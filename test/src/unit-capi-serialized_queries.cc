@@ -107,7 +107,11 @@ struct SerializationFx {
   Context ctx;
   VFS vfs;
 
-  // Buffers to allocate on query size for serialized queries
+  // Serialization parameters
+  bool serialize_ = true;
+  bool refactored_query_v2_ = false;
+  bool finalize_ = false;
+  // Buffers to allocate on server side for serialized queries
   tiledb::test::ServerQueryBuffers server_buffers_;
 
   SerializationFx()
@@ -215,7 +219,13 @@ struct SerializationFx {
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
 
     // The deserialized query should also include the write stats
@@ -259,7 +269,13 @@ struct SerializationFx {
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
 
     // The deserialized query should also include the write stats
@@ -301,7 +317,13 @@ struct SerializationFx {
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
 
     // The deserialized query should also include the write stats
@@ -320,7 +342,13 @@ struct SerializationFx {
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
 
     // The deserialized query should also include the delete stats
@@ -365,7 +393,13 @@ struct SerializationFx {
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
 
     // The deserialized query should also include the write stats
@@ -379,6 +413,7 @@ TEST_CASE_METHOD(
     SerializationFx,
     "Query serialization, dense",
     "[query][dense][serialization]") {
+  refactored_query_v2_ = GENERATE(true, false);
   create_array(TILEDB_DENSE);
   auto expected_results = write_dense_array();
 
@@ -401,7 +436,13 @@ TEST_CASE_METHOD(
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
 
     // The deserialized query should also include the read stats
@@ -445,7 +486,13 @@ TEST_CASE_METHOD(
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
 
     // The deserialized query should also include the read stats
@@ -505,7 +552,13 @@ TEST_CASE_METHOD(
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
 
     // The deserialized query should also include the read stats
@@ -555,7 +608,13 @@ TEST_CASE_METHOD(
     // Submit initial query.
     set_buffers(query);
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
     // The deserialized query should also include the read stats
     check_read_stats(query);
@@ -571,7 +630,13 @@ TEST_CASE_METHOD(
     // Reset buffers, serialize and resubmit
     set_buffers(query);
     rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
     // The deserialized query should also include the read stats
     check_read_stats(query);
@@ -589,7 +654,13 @@ TEST_CASE_METHOD(
     // Reset buffers, serialize and resubmit
     set_buffers(query);
     rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
     // The deserialized query should also include the read stats
     check_read_stats(query);
@@ -610,6 +681,7 @@ TEST_CASE_METHOD(
     SerializationFx,
     "Query serialization, sparse",
     "[query][sparse][serialization]") {
+  refactored_query_v2_ = GENERATE(true, false);
   create_array(TILEDB_SPARSE);
   write_sparse_array();
 
@@ -634,7 +706,13 @@ TEST_CASE_METHOD(
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
 
     // The deserialized query should also include the read stats
@@ -655,6 +733,7 @@ TEST_CASE_METHOD(
     SerializationFx,
     "Query serialization, sparse, old client",
     "[query][sparse][serialization][old-client]") {
+  refactored_query_v2_ = GENERATE(true, false);
   create_array(TILEDB_SPARSE);
   write_sparse_array();
 
@@ -685,7 +764,13 @@ TEST_CASE_METHOD(
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
 
     // The deserialized query should also include the read stats
@@ -706,6 +791,7 @@ TEST_CASE_METHOD(
     SerializationFx,
     "Query serialization, split coords, sparse",
     "[query][sparse][serialization][split-coords]") {
+  refactored_query_v2_ = GENERATE(true, false);
   create_array(TILEDB_SPARSE);
   write_sparse_array_split_coords();
 
@@ -730,7 +816,13 @@ TEST_CASE_METHOD(
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
 
     // The deserialized query should also include the read stats
@@ -752,6 +844,7 @@ TEST_CASE_METHOD(
     SerializationFx,
     "Query serialization, dense ranges",
     "[query][dense][serialization]") {
+  refactored_query_v2_ = GENERATE(true, false);
   create_array(TILEDB_DENSE);
   write_dense_array_ranges();
 
@@ -775,7 +868,13 @@ TEST_CASE_METHOD(
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
 
     // The deserialized query should also include the read stats
@@ -811,7 +910,13 @@ TEST_CASE_METHOD(
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
 
     // The deserialized query should also include the read stats
@@ -851,7 +956,13 @@ TEST_CASE_METHOD(
     set_buffers(query);
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
     // The deserialized query should also include the read stats
     check_read_stats(query);
@@ -868,7 +979,13 @@ TEST_CASE_METHOD(
     set_buffers(query);
     // Submit query
     rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
     // The deserialized query should also include the read stats
     check_read_stats(query);
@@ -885,7 +1002,13 @@ TEST_CASE_METHOD(
     set_buffers(query);
     // Submit query
     rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
     // The deserialized query should also include the read stats
     check_read_stats(query);
@@ -906,6 +1029,7 @@ TEST_CASE_METHOD(
     SerializationFx,
     "Query serialization, sparse delete",
     "[query][sparse][delete][serialization]") {
+  refactored_query_v2_ = GENERATE(true, false);
   create_array(TILEDB_SPARSE);
   write_sparse_array();
   write_sparse_delete();
@@ -931,7 +1055,13 @@ TEST_CASE_METHOD(
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        finalize_);
     REQUIRE(rc == TILEDB_OK);
 
     // The deserialized query should also include the read stats
@@ -952,13 +1082,13 @@ TEST_CASE_METHOD(
     SerializationFx,
     "Global order writes serialization",
     "[global-order-write][serialization][dense]") {
-  bool serialized = false;
   SECTION("no serialization") {
-    serialized = false;
+    serialize_ = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized = true;
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
 #endif
 
@@ -1023,13 +1153,24 @@ TEST_CASE_METHOD(
     // Simulate REST submit()
     if (begin < end) {
       submit_query_wrapper(
-          ctx, array_uri, &query, server_buffers_, serialized, false);
+          ctx,
+          array_uri,
+          &query,
+          server_buffers_,
+          serialize_,
+          refactored_query_v2_,
+          false);
     }
   }
 
   // Submit query
-  auto rc =
-      submit_query_wrapper(ctx, array_uri, &query, server_buffers_, serialized);
+  auto rc = submit_query_wrapper(
+      ctx,
+      array_uri,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE(rc == TILEDB_OK);
 
   REQUIRE(query.query_status() == Query::Status::COMPLETE);
@@ -1055,7 +1196,12 @@ TEST_CASE_METHOD(
         "a3", a3_result_offsets.data(), a3_result_offsets.size());
 
     auto rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, serialized);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
 

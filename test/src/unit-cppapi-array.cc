@@ -51,7 +51,10 @@ struct CPPArrayFx {
   static const unsigned d1_tile = 10;
   static const unsigned d2_tile = 5;
 
-  // Buffers to allocate on query size for serialized queries
+  // Serialization parameters
+  bool serialize_ = false;
+  bool refactored_query_v2_ = false;
+  // Buffers to allocate on server side for serialized queries
   test::ServerQueryBuffers server_buffers_;
 
   CPPArrayFx()
@@ -352,19 +355,24 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
 
     query.set_layout(TILEDB_GLOBAL_ORDER);
 
-    bool serialized_writes = false;
     SECTION("no serialization") {
-      serialized_writes = false;
+      serialize_ = false;
     }
-    SECTION("serialization enabled global order write") {
 #ifdef TILEDB_SERIALIZATION
-      serialized_writes = true;
-#endif
+    SECTION("serialization enabled global order write") {
+      serialize_ = true;
+      refactored_query_v2_ = GENERATE(true, false);
     }
+#endif
 
     // Submit query
     auto rc = submit_query_wrapper(
-        ctx, "cpp_unit_array", &query, server_buffers_, serialized_writes);
+        ctx,
+        "cpp_unit_array",
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_);
     REQUIRE(rc == TILEDB_OK);
 
     // Check non-empty domain while array open in write mode
@@ -424,6 +432,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
 }
 
 TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
+  bool serialize = false, refactored_query_v2 = false;
   const std::string array_name_1d = "cpp_unit_array_1d";
   Context ctx;
   VFS vfs(ctx);
@@ -432,7 +441,6 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
   tiledb_array_type_t array_type = TILEDB_DENSE;
   bool null_pointer = true;
 
-  bool serialized_writes = false;
   SECTION("SPARSE") {
     array_type = TILEDB_SPARSE;
     SECTION("GLOBAL_ORDER") {
@@ -446,13 +454,14 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
         null_pointer = false;
       }
       SECTION("no serialization") {
-        serialized_writes = false;
+        serialize = false;
       }
-      SECTION("serialization enabled global order write") {
 #ifdef TILEDB_SERIALIZATION
-        serialized_writes = true;
-#endif
+      SECTION("serialization enabled global order write") {
+        serialize = true;
+        refactored_query_v2 = GENERATE(true, false);
       }
+#endif
     }
 
     SECTION("UNORDERED") {
@@ -509,7 +518,12 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
     // Submit query
     test::ServerQueryBuffers server_buffers_;
     auto rc = submit_query_wrapper(
-        ctx, array_name_1d, &q, server_buffers_, serialized_writes);
+        ctx,
+        array_name_1d,
+        &q,
+        server_buffers_,
+        serialize,
+        refactored_query_v2);
     REQUIRE(rc == TILEDB_OK);
 
     array.close();
@@ -1107,6 +1121,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Writing single cell with global order",
     "[cppapi][sparse][global]") {
+  bool serialize = false, refactored_query_v2 = false;
   const std::string array_name = "cpp_unit_array";
   Context ctx;
   VFS vfs(ctx);
@@ -1131,20 +1146,25 @@ TEST_CASE(
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_GLOBAL_ORDER)
       .set_data_buffer("a", data_w);
-  bool serialized_writes = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialize = false;
   }
-  SECTION("serialization enabled global order write") {
 #ifdef TILEDB_SERIALIZATION
-    serialized_writes = true;
-#endif
+  SECTION("serialization enabled global order write") {
+    serialize = true;
+    refactored_query_v2 = GENERATE(true, false);
   }
+#endif
 
   // Submit query
   test::ServerQueryBuffers server_buffers_;
   auto rc = test::submit_query_wrapper(
-      ctx, array_name, &query_w, server_buffers_, serialized_writes);
+      ctx,
+      array_name,
+      &query_w,
+      server_buffers_,
+      serialize,
+      refactored_query_v2);
   REQUIRE(rc == TILEDB_OK);
 
   array_w.close();
@@ -1493,6 +1513,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Sparse global order, dimension only read",
     "[cppapi][sparse][global][read][dimension-only]") {
+  bool serialize = false, refactored_query_v2 = false;
   const std::string array_name = "cpp_unit_array";
   Context ctx;
   VFS vfs(ctx);
@@ -1517,20 +1538,26 @@ TEST_CASE(
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_GLOBAL_ORDER)
       .set_data_buffer("a", data_w);
-  bool serialized_writes = false;
+
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialize = false;
   }
-  SECTION("serialization enabled global order write") {
 #ifdef TILEDB_SERIALIZATION
-    serialized_writes = true;
-#endif
+  SECTION("serialization enabled global order write") {
+    serialize = true;
+    refactored_query_v2 = GENERATE(true, false);
   }
+#endif
 
   // Submit query
   test::ServerQueryBuffers server_buffers_;
   auto rc = test::submit_query_wrapper(
-      ctx, array_name, &query_w, server_buffers_, serialized_writes);
+      ctx,
+      array_name,
+      &query_w,
+      server_buffers_,
+      serialize,
+      refactored_query_v2);
   REQUIRE(rc == TILEDB_OK);
 
   array_w.close();
@@ -1555,6 +1582,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Unordered with dups, dimension only read",
     "[cppapi][sparse][unordered][dups][read][dimension-only]") {
+  bool serialize = false, refactored_query_v2 = false;
   const std::string array_name = "cpp_unit_array";
   Context ctx;
   VFS vfs(ctx);
@@ -1580,20 +1608,26 @@ TEST_CASE(
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_GLOBAL_ORDER)
       .set_data_buffer("a", data_w);
-  bool serialized_writes = false;
+
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialize = false;
   }
-  SECTION("serialization enabled global order write") {
 #ifdef TILEDB_SERIALIZATION
-    serialized_writes = true;
-#endif
+  SECTION("serialization enabled global order write") {
+    serialize = true;
+    refactored_query_v2 = GENERATE(true, false);
   }
+#endif
 
   // Submit query
   test::ServerQueryBuffers server_buffers_;
   auto rc = test::submit_query_wrapper(
-      ctx, array_name, &query_w, server_buffers_, serialized_writes);
+      ctx,
+      array_name,
+      &query_w,
+      server_buffers_,
+      serialize,
+      refactored_query_v2);
 
   REQUIRE(rc == TILEDB_OK);
 

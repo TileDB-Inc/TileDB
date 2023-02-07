@@ -908,18 +908,20 @@ int deserialize_array_and_query(
 
 /**
  * Helper method that wraps tiledb_array_open() and inserts a serialization
- * step, if serialization is enabled. The added serialization steps are
- * designed to closely mimic the behavior of the REST server.
+ * step, if serialization is enabled. This wrapper models exclusively the
+ * refactored array open (array open v2) serialization path. The added
+ * serialization steps are designed to closely mimic the behavior of the REST
+ * server.
  *
  * @param ctx Context.
  * @param query_type Type of query to open the array for.
- * @param serialize_query True if this is a remote array open, false if not.
+ * @param serialize True if this is a remote array open, false if not.
  * @param open_array Output open array.
  */
 int array_open_wrapper(
     tiledb_ctx_t* ctx,
     tiledb_query_type_t query_type,
-    bool serialize_query,
+    bool serialize,
     tiledb_array_t** open_array);
 
 /**
@@ -936,6 +938,8 @@ int array_open_wrapper(
  * e.g. once in the test Fixture definition or just before the call to
  * submit_query_wrapper.
  * @param serialize_query True if this is a remote array open, false if not.
+ * @param refactored_query_v2 If "rest.use_refactored_array_open" should be
+ * true.
  * @param finalize Finalize or not the query after submitting it.
  */
 int submit_query_wrapper(
@@ -944,6 +948,7 @@ int submit_query_wrapper(
     tiledb_query_t** query,
     ServerQueryBuffers& buffers,
     bool serialize_query,
+    bool refactored_query_v2 = false,
     bool finalize = true);
 
 /** C++ wrapper of submit_query_wrapper */
@@ -953,6 +958,7 @@ int submit_query_wrapper(
     Query* query,
     ServerQueryBuffers& buffers,
     bool serialize_query,
+    bool refactored_query_v2 = false,
     bool finalize = true);
 
 /**

@@ -59,10 +59,11 @@ struct SparseHeterFx {
   // Vector of supported filsystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
-  // Buffers to allocate on query size for serialized queries
-  ServerQueryBuffers server_buffers_;
-
+  // Serialization parameters
   bool serialize_ = false;
+  bool refactored_query_v2_ = false;
+  // Buffers to allocate on server side for serialized queries
+  ServerQueryBuffers server_buffers_;
 
   // Functions
   SparseHeterFx();
@@ -537,7 +538,12 @@ void SparseHeterFx::write_sparse_array_float_int64(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -732,6 +738,7 @@ TEST_CASE_METHOD(
   SECTION("- Serialization") {
 #ifdef TILEDB_SERIALIZATION
     serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
 #endif
   }
 
@@ -1086,6 +1093,7 @@ TEST_CASE_METHOD(
   }
   SECTION("- Serialization") {
     serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
 
   SupportedFsLocal local_fs;

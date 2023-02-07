@@ -1222,13 +1222,14 @@ TEST_CASE(
     "Backwards compatibility: Upgrades an array of older version and "
     "write/read it",
     "[backwards-compat][upgrade-version][write-read-new-version]") {
-  bool serialized = false;
+  bool serialize = false, refactored_query_v2 = false;
   SECTION("no serialization") {
-    serialized = false;
+    serialize = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled") {
-    serialized = true;
+    serialize = true;
+    refactored_query_v2 = GENERATE(true, false);
   }
 #endif
 
@@ -1259,7 +1260,12 @@ TEST_CASE(
 
   ServerQueryBuffers server_buffers;
   submit_query_wrapper(
-      ctx, array_name, &query_read1, server_buffers, serialized);
+      ctx,
+      array_name,
+      &query_read1,
+      server_buffers,
+      serialize,
+      refactored_query_v2);
   array_read1.close();
 
   for (int i = 0; i < 4; i++) {
@@ -1281,14 +1287,19 @@ TEST_CASE(
   query_write.set_data_buffer("d2", d2_write);
 
   submit_query_wrapper(
-      ctx, array_name, &query_write, server_buffers, serialized);
+      ctx,
+      array_name,
+      &query_write,
+      server_buffers,
+      serialize,
+      refactored_query_v2);
 
   array_write.close();
 
   FragmentInfo fragment_info(ctx, array_name);
   fragment_info.load();
 
-  if (serialized) {
+  if (serialize) {
     FragmentInfo deserialized_fragment_info(ctx, array_name);
     tiledb_fragment_info_serialize(
         ctx.ptr().get(),
@@ -1324,7 +1335,12 @@ TEST_CASE(
       .set_data_buffer("d2", d2_read2);
 
   submit_query_wrapper(
-      ctx, array_name, &query_read2, server_buffers, serialized);
+      ctx,
+      array_name,
+      &query_read2,
+      server_buffers,
+      serialize,
+      refactored_query_v2);
   array_read2.close();
 
   for (int i = 0; i < 2; i++) {

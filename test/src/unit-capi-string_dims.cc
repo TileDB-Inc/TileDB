@@ -54,12 +54,6 @@ using namespace tiledb::test;
 typedef std::pair<std::string, uint64_t> EstSize;
 
 struct StringDimsFx {
-  /**
-   * If true, array schema is serialized before submission, to test the
-   * serialization paths.
-   */
-  bool serialize_ = false;
-
   // TileDB context
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
@@ -67,7 +61,10 @@ struct StringDimsFx {
   // Vector of supported filsystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
-  // Buffers to allocate on query size for serialized queries
+  // Serialization parameters
+  bool serialize_ = false;
+  bool refactored_query_v2_ = false;
+  // Buffers to allocate on server side for serialized queries
   tiledb::test::ServerQueryBuffers server_buffers_;
 
   // Used to get the number of directories or files of another directory
@@ -380,7 +377,12 @@ void StringDimsFx::write_array_1d(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   // Close array
@@ -432,7 +434,12 @@ void StringDimsFx::write_array_2d(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   // Close array
@@ -718,7 +725,13 @@ void StringDimsFx::read_array_1d(
   CHECK(rc == TILEDB_OK);
 
   rc = submit_query_wrapper(
-      ctx, array_uri, &query, server_buffers_, serialize_, false);
+      ctx,
+      array_uri,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_,
+      false);
   CHECK(rc == TILEDB_OK);
 
   // Get status
@@ -833,7 +846,13 @@ void StringDimsFx::read_array_2d(
   rc = tiledb_array_get_uri(ctx, array, &array_uri);
   CHECK(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx, array_uri, &query, server_buffers_, serialize_, false);
+      ctx,
+      array_uri,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_,
+      false);
   CHECK(rc == TILEDB_OK);
 
   // Get status
@@ -894,7 +913,13 @@ void StringDimsFx::read_array_2d_default_string_range(
   rc = tiledb_array_get_uri(ctx, array, &array_uri);
   CHECK(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx, array_uri, &query, server_buffers_, serialize_, false);
+      ctx,
+      array_uri,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_,
+      false);
   CHECK(rc == TILEDB_OK);
 
   // Get status
@@ -918,11 +943,13 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_ = false;
   }
-  SECTION("- Serialization") {
 #ifdef TILEDB_SERIALIZATION
+  SECTION("- Serialization") {
     serialize_ = true;
-#endif
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
+
   SupportedFsLocal local_fs;
   std::string array_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "string_dims";
@@ -1028,11 +1055,13 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_ = false;
   }
-  SECTION("- Serialization") {
 #ifdef TILEDB_SERIALIZATION
+  SECTION("- Serialization") {
     serialize_ = true;
-#endif
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
+
   SupportedFsLocal local_fs;
   std::string array_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "string_dims";
@@ -1082,7 +1111,13 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_, false);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_,
+      false);
   REQUIRE(rc == TILEDB_ERR);
 
   // Close array
@@ -1104,11 +1139,13 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_ = false;
   }
-  SECTION("- Serialization") {
 #ifdef TILEDB_SERIALIZATION
+  SECTION("- Serialization") {
     serialize_ = true;
-#endif
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
+
   SupportedFsLocal local_fs;
   std::string array_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "string_dims";
@@ -1159,7 +1196,13 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_, false);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_,
+      false);
   REQUIRE(rc == TILEDB_ERR);
 
   // Close array
@@ -1181,11 +1224,13 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_ = false;
   }
-  SECTION("- Serialization") {
 #ifdef TILEDB_SERIALIZATION
+  SECTION("- Serialization") {
     serialize_ = true;
-#endif
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
+
   SupportedFsLocal local_fs;
   std::string array_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "string_dims";
@@ -1236,7 +1281,13 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_, false);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_,
+      false);
   REQUIRE(rc == TILEDB_ERR);
 
   // Close array
@@ -1257,11 +1308,13 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_ = false;
   }
-  SECTION("- Serialization") {
 #ifdef TILEDB_SERIALIZATION
+  SECTION("- Serialization") {
     serialize_ = true;
-#endif
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
+
   SupportedFsLocal local_fs;
   std::string array_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "string_dims";
@@ -1315,7 +1368,13 @@ TEST_CASE_METHOD(
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_, false);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_,
+      false);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -1379,11 +1438,13 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_ = false;
   }
-  SECTION("- Serialization") {
 #ifdef TILEDB_SERIALIZATION
+  SECTION("- Serialization") {
     serialize_ = true;
-#endif
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
+
   SupportedFsLocal local_fs;
   std::string array_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "string_dims";
@@ -1620,11 +1681,13 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_ = false;
   }
-  SECTION("- Serialization") {
 #ifdef TILEDB_SERIALIZATION
+  SECTION("- Serialization") {
     serialize_ = true;
-#endif
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
+
   SupportedFsLocal local_fs;
   std::string array_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "string_dims";
@@ -1809,11 +1872,13 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_ = false;
   }
-  SECTION("- Serialization") {
 #ifdef TILEDB_SERIALIZATION
+  SECTION("- Serialization") {
     serialize_ = true;
-#endif
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
+
   SupportedFsLocal local_fs;
   std::string array_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "string_dims";
@@ -1922,11 +1987,13 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_ = false;
   }
-  SECTION("- Serialization") {
 #ifdef TILEDB_SERIALIZATION
+  SECTION("- Serialization") {
     serialize_ = true;
-#endif
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
+
   SupportedFsLocal local_fs;
   std::string array_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "string_dims";
@@ -2052,11 +2119,13 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_ = false;
   }
-  SECTION("- Serialization") {
 #ifdef TILEDB_SERIALIZATION
+  SECTION("- Serialization") {
     serialize_ = true;
-#endif
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
+
   SupportedFsLocal local_fs;
   std::string array_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "string_dims";
@@ -2316,11 +2385,13 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_ = false;
   }
-  SECTION("- Serialization") {
 #ifdef TILEDB_SERIALIZATION
+  SECTION("- Serialization") {
     serialize_ = true;
-#endif
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
+
   SupportedFsLocal local_fs;
   std::string array_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "string_dims";
@@ -2373,7 +2444,13 @@ TEST_CASE_METHOD(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_, false);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_,
+      false);
   CHECK(rc == TILEDB_OK);
 
   // Write "b, 2"
@@ -2382,7 +2459,12 @@ TEST_CASE_METHOD(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   // Close array
@@ -2439,11 +2521,13 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_ = false;
   }
-  SECTION("- Serialization") {
 #ifdef TILEDB_SERIALIZATION
+  SECTION("- Serialization") {
     serialize_ = true;
-#endif
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
+
   SupportedFsLocal local_fs;
   std::string array_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "string_dims";
@@ -2496,7 +2580,13 @@ TEST_CASE_METHOD(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_, false);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_,
+      false);
   CHECK(rc == TILEDB_OK);
 
   // Write "b, 2"
@@ -2505,7 +2595,13 @@ TEST_CASE_METHOD(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_, false);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_,
+      false);
   CHECK(rc == TILEDB_OK);
 
   // Write c, 3; d, 4 and e, 5.
@@ -2521,7 +2617,12 @@ TEST_CASE_METHOD(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, array_name, &query, server_buffers_, serialize_);
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   CHECK(rc == TILEDB_OK);
 
   // Close array
@@ -2578,11 +2679,13 @@ TEST_CASE_METHOD(
   SECTION("- No serialization") {
     serialize_ = false;
   }
-  SECTION("- Serialization") {
 #ifdef TILEDB_SERIALIZATION
+  SECTION("- Serialization") {
     serialize_ = true;
-#endif
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
+
   SupportedFsLocal local_fs;
   std::string array_name =
       local_fs.file_prefix() + local_fs.temp_dir() + "string_dims";

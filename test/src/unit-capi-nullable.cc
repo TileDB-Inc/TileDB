@@ -58,8 +58,11 @@ class NullableArrayFx {
   const string FILE_TEMP_DIR =
       tiledb::sm::Posix::current_dir() + "/tiledb_test/";
 #endif
-  bool serialized_;
-  // Buffers to allocate on query size for serialized queries
+
+  // Serialization parameters
+  bool serialize_ = false;
+  bool refactored_query_v2_ = false;
+  // Buffers to allocate on server side for serialized queries
   ServerQueryBuffers server_buffers_;
 
   struct test_dim_t {
@@ -227,7 +230,7 @@ NullableArrayFx::NullableArrayFx() {
 
   tiledb_config_free(&config);
 
-  serialized_ = false;
+  serialize_ = false;
 }
 
 NullableArrayFx::~NullableArrayFx() {
@@ -436,7 +439,12 @@ void NullableArrayFx::write(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, FILE_TEMP_DIR + array_name, &query, server_buffers_, serialized_);
+      ctx_,
+      FILE_TEMP_DIR + array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
@@ -539,7 +547,12 @@ void NullableArrayFx::read(
 
   // Submit query
   rc = submit_query_wrapper(
-      ctx_, FILE_TEMP_DIR + array_name, &query, server_buffers_, serialized_);
+      ctx_,
+      FILE_TEMP_DIR + array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
@@ -874,13 +887,14 @@ TEST_CASE_METHOD(
   attrs.emplace_back("a3", TILEDB_INT32, TILEDB_VAR_NUM, true);
 
   SECTION("no serialization") {
-    serialized_ = false;
+    serialize_ = false;
   }
-  SECTION("serialization enabled") {
 #ifdef TILEDB_SERIALIZATION
-    serialized_ = true;
-#endif
+  SECTION("serialization enabled") {
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
 
   for (auto attr_iter = attrs.begin(); attr_iter != attrs.end(); ++attr_iter) {
     vector<test_attr_t> test_attrs(attrs.begin(), attr_iter + 1);
