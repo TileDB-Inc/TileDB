@@ -192,18 +192,18 @@ TEST_CASE(
   rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
-  tiledb_encryption_type_t encryption_type =
-      tiledb_encryption_type_t::TILEDB_NO_ENCRYPTION;
-  const char* key = "";
-  int key_length = 0;
-  int expected_fragment_size = 3202;
-  SECTION("encrypted") {
+  bool encrypt = false;
+  encrypt = GENERATE(false, true);
+  tiledb_encryption_type_t encryption_type;
+  const char* key;
+  int key_length;
+  int expected_fragment_size;
+  if (encrypt) {
     encryption_type = tiledb_encryption_type_t::TILEDB_AES_256_GCM;
     key = "12345678901234567890123456789012";
     key_length = 32;
     expected_fragment_size = 5585;
-  }
-  SECTION("not encrypted") {
+  } else {
     encryption_type = tiledb_encryption_type_t::TILEDB_NO_ENCRYPTION;
     key = "";
     key_length = 0;
