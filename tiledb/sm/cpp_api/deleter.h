@@ -140,9 +140,9 @@ class Deleter {
   }
 
   void operator()(tiledb_string_t* p) const {
-    capi_return_t result = tiledb_string_free(&p);
+    capi_status_t result = tiledb_status(tiledb_string_free(&p));
     if (result != TILEDB_OK) {
-      Log::warn("Could not free string; Error code: " + std::to_string(result));
+      log_warn("Could not free string; Error code: " + std::to_string(result));
     }
   }
 

@@ -1,5 +1,5 @@
 /**
- * @file   log.h
+ * @file log.h
  *
  * @section LICENSE
  *
@@ -28,32 +28,22 @@
  * @section DESCRIPTION
  *
  * This file declares the C++ API's logger.
+ * TODO: This is currently a stub; write a proper implementation.
  */
 
 #ifndef TILEDB_CPP_API_LOG_H
 #define TILEDB_CPP_API_LOG_H
 
-#include "context.h"
-#include "tiledb.h"
+#include <string>
 
-namespace tiledb {
-
-namespace impl {
+namespace tiledb::impl {
 
 /**
- * Logs events from the C++ API.
- * TODO: This is currently a stub; write a proper implementation.
+ * Logs a warning.
  */
-class Log {
- public:
-  Log() = delete;
+inline void log_warn(const std::string&) noexcept {
+}
 
-  static void warn(const std::string&) noexcept {
-  }
-};
-
-}  // namespace impl
-
-}  // namespace tiledb
+}  // namespace tiledb::impl
 
 #endif  // TILEDB_CPP_API_LOG_H
