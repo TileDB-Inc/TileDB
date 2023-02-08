@@ -1488,11 +1488,6 @@ Status query_from_capnp(
     uint8_t* existing_validity_buffer = nullptr;
     uint64_t existing_validity_buffer_size = 0;
 
-    // For writes and read (client side) we need ptrs to set the sizes properly
-    uint64_t* existing_buffer_size_ptr = nullptr;
-    uint64_t* existing_offset_buffer_size_ptr = nullptr;
-    uint64_t* existing_validity_buffer_size_ptr = nullptr;
-
     auto var_size = schema.var_size(name);
     auto nullable = schema.is_nullable(name);
     const QueryBuffer& query_buffer = query->buffer(name);
@@ -1529,7 +1524,11 @@ Status query_from_capnp(
         }
       }
     } else if (query_type == QueryType::WRITE) {
-      // For writes we need to use get_buffer and clientside
+      // For writes we need ptrs to set the sizes properly
+      uint64_t* existing_buffer_size_ptr = nullptr;
+      uint64_t* existing_offset_buffer_size_ptr = nullptr;
+      uint64_t* existing_validity_buffer_size_ptr = nullptr;
+
       if (var_size) {
         if (!nullable) {
           RETURN_NOT_OK(query->get_data_buffer(
@@ -1683,7 +1682,8 @@ Status query_from_capnp(
           // attr_copy_state==nulptr models the case of deserialization code
           // being called via the C API tiledb_query_deserialize (e.g. unit
           // test serialization wrappers).
-          // When a rest_client exists, there is always a copy_state
+          // When a rest_client exists, there is always a non null copy_state
+          // incoming argument from which attr_copy_state is initialized
           if (attr_copy_state == nullptr) {
             // Set the size directly on the query (so user can introspect on
             // result size).
@@ -1729,7 +1729,8 @@ Status query_from_capnp(
           // attr_copy_state==nulptr models the case of deserialization code
           // being called via the C API tiledb_query_deserialize (e.g. unit
           // test serialization wrappers).
-          // When a rest_client exists, there is always a copy_state
+          // When a rest_client exists, there is always a non null copy_state
+          // incoming argument from which attr_copy_state is initialized
           if (attr_copy_state == nullptr) {
             // Set the size directly on the query (so user can introspect on
             // result size).
