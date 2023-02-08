@@ -105,7 +105,7 @@ Query::Query(
     , consolidation_with_timestamps_(false)
     , force_legacy_reader_(false)
     , fragment_name_(fragment_name)
-    , remote_query_(array_->is_remote())
+    , remote_query_(false)
     , is_dimension_label_ordered_read_(false)
     , dimension_label_increasing_(true)
     , fragment_size_(std::numeric_limits<uint64_t>::max())
