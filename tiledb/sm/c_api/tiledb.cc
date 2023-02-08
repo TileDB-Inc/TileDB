@@ -40,6 +40,7 @@
 #include "tiledb/api/c_api/config/config_api_internal.h"
 #include "tiledb/api/c_api/error/error_api_internal.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_internal.h"
+#include "tiledb/api/c_api/string/string_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/dynamic_memory/dynamic_memory.h"
@@ -5007,7 +5008,32 @@ int32_t tiledb_fragment_info_get_fragment_name(
       sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(fragment_info->fragment_info_->get_fragment_name(fid, name));
+  LOG_WARN(
+      "tiledb_fragment_info_get_fragment_name is deprecated. Please use "
+      "tiledb_fragment_info_get_fragment_name_v2 instead.");
+  // This will leak the string but as a temporary solution until
+  // this deprecated function is removed.
+  *name = (new std::string(fragment_info->fragment_info_->fragment_name(fid)))
+              ->c_str();
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_fragment_info_get_fragment_name_v2(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    tiledb_string_t** name) {
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  if (name == nullptr) {
+    throw std::invalid_argument("Name cannot be null.");
+  }
+
+  *name = tiledb_string_handle_t::make_handle(
+      fragment_info->fragment_info_->fragment_name(fid));
 
   return TILEDB_OK;
 }
@@ -7789,6 +7815,15 @@ int32_t tiledb_fragment_info_get_fragment_name(
     uint32_t fid,
     const char** name) noexcept {
   return api_entry<tiledb::api::tiledb_fragment_info_get_fragment_name>(
+      ctx, fragment_info, fid, name);
+}
+
+int32_t tiledb_fragment_info_get_fragment_name_v2(
+    tiledb_ctx_t* ctx,
+    tiledb_fragment_info_t* fragment_info,
+    uint32_t fid,
+    tiledb_string_t** name) noexcept {
+  return api_entry<tiledb::api::tiledb_fragment_info_get_fragment_name_v2>(
       ctx, fragment_info, fid, name);
 }
 

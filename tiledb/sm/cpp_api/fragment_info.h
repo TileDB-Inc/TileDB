@@ -92,13 +92,17 @@ class FragmentInfo {
   }
 
   /** Returns the name of the fragment with the given index. */
-  TILEDB_DEPRECATED
   std::string fragment_name(uint32_t fid) const {
     auto& ctx = ctx_.get();
+    tiledb_string_t* name;
+    ctx.handle_error(tiledb_fragment_info_get_fragment_name_v2(
+        ctx.ptr().get(), fragment_info_.get(), fid, &name));
+    auto name_ptr =
+        std::unique_ptr<tiledb_string_t, tiledb::impl::Deleter>(name);
     const char* name_c;
-    ctx.handle_error(tiledb_fragment_info_get_fragment_name(
-        ctx.ptr().get(), fragment_info_.get(), fid, &name_c));
-    return std::string(name_c);
+    size_t length;
+    ctx.handle_error(tiledb_string_view(name_ptr.get(), &name_c, &length));
+    return std::string(name_c, length);
   }
 
   /**
