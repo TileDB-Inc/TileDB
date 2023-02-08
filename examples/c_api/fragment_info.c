@@ -49,7 +49,7 @@ void handle_error(capi_return_t result) {
     if (tiledb_ctx_get_last_error(ctx, &err) != TILEDB_OK) {
       fatal_error();
     }
-    char* error_msg;
+    const char* error_msg;
     if (tiledb_error_message(err, &error_msg) != TILEDB_OK) {
       fatal_error();
     }
