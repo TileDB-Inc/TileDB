@@ -117,8 +117,9 @@ void InfoCommand::run() {
 
 void InfoCommand::print_tile_sizes() const {
   Config config;
-  ContextResources resources(config, 1, 1, "");
-  StorageManager sm(resources, make_shared<Logger>(HERE(), ""), config);
+  auto logger = make_shared<Logger>(HERE(), "");
+  ContextResources resources(config, logger, 1, 1, "");
+  StorageManager sm(resources, logger, config);
 
   // Open the array
   URI uri(array_uri_);
@@ -187,8 +188,9 @@ void InfoCommand::print_tile_sizes() const {
 
 void InfoCommand::print_schema_info() const {
   Config config;
-  ContextResources resources(config, 1, 1, "");
-  StorageManager sm(resources, make_shared<Logger>(HERE(), ""), config);
+  auto logger = make_shared<Logger>(HERE(), "");
+  ContextResources resources(config, logger, 1, 1, "");
+  StorageManager sm(resources, logger, config);
 
   // Open the array
   URI uri(array_uri_);
@@ -204,8 +206,9 @@ void InfoCommand::print_schema_info() const {
 
 void InfoCommand::write_svg_mbrs() const {
   Config config;
-  ContextResources resources(config, 1, 1, "");
-  StorageManager sm(resources, make_shared<Logger>(HERE(), ""), config);
+  auto logger = make_shared<Logger>(HERE(), "");
+  ContextResources resources(config, logger, 1, 1, "");
+  StorageManager sm(resources, logger, config);
 
   // Open the array
   URI uri(array_uri_);
@@ -279,8 +282,9 @@ void InfoCommand::write_svg_mbrs() const {
 
 void InfoCommand::write_text_mbrs() const {
   Config config;
-  ContextResources resources(config, 1, 1, "");
-  StorageManager sm(resources, make_shared<Logger>(HERE(), ""), config);
+  auto logger = make_shared<Logger>(HERE(), "");
+  ContextResources resources(config, logger, 1, 1, "");
+  StorageManager sm(resources, logger, config);
 
   // Open the array
   URI uri(array_uri_);

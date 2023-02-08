@@ -31,10 +31,17 @@
  */
 
 #include "tiledb/sm/storage_manager/context_resources.h"
+#include "tiledb/sm/rest/rest_client.h"
 
 using namespace tiledb::common;
 
 namespace tiledb::sm {
+
+#ifdef TILEDB_SERIALIZATION
+constexpr bool TILEDB_SERIALIZATION_ENABLED = true;
+#else
+constexpr bool TILEDB_SERIALIZATION_ENABLED = false;
+#endif
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -42,10 +49,13 @@ namespace tiledb::sm {
 
 ContextResources::ContextResources(
     const Config& config,
+    shared_ptr<Logger> logger,
     size_t compute_thread_count,
     size_t io_thread_count,
     std::string stats_name)
-    : compute_tp_(compute_thread_count)
+    : config_(config)
+    , logger_(logger)
+    , compute_tp_(compute_thread_count)
     , io_tp_(io_thread_count)
     , stats_(make_shared<stats::Stats>(HERE(), stats_name))
     , vfs_(stats_.get(), &compute_tp_, &io_tp_, config) {
@@ -53,6 +63,16 @@ ContextResources::ContextResources(
    * Explicitly register our `stats` object with the global.
    */
   stats::all_stats.register_stats(stats_);
+
+  if constexpr (TILEDB_SERIALIZATION_ENABLED) {
+    auto server_address = config_.get<std::string>("rest.server_address");
+    if (server_address) {
+      auto client = tdb::make_shared<RestClient>(HERE());
+      auto st = client->init(&stats(), &config_, &compute_tp(), logger_);
+      throw_if_not_ok(st);
+      rest_client_ = client;
+    }
+  }
 }
 
 }  // namespace tiledb::sm
