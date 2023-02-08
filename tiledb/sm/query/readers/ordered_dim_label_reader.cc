@@ -248,6 +248,12 @@ void OrderedDimLabelReader::label_read() {
   // Sanity checks.
   assert(std::is_integral<IndexType>::value);
 
+  // Handle empty array.
+  if (fragment_metadata_.empty()) {
+    throw OrderedDimLabelReaderStatusException(
+        "Cannot read dim label; Dimension label is empty");
+  }
+
   // Precompute data.
   auto&& [non_empty_domain, non_empty_domains, frag_first_array_tile_idx] =
       cache_dimension_label_data<IndexType>();
