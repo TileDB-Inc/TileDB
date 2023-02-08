@@ -50,6 +50,14 @@ capi_return_t tiledb_dimension_label_get_dimension_index(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_dimension_label_get_label_attr_name(
+    tiledb_dimension_label_t* dim_label, const char** label_attr_name) {
+  ensure_dimension_label_is_valid(dim_label);
+  ensure_output_pointer_is_valid(label_attr_name);
+  *label_attr_name = dim_label->dimension_label().label_attr_name().c_str();
+  return TILEDB_OK;
+}
+
 capi_return_t tiledb_dimension_label_get_label_cell_val_num(
     tiledb_dimension_label_t* dim_label, uint32_t* label_cell_val_num) {
   ensure_dimension_label_is_valid(dim_label);
@@ -109,6 +117,15 @@ capi_return_t tiledb_dimension_label_get_dimension_index(
   return api_entry_context<
       tiledb::api::tiledb_dimension_label_get_dimension_index>(
       ctx, dim_label, dim_index);
+}
+
+capi_return_t tiledb_dimension_label_get_label_attr_name(
+    tiledb_ctx_t* ctx,
+    tiledb_dimension_label_t* dim_label,
+    const char** label_attr_name) noexcept {
+  return api_entry_context<
+      tiledb::api::tiledb_dimension_label_get_label_attr_name>(
+      ctx, dim_label, label_attr_name);
 }
 
 capi_return_t tiledb_dimension_label_get_label_cell_val_num(

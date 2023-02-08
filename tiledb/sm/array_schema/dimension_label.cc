@@ -1,5 +1,5 @@
 /**
- * @file tiledb/sm/array_schema/dimension_label_reference.cc
+ * @file tiledb/sm/array_schema/dimension_label.cc
  *
  * @section LICENSE
  *
@@ -26,7 +26,7 @@
  * THE SOFTWARE.
  */
 
-#include "tiledb/sm/array_schema/dimension_label_reference.h"
+#include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -45,14 +45,14 @@ using namespace tiledb::type;
 namespace tiledb::sm {
 
 /** Class for locally generated status exceptions. */
-class DimensionLabelReferenceStatusException : public StatusException {
+class DimensionLabelStatusException : public StatusException {
  public:
-  explicit DimensionLabelReferenceStatusException(const std::string& msg)
-      : StatusException("DimensionLabelReference", msg) {
+  explicit DimensionLabelStatusException(const std::string& msg)
+      : StatusException("DimensionLabel", msg) {
   }
 };
 
-DimensionLabelReference::DimensionLabelReference(
+DimensionLabel::DimensionLabel(
     dimension_size_type dim_id,
     const std::string& dim_label_name,
     const URI& uri,
@@ -122,7 +122,7 @@ DimensionLabelReference::DimensionLabelReference(
   }
 }
 
-DimensionLabelReference::DimensionLabelReference(
+DimensionLabel::DimensionLabel(
     dimension_size_type dim_id,
     const std::string& dim_label_name,
     const URI& uri,
@@ -200,7 +200,7 @@ DimensionLabelReference::DimensionLabelReference(
 //| Label datatype             | `uint8_t`  |
 //| Label cell_val_num         | `uint32_t` |
 //| Is external                | `bool`     |
-shared_ptr<DimensionLabelReference> DimensionLabelReference::deserialize(
+shared_ptr<DimensionLabel> DimensionLabel::deserialize(
     Deserializer& deserializer, uint32_t) {
   try {
     // Read dimension ID
@@ -233,8 +233,8 @@ shared_ptr<DimensionLabelReference> DimensionLabelReference::deserialize(
     // Read if dimension label is external
     auto is_external = deserializer.read<bool>();
 
-    // Construct and return a shared pointer to a DimensionLabelReference
-    return make_shared<DimensionLabelReference>(
+    // Construct and return a shared pointer to a DimensionLabel
+    return make_shared<DimensionLabel>(
         HERE(),
         dim_id,
         dim_label_name,
@@ -248,11 +248,11 @@ shared_ptr<DimensionLabelReference> DimensionLabelReference::deserialize(
         relative_uri);
   } catch (std::exception& e) {
     std::throw_with_nested(
-        std::runtime_error("[DimensionLabelReference::deserialize] "));
+        std::runtime_error("[DimensionLabel::deserialize] "));
   }
 }
 
-void DimensionLabelReference::dump(FILE* out) const {
+void DimensionLabel::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
   fprintf(out, "### Dimension Label ###\n");
@@ -267,10 +267,10 @@ void DimensionLabelReference::dump(FILE* out) const {
   fprintf(out, "\n");
 }
 
-const shared_ptr<ArraySchema> DimensionLabelReference::schema() const {
+const shared_ptr<ArraySchema> DimensionLabel::schema() const {
   if (!schema_) {
     throw StatusException(
-        "DimensionLabelReference",
+        "DimensionLabel",
         "Cannot return dimension label schema; No schema is set.");
   }
   return schema_;
@@ -291,8 +291,7 @@ const shared_ptr<ArraySchema> DimensionLabelReference::schema() const {
 //| Label datatype             | `uint8_t`  |
 //| Label cell_val_num         | `uint32_t` |
 //| Is external                | `bool`     |
-void DimensionLabelReference::serialize(
-    Serializer& serializer, uint32_t) const {
+void DimensionLabel::serialize(Serializer& serializer, uint32_t) const {
   // Read dimension ID
   serializer.write<uint32_t>(dim_id_);
 

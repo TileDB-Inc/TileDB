@@ -45,7 +45,7 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 class Array;
-class DimensionLabelReference;
+class DimensionLabel;
 class Query;
 class QueryBuffer;
 class Subarray;

@@ -36,7 +36,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory.h"
 #include "tiledb/sm/array/array.h"
-#include "tiledb/sm/array_schema/dimension_label_reference.h"
+#include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
@@ -632,7 +632,7 @@ Status Query::get_data_buffer(
   // Return the buffer
   it = label_buffers_.find(name);
   if (it != label_buffers_.end()) {
-    if (array_schema_->dimension_label_reference(name).is_var()) {
+    if (array_schema_->dimension_label(name).is_var()) {
       *buffer = it->second.buffer_var_;
       *buffer_size = it->second.buffer_var_size_;
     } else {
@@ -1287,7 +1287,7 @@ Status Query::set_data_buffer(
 
     // Set dimension label buffer on the appropriate buffer depending if the
     // label is fixed or variable length.
-    array_schema_->dimension_label_reference(name).is_var() ?
+    array_schema_->dimension_label(name).is_var() ?
         label_buffers_[name].set_data_var_buffer(buffer, buffer_size) :
         label_buffers_[name].set_data_buffer(buffer, buffer_size);
     return Status::Ok();
@@ -1401,7 +1401,7 @@ Status Query::set_offsets_buffer(
     }
 
     // Check the dimension labe is in fact variable length.
-    if (!array_schema_->dimension_label_reference(name).is_var()) {
+    if (!array_schema_->dimension_label(name).is_var()) {
       throw QueryStatusException(
           std::string("Cannot set buffer; Input dimension label '") + name +
           "' is fixed-sized");

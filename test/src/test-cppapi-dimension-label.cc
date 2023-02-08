@@ -83,6 +83,8 @@ TEST_CASE_METHOD(
     CHECK(dim_label.label_cell_val_num() == tiledb::sm::constants::var_num);
     CHECK(dim_label.label_type() == TILEDB_STRING_ASCII);
   }
+  CHECK(dim_label.label_attr_name() == "label");
+
   // Make sure the URI is to a valid array.
   auto dim_label_object = tiledb::Object::object(ctx_, dim_label.uri());
   CHECK(dim_label_object.type() == tiledb::Object::Type::Array);

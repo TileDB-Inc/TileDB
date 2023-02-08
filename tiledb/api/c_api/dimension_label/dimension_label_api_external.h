@@ -77,6 +77,20 @@ TILEDB_EXPORT capi_return_t tiledb_dimension_label_get_dimension_index(
     uint32_t* dim_index) TILEDB_NOEXCEPT;
 
 /**
+ * Returns the name of the dimension label.
+ *
+ * @param[in] ctx TileDB context.
+ * @param[in] dim_label The target dimension label.
+ * @param[out] label_attr_name The name of the attribute the label data is
+ *     stored under.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_dimension_label_get_label_attr_name(
+    tiledb_ctx_t* ctx,
+    tiledb_dimension_label_t* dim_label,
+    const char** label_attr_name) TILEDB_NOEXCEPT;
+
+/**
  * Returns the number of values per cell for the labels on the dimension label.
  * For variable-sized labels the result is TILEDB_VAR_NUM.
  *

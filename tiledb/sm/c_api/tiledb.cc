@@ -48,7 +48,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/array_schema/dimension_label_reference.h"
+#include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/c_api/api_argument_validator.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/config/config_iter.h"
@@ -3204,7 +3204,7 @@ int32_t tiledb_array_create(
          ++ilabel) {
       // Get dimension label information and define URI and name.
       const auto& dim_label_ref =
-          array_schema->array_schema_->dimension_label_reference(ilabel);
+          array_schema->array_schema_->dimension_label(ilabel);
       if (dim_label_ref.is_external())
         continue;
       if (!dim_label_ref.has_schema()) {
@@ -3290,7 +3290,7 @@ int32_t tiledb_array_create_with_key(
          ++ilabel) {
       // Get dimension label information and define URI and name.
       const auto& dim_label_ref =
-          array_schema->array_schema_->dimension_label_reference(ilabel);
+          array_schema->array_schema_->dimension_label(ilabel);
       if (dim_label_ref.is_external())
         continue;
       if (!dim_label_ref.has_schema()) {

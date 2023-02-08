@@ -34,7 +34,7 @@ commence(unit_test array_schema)
         main.cc
         unit_array_schema.cc
         unit_dimension.cc
-        unit_dimension_label_reference.cc
+        unit_dimension_label.cc
         unit_domain_data.cc
         unit_tile_domain.cc
     )

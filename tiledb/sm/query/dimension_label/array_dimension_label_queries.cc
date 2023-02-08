@@ -34,7 +34,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/array_schema/dimension_label_reference.h"
+#include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -213,7 +213,7 @@ void ArrayDimensionLabelQueries::add_read_queries(
     try {
       // Get the dimension label reference from the array.
       const auto& dim_label_ref =
-          array->array_schema_latest().dimension_label_reference(label_name);
+          array->array_schema_latest().dimension_label(label_name);
 
       // Open the indexed array.
       const auto dim_label = open_dimension_label(
@@ -245,7 +245,7 @@ void ArrayDimensionLabelQueries::add_read_queries(
     try {
       // Get the dimension label reference from the array.
       const auto& dim_label_ref =
-          array->array_schema_latest().dimension_label_reference(label_name);
+          array->array_schema_latest().dimension_label(label_name);
 
       // Open the indexed array.
       auto dim_label_iter = dimension_labels_.find(label_name);
@@ -287,7 +287,7 @@ void ArrayDimensionLabelQueries::add_write_queries(
     try {
       // Get the dimension label reference from the array.
       const auto& dim_label_ref =
-          array->array_schema_latest().dimension_label_reference(label_name);
+          array->array_schema_latest().dimension_label(label_name);
 
       // Verify that this subarray is not set to use labels.
       if (subarray.has_label_ranges(dim_label_ref.dimension_index())) {

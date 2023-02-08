@@ -69,7 +69,7 @@ namespace sm {
 
 class Array;
 class ArraySchema;
-class DimensionLabelReference;
+class DimensionLabel;
 class EncryptionKey;
 class FragIdx;
 class FragmentMetadata;
@@ -296,7 +296,7 @@ class Subarray {
    *     and truncate the range.
    */
   void add_label_range(
-      const DimensionLabelReference& dim_label_ref,
+      const DimensionLabel& dim_label_ref,
       Range&& range,
       const bool read_range_oob_error = true);
 
@@ -1234,8 +1234,7 @@ class Subarray {
      * ranges for.
      * @param coalesce_ranges Set if ranges should be combined when adjacent.
      */
-    LabelRangeSubset(
-        const DimensionLabelReference& ref, bool coalesce_ranges = true);
+    LabelRangeSubset(const DimensionLabel& ref, bool coalesce_ranges = true);
 
     inline const std::vector<Range>& get_ranges() const {
       return ranges.ranges();

@@ -243,16 +243,17 @@ TEST_CASE_METHOD(
   const char* dim_label_uri;
   require_tiledb_ok(
       tiledb_dimension_label_get_uri(ctx, loaded_dim_label, &dim_label_uri));
+  const char* label_attr_name;
+  require_tiledb_ok(tiledb_dimension_label_get_label_attr_name(
+      ctx, loaded_dim_label, &label_attr_name));
   tiledb_array_schema_t* loaded_dim_label_array_schema{nullptr};
   require_tiledb_ok(tiledb_array_schema_load(
       ctx, dim_label_uri, &loaded_dim_label_array_schema));
-  tiledb_dimension_label_free(&loaded_dim_label);
-  tiledb_array_schema_free(&loaded_array_schema);
 
   // Check the filter on the label attribute.
   tiledb_attribute_t* label_attr;
-  require_tiledb_ok(tiledb_array_schema_get_attribute_from_index(
-      ctx, loaded_dim_label_array_schema, 0, &label_attr));
+  require_tiledb_ok(tiledb_array_schema_get_attribute_from_name(
+      ctx, loaded_dim_label_array_schema, label_attr_name, &label_attr));
   tiledb_filter_list_t* loaded_filter_list;
   require_tiledb_ok(
       tiledb_attribute_get_filter_list(ctx, label_attr, &loaded_filter_list));
@@ -278,6 +279,8 @@ TEST_CASE_METHOD(
 
   // Free remaining resources.
   tiledb_array_schema_free(&loaded_dim_label_array_schema);
+  tiledb_dimension_label_free(&loaded_dim_label);
+  tiledb_array_schema_free(&loaded_array_schema);
 }
 
 TEST_CASE_METHOD(

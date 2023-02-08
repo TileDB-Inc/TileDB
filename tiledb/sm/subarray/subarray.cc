@@ -42,7 +42,7 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
-#include "tiledb/sm/array_schema/dimension_label_reference.h"
+#include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -177,7 +177,7 @@ void Subarray::add_index_ranges_from_label(
 }
 
 void Subarray::add_label_range(
-    const DimensionLabelReference& dim_label_ref,
+    const DimensionLabel& dim_label_ref,
     Range&& range,
     const bool read_range_oob_error) {
   const auto dim_idx = dim_label_ref.dimension_index();
@@ -246,7 +246,7 @@ void Subarray::add_label_range(
   }
   // Get dimension label range and check the label is in fact fixed-sized.
   const auto& dim_label_ref =
-      array_->array_schema_latest().dimension_label_reference(label_name);
+      array_->array_schema_latest().dimension_label(label_name);
   if (dim_label_ref.label_cell_val_num() == constants::var_num) {
     throw StatusException(
         Status_SubarrayError("Cannot add label range; Cannot add a fixed-sized "
@@ -274,7 +274,7 @@ void Subarray::add_label_range_var(
   // Get the dimension label range and check the label is in fact
   // variable-sized.
   const auto& dim_label_ref =
-      array_->array_schema_latest().dimension_label_reference(label_name);
+      array_->array_schema_latest().dimension_label(label_name);
   if (dim_label_ref.label_cell_val_num() != constants::var_num) {
     throw StatusException(Status_SubarrayError(
         "Cannot add label range; Cannot add a variable-sized range to a "
@@ -598,7 +598,7 @@ void Subarray::get_label_range(
     const void** end,
     const void** stride) const {
   auto dim_idx = array_->array_schema_latest()
-                     .dimension_label_reference(label_name)
+                     .dimension_label(label_name)
                      .dimension_index();
   if (!label_range_subset_[dim_idx].has_value() ||
       label_range_subset_[dim_idx].value().name != label_name) {
@@ -615,7 +615,7 @@ void Subarray::get_label_range(
 void Subarray::get_label_range_num(
     const std::string& label_name, uint64_t* range_num) const {
   auto dim_idx = array_->array_schema_latest()
-                     .dimension_label_reference(label_name)
+                     .dimension_label(label_name)
                      .dimension_index();
   *range_num = (label_range_subset_[dim_idx].has_value() &&
                 label_range_subset_[dim_idx].value().name == label_name) ?
@@ -629,7 +629,7 @@ void Subarray::get_label_range_var(
     void* start,
     void* end) const {
   auto dim_idx = array_->array_schema_latest()
-                     .dimension_label_reference(label_name)
+                     .dimension_label(label_name)
                      .dimension_index();
   if (!label_range_subset_[dim_idx].has_value() ||
       label_range_subset_[dim_idx].value().name != label_name) {
@@ -648,7 +648,7 @@ void Subarray::get_label_range_var_size(
     uint64_t* start_size,
     uint64_t* end_size) const {
   auto dim_idx = array_->array_schema_latest()
-                     .dimension_label_reference(label_name)
+                     .dimension_label(label_name)
                      .dimension_index();
   if (!label_range_subset_[dim_idx].has_value() ||
       label_range_subset_[dim_idx].value().name != label_name) {
@@ -1795,7 +1795,7 @@ void Subarray::set_attribute_ranges(
 const std::vector<Range>& Subarray::ranges_for_label(
     const std::string& label_name) const {
   auto dim_idx = array_->array_schema_latest()
-                     .dimension_label_reference(label_name)
+                     .dimension_label(label_name)
                      .dimension_index();
   if (!label_range_subset_[dim_idx].has_value() ||
       label_range_subset_[dim_idx].value().name != label_name) {
@@ -3343,7 +3343,7 @@ template void Subarray::crop_to_tile<double>(
 /* ********************************* */
 
 Subarray::LabelRangeSubset::LabelRangeSubset(
-    const DimensionLabelReference& ref, bool coalesce_ranges)
+    const DimensionLabel& ref, bool coalesce_ranges)
     : name{ref.name()}
     , ranges{RangeSetAndSuperset(
           ref.label_type(), Range(), false, coalesce_ranges)} {

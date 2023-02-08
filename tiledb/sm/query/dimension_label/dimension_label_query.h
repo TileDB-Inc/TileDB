@@ -45,7 +45,7 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 class Array;
-class DimensionLabelReference;
+class DimensionLabel;
 class QueryBuffer;
 class Subarray;
 
@@ -78,7 +78,7 @@ class DimensionLabelQuery : public Query {
   DimensionLabelQuery(
       StorageManager* storage_manager,
       shared_ptr<Array> dim_label,
-      const DimensionLabelReference& dim_label_ref,
+      const DimensionLabel& dim_label_ref,
       const Subarray& parent_subarray,
       const QueryBuffer& label_buffer,
       const QueryBuffer& index_buffer,
@@ -95,7 +95,7 @@ class DimensionLabelQuery : public Query {
   DimensionLabelQuery(
       StorageManager* storage_manager,
       shared_ptr<Array> dim_label,
-      const DimensionLabelReference& dim_label_ref,
+      const DimensionLabel& dim_label_ref,
       const std::vector<Range>& label_ranges);
 
   /** Disable copy and move. */
