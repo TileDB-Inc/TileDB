@@ -51,27 +51,16 @@ class QueryBufferCache {
 
   /** Constructor for fixed / var-size data. */
   QueryBufferCache(
-      uint64_t cell_num_per_tile, uint64_t cell_size, bool is_var = false)
-      : is_var_(is_var)
-      , is_nullable_(false)
-      , cell_size_(cell_size)
-      , cache_bytes_(0)
-      , buffer_(cell_num_per_tile * cell_size_)
-      , buffer_validity_(0) {
-  }
-
-  /** Constructor for nullable data which may be fixed or var-size. */
-  QueryBufferCache(
       uint64_t cell_num_per_tile,
       uint64_t cell_size,
       bool is_var,
       bool is_nullable)
       : is_var_(is_var)
-      , is_nullable_(is_nullable)
+      , is_nullable_(false)
       , cell_size_(cell_size)
-      , cache_bytes_(0)
+      , fixed_bytes_to_cache_(0)
       , buffer_(cell_num_per_tile * cell_size_)
-      , buffer_validity_(cell_num_per_tile) {
+      , buffer_validity_(is_nullable ? cell_num_per_tile : 0) {
   }
 
   /* ********************************* */
@@ -99,7 +88,7 @@ class QueryBufferCache {
   uint8_t cell_size_;
 
   /** Tile overflow fixed bytes to write to cache after submission. */
-  uint64_t cache_bytes_;
+  uint64_t fixed_bytes_to_cache_;
 
   Buffer buffer_;
   Buffer buffer_var_;

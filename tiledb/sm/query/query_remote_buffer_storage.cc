@@ -75,14 +75,9 @@ QueryRemoteBufferStorage::QueryRemoteBufferStorage(
     uint64_t cell_size = is_var ? constants::cell_var_offset_size : data_size;
     bool is_nullable = query.array_schema().is_nullable(name);
 
-    if (is_nullable) {
-      query_buffer_caches_.emplace(
-          name,
-          QueryBufferCache(cell_num_per_tile_, cell_size, is_var, is_nullable));
-    } else {
-      query_buffer_caches_.emplace(
-          name, QueryBufferCache(cell_num_per_tile_, cell_size, is_var));
-    }
+    query_buffer_caches_.emplace(
+        name,
+        QueryBufferCache(cell_num_per_tile_, cell_size, is_var, is_nullable));
   }
 }
 
@@ -90,13 +85,15 @@ void QueryRemoteBufferStorage::cache_non_tile_aligned_data() {
   for (auto& query_buffer_cache : query_buffer_caches_) {
     const auto& query_buffer = query_buffers_[query_buffer_cache.first];
     auto& cache = query_buffer_cache.second;
-    uint64_t cache_cells = cache.cache_bytes_ / cache.cell_size_;
+    uint64_t cache_cells = cache.fixed_bytes_to_cache_ / cache.cell_size_;
 
+    // Cache fixed data.
     cache.buffer_.reset_size();
     throw_if_not_ok(cache.buffer_.write(
         (char*)query_buffer.buffer_ + *query_buffer.buffer_size_,
-        cache.cache_bytes_));
+        cache.fixed_bytes_to_cache_));
 
+    // Cache var data.
     if (query_buffer.buffer_var_size_ != nullptr) {
       cache.buffer_var_.reset_size();
       uint64_t shift_var_bytes = query_buffer.original_buffer_var_size_ -
@@ -106,22 +103,22 @@ void QueryRemoteBufferStorage::cache_non_tile_aligned_data() {
           shift_var_bytes));
 
       // Ensure cached offsets ascend from 0.
-      if (cache.cache_bytes_ > 0) {
+      if (cache_cells > 0) {
         auto* data = cache.buffer_.data_as<uint64_t>();
-        std::adjacent_difference(data, data + cache_cells, data);
-        data[0] = 0;
-        for (uint64_t i = 1; i < cache_cells; i++) {
-          data[i] += data[i - 1];
+        uint64_t diff = data[0];
+        for (uint64_t i = 0; i < cache_cells; i++) {
+          data[i] -= diff;
         }
       }
     }
 
+    // Cache validity data.
     if (query_buffer.validity_vector_.buffer_size() != nullptr) {
       cache.buffer_validity_.reset_size();
       throw_if_not_ok(cache.buffer_validity_.write(
           query_buffer.validity_vector_.buffer() +
               *query_buffer.validity_vector_.buffer_size(),
-          cache.cache_bytes_ / cache.cell_size_));
+          cache_cells));
     }
   }
 }
@@ -188,7 +185,7 @@ void QueryRemoteBufferStorage::make_buffers_tile_aligned() {
     // Check if data between cache and user buffer is tile-aligned.
     if (total_buffer_cells % cell_num_per_tile_ == 0) {
       // Submit all data and cache nothing after submit.
-      cache.cache_bytes_ = 0;
+      cache.fixed_bytes_to_cache_ = 0;
       continue;
     }
     uint64_t buffer_cache_bytes =
@@ -196,7 +193,7 @@ void QueryRemoteBufferStorage::make_buffers_tile_aligned() {
 
     // Hold tile overflow cells from this submission and cache afterwards.
     *query_buffer.buffer_size_ -= buffer_cache_bytes;
-    cache.cache_bytes_ = buffer_cache_bytes;
+    cache.fixed_bytes_to_cache_ = buffer_cache_bytes;
     if (cache.is_var_) {
       uint64_t var_buffer_size = *query_buffer.buffer_var_size_;
       uint64_t first_cached_offset = ((uint64_t*)query_buffer.buffer_)
