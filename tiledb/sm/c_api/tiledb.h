@@ -3290,6 +3290,51 @@ TILEDB_EXPORT int32_t tiledb_query_condition_combine(
     tiledb_query_condition_combination_op_t combination_op,
     tiledb_query_condition_t** combined_cond) TILEDB_NOEXCEPT;
 
+/**
+ * Create a query condition representing a negation of
+ * the input query condition. Currently this is performed
+ * by applying De Morgan's theorem recursively to the
+ * query condition's internal representation.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_query_condition_t* query_condition_1;
+ * tiledb_query_condition_alloc(ctx, &query_condition_1);
+ * uint32_t value_1 = 5;
+ * tiledb_query_condition_init(
+ *   ctx,
+ *   query_condition_1,
+ *   "longitude",
+ *   &value_1,
+ *   sizeof(value_1),
+ *   TILEDB_LT);
+ *
+ * tiledb_query_condition_t* query_condition_2;
+ * tiledb_query_condition_negate(
+ *   ctx,
+ *   query_condition_1,
+ *   &query_condition_2);
+ *
+ * tiledb_query_condition_free(&query_condition_1);
+ *
+ * tiledb_query_set_condition(ctx, query, query_condition_2);
+ * tiledb_query_submit(ctx, query);
+ * tiledb_query_condition_free(&query_condition_2);
+ * @endcode
+ *
+ * @param[in]  ctx The TileDB context.
+ * @param[in]  left_cond The first input condition.
+ * @param[in]  right_cond The second input condition.
+ * @param[in]  combination_op The combination operation.
+ * @param[out] combined_cond The output condition holder.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_condition_negate(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_condition_t* cond,
+    tiledb_query_condition_t** negated_cond) TILEDB_NOEXCEPT;
+
 /* ********************************* */
 /*             SUBARRAY              */
 /* ********************************* */

@@ -2809,6 +2809,14 @@ int32_t tiledb_query_condition_combine(
   return TILEDB_OK;
 }
 
+int32_t tiledb_query_condition_negate(
+    tiledb_ctx_t* const ctx,
+    const tiledb_query_condition_t* const cond,
+    tiledb_query_condition_t** const negated_cond) {
+  return api::tiledb_query_condition_combine(
+      ctx, cond, nullptr, TILEDB_NOT, negated_cond);
+}
+
 /* ****************************** */
 /*              ARRAY             */
 /* ****************************** */
@@ -7032,6 +7040,14 @@ int32_t tiledb_query_condition_combine(
     tiledb_query_condition_t** const combined_cond) noexcept {
   return api_entry<tiledb::api::tiledb_query_condition_combine>(
       ctx, left_cond, right_cond, combination_op, combined_cond);
+}
+
+int32_t tiledb_query_condition_negate(
+    tiledb_ctx_t* const ctx,
+    const tiledb_query_condition_t* const cond,
+    tiledb_query_condition_t** const negated_cond) noexcept {
+  return api_entry<tiledb::api::tiledb_query_condition_negate>(
+      ctx, cond, negated_cond);
 }
 
 /* ****************************** */
