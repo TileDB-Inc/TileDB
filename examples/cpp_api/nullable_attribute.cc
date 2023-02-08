@@ -53,14 +53,14 @@ void create_array() {
   ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
 
-  // Create two attributes "a1" and "a2", the first fixed and the second
-  // variable-sized.
+  // Create three attributes "a1", "a2" and "a3", the first fixed, the second
+  // variable-sized and the last one a variable-sized UTF8 string
   Attribute a1 = Attribute::create<int>(ctx, "a1");
   Attribute a2 = Attribute::create<std::vector<int>>(ctx, "a2");
   auto a3 = Attribute(ctx, "a3", TILEDB_STRING_UTF8);
   a3.set_cell_val_num(TILEDB_VAR_NUM);
 
-  // Set both attributes as nullable
+  // Set all attributes as nullable
   a1.set_nullable(true);
   a2.set_nullable(true);
   a3.set_nullable(true);
