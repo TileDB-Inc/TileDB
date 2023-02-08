@@ -34,2119 +34,407 @@
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
+#include <map>
+#include <sstream>
 #include <vector>
 
+#include <test/support/src/ast_helpers.h>
 #include <test/support/tdb_catch.h>
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb;
 
-int num_rows = 20;
-int a_fill_value = -1;
-float b_fill_value = 0.0;
-const std::string array_name = "cpp_integration_query_condition_array";
+/** Test suite constants */
+static const char* ARRAY_NAME = "test_query_conditions_array";
+constexpr int NUM_ROWS = 20;
+constexpr int A_FILL = -1;
+constexpr float B_FILL = -1.0;
+constexpr const char* C_FILL = "ohai";
+constexpr const char* D_FILL = "\xf0\x9f\x9a\x97";
 
-inline int index_from_row_col(int r, int c) {
-  return ((r - 1) * num_rows) + (c - 1);
-}
+const std::vector<std::string> OPTION_NAMES = {
+    "allow_dups", "legacy", "skip_attribute_b"};
 
-/**
- * @brief Create a TileDB array with the following characteristics.
- * - Two dimensions called rows and cols. Each dimension is of type
- * int, and has a lower bound of 1 and a higher bound of 20, inclusive.
- * - Two attributes called "a" (of type int) and "b" (of type float).
- * - Tile size of 4.
- *
- * The data in the array is set as follows. On attribute a, each cell's value
- * is 0 if the column index is 1 if the column dimension is odd, and 0 if the
- * column index is even. This makes the cell values on attribute a look like
- * the following:
- *
- * 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0
- * .
- * . (for 20 rows total)
- * .
- * 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0
- *
- * On attribute b, the cell values are based on a more complex system.
- * The values are set with likeness to the diagram below. Keep in mind
- * that each row is 20 cells long.
- *
- * 3.4  4.2  Z  4.2  Y    4.2  Z  4.2  ... 3.4  4.2  Z  4.2
- * Y    4.2  Z  4.2  3.4  4.2  Z  4.2  ... Y    4.2  Z  4.2
- * .
- * . (for 20 rows total)
- * .
- * Y    4.2  Z  4.2  3.4  4.2  Z  4.2  ... Y    4.2  Z  4.2
- *
- * Legend:
- * Y: 3.45 <= val <= 3.7
- * Z: val <= 3.2
- * Numbers are true to their cell value.
- *
- *
- * @param ctx Context.
- * @param array_type Type of array (sparse or dense).
- * @param set_dups Whether the array allows coordinate duplicates.
- * @param a_data_read Data buffer to store cell values on attribute a.
- * @param b_data_read Data buffer to store cell values on attribute b.
- */
-void create_array(
-    Context& ctx,
-    tiledb_array_type_t array_type,
-    bool set_dups,
-    bool add_utf8_attr,
-    std::vector<int>& a_data_read,
-    std::vector<float>& b_data_read) {
-  Domain domain(ctx);
-  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, num_rows}}, 4))
-      .add_dimension(Dimension::create<int>(ctx, "cols", {{1, num_rows}}, 4));
-  ArraySchema schema(ctx, array_type);
-  if (set_dups) {
-    schema.set_allows_dups(true);
-  }
-  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
-  Attribute attr_a = Attribute::create<int>(ctx, "a");
-  Attribute attr_b = Attribute::create<float>(ctx, "b");
-  if (array_type == TILEDB_DENSE) {
-    attr_a.set_fill_value(&a_fill_value, sizeof(int));
-    attr_b.set_fill_value(&b_fill_value, sizeof(float));
-  } else {
-    schema.set_capacity(16);
-  }
-  schema.add_attribute(attr_a);
-  schema.add_attribute(attr_b);
-  if (add_utf8_attr) {
-    Attribute attr_c = Attribute::create(ctx, "c", TILEDB_STRING_UTF8);
-    attr_c.set_cell_val_num(TILEDB_VAR_NUM);
-    if (array_type == TILEDB_DENSE) {
-      std::string ohai("ohai");
-      attr_c.set_fill_value(ohai.data(), ohai.size());
-    }
-    schema.add_attribute(attr_c);
-  }
-  Array::create(array_name, schema);
+const std::vector<std::string> ASCII_CHOICES = {
+    "alice",
+    "bob",
+    "craig",
+    "dave",
+    "erin",
+    "frank",
+    "grace",
+    "heidi",
+    "ivan",
+    "judy"};
 
-  // Write some initial data and close the array.
-  std::vector<int> row_dims;
-  std::vector<int> col_dims;
-  std::vector<int> a_data;
-  std::vector<float> b_data;
-  std::vector<uint8_t> c_data;
-  std::vector<uint64_t> c_offsets;
+const std::vector<std::string> UTF8_CHOICES = {
+    "\x41",                              // "A"
+    "\x61",                              // "a"
+    "\x61\x61",                          // "aa"
+    "\x6e\xcc\x83",                      // n-plus-tilda
+    "\xc3\xb1",                          // n-with-tilda
+    "\xe2\x88\x9e",                      // :infinity:
+    "\xe2\x98\x83\xef\xb8\x8f",          // :snowman:
+    "\xf0\x9f\x80\x84",                  // :mahjong:
+    "\xf0\x9f\x87\xac\xf0\x9f\x87\xb7",  // :flag-gr:
+    "\xf0\x9f\x8d\xa8"                   // :icecream:
+};
 
-  std::vector<std::string> c_choices = {
-      std::string("bird"),
-      std::string("bunny"),
-      std::string("cat"),
-      std::string("dog")};
+typedef const std::array<int, 2> TRange;
 
-  for (int i = 0; i < num_rows * num_rows; ++i) {
-    int row = (i / num_rows) + 1;
-    int col = (i % num_rows) + 1;
-    int a = i % 2 == 1 ? 0 : 1;
-    float b;
-    std::string c_str;
-    if (i % 8 == 0) {
-      // b = 3.4
-      b = 3.4f;
-      c_str = c_choices[0];
-    } else if (i % 4 == 0) {
-      // 3.45 <= b <= 3.7
-      b = static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / 0.25));
-      b += 3.45f;
-      c_str = c_choices[1];
-    } else if (i % 2 == 0) {
-      // b <= 3.2
-      b = static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / 3.2));
-      c_str = c_choices[2];
-    } else {
-      // b = 4.2
-      b = 4.2f;
-      c_str = c_choices[3];
-    }
-
-    row_dims.push_back(row);
-    col_dims.push_back(col);
-    a_data.push_back(a);
-    b_data.push_back(b);
-    c_offsets.push_back(c_data.size());
-    for (size_t c_idx = 0; c_idx < c_str.size(); c_idx++) {
-      c_data.push_back(c_str.at(c_idx));
-    }
-  }
-
-  if (array_type == TILEDB_SPARSE) {
-    Array array_w(ctx, array_name, TILEDB_WRITE);
-    Query query_w(ctx, array_w);
-    query_w.set_layout(TILEDB_UNORDERED)
-        .set_data_buffer("rows", row_dims)
-        .set_data_buffer("cols", col_dims)
-        .set_data_buffer("a", a_data)
-        .set_data_buffer("b", b_data);
-
-    if (add_utf8_attr) {
-      query_w.set_data_buffer("c", c_data).set_offsets_buffer("c", c_offsets);
-    }
-
-    query_w.submit();
-    query_w.finalize();
-    array_w.close();
-  } else if (array_type == TILEDB_DENSE) {
-    Array array_w(ctx, array_name, TILEDB_WRITE);
-    Query query_w(ctx, array_w);
-    query_w.set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer("a", a_data)
-        .set_data_buffer("b", b_data);
-
-    if (add_utf8_attr) {
-      query_w.set_data_buffer("c", c_data).set_offsets_buffer("c", c_offsets);
-    }
-
-    query_w.submit();
-    query_w.finalize();
-    array_w.close();
-  }
-
-  // Open and read the entire array to save data for future comparisons.
-  Array array1(ctx, array_name, TILEDB_READ);
-  Query query1(ctx, array1);
-  query1.set_layout(TILEDB_ROW_MAJOR)
-      .set_data_buffer("a", a_data_read)
-      .set_data_buffer("b", b_data_read);
-
-  if (array_type == TILEDB_DENSE) {
-    int range[] = {1, num_rows};
-    query1.add_range("rows", range[0], range[1])
-        .add_range("cols", range[0], range[1]);
-  }
-  query1.submit();
-
-  // Check the query for accuracy. The query results should contain all the
-  // elements.
-  size_t total_num_elements = static_cast<size_t>(num_rows * num_rows);
-  auto table = query1.result_buffer_elements();
-  REQUIRE(table.size() == 2);
-  REQUIRE(table["a"].first == 0);
-  REQUIRE(table["a"].second == total_num_elements);
-  REQUIRE(table["b"].first == 0);
-  REQUIRE(table["b"].second == total_num_elements);
-
-  for (size_t i = 0; i < total_num_elements; ++i) {
-    if (i % 2 == 0) {
-      REQUIRE(a_data_read[i] == 1);
-      REQUIRE(b_data_read[i] <= 3.8);
-    } else {
-      REQUIRE(a_data_read[i] == 0);
-      REQUIRE(
-          fabs(b_data_read[i] - 4.2f) < std::numeric_limits<float>::epsilon());
-    }
-  }
-  query1.finalize();
-  array1.close();
-}
-
-/**
- * @brief Function that performs a query and sets parameters as needed.
- *
- * @param a_data Query data buffer for attribute "a".
- * @param b_data Query data buffer for attribute "b".
- * @param qc Query condition.
- * @param layout_type Layout type for the query.
- * @param query The query to be submitted.
- */
-static void perform_query(
-    std::vector<int>& a_data,
-    std::vector<float>& b_data,
-    const QueryCondition& qc,
-    tiledb_layout_t layout_type,
-    Query& query) {
-  query.set_layout(layout_type)
-      .set_data_buffer("a", a_data)
-      .set_data_buffer("b", b_data)
-      .set_condition(qc);
-  query.submit();
-}
-
-static void perform_query(
-    std::vector<int>& a_data,
-    std::vector<float>& b_data,
-    std::string& c_data,
-    std::vector<uint64_t>& c_offsets,
-    const QueryCondition& qc,
-    tiledb_layout_t layout_type,
-    Query& query) {
-  query.set_layout(layout_type)
-      .set_data_buffer("a", a_data)
-      .set_data_buffer("b", b_data)
-      .set_data_buffer("c", c_data)
-      .set_offsets_buffer("c", c_offsets)
-      .set_condition(qc);
-  query.submit();
-}
-
+/** Test parameters */
 struct TestParams {
   TestParams(
       tiledb_array_type_t array_type,
       tiledb_layout_t layout,
-      bool set_dups,
-      bool legacy,
-      bool add_utf8_attr = false)
-      : array_type_(array_type)
-      , layout_(layout)
-      , set_dups_(set_dups)
-      , legacy_(legacy)
-      , add_utf8_attr_(add_utf8_attr) {
-  }
+      std::map<std::string, bool> options = {});
+
+  bool get(std::string option);
 
   tiledb_array_type_t array_type_;
   tiledb_layout_t layout_;
-  bool set_dups_;
-  bool legacy_;
-  bool add_utf8_attr_;
+  std::map<std::string, bool> options_;
+};
+
+struct QCTestCell {
+  QCTestCell();
+  QCTestCell(int x, int y, int a, float b, std::string c, std::string d);
+
+  bool operator==(const QCTestCell& rhs) const;
+  bool in_range(TRange x_range, TRange y_range);
+  std::string to_string() const;
+  std::pair<int, int> key() const;
+
+  int x_;
+  int y_;
+  int a_;
+  float b_;
+  std::string c_;
+  std::string d_;
+};
+
+bool operator<(QCTestCell a, QCTestCell b);
+std::ostream& operator<<(std::ostream& os, QCTestCell const& value);
+typedef std::function<bool(QCTestCell&)> Chooser;
+
+/** Tests for CPP API query conditions */
+struct QueryConditionTest {
+  // Constructors/Destructors
+  QueryConditionTest(TestParams params);
+  ~QueryConditionTest();
+
+  void validate(QueryCondition& qc, Chooser chooser);
+  void validate(
+      QueryCondition& qc,
+      TRange x_range,
+      TRange y_range,
+      Chooser chooser,
+      bool range_specified = true);
+
+  void create_array();
+  void update_array(TRange x_range, TRange y_range);
+  void load_array();
+  void query_to_cells(
+      Query& query, std::vector<QCTestCell>& cells, bool loading = false);
+  void remove_array();
+
+  // TileDB context
+  Context ctx_;
+  VFS vfs_;
+  TestParams params_;
+
+  std::vector<QCTestCell> cells_;
 };
 
 TEST_CASE(
-    "Testing read query with basic QC, with no range.",
-    "[query][query-condition]") {
-  // Initial setup.
-  std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
-
-  // Define query condition (b < 4.0).
-  QueryCondition qc(ctx);
-  float val = 4.0f;
-  qc.init("b", &val, sizeof(float), TILEDB_LT);
-
-  // Create buffers with size of the results of the two queries.
-  std::vector<int> a_data_read(num_rows * num_rows);
-  std::vector<float> b_data_read(num_rows * num_rows);
-
-  // These buffers store the results of the second query made with the query
-  // condition specified above.
-  std::vector<int> a_data_read_2(num_rows * num_rows);
-  std::vector<float> b_data_read_2(num_rows * num_rows);
-
-  // Generate test parameters.
+    "Testing read query with basic QC", "[query][query-condition][simple]") {
   TestParams params = GENERATE(
-      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
-      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false),
-      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false));
+      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, {{"legacy", true}}),
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, {{"allow_dups", true}}),
+      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR));
 
-  // Setup by creating buffers to store all elements of the original array.
-  create_array(
-      ctx,
-      params.array_type_,
-      params.set_dups_,
-      params.add_utf8_attr_,
-      a_data_read,
-      b_data_read);
+  QueryConditionTest t(params);
 
-  // Create the query, which reads over the entire array with query condition
-  // (b < 4.0).
-  Config config;
-  if (params.legacy_) {
-    config.set("sm.query.sparse_global_order.reader", "legacy");
-    config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
-  }
-  Context ctx2 = Context(config);
-  Array array(ctx2, array_name, TILEDB_READ);
-  Query query(ctx2, array);
+  QueryCondition qc(t.ctx_, "b", 50.0f, TILEDB_LT);
+  auto pred = [](QCTestCell& cell) { return cell.b_ < 50.0f; };
 
-  // Set a subarray for dense.
-  if (params.array_type_ == TILEDB_DENSE) {
-    int range[] = {1, num_rows};
-    query.add_range("rows", range[0], range[1])
-        .add_range("cols", range[0], range[1]);
-  }
+  // Simple QC with no range specified
+  t.validate(qc, pred);
 
-  // Perform query and validate.
-  perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
-  if (params.array_type_ == TILEDB_SPARSE) {
-    // Check the query for accuracy. The query results should contain 200
-    // elements. Each of these elements should have the cell value 1 on
-    // attribute a and should match the original value in the array that reads
-    // all elements.
-    auto table = query.result_buffer_elements();
-    REQUIRE(table.size() == 2);
-    REQUIRE(table["a"].first == 0);
-    REQUIRE(table["a"].second == 200);
-    REQUIRE(table["b"].first == 0);
-    REQUIRE(table["b"].second == 200);
+  // Simple QC negation with no range specified
+  auto neg_qc = qc.negate();
+  t.validate(neg_qc, [&pred](QCTestCell& cell) { return !pred(cell); });
 
-    // The unordered query should return the results in global order. Therefore,
-    // we iterate over each tile to collect our results.
-    int i = 0;
-    for (int tile_r = 1; tile_r <= num_rows; tile_r += 4) {
-      for (int tile_c = 1; tile_c <= num_rows; tile_c += 4) {
-        // Iterating over each tile.
-        for (int r = tile_r; r < tile_r + 4; ++r) {
-          for (int c = tile_c; c < tile_c + 4; c += 2) {
-            int original_arr_i = index_from_row_col(r, c);
-            REQUIRE(a_data_read_2[i] == 1);
-            REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
-            REQUIRE(
-                fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
-                std::numeric_limits<float>::epsilon());
-            i += 1;
-          }
-        }
-      }
-    }
-  } else {
-    // Check the query for accuracy. The query results should contain 400
-    // elements. Elements that meet the query condition should have the cell
-    // value 1 on attribute a and should match the original value in the array
-    // on attribute b. Elements that do not should have the fill value for both
-    // attributes.
-    size_t total_num_elements = static_cast<size_t>(num_rows * num_rows);
-    auto table = query.result_buffer_elements();
-    REQUIRE(table.size() == 2);
-    REQUIRE(table["a"].first == 0);
-    REQUIRE(table["a"].second == total_num_elements);
-    REQUIRE(table["b"].first == 0);
-    REQUIRE(table["b"].second == total_num_elements);
+  // Simple QC with range in a single tile
+  t.validate(qc, {2, 3}, {2, 3}, pred);
 
-    for (int i = 0; i < num_rows * num_rows; ++i) {
-      if (i % 2 == 0) {
-        REQUIRE(a_data_read_2[i] == 1);
-        REQUIRE(a_data_read_2[i] == a_data_read[i]);
-        REQUIRE(
-            fabs(b_data_read_2[i] - b_data_read[i]) <
-            std::numeric_limits<float>::epsilon());
-      } else {
-        REQUIRE(a_data_read_2[i] == a_fill_value);
-        REQUIRE(
-            fabs(b_data_read_2[i] - b_fill_value) <
-            std::numeric_limits<float>::epsilon());
-      }
-    }
-  }
+  // Simple QC with a range spanning tiles on each dimension
+  t.validate(qc, {2, 3}, {2, 15}, pred);
+  t.validate(qc, {2, 15}, {2, 3}, pred);
 
-  query.finalize();
-  array.close();
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
+  // Simple QC with a range spanning tiles in both dimensions
+  t.validate(qc, {2, 15}, {2, 15}, pred);
 }
 
 TEST_CASE(
-    "Testing read query with basic negated QC, with no range.",
-    "[query][query-condition][negation]") {
-  // Initial setup.
-  std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
-
-  // Define query condition (b < 4.0).
-  QueryCondition qc(ctx);
-  float val = 4.0f;
-  qc.init("b", &val, sizeof(float), TILEDB_LT);
-
-  QueryCondition neg_qc = qc.negate();
-
-  // Create buffers with size of the results of the two queries.
-  std::vector<int> a_data_read(num_rows * num_rows);
-  std::vector<float> b_data_read(num_rows * num_rows);
-
-  // These buffers store the results of the second query made with the query
-  // condition specified above.
-  std::vector<int> a_data_read_2(num_rows * num_rows);
-  std::vector<float> b_data_read_2(num_rows * num_rows);
-
-  // Generate test parameters.
+    "Testing read query with complex QC", "[query][query-condition][complex]") {
   TestParams params = GENERATE(
-      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
-      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false),
-      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false));
+      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, {{"legacy", true}}),
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, {{"allow_dups", true}}),
+      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR));
 
-  // Setup by creating buffers to store all elements of the original array.
-  create_array(
-      ctx,
-      params.array_type_,
-      params.set_dups_,
-      params.add_utf8_attr_,
-      a_data_read,
-      b_data_read);
+  QueryConditionTest t(params);
 
-  // Create the query, which reads over the entire array with query condition
-  // (b < 4.0).
-  Config config;
-  if (params.legacy_) {
-    config.set("sm.query.sparse_global_order.reader", "legacy");
-    config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
-  }
-  Context ctx2 = Context(config);
-  Array array(ctx2, array_name, TILEDB_READ);
-  Query query(ctx2, array);
+  QueryCondition qc1(t.ctx_, "a", 25, TILEDB_GT);
+  QueryCondition qc2(t.ctx_, "a", 75, TILEDB_LT);
+  QueryCondition qc3(t.ctx_, "b", 25.0f, TILEDB_GT);
+  QueryCondition qc4(t.ctx_, "b", 75.0f, TILEDB_LT);
+  QueryCondition qc = (qc1 && qc2) || (qc3 && qc4);
 
-  // Set a subarray for dense.
-  if (params.array_type_ == TILEDB_DENSE) {
-    int range[] = {1, num_rows};
-    query.add_range("rows", range[0], range[1])
-        .add_range("cols", range[0], range[1]);
-  }
+  auto pred = [](QCTestCell& cell) {
+    return (
+        (cell.a_ > 25 && cell.a_ < 75) || (cell.b_ > 25.0f && cell.b_ < 75.0f));
+  };
 
-  // Perform query and validate.
-  perform_query(a_data_read_2, b_data_read_2, neg_qc, params.layout_, query);
-  if (params.array_type_ == TILEDB_SPARSE) {
-    // Check the query for accuracy. The query results should contain 200
-    // elements. Each of these elements should have the cell value 1 on
-    // attribute a and should match the original value in the array that reads
-    // all elements.
-    auto table = query.result_buffer_elements();
-    REQUIRE(table.size() == 2);
-    REQUIRE(table["a"].first == 0);
-    REQUIRE(table["a"].second == 200);
-    REQUIRE(table["b"].first == 0);
-    REQUIRE(table["b"].second == 200);
+  // QC with no range specified
+  t.validate(qc, pred);
 
-    // The unordered query should return the results in global order. Therefore,
-    // we iterate over each tile to collect our results.
-    int i = 0;
-    for (int tile_r = 1; tile_r <= num_rows; tile_r += 4) {
-      for (int tile_c = 1; tile_c <= num_rows; tile_c += 4) {
-        // Iterating over each tile.
-        for (int r = tile_r; r < tile_r + 4; ++r) {
-          for (int c = tile_c + 1; c < tile_c + 4; c += 2) {
-            int original_arr_i = index_from_row_col(r, c);
-            REQUIRE(a_data_read_2[i] == 0);
-            REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
-            REQUIRE(
-                fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
-                std::numeric_limits<float>::epsilon());
-            i += 1;
-          }
-        }
-      }
-    }
-  } else {
-    // Check the query for accuracy. The query results should contain 400
-    // elements. Elements that meet the query condition should have the cell
-    // value 1 on attribute a and should match the original value in the array
-    // on attribute b. Elements that do not should have the fill value for both
-    // attributes.
-    size_t total_num_elements = static_cast<size_t>(num_rows * num_rows);
-    auto table = query.result_buffer_elements();
-    REQUIRE(table.size() == 2);
-    REQUIRE(table["a"].first == 0);
-    REQUIRE(table["a"].second == total_num_elements);
-    REQUIRE(table["b"].first == 0);
-    REQUIRE(table["b"].second == total_num_elements);
+  // QC negation with no range specified
+  auto neg_qc = qc.negate();
+  t.validate(neg_qc, [&pred](QCTestCell& cell) { return !pred(cell); });
 
-    for (int i = 0; i < num_rows * num_rows; ++i) {
-      if (i % 2 == 1) {
-        REQUIRE(a_data_read_2[i] == 0);
-        REQUIRE(a_data_read_2[i] == a_data_read[i]);
-        REQUIRE(
-            fabs(b_data_read_2[i] - b_data_read[i]) <
-            std::numeric_limits<float>::epsilon());
-      } else {
-        REQUIRE(a_data_read_2[i] == a_fill_value);
-        REQUIRE(
-            fabs(b_data_read_2[i] - b_fill_value) <
-            std::numeric_limits<float>::epsilon());
-      }
-    }
-  }
+  // QC with range in a single tile
+  t.validate(qc, {2, 3}, {2, 3}, pred);
 
-  query.finalize();
-  array.close();
+  // QC with a range spanning tiles on each dimension
+  t.validate(qc, {2, 3}, {2, 15}, pred);
+  t.validate(qc, {2, 15}, {2, 3}, pred);
 
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
+  // Simple QC with a range spanning tiles in both dimensions
+  t.validate(qc, {2, 15}, {2, 15}, pred);
 }
 
 TEST_CASE(
-    "Testing read query with basic QC, with range within a tile.",
-    "[query][query-condition]") {
-  // Initial setup.
-  std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
-
-  // Define query condition (b < 4.0).
-  QueryCondition qc(ctx);
-  float val = 4.0f;
-  qc.init("b", &val, sizeof(float), TILEDB_LT);
-
-  // Create buffers with size of the results of the two queries.
-  std::vector<int> a_data_read(num_rows * num_rows);
-  std::vector<float> b_data_read(num_rows * num_rows);
-
-  // These buffers store the results of the second query made with the query
-  // condition specified above.
-  std::vector<int> a_data_read_2(4);
-  std::vector<float> b_data_read_2(4);
-
-  // Generate test parameters.
+    "Testing read query with complex QC against ASCII strings",
+    "[query][query-condition][ascii-strings]") {
   TestParams params = GENERATE(
-      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
-      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false),
-      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false));
+      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, {{"legacy", true}}),
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, {{"allow_dups", true}}),
+      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR));
 
-  // Setup by creating buffers to store all elements of the original array.
-  create_array(
-      ctx,
-      params.array_type_,
-      params.set_dups_,
-      params.add_utf8_attr_,
-      a_data_read,
-      b_data_read);
+  QueryConditionTest t(params);
 
-  // Create the query, which reads over the entire array with query condition
-  // (b < 4.0).
-  Config config;
-  if (params.legacy_) {
-    config.set("sm.query.sparse_global_order.reader", "legacy");
-    config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
-  }
-  Context ctx2 = Context(config);
-  Array array(ctx2, array_name, TILEDB_READ);
-  Query query(ctx2, array);
+  QueryCondition qc1(t.ctx_, "c", "craig", TILEDB_EQ);
+  QueryCondition qc2(t.ctx_, "c", "grace", TILEDB_EQ);
+  QueryCondition qc3(t.ctx_, "c", "ivan", TILEDB_GE);
+  QueryCondition qc = qc1 || qc2 || qc3;
 
-  // Define range.
-  int range[] = {2, 3};
-  query.add_range("rows", range[0], range[1])
-      .add_range("cols", range[0], range[1]);
+  auto pred = [](QCTestCell& cell) {
+    if (cell.c_ == "craig") {
+      return true;
+    }
+    if (cell.c_ == "grace") {
+      return true;
+    }
+    if (cell.c_ >= "ivan") {
+      return true;
+    }
+    return false;
+  };
 
-  // Perform query and validate.
-  perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
-  if (params.array_type_ == TILEDB_SPARSE) {
-    // Check the query for accuracy. The query results should contain 2
-    // elements.
-    auto table = query.result_buffer_elements();
-    REQUIRE(table.size() == 2);
-    REQUIRE(table["a"].first == 0);
-    REQUIRE(table["a"].second == 2);
-    REQUIRE(table["b"].first == 0);
-    REQUIRE(table["b"].second == 2);
+  // QC with no range specified
+  t.validate(qc, pred);
 
-    // Testing (2,3), which should be in the result buffer.
-    int ind_0 = index_from_row_col(2, 3);
-    REQUIRE(a_data_read_2[0] == a_data_read[ind_0]);
-    REQUIRE(
-        fabs(b_data_read_2[0] - b_data_read[ind_0]) <
-        std::numeric_limits<float>::epsilon());
+  // QC negation with no range specified
+  auto neg_qc = qc.negate();
+  t.validate(neg_qc, [&pred](QCTestCell& cell) { return !pred(cell); });
 
-    // Testing (3,3), which should be in the result buffer.
-    int ind_1 = index_from_row_col(3, 3);
-    REQUIRE(a_data_read_2[1] == a_data_read[ind_1]);
-    REQUIRE(
-        fabs(b_data_read_2[1] - b_data_read[ind_1]) <
-        std::numeric_limits<float>::epsilon());
-  } else {
-    auto table = query.result_buffer_elements();
+  // QC with range in a single tile
+  t.validate(qc, {2, 3}, {2, 3}, pred);
 
-    // Check the query for accuracy. The query results should contain 4
-    // elements.
-    REQUIRE(table.size() == 2);
-    REQUIRE(table["a"].first == 0);
-    REQUIRE(table["a"].second == 4);
-    REQUIRE(table["b"].first == 0);
-    REQUIRE(table["b"].second == 4);
+  // QC with a range spanning tiles on each dimension
+  t.validate(qc, {2, 3}, {2, 15}, pred);
+  t.validate(qc, {2, 15}, {2, 3}, pred);
 
-    // Testing (2,2), which should be filtered out.
-    REQUIRE(a_data_read_2[0] == a_fill_value);
-    REQUIRE(
-        fabs(b_data_read_2[0] - b_fill_value) <
-        std::numeric_limits<float>::epsilon());
-
-    // Testing (2,3), which should be in the result buffer.
-    int ind_1 = index_from_row_col(2, 3);
-    REQUIRE(a_data_read_2[1] == a_data_read[ind_1]);
-    REQUIRE(
-        fabs(b_data_read_2[1] - b_data_read[ind_1]) <
-        std::numeric_limits<float>::epsilon());
-
-    // Testing (3,2), which should be filtered out.
-    REQUIRE(a_data_read_2[2] == a_fill_value);
-    REQUIRE(
-        fabs(b_data_read_2[2] - b_fill_value) <
-        std::numeric_limits<float>::epsilon());
-
-    // Testing (3,3), which should be in the result buffer.
-    int ind_3 = index_from_row_col(3, 3);
-    REQUIRE(a_data_read_2[3] == a_data_read[ind_3]);
-    REQUIRE(
-        fabs(b_data_read_2[3] - b_data_read[ind_3]) <
-        std::numeric_limits<float>::epsilon());
-  }
-
-  query.finalize();
-  array.close();
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
+  // Simple QC with a range spanning tiles in both dimensions
+  t.validate(qc, {2, 15}, {2, 15}, pred);
 }
 
 TEST_CASE(
-    "Testing read query with basic QC, with range across tile for rows "
-    "dimension, within tile for cols dimension.",
-    "[query][query-condition]") {
-  // Initial setup.
-  std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
-
-  // Define query condition (b < 4.0).
-  QueryCondition qc(ctx);
-  float val = 4.0f;
-  qc.init("b", &val, sizeof(float), TILEDB_LT);
-
-  // Create buffers with size of the results of the two queries.
-  std::vector<int> a_data_read(num_rows * num_rows);
-  std::vector<float> b_data_read(num_rows * num_rows);
-
-  // These buffers store the results of the second query made with the query
-  // condition specified above.
-  std::vector<int> a_data_read_2(8);
-  std::vector<float> b_data_read_2(8);
-
-  // Generate test parameters.
+    "Testing read query with complex QC against UTF-8 strings",
+    "[query][query-condition][utf-8-strings]") {
   TestParams params = GENERATE(
-      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
-      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false),
-      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false));
+      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, {{"legacy", true}}),
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, {{"allow_dups", true}}),
+      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR));
 
-  // Setup by creating buffers to store all elements of the original array.
-  create_array(
-      ctx,
-      params.array_type_,
-      params.set_dups_,
-      params.add_utf8_attr_,
-      a_data_read,
-      b_data_read);
+  QueryConditionTest t(params);
 
-  // Create the query, which reads over the entire array with query condition
-  // (b < 4.0).
-  Config config;
-  if (params.legacy_) {
-    config.set("sm.query.sparse_global_order.reader", "legacy");
-    config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
-  }
-  Context ctx2 = Context(config);
-  Array array(ctx2, array_name, TILEDB_READ);
-  Query query(ctx2, array);
+  QueryCondition qc1(t.ctx_, "d", "aa", TILEDB_EQ);
+  QueryCondition qc2(t.ctx_, "d", "\xc3\xb1", TILEDB_EQ);  // n-with-tilda
+  QueryCondition qc3(t.ctx_, "d", "\xf0\x9f\x80\x84", TILEDB_GE);  // :mahjong:
+  QueryCondition qc = qc1 || qc2 || qc3;
 
-  // Define range.
-  int range[] = {2, 3};
-  int range1[] = {7, 10};
-  query.add_range("rows", range1[0], range1[1])
-      .add_range("cols", range[0], range[1]);
-
-  // Perform query and validate.
-  perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
-  if (params.array_type_ == TILEDB_SPARSE) {
-    // Check the query for accuracy. The query results should contain 2
-    // elements.
-    auto table = query.result_buffer_elements();
-    REQUIRE(table.size() == 2);
-    REQUIRE(table["a"].first == 0);
-    REQUIRE(table["a"].second == 4);
-    REQUIRE(table["b"].first == 0);
-    REQUIRE(table["b"].second == 4);
-
-    // Testing (7,3), which should be in the result buffer.
-    int ind_0 = index_from_row_col(7, 3);
-    REQUIRE(a_data_read_2[0] == a_data_read[ind_0]);
-    REQUIRE(
-        fabs(b_data_read_2[0] - b_data_read[ind_0]) <
-        std::numeric_limits<float>::epsilon());
-
-    // Testing (8,3), which should be in the result buffer.
-    int ind_1 = index_from_row_col(8, 3);
-    REQUIRE(a_data_read_2[1] == a_data_read[ind_1]);
-    REQUIRE(
-        fabs(b_data_read_2[1] - b_data_read[ind_1]) <
-        std::numeric_limits<float>::epsilon());
-
-    // Testing (9,3), which should be in the result buffer.
-    int ind_2 = index_from_row_col(9, 3);
-    REQUIRE(a_data_read_2[2] == a_data_read[ind_2]);
-    REQUIRE(
-        fabs(b_data_read_2[2] - b_data_read[ind_2]) <
-        std::numeric_limits<float>::epsilon());
-
-    // Testing (10,3), which should be in the result buffer.
-    int ind_3 = index_from_row_col(10, 3);
-    REQUIRE(a_data_read_2[3] == a_data_read[ind_3]);
-    REQUIRE(
-        fabs(b_data_read_2[3] - b_data_read[ind_3]) <
-        std::numeric_limits<float>::epsilon());
-  } else {
-    // Check the query for accuracy. The query results should contain 8
-    // elements.
-    auto table = query.result_buffer_elements();
-    REQUIRE(table.size() == 2);
-    REQUIRE(table["a"].first == 0);
-    REQUIRE(table["a"].second == 8);
-    REQUIRE(table["b"].first == 0);
-    REQUIRE(table["b"].second == 8);
-    for (int r = 7; r <= 10; ++r) {
-      for (int c = 2; c <= 3; ++c) {
-        int i = ((r - 7) * 2) + (c - 2);
-        int original_arr_i = index_from_row_col(r, c);
-        if (c == 3) {
-          // If the column dimension value is 3, the cell should be in the
-          // result buffer.
-          REQUIRE(a_data_read_2[i] == 1);
-          REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
-          REQUIRE(
-              fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
-              std::numeric_limits<float>::epsilon());
-        } else {
-          // If the column dimension value is 2, the cell should be filtered
-          // out.
-          REQUIRE(a_data_read_2[i] == a_fill_value);
-          REQUIRE(
-              fabs(b_data_read_2[i] - b_fill_value) <
-              std::numeric_limits<float>::epsilon());
-        }
-      }
+  auto pred = [](QCTestCell& cell) {
+    if (cell.d_ == "aa") {
+      return true;
     }
-  }
+    if (cell.d_ == "\xc3\xb1") {
+      return true;
+    }
+    if (cell.d_ >= "\xf0\x9f\x80\x84") {
+      return true;
+    }
+    return false;
+  };
 
-  query.finalize();
-  array.close();
+  // QC with no range specified
+  t.validate(qc, pred);
 
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
+  // QC negation with no range specified
+  auto neg_qc = qc.negate();
+  t.validate(neg_qc, [&pred](QCTestCell& cell) { return !pred(cell); });
+
+  // QC with range in a single tile
+  t.validate(qc, {2, 3}, {2, 3}, pred);
+
+  // QC with a range spanning tiles on each dimension
+  t.validate(qc, {2, 3}, {2, 15}, pred);
+  t.validate(qc, {2, 15}, {2, 3}, pred);
+
+  // Simple QC with a range spanning tiles in both dimensions
+  t.validate(qc, {2, 15}, {2, 15}, pred);
 }
 
 TEST_CASE(
-    "Testing read query with basic QC, with range within tile for rows "
-    "dimension, across tile for cols dimension.",
-    "[query][query-condition]") {
-  // Initial setup.
-  std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
-
-  // Define query condition (b < 4.0).
-  QueryCondition qc(ctx);
-  float val = 4.0f;
-  qc.init("b", &val, sizeof(float), TILEDB_LT);
-
-  // Create buffers with size of the results of the two queries.
-  std::vector<int> a_data_read(num_rows * num_rows);
-  std::vector<float> b_data_read(num_rows * num_rows);
-
-  // These buffers store the results of the second query made with the query
-  // condition specified above.
-  std::vector<int> a_data_read_2(8);
-  std::vector<float> b_data_read_2(8);
-
-  // Generate test parameters.
+    "Testing read query with complex QC after array update",
+    "[query][query-condition][with-updates]") {
   TestParams params = GENERATE(
-      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
-      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false),
-      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false));
+      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, {{"legacy", true}}),
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, {{"allow_dups", true}}),
+      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR));
 
-  // Setup by creating buffers to store all elements of the original array.
-  create_array(
-      ctx,
-      params.array_type_,
-      params.set_dups_,
-      params.add_utf8_attr_,
-      a_data_read,
-      b_data_read);
+  QueryConditionTest t(params);
 
-  // Create the query, which reads over the entire array with query condition
-  // (b < 4.0).
-  Config config;
-  if (params.legacy_) {
-    config.set("sm.query.sparse_global_order.reader", "legacy");
-    config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
-  }
-  Context ctx2 = Context(config);
-  Array array(ctx2, array_name, TILEDB_READ);
-  Query query(ctx2, array);
+  QueryCondition qc1(t.ctx_, "a", 25, TILEDB_GT);
+  QueryCondition qc2(t.ctx_, "a", 75, TILEDB_LT);
+  QueryCondition qc3(t.ctx_, "b", 25.0f, TILEDB_GT);
+  QueryCondition qc4(t.ctx_, "b", 75.0f, TILEDB_LT);
+  QueryCondition qc = (qc1 && qc2) || (qc3 && qc4);
 
-  // Define range.
-  int range[] = {2, 3};
-  int range1[] = {7, 10};
-  query.add_range("rows", range[0], range[1])
-      .add_range("cols", range1[0], range1[1]);
+  auto pred = [](QCTestCell& cell) {
+    return (
+        (cell.a_ > 25 && cell.a_ < 75) || (cell.b_ > 25.0f && cell.b_ < 75.0f));
+  };
 
-  // Perform query and validate.
-  perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
-  if (params.array_type_ == TILEDB_SPARSE) {
-    // Check the query for accuracy. The query results should contain 4
-    // elements.
-    auto table = query.result_buffer_elements();
-    REQUIRE(table.size() == 2);
-    REQUIRE(table["a"].first == 0);
-    REQUIRE(table["a"].second == 4);
-    REQUIRE(table["b"].first == 0);
-    REQUIRE(table["b"].second == 4);
+  // QC with no range specified
+  t.validate(qc, pred);
 
-    // Ensure that the same data is in each array (global order).
-    int i = 0;
-    for (int c = range1[0]; c <= range1[1]; c += 2) {
-      for (int r = range[0]; r <= range[1]; ++r) {
-        int original_arr_i = index_from_row_col(r, c);
-        REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
-        REQUIRE(
-            fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
-            std::numeric_limits<float>::epsilon());
-        i += 1;
-      }
-    }
-  } else {
-    // Check the query for accuracy. The query results should contain 8
-    // elements.
-    auto table = query.result_buffer_elements();
-    REQUIRE(table.size() == 2);
-    REQUIRE(table["a"].first == 0);
-    REQUIRE(table["a"].second == 8);
-    REQUIRE(table["b"].first == 0);
-    REQUIRE(table["b"].second == 8);
+  // QC negation with no range specified
+  auto neg_qc = qc.negate();
+  t.validate(neg_qc, [&pred](QCTestCell& cell) { return !pred(cell); });
 
-    for (int r = 2; r <= 3; ++r) {
-      for (int c = 7; c <= 10; ++c) {
-        int i = ((r - 2) * 4) + (c - 7);
-        int original_arr_i = index_from_row_col(r, c);
-        // If the column dimension value is 7 or 9, the cell should be in the
-        // result buffer.
-        if (c == 7 || c == 9) {
-          REQUIRE(a_data_read_2[i] == 1);
-          REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
-          REQUIRE(
-              fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
-              std::numeric_limits<float>::epsilon());
-        } else {
-          // If the column dimension value is 8 or 10, the cell should be
-          // filtered out.
-          REQUIRE(a_data_read_2[i] == a_fill_value);
-          REQUIRE(
-              fabs(b_data_read_2[i] - b_fill_value) <
-              std::numeric_limits<float>::epsilon());
-        }
-      }
-    }
-  }
+  // QC with range in a single tile
+  t.validate(qc, {2, 3}, {2, 3}, pred);
 
-  query.finalize();
-  array.close();
+  // QC with a range spanning tiles on each dimension
+  t.validate(qc, {2, 3}, {2, 15}, pred);
+  t.validate(qc, {2, 15}, {2, 3}, pred);
 
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
+  // Simple QC with a range spanning tiles in both dimensions
+  t.validate(qc, {2, 15}, {2, 15}, pred);
+
+  // Update the center of the array
+  t.update_array({5, 15}, {5, 15});
+  t.load_array();
+
+  // Re-run all tests
+  t.validate(qc, pred);
+  t.validate(neg_qc, [&pred](QCTestCell& cell) { return !pred(cell); });
+  t.validate(qc, {2, 3}, {2, 3}, pred);
+  t.validate(qc, {2, 3}, {2, 15}, pred);
+  t.validate(qc, {2, 15}, {2, 3}, pred);
+  t.validate(qc, {2, 15}, {2, 15}, pred);
 }
 
 TEST_CASE(
-    "Testing read query with basic QC, with ranges across tiles on both "
-    "dimensions.",
-    "[query][query-condition]") {
-  // Initial setup.
-  std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
-  VFS vfs(ctx);
+    "Testing read query with QC on dimensions",
+    "[query][query-condition][dimensions]") {
+  // TODO: Figure out how to match query conditions
+  // against dense coordinates.
 
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
-
-  // Define query condition (b < 4.0).
-  QueryCondition qc(ctx);
-  float val = 4.0f;
-  qc.init("b", &val, sizeof(float), TILEDB_LT);
-
-  // Create buffers with size of the results of the two queries.
-  std::vector<int> a_data_read(num_rows * num_rows);
-  std::vector<float> b_data_read(num_rows * num_rows);
-
-  // These buffers store the results of the second query made with the query
-  // condition specified above.
-  std::vector<int> a_data_read_2(64);
-  std::vector<float> b_data_read_2(64);
-
-  // Generate test parameters.
   TestParams params = GENERATE(
-      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
-      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false),
-      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false));
+      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, {{"legacy", true}}),
+      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER),
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED));
 
-  // Setup by creating buffers to store all elements of the original array.
-  create_array(
-      ctx,
-      params.array_type_,
-      params.set_dups_,
-      params.add_utf8_attr_,
-      a_data_read,
-      b_data_read);
+  QueryConditionTest t(params);
 
-  // Create the query, which reads over the entire array with query condition
-  // (b < 4.0).
-  Config config;
-  if (params.legacy_) {
-    config.set("sm.query.sparse_global_order.reader", "legacy");
-    config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
-  }
-  Context ctx2 = Context(config);
-  Array array(ctx2, array_name, TILEDB_READ);
-  Query query(ctx2, array);
+  QueryCondition qc1(t.ctx_, "x", 5, TILEDB_GE);
+  QueryCondition qc2(t.ctx_, "x", 15, TILEDB_LE);
+  QueryCondition qc3(t.ctx_, "y", 5, TILEDB_GE);
+  QueryCondition qc4(t.ctx_, "y", 15, TILEDB_LE);
+  QueryCondition qc5(t.ctx_, "b", 50.0f, TILEDB_LT);
+  QueryCondition qc = qc1 && qc2 && qc3 && qc4 && qc5;
 
-  // Define range.
-  int range[] = {7, 14};
-  query.add_range("rows", range[0], range[1])
-      .add_range("cols", range[0], range[1]);
+  auto pred = [](QCTestCell& cell) {
+    return cell.x_ >= 5 && cell.x_ <= 15 && cell.y_ >= 5 && cell.y_ <= 15 &&
+           cell.b_ < 50.0f;
+  };
 
-  // Perform query and validate.
-  perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
-  if (params.array_type_ == TILEDB_SPARSE) {
-    // Check the query for accuracy. The query results should contain 32
-    // elements.
-    auto table = query.result_buffer_elements();
-    REQUIRE(table.size() == 2);
-    REQUIRE(table["a"].first == 0);
-    REQUIRE(table["a"].second == 32);
-    REQUIRE(table["b"].first == 0);
-    REQUIRE(table["b"].second == 32);
+  // QC with no range specified
+  t.validate(qc, pred);
 
-    int i = 0;
-    std::vector<std::pair<int, int>> ranges_vec;
-    ranges_vec.push_back(std::make_pair(7, 8));
-    ranges_vec.push_back(std::make_pair(9, 12));
-    ranges_vec.push_back(std::make_pair(13, 14));
+  // QC negation with no range specified
+  auto neg_qc = qc.negate();
+  t.validate(neg_qc, [&pred](QCTestCell& cell) { return !pred(cell); });
 
-    for (size_t a = 0; a < 3; ++a) {    // Iterating over rows.
-      for (size_t b = 0; b < 3; ++b) {  // Iterating over cols.
-        int row_lo = ranges_vec[a].first;
-        int row_hi = ranges_vec[a].second;
-        int col_lo = ranges_vec[b].first;
-        int col_hi = ranges_vec[b].second;
-
-        for (int r = row_lo; r <= row_hi; ++r) {
-          for (int c = col_lo; c <= col_hi; ++c) {
-            int original_arr_i = index_from_row_col(r, c);
-            // The buffer should have kept elements that were originally
-            // constructed to have values less than 4.0; this means that any
-            // element whose original index is even should be in the result
-            // buffer.
-            if (original_arr_i % 2 == 0) {
-              REQUIRE(a_data_read_2[i] == 1);
-              REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
-              REQUIRE(
-                  fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
-                  std::numeric_limits<float>::epsilon());
-              i += 1;
-            }
-          }
-        }
-      }
-    }
-  } else {
-    // Check the query for accuracy. The query results should contain 64
-    // elements.
-    auto table = query.result_buffer_elements();
-    REQUIRE(table.size() == 2);
-    REQUIRE(table["a"].first == 0);
-    REQUIRE(table["a"].second == 64);
-    REQUIRE(table["b"].first == 0);
-    REQUIRE(table["b"].second == 64);
-
-    for (int r = 7; r <= 14; ++r) {
-      for (int c = 7; c <= 14; ++c) {
-        int original_arr_i = index_from_row_col(r, c);
-        int i = ((r - 7) * 8) + (c - 7);
-        // The buffer should have kept elements that were originally constructed
-        // to have values less than 4.0; this means that any element whose
-        // original index is even should have been kept.
-        if (original_arr_i % 2 == 0) {
-          // Checking for original value.
-          REQUIRE(a_data_read_2[i] == 1);
-          REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
-          REQUIRE(
-              fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
-              std::numeric_limits<float>::epsilon());
-        } else {
-          // Checking for fill value.
-          REQUIRE(a_data_read_2[i] == a_fill_value);
-          REQUIRE(
-              fabs(b_data_read_2[i] - b_fill_value) <
-              std::numeric_limits<float>::epsilon());
-        }
-      }
-    }
-  }
-
-  query.finalize();
-  array.close();
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
+  t.validate(qc, {2, 3}, {2, 3}, pred);
+  t.validate(qc, {2, 3}, {2, 17}, pred);
+  t.validate(qc, {2, 17}, {2, 3}, pred);
+  t.validate(qc, {2, 17}, {2, 17}, pred);
 }
 
 TEST_CASE(
-    "Testing read query with complex QC, with ranges across tiles on both "
-    "dimensions.",
-    "[query][query-condition]") {
-  // Initial setup.
-  std::srand(static_cast<uint32_t>(time(0)));
+    "Testing read query with simple QC with string dimension",
+    "[query][query-condition][dimensions][string]") {
   Context ctx;
   VFS vfs(ctx);
 
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
+  if (vfs.is_dir(ARRAY_NAME)) {
+    vfs.remove_dir(ARRAY_NAME);
   }
 
-  // Define query condition (b < 4.0f AND b <= 3.7f AND b >= 3.3f AND b
-  // != 3.4f);
-  QueryCondition qc1(ctx);
-  float val1 = 4.0f;
-  qc1.init("b", &val1, sizeof(float), TILEDB_LT);
-
-  QueryCondition qc2(ctx);
-  float val2 = 3.7f;
-  qc2.init("b", &val2, sizeof(float), TILEDB_LE);
-
-  QueryCondition qc3(ctx);
-  float val3 = 3.3f;
-  qc3.init("b", &val3, sizeof(float), TILEDB_GE);
-
-  QueryCondition qc4(ctx);
-  float val4 = 3.4f;
-  qc4.init("b", &val4, sizeof(float), TILEDB_NE);
-
-  QueryCondition qc5 = qc1.combine(qc2, TILEDB_AND);
-  QueryCondition qc6 = qc5.combine(qc3, TILEDB_AND);
-  QueryCondition qc = qc6.combine(qc4, TILEDB_AND);
-
-  // Create buffers with size of the results of the two queries.
-  std::vector<int> a_data_read(num_rows * num_rows);
-  std::vector<float> b_data_read(num_rows * num_rows);
-
-  // These buffers store the results of the second query made with the query
-  // condition specified above.
-  std::vector<int> a_data_read_2(64);
-  std::vector<float> b_data_read_2(64);
-
-  // Generate test parameters.
-  TestParams params = GENERATE(
-      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
-      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false),
-      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false));
-
-  // Setup by creating buffers to store all elements of the original array.
-  create_array(
-      ctx,
-      params.array_type_,
-      params.set_dups_,
-      params.add_utf8_attr_,
-      a_data_read,
-      b_data_read);
-
-  // Create the query, which reads over the entire array with query condition
-  // (b < 4.0).
-  Config config;
-  if (params.legacy_) {
-    config.set("sm.query.sparse_global_order.reader", "legacy");
-    config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
-  }
-  Context ctx2 = Context(config);
-  Array array(ctx2, array_name, TILEDB_READ);
-  Query query(ctx2, array);
-
-  // Define range.
-  int range[] = {7, 14};
-  query.add_range("rows", range[0], range[1])
-      .add_range("cols", range[0], range[1]);
-
-  // Perform query and validate.
-  perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
-  if (params.array_type_ == TILEDB_SPARSE) {
-    // Check the query for accuracy. The query results should contain 8
-    // elements.
-    auto table = query.result_buffer_elements();
-    REQUIRE(table.size() == 2);
-    REQUIRE(table["a"].first == 0);
-    REQUIRE(table["a"].second == 8);
-    REQUIRE(table["b"].first == 0);
-    REQUIRE(table["b"].second == 8);
-
-    int i = 0;
-    std::vector<std::pair<int, int>> ranges_vec;
-    ranges_vec.push_back(std::make_pair(7, 8));
-    ranges_vec.push_back(std::make_pair(9, 12));
-    ranges_vec.push_back(std::make_pair(13, 14));
-
-    for (size_t a = 0; a < 3; ++a) {    // Iterating over rows.
-      for (size_t b = 0; b < 3; ++b) {  // Iterating over cols.
-        int row_lo = ranges_vec[a].first;
-        int row_hi = ranges_vec[a].second;
-        int col_lo = ranges_vec[b].first;
-        int col_hi = ranges_vec[b].second;
-
-        for (int r = row_lo; r <= row_hi; ++r) {
-          for (int c = col_lo; c <= col_hi; ++c) {
-            int original_arr_i = index_from_row_col(r, c);
-            // The buffer should have kept elements that were originally
-            // constructed to have values that satisfy the range [3.3, 3.7] but
-            // are not equal to 3.4. This means that any element whose original
-            // index is 4 mod 8 should be in the result buffer.
-            if (original_arr_i % 8 == 4) {
-              REQUIRE(a_data_read_2[i] == 1);
-              REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
-              REQUIRE(
-                  fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
-                  std::numeric_limits<float>::epsilon());
-              i += 1;
-            }
-          }
-        }
-      }
-    }
-  } else {
-    // Check the query for accuracy. The query results should contain 64
-    // elements.
-    auto table = query.result_buffer_elements();
-    REQUIRE(table.size() == 2);
-    REQUIRE(table["a"].first == 0);
-    REQUIRE(table["a"].second == 64);
-    REQUIRE(table["b"].first == 0);
-    REQUIRE(table["b"].second == 64);
-
-    for (int r = 7; r <= 14; ++r) {
-      for (int c = 7; c <= 14; ++c) {
-        int original_arr_i = index_from_row_col(r, c);
-        int i = ((r - 7) * 8) + (c - 7);
-        // The buffer should have kept elements that were originally constructed
-        // to have values that satisfy the range [3.3, 3.7] but are not equal
-        // to 3.4. This means that any element whose original index is 4 mod 8
-        // should have been kept.
-        if (original_arr_i % 8 == 4) {
-          // Checking for original value.
-          REQUIRE(a_data_read_2[i] == 1);
-          REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
-          REQUIRE(
-              fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
-              std::numeric_limits<float>::epsilon());
-        } else {
-          // Checking for fill value.
-          REQUIRE(a_data_read_2[i] == a_fill_value);
-          REQUIRE(
-              fabs(b_data_read_2[i] - b_fill_value) <
-              std::numeric_limits<float>::epsilon());
-        }
-      }
-    }
-  }
-
-  query.finalize();
-  array.close();
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
-}
-
-TEST_CASE(
-    "Testing read query with complex QC, with ranges across tiles on both "
-    "dimensions and a UTF-8 attribute",
-    "[query][query-condition][utf8]") {
-  // Initial setup.
-  std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
-
-  // Define query condition (b < 4.0f AND b <= 3.7f AND b >= 3.3f AND b
-  // != 3.4f);
-  QueryCondition qc1(ctx);
-  float val1 = 4.0f;
-  qc1.init("b", &val1, sizeof(float), TILEDB_LT);
-
-  QueryCondition qc2(ctx);
-  float val2 = 3.7f;
-  qc2.init("b", &val2, sizeof(float), TILEDB_LE);
-
-  QueryCondition qc3(ctx);
-  float val3 = 3.3f;
-  qc3.init("b", &val3, sizeof(float), TILEDB_GE);
-
-  QueryCondition qc4(ctx);
-  float val4 = 3.4f;
-  qc4.init("b", &val4, sizeof(float), TILEDB_NE);
-
-  QueryCondition qc5(ctx);
-  std::string val5("dog");
-  qc5.init("c", val5.data(), val5.size(), TILEDB_LE);
-
-  QueryCondition qc6 = qc1.combine(qc2, TILEDB_AND);
-  QueryCondition qc7 = qc6.combine(qc3, TILEDB_AND);
-  QueryCondition qc8 = qc7.combine(qc4, TILEDB_AND);
-  QueryCondition qc = qc8.combine(qc5, TILEDB_AND);
-
-  // Create buffers with size of the results of the two queries.
-  std::vector<int> a_data_read(num_rows * num_rows);
-  std::vector<float> b_data_read(num_rows * num_rows);
-
-  // These buffers store the results of the second query made with the query
-  // condition specified above.
-  std::vector<int> a_data_read_2(64);
-  std::vector<float> b_data_read_2(64);
-  std::string c_data_read_2;
-  c_data_read_2.resize(64 * 5);
-  std::vector<uint64_t> c_data_offsets_2(64);
-
-  // Generate test parameters.
-  TestParams params = GENERATE(
-      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true, true),
-      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false, true),
-      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false, true));
-
-  // Setup by creating buffers to store all elements of the original array.
-  create_array(
-      ctx,
-      params.array_type_,
-      params.set_dups_,
-      params.add_utf8_attr_,
-      a_data_read,
-      b_data_read);
-
-  // Create the query, which reads over the entire array with query condition
-  // (b < 4.0).
-  Config config;
-  if (params.legacy_) {
-    config.set("sm.query.sparse_global_order.reader", "legacy");
-    config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
-  }
-  Context ctx2 = Context(config);
-  Array array(ctx2, array_name, TILEDB_READ);
-  Query query(ctx2, array);
-
-  // Define range.
-  int range[] = {7, 14};
-  query.add_range("rows", range[0], range[1])
-      .add_range("cols", range[0], range[1]);
-
-  // Perform query and validate.
-  perform_query(
-      a_data_read_2,
-      b_data_read_2,
-      c_data_read_2,
-      c_data_offsets_2,
-      qc,
-      params.layout_,
-      query);
-  if (params.array_type_ == TILEDB_SPARSE) {
-    // Check the query for accuracy. The query results should contain 8
-    // elements.
-    auto table = query.result_buffer_elements();
-    REQUIRE(table.size() == 3);
-    REQUIRE(table["a"].first == 0);
-    REQUIRE(table["a"].second == 8);
-    REQUIRE(table["b"].first == 0);
-    REQUIRE(table["b"].second == 8);
-
-    int i = 0;
-    std::vector<std::pair<int, int>> ranges_vec;
-    ranges_vec.push_back(std::make_pair(7, 8));
-    ranges_vec.push_back(std::make_pair(9, 12));
-    ranges_vec.push_back(std::make_pair(13, 14));
-
-    for (size_t a = 0; a < 3; ++a) {    // Iterating over rows.
-      for (size_t b = 0; b < 3; ++b) {  // Iterating over cols.
-        int row_lo = ranges_vec[a].first;
-        int row_hi = ranges_vec[a].second;
-        int col_lo = ranges_vec[b].first;
-        int col_hi = ranges_vec[b].second;
-
-        for (int r = row_lo; r <= row_hi; ++r) {
-          for (int c = col_lo; c <= col_hi; ++c) {
-            int original_arr_i = index_from_row_col(r, c);
-            // The buffer should have kept elements that were originally
-            // constructed to have values that satisfy the range [3.3, 3.7] but
-            // are not equal to 3.4. This means that any element whose original
-            // index is 4 mod 8 should be in the result buffer.
-            if (original_arr_i % 8 == 4) {
-              REQUIRE(a_data_read_2[i] == 1);
-              REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
-              REQUIRE(
-                  fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
-                  std::numeric_limits<float>::epsilon());
-              i += 1;
-            }
-          }
-        }
-      }
-    }
-  } else {
-    // Check the query for accuracy. The query results should contain 64
-    // elements.
-    auto table = query.result_buffer_elements();
-    REQUIRE(table.size() == 3);
-    REQUIRE(table["a"].first == 0);
-    REQUIRE(table["a"].second == 64);
-    REQUIRE(table["b"].first == 0);
-    REQUIRE(table["b"].second == 64);
-
-    for (int r = 7; r <= 14; ++r) {
-      for (int c = 7; c <= 14; ++c) {
-        int original_arr_i = index_from_row_col(r, c);
-        int i = ((r - 7) * 8) + (c - 7);
-        // The buffer should have kept elements that were originally constructed
-        // to have values that satisfy the range [3.3, 3.7] but are not equal
-        // to 3.4. This means that any element whose original index is 4 mod 8
-        // should have been kept.
-        if (original_arr_i % 8 == 4) {
-          // Checking for original value.
-          REQUIRE(a_data_read_2[i] == 1);
-          REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
-          REQUIRE(
-              fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
-              std::numeric_limits<float>::epsilon());
-        } else {
-          // Checking for fill value.
-          REQUIRE(a_data_read_2[i] == a_fill_value);
-          REQUIRE(
-              fabs(b_data_read_2[i] - b_fill_value) <
-              std::numeric_limits<float>::epsilon());
-        }
-      }
-    }
-  }
-
-  query.finalize();
-  array.close();
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
-}
-
-TEST_CASE(
-    "Testing dense query condition with overlapping fragment domains",
-    "[query][query-condition][dense][overlapping-fd]") {
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
-
-  // Create a simple 1D vector with domain 1-10 and one attribute.
-  Domain domain(ctx);
-  domain.add_dimension(Dimension::create<int>(ctx, "d", {{1, 10}}, 5));
-  ArraySchema schema(ctx, TILEDB_DENSE);
-  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
-  Attribute attr = Attribute::create<int>(ctx, "a");
-  int fill_value = -1;
-  attr.set_fill_value(&fill_value, sizeof(int));
-  schema.add_attribute(attr);
-  Array::create(array_name, schema);
-
-  // Open array for write.
-  Array array(ctx, array_name, TILEDB_WRITE);
-
-  // Write all values as 3 in the array.
-  std::vector<int> vals = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
-  Query query_w(ctx, array, TILEDB_WRITE);
-  int range[] = {1, 10};
-  query_w.add_range("d", range[0], range[1]);
-  query_w.set_layout(TILEDB_ROW_MAJOR);
-  query_w.set_buffer("a", vals);
-  REQUIRE(query_w.submit() == Query::Status::COMPLETE);
-
-  // Write values from 3-6 as 7 in the array.
-  std::vector<int> vals2 = {7, 7, 7, 7};
-  Query query_w2(ctx, array, TILEDB_WRITE);
-  int range2[] = {3, 6};
-  query_w2.add_range("d", range2[0], range2[1]);
-  query_w2.set_layout(TILEDB_ROW_MAJOR);
-  query_w2.set_buffer("a", vals2);
-  REQUIRE(query_w2.submit() == Query::Status::COMPLETE);
-
-  array.close();
-
-  // Open the array for read.
-  Array array_r(ctx, array_name, TILEDB_READ);
-
-  // Query the data with query condition a > 4.
-  QueryCondition qc(ctx);
-  int val1 = 4;
-  qc.init("a", &val1, sizeof(int), TILEDB_GT);
-
-  std::vector<int> vals_read(10);
-  Query query_r(ctx, array_r, TILEDB_READ);
-  query_r.add_range("d", range[0], range[1]);
-  query_r.set_layout(TILEDB_ROW_MAJOR);
-  query_r.set_buffer("a", vals_read);
-  query_r.set_condition(qc);
-  REQUIRE(query_r.submit() == Query::Status::COMPLETE);
-
-  std::vector<int> c_vals_read = {-1, -1, 7, 7, 7, 7, -1, -1, -1, -1};
-  CHECK(0 == memcmp(vals_read.data(), c_vals_read.data(), 10 * sizeof(int)));
-
-  array_r.close();
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
-}
-
-TEST_CASE(
-    "Testing read query with basic QC, condition on dimension, with range "
-    "within a tile.",
-    "[query][query-condition][dimension]") {
-  // Initial setup.
-  std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
-
-  // Define query condition (b < 4.0).
-  QueryCondition qc(ctx);
-  float val = 4.0f;
-  qc.init("b", &val, sizeof(float), TILEDB_LT);
-
-  // Define ranges through query condition.
-  int range[] = {2, 3};
-  QueryCondition qc_range_rows_1(ctx);
-  qc_range_rows_1.init("rows", &range[0], sizeof(int), TILEDB_GE);
-  qc = qc.combine(qc_range_rows_1, TILEDB_AND);
-
-  QueryCondition qc_range_rows_2(ctx);
-  qc_range_rows_2.init("rows", &range[1], sizeof(int), TILEDB_LE);
-  qc = qc.combine(qc_range_rows_2, TILEDB_AND);
-
-  QueryCondition qc_range_cols_1(ctx);
-  qc_range_cols_1.init("cols", &range[0], sizeof(int), TILEDB_GE);
-  qc = qc.combine(qc_range_cols_1, TILEDB_AND);
-
-  QueryCondition qc_range_cols_2(ctx);
-  qc_range_cols_2.init("cols", &range[1], sizeof(int), TILEDB_LE);
-  qc = qc.combine(qc_range_cols_2, TILEDB_AND);
-
-  // Create buffers with size of the results of the two queries.
-  std::vector<int> a_data_read(num_rows * num_rows);
-  std::vector<float> b_data_read(num_rows * num_rows);
-
-  // These buffers store the results of the second query made with the query
-  // condition specified above.
-  std::vector<int> a_data_read_2(num_rows * num_rows);
-  std::vector<float> b_data_read_2(num_rows * num_rows);
-
-  // Generate test parameters.
-  TestParams params = GENERATE(
-      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
-      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, false),
-      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false));
-
-  // Setup by creating buffers to store all elements of the original array.
-  create_array(
-      ctx,
-      params.array_type_,
-      params.set_dups_,
-      params.add_utf8_attr_,
-      a_data_read,
-      b_data_read);
-
-  // Create the query, which reads over the entire array with query condition
-  // (b < 4.0).
-  Config config;
-  if (params.legacy_) {
-    config.set("sm.query.sparse_global_order.reader", "legacy");
-    config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
-  }
-  Context ctx2 = Context(config);
-  Array array(ctx2, array_name, TILEDB_READ);
-  Query query(ctx2, array);
-
-  // Perform query and validate.
-  perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
-
-  // Check the query for accuracy. The query results should contain 2
-  // elements.
-  auto table = query.result_buffer_elements();
-  REQUIRE(table.size() == 2);
-  REQUIRE(table["a"].first == 0);
-  REQUIRE(table["a"].second == 2);
-  REQUIRE(table["b"].first == 0);
-  REQUIRE(table["b"].second == 2);
-
-  // Testing (2,3), which should be in the result buffer.
-  int ind_0 = index_from_row_col(2, 3);
-  REQUIRE(a_data_read_2[0] == a_data_read[ind_0]);
-  REQUIRE(
-      fabs(b_data_read_2[0] - b_data_read[ind_0]) <
-      std::numeric_limits<float>::epsilon());
-
-  // Testing (3,3), which should be in the result buffer.
-  int ind_1 = index_from_row_col(3, 3);
-  REQUIRE(a_data_read_2[1] == a_data_read[ind_1]);
-  REQUIRE(
-      fabs(b_data_read_2[1] - b_data_read[ind_1]) <
-      std::numeric_limits<float>::epsilon());
-
-  query.finalize();
-  array.close();
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
-}
-
-TEST_CASE(
-    "Testing read query with basic QC, condition on dimension, with range "
-    "across tile for rows dimension, within tile for cols dimension.",
-    "[query][query-condition][dimension]") {
-  // Initial setup.
-  std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
-
-  // Define query condition (b < 4.0).
-  QueryCondition qc(ctx);
-  float val = 4.0f;
-  qc.init("b", &val, sizeof(float), TILEDB_LT);
-
-  // Define ranges through query condition.
-  int range[] = {2, 3};
-  int range1[] = {7, 10};
-  QueryCondition qc_range_rows_1(ctx);
-  qc_range_rows_1.init("rows", &range1[0], sizeof(int), TILEDB_GE);
-  qc = qc.combine(qc_range_rows_1, TILEDB_AND);
-
-  QueryCondition qc_range_rows_2(ctx);
-  qc_range_rows_2.init("rows", &range1[1], sizeof(int), TILEDB_LE);
-  qc = qc.combine(qc_range_rows_2, TILEDB_AND);
-
-  QueryCondition qc_range_cols_1(ctx);
-  qc_range_cols_1.init("cols", &range[0], sizeof(int), TILEDB_GE);
-  qc = qc.combine(qc_range_cols_1, TILEDB_AND);
-
-  QueryCondition qc_range_cols_2(ctx);
-  qc_range_cols_2.init("cols", &range[1], sizeof(int), TILEDB_LE);
-  qc = qc.combine(qc_range_cols_2, TILEDB_AND);
-
-  // Create buffers with size of the results of the two queries.
-  std::vector<int> a_data_read(num_rows * num_rows);
-  std::vector<float> b_data_read(num_rows * num_rows);
-
-  // These buffers store the results of the second query made with the query
-  // condition specified above.
-  std::vector<int> a_data_read_2(num_rows * num_rows);
-  std::vector<float> b_data_read_2(num_rows * num_rows);
-
-  // Generate test parameters.
-  TestParams params = GENERATE(
-      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
-      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, false),
-      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false));
-
-  // Setup by creating buffers to store all elements of the original array.
-  create_array(
-      ctx,
-      params.array_type_,
-      params.set_dups_,
-      params.add_utf8_attr_,
-      a_data_read,
-      b_data_read);
-
-  // Create the query, which reads over the entire array with query condition
-  // (b < 4.0).
-  Config config;
-  if (params.legacy_) {
-    config.set("sm.query.sparse_global_order.reader", "legacy");
-    config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
-  }
-  Context ctx2 = Context(config);
-  Array array(ctx2, array_name, TILEDB_READ);
-  Query query(ctx2, array);
-
-  // Perform query and validate.
-  perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
-
-  // Check the query for accuracy. The query results should contain 2
-  // elements.
-  auto table = query.result_buffer_elements();
-  REQUIRE(table.size() == 2);
-  REQUIRE(table["a"].first == 0);
-  REQUIRE(table["a"].second == 4);
-  REQUIRE(table["b"].first == 0);
-  REQUIRE(table["b"].second == 4);
-
-  // Testing (7,3), which should be in the result buffer.
-  int ind_0 = index_from_row_col(7, 3);
-  REQUIRE(a_data_read_2[0] == a_data_read[ind_0]);
-  REQUIRE(
-      fabs(b_data_read_2[0] - b_data_read[ind_0]) <
-      std::numeric_limits<float>::epsilon());
-
-  // Testing (8,3), which should be in the result buffer.
-  int ind_1 = index_from_row_col(8, 3);
-  REQUIRE(a_data_read_2[1] == a_data_read[ind_1]);
-  REQUIRE(
-      fabs(b_data_read_2[1] - b_data_read[ind_1]) <
-      std::numeric_limits<float>::epsilon());
-
-  // Testing (9,3), which should be in the result buffer.
-  int ind_2 = index_from_row_col(9, 3);
-  REQUIRE(a_data_read_2[2] == a_data_read[ind_2]);
-  REQUIRE(
-      fabs(b_data_read_2[2] - b_data_read[ind_2]) <
-      std::numeric_limits<float>::epsilon());
-
-  // Testing (10,3), which should be in the result buffer.
-  int ind_3 = index_from_row_col(10, 3);
-  REQUIRE(a_data_read_2[3] == a_data_read[ind_3]);
-  REQUIRE(
-      fabs(b_data_read_2[3] - b_data_read[ind_3]) <
-      std::numeric_limits<float>::epsilon());
-
-  query.finalize();
-  array.close();
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
-}
-
-TEST_CASE(
-    "Testing read query with basic QC, condition on dimension, with range "
-    "within tile for rows dimension, across tile for cols dimension.",
-    "[query][query-condition][dimension]") {
-  // Initial setup.
-  std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
-
-  // Define query condition (b < 4.0).
-  QueryCondition qc(ctx);
-  float val = 4.0f;
-  qc.init("b", &val, sizeof(float), TILEDB_LT);
-
-  // Define ranges through query condition.
-  int range[] = {2, 3};
-  int range1[] = {7, 10};
-  QueryCondition qc_range_rows_1(ctx);
-  qc_range_rows_1.init("rows", &range[0], sizeof(int), TILEDB_GE);
-  qc = qc.combine(qc_range_rows_1, TILEDB_AND);
-
-  QueryCondition qc_range_rows_2(ctx);
-  qc_range_rows_2.init("rows", &range[1], sizeof(int), TILEDB_LE);
-  qc = qc.combine(qc_range_rows_2, TILEDB_AND);
-
-  QueryCondition qc_range_cols_1(ctx);
-  qc_range_cols_1.init("cols", &range1[0], sizeof(int), TILEDB_GE);
-  qc = qc.combine(qc_range_cols_1, TILEDB_AND);
-
-  QueryCondition qc_range_cols_2(ctx);
-  qc_range_cols_2.init("cols", &range1[1], sizeof(int), TILEDB_LE);
-  qc = qc.combine(qc_range_cols_2, TILEDB_AND);
-
-  // Create buffers with size of the results of the two queries.
-  std::vector<int> a_data_read(num_rows * num_rows);
-  std::vector<float> b_data_read(num_rows * num_rows);
-
-  // These buffers store the results of the second query made with the query
-  // condition specified above.
-  std::vector<int> a_data_read_2(num_rows * num_rows);
-  std::vector<float> b_data_read_2(num_rows * num_rows);
-
-  // Generate test parameters.
-  TestParams params = GENERATE(
-      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
-      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, false),
-      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false));
-
-  // Setup by creating buffers to store all elements of the original array.
-  create_array(
-      ctx,
-      params.array_type_,
-      params.set_dups_,
-      params.add_utf8_attr_,
-      a_data_read,
-      b_data_read);
-
-  // Create the query, which reads over the entire array with query condition
-  // (b < 4.0).
-  Config config;
-  if (params.legacy_) {
-    config.set("sm.query.sparse_global_order.reader", "legacy");
-    config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
-  }
-  Context ctx2 = Context(config);
-  Array array(ctx2, array_name, TILEDB_READ);
-  Query query(ctx2, array);
-
-  // Perform query and validate.
-  perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
-
-  // Check the query for accuracy. The query results should contain 4
-  // elements.
-  auto table = query.result_buffer_elements();
-  REQUIRE(table.size() == 2);
-  REQUIRE(table["a"].first == 0);
-  REQUIRE(table["a"].second == 4);
-  REQUIRE(table["b"].first == 0);
-  REQUIRE(table["b"].second == 4);
-
-  // Ensure that the same data is in each array (global order).
-  int i = 0;
-  for (int c = range1[0]; c <= range1[1]; c += 2) {
-    for (int r = range[0]; r <= range[1]; ++r) {
-      int original_arr_i = index_from_row_col(r, c);
-      REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
-      REQUIRE(
-          fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
-          std::numeric_limits<float>::epsilon());
-      i += 1;
-    }
-  }
-
-  query.finalize();
-  array.close();
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
-}
-
-TEST_CASE(
-    "Testing read query with basic QC, condition on dimension, with ranges "
-    "across tiles on both dimensions.",
-    "[query][query-condition][dimension]") {
-  // Initial setup.
-  std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
-
-  // Define query condition (b < 4.0).
-  QueryCondition qc(ctx);
-  float val = 4.0f;
-  qc.init("b", &val, sizeof(float), TILEDB_LT);
-
-  // Define ranges through query condition.
-  int range[] = {7, 14};
-  QueryCondition qc_range_rows_1(ctx);
-  qc_range_rows_1.init("rows", &range[0], sizeof(int), TILEDB_GE);
-  qc = qc.combine(qc_range_rows_1, TILEDB_AND);
-
-  QueryCondition qc_range_rows_2(ctx);
-  qc_range_rows_2.init("rows", &range[1], sizeof(int), TILEDB_LE);
-  qc = qc.combine(qc_range_rows_2, TILEDB_AND);
-
-  QueryCondition qc_range_cols_1(ctx);
-  qc_range_cols_1.init("cols", &range[0], sizeof(int), TILEDB_GE);
-  qc = qc.combine(qc_range_cols_1, TILEDB_AND);
-
-  QueryCondition qc_range_cols_2(ctx);
-  qc_range_cols_2.init("cols", &range[1], sizeof(int), TILEDB_LE);
-  qc = qc.combine(qc_range_cols_2, TILEDB_AND);
-
-  // Create buffers with size of the results of the two queries.
-  std::vector<int> a_data_read(num_rows * num_rows);
-  std::vector<float> b_data_read(num_rows * num_rows);
-
-  // These buffers store the results of the second query made with the query
-  // condition specified above.
-  std::vector<int> a_data_read_2(num_rows * num_rows);
-  std::vector<float> b_data_read_2(num_rows * num_rows);
-
-  // Generate test parameters.
-  TestParams params = GENERATE(
-      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
-      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, false),
-      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false));
-
-  // Setup by creating buffers to store all elements of the original array.
-  create_array(
-      ctx,
-      params.array_type_,
-      params.set_dups_,
-      params.add_utf8_attr_,
-      a_data_read,
-      b_data_read);
-
-  // Create the query, which reads over the entire array with query condition
-  // (b < 4.0).
-  Config config;
-  if (params.legacy_) {
-    config.set("sm.query.sparse_global_order.reader", "legacy");
-    config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
-  }
-  Context ctx2 = Context(config);
-  Array array(ctx2, array_name, TILEDB_READ);
-  Query query(ctx2, array);
-
-  // Perform query and validate.
-  perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
-
-  // Check the query for accuracy. The query results should contain 32
-  // elements.
-  auto table = query.result_buffer_elements();
-  REQUIRE(table.size() == 2);
-  REQUIRE(table["a"].first == 0);
-  REQUIRE(table["a"].second == 32);
-  REQUIRE(table["b"].first == 0);
-  REQUIRE(table["b"].second == 32);
-
-  int i = 0;
-  std::vector<std::pair<int, int>> ranges_vec;
-  ranges_vec.push_back(std::make_pair(7, 8));
-  ranges_vec.push_back(std::make_pair(9, 12));
-  ranges_vec.push_back(std::make_pair(13, 14));
-
-  for (size_t a = 0; a < 3; ++a) {    // Iterating over rows.
-    for (size_t b = 0; b < 3; ++b) {  // Iterating over cols.
-      int row_lo = ranges_vec[a].first;
-      int row_hi = ranges_vec[a].second;
-      int col_lo = ranges_vec[b].first;
-      int col_hi = ranges_vec[b].second;
-
-      for (int r = row_lo; r <= row_hi; ++r) {
-        for (int c = col_lo; c <= col_hi; ++c) {
-          int original_arr_i = index_from_row_col(r, c);
-          // The buffer should have kept elements that were originally
-          // constructed to have values less than 4.0; this means that any
-          // element whose original index is even should be in the result
-          // buffer.
-          if (original_arr_i % 2 == 0) {
-            REQUIRE(a_data_read_2[i] == 1);
-            REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
-            REQUIRE(
-                fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
-                std::numeric_limits<float>::epsilon());
-            i += 1;
-          }
-        }
-      }
-    }
-  }
-
-  query.finalize();
-  array.close();
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
-}
-
-TEST_CASE(
-    "Testing read query with complex QC, condition on dimensions, with ranges "
-    "across tiles on both dimensions.",
-    "[query][query-condition][dimension]") {
-  // Initial setup.
-  std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
-
-  // Define query condition (b < 4.0f AND b <= 3.7f AND b >= 3.3f AND b
-  // != 3.4f);
-  QueryCondition qc1(ctx);
-  float val1 = 4.0f;
-  qc1.init("b", &val1, sizeof(float), TILEDB_LT);
-
-  QueryCondition qc2(ctx);
-  float val2 = 3.7f;
-  qc2.init("b", &val2, sizeof(float), TILEDB_LE);
-
-  QueryCondition qc3(ctx);
-  float val3 = 3.3f;
-  qc3.init("b", &val3, sizeof(float), TILEDB_GE);
-
-  QueryCondition qc4(ctx);
-  float val4 = 3.4f;
-  qc4.init("b", &val4, sizeof(float), TILEDB_NE);
-
-  QueryCondition qc5 = qc1.combine(qc2, TILEDB_AND);
-  QueryCondition qc6 = qc5.combine(qc3, TILEDB_AND);
-  QueryCondition qc = qc6.combine(qc4, TILEDB_AND);
-
-  // Define ranges through query condition.
-  int range[] = {7, 14};
-  QueryCondition qc_range_rows_1(ctx);
-  qc_range_rows_1.init("rows", &range[0], sizeof(int), TILEDB_GE);
-  qc = qc.combine(qc_range_rows_1, TILEDB_AND);
-
-  QueryCondition qc_range_rows_2(ctx);
-  qc_range_rows_2.init("rows", &range[1], sizeof(int), TILEDB_LE);
-  qc = qc.combine(qc_range_rows_2, TILEDB_AND);
-
-  QueryCondition qc_range_cols_1(ctx);
-  qc_range_cols_1.init("cols", &range[0], sizeof(int), TILEDB_GE);
-  qc = qc.combine(qc_range_cols_1, TILEDB_AND);
-
-  QueryCondition qc_range_cols_2(ctx);
-  qc_range_cols_2.init("cols", &range[1], sizeof(int), TILEDB_LE);
-  qc = qc.combine(qc_range_cols_2, TILEDB_AND);
-
-  // Create buffers with size of the results of the two queries.
-  std::vector<int> a_data_read(num_rows * num_rows);
-  std::vector<float> b_data_read(num_rows * num_rows);
-
-  // These buffers store the results of the second query made with the query
-  // condition specified above.
-  std::vector<int> a_data_read_2(num_rows * num_rows);
-  std::vector<float> b_data_read_2(num_rows * num_rows);
-
-  // Generate test parameters.
-  // PJD: Why not dense here?
-  TestParams params = GENERATE(
-      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
-      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, false),
-      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false));
-
-  // Setup by creating buffers to store all elements of the original array.
-  create_array(
-      ctx,
-      params.array_type_,
-      params.set_dups_,
-      params.add_utf8_attr_,
-      a_data_read,
-      b_data_read);
-
-  // Create the query, which reads over the entire array with query condition
-  // (b < 4.0).
-  Config config;
-  if (params.legacy_) {
-    config.set("sm.query.sparse_global_order.reader", "legacy");
-    config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
-  }
-  Context ctx2 = Context(config);
-  Array array(ctx2, array_name, TILEDB_READ);
-  Query query(ctx2, array);
-
-  // Perform query and validate.
-  perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
-
-  // Check the query for accuracy. The query results should contain 8
-  // elements.
-  auto table = query.result_buffer_elements();
-  REQUIRE(table.size() == 2);
-  REQUIRE(table["a"].first == 0);
-  REQUIRE(table["a"].second == 8);
-  REQUIRE(table["b"].first == 0);
-  REQUIRE(table["b"].second == 8);
-
-  int i = 0;
-  std::vector<std::pair<int, int>> ranges_vec;
-  ranges_vec.push_back(std::make_pair(7, 8));
-  ranges_vec.push_back(std::make_pair(9, 12));
-  ranges_vec.push_back(std::make_pair(13, 14));
-
-  for (size_t a = 0; a < 3; ++a) {    // Iterating over rows.
-    for (size_t b = 0; b < 3; ++b) {  // Iterating over cols.
-      int row_lo = ranges_vec[a].first;
-      int row_hi = ranges_vec[a].second;
-      int col_lo = ranges_vec[b].first;
-      int col_hi = ranges_vec[b].second;
-
-      for (int r = row_lo; r <= row_hi; ++r) {
-        for (int c = col_lo; c <= col_hi; ++c) {
-          int original_arr_i = index_from_row_col(r, c);
-          // The buffer should have kept elements that were originally
-          // constructed to have values that satisfy the range [3.3, 3.7] but
-          // are not equal to 3.4. This means that any element whose original
-          // index is 4 mod 8 should be in the result buffer.
-          if (original_arr_i % 8 == 4) {
-            REQUIRE(a_data_read_2[i] == 1);
-            REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
-            REQUIRE(
-                fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
-                std::numeric_limits<float>::epsilon());
-            i += 1;
-          }
-        }
-      }
-    }
-  }
-
-  query.finalize();
-  array.close();
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
-}
-
-TEST_CASE(
-    "Testing read query with simple QC, condition on dimensions, string dim",
-    "[query][query-condition][dimension]") {
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
-
-  Domain domain(ctx);
-  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 4))
-      .add_dimension(Dimension::create(
-          ctx, "cols", TILEDB_STRING_ASCII, nullptr, nullptr));
   ArraySchema schema(ctx, TILEDB_SPARSE);
-
-  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
-  Attribute attr_a = Attribute::create<int>(ctx, "a");
+  schema.set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
   schema.set_capacity(16);
-  schema.add_attribute(attr_a);
-  Array::create(array_name, schema);
+
+  auto dim_x = Dimension::create<int>(ctx, "x", {{1, 4}}, 4);
+  auto dim_y =
+      Dimension::create(ctx, "y", TILEDB_STRING_ASCII, nullptr, nullptr);
+  auto att_a = Attribute::create<int>(ctx, "a");
+
+  Domain dom(ctx);
+  dom.add_dimensions(dim_x, dim_y);
+  schema.set_domain(dom);
+
+  schema.add_attribute(att_a);
+
+  Array::create(ARRAY_NAME, schema);
 
   // Write some initial data and close the array.
-  std::vector<int> rows_dims = {1, 2};
-  std::string cols_dims = "ab";
-  std::vector<uint64_t> cols_dim_offs = {0, 1};
-  std::vector<int> a_data = {3, 4};
+  std::vector<int> x_data = {1, 2, 3, 4};
+  std::string y_data = "johnpaulringogeorge";
+  std::vector<uint64_t> y_off = {0, 4, 8, 13};
+  std::vector<int> a_data = {42, 41, 40, 39};
 
-  Array array_w(ctx, array_name, TILEDB_WRITE);
+  Array array_w(ctx, ARRAY_NAME, TILEDB_WRITE);
   Query query_w(ctx, array_w);
   query_w.set_layout(TILEDB_UNORDERED)
-      .set_data_buffer("rows", rows_dims)
-      .set_data_buffer("cols", cols_dims)
-      .set_offsets_buffer("cols", cols_dim_offs)
+      .set_data_buffer("x", x_data)
+      .set_data_buffer("y", y_data)
+      .set_offsets_buffer("y", y_off)
       .set_data_buffer("a", a_data);
 
   query_w.submit();
@@ -2154,160 +442,501 @@ TEST_CASE(
   array_w.close();
 
   // Read the data with query condition on the string dimension.
-  Array array(ctx, array_name, TILEDB_READ);
+  Array array(ctx, ARRAY_NAME, TILEDB_READ);
   Query query(ctx, array);
 
-  QueryCondition qc(ctx);
-  std::string val = "b";
-  qc.init("cols", val.data(), 1, TILEDB_EQ);
+  QueryCondition qc(ctx, "y", "ringo", TILEDB_EQ);
 
-  std::vector<int> rows_read(1);
-  std::string cols_read;
-  cols_read.resize(1);
-  std::vector<uint64_t> cols_offs_read(1);
-  std::vector<int> a_read(1);
+  std::vector<int> x_read(4);
+  std::vector<char> y_read(y_data.size());
+  std::vector<uint64_t> y_off_read(4);
+  std::vector<int> a_read(4);
 
   query.set_layout(TILEDB_GLOBAL_ORDER)
-      .set_data_buffer("rows", rows_read)
-      .set_data_buffer("cols", cols_read)
-      .set_offsets_buffer("cols", cols_offs_read)
+      .set_data_buffer("x", x_read)
+      .set_data_buffer("y", y_read)
+      .set_offsets_buffer("y", y_off_read)
       .set_data_buffer("a", a_read)
       .set_condition(qc);
   query.submit();
-  CHECK(query.query_status() == Query::Status::COMPLETE);
 
-  // Check the query for accuracy. The query results should contain 1 element.
   auto table = query.result_buffer_elements();
-  CHECK(table.size() == 3);
-  CHECK(table["a"].first == 0);
-  CHECK(table["a"].second == 1);
+  x_read.resize(table["x"].second);
+  y_read.resize(table["y"].second);
+  y_off_read.resize(table["y"].first);
+  a_read.resize(table["a"].second);
 
-  CHECK(rows_read[0] == 2);
-  CHECK(cols_read == "b");
-  CHECK(cols_offs_read[0] == 0);
-  CHECK(a_read[0] == 4);
+  REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
+  REQUIRE(x_read.size() == 1);
+  REQUIRE(x_read[0] == 3);
+
+  REQUIRE(std::string(y_read.begin(), y_read.end()) == "ringo");
+
+  REQUIRE(y_off_read.size() == 1);
+  REQUIRE(y_off_read[0] == 0);
+
+  REQUIRE(a_read.size() == 1);
+  REQUIRE(a_read[0] == 40);
+
+  if (vfs.is_dir(ARRAY_NAME)) {
+    vfs.remove_dir(ARRAY_NAME);
   }
 }
 
 TEST_CASE(
-    "Testing read query with basic QC, with no range, query condition "
-    "attribute not in buffers",
+    "Testing read query with QC referencing attribute not in buffers",
     "[query][query-condition][attr-not-in-buffers]") {
-  // Initial setup.
-  std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
-  VFS vfs(ctx);
+  TestParams params = GENERATE(
+      TestParams(
+          TILEDB_SPARSE,
+          TILEDB_GLOBAL_ORDER,
+          {{"skip_attribute_b", true}, {"legacy", true}}),
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, {{"skip_attribute_b", true}}),
+      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, {{"skip_attribute_b", true}}));
 
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
+  // TODO: Figure out how to match query conditions
+  // against dense coordinates.
+  // TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, fale, false);
+
+  QueryConditionTest t(params);
+
+  QueryCondition qc(t.ctx_, "b", 50.0f, TILEDB_LT);
+  auto pred = [](QCTestCell& cell) { return cell.b_ < 50.0f; };
+
+  // QC with no range specified
+  t.validate(qc, pred);
+
+  // QC negation with no range specified
+  auto neg_qc = qc.negate();
+  t.validate(neg_qc, [&pred](QCTestCell& cell) { return !pred(cell); });
+
+  t.validate(qc, {2, 3}, {2, 3}, pred);
+  t.validate(qc, {2, 3}, {2, 17}, pred);
+  t.validate(qc, {2, 17}, {2, 3}, pred);
+  t.validate(qc, {2, 17}, {2, 17}, pred);
+}
+
+// Test Utility Functions
+
+float rand_float() {
+  return float(std::rand()) / float(RAND_MAX);
+}
+
+float rand_float(float lo, float hi) {
+  return lo + rand_float() * (hi - lo);
+}
+
+int rand_int(int lo, int hi) {
+  return (int)rand_float(lo, hi);
+}
+
+std::string string_at(
+    size_t i, std::vector<char> data, std::vector<uint64_t> offsets) {
+  uint64_t start = offsets[i];
+  uint64_t end = UINT64_MAX;
+  if (i < offsets.size() - 1) {
+    end = offsets[i + 1];
+  } else {
+    end = data.size();
   }
 
-  // Define query condition (b < 4.0).
-  QueryCondition qc(ctx);
-  float val = 4.0f;
-  qc.init("b", &val, sizeof(float), TILEDB_LT);
+  if (end == UINT64_MAX) {
+    throw std::logic_error("Bad end offset");
+  }
+  if (end < start) {
+    throw std::logic_error("Bad string range");
+  }
 
-  // Create buffers with size of the results of the two queries.
-  std::vector<int> a_data_read(num_rows * num_rows);
-  std::vector<float> b_data_read(num_rows * num_rows);
+  return std::string(data.data() + start, end - start);
+}
 
-  // These buffers store the results of the second query made with the query
-  // condition specified above.
-  std::vector<int> a_data_read_2(num_rows * num_rows);
+void add_string(
+    std::string choice,
+    std::vector<char>& data,
+    std::vector<uint64_t>& offsets) {
+  offsets.push_back(data.size());
+  for (size_t i = 0; i < choice.size(); i++) {
+    data.push_back(choice.at(i));
+  }
+}
 
-  // Generate test parameters.
-  TestParams params = GENERATE(
-      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
-      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false),
-      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false));
+void add_string(
+    std::vector<std::string> choices,
+    std::vector<char>& data,
+    std::vector<uint64_t>& offsets) {
+  auto choice = choices[rand_int(0, choices.size() - 1)];
+  add_string(choice, data, offsets);
+}
 
-  // Setup by creating buffers to store all elements of the original array.
-  create_array(
-      ctx,
-      params.array_type_,
-      params.set_dups_,
-      params.add_utf8_attr_,
-      a_data_read,
-      b_data_read);
+TestParams::TestParams(
+    tiledb_array_type_t array_type,
+    tiledb_layout_t layout,
+    std::map<std::string, bool> options)
+    : array_type_(array_type)
+    , layout_(layout)
+    , options_(options) {
+  for (auto name : OPTION_NAMES) {
+    if (options_.find(name) == options_.end()) {
+      options_[name] = false;
+    }
+  }
+  REQUIRE(options_.size() == OPTION_NAMES.size());
+}
 
-  // Create the query, which reads over the entire array with query condition
-  // (b < 4.0).
+bool TestParams::get(std::string option) {
+  if (options_.find(option) == options_.end()) {
+    throw std::logic_error("Invalid option name: " + option);
+  }
+  return options_[option];
+}
+
+QCTestCell::QCTestCell() {
+}
+
+QCTestCell::QCTestCell(
+    int x, int y, int a, float b, std::string c, std::string d)
+    : x_(x)
+    , y_(y)
+    , a_(a)
+    , b_(b)
+    , c_(c)
+    , d_(d) {
+}
+
+bool QCTestCell::operator==(const QCTestCell& rhs) const {
+  if (x_ != rhs.x_) {
+    return false;
+  }
+  if (y_ != rhs.y_) {
+    return false;
+  }
+  if (a_ != rhs.a_) {
+    return false;
+  }
+  if (b_ != rhs.b_) {
+    return false;
+  }
+  if (c_ != rhs.c_) {
+    return false;
+  }
+  if (d_ != rhs.d_) {
+    return false;
+  }
+  return true;
+}
+
+bool QCTestCell::in_range(TRange x_range, TRange y_range) {
+  if (x_ < x_range[0] || x_ > x_range[1]) {
+    return false;
+  }
+  if (y_ < y_range[0] || y_ > y_range[1]) {
+    return false;
+  }
+  return true;
+}
+
+std::string QCTestCell::to_string() const {
+  std::stringstream ss;
+  ss << "(" << x_ << ", " << y_ << ") = ";
+  ss << "(" << a_ << ", " << b_ << ", '" << c_ << "', '" << d_ << "')";
+  return ss.str();
+}
+
+std::pair<int, int> QCTestCell::key() const {
+  return std::make_pair(x_, y_);
+}
+
+bool operator<(QCTestCell lhs, QCTestCell rhs) {
+  if (lhs.x_ != rhs.x_) {
+    return lhs.x_ < rhs.x_;
+  }
+  if (lhs.y_ != rhs.y_) {
+    return lhs.y_ < rhs.y_;
+  }
+  if (lhs.a_ != rhs.a_) {
+    return lhs.a_ < rhs.a_;
+  }
+  if (lhs.b_ != rhs.b_) {
+    return lhs.b_ < rhs.b_;
+  }
+  if (lhs.c_ != rhs.c_) {
+    return lhs.c_ < rhs.c_;
+  }
+  if (lhs.d_ != rhs.d_) {
+    return lhs.d_ < rhs.d_;
+  }
+  return false;
+}
+
+std::ostream& operator<<(std::ostream& os, QCTestCell const& value) {
+  os << value.to_string();
+  return os;
+}
+
+struct QCData {
+  QCData(size_t size)
+      : x_(size, -1)
+      , y_(size, -1)
+      , a_(size, -1)
+      , b_(size, -1)
+      , c_(size * 10, -1)
+      , c_off_(size, UINT64_MAX)
+      , d_(size * 10, -1)
+      , d_off_(size, UINT64_MAX) {
+  }
+
+  QCData(TRange x_range, TRange y_range) {
+    for (auto y = y_range[0]; y <= y_range[1]; y++) {
+      for (auto x = x_range[0]; x <= x_range[1]; x++) {
+        x_.push_back(x);
+        y_.push_back(y);
+        a_.push_back(rand_int(0, 100));
+        b_.push_back(rand_float(0.0f, 100.0f));
+        add_string(ASCII_CHOICES, c_, c_off_);
+        add_string(UTF8_CHOICES, d_, d_off_);
+      }
+    }
+  }
+
+  std::vector<int> x_;
+  std::vector<int> y_;
+  std::vector<int> a_;
+  std::vector<float> b_;
+  std::vector<char> c_;
+  std::vector<uint64_t> c_off_;
+  std::vector<char> d_;
+  std::vector<uint64_t> d_off_;
+};
+
+QueryConditionTest::QueryConditionTest(TestParams params)
+    : vfs_(ctx_)
+    , params_(params) {
   Config config;
-  if (params.legacy_) {
+  ctx_ = Context(config);
+  vfs_ = VFS(ctx_);
+  remove_array();
+  create_array();
+  // dump_array();
+}
+
+QueryConditionTest::~QueryConditionTest() {
+  remove_array();
+}
+
+void QueryConditionTest::validate(QueryCondition& qc, Chooser chooser) {
+  validate(qc, {1, NUM_ROWS}, {1, NUM_ROWS}, chooser, false);
+}
+
+void QueryConditionTest::validate(
+    QueryCondition& qc,
+    TRange x_range,
+    TRange y_range,
+    Chooser chooser,
+    bool range_specified) {
+  // Collect our matching cells for assertions
+  size_t matches = 0;
+  std::vector<QCTestCell> expect;
+  for (auto cell : cells_) {
+    if (!cell.in_range(x_range, y_range)) {
+      continue;
+    }
+
+    if (chooser(cell)) {
+      matches += 1;
+      if (params_.get("skip_attribute_b")) {
+        cell.b_ = B_FILL;
+      }
+      expect.push_back(cell);
+    } else if (
+        params_.array_type_ == TILEDB_DENSE &&
+        cell.in_range(x_range, y_range)) {
+      cell.a_ = A_FILL;
+      cell.b_ = B_FILL;
+      cell.c_ = std::string(C_FILL);
+      cell.d_ = std::string(D_FILL);
+      expect.push_back(cell);
+    }
+  }
+
+  // Execute the query
+  Config config;
+  if (params_.get("legacy")) {
     config.set("sm.query.sparse_global_order.reader", "legacy");
     config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
   }
-  Context ctx2 = Context(config);
-  Array array(ctx2, array_name, TILEDB_READ);
-  Query query(ctx2, array);
+
+  Context ctx = Context(config);
+  Array array(ctx, ARRAY_NAME, TILEDB_READ);
+  Query query(ctx, array);
 
   // Set a subarray for dense.
-  if (params.array_type_ == TILEDB_DENSE) {
-    int range[] = {1, num_rows};
-    query.add_range("rows", range[0], range[1])
-        .add_range("cols", range[0], range[1]);
+  if (params_.array_type_ == TILEDB_DENSE || range_specified) {
+    Subarray subarray(ctx, array);
+    subarray.add_range("x", x_range[0], x_range[1]);
+    subarray.add_range("y", y_range[0], y_range[1]);
+    query.set_subarray(subarray);
   }
 
-  // Perform query and validate.
-  query.set_layout(params.layout_)
-      .set_data_buffer("a", a_data_read_2)
-      .set_condition(qc);
-  query.submit();
+  query.set_layout(params_.layout_).set_condition(qc);
 
-  if (params.array_type_ == TILEDB_SPARSE) {
-    // Check the query for accuracy. The query results should contain 200
-    // elements. Each of these elements should have the cell value 1 on
-    // attribute a and should match the original value in the array that reads
-    // all elements.
-    auto table = query.result_buffer_elements();
-    REQUIRE(table.size() == 1);
-    REQUIRE(table["a"].first == 0);
-    REQUIRE(table["a"].second == 200);
-
-    // The unordered query should return the results in global order. Therefore,
-    // we iterate over each tile to collect our results.
-    int i = 0;
-    for (int tile_r = 1; tile_r <= num_rows; tile_r += 4) {
-      for (int tile_c = 1; tile_c <= num_rows; tile_c += 4) {
-        // Iterating over each tile.
-        for (int r = tile_r; r < tile_r + 4; ++r) {
-          for (int c = tile_c; c < tile_c + 4; c += 2) {
-            int original_arr_i = index_from_row_col(r, c);
-            REQUIRE(a_data_read_2[i] == 1);
-            REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
-            i += 1;
-          }
-        }
-      }
-    }
-  } else {
-    // Check the query for accuracy. The query results should contain 400
-    // elements. Elements that meet the query condition should have the cell
-    // value 1 on attribute a and should match the original value in the array
-    // on attribute b. Elements that do not should have the fill value for both
-    // attributes.
-    size_t total_num_elements = static_cast<size_t>(num_rows * num_rows);
-    auto table = query.result_buffer_elements();
-    REQUIRE(table.size() == 1);
-    REQUIRE(table["a"].first == 0);
-    REQUIRE(table["a"].second == total_num_elements);
-    for (int i = 0; i < num_rows * num_rows; ++i) {
-      if (i % 2 == 0) {
-        REQUIRE(a_data_read_2[i] == 1);
-        REQUIRE(a_data_read_2[i] == a_data_read[i]);
-      } else {
-        REQUIRE(a_data_read_2[i] == a_fill_value);
-      }
-    }
-  }
-
-  query.finalize();
+  std::vector<QCTestCell> result;
+  query_to_cells(query, result);
   array.close();
 
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
+  REQUIRE(result.size() == expect.size());
+
+  std::sort(expect.begin(), expect.end());
+  std::sort(result.begin(), result.end());
+
+  size_t nulls_seen = 0;
+  for (size_t i = 0; i < result.size(); i++) {
+    REQUIRE(result[i] == expect[i]);
+    if (result[i].a_ == A_FILL) {
+      nulls_seen += 1;
+    }
   }
+
+  REQUIRE(result.size() - nulls_seen == matches);
+}
+
+void QueryConditionTest::create_array() {
+  Domain dom(ctx_);
+  auto dim_x = Dimension::create<int>(ctx_, "x", {{1, NUM_ROWS}}, 4);
+  auto dim_y = Dimension::create<int>(ctx_, "y", {{1, NUM_ROWS}}, 4);
+  dom.add_dimensions(dim_y, dim_x);
+
+  ArraySchema schema(ctx_, params_.array_type_);
+  schema.set_domain(dom).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.set_allows_dups(params_.get("allow_dups"));
+
+  auto attr_a = Attribute::create<int>(ctx_, "a");
+  auto attr_b = Attribute::create<float>(ctx_, "b");
+  auto attr_c = Attribute::create(ctx_, "c", TILEDB_STRING_ASCII);
+  auto attr_d = Attribute::create(ctx_, "d", TILEDB_STRING_UTF8);
+
+  attr_c.set_cell_val_num(TILEDB_VAR_NUM);
+  attr_d.set_cell_val_num(TILEDB_VAR_NUM);
+
+  if (params_.array_type_ == TILEDB_DENSE) {
+    attr_a.set_fill_value(&A_FILL, sizeof(int));
+    attr_b.set_fill_value(&B_FILL, sizeof(float));
+    attr_c.set_fill_value(C_FILL, strlen(C_FILL));
+    attr_d.set_fill_value(D_FILL, strlen(D_FILL));
+  } else {
+    schema.set_capacity(16);
+  }
+
+  schema.add_attributes(attr_a, attr_b, attr_c, attr_d);
+
+  Array::create(ARRAY_NAME, schema);
+  update_array({1, NUM_ROWS}, {1, NUM_ROWS});
+  load_array();
+}
+
+void QueryConditionTest::update_array(TRange x_range, TRange y_range) {
+  QCData data(x_range, y_range);
+
+  Array array(ctx_, ARRAY_NAME, TILEDB_WRITE);
+  Query query(ctx_, array);
+
+  if (params_.array_type_ == TILEDB_SPARSE) {
+    query.set_layout(TILEDB_UNORDERED)
+        .set_data_buffer("x", data.x_)
+        .set_data_buffer("y", data.y_);
+  } else {
+    Subarray subarray(ctx_, array);
+    subarray.add_range("x", x_range[0], x_range[1]);
+    subarray.add_range("y", y_range[0], y_range[1]);
+
+    query.set_layout(TILEDB_ROW_MAJOR).set_subarray(subarray);
+  }
+
+  query.set_data_buffer("a", data.a_)
+      .set_data_buffer("b", data.b_)
+      .set_data_buffer("c", data.c_)
+      .set_offsets_buffer("c", data.c_off_)
+      .set_data_buffer("d", data.d_)
+      .set_offsets_buffer("d", data.d_off_);
+
+  query.submit();
+  query.finalize();
+  array.close();
+}
+
+void QueryConditionTest::load_array() {
+  Array array(ctx_, ARRAY_NAME, TILEDB_READ);
+  Query query(ctx_, array);
+  query.set_layout(TILEDB_ROW_MAJOR);
+
+  if (params_.array_type_ == TILEDB_DENSE) {
+    int range[] = {1, NUM_ROWS};
+    query.add_range("y", range[0], range[1]);
+    query.add_range("x", range[0], range[1]);
+  }
+
+  query_to_cells(query, cells_, true);
+
+  array.close();
+}
+
+void QueryConditionTest::query_to_cells(
+    Query& query, std::vector<QCTestCell>& cells, bool loading) {
+  QCData data(NUM_ROWS * NUM_ROWS * 10);
+
+  query.set_data_buffer("x", data.x_)
+      .set_data_buffer("y", data.y_)
+      .set_data_buffer("a", data.a_)
+      .set_data_buffer("c", data.c_)
+      .set_data_buffer("d", data.d_)
+      .set_offsets_buffer("c", data.c_off_)
+      .set_offsets_buffer("d", data.d_off_);
+
+  if (!params_.get("skip_attribute_b") || loading) {
+    query.set_data_buffer("b", data.b_);
+  }
+
+  query.submit();
+  REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+  auto table = query.result_buffer_elements();
+  data.x_.resize(table["x"].second);
+  data.y_.resize(table["y"].second);
+  data.a_.resize(table["a"].second);
+  if (!params_.get("skip_attribute_b") || loading) {
+    data.b_.resize(table["b"].second);
+  }
+  data.c_off_.resize(table["c"].first);
+  data.c_.resize(table["c"].second);
+  data.d_off_.resize(table["d"].first);
+  data.d_.resize(table["d"].second);
+
+  cells.clear();
+  for (size_t i = 0; i < data.x_.size(); i++) {
+    if (!params_.get("skip_attribute_b") || loading) {
+      cells.emplace_back(
+          data.x_[i],
+          data.y_[i],
+          data.a_[i],
+          data.b_[i],
+          string_at(i, data.c_, data.c_off_),
+          string_at(i, data.d_, data.d_off_));
+    } else {
+      cells.emplace_back(
+          data.x_[i],
+          data.y_[i],
+          data.a_[i],
+          B_FILL,
+          string_at(i, data.c_, data.c_off_),
+          string_at(i, data.d_, data.d_off_));
+    }
+  }
+}
+
+void QueryConditionTest::remove_array() {
+  if (!vfs_.is_dir(ARRAY_NAME)) {
+    return;
+  }
+
+  vfs_.remove_dir(ARRAY_NAME);
 }

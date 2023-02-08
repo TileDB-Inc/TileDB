@@ -58,6 +58,70 @@ class QueryCondition {
     query_condition_ = std::shared_ptr<tiledb_query_condition_t>(qc, deleter_);
   }
 
+  /**
+   * Create and initialize a TileDB query conditon object.
+   * @param ctx TileDB context
+   * @param field_name The dimension or attribute to compare
+   * @param val The value to use for comparison
+   * @param op The comparison operation to use
+   */
+  template <typename T>
+  QueryCondition(
+      const Context& ctx,
+      std::string field_name,
+      T val,
+      tiledb_query_condition_op_t op)
+      : ctx_(ctx) {
+    tiledb_query_condition_t* qc;
+    ctx.handle_error(tiledb_query_condition_alloc(ctx.ptr().get(), &qc));
+    query_condition_ = std::shared_ptr<tiledb_query_condition_t>(qc, deleter_);
+    ctx.handle_error(tiledb_query_condition_init(
+        ctx.ptr().get(),
+        query_condition_.get(),
+        field_name.c_str(),
+        &val,
+        sizeof(T),
+        op));
+  }
+
+  template <>
+  QueryCondition(
+      const Context& ctx,
+      std::string field_name,
+      std::string val,
+      tiledb_query_condition_op_t op)
+      : ctx_(ctx) {
+    tiledb_query_condition_t* qc;
+    ctx.handle_error(tiledb_query_condition_alloc(ctx.ptr().get(), &qc));
+    query_condition_ = std::shared_ptr<tiledb_query_condition_t>(qc, deleter_);
+    ctx.handle_error(tiledb_query_condition_init(
+        ctx.ptr().get(),
+        query_condition_.get(),
+        field_name.c_str(),
+        val.c_str(),
+        val.size(),
+        op));
+  }
+
+  template <>
+  QueryCondition(
+      const Context& ctx,
+      std::string field_name,
+      const char* val,
+      tiledb_query_condition_op_t op)
+      : ctx_(ctx) {
+    tiledb_query_condition_t* qc;
+    ctx.handle_error(tiledb_query_condition_alloc(ctx.ptr().get(), &qc));
+    query_condition_ = std::shared_ptr<tiledb_query_condition_t>(qc, deleter_);
+    ctx.handle_error(tiledb_query_condition_init(
+        ctx.ptr().get(),
+        query_condition_.get(),
+        field_name.c_str(),
+        val,
+        strlen(val),
+        op));
+  }
+
   /** Copy constructor. */
   QueryCondition(const QueryCondition&) = default;
 
@@ -88,6 +152,22 @@ class QueryCondition {
 
   /** Move-assignment operator. */
   QueryCondition& operator=(QueryCondition&&) = default;
+
+  /* ********************************* */
+  /*             OPERATORS             */
+  /* ********************************* */
+
+  QueryCondition operator&&(const QueryCondition& rhs) {
+    return this->combine(rhs, TILEDB_AND);
+  }
+
+  QueryCondition operator||(const QueryCondition& rhs) {
+    return this->combine(rhs, TILEDB_OR);
+  }
+
+  QueryCondition operator!() {
+    return this->negate();
+  }
 
   /* ********************************* */
   /*                API                */
