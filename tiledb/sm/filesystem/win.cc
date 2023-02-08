@@ -194,6 +194,7 @@ Status Win::recursively_remove_directory(const std::string& path) const {
   const std::string glob = path + "\\*";
   WIN32_FIND_DATA find_data;
   const char* what_call = nullptr;
+  Status ret;
 
   // Get first file in directory.
   HANDLE find_h = FindFirstFileEx(
@@ -214,13 +215,13 @@ Status Win::recursively_remove_directory(const std::string& path) const {
         strcmp(find_data.cFileName, "..") != 0) {
       std::string file_path = path + "\\" + find_data.cFileName;
       if (PathIsDirectory(file_path.c_str())) {
-        if (!recursively_remove_directory(file_path).ok()) {
-          what_call = "recursively_remove_directory";
+        ret = recursively_remove_directory(file_path);
+        if (!ret.ok()) {
           goto err;
         }
       } else {
-        if (!remove_file(file_path).ok()) {
-          what_call = "remove_file";
+        ret = remove_file(file_path);
+        if (!ret.ok()) {
           goto err;
         }
       }
@@ -245,6 +246,15 @@ err:
   if (find_h != INVALID_HANDLE_VALUE) {
     FindClose(find_h);
   }
+
+  // If we encountered an error while recursively
+  // removing files and directories, return it.
+  if (!ret.ok()) {
+    return ret;
+  }
+
+  // Otherwise, create a new error status and return
+  // that instead.
   std::string offender = __func__;
   if (what_call) {
     offender.append(" ");
