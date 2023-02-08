@@ -129,6 +129,13 @@ capi_return_t tiledb_subarray_add_label_range_var(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_subarray_get_label_name(
+    tiledb_subarray_t* subarray, uint32_t dim_idx, const char** label_name) {
+  const auto& name = subarray->subarray_->get_label_name(dim_idx);
+  *label_name = name.c_str();
+  return TILEDB_OK;
+}
+
 capi_return_t tiledb_subarray_get_label_range(
     const tiledb_subarray_t* subarray,
     const char* dim_name,
@@ -166,6 +173,15 @@ capi_return_t tiledb_subarray_get_label_range_var_size(
     uint64_t* end_size) {
   subarray->subarray_->get_label_range_var_size(
       dim_name, range_idx, start_size, end_size);
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_subarray_has_label_ranges(
+    const tiledb_subarray_t* subarray,
+    const uint32_t dim_idx,
+    int32_t* has_label_ranges) {
+  bool has_ranges = subarray->subarray_->has_label_ranges(dim_idx);
+  *has_label_ranges = has_ranges ? 1 : 0;
   return TILEDB_OK;
 }
 
@@ -249,6 +265,15 @@ capi_return_t tiledb_subarray_add_label_range_var(
       ctx, subarray, label_name, start, start_size, end, end_size);
 }
 
+capi_return_t tiledb_subarray_get_label_name(
+    tiledb_ctx_t* ctx,
+    tiledb_subarray_t* subarray,
+    uint32_t dim_idx,
+    const char** label_name) noexcept {
+  return api_entry_context<detail::tiledb_subarray_get_label_name>(
+      ctx, subarray, dim_idx, label_name);
+}
+
 capi_return_t tiledb_subarray_get_label_range(
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
@@ -290,4 +315,13 @@ capi_return_t tiledb_subarray_get_label_range_var_size(
     uint64_t* end_size) noexcept {
   return api_entry_context<detail::tiledb_subarray_get_label_range_var_size>(
       ctx, subarray, dim_name, range_idx, start_size, end_size);
+}
+
+capi_return_t tiledb_subarray_has_label_ranges(
+    tiledb_ctx_t* ctx,
+    const tiledb_subarray_t* subarray,
+    const uint32_t dim_idx,
+    int32_t* has_label_ranges) noexcept {
+  return api_entry_context<detail::tiledb_subarray_has_label_ranges>(
+      ctx, subarray, dim_idx, has_label_ranges);
 }
