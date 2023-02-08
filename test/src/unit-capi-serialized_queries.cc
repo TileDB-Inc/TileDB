@@ -1229,6 +1229,7 @@ TEST_CASE_METHOD(
   // Only makes sense in serialization
   return;
 #endif
+  refactored_query_v2_ = GENERATE(true, false);
 
   create_array(TILEDB_SPARSE);
   write_sparse_array();
@@ -1251,7 +1252,13 @@ TEST_CASE_METHOD(
   Query::Status status;
   do {
     int rc = submit_query_wrapper(
-        ctx, array_uri, &query, server_buffers_, true, false);
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        true,
+        refactored_query_v2_,
+        false);
     REQUIRE(rc == TILEDB_OK);
 
     status = query.query_status();
