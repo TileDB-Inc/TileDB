@@ -214,7 +214,6 @@ WriterBase::WriterBase(
 
   optimize_layout_for_1D();
 
-  // Remote global order writes may submit offsets > var size due to cache data.
   check_var_attr_offsets();
 
   // Get the timestamp the array was opened and the array write version.

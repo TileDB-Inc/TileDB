@@ -56,7 +56,7 @@ class QueryBufferCache {
       bool is_var,
       bool is_nullable)
       : is_var_(is_var)
-      , is_nullable_(false)
+      , is_nullable_(is_nullable)
       , cell_size_(cell_size)
       , fixed_bytes_to_cache_(0)
       , buffer_(cell_num_per_tile * cell_size_)
