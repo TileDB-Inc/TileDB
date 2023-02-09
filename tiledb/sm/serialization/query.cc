@@ -1491,15 +1491,10 @@ Status query_from_capnp(
     uint8_t* existing_validity_buffer = nullptr;
     uint64_t existing_validity_buffer_size = 0;
 
-    // For writes and read (client side) we need ptrs to set the sizes properly
-    uint64_t* existing_buffer_size_ptr = nullptr;
-    uint64_t* existing_offset_buffer_size_ptr = nullptr;
-    uint64_t* existing_validity_buffer_size_ptr = nullptr;
-
     auto var_size = schema.var_size(name);
     auto nullable = schema.is_nullable(name);
-    if (type == QueryType::READ && context == SerializationContext::SERVER) {
-      const QueryBuffer& query_buffer = query->buffer(name);
+    const QueryBuffer& query_buffer = query->buffer(name);
+    if (type == QueryType::READ) {
       // We use the query_buffer directly in order to get the original buffer
       // sizes. This avoid a problem where an incomplete query will change the
       // users buffer size to the smaller results and we end up not being able
@@ -1531,8 +1526,12 @@ Status query_from_capnp(
               query_buffer.original_validity_vector_size_;
         }
       }
-    } else if (query_type == QueryType::WRITE || type == QueryType::READ) {
-      // For writes we need to use get_buffer and clientside
+    } else if (query_type == QueryType::WRITE) {
+      // For writes we need ptrs to set the sizes properly
+      uint64_t* existing_buffer_size_ptr = nullptr;
+      uint64_t* existing_offset_buffer_size_ptr = nullptr;
+      uint64_t* existing_validity_buffer_size_ptr = nullptr;
+
       if (var_size) {
         if (!nullable) {
           RETURN_NOT_OK(query->get_data_buffer(
@@ -1683,17 +1682,27 @@ Status query_from_capnp(
             }
           }
 
+          // attr_copy_state==nulptr models the case of deserialization code
+          // being called via the C API tiledb_query_deserialize (e.g. unit
+          // test serialization wrappers).
+          // When a rest_client exists, there is always a non null copy_state
+          // incoming argument from which attr_copy_state is initialized
           if (attr_copy_state == nullptr) {
             // Set the size directly on the query (so user can introspect on
             // result size).
-            if (existing_offset_buffer_size_ptr != nullptr)
-              *existing_offset_buffer_size_ptr =
-                  curr_offset_size + fixedlen_size_to_copy;
-            if (existing_buffer_size_ptr != nullptr)
-              *existing_buffer_size_ptr = curr_data_size + varlen_size;
-            if (nullable && existing_validity_buffer_size_ptr != nullptr)
-              *existing_validity_buffer_size_ptr =
+            // Subsequent incomplete submits will use the original buffer
+            // sizes members from the query in the beginning of the loop
+            // to calculate if user buffers have enough space to hold the data,
+            // here we only care that after data received from the wire is
+            // copied within the user buffers, the buffer sizes are accurate so
+            // user can introspect.
+            *query_buffer.buffer_size_ =
+                curr_offset_size + fixedlen_size_to_copy;
+            *query_buffer.buffer_var_size_ = curr_data_size + varlen_size;
+            if (nullable) {
+              *query_buffer.validity_vector_.buffer_size() =
                   curr_validity_size + validitylen_size;
+            }
           } else {
             // Accumulate total bytes copied (caller's responsibility to
             // eventually update the query).
@@ -1720,12 +1729,25 @@ Status query_from_capnp(
             attribute_buffer_start += validitylen_size;
           }
 
+          // attr_copy_state==nulptr models the case of deserialization code
+          // being called via the C API tiledb_query_deserialize (e.g. unit
+          // test serialization wrappers).
+          // When a rest_client exists, there is always a non null copy_state
+          // incoming argument from which attr_copy_state is initialized
           if (attr_copy_state == nullptr) {
-            if (existing_buffer_size_ptr != nullptr)
-              *existing_buffer_size_ptr = curr_data_size + fixedlen_size;
-            if (nullable && existing_validity_buffer_size_ptr != nullptr)
-              *existing_validity_buffer_size_ptr =
+            // Set the size directly on the query (so user can introspect on
+            // result size).
+            // Subsequent incomplete submits will use the original buffer
+            // sizes members from the query in the beginning of the loop
+            // to calculate if user buffers have enough space to hold the data,
+            // here we only care that after data received from the wire is
+            // copied within the user buffers, the buffer sizes are accurate so
+            // user can introspect.
+            *query_buffer.buffer_size_ = curr_data_size + fixedlen_size;
+            if (nullable) {
+              *query_buffer.validity_vector_.buffer_size() =
                   curr_validity_size + validitylen_size;
+            }
           } else {
             attr_copy_state->data_size += fixedlen_size;
             if (nullable)
