@@ -1691,12 +1691,6 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
           return Status::Ok();
         }
 
-        // Bitsort attribute is already loaded in memory.
-        if (bitsort_attribute_.has_value() &&
-            name == bitsort_attribute_.value()) {
-          return Status::Ok();
-        }
-
         // Get the size for all tiles.
         uint64_t idx = 0;
         for (; idx < max_cs_idx; idx++) {
@@ -1752,9 +1746,10 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
       status, logger_->status_no_return_value(status), nullopt);
 
   if (max_cs_idx == 0) {
-    return {Status_SparseUnorderedWithDupsReaderError(
-                "Unable to copy one slab with current budget/buffers"),
-            nullopt};
+    return {
+        Status_SparseUnorderedWithDupsReaderError(
+            "Unable to copy one slab with current budget/buffers"),
+        nullopt};
   }
 
   // Resize the result tiles vector.
@@ -1827,17 +1822,17 @@ uint64_t SparseGlobalOrderReader<BitmapType>::compute_var_size_offsets(
     cell_offsets[result_cell_slabs.size()] = total_cells;
     last_rcs.length_ = total_cells - cell_offsets[result_cell_slabs.size() - 1];
 
-    // Remove empty cell slab.
-    if (last_rcs.length_ == 0) {
-      result_cell_slabs.pop_back();
-    }
-
     // Update the buffer size.
     new_var_buffer_size = ((OffType*)query_buffer.buffer_)[total_cells];
 
     // Update the cell progress.
     read_state_.frag_idx_[last_rcs.tile_->frag_idx()] =
         FragIdx(last_rcs.tile_->tile_idx(), last_rcs.start_ + last_rcs.length_);
+
+    // Remove empty cell slab.
+    if (last_rcs.length_ == 0) {
+      result_cell_slabs.pop_back();
+    }
   }
 
   return new_var_buffer_size;
@@ -1896,6 +1891,7 @@ Status SparseGlobalOrderReader<BitmapType>::process_slabs(
       }
     }
   }
+  std::sort(result_tiles.begin(), result_tiles.end(), result_tile_cmp);
 
   // Read a few attributes a a time.
   uint64_t buffer_idx = 0;
@@ -2010,10 +2006,7 @@ Status SparseGlobalOrderReader<BitmapType>::process_slabs(
       }
 
       // Clear tiles from memory.
-      const auto is_bitsort_attr =
-          bitsort_attribute_.has_value() && bitsort_attribute_.value() == name;
-      if (!is_bitsort_attr && !is_dim &&
-          qc_loaded_attr_names_set_.count(name) == 0 &&
+      if (!is_dim && qc_loaded_attr_names_set_.count(name) == 0 &&
           name != constants::timestamps &&
           name != constants::delete_timestamps) {
         clear_tiles(name, result_tiles);

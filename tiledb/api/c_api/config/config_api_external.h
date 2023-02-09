@@ -91,6 +91,14 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *
  * **Parameters**
  *
+ * - `sm.allow_separate_attribute_writes` <br>
+ *    **Experimental** <br>
+ *    Allow separate attribute write queries.<br>
+ *    **Default**: false
+ * - `sm.allow_updates_experimental` <br>
+ *    **Experimental** <br>
+ *    Allow update queries. Experimental for testing purposes, do not use.<br>
+ *    **Default**: false
  * - `sm.dedup_coords` <br>
  *    If `true`, cells with duplicate coordinates will be removed during sparse
  *    fragment writes. Note that ties during deduplication are broken
@@ -106,7 +114,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    If `true`, an error will be thrown if there are cells with coordinates
  *    lying outside the domain during sparse fragment writes.  <br>
  *    **Default**: true
- *    `sm.read_range_oob` <br>
+ * - `sm.read_range_oob` <br>
  *    If `error`, this will check ranges for read with out-of-bounds on the
  *    dimension domain's. If `warn`, the ranges will be capped at the
  *    dimension's domain and a warning logged. <br>
@@ -115,9 +123,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    Checks if the coordinates obey the global array order. Applicable only
  *    to sparse writes in global order.
  *    **Default**: true
- * - `sm.tile_cache_size` <br>
- *    The tile cache size in bytes. Any `uint64_t` value is acceptable. <br>
- *    **Default**: 10,000,000
  * - `sm.enable_signal_handlers` <br>
  *    Determines whether or not TileDB will install signal handlers. <br>
  *    **Default**: true
@@ -136,13 +141,13 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    `group_meta` (remove only consolidate group metadata only).
  *    <br>
  *    **Default**: fragments
- * - `sm.consolidation_mode` <br>
+ * - `sm.consolidation.mode` <br>
  *    The consolidation mode, one of
  *    `commits` (consolidate all commit files),
  *    `fragments` (consolidate all fragments),
  *    `fragment_meta` (consolidate only fragment metadata footers to a single
- * file), `array_meta` (consolidate array metadata only), or `group_meta`
- * (consolidate group metadata only). <br>
+ *    file), `array_meta` (consolidate array metadata only), or `group_meta`
+ *    (consolidate group metadata only). <br>
  *    **Default**: "fragments"
  * - `sm.consolidation.amplification` <br>
  *    The factor by which the size of the dense fragment resulting
@@ -282,12 +287,12 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    info, otherwise they will be loaded lazily when some info related to MBRs
  *    is requested by the user. <br>
  *    **Default**: false
- * -  `sm.partial_tile_offset_loading`
+ * - `sm.partial_tile_offset_loading`
  *    **Experimental** <br>
  *    If `true` tile offsets can be partially loaded and unloaded by the
  *    readers. <br>
  *    **Default**: false
- * -  `vfs.read_ahead_cache_size` <br>
+ * - `vfs.read_ahead_cache_size` <br>
  *    The the total maximum size of the read-ahead cache, which is an LRU. <br>
  *    **Default**: 10485760
  * - `vfs.min_parallel_size` <br>
@@ -304,10 +309,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `vfs.min_batch_gap` <br>
  *    The minimum number of bytes between two VFS read batches.<br>
  *    **Default**: 500KB
- * - `vfs.disable_batching` <br>
- *    **Experimental** <br>
- *    Disables tile batching from VFS, making direct reads.<br>
- *    **Default**: false
  * - `vfs.file.posix_file_permissions` <br>
  *    Permissions to use for posix file system with file creation.<br>
  *    **Default**: 644
@@ -317,7 +318,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `vfs.file.max_parallel_ops` <br>
  *    The maximum number of parallel operations on objects with `file:///`
  *    URIs. <br>
- *    **Default**: `sm.io_concurrency_level`
+ *    **Default**: `1`
  * - `vfs.azure.storage_account_name` <br>
  *    Set the Azure Storage Account name. <br>
  *    **Default**: ""
@@ -587,7 +588,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *
  * @code{.c}
  * tiledb_error_t* error = NULL;
- * tiledb_config_set(config, "sm.tile_cache_size", "1000000", &error);
+ * tiledb_config_set(config, "sm.memory_budget", "1000000", &error);
  * @endcode
  *
  * @param config The config object.
@@ -611,7 +612,7 @@ TILEDB_EXPORT capi_return_t tiledb_config_set(
  * @code{.c}
  * const char* value;
  * tiledb_error_t* error = NULL;
- * tiledb_config_get(config, "sm.tile_cache_size", &value, &error);
+ * tiledb_config_get(config, "sm.memory_budget", &value, &error);
  * @endcode
  *
  * @param config The config object.
@@ -636,7 +637,7 @@ TILEDB_EXPORT capi_return_t tiledb_config_get(
  *
  * @code{.c}
  * tiledb_error_t* error = NULL;
- * tiledb_config_unset(config, "sm.tile_cache_size", &error);
+ * tiledb_config_unset(config, "sm.memory_budget", &error);
  * @endcode
  *
  * @param config The config object.

@@ -321,7 +321,7 @@ bool Dimension::coincides_with_tiles(const Range& r) const {
 }
 
 template <class T>
-Range Dimension::compute_mbr(const Tile& tile) {
+Range Dimension::compute_mbr(const WriterTile& tile) {
   auto cell_num = tile.cell_num();
   assert(cell_num > 0);
 
@@ -340,14 +340,14 @@ Range Dimension::compute_mbr(const Tile& tile) {
   return mbr;
 }
 
-Range Dimension::compute_mbr(const Tile& tile) const {
+Range Dimension::compute_mbr(const WriterTile& tile) const {
   assert(compute_mbr_func_ != nullptr);
   return compute_mbr_func_(tile);
 }
 
 template <>
 Range Dimension::compute_mbr_var<char>(
-    const Tile& tile_off, const Tile& tile_val) {
+    const WriterTile& tile_off, const WriterTile& tile_val) {
   auto d_val_size = tile_val.size();
   auto cell_num = tile_off.cell_num();
   assert(cell_num > 0);
@@ -376,7 +376,7 @@ Range Dimension::compute_mbr_var<char>(
 }
 
 Range Dimension::compute_mbr_var(
-    const Tile& tile_off, const Tile& tile_val) const {
+    const WriterTile& tile_off, const WriterTile& tile_val) const {
   assert(compute_mbr_var_func_ != nullptr);
   return compute_mbr_var_func_(tile_off, tile_val);
 }

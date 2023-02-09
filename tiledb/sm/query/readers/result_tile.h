@@ -65,6 +65,11 @@ class QueryCondition;
 class Subarray;
 
 /**
+ * Utilitary function to sort result tiles by fragment first then tile index.
+ */
+bool result_tile_cmp(const ResultTile* a, const ResultTile* b);
+
+/**
  * Stores information about a logical dense or sparse result tile. Note that it
  * may store the physical tiles across more than one attributes for the same
  * logical tile (space/data tile for dense, data tile oriented by an MBR for
@@ -192,6 +197,57 @@ class ResultTile {
   };
 
   /**
+   * Class definition for tile data.
+   */
+  class TileData {
+   public:
+    /* ********************************* */
+    /*     CONSTRUCTORS & DESTRUCTORS    */
+    /* ********************************* */
+    TileData(
+        void* fixed_filtered_data,
+        void* var_filtered_data,
+        void* validity_filtered_data)
+        : fixed_filtered_data_(fixed_filtered_data)
+        , var_filtered_data_(var_filtered_data)
+        , validity_filtered_data_(validity_filtered_data) {
+    }
+
+    /* ********************************* */
+    /*                API                */
+    /* ********************************* */
+
+    /** @return The fixed filtered data pointer. */
+    inline void* fixed_filtered_data() const {
+      return fixed_filtered_data_;
+    }
+
+    /** @return The var filtered data pointer. */
+    inline void* var_filtered_data() const {
+      return var_filtered_data_;
+    }
+
+    /** @return The validity filtered data pointer. */
+    inline void* validity_filtered_data() const {
+      return validity_filtered_data_;
+    }
+
+   private:
+    /* ********************************* */
+    /*        PRIVATE ATTRIBUTES         */
+    /* ********************************* */
+
+    /** Stores the fixed filtered data pointer. */
+    void* fixed_filtered_data_;
+
+    /** Stores the var filtered data pointer. */
+    void* var_filtered_data_;
+
+    /** Stores the validity filtered data pointer. */
+    void* validity_filtered_data_;
+  };
+
+  /**
    * Class definition for the tile tuple.
    */
   class TileTuple {
@@ -208,7 +264,8 @@ class ResultTile {
         const format_version_t format_version,
         const ArraySchema& array_schema,
         const std::string& name,
-        const TileSizes tile_sizes)
+        const TileSizes tile_sizes,
+        const TileData tile_data)
         : fixed_tile_(
               tile_sizes.has_var_tile() ?
                   Tile(
@@ -217,6 +274,7 @@ class ResultTile {
                       constants::cell_var_offset_size,
                       0,
                       tile_sizes.tile_size(),
+                      tile_data.fixed_filtered_data(),
                       tile_sizes.tile_persisted_size()) :
                   Tile(
                       format_version,
@@ -224,6 +282,7 @@ class ResultTile {
                       array_schema.cell_size(name),
                       (name == constants::coords) ? array_schema.dim_num() : 0,
                       tile_sizes.tile_size(),
+                      tile_data.fixed_filtered_data(),
                       tile_sizes.tile_persisted_size())) {
       if (tile_sizes.has_var_tile()) {
         auto type = array_schema.type(name);
@@ -233,6 +292,7 @@ class ResultTile {
             datatype_size(type),
             0,
             tile_sizes.tile_var_size(),
+            tile_data.var_filtered_data(),
             tile_sizes.tile_var_persisted_size());
       }
 
@@ -243,6 +303,7 @@ class ResultTile {
             constants::cell_validity_size,
             0,
             tile_sizes.tile_validity_size(),
+            tile_data.validity_filtered_data(),
             tile_sizes.tile_validity_persisted_size());
       }
     }
@@ -358,7 +419,8 @@ class ResultTile {
       const format_version_t format_version,
       const ArraySchema& array_schema,
       const std::string& name,
-      const TileSizes tile_sizes);
+      const TileSizes tile_sizes,
+      const TileData tile_data);
 
   /** Initializes the result tile for the given dimension name and index. */
   void init_coord_tile(
@@ -366,6 +428,7 @@ class ResultTile {
       const ArraySchema& array_schema,
       const std::string& name,
       const TileSizes tile_sizes,
+      const TileData tile_data,
       unsigned dim_idx);
 
   /** Returns the tile pair for the input attribute or dimension. */
@@ -661,7 +724,7 @@ class ResultTile {
    * is invoked in a critical path and is experimentally faster as a c-style
    * function pointer than a bound `std::function`.
    */
-  const void* (ResultTile::*coord_func_)(uint64_t, unsigned)const;
+  const void* (ResultTile::*coord_func_)(uint64_t, unsigned) const;
 
   /**
    * Stores the appropriate templated compute_results_sparse() function based

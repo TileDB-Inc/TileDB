@@ -309,9 +309,6 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Are we doing deletes consolidation (without purge option). */
   bool deletes_consolidation_no_purge_;
 
-  /** Optional string for a bitsort attribute. */
-  std::optional<std::string> bitsort_attribute_;
-
   /** Do we allo partial tile offset loading for this query? */
   bool partial_tile_offsets_loading_;
 
@@ -379,21 +376,18 @@ class SparseIndexReaderBase : public ReaderBase {
   /**
    * Returns the tile offset size for the list of relevant fragments.
    *
-   * @param relevant_fragments Relevant fragments to load offsets for or
-   * nullopt to load for all fragments.
+   * @param relevant_fragments Relevant fragments to load offsets for.
    * @return Total in memory size.
    */
-  uint64_t tile_offsets_size(
-      const optional<std::vector<unsigned>>& relevant_fragments);
+  uint64_t tile_offsets_size(const RelevantFragments& relevant_fragments);
 
   /**
    * Load all tile offsets.
    *
-   * @param relevant_fragments Relevant fragments to load offsets for or
-   * nullopt to load for all fragments.
+   * @param relevant_fragments Relevant fragments to load offsets for.
    */
   void load_tile_offsets_for_fragments(
-      const optional<std::vector<unsigned>>& relevant_fragments);
+      const RelevantFragments& relevant_fragments);
 
   /**
    * Read and unfilter coord tiles.

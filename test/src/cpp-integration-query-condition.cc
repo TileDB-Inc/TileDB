@@ -96,6 +96,7 @@ void create_array(
     Context& ctx,
     tiledb_array_type_t array_type,
     bool set_dups,
+    bool add_utf8_attr,
     std::vector<int>& a_data_read,
     std::vector<float>& b_data_read) {
   Domain domain(ctx);
@@ -116,6 +117,15 @@ void create_array(
   }
   schema.add_attribute(attr_a);
   schema.add_attribute(attr_b);
+  if (add_utf8_attr) {
+    Attribute attr_c = Attribute::create(ctx, "c", TILEDB_STRING_UTF8);
+    attr_c.set_cell_val_num(TILEDB_VAR_NUM);
+    if (array_type == TILEDB_DENSE) {
+      std::string ohai("ohai");
+      attr_c.set_fill_value(ohai.data(), ohai.size());
+    }
+    schema.add_attribute(attr_c);
+  }
   Array::create(array_name, schema);
 
   // Write some initial data and close the array.
@@ -123,31 +133,48 @@ void create_array(
   std::vector<int> col_dims;
   std::vector<int> a_data;
   std::vector<float> b_data;
+  std::vector<uint8_t> c_data;
+  std::vector<uint64_t> c_offsets;
+
+  std::vector<std::string> c_choices = {
+      std::string("bird"),
+      std::string("bunny"),
+      std::string("cat"),
+      std::string("dog")};
 
   for (int i = 0; i < num_rows * num_rows; ++i) {
     int row = (i / num_rows) + 1;
     int col = (i % num_rows) + 1;
     int a = i % 2 == 1 ? 0 : 1;
     float b;
+    std::string c_str;
     if (i % 8 == 0) {
       // b = 3.4
       b = 3.4f;
+      c_str = c_choices[0];
     } else if (i % 4 == 0) {
       // 3.45 <= b <= 3.7
       b = static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / 0.25));
       b += 3.45f;
+      c_str = c_choices[1];
     } else if (i % 2 == 0) {
       // b <= 3.2
       b = static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / 3.2));
+      c_str = c_choices[2];
     } else {
       // b = 4.2
       b = 4.2f;
+      c_str = c_choices[3];
     }
 
     row_dims.push_back(row);
     col_dims.push_back(col);
     a_data.push_back(a);
     b_data.push_back(b);
+    c_offsets.push_back(c_data.size());
+    for (size_t c_idx = 0; c_idx < c_str.size(); c_idx++) {
+      c_data.push_back(c_str.at(c_idx));
+    }
   }
 
   if (array_type == TILEDB_SPARSE) {
@@ -159,6 +186,10 @@ void create_array(
         .set_data_buffer("a", a_data)
         .set_data_buffer("b", b_data);
 
+    if (add_utf8_attr) {
+      query_w.set_data_buffer("c", c_data).set_offsets_buffer("c", c_offsets);
+    }
+
     query_w.submit();
     query_w.finalize();
     array_w.close();
@@ -168,6 +199,10 @@ void create_array(
     query_w.set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a", a_data)
         .set_data_buffer("b", b_data);
+
+    if (add_utf8_attr) {
+      query_w.set_data_buffer("c", c_data).set_offsets_buffer("c", c_offsets);
+    }
 
     query_w.submit();
     query_w.finalize();
@@ -234,22 +269,42 @@ static void perform_query(
   query.submit();
 }
 
+static void perform_query(
+    std::vector<int>& a_data,
+    std::vector<float>& b_data,
+    std::string& c_data,
+    std::vector<uint64_t>& c_offsets,
+    const QueryCondition& qc,
+    tiledb_layout_t layout_type,
+    Query& query) {
+  query.set_layout(layout_type)
+      .set_data_buffer("a", a_data)
+      .set_data_buffer("b", b_data)
+      .set_data_buffer("c", c_data)
+      .set_offsets_buffer("c", c_offsets)
+      .set_condition(qc);
+  query.submit();
+}
+
 struct TestParams {
   TestParams(
       tiledb_array_type_t array_type,
       tiledb_layout_t layout,
       bool set_dups,
-      bool legacy)
+      bool legacy,
+      bool add_utf8_attr = false)
       : array_type_(array_type)
       , layout_(layout)
       , set_dups_(set_dups)
-      , legacy_(legacy) {
+      , legacy_(legacy)
+      , add_utf8_attr_(add_utf8_attr) {
   }
 
   tiledb_array_type_t array_type_;
   tiledb_layout_t layout_;
   bool set_dups_;
   bool legacy_;
+  bool add_utf8_attr_;
 };
 
 TEST_CASE(
@@ -286,7 +341,12 @@ TEST_CASE(
 
   // Setup by creating buffers to store all elements of the original array.
   create_array(
-      ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+      ctx,
+      params.array_type_,
+      params.set_dups_,
+      params.add_utf8_attr_,
+      a_data_read,
+      b_data_read);
 
   // Create the query, which reads over the entire array with query condition
   // (b < 4.0).
@@ -411,7 +471,12 @@ TEST_CASE(
 
   // Setup by creating buffers to store all elements of the original array.
   create_array(
-      ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+      ctx,
+      params.array_type_,
+      params.set_dups_,
+      params.add_utf8_attr_,
+      a_data_read,
+      b_data_read);
 
   // Create the query, which reads over the entire array with query condition
   // (b < 4.0).
@@ -535,7 +600,12 @@ TEST_CASE(
 
   // Setup by creating buffers to store all elements of the original array.
   create_array(
-      ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+      ctx,
+      params.array_type_,
+      params.set_dups_,
+      params.add_utf8_attr_,
+      a_data_read,
+      b_data_read);
 
   // Create the query, which reads over the entire array with query condition
   // (b < 4.0).
@@ -669,7 +739,12 @@ TEST_CASE(
 
   // Setup by creating buffers to store all elements of the original array.
   create_array(
-      ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+      ctx,
+      params.array_type_,
+      params.set_dups_,
+      params.add_utf8_attr_,
+      a_data_read,
+      b_data_read);
 
   // Create the query, which reads over the entire array with query condition
   // (b < 4.0).
@@ -789,7 +864,12 @@ TEST_CASE(
 
   // Setup by creating buffers to store all elements of the original array.
   create_array(
-      ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+      ctx,
+      params.array_type_,
+      params.set_dups_,
+      params.add_utf8_attr_,
+      a_data_read,
+      b_data_read);
 
   // Create the query, which reads over the entire array with query condition
   // (b < 4.0).
@@ -946,7 +1026,12 @@ TEST_CASE(
 
   // Setup by creating buffers to store all elements of the original array.
   create_array(
-      ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+      ctx,
+      params.array_type_,
+      params.set_dups_,
+      params.add_utf8_attr_,
+      a_data_read,
+      b_data_read);
 
   // Create the query, which reads over the entire array with query condition
   // (b < 4.0).
@@ -1013,6 +1098,184 @@ TEST_CASE(
     // elements.
     auto table = query.result_buffer_elements();
     REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == 64);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == 64);
+
+    for (int r = 7; r <= 14; ++r) {
+      for (int c = 7; c <= 14; ++c) {
+        int original_arr_i = index_from_row_col(r, c);
+        int i = ((r - 7) * 8) + (c - 7);
+        // The buffer should have kept elements that were originally constructed
+        // to have values that satisfy the range [3.3, 3.7] but are not equal
+        // to 3.4. This means that any element whose original index is 4 mod 8
+        // should have been kept.
+        if (original_arr_i % 8 == 4) {
+          // Checking for original value.
+          REQUIRE(a_data_read_2[i] == 1);
+          REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
+          REQUIRE(
+              fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
+              std::numeric_limits<float>::epsilon());
+        } else {
+          // Checking for fill value.
+          REQUIRE(a_data_read_2[i] == a_fill_value);
+          REQUIRE(
+              fabs(b_data_read_2[i] - b_fill_value) <
+              std::numeric_limits<float>::epsilon());
+        }
+      }
+    }
+  }
+
+  query.finalize();
+  array.close();
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+}
+
+TEST_CASE(
+    "Testing read query with complex QC, with ranges across tiles on both "
+    "dimensions and a UTF-8 attribute",
+    "[query][query-condition][utf8]") {
+  // Initial setup.
+  std::srand(static_cast<uint32_t>(time(0)));
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  // Define query condition (b < 4.0f AND b <= 3.7f AND b >= 3.3f AND b
+  // != 3.4f);
+  QueryCondition qc1(ctx);
+  float val1 = 4.0f;
+  qc1.init("b", &val1, sizeof(float), TILEDB_LT);
+
+  QueryCondition qc2(ctx);
+  float val2 = 3.7f;
+  qc2.init("b", &val2, sizeof(float), TILEDB_LE);
+
+  QueryCondition qc3(ctx);
+  float val3 = 3.3f;
+  qc3.init("b", &val3, sizeof(float), TILEDB_GE);
+
+  QueryCondition qc4(ctx);
+  float val4 = 3.4f;
+  qc4.init("b", &val4, sizeof(float), TILEDB_NE);
+
+  QueryCondition qc5(ctx);
+  std::string val5("dog");
+  qc5.init("c", val5.data(), val5.size(), TILEDB_LE);
+
+  QueryCondition qc6 = qc1.combine(qc2, TILEDB_AND);
+  QueryCondition qc7 = qc6.combine(qc3, TILEDB_AND);
+  QueryCondition qc8 = qc7.combine(qc4, TILEDB_AND);
+  QueryCondition qc = qc8.combine(qc5, TILEDB_AND);
+
+  // Create buffers with size of the results of the two queries.
+  std::vector<int> a_data_read(num_rows * num_rows);
+  std::vector<float> b_data_read(num_rows * num_rows);
+
+  // These buffers store the results of the second query made with the query
+  // condition specified above.
+  std::vector<int> a_data_read_2(64);
+  std::vector<float> b_data_read_2(64);
+  std::string c_data_read_2;
+  c_data_read_2.resize(64 * 5);
+  std::vector<uint64_t> c_data_offsets_2(64);
+
+  // Generate test parameters.
+  TestParams params = GENERATE(
+      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true, true),
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false, true),
+      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false, true));
+
+  // Setup by creating buffers to store all elements of the original array.
+  create_array(
+      ctx,
+      params.array_type_,
+      params.set_dups_,
+      params.add_utf8_attr_,
+      a_data_read,
+      b_data_read);
+
+  // Create the query, which reads over the entire array with query condition
+  // (b < 4.0).
+  Config config;
+  if (params.legacy_) {
+    config.set("sm.query.sparse_global_order.reader", "legacy");
+    config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
+  }
+  Context ctx2 = Context(config);
+  Array array(ctx2, array_name, TILEDB_READ);
+  Query query(ctx2, array);
+
+  // Define range.
+  int range[] = {7, 14};
+  query.add_range("rows", range[0], range[1])
+      .add_range("cols", range[0], range[1]);
+
+  // Perform query and validate.
+  perform_query(
+      a_data_read_2,
+      b_data_read_2,
+      c_data_read_2,
+      c_data_offsets_2,
+      qc,
+      params.layout_,
+      query);
+  if (params.array_type_ == TILEDB_SPARSE) {
+    // Check the query for accuracy. The query results should contain 8
+    // elements.
+    auto table = query.result_buffer_elements();
+    REQUIRE(table.size() == 3);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == 8);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == 8);
+
+    int i = 0;
+    std::vector<std::pair<int, int>> ranges_vec;
+    ranges_vec.push_back(std::make_pair(7, 8));
+    ranges_vec.push_back(std::make_pair(9, 12));
+    ranges_vec.push_back(std::make_pair(13, 14));
+
+    for (size_t a = 0; a < 3; ++a) {    // Iterating over rows.
+      for (size_t b = 0; b < 3; ++b) {  // Iterating over cols.
+        int row_lo = ranges_vec[a].first;
+        int row_hi = ranges_vec[a].second;
+        int col_lo = ranges_vec[b].first;
+        int col_hi = ranges_vec[b].second;
+
+        for (int r = row_lo; r <= row_hi; ++r) {
+          for (int c = col_lo; c <= col_hi; ++c) {
+            int original_arr_i = index_from_row_col(r, c);
+            // The buffer should have kept elements that were originally
+            // constructed to have values that satisfy the range [3.3, 3.7] but
+            // are not equal to 3.4. This means that any element whose original
+            // index is 4 mod 8 should be in the result buffer.
+            if (original_arr_i % 8 == 4) {
+              REQUIRE(a_data_read_2[i] == 1);
+              REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
+              REQUIRE(
+                  fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
+                  std::numeric_limits<float>::epsilon());
+              i += 1;
+            }
+          }
+        }
+      }
+    }
+  } else {
+    // Check the query for accuracy. The query results should contain 64
+    // elements.
+    auto table = query.result_buffer_elements();
+    REQUIRE(table.size() == 3);
     REQUIRE(table["a"].first == 0);
     REQUIRE(table["a"].second == 64);
     REQUIRE(table["b"].first == 0);
@@ -1175,7 +1438,12 @@ TEST_CASE(
 
   // Setup by creating buffers to store all elements of the original array.
   create_array(
-      ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+      ctx,
+      params.array_type_,
+      params.set_dups_,
+      params.add_utf8_attr_,
+      a_data_read,
+      b_data_read);
 
   // Create the query, which reads over the entire array with query condition
   // (b < 4.0).
@@ -1276,7 +1544,12 @@ TEST_CASE(
 
   // Setup by creating buffers to store all elements of the original array.
   create_array(
-      ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+      ctx,
+      params.array_type_,
+      params.set_dups_,
+      params.add_utf8_attr_,
+      a_data_read,
+      b_data_read);
 
   // Create the query, which reads over the entire array with query condition
   // (b < 4.0).
@@ -1391,7 +1664,12 @@ TEST_CASE(
 
   // Setup by creating buffers to store all elements of the original array.
   create_array(
-      ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+      ctx,
+      params.array_type_,
+      params.set_dups_,
+      params.add_utf8_attr_,
+      a_data_read,
+      b_data_read);
 
   // Create the query, which reads over the entire array with query condition
   // (b < 4.0).
@@ -1490,7 +1768,12 @@ TEST_CASE(
 
   // Setup by creating buffers to store all elements of the original array.
   create_array(
-      ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+      ctx,
+      params.array_type_,
+      params.set_dups_,
+      params.add_utf8_attr_,
+      a_data_read,
+      b_data_read);
 
   // Create the query, which reads over the entire array with query condition
   // (b < 4.0).
@@ -1619,6 +1902,7 @@ TEST_CASE(
   std::vector<float> b_data_read_2(num_rows * num_rows);
 
   // Generate test parameters.
+  // PJD: Why not dense here?
   TestParams params = GENERATE(
       TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
       TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, false),
@@ -1626,7 +1910,12 @@ TEST_CASE(
 
   // Setup by creating buffers to store all elements of the original array.
   create_array(
-      ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+      ctx,
+      params.array_type_,
+      params.set_dups_,
+      params.add_utf8_attr_,
+      a_data_read,
+      b_data_read);
 
   // Create the query, which reads over the entire array with query condition
   // (b < 4.0).
@@ -1805,7 +2094,12 @@ TEST_CASE(
 
   // Setup by creating buffers to store all elements of the original array.
   create_array(
-      ctx, params.array_type_, params.set_dups_, a_data_read, b_data_read);
+      ctx,
+      params.array_type_,
+      params.set_dups_,
+      params.add_utf8_attr_,
+      a_data_read,
+      b_data_read);
 
   // Create the query, which reads over the entire array with query condition
   // (b < 4.0).

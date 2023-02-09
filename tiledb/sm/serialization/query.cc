@@ -70,6 +70,7 @@
 #include "tiledb/sm/serialization/config.h"
 #include "tiledb/sm/serialization/fragment_metadata.h"
 #include "tiledb/sm/serialization/query.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
@@ -175,12 +176,13 @@ Status subarray_to_capnp(
     RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
   }
 
-  if (subarray->relevant_fragments().has_value() &&
-      subarray->relevant_fragments()->size() > 0) {
-    auto relevant_fragments_builder =
-        builder->initRelevantFragments(subarray->relevant_fragments()->size());
-    for (size_t i = 0; i < subarray->relevant_fragments()->size(); ++i) {
-      relevant_fragments_builder.set(i, subarray->relevant_fragments()->at(i));
+  if (subarray->relevant_fragments().relevant_fragments_size() > 0) {
+    auto relevant_fragments_builder = builder->initRelevantFragments(
+        subarray->relevant_fragments().relevant_fragments_size());
+    for (size_t i = 0;
+         i < subarray->relevant_fragments().relevant_fragments_size();
+         ++i) {
+      relevant_fragments_builder.set(i, subarray->relevant_fragments()[i]);
     }
   }
 
@@ -240,11 +242,13 @@ Status subarray_from_capnp(
   if (reader.hasRelevantFragments()) {
     auto relevant_fragments = reader.getRelevantFragments();
     size_t count = relevant_fragments.size();
-    subarray->relevant_fragments() = std::vector<unsigned>();
-    subarray->relevant_fragments()->reserve(count);
+    std::vector<unsigned> rf;
+    rf.reserve(count);
     for (size_t i = 0; i < count; i++) {
-      subarray->relevant_fragments()->emplace_back(relevant_fragments[i]);
+      rf.emplace_back(relevant_fragments[i]);
     }
+
+    subarray->relevant_fragments() = RelevantFragments(rf);
   }
 
   return Status::Ok();
@@ -1400,16 +1404,14 @@ Status query_from_capnp(
     ThreadPool* compute_tp) {
   using namespace tiledb::sm;
 
-  auto type = query->type();
   auto array = query->array();
-  const auto& schema = query->array_schema();
-
   if (array == nullptr) {
     return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize; array pointer is null."));
   }
 
   // Deserialize query type (sanity check).
+  auto type = query->type();
   QueryType query_type = QueryType::READ;
   RETURN_NOT_OK(query_type_enum(query_reader.getType().cStr(), &query_type));
   if (query_type != type) {
@@ -1428,9 +1430,6 @@ Status query_from_capnp(
   // Deserialize layout.
   Layout layout = Layout::UNORDERED;
   RETURN_NOT_OK(layout_enum(query_reader.getLayout().cStr(), &layout));
-
-  // Deserialize array instance.
-  RETURN_NOT_OK(array_from_capnp(query_reader.getArray(), array));
 
   // Marks the query as remote
   // Needs to happen before the reset strategy call below so that the marker
@@ -1457,6 +1456,7 @@ Status query_from_capnp(
     }
   }
 
+  const auto& schema = query->array_schema();
   // Deserialize and set attribute buffers.
   if (!query_reader.hasAttributeBufferHeaders()) {
     return LOG_STATUS(Status_SerializationError(
@@ -1488,15 +1488,10 @@ Status query_from_capnp(
     uint8_t* existing_validity_buffer = nullptr;
     uint64_t existing_validity_buffer_size = 0;
 
-    // For writes and read (client side) we need ptrs to set the sizes properly
-    uint64_t* existing_buffer_size_ptr = nullptr;
-    uint64_t* existing_offset_buffer_size_ptr = nullptr;
-    uint64_t* existing_validity_buffer_size_ptr = nullptr;
-
     auto var_size = schema.var_size(name);
     auto nullable = schema.is_nullable(name);
-    if (type == QueryType::READ && context == SerializationContext::SERVER) {
-      const QueryBuffer& query_buffer = query->buffer(name);
+    const QueryBuffer& query_buffer = query->buffer(name);
+    if (type == QueryType::READ) {
       // We use the query_buffer directly in order to get the original buffer
       // sizes. This avoid a problem where an incomplete query will change the
       // users buffer size to the smaller results and we end up not being able
@@ -1528,8 +1523,12 @@ Status query_from_capnp(
               query_buffer.original_validity_vector_size_;
         }
       }
-    } else if (query_type == QueryType::WRITE || type == QueryType::READ) {
-      // For writes we need to use get_buffer and clientside
+    } else if (query_type == QueryType::WRITE) {
+      // For writes we need ptrs to set the sizes properly
+      uint64_t* existing_buffer_size_ptr = nullptr;
+      uint64_t* existing_offset_buffer_size_ptr = nullptr;
+      uint64_t* existing_validity_buffer_size_ptr = nullptr;
+
       if (var_size) {
         if (!nullable) {
           RETURN_NOT_OK(query->get_data_buffer(
@@ -1680,17 +1679,27 @@ Status query_from_capnp(
             }
           }
 
+          // attr_copy_state==nulptr models the case of deserialization code
+          // being called via the C API tiledb_query_deserialize (e.g. unit
+          // test serialization wrappers).
+          // When a rest_client exists, there is always a non null copy_state
+          // incoming argument from which attr_copy_state is initialized
           if (attr_copy_state == nullptr) {
             // Set the size directly on the query (so user can introspect on
             // result size).
-            if (existing_offset_buffer_size_ptr != nullptr)
-              *existing_offset_buffer_size_ptr =
-                  curr_offset_size + fixedlen_size_to_copy;
-            if (existing_buffer_size_ptr != nullptr)
-              *existing_buffer_size_ptr = curr_data_size + varlen_size;
-            if (nullable && existing_validity_buffer_size_ptr != nullptr)
-              *existing_validity_buffer_size_ptr =
+            // Subsequent incomplete submits will use the original buffer
+            // sizes members from the query in the beginning of the loop
+            // to calculate if user buffers have enough space to hold the data,
+            // here we only care that after data received from the wire is
+            // copied within the user buffers, the buffer sizes are accurate so
+            // user can introspect.
+            *query_buffer.buffer_size_ =
+                curr_offset_size + fixedlen_size_to_copy;
+            *query_buffer.buffer_var_size_ = curr_data_size + varlen_size;
+            if (nullable) {
+              *query_buffer.validity_vector_.buffer_size() =
                   curr_validity_size + validitylen_size;
+            }
           } else {
             // Accumulate total bytes copied (caller's responsibility to
             // eventually update the query).
@@ -1717,12 +1726,25 @@ Status query_from_capnp(
             attribute_buffer_start += validitylen_size;
           }
 
+          // attr_copy_state==nulptr models the case of deserialization code
+          // being called via the C API tiledb_query_deserialize (e.g. unit
+          // test serialization wrappers).
+          // When a rest_client exists, there is always a non null copy_state
+          // incoming argument from which attr_copy_state is initialized
           if (attr_copy_state == nullptr) {
-            if (existing_buffer_size_ptr != nullptr)
-              *existing_buffer_size_ptr = curr_data_size + fixedlen_size;
-            if (nullable && existing_validity_buffer_size_ptr != nullptr)
-              *existing_validity_buffer_size_ptr =
+            // Set the size directly on the query (so user can introspect on
+            // result size).
+            // Subsequent incomplete submits will use the original buffer
+            // sizes members from the query in the beginning of the loop
+            // to calculate if user buffers have enough space to hold the data,
+            // here we only care that after data received from the wire is
+            // copied within the user buffers, the buffer sizes are accurate so
+            // user can introspect.
+            *query_buffer.buffer_size_ = curr_data_size + fixedlen_size;
+            if (nullable) {
+              *query_buffer.validity_vector_.buffer_size() =
                   curr_validity_size + validitylen_size;
+            }
           } else {
             attr_copy_state->data_size += fixedlen_size;
             if (nullable)
@@ -1780,34 +1802,20 @@ Status query_from_capnp(
         attr_state->var_len_data.swap(varlen_buff);
         attr_state->validity_len_data.swap(validitylen_buff);
         if (var_size) {
-          if (!nullable) {
-            RETURN_NOT_OK(query->set_data_buffer(
-                name, nullptr, &attr_state->var_len_size, false));
-            RETURN_NOT_OK(query->set_offsets_buffer(
-                name, nullptr, &attr_state->fixed_len_size, false));
-          } else {
-            RETURN_NOT_OK(query->set_buffer_vbytemap(
-                name,
-                nullptr,
-                &attr_state->fixed_len_size,
-                nullptr,
-                &attr_state->var_len_size,
-                nullptr,
-                &attr_state->validity_len_size,
-                false));
+          throw_if_not_ok(query->set_data_buffer(
+              name, nullptr, &attr_state->var_len_size, false));
+          throw_if_not_ok(query->set_offsets_buffer(
+              name, nullptr, &attr_state->fixed_len_size, false));
+          if (nullable) {
+            throw_if_not_ok(query->set_validity_buffer(
+                name, nullptr, &attr_state->validity_len_size, false));
           }
         } else {
-          if (!nullable) {
-            RETURN_NOT_OK(query->set_data_buffer(
-                name, nullptr, &attr_state->fixed_len_size, false));
-          } else {
-            RETURN_NOT_OK(query->set_buffer_vbytemap(
-                name,
-                nullptr,
-                &attr_state->fixed_len_size,
-                nullptr,
-                &attr_state->validity_len_size,
-                false));
+          throw_if_not_ok(query->set_data_buffer(
+              name, nullptr, &attr_state->fixed_len_size, false));
+          if (nullable) {
+            throw_if_not_ok(query->set_validity_buffer(
+                name, nullptr, &attr_state->validity_len_size, false));
           }
         }
       } else if (query_type == QueryType::WRITE) {
@@ -1834,20 +1842,13 @@ Status query_from_capnp(
           attr_state->var_len_data.swap(varlen_buff);
           attr_state->validity_len_data.swap(validity_buff);
 
-          if (!nullable) {
-            RETURN_NOT_OK(query->set_data_buffer(
-                name, varlen_data, &attr_state->var_len_size));
-            RETURN_NOT_OK(query->set_offsets_buffer(
-                name, offsets, &attr_state->fixed_len_size));
-          } else {
-            RETURN_NOT_OK(query->set_buffer_vbytemap(
-                name,
-                offsets,
-                &attr_state->fixed_len_size,
-                varlen_data,
-                &attr_state->var_len_size,
-                validity,
-                &attr_state->validity_len_size));
+          throw_if_not_ok(query->set_data_buffer(
+              name, varlen_data, &attr_state->var_len_size));
+          throw_if_not_ok(query->set_offsets_buffer(
+              name, offsets, &attr_state->fixed_len_size));
+          if (nullable) {
+            throw_if_not_ok(query->set_validity_buffer(
+                name, validity, &attr_state->validity_len_size));
           }
         } else {
           auto* data = attribute_buffer_start;
@@ -1869,16 +1870,11 @@ Status query_from_capnp(
           attr_state->var_len_data.swap(varlen_buff);
           attr_state->validity_len_data.swap(validity_buff);
 
-          if (!nullable) {
-            RETURN_NOT_OK(query->set_data_buffer(
-                name, data, &attr_state->fixed_len_size));
-          } else {
-            RETURN_NOT_OK(query->set_buffer_vbytemap(
-                name,
-                data,
-                &attr_state->fixed_len_size,
-                validity,
-                &attr_state->validity_len_size));
+          throw_if_not_ok(
+              query->set_data_buffer(name, data, &attr_state->fixed_len_size));
+          if (nullable) {
+            throw_if_not_ok(query->set_validity_buffer(
+                name, validity, &attr_state->validity_len_size));
           }
         }
       } else {
@@ -1955,7 +1951,12 @@ Status query_from_capnp(
         void* subarray = nullptr;
         RETURN_NOT_OK(
             utils::deserialize_subarray(subarray_reader, schema, &subarray));
-        RETURN_NOT_OK_ELSE(query->set_subarray(subarray), tdb_free(subarray));
+        try {
+          query->set_subarray_unsafe(subarray);
+        } catch (...) {
+          tdb_free(subarray);
+          throw;
+        }
         tdb_free(subarray);
       }
 
@@ -2004,6 +2005,66 @@ Status query_from_capnp(
     }
   }
 
+  return Status::Ok();
+}
+
+Status array_from_query_deserialize(
+    const Buffer& serialized_buffer,
+    SerializationType serialize_type,
+    Array& array,
+    StorageManager* storage_manager) {
+  try {
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        ::capnp::MallocMessageBuilder message_builder;
+        capnp::Query::Builder query_builder =
+            message_builder.initRoot<capnp::Query>();
+        json.decode(
+            kj::StringPtr(
+                static_cast<const char*>(serialized_buffer.cur_data())),
+            query_builder);
+        capnp::Query::Reader query_reader = query_builder.asReader();
+        // Deserialize array instance.
+        RETURN_NOT_OK(array_from_capnp(
+            query_reader.getArray(), storage_manager, &array, false));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        // Capnp FlatArrayMessageReader requires 64-bit alignment.
+        if (!utils::is_aligned<sizeof(uint64_t)>(serialized_buffer.cur_data()))
+          return LOG_STATUS(Status_SerializationError(
+              "Could not deserialize query; buffer is not 8-byte aligned."));
+
+        // Set traversal limit to 10GI (TODO: make this a config option)
+        ::capnp::ReaderOptions readerOptions;
+        readerOptions.traversalLimitInWords = uint64_t(1024) * 1024 * 1024 * 10;
+        ::capnp::FlatArrayMessageReader reader(
+            kj::arrayPtr(
+                reinterpret_cast<const ::capnp::word*>(
+                    serialized_buffer.cur_data()),
+                (serialized_buffer.size() - serialized_buffer.offset()) /
+                    sizeof(::capnp::word)),
+            readerOptions);
+
+        capnp::Query::Reader query_reader = reader.getRoot<capnp::Query>();
+        // Deserialize array instance.
+        RETURN_NOT_OK(array_from_capnp(
+            query_reader.getArray(), storage_manager, &array, false));
+        break;
+      }
+      default:
+        return LOG_STATUS(Status_SerializationError(
+            "Cannot deserialize; unknown serialization type."));
+    }
+  } catch (kj::Exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Cannot deserialize; kj::Exception: " +
+        std::string(e.getDescription().cStr())));
+  } catch (std::exception& e) {
+    return LOG_STATUS(Status_SerializationError(
+        "Cannot deserialize; exception: " + std::string(e.what())));
+  }
   return Status::Ok();
 }
 
@@ -2286,9 +2347,10 @@ Status query_est_result_size_reader_from_capnp(
     auto result_size = it.getValue();
     est_result_sizes_map.emplace(
         name,
-        Subarray::ResultSize{result_size.getSizeFixed(),
-                             result_size.getSizeVar(),
-                             result_size.getSizeValidity()});
+        Subarray::ResultSize{
+            result_size.getSizeFixed(),
+            result_size.getSizeVar(),
+            result_size.getSizeValidity()});
   }
 
   std::unordered_map<std::string, Subarray::MemorySize> max_memory_sizes_map;
@@ -2297,9 +2359,10 @@ Status query_est_result_size_reader_from_capnp(
     auto memory_size = it.getValue();
     max_memory_sizes_map.emplace(
         name,
-        Subarray::MemorySize{memory_size.getSizeFixed(),
-                             memory_size.getSizeVar(),
-                             memory_size.getSizeValidity()});
+        Subarray::MemorySize{
+            memory_size.getSizeFixed(),
+            memory_size.getSizeVar(),
+            memory_size.getSizeValidity()});
   }
 
   return query->set_est_result_size(est_result_sizes_map, max_memory_sizes_map);
@@ -2504,6 +2567,16 @@ Status global_write_state_to_capnp(
           builder[i].setPartNumber(state.completed_parts[i].part_number);
         }
       }
+
+      if (state.buffered_chunks.has_value()) {
+        auto& buffered_chunks = state.buffered_chunks.value();
+        auto builder =
+            multipart_entry_builder.initBufferedChunks(buffered_chunks.size());
+        for (uint64_t i = 0; i < buffered_chunks.size(); ++i) {
+          builder[i].setUri(buffered_chunks[i].uri);
+          builder[i].setSize(buffered_chunks[i].size);
+        }
+      }
     }
   }
 
@@ -2591,6 +2664,18 @@ Status global_write_state_from_capnp(
           }
         }
 
+        if (state.hasBufferedChunks()) {
+          deserialized_state.buffered_chunks.emplace();
+          auto& chunks = deserialized_state.buffered_chunks.value();
+          for (auto chunk : state.getBufferedChunks()) {
+            chunks.emplace_back();
+            chunks.back().size = chunk.getSize();
+            if (chunk.hasUri()) {
+              chunks.back().uri = std::string(chunk.getUri().cStr());
+            }
+          }
+        }
+
         RETURN_NOT_OK(globalwriter->set_multipart_upload_state(
             buffer_uri,
             deserialized_state,
@@ -2611,6 +2696,12 @@ Status query_serialize(Query*, SerializationType, bool, BufferList*) {
 
 Status query_deserialize(
     const Buffer&, SerializationType, bool, CopyState*, Query*, ThreadPool*) {
+  return LOG_STATUS(Status_SerializationError(
+      "Cannot deserialize; serialization not enabled."));
+}
+
+Status array_from_query_deserialize(
+    const Buffer&, SerializationType, Array&, StorageManager*) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }

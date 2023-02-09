@@ -49,6 +49,7 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/query/readers/attribute_order_validator.h"
+#include "tiledb/sm/query/readers/filtered_data.h"
 #include "tiledb/sm/query/strategy_base.h"
 #include "tiledb/sm/query/writers/domain_buffer.h"
 #include "tiledb/sm/subarray/subarray.h"
@@ -62,24 +63,6 @@ class ReaderBaseStatusException : public StatusException {
  public:
   explicit ReaderBaseStatusException(const std::string& message)
       : StatusException("ReaderBase", message) {
-  }
-};
-
-template <
-    typename CmpObject,
-    typename std::enable_if_t<
-        std::is_same_v<CmpObject, HilbertCmpQB> ||
-        std::is_same_v<CmpObject, GlobalCmpQB>>*>
-struct ReaderBase::BitSortFilterMetadataStorage {
-  std::vector<Tile*> dim_tiles_;
-  std::vector<QueryBuffer> query_buffers_;
-  std::vector<uint64_t> hilbert_values_;
-  std::optional<DomainBuffersView> db_;
-  std::optional<CmpObject> cmp_obj_;
-  std::function<bool(const uint64_t&, const uint64_t&)> comparator_;
-
-  BitSortFilterMetadataType get_bitsort_filter_metadata_type() {
-    return BitSortFilterMetadataType(&dim_tiles_, &comparator_);
   }
 };
 
@@ -107,11 +90,12 @@ ReaderBase::ReaderBase(
           subarray,
           layout)
     , condition_(condition)
-    , disable_cache_(false)
-    , disable_batching_(false)
     , user_requested_timestamps_(false)
     , use_timestamps_(false)
-    , initial_data_loaded_(false) {
+    , initial_data_loaded_(false)
+    , max_batch_size_(config.get<uint64_t>("vfs.max_batch_size").value())
+    , min_batch_gap_(config.get<uint64_t>("vfs.min_batch_gap").value())
+    , min_batch_size_(config.get<uint64_t>("vfs.min_batch_size").value()) {
   if (array != nullptr)
     fragment_metadata_ = array->fragment_metadata();
   timestamps_needed_for_deletes_and_updates_.resize(fragment_metadata_.size());
@@ -121,13 +105,6 @@ ReaderBase::ReaderBase(
         "Cannot initialize reader; Multi-range reads are not supported on a "
         "global order query.");
   }
-
-  bool found = false;
-  if (!config_.get<bool>("vfs.disable_batching", &disable_batching_, &found)
-           .ok()) {
-    throw ReaderBaseStatusException("Cannot get disable batching setting");
-  }
-  assert(found);
 }
 
 /* ********************************* */
@@ -189,6 +166,46 @@ void ReaderBase::compute_result_space_tiles(
       result_space_tile.set_result_tile(frag_idx, result_tile);
     }
   }
+}
+
+/* ****************************** */
+/*         PUBLIC METHODS         */
+/* ****************************** */
+
+bool ReaderBase::skip_field(
+    const unsigned frag_idx, const std::string& name) const {
+  auto& fragment{fragment_metadata_[frag_idx]};
+  const auto format_version{fragment->format_version()};
+  const auto& schema{fragment->array_schema()};
+
+  // Applicable for zipped coordinates only to versions < 5
+  if (name == constants::coords && format_version >= 5) {
+    return true;
+  }
+
+  // Applicable to separate coordinates only to versions >= 5
+  const auto is_dim{schema->is_dim(name)};
+  if (is_dim && format_version < 5) {
+    return true;
+  }
+
+  // Not a member of array schema, this field was added in array
+  // schema evolution, ignore for this fragment's tile offsets
+  if (!schema->is_field(name)) {
+    return true;
+  }
+
+  // If the fragment doesn't include timestamps
+  if (timestamps_not_present(name, frag_idx)) {
+    return true;
+  }
+
+  // Continue if the fragment doesn't have delete metadata.
+  if (delete_meta_not_present(name, frag_idx)) {
+    return true;
+  }
+
+  return false;
 }
 
 /* ****************************** */
@@ -340,13 +357,7 @@ void ReaderBase::check_validity_buffer_sizes() const {
 bool ReaderBase::partial_consolidated_fragment_overlap(
     Subarray& subarray) const {
   // Fetch relevant fragments so we check only intersecting fragments
-  const auto relevant_fragments = subarray.relevant_fragments();
-  for (size_t i = 0;
-       i < (relevant_fragments.has_value() ? relevant_fragments.value().size() :
-                                             fragment_metadata_.size());
-       i++) {
-    auto frag_idx =
-        relevant_fragments.has_value() ? relevant_fragments.value()[i] : i;
+  for (const auto frag_idx : subarray.relevant_fragments()) {
     auto& fragment = fragment_metadata_[frag_idx];
     if (fragment->has_timestamps() &&
         fragment->partial_time_overlap(
@@ -419,7 +430,7 @@ bool ReaderBase::include_timestamps(const unsigned f) const {
 }
 
 Status ReaderBase::load_tile_offsets(
-    const optional<std::vector<unsigned>>& relevant_fragments,
+    const RelevantFragments& relevant_fragments,
     const std::vector<std::string>& names) {
   auto timer_se = stats_->start_timer("load_tile_offsets");
   const auto encryption_key = array_->encryption_key();
@@ -427,43 +438,16 @@ Status ReaderBase::load_tile_offsets(
   const auto status = parallel_for(
       storage_manager_->compute_tp(),
       0,
-      relevant_fragments.has_value() ? relevant_fragments->size() :
-                                       fragment_metadata_.size(),
+      relevant_fragments.size(),
       [&](const uint64_t i) {
-        auto frag_idx =
-            relevant_fragments.has_value() ? relevant_fragments.value()[i] : i;
+        auto frag_idx = relevant_fragments[i];
         auto& fragment = fragment_metadata_[frag_idx];
-        const auto format_version = fragment->format_version();
 
         // Filter the 'names' for format-specific names.
         std::vector<std::string> filtered_names;
         filtered_names.reserve(names.size());
-        const auto& schema = fragment->array_schema();
         for (const auto& name : names) {
-          // Applicable for zipped coordinates only to versions < 5
-          if (name == constants::coords && format_version >= 5) {
-            continue;
-          }
-
-          // Applicable to separate coordinates only to versions >= 5
-          const auto is_dim = schema->is_dim(name);
-          if (is_dim && format_version < 5) {
-            continue;
-          }
-
-          // Not a member of array schema, this field was added in array
-          // schema evolution, ignore for this fragment's tile offsets
-          if (!schema->is_field(name)) {
-            continue;
-          }
-
-          // If the fragment doesn't include timestamps
-          if (timestamps_not_present(name, frag_idx)) {
-            continue;
-          }
-
-          // Continue if the fragment doesn't have delete metadata.
-          if (delete_meta_not_present(name, frag_idx)) {
+          if (skip_field(frag_idx, name)) {
             continue;
           }
 
@@ -481,7 +465,7 @@ Status ReaderBase::load_tile_offsets(
 }
 
 Status ReaderBase::load_tile_var_sizes(
-    const optional<std::vector<unsigned>>& relevant_fragments,
+    const RelevantFragments& relevant_fragments,
     const std::vector<std::string>& names) {
   auto timer_se = stats_->start_timer("load_tile_var_sizes");
   const auto encryption_key = array_->encryption_key();
@@ -489,23 +473,23 @@ Status ReaderBase::load_tile_var_sizes(
   const auto status = parallel_for(
       storage_manager_->compute_tp(),
       0,
-      relevant_fragments.has_value() ? relevant_fragments->size() :
-                                       fragment_metadata_.size(),
+      relevant_fragments.size(),
       [&](const uint64_t i) {
-        auto frag_idx =
-            relevant_fragments.has_value() ? relevant_fragments.value()[i] : i;
+        auto frag_idx = relevant_fragments[i];
         auto& fragment = fragment_metadata_[frag_idx];
 
         const auto& schema = fragment->array_schema();
         for (const auto& name : names) {
           // Not a member of array schema, this field was added in array
           // schema evolution, ignore for this fragment's tile var sizes.
-          if (!schema->is_field(name))
+          if (!schema->is_field(name)) {
             continue;
+          }
 
           // Not a var size attribute.
-          if (!schema->var_size(name))
+          if (!schema->var_size(name)) {
             continue;
+          }
 
           throw_if_not_ok(fragment->load_tile_var_sizes(*encryption_key, name));
         }
@@ -542,216 +526,152 @@ Status ReaderBase::load_processed_conditions() {
   return Status::Ok();
 }
 
-Status ReaderBase::read_attribute_tiles(
+Status ReaderBase::read_and_unfilter_attribute_tiles(
+    const std::vector<std::string>& names,
+    const std::vector<ResultTile*>& result_tiles) const {
+  // The filtered data here contains the memory allocations for all of the
+  // filtered data that is read by `read_attribute_tiles`. To prevent
+  // modifications to the filter pipeline at the moment, the `result_tiles`
+  // vector will be mutated in the following way: the `filtered_data_` and
+  // `filtered_size_` of each tiles will be stored in the `Tile` objects inside
+  // of `ResultTile`. `filtered_data_` will point to a memory location inside of
+  // a data block of 'filtered_data'. The filtered pipeline uses
+  // `filtered_data()` and `filtered_size()` to access the tile data. It also
+  // uses 'clear_filtered_buffer()' to clear those values once the tile is
+  // unfiltered to prevent access to memory that went away. Another refactor
+  // will store those two values in another class and pass it down to the filter
+  // pipeline to remove more and more data from the 'ResultTile' object and
+  // eventually get rid of it altogether so that we can clarify the data flow.
+  // At the end of this function call, all memory inside of 'filtered_data' has
+  // been used and the tiles are unfiltered so the data can be deleted.
+  auto filtered_data{read_attribute_tiles(names, result_tiles)};
+  for (auto& name : names) {
+    RETURN_NOT_OK(unfilter_tiles(name, result_tiles));
+  }
+
+  return Status::Ok();
+}
+
+Status ReaderBase::read_and_unfilter_coordinate_tiles(
+    const std::vector<std::string>& names,
+    const std::vector<ResultTile*>& result_tiles) const {
+  // See the comment in 'read_and_unfilter_attribute_tiles' to get more
+  // information about the lifetime of this object.
+  auto filtered_data{read_coordinate_tiles(names, result_tiles)};
+  for (auto& name : names) {
+    RETURN_NOT_OK(unfilter_tiles(name, result_tiles));
+  }
+
+  return Status::Ok();
+}
+
+std::vector<FilteredData> ReaderBase::read_attribute_tiles(
     const std::vector<std::string>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_attribute_tiles");
   return read_tiles(names, result_tiles);
 }
 
-Status ReaderBase::read_coordinate_tiles(
+std::vector<FilteredData> ReaderBase::read_coordinate_tiles(
     const std::vector<std::string>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_coordinate_tiles");
   return read_tiles(names, result_tiles);
 }
 
-Status ReaderBase::read_tiles(
+std::vector<FilteredData> ReaderBase::read_tiles(
     const std::vector<std::string>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_tiles");
+  std::vector<FilteredData> filtered_data;
 
-  // Shortcut for empty tile vec
+  // Shortcut for empty tile vec.
   if (result_tiles.empty() || names.empty()) {
-    return Status::Ok();
+    return filtered_data;
   }
 
-  // Populate the list of regions per file to be read.
-  std::unordered_map<
-      URI,
-      std::vector<tuple<uint64_t, Tile*, uint64_t>>,
-      URIHasher>
-      all_regions;
+  uint64_t num_tiles_read{0};
+  std::vector<ThreadPool::Task> read_tasks;
+  filtered_data.reserve(names.size());
 
-  uint64_t num_tiles_read = 0;
-
-  // Run all tiles and attributes.
+  // Run all attributes independently.
   for (auto name : names) {
+    // Create the filtered data blocks. This will also kick off the read for the
+    // data blocks right after the memory is allocated so that we can optimize
+    // read and memory allocations.
+    const bool var_sized{array_schema_.var_size(name)};
+    const bool nullable{array_schema_.is_nullable(name)};
+    filtered_data.emplace_back(
+        *this,
+        min_batch_size_,
+        max_batch_size_,
+        min_batch_gap_,
+        fragment_metadata_,
+        result_tiles,
+        name,
+        var_sized,
+        nullable,
+        storage_manager_,
+        read_tasks);
+
+    // Go through each tiles and create the attribute tiles.
     for (auto tile : result_tiles) {
-      // For each tile, read from its fragment.
-      auto const fragment = fragment_metadata_[tile->frag_idx()];
+      auto const fragment{fragment_metadata_[tile->frag_idx()]};
+      const auto& array_schema{fragment->array_schema()};
 
-      const format_version_t format_version = fragment->format_version();
-
-      // Applicable for zipped coordinates only to versions < 5
-      if (name == constants::coords && format_version >= 5) {
-        continue;
-      }
-
-      // Applicable to separate coordinates only to versions >= 5
-      const auto& array_schema = fragment->array_schema();
-      const bool is_dim = array_schema->is_dim(name);
-      if (is_dim && format_version < 5) {
-        continue;
-      }
-
-      // If the fragment doesn't have the attribute, this is a schema
-      // evolution field and will be treated with fill-in value instead of
-      // reading from disk
-      if (!array_schema->is_field(name)) {
-        continue;
-      }
-
-      // If the fragment doesn't include timestamps
-      if (timestamps_not_present(name, tile->frag_idx())) {
-        continue;
-      }
-
-      // Continue if the fragment doesn't have delete metadata.
-      if (delete_meta_not_present(name, tile->frag_idx())) {
+      if (skip_field(tile->frag_idx(), name)) {
         continue;
       }
 
       num_tiles_read++;
-
-      const bool var_size = array_schema->var_size(name);
-      const bool nullable = array_schema->is_nullable(name);
-      const auto tile_idx = tile->tile_idx();
+      const auto tile_idx{tile->tile_idx()};
 
       // Construct a TileSizes class.
-      ResultTile::TileSizes tile_sizes(
-          fragment, name, var_size, nullable, tile_idx);
+      ResultTile::TileSizes tile_sizes{
+          fragment, name, var_sized, nullable, tile_idx};
+
+      // Construct a tile data class.
+      // See the explanation in 'read_and_unfilter_attribute_tiles' for more
+      // lifetime details. The tile data class is used to transmit the location
+      // of the fixed/var/nullable filtered data to the created 'TileTuple'
+      // object inside of each 'ResultTile'. The filter pipeline currently uses
+      // the 'ResultTile' object to access the data. Eventually, these
+      // 'TileData' objects should be returned by this function and passed into
+      // 'unfilter_tiles' so that the filter pipeline can stop using the
+      // 'ResultTile' object to get access to the filtered data.
+      ResultTile::TileData tile_data{
+          filtered_data.back().fixed_filtered_data(fragment.get(), tile),
+          filtered_data.back().var_filtered_data(fragment.get(), tile),
+          filtered_data.back().nullable_filtered_data(fragment.get(), tile)};
 
       // Initialize the tile(s)
-      ResultTile::TileTuple* tile_tuple = nullptr;
+      const format_version_t format_version{fragment->format_version()};
+      const auto is_dim{array_schema->is_dim(name)};
       if (is_dim) {
-        const uint64_t dim_num = array_schema->dim_num();
+        const uint64_t dim_num{array_schema->dim_num()};
         for (uint64_t d = 0; d < dim_num; ++d) {
           if (array_schema->dimension_ptr(d)->name() == name) {
             tile->init_coord_tile(
-                format_version, array_schema_, name, tile_sizes, d);
+                format_version, array_schema_, name, tile_sizes, tile_data, d);
             break;
           }
         }
-        tile_tuple = tile->tile_tuple(name);
       } else {
-        tile->init_attr_tile(format_version, array_schema_, name, tile_sizes);
-        tile_tuple = tile->tile_tuple(name);
-      }
-
-      assert(tile_tuple != nullptr);
-      Tile* const t = &tile_tuple->fixed_tile();
-      Tile* const t_var = var_size ? &tile_tuple->var_tile() : nullptr;
-      Tile* const t_validity =
-          nullable ? &tile_tuple->validity_tile() : nullptr;
-      auto&& [status, tile_attr_uri] = fragment->uri(name);
-      RETURN_NOT_OK(status);
-
-      // Try the cache first.
-      bool cache_hit = false;
-      uint64_t tile_attr_offset;
-      RETURN_NOT_OK(fragment->file_offset(name, tile_idx, &tile_attr_offset));
-      if (!disable_cache_) {
-        RETURN_NOT_OK(storage_manager_->read_from_cache(
-            *tile_attr_uri,
-            tile_attr_offset,
-            t->filtered_buffer(),
-            tile_sizes.tile_persisted_size(),
-            &cache_hit));
-      }
-
-      if (!cache_hit) {
-        // Add the region of the fragment to be read.
-        all_regions[*tile_attr_uri].emplace_back(
-            tile_attr_offset, t, tile_sizes.tile_persisted_size());
-      }
-
-      if (var_size) {
-        auto&& [status, tile_attr_var_uri] = fragment->var_uri(name);
-        RETURN_NOT_OK(status);
-
-        uint64_t tile_attr_var_offset;
-        RETURN_NOT_OK(
-            fragment->file_var_offset(name, tile_idx, &tile_attr_var_offset));
-        if (!disable_cache_) {
-          RETURN_NOT_OK(storage_manager_->read_from_cache(
-              *tile_attr_var_uri,
-              tile_attr_var_offset,
-              t_var->filtered_buffer(),
-              tile_sizes.tile_var_persisted_size(),
-              &cache_hit));
-        }
-
-        if (!cache_hit) {
-          // Add the region of the fragment to be read.
-          all_regions[*tile_attr_var_uri].emplace_back(
-              tile_attr_var_offset,
-              t_var,
-              tile_sizes.tile_var_persisted_size());
-        }
-      }
-
-      if (nullable) {
-        auto&& [status, tile_validity_attr_uri] = fragment->validity_uri(name);
-        RETURN_NOT_OK(status);
-
-        uint64_t tile_attr_validity_offset;
-        RETURN_NOT_OK(fragment->file_validity_offset(
-            name, tile_idx, &tile_attr_validity_offset));
-        if (!disable_cache_) {
-          RETURN_NOT_OK(storage_manager_->read_from_cache(
-              *tile_validity_attr_uri,
-              tile_attr_validity_offset,
-              t_validity->filtered_buffer(),
-              tile_sizes.tile_validity_persisted_size(),
-              &cache_hit));
-        }
-
-        if (!cache_hit) {
-          // Add the region of the fragment to be read.
-          all_regions[*tile_validity_attr_uri].emplace_back(
-              tile_attr_validity_offset,
-              t_validity,
-              tile_sizes.tile_validity_persisted_size());
-        }
+        tile->init_attr_tile(
+            format_version, array_schema_, name, tile_sizes, tile_data);
       }
     }
   }
 
   stats_->add_counter("num_tiles_read", num_tiles_read);
 
-  // Do not use the read-ahead cache because tiles will be
-  // cached in the tile cache.
-  const bool use_read_ahead = false;
-
-  // Read the tiles asynchronously
-  std::vector<ThreadPool::Task> tasks;
-
-  // Enqueue all regions to be read.
-  for (const auto& item : all_regions) {
-    if (disable_batching_) {
-      RETURN_NOT_OK(storage_manager_->vfs()->read_all_no_batching(
-          item.first,
-          item.second,
-          storage_manager_->io_tp(),
-          &tasks,
-          use_read_ahead));
-    } else {
-      RETURN_NOT_OK(storage_manager_->vfs()->read_all(
-          item.first,
-          item.second,
-          storage_manager_->io_tp(),
-          &tasks,
-          use_read_ahead));
-    }
+  // Wait for the read tasks to finish.
+  auto statuses{storage_manager_->io_tp()->wait_all_status(read_tasks)};
+  for (const auto& st : statuses) {
+    throw_if_not_ok(st);
   }
 
-  // Wait for the reads to finish and check statuses.
-  auto statuses = storage_manager_->io_tp()->wait_all_status(tasks);
-  for (const auto& st : statuses)
-    RETURN_CANCEL_OR_ERROR(st);
-
-  return Status::Ok();
+  return filtered_data;
 }
 
 tuple<Status, optional<uint64_t>> ReaderBase::load_chunk_data(
@@ -761,7 +681,7 @@ tuple<Status, optional<uint64_t>> ReaderBase::load_chunk_data(
   assert(tile->filtered());
 
   Status st = Status::Ok();
-  auto filtered_buffer_data = tile->filtered_buffer().data();
+  auto filtered_buffer_data = tile->filtered_data();
   if (filtered_buffer_data == nullptr) {
     st = logger_->status(Status_ReaderError("Tile has null buffer."));
     return {st, nullopt};
@@ -805,9 +725,10 @@ tuple<Status, optional<uint64_t>> ReaderBase::load_chunk_data(
   }
 
   if (total_orig_size != tile->size()) {
-    return {LOG_STATUS(Status_ReaderError(
-                "Error incorrect unfiltered tile size allocated.")),
-            nullopt};
+    return {
+        LOG_STATUS(
+            Status_ReaderError("Incorrect unfiltered tile size allocated.")),
+        nullopt};
   }
 
   return {Status::Ok(), total_orig_size};
@@ -827,58 +748,44 @@ ReaderBase::load_tile_chunk_data(
   assert(tile_chunk_var_data);
   assert(tile_chunk_validity_data);
 
-  auto& fragment = fragment_metadata_[tile->frag_idx()];
-  const auto format_version = fragment->format_version();
+  if (skip_field(tile->frag_idx(), name)) {
+    return {Status::Ok(), 0, 0, 0};
+  }
+
+  auto tile_tuple = tile->tile_tuple(name);
+
+  // Skip non-existent attributes/dimensions (e.g. coords in the
+  // dense case).
+  if (tile_tuple == nullptr || tile_tuple->fixed_tile().filtered_size() == 0) {
+    return {Status::Ok(), 0, 0, 0};
+  }
+
+  const auto t = &tile_tuple->fixed_tile();
+  const auto t_var = var_size ? &tile_tuple->var_tile() : nullptr;
+  const auto t_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
+
   uint64_t unfiltered_tile_size = 0, unfiltered_tile_var_size = 0,
            unfiltered_tile_validity_size = 0;
 
-  // Applicable for zipped coordinates only to versions < 5
-  // Applicable for separate coordinates only to version >= 5
-  if (name != constants::coords ||
-      (name == constants::coords && format_version < 5) ||
-      (array_schema_.is_dim(name) && format_version >= 5)) {
-    auto tile_tuple = tile->tile_tuple(name);
-
-    // Skip non-existent attributes/dimensions (e.g. coords in the
-    // dense case).
-    if (tile_tuple == nullptr ||
-        tile_tuple->fixed_tile().filtered_buffer().size() == 0) {
-      return {Status::Ok(), 0, 0, 0};
-    }
-
-    // If the fragment doesn't include timestamps
-    if (timestamps_not_present(name, tile->frag_idx())) {
-      return {Status::Ok(), 0, 0, 0};
-    }
-
-    // If the fragment doesn't have delete metadata.
-    if (delete_meta_not_present(name, tile->frag_idx())) {
-      return {Status::Ok(), 0, 0, 0};
-    }
-
-    const auto t = &tile_tuple->fixed_tile();
-    const auto t_var = var_size ? &tile_tuple->var_tile() : nullptr;
-    const auto t_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
-
-    auto&& [st, tile_size] = load_chunk_data(t, tile_chunk_data);
+  auto&& [st, tile_size] = load_chunk_data(t, tile_chunk_data);
+  RETURN_NOT_OK_TUPLE(st, nullopt, nullopt, nullopt);
+  unfiltered_tile_size = tile_size.value();
+  if (var_size) {
+    auto&& [st, tile_var_size] = load_chunk_data(t_var, tile_chunk_var_data);
     RETURN_NOT_OK_TUPLE(st, nullopt, nullopt, nullopt);
-    unfiltered_tile_size = tile_size.value();
-    if (var_size) {
-      auto&& [st, tile_var_size] = load_chunk_data(t_var, tile_chunk_var_data);
-      RETURN_NOT_OK_TUPLE(st, nullopt, nullopt, nullopt);
-      unfiltered_tile_var_size = tile_var_size.value();
-    }
-    if (nullable) {
-      auto&& [st, tile_validity_size] =
-          load_chunk_data(t_validity, tile_chunk_validity_data);
-      RETURN_NOT_OK_TUPLE(st, nullopt, nullopt, nullopt);
-      unfiltered_tile_validity_size = tile_validity_size.value();
-    }
+    unfiltered_tile_var_size = tile_var_size.value();
   }
-  return {Status::Ok(),
-          unfiltered_tile_size,
-          unfiltered_tile_var_size,
-          unfiltered_tile_validity_size};
+  if (nullable) {
+    auto&& [st, tile_validity_size] =
+        load_chunk_data(t_validity, tile_chunk_validity_data);
+    RETURN_NOT_OK_TUPLE(st, nullopt, nullopt, nullopt);
+    unfiltered_tile_validity_size = tile_validity_size.value();
+  }
+  return {
+      Status::Ok(),
+      unfiltered_tile_size,
+      unfiltered_tile_var_size,
+      unfiltered_tile_validity_size};
 }
 
 Status ReaderBase::unfilter_tile_chunk_range(
@@ -892,104 +799,63 @@ Status ReaderBase::unfilter_tile_chunk_range(
     const ChunkData& tile_chunk_var_data,
     const ChunkData& tile_chunk_validity_data) const {
   assert(tile);
-  auto& fragment = fragment_metadata_[tile->frag_idx()];
-  auto format_version = fragment->format_version();
 
-  // Applicable for zipped coordinates only to versions < 5
-  // Applicable for separate coordinates only to version >= 5
-  if (name != constants::coords ||
-      (name == constants::coords && format_version < 5) ||
-      (array_schema_.is_dim(name) && format_version >= 5)) {
-    auto tile_tuple = tile->tile_tuple(name);
+  if (skip_field(tile->frag_idx(), name)) {
+    return Status::Ok();
+  }
 
-    // Skip non-existent attributes/dimensions (e.g. coords in the
-    // dense case).
-    if (tile_tuple == nullptr ||
-        tile_tuple->fixed_tile().filtered_buffer().size() == 0) {
-      return Status::Ok();
-    }
+  auto tile_tuple = tile->tile_tuple(name);
 
-    // If the fragment doesn't include timestamps
-    if (timestamps_not_present(name, tile->frag_idx())) {
-      return Status::Ok();
-    }
+  // Skip non-existent attributes/dimensions (e.g. coords in the
+  // dense case).
+  if (tile_tuple == nullptr || tile_tuple->fixed_tile().filtered_size() == 0) {
+    return Status::Ok();
+  }
 
-    // If the fragment doesn't have delete metadata.
-    if (delete_meta_not_present(name, tile->frag_idx())) {
-      return Status::Ok();
-    }
+  auto t = &tile_tuple->fixed_tile();
+  auto t_var = var_size ? &tile_tuple->var_tile() : nullptr;
+  auto t_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
 
-    auto t = &tile_tuple->fixed_tile();
-    auto t_var = var_size ? &tile_tuple->var_tile() : nullptr;
-    auto t_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
-
-    // Unfilter 't' for fixed-sized tiles, otherwise unfilter both 't' and
-    // 't_var' for var-sized tiles.
-    if (!var_size) {
-      if (!nullable) {
-        if (array_schema_.bitsort_filter_attr().has_value()) {
-          BitSortFilterMetadataType bitsort_metadata;
-          if (array_schema_.cell_order() == Layout::HILBERT) {
-            BitSortFilterMetadataStorage<HilbertCmpQB> bitsort_storage;
-            bitsort_metadata = construct_bitsort_filter_argument<HilbertCmpQB>(
-                tile, bitsort_storage);
-            RETURN_NOT_OK(unfilter_tile_chunk_range(
-                num_range_threads,
-                range_thread_idx,
-                name,
-                t,
-                tile_chunk_data,
-                &bitsort_metadata));
-          } else {
-            BitSortFilterMetadataStorage<GlobalCmpQB> bitsort_storage;
-            bitsort_metadata = construct_bitsort_filter_argument<GlobalCmpQB>(
-                tile, bitsort_storage);
-            RETURN_NOT_OK(unfilter_tile_chunk_range(
-                num_range_threads,
-                range_thread_idx,
-                name,
-                t,
-                tile_chunk_data,
-                &bitsort_metadata));
-          }
-        } else {
-          RETURN_NOT_OK(unfilter_tile_chunk_range(
-              num_range_threads, range_thread_idx, name, t, tile_chunk_data));
-        }
-      } else {
-        RETURN_NOT_OK(unfilter_tile_chunk_range_nullable(
-            num_range_threads,
-            range_thread_idx,
-            name,
-            t,
-            tile_chunk_data,
-            t_validity,
-            tile_chunk_validity_data));
-      }
+  // Unfilter 't' for fixed-sized tiles, otherwise unfilter both 't' and
+  // 't_var' for var-sized tiles.
+  if (!var_size) {
+    if (!nullable) {
+      RETURN_NOT_OK(unfilter_tile_chunk_range(
+          num_range_threads, range_thread_idx, name, t, tile_chunk_data));
     } else {
-      if (!nullable)
-        RETURN_NOT_OK(unfilter_tile_chunk_range(
-            num_range_threads,
-            range_thread_idx,
-            name,
-            t,
-            tile_chunk_data,
-            t_var,
-            tile_chunk_var_data));
-      else {
-        RETURN_NOT_OK(unfilter_tile_chunk_range_nullable(
-            num_range_threads,
-            range_thread_idx,
-            name,
-            t,
-            tile_chunk_data,
-            t_var,
-            tile_chunk_var_data,
-            t_validity,
-            tile_chunk_validity_data));
-      }
+      RETURN_NOT_OK(unfilter_tile_chunk_range_nullable(
+          num_range_threads,
+          range_thread_idx,
+          name,
+          t,
+          tile_chunk_data,
+          t_validity,
+          tile_chunk_validity_data));
+    }
+  } else {
+    if (!nullable)
+      RETURN_NOT_OK(unfilter_tile_chunk_range(
+          num_range_threads,
+          range_thread_idx,
+          name,
+          t,
+          tile_chunk_data,
+          t_var,
+          tile_chunk_var_data));
+    else {
+      RETURN_NOT_OK(unfilter_tile_chunk_range_nullable(
+          num_range_threads,
+          range_thread_idx,
+          name,
+          t,
+          tile_chunk_data,
+          t_var,
+          tile_chunk_var_data,
+          t_validity,
+          tile_chunk_validity_data));
     }
   }
+
   return Status::Ok();
 }
 
@@ -1013,49 +879,33 @@ Status ReaderBase::post_process_unfiltered_tile(
     const bool nullable) const {
   assert(tile);
 
-  auto& fragment = fragment_metadata_[tile->frag_idx()];
-  auto format_version = fragment->format_version();
+  if (skip_field(tile->frag_idx(), name)) {
+    return Status::Ok();
+  }
 
-  // Applicable for zipped coordinates only to versions < 5
-  // Applicable for separate coordinates only to version >= 5
-  if (name != constants::coords ||
-      (name == constants::coords && format_version < 5) ||
-      (array_schema_.is_dim(name) && format_version >= 5)) {
-    auto tile_tuple = tile->tile_tuple(name);
+  auto tile_tuple = tile->tile_tuple(name);
 
-    // Skip non-existent attributes/dimensions (e.g. coords in the
-    // dense case).
-    if (tile_tuple == nullptr ||
-        tile_tuple->fixed_tile().filtered_buffer().size() == 0) {
-      return Status::Ok();
-    }
+  // Skip non-existent attributes/dimensions (e.g. coords in the
+  // dense case).
+  if (tile_tuple == nullptr || tile_tuple->fixed_tile().filtered_size() == 0) {
+    return Status::Ok();
+  }
 
-    // If the fragment doesn't include timestamps
-    if (timestamps_not_present(name, tile->frag_idx())) {
-      return Status::Ok();
-    }
+  auto& t = tile_tuple->fixed_tile();
+  t.clear_filtered_buffer();
 
-    // If the fragment doesn't have delete metadata.
-    if (delete_meta_not_present(name, tile->frag_idx())) {
-      return Status::Ok();
-    }
+  throw_if_not_ok(zip_tile_coordinates(name, &t));
 
-    auto& t = tile_tuple->fixed_tile();
-    t.filtered_buffer().clear();
+  if (var_size) {
+    auto& t_var = tile_tuple->var_tile();
+    t_var.clear_filtered_buffer();
+    throw_if_not_ok(zip_tile_coordinates(name, &t_var));
+  }
 
-    throw_if_not_ok(zip_tile_coordinates(name, &t));
-
-    if (var_size) {
-      auto& t_var = tile_tuple->var_tile();
-      t_var.filtered_buffer().clear();
-      throw_if_not_ok(zip_tile_coordinates(name, &t_var));
-    }
-
-    if (nullable) {
-      auto& t_validity = tile_tuple->validity_tile();
-      t_validity.filtered_buffer().clear();
-      throw_if_not_ok(zip_tile_coordinates(name, &t_validity));
-    }
+  if (nullable) {
+    auto& t_validity = tile_tuple->validity_tile();
+    t_validity.clear_filtered_buffer();
+    throw_if_not_ok(zip_tile_coordinates(name, &t_validity));
   }
 
   return Status::Ok();
@@ -1160,8 +1010,7 @@ Status ReaderBase::unfilter_tile_chunk_range(
     const uint64_t thread_idx,
     const std::string& name,
     Tile* tile,
-    const ChunkData& tile_chunk_data,
-    void* support_data) const {
+    const ChunkData& tile_chunk_data) const {
   assert(tile);
   // Prevent processing past the end of chunks in case there are more
   // threads than chunks.
@@ -1183,7 +1032,6 @@ Status ReaderBase::unfilter_tile_chunk_range(
   RETURN_NOT_OK(filters.run_reverse_chunk_range(
       stats_,
       tile,
-      support_data,
       tile_chunk_data,
       t_min,
       t_max,
@@ -1222,7 +1070,6 @@ Status ReaderBase::unfilter_tile_chunk_range(
   RETURN_NOT_OK(offset_filters.run_reverse_chunk_range(
       stats_,
       tile,
-      nullptr,
       tile_chunk_data,
       t_min,
       t_max,
@@ -1238,7 +1085,6 @@ Status ReaderBase::unfilter_tile_chunk_range(
     RETURN_NOT_OK(filters.run_reverse_chunk_range(
         stats_,
         tile_var,
-        nullptr,
         tile_var_chunk_data,
         tvar_min,
         tvar_max,
@@ -1281,7 +1127,6 @@ Status ReaderBase::unfilter_tile_chunk_range_nullable(
     RETURN_NOT_OK(filters.run_reverse_chunk_range(
         stats_,
         tile,
-        nullptr,
         tile_chunk_data,
         t_min,
         t_max,
@@ -1302,7 +1147,6 @@ Status ReaderBase::unfilter_tile_chunk_range_nullable(
     RETURN_NOT_OK(validity_filters.run_reverse_chunk_range(
         stats_,
         tile_validity,
-        nullptr,
         tile_validity_chunk_data,
         tval_min,
         tval_max,
@@ -1351,7 +1195,6 @@ Status ReaderBase::unfilter_tile_chunk_range_nullable(
     RETURN_NOT_OK(offset_filters.run_reverse_chunk_range(
         stats_,
         tile,
-        nullptr,
         tile_chunk_data,
         t_min,
         t_max,
@@ -1372,7 +1215,6 @@ Status ReaderBase::unfilter_tile_chunk_range_nullable(
     RETURN_NOT_OK(filters.run_reverse_chunk_range(
         stats_,
         tile_var,
-        nullptr,
         tile_var_chunk_data,
         tvar_min,
         tvar_max,
@@ -1393,7 +1235,6 @@ Status ReaderBase::unfilter_tile_chunk_range_nullable(
     RETURN_NOT_OK(validity_filters.run_reverse_chunk_range(
         stats_,
         tile_validity,
-        nullptr,
         tile_validity_chunk_data,
         tval_min,
         tval_max,
@@ -1414,13 +1255,6 @@ Status ReaderBase::unfilter_tiles(
   auto nullable = array_schema_.is_nullable(name);
   auto num_tiles = static_cast<uint64_t>(result_tiles.size());
 
-  if (array_schema_.is_dim(name) &&
-      array_schema_.bitsort_filter_attr().has_value()) {
-    // We omit running unfilter_tiles when there is a dimension, since we
-    // process the dimension tiles in the bitsort filter.
-    return Status::Ok();
-  }
-
   auto chunking = true;
   if (var_size) {
     auto filters = array_schema_.filters(name);
@@ -1431,7 +1265,7 @@ Status ReaderBase::unfilter_tiles(
   // The per tile cache is only used in readers where unfiltering
   // was done in parallel on tiles. The new readers parallelize both on
   // tiles and chunk ranges and don't benefit from using a tile cache.
-  if (disable_cache_ == true && chunking) {
+  if (chunking) {
     return unfilter_tiles_chunk_range(name, result_tiles);
   }
 
@@ -1439,122 +1273,37 @@ Status ReaderBase::unfilter_tiles(
       storage_manager_->compute_tp(), 0, num_tiles, [&, this](uint64_t i) {
         ResultTile* const tile = result_tiles[i];
 
-        auto& fragment = fragment_metadata_[tile->frag_idx()];
-        auto format_version = fragment->format_version();
+        if (skip_field(tile->frag_idx(), name)) {
+          return Status::Ok();
+        }
 
-        // Applicable for zipped coordinates only to versions < 5
-        // Applicable for separate coordinates only to version >= 5
-        if (name != constants::coords ||
-            (name == constants::coords && format_version < 5) ||
-            (array_schema_.is_dim(name) && format_version >= 5)) {
-          auto tile_tuple = tile->tile_tuple(name);
+        auto tile_tuple = tile->tile_tuple(name);
 
-          // Skip non-existent attributes/dimensions (e.g. coords in the
-          // dense case).
-          if (tile_tuple == nullptr ||
-              tile_tuple->fixed_tile().filtered_buffer().size() == 0) {
-            return Status::Ok();
-          }
+        // Skip non-existent attributes/dimensions (e.g. coords in the
+        // dense case).
+        if (tile_tuple == nullptr ||
+            tile_tuple->fixed_tile().filtered_size() == 0) {
+          return Status::Ok();
+        }
 
-          // If the fragment doesn't include timestamps
-          if (timestamps_not_present(name, tile->frag_idx())) {
-            return Status::Ok();
-          }
+        Tile* const t = &tile_tuple->fixed_tile();
+        Tile* const t_var = var_size ? &tile_tuple->var_tile() : nullptr;
+        Tile* const t_validity =
+            nullable ? &tile_tuple->validity_tile() : nullptr;
 
-          // If the fragment doesn't have delete metadata.
-          if (delete_meta_not_present(name, tile->frag_idx())) {
-            return Status::Ok();
-          }
-
-          Tile* const t = &tile_tuple->fixed_tile();
-          Tile* const t_var = var_size ? &tile_tuple->var_tile() : nullptr;
-          Tile* const t_validity =
-              nullable ? &tile_tuple->validity_tile() : nullptr;
-
-          if (disable_cache_ == false) {
-            logger_->info("using cache");
-            // Get information about the tile in its fragment.
-            auto&& [status, tile_attr_uri] = fragment->uri(name);
-            RETURN_NOT_OK(status);
-
-            auto tile_idx = tile->tile_idx();
-            uint64_t tile_attr_offset;
-            RETURN_NOT_OK(
-                fragment->file_offset(name, tile_idx, &tile_attr_offset));
-
-            // Cache 't'.
-            if (t->filtered() && !disable_cache_) {
-              // Store the filtered buffer in the tile cache.
-              RETURN_NOT_OK(storage_manager_->write_to_cache(
-                  *tile_attr_uri, tile_attr_offset, t->filtered_buffer()));
-            }
-
-            // Cache 't_var'.
-            if (var_size && t_var->filtered() && !disable_cache_) {
-              auto&& [status, tile_attr_var_uri] = fragment->var_uri(name);
-              RETURN_NOT_OK(status);
-
-              uint64_t tile_attr_var_offset;
-              RETURN_NOT_OK(fragment->file_var_offset(
-                  name, tile_idx, &tile_attr_var_offset));
-
-              // Store the filtered buffer in the tile cache.
-              RETURN_NOT_OK(storage_manager_->write_to_cache(
-                  *tile_attr_var_uri,
-                  tile_attr_var_offset,
-                  t_var->filtered_buffer()));
-            }
-
-            // Cache 't_validity'.
-            if (nullable && t_validity->filtered() && !disable_cache_) {
-              auto&& [status, tile_attr_validity_uri] =
-                  fragment->validity_uri(name);
-              RETURN_NOT_OK(status);
-
-              uint64_t tile_attr_validity_offset;
-              RETURN_NOT_OK(fragment->file_validity_offset(
-                  name, tile_idx, &tile_attr_validity_offset));
-
-              // Store the filtered buffer in the tile cache.
-              RETURN_NOT_OK(storage_manager_->write_to_cache(
-                  *tile_attr_validity_uri,
-                  tile_attr_validity_offset,
-                  t_validity->filtered_buffer()));
-            }
-          }
-
-          // Unfilter 't' for fixed-sized tiles, otherwise unfilter both 't'
-          // and 't_var' for var-sized tiles.
-          if (!var_size) {
-            if (!nullable) {
-              if (array_schema_.bitsort_filter_attr().has_value()) {
-                BitSortFilterMetadataType bitsort_metadata;
-                if (array_schema_.cell_order() == Layout::HILBERT) {
-                  BitSortFilterMetadataStorage<HilbertCmpQB> bitsort_storage;
-                  bitsort_metadata =
-                      construct_bitsort_filter_argument<HilbertCmpQB>(
-                          tile, bitsort_storage);
-                  RETURN_NOT_OK(unfilter_tile(name, t, &bitsort_metadata));
-                } else {
-                  BitSortFilterMetadataStorage<GlobalCmpQB> bitsort_storage;
-                  bitsort_metadata =
-                      construct_bitsort_filter_argument<GlobalCmpQB>(
-                          tile, bitsort_storage);
-                  RETURN_NOT_OK(unfilter_tile(name, t, &bitsort_metadata));
-                }
-              } else {
-                RETURN_NOT_OK(unfilter_tile(name, t));
-              }
-
-            } else {
-              RETURN_NOT_OK(unfilter_tile_nullable(name, t, t_validity));
-            }
+        // Unfilter 't' for fixed-sized tiles, otherwise unfilter both 't'
+        // and 't_var' for var-sized tiles.
+        if (!var_size) {
+          if (!nullable) {
+            RETURN_NOT_OK(unfilter_tile(name, t));
           } else {
-            if (!nullable)
-              RETURN_NOT_OK(unfilter_tile(name, t, t_var));
-            else
-              RETURN_NOT_OK(unfilter_tile_nullable(name, t, t_var, t_validity));
+            RETURN_NOT_OK(unfilter_tile_nullable(name, t, t_validity));
           }
+        } else {
+          if (!nullable)
+            RETURN_NOT_OK(unfilter_tile(name, t, t_var));
+          else
+            RETURN_NOT_OK(unfilter_tile_nullable(name, t, t_var, t_validity));
         }
 
         return Status::Ok();
@@ -1565,8 +1314,7 @@ Status ReaderBase::unfilter_tiles(
   return Status::Ok();
 }
 
-Status ReaderBase::unfilter_tile(
-    const std::string& name, Tile* tile, void* support_data) const {
+Status ReaderBase::unfilter_tile(const std::string& name, Tile* tile) const {
   FilterPipeline filters = array_schema_.filters(name);
 
   // Append an encryption unfilter when necessary.
@@ -1579,8 +1327,7 @@ Status ReaderBase::unfilter_tile(
       tile,
       nullptr,
       storage_manager_->compute_tp(),
-      storage_manager_->config(),
-      support_data));
+      storage_manager_->config()));
 
   return Status::Ok();
 }
@@ -1602,22 +1349,12 @@ Status ReaderBase::unfilter_tile(
   if (filters.skip_offsets_filtering(
           tile_var->type(), array_schema_.version())) {
     RETURN_NOT_OK(filters.run_reverse(
-        stats_, tile_var, tile, storage_manager_->compute_tp(), config_, tile));
+        stats_, tile_var, tile, storage_manager_->compute_tp(), config_));
   } else {
     RETURN_NOT_OK(offset_filters.run_reverse(
-        stats_,
-        tile,
-        nullptr,
-        storage_manager_->compute_tp(),
-        config_,
-        nullptr));
+        stats_, tile, nullptr, storage_manager_->compute_tp(), config_));
     RETURN_NOT_OK(filters.run_reverse(
-        stats_,
-        tile_var,
-        nullptr,
-        storage_manager_->compute_tp(),
-        config_,
-        nullptr));
+        stats_, tile_var, nullptr, storage_manager_->compute_tp(), config_));
   }
 
   return Status::Ok();
@@ -1640,16 +1377,14 @@ Status ReaderBase::unfilter_tile_nullable(
       tile,
       nullptr,
       storage_manager_->compute_tp(),
-      storage_manager_->config(),
-      nullptr));
+      storage_manager_->config()));
   // Reverse the validity tile filters.
   RETURN_NOT_OK(validity_filters.run_reverse(
       stats_,
       tile_validity,
       nullptr,
       storage_manager_->compute_tp(),
-      storage_manager_->config(),
-      nullptr));
+      storage_manager_->config()));
 
   return Status::Ok();
 }
@@ -1674,29 +1409,27 @@ Status ReaderBase::unfilter_tile_nullable(
   // Reverse the tile filters.
   // If offsets don't need to be unfiltered separately, it means they
   // will be created on the fly from filtered var-length data
-  if (filters.skip_offsets_filtering(tile->type(), array_schema_.version())) {
+  if (filters.skip_offsets_filtering(
+          tile_var->type(), array_schema_.version())) {
     RETURN_NOT_OK(filters.run_reverse(
         stats_,
         tile_var,
         tile,
         storage_manager_->compute_tp(),
-        storage_manager_->config(),
-        tile));
+        storage_manager_->config()));
   } else {
     RETURN_NOT_OK(offset_filters.run_reverse(
         stats_,
         tile,
         nullptr,
         storage_manager_->compute_tp(),
-        storage_manager_->config(),
-        nullptr));
+        storage_manager_->config()));
     RETURN_NOT_OK(filters.run_reverse(
         stats_,
         tile_var,
         nullptr,
         storage_manager_->compute_tp(),
-        storage_manager_->config(),
-        nullptr));
+        storage_manager_->config()));
   }
 
   // Reverse the validity tile filters.
@@ -1705,8 +1438,7 @@ Status ReaderBase::unfilter_tile_nullable(
       tile_validity,
       nullptr,
       storage_manager_->compute_tp(),
-      storage_manager_->config(),
-      nullptr));
+      storage_manager_->config()));
 
   return Status::Ok();
 }
@@ -1749,32 +1481,16 @@ void ReaderBase::compute_result_space_tiles(
 
   // Compute fragment tile domains
   std::vector<TileDomain<T>> frag_tile_domains;
-
-  if (partitioner_subarray.is_set()) {
-    auto relevant_frags = partitioner_subarray.relevant_fragments().value();
-    for (auto it = relevant_frags.rbegin(); it != relevant_frags.rend(); it++) {
-      if (fragment_metadata_[*it]->dense()) {
-        frag_tile_domains.emplace_back(
-            *it,
-            domain,
-            fragment_metadata_[*it]->non_empty_domain(),
-            tile_extents,
-            tile_order);
-      }
-    }
-  } else {
-    auto fragment_num = (int)fragment_metadata_.size();
-    if (fragment_num > 0) {
-      for (int i = fragment_num - 1; i >= 0; --i) {
-        if (fragment_metadata_[i]->dense()) {
-          frag_tile_domains.emplace_back(
-              i,
-              domain,
-              fragment_metadata_[i]->non_empty_domain(),
-              tile_extents,
-              tile_order);
-        }
-      }
+  auto relevant_frags = partitioner_subarray.relevant_fragments();
+  for (size_t i = relevant_frags.size(); i > 0; --i) {
+    auto f = relevant_frags[i - 1];
+    if (fragment_metadata_[f]->dense()) {
+      frag_tile_domains.emplace_back(
+          f,
+          domain,
+          fragment_metadata_[f]->non_empty_domain(),
+          tile_extents,
+          tile_order);
     }
   }
 
@@ -1835,9 +1551,10 @@ ReaderBase::cache_dimension_label_data() {
     max = std::max(max, ned[1]);
   }
 
-  return {Range(&min, &max, sizeof(IndexType)),
-          std::move(non_empty_domains),
-          std::move(frag_first_array_tile_idx)};
+  return {
+      Range(&min, &max, sizeof(IndexType)),
+      std::move(non_empty_domains),
+      std::move(frag_first_array_tile_idx)};
 }
 
 template <typename IndexType, typename AttributeType>
@@ -1891,8 +1608,9 @@ void ReaderBase::validate_attribute_order(
   // validation.
   if (validator.need_to_load_tiles()) {
     auto tiles_to_load = validator.tiles_to_load();
-    throw_if_not_ok(read_attribute_tiles({attribute_name}, tiles_to_load));
-    throw_if_not_ok(unfilter_tiles(attribute_name, tiles_to_load));
+
+    throw_if_not_ok(
+        read_and_unfilter_attribute_tiles({attribute_name}, tiles_to_load));
 
     // Validate bounds not validated using tile data.
     throw_if_not_ok(parallel_for(
@@ -2043,86 +1761,6 @@ void ReaderBase::validate_attribute_order(
     default:
       throw ReaderBaseStatusException("Invalid attribute type");
   }
-}
-
-void ReaderBase::calculate_hilbert_values(
-    const DomainBuffersView& domain_buffers,
-    std::vector<uint64_t>& hilbert_values) const {
-  auto dim_num = array_schema_.dim_num();
-  Hilbert h(dim_num);
-  auto bits = h.bits();
-  auto max_bucket_val = ((uint64_t)1 << bits) - 1;
-
-  // Calculate Hilbert values in parallel
-  uint64_t cell_num = hilbert_values.size();
-  throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(), 0, cell_num, [&](uint64_t c) {
-        std::vector<uint64_t> coords(dim_num);
-        for (uint32_t d = 0; d < dim_num; ++d) {
-          auto dim{array_schema_.dimension_ptr(d)};
-          coords[d] = hilbert_order::map_to_uint64(
-              *dim, domain_buffers[d], c, bits, max_bucket_val);
-        }
-        hilbert_values[c] = h.coords_to_hilbert(&coords[0]);
-
-        return Status::Ok();
-      }));
-}
-
-template <
-    typename CmpObject,
-    typename std::enable_if_t<
-        std::is_same_v<CmpObject, HilbertCmpQB> ||
-        std::is_same_v<CmpObject, GlobalCmpQB>>*>
-BitSortFilterMetadataType ReaderBase::construct_bitsort_filter_argument(
-    ResultTile* const tile,
-    BitSortFilterMetadataStorage<CmpObject>& bitsort_storage) const {
-  // Collect the storage vectors.
-  std::vector<Tile*>& dim_tiles = bitsort_storage.dim_tiles_;
-  std::vector<QueryBuffer>& query_buffers = bitsort_storage.query_buffers_;
-  dimension_size_type num_dims = array_schema_.dim_num();
-  std::vector<uint64_t> dim_data_sizes;
-
-  dim_tiles.reserve(num_dims);
-  query_buffers.reserve(num_dims);
-  dim_data_sizes.reserve(num_dims);
-
-  // Loop over the dimensions, adding the dimension tiles and constructed
-  // QueryBuffer objects that represent the dimension tile data.
-  for (dimension_size_type i = 0; i < num_dims; ++i) {
-    const Dimension* dimension = array_schema_.domain().dimension_ptr(i);
-    auto dim_tile_tuple = tile->tile_tuple(dimension->name());
-    dim_tiles.emplace_back(&dim_tile_tuple->fixed_tile());
-
-    auto& filtered_buffer = dim_tiles[i]->filtered_buffer();
-    dim_data_sizes.emplace_back(filtered_buffer.size());
-    query_buffers.emplace_back(
-        filtered_buffer.data(), nullptr, &dim_data_sizes[i], nullptr);
-  }
-
-  bitsort_storage.db_.emplace(
-      DomainBuffersView(array_schema_.domain(), query_buffers));
-  if constexpr (std::is_same<CmpObject, HilbertCmpQB>::value) {
-    std::vector<uint64_t>& hilbert_values = bitsort_storage.hilbert_values_;
-    assert(dim_tiles.size() > 0);
-    uint64_t cell_num = dim_tiles[0]->cell_num();
-    hilbert_values.resize(cell_num);
-    calculate_hilbert_values(bitsort_storage.db_.value(), hilbert_values);
-    bitsort_storage.cmp_obj_.emplace(HilbertCmpQB(
-        array_schema_.domain(), bitsort_storage.db_.value(), hilbert_values));
-  } else if constexpr (std::is_same<CmpObject, GlobalCmpQB>::value) {
-    bitsort_storage.cmp_obj_.emplace(
-        GlobalCmpQB(array_schema_.domain(), bitsort_storage.db_.value()));
-  }
-
-  std::function<bool(const uint64_t&, const uint64_t&)>& comparator =
-      bitsort_storage.comparator_;
-  CmpObject& cmp_obj = bitsort_storage.cmp_obj_.value();
-  comparator = [&cmp_obj](const uint64_t& left_idx, const uint64_t& right_idx) {
-    return cmp_obj(left_idx, right_idx);
-  };
-
-  return bitsort_storage.get_bitsort_filter_metadata_type();
 }
 
 // Explicit template instantiations

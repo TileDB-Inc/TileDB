@@ -47,6 +47,7 @@ class Buffer;
 class ConstBuffer;
 class FilterBuffer;
 class Tile;
+class WriterTile;
 
 enum class FilterOption : uint8_t;
 enum class FilterType : uint8_t;
@@ -94,7 +95,8 @@ class Filter {
    * Implemented by filter subclass.
    *
    * @param tile Current tile on which the filter is being run
-   * @param support_data Support data for the filter
+   * @param offsets_tile Offsets tile of the current tile on which the filter is
+   * being run
    * @param input_metadata Buffer with metadata for `input`
    * @param input Buffer with data to be filtered.
    * @param output_metadata Buffer with metadata for filtered data
@@ -102,8 +104,8 @@ class Filter {
    * @return
    */
   virtual Status run_forward(
-      const Tile& tile,
-      void* const support_data,
+      const WriterTile& tile,
+      WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -119,7 +121,8 @@ class Filter {
    * Implemented by filter subclass.
    *
    * @param tile Current tile on which the filter is being run
-   * @param support_data Support data for the filter
+   * @param offsets_tile Offsets tile of the current tile on which the filter is
+   * being run
    * @param input_metadata Buffer with metadata for `input`
    * @param input Buffer with data to be filtered.
    * @param output_metadata Buffer with metadata for filtered data
@@ -129,7 +132,7 @@ class Filter {
    */
   virtual Status run_reverse(
       const Tile& tile,
-      void* support_data,
+      Tile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

@@ -129,14 +129,14 @@ class Port {
     std::lock_guard(this->mutex_);
     if (!is_attached()) {
       throw std::runtime_error(
-          "Attempting to unattach unattached correspondent");
+          "Attempting to unattached unattached correspondent");
     }
     clear_attached();
     item_mover_.reset();
   }
 
  public:
-  auto get_mover() {
+  auto get_mover() const {
     return item_mover_;
   }
 };
@@ -218,7 +218,7 @@ class Source : public Port<Mover_T, Block> {
 /**
  * A data flow sink, used by both edges and nodes.
  *
- * Sink objects have two states: emptty and full.  Their functionality is
+ * Sink objects have two states: empty and full.  Their functionality is
  * determined by the states (and policies) of the `Mover`.  Their
  * functionality is determined by the states (and policies) of the `Mover`.
  */

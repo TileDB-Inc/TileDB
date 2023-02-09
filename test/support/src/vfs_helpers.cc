@@ -359,28 +359,38 @@ std::string SupportedFsMem::temp_dir() {
   return temp_dir_;
 }
 
-void TemporaryDirectoryFixture::check_tiledb_ok(int rc) {
-  if (rc != TILEDB_OK) {
-    tiledb_error_t* err = NULL;
-    tiledb_ctx_get_last_error(ctx, &err);
-    const char* msg;
-    tiledb_error_message(err, &msg);
-    UNSCOPED_INFO(msg);
-  }
-  CHECK(rc == TILEDB_OK);
+void TemporaryDirectoryFixture::alloc_encrypted_ctx(
+    const std::string& encryption_type,
+    const std::string& encryption_key,
+    tiledb_ctx_t** ctx_with_encrypt) const {
+  // Get the configuration settings for the fixture's context.
+  tiledb_config_t* config;
+  require_tiledb_ok(tiledb_ctx_get_config(ctx, &config));
+
+  // Change the configuration to match the desired encryption settings.
+  tiledb_error_t* error;
+  require_tiledb_ok(tiledb_config_set(
+      config, "sm.encryption_type", encryption_type.c_str(), &error));
+  REQUIRE(error == nullptr);
+  require_tiledb_ok(tiledb_config_set(
+      config, "sm.encryption_key", encryption_key.c_str(), &error));
+  REQUIRE(error == nullptr);
+
+  // Allocate the context with the updated configuration.
+  require_tiledb_ok(tiledb_ctx_alloc(config, ctx_with_encrypt));
+
+  // Free resources.
+  tiledb_config_free(&config);
+  tiledb_error_free(&error);
 }
 
-void TemporaryDirectoryFixture::require_tiledb_ok(int rc) {
-  if (rc != TILEDB_OK) {
-    tiledb_error_t* err = NULL;
-    tiledb_ctx_get_last_error(ctx, &err);
-    const char* msg;
-    tiledb_error_message(err, &msg);
-    UNSCOPED_INFO(msg);
-  }
-  REQUIRE(rc == TILEDB_OK);
+std::string TemporaryDirectoryFixture::create_temporary_array(
+    std::string&& name, tiledb_array_schema_t* array_schema) {
+  auto array_uri = fullpath(std::move(name));
+  require_tiledb_ok(tiledb_array_schema_check(ctx, array_schema));
+  require_tiledb_ok(tiledb_array_create(ctx, array_uri.c_str(), array_schema));
+  return array_uri;
 }
 
 }  // End of namespace test
-
 }  // End of namespace tiledb

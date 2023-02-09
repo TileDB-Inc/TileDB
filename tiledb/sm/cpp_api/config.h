@@ -265,6 +265,10 @@ class Config {
    *
    * **Parameters**
    *
+   * - `sm.allow_separate_attribute_writes` <br>
+   *    **Experimental** <br>
+   *    Allow separate attribute write queries.<br>
+   *    **Default**: false
    * - `sm.allow_updates_experimental` <br>
    *    **Experimental** <br>
    *    Allow update queries. Experimental for testing purposes, do not use.<br>
@@ -293,13 +297,6 @@ class Config {
    *    Checks if the coordinates obey the global array order. Applicable only
    *    to sparse writes in global order.
    *    **Default**: true
-   * - `sm.tile_cache_size` <br>
-   *    The tile cache size in bytes. Any `uint64_t` value is acceptable. <br>
-   *    **Default**: 10,000,000
-   * - `sm.array_schema_cache_size` <br>
-   *    Array schema cache size in bytes. Any `uint64_t` value is acceptable.
-   *    <br>
-   *    **Default**: 10,000,000
    * - `sm.enable_signal_handlers` <br>
    *    Whether or not TileDB will install signal handlers. <br>
    *    **Default**: true
@@ -319,7 +316,7 @@ class Config {
    *    `group_meta` (remove only consolidate group metadata only).
    *    <br>
    *    **Default**: "fragments"
-   * - `sm.consolidation_mode` <br>
+   * - `sm.consolidation.mode` <br>
    *    The consolidation mode, one of
    *    `commits` (consolidate all commit files),
    *    `fragments` (consolidate all fragments),
@@ -489,10 +486,6 @@ class Config {
    * - `vfs.min_batch_gap` <br>
    *    The minimum number of bytes between two VFS read batches.<br>
    *    **Default**: 500KB
-   * - `vfs.disable_batching` <br>
-   *    **Experimental** <br>
-   *    Disables tile batching from VFS, making direct reads.<br>
-   *    **Default**: false
    * - `vfs.file.posix_file_permissions` <br>
    *    permissions to use for posix file system with file or dir creation.<br>
    *    **Default**: 644
@@ -502,7 +495,7 @@ class Config {
    * - `vfs.file.max_parallel_ops` <br>
    *    The maximum number of parallel operations on objects with `file:///`
    *    URIs. <br>
-   *    **Default**: `sm.io_concurrency_level`
+   *    **Default**: `1`
    * - `vfs.azure.storage_account_name` <br>
    *    Set the Azure Storage Account name. <br>
    *    **Default**: ""

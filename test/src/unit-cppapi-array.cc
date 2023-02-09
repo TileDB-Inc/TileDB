@@ -51,6 +51,12 @@ struct CPPArrayFx {
   static const unsigned d1_tile = 10;
   static const unsigned d2_tile = 5;
 
+  // Serialization parameters
+  bool serialize_ = false;
+  bool refactored_query_v2_ = false;
+  // Buffers to allocate on server side for serialized queries
+  test::ServerQueryBuffers server_buffers_;
+
   CPPArrayFx()
       : vfs(ctx) {
     using namespace tiledb;
@@ -349,21 +355,25 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
 
     query.set_layout(TILEDB_GLOBAL_ORDER);
 
-    bool serialized_writes = false;
     SECTION("no serialization") {
-      serialized_writes = false;
+      serialize_ = false;
     }
-    SECTION("serialization enabled global order write") {
 #ifdef TILEDB_SERIALIZATION
-      serialized_writes = true;
+    SECTION("serialization enabled global order write") {
+      serialize_ = true;
+      refactored_query_v2_ = GENERATE(true, false);
+    }
 #endif
-    }
-    if (!serialized_writes) {
-      CHECK(query.submit() == tiledb::Query::Status::COMPLETE);
-      REQUIRE_NOTHROW(query.finalize());
-    } else {
-      test::submit_and_finalize_serialized_query(ctx, query);
-    }
+
+    // Submit query
+    auto rc = submit_query_wrapper(
+        ctx,
+        "cpp_unit_array",
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_);
+    REQUIRE(rc == TILEDB_OK);
 
     // Check non-empty domain while array open in write mode
     CHECK_THROWS(array.non_empty_domain<int>(1));
@@ -422,6 +432,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
 }
 
 TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
+  bool serialize = false, refactored_query_v2 = false;
   const std::string array_name_1d = "cpp_unit_array_1d";
   Context ctx;
   VFS vfs(ctx);
@@ -430,7 +441,6 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
   tiledb_array_type_t array_type = TILEDB_DENSE;
   bool null_pointer = true;
 
-  bool serialized_writes = false;
   SECTION("SPARSE") {
     array_type = TILEDB_SPARSE;
     SECTION("GLOBAL_ORDER") {
@@ -444,13 +454,14 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
         null_pointer = false;
       }
       SECTION("no serialization") {
-        serialized_writes = false;
+        serialize = false;
       }
-      SECTION("serialization enabled global order write") {
 #ifdef TILEDB_SERIALIZATION
-        serialized_writes = true;
-#endif
+      SECTION("serialization enabled global order write") {
+        serialize = true;
+        refactored_query_v2 = GENERATE(true, false);
       }
+#endif
     }
 
     SECTION("UNORDERED") {
@@ -503,12 +514,17 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
     q.set_data_buffer("a", a);
     q.set_offsets_buffer("a", a_offset);
     q.set_data_buffer("b", b);
-    if (!serialized_writes || write_layout != TILEDB_GLOBAL_ORDER) {
-      q.submit();
-      q.finalize();
-    } else {
-      test::submit_and_finalize_serialized_query(ctx, q);
-    }
+
+    // Submit query
+    test::ServerQueryBuffers server_buffers_;
+    auto rc = submit_query_wrapper(
+        ctx,
+        array_name_1d,
+        &q,
+        server_buffers_,
+        serialize,
+        refactored_query_v2);
+    REQUIRE(rc == TILEDB_OK);
 
     array.close();
   }
@@ -584,10 +600,9 @@ TEST_CASE("C++ API: Incorrect offsets", "[cppapi][invalid-offsets]") {
 }
 
 TEST_CASE("C++ API: Read subarray with expanded domain", "[cppapi][dense]") {
-  const std::vector<tiledb_layout_t> tile_layouts = {TILEDB_ROW_MAJOR,
-                                                     TILEDB_COL_MAJOR},
-                                     cell_layouts = {TILEDB_ROW_MAJOR,
-                                                     TILEDB_COL_MAJOR};
+  const std::vector<tiledb_layout_t>
+      tile_layouts = {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR},
+      cell_layouts = {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR};
   const std::vector<int> tile_extents = {1, 2, 3, 4};
 
   for (auto tile_layout : tile_layouts) {
@@ -692,16 +707,20 @@ TEST_CASE(
 
   tiledb::Array::create(array_name, schema);
   auto array_w = tiledb::Array(ctx, array_name, TILEDB_WRITE);
-  auto query_w = tiledb::Query(ctx, array_w, TILEDB_WRITE);
   std::vector<int> data = {0, 1};
 
-  query_w.set_data_buffer("a", data).set_subarray({0, 1}).submit();
-  query_w.set_data_buffer("a", data).set_subarray({2, 3}).submit();
+  auto query_1 = tiledb::Query(ctx, array_w, TILEDB_WRITE);
+  query_1.set_data_buffer("a", data).set_subarray({0, 1}).submit();
+
+  auto query_2 = tiledb::Query(ctx, array_w, TILEDB_WRITE);
+  query_2.set_data_buffer("a", data).set_subarray({2, 3}).submit();
+
   // this fragment write caused crash during consolidation
   //   https://github.com/TileDB-Inc/TileDB/issues/1205
   //   https://github.com/TileDB-Inc/TileDB/issues/1212
-  query_w.set_data_buffer("a", data).set_subarray({4, 5}).submit();
-  query_w.finalize();
+  auto query_3 = tiledb::Query(ctx, array_w, TILEDB_WRITE);
+  query_3.set_data_buffer("a", data).set_subarray({4, 5}).submit();
+
   array_w.close();
   CHECK(tiledb::test::num_fragments(array_name) == 3);
   Array::consolidate(ctx, array_name);
@@ -1102,6 +1121,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Writing single cell with global order",
     "[cppapi][sparse][global]") {
+  bool serialize = false, refactored_query_v2 = false;
   const std::string array_name = "cpp_unit_array";
   Context ctx;
   VFS vfs(ctx);
@@ -1126,21 +1146,27 @@ TEST_CASE(
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_GLOBAL_ORDER)
       .set_data_buffer("a", data_w);
-  bool serialized_writes = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialize = false;
   }
-  SECTION("serialization enabled global order write") {
 #ifdef TILEDB_SERIALIZATION
-    serialized_writes = true;
+  SECTION("serialization enabled global order write") {
+    serialize = true;
+    refactored_query_v2 = GENERATE(true, false);
+  }
 #endif
-  }
-  if (!serialized_writes) {
-    query_w.submit();
-    query_w.finalize();
-  } else {
-    test::submit_and_finalize_serialized_query(ctx, query_w);
-  }
+
+  // Submit query
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx,
+      array_name,
+      &query_w,
+      server_buffers_,
+      serialize,
+      refactored_query_v2);
+  REQUIRE(rc == TILEDB_OK);
+
   array_w.close();
 
   // Read
@@ -1487,6 +1513,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Sparse global order, dimension only read",
     "[cppapi][sparse][global][read][dimension-only]") {
+  bool serialize = false, refactored_query_v2 = false;
   const std::string array_name = "cpp_unit_array";
   Context ctx;
   VFS vfs(ctx);
@@ -1511,21 +1538,28 @@ TEST_CASE(
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_GLOBAL_ORDER)
       .set_data_buffer("a", data_w);
-  bool serialized_writes = false;
+
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialize = false;
   }
-  SECTION("serialization enabled global order write") {
 #ifdef TILEDB_SERIALIZATION
-    serialized_writes = true;
+  SECTION("serialization enabled global order write") {
+    serialize = true;
+    refactored_query_v2 = GENERATE(true, false);
+  }
 #endif
-  }
-  if (!serialized_writes) {
-    query_w.submit();
-    query_w.finalize();
-  } else {
-    test::submit_and_finalize_serialized_query(ctx, query_w);
-  }
+
+  // Submit query
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx,
+      array_name,
+      &query_w,
+      server_buffers_,
+      serialize,
+      refactored_query_v2);
+  REQUIRE(rc == TILEDB_OK);
+
   array_w.close();
 
   // Read
@@ -1548,6 +1582,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Unordered with dups, dimension only read",
     "[cppapi][sparse][unordered][dups][read][dimension-only]") {
+  bool serialize = false, refactored_query_v2 = false;
   const std::string array_name = "cpp_unit_array";
   Context ctx;
   VFS vfs(ctx);
@@ -1573,21 +1608,29 @@ TEST_CASE(
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_GLOBAL_ORDER)
       .set_data_buffer("a", data_w);
-  bool serialized_writes = false;
+
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialize = false;
   }
-  SECTION("serialization enabled global order write") {
 #ifdef TILEDB_SERIALIZATION
-    serialized_writes = true;
+  SECTION("serialization enabled global order write") {
+    serialize = true;
+    refactored_query_v2 = GENERATE(true, false);
+  }
 #endif
-  }
-  if (!serialized_writes) {
-    query_w.submit();
-    query_w.finalize();
-  } else {
-    test::submit_and_finalize_serialized_query(ctx, query_w);
-  }
+
+  // Submit query
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx,
+      array_name,
+      &query_w,
+      server_buffers_,
+      serialize,
+      refactored_query_v2);
+
+  REQUIRE(rc == TILEDB_OK);
+
   array_w.close();
 
   // Read

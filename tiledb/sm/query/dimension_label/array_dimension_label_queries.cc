@@ -34,7 +34,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/array_schema/dimension_label_reference.h"
+#include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -51,14 +51,12 @@ namespace tiledb::sm {
 
 ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
     StorageManager* storage_manager,
-    stats::Stats* stats,
     Array* array,
     const Subarray& subarray,
     const std::unordered_map<std::string, QueryBuffer>& label_buffers,
     const std::unordered_map<std::string, QueryBuffer>& array_buffers,
     const optional<std::string>& fragment_name)
     : storage_manager_(storage_manager)
-    , stats_(stats)
     , label_range_queries_by_dim_idx_(subarray.dim_num(), nullptr)
     , label_data_queries_by_dim_idx_(subarray.dim_num())
     , range_query_status_{QueryStatus::UNINITIALIZED}
@@ -141,10 +139,10 @@ void ArrayDimensionLabelQueries::process_data_queries() {
           throw_if_not_ok(query->init());
           throw_if_not_ok(query->process());
           return Status::Ok();
-        } catch (...) {
-          std::throw_with_nested(DimensionLabelQueryStatusException(
+        } catch (const StatusException& err) {
+          throw DimensionLabelQueryStatusException(
               "Failed to process data query for label '" +
-              query->dim_label_name() + "'."));
+              query->dim_label_name() + "'. " + err.what());
         }
       }));
 }
@@ -182,10 +180,10 @@ void ArrayDimensionLabelQueries::process_range_queries(Query* parent_query) {
                 dim_idx, is_point_ranges, range_data, count);
           }
           return Status::Ok();
-        } catch (...) {
-          std::throw_with_nested(DimensionLabelQueryStatusException(
+        } catch (const StatusException& err) {
+          throw DimensionLabelQueryStatusException(
               "Failed to process and update index ranges for label '" +
-              range_query->dim_label_name() + "'."));
+              range_query->dim_label_name() + "'. " + err.what());
         }
       }));
 
@@ -215,7 +213,7 @@ void ArrayDimensionLabelQueries::add_read_queries(
     try {
       // Get the dimension label reference from the array.
       const auto& dim_label_ref =
-          array->array_schema_latest().dimension_label_reference(label_name);
+          array->array_schema_latest().dimension_label(label_name);
 
       // Open the indexed array.
       const auto dim_label = open_dimension_label(
@@ -235,10 +233,10 @@ void ArrayDimensionLabelQueries::add_read_queries(
           dim_label_ref,
           label_ranges));
       label_range_queries_by_dim_idx_[dim_idx] = range_queries_.back().get();
-    } catch (...) {
-      std::throw_with_nested(DimensionLabelQueryStatusException(
+    } catch (const StatusException& err) {
+      throw DimensionLabelQueryStatusException(
           "Failed to initialize the query to read range data from label '" +
-          label_name + "'."));
+          label_name + "'. " + err.what());
     }
   }
 
@@ -247,7 +245,7 @@ void ArrayDimensionLabelQueries::add_read_queries(
     try {
       // Get the dimension label reference from the array.
       const auto& dim_label_ref =
-          array->array_schema_latest().dimension_label_reference(label_name);
+          array->array_schema_latest().dimension_label(label_name);
 
       // Open the indexed array.
       auto dim_label_iter = dimension_labels_.find(label_name);
@@ -263,7 +261,6 @@ void ArrayDimensionLabelQueries::add_read_queries(
       data_queries_.emplace_back(tdb_new(
           DimensionLabelQuery,
           storage_manager_,
-          stats_->create_child("DimensionLabelQuery"),
           dim_label,
           dim_label_ref,
           subarray,
@@ -272,10 +269,10 @@ void ArrayDimensionLabelQueries::add_read_queries(
           nullopt));
       label_data_queries_by_dim_idx_[dim_label_ref.dimension_index()].push_back(
           data_queries_.back().get());
-    } catch (...) {
-      std::throw_with_nested(DimensionLabelQueryStatusException(
+    } catch (const StatusException& err) {
+      throw DimensionLabelQueryStatusException(
           "Failed to initialize the data query for label '" + label_name +
-          "'."));
+          "'. " + err.what());
     }
   }
 }
@@ -290,7 +287,7 @@ void ArrayDimensionLabelQueries::add_write_queries(
     try {
       // Get the dimension label reference from the array.
       const auto& dim_label_ref =
-          array->array_schema_latest().dimension_label_reference(label_name);
+          array->array_schema_latest().dimension_label(label_name);
 
       // Verify that this subarray is not set to use labels.
       if (subarray.has_label_ranges(dim_label_ref.dimension_index())) {
@@ -315,7 +312,6 @@ void ArrayDimensionLabelQueries::add_write_queries(
       data_queries_.emplace_back(tdb_new(
           DimensionLabelQuery,
           storage_manager_,
-          stats_->create_child("DimensionLabelQuery"),
           dim_label,
           dim_label_ref,
           subarray,
@@ -326,10 +322,10 @@ void ArrayDimensionLabelQueries::add_write_queries(
           fragment_name_));
       label_data_queries_by_dim_idx_[dim_label_ref.dimension_index()].push_back(
           data_queries_.back().get());
-    } catch (...) {
-      std::throw_with_nested(DimensionLabelQueryStatusException(
+    } catch (const StatusException& err) {
+      throw DimensionLabelQueryStatusException(
           "Failed to initialize the data query for label '" + label_name +
-          "'."));
+          "'. " + err.what());
     }
   }
 }
@@ -345,17 +341,15 @@ shared_ptr<Array> ArrayDimensionLabelQueries::open_dimension_label(
       make_shared<Array>(HERE(), dim_label_uri, storage_manager_));
   const auto dim_label = label_iter.first->second;
 
-  // Open the dimension label. Handling encrypted dimension labels is not yet
-  // implemented.
-  // TODO: Make sure these timestamps are the desired timestamps.
-  // TODO: Make sure the encryption is as expected.
+  // Open the dimension label with the same timestamps and encryption as the
+  // parent array.
   throw_if_not_ok(dim_label->open(
       query_type,
       array->timestamp_start(),
       array->timestamp_end(),
-      EncryptionType::NO_ENCRYPTION,
-      nullptr,
-      0));
+      array->encryption_key()->encryption_type(),
+      array->encryption_key()->key().data(),
+      array->encryption_key()->key().size()));
 
   // Check the dimension label is compatible with expected dimension label.
   array->array_schema_latest().check_dimension_label_schema(

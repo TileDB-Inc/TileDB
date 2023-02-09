@@ -66,17 +66,49 @@ using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
 
-Tile recreate_tile_for_unfiltering(
-    const uint32_t dim_num, const uint64_t tile_size, Tile&& tile) {
+WriterTile make_increasing_tile(const uint64_t nelts) {
+  const uint64_t tile_size = nelts * sizeof(uint64_t);
+  const uint64_t cell_size = sizeof(uint64_t);
+
+  WriterTile tile(
+      constants::format_version, Datatype::UINT64, cell_size, tile_size);
+  for (uint64_t i = 0; i < nelts; i++) {
+    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+  }
+
+  return tile;
+}
+
+WriterTile make_offsets_tile(std::vector<uint64_t>& offsets) {
+  const uint64_t offsets_tile_size =
+      offsets.size() * constants::cell_var_offset_size;
+
+  WriterTile offsets_tile(
+      constants::format_version,
+      Datatype::UINT64,
+      constants::cell_var_offset_size,
+      offsets_tile_size);
+
+  // Set up test data
+  for (uint64_t i = 0; i < offsets.size(); i++) {
+    CHECK(offsets_tile
+              .write(
+                  &offsets[i],
+                  i * constants::cell_var_offset_size,
+                  constants::cell_var_offset_size)
+              .ok());
+  }
+
+  return offsets_tile;
+}
+
+Tile create_tile_for_unfiltering(uint64_t nelts, WriterTile& tile) {
   Tile ret(
       tile.format_version(),
       tile.type(),
       tile.cell_size(),
-      dim_num,
-      tile_size,
-      tile.filtered_buffer().size());
-  memcpy(
-      ret.filtered_buffer().data(),
+      0,
+      tile.cell_size() * nelts,
       tile.filtered_buffer().data(),
       tile.filtered_buffer().size());
   return ret;
@@ -98,8 +130,8 @@ class Add1InPlace : public tiledb::sm::Filter {
   }
 
   Status run_forward(
-      const Tile&,
-      void* const,
+      const WriterTile&,
+      WriterTile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -123,7 +155,7 @@ class Add1InPlace : public tiledb::sm::Filter {
 
   Status run_reverse(
       const Tile&,
-      void*,
+      Tile*,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -169,8 +201,8 @@ class Add1OutOfPlace : public tiledb::sm::Filter {
   }
 
   Status run_forward(
-      const Tile&,
-      void* const,
+      const WriterTile&,
+      WriterTile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -205,7 +237,7 @@ class Add1OutOfPlace : public tiledb::sm::Filter {
 
   Status run_reverse(
       const Tile&,
-      void*,
+      Tile*,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -262,8 +294,8 @@ class AddNInPlace : public tiledb::sm::Filter {
   }
 
   Status run_forward(
-      const Tile&,
-      void* const,
+      const WriterTile&,
+      WriterTile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -286,7 +318,7 @@ class AddNInPlace : public tiledb::sm::Filter {
 
   Status run_reverse(
       const Tile&,
-      void*,
+      Tile*,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -345,8 +377,8 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
   }
 
   Status run_forward(
-      const Tile&,
-      void* const,
+      const WriterTile&,
+      WriterTile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -377,7 +409,7 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
 
   Status run_reverse(
       const Tile&,
-      void*,
+      Tile*,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -436,8 +468,8 @@ class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
   }
 
   Status run_forward(
-      const Tile&,
-      void* const,
+      const WriterTile&,
+      WriterTile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -492,7 +524,7 @@ class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
 
   Status run_reverse(
       const Tile&,
-      void*,
+      Tile*,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -555,22 +587,7 @@ TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
 
   // Set up test data
   const uint64_t nelts = 100;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
+  auto tile = make_increasing_tile(nelts);
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
@@ -607,13 +624,16 @@ TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
     offset += sizeof(uint64_t);
   }
 
-  tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+  auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+  CHECK(pipeline
+            .run_reverse(
+                &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
             .ok());
-  CHECK(tile.filtered_buffer().size() == 0);
+  CHECK(unfiltered_tile.filtered_size() == 0);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
-    CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+    CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+              .ok());
     CHECK(elt == i);
   }
 }
@@ -624,22 +644,7 @@ TEST_CASE(
 
   // Set up test data
   const uint64_t nelts = 100;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
+  auto tile = make_increasing_tile(nelts);
 
   // Set up test data
   std::vector<uint64_t> sizes{
@@ -670,30 +675,11 @@ TEST_CASE(
   }
   offsets[offsets.size() - 1] = offset;
 
-  const uint64_t offsets_tile_size =
-      offsets.size() * constants::cell_var_offset_size;
-
-  Tile offsets_tile(
-      constants::format_version,
-      Datatype::UINT64,
-      constants::cell_var_offset_size,
-      dim_num,
-      offsets_tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < offsets.size(); i++) {
-    CHECK(offsets_tile
-              .write(
-                  &offsets[i],
-                  i * constants::cell_var_offset_size,
-                  constants::cell_var_offset_size)
-              .ok());
-  }
+  auto offsets_tile = make_offsets_tile(offsets);
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  Tile::set_max_tile_chunk_size(80);
+  WriterTile::set_max_tile_chunk_size(80);
   CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
             .ok());
 
@@ -731,17 +717,20 @@ TEST_CASE(
     }
   }
 
-  tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+  auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+  CHECK(pipeline
+            .run_reverse(
+                &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
             .ok());
-  CHECK(tile.filtered_buffer().size() == 0);
+  CHECK(unfiltered_tile.filtered_size() == 0);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
-    CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+    CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+              .ok());
     CHECK(elt == i);
   }
 
-  Tile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
+  WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
 }
 
 TEST_CASE(
@@ -749,22 +738,7 @@ TEST_CASE(
   tiledb::sm::Config config;
 
   const uint64_t nelts = 100;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
+  auto tile = make_increasing_tile(nelts);
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
@@ -804,14 +778,16 @@ TEST_CASE(
       offset += sizeof(uint64_t);
     }
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
@@ -853,14 +829,16 @@ TEST_CASE(
       offset += sizeof(uint64_t);
     }
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
@@ -872,22 +850,7 @@ TEST_CASE(
   tiledb::sm::Config config;
 
   const uint64_t nelts = 100;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
+  auto tile = make_increasing_tile(nelts);
 
   // Set up test data
   std::vector<uint64_t> sizes{
@@ -918,33 +881,14 @@ TEST_CASE(
   }
   offsets[offsets.size() - 1] = offset;
 
-  const uint64_t offsets_tile_size =
-      offsets.size() * constants::cell_var_offset_size;
-
-  Tile offsets_tile(
-      constants::format_version,
-      Datatype::UINT64,
-      constants::cell_var_offset_size,
-      dim_num,
-      offsets_tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < offsets.size(); i++) {
-    CHECK(offsets_tile
-              .write(
-                  &offsets[i],
-                  i * constants::cell_var_offset_size,
-                  constants::cell_var_offset_size)
-              .ok());
-  }
+  auto offsets_tile = make_offsets_tile(offsets);
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
   pipeline.add_filter(Add1InPlace());
 
   SECTION("- Single stage") {
-    Tile::set_max_tile_chunk_size(80);
+    WriterTile::set_max_tile_chunk_size(80);
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
               .ok());
 
@@ -982,21 +926,23 @@ TEST_CASE(
       }
     }
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
 
   SECTION("- Multi-stage") {
     // Add a few more +1 filters and re-run.
-    Tile::set_max_tile_chunk_size(80);
+    WriterTile::set_max_tile_chunk_size(80);
     pipeline.add_filter(Add1InPlace());
     pipeline.add_filter(Add1InPlace());
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
@@ -1036,19 +982,21 @@ TEST_CASE(
       }
     }
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
 
-  Tile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
+  WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
 }
 
 TEST_CASE(
@@ -1058,22 +1006,7 @@ TEST_CASE(
 
   // Set up test data
   const uint64_t nelts = 100;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
+  auto tile = make_increasing_tile(nelts);
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
@@ -1113,14 +1046,16 @@ TEST_CASE(
       offset += sizeof(uint64_t);
     }
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
@@ -1162,14 +1097,16 @@ TEST_CASE(
       offset += sizeof(uint64_t);
     }
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
@@ -1181,22 +1118,7 @@ TEST_CASE(
   tiledb::sm::Config config;
 
   const uint64_t nelts = 100;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
+  auto tile = make_increasing_tile(nelts);
 
   // Set up test data
   std::vector<uint64_t> sizes{
@@ -1227,33 +1149,14 @@ TEST_CASE(
   }
   offsets[offsets.size() - 1] = offset;
 
-  const uint64_t offsets_tile_size =
-      offsets.size() * constants::cell_var_offset_size;
-
-  Tile offsets_tile(
-      constants::format_version,
-      Datatype::UINT64,
-      constants::cell_var_offset_size,
-      dim_num,
-      offsets_tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < offsets.size(); i++) {
-    CHECK(offsets_tile
-              .write(
-                  &offsets[i],
-                  i * constants::cell_var_offset_size,
-                  constants::cell_var_offset_size)
-              .ok());
-  }
+  auto offsets_tile = make_offsets_tile(offsets);
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
   pipeline.add_filter(Add1OutOfPlace());
 
   SECTION("- Single stage") {
-    Tile::set_max_tile_chunk_size(80);
+    WriterTile::set_max_tile_chunk_size(80);
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
               .ok());
 
@@ -1291,21 +1194,23 @@ TEST_CASE(
       }
     }
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
 
   SECTION("- Multi-stage") {
     // Add a few more +1 filters and re-run.
-    Tile::set_max_tile_chunk_size(80);
+    WriterTile::set_max_tile_chunk_size(80);
     pipeline.add_filter(Add1OutOfPlace());
     pipeline.add_filter(Add1OutOfPlace());
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
@@ -1345,19 +1250,21 @@ TEST_CASE(
       }
     }
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
 
-  Tile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
+  WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
 }
 
 TEST_CASE(
@@ -1367,22 +1274,7 @@ TEST_CASE(
 
   // Set up test data
   const uint64_t nelts = 100;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
+  auto tile = make_increasing_tile(nelts);
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
@@ -1421,13 +1313,16 @@ TEST_CASE(
     offset += sizeof(uint64_t);
   }
 
-  tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+  auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+  CHECK(pipeline
+            .run_reverse(
+                &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
             .ok());
-  CHECK(tile.filtered_buffer().size() == 0);
+  CHECK(unfiltered_tile.filtered_size() == 0);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
-    CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+    CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+              .ok());
     CHECK(elt == i);
   }
 }
@@ -1438,22 +1333,7 @@ TEST_CASE(
   tiledb::sm::Config config;
 
   const uint64_t nelts = 100;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
+  auto tile = make_increasing_tile(nelts);
 
   // Set up test data
   std::vector<uint64_t> sizes{
@@ -1484,30 +1364,11 @@ TEST_CASE(
   }
   offsets[offsets.size() - 1] = offset;
 
-  const uint64_t offsets_tile_size =
-      offsets.size() * constants::cell_var_offset_size;
-
-  Tile offsets_tile(
-      constants::format_version,
-      Datatype::UINT64,
-      constants::cell_var_offset_size,
-      dim_num,
-      offsets_tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < offsets.size(); i++) {
-    CHECK(offsets_tile
-              .write(
-                  &offsets[i],
-                  i * constants::cell_var_offset_size,
-                  constants::cell_var_offset_size)
-              .ok());
-  }
+  auto offsets_tile = make_offsets_tile(offsets);
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  Tile::set_max_tile_chunk_size(80);
+  WriterTile::set_max_tile_chunk_size(80);
   pipeline.add_filter(Add1InPlace());
   pipeline.add_filter(Add1OutOfPlace());
   pipeline.add_filter(Add1InPlace());
@@ -1549,39 +1410,27 @@ TEST_CASE(
     }
   }
 
-  tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+  auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+  CHECK(pipeline
+            .run_reverse(
+                &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
             .ok());
-  CHECK(tile.filtered_buffer().size() == 0);
+  CHECK(unfiltered_tile.filtered_size() == 0);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
-    CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+    CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+              .ok());
     CHECK(elt == i);
   }
 
-  Tile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
+  WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
 }
 
 TEST_CASE("Filter: Test compression", "[filter][compression]") {
   tiledb::sm::Config config;
 
   const uint64_t nelts = 100;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
+  auto tile = make_increasing_tile(nelts);
 
   // Set up dummy array schema (needed by compressor filter for cell size, etc).
   uint32_t dim_dom[] = {1, 10};
@@ -1612,16 +1461,18 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() < nelts * sizeof(uint64_t));
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
 
     // Check all elements original values.
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
@@ -1636,16 +1487,18 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() < nelts * sizeof(uint64_t));
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
 
     // Check all elements original values.
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
@@ -1662,16 +1515,18 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() < nelts * sizeof(uint64_t));
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
 
     // Check all elements original values.
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
@@ -1681,22 +1536,7 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
   tiledb::sm::Config config;
 
   const uint64_t nelts = 100;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
+  auto tile = make_increasing_tile(nelts);
 
   // Set up test data
   std::vector<uint64_t> sizes{
@@ -1727,26 +1567,7 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
   }
   offsets[offsets.size() - 1] = offset;
 
-  const uint64_t offsets_tile_size =
-      offsets.size() * constants::cell_var_offset_size;
-
-  Tile offsets_tile(
-      constants::format_version,
-      Datatype::UINT64,
-      constants::cell_var_offset_size,
-      dim_num,
-      offsets_tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < offsets.size(); i++) {
-    CHECK(offsets_tile
-              .write(
-                  &offsets[i],
-                  i * constants::cell_var_offset_size,
-                  constants::cell_var_offset_size)
-              .ok());
-  }
+  auto offsets_tile = make_offsets_tile(offsets);
 
   // Set up dummy array schema (needed by compressor filter for cell size, etc).
   uint32_t dim_dom[] = {1, 10};
@@ -1767,7 +1588,7 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
   ThreadPool tp(4);
 
   SECTION("- Simple") {
-    Tile::set_max_tile_chunk_size(80);
+    WriterTile::set_max_tile_chunk_size(80);
     pipeline.add_filter(Add1InPlace());
     pipeline.add_filter(Add1OutOfPlace());
     pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::LZ4, 5));
@@ -1780,22 +1601,24 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
         tile.filtered_buffer().value_at_as<uint64_t>(0) ==
         9);  // Number of chunks
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
 
     // Check all elements original values.
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
 
   SECTION("- With checksum stage") {
-    Tile::set_max_tile_chunk_size(80);
+    WriterTile::set_max_tile_chunk_size(80);
     pipeline.add_filter(PseudoChecksumFilter());
     pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::LZ4, 5));
 
@@ -1807,22 +1630,24 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
         tile.filtered_buffer().value_at_as<uint64_t>(0) ==
         9);  // Number of chunks
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
 
     // Check all elements original values.
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
 
   SECTION("- With multiple stages") {
-    Tile::set_max_tile_chunk_size(80);
+    WriterTile::set_max_tile_chunk_size(80);
     pipeline.add_filter(Add1InPlace());
     pipeline.add_filter(PseudoChecksumFilter());
     pipeline.add_filter(Add1OutOfPlace());
@@ -1836,21 +1661,23 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
         tile.filtered_buffer().value_at_as<uint64_t>(0) ==
         9);  // Number of chunks
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
 
     // Check all elements original values.
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
 
-  Tile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
+  WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
 }
 
 TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
@@ -1859,22 +1686,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
   // Set up test data
   const uint64_t nelts = 100;
   const uint64_t expected_checksum = 4950;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
+  auto tile = make_increasing_tile(nelts);
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
@@ -1921,14 +1733,16 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
       offset += sizeof(uint64_t);
     }
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
@@ -1988,14 +1802,16 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
       offset += sizeof(uint64_t);
     }
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
@@ -2006,22 +1822,7 @@ TEST_CASE(
   tiledb::sm::Config config;
 
   const uint64_t nelts = 100;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
+  auto tile = make_increasing_tile(nelts);
 
   // Set up test data
   std::vector<uint64_t> sizes{
@@ -2052,26 +1853,7 @@ TEST_CASE(
   }
   offsets[offsets.size() - 1] = offset;
 
-  const uint64_t offsets_tile_size =
-      offsets.size() * constants::cell_var_offset_size;
-
-  Tile offsets_tile(
-      constants::format_version,
-      Datatype::UINT64,
-      constants::cell_var_offset_size,
-      dim_num,
-      offsets_tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < offsets.size(); i++) {
-    CHECK(offsets_tile
-              .write(
-                  &offsets[i],
-                  i * constants::cell_var_offset_size,
-                  constants::cell_var_offset_size)
-              .ok());
-  }
+  auto offsets_tile = make_offsets_tile(offsets);
 
   std::vector<uint64_t> expected_checksums{
       91, 99, 275, 238, 425, 525, 1350, 825, 1122};
@@ -2081,7 +1863,7 @@ TEST_CASE(
   pipeline.add_filter(PseudoChecksumFilter());
 
   SECTION("- Single stage") {
-    Tile::set_max_tile_chunk_size(80);
+    WriterTile::set_max_tile_chunk_size(80);
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
               .ok());
 
@@ -2126,20 +1908,22 @@ TEST_CASE(
       }
     }
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
 
   SECTION("- Multi-stage") {
-    Tile::set_max_tile_chunk_size(80);
+    WriterTile::set_max_tile_chunk_size(80);
     pipeline.add_filter(Add1OutOfPlace());
     pipeline.add_filter(Add1InPlace());
     pipeline.add_filter(PseudoChecksumFilter());
@@ -2194,19 +1978,21 @@ TEST_CASE(
       }
     }
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
 
-  Tile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
+  WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
 }
 
 TEST_CASE("Filter: Test pipeline modify filter", "[filter][modify]") {
@@ -2214,22 +2000,7 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter][modify]") {
 
   // Set up test data
   const uint64_t nelts = 100;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
+  auto tile = make_increasing_tile(nelts);
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
@@ -2275,13 +2046,16 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter][modify]") {
     offset += sizeof(uint64_t);
   }
 
-  tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+  auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+  CHECK(pipeline
+            .run_reverse(
+                &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
             .ok());
-  CHECK(tile.filtered_buffer().size() == 0);
+  CHECK(unfiltered_tile.filtered_size() == 0);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
-    CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+    CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+              .ok());
     CHECK(elt == i);
   }
 }
@@ -2290,22 +2064,7 @@ TEST_CASE("Filter: Test pipeline modify filter var", "[filter][modify][var]") {
   tiledb::sm::Config config;
 
   const uint64_t nelts = 100;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
+  auto tile = make_increasing_tile(nelts);
 
   // Set up test data
   std::vector<uint64_t> sizes{
@@ -2336,26 +2095,7 @@ TEST_CASE("Filter: Test pipeline modify filter var", "[filter][modify][var]") {
   }
   offsets[offsets.size() - 1] = offset;
 
-  const uint64_t offsets_tile_size =
-      offsets.size() * constants::cell_var_offset_size;
-
-  Tile offsets_tile(
-      constants::format_version,
-      Datatype::UINT64,
-      constants::cell_var_offset_size,
-      dim_num,
-      offsets_tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < offsets.size(); i++) {
-    CHECK(offsets_tile
-              .write(
-                  &offsets[i],
-                  i * constants::cell_var_offset_size,
-                  constants::cell_var_offset_size)
-              .ok());
-  }
+  auto offsets_tile = make_offsets_tile(offsets);
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
@@ -2372,7 +2112,7 @@ TEST_CASE("Filter: Test pipeline modify filter var", "[filter][modify][var]") {
   CHECK(add_n != nullptr);
   add_n->set_increment(2);
 
-  Tile::set_max_tile_chunk_size(80);
+  WriterTile::set_max_tile_chunk_size(80);
   CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
             .ok());
 
@@ -2410,17 +2150,20 @@ TEST_CASE("Filter: Test pipeline modify filter var", "[filter][modify][var]") {
     }
   }
 
-  tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+  auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+  CHECK(pipeline
+            .run_reverse(
+                &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
             .ok());
-  CHECK(tile.filtered_buffer().size() == 0);
+  CHECK(unfiltered_tile.filtered_size() == 0);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
-    CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+    CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+              .ok());
     CHECK(elt == i);
   }
 
-  Tile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
+  WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
 }
 
 TEST_CASE("Filter: Test pipeline copy", "[filter][copy]") {
@@ -2429,22 +2172,7 @@ TEST_CASE("Filter: Test pipeline copy", "[filter][copy]") {
   const uint64_t expected_checksum = 5350;
 
   const uint64_t nelts = 100;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
+  auto tile = make_increasing_tile(nelts);
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
@@ -2503,13 +2231,16 @@ TEST_CASE("Filter: Test pipeline copy", "[filter][copy]") {
     offset += sizeof(uint64_t);
   }
 
-  tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+  auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+  CHECK(pipeline
+            .run_reverse(
+                &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
             .ok());
-  CHECK(tile.filtered_buffer().size() == 0);
+  CHECK(unfiltered_tile.filtered_size() == 0);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
-    CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+    CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+              .ok());
     CHECK(elt == i);
   }
 }
@@ -2518,22 +2249,6 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
   tiledb::sm::Config config;
 
   const uint64_t nelts = 100;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
 
   EncryptionKey encryption_key;
   REQUIRE(encryption_key
@@ -2568,6 +2283,8 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
 
   ThreadPool tp(4);
   for (int i = 0; i < 100; i++) {
+    auto tile = make_increasing_tile(nelts);
+
     // Construct a random pipeline
     FilterPipeline pipeline;
     const unsigned max_num_filters = 6;
@@ -2601,14 +2318,16 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t n = 0; n < nelts; n++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, n * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, n * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == n);
     }
   }
@@ -2621,22 +2340,7 @@ TEST_CASE(
   REQUIRE(config.set("sm.skip_checksum_validation", "true").ok());
 
   const uint64_t nelts = 100;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
+  auto tile = make_increasing_tile(nelts);
 
   // MD5
   FilterPipeline md5_pipeline;
@@ -2648,34 +2352,41 @@ TEST_CASE(
   CHECK(tile.size() == 0);
   CHECK(tile.filtered_buffer().size() != 0);
 
-  tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
+  auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
   CHECK(md5_pipeline
-            .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .run_reverse(
+                &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
             .ok());
-  CHECK(tile.filtered_buffer().size() == 0);
+  CHECK(unfiltered_tile.filtered_size() == 0);
   for (uint64_t n = 0; n < nelts; n++) {
     uint64_t elt = 0;
-    CHECK(tile.read(&elt, n * sizeof(uint64_t), sizeof(uint64_t)).ok());
+    CHECK(unfiltered_tile.read(&elt, n * sizeof(uint64_t), sizeof(uint64_t))
+              .ok());
     CHECK(elt == n);
   }
 
   // SHA256
+  auto tile2 = make_increasing_tile(nelts);
+
   FilterPipeline sha_256_pipeline;
   ChecksumMD5Filter sha_256_filter;
   sha_256_pipeline.add_filter(sha_256_filter);
-  CHECK(sha_256_pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp)
-            .ok());
-  CHECK(tile.size() == 0);
-  CHECK(tile.filtered_buffer().size() != 0);
+  CHECK(
+      sha_256_pipeline.run_forward(&test::g_helper_stats, &tile2, nullptr, &tp)
+          .ok());
+  CHECK(tile2.size() == 0);
+  CHECK(tile2.filtered_buffer().size() != 0);
 
-  tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
+  auto unfiltered_tile2 = create_tile_for_unfiltering(nelts, tile2);
   CHECK(sha_256_pipeline
-            .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+            .run_reverse(
+                &test::g_helper_stats, &unfiltered_tile2, nullptr, &tp, config)
             .ok());
-  CHECK(tile.filtered_buffer().size() == 0);
+  CHECK(unfiltered_tile2.filtered_size() == 0);
   for (uint64_t n = 0; n < nelts; n++) {
     uint64_t elt = 0;
-    CHECK(tile.read(&elt, n * sizeof(uint64_t), sizeof(uint64_t)).ok());
+    CHECK(unfiltered_tile2.read(&elt, n * sizeof(uint64_t), sizeof(uint64_t))
+              .ok());
     CHECK(elt == n);
   }
 }
@@ -2685,28 +2396,14 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
 
   // Set up test data
   const uint64_t nelts = 1000;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
   pipeline.add_filter(BitWidthReductionFilter());
 
   SECTION("- Single stage") {
+    auto tile = make_increasing_tile(nelts);
+
     CHECK(
         pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
 
@@ -2738,14 +2435,16 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
     auto compressed_size = tile.filtered_buffer().size();
     CHECK(compressed_size < nelts * sizeof(uint64_t));
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
@@ -2754,6 +2453,8 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
     std::vector<uint32_t> window_sizes = {
         32, 64, 128, 256, 437, 512, 1024, 2000};
     for (auto window_size : window_sizes) {
+      auto tile = make_increasing_tile(nelts);
+
       pipeline.get_filter<BitWidthReductionFilter>()->set_max_window_size(
           window_size);
 
@@ -2762,14 +2463,17 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
       CHECK(tile.size() == 0);
       CHECK(tile.filtered_buffer().size() != 0);
 
-      tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-      CHECK(pipeline
-                .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-                .ok());
-      CHECK(tile.filtered_buffer().size() == 0);
+      auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+      CHECK(
+          pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+      CHECK(unfiltered_tile.filtered_size() == 0);
       for (uint64_t i = 0; i < nelts; i++) {
         uint64_t elt = 0;
-        CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+        CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                  .ok());
         CHECK(elt == i);
       }
     }
@@ -2782,13 +2486,11 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
     std::uniform_int_distribution<> rng(0, std::numeric_limits<int32_t>::max());
     INFO("Random element seed: " << seed);
 
-    Tile tile(
+    WriterTile tile(
         constants::format_version,
         Datatype::UINT64,
-        cell_size,
-        dim_num,
-        tile_size,
-        0);
+        sizeof(uint64_t),
+        nelts * sizeof(uint64_t));
 
     // Set up test data
     for (uint64_t i = 0; i < nelts; i++) {
@@ -2801,14 +2503,16 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK((int64_t)elt == rng(gen_copy));
     }
   }
@@ -2822,19 +2526,15 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
         std::numeric_limits<int32_t>::max());
     INFO("Random element seed: " << seed);
 
-    const uint64_t tile_size2 = nelts * sizeof(uint32_t);
-
-    Tile tile(
+    WriterTile tile(
         constants::format_version,
-        Datatype::UINT64,
-        cell_size,
-        dim_num,
-        tile_size2,
-        0);
+        Datatype::UINT32,
+        sizeof(uint32_t),
+        nelts * sizeof(uint32_t));
 
     // Set up test data
     for (uint64_t i = 0; i < nelts; i++) {
-      uint64_t val = (uint32_t)rng(gen);
+      uint32_t val = (uint32_t)rng(gen);
       CHECK(tile.write(&val, i * sizeof(uint32_t), sizeof(uint32_t)).ok());
     }
 
@@ -2843,26 +2543,26 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size2, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       int32_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(int32_t), sizeof(int32_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(int32_t), sizeof(int32_t))
+                .ok());
       CHECK(elt == rng(gen_copy));
     }
   }
 
   SECTION("- Byte overflow") {
-    Tile tile(
+    WriterTile tile(
         constants::format_version,
         Datatype::UINT64,
-        cell_size,
-        dim_num,
-        tile_size,
-        0);
+        sizeof(uint64_t),
+        nelts * sizeof(uint64_t));
 
     // Set up test data
     for (uint64_t i = 0; i < nelts; i++) {
@@ -2875,14 +2575,16 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i % 257);
     }
   }
@@ -2894,22 +2596,6 @@ TEST_CASE(
   tiledb::sm::Config config;
 
   const uint64_t nelts = 100;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
 
   // Set up test data
   std::vector<uint64_t> sizes{
@@ -2943,30 +2629,15 @@ TEST_CASE(
   const uint64_t offsets_tile_size =
       offsets.size() * constants::cell_var_offset_size;
 
-  Tile offsets_tile(
-      constants::format_version,
-      Datatype::UINT64,
-      constants::cell_var_offset_size,
-      dim_num,
-      offsets_tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < offsets.size(); i++) {
-    CHECK(offsets_tile
-              .write(
-                  &offsets[i],
-                  i * constants::cell_var_offset_size,
-                  constants::cell_var_offset_size)
-              .ok());
-  }
-
   FilterPipeline pipeline;
   ThreadPool tp(4);
   pipeline.add_filter(BitWidthReductionFilter());
 
   SECTION("- Single stage") {
-    Tile::set_max_tile_chunk_size(80);
+    auto tile = make_increasing_tile(nelts);
+    auto offsets_tile = make_offsets_tile(offsets);
+
+    WriterTile::set_max_tile_chunk_size(80);
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
               .ok());
 
@@ -3020,23 +2691,27 @@ TEST_CASE(
     auto compressed_size = tile.filtered_buffer().size();
     CHECK(compressed_size < nelts * sizeof(uint64_t));
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
 
   SECTION("- Window sizes") {
-    Tile::set_max_tile_chunk_size(80);
+    WriterTile::set_max_tile_chunk_size(80);
     std::vector<uint32_t> window_sizes = {
         32, 64, 128, 256, 437, 512, 1024, 2000};
     for (auto window_size : window_sizes) {
+      auto tile = make_increasing_tile(nelts);
+      auto offsets_tile = make_offsets_tile(offsets);
       pipeline.get_filter<BitWidthReductionFilter>()->set_max_window_size(
           window_size);
 
@@ -3046,34 +2721,36 @@ TEST_CASE(
       CHECK(tile.size() == 0);
       CHECK(tile.filtered_buffer().size() != 0);
 
-      tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-      CHECK(pipeline
-                .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-                .ok());
-      CHECK(tile.filtered_buffer().size() == 0);
+      auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+      CHECK(
+          pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+      CHECK(unfiltered_tile.filtered_size() == 0);
       for (uint64_t i = 0; i < nelts; i++) {
         uint64_t elt = 0;
-        CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+        CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                  .ok());
         CHECK(elt == i);
       }
     }
   }
 
   SECTION("- Random values") {
-    Tile::set_max_tile_chunk_size(80);
+    WriterTile::set_max_tile_chunk_size(80);
     std::random_device rd;
     auto seed = rd();
     std::mt19937 gen(seed), gen_copy(seed);
     std::uniform_int_distribution<> rng(0, std::numeric_limits<int32_t>::max());
     INFO("Random element seed: " << seed);
 
-    Tile tile(
+    WriterTile tile(
         constants::format_version,
         Datatype::UINT64,
-        cell_size,
-        dim_num,
-        tile_size,
-        0);
+        sizeof(uint64_t),
+        nelts * sizeof(uint64_t));
+    auto offsets_tile = make_offsets_tile(offsets);
 
     // Set up test data
     for (uint64_t i = 0; i < nelts; i++) {
@@ -3086,20 +2763,22 @@ TEST_CASE(
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK((int64_t)elt == rng(gen_copy));
     }
   }
 
   SECTION(" - Random signed values") {
-    Tile::set_max_tile_chunk_size(80);
+    WriterTile::set_max_tile_chunk_size(80);
     std::random_device rd;
     auto seed = rd();
     std::mt19937 gen(seed), gen_copy(seed);
@@ -3108,19 +2787,15 @@ TEST_CASE(
         std::numeric_limits<int32_t>::max());
     INFO("Random element seed: " << seed);
 
-    const uint64_t tile_size2 = nelts * sizeof(uint32_t);
-
-    Tile tile(
+    WriterTile tile(
         constants::format_version,
-        Datatype::UINT64,
-        cell_size,
-        dim_num,
-        tile_size2,
-        0);
+        Datatype::UINT32,
+        sizeof(uint32_t),
+        nelts * sizeof(uint32_t));
 
     // Set up test data
     for (uint64_t i = 0; i < nelts; i++) {
-      uint64_t val = (uint32_t)rng(gen);
+      uint32_t val = (uint32_t)rng(gen);
       CHECK(tile.write(&val, i * sizeof(uint32_t), sizeof(uint32_t)).ok());
     }
 
@@ -3129,13 +2804,11 @@ TEST_CASE(
       offsets32[i] /= 2;
     }
 
-    Tile offsets_tile32(
+    WriterTile offsets_tile32(
         constants::format_version,
         Datatype::UINT64,
         constants::cell_var_offset_size,
-        dim_num,
-        offsets_tile_size,
-        0);
+        offsets_tile_size);
 
     // Set up test data
     for (uint64_t i = 0; i < offsets.size(); i++) {
@@ -3153,27 +2826,27 @@ TEST_CASE(
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size2, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       int32_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(int32_t), sizeof(int32_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(int32_t), sizeof(int32_t))
+                .ok());
       CHECK(elt == rng(gen_copy));
     }
   }
 
   SECTION("- Byte overflow") {
-    Tile::set_max_tile_chunk_size(80);
-    Tile tile(
+    WriterTile::set_max_tile_chunk_size(80);
+    WriterTile tile(
         constants::format_version,
         Datatype::UINT64,
-        cell_size,
-        dim_num,
-        tile_size,
-        0);
+        sizeof(uint64_t),
+        nelts * sizeof(uint64_t));
 
     // Set up test data
     for (uint64_t i = 0; i < nelts; i++) {
@@ -3181,24 +2854,28 @@ TEST_CASE(
       CHECK(tile.write(&val, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
     }
 
+    auto offsets_tile = make_offsets_tile(offsets);
+
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
               .ok());
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i % 257);
     }
   }
 
-  Tile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
+  WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
 }
 
 TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
@@ -3206,28 +2883,13 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
 
   // Set up test data
   const uint64_t nelts = 1000;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
   pipeline.add_filter(PositiveDeltaFilter());
 
   SECTION("- Single stage") {
+    auto tile = make_increasing_tile(nelts);
     CHECK(
         pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
 
@@ -3259,14 +2921,16 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
         encoded_size == pipeline_metadata_size + filter_metadata_size +
                             nelts * sizeof(uint64_t));
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
@@ -3275,6 +2939,7 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
     std::vector<uint32_t> window_sizes = {
         32, 64, 128, 256, 437, 512, 1024, 2000};
     for (auto window_size : window_sizes) {
+      auto tile = make_increasing_tile(nelts);
       pipeline.get_filter<PositiveDeltaFilter>()->set_max_window_size(
           window_size);
 
@@ -3283,20 +2948,24 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
       CHECK(tile.size() == 0);
       CHECK(tile.filtered_buffer().size() != 0);
 
-      tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-      CHECK(pipeline
-                .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-                .ok());
-      CHECK(tile.filtered_buffer().size() == 0);
+      auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+      CHECK(
+          pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+      CHECK(unfiltered_tile.filtered_size() == 0);
       for (uint64_t i = 0; i < nelts; i++) {
         uint64_t elt = 0;
-        CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+        CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                  .ok());
         CHECK(elt == i);
       }
     }
   }
 
   SECTION("- Error on non-positive delta data") {
+    auto tile = make_increasing_tile(nelts);
     for (uint64_t i = 0; i < nelts; i++) {
       auto val = nelts - i;
       CHECK(tile.write(&val, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
@@ -3313,22 +2982,6 @@ TEST_CASE(
   tiledb::sm::Config config;
 
   const uint64_t nelts = 100;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
 
   // Set up test data
   std::vector<uint64_t> sizes{
@@ -3359,33 +3012,15 @@ TEST_CASE(
   }
   offsets[offsets.size() - 1] = offset;
 
-  const uint64_t offsets_tile_size =
-      offsets.size() * constants::cell_var_offset_size;
-
-  Tile offsets_tile(
-      constants::format_version,
-      Datatype::UINT64,
-      constants::cell_var_offset_size,
-      dim_num,
-      offsets_tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < offsets.size(); i++) {
-    CHECK(offsets_tile
-              .write(
-                  &offsets[i],
-                  i * constants::cell_var_offset_size,
-                  constants::cell_var_offset_size)
-              .ok());
-  }
-
   FilterPipeline pipeline;
   ThreadPool tp(4);
   pipeline.add_filter(PositiveDeltaFilter());
 
   SECTION("- Single stage") {
-    Tile::set_max_tile_chunk_size(80);
+    auto tile = make_increasing_tile(nelts);
+    auto offsets_tile = make_offsets_tile(offsets);
+
+    WriterTile::set_max_tile_chunk_size(80);
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
               .ok());
 
@@ -3440,23 +3075,28 @@ TEST_CASE(
         encoded_size ==
         pipeline_metadata_size + total_md_size + nelts * sizeof(uint64_t));
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
 
   SECTION("- Window sizes") {
-    Tile::set_max_tile_chunk_size(80);
+    WriterTile::set_max_tile_chunk_size(80);
     std::vector<uint32_t> window_sizes = {
         32, 64, 128, 256, 437, 512, 1024, 2000};
     for (auto window_size : window_sizes) {
+      auto tile = make_increasing_tile(nelts);
+      auto offsets_tile = make_offsets_tile(offsets);
+
       pipeline.get_filter<PositiveDeltaFilter>()->set_max_window_size(
           window_size);
 
@@ -3466,21 +3106,27 @@ TEST_CASE(
       CHECK(tile.size() == 0);
       CHECK(tile.filtered_buffer().size() != 0);
 
-      tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-      CHECK(pipeline
-                .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-                .ok());
-      CHECK(tile.filtered_buffer().size() == 0);
+      auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+      CHECK(
+          pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+      CHECK(unfiltered_tile.filtered_size() == 0);
       for (uint64_t i = 0; i < nelts; i++) {
         uint64_t elt = 0;
-        CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+        CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                  .ok());
         CHECK(elt == i);
       }
     }
   }
 
   SECTION("- Error on non-positive delta data") {
-    Tile::set_max_tile_chunk_size(80);
+    auto tile = make_increasing_tile(nelts);
+    auto offsets_tile = make_offsets_tile(offsets);
+
+    WriterTile::set_max_tile_chunk_size(80);
     for (uint64_t i = 0; i < nelts; i++) {
       auto val = nelts - i;
       CHECK(tile.write(&val, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
@@ -3491,7 +3137,7 @@ TEST_CASE(
              .ok());
   }
 
-  Tile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
+  WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
 }
 
 TEST_CASE("Filter: Test bitshuffle", "[filter][bitshuffle]") {
@@ -3499,22 +3145,7 @@ TEST_CASE("Filter: Test bitshuffle", "[filter][bitshuffle]") {
 
   // Set up test data
   const uint64_t nelts = 1000;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
+  auto tile = make_increasing_tile(nelts);
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
@@ -3526,14 +3157,16 @@ TEST_CASE("Filter: Test bitshuffle", "[filter][bitshuffle]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
@@ -3542,13 +3175,11 @@ TEST_CASE("Filter: Test bitshuffle", "[filter][bitshuffle]") {
     const uint32_t nelts2 = 1001;
     const uint64_t tile_size2 = nelts2 * sizeof(uint32_t);
 
-    Tile tile2(
+    WriterTile tile2(
         constants::format_version,
         Datatype::UINT32,
         sizeof(uint32_t),
-        dim_num,
-        tile_size2,
-        0);
+        tile_size2);
 
     // Set up test data
     for (uint32_t i = 0; i < nelts2; i++) {
@@ -3560,15 +3191,17 @@ TEST_CASE("Filter: Test bitshuffle", "[filter][bitshuffle]") {
     CHECK(tile2.size() == 0);
     CHECK(tile2.filtered_buffer().size() != 0);
 
-    tile2 =
-        recreate_tile_for_unfiltering(dim_num, tile_size2, std::move(tile2));
-    CHECK(pipeline
-              .run_reverse(&test::g_helper_stats, &tile2, nullptr, &tp, config)
-              .ok());
-    CHECK(tile2.filtered_buffer().size() == 0);
+    auto unfiltered_tile2 = create_tile_for_unfiltering(nelts2, tile2);
+    CHECK(
+        pipeline
+            .run_reverse(
+                &test::g_helper_stats, &unfiltered_tile2, nullptr, &tp, config)
+            .ok());
+    CHECK(unfiltered_tile2.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts2; i++) {
       uint32_t elt = 0;
-      CHECK(tile2.read(&elt, i * sizeof(uint32_t), sizeof(uint32_t)).ok());
+      CHECK(unfiltered_tile2.read(&elt, i * sizeof(uint32_t), sizeof(uint32_t))
+                .ok());
       CHECK(elt == i);
     }
   }
@@ -3578,22 +3211,7 @@ TEST_CASE("Filter: Test bitshuffle var", "[filter][bitshuffle][var]") {
   tiledb::sm::Config config;
 
   const uint64_t nelts = 100;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
+  auto tile = make_increasing_tile(nelts);
 
   // Set up test data
   std::vector<uint64_t> sizes{
@@ -3624,62 +3242,43 @@ TEST_CASE("Filter: Test bitshuffle var", "[filter][bitshuffle][var]") {
   }
   offsets[offsets.size() - 1] = offset;
 
-  const uint64_t offsets_tile_size =
-      offsets.size() * constants::cell_var_offset_size;
-
-  Tile offsets_tile(
-      constants::format_version,
-      Datatype::UINT64,
-      constants::cell_var_offset_size,
-      dim_num,
-      offsets_tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < offsets.size(); i++) {
-    CHECK(offsets_tile
-              .write(
-                  &offsets[i],
-                  i * constants::cell_var_offset_size,
-                  constants::cell_var_offset_size)
-              .ok());
-  }
+  auto offsets_tile = make_offsets_tile(offsets);
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
   pipeline.add_filter(BitshuffleFilter());
 
   SECTION("- Single stage") {
-    Tile::set_max_tile_chunk_size(80);
+    WriterTile::set_max_tile_chunk_size(80);
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
               .ok());
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
 
   SECTION("- Indivisible by 8") {
-    Tile::set_max_tile_chunk_size(80);
+    WriterTile::set_max_tile_chunk_size(80);
     const uint32_t nelts2 = 1001;
     const uint64_t tile_size2 = nelts2 * sizeof(uint32_t);
 
-    Tile tile2(
+    WriterTile tile2(
         constants::format_version,
         Datatype::UINT32,
         sizeof(uint32_t),
-        dim_num,
-        tile_size2,
-        0);
+        tile_size2);
 
     // Set up test data
     for (uint32_t i = 0; i < nelts2; i++) {
@@ -3692,20 +3291,22 @@ TEST_CASE("Filter: Test bitshuffle var", "[filter][bitshuffle][var]") {
     CHECK(tile2.size() == 0);
     CHECK(tile2.filtered_buffer().size() != 0);
 
-    tile2 =
-        recreate_tile_for_unfiltering(dim_num, tile_size2, std::move(tile2));
-    CHECK(pipeline
-              .run_reverse(&test::g_helper_stats, &tile2, nullptr, &tp, config)
-              .ok());
-    CHECK(tile2.filtered_buffer().size() == 0);
+    auto unfiltered_tile2 = create_tile_for_unfiltering(nelts2, tile2);
+    CHECK(
+        pipeline
+            .run_reverse(
+                &test::g_helper_stats, &unfiltered_tile2, nullptr, &tp, config)
+            .ok());
+    CHECK(unfiltered_tile2.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts2; i++) {
       uint32_t elt = 0;
-      CHECK(tile2.read(&elt, i * sizeof(uint32_t), sizeof(uint32_t)).ok());
+      CHECK(unfiltered_tile2.read(&elt, i * sizeof(uint32_t), sizeof(uint32_t))
+                .ok());
       CHECK(elt == i);
     }
   }
 
-  Tile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
+  WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
 }
 
 TEST_CASE("Filter: Test byteshuffle", "[filter][byteshuffle]") {
@@ -3713,22 +3314,7 @@ TEST_CASE("Filter: Test byteshuffle", "[filter][byteshuffle]") {
 
   // Set up test data
   const uint64_t nelts = 1000;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
+  auto tile = make_increasing_tile(nelts);
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
@@ -3740,14 +3326,16 @@ TEST_CASE("Filter: Test byteshuffle", "[filter][byteshuffle]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
@@ -3756,13 +3344,11 @@ TEST_CASE("Filter: Test byteshuffle", "[filter][byteshuffle]") {
     const uint32_t nelts2 = 1001;
     const uint64_t tile_size2 = nelts2 * sizeof(uint32_t);
 
-    Tile tile2(
+    WriterTile tile2(
         constants::format_version,
         Datatype::UINT32,
         sizeof(uint32_t),
-        dim_num,
-        tile_size2,
-        0);
+        tile_size2);
 
     // Set up test data
     for (uint32_t i = 0; i < nelts2; i++) {
@@ -3774,15 +3360,17 @@ TEST_CASE("Filter: Test byteshuffle", "[filter][byteshuffle]") {
     CHECK(tile2.size() == 0);
     CHECK(tile2.filtered_buffer().size() != 0);
 
-    tile2 =
-        recreate_tile_for_unfiltering(dim_num, tile_size2, std::move(tile2));
-    CHECK(pipeline
-              .run_reverse(&test::g_helper_stats, &tile2, nullptr, &tp, config)
-              .ok());
-    CHECK(tile2.filtered_buffer().size() == 0);
+    auto unfiltered_tile2 = create_tile_for_unfiltering(nelts2, tile2);
+    CHECK(
+        pipeline
+            .run_reverse(
+                &test::g_helper_stats, &unfiltered_tile2, nullptr, &tp, config)
+            .ok());
+    CHECK(unfiltered_tile2.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts2; i++) {
       uint32_t elt = 0;
-      CHECK(tile2.read(&elt, i * sizeof(uint32_t), sizeof(uint32_t)).ok());
+      CHECK(unfiltered_tile2.read(&elt, i * sizeof(uint32_t), sizeof(uint32_t))
+                .ok());
       CHECK(elt == i);
     }
   }
@@ -3792,22 +3380,7 @@ TEST_CASE("Filter: Test byteshuffle var", "[filter][byteshuffle][var]") {
   tiledb::sm::Config config;
 
   const uint64_t nelts = 100;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
+  auto tile = make_increasing_tile(nelts);
 
   // Set up test data
   std::vector<uint64_t> sizes{
@@ -3838,62 +3411,43 @@ TEST_CASE("Filter: Test byteshuffle var", "[filter][byteshuffle][var]") {
   }
   offsets[offsets.size() - 1] = offset;
 
-  const uint64_t offsets_tile_size =
-      offsets.size() * constants::cell_var_offset_size;
-
-  Tile offsets_tile(
-      constants::format_version,
-      Datatype::UINT64,
-      constants::cell_var_offset_size,
-      dim_num,
-      offsets_tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < offsets.size(); i++) {
-    CHECK(offsets_tile
-              .write(
-                  &offsets[i],
-                  i * constants::cell_var_offset_size,
-                  constants::cell_var_offset_size)
-              .ok());
-  }
+  auto offsets_tile = make_offsets_tile(offsets);
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
   pipeline.add_filter(ByteshuffleFilter());
 
   SECTION("- Single stage") {
-    Tile::set_max_tile_chunk_size(80);
+    WriterTile::set_max_tile_chunk_size(80);
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
               .ok());
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
 
   SECTION("- Uneven number of elements") {
-    Tile::set_max_tile_chunk_size(80);
+    WriterTile::set_max_tile_chunk_size(80);
     const uint32_t nelts2 = 1001;
     const uint64_t tile_size2 = nelts2 * sizeof(uint32_t);
 
-    Tile tile2(
+    WriterTile tile2(
         constants::format_version,
         Datatype::UINT32,
         sizeof(uint32_t),
-        dim_num,
-        tile_size2,
-        0);
+        tile_size2);
 
     // Set up test data
     for (uint32_t i = 0; i < nelts2; i++) {
@@ -3906,20 +3460,22 @@ TEST_CASE("Filter: Test byteshuffle var", "[filter][byteshuffle][var]") {
     CHECK(tile2.size() == 0);
     CHECK(tile2.filtered_buffer().size() != 0);
 
-    tile2 =
-        recreate_tile_for_unfiltering(dim_num, tile_size2, std::move(tile2));
-    CHECK(pipeline
-              .run_reverse(&test::g_helper_stats, &tile2, nullptr, &tp, config)
-              .ok());
-    CHECK(tile2.filtered_buffer().size() == 0);
+    auto unfiltered_tile2 = create_tile_for_unfiltering(nelts2, tile2);
+    CHECK(
+        pipeline
+            .run_reverse(
+                &test::g_helper_stats, &unfiltered_tile2, nullptr, &tp, config)
+            .ok());
+    CHECK(unfiltered_tile2.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts2; i++) {
       uint32_t elt = 0;
-      CHECK(tile2.read(&elt, i * sizeof(uint32_t), sizeof(uint32_t)).ok());
+      CHECK(unfiltered_tile2.read(&elt, i * sizeof(uint32_t), sizeof(uint32_t))
+                .ok());
       CHECK(elt == i);
     }
   }
 
-  Tile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
+  WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
 }
 
 TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
@@ -3927,22 +3483,7 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
 
   // Set up test data
   const uint64_t nelts = 1000;
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  const uint32_t dim_num = 0;
-
-  Tile tile(
-      constants::format_version,
-      Datatype::UINT64,
-      cell_size,
-      dim_num,
-      tile_size,
-      0);
-
-  // Set up test data
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
-  }
+  auto tile = make_increasing_tile(nelts);
 
   SECTION("- AES-256-GCM") {
     FilterPipeline pipeline;
@@ -3966,41 +3507,46 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     CHECK(tile.size() == 0);
     CHECK(tile.filtered_buffer().size() != 0);
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
 
     // Check error decrypting with wrong key.
+    tile = make_increasing_tile(nelts);
     CHECK(
         pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
     key[0]++;
     filter->set_key(key);
 
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-    CHECK(!pipeline
-               .run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-               .ok());
+    unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    CHECK(
+        !pipeline
+             .run_reverse(
+                 &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+             .ok());
 
-    // Fix key and check success. Note: this test depends on the implementation
-    // leaving the tile data unmodified when the decryption fails, which is not
-    // true in general use of the filter pipeline.
-    tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
+    // Fix key and check success.
+    unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
     key[0]--;
     filter->set_key(key);
-    CHECK(
-        pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
-            .ok());
-    CHECK(tile.filtered_buffer().size() == 0);
+    CHECK(pipeline
+              .run_reverse(
+                  &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
+              .ok());
+    CHECK(unfiltered_tile.filtered_size() == 0);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
+                .ok());
       CHECK(elt == i);
     }
   }
@@ -4014,7 +3560,7 @@ void testing_float_scaling_filter() {
   const uint64_t nelts = 100;
   const uint64_t tile_size = nelts * sizeof(FloatingType);
   const uint64_t cell_size = sizeof(FloatingType);
-  const uint32_t dim_num = 0;
+  ;
 
   Datatype t = Datatype::FLOAT32;
   switch (sizeof(FloatingType)) {
@@ -4032,7 +3578,7 @@ void testing_float_scaling_filter() {
     }
   }
 
-  Tile tile(constants::format_version, t, cell_size, dim_num, tile_size, 0);
+  WriterTile tile(constants::format_version, t, cell_size, tile_size);
 
   std::vector<FloatingType> float_result_vec;
   double scale = 2.53;
@@ -4075,12 +3621,16 @@ void testing_float_scaling_filter() {
   CHECK(tile.size() == 0);
   CHECK(tile.filtered_buffer().size() != 0);
 
-  tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+  auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+  CHECK(pipeline
+            .run_reverse(
+                &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
             .ok());
   for (uint64_t i = 0; i < nelts; i++) {
     FloatingType elt = 0.0f;
-    CHECK(tile.read(&elt, i * sizeof(FloatingType), sizeof(FloatingType)).ok());
+    CHECK(unfiltered_tile
+              .read(&elt, i * sizeof(FloatingType), sizeof(FloatingType))
+              .ok());
     CHECK(elt == float_result_vec[i]);
   }
 }
@@ -4110,9 +3660,9 @@ void testing_xor_filter(Datatype t) {
   const uint64_t nelts = 100;
   const uint64_t tile_size = nelts * sizeof(T);
   const uint64_t cell_size = sizeof(T);
-  const uint32_t dim_num = 0;
+  ;
 
-  Tile tile(constants::format_version, t, cell_size, dim_num, tile_size, 0);
+  WriterTile tile(constants::format_version, t, cell_size, tile_size);
 
   // Setting up the random number generator for the XOR filter testing.
   std::mt19937_64 gen(0x57A672DE);
@@ -4137,12 +3687,14 @@ void testing_xor_filter(Datatype t) {
   CHECK(tile.size() == 0);
   CHECK(tile.filtered_buffer().size() != 0);
 
-  tile = recreate_tile_for_unfiltering(dim_num, tile_size, std::move(tile));
-  CHECK(pipeline.run_reverse(&test::g_helper_stats, &tile, nullptr, &tp, config)
+  auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+  CHECK(pipeline
+            .run_reverse(
+                &test::g_helper_stats, &unfiltered_tile, nullptr, &tp, config)
             .ok());
   for (uint64_t i = 0; i < nelts; i++) {
     T elt = 0;
-    CHECK(tile.read(&elt, i * sizeof(T), sizeof(T)).ok());
+    CHECK(unfiltered_tile.read(&elt, i * sizeof(T), sizeof(T)).ok());
     CHECK(elt == results[i]);
   }
 }

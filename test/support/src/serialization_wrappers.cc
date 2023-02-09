@@ -33,6 +33,8 @@
 
 #include <test/support/tdb_catch.h>
 #include <string>
+
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 
@@ -118,6 +120,25 @@ int tiledb_array_open_serialize(
   REQUIRE(rc == TILEDB_OK);
 
   tiledb_buffer_free(&buffer);
+  return rc;
+}
+
+int array_serialize_wrapper(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_array_t** new_array,
+    tiledb_serialization_type_t serialize_type) {
+  // Serialize the array
+  tiledb_buffer_t* buff;
+  int rc = tiledb_serialize_array(ctx, array, serialize_type, 1, &buff);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Load array from the rest server
+  rc = tiledb_deserialize_array(ctx, buff, serialize_type, 0, new_array);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up.
+  tiledb_buffer_free(&buff);
   return rc;
 }
 

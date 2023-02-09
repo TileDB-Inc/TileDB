@@ -104,13 +104,7 @@ VFS::VFS(
   supported_fs_.insert(Filesystem::GCS);
   st = gcs_.init(config_, io_tp_);
   if (!st.ok()) {
-    // We should print some warning here, LOG_STATUS only prints in
-    // verbose mode. Since this is called in the init of the context, we
-    // can't return the error through the normal set it on the context.
-    throw StatusException(Status_GCSError(
-        "GCS failed to initialize, GCS support will not be available in this "
-        "context: " +
-        st.message()));
+    throw std::runtime_error("[VFS::VFS] Failed to initialize GCS backend.");
   }
 #endif
 
@@ -1354,128 +1348,6 @@ Status VFS::read_ahead_impl(
   return Status::Ok();
 }
 
-Status VFS::read_all(
-    const URI& uri,
-    const std::vector<tuple<uint64_t, Tile*, uint64_t>>& regions,
-    ThreadPool* thread_pool,
-    std::vector<ThreadPool::Task>* tasks,
-    const bool use_read_ahead) {
-  if (regions.empty()) {
-    return Status::Ok();
-  }
-
-  // Convert the individual regions into batched regions.
-  std::vector<BatchedRead> batches;
-  RETURN_NOT_OK(compute_read_batches(regions, &batches));
-
-  // Read all the batches and copy to the original destinations.
-  for (const auto& batch : batches) {
-    URI uri_copy = uri;
-    BatchedRead batch_copy = batch;
-    auto task =
-        thread_pool->execute([this, uri_copy, batch_copy, use_read_ahead]() {
-          Buffer buffer;
-          RETURN_NOT_OK(buffer.realloc(batch_copy.nbytes));
-          RETURN_NOT_OK(read(
-              uri_copy,
-              batch_copy.offset,
-              buffer.data(),
-              batch_copy.nbytes,
-              use_read_ahead));
-          // Parallel copy back into the individual destinations.
-          for (uint64_t i = 0; i < batch_copy.regions.size(); i++) {
-            const auto& region = batch_copy.regions[i];
-            uint64_t offset = std::get<0>(region);
-            void* dest = std::get<1>(region)->filtered_buffer().data();
-            uint64_t nbytes = std::get<2>(region);
-            std::memcpy(dest, buffer.data(offset - batch_copy.offset), nbytes);
-          }
-
-          return Status::Ok();
-        });
-
-    tasks->push_back(std::move(task));
-  }
-
-  return Status::Ok();
-}
-
-Status VFS::read_all_no_batching(
-    const URI& uri,
-    const std::vector<tuple<uint64_t, Tile*, uint64_t>>& regions,
-    ThreadPool* thread_pool,
-    std::vector<ThreadPool::Task>* tasks,
-    const bool use_read_ahead) {
-  if (regions.empty()) {
-    return Status::Ok();
-  }
-
-  // Read all the batches and copy to the original destinations.
-  for (const auto& region : regions) {
-    URI uri_copy = uri;
-    auto task =
-        thread_pool->execute([this, uri_copy, region, use_read_ahead]() {
-          RETURN_NOT_OK(read(
-              uri_copy,
-              std::get<0>(region),
-              std::get<1>(region)->filtered_buffer().data(),
-              std::get<2>(region),
-              use_read_ahead));
-
-          return Status::Ok();
-        });
-
-    tasks->push_back(std::move(task));
-  }
-
-  return Status::Ok();
-}
-
-Status VFS::compute_read_batches(
-    const std::vector<tuple<uint64_t, Tile*, uint64_t>>& regions,
-    std::vector<BatchedRead>* batches) const {
-  // Ensure the regions are sorted on offset.
-  std::vector<tuple<uint64_t, Tile*, uint64_t>> sorted_regions(
-      regions.begin(), regions.end());
-  parallel_sort(
-      compute_tp_,
-      sorted_regions.begin(),
-      sorted_regions.end(),
-      [](const tuple<uint64_t, Tile*, uint64_t>& a,
-         const tuple<uint64_t, Tile*, uint64_t>& b) {
-        return std::get<0>(a) < std::get<0>(b);
-      });
-
-  // Start the first batch containing only the first region.
-  BatchedRead curr_batch(sorted_regions.front());
-  for (uint64_t i = 1; i < sorted_regions.size(); i++) {
-    const auto& region = sorted_regions[i];
-    uint64_t offset = std::get<0>(region);
-    uint64_t nbytes = std::get<2>(region);
-    uint64_t new_batch_size = (offset + nbytes) - curr_batch.offset;
-    uint64_t gap = offset - (curr_batch.offset + curr_batch.nbytes);
-    if (new_batch_size <= vfs_params_.max_batch_size_ &&
-        (new_batch_size <= vfs_params_.min_batch_size_ ||
-         gap <= vfs_params_.min_batch_gap_)) {
-      // Extend current batch.
-      curr_batch.nbytes = new_batch_size;
-      curr_batch.regions.push_back(region);
-    } else {
-      // Push the old batch and start a new one.
-      batches->push_back(curr_batch);
-      curr_batch.offset = offset;
-      curr_batch.nbytes = nbytes;
-      curr_batch.regions.clear();
-      curr_batch.regions.push_back(region);
-    }
-  }
-
-  // Push the last batch
-  batches->push_back(curr_batch);
-
-  return Status::Ok();
-}
-
 bool VFS::supports_fs(Filesystem fs) const {
   return (supported_fs_.find(fs) != supported_fs_.end());
 }
@@ -1634,9 +1506,28 @@ Status VFS::close_file(const URI& uri) {
       Status_VFSError("Unsupported URI schemes: " + uri.to_string()));
 }
 
-Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
+void VFS::finalize_and_close_file(const URI& uri) {
+  if (uri.is_s3()) {
+#ifdef HAVE_S3
+    s3_.finalize_and_flush_object(uri);
+    return;
+#else
+    throw StatusException(
+        Status_VFSError("TileDB was built without S3 support"));
+#endif
+  }
+  throw_if_not_ok(close_file(uri));
+}
+
+Status VFS::write(
+    const URI& uri,
+    const void* buffer,
+    uint64_t buffer_size,
+    bool remote_global_order_write) {
   stats_->add_counter("write_byte_num", buffer_size);
   stats_->add_counter("write_ops_num", 1);
+
+  (void)remote_global_order_write;
 
   if (uri.is_file()) {
 #ifdef _WIN32
@@ -1654,6 +1545,10 @@ Status VFS::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
+    if (remote_global_order_write) {
+      s3_.global_order_write_buffered(uri, buffer, buffer_size);
+      return Status::Ok();
+    }
     return s3_.write(uri, buffer, buffer_size);
 #else
     return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
@@ -1701,6 +1596,15 @@ VFS::multipart_upload_state(const URI& uri) {
       state.completed_parts.back().e_tag = entry.second.GetETag();
       state.completed_parts.back().part_number = entry.second.GetPartNumber();
     }
+    if (!s3_state->buffered_chunks.empty()) {
+      state.buffered_chunks.emplace();
+      for (auto& chunk : s3_state->buffered_chunks) {
+        state.buffered_chunks->emplace_back(
+            URI(chunk.uri).remove_trailing_slash().last_path_part(),
+            chunk.size);
+      }
+    }
+
     return {Status::Ok(), state};
 #else
     return {
@@ -1748,6 +1652,16 @@ Status VFS::set_multipart_upload_state(
       rv.first->second.SetETag(part.e_tag->c_str());
       rv.first->second.SetPartNumber(part.part_number);
     }
+
+    if (state.buffered_chunks.has_value()) {
+      for (auto& chunk : *state.buffered_chunks) {
+        // Chunk URI gets reconstructed from the serialized chunk name
+        // and the real attribute uri
+        s3_state.buffered_chunks.emplace_back(
+            s3_.generate_chunk_uri(uri, chunk.uri).to_string(), chunk.size);
+      }
+    }
+
     return s3_.set_multipart_upload_state(uri.to_string(), s3_state);
 #else
     return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
@@ -1775,10 +1689,13 @@ Status VFS::flush_multipart_file_buffer(const URI& uri) {
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     Buffer* buff = nullptr;
-    RETURN_NOT_OK(s3_.get_file_buffer(uri, &buff));
-    RETURN_NOT_OK(s3_.flush_file_buffer(uri, buff, true));
+    throw_if_not_ok(s3_.get_file_buffer(uri, &buff));
+    s3_.global_order_write(uri, buff->data(), buff->size());
+    buff->reset_size();
+
 #else
-    return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+    throw StatusException(
+        Status_VFSError("TileDB was built without S3 support"));
 #endif
   }
 

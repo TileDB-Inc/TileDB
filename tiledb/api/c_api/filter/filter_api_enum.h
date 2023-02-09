@@ -56,8 +56,11 @@ TILEDB_FILTER_TYPE_ENUM(FILTER_NONE) = 0,
     TILEDB_FILTER_TYPE_ENUM(FILTER_SCALE_FLOAT) = 15,
     /** XOR filter. */
     TILEDB_FILTER_TYPE_ENUM(FILTER_XOR) = 16,
-    /** Bitsort Filter. */
-    TILEDB_FILTER_TYPE_ENUM(FILTER_BITSORT) = 17,
+    /**
+     * Previously used by bitsort filter. Can be re-used by next filter
+     * implemented.
+     */
+    TILEDB_FILTER_TYPE_ENUM(FILTER_DEPRECATED) = 17,
     /** WEBP filter. */
     TILEDB_FILTER_TYPE_ENUM(FILTER_WEBP) = 18,
 #endif

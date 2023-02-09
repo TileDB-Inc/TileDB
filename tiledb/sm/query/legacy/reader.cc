@@ -44,6 +44,7 @@
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/legacy/read_cell_slab_iter.h"
 #include "tiledb/sm/query/query_macros.h"
+#include "tiledb/sm/query/readers/filtered_data.h"
 #include "tiledb/sm/query/readers/result_tile.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -340,14 +341,8 @@ Status Reader::apply_query_condition(
   // To evaluate the query condition, we need to read tiles for the
   // attributes used in the query condition. Build a map of attribute
   // names to read.
-  const auto bitsort_attr = array_schema_.bitsort_filter_attr();
   std::unordered_map<std::string, ProcessTileFlags> names;
   for (const auto& condition_name : qc_loaded_attr_names_set_) {
-    // Skip loading tiles for bitsort attribute.
-    if (bitsort_attr.has_value() && condition_name == bitsort_attr.value()) {
-      continue;
-    }
-
     names[condition_name] = ProcessTileFlag::READ;
   }
 
@@ -837,7 +832,6 @@ Status Reader::copy_attribute_values(
 
   // Build a set of attribute names to process.
   std::unordered_map<std::string, ProcessTileFlags> names;
-  const auto bitsort_attr = array_schema_.bitsort_filter_attr();
   for (const auto& it : buffers_) {
     const auto& name = it.first;
 
@@ -849,16 +843,11 @@ Status Reader::copy_attribute_values(
       continue;
     }
 
-    // See if this is the bitsort attribute.
-    const auto is_bitsort_attr =
-        bitsort_attr.has_value() && bitsort_attr.value() == name;
-
     // If the query condition has a clause for `name`, we will only flag it to
     // copy because we have already preloaded the offsets and read the tiles in
-    // `apply_query_condition`. We do the same for the bitsort attribute as it
-    // was already read/unfiltered to process coordinates.
+    // `apply_query_condition`.
     ProcessTileFlags flags = ProcessTileFlag::COPY;
-    if (qc_loaded_attr_names_set_.count(name) == 0 && !is_bitsort_attr) {
+    if (qc_loaded_attr_names_set_.count(name) == 0) {
       flags |= ProcessTileFlag::READ;
     }
 
@@ -1467,10 +1456,6 @@ Status Reader::process_tiles(
     std::vector<std::string> inner_names(
         read_names.begin() + idx, read_names.begin() + idx + num_reads);
 
-    // Read the tiles for the names in `inner_names`. Each attribute
-    // name will be read concurrently.
-    RETURN_CANCEL_OR_ERROR(read_attribute_tiles(inner_names, result_tiles));
-
     // Copy the cells into the associated `buffers_`, and then clear the cells
     // from the tiles. The cell copies are not thread safe. Clearing tiles are
     // thread safe, but quick enough that they do not justify scheduling on
@@ -1478,7 +1463,8 @@ Status Reader::process_tiles(
     for (const auto& inner_name : inner_names) {
       const ProcessTileFlags flags = names.at(inner_name);
 
-      RETURN_CANCEL_OR_ERROR(unfilter_tiles(inner_name, result_tiles));
+      RETURN_CANCEL_OR_ERROR(
+          read_and_unfilter_attribute_tiles({inner_name}, result_tiles));
 
       if (flags & ProcessTileFlag::COPY) {
         if (!array_schema_.var_size(inner_name)) {
@@ -1631,8 +1617,10 @@ Status Reader::compute_result_coords(
   // Create temporary vector with pointers to result tiles, so that
   // `read_tiles`, `unfilter_tiles` below can work without changes
   std::vector<ResultTile*> tmp_result_tiles;
-  for (auto& result_tile : result_tiles)
+  for (auto& result_tile : result_tiles) {
     tmp_result_tiles.push_back(&result_tile);
+  }
+  std::sort(tmp_result_tiles.begin(), tmp_result_tiles.end(), result_tile_cmp);
 
   // Preload zipped coordinate tile offsets. Note that this will
   // ignore fragments with a version >= 5.
@@ -1662,40 +1650,21 @@ Status Reader::compute_result_coords(
 
   // Read and unfilter zipped coordinate tiles. Note that
   // this will ignore fragments with a version >= 5.
-  RETURN_CANCEL_OR_ERROR(
-      read_coordinate_tiles(zipped_coords_names, tmp_result_tiles));
-  RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::coords, tmp_result_tiles));
+  RETURN_CANCEL_OR_ERROR(read_and_unfilter_coordinate_tiles(
+      zipped_coords_names, tmp_result_tiles));
 
   // Read and unfilter unzipped coordinate tiles. Note that
   // this will ignore fragments with a version < 5.
-  RETURN_CANCEL_OR_ERROR(read_coordinate_tiles(dim_names, tmp_result_tiles));
-  for (const auto& dim_name : dim_names) {
-    RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, tmp_result_tiles));
-  }
-
-  // If we have an attribute with bitsort filter, we need to run the filter on
-  // the attribute before we can use the coordinates.
-  const auto bitsort_attr = array_schema_.bitsort_filter_attr();
-  if (bitsort_attr.has_value()) {
-    std::vector<std::string> bitsort_attr_name = {bitsort_attr.value()};
-    RETURN_CANCEL_OR_ERROR(load_tile_offsets(
-        read_state_.partitioner_.subarray().relevant_fragments(),
-        bitsort_attr_name));
-    RETURN_CANCEL_OR_ERROR(
-        read_attribute_tiles(bitsort_attr_name, tmp_result_tiles));
-    RETURN_CANCEL_OR_ERROR(
-        unfilter_tiles(bitsort_attr.value(), tmp_result_tiles));
-  }
+  RETURN_CANCEL_OR_ERROR(
+      read_and_unfilter_coordinate_tiles(dim_names, tmp_result_tiles));
 
   // Read and unfilter timestamps, if required.
   if (use_timestamps_) {
     std::vector<std::string> timestamps = {constants::timestamps};
     RETURN_CANCEL_OR_ERROR(load_tile_offsets(
         read_state_.partitioner_.subarray().relevant_fragments(), timestamps));
-
-    RETURN_CANCEL_OR_ERROR(read_attribute_tiles(timestamps, tmp_result_tiles));
     RETURN_CANCEL_OR_ERROR(
-        unfilter_tiles(constants::timestamps, tmp_result_tiles));
+        read_and_unfilter_attribute_tiles(timestamps, tmp_result_tiles));
   }
 
   // Read and unfilter delete timestamps.
@@ -1704,11 +1673,8 @@ Status Reader::compute_result_coords(
     RETURN_CANCEL_OR_ERROR(load_tile_offsets(
         read_state_.partitioner_.subarray().relevant_fragments(),
         delete_timestamps));
-
     RETURN_CANCEL_OR_ERROR(
-        read_attribute_tiles(delete_timestamps, tmp_result_tiles));
-    RETURN_CANCEL_OR_ERROR(
-        unfilter_tiles(constants::delete_timestamps, tmp_result_tiles));
+        read_and_unfilter_attribute_tiles(delete_timestamps, tmp_result_tiles));
   }
 
   // Compute the read coordinates for all fragments for each subarray range.
@@ -1827,6 +1793,7 @@ Status Reader::dense_read() {
       result_coords,
       result_tiles,
       result_cell_slabs));
+  std::sort(result_tiles.begin(), result_tiles.end(), result_tile_cmp);
 
   auto stride = array_schema_.domain().stride<T>(subarray.layout());
   RETURN_NOT_OK(apply_query_condition(
@@ -2070,6 +2037,7 @@ Status Reader::sparse_read() {
   for (auto& srt : sparse_result_tiles) {
     result_tiles.push_back(&srt);
   }
+  std::sort(result_tiles.begin(), result_tiles.end(), result_tile_cmp);
 
   // Compute result cell slabs
   std::vector<ResultCellSlab> result_cell_slabs;
@@ -2261,10 +2229,11 @@ tuple<Status, optional<bool>> Reader::fill_dense_coords(
   // This path does not use result cell slabs, which will fill coordinates
   // for cells that should be filtered out.
   if (!condition_.empty()) {
-    return {logger_->status(Status_ReaderError(
-                "Cannot read dense coordinates; dense coordinate "
-                "reads are unsupported with a query condition")),
-            nullopt};
+    return {
+        logger_->status(Status_ReaderError(
+            "Cannot read dense coordinates; dense coordinate "
+            "reads are unsupported with a query condition")),
+        nullopt};
   }
 
   // Prepare buffers

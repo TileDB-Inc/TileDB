@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2022 WriterTileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,7 @@
  */
 
 #include "tiledb/sm/tile/tile_metadata_generator.h"
-#include "tiledb/sm/tile/writer_tile.h"
+#include "tiledb/sm/tile/writer_tile_tuple.h"
 
 using namespace tiledb::common;
 
@@ -44,7 +44,7 @@ namespace sm {
 
 template <typename T>
 void Sum<T, int64_t>::sum(
-    const Tile& tile, uint64_t start, uint64_t end, ByteVec& sum) {
+    const WriterTile& tile, uint64_t start, uint64_t end, ByteVec& sum) {
   // Get pointers to the data and cell num.
   auto values = tile.data_as<T>();
   auto sum_data = reinterpret_cast<int64_t*>(sum.data());
@@ -70,7 +70,7 @@ void Sum<T, int64_t>::sum(
 
 template <typename T>
 void Sum<T, uint64_t>::sum(
-    const Tile& tile, uint64_t start, uint64_t end, ByteVec& sum) {
+    const WriterTile& tile, uint64_t start, uint64_t end, ByteVec& sum) {
   // Get pointers to the data and cell num.
   auto values = tile.data_as<T>();
   auto sum_data = reinterpret_cast<uint64_t*>(sum.data());
@@ -89,7 +89,7 @@ void Sum<T, uint64_t>::sum(
 
 template <typename T>
 void Sum<T, double>::sum(
-    const Tile& tile, uint64_t start, uint64_t end, ByteVec& sum) {
+    const WriterTile& tile, uint64_t start, uint64_t end, ByteVec& sum) {
   // Get pointers to the data and cell num.
   auto values = tile.data_as<T>();
   auto sum_data = reinterpret_cast<double*>(sum.data());
@@ -111,8 +111,8 @@ void Sum<T, double>::sum(
 
 template <typename T>
 void Sum<T, int64_t>::sum_nullable(
-    const Tile& tile,
-    const Tile& validity_tile,
+    const WriterTile& tile,
+    const WriterTile& validity_tile,
     uint64_t start,
     uint64_t end,
     ByteVec& sum) {
@@ -144,8 +144,8 @@ void Sum<T, int64_t>::sum_nullable(
 
 template <typename T>
 void Sum<T, uint64_t>::sum_nullable(
-    const Tile& tile,
-    const Tile& validity_tile,
+    const WriterTile& tile,
+    const WriterTile& validity_tile,
     uint64_t start,
     uint64_t end,
     ByteVec& sum) {
@@ -170,8 +170,8 @@ void Sum<T, uint64_t>::sum_nullable(
 
 template <typename T>
 void Sum<T, double>::sum_nullable(
-    const Tile& tile,
-    const Tile& validity_tile,
+    const WriterTile& tile,
+    const WriterTile& validity_tile,
     uint64_t start,
     uint64_t end,
     ByteVec& sum) {
@@ -288,13 +288,13 @@ TileMetadataGenerator::TileMetadataGenerator(
 /*               API              */
 /* ****************************** */
 
-void TileMetadataGenerator::process_full_tile(const WriterTile& tile) {
+void TileMetadataGenerator::process_full_tile(const WriterTileTuple& tile) {
   uint64_t cell_num = tile.cell_num();
   process_cell_slab(tile, 0, cell_num);
 }
 
 void TileMetadataGenerator::process_cell_slab(
-    const WriterTile& tile, uint64_t start, uint64_t end) {
+    const WriterTileTuple& tile, uint64_t start, uint64_t end) {
   if (!var_size_) {
     // Switch depending on datatype.
     switch (type_) {
@@ -368,7 +368,7 @@ void TileMetadataGenerator::process_cell_slab(
   }
 }
 
-void TileMetadataGenerator::set_tile_metadata(WriterTile& tile) {
+void TileMetadataGenerator::set_tile_metadata(WriterTileTuple& tile) {
   tile.set_metadata(min_, min_size_, max_, max_size_, sum_, null_count_);
 }
 
@@ -378,7 +378,7 @@ void TileMetadataGenerator::set_tile_metadata(WriterTile& tile) {
 
 template <class T>
 void TileMetadataGenerator::min_max(
-    const Tile& tile, uint64_t start, uint64_t end) {
+    const WriterTile& tile, uint64_t start, uint64_t end) {
   // Get pointer to the data and cell num.
   auto values = tile.data_as<T>();
 
@@ -397,7 +397,7 @@ void TileMetadataGenerator::min_max(
 
 template <>
 void TileMetadataGenerator::min_max<char>(
-    const Tile& tile, uint64_t start, uint64_t end) {
+    const WriterTile& tile, uint64_t start, uint64_t end) {
   // For strings, return null for empty tiles.
   auto size = tile.size();
   if (size == 0) {
@@ -415,17 +415,22 @@ void TileMetadataGenerator::min_max<char>(
   // Process all cells, starting at the second value.
   auto value = data + start * cell_size_;
   for (uint64_t c = start; c < end; c++) {
-    min_ =
-        strncmp((const char*)min_, (const char*)value, size) > 0 ? value : min_;
-    max_ =
-        strncmp((const char*)max_, (const char*)value, size) < 0 ? value : max_;
+    min_ = strncmp((const char*)min_, (const char*)value, cell_size_) > 0 ?
+               value :
+               min_;
+    max_ = strncmp((const char*)max_, (const char*)value, cell_size_) < 0 ?
+               value :
+               max_;
     value += cell_size_;
   }
 }
 
 template <class T>
 void TileMetadataGenerator::min_max_nullable(
-    const Tile& tile, const Tile& validity_tile, uint64_t start, uint64_t end) {
+    const WriterTile& tile,
+    const WriterTile& validity_tile,
+    uint64_t start,
+    uint64_t end) {
   auto values = tile.data_as<T>();
   auto validity_values = validity_tile.data_as<uint8_t>();
 
@@ -448,7 +453,10 @@ void TileMetadataGenerator::min_max_nullable(
 
 template <>
 void TileMetadataGenerator::min_max_nullable<char>(
-    const Tile& tile, const Tile& validity_tile, uint64_t start, uint64_t end) {
+    const WriterTile& tile,
+    const WriterTile& validity_tile,
+    uint64_t start,
+    uint64_t end) {
   // Get pointers to the data and cell num.
   auto value = tile.data_as<char>();
   auto validity_values = validity_tile.data_as<uint8_t>();
@@ -475,7 +483,7 @@ void TileMetadataGenerator::min_max_nullable<char>(
 
 template <class T>
 void TileMetadataGenerator::process_cell_range(
-    const WriterTile& tile, uint64_t start, uint64_t end) {
+    const WriterTileTuple& tile, uint64_t start, uint64_t end) {
   min_size_ = max_size_ = cell_size_;
   const auto& fixed_tile = tile.fixed_tile();
 
@@ -511,7 +519,7 @@ void TileMetadataGenerator::process_cell_range(
 }
 
 void TileMetadataGenerator::process_cell_range_var(
-    const WriterTile& tile, uint64_t start, uint64_t end) {
+    const WriterTileTuple& tile, uint64_t start, uint64_t end) {
   assert(tile.var_size());
 
   const auto& offset_tile = tile.offset_tile();

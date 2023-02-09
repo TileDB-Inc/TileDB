@@ -46,6 +46,7 @@
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/subarray/range_subset.h"
+#include "tiledb/sm/subarray/relevant_fragments.h"
 #include "tiledb/sm/subarray/subarray_tile_overlap.h"
 
 #include <cmath>
@@ -68,7 +69,7 @@ namespace sm {
 
 class Array;
 class ArraySchema;
-class DimensionLabelReference;
+class DimensionLabel;
 class EncryptionKey;
 class FragIdx;
 class FragmentMetadata;
@@ -247,8 +248,27 @@ class Subarray {
    */
   const Config* config() const;
 
-  /** equivalent for older Query::set_subarray(const void *subarray); */
+  /**
+   * Sets the subarray using a pointer to raw range data that stores one range
+   * per dimension.
+   *
+   * This is only valid for arrays with homogenous dimension data types.
+   *
+   * @param subarray A pointer to the range data to use.
+   * @returns Status error
+   */
   Status set_subarray(const void* subarray);
+
+  /**
+   * Sets the subarray using a pointer to raw range data that stores one range
+   * per dimension without performing validity checks.
+   *
+   * This is only valid for arrays with homogenous dimension data types. This
+   * function should only be used for deserializing dense write queries.
+   *
+   * @param subarray A pointer to the range data to use.
+   */
+  void set_subarray_unsafe(const void* subarray);
 
   /**
    * Adds dimension ranges computed from label ranges on the dimension label.
@@ -276,7 +296,7 @@ class Subarray {
    *     and truncate the range.
    */
   void add_label_range(
-      const DimensionLabelReference& dim_label_ref,
+      const DimensionLabel& dim_label_ref,
       Range&& range,
       const bool read_range_oob_error = true);
 
@@ -1129,12 +1149,12 @@ class Subarray {
   /**
    * Return relevant fragments as computed
    */
-  const optional<std::vector<unsigned>>& relevant_fragments() const;
+  const RelevantFragments& relevant_fragments() const;
 
   /**
    * Return relevant fragments as computed
    */
-  optional<std::vector<unsigned>>& relevant_fragments();
+  RelevantFragments& relevant_fragments();
 
   /**
    * For flattened ("total order") start/end range indexes,
@@ -1177,41 +1197,6 @@ class Subarray {
 
   /**
    * An opaque context to be used between successive calls
-   * to `compute_relevant_fragments`.
-   */
-  struct ComputeRelevantFragmentsCtx {
-    ComputeRelevantFragmentsCtx()
-        : initialized_(false) {
-    }
-
-    /**
-     * This context cache is lazy initialized. This will be
-     * set to `true` when initialized in `compute_relevant_fragments()`.
-     */
-    bool initialized_;
-
-    /**
-     * The last calibrated start coordinates.
-     */
-    std::vector<uint64_t> last_start_coords_;
-
-    /**
-     * The last calibrated end coordinates.
-     */
-    std::vector<uint64_t> last_end_coords_;
-
-    /**
-     * The fragment bytemaps for each dimension. The inner
-     * vector is the fragment bytemap that has a byte element
-     * for each fragment. Non-zero bytes represent relevant
-     * fragments for a specific dimension. Each dimension
-     * has its own fragment bytemap (the outer vector).
-     */
-    std::vector<std::vector<uint8_t>> frag_bytemaps_;
-  };
-
-  /**
-   * An opaque context to be used between successive calls
    * to `compute_relevant_fragment_tile_overlap`.
    */
   struct ComputeRelevantTileOverlapCtx {
@@ -1249,8 +1234,7 @@ class Subarray {
      * ranges for.
      * @param coalesce_ranges Set if ranges should be combined when adjacent.
      */
-    LabelRangeSubset(
-        const DimensionLabelReference& ref, bool coalesce_ranges = true);
+    LabelRangeSubset(const DimensionLabel& ref, bool coalesce_ranges = true);
 
     inline const std::vector<Range>& get_ranges() const {
       return ranges.ranges();
@@ -1334,7 +1318,7 @@ class Subarray {
    * The array fragment ids whose non-empty domain intersects at
    * least one subarray range.
    */
-  optional<std::vector<unsigned>> relevant_fragments_;
+  RelevantFragments relevant_fragments_;
 
   /**
    * The precomputed tile overlap state. Is not guaranteed to be
@@ -1433,39 +1417,6 @@ class Subarray {
    * given subarray.
    */
   void swap(Subarray& subarray);
-
-  /**
-   * Computes the indexes of the fragments that are relevant to the query,
-   * that is those whose non-empty domain intersects with at least one
-   * range.
-   *
-   * @param compute_tp The thread pool for compute-bound tasks.
-   * @param tile_overlap Mutated to store the computed tile overlap.
-   * @param fn_ctx An opaque context object to be used between successive
-   * invocations.
-   */
-  Status compute_relevant_fragments(
-      ThreadPool* compute_tp,
-      const SubarrayTileOverlap* tile_overlap,
-      ComputeRelevantFragmentsCtx* fn_ctx);
-
-  /**
-   * Computes the relevant fragment bytemap for a specific dimension.
-   *
-   * @param compute_tp The thread pool for compute-bound tasks.
-   * @param dim_idx The index of the dimension to compute on.
-   * @param fragment_num The number of fragments to compute on.
-   * @param start_coords The starting range coordinates to compute between.
-   * @param end_coords The ending range coordinates to compute between.
-   * @param frag_bytemap The fragment bytemap to mutate.
-   */
-  Status compute_relevant_fragments_for_dim(
-      ThreadPool* compute_tp,
-      uint32_t dim_idx,
-      uint64_t fragment_num,
-      const std::vector<uint64_t>& start_coords,
-      const std::vector<uint64_t>& end_coords,
-      std::vector<uint8_t>* frag_bytemap) const;
 
   /** Loads the R-Trees of all relevant fragments in parallel. */
   Status load_relevant_fragment_rtrees(ThreadPool* compute_tp) const;

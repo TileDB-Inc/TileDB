@@ -339,6 +339,33 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPOrderedDimLabelReaderFixedDoubleFx,
+    "Ordered dimension label reader: Invalid no data",
+    "[ordered-dim-label-reader][invalid][no-data]") {
+  Array array(ctx_, array_name, TILEDB_READ);
+  Query query(ctx_, array, TILEDB_READ);
+
+  // Set attribute ranges.
+  std::vector<double> ranges{0.4, 0.8};
+  std::vector<Range> input_ranges;
+  input_ranges.emplace_back(&ranges[0], &ranges[1], sizeof(double));
+
+  Subarray subarray(ctx_, array);
+  subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
+
+  query.ptr()->query_->set_dimension_label_ordered_read(increasing_labels_);
+  std::vector<int> index(ranges.size());
+  query.set_data_buffer("index", index);
+  query.set_subarray(subarray);
+  REQUIRE_THROWS_WITH(
+      query.submit(),
+      ContainsSubstring("OrderedDimLabelReader: Cannot read dim label; "
+                        "Dimension label is empty"));
+
+  array.close();
+}
+
+TEST_CASE_METHOD(
+    CPPOrderedDimLabelReaderFixedDoubleFx,
     "Ordered dimension label reader: fixed double labels, single fragment, "
     "increasing",
     "[ordered-dim-label-reader][fixed][double][single-fragment][increasing]") {

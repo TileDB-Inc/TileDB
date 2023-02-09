@@ -30,6 +30,11 @@ include(object_library)
 # Object library for other units to depend upon
 #
 commence(object_library stats)
-    this_target_sources(stats.cc)
+    this_target_sources(stats.cc global_stats.cc)
+    if(TILEDB_STATS)
+      this_target_compile_definitions(-DTILEDB_STATS)
+    endif()
     this_target_object_libraries(baseline stringx)
 conclude(object_library)
+
+add_test_subdirectory()

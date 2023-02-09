@@ -59,8 +59,8 @@ void BitshuffleFilter::dump(FILE* out) const {
 }
 
 Status BitshuffleFilter::run_forward(
-    const Tile& tile,
-    void* const,
+    const WriterTile& tile,
+    WriterTile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -126,7 +126,7 @@ Status BitshuffleFilter::compute_parts(
 }
 
 Status BitshuffleFilter::shuffle_part(
-    const Tile& tile, const ConstBuffer* part, Buffer* output) const {
+    const WriterTile& tile, const ConstBuffer* part, Buffer* output) const {
   auto tile_type = tile.type();
   auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
   auto part_nelts = part->size() / tile_type_size;
@@ -165,7 +165,7 @@ Status BitshuffleFilter::shuffle_part(
 
 Status BitshuffleFilter::run_reverse(
     const Tile& tile,
-    void*,
+    Tile*,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,

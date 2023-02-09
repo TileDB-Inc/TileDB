@@ -31,6 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/coords_workaround.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/misc/constants.h"
@@ -253,7 +254,7 @@ TEST_CASE(
   Query query(ctx, array, TILEDB_READ);
   CHECK_THROWS(query.set_subarray(subarray));
   std::vector<int32_t> buff = {1, 2, 4};
-  CHECK_THROWS(query.set_data_buffer(TILEDB_COORDS, buff));
+  CHECK_THROWS(query.set_data_buffer(tiledb::test::TILEDB_COORDS, buff));
 
   // Close array
   array.close();
@@ -293,8 +294,9 @@ TEST_CASE(
   }
 
   SECTION("int32 domain [min, max]") {
-    int32_t domain[2] = {std::numeric_limits<int32_t>::lowest(),
-                         std::numeric_limits<int32_t>::max()};
+    int32_t domain[2] = {
+        std::numeric_limits<int32_t>::lowest(),
+        std::numeric_limits<int32_t>::max()};
     const int32_t tile_extent = 5;
     domain[1] -= tile_extent;
     CHECK_NOTHROW(tiledb::Dimension::create(
@@ -323,8 +325,9 @@ TEST_CASE(
   }
 
   SECTION("int64 domain [min, max]") {
-    int64_t domain[2] = {std::numeric_limits<int64_t>::lowest(),
-                         std::numeric_limits<int64_t>::max()};
+    int64_t domain[2] = {
+        std::numeric_limits<int64_t>::lowest(),
+        std::numeric_limits<int64_t>::max()};
     const int64_t tile_extent = 5;
     domain[1] -= tile_extent;
     CHECK_NOTHROW(tiledb::Dimension::create(
@@ -339,8 +342,9 @@ TEST_CASE(
   }
 
   SECTION("uint32 domain [min, max]") {
-    uint32_t domain[2] = {std::numeric_limits<uint32_t>::lowest(),
-                          std::numeric_limits<uint32_t>::max()};
+    uint32_t domain[2] = {
+        std::numeric_limits<uint32_t>::lowest(),
+        std::numeric_limits<uint32_t>::max()};
     const uint32_t tile_extent = 5;
     domain[1] -= tile_extent;
     CHECK_NOTHROW(tiledb::Dimension::create(
@@ -355,8 +359,9 @@ TEST_CASE(
   }
 
   SECTION("uint64 domain [min, max]") {
-    uint64_t domain[2] = {std::numeric_limits<uint64_t>::lowest(),
-                          std::numeric_limits<uint64_t>::max()};
+    uint64_t domain[2] = {
+        std::numeric_limits<uint64_t>::lowest(),
+        std::numeric_limits<uint64_t>::max()};
     const uint64_t tile_extent = 5;
     domain[1] -= tile_extent;
     CHECK_NOTHROW(tiledb::Dimension::create(

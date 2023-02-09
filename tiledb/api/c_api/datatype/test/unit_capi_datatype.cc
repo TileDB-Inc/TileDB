@@ -40,7 +40,8 @@ struct TestCase {
   TestCase(tiledb_datatype_t dtype, const char* name, int defined_as)
       : dtype_(dtype)
       , name_(name)
-      , defined_as_(defined_as) {}
+      , defined_as_(defined_as) {
+  }
 
   tiledb_datatype_t dtype_;
   const char* name_;
@@ -60,7 +61,8 @@ struct TestCase {
   }
 };
 
-TEST_CASE("C API: Test datatype enum string conversion", "[capi][enums][datatype]") {
+TEST_CASE(
+    "C API: Test datatype enum string conversion", "[capi][enums][datatype]") {
   // clang-format off
   TestCase test = GENERATE(
     TestCase(TILEDB_INT32,          "INT32",          0),

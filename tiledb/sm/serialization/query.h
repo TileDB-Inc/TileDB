@@ -38,6 +38,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 #ifdef TILEDB_SERIALIZATION
 #include "tiledb/sm/serialization/tiledb-rest.h"
@@ -126,6 +127,19 @@ struct QueryBufferCopyState {
 /** Maps a buffer name to an associated QueryBufferCopyState. */
 using CopyState =
     std::unordered_map<std::string, serialization::QueryBufferCopyState>;
+
+/**
+ * Deserialize an array from a buffer containing a serialized query
+ *
+ * @param serialized_buffer Buffer containing serialized query
+ * @param serialize_type Serialization type of serialized query
+ * @param array Array object to deserialize into
+ */
+Status array_from_query_deserialize(
+    const Buffer& serialized_buffer,
+    SerializationType serialize_type,
+    Array& array,
+    StorageManager* storage_manager);
 
 /**
  * Serialize a query

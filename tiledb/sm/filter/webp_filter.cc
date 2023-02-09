@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/filter/webp_filter.h"
+#include "tiledb/common/scoped_executor.h"
 #include "tiledb/sm/tile/tile.h"
 
 namespace tiledb::sm {
@@ -50,8 +51,8 @@ namespace tiledb::sm {
  */
 
 Status WebpFilter::run_forward(
-    const Tile&,
-    void* const,
+    const WriterTile&,
+    WriterTile* const,
     FilterBuffer*,
     FilterBuffer*,
     FilterBuffer*,
@@ -61,7 +62,7 @@ Status WebpFilter::run_forward(
 
 Status WebpFilter::run_reverse(
     const Tile&,
-    void* const,
+    Tile* const,
     FilterBuffer*,
     FilterBuffer*,
     FilterBuffer*,
@@ -97,8 +98,8 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 Status WebpFilter::run_forward(
-    const Tile&,
-    void* const,
+    const WriterTile&,
+    WriterTile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -213,7 +214,7 @@ Status WebpFilter::run_forward(
 
 Status WebpFilter::run_reverse(
     const Tile& tile,
-    void* const,
+    Tile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -375,7 +376,7 @@ void WebpFilter::set_extents(const std::vector<ByteVecValue>& extents) {
     throw StatusException(Status_FilterError(
         "Tile extents too large; Max size WebP image is 16383x16383 pixels"));
   }
-  Tile::set_max_tile_chunk_size(extents_.first * extents_.second);
+  WriterTile::set_max_tile_chunk_size(extents_.first * extents_.second);
 }
 
 template void WebpFilter::set_extents<uint8_t>(

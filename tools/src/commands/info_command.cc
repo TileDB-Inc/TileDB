@@ -116,9 +116,10 @@ void InfoCommand::run() {
 }
 
 void InfoCommand::print_tile_sizes() const {
-  stats::Stats stats("");
-  StorageManager sm(
-      &compute_tp_, &io_tp_, &stats, make_shared<Logger>(HERE(), ""), Config());
+  Config config;
+  auto logger = make_shared<Logger>(HERE(), "");
+  ContextResources resources(config, logger, 1, 1, "");
+  StorageManager sm(resources, logger, config);
 
   // Open the array
   URI uri(array_uri_);
@@ -186,9 +187,10 @@ void InfoCommand::print_tile_sizes() const {
 }
 
 void InfoCommand::print_schema_info() const {
-  stats::Stats stats("");
-  StorageManager sm(
-      &compute_tp_, &io_tp_, &stats, make_shared<Logger>(HERE(), ""), Config());
+  Config config;
+  auto logger = make_shared<Logger>(HERE(), "");
+  ContextResources resources(config, logger, 1, 1, "");
+  StorageManager sm(resources, logger, config);
 
   // Open the array
   URI uri(array_uri_);
@@ -203,9 +205,10 @@ void InfoCommand::print_schema_info() const {
 }
 
 void InfoCommand::write_svg_mbrs() const {
-  stats::Stats stats("");
-  StorageManager sm(
-      &compute_tp_, &io_tp_, &stats, make_shared<Logger>(HERE(), ""), Config());
+  Config config;
+  auto logger = make_shared<Logger>(HERE(), "");
+  ContextResources resources(config, logger, 1, 1, "");
+  StorageManager sm(resources, logger, config);
 
   // Open the array
   URI uri(array_uri_);
@@ -278,9 +281,10 @@ void InfoCommand::write_svg_mbrs() const {
 }
 
 void InfoCommand::write_text_mbrs() const {
-  stats::Stats stats("");
-  StorageManager sm(
-      &compute_tp_, &io_tp_, &stats, make_shared<Logger>(HERE(), ""), Config());
+  Config config;
+  auto logger = make_shared<Logger>(HERE(), "");
+  ContextResources resources(config, logger, 1, 1, "");
+  StorageManager sm(resources, logger, config);
 
   // Open the array
   URI uri(array_uri_);

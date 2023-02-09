@@ -26,13 +26,11 @@
  * THE SOFTWARE.
  */
 
-#include "../bountiful.h"
 #include "../throw_catch.h"
+#include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
 
 using namespace tiledb::common;
 
 int main() {
-  (void)sizeof(ThrowCatchScheduler<size_t>(1));
-  (void)sizeof(BountifulScheduler<size_t>(1));
-  //(void)sizeof(BountifulScheduler<size_t>());
+  (void)sizeof(ThrowCatchScheduler<node>(1));
 }

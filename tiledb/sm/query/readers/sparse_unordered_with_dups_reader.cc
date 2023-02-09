@@ -89,7 +89,7 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
           condition)
     , tile_offsets_min_frag_idx_(std::numeric_limits<unsigned>::max())
     , tile_offsets_max_frag_idx_(0) {
-  include_coords_ = subarray_.is_set() || bitsort_attribute_.has_value();
+  include_coords_ = false;
   SparseIndexReaderBase::init(skip_checks_serialization);
 
   // Initialize memory budget variables.
@@ -173,6 +173,9 @@ Status SparseUnorderedWithDupsReader<BitmapType>::initialize_memory_budget() {
 
 template <class BitmapType>
 Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
+  // Subarray is not known to be explicitly set until buffers are deserialized
+  include_coords_ = subarray_.is_set();
+
   auto timer_se = stats_->start_timer("dowork");
 
   // Make sure user didn't request delete timestamps.
@@ -233,7 +236,6 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
     for (auto& result_tile : result_tiles_) {
       if (!result_tile.coords_loaded()) {
         result_tile.set_coords_loaded();
-        ;
         result_tiles_created.emplace_back(&result_tile);
       } else {
         result_tiles_loaded.emplace_back(&result_tile);
@@ -394,22 +396,11 @@ void SparseUnorderedWithDupsReader<BitmapType>::load_tile_offsets_data() {
             std::to_string(array_memory_tracker_->get_memory_budget()) + ").");
       }
 
-      // Make the vector of fragments to load.
-      std::vector<unsigned> to_load;
-      if (relevant_fragments.has_value()) {
-        to_load.reserve(relevant_fragments->size());
-        for (auto f : relevant_fragments.value()) {
-          if (f >= tile_offsets_min_frag_idx_ &&
-              f < tile_offsets_max_frag_idx_) {
-            to_load.emplace_back(f);
-          }
-        }
-      } else {
-        to_load.resize(tile_offsets_max_frag_idx_ - tile_offsets_min_frag_idx_);
-        std::iota(to_load.begin(), to_load.end(), tile_offsets_min_frag_idx_);
-      }
-
       // Load the tile offsets.
+      RelevantFragments to_load(
+          relevant_fragments,
+          tile_offsets_min_frag_idx_,
+          tile_offsets_max_frag_idx_);
       load_tile_offsets_for_fragments(std::move(to_load));
     }
   }
@@ -547,6 +538,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
         }
 
         // Add all tiles for this fragment.
+        all_tiles_loaded_[f] = start == tile_num;
         for (uint64_t t = start; t < tile_num; t++) {
           budget_exceeded = add_result_tile(
               dim_num,
@@ -1527,12 +1519,6 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
           return Status::Ok();
         }
 
-        // Bitsort attribute is already loaded in memory.
-        if (bitsort_attribute_.has_value() &&
-            name == bitsort_attribute_.value()) {
-          return Status::Ok();
-        }
-
         // Get the size for all tiles.
         uint64_t idx = 0;
         for (; idx < max_rt_idx; idx++) {
@@ -1575,9 +1561,10 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
       status, logger_->status_no_return_value(status), nullopt);
 
   if (max_rt_idx == 0)
-    return {Status_SparseUnorderedWithDupsReaderError(
-                "Unable to copy one tile with current budget/buffers"),
-            nullopt};
+    return {
+        Status_SparseUnorderedWithDupsReaderError(
+            "Unable to copy one tile with current budget/buffers"),
+        nullopt};
 
   // Resize the result tiles vector.
   buffers_full_ &= max_rt_idx == result_tiles.size();
@@ -1769,11 +1756,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
         for (const auto& idx : *index_to_copy) {
           const auto& name_to_clear = names[idx];
           const auto is_dim_to_clear = array_schema_.is_dim(name_to_clear);
-          const auto is_bitsort_attr =
-              bitsort_attribute_.has_value() &&
-              bitsort_attribute_.value() == name_to_clear;
-          if (!is_bitsort_attr &&
-              qc_loaded_attr_names_set_.count(name_to_clear) == 0 &&
+          if (qc_loaded_attr_names_set_.count(name_to_clear) == 0 &&
               (!include_coords_ || !is_dim_to_clear)) {
             clear_tiles(name_to_clear, result_tiles, new_result_tiles_size);
           }
@@ -1810,9 +1793,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
         *query_buffer.validity_vector_.buffer_size() = total_cells;
 
       // Clear tiles from memory.
-      const auto is_bitsort_attr =
-          bitsort_attribute_.has_value() && bitsort_attribute_.value() == name;
-      if (!is_bitsort_attr && qc_loaded_attr_names_set_.count(name) == 0 &&
+      if (qc_loaded_attr_names_set_.count(name) == 0 &&
           (!include_coords_ || !is_dim) && name != constants::timestamps &&
           name != constants::delete_timestamps) {
         clear_tiles(name, result_tiles);

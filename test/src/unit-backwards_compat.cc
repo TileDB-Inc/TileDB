@@ -1222,30 +1222,14 @@ TEST_CASE(
     "Backwards compatibility: Upgrades an array of older version and "
     "write/read it",
     "[backwards-compat][upgrade-version][write-read-new-version]") {
-  bool serialized_writes = false;
-  bool serialized_load = false;
+  bool serialize = false, refactored_query_v2 = false;
   SECTION("no serialization") {
-    serialized_writes = false;
-
-    SECTION("no serialization") {
-      serialized_load = false;
-    }
-#ifdef TILEDB_SERIALIZATION
-    SECTION("serialization enabled fragment info load") {
-      serialized_load = true;
-    }
-#endif
+    serialize = false;
   }
 #ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialized_writes = true;
-
-    SECTION("no serialization") {
-      serialized_load = false;
-    }
-    SECTION("serialization enabled fragment info load") {
-      serialized_load = true;
-    }
+  SECTION("serialization enabled") {
+    serialize = true;
+    refactored_query_v2 = GENERATE(true, false);
   }
 #endif
 
@@ -1274,7 +1258,14 @@ TEST_CASE(
       .set_data_buffer("d1", d1_read1)
       .set_data_buffer("d2", d2_read1);
 
-  query_read1.submit();
+  ServerQueryBuffers server_buffers;
+  submit_query_wrapper(
+      ctx,
+      array_name,
+      &query_read1,
+      server_buffers,
+      serialize,
+      refactored_query_v2);
   array_read1.close();
 
   for (int i = 0; i < 4; i++) {
@@ -1295,19 +1286,20 @@ TEST_CASE(
   query_write.set_data_buffer("d1", d1_write);
   query_write.set_data_buffer("d2", d2_write);
 
-  if (!serialized_writes) {
-    query_write.submit();
-    query_write.finalize();
-  } else {
-    submit_and_finalize_serialized_query(ctx, query_write);
-  }
+  submit_query_wrapper(
+      ctx,
+      array_name,
+      &query_write,
+      server_buffers,
+      serialize,
+      refactored_query_v2);
 
   array_write.close();
 
   FragmentInfo fragment_info(ctx, array_name);
   fragment_info.load();
 
-  if (serialized_load) {
+  if (serialize) {
     FragmentInfo deserialized_fragment_info(ctx, array_name);
     tiledb_fragment_info_serialize(
         ctx.ptr().get(),
@@ -1342,7 +1334,13 @@ TEST_CASE(
       .set_data_buffer("d1", d1_read2)
       .set_data_buffer("d2", d2_read2);
 
-  query_read2.submit();
+  submit_query_wrapper(
+      ctx,
+      array_name,
+      &query_read2,
+      server_buffers,
+      serialize,
+      refactored_query_v2);
   array_read2.close();
 
   for (int i = 0; i < 2; i++) {

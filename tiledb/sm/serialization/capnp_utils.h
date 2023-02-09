@@ -90,22 +90,22 @@ tuple<Status, optional<shared_ptr<Attribute>>> attribute_from_capnp(
     const capnp::Attribute::Reader& attribute_reader);
 
 /**
- * Serialize a URI of array directory into a relative path with regards to
- * the array uri. This is needed since for security reasons we don't want to
- * send full paths over the wire. The absolute -> relative truncation happens
- * based on the format version that the path was written in. For an old-format
- * uri - prior to version 12- (e.g. array_name/fragment423423423423), we just
- * keep and serialize the last part (fragment423423423423). For a newer format
- * uri (e.g. array_name/__fragments/fragment423423423423 ) we keep and
- * serialize the last 2 parts (__fragments/fragment423423423423). Then upon
- * deserialization we don’t need to rembember/know the version each of each
- * fragment, we can just append that to the root (array_name/) and we are done.
- * To detect the version, we look into the uri for the presence of the folder
- * names introduced after v12.
+ * Serialize a URI into a relative path with regards to the array uri. This is
+ * needed since for security reasons we don't want to send full paths over the
+ * wire. The absolute -> relative truncation happens based on the format version
+ * that the path was written in. For an old-format uri - prior to version 12-
+ * (e.g. array_name/fragment423423423423), we just keep and serialize the last
+ * part (fragment423423423423). For a newer format uri (e.g.
+ * array_name/__fragments/fragment423423423423 ) we keep and serialize the last
+ * 2 parts (__fragments/fragment423423423423). Then upon deserialization we
+ * don’t need to rembember/know the version each of each fragment, we can just
+ * append that to the root (array_name/) and we are done. To detect the version,
+ * we look into the uri for the presence of the folder names introduced after
+ * v12.
  *
  * @param uri URI to serialize as relative path
  */
-inline std::string serialize_array_dir_uri_to_relative(const URI& uri) {
+inline std::string serialize_array_uri_to_relative(const URI& uri) {
   static std::array<std::string_view, 5> dir_names = {
       constants::array_fragments_dir_name,
       constants::array_commits_dir_name,
@@ -130,7 +130,7 @@ inline std::string serialize_array_dir_uri_to_relative(const URI& uri) {
  * @param uri URI to deserialize as absolute path
  * @param array_uri URI of the array the path belongs to
  */
-inline URI deserialize_array_dir_uri_to_absolute(
+inline URI deserialize_array_uri_to_absolute(
     const std::string& uri, const URI& array_uri) {
   return array_uri.join_path(uri);
 }

@@ -249,40 +249,6 @@ class Query {
   Status submit_and_finalize();
 
   /**
-   * This is a deprecated API.
-   * Retrieves the buffer of a fixed-sized attribute/dimension.
-   *
-   * @param name The buffer attribute/dimension name. An empty string means
-   *     the special default attribute/dimension.
-   * @param buffer The buffer to be retrieved.
-   * @param buffer_size A pointer to the buffer size to be retrieved.
-   * @return Status
-   */
-  Status get_buffer(
-      const char* name, void** buffer, uint64_t** buffer_size) const;
-
-  /**
-   * This is a deprecated API.
-   * Retrieves the offsets and values buffers of a var-sized
-   * attribute/dimension.
-   *
-   * @param name The attribute/dimension name. An empty string means
-   *     the special default attribute/dimension.
-   * @param buffer_off The offsets buffer to be retrieved.
-   * @param buffer_off_size A pointer to the offsets buffer size to be
-   * retrieved.
-   * @param buffer_val The values buffer to be retrieved.
-   * @param buffer_val_size A pointer to the values buffer size to be retrieved.
-   * @return Status
-   */
-  Status get_buffer(
-      const char* name,
-      uint64_t** buffer_off,
-      uint64_t** buffer_off_size,
-      void** buffer_val,
-      uint64_t** buffer_val_size) const;
-
-  /**
    * Retrieves the data buffer of a fixed/var-sized attribute/dimension.
    *
    * @param name The buffer attribute/dimension name. An empty string means
@@ -293,26 +259,6 @@ class Query {
    */
   Status get_data_buffer(
       const char* name, void** buffer, uint64_t** buffer_size) const;
-
-  /**
-   * Retrieves the data buffer of a fixed or variable-sized dimension label.
-   *
-   * @param name The name of the the label.
-   * @param buffer The buffer to be retrieved.
-   * @param buffer_size The size of the buffer.
-   */
-  void get_label_data_buffer(
-      const std::string& name, void** buffer, uint64_t** buffer_size) const;
-
-  /**
-   * Retrieves the offset buffer for a variable-sized dimension label.
-   *
-   * @param name The name of the label.
-   * @param buffer The buffer to be retrieved.
-   * @param buffer_size The size of the buffer.
-   */
-  void get_label_offsets_buffer(
-      const std::string& name, uint64_t** buffer, uint64_t** buffer_size) const;
 
   /**
    * Retrieves the offset buffer for a var-sized attribute/dimension.
@@ -346,49 +292,6 @@ class Query {
    */
   Status get_validity_buffer(
       const char* name,
-      uint8_t** buffer_validity_bytemap,
-      uint64_t** buffer_validity_bytemap_size) const;
-
-  /**
-   * This is a deprecated API.
-   * Retrieves the buffer and validity bytemap of a fixed-sized, nullable
-   * attribute.
-   *
-   * @param name The buffer attribute name. An empty string means
-   *     the special default attribute.
-   * @param buffer The buffer to be retrieved.
-   * @param buffer_size A pointer to the buffer size to be retrieved.
-   * @param buffer The buffer to be retrieved.
-   * @param buffer_size A pointer to the buffer size to be retrieved.
-   * @return Status
-   */
-  Status get_buffer_vbytemap(
-      const char* name,
-      void** buffer,
-      uint64_t** buffer_size,
-      uint8_t** buffer_validity_bytemap,
-      uint64_t** buffer_validity_bytemap_size) const;
-
-  /**
-   * This is a deprecated API.
-   * Retrieves the offsets, values, and validity bytemap buffers of
-   * a var-sized, nullable attribute.
-   *
-   * @param name The attribute name. An empty string means
-   *     the special default attribute.
-   * @param buffer_off The offsets buffer to be retrieved.
-   * @param buffer_off_size A pointer to the offsets buffer size to be
-   * retrieved.
-   * @param buffer_val The values buffer to be retrieved.
-   * @param buffer_val_size A pointer to the values buffer size to be retrieved.
-   * @return Status
-   */
-  Status get_buffer_vbytemap(
-      const char* name,
-      uint64_t** buffer_off,
-      uint64_t** buffer_off_size,
-      void** buffer_val,
-      uint64_t** buffer_val_size,
       uint8_t** buffer_validity_bytemap,
       uint64_t** buffer_validity_bytemap_size) const;
 
@@ -540,36 +443,6 @@ class Query {
       const std::string& name, const QueryBuffer& buffer);
 
   /**
-   * Sets the label data buffer for fixed or variable sized dimension labels.
-   *
-   * @param name The name of the dimension label to set the data buffer for.
-   * @param buffer The buffer for the data.
-   * @param buffer_size The size of the data.
-   * @param check_null_buffers If ``true`` verify buffer and buffersize are not
-   *     nullptrs.
-   */
-  void set_label_data_buffer(
-      const std::string& name,
-      void* const buffer,
-      uint64_t* const buffer_size,
-      const bool check_null_buffers = true);
-
-  /**
-   * Sets the label offsets buffer for variable sized dimension labels.
-   *
-   * @param name The name of the dimension label to set the offsets buffer for.
-   * @param buffer_offsets The buffer for offsets for the variable size data.
-   * @param buffer_offsets_size The size of the offsets buffer.
-   * @param check_null_buffers If ``true`` verify buffer and buffersize are not
-   *     nullptrs.
-   */
-  void set_label_offsets_buffer(
-      const std::string& name,
-      uint64_t* const buffer_offsets,
-      uint64_t* const buffer_offsets_size,
-      const bool check_null_buffers = true);
-
-  /**
    * Sets the offset buffer for a var-sized attribute/dimension.
    *
    * @param name The attribute/dimension to set the buffer for.
@@ -618,132 +491,6 @@ class Query {
    * @return Config from query
    */
   const Config& config() const;
-
-  /**
-   * This is a deprecated API.
-   * Sets the buffer for a fixed-sized attribute/dimension.
-   *
-   * @param name The attribute/dimension to set the buffer for.
-   * @param buffer The buffer that either have the input data to be written,
-   *     or will hold the data to be read.
-   * @param buffer_size In the case of writes, this is the size of `buffer`
-   *     in bytes. In the case of reads, this initially contains the allocated
-   *     size of `buffer`, but after the termination of the query
-   *     it will contain the size of the useful (read) data in `buffer`.
-   * @param check_null_buffers If true (default), null buffers are not allowed.
-   * @return Status
-   */
-  Status set_buffer(
-      const std::string& name,
-      void* buffer,
-      uint64_t* buffer_size,
-      bool check_null_buffers = true);
-
-  /**
-   * This is a deprecated API.
-   * Sets the buffer for a var-sized attribute/dimension.
-   *
-   * @param name The attribute/dimension to set the buffer for.
-   * @param buffer_off The buffer that either have the input data to be written,
-   *     or will hold the data to be read. This buffer holds the starting
-   *     offsets of each cell value in `buffer_val`.
-   * @param buffer_off_size In the case of writes, it is the size of
-   *     `buffer_off` in bytes. In the case of reads, this initially contains
-   *     the allocated size of `buffer_off`, but after the termination of the
-   *     function it will contain the size of the useful (read) data in
-   *     `buffer_off`.
-   * @param buffer_val The buffer that either have the input data to be written,
-   *     or will hold the data to be read. This buffer holds the actual
-   *     var-sized cell values.
-   * @param buffer_val_size In the case of writes, it is the size of
-   *     `buffer_val` in bytes. In the case of reads, this initially contains
-   *     the allocated size of `buffer_val`, but after the termination of the
-   *     query it will contain the size of the useful (read) data in
-   *     `buffer_val`.
-   * @param check_null_buffers If true (default), null buffers are not allowed.
-   * @return Status
-   */
-  Status set_buffer(
-      const std::string& name,
-      uint64_t* buffer_off,
-      uint64_t* buffer_off_size,
-      void* buffer_val,
-      uint64_t* buffer_val_size,
-      bool check_null_buffers = true);
-
-  /**
-   * This is a deprecated API.
-   * Sets the buffer for a fixed-sized, nullable attribute with a validity
-   * bytemap.
-   *
-   * @param name The attribute to set the buffer for.
-   * @param buffer The buffer that either have the input data to be written,
-   *     or will hold the data to be read.
-   * @param buffer_size In the case of writes, this is the size of `buffer`
-   *     in bytes. In the case of reads, this initially contains the allocated
-   *     size of `buffer`, but after the termination of the query
-   *     it will contain the size of the useful (read) data in `buffer`.
-   * @param buffer_validity_bytemap The buffer that either have the validity
-   * bytemap associated with the input data to be written, or will hold the
-   * validity bytemap to be read.
-   * @param buffer_validity_bytemap_size In the case of writes, this is the size
-   * of `buffer_validity_bytemap` in bytes. In the case of reads, this initially
-   *     contains the allocated size of `buffer_validity_bytemap`, but after the
-   *     termination of the query it will contain the size of the useful (read)
-   * data in `buffer_validity_bytemap`.
-   * @param check_null_buffers If true (default), null buffers are not allowed.
-   * @return Status
-   */
-  Status set_buffer_vbytemap(
-      const std::string& name,
-      void* buffer,
-      uint64_t* buffer_size,
-      uint8_t* buffer_validity_bytemap,
-      uint64_t* buffer_validity_bytemap_size,
-      bool check_null_buffers = true);
-
-  /**
-   * This is a deprecated API.
-   * Sets the buffer for a var-sized, nullable attribute with a validity
-   * bytemap.
-   *
-   * @param name The attribute to set the buffer for.
-   * @param buffer_off The buffer that either have the input data to be written,
-   *     or will hold the data to be read. This buffer holds the starting
-   *     offsets of each cell value in `buffer_val`.
-   * @param buffer_off_size In the case of writes, it is the size of
-   *     `buffer_off` in bytes. In the case of reads, this initially contains
-   *     the allocated size of `buffer_off`, but after the termination of the
-   *     function it will contain the size of the useful (read) data in
-   *     `buffer_off`.
-   * @param buffer_val The buffer that either have the input data to be written,
-   *     or will hold the data to be read. This buffer holds the actual
-   *     var-sized cell values.
-   * @param buffer_val_size In the case of writes, it is the size of
-   *     `buffer_val` in bytes. In the case of reads, this initially contains
-   *     the allocated size of `buffer_val`, but after the termination of the
-   *     query it will contain the size of the useful (read) data in
-   *     `buffer_val`.
-   * @param buffer_validity_bytemap The buffer that either have the validity
-   * bytemap associated with the input data to be written, or will hold the
-   * validity bytemap to be read.
-   * @param buffer_validity_bytemap_size In the case of writes, this is the size
-   * of `buffer_validity_bytemap` in bytes. In the case of reads, this initially
-   *     contains the allocated size of `buffer_validity_bytemap`, but after the
-   *     termination of the query it will contain the size of the useful (read)
-   * data in `buffer_validity_bytemap`.
-   * @param check_null_buffers If true (default), null buffers are not allowed.
-   * @return Status
-   */
-  Status set_buffer_vbytemap(
-      const std::string& name,
-      uint64_t* buffer_off,
-      uint64_t* buffer_off_size,
-      void* buffer_val,
-      uint64_t* buffer_val_size,
-      uint8_t* buffer_validity_bytemap,
-      uint64_t* buffer_validity_bytemap_size,
-      bool check_null_buffers = true);
 
   /**
    * Used by serialization to set the estimated result size
@@ -809,13 +556,8 @@ class Query {
    * the entire domain.
    *
    * @param subarray The subarray to be set.
-   * @return Status
-   *
-   * @note Setting a subarray for sparse arrays, or for dense arrays
-   *     when performing unordered (sparse) writes, has no effect
-   *     (will be ingnored).
    */
-  Status set_subarray(const void* subarray);
+  void set_subarray(const void* subarray);
 
   /** Returns the query subarray. */
   const Subarray* subarray() const;
@@ -824,18 +566,23 @@ class Query {
    * Sets the query subarray.
    *
    * @param subarray The subarray to be set.
-   * @return Status
-   *
-   * @note Calling set_subarray for sparse arrays, or for dense arrays
-   *     when performing unordered (sparse) writes, has no effect.
    */
-  Status set_subarray(const tiledb::sm::Subarray& subarray);
+  void set_subarray(const tiledb::sm::Subarray& subarray);
 
   /** Sets the query subarray, without performing any checks. */
   Status set_subarray_unsafe(const Subarray& subarray);
 
   /** Sets the query subarray, without performing any checks. */
   Status set_subarray_unsafe(const NDRange& subarray);
+
+  /**
+   * Sets the query subarray without performing any checks.
+   *
+   * Used for deserialize dense writes.
+   *
+   * @param subarray The subarray to be set.
+   */
+  void set_subarray_unsafe(const void* subarray);
 
   /** Submits the query to the storage manager. */
   Status submit();
@@ -1066,6 +813,12 @@ class Query {
    */
   uint64_t fragment_size_;
 
+  /** Allow separate attribute writes. */
+  bool allow_separate_attribute_writes_;
+
+  /** Already written buffers. */
+  std::unordered_set<std::string> written_buffers_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -1101,68 +854,11 @@ class Query {
   bool only_dim_label_query() const;
 
   /**
-   * This is a deprecated API.
-   * Internal routine for setting fixed-sized, nullable attribute buffers with
-   * a ValidityVector.
-   */
-  Status set_buffer(
-      const std::string& name,
-      void* buffer,
-      uint64_t* buffer_size,
-      ValidityVector&& validity_vector,
-      bool check_null_buffers = true);
-
-  /**
-   * This is a deprecated API.
-   * Internal routine for setting var-sized, nullable attribute buffers with
-   * a ValidityVector.
-   */
-  Status set_buffer(
-      const std::string& name,
-      uint64_t* buffer_off,
-      uint64_t* buffer_off_size,
-      void* buffer_val,
-      uint64_t* buffer_val_size,
-      ValidityVector&& validity_vector,
-      bool check_null_buffers = true);
-
-  /**
-   * This is a deprecated API.
-   * Internal routine for getting fixed-sized, nullable attribute buffers with
-   * a ValidityVector.
-   */
-  Status get_buffer(
-      const char* name,
-      void** buffer,
-      uint64_t** buffer_size,
-      const ValidityVector** validity_vector) const;
-
-  /**
-   * This is a deprecated API.
-   * Internal routine for getting fixed-sized, nullable attribute buffers with
-   * a ValidityVector.
-   */
-  Status get_buffer(
-      const char* name,
-      uint64_t** buffer_off,
-      uint64_t** buffer_off_size,
-      void** buffer_val,
-      uint64_t** buffer_val_size,
-      const ValidityVector** validity_vector) const;
-
-  /**
    * Check if input buffers are tile aligned. This function should be called
    * only for remote global order writes and it should enforce tile alignment
    * for both dense and sparse arrays.
    */
   Status check_tile_alignment() const;
-
-  /**
-   * Check if input buffers are bigger than 5MB. S3 multipart upload
-   * requires each part be bigger than 5MB, except the last part.
-   * This function should be called only for remote global order writes.
-   */
-  Status check_buffer_multipart_size() const;
 
   /**
    * Reset coord buffer markers at end of a global write submit.

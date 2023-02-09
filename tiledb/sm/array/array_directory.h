@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,8 +37,11 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
+#include <functional>
 #include <unordered_map>
 
 using namespace tiledb::common;
@@ -74,6 +77,11 @@ class ArrayDirectory {
    */
   class FilteredFragmentUris {
    public:
+    /**
+     * Type alias for a set of fragment_uris.
+     */
+    using FragmentSet = std::set<URI>;
+
     /* ********************************* */
     /*     CONSTRUCTORS & DESTRUCTORS    */
     /* ********************************* */
@@ -126,6 +134,29 @@ class ArrayDirectory {
       return fragment_uris_;
     };
 
+    /**
+     * Returns the filtered fragment URIs matching the given fragments_list.
+     *
+     * Note: though fragment_uris_ is of type TimestampedURI,
+     * this API will return non-timestamped URIs.
+     */
+    std::vector<URI> fragment_uris(
+        const std::vector<URI>& fragments_list) const {
+      std::vector<URI> uris;
+      FragmentSet fragment_set = fragment_uris_to_set();
+      for (auto fragment : fragments_list) {
+        auto iter = fragment_set.find(fragment);
+        if (iter == fragment_set.end()) {
+          throw std::runtime_error(
+              "[ArrayDirectory::fragment_uris] " + fragment.to_string() +
+              " is not a fragment of the ArrayDirectory.");
+        } else {
+          uris.emplace_back(*iter);
+        }
+      }
+      return uris;
+    };
+
    private:
     /* ********************************* */
     /*         PRIVATE ATTRIBUTES        */
@@ -149,6 +180,23 @@ class ArrayDirectory {
      * [`timestamp_start_`, `timestamp_end_`].
      */
     std::vector<TimestampedURI> fragment_uris_;
+
+    /* ********************************* */
+    /*             PRIVATE API           */
+    /* ********************************* */
+
+    /**
+     * Convert the filtered fragment URIs into a FragmentSet to ease parsing.
+     *
+     * Note: this function is private and may only be called internally.
+     */
+    inline const FragmentSet fragment_uris_to_set() const {
+      FragmentSet fragment_set;
+      for (auto timestamped_uri : fragment_uris_) {
+        fragment_set.insert(timestamped_uri.uri_);
+      }
+      return fragment_set;
+    }
   };
 
  public:
@@ -236,14 +284,18 @@ class ArrayDirectory {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
-  ArrayDirectory() = default;
+  /**
+   * Constructor.
+   *
+   * @param resources A reference to a ContextResources instance
+   * @param uri The URI of the array directory
+   */
+  ArrayDirectory(ContextResources& resources, const URI& uri);
 
   /**
    * Constructor.
    *
-   * @param vfs A pointer to a VFS object for all IO.
-   * @param tp A thread pool used for parallelism.
+   * @param resources A reference to the ContextResources instance
    * @param uri The URI of the array directory.
    * @param timestamp_start Only array fragments, metadata, etc. that
    *     were created within timestamp range
@@ -256,8 +308,7 @@ class ArrayDirectory {
    * @param mode The mode to load the array directory in.
    */
   ArrayDirectory(
-      VFS* vfs,
-      ThreadPool* tp,
+      ContextResources& resources,
       const URI& uri,
       uint64_t timestamp_start,
       uint64_t timestamp_end,
@@ -332,7 +383,7 @@ class ArrayDirectory {
    * The new fragment name is computed
    * as `__<first_URI_timestamp>_<last_URI_timestamp>_<uuid>`.
    */
-  tuple<Status, optional<std::string>> compute_new_fragment_name(
+  std::string compute_new_fragment_name(
       const URI& first, const URI& last, format_version_t format_version) const;
 
   /** Returns `true` if `load` has been run. */
@@ -347,6 +398,12 @@ class ArrayDirectory {
 
   /** Returns the end timestamp of the files to be considered */
   const uint64_t& timestamp_end() const;
+
+  /** Writes a commit ignore file. */
+  void write_commit_ignore_file(const std::vector<URI>& commit_uris_to_ignore);
+
+  /** Deletes the array fragments at the given fragment URIs. */
+  void delete_fragments_list(const std::vector<URI>& fragment_uris);
 
   /* ACCESSORS */
 
@@ -436,14 +493,14 @@ class ArrayDirectory {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The ContextResources class. */
+  std::reference_wrapper<ContextResources> resources_;
+
   /** The array URI. */
   URI uri_;
 
-  /** The storage manager. */
-  VFS* vfs_;
-
-  /** A thread pool used for parallelism. */
-  ThreadPool* tp_;
+  /** The class stats. */
+  stats::Stats* stats_;
 
   /** Fragment URIs. */
   std::vector<URI> unfiltered_fragment_uris_;
@@ -551,7 +608,7 @@ class ArrayDirectory {
    * @return Status, fragment metadata URIs.
    */
   tuple<Status, optional<std::vector<URI>>>
-  load_fragment_metadata_dir_uris_v12_or_higher();
+  list_fragment_metadata_dir_uris_v12_or_higher();
 
   /**
    * Loads the commits URIs to consolidate.

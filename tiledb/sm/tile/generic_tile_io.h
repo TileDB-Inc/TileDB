@@ -37,7 +37,8 @@
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
+#include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 
 using namespace tiledb::common;
 
@@ -99,10 +100,10 @@ class GenericTileIO {
   /**
    * Constructor.
    *
-   * @param storage_manager The storage manager.
+   * @param resources The ContextResources to use
    * @param uri The name of the file that stores data.
    */
-  GenericTileIO(StorageManager* storage_manager, const URI& uri);
+  GenericTileIO(ContextResources& resources, const URI& uri);
 
   GenericTileIO() = delete;
   DISABLE_COPY_AND_COPY_ASSIGN(GenericTileIO);
@@ -135,15 +136,15 @@ class GenericTileIO {
   /**
    * Reads the generic tile header from the file.
    *
-   * @param sm The StorageManager instance to use for reading.
+   * @param resources The ContextResources instance to use for reading.
    * @param uri The URI of the generic tile.
    * @param file_offset The offset where the header read will begin.
    * @param encryption_key If the array is encrypted, the private encryption
    *    key. For unencrypted arrays, pass `nullptr`.
    * @return Status, Header
    */
-  static tuple<Status, optional<GenericTileHeader>> read_generic_tile_header(
-      const StorageManager* sm, const URI& uri, uint64_t file_offset);
+  static GenericTileHeader read_generic_tile_header(
+      ContextResources& resources, const URI& uri, uint64_t file_offset);
 
   /**
    * Writes a tile generically to the file. This means that a header will be
@@ -157,7 +158,7 @@ class GenericTileIO {
    * @return Status
    */
   Status write_generic(
-      Tile* tile, const EncryptionKey& encryption_key, uint64_t* nbytes);
+      WriterTile* tile, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
    * Serialize a generic tile header.
@@ -181,8 +182,8 @@ class GenericTileIO {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The storage manager object. */
-  StorageManager* storage_manager_;
+  /** The ContextResources object. */
+  ContextResources& resources_;
 
   /** The file URI. */
   URI uri_;
@@ -208,7 +209,7 @@ class GenericTileIO {
    * @return Status
    */
   Status init_generic_tile_header(
-      Tile* tile,
+      WriterTile* tile,
       GenericTileHeader* header,
       const EncryptionKey& encryption_key) const;
 };

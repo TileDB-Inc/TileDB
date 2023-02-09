@@ -398,9 +398,6 @@ const std::string filter_scale_float_str = "SCALE_FLOAT";
 /** String describing FILTER_XOR. */
 const std::string filter_xor_str = "XOR";
 
-/** String describing FILTER_BITSORT. */
-const std::string filter_bitsort_str = "BITSORT";
-
 /** String describing FILTER_WEBP. */
 const std::string filter_webp_str = "WEBP";
 
@@ -637,7 +634,7 @@ const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization base format version number. */
-const format_version_t base_format_version = 17;
+const format_version_t base_format_version = 18;
 
 /**
  * The TileDB serialization format version number.
@@ -737,6 +734,16 @@ const std::string filestore_metadata_original_filename_key =
 
 /** Name of the metadata key used in filestore arrays for filename extension. */
 const std::string filestore_metadata_file_extension_key = "file_extension";
+
+/** The minimum size of an s3 multipart upload intermediate part. */
+const uint64_t s3_min_multipart_part_size = 5242880;
+
+/**
+ * The dir name under fragment uri used by s3 to store remote
+ * global order writes intermediate chunks
+ */
+const std::string s3_multipart_buffering_dirname =
+    "__global_order_write_chunks";
 
 const void* fill_value(Datatype type) {
   switch (type) {

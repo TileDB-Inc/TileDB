@@ -111,16 +111,6 @@
     TILEDB_SERIALIZATION_TYPE_ENUM(CAPNP),
 #endif
 
-/** TileDB VFS mode */
-#ifdef TILEDB_VFS_MODE_ENUM
-    /** Read mode */
-    TILEDB_VFS_MODE_ENUM(VFS_READ) = 0,
-    /** Write mode */
-    TILEDB_VFS_MODE_ENUM(VFS_WRITE) = 1,
-    /** Append mode */
-    TILEDB_VFS_MODE_ENUM(VFS_APPEND) = 2,
-#endif
-
 #ifdef TILEDB_MIME_TYPE_ENUM
     /** Unspecified MIME type*/
     TILEDB_MIME_TYPE_ENUM(MIME_AUTODETECT) = 0,
@@ -128,13 +118,4 @@
     TILEDB_MIME_TYPE_ENUM(MIME_TIFF) = 1,
     /** application/pdf*/
     TILEDB_MIME_TYPE_ENUM(MIME_PDF) = 2,
-#endif
-
-#ifdef TILEDB_DATA_ORDER_ENUM
-    /** Unordered dimension label. */
-    TILEDB_DATA_ORDER_ENUM(UNORDERED_DATA) = 0,
-    /** Ordered dimension label with increasing values. */
-    TILEDB_DATA_ORDER_ENUM(INCREASING_DATA) = 1,
-    /** Ordered dimension label with decreasing values. */
-    TILEDB_DATA_ORDER_ENUM(DECREASING_DATA) = 2,
 #endif

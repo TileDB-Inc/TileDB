@@ -412,17 +412,19 @@ TEST_CASE_METHOD(
   int num_frags = 2;
   for (int i = 1; i < num_frags + 1; i++) {
     // Write a fragment.
-    int coords[] = {i,
-                    num_frags + i,
-                    2 * num_frags + i,
-                    3 * num_frags + i,
-                    4 * num_frags + i};
+    int coords[] = {
+        i,
+        num_frags + i,
+        2 * num_frags + i,
+        3 * num_frags + i,
+        4 * num_frags + i};
     uint64_t coords_size = sizeof(coords);
-    int data[] = {i,
-                  num_frags + i,
-                  2 * num_frags + i,
-                  3 * num_frags + i,
-                  4 * num_frags + i};
+    int data[] = {
+        i,
+        num_frags + i,
+        2 * num_frags + i,
+        3 * num_frags + i,
+        4 * num_frags + i};
     uint64_t data_size = sizeof(data);
     write_1d_fragment(coords, &coords_size, data, &data_size);
   }
@@ -917,13 +919,11 @@ TEST_CASE_METHOD(
 TEST_CASE(
     "Sparse global order reader: user buffer cannot fit single cell",
     "[sparse-global-order][user-buffer][too-small]") {
-  bool serialized_writes = false;
-  SECTION("no serialization") {
-    serialized_writes = false;
-  }
+  bool serialized = false, refactored_query_v2 = false;
 #ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialized_writes = true;
+  serialized = GENERATE(true, false);
+  if (serialized) {
+    refactored_query_v2 = GENERATE(true, false);
   }
 #endif
 
@@ -966,12 +966,16 @@ TEST_CASE(
   query.set_data_buffer("a", a1_data);
   query.set_offsets_buffer("a", a1_offsets);
 
-  if (!serialized_writes) {
-    CHECK_NOTHROW(query.submit());
-    query.finalize();
-  } else {
-    submit_and_finalize_serialized_query(ctx, query);
-  }
+  // Submit query
+  ServerQueryBuffers server_buffers_;
+  auto rc = submit_query_wrapper(
+      ctx,
+      array_name,
+      &query,
+      server_buffers_,
+      serialized,
+      refactored_query_v2);
+  REQUIRE(rc == TILEDB_OK);
 
   // Read using a buffer that can't fit a single result
   Array array2(ctx, array_name, TILEDB_READ);
@@ -990,14 +994,28 @@ TEST_CASE(
 
   // The user buffer cannot fit a single result so it should return Incomplete
   // with the right reason
-  auto st = query2.submit();
-  CHECK(st == Query::Status::INCOMPLETE);
+  rc = submit_query_wrapper(
+      ctx,
+      array_name,
+      &query2,
+      server_buffers_,
+      serialized,
+      refactored_query_v2,
+      false);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(query2.query_status() == Query::Status::INCOMPLETE);
 
-  tiledb_query_status_details_t details;
-  int rc = tiledb_query_get_status_details(
-      ctx.ptr().get(), query2.ptr().get(), &details);
-  CHECK(rc == TILEDB_OK);
-  CHECK(details.incomplete_reason == TILEDB_REASON_USER_BUFFER_SIZE);
+  // For remote arrays the reason is always TILEDB_REASON_USER_BUFFER_SIZE, but
+  // we can't test it here since we simulate "remote" arrays by using a local
+  // URI so the array->is_remote() check will fail, and we won't get the
+  // correct result.
+  if (!serialized) {
+    tiledb_query_status_details_t details;
+    rc = tiledb_query_get_status_details(
+        ctx.ptr().get(), query2.ptr().get(), &details);
+    CHECK(rc == TILEDB_OK);
+    CHECK(details.incomplete_reason == TILEDB_REASON_USER_BUFFER_SIZE);
+  }
 
   array2.close();
 
@@ -1107,17 +1125,19 @@ TEST_CASE_METHOD(
   int num_frags = 2;
   for (int i = 1; i < num_frags + 1; i++) {
     // Write a fragment.
-    int coords[] = {i,
-                    num_frags + i,
-                    2 * num_frags + i,
-                    3 * num_frags + i,
-                    4 * num_frags + i};
+    int coords[] = {
+        i,
+        num_frags + i,
+        2 * num_frags + i,
+        3 * num_frags + i,
+        4 * num_frags + i};
     uint64_t coords_size = sizeof(coords);
-    int data[] = {i,
-                  num_frags + i,
-                  2 * num_frags + i,
-                  3 * num_frags + i,
-                  4 * num_frags + i};
+    int data[] = {
+        i,
+        num_frags + i,
+        2 * num_frags + i,
+        3 * num_frags + i,
+        4 * num_frags + i};
     uint64_t data_size = sizeof(data);
     write_1d_fragment(coords, &coords_size, data, &data_size);
   }

@@ -106,6 +106,11 @@ class Array {
   /** Returns the array directory object. */
   const ArrayDirectory& array_directory() const;
 
+  /** Set the array directory. */
+  void set_array_directory(const ArrayDirectory& dir) {
+    array_dir_ = dir;
+  }
+
   /** Sets the latest array schema.
    * @param array_schema The array schema to set.
    */
@@ -219,12 +224,22 @@ class Array {
    * @param uri The uri of the Array whose fragments are to be deleted.
    * @param timestamp_start The start timestamp at which to delete fragments.
    * @param timestamp_end The end timestamp at which to delete fragments.
-   * @return Status
    *
    * @pre The Array must be open for exclusive writes
    */
-  Status delete_fragments(
+  void delete_fragments(
       const URI& uri, uint64_t timestamp_start, uint64_t timstamp_end);
+
+  /**
+   * Deletes the fragments with the given URIs from the Array with given URI.
+   *
+   * @param uri The uri of the Array whose fragments are to be deleted.
+   * @param fragment_uris The uris of the fragments to be deleted.
+   *
+   * @pre The Array must be open for exclusive writes
+   */
+  void delete_fragments_list(
+      const URI& uri, const std::vector<URI>& fragment_uris);
 
   /** Returns a constant pointer to the encryption key. */
   const EncryptionKey* encryption_key() const;
@@ -234,6 +249,13 @@ class Array {
    * an empty vector is returned.
    */
   std::vector<shared_ptr<FragmentMetadata>> fragment_metadata() const;
+
+  /**
+   * Accessor to the fragment metadata of the array.
+   */
+  inline std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata() {
+    return fragment_metadata_;
+  }
 
   /**
    * Returns `true` if the array is empty at the time it is opened.
@@ -308,6 +330,9 @@ class Array {
   /** Directly set the timestamp end value. */
   Status set_timestamp_end(uint64_t timestamp_end);
 
+  /** Directly set the timestamp end opened at value. */
+  Status set_timestamp_end_opened_at(const uint64_t timestamp_end_opened_at);
+
   /** Directly set the array config. */
   Status set_config(Config config);
 
@@ -317,6 +342,11 @@ class Array {
   /** Directly set the array URI for serialized compatibility with pre
    * TileDB 2.5 clients */
   Status set_uri_serialized(const std::string& uri);
+
+  /** Sets the array URI. */
+  void set_array_uri(const URI& array_uri) {
+    array_uri_ = array_uri;
+  }
 
   /**
    * Deletes metadata from an array opened in WRITE mode.
@@ -456,16 +486,36 @@ class Array {
   /** Checks the config to see if refactored array open should be used. */
   bool use_refactored_array_open() const;
 
+  /**
+   * Sets the array state as open.
+   *
+   * @param query_type The QueryType of the Array.
+   */
+  void set_array_open(const QueryType& query_type);
+
+  /**
+   * Sets the array state as open, used in serialization
+   */
+  void set_serialized_array_open();
+
   /** Set the query type to open the array for. */
   inline void set_query_type(QueryType query_type) {
     query_type_ = query_type;
   }
 
   /**
+   * Checks the array is open, in MODIFY_EXCLUSIVE mode, before deleting data.
+   */
+  void ensure_array_is_valid_for_delete(const URI& uri);
+
+  /**
    * Returns a map of the computed average cell size for var size
    * dimensions/attributes.
    */
-  std::unordered_map<std::string, uint64_t> get_average_var_cell_sizes();
+  std::unordered_map<std::string, uint64_t> get_average_var_cell_sizes() const;
+
+  /** Load array directory for non-remote arrays */
+  ArrayDirectory& load_array_directory();
 
   /** Return the max tile size for the array. */
   void get_max_tile_size(tiledb_fragment_max_tile_sizes_t* max_tile_sizes);
@@ -545,6 +595,9 @@ class Array {
   /** TileDB storage manager. */
   StorageManager* storage_manager_;
 
+  /** TileDB Context Resources. */
+  ContextResources& resources_;
+
   /** The array config. */
   Config config_;
 
@@ -592,6 +645,44 @@ class Array {
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
+  /**
+   * Opens an array for reads at a timestamp. All the metadata of the
+   * fragments created before or at the input timestamp are retrieved.
+   *
+   * If a timestamp_start is provided, this API will open the array between
+   * `timestamp_start` and `timestamp_end`.
+   *
+   * @param array The array to be opened.
+   * @return tuple of Status, latest ArraySchema, map of all array schemas and
+   * vector of FragmentMetadata
+   *        Status Ok on success, else error
+   *        ArraySchema The array schema to be retrieved after the
+   *           array is opened.
+   *        ArraySchemaMap Map of all array schemas found keyed by name
+   *        fragment_metadata The fragment metadata to be retrieved
+   *           after the array is opened.
+   */
+  tuple<
+      optional<shared_ptr<ArraySchema>>,
+      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
+      optional<std::vector<shared_ptr<FragmentMetadata>>>>
+  open_for_reads();
+
+  /**
+   * Opens an array for reads without fragments.
+   *
+   * @param array The array to be opened.
+   * @return tuple of Status, latest ArraySchema and map of all array schemas
+   *        Status Ok on success, else error
+   *        ArraySchema The array schema to be retrieved after the
+   *          array is opened.
+   *        ArraySchemaMap Map of all array schemas found keyed by name
+   */
+  tuple<
+      optional<shared_ptr<ArraySchema>>,
+      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+  open_for_reads_without_fragments();
+
   /** Clears the cached max buffer sizes and subarray. */
   void clear_last_max_buffer_sizes();
 
@@ -634,13 +725,6 @@ class Array {
 
   /** Computes the non-empty domain of the array. */
   Status compute_non_empty_domain();
-
-  /**
-   * Sets the array state as open.
-   *
-   * @param query_type The QueryType of the Array.
-   */
-  void set_array_open(const QueryType& query_type);
 
   /** Sets the array state as closed.
    *

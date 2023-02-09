@@ -96,12 +96,13 @@ TILEDB_EXPORT void tiledb_ctx_free(tiledb_ctx_t** ctx) TILEDB_NOEXCEPT;
  * @code{.c}
  * char* stats_json;
  * tiledb_ctx_get_stats(ctx, &stats_json);
- * // Make sure to free the retrieved `stats_json`
+ * // Use the string
+ * tiledb_stats_free_str(&stats_json);
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param stats_json The output json. The caller takes ownership
- *   of the c-string.
+ *   of the c-string and must free it using tiledb_stats_free_str().
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t

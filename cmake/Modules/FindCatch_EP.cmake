@@ -52,6 +52,7 @@ endif()
 find_package(Catch2 3.1
   HINTS
     ${CATCH_PATHS}
+    ${TILEDB_DEPS_NO_DEFAULT_PATH}
   )
 if(Catch2_FOUND)
   set(CATCH_INCLUDE_DIR ${Catch2_INCLUDE_DIR})
@@ -80,6 +81,7 @@ if (NOT Catch2_FOUND AND TILEDB_SUPERBUILD)
       # https://stackoverflow.com/questions/66227246/catch2-undefined-reference-to-catchstringmaker
       # catch build reportedly defaults to c++14, apparently building as cxx17 avoids...
       -DCMAKE_CXX_STANDARD=17 # to avoid undefined ...Catch::StringMaker
+      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
     UPDATE_COMMAND ""
     LOG_DOWNLOAD TRUE
     LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}

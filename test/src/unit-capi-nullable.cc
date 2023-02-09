@@ -58,7 +58,12 @@ class NullableArrayFx {
   const string FILE_TEMP_DIR =
       tiledb::sm::Posix::current_dir() + "/tiledb_test/";
 #endif
-  bool serialized_writes;
+
+  // Serialization parameters
+  bool serialize_ = false;
+  bool refactored_query_v2_ = false;
+  // Buffers to allocate on server side for serialized queries
+  ServerQueryBuffers server_buffers_;
 
   struct test_dim_t {
     test_dim_t(
@@ -225,7 +230,7 @@ NullableArrayFx::NullableArrayFx() {
 
   tiledb_config_free(&config);
 
-  serialized_writes = false;
+  serialize_ = false;
 }
 
 NullableArrayFx::~NullableArrayFx() {
@@ -432,15 +437,15 @@ void NullableArrayFx::write(
     }
   }
 
-  if (!serialized_writes) {
-    rc = tiledb_query_submit(ctx_, query);
-    REQUIRE(rc == TILEDB_OK);
-
-    rc = tiledb_query_finalize(ctx_, query);
-    REQUIRE(rc == TILEDB_OK);
-  } else {
-    submit_and_finalize_serialized_query(ctx_, query);
-  }
+  // Submit query
+  rc = submit_query_wrapper(
+      ctx_,
+      FILE_TEMP_DIR + array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
+  REQUIRE(rc == TILEDB_OK);
 
   // Clean up
   rc = tiledb_array_close(ctx_, array);
@@ -540,12 +545,14 @@ void NullableArrayFx::read(
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   REQUIRE(rc == TILEDB_OK);
 
-  // Submit the query.
-  rc = tiledb_query_submit(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
-
-  // Finalize the query, a no-op for non-global writes.
-  rc = tiledb_query_finalize(ctx_, query);
+  // Submit query
+  rc = submit_query_wrapper(
+      ctx_,
+      FILE_TEMP_DIR + array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
@@ -880,13 +887,14 @@ TEST_CASE_METHOD(
   attrs.emplace_back("a3", TILEDB_INT32, TILEDB_VAR_NUM, true);
 
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialize_ = false;
   }
-  SECTION("serialization enabled global order write") {
 #ifdef TILEDB_SERIALIZATION
-    serialized_writes = true;
-#endif
+  SECTION("serialization enabled") {
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
+#endif
 
   for (auto attr_iter = attrs.begin(); attr_iter != attrs.end(); ++attr_iter) {
     vector<test_attr_t> test_attrs(attrs.begin(), attr_iter + 1);
@@ -895,10 +903,11 @@ TEST_CASE_METHOD(
            {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR}) {
         for (const tiledb_layout_t tile_order :
              {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR}) {
-          for (const tiledb_layout_t write_order : {TILEDB_ROW_MAJOR,
-                                                    TILEDB_COL_MAJOR,
-                                                    TILEDB_UNORDERED,
-                                                    TILEDB_GLOBAL_ORDER}) {
+          for (const tiledb_layout_t write_order :
+               {TILEDB_ROW_MAJOR,
+                TILEDB_COL_MAJOR,
+                TILEDB_UNORDERED,
+                TILEDB_GLOBAL_ORDER}) {
             do_2d_nullable_test(
                 test_attrs, array_type, cell_order, tile_order, write_order);
           }

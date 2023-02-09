@@ -42,6 +42,7 @@
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_macros.h"
+#include "tiledb/sm/query/readers/filtered_data.h"
 #include "tiledb/sm/query/strategy_base.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/subarray/subarray.h"
@@ -94,9 +95,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , buffers_full_(false)
     , deletes_consolidation_no_purge_(
           buffers_.count(constants::delete_timestamps) != 0)
-    , bitsort_attribute_(array_schema_.bitsort_filter_attr())
     , partial_tile_offsets_loading_(false) {
-  disable_cache_ = true;
 }
 
 /* ****************************** */
@@ -170,19 +169,15 @@ std::vector<uint64_t> SparseIndexReaderBase::tile_offset_sizes() {
   std::vector<uint64_t> ret(fragment_metadata_.size());
   const auto dim_num = array_schema_.dim_num();
 
-  // Either compute for all fragments or relevant fragments if a subarray is
-  // set.
-  bool all_frag = !subarray_.is_set();
-  const auto relevant_fragments = subarray_.relevant_fragments();
-
   // Compute the size of tile offsets per fragments.
+  const auto relevant_fragments = subarray_.relevant_fragments();
   throw_if_not_ok(parallel_for(
       storage_manager_->compute_tp(),
       0,
-      all_frag ? fragment_metadata_.size() : relevant_fragments->size(),
+      relevant_fragments.size(),
       [&](uint64_t i) {
         // For easy reference.
-        auto frag_idx = all_frag ? i : relevant_fragments.value()[i];
+        auto frag_idx = relevant_fragments[i];
         auto& fragment = fragment_metadata_[frag_idx];
         const auto& schema = fragment->array_schema();
         const auto tile_num = fragment->tile_num();
@@ -314,12 +309,6 @@ std::pair<uint64_t, uint64_t> SparseIndexReaderBase::get_coord_tiles_size(
   if (fragment_metadata_[f]->has_delete_meta()) {
     tiles_size +=
         fragment_metadata_[f]->cell_num(t) * constants::timestamp_size;
-  }
-
-  // Compute bitsort attribute tile size.
-  if (bitsort_attribute_.has_value()) {
-    // Calculate memory consumption for this tile.
-    tiles_size += get_attribute_tile_size(bitsort_attribute_.value(), f, t);
   }
 
   // Compute query condition tile sizes.
@@ -505,24 +494,17 @@ Status SparseIndexReaderBase::load_initial_data() {
 }
 
 uint64_t SparseIndexReaderBase::tile_offsets_size(
-    const optional<std::vector<unsigned>>& relevant_fragments) {
+    const RelevantFragments& relevant_fragments) {
   uint64_t total_tile_offset_usage = 0;
-  if (!relevant_fragments.has_value()) {
-    total_tile_offset_usage = std::accumulate(
-        per_frag_tile_offsets_usage_.begin(),
-        per_frag_tile_offsets_usage_.end(),
-        0);
-  } else {
-    for (auto f : relevant_fragments.value()) {
-      total_tile_offset_usage += per_frag_tile_offsets_usage_[f];
-    }
+  for (auto f : relevant_fragments) {
+    total_tile_offset_usage += per_frag_tile_offsets_usage_[f];
   }
 
   return total_tile_offset_usage;
 }
 
 void SparseIndexReaderBase::load_tile_offsets_for_fragments(
-    const optional<std::vector<unsigned>>& relevant_fragments) {
+    const RelevantFragments& relevant_fragments) {
   // Preload zipped coordinate tile offsets. Note that this will
   // ignore fragments with a version >= 5.
   std::vector<std::string> zipped_coords_names = {constants::coords};
@@ -545,27 +527,20 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
   if (include_coords_) {
     // Read and unfilter zipped coordinate tiles. Note that
     // this will ignore fragments with a version >= 5.
-    std::vector<std::string> zipped_coords_names = {constants::coords};
     RETURN_CANCEL_OR_ERROR(
-        read_coordinate_tiles(zipped_coords_names, result_tiles));
-    RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::coords, result_tiles));
+        read_and_unfilter_coordinate_tiles({constants::coords}, result_tiles));
 
     // Read and unfilter unzipped coordinate tiles. Note that
     // this will ignore fragments with a version < 5.
-    RETURN_CANCEL_OR_ERROR(read_coordinate_tiles(dim_names_, result_tiles));
-    for (const auto& dim_name : dim_names_) {
-      RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, result_tiles));
-    }
+    RETURN_CANCEL_OR_ERROR(
+        read_and_unfilter_coordinate_tiles(dim_names_, result_tiles));
   }
 
   // Compute attributes to load.
   std::vector<std::string> attr_to_load;
   attr_to_load.reserve(
       1 + deletes_consolidation_no_purge_ + use_timestamps_ +
-      qc_loaded_attr_names_.size() + bitsort_attribute_.has_value());
-  if (bitsort_attribute_.has_value()) {
-    attr_to_load.emplace_back(bitsort_attribute_.value());
-  }
+      qc_loaded_attr_names_.size());
   if (use_timestamps_) {
     attr_to_load.emplace_back(constants::timestamps);
   }
@@ -579,11 +554,8 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
       std::back_inserter(attr_to_load));
 
   // Read and unfilter attribute tiles.
-  RETURN_CANCEL_OR_ERROR(read_attribute_tiles(attr_to_load, result_tiles));
-
-  for (const auto& name : attr_to_load) {
-    RETURN_CANCEL_OR_ERROR(unfilter_tiles(name, result_tiles));
-  }
+  RETURN_CANCEL_OR_ERROR(
+      read_and_unfilter_attribute_tiles(attr_to_load, result_tiles));
 
   logger_->debug("Done reading and unfiltering coords tiles");
   return Status::Ok();
@@ -903,10 +875,7 @@ SparseIndexReaderBase::read_and_unfilter_attributes(
 
   // Read and unfilter tiles.
   RETURN_NOT_OK_TUPLE(
-      read_attribute_tiles(names_to_read, result_tiles), nullopt);
-
-  for (auto& name : names_to_read)
-    RETURN_NOT_OK_TUPLE(unfilter_tiles(name, result_tiles), nullopt);
+      read_and_unfilter_attribute_tiles(names_to_read, result_tiles), nullopt);
 
   return {Status::Ok(), std::move(index_to_copy)};
 }

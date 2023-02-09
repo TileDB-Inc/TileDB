@@ -35,6 +35,7 @@
 
 #include <memory>
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 
 namespace tiledb::common {
 class ThreadPool;
@@ -48,19 +49,28 @@ class Config;
 class VFS;
 
 class StorageManagerStub {
+  ContextResources& resources_;
   Config config_;
 
  public:
   static constexpr bool is_overriding_class = true;
   StorageManagerStub(
-      common::ThreadPool*,
-      common::ThreadPool*,
-      stats::Stats*,
+      ContextResources& resources,
       std::shared_ptr<common::Logger>,
       const Config& config)
-      : config_(config) {
+      : resources_(resources)
+      , config_(config) {
   }
 
+  inline common::ThreadPool* compute_tp() {
+    return &resources_.compute_tp();
+  }
+  inline common::ThreadPool* io_tp() {
+    return &resources_.io_tp();
+  }
+  inline stats::Stats* stats() {
+    return &resources_.stats();
+  }
   const Config& config() {
     return config_;
   }

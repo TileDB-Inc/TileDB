@@ -59,8 +59,8 @@ void ByteshuffleFilter::dump(FILE* out) const {
 }
 
 Status ByteshuffleFilter::run_forward(
-    const Tile& tile,
-    void* const,
+    const WriterTile& tile,
+    WriterTile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -94,7 +94,7 @@ Status ByteshuffleFilter::run_forward(
 }
 
 Status ByteshuffleFilter::shuffle_part(
-    const Tile& tile, const ConstBuffer* part, Buffer* output) const {
+    const WriterTile& tile, const ConstBuffer* part, Buffer* output) const {
   auto tile_type = tile.type();
   auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
 
@@ -109,7 +109,7 @@ Status ByteshuffleFilter::shuffle_part(
 
 Status ByteshuffleFilter::run_reverse(
     const Tile& tile,
-    void*,
+    Tile*,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,

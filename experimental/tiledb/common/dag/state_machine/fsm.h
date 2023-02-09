@@ -44,6 +44,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include "experimental/tiledb/common/dag/execution/task_state_machine.h"
 #include "experimental/tiledb/common/dag/state_machine/fsm_types.h"
 
 namespace tiledb::common {
@@ -80,7 +81,7 @@ transition_table<two_stage>[num_states<two_stage>][n_events] {
   /* xt_10 */ { two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::xt_01, two_stage::xt_01, two_stage::unreach },
   /* xt_11 */ { two_stage::error, two_stage::error, two_stage::error, two_stage::xt_10, two_stage::xt_11, two_stage::xt_11, two_stage::unreach },
 						    		    		                                          
-  /* done  */ { two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error },
+  /* done  */ { two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::/*error*/done },
   /* error */ { two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error },
 								                                          
   /* last */  { two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error, two_stage::error },
@@ -122,12 +123,12 @@ constexpr const PortAction entry_table<two_stage> [num_states<two_stage>][n_even
   /* st_11 */ { PortAction::notify_sink, PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::none },
 								                           						                            
 
-  /* xt_00 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::term_source },
-  /* xt_01 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::term_source },
+  /* xt_00 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::term_source  },
+  /* xt_01 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::term_source  },
   /* xt_10 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::source_throw },
   /* xt_11 */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::source_throw },
 								                           						                            
-  /* done  */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::term_sink, PortAction::term_sink, PortAction::none },
+  /* done  */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::term_sink, PortAction::term_sink, PortAction::/*none*/term_source },
   /* error */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::none },
 								                           						                            
   /* last */  { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,      PortAction::none,      PortAction::none },
@@ -159,7 +160,7 @@ transition_table<three_stage>[num_states<three_stage>][n_events] {
   /* xt_110 */ { three_stage::unreach,  three_stage::unreach,  three_stage::unreach,  three_stage::unreach,  three_stage::xt_011,  three_stage::xt_011,  three_stage::unreach,},
   /* xt_111 */ { three_stage::unreach,  three_stage::unreach,  three_stage::unreach,  three_stage::xt_110, three_stage::xt_111,  three_stage::xt_111,  three_stage::unreach,},
 							                        					                         
-  /* done   */ { three_stage::error,  three_stage::error,  three_stage::error,  three_stage::error,  three_stage::error,   three_stage::error,   three_stage::error },
+  /* done   */ { three_stage::error,  three_stage::error,  three_stage::error,  three_stage::error,  three_stage::error,   three_stage::error,   three_stage::/*error*/done },
   /* error  */ { three_stage::error,  three_stage::error,  three_stage::error,  three_stage::error,  three_stage::error,   three_stage::error,   three_stage::error },
 							                        					                         
   /* last  */  { three_stage::error,  three_stage::error,  three_stage::error,  three_stage::error,  three_stage::error,   three_stage::error,   three_stage::error },
@@ -224,7 +225,7 @@ constexpr const PortAction entry_table<three_stage>[num_states<three_stage>][n_e
   /* xt_110 */ { PortAction::source_throw, PortAction::source_throw, PortAction::source_throw, PortAction::sink_throw, PortAction::sink_throw, PortAction::sink_throw, PortAction::source_throw },
   /* xt_111 */ { PortAction::source_throw, PortAction::source_throw, PortAction::source_throw, PortAction::sink_throw, PortAction::sink_throw, PortAction::sink_throw, PortAction::source_throw },
 								   			   			                                                  
-  /* done   */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::term_sink, PortAction::term_sink, PortAction::none },
+  /* done   */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::term_sink, PortAction::term_sink, PortAction::/*none*/term_source },
   /* error  */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::none },
 								   			   			                                                  
   /* last   */ { PortAction::none,        PortAction::none,        PortAction::none,        PortAction::none,          PortAction::none,     PortAction::none,      PortAction::none },
@@ -251,12 +252,6 @@ constexpr const PortAction entry_table<three_stage>[num_states<three_stage>][n_e
  * to the `PortFiniteStateMachine`. Documentation about action policy classes
  * can be found in policies.h.
  *
- * @note There is a fair amount of debugging code inserted into the class at
- * the moment.
- *
- * @todo Clean up the debugging code as we gain more confidence/experience with
- * the state machine (et al).
- *
  * @todo Use an aspect class (as another template argument) to effect
  * callbacks at each interesting point in the state machine (such as debugging
  * statements).
@@ -267,7 +262,10 @@ class PortFiniteStateMachine {
   PortState state_;
   PortState next_state_;
 
+  constexpr static bool wait_returns_ = Policy::wait_returns_;
+
  public:
+  using scheduler_event_type = SchedulerAction;
   using port_state = PortState;
   using lock_type = std::unique_lock<std::mutex>;
 
@@ -329,11 +327,16 @@ class PortFiniteStateMachine {
    * @param event The event to be processed
    * @param msg A debugging string to preface printout information for
    * the state transition
+   *
+   * @todo Get rid of msg and event_counter -- they were only for debugging.
    */
-  void event(PortEvent event, const std::string& msg = "") {
+  scheduler_event_type event(PortEvent event, const std::string&) {
     std::unique_lock lock(mutex_);
 
-    assert(state_ != PortState::error);
+    if (state_ == PortState::error) {
+      throw std::logic_error(
+          "PortFiniteStateMachine::event: state_ == PortState::error");
+    }
 
   retry:
 
@@ -343,39 +346,14 @@ class PortFiniteStateMachine {
     next_state_ =
         transition_table<port_state>[to_index(state_)][to_index(event)];
 
-    //    assert(next_state_ != PortState::error);
+    if (next_state_ == PortState::error) {
+      throw std::logic_error(
+          "PortFiniteStateMachine::event: next_state_ == PortState::error");
+    }
 
     auto exit_action{exit_table<port_state>[to_index(state_)][to_index(event)]};
     auto entry_action{
         entry_table<port_state>[to_index(next_state_)][to_index(event)]};
-
-    auto old_state = state_;
-
-    if (!msg.empty() || debug_) {
-      std::cout << "\n"
-                << event_counter++
-                << " On event start: " + msg + " " + str(event) + ": " +
-                       str(state_) + " (" + str(exit_action) + ") -> (" +
-                       str(entry_action)
-                << ") " + str(next_state_) << std::endl;
-    }
-
-    if ((!msg.empty() || debug_) && (next_state_ == port_state::error)) {
-      std::cout << "\n"
-                << event_counter++
-                << " ERROR On event start: " + msg + " " + str(event) + ": " +
-                       str(state_) + " (" + str(exit_action) + ") -> (" +
-                       str(entry_action)
-                << ") " + str(next_state_) << std::endl;
-    }
-
-    if (!msg.empty() || debug_) {
-      std::cout << event_counter++
-                << " Pre exit event: " + msg + " " + str(event) + ": " +
-                       str(state_) + " (" + str(exit_action) + ") -> (" +
-                       str(entry_action)
-                << ") " + str(next_state_) << std::endl;
-    }
 
     /**
      * Perform any exit actions.  Based on the exit action in the exit action
@@ -388,103 +366,62 @@ class PortFiniteStateMachine {
         break;
 
       case PortAction::ac_return:
-        if (!msg.empty())
-          std::cout << event_counter++
-                    << "      " + msg + " exit about to ac_return" << std::endl;
-        static_cast<Policy*>(this)->on_ac_return(lock, event_counter);
-        return;
-        // break;
+        return static_cast<Policy*>(this)->on_ac_return(lock, event_counter);
 
       case PortAction::source_move:
-        if (!msg.empty())
-          std::cout << event_counter++
-                    << "      " + msg + " exit about to source_move"
-                    << std::endl;
+        // @todo Why does this not notify?
         static_cast<Policy*>(this)->on_source_move(lock, event_counter);
         break;
 
       case PortAction::sink_move:
-        if (!msg.empty())
-          std::cout << event_counter++
-                    << "      " + msg + " exit about to sink_move" << std::endl;
+        // @todo Why does this not notify?
         static_cast<Policy*>(this)->on_sink_move(lock, event_counter);
         break;
 
       case PortAction::source_wait:
-        if (!msg.empty())
-          std::cout << event_counter++
-                    << "      " + msg + " exit about to source_wait"
-                    << std::endl;
-        static_cast<Policy*>(this)->on_source_wait(lock, event_counter);
-        goto retry;
-        // break;
+        if (wait_returns_) {
+          static_cast<Policy*>(this)->on_source_wait(lock, event_counter);
+          goto retry;
+        } else {
+          return static_cast<Policy*>(this)->on_source_wait(
+              lock, event_counter);
+        }
 
       case PortAction::sink_wait:
-        if (!msg.empty())
-          std::cout << event_counter++
-                    << "      " + msg + " exit about to sink_wait" << std::endl;
-        static_cast<Policy*>(this)->on_sink_wait(lock, event_counter);
-        goto retry;
-        // break;
+        if (wait_returns_) {
+          static_cast<Policy*>(this)->on_sink_wait(lock, event_counter);
+          goto retry;
+        } else {
+          return static_cast<Policy*>(this)->on_sink_wait(lock, event_counter);
+        }
 
       case PortAction::notify_source:
-        if (!msg.empty())
-          std::cout << event_counter++
-                    << "      " + msg + " exit about to notify source"
-                    << std::endl;
-        static_cast<Policy*>(this)->on_notify_source(lock, event_counter);
-        break;
+        return static_cast<Policy*>(this)->on_notify_source(
+            lock, event_counter);
 
       case PortAction::notify_sink:
-        if (!msg.empty())
-          std::cout << event_counter++
-                    << "      " + msg + " exit about to notify sink"
-                    << std::endl;
-        static_cast<Policy*>(this)->on_notify_sink(lock, event_counter);
-        break;
+        return static_cast<Policy*>(this)->on_notify_sink(lock, event_counter);
 
       case PortAction::term_source:
-        if (!msg.empty())
-          std::cout << event_counter++
-                    << "      " + msg + " exit about to term_source"
-                    << std::endl;
-        static_cast<Policy*>(this)->on_term_source(lock, event_counter);
-        break;
+        return static_cast<Policy*>(this)->on_term_source(lock, event_counter);
 
       case PortAction::term_sink:
-        if (!msg.empty())
-          std::cout << event_counter++
-                    << "      " + msg + " exit about to term_sink" << std::endl;
-        static_cast<Policy*>(this)->on_term_sink(lock, event_counter);
-        break;
+        return static_cast<Policy*>(this)->on_term_sink(lock, event_counter);
 
       case PortAction::source_throw:
-        if (!msg.empty())
-          std::cout << event_counter++
-                    << "      " + msg + " exit about to source_throw"
-                    << std::endl;
-        break;
+        throw std::logic_error(
+            "PortFiniteStateMachine::event: "
+            "exit_action == PortAction::source_throw");
 
       case PortAction::sink_throw:
-        if (!msg.empty())
-          std::cout << event_counter++
-                    << "      " + msg + " exit about to sink_throw"
-                    << std::endl;
-        break;
+        throw std::logic_error(
+            "PortFiniteStateMachine::event: "
+            "exit_action == PortAction::sink_throw");
 
       default:
         throw std::logic_error(
             "Unexpected exit action: " + str(exit_action) + ": " + str(state_) +
             " -> " + str(next_state_));
-    }
-
-    if (!msg.empty() || debug_) {
-      if (!msg.empty())
-        std::cout << event_counter++
-                  << " Post exit: " + msg + " " + str(event) + ": " +
-                         str(state_) + " (" + str(exit_action) + ") -> (" +
-                         str(entry_action)
-                  << ") " + str(next_state_) << std::endl;
     }
 
     /*
@@ -495,18 +432,10 @@ class PortFiniteStateMachine {
     /*
      * Update the entry_action in case we have come back from a wait.
      *
-     * (Will the behavior of this change with different scheduling?)
+     * @todo Will the behavior of this change with different scheduling?
      */
     entry_action =
         entry_table<port_state>[to_index(next_state_)][to_index(event)];
-
-    if (!msg.empty() || debug_) {
-      std::cout << event_counter++
-                << " Pre entry event: " + msg + " " + str(event) + ": " +
-                       str(old_state) + " (" + str(exit_action) + ") -> (" +
-                       str(entry_action)
-                << ") " + str(state_) << std::endl;
-    }
 
     /**
      * Perform any entry actions.
@@ -516,29 +445,18 @@ class PortFiniteStateMachine {
         break;
 
       case PortAction::ac_return:
-
-        if (!msg.empty())
-          std::cout << event_counter++
-                    << "      " + msg + " entry about to ac_return"
-                    << std::endl;
-
-        static_cast<Policy*>(this)->on_ac_return(lock, event_counter);
-        return;
-        // break;
+        return static_cast<Policy*>(this)->on_ac_return(lock, event_counter);
 
       case PortAction::source_move:
-
-        if (!msg.empty())
-          std::cout << event_counter++
-                    << "      " + msg + " entry about to source_move"
-                    << std::endl;
-
         static_cast<Policy*>(this)->on_source_move(lock, event_counter);
-        static_cast<Policy*>(this)->on_notify_sink(lock, event_counter);
+        return static_cast<Policy*>(this)->on_notify_sink(lock, event_counter);
 
+        // @todo -- properly handle cases of notify returning and not returning
         /*
          * If we do a move on entry, we need to fix up the state, since we
          * have already passed the state transition step.
+         *
+         * @todo This seems like unreachable -- why is it here?
          */
         if constexpr (std::is_same_v<port_state, two_stage>) {
           switch (state_) {
@@ -581,22 +499,17 @@ class PortFiniteStateMachine {
           std::cout << "should not be here" << std::endl;
           assert(false);
         }
-
         break;
 
       case PortAction::sink_move:
-
-        if (!msg.empty())
-          std::cout << event_counter++
-                    << "      " + msg + " entry about to sink_move"
-                    << std::endl;
-
         static_cast<Policy*>(this)->on_sink_move(lock, event_counter);
-        static_cast<Policy*>(this)->on_notify_source(lock, event_counter);
+        return static_cast<Policy*>(this)->on_notify_source(
+            lock, event_counter);
 
         /*
          * If we do a move on entry, we need to fix up the state, since we
          * have already passed the state transition step.
+         * @todo This seems like unreachable -- why is it here?
          */
         if constexpr (std::is_same_v<port_state, two_stage>) {
           switch (state_) {
@@ -639,56 +552,26 @@ class PortFiniteStateMachine {
           std::cout << "should not be here" << std::endl;
           assert(false);
         }
-
         break;
 
       case PortAction::source_wait:
-        if (!msg.empty())
-          std::cout << event_counter++
-                    << "      " + msg + " entry about to source_wait"
-                    << std::endl;
-        static_cast<Policy*>(this)->on_source_wait(lock, event_counter);
-        break;
+        return static_cast<Policy*>(this)->on_source_wait(lock, event_counter);
 
       case PortAction::sink_wait:
-        if (!msg.empty())
-          std::cout << event_counter++
-                    << "      " + msg + " entry about to sink_wait"
-                    << std::endl;
-        static_cast<Policy*>(this)->on_sink_wait(lock, event_counter);
-        break;
+        return static_cast<Policy*>(this)->on_sink_wait(lock, event_counter);
 
       case PortAction::notify_source:
-        if (!msg.empty())
-          std::cout << event_counter++
-                    << "      " + msg + " entry about to notify source"
-                    << std::endl;
-        static_cast<Policy*>(this)->on_notify_source(lock, event_counter);
-        break;
+        return static_cast<Policy*>(this)->on_notify_source(
+            lock, event_counter);
 
       case PortAction::notify_sink:
-        if (!msg.empty())
-          std::cout << event_counter++
-                    << "      " + msg + " entry about to notify sink"
-                    << std::endl;
-        static_cast<Policy*>(this)->on_notify_sink(lock, event_counter);
-        break;
+        return static_cast<Policy*>(this)->on_notify_sink(lock, event_counter);
 
       case PortAction::term_source:
-        if (!msg.empty())
-          std::cout << event_counter++
-                    << "      " + msg + " entry about to term_source"
-                    << std::endl;
-        static_cast<Policy*>(this)->on_term_source(lock, event_counter);
-        break;
+        return static_cast<Policy*>(this)->on_term_source(lock, event_counter);
 
       case PortAction::term_sink:
-        if (!msg.empty())
-          std::cout << event_counter++
-                    << "      " + msg + " entry about to term_sink"
-                    << std::endl;
-        static_cast<Policy*>(this)->on_term_sink(lock, event_counter);
-        break;
+        return static_cast<Policy*>(this)->on_term_sink(lock, event_counter);
 
       default:
         throw std::logic_error(
@@ -696,13 +579,7 @@ class PortFiniteStateMachine {
             str(state_) + " -> " + str(next_state_));
     }
 
-    if (!msg.empty() || debug_) {
-      std::cout << event_counter++
-                << " Post entry event: " + msg + " " + str(event) + ": " +
-                       str(state_) + " (" + str(exit_action) + ") -> (" +
-                       str(entry_action)
-                << ") " + str(next_state_) << std::endl;
-    }
+    return scheduler_event_type::noop;
   }
 
  public:

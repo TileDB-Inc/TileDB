@@ -93,9 +93,9 @@ storage_size_t get_serialized_condition_size(
   return size_computation_serializer.size();
 }
 
-Tile serialize_condition(const QueryCondition& query_condition) {
-  Tile tile{
-      Tile::from_generic(get_serialized_condition_size(query_condition.ast()))};
+WriterTile serialize_condition(const QueryCondition& query_condition) {
+  WriterTile tile{WriterTile::from_generic(
+      get_serialized_condition_size(query_condition.ast()))};
 
   Serializer serializer(tile.data(), tile.size());
   serialize_condition_impl(query_condition.ast(), serializer);
@@ -178,11 +178,12 @@ storage_size_t get_serialized_update_condition_and_values_size(
   return size_computation_serializer.size();
 }
 
-Tile serialize_update_condition_and_values(
+WriterTile serialize_update_condition_and_values(
     const QueryCondition& query_condition,
     const std::vector<UpdateValue>& update_values) {
-  Tile tile{Tile::from_generic(get_serialized_update_condition_and_values_size(
-      query_condition.ast(), update_values))};
+  WriterTile tile{
+      WriterTile::from_generic(get_serialized_update_condition_and_values_size(
+          query_condition.ast(), update_values))};
 
   Serializer serializer(tile.data(), tile.size());
   serialize_condition_impl(query_condition.ast(), serializer);
@@ -218,11 +219,12 @@ deserialize_update_condition_and_values(
     const void* buff,
     const storage_size_t size) {
   Deserializer deserializer(buff, size);
-  return {QueryCondition(
-              condition_index,
-              condition_marker,
-              deserialize_condition_impl(deserializer)),
-          deserialize_update_values_impl(deserializer)};
+  return {
+      QueryCondition(
+          condition_index,
+          condition_marker,
+          deserialize_condition_impl(deserializer)),
+      deserialize_update_values_impl(deserializer)};
 }
 
 }  // namespace tiledb::sm::deletes_and_updates::serialization

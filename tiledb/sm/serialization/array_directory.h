@@ -38,6 +38,7 @@
 #endif
 
 #include "tiledb/sm/array/array_directory.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 
 using namespace tiledb::common;
 
@@ -55,11 +56,13 @@ namespace serialization {
  * Convert Cap'n Proto message to Array Directory
  *
  * @param array_dir_reader cap'n proto class
+ * @param resources A reference to the ContextResources instance
  * @param array_uri uri of the array that the directory belongs to
  * @return array_directory array directory object to deserialize into
  */
 shared_ptr<ArrayDirectory> array_directory_from_capnp(
     const capnp::ArrayDirectory::Reader& array_directory_reader,
+    ContextResources& resources,
     const URI& array_uri);
 
 /**

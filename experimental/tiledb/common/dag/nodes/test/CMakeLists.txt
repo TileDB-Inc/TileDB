@@ -29,8 +29,10 @@
 #
 # Define unit tests
 #
-dag_add_header_only_unit_test(general_node)
-dag_add_header_only_unit_test(simple_node)
+dag_add_header_only_unit_test(general_nodes)
+dag_add_header_only_unit_test(simple_nodes)
+dag_add_header_only_unit_test(segmented_nodes)
+dag_add_header_only_unit_test(segmented_mimo_nodes)
 dag_add_header_only_unit_test(stop_source)
 dag_add_header_only_unit_test(util_functions)
 dag_add_header_only_unit_test(nodes_concurrency)
@@ -58,3 +60,5 @@ add_test(
     COMMAND $<TARGET_FILE:unit_nodes_sieve> --durations=yes
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+add_dependencies(all_unit_tests "unit_nodes_sieve")
+

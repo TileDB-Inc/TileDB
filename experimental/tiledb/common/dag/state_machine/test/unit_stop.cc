@@ -81,34 +81,37 @@ TEST_CASE("Port FSM: Just stop, two stage", "[stop]") {
   /*
    * After the stop is signalled, the source will be descheduled and not run any
    * more.  Any further actions should result in error.
+   *
+   *  We can't directly CHECK error state because the state machine will throw.
    */
   a.set_state(two_stage::st_00);
   CHECK(str(a.state()) == "st_00");
   a.port_exhausted();
   CHECK(str(a.state()) == "xt_00");
-  a.port_fill();
-  CHECK(str(a.state()) == "error");
+
+  CHECK_THROWS(a.port_fill());
+  // CHECK(str(a.state()) == "error");
 
   a.set_state(two_stage::st_00);
   CHECK(str(a.state()) == "st_00");
   a.port_exhausted();
   CHECK(str(a.state()) == "xt_00");
-  a.port_push();
-  CHECK(str(a.state()) == "error");
+  CHECK_THROWS(a.port_push());
+  // CHECK(str(a.state()) == "error");
 
   a.set_state(two_stage::st_01);
   CHECK(str(a.state()) == "st_01");
   a.port_exhausted();
   CHECK(str(a.state()) == "xt_01");
-  a.port_fill();
-  CHECK(str(a.state()) == "error");
+  CHECK_THROWS(a.port_fill());
+  // CHECK(str(a.state()) == "error");
 
   a.set_state(two_stage::st_01);
   CHECK(str(a.state()) == "st_01");
   a.port_exhausted();
   CHECK(str(a.state()) == "xt_01");
-  a.port_push();
-  CHECK(str(a.state()) == "error");
+  CHECK_THROWS(a.port_push());
+  // CHECK(str(a.state()) == "error");
 
   /*
    * The stop can be signalled at any time with respect to the sink.
@@ -185,57 +188,57 @@ TEST_CASE("Port FSM: Just stop, three stage", "[stop]") {
   CHECK(str(a.state()) == "st_000");
   a.port_exhausted();
   CHECK(str(a.state()) == "xt_000");
-  a.port_fill();
-  CHECK(str(a.state()) == "error");
+  CHECK_THROWS(a.port_fill());
+  // CHECK(str(a.state()) == "error");
 
   a.set_state(three_stage::st_001);
   CHECK(str(a.state()) == "st_001");
   a.port_exhausted();
   CHECK(str(a.state()) == "xt_001");
-  a.port_fill();
-  CHECK(str(a.state()) == "error");
+  CHECK_THROWS(a.port_fill());
+  // CHECK(str(a.state()) == "error");
 
   a.set_state(three_stage::st_010);
   CHECK(str(a.state()) == "st_010");
   a.port_exhausted();
   CHECK(str(a.state()) == "xt_010");
-  a.port_fill();
-  CHECK(str(a.state()) == "error");
+  CHECK_THROWS(a.port_fill());
+  // CHECK(str(a.state()) == "error");
 
   a.set_state(three_stage::st_011);
   CHECK(str(a.state()) == "st_011");
   a.port_exhausted();
   CHECK(str(a.state()) == "xt_011");
-  a.port_fill();
-  CHECK(str(a.state()) == "error");
+  CHECK_THROWS(a.port_fill());
+  // CHECK(str(a.state()) == "error");
 
   a.set_state(three_stage::st_000);
   CHECK(str(a.state()) == "st_000");
   a.port_exhausted();
   CHECK(str(a.state()) == "xt_000");
-  a.port_push();
-  CHECK(str(a.state()) == "error");
+  CHECK_THROWS(a.port_push());
+  // CHECK(str(a.state()) == "error");
 
   a.set_state(three_stage::st_001);
   CHECK(str(a.state()) == "st_001");
   a.port_exhausted();
   CHECK(str(a.state()) == "xt_001");
-  a.port_push();
-  CHECK(str(a.state()) == "error");
+  CHECK_THROWS(a.port_push());
+  // CHECK(str(a.state()) == "error");
 
   a.set_state(three_stage::st_010);
   CHECK(str(a.state()) == "st_010");
   a.port_exhausted();
   CHECK(str(a.state()) == "xt_010");
-  a.port_push();
-  CHECK(str(a.state()) == "error");
+  CHECK_THROWS(a.port_push());
+  // CHECK(str(a.state()) == "error");
 
   a.set_state(three_stage::st_011);
   CHECK(str(a.state()) == "st_011");
   a.port_exhausted();
   CHECK(str(a.state()) == "xt_011");
-  a.port_push();
-  CHECK(str(a.state()) == "error");
+  CHECK_THROWS(a.port_push());
+  // CHECK(str(a.state()) == "error");
 
   /*
    * The stop can be signalled at any time with respect to the sink.
@@ -293,8 +296,8 @@ TEST_CASE("Port FSM: Just stop, three stage", "[stop]") {
   CHECK(str(a.state()) == "st_000");
   a.port_exhausted();
   CHECK(str(a.state()) == "xt_000");
-  a.port_drain();
-  CHECK(str(a.state()) == "error");
+  CHECK_THROWS(a.port_drain());
+  // CHECK(str(a.state()) == "error");
 
   a.set_state(three_stage::st_001);
   CHECK(str(a.state()) == "st_001");
@@ -309,8 +312,8 @@ TEST_CASE("Port FSM: Just stop, three stage", "[stop]") {
   CHECK(str(a.state()) == "st_010");
   a.port_exhausted();
   CHECK(str(a.state()) == "xt_010");
-  a.port_drain();
-  CHECK(str(a.state()) == "error");
+  CHECK_THROWS(a.port_drain());
+  // CHECK(str(a.state()) == "error");
 
   a.set_state(three_stage::st_011);
   CHECK(str(a.state()) == "st_011");

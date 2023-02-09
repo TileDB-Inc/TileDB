@@ -38,8 +38,6 @@
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
-#include "tiledb/sm/array_schema/dimension_label_reference.h"
-#include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -77,7 +75,7 @@ class ArrayExample : public TemporaryDirectoryFixture {
     auto array_schema = create_array_schema(
         ctx,
         TILEDB_DENSE,
-        {"x"},
+        {"dim"},
         {TILEDB_UINT64},
         {index_domain},
         {&x_tile_extent},
@@ -142,9 +140,9 @@ class ArrayExample : public TemporaryDirectoryFixture {
           ctx, query, "a", input_attr_data.data(), &attr_data_size));
     }
     if (label_data_size != 0) {
-      require_tiledb_ok(tiledb_query_set_label_data_buffer(
+      require_tiledb_ok(tiledb_query_set_data_buffer(
           ctx, query, "x", input_label_data.data(), &label_data_size));
-      require_tiledb_ok(tiledb_query_set_label_offsets_buffer(
+      require_tiledb_ok(tiledb_query_set_offsets_buffer(
           ctx, query, "x", input_label_offsets.data(), &label_offsets_size));
     }
 
@@ -156,6 +154,7 @@ class ArrayExample : public TemporaryDirectoryFixture {
 
     // Clean-up.
     tiledb_query_free(&query);
+    tiledb_subarray_free(&subarray);
     tiledb_array_free(&array);
   }
 
@@ -200,9 +199,9 @@ class ArrayExample : public TemporaryDirectoryFixture {
     require_tiledb_ok(tiledb_query_set_subarray_t(ctx, query, subarray));
     require_tiledb_ok(tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR));
     if (!expected_label_offsets.empty()) {
-      require_tiledb_ok(tiledb_query_set_label_data_buffer(
+      require_tiledb_ok(tiledb_query_set_data_buffer(
           ctx, query, "x", label_data.data(), &label_data_size));
-      require_tiledb_ok(tiledb_query_set_label_offsets_buffer(
+      require_tiledb_ok(tiledb_query_set_offsets_buffer(
           ctx, query, "x", label_offsets.data(), &label_offsets_size));
     }
     if (!expected_attr_data.empty()) {
@@ -280,9 +279,9 @@ class ArrayExample : public TemporaryDirectoryFixture {
     require_tiledb_ok(tiledb_query_set_subarray_t(ctx, query, subarray));
     require_tiledb_ok(tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR));
     if (!expected_label_offsets.empty()) {
-      require_tiledb_ok(tiledb_query_set_label_data_buffer(
+      require_tiledb_ok(tiledb_query_set_data_buffer(
           ctx, query, "x", label_data.data(), &label_data_size));
-      require_tiledb_ok(tiledb_query_set_label_offsets_buffer(
+      require_tiledb_ok(tiledb_query_set_offsets_buffer(
           ctx, query, "x", label_offsets.data(), &label_offsets_size));
     }
     if (!expected_attr_data.empty()) {
@@ -324,7 +323,7 @@ TEST_CASE_METHOD(
     "[capi][query][DimensionLabel][var]") {
   // Array parameters.
   std::vector<uint64_t> index_domain{0, 3};
-  tiledb_data_order_t label_order;
+  tiledb_data_order_t label_order{};
 
   // Vectors for input data.
   std::vector<uint64_t> input_label_data_raw{};
@@ -352,22 +351,6 @@ TEST_CASE_METHOD(
 
     // Set the data values.
     input_label_data_raw = {30, 20, 15, 11};
-
-    // Set the attribute values.
-    SECTION("With array data") {
-      input_attr_data = {0.5, 1.0, 1.5, 2.0};
-    }
-    SECTION("Without array data") {
-      input_attr_data = {};
-    }
-  }
-
-  SECTION("Write unordered labels", "[UnorderedLabels]") {
-    // Set the label order.
-    label_order = TILEDB_UNORDERED_DATA;
-
-    // Set the data values.
-    input_label_data_raw = {15, 30, 20, 10};
 
     // Set the attribute values.
     SECTION("With array data") {
@@ -411,7 +394,7 @@ TEST_CASE_METHOD(
   }
 
   // Check range reader.
-  if (label_order != TILEDB_UNORDERED_DATA) {
+  {
     INFO("Reading data by label range.");
 
     // Check full range

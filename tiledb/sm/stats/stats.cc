@@ -173,8 +173,9 @@ std::string Stats::dump(
 #ifdef TILEDB_STATS
 
 void Stats::add_counter(const std::string& stat, uint64_t count) {
-  if (!enabled_)
+  if (!enabled_) {
     return;
+  }
 
   std::string new_stat = prefix_ + stat;
   std::unique_lock<std::mutex> lck(mtx_);
@@ -186,35 +187,18 @@ void Stats::add_counter(const std::string& stat, uint64_t count) {
   }
 }
 
-ScopedExecutor Stats::start_timer(const std::string& stat) {
-  if (!enabled_)
-    return ScopedExecutor();
-
-  std::string new_stat = prefix_ + stat;
-  std::unique_lock<std::mutex> lck(mtx_);
-  const std::thread::id tid = std::this_thread::get_id();
-  start_times_[new_stat][tid] = std::chrono::high_resolution_clock::now();
-
-  std::function<void()> end_timer_fn = std::bind(&Stats::end_timer, this, stat);
-  return ScopedExecutor(std::move(end_timer_fn));
+DurationInstrument<Stats> Stats::start_timer(const std::string& stat) {
+  return DurationInstrument<Stats>(*this, stat);
 }
 
-void Stats::end_timer(const std::string& stat) {
-  if (!enabled_)
+void Stats::report_duration(
+    const std::string& stat, const std::chrono::duration<double> duration) {
+  if (!enabled_) {
     return;
+  }
 
   std::string new_stat = prefix_ + stat;
   std::unique_lock<std::mutex> lck(mtx_);
-
-  // Calculate duration
-  const std::thread::id tid = std::this_thread::get_id();
-  auto it = start_times_.find(new_stat);
-  assert(it != start_times_.end());
-  auto tit = it->second.find(tid);
-  assert(tit != it->second.end());
-  auto start_time = tit->second;
-  auto end_time = std::chrono::high_resolution_clock::now();
-  const std::chrono::duration<double> duration = end_time - start_time;
 
   // Add duration to timer total
   auto it2 = timers_.find(new_stat + ".sum");
@@ -244,17 +228,15 @@ void Stats::end_timer(const std::string& stat) {
 
 #else
 
-void Stats::add_counter(const std::string& stat, uint64_t count) {
-  (void)stat;
-  (void)count;
-}
-ScopedExecutor Stats::start_timer(const std::string& stat) {
-  (void)stat;
-  return ScopedExecutor();
+void Stats::add_counter(const std::string&, uint64_t) {
 }
 
-void Stats::end_timer(const std::string& stat) {
-  (void)stat;
+int Stats::start_timer(const std::string&) {
+  return 0;
+}
+
+void Stats::report_duration(
+    const std::string&, const std::chrono::duration<double>) {
 }
 
 #endif

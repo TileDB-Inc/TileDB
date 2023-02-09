@@ -39,7 +39,8 @@ struct TestCase {
   TestCase(tiledb_walk_order_t order, const char* name, int defined_as)
       : order_(order)
       , name_(name)
-      , defined_as_(defined_as) {}
+      , defined_as_(defined_as) {
+  }
 
   tiledb_walk_order_t order_;
   const char* name_;

@@ -281,8 +281,8 @@ class Filter {
         return "SCALE_FLOAT";
       case TILEDB_FILTER_XOR:
         return "XOR";
-      case TILEDB_FILTER_BITSORT:
-        return "BITSORT";
+      case TILEDB_FILTER_DEPRECATED:
+        return "DEPRECATED";
       case TILEDB_FILTER_WEBP:
         return "WEBP";
     }

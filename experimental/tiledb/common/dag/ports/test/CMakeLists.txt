@@ -41,7 +41,6 @@ add_executable(unit_ports_sieve EXCLUDE_FROM_ALL)
 #
 # Required libraries
 #
-target_link_libraries(unit_ports_sieve PUBLIC baseline)
 #
 # Define sources for test
 #
@@ -56,3 +55,4 @@ add_test(
     COMMAND $<TARGET_FILE:unit_ports_sieve> --durations=yes
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+add_dependencies(all_unit_tests "unit_ports_sieve")

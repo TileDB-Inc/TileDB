@@ -39,7 +39,7 @@
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/tile/writer_tile.h"
+#include "tiledb/sm/tile/writer_tile_tuple.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
@@ -101,8 +101,9 @@ const typename DenseTiler<T>::CopyPlan DenseTiler<T>::copy_plan(
   auto subarray = subarray_->ndrange(0);  // Guaranteed to be unary
   std::vector<std::array<T, 2>> sub(dim_num);
   for (int32_t d = 0; d < dim_num; ++d)
-    sub[d] = {*(const T*)subarray[d].start_fixed(),
-              *(const T*)subarray[d].end_fixed()};
+    sub[d] = {
+        *(const T*)subarray[d].start_fixed(),
+        *(const T*)subarray[d].end_fixed()};
   auto tile_layout = array_schema_.cell_order();
   auto sub_layout = subarray_->layout();
 
@@ -190,7 +191,7 @@ const typename DenseTiler<T>::CopyPlan DenseTiler<T>::copy_plan(
 
 template <class T>
 Status DenseTiler<T>::get_tile(
-    uint64_t id, const std::string& name, WriterTile& tile) {
+    uint64_t id, const std::string& name, WriterTileTuple& tile) {
   auto timer_se = stats_->start_timer("get_tile");
 
   // Checks
@@ -218,13 +219,11 @@ Status DenseTiler<T>::get_tile(
     std::vector<uint8_t> fill_var(sizeof(uint64_t), 0);
 
     // Initialize position tile
-    Tile tile_pos(
+    WriterTile tile_pos(
         constants::format_version,
         constants::cell_var_offset_type,
         constants::cell_var_offset_size,
-        0,
-        tile_off_size,
-        0);
+        tile_off_size);
 
     // Fill entire tile with MAX_UINT64
     std::vector<uint64_t> to_write(
@@ -503,7 +502,7 @@ std::vector<std::array<T, 2>> DenseTiler<T>::tile_subarray(uint64_t id) const {
 
 template <class T>
 Status DenseTiler<T>::copy_tile(
-    uint64_t id, uint64_t cell_size, uint8_t* buff, Tile& tile) const {
+    uint64_t id, uint64_t cell_size, uint8_t* buff, WriterTile& tile) const {
   // Calculate copy plan
   const CopyPlan copy_plan = this->copy_plan(id);
 
@@ -577,7 +576,7 @@ Status DenseTiler<T>::copy_tile(
 
 template <class T>
 void DenseTiler<T>::compute_tile_metadata(
-    const std::string& name, uint64_t id, WriterTile& tile) const {
+    const std::string& name, uint64_t id, WriterTileTuple& tile) const {
   // Calculate copy plan
   const CopyPlan copy_plan = this->copy_plan(id);
 

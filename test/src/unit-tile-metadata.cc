@@ -41,6 +41,9 @@ using namespace tiledb;
 
 template <typename TestType>
 struct CPPFixedTileMetadataFx {
+  // Buffers to allocate on server side for serialized queries
+  test::ServerQueryBuffers server_buffers_;
+
   CPPFixedTileMetadataFx()
       : vfs_(ctx_) {
     if (vfs_.is_dir(ARRAY_NAME))
@@ -108,12 +111,13 @@ struct CPPFixedTileMetadataFx {
   }
 
   void write_fragment(
-      const bool serialized_writes,
       uint64_t f,
       tiledb_layout_t layout,
       bool nullable,
       bool all_null,
-      uint64_t cell_val_num) {
+      uint64_t cell_val_num,
+      const bool serialized,
+      const bool refactored_query_v2) {
     std::default_random_engine random_engine;
 
     // Generate random, sorted strings for the string ascii type.
@@ -255,12 +259,16 @@ struct CPPFixedTileMetadataFx {
       query.set_validity_buffer("a", a_val);
     }
 
-    if (!serialized_writes) {
-      query.submit();
-      query.finalize();
-    } else {
-      test::submit_and_finalize_serialized_query(ctx_, query);
-    }
+    // Submit query
+    auto rc = test::submit_query_wrapper(
+        ctx_,
+        ARRAY_NAME,
+        &query,
+        server_buffers_,
+        serialized,
+        refactored_query_v2);
+    REQUIRE(rc == TILEDB_OK);
+
     array.close();
   }
 
@@ -623,16 +631,16 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   typedef TestType T;
   std::string test = GENERATE("nullable", "all null", "non nullable");
 
-  bool serialized_writes = false;
+  bool serialized = false, refactored_query_v2 = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialized = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes = true;
+    serialized = true;
+    refactored_query_v2 = GENERATE(true, false);
   }
 #endif
-
   tiledb_layout_t layout =
       GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER, TILEDB_ROW_MAJOR);
 
@@ -649,7 +657,13 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   for (uint64_t f = 0; f < num_frag; f++) {
     // Write a fragment.
     CPPFixedTileMetadataFx<T>::write_fragment(
-        serialized_writes, f, layout, nullable, all_null, cell_val_num);
+        f,
+        layout,
+        nullable,
+        all_null,
+        cell_val_num,
+        serialized,
+        refactored_query_v2);
   }
 
   for (uint64_t f = 0; f < num_frag; f++) {
@@ -660,6 +674,9 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 }
 
 struct CPPVarTileMetadataFx {
+  // Buffers to allocate on server side for serialized queries
+  test::ServerQueryBuffers server_buffers_;
+
   CPPVarTileMetadataFx()
       : vfs_(ctx_) {
     if (vfs_.is_dir(ARRAY_NAME))
@@ -694,11 +711,12 @@ struct CPPVarTileMetadataFx {
   }
 
   void write_fragment(
-      const bool serialized_writes,
       uint64_t f,
       tiledb_layout_t layout,
       bool nullable,
-      bool all_null) {
+      bool all_null,
+      const bool serialized,
+      const bool refactored_query_v2) {
     std::default_random_engine random_engine;
 
     uint64_t max_string_size = 100;
@@ -792,12 +810,15 @@ struct CPPVarTileMetadataFx {
       query.set_validity_buffer("a", a_val);
     }
 
-    if (!serialized_writes) {
-      query.submit();
-      query.finalize();
-    } else {
-      test::submit_and_finalize_serialized_query(ctx_, query);
-    }
+    // Submit query
+    auto rc = test::submit_query_wrapper(
+        ctx_,
+        ARRAY_NAME,
+        &query,
+        server_buffers_,
+        serialized,
+        refactored_query_v2);
+    REQUIRE(rc == TILEDB_OK);
     array.close();
   }
 
@@ -1022,13 +1043,14 @@ TEST_CASE_METHOD(
     "[tile-metadata][var-data]") {
   std::string test = GENERATE("nullable", "all null", "non nullable");
 
-  bool serialized_writes = false;
+  bool serialized = false, refactored_query_v2 = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialized = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes = true;
+    serialized = true;
+    refactored_query_v2 = GENERATE(true, false);
   }
 #endif
 
@@ -1046,7 +1068,7 @@ TEST_CASE_METHOD(
   for (uint64_t f = 0; f < num_frag; f++) {
     // Write a fragment.
     CPPVarTileMetadataFx::write_fragment(
-        serialized_writes, f, layout, nullable, all_null);
+        f, layout, nullable, all_null, serialized, refactored_query_v2);
   }
 
   for (uint64_t f = 0; f < num_frag; f++) {
@@ -1124,22 +1146,23 @@ struct CPPFixedTileMetadataPartialFx {
     subarray.add_range(1, r[0], r[1]);
     query.set_subarray(subarray);
 
-    std::vector<double> a{1.7,
-                          1.1,
-                          2.2,
-                          2.5,
-                          1.5,
-                          1.3,
-                          2.1,
-                          2.6,
-                          3.4,
-                          3.8,
-                          4.1,
-                          4.2,
-                          3.5,
-                          3.2,
-                          4.9,
-                          4.6};
+    std::vector<double> a{
+        1.7,
+        1.1,
+        2.2,
+        2.5,
+        1.5,
+        1.3,
+        2.1,
+        2.6,
+        3.4,
+        3.8,
+        4.1,
+        4.2,
+        3.5,
+        3.2,
+        4.9,
+        4.6};
     query.set_layout(TILEDB_ROW_MAJOR);
     query.set_data_buffer("a", a);
 

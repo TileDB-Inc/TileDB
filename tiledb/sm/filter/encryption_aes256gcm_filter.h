@@ -97,8 +97,8 @@ class EncryptionAES256GCMFilter : public Filter {
    * Encrypt the bytes of the input data into the output data buffer.
    */
   Status run_forward(
-      const Tile& tile,
-      void* const support_data,
+      const WriterTile& tile,
+      WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -109,7 +109,7 @@ class EncryptionAES256GCMFilter : public Filter {
    */
   Status run_reverse(
       const Tile& tile,
-      void* support_data,
+      Tile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

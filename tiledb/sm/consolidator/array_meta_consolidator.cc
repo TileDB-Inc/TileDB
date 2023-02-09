@@ -156,8 +156,7 @@ void ArrayMetaConsolidator::vacuum(const char* array_name) {
   auto compute_tp = storage_manager_->compute_tp();
 
   auto array_dir = ArrayDirectory(
-      vfs,
-      compute_tp,
+      storage_manager_->resources(),
       URI(array_name),
       0,
       std::numeric_limits<uint64_t>::max());

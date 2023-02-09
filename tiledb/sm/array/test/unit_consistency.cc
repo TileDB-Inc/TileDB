@@ -169,11 +169,8 @@ TEST_CASE(
 
   // Create a StorageManager
   Config config;
-  ThreadPool tp_cpu(1);
-  ThreadPool tp_io(1);
-  stats::Stats stats("");
-  StorageManager sm(
-      &tp_cpu, &tp_io, &stats, make_shared<Logger>(HERE(), ""), config);
+  ContextResources resources(config, nullptr, 1, 1, "");
+  StorageManager sm(resources, make_shared<Logger>(HERE(), ""), config);
 
   // Register array
   tdb_unique_ptr<Array> array = x.open_array(uri, &sm);
@@ -197,15 +194,12 @@ TEST_CASE(
 
   // Create a StorageManager
   Config config;
-  ThreadPool tp_cpu(1);
-  ThreadPool tp_io(1);
-  stats::Stats stats("");
-  StorageManager sm(
-      &tp_cpu, &tp_io, &stats, make_shared<Logger>(HERE(), ""), config);
+  ContextResources resources(config, nullptr, 1, 1, "");
+  StorageManager sm(resources, make_shared<Logger>(HERE(), ""), config);
 
   std::vector<tdb_unique_ptr<Array>> arrays;
-  std::vector<URI> uris = {URI("whitebox_array_vector_1"),
-                           URI("whitebox_array_vector_2")};
+  std::vector<URI> uris = {
+      URI("whitebox_array_vector_1"), URI("whitebox_array_vector_2")};
 
   // Register arrays
   size_t count = 0;
@@ -242,11 +236,8 @@ TEST_CASE(
 
   // Create a StorageManager
   Config config;
-  ThreadPool tp_cpu(1);
-  ThreadPool tp_io(1);
-  stats::Stats stats("");
-  StorageManager sm(
-      &tp_cpu, &tp_io, &stats, make_shared<Logger>(HERE(), ""), config);
+  ContextResources resources(config, nullptr, 1, 1, "");
+  StorageManager sm(resources, make_shared<Logger>(HERE(), ""), config);
 
   // Create an array
   tdb_unique_ptr<Array> array = x.create_array(uri, &sm);
@@ -261,7 +252,8 @@ TEST_CASE(
   // Try to register an array for read
   REQUIRE_THROWS_WITH(
       x.register_array(uri, *array.get(), QueryType::READ),
-      Catch::Matchers::ContainsSubstring("close array opened for exclusive modification"));
+      Catch::Matchers::ContainsSubstring(
+          "close array opened for exclusive modification"));
   REQUIRE(x.registry_size() == 1);
   REQUIRE(x.is_open(uri) == true);
 

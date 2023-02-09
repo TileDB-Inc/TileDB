@@ -179,8 +179,8 @@ std::vector<uint8_t> create_image(
 // These templates will not be used if built with TILEDB_WEBP=OFF
 template <typename T>
 [[maybe_unused]] Domain create_domain(const Context& ctx, uint8_t format) {
-  T height = GENERATE(131, 217, 1003);
-  T width = GENERATE(103, 277, 1001);
+  T height = GENERATE(131, 217);
+  T width = GENERATE(103, 277);
   uint8_t pixel_depth = format < TILEDB_WEBP_RGBA ? 3 : 4;
   auto y = Dimension::create<T>(ctx, "y", {{1, height}}, height / 2);
   auto x = Dimension::create<T>(
@@ -223,114 +223,131 @@ template <>
   return domain;
 }
 
-// TODO: When this test passes it can be combined with `C++ API: WEBP Filter`.
-// We can explicitly run the test with `tiledb_unit [.xfail]` for debugging.
-using DimensionTypesSmall = std::tuple<int8_t, int16_t, uint8_t, uint16_t>;
+using TestTypes = std::tuple<uint16_t, int16_t, int32_t, int64_t, uint32_t>;
 TEMPLATE_LIST_TEST_CASE(
-    "C++ API: WEBP Filter small dims",
-    "[cppapi][filter][webp][.xfail]",
-    DimensionTypesSmall) {
+    "C++ API: WEBP filter schema validation",
+    "[cppapi][filter][webp]",
+    TestTypes) {
   if constexpr (webp_filter_exists) {
     Context ctx;
     VFS vfs(ctx);
-    if (vfs.is_dir(webp_array_name))
+    if (vfs.is_dir(webp_array_name)) {
       vfs.remove_dir(webp_array_name);
-
-    uint8_t format_expected = GENERATE(
-        TILEDB_WEBP_RGB, TILEDB_WEBP_RGBA, TILEDB_WEBP_BGR, TILEDB_WEBP_BGRA);
-    uint8_t lossless_expected = GENERATE(1, 0);
-
+    }
     Filter filter(ctx, TILEDB_FILTER_WEBP);
-    REQUIRE(filter.filter_type() == TILEDB_FILTER_WEBP);
-    REQUIRE(
-        filter.to_str(filter.filter_type()) == sm::constants::filter_webp_str);
-
-    float quality_found;
-    REQUIRE_NOTHROW(filter.set_option(TILEDB_WEBP_QUALITY, 100.0f));
-    REQUIRE_NOTHROW(
-        filter.get_option<float>(TILEDB_WEBP_QUALITY, &quality_found));
-    REQUIRE(100.0f == quality_found);
-
-    uint8_t format_found;
-    REQUIRE_NOTHROW(
-        filter.set_option(TILEDB_WEBP_INPUT_FORMAT, &format_expected));
-    REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_INPUT_FORMAT, &format_found));
-    REQUIRE(format_expected == format_found);
-
-    // Check WEBP_LOSSLESS option.
-    uint8_t lossless_found;
-    REQUIRE_NOTHROW(
-        filter.set_option(TILEDB_WEBP_LOSSLESS, &lossless_expected));
-    REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_LOSSLESS, &lossless_found));
-    REQUIRE(lossless_expected == lossless_found);
-
-    // Test against images of different sizes.
-    Domain domain = create_domain<TestType>(ctx, format_expected);
-    uint8_t pixel_depth = format_expected < TILEDB_WEBP_RGBA ? 3 : 4;
-    TestType height = domain.dimension(0).template domain<TestType>().second;
-    TestType width =
-        domain.dimension(1).template domain<TestType>().second / pixel_depth;
-
     FilterList filterList(ctx);
     filterList.add_filter(filter);
 
-    // This attribute is used for all colorspace formats: RGB, RGBA, BGR, BGRA.
-    auto a = Attribute::create<uint8_t>(ctx, "rgb");
-    a.set_filter_list(filterList);
+    // Create valid attribute, domain, and schema.
+    auto valid_attr = Attribute::create<uint8_t>(ctx, "rgb");
+    valid_attr.set_filter_list(filterList);
 
-    ArraySchema schema(ctx, TILEDB_DENSE);
-    schema.set_domain(domain);
-    schema.add_attribute(a);
-    Array::create(webp_array_name, schema);
+    Domain valid_domain(ctx);
+    valid_domain.add_dimension(
+        Dimension::create<uint64_t>(ctx, "y", {{1, 100}}, 90));
+    valid_domain.add_dimension(
+        Dimension::create<uint64_t>(ctx, "x", {{1, 100}}, 90));
 
-    auto rgb = create_image(width, height, pixel_depth);
+    ArraySchema valid_schema(ctx, TILEDB_DENSE);
+    valid_schema.set_domain(valid_domain);
+    valid_schema.add_attribute(valid_attr);
 
-    // Write pixel data to the array.
-    Array array(ctx, webp_array_name, TILEDB_WRITE);
-    Query write(ctx, array);
-    write.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("rgb", rgb);
-    write.submit();
-    array.close();
-    REQUIRE(Query::Status::COMPLETE == write.query_status());
+    // Create an invalid attribute for use with WebP filter.
+    auto invalid_attr = Attribute::create<TestType>(ctx, "rgb");
+    invalid_attr.set_filter_list(filterList);
 
-    array.open(TILEDB_READ);
-    std::vector<uint8_t> read_rgb((width * pixel_depth) * height);
-    std::vector<TestType> subarray = {
-        1, height, 1, (TestType)(width * pixel_depth)};
-    Query read(ctx, array);
-    read.set_layout(TILEDB_ROW_MAJOR)
-        .set_subarray(subarray)
-        .set_data_buffer("rgb", read_rgb);
-    read.submit();
-    array.close();
-    REQUIRE(Query::Status::COMPLETE == read.query_status());
+    // WebP filter requires exactly 2 dimensions for Y, X.
+    {
+      Domain invalid_domain(ctx);
+      invalid_domain.add_dimension(
+          Dimension::create<uint64_t>(ctx, "y", {{1, 100}}, 90));
 
-    if (lossless_expected == 1) {
-      // Lossless compression should be exact.
-      REQUIRE_THAT(read_rgb, Catch::Matchers::Equals(rgb));
-    } else {
-      // Lossy compression at 100.0f quality should be approx.
-      REQUIRE_THAT(read_rgb, Catch::Matchers::Approx(rgb).margin(200));
+      // Test with < 2 dimensions.
+      ArraySchema invalid_schema(ctx, TILEDB_DENSE);
+      invalid_schema.set_domain(invalid_domain);
+      invalid_schema.add_attribute(valid_attr);
+      REQUIRE_THROWS_WITH(
+          Array::create(webp_array_name, invalid_schema),
+          Catch::Matchers::ContainsSubstring(
+              "WebP filter requires exactly 2 dimensions Y, X"));
+
+      // Test with > 2 dimensions.
+      invalid_domain.add_dimensions(
+          Dimension::create<uint64_t>(ctx, "x", {{1, 100}}, 90),
+          Dimension::create<uint64_t>(ctx, "z", {{1, 100}}, 90));
+      invalid_schema.set_domain(invalid_domain);
+      REQUIRE_THROWS_WITH(
+          Array::create(webp_array_name, invalid_schema),
+          Catch::Matchers::ContainsSubstring(
+              "WebP filter requires exactly 2 dimensions Y, X"));
     }
 
-    if constexpr (png_found) {
-      write_image(
-          read_rgb, width, height, pixel_depth, format_expected, nullptr);
+    // In dense arrays, all dimensions must have matching datatype.
+    {
+      Domain invalid_domain(ctx);
+      invalid_domain.add_dimension(
+          Dimension::create<uint64_t>(ctx, "y", {{1, 100}}, 90));
+      invalid_domain.add_dimension(
+          Dimension::create<TestType>(ctx, "x", {{1, 100}}, 90));
+
+      ArraySchema invalid_schema(ctx, TILEDB_DENSE);
+
+      // This is also enforced by ArraySchema::check_webp_filter.
+      REQUIRE_THROWS_WITH(
+          invalid_schema.set_domain(invalid_domain),
+          Catch::Matchers::ContainsSubstring(
+              "In dense arrays, all dimensions must have the same datatype"));
     }
 
-    if (vfs.is_dir(webp_array_name))
+    // WebP filter supports only uint8 attributes.
+    {
+      ArraySchema invalid_schema(ctx, TILEDB_DENSE);
+      invalid_schema.set_domain(valid_domain);
+
+      invalid_schema.add_attribute(invalid_attr);
+      REQUIRE_THROWS_WITH(
+          Array::create(webp_array_name, invalid_schema),
+          Catch::Matchers::ContainsSubstring(
+              "WebP filter supports only uint8 attributes"));
+    }
+
+    // WebP filter can only be applied to dense arrays.
+    {
+      ArraySchema invalid_schema(ctx, TILEDB_SPARSE);
+      invalid_schema.set_domain(valid_domain);
+      invalid_schema.add_attribute(valid_attr);
+
+      REQUIRE_THROWS_WITH(
+          Array::create(webp_array_name, invalid_schema),
+          Catch::Matchers::ContainsSubstring(
+              "WebP filter can only be applied to dense arrays"));
+    }
+
+    REQUIRE_NOTHROW(Array::create(webp_array_name, valid_schema));
+
+    if (vfs.is_dir(webp_array_name)) {
       vfs.remove_dir(webp_array_name);
+    }
   }
 }
 
-using DimensionTypes = std::tuple<int32_t, int64_t, uint32_t, uint64_t>;
+using DimensionTypes = std::tuple<
+    uint8_t,
+    uint16_t,
+    uint32_t,
+    uint64_t,
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t>;
 TEMPLATE_LIST_TEST_CASE(
     "C++ API: WEBP Filter", "[cppapi][filter][webp]", DimensionTypes) {
   if constexpr (webp_filter_exists) {
     Context ctx;
     VFS vfs(ctx);
-    if (vfs.is_dir(webp_array_name))
+    if (vfs.is_dir(webp_array_name)) {
       vfs.remove_dir(webp_array_name);
+    }
 
     uint8_t format_expected = GENERATE(
         TILEDB_WEBP_RGB, TILEDB_WEBP_RGBA, TILEDB_WEBP_BGR, TILEDB_WEBP_BGRA);
@@ -442,8 +459,9 @@ TEMPLATE_LIST_TEST_CASE(
           read_rgb, width, height, pixel_depth, format_expected, nullptr);
     }
 
-    if (vfs.is_dir(webp_array_name))
+    if (vfs.is_dir(webp_array_name)) {
       vfs.remove_dir(webp_array_name);
+    }
   }
 }
 
@@ -455,8 +473,9 @@ TEST_CASE("C API: WEBP Filter", "[capi][filter][webp]") {
     tiledb_vfs_alloc(ctx, nullptr, &vfs);
     int32_t is_dir = false;
     tiledb_vfs_is_dir(ctx, vfs, webp_array_name.c_str(), &is_dir);
-    if (is_dir)
+    if (is_dir) {
       tiledb_vfs_remove_dir(ctx, vfs, webp_array_name.c_str());
+    }
 
     uint8_t expected_lossless = GENERATE(1, 0);
     uint8_t expected_fmt = GENERATE(
@@ -622,7 +641,8 @@ TEST_CASE("C API: WEBP Filter", "[capi][filter][webp]") {
     }
 
     tiledb_vfs_is_dir(ctx, vfs, webp_array_name.c_str(), &is_dir);
-    if (is_dir)
+    if (is_dir) {
       tiledb_vfs_remove_dir(ctx, vfs, webp_array_name.c_str());
+    }
   }
 }

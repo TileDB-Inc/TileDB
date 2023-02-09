@@ -92,14 +92,6 @@ struct tiledb_query_condition_t {
   tiledb::sm::QueryCondition* query_condition_ = nullptr;
 };
 
-struct tiledb_vfs_t {
-  tiledb::sm::VFS* vfs_ = nullptr;
-};
-
-struct tiledb_vfs_fh_t {
-  tiledb::sm::VFSFileHandle* vfs_fh_ = nullptr;
-};
-
 struct tiledb_fragment_info_t {
   tiledb::sm::FragmentInfo* fragment_info_ = nullptr;
 };

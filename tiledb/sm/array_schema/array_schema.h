@@ -53,7 +53,7 @@ class Attribute;
 class Buffer;
 class ConstBuffer;
 class Dimension;
-class DimensionLabelReference;
+class DimensionLabel;
 class Domain;
 
 enum class ArrayType : uint8_t;
@@ -126,7 +126,7 @@ class ArraySchema {
       Layout tile_order,
       uint64_t capacity,
       std::vector<shared_ptr<const Attribute>> attributes,
-      std::vector<shared_ptr<const DimensionLabelReference>> dimension_labels,
+      std::vector<shared_ptr<const DimensionLabel>> dimension_labels,
       FilterPipeline cell_var_offsets_filters,
       FilterPipeline cell_validity_filters,
       FilterPipeline coords_filters);
@@ -241,16 +241,14 @@ class ArraySchema {
   bool dense() const;
 
   /** Returns the i-th dimension label. */
-  const DimensionLabelReference& dimension_label_reference(
-      dimension_label_size_type i) const;
+  const DimensionLabel& dimension_label(dimension_label_size_type i) const;
 
   /**
    * Returns the selected dimension label.
    *
    * A status exception is thrown if the dimension label does not exist.
    */
-  const DimensionLabelReference& dimension_label_reference(
-      const std::string& name) const;
+  const DimensionLabel& dimension_label(const std::string& name) const;
 
   /** Returns the i-th dimension. */
   const Dimension* dimension_ptr(dimension_size_type i) const;
@@ -285,6 +283,8 @@ class ArraySchema {
    * @return Status
    */
   Status has_attribute(const std::string& name, bool* has_attr) const;
+
+  bool has_ordered_attributes() const;
 
   /** Returns true if the input name is an attribute. */
   bool is_attr(const std::string& name) const;
@@ -473,16 +473,6 @@ class ArraySchema {
   /** Generates a new array schema URI with specified timestamp range. */
   Status generate_uri(const std::pair<uint64_t, uint64_t>& timestamp_range);
 
-  /**
-   * Returns the name of the attribute in this schema with a bitsort filter.
-   * If none exists, then this function returns std::nullopt. Note that
-   * there should only be one attribute per schema with a bitsort filter in
-   * place, as the bitsort filter will use the dimension tiles to store the
-   * positions, and there is only one set of dimension tiles per set of
-   * attribute tiles.
-   */
-  std::optional<std::string> bitsort_filter_attr() const;
-
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -551,12 +541,10 @@ class ArraySchema {
   std::vector<shared_ptr<const Attribute>> attributes_;
 
   /** The array dimension labels. */
-  std::vector<shared_ptr<const DimensionLabelReference>>
-      dimension_label_references_;
+  std::vector<shared_ptr<const DimensionLabel>> dimension_labels_;
 
   /** A map from the dimension label names to the label schemas. */
-  std::unordered_map<std::string, const DimensionLabelReference*>
-      dimension_label_reference_map_;
+  std::unordered_map<std::string, const DimensionLabel*> dimension_label_map_;
 
   /** The filter pipeline run on offset tiles for var-length attributes. */
   FilterPipeline cell_var_offsets_filters_;
@@ -571,12 +559,6 @@ class ArraySchema {
   mutable std::mutex mtx_;
 
   /**
-   * Attribute with bitsort filter in its filter pipeline.
-   * Set to nullopt when none exists.
-   */
-  std::optional<std::string> bitsort_filter_attr_;
-
-  /**
    * Number of internal dimension labels - used for constructing label URI.
    *
    * WARNING: This is only for array schema construction. It is not
@@ -589,8 +571,8 @@ class ArraySchema {
   /* ********************************* */
 
   /**
-   * Returns false if the union of attribute and dimension names contain
-   * duplicates.
+   * Throws an error if the union of attribute, dimension, and dimension label
+   * names contain duplicates.
    */
   void check_attribute_dimension_label_names() const;
 

@@ -51,7 +51,7 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
-#include "tiledb/sm/tile/writer_tile.h"
+#include "tiledb/sm/tile/writer_tile_tuple.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
 
 using namespace tiledb;
@@ -107,10 +107,18 @@ GlobalOrderWriter::GlobalOrderWriter(
     , processed_conditions_(processed_conditions)
     , fragment_size_(fragment_size)
     , current_fragment_size_(0) {
+  // Check the layout is global order.
   if (layout != Layout::GLOBAL_ORDER) {
     throw GlobalOrderWriterStatusException(
         "Failed to initialize global order writer. Layout " +
         layout_str(layout) + " is not global order.");
+  }
+
+  // Check no ordered attributes.
+  if (array_schema_.has_ordered_attributes()) {
+    throw GlobalOrderWriterStatusException(
+        "Failed to initialize global order writer. Global order writes to "
+        "ordered attributes are not yet supported.");
   }
 }
 
@@ -124,7 +132,7 @@ GlobalOrderWriter::~GlobalOrderWriter() {
 Status GlobalOrderWriter::dowork() {
   get_dim_attr_stats();
 
-  auto timer_se = stats_->start_timer("write");
+  auto timer_se = stats_->start_timer("dowork");
 
   // In case the user has provided a coordinates buffer
   RETURN_NOT_OK(split_coords_buffer());
@@ -200,10 +208,10 @@ Status GlobalOrderWriter::init_global_write_state() {
     const auto capacity = array_schema_.capacity();
     const auto cell_num_per_tile =
         coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
-    auto last_tile_vector =
-        std::pair<std::string, WriterTileVector>(name, WriterTileVector());
+    auto last_tile_vector = std::pair<std::string, WriterTileTupleVector>(
+        name, WriterTileTupleVector());
     try {
-      last_tile_vector.second.emplace_back(WriterTile(
+      last_tile_vector.second.emplace_back(WriterTileTuple(
           array_schema_,
           cell_num_per_tile,
           var_size,
@@ -411,8 +419,8 @@ Status GlobalOrderWriter::check_global_order() const {
   auto& domain{array_schema_.domain()};
   DomainBuffersView domain_buffs{array_schema_, buffers_};
   if (global_write_state_->cells_written_.begin()->second > 0) {
-    DomainBuffersView last_cell_buffs{array_schema_,
-                                      *global_write_state_->last_cell_coords_};
+    DomainBuffersView last_cell_buffs{
+        array_schema_, *global_write_state_->last_cell_coords_};
     auto left{last_cell_buffs.domain_ref_at(domain, 0)};
     auto right{domain_buffs.domain_ref_at(domain, 0)};
 
@@ -752,7 +760,7 @@ Status GlobalOrderWriter::global_write() {
     RETURN_CANCEL_OR_ERROR(compute_coord_dups(&coord_dups));
   }
 
-  std::unordered_map<std::string, WriterTileVector> tiles;
+  std::unordered_map<std::string, WriterTileTupleVector> tiles;
   RETURN_CANCEL_OR_ERROR(prepare_full_tiles(coord_dups, &tiles));
 
   // Find number of tiles and gather stats
@@ -854,12 +862,12 @@ void GlobalOrderWriter::nuke_global_write_state() {
 
 Status GlobalOrderWriter::prepare_full_tiles(
     const std::set<uint64_t>& coord_dups,
-    std::unordered_map<std::string, WriterTileVector>* tiles) const {
+    std::unordered_map<std::string, WriterTileTupleVector>* tiles) const {
   auto timer_se = stats_->start_timer("prepare_tiles");
 
   // Initialize attribute and coordinate tiles
   for (const auto& it : buffers_) {
-    (*tiles)[it.first] = WriterTileVector();
+    (*tiles)[it.first] = WriterTileTupleVector();
   }
 
   auto num = buffers_.size();
@@ -881,7 +889,7 @@ Status GlobalOrderWriter::prepare_full_tiles(
 Status GlobalOrderWriter::prepare_full_tiles(
     const std::string& name,
     const std::set<uint64_t>& coord_dups,
-    WriterTileVector* tiles) const {
+    WriterTileTupleVector* tiles) const {
   return array_schema_.var_size(name) ?
              prepare_full_tiles_var(name, coord_dups, tiles) :
              prepare_full_tiles_fixed(name, coord_dups, tiles);
@@ -890,7 +898,7 @@ Status GlobalOrderWriter::prepare_full_tiles(
 Status GlobalOrderWriter::prepare_full_tiles_fixed(
     const std::string& name,
     const std::set<uint64_t>& coord_dups,
-    WriterTileVector* tiles) const {
+    WriterTileTupleVector* tiles) const {
   // For easy reference
   auto nullable = array_schema_.is_nullable(name);
   auto type = array_schema_.type(name);
@@ -961,7 +969,7 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
   if (full_tile_num > 0) {
     tiles->reserve(full_tile_num);
     for (uint64_t i = 0; i < full_tile_num; i++) {
-      tiles->emplace_back(WriterTile(
+      tiles->emplace_back(WriterTileTuple(
           array_schema_, cell_num_per_tile, false, nullable, cell_size, type));
     }
 
@@ -1059,7 +1067,7 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
 Status GlobalOrderWriter::prepare_full_tiles_var(
     const std::string& name,
     const std::set<uint64_t>& coord_dups,
-    WriterTileVector* tiles) const {
+    WriterTileTupleVector* tiles) const {
   // For easy reference
   auto it = buffers_.find(name);
   auto nullable = array_schema_.is_nullable(name);
@@ -1168,7 +1176,7 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
   if (full_tile_num > 0) {
     tiles->reserve(full_tile_num);
     for (uint64_t i = 0; i < full_tile_num; i++) {
-      tiles->emplace_back(WriterTile(
+      tiles->emplace_back(WriterTileTuple(
           array_schema_, cell_num_per_tile, true, nullable, cell_size, type));
     }
 
@@ -1348,12 +1356,12 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
 uint64_t GlobalOrderWriter::num_tiles_to_write(
     uint64_t start,
     uint64_t tile_num,
-    std::unordered_map<std::string, WriterTileVector>& tiles) {
+    std::unordered_map<std::string, WriterTileTupleVector>& tiles) {
   // Cache variables to prevent map lookups.
   const auto buf_names = buffer_names();
   std::vector<bool> var_size;
   std::vector<bool> nullable;
-  std::vector<WriterTileVector*> writer_tile_vectors;
+  std::vector<WriterTileTupleVector*> writer_tile_vectors;
   var_size.reserve(buf_names.size());
   nullable.reserve(buf_names.size());
   writer_tile_vectors.reserve(buf_names.size());

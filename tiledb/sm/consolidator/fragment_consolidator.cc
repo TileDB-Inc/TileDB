@@ -43,6 +43,7 @@
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <iostream>
+#include <numeric>
 #include <sstream>
 
 using namespace tiledb::common;
@@ -296,11 +297,8 @@ void FragmentConsolidator::vacuum(const char* array_name) {
   }
 
   // Get the fragment URIs and vacuum file URIs to be vacuumed
-  auto vfs = storage_manager_->vfs();
-  auto compute_tp = storage_manager_->compute_tp();
-  auto array_dir = ArrayDirectory(
-      vfs,
-      compute_tp,
+  ArrayDirectory array_dir(
+      storage_manager_->resources(),
       URI(array_name),
       0,
       std::numeric_limits<uint64_t>::max(),
@@ -313,11 +311,12 @@ void FragmentConsolidator::vacuum(const char* array_name) {
       filtered_fragment_uris.commit_uris_to_ignore();
 
   if (commit_uris_to_ignore.size() > 0) {
-    throw_if_not_ok(storage_manager_->write_commit_ignore_file(
-        array_dir, commit_uris_to_ignore));
+    array_dir.write_commit_ignore_file(commit_uris_to_ignore);
   }
 
   // Delete the commit and vacuum files
+  auto vfs = storage_manager_->vfs();
+  auto compute_tp = storage_manager_->compute_tp();
   vfs->remove_files(compute_tp, filtered_fragment_uris.commit_uris_to_vacuum());
   vfs->remove_files(
       compute_tp, filtered_fragment_uris.fragment_vac_uris_to_vacuum());
@@ -411,9 +410,9 @@ Status FragmentConsolidator::consolidate_internal(
   }
 
   // Prepare buffers
-  std::vector<ByteVec> buffers;
-  std::vector<uint64_t> buffer_sizes;
-  RETURN_NOT_OK(create_buffers(array_schema, &buffers, &buffer_sizes));
+  auto average_var_cell_sizes = array_for_reads->get_average_var_cell_sizes();
+  auto&& [buffers, buffer_sizes] =
+      create_buffers(stats_, config_, array_schema, average_var_cell_sizes);
 
   // Create queries
   auto query_r = (Query*)nullptr;
@@ -521,11 +520,13 @@ Status FragmentConsolidator::copy_array(
   return Status::Ok();
 }
 
-Status FragmentConsolidator::create_buffers(
+tuple<std::vector<ByteVec>, std::vector<uint64_t>>
+FragmentConsolidator::create_buffers(
+    stats::Stats* stats,
+    const ConsolidationConfig& config,
     const ArraySchema& array_schema,
-    std::vector<ByteVec>* buffers,
-    std::vector<uint64_t>* buffer_sizes) {
-  auto timer_se = stats_->start_timer("consolidate_create_buffers");
+    std::unordered_map<std::string, uint64_t>& avg_cell_sizes) {
+  auto timer_se = stats->start_timer("consolidate_create_buffers");
 
   // For easy reference
   auto attribute_num = array_schema.attribute_num();
@@ -533,38 +534,77 @@ Status FragmentConsolidator::create_buffers(
   auto dim_num = array_schema.dim_num();
   auto sparse = !array_schema.dense();
 
-  // Calculate number of buffers
-  size_t buffer_num = 0;
+  // Calculate buffer weights. We reserve the maximum possible number of buffers
+  // to make only one allocation. If an attribute is var size and nullable, it
+  // has 3 buffers, dimensions only have 2 as they cannot be nullable. Then one
+  // buffer for timestamps, and 2 for delete metadata.
+  std::vector<size_t> buffer_weights;
+  buffer_weights.reserve(attribute_num * 3 + dim_num * 2 + 3);
   for (unsigned i = 0; i < attribute_num; ++i) {
-    buffer_num += (array_schema.attributes()[i]->var_size()) ? 2 : 1;
-    buffer_num += (array_schema.attributes()[i]->nullable()) ? 1 : 0;
+    const auto attr = array_schema.attributes()[i];
+    const auto var_size = attr->var_size();
+
+    // First buffer is either the var size data or the fixed size data.
+    buffer_weights.emplace_back(
+        var_size ? avg_cell_sizes[attr->name()] : attr->cell_size());
+
+    // For var size attributes, add the offsets buffer weight.
+    if (var_size) {
+      buffer_weights.emplace_back(constants::cell_var_offset_size);
+    }
+
+    // For nullable attributes, add the offsets buffer weight.
+    if (attr->nullable()) {
+      buffer_weights.emplace_back(constants::cell_validity_size);
+    }
   }
+
   if (sparse) {
-    for (unsigned i = 0; i < dim_num; ++i)
-      buffer_num += (domain.dimension_ptr(i)->var_size()) ? 2 : 1;
+    for (unsigned i = 0; i < dim_num; ++i) {
+      const auto dim = domain.dimension_ptr(i);
+      const auto var_size = dim->var_size();
+
+      // First buffer is either the var size data or the fixed size data.
+      buffer_weights.emplace_back(
+          var_size ? avg_cell_sizes[dim->name()] : dim->coord_size());
+
+      // For var size attributes, add the offsets buffer weight.
+      if (var_size) {
+        buffer_weights.emplace_back(constants::cell_var_offset_size);
+      }
+    }
   }
-  if (config_.with_timestamps_ && sparse) {
-    buffer_num++;
+
+  if (config.with_timestamps_ && sparse) {
+    buffer_weights.emplace_back(constants::timestamp_size);
   }
 
   // Adding buffers for delete meta, one for timestamp and one for condition
   // index.
-  if (config_.with_delete_meta_) {
-    buffer_num += 2;
+  if (config.with_delete_meta_) {
+    buffer_weights.emplace_back(constants::timestamp_size);
+    buffer_weights.emplace_back(sizeof(uint64_t));
   }
 
-  // Create buffers
-  buffers->resize(buffer_num);
-  buffer_sizes->resize(buffer_num);
+  // Use the old buffer size setting to see how much memory we would use.
+  auto buffer_num = buffer_weights.size();
+  uint64_t total_budget = config.buffer_size_ * buffer_num;
 
-  // Allocate space for each buffer
+  // Create buffers.
+  std::vector<ByteVec> buffers(buffer_num);
+  std::vector<uint64_t> buffer_sizes(buffer_num);
+  auto total_weights =
+      std::accumulate(buffer_weights.begin(), buffer_weights.end(), 0);
+
+  // Allocate space for each buffer.
   for (unsigned i = 0; i < buffer_num; ++i) {
-    (*buffers)[i].resize(config_.buffer_size_);
-    (*buffer_sizes)[i] = config_.buffer_size_;
+    buffer_sizes[i] =
+        std::max<uint64_t>(1, total_budget * buffer_weights[i] / total_weights);
+    buffers[i].resize(buffer_sizes[i]);
   }
 
   // Success
-  return Status::Ok();
+  return {buffers, buffer_sizes};
 }
 
 Status FragmentConsolidator::create_queries(
@@ -604,10 +644,9 @@ Status FragmentConsolidator::create_queries(
   auto last = (*query_r)->last_fragment_uri();
 
   auto write_version = array_for_reads->array_schema_latest().write_version();
-  auto&& [st, fragment_name] =
+  auto fragment_name =
       array_for_reads->array_directory().compute_new_fragment_name(
           first, last, write_version);
-  RETURN_NOT_OK(st);
 
   // Create write query
   *query_w = tdb_new(Query, storage_manager_, array_for_writes, fragment_name);
@@ -631,7 +670,7 @@ Status FragmentConsolidator::create_queries(
   // Set the URI for the new fragment.
   auto frag_uri =
       array_for_reads->array_directory().get_fragments_dir(write_version);
-  *new_fragment_uri = frag_uri.join_path(fragment_name.value());
+  *new_fragment_uri = frag_uri.join_path(fragment_name);
 
   return Status::Ok();
 }
@@ -762,45 +801,35 @@ Status FragmentConsolidator::set_query_buffers(
   auto attributes = array_schema.attributes();
   unsigned bid = 0;
 
-  // Here the first buffer should always be the fixed buffer (either offsets or
-  // fixed data) as we use the first buffer size to determine if any cells were
-  // written or not.
+  // Here the first buffer should always be the fixed buffer (either offsets
+  // or fixed data) as we use the first buffer size to determine if any cells
+  // were written or not.
   for (const auto& attr : attributes) {
     if (!attr->var_size()) {
-      if (!attr->nullable()) {
-        RETURN_NOT_OK(query->set_data_buffer(
-            attr->name(), (void*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
-        ++bid;
-      } else {
-        RETURN_NOT_OK(query->set_buffer_vbytemap(
+      throw_if_not_ok(query->set_data_buffer(
+          attr->name(), (void*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
+      ++bid;
+      if (attr->nullable()) {
+        throw_if_not_ok(query->set_validity_buffer(
             attr->name(),
-            (void*)&(*buffers)[bid][0],
-            &(*buffer_sizes)[bid],
-            (uint8_t*)&(*buffers)[bid + 1][0],
-            &(*buffer_sizes)[bid + 1]));
-        bid += 2;
+            (uint8_t*)&(*buffers)[bid][0],
+            &(*buffer_sizes)[bid]));
+        ++bid;
       }
     } else {
-      if (!attr->nullable()) {
-        RETURN_NOT_OK(query->set_data_buffer(
+      throw_if_not_ok(query->set_data_buffer(
+          attr->name(),
+          (void*)&(*buffers)[bid + 1][0],
+          &(*buffer_sizes)[bid + 1]));
+      throw_if_not_ok(query->set_offsets_buffer(
+          attr->name(), (uint64_t*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
+      bid += 2;
+      if (attr->nullable()) {
+        throw_if_not_ok(query->set_validity_buffer(
             attr->name(),
-            (void*)&(*buffers)[bid + 1][0],
-            &(*buffer_sizes)[bid + 1]));
-        RETURN_NOT_OK(query->set_offsets_buffer(
-            attr->name(),
-            (uint64_t*)&(*buffers)[bid][0],
+            (uint8_t*)&(*buffers)[bid][0],
             &(*buffer_sizes)[bid]));
-        bid += 2;
-      } else {
-        RETURN_NOT_OK(query->set_buffer_vbytemap(
-            attr->name(),
-            (uint64_t*)&(*buffers)[bid][0],
-            &(*buffer_sizes)[bid],
-            (void*)&(*buffers)[bid + 1][0],
-            &(*buffer_sizes)[bid + 1],
-            (uint8_t*)&(*buffers)[bid + 2][0],
-            &(*buffer_sizes)[bid + 2]));
-        bid += 3;
+        ++bid;
       }
     }
   }
@@ -809,15 +838,15 @@ Status FragmentConsolidator::set_query_buffers(
       auto dim{array_schema.dimension_ptr(d)};
       auto dim_name = dim->name();
       if (!dim->var_size()) {
-        RETURN_NOT_OK(query->set_data_buffer(
+        throw_if_not_ok(query->set_data_buffer(
             dim_name, (void*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
         ++bid;
       } else {
-        RETURN_NOT_OK(query->set_data_buffer(
+        throw_if_not_ok(query->set_data_buffer(
             dim_name,
             (void*)&(*buffers)[bid + 1][0],
             &(*buffer_sizes)[bid + 1]));
-        RETURN_NOT_OK(query->set_offsets_buffer(
+        throw_if_not_ok(query->set_offsets_buffer(
             dim_name, (uint64_t*)&(*buffers)[bid][0], &(*buffer_sizes)[bid]));
         bid += 2;
       }
@@ -825,7 +854,7 @@ Status FragmentConsolidator::set_query_buffers(
   }
 
   if (config_.with_timestamps_ && !dense) {
-    RETURN_NOT_OK(query->set_data_buffer(
+    throw_if_not_ok(query->set_data_buffer(
         constants::timestamps,
         (void*)&(*buffers)[bid][0],
         &(*buffer_sizes)[bid]));
@@ -833,12 +862,12 @@ Status FragmentConsolidator::set_query_buffers(
   }
 
   if (config_.with_delete_meta_ && !dense) {
-    RETURN_NOT_OK(query->set_data_buffer(
+    throw_if_not_ok(query->set_data_buffer(
         constants::delete_timestamps,
         (void*)&(*buffers)[bid][0],
         &(*buffer_sizes)[bid]));
     ++bid;
-    RETURN_NOT_OK(query->set_data_buffer(
+    throw_if_not_ok(query->set_data_buffer(
         constants::delete_condition_index,
         (void*)&(*buffers)[bid][0],
         &(*buffer_sizes)[bid]));

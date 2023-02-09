@@ -75,8 +75,9 @@ TEMPLATE_TEST_CASE(
     REQUIRE(!status.ok());
   }
   SECTION("Test a non-valid subset that is actually the full typeset") {
-    TestType data[2]{std::numeric_limits<TestType>::min(),
-                     std::numeric_limits<TestType>::max()};
+    TestType data[2]{
+        std::numeric_limits<TestType>::min(),
+        std::numeric_limits<TestType>::max()};
     Range range{&data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(!status.ok());
@@ -121,8 +122,9 @@ TEMPLATE_TEST_CASE(
     REQUIRE(!status.ok());
   }
   SECTION("Test a non-valid subset that is actually the full typeset") {
-    TestType data[2]{std::numeric_limits<TestType>::lowest(),
-                     std::numeric_limits<TestType>::max()};
+    TestType data[2]{
+        std::numeric_limits<TestType>::lowest(),
+        std::numeric_limits<TestType>::max()};
     Range range{&data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(!status.ok());
@@ -162,15 +164,17 @@ TEMPLATE_TEST_CASE(
     REQUIRE(!status.ok());
   }
   SECTION("Test a non-valid subset that is actually the full typeset") {
-    TestType data[2]{std::numeric_limits<TestType>::lowest(),
-                     std::numeric_limits<TestType>::max()};
+    TestType data[2]{
+        std::numeric_limits<TestType>::lowest(),
+        std::numeric_limits<TestType>::max()};
     Range range{&data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(!status.ok());
   }
   SECTION("Test a non-valid subset that is actually infinite") {
-    TestType data[2]{-std::numeric_limits<TestType>::infinity(),
-                     std::numeric_limits<TestType>::infinity()};
+    TestType data[2]{
+        -std::numeric_limits<TestType>::infinity(),
+        std::numeric_limits<TestType>::infinity()};
     Range range{&data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(!status.ok());

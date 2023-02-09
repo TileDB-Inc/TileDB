@@ -65,7 +65,7 @@ class FloatScalingFilter : public Filter {
   };
   /**
    * Default constructor. Default settings for Float Scaling Filter are
-   * scale = 1.0f, offset = 0.0f, and bit_width = 8.
+   * scale = 1.0f, offset = 0.0f, and byte_width = 8.
    */
   FloatScalingFilter()
       : Filter(FilterType::FILTER_SCALE_FLOAT)
@@ -100,8 +100,8 @@ class FloatScalingFilter : public Filter {
    * with the pre-specified byte width.
    */
   Status run_forward(
-      const Tile& tile,
-      void* const support_data,
+      const WriterTile& tile,
+      WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -114,7 +114,7 @@ class FloatScalingFilter : public Filter {
    */
   Status run_reverse(
       const Tile& tile,
-      void* support_data,
+      Tile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

@@ -55,7 +55,7 @@ TEST_CASE(
     "[pseudo_nodes]") {
   size_t N = 37;
 
-  generator g(N);
+  generators g(N);
 
   std::vector<size_t> v;
   std::back_insert_iterator<std::vector<size_t>> w(v);
@@ -116,7 +116,7 @@ TEST_CASE(
   }
 
   SECTION("Attach generator and consumer") {
-    generator g(N);
+    generators g(N);
 
     std::vector<size_t> v;
     std::back_insert_iterator<std::vector<size_t>> w(v);
@@ -142,7 +142,7 @@ TEST_CASE(
     "Pseudo Nodes: Pass some data, two attachment orders", "[pseudo_nodes]") {
   size_t rounds = 43;
 
-  generator g(rounds);
+  generators g(rounds);
 
   std::vector<size_t> v;
   std::back_insert_iterator<std::vector<size_t>> w(v);
@@ -185,7 +185,7 @@ TEST_CASE(
 TEST_CASE("Pseudo Nodes: Asynchronously pass some data", "[pseudo_nodes]") {
   size_t rounds = 423;
 
-  generator g(rounds);
+  generators g(rounds);
 
   std::vector<size_t> v;
   std::back_insert_iterator<std::vector<size_t>> w(v);

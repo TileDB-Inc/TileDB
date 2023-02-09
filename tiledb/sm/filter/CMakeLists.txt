@@ -83,11 +83,9 @@ conclude(object_library)
 # `checksum_filters` object library
 #
 commence(object_library checksum_filters)
-    cmake_path(APPEND TILEDB_SOURCE_ROOT "external/src/md5" OUTPUT_VARIABLE MD5_SOURCE_ROOT)
     this_target_sources(
-        checksum_md5_filter.cc ${MD5_SOURCE_ROOT}/md5.cc checksum_sha256_filter.cc)
+        checksum_md5_filter.cc checksum_sha256_filter.cc)
     this_target_object_libraries(config filter)
-    set_source_files_properties(${MD5_SOURCE_ROOT}/md5.cc PROPERTIES INCLUDE_DIRECTORIES "${TILEDB_EXTERNAL_INCLUDE}")
 conclude(object_library)
 
 #
@@ -121,19 +119,6 @@ commence(object_library xor_filter)
     this_target_sources(xor_filter.cc)
     this_target_object_libraries(filter)
 conclude(object_library)
-
-#
-# `bitsort_filters` object library
-#
-add_library(bitsort_filters OBJECT bitsort_filter.cc)
-target_link_libraries(bitsort_filters PUBLIC filter $<TARGET_OBJECTS:filter>)
-target_link_libraries(bitsort_filters PUBLIC tile $<TARGET_OBJECTS:tile>)
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_bitsort_filters EXCLUDE_FROM_ALL)
-target_link_libraries(compile_bitsort_filters PRIVATE bitsort_filters)
-target_sources(compile_bitsort_filters PRIVATE test/compile_bitsort_filter_main.cc)
 
 #
 # `webp_filter` object library.
@@ -173,7 +158,7 @@ commence(object_library all_filters)
         bit_width_reduction_filter.cc noop_filter.cc positive_delta_filter.cc)
     this_target_object_libraries(bitshuffle_filter byteshuffle_filter
         checksum_filters compression_filter encryption_filters float_scaling_filter
-        xor_filter bitsort_filters webp_filter)
+        xor_filter webp_filter)
 conclude(object_library)
 
 #

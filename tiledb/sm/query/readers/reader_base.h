@@ -38,7 +38,6 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/tile_domain.h"
-#include "tiledb/sm/filter/bitsort_filter_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/query_condition.h"
@@ -53,6 +52,7 @@ namespace sm {
 
 class Array;
 class ArraySchema;
+class FilteredData;
 class Subarray;
 
 /** Processes read queries. */
@@ -154,6 +154,19 @@ class ReaderBase : public StrategyBase {
       const std::vector<TileDomain<T>>& frag_tile_domains,
       std::map<const T*, ResultSpaceTile<T>>& result_space_tiles);
 
+  /* ********************************* */
+  /*          PUBLIC METHODS           */
+  /* ********************************* */
+
+  /**
+   * Check if a field should be skipped for a certain fragment.
+   *
+   * @param frag_idx Fragment index.
+   * @param name Name of the dimension/attribute.
+   * @return True if the field should be skipped, false if they shouldn't.
+   */
+  bool skip_field(const unsigned frag_idx, const std::string& name) const;
+
  protected:
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
@@ -183,12 +196,6 @@ class ReaderBase : public StrategyBase {
 
   /** The fragment metadata that the reader will focus on. */
   std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
-
-  /** Disable the tile cache or not. */
-  bool disable_cache_;
-
-  /** Read directly from storage without batching. */
-  bool disable_batching_;
 
   /**
    * The condition to apply on results when there is partial time overlap
@@ -222,6 +229,15 @@ class ReaderBase : public StrategyBase {
 
   /** Have we loaded the initial data. */
   bool initial_data_loaded_;
+
+  /** The maximum number of bytes in a batched read operation. */
+  uint64_t max_batch_size_;
+
+  /** The minimum number of bytes between two read batches. */
+  uint64_t min_batch_gap_;
+
+  /** The minimum number of bytes in a batched read operation. */
+  uint64_t min_batch_size_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */
@@ -303,7 +319,7 @@ class ReaderBase : public StrategyBase {
    * Checks if timestamps should be loaded for a fragment.
    *
    * @param f Fragment index.
-   * @return True if timestamps should be included, false if they are not.
+   * @return True if timestamps should be included, false if they are not
    * needed.
    */
   bool include_timestamps(const unsigned f) const;
@@ -322,12 +338,12 @@ class ReaderBase : public StrategyBase {
    * Loads tile offsets for each attribute/dimension name into
    * their associated element in `fragment_metadata_`.
    *
-   * @param relevant_fragments Optional list of relevant fragments.
+   * @param relevant_fragments List of relevant fragments.
    * @param names The attribute/dimension names.
    * @return Status
    */
   Status load_tile_offsets(
-      const optional<std::vector<unsigned>>& relevant_fragments,
+      const RelevantFragments& relevant_fragments,
       const std::vector<std::string>& names);
 
   /**
@@ -355,12 +371,12 @@ class ReaderBase : public StrategyBase {
    * Loads tile var sizes for each attribute/dimension name into
    * their associated element in `fragment_metadata_`.
    *
-   * @param relevant_fragments Optional list of relevant fragments.
+   * @param relevant_fragments List of relevant fragments.
    * @param names The attribute/dimension names.
    * @return Status
    */
   Status load_tile_var_sizes(
-      const optional<std::vector<unsigned>>& relevant_fragments,
+      const RelevantFragments& relevant_fragments,
       const std::vector<std::string>& names);
 
   /**
@@ -372,6 +388,30 @@ class ReaderBase : public StrategyBase {
   Status load_processed_conditions();
 
   /**
+   * Read and unfilter attribute tiles.
+   *
+   * @param names The attribute names.
+   * @param result_tiles The retrieved tiles will be stored inside the
+   *     `ResultTile` instances in this vector.
+   * @return Status.
+   */
+  Status read_and_unfilter_attribute_tiles(
+      const std::vector<std::string>& names,
+      const std::vector<ResultTile*>& result_tiles) const;
+
+  /**
+   * Read and unfilter coordinate tiles.
+   *
+   * @param names The coordinate/dimension names.
+   * @param result_tiles The retrieved tiles will be stored inside the
+   *     `ResultTile` instances in this vector.
+   * @return Status.
+   */
+  Status read_and_unfilter_coordinate_tiles(
+      const std::vector<std::string>& names,
+      const std::vector<ResultTile*>& result_tiles) const;
+
+  /**
    * Concurrently executes across each name in `names` and each result tile
    * in 'result_tiles'.
    *
@@ -381,9 +421,9 @@ class ReaderBase : public StrategyBase {
    * @param names The attribute names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
-   * @return Status
+   * @return Filtered data blocks.
    */
-  Status read_attribute_tiles(
+  std::vector<FilteredData> read_attribute_tiles(
       const std::vector<std::string>& names,
       const std::vector<ResultTile*>& result_tiles) const;
 
@@ -397,9 +437,9 @@ class ReaderBase : public StrategyBase {
    * @param names The coordinate/dimension names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
-   * @return Status
+   * @return Filtered data blocks.
    */
-  Status read_coordinate_tiles(
+  std::vector<FilteredData> read_coordinate_tiles(
       const std::vector<std::string>& names,
       const std::vector<ResultTile*>& result_tiles) const;
 
@@ -413,9 +453,9 @@ class ReaderBase : public StrategyBase {
    * @param names The attribute/dimension names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
-   * @return Status
+   * @return Filtered data blocks.
    */
-  Status read_tiles(
+  std::vector<FilteredData> read_tiles(
       const std::vector<std::string>& names,
       const std::vector<ResultTile*>& result_tiles) const;
 
@@ -443,7 +483,6 @@ class ReaderBase : public StrategyBase {
    * @param name Attribute/dimension the tile belong to.
    * @param tile Tile to be unfiltered.
    * @param tile_chunk_data Tile chunk info, buffers and offsets
-   * @param support_data Support data for the filter
    * @return Status
    */
   Status unfilter_tile_chunk_range(
@@ -451,8 +490,7 @@ class ReaderBase : public StrategyBase {
       uint64_t thread_idx,
       const std::string& name,
       Tile* tile,
-      const ChunkData& tile_chunk_data,
-      void* support_data = nullptr) const;
+      const ChunkData& tile_chunk_data) const;
 
   /**
    * Runs the input var-sized tile for the input attribute or dimension through
@@ -549,11 +587,9 @@ class ReaderBase : public StrategyBase {
    *
    * @param name The attribute/dimension the tile belong to.
    * @param tile The tile to be unfiltered.
-   * @param support_data Support data for the filter.
    * @return Status
    */
-  Status unfilter_tile(
-      const std::string& name, Tile* tile, void* support_data = nullptr) const;
+  Status unfilter_tile(const std::string& name, Tile* tile) const;
 
   /**
    * Runs the input var-sized tile for the input attribute or dimension through
@@ -801,53 +837,6 @@ class ReaderBase : public StrategyBase {
       Range& array_non_empty_domain,
       std::vector<const void*>& non_empty_domains,
       std::vector<uint64_t>& frag_first_array_tile_idx);
-
- private:
-  /**
-   * @brief Class that stores all the storage needed to keep bitsort
-   * metadata.
-   * @tparam CmpObject The comparator object being stored.
-   */
-  template <
-      typename CmpObject,
-      typename std::enable_if_t<
-          std::is_same_v<CmpObject, HilbertCmpQB> ||
-          std::is_same_v<CmpObject, GlobalCmpQB>>* = nullptr>
-  struct BitSortFilterMetadataStorage;
-
-  /* ********************************* */
-  /*          PRIVATE METHODS          */
-  /* ********************************* */
-
-  /**
-   * Calculate Hilbert values. Used to pass in a Hilbert
-   * comparator to the read-reverse path.
-   *
-   * @param domain_buffers
-   * @param hilbert_values
-   */
-  void calculate_hilbert_values(
-      const DomainBuffersView& domain_buffers,
-      std::vector<uint64_t>& hilbert_values) const;
-
-  /**
-   * Constructs the bitsort metadata object.
-   *
-   * @tparam CmpObject The comparator object being constructed.
-   * @param tile Fixed tile that is being unfiltered.
-   * @param bitsort_storage Storage for all the vectors needed to construct
-   * the bitsort filter.
-   * @return BitSortFilterMetadataType the constructed argument.
-   */
-
-  template <
-      typename CmpObject,
-      typename std::enable_if_t<
-          std::is_same_v<CmpObject, HilbertCmpQB> ||
-          std::is_same_v<CmpObject, GlobalCmpQB>>* = nullptr>
-  BitSortFilterMetadataType construct_bitsort_filter_argument(
-      ResultTile* const tile,
-      BitSortFilterMetadataStorage<CmpObject>& bitsort_storage) const;
 };
 
 }  // namespace sm

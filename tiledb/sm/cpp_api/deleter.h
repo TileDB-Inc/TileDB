@@ -36,6 +36,7 @@
 #define TILEDB_CPP_API_DELETER_H
 
 #include "context.h"
+#include "log.h"
 #include "tiledb.h"
 #include "tiledb_experimental.h"
 
@@ -102,6 +103,10 @@ class Deleter {
     tiledb_dimension_free(&p);
   }
 
+  void operator()(tiledb_dimension_label_t* p) const {
+    tiledb_dimension_label_free(&p);
+  }
+
   void operator()(tiledb_domain_t* p) const {
     tiledb_domain_free(&p);
   }
@@ -132,6 +137,13 @@ class Deleter {
 
   void operator()(tiledb_consolidation_plan_t* p) const {
     tiledb_consolidation_plan_free(&p);
+  }
+
+  void operator()(tiledb_string_t* p) const {
+    capi_status_t result = tiledb_status(tiledb_string_free(&p));
+    if (result != TILEDB_OK) {
+      log_warn("Could not free string; Error code: " + std::to_string(result));
+    }
   }
 
  private:

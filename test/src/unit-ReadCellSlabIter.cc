@@ -178,8 +178,14 @@ void set_result_tile_dim(
       std::nullopt,
       std::nullopt,
       std::nullopt);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_coord_tile(
-      constants::format_version, array_schema, dim, tile_sizes, dim_idx);
+      constants::format_version,
+      array_schema,
+      dim,
+      tile_sizes,
+      tile_data,
+      dim_idx);
   auto tile_tuple = result_tile.tile_tuple(dim);
   REQUIRE(tile_tuple != nullptr);
   uint64_t* data = tile_tuple->fixed_tile().data_as<uint64_t>();

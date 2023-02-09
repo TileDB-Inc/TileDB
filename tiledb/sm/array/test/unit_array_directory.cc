@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/array/array_directory.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 
 #include <test/support/tdb_catch.h>
 #include <iostream>
@@ -61,7 +62,9 @@ TEST_CASE(
     "Array directory: Test timestamp overlap",
     "[array-directory][timestamp-overlap]") {
   WhiteboxArrayDirectory wb_array_dir;
-  ArrayDirectory array_dir;
+  Config cfg;
+  ContextResources resources{cfg, nullptr, 1, 1, ""};
+  ArrayDirectory array_dir(resources, URI());
   wb_array_dir.set_open_timestamps(array_dir, 2, 4);
 
   // Only full overlap should be included for regular fragments.

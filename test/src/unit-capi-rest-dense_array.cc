@@ -949,10 +949,11 @@ void DenseArrayRESTFx::check_simultaneous_writes(const std::string& path) {
 
   // Pre-generate buffers to write
   for (int i = 0; i < nthreads; i++) {
-    subarrays.push_back({{domain_0_lo,
-                          domain_0_lo + tile_extent_0 - 1,
-                          domain_1_lo,
-                          domain_1_lo + tile_extent_1 - 1}});
+    subarrays.push_back(
+        {{domain_0_lo,
+          domain_0_lo + tile_extent_0 - 1,
+          domain_1_lo,
+          domain_1_lo + tile_extent_1 - 1}});
     buffer_sizes.push_back({{tile_extent_0 * tile_extent_1 * sizeof(int)}});
     buffers.push_back(new int[buffer_sizes.back()[0] / sizeof(int)]);
   }
@@ -1439,22 +1440,23 @@ TEST_CASE_METHOD(
 
   // Read whole array
   uint64_t subarray_read[] = {1, 4, 1, 4};
-  int c_a1[] = {INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                1,
-                2,
-                INT_MIN,
-                INT_MIN,
-                3,
-                4,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN};
+  int c_a1[] = {
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      1,
+      2,
+      INT_MIN,
+      INT_MIN,
+      3,
+      4,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN};
   int read_a1[16];
   uint64_t read_a1_size = sizeof(read_a1);
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
@@ -1524,22 +1526,23 @@ TEST_CASE_METHOD(
 
   // Read whole array
   uint64_t subarray_read[] = {1, 4, 1, 4};
-  int c_a1[] = {INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                1,
-                2,
-                INT_MIN,
-                INT_MIN,
-                3,
-                4,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN,
-                INT_MIN};
+  int c_a1[] = {
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      1,
+      2,
+      INT_MIN,
+      INT_MIN,
+      3,
+      4,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN};
   int read_a1[16];
   uint64_t read_a1_size = sizeof(read_a1);
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
@@ -1631,22 +1634,23 @@ TEST_CASE_METHOD(
 
   // Read whole array
   uint64_t subarray[] = {1, 4, 1, 4};
-  int c_a[] = {1,
-               2,
-               3,
-               4,
-               5,
-               101,
-               102,
-               8,
-               INT_MIN,
-               103,
-               104,
-               INT_MIN,
-               INT_MIN,
-               INT_MIN,
-               INT_MIN,
-               INT_MIN};
+  int c_a[] = {
+      1,
+      2,
+      3,
+      4,
+      5,
+      101,
+      102,
+      8,
+      INT_MIN,
+      103,
+      104,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN,
+      INT_MIN};
   int read_a[16];
   uint64_t read_a_size = sizeof(read_a);
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
@@ -1880,8 +1884,8 @@ TEST_CASE_METHOD(
 
   // Create a subarray of data
   int64_t subarray[] = {10, 50, 20, 60};
-  int64_t subarray_length[2] = {subarray[1] - subarray[0] + 1,
-                                subarray[3] - subarray[2] + 1};
+  int64_t subarray_length[2] = {
+      subarray[1] - subarray[0] + 1, subarray[3] - subarray[2] + 1};
   int64_t cell_num_in_subarray = subarray_length[0] * subarray_length[1];
   auto buffer = new int[cell_num_in_subarray];
   int64_t index = 0;

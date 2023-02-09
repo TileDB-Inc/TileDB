@@ -106,6 +106,45 @@ class FragmentMetadata {
   FragmentMetadata& operator=(const FragmentMetadata& other);
 
   /* ********************************* */
+  /*          TYPE DEFINITIONS         */
+  /* ********************************* */
+
+  /** Keeps track of which metadata is loaded. */
+  struct LoadedMetadata {
+    bool footer_ = false;
+    bool rtree_ = false;
+    std::vector<bool> tile_offsets_;
+    std::vector<bool> tile_var_offsets_;
+    std::vector<bool> tile_var_sizes_;
+    std::vector<bool> tile_validity_offsets_;
+    std::vector<bool> tile_min_;
+    std::vector<bool> tile_max_;
+    std::vector<bool> tile_sum_;
+    std::vector<bool> tile_null_count_;
+    bool fragment_min_max_sum_null_count_ = false;
+    bool processed_conditions_ = false;
+  };
+
+  /**
+   * Stores the start offsets of the generic tiles stored in the
+   * metadata file, each separately storing the various metadata
+   * (e.g., R-Tree, tile offsets, etc).
+   */
+  struct GenericTileOffsets {
+    uint64_t rtree_ = 0;
+    std::vector<uint64_t> tile_offsets_;
+    std::vector<uint64_t> tile_var_offsets_;
+    std::vector<uint64_t> tile_var_sizes_;
+    std::vector<uint64_t> tile_validity_offsets_;
+    std::vector<uint64_t> tile_min_offsets_;
+    std::vector<uint64_t> tile_max_offsets_;
+    std::vector<uint64_t> tile_sum_offsets_;
+    std::vector<uint64_t> tile_null_count_offsets_;
+    uint64_t fragment_min_max_sum_null_count_offset_;
+    uint64_t processed_conditions_offsets_;
+  };
+
+  /* ********************************* */
   /*                API                */
   /* ********************************* */
 
@@ -369,6 +408,11 @@ class FragmentMetadata {
   /** Returns an RTree for the MBRs. */
   inline const RTree& rtree() const {
     return rtree_;
+  }
+
+  /** Returns the generic tile offsets. */
+  inline const GenericTileOffsets& generic_tile_offsets() const {
+    return gt_offsets_;
   }
 
   /**
@@ -658,11 +702,9 @@ class FragmentMetadata {
    *
    * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
-   * @param offset The file offset to be retrieved.
-   * @return Status
+   * @return The file offset to be retrieved.
    */
-  Status file_offset(
-      const std::string& name, uint64_t tile_idx, uint64_t* offset);
+  uint64_t file_offset(const std::string& name, uint64_t tile_idx) const;
 
   /**
    * Retrieves the starting offset of the input tile of input attribute or
@@ -670,11 +712,9 @@ class FragmentMetadata {
    *
    * @param name The input attribute/dimension.
    * @param tile_idx The index of the tile in the metadata.
-   * @param offset The file offset to be retrieved.
-   * @return Status
+   * @return The file offset to be retrieved.
    */
-  Status file_var_offset(
-      const std::string& name, uint64_t tile_idx, uint64_t* offset);
+  uint64_t file_var_offset(const std::string& name, uint64_t tile_idx) const;
 
   /**
    * Retrieves the starting offset of the input validity tile of the
@@ -682,11 +722,10 @@ class FragmentMetadata {
    *
    * @param name The input attribute.
    * @param tile_idx The index of the tile in the metadata.
-   * @param offset The file offset to be retrieved.
-   * @return Status
+   * @return The file offset to be retrieved.
    */
-  Status file_validity_offset(
-      const std::string& name, uint64_t tile_idx, uint64_t* offset);
+  uint64_t file_validity_offset(
+      const std::string& name, uint64_t tile_idx) const;
 
   /**
    * Retrieves the size of the fragment metadata footer
@@ -712,7 +751,8 @@ class FragmentMetadata {
    * @param tile_idx The index of the tile in the metadata.
    * @return Size.
    */
-  uint64_t persisted_tile_size(const std::string& name, uint64_t tile_idx);
+  uint64_t persisted_tile_size(
+      const std::string& name, uint64_t tile_idx) const;
 
   /**
    * Retrieves the size of the tile when it is persisted (e.g. the size of the
@@ -723,7 +763,8 @@ class FragmentMetadata {
    * @param tile_idx The index of the tile in the metadata.
    * @return Size.
    */
-  uint64_t persisted_tile_var_size(const std::string& name, uint64_t tile_idx);
+  uint64_t persisted_tile_var_size(
+      const std::string& name, uint64_t tile_idx) const;
 
   /**
    * Retrieves the size of the validity tile when it is persisted (e.g. the size
@@ -734,7 +775,7 @@ class FragmentMetadata {
    * @return Size.
    */
   uint64_t persisted_tile_validity_size(
-      const std::string& name, uint64_t tile_idx);
+      const std::string& name, uint64_t tile_idx) const;
 
   /**
    * Returns the (uncompressed) tile size for a given attribute or dimension
@@ -1045,9 +1086,19 @@ class FragmentMetadata {
     return tile_offsets_;
   }
 
+  /** tile_offsets_mtx accessor */
+  std::deque<std::mutex>& tile_offsets_mtx() {
+    return tile_offsets_mtx_;
+  }
+
   /** tile_var_offsets accessor */
   std::vector<std::vector<uint64_t>>& tile_var_offsets() {
     return tile_var_offsets_;
+  }
+
+  /** tile_var_offsets_mtx accessor */
+  std::deque<std::mutex>& tile_var_offsets_mtx() {
+    return tile_var_offsets_mtx_;
   }
 
   /** tile_var_sizes  accessor */
@@ -1135,9 +1186,19 @@ class FragmentMetadata {
     return rtree_;
   }
 
+  /** gt_offsets_ accessor */
+  inline GenericTileOffsets& generic_tile_offsets() {
+    return gt_offsets_;
+  }
+
   /** set the SM pointer during deserialization*/
   void set_storage_manager(StorageManager* sm) {
     storage_manager_ = sm;
+  }
+
+  /** set the SM pointer during deserialization*/
+  void set_memory_tracker(MemoryTracker* memory_tracker) {
+    memory_tracker_ = memory_tracker;
   }
 
   /** loaded_metadata_.rtree_ accessor */
@@ -1145,46 +1206,12 @@ class FragmentMetadata {
     loaded_metadata_.rtree_ = true;
   }
 
+  /** loaded_metadata_ accessor */
+  inline void set_loaded_metadata(const LoadedMetadata& loaded_metadata) {
+    loaded_metadata_ = loaded_metadata;
+  }
+
  private:
-  /* ********************************* */
-  /*          TYPE DEFINITIONS         */
-  /* ********************************* */
-
-  /**
-   * Stores the start offsets of the generic tiles stored in the
-   * metadata file, each separately storing the various metadata
-   * (e.g., R-Tree, tile offsets, etc).
-   */
-  struct GenericTileOffsets {
-    uint64_t rtree_ = 0;
-    std::vector<uint64_t> tile_offsets_;
-    std::vector<uint64_t> tile_var_offsets_;
-    std::vector<uint64_t> tile_var_sizes_;
-    std::vector<uint64_t> tile_validity_offsets_;
-    std::vector<uint64_t> tile_min_offsets_;
-    std::vector<uint64_t> tile_max_offsets_;
-    std::vector<uint64_t> tile_sum_offsets_;
-    std::vector<uint64_t> tile_null_count_offsets_;
-    uint64_t fragment_min_max_sum_null_count_offset_;
-    uint64_t processed_conditions_offsets_;
-  };
-
-  /** Keeps track of which metadata is loaded. */
-  struct LoadedMetadata {
-    bool footer_ = false;
-    bool rtree_ = false;
-    std::vector<bool> tile_offsets_;
-    std::vector<bool> tile_var_offsets_;
-    std::vector<bool> tile_var_sizes_;
-    std::vector<bool> tile_validity_offsets_;
-    std::vector<bool> tile_min_;
-    std::vector<bool> tile_max_;
-    std::vector<bool> tile_sum_;
-    std::vector<bool> tile_null_count_;
-    bool fragment_min_max_sum_null_count_ = false;
-    bool processed_conditions_ = false;
-  };
-
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
@@ -1783,7 +1810,7 @@ class FragmentMetadata {
   Status store_footer(const EncryptionKey& encryption_key);
 
   /** Writes the R-tree to a tile. */
-  Tile write_rtree();
+  WriterTile write_rtree();
 
   /** Writes the non-empty domain to the input buffer. */
   void write_non_empty_domain(Serializer& serializer) const;
@@ -1997,7 +2024,9 @@ class FragmentMetadata {
    * @return Status
    */
   Status write_generic_tile_to_file(
-      const EncryptionKey& encryption_key, Tile& tile, uint64_t* nbytes) const;
+      const EncryptionKey& encryption_key,
+      WriterTile& tile,
+      uint64_t* nbytes) const;
 
   /**
    * Writes the contents of the input buffer at the end of the fragment
@@ -2005,7 +2034,7 @@ class FragmentMetadata {
    * retrieval upon reading (as its size is predictable based on the
    * number of attributes).
    */
-  Status write_footer_to_file(Tile&) const;
+  Status write_footer_to_file(WriterTile&) const;
 
   /**
    * Simple clean up function called in the case of error. It removes the

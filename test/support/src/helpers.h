@@ -34,6 +34,7 @@
 #define TILEDB_TEST_HELPERS_H
 
 #include <tiledb/common/logger_public.h>
+#include "test/support/src/coords_workaround.h"
 #include "tiledb.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array/array.h"
@@ -66,31 +67,6 @@ extern std::mutex catch2_macro_mutex;
     REQUIRE(a);                                           \
   }
 
-// A variant of the CHECK macro for checking C API return value equals
-// TILEDB_OK.
-#define CHECK_TILEDB_OK(a) \
-  { CHECK(a == TILEDB_OK); }
-
-// A variant of the REQUIRE macro for checking C API return value equals
-// TILEDB_OK.
-#define REQUIRE_TILEDB_OK(a) \
-  { REQUIRE(a == TILEDB_OK); }
-
-// A variant of the CHECK macro for checking a Status object is okay.
-#define CHECK_TILEDB_STATUS_OK(status)   \
-  {                                      \
-    if (!status.ok())                    \
-      UNSCOPED_INFO(status.to_string()); \
-    CHECK(status.ok());                  \
-  }
-
-// A variant of the REQUIRE macro for checking a Status objects is okay.
-#define REQUIRE_TILEDB_STATUS_OK(status) \
-  {                                      \
-    if (!status.ok())                    \
-      UNSCOPED_INFO(status.to_string()); \
-    REQUIRE(status.ok());                \
-  }
 namespace tiledb {
 
 namespace sm {
@@ -112,6 +88,50 @@ shared_ptr<Logger> g_helper_logger(void);
 typedef std::pair<tiledb_filter_type_t, int> Compressor;
 template <class T>
 using SubarrayRanges = std::vector<std::vector<T>>;
+
+/**
+ * Check the return code for a TileDB C-API function is TILEDB_ERR and
+ * compare the last error message from the local TileDB context to an expected
+ * error message.
+ *
+ * @param ctx Context to check for the error and error message.
+ * @param rc Return code from a TileDB C-API function.
+ * @param expected_msg The expected message from the last error.
+ */
+void check_tiledb_error_with(
+    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg);
+
+/**
+ * Checks the return code for a TileDB C-API function is TILEDB_OK. If not,
+ * if will add a failed assert to the Catch2 test and print the last error
+ * message from the local TileDB context.
+ *
+ * @param ctx Context to check for the error and error message.
+ * @param rc Return code from a TileDB C-API function.
+ */
+void check_tiledb_ok(tiledb_ctx_t* ctx, int rc);
+
+/**
+ * Require the return code for a TileDB C-API function is TILEDB_ERR and
+ * compare the last error message from the local TileDB context to an expected
+ * error message.
+ *
+ * @param ctx Context to check for the error and error message.
+ * @param rc Return code from a TileDB C-API function.
+ * @param expected_msg The expected message from the last error.
+ */
+void require_tiledb_error_with(
+    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg);
+
+/**
+ * Requires the return code for a TileDB C-API function is TILEDB_OK. If not,
+ * it will end the Catch2 test and print the last error message from the local
+ * TileDB context.
+ *
+ * @param ctx Context to check for the error and error message.
+ * @param rc Return code from a TileDB C-API function.
+ */
+void require_tiledb_ok(tiledb_ctx_t* ctx, int rc);
 
 /**
  * Helper struct for the buffers of an attribute/dimension
@@ -136,6 +156,16 @@ struct QueryBuffer {
 };
 /** Map attribute/dimension name -> QueryBuffer */
 typedef std::map<std::string, QueryBuffer> QueryBuffers;
+
+// server side buffers
+using ServerDataBuffers = std::vector<std::vector<uint8_t>>;
+using ServerOffsetsBuffers = std::vector<std::vector<uint64_t>>;
+struct ServerQueryBuffers {
+  ServerDataBuffers attr_or_dim_data;
+  ServerOffsetsBuffers attr_or_dim_off;
+  ServerDataBuffers attr_or_dim;
+  ServerDataBuffers attr_or_dim_nullable;
+};
 
 /**
  * Get the config for using the refactored dense reader.
@@ -830,66 +860,144 @@ class CommitsDirectory : public FileCount {
 template <class T>
 void check_counts(span<T> vals, std::vector<uint64_t> expected);
 
-/**
- * Helper function that serializes a query from the "client" or "server"
- * perspective. The flow being mimicked here is (for read queries):
- *
- * - Client sets up read query object including buffers.
- * - Client submits query to a remote array.
- * - Internal code (not C API) serializes that query and send it via curl.
- * - Server receives and deserializes the query using the C API.
- * - Server submits query.
- * - Server serializes (using C API) the query and sends it back.
- * - Client receives response and deserializes the query (not C API). This
- *   copies the query results into the original user buffers.
- * - Client's blocking call to tiledb_query_submit() now returns.
- */
-void serialize_query(
-    const Context& ctx,
-    Query& query,
-    std::vector<uint8_t>* serialized,
-    bool clientside);
-
-/**
- * Helper function that deserializes a query from the "client" or "server"
+/*
+ * Helper function that serializes a query from a "client" or "server"
  * perspective.
+ *
+ * @param ctx Context.
+ * @param query Tiledb query to serialize.
+ * @param serialized Output buffer with serialized query.
+ * @param clientside True if client serializes, false if server serializes.
  */
-void deserialize_query(
-    const Context& ctx,
-    std::vector<uint8_t>& serialized,
-    Query* query,
-    bool clientside);
-
 int serialize_query(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     std::vector<uint8_t>* serialized,
     bool clientside);
 
+/**
+ * Helper function that deserializes a query from a "client" perspective.
+ *
+ * @param ctx Context.
+ * @param serialized Serialized buffer to deserialize into query object.
+ * @param query Input/Output deserialized Tiledb query object.
+ * @param clientside True if client deserializes, false if server deserializes.
+ */
 int deserialize_query(
     tiledb_ctx_t* ctx,
     std::vector<uint8_t>& serialized,
     tiledb_query_t* query,
     bool clientside);
 
-void submit_serialized_query(tiledb_ctx_t* ctx, tiledb_query_t* query);
+/**
+ * Helper function that deserializes a query from a "server" perspective.
+ *
+ * @param ctx Context.
+ * @param serialized Serialized buffer to deserialize into query object.
+ * @param query Output deserialized Tiledb query object with deserialized array
+ * in it.
+ * @param array_uri URI of the array the query is for.
+ * @param clientside True if client deserializes, false if server deserializes.
+ */
+int deserialize_array_and_query(
+    tiledb_ctx_t* ctx,
+    std::vector<uint8_t>& serialized,
+    tiledb_query_t** query,
+    const char* array_uri,
+    bool clientside);
 
-void submit_serialized_query(const Context& ctx, Query& query);
+/**
+ * Helper method that wraps tiledb_array_open() and inserts a serialization
+ * step, if serialization is enabled. This wrapper models exclusively the
+ * refactored array open (array open v2) serialization path. The added
+ * serialization steps are designed to closely mimic the behavior of the REST
+ * server.
+ *
+ * @param ctx Context.
+ * @param query_type Type of query to open the array for.
+ * @param serialize True if this is a remote array open, false if not.
+ * @param open_array Output open array.
+ */
+int array_open_wrapper(
+    tiledb_ctx_t* ctx,
+    tiledb_query_type_t query_type,
+    bool serialize,
+    tiledb_array_t** open_array);
 
-void finalize_serialized_query(tiledb_ctx_t* ctx, tiledb_query_t* query);
+/**
+ * C API
+ * Helper method that wraps tiledb_query_submit() and inserts serialization
+ * steps, if serialization is enabled. The added serialization steps are
+ * designed to closely mimic the behavior of the REST server.
+ *
+ * @param ctx Context.
+ * @param array_uri URI of the array the query submit is for.
+ * @param query Input/Output tiledb query object to submit/get back.
+ * @param buffers Stack allocated buffers to be used by the step simulating
+ * "server side buffer allocation" for READ queries. They can only be allocated
+ * e.g. once in the test Fixture definition or just before the call to
+ * submit_query_wrapper.
+ * @param serialize_query True if this is a remote array open, false if not.
+ * @param refactored_query_v2 If "rest.use_refactored_array_open" should be
+ * true.
+ * @param finalize Finalize or not the query after submitting it.
+ */
+int submit_query_wrapper(
+    tiledb_ctx_t* ctx,
+    const std::string& array_uri,
+    tiledb_query_t** query,
+    ServerQueryBuffers& buffers,
+    bool serialize_query,
+    bool refactored_query_v2 = false,
+    bool finalize = true);
 
-void finalize_serialized_query(const Context& ctx, Query& query);
+/** C++ wrapper of submit_query_wrapper */
+int submit_query_wrapper(
+    const Context& ctx,
+    const std::string& array_uri,
+    Query* query,
+    ServerQueryBuffers& buffers,
+    bool serialize_query,
+    bool refactored_query_v2 = false,
+    bool finalize = true);
 
-void submit_and_finalize_serialized_query(
-    tiledb_ctx_t* ctx, tiledb_query_t* query);
+/**
+ * C API
+ * Helper method that wraps tiledb_query_finalize() and inserts serialization
+ * steps, if serialization is enabled. The added serialization steps are
+ * designed to closely mimic the behavior of the REST server.
+ *
+ * @param ctx Context.
+ * @param array_uri URI of the array the query finalize is for.
+ * @param query Input/Output tiledb query object to submit/get back.
+ * @param serialize_query True if this is a remote array open, false if not.
+ */
+int finalize_query_wrapper(
+    const Context& ctx,
+    const std::string& array_uri,
+    Query* query,
+    bool serialize_query);
 
-void submit_and_finalize_serialized_query(const Context& ctx, Query& query);
+/** C++ wrapper of finalize_query_wrapper */
+int finalize_query_wrapper(
+    tiledb_ctx_t* ctx,
+    const std::string& array_uri,
+    tiledb_query_t** query,
+    bool serialize_query);
+
 /**
  * Helper function that allocates buffers on a query object that has been
- * deserialized on the "server" side.
+ * deserialized on the "server" side. This is a necassary step for serialized
+ * READ queries.
+ *
+ * @param ctx Context.
+ * @param query Query for which we are allocating the buffers.
+ * @param query_buffers Input/Output allocated buffers.
  */
-std::vector<void*> allocate_query_buffers(
-    const Context& ctx, const Array& array, Query* query);
+void allocate_query_buffers_server_side(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    ServerQueryBuffers& query_buffers);
 
 }  // End of namespace test
 

@@ -57,6 +57,7 @@
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/stats/global_stats.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/tile/filtered_buffer.h"
 
 using namespace tiledb::common;
@@ -69,7 +70,6 @@ class ArrayDirectory;
 class ArraySchema;
 class ArraySchemaEvolution;
 class Buffer;
-class BufferLRUCache;
 class Consolidator;
 class EncryptionKey;
 class FragmentMetadata;
@@ -123,9 +123,7 @@ class StorageManagerCanonical {
    * @param config The configuration parameters.
    */
   StorageManagerCanonical(
-      ThreadPool* compute_tp,
-      ThreadPool* io_tp,
-      stats::Stats* parent_stats,
+      ContextResources& resources,
       shared_ptr<Logger> logger,
       const Config& config);
 
@@ -251,46 +249,6 @@ class StorageManagerCanonical {
       const EncryptionKey& enc_key,
       const bool include_vaccummed_fragments = false);
 
-  /**
-   * Opens an array for reads at a timestamp. All the metadata of the
-   * fragments created before or at the input timestamp are retrieved.
-   *
-   * If a timestamp_start is provided, this API will open the array between
-   * `timestamp_start` and `timestamp_end`.
-   *
-   * @param array The array to be opened.
-   * @return tuple of Status, latest ArraySchema, map of all array schemas and
-   * vector of FragmentMetadata
-   *        Status Ok on success, else error
-   *        ArraySchema The array schema to be retrieved after the
-   *           array is opened.
-   *        ArraySchemaMap Map of all array schemas found keyed by name
-   *        fragment_metadata The fragment metadata to be retrieved
-   *           after the array is opened.
-   */
-  tuple<
-      Status,
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
-      optional<std::vector<shared_ptr<FragmentMetadata>>>>
-  array_open_for_reads(Array* array);
-
-  /**
-   * Opens an array for reads without fragments.
-   *
-   * @param array The array to be opened.
-   * @return tuple of Status, latest ArraySchema and map of all array schemas
-   *        Status Ok on success, else error
-   *        ArraySchema The array schema to be retrieved after the
-   *          array is opened.
-   *        ArraySchemaMap Map of all array schemas found keyed by name
-   */
-  tuple<
-      Status,
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
-  array_open_for_reads_without_fragments(Array* array);
-
   /** Opens an array for writes.
    *
    * @param array The array to open.
@@ -343,26 +301,6 @@ class StorageManagerCanonical {
       Array* array, const std::vector<TimestampedURI>& fragment_info);
 
   /**
-   * Reopen an array for reads.
-   *
-   * @param array The array to reopen.
-   * @return tuple of Status, latest ArraySchema, map of all array schemas and
-   * vector of FragmentMetadata
-   *        Status Ok on success, else error
-   *        ArraySchema The array schema to be retrieved after the
-   *          array is opened.
-   *        ArraySchemaMap Map of all array schemas found keyed by name
-   *        FragmentMetadata The fragment metadata to be retrieved
-   *          after the array is opened.
-   */
-  tuple<
-      Status,
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
-      optional<std::vector<shared_ptr<FragmentMetadata>>>>
-  array_reopen(Array* array);
-
-  /**
    * Consolidates the fragments of an array into a single one.
    *
    * @param array_name The name of the array to be consolidated.
@@ -405,15 +343,6 @@ class StorageManagerCanonical {
       const Config& config);
 
   /**
-   * Writes a commit ignore file.
-   *
-   * @param array_dir The ArrayDirectory where the data is stored.
-   * @param commit_uris_to_ignore The commit files that are to be ignored.
-   */
-  Status write_commit_ignore_file(
-      ArrayDirectory array_dir, const std::vector<URI>& commit_uris_to_ignore);
-
-  /**
    * Writes a consolidated commits file.
    *
    * @param write_version Write version.
@@ -438,9 +367,8 @@ class StorageManagerCanonical {
    * @param array_name The name of the array whose fragments are to be deleted.
    * @param timestamp_start The start timestamp at which to delete.
    * @param timestamp_end The end timestamp at which to delete.
-   * @return Status
    */
-  Status delete_fragments(
+  void delete_fragments(
       const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end);
 
   /**
@@ -673,12 +601,6 @@ class StorageManagerCanonical {
   /** Returns the configuration parameters. */
   const Config& config() const;
 
-  /** Creates a directory with the input URI. */
-  Status create_dir(const URI& uri);
-
-  /** Creates an empty file with the input URI. */
-  Status touch(const URI& uri);
-
   /** Returns the current map of any set tags. */
   const std::unordered_map<std::string, std::string>& tags() const;
 
@@ -691,16 +613,22 @@ class StorageManagerCanonical {
   Status group_create(const std::string& group);
 
   /** Returns the thread pool for compute-bound tasks. */
-  ThreadPool* compute_tp() const;
+  [[nodiscard]] inline ThreadPool* compute_tp() const {
+    return &(resources_.compute_tp());
+  }
 
   /** Returns the thread pool for io-bound tasks. */
-  ThreadPool* io_tp() const;
+  [[nodiscard]] inline ThreadPool* io_tp() const {
+    return &(resources_.io_tp());
+  }
 
   /**
    * If the storage manager was configured with a REST server, return the
    * client instance. Else, return nullptr.
    */
-  RestClient* rest_client() const;
+  inline RestClient* rest_client() const {
+    return resources_.rest_client().get();
+  }
 
   /**
    * Checks if the input URI represents an array.
@@ -711,16 +639,6 @@ class StorageManagerCanonical {
   bool is_array(const URI& uri) const;
 
   /**
-   * Checks if the input URI represents a directory.
-   *
-   * @param The URI to be checked.
-   * @param is_dir Set to `true` if the URI is a directory and `false`
-   *     otherwise.
-   * @return Status
-   */
-  Status is_dir(const URI& uri, bool* is_dir) const;
-
-  /**
    * Checks if the input URI represents a group.
    *
    * @param The URI to be checked.
@@ -729,16 +647,6 @@ class StorageManagerCanonical {
    * @return Status
    */
   Status is_group(const URI& uri, bool* is_group) const;
-
-  /**
-   * Checks if the input URI represents a file.
-   *
-   * @param The URI to be checked.
-   * @param is_file Set to `true` if the URI is a file and `false`
-   *     otherwise.
-   * @return Status
-   */
-  Status is_file(const URI& uri, bool* is_file) const;
 
   /**
    * Loads the schema of a schema uri from persistent storage into memory.
@@ -921,54 +829,6 @@ class StorageManagerCanonical {
   Status query_submit_async(Query* query);
 
   /**
-   * Reads from the cache into the input buffer. `uri` and `offset` collectively
-   * form the key of the cached object to be read. Essentially, this is used
-   * to read potentially cached tiles. `uri` is the URI of the attribute the
-   * tile belongs to, and `offset` is the offset in the attribute file where
-   * the tile is located. Observe that the `uri`, `offset` pair is unique.
-   *
-   * @param uri The URI of the cached object.
-   * @param offset The offset of the cached object.
-   * @param buffer The buffer to write into. The function reallocates memory
-   *     for the buffer, sets its size to *nbytes* and resets its offset.
-   * @param nbytes Number of bytes to be read.
-   * @param in_cache This is set to `true` if the object is in the cache,
-   *     and `false` otherwise.
-   * @return Status.
-   */
-  Status read_from_cache(
-      const URI& uri,
-      uint64_t offset,
-      FilteredBuffer& buffer,
-      uint64_t nbytes,
-      bool* in_cache) const;
-
-  /**
-   * Reads from a file into the input buffer.
-   *
-   * @param uri The URI file to read from.
-   * @param offset The offset in the file the read will start from.
-   * @param buffer The buffer to write into. The function reallocates memory
-   *     for the buffer, sets its size to *nbytes* and resets its offset.
-   * @param nbytes The number of bytes to read.
-   * @return Status.
-   */
-  Status read(
-      const URI& uri, uint64_t offset, Buffer* buffer, uint64_t nbytes) const;
-
-  /**
-   * Reads from a file into the raw input buffer.
-   *
-   * @param uri The URI file to read from.
-   * @param offset The offset in the file the read will start from.
-   * @param buffer The buffer to write into.
-   * @param nbytes The number of bytes to read.
-   * @return Status.
-   */
-  Status read(
-      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const;
-
-  /**
    * Sets a string/string KV "tag" on the storage manager instance.
    *
    * This is currently only meant for internal TileDB Inc. usage.
@@ -1010,44 +870,21 @@ class StorageManagerCanonical {
    * @return Status
    */
   Status store_data_to_generic_tile(
-      Tile& tile, const URI& uri, const EncryptionKey& encryption_key);
+      WriterTile& tile, const URI& uri, const EncryptionKey& encryption_key);
 
-  /** Closes a file, flushing its contents to persistent storage. */
-  Status close_file(const URI& uri);
-
-  /** Syncs a file or directory, flushing its contents to persistent storage. */
-  Status sync(const URI& uri);
+  [[nodiscard]] inline ContextResources& resources() const {
+    return resources_;
+  }
 
   /** Returns the virtual filesystem object. */
-  VFS* vfs() const;
-
-  /**
-   * Writes the contents of a buffer into the cache. `uri` and `offset`
-   * collectively form the key of the object to be cached. Essentially, this is
-   * used to cach tiles. `uri` is the URI of the attribute the
-   * tile belongs to, and `offset` is the offset in the attribute file where
-   * the tile is located. Observe that the `uri`, `offset` pair is unique.
-   *
-   * @param uri The URI of the cached object.
-   * @param offset The offset of the cached object.
-   * @param buffer The buffer whose contents will be cached.
-   * @return Status.
-   */
-  Status write_to_cache(
-      const URI& uri, uint64_t offset, const FilteredBuffer& buffer) const;
-
-  /**
-   * Writes the input data into a URI file.
-   *
-   * @param uri The file to write into.
-   * @param data The data to write.
-   * @param size The data size in bytes.
-   * @return Status.
-   */
-  Status write(const URI& uri, void* data, uint64_t size) const;
+  [[nodiscard]] inline VFS* vfs() const {
+    return &(resources_.vfs());
+  }
 
   /** Returns `stats_`. */
-  stats::Stats* stats();
+  [[nodiscard]] inline stats::Stats* stats() {
+    return &(resources_.stats());
+  }
 
   /** Returns the internal logger object. */
   shared_ptr<Logger> logger() const;
@@ -1115,8 +952,8 @@ class StorageManagerCanonical {
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 
-  /** The class stats. */
-  stats::Stats* stats_;
+  /** Context create resources object. */
+  ContextResources& resources_;
 
   /** The class logger. */
   shared_ptr<Logger> logger_;
@@ -1155,30 +992,12 @@ class StorageManagerCanonical {
   /** Guards queries_in_progress_ counter. */
   std::condition_variable queries_in_progress_cv_;
 
-  /** The thread pool for compute-bound tasks. */
-  ThreadPool* const compute_tp_;
-
-  /** The thread pool for io-bound tasks. */
-  ThreadPool* const io_tp_;
-
   /** Tracks all scheduled tasks that can be safely cancelled before execution.
    */
   CancelableTasks cancelable_tasks_;
 
   /** Tags for the context object. */
   std::unordered_map<std::string, std::string> tags_;
-
-  /** A tile cache. */
-  tdb_unique_ptr<BufferLRUCache> tile_cache_;
-
-  /**
-   * Virtual filesystem handler. It directs queries to the appropriate
-   * filesystem backend. Note that this is stateful.
-   */
-  VFS* vfs_;
-
-  /** The rest client (may be null if none was configured). */
-  tdb_unique_ptr<RestClient> rest_client_;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */
@@ -1247,9 +1066,6 @@ class StorageManagerCanonical {
 
   /** Block until there are zero in-progress queries. */
   void wait_for_zero_in_progress();
-
-  /** Initializes a REST client, if one was configured. */
-  Status init_rest_client();
 
   /** Sets default tag values on this StorageManagerCanonical. */
   Status set_default_tags();

@@ -57,6 +57,15 @@ struct Array {
 
   arrayMetadata @7 :ArrayMetadata;
   # array metadata
+
+  arrayDirectory @8 :ArrayDirectory;
+  # array directory (for reads)
+
+  fragmentMetadataAll @9 :List(FragmentMetadata);
+  # metadata for all fragments (for reads)
+
+  openedAtEndTimestamp @10 :UInt64;
+  # The ending timestamp that the array was last opened at
 }
 
 struct ArrayOpen {
@@ -889,6 +898,31 @@ struct SingleCoord {
 }
 
 struct FragmentMetadata {
+  struct GenericTileOffsets {
+      rtree @0 :UInt64;
+      # RTree serialized as a blob
+      tileOffsets @1 :List(UInt64);
+      # tile offsets
+      tileVarOffsets @2 :List(UInt64);
+      # variable tile offsets
+      tileVarSizes @3 :List(UInt64);
+      # sizes of the uncompressed variable tiles offsets
+      tileValidityOffsets @4 :List(UInt64);
+      # tile validity offsets
+      tileMinOffsets @5 :List(UInt64);
+      # min tile offsets
+      tileMaxOffsets @6 :List(UInt64);
+      # max tile offsets
+      tileSumOffsets @7 :List(UInt64);
+      # tile sum offsets
+      tileNullCountOffsets @8 :List(UInt64);
+      # null count offsets
+      fragmentMinMaxSumNullCountOffset @9 :UInt64;
+      # fragment min/max/sum/nullcount offsets
+      processedConditionsOffsets @10 :UInt64;
+      # processed conditions offsets
+  }
+
   fileSizes @0 :List(UInt64);
   # The size of each attribute file
 
@@ -972,6 +1006,9 @@ struct FragmentMetadata {
 
   hasConsolidatedFooter @27 :Bool;
   # if the fragment metadata footer appears in a consolidated file
+
+  gtOffsets @28 :GenericTileOffsets;
+  # the start offsets of the generic tiles stored in the metadata file
 }
 
 struct MultiPartUploadState {
@@ -986,6 +1023,13 @@ struct MultiPartUploadState {
 
   completedParts@3 :List(CompletedPart);
   # A list of parts that are already uploaded
+
+  bufferedChunks@4 :List(BufferedChunk);
+  # S3 specific field. A partial remote global order write might not be
+  # result in a direct multipart part upload, s3 does not permit parts to be
+  # smaller than 5mb (except the last one). We buffer directly on S3 using
+  # intermediate files until we can deliver a big enough multipart part.
+  # This list helps us keep track of these intermediate buffering files.
 }
 struct CompletedPart {
   eTag@0 :Text;
@@ -999,3 +1043,13 @@ struct WrittenFragmentInfo {
   uri @0 :Text;
   timestampRange @1 :List(UInt64);
 }
+
+struct BufferedChunk {
+  uri@0 :Text;
+  # path to intermediate chunk which buffers
+  # a <5mb remote global order write operation
+
+  size@1 :UInt64;
+  # the size in bytes of the intermediate chunk
+}
+

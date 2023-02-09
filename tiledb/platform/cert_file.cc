@@ -39,4 +39,4 @@ std::once_flag CertFileTraits<LinuxOS>::cert_file_initialized_;
 std::string CertFileTraits<LinuxOS>::cert_file_;
 #endif
 
-} // namespce tiledb::platform
+}  // namespace tiledb::platform

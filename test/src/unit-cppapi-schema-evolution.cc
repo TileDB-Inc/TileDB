@@ -742,12 +742,7 @@ TEST_CASE(
     //       in order to reproduce SC-23671.
     int value = 4;
     QueryCondition query_condition(ctx);
-    query_condition.init(
-      "b",
-      &value,
-      sizeof(value),
-      TILEDB_EQ
-    );
+    query_condition.init("b", &value, sizeof(value), TILEDB_EQ);
 
     // Prepare the query
     Query query(ctx, array, TILEDB_READ);
@@ -770,14 +765,10 @@ TEST_CASE(
     b_data.resize(result_num);
     d1_data.resize(result_num);
     d2_data.resize(result_num);
-    CHECK_THAT(a_data,
-               Catch::Matchers::Equals(std::vector<int>{4}));
-    CHECK_THAT(b_data,
-               Catch::Matchers::Equals(std::vector<uint32_t>{4}));
-    CHECK_THAT(d1_data,
-               Catch::Matchers::Equals(std::vector<int>{4}));
-    CHECK_THAT(d2_data,
-               Catch::Matchers::Equals(std::vector<int>{1}));
+    CHECK_THAT(a_data, Catch::Matchers::Equals(std::vector<int>{4}));
+    CHECK_THAT(b_data, Catch::Matchers::Equals(std::vector<uint32_t>{4}));
+    CHECK_THAT(d1_data, Catch::Matchers::Equals(std::vector<int>{4}));
+    CHECK_THAT(d2_data, Catch::Matchers::Equals(std::vector<int>{1}));
   }
 
   // Cleanup.

@@ -1,5 +1,5 @@
 #
-# tiledb/sm/metadata/CMakeLists.txt
+# tiledb/sm/metadata/test/CMakeLists.txt
 #
 # The MIT License
 #

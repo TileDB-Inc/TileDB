@@ -32,6 +32,7 @@
 
 #include <test/support/tdb_catch.h>
 #include <fstream>
+#include "test/support/src/coords_workaround.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 static void check_filters(
@@ -112,7 +113,7 @@ static void run_checksum_test(tiledb_filter_type_t filter_type) {
   Query query_r(ctx2, array);
   query_r.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
-      .set_data_buffer(tiledb_coords(), coords_read)
+      .set_data_buffer(tiledb::test::TILEDB_COORDS, coords_read)
       .set_data_buffer("a1", a1_read)
       .set_data_buffer("a2", a2_read_data)
       .set_offsets_buffer("a2", a2_read_off);
@@ -183,7 +184,7 @@ static void run_checksum_test(tiledb_filter_type_t filter_type) {
   Query query_r2(ctx, array);
   query_r2.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
-      .set_data_buffer(tiledb_coords(), coords_read2)
+      .set_data_buffer(tiledb::test::TILEDB_COORDS, coords_read2)
       .set_data_buffer("a1", a1_read2)
       .set_data_buffer("a2", a2_read_data2)
       .set_offsets_buffer("a2", a2_read_off2);

@@ -42,6 +42,7 @@
  * API sections
  */
 #include "tiledb/api/c_api/group/group_api_external_experimental.h"
+#include "tiledb_dimension_label_experimental.h"
 
 /* ********************************* */
 /*               MACROS              */
@@ -198,8 +199,25 @@ TILEDB_EXPORT int32_t tiledb_array_schema_timestamp_range(
  * **Example:**
  *
  * @code{.c}
- * tiledb_array_delete_array(
- *   ctx, array, "hdfs:///temp/my_array");
+ * tiledb_array_delete(ctx, "hdfs:///temp/my_array");
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param uri The Array's URI.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* uri)
+    TILEDB_NOEXCEPT;
+
+/**
+ * Note: This API is deprecated and replaced with tiledb_array_delete (above).
+ *
+ * Deletes all written array data.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_delete_array(ctx, array, "hdfs:///temp/my_array");
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -207,7 +225,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_timestamp_range(
  * @param uri The Array's URI.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_array_delete_array(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_delete_array(
     tiledb_ctx_t* ctx, tiledb_array_t* array, const char* uri) TILEDB_NOEXCEPT;
 
 /**

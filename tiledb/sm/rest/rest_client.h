@@ -49,7 +49,9 @@ namespace tiledb {
 namespace sm {
 
 class ArraySchema;
+class ArraySchemaEvolution;
 class Config;
+class FragmentInfo;
 class Query;
 
 enum class SerializationType : uint8_t;
@@ -102,9 +104,11 @@ class RestClient {
    * Post the array config and get an array from rest server
    *
    * @param uri of array being loaded
+   * @param storage_manager storage manager of array being loaded
    * @param array array to load into
    */
-  Status post_array_from_rest(const URI& uri, Array* array);
+  Status post_array_from_rest(
+      const URI& uri, StorageManager* storage_manager, Array* array);
 
   /**
    * Post a data array schema to rest server
@@ -341,6 +345,12 @@ class RestClient {
    * (regardless of how many times the query is resubmitted).
    */
   bool resubmit_incomplete_;
+
+  /**
+   * If true, the new, experimental REST routes and APIs for opening an array
+   * and submitting a query will be used
+   */
+  bool use_refactored_array_and_query_;
 
   /** Collection of extra headers that are attached to REST requests. */
   std::unordered_map<std::string, std::string> extra_headers_;

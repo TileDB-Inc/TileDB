@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB Inc.
+ * @copyright Copyright (c) 2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -58,6 +58,12 @@ struct DeletesFx {
   Context ctx_;
   VFS vfs_;
   sm::StorageManager* sm_;
+
+  // Serialization parameters
+  bool serialize_ = false;
+  bool refactored_query_v2_ = false;
+  // Buffers to allocate on server side for serialized queries
+  ServerQueryBuffers server_buffers_;
 
   std::string key_ = "0123456789abcdeF0123456789abcdeF";
   const tiledb_encryption_type_t enc_type_ = TILEDB_AES_256_GCM;
@@ -222,12 +228,14 @@ void DeletesFx::write_sparse(
         ctx_,
         SPARSE_ARRAY_NAME,
         TILEDB_WRITE,
-        enc_type_,
-        std::string(key_),
-        timestamp);
+        TemporalPolicy(TimeTravel, timestamp),
+        EncryptionAlgorithm(AESGCM, key_.c_str()));
   } else {
     array = std::make_unique<Array>(
-        ctx_, SPARSE_ARRAY_NAME, TILEDB_WRITE, timestamp);
+        ctx_,
+        SPARSE_ARRAY_NAME,
+        TILEDB_WRITE,
+        TemporalPolicy(TimeTravel, timestamp));
   }
 
   // Create query.
@@ -238,8 +246,13 @@ void DeletesFx::write_sparse(
   query.set_data_buffer("d2", dim2);
 
   // Submit/finalize the query.
-  query.submit();
-  query.finalize();
+  submit_query_wrapper(
+      ctx_,
+      SPARSE_ARRAY_NAME,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
 
   // Close array.
   array->close();
@@ -269,8 +282,13 @@ void DeletesFx::write_sparse_v11(uint64_t timestamp) {
   query.set_data_buffer("d2", buffer_coords_dim2);
 
   // Submit/finalize the query.
-  query.submit();
-  query.finalize();
+  submit_query_wrapper(
+      ctx_,
+      SPARSE_ARRAY_NAME,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
 
   // Close array.
   array.close();
@@ -303,12 +321,14 @@ void DeletesFx::read_sparse(
         ctx_,
         SPARSE_ARRAY_NAME,
         TILEDB_READ,
-        enc_type_,
-        std::string(key_),
-        timestamp);
+        TemporalPolicy(TimeTravel, timestamp),
+        EncryptionAlgorithm(AESGCM, key_.c_str()));
   } else {
     array = std::make_unique<Array>(
-        ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp);
+        ctx_,
+        SPARSE_ARRAY_NAME,
+        TILEDB_READ,
+        TemporalPolicy(TimeTravel, timestamp));
   }
 
   // Create query.
@@ -319,7 +339,14 @@ void DeletesFx::read_sparse(
   query.set_data_buffer("d2", dim2);
 
   // Submit the query.
-  query.submit();
+  submit_query_wrapper(
+      ctx_,
+      SPARSE_ARRAY_NAME,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_,
+      false);
   CHECK(query.query_status() == Query::Status::COMPLETE);
 
   // Get the query stats.
@@ -372,19 +399,34 @@ void DeletesFx::write_delete_condition(
         ctx_,
         SPARSE_ARRAY_NAME,
         TILEDB_DELETE,
-        enc_type_,
-        std::string(key_),
-        timestamp);
+        TemporalPolicy(TimeTravel, timestamp),
+        EncryptionAlgorithm(AESGCM, key_.c_str()));
   } else {
     array = std::make_unique<Array>(
-        ctx_, SPARSE_ARRAY_NAME, TILEDB_DELETE, timestamp);
+        ctx_,
+        SPARSE_ARRAY_NAME,
+        TILEDB_DELETE,
+        TemporalPolicy(TimeTravel, timestamp));
   }
 
   // Create query.
   Query query(ctx_, *array, TILEDB_DELETE);
 
   query.set_condition(qc);
-  query.submit();
+  // Submit the query. In certain tests we want to check if this call throws, so
+  // we call directly query.submit() if serialization is not enabled.
+  if (!serialize_) {
+    query.submit();
+  } else {
+    submit_query_wrapper(
+        ctx_,
+        SPARSE_ARRAY_NAME,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        false);
+  }
   CHECK(query.query_status() == Query::Status::COMPLETE);
 
   // Close array.
@@ -400,12 +442,14 @@ void DeletesFx::check_delete_conditions(
         ctx_,
         SPARSE_ARRAY_NAME,
         TILEDB_READ,
-        enc_type_,
-        std::string(key_),
-        timestamp);
+        TemporalPolicy(TimeTravel, timestamp),
+        EncryptionAlgorithm(AESGCM, key_.c_str()));
   } else {
     array = std::make_unique<Array>(
-        ctx_, SPARSE_ARRAY_NAME, TILEDB_READ, timestamp);
+        ctx_,
+        SPARSE_ARRAY_NAME,
+        TILEDB_READ,
+        TemporalPolicy(TimeTravel, timestamp));
   }
   auto array_ptr = array->ptr()->array_;
 
@@ -451,6 +495,17 @@ TEST_CASE_METHOD(
   remove_sparse_array();
 
   bool encrypt = GENERATE(true, false);
+
+#ifdef TILEDB_SERIALIZATION
+  // serialization not supported for encrypted arrays
+  if (!encrypt) {
+    serialize_ = GENERATE(false, true);
+    if (serialize_) {
+      refactored_query_v2_ = GENERATE(true, false);
+    }
+  }
+#endif
+
   create_sparse_array(false, encrypt);
 
   // Define query condition (a1 < 4).
@@ -517,6 +572,12 @@ TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Test deletes, reading with delete condition",
     "[cppapi][deletes][read]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
   remove_sparse_array();
 
   bool consolidate = GENERATE(true, false);
@@ -525,6 +586,7 @@ TEST_CASE_METHOD(
   bool allows_dups = GENERATE(true, false);
   bool legacy = GENERATE(true, false);
   tiledb_layout_t read_layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
+
   if (!consolidate && (vacuum || purge_deleted_cells)) {
     return;
   }
@@ -619,6 +681,13 @@ TEST_CASE_METHOD(
     "CPP API: Test deletes, reading with delete condition, consolidated "
     "fragment",
     "[cppapi][deletes][read][consolidated]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   remove_sparse_array();
 
   bool consolidate = GENERATE(true, false);
@@ -627,6 +696,7 @@ TEST_CASE_METHOD(
   bool allows_dups = GENERATE(true, false);
   bool legacy = GENERATE(true, false);
   tiledb_layout_t read_layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
+
   if (!consolidate && (vacuum || purge_deleted_cells)) {
     return;
   }
@@ -799,6 +869,13 @@ TEST_CASE_METHOD(
     "CPP API: Test deletes, reading with delete condition, delete duplicates "
     "from later fragments",
     "[cppapi][deletes][duplicates]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   remove_sparse_array();
 
   bool purge_deleted_cells = GENERATE(true, false);
@@ -807,6 +884,7 @@ TEST_CASE_METHOD(
   bool allows_dups = GENERATE(true, false);
   bool legacy = GENERATE(true, false);
   tiledb_layout_t read_layout = GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
+
   if (!consolidate && (vacuum || purge_deleted_cells)) {
     return;
   }
@@ -869,9 +947,16 @@ TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Test deletes, commits consolidation",
     "[cppapi][deletes][commits][consolidation]") {
-  remove_sparse_array();
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
 
   bool vacuum = GENERATE(false, true);
+
+  remove_sparse_array();
   create_sparse_array();
 
   // Write fragment.
@@ -920,6 +1005,13 @@ TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Test deletes, consolidation, delete same cell earlier",
     "[cppapi][deletes][consolidation][same-cell]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   remove_sparse_array();
 
   bool allows_dups = GENERATE(true, false);
@@ -1040,6 +1132,13 @@ TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Test deletes, multiple consolidation with deletes",
     "[cppapi][deletes][consolidation][multiple]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   remove_sparse_array();
 
   bool purge_deleted_cells = GENERATE(true, false);
@@ -1154,6 +1253,13 @@ TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Test deletes, multiple cells with same coords in same fragment",
     "[cppapi][deletes][consolidation][multiple-cells-same-coords]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   remove_sparse_array();
 
   bool purge_deleted_cells = GENERATE(true, false);
@@ -1334,6 +1440,13 @@ TEST_CASE_METHOD(
     "across tiles",
     "[cppapi][deletes][consolidation][multiple-cells-same-coords][across-"
     "tiles]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   remove_sparse_array();
 
   bool purge_deleted_cells = GENERATE(true, false);
@@ -1513,6 +1626,13 @@ TEST_CASE_METHOD(
     "CPP API: Test consolidating fragment with delete timestamp, with purge "
     "option",
     "[cppapi][deletes][consolidation][with-delete-meta][purge]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   remove_sparse_array();
 
   create_sparse_array(false);
@@ -1592,13 +1712,59 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     DeletesFx,
-    "CPP API: Deletion of fragment writes",
+    "CPP API: Deletion of invalid fragment writes",
+    "[cppapi][deletes][fragments][invalid]") {
+  // Note: An array must be open in MODIFY_EXCLUSIVE mode to delete fragments
+  remove_sparse_array();
+
+  // Write fragments at timestamps 1, 3
+  create_sparse_array();
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 3);
+  CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 2);
+
+  // Open array in WRITE mode and try to delete fragments
+  std::unique_ptr<Array> array =
+      std::make_unique<Array>(ctx_, SPARSE_ARRAY_NAME, TILEDB_WRITE);
+  REQUIRE_THROWS_WITH(
+      array->delete_fragments(SPARSE_ARRAY_NAME, 0, UINT64_MAX),
+      Catch::Matchers::ContainsSubstring(
+          "Query type must be MODIFY_EXCLUSIVE"));
+  CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 2);
+  array->close();
+
+  // Try to delete a fragment uri that doesn't exist
+  std::string extraneous_fragment =
+      std::string(SPARSE_ARRAY_NAME) + "/" +
+      tiledb::sm::constants::array_fragments_dir_name + "/extraneous";
+  const char* extraneous_fragments[1] = {extraneous_fragment.c_str()};
+  REQUIRE_THROWS_WITH(
+      Array::delete_fragments_list(
+          ctx_, SPARSE_ARRAY_NAME, extraneous_fragments, 1),
+      Catch::Matchers::ContainsSubstring(
+          "is not a fragment of the ArrayDirectory"));
+  CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 2);
+
+  remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    DeletesFx,
+    "CPP API: Deletion of fragment writes by timestamp and uri",
     "[cppapi][deletes][fragments]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   remove_sparse_array();
 
   // Conditionally consolidate and vacuum
   bool consolidate = GENERATE(true, false);
   bool vacuum = GENERATE(true, false);
+
   if (!consolidate && vacuum) {
     return;
   }
@@ -1609,6 +1775,7 @@ TEST_CASE_METHOD(
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 3);
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 5);
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 7);
+  CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 4);
 
   if (consolidate) {
     consolidate_commits_sparse(vacuum);
@@ -1625,11 +1792,22 @@ TEST_CASE_METHOD(
   }
 
   // Delete fragments
-  std::unique_ptr<Array> array =
-      std::make_unique<Array>(ctx_, SPARSE_ARRAY_NAME, TILEDB_MODIFY_EXCLUSIVE);
-  array->delete_fragments(SPARSE_ARRAY_NAME, 2, 6);
-  CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 2);
-  array->close();
+  SECTION("delete fragments by timestamps") {
+    std::unique_ptr<Array> array = std::make_unique<Array>(
+        ctx_, SPARSE_ARRAY_NAME, TILEDB_MODIFY_EXCLUSIVE);
+    array->delete_fragments(SPARSE_ARRAY_NAME, 2, 6);
+    array->close();
+  }
+
+  SECTION("delete fragments by uris") {
+    FragmentInfo fragment_info(ctx_, std::string(SPARSE_ARRAY_NAME));
+    fragment_info.load();
+    auto fragment_name1 = fragment_info.fragment_uri(1);
+    auto fragment_name2 = fragment_info.fragment_uri(2);
+    const char* fragment_uris[2] = {
+        fragment_name1.c_str(), fragment_name2.c_str()};
+    Array::delete_fragments_list(ctx_, SPARSE_ARRAY_NAME, fragment_uris, 2);
+  }
 
   // Check commits directory after deletion
   if (consolidate) {
@@ -1647,6 +1825,7 @@ TEST_CASE_METHOD(
       CHECK(commits_dir.dir_size() == 4);
     }
   }
+  CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 2);
 
   // Read array
   uint64_t buffer_size = 4;
@@ -1669,6 +1848,13 @@ TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Deletion of fragment writes consolidated with timestamps",
     "[cppapi][deletes][fragments][consolidation_with_timestamps]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   remove_sparse_array();
   bool vacuum = GENERATE(true, false);
 
@@ -1731,46 +1917,14 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    DeletesFx,
-    "CPP API: Deletion of invalid array writes",
-    "[cppapi][deletes][array][invalid]") {
-  // Note: An array must be open in MODIFY_EXCLUSIVE mode to delete data
-  remove_sparse_array();
-  auto array_name = std::string(SPARSE_ARRAY_NAME);
-
-  // Write fragments
-  create_sparse_array();
-  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
-  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 3);
-
-  // Ensure expected data was written
-  CHECK(tiledb::test::num_commits(SPARSE_ARRAY_NAME) == 2);
-  CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 2);
-  auto schemas =
-      vfs_.ls(array_name + "/" + tiledb::sm::constants::array_schema_dir_name);
-  CHECK(schemas.size() == 1);
-
-  // Open array in WRITE mode and try to delete data
-  std::unique_ptr<Array> array =
-      std::make_unique<Array>(ctx_, SPARSE_ARRAY_NAME, TILEDB_WRITE);
-  REQUIRE_THROWS_WITH(
-      array->delete_array(SPARSE_ARRAY_NAME),
-      Catch::Matchers::ContainsSubstring(
-          "Query type must be MODIFY_EXCLUSIVE"));
-  array->close();
-
-  // Ensure nothing was deleted
-  CHECK(tiledb::test::num_commits(SPARSE_ARRAY_NAME) == 2);
-  CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 2);
-  schemas =
-      vfs_.ls(array_name + "/" + tiledb::sm::constants::array_schema_dir_name);
-  CHECK(schemas.size() == 1);
-
-  remove_sparse_array();
-}
-
-TEST_CASE_METHOD(
     DeletesFx, "CPP API: Deletion of array data", "[cppapi][deletes][array]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   remove_sparse_array();
   auto array_name = std::string(SPARSE_ARRAY_NAME);
 
@@ -1825,12 +1979,7 @@ TEST_CASE_METHOD(
   }
 
   // Delete array data
-  array =
-      std::make_unique<Array>(ctx_, SPARSE_ARRAY_NAME, TILEDB_MODIFY_EXCLUSIVE);
-  array->delete_array(array_name);
-
-  // Note: delete_array closes the array; closing here is an extraneous no-op
-  array->close();
+  Array::delete_array(ctx_, array_name);
 
   // Check working directory after delete
   REQUIRE(vfs_.is_file(extraneous_file_path));
@@ -1875,6 +2024,14 @@ TEST_CASE_METHOD(
   if constexpr (is_experimental_build) {
     return;
   }
+
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   remove_sparse_array();
   auto array_name = std::string(SPARSE_ARRAY_NAME);
 
@@ -1907,9 +2064,7 @@ TEST_CASE_METHOD(
   }
 
   // Delete array data
-  std::unique_ptr<Array> array =
-      std::make_unique<Array>(ctx_, SPARSE_ARRAY_NAME, TILEDB_MODIFY_EXCLUSIVE);
-  array->delete_array(array_name);
+  Array::delete_array(ctx_, array_name);
 
   // Check working directory after delete
   uris = vfs_.ls(array_name);

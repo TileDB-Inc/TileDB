@@ -76,7 +76,8 @@ TEST_CASE(
 
   SizeComputationSerializer size_computation_serializer1;
   metadata_to_serialize1.serialize(size_computation_serializer1);
-  Tile tile1{Tile::from_generic(size_computation_serializer1.size())};
+  WriterTile tile1{
+      WriterTile::from_generic(size_computation_serializer1.size())};
 
   Serializer serializer1(tile1.data(), tile1.size());
   metadata_to_serialize1.serialize(serializer1);
@@ -87,7 +88,8 @@ TEST_CASE(
 
   SizeComputationSerializer size_computation_serializer2;
   metadata_to_serialize2.serialize(size_computation_serializer2);
-  Tile tile2{Tile::from_generic(size_computation_serializer2.size())};
+  WriterTile tile2{
+      WriterTile::from_generic(size_computation_serializer2.size())};
 
   Serializer serializer2(tile2.data(), tile2.size());
   metadata_to_serialize2.serialize(serializer2);
@@ -102,15 +104,45 @@ TEST_CASE(
 
   SizeComputationSerializer size_computation_serializer3;
   metadata_to_serialize3.serialize(size_computation_serializer3);
-  Tile tile3{Tile::from_generic(size_computation_serializer3.size())};
+  WriterTile tile3{
+      WriterTile::from_generic(size_computation_serializer3.size())};
 
   Serializer serializer3(tile3.data(), tile3.size());
   metadata_to_serialize3.serialize(serializer3);
 
   metadata_tiles.resize(3);
-  metadata_tiles[0] = tdb::make_shared<Tile>(HERE(), std::move(tile1));
-  metadata_tiles[1] = tdb::make_shared<Tile>(HERE(), std::move(tile2));
-  metadata_tiles[2] = tdb::make_shared<Tile>(HERE(), std::move(tile3));
+  metadata_tiles[0] = tdb::make_shared<Tile>(
+      HERE(),
+      tile1.format_version(),
+      tile1.type(),
+      tile1.cell_size(),
+      0,
+      tile1.size(),
+      tile1.filtered_buffer().data(),
+      tile1.filtered_buffer().size());
+  memcpy(metadata_tiles[0]->data(), tile1.data(), tile1.size());
+
+  metadata_tiles[1] = tdb::make_shared<Tile>(
+      HERE(),
+      tile2.format_version(),
+      tile2.type(),
+      tile2.cell_size(),
+      0,
+      tile2.size(),
+      tile2.filtered_buffer().data(),
+      tile2.filtered_buffer().size());
+  memcpy(metadata_tiles[1]->data(), tile2.data(), tile2.size());
+
+  metadata_tiles[2] = tdb::make_shared<Tile>(
+      HERE(),
+      tile3.format_version(),
+      tile3.type(),
+      tile3.cell_size(),
+      0,
+      tile3.size(),
+      tile3.filtered_buffer().data(),
+      tile3.filtered_buffer().size());
+  memcpy(metadata_tiles[2]->data(), tile3.data(), tile3.size());
 
   auto meta{Metadata::deserialize(metadata_tiles)};
 

@@ -48,7 +48,6 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/sm/stats/stats.h"
-#include "tiledb/sm/stats/timer_stat.h"
 
 namespace tiledb {
 namespace sm {
@@ -136,7 +135,7 @@ class GlobalStats {
   mutable std::mutex mtx_;
 
   /** The aggregated stats. */
-  std::list<shared_ptr<stats::Stats>> registered_stats_;
+  std::list<std::weak_ptr<stats::Stats>> registered_stats_;
 
   /* ****************************** */
   /*       PRIVATE FUNCTIONS        */
@@ -144,6 +143,14 @@ class GlobalStats {
 
   /** Dump the current registered stats. */
   std::string dump_registered_stats() const;
+
+  /** iterate over raw stats calling f() */
+  template <class FuncT>
+  void iterate(const FuncT&);
+
+  /** iterate over raw stats calling f() */
+  template <class FuncT>
+  void iterate(const FuncT&) const;
 };
 
 /* ********************************* */

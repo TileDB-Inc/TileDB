@@ -61,6 +61,15 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+class ArrayStatusException : public StatusException {
+ public:
+  explicit ArrayStatusException(const std::string& message)
+      : StatusException("Array", message) {
+  }
+};
+
+void ensure_supported_schema_version_for_read(format_version_t version);
+
 ConsistencyController& controller() {
   static ConsistencyController controller;
   return controller;
@@ -76,7 +85,7 @@ Array::Array(
     ConsistencyController& cc)
     : array_schema_latest_(nullptr)
     , array_uri_(array_uri)
-    , array_dir_()
+    , array_dir_(storage_manager->resources(), array_uri)
     , array_uri_serialized_(array_uri)
     , encryption_key_(make_shared<EncryptionKey>(HERE()))
     , is_open_(false)
@@ -85,7 +94,8 @@ Array::Array(
     , timestamp_end_(UINT64_MAX)
     , timestamp_end_opened_at_(UINT64_MAX)
     , storage_manager_(storage_manager)
-    , config_(storage_manager_->config())
+    , resources_(storage_manager_->resources())
+    , config_(resources_.config())
     , remote_(array_uri.is_tiledb())
     , metadata_()
     , metadata_loaded_(false)
@@ -137,6 +147,8 @@ Status Array::open_without_fragments(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
+  auto timer =
+      storage_manager_->stats()->start_timer("array_open_without_fragments");
   Status st;
   // Checks
   if (is_open()) {
@@ -169,7 +181,7 @@ Status Array::open_without_fragments(
     }
 
     if (remote_) {
-      auto rest_client = storage_manager_->rest_client();
+      auto rest_client = resources_.rest_client();
       if (rest_client == nullptr) {
         throw Status_ArrayError(
             "Cannot open array; remote array with no REST client.");
@@ -184,22 +196,20 @@ Status Array::open_without_fragments(
         }
         array_schema_latest_ = array_schema_latest.value();
       } else {
-        auto st = rest_client->post_array_from_rest(array_uri_, this);
+        auto st = rest_client->post_array_from_rest(
+            array_uri_, storage_manager_, this);
         if (!st.ok()) {
           throw StatusException(st);
         }
       }
     } else {
-      array_dir_ = ArrayDirectory(
-          storage_manager_->vfs(),
-          storage_manager_->compute_tp(),
-          array_uri_,
-          0,
-          UINT64_MAX,
-          ArrayDirectoryMode::READ);
-
-      auto&& [st, array_schema, array_schemas] =
-          storage_manager_->array_open_for_reads_without_fragments(this);
+      {
+        auto timer_se = storage_manager_->stats()->start_timer(
+            "array_open_without_fragments_load_directory");
+        array_dir_ = ArrayDirectory(
+            resources_, array_uri_, 0, UINT64_MAX, ArrayDirectoryMode::READ);
+      }
+      auto&& [array_schema, array_schemas] = open_for_reads_without_fragments();
       if (!st.ok())
         throw StatusException(st);
 
@@ -247,6 +257,8 @@ Status Array::open(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
+  auto timer = storage_manager_->stats()->start_timer(
+      "array_open_" + query_type_str(query_type));
   Status st;
   // Checks
   if (is_open()) {
@@ -344,7 +356,7 @@ Status Array::open(
     }
 
     if (remote_) {
-      auto rest_client = storage_manager_->rest_client();
+      auto rest_client = resources_.rest_client();
       if (rest_client == nullptr) {
         throw Status_ArrayError(
             "Cannot open array; remote array with no REST client.");
@@ -357,24 +369,22 @@ Status Array::open(
         }
         array_schema_latest_ = array_schema_latest.value();
       } else {
-        auto st = rest_client->post_array_from_rest(array_uri_, this);
+        auto st = rest_client->post_array_from_rest(
+            array_uri_, storage_manager_, this);
         if (!st.ok()) {
           throw StatusException(st);
         }
       }
     } else if (query_type == QueryType::READ) {
-      array_dir_ = ArrayDirectory(
-          storage_manager_->vfs(),
-          storage_manager_->compute_tp(),
-          array_uri_,
-          timestamp_start_,
-          timestamp_end_opened_at_);
-
-      auto&& [st, array_schema_latest, array_schemas, fragment_metadata] =
-          storage_manager_->array_open_for_reads(this);
-      if (!st.ok()) {
-        throw StatusException(st);
+      {
+        auto timer_se = storage_manager_->stats()->start_timer(
+            "array_open_read_load_directory");
+        array_dir_ = ArrayDirectory(
+            resources_, array_uri_, timestamp_start_, timestamp_end_opened_at_);
       }
+      auto&& [array_schema_latest, array_schemas, fragment_metadata] =
+          open_for_reads();
+
       // Set schemas
       array_schema_latest_ = array_schema_latest.value();
       array_schemas_all_ = array_schemas.value();
@@ -382,14 +392,16 @@ Status Array::open(
     } else if (
         query_type == QueryType::WRITE ||
         query_type == QueryType::MODIFY_EXCLUSIVE) {
-      array_dir_ = ArrayDirectory(
-          storage_manager_->vfs(),
-          storage_manager_->compute_tp(),
-          array_uri_,
-          timestamp_start_,
-          timestamp_end_opened_at_,
-          ArrayDirectoryMode::SCHEMA_ONLY);
-
+      {
+        auto timer_se = storage_manager_->stats()->start_timer(
+            "array_open_write_load_directory");
+        array_dir_ = ArrayDirectory(
+            resources_,
+            array_uri_,
+            timestamp_start_,
+            timestamp_end_opened_at_,
+            ArrayDirectoryMode::SCHEMA_ONLY);
+      }
       auto&& [st, array_schema_latest, array_schemas] =
           storage_manager_->array_open_for_writes(this);
       throw_if_not_ok(st);
@@ -401,14 +413,16 @@ Status Array::open(
       metadata_.reset(timestamp_end_opened_at_);
     } else if (
         query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
-      array_dir_ = ArrayDirectory(
-          storage_manager_->vfs(),
-          storage_manager_->compute_tp(),
-          array_uri_,
-          timestamp_start_,
-          timestamp_end_opened_at_,
-          ArrayDirectoryMode::READ);
-
+      {
+        auto timer_se = storage_manager_->stats()->start_timer(
+            "array_open_delete_or_update_load_directory");
+        array_dir_ = ArrayDirectory(
+            resources_,
+            array_uri_,
+            timestamp_start_,
+            timestamp_end_opened_at_,
+            ArrayDirectoryMode::READ);
+      }
       auto&& [st, array_schema_latest, array_schemas] =
           storage_manager_->array_open_for_writes(this);
       throw_if_not_ok(st);
@@ -476,7 +490,7 @@ Status Array::close() {
         // Set metadata loaded to be true so when serialization fetchs the
         // metadata it won't trigger a deadlock
         metadata_loaded_ = true;
-        auto rest_client = storage_manager_->rest_client();
+        auto rest_client = resources_.rest_client();
         if (rest_client == nullptr)
           throw Status_ArrayError(
               "Error closing array; remote array with no REST client.");
@@ -518,30 +532,14 @@ Status Array::close() {
 }
 
 void Array::delete_array(const URI& uri) {
-  // Check that query type is MODIFY_EXCLUSIVE
-  if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    throw StatusException(Status_ArrayError(
-        "[Array::delete_array] Query type must be MODIFY_EXCLUSIVE"));
-  }
-
-  // Check that array is open
-  if (!is_open() && !controller().is_open(uri)) {
-    throw StatusException(
-        Status_ArrayError("[Array::delete_array] Array is closed"));
-  }
-
-  // Check that array is not in the process of opening or closing
-  if (is_opening_or_closing_) {
-    throw StatusException(Status_ArrayError(
-        "[Array::delete_array] "
-        "May not perform simultaneous open or close operations."));
-  }
+  // Check that data deletion is allowed
+  ensure_array_is_valid_for_delete(uri);
 
   // Delete array data
   if (remote_) {
-    auto rest_client = storage_manager_->rest_client();
+    auto rest_client = resources_.rest_client();
     if (rest_client == nullptr) {
-      throw Status_ArrayError(
+      throw ArrayStatusException(
           "[Array::delete_array] Remote array with no REST client.");
     }
     rest_client->delete_array_from_rest(uri);
@@ -553,32 +551,37 @@ void Array::delete_array(const URI& uri) {
   throw_if_not_ok(this->close());
 }
 
-Status Array::delete_fragments(
+void Array::delete_fragments(
     const URI& uri, uint64_t timestamp_start, uint64_t timestamp_end) {
-  // Check that query type is MODIFY_EXCLUSIVE
-  if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    return LOG_STATUS(Status_ArrayError(
-        "[Array::delete_fragments] Query type must be MODIFY_EXCLUSIVE"));
-  }
-
-  // Check that array is open
-  if (!is_open() && !controller().is_open(uri)) {
-    return LOG_STATUS(
-        Status_ArrayError("[Array::delete_fragments] Array is closed"));
-  }
-
-  // Check that array is not in the process of opening or closing
-  if (is_opening_or_closing_) {
-    return LOG_STATUS(Status_ArrayError(
-        "[Array::delete_fragments] "
-        "May not perform simultaneous open or close operations."));
-  }
+  // Check that data deletion is allowed
+  ensure_array_is_valid_for_delete(uri);
 
   // Delete fragments
-  RETURN_NOT_OK(storage_manager_->delete_fragments(
-      uri.c_str(), timestamp_start, timestamp_end));
+  // #TODO Add rest support for delete_fragments
+  if (remote_) {
+    throw ArrayStatusException(
+        "[Array::delete_fragments] Remote arrays currently unsupported.");
+  } else {
+    storage_manager_->delete_fragments(
+        uri.c_str(), timestamp_start, timestamp_end);
+  }
+}
 
-  return Status::Ok();
+void Array::delete_fragments_list(
+    const URI& uri, const std::vector<URI>& fragment_uris) {
+  // Check that data deletion is allowed
+  ensure_array_is_valid_for_delete(uri);
+
+  // Delete fragments
+  // #TODO Add rest support for delete_fragments_list
+  if (remote_) {
+    throw ArrayStatusException(
+        "[Array::delete_fragments_list] Remote arrays currently unsupported.");
+  } else {
+    auto array_dir = ArrayDirectory(
+        resources_, uri, 0, std::numeric_limits<uint64_t>::max());
+    array_dir.delete_fragments_list(fragment_uris);
+  }
 }
 
 bool Array::is_empty() const {
@@ -602,9 +605,10 @@ tuple<Status, optional<shared_ptr<ArraySchema>>> Array::get_array_schema()
     const {
   // Error if the array is not open
   if (!is_open_)
-    return {LOG_STATUS(Status_ArrayError(
-                "Cannot get array schema; Array is not open")),
-            nullopt};
+    return {
+        LOG_STATUS(
+            Status_ArrayError("Cannot get array schema; Array is not open")),
+        nullopt};
 
   return {Status::Ok(), array_schema_latest_};
 }
@@ -754,6 +758,7 @@ Status Array::reopen() {
 }
 
 Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
+  auto timer = storage_manager_->stats()->start_timer("array_reopen");
   if (!is_open_) {
     return LOG_STATUS(
         Status_ArrayError("Cannot reopen array; Array is not open"));
@@ -780,6 +785,14 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   }
 
   if (remote_) {
+    try {
+      set_array_closed();
+    } catch (std::exception& e) {
+      is_opening_or_closing_ = false;
+      throw Status_ArrayError(e.what());
+    }
+    is_opening_or_closing_ = false;
+
     return open(
         query_type_,
         encryption_key_->encryption_type(),
@@ -788,21 +801,23 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   }
 
   try {
-    array_dir_ = ArrayDirectory(
-        storage_manager_->vfs(),
-        storage_manager_->compute_tp(),
-        array_uri_,
-        timestamp_start_,
-        timestamp_end_opened_at_,
-        query_type_ == QueryType::READ ? ArrayDirectoryMode::READ :
-                                         ArrayDirectoryMode::SCHEMA_ONLY);
+    {
+      auto timer_se =
+          storage_manager_->stats()->start_timer("array_reopen_directory");
+      array_dir_ = ArrayDirectory(
+          resources_,
+          array_uri_,
+          timestamp_start_,
+          timestamp_end_opened_at_,
+          query_type_ == QueryType::READ ? ArrayDirectoryMode::READ :
+                                           ArrayDirectoryMode::SCHEMA_ONLY);
+    }
   } catch (const std::logic_error& le) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
 
-  auto&& [st, array_schema_latest, array_schemas, fragment_metadata] =
-      storage_manager_->array_reopen(this);
-  RETURN_NOT_OK(st);
+  auto&& [array_schema_latest, array_schemas, fragment_metadata] =
+      open_for_reads();
 
   array_schema_latest_ = array_schema_latest.value();
   array_schemas_all_ = array_schemas.value();
@@ -822,6 +837,12 @@ uint64_t Array::timestamp_start() const {
 
 Status Array::set_timestamp_end(const uint64_t timestamp_end) {
   timestamp_end_ = timestamp_end;
+  return Status::Ok();
+}
+
+Status Array::set_timestamp_end_opened_at(
+    const uint64_t timestamp_end_opened_at) {
+  timestamp_end_opened_at_ = timestamp_end_opened_at;
   return Status::Ok();
 }
 
@@ -1111,7 +1132,8 @@ bool Array::use_refactored_array_open() const {
   return refactored_array_open;
 }
 
-std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes() {
+std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
+    const {
   std::unordered_map<std::string, uint64_t> ret;
 
   // Find the names of the var-sized dimensions or attributes.
@@ -1137,7 +1159,7 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes() {
   // Load all metadata for tile var sizes among fragments.
   for (const auto& var_name : var_names) {
     throw_if_not_ok(parallel_for(
-        storage_manager_->compute_tp(),
+        &resources_.compute_tp(),
         0,
         fragment_metadata_.size(),
         [&](const unsigned f) {
@@ -1155,10 +1177,7 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes() {
 
   // Now compute for each var size names, the average cell size.
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
-      0,
-      var_names.size(),
-      [&](const uint64_t n) {
+      &resources_.compute_tp(), 0, var_names.size(), [&](const uint64_t n) {
         uint64_t total_size = 0;
         uint64_t cell_num = 0;
         auto& var_name = var_names[n];
@@ -1191,6 +1210,44 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes() {
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */
+
+tuple<
+    optional<shared_ptr<ArraySchema>>,
+    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
+    optional<std::vector<shared_ptr<FragmentMetadata>>>>
+Array::open_for_reads() {
+  auto timer_se = resources_.stats().start_timer(
+      "array_open_read_load_schemas_and_fragment_meta");
+  auto&& [st, array_schema_latest, array_schemas_all, fragment_metadata] =
+      storage_manager_->load_array_schemas_and_fragment_metadata(
+          array_directory(), memory_tracker(), *encryption_key());
+
+  throw_if_not_ok(st);
+
+  auto version = array_schema_latest.value()->version();
+  ensure_supported_schema_version_for_read(version);
+
+  return {array_schema_latest, array_schemas_all, fragment_metadata};
+}
+
+tuple<
+    optional<shared_ptr<ArraySchema>>,
+    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+Array::open_for_reads_without_fragments() {
+  auto timer_se = resources_.stats().start_timer(
+      "array_open_read_without_fragments_load_schemas");
+
+  // Load array schemas
+  auto&& [st_schemas, array_schema_latest, array_schemas_all] =
+      storage_manager_->load_array_schemas(
+          array_directory(), *encryption_key());
+  throw_if_not_ok(st_schemas);
+
+  auto version = array_schema_latest.value()->version();
+  ensure_supported_schema_version_for_read(version);
+
+  return {array_schema_latest, array_schemas_all};
+}
 
 void Array::clear_last_max_buffer_sizes() {
   last_max_buffer_sizes_.clear();
@@ -1246,7 +1303,7 @@ Status Array::compute_max_buffer_sizes(
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const {
   if (remote_) {
-    auto rest_client = storage_manager_->rest_client();
+    auto rest_client = resources_.rest_client();
     if (rest_client == nullptr) {
       return LOG_STATUS(Status_ArrayError(
           "Cannot get max buffer sizes; remote array with no REST client."));
@@ -1328,7 +1385,7 @@ Status Array::compute_max_buffer_sizes(
 
 Status Array::load_metadata() {
   if (remote_) {
-    auto rest_client = storage_manager_->rest_client();
+    auto rest_client = resources_.rest_client();
     if (rest_client == nullptr) {
       return LOG_STATUS(Status_ArrayError(
           "Cannot load metadata; remote array with no REST client."));
@@ -1346,7 +1403,7 @@ Status Array::load_metadata() {
 
 Status Array::load_remote_non_empty_domain() {
   if (remote_) {
-    auto rest_client = storage_manager_->rest_client();
+    auto rest_client = resources_.rest_client();
     if (rest_client == nullptr) {
       return LOG_STATUS(Status_ArrayError(
           "Cannot load metadata; remote array with no REST client."));
@@ -1356,6 +1413,27 @@ Status Array::load_remote_non_empty_domain() {
     non_empty_domain_computed_ = true;
   }
   return Status::Ok();
+}
+
+ArrayDirectory& Array::load_array_directory() {
+  if (array_dir_.loaded()) {
+    return array_dir_;
+  }
+
+  if (remote_) {
+    throw std::logic_error(
+        "Loading array directory for remote arrays is not supported");
+  }
+
+  auto mode = (query_type_ == QueryType::WRITE ||
+               query_type_ == QueryType::MODIFY_EXCLUSIVE) ?
+                  ArrayDirectoryMode::SCHEMA_ONLY :
+                  ArrayDirectoryMode::READ;
+
+  array_dir_ = ArrayDirectory(
+      resources_, array_uri_, timestamp_start_, timestamp_end_opened_at_, mode);
+
+  return array_dir_;
 }
 
 Status Array::compute_non_empty_domain() {
@@ -1428,6 +1506,44 @@ void Array::set_array_closed() {
   is_open_ = false;
 }
 
+void Array::ensure_array_is_valid_for_delete(const URI& uri) {
+  // Check that query type is MODIFY_EXCLUSIVE
+  if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
+    throw ArrayStatusException(
+        "[ensure_array_is_valid_for_delete] "
+        "Query type must be MODIFY_EXCLUSIVE to perform a delete.");
+  }
+
+  // Check that array is open
+  if (!is_open() && !controller().is_open(uri)) {
+    throw ArrayStatusException(
+        "[ensure_array_is_valid_for_delete] Array is closed");
+  }
+
+  // Check that array is not in the process of opening or closing
+  if (is_opening_or_closing_) {
+    throw ArrayStatusException(
+        "[ensure_array_is_valid_for_delete] "
+        "May not perform simultaneous open or close operations.");
+  }
+}
+
+void ensure_supported_schema_version_for_read(format_version_t version) {
+  // We do not allow reading from arrays written by newer version of TileDB
+  if (version > constants::format_version) {
+    std::stringstream err;
+    err << "Cannot open array for reads; Array format version (";
+    err << version;
+    err << ") is newer than library format version (";
+    err << constants::format_version << ")";
+    throw Status_StorageManagerError(err.str());
+  }
+}
+
+void Array::set_serialized_array_open() {
+  is_open_ = true;
+}
+
 void Array::get_max_tile_size(
     tiledb_fragment_max_tile_sizes_t* max_tile_sizes) {
   assert(max_tile_sizes);
@@ -1465,8 +1581,7 @@ void Array::get_max_tile_size(
   // Create an ArrayDirectory object and then load the array schemas
   // and fragment metadata.
   auto array_dir = ArrayDirectory(
-      storage_manager_->vfs(),
-      storage_manager_->compute_tp(),
+      resources_,
       array_uri_,
       timestamp_start,
       timestamp_end);

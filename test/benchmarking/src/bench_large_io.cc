@@ -154,10 +154,11 @@ class Benchmark : public BenchmarkBase {
     for (int i = 0; i < 2; ++i) {
       Array array(ctx_, sparse_array_uri_, TILEDB_READ);
       auto non_empty = array.non_empty_domain<uint32_t>();
-      std::vector<uint32_t> subarray = {non_empty[0].second.first,
-                                        non_empty[0].second.second,
-                                        non_empty[1].second.first,
-                                        non_empty[1].second.second};
+      std::vector<uint32_t> subarray = {
+          non_empty[0].second.first,
+          non_empty[0].second.second,
+          non_empty[1].second.first,
+          non_empty[1].second.second};
 
       auto max_elements = array.max_buffer_elements(subarray);
       data_a_.resize(max_elements["a"].second);

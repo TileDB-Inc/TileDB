@@ -209,13 +209,12 @@ Status CompressionFilter::get_option_impl(
 }
 
 Status CompressionFilter::run_forward(
-    const Tile& tile,
-    void* const support_data,
+    const WriterTile& tile,
+    WriterTile* const offsets_tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  Tile* const offsets_tile = static_cast<Tile*>(support_data);
   // Easy case: no compression
   if (compressor_ == Compressor::NO_COMPRESSION) {
     RETURN_NOT_OK(output->append_view(input));
@@ -227,7 +226,9 @@ Status CompressionFilter::run_forward(
     return LOG_STATUS(
         Status_FilterError("Input is too large to be compressed."));
 
-  if (tile.type() == Datatype::STRING_ASCII && offsets_tile) {
+  if ((tile.type() == Datatype::STRING_ASCII ||
+       tile.type() == Datatype::STRING_UTF8) &&
+      offsets_tile) {
     if (compressor_ == Compressor::RLE ||
         compressor_ == Compressor::DICTIONARY_ENCODING)
       return compress_var_string_coords(
@@ -270,14 +271,13 @@ Status CompressionFilter::run_forward(
 
 Status CompressionFilter::run_reverse(
     const Tile& tile,
-    void* support_data,
+    Tile* const offsets_tile,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output,
     const Config& config) const {
   (void)config;
-  Tile* offsets_tile = static_cast<Tile*>(support_data);
 
   // Easy case: no compression
   if (compressor_ == Compressor::NO_COMPRESSION) {
@@ -299,7 +299,9 @@ Status CompressionFilter::run_reverse(
   Buffer* metadata_buffer = output_metadata->buffer_ptr(0);
   assert(metadata_buffer != nullptr);
 
-  if (tile.type() == Datatype::STRING_ASCII && version_ >= 12 && offsets_tile) {
+  if ((tile.type() == Datatype::STRING_ASCII ||
+       tile.type() == Datatype::STRING_UTF8) &&
+      version_ >= 12 && offsets_tile) {
     if (compressor_ == Compressor::RLE ||
         compressor_ == Compressor::DICTIONARY_ENCODING)
       return decompress_var_string_coords(
@@ -316,7 +318,7 @@ Status CompressionFilter::run_reverse(
 }
 
 Status CompressionFilter::compress_part(
-    const Tile& tile,
+    const WriterTile& tile,
     ConstBuffer* part,
     Buffer* output,
     FilterBuffer* output_metadata) const {
@@ -437,7 +439,7 @@ Status CompressionFilter::decompress_part(
 
 tuple<std::vector<std::string_view>, uint64_t>
 CompressionFilter::create_input_view(
-    const FilterBuffer& input, Tile* const offsets_tile) {
+    const FilterBuffer& input, WriterTile* const offsets_tile) {
   auto input_buf = static_cast<const char*>(input.buffers()[0].data());
   auto offsets_data = static_cast<uint64_t*>(offsets_tile->data());
   auto offsets_size = offsets_tile->size() / constants::cell_var_offset_size;
@@ -473,7 +475,7 @@ uint8_t CompressionFilter::compute_bytesize(uint64_t param_length) {
 
 Status CompressionFilter::compress_var_string_coords(
     const FilterBuffer& input,
-    Tile* const offsets_tile,
+    WriterTile* const offsets_tile,
     FilterBuffer& output,
     FilterBuffer& output_metadata) const {
   if (input.num_buffers() != 1) {
@@ -619,7 +621,8 @@ Status CompressionFilter::decompress_var_string_coords(
   return Status::Ok();
 }
 
-uint64_t CompressionFilter::overhead(const Tile& tile, uint64_t nbytes) const {
+uint64_t CompressionFilter::overhead(
+    const WriterTile& tile, uint64_t nbytes) const {
   auto cell_size = tile.cell_size();
 
   switch (compressor_) {

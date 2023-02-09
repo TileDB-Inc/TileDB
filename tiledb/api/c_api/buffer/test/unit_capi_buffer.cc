@@ -32,8 +32,8 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "tiledb/api/c_api/context/context_api_external.h"
 #include "../buffer_api_external.h"
+#include "tiledb/api/c_api/context/context_api_external.h"
 
 TEST_CASE("C API: Test buffer", "[capi][buffer]") {
   tiledb_ctx_handle_t* ctx{nullptr};
@@ -63,7 +63,7 @@ TEST_CASE("C API: Test buffer", "[capi][buffer]") {
     const unsigned alloc_size = 123;
     void* alloc = std::malloc(alloc_size);
     REQUIRE(
-      tiledb_buffer_set_data(ctx, buffer, alloc, alloc_size) == TILEDB_OK);
+        tiledb_buffer_set_data(ctx, buffer, alloc, alloc_size) == TILEDB_OK);
 
     // Check size/data
     void* data;
@@ -74,13 +74,13 @@ TEST_CASE("C API: Test buffer", "[capi][buffer]") {
 
     // Check it works to set again
     REQUIRE(
-      tiledb_buffer_set_data(ctx, buffer, alloc, alloc_size) == TILEDB_OK);
+        tiledb_buffer_set_data(ctx, buffer, alloc, alloc_size) == TILEDB_OK);
 
     // Buffers can alias
     tiledb_buffer_t* buffer2;
     REQUIRE(tiledb_buffer_alloc(ctx, &buffer2) == TILEDB_OK);
     REQUIRE(
-      tiledb_buffer_set_data(ctx, buffer2, alloc, alloc_size) == TILEDB_OK);
+        tiledb_buffer_set_data(ctx, buffer2, alloc, alloc_size) == TILEDB_OK);
     tiledb_buffer_free(&buffer2);
 
     // Check setting to nullptr works

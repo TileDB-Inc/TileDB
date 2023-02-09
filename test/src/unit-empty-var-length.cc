@@ -59,10 +59,16 @@ uint64_t UTF8_OFFSET_4_FOR_EMPTY =
     sizeof(UTF8_STRINGS_VAR_FOR_EMPTY) - UTF8_NULL_SIZE_FOR_EMPTY;
 
 struct StringEmptyFx {
+  // Serialization parameters
+  bool serialize_ = false;
+  bool refactored_query_v2_ = false;
+  // Buffers to allocate on server side for serialized queries
+  ServerQueryBuffers server_buffers_;
+
   void create_array(const std::string& array_name);
   void delete_array(const std::string& array_name);
   void read_array(const std::string& array_name);
-  void write_array(const std::string& array_name, const bool serialized_writes);
+  void write_array(const std::string& array_name);
 };
 
 // Create a simple dense 1D array with three string attributes
@@ -159,8 +165,7 @@ void StringEmptyFx::create_array(const std::string& array_name) {
   tiledb_ctx_free(&ctx);
 }
 
-void StringEmptyFx::write_array(
-    const std::string& array_name, const bool serialized_writes) {
+void StringEmptyFx::write_array(const std::string& array_name) {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
@@ -168,18 +173,20 @@ void StringEmptyFx::write_array(
 
   // Prepare buffers
   uint64_t buffer_a1_size = sizeof(buffer_a1);
-  uint64_t buffer_a1_offsets[] = {0 * sizeof(int32_t),
-                                  1 * sizeof(int32_t),
-                                  2 * sizeof(int32_t),
-                                  2 * sizeof(int32_t),
-                                  3 * sizeof(int32_t)};
+  uint64_t buffer_a1_offsets[] = {
+      0 * sizeof(int32_t),
+      1 * sizeof(int32_t),
+      2 * sizeof(int32_t),
+      2 * sizeof(int32_t),
+      3 * sizeof(int32_t)};
   uint64_t buffer_a1_offsets_size = sizeof(buffer_a1_offsets);
 
-  uint64_t buffer_a2_offsets[] = {UTF8_OFFSET_0_FOR_EMPTY,
-                                  UTF8_OFFSET_1_FOR_EMPTY,
-                                  UTF8_OFFSET_2_FOR_EMPTY,
-                                  UTF8_OFFSET_3_FOR_EMPTY,
-                                  UTF8_OFFSET_3_FOR_EMPTY};
+  uint64_t buffer_a2_offsets[] = {
+      UTF8_OFFSET_0_FOR_EMPTY,
+      UTF8_OFFSET_1_FOR_EMPTY,
+      UTF8_OFFSET_2_FOR_EMPTY,
+      UTF8_OFFSET_3_FOR_EMPTY,
+      UTF8_OFFSET_3_FOR_EMPTY};
   uint64_t buffer_a2_offsets_size = sizeof(buffer_a2_offsets);
   uint64_t buffer_a2_size =
       sizeof(UTF8_STRINGS_VAR_FOR_EMPTY) - UTF8_NULL_SIZE_FOR_EMPTY;
@@ -190,11 +197,12 @@ void StringEmptyFx::write_array(
       UTF8_STRINGS_VAR_FOR_EMPTY,
       sizeof(UTF8_STRINGS_VAR_FOR_EMPTY) - UTF8_NULL_SIZE_FOR_EMPTY);
 
-  uint64_t buffer_a3_offsets[] = {UTF8_OFFSET_0_FOR_EMPTY,
-                                  UTF8_OFFSET_1_FOR_EMPTY,
-                                  UTF8_OFFSET_4_FOR_EMPTY,
-                                  UTF8_OFFSET_4_FOR_EMPTY,
-                                  UTF8_OFFSET_4_FOR_EMPTY};
+  uint64_t buffer_a3_offsets[] = {
+      UTF8_OFFSET_0_FOR_EMPTY,
+      UTF8_OFFSET_1_FOR_EMPTY,
+      UTF8_OFFSET_4_FOR_EMPTY,
+      UTF8_OFFSET_4_FOR_EMPTY,
+      UTF8_OFFSET_4_FOR_EMPTY};
   uint64_t buffer_a3_offsets_size = sizeof(buffer_a3_offsets);
   uint64_t buffer_a3_size =
       sizeof(UTF8_STRINGS_VAR_FOR_EMPTY) - UTF8_NULL_SIZE_FOR_EMPTY;
@@ -205,11 +213,12 @@ void StringEmptyFx::write_array(
       UTF8_STRINGS_VAR_FOR_EMPTY,
       sizeof(UTF8_STRINGS_VAR_FOR_EMPTY) - UTF8_NULL_SIZE_FOR_EMPTY);
 
-  uint64_t buffer_a4_offsets[] = {0 * sizeof(float),
-                                  1 * sizeof(float),
-                                  2 * sizeof(float),
-                                  3 * sizeof(float),
-                                  4 * sizeof(float)};
+  uint64_t buffer_a4_offsets[] = {
+      0 * sizeof(float),
+      1 * sizeof(float),
+      2 * sizeof(float),
+      3 * sizeof(float),
+      4 * sizeof(float)};
   uint64_t buffer_a4_offsets_size = sizeof(buffer_a4_offsets);
   uint64_t buffer_a4_size = sizeof(buffer_a4);
 
@@ -257,14 +266,15 @@ void StringEmptyFx::write_array(
       ctx, query, "a4", buffer_a4_offsets, &buffer_a4_offsets_size);
   REQUIRE(rc == TILEDB_OK);
 
-  if (!serialized_writes) {
-    rc = tiledb_query_submit(ctx, query);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_finalize(ctx, query);
-    CHECK(rc == TILEDB_OK);
-  } else {
-    submit_and_finalize_serialized_query(ctx, query);
-  }
+  // Submit query
+  rc = submit_query_wrapper(
+      ctx,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
+  REQUIRE(rc == TILEDB_OK);
 
   // Close array
   rc = tiledb_array_close(ctx, array);
@@ -385,9 +395,13 @@ void StringEmptyFx::read_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = tiledb_query_submit(ctx, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx, query);
+  rc = submit_query_wrapper(
+      ctx,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE(rc == TILEDB_OK);
 
   // Check results
@@ -467,19 +481,19 @@ TEST_CASE_METHOD(
     StringEmptyFx, "C API: Test empty support", "[capi][empty-var-length]") {
   std::string array_name = "empty_string";
 
-  bool serialized_writes = false;
   SECTION("no serialization") {
-    serialized_writes = false;
+    serialize_ = false;
   }
 #ifdef TILEDB_SERIALIZATION
   SECTION("serialization enabled global order write") {
-    serialized_writes = true;
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
 #endif
 
   delete_array(array_name);
   create_array(array_name);
-  write_array(array_name, serialized_writes);
+  write_array(array_name);
   read_array(array_name);
   delete_array(array_name);
 }

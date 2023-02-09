@@ -11,8 +11,10 @@ core/src/temp
 coverage.info
 test/benchmarking/build/*
 test/bin/*
+test/cpp_unit_webp.png
 test/inputs/arrays/read_compatibility_test*
 test/obj/*
+test/regression/foo1
 test/tiledb_test/*
 Doxyfile.log
 doxyfile.inc

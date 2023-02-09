@@ -110,8 +110,17 @@ set(TILEDB_UNIT_TEST_SOURCES
   support/src/ast_helpers.h
   support/src/helpers.h
   support/src/helpers-dimension.h
+  src/test-capi-array-write-ordered-attr-fixed.cc
+  src/test-capi-array-write-ordered-attr-var.cc
   src/test-capi-consolidation-plan.cc
+  src/test-capi-array-many-dimension-labels.cc
+  src/test-capi-dimension-label.cc
+  src/test-capi-dimension-label-encrypted.cc
+  src/test-capi-dense-array-dimension-label.cc
+  src/test-capi-dense-array-dimension-label-var.cc
   src/test-capi-query-error-handling.cc
+  src/test-capi-sparse-array-dimension-label.cc
+  src/test-capi-subarray-labels.cc
   src/test-cppapi-consolidation-plan.cc
   src/unit-average-cell-size.cc
   src/unit-azure.cc
@@ -142,6 +151,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-metadata.cc
   src/unit-capi-nullable.cc
   src/unit-capi-object_mgmt.cc
+  src/unit-capi-partial-attribute-write.cc
   src/unit-capi-query.cc
   src/unit-capi-query_2.cc
   src/unit-capi-smoke-test.cc
@@ -172,7 +182,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-gcs.cc
   src/unit-gs.cc
   src/unit-hdfs-filesystem.cc
-  src/unit-lru_cache.cc
   src/unit-ordered-dim-label-reader.cc
   src/unit-tile-metadata.cc
   src/unit-tile-metadata-generator.cc
@@ -195,8 +204,10 @@ set(TILEDB_UNIT_TEST_SOURCES
 
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
+    src/test-cppapi-dense-array-dimension-label.cc
+    src/test-cppapi-dimension-label.cc
+    src/test-cppapi-subarray-labels.cc
     src/unit-cppapi-array.cc
-    src/unit-cppapi-bitsort-filter.cc
     src/unit-cppapi-checksum.cc
     src/unit-cppapi-config.cc
     src/unit-cppapi-consolidation-sparse.cc
@@ -215,6 +226,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-max-fragment-size.cc
     src/unit-cppapi-metadata.cc
     src/unit-cppapi-nullable.cc
+    src/unit-cppapi-partial-attribute-write.cc
     src/unit-cppapi-query.cc
     src/cpp-integration-query-condition.cc
     src/unit-cppapi-schema.cc
@@ -251,16 +263,6 @@ if (TILEDB_ARROW_TESTS)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/unit-arrow.cc
     ${CMAKE_SOURCE_DIR}/tiledb/sm/cpp_api/arrow_io_impl.h
-  )
-endif()
-
-if (TILEDB_EXPERIMENTAL_FEATURES)
-  list(APPEND TILEDB_UNIT_TEST_SOURCES
-    src/test-capi-array-many-dimension-labels.cc
-    src/test-capi-dimension_labels.cc
-    src/test-capi-dense-array-dimension-label.cc
-    src/test-capi-dense-array-dimension-label-var.cc
-    src/test-capi-sparse-array-dimension-label.cc
   )
 endif()
 
@@ -309,27 +311,14 @@ if (TILEDB_HDFS)
       LibJVM::libjvm
       LibJVM::libjsig
   )
-  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_HDFS)
   target_include_directories(tiledb_unit PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
     )
 endif()
 
-if (TILEDB_S3)
-  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_S3)
-endif()
-
 if (TILEDB_TESTS_AWS_S3_CONFIG)
   message(STATUS "Tests built with AWS S3 config")
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_AWS_S3_CONFIG)
-endif()
-
-if (TILEDB_AZURE)
-  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_AZURE)
-endif()
-
-if (TILEDB_GCS)
-  target_compile_definitions(tiledb_unit PRIVATE -DHAVE_GCS)
 endif()
 
 if (TILEDB_SERIALIZATION)
@@ -366,7 +355,7 @@ target_compile_definitions(tiledb_unit PRIVATE
 )
 
 # Linking dl is only needed on linux with gcc
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set_target_properties(tiledb_unit PROPERTIES
       LINK_FLAGS "-Wl,--no-as-needed -ldl"
     )

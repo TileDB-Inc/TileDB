@@ -42,6 +42,22 @@
 
 using namespace tiledb::common;
 
+namespace {
+bool ignore_default_via_env(const std::string& param) {
+  if (param == "vfs.s3.region") {
+    // We should not use the default value for `vfs.s3.region` if the user
+    // has set either AWS_REGION or AWS_DEFAULT_REGION in their environment.
+    // We defer to the SDK to interpret these values.
+
+    if ((std::getenv("AWS_REGION") != nullptr) ||
+        (std::getenv("AWS_DEFAULT_REGION") != nullptr)) {
+      return true;
+    }
+  }
+  return false;
+}
+}  // namespace
+
 namespace tiledb::sm {
 
 /** Return a Config error class Status with a given message **/
@@ -77,6 +93,7 @@ const std::string Config::REST_CURL_VERBOSE = "false";
 const std::string Config::REST_LOAD_METADATA_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_USE_REFACTORED_ARRAY_OPEN = "false";
+const std::string Config::SM_ALLOW_SEPARATE_ATTRIBUTE_WRITES = "false";
 const std::string Config::SM_ALLOW_UPDATES_EXPERIMENTAL = "false";
 const std::string Config::SM_ENCRYPTION_KEY = "";
 const std::string Config::SM_ENCRYPTION_TYPE = "NO_ENCRYPTION";
@@ -85,7 +102,6 @@ const std::string Config::SM_CHECK_COORD_DUPS = "true";
 const std::string Config::SM_CHECK_COORD_OOB = "true";
 const std::string Config::SM_READ_RANGE_OOB = "warn";
 const std::string Config::SM_CHECK_GLOBAL_ORDER = "true";
-const std::string Config::SM_TILE_CACHE_SIZE = "10000000";
 const std::string Config::SM_SKIP_EST_SIZE_PARTITIONING = "false";
 const std::string Config::SM_SKIP_UNARY_PARTITIONING_BUDGET_CHECK = "false";
 const std::string Config::SM_MEMORY_BUDGET = "5368709120";       // 5GB
@@ -141,14 +157,12 @@ const std::string Config::SM_GROUP_TIMESTAMP_END = std::to_string(UINT64_MAX);
 const std::string Config::SM_FRAGMENT_INFO_PRELOAD_MBRS = "false";
 const std::string Config::SM_PARTIAL_TILE_OFFSETS_LOADING = "false";
 const std::string Config::VFS_MIN_PARALLEL_SIZE = "10485760";
-const std::string Config::VFS_MAX_BATCH_SIZE = std::to_string(UINT64_MAX);
+const std::string Config::VFS_MAX_BATCH_SIZE = "104857600";
 const std::string Config::VFS_MIN_BATCH_GAP = "512000";
 const std::string Config::VFS_MIN_BATCH_SIZE = "20971520";
-const std::string Config::VFS_DISABLE_BATCHING = "false";
 const std::string Config::VFS_FILE_POSIX_FILE_PERMISSIONS = "644";
 const std::string Config::VFS_FILE_POSIX_DIRECTORY_PERMISSIONS = "755";
-const std::string Config::VFS_FILE_MAX_PARALLEL_OPS =
-    Config::SM_IO_CONCURRENCY_LEVEL;
+const std::string Config::VFS_FILE_MAX_PARALLEL_OPS = "1";
 const std::string Config::VFS_READ_AHEAD_SIZE = "102400";          // 100KiB
 const std::string Config::VFS_READ_AHEAD_CACHE_SIZE = "10485760";  // 10MiB;
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_NAME = "";
@@ -234,6 +248,9 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "config.logging_format", Config::CONFIG_LOGGING_DEFAULT_FORMAT),
     std::make_pair(
+        "sm.allow_separate_attribute_writes",
+        Config::SM_ALLOW_SEPARATE_ATTRIBUTE_WRITES),
+    std::make_pair(
         "sm.allow_updates_experimental", Config::SM_ALLOW_UPDATES_EXPERIMENTAL),
     std::make_pair("sm.encryption_key", Config::SM_ENCRYPTION_KEY),
     std::make_pair("sm.encryption_type", Config::SM_ENCRYPTION_TYPE),
@@ -242,7 +259,6 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair("sm.check_coord_oob", Config::SM_CHECK_COORD_OOB),
     std::make_pair("sm.read_range_oob", Config::SM_READ_RANGE_OOB),
     std::make_pair("sm.check_global_order", Config::SM_CHECK_GLOBAL_ORDER),
-    std::make_pair("sm.tile_cache_size", Config::SM_TILE_CACHE_SIZE),
     std::make_pair(
         "sm.skip_est_size_partitioning", Config::SM_SKIP_EST_SIZE_PARTITIONING),
     std::make_pair(
@@ -339,7 +355,6 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair("vfs.max_batch_size", Config::VFS_MAX_BATCH_SIZE),
     std::make_pair("vfs.min_batch_gap", Config::VFS_MIN_BATCH_GAP),
     std::make_pair("vfs.min_batch_size", Config::VFS_MIN_BATCH_SIZE),
-    std::make_pair("vfs.disable_batching", Config::VFS_DISABLE_BATCHING),
     std::make_pair("vfs.read_ahead_size", Config::VFS_READ_AHEAD_SIZE),
     std::make_pair(
         "vfs.read_ahead_cache_size", Config::VFS_READ_AHEAD_CACHE_SIZE),
@@ -662,6 +677,8 @@ Status Config::sanity_check(
     if (value != "DEFAULT" && value != "JSON")
       return LOG_STATUS(
           Status_ConfigError("Invalid logging format parameter value"));
+  } else if (param == "sm.allow_separate_attribute_writes") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.allow_updates_experimental") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.dedup_coords") {
@@ -672,8 +689,6 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.check_global_order") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
-  } else if (param == "sm.tile_cache_size") {
-    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.memory_budget") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.memory_budget_var") {
@@ -718,8 +733,6 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.min_batch_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
-  } else if (param == "vfs.disable_batching") {
-    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.read_ahead_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.read_ahead_cache_size") {
@@ -833,6 +846,13 @@ const char* Config::get_from_config_or_env(
   if (found_config && user_set_parameter) {
     *found = found_config;
     return value_config;
+  }
+
+  // Check if default for this parameter should be ignored based on
+  // environment variables
+  if (ignore_default_via_env(param)) {
+    *found = true;
+    return "";
   }
 
   // Check env if not found in config or if it was found in the config but is

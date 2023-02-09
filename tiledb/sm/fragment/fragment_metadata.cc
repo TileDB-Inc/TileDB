@@ -897,7 +897,7 @@ Status FragmentMetadata::store_v7_v10(const EncryptionKey& encryption_key) {
   throw_if_not_ok(store_footer(encryption_key));
 
   // Close file
-  return storage_manager_->close_file(fragment_metadata_uri);
+  return storage_manager_->vfs()->close_file(fragment_metadata_uri);
 }
 
 Status FragmentMetadata::store_v11(const EncryptionKey& encryption_key) {
@@ -979,7 +979,7 @@ Status FragmentMetadata::store_v11(const EncryptionKey& encryption_key) {
   RETURN_NOT_OK_ELSE(store_footer(encryption_key), clean_up());
 
   // Close file
-  return storage_manager_->close_file(fragment_metadata_uri);
+  return storage_manager_->vfs()->close_file(fragment_metadata_uri);
 }
 
 Status FragmentMetadata::store_v12_v14(const EncryptionKey& encryption_key) {
@@ -1066,7 +1066,7 @@ Status FragmentMetadata::store_v12_v14(const EncryptionKey& encryption_key) {
   throw_if_not_ok(store_footer(encryption_key));
 
   // Close file
-  return storage_manager_->close_file(fragment_metadata_uri);
+  return storage_manager_->vfs()->close_file(fragment_metadata_uri);
 }
 
 Status FragmentMetadata::store_v15_or_higher(
@@ -1159,7 +1159,7 @@ Status FragmentMetadata::store_v15_or_higher(
   throw_if_not_ok(store_footer(encryption_key));
 
   // Close file
-  return storage_manager_->close_file(fragment_metadata_uri);
+  return storage_manager_->vfs()->close_file(fragment_metadata_uri);
 }
 
 Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
@@ -1268,8 +1268,9 @@ tuple<Status, optional<std::string>> FragmentMetadata::encode_name(
   assert(version_ > 8);
   const auto iter = idx_map_.find(name);
   if (iter == idx_map_.end())
-    return {Status_FragmentMetadataError("Name " + name + " not in idx_map_"),
-            std::nullopt};
+    return {
+        Status_FragmentMetadataError("Name " + name + " not in idx_map_"),
+        std::nullopt};
 
   const unsigned idx = iter->second;
 
@@ -1335,9 +1336,10 @@ tuple<Status, optional<URI>> FragmentMetadata::validity_uri(
   if (!st.ok())
     return {st, std::nullopt};
 
-  return {st,
-          fragment_uri_.join_path(
-              *encoded_name + "_validity" + constants::file_suffix)};
+  return {
+      st,
+      fragment_uri_.join_path(
+          *encoded_name + "_validity" + constants::file_suffix)};
 }
 
 const std::string& FragmentMetadata::array_schema_name() {
@@ -1522,46 +1524,43 @@ Status FragmentMetadata::load_processed_conditions(
   return Status::Ok();
 }
 
-Status FragmentMetadata::file_offset(
-    const std::string& name, uint64_t tile_idx, uint64_t* offset) {
+uint64_t FragmentMetadata::file_offset(
+    const std::string& name, uint64_t tile_idx) const {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_offsets_[idx]) {
-    return LOG_STATUS(Status_FragmentMetadataError(
-        "Trying to access tile offsets metadata that's not loaded"));
+    throw std::logic_error(
+        "Trying to access tile offsets metadata that's not loaded");
   }
 
-  *offset = tile_offsets_[idx][tile_idx];
-  return Status::Ok();
+  return tile_offsets_[idx][tile_idx];
 }
 
-Status FragmentMetadata::file_var_offset(
-    const std::string& name, uint64_t tile_idx, uint64_t* offset) {
+uint64_t FragmentMetadata::file_var_offset(
+    const std::string& name, uint64_t tile_idx) const {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_var_offsets_[idx]) {
-    return LOG_STATUS(Status_FragmentMetadataError(
-        "Trying to access tile var offsets metadata that's not loaded"));
+    throw std::logic_error(
+        "Trying to access tile var offsets metadata that's not loaded");
   }
 
-  *offset = tile_var_offsets_[idx][tile_idx];
-  return Status::Ok();
+  return tile_var_offsets_[idx][tile_idx];
 }
 
-Status FragmentMetadata::file_validity_offset(
-    const std::string& name, uint64_t tile_idx, uint64_t* offset) {
+uint64_t FragmentMetadata::file_validity_offset(
+    const std::string& name, uint64_t tile_idx) const {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
   if (!loaded_metadata_.tile_validity_offsets_[idx]) {
-    return LOG_STATUS(Status_FragmentMetadataError(
-        "Trying to access tile validity offsets metadata that's not loaded"));
+    throw std::logic_error(
+        "Trying to access tile validity offsets metadata that's not loaded");
   }
 
-  *offset = tile_validity_offsets_[idx][tile_idx];
-  return Status::Ok();
+  return tile_validity_offsets_[idx][tile_idx];
 }
 
 const NDRange& FragmentMetadata::mbr(uint64_t tile_idx) const {
@@ -1573,7 +1572,7 @@ const std::vector<NDRange>& FragmentMetadata::mbrs() const {
 }
 
 uint64_t FragmentMetadata::persisted_tile_size(
-    const std::string& name, uint64_t tile_idx) {
+    const std::string& name, uint64_t tile_idx) const {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
@@ -1592,7 +1591,7 @@ uint64_t FragmentMetadata::persisted_tile_size(
 }
 
 uint64_t FragmentMetadata::persisted_tile_var_size(
-    const std::string& name, uint64_t tile_idx) {
+    const std::string& name, uint64_t tile_idx) const {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
@@ -1613,7 +1612,7 @@ uint64_t FragmentMetadata::persisted_tile_var_size(
 }
 
 uint64_t FragmentMetadata::persisted_tile_validity_size(
-    const std::string& name, uint64_t tile_idx) {
+    const std::string& name, uint64_t tile_idx) const {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
@@ -2136,7 +2135,7 @@ Status FragmentMetadata::get_footer_offset_and_size(
     URI fragment_metadata_uri = fragment_uri_.join_path(
         std::string(constants::fragment_metadata_filename));
     uint64_t size_offset = meta_file_size_ - sizeof(uint64_t);
-    RETURN_NOT_OK(storage_manager_->read(
+    RETURN_NOT_OK(storage_manager_->vfs()->read(
         fragment_metadata_uri, size_offset, size, sizeof(uint64_t)));
     *offset = meta_file_size_ - *size - sizeof(uint64_t);
     storage_manager_->stats()->add_counter(
@@ -3641,7 +3640,7 @@ Status FragmentMetadata::load_v1_v2(
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
   // Read metadata
-  GenericTileIO tile_io(storage_manager_, fragment_metadata_uri);
+  GenericTileIO tile_io(storage_manager_->resources(), fragment_metadata_uri);
   auto&& [st, tile_opt] =
       tile_io.read_generic(0, encryption_key, storage_manager_->config());
   RETURN_NOT_OK(st);
@@ -3932,12 +3931,12 @@ Status FragmentMetadata::store_rtree(
   return Status::Ok();
 }
 
-Tile FragmentMetadata::write_rtree() {
+WriterTile FragmentMetadata::write_rtree() {
   rtree_.build_tree();
   SizeComputationSerializer size_computation_serializer;
   rtree_.serialize(size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   rtree_.serialize(serializer);
@@ -3992,7 +3991,7 @@ tuple<Status, optional<Tile>> FragmentMetadata::read_generic_tile_from_file(
       std::string(constants::fragment_metadata_filename));
 
   // Read metadata
-  GenericTileIO tile_io(storage_manager_, fragment_metadata_uri);
+  GenericTileIO tile_io(storage_manager_->resources(), fragment_metadata_uri);
   auto&& [st, tile_opt] =
       tile_io.read_generic(offset, encryption_key, storage_manager_->config());
   RETURN_NOT_OK_TUPLE(st, nullopt);
@@ -4026,7 +4025,7 @@ Status FragmentMetadata::read_file_footer(
   }
 
   // Read footer
-  return storage_manager_->read(
+  return storage_manager_->vfs()->read(
       fragment_metadata_uri,
       *footer_offset,
       tile->data_as<uint8_t>(),
@@ -4034,27 +4033,29 @@ Status FragmentMetadata::read_file_footer(
 }
 
 Status FragmentMetadata::write_generic_tile_to_file(
-    const EncryptionKey& encryption_key, Tile& tile, uint64_t* nbytes) const {
+    const EncryptionKey& encryption_key,
+    WriterTile& tile,
+    uint64_t* nbytes) const {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
 
-  GenericTileIO tile_io(storage_manager_, fragment_metadata_uri);
+  GenericTileIO tile_io(storage_manager_->resources(), fragment_metadata_uri);
   RETURN_NOT_OK(tile_io.write_generic(&tile, encryption_key, nbytes));
 
   return Status::Ok();
 }
 
-Status FragmentMetadata::write_footer_to_file(Tile& tile) const {
+Status FragmentMetadata::write_footer_to_file(WriterTile& tile) const {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
 
   uint64_t size = tile.size();
-  RETURN_NOT_OK(
-      storage_manager_->write(fragment_metadata_uri, tile.data(), tile.size()));
+  RETURN_NOT_OK(storage_manager_->vfs()->write(
+      fragment_metadata_uri, tile.data(), tile.size()));
 
   // Write the size in the end if there is at least one var-sized dimension
   if (!array_schema_->domain().all_dims_fixed() || version_ >= 10)
-    return storage_manager_->write(
+    return storage_manager_->vfs()->write(
         fragment_metadata_uri, &size, sizeof(uint64_t));
   return Status::Ok();
 }
@@ -4064,7 +4065,7 @@ void FragmentMetadata::store_tile_offsets(
   SizeComputationSerializer size_computation_serializer;
   write_tile_offsets(idx, size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   write_tile_offsets(idx, serializer);
@@ -4092,7 +4093,7 @@ void FragmentMetadata::store_tile_var_offsets(
   SizeComputationSerializer size_computation_serializer;
   write_tile_var_offsets(idx, size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   write_tile_var_offsets(idx, serializer);
@@ -4122,7 +4123,7 @@ void FragmentMetadata::store_tile_var_sizes(
   SizeComputationSerializer size_computation_serializer;
   write_tile_var_sizes(idx, size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   write_tile_var_sizes(idx, serializer);
@@ -4150,7 +4151,7 @@ void FragmentMetadata::store_tile_validity_offsets(
   SizeComputationSerializer size_computation_serializer;
   write_tile_validity_offsets(idx, size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   write_tile_validity_offsets(idx, serializer);
@@ -4180,7 +4181,7 @@ void FragmentMetadata::store_tile_mins(
   SizeComputationSerializer size_computation_serializer;
   write_tile_mins(idx, size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   write_tile_mins(idx, serializer);
@@ -4217,7 +4218,7 @@ void FragmentMetadata::store_tile_maxs(
   SizeComputationSerializer size_computation_serializer;
   write_tile_maxs(idx, size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   write_tile_maxs(idx, serializer);
@@ -4254,7 +4255,7 @@ void FragmentMetadata::store_tile_sums(
   SizeComputationSerializer size_computation_serializer;
   write_tile_sums(idx, size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   write_tile_sums(idx, serializer);
@@ -4280,7 +4281,7 @@ void FragmentMetadata::store_tile_null_counts(
   SizeComputationSerializer size_computation_serializer;
   write_tile_null_counts(idx, size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   write_tile_null_counts(idx, serializer);
@@ -4334,7 +4335,7 @@ void FragmentMetadata::store_fragment_min_max_sum_null_count(
   SizeComputationSerializer size_computation_serializer;
   serialize_data(size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   serialize_data(serializer);
@@ -4361,7 +4362,7 @@ void FragmentMetadata::store_processed_conditions(
   SizeComputationSerializer size_computation_serializer;
   serialize_processed_conditions(size_computation_serializer);
 
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   serialize_processed_conditions(serializer);
@@ -4693,7 +4694,7 @@ Status FragmentMetadata::store_footer(const EncryptionKey& encryption_key) {
   (void)encryption_key;  // Not used for now, maybe in the future
   SizeComputationSerializer size_computation_serializer;
   RETURN_NOT_OK(write_footer(size_computation_serializer));
-  Tile tile{Tile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
   RETURN_NOT_OK(write_footer(serializer));
@@ -4709,7 +4710,7 @@ void FragmentMetadata::clean_up() {
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);
 
-  throw_if_not_ok(storage_manager_->close_file(fragment_metadata_uri));
+  throw_if_not_ok(storage_manager_->vfs()->close_file(fragment_metadata_uri));
   throw_if_not_ok(storage_manager_->vfs()->remove_file(fragment_metadata_uri));
 }
 

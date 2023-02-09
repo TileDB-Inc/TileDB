@@ -84,7 +84,10 @@ enum class WebpInputFormat : uint8_t;
  *
  * This filter expects the array to provide two dimensions for Y, X pixel
  * position. Dimensions may be defined with any name, but Y, X should be at
- * dimension index 0, 1 respectively.
+ * dimension index 0, 1 respectively. Dimension data types must use matching
+ * integral types.
+ *
+ * The WebP filter supports attribute data types of uint8 only.
  */
 class WebpFilter : public Filter {
  public:
@@ -146,7 +149,8 @@ class WebpFilter : public Filter {
    * encoded WebP data to the TileDB Array.
    *
    * @param tile Current tile on which the filter is being run.
-   * @param support_data Support data for the filter
+   * @param offsets_tile Offsets tile of the current tile on which the filter is
+   * being run
    * @param input_metadata Buffer with metadata for `input`.
    * @param input Buffer with data to be filtered.
    * @param output_metadata Buffer with metadata for filtered data.
@@ -154,8 +158,8 @@ class WebpFilter : public Filter {
    * @return Status::Ok() on success. Throws on failure.
    */
   Status run_forward(
-      const Tile& tile,
-      void* const support_data,
+      const WriterTile& tile,
+      WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -181,7 +185,8 @@ class WebpFilter : public Filter {
    * Runs the filter in reverse, returning raw colorspace values to the client.
    *
    * @param tile Current tile on which the filter is being run.
-   * @param support_data Support data for the filter
+   * @param offsets_tile Offsets tile of the current tile on which the filter is
+   * being run
    * @param input_metadata Buffer with metadata for `input`.
    * @param input Buffer with data to be filtered.
    * @param output_metadata Buffer with metadata for filtered data.
@@ -191,7 +196,7 @@ class WebpFilter : public Filter {
    */
   Status run_reverse(
       const Tile& tile,
-      void* const support_data,
+      Tile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

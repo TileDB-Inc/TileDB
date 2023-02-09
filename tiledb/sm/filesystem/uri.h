@@ -288,6 +288,9 @@ class URI {
   /** Returns the URI string. */
   std::string to_string() const;
 
+  /** Returns the parent dir URI */
+  URI parent_path() const;
+
   /** For comparing URIs alphanumerically. */
   bool operator==(const URI& uri) const;
 

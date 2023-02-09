@@ -34,8 +34,6 @@
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
-#include "tiledb/sm/array_schema/dimension_label_reference.h"
-#include "tiledb/sm/c_api/experimental/tiledb_dimension_label.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -79,7 +77,7 @@ class SparseArrayExample1 : public TemporaryDirectoryFixture {
     auto array_schema = create_array_schema(
         ctx,
         TILEDB_SPARSE,
-        {"x"},
+        {"dim"},
         {TILEDB_UINT64},
         {&index_domain_[0]},
         {&x_tile_extent},
@@ -132,14 +130,14 @@ class SparseArrayExample1 : public TemporaryDirectoryFixture {
     require_tiledb_ok(tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED));
     if (index_data_size != 0) {
       require_tiledb_ok(tiledb_query_set_data_buffer(
-          ctx, query, "x", input_index_data.data(), &index_data_size));
+          ctx, query, "dim", input_index_data.data(), &index_data_size));
     }
     if (attr_data_size != 0) {
       require_tiledb_ok(tiledb_query_set_data_buffer(
           ctx, query, "a", input_attr_data.data(), &attr_data_size));
     }
     if (label_data_size != 0) {
-      require_tiledb_ok(tiledb_query_set_label_data_buffer(
+      require_tiledb_ok(tiledb_query_set_data_buffer(
           ctx, query, "x", input_label_data.data(), &label_data_size));
     }
 
@@ -189,7 +187,7 @@ class SparseArrayExample1 : public TemporaryDirectoryFixture {
     require_tiledb_ok(tiledb_query_alloc(ctx, array, TILEDB_READ, &query));
     require_tiledb_ok(tiledb_query_set_subarray_t(ctx, query, subarray));
     require_tiledb_ok(tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED));
-    require_tiledb_ok(tiledb_query_set_label_data_buffer(
+    require_tiledb_ok(tiledb_query_set_data_buffer(
         ctx, query, "x", label_data.data(), &label_data_size));
     if (!expected_attr_data.empty()) {
       require_tiledb_ok(tiledb_query_set_data_buffer(
@@ -258,7 +256,7 @@ class SparseArrayExample1 : public TemporaryDirectoryFixture {
     require_tiledb_ok(tiledb_query_set_subarray_t(ctx, query, subarray));
     require_tiledb_ok(tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR));
     if (!expected_label_data.empty()) {
-      require_tiledb_ok(tiledb_query_set_label_data_buffer(
+      require_tiledb_ok(tiledb_query_set_data_buffer(
           ctx, query, "x", label_data.data(), &label_data_size));
     }
     if (!expected_attr_data.empty()) {
@@ -313,7 +311,7 @@ TEST_CASE_METHOD(
   std::vector<uint64_t> index_data_sorted_by_label{};
 
   // Dimension label parameters.
-  tiledb_data_order_t label_order;
+  tiledb_data_order_t label_order{};
 
   SECTION("Write increasing labels", "[IncreasingLabels]") {
     // Set the label order.
@@ -359,29 +357,6 @@ TEST_CASE_METHOD(
     index_data_sorted_by_label = {3, 2, 1, 0};
   }
 
-  SECTION("Write unordered labels and array", "[UnorderedLabels]") {
-    // Set the label order.
-    label_order = TILEDB_UNORDERED_DATA;
-
-    // Set the data values.
-    input_index_data = {0, 3, 2, 1};
-    input_label_data = {1.0, 0.0, -0.5, -1.0};
-
-    SECTION("With attribute values") {
-      input_attr_data = {0.5, 1.0, 1.5, 2.0};
-      attr_data_sorted_by_index = {0.5, 2.0, 1.5, 1.0};
-    }
-    SECTION("Without attribute values") {
-      input_attr_data = {};
-      attr_data_sorted_by_index = {};
-    }
-
-    // Define expected output data.
-    label_data_sorted_by_index = {1.0, -1.0, -0.5, 0.0};
-    label_data_sorted_by_label = {-1.0, -0.5, 0.0, 1.0};
-    index_data_sorted_by_label = {1, 2, 3, 0};
-  }
-
   INFO(
       "Testing array with label order " +
       data_order_str(static_cast<DataOrder>(label_order)) + ".");
@@ -398,7 +373,7 @@ TEST_CASE_METHOD(
   }
 
   // Check values when reading by label ranges.
-  if (label_order != TILEDB_UNORDERED_DATA) {
+  {
     INFO("Reading data by label range.");
 
     // Check query on full range.
@@ -436,7 +411,7 @@ TEST_CASE_METHOD(
   std::vector<double> input_attr_data{};
 
   // Dimension label parameters.
-  tiledb_data_order_t label_order;
+  tiledb_data_order_t label_order{};
 
   SECTION("Increasing labels with bad order", "[IncreasingLabels]") {
     label_order = TILEDB_INCREASING_DATA;

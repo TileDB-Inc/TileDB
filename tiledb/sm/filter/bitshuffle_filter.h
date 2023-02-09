@@ -86,8 +86,8 @@ class BitshuffleFilter : public Filter {
    * Shuffle the bits of the input data into the output data buffer.
    */
   Status run_forward(
-      const Tile& tile,
-      void* const support_data,
+      const WriterTile& tile,
+      WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -98,7 +98,7 @@ class BitshuffleFilter : public Filter {
    */
   Status run_reverse(
       const Tile& tile,
-      void* support_data,
+      Tile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -128,7 +128,7 @@ class BitshuffleFilter : public Filter {
    * @return Status
    */
   Status shuffle_part(
-      const Tile& tile, const ConstBuffer* part, Buffer* output) const;
+      const WriterTile& tile, const ConstBuffer* part, Buffer* output) const;
 
   /**
    * Perform bit unshuffling on the given input buffer.

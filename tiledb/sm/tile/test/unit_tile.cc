@@ -45,7 +45,8 @@ TEST_CASE("Tile: Test basic IO", "[Tile][basic_io]") {
   const uint64_t tile_size = 1024 * 1024;
   const uint64_t cell_size = sizeof(uint32_t);
   const unsigned int dim_num = 1;
-  Tile tile(format_version, data_type, cell_size, dim_num, tile_size, 0);
+  Tile tile(
+      format_version, data_type, cell_size, dim_num, tile_size, nullptr, 0);
   CHECK(tile.size() == tile_size);
 
   // Create a buffer to write to the test Tile.
@@ -118,7 +119,8 @@ TEST_CASE("Tile: Test move constructor", "[Tile][move_constructor]") {
   const uint64_t tile_size = 1024 * 1024;
   const uint64_t cell_size = sizeof(uint32_t);
   const unsigned int dim_num = 1;
-  Tile tile1(format_version, data_type, cell_size, dim_num, tile_size, 0);
+  Tile tile1(
+      format_version, data_type, cell_size, dim_num, tile_size, nullptr, 0);
 
   // Create a buffer to write to the first test Tile.
   const uint32_t buffer_len = tile_size / sizeof(uint32_t);
@@ -158,7 +160,8 @@ TEST_CASE("Tile: Test move-assignment", "[Tile][move_assignment]") {
   const uint64_t tile_size = 1024 * 1024;
   const uint64_t cell_size = sizeof(uint32_t);
   const unsigned int dim_num = 1;
-  Tile tile1(format_version, data_type, cell_size, dim_num, tile_size, 0);
+  Tile tile1(
+      format_version, data_type, cell_size, dim_num, tile_size, nullptr, 0);
 
   // Create a buffer to write to the first test Tile.
   const uint32_t buffer_len = tile_size / sizeof(uint32_t);

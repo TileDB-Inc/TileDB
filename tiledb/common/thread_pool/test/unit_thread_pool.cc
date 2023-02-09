@@ -146,13 +146,20 @@ TEST_CASE("ThreadPool: Test wait status", "[threadpool]") {
   REQUIRE(result == 100);
 }
 
+struct AtomicHolder {
+  AtomicHolder(int val)
+      : val_(val) {
+  }
+  std::atomic<int> val_;
+};
+
 TEST_CASE("ThreadPool: Test no wait", "[threadpool]") {
   {
     ThreadPool pool{4};
-    std::atomic<int> result(0);
+    auto ptr = tdb::make_shared<AtomicHolder>(HERE(), 0);
     for (int i = 0; i < 5; i++) {
-      ThreadPool::Task task = pool.execute([&result]() {
-        result++;
+      ThreadPool::Task task = pool.execute([result = ptr]() {
+        result->val_++;
         std::this_thread::sleep_for(std::chrono::milliseconds(random_ms(1000)));
         return Status::Ok();
       });

@@ -107,7 +107,7 @@ class FragmentInfo {
   Status get_total_cell_num(uint64_t* cell_num) const;
 
   /** Retrieves the name of the fragment with the given index. */
-  Status get_fragment_name(uint32_t fid, const char** name) const;
+  const std::string& fragment_name(uint32_t fid) const;
 
   /** Retrieves the size of the fragment with the given index. */
   Status get_fragment_size(uint32_t fid, uint64_t* size) const;
@@ -364,6 +364,11 @@ class FragmentInfo {
     return unconsolidated_metadata_num_;
   }
 
+  /** loaded_ accessor. */
+  inline bool& loaded() {
+    return loaded_;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -408,6 +413,9 @@ class FragmentInfo {
   /** Timestamp end used in load. */
   uint64_t timestamp_end_;
 
+  /** Whether the fragment info have been loaded. */
+  bool loaded_ = false;
+
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
@@ -424,6 +432,11 @@ class FragmentInfo {
    * Loads the fragment info from an array using the array directory.
    */
   Status load(const ArrayDirectory& array_directory);
+
+  /**
+   * Throws if the info have not been loaded.
+   */
+  void ensure_loaded() const;
 
   /**
    * Loads the fragment metadata of the input URI and returns a

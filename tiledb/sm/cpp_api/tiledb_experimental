@@ -34,8 +34,11 @@
 #define TILEDB_EXPERIMENTAL_CPP_H
 
 #include "array_schema_evolution.h"
+#include "array_schema_experimental.h"
+#include "dimension_label_experimental.h"
 #include "consolidation_plan_experimental.h"
 #include "group_experimental.h"
 #include "query_experimental.h"
+#include "subarray_experimental.h"
 
 #endif  // TILEDB_EXPERIMENTAL_CPP_H

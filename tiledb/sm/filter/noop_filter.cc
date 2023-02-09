@@ -56,8 +56,8 @@ void NoopFilter::dump(FILE* out) const {
 }
 
 Status NoopFilter::run_forward(
-    const Tile&,
-    void* const,
+    const WriterTile&,
+    WriterTile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -69,7 +69,7 @@ Status NoopFilter::run_forward(
 
 Status NoopFilter::run_reverse(
     const Tile&,
-    void*,
+    Tile*,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,

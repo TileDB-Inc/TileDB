@@ -110,9 +110,20 @@ Status RestClient::init(
   if (c_str != nullptr)
     RETURN_NOT_OK(serialization_type_enum(c_str, &serialization_type_));
 
-  bool found;
+  bool found = false;
   RETURN_NOT_OK(config_->get<bool>(
       "rest.resubmit_incomplete", &resubmit_incomplete_, &found));
+
+  found = false;
+  auto status = config_->get<bool>(
+      "rest.use_refactored_array_open",
+      &use_refactored_array_and_query_,
+      &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error(
+        "Cannot get use_refactored_array_open configuration option from "
+        "config");
+  }
 
   return Status::Ok();
 }
@@ -269,7 +280,8 @@ Status RestClient::post_array_schema_to_rest(
   return sc;
 }
 
-Status RestClient::post_array_from_rest(const URI& uri, Array* array) {
+Status RestClient::post_array_from_rest(
+    const URI& uri, StorageManager* storage_manager, Array* array) {
   if (array == nullptr) {
     return LOG_STATUS(Status_SerializationError(
         "Error getting remote array; array is null."));
@@ -312,7 +324,7 @@ Status RestClient::post_array_from_rest(const URI& uri, Array* array) {
   // Ensure data has a null delimiter for cap'n proto if using JSON
   RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
   return serialization::array_deserialize(
-      array, serialization_type_, returned_data);
+      array, serialization_type_, returned_data, storage_manager);
 }
 
 void RestClient::delete_array_from_rest(const URI& uri) {
@@ -572,10 +584,18 @@ Status RestClient::post_query_submit(
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  std::string url = redirect_uri(cache_key) + "/v2/arrays/" + array_ns + "/" +
-                    curlc.url_escape(array_uri) +
-                    "/query/submit?type=" + query_type_str(query->type()) +
-                    "&read_all=" + (resubmit_incomplete_ ? "true" : "false");
+  std::string url;
+  if (use_refactored_array_and_query_) {
+    url = redirect_uri(cache_key) + "/v3/arrays/" + array_ns + "/" +
+          curlc.url_escape(array_uri) +
+          "/query/submit?type=" + query_type_str(query->type()) +
+          "&read_all=" + (resubmit_incomplete_ ? "true" : "false");
+  } else {
+    url = redirect_uri(cache_key) + "/v2/arrays/" + array_ns + "/" +
+          curlc.url_escape(array_uri) +
+          "/query/submit?type=" + query_type_str(query->type()) +
+          "&read_all=" + (resubmit_incomplete_ ? "true" : "false");
+  }
 
   // Remote array reads always supply the timestamp.
   url += "&start_timestamp=" + std::to_string(array->timestamp_start());
@@ -797,10 +817,16 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  const std::string url =
-      redirect_uri(cache_key) + "/v1/arrays/" + array_ns + "/" +
-      curlc.url_escape(array_uri) +
-      "/query/finalize?type=" + query_type_str(query->type());
+  std::string url;
+  if (use_refactored_array_and_query_) {
+    url = redirect_uri(cache_key) + "/v3/arrays/" + array_ns + "/" +
+          curlc.url_escape(array_uri) +
+          "/query/finalize?type=" + query_type_str(query->type());
+  } else {
+    url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns + "/" +
+          curlc.url_escape(array_uri) +
+          "/query/finalize?type=" + query_type_str(query->type());
+  }
   Buffer returned_data;
   RETURN_NOT_OK(curlc.post_data(
       stats_,
@@ -846,10 +872,16 @@ Status RestClient::submit_and_finalize_query_to_rest(
   const std::string cache_key = array_ns + ":" + array_uri;
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  std::string url =
-      redirect_uri(cache_key) + "/v2/arrays/" + array_ns + "/" +
-      curlc.url_escape(array_uri) +
-      "/query/submit_and_finalize?type=" + query_type_str(query->type());
+  std::string url;
+  if (use_refactored_array_and_query_) {
+    url = redirect_uri(cache_key) + "/v3/arrays/" + array_ns + "/" +
+          curlc.url_escape(array_uri) +
+          "/query/submit_and_finalize?type=" + query_type_str(query->type());
+  } else {
+    url = redirect_uri(cache_key) + "/v2/arrays/" + array_ns + "/" +
+          curlc.url_escape(array_uri) +
+          "/query/submit_and_finalize?type=" + query_type_str(query->type());
+  }
 
   auto write_cb = std::bind(
       &RestClient::query_post_call_back,
@@ -1354,7 +1386,7 @@ Status RestClient::post_array_schema_to_rest(const URI&, const ArraySchema&) {
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
-Status RestClient::post_array_from_rest(const URI&, Array*) {
+Status RestClient::post_array_from_rest(const URI&, StorageManager*, Array*) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }

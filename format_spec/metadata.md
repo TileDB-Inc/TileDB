@@ -34,7 +34,7 @@ The metadata file has the following on-disk format:
 | :--- | :--- | :--- |
 | Key length | `uint32_t` | The length of the key. |
 | Key | `uint8_t[]` | The key. |
-| Deletion | `char` | `1`/`0` if it is a deletion/insertion. |
-| Value type | `char` | The value data type. Present only if `del` is `0`. |
+| Deletion | `uint8_t` | `1`/`0` if it is a deletion/insertion. |
+| Value type | `uint8_t` | The value data type. Present only if `del` is `0`. |
 | Number of values | `uint32_t` | The number of values. Present only if `del` is `0`. |
 | Value | `uint8_t[]` | The value. Present only if `del` is `0`. |
