@@ -538,6 +538,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
         }
 
         // Add all tiles for this fragment.
+        all_tiles_loaded_[f] = start == tile_num;
         for (uint64_t t = start; t < tile_num; t++) {
           budget_exceeded = add_result_tile(
               dim_num,

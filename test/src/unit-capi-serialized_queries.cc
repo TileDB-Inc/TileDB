@@ -1219,3 +1219,50 @@ TEST_CASE_METHOD(
     }
   }
 }
+
+TEST_CASE_METHOD(
+    SerializationFx,
+    "Derialization of a var size read query correctly resets original buffer "
+    "sizes",
+    "[capi][query][serialization][reset-buffers]") {
+#ifndef TILEDB_SERIALIZATION
+  // Only makes sense in serialization
+  return;
+#endif
+  refactored_query_v2_ = GENERATE(true, false);
+
+  create_array(TILEDB_SPARSE);
+  write_sparse_array();
+
+  Array array(ctx, array_uri, TILEDB_READ);
+  Query query(ctx, array);
+  query.set_layout(TILEDB_UNORDERED);
+
+  uint64_t up_limit = 16;
+  std::vector<char> a3_data(up_limit);
+  uint64_t offsets_size = up_limit / 8;
+  std::vector<uint64_t> a3_offsets(offsets_size);
+
+  auto set_buffers = [&]() {
+    query.set_data_buffer("a3", a3_data.data(), a3_data.size());
+    query.set_offsets_buffer("a3", a3_offsets.data(), a3_offsets.size());
+  };
+
+  set_buffers();
+  Query::Status status;
+  do {
+    int rc = submit_query_wrapper(
+        ctx,
+        array_uri,
+        &query,
+        server_buffers_,
+        true,
+        refactored_query_v2_,
+        false);
+    REQUIRE(rc == TILEDB_OK);
+
+    status = query.query_status();
+  } while (status == Query::Status::INCOMPLETE);
+
+  REQUIRE(status == Query::Status::COMPLETE);
+}
