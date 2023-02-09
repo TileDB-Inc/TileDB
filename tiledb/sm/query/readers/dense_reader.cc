@@ -150,7 +150,10 @@ void DenseReader::initialize_memory_budget() {
   }
 
   // Set the memory budget for the array
-  array_memory_tracker_->set_budget(memory_budget_);
+  if (!array_memory_tracker_->set_budget(memory_budget_)) {
+    throw DenseReaderStatusException(
+        "Memory budget is too small to open array");
+  }
 }
 
 const DenseReader::ReadState* DenseReader::read_state() const {
@@ -733,6 +736,12 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
         throw DenseReaderStatusException(
             "Cannot process a single tile, increase memory budget");
       }
+    }
+
+    if (required_memory_query_condition > available_memory) {
+      throw DenseReaderStatusException(
+          "Cannot process a single tile because of query condition, increase "
+          "memory budget");
     }
   }
 
