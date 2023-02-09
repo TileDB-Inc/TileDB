@@ -655,8 +655,8 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
   // Keep track of the required memory to load the result space tiles. The first
   // element of this vector is an aggregate of all query condition fields,
   // followed by the rest of the buffers in names.
-  std::vector<uint64_t> required_memory(
-      names.size() - condition_names.size() + 1);
+  uint64_t required_memory_query_condition = 0;
+  std::vector<uint64_t> required_memory(names.size() - condition_names.size());
 
   // Create the vector of result tiles to operate on. We stop once we reach the
   // end or the memory budget. The memory budget is combined for all query
@@ -682,17 +682,16 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
 
     // If we reached the memory budget, stop. Always include the first tile.
     if (t_end != t_start &&
-        required_memory[0] + condition_memory > left_over_budget) {
+        required_memory_query_condition + condition_memory > left_over_budget) {
       done = true;
       break;
     } else {
-      required_memory[0] += condition_memory;
+      required_memory_query_condition += condition_memory;
     }
 
     // Compute the required memory to load the tiles for each names for the
     // current space tile.
     for (uint64_t n = condition_names.size(); n < names.size(); n++) {
-      uint64_t r_idx = n + 1 - condition_names.size();
       uint64_t tile_memory = 0;
       for (const auto& result_tile : it->second.result_tiles()) {
         auto& rt = result_tile.second;
@@ -701,6 +700,7 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
       }
 
       // If we reached the memory budget, stop. Always include the first tile.
+      uint64_t r_idx = n - condition_names.size();
       if (t_end != t_start &&
           required_memory[r_idx] + tile_memory > left_over_budget) {
         done = true;
