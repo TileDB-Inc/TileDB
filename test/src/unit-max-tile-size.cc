@@ -1073,13 +1073,14 @@ TEST_CASE_METHOD(
     "C++ API: Max tile size, serialization",
     "[max-tile-size][serialization]") {
   tiledb::sm::Buffer buff;
-  std::vector<uint64_t> values_to_try{0,
-                                      4,
-                                      208,
-                                      1024,
-                                      64 * 1024 * 1024,
-                                      64 * 1024 * 1024 + 1,
-                                      std::numeric_limits<uint64_t>::max()};
+  std::vector<uint64_t> values_to_try{
+      0,
+      4,
+      208,
+      1024,
+      64 * 1024 * 1024,
+      64 * 1024 * 1024 + 1,
+      std::numeric_limits<uint64_t>::max()};
 
   // Loop through values_to_try serializing/deserializing and comparing
   // to original value.

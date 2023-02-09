@@ -1580,11 +1580,8 @@ void Array::get_max_tile_size(
 
   // Create an ArrayDirectory object and then load the array schemas
   // and fragment metadata.
-  auto array_dir = ArrayDirectory(
-      resources_,
-      array_uri_,
-      timestamp_start,
-      timestamp_end);
+  auto array_dir =
+      ArrayDirectory(resources_, array_uri_, timestamp_start, timestamp_end);
 
   MemoryTracker memory_tracker;
   auto&& [st, array_schema_latest, array_schemas_all, fragment_metadata] =
@@ -1599,13 +1596,19 @@ void Array::get_max_tile_size(
     auto& frags_schema = frag->array_schema();
 
     if (!frags_schema->dense()) {
-      get_max_tile_size_for_attribute_dim(maxs, *frag, constants::coords, false, false, enc_key);
+      get_max_tile_size_for_attribute_dim(
+          maxs, *frag, constants::coords, false, false, enc_key);
     }
 
     auto& attributes = frags_schema->attributes();
     for (auto& attrib : attributes) {
       get_max_tile_size_for_attribute_dim(
-          maxs, *frag, attrib->name(), attrib->var_size(), attrib->nullable(), enc_key);
+          maxs,
+          *frag,
+          attrib->name(),
+          attrib->var_size(),
+          attrib->nullable(),
+          enc_key);
     }
     auto dim_names = frags_schema->dim_names();
     for (auto& dim_name : dim_names) {
@@ -1614,7 +1617,7 @@ void Array::get_max_tile_size(
           *frag,
           dim_name,
           frags_schema->var_size(dim_name),
-          frags_schema->is_nullable(dim_name), 
+          frags_schema->is_nullable(dim_name),
           enc_key);
     }
   }
@@ -1624,7 +1627,7 @@ void Array::get_max_tile_size(
       maxs.max_persisted_fixed_tile_size, maxs.max_persisted_tile_size_var);
 }
 
-void Array::get_max_tile_size_for_attribute_dim (
+void Array::get_max_tile_size_for_attribute_dim(
     tiledb_fragment_max_tile_sizes_t& maxs,
     FragmentMetadata& f,
     const std::string& name,
