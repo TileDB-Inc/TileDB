@@ -895,7 +895,7 @@ Status Query::process() {
   }
 
   return Status::Ok();
-}  // namespace sm
+}
 
 IQueryStrategy* Query::strategy(bool skip_checks_serialization) {
   if (strategy_ == nullptr) {

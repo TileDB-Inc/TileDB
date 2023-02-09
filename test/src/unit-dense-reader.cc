@@ -101,6 +101,7 @@ struct CDenseFx {
       uint64_t* a2_data_size,
       uint64_t* a2_offsets,
       uint64_t* a2_offsets_size,
+      uint64_t expected_num_loops,
       bool add_a1_qc = false,
       bool add_a2_qc = false,
       std::string expected_error = std::string());
@@ -512,6 +513,7 @@ void CDenseFx::read_fixed_strings(
     uint64_t* a2_data_size,
     uint64_t* a2_offsets,
     uint64_t* a2_offsets_size,
+    uint64_t expected_num_loops,
     bool add_a1_qc,
     bool add_a2_qc,
     std::string expected_error) {
@@ -612,7 +614,7 @@ void CDenseFx::read_fixed_strings(
     REQUIRE(counters != nullptr);
     auto loop_num =
         counters->find("Context.StorageManager.Query.Reader.internal_loop_num");
-    CHECK(2 == loop_num->second);
+    CHECK(expected_num_loops == loop_num->second);
   }
 
   // Clean up.
@@ -626,6 +628,8 @@ void CDenseFx::read_fixed_strings(
 /*                TESTS              */
 /* ********************************* */
 
+#define NUM_CELLS 20
+
 TEST_CASE_METHOD(
     CDenseFx, "Dense reader: bad config", "[dense-reader][bad-config]") {
   // Create default array.
@@ -633,11 +637,11 @@ TEST_CASE_METHOD(
   create_default_array_1d();
 
   // Write a fragment.
-  int subarray[] = {1, 20};
-  int data[] = {1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
-                11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
-  uint64_t data_size = sizeof(data);
-  write_1d_fragment(subarray, data, &data_size);
+  int subarray[] = {1, NUM_CELLS};
+  std::vector<int> data(NUM_CELLS);
+  std::iota(data.begin(), data.end(), 1);
+  uint64_t data_size = data.size() * sizeof(int);
+  write_1d_fragment(subarray, data.data(), &data_size);
 
   // Each tile is 40 bytes, this will only allow to load one.
   total_budget_ = "50";
@@ -645,7 +649,7 @@ TEST_CASE_METHOD(
   update_config();
 
   // Try to read.
-  int data_r[20] = {0};
+  int data_r[NUM_CELLS] = {0};
   uint64_t data_r_size = sizeof(data_r);
   read(
       subarray,
@@ -664,11 +668,11 @@ TEST_CASE_METHOD(
   create_default_array_1d();
 
   // Write a fragment.
-  int subarray[] = {1, 20};
-  int data[] = {1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
-                11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
-  uint64_t data_size = sizeof(data);
-  write_1d_fragment(subarray, data, &data_size);
+  int subarray[] = {1, NUM_CELLS};
+  std::vector<int> data(NUM_CELLS);
+  std::iota(data.begin(), data.end(), 1);
+  uint64_t data_size = data.size() * sizeof(int);
+  write_1d_fragment(subarray, data.data(), &data_size);
 
   // Each tile is 40 bytes, this will only allow to load one.
   total_budget_ = "50";
@@ -676,7 +680,7 @@ TEST_CASE_METHOD(
   update_config();
 
   // Try to read.
-  int data_r[20] = {0};
+  int data_r[NUM_CELLS] = {0};
   uint64_t data_r_size = sizeof(data_r);
   read(
       subarray,
@@ -697,23 +701,23 @@ TEST_CASE_METHOD(
   create_default_array_1d();
 
   // Write a fragment.
-  int subarray[] = {1, 20};
-  int data[] = {1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
-                11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
-  uint64_t data_size = sizeof(data);
-  write_1d_fragment(subarray, data, &data_size);
+  int subarray[] = {1, NUM_CELLS};
+  std::vector<int> data(NUM_CELLS);
+  std::iota(data.begin(), data.end(), 1);
+  uint64_t data_size = data.size() * sizeof(int);
+  write_1d_fragment(subarray, data.data(), &data_size);
 
   // Each tile is 40 bytes, this will only allow to load one.
   tile_memory_budget_ = "50";
   update_config();
 
   // Try to read.
-  int data_r[20] = {0};
+  int data_r[NUM_CELLS] = {0};
   uint64_t data_r_size = sizeof(data_r);
   read(subarray, data_r, &data_r_size, use_qc);
 
   CHECK(data_r_size == data_size);
-  CHECK(!std::memcmp(data, data_r, data_size));
+  CHECK(!std::memcmp(data.data(), data_r, data_size));
 }
 
 TEST_CASE_METHOD(
@@ -727,11 +731,11 @@ TEST_CASE_METHOD(
   create_default_array_1d();
 
   // Write a fragment.
-  int subarray[] = {1, 20};
-  int data[] = {1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
-                11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
-  uint64_t data_size = sizeof(data);
-  write_1d_fragment(subarray, data, &data_size);
+  int subarray[] = {1, NUM_CELLS};
+  std::vector<int> data(NUM_CELLS);
+  std::iota(data.begin(), data.end(), 1);
+  uint64_t data_size = data.size() * sizeof(int);
+  write_1d_fragment(subarray, data.data(), &data_size);
 
   total_budget_ = "420";
   tile_memory_budget_ = "50";
@@ -760,13 +764,17 @@ TEST_CASE_METHOD(
   create_default_array_1d_string();
 
   // Write a fragment.
-  int subarray[] = {1, 20};
-  char data[] = "1234567891011121314151617181920";
-  uint64_t data_size = sizeof(data) - 1;
-  uint64_t offsets[] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
-                        11, 13, 15, 17, 19, 21, 23, 25, 27, 29};
-  uint64_t offsets_size = sizeof(offsets);
-  write_1d_fragment_strings(subarray, data, &data_size, offsets, &offsets_size);
+  int subarray[] = {1, NUM_CELLS};
+  std::string data;
+  std::vector<uint64_t> offsets(NUM_CELLS);
+  for (uint64_t i = 0; i < NUM_CELLS; i++) {
+    offsets[i] = data.size();
+    data += std::to_string(i + 1);
+  }
+  uint64_t data_size = data.size();
+  uint64_t offsets_size = offsets.size() * sizeof(uint64_t);
+  write_1d_fragment_strings(
+      subarray, data.data(), &data_size, offsets.data(), &offsets_size);
 
   // Each tiles are 91 and 100 bytes respectively, this will only allow to
   // load one.
@@ -774,17 +782,17 @@ TEST_CASE_METHOD(
   update_config();
 
   // Try to read.
-  char data_r[100] = {0};
+  char data_r[NUM_CELLS * 2] = {0};
   uint64_t data_r_size = sizeof(data_r);
-  uint64_t offsets_r[20] = {0};
+  uint64_t offsets_r[NUM_CELLS] = {0};
   uint64_t offsets_r_size = sizeof(offsets_r);
   read_strings(
       subarray, data_r, &data_r_size, offsets_r, &offsets_r_size, use_qc);
 
   CHECK(data_r_size == data_size);
-  CHECK(!std::memcmp(data, data_r, data_size));
+  CHECK(!std::memcmp(data.data(), data_r, data_size));
   CHECK(offsets_r_size == offsets_size);
-  CHECK(!std::memcmp(offsets, offsets_r, offsets_size));
+  CHECK(!std::memcmp(offsets.data(), offsets_r, offsets_size));
 }
 
 TEST_CASE_METHOD(
@@ -798,13 +806,17 @@ TEST_CASE_METHOD(
   create_default_array_1d_string();
 
   // Write a fragment.
-  int subarray[] = {1, 20};
-  char data[] = "1234567891011121314151617181920";
-  uint64_t data_size = sizeof(data) - 1;
-  uint64_t offsets[] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
-                        11, 13, 15, 17, 19, 21, 23, 25, 27, 29};
-  uint64_t offsets_size = sizeof(offsets);
-  write_1d_fragment_strings(subarray, data, &data_size, offsets, &offsets_size);
+  int subarray[] = {1, NUM_CELLS};
+  std::string data;
+  std::vector<uint64_t> offsets(NUM_CELLS);
+  for (uint64_t i = 0; i < NUM_CELLS; i++) {
+    offsets[i] = data.size();
+    data += std::to_string(i + 1);
+  }
+  uint64_t data_size = data.size();
+  uint64_t offsets_size = offsets.size() * sizeof(uint64_t);
+  write_1d_fragment_strings(
+      subarray, data.data(), &data_size, offsets.data(), &offsets_size);
 
   // Each tiles are 91 and 100 bytes respectively, this will only allow to
   // load one.
@@ -819,7 +831,7 @@ TEST_CASE_METHOD(
           "DenseReader: Cannot process a single tile, increase memory budget";
 
   // Try to read.
-  char data_r[100] = {0};
+  char data_r[NUM_CELLS * 2] = {0};
   uint64_t data_r_size = sizeof(data_r);
   uint64_t offsets_r[10] = {0};
   uint64_t offsets_r_size = sizeof(offsets_r);
@@ -842,13 +854,17 @@ TEST_CASE_METHOD(
   create_default_array_1d_string();
 
   // Write a fragment.
-  int subarray[] = {1, 20};
-  char data[] = "1234567891011121314151617181920";
-  uint64_t data_size = sizeof(data) - 1;
-  uint64_t offsets[] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
-                        11, 13, 15, 17, 19, 21, 23, 25, 27, 29};
-  uint64_t offsets_size = sizeof(offsets);
-  write_1d_fragment_strings(subarray, data, &data_size, offsets, &offsets_size);
+  int subarray[] = {1, NUM_CELLS};
+  std::string data;
+  std::vector<uint64_t> offsets(NUM_CELLS);
+  for (uint64_t i = 0; i < NUM_CELLS; i++) {
+    offsets[i] = data.size();
+    data += std::to_string(i + 1);
+  }
+  uint64_t data_size = data.size();
+  uint64_t offsets_size = offsets.size() * sizeof(uint64_t);
+  write_1d_fragment_strings(
+      subarray, data.data(), &data_size, offsets.data(), &offsets_size);
 
   // Each tile is 40 bytes, this will only allow to load one.
   tile_memory_budget_ = "50";
@@ -856,7 +872,7 @@ TEST_CASE_METHOD(
 
   // Try to read.
   int subarray_r[] = {6, 15};
-  char data_r[100] = {0};
+  char data_r[NUM_CELLS * 2] = {0};
   uint64_t data_r_size = sizeof(data_r);
   uint64_t offsets_r[10] = {0};
   uint64_t offsets_r_size = sizeof(offsets_r);
@@ -881,22 +897,25 @@ TEST_CASE_METHOD(
   create_default_array_1d_fixed_string();
 
   // Write a fragment.
-  int subarray[] = {1, 20};
-  int a1_data[] = {1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
-                   11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
-  uint64_t a1_data_size = sizeof(a1_data);
-  char a2_data[] = "1234567891011121314151617181920";
-  uint64_t a2_data_size = sizeof(a2_data) - 1;
-  uint64_t a2_offsets[] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
-                           11, 13, 15, 17, 19, 21, 23, 25, 27, 29};
-  uint64_t a2_offsets_size = sizeof(a2_offsets);
+  int subarray[] = {1, NUM_CELLS};
+  std::vector<int> a1_data(NUM_CELLS);
+  std::iota(a1_data.begin(), a1_data.end(), 1);
+  uint64_t a1_data_size = a1_data.size() * sizeof(int);
+  std::string a2_data;
+  std::vector<uint64_t> a2_offsets(NUM_CELLS);
+  for (uint64_t i = 0; i < NUM_CELLS; i++) {
+    a2_offsets[i] = a2_data.size();
+    a2_data += std::to_string(i + 1);
+  }
+  uint64_t a2_data_size = a2_data.size();
+  uint64_t a2_offsets_size = a2_offsets.size() * sizeof(uint64_t);
   write_1d_fragment_fixed_strings(
       subarray,
-      a1_data,
+      a1_data.data(),
       &a1_data_size,
-      a2_data,
+      a2_data.data(),
       &a2_data_size,
-      a2_offsets,
+      a2_offsets.data(),
       &a2_offsets_size);
 
   // Each var tiles are 91 and 100 bytes respectively, this will only allow to
@@ -906,11 +925,11 @@ TEST_CASE_METHOD(
   update_config();
 
   // Try to read.
-  int a1_data_r[20] = {0};
+  int a1_data_r[NUM_CELLS] = {0};
   uint64_t a1_data_r_size = sizeof(a1_data_r);
-  char a2_data_r[100] = {0};
+  char a2_data_r[NUM_CELLS * 2] = {0};
   uint64_t a2_data_r_size = sizeof(a2_data_r);
-  uint64_t a2_offsets_r[20] = {0};
+  uint64_t a2_offsets_r[NUM_CELLS] = {0};
   uint64_t a2_offsets_r_size = sizeof(a2_offsets_r);
   read_fixed_strings(
       subarray,
@@ -919,14 +938,15 @@ TEST_CASE_METHOD(
       a2_data_r,
       &a2_data_r_size,
       a2_offsets_r,
-      &a2_offsets_r_size);
+      &a2_offsets_r_size,
+      2);
 
   CHECK(a1_data_r_size == a1_data_size);
-  CHECK(!std::memcmp(a1_data, a1_data_r, a1_data_size));
+  CHECK(!std::memcmp(a1_data.data(), a1_data_r, a1_data_size));
   CHECK(a2_data_r_size == a2_data_size);
-  CHECK(!std::memcmp(a2_data, a2_data_r, a2_data_size));
+  CHECK(!std::memcmp(a2_data.data(), a2_data_r, a2_data_size));
   CHECK(a2_offsets_r_size == a2_offsets_size);
-  CHECK(!std::memcmp(a2_offsets, a2_offsets_r, a2_offsets_size));
+  CHECK(!std::memcmp(a2_offsets.data(), a2_offsets_r, a2_offsets_size));
 
   // Now read with QC set for a1 only.
   read_fixed_strings(
@@ -937,15 +957,16 @@ TEST_CASE_METHOD(
       &a2_data_r_size,
       a2_offsets_r,
       &a2_offsets_r_size,
+      2,
       true,
       false);
 
   CHECK(a1_data_r_size == a1_data_size);
-  CHECK(!std::memcmp(a1_data, a1_data_r, a1_data_size));
+  CHECK(!std::memcmp(a1_data.data(), a1_data_r, a1_data_size));
   CHECK(a2_data_r_size == a2_data_size);
-  CHECK(!std::memcmp(a2_data, a2_data_r, a2_data_size));
+  CHECK(!std::memcmp(a2_data.data(), a2_data_r, a2_data_size));
   CHECK(a2_offsets_r_size == a2_offsets_size);
-  CHECK(!std::memcmp(a2_offsets, a2_offsets_r, a2_offsets_size));
+  CHECK(!std::memcmp(a2_offsets.data(), a2_offsets_r, a2_offsets_size));
 
   // Now read with QC set for a2 only.
   read_fixed_strings(
@@ -956,15 +977,16 @@ TEST_CASE_METHOD(
       &a2_data_r_size,
       a2_offsets_r,
       &a2_offsets_r_size,
+      2,
       false,
       true);
 
   CHECK(a1_data_r_size == a1_data_size);
-  CHECK(!std::memcmp(a1_data, a1_data_r, a1_data_size));
+  CHECK(!std::memcmp(a1_data.data(), a1_data_r, a1_data_size));
   CHECK(a2_data_r_size == a2_data_size);
-  CHECK(!std::memcmp(a2_data, a2_data_r, a2_data_size));
+  CHECK(!std::memcmp(a2_data.data(), a2_data_r, a2_data_size));
   CHECK(a2_offsets_r_size == a2_offsets_size);
-  CHECK(!std::memcmp(a2_offsets, a2_offsets_r, a2_offsets_size));
+  CHECK(!std::memcmp(a2_offsets.data(), a2_offsets_r, a2_offsets_size));
 
   // Now read with QC set for a1 and a2, should fail.
   read_fixed_strings(
@@ -975,8 +997,172 @@ TEST_CASE_METHOD(
       &a2_data_r_size,
       a2_offsets_r,
       &a2_offsets_r_size,
+      0,
       true,
       true,
       "DenseReader: Cannot process a single tile because of query "
       "condition, increase memory budget");
+}
+
+TEST_CASE_METHOD(
+    CDenseFx,
+    "Dense reader: budget exceeded, fixed/var attribute",
+    "[dense-reader][budget-too-small][fixed-var]") {
+  // Create default array.
+  reset_config();
+  create_default_array_1d_fixed_string();
+
+  // Write a fragment.
+  int subarray[] = {1, NUM_CELLS};
+  std::vector<int> a1_data(NUM_CELLS);
+  std::iota(a1_data.begin(), a1_data.end(), 1);
+  uint64_t a1_data_size = a1_data.size() * sizeof(int);
+  std::string a2_data;
+  std::vector<uint64_t> a2_offsets(NUM_CELLS);
+  for (uint64_t i = 0; i < NUM_CELLS; i++) {
+    a2_offsets[i] = a2_data.size();
+    a2_data += std::to_string(i + 1);
+  }
+  uint64_t a2_data_size = a2_data.size();
+  uint64_t a2_offsets_size = a2_offsets.size() * sizeof(uint64_t);
+  write_1d_fragment_fixed_strings(
+      subarray,
+      a1_data.data(),
+      &a1_data_size,
+      a2_data.data(),
+      &a2_data_size,
+      a2_offsets.data(),
+      &a2_offsets_size);
+
+  // Each var tiles are 91 and 100 bytes respectively, this will only allow to
+  // load one. Fixed tiles are both 40 so they both fit in the budget.
+  total_budget_ = "640";
+  tile_memory_budget_ = "105";
+  update_config();
+
+  // Try to read.
+  int a1_data_r[NUM_CELLS] = {0};
+  uint64_t a1_data_r_size = sizeof(a1_data_r);
+  char a2_data_r[NUM_CELLS * 2] = {0};
+  uint64_t a2_data_r_size = sizeof(a2_data_r);
+  uint64_t a2_offsets_r[NUM_CELLS] = {0};
+  uint64_t a2_offsets_r_size = sizeof(a2_offsets_r);
+  read_fixed_strings(
+      subarray,
+      a1_data_r,
+      &a1_data_r_size,
+      a2_data_r,
+      &a2_data_r_size,
+      a2_offsets_r,
+      &a2_offsets_r_size,
+      0,
+      false,
+      false,
+      "DenseReader: Cannot process a single tile, increase memory budget");
+
+  // Now read with QC set for a1 only.
+  read_fixed_strings(
+      subarray,
+      a1_data_r,
+      &a1_data_r_size,
+      a2_data_r,
+      &a2_data_r_size,
+      a2_offsets_r,
+      &a2_offsets_r_size,
+      0,
+      true,
+      false,
+      "DenseReader: Cannot process a single tile, increase memory budget");
+
+  // Now read with QC set for a2 only.
+  read_fixed_strings(
+      subarray,
+      a1_data_r,
+      &a1_data_r_size,
+      a2_data_r,
+      &a2_data_r_size,
+      a2_offsets_r,
+      &a2_offsets_r_size,
+      0,
+      false,
+      true,
+      "DenseReader: Cannot process a single tile because of query "
+      "condition, increase memory budget");
+
+  // Now read with QC set for a1 and a2, should fail.
+  read_fixed_strings(
+      subarray,
+      a1_data_r,
+      &a1_data_r_size,
+      a2_data_r,
+      &a2_data_r_size,
+      a2_offsets_r,
+      &a2_offsets_r_size,
+      0,
+      true,
+      true,
+      "DenseReader: Cannot process a single tile because of query "
+      "condition, increase memory budget");
+}
+
+#define LARGE_NUM_CELLS 50
+
+TEST_CASE_METHOD(
+    CDenseFx,
+    "Dense reader: fixed/var attribute, many loops",
+    "[dense-reader][many-loops][fixed-var]") {
+  // Create default array.
+  reset_config();
+  create_default_array_1d_fixed_string();
+
+  // Write a fragment.
+  int subarray[] = {1, LARGE_NUM_CELLS};
+  std::vector<int> a1_data(LARGE_NUM_CELLS);
+  std::iota(a1_data.begin(), a1_data.end(), 1);
+  uint64_t a1_data_size = a1_data.size() * sizeof(int);
+  std::string a2_data;
+  std::vector<uint64_t> a2_offsets(LARGE_NUM_CELLS);
+  for (uint64_t i = 0; i < LARGE_NUM_CELLS; i++) {
+    a2_offsets[i] = a2_data.size();
+    a2_data += std::to_string(i + 1);
+  }
+  uint64_t a2_data_size = a2_data.size();
+  uint64_t a2_offsets_size = a2_offsets.size() * sizeof(uint64_t);
+  write_1d_fragment_fixed_strings(
+      subarray,
+      a1_data.data(),
+      &a1_data_size,
+      a2_data.data(),
+      &a2_data_size,
+      a2_offsets.data(),
+      &a2_offsets_size);
+
+  // First var tiles is 91 and subequent are 100 bytes, this will only allow to
+  // load two tiles the first loop and one on the subsequents.
+  tile_memory_budget_ = "192";
+  update_config();
+
+  // Try to read.
+  int a1_data_r[LARGE_NUM_CELLS] = {0};
+  uint64_t a1_data_r_size = sizeof(a1_data_r);
+  char a2_data_r[LARGE_NUM_CELLS * 2] = {0};
+  uint64_t a2_data_r_size = sizeof(a2_data_r);
+  uint64_t a2_offsets_r[LARGE_NUM_CELLS] = {0};
+  uint64_t a2_offsets_r_size = sizeof(a2_offsets_r);
+  read_fixed_strings(
+      subarray,
+      a1_data_r,
+      &a1_data_r_size,
+      a2_data_r,
+      &a2_data_r_size,
+      a2_offsets_r,
+      &a2_offsets_r_size,
+      4);
+
+  CHECK(a1_data_r_size == a1_data_size);
+  CHECK(!std::memcmp(a1_data.data(), a1_data_r, a1_data_size));
+  CHECK(a2_data_r_size == a2_data_size);
+  CHECK(!std::memcmp(a2_data.data(), a2_data_r, a2_data_size));
+  CHECK(a2_offsets_r_size == a2_offsets_size);
+  CHECK(!std::memcmp(a2_offsets.data(), a2_offsets_r, a2_offsets_size));
 }
