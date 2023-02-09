@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -132,7 +132,7 @@ capi_return_t tiledb_group_set_config(
   ensure_group_is_valid(group);
   ensure_config_is_valid(config);
 
-  throw_if_not_ok(group->group().set_config(config->config()));
+  group->group().set_config(config->config());
 
   return TILEDB_OK;
 }
