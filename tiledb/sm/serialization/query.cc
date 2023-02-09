@@ -1290,7 +1290,16 @@ Status query_to_capnp(
     uint64_t cached_fixed_size = 0;
     uint64_t cached_var_size = 0;
     uint64_t cached_validity_size = 0;
-    if (query_buffer_storage != nullopt) {
+    // The cache will only exist if the query is a remote global order write.
+    if (query_buffer_storage.has_value()) {
+      // Remote global order writes must be tile-aligned.
+      // The cache sizes here reflect the bytes prepended to this query.
+      // If all writes were tile-aligned these will be zero.
+      // In the case of an unaligned write, we hold the tile overflow bytes from
+      // submission by adjusting user buffer sizes, tile-aligning the write.
+      // Once this write completes the cache is updated with the previously held
+      // tile-overflow bytes, and the following submission is prepended with
+      // with this data. See the QueryRemoteBufferStorage class for more info.
       const auto& buff_cache =
           query_buffer_storage->get_query_buffer_cache(name);
       cached_fixed_size = buff_cache.buffer_.size();
@@ -1301,6 +1310,7 @@ Status query_to_capnp(
     attr_buffer_builder.setName(name);
     if (buff.buffer_var_ != nullptr && buff.buffer_var_size_ != nullptr) {
       // Variable-sized buffer
+      // Include cached bytes for remote global order writes prepend data.
       uint64_t var_buff_size = *buff.buffer_var_size_ + cached_var_size;
       total_var_len_bytes += var_buff_size;
       attr_buffer_builder.setVarLenBufferSizeInBytes(var_buff_size);
@@ -1316,6 +1326,7 @@ Status query_to_capnp(
           buff.original_buffer_size_);
     } else if (buff.buffer_ != nullptr && buff.buffer_size_ != nullptr) {
       // Fixed-length buffer
+      // Include cached bytes for remote global order writes prepend data.
       uint64_t buff_size = *buff.buffer_size_ + cached_fixed_size;
       total_fixed_len_bytes += buff_size;
       attr_buffer_builder.setFixedLenBufferSizeInBytes(buff_size);
@@ -1331,6 +1342,7 @@ Status query_to_capnp(
     }
 
     if (buff.validity_vector_.buffer_size() != nullptr) {
+      // Include cached bytes for remote global order writes prepend data.
       uint64_t buff_size =
           *buff.validity_vector_.buffer_size() + cached_validity_size;
       total_validity_len_bytes += buff_size;
@@ -2130,7 +2142,7 @@ Status query_serialize(
               Buffer var(buffer.buffer_var_, *buffer.buffer_var_size_);
 
               // If we are not appending offsets we can use non-owning buffers.
-              if (query_buffer_storage != nullopt) {
+              if (query_buffer_storage.has_value()) {
                 const auto& buffer_cache =
                     query_buffer_storage->get_query_buffer_cache(name);
                 Buffer prepend_data(

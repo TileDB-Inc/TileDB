@@ -538,12 +538,17 @@ Status RestClient::post_query_submit(
         Status_RestError("Error submitting query to REST; null array."));
   }
 
+  // For remote global order writes only.
   auto& cache = query->get_remote_buffer_cache();
-  if (cache != std::nullopt) {
+  if (cache.has_value()) {
     if (cache.value().should_cache_write()) {
+      // If the entire write was less than a tile, cache all buffers and return.
+      // We will prepend this data to the next write submission.
       cache.value().cache_write();
       return Status::Ok();
     }
+    // If the write is not tile-aligned adjust query buffer sizes to hold tile
+    // overflow bytes from this submission, aligning the write.
     cache.value().make_buffers_tile_aligned();
   }
 
@@ -616,7 +621,9 @@ Status RestClient::post_query_submit(
         st.message()));
   }
 
-  if (cache != std::nullopt) {
+  // For remote global order writes only.
+  if (cache.has_value()) {
+    // Update cache with any tile-overflow bytes held from this submission.
     cache.value().cache_non_tile_aligned_data();
   }
   return st;
