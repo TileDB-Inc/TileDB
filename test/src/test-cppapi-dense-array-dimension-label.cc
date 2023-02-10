@@ -80,6 +80,10 @@ class DenseArrayExample {
     tiledb::Array::create(array_name_, schema);
   }
 
+  tiledb::Context& ctx() {
+    return ctx_;
+  }
+
   /**
    * Write data to the array and dimension label.
    *
@@ -111,7 +115,7 @@ class DenseArrayExample {
       query.set_data_buffer("a", input_attr_data);
     }
     if (!input_label_data.empty()) {
-      query.set_data_buffer("x", input_label_data);
+      tiledb::QueryExperimental::set_data_buffer(query, "x", input_label_data);
     }
 
     // Submit write query.
@@ -155,7 +159,7 @@ class DenseArrayExample {
       query.set_data_buffer("a", input_attr_data);
     }
     if (!input_label_data.empty()) {
-      query.set_data_buffer("x", input_label_data);
+      tiledb::QueryExperimental::set_data_buffer(query, "x", input_label_data);
     }
 
     // Submit write query.
@@ -199,7 +203,7 @@ class DenseArrayExample {
       query.set_data_buffer("a", attr_data);
     }
     if (!expected_label_data.empty()) {
-      query.set_data_buffer("x", label_data);
+      tiledb::QueryExperimental::set_data_buffer(query, "x", label_data);
     }
 
     // Submit the query.
@@ -211,6 +215,10 @@ class DenseArrayExample {
     if (!expected_attr_data.empty()) {
       CHECK(attr_data == expected_attr_data);
     }
+  }
+
+  tiledb::Array open_array() {
+    return tiledb::Array(ctx_, array_name_, TILEDB_WRITE);
   }
 
  protected:
@@ -290,4 +298,48 @@ TEST_CASE(
 
   // Check results.
   array_fixture.read_and_check_values(0, 3, input_label_data, input_attr_data);
+}
+
+TEST_CASE(
+    "CPP_API: Test alternate set_data_buffer for dimension label",
+    "[cppapi][query][DimensionLabel]") {
+  // Create the array in a temporary directory.
+  DenseArrayExample<TILEDB_INCREASING_DATA> array_fixture{};
+  auto ctx = array_fixture.ctx();
+
+  // Vectors for input data.
+  std::vector<double> label_data{-1.0, 0.0, 0.5, 1.0};
+  std::vector<double> attr_data{0.5, 1.0, 1.5, 2.0};
+
+  // Open array for writing.
+  auto array = array_fixture.open_array();
+
+  // Create the subarray.
+  tiledb::Subarray subarray{ctx, array};
+  subarray.add_range<uint64_t>(0, 0, 3);
+
+  // Create and submit the query.
+  tiledb::Query query{ctx, array, TILEDB_WRITE};
+  query.set_layout(TILEDB_ROW_MAJOR).set_subarray(subarray);
+  query.set_data_buffer("a", attr_data);
+  SECTION("Set with std::vector") {
+    INFO("Set with std::vector");
+    tiledb::QueryExperimental::set_data_buffer(query, "x", label_data);
+    query.submit();
+  }
+  SECTION("Set with typed pointer") {
+    INFO("Set with typed pointer");
+    tiledb::QueryExperimental::set_data_buffer(
+        query, "x", label_data.data(), label_data.size());
+    query.submit();
+  }
+  SECTION("Set with void pointer") {
+    INFO("Set with void pointer");
+    tiledb::QueryExperimental::set_data_buffer(
+        query, "x", static_cast<void*>(label_data.data()), label_data.size());
+    query.submit();
+  }
+
+  // Check results.
+  array_fixture.read_and_check_values(0, 3, label_data, attr_data);
 }
