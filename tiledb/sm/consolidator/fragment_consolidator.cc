@@ -544,16 +544,16 @@ FragmentConsolidator::create_buffers(
     const auto attr = array_schema.attributes()[i];
     const auto var_size = attr->var_size();
 
-    // First buffer is either the var size offsets or the fixed size data.
+    // First buffer is either the var size data or the fixed size data.
     buffer_weights.emplace_back(
-        var_size ? constants::cell_var_offset_size : attr->cell_size());
+        var_size ? avg_cell_sizes[attr->name()] : attr->cell_size());
 
-    // For var size attributes, add the data buffer weight.
+    // For var size attributes, add the offsets buffer weight.
     if (var_size) {
-      buffer_weights.emplace_back(avg_cell_sizes[attr->name()]);
+      buffer_weights.emplace_back(constants::cell_var_offset_size);
     }
 
-    // For nullable attributes, add the validity buffer weight.
+    // For nullable attributes, add the offsets buffer weight.
     if (attr->nullable()) {
       buffer_weights.emplace_back(constants::cell_validity_size);
     }
@@ -564,13 +564,13 @@ FragmentConsolidator::create_buffers(
       const auto dim = domain.dimension_ptr(i);
       const auto var_size = dim->var_size();
 
-      // First buffer is either the var size offsets or the fixed size data.
+      // First buffer is either the var size data or the fixed size data.
       buffer_weights.emplace_back(
-          var_size ? constants::cell_var_offset_size : dim->coord_size());
+          var_size ? avg_cell_sizes[dim->name()] : dim->coord_size());
 
-      // For var size attributes, add the data buffer weight.
+      // For var size attributes, add the offsets buffer weight.
       if (var_size) {
-        buffer_weights.emplace_back(avg_cell_sizes[dim->name()]);
+        buffer_weights.emplace_back(constants::cell_var_offset_size);
       }
     }
   }
@@ -597,10 +597,9 @@ FragmentConsolidator::create_buffers(
       std::accumulate(buffer_weights.begin(), buffer_weights.end(), 0);
 
   // Allocate space for each buffer.
-  auto adjusted_budget = total_budget / total_weights * total_weights;
   for (unsigned i = 0; i < buffer_num; ++i) {
-    buffer_sizes[i] = std::max<uint64_t>(
-        1, adjusted_budget * buffer_weights[i] / total_weights);
+    buffer_sizes[i] =
+        std::max<uint64_t>(1, total_budget * buffer_weights[i] / total_weights);
     buffers[i].resize(buffer_sizes[i]);
   }
 
