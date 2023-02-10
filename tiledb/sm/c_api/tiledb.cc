@@ -1720,7 +1720,7 @@ int32_t tiledb_query_set_config(
   if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
   api::ensure_config_is_valid(config);
-  throw_if_not_ok(query->query_->set_config(config->config()));
+  query->query_->set_config(config->config());
   return TILEDB_OK;
 }
 
@@ -2412,7 +2412,7 @@ int32_t tiledb_subarray_set_config(
   if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
   api::ensure_config_is_valid(config);
-  throw_if_not_ok(subarray->subarray_->set_config(config->config()));
+  subarray->subarray_->set_config(config->config());
   return TILEDB_OK;
 }
 

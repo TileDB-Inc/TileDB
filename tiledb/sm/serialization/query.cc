@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -1452,7 +1452,7 @@ Status query_from_capnp(
     auto config_reader = query_reader.getConfig();
     RETURN_NOT_OK(config_from_capnp(config_reader, &decoded_config));
     if (decoded_config != nullptr) {
-      RETURN_NOT_OK(query->set_config(*decoded_config));
+      query->unsafe_set_config(*decoded_config);
     }
   }
 

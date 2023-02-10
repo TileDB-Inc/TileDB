@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB Inc.
+ * @copyright Copyright (c) 2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -229,7 +229,9 @@ TEST_CASE_METHOD(
   Query query(ctx_, array, TILEDB_WRITE);
   query.set_layout(TILEDB_UNORDERED);
   query.set_data_buffer("d1", dim1);
-  CHECK_THROWS_WITH(query.submit(), "Query: Dimension buffer d2 is not set");
+  CHECK_THROWS_WITH(
+      query.submit(),
+      "Query: [check_buffer_names] Dimension buffer d2 is not set");
 
   array.close();
 
