@@ -126,7 +126,14 @@ stages:
            VS2019:
              imageName: 'windows-2019'
              # Only S3 variable is currently supported in boostrap powershell
+             TILEDB_S3: OFF
+             TILEDB_AZURE: OFF
+             TILEDB_GCS: ON
              TILEDB_HDFS: OFF
+             TILEDB_STATIC: OFF
+             TILEDB_SERIALIZATION: OFF
+             TILEDB_FORCE_BUILD_DEPS: ON
+             #TILEDB_HDFS: OFF
              ARTIFACT_OS: 'windows'
              ARTIFACT_ARCH: 'x86_64'
        pool:
