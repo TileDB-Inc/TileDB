@@ -1827,7 +1827,7 @@ Status Query::submit() {
 
       // Allocate remote buffer storage for global order writes if necessary.
       // If we cache an entire write a query may be uninitialized for N submits.
-      if (query_remote_buffer_storage_.has_value() &&
+      if (!query_remote_buffer_storage_.has_value() &&
           type_ == QueryType::WRITE && layout_ == Layout::GLOBAL_ORDER) {
         query_remote_buffer_storage_.emplace(*this, buffers_);
       }
