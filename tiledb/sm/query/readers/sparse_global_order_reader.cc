@@ -100,10 +100,7 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
   SparseIndexReaderBase::init(skip_checks_serialization);
 
   // Initialize memory budget variables.
-  if (!initialize_memory_budget().ok()) {
-    throw SparseGlobalOrderReaderStatusException(
-        "Cannot initialize memory budget");
-  }
+  initialize_memory_budget();
 }
 
 /* ****************************** */
@@ -128,33 +125,31 @@ SparseGlobalOrderReader<BitmapType>::status_incomplete_reason() const {
 }
 
 template <class BitmapType>
-Status SparseGlobalOrderReader<BitmapType>::initialize_memory_budget() {
+void SparseGlobalOrderReader<BitmapType>::initialize_memory_budget() {
   bool found = false;
-  RETURN_NOT_OK(
+  throw_if_not_ok(
       config_.get<uint64_t>("sm.mem.total_budget", &memory_budget_, &found));
   assert(found);
-  RETURN_NOT_OK(config_.get<double>(
+  throw_if_not_ok(config_.get<double>(
       "sm.mem.reader.sparse_global_order.ratio_array_data",
       &memory_budget_ratio_array_data_,
       &found));
   assert(found);
-  RETURN_NOT_OK(config_.get<double>(
+  throw_if_not_ok(config_.get<double>(
       "sm.mem.reader.sparse_global_order.ratio_coords",
       &memory_budget_ratio_coords_,
       &found));
   assert(found);
-  RETURN_NOT_OK(config_.get<double>(
+  throw_if_not_ok(config_.get<double>(
       "sm.mem.reader.sparse_global_order.ratio_query_condition",
       &memory_budget_ratio_query_condition_,
       &found));
   assert(found);
-  RETURN_NOT_OK(config_.get<double>(
+  throw_if_not_ok(config_.get<double>(
       "sm.mem.reader.sparse_global_order.ratio_tile_ranges",
       &memory_budget_ratio_tile_ranges_,
       &found));
   assert(found);
-
-  return Status::Ok();
 }
 
 template <class BitmapType>
