@@ -169,7 +169,8 @@ TEST_CASE(
 
   // Create a StorageManager
   Config config;
-  ContextResources resources(config, nullptr, 1, 1, "");
+  auto logger = make_shared<Logger>(HERE(), "foo");
+  ContextResources resources(config, logger, 1, 1, "");
   StorageManager sm(resources, make_shared<Logger>(HERE(), ""), config);
 
   // Register array
@@ -194,7 +195,8 @@ TEST_CASE(
 
   // Create a StorageManager
   Config config;
-  ContextResources resources(config, nullptr, 1, 1, "");
+  auto logger = make_shared<Logger>(HERE(), "foo");
+  ContextResources resources(config, logger, 1, 1, "");
   StorageManager sm(resources, make_shared<Logger>(HERE(), ""), config);
 
   std::vector<tdb_unique_ptr<Array>> arrays;
@@ -236,7 +238,8 @@ TEST_CASE(
 
   // Create a StorageManager
   Config config;
-  ContextResources resources(config, nullptr, 1, 1, "");
+  auto logger = make_shared<Logger>(HERE(), "foo");
+  ContextResources resources(config, logger, 1, 1, "");
   StorageManager sm(resources, make_shared<Logger>(HERE(), ""), config);
 
   // Create an array
