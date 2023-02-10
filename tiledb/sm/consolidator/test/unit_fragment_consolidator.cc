@@ -199,14 +199,14 @@ TEST_CASE(
   SECTION("int32 dim, var attr") {
     schema =
         make_schema(true, {Datatype::INT32}, {Datatype::STRING_ASCII}, {false});
-    expected_sizes = {1496, 748, 748};
+    expected_sizes = {750, 1500, 750};
     avg_cell_sizes["a1"] = 4;
   }
 
   SECTION("int32 dim, nullable var attr") {
     schema =
         make_schema(true, {Datatype::INT32}, {Datatype::STRING_ASCII}, {true});
-    expected_sizes = {1880, 940, 235, 940};
+    expected_sizes = {941, 1882, 235, 941};
     avg_cell_sizes["a1"] = 4;
   }
 
@@ -216,7 +216,7 @@ TEST_CASE(
         {Datatype::INT32, Datatype::INT64},
         {Datatype::STRING_ASCII},
         {false});
-    expected_sizes = {1328, 664, 664, 1328};
+    expected_sizes = {666, 1333, 666, 1333};
     avg_cell_sizes["a1"] = 4;
   }
 
@@ -226,7 +226,7 @@ TEST_CASE(
         {Datatype::INT32, Datatype::STRING_ASCII},
         {Datatype::UINT8},
         {true});
-    expected_sizes = {166, 166, 664, 1328, 2656};
+    expected_sizes = {166, 166, 666, 2666, 1333};
     avg_cell_sizes["d2"] = 16;
   }
 
