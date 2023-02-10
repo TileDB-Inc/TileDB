@@ -402,7 +402,7 @@ class Query {
   void set_config(const Config& config);
 
   /**
-   * Sets the confif for the Query
+   * Sets the config for the Query
    *
    * @param config
    *
