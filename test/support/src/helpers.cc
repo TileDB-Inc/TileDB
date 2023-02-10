@@ -1570,9 +1570,18 @@ int array_open_wrapper(
   REQUIRE(rc == TILEDB_OK);
 
   // this helper only applies to refactored array open, so set it in the config
+  // Note: we actually set use_refactored_array_open_and_query_submit instead of
+  // simple use_refactored_array_open here, because we want array_open_wrapper
+  // to be usable in query_v3 tests that require that flag to be set right
+  // from the beginning for full Array objects to be retrieved on array open.
+  // There are dedicated tests in unit-capi-array.cc that are testing array v2
+  // feature with just setting use_refactored_array_open config variable.
   tiledb_error_t* error = nullptr;
   rc = tiledb_config_set(
-      config, "rest.use_refactored_array_open", "true", &error);
+      config,
+      "rest.use_refactored_array_open_and_query_submit",
+      "true",
+      &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
   REQUIRE(
