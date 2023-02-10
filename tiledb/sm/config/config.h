@@ -108,6 +108,9 @@ class Config {
   /** Refactored array open is disabled by default */
   static const std::string REST_USE_REFACTORED_ARRAY_OPEN;
 
+  /** Refactored query submit is disabled by default */
+  static const std::string REST_USE_REFACTORED_QUERY_SUBMIT;
+
   /** The prefix to use for checking for parameter environmental variables. */
   static const std::string CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
 

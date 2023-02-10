@@ -486,6 +486,9 @@ class Array {
   /** Checks the config to see if refactored array open should be used. */
   bool use_refactored_array_open() const;
 
+  /** Checks the config to see if refactored query submit should be used. */
+  bool use_refactored_query_submit() const;
+
   /**
    * Sets the array state as open.
    *

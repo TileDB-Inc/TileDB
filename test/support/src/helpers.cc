@@ -1721,7 +1721,10 @@ int submit_query_wrapper(
   if (refactored_query_v2) {
     tiledb_error_t* error = nullptr;
     rc = tiledb_config_set(
-        config, "rest.use_refactored_array_open", "true", &error);
+        config,
+        "rest.use_refactored_array_open_and_query_submit",
+        "true",
+        &error);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(error == nullptr);
     REQUIRE(tiledb_array_set_config(client_ctx, array, config) == TILEDB_OK);

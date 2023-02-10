@@ -111,18 +111,14 @@ Status RestClient::init(
     RETURN_NOT_OK(serialization_type_enum(c_str, &serialization_type_));
 
   bool found = false;
-  RETURN_NOT_OK(config_->get<bool>(
-      "rest.resubmit_incomplete", &resubmit_incomplete_, &found));
-
-  found = false;
   auto status = config_->get<bool>(
-      "rest.use_refactored_array_open",
+      "rest.use_refactored_array_open_and_query_submit",
       &use_refactored_array_and_query_,
       &found);
   if (!status.ok() || !found) {
     throw std::runtime_error(
-        "Cannot get use_refactored_array_open configuration option from "
-        "config");
+        "Cannot get rest.use_refactored_array_open_and_query_submit "
+        "configuration option from config");
   }
 
   return Status::Ok();

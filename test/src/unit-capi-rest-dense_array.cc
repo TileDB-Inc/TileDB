@@ -1802,9 +1802,6 @@ TEST_CASE_METHOD(
   tiledb_error_t* error;
   tiledb_config_t* config;
   tiledb_config_alloc(&config, &error);
-  REQUIRE(
-      tiledb_config_set(config, "rest.resubmit_incomplete", "false", &error) ==
-      TILEDB_OK);
 
   // Keep other REST server parameters the same
   REQUIRE(
