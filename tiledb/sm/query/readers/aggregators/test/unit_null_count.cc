@@ -192,10 +192,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data{
         2,
         10,
-        10,
         fixed_data.data(),
         nullopt,
-        0,
         validity_data.data(),
         false,
         nullopt};
@@ -209,10 +207,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data{
         2,
         10,
-        10,
         fixed_data.data(),
         nullopt,
-        0,
         validity_data.data(),
         false,
         bitmap.data()};
@@ -223,10 +219,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data2{
         0,
         2,
-        10,
         fixed_data.data(),
         nullopt,
-        0,
         validity_data.data(),
         false,
         bitmap.data()};
@@ -240,10 +234,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data{
         2,
         10,
-        10,
         fixed_data.data(),
         nullopt,
-        0,
         validity_data.data(),
         true,
         bitmap_count.data()};
@@ -254,10 +246,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data2{
         0,
         2,
-        10,
         fixed_data.data(),
         nullopt,
-        0,
         validity_data.data(),
         true,
         bitmap_count.data()};
@@ -287,10 +277,8 @@ TEST_CASE(
     AggregateBuffer input_data{
         2,
         10,
-        10,
         offsets.data(),
         var_data.data(),
-        var_data.size(),
         validity_data.data(),
         false,
         nullopt};
@@ -304,10 +292,8 @@ TEST_CASE(
     AggregateBuffer input_data{
         2,
         10,
-        10,
         offsets.data(),
         var_data.data(),
-        var_data.size(),
         validity_data.data(),
         false,
         bitmap.data()};
@@ -318,10 +304,8 @@ TEST_CASE(
     AggregateBuffer input_data2{
         0,
         2,
-        10,
         offsets.data(),
         var_data.data(),
-        var_data.size(),
         validity_data.data(),
         false,
         bitmap.data()};
@@ -335,10 +319,8 @@ TEST_CASE(
     AggregateBuffer input_data{
         2,
         10,
-        10,
         offsets.data(),
         var_data.data(),
-        var_data.size(),
         validity_data.data(),
         true,
         bitmap_count.data()};
@@ -349,10 +331,8 @@ TEST_CASE(
     AggregateBuffer input_data2{
         0,
         2,
-        10,
         offsets.data(),
         var_data.data(),
-        var_data.size(),
         validity_data.data(),
         true,
         bitmap_count.data()};

@@ -186,12 +186,19 @@ TEST_CASE_METHOD(
   uint64_t num_cells = 8;
 
   auto& array_schema = array_->array_->array_schema_latest();
-  ResultTile rt(0, 0, array_schema);
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_->array_->array_schema_latest_ptr(),
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
+  ResultTile rt(0, 0, frag_md);
 
   // Make sure cell_num() will return the correct value.
   if (!first_dim) {
     ResultTile::TileSizes tile_sizes(
-        num_cells * constants::cell_var_offset_size,
+        (num_cells + 1) * constants::cell_var_offset_size,
         0,
         0,
         0,
@@ -208,7 +215,7 @@ TEST_CASE_METHOD(
   }
 
   ResultTile::TileSizes tile_sizes(
-      num_cells * constants::cell_var_offset_size,
+      (num_cells + 1) * constants::cell_var_offset_size,
       0,
       num_cells,
       0,
@@ -228,7 +235,7 @@ TEST_CASE_METHOD(
 
   // Initialize offsets, use 1 character strings.
   uint64_t* offsets = (uint64_t*)t->data();
-  for (uint64_t i = 0; i < num_cells; i++) {
+  for (uint64_t i = 0; i < num_cells + 1; i++) {
     offsets[i] = i;
   }
 
@@ -289,12 +296,19 @@ TEST_CASE_METHOD(
   uint64_t num_cells = 8;
 
   auto& array_schema = array_->array_->array_schema_latest();
-  ResultTile rt(0, 0, array_schema);
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_->array_->array_schema_latest_ptr(),
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
+  ResultTile rt(0, 0, frag_md);
 
   // Make sure cell_num() will return the correct value.
   if (!first_dim) {
     ResultTile::TileSizes tile_sizes(
-        num_cells * constants::cell_var_offset_size,
+        (num_cells + 1) * constants::cell_var_offset_size,
         0,
         0,
         0,
@@ -311,7 +325,7 @@ TEST_CASE_METHOD(
   }
 
   ResultTile::TileSizes tile_sizes(
-      num_cells * constants::cell_var_offset_size,
+      (num_cells + 1) * constants::cell_var_offset_size,
       0,
       num_cells,
       0,
@@ -331,7 +345,7 @@ TEST_CASE_METHOD(
 
   // Initialize offsets, use 1 character strings.
   uint64_t* offsets = (uint64_t*)t->data();
-  for (uint64_t i = 0; i < num_cells; i++) {
+  for (uint64_t i = 0; i < num_cells + 1; i++) {
     offsets[i] = i;
   }
 

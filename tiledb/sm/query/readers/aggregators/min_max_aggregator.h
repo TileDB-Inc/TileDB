@@ -106,22 +106,6 @@ class ComparatorAggregatorBase {
       const uint64_t cell_idx) const;
 
   /**
-   * Get the last value for the input buffers.
-   *
-   * @tparam VALUE_T Value type.
-   * @param fixed_data Fixed data buffer.
-   * @param var_data Var data buffer.
-   * @param input_data Aggregate buffer.
-   *
-   * @return Value.
-   */
-  template <typename VALUE_T>
-  VALUE_T last_var_value(
-      const void* fixed_data,
-      const char* var_data,
-      const AggregateBuffer& input_data) const;
-
-  /**
    * Copy final data to the user buffer.
    *
    * @param output_field_name Name for the output buffer.
@@ -246,28 +230,6 @@ class ComparatorAggregator : public ComparatorAggregatorBase<T>,
       const uint64_t c) {
     auto cmp = ComparatorAggregatorBase<T>::template value_at<VALUE_T>(
         fixed_data, var_data, c);
-    if (!value.has_value()) {
-      value = cmp;
-    } else if (op_(cmp, value.value())) {
-      value = cmp;
-    }
-  }
-
-  /**
-   * Potentially update the min/max value with the last var value.
-   *
-   * @param value Value to possibly update.
-   * @param fixed_data Fixed data.
-   * @param var_data Var data.
-   * @param input_data Aggregate buffer.
-   */
-  inline void update_last_var_min_max(
-      optional<VALUE_T>& value,
-      const void* fixed_data,
-      const char* var_data,
-      const AggregateBuffer& input_data) {
-    auto cmp = ComparatorAggregatorBase<T>::template last_var_value<VALUE_T>(
-        fixed_data, var_data, input_data);
     if (!value.has_value()) {
       value = cmp;
     } else if (op_(cmp, value.value())) {

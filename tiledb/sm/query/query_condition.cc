@@ -661,21 +661,16 @@ void QueryCondition::apply_ast_node(
       if (var_size) {
         const auto& tile = tile_tuple->var_tile();
         const char* buffer = static_cast<char*>(tile.data());
-        const uint64_t buffer_size = tile.size();
 
         const auto& tile_offsets = tile_tuple->fixed_tile();
         const uint64_t* buffer_offsets =
             static_cast<uint64_t*>(tile_offsets.data());
-        const uint64_t buffer_offsets_el =
-            tile_offsets.size() / constants::cell_var_offset_size;
 
         // Iterate through each cell in this slab.
         while (c < length) {
           const uint64_t buffer_offset = buffer_offsets[start + c * stride];
           const uint64_t next_cell_offset =
-              (start + c * stride + 1 < buffer_offsets_el) ?
-                  buffer_offsets[start + c * stride + 1] :
-                  buffer_size;
+              buffer_offsets[start + c * stride + 1];
           const uint64_t cell_size = next_cell_offset - buffer_offset;
 
           const bool null_cell =
@@ -1364,13 +1359,10 @@ void QueryCondition::apply_ast_node_dense(
     // Get var data buffer and tile offsets buffer.
     const auto& tile = tile_tuple->var_tile();
     const char* buffer = static_cast<char*>(tile.data());
-    const uint64_t buffer_size = tile.size();
 
     const auto& tile_offsets = tile_tuple->fixed_tile();
     const uint64_t* buffer_offsets =
         static_cast<uint64_t*>(tile_offsets.data());
-    const uint64_t buffer_offsets_el =
-        tile_offsets.size() / constants::cell_var_offset_size;
 
     // Iterate through each cell in this slab.
     for (uint64_t c = 0; c < result_buffer.size(); ++c) {
@@ -1379,9 +1371,7 @@ void QueryCondition::apply_ast_node_dense(
       // ok.
       const uint64_t offset_idx = src_cell + (start + c) * stride;
       const uint64_t buffer_offset = buffer_offsets[offset_idx];
-      const uint64_t next_cell_offset = (offset_idx + 1 < buffer_offsets_el) ?
-                                            buffer_offsets[offset_idx + 1] :
-                                            buffer_size;
+      const uint64_t next_cell_offset = buffer_offsets[offset_idx + 1];
       const uint64_t cell_size = next_cell_offset - buffer_offset;
 
       // Get the cell value.
@@ -2328,13 +2318,12 @@ void QueryCondition::apply_ast_node_sparse(
     // Get var data buffer and tile offsets buffer.
     const auto& tile = tile_tuple->var_tile();
     const char* buffer = static_cast<char*>(tile.data());
-    const uint64_t buffer_size = tile.size();
 
     const auto& tile_offsets = tile_tuple->fixed_tile();
     const uint64_t* buffer_offsets =
         static_cast<uint64_t*>(tile_offsets.data());
     const uint64_t buffer_offsets_el =
-        tile_offsets.size() / constants::cell_var_offset_size;
+        tile_offsets.size() / constants::cell_var_offset_size - 1;
 
     // Iterate through each cell.
     for (uint64_t c = 0; c < buffer_offsets_el; ++c) {
@@ -2342,8 +2331,7 @@ void QueryCondition::apply_ast_node_sparse(
       // is string data requiring a strcmp which cannot be vectorized, this is
       // ok.
       const uint64_t buffer_offset = buffer_offsets[c];
-      const uint64_t next_cell_offset =
-          (c + 1 < buffer_offsets_el) ? buffer_offsets[c + 1] : buffer_size;
+      const uint64_t next_cell_offset = buffer_offsets[c + 1];
       const uint64_t cell_size = next_cell_offset - buffer_offset;
 
       // Get the cell value.

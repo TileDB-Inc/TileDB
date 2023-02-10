@@ -99,11 +99,6 @@ class TileBase {
     return size() / sizeof(T);
   }
 
-  /** Returns the number of cells stored in the tile. */
-  uint64_t cell_num() const {
-    return size() / cell_size_;
-  }
-
   /** Returns the internal buffer. */
   inline void* data() const {
     return data_.get();
@@ -133,6 +128,16 @@ class TileBase {
    *     properly allocated. It does not alter the tile offset and size.
    */
   Status write(const void* data, uint64_t offset, uint64_t nbytes);
+
+  /**
+   * Adds an extra offset at the end of this tile representing the size of the
+   * var tile.
+   *
+   * @param var_tile Var tile.
+   */
+  void add_extra_offset(TileBase& var_tile) {
+    data_as<uint64_t>()[size_ / cell_size_ - 1] = var_tile.size();
+  }
 
   /** Swaps the contents (all field values) of this tile with the given tile. */
   void swap(TileBase& tile);
@@ -286,9 +291,10 @@ class Tile : public TileBase {
    *   chunkN_data (uint8_t[])
    *
    * @param chunk_data Tile chunk info, buffers and offsets.
+   * @param is_offsets Does the tile contains offsets?
    * @return Original size.
    */
-  uint64_t load_chunk_data(ChunkData& chunk_data);
+  uint64_t load_chunk_data(ChunkData& chunk_data, bool is_offsets = false);
 
   /** Swaps the contents (all field values) of this tile with the given tile. */
   void swap(Tile& tile);
@@ -375,6 +381,11 @@ class WriterTile : public TileBase {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  /** Returns the number of cells stored in the tile. */
+  uint64_t cell_num() const {
+    return size() / cell_size_;
+  }
 
   /** Clears the internal buffer. */
   void clear_data();

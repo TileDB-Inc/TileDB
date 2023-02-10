@@ -1296,9 +1296,9 @@ TEST_CASE_METHOD(
       a2_offsets.data(),
       &a2_offsets_size);
 
-  // First var tiles is 91 and subequent are 100 bytes, this will only allow to
+  // First var tiles is 99 and subequent are 108 bytes, this will only allow to
   // load two tiles the first loop and one on the subsequents.
-  tile_upper_memory_limit_ = "384";
+  tile_upper_memory_limit_ = "416";
   update_config();
 
   // Try to read.

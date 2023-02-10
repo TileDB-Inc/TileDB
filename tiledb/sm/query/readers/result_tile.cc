@@ -67,14 +67,16 @@ bool result_tile_cmp(const ResultTile* a, const ResultTile* b) {
 /* ****************************** */
 
 ResultTile::ResultTile(
-    unsigned frag_idx, uint64_t tile_idx, const ArraySchema& array_schema)
-    : domain_(&array_schema.domain())
+    unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata& frag_md)
+    : domain_(&frag_md.array_schema()->domain())
     , frag_idx_(frag_idx)
-    , tile_idx_(tile_idx) {
+    , tile_idx_(tile_idx)
+    , cell_num_(frag_md.cell_num(tile_idx)) {
+  auto array_schema = frag_md.array_schema();
   coord_tiles_.resize(domain_->dim_num());
-  attr_tiles_.resize(array_schema.attribute_num());
-  for (uint64_t i = 0; i < array_schema.attribute_num(); i++) {
-    auto attribute = array_schema.attribute(i);
+  attr_tiles_.resize(array_schema->attribute_num());
+  for (uint64_t i = 0; i < array_schema->attribute_num(); i++) {
+    auto attribute = array_schema->attribute(i);
     attr_tiles_[i] = std::make_pair(attribute->name(), nullopt);
   }
   set_compute_results_func();
@@ -102,6 +104,7 @@ void ResultTile::swap(ResultTile& tile) {
   std::swap(domain_, tile.domain_);
   std::swap(frag_idx_, tile.frag_idx_);
   std::swap(tile_idx_, tile.tile_idx_);
+  std::swap(cell_num_, tile.cell_num_);
   std::swap(attr_tiles_, tile.attr_tiles_);
   std::swap(timestamps_tile_, tile.timestamps_tile_);
   std::swap(delete_timestamps_tile_, tile.delete_timestamps_tile_);
@@ -127,23 +130,7 @@ bool ResultTile::operator==(const ResultTile& rt) const {
 }
 
 uint64_t ResultTile::cell_num() const {
-  if (coord_tiles_[0].second.has_value()) {
-    return coord_tiles_[0].second->fixed_tile().cell_num();
-  }
-
-  if (coords_tile_.has_value()) {
-    return coords_tile_->fixed_tile().cell_num();
-  }
-
-  if (!attr_tiles_.empty()) {
-    for (const auto& attr : attr_tiles_) {
-      if (attr.second.has_value()) {
-        return attr.second.value().fixed_tile().cell_num();
-      }
-    }
-  }
-
-  return 0;
+  return cell_num_;
 }
 
 void ResultTile::erase_tile(const std::string& name) {
@@ -293,8 +280,6 @@ std::string_view ResultTile::coord_string(
     uint64_t pos, unsigned dim_idx) const {
   const auto& coord_tile_off = coord_tiles_[dim_idx].second->fixed_tile();
   const auto& coord_tile_val = coord_tiles_[dim_idx].second->var_tile();
-  auto cell_num = coord_tile_off.cell_num();
-  auto val_size = coord_tile_val.size();
 
   uint64_t offset = 0;
   Status st =
@@ -302,13 +287,9 @@ std::string_view ResultTile::coord_string(
   assert(st.ok());
 
   uint64_t next_offset = 0;
-  if (pos == cell_num - 1) {
-    next_offset = val_size;
-  } else {
-    st = coord_tile_off.read(
-        &next_offset, (pos + 1) * sizeof(uint64_t), sizeof(uint64_t));
-    assert(st.ok());
-  }
+  st = coord_tile_off.read(
+      &next_offset, (pos + 1) * sizeof(uint64_t), sizeof(uint64_t));
+  assert(st.ok());
 
   auto size = next_offset - offset;
 
@@ -369,9 +350,7 @@ std::string_view ResultTile::attribute_value<std::string_view>(
   auto& var_tile = tuple->var_tile();
   auto offset = offsets_data[pos];
 
-  auto size = static_cast<size_t>(pos) == cell_num() - 1 ?
-                  var_tile.size() - offset :
-                  offsets_data[pos + 1] - offset;
+  auto size = offsets_data[pos + 1] - offset;
   return std::string_view(&var_tile.data_as<char>()[offset], size);
 }
 
@@ -649,7 +628,6 @@ void ResultTile::compute_results_sparse<char>(
   // Get string buffer
   const auto& coord_tile_str = coord_tile.var_tile();
   auto buff_str = static_cast<const char*>(coord_tile_str.data());
-  auto buff_str_size = coord_tile_str.size();
 
   // For row-major cell orders, the first dimension is sorted.
   // For col-major cell orders, the last dimension is sorted.
@@ -698,9 +676,7 @@ void ResultTile::compute_results_sparse<char>(
       const uint64_t first_c_offset = buff_off[first_c_pos];
       const uint64_t last_c_offset = buff_off[last_c_pos];
       const uint64_t first_c_size = buff_off[first_c_pos + 1] - first_c_offset;
-      const uint64_t last_c_size = (last_c_pos == coords_num - 1) ?
-                                       buff_str_size - last_c_offset :
-                                       buff_off[last_c_pos + 1] - last_c_offset;
+      const uint64_t last_c_size = buff_off[last_c_pos + 1] - last_c_offset;
 
       // Fetch the coordinate values for the first and last coordinates
       // in this partition.
@@ -720,8 +696,7 @@ void ResultTile::compute_results_sparse<char>(
         uint64_t c_offset = 0, c_size = 0;
         for (uint64_t pos = first_c_pos; pos <= last_c_pos; ++pos) {
           c_offset = buff_off[pos];
-          c_size = (pos < coords_num - 1) ? buff_off[pos + 1] - c_offset :
-                                            buff_str_size - c_offset;
+          c_size = buff_off[pos + 1] - c_offset;
           r_bitmap[pos] = str_coord_intersects(
               c_offset, c_size, buff_str, range_start, range_end);
         }
@@ -774,8 +749,7 @@ void ResultTile::compute_results_sparse<char>(
         continue;
 
       c_offset = buff_off[pos];
-      c_size = (pos < coords_num - 1) ? buff_off[pos + 1] - c_offset :
-                                        buff_str_size - c_offset;
+      c_size = buff_off[pos + 1] - c_offset;
       r_bitmap[pos] = str_coord_intersects(
           c_offset, c_size, buff_str, range_start, range_end);
     }
@@ -832,8 +806,6 @@ void ResultTile::compute_results_count_sparse_string_range(
         cached_ranges,
     const char* buff_str,
     const uint64_t* buff_off,
-    const uint64_t cell_num,
-    const uint64_t buff_str_size,
     const uint64_t start,
     const uint64_t end,
     std::vector<BitmapType>& result_count) {
@@ -845,8 +817,7 @@ void ResultTile::compute_results_count_sparse_string_range(
       continue;
 
     uint64_t c_offset = buff_off[pos];
-    uint64_t c_size = (pos < cell_num - 1) ? buff_off[pos + 1] - c_offset :
-                                             buff_str_size - c_offset;
+    uint64_t c_size = buff_off[pos + 1] - c_offset;
 
     const std::string_view str(buff_str + c_offset, c_size);
 
@@ -907,7 +878,6 @@ void ResultTile::compute_results_count_sparse_string(
     const Layout& cell_order,
     const uint64_t min_cell,
     const uint64_t max_cell) {
-  auto cell_num = result_tile->cell_num();
   auto coords_num = max_cell - min_cell;
   auto dim_num = result_tile->domain()->dim_num();
 
@@ -926,7 +896,6 @@ void ResultTile::compute_results_count_sparse_string(
   // Get string buffer
   const auto& coord_tile_str = coord_tile.var_tile();
   auto buff_str = static_cast<const char*>(coord_tile_str.data());
-  auto buff_str_size = coord_tile_str.size();
 
   // Cache start_str/end_str for all ranges.
   std::vector<std::pair<std::string_view, std::string_view>> cached_ranges;
@@ -983,9 +952,7 @@ void ResultTile::compute_results_count_sparse_string(
       const uint64_t first_c_offset = buff_off[first_c_pos];
       const uint64_t last_c_offset = buff_off[last_c_pos];
       const uint64_t first_c_size = buff_off[first_c_pos + 1] - first_c_offset;
-      const uint64_t last_c_size = (last_c_pos == cell_num - 1) ?
-                                       buff_str_size - last_c_offset :
-                                       buff_off[last_c_pos + 1] - last_c_offset;
+      const uint64_t last_c_size = buff_off[last_c_pos + 1] - last_c_offset;
 
       // Fetch the coordinate values for the first and last coordinates
       // in this partition.
@@ -1016,8 +983,6 @@ void ResultTile::compute_results_count_sparse_string(
             cached_ranges,
             buff_str,
             buff_off,
-            cell_num,
-            buff_str_size,
             first_c_pos,
             last_c_pos,
             result_count);
@@ -1072,8 +1037,6 @@ void ResultTile::compute_results_count_sparse_string(
           cached_ranges,
           buff_str,
           buff_off,
-          cell_num,
-          buff_str_size,
           i,
           i + partition_size - 1,
           result_count);

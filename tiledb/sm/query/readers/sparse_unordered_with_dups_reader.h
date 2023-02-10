@@ -499,7 +499,6 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * @param count_bitmap Is the bitmap a count bitmap?
    * @param min_cell Min cell to aggregate.
    * @param min_cell Max cell to aggregate.
-   * @param cell_num Number of cells for the tile
    * @param rt Result tile.
    */
   AggregateBuffer make_aggregate_buffer(
@@ -509,7 +508,6 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       const bool count_bitmap,
       const uint64_t min_cell,
       const uint64_t max_cell,
-      const uint64_t cell_num,
       UnorderedWithDupsResultTile<BitmapType>& rt);
 
   /**

@@ -606,8 +606,6 @@ void SparseUnorderedWithDupsReader<uint64_t>::copy_offsets_tile(
     uint8_t* val_buffer,
     const void** var_data) {
   // Get source buffers.
-  const auto cell_num =
-      fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
   const auto tile_tuple = rt->tile_tuple(name);
 
   // If the tile_tuple is null, this is a field added in schema
@@ -616,7 +614,6 @@ void SparseUnorderedWithDupsReader<uint64_t>::copy_offsets_tile(
   const uint8_t* src_var_buff = nullptr;
   bool use_fill_value = false;
   OffType fill_value_size = 0;
-  uint64_t t_var_size = 0;
   if (tile_tuple == nullptr) {
     use_fill_value = true;
     fill_value_size = static_cast<OffType>(
@@ -625,17 +622,13 @@ void SparseUnorderedWithDupsReader<uint64_t>::copy_offsets_tile(
   } else {
     const auto& t = tile_tuple->fixed_tile();
     const auto& t_var = tile_tuple->var_tile();
-    t_var_size = t_var.size();
     src_buff = t.template data_as<uint64_t>();
     src_var_buff = t_var.template data_as<uint8_t>();
   }
 
-  // Process all cells. Last cell might be taken out for vectorization.
-  uint64_t end = (src_max_pos == cell_num && !use_fill_value) ?
-                     src_max_pos - 1 :
-                     src_max_pos;
+  // Process all cells.
   if (!use_fill_value) {
-    for (uint64_t c = src_min_pos; c < end; c++) {
+    for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
       for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
         *buffer = (OffType)(src_buff[c + 1] - src_buff[c]) / offset_div;
         buffer++;
@@ -643,19 +636,8 @@ void SparseUnorderedWithDupsReader<uint64_t>::copy_offsets_tile(
         var_data++;
       }
     }
-
-    // Do last cell.
-    if (src_max_pos == cell_num) {
-      for (uint64_t i = 0; i < rt->bitmap()[src_max_pos - 1]; i++) {
-        *buffer =
-            (OffType)(t_var_size - src_buff[src_max_pos - 1]) / offset_div;
-        buffer++;
-        *var_data = src_var_buff + src_buff[src_max_pos - 1];
-        var_data++;
-      }
-    }
   } else {
-    for (uint64_t c = src_min_pos; c < end; c++) {
+    for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
       for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
         *buffer = fill_value_size / offset_div;
         buffer++;
@@ -702,8 +684,6 @@ void SparseUnorderedWithDupsReader<uint8_t>::copy_offsets_tile(
     uint8_t* val_buffer,
     const void** var_data) {
   // Get source buffers.
-  const auto cell_num =
-      fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
   const auto tile_tuple = rt->tile_tuple(name);
 
   // If the tile_tuple is null, this is a field added in schema
@@ -712,7 +692,7 @@ void SparseUnorderedWithDupsReader<uint8_t>::copy_offsets_tile(
   const uint8_t* src_var_buff = nullptr;
   bool use_fill_value = false;
   OffType fill_value_size = 0;
-  uint64_t t_var_size = 0;
+
   if (tile_tuple == nullptr) {
     use_fill_value = true;
     fill_value_size = static_cast<OffType>(
@@ -721,18 +701,14 @@ void SparseUnorderedWithDupsReader<uint8_t>::copy_offsets_tile(
   } else {
     const auto& t = tile_tuple->fixed_tile();
     const auto& t_var = tile_tuple->var_tile();
-    t_var_size = t_var.size();
     src_buff = t.template data_as<uint64_t>();
     src_var_buff = t_var.template data_as<uint8_t>();
   }
 
   if (!rt->copy_full_tile() || use_fill_value) {
-    // Process all cells. Last cell might be taken out for vectorization.
-    uint64_t end = (src_max_pos == cell_num && !use_fill_value) ?
-                       src_max_pos - 1 :
-                       src_max_pos;
+    // Process all cells.
     if (!use_fill_value) {
-      for (uint64_t c = src_min_pos; c < end; c++) {
+      for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
         if (rt->bitmap()[c]) {
           *buffer = (OffType)(src_buff[c + 1] - src_buff[c]) / offset_div;
           buffer++;
@@ -740,15 +716,8 @@ void SparseUnorderedWithDupsReader<uint8_t>::copy_offsets_tile(
           var_data++;
         }
       }
-
-      // Do last cell.
-      if (src_max_pos == cell_num && rt->bitmap()[src_max_pos - 1]) {
-        *buffer =
-            (OffType)(t_var_size - src_buff[src_max_pos - 1]) / offset_div;
-        *var_data = src_var_buff + src_buff[src_max_pos - 1];
-      }
     } else {
-      for (uint64_t c = src_min_pos; c < end; c++) {
+      for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
         if (!rt->has_bmp() || rt->bitmap()[c]) {
           *buffer = fill_value_size / offset_div;
           buffer++;
@@ -780,19 +749,12 @@ void SparseUnorderedWithDupsReader<uint8_t>::copy_offsets_tile(
       }
     }
   } else {
-    // Copy full tile. Last cell might be taken out for vectorization.
-    uint64_t end = (src_max_pos == cell_num) ? src_max_pos - 1 : src_max_pos;
-    for (uint64_t c = src_min_pos; c < end; c++) {
+    // Copy full tile.
+    for (uint64_t c = src_min_pos; c < src_max_pos; c++) {
       *buffer = (OffType)(src_buff[c + 1] - src_buff[c]) / offset_div;
       buffer++;
       *var_data = src_var_buff + src_buff[c];
       var_data++;
-    }
-
-    // Copy last cell.
-    if (src_max_pos == cell_num) {
-      *buffer = (OffType)(t_var_size - src_buff[src_max_pos - 1]) / offset_div;
-      *var_data = src_var_buff + src_buff[src_max_pos - 1];
     }
 
     // Copy nullable values.
@@ -1915,12 +1877,10 @@ SparseUnorderedWithDupsReader<BitmapType>::make_aggregate_buffer(
     const bool count_bitmap,
     const uint64_t min_cell,
     const uint64_t max_cell,
-    const uint64_t cell_num,
     UnorderedWithDupsResultTile<BitmapType>& rt) {
   return AggregateBuffer(
       min_cell,
       max_cell,
-      cell_num,
       name == constants::count_of_rows ?
           nullptr :
           rt.tile_tuple(name)->fixed_tile().data(),
@@ -1928,9 +1888,6 @@ SparseUnorderedWithDupsReader<BitmapType>::make_aggregate_buffer(
           std::make_optional(
               rt.tile_tuple(name)->var_tile().template data_as<char>()) :
           nullopt,
-      var_sized && max_cell == cell_num ?
-          rt.tile_tuple(name)->var_tile().size() :
-          0,
       nullable ? std::make_optional(rt.tile_tuple(name)
                                         ->validity_tile()
                                         .template data_as<uint8_t>()) :
@@ -2006,7 +1963,6 @@ void SparseUnorderedWithDupsReader<BitmapType>::process_aggregates(
             count_bitmap,
             src_min_pos,
             src_max_pos,
-            cell_num,
             *rt)};
         for (auto& aggregate : aggregates) {
           aggregate->aggregate_data(aggregate_buffer);

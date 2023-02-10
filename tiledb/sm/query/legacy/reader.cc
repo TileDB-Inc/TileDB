@@ -730,8 +730,7 @@ Status Reader::compute_sparse_result_tiles(
           auto pair = std::pair<unsigned, uint64_t>(f, t);
           // Add tile only if it does not already exist
           if (result_tile_map->find(pair) == result_tile_map->end()) {
-            result_tiles.emplace_back(
-                f, t, *(fragment_metadata_[f]->array_schema()).get());
+            result_tiles.emplace_back(f, t, *fragment_metadata_[f].get());
             (*result_tile_map)[pair] = result_tiles.size() - 1;
           }
           // Always check range for multiple fragments or fragments with
@@ -750,8 +749,7 @@ Status Reader::compute_sparse_result_tiles(
         auto pair = std::pair<unsigned, uint64_t>(f, t);
         // Add tile only if it does not already exist
         if (result_tile_map->find(pair) == result_tile_map->end()) {
-          result_tiles.emplace_back(
-              f, t, *(fragment_metadata_[f]->array_schema()).get());
+          result_tiles.emplace_back(f, t, *fragment_metadata_[f].get());
           (*result_tile_map)[pair] = result_tiles.size() - 1;
         }
         // Always check range for multiple fragments or fragments with
@@ -1218,17 +1216,12 @@ Status Reader::compute_var_cell_destinations(
 
     // Get tile information, if the range is nonempty.
     uint64_t* tile_offsets = nullptr;
-    uint64_t tile_cell_num = 0;
-    uint64_t tile_var_size = 0;
     if (cs.tile_ != nullptr && cs.tile_->tile_tuple(name) != nullptr) {
       const auto tile_tuple = cs.tile_->tile_tuple(name);
       const auto& tile = tile_tuple->fixed_tile();
-      const auto& tile_var = tile_tuple->var_tile();
 
       // Get the internal buffer to the offset values.
       tile_offsets = (uint64_t*)tile.data();
-      tile_cell_num = tile.cell_num();
-      tile_var_size = tile_var.size();
     }
 
     // Compute the destinations for each cell in the range.
@@ -1242,10 +1235,7 @@ Status Reader::compute_var_cell_destinations(
       if (cs.tile_ == nullptr || cs.tile_->tile_tuple(name) == nullptr) {
         cell_var_size = fill_value_size;
       } else {
-        cell_var_size =
-            (cell_idx != tile_cell_num - 1) ?
-                tile_offsets[cell_idx + 1] - tile_offsets[cell_idx] :
-                tile_var_size - (tile_offsets[cell_idx] - tile_offsets[0]);
+        cell_var_size = tile_offsets[cell_idx + 1] - tile_offsets[cell_idx];
       }
 
       if (*total_offset_size + offset_size > buffer_size ||
@@ -1327,7 +1317,6 @@ Status Reader::copy_partitioned_var_cells(
     uint64_t* tile_offsets = nullptr;
     Tile* tile_var = nullptr;
     Tile* tile_validity = nullptr;
-    uint64_t tile_cell_num = 0;
     if (cs.tile_ != nullptr && cs.tile_->tile_tuple(*name) != nullptr) {
       const auto tile_tuple = cs.tile_->tile_tuple(*name);
       Tile* const tile = &tile_tuple->fixed_tile();
@@ -1336,7 +1325,6 @@ Status Reader::copy_partitioned_var_cells(
 
       // Get the internal buffer to the offset values.
       tile_offsets = (uint64_t*)tile->data();
-      tile_cell_num = tile->cell_num();
     }
 
     // Copy each cell in the range
@@ -1367,9 +1355,7 @@ Status Reader::copy_partitioned_var_cells(
               constants::cell_validity_size);
       } else {
         const uint64_t cell_var_size =
-            (cell_idx != tile_cell_num - 1) ?
-                tile_offsets[cell_idx + 1] - tile_offsets[cell_idx] :
-                tile_var->size() - (tile_offsets[cell_idx] - tile_offsets[0]);
+            tile_offsets[cell_idx + 1] - tile_offsets[cell_idx];
         const uint64_t tile_var_offset =
             tile_offsets[cell_idx] - tile_offsets[0];
 

@@ -170,9 +170,7 @@ void ReaderBase::compute_result_space_tiles(
       result_space_tile.append_frag_domain(frag_idx, frag_domain);
       auto tile_idx = frag_tile_domains[f].tile_pos(coords);
       ResultTile result_tile(
-          frag_idx,
-          tile_idx,
-          *(fragment_metadata[frag_idx]->array_schema()).get());
+          frag_idx, tile_idx, *fragment_metadata[frag_idx].get());
       result_space_tile.set_result_tile(frag_idx, result_tile);
     }
   }
@@ -720,7 +718,7 @@ ReaderBase::load_tile_chunk_data(
   const FilterPipeline& filters = array_schema_.filters(name);
   if (!var_size ||
       !filters.skip_offsets_filtering(t_var->type(), array_schema_.version())) {
-    unfiltered_tile_size = t->load_chunk_data(tile_chunk_data);
+    unfiltered_tile_size = t->load_chunk_data(tile_chunk_data, var_size);
   }
 
   if (var_size) {
@@ -778,6 +776,7 @@ Status ReaderBase::post_process_unfiltered_tile(
     auto& t_var = tile_tuple->var_tile();
     t_var.clear_filtered_buffer();
     throw_if_not_ok(zip_tile_coordinates(name, &t_var));
+    t.add_extra_offset(t_var);
   }
 
   if (nullable) {
@@ -1168,7 +1167,6 @@ void ReaderBase::validate_attribute_order(
       fragment_metadata_.size(),
       [&](int64_t f) {
         validator.validate_without_loading_tiles<IndexType, AttributeType>(
-            array_schema_,
             index_dim,
             increasing_data,
             f,

@@ -249,7 +249,7 @@ Status Tile::zip_coordinates() {
   return Status::Ok();
 }
 
-uint64_t Tile::load_chunk_data(ChunkData& unfiltered_tile) {
+uint64_t Tile::load_chunk_data(ChunkData& unfiltered_tile, bool is_offsets) {
   assert(filtered());
 
   Deserializer deserializer(filtered_data(), filtered_size());
@@ -276,7 +276,7 @@ uint64_t Tile::load_chunk_data(ChunkData& unfiltered_tile) {
     total_orig_size += chunk.unfiltered_data_size_;
   }
 
-  if (total_orig_size != size()) {
+  if (total_orig_size + (is_offsets ? sizeof(uint64_t) : 0) != size()) {
     throw TileStatusException("Incorrect unfiltered tile size allocated.");
   }
 
