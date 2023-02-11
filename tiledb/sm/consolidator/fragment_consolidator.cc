@@ -597,7 +597,7 @@ FragmentConsolidator::create_buffers(
       std::accumulate(buffer_weights.begin(), buffer_weights.end(), 0);
 
   // Allocate space for each buffer.
-  auto adjusted_budget = total_budget / total_weights * total_weights;
+  uint64_t adjusted_budget = total_budget / total_weights * total_weights;
   for (unsigned i = 0; i < buffer_num; ++i) {
     buffer_sizes[i] = std::max<uint64_t>(
         1, adjusted_budget * buffer_weights[i] / total_weights);
