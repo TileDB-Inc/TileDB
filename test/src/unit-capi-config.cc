@@ -238,6 +238,7 @@ void check_save_to_file() {
   ss << "rest.server_address https://api.tiledb.com\n";
   ss << "rest.server_serialization_format CAPNP\n";
   ss << "rest.use_refactored_array_open false\n";
+  ss << "rest.use_refactored_array_open_and_query_submit false\n";
   ss << "sm.allow_separate_attribute_writes false\n";
   ss << "sm.allow_updates_experimental false\n";
   ss << "sm.check_coord_dups true\n";
@@ -566,6 +567,13 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
   rc = tiledb_config_set(
+      config,
+      "rest.use_refactored_array_open_and_query_submit",
+      "true",
+      &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  rc = tiledb_config_set(
       config, "sm.fragment_info.preload_mbrs", "true", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
@@ -588,6 +596,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["rest.load_metadata_on_array_open"] = "false";
   all_param_values["rest.load_non_empty_domain_on_array_open"] = "false";
   all_param_values["rest.use_refactored_array_open"] = "true";
+  all_param_values["rest.use_refactored_array_open_and_query_submit"] = "true";
   all_param_values["sm.allow_separate_attribute_writes"] = "false";
   all_param_values["sm.allow_updates_experimental"] = "false";
   all_param_values["sm.encryption_key"] = "";
