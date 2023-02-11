@@ -1973,7 +1973,14 @@ void test_apply_cells_dense<char*>(
   std::vector<uint8_t> result_bitmap(cells, 1);
   REQUIRE(query_condition
               .apply_dense(
-                  *array_schema, result_tile, 0, 10, 0, 1, result_bitmap.data())
+                  *array_schema,
+                  result_tile,
+                  0,
+                  10,
+                  0,
+                  1,
+                  nullptr,
+                  result_bitmap.data())
               .ok());
 
   // Verify the result bitmap contain the expected cells.
@@ -2005,6 +2012,7 @@ void test_apply_cells_dense<char*>(
                       10,
                       0,
                       1,
+                      nullptr,
                       result_bitmap_eq_null.data())
                   .ok());
 
@@ -2075,7 +2083,14 @@ void test_apply_cells_dense(
   std::vector<uint8_t> result_bitmap(cells, 1);
   REQUIRE(query_condition
               .apply_dense(
-                  *array_schema, result_tile, 0, 10, 0, 1, result_bitmap.data())
+                  *array_schema,
+                  result_tile,
+                  0,
+                  10,
+                  0,
+                  1,
+                  nullptr,
+                  result_bitmap.data())
               .ok());
 
   // Verify the result bitmap contain the expected cells.
@@ -2547,11 +2562,17 @@ TEST_CASE(
 
   // Apply the query condition.
   std::vector<uint8_t> result_bitmap(cells, 1);
-  REQUIRE(
-      query_condition
-          .apply_dense(
-              *array_schema, &result_tile, 0, 10, 0, 1, result_bitmap.data())
-          .ok());
+  REQUIRE(query_condition
+              .apply_dense(
+                  *array_schema,
+                  &result_tile,
+                  0,
+                  10,
+                  0,
+                  1,
+                  nullptr,
+                  result_bitmap.data())
+              .ok());
 
   // Verify the result bitmap contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -3190,6 +3211,7 @@ void validate_qc_apply_dense(
                   10,
                   0,
                   1,
+                  nullptr,
                   dense_result_bitmap.data())
               .ok());
   for (uint64_t i = 0; i < cells; ++i) {
