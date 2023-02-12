@@ -301,6 +301,8 @@ void ConsolidationFx::create_dense_array() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_set_cell_val_num(ctx_, a2, TILEDB_VAR_NUM);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_nullable(ctx_, a2, true);
+  CHECK(rc == TILEDB_OK);
   tiledb_attribute_t* a3;
   CHECK(rc == TILEDB_OK);
   rc = tiledb_attribute_alloc(ctx_, "a3", TILEDB_FLOAT32, &a3);
@@ -1609,18 +1611,22 @@ void ConsolidationFx::write_dense_full() {
       "effggghhhh"
       "ijjkkkllll"
       "mnnooopppp";
+  uint8_t buffer_val_a2[] = {
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+  };
   float buffer_a3[] = {
       0.1f,  0.2f,  1.1f,  1.2f,  2.1f,  2.2f,  3.1f,  3.2f,
       4.1f,  4.2f,  5.1f,  5.2f,  6.1f,  6.2f,  7.1f,  7.2f,
       8.1f,  8.2f,  9.1f,  9.2f,  10.1f, 10.2f, 11.1f, 11.2f,
       12.1f, 12.2f, 13.1f, 13.2f, 14.1f, 14.2f, 15.1f, 15.2f,
   };
-  void* buffers[] = { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3 };
+  void* buffers[] = { buffer_a1, buffer_a2, buffer_var_a2, buffer_val_a2, buffer_a3 };
   uint64_t buffer_sizes[] =
   {
       sizeof(buffer_a1),
       sizeof(buffer_a2),
       sizeof(buffer_var_a2)-1,  // No need to store the last '\0' character
+      sizeof(buffer_val_a2),
       sizeof(buffer_a3)
   };
   // clang-format on
@@ -1666,8 +1672,11 @@ void ConsolidationFx::write_dense_full() {
   rc = tiledb_query_set_offsets_buffer(
       ctx_, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_validity_buffer(
+      ctx_, query, attributes[1], (uint8_t*)buffers[3], &buffer_sizes[3]);
+  CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
+      ctx_, query, attributes[2], buffers[4], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -1695,13 +1704,16 @@ void ConsolidationFx::write_dense_subarray(
   int buffer_a1[] = {112, 113, 114, 115};
   uint64_t buffer_a2[] = {0, 1, 3, 6};
   char buffer_var_a2[] = "MNNOOOPPPP";
+  uint8_t buffer_val_a2[] = {1, 1, 1, 1};
   float buffer_a3[] = {
       112.1f, 112.2f, 113.1f, 113.2f, 114.1f, 114.2f, 115.1f, 115.2f};
-  void* buffers[] = {buffer_a1, buffer_a2, buffer_var_a2, buffer_a3};
+  void* buffers[] = {
+      buffer_a1, buffer_a2, buffer_var_a2, buffer_val_a2, buffer_a3};
   uint64_t buffer_sizes[] = {
       sizeof(buffer_a1),
       sizeof(buffer_a2),
       sizeof(buffer_var_a2) - 1,  // No need to store the last '\0' character
+      sizeof(buffer_val_a2),
       sizeof(buffer_a3)};
 
   // Open array
@@ -1749,8 +1761,11 @@ void ConsolidationFx::write_dense_subarray(
   rc = tiledb_query_set_offsets_buffer(
       ctx_, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_validity_buffer(
+      ctx_, query, attributes[1], (uint8_t*)buffers[3], &buffer_sizes[3]);
+  CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
+      ctx_, query, attributes[2], buffers[4], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
@@ -3071,6 +3086,8 @@ void ConsolidationFx::read_dense_full_subarray() {
       "effggghhhh"
       "ijjkkkllll"
       "MNNOOOPPPP";
+  uint8_t c_buffer_a2_validity[] = {
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
   float c_buffer_a3[] = {
       0.1f,   0.2f,   1.1f,   1.2f,   2.1f,   2.2f,   3.1f,   3.2f,
       4.1f,   4.2f,   5.1f,   5.2f,   6.1f,   6.2f,   7.1f,   7.2f,
@@ -3109,12 +3126,14 @@ void ConsolidationFx::read_dense_full_subarray() {
   uint64_t buffer_a1_size = 64;
   uint64_t buffer_a2_off_size = 128;
   uint64_t buffer_a2_val_size = 114;
+  uint64_t buffer_a2_validity_size = 16;
   uint64_t buffer_a3_size = 128;
 
   // Prepare cell buffers
   auto buffer_a1 = (int*)malloc(buffer_a1_size);
   auto buffer_a2_off = (uint64_t*)malloc(buffer_a2_off_size);
   auto buffer_a2_val = (char*)malloc(buffer_a2_val_size);
+  auto buffer_a2_validity = (uint8_t*)malloc(buffer_a2_validity_size);
   auto buffer_a3 = (float*)malloc(buffer_a3_size);
 
   // Create query
@@ -3133,6 +3152,9 @@ void ConsolidationFx::read_dense_full_subarray() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_offsets_buffer(
       ctx_, query, "a2", buffer_a2_off, &buffer_a2_off_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_validity_buffer(
+      ctx_, query, "a2", buffer_a2_validity, &buffer_a2_validity_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a3", buffer_a3, &buffer_a3_size);
@@ -3161,10 +3183,13 @@ void ConsolidationFx::read_dense_full_subarray() {
   CHECK(sizeof(c_buffer_a1) == buffer_a1_size);
   CHECK(sizeof(c_buffer_a2_off) == buffer_a2_off_size);
   CHECK(sizeof(c_buffer_a2_val) - 1 == buffer_a2_val_size);
+  CHECK(sizeof(c_buffer_a2_validity) == buffer_a2_validity_size);
   CHECK(sizeof(c_buffer_a3) == buffer_a3_size);
   CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
   CHECK(!memcmp(buffer_a2_off, c_buffer_a2_off, sizeof(c_buffer_a2_off)));
   CHECK(!memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
+  CHECK(!memcmp(
+      buffer_a2_validity, c_buffer_a2_validity, sizeof(c_buffer_a2_validity)));
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
 
   // Close array
@@ -3177,6 +3202,7 @@ void ConsolidationFx::read_dense_full_subarray() {
   free(buffer_a1);
   free(buffer_a2_off);
   free(buffer_a2_val);
+  free(buffer_a2_validity);
   free(buffer_a3);
 }
 
@@ -3190,6 +3216,8 @@ void ConsolidationFx::read_dense_subarray_full() {
       "effggghhhh"
       "ijjkkkllll"
       "mnnooopppp";
+  uint8_t c_buffer_a2_validity[] = {
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
   float c_buffer_a3[] = {
       0.1f,  0.2f,  1.1f,  1.2f,  2.1f,  2.2f,  3.1f,  3.2f,
       4.1f,  4.2f,  5.1f,  5.2f,  6.1f,  6.2f,  7.1f,  7.2f,
@@ -3228,12 +3256,14 @@ void ConsolidationFx::read_dense_subarray_full() {
   uint64_t buffer_a1_size = 64;
   uint64_t buffer_a2_off_size = 128;
   uint64_t buffer_a2_val_size = 114;
+  uint64_t buffer_a2_validity_size = 16;
   uint64_t buffer_a3_size = 128;
 
   // Prepare cell buffers
   auto buffer_a1 = (int*)malloc(buffer_a1_size);
   auto buffer_a2_off = (uint64_t*)malloc(buffer_a2_off_size);
   auto buffer_a2_val = (char*)malloc(buffer_a2_val_size);
+  auto buffer_a2_validity = (uint8_t*)malloc(buffer_a2_validity_size);
   auto buffer_a3 = (float*)malloc(buffer_a3_size);
 
   // Create query
@@ -3252,6 +3282,9 @@ void ConsolidationFx::read_dense_subarray_full() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_offsets_buffer(
       ctx_, query, "a2", buffer_a2_off, &buffer_a2_off_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_validity_buffer(
+      ctx_, query, "a2", buffer_a2_validity, &buffer_a2_validity_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a3", buffer_a3, &buffer_a3_size);
@@ -3275,6 +3308,8 @@ void ConsolidationFx::read_dense_subarray_full() {
   CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
   CHECK(!memcmp(buffer_a2_off, c_buffer_a2_off, sizeof(c_buffer_a2_off)));
   CHECK(!memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
+  CHECK(!memcmp(
+      buffer_a2_validity, c_buffer_a2_validity, sizeof(c_buffer_a2_validity)));
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
 
   // Close array
@@ -3287,6 +3322,7 @@ void ConsolidationFx::read_dense_subarray_full() {
   free(buffer_a1);
   free(buffer_a2_off);
   free(buffer_a2_val);
+  free(buffer_a2_validity);
   free(buffer_a3);
 }
 
@@ -3311,6 +3347,8 @@ void ConsolidationFx::read_dense_four_tiles() {
       115};
   uint64_t c_buffer_a2_off[] = {
       0, 1, 3, 6, 10, 11, 13, 16, 20, 21, 23, 26, 30, 31, 33, 36};
+  uint8_t c_buffer_a2_validity[] = {
+      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
   char c_buffer_a2_val[] =
       "MNNOOOPPPP"
       "MNNOOOPPPP"
@@ -3354,12 +3392,14 @@ void ConsolidationFx::read_dense_four_tiles() {
   uint64_t buffer_a1_size = 64;
   uint64_t buffer_a2_off_size = 128;
   uint64_t buffer_a2_val_size = 114;
+  uint64_t buffer_a2_validity_size = 16;
   uint64_t buffer_a3_size = 128;
 
   // Prepare cell buffers
   auto buffer_a1 = (int*)malloc(buffer_a1_size);
   auto buffer_a2_off = (uint64_t*)malloc(buffer_a2_off_size);
   auto buffer_a2_val = (char*)malloc(buffer_a2_val_size);
+  auto buffer_a2_validity = (uint8_t*)malloc(buffer_a2_validity_size);
   auto buffer_a3 = (float*)malloc(buffer_a3_size);
 
   // Create query
@@ -3378,6 +3418,12 @@ void ConsolidationFx::read_dense_four_tiles() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_offsets_buffer(
       ctx_, query, "a2", buffer_a2_off, &buffer_a2_off_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, "a2", buffer_a2_off, &buffer_a2_off_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_validity_buffer(
+      ctx_, query, "a2", buffer_a2_validity, &buffer_a2_validity_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a3", buffer_a3, &buffer_a3_size);
@@ -3403,6 +3449,8 @@ void ConsolidationFx::read_dense_four_tiles() {
   CHECK(!memcmp(buffer_a1, c_buffer_a1, sizeof(c_buffer_a1)));
   CHECK(!memcmp(buffer_a2_off, c_buffer_a2_off, sizeof(c_buffer_a2_off)));
   CHECK(!memcmp(buffer_a2_val, c_buffer_a2_val, sizeof(c_buffer_a2_val) - 1));
+  CHECK(!memcmp(
+      buffer_a2_validity, c_buffer_a2_validity, sizeof(c_buffer_a2_validity)));
   CHECK(!memcmp(buffer_a3, c_buffer_a3, sizeof(c_buffer_a3)));
 
   // Close array
@@ -3415,6 +3463,7 @@ void ConsolidationFx::read_dense_four_tiles() {
   free(buffer_a1);
   free(buffer_a2_off);
   free(buffer_a2_val);
+  free(buffer_a2_validity);
   free(buffer_a3);
 }
 
