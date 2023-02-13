@@ -94,7 +94,8 @@ FragmentInfo& FragmentInfo::operator=(FragmentInfo&& fragment_info) {
 
 void FragmentInfo::set_config(const Config& config) {
   if (loaded_) {
-    throw Status_FragmentInfoError("[set_config] Cannot set config after load");
+    throw StatusException(
+        Status_FragmentInfoError("[set_config] Cannot set config after load"));
   }
   config_.inherit(config);
 }
