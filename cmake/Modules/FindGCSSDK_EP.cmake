@@ -106,7 +106,7 @@ if (NOT GCSSDK_FOUND)
         -DGOOGLE_CLOUD_CPP_EXTERNAL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
-      BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out -- -j${NCPU}
+      BUILD_COMMAND ${CMAKE_COMMAND} --build cmake-out -j ${NCPU}
       # There is no install command, the build process installs the libraries
       INSTALL_COMMAND ""
       LOG_DOWNLOAD TRUE
