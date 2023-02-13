@@ -54,7 +54,7 @@ if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT)
 
   if (NOT storage_client_FOUND)
     message(STATUS "DID NOT find GCSSDK as 'storage_client'")
-    find_package(google_cloud_cpp_storage CONFIG REQUIRED)
+    find_package(google_cloud_cpp_storage CONFIG)
     set(GCSSDK_FOUND ${google_cloud_cpp_storage_FOUND})
   endif()
   if (${google_cloud_cpp_storage_FOUND})
