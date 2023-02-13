@@ -963,10 +963,11 @@ ArraySchema ArraySchema::deserialize(
   // #TODO Add security validation
   auto version = deserializer.read<uint32_t>();
   if (!(version <= constants::format_version)) {
-    std::stringstream ss;
-    ss << "Failed to deserialize array schema; Incompatible format version: ";
-    ss << "got " << version << "; expected <= " << constants::format_version;
-    throw ArraySchemaStatusException(ss.str().c_str());
+    throw ArraySchemaStatusException(
+        "Failed to deserialize array schema: incompatible format version: "
+        "got " +
+        std::to_string(version) +
+        "; expected <= " + std::to_string(constants::format_version));
   }
 
   // Load allows_dups

@@ -1922,12 +1922,12 @@ TEST_CASE(
   // Try writing to a newer-versioned (UINT32_MAX) array
   REQUIRE_THROWS_WITH(
       Array(ctx, new_array_name, TILEDB_WRITE),
-      Catch::Matchers::ContainsSubstring("Incompatible format version."));
+      Catch::Matchers::ContainsSubstring("incompatible format version"));
 
   // Try reading from a newer-versioned (UINT32_MAX) array
   REQUIRE_THROWS_WITH(
       Array(ctx, new_array_name, TILEDB_READ),
-      Catch::Matchers::ContainsSubstring("Incompatible format version."));
+      Catch::Matchers::ContainsSubstring("incompatible format version"));
 
   // Clean up
   VFS vfs(ctx);
