@@ -47,7 +47,7 @@ using namespace tiledb;
 
 /** Test suite constants */
 static const char* ARRAY_NAME = "test_query_conditions_array";
-constexpr int NUM_ROWS = 20;
+constexpr int NUM_ROWS = 100;
 constexpr int A_FILL = -1;
 constexpr float B_FILL = -1.0;
 constexpr const char* C_FILL = "ohai";
@@ -532,18 +532,20 @@ int rand_int(int lo, int hi) {
 }
 
 std::string string_at(
-    size_t i, std::vector<char> data, std::vector<uint64_t> offsets) {
+    size_t i,
+    std::vector<char>& data,
+    std::vector<uint64_t>& offsets,
+    uint64_t data_size) {
   uint64_t start = offsets[i];
   uint64_t end = UINT64_MAX;
   if (i < offsets.size() - 1) {
     end = offsets[i + 1];
   } else {
-    end = data.size();
+    end = data_size;
   }
 
-  if (end == UINT64_MAX) {
-    throw std::logic_error("Bad end offset");
-  }
+  end = std::min(end, data_size);
+
   if (end < start) {
     throw std::logic_error("Bad string range");
   }
@@ -882,7 +884,7 @@ void QueryConditionTest::load_array() {
 
 void QueryConditionTest::query_to_cells(
     Query& query, std::vector<QCTestCell>& cells, bool loading) {
-  QCData data(NUM_ROWS * NUM_ROWS * 10);
+  QCData data(NUM_ROWS * NUM_ROWS);
 
   query.set_data_buffer("x", data.x_)
       .set_data_buffer("y", data.y_)
@@ -900,35 +902,25 @@ void QueryConditionTest::query_to_cells(
   REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
   auto table = query.result_buffer_elements();
-  data.x_.resize(table["x"].second);
-  data.y_.resize(table["y"].second);
-  data.a_.resize(table["a"].second);
-  if (!params_.get("skip_attribute_b") || loading) {
-    data.b_.resize(table["b"].second);
-  }
-  data.c_off_.resize(table["c"].first);
-  data.c_.resize(table["c"].second);
-  data.d_off_.resize(table["d"].first);
-  data.d_.resize(table["d"].second);
 
   cells.clear();
-  for (size_t i = 0; i < data.x_.size(); i++) {
+  for (size_t i = 0; i < table["x"].second; i++) {
     if (!params_.get("skip_attribute_b") || loading) {
       cells.emplace_back(
           data.x_[i],
           data.y_[i],
           data.a_[i],
           data.b_[i],
-          string_at(i, data.c_, data.c_off_),
-          string_at(i, data.d_, data.d_off_));
+          string_at(i, data.c_, data.c_off_, table["c"].second),
+          string_at(i, data.d_, data.d_off_, table["d"].second));
     } else {
       cells.emplace_back(
           data.x_[i],
           data.y_[i],
           data.a_[i],
           B_FILL,
-          string_at(i, data.c_, data.c_off_),
-          string_at(i, data.d_, data.d_off_));
+          string_at(i, data.c_, data.c_off_, table["c"].second),
+          string_at(i, data.d_, data.d_off_, table["d"].second));
     }
   }
 }
