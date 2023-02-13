@@ -40,12 +40,19 @@
 
 namespace tiledb::common {
 
+constexpr bool pjd_hack_fake_async = true;
+
 // Constructor.  May throw an exception on error.  No logging is done as the
 // logger may not yet be initialized.
 ThreadPool::ThreadPool(size_t n)
     : concurrency_level_(n) {
   // If concurrency_level_ is set to zero, construct the thread pool in shutdown
   // state.  Explicitly shut down the task queue as well.
+
+  if constexpr (pjd_hack_fake_async) {
+    return;
+  }
+
   if (concurrency_level_ == 0) {
     task_queue_.drain();
     return;

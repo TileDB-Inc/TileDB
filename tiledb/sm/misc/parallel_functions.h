@@ -44,6 +44,9 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+#define PJD_HACK_SINGLE_THREADED
+#ifndef PJD_HACK_SINGLE_THREADED
+
 /**
  * Sort the given iterator range, possibly in parallel.
  *
@@ -400,6 +403,56 @@ Status parallel_for_2d(
     return wait_status;
   return return_st;
 }
+
+#else
+
+template <
+    typename IterT,
+    typename CmpT = std::less<typename std::iterator_traits<IterT>::value_type>>
+void parallel_sort(
+    ThreadPool* const, IterT begin, IterT end, const CmpT& cmp = CmpT()) {
+  std::sort(begin, end, cmp);
+}
+
+template <typename FuncT>
+Status parallel_for(
+    ThreadPool* const, uint64_t begin, uint64_t end, const FuncT& F) {
+  assert(begin <= end);
+
+  for (uint64_t i = begin; i < end; ++i) {
+    auto st = F(i);
+    if (!st.ok()) {
+      return st;
+    }
+  }
+
+  return Status::Ok();
+}
+
+template <typename FuncT>
+Status parallel_for_2d(
+    ThreadPool* const,
+    uint64_t i0,
+    uint64_t i1,
+    uint64_t j0,
+    uint64_t j1,
+    const FuncT& F) {
+  assert(i0 <= i1);
+  assert(j0 <= j1);
+
+  for (uint64_t i = i0; i < i1; ++i) {
+    for (uint64_t j = j0; j < j1; ++j) {
+      auto st = F(i, j);
+      if (!st.ok()) {
+        return st;
+      }
+    }
+  }
+
+  return Status::Ok();
+}
+
+#endif  // PJD_HACK_SINGLE_THREADED
 
 }  // namespace sm
 }  // namespace tiledb

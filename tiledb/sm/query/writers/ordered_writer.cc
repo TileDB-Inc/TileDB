@@ -357,7 +357,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
   uint64_t frag_tile_id = 0;
   bool close_files = false;
   tile_batches.resize(batch_num);
-  std::optional<ThreadPool::Task> write_task = nullopt;
+  std::vector<ThreadPool::Task> write_tasks;
   for (uint64_t b = 0; b < batch_num; ++b) {
     auto batch_size = (b == batch_num - 1) ? last_batch_size : thread_num;
     assert(batch_size > 0);
@@ -395,12 +395,12 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
       RETURN_NOT_OK(st);
     }
 
-    if (write_task.has_value()) {
-      write_task->wait();
-      RETURN_NOT_OK(write_task->get());
+    if (write_tasks.size()) {
+      RETURN_NOT_OK(storage_manager_->io_tp()->wait_all(write_tasks));
+      write_tasks.clear();
     }
 
-    write_task = storage_manager_->io_tp()->execute([&, b, frag_tile_id]() {
+    write_tasks.push_back(storage_manager_->io_tp()->execute([&, b, frag_tile_id]() {
       close_files = (b == batch_num - 1);
       RETURN_NOT_OK(write_tiles(
           0,
@@ -412,14 +412,13 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
           close_files));
 
       return Status::Ok();
-    });
+    }));
 
     frag_tile_id += batch_size;
   }
 
-  if (write_task.has_value()) {
-    write_task->wait();
-    RETURN_NOT_OK(write_task->get());
+  if (write_tasks.size()) {
+    RETURN_NOT_OK(storage_manager_->io_tp()->wait_all(write_tasks));
   }
 
   return Status::Ok();
