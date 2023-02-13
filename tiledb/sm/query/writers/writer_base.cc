@@ -213,6 +213,7 @@ WriterBase::WriterBase(
   }
 
   optimize_layout_for_1D();
+
   check_var_attr_offsets();
 
   // Get the timestamp the array was opened and the array write version.
@@ -316,8 +317,7 @@ void WriterBase::check_var_attr_offsets() const {
   }
 }
 
-Status WriterBase::initialize_memory_budget() {
-  return Status::Ok();
+void WriterBase::initialize_memory_budget() {
 }
 
 /* ****************************** */

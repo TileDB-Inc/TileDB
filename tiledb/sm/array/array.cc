@@ -1125,11 +1125,27 @@ bool Array::use_refactored_array_open() const {
       "rest.use_refactored_array_open", &refactored_array_open, &found);
   if (!status.ok() || !found) {
     throw std::runtime_error(
-        "Cannot get use_refactored_array_open configuration option from "
+        "Cannot get rest.use_refactored_array_open configuration option from "
         "config");
   }
 
-  return refactored_array_open;
+  return refactored_array_open || use_refactored_query_submit();
+}
+
+bool Array::use_refactored_query_submit() const {
+  auto found = false;
+  auto refactored_query_submit = false;
+  auto status = config_.get<bool>(
+      "rest.use_refactored_array_open_and_query_submit",
+      &refactored_query_submit,
+      &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error(
+        "Cannot get rest.use_refactored_array_open_and_query_submit "
+        "configuration option from config");
+  }
+
+  return refactored_query_submit;
 }
 
 std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()

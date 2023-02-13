@@ -2348,6 +2348,8 @@ class Query {
   }
 
  private:
+  friend class QueryExperimental;
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */

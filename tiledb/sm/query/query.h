@@ -49,6 +49,7 @@
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/sm/query/query_remote_buffer_storage.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
@@ -317,6 +318,15 @@ class Query {
    * @return
    */
   std::unordered_map<std::string, Subarray::MemorySize> get_max_mem_size_map();
+
+  /**
+   * Retrieve remote buffer storage for remote global order writes.
+   *
+   * @return QueryRemoteBufferStorage for this query.
+   */
+  inline std::optional<QueryRemoteBufferStorage>& get_remote_buffer_cache() {
+    return query_remote_buffer_storage_;
+  }
 
   /**
    * Returns `true` if the query has results. Applicable only to read
@@ -819,6 +829,9 @@ class Query {
   /** Already written buffers. */
   std::unordered_set<std::string> written_buffers_;
 
+  /** Cache for tile aligned remote global order writes. */
+  std::optional<QueryRemoteBufferStorage> query_remote_buffer_storage_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -838,7 +851,7 @@ class Query {
   /**
    * Internal routine for checking the completeness of all attribute
    * and dimensions buffers. Iteratively searches that all attributes &
-   * dimenstions buffers have been set correctly
+   * dimensions buffers have been set correctly
    * @return Status
    */
   Status check_buffers_correctness();

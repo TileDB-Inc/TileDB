@@ -93,6 +93,7 @@ const std::string Config::REST_CURL_VERBOSE = "false";
 const std::string Config::REST_LOAD_METADATA_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_USE_REFACTORED_ARRAY_OPEN = "false";
+const std::string Config::REST_USE_REFACTORED_QUERY_SUBMIT = "false";
 const std::string Config::SM_ALLOW_SEPARATE_ATTRIBUTE_WRITES = "false";
 const std::string Config::SM_ALLOW_UPDATES_EXPERIMENTAL = "false";
 const std::string Config::SM_ENCRYPTION_KEY = "";
@@ -105,14 +106,15 @@ const std::string Config::SM_CHECK_GLOBAL_ORDER = "true";
 const std::string Config::SM_SKIP_EST_SIZE_PARTITIONING = "false";
 const std::string Config::SM_SKIP_UNARY_PARTITIONING_BUDGET_CHECK = "false";
 const std::string Config::SM_MEMORY_BUDGET = "5368709120";       // 5GB
-const std::string Config::SM_MEMORY_BUDGET_VAR = "10737418240";  // 10GB;
+const std::string Config::SM_MEMORY_BUDGET_VAR = "10737418240";  // 10GB
 const std::string Config::SM_QUERY_DENSE_QC_COORDS_MODE = "false";
 const std::string Config::SM_QUERY_DENSE_READER = "refactored";
 const std::string Config::SM_QUERY_SPARSE_GLOBAL_ORDER_READER = "refactored";
 const std::string Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER =
     "refactored";
 const std::string Config::SM_MEM_MALLOC_TRIM = "true";
-const std::string Config::SM_MEM_TOTAL_BUDGET = "10737418240";  // 10GB;
+const std::string Config::SM_TILE_MEMORY_BUDGET = "2147483648";  // 2GB
+const std::string Config::SM_MEM_TOTAL_BUDGET = "10737418240";   // 10GB
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS = "0.5";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION =
     "0.25";
@@ -243,6 +245,9 @@ const std::map<std::string, std::string> default_config_values = {
         "rest.use_refactored_array_open",
         Config::REST_USE_REFACTORED_ARRAY_OPEN),
     std::make_pair(
+        "rest.use_refactored_array_open_and_query_submit",
+        Config::REST_USE_REFACTORED_QUERY_SUBMIT),
+    std::make_pair(
         "config.env_var_prefix", Config::CONFIG_ENVIRONMENT_VARIABLE_PREFIX),
     std::make_pair("config.logging_level", Config::CONFIG_LOGGING_LEVEL),
     std::make_pair(
@@ -276,6 +281,7 @@ const std::map<std::string, std::string> default_config_values = {
         "sm.query.sparse_unordered_with_dups.reader",
         Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER),
     std::make_pair("sm.mem.malloc_trim", Config::SM_MEM_MALLOC_TRIM),
+    std::make_pair("sm.mem.tile_memory_budget", Config::SM_TILE_MEMORY_BUDGET),
     std::make_pair("sm.mem.total_budget", Config::SM_MEM_TOTAL_BUDGET),
     std::make_pair(
         "sm.mem.reader.sparse_global_order.ratio_coords",

@@ -108,6 +108,9 @@ class Config {
   /** Refactored array open is disabled by default */
   static const std::string REST_USE_REFACTORED_ARRAY_OPEN;
 
+  /** Refactored query submit is disabled by default */
+  static const std::string REST_USE_REFACTORED_QUERY_SUBMIT;
+
   /** The prefix to use for checking for parameter environmental variables. */
   static const std::string CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
 
@@ -197,6 +200,9 @@ class Config {
 
   /** Should malloc_trim be called on query/ctx destructors. */
   static const std::string SM_MEM_MALLOC_TRIM;
+
+  /** Maximum tile memory budget for readers. */
+  static const std::string SM_TILE_MEMORY_BUDGET;
 
   /** Maximum memory budget for readers and writers. */
   static const std::string SM_MEM_TOTAL_BUDGET;

@@ -248,8 +248,7 @@ GlobalOrderWriter::multipart_upload_state(bool client) {
 
   // TODO: to be refactored, there are multiple places in writers where
   // we iterate over the internal fragment files manually
-  const auto buf_names = buffer_names();
-  for (const auto& name : buf_names) {
+  for (const auto& name : buffer_names()) {
     auto&& [st1, uri] = meta->uri(name);
     RETURN_NOT_OK_TUPLE(st1, {});
 

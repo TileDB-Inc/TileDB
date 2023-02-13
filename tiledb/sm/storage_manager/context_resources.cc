@@ -64,6 +64,10 @@ ContextResources::ContextResources(
    */
   stats::all_stats.register_stats(stats_);
 
+  if (!logger_) {
+    throw std::logic_error("Logger must not be nullptr");
+  }
+
   if constexpr (TILEDB_SERIALIZATION_ENABLED) {
     auto server_address = config_.get<std::string>("rest.server_address");
     if (server_address) {

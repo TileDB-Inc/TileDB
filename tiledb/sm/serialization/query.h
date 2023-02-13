@@ -146,6 +146,8 @@ Status array_from_query_deserialize(
  *
  * @param query Query to serialize
  * @param serialize_type format to serialize to
+ * @param clientside Whether serialization should be performed from a client
+ *      or server perspective
  * @param serialized_buffer Buffer to store serialized query
  */
 Status query_serialize(

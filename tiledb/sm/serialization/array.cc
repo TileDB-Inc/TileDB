@@ -151,7 +151,7 @@ Status array_to_capnp(
         *(schema.second.get()), &schema_builder, client_side));
   }
 
-  if (array->use_refactored_array_open()) {
+  if (array->use_refactored_query_submit()) {
     // Serialize array directory (load if not loaded already)
     const auto array_directory = array->load_array_directory();
     auto array_directory_builder = array_builder->initArrayDirectory();
@@ -171,7 +171,9 @@ Status array_to_capnp(
         }
       }
     }
+  }
 
+  if (array->use_refactored_array_open()) {
     if (array->serialize_non_empty_domain()) {
       auto nonempty_domain_builder = array_builder->initNonEmptyDomain();
       RETURN_NOT_OK(

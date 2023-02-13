@@ -172,6 +172,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-compression-rle.cc
   src/unit-crypto.cc
   src/unit-ctx.cc
+  src/unit-dense-reader.cc
   src/unit-DenseTiler.cc
   src/unit-dimension.cc
   src/unit-duplicates.cc
@@ -221,6 +222,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-filter.cc
     src/unit-cppapi-float-scaling-filter.cc
     src/unit-cppapi-fragment_info.cc
+    src/unit-cppapi-global-order-writes-remote.cc
     src/unit-cppapi-group.cc
     src/unit-cppapi-hilbert.cc
     src/unit-cppapi-max-fragment-size.cc

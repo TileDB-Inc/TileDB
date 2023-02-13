@@ -109,7 +109,8 @@ Query::Query(
     , is_dimension_label_ordered_read_(false)
     , dimension_label_increasing_(true)
     , fragment_size_(std::numeric_limits<uint64_t>::max())
-    , allow_separate_attribute_writes_(false) {
+    , allow_separate_attribute_writes_(false)
+    , query_remote_buffer_storage_(std::nullopt) {
   assert(array->is_open());
 
   subarray_ = Subarray(array_, layout_, stats_, logger_);
@@ -865,7 +866,7 @@ Status Query::process() {
   }
 
   return Status::Ok();
-}  // namespace sm
+}
 
 IQueryStrategy* Query::strategy(bool skip_checks_serialization) {
   if (strategy_ == nullptr) {
@@ -1219,8 +1220,9 @@ Status Query::set_config(const Config& config) {
   config_ = config;
 
   // Refresh memory budget configuration.
-  if (strategy_ != nullptr)
-    RETURN_NOT_OK(strategy_->initialize_memory_budget());
+  if (strategy_ != nullptr) {
+    strategy_->initialize_memory_budget();
+  }
 
   // Set subarray's config for backwards compatibility
   // Users expect the query config to effect the subarray based on existing
@@ -1823,11 +1825,14 @@ Status Query::submit() {
 
     if (status_ == QueryStatus::UNINITIALIZED) {
       RETURN_NOT_OK(create_strategy());
-    }
 
-    // Check that input buffers are tile-aligned for remote global order
-    // writes
-    RETURN_NOT_OK(check_tile_alignment());
+      // Allocate remote buffer storage for global order writes if necessary.
+      // If we cache an entire write a query may be uninitialized for N submits.
+      if (!query_remote_buffer_storage_.has_value() &&
+          type_ == QueryType::WRITE && layout_ == Layout::GLOBAL_ORDER) {
+        query_remote_buffer_storage_.emplace(*this, buffers_);
+      }
+    }
 
     RETURN_NOT_OK(rest_client->submit_query_to_rest(array_->array_uri(), this));
 
@@ -1980,7 +1985,7 @@ tuple<Status, optional<bool>> Query::non_overlapping_ranges() {
 }
 
 bool Query::is_dense() const {
-  return !coords_info_.has_coords_;
+  return array_schema_->dense();
 }
 
 std::vector<WrittenFragmentInfo>& Query::get_written_fragment_info() {

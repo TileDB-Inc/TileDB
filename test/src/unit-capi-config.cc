@@ -238,6 +238,7 @@ void check_save_to_file() {
   ss << "rest.server_address https://api.tiledb.com\n";
   ss << "rest.server_serialization_format CAPNP\n";
   ss << "rest.use_refactored_array_open false\n";
+  ss << "rest.use_refactored_array_open_and_query_submit false\n";
   ss << "sm.allow_separate_attribute_writes false\n";
   ss << "sm.allow_updates_experimental false\n";
   ss << "sm.check_coord_dups true\n";
@@ -276,6 +277,7 @@ void check_save_to_file() {
   ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_query_condition "
         "0.25\n";
   ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges 0.1\n";
+  ss << "sm.mem.tile_memory_budget 2147483648\n";
   ss << "sm.mem.total_budget 10737418240\n";
   ss << "sm.memory_budget 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
@@ -565,6 +567,13 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
   rc = tiledb_config_set(
+      config,
+      "rest.use_refactored_array_open_and_query_submit",
+      "true",
+      &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  rc = tiledb_config_set(
       config, "sm.fragment_info.preload_mbrs", "true", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
@@ -587,6 +596,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["rest.load_metadata_on_array_open"] = "false";
   all_param_values["rest.load_non_empty_domain_on_array_open"] = "false";
   all_param_values["rest.use_refactored_array_open"] = "true";
+  all_param_values["rest.use_refactored_array_open_and_query_submit"] = "true";
   all_param_values["sm.allow_separate_attribute_writes"] = "false";
   all_param_values["sm.allow_updates_experimental"] = "false";
   all_param_values["sm.encryption_key"] = "";
@@ -605,6 +615,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.query.sparse_global_order.reader"] = "refactored";
   all_param_values["sm.query.sparse_unordered_with_dups.reader"] = "refactored";
   all_param_values["sm.mem.malloc_trim"] = "true";
+  all_param_values["sm.mem.tile_memory_budget"] = "2147483648";
   all_param_values["sm.mem.total_budget"] = "10737418240";
   all_param_values["sm.mem.reader.sparse_global_order.ratio_coords"] = "0.5";
   all_param_values["sm.mem.reader.sparse_global_order.ratio_query_condition"] =
