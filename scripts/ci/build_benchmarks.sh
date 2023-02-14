@@ -23,6 +23,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+set -xeuo pipefail
 
 # Builds CI benchmarks and checks test status
 pushd $GITHUB_WORKSPACE/test/benchmarking && \
