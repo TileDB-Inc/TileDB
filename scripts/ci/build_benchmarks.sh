@@ -39,7 +39,7 @@ popd
 # ...
 # given the above, explicitly check and bail.
 poss_ret_exit_code=$?
-if [ $poss_ret_exit_code ] ; then
+if [ $poss_ret_exit_code -ne 0 ] ;  then
   return $poss_ret_exit_code 2>/dev/null
   exit $poss_ret_exit_code
 fi
