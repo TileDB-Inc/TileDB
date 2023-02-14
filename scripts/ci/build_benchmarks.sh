@@ -27,9 +27,23 @@ set -xeuo pipefail
 
 # Builds CI benchmarks and checks test status
 pushd $GITHUB_WORKSPACE/test/benchmarking && \
-mkdir build && cd build && \
+mkdir -p build && cd build && \
 cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist ../src && make && \
 popd
+# man bash
+# ...
+# -e The shell does not exit if the command that fails is part of the command
+# list immediately following a while or until keyword, part of the test 
+# following the if or elif reserved words, part of any command executed in a && 
+# or || list except the command following the final && or  || ...
+# ...
+# given the above, explicitly check and bail.
+poss_ret_exit_code=$?
+if [ $poss_ret_exit_code ] ; then
+  return $poss_ret_exit_code 2>/dev/null
+  exit $poss_ret_exit_code
+fi
+
 
 testfile=$(mktemp)
 mv $testfile $testfile.cc
