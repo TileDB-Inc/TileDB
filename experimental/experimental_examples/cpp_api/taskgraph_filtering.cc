@@ -27,7 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * TODO
+ * This example demonstrates basic functionality of task graph APIs.
+ * It reads an array, compresses the data, decompresses, writes data into
+ * a new array, compares the new array data with original data.
+ *
+ *
  */
 
 #include <iostream>
@@ -64,10 +68,11 @@ class chunk_generator {
   }
 
   uint32_t operator()(std::stop_source& stop_source) {
-    if (begin_ + chunk_size_ >= array_size_) {
-      stop_source.request_stop();  // unclear how graph works here, does it
-                                   // pulsate one more time or it dies including
-                                   // this current operation?
+    if (begin_ + chunk_size_ > array_size_) {
+      stop_source.request_stop();
+      // TODO: Unclear how graph works here, does it
+      // pulsate one more time or it dies including
+      // this current operation?
     }
 
     uint32_t rv = begin_;
@@ -124,7 +129,12 @@ auto read_chunk(
     Context& ctx,
     const std::string& array_name,
     uint32_t chunk_size,
-    uint32_t in_offset_begin) {
+    uint32_t in_offset_begin,
+    uint32_t array_size) {
+  // Last reader reads till the end of the array
+  if (in_offset_begin + 2 * chunk_size > array_size) {
+    chunk_size = array_size - in_offset_begin;
+  }
   Array array(ctx, array_name, TILEDB_READ);
 
   Subarray subarray(ctx, array);
@@ -154,7 +164,7 @@ void validate_results(
         return n++;
       });
 
-  auto [o, c, data] = read_chunk(ctx, array_name, array_size, 0);
+  auto [o, c, data] = read_chunk(ctx, array_name, array_size, 0, array_size);
   (void)o;
   (void)c;
 
@@ -181,7 +191,7 @@ auto compress_chunk(const input_info<uint32_t>& in) {
     throw std::runtime_error("compression error");
   }
 
-  compressed_data.resize(data_ptr->size());
+  compressed_data.resize(out_size);
 
   return std::make_tuple(
       offset, chunk_size, std::make_shared<std::vector<char>>(compressed_data));
@@ -217,7 +227,7 @@ int main() {
   Context ctx(cfg);
   std::string array_name("taskgraph_filtering");
   std::string output_array("taskgraph_filtering_output");
-  uint32_t array_size = 96;
+  uint32_t array_size = 100;
 
   if (Object::object(ctx, array_name).type() == Object::Type::Array) {
     tiledb::VFS vfs(ctx);
@@ -245,12 +255,14 @@ int main() {
   for (uint32_t w = 0; w < num_threads; ++w) {
     auto a = initial_node(graph, gen);
     auto b = transform_node(
-        graph, [&ctx, &array_name, chunk_size](uint32_t in_offset_begin) {
-          return read_chunk(ctx, array_name, chunk_size, in_offset_begin);
+        graph,
+        [&ctx, &array_name, chunk_size, array_size](uint32_t in_offset_begin) {
+          return read_chunk(
+              ctx, array_name, chunk_size, in_offset_begin, array_size);
         });
     auto c = transform_node(graph, compress_chunk);
 
-    // MIMO node impl doesn't seem available, so I'm not sure how to
+    // TODO: MIMO node impl doesn't seem available, so I'm not sure how to
     // aggregate the outputs of all compressor nodes then fan back out
     // I'll fall back to making each compressor node pass the buffer directly to
     // a decompressor node
