@@ -964,7 +964,10 @@ ArraySchema ArraySchema::deserialize(
   auto version = deserializer.read<uint32_t>();
   if (!(version <= constants::format_version)) {
     throw ArraySchemaStatusException(
-        "Failed to deserialize array schema; Incompatible format version.");
+        "Failed to deserialize array schema: incompatible format version: "
+        "got " +
+        std::to_string(version) +
+        "; expected <= " + std::to_string(constants::format_version));
   }
 
   // Load allows_dups
