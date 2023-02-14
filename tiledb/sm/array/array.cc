@@ -855,9 +855,9 @@ uint64_t Array::timestamp_end_opened_at() const {
 }
 
 void Array::set_config(Config config) {
-  if (is_opening_or_closing_) {
+  if (is_open()) {
     throw ArrayStatusException(
-        "[set_config] Cannot set a config on an opening or closing array");
+        "[set_config] Cannot set a config on an open array");
   }
   config_.inherit(config);
 }

@@ -345,7 +345,7 @@ Status array_open_from_capnp(
     tdb_unique_ptr<Config> decoded_config = nullptr;
     RETURN_NOT_OK(
         config_from_capnp(array_open_reader.getConfig(), &decoded_config));
-    array->set_config(*decoded_config);
+    array->unsafe_set_config(*decoded_config);
   }
 
   if (array_open_reader.hasQueryType()) {
