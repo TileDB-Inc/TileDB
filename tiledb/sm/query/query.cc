@@ -1338,7 +1338,8 @@ Status Query::set_data_buffer(
       return set_coords_buffer(buffer, buffer_size);
   }
 
-  if (is_dim &&
+  const bool is_var = array_schema_->var_size(name);
+  if (is_dim && !is_var &&
       (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE)) {
     // Check number of coordinates
     uint64_t coords_num = *buffer_size / array_schema_->cell_size(name);
@@ -1365,7 +1366,7 @@ Status Query::set_data_buffer(
   has_coords_buffer_ |= is_dim;
 
   // Set attribute/dimension buffer on the appropriate buffer
-  if (!array_schema_->var_size(name))
+  if (!is_var)
     // Fixed size data buffer
     buffers_[name].set_data_buffer(buffer, buffer_size);
   else
