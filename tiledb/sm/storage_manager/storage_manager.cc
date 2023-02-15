@@ -223,59 +223,6 @@ StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
       Status::Ok(), array_schema_latest, array_schemas_all, fragment_metadata};
 }
 
-tuple<
-    Status,
-    optional<shared_ptr<ArraySchema>>,
-    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
-StorageManagerCanonical::array_open_for_writes(Array* array) {
-  auto timer_se = stats()->start_timer("array_open_write_load_schemas");
-  // Checks
-  if (!vfs()->supports_uri_scheme(array->array_uri()))
-    return {
-        logger_->status(Status_StorageManagerError(
-            "Cannot open array; URI scheme unsupported.")),
-        nullopt,
-        nullopt};
-
-  // Load array schemas
-  auto&& [st_schemas, array_schema_latest, array_schemas_all] =
-      load_array_schemas(array->array_directory(), *array->encryption_key());
-  RETURN_NOT_OK_TUPLE(st_schemas, nullopt, nullopt);
-
-  // If building experimentally, this library should not be able to
-  // write to newer-versioned or older-versioned arrays
-  // Else, this library should not be able to write to newer-versioned arrays
-  // (but it is ok to write to older arrays)
-  auto version = array_schema_latest.value()->version();
-  if constexpr (is_experimental_build) {
-    if (version != constants::format_version) {
-      std::stringstream err;
-      err << "Cannot open array for writes; Array format version (";
-      err << version;
-      err << ") is not the library format version (";
-      err << constants::format_version << ")";
-      return {
-          logger_->status(Status_StorageManagerError(err.str())),
-          nullopt,
-          nullopt};
-    }
-  } else {
-    if (version > constants::format_version) {
-      std::stringstream err;
-      err << "Cannot open array for writes; Array format version (";
-      err << version;
-      err << ") is newer than library format version (";
-      err << constants::format_version << ")";
-      return {
-          logger_->status(Status_StorageManagerError(err.str())),
-          nullopt,
-          nullopt};
-    }
-  }
-
-  return {Status::Ok(), array_schema_latest, array_schemas_all};
-}
-
 tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
 StorageManagerCanonical::array_load_fragments(
     Array* array, const std::vector<TimestampedURI>& fragments_to_load) {

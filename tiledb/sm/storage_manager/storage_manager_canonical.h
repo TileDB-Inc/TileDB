@@ -247,21 +247,6 @@ class StorageManagerCanonical {
       MemoryTracker* memory_tracker,
       const EncryptionKey& enc_key);
 
-  /** Opens an array for writes.
-   *
-   * @param array The array to open.
-   * @return tuple of Status, latest ArraySchema and map of all array schemas
-   *        Status Ok on success, else error
-   *        ArraySchema The array schema to be retrieved after the
-   *          array is opened.
-   *        ArraySchemaMap Map of all array schemas found keyed by name
-   */
-  tuple<
-      Status,
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
-  array_open_for_writes(Array* array);
-
   /**
    * Opens an group for reads.
    *
