@@ -927,7 +927,17 @@ endif()
 # TileDB static and shared library targets
 ############################################################
 
-add_library(tiledb_shared SHARED $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
+if(WIN32)
+  # TBD: What happens with this creating a static library?
+  #list(APPEND TILEDB_CORE_SOURCES ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/tiledb_win32_verinfo.rc)
+  add_library(tiledb_shared SHARED $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS> ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/tiledb_win32_verinfo.rc)
+  target_include_directories(tiledb_shared
+    PRIVATE
+      "${TILEDB_CORE_INCLUDE_DIR}"
+    )
+else()
+  add_library(tiledb_shared SHARED $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
+endif()
 
 # Target properties
 set_target_properties(tiledb_shared

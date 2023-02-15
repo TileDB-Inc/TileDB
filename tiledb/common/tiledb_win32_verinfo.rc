@@ -1,0 +1,23 @@
+#ifdef RC_INVOKED
+
+#include <tiledb\sm\c_api\tiledb_version.h>
+
+1 VERSIONINFO
+FILEVERSION TDB_WIN32_FILEVERSION
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904E4"
+    BEGIN
+      VALUE "FileVersion", TDB_WIN32_FILEVERSION_STR
+      VALUE "ProductName", "TileDB Embedded"
+    END
+  END
+  /* apparently VarFileInfo block required for ProductVersion/ProductName to display */
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x0409, 1252
+  END
+END
+
+#endif /*RC_INVOKED*/
