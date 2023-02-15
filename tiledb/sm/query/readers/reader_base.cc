@@ -79,7 +79,7 @@ ReaderBase::ReaderBase(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    QueryCondition& condition)
+    std::optional<QueryCondition>& condition)
     : StrategyBase(
           stats,
           logger,

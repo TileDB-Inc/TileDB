@@ -72,7 +72,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    QueryCondition& condition)
+    std::optional<QueryCondition>& condition)
     : ReaderBase(
           stats,
           logger,
@@ -266,7 +266,7 @@ std::vector<uint64_t> SparseIndexReaderBase::tile_offset_sizes() {
 
 bool SparseIndexReaderBase::has_post_deduplication_conditions(
     FragmentMetadata& frag_meta) {
-  return frag_meta.has_delete_meta() || !condition_.empty() ||
+  return frag_meta.has_delete_meta() || condition_.has_value() ||
          (!delete_and_update_conditions_.empty() &&
           !deletes_consolidation_no_purge_);
 }
@@ -360,8 +360,8 @@ Status SparseIndexReaderBase::load_initial_data() {
   }
 
   // Make a list of dim/attr that will be loaded for query condition.
-  if (!condition_.empty()) {
-    for (auto& name : condition_.field_names()) {
+  if (condition_.has_value()) {
+    for (auto& name : condition_->field_names()) {
       if (!array_schema_.is_dim(name) || !include_coords_) {
         qc_loaded_attr_names_set_.insert(name);
       }
@@ -722,7 +722,7 @@ Status SparseIndexReaderBase::apply_query_condition(
     std::vector<ResultTile*>& result_tiles) {
   auto timer_se = stats_->start_timer("apply_query_condition");
 
-  if (!condition_.empty() || !delete_and_update_conditions_.empty() ||
+  if (condition_.has_value() || !delete_and_update_conditions_.empty() ||
       use_timestamps_) {
     // Process all tiles in parallel.
     auto status = parallel_for(
@@ -768,8 +768,8 @@ Status SparseIndexReaderBase::apply_query_condition(
           }
 
           // Compute the result of the query condition for this tile
-          if (!condition_.empty()) {
-            RETURN_NOT_OK(condition_.apply_sparse<BitmapType>(
+          if (condition_.has_value()) {
+            RETURN_NOT_OK(condition_->apply_sparse<BitmapType>(
                 *(frag_meta->array_schema().get()),
                 *rt,
                 rt->post_dedup_bitmap()));

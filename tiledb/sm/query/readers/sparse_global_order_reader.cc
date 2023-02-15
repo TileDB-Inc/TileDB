@@ -77,7 +77,7 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    QueryCondition& condition,
+    std::optional<QueryCondition>& condition,
     bool consolidation_with_timestamps,
     bool skip_checks_serialization)
     : SparseIndexReaderBase(
@@ -160,7 +160,9 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
   auto fragment_num = fragment_metadata_.size();
 
   // Check that the query condition is valid.
-  RETURN_NOT_OK(condition_.check(array_schema_));
+  if (condition_.has_value()) {
+    RETURN_NOT_OK(condition_->check(array_schema_));
+  }
 
   get_dim_attr_stats();
 
@@ -2091,7 +2093,7 @@ template SparseGlobalOrderReader<uint8_t>::SparseGlobalOrderReader(
     std::unordered_map<std::string, QueryBuffer>&,
     Subarray&,
     Layout,
-    QueryCondition&,
+    std::optional<QueryCondition>&,
     bool,
     bool);
 template SparseGlobalOrderReader<uint64_t>::SparseGlobalOrderReader(
@@ -2103,7 +2105,7 @@ template SparseGlobalOrderReader<uint64_t>::SparseGlobalOrderReader(
     std::unordered_map<std::string, QueryBuffer>&,
     Subarray&,
     Layout,
-    QueryCondition&,
+    std::optional<QueryCondition>&,
     bool,
     bool);
 

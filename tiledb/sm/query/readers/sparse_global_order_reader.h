@@ -75,7 +75,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       std::unordered_map<std::string, QueryBuffer>& buffers,
       Subarray& subarray,
       Layout layout,
-      QueryCondition& condition,
+      std::optional<QueryCondition>& condition,
       bool consolidation_with_timestamps,
       bool skip_checks_serialization = false);
 

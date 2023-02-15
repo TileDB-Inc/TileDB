@@ -155,7 +155,7 @@ TEST_CASE_METHOD(
   std::unordered_map<std::string, tiledb::sm::QueryBuffer> buffers;
   buffers.emplace(
       "a", tiledb::sm::QueryBuffer(nullptr, nullptr, &tmp_size, &tmp_size));
-  QueryCondition condition;
+  std::optional<QueryCondition> condition;
   ThreadPool tp_cpu(4), tp_io(4);
   Array array(URI(array_name_), context.storage_manager());
   CHECK(array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0)
