@@ -59,7 +59,6 @@ template <class>
 class synchronized_optional;
 
 namespace detail {
-template <class T, class U>
 /**
  * Predicate that two `synchronized_optional` objects are the same object. Used
  * in binary operations.
@@ -72,10 +71,18 @@ template <class T, class U>
  * @param y Reference to the right hand side
  * @return whether the two objects are the same
  */
+template <class T, class U>
 constexpr bool is_same_as(
     const synchronized_optional<T>& x, const synchronized_optional<U>& y) {
   return std::addressof(x) == std::addressof(y);
 }
+
+/*
+ * Whitebox testing class forward declaration
+ */
+template <class>
+class whitebox_synchronized_optional;
+
 }  // namespace detail
 
 /**
@@ -201,9 +208,13 @@ constexpr bool is_same_as(
  *
  * @tparam T The underlying object is of type `T`
  */
-
 template <class T>
 class synchronized_optional {
+  /**
+   * Friend declaration allows whitebox testing with private class members.
+   */
+  friend class detail::whitebox_synchronized_optional<T>;
+
   /**
    * The lock used to synchronize read access to `base_`.
    */
@@ -677,8 +688,12 @@ class synchronized_optional {
   /*
    * Modifiers
    */
+ private:
   /**
    * Swapping values requires acquiring write locks on both objects.
+   *
+   * Currently disabled because of deadlocks between `scoped_lock` and other
+   * locks.
    */
   void swap(synchronized_optional& x) {
     /*
@@ -700,6 +715,7 @@ class synchronized_optional {
     // Assert: we have write locks on both objects
     base_.swap(x.base_);
   };
+ public:
 
   /**
    * Reset is equivalent to assigning `nullopt`.

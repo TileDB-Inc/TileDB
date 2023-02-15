@@ -27,5 +27,7 @@ include(unit_test)
 
 commence(unit_test synchronized_optional)
   this_target_sources(
-      unit_synchronized_optional.cc unit_synchronized_optional_comparisons.cc)
+      unit_synchronized_optional.cc
+      unit_synchronized_optional_comparisons.cc
+      unit_synchronized_optional_swap.cc)
 conclude(unit_test)
