@@ -30,9 +30,12 @@
  * This example demonstrates basic functionality of task graph APIs.
  * It reads an array, compresses the data, decompresses, writes data into
  * a new array, compares the new array data with original data.
- *
+ * This example is very similar as functionality with taskgraph_filtering.cc,
+ * but contains no TileDB Array APi so that the taskgraph API is
+ * highlighted even better.
  */
 
+#include <chrono>
 #include <iostream>
 
 #include <tiledb/tiledb>
@@ -46,6 +49,10 @@
 
 using namespace tiledb;
 using namespace tiledb::common;
+
+// The vectors used as input and output by the taskgraph
+static std::vector<uint32_t> array;
+static std::vector<uint32_t> output_array;
 
 // Alias the type of the input for a task graph node
 // In our case, a transform or terminal node gets an offset, a chunk size
@@ -85,94 +92,33 @@ class chunk_generator {
   }
 };
 
-void create_array(Context& ctx, const std::string& array_name) {
-  // Create a TileDB array with a single "rows" dimension,
-  // (0, uint32_max) domain and a tile extent of 4
-  Domain domain(ctx);
-  domain.add_dimension(Dimension::create<uint32_t>(
-      ctx, "rows", {{0, std::numeric_limits<uint32_t>::max() - 1}}, 4));
-
-  // The array is dense
-  ArraySchema schema(ctx, TILEDB_DENSE);
-  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
-
-  // Create a single fixed length attribute
-  auto a1 = Attribute::create<uint32_t>(ctx, "a1");
-  schema.add_attribute(a1);
-
-  // Create the (empty) array on disk.
-  Array::create(array_name, schema);
-}
-
-void write_chunk(
-    Context& ctx,
-    const std::string& array_name,
-    const input_info<uint32_t>& in) {
+void write_chunk(const input_info<uint32_t>& in) {
   // Unpack input coming from the parent node
   auto [offset, chunk_size, data] = in;
 
-  // Open array for writes
-  Array array(ctx, array_name, TILEDB_WRITE);
-  Query query(ctx, array, TILEDB_WRITE);
-  query.set_layout(TILEDB_ROW_MAJOR);
-
-  // Configure the query to write chunk_size elements starting at offset
-  Subarray subarray(ctx, array);
-  subarray.add_range(0, offset, offset + chunk_size - 1);
-  query.set_subarray(subarray);
-
-  // Set the buffer that will be written for attribute a1
-  query.set_data_buffer("a1", *data);
-
-  // Perform the write
-  query.submit();
+  // Write the input data into the output array at the given offset
+  std::copy(data->begin(), data->end(), output_array.begin() + offset);
 }
 
-void generate_test_data(
-    Context& ctx, const std::string& array_name, uint32_t array_size) {
+void generate_test_data() {
   // Write 0..array_size into the array
-  std::vector<uint32_t> data(array_size);
-  std::generate(data.begin(), data.end(), [n = 0]() mutable { return n++; });
-
-  write_chunk(
-      ctx,
-      array_name,
-      std::make_tuple(
-          0, array_size, std::make_shared<std::vector<uint32_t>>(data)));
+  std::generate(array.begin(), array.end(), [n = 0]() mutable { return n++; });
 }
 
 auto read_chunk(
-    Context& ctx,
-    const std::string& array_name,
-    uint32_t chunk_size,
-    uint32_t in_offset_begin,
-    uint32_t array_size) {
+    uint32_t chunk_size, uint32_t in_offset_begin, uint32_t array_size) {
   // Last reader reads till the end of the array
   if (in_offset_begin + 2 * chunk_size > array_size) {
     chunk_size = array_size - in_offset_begin;
   }
 
-  // Open array for reads
-  Array array(ctx, array_name, TILEDB_READ);
-
-  // Set a subarray for reading chunk_bytes starting at in_offset_begin
-  Subarray subarray(ctx, array);
-  subarray.add_range(0, in_offset_begin, in_offset_begin + chunk_size - 1);
-
-  // Alloc a big enough buffer for the query to read into
+  // Alloc a big enough buffer and read chunk_size bytes
+  // starting at in_offset_begin from the input array
   std::vector<uint32_t> data(chunk_size);
-
-  // Create a query and configure it with the subarray and buffers created above
-  Query query(ctx, array, TILEDB_READ);
-  query.set_subarray(subarray)
-      .set_layout(TILEDB_ROW_MAJOR)
-      .set_data_buffer("a1", data);
-
-  // Perform the read
-  query.submit();
-
-  // Make sure query completed
-  assert(query.query_status() == Query::Status::COMPLETE);
+  std::copy(
+      array.begin() + in_offset_begin,
+      array.begin() + in_offset_begin + chunk_size,
+      data.begin());
 
   // Return the output that will be passed to the child node
   // in the form of input_info<uint32_t>
@@ -183,21 +129,8 @@ auto read_chunk(
 }
 
 // Read data from the array and make sure it contains the expected data
-void validate_results(
-    Context& ctx, const std::string& array_name, uint32_t array_size) {
-  std::vector<uint32_t> expected_results(array_size);
-  std::generate(
-      expected_results.begin(), expected_results.end(), [n = 0]() mutable {
-        return n++;
-      });
-
-  auto [o, c, data] = read_chunk(ctx, array_name, array_size, 0, array_size);
-  (void)o;
-  (void)c;
-
-  for (uint32_t r = 0; r < array_size; ++r) {
-    assert(expected_results[r] == data->at(r));
-  }
+void validate_results() {
+  assert(std::equal(array.begin(), array.end(), output_array.begin()));
 }
 
 auto compress_chunk(const input_info<uint32_t>& in) {
@@ -261,35 +194,13 @@ auto decompress_chunk(const input_info<char>& in) {
 }
 
 int main() {
-  // Create a TileDB context.
-  Context ctx;
-
-  // Create a TileDB virtual filesystem object
-  tiledb::VFS vfs(ctx);
-
-  // Name of the array used as input
-  std::string array_name("taskgraph_filtering");
-
-  // Name of the array used by the task graph as output
-  std::string output_array("taskgraph_filtering_output");
-
   // The size of the arrays
   uint32_t array_size = 100;
-
-  // If the arrays already exist on disk, remove them and start clean
-  if (Object::object(ctx, array_name).type() == Object::Type::Array) {
-    vfs.remove_dir(array_name);
-  }
-  if (Object::object(ctx, output_array).type() == Object::Type::Array) {
-    vfs.remove_dir(output_array);
-  }
-
-  // Create the input array and the output array
-  create_array(ctx, output_array);
-  create_array(ctx, array_name);
+  array.resize(array_size);
+  output_array.resize(array_size);
 
   // Fill the input array with test data
-  generate_test_data(ctx, array_name, array_size);
+  generate_test_data();
 
   // The number of threads will dictate how wide the graph will be
   uint32_t num_threads = std::thread::hardware_concurrency();
@@ -339,22 +250,21 @@ int main() {
    * like defined in the illustration above. But a compress_chunk(B) can be
    * scheduled to run before a read_chunk(A) if A and B are different pipelines,
    * it's up to the scheduler to choose an order if there is no path(defined
-   * by the edges below) in the task graph from a node to another.
+   * by the edges below) in the graph from a node to another.
    */
+
   for (uint32_t w = 0; w < num_threads; ++w) {
     // Create the node that calls the generator to pick the next offset
     // This node takes no input, only generates an output
     auto a = initial_node(graph, gen);
 
-    // Create the node that brings a chunk of the TileDB Array in memory,
+    // Create the node that reads a chunk of the array in memory,
     // starting at an offset given by the node above.
     // Use a lambda here to capture some local vars and pass them to the
     // read_chunk function
     auto b = transform_node(
-        graph,
-        [&ctx, &array_name, chunk_size, array_size](uint32_t in_offset_begin) {
-          return read_chunk(
-              ctx, array_name, chunk_size, in_offset_begin, array_size);
+        graph, [chunk_size, array_size](uint32_t in_offset_begin) {
+          return read_chunk(chunk_size, in_offset_begin, array_size);
         });
 
     // Create a node that will compress the in memory chunk passed from above
@@ -365,12 +275,9 @@ int main() {
     // above
     auto d = transform_node(graph, decompress_chunk);
 
-    // Create a node that gets the in memory data from above and writes it
-    // into the output TileDB array
-    auto e = terminal_node(
-        graph, [&ctx, &output_array](const input_info<uint32_t>& in) {
-          write_chunk(ctx, output_array, in);
-        });
+    // Create a node that gets the in decompressed data from above and writes it
+    // into the output array
+    auto e = terminal_node(graph, write_chunk);
 
     // Define the execution dependencies using task graph edges
     make_edge(graph, a, b);
@@ -385,8 +292,9 @@ int main() {
   // Start executing the graph
   sync_wait(graph);
 
-  // At this point output_array should contain the same data as the input array
-  validate_results(ctx, output_array, array_size);
+  // At this point the output array should contain the same data as the
+  // input array
+  validate_results();
 
   return 0;
 }

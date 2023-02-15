@@ -34,6 +34,7 @@ message("TileDB is compiled with experimental features enabled")
 include(common NO_POLICY_SCOPE)
 
 add_subdirectory(tiledb)
+
 #
 # Test-compile of object library ensures link-completeness
 #

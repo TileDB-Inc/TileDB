@@ -32,9 +32,7 @@ if (WIN32)
   #   C4305: implicit truncation of double to float
   add_compile_options(/wd4204 /wd4221 /wd4305)
 else()
-  # Don't treat printf format warnings as errors.
-  add_compile_options(-Wno-error=format)
-  # TODO: Remove when KV API has been removed.
+   #TODO: Remove when KV API has been removed.
   add_compile_options(-Wno-deprecated-declarations)
 endif()
 add_custom_target(experimental_examples)
