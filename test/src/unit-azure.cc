@@ -54,12 +54,12 @@ static ConfList test_settings = {
      {"vfs.azure.storage_account_key",
       "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
       "K1SZFPTOtr/KBHBeksoGMGw=="},
-     {"vfs.azure.blob_endpoint", "127.0.0.1:10000/devstoreaccount1"}},
+     {"vfs.azure.blob_endpoint", "http://127.0.0.1:10000/devstoreaccount1"}},
     // Currently disabled because it does not work with the Azurite emulator
     // The SAS path was manually tested against the Azure Blob Service.
     //{{"vfs.azure.storage_account_name", "devstoreaccount2"},
     // {"vfs.azure.storage_sas_token", ""},
-    // {"vfs.azure.blob_endpoint", "127.0.0.1:10000/devstoreaccount2"}}
+    // {"vfs.azure.blob_endpoint", "http://127.0.0.1:10000/devstoreaccount2"}}
 };
 
 struct AzureFx {
