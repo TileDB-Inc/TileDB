@@ -1,3 +1,120 @@
+# TileDB v2.15.0 Release Notes
+
+## Disk Format
+
+* Add FloatScaleFilter to format spec (documentation only; filter released in 2.11.0) [#3494](https://github.com/TileDB-Inc/TileDB/pull/3494)
+
+## Breaking C API changes
+
+* Remove deprecated `Query` methods. [#3841](https://github.com/TileDB-Inc/TileDB/pull/3841)
+* Remove deprecated API functions about buffers [#3733](https://github.com/TileDB-Inc/TileDB/pull/3733)
+* Remove deprecated C API `tiledb_fragment_info_load_with_key` [#3740](https://github.com/TileDB-Inc/TileDB/pull/3740)
+* Remove extra experimental set buffer methods [#3761](https://github.com/TileDB-Inc/TileDB/pull/3761)
+* Remove C API functions `tiledb_array_open_at` and variations. [#3755](https://github.com/TileDB-Inc/TileDB/pull/3755)
+* Remove C API functions `tiledb_array_consolidate_metadata` and `tiledb_array_consolidate_metadata_with_key` [#3742](https://github.com/TileDB-Inc/TileDB/pull/3742)
+* Remove deprecated C API function `tiledb_coords`. [#3743](https://github.com/TileDB-Inc/TileDB/pull/3743)
+* Remove bitsort filter (feature-flagged filter). [#3852](https://github.com/TileDB-Inc/TileDB/pull/3852)
+
+## Breaking behavior
+
+* An error is now raised when setting a subarray on a query that is already initialized. [#3668](https://github.com/TileDB-Inc/TileDB/pull/3668)
+* An error is now raised when setting a subarray on a write to a sparse array. [#3668](https://github.com/TileDB-Inc/TileDB/pull/3668)
+
+## New features
+
+* Partial attribute writes into a single fragment. [#3714](https://github.com/TileDB-Inc/TileDB/pull/3714)
+* Query condition support for TIME types [#3784](https://github.com/TileDB-Inc/TileDB/pull/3784)
+* Enable dimension labels for the C API (provisional) [#3824](https://github.com/TileDB-Inc/TileDB/pull/3824)
+* Add dimension label C++ API (provisional) [#3839](https://github.com/TileDB-Inc/TileDB/pull/3839)
+
+## Improvements
+
+* Add creation of ArrayDirectory on open to stats [#3769](https://github.com/TileDB-Inc/TileDB/pull/3769)
+* Return underlying errors in Win::remove_dir [#3866](https://github.com/TileDB-Inc/TileDB/pull/3866)
+* Removes tile-aligned restriction for remote global order writes by caching tile overflow data from submissions. [#3762](https://github.com/TileDB-Inc/TileDB/pull/3762)
+* Implement S3 buffering support for remote global order writes [#3609](https://github.com/TileDB-Inc/TileDB/pull/3609)
+* Add support for dimension labels on an encrypted array [#3774](https://github.com/TileDB-Inc/TileDB/pull/3774)
+* Refactor relevant fragments into a separate class. [#3738](https://github.com/TileDB-Inc/TileDB/pull/3738)
+* Implement duration instrument for measuring times in stats. [#3746](https://github.com/TileDB-Inc/TileDB/pull/3746)
+* Move attribute order check to writer base [#3748](https://github.com/TileDB-Inc/TileDB/pull/3748)
+* Fragment consolidator: use average cell size for buffer allocation. [#3756](https://github.com/TileDB-Inc/TileDB/pull/3756)
+* Show URL in logger trace before results are returned [#3745](https://github.com/TileDB-Inc/TileDB/pull/3745)
+* Refactor tiledb_set_subarray call in test/support/src/helpers.cc [#3776](https://github.com/TileDB-Inc/TileDB/pull/3776)
+* Move array open methods from StorageManager to Array [#3790](https://github.com/TileDB-Inc/TileDB/pull/3790)
+* Split Tile class into different classes for read and write. [#3796](https://github.com/TileDB-Inc/TileDB/pull/3796)
+* Update ArrayDirectory to use ContextResources [#3800](https://github.com/TileDB-Inc/TileDB/pull/3800)
+* Use `EncryptionType::NO_ENCRYPTION` instead of casting the C enum. [#3545](https://github.com/TileDB-Inc/TileDB/pull/3545)
+* Tile metadata generator: fix buffer overflow on string comparison. [#3821](https://github.com/TileDB-Inc/TileDB/pull/3821)
+* Ordered writer: process next tile batch while waiting on write. [#3797](https://github.com/TileDB-Inc/TileDB/pull/3797)
+* Query v3: Reduce array open operations on Cloud [#3626](https://github.com/TileDB-Inc/TileDB/pull/3626)
+* Read tiles: get rid of extra VFS allocation. [#3848](https://github.com/TileDB-Inc/TileDB/pull/3848)
+* Clean-up `QueryBuffer` and move it away from statuses. [#3840](https://github.com/TileDB-Inc/TileDB/pull/3840)
+* Storage manager: remove passthrough read/write functions. [#3853](https://github.com/TileDB-Inc/TileDB/pull/3853)
+* Fix partial attribute write test. [#3862](https://github.com/TileDB-Inc/TileDB/pull/3862)
+* Query v2: Add array directory and fragment meta ser/deser behind config flag [#3845](https://github.com/TileDB-Inc/TileDB/pull/3845)
+* Ordered dimension label reader: handle empty array. [#3869](https://github.com/TileDB-Inc/TileDB/pull/3869)
+* Fix comments in nullable attributes example. [#3870](https://github.com/TileDB-Inc/TileDB/pull/3870)
+* RLE and dictionary filter only enabled for UTF8 since format version 17. [#3868](https://github.com/TileDB-Inc/TileDB/pull/3868)
+* Move more resources into ContextResources [#3807](https://github.com/TileDB-Inc/TileDB/pull/3807)
+* Better errors for failed dimension label queries. [#3872](https://github.com/TileDB-Inc/TileDB/pull/3872)
+* Dense reader: process smaller units of work. [#3856](https://github.com/TileDB-Inc/TileDB/pull/3856)
+* Use different config variable for enabling open v2 and query v3 [#3879](https://github.com/TileDB-Inc/TileDB/pull/3879)
+* Fragment consolidation: using correct buffer weights. [#3877](https://github.com/TileDB-Inc/TileDB/pull/3877)
+* Show expected and actual version numbers in the error message [#3855](https://github.com/TileDB-Inc/TileDB/pull/3855)
+* Fix shallow test-only bug in unit_rtree.cc [#3830](https://github.com/TileDB-Inc/TileDB/pull/3830)
+* Fix stack buffer overflow bug in unit-curl.cc [#3832](https://github.com/TileDB-Inc/TileDB/pull/3832)
+* Fix stack use after free bug in unit_thread_pool [#3831](https://github.com/TileDB-Inc/TileDB/pull/3831)
+
+## Defects removed
+
+* Fail if fragment info objects are accessed before loading them. [#3846](https://github.com/TileDB-Inc/TileDB/pull/3846)
+* Let ConsolidationPlan::dump() produce valid JSON [#3751](https://github.com/TileDB-Inc/TileDB/pull/3751)
+* Fix exceptions thrown during array schema validation for WebP filter. [#3752](https://github.com/TileDB-Inc/TileDB/pull/3752)
+* Modify GlobalStats::reset() to support compensation for registered stats being effectively leaked. [#3723](https://github.com/TileDB-Inc/TileDB/pull/3723)
+* Avoid pwrite bug on macOS Ventura 13.0 on Apple M1 [#3799](https://github.com/TileDB-Inc/TileDB/pull/3799)
+* Fix ASAN-detected UAF in sparse global order reader [#3822](https://github.com/TileDB-Inc/TileDB/pull/3822)
+* Improve WebP validation, fixes SC-24766, SC-24759 [#3819](https://github.com/TileDB-Inc/TileDB/pull/3819)
+* Deregister a remote array from the Consistency multimap before reopening. [#3859](https://github.com/TileDB-Inc/TileDB/pull/3859)
+* Fix buffer size error in deserializing query [#3851](https://github.com/TileDB-Inc/TileDB/pull/3851)
+* Fix segfault in unit_consistency [#3880](https://github.com/TileDB-Inc/TileDB/pull/3880)
+* Avoid segfault in unit_array [#3883](https://github.com/TileDB-Inc/TileDB/pull/3883)
+* VFS CAPIHandle class [#3523](https://github.com/TileDB-Inc/TileDB/pull/3523)
+
+## API changes
+
+### C API
+
+* Deprecate tiledb_query_submit_async [#3802](https://github.com/TileDB-Inc/TileDB/pull/3802)
+* Deprecate `tiledb_fragment_info_get_name`. [#3791](https://github.com/TileDB-Inc/TileDB/pull/3791)
+* Deprecate `tiledb_query_submit_async`. [#3802](https://github.com/TileDB-Inc/TileDB/pull/3802)
+* Add `tiledb_array_delete_fragments_list` API [#3798](https://github.com/TileDB-Inc/TileDB/pull/3798)
+* Add `tiledb_string_handle_t` so that C API functions can output strings with independent lifespans. [#3792](https://github.com/TileDB-Inc/TileDB/pull/3792)
+* Add `tiledb_dimension_label_handle_t` and `tiledb_dimension_label_t` handles to C-API [#3820](https://github.com/TileDB-Inc/TileDB/pull/3820)
+* Add `tiledb_subarray_has_label_ranges` and `tiledb_subarray_get_label_name`. [#3858](https://github.com/TileDB-Inc/TileDB/pull/3858)
+* Add `tiledb_fragment_info_get_fragment_name_v2`. [#3842](https://github.com/TileDB-Inc/TileDB/pull/3842)
+* Add function to access the dimension label attribute name. [#3867](https://github.com/TileDB-Inc/TileDB/pull/3867)
+* Change query set buffer methods to set label buffers in experimental builds [#3761](https://github.com/TileDB-Inc/TileDB/pull/3761)
+
+### C++ API
+
+* Move deprecated constructors into new array_deprecated.h file, manipulating them to use the new TemporalPolicy and EncryptionAlgorithm classes. [#3854](https://github.com/TileDB-Inc/TileDB/pull/3854)
+* Add function to access the dimension label attribute name. [#3867](https://github.com/TileDB-Inc/TileDB/pull/3867)
+* Add experimental `set_data_buffer` API that handles dimension labels [#3882](https://github.com/TileDB-Inc/TileDB/pull/3882)
+
+## Build system changes
+
+* Set ASAN options for TileDB [#3843](https://github.com/TileDB-Inc/TileDB/pull/3843)
+* Allow building TileDB with GNU GCC on MacOS [#3779](https://github.com/TileDB-Inc/TileDB/pull/3779)
+
+## Experimental features
+
+* Set of three exploratory but fully consistent schedulers for TileDB task graph library. [#3683](https://github.com/TileDB-Inc/TileDB/pull/3683)
+* Version 0.1 of specification task graph. [#3754](https://github.com/TileDB-Inc/TileDB/pull/3754)
+
+## Full Changelog:
+
+* https://github.com/TileDB-Inc/TileDB/compare/2.14.0...2.15.0
+
 # TileDB v2.14.0 Release Notes
 
 ## Announcements
