@@ -108,11 +108,13 @@ class Benchmark : public BenchmarkBase {
         non_empty[1].second.first,
         non_empty[1].second.second};
 
+    auto max_elements = array.max_buffer_elements(subarray_);
+    data_.resize(max_elements["a"].second);
+    coords_.resize(max_elements[TILEDB_COORDS].second);
+
     // Read the array one time, populating the entire tile cache.
     Array read_array(*ctx_, array_uri_, TILEDB_READ);
     Query read_query(*ctx_, read_array);
-    data_.resize(read_query.est_result_size("a"));
-    coords_.resize(read_query.est_result_size("TILEDB_COORDS"));
     read_query.set_subarray(subarray_)
         .set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a", data_)
