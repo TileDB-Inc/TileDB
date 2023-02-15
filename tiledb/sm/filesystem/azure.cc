@@ -51,6 +51,7 @@
 // macro definitions that blob_client.h has on some platforms
 #include <blob/blob_client.h>
 #include <put_block_list_request_base.h>
+#include <azure/storage/blobs.hpp>
 
 using namespace tiledb::common;
 using tiledb::common::filesystem::directory_entry;
@@ -107,22 +108,18 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
       ((tmp = getenv("AZURE_STORAGE_SAS_TOKEN")) != NULL)) {
     sas_token = std::string(getenv("AZURE_STORAGE_SAS_TOKEN"));
   }
+  if (!sas_token.empty()) {
+    LOG_WARN(
+        "The 'vfs.azure.storage_sas_token' option is deprecated and unused. "
+        "Make sure the 'vfs.azure.blob_endpoint' property has the SAS token "
+        "instead.");
+  }
 
   std::string blob_endpoint = config.get("vfs.azure.blob_endpoint", &found);
   assert(found);
   if (blob_endpoint.empty() &&
       ((tmp = getenv("AZURE_BLOB_ENDPOINT")) != NULL)) {
     blob_endpoint = std::string(getenv("AZURE_BLOB_ENDPOINT"));
-  }
-
-  bool use_https;
-  RETURN_NOT_OK(config.get<bool>("vfs.azure.use_https", &use_https, &found));
-  assert(found);
-  // note that the default here is use_https=true, so the logic below is
-  // inverted
-  if (use_https && ((tmp = getenv("AZURE_USE_HTTPS")) != NULL)) {
-    std::string use_https_env(tmp);
-    use_https = (!use_https_env.empty());
   }
 
   RETURN_NOT_OK(config.get<uint64_t>(
@@ -137,46 +134,21 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
 
   write_cache_max_size_ = max_parallel_ops_ * block_list_block_size_;
 
-  // Initialize a credential object
-  shared_ptr<azure::storage_lite::storage_credential> credential =
-      make_shared<azure::storage_lite::shared_key_credential>(
-          HERE(), account_name, account_key);
+  ::Azure::Storage::Blobs::BlobClientOptions options;
+  options.Retry.MaxRetries = constants::azure_max_attempts;
 
-  // Use the SAS token, if provided.
-  if (!sas_token.empty()) {
-    // clang-format off
-    credential = make_shared<azure::storage_lite::shared_access_signature_credential>(HERE(), sas_token);
-    // clang-format on
-  }
-
-  auto account = make_shared<azure::storage_lite::storage_account>(
-      HERE(), account_name, credential, use_https, blob_endpoint);
-
-  // Construct the Azure SDK blob client with a concurrency level
-  // equal to 'thread_pool_->concurrency_level'. Internally, the client
-  // will allocate an equal number of libcurl sessions with
-  // 'curl_easy_init'. This ensures that our 'thread_pool_' threads
-  // will not block on the blob client's internal request queue
-  // unless the user is performing concurrent I/O on this instance.
-
-  // Get CA Cert bundle file from global state. This is initialized and cached
-  // if detected. We have only had issues with finding the certificate path on
-  // Linux.
-  if constexpr (tiledb::platform::PlatformCertFile::enabled) {
-    const std::string cert_file = tiledb::platform::PlatformCertFile::get();
-    client_ = make_shared<azure::storage_lite::blob_client>(
-        HERE(), account, thread_pool_->concurrency_level(), cert_file);
+  // Construct the Azure SDK blob service client.
+  // We pass a shared kay if it was specified.
+  if (!account_key.empty()) {
+    client_ = std::make_unique<::Azure::Storage::Blobs::BlobServiceClient>(
+        blob_endpoint,
+        make_shared<::Azure::Storage::StorageSharedKeyCredential>(
+            HERE(), account_name, account_key),
+        options);
   } else {
-    client_ = make_shared<azure::storage_lite::blob_client>(
-        HERE(), account, static_cast<int>(thread_pool_->concurrency_level()));
+    client_ = std::make_unique<::Azure::Storage::Blobs::BlobServiceClient>(
+        blob_endpoint, options);
   }
-
-  // The Azure SDK does not provide a way to configure the retry
-  // policy or construct a client with our own retry policy. This
-  // re-assigns the context with our own retry policy.
-  *client_->context() = azure::storage_lite::executor_context(
-      make_shared<azure::storage_lite::tinyxml2_parser>(HERE()),
-      make_shared<AzureRetryPolicy>(HERE()));
 
   return Status::Ok();
 }

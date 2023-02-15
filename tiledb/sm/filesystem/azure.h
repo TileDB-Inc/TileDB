@@ -39,7 +39,6 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
-#include "tiledb/sm/curl/curl_init.h"
 #include "tiledb/sm/misc/constants.h"
 #include "uri.h"
 
@@ -47,9 +46,6 @@
 #define NOMINMAX  // avoid min/max macros from windows headers
 #endif
 #include <base64.h>
-#include <retry.h>
-#include <storage_account.h>
-#include <storage_credential.h>
 #include <list>
 #include <unordered_map>
 
@@ -63,8 +59,8 @@
 #endif
 
 // Forward declaration
-namespace azure::storage_lite {
-class blob_client;
+namespace Azure::Storage::Blobs {
+class BlobServiceClient;
 }
 
 using namespace tiledb::common;
@@ -328,56 +324,6 @@ class Azure {
   /*         PRIVATE DATATYPES         */
   /* ********************************* */
 
-  class AzureRetryPolicy final : public azure::storage_lite::retry_policy_base {
-   public:
-    /**
-     * The SDK invokes this routine before each request to Azure. This returns
-     * a pair: a bool to indicate if we should make a request and a time
-     * interval to wait before starting the request.
-     */
-    azure::storage_lite::retry_info evaluate(
-        const azure::storage_lite::retry_context& context) const override {
-      const int http_code = context.result();
-
-      // When the response code is 0, the SDK has yet to send the initial
-      // request. Allow the request to start immediately by returning a 0-second
-      // delay.
-      if (http_code == 0) {
-        return azure::storage_lite::retry_info(true, std::chrono::seconds(0));
-      }
-
-      // Determine if we should retry on the returned http code in the response.
-      if (!should_retry(http_code)) {
-        return azure::storage_lite::retry_info(false, std::chrono::seconds(0));
-      }
-
-      // Wait one second before all retry attempts.
-      static const int32_t max_retries = constants::azure_max_attempts;
-      if (context.numbers() < max_retries) {
-        return azure::storage_lite::retry_info(
-            true,
-            std::chrono::seconds(constants::azure_attempt_sleep_ms / 1000));
-      }
-
-      // All retry attempts exhausted.
-      return azure::storage_lite::retry_info(false, std::chrono::seconds(0));
-    }
-
-   private:
-    /**
-     * Returns true if we should attempt a retry after receiving 'http_code'
-     * in the last response.
-     */
-    bool should_retry(const int http_code) const {
-      // Only retry on server errors.
-      if (http_code >= 500 && http_code < 600) {
-        return true;
-      }
-
-      return false;
-    }
-  };
-
   /** Contains all state associated with a block list upload transaction. */
   class BlockListUploadState {
    public:
@@ -452,18 +398,11 @@ class Azure {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /**
-   * A libcurl initializer instance. This should remain
-   * the first member variable to ensure that libcurl is
-   * initialized before any calls that may require it.
-   */
-  tiledb::sm::curl::LibCurlInitializer curl_inited_;
-
   /** The VFS thread pool. */
   ThreadPool* thread_pool_;
 
-  /** The Azure blob storage client. */
-  shared_ptr<azure::storage_lite::blob_client> client_;
+  /** The Azure blob service client. */
+  std::unique_ptr<::Azure::Storage::Blobs::BlobServiceClient> client_;
 
   /** Maps a blob URI to an write cache buffer. */
   std::unordered_map<std::string, Buffer> write_cache_map_;
