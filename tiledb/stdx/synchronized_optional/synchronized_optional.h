@@ -715,8 +715,8 @@ class synchronized_optional {
     // Assert: we have write locks on both objects
     base_.swap(x.base_);
   };
- public:
 
+ public:
   /**
    * Reset is equivalent to assigning `nullopt`.
    */
