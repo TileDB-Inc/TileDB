@@ -777,7 +777,9 @@ Status DenseReader::apply_query_condition(
     std::vector<std::string> qc_names;
     qc_names.reserve(condition_names.size());
     for (auto& name : condition_names) {
-      qc_names.emplace_back(name);
+      if (!array_schema_.is_dim(name)) {
+        qc_names.emplace_back(name);
+      }
     }
 
     // Read and unfilter query condition attributes.
@@ -853,6 +855,7 @@ Status DenseReader::apply_query_condition(
                     end - start + 1,
                     iter.pos_in_tile(),
                     stride,
+                    iter.cell_slab_coords().data(),
                     dest_ptr));
               }
             }

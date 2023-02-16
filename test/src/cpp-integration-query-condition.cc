@@ -1434,7 +1434,8 @@ TEST_CASE(
   TestParams params = GENERATE(
       TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
       TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, false),
-      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false));
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false),
+      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false));
 
   // Setup by creating buffers to store all elements of the original array.
   create_array(
@@ -1456,31 +1457,68 @@ TEST_CASE(
   Array array(ctx2, array_name, TILEDB_READ);
   Query query(ctx2, array);
 
+  // Set a subarray for dense.
+  if (params.array_type_ == TILEDB_DENSE) {
+    int range[] = {1, num_rows};
+    query.add_range("rows", range[0], range[1])
+        .add_range("cols", range[0], range[1]);
+  }
+
   // Perform query and validate.
   perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
 
-  // Check the query for accuracy. The query results should contain 2
-  // elements.
   auto table = query.result_buffer_elements();
-  REQUIRE(table.size() == 2);
-  REQUIRE(table["a"].first == 0);
-  REQUIRE(table["a"].second == 2);
-  REQUIRE(table["b"].first == 0);
-  REQUIRE(table["b"].second == 2);
+  if (params.array_type_ != TILEDB_DENSE) {
+    // Check the query for accuracy. The query results should contain 2
+    // elements.
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == 2);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == 2);
 
-  // Testing (2,3), which should be in the result buffer.
-  int ind_0 = index_from_row_col(2, 3);
-  REQUIRE(a_data_read_2[0] == a_data_read[ind_0]);
-  REQUIRE(
-      fabs(b_data_read_2[0] - b_data_read[ind_0]) <
-      std::numeric_limits<float>::epsilon());
+    // Testing (2,3), which should be in the result buffer.
+    int ind_0 = index_from_row_col(2, 3);
+    REQUIRE(a_data_read_2[0] == a_data_read[ind_0]);
+    REQUIRE(
+        fabs(b_data_read_2[0] - b_data_read[ind_0]) <
+        std::numeric_limits<float>::epsilon());
 
-  // Testing (3,3), which should be in the result buffer.
-  int ind_1 = index_from_row_col(3, 3);
-  REQUIRE(a_data_read_2[1] == a_data_read[ind_1]);
-  REQUIRE(
-      fabs(b_data_read_2[1] - b_data_read[ind_1]) <
-      std::numeric_limits<float>::epsilon());
+    // Testing (3,3), which should be in the result buffer.
+    int ind_1 = index_from_row_col(3, 3);
+    REQUIRE(a_data_read_2[1] == a_data_read[ind_1]);
+    REQUIRE(
+        fabs(b_data_read_2[1] - b_data_read[ind_1]) <
+        std::numeric_limits<float>::epsilon());
+  } else {
+    // Check the query for accuracy. The query results should contain all
+    // elements.
+    size_t total_num_elements = static_cast<size_t>(num_rows * num_rows);
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == total_num_elements);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == total_num_elements);
+
+    // Ensure that the same data is in each array (global order).
+    for (int c = 1; c <= num_rows; ++c) {
+      for (int r = 1; r <= num_rows; ++r) {
+        int i = index_from_row_col(r, c);
+        int exp_a = -1;
+        float exp_b = 0;
+        if (r >= range[0] && r <= range[1] && c >= range[0] && c <= range[1] &&
+            b_data_read[i] < 4.0) {
+          exp_a = a_data_read[i];
+          exp_b = b_data_read[i];
+        }
+
+        REQUIRE(a_data_read_2[i] == exp_a);
+        REQUIRE(
+            fabs(b_data_read_2[i] - exp_b) <
+            std::numeric_limits<float>::epsilon());
+      }
+    }
+  }
 
   query.finalize();
   array.close();
@@ -1540,7 +1578,8 @@ TEST_CASE(
   TestParams params = GENERATE(
       TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
       TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, false),
-      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false));
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false),
+      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false));
 
   // Setup by creating buffers to store all elements of the original array.
   create_array(
@@ -1562,45 +1601,82 @@ TEST_CASE(
   Array array(ctx2, array_name, TILEDB_READ);
   Query query(ctx2, array);
 
+  // Set a subarray for dense.
+  if (params.array_type_ == TILEDB_DENSE) {
+    int range[] = {1, num_rows};
+    query.add_range("rows", range[0], range[1])
+        .add_range("cols", range[0], range[1]);
+  }
+
   // Perform query and validate.
   perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
 
-  // Check the query for accuracy. The query results should contain 2
-  // elements.
   auto table = query.result_buffer_elements();
-  REQUIRE(table.size() == 2);
-  REQUIRE(table["a"].first == 0);
-  REQUIRE(table["a"].second == 4);
-  REQUIRE(table["b"].first == 0);
-  REQUIRE(table["b"].second == 4);
+  if (params.array_type_ != TILEDB_DENSE) {
+    // Check the query for accuracy. The query results should contain 2
+    // elements.
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == 4);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == 4);
 
-  // Testing (7,3), which should be in the result buffer.
-  int ind_0 = index_from_row_col(7, 3);
-  REQUIRE(a_data_read_2[0] == a_data_read[ind_0]);
-  REQUIRE(
-      fabs(b_data_read_2[0] - b_data_read[ind_0]) <
-      std::numeric_limits<float>::epsilon());
+    // Testing (7,3), which should be in the result buffer.
+    int ind_0 = index_from_row_col(7, 3);
+    REQUIRE(a_data_read_2[0] == a_data_read[ind_0]);
+    REQUIRE(
+        fabs(b_data_read_2[0] - b_data_read[ind_0]) <
+        std::numeric_limits<float>::epsilon());
 
-  // Testing (8,3), which should be in the result buffer.
-  int ind_1 = index_from_row_col(8, 3);
-  REQUIRE(a_data_read_2[1] == a_data_read[ind_1]);
-  REQUIRE(
-      fabs(b_data_read_2[1] - b_data_read[ind_1]) <
-      std::numeric_limits<float>::epsilon());
+    // Testing (8,3), which should be in the result buffer.
+    int ind_1 = index_from_row_col(8, 3);
+    REQUIRE(a_data_read_2[1] == a_data_read[ind_1]);
+    REQUIRE(
+        fabs(b_data_read_2[1] - b_data_read[ind_1]) <
+        std::numeric_limits<float>::epsilon());
 
-  // Testing (9,3), which should be in the result buffer.
-  int ind_2 = index_from_row_col(9, 3);
-  REQUIRE(a_data_read_2[2] == a_data_read[ind_2]);
-  REQUIRE(
-      fabs(b_data_read_2[2] - b_data_read[ind_2]) <
-      std::numeric_limits<float>::epsilon());
+    // Testing (9,3), which should be in the result buffer.
+    int ind_2 = index_from_row_col(9, 3);
+    REQUIRE(a_data_read_2[2] == a_data_read[ind_2]);
+    REQUIRE(
+        fabs(b_data_read_2[2] - b_data_read[ind_2]) <
+        std::numeric_limits<float>::epsilon());
 
-  // Testing (10,3), which should be in the result buffer.
-  int ind_3 = index_from_row_col(10, 3);
-  REQUIRE(a_data_read_2[3] == a_data_read[ind_3]);
-  REQUIRE(
-      fabs(b_data_read_2[3] - b_data_read[ind_3]) <
-      std::numeric_limits<float>::epsilon());
+    // Testing (10,3), which should be in the result buffer.
+    int ind_3 = index_from_row_col(10, 3);
+    REQUIRE(a_data_read_2[3] == a_data_read[ind_3]);
+    REQUIRE(
+        fabs(b_data_read_2[3] - b_data_read[ind_3]) <
+        std::numeric_limits<float>::epsilon());
+  } else {
+    // Check the query for accuracy. The query results should contain all
+    // elements.
+    size_t total_num_elements = static_cast<size_t>(num_rows * num_rows);
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == total_num_elements);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == total_num_elements);
+
+    // Ensure that the same data is in each array (global order).
+    for (int c = 1; c <= num_rows; ++c) {
+      for (int r = 1; r <= num_rows; ++r) {
+        int i = index_from_row_col(r, c);
+        int exp_a = -1;
+        float exp_b = 0;
+        if (r >= range1[0] && r <= range1[1] && c >= range[0] &&
+            c <= range[1] && b_data_read[i] < 4.0) {
+          exp_a = a_data_read[i];
+          exp_b = b_data_read[i];
+        }
+
+        REQUIRE(a_data_read_2[i] == exp_a);
+        REQUIRE(
+            fabs(b_data_read_2[i] - exp_b) <
+            std::numeric_limits<float>::epsilon());
+      }
+    }
+  }
 
   query.finalize();
   array.close();
@@ -1660,7 +1736,8 @@ TEST_CASE(
   TestParams params = GENERATE(
       TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
       TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, false),
-      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false));
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false),
+      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false));
 
   // Setup by creating buffers to store all elements of the original array.
   create_array(
@@ -1682,28 +1759,65 @@ TEST_CASE(
   Array array(ctx2, array_name, TILEDB_READ);
   Query query(ctx2, array);
 
+  // Set a subarray for dense.
+  if (params.array_type_ == TILEDB_DENSE) {
+    int range[] = {1, num_rows};
+    query.add_range("rows", range[0], range[1])
+        .add_range("cols", range[0], range[1]);
+  }
+
   // Perform query and validate.
   perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
 
-  // Check the query for accuracy. The query results should contain 4
-  // elements.
   auto table = query.result_buffer_elements();
-  REQUIRE(table.size() == 2);
-  REQUIRE(table["a"].first == 0);
-  REQUIRE(table["a"].second == 4);
-  REQUIRE(table["b"].first == 0);
-  REQUIRE(table["b"].second == 4);
+  if (params.array_type_ != TILEDB_DENSE) {
+    // Check the query for accuracy. The query results should contain 4
+    // elements.
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == 4);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == 4);
 
-  // Ensure that the same data is in each array (global order).
-  int i = 0;
-  for (int c = range1[0]; c <= range1[1]; c += 2) {
-    for (int r = range[0]; r <= range[1]; ++r) {
-      int original_arr_i = index_from_row_col(r, c);
-      REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
-      REQUIRE(
-          fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
-          std::numeric_limits<float>::epsilon());
-      i += 1;
+    // Ensure that the same data is in each array (global order).
+    int i = 0;
+    for (int c = range1[0]; c <= range1[1]; c += 2) {
+      for (int r = range[0]; r <= range[1]; ++r) {
+        int original_arr_i = index_from_row_col(r, c);
+        REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
+        REQUIRE(
+            fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
+            std::numeric_limits<float>::epsilon());
+        i += 1;
+      }
+    }
+  } else {
+    // Check the query for accuracy. The query results should contain all
+    // elements.
+    size_t total_num_elements = static_cast<size_t>(num_rows * num_rows);
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == total_num_elements);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == total_num_elements);
+
+    // Ensure that the same data is in each array (global order).
+    for (int c = 1; c <= num_rows; ++c) {
+      for (int r = 1; r <= num_rows; ++r) {
+        int i = index_from_row_col(r, c);
+        int exp_a = -1;
+        float exp_b = 0;
+        if (r >= range[0] && r <= range[1] && c >= range1[0] &&
+            c <= range1[1] && b_data_read[i] < 4.0) {
+          exp_a = a_data_read[i];
+          exp_b = b_data_read[i];
+        }
+
+        REQUIRE(a_data_read_2[i] == exp_a);
+        REQUIRE(
+            fabs(b_data_read_2[i] - exp_b) <
+            std::numeric_limits<float>::epsilon());
+      }
     }
   }
 
@@ -1764,7 +1878,8 @@ TEST_CASE(
   TestParams params = GENERATE(
       TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
       TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, false),
-      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false));
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false),
+      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false));
 
   // Setup by creating buffers to store all elements of the original array.
   create_array(
@@ -1786,47 +1901,84 @@ TEST_CASE(
   Array array(ctx2, array_name, TILEDB_READ);
   Query query(ctx2, array);
 
+  // Set a subarray for dense.
+  if (params.array_type_ == TILEDB_DENSE) {
+    int range[] = {1, num_rows};
+    query.add_range("rows", range[0], range[1])
+        .add_range("cols", range[0], range[1]);
+  }
+
   // Perform query and validate.
   perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
 
-  // Check the query for accuracy. The query results should contain 32
-  // elements.
   auto table = query.result_buffer_elements();
-  REQUIRE(table.size() == 2);
-  REQUIRE(table["a"].first == 0);
-  REQUIRE(table["a"].second == 32);
-  REQUIRE(table["b"].first == 0);
-  REQUIRE(table["b"].second == 32);
+  if (params.array_type_ != TILEDB_DENSE) {
+    // Check the query for accuracy. The query results should contain 32
+    // elements.
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == 32);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == 32);
 
-  int i = 0;
-  std::vector<std::pair<int, int>> ranges_vec;
-  ranges_vec.push_back(std::make_pair(7, 8));
-  ranges_vec.push_back(std::make_pair(9, 12));
-  ranges_vec.push_back(std::make_pair(13, 14));
+    int i = 0;
+    std::vector<std::pair<int, int>> ranges_vec;
+    ranges_vec.push_back(std::make_pair(7, 8));
+    ranges_vec.push_back(std::make_pair(9, 12));
+    ranges_vec.push_back(std::make_pair(13, 14));
 
-  for (size_t a = 0; a < 3; ++a) {    // Iterating over rows.
-    for (size_t b = 0; b < 3; ++b) {  // Iterating over cols.
-      int row_lo = ranges_vec[a].first;
-      int row_hi = ranges_vec[a].second;
-      int col_lo = ranges_vec[b].first;
-      int col_hi = ranges_vec[b].second;
+    for (size_t a = 0; a < 3; ++a) {    // Iterating over rows.
+      for (size_t b = 0; b < 3; ++b) {  // Iterating over cols.
+        int row_lo = ranges_vec[a].first;
+        int row_hi = ranges_vec[a].second;
+        int col_lo = ranges_vec[b].first;
+        int col_hi = ranges_vec[b].second;
 
-      for (int r = row_lo; r <= row_hi; ++r) {
-        for (int c = col_lo; c <= col_hi; ++c) {
-          int original_arr_i = index_from_row_col(r, c);
-          // The buffer should have kept elements that were originally
-          // constructed to have values less than 4.0; this means that any
-          // element whose original index is even should be in the result
-          // buffer.
-          if (original_arr_i % 2 == 0) {
-            REQUIRE(a_data_read_2[i] == 1);
-            REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
-            REQUIRE(
-                fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
-                std::numeric_limits<float>::epsilon());
-            i += 1;
+        for (int r = row_lo; r <= row_hi; ++r) {
+          for (int c = col_lo; c <= col_hi; ++c) {
+            int original_arr_i = index_from_row_col(r, c);
+            // The buffer should have kept elements that were originally
+            // constructed to have values less than 4.0; this means that any
+            // element whose original index is even should be in the result
+            // buffer.
+            if (original_arr_i % 2 == 0) {
+              REQUIRE(a_data_read_2[i] == 1);
+              REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
+              REQUIRE(
+                  fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
+                  std::numeric_limits<float>::epsilon());
+              i += 1;
+            }
           }
         }
+      }
+    }
+  } else {
+    // Check the query for accuracy. The query results should contain all
+    // elements.
+    size_t total_num_elements = static_cast<size_t>(num_rows * num_rows);
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == total_num_elements);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == total_num_elements);
+
+    // Ensure that the same data is in each array (global order).
+    for (int c = 1; c <= num_rows; ++c) {
+      for (int r = 1; r <= num_rows; ++r) {
+        int i = index_from_row_col(r, c);
+        int exp_a = -1;
+        float exp_b = 0;
+        if (r >= range[0] && r <= range[1] && c >= range[0] && c <= range[1] &&
+            b_data_read[i] < 4.0) {
+          exp_a = a_data_read[i];
+          exp_b = b_data_read[i];
+        }
+
+        REQUIRE(a_data_read_2[i] == exp_a);
+        REQUIRE(
+            fabs(b_data_read_2[i] - exp_b) <
+            std::numeric_limits<float>::epsilon());
       }
     }
   }
@@ -1906,7 +2058,8 @@ TEST_CASE(
   TestParams params = GENERATE(
       TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
       TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, false),
-      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false));
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false),
+      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false));
 
   // Setup by creating buffers to store all elements of the original array.
   create_array(
@@ -1928,47 +2081,87 @@ TEST_CASE(
   Array array(ctx2, array_name, TILEDB_READ);
   Query query(ctx2, array);
 
+  // Set a subarray for dense.
+  if (params.array_type_ == TILEDB_DENSE) {
+    int range[] = {1, num_rows};
+    query.add_range("rows", range[0], range[1])
+        .add_range("cols", range[0], range[1]);
+  }
+
   // Perform query and validate.
   perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
 
-  // Check the query for accuracy. The query results should contain 8
-  // elements.
   auto table = query.result_buffer_elements();
-  REQUIRE(table.size() == 2);
-  REQUIRE(table["a"].first == 0);
-  REQUIRE(table["a"].second == 8);
-  REQUIRE(table["b"].first == 0);
-  REQUIRE(table["b"].second == 8);
+  if (params.array_type_ != TILEDB_DENSE) {
+    // Check the query for accuracy. The query results should contain 8
+    // elements.
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == 8);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == 8);
 
-  int i = 0;
-  std::vector<std::pair<int, int>> ranges_vec;
-  ranges_vec.push_back(std::make_pair(7, 8));
-  ranges_vec.push_back(std::make_pair(9, 12));
-  ranges_vec.push_back(std::make_pair(13, 14));
+    int i = 0;
+    std::vector<std::pair<int, int>> ranges_vec;
+    ranges_vec.push_back(std::make_pair(7, 8));
+    ranges_vec.push_back(std::make_pair(9, 12));
+    ranges_vec.push_back(std::make_pair(13, 14));
 
-  for (size_t a = 0; a < 3; ++a) {    // Iterating over rows.
-    for (size_t b = 0; b < 3; ++b) {  // Iterating over cols.
-      int row_lo = ranges_vec[a].first;
-      int row_hi = ranges_vec[a].second;
-      int col_lo = ranges_vec[b].first;
-      int col_hi = ranges_vec[b].second;
+    for (size_t a = 0; a < 3; ++a) {    // Iterating over rows.
+      for (size_t b = 0; b < 3; ++b) {  // Iterating over cols.
+        int row_lo = ranges_vec[a].first;
+        int row_hi = ranges_vec[a].second;
+        int col_lo = ranges_vec[b].first;
+        int col_hi = ranges_vec[b].second;
 
-      for (int r = row_lo; r <= row_hi; ++r) {
-        for (int c = col_lo; c <= col_hi; ++c) {
-          int original_arr_i = index_from_row_col(r, c);
-          // The buffer should have kept elements that were originally
-          // constructed to have values that satisfy the range [3.3, 3.7] but
-          // are not equal to 3.4. This means that any element whose original
-          // index is 4 mod 8 should be in the result buffer.
-          if (original_arr_i % 8 == 4) {
-            REQUIRE(a_data_read_2[i] == 1);
-            REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
-            REQUIRE(
-                fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
-                std::numeric_limits<float>::epsilon());
-            i += 1;
+        for (int r = row_lo; r <= row_hi; ++r) {
+          for (int c = col_lo; c <= col_hi; ++c) {
+            int original_arr_i = index_from_row_col(r, c);
+            // The buffer should have kept elements that were originally
+            // constructed to have values that satisfy the range [3.3, 3.7] but
+            // are not equal to 3.4. This means that any element whose original
+            // index is 4 mod 8 should be in the result buffer.
+            if (original_arr_i % 8 == 4) {
+              REQUIRE(a_data_read_2[i] == 1);
+              REQUIRE(a_data_read_2[i] == a_data_read[original_arr_i]);
+              REQUIRE(
+                  fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
+                  std::numeric_limits<float>::epsilon());
+              i += 1;
+            }
           }
         }
+      }
+    }
+  } else {
+    // Check the query for accuracy. The query results should contain all
+    // elements.
+    size_t total_num_elements = static_cast<size_t>(num_rows * num_rows);
+    REQUIRE(table.size() == 2);
+    REQUIRE(table["a"].first == 0);
+    REQUIRE(table["a"].second == total_num_elements);
+    REQUIRE(table["b"].first == 0);
+    REQUIRE(table["b"].second == total_num_elements);
+
+    // Ensure that the same data is in each array (global order).
+    for (int c = 1; c <= num_rows; ++c) {
+      for (int r = 1; r <= num_rows; ++r) {
+        int i = index_from_row_col(r, c);
+        int exp_a = -1;
+        float exp_b = 0;
+        if (r >= range[0] && r <= range[1] && c >= range[0] && c <= range[1] &&
+            b_data_read[i] < 4.0 && b_data_read[i] <= 3.7 &&
+            b_data_read[i] >= 3.3 &&
+            (fabs(b_data_read[i] - 3.4) >
+             std::numeric_limits<float>::epsilon())) {
+          exp_a = a_data_read[i];
+          exp_b = b_data_read[i];
+        }
+
+        REQUIRE(a_data_read_2[i] == exp_a);
+        REQUIRE(
+            fabs(b_data_read_2[i] - exp_b) <
+            std::numeric_limits<float>::epsilon());
       }
     }
   }
