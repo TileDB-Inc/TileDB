@@ -718,6 +718,12 @@ Status Query::init() {
 
     // Create dimension label queries and remove labels from subarray.
     if (uses_dimension_labels()) {
+      if (!condition_.empty()) {
+        return logger_->status(
+            Status_QueryError("Cannot init query; Using query conditions and "
+                              "dimension labels together is not supported."));
+      }
+
       // Check the layout is valid.
       if (layout_ == Layout::GLOBAL_ORDER) {
         return logger_->status(

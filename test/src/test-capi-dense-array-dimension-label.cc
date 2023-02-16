@@ -66,6 +66,11 @@ class DenseArrayExample1 : public TemporaryDirectoryFixture {
       , label_domain_{-1, 1} {
   }
 
+  /** Returns array name */
+  const std::string& uri() const {
+    return array_name;
+  }
+
   /**
    * Create the example array with a dimension label.
    *
@@ -513,4 +518,77 @@ TEST_CASE_METHOD(
 
   // Check results.
   check_values_from_data_reader(input_label_data, input_attr_data);
+}
+
+TEST_CASE(
+    "Test query conditions with dimension labels",
+    "[capi][query][DimensionLabel]") {
+  DenseArrayExample1 fixture{};
+
+  // Vectors for input data.
+  std::vector<double> input_label_data{-1.0, 0.0, 0.5, 1.0};
+  std::vector<double> input_attr_data{0.5, 1.0, 1.5, 2.0};
+
+  // Set the label order.
+  tiledb_data_order_t label_order{TILEDB_INCREASING_DATA};
+
+  // Create and write to the array.
+  fixture.create_example(label_order);
+  fixture.write_by_index(0, 3, input_attr_data, input_label_data);
+
+  // Set variables needed for querying.
+  auto ctx = fixture.get_ctx();
+  auto array_name = fixture.uri();
+  std::vector<double> label_data(4);
+  uint64_t label_data_size{label_data.size() * sizeof(double)};
+  std::vector<double> attr_data(4);
+  uint64_t attr_data_size{attr_data.size() * sizeof(double)};
+
+  // Open array for reading.
+  tiledb_array_t* array;
+  require_tiledb_ok(ctx, tiledb_array_alloc(ctx, array_name.c_str(), &array));
+  require_tiledb_ok(ctx, tiledb_array_open(ctx, array, TILEDB_READ));
+
+  // Create read query and set buffers.
+  tiledb_query_t* query;
+  require_tiledb_ok(ctx, tiledb_query_alloc(ctx, array, TILEDB_READ, &query));
+  check_tiledb_ok(ctx, tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR));
+  check_tiledb_ok(
+      ctx,
+      tiledb_query_set_data_buffer(
+          ctx, query, "x", label_data.data(), &label_data_size));
+  require_tiledb_ok(
+      ctx,
+      tiledb_query_set_data_buffer(
+          ctx, query, "a", attr_data.data(), &attr_data_size));
+
+  // Create and set subarray.
+  tiledb_subarray_t* subarray;
+  uint64_t start{0};
+  uint64_t stop{3};
+  require_tiledb_ok(ctx, tiledb_subarray_alloc(ctx, array, &subarray));
+  check_tiledb_ok(
+      ctx, tiledb_subarray_add_range(ctx, subarray, 0, &start, &stop, nullptr));
+  check_tiledb_ok(ctx, tiledb_query_set_subarray_t(ctx, query, subarray));
+  tiledb_subarray_free(&subarray);
+
+  // Set query condition.
+  tiledb_query_condition_t* qc;
+  check_tiledb_ok(ctx, tiledb_query_condition_alloc(ctx, &qc));
+  double val = 1.5;
+  check_tiledb_ok(
+      ctx,
+      tiledb_query_condition_init(
+          ctx, qc, "a", &val, sizeof(double), TILEDB_LT));
+  check_tiledb_ok(ctx, tiledb_query_set_condition(ctx, query, qc));
+  tiledb_query_condition_free(&qc);
+
+  // Submit query.
+  check_tiledb_error_with(
+      ctx,
+      tiledb_query_submit(ctx, query),
+      "[TileDB::Query] Error: Cannot init query; Using query conditions and "
+      "dimension labels together is not supported.");
+  tiledb_query_free(&query);
+  tiledb_array_free(&array);
 }
