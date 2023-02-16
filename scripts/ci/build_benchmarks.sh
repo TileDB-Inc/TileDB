@@ -23,11 +23,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+set -xeuo pipefail
 
 # Builds CI benchmarks and checks test status
-pushd $GITHUB_WORKSPACE/test/benchmarking && \
-mkdir build && cd build && \
-cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist ../src && make && \
+pushd $GITHUB_WORKSPACE/test/benchmarking
+mkdir -p build
+cd build
+cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist ../src
+make
 popd
 
 testfile=$(mktemp)
