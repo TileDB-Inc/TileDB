@@ -784,23 +784,26 @@ Status Azure::read(
   std::string blob_path;
   RETURN_NOT_OK(parse_azure_uri(uri, &container_name, &blob_path));
 
-  std::stringstream ss;
-  std::future<azure::storage_lite::storage_outcome<void>> result =
-      client_->download_blob_to_stream(
-          container_name, blob_path, offset, length + read_ahead_length, ss);
-  if (!result.valid()) {
+  size_t total_length = length + read_ahead_length;
+
+  ::Azure::Storage::Blobs::DownloadBlobOptions options;
+  options.Range = ::Azure::Core::Http::HttpRange();
+  options.Range.Value().Length = static_cast<int64_t>(total_length);
+  options.Range.Value().Offset = static_cast<int64_t>(offset);
+
+  ::Azure::Storage::Blobs::Models::DownloadBlobResult result;
+  try {
+    result = client_->GetBlobContainerClient(container_name)
+                 .GetBlobClient(blob_path)
+                 .Download(options)
+                 .Value;
+  } catch (const ::Azure::Storage::StorageException& e) {
     return LOG_STATUS(Status_AzureError(
-        std::string("Read blob failed on: " + uri.to_string())));
+        "Read blob failed on: " + uri.to_string() + "; " + e.Message));
   }
 
-  azure::storage_lite::storage_outcome<void> outcome = result.get();
-  if (!outcome.success()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("Read blob failed on: " + uri.to_string())));
-  }
-
-  ss.read(static_cast<char*>(buffer), length + read_ahead_length);
-  *length_returned = ss.gcount();
+  *length_returned = result.BodyStream->ReadToCount(
+      static_cast<uint8_t*>(buffer), total_length);
 
   if (*length_returned < length) {
     return LOG_STATUS(Status_AzureError(
@@ -899,20 +902,13 @@ Status Azure::touch(const URI& uri) const {
   std::string blob_path;
   RETURN_NOT_OK(parse_azure_uri(uri, &container_name, &blob_path));
 
-  std::stringstream empty_ss;
-  std::vector<std::pair<std::string, std::string>> empty_metadata;
-  std::future<azure::storage_lite::storage_outcome<void>> result =
-      client_->upload_block_blob_from_stream(
-          container_name, blob_path, empty_ss, empty_metadata);
-  if (!result.valid()) {
+  try {
+    client_->GetBlobContainerClient(container_name)
+        .GetBlockBlobClient(blob_path)
+        .UploadFrom(nullptr, 0);
+  } catch (const ::Azure::Storage::StorageException& e) {
     return LOG_STATUS(Status_AzureError(
-        std::string("Touch blob failed on: " + uri.to_string())));
-  }
-
-  azure::storage_lite::storage_outcome<void> outcome = result.get();
-  if (!outcome.success()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("Touch blob failed on: " + uri.to_string())));
+        "Touch blob failed on: " + uri.to_string() + "; " + e.Message));
   }
 
   return Status::Ok();
