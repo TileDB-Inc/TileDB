@@ -280,11 +280,12 @@ tuple<Status, optional<shared_ptr<FilterPipeline>>> filter_pipeline_from_capnp(
           HERE(), constants::max_tile_chunk_size, filter_list)};
 }
 
-Status attribute_to_capnp(
+void attribute_to_capnp(
     const Attribute* attribute, capnp::Attribute::Builder* attribute_builder) {
-  if (attribute == nullptr)
-    return LOG_STATUS(Status_SerializationError(
-        "Error serializing attribute; attribute is null."));
+  if (attribute == nullptr) {
+    throw SerializationStatusException(
+        "Error serializing attribute; attribute is null.");
+  }
 
   attribute_builder->setName(attribute->name());
   attribute_builder->setType(datatype_str(attribute->type()));
@@ -295,11 +296,12 @@ Status attribute_to_capnp(
   const void* fill_value;
   uint64_t fill_value_size;
   uint8_t fill_validity = true;
-  if (!attribute->nullable())
-    RETURN_NOT_OK(attribute->get_fill_value(&fill_value, &fill_value_size));
-  else
-    RETURN_NOT_OK(attribute->get_fill_value(
+  if (!attribute->nullable()) {
+    throw_if_not_ok(attribute->get_fill_value(&fill_value, &fill_value_size));
+  } else {
+    throw_if_not_ok(attribute->get_fill_value(
         &fill_value, &fill_value_size, &fill_validity));
+  }
 
   // Copy the fill value buffer into a capnp vector of bytes.
   auto capnpFillValue = kj::Vector<uint8_t>();
@@ -315,19 +317,16 @@ Status attribute_to_capnp(
 
   const auto& filters = attribute->filters();
   auto filter_pipeline_builder = attribute_builder->initFilterPipeline();
-  RETURN_NOT_OK(filter_pipeline_to_capnp(&filters, &filter_pipeline_builder));
-
-  return Status::Ok();
+  throw_if_not_ok(filter_pipeline_to_capnp(&filters, &filter_pipeline_builder));
 }
 
-tuple<Status, optional<shared_ptr<Attribute>>> attribute_from_capnp(
+shared_ptr<Attribute> attribute_from_capnp(
     const capnp::Attribute::Reader& attribute_reader) {
   // Get datatype
   Datatype datatype = Datatype::ANY;
-  RETURN_NOT_OK_TUPLE(
-      datatype_enum(attribute_reader.getType(), &datatype), nullopt);
+  throw_if_not_ok(datatype_enum(attribute_reader.getType(), &datatype));
 
-  // Set nullable.
+  // Set nullable
   const bool nullable = attribute_reader.getNullable();
 
   // Filter pipelines
@@ -335,7 +334,7 @@ tuple<Status, optional<shared_ptr<Attribute>>> attribute_from_capnp(
   if (attribute_reader.hasFilterPipeline()) {
     auto filter_pipeline_reader = attribute_reader.getFilterPipeline();
     auto&& [st_fp, f]{filter_pipeline_from_capnp(filter_pipeline_reader)};
-    RETURN_NOT_OK_TUPLE(st_fp, nullopt);
+    throw_if_not_ok(st_fp);
     filters = f.value();
   } else {
     filters = make_shared<FilterPipeline>(HERE());
@@ -361,17 +360,15 @@ tuple<Status, optional<shared_ptr<Attribute>>> attribute_from_capnp(
         datatype, attribute_reader.getCellValNum());
   }
 
-  return {
-      Status::Ok(),
-      tiledb::common::make_shared<Attribute>(
-          HERE(),
-          attribute_reader.getName(),
-          datatype,
-          nullable,
-          attribute_reader.getCellValNum(),
-          *(filters.get()),
-          fill_value_vec,
-          fill_value_validity)};
+  return tiledb::common::make_shared<Attribute>(
+      HERE(),
+      attribute_reader.getName(),
+      datatype,
+      nullable,
+      attribute_reader.getCellValNum(),
+      *(filters.get()),
+      fill_value_vec,
+      fill_value_validity);
 }
 
 Status dimension_to_capnp(
@@ -713,8 +710,7 @@ Status array_schema_to_capnp(
   auto attributes_buidler = array_schema_builder->initAttributes(num_attrs);
   for (size_t i = 0; i < num_attrs; i++) {
     auto attribute_builder = attributes_buidler[i];
-    RETURN_NOT_OK(
-        attribute_to_capnp(array_schema.attribute(i), &attribute_builder));
+    attribute_to_capnp(array_schema.attribute(i), &attribute_builder);
   }
 
   // Set timestamp range
@@ -862,14 +858,14 @@ ArraySchema array_schema_from_capnp(
   auto attributes_reader = schema_reader.getAttributes();
   std::vector<shared_ptr<const Attribute>> attributes;
   attributes.reserve(attributes_reader.size());
-  for (auto attr_reader : attributes_reader) {
-    auto&& [st_attr, attr]{attribute_from_capnp(attr_reader)};
-    if (!st_attr.ok()) {
-      throw std::runtime_error(
-          "[Deserialization::array_schema_from_capnp] Cannot deserialize "
-          "attributes.");
+  try {
+    for (auto attr_reader : attributes_reader) {
+      attributes.emplace_back(attribute_from_capnp(attr_reader));
     }
-    attributes.emplace_back(attr.value());
+  } catch (const std::exception& e) {
+    std::throw_with_nested(std::runtime_error(
+        "[Deserialization::array_schema_from_capnp] Cannot deserialize "
+        "attributes."));
   }
 
   // Placeholder for deserializing dimension label references
