@@ -37,6 +37,7 @@
 #include "tiledb_struct_def.h"
 
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"
+#include "tiledb/api/c_api/buffer_list/buffer_list_api_internal.h"
 #include "tiledb/api/c_api/config/config_api_internal.h"
 #include "tiledb/api/c_api/error/error_api_internal.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_internal.h"
@@ -250,9 +251,9 @@ int32_t tiledb_buffer_list_get_num_buffers(
     const tiledb_buffer_list_t* buffer_list,
     uint64_t* num_buffers) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, buffer_list) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
+  ensure_buffer_list_is_valid(buffer_list);
 
   *num_buffers = buffer_list->buffer_list_->num_buffers();
 
@@ -265,9 +266,9 @@ int32_t tiledb_buffer_list_get_buffer(
     uint64_t buffer_idx,
     tiledb_buffer_t** buffer) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, buffer_list) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
+  ensure_buffer_list_is_valid(buffer_list);
 
   // Get the underlying buffer
   tiledb::sm::Buffer* b;
@@ -284,9 +285,9 @@ int32_t tiledb_buffer_list_get_total_size(
     const tiledb_buffer_list_t* buffer_list,
     uint64_t* total_size) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, buffer_list) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
+  ensure_buffer_list_is_valid(buffer_list);
 
   *total_size = buffer_list->buffer_list_->total_size();
 
@@ -298,9 +299,9 @@ int32_t tiledb_buffer_list_flatten(
     const tiledb_buffer_list_t* buffer_list,
     tiledb_buffer_t** buffer) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, buffer_list) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
+  ensure_buffer_list_is_valid(buffer_list);
 
   // Create a buffer instance
   auto buf = tiledb_buffer_handle_t::make_handle();
@@ -4300,8 +4301,7 @@ int32_t tiledb_serialize_query(
     return TILEDB_ERR;
 
   // Allocate a buffer list
-  if (api::tiledb_buffer_list_alloc(ctx, buffer_list) != TILEDB_OK ||
-      sanity_check(ctx, *buffer_list) == TILEDB_ERR)
+  if (api::tiledb_buffer_list_alloc(ctx, buffer_list) != TILEDB_OK)
     return TILEDB_ERR;
 
   if (SAVE_ERROR_CATCH(

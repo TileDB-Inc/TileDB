@@ -1,9 +1,9 @@
 #
-# tiledb/sm/buffer/CMakeLists.txt
+# tiledb/api/c_api/buffer_list/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,22 +25,15 @@
 #
 
 include(common NO_POLICY_SCOPE)
-include(object_library)
+
+list(APPEND SOURCES
+  buffer_list_api.cc
+)
+gather_sources(${SOURCES})
 
 #
-# `buffer` object library
+# Object library for other units to depend upon
 #
-commence(object_library buffer)
-    this_target_sources(buffer.cc)
-    this_target_object_libraries(baseline)
-conclude(object_library)
-
-#
- # `buffer_list` object library
- #
- commence(object_library buffer_list)
-     this_target_sources(buffer_list.cc)
-     this_target_object_libraries(buffer)
- conclude(object_library)
-
-add_test_subdirectory()
+add_library(capi_buffer_list_stub OBJECT ${SOURCES})
+target_link_libraries(capi_buffer_list_stub PUBLIC export)
+target_link_libraries(capi_buffer_list_stub PUBLIC buffer_list $<TARGET_OBJECTS:buffer_list>)

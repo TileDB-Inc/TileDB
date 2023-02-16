@@ -1,11 +1,11 @@
 /**
- * @file tiledb/api/c_api/group/group_api_internal.h
+ * @file tiledb/api/c_api/buffer/buffer_api_internal.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the internal group section of the C API for TileDB.
+ * This file declares the internal buffer section of the C API for TileDB.
  */
 
 #ifndef TILEDB_CAPI_BUFFER_API_INTERNAL_H
@@ -85,7 +85,7 @@ namespace tiledb::api {
 /**
  * Returns if the argument is a valid buffer: non-null, valid as a handle
  *
- * @param group A buffer of unknown validity
+ * @param buffer A buffer of unknown validity
  */
 inline void ensure_buffer_is_valid(const tiledb_buffer_handle_t* buffer) {
   ensure_handle_is_valid(buffer);

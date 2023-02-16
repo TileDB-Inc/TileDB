@@ -56,6 +56,7 @@
  * API sections
  */
 #include "tiledb/api/c_api/buffer/buffer_api_external.h"
+#include "tiledb/api/c_api/buffer_list/buffer_list_api_external.h"
 #include "tiledb/api/c_api/config/config_api_external.h"
 #include "tiledb/api/c_api/context/context_api_external.h"
 #include "tiledb/api/c_api/data_order/data_order_api_external.h"
