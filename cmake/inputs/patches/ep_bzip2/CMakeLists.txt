@@ -26,7 +26,7 @@
 #
 
 project(bzip2)
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.21)
 
 set(SOURCES "blocksort.c" "huffman.c" "crctable.c" "randtable.c"
 "compress.c" "decompress.c" "bzlib.c")
