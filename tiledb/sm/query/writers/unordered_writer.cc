@@ -164,7 +164,7 @@ Status UnorderedWriter::dowork() {
 Status UnorderedWriter::finalize() {
   auto timer_se = stats_->start_timer("finalize");
 
-  if (!array_->is_remote()) {
+  if (!array_->is_remote() && !remote_query()) {
     if (written_buffers_.size() <
         array_schema_.dim_num() + array_schema_.attribute_num()) {
       throw UnorderWriterStatusException("Not all buffers already written");
