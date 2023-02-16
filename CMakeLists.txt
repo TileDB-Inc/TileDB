@@ -54,6 +54,7 @@ string(REGEX MATCH "TILEDB_VERSION_PATCH ([0-9]+)*" _ ${VERFILE})
 set(TILEDB_VERSION_PATCH ${CMAKE_MATCH_1})
 
 set(TILEDB_VERSION "${TILEDB_VERSION_MAJOR}.${TILEDB_VERSION_MINOR}.${TILEDB_VERSION_PATCH}")
+
 ############################################################
 # Check for regex characters in the most important paths
 # fixes https://github.com/TileDB-Inc/TileDB/issues/1799
@@ -203,6 +204,11 @@ message(STATUS "Starting TileDB regular build.")
 # Paths to locate the installed external projects.
 set(TILEDB_EP_SOURCE_DIR "${TILEDB_EP_BASE}/src")
 set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")
+
+# Override default install prefix if not set
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  set(CMAKE_INSTALL_PREFIX "${CMAKE_PROJECT_BINARY_DIR}/dist" CACHE PATH "..." FORCE)
+endif()
 
 ############################################################
 # Compile options/definitions for all targets

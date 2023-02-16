@@ -16,7 +16,7 @@ source_dir=`cd "\`dirname \"$0\"\`";pwd`
 binary_dir=`pwd`
 
 # Choose the default install prefix.
-default_prefix="${source_dir}/dist"
+default_prefix="${binary_dir}/dist"
 
 # Choose the default dependency install prefix
 default_dependency=${DEPENDENCY_INSTALL_PREFIX}
