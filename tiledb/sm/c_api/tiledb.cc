@@ -1030,15 +1030,8 @@ int32_t tiledb_array_schema_load(
     }
 
     // Load latest array schema
-    auto&& [st, array_schema_latest] =
-        storage_manager->load_array_schema_latest(array_dir, key);
-    if (!st.ok()) {
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
-      delete *array_schema;
-      return TILEDB_ERR;
-    }
-    (*array_schema)->array_schema_ = array_schema_latest.value();
+    auto&& array_schema_latest = array_dir.load_array_schema_latest(key);
+    (*array_schema)->array_schema_ = array_schema_latest;
   }
   return TILEDB_OK;
 }
@@ -1131,16 +1124,8 @@ int32_t tiledb_array_schema_load_with_key(
     }
 
     // Load latest array schema
-    auto&& [st, array_schema_latest] =
-        storage_manager->load_array_schema_latest(array_dir, key);
-    if (!st.ok()) {
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
-      delete *array_schema;
-      *array_schema = nullptr;
-      return TILEDB_ERR;
-    }
-    (*array_schema)->array_schema_ = array_schema_latest.value();
+    auto&& array_schema_latest = array_dir.load_array_schema_latest(key);
+    (*array_schema)->array_schema_ = array_schema_latest;
   }
   return TILEDB_OK;
 }
@@ -5355,16 +5340,9 @@ int32_t tiledb_fragment_info_get_array_schema(
     return TILEDB_OOM;
   }
 
-  auto&& [st, array_schema_get] =
+  auto&& array_schema_get =
       fragment_info->fragment_info_->get_array_schema(fid);
-  if (!st.ok()) {
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    delete *array_schema;
-    *array_schema = nullptr;
-    return TILEDB_ERR;
-  }
-  (*array_schema)->array_schema_ = array_schema_get.value();
+  (*array_schema)->array_schema_ = array_schema_get;
 
   return TILEDB_OK;
 }

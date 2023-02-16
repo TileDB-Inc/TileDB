@@ -33,6 +33,7 @@
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/unreachable.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/filter/compression_filter.h"
@@ -57,6 +58,30 @@ GenericTileIO::GenericTileIO(ContextResources& resources, const URI& uri)
 /* ****************************** */
 /*               API              */
 /* ****************************** */
+
+Tile GenericTileIO::load(
+    ContextResources& resources,
+    const URI& uri,
+    uint64_t offset,
+    const EncryptionKey& encryption_key) {
+  GenericTileIO tile_io(resources, uri);
+
+  // Get encryption key from config
+  if (encryption_key.encryption_type() == EncryptionType::NO_ENCRYPTION) {
+    EncryptionKey cfg_enc_key(resources.config());
+    auto&& [st1, tile_opt] =
+        tile_io.read_generic(offset, cfg_enc_key, resources.config());
+    throw_if_not_ok(st1);
+    return std::move(*tile_opt);
+  } else {
+    auto&& [st1, tile_opt] =
+        tile_io.read_generic(offset, encryption_key, resources.config());
+    throw_if_not_ok(st1);
+    return std::move(*tile_opt);
+  }
+
+  stdx::unreachable();
+}
 
 tuple<Status, optional<Tile>> GenericTileIO::read_generic(
     uint64_t file_offset,
