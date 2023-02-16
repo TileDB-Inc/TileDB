@@ -164,17 +164,19 @@ Status Azure::create_container(const URI& uri) const {
   std::string container_name;
   RETURN_NOT_OK(parse_azure_uri(uri, &container_name, nullptr));
 
-  std::future<azure::storage_lite::storage_outcome<void>> result =
-      client_->create_container(container_name);
-  if (!result.valid()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("Create container failed on: " + uri.to_string())));
+  bool created;
+  std::string error_message = "";
+  try {
+    created =
+        client_->GetBlobContainerClient(container_name).Create().Value.Created;
+  } catch (const ::Azure::Storage::StorageException& e) {
+    created = false;
+    error_message = "; " + e.Message;
   }
 
-  azure::storage_lite::storage_outcome<void> outcome = result.get();
-  if (!outcome.success()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("Create container failed on: " + uri.to_string())));
+  if (!created) {
+    return LOG_STATUS(Status_AzureError(std::string(
+        "Create container failed on: " + uri.to_string() + error_message)));
   }
 
   return wait_for_container_to_propagate(container_name);
@@ -817,17 +819,18 @@ Status Azure::remove_container(const URI& uri) const {
   std::string container_name;
   RETURN_NOT_OK(parse_azure_uri(uri, &container_name, nullptr));
 
-  std::future<azure::storage_lite::storage_outcome<void>> result =
-      client_->delete_container(container_name);
-  if (!result.valid()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("Remove container failed on: " + uri.to_string())));
+  bool deleted;
+  std::string error_message = "";
+  try {
+    deleted = client_->DeleteBlobContainer(container_name).Value.Deleted;
+  } catch (const ::Azure::Storage::StorageException& e) {
+    deleted = false;
+    error_message = "; " + e.Message;
   }
 
-  azure::storage_lite::storage_outcome<void> outcome = result.get();
-  if (!outcome.success()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("Remove container failed on: " + uri.to_string())));
+  if (!deleted) {
+    return LOG_STATUS(Status_AzureError(std::string(
+        "Remove container failed on: " + uri.to_string() + error_message)));
   }
 
   return wait_for_container_to_be_deleted(container_name);
@@ -840,18 +843,20 @@ Status Azure::remove_blob(const URI& uri) const {
   std::string blob_path;
   RETURN_NOT_OK(parse_azure_uri(uri, &container_name, &blob_path));
 
-  std::future<azure::storage_lite::storage_outcome<void>> result =
-      client_->delete_blob(
-          container_name, blob_path, false /* delete_snapshots */);
-  if (!result.valid()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("Remove blob failed on: " + uri.to_string())));
+  bool deleted;
+  std::string error_message = "";
+  try {
+    deleted = client_->GetBlobContainerClient(container_name)
+                  .DeleteBlob(blob_path)
+                  .Value.Deleted;
+  } catch (const ::Azure::Storage::StorageException& e) {
+    deleted = false;
+    error_message = "; " + e.Message;
   }
 
-  azure::storage_lite::storage_outcome<void> outcome = result.get();
-  if (!outcome.success()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("Remove blob failed on: " + uri.to_string())));
+  if (!deleted) {
+    return LOG_STATUS(Status_AzureError(std::string(
+        "Remove blob failed on: " + uri.to_string() + error_message)));
   }
 
   return wait_for_blob_to_be_deleted(container_name, blob_path);
