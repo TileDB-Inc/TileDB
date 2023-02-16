@@ -125,7 +125,7 @@ $SourceDirectory = Get-ScriptDirectory
 $BinaryDirectory = (Get-Item -Path ".\" -Verbose).FullName
 
 # Choose the default install prefix.
-$DefaultPrefix = Join-Path $SourceDirectory "dist"
+$DefaultPrefix = Join-Path $BinaryDirectory "dist"
 
 # Choose the default dependency install prefix.
 $DefaultDependency = $DefaultPrefix
