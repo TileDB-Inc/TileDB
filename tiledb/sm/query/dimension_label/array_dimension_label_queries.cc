@@ -136,7 +136,7 @@ void ArrayDimensionLabelQueries::process_data_queries() {
       [&](const size_t query_idx) {
         auto& query = data_queries_[query_idx];
         try {
-          throw_if_not_ok(query->init());
+          query->init();
           throw_if_not_ok(query->process());
           return Status::Ok();
         } catch (const StatusException& err) {
@@ -158,7 +158,7 @@ void ArrayDimensionLabelQueries::process_range_queries(Query* parent_query) {
         try {
           if (range_query) {
             // Process the query.
-            throw_if_not_ok(range_query->init());
+            range_query->init();
             throw_if_not_ok(range_query->process());
             if (!range_query->completed()) {
               throw DimensionLabelQueryStatusException(
