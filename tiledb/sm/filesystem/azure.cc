@@ -400,26 +400,16 @@ Status Azure::is_empty_container(const URI& uri, bool* is_empty) const {
   std::string container_name;
   RETURN_NOT_OK(parse_azure_uri(uri, &container_name, nullptr));
 
-  std::future<azure::storage_lite::storage_outcome<
-      azure::storage_lite::list_blobs_segmented_response>>
-      result = client_->list_blobs_segmented(container_name, "", "", "", 1);
-  if (!result.valid()) {
+  ::Azure::Storage::Blobs::ListBlobsOptions options;
+  options.PageSizeHint = 1;
+  try {
+    *is_empty = client_->GetBlobContainerClient(container_name)
+                    .ListBlobs(options)
+                    .Blobs.empty();
+  } catch (const ::Azure::Storage::StorageException& e) {
     return LOG_STATUS(Status_AzureError(
-        std::string("List blobs failed on: " + uri.to_string())));
+        "List blobs failed on: " + uri.to_string() + "; " + e.Message));
   }
-
-  azure::storage_lite::storage_outcome<
-      azure::storage_lite::list_blobs_segmented_response>
-      outcome = result.get();
-  if (!outcome.success()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("List blobs failed on: " + uri.to_string())));
-  }
-
-  azure::storage_lite::list_blobs_segmented_response response =
-      outcome.response();
-
-  *is_empty = response.blobs.empty();
 
   return Status::Ok();
 }
@@ -443,24 +433,18 @@ Status Azure::is_container(
   assert(client_);
   assert(is_container);
 
-  std::future<azure::storage_lite::storage_outcome<
-      azure::storage_lite::container_property>>
-      result = client_->get_container_properties(container_name);
-  if (!result.valid()) {
+  try {
+    client_->GetBlobContainerClient(container_name).GetProperties();
+  } catch (const ::Azure::Storage::StorageException& e) {
+    if (e.StatusCode == ::Azure::Core::Http::HttpStatusCode::NotFound) {
+      *is_container = false;
+      return Status_Ok();
+    }
     return LOG_STATUS(Status_AzureError(
-        std::string("Get container properties failed on: " + container_name)));
+        "Get blob properties failed on: " + container_name + "; " + e.Message));
   }
 
-  azure::storage_lite::storage_outcome<azure::storage_lite::container_property>
-      outcome = result.get();
-  if (!outcome.success()) {
-    *is_container = false;
-    return Status_Ok();
-  }
-
-  azure::storage_lite::container_property response = outcome.response();
-
-  *is_container = response.valid();
+  *is_container = true;
   return Status_Ok();
 }
 
@@ -491,24 +475,20 @@ Status Azure::is_blob(
   assert(client_);
   assert(is_blob);
 
-  std::future<
-      azure::storage_lite::storage_outcome<azure::storage_lite::blob_property>>
-      result = client_->get_blob_properties(container_name, blob_path);
-  if (!result.valid()) {
+  try {
+    client_->GetBlobContainerClient(container_name)
+        .GetBlobClient(blob_path)
+        .GetProperties();
+  } catch (const ::Azure::Storage::StorageException& e) {
+    if (e.StatusCode == ::Azure::Core::Http::HttpStatusCode::NotFound) {
+      *is_blob = false;
+      return Status_Ok();
+    }
     return LOG_STATUS(Status_AzureError(
-        std::string("Get blob properties failed on: " + blob_path)));
+        "Get blob properties failed on: " + blob_path + "; " + e.Message));
   }
 
-  azure::storage_lite::storage_outcome<azure::storage_lite::blob_property>
-      outcome = result.get();
-  if (!outcome.success()) {
-    *is_blob = false;
-    return Status_Ok();
-  }
-
-  azure::storage_lite::blob_property response = outcome.response();
-
-  *is_blob = response.valid();
+  *is_blob = true;
   return Status_Ok();
 }
 
@@ -571,53 +551,37 @@ tuple<Status, optional<std::vector<directory_entry>>> Azure::ls_with_sizes(
   RETURN_NOT_OK_TUPLE(
       parse_azure_uri(uri_dir, &container_name, &blob_path), nullopt);
 
+  auto container_client = client_->GetBlobContainerClient(container_name);
+
   std::vector<directory_entry> entries;
-  std::string continuation_token = "";
+  ::Azure::Storage::Blobs::ListBlobsOptions options;
+  options.ContinuationToken = "";
+  options.PageSizeHint = max_paths > 0 ? max_paths : 5000;
+  options.Prefix = blob_path;
   do {
-    std::future<azure::storage_lite::storage_outcome<
-        azure::storage_lite::list_blobs_segmented_response>>
-        result = client_->list_blobs_segmented(
-            container_name,
-            delimiter,
-            continuation_token,
-            blob_path,
-            max_paths > 0 ? max_paths : 5000);
-    if (!result.valid()) {
+    ::Azure::Storage::Blobs::ListBlobsByHierarchyPagedResponse response;
+    try {
+      response = container_client.ListBlobsByHierarchy("/", options);
+    } catch (const ::Azure::Storage::StorageException& e) {
       auto st = LOG_STATUS(Status_AzureError(
-          std::string("List blobs failed on: " + uri_dir.to_string())));
+          "List blobs failed on: " + uri_dir.to_string() + "; " + e.Message));
       return {st, nullopt};
     }
 
-    azure::storage_lite::storage_outcome<
-        azure::storage_lite::list_blobs_segmented_response>
-        outcome = result.get();
-    if (!outcome.success()) {
-      auto st = LOG_STATUS(Status_AzureError(
-          std::string("List blobs failed on: " + uri_dir.to_string())));
-      return {st, nullopt};
+    for (const auto& blob : response.Blobs) {
+      entries.emplace_back(
+          "azure://" + container_name + "/" +
+              remove_front_slash(remove_trailing_slash(blob.Name)),
+          blob.BlobSize,
+          false);
     }
 
-    azure::storage_lite::list_blobs_segmented_response response =
-        outcome.response();
-
-    for (const auto& blob : response.blobs) {
-      if (blob.is_directory) {
-        entries.emplace_back(
-            "azure://" + container_name + "/" +
-                remove_front_slash(remove_trailing_slash(blob.name)),
-            0,
-            blob.is_directory);
-      } else {
-        entries.emplace_back(
-            "azure://" + container_name + "/" +
-                remove_front_slash(remove_trailing_slash(blob.name)),
-            blob.content_length,
-            blob.is_directory);
-      }
+    for (const auto& prefix : response.BlobPrefixes) {
+      entries.emplace_back("azure://" + container_name + "/", 0, true);
     }
 
-    continuation_token = response.next_marker;
-  } while (!continuation_token.empty());
+    options.ContinuationToken = response.NextPageToken;
+  } while (options.ContinuationToken.HasValue());
 
   return {Status::Ok(), entries};
 }
@@ -733,35 +697,29 @@ Status Azure::blob_size(const URI& uri, uint64_t* const nbytes) const {
   std::string blob_path;
   RETURN_NOT_OK(parse_azure_uri(uri, &container_name, &blob_path));
 
-  std::future<azure::storage_lite::storage_outcome<
-      azure::storage_lite::list_blobs_segmented_response>>
-      result =
-          client_->list_blobs_segmented(container_name, "", "", blob_path, 1);
-  if (!result.valid()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("Get blob size failed on: " + uri.to_string())));
+  std::optional<std::string> error_message = nullopt;
+
+  try {
+    ::Azure::Storage::Blobs::ListBlobsOptions options;
+    options.Prefix = blob_path;
+    options.PageSizeHint = 1;
+
+    auto response =
+        client_->GetBlobContainerClient(container_name).ListBlobs(options);
+
+    if (response.Blobs.empty()) {
+      error_message = "Blob does not exist.";
+    }
+
+    *nbytes = static_cast<uint64_t>(response.Blobs[0].BlobSize);
+  } catch (const ::Azure::Storage::StorageException& e) {
+    error_message = e.Message;
   }
 
-  azure::storage_lite::storage_outcome<
-      azure::storage_lite::list_blobs_segmented_response>
-      outcome = result.get();
-  if (!outcome.success()) {
+  if (error_message.has_value()) {
     return LOG_STATUS(Status_AzureError(
-        std::string("Get blob size failed on: " + uri.to_string())));
+        "Get blob size failed on: " + uri.to_string() + error_message.value()));
   }
-
-  azure::storage_lite::list_blobs_segmented_response response =
-      outcome.response();
-
-  if (response.blobs.empty()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("Get blob size failed on: " + uri.to_string())));
-  }
-
-  const azure::storage_lite::list_blobs_segmented_item& blob =
-      response.blobs[0];
-
-  *nbytes = blob.content_length;
 
   return Status::Ok();
 }
