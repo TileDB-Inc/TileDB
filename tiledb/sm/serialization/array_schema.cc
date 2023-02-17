@@ -44,6 +44,7 @@
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/compressor.h"
+#include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
@@ -291,6 +292,7 @@ void attribute_to_capnp(
   attribute_builder->setType(datatype_str(attribute->type()));
   attribute_builder->setCellValNum(attribute->cell_val_num());
   attribute_builder->setNullable(attribute->nullable());
+  attribute_builder->setOrder(data_order_str(attribute->order()));
 
   // Get the fill value from `attribute`.
   const void* fill_value;
@@ -329,6 +331,11 @@ shared_ptr<Attribute> attribute_from_capnp(
   // Set nullable
   const bool nullable = attribute_reader.getNullable();
 
+  // Get data order
+  auto data_order = attribute_reader.hasOrder() ?
+                        data_order_from_str(attribute_reader.getOrder()) :
+                        DataOrder::UNORDERED_DATA;
+
   // Filter pipelines
   shared_ptr<FilterPipeline> filters{};
   if (attribute_reader.hasFilterPipeline()) {
@@ -345,8 +352,8 @@ shared_ptr<Attribute> attribute_from_capnp(
   uint8_t fill_value_validity = 0;
   if (attribute_reader.hasFillValue()) {
     // To initialize the ByteVecValue object, we do so by instantiating a
-    // vector of type uint8_t that points to the data stored in the
-    // byte vector.
+    // vector of type uint8_t that points to the data stored in the byte
+    // vector.
     auto capnp_byte_vec = attribute_reader.getFillValue().asBytes();
     auto vec_ptr = capnp_byte_vec.begin();
     std::vector<uint8_t> byte_vec(vec_ptr, vec_ptr + capnp_byte_vec.size());
@@ -368,7 +375,8 @@ shared_ptr<Attribute> attribute_from_capnp(
       attribute_reader.getCellValNum(),
       *(filters.get()),
       fill_value_vec,
-      fill_value_validity);
+      fill_value_validity,
+      data_order);
 }
 
 Status dimension_to_capnp(

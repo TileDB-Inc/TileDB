@@ -155,6 +155,9 @@ struct Attribute {
 
     fillValueValidity @6 :Bool;
     # Default validity fill value for nullable attributes
+
+    order @7 :Text;
+    # The prescribed order of the data stored in the attribute
 }
 
 struct AttributeBufferHeader {
@@ -693,7 +696,7 @@ struct ArrayDirectory {
     offset @2 :UInt64;
   }
 
-  unfilteredFragmentUris @0 :List(Text); 
+  unfilteredFragmentUris @0 :List(Text);
   # fragment URIs
 
   consolidatedCommitUris @1 :List(Text);
@@ -703,7 +706,7 @@ struct ArrayDirectory {
   # URIs of all the array schema files
 
   latestArraySchemaUri @3 :Text;
-  # latest array schema URI. 
+  # latest array schema URI.
 
   arrayMetaUrisToVacuum @4 :List(Text);
   # the array metadata files to vacuum
@@ -732,10 +735,10 @@ struct ArrayDirectory {
   # the location of delete tiles
 
   timestampStart @12 :UInt64;
-   # Only the files created after timestamp_start are listed 
+   # Only the files created after timestamp_start are listed
 
   timestampEnd @13 :UInt64;
-  # Only the files created before timestamp_end are listed 
+  # Only the files created before timestamp_end are listed
 }
 
 
@@ -1048,4 +1051,3 @@ struct BufferedChunk {
   size@1 :UInt64;
   # the size in bytes of the intermediate chunk
 }
-

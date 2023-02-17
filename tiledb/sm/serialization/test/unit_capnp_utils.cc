@@ -141,6 +141,10 @@ TEST_CASE("Serialize and deserialize attribute", "[attribute][serialization]") {
         constants::var_num,
         DataOrder::UNORDERED_DATA);
   }
+  SECTION("Ordered data") {
+    attr = make_shared<Attribute>(
+        HERE(), "attr1", Datatype::FLOAT64, 1, DataOrder::DECREASING_DATA);
+  }
 
   // Serialize
   ::capnp::MallocMessageBuilder message;
