@@ -609,23 +609,21 @@ Status Azure::copy_blob(const URI& old_uri, const URI& new_uri) {
   std::string old_container_name;
   std::string old_blob_path;
   RETURN_NOT_OK(parse_azure_uri(old_uri, &old_container_name, &old_blob_path));
+  std::string source_uri = client_->GetBlobContainerClient(old_container_name)
+                               .GetBlobClient(old_blob_path)
+                               .GetUrl();
 
   std::string new_container_name;
   std::string new_blob_path;
   RETURN_NOT_OK(parse_azure_uri(new_uri, &new_container_name, &new_blob_path));
 
-  std::future<azure::storage_lite::storage_outcome<void>> result =
-      client_->start_copy(
-          old_container_name, old_blob_path, new_container_name, new_blob_path);
-  if (!result.valid()) {
+  try {
+    client_->GetBlobContainerClient(new_container_name)
+        .GetBlobClient(new_blob_path)
+        .StartCopyFromUri(source_uri);
+  } catch (const ::Azure::Storage::StorageException& e) {
     return LOG_STATUS(Status_AzureError(
-        std::string("Copy blob failed on: " + old_uri.to_string())));
-  }
-
-  azure::storage_lite::storage_outcome<void> outcome = result.get();
-  if (!outcome.success()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("Copy blob failed on: " + old_uri.to_string())));
+        "Copy blob failed on: " + old_uri.to_string() + "; " + e.Message));
   }
 
   return wait_for_blob_to_propagate(new_container_name, new_blob_path);
