@@ -41,6 +41,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/logger_public.h"
+#include "tiledb/common/stdx_string.h"
 #include "tiledb/platform/cert_file.h"
 #include "tiledb/sm/filesystem/azure.h"
 #include "tiledb/sm/misc/parallel_functions.h"
@@ -116,6 +117,15 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   if (blob_endpoint.empty() &&
       ((tmp = getenv("AZURE_BLOB_ENDPOINT")) != NULL)) {
     blob_endpoint = std::string(getenv("AZURE_BLOB_ENDPOINT"));
+  }
+  if (blob_endpoint.empty()) {
+    LOG_WARN("The 'vfs.azure.blob_endpoint' option is not specified.");
+  }
+  if (!(utils::parse::starts_with(blob_endpoint, "http://") ||
+        utils::parse::starts_with(blob_endpoint, "https://"))) {
+    LOG_WARN(
+        "The 'vfs.azure.blob_endpoint' option should include the scheme (HTTP "
+        "or HTTPS).");
   }
 
   RETURN_NOT_OK(config.get<uint64_t>(
