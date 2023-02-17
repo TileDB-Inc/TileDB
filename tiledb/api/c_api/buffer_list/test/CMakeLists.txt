@@ -23,3 +23,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
+
+find_package(Catch_EP REQUIRED)
+
+add_executable(unit_capi_buffer_list EXCLUDE_FROM_ALL)
+target_sources(unit_capi_buffer_list PUBLIC unit_capi_buffer_list.cc)
+target_link_libraries(unit_capi_buffer_list PUBLIC capi_buffer_list_stub)
+target_link_libraries(unit_capi_buffer_list PUBLIC capi_buffer_stub)
+target_link_libraries(unit_capi_buffer_list PUBLIC Catch2::Catch2WithMain)
+
+add_test(
+  NAME "unit_capi_buffer_list"
+  COMMAND $<TARGET_FILE:unit_capi_buffer_list>
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)

@@ -25,3 +25,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+
+#include "../buffer_list_api_external.h"
+
+int main() {
+  tiledb_buffer_list_t* buffer_list = nullptr;
+  tiledb_buffer_list_alloc(nullptr, &buffer_list);
+  return 0;
+}

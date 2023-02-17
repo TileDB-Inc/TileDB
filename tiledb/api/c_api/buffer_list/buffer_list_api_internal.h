@@ -33,8 +33,36 @@
 #ifndef TILEDB_CAPI_BUFFER_LIST_API_INTERNAL_H
 #define TILEDB_CAPI_BUFFER_LIST_API_INTERNAL_H
 
-//#include "../../c_api_support/handle/handle.h"
+#include "../../c_api_support/handle/handle.h"
 #include "tiledb/sm/buffer/buffer_list.h"
+
+struct tiledb_buffer_list_handle_t
+    : public tiledb::api::CAPIHandle<tiledb_buffer_list_handle_t> {
+  /**
+   * Type name
+   */
+  static constexpr std::string_view object_type_name{"buffer list"};
+
+ private:
+  tiledb::sm::BufferList buffer_list_;
+
+ public:
+  explicit tiledb_buffer_list_handle_t()
+      : buffer_list_() {
+  }
+
+  inline void set_buffer_list(tiledb::sm::BufferList& buffer_list) {
+    buffer_list_ = buffer_list;
+  }
+
+  [[nodiscard]] inline tiledb::sm::BufferList& buffer_list() {
+    return buffer_list_;
+  }
+
+  [[nodiscard]] inline const tiledb::sm::BufferList& buffer_list() const {
+    return buffer_list_;
+  }
+};
 
 namespace tiledb::api {
 
@@ -43,15 +71,9 @@ namespace tiledb::api {
  *
  * @param buffer_list A buffer list of unknown validity
  */
-inline int32_t ensure_buffer_list_is_valid(
+inline void ensure_buffer_list_is_valid(
     const tiledb_buffer_list_t* buffer_list) {
-  // #TODO Change to inline void, ensure_handle_is_valid(buffer_list)
-  if (buffer_list == nullptr || buffer_list->buffer_list_ == nullptr) {
-    auto st = Status_Error("Invalid TileDB buffer list object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    return TILEDB_ERR;
-  }
-  return TILEDB_OK;
+  ensure_handle_is_valid(buffer_list);
 }
 
 }  // namespace tiledb::api
