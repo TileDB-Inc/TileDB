@@ -519,7 +519,7 @@ tuple<Status, optional<std::vector<directory_entry>>> Azure::ls_with_sizes(
   do {
     ::Azure::Storage::Blobs::ListBlobsByHierarchyPagedResponse response;
     try {
-      response = container_client.ListBlobsByHierarchy("/", options);
+      response = container_client.ListBlobsByHierarchy(delimiter, options);
     } catch (const ::Azure::Storage::StorageException& e) {
       auto st = LOG_STATUS(Status_AzureError(
           "List blobs failed on: " + uri_dir.to_string() + "; " + e.Message));
@@ -535,7 +535,11 @@ tuple<Status, optional<std::vector<directory_entry>>> Azure::ls_with_sizes(
     }
 
     for (const auto& prefix : response.BlobPrefixes) {
-      entries.emplace_back("azure://" + container_name + "/", 0, true);
+      entries.emplace_back(
+          "azure://" + container_name + "/" +
+              remove_front_slash(remove_trailing_slash(prefix)),
+          0,
+          true);
     }
 
     options.ContinuationToken = response.NextPageToken;

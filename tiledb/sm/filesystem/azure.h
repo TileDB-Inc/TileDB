@@ -45,17 +45,9 @@
 #if !defined(NOMINMAX)
 #define NOMINMAX  // avoid min/max macros from windows headers
 #endif
+#include <azure/core/base64.hpp>
 #include <list>
 #include <unordered_map>
-
-// azure sdk transitively includes mmtime.h which defines TIME_MS
-#ifdef TIME_MS
-#undef TIME_MS
-#endif
-
-#ifdef DELETE
-#undef DELETE
-#endif
 
 // Forward declaration
 namespace Azure::Storage::Blobs {
