@@ -10,6 +10,14 @@ steps:
   displayName: 'Print env'
 
 - bash: |
+    # This stage is needed until https://github.com/actions/runner-images/pull/7125 or similar is merged
+    # MacOS image 20230214.1 removed implicit installation of pkg-config
+    set -e pipefail
+    brew install pkg-config
+  condition: eq(variables['Agent.OS'], 'Darwin')
+  displayName: 'Install brew package for pkg-config (OSX only)'
+
+- bash: |
     set -e pipefail
     brew uninstall --ignore-dependencies libidn2 brotli rtmpdump
   condition: eq(variables['Agent.OS'], 'Darwin')
