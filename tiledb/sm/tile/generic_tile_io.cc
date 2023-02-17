@@ -102,14 +102,8 @@ tuple<Status, optional<Tile>> GenericTileIO::read_generic(
 
   // Unfilter
   assert(tile.filtered());
-  RETURN_NOT_OK_TUPLE(
-      header.filters.run_reverse(
-          &resources_.stats(),
-          &tile,
-          nullptr,
-          &resources_.compute_tp(),
-          config),
-      nullopt);
+  header.filters.run_reverse(
+      &resources_.stats(), tile, resources_.compute_tp(), config);
   assert(!tile.filtered());
 
   return {Status::Ok(), std::move(tile)};
