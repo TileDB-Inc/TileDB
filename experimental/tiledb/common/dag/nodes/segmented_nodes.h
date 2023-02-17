@@ -34,13 +34,15 @@
  * allowing the node to yield control back to the scheduler and return execution
  * where it left off.
  *
- * There are three types of segmented nodes:
+ * There are four types of segmented nodes:
  *   - Producer, which encapsulates a producer function that produces a single
  * result.
  *   - Consumer, which encapsulates a consumer function that consumes a single
  * result.
  *   - Function, which encapsulates a function that produces and consumes a
  * single result.
+ *   - MIMO, which encapsulates a function that produces and consumes
+ * results with arbitrary cardinality.
  *
  * The function encapsulated in the producer node may issue a stop request, in
  * which case the producer node will begin shutting down the task graph.
@@ -69,6 +71,7 @@
 #include "detail/segmented/consumer.h"
 #include "detail/segmented/function.h"
 #include "detail/segmented/producer.h"
+#include "detail/segmented/mimo.h"
 #include "node_traits.h"
 
 namespace tiledb::common {

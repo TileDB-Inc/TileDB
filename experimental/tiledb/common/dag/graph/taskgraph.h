@@ -43,9 +43,23 @@
 #include "experimental/tiledb/common/dag/execution/task_traits.h"
 #include "experimental/tiledb/common/dag/nodes/node_traits.h"
 #include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
+#include "experimental/tiledb/common/dag/nodes/detail/segmented/edge_node_ctad.h"
 #include "experimental/tiledb/common/dag/utility/print_types.h"
 
+#include "experimental/tiledb/common/dag/nodes/detail/segmented/mimo.h"
+
 namespace tiledb::common {
+
+
+template <class... R, class... T>
+auto aaa(std::function<void(std::tuple<R...>, std::tuple<T...>)>&& f) {
+  // using U... = std::remove_cv_t<std::remove_reference_t<T...>>;
+  auto tmp = mimo_node<DuffsMover3, std::remove_cv_t<std::remove_reference_t<T>>..., DuffsMover3, R...>{f};
+  return tmp;
+}
+
+
+
 
 template <class Scheduler>
 class TaskGraph {
@@ -109,6 +123,29 @@ class TaskGraph {
    * @todo: Add mechanism to support bind expressions.
    */
   template <class Function>
+  auto initial_mimo(Function&& f) {
+    using T = std::invoke_result_t<Function, std::stop_source&>;
+    auto tmp = producer_mimo<DuffsMover3, T>(std::forward<Function>(f));
+    nodes_.emplace_back(tmp);
+    return tmp;
+  }
+
+  /**
+   * Create a producer node and add it to the graph.
+   *
+   * @param f The function to store in the node.
+   *
+   * @tparam Function The type of function to be stored by the node.  The
+   * function must take as input an `std::stop_source` and return an item to be
+   * processed by the next node in the graph. The function calls
+   * `std::stop_source::request_stop()` to signal that the function will not
+   * produce any more items.
+   *
+   * @todo: With CTAD we don't need separate kinds of node functions.
+   *
+   * @todo: Add mechanism to support bind expressions.
+   */
+  template <class Function>
   auto initial_node(Function&& f) {
     auto tmp = producer_node<
         DuffsMover3,
@@ -117,6 +154,7 @@ class TaskGraph {
     nodes_.emplace_back(tmp);
     return tmp;
   }
+
 
   /**
    * Create a function node and add it to the graph.
@@ -140,6 +178,27 @@ class TaskGraph {
     return transform_node(std::function{std::forward<Function>(f)});
   }
 
+  template <template <class> class a, class b, template <class> class c, class d>
+  class e : public mimo_node<a, b, c, d> {};
+
+/**
+   * Create a multi-input, multi-output function node and add it to the graph.
+   *
+   * @param f The function to store in the node.
+   *
+   * @tparam Function The type of function to be held by the node.
+   * The function must take an item as input
+   * and return an item as output.
+   */
+   template <class... R, class... T>
+   auto mimo(std::function<std::tuple<R...>(const std::tuple<T...>&)>&& f ){
+     // using U... = std::remove_cv_t<std::remove_reference_t<T...>>;
+    auto tmp = mimo_node<DuffsMover3, std::tuple<std::remove_cv_t<std::remove_reference_t<T>>...>, DuffsMover3, std::tuple<R...>> {f};
+    nodes_.emplace_back(tmp);
+    return tmp;
+   }
+
+
   /**
    * Create a multi-input, multi-output function node and add it to the graph.
    *
@@ -150,7 +209,8 @@ class TaskGraph {
    * and return an item as output.
    */
   template <class Function>
-  auto mimo_node([[maybe_unused]] Function&& f) {
+  auto mimo(Function&& f) {
+    return mimo(std::function{std::forward<Function>(f)});
   }
 
   /**
@@ -184,6 +244,37 @@ class TaskGraph {
     return terminal_node(std::function{std::forward<Func>(f)});
   }
 
+
+  /**
+   * Create a terminal node and add it to the graph.
+   *
+   * @param f The function to store in the node.
+   *
+   * @tparam Function The type of function to be held by the node.
+   * The function must take an item as input
+   * and return void.
+   */
+  template <class T>
+  auto terminal_mimo(std::function<void(T)>&& f) {
+    using U = std::remove_cv_t<std::remove_reference_t<T>>;
+    auto tmp = consumer_mimo<DuffsMover3, U>(f);
+    nodes_.emplace_back(tmp);
+    return tmp;
+  }
+  /**
+   * Trampoline function to match a function to an std::function so that we
+   * can use CTAD to deduce the input argument type.
+   *
+   * @tparam Func The type of function to be held by the node.
+   * @param f The function to store in the node.
+   *
+   * @return A handle to the created node.
+   */
+  template <class Func>
+  auto terminal_mimo(Func&& f) {
+    return terminal_mimo(std::function{std::forward<Func>(f)});
+  }
+
   /**
    * Connect node `from` to node `to` with an edge.
    * An `Edge` connecting the `Source` of `from` to the `Sink` of `to` will be
@@ -196,10 +287,44 @@ class TaskGraph {
    * @param from A node supplying data to `to`.
    * @param to A node receiving data from `from`.
    */
+#if 0
   template <class From, class To>
   void make_edge(From& from, To& to) {
     connect(from, to);
-    edges_.emplace_back(std::make_shared<GraphEdge>(Edge(*from, *to)));
+    // edges_.emplace_back(std::make_shared<GraphEdge>(Edge(*from, *to)));
+    edges_.emplace_back(std::make_shared<GraphEdge>(Edge(from, to)));
+  }
+#endif
+
+
+
+  template <class From, class To>
+  std::enable_if_t<(!is_proxy_v<From> && !is_proxy_v<To>), void>
+  make_edge(From& from, To& to){
+    connect(from, to);
+    Edge(from, to);
+  }
+
+  template <class From, class To>
+  std::enable_if_t<!is_proxy_v<std::remove_reference_t<From>> && is_proxy_v<std::remove_reference_t<To>>, void>
+  make_edge(From&& from, To&& to){
+    connect(from, *(to.node_ptr_));
+    Edge(from, std::get<std::remove_reference_t<To>::portnum_>((*(to.node_ptr_))->get_input_ports()));
+  }
+
+  template <class From, class To>
+  std::enable_if_t<(is_proxy_v<std::remove_reference_t<From>> && !is_proxy_v<std::remove_reference_t<To>>), void>
+  make_edge(From&& from, To&& to){
+    connect(*(from.node_ptr_), to);
+    Edge(std::get<std::remove_reference_t<From>::portnum_>((*(from.node_ptr_))->get_output_ports()), to);
+  }
+
+  template <class From, class To>
+  std::enable_if_t<is_proxy_v<std::remove_reference_t<From>> && is_proxy_v<std::remove_reference_t<To>>, void>
+  make_edge(From&& from, To&& to){
+    connect(*(from.node_ptr_), *(to.node_ptr_));
+    Edge(std::get<std::remove_reference_t<From>::portnum_>((*(from.node_ptr_))->get_output_ports()),
+         std::get<std::remove_reference_t<To>::portnum_>((*(to.node_ptr_))->get_input_ports()));
   }
 
   /**
@@ -262,6 +387,16 @@ auto initial_node(Graph& graph, Function&& f) {
 }
 
 /**
+ * @ brief Add an initial node to a graph.
+ * @tparam Function
+ * @param f
+ */
+template <class Graph, class Function>
+auto initial_mimo(Graph& graph, Function&& f) {
+  return graph.initial_mimo(std::forward<Function>(f));
+}
+
+/**
  * @ brief Add a function node to a graph.
  * @tparam Function
  * @param f
@@ -277,8 +412,8 @@ auto transform_node(Graph& graph, Function&& f) {
  * @param f
  */
 template <class Graph, class Function>
-auto mimo_node(Graph& graph, Function&& f) {
-  return graph.mimo_node(std::forward<Function>(f));
+auto mimo(Graph& graph, Function&& f) {
+  return graph.mimo(std::forward<Function>(f));
 }
 
 /**
@@ -291,8 +426,18 @@ auto terminal_node(Graph& graph, Function&& f) {
   return graph.terminal_node(std::forward<Function>(f));
 }
 
+/**
+ * @ brief Add a terminal node to a graph.
+ * @tparam Function
+ * @param f
+ */
+template <class Graph, class Function>
+auto terminal_mimo(Graph& graph, Function&& f) {
+  return graph.terminal_mimo(std::forward<Function>(f));
+}
+
 template <class Graph, class From, class To>
-void make_edge(Graph& graph, From& from, To& to) {
+void make_edge(Graph& graph, From&& from, To&& to) {
   graph.make_edge(from, to);
 }
 
