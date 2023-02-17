@@ -47,10 +47,6 @@
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
 
-// blob_client.h needs to be included after logger_public.h to avoid
-// macro definitions that blob_client.h has on some platforms
-#include <blob/blob_client.h>
-#include <put_block_list_request_base.h>
 #include <azure/storage/blobs.hpp>
 
 using namespace tiledb::common;
@@ -285,37 +281,19 @@ Status Azure::flush_blob(const URI& uri) {
 
   // Build the block list to commit.
   const std::list<std::string> block_ids = state->get_block_ids();
-  std::vector<azure::storage_lite::put_block_list_request_base::block_item>
-      block_list;
-  block_list.reserve(block_ids.size());
-  for (const auto& block_id : state->get_block_ids()) {
-    azure::storage_lite::put_block_list_request_base::block_item block;
-    block.id = block_id;
-    block.type = azure::storage_lite::put_block_list_request_base::block_type::
-        uncommitted;
-    block_list.emplace_back(block);
-  }
-
-  // We do not store any custom metadata with the blob.
-  std::vector<std::pair<std::string, std::string>> empty_metadata;
 
   // Release all instance state associated with this block list
   // transactions so that we can safely return if the following
   // request failed.
   finish_block_list_upload(uri);
 
-  std::future<azure::storage_lite::storage_outcome<void>> result =
-      client_->put_block_list(
-          container_name, blob_path, block_list, empty_metadata);
-  if (!result.valid()) {
+  try {
+    client_->GetBlobContainerClient(container_name)
+        .GetBlockBlobClient(blob_path)
+        .CommitBlockList(std::vector(block_ids.begin(), block_ids.end()));
+  } catch (const ::Azure::Storage::StorageException& e) {
     return LOG_STATUS(Status_AzureError(
-        std::string("Flush blob failed on: " + uri.to_string())));
-  }
-
-  azure::storage_lite::storage_outcome<void> outcome = result.get();
-  if (!outcome.success()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("Flush blob failed on: " + uri.to_string())));
+        "Flush blob failed on: " + uri.to_string() + "; " + e.Message));
   }
 
   return wait_for_blob_to_propagate(container_name, blob_path);
@@ -349,35 +327,15 @@ Status Azure::flush_blob_direct(const URI& uri) {
   std::string blob_path;
   RETURN_NOT_OK(parse_azure_uri(uri, &container_name, &blob_path));
 
-  // We do not store any custom metadata with the blob.
-  std::vector<std::pair<std::string, std::string>> empty_metadata;
-
-  // Unlike the 'upload_block_from_buffer' interface used in
-  // the block list upload path, there is not an interface to
-  // upload a single blob with a buffer. There is only
-  // 'upload_block_blob_from_stream'. Here, we construct a
-  // zero-copy stream buffer.
-  ZeroCopyStreamBuffer zc_stream_buffer(
-      static_cast<char*>(write_cache_buffer->data()),
-      write_cache_buffer->size());
-  std::istream zc_istream(&zc_stream_buffer);
-
-  std::future<azure::storage_lite::storage_outcome<void>> result =
-      client_->upload_block_blob_from_stream(
-          container_name,
-          blob_path,
-          zc_istream,
-          empty_metadata,
-          write_cache_buffer->size());
-  if (!result.valid()) {
+  try {
+    client_->GetBlobContainerClient(container_name)
+        .GetBlockBlobClient(blob_path)
+        .UploadFrom(
+            static_cast<uint8_t*>(write_cache_buffer->data()),
+            static_cast<size_t>(write_cache_buffer->size()));
+  } catch (const ::Azure::Storage::StorageException& e) {
     return LOG_STATUS(Status_AzureError(
-        std::string("Flush blob failed on: " + uri.to_string())));
-  }
-
-  azure::storage_lite::storage_outcome<void> outcome = result.get();
-  if (!outcome.success()) {
-    return LOG_STATUS(Status_AzureError(
-        std::string("Flush blob failed on: " + uri.to_string())));
+        "Flush blob failed on: " + uri.to_string() + "; " + e.Message));
   }
 
   // Protect 'write_cache_map_' from multiple writers.
@@ -1076,29 +1034,15 @@ Status Azure::upload_block(
     const void* const buffer,
     const uint64_t length,
     const std::string& block_id) {
-  // The 'const_cast' is necessary because the SDK API requires a
-  // non-const 'buffer'. However, this is safe because the SDK does
-  // not actually mutate 'buffer'.
-  //
-  // This may removed once the following PR is merged and released:
-  // https://github.com/Azure/azure-storage-cpplite/pull/64
-  std::future<azure::storage_lite::storage_outcome<void>> result =
-      client_->upload_block_from_buffer(
-          container_name,
-          blob_path,
-          block_id,
-          const_cast<char*>(static_cast<const char*>(buffer)),
-          length);
-
-  if (!result.valid()) {
-    return LOG_STATUS(
-        Status_AzureError(std::string("Upload block failed on: " + blob_path)));
-  }
-
-  azure::storage_lite::storage_outcome<void> outcome = result.get();
-  if (!outcome.success()) {
-    return LOG_STATUS(
-        Status_AzureError(std::string("Upload block failed on: " + blob_path)));
+  ::Azure::Core::IO::MemoryBodyStream stream(
+      static_cast<const uint8_t*>(buffer), static_cast<size_t>(length));
+  try {
+    client_->GetBlobContainerClient(container_name)
+        .GetBlockBlobClient(blob_path)
+        .StageBlock(block_id, stream);
+  } catch (const ::Azure::Storage::StorageException& e) {
+    return LOG_STATUS(Status_AzureError(
+        "Upload block failed on: " + blob_path + "; " + e.Message));
   }
 
   return Status::Ok();
