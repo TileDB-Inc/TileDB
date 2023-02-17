@@ -2339,7 +2339,8 @@ Status query_deserialize(
 
   // The first buffer is always the serialized Query object.
   tiledb::sm::Buffer* original_buffer;
-  RETURN_NOT_OK(original_bufferlist.get_buffer(0, &original_buffer));
+  RETURN_NOT_OK(original_bufferlist.get_buffer(
+      0, const_cast<const tiledb::sm::Buffer**>(&original_buffer)));
   original_buffer->reset_offset();
 
   // Similarly, we must create a copy of 'copy_state'.
