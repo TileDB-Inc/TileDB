@@ -158,9 +158,9 @@ shared_ptr<ArraySchema> make_schema(
   for (uint64_t a = 0; a < attr_types.size(); a++) {
     Attribute attr("a" + std::to_string(a + 1), attr_types[a]);
     if (attr_types[a] == Datatype::STRING_ASCII) {
-      REQUIRE(attr.set_cell_val_num(constants::var_num).ok());
+      attr.set_cell_val_num(constants::var_num);
     }
-    REQUIRE(attr.set_nullable(attr_nullable[a]).ok());
+    attr.set_nullable(attr_nullable[a]);
     REQUIRE(array_schema->add_attribute(make_shared<Attribute>(HERE(), &attr))
                 .ok());
   }

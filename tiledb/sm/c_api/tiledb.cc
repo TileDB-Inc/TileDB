@@ -379,7 +379,7 @@ int32_t tiledb_attribute_set_nullable(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(attr->attr_->set_nullable(static_cast<bool>(nullable)));
+  attr->attr_->set_nullable(static_cast<bool>(nullable));
 
   return TILEDB_OK;
 }
@@ -394,7 +394,7 @@ int32_t tiledb_attribute_set_filter_list(
   }
   api::ensure_filter_list_is_valid(filter_list);
 
-  throw_if_not_ok(attr->attr_->set_filter_pipeline(filter_list->pipeline()));
+  attr->attr_->set_filter_pipeline(filter_list->pipeline());
 
   return TILEDB_OK;
 }
@@ -403,7 +403,7 @@ int32_t tiledb_attribute_set_cell_val_num(
     tiledb_ctx_t* ctx, tiledb_attribute_t* attr, uint32_t cell_val_num) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
-  throw_if_not_ok(attr->attr_->set_cell_val_num(cell_val_num));
+  attr->attr_->set_cell_val_num(cell_val_num);
   return TILEDB_OK;
 }
 
@@ -432,7 +432,7 @@ int32_t tiledb_attribute_get_nullable(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(attr->attr_->get_nullable(reinterpret_cast<bool*>(nullable)));
+  *nullable = attr->attr_->nullable() ? 1 : 0;
 
   return TILEDB_OK;
 }
@@ -482,7 +482,7 @@ int32_t tiledb_attribute_set_fill_value(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(attr->attr_->set_fill_value(value, size));
+  attr->attr_->set_fill_value(value, size);
 
   return TILEDB_OK;
 }
@@ -495,7 +495,7 @@ int32_t tiledb_attribute_get_fill_value(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(attr->attr_->get_fill_value(value, size));
+  attr->attr_->get_fill_value(value, size);
 
   return TILEDB_OK;
 }
@@ -509,7 +509,7 @@ int32_t tiledb_attribute_set_fill_value_nullable(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(attr->attr_->set_fill_value(value, size, valid));
+  attr->attr_->set_fill_value(value, size, valid);
 
   return TILEDB_OK;
 }
@@ -523,7 +523,7 @@ int32_t tiledb_attribute_get_fill_value_nullable(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(attr->attr_->get_fill_value(value, size, valid));
+  attr->attr_->get_fill_value(value, size, valid);
 
   return TILEDB_OK;
 }

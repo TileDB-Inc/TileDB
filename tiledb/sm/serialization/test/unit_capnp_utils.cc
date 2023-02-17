@@ -116,22 +116,20 @@ TEST_CASE("Serialize and deserialize attribute", "[attribute][serialization]") {
   SECTION("Nullable with non-default fill values") {
     double fill_value{2.0};
     attr = make_shared<Attribute>(HERE(), "attr1", Datatype::FLOAT64, true);
-    auto st = attr->set_fill_value(&fill_value, sizeof(double), 1);
-    REQUIRE(st.ok());
+    attr->set_fill_value(&fill_value, sizeof(double), 1);
   }
   SECTION("Non-default filters pipeline") {
     attr = make_shared<Attribute>(HERE(), "attr1", Datatype::UINT64);
     FilterPipeline filters;
     filters.add_filter(CompressionFilter(Compressor::ZSTD, 2));
     filters.add_filter(BitWidthReductionFilter());
-    auto st = attr->set_filter_pipeline(filters);
-    REQUIRE(st.ok());
+    attr->set_filter_pipeline(filters);
   }
   SECTION("Multiple cell values") {
     attr = make_shared<Attribute>(
         HERE(), "attr1", Datatype::INT32, 3, DataOrder::UNORDERED_DATA);
     int32_t fill_value[3]{1, -1, 0};
-    auto st = attr->set_fill_value(&fill_value[0], 3 * sizeof(int32_t));
+    attr->set_fill_value(&fill_value[0], 3 * sizeof(int32_t));
   }
   SECTION("Variable cell values") {
     attr = make_shared<Attribute>(

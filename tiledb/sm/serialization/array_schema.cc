@@ -299,10 +299,9 @@ void attribute_to_capnp(
   uint64_t fill_value_size;
   uint8_t fill_validity = true;
   if (!attribute->nullable()) {
-    throw_if_not_ok(attribute->get_fill_value(&fill_value, &fill_value_size));
+    attribute->get_fill_value(&fill_value, &fill_value_size);
   } else {
-    throw_if_not_ok(attribute->get_fill_value(
-        &fill_value, &fill_value_size, &fill_validity));
+    attribute->get_fill_value(&fill_value, &fill_value_size, &fill_validity);
   }
 
   // Copy the fill value buffer into a capnp vector of bytes.
