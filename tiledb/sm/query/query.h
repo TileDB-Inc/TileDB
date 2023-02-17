@@ -335,7 +335,7 @@ class Query {
   bool has_results() const;
 
   /** Initializes the query. */
-  Status init();
+  void init();
 
   /** Returns the first fragment uri. */
   URI first_fragment_uri() const;
