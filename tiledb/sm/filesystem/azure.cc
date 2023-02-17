@@ -240,16 +240,16 @@ Status Azure::flush_blob(const URI& uri) {
   const Status flush_write_cache_st =
       flush_write_cache(uri, write_cache_buffer, true);
 
-  std::unique_lock<std::mutex> states_lock(block_list_upload_states_lock_);
+  BlockListUploadState* state;
+  {
+    std::unique_lock<std::mutex> states_lock(block_list_upload_states_lock_);
 
-  if (block_list_upload_states_.count(uri.to_string()) == 0) {
-    return flush_write_cache_st;
+    if (block_list_upload_states_.count(uri.to_string()) == 0) {
+      return flush_write_cache_st;
+    }
+
+    state = &block_list_upload_states_.at(uri.to_string());
   }
-
-  BlockListUploadState* const state =
-      &block_list_upload_states_.at(uri.to_string());
-
-  states_lock.unlock();
 
   std::string container_name;
   std::string blob_path;
@@ -301,14 +301,16 @@ Status Azure::flush_blob(const URI& uri) {
 
 void Azure::finish_block_list_upload(const URI& uri) {
   // Protect 'block_list_upload_states_' from multiple writers.
-  std::unique_lock<std::mutex> states_lock(block_list_upload_states_lock_);
-  block_list_upload_states_.erase(uri.to_string());
-  states_lock.unlock();
+  {
+    std::unique_lock<std::mutex> states_lock(block_list_upload_states_lock_);
+    block_list_upload_states_.erase(uri.to_string());
+  }
 
   // Protect 'write_cache_map_' from multiple writers.
-  std::unique_lock<std::mutex> cache_lock(write_cache_map_lock_);
-  write_cache_map_.erase(uri.to_string());
-  cache_lock.unlock();
+  {
+    std::unique_lock<std::mutex> cache_lock(write_cache_map_lock_);
+    write_cache_map_.erase(uri.to_string());
+  }
 }
 
 Status Azure::flush_blob_direct(const URI& uri) {
@@ -339,9 +341,10 @@ Status Azure::flush_blob_direct(const URI& uri) {
   }
 
   // Protect 'write_cache_map_' from multiple writers.
-  std::unique_lock<std::mutex> cache_lock(write_cache_map_lock_);
-  write_cache_map_.erase(uri.to_string());
-  cache_lock.unlock();
+  {
+    std::unique_lock<std::mutex> cache_lock(write_cache_map_lock_);
+    write_cache_map_.erase(uri.to_string());
+  }
 
   return wait_for_blob_to_propagate(container_name, blob_path);
 }
@@ -957,37 +960,38 @@ Status Azure::write_blocks(
         Status_AzureError("Length not evenly divisible by block size"));
   }
 
+  BlockListUploadState* state;
   // Protect 'block_list_upload_states_' from concurrent read and writes.
-  std::unique_lock<std::mutex> states_lock(block_list_upload_states_lock_);
+  {
+    std::unique_lock<std::mutex> states_lock(block_list_upload_states_lock_);
 
-  auto state_iter = block_list_upload_states_.find(uri.to_string());
-  if (state_iter == block_list_upload_states_.end()) {
-    // Delete file if it exists (overwrite).
-    bool exists;
-    RETURN_NOT_OK(is_blob(uri, &exists));
-    if (exists) {
-      RETURN_NOT_OK(remove_blob(uri));
+    auto state_iter = block_list_upload_states_.find(uri.to_string());
+    if (state_iter == block_list_upload_states_.end()) {
+      // Delete file if it exists (overwrite).
+      bool exists;
+      RETURN_NOT_OK(is_blob(uri, &exists));
+      if (exists) {
+        RETURN_NOT_OK(remove_blob(uri));
+      }
+
+      // Instantiate the new state.
+      BlockListUploadState state;
+
+      // Store the new state.
+      const std::pair<
+          std::unordered_map<std::string, BlockListUploadState>::iterator,
+          bool>
+          emplaced = block_list_upload_states_.emplace(
+              uri.to_string(), std::move(state));
+      assert(emplaced.second);
+      state_iter = emplaced.first;
     }
 
-    // Instantiate the new state.
-    BlockListUploadState state;
-
-    // Store the new state.
-    const std::pair<
-        std::unordered_map<std::string, BlockListUploadState>::iterator,
-        bool>
-        emplaced = block_list_upload_states_.emplace(
-            uri.to_string(), std::move(state));
-    assert(emplaced.second);
-    state_iter = emplaced.first;
+    state = &state_iter->second;
+    // We're done reading and writing from 'block_list_upload_states_'. Mutating
+    // the 'state' element does not affect the thread-safety of
+    // 'block_list_upload_states_'.
   }
-
-  BlockListUploadState* const state = &state_iter->second;
-
-  // We're done reading and writing from 'block_list_upload_states_'. Mutating
-  // the 'state' element does not affect the thread-safety of
-  // 'block_list_upload_states_'.
-  states_lock.unlock();
 
   std::string container_name;
   std::string blob_path;
