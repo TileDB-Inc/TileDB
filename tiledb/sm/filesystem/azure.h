@@ -45,7 +45,6 @@
 #if !defined(NOMINMAX)
 #define NOMINMAX  // avoid min/max macros from windows headers
 #endif
-#include <base64.h>
 #include <list>
 #include <unordered_map>
 
@@ -341,13 +340,15 @@ class Azure {
       // the maximum number of blocks (50,000). All block ids must be
       // of equal length among a single blob.
       const int block_id_chars = 5;
-      const std::string padded_block_id_str =
-          std::string(block_id_chars - block_id_str.length(), '0') +
-          block_id_str;
+      std::vector<uint8_t> padded_block_id(
+          block_id_chars - block_id_str.length(), '0');
+      std::copy(
+          block_id_str.begin(),
+          block_id_str.end(),
+          std::back_inserter(padded_block_id));
 
-      const std::string b64_block_id_str = azure::storage_lite::to_base64(
-          reinterpret_cast<const unsigned char*>(padded_block_id_str.c_str()),
-          padded_block_id_str.size());
+      const std::string b64_block_id_str =
+          ::Azure::Core::Convert::Base64Encode(padded_block_id);
 
       block_ids_.emplace_back(b64_block_id_str);
 
@@ -383,17 +384,6 @@ class Azure {
     Status st_;
   };
 
-  /**
-   * A zero-copy stream buffer used as a work-around for writing
-   * a single buffer to the stream-only SDK interface.
-   */
-  class ZeroCopyStreamBuffer : public std::streambuf {
-   public:
-    ZeroCopyStreamBuffer(char* const buffer, std::size_t size) {
-      setg(buffer, buffer, buffer + size);
-    }
-  };
-
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
@@ -404,7 +394,7 @@ class Azure {
   /** The Azure blob service client. */
   std::unique_ptr<::Azure::Storage::Blobs::BlobServiceClient> client_;
 
-  /** Maps a blob URI to an write cache buffer. */
+  /** Maps a blob URI to a write cache buffer. */
   std::unordered_map<std::string, Buffer> write_cache_map_;
 
   /** Protects 'write_cache_map_'. */
