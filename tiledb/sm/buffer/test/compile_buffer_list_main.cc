@@ -26,9 +26,10 @@
  * THE SOFTWARE.
  */
 
+#include "../buffer.h"
 #include "../buffer_list.h"
 
 int main() {
-  (void)sizeof(tiledb::sm::BufferList);
+  tiledb::sm::BufferList();
   return 0;
 }
