@@ -87,6 +87,11 @@ class consumer_node_impl : public node_base, public Sink<Mover, T> {
       , consumed_items_{0} {
   }
 
+  auto get_input_port() {
+    return *reinterpret_cast<SinkBase*>(this);
+  }
+
+
   /** Utility functions for indicating what kind of node and state of the ports
    * being used.
    *
@@ -194,8 +199,14 @@ class consumer_node_impl : public node_base, public Sink<Mover, T> {
   scheduler_event_type resume() override {
     auto mover = SinkBase::get_mover();
 
+    // #ifdef __clang__
+    // #pragma clang diagnostic push
+    // #pragma ide diagnostic ignored "UnreachableCode"
+    // #endif
+
     switch (this->program_counter_) {
       /*
+       * @todo: don't do this -- case 0 shold be executed on all calls
        * case 0 is executed only on the very first call to resume.
        */
       case 0: {
@@ -249,6 +260,7 @@ class consumer_node_impl : public node_base, public Sink<Mover, T> {
       }
         [[fallthrough]];
 
+#if 0
         // @todo Should skip yield if pull waited;
       case 5: {
         ++this->program_counter_;
@@ -267,17 +279,23 @@ class consumer_node_impl : public node_base, public Sink<Mover, T> {
       }
 
         [[fallthrough]];
+#endif
 
       // @todo Where is the best place to yield?
-      case 6: {
-        this->program_counter_ = 1;
-        // this->task_yield(*this); ??
+      case 5: {
+        this->program_counter_ = 0;
         return scheduler_event_type::yield;
       }
+
       default: {
         break;
       }
     }
+
+    // #ifdef __clang__
+    // #pragma clang diagnostic pop
+    // #endif
+
     return scheduler_event_type::error;
   }
 
