@@ -1,5 +1,5 @@
 /**
- * @file   group_member_v1.cc
+ * @file   group_member_v2.cc
  *
  * @section LICENSE
  *
@@ -27,23 +27,24 @@
  *
  * @section DESCRIPTION
  *
- * This file implements TileDB GroupMemberV1
+ * This file implements TileDB GroupMemberV2
  */
 
-#include "tiledb/sm/group/group_member_v1.h"
+#include "tiledb/sm/group/group_member_v2.h"
 
 using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
 
-GroupMemberV1::GroupMemberV1(
+GroupMemberV2::GroupMemberV2(
     const URI& uri,
     const ObjectType& type,
     const bool& relative,
-    const std::optional<std::string>& name)
+    const std::optional<std::string>& name,
+    const bool& deleted)
     : GroupMember(
-          uri, type, relative, GroupMemberV1::format_version_, name, false){};
+          uri, type, relative, GroupMemberV2::format_version_, name, deleted){};
 
 // ===== FORMAT =====
 // format_version (uint32_t)
@@ -51,8 +52,8 @@ GroupMemberV1::GroupMemberV1(
 // relative (uint8_t)
 // uri_size (uint64_t)
 // uri (string)
-void GroupMemberV1::serialize(Serializer& serializer) {
-  serializer.write<uint32_t>(GroupMemberV1::format_version_);
+void GroupMemberV2::serialize(Serializer& serializer) {
+  serializer.write<uint32_t>(GroupMemberV2::format_version_);
 
   // Write type
   uint8_t type = static_cast<uint8_t>(type_);
@@ -74,9 +75,12 @@ void GroupMemberV1::serialize(Serializer& serializer) {
     serializer.write<uint64_t>(name_size);
     serializer.write(name_->data(), name_size);
   }
+
+  // Write deleted
+  serializer.write<uint8_t>(deleted_);
 }
 
-tdb_shared_ptr<GroupMember> GroupMemberV1::deserialize(
+tdb_shared_ptr<GroupMember> GroupMemberV2::deserialize(
     Deserializer& deserializer) {
   uint8_t type_placeholder;
   type_placeholder = deserializer.read<uint8_t>();
@@ -107,8 +111,12 @@ tdb_shared_ptr<GroupMember> GroupMemberV1::deserialize(
     name = name_string;
   }
 
-  tdb_shared_ptr<GroupMemberV1> group_member = tdb::make_shared<GroupMemberV1>(
-      HERE(), URI(uri_string, !relative), type, relative, name);
+  uint8_t deleted_int;
+  deleted_int = deserializer.read<uint8_t>();
+  auto deleted = static_cast<bool>(deleted_int);
+
+  tdb_shared_ptr<GroupMemberV2> group_member = tdb::make_shared<GroupMemberV2>(
+      HERE(), URI(uri_string, !relative), type, relative, name, deleted);
   return group_member;
 }
 

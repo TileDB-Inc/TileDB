@@ -42,12 +42,14 @@ GroupMember::GroupMember(
     const ObjectType& type,
     const bool& relative,
     uint32_t version,
-    const std::optional<std::string>& name)
+    const std::optional<std::string>& name,
+    const bool& deleted)
     : uri_(uri)
     , type_(type)
     , name_(name)
     , relative_(relative)
-    , version_(version) {
+    , version_(version)
+    , deleted_(deleted) {
 }
 
 const URI& GroupMember::uri() const {

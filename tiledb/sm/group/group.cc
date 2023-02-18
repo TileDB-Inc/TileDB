@@ -38,6 +38,7 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/group/group_member_v1.h"
+#include "tiledb/sm/group/group_member_v2.h"
 #include "tiledb/sm/group/group_v1.h"
 #include "tiledb/sm/metadata/metadata.h"
 #include "tiledb/sm/misc/tdb_time.h"
@@ -623,8 +624,8 @@ Status Group::mark_member_for_addition(
         ", type is INVALID. The member likely does not exist.");
   }
 
-  auto group_member = tdb::make_shared<GroupMemberV1>(
-      HERE(), group_member_uri, type, relative, name);
+  auto group_member = tdb::make_shared<GroupMemberV2>(
+      HERE(), group_member_uri, type, relative, name, false);
 
   members_to_add_.emplace(uri, group_member);
 
