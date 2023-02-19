@@ -597,7 +597,8 @@ Status Group::mark_member_for_addition(
 
   const std::string& uri = group_member_uri.to_string();
 
-  // TODO: Safety checks for not double adding, making sure its rmemove + add, etc
+  // TODO: Safety checks for not double adding, making sure its rmemove + add,
+  // etc
 
   URI absolute_group_member_uri = group_member_uri;
   if (relative) {
@@ -884,7 +885,10 @@ tuple<Status, optional<std::string>> Group::generate_name() const {
   auto timestamp =
       (timestamp_end_ != 0) ? timestamp_end_ : utils::time::timestamp_now_ms();
   std::stringstream ss;
-  ss << "__" << timestamp << "_" << timestamp << "_" << uuid << "_" << version_;
+  ss << "__" << timestamp << "_" << timestamp << "_" << uuid;
+  if (version_ > 1) {
+    ss << "_" << version_;
+  }
 
   return {Status::Ok(), ss.str()};
 }
