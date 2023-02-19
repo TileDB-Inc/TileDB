@@ -214,6 +214,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_member_v1.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_member_v2.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_v1.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_v2.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/metadata/metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/cancelable_tasks.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/constants.cc

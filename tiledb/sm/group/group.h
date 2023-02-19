@@ -254,17 +254,10 @@ class Group {
   Status mark_member_for_removal(const std::string& uri);
 
   /**
-   * Get the unordered map of members to remove, used in serialization only
-   * @return members_to_add
+   * Get the vector of members to modify, used in serialization only
+   * @return members_to_modify
    */
-  const std::unordered_set<std::string>& members_to_remove() const;
-
-  /**
-   * Get the unordered map of members to add, used in serialization only
-   * @return members_to_add
-   */
-  const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>&
-  members_to_add() const;
+  const std::vector<tdb_shared_ptr<GroupMember>>& members_to_modify() const;
 
   /**
    * Get the unordered map of members
@@ -291,13 +284,16 @@ class Group {
   virtual void serialize(Serializer& serializer);
 
   /**
-   * Applies and pending changes and then calls serialize
+   * Returns a Group object from the data in the input binary buffer.
    *
-   * @param buff The buffer to serialize the data into.
+   * @param buff The buffer to deserialize from.
    * @param version The format spec version.
-   * @return Status
+   * @return Status and Attribute
    */
-  void apply_and_serialize(Serializer& serializer);
+  static std::optional<tdb_shared_ptr<Group>> deserialize(
+      Deserializer& deserializer,
+      const URI& group_uri,
+      StorageManager* storage_manager);
 
   /**
    * Returns a Group object from the data in the input binary buffer.
@@ -307,7 +303,7 @@ class Group {
    * @return Status and Attribute
    */
   static std::optional<tdb_shared_ptr<Group>> deserialize(
-      Deserializer& deserializer,
+      std::vector<Deserializer>& deserializer,
       const URI& group_uri,
       StorageManager* storage_manager);
 
@@ -451,11 +447,8 @@ class Group {
    * it will not be in the map. */
   std::unordered_map<std::string, tdb_shared_ptr<GroupMember>> members_by_name_;
 
-  /** Mapping of members slated for removal. */
-  std::unordered_set<std::string> members_to_remove_;
-
   /** Mapping of members slated for adding. */
-  std::unordered_map<std::string, tdb_shared_ptr<GroupMember>> members_to_add_;
+  std::vector<tdb_shared_ptr<GroupMember>> members_to_modify_;
 
   /** Mutex for thread safety. */
   mutable std::mutex mtx_;
@@ -477,20 +470,20 @@ class Group {
   Status load_metadata();
 
   /**
+   * Generate new name in the form of timestmap_timestamp_uuid
+   *
+   * @return tuple of status and optional string
+   */
+  tuple<Status, optional<std::string>> generate_name() const;
+
+  /**
    * Apply any pending member additions or removals
    *
    * mutates members_ and clears members_to_add_ and members_to_remove_
    *
    * @return Status
    */
-  Status apply_pending_changes();
-
-  /**
-   * Generate new name in the form of timestmap_timestamp_uuid
-   *
-   * @return tuple of status and optional string
-   */
-  tuple<Status, optional<std::string>> generate_name() const;
+  virtual Status apply_pending_changes() = 0;
 };
 }  // namespace sm
 }  // namespace tiledb

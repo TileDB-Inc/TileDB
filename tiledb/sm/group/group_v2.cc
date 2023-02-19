@@ -1,5 +1,5 @@
 /**
- * @file   group_v1.cc
+ * @file   group_v2.cc
  *
  * @section LICENSE
  *
@@ -30,7 +30,7 @@
  * This file implements TileDB Group
  */
 
-#include "tiledb/sm/group/group_v1.h"
+#include "tiledb/sm/group/group_v2.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger.h"
 
@@ -38,8 +38,8 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
-GroupV1::GroupV1(const URI& group_uri, StorageManager* storage_manager)
-    : Group(group_uri, storage_manager, GroupV1::format_version_){};
+GroupV2::GroupV2(const URI& group_uri, StorageManager* storage_manager)
+    : Group(group_uri, storage_manager, GroupV2::format_version_){};
 
 // ===== FORMAT =====
 // format_version (format_version_t)
@@ -47,8 +47,8 @@ GroupV1::GroupV1(const URI& group_uri, StorageManager* storage_manager)
 //   group_member #1
 //   group_member #2
 //   ...
-void GroupV1::serialize(Serializer& serializer) {
-  serializer.write<format_version_t>(GroupV1::format_version_);
+void GroupV2::serialize(Serializer& serializer) {
+  serializer.write<format_version_t>(GroupV2::format_version_);
   uint64_t group_member_num = members_.size();
   serializer.write<uint64_t>(group_member_num);
   for (auto& it : members_) {
@@ -56,12 +56,12 @@ void GroupV1::serialize(Serializer& serializer) {
   }
 }
 
-tdb_shared_ptr<Group> GroupV1::deserialize(
+tdb_shared_ptr<Group> GroupV2::deserialize(
     Deserializer& deserializer,
     const URI& group_uri,
     StorageManager* storage_manager) {
-  tdb_shared_ptr<GroupV1> group =
-      tdb::make_shared<GroupV1>(HERE(), group_uri, storage_manager);
+  tdb_shared_ptr<GroupV2> group =
+      tdb::make_shared<GroupV2>(HERE(), group_uri, storage_manager);
 
   uint64_t member_count = 0;
   member_count = deserializer.read<uint64_t>();
@@ -73,40 +73,32 @@ tdb_shared_ptr<Group> GroupV1::deserialize(
   return group;
 }
 
-Status GroupV1::apply_pending_changes() {
+tdb_shared_ptr<Group> GroupV2::deserialize(
+    std::vector<Deserializer>& deserializers,
+    const URI& group_uri,
+    StorageManager* storage_manager) {
+  for (d : deserializers) {
+    deserialize(d);
+  }
+}
+
+Status GroupV2::apply_pending_changes() {
   std::lock_guard<std::mutex> lck(mtx_);
 
-  // Remove members first
-  for (const auto& member : members_to_modify_) {
-    auto& uri = member->uri();
-    if (member->deleted()) {
-      members_.erase(uri.to_string());
+  members_.clear();
+  members_vec_.clear();
+  members_by_name_.clear();
+  members_vec_.reserve(members_to_modify_.size());
 
-      // Check to remove relative URIs
-      auto uri_str = uri.to_string();
-      if (uri_str.find(group_uri_.add_trailing_slash().to_string()) !=
-          std::string::npos) {
-        // Get the substring relative path
-        auto relative_uri = uri_str.substr(
-            group_uri_.add_trailing_slash().to_string().size(), uri_str.size());
-        members_.erase(relative_uri);
-      }
-    } else {
-      members_.emplace(member->uri().to_string(), member);
+  for (auto& it : members_to_modify_) {
+    members_.emplace(it->uri().to_string(), it);
+    members_vec_.emplace_back(it);
+    if (it->name().has_value()) {
+      members_by_name_.emplace(it->name().value(), it);
     }
   }
   changes_applied_ = !members_to_modify_.empty();
   members_to_modify_.clear();
-
-  members_vec_.clear();
-  members_by_name_.clear();
-  members_vec_.reserve(members_.size());
-  for (auto& it : members_) {
-    members_vec_.emplace_back(it.second);
-    if (it.second->name().has_value()) {
-      members_by_name_.emplace(it.second->name().value(), it.second);
-    }
-  }
 
   return Status::Ok();
 }

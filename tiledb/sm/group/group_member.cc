@@ -68,6 +68,10 @@ const bool& GroupMember::relative() const {
   return relative_;
 }
 
+const bool& GroupMember::deleted() const {
+  return deleted_;
+}
+
 void GroupMember::serialize(Serializer&) {
   throw StatusException(
       Status_GroupMemberError("Invalid call to GroupMember::serialize"));

@@ -40,6 +40,7 @@
 #include "tiledb/sm/group/group_member_v1.h"
 #include "tiledb/sm/group/group_member_v2.h"
 #include "tiledb/sm/group/group_v1.h"
+#include "tiledb/sm/group/group_v2.h"
 #include "tiledb/sm/metadata/metadata.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/uuid.h"
@@ -145,9 +146,7 @@ Status Group::open(
   metadata_loaded_ = false;
 
   // Make sure to reset any values
-  changes_applied_ = false;
-  members_to_remove_.clear();
-  members_to_add_.clear();
+  members_to_modify_.clear();
   members_.clear();
 
   if (remote_) {
@@ -255,20 +254,16 @@ Status Group::close() {
         RETURN_NOT_OK(
             rest_client->put_group_metadata_to_rest(group_uri_, this));
       }
-      if (!members_to_remove_.empty() || !members_to_add_.empty() ||
-          changes_applied_) {
+      if (!members_to_modify_.empty()) {
         auto rest_client = storage_manager_->rest_client();
         if (rest_client == nullptr)
           return Status_GroupError(
               "Error closing group; remote group with no REST client.");
         RETURN_NOT_OK(rest_client->patch_group_to_rest(group_uri_, this));
 
-        changes_applied_ = true;
-        members_to_remove_.clear();
-        members_to_add_.clear();
+        members_to_modify_.clear();
       }
     }
-
     // Storage manager does not own the group schema for remote groups.
   } else {
     if (query_type_ == QueryType::READ) {
@@ -546,9 +541,7 @@ Status Group::clear() {
   members_.clear();
   members_by_name_.clear();
   members_vec_.clear();
-  members_to_remove_.clear();
-  members_to_add_.clear();
-  changes_applied_ = false;
+  members_to_modify_.clear();
 
   return Status::Ok();
 }
@@ -556,10 +549,10 @@ Status Group::clear() {
 void Group::add_member(const tdb_shared_ptr<GroupMember>& group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
   const std::string& uri = group_member->uri().to_string();
-  members_.emplace(uri, group_member);
+  members_[uri] = group_member;
   members_vec_.emplace_back(group_member);
   if (group_member->name().has_value()) {
-    members_by_name_.emplace(group_member->name().value(), group_member);
+    members_by_name_[group_member->name().value()] = group_member;
   }
 }
 
@@ -595,14 +588,6 @@ Status Group::mark_member_for_addition(
           ", member already set for removal.");
     }
 
-    for (const auto& it : members_to_add_) {
-      if (it.second->name() == name) {
-        return Status_GroupError(
-            "Cannot add group member " + *name +
-            ", member already set for addition.");
-      }
-    }
-
     if (members_by_name_.find(*name) != members_by_name_.end()) {
       return Status_GroupError(
           "Cannot add group member " + *name +
@@ -627,7 +612,7 @@ Status Group::mark_member_for_addition(
   auto group_member = tdb::make_shared<GroupMemberV2>(
       HERE(), group_member_uri, type, relative, name, false);
 
-  members_to_add_.emplace(uri, group_member);
+  members_to_modify_.emplace_back(group_member);
 
   return Status::Ok();
 }
@@ -651,55 +636,55 @@ Status Group::mark_member_for_removal(const std::string& uri) {
         "Cannot get member; Group was not opened in write or modify_exclusive "
         "mode");
   }
-  if (members_to_add_.find(uri) != members_to_add_.end()) {
-    return Status_GroupError(
-        "Cannot remove group member " + uri +
-        ", member already set for adding.");
-  }
 
-  // If the group is remote don't check if the member actually exists client
-  // side There is a number of "acceptable" URIs for remote objects We leave it
-  // to the server to validate the request later.
-  if (remote_) {
-    members_to_remove_.emplace(uri);
+  auto it = members_.find(uri);
+  auto it_name = members_by_name_.find(uri);
+  if (it != members_.end()) {
+    auto member_to_delete = make_shared<GroupMemberV2>(
+        it->second->uri(),
+        it->second->type(),
+        it->second->relative(),
+        it->second->name(),
+        true);
+    members_to_modify_.emplace_back(member_to_delete);
     return Status::Ok();
-    // If it's not remote check to validate the URI to remove actually exists in
-    // the group
+  } else if (it_name != members_by_name_.end()) {
+    // If the user passed the name, convert it to the URI for removal
+    auto member_to_delete = make_shared<GroupMemberV2>(
+        it_name->second->uri(),
+        it_name->second->type(),
+        it_name->second->relative(),
+        it_name->second->name(),
+        true);
+    members_to_modify_.emplace_back(member_to_delete);
+    return Status::Ok();
   } else {
-    if (members_.find(uri) != members_.end()) {
-      members_to_remove_.emplace(uri);
-      return Status::Ok();
-    } else if (members_by_name_.find(uri) != members_by_name_.end()) {
-      // If the user passed the name, convert it to the URI for removal
-      members_to_remove_.emplace(
-          members_by_name_.find(uri)->second->uri().to_string());
+    // try URI to see if we need to convert the local file to file://
+    URI uri_uri(uri);
+    it = members_.find(uri_uri.to_string());
+    if (it != members_.end()) {
+      auto member_to_delete = make_shared<GroupMemberV2>(
+          it->second->uri(),
+          it->second->type(),
+          it->second->relative(),
+          it->second->name(),
+          true);
+      members_to_modify_.emplace_back(member_to_delete);
       return Status::Ok();
     } else {
-      // try URI to see if we need to convert the local file to file://
-      URI uri_uri(uri);
-      if (members_.find(uri_uri.to_string()) != members_.end()) {
-        members_to_remove_.emplace(uri_uri.to_string());
-        return Status::Ok();
-      } else {
-        return Status_GroupError(
-            "Cannot remove group member " + uri +
-            ", member does not exist in group.");
-      }
+      return Status_GroupError(
+          "Cannot remove group member " + uri +
+          ", member does not exist in group.");
     }
   }
 
   return Status::Ok();
 }
 
-const std::unordered_set<std::string>& Group::members_to_remove() const {
+const std::vector<tdb_shared_ptr<GroupMember>>& Group::members_to_modify()
+    const {
   std::lock_guard<std::mutex> lck(mtx_);
-  return members_to_remove_;
-}
-
-const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>&
-Group::members_to_add() const {
-  std::lock_guard<std::mutex> lck(mtx_);
-  return members_to_add_;
+  return members_to_modify_;
 }
 
 const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>&
@@ -712,11 +697,6 @@ void Group::serialize(Serializer&) {
   throw StatusException(Status_GroupError("Invalid call to Group::serialize"));
 }
 
-void Group::apply_and_serialize(Serializer& serializer) {
-  throw_if_not_ok(apply_pending_changes());
-  serialize(serializer);
-}
-
 std::optional<tdb_shared_ptr<Group>> Group::deserialize(
     Deserializer& deserializer,
     const URI& group_uri,
@@ -725,6 +705,26 @@ std::optional<tdb_shared_ptr<Group>> Group::deserialize(
   version = deserializer.read<uint32_t>();
   if (version == 1) {
     return GroupV1::deserialize(deserializer, group_uri, storage_manager);
+  }
+  else if (version == 2) {
+    return GroupV2::deserialize(deserializer, group_uri, storage_manager);
+  }
+
+  throw StatusException(Status_GroupError(
+      "Unsupported group version " + std::to_string(version)));
+}
+
+std::optional<tdb_shared_ptr<Group>> Group::deserialize(
+    std::vector<Deserializer>& deserializer,
+    const URI& group_uri,
+    StorageManager* storage_manager) {
+  uint32_t version = 0;
+  version = deserializer.read<uint32_t>();
+  if (version == 1) {
+    return GroupV1::deserialize(deserializer, group_uri, storage_manager);
+  }
+  else if (version == 2) {
+    return GroupV2::deserialize(deserializer, group_uri, storage_manager);
   }
 
   throw StatusException(Status_GroupError(
@@ -902,41 +902,5 @@ Status Group::load_metadata() {
   return Status::Ok();
 }
 
-Status Group::apply_pending_changes() {
-  std::lock_guard<std::mutex> lck(mtx_);
-
-  // Remove members first
-  for (const auto& uri : members_to_remove_) {
-    members_.erase(uri);
-    // Check to remove relative URIs
-    if (uri.find(group_uri_.add_trailing_slash().to_string()) !=
-        std::string::npos) {
-      // Get the substring relative path
-      auto relative_uri = uri.substr(
-          group_uri_.add_trailing_slash().to_string().size(), uri.size());
-      members_.erase(relative_uri);
-    }
-  }
-
-  for (const auto& it : members_to_add_) {
-    members_.emplace(it);
-  }
-
-  changes_applied_ = !members_to_add_.empty() || !members_to_remove_.empty();
-  members_to_remove_.clear();
-  members_to_add_.clear();
-
-  members_vec_.clear();
-  members_by_name_.clear();
-  members_vec_.reserve(members_.size());
-  for (auto& it : members_) {
-    members_vec_.emplace_back(it.second);
-    if (it.second->name().has_value()) {
-      members_by_name_.emplace(it.second->name().value(), it.second);
-    }
-  }
-
-  return Status::Ok();
-}
 }  // namespace sm
 }  // namespace tiledb

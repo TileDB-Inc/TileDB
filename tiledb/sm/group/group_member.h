@@ -85,6 +85,8 @@ class GroupMember {
   /** Return if object is relative. */
   const bool& relative() const;
 
+  const bool& deleted() const;
+
   /**
    * Serializes the object members into a binary buffer.
    *

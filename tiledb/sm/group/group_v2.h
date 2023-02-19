@@ -1,5 +1,5 @@
 /**
- * @file   group_v1.h
+ * @file   group_v2.h
  *
  * @section LICENSE
  *
@@ -30,8 +30,8 @@
  * This file defines TileDB Group
  */
 
-#ifndef TILEDB_GROUP_V1_H
-#define TILEDB_GROUP_V1_H
+#ifndef TILEDB_GROUP_V2_H
+#define TILEDB_GROUP_V2_H
 
 #include <atomic>
 
@@ -52,12 +52,12 @@ namespace sm {
 
 class Group;
 
-class GroupV1 : public Group {
+class GroupV2 : public Group {
  public:
-  GroupV1(const URI& group_uri, StorageManager* storage_manager);
+  GroupV2(const URI& group_uri, StorageManager* storage_manager);
 
   /** Destructor. */
-  ~GroupV1() override = default;
+  ~GroupV2() override = default;
 
   /**
    * Serializes the object members into a binary buffer.
@@ -79,11 +79,23 @@ class GroupV1 : public Group {
       const URI& group_uri,
       StorageManager* storage_manager);
 
+  /**
+   * Returns a Group object from the data in the input binary buffer.
+   *
+   * @param buff The buffer to deserialize from.
+   * @param version The format spec version.
+   * @return Status and Attribute
+   */
+  static tdb_shared_ptr<Group> deserialize(
+      std::vector<Deserializer>& deserializer,
+      const URI& group_uri,
+      StorageManager* storage_manager);
+
  protected:
   /**
    * Apply any pending member additions or removals
    *
-   * mutates members_ and clears members_to_modify_;
+   * mutates members_ and clears members_to_modify_
    *
    * @return Status
    */
@@ -91,9 +103,9 @@ class GroupV1 : public Group {
 
  private:
   /* Format version for class. */
-  inline static const format_version_t format_version_ = 1;
+  inline static const format_version_t format_version_ = 2;
 };
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_GROUP_V1_H
+#endif  // TILEDB_GROUP_V2_H
