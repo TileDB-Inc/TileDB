@@ -67,18 +67,34 @@ tdb_shared_ptr<Group> GroupV2::deserialize(
   member_count = deserializer.read<uint64_t>();
   for (uint64_t i = 0; i < member_count; i++) {
     auto&& member = GroupMember::deserialize(deserializer);
-    group->add_member(member);
+    if (member->deleted()) {
+      group->delete_member(member);
+    } else {
+      group->add_member(member);
+    }
   }
 
   return group;
 }
 
 tdb_shared_ptr<Group> GroupV2::deserialize(
-    std::vector<Deserializer>& deserializers,
+    std::vector<shared_ptr<Deserializer>>& deserializers,
     const URI& group_uri,
     StorageManager* storage_manager) {
-  for (d : deserializers) {
-    deserialize(d);
+  tdb_shared_ptr<GroupV2> group =
+      tdb::make_shared<GroupV2>(HERE(), group_uri, storage_manager);
+
+  for (auto& deserializer : deserializers) {
+    uint64_t member_count = 0;
+    member_count = deserializer->read<uint64_t>();
+    for (uint64_t i = 0; i < member_count; i++) {
+      auto&& member = GroupMember::deserialize(*deserializer);
+      if (member->deleted()) {
+        group->delete_member(member);
+      } else {
+        group->add_member(member);
+      }
+    }
   }
 }
 

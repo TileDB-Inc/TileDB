@@ -549,10 +549,31 @@ Status Group::clear() {
 void Group::add_member(const tdb_shared_ptr<GroupMember>& group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
   const std::string& uri = group_member->uri().to_string();
-  members_[uri] = group_member;
+  members_.emplace(uri, group_member);
   members_vec_.emplace_back(group_member);
   if (group_member->name().has_value()) {
-    members_by_name_[group_member->name().value()] = group_member;
+    members_by_name_.emplace(group_member->name().value(), group_member);
+  }
+}
+
+void Group::delete_member(const tdb_shared_ptr<GroupMember>& group_member) {
+  std::lock_guard<std::mutex> lck(mtx_);
+  const std::string& uri = group_member->uri().to_string();
+  auto it = members_.find(uri);
+  if (it != members_.end()) {
+    auto name = it->second->name();
+    members_.erase(it);
+    if (group_member->name().has_value()) {
+      members_by_name_.erase(group_member->name().value());
+    } else if (name.has_value()) {
+      members_by_name_.erase(name.value());
+    }
+    for (size_t i = 0; i < members_vec_.size(); i++) {
+      if (members_vec_[i] == it->second) {
+        members_vec_.erase(members_vec_.begin() + i);
+        break;
+      }
+    }
   }
 }
 
@@ -575,25 +596,8 @@ Status Group::mark_member_for_addition(
   }
 
   const std::string& uri = group_member_uri.to_string();
-  if (members_to_remove_.find(uri) != members_to_remove_.end()) {
-    return Status_GroupError(
-        "Cannot add group member " + uri + ", member already set for removal.");
-  }
 
-  // If the name is set, validate its unique
-  if (name.has_value()) {
-    if (members_to_remove_.find(*name) != members_to_remove_.end()) {
-      return Status_GroupError(
-          "Cannot add group member " + *name +
-          ", member already set for removal.");
-    }
-
-    if (members_by_name_.find(*name) != members_by_name_.end()) {
-      return Status_GroupError(
-          "Cannot add group member " + *name +
-          ", member already exists in group.");
-    }
-  }
+  // TODO: Safety checks for not double adding, making sure its rmemove + add, etc
 
   URI absolute_group_member_uri = group_member_uri;
   if (relative) {
@@ -705,8 +709,7 @@ std::optional<tdb_shared_ptr<Group>> Group::deserialize(
   version = deserializer.read<uint32_t>();
   if (version == 1) {
     return GroupV1::deserialize(deserializer, group_uri, storage_manager);
-  }
-  else if (version == 2) {
+  } else if (version == 2) {
     return GroupV2::deserialize(deserializer, group_uri, storage_manager);
   }
 
@@ -715,20 +718,20 @@ std::optional<tdb_shared_ptr<Group>> Group::deserialize(
 }
 
 std::optional<tdb_shared_ptr<Group>> Group::deserialize(
-    std::vector<Deserializer>& deserializer,
+    std::vector<shared_ptr<Deserializer>>& deserializer,
     const URI& group_uri,
     StorageManager* storage_manager) {
-  uint32_t version = 0;
-  version = deserializer.read<uint32_t>();
-  if (version == 1) {
-    return GroupV1::deserialize(deserializer, group_uri, storage_manager);
-  }
-  else if (version == 2) {
-    return GroupV2::deserialize(deserializer, group_uri, storage_manager);
-  }
+  //  uint32_t version = 0;
+  //  version = deserializer.read<uint32_t>();
+  //  if (version == 1) {
+  //    return GroupV1::deserialize(deserializer, group_uri, storage_manager);
+  //  }
+  //  else if (version == 2) {
+  return GroupV2::deserialize(deserializer, group_uri, storage_manager);
+  //  }
 
-  throw StatusException(Status_GroupError(
-      "Unsupported group version " + std::to_string(version)));
+  //  throw StatusException(Status_GroupError(
+  //      "Unsupported group version " + std::to_string(version)));
 }
 
 const URI& Group::group_uri() const {
@@ -881,7 +884,7 @@ tuple<Status, optional<std::string>> Group::generate_name() const {
   auto timestamp =
       (timestamp_end_ != 0) ? timestamp_end_ : utils::time::timestamp_now_ms();
   std::stringstream ss;
-  ss << "__" << timestamp << "_" << timestamp << "_" << uuid;
+  ss << "__" << timestamp << "_" << timestamp << "_" << uuid << "_" << version_;
 
   return {Status::Ok(), ss.str()};
 }

@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/group/group_member.h"
 #include "tiledb/sm/group/group_member_v1.h"
+#include "tiledb/sm/group/group_member_v2.h"
 
 using namespace tiledb::common;
 
@@ -83,6 +84,8 @@ tdb_shared_ptr<GroupMember> GroupMember::deserialize(
   version = deserializer.read<uint32_t>();
   if (version == 1) {
     return GroupMemberV1::deserialize(deserializer);
+  } else if (version == 2) {
+    return GroupMemberV2::deserialize(deserializer);
   }
   throw StatusException(Status_GroupError(
       "Unsupported group member version " + std::to_string(version)));

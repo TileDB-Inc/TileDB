@@ -1934,6 +1934,32 @@ StorageManagerCanonical::load_group_from_uri(
 }
 
 tuple<Status, optional<shared_ptr<Group>>>
+StorageManagerCanonical::load_group_from_all_uris(
+    const URI& group_uri,
+    const std::vector<TimestampedURI>& uris,
+    const EncryptionKey& encryption_key) {
+  auto timer_se = stats()->start_timer("sm_load_group_from_uri");
+
+  std::vector<shared_ptr<Deserializer>> deserializers;
+  for (auto& uri : uris) {
+    auto&& [st, tile_opt] =
+        load_data_from_generic_tile(uri.uri_, 0, encryption_key);
+    RETURN_NOT_OK_TUPLE(st, nullopt);
+    auto& tile = *tile_opt;
+
+    stats()->add_counter("read_group_size", tile.size());
+
+    // Deserialize
+    shared_ptr<Deserializer> deserializer =
+        tdb::make_shared<Deserializer>(HERE(), tile.data(), tile.size());
+    deserializers.emplace_back(deserializer);
+  }
+
+  auto opt_group = Group::deserialize(deserializers, group_uri, this);
+  return {Status::Ok(), opt_group};
+}
+
+tuple<Status, optional<shared_ptr<Group>>>
 StorageManagerCanonical::load_group_details(
     const shared_ptr<GroupDirectory>& group_directory,
     const EncryptionKey& encryption_key) {
@@ -1944,8 +1970,23 @@ StorageManagerCanonical::load_group_details(
     // has just been created and no members have been added yet.
     return {Status::Ok(), std::nullopt};
   }
-  return load_group_from_uri(
-      group_directory->uri(), latest_group_uri, encryption_key);
+
+  // V1 groups did not have the version appended so only have 4 "_"
+  // (__<timestamp>_<timestamp>_<uuid>)
+  if (std::count(
+          latest_group_uri.last_path_part().begin(),
+          latest_group_uri.last_path_part().end(),
+          '_') == 4) {
+    return load_group_from_uri(
+        group_directory->uri(), latest_group_uri, encryption_key);
+  }
+
+  // V2 and newer should loop over all uris all the time to handle deletes at
+  // read-time
+  return load_group_from_all_uris(
+      group_directory->uri(),
+      group_directory->group_detail_uris(),
+      encryption_key);
 }
 
 std::tuple<

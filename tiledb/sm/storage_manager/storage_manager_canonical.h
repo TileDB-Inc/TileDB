@@ -198,6 +198,19 @@ class StorageManagerCanonical {
       const EncryptionKey& encryption_key);
 
   /**
+   * Load a group detail from URIs
+   *
+   * @param group_uri group uri
+   * @param uri location to load
+   * @param encryption_key encryption key
+   * @return tuple Status and pointer to group deserialized
+   */
+  tuple<Status, optional<shared_ptr<Group>>> load_group_from_all_uris(
+      const URI& group_uri,
+      const std::vector<TimestampedURI>& uris,
+      const EncryptionKey& encryption_key);
+
+  /**
    * Load group details based on group directory
    *
    * @param group_directory

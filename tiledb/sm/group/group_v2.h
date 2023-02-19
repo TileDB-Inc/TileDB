@@ -87,7 +87,7 @@ class GroupV2 : public Group {
    * @return Status and Attribute
    */
   static tdb_shared_ptr<Group> deserialize(
-      std::vector<Deserializer>& deserializer,
+      std::vector<shared_ptr<Deserializer>>& deserializer,
       const URI& group_uri,
       StorageManager* storage_manager);
 

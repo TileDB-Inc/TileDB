@@ -267,12 +267,19 @@ class Group {
       const;
 
   /**
-   * Add a member to a group, this will be flushed to disk on close
+   * Add a member to a group
    *
    * @param group_member to add
-   * @return Status
+   * @return void
    */
   void add_member(const tdb_shared_ptr<GroupMember>& group_member);
+
+  /**
+   * Delete a member from the group
+   *
+   * @param group_member
+   */
+  void delete_member(const tdb_shared_ptr<GroupMember>& group_member);
 
   /**
    * Serializes the object members into a binary buffer.
@@ -303,7 +310,7 @@ class Group {
    * @return Status and Attribute
    */
   static std::optional<tdb_shared_ptr<Group>> deserialize(
-      std::vector<Deserializer>& deserializer,
+      std::vector<shared_ptr<Deserializer>>& deserializer,
       const URI& group_uri,
       StorageManager* storage_manager);
 
@@ -390,7 +397,7 @@ class Group {
   URI group_uri_;
 
   /** The group directory object for listing URIs. */
-  std::shared_ptr<GroupDirectory> group_dir_;
+  shared_ptr<GroupDirectory> group_dir_;
 
   /** TileDB storage manager. */
   StorageManager* storage_manager_;
@@ -456,7 +463,7 @@ class Group {
   /* Format version. */
   const uint32_t version_;
 
-  /* Were changes applied and is a write required */
+  /* Were changes applied and is a write is required */
   bool changes_applied_;
 
   /* ********************************* */
