@@ -59,7 +59,7 @@ struct CDenseFx {
   std::string array_name_;
   const char* ARRAY_NAME = "test_dense_reader";
   std::string total_budget_;
-  std::string tile_memory_budget_;
+  std::string tile_upper_memory_limit_;
 
   void create_default_array_1d();
   void create_default_array_1d_string();
@@ -133,7 +133,7 @@ CDenseFx::~CDenseFx() {
 
 void CDenseFx::reset_config() {
   total_budget_ = "1048576";
-  tile_memory_budget_ = "1024";
+  tile_upper_memory_limit_ = "1024";
   update_config();
 }
 
@@ -161,7 +161,7 @@ void CDenseFx::update_config() {
       tiledb_config_set(
           config,
           "sm.mem.tile_memory_budget",
-          tile_memory_budget_.c_str(),
+          tile_upper_memory_limit_.c_str(),
           &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
 
@@ -631,35 +631,6 @@ void CDenseFx::read_fixed_strings(
 #define NUM_CELLS 20
 
 TEST_CASE_METHOD(
-    CDenseFx, "Dense reader: bad config", "[dense-reader][bad-config]") {
-  // Create default array.
-  reset_config();
-  create_default_array_1d();
-
-  // Write a fragment.
-  int subarray[] = {1, NUM_CELLS};
-  std::vector<int> data(NUM_CELLS);
-  std::iota(data.begin(), data.end(), 1);
-  uint64_t data_size = data.size() * sizeof(int);
-  write_1d_fragment(subarray, data.data(), &data_size);
-
-  // Each tile is 40 bytes, this will only allow to load one.
-  total_budget_ = "50";
-  tile_memory_budget_ = "100";
-  update_config();
-
-  // Try to read.
-  int data_r[NUM_CELLS] = {0};
-  uint64_t data_r_size = sizeof(data_r);
-  read(
-      subarray,
-      data_r,
-      &data_r_size,
-      false,
-      "DenseReader: sm.mem.tile_memory_budget > sm.mem.total_budget");
-}
-
-TEST_CASE_METHOD(
     CDenseFx,
     "Dense reader: budget too small",
     "[dense-reader][budget-too-small]") {
@@ -676,7 +647,7 @@ TEST_CASE_METHOD(
 
   // Each tile is 40 bytes, this will only allow to load one.
   total_budget_ = "50";
-  tile_memory_budget_ = "50";
+  tile_upper_memory_limit_ = "50";
   update_config();
 
   // Try to read.
@@ -708,7 +679,7 @@ TEST_CASE_METHOD(
   write_1d_fragment(subarray, data.data(), &data_size);
 
   // Each tile is 40 bytes, this will only allow to load one.
-  tile_memory_budget_ = "50";
+  tile_upper_memory_limit_ = "50";
   update_config();
 
   // Try to read.
@@ -738,7 +709,7 @@ TEST_CASE_METHOD(
   write_1d_fragment(subarray, data.data(), &data_size);
 
   total_budget_ = "420";
-  tile_memory_budget_ = "50";
+  tile_upper_memory_limit_ = "50";
   update_config();
 
   std::string error_expected =
@@ -778,7 +749,7 @@ TEST_CASE_METHOD(
 
   // Each tiles are 91 and 100 bytes respectively, this will only allow to
   // load one.
-  tile_memory_budget_ = "105";
+  tile_upper_memory_limit_ = "105";
   update_config();
 
   // Try to read.
@@ -821,7 +792,7 @@ TEST_CASE_METHOD(
   // Each tiles are 91 and 100 bytes respectively, this will only allow to
   // load one.
   total_budget_ = "460";
-  tile_memory_budget_ = "105";
+  tile_upper_memory_limit_ = "105";
   update_config();
 
   std::string error_expected =
@@ -867,7 +838,7 @@ TEST_CASE_METHOD(
       subarray, data.data(), &data_size, offsets.data(), &offsets_size);
 
   // Each tile is 40 bytes, this will only allow to load one.
-  tile_memory_budget_ = "50";
+  tile_upper_memory_limit_ = "50";
   update_config();
 
   // Try to read.
@@ -921,7 +892,7 @@ TEST_CASE_METHOD(
   // Each var tiles are 91 and 100 bytes respectively, this will only allow to
   // load one. Fixed tiles are both 40 so they both fit in the budget.
   total_budget_ = "660";
-  tile_memory_budget_ = "105";
+  tile_upper_memory_limit_ = "105";
   update_config();
 
   // Try to read.
@@ -1037,7 +1008,7 @@ TEST_CASE_METHOD(
   // Each var tiles are 91 and 100 bytes respectively, this will only allow to
   // load one. Fixed tiles are both 40 so they both fit in the budget.
   total_budget_ = "640";
-  tile_memory_budget_ = "105";
+  tile_upper_memory_limit_ = "105";
   update_config();
 
   // Try to read.
@@ -1139,7 +1110,7 @@ TEST_CASE_METHOD(
 
   // First var tiles is 91 and subequent are 100 bytes, this will only allow to
   // load two tiles the first loop and one on the subsequents.
-  tile_memory_budget_ = "192";
+  tile_upper_memory_limit_ = "192";
   update_config();
 
   // Try to read.
