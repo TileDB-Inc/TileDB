@@ -48,6 +48,7 @@
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
 
+#include <azure/core/diagnostics/logger.hpp>
 #include <azure/storage/blobs.hpp>
 
 using namespace tiledb::common;
@@ -138,6 +139,28 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   assert(found);
 
   write_cache_max_size_ = max_parallel_ops_ * block_list_block_size_;
+
+  // Initialize logging from the Azure SDK.
+  static std::once_flag azure_log_sentinel;
+  std::call_once(azure_log_sentinel, []() {
+    ::Azure::Core::Diagnostics::Logger::SetListener(
+        [](auto level, const std::string& message) {
+          switch (level) {
+            case ::Azure::Core::Diagnostics::Logger::Level::Error:
+              LOG_ERROR(message);
+              break;
+            case ::Azure::Core::Diagnostics::Logger::Level::Warning:
+              LOG_WARN(message);
+              break;
+            case ::Azure::Core::Diagnostics::Logger::Level::Informational:
+              LOG_INFO(message);
+              break;
+            case ::Azure::Core::Diagnostics::Logger::Level::Verbose:
+              LOG_DEBUG(message);
+              break;
+          }
+        });
+  });
 
   ::Azure::Storage::Blobs::BlobClientOptions options;
   options.Retry.MaxRetries = constants::azure_max_attempts;
