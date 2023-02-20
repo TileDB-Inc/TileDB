@@ -146,14 +146,19 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   // Construct the Azure SDK blob service client.
   // We pass a shared kay if it was specified.
   if (!account_key.empty()) {
-    client_ = std::make_unique<::Azure::Storage::Blobs::BlobServiceClient>(
-        blob_endpoint,
-        make_shared<::Azure::Storage::StorageSharedKeyCredential>(
-            HERE(), account_name, account_key),
-        options);
+    client_ =
+        tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
+            ::Azure::Storage::Blobs::BlobServiceClient,
+            blob_endpoint,
+            make_shared<::Azure::Storage::StorageSharedKeyCredential>(
+                HERE(), account_name, account_key),
+            options));
   } else {
-    client_ = std::make_unique<::Azure::Storage::Blobs::BlobServiceClient>(
-        blob_endpoint, options);
+    client_ =
+        tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
+            ::Azure::Storage::Blobs::BlobServiceClient,
+            blob_endpoint,
+            options));
   }
 
   return Status::Ok();

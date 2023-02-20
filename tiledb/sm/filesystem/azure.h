@@ -384,7 +384,7 @@ class Azure {
   ThreadPool* thread_pool_;
 
   /** The Azure blob service client. */
-  std::unique_ptr<::Azure::Storage::Blobs::BlobServiceClient> client_;
+  tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient> client_;
 
   /** Maps a blob URI to a write cache buffer. */
   std::unordered_map<std::string, Buffer> write_cache_map_;
