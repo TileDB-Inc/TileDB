@@ -41,6 +41,7 @@ jobs:
     with:
       ci_backend: GCS
       matrix_image: ubuntu-20.04
+      timeout: 120
       bootstrap_args: '--enable-gcs --enable-release-symbols'
   ci3:
     uses: ./.github/workflows/ci-linux_mac.yml

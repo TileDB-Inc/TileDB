@@ -1,0 +1,26 @@
+{
+    "name": "tiledb",
+    "version-string": "2.15.0",
+    "builtin-baseline": "f14984af3738e69f197bf0e647a8dca12de92996",
+    "dependencies": [
+        "bzip2",
+        "openssl",
+        "zstd",
+        {
+            "name": "catch2",
+            "version>=": "3.1.0"
+        }
+    ],
+    "features": {
+        "gcs": {
+            "description": "Support google cloud storage",
+            "dependencies": [
+                {
+                    "name": "google-cloud-cpp",
+                    "version>=": "2.6.0",
+                    "features": [ "storage" ]
+                }
+            ]
+        }
+    }
+}
