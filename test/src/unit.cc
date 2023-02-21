@@ -2,6 +2,7 @@
 #include <test/support/tdb_catch.h>
 
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -54,16 +55,32 @@ int main(const int argc, char** const argv) {
 struct CICompletionStatusListener : Catch::EventListenerBase {
   using Catch::EventListenerBase::EventListenerBase;  // inherit constructor
 
-  // Successful completion hook
+  // Successful completion hook:
+  // This is a secondary validation that the tests ran and succeeded.
+  // - For Github actions, we write into step output
+  // - For Azure Pipelines, we set an environment variable
+  // These outputs are validated in a separate CI step.
+
   void testRunEnded(Catch::TestRunStats const& testRunStats) override {
-    if (std::getenv("GITHUB_RUN_ID") != nullptr ||
-        std::getenv("AGENT_NAME") != nullptr) {
-      if (testRunStats.totals.testCases.allOk() == 1) {
-        // set TILEDB_CI_SUCCESS job-level variable in azure pipelines
-        // note: this variable is only set in subsequest tasks.
-        printf("::set-output name=TILEDB_CI_SUCCESS::1\n");
-        printf("##vso[task.setvariable variable=TILEDB_CI_SUCCESS]1\n");
+    if (testRunStats.totals.testCases.allOk() != 1) {
+      // Test failed, *don't* set success variable.
+      return;
+    }
+
+    if (const char* gh_state_filename_p = std::getenv("GITHUB_OUTPUT");
+        gh_state_filename_p != nullptr) {
+      std::string state_filename(gh_state_filename_p);
+      if (std::ofstream output{state_filename}) {
+        output << "TILEDB_CI_SUCCESS=1"
+               << "\n";
+      } else {
+        std::cerr << "Failed to open GITHUB_STATE file for CI_SUCCESS tracking!"
+                  << std::endl;
       }
+    } else if (std::getenv("AGENT_NAME") != nullptr) {
+      // set TILEDB_CI_SUCCESS job-level variable in azure pipelines
+      // note: this variable is only set in subsequest tasks.
+      printf("##vso[task.setvariable variable=TILEDB_CI_SUCCESS]1\n");
     }
   }
 };
