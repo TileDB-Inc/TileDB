@@ -38,6 +38,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Options")
 
 include(BuildOptions)
 include(global-policies NO_POLICY_SCOPE)
+include(init-submodule) # Must be done before `project()` for vcpkg
 
 ############################################################
 # Parse version file
