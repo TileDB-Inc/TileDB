@@ -91,6 +91,7 @@ jobs:
           #####################################################
           # Build libtiledb using `bootstrap_args` as set above
 
+          source $GITHUB_WORKSPACE/scripts/ci/bootstrap_libtiledb.sh
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
           ###################################################
