@@ -29,16 +29,12 @@ endif()
 #############
 # vcpkg setup
 
-set(VCPKG_BUILD_TYPE release)
-
 if (TILEDB_GCS)
     # TODO our_vcpkg_enable
     list(APPEND VCPKG_MANIFEST_FEATURES "gcs")
+
+    # This must be set *before* `project()`
+    # TODO make sure this works with user-specified toolchain
+    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/external/vcpkg/scripts/buildsystems/vcpkg.cmake"
+      CACHE STRING "Vcpkg toolchain file")
 endif()
-
-# This must be set *before* `project()`
-# TODO make sure this works with user-specified toolchain
-set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/external/vcpkg/scripts/buildsystems/vcpkg.cmake"
-  CACHE STRING "Vcpkg toolchain file")
-
-set(VCPKG_BUILD_TYPE release)
