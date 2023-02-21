@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - vcpkg-test
+      - ihn/vcpkg
       - dev
       - release-*
       - refs/tags/*
