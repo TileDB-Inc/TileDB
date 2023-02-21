@@ -77,7 +77,7 @@ class GroupMemberV2 : public GroupMember {
 
  private:
   /* Format version for class. */
-  inline static const format_version_t format_version_ = 1;
+  inline static const format_version_t format_version_ = 2;
 };
 }  // namespace sm
 }  // namespace tiledb

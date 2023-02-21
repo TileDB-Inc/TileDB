@@ -1973,10 +1973,8 @@ StorageManagerCanonical::load_group_details(
 
   // V1 groups did not have the version appended so only have 4 "_"
   // (__<timestamp>_<timestamp>_<uuid>)
-  if (std::count(
-          latest_group_uri.last_path_part().begin(),
-          latest_group_uri.last_path_part().end(),
-          '_') == 4) {
+  auto part = latest_group_uri.last_path_part();
+  if (std::count(part.begin(), part.end(), '_') == 4) {
     return load_group_from_uri(
         group_directory->uri(), latest_group_uri, encryption_key);
   }

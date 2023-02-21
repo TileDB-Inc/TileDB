@@ -96,6 +96,8 @@ tdb_shared_ptr<Group> GroupV2::deserialize(
       }
     }
   }
+
+  return group;
 }
 
 Status GroupV2::apply_pending_changes() {
