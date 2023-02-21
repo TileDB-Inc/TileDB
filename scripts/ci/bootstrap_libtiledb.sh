@@ -29,14 +29,21 @@ set -xeuo pipefail
 # This will not validate linkage, but we can't
 # build all variations separately right now.
 
+CONFIG_TMP_PATH=`mktemp -d`
+pushd $CONFIG_TMP_PATH
+$GITHUB_WORKSPACE/bootstrap $bootstrap_args --disable-tests
+popd
+
+###############################################
+
+# Build and test libtiledb
+
+# Set up arguments for bootstrap.sh
+bootstrap_args="${bootstrap_args} --enable-verbose";
+
+mkdir -p $GITHUB_WORKSPACE/build
 cd $GITHUB_WORKSPACE/build
 
-make -j4
-
-make -C tiledb install
-
-ls -la
-
-make -j4 -C tiledb tiledb_unit
-make -j4 -C tiledb tiledb_regression
-make -j4 -C tiledb all_link_complete
+# Configure and build TileDB
+echo "Bootstrapping with '$bootstrap_args'"
+$GITHUB_WORKSPACE/bootstrap $bootstrap_args
