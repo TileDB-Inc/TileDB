@@ -51,7 +51,16 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 class Attribute;
+
 namespace serialization {
+
+/** Class for query status exceptions. */
+class SerializationStatusException : public StatusException {
+ public:
+  explicit SerializationStatusException(const std::string& msg)
+      : StatusException("Serialization", msg) {
+  }
+};
 
 /**
  * Serialize a config into a cap'n proto class
@@ -75,18 +84,17 @@ Status config_from_capnp(
  * Serialize an attribute into a cap'n proto class
  * @param attribute attribute to serialize
  * @param attribute_builder cap'n proto message class
- * @return Status
  */
-Status attribute_to_capnp(
+void attribute_to_capnp(
     const Attribute* attribute, capnp::Attribute::Builder* attribute_builder);
 
 /**
  * Create an attribute object from a cap'n proto class
  * @param attribute_reader cap'n proto message class
  * @param attribute attribute to deserialize into
- * @return Status
+ * @return The generated attribute
  */
-tuple<Status, optional<shared_ptr<Attribute>>> attribute_from_capnp(
+shared_ptr<Attribute> attribute_from_capnp(
     const capnp::Attribute::Reader& attribute_reader);
 
 /**

@@ -171,7 +171,6 @@ class Attribute {
    *
    * @param serializer The object the attribute is serialized into.
    * @param version The format spec version.
-   * @return Status
    */
   void serialize(Serializer& serializer, uint32_t version) const;
 
@@ -179,28 +178,14 @@ class Attribute {
    * Sets the attribute number of values per cell. Note that if the attribute
    * datatype is `ANY` this function returns an error, since `ANY` datatype
    * must always be variable-sized.
-   *
-   * @return Status
    */
-  Status set_cell_val_num(unsigned int cell_val_num);
+  void set_cell_val_num(unsigned int cell_val_num);
 
-  /**
-   * Sets the nullability for this attribute.
-   *
-   * @return Status
-   */
-  Status set_nullable(bool nullable);
-
-  /**
-   * Gets the nullability for this attribute.
-   *
-   * @param nullable Mutates to true or false.
-   * @return Status
-   */
-  Status get_nullable(bool* nullable);
+  /** Sets the nullability for this attribute. */
+  void set_nullable(bool nullable);
 
   /** Sets the filter pipeline for this attribute. */
-  Status set_filter_pipeline(const FilterPipeline& pipeline);
+  void set_filter_pipeline(const FilterPipeline& pipeline);
 
   /** Sets the attribute name. */
   void set_name(const std::string& name);
@@ -209,26 +194,25 @@ class Attribute {
    * Sets the fill value for the attribute. Applicable to
    * both fixed-sized and var-sized attributes.
    */
-  Status set_fill_value(const void* value, uint64_t size);
+  void set_fill_value(const void* value, uint64_t size);
 
   /**
    * Gets the fill value for the attribute. Applicable to
    * fixed-sized and var-sized attributes.
    */
-  Status get_fill_value(const void** value, uint64_t* size) const;
+  void get_fill_value(const void** value, uint64_t* size) const;
 
   /**
    * Sets the fill value for the nullable attribute. Applicable to
    * both fixed-sized and var-sized attributes.
    */
-  Status set_fill_value(const void* value, uint64_t size, uint8_t valid);
+  void set_fill_value(const void* value, uint64_t size, uint8_t valid);
 
   /**
    * Gets the fill value for the nullable attribute. Applicable to
    * fixed-sized and var-sized attributes.
    */
-  Status get_fill_value(
-      const void** value, uint64_t* size, uint8_t* valid) const;
+  void get_fill_value(const void** value, uint64_t* size, uint8_t* valid) const;
 
   /** Returns the fill value. */
   const ByteVecValue& fill_value() const;
