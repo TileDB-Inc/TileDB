@@ -611,7 +611,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     Bzip2::Bzip2
     LZ4::LZ4
     spdlog::spdlog
-    Zlib::Zlib
+    ZLIB::ZLIB
     Zstd::Zstd
     libmagic
 )
@@ -897,7 +897,6 @@ if (TILEDB_STATIC)
 
   append_dep_lib(Bzip2::Bzip2)
   append_dep_lib(LZ4::LZ4)
-  append_dep_lib(Zlib::Zlib)
   append_dep_lib(ZLIB::ZLIB)
   append_dep_lib(Zstd::Zstd)
   append_dep_lib(CapnProto::capnp)
