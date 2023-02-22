@@ -1706,10 +1706,9 @@ uint64_t Array::max_tile_size() {
       maxs.max_in_memory_fixed_tile_size, maxs.max_in_memory_tile_size_var);
   maxs.max_persisted_tile_size = std::max(
       maxs.max_persisted_fixed_tile_size, maxs.max_persisted_tile_size_var);
-      
+
   return max_tile_sizes.max_in_memory_tile_size;
 }
-
 
 }  // namespace sm
 }  // namespace tiledb

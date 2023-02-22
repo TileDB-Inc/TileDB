@@ -667,10 +667,9 @@ class Array {
     uint64_t max_in_memory_tile_size_var;
     uint64_t max_persisted_tile_size_validity;
     uint64_t max_in_memory_tile_size_validity;
-
   };
 
-/* ********************************* */
+  /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
@@ -761,9 +760,9 @@ class Array {
    **/
   void set_array_closed();
 
-  /** 
-   * Adjust the max tile sizes for the named attribute or dimension 
-   * 
+  /**
+   * Adjust the max tile sizes for the named attribute or dimension
+   *
    * @param maxs struct providing/returning max tile sizes for named attr/dim
    * @param f fragment to eval tile sizes for attr/dim
    * @param name attr/dim to eval tile sizes of
