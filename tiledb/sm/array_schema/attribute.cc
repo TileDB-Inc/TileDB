@@ -301,11 +301,11 @@ void Attribute::serialize(
   }
 }
 
-Status Attribute::set_cell_val_num(unsigned int cell_val_num) {
+void Attribute::set_cell_val_num(unsigned int cell_val_num) {
   if (type_ == Datatype::ANY) {
-    return LOG_STATUS(Status_AttributeError(
+    throw AttributeStatusException(
         "Cannot set number of values per cell; Attribute datatype `ANY` is "
-        "always variable-sized"));
+        "always variable-sized");
   }
 
   if (order_ != DataOrder::UNORDERED_DATA && type_ != Datatype::STRING_ASCII &&
@@ -318,159 +318,142 @@ Status Attribute::set_cell_val_num(unsigned int cell_val_num) {
 
   cell_val_num_ = cell_val_num;
   set_default_fill_value();
-
-  return Status::Ok();
 }
 
-Status Attribute::set_nullable(const bool nullable) {
+void Attribute::set_nullable(const bool nullable) {
   if (nullable && order_ != DataOrder::UNORDERED_DATA) {
     throw AttributeStatusException(
         "Cannot set to nullable; An ordered attribute cannot be nullable.");
   }
   nullable_ = nullable;
-  return Status::Ok();
 }
 
-Status Attribute::get_nullable(bool* const nullable) {
-  *nullable = nullable_;
-  return Status::Ok();
-}
-
-Status Attribute::set_filter_pipeline(const FilterPipeline& pipeline) {
+void Attribute::set_filter_pipeline(const FilterPipeline& pipeline) {
   for (unsigned i = 0; i < pipeline.size(); ++i) {
     if (datatype_is_real(type_) &&
         pipeline.get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
-      return LOG_STATUS(
-          Status_AttributeError("Cannot set DOUBLE DELTA filter to an "
-                                "attribute with a real datatype"));
+      throw AttributeStatusException(
+          "Cannot set DOUBLE DELTA filter to an attribute with a real "
+          "datatype");
   }
 
   if ((type_ == Datatype::STRING_ASCII || type_ == Datatype::STRING_UTF8) &&
       var_size() && pipeline.size() > 1) {
     if (pipeline.has_filter(FilterType::FILTER_RLE) &&
         pipeline.get_filter(0)->type() != FilterType::FILTER_RLE) {
-      return LOG_STATUS(Status_ArraySchemaError(
+      throw AttributeStatusException(
           "RLE filter must be the first filter to apply when used on a "
-          "variable length string attribute"));
+          "variable length string attribute");
     }
     if (pipeline.has_filter(FilterType::FILTER_DICTIONARY) &&
         pipeline.get_filter(0)->type() != FilterType::FILTER_DICTIONARY) {
-      return LOG_STATUS(Status_ArraySchemaError(
+      throw AttributeStatusException(
           "Dictionary filter must be the first filter to apply when used on a "
-          "variable length string attribute"));
+          "variable length string attribute");
     }
   }
 
   filters_ = pipeline;
-  return Status::Ok();
 }
 
 void Attribute::set_name(const std::string& name) {
   name_ = name;
 }
 
-Status Attribute::set_fill_value(const void* value, uint64_t size) {
+void Attribute::set_fill_value(const void* value, uint64_t size) {
   if (value == nullptr) {
-    return LOG_STATUS(Status_AttributeError(
-        "Cannot set fill value; Input value cannot be null"));
+    throw AttributeStatusException(
+        "Cannot set fill value; Input value cannot be null");
   }
 
   if (size == 0) {
-    return LOG_STATUS(
-        Status_AttributeError("Cannot set fill value; Input size cannot be 0"));
+    throw AttributeStatusException(
+        "Cannot set fill value; Input size cannot be 0");
   }
 
   if (nullable()) {
-    return LOG_STATUS(
-        Status_AttributeError("Cannot set fill value; Attribute is nullable"));
+    throw AttributeStatusException(
+        "Cannot set fill value; Attribute is nullable");
   }
 
   if (!var_size() && size != cell_size()) {
-    return LOG_STATUS(Status_AttributeError(
-        "Cannot set fill value; Input size is not the same as cell size"));
+    throw AttributeStatusException(
+        "Cannot set fill value; Input size is not the same as cell size");
   }
 
   fill_value_.resize(size);
   fill_value_.shrink_to_fit();
   std::memcpy(fill_value_.data(), value, size);
-
-  return Status::Ok();
 }
 
-Status Attribute::get_fill_value(const void** value, uint64_t* size) const {
+void Attribute::get_fill_value(const void** value, uint64_t* size) const {
   if (value == nullptr) {
-    return LOG_STATUS(Status_AttributeError(
-        "Cannot get fill value; Input value cannot be null"));
+    throw AttributeStatusException(
+        "Cannot get fill value; Input value cannot be null");
   }
 
   if (size == nullptr) {
-    return LOG_STATUS(Status_AttributeError(
-        "Cannot get fill value; Input size cannot be null"));
+    throw AttributeStatusException(
+        "Cannot get fill value; Input size cannot be null");
   }
 
   if (nullable()) {
-    return LOG_STATUS(
-        Status_AttributeError("Cannot get fill value; Attribute is nullable"));
+    throw AttributeStatusException(
+        "Cannot get fill value; Attribute is nullable");
   }
 
   *value = fill_value_.data();
   *size = (uint64_t)fill_value_.size();
-
-  return Status::Ok();
 }
 
-Status Attribute::set_fill_value(
+void Attribute::set_fill_value(
     const void* value, uint64_t size, uint8_t valid) {
   if (value == nullptr) {
-    return LOG_STATUS(Status_AttributeError(
-        "Cannot set fill value; Input value cannot be null"));
+    throw AttributeStatusException(
+        "Cannot set fill value; Input value cannot be null");
   }
 
   if (size == 0) {
-    return LOG_STATUS(
-        Status_AttributeError("Cannot set fill value; Input size cannot be 0"));
+    throw AttributeStatusException(
+        "Cannot set fill value; Input size cannot be 0");
   }
 
   if (!nullable()) {
-    return LOG_STATUS(Status_AttributeError(
-        "Cannot set fill value; Attribute is not nullable"));
+    throw AttributeStatusException(
+        "Cannot set fill value; Attribute is not nullable");
   }
 
   if (!var_size() && size != cell_size()) {
-    return LOG_STATUS(Status_AttributeError(
-        "Cannot set fill value; Input size is not the same as cell size"));
+    throw AttributeStatusException(
+        "Cannot set fill value; Input size is not the same as cell size");
   }
 
   fill_value_.resize(size);
   fill_value_.shrink_to_fit();
   std::memcpy(fill_value_.data(), value, size);
   fill_value_validity_ = valid;
-
-  return Status::Ok();
 }
 
-Status Attribute::get_fill_value(
+void Attribute::get_fill_value(
     const void** value, uint64_t* size, uint8_t* valid) const {
   if (value == nullptr) {
-    return LOG_STATUS(Status_AttributeError(
-        "Cannot get fill value; Input value cannot be null"));
+    throw AttributeStatusException(
+        "Cannot get fill value; Input value cannot be null");
   }
 
   if (size == nullptr) {
-    return LOG_STATUS(Status_AttributeError(
-        "Cannot get fill value; Input size cannot be null"));
+    throw AttributeStatusException(
+        "Cannot get fill value; Input size cannot be null");
   }
 
   if (!nullable()) {
-    return LOG_STATUS(Status_AttributeError(
-        "Cannot get fill value; Attribute is not nullable"));
+    throw AttributeStatusException(
+        "Cannot get fill value; Attribute is not nullable");
   }
 
   *value = fill_value_.data();
   *size = (uint64_t)fill_value_.size();
   *valid = fill_value_validity_;
-
-  return Status::Ok();
 }
 
 const ByteVecValue& Attribute::fill_value() const {

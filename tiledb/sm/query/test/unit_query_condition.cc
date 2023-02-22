@@ -1201,9 +1201,8 @@ void test_apply_cells<char*>(
   // Fetch the fill value.
   const void* fill_value{nullptr};
   uint64_t fill_value_size{0};
-  REQUIRE(array_schema->attribute(field_name)
-              ->get_fill_value(&fill_value, &fill_value_size)
-              .ok());
+  array_schema->attribute(field_name)
+      ->get_fill_value(&fill_value, &fill_value_size);
   REQUIRE(fill_value_size == 2 * sizeof(char));
 
   // Build expected indexes of cells that meet the query condition
@@ -1350,9 +1349,8 @@ void test_apply_cells(
   // Fetch the fill value.
   const void* fill_value{nullptr};
   uint64_t fill_value_size{0};
-  REQUIRE(array_schema->attribute(field_name)
-              ->get_fill_value(&fill_value, &fill_value_size)
-              .ok());
+  array_schema->attribute(field_name)
+      ->get_fill_value(&fill_value, &fill_value_size);
   REQUIRE(fill_value_size == sizeof(T));
 
   // Build expected indexes of cells that meet the query condition
@@ -1591,11 +1589,11 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
   // Initialize the array schema.
   shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(attr.set_nullable(nullable).ok());
-  REQUIRE(attr.set_cell_val_num(var_size ? constants::var_num : 2).ok());
+  attr.set_nullable(nullable);
+  attr.set_cell_val_num(var_size ? constants::var_num : 2);
 
   if (!nullable) {
-    REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
+    attr.set_fill_value(fill_value, 2 * sizeof(char));
   }
 
   REQUIRE(
@@ -1644,8 +1642,8 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
   // Initialize the array schema.
   shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(attr.set_cell_val_num(1).ok());
-  REQUIRE(attr.set_fill_value(&fill_value, sizeof(T)).ok());
+  attr.set_cell_val_num(1);
+  attr.set_fill_value(&fill_value, sizeof(T));
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), &attr)).ok());
   Domain domain;
@@ -1736,11 +1734,11 @@ TEST_CASE(
   // Initialize the array schema.
   shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(attr.set_nullable(nullable).ok());
-  REQUIRE(attr.set_cell_val_num(var_size ? constants::var_num : 2).ok());
+  attr.set_nullable(nullable);
+  attr.set_cell_val_num(var_size ? constants::var_num : 2);
 
   if (!nullable) {
-    REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
+    attr.set_fill_value(fill_value, 2 * sizeof(char));
   }
 
   REQUIRE(
@@ -1973,7 +1971,14 @@ void test_apply_cells_dense<char*>(
   std::vector<uint8_t> result_bitmap(cells, 1);
   REQUIRE(query_condition
               .apply_dense(
-                  *array_schema, result_tile, 0, 10, 0, 1, result_bitmap.data())
+                  *array_schema,
+                  result_tile,
+                  0,
+                  10,
+                  0,
+                  1,
+                  nullptr,
+                  result_bitmap.data())
               .ok());
 
   // Verify the result bitmap contain the expected cells.
@@ -2005,6 +2010,7 @@ void test_apply_cells_dense<char*>(
                       10,
                       0,
                       1,
+                      nullptr,
                       result_bitmap_eq_null.data())
                   .ok());
 
@@ -2075,7 +2081,14 @@ void test_apply_cells_dense(
   std::vector<uint8_t> result_bitmap(cells, 1);
   REQUIRE(query_condition
               .apply_dense(
-                  *array_schema, result_tile, 0, 10, 0, 1, result_bitmap.data())
+                  *array_schema,
+                  result_tile,
+                  0,
+                  10,
+                  0,
+                  1,
+                  nullptr,
+                  result_bitmap.data())
               .ok());
 
   // Verify the result bitmap contain the expected cells.
@@ -2268,11 +2281,11 @@ void test_apply_dense<char*>(
   // Initialize the array schema.
   shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(attr.set_nullable(nullable).ok());
-  REQUIRE(attr.set_cell_val_num(var_size ? constants::var_num : 2).ok());
+  attr.set_nullable(nullable);
+  attr.set_cell_val_num(var_size ? constants::var_num : 2);
 
   if (!nullable) {
-    REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
+    attr.set_fill_value(fill_value, 2 * sizeof(char));
   }
 
   REQUIRE(
@@ -2325,8 +2338,8 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
   // Initialize the array schema.
   shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(attr.set_cell_val_num(1).ok());
-  REQUIRE(attr.set_fill_value(&fill_value, sizeof(T)).ok());
+  attr.set_cell_val_num(1);
+  attr.set_fill_value(&fill_value, sizeof(T));
   REQUIRE(
       array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
           .ok());
@@ -2424,11 +2437,11 @@ TEST_CASE(
   // Initialize the array schema.
   shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(attr.set_nullable(nullable).ok());
-  REQUIRE(attr.set_cell_val_num(var_size ? constants::var_num : 2).ok());
+  attr.set_nullable(nullable);
+  attr.set_cell_val_num(var_size ? constants::var_num : 2);
 
   if (!nullable) {
-    REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
+    attr.set_fill_value(fill_value, 2 * sizeof(char));
   }
 
   REQUIRE(
@@ -2547,11 +2560,17 @@ TEST_CASE(
 
   // Apply the query condition.
   std::vector<uint8_t> result_bitmap(cells, 1);
-  REQUIRE(
-      query_condition
-          .apply_dense(
-              *array_schema, &result_tile, 0, 10, 0, 1, result_bitmap.data())
-          .ok());
+  REQUIRE(query_condition
+              .apply_dense(
+                  *array_schema,
+                  &result_tile,
+                  0,
+                  10,
+                  0,
+                  1,
+                  nullptr,
+                  result_bitmap.data())
+              .ok());
 
   // Verify the result bitmap contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -2937,11 +2956,11 @@ void test_apply_sparse<char*>(
   // Initialize the array schema.
   shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(attr.set_nullable(nullable).ok());
-  REQUIRE(attr.set_cell_val_num(var_size ? constants::var_num : 2).ok());
+  attr.set_nullable(nullable);
+  attr.set_cell_val_num(var_size ? constants::var_num : 2);
 
   if (!nullable) {
-    REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
+    attr.set_fill_value(fill_value, 2 * sizeof(char));
   }
 
   REQUIRE(
@@ -2994,8 +3013,8 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
   // Initialize the array schema.
   shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(attr.set_cell_val_num(1).ok());
-  REQUIRE(attr.set_fill_value(&fill_value, sizeof(T)).ok());
+  attr.set_cell_val_num(1);
+  attr.set_fill_value(&fill_value, sizeof(T));
   REQUIRE(
       array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
           .ok());
@@ -3190,6 +3209,7 @@ void validate_qc_apply_dense(
                   10,
                   0,
                   1,
+                  nullptr,
                   dense_result_bitmap.data())
               .ok());
   for (uint64_t i = 0; i < cells; ++i) {
@@ -4045,9 +4065,9 @@ TEST_CASE(
   // Initialize the array schema.
   shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(attr.set_nullable(false).ok());
-  REQUIRE(attr.set_cell_val_num(constants::var_num).ok());
-  REQUIRE(attr.set_fill_value("ac", 2 * sizeof(char)).ok());
+  attr.set_nullable(false);
+  attr.set_cell_val_num(constants::var_num);
+  attr.set_fill_value("ac", 2 * sizeof(char));
 
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), &attr)).ok());
@@ -4420,9 +4440,9 @@ TEST_CASE(
   // Initialize the array schema.
   shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(attr.set_nullable(false).ok());
-  REQUIRE(attr.set_cell_val_num(constants::var_num).ok());
-  REQUIRE(attr.set_fill_value("ac", 2 * sizeof(char)).ok());
+  attr.set_nullable(false);
+  attr.set_cell_val_num(constants::var_num);
+  attr.set_fill_value("ac", 2 * sizeof(char));
 
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), &attr)).ok());
@@ -4761,7 +4781,7 @@ TEST_CASE(
   // Initialize the array schema.
   shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(attr.set_nullable(true).ok());
+  attr.set_nullable(true);
   REQUIRE(
       array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
           .ok());
@@ -4850,11 +4870,11 @@ TEST_CASE(
   // Initialize the array schema.
   shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(attr.set_nullable(nullable).ok());
-  REQUIRE(attr.set_cell_val_num(var_size ? constants::var_num : 2).ok());
+  attr.set_nullable(nullable);
+  attr.set_cell_val_num(var_size ? constants::var_num : 2);
 
   if (!nullable) {
-    REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
+    attr.set_fill_value(fill_value, 2 * sizeof(char));
   }
 
   REQUIRE(

@@ -1,9 +1,10 @@
 #
-# tiledb/sm/CMakeLists.txt
+# experimental/examples/CMakeLists.txt
+#
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,28 +25,19 @@
 # THE SOFTWARE.
 #
 
-include(common-root)
+if (WIN32)
+  # Disable MSVC warnings not present with gcc.
+  #   C4204: non-constant aggregate initializer
+  #   C4221: aggregate initializer with local variable
+  #   C4305: implicit truncation of double to float
+  add_compile_options(/wd4204 /wd4221 /wd4305)
+else()
+   #TODO: Remove when KV API has been removed.
+  add_compile_options(-Wno-deprecated-declarations)
+endif()
+add_custom_target(experimental_examples)
 
-add_subdirectory(array)
-add_subdirectory(array_schema)
-add_subdirectory(buffer)
-add_subdirectory(compressors)
-add_subdirectory(config)
-add_subdirectory(consolidator)
-add_subdirectory(crypto)
-add_subdirectory(filesystem)
-add_subdirectory(filter)
-add_subdirectory(group)
-add_subdirectory(metadata)
-add_subdirectory(misc)
-add_subdirectory(query)
-add_subdirectory(rtree)
-add_subdirectory(stats)
-add_subdirectory(storage_manager)
-add_subdirectory(subarray)
-add_subdirectory(tile)
-
-
-if (TILEDB_SERIALIZATION)
-  add_subdirectory(serialization)
+if (TILEDB_CPP_API)
+  add_subdirectory(cpp_api)
+  add_dependencies(experimental_examples experimental_examples_cpp)
 endif()

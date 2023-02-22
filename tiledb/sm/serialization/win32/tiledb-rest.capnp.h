@@ -227,7 +227,7 @@ struct Attribute {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(92ad78f56de3d76a, 1, 4)
+    CAPNP_DECLARE_STRUCT_HEADER(92ad78f56de3d76a, 1, 5)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -2784,6 +2784,9 @@ class Attribute::Reader {
 
   inline bool getFillValueValidity() const;
 
+  inline bool hasOrder() const;
+  inline ::capnp::Text::Reader getOrder() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -2865,6 +2868,13 @@ class Attribute::Builder {
 
   inline bool getFillValueValidity();
   inline void setFillValueValidity(bool value);
+
+  inline bool hasOrder();
+  inline ::capnp::Text::Builder getOrder();
+  inline void setOrder(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initOrder(unsigned int size);
+  inline void adoptOrder(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownOrder();
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -15118,6 +15128,43 @@ inline bool Attribute::Builder::getFillValueValidity() {
 inline void Attribute::Builder::setFillValueValidity(bool value) {
   _builder.setDataField<bool>(
       ::capnp::bounded<33>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool Attribute::Reader::hasOrder() const {
+  return !_reader.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Attribute::Builder::hasOrder() {
+  return !_builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader Attribute::Reader::getOrder() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder Attribute::Builder::getOrder() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
+}
+inline void Attribute::Builder::setOrder(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder Attribute::Builder::initOrder(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+      size);
+}
+inline void Attribute::Builder::adoptOrder(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text> Attribute::Builder::disownOrder() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
 }
 
 inline bool AttributeBufferHeader::Reader::hasName() const {

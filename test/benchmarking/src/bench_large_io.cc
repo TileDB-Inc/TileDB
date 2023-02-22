@@ -160,11 +160,9 @@ class Benchmark : public BenchmarkBase {
           non_empty[1].second.first,
           non_empty[1].second.second};
 
-      auto max_elements = array.max_buffer_elements(subarray);
-      data_a_.resize(max_elements["a"].second);
-      sparse_coords_.resize(max_elements[TILEDB_COORDS].second);
-
       Query query(ctx_, array);
+      data_a_.resize(query.est_result_size("a"));
+      sparse_coords_.resize(query.est_result_size("TILEDB_COORDS"));
       query.set_subarray(subarray)
           .set_layout(TILEDB_ROW_MAJOR)
           .set_data_buffer("a", data_a_)

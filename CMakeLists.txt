@@ -254,6 +254,9 @@ else()
   # Build-specific flags
   if (CMAKE_BUILD_TYPE MATCHES "Debug")
     add_compile_options(-DDEBUG -O0 -g3 -ggdb3 -gdwarf-3)
+    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+      add_compile_options(-fstandalone-debug)
+    endif()
   elseif (CMAKE_BUILD_TYPE MATCHES "Release")
     add_compile_options(-O3)
   elseif (CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
@@ -479,6 +482,7 @@ endforeach()
 #####################
 add_library(local_install INTERFACE)
 target_include_directories(local_install INTERFACE ${TILEDB_LOCALINSTALL_INCLUDE})
+target_include_directories(local_install INTERFACE ${CMAKE_SOURCE_DIR})
 
 ############################################################
 # Enable testing and add subdirectories
@@ -529,6 +533,8 @@ add_subdirectory(tiledb)
 
 # Build examples
 add_subdirectory(examples)
+
+add_subdirectory(experimental/experimental_examples)
 
 # Build tools
 if (TILEDB_TOOLS)

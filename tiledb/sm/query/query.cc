@@ -494,7 +494,7 @@ Status Query::submit_and_finalize() {
         array_->array_uri(), this);
   }
 
-  RETURN_NOT_OK(init());
+  init();
   RETURN_NOT_OK(storage_manager_->query_submit(this));
 
   RETURN_NOT_OK(strategy_->finalize());
@@ -695,34 +695,40 @@ bool Query::has_results() const {
   return false;
 }
 
-Status Query::init() {
+void Query::init() {
   // Only if the query has not been initialized before
   if (status_ == QueryStatus::UNINITIALIZED) {
     // Check if the array got closed
-    if (array_ == nullptr || !array_->is_open())
-      return logger_->status(Status_QueryError(
-          "Cannot init query; The associated array is not open"));
+    if (array_ == nullptr || !array_->is_open()) {
+      throw QueryStatusException(
+          "Cannot init query; The associated array is not open");
+    }
 
     // Check if the array got re-opened with a different query type
     QueryType array_query_type{array_->get_query_type()};
     if (array_query_type != type_) {
-      std::stringstream errmsg;
-      errmsg << "Cannot init query; "
-             << "Associated array query type does not match query type: "
-             << "(" << query_type_str(array_query_type)
-             << " != " << query_type_str(type_) << ")";
-      return logger_->status(Status_QueryError(errmsg.str()));
+      throw QueryStatusException(
+          "Cannot init query; Associated array query type does not match "
+          "query type: (" +
+          query_type_str(array_query_type) + " != " + query_type_str(type_) +
+          ")");
     }
 
-    RETURN_NOT_OK(check_buffer_names());
+    throw_if_not_ok(check_buffer_names());
 
     // Create dimension label queries and remove labels from subarray.
     if (uses_dimension_labels()) {
+      if (!condition_.empty()) {
+        throw QueryStatusException(
+            "Cannot init query; Using query conditions and dimension labels "
+            "together is not supported.");
+      }
+
       // Check the layout is valid.
       if (layout_ == Layout::GLOBAL_ORDER) {
-        return logger_->status(
-            Status_QueryError("Cannot init query; The global order layout is "
-                              "not supported when querying dimension labels"));
+        throw QueryStatusException(
+            "Cannot init query; The global order layout is not supported "
+            "when querying dimension labels");
       }
 
       // Support for reading dimension label data from sparse arrays with
@@ -732,9 +738,9 @@ Status Query::init() {
       if (!only_dim_label_query() && type_ == QueryType::READ &&
           !array_schema_->dense() && array_schema_->dim_num() > 1 &&
           !label_buffers_.empty()) {
-        return logger_->status(Status_QueryError(
-            "Cannot initialize query; Reading dimension label data is not yet "
-            "supported on sparse arrays with multiple dimensions."));
+        throw QueryStatusException(
+            "Cannot initialize query; Reading dimension label data is not "
+            "yet supported on sparse arrays with multiple dimensions.");
       }
 
       // Initialize the dimension label queries.
@@ -751,13 +757,11 @@ Status Query::init() {
     // Create the query strategy if querying main array and the Subarray does
     // not need to be updated.
     if (!only_dim_label_query() && !subarray_.has_label_ranges()) {
-      RETURN_NOT_OK(create_strategy());
+      throw_if_not_ok(create_strategy());
     }
   }
 
   status_ = QueryStatus::INPROGRESS;
-
-  return Status::Ok();
 }
 
 URI Query::first_fragment_uri() const {
@@ -1338,7 +1342,8 @@ Status Query::set_data_buffer(
       return set_coords_buffer(buffer, buffer_size);
   }
 
-  if (is_dim &&
+  const bool is_var = array_schema_->var_size(name);
+  if (is_dim && !is_var &&
       (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE)) {
     // Check number of coordinates
     uint64_t coords_num = *buffer_size / array_schema_->cell_size(name);
@@ -1365,7 +1370,7 @@ Status Query::set_data_buffer(
   has_coords_buffer_ |= is_dim;
 
   // Set attribute/dimension buffer on the appropriate buffer
-  if (!array_schema_->var_size(name))
+  if (!is_var)
     // Fixed size data buffer
     buffers_[name].set_data_buffer(buffer, buffer_size);
   else
@@ -1839,7 +1844,7 @@ Status Query::submit() {
     reset_coords_markers();
     return Status::Ok();
   }
-  RETURN_NOT_OK(init());
+  init();
   RETURN_NOT_OK(storage_manager_->query_submit(this));
 
   reset_coords_markers();
@@ -1853,7 +1858,7 @@ Status Query::submit_async(
     callback(callback_data);
     return Status::Ok();
   }
-  RETURN_NOT_OK(init());
+  init();
   if (array_->is_remote())
     return logger_->status(
         Status_QueryError("Error in async query submission; async queries not "
