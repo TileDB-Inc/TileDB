@@ -100,7 +100,6 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   }
 
   std::string sas_token = config.get("vfs.azure.storage_sas_token", &found);
-  assert(found);
   if (sas_token.empty() &&
       ((tmp = getenv("AZURE_STORAGE_SAS_TOKEN")) != NULL)) {
     sas_token = std::string(getenv("AZURE_STORAGE_SAS_TOKEN"));

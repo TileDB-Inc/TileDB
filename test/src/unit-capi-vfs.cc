@@ -162,11 +162,8 @@ void VFSFx::set_num_vfs_threads(unsigned num_threads) {
         tiledb_config_set(
             config,
             "vfs.azure.blob_endpoint",
-            "127.0.0.1:10000/devstoreaccount1",
+            "http://127.0.0.1:10000/devstoreaccount1",
             &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.azure.use_https", "false", &error) ==
-        TILEDB_OK);
   }
 
   // Set number of threads across all backends.
