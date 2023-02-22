@@ -153,6 +153,10 @@ Status OrderedWriter::finalize() {
 void OrderedWriter::reset() {
 }
 
+std::string OrderedWriter::name() {
+  return "OrderedWriter";
+}
+
 /* ****************************** */
 /*        PRIVATE METHODS         */
 /* ****************************** */

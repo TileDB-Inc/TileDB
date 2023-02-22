@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -37,6 +37,7 @@ gather_sources(${SOURCES})
 add_library(capi_query_plan OBJECT ${SOURCES})
 target_link_libraries(capi_query_plan PUBLIC export)
 target_link_libraries(capi_query_plan PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+target_link_libraries(capi_query_plan PUBLIC query_plan $<TARGET_OBJECTS:query_plan>)
 
 #
 # Test-compile of object library ensures link-completeness

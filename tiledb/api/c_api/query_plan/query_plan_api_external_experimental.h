@@ -1,11 +1,11 @@
 /**
- * @file tiledb/api/c_api/query_plan/query_plan_api_external.h
+ * @file tiledb/api/c_api/query_plan/query_plan_api_external_experimental.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,28 +35,38 @@
 
 #include "../api_external_common.h"
 #include "../string/string_api_external.h"
-#include "tiledb.h"
 #include "tiledb/api/c_api/context/context_api_external.h"
+#include "tiledb/api/c_api/query/query_api_external.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * TODO
+ * Fetches a query plan string representation given a context and a
+ * unsubmitted yet fully formed query object.
+ * The returned query plan is represented as valid JSON, but the API
+ * is still experimental, there is no JSON schema describing it and
+ * the content of the returned query plan will most likely change.
  * **Example:**
  *
  * @code{.c}
- * TODO
+ * tiledb_string_handle_t *str_handle;
+ * const char *plan;
+ * size_t len;
+ * tiledb_query_get_plan(ctx, query, &str_handle);
+ * tiledb_string_view(str_handle, &plan, &len);
  * @endcode
  *
- * @param TODO
+ * @param ctx The TileDB context
+ * @param query An unsubmitted yet fully formed query object
+ * @param plan The query plan string to be created
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_query_get_plan(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    tiledb_string_handle_t** rv) TILEDB_NOEXCEPT;
+    tiledb_string_handle_t** plan) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }

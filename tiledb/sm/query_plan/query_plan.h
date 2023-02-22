@@ -33,6 +33,8 @@
 #ifndef TILEDB_QUERY_PLAN_H
 #define TILEDB_QUERY_PLAN_H
 
+#include <string>
+#include <vector>
 #include "tiledb/common/common.h"
 
 using namespace tiledb::common;
@@ -40,7 +42,96 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class QueryPlan {};
+class Query;
+enum class Layout : uint8_t;
+enum class ArrayType : uint8_t;
+
+/**
+ * Query plan information
+ */
+class QueryPlan {
+ public:
+  /* ****************************** */
+  /*   CONSTRUCTORS & DESTRUCTORS   */
+  /* ****************************** */
+
+  /**
+   * Default Constructor
+   * Deleted, a QueryPlan object doesn't make sense without a Query
+   */
+  QueryPlan() = delete;
+
+  /**
+   * Constructor
+   *
+   * @param query A query object for which we want to calculate the plan
+   */
+  QueryPlan(Query& query);
+
+  /* ****************************** */
+  /*              API               */
+  /* ****************************** */
+
+  /**
+   * Dump a valid json string representation of the query plan information.
+   * This output is designed for human consumption and there is currently
+   * no schema that defines the structure of the returned json string.
+   *
+   * @return a json representation of the query plan
+   */
+  std::string dump_json(uint32_t indent = 4);
+
+ private:
+  /* ****************************** */
+  /*       PRIVATE ATTRIBUTES       */
+  /* ****************************** */
+
+  /** The uri of the queried array */
+  std::string array_uri_;
+
+  /** The storage backend as seen by VFS */
+  std::string vfs_backend_;
+
+  /** Query layout */
+  Layout query_layout_;
+
+  /** The strategy name used by the query */
+  std::string strategy_name_;
+
+  /** The dense/sparse array type */
+  ArrayType array_type_;
+
+  /** A list of queried attributes */
+  std::vector<std::string> attributes_;
+
+  /** A list of queried dimensions */
+  std::vector<std::string> dimensions_;
+
+  /* ****************************** */
+  /*       PRIVATE FUNCTIONS        */
+  /* ****************************** */
+
+  /** Set the uri of the queried array */
+  void set_array_uri(const std::string& uri);
+
+  /** Set the storage backend as seen by VFS */
+  void set_vfs_backend(const std::string& backend);
+
+  /** Set the query layout */
+  void set_query_layout(Layout layout);
+
+  /** Set the strategy name used by the query */
+  void set_strategy_name(const std::string& strategy);
+
+  /** Set the dense/sparse array type */
+  void set_array_type(ArrayType type);
+
+  /** Set the list of queried attributes */
+  void set_attributes(const std::vector<std::string>& attrs);
+
+  /** Set the list of queried dimensions */
+  void set_dimensions(const std::vector<std::string>& dims);
+};
 
 }  // namespace sm
 }  // namespace tiledb

@@ -447,7 +447,8 @@ QueryBuffer Query::buffer(const std::string& name) const {
 }
 
 Status Query::finalize() {
-  if (status_ == QueryStatus::UNINITIALIZED) {
+  if (status_ == QueryStatus::UNINITIALIZED ||
+      status_ == QueryStatus::INITIALIZED) {
     return Status::Ok();
   }
 
@@ -684,7 +685,8 @@ Status Query::get_attr_serialization_state(
 }
 
 bool Query::has_results() const {
-  if (status_ == QueryStatus::UNINITIALIZED || type_ != QueryType::READ) {
+  if (status_ == QueryStatus::UNINITIALIZED ||
+      status_ == QueryStatus::INITIALIZED || type_ != QueryType::READ) {
     return false;
   }
 
@@ -697,7 +699,8 @@ bool Query::has_results() const {
 
 void Query::init() {
   // Only if the query has not been initialized before
-  if (status_ == QueryStatus::UNINITIALIZED) {
+  if (status_ == QueryStatus::UNINITIALIZED ||
+      status_ == QueryStatus::INITIALIZED) {
     // Check if the array got closed
     if (array_ == nullptr || !array_->is_open()) {
       throw QueryStatusException(
@@ -804,7 +807,8 @@ Status Query::cancel() {
 }
 
 Status Query::process() {
-  if (status_ == QueryStatus::UNINITIALIZED)
+  if (status_ == QueryStatus::UNINITIALIZED ||
+      status_ == QueryStatus::INITIALIZED)
     return logger_->status(
         Status_QueryError("Cannot process query; Query is not initialized"));
   status_ = QueryStatus::INPROGRESS;
@@ -831,6 +835,8 @@ Status Query::process() {
         dynamic_cast<StrategyBase*>(strategy_.get())->stats()->reset();
         strategy_ = nullptr;
       }
+      // This changes the query into INITIALIZED, but it's ok as the status
+      // is updated correctly below
       throw_if_not_ok(create_strategy(true));
     }
   }
@@ -1196,6 +1202,9 @@ Status Query::create_strategy(bool skip_checks_serialization) {
     return logger_->status(
         Status_QueryError("Cannot create strategy; allocation failed"));
 
+  // Transition the query into INITIALIZED state
+  set_status(QueryStatus::INITIALIZED);
+
   return Status::Ok();
 }
 
@@ -1555,13 +1564,13 @@ Status Query::set_est_result_size(
 }
 
 Status Query::set_layout(Layout layout) {
+  if (status_ != QueryStatus::UNINITIALIZED) {
+    return logger_->status(
+        Status_QueryError("Cannot set layout after initialization"));
+  }
+
   switch (type_) {
     case (QueryType::READ):
-      if (status_ != QueryStatus::UNINITIALIZED) {
-        return logger_->status(
-            Status_QueryError("Cannot set layout after initialization"));
-      }
-
       break;
 
     case (QueryType::WRITE):
@@ -1603,6 +1612,11 @@ Status Query::set_condition(const QueryCondition& condition) {
     return logger_->status(Status_QueryError(
         "Cannot set query condition; Operation not applicable "
         "to write queries"));
+  }
+  if (status_ != tiledb::sm::QueryStatus::UNINITIALIZED) {
+    return logger_->status(Status_QueryError(
+        "Cannot set query condition; Setting a query condition on an already"
+        "initialized query is not supported."));
   }
 
   condition_ = condition;

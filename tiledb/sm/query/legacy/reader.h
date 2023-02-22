@@ -114,6 +114,9 @@ class Reader : public ReaderBase, public IQueryStrategy {
   /** Resets the reader object. */
   void reset();
 
+  /** Returns the name of the strategy */
+  std::string name();
+
   /**
    * Computes the result cell slabs for the input subarray, given the
    * input result coordinates (retrieved from the sparse fragments).

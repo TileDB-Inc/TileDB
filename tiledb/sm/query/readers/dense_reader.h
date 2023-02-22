@@ -139,6 +139,9 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   /** Resets the reader object. */
   void reset();
 
+  /** Returns the name of the strategy */
+  std::string name();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

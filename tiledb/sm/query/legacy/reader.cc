@@ -270,6 +270,10 @@ Status Reader::dowork() {
 void Reader::reset() {
 }
 
+std::string Reader::name() {
+  return "LegacyReader";
+}
+
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */

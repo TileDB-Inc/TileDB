@@ -297,6 +297,12 @@ void SparseGlobalOrderReader<BitmapType>::reset() {
 }
 
 template <class BitmapType>
+std::string SparseGlobalOrderReader<BitmapType>::name() {
+  return "SparseGlobalOrderReader<" + std::string(typeid(BitmapType).name()) +
+         ">";
+}
+
+template <class BitmapType>
 void SparseGlobalOrderReader<BitmapType>::load_all_tile_offsets() {
   if (!tile_offsets_loaded_) {
     // Make sure we have enough space for tile offsets data.

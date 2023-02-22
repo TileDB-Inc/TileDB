@@ -5,8 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,17 +30,26 @@
  * This file defines the query_plan C API of TileDB.
  **/
 
-#include "tiledb/api/c_api_support/c_api_support.h"
-
+#include "../string/string_api_internal.h"
 #include "query_plan_api_external_experimental.h"
+#include "tiledb/api/c_api_support/c_api_support.h"
+#include "tiledb/sm/c_api/api_argument_validator.h"
+
+#include "tiledb/sm/query_plan/query_plan.h"
 
 namespace tiledb::api {
 
 capi_return_t tiledb_query_get_plan(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_string_handle_t** rv) {
-  (void)ctx;
-  (void)query;
-  (void)rv;
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, query) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  sm::QueryPlan plan(*query->query_);
+
+  *rv = tiledb_string_handle_t::make_handle(plan.dump_json());
+
   return TILEDB_OK;
 }
 

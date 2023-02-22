@@ -220,6 +220,10 @@ Status DenseReader::dowork() {
 void DenseReader::reset() {
 }
 
+std::string DenseReader::name() {
+  return "DenseReader";
+}
+
 template <class OffType>
 Status DenseReader::dense_read() {
   auto type{array_schema_.domain().dimension_ptr(0)->type()};

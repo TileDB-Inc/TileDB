@@ -183,5 +183,9 @@ Status DeletesAndUpdates::dowork() {
 void DeletesAndUpdates::reset() {
 }
 
+std::string DeletesAndUpdates::name() {
+  return "DeletesAndUpdates";
+}
+
 }  // namespace sm
 }  // namespace tiledb
