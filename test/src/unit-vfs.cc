@@ -183,9 +183,8 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
                 .ok());
     REQUIRE(
         config
-            .set("vfs.azure.blob_endpoint", "127.0.0.1:10000/devstoreaccount1")
+            .set("vfs.azure.blob_endpoint", "http://127.0.0.1:10000/devstoreaccount1")
             .ok());
-    REQUIRE(config.set("vfs.azure.use_https", "false").ok());
 
     root_pairs.emplace_back(
         URI("azure://" + tiledb::test::random_name("vfs") + "/"),

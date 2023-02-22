@@ -102,7 +102,6 @@ void AzureFx::init_azure(Config&& config, ConfMap settings) {
 
   // Set provided config settings for connection
   std::for_each(settings.begin(), settings.end(), set_conf);
-  REQUIRE(config.set("vfs.azure.use_https", "false").ok());
 
   // Initialize
   REQUIRE(azure_.init(config, &thread_pool_).ok());

@@ -226,11 +226,8 @@ Status SupportedFsAzure::prepare_config(
       tiledb_config_set(
           config,
           "vfs.azure.blob_endpoint",
-          "127.0.0.1:10000/devstoreaccount1",
+          "http://127.0.0.1:10000/devstoreaccount1",
           &error) == TILEDB_OK);
-  REQUIRE(
-      tiledb_config_set(config, "vfs.azure.use_https", "false", &error) ==
-      TILEDB_OK);
   return Status::Ok();
 }
 
