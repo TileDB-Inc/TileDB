@@ -1049,3 +1049,12 @@ struct BufferedChunk {
   # the size in bytes of the intermediate chunk
 }
 
+struct ArrayConsolidationRequest {
+  config @0 :Config;
+  # Config
+}
+
+struct ArrayVacuumRequest {
+  config @0 :Config;
+  # Config
+}
