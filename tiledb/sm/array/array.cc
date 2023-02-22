@@ -1666,6 +1666,17 @@ uint64_t Array::max_tile_size() {
       ArrayDirectory(resources_, array_uri_, timestamp_start, timestamp_end);
 
   MemoryTracker memory_tracker;
+  bool found = false;
+  uint64_t memory_budget;
+  throw_if_not_ok(
+      config_.get<uint64_t>("sm.mem.total_budget", &memory_budget, &found));
+  assert(found);
+  // Set the memory budget for the array
+  if (!memory_tracker.set_budget(memory_budget)) {
+    throw StatusException(Status_ArrayError(
+        "Memory budget is too small to open array"));
+  }
+
   auto&& [st, array_schema_latest, array_schemas_all, fragment_metadata] =
       storage_manager_->load_array_schemas_and_fragment_metadata(
           array_dir, &memory_tracker, enc_key, true);
