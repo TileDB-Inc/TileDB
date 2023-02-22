@@ -28,10 +28,6 @@ You can use TileDB to store data in a variety of applications, such as Genomics,
 You can install the TileDB library as follows:
 
 ```bash
-# Homebrew (macOS):
-$ brew update
-$ brew install tiledb-inc/stable/tiledb
-
 # Or Conda (macOS, Linux, Windows):
 $ conda install -c conda-forge tiledb
 ```
