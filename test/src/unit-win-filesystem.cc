@@ -242,4 +242,17 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
   CHECK(win_.is_file(URI(test_file_path + "2").to_path()));
 }
 
+TEST_CASE_METHOD(
+    WinFx, "Test writing large files", "[.nightly_only][windows][large-file]") {
+  const uint64_t five_gigabytes = static_cast<uint64_t>(5) << 30;
+
+  std::string file = TEMP_DIR + "\\large-file";
+
+  std::vector<uint8_t> buffer(five_gigabytes);
+
+  REQUIRE(win_.write(file, buffer.data(), buffer.size()).ok());
+
+  REQUIRE(win_.read(file, 0, buffer.data(), buffer.size()).ok());
+}
+
 #endif  // _WIN32
