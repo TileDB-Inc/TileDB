@@ -25,16 +25,3 @@ if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/external/vcpkg/LICENSE.txt")
     message(FATAL_ERROR "The submodules were not downloaded! _TILEDB_CMAKE_INIT_GIT_SUBMODULES"
                         " was turned off or failed. Please update submodules and try again.")
 endif()
-
-#############
-# vcpkg setup
-
-if (TILEDB_GCS)
-    # TODO our_vcpkg_enable
-    list(APPEND VCPKG_MANIFEST_FEATURES "gcs")
-
-    # This must be set *before* `project()`
-    # TODO make sure this works with user-specified toolchain
-    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/external/vcpkg/scripts/buildsystems/vcpkg.cmake"
-      CACHE STRING "Vcpkg toolchain file")
-endif()
