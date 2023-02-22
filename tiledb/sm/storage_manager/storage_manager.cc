@@ -183,6 +183,9 @@ StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
   const auto& meta_uris = array_dir.fragment_meta_uris();
   auto fragments_to_load = filtered_fragment_uris.fragment_uris();
   if (include_vaccummed_fragments) {
+    fragments_to_load.reserve(
+        fragments_to_load.size() +
+        filtered_fragment_uris.fragment_uris_to_vacuum().size());
     for (auto& uri : filtered_fragment_uris.fragment_uris_to_vacuum()) {
       std::pair<uint64_t, uint64_t> fragment_timestamp_range;
       throw_if_not_ok(

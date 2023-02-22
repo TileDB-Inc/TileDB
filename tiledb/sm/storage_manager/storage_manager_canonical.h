@@ -45,7 +45,6 @@
 #include <string>
 #include <thread>
 
-#include "tiledb/api/c_api/tiledb_max_tile_sizes.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger_public.h"

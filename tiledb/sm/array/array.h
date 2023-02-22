@@ -521,7 +521,7 @@ class Array {
   ArrayDirectory& load_array_directory();
 
   /** Return the max tile size for the array. */
-  void get_max_tile_size(tiledb_fragment_max_tile_sizes_t* max_tile_sizes);
+  uint64_t max_tile_size();
 
  private:
   /* ********************************* */
@@ -644,7 +644,33 @@ class Array {
    */
   std::mutex mtx_;
 
-  /* ********************************* */
+  /** struct used for gathering various max tile sizes. */
+  struct tiledb_fragment_max_tile_sizes_t {
+    tiledb_fragment_max_tile_sizes_t() {
+      max_in_memory_tile_size = 0;
+      max_persisted_tile_size = 0;
+
+      max_persisted_fixed_tile_size = 0;
+      max_in_memory_fixed_tile_size = 0;
+      max_persisted_tile_size_var = 0;
+      max_in_memory_tile_size_var = 0;
+      max_persisted_tile_size_validity = 0;
+      max_in_memory_tile_size_validity = 0;
+    }
+
+    uint64_t max_in_memory_tile_size;
+    uint64_t max_persisted_tile_size;
+
+    uint64_t max_persisted_fixed_tile_size;
+    uint64_t max_in_memory_fixed_tile_size;
+    uint64_t max_persisted_tile_size_var;
+    uint64_t max_in_memory_tile_size_var;
+    uint64_t max_persisted_tile_size_validity;
+    uint64_t max_in_memory_tile_size_validity;
+
+  };
+
+/* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
@@ -735,8 +761,17 @@ class Array {
    **/
   void set_array_closed();
 
-  /** Obtain the Fragment's max tile for the named attribute or dimension */
-  void get_max_tile_size_for_attribute_dim(
+  /** 
+   * Adjust the max tile sizes for the named attribute or dimension 
+   * 
+   * @param maxs struct providing/returning max tile sizes for named attr/dim
+   * @param f fragment to eval tile sizes for attr/dim
+   * @param name attr/dim to eval tile sizes of
+   * @param var_size indicator of whether considered item is variable size
+   * @param is_nullable indicator of whether considered item is nullable
+   * @param enc_key to be used accessing fragment data
+   */
+  void evalute_attribute_dim_tile_sizes_for_maxs(
       tiledb_fragment_max_tile_sizes_t& maxs,
       FragmentMetadata& f,
       const std::string& name,

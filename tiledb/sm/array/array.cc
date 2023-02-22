@@ -1522,128 +1522,7 @@ void Array::set_array_closed() {
   is_open_ = false;
 }
 
-void Array::ensure_array_is_valid_for_delete(const URI& uri) {
-  // Check that query type is MODIFY_EXCLUSIVE
-  if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    throw ArrayStatusException(
-        "[ensure_array_is_valid_for_delete] "
-        "Query type must be MODIFY_EXCLUSIVE to perform a delete.");
-  }
-
-  // Check that array is open
-  if (!is_open() && !controller().is_open(uri)) {
-    throw ArrayStatusException(
-        "[ensure_array_is_valid_for_delete] Array is closed");
-  }
-
-  // Check that array is not in the process of opening or closing
-  if (is_opening_or_closing_) {
-    throw ArrayStatusException(
-        "[ensure_array_is_valid_for_delete] "
-        "May not perform simultaneous open or close operations.");
-  }
-}
-
-void ensure_supported_schema_version_for_read(format_version_t version) {
-  // We do not allow reading from arrays written by newer version of TileDB
-  if (version > constants::format_version) {
-    std::stringstream err;
-    err << "Cannot open array for reads; Array format version (";
-    err << version;
-    err << ") is newer than library format version (";
-    err << constants::format_version << ")";
-    throw Status_StorageManagerError(err.str());
-  }
-}
-
-void Array::set_serialized_array_open() {
-  is_open_ = true;
-}
-
-void Array::get_max_tile_size(
-    tiledb_fragment_max_tile_sizes_t* max_tile_sizes) {
-  assert(max_tile_sizes);
-
-  if (remote_) {
-    auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr) {
-      throw StatusException(
-          Status_Error("Failed to obtain maximum tile size; remote array with "
-                       "no REST client."));
-    }
-
-    throw_if_not_ok(rest_client->get_array_maximum_tile_size_from_rest(
-        array_uri_, &max_tile_sizes->max_in_memory_tile_size));
-    return;
-  }
-
-  // Check that array is open
-  if (!is_open()) {
-    throw StatusException(Status_ArrayError(
-        "[Array::array_get_fragment_tile_max_size] Array is closed"));
-  }
-
-  if (query_type_ != QueryType::READ) {
-    throw StatusException(Status_ArrayError(
-        "[Array::array_get_fragment_tile_max_size] needs QueryType::READ"));
-  }
-
-  memset(max_tile_sizes, 0, sizeof(*max_tile_sizes));
-
-  EncryptionKey enc_key(config_);
-  uint64_t timestamp_start = 0;
-  uint64_t timestamp_end = UINT64_MAX;
-
-  // Create an ArrayDirectory object and then load the array schemas
-  // and fragment metadata.
-  auto array_dir =
-      ArrayDirectory(resources_, array_uri_, timestamp_start, timestamp_end);
-
-  MemoryTracker memory_tracker;
-  auto&& [st, array_schema_latest, array_schemas_all, fragment_metadata] =
-      storage_manager_->load_array_schemas_and_fragment_metadata(
-          array_dir, &memory_tracker, enc_key, true);
-  throw_if_not_ok(st);
-
-  tiledb_fragment_max_tile_sizes_t& maxs = *max_tile_sizes;
-  memset(&maxs, 0, sizeof(maxs));
-
-  for (auto& frag : *fragment_metadata) {
-    auto& frags_schema = frag->array_schema();
-
-    if (!frags_schema->dense()) {
-      get_max_tile_size_for_attribute_dim(
-          maxs, *frag, constants::coords, false, false, enc_key);
-    }
-
-    auto& attributes = frags_schema->attributes();
-    for (auto& attrib : attributes) {
-      get_max_tile_size_for_attribute_dim(
-          maxs,
-          *frag,
-          attrib->name(),
-          attrib->var_size(),
-          attrib->nullable(),
-          enc_key);
-    }
-    auto dim_names = frags_schema->dim_names();
-    for (auto& dim_name : dim_names) {
-      get_max_tile_size_for_attribute_dim(
-          maxs,
-          *frag,
-          dim_name,
-          frags_schema->var_size(dim_name),
-          frags_schema->is_nullable(dim_name),
-          enc_key);
-    }
-  }
-  maxs.max_in_memory_tile_size = std::max(
-      maxs.max_in_memory_fixed_tile_size, maxs.max_in_memory_tile_size_var);
-  maxs.max_persisted_tile_size = std::max(
-      maxs.max_persisted_fixed_tile_size, maxs.max_persisted_tile_size_var);
-}
-
-void Array::get_max_tile_size_for_attribute_dim(
+void Array::evalute_attribute_dim_tile_sizes_for_maxs(
     tiledb_fragment_max_tile_sizes_t& maxs,
     FragmentMetadata& f,
     const std::string& name,
@@ -1711,6 +1590,126 @@ void Array::get_max_tile_size_for_attribute_dim(
         max_frag_in_memory_tile_size_validity);
   }
 }
+
+void Array::ensure_array_is_valid_for_delete(const URI& uri) {
+  // Check that query type is MODIFY_EXCLUSIVE
+  if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
+    throw ArrayStatusException(
+        "[ensure_array_is_valid_for_delete] "
+        "Query type must be MODIFY_EXCLUSIVE to perform a delete.");
+  }
+
+  // Check that array is open
+  if (!is_open() && !controller().is_open(uri)) {
+    throw ArrayStatusException(
+        "[ensure_array_is_valid_for_delete] Array is closed");
+  }
+
+  // Check that array is not in the process of opening or closing
+  if (is_opening_or_closing_) {
+    throw ArrayStatusException(
+        "[ensure_array_is_valid_for_delete] "
+        "May not perform simultaneous open or close operations.");
+  }
+}
+
+void ensure_supported_schema_version_for_read(format_version_t version) {
+  // We do not allow reading from arrays written by newer version of TileDB
+  if (version > constants::format_version) {
+    std::stringstream err;
+    err << "Cannot open array for reads; Array format version (";
+    err << version;
+    err << ") is newer than library format version (";
+    err << constants::format_version << ")";
+    throw Status_StorageManagerError(err.str());
+  }
+}
+
+void Array::set_serialized_array_open() {
+  is_open_ = true;
+}
+
+uint64_t Array::max_tile_size() {
+  tiledb_fragment_max_tile_sizes_t max_tile_sizes;
+
+  if (remote_) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr) {
+      throw StatusException(
+          Status_Error("Failed to obtain maximum tile size; remote array with "
+                       "no REST client."));
+    }
+
+    throw_if_not_ok(rest_client->get_array_maximum_tile_size_from_rest(
+        array_uri_, &max_tile_sizes.max_in_memory_tile_size));
+    return max_tile_sizes.max_in_memory_tile_size;
+  }
+
+  // Check that array is open
+  if (!is_open()) {
+    throw StatusException(Status_ArrayError(
+        "[Array::array_get_fragment_tile_max_size] Array is closed"));
+  }
+
+  if (query_type_ != QueryType::READ) {
+    throw StatusException(Status_ArrayError(
+        "[Array::array_get_fragment_tile_max_size] needs QueryType::READ"));
+  }
+
+  EncryptionKey enc_key(config_);
+  uint64_t timestamp_start = 0;
+  uint64_t timestamp_end = UINT64_MAX;
+
+  // Create an ArrayDirectory object and then load the array schemas
+  // and fragment metadata.
+  auto array_dir =
+      ArrayDirectory(resources_, array_uri_, timestamp_start, timestamp_end);
+
+  MemoryTracker memory_tracker;
+  auto&& [st, array_schema_latest, array_schemas_all, fragment_metadata] =
+      storage_manager_->load_array_schemas_and_fragment_metadata(
+          array_dir, &memory_tracker, enc_key, true);
+  throw_if_not_ok(st);
+
+  tiledb_fragment_max_tile_sizes_t& maxs = max_tile_sizes;
+
+  for (auto& frag : *fragment_metadata) {
+    auto& frags_schema = frag->array_schema();
+
+    if (!frags_schema->dense()) {
+      evalute_attribute_dim_tile_sizes_for_maxs(
+          maxs, *frag, constants::coords, false, false, enc_key);
+    }
+
+    auto& attributes = frags_schema->attributes();
+    for (auto& attrib : attributes) {
+      evalute_attribute_dim_tile_sizes_for_maxs(
+          maxs,
+          *frag,
+          attrib->name(),
+          attrib->var_size(),
+          attrib->nullable(),
+          enc_key);
+    }
+    auto dim_names = frags_schema->dim_names();
+    for (auto& dim_name : dim_names) {
+      evalute_attribute_dim_tile_sizes_for_maxs(
+          maxs,
+          *frag,
+          dim_name,
+          frags_schema->var_size(dim_name),
+          frags_schema->is_nullable(dim_name),
+          enc_key);
+    }
+  }
+  maxs.max_in_memory_tile_size = std::max(
+      maxs.max_in_memory_fixed_tile_size, maxs.max_in_memory_tile_size_var);
+  maxs.max_persisted_tile_size = std::max(
+      maxs.max_persisted_fixed_tile_size, maxs.max_persisted_tile_size_var);
+      
+  return max_tile_sizes.max_in_memory_tile_size;
+}
+
 
 }  // namespace sm
 }  // namespace tiledb
