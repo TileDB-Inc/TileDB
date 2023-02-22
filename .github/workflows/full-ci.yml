@@ -2,6 +2,7 @@ name: "Full CI"
 on:
   push:
     branches:
+      - vcpkg-test
       - dev
       - release-*
       - refs/tags/*
