@@ -2,15 +2,39 @@
 
 #include <tiledb\sm\c_api\tiledb_version.h>
 
+#if 01
+#define TDB_STRINGIZE_HELPER(x) #x
+#define TDB_STRINGIZE(x) TDB_STRINGIZE_HELPER(x)
+#define TDB_WIN32_FILEVERSION \
+  TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH, 0
+#define TDB_WIN32_FILEVERSION_STR                            \
+  TDB_STRINGIZE(TILEDB_VERSION_MAJOR)                        \
+  "," TDB_STRINGIZE(TILEDB_VERSION_MINOR) "," TDB_STRINGIZE( \
+      TILEDB_VERSION_PATCH)
+#endif
+
 1 VERSIONINFO
+/* Windows Explorer apparently presents FILEVERSION info from this field. */
 FILEVERSION TDB_WIN32_FILEVERSION
+/* Windows Explorer apparently DOES NOT present PRODUCTVERSION info from this field. */
+PRODUCTVERSION TDB_WIN32_FILEVERSION
 BEGIN
   BLOCK "StringFileInfo"
   BEGIN
     BLOCK "040904E4"
     BEGIN
-      VALUE "FileVersion", TDB_WIN32_FILEVERSION_STR
+      VALUE "CompanyName", "TileDB Inc."
+      VALUE "FileDescription", "TileDB Embedded"
+/* Windows Explorer apparently DOES NOT present FileVersion info from this field. */
+/*      VALUE "FileVersion", TDB_WIN32_FILEVERSION_STR*/
+      VALUE "InternalName", "tiledb"
+      VALUE "LegalCopyright", "Copyright (c) TileDB Inc. Licensed under the MIT License."
+      VALUE "OriginalName", "tiledb.dll"
       VALUE "ProductName", "TileDB Embedded"
+      VALUE "prodvers", TDB_WIN32_FILEVERSION_STR
+/* Windows Explorer apparently presents ProductVersion info from this field. */
+      VALUE "ProductVersion", TDB_WIN32_FILEVERSION_STR
+/*      VALUE "ProductVersion", "xyz123a"*/
     END
   END
   /* apparently VarFileInfo block required for ProductVersion/ProductName to display */
