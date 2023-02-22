@@ -2,6 +2,7 @@ name: "Full CI"
 on:
   push:
     branches:
+      - pd/*
       - dev
       - release-*
       - refs/tags/*
