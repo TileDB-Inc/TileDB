@@ -1673,8 +1673,8 @@ uint64_t Array::max_tile_size() {
   assert(found);
   // Set the memory budget for the array
   if (!memory_tracker.set_budget(memory_budget)) {
-    throw StatusException(Status_ArrayError(
-        "Memory budget is too small to open array"));
+    throw StatusException(
+        Status_ArrayError("Memory budget is too small to open array"));
   }
 
   auto&& [st, array_schema_latest, array_schemas_all, fragment_metadata] =
