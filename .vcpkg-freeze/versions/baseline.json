@@ -1,0 +1,72 @@
+{
+  "default": {
+    "abseil": {
+      "baseline": "20220623.1",
+      "port-version": 0
+    },
+    "bzip2": {
+      "baseline": "1.0.8",
+      "port-version": 3
+    },
+    "c-ares": {
+      "baseline": "1.18.1",
+      "port-version": 1
+    },
+    "catch2": {
+      "baseline": "3.3.1",
+      "port-version": 0
+    },
+    "crc32c": {
+      "baseline": "1.1.2",
+      "port-version": 1
+    },
+    "curl": {
+      "baseline": "7.86.0",
+      "port-version": 1
+    },
+    "google-cloud-cpp": {
+      "baseline": "2.6.0",
+      "port-version": 0
+    },
+    "grpc": {
+      "baseline": "1.50.1",
+      "port-version": 0
+    },
+    "nlohmann-json": {
+      "baseline": "3.11.2",
+      "port-version": 0
+    },
+    "openssl": {
+      "baseline": "3.0.7",
+      "port-version": 1
+    },
+    "protobuf": {
+      "baseline": "3.21.8",
+      "port-version": 0
+    },
+    "re2": {
+      "baseline": "2021-11-01",
+      "port-version": 1
+    },
+    "upb": {
+      "baseline": "2022-06-21",
+      "port-version": 0
+    },
+    "vcpkg-cmake": {
+      "baseline": "2022-10-30",
+      "port-version": 0
+    },
+    "vcpkg-cmake-config": {
+      "baseline": "2022-02-06",
+      "port-version": 1
+    },
+    "zlib": {
+      "baseline": "1.2.13",
+      "port-version": 0
+    },
+    "zstd": {
+      "baseline": "1.5.2",
+      "port-version": 2
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "versions": [
+    {
+      "path": "$/ports/bzip2/1.0.8_3",
+      "port-version": 3,
+      "version-semver": "1.0.8"
+    }
+  ]
+}

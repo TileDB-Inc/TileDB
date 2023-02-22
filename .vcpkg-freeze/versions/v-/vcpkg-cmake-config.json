@@ -1,0 +1,9 @@
+{
+  "versions": [
+    {
+      "path": "$/ports/vcpkg-cmake-config/2022-02-06_1",
+      "port-version": 1,
+      "version-date": "2022-02-06"
+    }
+  ]
+}

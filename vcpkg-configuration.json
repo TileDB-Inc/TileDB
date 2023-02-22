@@ -1,0 +1,6 @@
+{
+  "default-registry": {
+    "kind": "filesystem",
+    "path": "./.vcpkg-freeze"
+  }
+}
