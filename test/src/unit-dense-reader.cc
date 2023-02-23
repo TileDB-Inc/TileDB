@@ -160,7 +160,7 @@ void CDenseFx::update_config() {
   REQUIRE(
       tiledb_config_set(
           config,
-          "sm.mem.tile_memory_budget",
+          "sm.mem.tile_upper_memory_limit",
           tile_upper_memory_limit_.c_str(),
           &error) == TILEDB_OK);
   REQUIRE(error == nullptr);

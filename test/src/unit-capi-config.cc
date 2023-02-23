@@ -277,7 +277,7 @@ void check_save_to_file() {
   ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_query_condition "
         "0.25\n";
   ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges 0.1\n";
-  ss << "sm.mem.tile_memory_budget 2147483648\n";
+  ss << "sm.mem.tile_upper_memory_limit 2147483648\n";
   ss << "sm.mem.total_budget 10737418240\n";
   ss << "sm.memory_budget 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
@@ -615,7 +615,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.query.sparse_global_order.reader"] = "refactored";
   all_param_values["sm.query.sparse_unordered_with_dups.reader"] = "refactored";
   all_param_values["sm.mem.malloc_trim"] = "true";
-  all_param_values["sm.mem.tile_memory_budget"] = "2147483648";
+  all_param_values["sm.mem.tile_upper_memory_limit"] = "2147483648";
   all_param_values["sm.mem.total_budget"] = "10737418240";
   all_param_values["sm.mem.reader.sparse_global_order.ratio_coords"] = "0.5";
   all_param_values["sm.mem.reader.sparse_global_order.ratio_query_condition"] =
