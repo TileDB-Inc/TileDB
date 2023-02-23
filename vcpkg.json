@@ -18,6 +18,7 @@
                 {
                     "name": "google-cloud-cpp",
                     "version>=": "2.6.0",
+                    "default-features": false,
                     "features": [ "storage" ]
                 }
             ]
