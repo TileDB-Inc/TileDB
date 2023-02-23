@@ -140,14 +140,8 @@ void DenseReader::initialize_memory_budget() {
       config_.get<uint64_t>("sm.mem.total_budget", &memory_budget_, &found));
   assert(found);
   throw_if_not_ok(config_.get<uint64_t>(
-      "sm.mem.tile_memory_budget", &tile_memory_budget_, &found));
+      "sm.mem.tile_upper_memory_limit", &tile_upper_memory_limit_, &found));
   assert(found);
-
-  // Validate memory budget values.
-  if (tile_memory_budget_ > memory_budget_) {
-    throw DenseReaderStatusException(
-        "sm.mem.tile_memory_budget > sm.mem.total_budget");
-  }
 
   // Set the memory budget for the array
   if (!array_memory_tracker_->set_budget(memory_budget_)) {
@@ -650,8 +644,8 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
     uint64_t t_start,
     std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles) {
   // For easy reference.
-  const uint64_t left_over_budget = std::min(
-      tile_memory_budget_,
+  const uint64_t upper_memory_limit = std::min(
+      tile_upper_memory_limit_,
       memory_budget_ - array_memory_tracker_->get_memory_usage());
   const auto& tile_coords = subarray.tile_coords();
 
@@ -684,8 +678,8 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
     }
 
     // If we reached the memory budget, stop. Always include the first tile.
-    if (t_end != t_start &&
-        required_memory_query_condition + condition_memory > left_over_budget) {
+    if (t_end != t_start && required_memory_query_condition + condition_memory >
+                                upper_memory_limit) {
       done = true;
       break;
     } else {
@@ -705,7 +699,7 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
       // If we reached the memory budget, stop. Always include the first tile.
       uint64_t r_idx = n - condition_names.size();
       if (t_end != t_start &&
-          required_memory[r_idx] + tile_memory > left_over_budget) {
+          required_memory[r_idx] + tile_memory > upper_memory_limit) {
         done = true;
         break;
       } else {

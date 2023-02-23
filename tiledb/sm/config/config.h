@@ -202,7 +202,7 @@ class Config {
   static const std::string SM_MEM_MALLOC_TRIM;
 
   /** Maximum tile memory budget for readers. */
-  static const std::string SM_TILE_MEMORY_BUDGET;
+  static const std::string SM_UPPER_MEMORY_LIMIT;
 
   /** Maximum memory budget for readers and writers. */
   static const std::string SM_MEM_TOTAL_BUDGET;
