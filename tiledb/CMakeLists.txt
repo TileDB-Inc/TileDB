@@ -928,9 +928,8 @@ endif()
 ############################################################
 
 if(WIN32)
-  # TBD: What happens with this creating a static library?
-  #list(APPEND TILEDB_CORE_SOURCES ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/tiledb_win32_verinfo.rc)
-  add_library(tiledb_shared SHARED $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS> ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/tiledb_win32_verinfo.rc)
+  # The .rc file will be created elsewhere (currently below) via configure_file()
+  add_library(tiledb_shared SHARED $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS> ${CMAKE_CURRENT_BINARY_DIR}/tiledb_win32_verinfo.rc)
   target_include_directories(tiledb_shared
     PRIVATE
       "${TILEDB_CORE_INCLUDE_DIR}"
@@ -1179,3 +1178,14 @@ configure_file(
 )
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/tiledb.pc
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+
+if (WIN32)
+  # WIN32 RC file creation (for VERSIONINFO)
+  set(TDB_WIN32_FILEVERSION "${ver_major},${ver_minor},${ver_patch},0")
+  set(TDB_WIN32_FILEVERSION_STR "\"${ver_major}.${ver_minor}.${ver_patch}\"")
+  configure_file(
+          ${CMAKE_CURRENT_SOURCE_DIR}/../cmake/inputs/tiledb_win32_verinfo.rc.in
+          ${CMAKE_CURRENT_BINARY_DIR}/tiledb_win32_verinfo.rc
+          @ONLY
+  )
+endif()
