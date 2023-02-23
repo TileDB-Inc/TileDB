@@ -107,11 +107,22 @@ Status array_open_from_capnp(
  *
  * @param fragments fragments to serialize
  * @param array_fragments_builder cap'n proto class
- * @return Status
  */
-void fragments_to_capnp(
+void fragments_list_to_capnp(
     const std::vector<URI>& fragments,
     capnp::ArrayFragments::Builder* array_fragments_builder);
+
+/**
+ * Convert Cap'n Proto message to Array Fragments
+ *
+ * @param array_fragments_reader cap'n proto class
+ * @param fragments fragments to deserialize into
+ * @param array_uri uri of the array that the fragments belong to
+ */
+void fragments_list_from_capnp(
+    capnp::ArrayFragments::Reader& array_fragments_reader,
+    std::vector<URI>& fragments,
+    const URI& array_uri);
 
 /**
  * Convert Cap'n Proto message to Array Metadata
@@ -174,10 +185,16 @@ Status array_open_deserialize(
     SerializationType serialize_type,
     const Buffer& serialized_buffer);
 
-void fragments_serialize(
+void fragments_list_serialize(
     const std::vector<URI>& fragments,
     SerializationType serialize_type,
     Buffer* serialized_buffer);
+
+void fragments_list_deserialize(
+    std::vector<URI>& fragments,
+    const URI& array_uri,
+    SerializationType serialize_type,
+    const Buffer& serialized_buffer);
 
 Status metadata_serialize(
     Metadata* metadata,

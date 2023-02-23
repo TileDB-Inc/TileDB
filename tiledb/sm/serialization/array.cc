@@ -377,33 +377,44 @@ Status array_open_from_capnp(
   return Status::Ok();
 }
 
-void fragments_to_capnp(
+void fragments_list_to_capnp(
     const std::vector<URI>& fragments,
-    capnp::ArrayFragments::Builder* array_fragments_builder) {
-  auto fragments_list_builder =
-      array_fragments_builder->initUris(fragments.size());
+    capnp::ArrayFragmentsList::Builder* array_fragments_list_builder) {
+  auto entries_builder =
+      array_fragments_list_builder->initEntries(fragments.size());
   for (size_t i = 0; i < fragments.size(); i++) {
-    // As in fragment_info_to_capnp
-    // Strip full URI & send only the name of the fragment for security reasons
-    fragments_list_builder.set(
-        i, fragments[i].remove_trailing_slash().last_path_part());
+    const auto& relative_uri = serialize_array_uri_to_relative(fragments[i]);
+    entries_builder.set(i, relative_uri);
   }
 }
 
-void fragments_serialize(
+void fragments_list_from_capnp(
+    capnp::ArrayFragmentsList::Reader& array_fragments_list_reader,
+    std::vector<URI>& fragments,
+    const URI& array_uri) {
+  if (array_fragments_list_reader.hasEntries()) {
+    for (auto entry : array_fragments_list_reader.getEntries()) {
+      fragments.reserve(array_fragments_list_reader.getEntries().size());
+      fragments.emplace_back(
+          deserialize_array_uri_to_absolute(entry.cStr(), array_uri));
+    }
+  }
+}
+
+void fragments_list_serialize(
     const std::vector<URI>& fragments,
     SerializationType serialize_type,
     Buffer* serialized_buffer) {
   if (fragments.empty()) {
     throw ArraySerializationStatusException(
-        "[fragments_serialize] Fragments vector is empty");
+        "[fragments_list_serialize] Fragments vector is empty");
   }
 
   try {
     // Serialize
     ::capnp::MallocMessageBuilder message;
-    auto builder = message.initRoot<capnp::ArrayFragments>();
-    fragments_to_capnp(fragments, &builder);
+    auto builder = message.initRoot<capnp::ArrayFragmentsList>();
+    fragments_list_to_capnp(fragments, &builder);
 
     // Copy to buffer
     serialized_buffer->reset_size();
@@ -431,17 +442,67 @@ void fragments_serialize(
       }
       default: {
         throw ArraySerializationStatusException(
-            "[fragments_serialize] Unknown serialization type passed");
+            "[fragments_list_serialize] Unknown serialization type passed");
       }
     }
 
   } catch (kj::Exception& e) {
     throw ArraySerializationStatusException(
-        "[fragments_serialize] kj::Exception: " +
+        "[fragments_list_serialize] kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
     throw ArraySerializationStatusException(
-        "[fragments_serialize] exception " + std::string(e.what()));
+        "[fragments_list_serialize] exception " + std::string(e.what()));
+  }
+}
+
+void fragments_list_deserialize(
+    std::vector<URI>& fragments,
+    const URI& array_uri,
+    SerializationType serialize_type,
+    const Buffer& serialized_buffer) {
+  if (array_uri.is_invalid()) {
+    throw ArraySerializationStatusException(
+        "[fragments_list_deserialize] Invalid Array URI");
+  }
+
+  try {
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        ::capnp::MallocMessageBuilder message_builder;
+        auto builder = message_builder.initRoot<capnp::ArrayFragmentsList>();
+        json.decode(
+            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
+            builder);
+        auto reader = builder.asReader();
+        // Deserialize
+        fragments_list_from_capnp(reader, fragments, array_uri);
+        break;
+      }
+      case SerializationType::CAPNP: {
+        const auto mBytes =
+            reinterpret_cast<const kj::byte*>(serialized_buffer.data());
+        ::capnp::FlatArrayMessageReader msg_reader(kj::arrayPtr(
+            reinterpret_cast<const ::capnp::word*>(mBytes),
+            serialized_buffer.size() / sizeof(::capnp::word)));
+        auto reader = msg_reader.getRoot<capnp::ArrayFragmentsList>();
+        // Deserialize
+        fragments_list_from_capnp(reader, fragments, array_uri);
+        break;
+      }
+      default: {
+        throw ArraySerializationStatusException(
+            "[fragments_list_deserialize] Unknown serialization type passed");
+      }
+    }
+  } catch (kj::Exception& e) {
+    throw ArraySerializationStatusException(
+        "[fragments_list_deserialize] kj::Exception: " +
+        std::string(e.getDescription().cStr()));
+  } catch (std::exception& e) {
+    throw ArraySerializationStatusException(
+        "[fragments_list_deserialize] exception " + std::string(e.what()));
   }
 }
 
@@ -772,7 +833,7 @@ Status array_serialize(Array*, SerializationType, Buffer*, const bool) {
 Status array_deserialize(
     Array*, SerializationType, const Buffer&, StorageManager*) {
   return LOG_STATUS(Status_SerializationError(
-      "Cannot serialize; serialization not enabled."));
+      "Cannot deserialize; serialization not enabled."));
 }
 
 Status array_open_serialize(const Array&, SerializationType, Buffer*) {
@@ -785,9 +846,16 @@ Status array_open_deserialize(Array*, SerializationType, const Buffer&) {
       "Cannot deserialize; serialization not enabled."));
 }
 
-void fragments_serialize(const std::vector<URI>&, SerializationType, Buffer*) {
+void fragments_list_serialize(
+    const std::vector<URI>&, SerializationType, Buffer*) {
   throw ArraySerializationStatusException(
       "Cannot serialize; serialization not enabled.");
+}
+
+void fragments_list_deserialize(
+    std::vector<URI>&, const URI&, SerializationType, const Buffer&) {
+  throw ArraySerializationStatusException(
+      "Cannot deserialize; serialization not enabled.");
 }
 
 Status metadata_serialize(Metadata*, SerializationType, Buffer*) {
@@ -797,7 +865,7 @@ Status metadata_serialize(Metadata*, SerializationType, Buffer*) {
 
 Status metadata_deserialize(Metadata*, SerializationType, const Buffer&) {
   return LOG_STATUS(Status_SerializationError(
-      "Cannot serialize; serialization not enabled."));
+      "Cannot deserialize; serialization not enabled."));
 }
 
 #endif  // TILEDB_SERIALIZATION

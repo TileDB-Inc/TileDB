@@ -1199,8 +1199,13 @@ struct BufferedChunk {
   # the size in bytes of the intermediate chunk
 }
 
+struct ArrayFragmentsList {
+  entries @0 :List(Text);
+}
+
 struct ArrayFragments {
-  uris @0 :List(Text);
+  startTimestamp @0 :UInt64;
+  endTimestamp @1 :UInt64;
 }
 
 struct ArrayConsolidationRequest {

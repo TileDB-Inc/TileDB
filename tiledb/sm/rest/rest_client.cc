@@ -367,7 +367,8 @@ void RestClient::delete_fragments_from_rest(
 void RestClient::delete_fragments_list_from_rest(
     const URI& uri, const std::vector<URI>& fragment_uris) {
   Buffer buff;
-  serialization::fragments_serialize(fragment_uris, serialization_type_, &buff);
+  serialization::fragments_list_serialize(
+      fragment_uris, serialization_type_, &buff);
   // Wrap in a list
   BufferList serialized;
   throw_if_not_ok(serialized.add_buffer(std::move(buff)));
@@ -1495,7 +1496,7 @@ void RestClient::delete_fragments_from_rest(const URI&, uint64_t, uint64_t) {
 }
 
 void RestClient::delete_fragments_list_from_rest(
-    const URI& uri, const std::vector<URI>& fragment_uris) {
+    const URI&, const std::vector<URI>&) {
   throw StatusException(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }

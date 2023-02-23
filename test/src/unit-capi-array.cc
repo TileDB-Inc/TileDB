@@ -2666,3 +2666,66 @@ TEST_CASE_METHOD(
   remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 #endif
 }
+
+TEST_CASE_METHOD(
+    ArrayFx,
+    "Test array fragments serialization",
+    "[array][fragments][serialization]") {
+#ifdef TILEDB_SERIALIZATION
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "array_fragments_serialization";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+  create_dense_vector(array_name);
+
+  // Write fragments at timestamps 1, 2
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  write_fragment(array, 1);
+  write_fragment(array, 2);
+  CHECK(tiledb::test::num_commits(array_name) == 2);
+  CHECK(tiledb::test::num_fragments(array_name) == 2);
+
+  // Get the fragment info object
+  tiledb_fragment_info_t* fragment_info = nullptr;
+  rc = tiledb_fragment_info_alloc(ctx_, array_name.c_str(), &fragment_info);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_fragment_info_load(ctx_, fragment_info);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Get the fragment URIs
+  const char* uri1;
+  rc = tiledb_fragment_info_get_fragment_uri(ctx_, fragment_info, 0, &uri1);
+  REQUIRE(rc == TILEDB_OK);
+  const char* uri2;
+  rc = tiledb_fragment_info_get_fragment_uri(ctx_, fragment_info, 1, &uri2);
+  REQUIRE(rc == TILEDB_OK);
+
+  std::vector<URI> fragments;
+  fragments.emplace_back(URI(uri1));
+  fragments.emplace_back(URI(uri2));
+
+  // Serialize and deserialize fragments
+  tiledb_buffer_t* buff;
+  rc = tiledb_buffer_alloc(ctx_, &buff);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb::sm::serialization::fragments_list_serialize(
+      fragments, tiledb::sm::SerializationType::CAPNP, &buff->buffer());
+  std::vector<URI> deserialized_fragments;
+  tiledb::sm::serialization::fragments_list_deserialize(
+      deserialized_fragments,
+      URI(array_name.c_str()),
+      tiledb::sm::SerializationType::CAPNP,
+      buff->buffer());
+
+  // Compare original fragments to deserialized_fragments
+  CHECK(fragments == deserialized_fragments);
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_buffer_free(&buff);
+  tiledb_fragment_info_free(&fragment_info);
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+#endif
+}
