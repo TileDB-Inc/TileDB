@@ -133,17 +133,17 @@ set(TILEDB_BASE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tiledb")
 # Set experimental TileDB Source
 set(TILEDB_EXPERIMENTAL_BASE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/experimental")
 
-# Perform superbuild config and exit.
-if (TILEDB_SUPERBUILD)
-  project(TileDB-Superbuild)
-  message(STATUS "Starting TileDB superbuild.")
-  include("cmake/TileDB-Superbuild.cmake")
-  message(STATUS "Install prefix is ${CMAKE_INSTALL_PREFIX}")
-  # The superbuild file incorporates this file as an external project with the
-  # superbuild off. Thus we stop processing this file here, knowing that we'll
-  # come back later.
-  return()
-endif()
+# # Perform superbuild config and exit.
+# if (TILEDB_SUPERBUILD)
+#   project(TileDB-Superbuild)
+#   message(STATUS "Starting TileDB superbuild.")
+#   include("cmake/TileDB-Superbuild.cmake")
+#   message(STATUS "Install prefix is ${CMAKE_INSTALL_PREFIX}")
+#   # The superbuild file incorporates this file as an external project with the
+#   # superbuild off. Thus we stop processing this file here, knowing that we'll
+#   # come back later.
+#   return()
+# endif()
 
 project(TileDB)
 message(STATUS "Starting TileDB regular build.")

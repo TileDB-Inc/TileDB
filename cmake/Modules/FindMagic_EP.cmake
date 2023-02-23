@@ -41,7 +41,7 @@ if(TILEDB_LIBMAGIC_EP_BUILT)
   find_package(libmagic PATHS ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH})
 endif()
 
-if (TILEDB_LIBMAGIC_EP_BUILT)
+if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_WEBP_EP_BUILT)
   find_path(libmagic_INCLUDE_DIR
     NAMES magic.h
     PATHS ${LIBMAGIC_PATHS}
@@ -60,21 +60,17 @@ if (TILEDB_LIBMAGIC_EP_BUILT)
 
   # Link statically if installed with the EP.
   find_library(libmagic_LIBRARIES
-    libmagic
-    PATHS ${LIBMAGIC_PATHS}
-    PATH_SUFFIXES lib a
-    #${TILEDB_DEPS_NO_DEFAULT_PATH}
-    ${NO_DEFAULT_PATH}
+    magic
   )
 
   include(FindPackageHandleStandardArgs)
   FIND_PACKAGE_HANDLE_STANDARD_ARGS(libmagic
-    REQUIRED_VARS libmagic_LIBRARIES libmagic_INCLUDE_DIR
+    REQUIRED_VARS libmagic_INCLUDE_DIR libmagic_LIBRARIES
   )
 endif()
 
 # if not yet built add it as an external project
-if(NOT TILEDB_LIBMAGIC_EP_BUILT)
+if(NOT libmagic_FOUND AND NOT TILEDB_LIBMAGIC_EP_BUILT)
   if (TILEDB_SUPERBUILD)
     message(STATUS "Adding Magic as an external project")
 
@@ -120,7 +116,7 @@ endif()
 
 find_file(libmagic_DICTIONARY magic.mgc
   PATHS ${LIBMAGIC_PATHS}
-  PATH_SUFFIXES bin share
+  PATH_SUFFIXES bin share share/libmagic/misc
   ${NO_DEFAULT_PATH}
 )
 

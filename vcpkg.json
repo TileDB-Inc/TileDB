@@ -9,8 +9,16 @@
             "version>=": "3.1.0"
         },
         {
-            "name": "curl",
-            "version>=": "7.86.0#1"
+            "name": "libmagic",
+            "version>=": "5.40#1"
+        },
+        {
+            "name": "libpng",
+            "version>=": "1.6.39"
+        },
+        {
+            "name": "libwebp",
+            "version>=": "1.2.4"
         },
         {
             "name": "lz4",
@@ -32,6 +40,31 @@
                     "version>=": "2.6.0",
                     "default-features": false,
                     "features": [ "storage" ]
+                }
+            ]
+        },
+        "s3": {
+          "description": "Enable support for S3 object storage",
+          "dependencies": [
+              {
+                  "name": "aws-crt-cpp",
+                  "version>=": "0.15.1#4"
+              },
+              {
+                  "name": "aws-sdk-cpp",
+                  "version>=": "1.9.220#3",
+                  "features": ["identity-management", "s3"]
+              }
+          ]
+        },
+        "serialization": {
+            "description": "Enable support of serialization",
+            "dependencies": [
+                {
+                    "name": "curl",
+                    "version>=": "7.86.0#1",
+                    "default-features": false,
+                    "features": ["openssl"]
                 }
             ]
         }
