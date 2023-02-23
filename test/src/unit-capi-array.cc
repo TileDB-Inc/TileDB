@@ -2682,10 +2682,31 @@ TEST_CASE_METHOD(
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
-  write_fragment(array, 1);
-  write_fragment(array, 2);
+  uint64_t start_timestamp = 1;
+  uint64_t end_timestamp = 2;
+  write_fragment(array, start_timestamp);
+  write_fragment(array, end_timestamp);
   CHECK(tiledb::test::num_commits(array_name) == 2);
   CHECK(tiledb::test::num_fragments(array_name) == 2);
+
+  // Serialize and deserialize fragment timestamps
+  tiledb_buffer_t* buff;
+  rc = tiledb_buffer_alloc(ctx_, &buff);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb::sm::serialization::fragments_timestamps_serialize(
+      start_timestamp,
+      end_timestamp,
+      tiledb::sm::SerializationType::CAPNP,
+      &buff->buffer());
+  uint64_t deserialized_start_timestamp = 0;
+  uint64_t deserialized_end_timestamp = 0;
+  tiledb::sm::serialization::fragments_timestamps_deserialize(
+      deserialized_start_timestamp,
+      deserialized_end_timestamp,
+      tiledb::sm::SerializationType::CAPNP,
+      buff->buffer());
+  CHECK(deserialized_start_timestamp == start_timestamp);
+  CHECK(deserialized_end_timestamp == end_timestamp);
 
   // Get the fragment info object
   tiledb_fragment_info_t* fragment_info = nullptr;
@@ -2706,10 +2727,7 @@ TEST_CASE_METHOD(
   fragments.emplace_back(URI(uri1));
   fragments.emplace_back(URI(uri2));
 
-  // Serialize and deserialize fragments
-  tiledb_buffer_t* buff;
-  rc = tiledb_buffer_alloc(ctx_, &buff);
-  REQUIRE(rc == TILEDB_OK);
+  // Serialize and deserialize fragments list
   tiledb::sm::serialization::fragments_list_serialize(
       fragments, tiledb::sm::SerializationType::CAPNP, &buff->buffer());
   std::vector<URI> deserialized_fragments;

@@ -96,6 +96,7 @@ CAPNP_DECLARE_SCHEMA(bde8ebd7b13d8625);
 CAPNP_DECLARE_SCHEMA(a736c51d292ca752);
 CAPNP_DECLARE_SCHEMA(cd8abc9dabc4b03f);
 CAPNP_DECLARE_SCHEMA(f9a9dbcb30534202);
+CAPNP_DECLARE_SCHEMA(fb627397ce3c9a7e);
 CAPNP_DECLARE_SCHEMA(8923140fd5c2df3f);
 CAPNP_DECLARE_SCHEMA(f5a35661031194d2);
 CAPNP_DECLARE_SCHEMA(e68edfc0939e63df);
@@ -1559,15 +1560,15 @@ struct ArrayFragmentsList {
   };
 };
 
-struct ArrayFragments {
-  ArrayFragments() = delete;
+struct ArrayFragmentsTimestamps {
+  ArrayFragmentsTimestamps() = delete;
 
   class Reader;
   class Builder;
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(8923140fd5c2df3f, 2, 0)
+    CAPNP_DECLARE_STRUCT_HEADER(fb627397ce3c9a7e, 2, 0)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -14026,9 +14027,9 @@ class ArrayFragmentsList::Pipeline {
 };
 #endif  // !CAPNP_LITE
 
-class ArrayFragments::Reader {
+class ArrayFragmentsTimestamps::Reader {
  public:
-  typedef ArrayFragments Reads;
+  typedef ArrayFragmentsTimestamps Reads;
 
   Reader() = default;
   inline explicit Reader(::capnp::_::StructReader base)
@@ -14061,9 +14062,9 @@ class ArrayFragments::Reader {
   friend class ::capnp::Orphanage;
 };
 
-class ArrayFragments::Builder {
+class ArrayFragmentsTimestamps::Builder {
  public:
-  typedef ArrayFragments Builds;
+  typedef ArrayFragmentsTimestamps Builds;
 
   Builder() = delete;  // Deleted to discourage incorrect usage.
                        // You can explicitly initialize to nullptr instead.
@@ -14104,9 +14105,9 @@ class ArrayFragments::Builder {
 };
 
 #if !CAPNP_LITE
-class ArrayFragments::Pipeline {
+class ArrayFragmentsTimestamps::Pipeline {
  public:
-  typedef ArrayFragments Pipelines;
+  typedef ArrayFragmentsTimestamps Pipelines;
 
   inline Pipeline(decltype(nullptr))
       : _typeless(nullptr) {
@@ -30757,30 +30758,32 @@ ArrayFragmentsList::Builder::disownEntries() {
           _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
-inline ::uint64_t ArrayFragments::Reader::getStartTimestamp() const {
+inline ::uint64_t ArrayFragmentsTimestamps::Reader::getStartTimestamp() const {
   return _reader.getDataField<::uint64_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint64_t ArrayFragments::Builder::getStartTimestamp() {
+inline ::uint64_t ArrayFragmentsTimestamps::Builder::getStartTimestamp() {
   return _builder.getDataField<::uint64_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
-inline void ArrayFragments::Builder::setStartTimestamp(::uint64_t value) {
+inline void ArrayFragmentsTimestamps::Builder::setStartTimestamp(
+    ::uint64_t value) {
   _builder.setDataField<::uint64_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
-inline ::uint64_t ArrayFragments::Reader::getEndTimestamp() const {
+inline ::uint64_t ArrayFragmentsTimestamps::Reader::getEndTimestamp() const {
   return _reader.getDataField<::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint64_t ArrayFragments::Builder::getEndTimestamp() {
+inline ::uint64_t ArrayFragmentsTimestamps::Builder::getEndTimestamp() {
   return _builder.getDataField<::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void ArrayFragments::Builder::setEndTimestamp(::uint64_t value) {
+inline void ArrayFragmentsTimestamps::Builder::setEndTimestamp(
+    ::uint64_t value) {
   _builder.setDataField<::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }

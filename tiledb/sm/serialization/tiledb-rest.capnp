@@ -1203,7 +1203,7 @@ struct ArrayFragmentsList {
   entries @0 :List(Text);
 }
 
-struct ArrayFragments {
+struct ArrayFragmentsTimestamps {
   startTimestamp @0 :UInt64;
   endTimestamp @1 :UInt64;
 }

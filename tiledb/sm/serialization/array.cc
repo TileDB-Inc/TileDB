@@ -377,6 +377,128 @@ Status array_open_from_capnp(
   return Status::Ok();
 }
 
+void fragments_timestamps_to_capnp(
+    uint64_t start_timestamp,
+    uint64_t end_timestamp,
+    capnp::ArrayFragmentsTimestamps::Builder* array_fragments_builder) {
+  array_fragments_builder->setStartTimestamp(start_timestamp);
+  array_fragments_builder->setEndTimestamp(end_timestamp);
+}
+
+void fragments_timestamps_from_capnp(
+    capnp::ArrayFragmentsTimestamps::Reader& array_fragments_reader,
+    uint64_t& start_timestamp,
+    uint64_t& end_timestamp) {
+  start_timestamp = array_fragments_reader.getStartTimestamp();
+  end_timestamp = array_fragments_reader.getEndTimestamp();
+
+  if (start_timestamp > end_timestamp) {
+    throw std::logic_error(
+        "[fragments_timestamps_from_capnp] Deserialized timestamps are "
+        "invalid");
+  }
+}
+
+void fragments_timestamps_serialize(
+    uint64_t start_timestamp,
+    uint64_t end_timestamp,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer) {
+  try {
+    // Serialize
+    ::capnp::MallocMessageBuilder message;
+    auto builder = message.initRoot<capnp::ArrayFragmentsTimestamps>();
+    fragments_timestamps_to_capnp(start_timestamp, end_timestamp, &builder);
+
+    // Copy to buffer
+    serialized_buffer->reset_size();
+    serialized_buffer->reset_offset();
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        kj::String capnp_json = json.encode(builder);
+        const auto json_len = capnp_json.size();
+        const char nul = '\0';
+        // size does not include needed null terminator, so add +1
+        throw_if_not_ok(serialized_buffer->realloc(json_len + 1));
+        throw_if_not_ok(serialized_buffer->write(capnp_json.cStr(), json_len));
+        throw_if_not_ok(serialized_buffer->write(&nul, 1));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
+        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
+        const auto nbytes = message_chars.size();
+        throw_if_not_ok(serialized_buffer->realloc(nbytes));
+        throw_if_not_ok(
+            serialized_buffer->write(message_chars.begin(), nbytes));
+        break;
+      }
+      default: {
+        throw ArraySerializationStatusException(
+            "[fragments_timestamps_serialize] Unknown serialization type "
+            "passed");
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    throw ArraySerializationStatusException(
+        "[fragments_timestamps_serialize] kj::Exception: " +
+        std::string(e.getDescription().cStr()));
+  } catch (std::exception& e) {
+    throw ArraySerializationStatusException(
+        "[fragments_timestamps_serialize] exception " + std::string(e.what()));
+  }
+}
+
+void fragments_timestamps_deserialize(
+    uint64_t& start_timestamp,
+    uint64_t& end_timestamp,
+    SerializationType serialize_type,
+    const Buffer& serialized_buffer) {
+  try {
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        ::capnp::MallocMessageBuilder message_builder;
+        auto builder =
+            message_builder.initRoot<capnp::ArrayFragmentsTimestamps>();
+        json.decode(
+            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
+            builder);
+        auto reader = builder.asReader();
+        // Deserialize
+        fragments_timestamps_from_capnp(reader, start_timestamp, end_timestamp);
+        break;
+      }
+      case SerializationType::CAPNP: {
+        const auto mBytes =
+            reinterpret_cast<const kj::byte*>(serialized_buffer.data());
+        ::capnp::FlatArrayMessageReader msg_reader(kj::arrayPtr(
+            reinterpret_cast<const ::capnp::word*>(mBytes),
+            serialized_buffer.size() / sizeof(::capnp::word)));
+        auto reader = msg_reader.getRoot<capnp::ArrayFragmentsTimestamps>();
+        // Deserialize
+        fragments_timestamps_from_capnp(reader, start_timestamp, end_timestamp);
+        break;
+      }
+      default: {
+        throw ArraySerializationStatusException(
+            "[fragments_timestamps_deserialize] "
+            "Unknown serialization type passed");
+      }
+    }
+  } catch (kj::Exception& e) {
+    throw ArraySerializationStatusException(
+        "[fragments_timestamps_deserialize] kj::Exception: " +
+        std::string(e.getDescription().cStr()));
+  } catch (std::exception& e) {
+    throw ArraySerializationStatusException(
+        "[fragments_timestamps_deserialize] exception " +
+        std::string(e.what()));
+  }
+}
+
 void fragments_list_to_capnp(
     const std::vector<URI>& fragments,
     capnp::ArrayFragmentsList::Builder* array_fragments_list_builder) {
@@ -844,6 +966,18 @@ Status array_open_serialize(const Array&, SerializationType, Buffer*) {
 Status array_open_deserialize(Array*, SerializationType, const Buffer&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
+}
+
+void fragments_timestamps_serialize(
+    uint64_t, uint64_t, SerializationType, Buffer*) {
+  throw ArraySerializationStatusException(
+      "Cannot serialize; serialization not enabled.");
+}
+
+void fragments_timestamps_deserialize(
+    uint64_t&, uint64_t&, SerializationType, const Buffer&) {
+  throw ArraySerializationStatusException(
+      "Cannot deserialize; serialization not enabled.");
 }
 
 void fragments_list_serialize(

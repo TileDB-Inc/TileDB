@@ -103,24 +103,48 @@ Status array_open_from_capnp(
     const capnp::ArrayMetadata::Reader& array_open_reader, Array* array);
 
 /**
- * Convert Array Fragments to Cap'n Proto message
+ * Convert Array FragmentsTimestamps to Cap'n Proto message
+ *
+ * @param start_timestamp the start timestamp to serialize
+ * @param end_timestamp the end timestamp to serialize
+ * @param array_fragments_builder cap'n proto class
+ */
+void fragments_timestamps_to_capnp(
+    uint64_t start_timestamp,
+    uint64_t end_timestamp,
+    capnp::ArrayFragmentsTimestamps::Builder* array_fragments_builder);
+
+/**
+ * Convert Cap'n Proto message to Array FragmentsTimestamps
+ *
+ * @param array_fragments_reader cap'n proto class
+ * @param start_timestamp the start timestamp to deserialize into
+ * @param end_timestamp the end timestamp to deserialize into
+ */
+void fragments_timestamps_from_capnp(
+    capnp::ArrayFragmentsTimestamps::Reader& array_fragments_reader,
+    uint64_t& start_timestamp,
+    uint64_t& end_timestamp);
+
+/**
+ * Convert Array FragmentsList to Cap'n Proto message
  *
  * @param fragments fragments to serialize
  * @param array_fragments_builder cap'n proto class
  */
 void fragments_list_to_capnp(
     const std::vector<URI>& fragments,
-    capnp::ArrayFragments::Builder* array_fragments_builder);
+    capnp::ArrayFragmentsList::Builder* array_fragments_builder);
 
 /**
- * Convert Cap'n Proto message to Array Fragments
+ * Convert Cap'n Proto message to Array FragmentsList
  *
  * @param array_fragments_reader cap'n proto class
  * @param fragments fragments to deserialize into
  * @param array_uri uri of the array that the fragments belong to
  */
 void fragments_list_from_capnp(
-    capnp::ArrayFragments::Reader& array_fragments_reader,
+    capnp::ArrayFragmentsList::Reader& array_fragments_reader,
     std::vector<URI>& fragments,
     const URI& array_uri);
 
@@ -182,6 +206,18 @@ Status array_open_serialize(
  */
 Status array_open_deserialize(
     Array* array,
+    SerializationType serialize_type,
+    const Buffer& serialized_buffer);
+
+void fragments_timestamps_serialize(
+    uint64_t start_timestamp,
+    uint64_t end_timestamp,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer);
+
+void fragments_timestamps_deserialize(
+    uint64_t& start_timestamp,
+    uint64_t& end_timestamp,
     SerializationType serialize_type,
     const Buffer& serialized_buffer);
 

@@ -347,6 +347,13 @@ void RestClient::delete_array_from_rest(const URI& uri) {
 
 void RestClient::delete_fragments_from_rest(
     const URI& uri, uint64_t timestamp_start, uint64_t timestamp_end) {
+  Buffer buff;
+  serialization::fragments_timestamps_serialize(
+      timestamp_start, timestamp_end, serialization_type_, &buff);
+  // Wrap in a list
+  BufferList serialized;
+  throw_if_not_ok(serialized.add_buffer(std::move(buff)));
+
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
@@ -356,12 +363,16 @@ void RestClient::delete_fragments_from_rest(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
                           "/" + curlc.url_escape(array_uri) +
-                          "start_timestamp=" + std::to_string(timestamp_start) +
-                          "&end_timestamp=" + std::to_string(timestamp_end);
+                          "/delete_fragments";
 
   Buffer returned_data;
-  throw_if_not_ok(curlc.delete_data(
-      stats_, url, serialization_type_, &returned_data, cache_key));
+  throw_if_not_ok(curlc.post_data(
+      stats_,
+      url,
+      serialization_type_,
+      &serialized,
+      &returned_data,
+      cache_key));
 }
 
 void RestClient::delete_fragments_list_from_rest(
