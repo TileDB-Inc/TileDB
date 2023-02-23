@@ -193,7 +193,7 @@ struct ArraySchema {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(d71de32f98e296fe, 2, 14)
+    CAPNP_DECLARE_STRUCT_HEADER(d71de32f98e296fe, 2, 13)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -2387,12 +2387,6 @@ class ArraySchema::Reader {
       ::capnp::Kind::STRUCT>::Reader
   getDimensionLabels() const;
 
-  inline bool hasDimensionLabelMap() const;
-  inline ::tiledb::sm::serialization::capnp::Map<
-      ::capnp::Text,
-      ::tiledb::sm::serialization::capnp::DimensionLabel>::Reader
-  getDimensionLabelMap() const;
-
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -2592,28 +2586,6 @@ class ArraySchema::Builder {
       ::capnp::Kind::STRUCT>>
   disownDimensionLabels();
 
-  inline bool hasDimensionLabelMap();
-  inline ::tiledb::sm::serialization::capnp::Map<
-      ::capnp::Text,
-      ::tiledb::sm::serialization::capnp::DimensionLabel>::Builder
-  getDimensionLabelMap();
-  inline void setDimensionLabelMap(
-      ::tiledb::sm::serialization::capnp::Map<
-          ::capnp::Text,
-          ::tiledb::sm::serialization::capnp::DimensionLabel>::Reader value);
-  inline ::tiledb::sm::serialization::capnp::Map<
-      ::capnp::Text,
-      ::tiledb::sm::serialization::capnp::DimensionLabel>::Builder
-  initDimensionLabelMap();
-  inline void adoptDimensionLabelMap(
-      ::capnp::Orphan<::tiledb::sm::serialization::capnp::Map<
-          ::capnp::Text,
-          ::tiledb::sm::serialization::capnp::DimensionLabel>>&& value);
-  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Map<
-      ::capnp::Text,
-      ::tiledb::sm::serialization::capnp::DimensionLabel>>
-  disownDimensionLabelMap();
-
  private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -2642,10 +2614,6 @@ class ArraySchema::Pipeline {
   getOffsetFilterPipeline();
   inline ::tiledb::sm::serialization::capnp::FilterPipeline::Pipeline
   getValidityFilterPipeline();
-  inline ::tiledb::sm::serialization::capnp::Map<
-      ::capnp::Text,
-      ::tiledb::sm::serialization::capnp::DimensionLabel>::Pipeline
-  getDimensionLabelMap();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -14947,84 +14915,6 @@ ArraySchema::Builder::disownDimensionLabels() {
                                           .getPointerField(
                                               ::capnp::bounded<12>() *
                                               ::capnp::POINTERS));
-}
-
-inline bool ArraySchema::Reader::hasDimensionLabelMap() const {
-  return !_reader.getPointerField(::capnp::bounded<13>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline bool ArraySchema::Builder::hasDimensionLabelMap() {
-  return !_builder.getPointerField(::capnp::bounded<13>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline ::tiledb::sm::serialization::capnp::Map<
-    ::capnp::Text,
-    ::tiledb::sm::serialization::capnp::DimensionLabel>::Reader
-ArraySchema::Reader::getDimensionLabelMap() const {
-  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
-      ::capnp::Text,
-      ::tiledb::sm::serialization::capnp::DimensionLabel>>::
-      get(_reader.getPointerField(::capnp::bounded<13>() * ::capnp::POINTERS));
-}
-inline ::tiledb::sm::serialization::capnp::Map<
-    ::capnp::Text,
-    ::tiledb::sm::serialization::capnp::DimensionLabel>::Builder
-ArraySchema::Builder::getDimensionLabelMap() {
-  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
-      ::capnp::Text,
-      ::tiledb::sm::serialization::capnp::DimensionLabel>>::
-      get(_builder.getPointerField(::capnp::bounded<13>() * ::capnp::POINTERS));
-}
-#if !CAPNP_LITE
-inline ::tiledb::sm::serialization::capnp::Map<
-    ::capnp::Text,
-    ::tiledb::sm::serialization::capnp::DimensionLabel>::Pipeline
-ArraySchema::Pipeline::getDimensionLabelMap() {
-  return ::tiledb::sm::serialization::capnp::
-      Map<::capnp::Text, ::tiledb::sm::serialization::capnp::DimensionLabel>::
-          Pipeline(_typeless.getPointerField(13));
-}
-#endif  // !CAPNP_LITE
-inline void ArraySchema::Builder::setDimensionLabelMap(
-    ::tiledb::sm::serialization::capnp::Map<
-        ::capnp::Text,
-        ::tiledb::sm::serialization::capnp::DimensionLabel>::Reader value) {
-  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
-      ::capnp::Text,
-      ::tiledb::sm::serialization::capnp::DimensionLabel>>::
-      set(_builder.getPointerField(::capnp::bounded<13>() * ::capnp::POINTERS),
-          value);
-}
-inline ::tiledb::sm::serialization::capnp::Map<
-    ::capnp::Text,
-    ::tiledb::sm::serialization::capnp::DimensionLabel>::Builder
-ArraySchema::Builder::initDimensionLabelMap() {
-  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
-      ::capnp::Text,
-      ::tiledb::sm::serialization::capnp::DimensionLabel>>::
-      init(
-          _builder.getPointerField(::capnp::bounded<13>() * ::capnp::POINTERS));
-}
-inline void ArraySchema::Builder::adoptDimensionLabelMap(
-    ::capnp::Orphan<::tiledb::sm::serialization::capnp::Map<
-        ::capnp::Text,
-        ::tiledb::sm::serialization::capnp::DimensionLabel>>&& value) {
-  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
-      ::capnp::Text,
-      ::tiledb::sm::serialization::capnp::DimensionLabel>>::
-      adopt(
-          _builder.getPointerField(::capnp::bounded<13>() * ::capnp::POINTERS),
-          kj::mv(value));
-}
-inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Map<
-    ::capnp::Text,
-    ::tiledb::sm::serialization::capnp::DimensionLabel>>
-ArraySchema::Builder::disownDimensionLabelMap() {
-  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
-      ::capnp::Text,
-      ::tiledb::sm::serialization::capnp::DimensionLabel>>::
-      disown(
-          _builder.getPointerField(::capnp::bounded<13>() * ::capnp::POINTERS));
 }
 
 inline ::uint32_t DimensionLabel::Reader::getDimensionId() const {

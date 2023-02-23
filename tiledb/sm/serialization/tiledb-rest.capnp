@@ -122,9 +122,6 @@ struct ArraySchema {
 
     dimensionLabels @14 :List(DimensionLabel);
     # Dimension labels of the array
-
-    dimensionLabelMap @15 :Map(Text, DimensionLabel);
-    # Map from dimension label names to label schemas
 }
 
 struct DimensionLabel {
