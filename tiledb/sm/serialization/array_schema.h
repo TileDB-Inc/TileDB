@@ -98,6 +98,29 @@ Status array_schema_to_capnp(
 ArraySchema array_schema_from_capnp(
     const capnp::ArraySchema::Reader& schema_reader, const URI& uri);
 
+/**
+ * Serialize a dimension label to cap'n proto object
+ *
+ * @param dim_label Dimension label to serialize
+ * @param builder Cap'n proto class.
+ * @param client_side Indicate if client or server side. We will only serialize
+ *     the dimension label array schema URI if client side and the array schema
+ *     exists.
+ */
+void dimension_label_to_capnp(
+    const DimensionLabel& dimension_label,
+    capnp::DimensionLabel::Builder* dim_label_builder,
+    const bool client_side);
+
+/**
+ * Deserialize a dimension label from a cap'n proto object
+ *
+ * @param reader Cap'n proto reader object.
+ * @return A new DimensionLabel.
+ */
+shared_ptr<DimensionLabel> dimension_label_from_capnp(
+    const capnp::DimensionLabel::Reader& reader);
+
 #endif  // TILEDB_SERIALIZATION
 
 /**
