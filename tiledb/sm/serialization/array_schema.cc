@@ -704,7 +704,7 @@ shared_ptr<DimensionLabel> dimension_label_from_capnp(
       HERE(),
       dim_label_reader.getDimensionId(),
       dim_label_reader.getName().cStr(),
-      URI(dim_label_reader.getUri().cStr()),
+      URI(dim_label_reader.getUri().cStr(), false),
       dim_label_reader.getAttributeName().cStr(),
       data_order_from_str(dim_label_reader.getOrder()),
       datatype,

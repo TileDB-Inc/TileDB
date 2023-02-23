@@ -60,6 +60,12 @@ using namespace tiledb::test;
  */
 class DenseArrayExample1 : public TemporaryDirectoryFixture {
  public:
+  /**
+   * If true, array schema is serialized before submission, to test the
+   * serialization paths.
+   */
+  bool serialize_ = false;
+
   DenseArrayExample1()
       : array_name{}
       , index_domain_{0, 3}
@@ -100,7 +106,8 @@ class DenseArrayExample1 : public TemporaryDirectoryFixture {
         ctx, array_schema, 0, "x", label_order, TILEDB_FLOAT64);
 
     // Create array
-    array_name = create_temporary_array("array_with_label_1", array_schema);
+    array_name =
+        create_temporary_array("array_with_label_1", array_schema, serialize_);
     tiledb_array_schema_free(&array_schema);
   }
 
@@ -374,6 +381,10 @@ TEST_CASE_METHOD(
     DenseArrayExample1,
     "Round trip dimension label data for dense 1d array",
     "[capi][query][DimensionLabel]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(true, false);
+#endif
+
   // Vectors for input data.
   std::vector<double> input_label_data{};
   std::vector<double> input_attr_data{};
@@ -460,6 +471,10 @@ TEST_CASE_METHOD(
     DenseArrayExample1,
     "Test error on bad dimension label order for dense array",
     "[capi][query][DimensionLabel]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(true, false);
+#endif
+
   // Vectors for input data.
   std::vector<double> input_label_data{};
   std::vector<double> input_attr_data{};
@@ -500,6 +515,9 @@ TEST_CASE_METHOD(
     DenseArrayExample1,
     "Test write array by label",
     "[capi][query][DimensionLabel]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(true, false);
+#endif
   // Vectors for input data.
   std::vector<double> input_label_data{-1.0, 0.0, 0.5, 1.0};
   std::vector<double> input_attr_data{0.5, 1.0, 1.5, 2.0};

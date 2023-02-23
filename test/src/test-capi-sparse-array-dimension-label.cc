@@ -60,6 +60,12 @@ using namespace tiledb::test;
  */
 class SparseArrayExample1 : public TemporaryDirectoryFixture {
  public:
+  /**
+   * If true, array schema is serialized before submission, to test the
+   * serialization paths.
+   */
+  bool serialize_ = false;
+
   SparseArrayExample1()
       : array_name{}
       , index_domain_{0, 3}
@@ -94,7 +100,8 @@ class SparseArrayExample1 : public TemporaryDirectoryFixture {
     tiledb_array_schema_add_dimension_label(
         ctx, array_schema, 0, "x", label_order, TILEDB_FLOAT64);
     // Create array
-    array_name = create_temporary_array("array_with_label_1", array_schema);
+    array_name =
+        create_temporary_array("array_with_label_1", array_schema, serialize_);
     tiledb_array_schema_free(&array_schema);
   }
 
@@ -299,6 +306,10 @@ TEST_CASE_METHOD(
     SparseArrayExample1,
     "Round trip dimension label data for sparse 1D array",
     "[capi][query][DimensionLabel]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(true, false);
+#endif
+
   // Input vectors.
   std::vector<uint64_t> input_index_data{};
   std::vector<double> input_label_data{};
@@ -405,6 +416,10 @@ TEST_CASE_METHOD(
     SparseArrayExample1,
     "Test error on bad dimension label order for sparse array",
     "[capi][query][DimensionLabel]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(true, false);
+#endif
+
   // Vectors for input data.
   std::vector<uint64_t> input_index_data{};
   std::vector<double> input_label_data{};
