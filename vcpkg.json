@@ -4,12 +4,24 @@
     "builtin-baseline": "f14984af3738e69f197bf0e647a8dca12de92996",
     "dependencies": [
         "bzip2",
-        "openssl",
-        "zstd",
         {
             "name": "catch2",
             "version>=": "3.1.0"
-        }
+        },
+        {
+            "name": "curl",
+            "version>=": "7.86.0#1"
+        },
+        {
+            "name": "lz4",
+            "version>=": "1.9.4#1"
+        },
+        "openssl",
+        {
+            "name": "spdlog",
+            "version>=": "1.11.0"
+        },
+        "zstd"
     ],
     "features": {
         "gcs": {
@@ -23,5 +35,15 @@
                 }
             ]
         }
-    }
+    },
+    "overrides": [
+        {
+            "name": "curl",
+            "version": "7.74.0#8"
+        },
+        {
+            "name": "lz4",
+            "version": "1.9.3#4"
+        }
+    ]
 }
