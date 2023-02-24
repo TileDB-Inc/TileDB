@@ -402,8 +402,7 @@ Status Array::open(
             timestamp_end_opened_at_,
             ArrayDirectoryMode::SCHEMA_ONLY);
       }
-      auto&& [st, array_schema_latest, array_schemas] =
-          storage_manager_->array_open_for_writes(this);
+      auto&& [st, array_schema_latest, array_schemas] = open_for_writes();
       throw_if_not_ok(st);
 
       // Set schemas
@@ -423,8 +422,7 @@ Status Array::open(
             timestamp_end_opened_at_,
             ArrayDirectoryMode::READ);
       }
-      auto&& [st, array_schema_latest, array_schemas] =
-          storage_manager_->array_open_for_writes(this);
+      auto&& [st, array_schema_latest, array_schemas] = open_for_writes();
       throw_if_not_ok(st);
 
       // Set schemas
@@ -1263,6 +1261,60 @@ Array::open_for_reads_without_fragments() {
   ensure_supported_schema_version_for_read(version);
 
   return {array_schema_latest, array_schemas_all};
+}
+
+tuple<
+    Status,
+    optional<shared_ptr<ArraySchema>>,
+    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+Array::open_for_writes() {
+  auto timer_se =
+      resources_.stats().start_timer("array_open_write_load_schemas");
+  // Checks
+  if (!resources_.vfs().supports_uri_scheme(array_uri_))
+    return {
+        resources_.logger()->status(Status_StorageManagerError(
+            "Cannot open array; URI scheme unsupported.")),
+        nullopt,
+        nullopt};
+
+  // Load array schemas
+  auto&& [st_schemas, array_schema_latest, array_schemas_all] =
+      storage_manager_->load_array_schemas(array_dir_, *encryption_key_);
+  RETURN_NOT_OK_TUPLE(st_schemas, nullopt, nullopt);
+
+  // If building experimentally, this library should not be able to
+  // write to newer-versioned or older-versioned arrays
+  // Else, this library should not be able to write to newer-versioned arrays
+  // (but it is ok to write to older arrays)
+  auto version = array_schema_latest.value()->version();
+  if constexpr (is_experimental_build) {
+    if (version != constants::format_version) {
+      std::stringstream err;
+      err << "Cannot open array for writes; Array format version (";
+      err << version;
+      err << ") is not the library format version (";
+      err << constants::format_version << ")";
+      return {
+          resources_.logger()->status(Status_StorageManagerError(err.str())),
+          nullopt,
+          nullopt};
+    }
+  } else {
+    if (version > constants::format_version) {
+      std::stringstream err;
+      err << "Cannot open array for writes; Array format version (";
+      err << version;
+      err << ") is newer than library format version (";
+      err << constants::format_version << ")";
+      return {
+          resources_.logger()->status(Status_StorageManagerError(err.str())),
+          nullopt,
+          nullopt};
+    }
+  }
+
+  return {Status::Ok(), array_schema_latest, array_schemas_all};
 }
 
 void Array::clear_last_max_buffer_sizes() {
