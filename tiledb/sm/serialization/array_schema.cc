@@ -777,12 +777,14 @@ Status array_schema_to_capnp(
 
   // Dimension labels
   auto num_labels = array_schema.dim_label_num();
-  auto dim_labels_buidler =
-      array_schema_builder->initDimensionLabels(num_labels);
-  for (size_t i = 0; i < num_labels; i++) {
-    auto dim_label_builder = dim_labels_buidler[i];
-    dimension_label_to_capnp(
-        array_schema.dimension_label(i), &dim_label_builder, client_side);
+  if (num_labels > 0) {
+    auto dim_labels_buidler =
+        array_schema_builder->initDimensionLabels(num_labels);
+    for (size_t i = 0; i < num_labels; i++) {
+      auto dim_label_builder = dim_labels_buidler[i];
+      dimension_label_to_capnp(
+          array_schema.dimension_label(i), &dim_label_builder, client_side);
+    }
   }
 
   return Status::Ok();
