@@ -24,15 +24,13 @@
 # THE SOFTWARE.
 #
 
-find_package(Catch_EP REQUIRED)
+include(unit_test)
 
-add_executable(unit_capi_query_plan EXCLUDE_FROM_ALL)
-target_sources(unit_capi_query_plan PUBLIC unit_capi_query_plan.cc)
-target_link_libraries(unit_capi_query_plan PUBLIC capi_query_plan)
-target_link_libraries(unit_capi_query_plan PUBLIC Catch2::Catch2WithMain)
-
-add_test(
-  NAME "unit_capi_query_plan"
-  COMMAND $<TARGET_FILE:unit_capi_query_plan>
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
+commence(unit_test capi_query_plan)
+  this_target_sources(unit_capi_query_plan.cc)
+  this_target_object_libraries(capi_query_plan)
+  if (NOT MSVC)
+      target_compile_options(unit_capi_query_plan PRIVATE -Wno-deprecated-declarations)
+  endif()
+  this_target_link_libraries(tiledb_test_support_lib)
+conclude(unit_test)

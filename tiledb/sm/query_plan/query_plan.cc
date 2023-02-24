@@ -86,7 +86,7 @@ QueryPlan::QueryPlan(Query& query) {
 /* ********************************* */
 std::string QueryPlan::dump_json(uint32_t indent) {
   nlohmann::json rv = {
-      {"TileDB Query plan",
+      {"TileDB Query Plan",
        {{"Array.URI", array_uri_},
         {"Array.Type", array_type_str(array_type_)},
         {"VFS.Backend", vfs_backend_},
