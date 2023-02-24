@@ -66,7 +66,7 @@ extern "C" {
 TILEDB_EXPORT int32_t tiledb_query_get_plan(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    tiledb_string_handle_t** plan) TILEDB_NOEXCEPT;
+    tiledb_string_t** plan) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }
