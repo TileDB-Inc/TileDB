@@ -159,7 +159,7 @@ TEST_CASE(
 
   // Check dimension label properties and components.
   CHECK(dim_label->has_schema() == dim_label_clone->has_schema());
-  if (dim_label->schema() && dim_label_clone->has_schema()) {
+  if (dim_label->has_schema() && dim_label_clone->has_schema()) {
     check_array_schema_is_equivalent(
         dim_label->schema().get(), dim_label_clone->schema().get());
   }

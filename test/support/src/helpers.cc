@@ -131,9 +131,6 @@ void require_tiledb_ok(tiledb_ctx_t* ctx, int rc) {
     }
     tiledb_error_free(&err);
   }
-  if (rc != TILEDB_OK) {
-    REQUIRE(rc != TILEDB_OK);
-  }
   REQUIRE(rc == TILEDB_OK);
 }
 

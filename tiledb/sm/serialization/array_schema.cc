@@ -682,9 +682,12 @@ void dimension_label_to_capnp(
   dim_label_builder->setExternal(dimension_label.is_external());
   dim_label_builder->setRelative(dimension_label.uri_is_relative());
 
-  const auto& schema = dimension_label.schema();
-  auto schema_builder = dim_label_builder->initSchema();
-  throw_if_not_ok(array_schema_to_capnp(*schema, &schema_builder, client_side));
+  if (dimension_label.has_schema()) {
+    const auto& schema = dimension_label.schema();
+    auto schema_builder = dim_label_builder->initSchema();
+    throw_if_not_ok(
+        array_schema_to_capnp(*schema, &schema_builder, client_side));
+  }
 }
 
 shared_ptr<DimensionLabel> dimension_label_from_capnp(
@@ -693,7 +696,7 @@ shared_ptr<DimensionLabel> dimension_label_from_capnp(
   Datatype datatype = Datatype::ANY;
   throw_if_not_ok(datatype_enum(dim_label_reader.getType(), &datatype));
 
-  shared_ptr<ArraySchema> schema{};
+  shared_ptr<ArraySchema> schema = nullptr;
   if (dim_label_reader.hasSchema()) {
     auto schema_reader = dim_label_reader.getSchema();
     schema = make_shared<ArraySchema>(
