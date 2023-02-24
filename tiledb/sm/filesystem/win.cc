@@ -436,23 +436,29 @@ Status Win::read(
         get_last_error_msg("CreateFile") + ")"));
   }
 
-  LARGE_INTEGER offset_lg_int;
-  offset_lg_int.QuadPart = offset;
-  OVERLAPPED ov = {0, 0, {{0, 0}}, 0};
-  ov.Offset = offset_lg_int.LowPart;
-  ov.OffsetHigh = offset_lg_int.HighPart;
-  DWORD num_bytes_read = 0;
-  if (ReadFile(file_h, buffer, nbytes, &num_bytes_read, &ov) == 0 ||
-      num_bytes_read != nbytes) {
-    auto gle = GetLastError();
-    CloseHandle(file_h);
-    return LOG_STATUS(Status_IOError(
-        "Cannot read from file '" + path + "'; File read error " +
-        (gle != 0 ? get_last_error_msg(gle, "ReadFile") :
-                    "num_bytes_read " + std::to_string(num_bytes_read) +
-                        " != nbyes " + std::to_string(nbytes))));
-  }
-
+  do {
+    LARGE_INTEGER offset_lg_int;
+    offset_lg_int.QuadPart = offset;
+    OVERLAPPED ov = {0, 0, {{0, 0}}, 0};
+    ov.Offset = offset_lg_int.LowPart;
+    ov.OffsetHigh = offset_lg_int.HighPart;
+    DWORD num_bytes_to_read = nbytes > std::numeric_limits<DWORD>::max() ?
+                                  std::numeric_limits<DWORD>::max() :
+                                  (DWORD)nbytes;
+    DWORD num_bytes_read = 0;
+    if (ReadFile(file_h, buffer, num_bytes_to_read, &num_bytes_read, &ov) ==
+        0) {
+      auto gle = GetLastError();
+      CloseHandle(file_h);
+      return LOG_STATUS(Status_IOError(
+          "Cannot read from file '" + path + "'; File read error " +
+          (gle != 0 ? get_last_error_msg(gle, "ReadFile") :
+                      "num_bytes_read " + std::to_string(num_bytes_read) +
+                          " != nbyes " + std::to_string(nbytes))));
+    }
+    offset += num_bytes_read;
+    nbytes -= num_bytes_read;
+  } while (nbytes > 0);
   if (CloseHandle(file_h) == 0) {
     return LOG_STATUS(Status_IOError(
         "Cannot read from file '" + path + "'; File closing error " +
