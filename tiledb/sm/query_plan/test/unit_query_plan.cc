@@ -56,7 +56,7 @@ struct QueryPlanFx {
   tiledb_vfs_t* vfs_;
 
   // Vector of supported filsystems
-  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
+  const std::vector<tdb_unique_ptr<SupportedFs>> fs_vec_;
 
   // Functions
   QueryPlanFx();
@@ -68,14 +68,14 @@ struct QueryPlanFx {
 };
 
 QueryPlanFx::QueryPlanFx()
-    : fs_vec_(vfs_test_get_fs_vec()) {
+    : fs_vec_(tdb_vfs_test_get_fs_vec()) {
   // Initialize vfs test
-  REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
+  REQUIRE(tdb_vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
 }
 
 QueryPlanFx::~QueryPlanFx() {
   // Close vfs test
-  REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
+  REQUIRE(tdb_vfs_test_close(fs_vec_, ctx_, vfs_).ok());
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
 }

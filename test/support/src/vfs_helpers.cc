@@ -38,6 +38,16 @@ namespace test {
 
 std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
   std::vector<std::unique_ptr<SupportedFs>> fs_vec;
+
+  for (auto& f : tdb_vfs_test_get_fs_vec()) {
+    fs_vec.emplace_back(f.release());
+  }
+
+  return fs_vec;
+}
+
+std::vector<tdb_unique_ptr<SupportedFs>> tdb_vfs_test_get_fs_vec() {
+  std::vector<tdb_unique_ptr<SupportedFs>> fs_vec;
   bool supports_s3 = false;
   bool supports_hdfs = false;
   bool supports_azure = false;
@@ -80,6 +90,30 @@ Status vfs_test_init(
     tiledb_ctx_t** ctx,
     tiledb_vfs_t** vfs,
     tiledb_config_t* config) {
+  std::vector<SupportedFs*> vec;
+  for (auto& f : fs_vec) {
+    vec.emplace_back(f.get());
+  }
+  return raw_vfs_test_init(vec, ctx, vfs, config);
+}
+
+Status tdb_vfs_test_init(
+    const std::vector<tdb_unique_ptr<SupportedFs>>& fs_vec,
+    tiledb_ctx_t** ctx,
+    tiledb_vfs_t** vfs,
+    tiledb_config_t* config) {
+  std::vector<SupportedFs*> vec;
+  for (auto& f : fs_vec) {
+    vec.emplace_back(f.get());
+  }
+  return raw_vfs_test_init(vec, ctx, vfs, config);
+}
+
+Status raw_vfs_test_init(
+    const std::vector<SupportedFs*>& fs_vec,
+    tiledb_ctx_t** ctx,
+    tiledb_vfs_t** vfs,
+    tiledb_config_t* config) {
   tiledb_error_t* error = nullptr;
   tiledb_config_t* config_tmp = config;
   if (config_tmp == nullptr) {
@@ -107,6 +141,17 @@ Status vfs_test_init(
 
 Status vfs_test_close(
     const std::vector<std::unique_ptr<SupportedFs>>& fs_vec,
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs) {
+  for (auto& fs : fs_vec) {
+    RETURN_NOT_OK(fs->close(ctx, vfs));
+  }
+
+  return Status::Ok();
+}
+
+Status tdb_vfs_test_close(
+    const std::vector<tdb_unique_ptr<SupportedFs>>& fs_vec,
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs) {
   for (auto& fs : fs_vec) {
