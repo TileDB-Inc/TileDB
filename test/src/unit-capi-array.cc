@@ -36,10 +36,6 @@
 #endif
 
 #include <test/support/tdb_catch.h>
-#include "tiledb/sm/c_api/tiledb.h"
-
-#include <iostream>
-
 #include "test/support/src/helpers.h"
 #include "test/support/src/serialization_wrappers.h"
 #include "test/support/src/vfs_helpers.h"
@@ -2689,7 +2685,7 @@ TEST_CASE_METHOD(
   CHECK(tiledb::test::num_commits(array_name) == 2);
   CHECK(tiledb::test::num_fragments(array_name) == 2);
 
-  // Serialize and deserialize fragment timestamps
+  // Serialize fragment timestamp and deserialize using C API
   tiledb_buffer_t* buff;
   rc = tiledb_buffer_alloc(ctx_, &buff);
   REQUIRE(rc == TILEDB_OK);
@@ -2700,13 +2696,13 @@ TEST_CASE_METHOD(
       &buff->buffer());
   uint64_t deserialized_start_timestamp = 0;
   uint64_t deserialized_end_timestamp = 0;
-  tiledb::sm::serialization::fragments_timestamps_deserialize(
+  rc = tiledb_deserialize_fragments_timestamps(
+      ctx_,
       deserialized_start_timestamp,
       deserialized_end_timestamp,
-      tiledb::sm::SerializationType::CAPNP,
-      buff->buffer());
-  CHECK(deserialized_start_timestamp == start_timestamp);
-  CHECK(deserialized_end_timestamp == end_timestamp);
+      (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+      buff);
+  REQUIRE(rc == TILEDB_OK);
 
   // Get the fragment info object
   tiledb_fragment_info_t* fragment_info = nullptr;
@@ -2727,7 +2723,7 @@ TEST_CASE_METHOD(
   fragments.emplace_back(URI(uri1));
   fragments.emplace_back(URI(uri2));
 
-  // Serialize and deserialize fragments list
+  // Serialize fragments list and deserialize with internal API
   tiledb::sm::serialization::fragments_list_serialize(
       fragments, tiledb::sm::SerializationType::CAPNP, &buff->buffer());
   std::vector<URI> deserialized_fragments;

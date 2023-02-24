@@ -132,7 +132,7 @@ class RestClient {
    * at the given URI from the REST server.
    *
    * #TODO Implement API endpoint on TileDBCloud.
-   * @param uri Array URI to delete
+   * @param uri Array URI to delete fragments from
    * @param timestamp_start The start timestamp at which to delete fragments
    * @param timestamp_end The end timestamp at which to delete fragments
    */

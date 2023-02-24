@@ -58,14 +58,14 @@ namespace tiledb {
 namespace sm {
 namespace serialization {
 
-#ifdef TILEDB_SERIALIZATION
-
 class ArraySerializationStatusException : public StatusException {
  public:
   explicit ArraySerializationStatusException(const std::string& message)
       : StatusException("[TileDB::Serialization][Array]", message) {
   }
 };
+
+#ifdef TILEDB_SERIALIZATION
 
 Status metadata_to_capnp(
     const Metadata* metadata,
@@ -515,8 +515,8 @@ void fragments_list_from_capnp(
     std::vector<URI>& fragments,
     const URI& array_uri) {
   if (array_fragments_list_reader.hasEntries()) {
+    fragments.reserve(array_fragments_list_reader.getEntries().size());
     for (auto entry : array_fragments_list_reader.getEntries()) {
-      fragments.reserve(array_fragments_list_reader.getEntries().size());
       fragments.emplace_back(
           deserialize_array_uri_to_absolute(entry.cStr(), array_uri));
     }
