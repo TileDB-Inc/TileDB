@@ -217,6 +217,7 @@ Status Group::open(
 
   query_type_ = query_type;
   is_open_ = true;
+  changes_applied_ = false;
 
   return Status::Ok();
 }
