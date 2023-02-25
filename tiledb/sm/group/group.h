@@ -39,6 +39,7 @@
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/group/group_details.h"
 #include "tiledb/sm/group/group_directory.h"
 #include "tiledb/sm/group/group_member.h"
 #include "tiledb/sm/metadata/metadata.h"
@@ -51,11 +52,10 @@ namespace sm {
 
 class Group {
  public:
-  Group(
-      const URI& group_uri, StorageManager* storage_manager, uint32_t version);
+  Group(const URI& group_uri, StorageManager* storage_manager);
 
   /** Destructor. */
-  virtual ~Group() = default;
+  ~Group() = default;
 
   /** Returns the group directory object. */
   const shared_ptr<GroupDirectory> group_directory() const;
@@ -288,7 +288,7 @@ class Group {
    * @param version The format spec version.
    * @return Status
    */
-  virtual void serialize(Serializer& serializer);
+  /*virtual void serialize(Serializer& serializer);*/
 
   /**
    * Returns a Group object from the data in the input binary buffer.
@@ -297,10 +297,10 @@ class Group {
    * @param version The format spec version.
    * @return Status and Attribute
    */
-  static std::optional<tdb_shared_ptr<Group>> deserialize(
+  /*static std::optional<tdb_shared_ptr<Group>> deserialize(
       Deserializer& deserializer,
       const URI& group_uri,
-      StorageManager* storage_manager);
+      StorageManager* storage_manager);*/
 
   /**
    * Returns a Group object from the data in the input binary buffer.
@@ -309,10 +309,10 @@ class Group {
    * @param version The format spec version.
    * @return Status and Attribute
    */
-  static std::optional<tdb_shared_ptr<Group>> deserialize(
-      std::vector<shared_ptr<Deserializer>>& deserializer,
-      const URI& group_uri,
-      StorageManager* storage_manager);
+  /*  static std::optional<tdb_shared_ptr<Group>> deserialize(
+        const std::vector<shared_ptr<Deserializer>>& deserializer,
+        const URI& group_uri,
+        StorageManager* storage_manager);*/
 
   /** Returns the group URI. */
   const URI& group_uri() const;
@@ -389,6 +389,13 @@ class Group {
       bool recursive = false,
       bool print_self = true) const;
 
+  /**
+   * Group Details
+   *
+   * @return GroupDetails
+   */
+  tdb_shared_ptr<GroupDetails> group_details();
+
  protected:
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
@@ -444,24 +451,11 @@ class Group {
    */
   tdb_shared_ptr<EncryptionKey> encryption_key_;
 
-  /** The mapping of all members of this group. */
-  std::unordered_map<std::string, tdb_shared_ptr<GroupMember>> members_;
-
-  /** Vector for index based lookup. */
-  std::vector<tdb_shared_ptr<GroupMember>> members_vec_;
-
-  /** Unordered map of members by their name, if the member doesn't have a name,
-   * it will not be in the map. */
-  std::unordered_map<std::string, tdb_shared_ptr<GroupMember>> members_by_name_;
-
-  /** Mapping of members slated for adding. */
-  std::vector<tdb_shared_ptr<GroupMember>> members_to_modify_;
+  /** Group Details. */
+  tdb_shared_ptr<GroupDetails> group_details_;
 
   /** Mutex for thread safety. */
   mutable std::mutex mtx_;
-
-  /* Format version. */
-  const uint32_t version_;
 
   /* Were changes applied and is a write is required */
   bool changes_applied_;
@@ -482,15 +476,6 @@ class Group {
    * @return tuple of status and optional string
    */
   tuple<Status, optional<std::string>> generate_name() const;
-
-  /**
-   * Apply any pending member additions or removals
-   *
-   * mutates members_ and clears members_to_add_ and members_to_remove_
-   *
-   * @return Status
-   */
-  virtual Status apply_pending_changes() = 0;
 };
 }  // namespace sm
 }  // namespace tiledb

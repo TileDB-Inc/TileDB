@@ -35,7 +35,7 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/group/group.h"
-#include "tiledb/sm/group/group_v1.h"
+#include "tiledb/sm/group/group_details_v1.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -75,12 +75,12 @@ Status GroupMetaConsolidator::consolidate(
 
   // Open group for reading
   auto group_uri = URI(group_name);
-  GroupV1 group_for_reads(group_uri, storage_manager_);
+  Group group_for_reads(group_uri, storage_manager_);
   RETURN_NOT_OK(group_for_reads.open(
       QueryType::READ, config_.timestamp_start_, config_.timestamp_end_));
 
   // Open group for writing
-  GroupV1 group_for_writes(group_uri, storage_manager_);
+  Group group_for_writes(group_uri, storage_manager_);
   RETURN_NOT_OK_ELSE(
       group_for_writes.open(QueryType::WRITE),
       throw_if_not_ok(group_for_reads.close()));

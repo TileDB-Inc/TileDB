@@ -57,7 +57,8 @@
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/group/group.h"
-#include "tiledb/sm/group/group_v1.h"
+#include "tiledb/sm/group/group_details_v1.h"
+#include "tiledb/sm/group/group_details_v2.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
@@ -150,7 +151,14 @@ Status StorageManagerCanonical::group_close_for_writes(Group* group) {
 
   // Store any changes required
   if (group->changes_applied()) {
-    RETURN_NOT_OK(store_group_detail(group, *group->encryption_key()));
+    const URI& group_detail_folder_uri = group->group_detail_uri();
+    auto&& [st, group_detail_uri] = group->generate_detail_uri();
+    RETURN_NOT_OK(st);
+    RETURN_NOT_OK(store_group_detail(
+        group_detail_folder_uri,
+        group_detail_uri.value(),
+        group->group_details(),
+        *group->encryption_key()));
   }
 
   // Remove entry from open groups
@@ -1295,7 +1303,7 @@ Status StorageManagerCanonical::group_create(const std::string& group_uri) {
   std::lock_guard<std::mutex> lock{object_create_mtx_};
 
   if (uri.is_tiledb()) {
-    GroupV1 group(uri, this);
+    Group group(uri, this);
     RETURN_NOT_OK(rest_client()->post_group_create_to_rest(uri, &group));
     return Status::Ok();
   }
@@ -1796,11 +1804,10 @@ Status StorageManagerCanonical::set_tag(
 }
 
 Status StorageManagerCanonical::store_group_detail(
-    Group* group, const EncryptionKey& encryption_key) {
-  const URI& group_detail_folder_uri = group->group_detail_uri();
-  auto&& [st, group_detail_uri] = group->generate_detail_uri();
-  RETURN_NOT_OK(st);
-
+    const URI& group_detail_folder_uri,
+    const URI& group_detail_uri,
+    tdb_shared_ptr<GroupDetails> group,
+    const EncryptionKey& encryption_key) {
   // Serialize
   SizeComputationSerializer size_computation_serializer;
   group->serialize(size_computation_serializer);
@@ -1821,9 +1828,9 @@ Status StorageManagerCanonical::store_group_detail(
     RETURN_NOT_OK(vfs()->create_dir(group_detail_folder_uri));
 
   RETURN_NOT_OK(
-      store_data_to_generic_tile(tile, *group_detail_uri, encryption_key));
+      store_data_to_generic_tile(tile, group_detail_uri, encryption_key));
 
-  return st;
+  return Status::Ok();
 }
 
 Status StorageManagerCanonical::store_array_schema(
@@ -1916,7 +1923,7 @@ shared_ptr<Logger> StorageManagerCanonical::logger() const {
   return logger_;
 }
 
-tuple<Status, optional<shared_ptr<Group>>>
+tuple<Status, optional<shared_ptr<GroupDetails>>>
 StorageManagerCanonical::load_group_from_uri(
     const URI& group_uri, const URI& uri, const EncryptionKey& encryption_key) {
   auto timer_se = stats()->start_timer("sm_load_group_from_uri");
@@ -1929,11 +1936,11 @@ StorageManagerCanonical::load_group_from_uri(
 
   // Deserialize
   Deserializer deserializer(tile.data(), tile.size());
-  auto opt_group = Group::deserialize(deserializer, group_uri, this);
+  auto opt_group = GroupDetails::deserialize(deserializer, group_uri);
   return {Status::Ok(), opt_group};
 }
 
-tuple<Status, optional<shared_ptr<Group>>>
+tuple<Status, optional<shared_ptr<GroupDetails>>>
 StorageManagerCanonical::load_group_from_all_uris(
     const URI& group_uri,
     const std::vector<TimestampedURI>& uris,
@@ -1941,6 +1948,9 @@ StorageManagerCanonical::load_group_from_all_uris(
   auto timer_se = stats()->start_timer("sm_load_group_from_uri");
 
   std::vector<shared_ptr<Deserializer>> deserializers;
+  // We collect tiles, so they outlive the for loop but stoll scoped to this
+  // function We need to have a deserializer that takes ownership
+  std::vector<optional<Tile>> tiles;
   for (auto& uri : uris) {
     auto&& [st, tile_opt] =
         load_data_from_generic_tile(uri.uri_, 0, encryption_key);
@@ -1953,13 +1963,14 @@ StorageManagerCanonical::load_group_from_all_uris(
     shared_ptr<Deserializer> deserializer =
         tdb::make_shared<Deserializer>(HERE(), tile.data(), tile.size());
     deserializers.emplace_back(deserializer);
+    tiles.emplace_back(std::move(tile_opt));
   }
 
-  auto opt_group = Group::deserialize(deserializers, group_uri, this);
+  auto opt_group = GroupDetails::deserialize(deserializers, group_uri);
   return {Status::Ok(), opt_group};
 }
 
-tuple<Status, optional<shared_ptr<Group>>>
+tuple<Status, optional<shared_ptr<GroupDetails>>>
 StorageManagerCanonical::load_group_details(
     const shared_ptr<GroupDirectory>& group_directory,
     const EncryptionKey& encryption_key) {
@@ -1987,10 +1998,7 @@ StorageManagerCanonical::load_group_details(
       encryption_key);
 }
 
-std::tuple<
-    Status,
-    std::optional<
-        const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>>>
+std::tuple<Status, std::optional<tdb_shared_ptr<GroupDetails>>>
 StorageManagerCanonical::group_open_for_reads(Group* group) {
   auto timer_se = stats()->start_timer("group_open_for_reads");
 
@@ -2004,7 +2012,7 @@ StorageManagerCanonical::group_open_for_reads(Group* group) {
   open_groups_.insert(group);
 
   if (group_deserialized.has_value()) {
-    return {Status::Ok(), group_deserialized.value()->members()};
+    return {Status::Ok(), group_deserialized.value()};
   }
 
   // Return ok because having no members is acceptable if the group has never
@@ -2012,10 +2020,7 @@ StorageManagerCanonical::group_open_for_reads(Group* group) {
   return {Status::Ok(), std::nullopt};
 }
 
-std::tuple<
-    Status,
-    std::optional<
-        const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>>>
+std::tuple<Status, std::optional<tdb_shared_ptr<GroupDetails>>>
 StorageManagerCanonical::group_open_for_writes(Group* group) {
   auto timer_se = stats()->start_timer("group_open_for_writes");
 
@@ -2029,7 +2034,7 @@ StorageManagerCanonical::group_open_for_writes(Group* group) {
   open_groups_.insert(group);
 
   if (group_deserialized.has_value()) {
-    return {Status::Ok(), group_deserialized.value()->members()};
+    return {Status::Ok(), group_deserialized.value()};
   }
 
   // Return ok because having no members is acceptable if the group has never

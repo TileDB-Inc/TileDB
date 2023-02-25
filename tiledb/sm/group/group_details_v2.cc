@@ -1,5 +1,5 @@
 /**
- * @file   group_v2.cc
+ * @file   group_details_v2.cc
  *
  * @section LICENSE
  *
@@ -27,10 +27,10 @@
  *
  * @section DESCRIPTION
  *
- * This file implements TileDB Group
+ * This file implements TileDB Group Details V2
  */
 
-#include "tiledb/sm/group/group_v2.h"
+#include "tiledb/sm/group/group_details_v2.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger.h"
 
@@ -38,8 +38,8 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
-GroupV2::GroupV2(const URI& group_uri, StorageManager* storage_manager)
-    : Group(group_uri, storage_manager, GroupV2::format_version_){};
+GroupDetailsV2::GroupDetailsV2(const URI& group_uri)
+    : GroupDetails(group_uri, GroupDetailsV2::format_version_){};
 
 // ===== FORMAT =====
 // format_version (format_version_t)
@@ -47,8 +47,8 @@ GroupV2::GroupV2(const URI& group_uri, StorageManager* storage_manager)
 //   group_member #1
 //   group_member #2
 //   ...
-void GroupV2::serialize(Serializer& serializer) {
-  serializer.write<format_version_t>(GroupV2::format_version_);
+void GroupDetailsV2::serialize(Serializer& serializer) {
+  serializer.write<format_version_t>(GroupDetailsV2::format_version_);
   uint64_t group_member_num = members_.size();
   serializer.write<uint64_t>(group_member_num);
   for (auto& it : members_) {
@@ -56,12 +56,10 @@ void GroupV2::serialize(Serializer& serializer) {
   }
 }
 
-tdb_shared_ptr<Group> GroupV2::deserialize(
-    Deserializer& deserializer,
-    const URI& group_uri,
-    StorageManager* storage_manager) {
-  tdb_shared_ptr<GroupV2> group =
-      tdb::make_shared<GroupV2>(HERE(), group_uri, storage_manager);
+tdb_shared_ptr<GroupDetails> GroupDetailsV2::deserialize(
+    Deserializer& deserializer, const URI& group_uri) {
+  tdb_shared_ptr<GroupDetailsV2> group =
+      tdb::make_shared<GroupDetailsV2>(HERE(), group_uri);
 
   uint64_t member_count = 0;
   member_count = deserializer.read<uint64_t>();
@@ -77,14 +75,15 @@ tdb_shared_ptr<Group> GroupV2::deserialize(
   return group;
 }
 
-tdb_shared_ptr<Group> GroupV2::deserialize(
-    std::vector<shared_ptr<Deserializer>>& deserializers,
-    const URI& group_uri,
-    StorageManager* storage_manager) {
-  tdb_shared_ptr<GroupV2> group =
-      tdb::make_shared<GroupV2>(HERE(), group_uri, storage_manager);
+tdb_shared_ptr<GroupDetails> GroupDetailsV2::deserialize(
+    const std::vector<shared_ptr<Deserializer>>& deserializers,
+    const URI& group_uri) {
+  tdb_shared_ptr<GroupDetailsV2> group =
+      tdb::make_shared<GroupDetailsV2>(HERE(), group_uri);
 
   for (auto& deserializer : deserializers) {
+    // Read and ignore version
+    deserializer->read<format_version_t>();
     uint64_t member_count = 0;
     member_count = deserializer->read<uint64_t>();
     for (uint64_t i = 0; i < member_count; i++) {
@@ -100,7 +99,7 @@ tdb_shared_ptr<Group> GroupV2::deserialize(
   return group;
 }
 
-Status GroupV2::apply_pending_changes() {
+Status GroupDetailsV2::apply_pending_changes() {
   std::lock_guard<std::mutex> lck(mtx_);
 
   members_.clear();

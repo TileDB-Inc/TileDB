@@ -1,5 +1,5 @@
 /**
- * @file   group_v1.h
+ * @file   group_details_v1.h
  *
  * @section LICENSE
  *
@@ -27,11 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file defines TileDB Group
+ * This file defines TileDB Group Details V1
  */
 
-#ifndef TILEDB_GROUP_V1_H
-#define TILEDB_GROUP_V1_H
+#ifndef TILEDB_GROUP_DETAILS_V1_H
+#define TILEDB_GROUP_DETAILS_V1_H
 
 #include <atomic>
 
@@ -39,7 +39,7 @@
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/query_type.h"
-#include "tiledb/sm/group/group.h"
+#include "tiledb/sm/group/group_details.h"
 #include "tiledb/sm/group/group_member.h"
 #include "tiledb/sm/metadata/metadata.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -50,14 +50,14 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class Group;
+class GroupDetails;
 
-class GroupV1 : public Group {
+class GroupDetailsV1 : public GroupDetails {
  public:
-  GroupV1(const URI& group_uri, StorageManager* storage_manager);
+  GroupDetailsV1(const URI& group_uri);
 
   /** Destructor. */
-  ~GroupV1() override = default;
+  ~GroupDetailsV1() override = default;
 
   /**
    * Serializes the object members into a binary buffer.
@@ -74,10 +74,8 @@ class GroupV1 : public Group {
    * @param version The format spec version.
    * @return Status and Attribute
    */
-  static tdb_shared_ptr<Group> deserialize(
-      Deserializer& deserializer,
-      const URI& group_uri,
-      StorageManager* storage_manager);
+  static tdb_shared_ptr<GroupDetails> deserialize(
+      Deserializer& deserializer, const URI& group_uri);
 
  protected:
   /**
@@ -96,4 +94,4 @@ class GroupV1 : public Group {
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_GROUP_V1_H
+#endif  // TILEDB_GROUP_DETAILS_V1_H

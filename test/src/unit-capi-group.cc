@@ -354,7 +354,7 @@ TEST_CASE_METHOD(
       tiledb_group_put_metadata(ctx_, group, "key", TILEDB_INT32, 1, &v);
   CHECK(rc == TILEDB_ERR);
 
-  // Write metadata on an group opened in READ mode
+  // Write metadata on a group opened in READ mode
   set_group_timestamp(group, 1);
   rc = tiledb_group_open(ctx_, group, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
