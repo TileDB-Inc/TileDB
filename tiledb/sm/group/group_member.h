@@ -104,6 +104,12 @@ class GroupMember {
    */
   static tdb_shared_ptr<GroupMember> deserialize(Deserializer& deserializer);
 
+  /**
+   * Return format version
+   * @return format version
+   */
+  format_version_t version() const;
+
  protected:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

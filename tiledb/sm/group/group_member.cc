@@ -73,6 +73,10 @@ const bool& GroupMember::deleted() const {
   return deleted_;
 }
 
+format_version_t GroupMember::version() const {
+  return version_;
+}
+
 void GroupMember::serialize(Serializer&) {
   throw StatusException(
       Status_GroupMemberError("Invalid call to GroupMember::serialize"));
