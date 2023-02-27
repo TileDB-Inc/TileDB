@@ -69,42 +69,25 @@ bool Posix::both_slashes(char a, char b) {
   return a == '/' && b == '/';
 }
 
-uint64_t Posix::read_all(
-    int fd, void* buffer, uint64_t nbytes, uint64_t offset) {
+Status Posix::read_all(int fd, void* buffer, uint64_t nbytes, uint64_t offset) {
   auto bytes = reinterpret_cast<char*>(buffer);
   uint64_t nread = 0;
   do {
     ssize_t actual_read =
         ::pread(fd, bytes + nread, nbytes - nread, offset + nread);
-    if (actual_read == -1) {
-      LOG_STATUS_NO_RETURN_VALUE(
-          Status_Error(std::string("POSIX pread error: ") + strerror(errno)));
-      return nread;
-    } else {
-      nread += actual_read;
+    if (actual_read < 0) {
+      return LOG_STATUS(
+          Status_IOError(std::string("POSIX read error: ") + strerror(errno)));
+    } else if (actual_read == 0) {
+      break;
     }
+    nread += actual_read;
   } while (nread < nbytes);
 
-  return nread;
-}
-
-uint64_t Posix::pwrite_all(
-    int fd, uint64_t file_offset, const void* buffer, uint64_t nbytes) {
-  auto bytes = reinterpret_cast<const char*>(buffer);
-  uint64_t written = 0;
-  do {
-    ssize_t actual_written =
-        ::pwrite(fd, bytes + written, nbytes - written, file_offset + written);
-    if (actual_written == -1) {
-      LOG_STATUS_NO_RETURN_VALUE(
-          Status_Error(std::string("POSIX write error: ") + strerror(errno)));
-      return written;
-    } else {
-      written += actual_written;
-    }
-  } while (written < nbytes);
-
-  return written;
+  if (nread != nbytes) {
+    return LOG_STATUS(Status_IOError("POSIX incomplete read: EOF reached"));
+  }
+  return Status::Ok();
 }
 
 void Posix::adjacent_slashes_dedup(std::string* path) {
@@ -457,21 +440,16 @@ Status Posix::read(
   }
   if (nbytes > SSIZE_MAX) {
     return LOG_STATUS(Status_IOError(
-        std::string("Cannot read from file ' ") + path.c_str() +
+        std::string("Cannot read from file ' ") + path +
         "'; nbytes > SSIZE_MAX"));
   }
-  uint64_t bytes_read = read_all(fd, buffer, nbytes, offset);
-  if (bytes_read != nbytes) {
-    return LOG_STATUS(Status_IOError(
-        std::string("Cannot read from file '") + path.c_str() +
-        "'; File reading error"));
-  }
+  Status st = read_all(fd, buffer, nbytes, offset);
   // Close file
   if (close(fd)) {
-    return LOG_STATUS(Status_IOError(
-        std::string("Cannot read from file; ") + strerror(errno)));
+    LOG_STATUS_NO_RETURN_VALUE(
+        Status_IOError(std::string("Cannot close file; ") + strerror(errno)));
   }
-  return Status::Ok();
+  return st;
 }
 
 Status Posix::sync(const std::string& path) {
@@ -606,31 +584,17 @@ Status Posix::write(
 
 Status Posix::write_at(
     int fd, uint64_t file_offset, const void* buffer, uint64_t buffer_size) {
-  // Append data to the file in batches of constants::max_write_bytes
-  // bytes at a time
-  uint64_t buffer_bytes_written = 0;
   const char* buffer_bytes_ptr = static_cast<const char*>(buffer);
-  while (buffer_size > constants::max_write_bytes) {
-    uint64_t bytes_written = pwrite_all(
-        fd,
-        file_offset + buffer_bytes_written,
-        buffer_bytes_ptr + buffer_bytes_written,
-        constants::max_write_bytes);
-    if (bytes_written != constants::max_write_bytes) {
-      return LOG_STATUS(Status_IOError(
-          std::string("Cannot write to file; File writing error")));
+  while (buffer_size > 0) {
+    ssize_t actual_written =
+        ::pwrite(fd, buffer_bytes_ptr, buffer_size, file_offset);
+    if (actual_written == -1) {
+      return LOG_STATUS(
+          Status_IOError(std::string("POSIX write error:") + strerror(errno)));
     }
-    buffer_bytes_written += bytes_written;
-    buffer_size -= bytes_written;
-  }
-  uint64_t bytes_written = pwrite_all(
-      fd,
-      file_offset + buffer_bytes_written,
-      buffer_bytes_ptr + buffer_bytes_written,
-      buffer_size);
-  if (bytes_written != buffer_size) {
-    return LOG_STATUS(Status_IOError(
-        std::string("Cannot write to file; File writing error")));
+    buffer_bytes_ptr += actual_written;
+    file_offset += actual_written;
+    buffer_size -= actual_written;
   }
   return Status::Ok();
 }
