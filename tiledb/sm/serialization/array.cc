@@ -386,7 +386,7 @@ void fragments_timestamps_to_capnp(
 }
 
 void fragments_timestamps_from_capnp(
-    capnp::ArrayFragmentsTimestamps::Reader& array_fragments_reader,
+    const capnp::ArrayFragmentsTimestamps::Reader& array_fragments_reader,
     uint64_t& start_timestamp,
     uint64_t& end_timestamp) {
   start_timestamp = array_fragments_reader.getStartTimestamp();
@@ -511,7 +511,7 @@ void fragments_list_to_capnp(
 }
 
 void fragments_list_from_capnp(
-    capnp::ArrayFragmentsList::Reader& array_fragments_list_reader,
+    const capnp::ArrayFragmentsList::Reader& array_fragments_list_reader,
     std::vector<URI>& fragments,
     const URI& array_uri) {
   if (array_fragments_list_reader.hasEntries()) {

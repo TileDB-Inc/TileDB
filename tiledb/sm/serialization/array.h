@@ -122,7 +122,7 @@ void fragments_timestamps_to_capnp(
  * @param end_timestamp the end timestamp to deserialize into
  */
 void fragments_timestamps_from_capnp(
-    capnp::ArrayFragmentsTimestamps::Reader& array_fragments_reader,
+    const capnp::ArrayFragmentsTimestamps::Reader& array_fragments_reader,
     uint64_t& start_timestamp,
     uint64_t& end_timestamp);
 
@@ -144,7 +144,7 @@ void fragments_list_to_capnp(
  * @param array_uri uri of the array that the fragments belong to
  */
 void fragments_list_from_capnp(
-    capnp::ArrayFragmentsList::Reader& array_fragments_reader,
+    const capnp::ArrayFragmentsList::Reader& array_fragments_reader,
     std::vector<URI>& fragments,
     const URI& array_uri);
 
