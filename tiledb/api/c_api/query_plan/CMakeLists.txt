@@ -37,6 +37,7 @@ add_library(capi_query_plan OBJECT ${SOURCES})
 target_link_libraries(capi_query_plan PUBLIC export)
 target_link_libraries(capi_query_plan PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(capi_query_plan PUBLIC query_plan $<TARGET_OBJECTS:query_plan>)
+target_link_libraries(capi_query_plan PUBLIC capi_filter_stub $<TARGET_OBJECTS:capi_filter_stub>)
 
 #
 # Test-compile of object library ensures link-completeness
