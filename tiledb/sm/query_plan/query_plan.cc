@@ -55,30 +55,26 @@ QueryPlan::QueryPlan(Query& query) {
         "are not currently supported.");
   }
 
-  set_array_uri(query.array()->array_uri().to_string());
-  set_vfs_backend(URI(array_uri_).backend_name());
-  set_query_layout(query.layout());
+  array_uri_ = query.array()->array_uri().to_string();
+  vfs_backend_ = URI(array_uri_).backend_name();
+  query_layout_ = query.layout();
 
   // This most probably ends up creating the strategy on the query
   auto strategy_ptr = query.strategy();
-  set_strategy_name(strategy_ptr->name());
+  strategy_name_ = strategy_ptr->name();
 
-  set_array_type(query.array()->array_schema_latest().array_type());
+  array_type_ = query.array()->array_schema_latest().array_type();
 
-  std::vector<std::string> attrs;
-  std::vector<std::string> dims;
   for (auto& buf : query.buffer_names()) {
     if (query.array()->array_schema_latest().is_dim(buf)) {
-      dims.push_back(buf);
+      dimensions_.push_back(buf);
     } else {
-      attrs.push_back(buf);
+      attributes_.push_back(buf);
     }
   }
   if (query.is_dense()) {
-    dims = query.array()->array_schema_latest().dim_names();
+    dimensions_ = query.array()->array_schema_latest().dim_names();
   }
-  set_attributes(attrs);
-  set_dimensions(dims);
 }
 
 /* ********************************* */
@@ -96,37 +92,6 @@ std::string QueryPlan::dump_json(uint32_t indent) {
         {"Query.Dimensions", dimensions_}}}};
 
   return rv.dump(indent);
-}
-
-/* ********************************* */
-/*          PRIVATE METHODS          */
-/* ********************************* */
-void QueryPlan::set_array_uri(const std::string& uri) {
-  array_uri_ = uri;
-}
-
-void QueryPlan::set_vfs_backend(const std::string& backend) {
-  vfs_backend_ = backend;
-}
-
-void QueryPlan::set_query_layout(Layout layout) {
-  query_layout_ = layout;
-}
-
-void QueryPlan::set_strategy_name(const std::string& strategy) {
-  strategy_name_ = strategy;
-}
-
-void QueryPlan::set_array_type(ArrayType type) {
-  array_type_ = type;
-}
-
-void QueryPlan::set_attributes(const std::vector<std::string>& attrs) {
-  attributes_ = attrs;
-}
-
-void QueryPlan::set_dimensions(const std::vector<std::string>& dims) {
-  dimensions_ = dims;
 }
 
 }  // namespace sm

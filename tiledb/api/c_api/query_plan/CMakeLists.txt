@@ -23,12 +23,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-
 include(common NO_POLICY_SCOPE)
 
 list(APPEND SOURCES
   query_plan_api.cc
-)
+  )
 gather_sources(${SOURCES})
 
 #
@@ -45,6 +44,5 @@ target_link_libraries(capi_query_plan PUBLIC query_plan $<TARGET_OBJECTS:query_p
 add_executable(compile_capi_query_plan EXCLUDE_FROM_ALL)
 target_link_libraries(compile_capi_query_plan PRIVATE capi_query_plan)
 target_sources(compile_capi_query_plan PRIVATE test/compile_capi_query_plan_main.cc)
-add_dependencies(all_link_complete compile_capi_query_plan)
 
 add_test_subdirectory()

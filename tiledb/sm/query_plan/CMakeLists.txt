@@ -23,16 +23,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-
 include(common NO_POLICY_SCOPE)
-include(object_library)
 
-#
-# Object library for other units to depend upon
-#
-commence(object_library query_plan)
-    this_target_sources(query_plan.cc)
-    this_target_object_libraries(baseline)
-conclude(object_library)
+add_library(query_plan OBJECT query_plan.cc)
+target_link_libraries(query_plan PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+target_link_libraries(query_plan PUBLIC buffer $<TARGET_OBJECTS:buffer>)
+
+add_executable(compile_query_plan EXCLUDE_FROM_ALL)
+target_link_libraries(compile_query_plan PRIVATE query_plan)
+target_sources(compile_query_plan PRIVATE test/compile_query_plan_main.cc $<TARGET_OBJECTS:query_plan>
+)
 
 add_test_subdirectory()

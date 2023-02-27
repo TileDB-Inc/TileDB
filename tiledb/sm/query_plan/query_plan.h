@@ -106,31 +106,6 @@ class QueryPlan {
 
   /** A list of queried dimensions */
   std::vector<std::string> dimensions_;
-
-  /* ****************************** */
-  /*       PRIVATE FUNCTIONS        */
-  /* ****************************** */
-
-  /** Set the uri of the queried array */
-  void set_array_uri(const std::string& uri);
-
-  /** Set the storage backend as seen by VFS */
-  void set_vfs_backend(const std::string& backend);
-
-  /** Set the query layout */
-  void set_query_layout(Layout layout);
-
-  /** Set the strategy name used by the query */
-  void set_strategy_name(const std::string& strategy);
-
-  /** Set the dense/sparse array type */
-  void set_array_type(ArrayType type);
-
-  /** Set the list of queried attributes */
-  void set_attributes(const std::vector<std::string>& attrs);
-
-  /** Set the list of queried dimensions */
-  void set_dimensions(const std::vector<std::string>& dims);
 };
 
 }  // namespace sm
