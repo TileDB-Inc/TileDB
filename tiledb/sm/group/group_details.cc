@@ -223,10 +223,6 @@ bool GroupDetails::changes_applied() const {
   return changes_applied_;
 }
 
-void GroupDetails::set_changes_applied(const bool changes_applied) {
-  changes_applied_ = changes_applied;
-}
-
 uint64_t GroupDetails::member_count() const {
   std::lock_guard<std::mutex> lck(mtx_);
 

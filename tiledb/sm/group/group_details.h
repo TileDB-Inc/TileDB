@@ -162,14 +162,6 @@ class GroupDetails {
   bool changes_applied() const;
 
   /**
-   * Set changes applied, only used in serialization
-   * @param changes_applied should changes be considered to be applied? If so
-   * then this will enable writes from a deserialized group
-   *
-   */
-  void set_changes_applied(bool changes_applied);
-
-  /**
    * Get count of members
    *
    * @return member count

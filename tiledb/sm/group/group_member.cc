@@ -65,11 +65,11 @@ const std::optional<std::string> GroupMember::name() const {
   return name_;
 }
 
-const bool& GroupMember::relative() const {
+bool GroupMember::relative() const {
   return relative_;
 }
 
-const bool& GroupMember::deleted() const {
+bool GroupMember::deleted() const {
   return deleted_;
 }
 

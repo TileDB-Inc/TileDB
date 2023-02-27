@@ -82,10 +82,14 @@ shared_ptr<GroupDetails> GroupDetailsV2::deserialize(
       tdb::make_shared<GroupDetailsV2>(HERE(), group_uri);
 
   for (auto& deserializer : deserializers) {
-    // Read and ignore version
-    deserializer->read<format_version_t>();
-    uint64_t member_count = 0;
-    member_count = deserializer->read<uint64_t>();
+    // Read and assert version
+    format_version_t details_version = deserializer->read<format_version_t>();
+    assert(details_version == 2);
+    // Avoid unused warning when in release mode and the assert doesn't exist.
+    (void)details_version;
+
+    // Read members
+    uint64_t member_count = deserializer->read<uint64_t>();
     for (uint64_t i = 0; i < member_count; i++) {
       auto member = GroupMember::deserialize(*deserializer);
       if (member->deleted()) {

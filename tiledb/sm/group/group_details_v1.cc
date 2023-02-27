@@ -61,8 +61,7 @@ shared_ptr<GroupDetails> GroupDetailsV1::deserialize(
   shared_ptr<GroupDetailsV1> group =
       tdb::make_shared<GroupDetailsV1>(HERE(), group_uri);
 
-  uint64_t member_count = 0;
-  member_count = deserializer.read<uint64_t>();
+  uint64_t member_count = deserializer.read<uint64_t>();
   for (uint64_t i = 0; i < member_count; i++) {
     auto&& member = GroupMember::deserialize(deserializer);
     group->add_member(member);
