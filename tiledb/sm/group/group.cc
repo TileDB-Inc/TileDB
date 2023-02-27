@@ -527,12 +527,12 @@ Status Group::clear() {
   return group_details_->clear();
 }
 
-void Group::add_member(const tdb_shared_ptr<GroupMember>& group_member) {
+void Group::add_member(const tdb_shared_ptr<GroupMember> group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
   group_details_->add_member(group_member);
 }
 
-void Group::delete_member(const tdb_shared_ptr<GroupMember>& group_member) {
+void Group::delete_member(const tdb_shared_ptr<GroupMember> group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
   group_details_->delete_member(group_member);
 }

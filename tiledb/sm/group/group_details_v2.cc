@@ -64,7 +64,7 @@ tdb_shared_ptr<GroupDetails> GroupDetailsV2::deserialize(
   uint64_t member_count = 0;
   member_count = deserializer.read<uint64_t>();
   for (uint64_t i = 0; i < member_count; i++) {
-    auto&& member = GroupMember::deserialize(deserializer);
+    auto member = GroupMember::deserialize(deserializer);
     if (member->deleted()) {
       group->delete_member(member);
     } else {
@@ -87,7 +87,7 @@ tdb_shared_ptr<GroupDetails> GroupDetailsV2::deserialize(
     uint64_t member_count = 0;
     member_count = deserializer->read<uint64_t>();
     for (uint64_t i = 0; i < member_count; i++) {
-      auto&& member = GroupMember::deserialize(*deserializer);
+      auto member = GroupMember::deserialize(*deserializer);
       if (member->deleted()) {
         group->delete_member(member);
       } else {

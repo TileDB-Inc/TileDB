@@ -66,7 +66,7 @@ Status GroupDetails::clear() {
   return Status::Ok();
 }
 
-void GroupDetails::add_member(const tdb_shared_ptr<GroupMember>& group_member) {
+void GroupDetails::add_member(const tdb_shared_ptr<GroupMember> group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
   const std::string& uri = group_member->uri().to_string();
   members_.emplace(uri, group_member);
@@ -77,23 +77,23 @@ void GroupDetails::add_member(const tdb_shared_ptr<GroupMember>& group_member) {
 }
 
 void GroupDetails::delete_member(
-    const tdb_shared_ptr<GroupMember>& group_member) {
+    const tdb_shared_ptr<GroupMember> group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
   const std::string& uri = group_member->uri().to_string();
   auto it = members_.find(uri);
   if (it != members_.end()) {
+    for (size_t i = 0; i < members_vec_.size(); i++) {
+      if (members_vec_[i] == it->second) {
+        members_vec_.erase(members_vec_.begin() + i);
+        break;
+      }
+    }
     auto name = it->second->name();
     members_.erase(it);
     if (group_member->name().has_value()) {
       members_by_name_.erase(group_member->name().value());
     } else if (name.has_value()) {
       members_by_name_.erase(name.value());
-    }
-    for (size_t i = 0; i < members_vec_.size(); i++) {
-      if (members_vec_[i] == it->second) {
-        members_vec_.erase(members_vec_.begin() + i);
-        break;
-      }
     }
   }
 }

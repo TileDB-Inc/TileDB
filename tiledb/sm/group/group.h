@@ -272,14 +272,14 @@ class Group {
    * @param group_member to add
    * @return void
    */
-  void add_member(const tdb_shared_ptr<GroupMember>& group_member);
+  void add_member(const tdb_shared_ptr<GroupMember> group_member);
 
   /**
    * Delete a member from the group
    *
    * @param group_member
    */
-  void delete_member(const tdb_shared_ptr<GroupMember>& group_member);
+  void delete_member(const tdb_shared_ptr<GroupMember> group_member);
 
   /** Returns the group URI. */
   const URI& group_uri() const;

@@ -112,14 +112,14 @@ class GroupDetails {
    * @param group_member to add
    * @return void
    */
-  void add_member(const tdb_shared_ptr<GroupMember>& group_member);
+  void add_member(const tdb_shared_ptr<GroupMember> group_member);
 
   /**
    * Delete a member from the group
    *
    * @param group_member
    */
-  void delete_member(const tdb_shared_ptr<GroupMember>& group_member);
+  void delete_member(const tdb_shared_ptr<GroupMember> group_member);
 
   /**
    * Serializes the object members into a binary buffer.
