@@ -60,7 +60,7 @@ using tiledb::api::api_entry_with_context;
 capi_return_t tiledb_query_get_plan(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    tiledb_string_handle_t** rv) TILEDB_NOEXCEPT {
+    tiledb_string_handle_t** rv) noexcept {
   return api_entry_with_context<tiledb::api::tiledb_query_get_plan>(
       ctx, query, rv);
 }
