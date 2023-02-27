@@ -257,13 +257,13 @@ class Group {
    * Get the vector of members to modify, used in serialization only
    * @return members_to_modify
    */
-  const std::vector<tdb_shared_ptr<GroupMember>>& members_to_modify() const;
+  const std::vector<shared_ptr<GroupMember>>& members_to_modify() const;
 
   /**
    * Get the unordered map of members
    * @return members
    */
-  const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>& members()
+  const std::unordered_map<std::string, shared_ptr<GroupMember>>& members()
       const;
 
   /**
@@ -272,14 +272,14 @@ class Group {
    * @param group_member to add
    * @return void
    */
-  void add_member(const tdb_shared_ptr<GroupMember> group_member);
+  void add_member(const shared_ptr<GroupMember> group_member);
 
   /**
    * Delete a member from the group
    *
    * @param group_member
    */
-  void delete_member(const tdb_shared_ptr<GroupMember> group_member);
+  void delete_member(const shared_ptr<GroupMember> group_member);
 
   /** Returns the group URI. */
   const URI& group_uri() const;
@@ -361,7 +361,7 @@ class Group {
    *
    * @return GroupDetails
    */
-  tdb_shared_ptr<GroupDetails> group_details();
+  shared_ptr<GroupDetails> group_details();
 
  protected:
   /* ********************************* */
@@ -416,10 +416,10 @@ class Group {
    * bytes should be stored. Whenever a key is needed, a pointer to this
    * memory region should be passed instead of a copy of the bytes.
    */
-  tdb_shared_ptr<EncryptionKey> encryption_key_;
+  shared_ptr<EncryptionKey> encryption_key_;
 
   /** Group Details. */
-  tdb_shared_ptr<GroupDetails> group_details_;
+  shared_ptr<GroupDetails> group_details_;
 
   /** Mutex for thread safety. */
   mutable std::mutex mtx_;

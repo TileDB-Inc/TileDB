@@ -56,9 +56,9 @@ void GroupDetailsV2::serialize(Serializer& serializer) {
   }
 }
 
-tdb_shared_ptr<GroupDetails> GroupDetailsV2::deserialize(
+shared_ptr<GroupDetails> GroupDetailsV2::deserialize(
     Deserializer& deserializer, const URI& group_uri) {
-  tdb_shared_ptr<GroupDetailsV2> group =
+  shared_ptr<GroupDetailsV2> group =
       tdb::make_shared<GroupDetailsV2>(HERE(), group_uri);
 
   uint64_t member_count = 0;
@@ -75,10 +75,10 @@ tdb_shared_ptr<GroupDetails> GroupDetailsV2::deserialize(
   return group;
 }
 
-tdb_shared_ptr<GroupDetails> GroupDetailsV2::deserialize(
+shared_ptr<GroupDetails> GroupDetailsV2::deserialize(
     const std::vector<shared_ptr<Deserializer>>& deserializers,
     const URI& group_uri) {
-  tdb_shared_ptr<GroupDetailsV2> group =
+  shared_ptr<GroupDetailsV2> group =
       tdb::make_shared<GroupDetailsV2>(HERE(), group_uri);
 
   for (auto& deserializer : deserializers) {

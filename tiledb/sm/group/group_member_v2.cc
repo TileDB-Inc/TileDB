@@ -80,8 +80,7 @@ void GroupMemberV2::serialize(Serializer& serializer) {
   serializer.write<uint8_t>(deleted_);
 }
 
-tdb_shared_ptr<GroupMember> GroupMemberV2::deserialize(
-    Deserializer& deserializer) {
+shared_ptr<GroupMember> GroupMemberV2::deserialize(Deserializer& deserializer) {
   uint8_t type_placeholder;
   type_placeholder = deserializer.read<uint8_t>();
   ObjectType type = static_cast<ObjectType>(type_placeholder);
@@ -115,7 +114,7 @@ tdb_shared_ptr<GroupMember> GroupMemberV2::deserialize(
   deleted_int = deserializer.read<uint8_t>();
   auto deleted = static_cast<bool>(deleted_int);
 
-  tdb_shared_ptr<GroupMemberV2> group_member = tdb::make_shared<GroupMemberV2>(
+  shared_ptr<GroupMemberV2> group_member = tdb::make_shared<GroupMemberV2>(
       HERE(), URI(uri_string, !relative), type, relative, name, deleted);
   return group_member;
 }

@@ -274,7 +274,7 @@ bool Group::is_remote() const {
   return remote_;
 }
 
-tdb_shared_ptr<GroupDetails> Group::group_details() {
+shared_ptr<GroupDetails> Group::group_details() {
   return group_details_;
 }
 
@@ -527,12 +527,12 @@ Status Group::clear() {
   return group_details_->clear();
 }
 
-void Group::add_member(const tdb_shared_ptr<GroupMember> group_member) {
+void Group::add_member(const shared_ptr<GroupMember> group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
   group_details_->add_member(group_member);
 }
 
-void Group::delete_member(const tdb_shared_ptr<GroupMember> group_member) {
+void Group::delete_member(const shared_ptr<GroupMember> group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
   group_details_->delete_member(group_member);
 }
@@ -581,14 +581,13 @@ Status Group::mark_member_for_removal(const std::string& uri) {
   return group_details_->mark_member_for_removal(uri);
 }
 
-const std::vector<tdb_shared_ptr<GroupMember>>& Group::members_to_modify()
-    const {
+const std::vector<shared_ptr<GroupMember>>& Group::members_to_modify() const {
   std::lock_guard<std::mutex> lck(mtx_);
   return group_details_->members_to_modify();
 }
 
-const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>&
-Group::members() const {
+const std::unordered_map<std::string, shared_ptr<GroupMember>>& Group::members()
+    const {
   std::lock_guard<std::mutex> lck(mtx_);
   return group_details_->members();
 }

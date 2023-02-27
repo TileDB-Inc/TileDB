@@ -74,7 +74,7 @@ class GroupDetailsV1 : public GroupDetails {
    * @param version The format spec version.
    * @return Status and Attribute
    */
-  static tdb_shared_ptr<GroupDetails> deserialize(
+  static shared_ptr<GroupDetails> deserialize(
       Deserializer& deserializer, const URI& group_uri);
 
  protected:

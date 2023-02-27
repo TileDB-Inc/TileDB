@@ -56,9 +56,9 @@ void GroupDetailsV1::serialize(Serializer& serializer) {
   }
 }
 
-tdb_shared_ptr<GroupDetails> GroupDetailsV1::deserialize(
+shared_ptr<GroupDetails> GroupDetailsV1::deserialize(
     Deserializer& deserializer, const URI& group_uri) {
-  tdb_shared_ptr<GroupDetailsV1> group =
+  shared_ptr<GroupDetailsV1> group =
       tdb::make_shared<GroupDetailsV1>(HERE(), group_uri);
 
   uint64_t member_count = 0;

@@ -97,13 +97,13 @@ class GroupDetails {
    * Get the vector of members to modify, used in serialization only
    * @return members_to_modify
    */
-  const std::vector<tdb_shared_ptr<GroupMember>>& members_to_modify() const;
+  const std::vector<shared_ptr<GroupMember>>& members_to_modify() const;
 
   /**
    * Get the unordered map of members
    * @return members
    */
-  const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>& members()
+  const std::unordered_map<std::string, shared_ptr<GroupMember>>& members()
       const;
 
   /**
@@ -112,14 +112,14 @@ class GroupDetails {
    * @param group_member to add
    * @return void
    */
-  void add_member(const tdb_shared_ptr<GroupMember> group_member);
+  void add_member(const shared_ptr<GroupMember> group_member);
 
   /**
    * Delete a member from the group
    *
    * @param group_member
    */
-  void delete_member(const tdb_shared_ptr<GroupMember> group_member);
+  void delete_member(const shared_ptr<GroupMember> group_member);
 
   /**
    * Serializes the object members into a binary buffer.
@@ -137,7 +137,7 @@ class GroupDetails {
    * @param version The format spec version.
    * @return Status and Attribute
    */
-  static std::optional<tdb_shared_ptr<GroupDetails>> deserialize(
+  static std::optional<shared_ptr<GroupDetails>> deserialize(
       Deserializer& deserializer, const URI& group_uri);
 
   /**
@@ -148,7 +148,7 @@ class GroupDetails {
    * @param version The format spec version.
    * @return Status and Attribute
    */
-  static std::optional<tdb_shared_ptr<GroupDetails>> deserialize(
+  static std::optional<shared_ptr<GroupDetails>> deserialize(
       const std::vector<shared_ptr<Deserializer>>& deserializer,
       const URI& group_uri);
 
@@ -219,17 +219,17 @@ class GroupDetails {
   URI group_uri_;
 
   /** The mapping of all members of this group. */
-  std::unordered_map<std::string, tdb_shared_ptr<GroupMember>> members_;
+  std::unordered_map<std::string, shared_ptr<GroupMember>> members_;
 
   /** Vector for index based lookup. */
-  std::vector<tdb_shared_ptr<GroupMember>> members_vec_;
+  std::vector<shared_ptr<GroupMember>> members_vec_;
 
   /** Unordered map of members by their name, if the member doesn't have a name,
    * it will not be in the map. */
-  std::unordered_map<std::string, tdb_shared_ptr<GroupMember>> members_by_name_;
+  std::unordered_map<std::string, shared_ptr<GroupMember>> members_by_name_;
 
   /** Mapping of members slated for adding. */
-  std::vector<tdb_shared_ptr<GroupMember>> members_to_modify_;
+  std::vector<shared_ptr<GroupMember>> members_to_modify_;
 
   /** Mutex for thread safety. */
   mutable std::mutex mtx_;

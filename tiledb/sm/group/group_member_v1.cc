@@ -76,8 +76,7 @@ void GroupMemberV1::serialize(Serializer& serializer) {
   }
 }
 
-tdb_shared_ptr<GroupMember> GroupMemberV1::deserialize(
-    Deserializer& deserializer) {
+shared_ptr<GroupMember> GroupMemberV1::deserialize(Deserializer& deserializer) {
   uint8_t type_placeholder;
   type_placeholder = deserializer.read<uint8_t>();
   ObjectType type = static_cast<ObjectType>(type_placeholder);
@@ -107,7 +106,7 @@ tdb_shared_ptr<GroupMember> GroupMemberV1::deserialize(
     name = name_string;
   }
 
-  tdb_shared_ptr<GroupMemberV1> group_member = tdb::make_shared<GroupMemberV1>(
+  shared_ptr<GroupMemberV1> group_member = tdb::make_shared<GroupMemberV1>(
       HERE(), URI(uri_string, !relative), type, relative, name);
   return group_member;
 }
