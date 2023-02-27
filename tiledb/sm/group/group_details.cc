@@ -104,9 +104,7 @@ Status GroupDetails::mark_member_for_addition(
     std::optional<std::string>& name,
     StorageManager* storage_manager) {
   std::lock_guard<std::mutex> lck(mtx_);
-  const std::string& uri = group_member_uri.to_string();
-
-  // TODO: Safety checks for not double adding, making sure its rmemove + add,
+  // TODO: Safety checks for not double adding, making sure its remove + add,
   // etc
 
   URI absolute_group_member_uri = group_member_uri;
@@ -214,18 +212,8 @@ std::optional<tdb_shared_ptr<GroupDetails>> GroupDetails::deserialize(
 std::optional<tdb_shared_ptr<GroupDetails>> GroupDetails::deserialize(
     const std::vector<shared_ptr<Deserializer>>& deserializer,
     const URI& group_uri) {
-  //  uint32_t version = 0;
-  //  version = deserializer.read<uint32_t>();
-  //  if (version == 1) {
-  //    return GroupDetailsV1::deserialize(deserializer, group_uri,
-  //    storage_manager);
-  //  }
-  //  else if (version == 2) {
+  // Currently this is only supported for v2 on-disk format
   return GroupDetailsV2::deserialize(deserializer, group_uri);
-  //  }
-
-  //  throw StatusException(Status_GroupError(
-  //      "Unsupported group version " + std::to_string(version)));
 }
 
 const URI& GroupDetails::group_uri() const {

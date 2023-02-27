@@ -133,7 +133,7 @@ class GroupDetails {
   /**
    * Returns a Group object from the data in the input binary buffer.
    *
-   * @param buff The buffer to deserialize from.
+   * @param deserializer The buffer to deserialize from.
    * @param version The format spec version.
    * @return Status and Attribute
    */
@@ -143,7 +143,8 @@ class GroupDetails {
   /**
    * Returns a Group object from the data in the input binary buffer.
    *
-   * @param buff The buffer to deserialize from.
+   * @param deserializers List of buffers for each details file to deserialize
+   * from.
    * @param version The format spec version.
    * @return Status and Attribute
    */

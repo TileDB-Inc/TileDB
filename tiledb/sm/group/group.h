@@ -281,39 +281,6 @@ class Group {
    */
   void delete_member(const tdb_shared_ptr<GroupMember>& group_member);
 
-  /**
-   * Serializes the object members into a binary buffer.
-   *
-   * @param buff The buffer to serialize the data into.
-   * @param version The format spec version.
-   * @return Status
-   */
-  /*virtual void serialize(Serializer& serializer);*/
-
-  /**
-   * Returns a Group object from the data in the input binary buffer.
-   *
-   * @param buff The buffer to deserialize from.
-   * @param version The format spec version.
-   * @return Status and Attribute
-   */
-  /*static std::optional<tdb_shared_ptr<Group>> deserialize(
-      Deserializer& deserializer,
-      const URI& group_uri,
-      StorageManager* storage_manager);*/
-
-  /**
-   * Returns a Group object from the data in the input binary buffer.
-   *
-   * @param buff The buffer to deserialize from.
-   * @param version The format spec version.
-   * @return Status and Attribute
-   */
-  /*  static std::optional<tdb_shared_ptr<Group>> deserialize(
-        const std::vector<shared_ptr<Deserializer>>& deserializer,
-        const URI& group_uri,
-        StorageManager* storage_manager);*/
-
   /** Returns the group URI. */
   const URI& group_uri() const;
 

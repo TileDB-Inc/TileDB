@@ -593,47 +593,6 @@ Group::members() const {
   return group_details_->members();
 }
 
-// void Group::serialize(Serializer&) {
-//   throw StatusException(Status_GroupError("Invalid call to
-//   Group::serialize"));
-// }
-/*
-std::optional<tdb_shared_ptr<Group>> Group::deserialize(
-    Deserializer& deserializer,
-    const URI& group_uri,
-    StorageManager* storage_manager) {
-
-  return GroupDetails::deserialize(deserializer, group_uri, storage_manager);
-//  uint32_t version = 0;
-//  version = deserializer.read<uint32_t>();
-//  if (version == 1) {
-//    return GroupDetailsV1::deserialize(deserializer, group_uri);
-//  } else if (version == 2) {
-//    return GroupDetailsV2::deserialize(deserializer, group_uri,
-storage_manager);
-//  }
-
-//  throw StatusException(Status_GroupError(
-//      "Unsupported group version " + std::to_string(version)));
-}
-
-std::optional<tdb_shared_ptr<Group>> Group::deserialize(
-    const std::vector<shared_ptr<Deserializer>>& deserializer,
-    const URI& group_uri,
-    StorageManager* storage_manager) {
-  //  uint32_t version = 0;
-  //  version = deserializer.read<uint32_t>();
-  //  if (version == 1) {
-  //    return GroupV1::deserialize(deserializer, group_uri, storage_manager);
-  //  }
-  //  else if (version == 2) {
-  return GroupV2::deserialize(deserializer, group_uri, storage_manager);
-  //  }
-
-  //  throw StatusException(Status_GroupError(
-  //      "Unsupported group version " + std::to_string(version)));
-}*/
-
 const URI& Group::group_uri() const {
   return group_uri_;
 }
