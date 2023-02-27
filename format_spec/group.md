@@ -33,3 +33,4 @@ The group member is the content inside a [group](./group.md)
 | Relative | `uint8_t` | Is the URI relative to the group |
 | URI length | `uint32_t` | Number of characters in URI |
 | URI | `uint8_t[]` | URI character array |
+| Deleted | `uint8_t` | Is the member deleted |
