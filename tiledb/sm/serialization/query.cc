@@ -84,7 +84,7 @@ namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
-shared_ptr<Logger> dummy_logger = make_shared<Logger>(HERE(), "");
+shared_ptr<Logger> dummy_logger = make_shared<Logger>(HERE(), Logger::Format::DEFAULT);
 
 Status stats_to_capnp(Stats& stats, capnp::Stats::Builder* stats_builder) {
   // Build counters

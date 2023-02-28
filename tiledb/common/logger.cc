@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/common/logger.h"
+#include "tiledb/platform/platform.h"
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/fmt/ostr.h>
@@ -46,26 +47,54 @@ namespace tiledb::common {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Logger::Logger(
-    const std::string& name, const Logger::Format format, const bool root)
-    : name_(name)
-    , root_(root) {
+static inline bool stricmp(const std::string& lhs, const std::string& rhs);
+static inline bool charicmp(char lhs, char rhs);
+
+Logger::Logger(Logger::Format format)
+  : name_(global_logger_name(format))
+  , root_(true) {
   logger_ = spdlog::get(name_);
   if (logger_ == nullptr) {
-#ifdef _WIN32
-    logger_ = spdlog::stdout_logger_mt(name_);
-#else
-    logger_ = spdlog::stdout_color_mt(name_);
-#endif
+    if constexpr (platform::is_os_windows) {
+      logger_ = spdlog::stdout_logger_mt(name_);
+    } else {
+      logger_ = spdlog::stdout_color_mt(name_);
+    }
   }
-  if (root && format == Logger::Format::JSON) {
+
+  set_format(format);
+  set_level(Logger::Level::ERR);
+}
+
+Logger::Logger(const sm::Config& config, const std::string& name)
+    : name_(name)
+    , root_(false) {
+  logger_ = spdlog::get(name_);
+  if (logger_ == nullptr) {
+    if constexpr (platform::is_os_windows) {
+      logger_ = spdlog::stdout_logger_mt(name_);
+    } else {
+      logger_ = spdlog::stdout_color_mt(name_);
+    }
+  }
+
+  auto format = config.get<std::string>("config.logging_format");
+  set_format(format.value_or("DEFAULT"));
+
+  auto level = config.get<std::string>("config.logging_level");
+  set_level(level.value_or("ERR"));
+
+  if (root_ && fmt_ == Logger::Format::JSON) {
     // If this is the first logger created set up the opening brace and an
     // array named "log"
     logger_->set_pattern("{\n \"log\": [");
     logger_->critical("");
   }
-  set_level(Logger::Level::ERR);
-  set_format(format);
+
+  // HACK: We need to eventually move this setup to a library wide
+  // initialization section. Calling it here each time we construct
+  // a logger matches the previous behavior.
+  global_logger(fmt_).set_level(level.value_or("ERR"));
 }
 
 Logger::Logger(shared_ptr<spdlog::logger> logger) {
@@ -209,6 +238,19 @@ void Logger::set_level(Logger::Level lvl) {
   }
 }
 
+void Logger::set_level(const std::string& lvl) noexcept {
+  try {
+    auto opt_lvl = level_from_str(lvl);
+    if (opt_lvl.has_value()) {
+      set_level(opt_lvl.value());
+    } else {
+      error("Ignoring invalid log level: " + lvl);
+    }
+  } catch (...) {
+    error("Unknown error while  setting log level from: " + lvl);
+  }
+}
+
 void Logger::set_format(Logger::Format fmt) {
   switch (fmt) {
     case Logger::Format::JSON: {
@@ -250,6 +292,55 @@ void Logger::set_format(Logger::Format fmt) {
   fmt_ = fmt;
 }
 
+void Logger::set_format(const std::string& fmt) noexcept {
+  try {
+    auto opt_fmt = format_from_str(fmt);
+    if (opt_fmt.has_value()) {
+      set_format(opt_fmt.value());
+    } else {
+      error("Ignoring invalid log format: " + fmt);
+    }
+  } catch (...) {
+    error("Unknown error while setting log format from: " + fmt);
+  }
+}
+
+std::optional<Logger::Level> Logger::level_from_str(const std::string& lvl) noexcept {
+  try {
+    if (stricmp(lvl, "0") || stricmp(lvl, "FATAL")) {
+      return {Logger::Level::FATAL};
+    } else if (stricmp(lvl, "1") || stricmp(lvl, "ERR")) {
+      return {Logger::Level::ERR};
+    } else if (stricmp(lvl, "2") || stricmp(lvl, "WARN")) {
+      return {Logger::Level::WARN};
+    } else if (stricmp(lvl, "3") || stricmp(lvl, "INFO")) {
+      return {Logger::Level::INFO};
+    } else if (stricmp(lvl, "4") || stricmp(lvl, "DBG")) {
+      return {Logger::Level::DBG};
+    } else if (stricmp(lvl, "5") || stricmp(lvl, "TRACE")) {
+      return {Logger::Level::TRACE};
+    } else {
+      return std::nullopt;
+    }
+  } catch (...) {
+    return std::nullopt;
+  }
+}
+
+std::optional<Logger::Format> Logger::format_from_str(const std::string& format) noexcept {
+  try {
+    if (stricmp(format, "DEFAULT")) {
+      return {Logger::Format::DEFAULT};
+    } else if (stricmp(format, "JSON")) {
+      return {Logger::Format::JSON};
+    } else {
+      return std::nullopt;
+    }
+  } catch (...) {
+    return std::nullopt;
+  }
+}
+
 void Logger::set_name(const std::string& tags) {
   name_ = tags;
 }
@@ -276,20 +367,22 @@ std::string Logger::add_tag(const std::string& tag, uint64_t id) {
   return tags;
 }
 
+std::string Logger::global_logger_name(Logger::Format format) {
+  auto ts_micro =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(
+          std::chrono::system_clock::now().time_since_epoch())
+          .count();
+  return (format == Logger::Format::JSON) ?
+          "\"" + std::to_string(ts_micro) + "-Global\":\"1\"" :
+          std::to_string(ts_micro) + "-Global";
+}
+
 /* ********************************* */
 /*              GLOBAL               */
 /* ********************************* */
 
 Logger& global_logger(Logger::Format format) {
-  static auto ts_micro =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(
-          std::chrono::system_clock::now().time_since_epoch())
-          .count();
-  static std::string name =
-      (format == Logger::Format::JSON) ?
-          "\"" + std::to_string(ts_micro) + "-Global\":\"1\"" :
-          std::to_string(ts_micro) + "-Global";
-  static Logger l(name, format, true);
+  static Logger l(format);
   return l;
 }
 
@@ -358,5 +451,31 @@ void LOG_WARN(const std::stringstream& msg) {
 void LOG_ERROR(const std::stringstream& msg) {
   global_logger().error(msg);
 }
+
+
+static inline bool stricmp(const std::string& lhs, const std::string& rhs) {
+  if (lhs.size() != rhs.size()) {
+    return false;
+  }
+
+  for(size_t i = 0; i < lhs.size(); i++) {
+    if (charicmp(lhs[i], rhs[i])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static inline bool charicmp(char lhs, char rhs) {
+  if (lhs >= 'A' && lhs <= 'Z') {
+    lhs = 'a' + (lhs - 'A');
+  }
+  if (rhs >= 'A' && rhs <= 'Z') {
+    rhs = 'a' + (rhs - 'A');
+  }
+  return lhs == rhs;
+}
+
 
 }  // namespace tiledb::common

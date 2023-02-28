@@ -27,7 +27,7 @@
 include(unit_test)
 
 commence(unit_test dynamic_memory)
-    this_target_object_libraries(baseline)
+    this_target_object_libraries(baseline config)
     this_target_sources(main.cc unit_dynamic_memory.cc)
     # Link to Threads::Threads if library or flag needed to enable threading.
     # The heap_profiler dependency requires threads. The dependency should be

@@ -178,14 +178,6 @@ class Context {
    * @return IO thread count.
    */
   size_t get_io_thread_count(const Config& config);
-
-  /**
-   * Initializes global and local logger.
-   *
-   * @param config The configuration parameters.
-   * @return Status
-   */
-  Status init_loggers(const Config& config);
 };
 
 }  // namespace tiledb::sm

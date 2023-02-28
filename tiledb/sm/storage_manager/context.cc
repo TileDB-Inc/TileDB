@@ -49,7 +49,7 @@ namespace sm {
 Context::Context(const Config& config)
     : last_error_(nullopt)
     , logger_(make_shared<Logger>(
-          HERE(), logger_prefix_ + std::to_string(++logger_id_)))
+          HERE(), config, logger_prefix_ + std::to_string(++logger_id_)))
     , resources_(
           config,
           logger_,
@@ -60,10 +60,6 @@ Context::Context(const Config& config)
           // it is part of the public facing API.
           "Context.StorageManager")
     , storage_manager_{resources_, logger_, config} {
-  /*
-   * Logger class is not yet C.41-compliant
-   */
-  throw_if_not_ok(init_loggers(config));
 }
 
 /* ****************************** */
@@ -199,37 +195,6 @@ size_t Context::get_io_thread_count(const Config& config) {
 
   return static_cast<size_t>(
       std::max(config_thread_count, io_concurrency_level));
-}
-
-Status Context::init_loggers(const Config& config) {
-  // temporarily set level to error so that possible errors reading
-  // configuration are visible to the user
-  logger_->set_level(Logger::Level::ERR);
-
-  const char* format_conf;
-  RETURN_NOT_OK(config.get("config.logging_format", &format_conf));
-  assert(format_conf != nullptr);
-  Logger::Format format = Logger::Format::DEFAULT;
-  RETURN_NOT_OK(logger_format_from_string(format_conf, &format));
-
-  global_logger(format);
-  logger_->set_format(static_cast<Logger::Format>(format));
-
-  // set logging level from config
-  bool found = false;
-  uint32_t level = static_cast<unsigned int>(Logger::Level::ERR);
-  RETURN_NOT_OK(config.get<uint32_t>("config.logging_level", &level, &found));
-  assert(found);
-  if (level > static_cast<unsigned int>(Logger::Level::TRACE)) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot set logger level; Unsupported level:" + std::to_string(level) +
-        "set in configuration"));
-  }
-
-  global_logger().set_level(static_cast<Logger::Level>(level));
-  logger_->set_level(static_cast<Logger::Level>(level));
-
-  return Status::Ok();
 }
 
 }  // namespace sm

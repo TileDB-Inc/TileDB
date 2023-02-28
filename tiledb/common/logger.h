@@ -58,6 +58,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/config/config.h"
 
 namespace tiledb {
 namespace common {
@@ -72,11 +73,12 @@ class Logger {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructors */
-  Logger(
-      const std::string& name,
-      const Logger::Format format = Logger::Format::DEFAULT,
-      const bool root = false);
+  /** Constructor a root global logger */
+  Logger(Logger::Format format);
+
+  /** Construct a normal logger */
+  Logger(const sm::Config& config, const std::string& name);
+
 
   Logger(shared_ptr<spdlog::logger> logger);
 
@@ -344,12 +346,30 @@ class Logger {
   void set_level(Logger::Level lvl);
 
   /**
+   * Set the logger level. Logs an error if lvl is not a valid
+   * logging level but does not throw an exception.
+   *
+   * @param lvl The level to set as either an integer in the range [0, 5]
+   *    or a string representation.
+   */
+  void set_level(const std::string& lvl) noexcept;
+
+  /**
    * Set the logger output format.
    *
    * @param fmt Logger::Format JSON logs in json format, DEFAULT
    * logs in the default tiledb format
    */
   void set_format(Logger::Format fmt);
+
+  /**
+   * Set the logger output format. Logs a message if fmt is not
+   * a valid logging format but does throw.
+   *
+   * @param fmt The logging format to use.
+   */
+  void set_format(const std::string& fmt) noexcept;
+
 
   /* ********************************* */
   /*          PUBLIC ATTRIBUTES        */
@@ -365,22 +385,26 @@ class Logger {
     TRACE,
   };
 
+  static std::optional<Level> level_from_str(const std::string& lvl) noexcept;
+
   /** Log format. */
   enum class Format : char {
     DEFAULT,
     JSON,
   };
 
+  static std::optional<Format> format_from_str(const std::string& fmt) noexcept;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The logger object. */
-  shared_ptr<spdlog::logger> logger_;
-
   /** The name of the logger */
   std::string name_;
+
+  /** The logger object. */
+  shared_ptr<spdlog::logger> logger_;
 
   /** The format of the logger  */
   static inline Logger::Format fmt_ = Logger::Format::DEFAULT;
@@ -411,6 +435,9 @@ class Logger {
    *
    */
   std::string add_tag(const std::string& tag, uint64_t id);
+
+  /** Generate a global logger name. */
+  static std::string global_logger_name(Logger::Format format);
 };
 
 /* ********************************* */
@@ -420,27 +447,9 @@ class Logger {
 /**
  * Returns a global logger to be used for general logging
  *
- * @param format The output format of the logger
+ * @param format The logging format to use on the global logger
  */
 Logger& global_logger(Logger::Format format = Logger::Format::DEFAULT);
-
-/**
- * Returns the logger format type given a string representation.
- *
- *  @param format_type_str The string representation of the logger format type
- *  @param[out] format_type The logger format type
- */
-inline Status logger_format_from_string(
-    const std::string& format_type_str, Logger::Format* format_type) {
-  if (format_type_str == "DEFAULT")
-    *format_type = Logger::Format::DEFAULT;
-  else if (format_type_str == "JSON")
-    *format_type = Logger::Format::JSON;
-  else {
-    return Status_Error("Unsupported logging format: " + format_type_str);
-  }
-  return Status::Ok();
-}
 
 }  // namespace common
 }  // namespace tiledb
