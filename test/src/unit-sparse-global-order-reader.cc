@@ -75,7 +75,8 @@ struct CSparseGlobalOrderFx {
       int* data,
       uint64_t* data_size,
       tiledb_query_t** query = nullptr,
-      tiledb_array_t** array_ret = nullptr);
+      tiledb_array_t** array_ret = nullptr,
+      int* custom_subarray = nullptr);
   void reset_config();
   void update_config();
 
@@ -238,7 +239,8 @@ int32_t CSparseGlobalOrderFx::read(
     int* data,
     uint64_t* data_size,
     tiledb_query_t** query_ret,
-    tiledb_array_t** array_ret) {
+    tiledb_array_t** array_ret,
+    int* custom_subarray) {
   // Open array for reading.
   tiledb_array_t* array;
   auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
@@ -254,7 +256,11 @@ int32_t CSparseGlobalOrderFx::read(
   if (set_subarray) {
     // Set subarray.
     int subarray[] = {1, 10};
-    rc = tiledb_query_set_subarray(ctx_, query, subarray);
+    if (custom_subarray) {
+      rc = tiledb_query_set_subarray(ctx_, query, custom_subarray);
+    } else {
+      rc = tiledb_query_set_subarray(ctx_, query, subarray);
+    }
     CHECK(rc == TILEDB_OK);
   }
 
@@ -342,6 +348,180 @@ TEST_CASE_METHOD(
   CHECK(
       error_str.find("Exceeded memory budget for result tile ranges") !=
       std::string::npos);
+}
+
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: Tile ranges budget exceeded sc-23660 A",
+    "[sparse-global-order][tile-ranges][budget-exceeded][regression]") {
+  // Observed to produce the observed_bad_data in v2.12.2.
+
+  // Create default array.
+  reset_config();
+  create_default_array_1d();
+
+  // Write a fragment.
+  int coords1[] = {1, 3, 5, 7, 9};
+  uint64_t coords1_size = sizeof(coords1);
+  int data1[] = {11, 33, 55, 77, 99};
+  uint64_t data1_size = sizeof(data1);
+  write_1d_fragment(coords1, &coords1_size, data1, &data1_size);
+
+  // Write another fragment with coords(/values) interleaved with prev.
+  int coords2[] = {2, 4, 6, 8, 10};
+  uint64_t coords2_size = sizeof(coords2);
+  int data2[] = {22, 44, 66, 88, 1010};
+  uint64_t data2_size = sizeof(data2);
+  write_1d_fragment(coords2, &coords2_size, data2, &data2_size);
+
+  // specific relationship for failure not known, but these values
+  // will result in failure with data being written.
+  total_budget_ = "10000";
+  ratio_tile_ranges_ = "0.1"; // .1 is the default
+  update_config();
+
+  tiledb_array_t* array = nullptr;
+  tiledb_query_t* query = nullptr;
+
+  // Try to read.
+  int coords_r[2];
+  int data_r[2];
+  uint64_t coords_r_size = sizeof(coords_r);
+  uint64_t data_r_size = sizeof(data_r);
+  int subarray[] = {4, 10};
+  int rc;
+  tiledb_query_status_t status;
+  rc = read(
+      true,
+      false,
+      coords_r,
+      &coords_r_size,
+      data_r,
+      &data_r_size,
+      &query,
+      &array,
+      subarray);
+  CHECK(rc == TILEDB_OK);
+
+  std::vector<int> retrieved_data;
+  retrieved_data.reserve(10);
+
+  do {
+    auto nitems = data_r_size / sizeof(int);
+    for (auto ui = 0u; ui < nitems; ++ui) {
+      //std::cout << ui << ": " << data_r[ui] << std::endl;
+      retrieved_data.emplace_back(data_r[ui]);
+    }
+
+    // Check incomplete query status.
+    tiledb_query_get_status(ctx_, query, &status);
+    if (status == TILEDB_INCOMPLETE) {
+      rc = tiledb_query_submit(ctx_, query);
+      CHECK(rc == TILEDB_OK);
+    }
+  } while (status == TILEDB_INCOMPLETE);
+
+  // The correct data should be...
+  std::vector<int> expected_correct_data{44, 55, 66, 77, 88, 99, 1010};
+  // But the error situation in v2.12.2 instead produced...
+  std::vector<int> observed_bad_data{44, 66, 88, 1010};
+  CHECK_FALSE(retrieved_data == observed_bad_data);
+  CHECK(retrieved_data == expected_correct_data);
+
+}
+
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: Tile ranges budget exceeded sc-23660 B",
+    "[sparse-global-order][tile-ranges][budget-exceeded][regression]") {
+  // Observed to produce the observed_bad_data in v2.12.2.
+
+  // Similar in nature to the "... A" version, but using some differently
+  // written data.
+  // While ...A and ...B are similar they seemed too dissimilar to try to combine
+  // them via a multiple SECTION() approach.
+
+  // Create default array.
+  reset_config();
+  create_default_array_1d();
+
+  // Write a fragment.
+  int coords1[] = {1, 4, 7, 10};
+  uint64_t coords1_size = sizeof(coords1);
+  int data1[] = {11, 44, 77, 1010};
+  uint64_t data1_size = sizeof(data1);
+
+  // Write another fragment with coords(/values) interleaved with prev.
+  int coords2[] = {2, 5, 8, 11};
+  uint64_t coords2_size = sizeof(coords2);
+  int data2[] = {22, 55, 88, 1111};
+  uint64_t data2_size = sizeof(data2);
+
+  // Write another fragment with coords(/values) interleaved with prev.
+  int coords3[] = {3, 6, 9, 12};
+  uint64_t coords3_size = sizeof(coords3);
+  int data3[] = {33, 66, 99, 1212};
+  uint64_t data3_size = sizeof(data3);
+
+//  write_1d_fragment(coords3, &coords3_size, data3, &data3_size);
+  write_1d_fragment(coords1, &coords1_size, data1, &data1_size);
+  write_1d_fragment(coords3, &coords3_size, data3, &data3_size);
+  write_1d_fragment(coords2, &coords2_size, data2, &data2_size);
+
+  // specific relationship for failure not known, but these values
+  // will result in failure with data being written.
+  total_budget_ = "15000";
+  ratio_tile_ranges_ = "0.1";  // .1 is the default
+  update_config();
+
+  tiledb_array_t* array = nullptr;
+  tiledb_query_t* query = nullptr;
+
+  // Try to read.
+  int coords_r[1];
+  int data_r[1];
+  uint64_t coords_r_size = sizeof(coords_r);
+  uint64_t data_r_size = sizeof(data_r);
+  int subarray[] = {5, 11};
+  int rc;
+  tiledb_query_status_t status;
+  rc = read(
+      true,
+      false,
+      coords_r,
+      &coords_r_size,
+      data_r,
+      &data_r_size,
+      &query,
+      &array,
+      subarray);
+  CHECK(rc == TILEDB_OK);
+
+  std::vector<int> retrieved_data;
+  retrieved_data.reserve(10);
+
+  do {
+    auto nitems = data_r_size / sizeof(int);
+    for (auto ui = 0u; ui < nitems; ++ui) {
+      // std::cout << ui << ": " << data_r[ui] << std::endl;
+      retrieved_data.emplace_back(data_r[ui]);
+    }
+
+    // Check incomplete query status.
+    tiledb_query_get_status(ctx_, query, &status);
+    if (status == TILEDB_INCOMPLETE) {
+      rc = tiledb_query_submit(ctx_, query);
+      CHECK(rc == TILEDB_OK);
+    }
+  } while (status == TILEDB_INCOMPLETE);
+
+  // The correct data should be...
+  std::vector<int> expected_correct_data{55, 66, 77, 88, 99, 1010, 1111};
+  // But the error situation in v2.12.2 instead produced...
+  std::vector<int> observed_bad_data{55, 66, 88, 99, 1111};
+  CHECK_FALSE(retrieved_data == observed_bad_data);
+  CHECK(retrieved_data == expected_correct_data);
+
 }
 
 TEST_CASE_METHOD(
