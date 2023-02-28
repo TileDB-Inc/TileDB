@@ -2698,11 +2698,13 @@ TEST_CASE_METHOD(
   uint64_t deserialized_end_timestamp = 0;
   rc = tiledb_deserialize_fragments_timestamps(
       ctx_,
-      deserialized_start_timestamp,
-      deserialized_end_timestamp,
       (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
-      buff);
+      buff,
+      &deserialized_start_timestamp,
+      &deserialized_end_timestamp);
   REQUIRE(rc == TILEDB_OK);
+  CHECK(deserialized_start_timestamp == start_timestamp);
+  CHECK(deserialized_end_timestamp == end_timestamp);
 
   // Get the fragment info object
   tiledb_fragment_info_t* fragment_info = nullptr;
@@ -2726,12 +2728,11 @@ TEST_CASE_METHOD(
   // Serialize fragments list and deserialize with internal API
   tiledb::sm::serialization::fragments_list_serialize(
       fragments, tiledb::sm::SerializationType::CAPNP, &buff->buffer());
-  std::vector<URI> deserialized_fragments;
-  tiledb::sm::serialization::fragments_list_deserialize(
-      deserialized_fragments,
-      URI(array_name.c_str()),
-      tiledb::sm::SerializationType::CAPNP,
-      buff->buffer());
+  std::vector<URI> deserialized_fragments =
+      tiledb::sm::serialization::fragments_list_deserialize(
+          URI(array_name.c_str()),
+          tiledb::sm::SerializationType::CAPNP,
+          buff->buffer());
 
   // Compare original fragments to deserialized_fragments
   CHECK(fragments == deserialized_fragments);

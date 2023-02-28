@@ -435,37 +435,37 @@ TILEDB_EXPORT int32_t tiledb_serialize_array_max_buffer_sizes(
  * Deserializes the fragment timestamps from the given buffer.
  *
  * @param ctx The TileDB context.
- * @param timestamp_start The start timestamp to deserialize.
- * @param timestamp_end The end timestamp to deserialize.
  * @param serialization_type Type of serialization to use
  * @param buffer Buffer containing serialized fragment timestamps.
+ * @param timestamp_start The start timestamp to deserialize into.
+ * @param timestamp_end The end timestamp to deserialize into.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_deserialize_fragments_timestamps(
     tiledb_ctx_t* ctx,
-    uint64_t timestamp_start,
-    uint64_t timestamp_end,
     tiledb_serialization_type_t serialization_type,
-    const tiledb_buffer_t* buffer) TILEDB_NOEXCEPT;
+    const tiledb_buffer_t* buffer,
+    uint64_t* timestamp_start,
+    uint64_t* timestamp_end) TILEDB_NOEXCEPT;
 
 /**
  * Deserializes the fragments list from the given buffer.
  *
  * @param ctx The TileDB context.
- * @param fragments The fragments list to deserialize.
- * @param num_fragments The number of fragments to be deserialized.
  * @param array_uri The URI of the fragments' parent Array.
  * @param serialization_type Type of serialization to use
- * @param buffer Buffer containing serialized fragment timestamps.
+ * @param buffer Buffer containing serialized fragments list.
+ * @param fragments The fragments list to deserialize into.
+ * @param num_fragments The number of deserialized fragments in the list.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_deserialize_fragments_list(
     tiledb_ctx_t* ctx,
-    const char* fragments[],
-    const size_t num_fragments,
     const char* array_uri,
     tiledb_serialization_type_t serialization_type,
-    const tiledb_buffer_t* buffer) TILEDB_NOEXCEPT;
+    const tiledb_buffer_t* buffer,
+    char** fragments,
+    size_t* num_fragments) TILEDB_NOEXCEPT;
 
 /**
  * Serializes the array metadata into the given buffer.

@@ -118,13 +118,10 @@ void fragments_timestamps_to_capnp(
  * Convert Cap'n Proto message to Array FragmentsTimestamps
  *
  * @param array_fragments_reader cap'n proto class
- * @param start_timestamp the start timestamp to deserialize into
- * @param end_timestamp the end timestamp to deserialize into
+ * @return a tuple of start_timestamp, end_timestamp
  */
-void fragments_timestamps_from_capnp(
-    const capnp::ArrayFragmentsTimestamps::Reader& array_fragments_reader,
-    uint64_t& start_timestamp,
-    uint64_t& end_timestamp);
+std::tuple<uint64_t, uint64_t> fragments_timestamps_from_capnp(
+    const capnp::ArrayFragmentsTimestamps::Reader& array_fragments_reader);
 
 /**
  * Convert Array FragmentsList to Cap'n Proto message
@@ -140,12 +137,11 @@ void fragments_list_to_capnp(
  * Convert Cap'n Proto message to Array FragmentsList
  *
  * @param array_fragments_reader cap'n proto class
- * @param fragments fragments to deserialize into
  * @param array_uri uri of the array that the fragments belong to
+ * @return vector of deserialized fragments
  */
-void fragments_list_from_capnp(
+std::vector<URI> fragments_list_from_capnp(
     const capnp::ArrayFragmentsList::Reader& array_fragments_reader,
-    std::vector<URI>& fragments,
     const URI& array_uri);
 
 /**
@@ -215,19 +211,15 @@ void fragments_timestamps_serialize(
     SerializationType serialize_type,
     Buffer* serialized_buffer);
 
-void fragments_timestamps_deserialize(
-    uint64_t& start_timestamp,
-    uint64_t& end_timestamp,
-    SerializationType serialize_type,
-    const Buffer& serialized_buffer);
+std::tuple<uint64_t, uint64_t> fragments_timestamps_deserialize(
+    SerializationType serialize_type, const Buffer& serialized_buffer);
 
 void fragments_list_serialize(
     const std::vector<URI>& fragments,
     SerializationType serialize_type,
     Buffer* serialized_buffer);
 
-void fragments_list_deserialize(
-    std::vector<URI>& fragments,
+std::vector<URI> fragments_list_deserialize(
     const URI& array_uri,
     SerializationType serialize_type,
     const Buffer& serialized_buffer);
