@@ -39,6 +39,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/crypto/crypto.h"
 #include "tiledb/sm/filesystem/path_win.h"
 #include "tiledb/sm/filesystem/win.h"
 
@@ -250,9 +251,38 @@ TEST_CASE_METHOD(
 
   std::vector<uint8_t> buffer(five_gigabytes);
 
+  // We use a prime period to catch errors where the 4GB buffer chunks are
+  // written in the wrong place.
+  const uint8_t sequence_period = 59;
+
+  uint8_t i = 0;
+  std::generate(buffer.begin(), buffer.end(), [&]() {
+    auto val = i;
+    i = (i + 1) % sequence_period;
+    return val;
+  });
+
+  Buffer expected_buffer;
+  REQUIRE(expected_buffer.realloc(Crypto::MD5_DIGEST_BYTES).ok());
+
   REQUIRE(win_.write(file, buffer.data(), buffer.size()).ok());
 
+  REQUIRE(Crypto::md5(buffer.data(), buffer.size(), &expected_buffer).ok());
+
+  std::fill(buffer.begin(), buffer.end(), 0);
+
   REQUIRE(win_.read(file, 0, buffer.data(), buffer.size()).ok());
+
+  Buffer actual_buffer;
+  REQUIRE(actual_buffer.realloc(Crypto::MD5_DIGEST_BYTES).ok());
+
+  REQUIRE(Crypto::md5(buffer.data(), buffer.size(), &actual_buffer).ok());
+
+  REQUIRE(
+      std::memcmp(
+          expected_buffer.data(),
+          actual_buffer.data(),
+          Crypto::MD5_DIGEST_BYTES) == 0);
 }
 
 #endif  // _WIN32
