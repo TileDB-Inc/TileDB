@@ -1272,7 +1272,8 @@ Status Query::set_data_buffer(
     const std::string& name,
     void* const buffer,
     uint64_t* const buffer_size,
-    const bool check_null_buffers) {
+    const bool check_null_buffers,
+    const bool serialization_allow_new_attr) {
   // General checks for fixed buffers
   RETURN_NOT_OK(check_set_fixed_buffer(name));
 
@@ -1337,7 +1338,7 @@ Status Query::set_data_buffer(
   // Error if setting a new attribute/dimension after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists &&
-      !allow_separate_attribute_writes_) {
+      !allow_separate_attribute_writes_ && !serialization_allow_new_attr) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
@@ -1393,7 +1394,8 @@ Status Query::set_offsets_buffer(
     const std::string& name,
     uint64_t* const buffer_offsets,
     uint64_t* const buffer_offsets_size,
-    const bool check_null_buffers) {
+    const bool check_null_buffers,
+    const bool serialization_allow_new_attr) {
   RETURN_NOT_OK(check_set_fixed_buffer(name));
 
   // Check buffer
@@ -1457,7 +1459,7 @@ Status Query::set_offsets_buffer(
   // Error if setting a new attribute/dimension after initialization
   bool exists = buffers_.find(name) != buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists &&
-      !allow_separate_attribute_writes_) {
+      !allow_separate_attribute_writes_ && !serialization_allow_new_attr) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
@@ -1500,7 +1502,8 @@ Status Query::set_validity_buffer(
     const std::string& name,
     uint8_t* const buffer_validity_bytemap,
     uint64_t* const buffer_validity_bytemap_size,
-    const bool check_null_buffers) {
+    const bool check_null_buffers,
+    const bool serialization_allow_new_attr) {
   RETURN_NOT_OK(check_set_fixed_buffer(name));
 
   ValidityVector validity_vector;
@@ -1534,7 +1537,8 @@ Status Query::set_validity_buffer(
 
   // Error if setting a new attribute after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
-  if (status_ != QueryStatus::UNINITIALIZED && !exists) {
+  if (status_ != QueryStatus::UNINITIALIZED && !exists &&
+      !serialization_allow_new_attr) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute '") + name +
         "' after initialization"));

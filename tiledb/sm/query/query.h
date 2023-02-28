@@ -429,13 +429,16 @@ class Query {
    *     it will contain the size of the useful (read) data in `buffer`.
    * @param check_null_buffers If true (default), null buffers are not
    * allowed.
+   * @param serialization_allow_new_attr If true, setting new attributes
+   * is allowed in INITIALIZED state
    * @return Status
    */
   Status set_data_buffer(
       const std::string& name,
       void* const buffer,
       uint64_t* const buffer_size,
-      const bool check_null_buffers = true);
+      const bool check_null_buffers = true,
+      const bool serialization_allow_new_attr = false);
 
   /**
    * Wrapper to set the internal buffer for a dimension or attribute from a
@@ -465,13 +468,16 @@ class Query {
    *     `buffer_off`.
    * @param check_null_buffers If true (default), null buffers are not
    * allowed.
+   * @param serialization_allow_new_attr If true, setting new attributes
+   * is allowed in INITIALIZED state
    * @return Status
    */
   Status set_offsets_buffer(
       const std::string& name,
       uint64_t* const buffer_offsets,
       uint64_t* const buffer_offsets_size,
-      const bool check_null_buffers = true);
+      const bool check_null_buffers = true,
+      const bool serialization_allow_new_attr = false);
 
   /**
    * Sets the validity buffer for nullable attribute/dimension.
@@ -487,13 +493,16 @@ class Query {
    * data in `buffer_validity_bytemap`.
    * @param check_null_buffers If true (default), null buffers are not
    * allowed.
+   * @param serialization_allow_new_attr If true, setting new attributes
+   * is allowed in INITIALIZED state
    * @return Status
    */
   Status set_validity_buffer(
       const std::string& name,
       uint8_t* const buffer_validity_bytemap,
       uint64_t* const buffer_validity_bytemap_size,
-      const bool check_null_buffers = true);
+      const bool check_null_buffers = true,
+      const bool serialization_allow_new_attr = false);
 
   /**
    * Get the config of the query.
