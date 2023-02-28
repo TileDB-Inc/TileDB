@@ -1203,7 +1203,9 @@ Status Query::create_strategy(bool skip_checks_serialization) {
         Status_QueryError("Cannot create strategy; allocation failed"));
 
   // Transition the query into INITIALIZED state
-  set_status(QueryStatus::INITIALIZED);
+  if (!skip_checks_serialization) {
+    set_status(QueryStatus::INITIALIZED);
+  }
 
   return Status::Ok();
 }
