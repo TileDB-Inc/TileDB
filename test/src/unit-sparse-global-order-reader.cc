@@ -377,7 +377,7 @@ TEST_CASE_METHOD(
   // specific relationship for failure not known, but these values
   // will result in failure with data being written.
   total_budget_ = "10000";
-  ratio_tile_ranges_ = "0.1"; // .1 is the default
+  ratio_tile_ranges_ = "0.1";  // .1 is the default
   update_config();
 
   tiledb_array_t* array = nullptr;
@@ -409,7 +409,6 @@ TEST_CASE_METHOD(
   do {
     auto nitems = data_r_size / sizeof(int);
     for (auto ui = 0u; ui < nitems; ++ui) {
-      //std::cout << ui << ": " << data_r[ui] << std::endl;
       retrieved_data.emplace_back(data_r[ui]);
     }
 
@@ -427,7 +426,6 @@ TEST_CASE_METHOD(
   std::vector<int> observed_bad_data{44, 66, 88, 1010};
   CHECK_FALSE(retrieved_data == observed_bad_data);
   CHECK(retrieved_data == expected_correct_data);
-
 }
 
 TEST_CASE_METHOD(
@@ -438,8 +436,8 @@ TEST_CASE_METHOD(
 
   // Similar in nature to the "... A" version, but using some differently
   // written data.
-  // While ...A and ...B are similar they seemed too dissimilar to try to combine
-  // them via a multiple SECTION() approach.
+  // While ...A and ...B are similar they seemed too dissimilar to try to
+  // combine them via a multiple SECTION() approach.
 
   // Create default array.
   reset_config();
@@ -463,7 +461,6 @@ TEST_CASE_METHOD(
   int data3[] = {33, 66, 99, 1212};
   uint64_t data3_size = sizeof(data3);
 
-//  write_1d_fragment(coords3, &coords3_size, data3, &data3_size);
   write_1d_fragment(coords1, &coords1_size, data1, &data1_size);
   write_1d_fragment(coords3, &coords3_size, data3, &data3_size);
   write_1d_fragment(coords2, &coords2_size, data2, &data2_size);
@@ -503,7 +500,6 @@ TEST_CASE_METHOD(
   do {
     auto nitems = data_r_size / sizeof(int);
     for (auto ui = 0u; ui < nitems; ++ui) {
-      // std::cout << ui << ": " << data_r[ui] << std::endl;
       retrieved_data.emplace_back(data_r[ui]);
     }
 
@@ -521,7 +517,6 @@ TEST_CASE_METHOD(
   std::vector<int> observed_bad_data{55, 66, 88, 99, 1111};
   CHECK_FALSE(retrieved_data == observed_bad_data);
   CHECK(retrieved_data == expected_correct_data);
-
 }
 
 TEST_CASE_METHOD(
