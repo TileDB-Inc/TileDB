@@ -1716,7 +1716,8 @@ std::string_view FragmentMetadata::get_tile_min_as<std::string_view>(
     auto offsets = (uint64_t*)tile_min_buffer_[idx].data();
     auto min_offset = offsets[tile_idx];
     auto size = tile_idx == tile_num - 1 ?
-                    static_cast<size_cast>(tile_min_var_buffer_[idx].size() - min_offset) :
+                    static_cast<size_cast>(
+                        tile_min_var_buffer_[idx].size() - min_offset) :
                     static_cast<size_cast>(offsets[tile_idx + 1] - min_offset);
     char* min = &tile_min_var_buffer_[idx][min_offset];
     return {min, size};
@@ -1790,7 +1791,8 @@ std::string_view FragmentMetadata::get_tile_max_as<std::string_view>(
     auto offsets = (uint64_t*)tile_max_buffer_[idx].data();
     auto max_offset = offsets[tile_idx];
     auto size = tile_idx == tile_num - 1 ?
-                    static_cast<size_cast>(tile_max_var_buffer_[idx].size() - max_offset):
+                    static_cast<size_cast>(
+                        tile_max_var_buffer_[idx].size() - max_offset) :
                     static_cast<size_cast>(offsets[tile_idx + 1] - max_offset);
     char* max = &tile_max_var_buffer_[idx][max_offset];
     return {max, size};
