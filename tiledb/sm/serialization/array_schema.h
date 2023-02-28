@@ -103,9 +103,7 @@ ArraySchema array_schema_from_capnp(
  *
  * @param dim_label Dimension label to serialize
  * @param builder Cap'n proto class.
- * @param client_side Indicate if client or server side. We will only serialize
- *     the dimension label array schema URI if client side and the array schema
- *     exists.
+ * @param client_side Indicate if client or server side.
  */
 void dimension_label_to_capnp(
     const DimensionLabel& dimension_label,

@@ -674,13 +674,19 @@ void dimension_label_to_capnp(
     const bool client_side) {
   dim_label_builder->setDimensionId(dimension_label.dimension_index());
   dim_label_builder->setName(dimension_label.name());
-  dim_label_builder->setUri(dimension_label.uri().to_string());
   dim_label_builder->setAttributeName(dimension_label.label_attr_name());
   dim_label_builder->setOrder(data_order_str(dimension_label.label_order()));
   dim_label_builder->setType(datatype_str(dimension_label.label_type()));
   dim_label_builder->setCellValNum(dimension_label.label_cell_val_num());
   dim_label_builder->setExternal(dimension_label.is_external());
   dim_label_builder->setRelative(dimension_label.uri_is_relative());
+  if (dimension_label.uri_is_relative()) {
+    dim_label_builder->setUri(dimension_label.uri().to_string());
+  } else {
+    throw SerializationStatusException(
+        "[Serialization::dimension_label_to_capnp] Serialization of absolute "
+        "dimension label URIs not yet implemented.");
+  }
 
   if (dimension_label.has_schema()) {
     const auto& schema = dimension_label.schema();
@@ -696,11 +702,18 @@ shared_ptr<DimensionLabel> dimension_label_from_capnp(
   Datatype datatype = Datatype::ANY;
   throw_if_not_ok(datatype_enum(dim_label_reader.getType(), &datatype));
 
-  shared_ptr<ArraySchema> schema = nullptr;
+  shared_ptr<ArraySchema> schema{nullptr};
   if (dim_label_reader.hasSchema()) {
     auto schema_reader = dim_label_reader.getSchema();
     schema = make_shared<ArraySchema>(
         HERE(), array_schema_from_capnp(schema_reader, URI()));
+  }
+
+  auto is_relative = dim_label_reader.getRelative();
+  if (!is_relative) {
+    throw SerializationStatusException(
+        "[Deserialization::dimension_label_from_capnp] Deserialization of "
+        "absolute dimension label URIs not yet implemented.");
   }
 
   return tiledb::common::make_shared<DimensionLabel>(
@@ -714,7 +727,7 @@ shared_ptr<DimensionLabel> dimension_label_from_capnp(
       dim_label_reader.getCellValNum(),
       schema,
       dim_label_reader.getExternal(),
-      dim_label_reader.getRelative());
+      is_relative);
 }
 
 Status array_schema_to_capnp(
@@ -778,10 +791,10 @@ Status array_schema_to_capnp(
   // Dimension labels
   auto num_labels = array_schema.dim_label_num();
   if (num_labels > 0) {
-    auto dim_labels_buidler =
+    auto dim_labels_builder =
         array_schema_builder->initDimensionLabels(num_labels);
     for (size_t i = 0; i < num_labels; i++) {
-      auto dim_label_builder = dim_labels_buidler[i];
+      auto dim_label_builder = dim_labels_builder[i];
       dimension_label_to_capnp(
           array_schema.dimension_label(i), &dim_label_builder, client_side);
     }
