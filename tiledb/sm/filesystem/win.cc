@@ -436,6 +436,7 @@ Status Win::read(
         get_last_error_msg("CreateFile") + ")"));
   }
 
+  char* byte_buffer = reinterpret_cast<char*>(buffer);
   do {
     LARGE_INTEGER offset_lg_int;
     offset_lg_int.QuadPart = offset;
@@ -446,7 +447,8 @@ Status Win::read(
                                   std::numeric_limits<DWORD>::max() :
                                   (DWORD)nbytes;
     DWORD num_bytes_read = 0;
-    if (ReadFile(file_h, buffer, num_bytes_to_read, &num_bytes_read, &ov) ==
+    if (ReadFile(
+            file_h, byte_buffer, num_bytes_to_read, &num_bytes_read, &ov) ==
         0) {
       auto gle = GetLastError();
       CloseHandle(file_h);
@@ -456,6 +458,7 @@ Status Win::read(
                       "num_bytes_read " + std::to_string(num_bytes_read) +
                           " != nbyes " + std::to_string(nbytes))));
     }
+    byte_buffer += num_bytes_read;
     offset += num_bytes_read;
     nbytes -= num_bytes_read;
   } while (nbytes > 0);
