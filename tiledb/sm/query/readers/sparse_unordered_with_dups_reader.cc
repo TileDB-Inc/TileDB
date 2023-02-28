@@ -154,15 +154,13 @@ void SparseUnorderedWithDupsReader<BitmapType>::initialize_memory_budget() {
   assert(found);
 
   throw_if_not_ok(config_.get<double>(
-      "sm.mem.reader.sparse_unordered_with_dups.ratio_query_condition",
-      &memory_budget_ratio_query_condition_,
-      &found));
-  assert(found);
-
-  throw_if_not_ok(config_.get<double>(
       "sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges",
       &memory_budget_ratio_tile_ranges_,
       &found));
+  assert(found);
+
+  throw_if_not_ok(config_.get<uint64_t>(
+      "sm.mem.tile_upper_memory_limit", &tile_upper_memory_limit_, &found));
   assert(found);
 }
 
@@ -404,50 +402,64 @@ void SparseUnorderedWithDupsReader<BitmapType>::load_tile_offsets_data() {
 }
 
 template <class BitmapType>
-std::pair<uint64_t, uint64_t>
-SparseUnorderedWithDupsReader<BitmapType>::get_coord_tiles_size(
+uint64_t SparseUnorderedWithDupsReader<BitmapType>::get_coord_tiles_size(
     unsigned dim_num, unsigned f, uint64_t t) {
-  auto tiles_sizes =
+  auto tiles_size =
       SparseIndexReaderBase::get_coord_tiles_size<BitmapType>(dim_num, f, t);
 
   auto frag_meta = fragment_metadata_[f];
 
   // Add the result tile structure size.
-  tiles_sizes.first += sizeof(UnorderedWithDupsResultTile<BitmapType>);
+  tiles_size += sizeof(UnorderedWithDupsResultTile<BitmapType>);
 
   // Add the tile bitmap size if there is a subarray or any condition to
   // process.
   if (subarray_.is_set() || has_post_deduplication_conditions(*frag_meta) ||
       process_partial_timestamps(*frag_meta)) {
-    tiles_sizes.first += frag_meta->cell_num(t) * sizeof(BitmapType);
+    tiles_size += frag_meta->cell_num(t) * sizeof(BitmapType);
   }
 
-  return tiles_sizes;
+  return tiles_size;
 }
 
 template <class BitmapType>
 bool SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
     const unsigned dim_num,
-    const uint64_t memory_budget_qc_tiles,
-    const uint64_t memory_budget_coords_tiles,
     const unsigned f,
     const uint64_t t,
     const uint64_t last_t,
     const FragmentMetadata& frag_md) {
+  // Use either the coordinate portion of the total budget or the tile upper
+  // memory limit as the upper memory limit, whichever is smaller.
+  const uint64_t upper_memory_limit = std::min<uint64_t>(
+      tile_upper_memory_limit_, memory_budget_ * memory_budget_ratio_coords_);
+
   // Calculate memory consumption for this tile.
-  auto tiles_sizes = get_coord_tiles_size(dim_num, f, t);
-  auto tiles_size = tiles_sizes.first;
-  auto tiles_size_qc = tiles_sizes.second;
+  auto tiles_size = get_coord_tiles_size(dim_num, f, t);
 
   // Don't load more tiles than the memory budget.
-  if (memory_used_for_coords_total_ + tiles_size > memory_budget_coords_tiles ||
-      memory_used_qc_tiles_total_ + tiles_size_qc > memory_budget_qc_tiles) {
-    return true;
+  if (memory_used_for_coords_total_ + tiles_size > upper_memory_limit) {
+    // If we don't have any tiles loaded and the new tile still can fit in the
+    // available memory, allow loading it so we can make progress.
+    if (!result_tiles_.empty() || tiles_size > available_memory()) {
+      logger_->debug(
+          "Budget exceeded adding result tiles, fragment {0}, tile "
+          "{1}",
+          f,
+          t);
+
+      // Make sure we can add at least one tile.
+      if (result_tiles_.empty()) {
+        throw SparseUnorderedWithDupsReaderStatusException(
+            "Cannot load a single tile, increase memory budget");
+      }
+
+      return true;
+    }
   }
 
   // Adjust memory usage.
   memory_used_for_coords_total_ += tiles_size;
-  memory_used_qc_tiles_total_ += tiles_size_qc;
 
   // Add the result tile.
   result_tiles_.emplace_back(f, t, frag_md);
@@ -468,11 +480,6 @@ void SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
   const auto fragment_num = fragment_metadata_.size();
   const auto dim_num = array_schema_.dim_num();
 
-  const uint64_t memory_budget_qc_tiles =
-      memory_budget_ * memory_budget_ratio_query_condition_;
-  const uint64_t memory_budget_coords =
-      memory_budget_ * memory_budget_ratio_coords_;
-
   // Create result tiles.
   if (subarray_.is_set()) {
     // Load as many tiles as the memory budget allows.
@@ -487,33 +494,19 @@ void SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
 
           // Add all tiles for this range.
           for (uint64_t t = range.first; t <= range.second; t++) {
-            budget_exceeded = add_result_tile(
-                dim_num,
-                memory_budget_qc_tiles,
-                memory_budget_coords,
-                f,
-                t,
-                last_t,
-                *fragment_metadata_[f]);
-
-            // Make sure we can add at least one tile.
+            budget_exceeded =
+                add_result_tile(dim_num, f, t, last_t, *fragment_metadata_[f]);
             if (budget_exceeded) {
-              logger_->debug(
-                  "Budget exceeded adding result tiles, fragment {0}, tile "
-                  "{1}",
-                  f,
-                  t);
-              if (result_tiles_.empty())
-                throw SparseUnorderedWithDupsReaderStatusException(
-                    "Cannot load a single tile, increase memory budget");
               break;
             }
 
             range.first++;
           }
 
-          if (budget_exceeded)
+          if (budget_exceeded) {
             break;
+          }
+
           remove_result_tile_range(f);
         }
       }
@@ -538,22 +531,8 @@ void SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
         all_tiles_loaded_[f] = start == tile_num;
         for (uint64_t t = start; t < tile_num; t++) {
           budget_exceeded = add_result_tile(
-              dim_num,
-              memory_budget_qc_tiles,
-              memory_budget_coords,
-              f,
-              t,
-              tile_num - 1,
-              *fragment_metadata_[f]);
-          // Make sure we can add at least one tile.
+              dim_num, f, t, tile_num - 1, *fragment_metadata_[f]);
           if (budget_exceeded) {
-            logger_->debug(
-                "Budget exceeded adding result tiles, fragment {0}, tile {1}",
-                f,
-                t);
-            if (result_tiles_.empty())
-              throw SparseUnorderedWithDupsReaderStatusException(
-                  "Cannot load a single tile, increase memory budget");
             break;
           }
         }
@@ -1494,8 +1473,12 @@ template <class BitmapType>
 tuple<Status, optional<std::vector<uint64_t>>>
 SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
     const std::vector<std::string>& names,
-    const uint64_t memory_budget,
     std::vector<ResultTile*>& result_tiles) {
+  // Use either the tile upper memory limit, or the available memory as the
+  // upper memory limit, whichever is smaller.
+  uint64_t upper_memory_limit =
+      std::min(tile_upper_memory_limit_, available_memory());
+
   // Process all attributes in parallel.
   uint64_t max_rt_idx = result_tiles.size();
   std::mutex max_rt_idx_mtx;
@@ -1537,9 +1520,13 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
             tile_size += sizeof(void*) * rt->result_num();
           }
 
-          // Stop when we reach the budget.
-          if (*mem_usage + tile_size > memory_budget) {
-            break;
+          // Stop when we reach the upper limit.
+          if (*mem_usage + tile_size > upper_memory_limit) {
+            // We can allow the first tile to go above the upper limit if it
+            // fits the available memory.
+            if (idx != 0 || tile_size > available_memory()) {
+              break;
+            }
           }
 
           // Adjust memory usage.
@@ -1653,12 +1640,8 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
       compute_fixed_results_to_copy(names, result_tiles);
 
   // Making sure we respect the memory budget for the copy operation.
-  uint64_t memory_budget = memory_budget_ - memory_used_qc_tiles_total_ -
-                           memory_used_for_coords_total_ -
-                           memory_used_result_tile_ranges_ -
-                           array_memory_tracker_->get_memory_usage();
   auto&& [st, mem_usage_per_attr] =
-      respect_copy_memory_budget(names, memory_budget, result_tiles);
+      respect_copy_memory_budget(names, result_tiles);
   RETURN_NOT_OK(st);
 
   // There is no space for any tiles in the user buffer, exit.
@@ -1679,7 +1662,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
   while (buffer_idx < names.size()) {
     // Read and unfilter as many attributes as can fit in the budget.
     auto&& [st, index_to_copy] = read_and_unfilter_attributes(
-        memory_budget, names, *mem_usage_per_attr, &buffer_idx, result_tiles);
+        names, *mem_usage_per_attr, &buffer_idx, result_tiles);
     RETURN_NOT_OK(st);
 
     // Copy one attribute at a time for buffers in memory.
@@ -1832,15 +1815,12 @@ Status SparseUnorderedWithDupsReader<BitmapType>::remove_result_tile(
     typename std::list<UnorderedWithDupsResultTile<BitmapType>>::iterator rt) {
   // Remove coord tile size from memory budget.
   const auto tile_idx = rt->tile_idx();
-  auto tiles_sizes =
+  auto tiles_size =
       get_coord_tiles_size(array_schema_.dim_num(), frag_idx, tile_idx);
-  auto tiles_size = tiles_sizes.first;
-  auto tiles_size_qc = tiles_sizes.second;
 
   {
     std::unique_lock<std::mutex> lck(mem_budget_mtx_);
     memory_used_for_coords_total_ -= tiles_size;
-    memory_used_qc_tiles_total_ -= tiles_size_qc;
   }
 
   // Delete the tile.
@@ -1864,7 +1844,6 @@ Status SparseUnorderedWithDupsReader<BitmapType>::end_iteration() {
   // Validate memory usage.
   if (!incomplete()) {
     assert(memory_used_for_coords_total_ == 0);
-    assert(memory_used_qc_tiles_total_ == 0);
     assert(memory_used_result_tile_ranges_ == 0);
   }
 

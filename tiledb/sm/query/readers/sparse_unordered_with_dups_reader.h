@@ -184,17 +184,14 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * @param f Fragment index.
    * @param t Tile index.
    *
-   * @return Tiles_size, tiles_size_qc.
+   * @return Tiles size.
    */
-  std::pair<uint64_t, uint64_t> get_coord_tiles_size(
-      unsigned dim_num, unsigned f, uint64_t t);
+  uint64_t get_coord_tiles_size(unsigned dim_num, unsigned f, uint64_t t);
 
   /**
    * Add a result tile to process, making sure maximum budget is respected.
    *
    * @param dim_num Number of dimensions.
-   * @param memory_budget_qc_tiles Memory budget for query condition tiles.
-   * @param memory_budget_coords_tiles Memory budget for coordinate tiles.
    * @param f Fragment index.
    * @param t Tile index.
    * @param last_t Last tile index.
@@ -204,8 +201,6 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    */
   bool add_result_tile(
       const unsigned dim_num,
-      const uint64_t memory_budget_qc_tiles,
-      const uint64_t memory_budget_coords_tiles,
       const unsigned f,
       const uint64_t t,
       const uint64_t last_t,
@@ -425,14 +420,12 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * the budget.
    *
    * @param names Attribute/dimensions to compute for.
-   * @param memory_budget Memory budget allowed for copy operation.
    * @param result_tiles Result tiles to process, might be truncated.
    *
    * @return Status, total_mem_usage_per_attr.
    */
   tuple<Status, optional<std::vector<uint64_t>>> respect_copy_memory_budget(
       const std::vector<std::string>& names,
-      const uint64_t memory_budget,
       std::vector<ResultTile*>& result_tiles);
 
   /**
