@@ -1522,7 +1522,7 @@ void Array::set_array_closed() {
   is_open_ = false;
 }
 
-void Array::evalute_attribute_dim_tile_sizes_for_maxs(
+void Array::evalute_field_tile_sizes_for_maxs(
     tiledb_fragment_max_tile_sizes_t& maxs,
     FragmentMetadata& f,
     const std::string& name,
@@ -1688,13 +1688,13 @@ uint64_t Array::max_tile_size() {
     auto& frags_schema = frag->array_schema();
 
     if (!frags_schema->dense()) {
-      evalute_attribute_dim_tile_sizes_for_maxs(
+      evalute_field_tile_sizes_for_maxs(
           maxs, *frag, constants::coords, false, false, enc_key);
     }
 
     auto& attributes = frags_schema->attributes();
     for (auto& attrib : attributes) {
-      evalute_attribute_dim_tile_sizes_for_maxs(
+      evalute_field_tile_sizes_for_maxs(
           maxs,
           *frag,
           attrib->name(),
@@ -1704,7 +1704,7 @@ uint64_t Array::max_tile_size() {
     }
     auto dim_names = frags_schema->dim_names();
     for (auto& dim_name : dim_names) {
-      evalute_attribute_dim_tile_sizes_for_maxs(
+      evalute_field_tile_sizes_for_maxs(
           maxs,
           *frag,
           dim_name,

@@ -770,7 +770,7 @@ class Array {
    * @param is_nullable indicator of whether considered item is nullable
    * @param enc_key to be used accessing fragment data
    */
-  void evalute_attribute_dim_tile_sizes_for_maxs(
+  void evalute_field_tile_sizes_for_maxs(
       tiledb_fragment_max_tile_sizes_t& maxs,
       FragmentMetadata& f,
       const std::string& name,
