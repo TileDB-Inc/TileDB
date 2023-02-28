@@ -9,7 +9,7 @@ if (TILEDB_GCS)
             CACHE STRING "Vcpkg toolchain file"
         )
     else()
-        include(init-submodule.cmake)
+        include(init-submodule)
     endif()
 
     set(VCPKG_INSTALL_OPTIONS "--no-print-usage")
