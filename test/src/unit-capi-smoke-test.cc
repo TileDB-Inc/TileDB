@@ -37,7 +37,6 @@
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/misc/utils.h"
 
-#include <filesystem>
 #include <iostream>
 #include <vector>
 
