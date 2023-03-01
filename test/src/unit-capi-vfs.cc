@@ -56,7 +56,11 @@ struct VFSFx {
   const std::string AZURE_CONTAINER =
       AZURE_PREFIX + random_name("tiledb") + "/";
   const std::string AZURE_TEMP_DIR = AZURE_CONTAINER + "tiledb_test/";
-  const std::string FILE_TEMP_DIR = tiledb::test::get_temp_path();
+  const std::string FILE_TEMP_DIR =
+#ifndef _WIN32
+      "file://" +
+#endif
+      tiledb::test::get_temp_path();
   const std::string MEMFS_TEMP_DIR = std::string("mem://tiledb_test/");
 
   // TileDB context and vfs
