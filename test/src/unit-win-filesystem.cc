@@ -68,14 +68,13 @@ struct WinFx {
     REQUIRE(vfs_config_.set("vfs.min_parallel_size", "100").ok());
     REQUIRE(win_.init(vfs_config_, &thread_pool_).ok());
 
-    if (path_exists(TEMP_DIR + "tiledb_test_dir"))
-      REQUIRE(win_.remove_dir(TEMP_DIR + "tiledb_test_dir").ok());
-    if (path_exists(TEMP_DIR + "tiledb_test_file"))
-      REQUIRE(win_.remove_file(TEMP_DIR + "tiledb_test_file").ok());
+    if (path_exists(TEMP_DIR)) {
+      REQUIRE(win_.remove_dir(TEMP_DIR).ok());
+    }
   }
 
   ~WinFx() {
-    REQUIRE(win_.remove_dir(TEMP_DIR + "tiledb_test_dir").ok());
+    REQUIRE(win_.remove_dir(TEMP_DIR).ok());
   }
 
   bool path_exists(std::string path) {
@@ -85,9 +84,8 @@ struct WinFx {
 
 TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
   using tiledb::sm::path_win::is_win_path;
-  const std::string test_dir_path = win_.current_dir() + "/tiledb_test_dir";
-  const std::string test_file_path =
-      win_.current_dir() + "/tiledb_test_dir/tiledb_test_file";
+  const std::string test_dir_path = TEMP_DIR + "/win_tests";
+  const std::string test_file_path = TEMP_DIR + "/win_tests/tiledb_test_file";
   URI test_dir(test_dir_path);
   URI test_file(test_file_path);
   Status st;
@@ -144,6 +142,9 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
       Win::abs_path("path1\\path2\\..\\path3") ==
       Win::current_dir() + "\\path1\\path3");
 
+  CHECK(!win_.is_dir(TEMP_DIR));
+  st = win_.create_dir(TEMP_DIR);
+  CHECK(st.ok());
   CHECK(!win_.is_dir(test_dir.to_path()));
   st = win_.create_dir(test_dir.to_path());
   CHECK(st.ok());
@@ -220,7 +221,7 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
   CHECK(st.ok());
   CHECK(paths.size() == 1);
   CHECK(!starts_with(paths[0], "file:///"));
-  CHECK(ends_with(paths[0], "tiledb_test_dir\\tiledb_test_file"));
+  CHECK(ends_with(paths[0], "win_tests\\tiledb_test_file"));
   CHECK(win_.is_file(paths[0]));
 
   uint64_t nbytes = 0;
