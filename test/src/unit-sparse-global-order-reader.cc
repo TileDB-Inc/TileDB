@@ -353,7 +353,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: Tile ranges budget exceeded sc-23660 A",
-    "[sparse-global-order][tile-ranges][budget-exceeded][regression]") {
+    "[sparse-global-order][tile-ranges][budget-exceeded][.regression]") {
   // Observed to produce the observed_bad_data in v2.12.2.
 
   // Create default array.
@@ -431,7 +431,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: Tile ranges budget exceeded sc-23660 B",
-    "[sparse-global-order][tile-ranges][budget-exceeded][regression]") {
+    "[sparse-global-order][tile-ranges][budget-exceeded][.regression]") {
   // Observed to produce the observed_bad_data in v2.12.2.
 
   // Similar in nature to the "... A" version, but using some differently
