@@ -80,6 +80,7 @@ struct CPPMaxFragmentSizeFx {
 
     // Set the maximum size for the fragments.
     query.ptr().get()->query_->set_fragment_size(fragment_size);
+    query.set_layout(TILEDB_GLOBAL_ORDER);
 
     // Perform writes of the requested sizes.
     for (auto num_vals : write_sizes) {
@@ -95,7 +96,6 @@ struct CPPMaxFragmentSizeFx {
       // Perform the write.
       query.set_data_buffer("d1", d1_buff);
       query.set_data_buffer("a1", a1_buff);
-      query.set_layout(TILEDB_GLOBAL_ORDER);
       REQUIRE(query.submit() == Query::Status::COMPLETE);
 
       start_val += num_vals;
