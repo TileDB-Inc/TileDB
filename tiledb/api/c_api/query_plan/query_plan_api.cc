@@ -33,7 +33,7 @@
 #include "../string/string_api_internal.h"
 #include "query_plan_api_external_experimental.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
-#include "tiledb/sm/c_api/api_argument_validator.h"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
 
 #include "tiledb/sm/query_plan/query_plan.h"
 
@@ -41,9 +41,11 @@ namespace tiledb::api {
 
 capi_return_t tiledb_query_get_plan(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_string_handle_t** rv) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, query) == TILEDB_ERR) {
-    return TILEDB_ERR;
+  // unused for now
+  (void)ctx;
+
+  if (query == nullptr) {
+    throw CAPIStatusException("argument `query` may not be nullptr");
   }
 
   sm::QueryPlan plan(*query->query_);
