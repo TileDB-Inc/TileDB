@@ -84,6 +84,8 @@ static tiledb::sm::stats::Stats g_helper_stats("test");
 // objects that require a parent `Logger` object.
 shared_ptr<Logger> g_helper_logger(void);
 
+const std::string& get_temp_path();
+
 // For easy reference
 typedef std::pair<tiledb_filter_type_t, int> Compressor;
 template <class T>

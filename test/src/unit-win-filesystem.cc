@@ -33,6 +33,7 @@
 #ifdef _WIN32
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/helpers.h"
 
 #include <cassert>
 #include "tiledb/common/status.h"
@@ -57,7 +58,7 @@ static bool ends_with(const std::string& value, const std::string& suffix) {
 }
 
 struct WinFx {
-  const std::string TEMP_DIR = Win::current_dir() + "/";
+  const std::string& TEMP_DIR = tiledb::test::get_temp_path();
   Win win_;
   ThreadPool thread_pool_{4};
   Config vfs_config_;

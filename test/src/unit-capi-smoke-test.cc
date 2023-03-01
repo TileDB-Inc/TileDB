@@ -33,15 +33,11 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
-#ifdef _WIN32
-#include "tiledb/sm/filesystem/win.h"
-#else
-#include "tiledb/sm/filesystem/posix.h"
-#endif
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/misc/utils.h"
 
+#include <filesystem>
 #include <iostream>
 #include <vector>
 
@@ -53,15 +49,7 @@ static const char encryption_key[] = "unittestunittestunittestunittest";
 
 class SmokeTestFx {
  public:
-#ifdef _WIN32
-  const string FILE_URI_PREFIX = "";
-  const string FILE_TEMP_DIR =
-      tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
-#else
-  const string FILE_URI_PREFIX = "file://";
-  const string FILE_TEMP_DIR =
-      tiledb::sm::Posix::current_dir() + "/tiledb_test/";
-#endif
+  const string& FILE_TEMP_DIR = tiledb::test::get_temp_path();
 
   /**
    * Wraps data to build a dimension with the C-API.
