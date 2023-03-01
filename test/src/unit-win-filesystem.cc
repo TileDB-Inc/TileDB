@@ -182,17 +182,19 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
   CHECK(st.ok());
 
   const unsigned buffer_size = 100000;
-  auto write_buffer = new char[buffer_size];
+  std::vector<char> write_buffer(buffer_size);
   for (unsigned i = 0; i < buffer_size; i++) {
     write_buffer[i] = 'a' + (i % 26);
   }
-  st = win_.write(test_file.to_path(), write_buffer, buffer_size);
+  st =
+      win_.write(test_file.to_path(), write_buffer.data(), write_buffer.size());
   CHECK(st.ok());
   st = win_.sync(test_file.to_path());
   CHECK(st.ok());
 
-  auto read_buffer = new char[26];
-  st = win_.read(test_file.to_path(), 0, read_buffer, 26);
+  std::vector<char> read_buffer(26);
+  st =
+      win_.read(test_file.to_path(), 0, read_buffer.data(), read_buffer.size());
   CHECK(st.ok());
 
   bool allok = true;
@@ -204,7 +206,8 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
   }
   CHECK(allok == true);
 
-  st = win_.read(test_file.to_path(), 11, read_buffer, 26);
+  st = win_.read(
+      test_file.to_path(), 11, read_buffer.data(), read_buffer.size());
   CHECK(st.ok());
 
   allok = true;
