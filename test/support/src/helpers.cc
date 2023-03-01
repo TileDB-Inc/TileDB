@@ -56,8 +56,9 @@ namespace tiledb {
 namespace test {
 
 const std::string& get_temp_path() {
+  // Ensure the path has a trailing delimiter.
   static std::string temp_path =
-      (std::filesystem::temp_directory_path() / "tiledb_test").string();
+      (std::filesystem::temp_directory_path() / "tiledb_test" / "").string();
 
   return temp_path;
 }
