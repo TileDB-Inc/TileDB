@@ -1,0 +1,32 @@
+#ifdef RC_INVOKED
+
+1 VERSIONINFO
+/* Windows Explorer apparently presents FILEVERSION info from this field. */
+FILEVERSION @TDB_WIN32_FILEVERSION@
+/* Windows Explorer apparently DOES NOT present PRODUCTVERSION info from this field. */
+PRODUCTVERSION @TDB_WIN32_FILEVERSION@
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904E4"
+    BEGIN
+      VALUE "CompanyName", "TileDB Inc."
+      VALUE "FileDescription", "TileDB Embedded"
+/* Windows Explorer apparently DOES NOT present FileVersion info from this field. */
+/*      VALUE "FileVersion", TDB_WIN32_FILEVERSION_STR*/
+      VALUE "InternalName", "tiledb"
+      VALUE "LegalCopyright", "Copyright (c) 2017-2023 TileDB, Inc. Licensed under the MIT License."
+      VALUE "OriginalName", "tiledb.dll"
+      VALUE "ProductName", "TileDB Embedded"
+/* Windows Explorer apparently presents ProductVersion info from this field. */
+      VALUE "ProductVersion", @TDB_WIN32_FILEVERSION_STR@
+    END
+  END
+  /* apparently VarFileInfo block required for ProductVersion/ProductName to display */
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x0409, 1252
+  END
+END
+
+#endif /*RC_INVOKED*/

@@ -930,6 +930,37 @@ endif()
 
 add_library(tiledb_shared SHARED $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
 
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/sm/c_api/tiledb_version.h" ver)
+
+string(REGEX MATCH "TILEDB_VERSION_MAJOR ([0-9]*)" _ ${ver})
+set(ver_major ${CMAKE_MATCH_1})
+
+string(REGEX MATCH "TILEDB_VERSION_MINOR ([0-9]*)" _ ${ver})
+set(ver_minor ${CMAKE_MATCH_1})
+
+string(REGEX MATCH "TILEDB_VERSION_PATCH ([0-9]*)" _ ${ver})
+set(ver_patch ${CMAKE_MATCH_1})
+
+set(VERSION "${ver_major}.${ver_minor}.${ver_patch}")
+
+if (WIN32)
+  # WIN32 RC file creation (for VERSIONINFO)
+  set(TDB_WIN32_FILEVERSION "${ver_major},${ver_minor},${ver_patch},0")
+  set(TDB_WIN32_FILEVERSION_STR "\"${ver_major}.${ver_minor}.${ver_patch}\"")
+  configure_file(
+          ${CMAKE_CURRENT_SOURCE_DIR}/../cmake/inputs/tiledb_win32_verinfo.rc.in
+          ${CMAKE_CURRENT_BINARY_DIR}/tiledb_win32_verinfo.rc
+          @ONLY
+  )
+
+  # The .rc file will be created elsewhere (currently below) via configure_file()
+  target_sources(tiledb_shared PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/tiledb_win32_verinfo.rc)
+  target_include_directories(tiledb_shared
+    PRIVATE
+      "${TILEDB_CORE_INCLUDE_DIR}"
+    )
+endif()
+
 # Target properties
 set_target_properties(tiledb_shared
   PROPERTIES
@@ -1144,19 +1175,6 @@ install(
   DESTINATION "${CONFIG_INSTALL_DIR}"
 )
 
-file(READ "${CMAKE_CURRENT_SOURCE_DIR}/sm/c_api/tiledb_version.h" ver)
-
-string(REGEX MATCH "TILEDB_VERSION_MAJOR ([0-9]*)" _ ${ver})
-set(ver_major ${CMAKE_MATCH_1})
-
-string(REGEX MATCH "TILEDB_VERSION_MINOR ([0-9]*)" _ ${ver})
-set(ver_minor ${CMAKE_MATCH_1})
-
-string(REGEX MATCH "TILEDB_VERSION_PATCH ([0-9]*)" _ ${ver})
-set(ver_patch ${CMAKE_MATCH_1})
-
-set(VERSION "${ver_major}.${ver_minor}.${ver_patch}")
-
 if (WIN32 AND TILEDB_WEBP)
   set(PKGCONF_REQ_PRIV "libmagic pcre2-8 pcre2-posix")
   string(CONCAT PKGCONF_REQ_PRIV ${PKGCONF_REQ_PRIV} " webp imagedec imageenc imageioutil webpdecoder webpdmux webpmux")
@@ -1170,3 +1188,4 @@ configure_file(
 )
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/tiledb.pc
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+
