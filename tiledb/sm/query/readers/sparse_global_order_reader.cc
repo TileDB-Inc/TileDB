@@ -1045,19 +1045,20 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
         }
       }
 
-      update_frag_idx(tile, to_process.pos_ + 1);
-
       // For no dups, we just remove the cells from the queue as the one with
       // the higher timestamp is already in `to_process` and will be processed
       // below. For dups, `to_process` was already added above, replace it with
       // the top of the queue.
       if (!return_all_dups) {
         auto to_remove = tile_queue.top();
+        update_frag_idx(to_remove.tile_, to_remove.pos_ + 1);
         tile_queue.pop();
 
         // Put the next cell from the processed tile in the queue.
         need_more_tiles = add_next_cell_to_queue(to_remove, rt_it, tile_queue);
       } else {
+        update_frag_idx(tile, to_process.pos_ + 1);
+
         // Put the next cell from the processed tile in the queue.
         need_more_tiles = add_next_cell_to_queue(to_process, rt_it, tile_queue);
 
