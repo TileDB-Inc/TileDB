@@ -1195,3 +1195,64 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
+
+TEST_CASE_METHOD(
+    CSparseGlobalOrderFx,
+    "Sparse global order reader: correct read state on duplicates",
+    "[sparse-global-order][no-dups][read-state]") {
+  create_default_array_1d(false);
+
+  // Write one fragment in coordinates 1-10 with data 1-10.
+  int coords[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  uint64_t coords_size = sizeof(coords);
+  int data1[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  uint64_t data1_size = sizeof(data1);
+  write_1d_fragment(coords, &coords_size, data1, &data1_size);
+
+  // Write another fragment with the same coordinates but data 11-20.
+  int data2[] = {11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
+  uint64_t data2_size = sizeof(data2);
+  write_1d_fragment(coords, &coords_size, data2, &data2_size);
+
+  tiledb_array_t* array = nullptr;
+  tiledb_query_t* query = nullptr;
+
+  // Read with buffers that can only fit one cell.
+  int coords_r[1];
+  int data_r[1];
+  uint64_t coords_r_size = sizeof(coords_r);
+  uint64_t data_r_size = sizeof(data_r);
+
+  // Read the first cell.
+  int rc;
+  tiledb_query_status_t status;
+  rc = read(
+      true,
+      false,
+      coords_r,
+      &coords_r_size,
+      data_r,
+      &data_r_size,
+      &query,
+      &array);
+  CHECK(rc == TILEDB_OK);
+
+  CHECK(coords_r[0] == 1);
+  CHECK(data_r[0] == 11);
+
+  for (int i = 2; i <= 10; i++) {
+    // Check incomplete query status.
+    tiledb_query_get_status(ctx_, query, &status);
+    CHECK(status == TILEDB_INCOMPLETE);
+
+    rc = tiledb_query_submit(ctx_, query);
+    CHECK(rc == TILEDB_OK);
+
+    CHECK(coords_r[0] == i);
+    CHECK(data_r[0] == i + 10);
+  }
+
+  // Check completed query status.
+  tiledb_query_get_status(ctx_, query, &status);
+  CHECK(status == TILEDB_COMPLETED);
+}
