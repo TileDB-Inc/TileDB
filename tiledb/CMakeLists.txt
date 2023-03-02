@@ -53,6 +53,7 @@ find_package(Threads REQUIRED)
 
 add_subdirectory(api)
 add_subdirectory(common)
+add_subdirectory(platform)
 add_subdirectory(type)
 add_subdirectory(sm)
 add_subdirectory(storage_format)
