@@ -47,7 +47,10 @@ namespace tiledb::common {
 /* ********************************* */
 
 Logger::Logger(
-    const std::string& name, const Logger::Format format, const bool root)
+    const std::string& name,
+    const Logger::Level level,
+    const Logger::Format format,
+    const bool root)
     : name_(name)
     , root_(root) {
   logger_ = spdlog::get(name_);
@@ -64,7 +67,7 @@ Logger::Logger(
     logger_->set_pattern("{\n \"log\": [");
     logger_->critical("");
   }
-  set_level(Logger::Level::ERR);
+  set_level(level);
   set_format(format);
 }
 
@@ -289,7 +292,7 @@ Logger& global_logger(Logger::Format format) {
       (format == Logger::Format::JSON) ?
           "\"" + std::to_string(ts_micro) + "-Global\":\"1\"" :
           std::to_string(ts_micro) + "-Global";
-  static Logger l(name, format, true);
+  static Logger l(name, Logger::Level::ERR, format, true);
   return l;
 }
 
