@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -538,7 +538,7 @@ void Array::delete_array(const URI& uri) {
     auto rest_client = resources_.rest_client();
     if (rest_client == nullptr) {
       throw ArrayStatusException(
-          "[Array::delete_array] Remote array with no REST client.");
+          "[delete_array] Remote array with no REST client.");
     }
     rest_client->delete_array_from_rest(uri);
   } else {
@@ -558,7 +558,7 @@ void Array::delete_fragments(
   // #TODO Add rest support for delete_fragments
   if (remote_) {
     throw ArrayStatusException(
-        "[Array::delete_fragments] Remote arrays currently unsupported.");
+        "[delete_fragments] Remote arrays currently unsupported.");
   } else {
     storage_manager_->delete_fragments(
         uri.c_str(), timestamp_start, timestamp_end);
@@ -574,7 +574,7 @@ void Array::delete_fragments_list(
   // #TODO Add rest support for delete_fragments_list
   if (remote_) {
     throw ArrayStatusException(
-        "[Array::delete_fragments_list] Remote arrays currently unsupported.");
+        "[delete_fragments_list] Remote arrays currently unsupported.");
   } else {
     auto array_dir = ArrayDirectory(
         resources_, uri, 0, std::numeric_limits<uint64_t>::max());
@@ -852,9 +852,12 @@ uint64_t Array::timestamp_end_opened_at() const {
   return timestamp_end_opened_at_;
 }
 
-Status Array::set_config(Config config) {
+void Array::set_config(Config config) {
+  if (is_open()) {
+    throw ArrayStatusException(
+        "[set_config] Cannot set a config on an open array");
+  }
   config_.inherit(config);
-  return Status::Ok();
 }
 
 Config Array::config() const {

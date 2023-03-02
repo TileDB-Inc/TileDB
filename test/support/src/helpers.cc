@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -1736,7 +1736,13 @@ int submit_query_wrapper(
         &error);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(error == nullptr);
+
+    REQUIRE(tiledb_array_close(client_ctx, array) == TILEDB_OK);
     REQUIRE(tiledb_array_set_config(client_ctx, array, config) == TILEDB_OK);
+    tiledb_query_type_t query_type;
+    REQUIRE_SAFE(
+        tiledb_query_get_type(client_ctx, *query, &query_type) == TILEDB_OK);
+    REQUIRE(tiledb_array_open(client_ctx, array, query_type) == TILEDB_OK);
   }
 
   // Get the query type

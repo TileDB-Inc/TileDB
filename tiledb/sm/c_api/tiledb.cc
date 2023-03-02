@@ -2945,7 +2945,7 @@ int32_t tiledb_array_set_config(
   if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
   api::ensure_config_is_valid(config);
-  throw_if_not_ok(array->array_->set_config(config->config()));
+  array->array_->set_config(config->config());
   return TILEDB_OK;
 }
 
