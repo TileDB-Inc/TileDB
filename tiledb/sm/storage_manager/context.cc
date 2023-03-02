@@ -49,7 +49,9 @@ namespace sm {
 Context::Context(const Config& config)
     : last_error_(nullopt)
     , logger_(make_shared<Logger>(
-          HERE(), logger_prefix_ + std::to_string(++logger_id_)))
+          HERE(),
+          logger_prefix_ + std::to_string(++logger_id_),
+          get_log_level(config)))
     , resources_(
           config,
           logger_,
@@ -199,6 +201,25 @@ size_t Context::get_io_thread_count(const Config& config) {
 
   return static_cast<size_t>(
       std::max(config_thread_count, io_concurrency_level));
+}
+
+common::Logger::Level Context::get_log_level(const Config& config) {
+  auto cfg_level = config.get<std::string>("config.logging_level");
+  if (cfg_level == "0") {
+    return Logger::Level::FATAL;
+  } else if (cfg_level == "1") {
+    return Logger::Level::ERR;
+  } else if (cfg_level == "2") {
+    return Logger::Level::WARN;
+  } else if (cfg_level == "3") {
+    return Logger::Level::INFO;
+  } else if (cfg_level == "4") {
+    return Logger::Level::DBG;
+  } else if (cfg_level == "5") {
+    return Logger::Level::TRACE;
+  } else {
+    return Logger::Level::ERR;
+  }
 }
 
 Status Context::init_loggers(const Config& config) {

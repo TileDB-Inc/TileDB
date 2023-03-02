@@ -34,6 +34,7 @@
 #define TILEDB_CONTEXT_H
 
 #include "tiledb/common/exception/exception.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -178,6 +179,14 @@ class Context {
    * @return IO thread count.
    */
   size_t get_io_thread_count(const Config& config);
+
+  /**
+   * Get the configured log level
+   *
+   * @param config The config to look up the log leve information from.
+   * @return Log level
+   */
+  common::Logger::Level get_log_level(const Config& config);
 
   /**
    * Initializes global and local logger.
