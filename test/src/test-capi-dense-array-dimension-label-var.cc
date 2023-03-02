@@ -60,6 +60,12 @@ using namespace tiledb::test;
  */
 class ArrayExample : public TemporaryDirectoryFixture {
  public:
+  /**
+   * If true, array schema is serialized before submission, to test the
+   * serialization paths.
+   */
+  bool serialize_ = false;
+
   ArrayExample()
       : array_name{} {
   }
@@ -92,7 +98,8 @@ class ArrayExample : public TemporaryDirectoryFixture {
     tiledb_array_schema_add_dimension_label(
         ctx, array_schema, 0, "x", label_order, TILEDB_STRING_ASCII);
     // Create array
-    array_name = create_temporary_array("array_with_label_1", array_schema);
+    array_name =
+        create_temporary_array("array_with_label_1", array_schema, serialize_);
     tiledb_array_schema_free(&array_schema);
   }
 
@@ -321,6 +328,10 @@ TEST_CASE_METHOD(
     "Round trip dimension label and array data for dense 1d array with var "
     "dimension label",
     "[capi][query][DimensionLabel][var]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(true, false);
+#endif
+
   // Array parameters.
   std::vector<uint64_t> index_domain{0, 3};
   tiledb_data_order_t label_order{};
