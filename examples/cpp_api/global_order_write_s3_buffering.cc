@@ -9,8 +9,8 @@ using namespace tiledb;
 // serving at localhost:8181 where test_gow_rest2 is a registered array.
 // The example creates/deletes this array directly from S3, but as long as the
 // array was registered on the REST server, the test should work fine
-std::string array_name("tiledb://demo/test_gow_rest2");
-std::string s3_array("s3://tiledb-robert2/test_gow_rest2");
+std::string array_namespace("tiledb://demo/");
+std::string s3_array("s3://tiledb-shaun/arrays/test_gow_rest2");
 
 uint64_t tile_extent = 32;
 uint64_t capacity = tile_extent;
@@ -45,7 +45,7 @@ void create_array(Context& ctx) {
   if (array_type == TILEDB_SPARSE) {
     schema.set_capacity(capacity);
   }
-  Array::create(s3_array, schema);
+  Array::create(array_namespace + s3_array, schema);
 }
 
 // Each global order write of size chunk_size will create an intermediate S3
@@ -53,7 +53,7 @@ void create_array(Context& ctx) {
 // submit_and_finalize) in the fragment path under e.g.
 // frag_uuid/__global_order_write_chunks/a1.tdb_0
 void global_write(Context& ctx) {
-  Array array(ctx, array_name, TILEDB_WRITE);
+  Array array(ctx, array_namespace + s3_array, TILEDB_WRITE);
 
   for (uint64_t i = 0; i < ncells; i++) {
     a1.push_back(i);
@@ -118,7 +118,7 @@ void global_write(Context& ctx) {
 }
 
 void read_and_validate(Context& ctx) {
-  Array array(ctx, array_name, TILEDB_READ);
+  Array array(ctx, array_namespace + s3_array, TILEDB_READ);
 
   Query query(ctx, array);
   query.set_layout(TILEDB_ROW_MAJOR);
@@ -169,16 +169,15 @@ void read_and_validate(Context& ctx) {
 int main() {
   Config cfg;
   cfg["rest.username"] = "demo";
-  cfg["rest.password"] = "demodemo";
-  cfg["rest.server_address"] = "http://localhost:8181";
+  cfg["rest.password"] = "Demodemodemo!";
+  cfg["rest.server_address"] = "http://127.0.0.1:8181";
 
   Context ctx(cfg);
 
   try {
     create_array(ctx);
   } catch (...) {
-    tiledb::VFS vfs(ctx);
-    vfs.remove_dir(s3_array);
+    Array::delete_array(ctx, array_namespace + s3_array);
     std::cout << "Removed existing array" << std::endl;
     create_array(ctx);
   }
