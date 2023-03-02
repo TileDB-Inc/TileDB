@@ -367,6 +367,7 @@ endif()
 list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/api_external_common.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/buffer/buffer_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/buffer_list/buffer_list_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/config/config_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/context/context_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/data_order/data_order_api_enum.h"
@@ -572,6 +573,7 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_capi_error unit_capi_config unit_capi_context)
   add_dependencies(tests unit_capi_array)
   add_dependencies(tests unit_capi_buffer)
+  add_dependencies(tests unit_capi_buffer_list)
   add_dependencies(tests unit_capi_data_order)
   add_dependencies(tests unit_capi_datatype)
   add_dependencies(tests unit_capi_filesystem)

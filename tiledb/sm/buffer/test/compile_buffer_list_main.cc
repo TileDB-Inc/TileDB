@@ -1,5 +1,5 @@
 /**
- * @file compile_buffer_main.cc
+ * @file compile_buffer_list_main.cc
  *
  * @section LICENSE
  *
@@ -27,8 +27,9 @@
  */
 
 #include "../buffer.h"
+#include "../buffer_list.h"
 
 int main() {
-  tiledb::sm::Buffer();
+  tiledb::sm::BufferList();
   return 0;
 }

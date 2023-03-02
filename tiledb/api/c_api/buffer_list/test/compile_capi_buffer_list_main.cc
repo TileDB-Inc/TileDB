@@ -1,5 +1,5 @@
 /**
- * @file compile_buffer_main.cc
+ * @file tiledb/api/c_api/buffer_list/test/compile_capi_buffer_list_main.cc
  *
  * @section LICENSE
  *
@@ -26,9 +26,10 @@
  * THE SOFTWARE.
  */
 
-#include "../buffer.h"
+#include "../buffer_list_api_external.h"
 
 int main() {
-  tiledb::sm::Buffer();
+  tiledb_buffer_list_t* buffer_list = nullptr;
+  tiledb_buffer_list_alloc(nullptr, &buffer_list);
   return 0;
 }
