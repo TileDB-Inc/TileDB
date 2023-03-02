@@ -4842,7 +4842,7 @@ int32_t tiledb_fragment_info_set_config(
     return TILEDB_ERR;
   api::ensure_config_is_valid(config);
 
-  throw_if_not_ok(fragment_info->fragment_info_->set_config(config->config()));
+  fragment_info->fragment_info_->set_config(config->config());
 
   return TILEDB_OK;
 }

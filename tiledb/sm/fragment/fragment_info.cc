@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -92,9 +92,12 @@ FragmentInfo& FragmentInfo::operator=(FragmentInfo&& fragment_info) {
 /*                API                */
 /* ********************************* */
 
-Status FragmentInfo::set_config(const Config& config) {
-  config_ = config;
-  return Status::Ok();
+void FragmentInfo::set_config(const Config& config) {
+  if (loaded_) {
+    throw StatusException(
+        Status_FragmentInfoError("[set_config] Cannot set config after load"));
+  }
+  config_.inherit(config);
 }
 
 void FragmentInfo::expand_anterior_ndrange(
