@@ -128,6 +128,14 @@ class Subarray {
   /* ********************************* */
   /*         PUBLIC DATA TYPES         */
   /* ********************************* */
+  /**
+   * Size type for the number of dimensions of an array and for dimension
+   * indices.
+   *
+   * Note: This should be the same as `Domain::dimension_size_type`. We're
+   * not including `domain.h`, otherwise we'd use that definition here.
+   */
+  using dimension_size_type = unsigned int;
 
   /**
    * Result size (in bytes) for an attribute/dimension used for
@@ -430,6 +438,12 @@ class Subarray {
    */
   const std::vector<Range>& get_attribute_ranges(
       const std::string& attr_name) const;
+
+  // TODO: add docstring
+  inline const std::unordered_map<std::string, std::vector<Range>>&
+  get_attribute_ranges() const {
+    return attr_range_subset_;
+  }
 
   /**
    * Returns the name of the dimension label at the dimension index.
@@ -935,6 +949,8 @@ class Subarray {
    */
   bool has_label_ranges(const uint32_t dim_index) const;
 
+  bool label_ranges_num() const;
+
   /**
    * Set default indicator for dimension subarray. Used by serialization only
    * @param dim_index
@@ -1026,6 +1042,12 @@ class Subarray {
    * @note Intended for serialization only
    */
   Status set_ranges_for_dim(uint32_t dim_idx, const std::vector<Range>& ranges);
+
+  // TODO: add docstring
+  void set_label_ranges_for_dim(
+      const uint32_t dim_idx,
+      const std::string& name,
+      std::vector<Range>& ranges);
 
   /**
    * Splits the subarray along the splitting dimension and value into
@@ -1190,6 +1212,14 @@ class Subarray {
   tuple<Status, optional<bool>> non_overlapping_ranges(
       ThreadPool* const compute_tp);
 
+  /** Returns if ranges are sorted. */
+  inline bool coalesce_ranges() const {
+    return coalesce_ranges_;
+  }
+
+  // TODO: docstring
+  void add_default_label_ranges(dimension_size_type dim_num);
+
  private:
   /* ********************************* */
   /*        PRIVATE DATA TYPES         */
@@ -1236,15 +1266,25 @@ class Subarray {
      */
     LabelRangeSubset(const DimensionLabel& ref, bool coalesce_ranges = true);
 
+    /**
+     * Constructor
+     *
+     * @param ref Dimension label reference to the label this will contain
+     * ranges for.
+     * @param coalesce_ranges Set if ranges should be combined when adjacent.
+     */
+    LabelRangeSubset(
+        const std::string& name, Datatype type, bool coalesce_ranges = true);
+
     inline const std::vector<Range>& get_ranges() const {
-      return ranges.ranges();
+      return ranges_.ranges();
     }
 
     /** Name of the dimension label. */
-    std::string name;
+    std::string name_;
 
     /** The ranges set on the dimension label. */
-    RangeSetAndSuperset ranges;
+    RangeSetAndSuperset ranges_;
   };
 
   /* ********************************* */
