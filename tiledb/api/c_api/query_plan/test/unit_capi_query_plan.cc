@@ -197,8 +197,6 @@ TEST_CASE_METHOD(
   CHECK(tiledb_query_get_plan(ctx, nullptr, &string_handle) == TILEDB_ERR);
 
   REQUIRE(tiledb_array_close(ctx, array) == TILEDB_OK);
-
-  tiledb_string_free(&string_handle);
   tiledb_query_free(&query);
   tiledb_array_free(&array);
 }
@@ -253,7 +251,7 @@ TEST_CASE_METHOD(
       tiledb_query_set_data_buffer(ctx, query, "a1", d.data(), &size) ==
       TILEDB_OK);
 
-  tiledb_string_free(&string_handle);
+  REQUIRE(tiledb_string_free(&string_handle) == TILEDB_OK);
   REQUIRE(tiledb_array_close(ctx, array) == TILEDB_OK);
   tiledb_query_free(&query);
   tiledb_array_free(&array);
@@ -311,7 +309,7 @@ TEST_CASE_METHOD(
       json_plan["TileDB Query Plan"]["Query.Dimensions"] ==
       std::vector({"dim_1", "dim_2"}));
 
-  tiledb_string_free(&string_handle);
+  REQUIRE(tiledb_string_free(&string_handle) == TILEDB_OK);
   REQUIRE(tiledb_array_close(ctx, array) == TILEDB_OK);
   tiledb_query_free(&query);
   tiledb_array_free(&array);
@@ -377,7 +375,7 @@ TEST_CASE_METHOD(
       json_plan["TileDB Query Plan"]["Query.Dimensions"] ==
       std::vector<std::string>());
 
-  tiledb_string_free(&string_handle);
+  REQUIRE(tiledb_string_free(&string_handle) == TILEDB_OK);
   REQUIRE(tiledb_array_close(ctx, array) == TILEDB_OK);
   tiledb_query_free(&query);
   tiledb_array_free(&array);
