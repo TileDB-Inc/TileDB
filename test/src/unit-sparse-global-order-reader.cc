@@ -1200,7 +1200,8 @@ TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: correct read state on duplicates",
     "[sparse-global-order][no-dups][read-state]") {
-  create_default_array_1d(false);
+  bool dups = GENERATE(false, true);
+  create_default_array_1d(dups);
 
   // Write one fragment in coordinates 1-10 with data 1-10.
   int coords[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
@@ -1238,18 +1239,35 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   CHECK(coords_r[0] == 1);
-  CHECK(data_r[0] == 11);
 
-  for (int i = 2; i <= 10; i++) {
-    // Check incomplete query status.
-    tiledb_query_get_status(ctx_, query, &status);
-    CHECK(status == TILEDB_INCOMPLETE);
+  if (dups) {
+    CHECK((data_r[0] == 1 || data_r[0] == 11));
 
-    rc = tiledb_query_submit(ctx_, query);
-    CHECK(rc == TILEDB_OK);
+    for (int i = 3; i <= 21; i++) {
+      // Check incomplete query status.
+      tiledb_query_get_status(ctx_, query, &status);
+      CHECK(status == TILEDB_INCOMPLETE);
 
-    CHECK(coords_r[0] == i);
-    CHECK(data_r[0] == i + 10);
+      rc = tiledb_query_submit(ctx_, query);
+      CHECK(rc == TILEDB_OK);
+
+      CHECK(coords_r[0] == i / 2);
+      CHECK((data_r[0] == i / 2 + 10 || data_r[0] == i / 2));
+    }
+  } else {
+    CHECK(data_r[0] == 11);
+
+    for (int i = 2; i <= 10; i++) {
+      // Check incomplete query status.
+      tiledb_query_get_status(ctx_, query, &status);
+      CHECK(status == TILEDB_INCOMPLETE);
+
+      rc = tiledb_query_submit(ctx_, query);
+      CHECK(rc == TILEDB_OK);
+
+      CHECK(coords_r[0] == i);
+      CHECK(data_r[0] == i + 10);
+    }
   }
 
   // Check completed query status.

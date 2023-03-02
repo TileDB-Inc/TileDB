@@ -1039,10 +1039,6 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
             num_cells--;
           }
         }
-
-        if (num_cells == 0) {
-          break;
-        }
       }
 
       // For no dups, we just remove the cells from the queue as the one with
@@ -1065,6 +1061,10 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
         to_process = tile_queue.top();
         tile_queue.pop();
         tile = to_process.tile_;
+      }
+
+      if (num_cells == 0) {
+        break;
       }
     }
 
