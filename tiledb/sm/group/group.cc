@@ -145,9 +145,14 @@ Status Group::open(
 
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr)
+    if (rest_client == nullptr) {
       return Status_GroupError(
           "Cannot open group; remote group with no REST client.");
+    }
+
+    // Set initial group details to be deserialized into
+    group_details_ = tdb::make_shared<GroupDetailsV2>(HERE(), group_uri_);
+
     RETURN_NOT_OK(rest_client->post_group_from_rest(group_uri_, this));
   } else if (query_type == QueryType::READ) {
     try {
@@ -275,6 +280,10 @@ bool Group::is_remote() const {
 }
 
 shared_ptr<GroupDetails> Group::group_details() {
+  return group_details_;
+}
+
+const shared_ptr<GroupDetails> Group::group_details() const {
   return group_details_;
 }
 

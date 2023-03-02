@@ -363,6 +363,13 @@ class Group {
    */
   shared_ptr<GroupDetails> group_details();
 
+  /**
+   * Group Details
+   *
+   * @return GroupDetails
+   */
+  const shared_ptr<GroupDetails> group_details() const;
+
  protected:
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */

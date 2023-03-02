@@ -141,16 +141,20 @@ Status group_details_to_capnp(
     return LOG_STATUS(
         Status_SerializationError("Error serializing group; group is null."));
 
-  const auto& group_members = group->members();
-  if (!group_members.empty()) {
-    auto group_members_builder =
-        group_details_builder->initMembers(group_members.size());
-    uint64_t i = 0;
-    for (const auto& it : group_members) {
-      auto group_member_builder = group_members_builder[i];
-      RETURN_NOT_OK(group_member_to_capnp(it.second, &group_member_builder));
-      // Increment index
-      ++i;
+  auto& group_details = group->group_details();
+
+  if (group_details != nullptr) {
+    const auto& group_members = group->members();
+    if (!group_members.empty()) {
+      auto group_members_builder =
+          group_details_builder->initMembers(group_members.size());
+      uint64_t i = 0;
+      for (const auto& it : group_members) {
+        auto group_member_builder = group_members_builder[i];
+        RETURN_NOT_OK(group_member_to_capnp(it.second, &group_member_builder));
+        // Increment index
+        ++i;
+      }
     }
   }
 
