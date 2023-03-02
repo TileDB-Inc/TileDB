@@ -731,3 +731,85 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
+
+TEST_CASE(
+    "C++ API: Filter empty strings with RLE or Dictionary encoding",
+    "[cppapi][filter][rle-strings][dict-strings][empty-strings]") {
+  using namespace tiledb;
+  Context ctx;
+  VFS vfs(ctx);
+  std::string array_name = "cpp_unit_array";
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  auto f = GENERATE(TILEDB_FILTER_RLE, TILEDB_FILTER_DICTIONARY);
+
+  // Create array with string dimension and one attribute
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+
+  FilterList filters(ctx);
+  filters.add_filter({ctx, f});
+
+  auto d0 = Dimension::create(ctx, "d0", TILEDB_STRING_ASCII, nullptr, nullptr);
+  d0.set_filter_list(filters);
+
+  Domain domain(ctx);
+  domain.add_dimensions(d0);
+  schema.set_domain(domain);
+
+  auto a0 = Attribute::create<int32_t>(ctx, "a0");
+  schema.add_attributes(a0);
+  schema.set_allows_dups(true);
+
+  Array::create(array_name, schema);
+
+  // Write empty strings to the array in 2 different ways
+  int elements = 10;
+  auto full_buffer_of_empty_strings = GENERATE(true, false);
+  std::vector<char> d0_buf(0);
+  if (full_buffer_of_empty_strings) {
+    d0_buf.assign(elements, 0);
+  }
+
+  std::vector<uint64_t> d0_offsets_buf(elements, 0);
+  std::vector<int> a0_buf(elements, 42);
+
+  Array array_w(ctx, array_name, TILEDB_WRITE);
+  Query query_w(ctx, array_w);
+  query_w.set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("d0", d0_buf)
+      .set_offsets_buffer("d0", d0_offsets_buf)
+      .set_data_buffer("a0", a0_buf);
+  query_w.submit();
+  array_w.close();
+
+  // Read all data and check no error and data correct
+  std::vector<std::byte> d0_read_buf(1 << 20);
+  std::vector<uint64_t> d0_offsets_read_buf(1 << 20);
+  std::vector<int32_t> a0_read_buf(1 << 20);
+
+  Array array_r(ctx, array_name, TILEDB_READ);
+  Query query_r(ctx, array_r);
+  query_r.set_layout(TILEDB_UNORDERED);
+  query_r.set_data_buffer("d0", d0_read_buf)
+      .set_offsets_buffer("d0", d0_offsets_read_buf)
+      .set_data_buffer("a0", a0_read_buf);
+
+  auto st = query_r.submit();
+  REQUIRE(st == Query::Status::COMPLETE);
+
+  auto results = query_r.result_buffer_elements();
+  auto num_offsets = results["d0"].first;
+  CHECK(num_offsets == 10);
+
+  for (uint64_t i = 0; i < num_offsets; i++) {
+    CHECK(a0_read_buf[i] == 42);
+  }
+
+  array_r.close();
+
+  // Clean up
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
