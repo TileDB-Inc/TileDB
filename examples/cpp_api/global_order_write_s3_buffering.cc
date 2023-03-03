@@ -177,7 +177,8 @@ int main() {
   try {
     create_array(ctx);
   } catch (...) {
-    Array::delete_array(ctx, array_namespace + s3_array);
+    VFS vfs(ctx);
+    vfs.remove_dir(s3_array);
     std::cout << "Removed existing array" << std::endl;
     create_array(ctx);
   }
