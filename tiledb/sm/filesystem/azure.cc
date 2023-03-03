@@ -212,46 +212,7 @@ Status Azure::create_container(const URI& uri) const {
         "Create container failed on: " + uri.to_string() + error_message)));
   }
 
-  return wait_for_container_to_propagate(container_name);
-}
-
-Status Azure::wait_for_container_to_propagate(
-    const std::string& container_name) const {
-  unsigned attempts = 0;
-  while (attempts++ < constants::azure_max_attempts) {
-    bool is_container;
-    RETURN_NOT_OK(this->is_container(container_name, &is_container));
-
-    if (is_container) {
-      return Status::Ok();
-    }
-
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(constants::azure_attempt_sleep_ms));
-  }
-
-  return LOG_STATUS(Status_AzureError(std::string(
-      "Timed out waiting on container to propogate: " + container_name)));
-}
-
-Status Azure::wait_for_container_to_be_deleted(
-    const std::string& container_name) const {
-  assert(client_);
-
-  unsigned attempts = 0;
-  while (attempts++ < constants::azure_max_attempts) {
-    bool is_container;
-    RETURN_NOT_OK(this->is_container(container_name, &is_container));
-    if (!is_container) {
-      return Status::Ok();
-    }
-
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(constants::azure_attempt_sleep_ms));
-  }
-
-  return LOG_STATUS(Status_AzureError(std::string(
-      "Timed out waiting on container to be deleted: " + container_name)));
+  return Status::Ok();
 }
 
 Status Azure::empty_container(const URI& container) const {
@@ -333,7 +294,7 @@ Status Azure::flush_blob(const URI& uri) {
         "Flush blob failed on: " + uri.to_string() + "; " + e.Message));
   }
 
-  return wait_for_blob_to_propagate(container_name, blob_path);
+  return Status::Ok();
 }
 
 void Azure::finish_block_list_upload(const URI& uri) {
@@ -383,7 +344,7 @@ Status Azure::flush_blob_direct(const URI& uri) {
     write_cache_map_.erase(uri.to_string());
   }
 
-  return wait_for_blob_to_propagate(container_name, blob_path);
+  return Status::Ok();
 }
 
 Status Azure::is_empty_container(const URI& uri, bool* is_empty) const {
@@ -628,47 +589,7 @@ Status Azure::copy_blob(const URI& old_uri, const URI& new_uri) {
         "Copy blob failed on: " + old_uri.to_string() + "; " + e.Message));
   }
 
-  return wait_for_blob_to_propagate(new_container_name, new_blob_path);
-}
-
-Status Azure::wait_for_blob_to_propagate(
-    const std::string& container_name, const std::string& blob_path) const {
-  assert(client_);
-
-  unsigned attempts = 0;
-  while (attempts++ < constants::azure_max_attempts) {
-    bool is_blob;
-    RETURN_NOT_OK(this->is_blob(container_name, blob_path, &is_blob));
-    if (is_blob) {
-      return Status::Ok();
-    }
-
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(constants::azure_attempt_sleep_ms));
-  }
-
-  return LOG_STATUS(Status_AzureError(
-      std::string("Timed out waiting on blob to propogate: " + blob_path)));
-}
-
-Status Azure::wait_for_blob_to_be_deleted(
-    const std::string& container_name, const std::string& blob_path) const {
-  assert(client_);
-
-  unsigned attempts = 0;
-  while (attempts++ < constants::azure_max_attempts) {
-    bool is_blob;
-    RETURN_NOT_OK(this->is_blob(container_name, blob_path, &is_blob));
-    if (!is_blob) {
-      return Status::Ok();
-    }
-
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(constants::azure_attempt_sleep_ms));
-  }
-
-  return LOG_STATUS(Status_AzureError(
-      std::string("Timed out waiting on blob to be deleted: " + blob_path)));
+  return Status::Ok();
 }
 
 Status Azure::move_dir(const URI& old_uri, const URI& new_uri) {
@@ -794,7 +715,7 @@ Status Azure::remove_container(const URI& uri) const {
         "Remove container failed on: " + uri.to_string() + error_message)));
   }
 
-  return wait_for_container_to_be_deleted(container_name);
+  return Status::Ok();
 }
 
 Status Azure::remove_blob(const URI& uri) const {
@@ -820,7 +741,7 @@ Status Azure::remove_blob(const URI& uri) const {
         "Remove blob failed on: " + uri.to_string() + error_message)));
   }
 
-  return wait_for_blob_to_be_deleted(container_name, blob_path);
+  return Status::Ok();
 }
 
 Status Azure::remove_dir(const URI& uri) const {
