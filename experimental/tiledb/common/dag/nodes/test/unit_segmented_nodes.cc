@@ -32,6 +32,7 @@
 #include "unit_segmented_nodes.h"
 #include <future>
 #include <type_traits>
+#include <variant>
 #include "experimental/tiledb/common/dag/edge/edge.h"
 #include "experimental/tiledb/common/dag/nodes/generators.h"
 #include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
@@ -455,3 +456,223 @@ TEMPLATE_TEST_CASE(
     Edge j{*b, *c};
   }
 }
+
+
+
+
+/**
+ * Some dummy_monostate functions and classes to test node constructors
+ * with.
+ */
+std::monostate dummy_monostate_source(std::stop_source&) {
+  return std::monostate{};
+}
+
+std::monostate dummy_monostate_function(std::monostate) {
+  return std::monostate{};
+}
+
+void dummy_monostate_sink(std::monostate) {
+}
+
+class dummy_monostate_source_class {
+ public:
+  std::monostate operator()(std::stop_source&) {
+    return std::monostate{};
+  }
+};
+
+class dummy_monostate_function_class {
+ public:
+  std::monostate operator()(const std::monostate&) {
+    return std::monostate{};
+  }
+};
+
+class dummy_monostate_sink_class {
+ public:
+  void operator()(std::monostate) {
+  }
+};
+
+std::monostate dummy_monostate_bind_source(double) {
+  return std::monostate{};
+}
+
+std::monostate dummy_monostate_bind_function(double, float, std::monostate) {
+  return std::monostate{};
+}
+
+void dummy_monostate_bind_sink(std::monostate, float, const int&) {
+}
+
+/**
+ * Some dummy_monostate function template and class templates to test node constructors
+ * with.
+ */
+template <class Block = std::monostate>
+std::monostate dummy_monostate_source_t(std::stop_source&) {
+  return Block{};
+}
+
+template <class InBlock = std::monostate, class OutBlock = InBlock>
+OutBlock dummy_monostate_function_t(InBlock) {
+  return OutBlock{};
+}
+
+template <class Block = std::monostate>
+void dummy_monostate_sink_t(const Block&) {
+}
+
+template <class Block = std::monostate>
+class dummy_monostate_source_class_t {
+ public:
+  Block operator()() {
+    return Block{};
+  }
+};
+
+template <class InBlock = std::monostate, class OutBlock = InBlock>
+class dummy_monostate_function_class_t {
+ public:
+  OutBlock operator()(const InBlock&) {
+    return OutBlock{};
+  }
+};
+
+template <class Block = std::monostate>
+class dummy_monostate_sink_class_t {
+ public:
+  void operator()(Block) {
+  }
+};
+
+template <class Block = std::monostate>
+Block dummy_monostate_bind_source_t(double) {
+  return Block{};
+}
+
+template <class InBlock = std::monostate, class OutBlock = InBlock>
+OutBlock dummy_monostate_bind_function_t(double, float, InBlock) {
+  return OutBlock{};
+}
+
+template <class Block = std::monostate>
+void dummy_monostate_bind_sink_t(Block, float, const int&) {
+}
+
+TEMPLATE_TEST_CASE(
+    "SegementedNodes: Verify various API approaches with monostate, including function_node",
+    "[segmented_nodes]",
+    (std::tuple<
+        consumer_node<AsyncMover2, std::monostate>,
+        function_node<AsyncMover2, std::monostate>,
+        producer_node<AsyncMover2, std::monostate>>),
+    (std::tuple<
+        consumer_node<AsyncMover3, std::monostate>,
+        function_node<AsyncMover3, std::monostate>,
+        producer_node<AsyncMover3, std::monostate>>)) {
+  using C = typename std::tuple_element<0, TestType>::type;
+  using F = typename std::tuple_element<1, TestType>::type;
+  using P = typename std::tuple_element<2, TestType>::type;
+
+  SECTION("function") {
+    P a{dummy_monostate_source};
+    F b{dummy_monostate_function};
+    C c{dummy_monostate_sink};
+
+    Edge g{*a, *b};
+    Edge h{*b, *c};
+  }
+
+    SECTION("lambda") {
+      auto dummy_source_lambda = [](std::stop_source&) { return std::monostate{}; };
+      auto dummy_function_lambda = [](std::monostate) { return std::monostate{}; };
+      auto dummy_sink_lambda = [](std::monostate) {};
+
+      P a{dummy_source_lambda};
+      F b{dummy_function_lambda};
+      C c{dummy_sink_lambda};
+
+      Edge g{*a, *b};
+      Edge h{*b, *c};
+    }
+
+    SECTION("inline lambda") {
+      P a([](std::stop_source&) { return std::monostate{}; });
+      F b([](std::monostate) { return std::monostate{}; });
+      C c([](std::monostate) {});
+
+      Edge g{*a, *b};
+      Edge h{*b, *c};
+    }
+
+    SECTION("function object") {
+      auto ac = dummy_monostate_source_class{};
+      dummy_monostate_function_class fc{};
+      dummy_monostate_sink_class dc{};
+
+      P a{ac};
+      F b{fc};
+      C c{dc};
+
+      Edge g{*a, *b};
+      Edge h{*b, *c};
+    }
+
+    SECTION("inline function object") {
+      P a{dummy_monostate_source_class{}};
+      F b{dummy_monostate_function_class{}};
+      C c{dummy_monostate_sink_class{}};
+
+      Edge g{*a, *b};
+      Edge h{*b, *c};
+    }
+    SECTION("bind") {
+      double x = 0.01;
+      float y = -0.001;
+      int z = 8675309;
+
+      auto ac = std::bind(dummy_monostate_bind_source, x);
+      auto dc = std::bind(dummy_monostate_bind_sink, std::placeholders::_1, y, z);
+      auto fc = std::bind(dummy_monostate_bind_function, x, y, std::placeholders::_1);
+
+      P a{ac};
+      F b{fc};
+      C c{dc};
+
+      Edge g{*a, *b};
+      Edge h{*b, *c};
+    }
+
+    SECTION("inline bind") {
+      double x = 0.01;
+      float y = -0.001;
+      int z = 8675309;
+
+      P a{std::bind(dummy_monostate_bind_source, x)};
+      F b{std::bind(dummy_monostate_bind_function, x, y, std::placeholders::_1)};
+      C c{std::bind(dummy_monostate_bind_sink, std::placeholders::_1, y, z)};
+
+      Edge i{*a, *b};
+      Edge j{*b, *c};
+    }
+
+    SECTION("bind with move") {
+      double x = 0.01;
+      float y = -0.001;
+      int z = 8675309;
+
+      auto ac = std::bind(dummy_monostate_bind_source, std::move(x));
+      auto dc = std::bind(
+          dummy_monostate_bind_sink, std::placeholders::_1, std::move(y), std::move(z));
+      auto fc = std::bind(
+          dummy_monostate_bind_function, std::move(x), std::move(y), std::placeholders::_1);
+
+      P a{std::move(ac)};
+      F b{std::move(fc)};
+      C c{std::move(dc)};
+
+      Edge i{*a, *b};
+      Edge j{*b, *c};
+    }}
