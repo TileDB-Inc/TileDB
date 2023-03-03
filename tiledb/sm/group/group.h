@@ -39,6 +39,7 @@
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/group/group_details.h"
 #include "tiledb/sm/group/group_directory.h"
 #include "tiledb/sm/group/group_member.h"
 #include "tiledb/sm/metadata/metadata.h"
@@ -51,11 +52,10 @@ namespace sm {
 
 class Group {
  public:
-  Group(
-      const URI& group_uri, StorageManager* storage_manager, uint32_t version);
+  Group(const URI& group_uri, StorageManager* storage_manager);
 
   /** Destructor. */
-  virtual ~Group() = default;
+  ~Group() = default;
 
   /** Returns the group directory object. */
   const shared_ptr<GroupDirectory> group_directory() const;
@@ -254,62 +254,32 @@ class Group {
   Status mark_member_for_removal(const std::string& uri);
 
   /**
-   * Get the unordered map of members to remove, used in serialization only
-   * @return members_to_add
+   * Get the vector of members to modify, used in serialization only
+   * @return members_to_modify
    */
-  const std::unordered_set<std::string>& members_to_remove() const;
-
-  /**
-   * Get the unordered map of members to add, used in serialization only
-   * @return members_to_add
-   */
-  const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>&
-  members_to_add() const;
+  const std::vector<shared_ptr<GroupMember>>& members_to_modify() const;
 
   /**
    * Get the unordered map of members
    * @return members
    */
-  const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>& members()
+  const std::unordered_map<std::string, shared_ptr<GroupMember>>& members()
       const;
 
   /**
-   * Add a member to a group, this will be flushed to disk on close
+   * Add a member to a group
    *
    * @param group_member to add
-   * @return Status
+   * @return void
    */
-  void add_member(const tdb_shared_ptr<GroupMember>& group_member);
+  void add_member(const shared_ptr<GroupMember> group_member);
 
   /**
-   * Serializes the object members into a binary buffer.
+   * Delete a member from the group
    *
-   * @param buff The buffer to serialize the data into.
-   * @param version The format spec version.
-   * @return Status
+   * @param group_member
    */
-  virtual void serialize(Serializer& serializer);
-
-  /**
-   * Applies and pending changes and then calls serialize
-   *
-   * @param buff The buffer to serialize the data into.
-   * @param version The format spec version.
-   * @return Status
-   */
-  void apply_and_serialize(Serializer& serializer);
-
-  /**
-   * Returns a Group object from the data in the input binary buffer.
-   *
-   * @param buff The buffer to deserialize from.
-   * @param version The format spec version.
-   * @return Status and Attribute
-   */
-  static std::optional<tdb_shared_ptr<Group>> deserialize(
-      Deserializer& deserializer,
-      const URI& group_uri,
-      StorageManager* storage_manager);
+  void delete_member(const shared_ptr<GroupMember> group_member);
 
   /** Returns the group URI. */
   const URI& group_uri() const;
@@ -386,6 +356,20 @@ class Group {
       bool recursive = false,
       bool print_self = true) const;
 
+  /**
+   * Group Details
+   *
+   * @return GroupDetails
+   */
+  shared_ptr<GroupDetails> group_details();
+
+  /**
+   * Group Details
+   *
+   * @return GroupDetails
+   */
+  const shared_ptr<GroupDetails> group_details() const;
+
  protected:
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
@@ -394,7 +378,7 @@ class Group {
   URI group_uri_;
 
   /** The group directory object for listing URIs. */
-  std::shared_ptr<GroupDirectory> group_dir_;
+  shared_ptr<GroupDirectory> group_dir_;
 
   /** TileDB storage manager. */
   StorageManager* storage_manager_;
@@ -439,31 +423,15 @@ class Group {
    * bytes should be stored. Whenever a key is needed, a pointer to this
    * memory region should be passed instead of a copy of the bytes.
    */
-  tdb_shared_ptr<EncryptionKey> encryption_key_;
+  shared_ptr<EncryptionKey> encryption_key_;
 
-  /** The mapping of all members of this group. */
-  std::unordered_map<std::string, tdb_shared_ptr<GroupMember>> members_;
-
-  /** Vector for index based lookup. */
-  std::vector<tdb_shared_ptr<GroupMember>> members_vec_;
-
-  /** Unordered map of members by their name, if the member doesn't have a name,
-   * it will not be in the map. */
-  std::unordered_map<std::string, tdb_shared_ptr<GroupMember>> members_by_name_;
-
-  /** Mapping of members slated for removal. */
-  std::unordered_set<std::string> members_to_remove_;
-
-  /** Mapping of members slated for adding. */
-  std::unordered_map<std::string, tdb_shared_ptr<GroupMember>> members_to_add_;
+  /** Group Details. */
+  shared_ptr<GroupDetails> group_details_;
 
   /** Mutex for thread safety. */
   mutable std::mutex mtx_;
 
-  /* Format version. */
-  const uint32_t version_;
-
-  /* Were changes applied and is a write required */
+  /* Were changes applied and is a write is required */
   bool changes_applied_;
 
   /* ********************************* */
@@ -475,15 +443,6 @@ class Group {
    * @return  Status
    */
   Status load_metadata();
-
-  /**
-   * Apply any pending member additions or removals
-   *
-   * mutates members_ and clears members_to_add_ and members_to_remove_
-   *
-   * @return Status
-   */
-  Status apply_pending_changes();
 
   /**
    * Generate new name in the form of timestmap_timestamp_uuid

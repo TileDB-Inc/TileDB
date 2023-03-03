@@ -1,5 +1,5 @@
 /**
- * @file   group_member_v1.h
+ * @file   group_details_v1.h
  *
  * @section LICENSE
  *
@@ -27,19 +27,22 @@
  *
  * @section DESCRIPTION
  *
- * This file defines TileDB Group Member
+ * This file defines TileDB Group Details V1
  */
 
-#ifndef TILEDB_GROUP_MEMBER_V1_H
-#define TILEDB_GROUP_MEMBER_V1_H
+#ifndef TILEDB_GROUP_DETAILS_V1_H
+#define TILEDB_GROUP_DETAILS_V1_H
 
 #include <atomic>
 
-#include "tiledb/common/common.h"
-#include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/enums/object_type.h"
-#include "tiledb/sm/filesystem/uri.h"
-#include "tiledb/sm/group/group.h"
+#include "tiledb/common/status.h"
+#include "tiledb/sm/config/config.h"
+#include "tiledb/sm/crypto/encryption_key.h"
+#include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/group/group_details.h"
+#include "tiledb/sm/group/group_member.h"
+#include "tiledb/sm/metadata/metadata.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
 using namespace tiledb::common;
@@ -47,15 +50,14 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class GroupMemberV1 : public GroupMember {
- public:
-  GroupMemberV1(
-      const URI& uri,
-      const ObjectType& type,
-      const bool& relative,
-      const std::optional<std::string>& name);
+class GroupDetails;
 
-  ~GroupMemberV1() override = default;
+class GroupDetailsV1 : public GroupDetails {
+ public:
+  GroupDetailsV1(const URI& group_uri);
+
+  /** Destructor. */
+  ~GroupDetailsV1() override = default;
 
   /**
    * Serializes the object members into a binary buffer.
@@ -72,7 +74,18 @@ class GroupMemberV1 : public GroupMember {
    * @param version The format spec version.
    * @return Status and Attribute
    */
-  static shared_ptr<GroupMember> deserialize(Deserializer& deserializer);
+  static shared_ptr<GroupDetails> deserialize(
+      Deserializer& deserializer, const URI& group_uri);
+
+ protected:
+  /**
+   * Apply any pending member additions or removals
+   *
+   * mutates members_ and clears members_to_modify_;
+   *
+   * @return Status
+   */
+  Status apply_pending_changes() override;
 
  private:
   /* Format version for class. */
@@ -81,4 +94,4 @@ class GroupMemberV1 : public GroupMember {
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_GROUP_MEMBER_V1_H
+#endif  // TILEDB_GROUP_DETAILS_V1_H
