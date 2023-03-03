@@ -1,6 +1,8 @@
 # Group
 
-A group consists of [metadata](./metadata.md) and a file containing group members
+A group consists of [metadata](./metadata.md) and a file containing group members.
+
+The current group format version is `2`.
 
 ```
 my_group                       # Group folder
@@ -24,7 +26,9 @@ my_group                       # Group folder
 
 ## Group Member
 
-The group member is the content inside a [group](./group.md)
+The group member is the content inside a [group](./group.md).
+
+The current group member format version is `2`.
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
@@ -33,3 +37,4 @@ The group member is the content inside a [group](./group.md)
 | Relative | `uint8_t` | Is the URI relative to the group |
 | URI length | `uint32_t` | Number of characters in URI |
 | URI | `uint8_t[]` | URI character array |
+| Deleted | `uint8_t` | Is the member deleted |

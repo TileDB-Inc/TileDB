@@ -67,7 +67,8 @@ class GroupMember {
       const ObjectType& type,
       const bool& relative,
       uint32_t version,
-      const std::optional<std::string>& name);
+      const std::optional<std::string>& name,
+      const bool& deleted);
 
   /** Destructor. */
   virtual ~GroupMember() = default;
@@ -82,7 +83,9 @@ class GroupMember {
   const std::optional<std::string> name() const;
 
   /** Return if object is relative. */
-  const bool& relative() const;
+  bool relative() const;
+
+  bool deleted() const;
 
   /**
    * Serializes the object members into a binary buffer.
@@ -99,7 +102,13 @@ class GroupMember {
    * @param version The format spec version.
    * @return Status and Attribute
    */
-  static tdb_shared_ptr<GroupMember> deserialize(Deserializer& deserializer);
+  static shared_ptr<GroupMember> deserialize(Deserializer& deserializer);
+
+  /**
+   * Return format version
+   * @return format version
+   */
+  format_version_t version() const;
 
  protected:
   /* ********************************* */
@@ -119,6 +128,9 @@ class GroupMember {
 
   /* Format version. */
   const uint32_t version_;
+
+  /** Is group member deleted from group. */
+  bool deleted_;
 };
 }  // namespace sm
 }  // namespace tiledb

@@ -1,5 +1,5 @@
 /**
- * @file   group_member_v1.h
+ * @file   group_member_v2.h
  *
  * @section LICENSE
  *
@@ -30,8 +30,8 @@
  * This file defines TileDB Group Member
  */
 
-#ifndef TILEDB_GROUP_MEMBER_V1_H
-#define TILEDB_GROUP_MEMBER_V1_H
+#ifndef TILEDB_GROUP_MEMBER_V2_H
+#define TILEDB_GROUP_MEMBER_V2_H
 
 #include <atomic>
 
@@ -47,15 +47,16 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class GroupMemberV1 : public GroupMember {
+class GroupMemberV2 : public GroupMember {
  public:
-  GroupMemberV1(
+  GroupMemberV2(
       const URI& uri,
       const ObjectType& type,
       const bool& relative,
-      const std::optional<std::string>& name);
+      const std::optional<std::string>& name,
+      const bool& deleted);
 
-  ~GroupMemberV1() override = default;
+  ~GroupMemberV2() override = default;
 
   /**
    * Serializes the object members into a binary buffer.
@@ -76,9 +77,9 @@ class GroupMemberV1 : public GroupMember {
 
  private:
   /* Format version for class. */
-  inline static const format_version_t format_version_ = 1;
+  inline static const format_version_t format_version_ = 2;
 };
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_GROUP_MEMBER_V1_H
+#endif  // TILEDB_GROUP_MEMBER_V2_H
