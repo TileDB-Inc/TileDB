@@ -241,7 +241,8 @@ ul.task-list li input[type="checkbox"] {
 
 <section id="group" class="level1">
 <h1>Group</h1>
-<p>A group consists of <a href="../format_spec/metadata.html">metadata</a> and a file containing group members</p>
+<p>A group consists of <a href="../format_spec/metadata.html">metadata</a> and a file containing group members.</p>
+<p>The current group format version is <code>2</code>.</p>
 <pre><code>my_group                       # Group folder
     |_ __tiledb_group.tdb      # Empty group file
     |_ __group                 # Group folder
@@ -288,7 +289,8 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="group-member" class="level2">
 <h2 class="anchored" data-anchor-id="group-member">Group Member</h2>
-<p>The group member is the content inside a <a href="../format_spec/group.html">group</a></p>
+<p>The group member is the content inside a <a href="../format_spec/group.html">group</a>.</p>
+<p>The current group member format version is <code>2</code>.</p>
 <table class="table">
 <thead>
 <tr class="header">
@@ -322,6 +324,11 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: left;">URI</td>
 <td style="text-align: left;"><code>uint8_t[]</code></td>
 <td style="text-align: left;">URI character array</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Deleted</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">Is the member deleted</td>
 </tr>
 </tbody>
 </table>
