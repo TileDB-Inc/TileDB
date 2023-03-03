@@ -457,9 +457,6 @@ TEMPLATE_TEST_CASE(
   }
 }
 
-
-
-
 /**
  * Some dummy_monostate functions and classes to test node constructors
  * with.
@@ -507,8 +504,8 @@ void dummy_monostate_bind_sink(std::monostate, float, const int&) {
 }
 
 /**
- * Some dummy_monostate function template and class templates to test node constructors
- * with.
+ * Some dummy_monostate function template and class templates to test node
+ * constructors with.
  */
 template <class Block = std::monostate>
 std::monostate dummy_monostate_source_t(std::stop_source&) {
@@ -562,7 +559,8 @@ void dummy_monostate_bind_sink_t(Block, float, const int&) {
 }
 
 TEMPLATE_TEST_CASE(
-    "SegementedNodes: Verify various API approaches with monostate, including function_node",
+    "SegementedNodes: Verify various API approaches with monostate, including "
+    "function_node",
     "[segmented_nodes]",
     (std::tuple<
         consumer_node<AsyncMover2, std::monostate>,
@@ -585,94 +583,106 @@ TEMPLATE_TEST_CASE(
     Edge h{*b, *c};
   }
 
-    SECTION("lambda") {
-      auto dummy_source_lambda = [](std::stop_source&) { return std::monostate{}; };
-      auto dummy_function_lambda = [](std::monostate) { return std::monostate{}; };
-      auto dummy_sink_lambda = [](std::monostate) {};
+  SECTION("lambda") {
+    auto dummy_source_lambda = [](std::stop_source&) {
+      return std::monostate{};
+    };
+    auto dummy_function_lambda = [](std::monostate) {
+      return std::monostate{};
+    };
+    auto dummy_sink_lambda = [](std::monostate) {};
 
-      P a{dummy_source_lambda};
-      F b{dummy_function_lambda};
-      C c{dummy_sink_lambda};
+    P a{dummy_source_lambda};
+    F b{dummy_function_lambda};
+    C c{dummy_sink_lambda};
 
-      Edge g{*a, *b};
-      Edge h{*b, *c};
-    }
+    Edge g{*a, *b};
+    Edge h{*b, *c};
+  }
 
-    SECTION("inline lambda") {
-      P a([](std::stop_source&) { return std::monostate{}; });
-      F b([](std::monostate) { return std::monostate{}; });
-      C c([](std::monostate) {});
+  SECTION("inline lambda") {
+    P a([](std::stop_source&) { return std::monostate{}; });
+    F b([](std::monostate) { return std::monostate{}; });
+    C c([](std::monostate) {});
 
-      Edge g{*a, *b};
-      Edge h{*b, *c};
-    }
+    Edge g{*a, *b};
+    Edge h{*b, *c};
+  }
 
-    SECTION("function object") {
-      auto ac = dummy_monostate_source_class{};
-      dummy_monostate_function_class fc{};
-      dummy_monostate_sink_class dc{};
+  SECTION("function object") {
+    auto ac = dummy_monostate_source_class{};
+    dummy_monostate_function_class fc{};
+    dummy_monostate_sink_class dc{};
 
-      P a{ac};
-      F b{fc};
-      C c{dc};
+    P a{ac};
+    F b{fc};
+    C c{dc};
 
-      Edge g{*a, *b};
-      Edge h{*b, *c};
-    }
+    Edge g{*a, *b};
+    Edge h{*b, *c};
+  }
 
-    SECTION("inline function object") {
-      P a{dummy_monostate_source_class{}};
-      F b{dummy_monostate_function_class{}};
-      C c{dummy_monostate_sink_class{}};
+  SECTION("inline function object") {
+    P a{dummy_monostate_source_class{}};
+    F b{dummy_monostate_function_class{}};
+    C c{dummy_monostate_sink_class{}};
 
-      Edge g{*a, *b};
-      Edge h{*b, *c};
-    }
-    SECTION("bind") {
-      double x = 0.01;
-      float y = -0.001;
-      int z = 8675309;
+    Edge g{*a, *b};
+    Edge h{*b, *c};
+  }
+  SECTION("bind") {
+    double x = 0.01;
+    float y = -0.001;
+    int z = 8675309;
 
-      auto ac = std::bind(dummy_monostate_bind_source, x);
-      auto dc = std::bind(dummy_monostate_bind_sink, std::placeholders::_1, y, z);
-      auto fc = std::bind(dummy_monostate_bind_function, x, y, std::placeholders::_1);
+    auto ac = std::bind(dummy_monostate_bind_source, x);
+    auto dc = std::bind(dummy_monostate_bind_sink, std::placeholders::_1, y, z);
+    auto fc =
+        std::bind(dummy_monostate_bind_function, x, y, std::placeholders::_1);
 
-      P a{ac};
-      F b{fc};
-      C c{dc};
+    P a{ac};
+    F b{fc};
+    C c{dc};
 
-      Edge g{*a, *b};
-      Edge h{*b, *c};
-    }
+    Edge g{*a, *b};
+    Edge h{*b, *c};
+  }
 
-    SECTION("inline bind") {
-      double x = 0.01;
-      float y = -0.001;
-      int z = 8675309;
+  SECTION("inline bind") {
+    double x = 0.01;
+    float y = -0.001;
+    int z = 8675309;
 
-      P a{std::bind(dummy_monostate_bind_source, x)};
-      F b{std::bind(dummy_monostate_bind_function, x, y, std::placeholders::_1)};
-      C c{std::bind(dummy_monostate_bind_sink, std::placeholders::_1, y, z)};
+    P a{std::bind(dummy_monostate_bind_source, x)};
+    F b{std::bind(dummy_monostate_bind_function, x, y, std::placeholders::_1)};
+    C c{std::bind(dummy_monostate_bind_sink, std::placeholders::_1, y, z)};
 
-      Edge i{*a, *b};
-      Edge j{*b, *c};
-    }
+    Edge i{*a, *b};
+    Edge j{*b, *c};
+  }
 
-    SECTION("bind with move") {
-      double x = 0.01;
-      float y = -0.001;
-      int z = 8675309;
+  SECTION("bind with move") {
+    double x = 0.01;
+    float y = -0.001;
+    int z = 8675309;
 
-      auto ac = std::bind(dummy_monostate_bind_source, std::move(x));
-      auto dc = std::bind(
-          dummy_monostate_bind_sink, std::placeholders::_1, std::move(y), std::move(z));
-      auto fc = std::bind(
-          dummy_monostate_bind_function, std::move(x), std::move(y), std::placeholders::_1);
+    auto ac = std::bind(dummy_monostate_bind_source, std::move(x));
+    auto dc = std::bind(
+        dummy_monostate_bind_sink,
+        std::placeholders::_1,
+        std::move(y),
+        std::move(z));
+    auto fc = std::bind(
+        dummy_monostate_bind_function,
+        std::move(x),
+        std::move(y),
+        std::placeholders::_1);
 
-      P a{std::move(ac)};
-      F b{std::move(fc)};
-      C c{std::move(dc)};
+    P a{std::move(ac)};
+    F b{std::move(fc)};
+    C c{std::move(dc)};
 
-      Edge i{*a, *b};
-      Edge j{*b, *c};
-    }}
+    Edge i{*a, *b};
+    Edge j{*b, *c};
+  }
+}
