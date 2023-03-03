@@ -233,7 +233,7 @@ TEST_CASE_METHOD(
   // It's not possible to set subarrays, layout, query condition or new buffers
   // once the query plan got generated.
   CHECK(tiledb_query_set_subarray(ctx, query, &dom) == TILEDB_ERR);
-  CHECK(tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR) == TILEDB_ERR);
+  CHECK(tiledb_query_set_layout(ctx, query, TILEDB_COL_MAJOR) == TILEDB_ERR);
   tiledb_query_condition_t* qc;
   CHECK(tiledb_query_condition_alloc(ctx, &qc) == TILEDB_OK);
   int32_t val = 10000;

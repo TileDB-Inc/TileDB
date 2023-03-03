@@ -1570,6 +1570,10 @@ Status Query::set_est_result_size(
 }
 
 Status Query::set_layout(Layout layout) {
+  if (layout == layout_) {  // Noop
+    return Status::Ok();
+  }
+
   if (status_ != QueryStatus::UNINITIALIZED) {
     return logger_->status(
         Status_QueryError("Cannot set layout after initialization"));
