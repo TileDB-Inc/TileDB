@@ -31,6 +31,12 @@
  */
 
 #include <filesystem>
+#if _WIN32
+#include <process.h>
+#define getpid _getpid
+#else
+#include <unistd.h>
+#endif
 
 #include <test/support/tdb_catch.h>
 #include "helpers.h"
@@ -58,7 +64,9 @@ namespace test {
 const std::string& get_temp_path() {
   // Ensure the path has a trailing delimiter.
   static std::string temp_path =
-      (std::filesystem::temp_directory_path() / "tiledb_test" / "").string();
+      (std::filesystem::temp_directory_path() /
+       ("tiledb_test_" + std::to_string(getpid())) / "")
+          .string();
 
   return temp_path;
 }
