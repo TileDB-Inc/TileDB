@@ -1,6 +1,8 @@
 # Group
 
-A group consists of [metadata](./metadata.md) and a file containing group members
+A group consists of [metadata](./metadata.md) and a file containing group members.
+
+The current group format version is `2`.
 
 ```
 my_group                       # Group folder
@@ -24,7 +26,9 @@ my_group                       # Group folder
 
 ## Group Member
 
-The group member is the content inside a [group](./group.md)
+The group member is the content inside a [group](./group.md).
+
+The current group member format version is `2`.
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
