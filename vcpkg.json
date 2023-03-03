@@ -4,21 +4,50 @@
     "builtin-baseline": "f14984af3738e69f197bf0e647a8dca12de92996",
     "dependencies": [
         "bzip2",
-        "openssl",
-        "zstd",
         {
             "name": "catch2",
             "version>=": "3.1.0"
-        }
+        },
+        "openssl",
+        "zstd"
     ],
     "features": {
-        "gcs": {
+        "with-abseil": {
+            "description": "Enables building of abseil library and linkage test",
+            "dependencies": [
+                {
+                    "name": "abseil",
+                    "version>=": "20211102.0"
+                }
+            ]
+        },
+        "with-azure": {
+            "description": "Support Azure Storage",
+            "dependencies": [
+                {
+                    "name": "azure-storage-cpplite",
+                    "version>=": "0.3.0"
+                }
+            ]
+        },
+        "with-gcs": {
             "description": "Support google cloud storage",
             "dependencies": [
                 {
                     "name": "google-cloud-cpp",
                     "version>=": "2.6.0",
                     "features": [ "storage" ],
+                    "default-features": false
+                }
+            ]
+        },
+        "with-s3": {
+            "description": "Support AWS S3 Storage",
+            "dependencies": [
+                {
+                    "name": "aws-sdk-cpp",
+                    "version>=": "1.8.84",
+                    "features": ["s3", "identity-management", "sts"],
                     "default-features": false
                 }
             ]

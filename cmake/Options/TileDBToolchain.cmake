@@ -3,7 +3,12 @@
 ############################################################
 
 # Only enable vcpkg on GCS builds for now
-if (NOT TILEDB_GCS)
+if (NOT TILEDB_VCPKG AND NOT TILEDB_GCS)
+    return()
+endif()
+
+# We've already run vcpkg by the time the super build is finished
+if (NOT TILEDB_SUPERBUILD)
     return()
 endif()
 
@@ -19,4 +24,19 @@ else()
 endif()
 
 set(VCPKG_INSTALL_OPTIONS "--no-print-usage")
-list(APPEND VCPKG_MANIFEST_FEATURES "gcs")
+
+if(TILEDB_ABSEIL)
+    list(APPEND VCPKG_MANIFEST_FEATURES "with-abseil")
+endif()
+
+if(TILEDB_AZURE)
+    list(APPEND VCPKG_MANIFEST_FEATURES "with-azure")
+endif()
+
+if(TILEDB_GCS)
+    list(APPEND VCPKG_MANIFEST_FEATURES "with-gcs")
+endif()
+
+if(TILEDB_S3)
+    list(APPEND VCPKG_MANIFEST_FEATURES "with-s3")
+endif()
