@@ -112,7 +112,8 @@ Status vfs_test_close(
 }
 
 Status SupportedFsS3::prepare_config(
-    tiledb_config_t* config, tiledb_error_t* error) {
+    [[maybe_unused]] tiledb_config_t* config,
+    [[maybe_unused]] tiledb_error_t* error) {
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
   REQUIRE(
       tiledb_config_set(
