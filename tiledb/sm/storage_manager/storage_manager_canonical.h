@@ -73,7 +73,7 @@ class Consolidator;
 class EncryptionKey;
 class FragmentMetadata;
 class FragmentInfo;
-class Group;
+class GroupDetails;
 class Metadata;
 class MemoryTracker;
 class Query;
@@ -192,9 +192,22 @@ class StorageManagerCanonical {
    * @param encryption_key encryption key
    * @return tuple Status and pointer to group deserialized
    */
-  tuple<Status, optional<shared_ptr<Group>>> load_group_from_uri(
+  tuple<Status, optional<shared_ptr<GroupDetails>>> load_group_from_uri(
       const URI& group_uri,
       const URI& uri,
+      const EncryptionKey& encryption_key);
+
+  /**
+   * Load a group detail from URIs
+   *
+   * @param group_uri group uri
+   * @param uri location to load
+   * @param encryption_key encryption key
+   * @return tuple Status and pointer to group deserialized
+   */
+  tuple<Status, optional<shared_ptr<GroupDetails>>> load_group_from_all_uris(
+      const URI& group_uri,
+      const std::vector<TimestampedURI>& uris,
       const EncryptionKey& encryption_key);
 
   /**
@@ -205,18 +218,24 @@ class StorageManagerCanonical {
    *
    * @return tuple Status and pointer to group deserialized
    */
-  tuple<Status, optional<shared_ptr<Group>>> load_group_details(
+  tuple<Status, optional<shared_ptr<GroupDetails>>> load_group_details(
       const shared_ptr<GroupDirectory>& group_directory,
       const EncryptionKey& encryption_key);
 
   /**
    * Store the group details
    *
+   * @param group_detail_folder_uri group details folder
+   * @param group_detail_uri uri for detail file to write
    * @param group to serialize and store
    * @param encryption_key encryption key for at-rest encryption
    * @return status
    */
-  Status store_group_detail(Group* group, const EncryptionKey& encryption_key);
+  Status store_group_detail(
+      const URI& group_detail_folder_uri,
+      const URI& group_detail_uri,
+      tdb_shared_ptr<GroupDetails> group,
+      const EncryptionKey& encryption_key);
 
   /**
    * Returns the array schemas and fragment metadata for the given array.
@@ -269,10 +288,7 @@ class StorageManagerCanonical {
    * @return tuple of Status, latest GroupSchema and map of all group schemas
    *        Status Ok on success, else error
    */
-  std::tuple<
-      Status,
-      std::optional<
-          const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>>>
+  std::tuple<Status, std::optional<tdb_shared_ptr<GroupDetails>>>
   group_open_for_reads(Group* group);
 
   /** Opens an group for writes.
@@ -281,10 +297,7 @@ class StorageManagerCanonical {
    * @return tuple of Status, latest GroupSchema and map of all group schemas
    *        Status Ok on success, else error
    */
-  std::tuple<
-      Status,
-      std::optional<
-          const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>>>
+  std::tuple<Status, std::optional<tdb_shared_ptr<GroupDetails>>>
   group_open_for_writes(Group* group);
 
   /**
