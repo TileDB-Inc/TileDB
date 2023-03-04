@@ -46,7 +46,7 @@ using namespace tiledb::common;
  * Verify various API approaches
  */
 TEMPLATE_TEST_CASE(
-    "SegementedNodes: Verify various API approaches",
+    "SegmentedNodes: Verify various API approaches",
     "[segmented_nodes]",
     (std::tuple<
         consumer_node<AsyncMover2, size_t>,
@@ -243,7 +243,7 @@ void dummy_bind_sink_t(Block, float, const int&) {
  * in-line lambda, function object, bind, and rvalue bind.
  */
 TEMPLATE_TEST_CASE(
-    "SegementedNodes: Verify numerous API approaches, with edges",
+    "SegmentedNodes: Verify numerous API approaches, with edges",
     "[segmented_nodes]",
     (std::tuple<
         consumer_node<AsyncMover2, size_t>,
