@@ -27,12 +27,19 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
-if (TILEDB_WEBP_EP_BUILT)
+if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_WEBP_EP_BUILT)
   find_package(WebP REQUIRED PATHS ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH})
 endif()
 
+if(WebP_FOUND)
+  get_target_property(WebP_Link_Libraries WebP::webp INTERFACE_LINK_LIBRARIES)
+  if(Threads::Threads IN_LIST WebP_Link_Libraries)
+    find_package(Threads)
+  endif()
+endif()
+
 # if not yet built add it as an external project
-if(NOT TILEDB_WEBP_EP_BUILT)
+if(NOT WebP_FOUND)
   if (TILEDB_SUPERBUILD)
     message(STATUS "Adding Webp as an external project")
 
@@ -43,7 +50,7 @@ if(NOT TILEDB_WEBP_EP_BUILT)
       #GIT_TAG "release-1.?.?" # after 'static' addition in some release
       # from branch 'main' history as the 'static' support added apr 12 2022
       # at implementation time is not yet in release branch/tag.
-      GIT_TAG "a19a25bb03757d5bb14f8d9755ab39f06d0ae5ef" 
+      GIT_TAG "a19a25bb03757d5bb14f8d9755ab39f06d0ae5ef"
       GIT_SUBMODULES_RECURSE TRUE
       UPDATE_COMMAND ""
       CMAKE_ARGS

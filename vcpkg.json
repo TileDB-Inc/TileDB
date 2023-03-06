@@ -51,6 +51,16 @@
                     "default-features": false
                 }
             ]
+        },
+        "with-webp": {
+            "description": "Support libwebp based compression filters",
+            "dependencies": [
+                {
+                    "name": "libwebp",
+                    "version>=": "1.2.3"
+                }
+            ]
+
         }
     }
 }
