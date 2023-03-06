@@ -501,12 +501,14 @@ if (TILEDB_S3)
   find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
-      AWSSDK::aws-cpp-sdk-s3
-      AWSSDK::aws-cpp-sdk-core
+      AWSSDK::aws-c-cal
       AWSSDK::aws-c-event-stream
-      AWSSDK::aws-checksums
       AWSSDK::aws-c-common
+      AWSSDK::aws-c-io
+      AWSSDK::aws-checksums
+      AWSSDK::aws-cpp-sdk-core
       AWSSDK::aws-cpp-sdk-identity-management
+      AWSSDK::aws-cpp-sdk-s3
       AWSSDK::aws-cpp-sdk-sts)
 endif()
 

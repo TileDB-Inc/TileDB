@@ -170,8 +170,10 @@ endif ()
 if (AWSSDK_FOUND)
   set(AWS_SERVICES s3)
   AWSSDK_DETERMINE_LIBS_TO_LINK(AWS_SERVICES AWS_LINKED_LIBS)
-  list(APPEND AWS_LINKED_LIBS aws-c-common
+  list(APPEND AWS_LINKED_LIBS aws-c-cal
+                              aws-c-common
                               aws-c-event-stream
+                              aws-c-io
                               aws-checksums
                               aws-cpp-sdk-sts
                               aws-cpp-sdk-identity-management)
