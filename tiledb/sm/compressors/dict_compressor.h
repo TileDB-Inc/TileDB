@@ -191,6 +191,9 @@ class DictEncoding {
     // this can be the case if the compressed buffer was empty, eg. representing
     // empty strings
     if (output.size() == 0) {
+      for (size_t i = 0; i < output_offsets.size(); i++) {
+        output_offsets[i] = 0;
+      }
       return;
     }
 
