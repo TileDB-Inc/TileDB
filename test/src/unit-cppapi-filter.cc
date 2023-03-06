@@ -733,7 +733,8 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "C++ API: Filter empty strings with RLE or Dictionary encoding",
+    "C++ API: Filter buffer with some empty strings with RLE or Dictionary "
+    "encoding",
     "[cppapi][filter][rle-strings][dict-strings][empty-strings]") {
   using namespace tiledb;
   Context ctx;
@@ -764,16 +765,32 @@ TEST_CASE(
 
   Array::create(array_name, schema);
 
-  // Write empty strings to the array in 2 different ways
-  int elements = 10;
-  auto full_buffer_of_empty_strings = GENERATE(true, false);
-  std::vector<char> d0_buf(0);
-  if (full_buffer_of_empty_strings) {
-    d0_buf.assign(elements, 0);
+  std::vector<char> d0_buf;
+  std::vector<uint64_t> d0_offsets_buf;
+  std::vector<int> a0_buf;
+
+  SECTION("Only empty strings in data buffer") {
+    // Write this data buffer to the array:
+    // ["\0","\0","\0","\0","\0","\0","\0","\0","\0","\0"]
+    // As data we use the d0 array empty, as already defined.
+    d0_offsets_buf.assign(10, 0);
+    a0_buf.assign(10, 42);
   }
 
-  std::vector<uint64_t> d0_offsets_buf(elements, 0);
-  std::vector<int> a0_buf(elements, 42);
+  SECTION("Combine empty and strings of nulls in data buffer") {
+    // Write this data buffer to the array:
+    // ["\0","\0","\0","\0","\0","\0","\0","\0","\0","\0\0\0\0\0\0\0\0\0\0"]
+    d0_buf.assign(10, 0);
+    d0_offsets_buf.assign(10, 0);
+    a0_buf.assign(10, 42);
+  }
+
+  SECTION("Combine empty and non-empty strings in data buffer") {
+    // Write this data buffer to the array of strings: ["a", "bb", "", "c", ""]
+    d0_buf.assign({'a', 'b', 'b', 'c'});
+    d0_offsets_buf.assign({0, 1, 3, 3, 4});
+    a0_buf.assign({42, 42, 42, 42, 42});
+  }
 
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w);
@@ -801,7 +818,7 @@ TEST_CASE(
 
   auto results = query_r.result_buffer_elements();
   auto num_offsets = results["d0"].first;
-  CHECK(num_offsets == 10);
+  CHECK(num_offsets == d0_offsets_buf.size());
 
   for (uint64_t i = 0; i < num_offsets; i++) {
     CHECK(a0_read_buf[i] == 42);

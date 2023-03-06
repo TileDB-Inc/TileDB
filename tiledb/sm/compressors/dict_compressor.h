@@ -220,14 +220,11 @@ class DictEncoding {
     std::vector<std::byte> serialized_dict(dict_size);
     size_t out_index = 0;
     for (const auto& dict_entry : dict) {
-      // extra care for empty strings
-      auto entry_size = dict_entry.empty() ? 1 : dict_entry.size();
-      auto entry_data = dict_entry.empty() ? "" : dict_entry.data();
       utils::endianness::encode_be<T>(
-          static_cast<T>(entry_size), &serialized_dict[out_index]);
+          static_cast<T>(dict_entry.size()), &serialized_dict[out_index]);
       out_index += sizeof(T);
-      memcpy(&serialized_dict[out_index], entry_data, entry_size);
-      out_index += entry_size;
+      memcpy(&serialized_dict[out_index], dict_entry.data(), dict_entry.size());
+      out_index += dict_entry.size();
     }
 
     serialized_dict.resize(out_index);
@@ -252,6 +249,11 @@ class DictEncoding {
     size_t in_index = 0;
     while (in_index < serialized_dict.size()) {
       str_len = utils::endianness::decode_be<T>(&serialized_dict[in_index]);
+      if (str_len == 0) {
+        dict.emplace_back();
+        in_index++;
+        continue;
+      }
       // increment past the size element to the per-word data block
       in_index += sizeof(T);
       // construct string in place
