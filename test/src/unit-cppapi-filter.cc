@@ -819,6 +819,8 @@ TEST_CASE(
   auto results = query_r.result_buffer_elements();
   auto num_offsets = results["d0"].first;
   CHECK(num_offsets == d0_offsets_buf.size());
+  auto str_len = results["d0"].second;
+  CHECK(str_len == d0_buf.size());
 
   for (uint64_t i = 0; i < num_offsets; i++) {
     CHECK(a0_read_buf[i] == 42);

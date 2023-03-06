@@ -188,15 +188,6 @@ class DictEncoding {
           "Empty arguments when decompressing dictionary encoded strings.");
     }
 
-    // this can be the case if the compressed buffer was empty, eg. representing
-    // empty strings
-    if (output.size() == 0) {
-      for (size_t i = 0; i < output_offsets.size(); i++) {
-        output_offsets[i] = 0;
-      }
-      return;
-    }
-
     T word_id = 0;
     size_t in_index = 0, out_index = 0, offset_index = 0;
 
@@ -205,7 +196,7 @@ class DictEncoding {
       in_index += sizeof(T);
       assert(word_id < dict.size());
       const auto& word = dict[word_id];
-      memcpy(&output[out_index], word.data(), word.size());
+      memcpy(output.data() + out_index, word.data(), word.size());
       output_offsets[offset_index++] = out_index;
       out_index += word.size();
     }
@@ -252,16 +243,11 @@ class DictEncoding {
     size_t in_index = 0;
     while (in_index < serialized_dict.size()) {
       str_len = utils::endianness::decode_be<T>(&serialized_dict[in_index]);
-      if (str_len == 0) {
-        dict.emplace_back();
-        in_index++;
-        continue;
-      }
       // increment past the size element to the per-word data block
       in_index += sizeof(T);
       // construct string in place
       dict.emplace_back(
-          reinterpret_cast<const char*>(&serialized_dict[in_index]), str_len);
+          reinterpret_cast<const char*>(serialized_dict.data() + in_index), str_len);
       in_index += str_len;
     }
 
