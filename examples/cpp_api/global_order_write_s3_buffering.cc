@@ -9,7 +9,7 @@ using namespace tiledb;
 // serving at localhost:8181 where test_gow_rest2 is a registered array.
 // The example creates/deletes this array directly from S3, but as long as the
 // array was registered on the REST server, the test should work fine
-std::string array_namespace("tiledb://demo/");
+std::string array_namespace("tiledb://unit/");
 std::string s3_array("s3://tiledb-shaun/arrays/test_gow_rest2");
 
 uint64_t tile_extent = 32;
@@ -168,10 +168,6 @@ void read_and_validate(Context& ctx) {
 
 int main() {
   Config cfg;
-  cfg["rest.username"] = "demo";
-  cfg["rest.password"] = "Demodemodemo!";
-  cfg["rest.server_address"] = "http://127.0.0.1:8181";
-
   Context ctx(cfg);
 
   try {

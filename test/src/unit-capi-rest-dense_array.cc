@@ -80,9 +80,8 @@ struct DenseArrayRESTFx {
   // Vector of supported filsystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
-  const std::string rest_server_uri_ = "http://127.0.0.1:8181";
-  const std::string rest_server_username_ = "demo";
-  const std::string rest_server_password_ = "Demodemodemo!";
+  // TODO: Add CI username to constants?
+  const std::string rest_server_username_ = "unit";
   const std::string TILEDB_URI_PREFIX =
       "tiledb://" + rest_server_username_ + "/";
   std::set<std::string> to_deregister_;
@@ -205,29 +204,8 @@ struct DenseArrayRESTFx {
 
 DenseArrayRESTFx::DenseArrayRESTFx()
     : fs_vec_(vfs_test_get_fs_vec()) {
-  tiledb_error_t* error;
-  tiledb_config_t* config;
-  tiledb_config_alloc(&config, &error);
-  // Keep other REST server parameters the same
-  REQUIRE(
-      tiledb_config_set(
-          config, "rest.server_address", rest_server_uri_.c_str(), &error) ==
-      TILEDB_OK);
-  REQUIRE(
-      tiledb_config_set(
-          config, "rest.server_serialization_format", "CAPNP", &error) ==
-      TILEDB_OK);
-  REQUIRE(
-      tiledb_config_set(
-          config, "rest.username", rest_server_username_.c_str(), &error) ==
-      TILEDB_OK);
-  REQUIRE(
-      tiledb_config_set(
-          config, "rest.password", rest_server_password_.c_str(), &error) ==
-      TILEDB_OK);
-
   // Initialize vfs test
-  REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_, config).ok());
+  REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
   std::srand(0);
 }
 
@@ -1793,10 +1771,10 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_ERR);
 
   // Set some subarray AFTER setting the layout to UNORDERED
-//  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
-//  CHECK(rc == TILEDB_OK);
-//  rc = tiledb_query_set_subarray(ctx_, query, subarray);
-//  CHECK(rc == TILEDB_ERR);
+  //  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+  //  CHECK(rc == TILEDB_OK);
+  //  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  //  CHECK(rc == TILEDB_ERR);
 
   // Close array
   CHECK(tiledb_array_close(ctx_, array) == TILEDB_OK);
