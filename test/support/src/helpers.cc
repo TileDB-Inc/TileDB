@@ -30,8 +30,16 @@
  * This file defines some test suite helper functions.
  */
 
-#include "helpers.h"
+#include <filesystem>
+#if _WIN32
+#include <process.h>
+#define getpid _getpid
+#else
+#include <unistd.h>
+#endif
+
 #include <test/support/tdb_catch.h>
+#include "helpers.h"
 #include "serialization_wrappers.h"
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_external.h"
@@ -52,6 +60,16 @@ std::mutex catch2_macro_mutex;
 
 namespace tiledb {
 namespace test {
+
+const std::string& get_temp_path() {
+  // Ensure the path has a trailing delimiter.
+  static std::string temp_path =
+      (std::filesystem::temp_directory_path() /
+       ("tiledb_test_" + std::to_string(getpid())) / "")
+          .string();
+
+  return temp_path;
+}
 
 // Command line arguments.
 std::string g_vfs;
