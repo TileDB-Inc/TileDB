@@ -2629,7 +2629,9 @@ int32_t tiledb_query_condition_combine(
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, left_cond) == TILEDB_ERR ||
-      sanity_check(ctx, right_cond) == TILEDB_ERR)
+      (combination_op != TILEDB_NOT &&
+       sanity_check(ctx, right_cond) == TILEDB_ERR) ||
+      (combination_op == TILEDB_NOT && right_cond != nullptr))
     return TILEDB_ERR;
 
   // Create the combined query condition struct
@@ -2655,19 +2657,40 @@ int32_t tiledb_query_condition_combine(
     return TILEDB_OOM;
   }
 
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          left_cond->query_condition_->combine(
-              *right_cond->query_condition_,
-              static_cast<tiledb::sm::QueryConditionCombinationOp>(
-                  combination_op),
-              (*combined_cond)->query_condition_))) {
-    delete (*combined_cond)->query_condition_;
-    delete *combined_cond;
-    return TILEDB_ERR;
+  if (combination_op == TILEDB_NOT) {
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            left_cond->query_condition_->negate(
+                static_cast<tiledb::sm::QueryConditionCombinationOp>(
+                    combination_op),
+                (*combined_cond)->query_condition_))) {
+      delete (*combined_cond)->query_condition_;
+      delete *combined_cond;
+      return TILEDB_ERR;
+    }
+  } else {
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            left_cond->query_condition_->combine(
+                *right_cond->query_condition_,
+                static_cast<tiledb::sm::QueryConditionCombinationOp>(
+                    combination_op),
+                (*combined_cond)->query_condition_))) {
+      delete (*combined_cond)->query_condition_;
+      delete *combined_cond;
+      return TILEDB_ERR;
+    }
   }
 
   return TILEDB_OK;
+}
+
+int32_t tiledb_query_condition_negate(
+    tiledb_ctx_t* const ctx,
+    const tiledb_query_condition_t* const cond,
+    tiledb_query_condition_t** const negated_cond) {
+  return api::tiledb_query_condition_combine(
+      ctx, cond, nullptr, TILEDB_NOT, negated_cond);
 }
 
 /* ****************************** */
@@ -6846,6 +6869,14 @@ int32_t tiledb_query_condition_combine(
     tiledb_query_condition_t** const combined_cond) noexcept {
   return api_entry<tiledb::api::tiledb_query_condition_combine>(
       ctx, left_cond, right_cond, combination_op, combined_cond);
+}
+
+int32_t tiledb_query_condition_negate(
+    tiledb_ctx_t* const ctx,
+    const tiledb_query_condition_t* const cond,
+    tiledb_query_condition_t** const negated_cond) noexcept {
+  return api_entry<tiledb::api::tiledb_query_condition_negate>(
+      ctx, cond, negated_cond);
 }
 
 /* ****************************** */

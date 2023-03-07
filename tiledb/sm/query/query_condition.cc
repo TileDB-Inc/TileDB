@@ -140,11 +140,25 @@ Status QueryCondition::combine(
       combination_op != QueryConditionCombinationOp::OR) {
     return Status_QueryConditionError(
         "Cannot combine query conditions; Only the 'AND' "
-        "and 'OR' combination ops are supported");
+        "and 'OR' combination ops are supported in this function.");
   }
 
   combined_cond->field_names_.clear();
   combined_cond->tree_ = this->tree_->combine(rhs.tree_, combination_op);
+  return Status::Ok();
+}
+
+Status QueryCondition::negate(
+    QueryConditionCombinationOp combination_op,
+    QueryCondition* combined_cond) const {
+  if (combination_op != QueryConditionCombinationOp::NOT) {
+    return Status_QueryConditionError(
+        "Cannot negate query condition; Only the 'NOT' "
+        "combination op is supported in this function.");
+  }
+
+  combined_cond->field_names_.clear();
+  combined_cond->tree_ = this->tree_->get_negated_tree();
   return Status::Ok();
 }
 
