@@ -4,16 +4,16 @@
     "builtin-baseline": "f14984af3738e69f197bf0e647a8dca12de92996",
     "dependencies": [
         "bzip2",
-        {
-            "name": "catch2",
-            "version>=": "3.1.0"
-        },
+        "catch2",
         "libmagic",
+        "lz4",
         "openssl",
+        "spdlog",
+        "zlib",
         "zstd"
     ],
     "features": {
-        "with-abseil": {
+        "abseil": {
             "description": "Enables building of abseil library and linkage test",
             "dependencies": [
                 {
@@ -22,7 +22,7 @@
                 }
             ]
         },
-        "with-azure": {
+        "azure": {
             "description": "Support Azure Storage",
             "dependencies": [
                 {
@@ -31,7 +31,7 @@
                 }
             ]
         },
-        "with-gcs": {
+        "gcs": {
             "description": "Support google cloud storage",
             "dependencies": [
                 {
@@ -42,7 +42,16 @@
                 }
             ]
         },
-        "with-s3": {
+        "serialization": {
+          "description": "Enable TileDB Cloud Support",
+          "dependencies": [
+              {
+                  "name": "capnproto",
+                  "version>=": "0.8.0"
+              }
+          ]
+        },
+        "s3": {
             "description": "Support AWS S3 Storage",
             "dependencies": [
                 {
@@ -53,7 +62,16 @@
                 }
             ]
         },
-        "with-webp": {
+        "tools": {
+            "description": "Build tiledb command line tool",
+            "dependencies": [
+                {
+                    "name": "clipp",
+                    "version>=": "1.2.3"
+                }
+            ]
+        },
+        "webp": {
             "description": "Support libwebp based compression filters",
             "dependencies": [
                 {

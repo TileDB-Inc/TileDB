@@ -27,7 +27,11 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
-if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_WEBP_EP_BUILT)
+if (NOT TILEDB_FORCE_ALL_DEPS)
+  find_package(WebP QUIET)
+endif()
+
+if(NOT WebP_FOUND AND TILEDB_WEBP_EP_BUILT)
   find_package(WebP REQUIRED PATHS ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH})
 endif()
 
