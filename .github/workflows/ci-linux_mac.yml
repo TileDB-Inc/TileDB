@@ -55,6 +55,25 @@ jobs:
     name: ${{matrix.os}} - ${{ inputs.ci_backend }}${{ inputs.ci_option }}
     steps:
       - uses: actions/checkout@v3
+        with:
+            submodules: true
+            fetch-depth: 0
+
+      - name: Restore artifacts, or setup vcpkg for building artifacts
+        uses: lukka/run-vcpkg@v10
+        id: runvcpkg
+        with:
+          vcpkgJsonGlob: 'vcpkg.json'
+          vcpkgDirectory: '${{ github.workspace }}/external/vcpkg'
+
+      - name: List $GITHUB_WORKSPACE before build
+        run: find $GITHUB_WORKSPACE
+        shell: bash
+
+      - name: Prints output of run-vcpkg's action.
+        run: echo "root='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_ROOT_OUT }}', triplet='${{ steps.runvcpkg.outputs.RUNVCPKG_VCPKG_DEFAULT_TRIPLET_OUT }}' "
+      - name: Work around vcpkg default # https://github.com/microsoft/vcpkg/issues/143#issuecomment-705778244 ¯\_(ツ)_/¯
+        run:  find $GITHUB_WORKSPACE/external/vcpkg/triplets/* -type f -exec sh -c "echo \"\nset(VCPKG_BUILD_TYPE release)\n\" >> {}" \;
 
       - name: 'Ubuntu Prelim'
         if: ${{ startsWith(matrix.os, 'ubuntu-') == true }}
@@ -73,24 +92,44 @@ jobs:
           python -m pip install --upgrade pip virtualenv
           pip install pyarrow pybind11 numpy
 
-      - name: 'Build and test libtiledb'
-        id: test
+      - name: 'Brew setup on macOS' # x-ref c8e49ba8f8b9ce
+        if: ${{ startsWith(matrix.os, 'macos-') == true }}
+        run: |
+          set -e pipefail
+          brew install pkg-config
+
+      - name: 'Configure libtiledb build'
+        id: configure
         shell: bash
         run: |
           set -e pipefail
 
-          ## ** NOTE: most of these steps must run in the same shell context **
+          #####################################################
+          # We want to run bootstrap in an isolated step in order to
+          # cache vcpkg deps across runs if the libtiledb build fails.
 
+          source $GITHUB_WORKSPACE/scripts/ci/bootstrap_libtiledb.sh
+
+      - name: 'Build and test libtiledb'
+        id: build_and_test
+        shell: bash
+        run: |
+          set -e pipefail
 
           ###################################################
           # Start helper processes, such as backend emulator
-          # if applicable
+          # if applicable.
+
+          #  ** NOTE: most tests must run in the same shell **
+          #  **       as build-services, especially tests   **
+          #  **       requiring a backend emulator.         **
 
           source $GITHUB_WORKSPACE/scripts/ci/posix/build-services-start.sh
 
           #####################################################
-          # Build libtiledb using `bootstrap_args` as set above
+          # Build libtiledb using bootstrap set above
 
+          source $GITHUB_WORKSPACE/scripts/ci/bootstrap_libtiledb.sh
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
           ###################################################
@@ -142,10 +181,10 @@ jobs:
 
       - name: 'Test status check'
         run: |
-          # tiledb_unit is configured to set a job-level variable TILEDB_CI_SUCCESS=1
+          # tiledb_unit is configured to set a  variable TILEDB_CI_SUCCESS=1
           # following the test run. If this variable is not set, the build should fail.
           # see https://github.com/TileDB-Inc/TileDB/pull/1400 (5f0623f4d3)
-          if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
+          if [[ "${{ steps.build_and_test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
             exit 1;
           fi
 

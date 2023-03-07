@@ -63,7 +63,12 @@ if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT)
   endif()
 endif()
 
-if (NOT GCSSDK_FOUND)
+if (NOT TILEDB_GCS_CLASSIC)
+  find_package(google_cloud_cpp_storage CONFIG REQUIRED)
+endif()
+
+if (NOT GCSSDK_FOUND AND NOT google_cloud_cpp_storage_FOUND)
+  message(FATAL_ERROR "GCS NOT FOUND")
   if (TILEDB_SUPERBUILD)
     message(STATUS "Could NOT find GCSSDK")
     message(STATUS "Adding GCSSDK as an external project")

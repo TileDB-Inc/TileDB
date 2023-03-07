@@ -31,6 +31,20 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
+##-----------------------------------
+# early WIN32 audit of path length for aws sdk build where
+# insufficient available path length causes sdk build failure.
+if (WIN32 AND NOT TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK)
+  if (TILEDB_SUPERBUILD AND TILEDB_S3)
+    string(LENGTH ${CMAKE_CURRENT_BINARY_DIR} LENGTH_CMAKE_CURRENT_BINARY_DIR)
+    if ( NOT (LENGTH_CMAKE_CURRENT_BINARY_DIR LESS 61))
+      message(FATAL_ERROR " build directory path likely too long for building awssdk/dependencies!")
+      return()
+    endif()
+  endif()
+endif()
+##-----------------------------------
+
 # If the EP was built, it will install the AWSSDKConfig.cmake file, which we
 # can use with find_package. CMake uses CMAKE_PREFIX_PATH to locate find
 # modules.
