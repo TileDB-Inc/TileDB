@@ -83,7 +83,7 @@ struct WinFx {
   }
 };
 
-TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
+TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows][filesystem]") {
   using tiledb::sm::path_win::is_win_path;
   const std::string test_dir_path = TEMP_DIR + "/win_tests";
   const std::string test_file_path = TEMP_DIR + "/win_tests/tiledb_test_file";
