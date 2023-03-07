@@ -75,7 +75,9 @@ struct WinFx {
   }
 
   ~WinFx() {
-    REQUIRE(win_.remove_dir(TEMP_DIR).ok());
+    if (path_exists(TEMP_DIR)) {
+      REQUIRE(win_.remove_dir(TEMP_DIR).ok());
+    }
   }
 
   bool path_exists(std::string path) {
@@ -246,6 +248,8 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows][filesystem]") {
 TEST_CASE_METHOD(
     WinFx, "Test writing large files", "[.nightly_only][windows][large-file]") {
   const uint64_t five_gigabytes = static_cast<uint64_t>(5) << 30;
+
+  REQUIRE(win_.create_dir(TEMP_DIR).ok());
 
   std::string file = TEMP_DIR + "\\large-file";
 
