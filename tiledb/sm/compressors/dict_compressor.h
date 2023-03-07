@@ -247,7 +247,8 @@ class DictEncoding {
       in_index += sizeof(T);
       // construct string in place
       dict.emplace_back(
-          reinterpret_cast<const char*>(serialized_dict.data() + in_index), str_len);
+          reinterpret_cast<const char*>(serialized_dict.data() + in_index),
+          str_len);
       in_index += str_len;
     }
 

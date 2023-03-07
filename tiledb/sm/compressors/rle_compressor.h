@@ -150,7 +150,7 @@ class RLE {
       const span<const std::byte> input,
       span<std::byte> output,
       span<uint64_t> output_offsets) {
-    if (input.empty() || output.empty() || output_offsets.empty())
+    if (input.empty() || output_offsets.empty())
       return;
 
     const uint64_t run_size = sizeof(T);
