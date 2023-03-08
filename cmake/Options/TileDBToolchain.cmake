@@ -2,13 +2,13 @@
 # TileDB Toolchain Setup
 ############################################################
 
-# Only enable vcpkg on GCS builds for now
-if (NOT TILEDB_VCPKG AND NOT TILEDB_GCS)
+# Only enable vcpkg on Azure and GCS builds for now
+if (NOT TILEDB_VCPKG AND NOT (TILEDB_AZURE OR TILEDB_GCS))
     return()
 endif()
 
-# For testing we're using --enable-gcs
-if(TILEDB_GCS AND NOT TILEDB_VCPKG)
+# For testing we're using --enable-gcs or --enable-azure
+if((TILEDB_AZURE OR TILEDB_GCS) AND NOT TILEDB_VCPKG)
     set(TILEDB_VCPKG ON)
 endif()
 

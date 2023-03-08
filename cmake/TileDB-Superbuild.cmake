@@ -130,10 +130,6 @@ if (TILEDB_S3)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAWSSDK_EP.cmake)
 endif()
 
-if (TILEDB_AZURE)
-  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAzureSDK_EP.cmake)
-endif()
-
 if (TILEDB_GCS)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindGCSSDK_EP.cmake)
 endif()
