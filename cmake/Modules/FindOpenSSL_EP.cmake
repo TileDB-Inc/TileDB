@@ -124,7 +124,9 @@ if (NOT OPENSSL_FOUND AND TILEDB_SUPERBUILD)
 endif()
 
 if (OPENSSL_FOUND)
-  message(STATUS "Found OpenSSL: ${OPENSSL_SSL_LIBRARY} -- OpenSSL crypto: ${OPENSSL_CRYPTO_LIBRARY} -- root: ${OPENSSL_ROOT_DIR}")
+  message(STATUS "Found OpenSSL: ${OPENSSL_SSL_LIBRARY}")
+  message(STATUS "Found OpenSSL crypto: ${OPENSSL_CRYPTO_LIBRARY}")
+  message(STATUS "OpenSSL Root: ${OPENSSL_ROOT_DIR}")
 
   if (DEFINED OPENSSL_INCLUDE_DIR AND "${OPENSSL_INCLUDE_DIR}" MATCHES "${HOMEBREW_BASE}.*")
     # define TILEDB_OPENSSL_DIR so we can ensure curl links the homebrew version
