@@ -350,7 +350,7 @@ class Query {
    * Returns the condition for filtering results in a read query.
    * @return QueryCondition
    */
-  const QueryCondition& condition() const;
+  const std::optional<QueryCondition>& condition() const;
 
   /**
    * Returns the update values for an update query.
@@ -733,7 +733,7 @@ class Query {
   std::vector<WrittenFragmentInfo> written_fragment_info_;
 
   /** The query condition. */
-  QueryCondition condition_;
+  std::optional<QueryCondition> condition_;
 
   /** The update values. */
   std::vector<UpdateValue> update_values_;

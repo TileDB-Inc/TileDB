@@ -1,4 +1,4 @@
-/**
+/*
  * @file   query.cc
  *
  * @section LICENSE
@@ -718,7 +718,7 @@ void Query::init() {
 
     // Create dimension label queries and remove labels from subarray.
     if (uses_dimension_labels()) {
-      if (!condition_.empty()) {
+      if (condition_.has_value()) {
         throw QueryStatusException(
             "Cannot init query; Using query conditions and dimension labels "
             "together is not supported.");
@@ -784,7 +784,7 @@ Layout Query::layout() const {
   return layout_;
 }
 
-const QueryCondition& Query::condition() const {
+const std::optional<QueryCondition>& Query::condition() const {
   if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
     throw std::runtime_error(
         "Query condition is not available for write or modify exclusive "
@@ -1605,7 +1605,12 @@ Status Query::set_condition(const QueryCondition& condition) {
         "to write queries"));
   }
 
+  if (condition.empty()) {
+    throw std::invalid_argument("Query conditions must not be empty");
+  }
+
   condition_ = condition;
+
   return Status::Ok();
 }
 

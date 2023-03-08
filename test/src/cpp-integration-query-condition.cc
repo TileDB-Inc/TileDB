@@ -171,6 +171,7 @@ void create_array(
     col_dims.push_back(col);
     a_data.push_back(a);
     b_data.push_back(b);
+
     c_offsets.push_back(c_data.size());
     for (size_t c_idx = 0; c_idx < c_str.size(); c_idx++) {
       c_data.push_back(c_str.at(c_idx));
@@ -306,6 +307,68 @@ struct TestParams {
   bool legacy_;
   bool add_utf8_attr_;
 };
+
+TEST_CASE(
+    "Testing read query with empty QC, with no range.",
+    "[query][query-condition][empty]") {
+  // Initial setup.
+  std::srand(static_cast<uint32_t>(time(0)));
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  // Create an empty query condition
+  QueryCondition qc(ctx);
+
+  // Create buffers with size of the results of the two queries.
+  std::vector<int> a_data_read(num_rows * num_rows);
+  std::vector<float> b_data_read(num_rows * num_rows);
+
+  // These buffers store the results of the second query made with the query
+  // condition specified above.
+  std::vector<int> a_data_read_2(num_rows * num_rows);
+  std::vector<float> b_data_read_2(num_rows * num_rows);
+
+  // Generate test parameters.
+  TestParams params = GENERATE(
+      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false),
+      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false));
+
+  // Setup by creating buffers to store all elements of the original array.
+  create_array(
+      ctx,
+      params.array_type_,
+      params.set_dups_,
+      params.add_utf8_attr_,
+      a_data_read,
+      b_data_read);
+
+  // Create the query, which reads over the entire array with query condition
+  Config config;
+  if (params.legacy_) {
+    config.set("sm.query.sparse_global_order.reader", "legacy");
+    config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
+  }
+  Context ctx2 = Context(config);
+  Array array(ctx2, array_name, TILEDB_READ);
+  Query query(ctx2, array);
+
+  // Set a subarray for dense.
+  if (params.array_type_ == TILEDB_DENSE) {
+    int range[] = {1, num_rows};
+    query.add_range("rows", range[0], range[1])
+        .add_range("cols", range[0], range[1]);
+  }
+
+  // Perform query and validate.
+  CHECK_THROWS_AS(
+      perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query),
+      std::exception);
+}
 
 TEST_CASE(
     "Testing read query with basic QC, with no range.",

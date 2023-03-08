@@ -75,7 +75,7 @@ OrderedDimLabelReader::OrderedDimLabelReader(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    QueryCondition& condition,
+    std::optional<QueryCondition>& condition,
     bool increasing_labels,
     bool skip_checks_serialization)
     : ReaderBase(
@@ -135,7 +135,7 @@ OrderedDimLabelReader::OrderedDimLabelReader(
         "Cannot initialize ordered dim label reader; Subarray is set");
   }
 
-  if (!condition_.empty()) {
+  if (condition_.has_value()) {
     throw OrderedDimLabelReaderStatusException(
         "Ordered dimension laber reader cannot process query condition");
   }

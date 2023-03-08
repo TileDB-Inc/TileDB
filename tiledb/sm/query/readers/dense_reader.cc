@@ -76,7 +76,7 @@ DenseReader::DenseReader(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    QueryCondition& condition,
+    std::optional<QueryCondition>& condition,
     bool skip_checks_serialization)
     : ReaderBase(
           stats,
@@ -170,7 +170,9 @@ Status DenseReader::dowork() {
   auto timer_se = stats_->start_timer("dowork");
 
   // Check that the query condition is valid.
-  RETURN_NOT_OK(condition_.check(array_schema_));
+  if (condition_.has_value()) {
+    RETURN_NOT_OK(condition_->check(array_schema_));
+  }
 
   get_dim_attr_stats();
 
@@ -361,7 +363,11 @@ Status DenseReader::dense_read() {
   std::vector<std::string> names;
   std::vector<std::string> fixed_names;
   std::vector<std::string> var_names;
-  auto condition_names = condition_.field_names();
+  std::unordered_set<std::string> condition_names;
+  if (condition_.has_value()) {
+    condition_names = condition_->field_names();
+  }
+
   for (auto& name : condition_names) {
     names.emplace_back(name);
   }
@@ -396,7 +402,7 @@ Status DenseReader::dense_read() {
   uint64_t subarray_start_cell = 0;
   uint64_t subarray_end_cell = 0;
   std::vector<uint8_t> qc_result(
-      condition_.empty() ? 0 : subarray.cell_num(), 1);
+      !condition_.has_value() ? 0 : subarray.cell_num(), 1);
 
   // Keep track of the current var buffer sizes.
   std::map<std::string, uint64_t> var_buffer_sizes;
@@ -566,7 +572,7 @@ void DenseReader::init_read_state() {
   }
   assert(found);
 
-  if (qc_coords_mode_ && condition_.empty()) {
+  if (qc_coords_mode_ && !condition_.has_value()) {
     throw DenseReaderStatusException(
         "sm.query.dense.qc_coords_mode requires a query condition");
   }
@@ -759,7 +765,7 @@ Status DenseReader::apply_query_condition(
     std::vector<uint8_t>& qc_result) {
   auto timer_se = stats_->start_timer("apply_query_condition");
 
-  if (!condition_.empty()) {
+  if (condition_.has_value()) {
     // For easy reference.
     const auto& tile_coords = subarray.tile_coords();
     const auto dim_num = array_schema_.dim_num();
@@ -840,7 +846,7 @@ Status DenseReader::apply_query_condition(
                   }
                 }
 
-                RETURN_NOT_OK(condition_.apply_dense(
+                RETURN_NOT_OK(condition_->apply_dense(
                     *(fragment_metadata_[frag_domains[i].fid()]
                           ->array_schema()
                           .get()),
@@ -1283,7 +1289,7 @@ Status DenseReader::copy_fixed_tiles(
     }
 
     // Apply query condition results to this slab.
-    if (!condition_.empty()) {
+    if (condition_.has_value()) {
       for (uint64_t c = 0; c < iter.cell_slab_length(); c++) {
         if (!(qc_result[c + cell_offset] & 0x1)) {
           memcpy(
@@ -1470,7 +1476,7 @@ Status DenseReader::copy_offset_tiles(
       }
     }
 
-    if (!condition_.empty()) {
+    if (condition_.has_value()) {
       // Apply query condition results to this slab.
       for (uint64_t c = 0; c < iter.cell_slab_length(); c++) {
         if (!(qc_result[c + cell_offset] & 0x1)) {

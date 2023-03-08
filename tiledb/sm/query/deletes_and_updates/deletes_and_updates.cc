@@ -64,7 +64,7 @@ DeletesAndUpdates::DeletesAndUpdates(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    QueryCondition& condition,
+    std::optional<QueryCondition>& condition,
     std::vector<UpdateValue>& update_values,
     bool skip_checks_serialization)
     : StrategyBase(
@@ -99,7 +99,7 @@ DeletesAndUpdates::DeletesAndUpdates(
         "Cannot initialize deletes; Subarrays are not supported");
   }
 
-  if (!skip_checks_serialization && condition_.empty()) {
+  if (!skip_checks_serialization && !condition_.has_value()) {
     throw DeleteAndUpdateStatusException(
         "Cannot initialize deletes; One condition is needed");
   }
@@ -123,7 +123,12 @@ Status DeletesAndUpdates::dowork() {
   auto timer_se = stats_->start_timer("dowork");
 
   // Check that the query condition is valid.
-  RETURN_NOT_OK(condition_.check(array_schema_));
+  if (condition_.has_value()) {
+    RETURN_NOT_OK(condition_->check(array_schema_));
+  } else {
+    throw DeleteAndUpdateStatusException(
+        "Cannot process delete, no condition is set");
+  }
 
   // Check that the update values are valid.
   for (auto& update_value : update_values_) {
@@ -166,10 +171,10 @@ Status DeletesAndUpdates::dowork() {
   WriterTile serialized_condition =
       update_values_.empty() ?
           tiledb::sm::deletes_and_updates::serialization::serialize_condition(
-              condition_.negated_condition()) :
+              condition_->negated_condition()) :
           tiledb::sm::deletes_and_updates::serialization::
               serialize_update_condition_and_values(
-                  condition_.negated_condition(), update_values_);
+                  condition_->negated_condition(), update_values_);
   new_fragment_str += update_values_.empty() ? constants::delete_file_suffix :
                                                constants::update_file_suffix;
 
