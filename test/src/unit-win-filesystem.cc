@@ -39,6 +39,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/crypto/crypto.h"
 #include "tiledb/sm/filesystem/path_win.h"
 #include "tiledb/sm/filesystem/win.h"
 
@@ -74,7 +75,9 @@ struct WinFx {
   }
 
   ~WinFx() {
-    REQUIRE(win_.remove_dir(TEMP_DIR).ok());
+    if (path_exists(TEMP_DIR)) {
+      REQUIRE(win_.remove_dir(TEMP_DIR).ok());
+    }
   }
 
   bool path_exists(std::string path) {
@@ -82,7 +85,7 @@ struct WinFx {
   }
 };
 
-TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
+TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows][filesystem]") {
   using tiledb::sm::path_win::is_win_path;
   const std::string test_dir_path = TEMP_DIR + "/win_tests";
   const std::string test_file_path = TEMP_DIR + "/win_tests/tiledb_test_file";
@@ -240,6 +243,50 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
   CHECK(st.ok());
   CHECK(!win_.is_file(test_file.to_path()));
   CHECK(win_.is_file(URI(test_file_path + "2").to_path()));
+}
+
+TEST_CASE_METHOD(
+    WinFx, "Test writing large files", "[.nightly_only][windows][large-file]") {
+  const uint64_t five_gigabytes = static_cast<uint64_t>(5) << 30;
+
+  REQUIRE(win_.create_dir(TEMP_DIR).ok());
+
+  std::string file = TEMP_DIR + "\\large-file";
+
+  std::vector<uint8_t> buffer(five_gigabytes);
+
+  // We use a prime period to catch errors where the 4GB buffer chunks are
+  // written in the wrong place.
+  const uint8_t sequence_period = 59;
+
+  uint8_t i = 0;
+  std::generate(buffer.begin(), buffer.end(), [&]() {
+    auto val = i;
+    i = (i + 1) % sequence_period;
+    return val;
+  });
+
+  Buffer expected_buffer;
+  REQUIRE(expected_buffer.realloc(Crypto::MD5_DIGEST_BYTES).ok());
+
+  REQUIRE(win_.write(file, buffer.data(), buffer.size()).ok());
+
+  REQUIRE(Crypto::md5(buffer.data(), buffer.size(), &expected_buffer).ok());
+
+  std::fill(buffer.begin(), buffer.end(), 0);
+
+  REQUIRE(win_.read(file, 0, buffer.data(), buffer.size()).ok());
+
+  Buffer actual_buffer;
+  REQUIRE(actual_buffer.realloc(Crypto::MD5_DIGEST_BYTES).ok());
+
+  REQUIRE(Crypto::md5(buffer.data(), buffer.size(), &actual_buffer).ok());
+
+  REQUIRE(
+      std::memcmp(
+          expected_buffer.data(),
+          actual_buffer.data(),
+          Crypto::MD5_DIGEST_BYTES) == 0);
 }
 
 #endif  // _WIN32
