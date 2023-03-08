@@ -51,7 +51,7 @@ extern "C" {
  *     array_schema,
  *     0,
  *     "label",
- *     TILEDB_INCREASING_LABELS,
+ *     TILEDB_INCREASING_DATA,
  *     TILEDB_FLOAT64);
  * @endcode
  *
@@ -160,7 +160,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_set_dimension_label_filter_list(
  *     array_schema,
  *     0,
  *     "label",
- *     TILEDB_INCREASING_LABELS,
+ *     TILEDB_INCREASING_DATA,
  *     TILEDB_FLOAT64);
  * tiledb_array_schema_set_dimension_label_tile_extent(
  *     ctx, array_schema, "label", TILEDB_INT64, &tile_extent);
