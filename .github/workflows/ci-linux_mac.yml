@@ -96,7 +96,7 @@ jobs:
         if: ${{ startsWith(matrix.os, 'macos-') == true }}
         run: |
           set -e pipefail
-          brew install pkg-config
+          brew install automake pkg-config
 
       - name: 'Configure libtiledb build'
         id: configure
