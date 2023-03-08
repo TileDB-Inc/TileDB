@@ -26,16 +26,16 @@
             ]
         },
         "azure": {
-            "description": "Support Azure Storage",
+            "description": "Support Azure Blob Storage",
             "dependencies": [
                 {
-                    "name": "azure-storage-cpplite",
-                    "version>=": "0.3.0"
+                    "name": "azure-storage-blobs-cpp",
+                    "version>=": "12.6.1"
                 }
             ]
         },
         "gcs": {
-            "description": "Support google cloud storage",
+            "description": "Support Google Cloud Storage",
             "dependencies": [
                 {
                     "name": "google-cloud-cpp",

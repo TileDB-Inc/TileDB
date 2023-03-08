@@ -6,23 +6,23 @@ TileDB dependencies must be built against source packages of released software v
 To simplify patchset maintenance, we may also fork a specific repository version in
 the TileDB-Inc organization.
 
-Several illustrative examples, using the Azure CPP Lite dependency:
+Several illustrative examples, using the AWS SDK dependency:
 - applying a patchset to a repo fork:
 
     ```
-    git clone https://github.com/Azure/azure-storage-cpplite
-    cd azure-storage-cpplite
-    git am /path/to/TileDB/cmake/inputs/patches/ep_azure/v0.3.0-patchset.patch
+    git clone https://github.com/aws/aws-sdk-cpp.git
+    cd aws-sdk-cpp
+    git am /path/to/TileDB/cmake/inputs/patches/ep_awssdk/awsccommon.patch
     ```
 
 - re-creating the patchset from updated fork:
 
     ```
-    cd azure-storage-cpplite
+    cd aws-sdk-cpp
     # commit or cherry-pick changes
-    git format-patch v0.3.0 --stdout > /path/to/TileDB/cmake/inputs/patches/ep_azure/v0.3.0-patchset.patch
+    git format-patch v0.3.0 --stdout > /path/to/TileDB/cmake/inputs/patches/ep_awssdk/awsccommon.patch
     # git add, commit, push to TileDB-Inc fork
     ```
 
   Note that the target branch above is for illustration only. The target version should match the version
-  of the dependency used in the `cmake/Modules/Find<DEP>.cmake` file.    
+  of the dependency used in the `cmake/Modules/Find<DEP>.cmake` file.

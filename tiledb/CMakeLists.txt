@@ -519,19 +519,11 @@ endif()
 # Azure dependencies
 if (TILEDB_AZURE)
   message(STATUS "The TileDB library is compiled with Azure support.")
-  find_package(AzureSDK_EP REQUIRED COMPONENTS azure)
+  find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
-      AzureSDK::AzureSDK
+      Azure::azure-storage-blobs
   )
-
-  if(MSVC)
-    if (TILEDB_CURL_EP_BUILT)
-      target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -DCURL_STATICLIB=1 -Dazure_storage_lite_EXPORTS)
-    else()
-      target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE                    -Dazure_storage_lite_EXPORTS)
-    endif()
-  endif()
 endif()
 
 # GCS dependencies
