@@ -949,8 +949,9 @@ TEST_CASE_METHOD(
   uint64_t data_size = sizeof(data);
   write_1d_fragment(coords, &coords_size, data, &data_size);
 
-  // One result tile (~505) will be bigger than the budget (5).
-  total_budget_ = "10000";
+  // One result tile (~505) will be larger than leftover memory.
+  total_budget_ = "800";
+  ratio_array_data_ = "0.99";
   ratio_coords_ = "0.0005";
   update_config();
 
