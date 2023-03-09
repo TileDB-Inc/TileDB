@@ -155,7 +155,7 @@ class RangeSetAndSupersetImpl {
   virtual ~RangeSetAndSupersetImpl() = default;
 
   /**
-   * Adds a range to the range manager without performing any checkes. If a
+   * Adds a range to the range manager without performing any checks. If a
    * default strategy is set, then first update the range strategy.
    *
    * @param ranges The current ranges in the subarray (remove after
@@ -181,7 +181,7 @@ class RangeSetAndSupersetImpl {
   virtual Status check_range_is_subset(const Range& range) const = 0;
 
   /**
-   * Crops a range tot he superset of this ``RangeSetAndSuperset``.
+   * Crops a range to the superset of this ``RangeSetAndSuperset``.
    *
    * If the range is cropped, a string is returned with a warning for the
    * logger.

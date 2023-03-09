@@ -210,14 +210,13 @@ DenseArrayRESTFx::DenseArrayRESTFx()
 }
 
 DenseArrayRESTFx::~DenseArrayRESTFx() {
-  // Close vfs test
-  REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
-
-  tiledb::sm::RestClient rest_client;
-  ThreadPool tp(4);
   for (const auto& uri : to_deregister_) {
+    // Deregister array and delete data.
     REQUIRE_NOTHROW(tiledb_array_delete(ctx_, uri.c_str()));
   }
+
+  // Close vfs test. Removes S3 bucket, Azure container, etc.
+  REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
 
   tiledb_vfs_free(&vfs_);
   CHECK(vfs_ == nullptr);
@@ -664,9 +663,9 @@ void DenseArrayRESTFx::check_sorted_reads(const std::string& path) {
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
+  tiledb_config_t* cfg;
+  tiledb_error_t* err = nullptr;
   if (encryption_type != TILEDB_NO_ENCRYPTION) {
-    tiledb_config_t* cfg;
-    tiledb_error_t* err = nullptr;
     rc = tiledb_config_alloc(&cfg, &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
@@ -683,14 +682,26 @@ void DenseArrayRESTFx::check_sorted_reads(const std::string& path) {
     REQUIRE(rc == TILEDB_OK);
     tiledb_config_free(&cfg);
     CHECK(rc == TILEDB_OK);
+    tiledb_error_free(&err);
   }
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
+
+  // Set config to throw on OOB subarray for reads.
+  rc = tiledb_config_alloc(&cfg, &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
+  rc = tiledb_config_set(cfg, "sm.read_range_oob", "error", &err);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(err == nullptr);
 
   // Check out of bounds subarray
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_config(ctx_, query, cfg);
+  REQUIRE(rc == TILEDB_OK);
+
   int64_t subarray_1[] = {-1, 5, 10, 10};
   rc = tiledb_query_set_subarray(ctx_, query, subarray_1);
   CHECK(rc == TILEDB_ERR);
@@ -1269,13 +1280,6 @@ void DenseArrayRESTFx::write_dense_array_missing_attributes(
   tiledb_query_free(&query);
 }
 
-std::string DenseArrayRESTFx::random_name(const std::string& prefix) {
-  std::stringstream ss;
-  ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << TILEDB_TIMESTAMP_NOW_MS;
-  return ss.str();
-}
-
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, sorted reads",
@@ -1284,7 +1288,6 @@ TEST_CASE_METHOD(
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
   check_sorted_reads(temp_dir);
-  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
@@ -1295,7 +1298,6 @@ TEST_CASE_METHOD(
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
   check_sorted_writes(temp_dir);
-  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
@@ -1306,7 +1308,6 @@ TEST_CASE_METHOD(
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
   check_simultaneous_writes(temp_dir);
-  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
@@ -1372,8 +1373,6 @@ TEST_CASE_METHOD(
   free(buffer_a2_val);
   free(buffer_a3);
   free(buffer_coords);
-
-  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
@@ -1387,7 +1386,6 @@ TEST_CASE_METHOD(
   create_temp_dir(temp_dir);
   create_dense_array(array_name);
   write_dense_array_missing_attributes(array_name);
-  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
@@ -1470,8 +1468,6 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
 
   CHECK(!memcmp(c_a1, read_a1, sizeof(c_a1)));
-
-  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
@@ -1556,8 +1552,6 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
 
   CHECK(!memcmp(c_a1, read_a1, sizeof(c_a1)));
-
-  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
@@ -1663,8 +1657,6 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
 
   CHECK(!memcmp(c_a, read_a, sizeof(c_a)));
-
-  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
@@ -1701,8 +1693,6 @@ TEST_CASE_METHOD(
   rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
-
-  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
@@ -1733,8 +1723,6 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_array_schema_free(&schema);
-
-  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
@@ -1782,8 +1770,6 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_query_free(&query);
   tiledb_array_free(&array);
-
-  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
@@ -1886,8 +1872,6 @@ TEST_CASE_METHOD(
   // Clean up
   REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
   tiledb_array_free(&array);
-
-  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
@@ -1921,8 +1905,6 @@ TEST_CASE_METHOD(
   // Clean up
   REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
   tiledb_array_free(&array);
-
-  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
@@ -1949,7 +1931,6 @@ TEST_CASE_METHOD(
   CHECK(tiledb_array_close(ctx_, array) == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_ctx_free(&ctx);
-  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
@@ -2045,8 +2026,6 @@ TEST_CASE_METHOD(
 
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-
-  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
@@ -2163,6 +2142,4 @@ TEST_CASE_METHOD(
   REQUIRE(static_cast<const float*>(value)[1] == 1.2f);
   REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
   tiledb_array_free(&array);
-
-  remove_temp_dir(temp_dir);
 }
