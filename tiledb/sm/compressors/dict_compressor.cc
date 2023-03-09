@@ -68,7 +68,7 @@ void DictEncoding::decompress(
     const uint8_t word_id_size,
     span<std::byte> output,
     span<uint64_t> output_offsets) {
-  if (input.empty() || output.empty() || word_id_size == 0) {
+  if (input.empty() || word_id_size == 0) {
     throw std::logic_error(
         "Failed decompressing dictionary-encoded strings; empty input "
         "arguments.");

@@ -150,7 +150,7 @@ class RLE {
       const span<const std::byte> input,
       span<std::byte> output,
       span<uint64_t> output_offsets) {
-    if (input.empty() || output.empty() || output_offsets.empty())
+    if (input.empty() || output_offsets.empty())
       return;
 
     const uint64_t run_size = sizeof(T);
@@ -168,7 +168,9 @@ class RLE {
       string_length = utils::endianness::decode_be<P>(&input[in_index]);
       in_index += str_len_size;
       for (uint64_t j = 0; j < run_length; j++) {
-        memcpy(&output[out_offset], &input[in_index], string_length);
+        if (string_length > 0) {
+          memcpy(&output[out_offset], &input[in_index], string_length);
+        }
         output_offsets[offset_index++] = out_offset;
         out_offset += string_length;
       }
