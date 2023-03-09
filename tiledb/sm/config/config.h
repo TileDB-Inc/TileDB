@@ -535,6 +535,9 @@ class Config {
   /** Verify TLS/SSL certificates (true). */
   static const std::string VFS_S3_VERIFY_SSL;
 
+  /** Force making an unsigned request to s3 (false). */
+  static const std::string VFS_S3_NO_SIGN_REQUEST;
+
   /** HDFS default kerb ticket cache path. */
   static const std::string VFS_HDFS_KERB_TICKET_CACHE_PATH;
 

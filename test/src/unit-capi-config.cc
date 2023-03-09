@@ -321,6 +321,7 @@ void check_save_to_file() {
   ss << "vfs.s3.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
   ss << "vfs.s3.multipart_part_size 5242880\n";
+  ss << "vfs.s3.no_sign_request false\n";
   ss << "vfs.s3.object_canned_acl NOT_SET\n";
   ss << "vfs.s3.proxy_port 0\n";
   ss << "vfs.s3.proxy_scheme http\n";
@@ -719,6 +720,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.s3.proxy_scheme"] = "http";
   all_param_values["vfs.s3.proxy_username"] = "";
   all_param_values["vfs.s3.verify_ssl"] = "true";
+  all_param_values["vfs.s3.no_sign_request"] = "false";
   all_param_values["vfs.hdfs.username"] = "stavros";
   all_param_values["vfs.hdfs.kerb_ticket_cache_path"] = "";
   all_param_values["vfs.hdfs.name_node_uri"] = "";
@@ -782,6 +784,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["s3.proxy_scheme"] = "http";
   vfs_param_values["s3.proxy_username"] = "";
   vfs_param_values["s3.verify_ssl"] = "true";
+  vfs_param_values["s3.no_sign_request"] = "false";
   vfs_param_values["s3.bucket_canned_acl"] = "NOT_SET";
   vfs_param_values["s3.object_canned_acl"] = "NOT_SET";
   vfs_param_values["hdfs.username"] = "stavros";
@@ -840,6 +843,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   s3_param_values["proxy_scheme"] = "http";
   s3_param_values["proxy_username"] = "";
   s3_param_values["verify_ssl"] = "true";
+  s3_param_values["no_sign_request"] = "false";
   s3_param_values["bucket_canned_acl"] = "NOT_SET";
   s3_param_values["object_canned_acl"] = "NOT_SET";
 
