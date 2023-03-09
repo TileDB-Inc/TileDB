@@ -333,6 +333,11 @@ SparseGlobalOrderReader<BitmapType>::get_coord_tiles_size(
   // Add the result tile structure size.
   tiles_sizes.first += sizeof(GlobalOrderResultTile<BitmapType>);
 
+  // Account for hilbert data.
+  if (array_schema_.cell_order() == Layout::HILBERT) {
+    tiles_sizes.first += fragment_metadata_[f]->cell_num(t) * sizeof(uint64_t);
+  }
+
   // Add the tile bitmap size if there is a subarray or pre query condition to
   // be processed.
   const bool dups = array_schema_.allows_dups();
@@ -368,11 +373,6 @@ bool SparseGlobalOrderReader<BitmapType>::add_result_tile(
   auto tiles_sizes = get_coord_tiles_size(dim_num, f, t);
   auto tiles_size = tiles_sizes.first;
   auto tiles_size_qc = tiles_sizes.second;
-
-  // Account for hilbert data.
-  if (array_schema_.cell_order() == Layout::HILBERT) {
-    tiles_size += fragment_metadata_[f]->cell_num(t) * sizeof(uint64_t);
-  }
 
   // Don't load more tiles than the memory budget.
   if (memory_used_for_coords_[f] + tiles_size > memory_budget_coords_tiles ||
@@ -2025,12 +2025,6 @@ Status SparseGlobalOrderReader<BitmapType>::remove_result_tile(
       get_coord_tiles_size(array_schema_.dim_num(), frag_idx, tile_idx);
   auto tiles_size = tiles_sizes.first;
   auto tiles_size_qc = tiles_sizes.second;
-
-  // Account for hilbert data.
-  if (array_schema_.cell_order() == Layout::HILBERT) {
-    tiles_size += fragment_metadata_[frag_idx]->cell_num(rt->tile_idx()) *
-                  sizeof(uint64_t);
-  }
 
   // Adjust per fragment memory usage.
   memory_used_for_coords_[frag_idx] -= tiles_size;
