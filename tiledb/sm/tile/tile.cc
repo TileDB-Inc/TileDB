@@ -111,6 +111,14 @@ TileBase::TileBase(
     , cell_size_(cell_size)
     , format_version_(format_version)
     , type_(type) {
+  /*
+   * We can check for a bad allocation after initialization without risk
+   * because none of the other member variables use its value for their own
+   * initialization.
+   */
+  if (!data_) {
+    throw std::bad_alloc();
+  }
 }
 
 TileBase::TileBase(TileBase&& tile)
