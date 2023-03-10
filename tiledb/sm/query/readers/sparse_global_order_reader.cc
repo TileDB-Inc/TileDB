@@ -328,7 +328,7 @@ uint64_t SparseGlobalOrderReader<BitmapType>::get_coord_tiles_size(
 
   // Account for hilbert data.
   if (array_schema_.cell_order() == Layout::HILBERT) {
-    tiles_sizes.first += fragment_metadata_[f]->cell_num(t) * sizeof(uint64_t);
+    tiles_size += fragment_metadata_[f]->cell_num(t) * sizeof(uint64_t);
   }
 
   // Add the tile bitmap size if there is a subarray or pre query condition to
