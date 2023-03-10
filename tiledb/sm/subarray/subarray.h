@@ -439,7 +439,9 @@ class Subarray {
   const std::vector<Range>& get_attribute_ranges(
       const std::string& attr_name) const;
 
-  // TODO: add docstring
+  /**
+   * Get all attribute ranges.
+   */
   inline const std::unordered_map<std::string, std::vector<Range>>&
   get_attribute_ranges() const {
     return attr_range_subset_;
@@ -949,7 +951,10 @@ class Subarray {
    */
   bool has_label_ranges(const uint32_t dim_index) const;
 
-  bool label_ranges_num() const;
+  /**
+   * Returns the number of dimensions that have label ranges set
+   */
+  int label_ranges_num() const;
 
   /**
    * Set default indicator for dimension subarray. Used by serialization only
@@ -1043,11 +1048,21 @@ class Subarray {
    */
   Status set_ranges_for_dim(uint32_t dim_idx, const std::vector<Range>& ranges);
 
-  // TODO: add docstring
+  /**
+   * Directly sets the dimension label ranges for the given dimension index,
+   * making a deep copy.
+   *
+   * @param dim_idx Index of dimension to set
+   * @param name Name of the dimension label to set
+   * @param ranges `Range` vector that will be copied and set
+   * @return Status
+   *
+   * @note Intended for serialization only
+   */
   void set_label_ranges_for_dim(
       const uint32_t dim_idx,
       const std::string& name,
-      std::vector<Range>& ranges);
+      const std::vector<Range>& ranges);
 
   /**
    * Splits the subarray along the splitting dimension and value into
@@ -1217,7 +1232,12 @@ class Subarray {
     return coalesce_ranges_;
   }
 
-  // TODO: docstring
+  /**
+   * Initialize the label ranges vector to nullopt for every
+   * dimension
+   *
+   * @param dim_num Total number of dimensions of the schema
+   */
   void add_default_label_ranges(dimension_size_type dim_num);
 
  private:

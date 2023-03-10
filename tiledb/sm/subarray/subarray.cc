@@ -183,7 +183,7 @@ void Subarray::add_label_range(
   const auto dim_idx = dim_label_ref.dimension_index();
   if (label_range_subset_[dim_idx].has_value()) {
     // A label range has already been set on this dimension. Do the following:
-    //  * Check this label is the same label that rangers were already set.
+    //  * Check this label is the same label that ranges were already set.
     if (dim_label_ref.name() != label_range_subset_[dim_idx].value().name_) {
       throw StatusException(Status_SubarrayError(
           "Cannot add label range; Dimension is already to set to use "
@@ -1034,7 +1034,7 @@ bool Subarray::has_label_ranges(const uint32_t dim_index) const {
          !label_range_subset_[dim_index]->ranges_.is_empty();
 }
 
-bool Subarray::label_ranges_num() const {
+int Subarray::label_ranges_num() const {
   return std::count_if(
       std::begin(label_range_subset_),
       std::end(label_range_subset_),
@@ -1829,21 +1829,17 @@ Status Subarray::set_ranges_for_dim(
   return Status::Ok();
 }
 
-// TODO: const in ranges was dropper because add_range expects non-const. See if
-// a const add_range can be added instead
 void Subarray::set_label_ranges_for_dim(
     const uint32_t dim_idx,
     const std::string& name,
-    std::vector<Range>& ranges) {
+    const std::vector<Range>& ranges) {
   auto dim{array_->array_schema_latest().dimension_ptr(dim_idx)};
   label_range_subset_[dim_idx] =
       LabelRangeSubset(name, dim->type(), coalesce_ranges_);
-  for (auto& range : ranges) {
-    // TODO: no idea if impl_ should be updated instead as in
-    // "add_range_unrestricted"
-    auto&& [error_status, oob_warning] =
-        label_range_subset_[dim_idx].value().ranges_.add_range(range);
-    throw_if_not_ok(error_status);
+  for (const auto& range : ranges) {
+    throw_if_not_ok(
+        label_range_subset_[dim_idx].value().ranges_.add_range_unrestricted(
+            range));
   }
 }
 

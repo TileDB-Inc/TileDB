@@ -72,7 +72,6 @@
 #include "tiledb/sm/serialization/fragment_metadata.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
-#include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 using namespace tiledb::common;
@@ -207,8 +206,11 @@ Status subarray_to_capnp(
     for (uint32_t i = 0; i < dim_num; i++) {
       if (subarray->has_label_ranges(i)) {
         auto label_range_builder = label_ranges_builder[label_id++];
-        // TODO: Consider throwing instead
-        assert(label_id < label_ranges_num);
+        if (label_id > label_ranges_num) {
+          throw StatusException(
+              Status_SerializationError("Label id exceeds the total number of "
+                                        "label ranges for the subarray."));
+        }
         label_range_builder.setDimensionId(i);
         const auto& label_name = subarray->get_label_name(i);
         label_range_builder.setName(label_name);
@@ -217,9 +219,6 @@ Status subarray_to_capnp(
         const auto datatype{schema.dimension_ptr(i)->type()};
         const auto& label_ranges = subarray->ranges_for_label(label_name);
         range_builder.setType(datatype_str(datatype));
-        // TODO: check with Julia if for dim lables is_implicitely_initialized_
-        // is always false. Should I even set this here?
-        // range_builder.setHasDefaultRange(false);
         range_buffers_to_capnp(label_ranges, range_builder);
       }
     }
