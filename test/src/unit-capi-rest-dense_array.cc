@@ -681,6 +681,7 @@ void DenseArrayRESTFx::check_sorted_reads(const std::string& path) {
     rc = tiledb_array_set_config(ctx_, array, cfg);
     REQUIRE(rc == TILEDB_OK);
     tiledb_config_free(&cfg);
+    tiledb_error_free(&err);
     CHECK(rc == TILEDB_OK);
   }
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
@@ -1920,8 +1921,8 @@ TEST_CASE_METHOD(
 
   // Set config to use a non-default environment prefix.
   // Prevents test from picking up on REST CI environment configuration.
-  tiledb_config_t * cfg;
-  tiledb_error_t * err;
+  tiledb_config_t* cfg;
+  tiledb_error_t* err;
   int rc = tiledb_config_alloc(&cfg, &err);
   CHECK(rc == TILEDB_OK);
   CHECK(err == nullptr);
@@ -1934,7 +1935,7 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_ctx_alloc(cfg, &ctx) == TILEDB_OK);
 
   tiledb_array_t* array;
-  tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_ERR);

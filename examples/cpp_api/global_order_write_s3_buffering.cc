@@ -32,6 +32,12 @@ std::vector<uint64_t> a3_offsets;
 tiledb_array_type_t array_type = TILEDB_DENSE;
 std::vector<uint64_t> coords;
 
+#ifdef TILEDB_TESTS_ENABLE_REST
+constexpr bool rest_enabled = true;
+#else
+constexpr bool rest_enabled = false;
+#endif
+
 void create_array(Context& ctx) {
   ArraySchema schema(ctx, array_type);
   Domain domain(ctx);
@@ -167,6 +173,10 @@ void read_and_validate(Context& ctx) {
 }
 
 int main() {
+  // Only run the example in CI if REST tests are enabled.
+  if (!rest_enabled) {
+    return 0;
+  }
   Config cfg;
   Context ctx(cfg);
 
