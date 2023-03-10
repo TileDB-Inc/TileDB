@@ -682,7 +682,6 @@ void DenseArrayRESTFx::check_sorted_reads(const std::string& path) {
     REQUIRE(rc == TILEDB_OK);
     tiledb_config_free(&cfg);
     CHECK(rc == TILEDB_OK);
-    tiledb_error_free(&err);
   }
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
@@ -725,6 +724,8 @@ void DenseArrayRESTFx::check_sorted_reads(const std::string& path) {
   CHECK(rc == TILEDB_OK);
 
   // Clean up
+  tiledb_error_free(&err);
+  tiledb_config_free(&cfg);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
@@ -1910,25 +1911,38 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, error without rest server configured",
-    "[capi][dense][rest][dense-set-subarray-sparse]") {
+    "[capi][dense][rest][rest-no-config]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
   std::string array_name =
       TILEDB_URI_PREFIX + temp_dir + "dense_set_subarray_sparse";
   create_dense_array(array_name);
 
+  // Set config to use a non-default environment prefix.
+  // Prevents test from picking up on REST CI environment configuration.
+  tiledb_config_t * cfg;
+  tiledb_error_t * err;
+  int rc = tiledb_config_alloc(&cfg, &err);
+  CHECK(rc == TILEDB_OK);
+  CHECK(err == nullptr);
+  rc = tiledb_config_set(cfg, "config.env_var_prefix", "UNIT_", &err);
+  CHECK(rc == TILEDB_OK);
+  CHECK(err == nullptr);
+
   // Create context without a REST config
   tiledb_ctx_t* ctx;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(cfg, &ctx) == TILEDB_OK);
 
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  tiledb_array_alloc(ctx, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_ERR);
 
   // Clean up
   CHECK(tiledb_array_close(ctx_, array) == TILEDB_OK);
+  tiledb_config_free(&cfg);
+  tiledb_error_free(&err);
   tiledb_array_free(&array);
   tiledb_ctx_free(&ctx);
 }
