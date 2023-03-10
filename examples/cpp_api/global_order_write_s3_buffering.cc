@@ -174,22 +174,21 @@ void read_and_validate(Context& ctx) {
 
 int main() {
   // Only run the example in CI if REST tests are enabled.
-  if (!rest_enabled) {
+  if constexpr (rest_enabled) {
+    Config cfg;
+    Context ctx(cfg);
+
+    try {
+      create_array(ctx);
+    } catch (...) {
+      VFS vfs(ctx);
+      vfs.remove_dir(s3_array);
+      std::cout << "Removed existing array" << std::endl;
+      create_array(ctx);
+    }
+    global_write(ctx);
+    read_and_validate(ctx);
+  } else {
     return 0;
   }
-  Config cfg;
-  Context ctx(cfg);
-
-  try {
-    create_array(ctx);
-  } catch (...) {
-    VFS vfs(ctx);
-    vfs.remove_dir(s3_array);
-    std::cout << "Removed existing array" << std::endl;
-    create_array(ctx);
-  }
-  global_write(ctx);
-  read_and_validate(ctx);
-
-  return 0;
 }
