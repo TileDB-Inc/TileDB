@@ -141,11 +141,7 @@ class SupportedFs {
  */
 class SupportedFsS3 : public SupportedFs {
  public:
-  SupportedFsS3()
-      : s3_prefix_("s3://")
-      , s3_bucket_(s3_prefix_ + random_name("tiledb") + "/")
-      , temp_dir_(s3_bucket_ + "tiledb_test/") {
-  }
+  SupportedFsS3();
 
   ~SupportedFsS3() = default;
 
@@ -197,7 +193,7 @@ class SupportedFsS3 : public SupportedFs {
   const std::string s3_prefix_;
 
   /** The bucket name for the S3 filesystem. */
-  const std::string s3_bucket_;
+  std::string s3_bucket_;
 
   /** The directory name of the S3 filesystem. */
   std::string temp_dir_;
