@@ -61,6 +61,7 @@ tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
     case tiledb::sm::FilterType::FILTER_LZ4:
     case tiledb::sm::FilterType::FILTER_RLE:
     case tiledb::sm::FilterType::FILTER_BZIP2:
+    case tiledb::sm::FilterType::FILTER_DELTA:
     case tiledb::sm::FilterType::FILTER_DOUBLE_DELTA:
     case tiledb::sm::FilterType::FILTER_DICTIONARY:
       return tdb_new(tiledb::sm::CompressionFilter, type, -1);
@@ -118,6 +119,7 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
     case FilterType::FILTER_LZ4:
     case FilterType::FILTER_RLE:
     case FilterType::FILTER_BZIP2:
+    case FilterType::FILTER_DELTA:
     case FilterType::FILTER_DOUBLE_DELTA:
     case FilterType::FILTER_DICTIONARY: {
       uint8_t compressor_char = deserializer.read<uint8_t>();
