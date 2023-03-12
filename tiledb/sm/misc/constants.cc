@@ -371,6 +371,9 @@ const std::string bzip2_str = "BZIP2";
 /** String describing DOUBLE_DELTA. */
 const std::string double_delta_str = "DOUBLE_DELTA";
 
+/** String describing DELTA. */
+const std::string delta_str = "DELTA";
+
 /** String describing FILTER_NONE. */
 const std::string filter_none_str = "NONE";
 

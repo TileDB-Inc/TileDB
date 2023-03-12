@@ -285,6 +285,8 @@ class Filter {
         return "DEPRECATED";
       case TILEDB_FILTER_WEBP:
         return "WEBP";
+      case TILEDB_FILTER_DELTA:
+        return "DELTA";
     }
     return "";
   }

@@ -358,6 +358,9 @@ extern const std::string bzip2_str;
 /** String describing DOUBLE_DELTA. */
 extern const std::string double_delta_str;
 
+/** String describing DELTA. */
+extern const std::string delta_str;
+
 /** String describing FILTER_NONE. */
 extern const std::string filter_none_str;
 

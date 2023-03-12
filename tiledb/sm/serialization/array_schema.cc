@@ -103,6 +103,7 @@ Status filter_to_capnp(
     case FilterType::FILTER_LZ4:
     case FilterType::FILTER_RLE:
     case FilterType::FILTER_BZIP2:
+    case FilterType::FILTER_DELTA:
     case FilterType::FILTER_DOUBLE_DELTA:
     case FilterType::FILTER_DICTIONARY: {
       int32_t level;
@@ -207,6 +208,7 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
     case FilterType::FILTER_RLE:
     case FilterType::FILTER_BZIP2:
     case FilterType::FILTER_DOUBLE_DELTA:
+    case FilterType::FILTER_DELTA:
     case FilterType::FILTER_DICTIONARY: {
       auto data = filter_reader.getData();
       int32_t level = data.getInt32();

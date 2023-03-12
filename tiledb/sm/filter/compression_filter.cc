@@ -37,6 +37,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/compressors/bzip_compressor.h"
 #include "tiledb/sm/compressors/dd_compressor.h"
+#include "tiledb/sm/compressors/delta_compressor.h"
 #include "tiledb/sm/compressors/dict_compressor.h"
 #include "tiledb/sm/compressors/gzip_compressor.h"
 #include "tiledb/sm/compressors/lz4_compressor.h"
@@ -86,36 +87,7 @@ void CompressionFilter::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
 
-  std::string compressor_str;
-  switch (compressor_) {
-    case Compressor::NO_COMPRESSION:
-      compressor_str = "NO_COMPRESSION";
-      break;
-    case Compressor::GZIP:
-      compressor_str = "GZIP";
-      break;
-    case Compressor::ZSTD:
-      compressor_str = "ZSTD";
-      break;
-    case Compressor::LZ4:
-      compressor_str = "LZ4";
-      break;
-    case Compressor::RLE:
-      compressor_str = "RLE";
-      break;
-    case Compressor::BZIP2:
-      compressor_str = "BZIP2";
-      break;
-    case Compressor::DOUBLE_DELTA:
-      compressor_str = "DOUBLE_DELTA";
-      break;
-    case Compressor::DICTIONARY_ENCODING:
-      compressor_str = "DICTIONARY_ENCODING";
-      break;
-    default:
-      compressor_str = "NO_COMPRESSION";
-  }
-
+  std::string compressor_str = tiledb::sm::compressor_str(compressor_);
   fprintf(out, "%s: COMPRESSION_LEVEL=%i", compressor_str.c_str(), level_);
 }
 
@@ -150,6 +122,8 @@ FilterType CompressionFilter::compressor_to_filter(Compressor compressor) {
       return FilterType::FILTER_DOUBLE_DELTA;
     case Compressor::DICTIONARY_ENCODING:
       return FilterType::FILTER_DICTIONARY;
+    case Compressor::DELTA:
+      return FilterType::FILTER_DELTA;
     default:
       assert(false);
       return FilterType::FILTER_NONE;
@@ -174,6 +148,8 @@ Compressor CompressionFilter::filter_to_compressor(FilterType type) {
       return Compressor::DOUBLE_DELTA;
     case FilterType::FILTER_DICTIONARY:
       return Compressor::DICTIONARY_ENCODING;
+    case FilterType::FILTER_DELTA:
+      return Compressor::DELTA;
     default:
       assert(false);
       return Compressor::NO_COMPRESSION;
@@ -355,6 +331,9 @@ Status CompressionFilter::compress_part(
           Status_FilterError("CompressionFilter error; Dictionary encoding "
                              "only applies to variable length strings"));
       break;
+    case Compressor::DELTA:
+      RETURN_NOT_OK(Delta::compress(type, &input_buffer, output));
+      break;
     default:
       assert(0);
   }
@@ -419,6 +398,9 @@ Status CompressionFilter::decompress_part(
       break;
     case Compressor::BZIP2:
       st = BZip::decompress(&input_buffer, &output_buffer);
+      break;
+    case Compressor::DELTA:
+      st = Delta::decompress(type, &input_buffer, &output_buffer);
       break;
     case Compressor::DOUBLE_DELTA:
       st = DoubleDelta::decompress(type, &input_buffer, &output_buffer);
