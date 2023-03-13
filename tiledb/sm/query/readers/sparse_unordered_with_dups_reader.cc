@@ -1575,7 +1575,6 @@ template <class OffType>
 tuple<bool, uint64_t, uint64_t>
 SparseUnorderedWithDupsReader<BitmapType>::compute_var_size_offsets(
     stats::Stats* stats,
-    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
     const std::vector<ResultTile*>& result_tiles,
     const uint64_t first_tile_min_pos,
     std::vector<uint64_t>& cell_offsets,
@@ -1611,18 +1610,17 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_var_size_offsets(
       auto last_tile = (UnorderedWithDupsResultTile<BitmapType>*)
           result_tiles[new_result_tiles_size];
 
-      auto last_tile_num_cells =
-          fragment_metadata[last_tile->frag_idx()]->cell_num(
-              last_tile->tile_idx());
-
       new_result_tiles_size++;
+      auto last_tile_num_cells = cell_offsets[new_result_tiles_size] -
+                                 cell_offsets[new_result_tiles_size - 1];
       cell_offsets[new_result_tiles_size] =
           new_result_tiles_size > 0 ? cell_offsets[new_result_tiles_size - 1] :
                                       0;
 
       const auto min_pos = new_result_tiles_size == 1 ? first_tile_min_pos : 0;
-      for (uint64_t c = min_pos; c < last_tile_num_cells - 1; c++) {
-        auto cell_count = last_tile->has_bmp() ? last_tile->bitmap()[c] : 1;
+      for (uint64_t c = 0; c < last_tile_num_cells - 1; c++) {
+        auto cell_count =
+            last_tile->has_bmp() ? last_tile->bitmap()[c + min_pos] : 1;
         auto new_size =
             ((OffType*)query_buffer
                  .buffer_)[cell_offsets[new_result_tiles_size] + cell_count];
@@ -1742,7 +1740,6 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
         auto&& [buffers_full, new_var_buffer_size, new_result_tiles_size] =
             compute_var_size_offsets<OffType>(
                 stats_,
-                fragment_metadata_,
                 result_tiles,
                 first_tile_min_pos,
                 cell_offsets,
