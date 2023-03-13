@@ -74,10 +74,9 @@ struct CSparseGlobalOrderFx {
       uint64_t* coords_size,
       int* data,
       uint64_t* data_size,
-      std::vector<int> subarray = {1, 10},
       tiledb_query_t** query = nullptr,
-      tiledb_array_t** array_ret = nullptr
-      );
+      tiledb_array_t** array_ret = nullptr,
+      std::vector<int> subarray = {1, 10});
   void reset_config();
   void update_config();
 
@@ -239,9 +238,9 @@ int32_t CSparseGlobalOrderFx::read(
     uint64_t* coords_size,
     int* data,
     uint64_t* data_size,
-    std::vector<int> subarray,
     tiledb_query_t** query_ret,
-    tiledb_array_t** array_ret
+    tiledb_array_t** array_ret,
+    std::vector<int> subarray
     ) {
   // Open array for reading.
   tiledb_array_t* array;
@@ -395,9 +394,9 @@ TEST_CASE_METHOD(
       &coords_r_size,
       data_r,
       &data_r_size,
-      subarray,
       &query,
-      &array
+      &array,
+      subarray
       );
   CHECK(rc == TILEDB_OK);
 
@@ -485,9 +484,9 @@ TEST_CASE_METHOD(
       &coords_r_size,
       data_r,
       &data_r_size,
-      subarray,
       &query,
-      &array
+      &array,
+      subarray
       );
   CHECK(rc == TILEDB_OK);
 
@@ -617,7 +616,6 @@ TEST_CASE_METHOD(
   int data_r[10];
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
-  std::vector<int> subarray = {1, 10};
   rc = read(
       use_subarray,
       false,
@@ -625,7 +623,6 @@ TEST_CASE_METHOD(
       &coords_r_size,
       data_r,
       &data_r_size,
-      subarray,
       &query,
       &array);
   CHECK(rc == TILEDB_OK);
@@ -813,7 +810,6 @@ TEST_CASE_METHOD(
   int data_r[10];
   coords_r_size = sizeof(coords_r);
   data_r_size = sizeof(data_r);
-  std::vector<int> subarray{1, 10};
 
   rc = read(
       use_subarray,
@@ -822,7 +818,6 @@ TEST_CASE_METHOD(
       &coords_r_size,
       data_r,
       &data_r_size,
-      subarray,
       &query,
       &array);
   CHECK(rc == TILEDB_OK);
@@ -1332,7 +1327,6 @@ TEST_CASE_METHOD(
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
   tiledb_query_status_t status;
-  std::vector<int> subarray{1, 10};
   uint32_t rc = read(
       use_subarray,
       false,
@@ -1340,7 +1334,6 @@ TEST_CASE_METHOD(
       &coords_r_size,
       data_r,
       &data_r_size,
-      subarray,
       &query,
       &array);
   CHECK(rc == TILEDB_OK);
