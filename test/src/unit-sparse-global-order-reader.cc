@@ -74,9 +74,10 @@ struct CSparseGlobalOrderFx {
       uint64_t* coords_size,
       int* data,
       uint64_t* data_size,
+      std::vector<int> subarray = {1, 10},
       tiledb_query_t** query = nullptr,
-      tiledb_array_t** array_ret = nullptr,
-      int* custom_subarray = nullptr);
+      tiledb_array_t** array_ret = nullptr
+      );
   void reset_config();
   void update_config();
 
@@ -238,9 +239,10 @@ int32_t CSparseGlobalOrderFx::read(
     uint64_t* coords_size,
     int* data,
     uint64_t* data_size,
+    std::vector<int> subarray,
     tiledb_query_t** query_ret,
-    tiledb_array_t** array_ret,
-    int* custom_subarray) {
+    tiledb_array_t** array_ret
+    ) {
   // Open array for reading.
   tiledb_array_t* array;
   auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
@@ -255,12 +257,7 @@ int32_t CSparseGlobalOrderFx::read(
 
   if (set_subarray) {
     // Set subarray.
-    int subarray[] = {1, 10};
-    if (custom_subarray) {
-      rc = tiledb_query_set_subarray(ctx_, query, custom_subarray);
-    } else {
-      rc = tiledb_query_set_subarray(ctx_, query, subarray);
-    }
+    rc = tiledb_query_set_subarray(ctx_, query, subarray.data());
     CHECK(rc == TILEDB_OK);
   }
 
@@ -374,10 +371,10 @@ TEST_CASE_METHOD(
   uint64_t data2_size = sizeof(data2);
   write_1d_fragment(coords2, &coords2_size, data2, &data2_size);
 
-  // specific relationship for failure not known, but these values
+  // Specific relationship for failure not known, but these values
   // will result in failure with data being written.
   total_budget_ = "10000";
-  ratio_tile_ranges_ = "0.1";  // .1 is the default
+  //Failure here occurs with the value of 0.1 for ratio_tile_ranges_.
   update_config();
 
   tiledb_array_t* array = nullptr;
@@ -388,7 +385,7 @@ TEST_CASE_METHOD(
   int data_r[2];
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
-  int subarray[] = {4, 10};
+  std::vector<int> subarray{4, 10};
   int rc;
   tiledb_query_status_t status;
   rc = read(
@@ -398,9 +395,10 @@ TEST_CASE_METHOD(
       &coords_r_size,
       data_r,
       &data_r_size,
+      subarray,
       &query,
-      &array,
-      subarray);
+      &array
+      );
   CHECK(rc == TILEDB_OK);
 
   std::vector<int> retrieved_data;
@@ -436,8 +434,6 @@ TEST_CASE_METHOD(
 
   // Similar in nature to the "... A" version, but using some differently
   // written data.
-  // While ...A and ...B are similar they seemed too dissimilar to try to
-  // combine them via a multiple SECTION() approach.
 
   // Create default array.
   reset_config();
@@ -468,7 +464,7 @@ TEST_CASE_METHOD(
   // specific relationship for failure not known, but these values
   // will result in failure with data being written.
   total_budget_ = "15000";
-  ratio_tile_ranges_ = "0.1";  // .1 is the default
+  // Failure here occurs with the value of 0.1 for ratio_tile_ranges_.
   update_config();
 
   tiledb_array_t* array = nullptr;
@@ -479,7 +475,7 @@ TEST_CASE_METHOD(
   int data_r[1];
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
-  int subarray[] = {5, 11};
+  std::vector<int> subarray{5, 11};
   int rc;
   tiledb_query_status_t status;
   rc = read(
@@ -489,9 +485,10 @@ TEST_CASE_METHOD(
       &coords_r_size,
       data_r,
       &data_r_size,
+      subarray,
       &query,
-      &array,
-      subarray);
+      &array
+      );
   CHECK(rc == TILEDB_OK);
 
   std::vector<int> retrieved_data;
@@ -620,7 +617,7 @@ TEST_CASE_METHOD(
   int data_r[10];
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
-
+  std::vector<int> subarray = {1, 10};
   rc = read(
       use_subarray,
       false,
@@ -628,6 +625,7 @@ TEST_CASE_METHOD(
       &coords_r_size,
       data_r,
       &data_r_size,
+      subarray,
       &query,
       &array);
   CHECK(rc == TILEDB_OK);
@@ -815,6 +813,7 @@ TEST_CASE_METHOD(
   int data_r[10];
   coords_r_size = sizeof(coords_r);
   data_r_size = sizeof(data_r);
+  std::vector<int> subarray{1, 10};
 
   rc = read(
       use_subarray,
@@ -823,6 +822,7 @@ TEST_CASE_METHOD(
       &coords_r_size,
       data_r,
       &data_r_size,
+      subarray,
       &query,
       &array);
   CHECK(rc == TILEDB_OK);
@@ -1332,6 +1332,7 @@ TEST_CASE_METHOD(
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
   tiledb_query_status_t status;
+  std::vector<int> subarray{1, 10};
   uint32_t rc = read(
       use_subarray,
       false,
@@ -1339,6 +1340,7 @@ TEST_CASE_METHOD(
       &coords_r_size,
       data_r,
       &data_r_size,
+      subarray,
       &query,
       &array);
   CHECK(rc == TILEDB_OK);
