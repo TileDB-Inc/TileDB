@@ -32,7 +32,14 @@ include(object_library)
 #
 commence(object_library array)
     this_target_sources(array_directory.cc)
-    this_target_object_libraries(baseline uri_format uuid vfs)
+    this_target_object_libraries(
+        array_schema
+        baseline
+        generic_tile_io
+        uri_format
+        uuid
+        vfs
+    )
     if(TILEDB_STATS)
         this_target_compile_definitions(-DTILEDB_STATS)
     endif()

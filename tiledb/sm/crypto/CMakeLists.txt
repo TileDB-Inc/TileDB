@@ -32,7 +32,7 @@ include(object_library)
 #
 commence(object_library crypto)
     this_target_sources(crypto.cc crypto_openssl.cc crypto_win32.cc encryption_key.cc)
-    this_target_object_libraries(buffer)
+    this_target_object_libraries(buffer config constants)
     if(WIN32)
         if(MSVC)
             find_library(BCRYPT_LIBRARY bcrypt)

@@ -229,8 +229,7 @@ class FragmentInfo {
   Status get_version(uint32_t fid, uint32_t* version) const;
 
   /** Retrieves the array schema of the fragment with the given index. */
-  tuple<Status, optional<shared_ptr<ArraySchema>>> get_array_schema(
-      uint32_t fid);
+  shared_ptr<ArraySchema> get_array_schema(uint32_t fid);
 
   /** Retrieves the array schema name of the fragment with the given index. */
   Status get_array_schema_name(uint32_t fid, const char** schema_name);
