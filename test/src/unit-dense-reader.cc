@@ -912,7 +912,7 @@ TEST_CASE_METHOD(
 
   // Each tiles are 91 and 100 bytes respectively, this will only allow to
   // load one.
-  tile_upper_memory_limit_ = "105";
+  tile_upper_memory_limit_ = "210";
   update_config();
 
   // Try to read.
@@ -955,7 +955,7 @@ TEST_CASE_METHOD(
   // Each tiles are 91 and 100 bytes respectively, this will only allow to
   // load one.
   total_budget_ = "460";
-  tile_upper_memory_limit_ = "105";
+  tile_upper_memory_limit_ = "210";
   update_config();
 
   std::string error_expected =
@@ -1001,7 +1001,7 @@ TEST_CASE_METHOD(
       subarray, data.data(), &data_size, offsets.data(), &offsets_size);
 
   // Each tile is 40 bytes, this will only allow to load one.
-  tile_upper_memory_limit_ = "50";
+  tile_upper_memory_limit_ = "100";
   update_config();
 
   // Try to read.
@@ -1055,7 +1055,7 @@ TEST_CASE_METHOD(
   // Each var tiles are 91 and 100 bytes respectively, this will only allow to
   // load one. Fixed tiles are both 40 so they both fit in the budget.
   total_budget_ = "660";
-  tile_upper_memory_limit_ = "105";
+  tile_upper_memory_limit_ = "210";
   update_config();
 
   // Try to read.
@@ -1171,7 +1171,7 @@ TEST_CASE_METHOD(
   // Each var tiles are 91 and 100 bytes respectively, this will only allow to
   // load one. Fixed tiles are both 40 so they both fit in the budget.
   total_budget_ = "640";
-  tile_upper_memory_limit_ = "105";
+  tile_upper_memory_limit_ = "210";
   update_config();
 
   // Try to read.
@@ -1271,9 +1271,9 @@ TEST_CASE_METHOD(
       a2_offsets.data(),
       &a2_offsets_size);
 
-  // First var tiles is 91 and subequent are 100 bytes, this will only allow
-  // to load two tiles the first loop and one on the subsequents.
-  tile_upper_memory_limit_ = "192";
+  // First var tiles is 91 and subequent are 100 bytes, this will only allow to
+  // load two tiles the first loop and one on the subsequents.
+  tile_upper_memory_limit_ = "384";
   update_config();
 
   // Try to read.

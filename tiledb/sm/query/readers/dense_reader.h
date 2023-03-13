@@ -190,6 +190,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   template <class DimType>
   tuple<uint64_t, std::vector<ResultTile*>> compute_result_tiles(
       const std::vector<std::string>& names,
+      std::optional<ThreadPool::Task>& compute_task,
       const std::unordered_set<std::string>& condition_names,
       Subarray& subarray,
       uint64_t t_start,
@@ -198,6 +199,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   /** Apply the query condition. */
   template <class DimType, class OffType>
   Status apply_query_condition(
+      std::optional<ThreadPool::Task>& compute_task,
       Subarray& subarray,
       const uint64_t t_start,
       const uint64_t t_end,
