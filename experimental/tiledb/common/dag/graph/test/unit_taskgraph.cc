@@ -372,6 +372,16 @@ TEST_CASE("TaskGraph: Schedule", "[taskgraph]") {
   sync_wait(graph);
 }
 
+
+TEST_CASE("TaskGraph: Different types along graph", "[taskgraph]") {
+  auto graph = TaskGraph<DuffsScheduler<node>>();
+  auto aa = initial_node(graph, [](std::stop_source) { return 0UL; });
+  auto bb = transform_node(graph, [](size_t){ return double{};});
+  //auto cc = terminal_node(graph, [](const size_t&){ });
+  make_edge(graph, aa, bb);
+}
+
+
 TEST_CASE("TaskGraph: Run Passing Integers", "[taskgraph]") {
   auto graph = TaskGraph<DuffsScheduler<node>>();
 
