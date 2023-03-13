@@ -245,6 +245,9 @@ class mimo_node_impl<
    * @note Elements are processed in order from 0 to sizeof(Ts)-1
    *
    * @pre sizeof(Ts) == sizeof(Us)
+   *
+   * @todo Use std::conjunction?
+   *
    */
   template <size_t I = 0, class... Ts, class... Us>
   constexpr void extract_all(std::tuple<Ts...>& in, std::tuple<Us...>& out) {
