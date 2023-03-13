@@ -240,8 +240,7 @@ int32_t CSparseGlobalOrderFx::read(
     uint64_t* data_size,
     tiledb_query_t** query_ret,
     tiledb_array_t** array_ret,
-    std::vector<int> subarray
-    ) {
+    std::vector<int> subarray) {
   // Open array for reading.
   tiledb_array_t* array;
   auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
@@ -373,7 +372,7 @@ TEST_CASE_METHOD(
   // Specific relationship for failure not known, but these values
   // will result in failure with data being written.
   total_budget_ = "10000";
-  //Failure here occurs with the value of 0.1 for ratio_tile_ranges_.
+  // Failure here occurs with the value of 0.1 for ratio_tile_ranges_.
   update_config();
 
   tiledb_array_t* array = nullptr;
@@ -396,8 +395,7 @@ TEST_CASE_METHOD(
       &data_r_size,
       &query,
       &array,
-      subarray
-      );
+      subarray);
   CHECK(rc == TILEDB_OK);
 
   std::vector<int> retrieved_data;
@@ -486,8 +484,7 @@ TEST_CASE_METHOD(
       &data_r_size,
       &query,
       &array,
-      subarray
-      );
+      subarray);
   CHECK(rc == TILEDB_OK);
 
   std::vector<int> retrieved_data;
