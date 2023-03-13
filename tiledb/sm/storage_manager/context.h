@@ -34,6 +34,7 @@
 #define TILEDB_CONTEXT_H
 
 #include "tiledb/common/exception/exception.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/stats/global_stats.h"
