@@ -502,10 +502,6 @@ class Config {
    * - `vfs.file.posix_directory_permissions` <br>
    *    permissions to use for posix file system with file or dir creation.<br>
    *    **Default**: 755
-   * - `vfs.file.max_parallel_ops` <br>
-   *    The maximum number of parallel operations on objects with `file:///`
-   *    URIs. <br>
-   *    **Default**: `1`
    * - `vfs.azure.storage_account_name` <br>
    *    Set the Azure Storage Account name. <br>
    *    **Default**: ""
