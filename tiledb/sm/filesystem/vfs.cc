@@ -109,7 +109,7 @@ VFS::VFS(
 #endif
 
 #ifdef _WIN32
-  throw_if_not_ok(win_.init(config_, io_tp_));
+  throw_if_not_ok(win_.init(config_));
 #else
   throw_if_not_ok(posix_.init(config_, io_tp_));
 #endif
