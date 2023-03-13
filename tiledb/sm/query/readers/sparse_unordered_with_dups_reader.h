@@ -74,7 +74,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       std::unordered_map<std::string, QueryBuffer>& buffers,
       Subarray& subarray,
       Layout layout,
-      QueryCondition& condition,
+      std::optional<QueryCondition>& condition,
       bool skip_checks_serialization = false);
 
   /** Destructor. */

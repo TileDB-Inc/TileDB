@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,8 +30,16 @@
  * This file defines some test suite helper functions.
  */
 
-#include "helpers.h"
+#include <filesystem>
+#if _WIN32
+#include <process.h>
+#define getpid _getpid
+#else
+#include <unistd.h>
+#endif
+
 #include <test/support/tdb_catch.h>
+#include "helpers.h"
 #include "serialization_wrappers.h"
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_external.h"
@@ -52,6 +60,16 @@ std::mutex catch2_macro_mutex;
 
 namespace tiledb {
 namespace test {
+
+const std::string& get_temp_path() {
+  // Ensure the path has a trailing delimiter.
+  static std::string temp_path =
+      (std::filesystem::temp_directory_path() /
+       ("tiledb_test_" + std::to_string(getpid())) / "")
+          .string();
+
+  return temp_path;
+}
 
 // Command line arguments.
 std::string g_vfs;
@@ -1736,7 +1754,13 @@ int submit_query_wrapper(
         &error);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(error == nullptr);
+
+    REQUIRE(tiledb_array_close(client_ctx, array) == TILEDB_OK);
     REQUIRE(tiledb_array_set_config(client_ctx, array, config) == TILEDB_OK);
+    tiledb_query_type_t query_type;
+    REQUIRE_SAFE(
+        tiledb_query_get_type(client_ctx, *query, &query_type) == TILEDB_OK);
+    REQUIRE(tiledb_array_open(client_ctx, array, query_type) == TILEDB_OK);
   }
 
   // Get the query type

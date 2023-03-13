@@ -272,6 +272,10 @@ TEST_CASE(
     CHECK(rc == TILEDB_OK);
     rc = tiledb_fragment_info_load(ctx, fragment_info);
     CHECK(rc == TILEDB_OK);
+
+    // Try setting the config after load
+    rc = tiledb_fragment_info_set_config(ctx, fragment_info, cfg);
+    CHECK(rc == TILEDB_ERR);
   } else {
     // Load fragment info
     rc = tiledb_fragment_info_load(ctx, fragment_info);

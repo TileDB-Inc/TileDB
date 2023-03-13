@@ -37,6 +37,7 @@
 #include "tiledb_struct_def.h"
 
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"
+#include "tiledb/api/c_api/buffer_list/buffer_list_api_internal.h"
 #include "tiledb/api/c_api/config/config_api_internal.h"
 #include "tiledb/api/c_api/error/error_api_internal.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_internal.h"
@@ -201,131 +202,6 @@ int32_t tiledb_serialization_type_from_str(
   if (!tiledb::sm::serialization_type_enum(str, &val).ok())
     return TILEDB_ERR;
   *serialization_type = (tiledb_serialization_type_t)val;
-  return TILEDB_OK;
-}
-
-/* ********************************* */
-/*            BUFFER LIST            */
-/* ********************************* */
-
-int32_t tiledb_buffer_list_alloc(
-    tiledb_ctx_t* ctx, tiledb_buffer_list_t** buffer_list) {
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Create a buffer list struct
-  *buffer_list = new (std::nothrow) tiledb_buffer_list_t;
-  if (*buffer_list == nullptr) {
-    auto st = Status_Error("Failed to allocate TileDB buffer list object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Create a new buffer_list object
-  (*buffer_list)->buffer_list_ = new (std::nothrow) tiledb::sm::BufferList;
-  if ((*buffer_list)->buffer_list_ == nullptr) {
-    delete *buffer_list;
-    *buffer_list = nullptr;
-    auto st = Status_Error("Failed to allocate TileDB buffer list object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Success
-  return TILEDB_OK;
-}
-
-void tiledb_buffer_list_free(tiledb_buffer_list_t** buffer_list) {
-  if (buffer_list != nullptr && *buffer_list != nullptr) {
-    delete (*buffer_list)->buffer_list_;
-    delete (*buffer_list);
-    *buffer_list = nullptr;
-  }
-}
-
-int32_t tiledb_buffer_list_get_num_buffers(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    uint64_t* num_buffers) {
-  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, buffer_list) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *num_buffers = buffer_list->buffer_list_->num_buffers();
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_buffer_list_get_buffer(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    uint64_t buffer_idx,
-    tiledb_buffer_t** buffer) {
-  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, buffer_list) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Get the underlying buffer
-  tiledb::sm::Buffer* b;
-  throw_if_not_ok(buffer_list->buffer_list_->get_buffer(buffer_idx, &b));
-
-  // Create a non-owning wrapper of the underlying buffer
-  *buffer = tiledb_buffer_handle_t::make_handle(b->data(), b->size());
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_buffer_list_get_total_size(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    uint64_t* total_size) {
-  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, buffer_list) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  *total_size = buffer_list->buffer_list_->total_size();
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_buffer_list_flatten(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    tiledb_buffer_t** buffer) {
-  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, buffer_list) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Create a buffer instance
-  auto buf = tiledb_buffer_handle_t::make_handle();
-
-  // Resize the dest buffer
-  const auto nbytes = buffer_list->buffer_list_->total_size();
-  auto st = buf->buffer().realloc(nbytes);
-  if (!st.ok()) {
-    tiledb_buffer_handle_t::break_handle(buf);
-    throw StatusException(st);
-  }
-
-  // Read all into the dest buffer
-  buffer_list->buffer_list_->reset_offset();
-  st = buffer_list->buffer_list_->read(buf->buffer().data(), nbytes);
-  if (!st.ok()) {
-    tiledb_buffer_handle_t::break_handle(buf);
-    throw StatusException(st);
-  }
-
-  // Set the result size
-  buf->buffer().set_size(nbytes);
-
-  *buffer = buf;
-
   return TILEDB_OK;
 }
 
@@ -1154,15 +1030,8 @@ int32_t tiledb_array_schema_load(
     }
 
     // Load latest array schema
-    auto&& [st, array_schema_latest] =
-        storage_manager->load_array_schema_latest(array_dir, key);
-    if (!st.ok()) {
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
-      delete *array_schema;
-      return TILEDB_ERR;
-    }
-    (*array_schema)->array_schema_ = array_schema_latest.value();
+    auto&& array_schema_latest = array_dir.load_array_schema_latest(key);
+    (*array_schema)->array_schema_ = array_schema_latest;
   }
   return TILEDB_OK;
 }
@@ -1255,16 +1124,8 @@ int32_t tiledb_array_schema_load_with_key(
     }
 
     // Load latest array schema
-    auto&& [st, array_schema_latest] =
-        storage_manager->load_array_schema_latest(array_dir, key);
-    if (!st.ok()) {
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
-      delete *array_schema;
-      *array_schema = nullptr;
-      return TILEDB_ERR;
-    }
-    (*array_schema)->array_schema_ = array_schema_latest.value();
+    auto&& array_schema_latest = array_dir.load_array_schema_latest(key);
+    (*array_schema)->array_schema_ = array_schema_latest;
   }
   return TILEDB_OK;
 }
@@ -2753,7 +2614,9 @@ int32_t tiledb_query_condition_combine(
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, left_cond) == TILEDB_ERR ||
-      sanity_check(ctx, right_cond) == TILEDB_ERR)
+      (combination_op != TILEDB_NOT &&
+       sanity_check(ctx, right_cond) == TILEDB_ERR) ||
+      (combination_op == TILEDB_NOT && right_cond != nullptr))
     return TILEDB_ERR;
 
   // Create the combined query condition struct
@@ -2779,19 +2642,40 @@ int32_t tiledb_query_condition_combine(
     return TILEDB_OOM;
   }
 
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          left_cond->query_condition_->combine(
-              *right_cond->query_condition_,
-              static_cast<tiledb::sm::QueryConditionCombinationOp>(
-                  combination_op),
-              (*combined_cond)->query_condition_))) {
-    delete (*combined_cond)->query_condition_;
-    delete *combined_cond;
-    return TILEDB_ERR;
+  if (combination_op == TILEDB_NOT) {
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            left_cond->query_condition_->negate(
+                static_cast<tiledb::sm::QueryConditionCombinationOp>(
+                    combination_op),
+                (*combined_cond)->query_condition_))) {
+      delete (*combined_cond)->query_condition_;
+      delete *combined_cond;
+      return TILEDB_ERR;
+    }
+  } else {
+    if (SAVE_ERROR_CATCH(
+            ctx,
+            left_cond->query_condition_->combine(
+                *right_cond->query_condition_,
+                static_cast<tiledb::sm::QueryConditionCombinationOp>(
+                    combination_op),
+                (*combined_cond)->query_condition_))) {
+      delete (*combined_cond)->query_condition_;
+      delete *combined_cond;
+      return TILEDB_ERR;
+    }
   }
 
   return TILEDB_OK;
+}
+
+int32_t tiledb_query_condition_negate(
+    tiledb_ctx_t* const ctx,
+    const tiledb_query_condition_t* const cond,
+    tiledb_query_condition_t** const negated_cond) {
+  return api::tiledb_query_condition_combine(
+      ctx, cond, nullptr, TILEDB_NOT, negated_cond);
 }
 
 /* ****************************** */
@@ -3069,7 +2953,7 @@ int32_t tiledb_array_set_config(
   if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
   api::ensure_config_is_valid(config);
-  throw_if_not_ok(array->array_->set_config(config->config()));
+  array->array_->set_config(config->config());
   return TILEDB_OK;
 }
 
@@ -4300,8 +4184,7 @@ int32_t tiledb_serialize_query(
     return TILEDB_ERR;
 
   // Allocate a buffer list
-  if (api::tiledb_buffer_list_alloc(ctx, buffer_list) != TILEDB_OK ||
-      sanity_check(ctx, *buffer_list) == TILEDB_ERR)
+  if (tiledb_buffer_list_alloc(ctx, buffer_list) != TILEDB_OK)
     return TILEDB_ERR;
 
   if (SAVE_ERROR_CATCH(
@@ -4310,8 +4193,8 @@ int32_t tiledb_serialize_query(
               query->query_,
               (tiledb::sm::SerializationType)serialize_type,
               client_side == 1,
-              (*buffer_list)->buffer_list_))) {
-    api::tiledb_buffer_list_free(buffer_list);
+              &(*buffer_list)->buffer_list()))) {
+    tiledb_buffer_list_free(buffer_list);
     return TILEDB_ERR;
   }
 
@@ -4967,7 +4850,7 @@ int32_t tiledb_fragment_info_set_config(
     return TILEDB_ERR;
   api::ensure_config_is_valid(config);
 
-  throw_if_not_ok(fragment_info->fragment_info_->set_config(config->config()));
+  fragment_info->fragment_info_->set_config(config->config());
 
   return TILEDB_OK;
 }
@@ -5457,16 +5340,9 @@ int32_t tiledb_fragment_info_get_array_schema(
     return TILEDB_OOM;
   }
 
-  auto&& [st, array_schema_get] =
+  auto&& array_schema_get =
       fragment_info->fragment_info_->get_array_schema(fid);
-  if (!st.ok()) {
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    delete *array_schema;
-    *array_schema = nullptr;
-    return TILEDB_ERR;
-  }
-  (*array_schema)->array_schema_ = array_schema_get.value();
+  (*array_schema)->array_schema_ = array_schema_get;
 
   return TILEDB_OK;
 }
@@ -5788,52 +5664,6 @@ void tiledb_version(int32_t* major, int32_t* minor, int32_t* rev) noexcept {
   *major = tiledb::sm::constants::library_version[0];
   *minor = tiledb::sm::constants::library_version[1];
   *rev = tiledb::sm::constants::library_version[2];
-}
-
-/* ********************************* */
-/*            BUFFER LIST            */
-/* ********************************* */
-
-int32_t tiledb_buffer_list_alloc(
-    tiledb_ctx_t* ctx, tiledb_buffer_list_t** buffer_list) noexcept {
-  return api_entry<tiledb::api::tiledb_buffer_list_alloc>(ctx, buffer_list);
-}
-
-void tiledb_buffer_list_free(tiledb_buffer_list_t** buffer_list) noexcept {
-  return api_entry_void<tiledb::api::tiledb_buffer_list_free>(buffer_list);
-}
-
-int32_t tiledb_buffer_list_get_num_buffers(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    uint64_t* num_buffers) noexcept {
-  return api_entry<tiledb::api::tiledb_buffer_list_get_num_buffers>(
-      ctx, buffer_list, num_buffers);
-}
-
-int32_t tiledb_buffer_list_get_buffer(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    uint64_t buffer_idx,
-    tiledb_buffer_t** buffer) noexcept {
-  return api_entry<tiledb::api::tiledb_buffer_list_get_buffer>(
-      ctx, buffer_list, buffer_idx, buffer);
-}
-
-int32_t tiledb_buffer_list_get_total_size(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    uint64_t* total_size) noexcept {
-  return api_entry<tiledb::api::tiledb_buffer_list_get_total_size>(
-      ctx, buffer_list, total_size);
-}
-
-int32_t tiledb_buffer_list_flatten(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    tiledb_buffer_t** buffer) noexcept {
-  return api_entry<tiledb::api::tiledb_buffer_list_flatten>(
-      ctx, buffer_list, buffer);
 }
 
 /* ********************************* */
@@ -7017,6 +6847,14 @@ int32_t tiledb_query_condition_combine(
     tiledb_query_condition_t** const combined_cond) noexcept {
   return api_entry<tiledb::api::tiledb_query_condition_combine>(
       ctx, left_cond, right_cond, combination_op, combined_cond);
+}
+
+int32_t tiledb_query_condition_negate(
+    tiledb_ctx_t* const ctx,
+    const tiledb_query_condition_t* const cond,
+    tiledb_query_condition_t** const negated_cond) noexcept {
+  return api_entry<tiledb::api::tiledb_query_condition_negate>(
+      ctx, cond, negated_cond);
 }
 
 /* ****************************** */

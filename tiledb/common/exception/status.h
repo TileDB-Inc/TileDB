@@ -328,10 +328,6 @@ inline Status Status_DomainError(const std::string& msg) {
 inline Status Status_ConsolidatorError(const std::string& msg) {
   return {"[TileDB::Consolidator] Error", msg};
 }
-/** Return a LRUCache error class Status with a given message **/
-inline Status Status_LRUCacheError(const std::string& msg) {
-  return {"[TileDB::LRUCache] Error", msg};
-}
 /** Return a Utils error class Status with a given message **/
 inline Status Status_UtilsError(const std::string& msg) {
   return {"[TileDB::Utils] Error", msg};
@@ -356,10 +352,6 @@ inline Status Status_HDFSError(const std::string& msg) {
 inline Status Status_MemFSError(const std::string& msg) {
   return {"[TileDB::MemFS] Error", msg};
 }
-/** Return a Attribute error class Status with a given message **/
-inline Status Status_AttributeError(const std::string& msg) {
-  return {"[TileDB::Attribute] Error", msg};
-}
 /** Return a Status_SparseGlobalOrderReaderError error class Status with a
  * given message **/
 inline Status Status_SparseGlobalOrderReaderError(const std::string& msg) {
@@ -370,11 +362,6 @@ inline Status Status_SparseGlobalOrderReaderError(const std::string& msg) {
 inline Status Status_SparseUnorderedWithDupsReaderError(
     const std::string& msg) {
   return {"[TileDB::SparseUnorderedWithDupsReaderError] Error", msg};
-}
-/** Return a Status_DenseReaderError error class Status with a given message
- * **/
-inline Status Status_DenseReaderError(const std::string& msg) {
-  return {"[TileDB::DenseReaderError] Error", msg};
 }
 /** Return a Reader error class Status with a given message **/
 inline Status Status_ReaderError(const std::string& msg) {
@@ -404,10 +391,6 @@ inline Status Status_ArrayError(const std::string& msg) {
 /** Return a VFSFileHandle error class Status with a given message **/
 inline Status Status_VFSFileHandleError(const std::string& msg) {
   return {"[TileDB::VFSFileHandle] Error", msg};
-}
-/** Return a Status_ContextError error class Status with a given message **/
-inline Status Status_ContextError(const std::string& msg) {
-  return {"[TileDB::Context] Error", msg};
 }
 /** Return a Status_SubarrayError error class Status with a given message **/
 inline Status Status_SubarrayError(const std::string& msg) {
@@ -456,11 +439,6 @@ inline Status Status_DenseTilerError(const std::string& msg) {
  * message **/
 inline Status Status_QueryConditionError(const std::string& msg) {
   return {"[TileDB::QueryCondition] Error", msg};
-}
-/** Return a Status_UpdateValueError error class Status with a given
- * message **/
-inline Status Status_UpdateValueError(const std::string& msg) {
-  return {"[TileDB::UpdateValue] Error", msg};
 }
 /** Return a Status_ArrayDirectoryError error class Status with a given
  * message **/

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -145,9 +145,11 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
     CHECK((std::string)array.config()["b"] == "10");
 
     // Create a config for the array
+    array.close();
     tiledb::Config cfg2;
     cfg2["b"] = "5";
     array.set_config(cfg2);
+    array.open(TILEDB_READ);
 
     // Check that the config values are correct
     CHECK((std::string)array.config()["a"] == "1");

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -80,7 +80,7 @@ Status fragment_info_request_from_capnp(
     tdb_unique_ptr<Config> decoded_config = nullptr;
     RETURN_NOT_OK(config_from_capnp(
         fragment_info_req_reader.getConfig(), &decoded_config));
-    RETURN_NOT_OK(fragment_info->set_config(*decoded_config));
+    fragment_info->set_config(*decoded_config);
   }
 
   return Status::Ok();

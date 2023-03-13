@@ -29,7 +29,7 @@ set -xeuo pipefail
 pushd $GITHUB_WORKSPACE/test/benchmarking
 mkdir -p build
 cd build
-cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/dist ../src
+cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/build/dist ../src
 make
 popd
 
@@ -51,8 +51,8 @@ int main(int argc, char **argv) {
 }
 EOF
 export TESTFILE_LDFLAGS="-ltiledb"
-export LD_LIBRARY_PATH=$GITHUB_WORKSPACE/dist/lib:/usr/local/lib:${LD_LIBRARY_PATH:-}
-$CXX -std=c++11 -g -O0 -Wall -Werror -I$GITHUB_WORKSPACE/dist/include -L$GITHUB_WORKSPACE/dist/lib $testfile -o $testfile.exe $TESTFILE_LDFLAGS && \
+export LD_LIBRARY_PATH=$GITHUB_WORKSPACE/build/dist/lib:/usr/local/lib:${LD_LIBRARY_PATH:-}
+$CXX -std=c++11 -g -O0 -Wall -Werror -I$GITHUB_WORKSPACE/build/dist/include -L$GITHUB_WORKSPACE/build/dist/lib $testfile -o $testfile.exe $TESTFILE_LDFLAGS && \
 $testfile.exe && \
 rm -f $testfile $testfile.exe
 

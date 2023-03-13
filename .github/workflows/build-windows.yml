@@ -178,9 +178,6 @@ jobs:
             $bootstrapOptions = $bootstrapOptions + " -DisableWebP"
           }
 
-          # Use toolchain hack to ignore strawberry perl path in GHA images
-          $env:CMAKE_TOOLCHAIN_FILE = "$env:BUILD_SOURCESDIRECTORY/.github/misc/github_windows_toolchain.cmake"
-
           $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
           Write-Host "bootstrapExpression: $bootstrapExpression"
           Invoke-Expression $bootstrapExpression
@@ -295,7 +292,7 @@ jobs:
             $host.SetShouldExit($LastExitCode)
           }
 
-          $env:Path += ";$env:BUILD_SOURCESDIRECTORY\dist\bin;$env:BUILD_BUILDDIRECTORY\externals\install\bin"
+          $env:Path += ";$env:BUILD_BUILDDIRECTORY\dist\bin;$env:BUILD_BUILDDIRECTORY\externals\install\bin"
 
           $TestAppDir = (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api")
           $TestAppDataDir = (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api\test_app_data")
@@ -371,7 +368,7 @@ jobs:
           cd build
 
           # Build zip artifact
-          cmake -A X64 -DCMAKE_PREFIX_PATH="$env:BUILD_SOURCESDIRECTORY\dist" ..
+          cmake -A X64 -DCMAKE_PREFIX_PATH="$env:BUILD_BUILDDIRECTORY\dist" ..
 
           cmake --build . --config $CMakeBuildType -- /verbosity:minimal
 
@@ -389,7 +386,7 @@ jobs:
           cd $env:BUILD_SOURCESDIRECTORY\test\packaging
           mkdir build
           cd build
-          cmake -DCMAKE_PREFIX_PATH="$env:BUILD_SOURCESDIRECTORY\dist" ..
+          cmake -DCMAKE_PREFIX_PATH="$env:BUILD_BUILDDIRECTORY\dist" ..
           # The testing is in the test/packaging/CMakeLists.txt file, just invoked,
           # there is no other code to be built in the produced projects.
 

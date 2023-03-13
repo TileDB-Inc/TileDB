@@ -81,7 +81,7 @@ DimensionLabel::DimensionLabel(
   if (uri.to_string().size() == 0) {
     throw std::invalid_argument(
         "Cannot create dimension label reference; Cannot set the URI to an "
-        "emptry string.");
+        "empty string.");
   }
   if (label_attr_name.size() == 0) {
     throw std::invalid_argument(

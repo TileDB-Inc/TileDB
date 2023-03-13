@@ -37,6 +37,7 @@ jobs:
         run: |
           bootstrap_args="${bootstrap_args}";
           bootstrap_args="${bootstrap_args} --enable-release-symbols";
+          source $GITHUB_WORKSPACE/scripts/ci/bootstrap_libtiledb.sh
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
       # Save the tiledb_unit binary for use in the next step

@@ -1,11 +1,11 @@
 /**
- * @file   tiledb/common/platform.h
+ * @file tiledb/platform/test/unit_platform.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,17 +26,6 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
- *
- * Platform/machine config of the TileDB library.
  */
 
-#ifndef TILEDB_COMMON_PLATFORM_H
-#define TILEDB_COMMON_PLATFORM_H
-
-#ifdef _WIN32
-constexpr bool is_windows = true;
-#else
-constexpr bool is_windows = false;
-#endif  // _WIN32
-
-#endif  // TILEDB_COMMON_PLATFORM_H
+#include <test/support/tdb_catch.h>

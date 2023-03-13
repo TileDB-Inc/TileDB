@@ -119,6 +119,42 @@ struct ArraySchema {
 
     timestampRange @13 :List(UInt64);
     # Timestamp range of array schema
+
+    dimensionLabels @14 :List(DimensionLabel);
+    # Dimension labels of the array
+}
+
+struct DimensionLabel {
+# A label of a dimension
+    dimensionId @0 :UInt32;
+    # Index of the dimension the label is attached to
+
+    name @1 :Text;
+    # Name of the dimension label
+
+    uri @2 :Text;
+    # URI of the existing dimension label
+
+    attributeName @3 :Text;
+    # Name of the attribute that stores the label data
+
+    order @4 :Text;
+    # Order of the dimension label
+
+    type @5 :Text;
+    # Datatype of label data
+
+    cellValNum @6 :UInt32;
+    # Number of cells per label value
+
+    external @7 :Bool;
+    # Is label stored in array's label directory or externally
+
+    relative @8 :Bool;
+    # Is URI relative or absolute to array directory
+
+    schema @9 :ArraySchema;
+    # Label schema
 }
 
 struct ArraySchemaEvolution {

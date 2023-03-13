@@ -58,6 +58,11 @@ TEST_CASE_METHOD(
     "[capi][ArraySchema][DimensionLabel]") {
   // Create and add dimension label schema (both fixed and variable length
   // examples).
+  bool serialize = false;
+#ifdef TILEDB_SERIALIZATION
+  serialize = GENERATE(true, false);
+#endif
+
   auto label_type = GENERATE(TILEDB_FLOAT64, TILEDB_STRING_ASCII);
   auto label_order = GENERATE(TILEDB_INCREASING_DATA, TILEDB_DECREASING_DATA);
 
@@ -115,8 +120,8 @@ TEST_CASE_METHOD(
   tiledb_dimension_label_free(&dim_label);
 
   // Create array.
-  auto array_name =
-      create_temporary_array("simple_array_with_label", array_schema);
+  auto array_name = create_temporary_array(
+      "simple_array_with_label", array_schema, serialize);
   tiledb_array_schema_free(&array_schema);
 
   // Load array schema and check number of labels.
@@ -182,6 +187,11 @@ TEST_CASE_METHOD(
     "[capi][ArraySchema][DimensionLabel]") {
   // Create and add dimension label schema (both fixed and variable length
   // examples).
+  bool serialize = false;
+#ifdef TILEDB_SERIALIZATION
+  serialize = GENERATE(true, false);
+#endif
+
   auto label_type = GENERATE(TILEDB_FLOAT64, TILEDB_STRING_ASCII);
   // Create an array schema
   uint64_t x_domain[2]{0, 63};
@@ -228,8 +238,8 @@ TEST_CASE_METHOD(
   REQUIRE(dim_label_num == 1);
 
   // Create array
-  auto array_name =
-      create_temporary_array("array_with_label_modified_tile", array_schema);
+  auto array_name = create_temporary_array(
+      "array_with_label_modified_tile", array_schema, serialize);
   URI array_uri{array_name};
   tiledb_array_schema_free(&array_schema);
 
@@ -290,6 +300,11 @@ TEST_CASE_METHOD(
     "[capi][ArraySchema][DimensionLabel]") {
   // Create and add dimension label schema (both fixed and variable length
   // examples).
+  bool serialize = false;
+#ifdef TILEDB_SERIALIZATION
+  serialize = GENERATE(true, false);
+#endif
+
   auto label_type = GENERATE(TILEDB_FLOAT64, TILEDB_STRING_ASCII);
   // Create an array schema
   uint64_t x_domain[2]{0, 63};
@@ -327,8 +342,8 @@ TEST_CASE_METHOD(
   REQUIRE(dim_label_num == 1);
 
   // Create array
-  auto array_name =
-      create_temporary_array("array_with_label_modified_tile", array_schema);
+  auto array_name = create_temporary_array(
+      "array_with_label_modified_tile", array_schema, serialize);
   URI array_uri{array_name};
   tiledb_array_schema_free(&array_schema);
 

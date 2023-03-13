@@ -1,5 +1,5 @@
 /**
- * @file   group_v1.cc
+ * @file   group_details_v1.cc
  *
  * @section LICENSE
  *
@@ -27,10 +27,10 @@
  *
  * @section DESCRIPTION
  *
- * This file implements TileDB Group
+ * This file implements TileDB Group Details V1
  */
 
-#include "tiledb/sm/group/group_v1.h"
+#include "tiledb/sm/group/group_details_v1.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger.h"
 
@@ -38,8 +38,8 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
-GroupV1::GroupV1(const URI& group_uri, StorageManager* storage_manager)
-    : Group(group_uri, storage_manager, GroupV1::format_version_){};
+GroupDetailsV1::GroupDetailsV1(const URI& group_uri)
+    : GroupDetails(group_uri, GroupDetailsV1::format_version_){};
 
 // ===== FORMAT =====
 // format_version (format_version_t)
@@ -47,8 +47,8 @@ GroupV1::GroupV1(const URI& group_uri, StorageManager* storage_manager)
 //   group_member #1
 //   group_member #2
 //   ...
-void GroupV1::serialize(Serializer& serializer) {
-  serializer.write<format_version_t>(GroupV1::format_version_);
+void GroupDetailsV1::serialize(Serializer& serializer) {
+  serializer.write<format_version_t>(GroupDetailsV1::format_version_);
   uint64_t group_member_num = members_.size();
   serializer.write<uint64_t>(group_member_num);
   for (auto& it : members_) {
@@ -56,15 +56,12 @@ void GroupV1::serialize(Serializer& serializer) {
   }
 }
 
-tdb_shared_ptr<Group> GroupV1::deserialize(
-    Deserializer& deserializer,
-    const URI& group_uri,
-    StorageManager* storage_manager) {
-  tdb_shared_ptr<GroupV1> group =
-      tdb::make_shared<GroupV1>(HERE(), group_uri, storage_manager);
+shared_ptr<GroupDetails> GroupDetailsV1::deserialize(
+    Deserializer& deserializer, const URI& group_uri) {
+  shared_ptr<GroupDetailsV1> group =
+      tdb::make_shared<GroupDetailsV1>(HERE(), group_uri);
 
-  uint64_t member_count = 0;
-  member_count = deserializer.read<uint64_t>();
+  uint64_t member_count = deserializer.read<uint64_t>();
   for (uint64_t i = 0; i < member_count; i++) {
     auto&& member = GroupMember::deserialize(deserializer);
     group->add_member(member);
@@ -72,5 +69,44 @@ tdb_shared_ptr<Group> GroupV1::deserialize(
 
   return group;
 }
+
+Status GroupDetailsV1::apply_pending_changes() {
+  std::lock_guard<std::mutex> lck(mtx_);
+
+  // Remove members first
+  for (const auto& member : members_to_modify_) {
+    auto& uri = member->uri();
+    if (member->deleted()) {
+      members_.erase(uri.to_string());
+
+      // Check to remove relative URIs
+      auto uri_str = uri.to_string();
+      if (uri_str.find(group_uri_.add_trailing_slash().to_string()) !=
+          std::string::npos) {
+        // Get the substring relative path
+        auto relative_uri = uri_str.substr(
+            group_uri_.add_trailing_slash().to_string().size(), uri_str.size());
+        members_.erase(relative_uri);
+      }
+    } else {
+      members_.emplace(member->uri().to_string(), member);
+    }
+  }
+  changes_applied_ = !members_to_modify_.empty();
+  members_to_modify_.clear();
+
+  members_vec_.clear();
+  members_by_name_.clear();
+  members_vec_.reserve(members_.size());
+  for (auto& it : members_) {
+    members_vec_.emplace_back(it.second);
+    if (it.second->name().has_value()) {
+      members_by_name_.emplace(it.second->name().value(), it.second);
+    }
+  }
+
+  return Status::Ok();
+}
+
 }  // namespace sm
 }  // namespace tiledb

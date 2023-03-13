@@ -117,7 +117,7 @@ class ReaderBase : public StrategyBase {
       std::unordered_map<std::string, QueryBuffer>& buffers,
       Subarray& subarray,
       Layout layout,
-      QueryCondition& condition);
+      std::optional<QueryCondition>& condition);
 
   /** Destructor. */
   ~ReaderBase() = default;
@@ -173,7 +173,7 @@ class ReaderBase : public StrategyBase {
   /* ********************************* */
 
   /** The query condition. */
-  QueryCondition& condition_;
+  std::optional<QueryCondition>& condition_;
 
   /**
    * The delete and update conditions.

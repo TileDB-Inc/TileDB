@@ -35,6 +35,7 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
+#include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/stats/stats.h"
@@ -320,6 +321,58 @@ class ArrayDirectory {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  /**
+   * Loads the schema of a schema uri from persistent storage into memory.
+   *
+   * @param array_schema_uri The URI path of the array schema.
+   * @param encryption_key The encryption key to use.
+   * @return Status, the loaded array schema
+   */
+  static shared_ptr<ArraySchema> load_array_schema_from_uri(
+      ContextResources& resources,
+      const URI& array_schema_uri,
+      const EncryptionKey& encryption_key);
+
+  /**
+   * Loads the latest schema of an array from persistent storage into memory.
+   *
+   * @param array_dir The ArrayDirectory object used to retrieve the
+   *     various URIs in the array directory.
+   * @param encryption_key The encryption key to use.
+   * @return Status, a new ArraySchema
+   */
+  shared_ptr<ArraySchema> load_array_schema_latest(
+      const EncryptionKey& encryption_key) const;
+
+  /**
+   * It loads and returns the latest schema and all the array schemas
+   * (in the presence of schema evolution).
+   *
+   * @param array_dir The ArrayDirectory object used to retrieve the
+   *     various URIs in the array directory.
+   * @param encryption_key The encryption key to use.
+   * @return tuple of Status, latest array schema and all array schemas.
+   *   Status Ok on success, else error
+   *   ArraySchema The latest array schema.
+   *   ArraySchemaMap Map of all array schemas loaded, keyed by name
+   */
+  tuple<
+      shared_ptr<ArraySchema>,
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>>
+  load_array_schemas(const EncryptionKey& encryption_key) const;
+
+  /**
+   * Loads all schemas of an array from persistent storage into memory.
+   *
+   * @param encryption_key The encryption key to use.
+   * @return tuple of Status and optional unordered map. If Status is an error
+   * the unordered_map will be nullopt
+   *        Status Ok on success, else error
+   *        ArraySchemaMap Map of all array schemas found keyed by name
+   */
+  std::unordered_map<std::string, shared_ptr<ArraySchema>>
+  load_all_array_schemas(const EncryptionKey& encryption_key) const;
 
   /** Returns the array URI. */
   const URI& uri() const;

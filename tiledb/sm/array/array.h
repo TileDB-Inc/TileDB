@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -333,8 +333,24 @@ class Array {
   /** Directly set the timestamp end opened at value. */
   Status set_timestamp_end_opened_at(const uint64_t timestamp_end_opened_at);
 
-  /** Directly set the array config. */
-  Status set_config(Config config);
+  /** Directly set the array config.
+   *
+   * @pre The array must be closed.
+   */
+  void set_config(Config config);
+
+  /**
+   * Directly set the array config.
+   *
+   * @param config
+   *
+   * @note This is a potentially unsafe operation. Arrays should be closed when
+   * setting a config. This is necessary to maintain current serialization
+   * behavior.
+   */
+  inline void unsafe_set_config(Config config) {
+    config_.inherit(config);
+  }
 
   /** Retrieves a reference to the array config. */
   Config config() const;

@@ -34,7 +34,7 @@
 #include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/enums/serialization_type.h"
-#include "tiledb/sm/group/group_v1.h"
+#include "tiledb/sm/group/group_details_v1.h"
 #include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/group.h"
 
@@ -95,7 +95,7 @@ capi_return_t tiledb_group_alloc(
   auto uri = tiledb::sm::URI(group_uri);
   if (uri.is_invalid()) {
     throw CAPIStatusException(
-        "Failed to create TileDB group object; Invalid URI");
+        "Failed to allocate TileDB group API object; Invalid URI");
   }
 
   *group = tiledb_group_handle_t::make_handle(uri, ctx->storage_manager());

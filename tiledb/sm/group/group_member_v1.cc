@@ -42,7 +42,8 @@ GroupMemberV1::GroupMemberV1(
     const ObjectType& type,
     const bool& relative,
     const std::optional<std::string>& name)
-    : GroupMember(uri, type, relative, GroupMemberV1::format_version_, name){};
+    : GroupMember(
+          uri, type, relative, GroupMemberV1::format_version_, name, false){};
 
 // ===== FORMAT =====
 // format_version (uint32_t)
@@ -75,18 +76,14 @@ void GroupMemberV1::serialize(Serializer& serializer) {
   }
 }
 
-tdb_shared_ptr<GroupMember> GroupMemberV1::deserialize(
-    Deserializer& deserializer) {
-  uint8_t type_placeholder;
-  type_placeholder = deserializer.read<uint8_t>();
+shared_ptr<GroupMember> GroupMemberV1::deserialize(Deserializer& deserializer) {
+  uint8_t type_placeholder = deserializer.read<uint8_t>();
   ObjectType type = static_cast<ObjectType>(type_placeholder);
 
-  uint8_t relative_int;
-  relative_int = deserializer.read<uint8_t>();
+  uint8_t relative_int = deserializer.read<uint8_t>();
   auto relative = static_cast<bool>(relative_int);
 
-  uint64_t uri_size = 0;
-  uri_size = deserializer.read<uint64_t>();
+  uint64_t uri_size = deserializer.read<uint64_t>();
 
   std::string uri_string;
   uri_string.resize(uri_size);
@@ -106,7 +103,7 @@ tdb_shared_ptr<GroupMember> GroupMemberV1::deserialize(
     name = name_string;
   }
 
-  tdb_shared_ptr<GroupMemberV1> group_member = tdb::make_shared<GroupMemberV1>(
+  shared_ptr<GroupMemberV1> group_member = tdb::make_shared<GroupMemberV1>(
       HERE(), URI(uri_string, !relative), type, relative, name);
   return group_member;
 }

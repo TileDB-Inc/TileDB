@@ -1,5 +1,5 @@
 /**
- * @file   group_v1.h
+ * @file   group_details_v2.h
  *
  * @section LICENSE
  *
@@ -27,11 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file defines TileDB Group
+ * This file defines TileDB Group Details V2
  */
 
-#ifndef TILEDB_GROUP_V1_H
-#define TILEDB_GROUP_V1_H
+#ifndef TILEDB_GROUP_DETAILS_V2_H
+#define TILEDB_GROUP_DETAILS_V2_H
 
 #include <atomic>
 
@@ -39,7 +39,8 @@
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/query_type.h"
-#include "tiledb/sm/group/group.h"
+#include "tiledb/sm/group/group_details.h"
+#include "tiledb/sm/group/group_details_v1.h"
 #include "tiledb/sm/group/group_member.h"
 #include "tiledb/sm/metadata/metadata.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -50,14 +51,14 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class Group;
+class GroupDetails;
 
-class GroupV1 : public Group {
+class GroupDetailsV2 : public GroupDetails {
  public:
-  GroupV1(const URI& group_uri, StorageManager* storage_manager);
+  GroupDetailsV2(const URI& group_uri);
 
   /** Destructor. */
-  ~GroupV1() override = default;
+  ~GroupDetailsV2() override = default;
 
   /**
    * Serializes the object members into a binary buffer.
@@ -74,16 +75,35 @@ class GroupV1 : public Group {
    * @param version The format spec version.
    * @return Status and Attribute
    */
-  static tdb_shared_ptr<Group> deserialize(
-      Deserializer& deserializer,
-      const URI& group_uri,
-      StorageManager* storage_manager);
+  static shared_ptr<GroupDetails> deserialize(
+      Deserializer& deserializer, const URI& group_uri);
+
+  /**
+   * Returns a Group object from the data in the input binary buffer.
+   *
+   * @param buff The buffer to deserialize from.
+   * @param version The format spec version.
+   * @return Status and Attribute
+   */
+  static shared_ptr<GroupDetails> deserialize(
+      const std::vector<shared_ptr<Deserializer>>& deserializer,
+      const URI& group_uri);
+
+ protected:
+  /**
+   * Apply any pending member additions or removals
+   *
+   * mutates members_ and clears members_to_modify_
+   *
+   * @return Status
+   */
+  Status apply_pending_changes() override;
 
  private:
   /* Format version for class. */
-  inline static const format_version_t format_version_ = 1;
+  inline static const format_version_t format_version_ = 2;
 };
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_GROUP_V1_H
+#endif  // TILEDB_GROUP_DETAILS_V2_H

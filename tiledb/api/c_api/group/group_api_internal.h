@@ -36,7 +36,6 @@
 #include "../../c_api_support/handle/handle.h"
 #include "../error/error_api_internal.h"
 #include "tiledb/sm/group/group.h"
-#include "tiledb/sm/group/group_v1.h"
 
 struct tiledb_group_handle_t
     : public tiledb::api::CAPIHandle<tiledb_group_handle_t> {
@@ -46,7 +45,7 @@ struct tiledb_group_handle_t
   static constexpr std::string_view object_type_name{"group"};
 
  private:
-  tiledb::sm::GroupV1 group_;
+  tiledb::sm::Group group_;
 
  public:
   tiledb_group_handle_t() = delete;
@@ -62,7 +61,7 @@ struct tiledb_group_handle_t
 
   [[nodiscard]] inline tiledb::sm::Group& group() const {
     return static_cast<tiledb::sm::Group&>(
-        const_cast<tiledb::sm::GroupV1&>(group_));
+        const_cast<tiledb::sm::Group&>(group_));
   }
 };
 

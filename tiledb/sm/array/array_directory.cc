@@ -38,12 +38,22 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
+#include "tiledb/sm/tile/generic_tile_io.h"
+#include "tiledb/sm/tile/tile.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+
+/** Class for ArrayDirectory status exceptions. */
+class ArrayDirectoryException : public StatusException {
+ public:
+  explicit ArrayDirectoryException(const std::string& msg)
+      : StatusException("ArrayDirectory", msg) {
+  }
+};
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -76,6 +86,104 @@ ArrayDirectory::ArrayDirectory(
 /* ********************************* */
 /*                API                */
 /* ********************************* */
+
+shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_from_uri(
+    ContextResources& resources,
+    const URI& schema_uri,
+    const EncryptionKey& encryption_key) {
+  auto timer_se =
+      resources.stats().start_timer("sm_load_array_schema_from_uri");
+
+  auto&& tile = GenericTileIO::load(resources, schema_uri, 0, encryption_key);
+
+  resources.stats().add_counter("read_array_schema_size", tile.size());
+
+  // Deserialize
+  Deserializer deserializer(tile.data(), tile.size());
+  return make_shared<ArraySchema>(
+      HERE(), ArraySchema::deserialize(deserializer, schema_uri));
+}
+
+shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_latest(
+    const EncryptionKey& encryption_key) const {
+  auto timer_se =
+      resources_.get().stats().start_timer("sm_load_array_schema_latest");
+
+  if (uri_.is_invalid()) {
+    throw ArrayDirectoryException(
+        "Cannot load array schema; Invalid array URI");
+  }
+
+  // Load schema from URI
+  const URI& schema_uri = latest_array_schema_uri();
+  auto&& array_schema =
+      load_array_schema_from_uri(resources_.get(), schema_uri, encryption_key);
+
+  array_schema->set_array_uri(uri_);
+
+  return std::move(array_schema);
+}
+
+tuple<
+    shared_ptr<ArraySchema>,
+    std::unordered_map<std::string, shared_ptr<ArraySchema>>>
+ArrayDirectory::load_array_schemas(const EncryptionKey& encryption_key) const {
+  // Load all array schemas
+  auto&& array_schemas = load_all_array_schemas(encryption_key);
+
+  // Locate the latest array schema
+  const auto& array_schema_latest_name =
+      latest_array_schema_uri().last_path_part();
+  auto it = array_schemas.find(array_schema_latest_name);
+  assert(it != array_schemas.end());
+
+  return {it->second, array_schemas};
+}
+
+std::unordered_map<std::string, shared_ptr<ArraySchema>>
+ArrayDirectory::load_all_array_schemas(
+    const EncryptionKey& encryption_key) const {
+  auto timer_se =
+      resources_.get().stats().start_timer("sm_load_all_array_schemas");
+
+  if (uri_.is_invalid()) {
+    throw ArrayDirectoryException(
+        "Cannot load all array schemas; Invalid array URI");
+  }
+
+  const std::vector<URI>& schema_uris = array_schema_uris();
+  if (schema_uris.empty()) {
+    throw ArrayDirectoryException(
+        "Cannot get the array schema vector; No array schemas found.");
+  }
+
+  std::vector<shared_ptr<ArraySchema>> schema_vector;
+  auto schema_num = schema_uris.size();
+  schema_vector.resize(schema_num);
+
+  auto status = parallel_for(
+      &resources_.get().compute_tp(), 0, schema_num, [&](size_t schema_ith) {
+        auto& schema_uri = schema_uris[schema_ith];
+        try {
+          auto&& array_schema = load_array_schema_from_uri(
+              resources_.get(), schema_uri, encryption_key);
+          array_schema->set_array_uri(uri_);
+          schema_vector[schema_ith] = array_schema;
+        } catch (std::exception& e) {
+          return Status_ArrayDirectoryError(e.what());
+        }
+
+        return Status::Ok();
+      });
+  throw_if_not_ok(status);
+
+  std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas;
+  for (const auto& schema : schema_vector) {
+    array_schemas[schema->name()] = schema;
+  }
+
+  return array_schemas;
+}
 
 const URI& ArrayDirectory::uri() const {
   return uri_;

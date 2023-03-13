@@ -55,6 +55,36 @@ jobs:
     name: ${{matrix.os}} - ${{ inputs.ci_backend }}${{ inputs.ci_option }}
     steps:
       - uses: actions/checkout@v3
+        with:
+            submodules: true
+            fetch-depth: 0
+
+      - name: Generate vcpkg cache key data
+        run: |
+          echo "${CC}" > $GITHUB_WORKSPACE/vcpkg-cache-key.data
+          echo "${CXX}" >> $GITHUB_WORKSPACE/vcpkg-cache-key.data
+          echo "${bootstrap_args}" >> $GITHUB_WORKSPACE/vcpkg-cache-key.data
+        shell: bash
+
+      - name: Create vcpkg cache key
+        id: vcpkg_cache_key
+        run: echo "value=${{ hashFiles('vcpkg-cache-key.data') }}" >> $GITHUB_OUTPUT
+
+      - name: Restore artifacts, or setup vcpkg for building artifacts
+        uses: lukka/run-vcpkg@v10
+        id: runvcpkg
+        with:
+          vcpkgJsonGlob: 'vcpkg.json'
+          vcpkgDirectory: '${{ github.workspace }}/external/vcpkg'
+          prependedCacheKey: 'tiledb-${{steps.vcpkg_cache_key.outputs.value}}'
+
+      - name: Prints output of run-vcpkg's action.
+        run: |
+          echo "run-vcpkg outputs:"
+          echo "${{ toJSON(steps.runvcpkg.outputs) }}"
+
+      - name: Prevent vpckg from building debug variants
+        run: ./scripts/ci/posix/patch_vcpkg_triplets.sh
 
       - name: 'Ubuntu Prelim'
         if: ${{ startsWith(matrix.os, 'ubuntu-') == true }}
@@ -67,31 +97,63 @@ jobs:
         with:
           python-version: '3.8'
           cache: 'pip'
+
       - name: 'Set up Python dependencies'
         run: |
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
           pip install pyarrow pybind11 numpy
 
-      - name: 'Build and test libtiledb'
+      - name: 'Brew setup on macOS' # x-ref c8e49ba8f8b9ce
+        if: ${{ startsWith(matrix.os, 'macos-') == true }}
+        run: |
+          set -e pipefail
+          brew install automake pkg-config
+
+      - name: 'Configure libtiledb'
+        id: configure
+        shell: bash
+        run: |
+          set -e pipefail
+
+          #####################################################
+          # We want to run bootstrap in an isolated step in order to
+          # cache vcpkg deps across runs if the libtiledb build fails.
+
+          source $GITHUB_WORKSPACE/scripts/ci/bootstrap_libtiledb.sh
+
+      - name: 'Build libtiledb'
+        id: build
+        shell: bash
+        run: |
+          set -e pipefail
+
+          #####################################################
+          # Build libtiledb using previous bootstrap
+
+          source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
+
+      - name: 'Test libtiledb'
         id: test
         shell: bash
         run: |
           set -e pipefail
 
-          ## ** NOTE: most of these steps must run in the same shell context **
-
-
           ###################################################
           # Start helper processes, such as backend emulator
-          # if applicable
+          # if applicable.
+
+          #  ** NOTE: most tests must run in the same shell **
+          #  **       as build-services, especially tests   **
+          #  **       requiring a backend emulator.         **
 
           source $GITHUB_WORKSPACE/scripts/ci/posix/build-services-start.sh
 
           #####################################################
-          # Build libtiledb using `bootstrap_args` as set above
+          # Jump to our build directory after starting object
+          # store mock servers
 
-          source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
+          cd $GITHUB_WORKSPACE/build
 
           ###################################################
           # Run tests
@@ -142,7 +204,7 @@ jobs:
 
       - name: 'Test status check'
         run: |
-          # tiledb_unit is configured to set a job-level variable TILEDB_CI_SUCCESS=1
+          # tiledb_unit is configured to set a  variable TILEDB_CI_SUCCESS=1
           # following the test run. If this variable is not set, the build should fail.
           # see https://github.com/TileDB-Inc/TileDB/pull/1400 (5f0623f4d3)
           if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then

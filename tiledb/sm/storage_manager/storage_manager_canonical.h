@@ -73,7 +73,7 @@ class Consolidator;
 class EncryptionKey;
 class FragmentMetadata;
 class FragmentInfo;
-class Group;
+class GroupDetails;
 class Metadata;
 class MemoryTracker;
 class Query;
@@ -174,17 +174,6 @@ class StorageManagerCanonical {
       Metadata* metadata);
 
   /**
-   * Load data from persistent storage.
-   *
-   * @param uri The object URI.
-   * @param offset The offset into the file to read from.
-   * @param encryption_key The encryption key to use.
-   * @return Status, Tile with the data.
-   */
-  tuple<Status, optional<Tile>> load_data_from_generic_tile(
-      const URI& uri, uint64_t offset, const EncryptionKey& encryption_key);
-
-  /**
    * Load a group detail from URI
    *
    * @param group_uri group uri
@@ -192,9 +181,22 @@ class StorageManagerCanonical {
    * @param encryption_key encryption key
    * @return tuple Status and pointer to group deserialized
    */
-  tuple<Status, optional<shared_ptr<Group>>> load_group_from_uri(
+  tuple<Status, optional<shared_ptr<GroupDetails>>> load_group_from_uri(
       const URI& group_uri,
       const URI& uri,
+      const EncryptionKey& encryption_key);
+
+  /**
+   * Load a group detail from URIs
+   *
+   * @param group_uri group uri
+   * @param uri location to load
+   * @param encryption_key encryption key
+   * @return tuple Status and pointer to group deserialized
+   */
+  tuple<Status, optional<shared_ptr<GroupDetails>>> load_group_from_all_uris(
+      const URI& group_uri,
+      const std::vector<TimestampedURI>& uris,
       const EncryptionKey& encryption_key);
 
   /**
@@ -205,18 +207,24 @@ class StorageManagerCanonical {
    *
    * @return tuple Status and pointer to group deserialized
    */
-  tuple<Status, optional<shared_ptr<Group>>> load_group_details(
+  tuple<Status, optional<shared_ptr<GroupDetails>>> load_group_details(
       const shared_ptr<GroupDirectory>& group_directory,
       const EncryptionKey& encryption_key);
 
   /**
    * Store the group details
    *
+   * @param group_detail_folder_uri group details folder
+   * @param group_detail_uri uri for detail file to write
    * @param group to serialize and store
    * @param encryption_key encryption key for at-rest encryption
    * @return status
    */
-  Status store_group_detail(Group* group, const EncryptionKey& encryption_key);
+  Status store_group_detail(
+      const URI& group_detail_folder_uri,
+      const URI& group_detail_uri,
+      tdb_shared_ptr<GroupDetails> group,
+      const EncryptionKey& encryption_key);
 
   /**
    * Returns the array schemas and fragment metadata for the given array.
@@ -254,10 +262,7 @@ class StorageManagerCanonical {
    * @return tuple of Status, latest GroupSchema and map of all group schemas
    *        Status Ok on success, else error
    */
-  std::tuple<
-      Status,
-      std::optional<
-          const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>>>
+  std::tuple<Status, std::optional<tdb_shared_ptr<GroupDetails>>>
   group_open_for_reads(Group* group);
 
   /** Opens an group for writes.
@@ -266,10 +271,7 @@ class StorageManagerCanonical {
    * @return tuple of Status, latest GroupSchema and map of all group schemas
    *        Status Ok on success, else error
    */
-  std::tuple<
-      Status,
-      std::optional<
-          const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>>>
+  std::tuple<Status, std::optional<tdb_shared_ptr<GroupDetails>>>
   group_open_for_writes(Group* group);
 
   /**
@@ -630,63 +632,6 @@ class StorageManagerCanonical {
    * @return Status
    */
   Status is_group(const URI& uri, bool* is_group) const;
-
-  /**
-   * Loads the schema of a schema uri from persistent storage into memory.
-   *
-   * @param array_schema_uri The URI path of the array schema.
-   * @param encryption_key The encryption key to use.
-   * @return Status, the loaded array schema
-   */
-  tuple<Status, optional<shared_ptr<ArraySchema>>> load_array_schema_from_uri(
-      const URI& array_schema_uri, const EncryptionKey& encryption_key);
-
-  /**
-   * Loads the latest schema of an array from persistent storage into memory.
-   *
-   * @param array_dir The ArrayDirectory object used to retrieve the
-   *     various URIs in the array directory.
-   * @param encryption_key The encryption key to use.
-   * @return Status, a new ArraySchema
-   */
-  tuple<Status, optional<shared_ptr<ArraySchema>>> load_array_schema_latest(
-      const ArrayDirectory& array_dir, const EncryptionKey& encryption_key);
-
-  /**
-   * It loads and returns the latest schema and all the array schemas
-   * (in the presence of schema evolution).
-   *
-   * @param array_dir The ArrayDirectory object used to retrieve the
-   *     various URIs in the array directory.
-   * @param encryption_key The encryption key to use.
-   * @return tuple of Status, latest array schema and all array schemas.
-   *   Status Ok on success, else error
-   *   ArraySchema The latest array schema.
-   *   ArraySchemaMap Map of all array schemas loaded, keyed by name
-   */
-  tuple<
-      Status,
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
-  load_array_schemas(
-      const ArrayDirectory& array_dir, const EncryptionKey& encryption_key);
-
-  /**
-   * Loads all schemas of an array from persistent storage into memory.
-   *
-   * @param array_dir The ArrayDirectory object used to retrieve the
-   *     various URIs in the array directory.
-   * @param encryption_key The encryption key to use.
-   * @return tuple of Status and optional unordered map. If Status is an error
-   * the unordered_map will be nullopt
-   *        Status Ok on success, else error
-   *        ArraySchemaMap Map of all array schemas found keyed by name
-   */
-  tuple<
-      Status,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
-  load_all_array_schemas(
-      const ArrayDirectory& array_dir, const EncryptionKey& encryption_key);
 
   /**
    * Loads the array metadata from persistent storage based on
