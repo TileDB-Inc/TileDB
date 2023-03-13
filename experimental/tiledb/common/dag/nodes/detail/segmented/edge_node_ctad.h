@@ -55,14 +55,14 @@ Edge(Source<Mover, T>, std::shared_ptr<consumer_node_impl<Mover, T>>&) -> Edge<M
 template <template <class> class Mover, class T>
 Edge(std::shared_ptr<producer_node_impl<Mover, T>>&, std::shared_ptr<consumer_node_impl<Mover, T>>&) -> Edge<Mover, T>;
 
-template <template <class> class Mover, class T>
-Edge(std::shared_ptr<producer_node_impl<Mover, T>>&, std::shared_ptr<function_node_impl<Mover, T>>&) -> Edge<Mover, T>;
+template <template <class> class Mover, class T, template <class> class Mover2, class T2>
+Edge(std::shared_ptr<producer_node_impl<Mover, T>>&, std::shared_ptr<function_node_impl<Mover, T, Mover2, T2>>&) -> Edge<Mover, T>;
 
-template <template <class> class Mover, class T>
-Edge(std::shared_ptr<function_node_impl<Mover, T>>&, std::shared_ptr<consumer_node_impl<Mover, T>>&) -> Edge<Mover, T>;
+template <template <class> class Mover, class T, template <class> class Mover2, class T2>
+Edge(std::shared_ptr<function_node_impl<Mover, T, Mover2, T2>>&, std::shared_ptr<consumer_node_impl<Mover2, T2>>&) -> Edge<Mover2, T2>;
 
-template <template <class> class Mover, class T>
-Edge(std::shared_ptr<function_node_impl<Mover, T>>&, std::shared_ptr<function_node_impl<Mover, T>>&) -> Edge<Mover, T>;
+template <template <class> class Mover, class T, template <class> class Mover2, class T2, template <class> class Mover3, class T3>
+Edge(std::shared_ptr<function_node_impl<Mover, T, Mover2, T2>>&, std::shared_ptr<function_node_impl<Mover2, T2, Mover3, T3>>&) -> Edge<Mover2, T2>;
 
 template <template <class> class SinkMover, class T, template <class> class SourceMover, class U>
 Edge(std::shared_ptr<mimo_node_impl<SinkMover, T, SourceMover, T>>&,
