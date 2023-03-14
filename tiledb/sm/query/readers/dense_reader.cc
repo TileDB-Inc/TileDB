@@ -1144,7 +1144,6 @@ Status DenseReader::copy_fixed_tiles(
   for (uint32_t fd = 0; fd < frag_domains.size(); ++fd) {
     tile_tuples[fd] =
         result_space_tile.result_tile(frag_domains[fd].fid())->tile_tuple(name);
-    assert(tile_tuples[fd] != nullptr);
   }
 
   if (stride == UINT64_MAX) {
@@ -1173,11 +1172,18 @@ Status DenseReader::copy_fixed_tiles(
     // Iterate through all fragment domains and copy data.
     for (int32_t fd = (int32_t)frag_domains.size() - 1; fd >= 0; --fd) {
       // If the cell slab overlaps this fragment domain range, copy data.
-      auto&& [overlaps, start, end] = cell_slab_overlaps_range(
-          dim_num,
-          frag_domains[fd].domain(),
-          iter.cell_slab_coords(),
-          iter.cell_slab_length());
+      bool overlaps = false;
+      uint64_t start = 0, end = 0;
+      if (tile_tuples[fd] != nullptr) {
+        auto&& [o, s, e] = cell_slab_overlaps_range(
+            dim_num,
+            frag_domains[fd].domain(),
+            iter.cell_slab_coords(),
+            iter.cell_slab_length());
+        overlaps = o;
+        start = s;
+        end = e;
+      }
       if (overlaps) {
         // Calculate the destination pointers.
         auto dest_ptr = dst_buf + cell_offset * cell_size;
@@ -1335,7 +1341,6 @@ Status DenseReader::copy_offset_tiles(
   for (uint32_t fd = 0; fd < frag_domains.size(); ++fd) {
     tile_tuples[fd] =
         result_space_tile.result_tile(frag_domains[fd].fid())->tile_tuple(name);
-    assert(tile_tuples[fd] != nullptr);
   }
 
   if (stride == UINT64_MAX) {
@@ -1367,11 +1372,18 @@ Status DenseReader::copy_offset_tiles(
     // Iterate through all fragment domains and copy data.
     for (int32_t fd = (int32_t)frag_domains.size() - 1; fd >= 0; --fd) {
       // If the cell slab overlaps this fragment domain range, copy data.
-      auto&& [overlaps, start, end] = cell_slab_overlaps_range(
-          dim_num,
-          frag_domains[fd].domain(),
-          iter.cell_slab_coords(),
-          iter.cell_slab_length());
+      bool overlaps = false;
+      uint64_t start = 0, end = 0;
+      if (tile_tuples[fd] != nullptr) {
+        auto&& [o, s, e] = cell_slab_overlaps_range(
+            dim_num,
+            frag_domains[fd].domain(),
+            iter.cell_slab_coords(),
+            iter.cell_slab_length());
+        overlaps = o;
+        start = s;
+        end = e;
+      }
       if (overlaps) {
         // Calculate the destination pointers.
         auto dest_ptr = dst_buf + cell_offset * sizeof(OffType);
