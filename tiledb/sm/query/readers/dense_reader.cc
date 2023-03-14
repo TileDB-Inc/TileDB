@@ -483,6 +483,10 @@ Status DenseReader::dense_read() {
         compute_task->wait();
         RETURN_NOT_OK(compute_task->get());
         compute_task = nullopt;
+
+        if (read_state_.overflowed_) {
+          return Status::Ok();
+        }
       }
 
       compute_task = storage_manager_->compute_tp()->execute(
@@ -526,10 +530,6 @@ Status DenseReader::dense_read() {
 
             return Status::Ok();
           });
-    }
-
-    if (read_state_.overflowed_) {
-      return Status::Ok();
     }
 
     t_start = t_end;
