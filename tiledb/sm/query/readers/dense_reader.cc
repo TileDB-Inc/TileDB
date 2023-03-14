@@ -417,11 +417,11 @@ Status DenseReader::dense_read() {
     // Get result tiles to process on this iteration.
     auto&& [ret_t_end, result_tiles_ret] = compute_result_tiles<DimType>(
         names,
-        compute_task,
         condition_names,
         subarray,
         t_start,
-        result_space_tiles);
+        result_space_tiles,
+        compute_task);
     t_end = ret_t_end;
     auto result_tiles = std::move(result_tiles_ret);
 
@@ -480,8 +480,8 @@ Status DenseReader::dense_read() {
       }
 
       if (compute_task.has_value()) {
-        compute_task->wait();
-        RETURN_NOT_OK(compute_task->get());
+        RETURN_NOT_OK(
+            storage_manager_->compute_tp()->wait(compute_task.value()));
         compute_task = nullopt;
 
         if (read_state_.overflowed_) {
@@ -537,8 +537,7 @@ Status DenseReader::dense_read() {
   }
 
   if (compute_task.has_value()) {
-    compute_task->wait();
-    RETURN_NOT_OK(compute_task->get());
+    RETURN_NOT_OK(storage_manager_->compute_tp()->wait(compute_task.value()));
     compute_task = nullopt;
   }
 
@@ -679,11 +678,11 @@ void DenseReader::init_read_state() {
 template <class DimType>
 tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
     const std::vector<std::string>& names,
-    std::optional<ThreadPool::Task>& compute_task,
     const std::unordered_set<std::string>& condition_names,
     Subarray& subarray,
     uint64_t t_start,
-    std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles) {
+    std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
+    std::optional<ThreadPool::Task>& compute_task) {
   // For easy reference.
   const auto& tile_coords = subarray.tile_coords();
   uint64_t available_memory =
@@ -693,8 +692,7 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
   // load two batches at once. Wait for the first compute task to complete
   // before loading more tiles.
   if (compute_task.has_value() && available_memory < tile_upper_memory_limit_) {
-    compute_task->wait();
-    throw_if_not_ok(compute_task->get());
+    throw_if_not_ok(storage_manager_->compute_tp()->wait(compute_task.value()));
     compute_task = nullopt;
   }
 
@@ -827,8 +825,7 @@ Status DenseReader::apply_query_condition(
         read_attribute_tiles(qc_names, result_tiles);
 
     if (compute_task.has_value()) {
-      compute_task->wait();
-      RETURN_NOT_OK(compute_task->get());
+      RETURN_NOT_OK(storage_manager_->compute_tp()->wait(compute_task.value()));
       compute_task = nullopt;
     }
 
