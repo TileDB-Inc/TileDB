@@ -62,7 +62,9 @@ struct CDenseFx {
   std::string tile_upper_memory_limit_;
 
   void create_default_array_1d();
+  void evolve_default_array_1d();
   void create_default_array_1d_string();
+  void evolve_default_array_1d_string();
   void create_default_array_1d_fixed_string();
   void write_1d_fragment(int* subarray, int* data, uint64_t* data_size);
   void write_1d_fragment_strings(
@@ -85,6 +87,12 @@ struct CDenseFx {
       uint64_t* data_size,
       bool add_qc = false,
       std::string expected_error = std::string());
+  void read_evolved(
+      int* subarray,
+      int* data,
+      uint64_t* data_size,
+      int* data_b,
+      uint64_t* data_b_size);
   void read_strings(
       int* subarray,
       char* data,
@@ -93,6 +101,16 @@ struct CDenseFx {
       uint64_t* offsets_size,
       bool add_qc = false,
       std::string expected_error = std::string());
+  void read_strings_evolved(
+      int* subarray,
+      char* data,
+      uint64_t* data_size,
+      uint64_t* offsets,
+      uint64_t* offsets_size,
+      char* data_b,
+      uint64_t* data_b_size,
+      uint64_t* offsets_b,
+      uint64_t* offsets_b_size);
   void read_fixed_strings(
       int* subarray,
       int* a1_data,
@@ -191,6 +209,33 @@ void CDenseFx::create_default_array_1d() {
       10);
 }
 
+void CDenseFx::evolve_default_array_1d() {
+  tiledb_array_schema_evolution_t* schemaEvolution;
+  auto rc = tiledb_array_schema_evolution_alloc(ctx_, &schemaEvolution);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create attribute
+  tiledb_attribute_t* b;
+  rc = tiledb_attribute_alloc(ctx_, "b", TILEDB_INT32, &b);
+  REQUIRE(rc == TILEDB_OK);
+
+  int fill_value = 7;
+  rc = tiledb_attribute_set_fill_value(ctx_, b, &fill_value, sizeof(int));
+  REQUIRE(rc == TILEDB_OK);
+
+  // Add attribute to schema evolution.
+  rc = tiledb_array_schema_evolution_add_attribute(ctx_, schemaEvolution, b);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Evolve array.
+  rc = tiledb_array_evolve(ctx_, array_name_.c_str(), schemaEvolution);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Cleanup.
+  tiledb_attribute_free(&b);
+  tiledb_array_schema_evolution_free(&schemaEvolution);
+}
+
 void CDenseFx::create_default_array_1d_string() {
   int domain[] = {1, 200};
   int tile_extent = 10;
@@ -209,6 +254,35 @@ void CDenseFx::create_default_array_1d_string() {
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
       10);
+}
+
+void CDenseFx::evolve_default_array_1d_string() {
+  tiledb_array_schema_evolution_t* schemaEvolution;
+  auto rc = tiledb_array_schema_evolution_alloc(ctx_, &schemaEvolution);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create attribute
+  tiledb_attribute_t* b;
+  rc = tiledb_attribute_alloc(ctx_, "b", TILEDB_STRING_ASCII, &b);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_cell_val_num(ctx_, b, TILEDB_VAR_NUM);
+  REQUIRE(rc == TILEDB_OK);
+
+  char fill_value = '7';
+  rc = tiledb_attribute_set_fill_value(ctx_, b, &fill_value, 1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Add attribute to schema evolution.
+  rc = tiledb_array_schema_evolution_add_attribute(ctx_, schemaEvolution, b);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Evolve array.
+  rc = tiledb_array_evolve(ctx_, array_name_.c_str(), schemaEvolution);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Cleanup.
+  tiledb_attribute_free(&b);
+  tiledb_array_schema_evolution_free(&schemaEvolution);
 }
 
 void CDenseFx::create_default_array_1d_fixed_string() {
@@ -428,6 +502,46 @@ void CDenseFx::read(
   tiledb_query_free(&query);
 }
 
+void CDenseFx::read_evolved(
+    int* subarray,
+    int* data,
+    uint64_t* data_size,
+    int* data_b,
+    uint64_t* data_b_size) {
+  // Open array for reading.
+  tiledb_array_t* array;
+  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create query.
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+
+  // Set subarray.
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
+
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", data, data_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "b", data_b, data_b_size);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query.
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
+
+  // Clean up.
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
 void CDenseFx::read_strings(
     int* subarray,
     char* data,
@@ -497,6 +611,55 @@ void CDenseFx::read_strings(
         counters->find("Context.StorageManager.Query.Reader.internal_loop_num");
     CHECK(2 == loop_num->second);
   }
+
+  // Clean up.
+  rc = tiledb_array_close(ctx_, array);
+  CHECK(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
+void CDenseFx::read_strings_evolved(
+    int* subarray,
+    char* data,
+    uint64_t* data_size,
+    uint64_t* offsets,
+    uint64_t* offsets_size,
+    char* data_b,
+    uint64_t* data_b_size,
+    uint64_t* offsets_b,
+    uint64_t* offsets_b_size) {
+  // Open array for reading.
+  tiledb_array_t* array;
+  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+
+  // Create query.
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+
+  // Set subarray.
+  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
+
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", data, data_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(ctx_, query, "a", offsets, offsets_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "b", data_b, data_b_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, "b", offsets_b, offsets_b_size);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit query.
+  rc = tiledb_query_submit(ctx_, query);
+  CHECK(rc == TILEDB_OK);
 
   // Clean up.
   rc = tiledb_array_close(ctx_, array);
@@ -1108,8 +1271,8 @@ TEST_CASE_METHOD(
       a2_offsets.data(),
       &a2_offsets_size);
 
-  // First var tiles is 91 and subequent are 100 bytes, this will only allow to
-  // load two tiles the first loop and one on the subsequents.
+  // First var tiles is 91 and subequent are 100 bytes, this will only allow
+  // to load two tiles the first loop and one on the subsequents.
   tile_upper_memory_limit_ = "192";
   update_config();
 
@@ -1136,4 +1299,102 @@ TEST_CASE_METHOD(
   CHECK(!std::memcmp(a2_data.data(), a2_data_r, a2_data_size));
   CHECK(a2_offsets_r_size == a2_offsets_size);
   CHECK(!std::memcmp(a2_offsets.data(), a2_offsets_r, a2_offsets_size));
+}
+
+TEST_CASE_METHOD(
+    CDenseFx,
+    "Dense reader: fixed schema evolution",
+    "[dense-reader][schema-evolution][fixed]") {
+  // Create default array.
+  reset_config();
+  create_default_array_1d();
+
+  // Write a fragment.
+  int subarray[] = {1, NUM_CELLS};
+  std::vector<int> data(NUM_CELLS);
+  std::iota(data.begin(), data.end(), 1);
+  uint64_t data_size = data.size() * sizeof(int);
+  write_1d_fragment(subarray, data.data(), &data_size);
+
+  // Evolve array.
+  evolve_default_array_1d();
+
+  // Try to read.
+  int data_r[NUM_CELLS] = {0};
+  uint64_t data_r_size = sizeof(data_r);
+  int data_r_b[NUM_CELLS] = {0};
+  uint64_t data_r_b_size = sizeof(data_r_b);
+  read_evolved(subarray, data_r, &data_r_size, data_r_b, &data_r_b_size);
+
+  // Validate cells.
+  for (int i = 0; i < NUM_CELLS; i++) {
+    CHECK(data_r[i] == i + 1);
+    CHECK(data_r_b[i] == 7);
+  }
+}
+
+TEST_CASE_METHOD(
+    CDenseFx,
+    "Dense reader: var schema evolution",
+    "[dense-reader][schema-evolution][var]") {
+  // Create default array.
+  reset_config();
+  create_default_array_1d_string();
+
+  // Write a fragment.
+  int subarray[] = {1, NUM_CELLS};
+  std::string data;
+  std::vector<uint64_t> offsets(NUM_CELLS);
+  for (uint64_t i = 0; i < NUM_CELLS; i++) {
+    offsets[i] = data.size();
+    data += std::to_string(i + 1);
+  }
+  uint64_t data_size = data.size();
+  uint64_t offsets_size = offsets.size() * sizeof(uint64_t);
+  write_1d_fragment_strings(
+      subarray, data.data(), &data_size, offsets.data(), &offsets_size);
+
+  // Evolve array.
+  evolve_default_array_1d_string();
+
+  // Try to read.
+  char data_r[NUM_CELLS * 2] = {0};
+  uint64_t data_r_size = sizeof(data_r);
+  uint64_t offsets_r[NUM_CELLS] = {0};
+  uint64_t offsets_r_size = sizeof(offsets_r);
+  char data_r_b[NUM_CELLS * 2] = {0};
+  uint64_t data_r_b_size = sizeof(data_r_b);
+  uint64_t offsets_r_b[NUM_CELLS] = {0};
+  uint64_t offsets_r_b_size = sizeof(offsets_r_b);
+  read_strings_evolved(
+      subarray,
+      data_r,
+      &data_r_size,
+      offsets_r,
+      &offsets_r_size,
+      data_r_b,
+      &data_r_b_size,
+      offsets_r_b,
+      &offsets_r_b_size);
+
+  // Validate cells.
+  char c_data[] = "1234567891011121314151617181920";
+  uint64_t c_data_size = sizeof(c_data) - 1;
+  uint64_t c_offsets[] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
+                          11, 13, 15, 17, 19, 21, 23, 25, 27, 29};
+  uint64_t c_offsets_size = sizeof(c_offsets);
+  CHECK(data_r_size == c_data_size);
+  CHECK(!std::memcmp(c_data, data_r, c_data_size));
+  CHECK(offsets_r_size == c_offsets_size);
+  CHECK(!std::memcmp(c_offsets, offsets_r, c_offsets_size));
+
+  char c_data_b[] = "77777777777777777777";
+  uint64_t c_data_b_size = sizeof(c_data_b) - 1;
+  uint64_t c_offsets_b[] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
+                            10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
+  uint64_t c_offsets_b_size = sizeof(c_offsets_b);
+  CHECK(data_r_b_size == c_data_b_size);
+  CHECK(!std::memcmp(c_data_b, data_r_b, c_data_b_size));
+  CHECK(offsets_r_b_size == c_offsets_b_size);
+  CHECK(!std::memcmp(c_offsets_b, offsets_r_b, c_offsets_b_size));
 }
