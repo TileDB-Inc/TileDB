@@ -103,7 +103,7 @@ shared_ptr<GroupDetails> GroupDetailsV2::deserialize(
   return group;
 }
 
-Status GroupDetailsV2::apply_pending_changes() {
+void GroupDetailsV2::apply_pending_changes() {
   std::lock_guard<std::mutex> lck(mtx_);
 
   members_.clear();
@@ -125,8 +125,6 @@ Status GroupDetailsV2::apply_pending_changes() {
   }
   changes_applied_ = !members_to_modify_.empty();
   members_to_modify_.clear();
-
-  return Status::Ok();
 }
 
 }  // namespace sm

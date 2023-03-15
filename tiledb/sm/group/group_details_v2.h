@@ -35,12 +35,10 @@
 
 #include <atomic>
 
-#include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/group/group_details.h"
-#include "tiledb/sm/group/group_details_v1.h"
 #include "tiledb/sm/group/group_member.h"
 #include "tiledb/sm/metadata/metadata.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -97,7 +95,7 @@ class GroupDetailsV2 : public GroupDetails {
    *
    * @return Status
    */
-  Status apply_pending_changes() override;
+  void apply_pending_changes() override;
 
  private:
   /* Format version for class. */

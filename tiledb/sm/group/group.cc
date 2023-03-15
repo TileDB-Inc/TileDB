@@ -256,7 +256,7 @@ void Group::close() {
         query_type_ == QueryType::MODIFY_EXCLUSIVE) {
       // If changes haven't been applied, apply them
       if (!changes_applied_) {
-        throw_if_not_ok(group_details_->apply_pending_changes());
+        group_details_->apply_pending_changes();
         changes_applied_ = group_details_->changes_applied();
       }
       throw_if_not_ok(storage_manager_->group_close_for_writes(this));
@@ -522,7 +522,7 @@ void Group::set_config(Config config) {
 }
 
 void Group::clear() {
-  throw_if_not_ok(group_details_->clear());
+  group_details_->clear();
 }
 
 void Group::add_member(const shared_ptr<GroupMember> group_member) {
@@ -552,8 +552,8 @@ void Group::mark_member_for_addition(
         "Cannot get member; Group was not opened in write or modify_exclusive "
         "mode");
   }
-  throw_if_not_ok(group_details_->mark_member_for_addition(
-      group_member_uri, relative, name, storage_manager_));
+  group_details_->mark_member_for_addition(
+      group_member_uri, relative, name, storage_manager_);
 }
 
 void Group::mark_member_for_removal(const URI& uri) {
@@ -576,7 +576,7 @@ void Group::mark_member_for_removal(const std::string& uri) {
         "mode");
   }
 
-  throw_if_not_ok(group_details_->mark_member_for_removal(uri));
+  group_details_->mark_member_for_removal(uri);
 }
 
 const std::vector<shared_ptr<GroupMember>>& Group::members_to_modify() const {

@@ -35,7 +35,6 @@
 
 #include <atomic>
 
-#include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -58,10 +57,8 @@ class GroupDetails {
 
   /**
    * Clear a group
-   *
-   * @return
    */
-  Status clear();
+  void clear();
 
   /**
    * Add a member to a group, this will be flushed to disk on close
@@ -69,9 +66,8 @@ class GroupDetails {
    * @param group_member_uri group member uri
    * @param relative is this URI relative
    * @param name optional name for member
-   * @return Status
    */
-  Status mark_member_for_addition(
+  void mark_member_for_addition(
       const URI& group_member_uri,
       const bool& relative,
       std::optional<std::string>& name,
@@ -81,17 +77,15 @@ class GroupDetails {
    * Remove a member from a group, this will be flushed to disk on close
    *
    * @param uri of member to remove
-   * @return Status
    */
-  Status mark_member_for_removal(const URI& uri);
+  void mark_member_for_removal(const URI& uri);
 
   /**
    * Remove a member from a group, this will be flushed to disk on close
    *
    * @param uri of member to remove
-   * @return Status
    */
-  Status mark_member_for_removal(const std::string& uri);
+  void mark_member_for_removal(const std::string& uri);
 
   /**
    * Get the vector of members to modify, used in serialization only
@@ -197,10 +191,8 @@ class GroupDetails {
    * Apply any pending member additions or removals
    *
    * mutates members_ and clears members_to_add_ and members_to_remove_
-   *
-   * @return Status
    */
-  virtual Status apply_pending_changes() = 0;
+  virtual void apply_pending_changes() = 0;
 
  protected:
   /* ********************************* */
