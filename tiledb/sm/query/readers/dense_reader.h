@@ -194,12 +194,12 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       Subarray& subarray,
       uint64_t t_start,
       std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
-      std::optional<ThreadPool::Task>& compute_task);
+      ThreadPool::Task& compute_task);
 
   /** Apply the query condition. */
   template <class DimType, class OffType>
   Status apply_query_condition(
-      std::optional<ThreadPool::Task>& compute_task,
+      ThreadPool::Task& compute_task,
       Subarray& subarray,
       const uint64_t t_start,
       const uint64_t t_end,

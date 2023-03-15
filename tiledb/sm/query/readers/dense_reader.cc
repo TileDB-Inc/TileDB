@@ -410,7 +410,7 @@ Status DenseReader::dense_read() {
     var_buffer_sizes.emplace(name, 0);
   }
 
-  std::optional<ThreadPool::Task> compute_task = nullopt;
+  ThreadPool::Task compute_task;
   while (t_end < tile_coords.size()) {
     stats_->add_counter("internal_loop_num", 1);
 
@@ -479,11 +479,8 @@ Status DenseReader::dense_read() {
         filtered_data = std::move(read_attribute_tiles(to_read, result_tiles));
       }
 
-      if (compute_task.has_value()) {
-        RETURN_NOT_OK(
-            storage_manager_->compute_tp()->wait(compute_task.value()));
-        compute_task = nullopt;
-
+      if (compute_task.valid()) {
+        RETURN_NOT_OK(storage_manager_->compute_tp()->wait(compute_task));
         if (read_state_.overflowed_) {
           return Status::Ok();
         }
@@ -536,9 +533,8 @@ Status DenseReader::dense_read() {
     subarray_start_cell = subarray_end_cell;
   }
 
-  if (compute_task.has_value()) {
-    RETURN_NOT_OK(storage_manager_->compute_tp()->wait(compute_task.value()));
-    compute_task = nullopt;
+  if (compute_task.valid()) {
+    RETURN_NOT_OK(storage_manager_->compute_tp()->wait(compute_task));
   }
 
   // For `qc_coords_mode` just fill in the coordinates and skip attribute
@@ -682,7 +678,7 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
     Subarray& subarray,
     uint64_t t_start,
     std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
-    std::optional<ThreadPool::Task>& compute_task) {
+    ThreadPool::Task& compute_task) {
   // For easy reference.
   const auto& tile_coords = subarray.tile_coords();
   uint64_t available_memory =
@@ -691,9 +687,8 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
   // If the available memory is less than the tile upper memory limit, we cannot
   // load two batches at once. Wait for the first compute task to complete
   // before loading more tiles.
-  if (compute_task.has_value() && available_memory < tile_upper_memory_limit_) {
-    throw_if_not_ok(storage_manager_->compute_tp()->wait(compute_task.value()));
-    compute_task = nullopt;
+  if (compute_task.valid() && available_memory < tile_upper_memory_limit_) {
+    throw_if_not_ok(storage_manager_->compute_tp()->wait(compute_task));
   }
 
   const uint64_t upper_memory_limit =
@@ -795,7 +790,7 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
 /** Apply the query condition. */
 template <class DimType, class OffType>
 Status DenseReader::apply_query_condition(
-    std::optional<ThreadPool::Task>& compute_task,
+    ThreadPool::Task& compute_task,
     Subarray& subarray,
     const uint64_t t_start,
     const uint64_t t_end,
@@ -824,9 +819,8 @@ Status DenseReader::apply_query_condition(
     std::vector<FilteredData> filtered_data =
         read_attribute_tiles(qc_names, result_tiles);
 
-    if (compute_task.has_value()) {
-      RETURN_NOT_OK(storage_manager_->compute_tp()->wait(compute_task.value()));
-      compute_task = nullopt;
+    if (compute_task.valid()) {
+      RETURN_NOT_OK(storage_manager_->compute_tp()->wait(compute_task));
     }
 
     compute_task = storage_manager_->compute_tp()->execute(
