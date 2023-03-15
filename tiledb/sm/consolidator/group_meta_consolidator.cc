@@ -129,6 +129,7 @@ Status GroupMetaConsolidator::consolidate(
     group_for_writes.close();
     throw;
   }
+  group_for_writes.close();
 
   // Write vacuum file
   URI vac_uri = URI(new_uri.to_string() + constants::vacuum_file_suffix);
