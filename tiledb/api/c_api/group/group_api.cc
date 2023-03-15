@@ -113,8 +113,7 @@ capi_return_t tiledb_group_open(
     tiledb_group_handle_t* group, tiledb_query_type_t query_type) {
   ensure_group_is_valid(group);
 
-  throw_if_not_ok(
-      group->group().open(static_cast<tiledb::sm::QueryType>(query_type)));
+  group->group().open(static_cast<tiledb::sm::QueryType>(query_type));
 
   return TILEDB_OK;
 }
@@ -122,7 +121,7 @@ capi_return_t tiledb_group_open(
 capi_return_t tiledb_group_close(tiledb_group_handle_t* group) {
   ensure_group_is_valid(group);
 
-  throw_if_not_ok(group->group().close());
+  group->group().close();
 
   return TILEDB_OK;
 }
@@ -156,8 +155,8 @@ capi_return_t tiledb_group_put_metadata(
   ensure_group_is_valid(group);
   ensure_key_argument_is_valid(key);
 
-  throw_if_not_ok(group->group().put_metadata(
-      key, static_cast<tiledb::sm::Datatype>(value_type), value_num, value));
+  group->group().put_metadata(
+      key, static_cast<tiledb::sm::Datatype>(value_type), value_num, value);
 
   return TILEDB_OK;
 }
@@ -176,7 +175,7 @@ capi_return_t tiledb_group_delete_metadata(
   ensure_group_is_valid(group);
   ensure_key_argument_is_valid(key);
 
-  throw_if_not_ok(group->group().delete_metadata(key));
+  group->group().delete_metadata(key);
 
   return TILEDB_OK;
 }
@@ -194,7 +193,7 @@ capi_return_t tiledb_group_get_metadata(
   ensure_output_pointer_is_valid(value);
 
   tiledb::sm::Datatype type;
-  throw_if_not_ok(group->group().get_metadata(key, &type, value_num, value));
+  group->group().get_metadata(key, &type, value_num, value);
 
   *value_type = static_cast<tiledb_datatype_t>(type);
 
@@ -206,7 +205,7 @@ capi_return_t tiledb_group_get_metadata_num(
   ensure_group_is_valid(group);
   ensure_output_pointer_is_valid(num);
 
-  throw_if_not_ok(group->group().get_metadata_num(num));
+  *num = group->group().metadata_num();
 
   return TILEDB_OK;
 }
@@ -227,8 +226,7 @@ capi_return_t tiledb_group_get_metadata_from_index(
   ensure_output_pointer_is_valid(value);
 
   tiledb::sm::Datatype type;
-  throw_if_not_ok(group->group().get_metadata(
-      index, key, key_len, &type, value_num, value));
+  group->group().get_metadata(index, key, key_len, &type, value_num, value);
 
   *value_type = static_cast<tiledb_datatype_t>(type);
 
@@ -246,8 +244,7 @@ capi_return_t tiledb_group_has_metadata_key(
   ensure_output_pointer_is_valid(has_key);
 
   tiledb::sm::Datatype type;
-  bool has_the_key;
-  throw_if_not_ok(group->group().has_metadata_key(key, &type, &has_the_key));
+  bool has_the_key = group->group().has_metadata_key(key, &type);
 
   *has_key = has_the_key ? 1 : 0;
   if (has_the_key) {
@@ -272,8 +269,7 @@ capi_return_t tiledb_group_add_member(
     name_optional = name;
   }
 
-  throw_if_not_ok(
-      group->group().mark_member_for_addition(uri, relative, name_optional));
+  group->group().mark_member_for_addition(uri, relative, name_optional);
 
   return TILEDB_OK;
 }
@@ -283,7 +279,7 @@ capi_return_t tiledb_group_remove_member(
   ensure_group_is_valid(group);
   ensure_group_uri_argument_is_valid(group_uri);
 
-  throw_if_not_ok(group->group().mark_member_for_removal(group_uri));
+  group->group().mark_member_for_removal(group_uri);
 
   return TILEDB_OK;
 }
@@ -343,7 +339,7 @@ error:
     std::free(tmp_name);
   }
 
-  return TILEDB_OK;
+  return TILEDB_ERR;
 }
 
 capi_return_t tiledb_group_get_member_by_name(
@@ -409,8 +405,7 @@ capi_return_t tiledb_group_get_query_type(
   ensure_output_pointer_is_valid(query_type);
 
   // Get query_type
-  tiledb::sm::QueryType type;
-  throw_if_not_ok(group->group().get_query_type(&type));
+  tiledb::sm::QueryType type = group->group().query_type_checked();
 
   *query_type = static_cast<tiledb_query_type_t>(type);
 
@@ -482,18 +477,13 @@ capi_return_t tiledb_serialize_group_metadata(
   ensure_group_is_valid(group);
   ensure_output_pointer_is_valid(buffer);
 
+  // Get metadata to serialize, this will load it if it does not exist
+  tiledb::sm::Metadata* metadata = group->group().metadata();
+
   // ALERT: Conditional Handle Construction
   auto buf = tiledb_buffer_handle_t::make_handle();
 
-  // Get metadata to serialize, this will load it if it does not exist
-  tiledb::sm::Metadata* metadata;
-  auto st = group->group().metadata(&metadata);
-  if (!st.ok()) {
-    tiledb_buffer_handle_t::break_handle(buf);
-    throw StatusException(st);
-  }
-
-  st = tiledb::sm::serialization::metadata_serialize(
+  Status st = tiledb::sm::serialization::metadata_serialize(
       metadata,
       static_cast<tiledb::sm::SerializationType>(serialize_type),
       &(buf->buffer()));

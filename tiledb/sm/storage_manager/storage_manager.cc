@@ -152,11 +152,10 @@ Status StorageManagerCanonical::group_close_for_writes(Group* group) {
   // Store any changes required
   if (group->changes_applied()) {
     const URI& group_detail_folder_uri = group->group_detail_uri();
-    auto&& [st, group_detail_uri] = group->generate_detail_uri();
-    RETURN_NOT_OK(st);
+    auto&& group_detail_uri = group->generate_detail_uri();
     RETURN_NOT_OK(store_group_detail(
         group_detail_folder_uri,
-        group_detail_uri.value(),
+        group_detail_uri,
         group->group_details(),
         *group->encryption_key()));
   }

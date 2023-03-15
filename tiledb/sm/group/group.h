@@ -35,7 +35,6 @@
 
 #include <atomic>
 
-#include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -65,11 +64,10 @@ class Group {
    *
    * @param query_type The query type. This should always be READ. It
    *    is here only for sanity check.
-   * @return Status
    *
    * @note Applicable only to reads.
    */
-  Status open(QueryType query_type);
+  void open(QueryType query_type);
 
   /**
    * Opens the group.
@@ -78,21 +76,20 @@ class Group {
    * @param timestamp_start The start timestamp at which to open the group
    * @param timestamp_end The end timestamp at which to open the group
    * @param query_type The query type. This should always be READ. It
-   * @return Status
    *
    */
-  Status open(
+  void open(
       QueryType query_type, uint64_t timestamp_start, uint64_t timestamp_end);
 
   /** Closes the group and frees all memory. */
-  Status close();
+  void close();
 
   /**
    * Clear a group
    *
    * @return
    */
-  Status clear();
+  void clear();
 
   /**
    * Deletes data from and closes a group opened in MODIFY_EXCLUSIVE mode.
@@ -108,9 +105,8 @@ class Group {
    * Deletes metadata from an group opened in WRITE mode.
    *
    * @param key The key of the metadata item to be deleted.
-   * @return Status
    */
-  Status delete_metadata(const char* key);
+  void delete_metadata(const char* key);
 
   /**
    * Puts metadata into an group opened in WRITE mode.
@@ -122,9 +118,8 @@ class Group {
    *     same datatype. This argument indicates the number of items in the
    *     value component of the metadata.
    * @param value The metadata value in binary form.
-   * @return Status
    */
-  Status put_metadata(
+  void put_metadata(
       const char* key,
       Datatype value_type,
       uint32_t value_num,
@@ -141,9 +136,8 @@ class Group {
    *     same datatype. This argument indicates the number of items in the
    *     value component of the metadata.
    * @param value The metadata value in binary form.
-   * @return Status
    */
-  Status get_metadata(
+  void get_metadata(
       const char* key,
       Datatype* value_type,
       uint32_t* value_num,
@@ -160,9 +154,8 @@ class Group {
    *     same datatype. This argument indicates the number of items in the
    *     value component of the metadata.
    * @param value The metadata value in binary form.
-   * @return Status
    */
-  Status get_metadata(
+  void get_metadata(
       uint64_t index,
       const char** key,
       uint32_t* key_len,
@@ -171,13 +164,13 @@ class Group {
       const void** value);
 
   /** Returns the number of group metadata items. */
-  Status get_metadata_num(uint64_t* num);
+  uint64_t metadata_num();
 
   /** Sets has_key == 1 and corresponding value_type if the group has key. */
-  Status has_metadata_key(const char* key, Datatype* value_type, bool* has_key);
+  bool has_metadata_key(const char* key, Datatype* value_type);
 
   /** Retrieves the group metadata object. */
-  Status metadata(Metadata** metadata);
+  Metadata* metadata();
 
   /**
    * Retrieves the group metadata object.
@@ -244,9 +237,8 @@ class Group {
    * @param group_member_uri group member uri
    * @param relative is this URI relative
    * @param name optional name for member
-   * @return Status
    */
-  Status mark_member_for_addition(
+  void mark_member_for_addition(
       const URI& group_member_uri,
       const bool& relative,
       std::optional<std::string>& name);
@@ -255,17 +247,15 @@ class Group {
    * Remove a member from a group, this will be flushed to disk on close
    *
    * @param uri of member to remove
-   * @return Status
    */
-  Status mark_member_for_removal(const URI& uri);
+  void mark_member_for_removal(const URI& uri);
 
   /**
    * Remove a member from a group, this will be flushed to disk on close
    *
    * @param uri of member to remove
-   * @return Status
    */
-  Status mark_member_for_removal(const std::string& uri);
+  void mark_member_for_removal(const std::string& uri);
 
   /**
    * Get the vector of members to modify, used in serialization only
@@ -304,9 +294,9 @@ class Group {
   /**
    * Function to generate a URL of a detail file
    *
-   * @return tuple of status and uri
+   * @return uri
    */
-  tuple<Status, optional<URI>> generate_detail_uri() const;
+  URI generate_detail_uri() const;
 
   /**
    * Have changes been applied to a group in write mode
@@ -355,7 +345,7 @@ class Group {
   bool is_remote() const;
 
   /** Retrieves the query type. Errors if the group is not open. */
-  Status get_query_type(QueryType* query_type) const;
+  QueryType query_type_checked() const;
 
   /**
    * Dump a string representation of a group
@@ -454,16 +444,15 @@ class Group {
 
   /**
    * Load group metadata, handles remote groups vs non-remote groups
-   * @return  Status
    */
-  Status load_metadata();
+  void load_metadata();
 
   /**
    * Generate new name in the form of timestmap_timestamp_uuid
    *
-   * @return tuple of status and optional string
+   * @return string
    */
-  tuple<Status, optional<std::string>> generate_name() const;
+  std::string generate_name() const;
 };
 }  // namespace sm
 }  // namespace tiledb
