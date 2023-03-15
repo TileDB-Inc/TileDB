@@ -74,47 +74,48 @@ shared_ptr<ArraySchema> make_schema(
   // Create the domain/dimensions.
   Domain domain;
   for (uint64_t d = 0; d < dim_types.size(); d++) {
-    Dimension dim("d" + std::to_string(d + 1), dim_types[d]);
+    auto dim{make_shared<Dimension>(
+        HERE(), "d" + std::to_string(d + 1), dim_types[d])};
 
     switch (dim_types[d]) {
       case Datatype::INT8: {
         int8_t bounds[2] = {1, 10};
-        REQUIRE(dim.set_domain(&bounds).ok());
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::INT16: {
         int16_t bounds[2] = {1, 10};
-        REQUIRE(dim.set_domain(&bounds).ok());
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::INT32: {
         int32_t bounds[2] = {1, 10};
-        REQUIRE(dim.set_domain(&bounds).ok());
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::INT64: {
         int64_t bounds[2] = {1, 10};
-        REQUIRE(dim.set_domain(&bounds).ok());
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::UINT8: {
         uint8_t bounds[2] = {1, 10};
-        REQUIRE(dim.set_domain(&bounds).ok());
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::UINT16: {
         uint16_t bounds[2] = {1, 10};
-        REQUIRE(dim.set_domain(&bounds).ok());
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::UINT32: {
         uint32_t bounds[2] = {1, 10};
-        REQUIRE(dim.set_domain(&bounds).ok());
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::UINT64: {
         uint64_t bounds[2] = {1, 10};
-        REQUIRE(dim.set_domain(&bounds).ok());
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::DATETIME_YEAR:
@@ -140,17 +141,17 @@ shared_ptr<ArraySchema> make_schema(
       case Datatype::TIME_FS:
       case Datatype::TIME_AS: {
         uint64_t bounds[2] = {1, 10};
-        REQUIRE(dim.set_domain(&bounds).ok());
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::STRING_ASCII: {
-        REQUIRE(dim.set_cell_val_num(constants::var_num).ok());
+        REQUIRE(dim->set_cell_val_num(constants::var_num).ok());
       }
       default: {
       }
     }
 
-    REQUIRE(domain.add_dimension(make_shared<Dimension>(HERE(), &dim)).ok());
+    REQUIRE(domain.add_dimension(dim).ok());
   }
   REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), &domain)).ok());
 

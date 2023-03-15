@@ -480,9 +480,9 @@ int32_t tiledb_domain_get_ndim(
 
 int32_t tiledb_domain_add_dimension(
     tiledb_ctx_t* ctx, tiledb_domain_t* domain, tiledb_dimension_t* dim) {
-  if (sanity_check(ctx, domain) == TILEDB_ERR)
+  if (sanity_check(ctx, domain) == TILEDB_ERR) {
     return TILEDB_ERR;
-
+  }
   throw_if_not_ok(domain->domain_->add_dimension(dim->copy_dimension()));
 
   return TILEDB_OK;

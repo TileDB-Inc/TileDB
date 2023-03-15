@@ -29,5 +29,7 @@
 #include "../dimension_api_internal.h"
 
 int main() {
+  std::string name("foo");
+  tiledb_dimension_handle_t x{name, tiledb::sm::Datatype::UINT32};
   return 0;
 }
