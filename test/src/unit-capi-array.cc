@@ -2414,7 +2414,6 @@ TEST_CASE_METHOD(
       REQUIRE(rc == TILEDB_ERR);
     }
   }
-
 }
 
 TEST_CASE_METHOD(
