@@ -43,8 +43,8 @@ int32_t tiledb_dimension_alloc(
     const void* dim_domain,
     const void* tile_extent,
     tiledb_dimension_t** dim) {
-  if (name == nullptr || name[0] == '\0') {
-    throw CAPIStatusException("Dimension must have a name");
+  if (name == nullptr) {
+    throw CAPIStatusException("Dimension name must not be NULL");
   }
   ensure_output_pointer_is_valid(dim);
   *dim = tiledb_dimension_handle_t::make_handle(
