@@ -125,20 +125,38 @@ void GroupDirectory::load() {
   // Some processing is also done here for things that don't depend on others.
   // List (in parallel) the root directory URIs
   tasks.emplace_back(tp_->execute([&]() {
-    root_dir_uris = list_root_dir_uris();
-    return Status::Ok();
+    try {
+      root_dir_uris = list_root_dir_uris();
+      return Status::Ok();
+    } catch (const StatusException& e) {
+      return e.extract_status();
+    } catch (const std::exception& e) {
+      return Status_GroupError(e.what());
+    }
   }));
 
   // Load (in parallel) the group metadata URIs
   tasks.emplace_back(tp_->execute([&]() {
-    load_group_meta_uris();
-    return Status::Ok();
+    try {
+      load_group_meta_uris();
+      return Status::Ok();
+    } catch (const StatusException& e) {
+      return e.extract_status();
+    } catch (const std::exception& e) {
+      return Status_GroupError(e.what());
+    }
   }));
 
   // Load (in paralell) the group details URIs
   tasks.emplace_back(tp_->execute([&] {
-    load_group_detail_uris();
-    return Status::Ok();
+    try {
+      load_group_detail_uris();
+      return Status::Ok();
+    } catch (const StatusException& e) {
+      return e.extract_status();
+    } catch (const std::exception& e) {
+      return Status_GroupError(e.what());
+    }
   }));
 
   // Wait for all tasks to complete
