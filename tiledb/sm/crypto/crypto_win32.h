@@ -128,7 +128,7 @@ class Win32CNG {
       const void* input,
       uint64_t input_read_size,
       Buffer* output,
-      LPCWSTR hash_algorithm);
+      BCRYPT_ALG_HANDLE hash_algorithm);
 
  private:
   /**

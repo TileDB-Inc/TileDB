@@ -296,69 +296,28 @@ Status Win32CNG::decrypt_aes256gcm(
 
 Status Win32CNG::md5(
     const void* input, uint64_t input_read_size, Buffer* output) {
-  return hash_bytes(input, input_read_size, output, BCRYPT_MD5_ALGORITHM);
+  return hash_bytes(input, input_read_size, output, BCRYPT_MD5_ALG_HANDLE);
 }
 
 Status Win32CNG::sha256(
     const void* input, uint64_t input_read_size, Buffer* output) {
-  return hash_bytes(input, input_read_size, output, BCRYPT_SHA256_ALGORITHM);
+  return hash_bytes(input, input_read_size, output, BCRYPT_SHA256_ALG_HANDLE);
 }
 
 Status Win32CNG::hash_bytes(
     const void* input,
     uint64_t input_read_size,
     Buffer* output,
-    LPCWSTR hash_algorithm) {
-  DWORD cbData = 0;
-
-  // open an algorithm handle
-  BCRYPT_ALG_HANDLE alg_handle;
-  if (!NT_SUCCESS(
-          BCryptOpenAlgorithmProvider(&alg_handle, hash_algorithm, NULL, 0))) {
-    return Status_ChecksumError(
-        "Win32CNG error; could not open of hash algorithm.");
-  }
-
-  // calculate the size of the buffer to hold the hash object
-  DWORD hash_size = 0;
-  if (!NT_SUCCESS(BCryptGetProperty(
-          alg_handle,
-          BCRYPT_OBJECT_LENGTH,
-          (PBYTE)&hash_size,
-          sizeof(DWORD),
-          &cbData,
-          0))) {
-    return Status_ChecksumError(
-        "Win32CNG error; could not get size of hash object.");
-  }
-
-  // allocate the hash object on the heap
-  tdb_unique_ptr<Buffer> hash_obj = tdb_unique_ptr<Buffer>(tdb_new(Buffer));
-  throw_if_not_ok(hash_obj->realloc(hash_size));
-
-  // create a hash
-  BCRYPT_HASH_HANDLE hash = NULL;
-  if (!NT_SUCCESS(BCryptCreateHash(
-          alg_handle,
-          &hash,
-          (PUCHAR)hash_obj->data(),
-          hash_size,
-          NULL,
+    BCRYPT_ALG_HANDLE hash_algorithm) {
+  if (!NT_SUCCESS(BCryptHash(
+          hash_algorithm,
+          nullptr,
           0,
-          0))) {
-    return Status_ChecksumError(
-        "Win32CNG error; could not create hash object.");
-  }
-
-  // hash some data
-  if (!NT_SUCCESS(BCryptHashData(hash, (PBYTE)input, input_read_size, 0))) {
+          (PBYTE)input,
+          input_read_size,
+          (PBYTE)output->data(),
+          output->alloced_size()))) {
     return Status_ChecksumError("Win32CNG error; could not hash data.");
-  }
-
-  // close the hash
-  if (!NT_SUCCESS(BCryptFinishHash(
-          hash, (PUCHAR)output->data(), output->alloced_size(), 0))) {
-    return Status_ChecksumError("Win32CNG error; could not close hash object.");
   }
 
   return Status::Ok();
