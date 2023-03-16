@@ -76,12 +76,12 @@ void Group::open(
     QueryType query_type, uint64_t timestamp_start, uint64_t timestamp_end) {
   // Checks
   if (is_open_) {
-    throw Status_GroupError("Cannot open group; Group already open");
+    throw GroupException("Cannot open group; Group already open");
   }
 
   if (query_type != QueryType::READ && query_type != QueryType::WRITE &&
       query_type != QueryType::MODIFY_EXCLUSIVE) {
-    throw Status_GroupError("Cannot open group; Unsupported query type");
+    throw GroupException("Cannot open group; Unsupported query type");
   }
 
   if (timestamp_end == UINT64_MAX) {
@@ -133,7 +133,7 @@ void Group::open(
   }
 
   if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
-    throw Status_GroupError(
+    throw GroupException(
         "Cannot open group; encrypted remote groups are not supported.");
 
   // Copy the key bytes.
@@ -146,7 +146,7 @@ void Group::open(
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr) {
-      throw Status_GroupError(
+      throw GroupException(
           "Cannot open group; remote group with no REST client.");
     }
 
@@ -164,7 +164,7 @@ void Group::open(
           timestamp_start,
           timestamp_end);
     } catch (const std::logic_error& le) {
-      throw Status_GroupDirectoryError(le.what());
+      throw GroupDirectoryException(le.what());
     }
 
     auto&& [st, group_details] = storage_manager_->group_open_for_reads(this);
@@ -183,7 +183,7 @@ void Group::open(
           (timestamp_end != 0) ? timestamp_end :
                                  utils::time::timestamp_now_ms());
     } catch (const std::logic_error& le) {
-      throw Status_GroupDirectoryError(le.what());
+      throw GroupDirectoryException(le.what());
     }
 
     auto&& [st, group_details] = storage_manager_->group_open_for_writes(this);
@@ -221,7 +221,7 @@ void Group::open(QueryType query_type) {
 void Group::close() {
   // Check if group is open
   if (!is_open_)
-    throw Status_GroupError("Cannot close group; Group not open.");
+    throw GroupException("Cannot close group; Group not open.");
 
   if (remote_) {
     // Update group metadata for write queries if metadata was written by the
@@ -234,7 +234,7 @@ void Group::close() {
         metadata_loaded_ = true;
         auto rest_client = storage_manager_->rest_client();
         if (rest_client == nullptr)
-          throw Status_GroupError(
+          throw GroupException(
               "Error closing group; remote group with no REST client.");
         throw_if_not_ok(
             rest_client->put_group_metadata_to_rest(group_uri_, this));
@@ -242,7 +242,7 @@ void Group::close() {
       if (!members_to_modify().empty()) {
         auto rest_client = storage_manager_->rest_client();
         if (rest_client == nullptr)
-          throw Status_GroupError(
+          throw GroupException(
               "Error closing group; remote group with no REST client.");
         throw_if_not_ok(rest_client->patch_group_to_rest(group_uri_, this));
       }
@@ -288,8 +288,7 @@ const shared_ptr<GroupDetails> Group::group_details() const {
 QueryType Group::query_type_checked() const {
   // Error if the group is not open
   if (!is_open_)
-    throw LOG_STATUS(
-        Status_GroupError("Cannot get query_type; Group is not open"));
+    throw GroupException("Cannot get query_type; Group is not open");
 
   return query_type_;
 }
@@ -343,18 +342,18 @@ void Group::delete_group(const URI& uri, bool recursive) {
 void Group::delete_metadata(const char* key) {
   // Check if group is open
   if (!is_open_)
-    throw Status_GroupError("Cannot delete metadata. Group is not open");
+    throw GroupException("Cannot delete metadata. Group is not open");
 
   // Check mode
   if (query_type_ != QueryType::WRITE &&
       query_type_ != QueryType::MODIFY_EXCLUSIVE)
-    throw Status_GroupError(
+    throw GroupException(
         "Cannot delete metadata. Group was "
         "not opened in write or modify_exclusive mode");
 
   // Check if key is null
   if (key == nullptr)
-    throw Status_GroupError("Cannot delete metadata. Key cannot be null");
+    throw GroupException("Cannot delete metadata. Key cannot be null");
 
   throw_if_not_ok(metadata_.del(key));
 }
@@ -366,22 +365,22 @@ void Group::put_metadata(
     const void* value) {
   // Check if group is open
   if (!is_open_)
-    throw Status_GroupError("Cannot put metadata; Group is not open");
+    throw GroupException("Cannot put metadata; Group is not open");
 
   // Check mode
   if (query_type_ != QueryType::WRITE &&
       query_type_ != QueryType::MODIFY_EXCLUSIVE)
-    throw Status_GroupError(
+    throw GroupException(
         "Cannot put metadata; Group was "
         "not opened in write or modify_exclusive mode");
 
   // Check if key is null
   if (key == nullptr)
-    throw Status_GroupError("Cannot put metadata; Key cannot be null");
+    throw GroupException("Cannot put metadata; Key cannot be null");
 
   // Check if value type is ANY
   if (value_type == Datatype::ANY)
-    throw Status_GroupError("Cannot put metadata; Value type cannot be ANY");
+    throw GroupException("Cannot put metadata; Value type cannot be ANY");
 
   throw_if_not_ok(metadata_.put(key, value_type, value_num, value));
 }
@@ -393,17 +392,17 @@ void Group::get_metadata(
     const void** value) {
   // Check if group is open
   if (!is_open_)
-    throw Status_GroupError("Cannot get metadata; Group is not open");
+    throw GroupException("Cannot get metadata; Group is not open");
 
   // Check mode
   if (query_type_ != QueryType::READ)
-    throw Status_GroupError(
+    throw GroupException(
         "Cannot get metadata; Group was "
         "not opened in read mode");
 
   // Check if key is null
   if (key == nullptr)
-    throw Status_GroupError("Cannot get metadata; Key cannot be null");
+    throw GroupException("Cannot get metadata; Key cannot be null");
 
   // Load group metadata, if not loaded yet
   if (!metadata_loaded_)
@@ -421,11 +420,11 @@ void Group::get_metadata(
     const void** value) {
   // Check if group is open
   if (!is_open_)
-    throw Status_GroupError("Cannot get metadata; Group is not open");
+    throw GroupException("Cannot get metadata; Group is not open");
 
   // Check mode
   if (query_type_ != QueryType::READ)
-    throw Status_GroupError(
+    throw GroupException(
         "Cannot get metadata; Group was "
         "not opened in read mode");
 
@@ -440,11 +439,11 @@ void Group::get_metadata(
 uint64_t Group::metadata_num() {
   // Check if group is open
   if (!is_open_)
-    throw Status_GroupError("Cannot get number of metadata; Group is not open");
+    throw GroupException("Cannot get number of metadata; Group is not open");
 
   // Check mode
   if (query_type_ != QueryType::READ)
-    throw Status_GroupError(
+    throw GroupException(
         "Cannot get number of metadata; Group was "
         "not opened in read mode");
 
@@ -458,17 +457,17 @@ uint64_t Group::metadata_num() {
 bool Group::has_metadata_key(const char* key, Datatype* value_type) {
   // Check if group is open
   if (!is_open_)
-    throw Status_GroupError("Cannot get metadata; Group is not open");
+    throw GroupException("Cannot get metadata; Group is not open");
 
   // Check mode
   if (query_type_ != QueryType::READ)
-    throw Status_GroupError(
+    throw GroupException(
         "Cannot get metadata; Group was "
         "not opened in read mode");
 
   // Check if key is null
   if (key == nullptr)
-    throw Status_GroupError("Cannot get metadata; Key cannot be null");
+    throw GroupException("Cannot get metadata; Key cannot be null");
 
   // Load group metadata, if not loaded yet
   if (!metadata_loaded_) {
@@ -542,13 +541,13 @@ void Group::mark_member_for_addition(
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
-    throw Status_GroupError("Cannot add member; Group is not open");
+    throw GroupException("Cannot add member; Group is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::WRITE &&
       query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    throw Status_GroupError(
+    throw GroupException(
         "Cannot get member; Group was not opened in write or modify_exclusive "
         "mode");
   }
@@ -564,14 +563,13 @@ void Group::mark_member_for_removal(const std::string& uri) {
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
-    throw Status_GroupError(
-        "Cannot mark member for removal; Group is not open");
+    throw GroupException("Cannot mark member for removal; Group is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::WRITE &&
       query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    throw Status_GroupError(
+    throw GroupException(
         "Cannot get member; Group was not opened in write or modify_exclusive "
         "mode");
   }
@@ -620,12 +618,12 @@ uint64_t Group::member_count() const {
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
-    throw Status_GroupError("Cannot get member count; Group is not open");
+    throw GroupException("Cannot get member count; Group is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    throw Status_GroupError(
+    throw GroupException(
         "Cannot get member; Group was not opened in read mode");
   }
 
@@ -638,12 +636,12 @@ tuple<std::string, ObjectType, optional<std::string>> Group::member_by_index(
 
   // Check if group is open
   if (!is_open_) {
-    throw Status_GroupError("Cannot get member by index; Group is not open");
+    throw GroupException("Cannot get member by index; Group is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    throw Status_GroupError(
+    throw GroupException(
         "Cannot get member; Group was not opened in read mode");
   }
 
@@ -656,12 +654,12 @@ Group::member_by_name(const std::string& name) {
 
   // Check if group is open
   if (!is_open_) {
-    throw Status_GroupError("Cannot get member by name; Group is not open");
+    throw GroupException("Cannot get member by name; Group is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    throw Status_GroupError(
+    throw GroupException(
         "Cannot get member; Group was not opened in read mode");
   }
 
@@ -726,7 +724,7 @@ void Group::load_metadata() {
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
-      throw Status_GroupError(
+      throw GroupException(
           "Cannot load metadata; remote group with no REST client.");
     throw_if_not_ok(
         rest_client->post_group_metadata_from_rest(group_uri_, this));

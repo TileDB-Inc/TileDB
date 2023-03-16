@@ -110,9 +110,10 @@ void GroupDetails::mark_member_for_addition(
         group_uri_.join_path(group_member_uri.to_string());
   }
   ObjectType type = ObjectType::INVALID;
-  throw_if_not_ok(storage_manager->object_type(absolute_group_member_uri, &type));
+  throw_if_not_ok(
+      storage_manager->object_type(absolute_group_member_uri, &type));
   if (type == ObjectType::INVALID) {
-    throw Status_GroupError(
+    throw GroupException(
         "Cannot add group member " + absolute_group_member_uri.to_string() +
         ", type is INVALID. The member likely does not exist.");
   }
@@ -162,7 +163,7 @@ void GroupDetails::mark_member_for_removal(const std::string& uri) {
           true);
       members_to_modify_.emplace_back(member_to_delete);
     } else {
-      throw Status_GroupError(
+      throw GroupException(
           "Cannot remove group member " + uri +
           ", member does not exist in group.");
     }
@@ -182,7 +183,7 @@ GroupDetails::members() const {
 }
 
 void GroupDetails::serialize(Serializer&) {
-  throw StatusException(Status_GroupError("Invalid call to Group::serialize"));
+  throw GroupException("Invalid call to Group::serialize");
 }
 
 std::optional<shared_ptr<GroupDetails>> GroupDetails::deserialize(
@@ -195,8 +196,7 @@ std::optional<shared_ptr<GroupDetails>> GroupDetails::deserialize(
     return GroupDetailsV2::deserialize(deserializer, group_uri);
   }
 
-  throw StatusException(Status_GroupError(
-      "Unsupported group version " + std::to_string(version)));
+  throw GroupException("Unsupported group version " + std::to_string(version));
 }
 
 std::optional<shared_ptr<GroupDetails>> GroupDetails::deserialize(
@@ -225,7 +225,7 @@ GroupDetails::member_by_index(uint64_t index) {
   std::lock_guard<std::mutex> lck(mtx_);
 
   if (index >= members_vec_.size()) {
-    throw Status_GroupError(
+    throw GroupException(
         "index " + std::to_string(index) + " is larger than member count " +
         std::to_string(members_vec_.size()));
   }
@@ -246,7 +246,7 @@ GroupDetails::member_by_name(const std::string& name) {
 
   auto it = members_by_name_.find(name);
   if (it == members_by_name_.end()) {
-    throw Status_GroupError(name + " does not exist in group");
+    throw GroupException(name + " does not exist in group");
   }
 
   auto member = it->second;

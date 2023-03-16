@@ -125,38 +125,20 @@ void GroupDirectory::load() {
   // Some processing is also done here for things that don't depend on others.
   // List (in parallel) the root directory URIs
   tasks.emplace_back(tp_->execute([&]() {
-    try {
-      root_dir_uris = list_root_dir_uris();
-      return Status::Ok();
-    } catch (const StatusException& e) {
-      return e.extract_status();
-    } catch (const std::exception& e) {
-      return Status_GroupError(e.what());
-    }
+    root_dir_uris = list_root_dir_uris();
+    return Status::Ok();
   }));
 
   // Load (in parallel) the group metadata URIs
   tasks.emplace_back(tp_->execute([&]() {
-    try {
-      load_group_meta_uris();
-      return Status::Ok();
-    } catch (const StatusException& e) {
-      return e.extract_status();
-    } catch (const std::exception& e) {
-      return Status_GroupError(e.what());
-    }
+    load_group_meta_uris();
+    return Status::Ok();
   }));
 
-  // Load (in paralell) the group details URIs
+  // Load (in parallel) the group details URIs
   tasks.emplace_back(tp_->execute([&] {
-    try {
-      load_group_detail_uris();
-      return Status::Ok();
-    } catch (const StatusException& e) {
-      return e.extract_status();
-    } catch (const std::exception& e) {
-      return Status_GroupError(e.what());
-    }
+    load_group_detail_uris();
+    return Status::Ok();
   }));
 
   // Wait for all tasks to complete
@@ -176,8 +158,7 @@ void GroupDirectory::load() {
   }
 
   if (!is_group) {
-    throw Status_GroupDirectoryError(
-        "Cannot open group; Group does not exist.");
+    throw GroupDirectoryException("Cannot open group; Group does not exist.");
   }
 
   // The URI manager has been loaded successfully

@@ -83,7 +83,7 @@ Status GroupMetaConsolidator::consolidate(
   Group group_for_writes(group_uri, storage_manager_);
   try {
     group_for_writes.open(QueryType::WRITE);
-  } catch (const std::exception&) {
+  } catch (...) {
     group_for_reads.close();
     throw;
   }
@@ -95,7 +95,7 @@ Status GroupMetaConsolidator::consolidate(
   try {
     metadata_r = group_for_reads.metadata();
     metadata_w = group_for_writes.metadata();
-  } catch (const std::exception&) {
+  } catch (...) {
     group_for_reads.close();
     group_for_writes.close();
     throw;
@@ -125,7 +125,7 @@ Status GroupMetaConsolidator::consolidate(
   // Close groups
   try {
     group_for_reads.close();
-  } catch (const std::exception&) {
+  } catch (...) {
     group_for_writes.close();
     throw;
   }
@@ -164,7 +164,7 @@ void GroupMetaConsolidator::vacuum(const char* group_name) {
         0,
         std::numeric_limits<uint64_t>::max());
   } catch (const std::logic_error& le) {
-    throw Status_GroupDirectoryError(le.what());
+    throw GroupDirectoryException(le.what());
   }
 
   // Delete the group metadata and vacuum files
