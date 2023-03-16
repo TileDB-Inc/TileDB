@@ -410,6 +410,14 @@ Status DenseReader::dense_read() {
     var_buffer_sizes.emplace(name, 0);
   }
 
+  /**
+   * The compute task is used to let the compute work happen while we reach the
+   * next read. There should ever be only one compute task at any given time and
+   * we wait for it to finish before we start any other piece of compute work.
+   * This is as far as we should go before implementing this properly in a task
+   * graph, where the start and end of every piece of work can clearly be
+   * identified.
+   */
   ThreadPool::Task compute_task;
   while (t_end < tile_coords.size()) {
     stats_->add_counter("internal_loop_num", 1);
