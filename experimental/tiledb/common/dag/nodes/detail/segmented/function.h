@@ -240,6 +240,7 @@ class function_node_impl : public node_base,
         auto pull_state = sink_mover->port_pull();
 
         if (sink_mover->is_done()) {
+          this->program_counter_ = 999;
           return source_mover->port_exhausted();
           break;
         } else {
@@ -334,6 +335,9 @@ auto post_state = sink_mover->state();
       }
         [[fallthrough]];
 
+      case 999: {
+        return scheduler_event_type::done;
+      }
       default: {
         break;
       }
