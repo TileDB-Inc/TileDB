@@ -911,7 +911,7 @@ TEST_CASE_METHOD(
       subarray, data.data(), &data_size, offsets.data(), &offsets_size);
 
   // Each tiles are 91 and 100 bytes respectively, this will only allow to
-  // load one.
+  // load one as the budget is split across two potential reads.
   tile_upper_memory_limit_ = "210";
   update_config();
 
@@ -953,7 +953,7 @@ TEST_CASE_METHOD(
       subarray, data.data(), &data_size, offsets.data(), &offsets_size);
 
   // Each tiles are 91 and 100 bytes respectively, this will only allow to
-  // load one.
+  // load one as the budget is split across two potential reads.
   total_budget_ = "460";
   tile_upper_memory_limit_ = "210";
   update_config();
@@ -1053,7 +1053,8 @@ TEST_CASE_METHOD(
       &a2_offsets_size);
 
   // Each var tiles are 91 and 100 bytes respectively, this will only allow to
-  // load one. Fixed tiles are both 40 so they both fit in the budget.
+  // load one as the budget is split across two potential reads. Fixed tiles are
+  // both 40 so they both fit in the budget.
   total_budget_ = "660";
   tile_upper_memory_limit_ = "210";
   update_config();
@@ -1169,7 +1170,8 @@ TEST_CASE_METHOD(
       &a2_offsets_size);
 
   // Each var tiles are 91 and 100 bytes respectively, this will only allow to
-  // load one. Fixed tiles are both 40 so they both fit in the budget.
+  // load one as the budget is split across two potential reads. Fixed tiles are
+  // both 40 so they both fit in the budget.
   total_budget_ = "640";
   tile_upper_memory_limit_ = "210";
   update_config();

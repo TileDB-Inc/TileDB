@@ -795,7 +795,11 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
   return {t_end, result_tiles};
 }
 
-/** Apply the query condition. */
+/**
+ * Apply the query condition. The computation will be pushed on the compute
+ * thread pool in `compute_task`. Callers should wait on this task before using
+ * the results of the query condition.
+ */
 template <class DimType, class OffType>
 Status DenseReader::apply_query_condition(
     ThreadPool::Task& compute_task,
