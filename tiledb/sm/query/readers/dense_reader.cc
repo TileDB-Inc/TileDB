@@ -410,15 +410,25 @@ Status DenseReader::dense_read() {
     var_buffer_sizes.emplace(name, 0);
   }
 
-  /**
-   * The compute task is used to let the compute work happen while we reach the
-   * next read. There should ever be only one compute task at any given time and
-   * we wait for it to finish before we start any other piece of compute work.
-   * This is as far as we should go before implementing this properly in a task
-   * graph, where the start and end of every piece of work can clearly be
-   * identified.
-   */
+  // The compute task is used to let the compute work happen while we reach the
+  // next read. There should ever be only one compute task at any given time and
+  // we wait for it to finish before we start any other piece of compute work.
+  // This is as far as we should go before implementing this properly in a task
+  // graph, where the start and end of every piece of work can clearly be
+  // identified.
   ThreadPool::Task compute_task;
+
+  // Most of the computations in this loop are moved to a seperate thread so
+  // that we can reach the next batch of tiles while processing the current one.
+  // for all tiles:
+  //   if not enough memory:
+  //     wait(compute_task)
+  //   read qc attributes
+  //   wait(compute_task)
+  //   compute_task = proccess qc attributes
+  //   read all attributes
+  //   wait(compute_task)
+  //   compute_task = proccess all attributes
   while (t_end < tile_coords.size()) {
     stats_->add_counter("internal_loop_num", 1);
 
@@ -676,8 +686,10 @@ void DenseReader::init_read_state() {
 }
 
 /**
- * Compute the maximum tile coords that we can process on this itereation to
- * respect the memory budget.
+ * Compute the maximum tile coords that we can process on this iteration to
+ * respect the memory budget. If the available memory is less than the tile
+ * upper memory limit, waits for compute task to complete before proceeding to
+ * the new iteration.
  */
 template <class DimType>
 tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
