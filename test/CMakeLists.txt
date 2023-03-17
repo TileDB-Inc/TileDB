@@ -28,24 +28,6 @@
 
 find_package(Catch_EP REQUIRED)
 
-# Expose the git commit hash to test support library.
-execute_process(
-        COMMAND git rev-parse HEAD
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        OUTPUT_VARIABLE TILEDB_GIT_COMMIT_HASH
-        OUTPUT_STRIP_TRAILING_WHITESPACE)
-target_compile_definitions(tiledb_test_support_lib PUBLIC -DTILEDB_GIT_COMMIT_HASH="${TILEDB_GIT_COMMIT_HASH}")
-
-if (TILEDB_TESTS_AWS_S3_CONFIG)
-  message(STATUS "Tests built with AWS S3 config")
-  target_compile_definitions(tiledb_test_support_lib PUBLIC -DTILEDB_TESTS_AWS_S3_CONFIG)
-endif()
-
-if (TILEDB_TESTS_ENABLE_REST)
-  message(STATUS "REST unit tests enabled")
-  target_compile_definitions(tiledb_test_support_lib PUBLIC -DTILEDB_TESTS_ENABLE_REST)
-endif()
-
 # Arrow integration test config and dependencies
 # Override from environment if not set in cache
 if (NOT DEFINED $CACHE{TILEDB_ARROW_TESTS})
@@ -328,6 +310,15 @@ if (TILEDB_HDFS)
   target_include_directories(tiledb_unit PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
     )
+endif()
+
+if (TILEDB_TESTS_AWS_S3_CONFIG)
+  message(STATUS "Tests built with AWS S3 config")
+  target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_AWS_S3_CONFIG)
+endif()
+
+if (TILEDB_TESTS_ENABLE_REST)
+  target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_ENABLE_REST)
 endif()
 
 if (TILEDB_SERIALIZATION)

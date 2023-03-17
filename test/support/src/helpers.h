@@ -84,21 +84,6 @@ static tiledb::sm::stats::Stats g_helper_stats("test");
 // objects that require a parent `Logger` object.
 shared_ptr<Logger> g_helper_logger(void);
 
-// Test start timestamp in ms. This will not update for-each test.
-static uint64_t time(TILEDB_TIMESTAMP_NOW_MS);
-
-#ifdef TILEDB_TESTS_ENABLE_REST
-constexpr bool rest_tests_enabled = true;
-#else
-constexpr bool rest_tests_enabled = false;
-#endif
-
-#ifdef TILEDB_TESTS_AWS_S3_CONFIG
-constexpr bool aws_s3_config = true;
-#else
-constexpr bool aws_s3_config = false;
-#endif
-
 const std::string& get_temp_path();
 
 // For easy reference
@@ -522,16 +507,6 @@ void open_array(tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t);
  * @return A random bucket name.
  */
 std::string random_name(const std::string& prefix);
-
-/**
- * Returns a path, with UTC date in the format 'YYYY-MM-DD' as the top level
- * directory, followed by the 'test_name' as a nested directory. This path is
- * then suffixed with the timestamp in MS of when the test suite was invoked.
- *
- * @param test_name The name of the test being invoked.
- * @return Path to test data that can be reused between tiledb_unit invocations.
- */
-std::string test_dir(const std::string& test_name);
 
 /**
  * Helper method that removes a directory.

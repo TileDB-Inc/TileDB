@@ -998,15 +998,6 @@ std::string random_name(const std::string& prefix) {
   return ss.str();
 }
 
-std::string test_dir(const std::string& test_name) {
-  std::time_t today =
-      std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-  std::stringstream ss;
-  ss << std::put_time(std::gmtime(&today), "%F") << "/" << test_name << "/"
-     << tiledb::test::time << "/";
-  return ss.str();
-}
-
 void remove_dir(const std::string& path, tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   int is_dir = 0;
   REQUIRE(tiledb_vfs_is_dir(ctx, vfs, path.c_str(), &is_dir) == TILEDB_OK);
