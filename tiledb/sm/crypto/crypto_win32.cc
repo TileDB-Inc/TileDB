@@ -49,6 +49,7 @@
 // under the MIT or Apache 2.0 licenses.
 #define BCRYPT_MD5_ALG_HANDLE 0x00000021
 #define BCRYPT_SHA256_ALG_HANDLE 0x00000041
+#define BCRYPT_AES_GCM_ALG_HANDLE 0x000001e1
 #endif
 
 using namespace tiledb::common;
@@ -108,24 +109,6 @@ Status Win32CNG::encrypt_aes256gcm(
   // Copy IV to output arg.
   std::memcpy(output_iv->cur_data(), iv_buf, iv_len);
 
-  // Initialize algorithm.
-  BCRYPT_ALG_HANDLE alg_handle;
-  if (!NT_SUCCESS(BCryptOpenAlgorithmProvider(
-          &alg_handle, BCRYPT_AES_ALGORITHM, nullptr, 0))) {
-    return LOG_STATUS(Status_EncryptionError(
-        "Win32CNG error; error opening algorithm provider."));
-  }
-  if (!NT_SUCCESS(BCryptSetProperty(
-          alg_handle,
-          BCRYPT_CHAINING_MODE,
-          (PUCHAR)BCRYPT_CHAIN_MODE_GCM,
-          sizeof(BCRYPT_CHAIN_MODE_GCM),
-          0))) {
-    BCryptCloseAlgorithmProvider(alg_handle, 0);
-    return LOG_STATUS(
-        Status_EncryptionError("Win32CNG error; error setting chaining mode."));
-  }
-
   // Initialize authentication info struct.
   BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO auth_info;
   BCRYPT_INIT_AUTH_MODE_INFO(auth_info);
@@ -154,7 +137,7 @@ Status Win32CNG::encrypt_aes256gcm(
 
   BCRYPT_KEY_HANDLE key_handle;
   if (!NT_SUCCESS(BCryptImportKey(
-          alg_handle,
+          BCRYPT_AES_GCM_ALG_HANDLE,
           nullptr,
           BCRYPT_KEY_DATA_BLOB,
           &key_handle,
@@ -163,7 +146,6 @@ Status Win32CNG::encrypt_aes256gcm(
           (unsigned char*)key_buffer.data(),
           key_buffer.size(),
           0))) {
-    BCryptCloseAlgorithmProvider(alg_handle, 0);
     return LOG_STATUS(
         Status_EncryptionError("Win32CNG error; error importing key blob."));
   }
@@ -182,7 +164,6 @@ Status Win32CNG::encrypt_aes256gcm(
           &output_len,
           0))) {
     BCryptDestroyKey(key_handle);
-    BCryptCloseAlgorithmProvider(alg_handle, 0);
     return LOG_STATUS(
         Status_EncryptionError("Win32CNG error; error encrypting."));
   }
@@ -192,7 +173,6 @@ Status Win32CNG::encrypt_aes256gcm(
 
   // Clean up.
   BCryptDestroyKey(key_handle);
-  BCryptCloseAlgorithmProvider(alg_handle, 0);
 
   return Status::Ok();
 }
@@ -211,24 +191,6 @@ Status Win32CNG::decrypt_aes256gcm(
   } else if (output->size() < required_space) {
     return LOG_STATUS(Status_EncryptionError(
         "Win32CNG error; cannot decrypt: output buffer too small."));
-  }
-
-  // Initialize algorithm.
-  BCRYPT_ALG_HANDLE alg_handle;
-  if (!NT_SUCCESS(BCryptOpenAlgorithmProvider(
-          &alg_handle, BCRYPT_AES_ALGORITHM, nullptr, 0))) {
-    return LOG_STATUS(Status_EncryptionError(
-        "Win32CNG error; error opening algorithm provider."));
-  }
-  if (!NT_SUCCESS(BCryptSetProperty(
-          alg_handle,
-          BCRYPT_CHAINING_MODE,
-          (PUCHAR)BCRYPT_CHAIN_MODE_GCM,
-          sizeof(BCRYPT_CHAIN_MODE_GCM),
-          0))) {
-    BCryptCloseAlgorithmProvider(alg_handle, 0);
-    return LOG_STATUS(
-        Status_EncryptionError("Win32CNG error; error setting chaining mode."));
   }
 
   // Initialize authentication info struct.
@@ -259,7 +221,7 @@ Status Win32CNG::decrypt_aes256gcm(
 
   BCRYPT_KEY_HANDLE key_handle;
   if (!NT_SUCCESS(BCryptImportKey(
-          alg_handle,
+          BCRYPT_AES_GCM_ALG_HANDLE,
           nullptr,
           BCRYPT_KEY_DATA_BLOB,
           &key_handle,
@@ -268,7 +230,6 @@ Status Win32CNG::decrypt_aes256gcm(
           (unsigned char*)key_buffer.data(),
           key_buffer.size(),
           0))) {
-    BCryptCloseAlgorithmProvider(alg_handle, 0);
     return LOG_STATUS(
         Status_EncryptionError("Win32CNG error; error importing key blob."));
   }
@@ -287,7 +248,6 @@ Status Win32CNG::decrypt_aes256gcm(
           &output_len,
           0))) {
     BCryptDestroyKey(key_handle);
-    BCryptCloseAlgorithmProvider(alg_handle, 0);
     return LOG_STATUS(
         Status_EncryptionError("Win32CNG error; error decrypting."));
   }
@@ -298,7 +258,6 @@ Status Win32CNG::decrypt_aes256gcm(
 
   // Clean up.
   BCryptDestroyKey(key_handle);
-  BCryptCloseAlgorithmProvider(alg_handle, 0);
 
   return Status::Ok();
 }
