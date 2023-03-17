@@ -471,7 +471,7 @@ TEMPLATE_TEST_CASE(
 
 TEMPLATE_TEST_CASE(
     "Run Passing Integers",
-    "[duffs]",
+    "[random]",
     (std::tuple<C2, F2, P2>),
     (std::tuple<C3, F3, P3>)) {
   using C = typename std::tuple_element<0, TestType>::type;

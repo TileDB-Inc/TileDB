@@ -1,11 +1,11 @@
 /**
- * @file   bounded_buffer.cc
+ * @file unit_randomized_queue.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,9 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
- *
-  */
-#include "bounded_buffer.h"
+ */
+
+#ifndef TILEDB_UNIT_RANDOMIZED_QUEUE_H
+#define TILEDB_UNIT_RANDOMIZED_QUEUE_H
+#include <test/support/tdb_catch.h>
+#endif  // TILEDB_UNIT_RANDOMIZED_QUEUE_H

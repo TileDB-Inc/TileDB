@@ -585,9 +585,9 @@ class RandomSchedulerImpl : public Base<Task, RandomSchedulerImpl<Task, Base>> {
         /*
          * Invoke the node's `resume` function.
          */
-        //lock.unlock();
+        lock.unlock();
         [[ maybe_unused ]] auto evt = task_to_run->resume();
-        //lock.lock();
+        lock.lock();
         if (evt == SchedulerAction::done) {
           ++num_exited_tasks_;
           task_to_run->task_state() = TaskState::terminated;

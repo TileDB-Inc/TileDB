@@ -81,6 +81,7 @@
 #include "experimental/tiledb/common/dag/execution/bountiful.h"
 #include "experimental/tiledb/common/dag/execution/duffs.h"
 #include "experimental/tiledb/common/dag/execution/frugal.h"
+#include "experimental/tiledb/common/dag/execution/random.h"
 #include "experimental/tiledb/common/dag/execution/throw_catch.h"
 #include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
 
@@ -622,6 +623,30 @@ int main(int argc, char* argv[]) {
       } else if (stages == 3) {
         auto t1 = timer_2(
             sieve_async_block<DuffsScheduler<node>, DuffsMover3, char>,
+            number,
+            block_size * 1024,
+            width,
+            reverse_order,
+            grouped,
+            true, /* use_futures */
+            false);
+        log(t1);
+      }
+    }else if (scheduler == "random") {
+      if (stages == 2) {
+        auto t1 = timer_2(
+            sieve_async_block<RandomScheduler<node>, RandomMover2, char>,
+            number,
+            block_size * 1024,
+            width,
+            reverse_order,
+            grouped,
+            true, /* use_futures */
+            false);
+        log(t1);
+      } else if (stages == 3) {
+        auto t1 = timer_2(
+            sieve_async_block<RandomScheduler<node>, RandomMover3, char>,
             number,
             block_size * 1024,
             width,
