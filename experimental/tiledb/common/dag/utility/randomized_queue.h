@@ -40,7 +40,6 @@
 #include <optional>
 #include <random>
 
-
 namespace tiledb::common {
 
 template <class Item>
@@ -151,13 +150,11 @@ class RandomizedQueue {
   }
 
  private:
-
   void shuffle_items() {
     std::random_device rd;
     std::mt19937 g(rd());
     std::shuffle(items_.begin(), items_.end(), g);
   }
-
 
   std::vector<Item> items_;
   std::condition_variable empty_cv_;
@@ -166,7 +163,6 @@ class RandomizedQueue {
   std::atomic<bool> draining_{false};
   std::atomic<bool> shutdown_{false};
 };
-
 
 }  // namespace tiledb::common
 

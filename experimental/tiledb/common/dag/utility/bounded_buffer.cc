@@ -27,5 +27,5 @@
  *
  * @section DESCRIPTION
  *
-  */
+ */
 #include "bounded_buffer.h"

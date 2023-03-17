@@ -1,33 +1,33 @@
 /**
-* @file unit_random.cc
-*
-* @section LICENSE
-*
-* The MIT License
-*
-* @copyright Copyright (c) 2022 TileDB, Inc.
-*
-* Permission is hereby granted, free of charge, to any person obtaining a copy
-* of this software and associated documentation files (the "Software"), to deal
-* in the Software without restriction, including without limitation the rights
-* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the Software is
-* furnished to do so, subject to the following conditions:
-*
-* The above copyright notice and this permission notice shall be included in
-* all copies or substantial portions of the Software.
-*
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-* THE SOFTWARE.
-*
-* @section DESCRIPTION
-*
-*/
+ * @file unit_random.cc
+ *
+ * @section LICENSE
+ *
+ * The MIT License
+ *
+ * @copyright Copyright (c) 2022 TileDB, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ */
 
 #include "unit_random.h"
 #include "../random.h"
@@ -57,7 +57,6 @@ TEST_CASE("Construct functions", "[random]") {
   auto f = F2([](const size_t& i) { return i; });
   auto c = C2([](const size_t&) {});
 }
-
 
 TEST_CASE("Resume functions", "[random]") {
   auto p = P2([](std::stop_source&) { return 0; });
@@ -137,7 +136,6 @@ TEST_CASE("Resume functions", "[random]") {
     CHECK(f->get_program_counter() == 0);
     CHECK(str(x) == "sink_wait");
   }
-
 
   SECTION("Emulate Passing Datum") {
     CHECK(p->get_program_counter() == 0);
@@ -284,11 +282,13 @@ TEST_CASE("Resume functions", "[random]") {
 
   SECTION("Emulate Pulling Data, with Some Blocking") {
     auto z = c->resume();  // pull
-    CHECK(c->get_program_counter() == 0); // wait decrements the program counter
+    CHECK(
+        c->get_program_counter() == 0);  // wait decrements the program counter
     CHECK(str(z) == "sink_wait");
 
     auto y = f->resume();  // pull
-    CHECK(c->get_program_counter() == 0); // wait decrements the program counter
+    CHECK(
+        c->get_program_counter() == 0);  // wait decrements the program counter
     CHECK(str(z) == "sink_wait");
 
     // Inject datum
@@ -355,14 +355,12 @@ TEMPLATE_TEST_CASE(
   auto g = F([](const size_t& i) { return i; });
   auto c = C([](const size_t&) {});
 
-
   SECTION("Producer and Consumer, submit") {
     connect(p, c);
     Edge(*p, *c);
     sched.submit(p);
     sched.submit(c);
   }
-
 
   SECTION("Producer, Function, and Consumer, submit") {
     connect(p, f);
@@ -468,7 +466,6 @@ TEMPLATE_TEST_CASE(
   }
 }
 
-
 TEMPLATE_TEST_CASE(
     "Run Passing Integers",
     "[random]",
@@ -499,18 +496,14 @@ TEMPLATE_TEST_CASE(
   }
 
   auto p = P([problem_size, &sched, &i, &input](std::stop_source& stop_source) {
-
     if (std::distance(input.begin(), i) >= static_cast<long>(problem_size)) {
-
       stop_source.request_stop();
       return *(input.begin()) + 1;
     }
 
     return (*i++) + 1;
   });
-  auto f = F([&sched](std::size_t k) {
-    return k - 1;
-  });
+  auto f = F([&sched](std::size_t k) { return k - 1; });
 
   auto c = C([&j, &output, &debug](std::size_t k) {
     if (debug)

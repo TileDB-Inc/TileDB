@@ -372,7 +372,8 @@ template <
     template <class>
     class SinkMover,
     class BlockIn,
-    template <class> class SourceMover,
+    template <class>
+    class SourceMover,
     class BlockOut>
 struct function_node
     : public std::shared_ptr<

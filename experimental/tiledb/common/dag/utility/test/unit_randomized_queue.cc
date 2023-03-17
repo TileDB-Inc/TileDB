@@ -51,8 +51,6 @@ struct foo<T, RandomizedQueue<T>> {
   }
 };
 
-
-
 TEMPLATE_TEST_CASE(
     "RandomizedQueue: RandomizedQueue::try_push",
     "[randomized queue]",
@@ -86,7 +84,6 @@ TEMPLATE_TEST_CASE(
 
   CHECK(a.try_push(6) == true);
   CHECK(a.try_push(7) == true);
-
 
   CHECK(a.size() == expected_size);
 
@@ -123,7 +120,7 @@ TEMPLATE_TEST_CASE(
   std::iota(begin(elements), end(elements), 0);
 
   auto a = foo<size_t, TestType>::make(num_elements);
-  for (auto&& e: elements) {
+  for (auto&& e : elements) {
     CHECK(a.push(e) == true);
   }
   for (auto& e : check) {
@@ -134,8 +131,6 @@ TEMPLATE_TEST_CASE(
   std::sort(begin(check), end(check));
   CHECK(std::equal(begin(check), end(check), begin(elements)));
 }
-
-
 
 TEMPLATE_TEST_CASE(
     "RandomizedQueue: RandomizedQueue::push and RandomizedQueue::pop async",

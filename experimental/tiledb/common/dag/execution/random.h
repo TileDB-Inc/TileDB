@@ -89,8 +89,8 @@ namespace tiledb::common {
  */
 template <class Mover, class PortState = typename Mover::PortState>
 class RandomPortPolicy : public PortFiniteStateMachine<
-                            RandomPortPolicy<Mover, PortState>,
-                            PortState> {
+                             RandomPortPolicy<Mover, PortState>,
+                             PortState> {
   using state_machine_type =
       PortFiniteStateMachine<RandomPortPolicy<Mover, PortState>, PortState>;
   using lock_type = typename state_machine_type::lock_type;
@@ -188,7 +188,6 @@ class RandomPortPolicy : public PortFiniteStateMachine<
     // return scheduler_event_type::sink_exit; ?? noop ?? yield ??
     return scheduler_event_type::noop;
   }
-
 };
 
 /**
@@ -219,7 +218,6 @@ struct SchedulerTraits<RandomSchedulerPolicy<Task, Scheduler>> {
   using task_type = typename task_handle_type::element_type;
 };
 
-
 /**
  * @brief Defines actions for scheduler state transitions.
  *
@@ -234,13 +232,11 @@ class RandomSchedulerPolicy {
   using task_handle_type = task_handle_t<Task>;
 
  private:
-
   class thread_pool {
     scheduler_type* scheduler_;
     size_t concurrency_level_{0};
 
    public:
-
     explicit thread_pool(scheduler_type* sched, size_t n)
         : scheduler_(sched)
         , concurrency_level_(n) {
@@ -328,7 +324,7 @@ class RandomSchedulerPolicy {
       return std::optional<task_handle_type>{};
     }
 
-    static std::atomic<size_t> next_task {0};
+    static std::atomic<size_t> next_task{0};
     size_t idx = next_task++ % runnable_vector_.size();
 
     static std::mutex m;
@@ -385,7 +381,7 @@ class RandomSchedulerPolicy {
    * this point.
    */
   void finish_queues([[maybe_unused]] const std::string& msg = "") {
-     std::lock_guard lock(mutex_);
+    std::lock_guard lock(mutex_);
     runnable_vector_.clear();
   }
   /* ********************************* */
@@ -414,7 +410,6 @@ class RandomSchedulerPolicy {
    * @brief Transitions all tasks from submission queue to runnable vector.
    */
   void make_submitted_runnable() {
-
     assert(runnable_vector_.size() == 0);
 
     runnable_vector_.clear();
@@ -426,16 +421,16 @@ class RandomSchedulerPolicy {
     shuffle_runnable_vector();
   }
 
-
   void shuffle_runnable_vector() {
-    std::shuffle(std::begin(runnable_vector_), std::end(runnable_vector_),
-                 std::mt19937{std::random_device{}()});
+    std::shuffle(
+        std::begin(runnable_vector_),
+        std::end(runnable_vector_),
+        std::mt19937{std::random_device{}()});
   }
 
-
-   private:
-   protected:
-    /**
+ private:
+ protected:
+  /**
    * @brief Data structures to hold tasks in various states of execution.
    * Since accesses to these are made under the scheduler lock, we don't need
    * to use thread-safe data structures.
@@ -465,7 +460,6 @@ class RandomSchedulerPolicy {
 
   thread_pool tp_;
 };  // namespace tiledb::common
-
 
 /**
  * @brief A scheduler that uses a policy to manage tasks.  Task graph nodes are
@@ -521,7 +515,7 @@ class RandomSchedulerImpl : public Base<Task, RandomSchedulerImpl<Task, Base>> {
   RandomSchedulerImpl& operator=(RandomSchedulerImpl&&) = delete;
 
   /** Destructor. */
-  ~RandomSchedulerImpl() //= default;
+  ~RandomSchedulerImpl()  //= default;
   {
     this->shutdown();
   }
@@ -551,9 +545,7 @@ class RandomSchedulerImpl : public Base<Task, RandomSchedulerImpl<Task, Base>> {
 
     while (!stop_token.stop_requested()) {
       {
-
-          std::unique_lock lock(worker_mutex_);
-
+        std::unique_lock lock(worker_mutex_);
 
         /*
          * If all of our tasks are done, then we are done.
@@ -571,22 +563,19 @@ class RandomSchedulerImpl : public Base<Task, RandomSchedulerImpl<Task, Base>> {
         // lock.unlock();
         auto val = this->get_runnable_task();
 
-
-
         if (!val) {
           break;
         }
         auto task_to_run = *val;
         auto node = (*(task_to_run->node()));
 
-
-      // retry:
+        // retry:
 
         /*
          * Invoke the node's `resume` function.
          */
         lock.unlock();
-        [[ maybe_unused ]] auto evt = task_to_run->resume();
+        [[maybe_unused]] auto evt = task_to_run->resume();
         lock.lock();
         if (evt == SchedulerAction::done) {
           ++num_exited_tasks_;

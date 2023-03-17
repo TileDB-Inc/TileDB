@@ -632,7 +632,7 @@ int main(int argc, char* argv[]) {
             false);
         log(t1);
       }
-    }else if (scheduler == "random") {
+    } else if (scheduler == "random") {
       if (stages == 2) {
         auto t1 = timer_2(
             sieve_async_block<RandomScheduler<node>, RandomMover2, char>,
