@@ -179,9 +179,9 @@ class StorageManagerCanonical {
    * @param group_uri group uri
    * @param uri location to load
    * @param encryption_key encryption key
-   * @return tuple Status and pointer to group deserialized
+   * @return pointer to group deserialized
    */
-  tuple<Status, optional<shared_ptr<GroupDetails>>> load_group_from_uri(
+  shared_ptr<GroupDetails> load_group_from_uri(
       const URI& group_uri,
       const URI& uri,
       const EncryptionKey& encryption_key);
@@ -192,9 +192,9 @@ class StorageManagerCanonical {
    * @param group_uri group uri
    * @param uri location to load
    * @param encryption_key encryption key
-   * @return tuple Status and pointer to group deserialized
+   * @return pointer to group deserialized
    */
-  tuple<Status, optional<shared_ptr<GroupDetails>>> load_group_from_all_uris(
+  shared_ptr<GroupDetails> load_group_from_all_uris(
       const URI& group_uri,
       const std::vector<TimestampedURI>& uris,
       const EncryptionKey& encryption_key);
@@ -205,9 +205,9 @@ class StorageManagerCanonical {
    * @param group_directory
    * @param encryption_key encryption key
    *
-   * @return tuple Status and pointer to group deserialized
+   * @return pointer to group deserialized
    */
-  tuple<Status, optional<shared_ptr<GroupDetails>>> load_group_details(
+  optional<shared_ptr<GroupDetails>> load_group_details(
       const shared_ptr<GroupDirectory>& group_directory,
       const EncryptionKey& encryption_key);
 
@@ -220,7 +220,7 @@ class StorageManagerCanonical {
    * @param encryption_key encryption key for at-rest encryption
    * @return status
    */
-  Status store_group_detail(
+  void store_group_detail(
       const URI& group_detail_folder_uri,
       const URI& group_detail_uri,
       tdb_shared_ptr<GroupDetails> group,
@@ -259,20 +259,17 @@ class StorageManagerCanonical {
    * Opens an group for reads.
    *
    * @param group The group to be opened.
-   * @return tuple of Status, latest GroupSchema and map of all group schemas
-   *        Status Ok on success, else error
+   * @return Group details
    */
-  std::tuple<Status, std::optional<tdb_shared_ptr<GroupDetails>>>
-  group_open_for_reads(Group* group);
+  optional<tdb_shared_ptr<GroupDetails>> group_open_for_reads(Group* group);
 
   /** Opens an group for writes.
    *
    * @param group The group to open.
-   * @return tuple of Status, latest GroupSchema and map of all group schemas
-   *        Status Ok on success, else error
+   * @return Group details
    */
-  std::tuple<Status, std::optional<tdb_shared_ptr<GroupDetails>>>
-  group_open_for_writes(Group* group);
+  std::optional<tdb_shared_ptr<GroupDetails>> group_open_for_writes(
+      Group* group);
 
   /**
    * Load fragments for an already open array.
@@ -593,9 +590,8 @@ class StorageManagerCanonical {
    * Creates a TileDB group.
    *
    * @param group The URI of the group to be created.
-   * @return Status
    */
-  Status group_create(const std::string& group);
+  void group_create(const std::string& group);
 
   /** Returns the thread pool for compute-bound tasks. */
   [[nodiscard]] inline ThreadPool* compute_tp() const {
@@ -627,11 +623,9 @@ class StorageManagerCanonical {
    * Checks if the input URI represents a group.
    *
    * @param The URI to be checked.
-   * @param is_group Set to `true` if the URI is a group and `false`
-   *     otherwise.
-   * @return Status
+   * @return `true` if the URI is a group and `false` otherwise.
    */
-  Status is_group(const URI& uri, bool* is_group) const;
+  bool is_group(const URI& uri) const;
 
   /**
    * Loads the array metadata from persistent storage based on
@@ -825,10 +819,8 @@ class StorageManagerCanonical {
    * @param config Configuration parameters for the consolidation
    *     (`nullptr` means default, which will use the config associated with
    *      this instance).
-   * @return Status
    */
-  Status group_metadata_consolidate(
-      const char* group_name, const Config& config);
+  void group_metadata_consolidate(const char* group_name, const Config& config);
 
   /**
    * Vacuums the consolidated metadata files of a group.

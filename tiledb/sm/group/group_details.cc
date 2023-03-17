@@ -186,7 +186,7 @@ void GroupDetails::serialize(Serializer&) {
   throw GroupException("Invalid call to Group::serialize");
 }
 
-std::optional<shared_ptr<GroupDetails>> GroupDetails::deserialize(
+shared_ptr<GroupDetails> GroupDetails::deserialize(
     Deserializer& deserializer, const URI& group_uri) {
   uint32_t version = 0;
   version = deserializer.read<uint32_t>();
@@ -199,7 +199,7 @@ std::optional<shared_ptr<GroupDetails>> GroupDetails::deserialize(
   throw GroupException("Unsupported group version " + std::to_string(version));
 }
 
-std::optional<shared_ptr<GroupDetails>> GroupDetails::deserialize(
+shared_ptr<GroupDetails> GroupDetails::deserialize(
     const std::vector<shared_ptr<Deserializer>>& deserializer,
     const URI& group_uri) {
   // Currently this is only supported for v2 on-disk format

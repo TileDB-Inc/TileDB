@@ -129,9 +129,9 @@ class GroupDetails {
    *
    * @param deserializer The buffer to deserialize from.
    * @param version The format spec version.
-   * @return Status and Attribute
+   * @return Group details
    */
-  static std::optional<shared_ptr<GroupDetails>> deserialize(
+  static shared_ptr<GroupDetails> deserialize(
       Deserializer& deserializer, const URI& group_uri);
 
   /**
@@ -140,9 +140,9 @@ class GroupDetails {
    * @param deserializers List of buffers for each details file to deserialize
    * from.
    * @param version The format spec version.
-   * @return Status and Attribute
+   * @return Group details
    */
-  static std::optional<shared_ptr<GroupDetails>> deserialize(
+  static shared_ptr<GroupDetails> deserialize(
       const std::vector<shared_ptr<Deserializer>>& deserializer,
       const URI& group_uri);
 

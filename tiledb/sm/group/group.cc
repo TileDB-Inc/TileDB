@@ -167,8 +167,7 @@ void Group::open(
       throw GroupDirectoryException(le.what());
     }
 
-    auto&& [st, group_details] = storage_manager_->group_open_for_reads(this);
-    throw_if_not_ok(st);
+    auto&& group_details = storage_manager_->group_open_for_reads(this);
     if (group_details.has_value()) {
       group_details_ = group_details.value();
     }
@@ -186,8 +185,7 @@ void Group::open(
       throw GroupDirectoryException(le.what());
     }
 
-    auto&& [st, group_details] = storage_manager_->group_open_for_writes(this);
-    throw_if_not_ok(st);
+    auto&& group_details = storage_manager_->group_open_for_writes(this);
 
     if (group_details.has_value()) {
       group_details_ = group_details.value();

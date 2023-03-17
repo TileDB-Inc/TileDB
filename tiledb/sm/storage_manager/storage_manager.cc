@@ -153,11 +153,11 @@ Status StorageManagerCanonical::group_close_for_writes(Group* group) {
   if (group->changes_applied()) {
     const URI& group_detail_folder_uri = group->group_detail_uri();
     auto&& group_detail_uri = group->generate_detail_uri();
-    RETURN_NOT_OK(store_group_detail(
+    store_group_detail(
         group_detail_folder_uri,
         group_detail_uri,
         group->group_details(),
-        *group->encryption_key()));
+        *group->encryption_key());
   }
 
   // Remove entry from open groups
@@ -1226,44 +1226,42 @@ StorageManagerCanonical::tags() const {
   return tags_;
 }
 
-Status StorageManagerCanonical::group_create(const std::string& group_uri) {
+void StorageManagerCanonical::group_create(const std::string& group_uri) {
   // Create group URI
   URI uri(group_uri);
   if (uri.is_invalid())
-    return logger_->status(Status_StorageManagerError(
-        "Cannot create group '" + group_uri + "'; Invalid group URI"));
+    throw std::invalid_argument(
+        "Cannot create group '" + group_uri + "'; Invalid group URI");
 
   // Check if group exists
-  bool exists;
-  RETURN_NOT_OK(is_group(uri, &exists));
+  bool exists = is_group(uri);
   if (exists)
-    return logger_->status(Status_StorageManagerError(
+    throw std::invalid_argument(
         std::string("Cannot create group; Group '") + uri.c_str() +
-        "' already exists"));
+        "' already exists");
 
   std::lock_guard<std::mutex> lock{object_create_mtx_};
 
   if (uri.is_tiledb()) {
     Group group(uri, this);
-    RETURN_NOT_OK(rest_client()->post_group_create_to_rest(uri, &group));
-    return Status::Ok();
+    throw_if_not_ok(rest_client()->post_group_create_to_rest(uri, &group));
+    return;
   }
 
   // Create group directory
-  RETURN_NOT_OK(vfs()->create_dir(uri));
+  throw_if_not_ok(vfs()->create_dir(uri));
 
   // Create group file
   URI group_filename = uri.join_path(constants::group_filename);
-  RETURN_NOT_OK(vfs()->touch(group_filename));
+  throw_if_not_ok(vfs()->touch(group_filename));
 
   // Create metadata folder
-  RETURN_NOT_OK(
+  throw_if_not_ok(
       vfs()->create_dir(uri.join_path(constants::group_metadata_dir_name)));
 
   // Create group detail folder
-  RETURN_NOT_OK(
+  throw_if_not_ok(
       vfs()->create_dir(uri.join_path(constants::group_detail_dir_name)));
-  return Status::Ok();
 }
 
 void StorageManagerCanonical::increment_in_progress() {
@@ -1299,26 +1297,27 @@ bool StorageManagerCanonical::is_array(const URI& uri) const {
   // TODO: mark unreachable
 }
 
-Status StorageManagerCanonical::is_group(const URI& uri, bool* is_group) const {
+bool StorageManagerCanonical::is_group(const URI& uri) const {
   // Handle remote array
   if (uri.is_tiledb()) {
     auto&& [st, exists] = rest_client()->check_group_exists_from_rest(uri);
-    RETURN_NOT_OK(st);
-    *is_group = *exists;
+    throw_if_not_ok(st);
+    return *exists;
   } else {
     // Check for new group details directory
-    RETURN_NOT_OK(vfs()->is_dir(
-        uri.join_path(constants::group_detail_dir_name), is_group));
+    bool is_group;
+    throw_if_not_ok(vfs()->is_dir(
+        uri.join_path(constants::group_detail_dir_name), &is_group));
 
-    if (*is_group) {
-      return Status::Ok();
+    if (!is_group) {
+      // Fall back to older group file to check for legacy (pre-format 12)
+      // groups
+      throw_if_not_ok(
+          vfs()->is_file(uri.join_path(constants::group_filename), &is_group));
     }
 
-    // Fall back to older group file to check for legacy (pre-format 12) groups
-    RETURN_NOT_OK(
-        vfs()->is_file(uri.join_path(constants::group_filename), is_group));
+    return is_group;
   }
-  return Status::Ok();
 }
 
 void StorageManagerCanonical::load_array_metadata(
@@ -1427,7 +1426,7 @@ Status StorageManagerCanonical::object_type(
     return Status::Ok();
   }
 
-  RETURN_NOT_OK(is_group(uri, &exists));
+  exists = is_group(uri);
   if (exists) {
     *type = ObjectType::GROUP;
     return Status::Ok();
@@ -1616,7 +1615,7 @@ Status StorageManagerCanonical::set_tag(
   return Status::Ok();
 }
 
-Status StorageManagerCanonical::store_group_detail(
+void StorageManagerCanonical::store_group_detail(
     const URI& group_detail_folder_uri,
     const URI& group_detail_uri,
     tdb_shared_ptr<GroupDetails> group,
@@ -1635,15 +1634,13 @@ Status StorageManagerCanonical::store_group_detail(
   // Check if the array schema directory exists
   // If not create it, this is caused by a pre-v10 array
   bool group_detail_dir_exists = false;
-  RETURN_NOT_OK(
+  throw_if_not_ok(
       vfs()->is_dir(group_detail_folder_uri, &group_detail_dir_exists));
   if (!group_detail_dir_exists)
-    RETURN_NOT_OK(vfs()->create_dir(group_detail_folder_uri));
+    throw_if_not_ok(vfs()->create_dir(group_detail_folder_uri));
 
-  RETURN_NOT_OK(
+  throw_if_not_ok(
       store_data_to_generic_tile(tile, group_detail_uri, encryption_key));
-
-  return Status::Ok();
 }
 
 Status StorageManagerCanonical::store_array_schema(
@@ -1736,8 +1733,7 @@ shared_ptr<Logger> StorageManagerCanonical::logger() const {
   return logger_;
 }
 
-tuple<Status, optional<shared_ptr<GroupDetails>>>
-StorageManagerCanonical::load_group_from_uri(
+shared_ptr<GroupDetails> StorageManagerCanonical::load_group_from_uri(
     const URI& group_uri, const URI& uri, const EncryptionKey& encryption_key) {
   auto timer_se = stats()->start_timer("sm_load_group_from_uri");
 
@@ -1747,12 +1743,10 @@ StorageManagerCanonical::load_group_from_uri(
 
   // Deserialize
   Deserializer deserializer(tile.data(), tile.size());
-  auto opt_group = GroupDetails::deserialize(deserializer, group_uri);
-  return {Status::Ok(), opt_group};
+  return GroupDetails::deserialize(deserializer, group_uri);
 }
 
-tuple<Status, optional<shared_ptr<GroupDetails>>>
-StorageManagerCanonical::load_group_from_all_uris(
+shared_ptr<GroupDetails> StorageManagerCanonical::load_group_from_all_uris(
     const URI& group_uri,
     const std::vector<TimestampedURI>& uris,
     const EncryptionKey& encryption_key) {
@@ -1770,12 +1764,10 @@ StorageManagerCanonical::load_group_from_all_uris(
     deserializers.emplace_back(deserializer);
   }
 
-  auto opt_group = GroupDetails::deserialize(deserializers, group_uri);
-  return {Status::Ok(), opt_group};
+  return GroupDetails::deserialize(deserializers, group_uri);
 }
 
-tuple<Status, optional<shared_ptr<GroupDetails>>>
-StorageManagerCanonical::load_group_details(
+optional<shared_ptr<GroupDetails>> StorageManagerCanonical::load_group_details(
     const shared_ptr<GroupDirectory>& group_directory,
     const EncryptionKey& encryption_key) {
   auto timer_se = stats()->start_timer("sm_load_group_details");
@@ -1783,7 +1775,7 @@ StorageManagerCanonical::load_group_details(
   if (latest_group_uri.is_invalid()) {
     // Returning ok because not having the latest group details means the group
     // has just been created and no members have been added yet.
-    return {Status::Ok(), std::nullopt};
+    return std::nullopt;
   }
 
   // V1 groups did not have the version appended so only have 4 "_"
@@ -1802,48 +1794,40 @@ StorageManagerCanonical::load_group_details(
       encryption_key);
 }
 
-std::tuple<Status, std::optional<tdb_shared_ptr<GroupDetails>>>
+std::optional<tdb_shared_ptr<GroupDetails>>
 StorageManagerCanonical::group_open_for_reads(Group* group) {
   auto timer_se = stats()->start_timer("group_open_for_reads");
 
   // Load group data
-  auto&& [st, group_deserialized] =
+  auto group_deserialized =
       load_group_details(group->group_directory(), *group->encryption_key());
-  RETURN_NOT_OK_TUPLE(st, std::nullopt);
 
   // Mark the array as now open
   std::lock_guard<std::mutex> lock{open_groups_mtx_};
   open_groups_.insert(group);
 
-  if (group_deserialized.has_value()) {
-    return {Status::Ok(), group_deserialized.value()};
-  }
-
-  // Return ok because having no members is acceptable if the group has never
-  // been written to.
-  return {Status::Ok(), std::nullopt};
+  return group_deserialized;
 }
 
-std::tuple<Status, std::optional<tdb_shared_ptr<GroupDetails>>>
+std::optional<tdb_shared_ptr<GroupDetails>>
 StorageManagerCanonical::group_open_for_writes(Group* group) {
   auto timer_se = stats()->start_timer("group_open_for_writes");
 
   // Load group data
-  auto&& [st, group_deserialized] =
+  auto&& group_deserialized =
       load_group_details(group->group_directory(), *group->encryption_key());
-  RETURN_NOT_OK_TUPLE(st, std::nullopt);
 
   // Mark the array as now open
   std::lock_guard<std::mutex> lock{open_groups_mtx_};
   open_groups_.insert(group);
 
   if (group_deserialized.has_value()) {
-    return {Status::Ok(), group_deserialized.value()};
+    return group_deserialized.value();
   }
 
   // Return ok because having no members is acceptable if the group has never
   // been written to.
-  return {Status::Ok(), std::nullopt};
+  return std::nullopt;
 }
 
 void StorageManagerCanonical::load_group_metadata(
@@ -2013,29 +1997,29 @@ Status StorageManagerCanonical::set_default_tags() {
   return Status::Ok();
 }
 
-Status StorageManagerCanonical::group_metadata_consolidate(
+void StorageManagerCanonical::group_metadata_consolidate(
     const char* group_name, const Config& config) {
   // Check group URI
   URI group_uri(group_name);
   if (group_uri.is_invalid()) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot consolidate group metadata; Invalid URI"));
+    throw std::invalid_argument(
+        "Cannot consolidate group metadata; Invalid URI");
   }
   // Check if group exists
   ObjectType obj_type;
-  RETURN_NOT_OK(object_type(group_uri, &obj_type));
+  throw_if_not_ok(object_type(group_uri, &obj_type));
 
   if (obj_type != ObjectType::GROUP) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot consolidate group metadata; Group does not exist"));
+    throw std::invalid_argument(
+        "Cannot consolidate group metadata; Group does not exist");
   }
 
   // Consolidate
   // Encryption credentials are loaded by Group from config
   auto consolidator =
       Consolidator::create(ConsolidationMode::GROUP_META, config, this);
-  return consolidator->consolidate(
-      group_name, EncryptionType::NO_ENCRYPTION, nullptr, 0);
+  throw_if_not_ok(consolidator->consolidate(
+      group_name, EncryptionType::NO_ENCRYPTION, nullptr, 0));
 }
 
 void StorageManagerCanonical::group_metadata_vacuum(
