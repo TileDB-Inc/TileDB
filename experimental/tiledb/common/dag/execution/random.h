@@ -385,6 +385,7 @@ class RandomSchedulerPolicy {
    * this point.
    */
   void finish_queues([[maybe_unused]] const std::string& msg = "") {
+     std::lock_guard lock(mutex_);
     runnable_vector_.clear();
   }
   /* ********************************* */
@@ -413,6 +414,9 @@ class RandomSchedulerPolicy {
    * @brief Transitions all tasks from submission queue to runnable vector.
    */
   void make_submitted_runnable() {
+
+    assert(runnable_vector_.size() == 0);
+
     runnable_vector_.clear();
     runnable_vector_.reserve(submission_queue_.size());
     while (!submission_queue_.empty()) {
