@@ -1,3 +1,18 @@
+# TileDB v2.14.2 Release Notes
+
+## Improvements
+
+* RLE and dictionary filter only enabled for UTF8 since format version 17. [#3868](https://github.com/TileDB-Inc/TileDB/pull/3868)
+* Fragment consolidation: using correct buffer weights. [#3877](https://github.com/TileDB-Inc/TileDB/pull/3877)
+* Sparse global order reader: fix read progress update for duplicates. [#3937](https://github.com/TileDB-Inc/TileDB/pull/3937)
+* Sparse unordered w/ dups: fix error on double var size overflow. [#3963](https://github.com/TileDB-Inc/TileDB/pull/3963)
+
+## Bug fixes
+
+* Deregister a remote array from the Consistency multimap before reopening. [#3859](https://github.com/TileDB-Inc/TileDB/pull/3859)
+* Fix buffer size error in deserializing query [#3851](https://github.com/TileDB-Inc/TileDB/pull/3851)
+* Fix support for empty strings for Dictionary and RLE encodings [#3938](https://github.com/TileDB-Inc/TileDB/pull/3938)
+
 # TileDB v2.14.1 Release Notes
 
 ## Defects removed
