@@ -467,3 +467,86 @@ TEMPLATE_TEST_CASE(
     sched.sync_wait_all();
   }
 }
+
+
+TEMPLATE_TEST_CASE(
+    "Run Passing Integers",
+    "[duffs]",
+    (std::tuple<C2, F2, P2>),
+    (std::tuple<C3, F3, P3>)) {
+  using C = typename std::tuple_element<0, TestType>::type;
+  using F = typename std::tuple_element<1, TestType>::type;
+  using P = typename std::tuple_element<2, TestType>::type;
+
+  auto num_threads = GENERATE(1, 2, 3, 4, 5, 8, 17);
+
+  bool debug{false};
+  size_t problem_size = 1337;
+  size_t rounds = problem_size;
+
+  auto sched = S(num_threads);
+
+  std::vector<size_t> input(rounds);
+  std::vector<size_t> output(rounds);
+
+  std::iota(input.begin(), input.end(), 19);
+  std::fill(output.begin(), output.end(), 0);
+  auto i = input.begin();
+  auto j = output.begin();
+
+  if (rounds != 0) {
+    CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
+  }
+
+  auto p = P([problem_size, &sched, &i, &input](std::stop_source& stop_source) {
+
+    if (std::distance(input.begin(), i) >= static_cast<long>(problem_size)) {
+
+      stop_source.request_stop();
+      return *(input.begin()) + 1;
+    }
+
+    return (*i++) + 1;
+  });
+  auto f = F([&sched](std::size_t k) {
+    return k - 1;
+  });
+
+  auto c = C([&j, &output, &debug](std::size_t k) {
+    if (debug)
+      std::cout << "Consuming " + std::to_string(k) + " with distance " +
+                       std::to_string(std::distance(output.begin(), j)) + "\n";
+
+    *j++ = k;
+  });
+
+  SECTION("Producer, Function, and Consumer, submit") {
+    connect(p, f);
+    connect(f, c);
+    Edge(*p, *f);
+    Edge(*f, *c);
+    sched.submit(p);
+    sched.submit(f);
+    sched.submit(c);
+    sched.sync_wait_all();
+  }
+
+  CHECK(rounds != 0);
+  CHECK(rounds == problem_size);
+
+  CHECK(input.begin() != i);
+  CHECK(input.size() == rounds);
+  CHECK(output.size() == rounds);
+
+  if (debug)
+    std::cout << std::distance(input.begin(), i) << std::endl;
+
+  CHECK(std::equal(input.begin(), i, output.begin()));
+
+  if (debug)
+    std::cout << "First input = " + std::to_string(*(input.begin())) +
+                     ", First output = " + std::to_string(*(output.begin())) +
+                     "\n";
+
+  CHECK(std::distance(input.begin(), i) == static_cast<long>(rounds));
+}
