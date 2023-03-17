@@ -529,7 +529,7 @@ std::string random_name(const std::string& prefix);
  * then suffixed with the timestamp in MS of when the test suite was invoked.
  *
  * @param test_name The name of the test being invoked.
- * @return A random bucket name.
+ * @return Path to test data that can be reused between tiledb_unit invocations.
  */
 std::string test_dir(const std::string& test_name);
 
