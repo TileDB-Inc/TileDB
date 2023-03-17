@@ -38,6 +38,7 @@
 #if !defined(NOMINMAX)
 #define NOMINMAX
 #endif
+#define _WIN32_WINNT _WIN32_WINNT_WIN10
 #include <windows.h>
 
 #include <bcrypt.h>

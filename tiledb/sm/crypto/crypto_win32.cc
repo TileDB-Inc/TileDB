@@ -42,6 +42,15 @@
 #define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0)
 #endif
 
+#ifndef _MSC_VER
+// The MinGW headers do not include the pseudo-handles.
+// Constants taken from
+// https://docs.rs/winapi/0.3.6/src/winapi/shared/bcrypt.rs.html#424, licensed
+// under the MIT or Apache 2.0 licenses.
+#define BCRYPT_MD5_ALG_HANDLE 0x00000021
+#define BCRYPT_SHA256_ALG_HANDLE 0x00000041
+#endif
+
 using namespace tiledb::common;
 
 namespace tiledb {
