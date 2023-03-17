@@ -1,5 +1,5 @@
 /**
- * @file   duffs.h
+ * @file   random.h
  *
  * @section LICENSE
  *
@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file declares a duffs (static threadpool) scheduler for dag.
+ * This file declares a random (static threadpool) scheduler for dag.
  *
  * This scheduler has a fixed number of threads (determined when the scheduler
  * is constructed).  Each thread runs the `worker` method of the scheduler.
@@ -44,28 +44,17 @@
  * tasks.  In the case of `sync_wait_all`, the scheduler will start execution
  * of all tasks and block until they are all complete.
  *
- * Tasks are maintained on a "runnable" queue and are executed in order from
- * the queue.  When a task is executing, it is placed in the running set and
- * when it is waiting, it is placed in the waiting set.  When a task yields,
- * it is moved from the running set to the back of the runnable queue.  When a
- * task is notified, it is moved from the waiting set to the runnable queue.
- *
- * When a task has completed execution, it is moved to the finished queue.
- *
- * Some very basic thread-safe data structures were required for this scheduler
- * and implemented in utils subdirectory.  These are not intended to be general
- * purpose, but rather to provide just enough functionality to support the
- * scheduler.
- *
- * More complete documentation about the generic interaction between schedulers
- * and item movers can can be found in the docs subdirectory.
+ * Tasks are maintained on a "runnable" vector.  Tasks are executed in order
+ * from the vector.  When the last task in the vector is executed, the vector
+ * is shuffled and the process repeats.  This is a simple way to ensure that
+ * tasks are executed fairly, but in a random order.
  *
  * @todo Factor scheduler, task, and policy so they are more orthogonal and
  * can be mixed and matched.
  */
 
-#ifndef TILEDB_DAG_duffs_H
-#define TILEDB_DAG_duffs_H
+#ifndef TILEDB_DAG_RANDOM_H
+#define TILEDB_DAG_RANDOM_H
 
 #include <condition_variable>
 #include <functional>
@@ -83,28 +72,27 @@
 #include "experimental/tiledb/common/dag/execution/task_state_machine.h"
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
 #include "experimental/tiledb/common/dag/state_machine/item_mover.h"
-#include "experimental/tiledb/common/dag/utility/bounded_buffer.h"
-#include "experimental/tiledb/common/dag/utility/concurrent_map.h"
-#include "experimental/tiledb/common/dag/utility/concurrent_set.h"
 #include "experimental/tiledb/common/dag/utility/print_types.h"
-#include "experimental/tiledb/common/dag/utility/spinlock.h"
 
 using namespace std::placeholders;
 
 namespace tiledb::common {
 
 /**
+ * @brief A scheduler that uses a fixed number of threads to execute tasks and
+ * an experimental "throw-catch" mechanism for signalling from port to
+ * scheduler.
  *
  * @tparam Mover The type of data mover used to move data between nodes ports.
  * @tparam PortState The type of port state, either `PortState::two_stage` or
  * `PortState::three_stage`.
  */
 template <class Mover, class PortState = typename Mover::PortState>
-class DuffsPortPolicy : public PortFiniteStateMachine<
-                            DuffsPortPolicy<Mover, PortState>,
+class RandomPortPolicy : public PortFiniteStateMachine<
+                            RandomPortPolicy<Mover, PortState>,
                             PortState> {
   using state_machine_type =
-      PortFiniteStateMachine<DuffsPortPolicy<Mover, PortState>, PortState>;
+      PortFiniteStateMachine<RandomPortPolicy<Mover, PortState>, PortState>;
   using lock_type = typename state_machine_type::lock_type;
 
   using mover_type = Mover;
@@ -118,7 +106,7 @@ class DuffsPortPolicy : public PortFiniteStateMachine<
    * Uses `enable_if` to select between two-stage and three-stage port state for
    * initialization values.
    */
-  DuffsPortPolicy() {
+  RandomPortPolicy() {
     if constexpr (std::is_same_v<PortState, two_stage>) {
       assert(static_cast<Mover*>(this)->state() == PortState::st_00);
     } else if constexpr (std::is_same_v<PortState, three_stage>) {
@@ -201,54 +189,44 @@ class DuffsPortPolicy : public PortFiniteStateMachine<
     return scheduler_event_type::noop;
   }
 
- private:
-  void debug_msg(const std::string& msg) {
-    if (static_cast<Mover*>(this)->debug_enabled()) {
-      std::cout << msg << "@" << str(this->state()) << "\n";
-    }
-  }
 };
 
 /**
- * Alias to define the three-stage data mover for the duffs device scheduler.
+ * Alias to define the three-stage data mover for the random scheduler.
  */
 template <class T>
-using DuffsMover3 = ItemMover<DuffsPortPolicy, three_stage, T>;
+using RandomMover3 = ItemMover<RandomPortPolicy, three_stage, T>;
 
 /**
- * Alias to define the two-stage data mover for the duffs device scheduler.
+ * Alias to define the two-stage data mover for the random scheduler.
  */
 template <class T>
-using DuffsMover2 = ItemMover<DuffsPortPolicy, two_stage, T>;
+using RandomMover2 = ItemMover<RandomPortPolicy, two_stage, T>;
 
 template <class Task, template <class, class> class Base>
-class DuffsSchedulerImpl;
+class RandomSchedulerImpl;
 
 template <class Task, class Policy>
-class DuffsSchedulerPolicy;
+class RandomSchedulerPolicy;
 
 template <class Node>
-using DuffsScheduler = DuffsSchedulerImpl<Task<Node>, DuffsSchedulerPolicy>;
+using RandomScheduler = RandomSchedulerImpl<Task<Node>, RandomSchedulerPolicy>;
 
 // We'll see if we still need this.
 template <class Task, class Scheduler>
-struct SchedulerTraits<DuffsSchedulerPolicy<Task, Scheduler>> {
+struct SchedulerTraits<RandomSchedulerPolicy<Task, Scheduler>> {
   using task_handle_type = Task;
   using task_type = typename task_handle_type::element_type;
 };
+
 
 /**
  * @brief Defines actions for scheduler state transitions.
  *
  * @tparam Task The type of task to be scheduled.
  */
-
 template <class Task, class Scheduler>
-class DuffsSchedulerPolicy
-    : public SchedulerStateMachine<DuffsSchedulerPolicy<Task, Scheduler>> {
-  // using policy_type = DuffsSchedulerPolicy<Task, Scheduler>;
-  // using lock_type = typename state_machine_type::lock_type;
-  //  using state_machine_type = SchedulerStateMachine<policy_type>;
+class RandomSchedulerPolicy {
   using scheduler_type = Scheduler;
 
  public:
@@ -256,35 +234,23 @@ class DuffsSchedulerPolicy
   using task_handle_type = task_handle_t<Task>;
 
  private:
-  /**
-   * @brief A thread pool for use by the state machine.
-   * @todo This should be a resouce parameter to the policy, not a member.
-   * @todo Use work stealing thread pool.
-   */
+
   class thread_pool {
     scheduler_type* scheduler_;
-    // std::atomic<size_t> concurrency_level_{0};
     size_t concurrency_level_{0};
 
    public:
-    /**
-     * @brief Very simple static thread pool.  The purpose of this thread pool
-     * is to launch the scheduler `worker` tasks, one per thread.
-     */
+
     explicit thread_pool(scheduler_type* sched, size_t n)
         : scheduler_(sched)
         , concurrency_level_(n) {
-      // If concurrency_level_ is set to zero, construct the thread pool in
-      // shutdown state.  Explicitly shut down the task queue as well.
       if (concurrency_level_ == 0) {
         return;
       }
 
-      // Set an upper limit on number of threads per core.  One use for this is
-      // in testing error conditions in creating a context.
       if (concurrency_level_ >= 256 * std::thread::hardware_concurrency()) {
         std::string msg =
-            "Error initializing duffs scheduler of concurrency level " +
+            "Error initializing random scheduler of concurrency level " +
             std::to_string(concurrency_level_) + "; Requested size too large";
         throw std::runtime_error(msg);
       }
@@ -320,10 +286,6 @@ class DuffsSchedulerPolicy
       }
     }
 
-    /**
-     * @brief Join all of the threads in the thread pool.
-     * @todo Use async and futures to be able to handle exceptions.
-     */
     void join_all_threads() {
       for (auto&& t : threads_) {
         if (t.joinable()) {
@@ -347,134 +309,37 @@ class DuffsSchedulerPolicy
   std::mutex mutex_;
   std::condition_variable start_cv_;
 
-  /************************************************************************
-   *
-   * The following are the actions for the scheduler state transitions.
-   *
-   ***********************************************************************/
  public:
-  /**
-   * @brief Initial action for task creation transition.  Moves `task` to the
-   * task submission queue.
-   *
-   * @param task The task to be transitioned.
-   */
-  void on_create(const task_handle_type& task) {
-    this->submission_queue_.push(task);
-  }
-
-  /**
-   * @brief Action for task submission transition.
-   *
-   * @param task The task to be transitioned.
-   */
-  void on_stop_create(const task_handle_type&) {
-  }
-
-  /**
-   * @brief Action for transitioning a task to the `runnable` state.  Puts the
-   * task on the runnable queue.
-   *
-   * @param task The task to be transitioned.
-   */
-  void on_make_runnable(const task_handle_type& task) {
-    this->global_runnable_queue_.push(task);
-  }
-
-  /**
-   *  @brief Action for transitioning a task out of the `runnable` state.  Note
-   * that this does not remove task from the runnable queue.  Tasks are removed
-   * from the runnable queue by the scheduler when they are to be executed.
-   *
-   * @param task The task to be transitioned.
-   */
-  void on_stop_runnable(const task_handle_type&) {
-  }
-
-  /**
-   * @brief Action for transitioning a task to the `running` state.  Puts task
-   * into the running set.
-   *
-   * @param task The task to be transitioned.
-   */
-  void on_make_running(const task_handle_type& task) {
-    this->running_set_.insert(task);
-  }
-
-  /**
-   * @brief Action for transitioning a task out of the `running` state.  Removes
-   * task from the running set.
-   *
-   * @param task The task to be transitioned.
-   */
-  void on_stop_running(const task_handle_type& task) {
-    auto n = this->running_set_.extract(task);
-    assert(!n.empty());
-  }
-
-  /**
-   * @brief Action for transitioning a task to the `waiting` state.
-   *
-   * @param task The task to be transitioned.
-   */
-  void on_make_waiting(const task_handle_type& task) {
-    this->waiting_set_.insert(task);
-  }
-
-  /**
-   * @brief Action for transitioning a task out of the `waiting` state.
-   *
-   * @param task The task to be transitioned.
-   */
-  void on_stop_waiting(const task_handle_type& task) {
-    auto n = this->waiting_set_.extract(task);
-  }
-
-  /**
-   * @brief Action for transitioning a task to the `done` state.  Puts task on
-   * the finished queue.
-   *
-   * @param task The task to be transitioned.
-   */
-  void on_terminate(const task_handle_type& task) {
-    this->finished_queue_.push(task);
-  }
-
-  /************************************************************************
-   *
-   * End policy API functions
-   *
-   ***********************************************************************/
-
- public:
-  explicit DuffsSchedulerPolicy(size_t num_threads)
+  explicit RandomSchedulerPolicy(size_t num_threads)
       : tp_{static_cast<scheduler_type*>(this), num_threads} {
   }
 
-  /**
-   * @brief Destructor.
-   */
-  ~DuffsSchedulerPolicy() {
-    shutdown();
-  }
+  ~RandomSchedulerPolicy() = default;
 
- public:
   void block_worker() {
-    /*
-     * The worker threads wait on a condition variable until they are released
-     * by a call to `sync_wait_all` (e.g.)
-     */
     std::unique_lock lock(mutex_);
     start_cv_.wait(lock, [this]() { return this->ready_to_run(); });
   }
 
-  /**
-   * @brief Gets a task from the runnable queue.  Blocking unless job is
-   * finished and queue is shut down.
-   */
   auto get_runnable_task() {
-    auto val = global_runnable_queue_.pop();
-    return val;
+    if (runnable_vector_.empty()) {
+      // Returning an empty optional indicates that there are no tasks to run,
+      // and the worker thread should exit.
+      return std::optional<task_handle_type>{};
+    }
+
+    static std::atomic<size_t> next_task {0};
+    size_t idx = next_task++ % runnable_vector_.size();
+
+    static std::mutex m;
+    if (idx == 0) {
+      std::lock_guard lock(m);
+      shuffle_runnable_vector();
+    }
+
+    auto val = runnable_vector_[idx];
+
+    return std::optional<task_handle_type>{val};
   }
 
   void sync_wait_all() {
@@ -520,13 +385,7 @@ class DuffsSchedulerPolicy
    * this point.
    */
   void finish_queues([[maybe_unused]] const std::string& msg = "") {
-    waiting_set_.clear();
-    global_runnable_queue_.drain();
-    for (auto& q : worker_queues_) {
-      q.drain();
-    }
-    running_set_.clear();
-    // finished_queue_.drain();
+    runnable_vector_.clear();
   }
   /* ********************************* */
   /*         PRIVATE FUNCTIONS         */
@@ -551,64 +410,46 @@ class DuffsSchedulerPolicy
   }
 
   /**
-   * @brief Transitions all tasks from submission queue to runnable queue.
+   * @brief Transitions all tasks from submission queue to runnable vector.
    */
   void make_submitted_runnable() {
+    runnable_vector_.clear();
+    runnable_vector_.reserve(submission_queue_.size());
     while (!submission_queue_.empty()) {
-      auto s = submission_queue_.front();
+      runnable_vector_.push_back(submission_queue_.front());
       submission_queue_.pop();
-      if (this->debug_enabled())
-        s->dump_task_state("Admitting");
-      this->task_admit(s);
     }
+    shuffle_runnable_vector();
   }
 
-  /**
-   * @brief Debug helper function.
-   */
-  void dump_queue_state(const std::string& msg = "") {
-    if (this->debug_enabled()) {
-      std::string preface = (!msg.empty() ? msg + "\n" : "");
 
-      std::cout << preface + "    global_runnable_queue_.size() = " +
-                       std::to_string(global_runnable_queue_.size()) + "\n" +
-                       "    running_set_.size() = " +
-                       std::to_string(running_set_.size()) + "\n" +
-                       "    waiting_set_.size() = " +
-                       std::to_string(waiting_set_.size()) + "\n" +
-                       "    finished_queue_.size() = " +
-                       std::to_string(finished_queue_.size()) + "\n" + "\n";
-    }
+  void shuffle_runnable_vector() {
+    std::shuffle(std::begin(runnable_vector_), std::end(runnable_vector_),
+                 std::mt19937{std::random_device{}()});
   }
 
-  /**
-   * @brief Debug helper function.
-   */
-  void debug_msg(const std::string& msg) {
-    if (this->debug_enabled()) {
-      std::cout << msg + "\n";
-    }
-  }
 
- private:
-  /**
+   private:
+   protected:
+    /**
    * @brief Data structures to hold tasks in various states of execution.
    * Since accesses to these are made under the scheduler lock, we don't need
    * to use thread-safe data structures.
    */
-  std::set<Task> waiting_set_;
-  std::set<Task> running_set_;
+  // std::set<Task> waiting_set_;
+  // std::set<Task> running_set_;
   std::queue<Task> submission_queue_;
-  std::queue<Task> finished_queue_;
+  // std::queue<Task> finished_queue_;
 
   /**
-   * @brief Queue of runnable tasks.
+   * @brief Vector of runnable tasks.
    *
    * @todo make private
    * @todo Use thread-stealing scheduling
    */
- protected:
-  BoundedBufferQ<Task, std::queue<Task>, false> global_runnable_queue_;
+
+  // BoundedBufferQ<Task, std::queue<Task>, false> global_runnable_queue_;
+  std::vector<Task> runnable_vector_;
 
   /**
    * @brief Local queues for each worker thread.
@@ -616,10 +457,11 @@ class DuffsSchedulerPolicy
  private:
   std::atomic<size_t> counter_{0};
   size_t num_workers_{0};
-  std::vector<BoundedBufferQ<Task, std::queue<Task>, false>> worker_queues_;
+  // std::vector<BoundedBufferQ<Task, std::queue<Task>, false>> worker_queues_;
 
   thread_pool tp_;
 };  // namespace tiledb::common
+
 
 /**
  * @brief A scheduler that uses a policy to manage tasks.  Task graph nodes are
@@ -629,11 +471,10 @@ class DuffsSchedulerPolicy
  *
  * @tparam Node The type of the task graph node to be scheduled as a task.
  */
-
 template <class Task, template <class, class> class Base>
-class DuffsSchedulerImpl : public Base<Task, DuffsSchedulerImpl<Task, Base>> {
-  using Scheduler = DuffsSchedulerImpl<Task, Base>;
-  using Policy = Base<Task, DuffsSchedulerImpl<Task, Base>>;
+class RandomSchedulerImpl : public Base<Task, RandomSchedulerImpl<Task, Base>> {
+  using Scheduler = RandomSchedulerImpl<Task, Base>;
+  using Policy = Base<Task, RandomSchedulerImpl<Task, Base>>;
 
   using task_type = task_t<Task>;
   using task_handle_type = task_handle_t<Task>;
@@ -656,68 +497,45 @@ class DuffsSchedulerImpl : public Base<Task, DuffsSchedulerImpl<Task, Base>> {
    *
    * @param num_threads The number of threads to use for the scheduler.
    */
-  explicit DuffsSchedulerImpl(size_t num_threads)
+  explicit RandomSchedulerImpl(size_t num_threads)
       : Policy(num_threads) {
   }
 
   /** Deleted default constructor */
-  DuffsSchedulerImpl() = delete;
+  RandomSchedulerImpl() = delete;
 
   /** Deleted copy constructor */
-  DuffsSchedulerImpl(const DuffsSchedulerImpl&) = delete;
+  RandomSchedulerImpl(const RandomSchedulerImpl&) = delete;
 
   /** Deleted copy assignment operator */
-  DuffsSchedulerImpl(DuffsSchedulerImpl&&) = delete;
+  RandomSchedulerImpl(RandomSchedulerImpl&&) = delete;
 
   /** Deleted move constructor */
-  DuffsSchedulerImpl& operator=(const DuffsSchedulerImpl&) = delete;
+  RandomSchedulerImpl& operator=(const RandomSchedulerImpl&) = delete;
 
   /** Deleted move assignment operator */
-  DuffsSchedulerImpl& operator=(DuffsSchedulerImpl&&) = delete;
+  RandomSchedulerImpl& operator=(RandomSchedulerImpl&&) = delete;
 
   /** Destructor. */
-  ~DuffsSchedulerImpl() = default;
+  ~RandomSchedulerImpl() //= default;
+  {
+    this->shutdown();
+  }
 
   /* ********************************* */
   /*         PUBLIC API                */
   /* ********************************* */
 
  public:
-  /**
-   * @brief Submit a task graph node to the scheduler.  The task create action
-   * is invoked, which results in the wrapped node being put into the
-   * submission queue.
-   *
-   * @param n The task graph node to be submitted.
-   */
   void submit(node_handle_type&& n) {
     ++num_submitted_tasks_;
     ++num_tasks_;
 
-    // task_handle_type aa;
-    // print_types(n, aa);
-    // std::shared_ptr<tiledb::common::node_base>
-    // tiledb::common::Task<std::shared_ptr<tiledb::common::node_base>>
-
     auto t = task_handle_type{std::move(n)};
-
     node_to_task[n] = t;
-
-    this->task_create(t);
+    this->submission_queue_.push(t);
   }
 
-  /**
-   * @brief The worker thread routine, which is the body of the scheduler and
-   * the main loop of the thread pool (each thread runs this function).
-   *
-   * The primary operation of the worker thread is to get a task and execute it.
-   * Task actions will be invoked in response to port events as used by
-   * execution of the `resume` function in the node.
-   *
-   * @param id The id of the thread.  These are assigned on thread creation,
-   * to be used for debugging purposes.  The id is in the range [0,
-   * concurrency_level).
-   */
   void worker(std::stop_token stop_token, size_t id = 0) {
     thread_local size_t my_id{id};
 
@@ -729,6 +547,10 @@ class DuffsSchedulerImpl : public Base<Task, DuffsSchedulerImpl<Task, Base>> {
 
     while (!stop_token.stop_requested()) {
       {
+
+          std::unique_lock lock(worker_mutex_);
+
+
         /*
          * If all of our tasks are done, then we are done.
          */
@@ -744,156 +566,31 @@ class DuffsSchedulerImpl : public Base<Task, DuffsSchedulerImpl<Task, Base>> {
          */
         // lock.unlock();
         auto val = this->get_runnable_task();
-        // lock.lock();
 
-        /*
-         * An empty `val` means that the queue is finished and that the task
-         * graph task is finished.  We can exit the worker thread.
-         */
+
+
         if (!val) {
           break;
         }
-
         auto task_to_run = *val;
         auto node = (*(task_to_run->node()));
 
-        std::unique_lock lock(worker_mutex_);
 
-        /*
-         * Transition task from runnable to running
-         */
-        this->task_dispatch(task_to_run);
-
-        if (task_to_run->task_state() != TaskState::running) {
-          throw std::runtime_error("Task is not in running state");
-        }
-
-      retry:
+      // retry:
 
         /*
          * Invoke the node's `resume` function.
          */
-        lock.unlock();
-        auto evt = task_to_run->resume();
-        lock.lock();
-        {
-          if (task_to_run->task_state() != TaskState::running) {
-            throw std::runtime_error("Task is not in running state");
-          }
-
-          switch (evt) {
-            case SchedulerAction::source_wait: {
-              /*
-               * These steps must be atomic to avoid lost wakeup
-               * @todo perhaps unify with sink_wait via predicate argument?
-               * @todo use actual state instead of is_*?
-               */
-              if (node->is_source_state_full() && !node->is_source_done()) {
-                this->task_wait(task_to_run);
-              }
-            } break;
-
-            case SchedulerAction::sink_wait: {
-              /*
-               * These steps must be atomic to avoid lost wakeup
-               * @todo perhaps unify with source_wait via predicate argument?
-               * @todo use actual state instead of is_*?
-               */
-              if (node->is_sink_state_empty() && !node->is_sink_done() &&
-                  !node->is_sink_terminated()) {
-                this->task_wait(task_to_run);
-              }
-            } break;
-
-            case SchedulerAction::notify_source: {
-              auto task_to_notify =
-                  node_to_task[task_to_run->source_correspondent()];
-              this->task_notify(task_to_notify);
-              goto retry;
-              break;
-            }
-
-            case SchedulerAction::notify_sink: {
-              auto task_to_notify =
-                  node_to_task[task_to_run->sink_correspondent()];
-              this->task_notify(task_to_notify);
-              goto retry;
-              break;
-            }
-
-            case SchedulerAction::source_exit: {
-              if (task_to_run->sink_correspondent() != nullptr) {
-                auto task_to_notify =
-                    node_to_task[task_to_run->sink_correspondent()];
-
-                if (task_to_notify == nullptr) {
-                  throw std::runtime_error("task_to_notify is null");
-                }
-                this->task_notify(task_to_notify);
-              }
-            }
-              [[fallthrough]];
-
-            case SchedulerAction::sink_exit: {
-              /*
-               * Transition task to finished state.
-               */
-              this->task_exit(task_to_run);
-              --num_tasks_;
-              ++num_exited_tasks_;
-
-              if (num_tasks_ + num_exited_tasks_ != num_submitted_tasks_) {
-                throw std::runtime_error(
-                    "num_tasks_ + num_exited_tasks_ != "
-                    "num_submitted_tasks_");
-              }
-
-              /*
-               * The task graph is finished when all submitted tasks have
-               * exited.
-               */
-              if (num_exited_tasks_ == num_submitted_tasks_) {
-                break;
-              }
-              break;
-            }
-
-            case SchedulerAction::yield: {
-              // We yield at the end of the loop, so do nothing here.
-              // this->task_yield(task_to_run);
-              if (this->global_runnable_queue_.size() ==
-                  0) {  // @todo Abstraction violation!
-                goto retry;
-              }
-              goto retry;
-              break;
-            }
-
-            case SchedulerAction::noop: {
-              break;
-            }
-
-            case SchedulerAction::error: {
-              throw std::runtime_error("Error condition in scheduler");
-            }
-
-            default: {
-              throw std::runtime_error("Unknown event");
-            }
-          }
-          /*
-           * Yield this task.
-           * @todo Should this be done here or at the end of a task?
-           */
-          { this->task_yield(task_to_run); }
+        //lock.unlock();
+        [[ maybe_unused ]] auto evt = task_to_run->resume();
+        //lock.lock();
+        if (evt == SchedulerAction::done) {
+          ++num_exited_tasks_;
+          task_to_run->task_state() = TaskState::terminated;
         }
-      }  // End lock
-    }    // end while(true);
+      }
+    }
 
-    /*
-     * Shutdown the queues, which will release any threads waiting on the
-     * runnable queue.
-     */
     this->finish_queues(std::to_string(my_id));
   }  // worker()
 
@@ -922,4 +619,4 @@ class DuffsSchedulerImpl : public Base<Task, DuffsSchedulerImpl<Task, Base>> {
 
 }  // namespace tiledb::common
 
-#endif  // TILEDB_DAG_duffs_H
+#endif  // TILEDB_DAG_RANDOM_H
