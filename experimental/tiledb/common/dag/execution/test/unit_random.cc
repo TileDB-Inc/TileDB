@@ -495,7 +495,7 @@ TEMPLATE_TEST_CASE(
     CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
   }
 
-  auto p = P([problem_size, &sched, &i, &input](std::stop_source& stop_source) {
+  auto p = P([problem_size, &i, &input](std::stop_source& stop_source) {
     if (std::distance(input.begin(), i) >= static_cast<long>(problem_size)) {
       stop_source.request_stop();
       return *(input.begin()) + 1;
@@ -503,7 +503,7 @@ TEMPLATE_TEST_CASE(
 
     return (*i++) + 1;
   });
-  auto f = F([&sched](std::size_t k) { return k - 1; });
+  auto f = F([](std::size_t k) { return k - 1; });
 
   auto c = C([&j, &output, &debug](std::size_t k) {
     if (debug)

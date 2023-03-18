@@ -73,6 +73,7 @@
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
 #include "experimental/tiledb/common/dag/state_machine/item_mover.h"
 #include "experimental/tiledb/common/dag/utility/print_types.h"
+#include "experimental/tiledb/common/dag/utility/randomized_queue.h"
 
 using namespace std::placeholders;
 
@@ -317,26 +318,6 @@ class RandomSchedulerPolicy {
     start_cv_.wait(lock, [this]() { return this->ready_to_run(); });
   }
 
-  auto get_runnable_task() {
-    if (runnable_vector_.empty()) {
-      // Returning an empty optional indicates that there are no tasks to run,
-      // and the worker thread should exit.
-      return std::optional<task_handle_type>{};
-    }
-
-    static std::atomic<size_t> next_task{0};
-    size_t idx = next_task++ % runnable_vector_.size();
-
-    static std::mutex m;
-    if (idx == 0) {
-      std::lock_guard lock(m);
-      shuffle_runnable_vector();
-    }
-
-    auto val = runnable_vector_[idx];
-
-    return std::optional<task_handle_type>{val};
-  }
 
   void sync_wait_all() {
     /*
@@ -381,8 +362,7 @@ class RandomSchedulerPolicy {
    * this point.
    */
   void finish_queues([[maybe_unused]] const std::string& msg = "") {
-    std::lock_guard lock(mutex_);
-    runnable_vector_.clear();
+    runnable_queue_.drain();
   }
   /* ********************************* */
   /*         PRIVATE FUNCTIONS         */
@@ -410,26 +390,15 @@ class RandomSchedulerPolicy {
    * @brief Transitions all tasks from submission queue to runnable vector.
    */
   void make_submitted_runnable() {
-    assert(runnable_vector_.size() == 0);
 
-    runnable_vector_.clear();
-    runnable_vector_.reserve(submission_queue_.size());
     while (!submission_queue_.empty()) {
-      runnable_vector_.push_back(submission_queue_.front());
+      auto s = submission_queue_.front();
       submission_queue_.pop();
+      runnable_queue_.push(s);
     }
-    shuffle_runnable_vector();
   }
 
-  void shuffle_runnable_vector() {
-    std::shuffle(
-        std::begin(runnable_vector_),
-        std::end(runnable_vector_),
-        std::mt19937{std::random_device{}()});
-  }
-
- private:
- protected:
+  protected:
   /**
    * @brief Data structures to hold tasks in various states of execution.
    * Since accesses to these are made under the scheduler lock, we don't need
@@ -444,11 +413,10 @@ class RandomSchedulerPolicy {
    * @brief Vector of runnable tasks.
    *
    * @todo make private
-   * @todo Use thread-stealing scheduling
    */
 
   // BoundedBufferQ<Task, std::queue<Task>, false> global_runnable_queue_;
-  std::vector<Task> runnable_vector_;
+  RandomizedQueue<Task> runnable_queue_;
 
   /**
    * @brief Local queues for each worker thread.
@@ -542,10 +510,8 @@ class RandomSchedulerImpl : public Base<Task, RandomSchedulerImpl<Task, Base>> {
     if (num_submitted_tasks_ == 0) {
       return;
     }
-
     while (!stop_token.stop_requested()) {
       {
-        std::unique_lock lock(worker_mutex_);
 
         /*
          * If all of our tasks are done, then we are done.
@@ -561,7 +527,9 @@ class RandomSchedulerImpl : public Base<Task, RandomSchedulerImpl<Task, Base>> {
          * `get_runnable_task` may block, causing deadlock.  So we release lock.
          */
         // lock.unlock();
-        auto val = this->get_runnable_task();
+        auto val = this->runnable_queue_.pop();
+
+        std::unique_lock lock(worker_mutex_);
 
         if (!val) {
           break;
@@ -580,6 +548,8 @@ class RandomSchedulerImpl : public Base<Task, RandomSchedulerImpl<Task, Base>> {
         if (evt == SchedulerAction::done) {
           ++num_exited_tasks_;
           task_to_run->task_state() = TaskState::terminated;
+        } else {
+          this->runnable_queue_.push(task_to_run);
         }
       }
     }

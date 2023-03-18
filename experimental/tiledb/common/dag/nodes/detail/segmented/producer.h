@@ -279,7 +279,7 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
         return scheduler_event_type::yield;
       }
       case 999: {
-        return scheduler_event_type::error;
+        return scheduler_event_type::done;
       }
       default:
         break;
