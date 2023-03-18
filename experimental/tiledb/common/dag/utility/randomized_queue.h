@@ -151,8 +151,8 @@ class RandomizedQueue {
 
  private:
   void shuffle_items() {
-    std::random_device rd;
-    std::mt19937 g(rd());
+    static std::random_device rd;
+    static std::mt19937 g(rd());
     std::shuffle(items_.begin(), items_.end(), g);
   }
 

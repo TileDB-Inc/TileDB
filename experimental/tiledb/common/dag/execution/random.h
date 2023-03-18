@@ -529,7 +529,7 @@ class RandomSchedulerImpl : public Base<Task, RandomSchedulerImpl<Task, Base>> {
         // lock.unlock();
         auto val = this->runnable_queue_.pop();
 
-        std::unique_lock lock(worker_mutex_);
+        //        std::unique_lock lock(worker_mutex_);
 
         if (!val) {
           break;
@@ -542,9 +542,10 @@ class RandomSchedulerImpl : public Base<Task, RandomSchedulerImpl<Task, Base>> {
         /*
          * Invoke the node's `resume` function.
          */
-        lock.unlock();
+//        lock.unlock();
         [[maybe_unused]] auto evt = task_to_run->resume();
-        lock.lock();
+//        lock.lock();
+
         if (evt == SchedulerAction::done) {
           ++num_exited_tasks_;
           task_to_run->task_state() = TaskState::terminated;
