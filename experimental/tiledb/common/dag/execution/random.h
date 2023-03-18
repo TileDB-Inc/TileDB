@@ -543,14 +543,22 @@ class RandomSchedulerImpl : public Base<Task, RandomSchedulerImpl<Task, Base>> {
          * Invoke the node's `resume` function.
          */
 //        lock.unlock();
-        [[maybe_unused]] auto evt = task_to_run->resume();
+//        [[maybe_unused]]
 //        lock.lock();
 
-        if (evt == SchedulerAction::done) {
-          ++num_exited_tasks_;
-          task_to_run->task_state() = TaskState::terminated;
-        } else {
-          this->runnable_queue_.push(task_to_run);
+        while (true) {
+          auto evt = task_to_run->resume();
+          if (evt == SchedulerAction::noop || evt == SchedulerAction::notify_sink || evt == SchedulerAction::notify_source) {
+            continue;
+          }
+
+          if (evt == SchedulerAction::done) {
+            ++num_exited_tasks_;
+            task_to_run->task_state() = TaskState::terminated;
+          } else {
+            this->runnable_queue_.push(task_to_run);
+          }
+          break;
         }
       }
     }
