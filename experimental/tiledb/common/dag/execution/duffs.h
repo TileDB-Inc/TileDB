@@ -94,9 +94,6 @@ using namespace std::placeholders;
 namespace tiledb::common {
 
 /**
- * @brief A scheduler that uses a fixed number of threads to execute tasks and
- * an experimental "throw-catch" mechanism for signalling from port to
- * scheduler.
  *
  * @tparam Mover The type of data mover used to move data between nodes ports.
  * @tparam PortState The type of port state, either `PortState::two_stage` or
@@ -191,7 +188,6 @@ class DuffsPortPolicy : public PortFiniteStateMachine<
    * Policy action called on the port `on_term_source` action.
    */
   inline scheduler_event_type on_term_source(lock_type&, std::atomic<int>&) {
-    // throw(duffs_source_exit);
     return scheduler_event_type::source_exit;
   }
 
@@ -717,10 +713,6 @@ class DuffsSchedulerImpl : public Base<Task, DuffsSchedulerImpl<Task, Base>> {
    * The primary operation of the worker thread is to get a task and execute it.
    * Task actions will be invoked in response to port events as used by
    * execution of the `resume` function in the node.
-   *
-   * Task actions throw exceptions when they are invoked.  The worker function
-   * catches these exceptions and reacts accordingly.  Events handled by the
-   * scheduler are: wait, notify, and exit.
    *
    * @param id The id of the thread.  These are assigned on thread creation,
    * to be used for debugging purposes.  The id is in the range [0,

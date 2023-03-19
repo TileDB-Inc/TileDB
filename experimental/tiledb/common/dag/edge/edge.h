@@ -68,17 +68,20 @@ class Edge;
  * Deduction guides for `Edge`.
  */
 template <template <class> class Mover_T, class Block>
-Edge(Source<Mover_T, Block>&, Sink<Mover_T, Block>&)->Edge<Mover_T, Block>;
+Edge(Source<Mover_T, Block>&, Sink<Mover_T, Block>&) -> Edge<Mover_T, Block>;
 
 template <template <class> class Mover_T, class Block>
-Edge(std::shared_ptr<Source<Mover_T, Block>>&, Sink<Mover_T, Block>&)->Edge<Mover_T, Block>;
+Edge(std::shared_ptr<Source<Mover_T, Block>>&, Sink<Mover_T, Block>&)
+    -> Edge<Mover_T, Block>;
 
 template <template <class> class Mover_T, class Block>
-Edge(Source<Mover_T, Block>&, std::shared_ptr<Sink<Mover_T, Block>>&)->Edge<Mover_T, Block>;
+Edge(Source<Mover_T, Block>&, std::shared_ptr<Sink<Mover_T, Block>>&)
+    -> Edge<Mover_T, Block>;
 
 template <template <class> class Mover_T, class Block>
-Edge(std::shared_ptr<Source<Mover_T, Block>>&, std::shared_ptr<Sink<Mover_T, Block>>&)->Edge<Mover_T, Block>;
-
+Edge(
+    std::shared_ptr<Source<Mover_T, Block>>&,
+    std::shared_ptr<Sink<Mover_T, Block>>&) -> Edge<Mover_T, Block>;
 
 /**
  * An edge in a task graph.

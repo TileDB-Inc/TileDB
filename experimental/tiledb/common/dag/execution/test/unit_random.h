@@ -1,5 +1,5 @@
 /**
- * @file   bounded_buffer.cc
+ * @file unit_random.h
  *
  * @section LICENSE
  *
@@ -26,6 +26,9 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
- *
  */
-#include "bounded_buffer.h"
+
+#ifndef TILEDB_UNIT_RANDOM_H
+#define TILEDB_UNIT_RANDOM_H
+#include <test/support/tdb_catch.h>
+#endif  // TILEDB_UNIT_RANDOM_H

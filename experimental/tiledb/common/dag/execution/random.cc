@@ -1,5 +1,5 @@
 /**
- * @file   bounded_buffer.cc
+ * @file random.cc
  *
  * @section LICENSE
  *
@@ -26,6 +26,6 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
- *
  */
-#include "bounded_buffer.h"
+
+#include "random.h"

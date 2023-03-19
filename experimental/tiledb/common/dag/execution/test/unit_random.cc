@@ -1,5 +1,5 @@
 /**
- * @file unit_duffs.cc
+ * @file unit_random.cc
  *
  * @section LICENSE
  *
@@ -29,27 +29,28 @@
  *
  */
 
-#include "unit_duffs.h"
-#include "../duffs.h"
+#include "unit_random.h"
+#include "../random.h"
+
 #include "experimental/tiledb/common/dag/edge/edge.h"
 #include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
 
 using namespace tiledb::common;
 
-using S = tiledb::common::DuffsScheduler<node>;
-using C2 = consumer_node<DuffsMover2, size_t>;
-using F2 = function_node<DuffsMover2, size_t>;
-using P2 = producer_node<DuffsMover2, size_t>;
+using S = tiledb::common::RandomScheduler<node>;
+using C2 = consumer_node<RandomMover2, size_t>;
+using F2 = function_node<RandomMover2, size_t>;
+using P2 = producer_node<RandomMover2, size_t>;
 
-using C3 = consumer_node<DuffsMover3, size_t>;
-using F3 = function_node<DuffsMover3, size_t>;
-using P3 = producer_node<DuffsMover3, size_t>;
+using C3 = consumer_node<RandomMover3, size_t>;
+using F3 = function_node<RandomMover3, size_t>;
+using P3 = producer_node<RandomMover3, size_t>;
 
-TEST_CASE("Construct Scheduler", "[duffs]") {
+TEST_CASE("Construct Scheduler", "[Random]") {
   auto sched = S(1);
 }
 
-TEST_CASE("Construct functions", "[duffs]") {
+TEST_CASE("Construct functions", "[random]") {
   // Test 2 stage edges -- 3 stage will have different behavior,
   // so needs its own test case
   auto p = P2([](std::stop_source&) { return 0; });
@@ -57,10 +58,7 @@ TEST_CASE("Construct functions", "[duffs]") {
   auto c = C2([](const size_t&) {});
 }
 
-// @todo Note this might change, depending on how we handle decrementing
-// the program counter for wait.
-
-TEST_CASE("Resume functions", "[duffs]") {
+TEST_CASE("Resume functions", "[random]") {
   auto p = P2([](std::stop_source&) { return 0; });
   auto f = F2([](const size_t& i) { return i; });
   auto c = C2([](const size_t&) {});
@@ -81,7 +79,6 @@ TEST_CASE("Resume functions", "[duffs]") {
     x = p->resume();
     CHECK(p->get_program_counter() == 0);
     CHECK(str(x) == "yield");
-
     // Second pass through node operation -- this should wait since port will be
     // full
     x = p->resume();
@@ -92,7 +89,34 @@ TEST_CASE("Resume functions", "[duffs]") {
     // Recall that wait decrements the program counter
     CHECK(p->get_program_counter() == 4);
     CHECK(str(x) == "source_wait");
-    // Don't resume further after wait
+  }
+
+  SECTION("Test Producer in Isolation, call wait twice ") {
+    // One pass through node operation
+    auto x = p->resume();
+    CHECK(p->get_program_counter() == 3);
+    CHECK(str(x) == "notify_sink");
+    x = p->resume();
+    CHECK(p->get_program_counter() == 5);
+    CHECK(str(x) == "noop");
+    x = p->resume();
+    CHECK(p->get_program_counter() == 0);
+    CHECK(str(x) == "yield");
+    // Second pass through node operation -- this should wait since port will be
+    // full
+    x = p->resume();
+    CHECK(p->get_program_counter() == 3);
+    CHECK(str(x) == "notify_sink");
+    x = p->resume();
+
+    // Recall that wait decrements the program counter
+    CHECK(p->get_program_counter() == 4);
+    CHECK(str(x) == "source_wait");
+
+    // Recall that wait decrements the program counter, so we should be able
+    // to call it again
+    CHECK(p->get_program_counter() == 4);
+    CHECK(str(x) == "source_wait");
   }
 
   SECTION("Test Consumer in Isolation ") {
@@ -315,7 +339,7 @@ TEST_CASE("Resume functions", "[duffs]") {
 
 TEMPLATE_TEST_CASE(
     "Submit Nodes",
-    "[duffs]",
+    "[random]",
     (std::tuple<C2, F2, P2>),
     (std::tuple<C3, F3, P3>)) {
   using C = typename std::tuple_element<0, TestType>::type;
@@ -384,7 +408,7 @@ TEMPLATE_TEST_CASE(
 
 TEMPLATE_TEST_CASE(
     "Run Simple Nodes",
-    "[duffs]",
+    "[random]",
     (std::tuple<C2, F2, P2>),
     (std::tuple<C3, F3, P3>)) {
   using C = typename std::tuple_element<0, TestType>::type;
@@ -444,7 +468,7 @@ TEMPLATE_TEST_CASE(
 
 TEMPLATE_TEST_CASE(
     "Run Passing Integers",
-    "[duffs]",
+    "[random]",
     (std::tuple<C2, F2, P2>),
     (std::tuple<C3, F3, P3>)) {
   using C = typename std::tuple_element<0, TestType>::type;
@@ -471,30 +495,15 @@ TEMPLATE_TEST_CASE(
     CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
   }
 
-  auto p = P([problem_size, &sched, &i, &input](std::stop_source& stop_source) {
-    if (sched.debug_enabled())
-      std::cout << "Producing " + std::to_string(*i) + " with distance " +
-                       std::to_string(std::distance(input.begin(), i)) + "\n";
+  auto p = P([problem_size, &i, &input](std::stop_source& stop_source) {
     if (std::distance(input.begin(), i) >= static_cast<long>(problem_size)) {
-      if (sched.debug_enabled()) {
-        std::cout << "Requesting stop\n";
-      }
-
       stop_source.request_stop();
       return *(input.begin()) + 1;
     }
 
-    if (sched.debug_enabled())
-      std::cout << "producer function returning " + std::to_string(*i) + "\n";
-
     return (*i++) + 1;
   });
-  auto f = F([&sched](std::size_t k) {
-    if (sched.debug_enabled())
-      std::cout << "Transforming " + std::to_string(k) + " to "
-                << std::to_string(k - 1) + "\n";
-    return k - 1;
-  });
+  auto f = F([](std::size_t k) { return k - 1; });
 
   auto c = C([&j, &output, &debug](std::size_t k) {
     if (debug)
