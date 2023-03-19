@@ -318,7 +318,6 @@ class RandomSchedulerPolicy {
     start_cv_.wait(lock, [this]() { return this->ready_to_run(); });
   }
 
-
   void sync_wait_all() {
     /*
      * Swap the submission queue (where all the submitted tasks are) with the
@@ -358,10 +357,9 @@ class RandomSchedulerPolicy {
 
   /**
    * @brief Cleans up the scheduler policy.  This is called when the scheduler
-   * is done. All queues are shut down.  All queues and sets should be empty at
-   * this point.
+   * is done. Runnable queue is shut down.
    */
-  void finish_queues([[maybe_unused]] const std::string& msg = "") {
+  void finish_queues() {
     runnable_queue_.drain();
   }
   /* ********************************* */
@@ -390,7 +388,6 @@ class RandomSchedulerPolicy {
    * @brief Transitions all tasks from submission queue to runnable vector.
    */
   void make_submitted_runnable() {
-
     while (!submission_queue_.empty()) {
       auto s = submission_queue_.front();
       submission_queue_.pop();
@@ -400,31 +397,20 @@ class RandomSchedulerPolicy {
 
   protected:
   /**
-   * @brief Data structures to hold tasks in various states of execution.
-   * Since accesses to these are made under the scheduler lock, we don't need
-   * to use thread-safe data structures.
+   *
+   * @todo make private
+   *
    */
-  // std::set<Task> waiting_set_;
-  // std::set<Task> running_set_;
   std::queue<Task> submission_queue_;
-  // std::queue<Task> finished_queue_;
 
   /**
-   * @brief Vector of runnable tasks.
+   * @brief Queue of runnable tasks, returns random task on each pop()
    *
    * @todo make private
    */
-
-  // BoundedBufferQ<Task, std::queue<Task>, false> global_runnable_queue_;
   RandomizedQueue<Task> runnable_queue_;
 
-  /**
-   * @brief Local queues for each worker thread.
-   */
  private:
-  std::atomic<size_t> counter_{0};
-  size_t num_workers_{0};
-  // std::vector<BoundedBufferQ<Task, std::queue<Task>, false>> worker_queues_;
 
   thread_pool tp_;
 };  // namespace tiledb::common
@@ -447,9 +433,6 @@ class RandomSchedulerImpl : public Base<Task, RandomSchedulerImpl<Task, Base>> {
 
   using node_handle_type = node_handle_t<Task>;
   using node_type = node_t<Task>;
-
-  // using node_handle_type = typename task_type::node_handle_type;
-  // using node_type = typename task_type::node_type;
 
   using Policy::Policy;
 
@@ -495,24 +478,23 @@ class RandomSchedulerImpl : public Base<Task, RandomSchedulerImpl<Task, Base>> {
  public:
   void submit(node_handle_type&& n) {
     ++num_submitted_tasks_;
-    ++num_tasks_;
 
     auto t = task_handle_type{std::move(n)};
-    node_to_task[n] = t;
     this->submission_queue_.push(t);
   }
 
-  void worker(std::stop_token stop_token, size_t id = 0) {
+  void worker(const std::stop_token& stop_token, size_t id = 0) {
     thread_local size_t my_id{id};
 
+    /* Don't let workers start until the scheduler releases them */
     this->block_worker();
 
     if (num_submitted_tasks_ == 0) {
       return;
     }
+
     while (!stop_token.stop_requested()) {
       {
-
         /*
          * If all of our tasks are done, then we are done.
          */
@@ -522,29 +504,14 @@ class RandomSchedulerImpl : public Base<Task, RandomSchedulerImpl<Task, Base>> {
 
         /*
          * Get a runnable task.
-         * This is a blocking call, unless the queue is finished.
-         * We don't want to call this under the lock, because
-         * `get_runnable_task` may block, causing deadlock.  So we release lock.
+         * This is a blocking call, unless the queue is finished, in which
+         * case an empty optional will be returned.
          */
-        // lock.unlock();
         auto val = this->runnable_queue_.pop();
-
-        //        std::unique_lock lock(worker_mutex_);
-
         if (!val) {
           break;
         }
         auto task_to_run = *val;
-        auto node = (*(task_to_run->node()));
-
-        // retry:
-
-        /*
-         * Invoke the node's `resume` function.
-         */
-//        lock.unlock();
-//        [[maybe_unused]]
-//        lock.lock();
 
         while (true) {
           auto evt = task_to_run->resume();
@@ -563,7 +530,7 @@ class RandomSchedulerImpl : public Base<Task, RandomSchedulerImpl<Task, Base>> {
       }
     }
 
-    this->finish_queues(std::to_string(my_id));
+    this->finish_queues();
   }  // worker()
 
   /* ********************************* */
@@ -571,16 +538,9 @@ class RandomSchedulerImpl : public Base<Task, RandomSchedulerImpl<Task, Base>> {
   /* ********************************* */
 
  private:
-  /**
-   * @brief A map to convert node ids to tasks.
-   */
-  std::map<node_handle_type, task_handle_type> node_to_task;
 
   /** Track number of tasks submitted to scheduler */
   std::atomic<size_t> num_submitted_tasks_{0};
-
-  /** Track number of tasks in the scheduler */
-  std::atomic<size_t> num_tasks_{0};
 
   /** Track number of tasks that have exited the scheduler */
   std::atomic<size_t> num_exited_tasks_{0};

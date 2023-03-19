@@ -42,6 +42,11 @@
 
 namespace tiledb::common {
 
+/**
+ * A simple queue that returns elements in random order.
+ * Supports push, try_push, pop, try_pop, and shutdown.
+ * @tparam Item type of item to store in the queue
+ */
 template <class Item>
 class RandomizedQueue {
  public:
@@ -59,6 +64,11 @@ class RandomizedQueue {
       , shutdown_{rhs.shutdown_.load()} {
   }
 
+  /**
+   * Add an item to the queue.
+   * @param item to push
+   * @return always true
+   */
   bool push(const Item& item) {
     std::unique_lock lock{mutex_};
 
@@ -73,7 +83,7 @@ class RandomizedQueue {
   }
 
   /**
-   * Here for historical reasons.  Will always succeed.
+   * Here for historical reasons.  Queue is unbounded, so will always succeed.
    * @param item
    * @return true
    */
@@ -90,6 +100,10 @@ class RandomizedQueue {
     return true;
   }
 
+  /**
+   * Try to pop an item from the queue.  If the queue is empty, return nothing.
+   * @return optional item
+   */
   std::optional<Item> try_pop() {
     std::scoped_lock lock{mutex_};
 
@@ -104,6 +118,11 @@ class RandomizedQueue {
     return item;
   }
 
+  /**
+   * Pop an item from the queue.  If the queue is empty, wait until an item is
+   * available.  If the queue is drained or shutdown, return empty optional.
+   * @return optional item
+   */
   std::optional<Item> pop() {
     std::unique_lock lock{mutex_};
 
@@ -120,10 +139,10 @@ class RandomizedQueue {
     return item;
   }
 
-  inline size_t size() const {
-    return items_.size();
-  }
-
+  /**
+   * Swap the data of this queue with the data of another queue.
+   * @param rhs the other queue
+   */
   void swap_data(RandomizedQueue& rhs) {
     std::scoped_lock lock{mutex_};
     std::swap(items_, rhs.queue_);
@@ -147,6 +166,23 @@ class RandomizedQueue {
     std::scoped_lock lock{mutex_};
     shutdown_ = true;
     empty_cv_.notify_all();
+  }
+
+  /**
+   * Return size of (number of items in) the queue
+   * @return
+   */
+  inline size_t size() const {
+    return items_.size();
+  }
+
+  /**
+   *
+   * @return true if the queue is empty
+   */
+
+  inline bool empty() const {
+    return items_.empty();
   }
 
  private:
