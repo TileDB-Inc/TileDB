@@ -483,7 +483,7 @@ class RandomSchedulerImpl : public Base<Task, RandomSchedulerImpl<Task, Base>> {
   }
 
   void worker(const std::stop_token& stop_token, size_t id = 0) {
-    thread_local size_t my_id{id};
+    [[maybe_unused]] thread_local size_t my_id{id};
 
     /* Don't let workers start until the scheduler releases them */
     this->block_worker();
