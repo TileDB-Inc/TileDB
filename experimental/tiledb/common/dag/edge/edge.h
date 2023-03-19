@@ -64,9 +64,33 @@ struct GraphEdge {};
 template <template <class> class Mover_T, class Block>
 class Edge;
 
-// template <template <class> class Mover_T, class Block>
-// Edge(Source<Mover_T, Block>&, Sink<Mover_T, Block>&)->Edge<Mover_T, Block>;
+/**
+ * Deduction guides for `Edge`.
+ */
+template <template <class> class Mover_T, class Block>
+Edge(Source<Mover_T, Block>&, Sink<Mover_T, Block>&)->Edge<Mover_T, Block>;
 
+template <template <class> class Mover_T, class Block>
+Edge(std::shared_ptr<Source<Mover_T, Block>>&, Sink<Mover_T, Block>&)->Edge<Mover_T, Block>;
+
+template <template <class> class Mover_T, class Block>
+Edge(Source<Mover_T, Block>&, std::shared_ptr<Sink<Mover_T, Block>>&)->Edge<Mover_T, Block>;
+
+template <template <class> class Mover_T, class Block>
+Edge(std::shared_ptr<Source<Mover_T, Block>>&, std::shared_ptr<Sink<Mover_T, Block>>&)->Edge<Mover_T, Block>;
+
+
+/**
+ * An edge in a task graph.
+ *
+ * Creating an edge sets up an item mover between the `Source` and the `Sink`.
+ * The `Edge` may go out of scope when this is done.  The item mover will still
+ * be pointed to by `Source` and the `Sink`.
+ *
+ * @todo Since the `Edge` doesn't really maintain any information related to
+ * `Source` and `Sink` it probably doesn't need those as template parameters,
+ * but rather we could make the constructor a function template.
+ */
 template <template <class> class Mover_T, class Block>
 class Edge : public GraphEdge {
   using source_type = Source<Mover_T, Block>;
@@ -85,32 +109,28 @@ class Edge : public GraphEdge {
   /**
    * Constructor.
    */
-  Edge(source_type& from, sink_type& to, bool debug = false) {
-    if (debug)
-      std::cout << "Edge constructor"
-                << " " << this << std::endl;
-
+  Edge(source_type& from, sink_type& to) {
     item_mover_ = std::make_shared<mover_type>();
-
-    if (item_mover_->debug_enabled())
-      std::cout << "Edge constructor after make shared" << std::endl;
-
-    if (debug) {
-      item_mover_->enable_debug();
-    }
-
-    if (item_mover_->debug_enabled())
-      std::cout << "Item mover debug " << item_mover_->debug_enabled()
-                << std::endl;
-
-    if (item_mover_->debug_enabled())
-      std::cout << "Edge constructor about to attach" << std::endl;
-
     attach(from, to, item_mover_);
-    if (item_mover_->debug_enabled())
-      std::cout << "Edge constructor done" << std::endl;
   }
 
+  // Warning!! For ctad to work, the shared ptrs cannot be references
+  Edge(std::shared_ptr<source_type> from, sink_type& to) {
+    item_mover_ = std::make_shared<mover_type>();
+    attach(*from, to, item_mover_);
+  }
+  Edge(source_type& from, std::shared_ptr<sink_type> to) {
+    item_mover_ = std::make_shared<mover_type>();
+    attach(from, *to, item_mover_);
+  }
+  Edge(std::shared_ptr<source_type> from, std::shared_ptr<sink_type> to) {
+    item_mover_ = std::make_shared<mover_type>();
+    attach(*from, *to, item_mover_);
+  }
+
+  /**
+   * Destructor.
+   */
   ~Edge() {
     if (item_mover_->debug_enabled())
       std::cout << "Edge destructor" << std::endl;
