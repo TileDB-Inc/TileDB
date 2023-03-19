@@ -395,7 +395,7 @@ class RandomSchedulerPolicy {
     }
   }
 
-  protected:
+ protected:
   /**
    *
    * @todo make private
@@ -411,7 +411,6 @@ class RandomSchedulerPolicy {
   RandomizedQueue<Task> runnable_queue_;
 
  private:
-
   thread_pool tp_;
 };  // namespace tiledb::common
 
@@ -515,7 +514,9 @@ class RandomSchedulerImpl : public Base<Task, RandomSchedulerImpl<Task, Base>> {
 
         while (true) {
           auto evt = task_to_run->resume();
-          if (evt == SchedulerAction::noop || evt == SchedulerAction::notify_sink || evt == SchedulerAction::notify_source) {
+          if (evt == SchedulerAction::noop ||
+              evt == SchedulerAction::notify_sink ||
+              evt == SchedulerAction::notify_source) {
             continue;
           }
 
@@ -538,7 +539,6 @@ class RandomSchedulerImpl : public Base<Task, RandomSchedulerImpl<Task, Base>> {
   /* ********************************* */
 
  private:
-
   /** Track number of tasks submitted to scheduler */
   std::atomic<size_t> num_submitted_tasks_{0};
 
