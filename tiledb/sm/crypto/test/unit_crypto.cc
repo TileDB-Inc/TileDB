@@ -519,11 +519,19 @@ TEST_CASE("Crypto: Test AES-256-GCM", "[crypto][aes]") {
 
 static std::vector<uint8_t> from_hex(const std::string& str) {
   std::vector<uint8_t> vec;
-  for (int i = 0; i < str.length(); i += 2) {
+  for (size_t i = 0; i < str.length(); i += 2) {
     char byte_str[3] = {str[i], str[i + 1], '\0'};
     vec.push_back((uint8_t)std::strtoul(byte_str, nullptr, 16));
   }
   return vec;
+}
+
+static std::string to_hex(const uint8_t* data, uint64_t length) {
+  std::stringstream ss;
+  for (uint64_t i = 0; i < length; i++) {
+    ss << std::hex << std::setw(2) << std::setfill('0') << (int)data[i];
+  }
+  return ss.str();
 }
 
 // Test that the given input has the expected hash value in
@@ -536,13 +544,8 @@ static void test_hash(
   Buffer hash_buf(Hash::digest_bytes);
   CHECK((Hash::hash(input, length, &hash_buf)).ok());
 
-  std::stringstream ss;
-  for (int i = 0; i < hash_buf.alloced_size(); i++) {
-    uint8_t data = ((uint8_t*)hash_buf.data())[i];
-    ss << std::hex << std::setw(2) << std::setfill('0') << (int)data;
-  }
   // Compare the strings for a better error message in case of failure.
-  CHECK(ss.str() == expected_hash);
+  CHECK(to_hex((uint8_t*)hash_buf.size(), hash_buf.size()) == expected_hash);
 }
 
 struct MD5Hash {
