@@ -214,6 +214,7 @@ const std::string Config::VFS_S3_PROXY_USERNAME = "";
 const std::string Config::VFS_S3_PROXY_PASSWORD = "";
 const std::string Config::VFS_S3_LOGGING_LEVEL = "Off";
 const std::string Config::VFS_S3_VERIFY_SSL = "true";
+const std::string Config::VFS_S3_NO_SIGN_REQUEST = "false";
 const std::string Config::VFS_S3_BUCKET_CANNED_ACL = "NOT_SET";
 const std::string Config::VFS_S3_OBJECT_CANNED_ACL = "NOT_SET";
 const std::string Config::VFS_HDFS_KERB_TICKET_CACHE_PATH = "";
@@ -441,6 +442,7 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair("vfs.s3.proxy_password", Config::VFS_S3_PROXY_PASSWORD),
     std::make_pair("vfs.s3.logging_level", Config::VFS_S3_LOGGING_LEVEL),
     std::make_pair("vfs.s3.verify_ssl", Config::VFS_S3_VERIFY_SSL),
+    std::make_pair("vfs.s3.no_sign_request", Config::VFS_S3_NO_SIGN_REQUEST),
     std::make_pair(
         "vfs.s3.bucket_canned_acl", Config::VFS_S3_BUCKET_CANNED_ACL),
     std::make_pair(
@@ -777,6 +779,8 @@ Status Config::sanity_check(
   } else if (param == "vfs.s3.proxy_port") {
     RETURN_NOT_OK(utils::parse::convert(value, &vint64));
   } else if (param == "vfs.s3.verify_ssl") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
+  } else if (param == "vfs.s3.no_sign_request") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (
       (chkno = 1, param == "vfs.s3.bucket_canned_acl") ||
