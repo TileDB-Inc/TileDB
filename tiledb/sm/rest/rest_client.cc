@@ -345,6 +345,55 @@ void RestClient::delete_array_from_rest(const URI& uri) {
       stats_, url, serialization_type_, &returned_data, cache_key));
 }
 
+void RestClient::delete_fragments_from_rest(
+    const URI& uri, uint64_t timestamp_start, uint64_t timestamp_end) {
+  // Init curl and form the URL
+  Curl curlc(logger_);
+  std::string array_ns, array_uri;
+  throw_if_not_ok(uri.get_rest_components(&array_ns, &array_uri));
+  const std::string cache_key = array_ns + ":" + array_uri;
+  throw_if_not_ok(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
+                          "/" + curlc.url_escape(array_uri) +
+                          "start_timestamp=" + std::to_string(timestamp_start) +
+                          "&end_timestamp=" + std::to_string(timestamp_end);
+
+  Buffer returned_data;
+  throw_if_not_ok(curlc.delete_data(
+      stats_, url, serialization_type_, &returned_data, cache_key));
+}
+
+void RestClient::delete_fragments_list_from_rest(
+    const URI& uri, const std::vector<URI>& fragment_uris) {
+  Buffer buff;
+  serialization::fragments_serialize(fragment_uris, serialization_type_, &buff);
+  // Wrap in a list
+  BufferList serialized;
+  throw_if_not_ok(serialized.add_buffer(std::move(buff)));
+
+  // Init curl and form the URL
+  Curl curlc(logger_);
+  std::string array_ns, array_uri;
+  throw_if_not_ok(uri.get_rest_components(&array_ns, &array_uri));
+  const std::string cache_key = array_ns + ":" + array_uri;
+  throw_if_not_ok(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
+                          "/" + curlc.url_escape(array_uri) +
+                          "/delete_fragments_list";
+
+  // Post query to rest
+  Buffer returned_data;
+  throw_if_not_ok(curlc.post_data(
+      stats_,
+      url,
+      serialization_type_,
+      &serialized,
+      &returned_data,
+      cache_key));
+}
+
 Status RestClient::deregister_array_from_rest(const URI& uri) {
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -1436,6 +1485,17 @@ Status RestClient::post_array_from_rest(const URI&, StorageManager*, Array*) {
 }
 
 void RestClient::delete_array_from_rest(const URI&) {
+  throw StatusException(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
+}
+
+void RestClient::delete_fragments_from_rest(const URI&, uint64_t, uint64_t) {
+  throw StatusException(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
+}
+
+void RestClient::delete_fragments_list_from_rest(
+    const URI& uri, const std::vector<URI>& fragment_uris) {
   throw StatusException(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }

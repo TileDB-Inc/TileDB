@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -103,6 +103,17 @@ Status array_open_from_capnp(
     const capnp::ArrayMetadata::Reader& array_open_reader, Array* array);
 
 /**
+ * Convert Array Fragments to Cap'n Proto message
+ *
+ * @param fragments fragments to serialize
+ * @param array_fragments_builder cap'n proto class
+ * @return Status
+ */
+void fragments_to_capnp(
+    const std::vector<URI>& fragments,
+    capnp::ArrayFragments::Builder* array_fragments_builder);
+
+/**
  * Convert Cap'n Proto message to Array Metadata
  *
  * @param array_metadata_reader cap'n proto class
@@ -162,6 +173,11 @@ Status array_open_deserialize(
     Array* array,
     SerializationType serialize_type,
     const Buffer& serialized_buffer);
+
+void fragments_serialize(
+    const std::vector<URI>& fragments,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer);
 
 Status metadata_serialize(
     Metadata* metadata,

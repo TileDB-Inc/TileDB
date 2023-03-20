@@ -60,6 +60,13 @@ namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
+class ArraySerializationStatusException : public StatusException {
+ public:
+  explicit ArraySerializationStatusException(const std::string& message)
+      : StatusException("[TileDB::Serialization][Array]", message) {
+  }
+};
+
 Status metadata_to_capnp(
     const Metadata* metadata,
     capnp::ArrayMetadata::Builder* array_metadata_builder) {
@@ -368,6 +375,74 @@ Status array_open_from_capnp(
   }
 
   return Status::Ok();
+}
+
+void fragments_to_capnp(
+    const std::vector<URI>& fragments,
+    capnp::ArrayFragments::Builder* array_fragments_builder) {
+  auto fragments_list_builder =
+      array_fragments_builder->initUris(fragments.size());
+  for (size_t i = 0; i < fragments.size(); i++) {
+    // As in fragment_info_to_capnp
+    // Strip full URI & send only the name of the fragment for security reasons
+    fragments_list_builder.set(
+        i, fragments[i].remove_trailing_slash().last_path_part());
+  }
+}
+
+void fragments_serialize(
+    const std::vector<URI>& fragments,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer) {
+  if (fragments.empty()) {
+    throw ArraySerializationStatusException(
+        "[fragments_serialize] Fragments vector is empty");
+  }
+
+  try {
+    // Serialize
+    ::capnp::MallocMessageBuilder message;
+    auto builder = message.initRoot<capnp::ArrayFragments>();
+    fragments_to_capnp(fragments, &builder);
+
+    // Copy to buffer
+    serialized_buffer->reset_size();
+    serialized_buffer->reset_offset();
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        kj::String capnp_json = json.encode(builder);
+        const auto json_len = capnp_json.size();
+        const char nul = '\0';
+        // size does not include needed null terminator, so add +1
+        throw_if_not_ok(serialized_buffer->realloc(json_len + 1));
+        throw_if_not_ok(serialized_buffer->write(capnp_json.cStr(), json_len));
+        throw_if_not_ok(serialized_buffer->write(&nul, 1));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
+        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
+        const auto nbytes = message_chars.size();
+        throw_if_not_ok(serialized_buffer->realloc(nbytes));
+        throw_if_not_ok(
+            serialized_buffer->write(message_chars.begin(), nbytes));
+        break;
+      }
+      default: {
+        throw ArraySerializationStatusException(
+            "[fragments_serialize] Unknown serialization type passed");
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    throw ArraySerializationStatusException(
+        "[fragments_serialize] kj::Exception: " +
+        std::string(e.getDescription().cStr()));
+  } catch (std::exception& e) {
+    throw ArraySerializationStatusException(
+        "[fragments_serialize] exception " + std::string(e.what()));
+  }
 }
 
 Status metadata_serialize(
@@ -708,6 +783,11 @@ Status array_open_serialize(const Array&, SerializationType, Buffer*) {
 Status array_open_deserialize(Array*, SerializationType, const Buffer&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
+}
+
+void fragments_serialize(const std::vector<URI>&, SerializationType, Buffer*) {
+  throw ArraySerializationStatusException(
+      "Cannot serialize; serialization not enabled.");
 }
 
 Status metadata_serialize(Metadata*, SerializationType, Buffer*) {

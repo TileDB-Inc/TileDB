@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -126,6 +126,29 @@ class RestClient {
    * @param uri Array URI to delete
    */
   void delete_array_from_rest(const URI& uri);
+
+  /**
+   * Deletes the fragments written between the given timestamps from the array
+   * at the given URI from the REST server.
+   *
+   * #TODO Implement API endpoint on TileDBCloud.
+   * @param uri Array URI to delete
+   * @param timestamp_start The start timestamp at which to delete fragments
+   * @param timestamp_end The end timestamp at which to delete fragments
+   */
+  void delete_fragments_from_rest(
+      const URI& uri, uint64_t timestamp_start, uint64_t timestamp_end);
+
+  /**
+   * Deletes the fragments with the given URIs from the array at the given URI
+   * from the REST server.
+   *
+   * #TODO Implement API endpoint on TileDBCloud.
+   * @param uri Array URI to delete fragments from
+   * @param fragment_uris The uris of the fragments to be deleted
+   */
+  void delete_fragments_list_from_rest(
+      const URI& uri, const std::vector<URI>& fragment_uris);
 
   /**
    * Deregisters an array at the given URI from the REST server.
