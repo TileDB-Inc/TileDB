@@ -158,10 +158,7 @@ jobs:
           ###################################################
           # Run tests
 
-          # Bypass Catch2 Framework stdout interception with awk on test output
-          ./tiledb/test/regression/tiledb_regression -d yes
-          ./tiledb/test/ci/test_assert -d yes
-          ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          source $GITHUB_WORKSPACE/scripts/run-nix-tests.sh
 
           ###################################################
           # Stop helper processes, if applicable
@@ -169,10 +166,19 @@ jobs:
           source $GITHUB_WORKSPACE/scripts/ci/posix/build-services-stop.sh
 
           ###################################################
+          # Generate test report
+
+          $GITHUB_WORKSPACE/scripts/collect-test-results.py > $GITHUB_STEP_SUMMARY
+
+      - name: Build and Run Examples
+        run: |
+          ###################################################
           # Build and run Examples
           make -C $GITHUB_WORKSPACE/build -j3 examples
           source $GITHUB_WORKSPACE/scripts/run-nix-examples.sh
 
+      - name: Build Benchmarks
+        run: |
           ###################################################
           # Build benchmark code
 
