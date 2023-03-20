@@ -31,7 +31,9 @@
  * labels.
  */
 
+#include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/serialization_wrappers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
@@ -142,6 +144,9 @@ class DenseArrayExample1 : public TemporaryDirectoryFixture {
     require_tiledb_ok(tiledb_subarray_alloc(ctx, array, &subarray));
     require_tiledb_ok(tiledb_subarray_add_range(
         ctx, subarray, 0, &index_start, &index_end, nullptr));
+    if (serialize_) {
+      tiledb_subarray_serialize(ctx, array, &subarray);
+    }
 
     // Create write query.
     tiledb_query_t* query;
@@ -206,6 +211,10 @@ class DenseArrayExample1 : public TemporaryDirectoryFixture {
     require_tiledb_ok(tiledb_subarray_add_label_range(
         ctx, subarray, "x", &label_start, &label_end, nullptr));
 
+    if (serialize_) {
+      tiledb_subarray_serialize(ctx, array, &subarray);
+    }
+
     // Create write query.
     tiledb_query_t* query;
     require_tiledb_ok(tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query));
@@ -257,6 +266,10 @@ class DenseArrayExample1 : public TemporaryDirectoryFixture {
     require_tiledb_ok(tiledb_subarray_alloc(ctx, array, &subarray));
     require_tiledb_ok(tiledb_subarray_add_range(
         ctx, subarray, 0, &index_domain_[0], &index_domain_[1], nullptr));
+
+    if (serialize_) {
+      tiledb_subarray_serialize(ctx, array, &subarray);
+    }
 
     // Define buffer and size values.
     std::vector<double> label_data(4);
@@ -322,6 +335,10 @@ class DenseArrayExample1 : public TemporaryDirectoryFixture {
     for (uint64_t r{0}; r < ranges.size() / 2; r++) {
       require_tiledb_ok(tiledb_subarray_add_label_range(
           ctx, subarray, "x", &ranges[2 * r], &ranges[2 * r + 1], nullptr));
+    }
+
+    if (serialize_) {
+      tiledb_subarray_serialize(ctx, array, &subarray);
     }
 
     // Define label buffer and size.
