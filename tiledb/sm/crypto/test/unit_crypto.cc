@@ -545,7 +545,9 @@ static void test_hash(
   CHECK((Hash::hash(input, length, &hash_buf)).ok());
 
   // Compare the strings for a better error message in case of failure.
-  CHECK(to_hex((uint8_t*)hash_buf.size(), hash_buf.size()) == expected_hash);
+  CHECK(
+      to_hex((uint8_t*)hash_buf.data(), hash_buf.alloced_size()) ==
+      expected_hash);
 }
 
 struct MD5Hash {
@@ -556,46 +558,22 @@ struct MD5Hash {
 };
 
 TEST_CASE("Crypto: Test MD5", "[crypto][md5]") {
-  SECTION("- Basic") {
-    std::string expected_checksum = "e99a18c428cb38d5f260853678922e03";
-    std::string text_to_checksum = "abc123";
-    ConstBuffer input_buffer(
-        text_to_checksum.data(), text_to_checksum.length());
-    Buffer output_buffer;
-    CHECK(output_buffer.realloc(Crypto::MD5_DIGEST_BYTES).ok());
-    CHECK(Crypto::md5(&input_buffer, &output_buffer).ok());
-
-    unsigned char* digest =
-        reinterpret_cast<unsigned char*>(output_buffer.data());
-    char md5string[33];
-    for (uint64_t i = 0; i < output_buffer.alloced_size(); ++i) {
-      sprintf(&md5string[i * 2], "%02x", (unsigned int)digest[i]);
-    }
-    CHECK(
-        memcmp(
-            expected_checksum.data(), md5string, expected_checksum.length()) ==
-        0);
-  }
+  auto test_md5 = [](const std::string input, const std::string expected_hash) {
+    test_hash<MD5Hash>((uint8_t*)(input.data()), input.length(), expected_hash);
+  };
   // Values taken from section A.5 in https://www.ietf.org/rfc/rfc1321.txt
-  SECTION("- RFC 1321 test vectors") {
-    auto test_md5 = [](const std::string input,
-                       const std::string expected_hash) {
-      test_hash<MD5Hash>(
-          (uint8_t*)(input.data()), input.length(), expected_hash);
-    };
-    test_md5("", "d41d8cd98f00b204e9800998ecf8427e");
-    test_md5("a", "0cc175b9c0f1b6a831c399e269772661");
-    test_md5("abc", "900150983cd24fb0d6963f7d28e17f72");
-    test_md5("message digest", "f96b697d7cb7938d525a2f31aaf161d0");
-    test_md5("abcdefghijklmnopqrstuvwxyz", "c3fcd3d76192e4007dfb496cca67e13b");
-    test_md5(
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
-        "d174ab98d277d9f5a5611c2c9f419d9f");
-    test_md5(
-        "1234567890123456789012345678901234567890123456789012345678901234567890"
-        "1234567890",
-        "57edf4a22be3c955ac49da2e2107b67a");
-  }
+  test_md5("", "d41d8cd98f00b204e9800998ecf8427e");
+  test_md5("a", "0cc175b9c0f1b6a831c399e269772661");
+  test_md5("abc", "900150983cd24fb0d6963f7d28e17f72");
+  test_md5("message digest", "f96b697d7cb7938d525a2f31aaf161d0");
+  test_md5("abcdefghijklmnopqrstuvwxyz", "c3fcd3d76192e4007dfb496cca67e13b");
+  test_md5(
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+      "d174ab98d277d9f5a5611c2c9f419d9f");
+  test_md5(
+      "1234567890123456789012345678901234567890123456789012345678901234567890"
+      "1234567890",
+      "57edf4a22be3c955ac49da2e2107b67a");
 }
 
 struct SHA256Hash {
@@ -606,70 +584,46 @@ struct SHA256Hash {
 };
 
 TEST_CASE("Crypto: Test SHA256", "[crypto][sha256]") {
-  SECTION("- Basic") {
-    std::string expected_checksum =
-        "6ca13d52ca70c883e0f0bb101e425a89e8624de51db2d2392593af6a84118090";
-    std::string text_to_checksum = "abc123";
-    ConstBuffer input_buffer(
-        text_to_checksum.data(), text_to_checksum.length());
-    Buffer output_buffer;
-    CHECK(output_buffer.realloc(Crypto::SHA256_DIGEST_BYTES).ok());
-    CHECK(Crypto::sha256(&input_buffer, &output_buffer).ok());
-
-    unsigned char* digest =
-        reinterpret_cast<unsigned char*>(output_buffer.data());
-    char shastring[65];
-    for (uint64_t i = 0; i < output_buffer.alloced_size(); ++i) {
-      sprintf(&shastring[i * 2], "%02x", (unsigned int)digest[i]);
-    }
-
-    CHECK(
-        memcmp(
-            expected_checksum.data(), shastring, expected_checksum.length()) ==
-        0);
-  }
+  auto test_sha256 = [](const std::string& input,
+                        const std::string& expected_hash) {
+    auto data = from_hex(input);
+    test_hash<SHA256Hash>(data.data(), data.size(), expected_hash);
+  };
   // Values taken from SHA256ShortMsg.rsp, from "SHA Test Vectors for Hashing
   // Bit-Oriented Messages", found at
   // https://csrc.nist.gov/Projects/cryptographic-algorithm-validation-program/Secure-Hashing
-  SECTION("- NIST test vectors") {
-    auto test_sha256 = [](const std::string& input,
-                          const std::string& expected_hash) {
-      auto data = from_hex(input);
-      test_hash<SHA256Hash>(data.data(), data.size(), expected_hash);
-    };
-    // Len = 0
-    test_sha256(
-        "", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
-    // Len = 64
-    test_sha256(
-        "5738c929c4f4ccb6",
-        "963bb88f27f512777aab6c8b1a02c70ec0ad651d428f870036e1917120fb48bf");
-    // Len = 128
-    test_sha256(
-        "0a27847cdc98bd6f62220b046edd762b",
-        "80c25ec1600587e7f28b18b1b18e3cdc89928e39cab3bc25e4d4a4c139bcedc4");
-    // Len = 192
-    test_sha256(
-        "47991301156d1d977c0338efbcad41004133aefbca6bcf7e",
-        "feeb4b2b59fec8fdb1e55194a493d8c871757b5723675e93d3ac034b380b7fc9");
-    // Len = 256
-    test_sha256(
-        "09fc1accc230a205e4a208e64a8f204291f581a12756392da4b8c0cf5ef02b95",
-        "4f44c1c7fbebb6f9601829f3897bfd650c56fa07844be76489076356ac1886a4");
-    // Len = 384
-    test_sha256(
-        "4eef5107459bddf8f24fc7656fd4896da8711db50400c0164847f692b886ce8d7f4d67"
-        "395090b3534efd7b0d298da34b",
-        "7c5d14ed83dab875ac25ce7feed6ef837d58e79dc601fb3c1fca48d4464e8b83");
-    // Len = 448
-    test_sha256(
-        "2d52447d1244d2ebc28650e7b05654bad35b3a68eedc7f8515306b496d75f3e73385dd"
-        "1b002625024b81a02f2fd6dffb6e6d561cb7d0bd7a",
-        "cfb88d6faf2de3a69d36195acec2e255e2af2b7d933997f348e09f6ce5758360");
-    // Len = 512
-    test_sha256(
-        "5a86b737eaea8ee976a0a24da63e7ed7eefad18a101c1211e2b3650c5187c2a8a65054"
-        "7208251f6d4237e661c7bf4c77f335390394c37fa1a9f9be836ac28509",
-        "42e61e174fbb3897d6dd6cef3dd2802fe67b331953b06114a65c772859dfc1aa");
-  }
+  // Len = 0
+  test_sha256(
+      "", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+  // Len = 64
+  test_sha256(
+      "5738c929c4f4ccb6",
+      "963bb88f27f512777aab6c8b1a02c70ec0ad651d428f870036e1917120fb48bf");
+  // Len = 128
+  test_sha256(
+      "0a27847cdc98bd6f62220b046edd762b",
+      "80c25ec1600587e7f28b18b1b18e3cdc89928e39cab3bc25e4d4a4c139bcedc4");
+  // Len = 192
+  test_sha256(
+      "47991301156d1d977c0338efbcad41004133aefbca6bcf7e",
+      "feeb4b2b59fec8fdb1e55194a493d8c871757b5723675e93d3ac034b380b7fc9");
+  // Len = 256
+  test_sha256(
+      "09fc1accc230a205e4a208e64a8f204291f581a12756392da4b8c0cf5ef02b95",
+      "4f44c1c7fbebb6f9601829f3897bfd650c56fa07844be76489076356ac1886a4");
+  // Len = 384
+  test_sha256(
+      "4eef5107459bddf8f24fc7656fd4896da8711db50400c0164847f692b886ce8d7f4d67"
+      "395090b3534efd7b0d298da34b",
+      "7c5d14ed83dab875ac25ce7feed6ef837d58e79dc601fb3c1fca48d4464e8b83");
+  // Len = 448
+  test_sha256(
+      "2d52447d1244d2ebc28650e7b05654bad35b3a68eedc7f8515306b496d75f3e73385dd"
+      "1b002625024b81a02f2fd6dffb6e6d561cb7d0bd7a",
+      "cfb88d6faf2de3a69d36195acec2e255e2af2b7d933997f348e09f6ce5758360");
+  // Len = 512
+  test_sha256(
+      "5a86b737eaea8ee976a0a24da63e7ed7eefad18a101c1211e2b3650c5187c2a8a65054"
+      "7208251f6d4237e661c7bf4c77f335390394c37fa1a9f9be836ac28509",
+      "42e61e174fbb3897d6dd6cef3dd2802fe67b331953b06114a65c772859dfc1aa");
 }
