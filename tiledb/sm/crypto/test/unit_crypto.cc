@@ -517,23 +517,24 @@ TEST_CASE("Crypto: Test AES-256-GCM", "[crypto][aes]") {
   }
 }
 
-// Test that the given input has the expected hash value.
-// Both values are given in hex. The function is generic over the hash.
-template <class f>
+static std::vector<uint8_t> from_hex(const std::string& str) {
+  std::vector<uint8_t> vec;
+  for (int i = 0; i < str.length(); i += 2) {
+    char byte_str[3] = {str[i], str[i + 1], '\0'};
+    vec.push_back((uint8_t)std::strtoul(byte_str, nullptr, 16));
+  }
+  return vec;
+}
+
+// Test that the given input has the expected hash value in
+// hex. The function is generic over the hash and the input type.
+template <class Hash>
 static void test_hash(
-    const std::string& input, const std::string& expected_hash) {
-  REQUIRE(input.length() % 2 == 0);
+    const uint8_t* input, uint64_t length, const std::string& expected_hash) {
   REQUIRE(expected_hash.length() % 2 == 0);
 
-  std::vector<uint8_t> input_bytes;
-  for (int i = 0; i < input.length(); i += 2) {
-    char byte_str[3] = {input[i], input[i + 1], '\0'};
-    input_bytes.push_back((uint8_t)std::strtoul(byte_str, nullptr, 16));
-  }
-
-  Buffer hash_buf(f::digest_bytes);
-  CHECK((f::hash(input_bytes.data(), (uint64_t)input_bytes.size(), &hash_buf))
-            .ok());
+  Buffer hash_buf(Hash::digest_bytes);
+  CHECK((Hash::hash(input, length, &hash_buf)).ok());
 
   std::stringstream ss;
   for (int i = 0; i < hash_buf.alloced_size(); i++) {
@@ -543,6 +544,13 @@ static void test_hash(
   // Compare the strings for a better error message in case of failure.
   CHECK(ss.str() == expected_hash);
 }
+
+struct MD5Hash {
+  static const int digest_bytes = Crypto::MD5_DIGEST_BYTES;
+  static Status hash(const uint8_t* input, uint64_t length, Buffer* output) {
+    return Crypto::md5(input, length, output);
+  }
+};
 
 TEST_CASE("Crypto: Test MD5", "[crypto][md5]") {
   SECTION("- Basic") {
@@ -564,6 +572,26 @@ TEST_CASE("Crypto: Test MD5", "[crypto][md5]") {
         memcmp(
             expected_checksum.data(), md5string, expected_checksum.length()) ==
         0);
+  }
+  // Values taken from section A.5 in https://www.ietf.org/rfc/rfc1321.txt
+  SECTION("- RFC 1321 test vectors") {
+    auto test_md5 = [](const std::string input,
+                       const std::string expected_hash) {
+      test_hash<MD5Hash>(
+          (uint8_t*)(input.data()), input.length(), expected_hash);
+    };
+    test_md5("", "d41d8cd98f00b204e9800998ecf8427e");
+    test_md5("a", "0cc175b9c0f1b6a831c399e269772661");
+    test_md5("abc", "900150983cd24fb0d6963f7d28e17f72");
+    test_md5("message digest", "f96b697d7cb7938d525a2f31aaf161d0");
+    test_md5("abcdefghijklmnopqrstuvwxyz", "c3fcd3d76192e4007dfb496cca67e13b");
+    test_md5(
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+        "d174ab98d277d9f5a5611c2c9f419d9f");
+    test_md5(
+        "1234567890123456789012345678901234567890123456789012345678901234567890"
+        "1234567890",
+        "57edf4a22be3c955ac49da2e2107b67a");
   }
 }
 
@@ -601,7 +629,11 @@ TEST_CASE("Crypto: Test SHA256", "[crypto][sha256]") {
   // Bit-Oriented Messages", found at
   // https://csrc.nist.gov/Projects/cryptographic-algorithm-validation-program/Secure-Hashing
   SECTION("- NIST test vectors") {
-    auto test_sha256 = test_hash<SHA256Hash>;
+    auto test_sha256 = [](const std::string& input,
+                          const std::string& expected_hash) {
+      auto data = from_hex(input);
+      test_hash<SHA256Hash>(data.data(), data.size(), expected_hash);
+    };
     // Len = 0
     test_sha256(
         "", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
