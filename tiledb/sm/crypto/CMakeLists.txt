@@ -53,3 +53,5 @@ commence(object_library crypto)
         set_source_files_properties(crypto_openssl.cc PROPERTIES COMPILE_OPTIONS "-Wno-deprecated-declarations")
     endif()
 conclude(object_library)
+
+add_test_subdirectory()
