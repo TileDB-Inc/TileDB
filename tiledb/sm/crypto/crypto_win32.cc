@@ -33,12 +33,14 @@
 #ifdef _WIN32
 
 #include <windows.h>
+
 #include <bcrypt.h>
-#include "tiledb/sm/crypto/crypto_win32.h"
+
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/crypto/crypto.h"
+#include "tiledb/sm/crypto/crypto_win32.h"
 
 #ifndef NT_SUCCESS
 #define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0)
