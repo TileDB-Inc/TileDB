@@ -32,6 +32,8 @@
 
 #ifdef _WIN32
 
+#include <windows.h>
+#include <bcrypt.h>
 #include "tiledb/sm/crypto/crypto_win32.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
@@ -294,17 +296,7 @@ Status Win32CNG::decrypt_aes256gcm(
   return Status::Ok();
 }
 
-Status Win32CNG::md5(
-    const void* input, uint64_t input_read_size, Buffer* output) {
-  return hash_bytes(input, input_read_size, output, BCRYPT_MD5_ALGORITHM);
-}
-
-Status Win32CNG::sha256(
-    const void* input, uint64_t input_read_size, Buffer* output) {
-  return hash_bytes(input, input_read_size, output, BCRYPT_SHA256_ALGORITHM);
-}
-
-Status Win32CNG::hash_bytes(
+static Status hash_bytes(
     const void* input,
     uint64_t input_read_size,
     Buffer* output,
@@ -362,6 +354,16 @@ Status Win32CNG::hash_bytes(
   }
 
   return Status::Ok();
+}
+
+Status Win32CNG::md5(
+    const void* input, uint64_t input_read_size, Buffer* output) {
+  return hash_bytes(input, input_read_size, output, BCRYPT_MD5_ALGORITHM);
+}
+
+Status Win32CNG::sha256(
+    const void* input, uint64_t input_read_size, Buffer* output) {
+  return hash_bytes(input, input_read_size, output, BCRYPT_SHA256_ALGORITHM);
 }
 
 }  // namespace sm

@@ -38,9 +38,7 @@
 #if !defined(NOMINMAX)
 #define NOMINMAX
 #endif
-#include <windows.h>
 
-#include <bcrypt.h>
 #include "tiledb/common/status.h"
 
 using namespace tiledb::common;
@@ -114,23 +112,6 @@ class Win32CNG {
   static Status sha256(
       const void* input, uint64_t input_read_size, Buffer* output);
 
-  /**
-   *
-   * Compute a has using Win32CNG functions
-   *
-   * @param input Plaintext to compute hash of
-   * @param input_read_size size of input to read for hash
-   * @param output Buffer to store store hash bytes.
-   * @param alg_handle hash algorithm handle
-   * @return Status
-   */
-  static Status hash_bytes(
-      const void* input,
-      uint64_t input_read_size,
-      Buffer* output,
-      LPCWSTR hash_algorithm);
-
- private:
   /**
    * Generates a number of cryptographically random bytes.
    *
