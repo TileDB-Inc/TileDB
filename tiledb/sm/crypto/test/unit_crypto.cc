@@ -35,6 +35,7 @@
 #include "tiledb/sm/crypto/crypto.h"
 
 #include <test/support/tdb_catch.h>
+#include <iomanip>
 #include <iostream>
 
 using namespace tiledb::sm;
@@ -516,6 +517,33 @@ TEST_CASE("Crypto: Test AES-256-GCM", "[crypto][aes]") {
   }
 }
 
+// Test that the given input has the expected hash value.
+// Both values are given in hex. The function is generic over the hash.
+template <class f>
+static void test_hash(
+    const std::string& input, const std::string& expected_hash) {
+  REQUIRE(input.length() % 2 == 0);
+  REQUIRE(expected_hash.length() % 2 == 0);
+
+  std::vector<uint8_t> input_bytes;
+  for (int i = 0; i < input.length(); i += 2) {
+    char byte_str[3] = {input[i], input[i + 1], '\0'};
+    input_bytes.push_back((uint8_t)std::strtoul(byte_str, nullptr, 16));
+  }
+
+  Buffer hash_buf(f::digest_bytes);
+  CHECK((f::hash(input_bytes.data(), (uint64_t)input_bytes.size(), &hash_buf))
+            .ok());
+
+  std::stringstream ss;
+  for (int i = 0; i < hash_buf.alloced_size(); i++) {
+    uint8_t data = ((uint8_t*)hash_buf.data())[i];
+    ss << std::hex << std::setw(2) << std::setfill('0') << (int)data;
+  }
+  // Compare the strings for a better error message in case of failure.
+  CHECK(ss.str() == expected_hash);
+}
+
 TEST_CASE("Crypto: Test MD5", "[crypto][md5]") {
   SECTION("- Basic") {
     std::string expected_checksum = "e99a18c428cb38d5f260853678922e03";
@@ -539,6 +567,13 @@ TEST_CASE("Crypto: Test MD5", "[crypto][md5]") {
   }
 }
 
+struct SHA256Hash {
+  static const int digest_bytes = Crypto::SHA256_DIGEST_BYTES;
+  static Status hash(const uint8_t* input, uint64_t length, Buffer* output) {
+    return Crypto::sha256(input, length, output);
+  }
+};
+
 TEST_CASE("Crypto: Test SHA256", "[crypto][sha256]") {
   SECTION("- Basic") {
     std::string expected_checksum =
@@ -561,5 +596,45 @@ TEST_CASE("Crypto: Test SHA256", "[crypto][sha256]") {
         memcmp(
             expected_checksum.data(), shastring, expected_checksum.length()) ==
         0);
+  }
+  // Values taken from SHA256ShortMsg.rsp, from "SHA Test Vectors for Hashing
+  // Bit-Oriented Messages", found at
+  // https://csrc.nist.gov/Projects/cryptographic-algorithm-validation-program/Secure-Hashing
+  SECTION("- NIST test vectors") {
+    auto test_sha256 = test_hash<SHA256Hash>;
+    // Len = 0
+    test_sha256(
+        "", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    // Len = 64
+    test_sha256(
+        "5738c929c4f4ccb6",
+        "963bb88f27f512777aab6c8b1a02c70ec0ad651d428f870036e1917120fb48bf");
+    // Len = 128
+    test_sha256(
+        "0a27847cdc98bd6f62220b046edd762b",
+        "80c25ec1600587e7f28b18b1b18e3cdc89928e39cab3bc25e4d4a4c139bcedc4");
+    // Len = 192
+    test_sha256(
+        "47991301156d1d977c0338efbcad41004133aefbca6bcf7e",
+        "feeb4b2b59fec8fdb1e55194a493d8c871757b5723675e93d3ac034b380b7fc9");
+    // Len = 256
+    test_sha256(
+        "09fc1accc230a205e4a208e64a8f204291f581a12756392da4b8c0cf5ef02b95",
+        "4f44c1c7fbebb6f9601829f3897bfd650c56fa07844be76489076356ac1886a4");
+    // Len = 384
+    test_sha256(
+        "4eef5107459bddf8f24fc7656fd4896da8711db50400c0164847f692b886ce8d7f4d67"
+        "395090b3534efd7b0d298da34b",
+        "7c5d14ed83dab875ac25ce7feed6ef837d58e79dc601fb3c1fca48d4464e8b83");
+    // Len = 448
+    test_sha256(
+        "2d52447d1244d2ebc28650e7b05654bad35b3a68eedc7f8515306b496d75f3e73385dd"
+        "1b002625024b81a02f2fd6dffb6e6d561cb7d0bd7a",
+        "cfb88d6faf2de3a69d36195acec2e255e2af2b7d933997f348e09f6ce5758360");
+    // Len = 512
+    test_sha256(
+        "5a86b737eaea8ee976a0a24da63e7ed7eefad18a101c1211e2b3650c5187c2a8a65054"
+        "7208251f6d4237e661c7bf4c77f335390394c37fa1a9f9be836ac28509",
+        "42e61e174fbb3897d6dd6cef3dd2802fe67b331953b06114a65c772859dfc1aa");
   }
 }
