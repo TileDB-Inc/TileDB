@@ -28,6 +28,8 @@
  * @section DESCRIPTION
  *
  * This file implements the FragmentsList class.
+ * #TODO Refactor fragment code to use this class,
+ * which is currently only used to deserialize a fragments list into a handle.
  */
 
 #include "tiledb/sm/fragment/fragments_list.h"

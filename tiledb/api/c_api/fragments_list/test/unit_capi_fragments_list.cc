@@ -31,3 +31,37 @@
 #include <test/support/tdb_catch.h>
 #include "../fragments_list_api_external.h"
 #include "../fragments_list_api_internal.h"
+
+TEST_CASE("C API: Test fragments list", "[capi][fragments_list]") {
+  tiledb::sm::URI a{tiledb::sm::URI("a")};
+  tiledb::sm::URI b{tiledb::sm::URI("b")};
+  std::vector<tiledb::sm::URI> uris = {a, b};
+  auto f{tiledb_fragments_list_handle_t::make_handle(uris)};
+
+  // Check fragment uris
+  const char* uri_a;
+  REQUIRE(tiledb_fragments_list_get_fragment_uri(f, 0, &uri_a) == TILEDB_OK);
+  CHECK(tiledb::sm::URI(uri_a) == a);
+  const char* uri_b;
+  REQUIRE(tiledb_fragments_list_get_fragment_uri(f, 1, &uri_b) == TILEDB_OK);
+  CHECK(tiledb::sm::URI(uri_b) == b);
+  REQUIRE(tiledb_fragments_list_get_fragment_uri(f, 2, &uri_b) == TILEDB_ERR);
+
+  // Check fragment indices
+  int index_a;
+  REQUIRE(
+      tiledb_fragments_list_get_fragment_index(f, uri_a, &index_a) ==
+      TILEDB_OK);
+  CHECK(index_a == 0);
+  int index_b;
+  REQUIRE(
+      tiledb_fragments_list_get_fragment_index(f, uri_b, &index_b) ==
+      TILEDB_OK);
+  CHECK(index_b == 1);
+  const char* uri_c = {"c"};
+  REQUIRE(
+      tiledb_fragments_list_get_fragment_index(f, uri_c, &index_b) ==
+      TILEDB_ERR);
+
+  tiledb_fragments_list_handle_t::break_handle(f);
+}

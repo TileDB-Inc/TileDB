@@ -45,6 +45,7 @@
 #include "tiledb/api/c_api/enumeration/enumeration_api_internal.h"
 #include "tiledb/api/c_api/error/error_api_internal.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_internal.h"
+#include "tiledb/api/c_api/fragments_list/fragments_list_api_internal.h"
 #include "tiledb/api/c_api/string/string_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/as_built/as_built.h"
@@ -4018,11 +4019,9 @@ capi_return_t tiledb_deserialize_fragments_list(
     const char* array_uri,
     tiledb_serialization_type_t serialize_type,
     const tiledb_buffer_t* buffer,
-    char** fragments,
-    size_t* num_fragments) noexcept {
+    tiledb_fragments_list_t** fragments) noexcept {
   api::ensure_buffer_is_valid(buffer);
   api::ensure_output_pointer_is_valid(fragments);
-  api::ensure_output_pointer_is_valid(num_fragments);
 
   // Deserialize
   std::vector<tiledb::sm::URI> uris =
@@ -4031,11 +4030,7 @@ capi_return_t tiledb_deserialize_fragments_list(
           (tiledb::sm::SerializationType)serialize_type,
           buffer->buffer());
 
-  for (auto uri : uris) {
-    if (uri.is_invalid()) {
-      return TILEDB_ERR;
-    }
-  }
+  *fragments = tiledb_fragments_list_handle_t::make_handle(uris);
 
   return TILEDB_OK;
 }
@@ -6920,10 +6915,9 @@ capi_return_t tiledb_deserialize_fragments_list(
     const char* array_uri,
     tiledb_serialization_type_t serialize_type,
     const tiledb_buffer_t* buffer,
-    char** fragments,
-    size_t* num_fragments) noexcept {
+    tiledb_fragments_list_t** fragments) noexcept {
   return api_entry<tiledb::api::tiledb_deserialize_fragments_list>(
-      ctx, array_uri, serialize_type, buffer, fragments, num_fragments);
+      ctx, array_uri, serialize_type, buffer, fragments);
 }
 
 int32_t tiledb_serialize_array_metadata(

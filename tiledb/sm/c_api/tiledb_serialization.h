@@ -456,7 +456,6 @@ TILEDB_EXPORT capi_return_t tiledb_deserialize_fragments_timestamps(
  * @param serialization_type Type of serialization to use
  * @param buffer Buffer containing serialized fragments list.
  * @param fragments The fragments list to deserialize into.
- * @param num_fragments The number of deserialized fragments in the list.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_deserialize_fragments_list(
@@ -464,8 +463,7 @@ TILEDB_EXPORT capi_return_t tiledb_deserialize_fragments_list(
     const char* array_uri,
     tiledb_serialization_type_t serialization_type,
     const tiledb_buffer_t* buffer,
-    char** fragments,
-    size_t* num_fragments) TILEDB_NOEXCEPT;
+    tiledb_fragments_list_t** fragments) TILEDB_NOEXCEPT;
 
 /**
  * Serializes the array metadata into the given buffer.

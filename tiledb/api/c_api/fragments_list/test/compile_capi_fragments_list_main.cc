@@ -30,7 +30,7 @@
 #include "../fragments_list_api_internal.h"
 
 int main() {
-  // auto x{tiledb_fragments_list_handle_t::make_handle()};
-  // tiledb_fragments_list_handle_t::break_handle(x);
+  auto x{tiledb_fragments_list_handle_t::make_handle()};
+  tiledb_fragments_list_handle_t::break_handle(x);
   return 0;
 }

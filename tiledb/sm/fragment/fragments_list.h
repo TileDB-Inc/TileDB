@@ -28,6 +28,8 @@
  * @section DESCRIPTION
  *
  * This file defines struct FragmentsList.
+ * #TODO Refactor fragment code to use this class,
+ * which is currently only used to deserialize a fragments list into a handle.
  */
 
 #ifndef TILEDB_FRAGMENTS_LIST_H

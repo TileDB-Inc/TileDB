@@ -2725,22 +2725,35 @@ TEST_CASE_METHOD(
   fragments.emplace_back(URI(uri1));
   fragments.emplace_back(URI(uri2));
 
-  // Serialize fragments list and deserialize with internal API
+  // Serialize fragments list and deserialize using C API
   tiledb::sm::serialization::fragments_list_serialize(
       fragments, tiledb::sm::SerializationType::CAPNP, &buff->buffer());
-  std::vector<URI> deserialized_fragments =
-      tiledb::sm::serialization::fragments_list_deserialize(
-          URI(array_name.c_str()),
-          tiledb::sm::SerializationType::CAPNP,
-          buff->buffer());
+  tiledb_fragments_list_t* deserialized_fragments;
+  rc = tiledb_deserialize_fragments_list(
+      ctx_,
+      array_name.c_str(),
+      (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+      buff,
+      &deserialized_fragments);
+  REQUIRE(rc == TILEDB_OK);
 
   // Compare original fragments to deserialized_fragments
-  CHECK(fragments == deserialized_fragments);
+  const char* deserialized_uri1;
+  REQUIRE(
+      tiledb_fragments_list_get_fragment_uri(
+          deserialized_fragments, 0, &deserialized_uri1) == TILEDB_OK);
+  CHECK(*deserialized_uri1 == *uri1);
+  const char* deserialized_uri2;
+  REQUIRE(
+      tiledb_fragments_list_get_fragment_uri(
+          deserialized_fragments, 1, &deserialized_uri2) == TILEDB_OK);
+  CHECK(*deserialized_uri2 == *uri2);
 
   // Clean up
   tiledb_array_free(&array);
   tiledb_buffer_free(&buff);
   tiledb_fragment_info_free(&fragment_info);
+  tiledb_fragments_list_free(&deserialized_fragments);
   remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 #endif
 }
