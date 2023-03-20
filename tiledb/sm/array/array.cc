@@ -1255,12 +1255,10 @@ Array::open_for_reads_without_fragments() {
       "array_open_read_without_fragments_load_schemas");
 
   // Load array schemas
-  auto&& [st_schemas, array_schema_latest, array_schemas_all] =
-      storage_manager_->load_array_schemas(
-          array_directory(), *encryption_key());
-  throw_if_not_ok(st_schemas);
+  auto&& [array_schema_latest, array_schemas_all] =
+      array_dir_.load_array_schemas(*encryption_key());
 
-  auto version = array_schema_latest.value()->version();
+  auto version = array_schema_latest->version();
   ensure_supported_schema_version_for_read(version);
 
   return {array_schema_latest, array_schemas_all};
@@ -1282,15 +1280,14 @@ Array::open_for_writes() {
         nullopt};
 
   // Load array schemas
-  auto&& [st_schemas, array_schema_latest, array_schemas_all] =
-      storage_manager_->load_array_schemas(array_dir_, *encryption_key_);
-  RETURN_NOT_OK_TUPLE(st_schemas, nullopt, nullopt);
+  auto&& [array_schema_latest, array_schemas_all] =
+      array_dir_.load_array_schemas(*encryption_key_);
 
   // If building experimentally, this library should not be able to
   // write to newer-versioned or older-versioned arrays
   // Else, this library should not be able to write to newer-versioned arrays
   // (but it is ok to write to older arrays)
-  auto version = array_schema_latest.value()->version();
+  auto version = array_schema_latest->version();
   if constexpr (is_experimental_build) {
     if (version != constants::format_version) {
       std::stringstream err;

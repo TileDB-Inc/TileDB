@@ -174,17 +174,6 @@ class StorageManagerCanonical {
       Metadata* metadata);
 
   /**
-   * Load data from persistent storage.
-   *
-   * @param uri The object URI.
-   * @param offset The offset into the file to read from.
-   * @param encryption_key The encryption key to use.
-   * @return Status, Tile with the data.
-   */
-  tuple<Status, optional<Tile>> load_data_from_generic_tile(
-      const URI& uri, uint64_t offset, const EncryptionKey& encryption_key);
-
-  /**
    * Load a group detail from URI
    *
    * @param group_uri group uri
@@ -643,63 +632,6 @@ class StorageManagerCanonical {
    * @return Status
    */
   Status is_group(const URI& uri, bool* is_group) const;
-
-  /**
-   * Loads the schema of a schema uri from persistent storage into memory.
-   *
-   * @param array_schema_uri The URI path of the array schema.
-   * @param encryption_key The encryption key to use.
-   * @return Status, the loaded array schema
-   */
-  tuple<Status, optional<shared_ptr<ArraySchema>>> load_array_schema_from_uri(
-      const URI& array_schema_uri, const EncryptionKey& encryption_key);
-
-  /**
-   * Loads the latest schema of an array from persistent storage into memory.
-   *
-   * @param array_dir The ArrayDirectory object used to retrieve the
-   *     various URIs in the array directory.
-   * @param encryption_key The encryption key to use.
-   * @return Status, a new ArraySchema
-   */
-  tuple<Status, optional<shared_ptr<ArraySchema>>> load_array_schema_latest(
-      const ArrayDirectory& array_dir, const EncryptionKey& encryption_key);
-
-  /**
-   * It loads and returns the latest schema and all the array schemas
-   * (in the presence of schema evolution).
-   *
-   * @param array_dir The ArrayDirectory object used to retrieve the
-   *     various URIs in the array directory.
-   * @param encryption_key The encryption key to use.
-   * @return tuple of Status, latest array schema and all array schemas.
-   *   Status Ok on success, else error
-   *   ArraySchema The latest array schema.
-   *   ArraySchemaMap Map of all array schemas loaded, keyed by name
-   */
-  tuple<
-      Status,
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
-  load_array_schemas(
-      const ArrayDirectory& array_dir, const EncryptionKey& encryption_key);
-
-  /**
-   * Loads all schemas of an array from persistent storage into memory.
-   *
-   * @param array_dir The ArrayDirectory object used to retrieve the
-   *     various URIs in the array directory.
-   * @param encryption_key The encryption key to use.
-   * @return tuple of Status and optional unordered map. If Status is an error
-   * the unordered_map will be nullopt
-   *        Status Ok on success, else error
-   *        ArraySchemaMap Map of all array schemas found keyed by name
-   */
-  tuple<
-      Status,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
-  load_all_array_schemas(
-      const ArrayDirectory& array_dir, const EncryptionKey& encryption_key);
 
   /**
    * Loads the array metadata from persistent storage based on

@@ -44,8 +44,7 @@
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
-using namespace tiledb::sm;
-using namespace tiledb::common;
+namespace tiledb::sm {
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -759,14 +758,14 @@ Status FragmentInfo::get_version(uint32_t fid, uint32_t* version) const {
   return Status::Ok();
 }
 
-tuple<Status, optional<shared_ptr<ArraySchema>>> FragmentInfo::get_array_schema(
-    uint32_t fid) {
+shared_ptr<ArraySchema> FragmentInfo::get_array_schema(uint32_t fid) {
   ensure_loaded();
-  if (fid >= fragment_num())
-    return {
-        LOG_STATUS(Status_FragmentInfoError(
-            "Cannot get array schema; Invalid fragment index")),
-        nullopt};
+  if (fid >= fragment_num()) {
+    auto st = Status_FragmentInfoError(
+        "Cannot get array schema; Invalid fragment index");
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    throw_if_not_ok(st);
+  }
   URI schema_uri;
   uint32_t version = single_fragment_info_vec_[fid].format_version();
   if (version >= 10) {
@@ -778,8 +777,8 @@ tuple<Status, optional<shared_ptr<ArraySchema>>> FragmentInfo::get_array_schema(
   }
 
   EncryptionKey encryption_key;
-  return storage_manager_->load_array_schema_from_uri(
-      schema_uri, encryption_key);
+  return ArrayDirectory::load_array_schema_from_uri(
+      storage_manager_->resources(), schema_uri, encryption_key);
 }
 
 Status FragmentInfo::get_array_schema_name(
@@ -1165,3 +1164,5 @@ void FragmentInfo::swap(FragmentInfo& fragment_info) {
   std::swap(timestamp_start_, fragment_info.timestamp_start_);
   std::swap(timestamp_end_, fragment_info.timestamp_end_);
 }
+
+}  // namespace tiledb::sm

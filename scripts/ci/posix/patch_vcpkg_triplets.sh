@@ -1,5 +1,4 @@
 #!/bin/bash
-
 #
 # The MIT License (MIT)
 #
@@ -23,16 +22,19 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+# Based on the comment here:
+# https://github.com/microsoft/vcpkg/issues/143#issuecomment-705778244 ¯\_(ツ)_/¯
+#
+# The conditional logic here is to avoid re-patching the triplet files after
+# they're restored by run-vcpkg. While re-patching is harmless, it breaks
+# run-vcpkg's caching because it changes the generated package hashes.
 
-# Prints log files (failed build only)
-set -e pipefail
-# Display log files if the build failed
-echo "Dumping log files for failed build"
-echo "----------------------------------"
-for f in $(find $GITHUB_WORKSPACE/{build,external} -name *.log);
-  do echo "------"
-      echo $f
-      echo "======"
-      cat $f
-  done;
+TRIPLETS="${GITHUB_WORKSPACE}/external/vcpkg/triplets"
 
+find $TRIPLETS -type f -maxdepth 1 | xargs grep -q "VCPKG_BUILD_TYPE release"
+if [ $? -ne 0 ]
+then
+  find $TRIPLETS -type f \
+    -exec sh -c "echo \"\nset(VCPKG_BUILD_TYPE release)\n\" >> {}" \;
+  echo "Triplets patched"
+fi

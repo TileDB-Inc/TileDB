@@ -659,6 +659,9 @@ class Config {
    * - `vfs.s3.verify_ssl` <br>
    *    Enable HTTPS certificate verification. <br>
    *    **Default**: true
+   * - `vfs.s3.no_sign_request` <br>
+   *    Make unauthenticated requests to s3. <br>
+   *    **Default**: false
    * - `vfs.s3.sse` <br>
    *    The server-side encryption algorithm to use. Supported non-empty
    *    values are "aes256" and "kms" (AWS key management service). <br>

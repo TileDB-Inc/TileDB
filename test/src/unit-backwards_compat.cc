@@ -135,7 +135,7 @@ TEST_CASE(
   std::string array_uri(arrays_dir + "/dense_array_v1_3_0");
   REQUIRE_THROWS_WITH(
       Array(ctx, array_uri, TILEDB_READ),
-      "[TileDB::Array] Error: [TileDB::StorageManager] Error: Reading data "
+      "[TileDB::Array] Error: [TileDB::ArrayDirectory] Error: Reading data "
       "past end of serialized data size.");
 }
 

@@ -181,12 +181,11 @@ StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
       stats()->start_timer("sm_load_array_schemas_and_fragment_metadata");
 
   // Load array schemas
-  auto&& [st_schemas, array_schema_latest, array_schemas_all] =
-      load_array_schemas(array_dir, enc_key);
-  RETURN_NOT_OK_TUPLE(st_schemas, std::nullopt, std::nullopt, std::nullopt);
+  auto&& [array_schema_latest, array_schemas_all] =
+      array_dir.load_array_schemas(enc_key);
 
-  auto filtered_fragment_uris = array_dir.filtered_fragment_uris(
-      array_schema_latest.value().get()->dense());
+  auto filtered_fragment_uris =
+      array_dir.filtered_fragment_uris(array_schema_latest->dense());
   const auto& meta_uris = array_dir.fragment_meta_uris();
   const auto& fragments_to_load = filtered_fragment_uris.fragment_uris();
 
@@ -220,8 +219,8 @@ StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
   // Load the fragment metadata
   auto&& [st_fragment_meta, fragment_metadata] = load_fragment_metadata(
       memory_tracker,
-      array_schema_latest.value(),
-      array_schemas_all.value(),
+      array_schema_latest,
+      array_schemas_all,
       enc_key,
       fragments_to_load,
       offsets);
@@ -716,14 +715,12 @@ Status StorageManager::array_evolve_schema(
         "' not exists"));
   }
 
-  auto&& [st1, array_schema] =
-      load_array_schema_latest(array_dir, encryption_key);
-  RETURN_NOT_OK(st1);
+  auto&& array_schema = array_dir.load_array_schema_latest(encryption_key);
 
   // Evolve schema
-  auto&& [st2, array_schema_evolved] =
-      schema_evolution->evolve_schema(array_schema.value());
-  RETURN_NOT_OK(st2);
+  auto&& [st1, array_schema_evolved] =
+      schema_evolution->evolve_schema(array_schema);
+  RETURN_NOT_OK(st1);
 
   Status st = store_array_schema(array_schema_evolved.value(), encryption_key);
   if (!st.ok()) {
@@ -784,14 +781,12 @@ Status StorageManagerCanonical::array_upgrade_version(
         key_length));
   }
 
-  auto&& [st2, array_schema] =
-      load_array_schema_latest(array_dir, encryption_key_cfg);
-  RETURN_NOT_OK(st2);
+  auto&& array_schema = array_dir.load_array_schema_latest(encryption_key_cfg);
 
-  if (array_schema.value()->version() < constants::format_version) {
-    auto st = array_schema.value()->generate_uri();
+  if (array_schema->version() < constants::format_version) {
+    auto st = array_schema->generate_uri();
     RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
-    array_schema.value()->set_version(constants::format_version);
+    array_schema->set_version(constants::format_version);
 
     // Create array schema directory if necessary
     URI array_schema_dir_uri =
@@ -800,7 +795,7 @@ Status StorageManagerCanonical::array_upgrade_version(
     RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
 
     // Store array schema
-    st = store_array_schema(array_schema.value(), encryption_key_cfg);
+    st = store_array_schema(array_schema, encryption_key_cfg);
     RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
 
     // Create commit directory if necessary
@@ -1327,125 +1322,6 @@ Status StorageManagerCanonical::is_group(const URI& uri, bool* is_group) const {
   return Status::Ok();
 }
 
-tuple<Status, optional<shared_ptr<ArraySchema>>>
-StorageManagerCanonical::load_array_schema_from_uri(
-    const URI& schema_uri, const EncryptionKey& encryption_key) {
-  auto timer_se = stats()->start_timer("sm_load_array_schema_from_uri");
-
-  auto&& [st, tile_opt] =
-      load_data_from_generic_tile(schema_uri, 0, encryption_key);
-  RETURN_NOT_OK_TUPLE(st, nullopt);
-  auto& tile = *tile_opt;
-
-  stats()->add_counter("read_array_schema_size", tile.size());
-
-  // Deserialize
-  Deserializer deserializer(tile.data(), tile.size());
-
-  try {
-    return {
-        Status::Ok(),
-        make_shared<ArraySchema>(
-            HERE(), ArraySchema::deserialize(deserializer, schema_uri))};
-  } catch (const StatusException& e) {
-    return {Status_StorageManagerError(e.what()), nullopt};
-  }
-}
-
-tuple<Status, optional<shared_ptr<ArraySchema>>>
-StorageManagerCanonical::load_array_schema_latest(
-    const ArrayDirectory& array_dir, const EncryptionKey& encryption_key) {
-  auto timer_se = stats()->start_timer("sm_load_array_schema_latest");
-
-  const URI& array_uri = array_dir.uri();
-  if (array_uri.is_invalid())
-    return {
-        logger_->status(Status_StorageManagerError(
-            "Cannot load array schema; Invalid array URI")),
-        nullopt};
-
-  // Load schema from URI
-  const URI& schema_uri = array_dir.latest_array_schema_uri();
-  auto&& [st, array_schema] =
-      load_array_schema_from_uri(schema_uri, encryption_key);
-  RETURN_NOT_OK_TUPLE(st, nullopt);
-
-  array_schema.value().get()->set_array_uri(array_uri);
-
-  return {Status::Ok(), array_schema};
-}
-
-tuple<
-    Status,
-    optional<shared_ptr<ArraySchema>>,
-    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
-StorageManagerCanonical::load_array_schemas(
-    const ArrayDirectory& array_dir, const EncryptionKey& encryption_key) {
-  // Load all array schemas
-  auto&& [st, array_schemas] =
-      load_all_array_schemas(array_dir, encryption_key);
-  RETURN_NOT_OK_TUPLE(st, nullopt, nullopt);
-
-  // Locate the latest array schema
-  const auto& array_schema_latest_name =
-      array_dir.latest_array_schema_uri().last_path_part();
-  auto it = array_schemas->find(array_schema_latest_name);
-  assert(it != array_schemas->end());
-
-  return {Status::Ok(), it->second, array_schemas};
-}
-
-tuple<
-    Status,
-    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
-StorageManagerCanonical::load_all_array_schemas(
-    const ArrayDirectory& array_dir, const EncryptionKey& encryption_key) {
-  auto timer_se = stats()->start_timer("sm_load_all_array_schemas");
-
-  const URI& array_uri = array_dir.uri();
-  if (array_uri.is_invalid())
-    return {
-        logger_->status(Status_StorageManagerError(
-            "Cannot load all array schemas; Invalid array URI")),
-        nullopt};
-
-  const std::vector<URI>& schema_uris = array_dir.array_schema_uris();
-  if (schema_uris.empty()) {
-    return {
-        logger_->status(Status_StorageManagerError(
-            "Cannot get the array schema vector; No array schemas found.")),
-        nullopt};
-  }
-
-  std::vector<shared_ptr<ArraySchema>> schema_vector;
-  auto schema_num = schema_uris.size();
-  schema_vector.resize(schema_num);
-
-  auto status =
-      parallel_for(compute_tp(), 0, schema_num, [&](size_t schema_ith) {
-        auto& schema_uri = schema_uris[schema_ith];
-        try {
-          auto&& [st, array_schema] =
-              load_array_schema_from_uri(schema_uri, encryption_key);
-          RETURN_NOT_OK(st);
-          array_schema.value()->set_array_uri(array_uri);
-          schema_vector[schema_ith] = array_schema.value();
-        } catch (std::exception& e) {
-          return Status_StorageManagerError(e.what());
-        }
-
-        return Status::Ok();
-      });
-  RETURN_NOT_OK_TUPLE(status, nullopt);
-
-  std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas;
-  for (const auto& schema : schema_vector) {
-    array_schemas[schema->name()] = schema;
-  }
-
-  return {Status::Ok(), array_schemas};
-}
-
 void StorageManagerCanonical::load_array_metadata(
     const ArrayDirectory& array_dir,
     const EncryptionKey& encryption_key,
@@ -1465,10 +1341,8 @@ void StorageManagerCanonical::load_array_metadata(
   throw_if_not_ok(parallel_for(compute_tp(), 0, metadata_num, [&](size_t m) {
     const auto& uri = array_metadata_to_load[m].uri_;
 
-    auto&& [st, tile] = load_data_from_generic_tile(uri, 0, encryption_key);
-    RETURN_NOT_OK(st);
-
-    metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(*tile));
+    auto&& tile = GenericTileIO::load(resources_, uri, 0, encryption_key);
+    metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(tile));
 
     return Status::Ok();
   }));
@@ -1500,28 +1374,21 @@ StorageManagerCanonical::load_delete_and_update_conditions(const Array& array) {
     auto& uri = locations[i].uri();
 
     // Read the condition from storage.
-    auto&& [st, tile_opt] = load_data_from_generic_tile(
-        uri, locations[i].offset(), *array.encryption_key());
-    RETURN_NOT_OK(st);
+    auto&& tile = GenericTileIO::load(
+        resources_, uri, locations[i].offset(), *array.encryption_key());
 
     if (tiledb::sm::utils::parse::ends_with(
             locations[i].condition_marker(),
             tiledb::sm::constants::delete_file_suffix)) {
       conditions[i] =
           tiledb::sm::deletes_and_updates::serialization::deserialize_condition(
-              i,
-              locations[i].condition_marker(),
-              tile_opt->data(),
-              tile_opt->size());
+              i, locations[i].condition_marker(), tile.data(), tile.size());
     } else if (tiledb::sm::utils::parse::ends_with(
                    locations[i].condition_marker(),
                    tiledb::sm::constants::update_file_suffix)) {
       auto&& [cond, uvs] = tiledb::sm::deletes_and_updates::serialization::
           deserialize_update_condition_and_values(
-              i,
-              locations[i].condition_marker(),
-              tile_opt->data(),
-              tile_opt->size());
+              i, locations[i].condition_marker(), tile.data(), tile.size());
       conditions[i] = std::move(cond);
       update_values[i] = std::move(uvs);
     } else {
@@ -1875,9 +1742,7 @@ StorageManagerCanonical::load_group_from_uri(
     const URI& group_uri, const URI& uri, const EncryptionKey& encryption_key) {
   auto timer_se = stats()->start_timer("sm_load_group_from_uri");
 
-  auto&& [st, tile_opt] = load_data_from_generic_tile(uri, 0, encryption_key);
-  RETURN_NOT_OK_TUPLE(st, nullopt);
-  auto& tile = *tile_opt;
+  auto&& tile = GenericTileIO::load(resources_, uri, 0, encryption_key);
 
   stats()->add_counter("read_group_size", tile.size());
 
@@ -1895,22 +1760,15 @@ StorageManagerCanonical::load_group_from_all_uris(
   auto timer_se = stats()->start_timer("sm_load_group_from_uri");
 
   std::vector<shared_ptr<Deserializer>> deserializers;
-  // We collect tiles, so they outlive the for loop but stoll scoped to this
-  // function We need to have a deserializer that takes ownership
-  std::vector<optional<Tile>> tiles;
   for (auto& uri : uris) {
-    auto&& [st, tile_opt] =
-        load_data_from_generic_tile(uri.uri_, 0, encryption_key);
-    RETURN_NOT_OK_TUPLE(st, nullopt);
-    auto& tile = *tile_opt;
+    auto&& tile = GenericTileIO::load(resources_, uri.uri_, 0, encryption_key);
 
     stats()->add_counter("read_group_size", tile.size());
 
     // Deserialize
     shared_ptr<Deserializer> deserializer =
-        tdb::make_shared<Deserializer>(HERE(), tile.data(), tile.size());
+        tdb::make_shared<TileDeserializer>(HERE(), std::move(tile));
     deserializers.emplace_back(deserializer);
-    tiles.emplace_back(std::move(tile_opt));
   }
 
   auto opt_group = GroupDetails::deserialize(deserializers, group_uri);
@@ -2009,10 +1867,8 @@ void StorageManagerCanonical::load_group_metadata(
   throw_if_not_ok(parallel_for(compute_tp(), 0, metadata_num, [&](size_t m) {
     const auto& uri = group_metadata_to_load[m].uri_;
 
-    auto&& [st, tile] = load_data_from_generic_tile(uri, 0, encryption_key);
-    RETURN_NOT_OK(st);
-
-    metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(*tile));
+    auto&& tile = GenericTileIO::load(resources_, uri, 0, encryption_key);
+    metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(tile));
 
     return Status::Ok();
   }));
@@ -2027,64 +1883,6 @@ void StorageManagerCanonical::load_group_metadata(
   // Copy the deserialized metadata into the original Metadata object
   *metadata = Metadata::deserialize(metadata_tiles);
   metadata->set_loaded_metadata_uris(group_metadata_to_load);
-}
-
-tuple<Status, optional<Tile>>
-StorageManagerCanonical::load_data_from_generic_tile(
-    const URI& uri, uint64_t offset, const EncryptionKey& encryption_key) {
-  GenericTileIO tile_io(resources_, uri);
-
-  // Get encryption key from config
-  if (encryption_key.encryption_type() == EncryptionType::NO_ENCRYPTION) {
-    bool found = false;
-    std::string encryption_key_from_cfg =
-        config_.get("sm.encryption_key", &found);
-    assert(found);
-    std::string encryption_type_from_cfg =
-        config_.get("sm.encryption_type", &found);
-    assert(found);
-    auto [st, etc] = encryption_type_enum(encryption_type_from_cfg);
-    RETURN_NOT_OK_TUPLE(st, nullopt);
-    EncryptionType encryption_type_cfg = etc.value();
-
-    EncryptionKey encryption_key_cfg;
-    if (encryption_key_from_cfg.empty()) {
-      RETURN_NOT_OK_TUPLE(
-          encryption_key_cfg.set_key(encryption_type_cfg, nullptr, 0), nullopt);
-    } else {
-      uint32_t key_length = 0;
-      if (EncryptionKey::is_valid_key_length(
-              encryption_type_cfg,
-              static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
-        const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
-        if (unit_test_cfg.array_encryption_key_length.is_set()) {
-          key_length = unit_test_cfg.array_encryption_key_length.get();
-        } else {
-          key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
-        }
-      }
-      RETURN_NOT_OK_TUPLE(
-          encryption_key_cfg.set_key(
-              encryption_type_cfg,
-              (const void*)encryption_key_from_cfg.c_str(),
-              key_length),
-          nullopt);
-    }
-
-    auto&& [st1, tile_opt] =
-        tile_io.read_generic(offset, encryption_key_cfg, config_);
-    RETURN_NOT_OK_TUPLE(st1, nullopt);
-
-    return {Status::Ok(), std::move(*tile_opt)};
-  } else {
-    auto&& [st1, tile_opt] =
-        tile_io.read_generic(offset, encryption_key, config_);
-    RETURN_NOT_OK_TUPLE(st1, nullopt);
-
-    return {Status::Ok(), std::move(*tile_opt)};
-  }
-
-  assert(false);
 }
 
 /* ****************************** */
@@ -2182,9 +1980,7 @@ StorageManagerCanonical::load_consolidated_fragment_meta(
   if (uri.to_string().empty())
     return {Status::Ok(), nullopt, nullopt};
 
-  auto&& [st, tile_opt] = load_data_from_generic_tile(uri, 0, enc_key);
-  RETURN_NOT_OK_TUPLE(st, nullopt, nullopt);
-  auto& tile = *tile_opt;
+  auto&& tile = GenericTileIO::load(resources_, uri, 0, enc_key);
 
   stats()->add_counter("consolidated_frag_meta_size", tile.size());
 
