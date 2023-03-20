@@ -1,5 +1,5 @@
 #
-# tiledb/sm/CMakeLists.txt
+# tiledb/api/c_api/fragments_list/test/CMakeLists.txt
 #
 # The MIT License
 #
@@ -24,30 +24,9 @@
 # THE SOFTWARE.
 #
 
-include(common-root)
+include(unit_test)
 
-add_subdirectory(array)
-add_subdirectory(array_schema)
-add_subdirectory(buffer)
-add_subdirectory(compressors)
-add_subdirectory(config)
-add_subdirectory(consolidator)
-add_subdirectory(crypto)
-add_subdirectory(filesystem)
-add_subdirectory(filter)
-add_subdirectory(fragment)
-add_subdirectory(group)
-add_subdirectory(metadata)
-add_subdirectory(misc)
-add_subdirectory(query)
-add_subdirectory(query_plan)
-add_subdirectory(rtree)
-add_subdirectory(stats)
-add_subdirectory(storage_manager)
-add_subdirectory(subarray)
-add_subdirectory(tile)
-
-
-if (TILEDB_SERIALIZATION)
-  add_subdirectory(serialization)
-endif()
+commence(unit_test capi_fragments_list)
+  this_target_sources(unit_capi_fragments_list.cc)
+  this_target_object_libraries(capi_fragments_list)
+conclude(unit_test)
