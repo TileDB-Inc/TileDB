@@ -64,6 +64,10 @@ struct tiledb_fragments_list_handle_t
       : frag_list_{f} {
   }
 
+  [[nodiscard]] inline const tiledb::sm::FragmentsList& fragments_list() const {
+    return frag_list_;
+  }
+
   tiledb::sm::URI& get_fragment_uri(int index) {
     return frag_list_.get_fragment_uri(index);
   }

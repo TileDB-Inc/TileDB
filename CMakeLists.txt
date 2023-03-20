@@ -357,6 +357,7 @@ list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter_list/filter_list_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/fragments_list/fragments_list_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/group/group_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/group/group_api_external_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/object/object_api_enum.h"
