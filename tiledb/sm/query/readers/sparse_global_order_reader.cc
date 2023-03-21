@@ -1217,11 +1217,6 @@ Status SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
         auto rt = static_cast<GlobalOrderResultTile<BitmapType>*>(
             result_cell_slabs[i].tile_);
 
-        // Get source buffers.
-        const auto cell_num =
-            fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
-        const auto tile_tuple = rt->tile_tuple(name);
-
         // Compute parallelization parameters.
         auto&& [min_pos, max_pos, dest_cell_offset, skip_copy] =
             compute_parallelization_parameters(
@@ -1233,6 +1228,11 @@ Status SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
         if (skip_copy) {
           return Status::Ok();
         }
+
+        // Get source buffers.
+        const auto cell_num =
+            fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
+        const auto tile_tuple = rt->tile_tuple(name);
 
         // If the tile_tuple is null, this is a field added in schema
         // evolution. Use the fill value.
@@ -1412,12 +1412,6 @@ Status SparseGlobalOrderReader<BitmapType>::copy_fixed_data_tiles(
         auto rt = static_cast<GlobalOrderResultTile<BitmapType>*>(
             result_cell_slabs[i].tile_);
 
-        // Get source buffers.
-        const auto stores_zipped_coords = is_dim && rt->stores_zipped_coords();
-        const auto tile_tuple = stores_zipped_coords ?
-                                    rt->tile_tuple(constants::coords) :
-                                    rt->tile_tuple(name);
-
         // Compute parallelization parameters.
         auto&& [min_pos, max_pos, dest_cell_offset, skip_copy] =
             compute_parallelization_parameters(
@@ -1429,6 +1423,12 @@ Status SparseGlobalOrderReader<BitmapType>::copy_fixed_data_tiles(
         if (skip_copy) {
           return Status::Ok();
         }
+
+        // Get source buffers.
+        const auto stores_zipped_coords = is_dim && rt->stores_zipped_coords();
+        const auto tile_tuple = stores_zipped_coords ?
+                                    rt->tile_tuple(constants::coords) :
+                                    rt->tile_tuple(name);
 
         // If the tile_tuple is null, this is a field added in schema
         // evolution. Use the fill value.
@@ -1899,9 +1899,11 @@ Status SparseGlobalOrderReader<BitmapType>::process_slabs(
   {
     std::unordered_set<ResultTile*> found_tiles;
     for (auto& rcs : result_cell_slabs) {
-      if (found_tiles.count(rcs.tile_) == 0) {
-        found_tiles.emplace(rcs.tile_);
-        result_tiles.emplace_back(rcs.tile_);
+      if (rcs.length_ != 0) {
+        if (found_tiles.count(rcs.tile_) == 0) {
+          found_tiles.emplace(rcs.tile_);
+          result_tiles.emplace_back(rcs.tile_);
+        }
       }
     }
   }
