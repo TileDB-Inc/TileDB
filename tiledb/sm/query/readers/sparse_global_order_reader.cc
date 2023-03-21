@@ -1051,6 +1051,7 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
       if (!return_all_dups) {
         auto to_remove = tile_queue.top();
         deleted_dups =
+            !to_remove.tile_->has_post_dedup_bmp() ||
             to_remove.tile_->post_dedup_bitmap()[to_remove.pos_] != 0;
         update_frag_idx(to_remove.tile_, to_remove.pos_ + 1);
         tile_queue.pop();
