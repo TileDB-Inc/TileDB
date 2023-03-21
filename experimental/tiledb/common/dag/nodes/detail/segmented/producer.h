@@ -310,6 +310,9 @@ struct producer_node : public std::shared_ptr<producer_node_impl<Mover, T>> {
   using Base = std::shared_ptr<PreBase>;
   using Base::Base;
 
+  using in_value_type = T;
+  using out_value_type = T;
+
   using node_type = node_t<producer_node_impl<Mover, T>>;
   using node_handle_type = node_handle_t<producer_node_impl<Mover, T>>;
 

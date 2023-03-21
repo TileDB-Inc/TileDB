@@ -60,21 +60,20 @@ struct tuple_maker_state {
 };
 
 template <
-    template <class> class Mover, class BlockIn>
+    template <class> class SinkMover, class BlockIn, template <class> class SourceMover, class BlockOut>
 class tuple_maker_node_impl : public node_base,
-                           public Sink<Mover, BlockIn>,
-                           public Source<Mover, std::tuple<BlockIn, BlockIn, BlockIn>> {
-  using BlockOut = std::tuple<BlockIn, BlockIn, BlockIn>;
-  using sink_mover_type = Mover<BlockIn>;
-  using source_mover_type = Mover<BlockOut>;
+                           public Sink<SinkMover, BlockIn>,
+                           public Source<SourceMover, BlockOut> {
+  using sink_mover_type = SinkMover<BlockIn>;
+  using source_mover_type = SourceMover<BlockOut>;
   using node_base_type = node_base;
   using scheduler_event_type = typename sink_mover_type::scheduler_event_type;
 
-  using SinkBase = Sink<Mover, BlockIn>;
-  using SourceBase = Source<Mover, BlockOut>;
+  using SinkBase = Sink<SinkMover, BlockIn>;
+  using SourceBase = Source<SourceMover, BlockOut>;
 
   using state_type = tuple_maker_state<BlockIn>;
-  state_type state{0};
+  state_type state{0, 0, 0, 0};
 
  public:
 
@@ -215,18 +214,20 @@ class tuple_maker_node_impl : public node_base,
 /** A function node is a shared pointer to the implementation class */
 template <
     template <class>
-    class Mover,
-    class BlockIn>
+    class SinkMover,
+    class BlockIn, template <class> class SourceMover, class BlockOut>
 struct tuple_maker_node
     : public std::shared_ptr<
-          tuple_maker_node_impl<Mover, BlockIn>> {
+          tuple_maker_node_impl<SinkMover, BlockIn, SourceMover, BlockOut>> {
   using Base = std::shared_ptr<
-      tuple_maker_node_impl<Mover, BlockIn>>;
+      tuple_maker_node_impl<SinkMover, BlockIn, SourceMover, BlockOut>>;
   using Base::Base;
+  using in_value_type = BlockIn;
+  using out_value_type = BlockOut;
 
    tuple_maker_node()
       : Base{std::make_shared<
-            tuple_maker_node_impl<Mover, BlockIn>>()}
+            tuple_maker_node_impl<SinkMover, BlockIn, SourceMover, BlockOut>>()}
         {}
 
 };

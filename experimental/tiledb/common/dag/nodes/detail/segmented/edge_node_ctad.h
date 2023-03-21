@@ -37,6 +37,7 @@
 
 namespace tiledb::common {
 
+
 template <template <class> class Mover, class T>
 Edge(producer_node<Mover, T>, consumer_node<Mover, T>) -> Edge<Mover, T>;
 
@@ -71,6 +72,33 @@ Edge(std::shared_ptr<mimo_node_impl<SinkMover, T, SourceMover, T>>&,
 template <template <class> class SinkMover, class T, template <class> class SourceMover, class U>
 Edge(std::shared_ptr<producer_node_impl<SourceMover, T>>&,
      std::shared_ptr<mimo_node_impl<SourceMover, T, SinkMover, U>>&) -> Edge<SourceMover, T>;
+
+
+// @todo there are probably better ways to do this
+// @todo make sure this works with mimo nodes / proxy as well
+template <template <template <class> class, class> class P,
+          template <template <class> class, class> class C,
+          template <class> class Mover, class T>
+Edge(P<Mover, T>, C<Mover, T>) -> Edge<Mover, T>;
+
+template <template <template <class> class, class> class P,
+          template <template <class> class, class, template <class> class, class> class F,
+          template <class> class SinkMover, class T,
+          template <class> class SourceMover, class U>
+Edge(P<SinkMover, T>, F<SinkMover, T, SourceMover, U>) -> Edge<SinkMover, T>;
+
+template <template <template <class> class, class> class C,
+          template <template <class> class, class, template <class> class, class> class F,
+          template <class> class SinkMover, class T,
+          template <class> class SourceMover, class U>
+Edge(F<SinkMover, T, SourceMover, U>, C<SourceMover, typename F<SinkMover, T, SourceMover, U>::out_value_type>) -> Edge<SourceMover, typename F<SinkMover, T, SourceMover, U>::out_value_type>;
+
+template <template <template <class> class, class, template <class> class, class> class F,
+          template <template <class> class, class, template <class> class, class> class G,
+          template <class> class SinkMover, class T,
+          template <class> class MidMover, class U,
+          template <class> class SourceMover, class W>
+Edge(F<SinkMover, T, MidMover, U>, G<MidMover, U, SourceMover, W>) -> Edge<MidMover, U>;
 
 }
 

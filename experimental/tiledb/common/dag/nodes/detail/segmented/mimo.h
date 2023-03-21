@@ -718,6 +718,9 @@ class mimo_node
   using Base = std::shared_ptr<PreBase>;
   using Base::Base;
 
+  using in_value_type = BlocksIn;
+  using out_value_type = BlocksOut;
+
  public:
   template <class Function>
   explicit mimo_node(Function&& f)
@@ -736,6 +739,8 @@ using consumer_mimo = mimo_node<SinkMover, BlocksIn, EmptyMover, std::tuple<>>;
 template <class MimoNode, size_t portnum>
 struct Proxy {
   constexpr static const size_t portnum_ {portnum};
+  using in_value_type = typename std::tuple_element_t<portnum, typename MimoNode::in_value_type>;
+  using out_value_type = typename std::tuple_element_t<portnum, typename MimoNode::out_value_type>;
   MimoNode* node_ptr_;
   Proxy(MimoNode& node) : node_ptr_{&node} {}
 };

@@ -5,7 +5,7 @@
 *
 * The MIT License
 *
-* @copyright Copyright (c) 2022 TileDB, Inc.
+* @copyright Copyright (c) 2023 TileDB, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -41,12 +41,12 @@ using namespace tiledb::common;
 using S = tiledb::common::DuffsScheduler<node>;
 using C2 = consumer_node<DuffsMover2, std::tuple<size_t,size_t,size_t>>;
 using F2 = function_node<DuffsMover2, size_t>;
-using T2 = tuple_maker_node<DuffsMover2, size_t>;
+using T2 = tuple_maker_node<DuffsMover2, size_t, DuffsMover2, std::tuple<size_t, size_t, size_t>>;
 using P2 = producer_node<DuffsMover2, size_t>;
 
 using C3 = consumer_node<DuffsMover3, std::tuple<size_t,size_t,size_t>>;
 using F3 = function_node<DuffsMover3, size_t>;
-using T3 = tuple_maker_node<DuffsMover3, size_t>;
+using T3 = tuple_maker_node<DuffsMover3, size_t, DuffsMover3, std::tuple<size_t,size_t,size_t>>;
 using P3 = producer_node<DuffsMover3, size_t>;
 
 TEMPLATE_TEST_CASE("TupleMaker: Verify construction", "[tuple_maker_node]",
@@ -96,11 +96,13 @@ TEMPLATE_TEST_CASE("TupleMaker: Verify connected nodes", "[tuple_maker_node]",
 
   connect(p, t);
   connect(t, c);
-  Edge(p, *t);
-  Edge(*t, c);
+
+  // @todo Have to figure out how to create deduction guides without combinatorial explosion
+  // Or fix the issue without so many custom deduction guides
+  Edge(p, t);
+  Edge(t, c);
 
   SECTION("Just submit") {
-    // @todo Have to figure out how to create deduction guides without combinatorial explosion
     sched.submit(p);
     sched.submit(t);
     sched.submit(c);

@@ -315,6 +315,9 @@ struct consumer_node : public std::shared_ptr<consumer_node_impl<Mover, T>> {
   using Base = std::shared_ptr<consumer_node_impl<Mover, T>>;
   using Base::Base;
 
+  using in_value_type = T;
+  using out_value_type = T;
+
   template <class Function>
   explicit consumer_node(Function&& f)
       : Base{std::make_shared<consumer_node_impl<Mover, T>>(

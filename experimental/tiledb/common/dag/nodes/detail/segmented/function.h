@@ -378,6 +378,9 @@ struct function_node
       function_node_impl<SinkMover, BlockIn, SourceMover, BlockOut>>;
   using Base::Base;
 
+  using in_value_type = BlockIn;
+  using out_value_type = BlockOut;
+
   template <class Function>
   explicit function_node(Function&& f)
       : Base{std::make_shared<
