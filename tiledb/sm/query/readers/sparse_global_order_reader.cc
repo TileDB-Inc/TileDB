@@ -1006,6 +1006,7 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
     bool stop_creating_slabs = false;
 
     // Process all cells with the same coordinates at once.
+    bool deleted_dups = false;
     while (!tile_queue.empty() && to_process.same_coords(tile_queue.top()) &&
            num_cells > 0) {
       // For consolidation with deletes, check if the cell was deleted and
@@ -1049,6 +1050,8 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
       // the top of the queue.
       if (!return_all_dups) {
         auto to_remove = tile_queue.top();
+        deleted_dups =
+            to_remove.tile_->post_dedup_bitmap()[to_remove.pos_] != 0;
         update_frag_idx(to_remove.tile_, to_remove.pos_ + 1);
         tile_queue.pop();
 
@@ -1133,6 +1136,12 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
 
           update_frag_idx(tile, start + length);
         }
+      } else if (deleted_dups) {
+        // If a duplicate was deleted by this well, we need to insert an empty
+        // cell slab. This will ensure that if we need to revert progress before
+        // this cell, the deleted cell will be merged again in all cases to
+        // delete the duplicates again.
+        result_cell_slabs.emplace_back(tile, start, 0);
       }
     }
 
@@ -1142,13 +1151,19 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
 
   buffers_full_ = num_cells == 0;
 
+  // Remove empty cell slab at the end of the structure to prevent copy issues.
+  while (result_cell_slabs.size() > 0 &&
+         result_cell_slabs.back().length_ == 0) {
+    result_cell_slabs.pop_back();
+  }
+
   logger_->debug(
       "Done merging result cell slabs, num slabs {0}, buffers full {1}",
       result_cell_slabs.size(),
       buffers_full_);
 
   return {Status::Ok(), std::move(result_cell_slabs)};
-};  // namespace sm
+};
 
 template <class BitmapType>
 tuple<uint64_t, uint64_t, uint64_t, bool>
@@ -1206,6 +1221,18 @@ Status SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
             fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
         const auto tile_tuple = rt->tile_tuple(name);
 
+        // Compute parallelization parameters.
+        auto&& [min_pos, max_pos, dest_cell_offset, skip_copy] =
+            compute_parallelization_parameters(
+                range_thread_idx,
+                num_range_threads,
+                rcs.start_,
+                rcs.length_,
+                cell_offsets[i]);
+        if (skip_copy) {
+          return Status::Ok();
+        }
+
         // If the tile_tuple is null, this is a field added in schema
         // evolution. Use the fill value.
         const uint64_t* src_buff = nullptr;
@@ -1224,18 +1251,6 @@ Status SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
           t_var_size = t_var.size();
           src_buff = t.template data_as<uint64_t>();
           src_var_buff = t_var.template data_as<uint8_t>();
-        }
-
-        // Compute parallelization parameters.
-        auto&& [min_pos, max_pos, dest_cell_offset, skip_copy] =
-            compute_parallelization_parameters(
-                range_thread_idx,
-                num_range_threads,
-                rcs.start_,
-                rcs.length_,
-                cell_offsets[i]);
-        if (skip_copy) {
-          return Status::Ok();
         }
 
         // Get dest buffers.
@@ -1402,18 +1417,6 @@ Status SparseGlobalOrderReader<BitmapType>::copy_fixed_data_tiles(
                                     rt->tile_tuple(constants::coords) :
                                     rt->tile_tuple(name);
 
-        // If the tile_tuple is null, this is a field added in schema
-        // evolution. Use the fill value.
-        const uint8_t* src_buff = nullptr;
-        bool use_fill_value = false;
-        if (tile_tuple == nullptr) {
-          use_fill_value = true;
-          src_buff = array_schema_.attribute(name)->fill_value().data();
-        } else {
-          const auto& t = tile_tuple->fixed_tile();
-          src_buff = t.template data_as<uint8_t>();
-        }
-
         // Compute parallelization parameters.
         auto&& [min_pos, max_pos, dest_cell_offset, skip_copy] =
             compute_parallelization_parameters(
@@ -1424,6 +1427,18 @@ Status SparseGlobalOrderReader<BitmapType>::copy_fixed_data_tiles(
                 cell_offsets[i]);
         if (skip_copy) {
           return Status::Ok();
+        }
+
+        // If the tile_tuple is null, this is a field added in schema
+        // evolution. Use the fill value.
+        const uint8_t* src_buff = nullptr;
+        bool use_fill_value = false;
+        if (tile_tuple == nullptr) {
+          use_fill_value = true;
+          src_buff = array_schema_.attribute(name)->fill_value().data();
+        } else {
+          const auto& t = tile_tuple->fixed_tile();
+          src_buff = t.template data_as<uint8_t>();
         }
 
         // Get dest buffers.
