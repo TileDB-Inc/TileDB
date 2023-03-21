@@ -1,5 +1,5 @@
 /**
- * @file   consumer.h
+ * @file   terminals.h
  *
  * @section LICENSE
  *

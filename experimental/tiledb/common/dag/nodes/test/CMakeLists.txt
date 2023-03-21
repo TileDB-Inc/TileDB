@@ -36,6 +36,7 @@ dag_add_header_only_unit_test(segmented_mimo_nodes)
 dag_add_header_only_unit_test(stop_source)
 dag_add_header_only_unit_test(util_functions)
 dag_add_header_only_unit_test(nodes_concurrency)
+dag_add_header_only_unit_test(tuple_maker)
 
 #
 # Define sieve test -- it is not catch-based

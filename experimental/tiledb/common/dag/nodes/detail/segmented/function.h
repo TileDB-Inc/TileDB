@@ -100,6 +100,7 @@ class function_node_impl : public node_base,
       , processed_items_{0} {
   }
 
+#if 0
   /** Utility functions for indicating what kind of node and state of the ports
    * being used.
    *
@@ -187,7 +188,7 @@ class function_node_impl : public node_base,
     if (SourceBase::item_mover_)
       SourceBase::item_mover_->enable_debug();
   }
-
+#endif
  private:
   auto get_sink_mover() const {
     return SinkBase::get_mover();
