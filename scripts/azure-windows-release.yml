@@ -68,6 +68,9 @@ steps:
       $bootstrapOptions = $bootstrapOptions + " -DisableWerror"
     }
 
+    # Set install prefix for packaging purposes
+    $bootstrapOptions = "-Prefix $env: $env:AGENT_BUILDDIRECTORY/s/dist" + $bootstrapOptions
+
     $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
     Write-Host "bootstrapExpression: $bootstrapExpression"
     Invoke-Expression $bootstrapExpression

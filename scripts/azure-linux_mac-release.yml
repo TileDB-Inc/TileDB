@@ -7,6 +7,7 @@ steps:
     echo "uname -s: " $(uname -s)
     echo "uname -v: " $(uname -v)
     printenv
+    which vcpkg
   displayName: 'Print env'
 
 - bash: |
