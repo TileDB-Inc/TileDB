@@ -53,6 +53,7 @@
 #include <wininet.h>  // For INTERNET_MAX_URL_LENGTH
 #include <algorithm>
 #include <cassert>
+#include <codecvt>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -67,14 +68,14 @@ namespace sm {
 namespace {
 /** Returns the last Windows error message string. */
 std::string get_last_error_msg_desc(decltype(GetLastError()) gle) {
-  LPVOID lpMsgBuf = nullptr;
-  if (FormatMessage(
+  LPWSTR lpMsgBuf = nullptr;
+  if (FormatMessageW(
           FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
-              FORMAT_MESSAGE_IGNORE_INSERTS,
+              FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_ARGUMENT_ARRAY,
           NULL,
           gle,
-          MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-          (LPTSTR)&lpMsgBuf,
+          0,
+          (LPWSTR)&lpMsgBuf,
           0,
           NULL) == 0) {
     if (lpMsgBuf) {
@@ -82,9 +83,9 @@ std::string get_last_error_msg_desc(decltype(GetLastError()) gle) {
     }
     return "unknown error";
   }
-  std::string msg(reinterpret_cast<char*>(lpMsgBuf));
+  std::wstring msg(lpMsgBuf);
   LocalFree(lpMsgBuf);
-  return msg;
+  return std::wstring_convert<std::codecvt_utf8<wchar_t>>{}.to_bytes(msg);
 }
 
 std::string get_last_error_msg(
