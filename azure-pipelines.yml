@@ -4,6 +4,7 @@ trigger:
     - dev
     - release-*
     - refs/tags/*
+    - build-
 pr:
   branches:
     include:

@@ -13,7 +13,7 @@ steps:
     # This stage is needed until https://github.com/actions/runner-images/pull/7125 or similar is merged
     # MacOS image 20230214.1 removed implicit installation of pkg-config
     set -e pipefail
-    brew install pkg-config vcpkg
+    brew install pkg-config
   condition: eq(variables['Agent.OS'], 'Darwin')
   displayName: 'Install brew package for pkg-config (OSX only)'
 
@@ -114,7 +114,7 @@ steps:
   continueOnError: true
 
 - bash: |
-    cat /Users/runner/work/1/s/build/vcpkg-bootstrap.log
+    cat $BUILD_REPOSITORY_LOCALPATH/build/vcpkg-bootstrap.log
   displayName: 'Dump vcpkg logs'
   continueOnError: true
 
