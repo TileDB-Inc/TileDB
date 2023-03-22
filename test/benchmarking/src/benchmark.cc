@@ -133,10 +133,10 @@ void BenchmarkBase::print_task(
     const std::vector<uint64_t>* const mem_samples_mb,
     const uint64_t baseline_mem_mb) {
   std::cout << "{\n";
-  std::cout << "  \"phase\": \"" << name << "\"\n";
+  std::cout << "  \"phase\": \"" << name << "\",\n";
 
   if (runtime_ms) {
-    std::cout << "  \"runtime_ms\": \"" << *runtime_ms << "\"\n";
+    std::cout << "  \"runtime_ms\": " << *runtime_ms << ",\n";
   }
 
   if (mem_samples_mb) {
@@ -164,8 +164,8 @@ void BenchmarkBase::print_task(
     peak_mem_mb = (peak_mem_mb > sample_size) ? peak_mem_mb - sample_size : 0;
     avg_mem_mb = (avg_mem_mb > sample_size) ? avg_mem_mb - sample_size : 0;
 
-    std::cout << "  \"baseline_mem_mb\": \"" << baseline_mem_mb << "\"\n";
-    std::cout << "  \"peak_mem_mb\": \"" << peak_mem_mb << "\"\n";
+    std::cout << "  \"baseline_mem_mb\": \"" << baseline_mem_mb << "\",\n";
+    std::cout << "  \"peak_mem_mb\": \"" << peak_mem_mb << "\",\n";
     std::cout << "  \"avg_mem_mb\": \"" << static_cast<uint64_t>(avg_mem_mb)
               << "\"\n";
   }

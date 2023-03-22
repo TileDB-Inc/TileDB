@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import argparse
 import glob
@@ -162,7 +162,7 @@ def run_benchmarks(args):
                 output_json = subprocess.check_output([exe, 'run'],
                                                       cwd=benchmark_build_dir)
                 result = json.loads(output_json)
-                times_ms.append(result['ms'])
+                times_ms.append(result['runtime_ms'])
             results[b] = times_ms
 
             subprocess.check_output([exe, 'teardown'], cwd=benchmark_build_dir)
