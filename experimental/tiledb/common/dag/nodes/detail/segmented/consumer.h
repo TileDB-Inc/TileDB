@@ -59,21 +59,10 @@ class consumer_node_impl : public node_base, public Sink<Mover, T> {
   using SinkBase = Sink<Mover, T>;
   using mover_type = Mover<T>;
   using node_base_type = node_base;
-  using scheduler_event_type = typename mover_type::scheduler_event_type;
 
   std::function<void(/*const*/ T&)> f_;
 
-  std::atomic<size_t> consumed_items_{0};
-
-  void set_item_mover(std::shared_ptr<mover_type> mover) {
-    this->item_mover_ = mover;
-  }
-
  public:
-  size_t consumed_items() {
-    return consumed_items_.load();
-  }
-
   /** Main constructor. Takes a consumer function as argument. */
   template <class Function>
   explicit consumer_node_impl(
@@ -87,103 +76,22 @@ class consumer_node_impl : public node_base, public Sink<Mover, T> {
       , consumed_items_{0} {
   }
 
-  auto get_input_port() {
-    return *reinterpret_cast<SinkBase*>(this);
-  }
+  consumer_node_impl(consumer_node_impl&&) noexcept = default;
 
-
-  /** Utility functions for indicating what kind of node and state of the ports
-   * being used.
-   *
-   * @todo Are these used anywhere?  This is an abstraction violation, so we
-   * should try not to use them.
-   * */
-  bool is_consumer_node() const override {
-    return true;
-  }
-
-  bool is_source_empty() const override {
-    auto mover = this->get_mover();
-    return empty_source(mover->state());
-  }
-
-  bool is_sink_full() const override {
-    auto mover = this->get_mover();
-    return full_sink(mover->state());
-  }
-
-  bool is_sink_state_empty() const override {
-    auto mover = this->get_mover();
-    return empty_state(mover->state());
-  }
-
-  bool is_sink_state_full() const override {
-    auto mover = this->get_mover();
-    return full_state(mover->state());
-  }
-
-  bool is_source_state_empty() const override {
-    auto mover = this->get_mover();
-    return empty_state(mover->state());
-  }
-
-  bool is_source_state_full() const override {
-    auto mover = this->get_mover();
-    return full_state(mover->state());
-  }
-
-  bool is_source_terminating() const override {
-    auto mover = this->get_mover();
-    return terminating(mover->state());
-  }
-
-  bool is_sink_terminating() const override {
-    auto mover = this->get_mover();
-    return terminating(mover->state());
-  }
-
-  bool is_source_terminated() const override {
-    auto mover = this->get_mover();
-    return terminated(mover->state());
-  }
-
-  bool is_sink_terminated() const override {
-    auto mover = this->get_mover();
-    return terminated(mover->state());
-  }
-
-  bool is_source_done() const override {
-    auto mover = this->get_mover();
-    return done(mover->state());
-  }
-
-  bool is_sink_done() const override {
-    auto mover = this->get_mover();
-    return done(mover->state());
-  }
-
-  std::string name() const override {
-    return {"consumer"};
-  }
-
-  void enable_debug() override {
-    node_base_type::enable_debug();
-    if (this->item_mover_)
-      this->item_mover_->enable_debug();
+ private:
+  void set_item_mover(std::shared_ptr<mover_type> mover) {
+    this->item_mover_ = mover;
   }
 
   auto get_sink_mover() const {
     return this->get_mover();
   }
 
-  void dump_node_state() override {
-    auto mover = this->get_mover();
-    std::cout << this->name() << " Node state: " << str(mover->state())
-              << std::endl;
+  auto get_input_port() {
+    return *reinterpret_cast<SinkBase*>(this);
   }
 
-  T thing{};  // @todo We should use the port item_
-
+ public:
   /**
    * Resume the node.  This will call the function that consumes items.
    * Main entry point of the node.
@@ -196,19 +104,13 @@ class consumer_node_impl : public node_base, public Sink<Mover, T> {
    * function execution is stored in the program counter.  A switch statement is
    * used to jump to the current program counter location.
    */
-  scheduler_event_type resume() override {
-    auto mover = SinkBase::get_mover();
 
-    // #ifdef __clang__
-    // #pragma clang diagnostic push
-    // #pragma ide diagnostic ignored "UnreachableCode"
-    // #endif
+  T thing{};  // @todo We should use the port item_
+
+  scheduler_event_type resume() override {
+    auto mover = this->get_mover();
 
     switch (this->program_counter_) {
-      /*
-       * @todo: don't do this -- case 0 shold be executed on all calls
-       * case 0 is executed only on the very first call to resume.
-       */
       case 0: {
         ++this->program_counter_;
 
@@ -216,7 +118,6 @@ class consumer_node_impl : public node_base, public Sink<Mover, T> {
 
         if (mover->is_done()) {
           return mover->port_exhausted();
-          break;
         } else {
           if (pull_state == scheduler_event_type::sink_wait) {
             this->decrement_program_counter();
@@ -225,64 +126,21 @@ class consumer_node_impl : public node_base, public Sink<Mover, T> {
         }
       }
 
-        [[fallthrough]];
-
-        /*
-         * To make the flow here similar to producer, we start with pull() the
-         * first time we are called but thereafter the loop goes from 1 to 5;
-         */
       case 1: {
         ++this->program_counter_;
-
         thing = *(SinkBase::extract());
+        return mover->port_drain();
       }
-        [[fallthrough]];
 
       case 2: {
         ++this->program_counter_;
-
-        return mover->port_drain();
-      }
-        [[fallthrough]];
-
-      case 3: {
-        ++this->program_counter_;
-
-        assert(this->source_correspondent() != nullptr);
-      }
-        [[fallthrough]];
-
-      case 4: {
-        ++this->program_counter_;
-
         f_(thing);
         ++consumed_items_;
       }
         [[fallthrough]];
 
-#if 0
-        // @todo Should skip yield if pull waited;
-      case 5: {
-        ++this->program_counter_;
-
-        auto pull_state = mover->port_pull();
-
-        if (mover->is_done()) {
-          return mover->port_exhausted();
-          break;
-        } else {
-          if (pull_state == scheduler_event_type::sink_wait) {
-            this->decrement_program_counter();
-          }
-          return pull_state;
-        }
-      }
-
-        [[fallthrough]];
-#endif
-
       // @todo Where is the best place to yield?
-      case 5: {
+      case 3: {
         this->program_counter_ = 0;
         return scheduler_event_type::yield;
       }
@@ -291,10 +149,6 @@ class consumer_node_impl : public node_base, public Sink<Mover, T> {
         break;
       }
     }
-
-    // #ifdef __clang__
-    // #pragma clang diagnostic pop
-    // #endif
 
     return scheduler_event_type::error;
   }
@@ -307,25 +161,50 @@ class consumer_node_impl : public node_base, public Sink<Mover, T> {
       resume();
     }
   }
+
+  /****************************************************************
+   *
+   * Debugging and testing support
+   *
+   ****************************************************************/
+
+  std::string name() const override {
+    return {"consumer"};
+  }
+
+  std::atomic<size_t> consumed_items_{0};
+
+  size_t consumed_items() {
+    return consumed_items_.load();
+  }
+
+  void enable_debug() override {
+    node_base_type::enable_debug();
+    if (this->item_mover_)
+      this->item_mover_->enable_debug();
+  }
+
+  void dump_node_state() override {
+    auto mover = this->get_mover();
+    std::cout << this->name() << " Node state: " << str(mover->state())
+              << std::endl;
+  }
 };
 
 /** A consumer node is a shared pointer to the implementation class */
 template <template <class> class Mover, class T>
 struct consumer_node : public std::shared_ptr<consumer_node_impl<Mover, T>> {
-  using Base = std::shared_ptr<consumer_node_impl<Mover, T>>;
+  using PreBase = consumer_node_impl<Mover, T>;
+  using Base = std::shared_ptr<PreBase>;
   using Base::Base;
-
-  using in_value_type = T;
-  using out_value_type = T;
 
   template <class Function>
   explicit consumer_node(Function&& f)
-      : Base{std::make_shared<consumer_node_impl<Mover, T>>(
-            std::forward<Function>(f))} {
+      : Base{std::make_shared<PreBase>(std::forward<Function>(f))} {
   }
 
-  explicit consumer_node(consumer_node_impl<Mover, T>& impl)
-      : Base{std::make_shared<consumer_node_impl<Mover, T>>(std::move(impl))} {
+  explicit consumer_node(PreBase& impl)
+      : Base{std::make_shared<PreBase>(std::move(impl))} {
   }
 };
 

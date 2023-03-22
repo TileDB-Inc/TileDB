@@ -258,11 +258,13 @@ TEST_CASE("Resume functions", "[duffs]") {
 
   SECTION("Emulate Pulling Data, with Some Blocking") {
     auto z = c->resume();  // pull
-    CHECK(c->get_program_counter() == 0); // wait decrements the program counter
+    CHECK(
+        c->get_program_counter() == 0);  // wait decrements the program counter
     CHECK(str(z) == "sink_wait");
 
     auto y = f->resume();  // pull
-    CHECK(c->get_program_counter() == 0); // wait decrements the program counter
+    CHECK(
+        c->get_program_counter() == 0);  // wait decrements the program counter
     CHECK(str(z) == "sink_wait");
 
     // Inject datum

@@ -1,46 +1,45 @@
 /**
-* @file   tuple_maker_node.h
-*
-* @section LICENSE
-*
-* The MIT License
-*
-* @copyright Copyright (c) 2022 TileDB, Inc.
-*
-* Permission is hereby granted, free of charge, to any person obtaining a copy
-* of this software and associated documentation files (the "Software"), to deal
-* in the Software without restriction, including without limitation the rights
-* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-* copies of the Software, and to permit persons to whom the Software is
-* furnished to do so, subject to the following conditions:
-*
-* The above copyright notice and this permission notice shall be included in
-* all copies or substantial portions of the Software.
-*
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-* THE SOFTWARE.
-*
-* @section DESCRIPTION
-*
-* This file implements a notional stateful node.
-*/
-
+ * @file   tuple_maker_node.h
+ *
+ * @section LICENSE
+ *
+ * The MIT License
+ *
+ * @copyright Copyright (c) 2022 TileDB, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file implements a notional stateful node.
+ */
 
 #ifndef TILEDB_DAG_NODES_TUPLE_MAKER_NODE_H
 #define TILEDB_DAG_NODES_TUPLE_MAKER_NODE_H
 
-#include <tuple>
 #include <atomic>
 #include <functional>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -60,10 +59,15 @@ struct tuple_maker_state {
 };
 
 template <
-    template <class> class SinkMover, class BlockIn, template <class> class SourceMover, class BlockOut>
+    template <class>
+    class SinkMover,
+    class BlockIn,
+    template <class>
+    class SourceMover,
+    class BlockOut>
 class tuple_maker_node_impl : public node_base,
-                           public Sink<SinkMover, BlockIn>,
-                           public Source<SourceMover, BlockOut> {
+                              public Sink<SinkMover, BlockIn>,
+                              public Source<SourceMover, BlockOut> {
   using sink_mover_type = SinkMover<BlockIn>;
   using source_mover_type = SourceMover<BlockOut>;
   using node_base_type = node_base;
@@ -76,8 +80,7 @@ class tuple_maker_node_impl : public node_base,
   state_type state{0, 0, 0, 0};
 
  public:
-
- tuple_maker_node_impl() = default;
+  tuple_maker_node_impl() = default;
 
  private:
   auto get_sink_mover() const {
@@ -91,15 +94,13 @@ class tuple_maker_node_impl : public node_base,
   BlockIn in_thing{};
 
  public:
-
-  #pragma ide diagnostic ignored "UnreachableCode"
+  //  #pragma ide diagnostic ignored "UnreachableCode"
 
   scheduler_event_type resume() override {
     auto source_mover = SourceBase::get_mover();
     auto sink_mover = SinkBase::get_mover();
 
     switch (state.counter_) {
-
       case 0: {
         ++state.counter_;
 
@@ -215,24 +216,26 @@ class tuple_maker_node_impl : public node_base,
 template <
     template <class>
     class SinkMover,
-    class BlockIn, template <class> class SourceMover, class BlockOut>
+    class BlockIn,
+    template <class>
+    class SourceMover,
+    class BlockOut>
 struct tuple_maker_node
     : public std::shared_ptr<
           tuple_maker_node_impl<SinkMover, BlockIn, SourceMover, BlockOut>> {
   using Base = std::shared_ptr<
       tuple_maker_node_impl<SinkMover, BlockIn, SourceMover, BlockOut>>;
   using Base::Base;
-  using in_value_type = BlockIn;
-  using out_value_type = BlockOut;
 
-   tuple_maker_node()
-      : Base{std::make_shared<
-            tuple_maker_node_impl<SinkMover, BlockIn, SourceMover, BlockOut>>()}
-        {}
-
+  tuple_maker_node()
+      : Base{std::make_shared<tuple_maker_node_impl<
+            SinkMover,
+            BlockIn,
+            SourceMover,
+            BlockOut>>()} {
+  }
 };
 
 }  // namespace tiledb::common
-
 
 #endif  // TILEDB_DAG_NODES_TUPLE_MAKER_NODE_H

@@ -54,8 +54,10 @@
 
 #include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
 
-//#include "experimental/tiledb/common/dag/nodes/detail/segmented/segmented_base.h"
-//#include "experimental/tiledb/common/dag/nodes/detail/segmented/segmented_fwd.h"
+//#include
+//"experimental/tiledb/common/dag/nodes/detail/segmented/segmented_base.h"
+//#include
+//"experimental/tiledb/common/dag/nodes/detail/segmented/segmented_fwd.h"
 #include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
 
 #include "experimental/tiledb/common/dag/utility/print_types.h"
@@ -83,7 +85,8 @@ struct fn_type;
 
 template <class... BlocksIn, class... BlocksOut>
 struct fn_type<std::tuple<BlocksIn...>, std::tuple<BlocksOut...>> {
-  using type = std::function<std::tuple<BlocksOut...>(const std::tuple<BlocksIn...>&)>;
+  using type =
+      std::function<std::tuple<BlocksOut...>(const std::tuple<BlocksIn...>&)>;
 };
 
 template <class... BlocksOut>
@@ -147,7 +150,6 @@ class mimo_node_impl<
   //                typename source_mover_type::scheduler_event_type>);
 
  public:
-
   /*
    * Make these public for now for testing
    *
@@ -163,11 +165,19 @@ class mimo_node_impl<
     return std::get<index>(inputs_);
   }
 
-  auto& get_input_ports() { return inputs_; }
-  auto& get_output_ports() { return outputs_; }
+  auto& get_input_ports() {
+    return inputs_;
+  }
+  auto& get_output_ports() {
+    return outputs_;
+  }
 
-  static constexpr size_t num_inputs() { return std::tuple_size_v<decltype(inputs_)>; }
-  static constexpr size_t num_outputs() { return std::tuple_size_v<decltype(outputs_)>; }
+  static constexpr size_t num_inputs() {
+    return std::tuple_size_v<decltype(inputs_)>;
+  }
+  static constexpr size_t num_outputs() {
+    return std::tuple_size_v<decltype(outputs_)>;
+  }
 
  private:
   /****************************************************************
@@ -193,7 +203,6 @@ class mimo_node_impl<
       std::is_same_v<decltype(input_items_), std::tuple<>>};
   static constexpr const bool is_consumer_{
       std::is_same_v<decltype(output_items_), std::tuple<>>};
-
 
   /**
    * Helper function to deal with tuples.  Applies the same single input single
@@ -437,7 +446,6 @@ class mimo_node_impl<
       , inputs_{} {
   }
 
-
   /**
    * Secondary constructor: Consumer node.
    *
@@ -453,7 +461,8 @@ class mimo_node_impl<
               std::is_invocable_r_v<
                   void,
                   Function,
-                  const std::tuple<BlocksIn...>&> && sizeof...(BlocksIn) != 1,
+                  const std::tuple<BlocksIn...>&> &&
+              sizeof...(BlocksIn) != 1,
           void**> = nullptr)
       : f_{std::forward<Function>(f)}
       , inputs_{} {
@@ -464,15 +473,12 @@ class mimo_node_impl<
       Function&& f,
       std::enable_if_t<
           are_same_v<std::tuple<>, BlocksOut...> &&
-              std::is_invocable_r_v<
-                  void,
-                  Function,
-                  BlocksIn&...>  && sizeof...(BlocksIn) == 1,
+              std::is_invocable_r_v<void, Function, BlocksIn&...> &&
+              sizeof...(BlocksIn) == 1,
           void**> = nullptr)
       : f_{std::forward<Function>(f)}
       , inputs_{} {
   }
-
 
   /**
    * Secondary constructor: Producer node.
@@ -485,8 +491,10 @@ class mimo_node_impl<
   explicit mimo_node_impl(
       Function&& f,
       std::enable_if_t<
-          are_same_v<std::tuple<>, BlocksIn...> &&
-              std::is_invocable_r_v<std::tuple<BlocksOut...>, Function, std::stop_source&>,
+          are_same_v<std::tuple<>, BlocksIn...> && std::is_invocable_r_v<
+                                                       std::tuple<BlocksOut...>,
+                                                       Function,
+                                                       std::stop_source&>,
           void**> = nullptr)
       : f_{std::forward<Function>(f)}
       , inputs_{} {
@@ -497,9 +505,9 @@ class mimo_node_impl<
       Function&& f,
       std::enable_if_t<
           are_same_v<std::tuple<>, BlocksIn...> &&
-              std::is_invocable_r_v<BlocksOut..., Function, std::stop_source&>
-                  &&                  sizeof...(BlocksOut) == 1
-          ,
+              std::
+                  is_invocable_r_v<BlocksOut..., Function, std::stop_source&> &&
+              sizeof...(BlocksOut) == 1,
           void**> = nullptr)
       : f_{std::forward<Function>(f)}
       , inputs_{} {
@@ -533,7 +541,6 @@ class mimo_node_impl<
    *
    */
   scheduler_event_type resume() override {
-
     std::stop_source stop_source_;
 
     switch (this->program_counter_) {
@@ -545,36 +552,21 @@ class mimo_node_impl<
 
           if (sink_done_all()) {
             return stop_all();
-            break;
           } else {
             return tmp_state;
           }
         }
       }
-        [[fallthrough]];
 
       case 1: {
         ++this->program_counter_;
         if constexpr (!is_producer_) {
           extract_all(inputs_, input_items_);
-        }
-      }
-        [[fallthrough]];
-
-      case 2: {
-        ++this->program_counter_;
-        if constexpr (!is_producer_) {
           return drain_all();
         }
       }
-        [[fallthrough]];
 
-      case 3: {
-        ++this->program_counter_;
-      }
-        [[fallthrough]];
-
-      case 4: {
+      case 2: {
         ++this->program_counter_;
 
         /**
@@ -592,48 +584,32 @@ class mimo_node_impl<
       }
         [[fallthrough]];
 
-      case 5: {
+      case 3: {
         ++this->program_counter_;
-
         if constexpr (!is_consumer_) {
           inject_all(output_items_, outputs_);
-        }
-      }
-        [[fallthrough]];
-
-      case 6: {
-        ++this->program_counter_;
-
-        if constexpr (!is_consumer_) {
           return fill_all();
         }
       }
-        [[fallthrough]];
 
-      case 7: {
-        ++this->program_counter_;
-      }
-        [[fallthrough]];
-
-      case 8: {
+      case 4: {
         ++this->program_counter_;
         if constexpr (!is_consumer_) {
           return push_all();
         }
       }
-        [[fallthrough]];
-      case 9: {
+
+      case 5: {
         this->program_counter_ = 0;
         return scheduler_event_type::yield;
       }
-        // [[fallthrough]];
 
       default: {
         break;
       }
     }
 
-      return scheduler_event_type::yield;
+    return scheduler_event_type::yield;
   }
 
   /** Run the node until it is done. */
@@ -647,6 +623,7 @@ class mimo_node_impl<
       }
     }
   }
+
   void dump_node_state() override {
   }
 };
@@ -718,9 +695,6 @@ class mimo_node
   using Base = std::shared_ptr<PreBase>;
   using Base::Base;
 
-  using in_value_type = BlocksIn;
-  using out_value_type = BlocksOut;
-
  public:
   template <class Function>
   explicit mimo_node(Function&& f)
@@ -729,7 +703,8 @@ class mimo_node
 };
 
 template <template <class> class SourceMover, class BlocksOut>
-using producer_mimo = mimo_node<EmptyMover, std::tuple<>, SourceMover, BlocksOut>;
+using producer_mimo =
+    mimo_node<EmptyMover, std::tuple<>, SourceMover, BlocksOut>;
 
 template <template <class> class SinkMover, class BlocksIn>
 using consumer_mimo = mimo_node<SinkMover, BlocksIn, EmptyMover, std::tuple<>>;
@@ -738,25 +713,31 @@ using consumer_mimo = mimo_node<SinkMover, BlocksIn, EmptyMover, std::tuple<>>;
 
 template <class MimoNode, size_t portnum>
 struct Proxy {
-  constexpr static const size_t portnum_ {portnum};
-  using in_value_type = typename std::tuple_element_t<portnum, typename MimoNode::in_value_type>;
-  using out_value_type = typename std::tuple_element_t<portnum, typename MimoNode::out_value_type>;
+  constexpr static const size_t portnum_{portnum};
+  // @todo: Proxy doesn't have any particular port it applies to, so we don't
+  // know whether it's
+  //   proxying an input or an output
+  // using in_value_type = typename std::tuple_element_t<portnum, typename
+  // MimoNode::in_value_type>; using out_value_type = typename
+  // std::tuple_element_t<portnum, typename MimoNode::out_value_type>;
   MimoNode* node_ptr_;
-  Proxy(MimoNode& node) : node_ptr_{&node} {}
+  Proxy(MimoNode& node)
+      : node_ptr_{&node} {
+  }
 };
 
 template <size_t N, class T>
 auto make_proxy(const T& u) {
   return Proxy<std::remove_reference_t<decltype(u)>, N>(u);
 }
-template<typename T>
-struct is_proxy: std::false_type {};
+template <typename T>
+struct is_proxy : std::false_type {};
 
-template<typename T, size_t portnum>
+template <typename T, size_t portnum>
 struct is_proxy<Proxy<T, portnum>> : std::true_type {};
 
 template <class T>
-constexpr const bool is_proxy_v {is_proxy<T>::value};
+constexpr const bool is_proxy_v{is_proxy<T>::value};
 #if 0
 /**
  * @brief A proxy class for accessing the inputs and outputs of a mimo node

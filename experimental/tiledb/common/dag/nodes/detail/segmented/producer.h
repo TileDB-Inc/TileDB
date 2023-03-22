@@ -59,35 +59,10 @@ namespace tiledb::common {
 template <template <class> class Mover, class T>
 struct producer_node_impl : public node_base, public Source<Mover, T> {
   using SourceBase = Source<Mover, T>;
-
+  using mover_type = Mover<T>;
   using node_base_type = node_base;
 
-  using mover_type = Mover<T>;
-  using node_type = node_t<node_base>;
-  using node_handle_type = node_handle_t<node_base>;
-
   std::function<T(std::stop_source&)> f_;
-
-  /**
-   * Counter to keep track of how many times the producer has been resumed.
-   */
-  std::atomic<size_t> produced_items_{0};
-
-  /**
-   * @brief Return the number of items produced by this node.
-   * @return The number of items produced by this node.
-   */
-  size_t produced_items() {
-    return produced_items_.load();
-  }
-
-  /**
-   * @brief Set the item mover for this node.
-   * @param mover The item mover.
-   */
-  void set_item_mover(std::shared_ptr<mover_type> mover) {
-    this->item_mover_ = mover;
-  }
 
   /**
    * @brief Constructor, takes a function that produces items.
@@ -106,103 +81,26 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
       , produced_items_{0} {
   }
 
-  producer_node_impl(producer_node_impl&& rhs) noexcept = default;
+  producer_node_impl(producer_node_impl&&) noexcept = default;
 
-  auto get_output_port() {
-    return *reinterpret_cast<SourceBase*>(this);
-  }
-
-  /** Utility functions for indicating what kind of node and state of the ports
-   * being used.
-   *
-   * @todo Are these used anywhere?  This is an abstraction violation, so we
-   * should try not to use them.
-   * */
-  bool is_producer_node() const override {
-    return true;
-  }
-
-  bool is_source_empty() const override {
-    auto mover = this->get_mover();
-    return empty_source(mover->state());
-  }
-
-  bool is_sink_full() const override {
-    auto mover = this->get_mover();
-    return full_sink(mover->state());
-  }
-
-  bool is_sink_state_empty() const override {
-    auto mover = this->get_mover();
-    return empty_state(mover->state());
-  }
-
-  bool is_sink_state_full() const override {
-    auto mover = this->get_mover();
-    return full_state(mover->state());
-  }
-
-  bool is_source_state_empty() const override {
-    auto mover = this->get_mover();
-    return empty_state(mover->state());
-  }
-
-  bool is_source_state_full() const override {
-    auto mover = this->get_mover();
-    return full_state(mover->state());
-  }
-
-  bool is_source_terminating() const override {
-    auto mover = this->get_mover();
-    return terminating(mover->state());
-  }
-
-  bool is_sink_terminating() const override {
-    auto mover = this->get_mover();
-    return terminating(mover->state());
-  }
-
-  bool is_source_terminated() const override {
-    auto mover = this->get_mover();
-    return terminated(mover->state());
-  }
-
-  bool is_sink_terminated() const override {
-    auto mover = this->get_mover();
-    return terminated(mover->state());
-  }
-
-  bool is_source_done() const override {
-    auto mover = this->get_mover();
-    return done(mover->state());
-  }
-
-  bool is_sink_done() const override {
-    auto mover = this->get_mover();
-    return done(mover->state());
-  }
-
-  /** Return name of node. */
-  std::string name() const override {
-    return {"producer"};
-  }
-
-  void enable_debug() override {
-    node_base_type::enable_debug();
-    if (this->item_mover_)
-      this->item_mover_->enable_debug();
+ private:
+  /**
+   * @brief Set the item mover for this node.
+   * @param mover The item mover.
+   */
+  void set_item_mover(std::shared_ptr<mover_type> mover) {
+    this->item_mover_ = mover;
   }
 
   auto get_source_mover() const {
     return this->get_mover();
   }
 
-  void dump_node_state() override {
-    auto mover = this->get_mover();
-    std::cout << this->name() << " Node state: " << str(mover->state())
-              << std::endl;
+  auto get_output_port() {
+    return *reinterpret_cast<SourceBase*>(this);
   }
 
+ public:
   /**
    * Resume the node.  This will call the function that produces items.
    * The function is passed a stop_source that can be used to terminate the
@@ -225,10 +123,6 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
     std::stop_source stop_source_;
     assert(!stop_source_.stop_requested());
 
-
-// #pragma clang diagnostic push
-// #pragma ide diagnostic ignored "UnreachableCode"
-
     switch (this->program_counter_) {
       case 0: {
         ++this->program_counter_;
@@ -238,57 +132,39 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
         if (stop_source_.stop_requested()) {
           this->program_counter_ = 999;
           return mover->port_exhausted();
-          break;
         }
         ++produced_items_;
       }
 
-        [[fallthrough]];
-
       case 1: {
         ++this->program_counter_;
-
         SourceBase::inject(thing);
-      }
-        [[fallthrough]];
-
-      case 2: {
-        this->program_counter_ = 3;
         return mover->port_fill();
       }
-        [[fallthrough]];
 
-      case 3: {
-        this->program_counter_ = 4;
-      }
-        [[fallthrough]];
-
-      case 4: {
-        this->program_counter_ = 5;
+      case 2: {
+        ++this->program_counter_;
         auto push_state = mover->port_push();
         if (push_state == scheduler_event_type::source_wait) {
           this->decrement_program_counter();
         }
         return push_state;
       }
-        [[fallthrough]];
 
-        // @todo Should skip yield if push waited;
-      case 5: {
+        // @todo Should skip yield if push waited, because the wait is already
+        //   a yield.
+      case 3: {
         this->program_counter_ = 0;
-        // this->task_yield(*this);
         return scheduler_event_type::yield;
       }
+
       case 999: {
         return scheduler_event_type::error;
       }
+
       default:
         break;
     }
-
-#ifdef __clang__
-#pragma clang diagnostic push
-#endif
 
     return scheduler_event_type::error;
   }
@@ -301,6 +177,42 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
       resume();
     }
   }
+
+  /****************************************************************
+   *
+   * Debugging and testing support
+   *
+   ****************************************************************/
+
+  /** Return name of node. */
+  std::string name() const override {
+    return {"producer"};
+  }
+
+  /**
+   * Counter to keep track of how many times the producer has been resumed.
+   */
+  std::atomic<size_t> produced_items_{0};
+
+  /**
+   * @brief Return the number of items produced by this node.
+   * @return The number of items produced by this node.
+   */
+  size_t produced_items() {
+    return produced_items_.load();
+  }
+
+  void enable_debug() override {
+    node_base_type::enable_debug();
+    if (this->item_mover_)
+      this->item_mover_->enable_debug();
+  }
+
+  void dump_node_state() override {
+    auto mover = this->get_mover();
+    std::cout << this->name() << " Node state: " << str(mover->state())
+              << std::endl;
+  }
 };
 
 /** A producer node is a shared pointer to the implementation class */
@@ -310,20 +222,16 @@ struct producer_node : public std::shared_ptr<producer_node_impl<Mover, T>> {
   using Base = std::shared_ptr<PreBase>;
   using Base::Base;
 
-  using in_value_type = T;
-  using out_value_type = T;
-
   using node_type = node_t<producer_node_impl<Mover, T>>;
   using node_handle_type = node_handle_t<producer_node_impl<Mover, T>>;
 
   template <class Function>
   explicit producer_node(Function&& f)
-      : Base{std::make_shared<PreBase>(
-            std::forward<Function>(f))} {
+      : Base{std::make_shared<PreBase>(std::forward<Function>(f))} {
   }
 
-  explicit producer_node(producer_node_impl<Mover, T>& impl)
-      : Base{std::make_shared<producer_node_impl<Mover, T>>(std::move(impl))} {
+  explicit producer_node(PreBase& impl)
+      : Base{std::make_shared<PreBase>(std::move(impl))} {
   }
 };
 

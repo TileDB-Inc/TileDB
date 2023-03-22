@@ -60,8 +60,7 @@ template <
     template <class>
     class SinkMover,
     class BlockIn,
-    template <class>
-    class SourceMover = SinkMover,
+    template <class> class SourceMover = SinkMover,
     class BlockOut = BlockIn>
 struct function_node;
 
