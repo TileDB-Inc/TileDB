@@ -113,6 +113,11 @@ steps:
   displayName: 'Build libtiledb'
   continueOnError: true
 
+- bash: |
+    cat /Users/runner/work/1/s/build/vcpkg-bootstrap.log
+  displayName: 'Dump vcpkg logs'
+  continueOnError: true
+
 - task: ArchiveFiles@2
   inputs:
     rootFolderOrFile: '$(Build.Repository.LocalPath)'
