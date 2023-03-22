@@ -960,6 +960,7 @@ void Domain::set_tile_cell_order_cmp_funcs() {
       case Datatype::STRING_UTF32:
       case Datatype::STRING_UCS2:
       case Datatype::STRING_UCS4:
+      case Datatype::CATEGORICAL_UTF8:
       case Datatype::ANY:
         tile_order_cmp_func_[d] = nullptr;
         cell_order_cmp_func_[d] = nullptr;

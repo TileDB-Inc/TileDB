@@ -210,6 +210,9 @@ const uint16_t empty_ucs2 = 0;
 /** The special value for an empty UCS4. */
 const uint32_t empty_ucs4 = 0;
 
+/** The special value for an empty CATEGORICAL_UTF8. */
+const uint8_t empty_categorical_utf8 = 0;
+
 /** The special value for an empty ANY. */
 const uint8_t empty_any = 0;
 
@@ -487,6 +490,9 @@ const std::string string_ucs2_str = "STRING_UCS2";
 
 /** The string representation for type STRING_UCS4. */
 const std::string string_ucs4_str = "STRING_UCS4";
+
+/** The string representation for type CATEGORICAL_UTF8. */
+const std::string categorical_utf8_str = "CATEGORICAL_UTF8";
 
 /** The string representation for type ANY. */
 const std::string any_str = "ANY";
@@ -787,6 +793,8 @@ const void* fill_value(Datatype type) {
       return &constants::empty_ucs2;
     case Datatype::STRING_UCS4:
       return &constants::empty_ucs4;
+    case Datatype::CATEGORICAL_UTF8:
+      return &constants::empty_categorical_utf8;
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:

@@ -3187,6 +3187,7 @@ tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(
     case Datatype::STRING_UTF32:
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
+    case Datatype::CATEGORICAL_UTF8:
     case Datatype::ANY:
       return {
           LOG_STATUS(Status_SubarrayError(

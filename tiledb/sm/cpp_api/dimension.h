@@ -65,7 +65,7 @@ namespace tiledb {
  * the following Datatypes are not valid for Dimension:
  * TILEDB_CHAR, TILEDB_BLOB, TILEDB_BOOL, TILEDB_STRING_UTF8,
  * TILEDB_STRING_UTF16, TILEDB_STRING_UTF32, TILEDB_STRING_UCS2,
- * TILEDB_STRING_UCS4, TILEDB_ANY
+ * TILEDB_STRING_UCS4, TILEDB_CATEGORICAL_UTF8, TILEDB_ANY
  **/
 class Dimension {
  public:
@@ -261,6 +261,7 @@ class Dimension {
       case TILEDB_STRING_UTF32:
       case TILEDB_STRING_UCS2:
       case TILEDB_STRING_UCS4:
+      case TILEDB_CATEGORICAL_UTF8:
       case TILEDB_ANY:
         // Not supported domain types
         throw TileDBError("Invalid Dim type");
@@ -380,6 +381,7 @@ class Dimension {
       case TILEDB_STRING_UTF32:
       case TILEDB_STRING_UCS2:
       case TILEDB_STRING_UCS4:
+      case TILEDB_CATEGORICAL_UTF8:
       case TILEDB_ANY:
         throw TileDBError("Invalid Dim type");
     }

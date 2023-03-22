@@ -26,4 +26,5 @@ Please note that this information is repeated in the C API, C++ API, and the Dim
 * TILEDB_STRING_UTF32
 * TILEDB_STRING_UCS2
 * TILEDB_STRING_UCS4
+* TILEDB_CATEGORICAL_UTF8
 * TILEDB_ANY

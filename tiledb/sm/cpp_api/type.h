@@ -274,6 +274,7 @@ inline bool tiledb_string_type(tiledb_datatype_t type) {
     case TILEDB_STRING_UTF32:
     case TILEDB_STRING_UCS2:
     case TILEDB_STRING_UCS4:
+    case TILEDB_CATEGORICAL_UTF8:
       return true;
     default:
       return false;

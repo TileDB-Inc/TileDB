@@ -231,6 +231,7 @@ bool TileMetadataGenerator::has_min_max_metadata(
     case Datatype::STRING_UTF32:
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
+    case Datatype::CATEGORICAL_UTF8:
       return false;
 
     default:
@@ -254,6 +255,7 @@ bool TileMetadataGenerator::has_sum_metadata(
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
     case Datatype::STRING_ASCII:
+    case Datatype::CATEGORICAL_UTF8:
       return false;
 
     default:

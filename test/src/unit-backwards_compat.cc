@@ -439,6 +439,7 @@ TEST_CASE(
           case TILEDB_CHAR:
           case TILEDB_STRING_ASCII:
           case TILEDB_STRING_UTF8:
+          case TILEDB_CATEGORICAL_UTF8:
           case TILEDB_ANY: {
             set_buffer_wrapper<char>(
                 query,
@@ -647,6 +648,7 @@ TEST_CASE(
           case TILEDB_CHAR:
           case TILEDB_STRING_ASCII:
           case TILEDB_STRING_UTF8:
+          case TILEDB_CATEGORICAL_UTF8:
           case TILEDB_ANY: {
             REQUIRE(static_cast<char*>(std::get<1>(buffer))[0] == '1');
             break;
@@ -939,6 +941,7 @@ TEST_CASE(
           case TILEDB_CHAR:
           case TILEDB_STRING_ASCII:
           case TILEDB_STRING_UTF8:
+          case TILEDB_CATEGORICAL_UTF8:
           case TILEDB_ANY: {
             set_buffer_wrapper<char>(
                 query,
@@ -1182,6 +1185,7 @@ TEST_CASE(
           case TILEDB_CHAR:
           case TILEDB_STRING_ASCII:
           case TILEDB_STRING_UTF8:
+          case TILEDB_CATEGORICAL_UTF8:
           case TILEDB_ANY: {
             REQUIRE(static_cast<char*>(std::get<1>(buffer))[0] == '1');
             break;

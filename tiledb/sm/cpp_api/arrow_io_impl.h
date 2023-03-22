@@ -153,6 +153,7 @@ ArrowInfo tiledb_buffer_arrow_fmt(BufferInfo bufferinfo, bool use_list = true) {
     switch(typeinfo.type) {
       case TILEDB_STRING_UTF8:
       case TILEDB_STRING_ASCII:
+      case TILEDB_CATEGORICAL_UTF8:
         break;
       case TILEDB_BLOB:
       case TILEDB_INT8:
@@ -179,6 +180,7 @@ ArrowInfo tiledb_buffer_arrow_fmt(BufferInfo bufferinfo, bool use_list = true) {
     ////////////////////////////////////////////////////////////////////////
     case TILEDB_STRING_ASCII:
     case TILEDB_STRING_UTF8:
+    case TILEDB_CATEGORICAL_UTF8:
       if (bufferinfo.offsets_elem_size == 4) {
         return ArrowInfo("u");
       } else {
@@ -303,6 +305,11 @@ TypeInfo arrow_type_to_tiledb(ArrowSchema* arw_schema) {
     return {TILEDB_CHAR, 1, TILEDB_VAR_NUM, fmt == "Z"};
   else if (fmt == "u" || fmt == "U")
     return {TILEDB_STRING_UTF8, 1, TILEDB_VAR_NUM, fmt == "U"};
+
+PJD: Hopefully this only blows up when Arrow is turned on
+    and will remind me that I need to figure out if there's a type
+    string for CATEGORICAL_UTF8
+
   else
     throw tiledb::TileDBError(
         "[TileDB-Arrow]: Unknown or unsupported Arrow format string '" + fmt +

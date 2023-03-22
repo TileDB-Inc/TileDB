@@ -40,7 +40,7 @@ namespace sm {
 static inline bool supported_string_type(Datatype type) {
   return (
       type == Datatype::CHAR || type == Datatype::STRING_ASCII ||
-      type == Datatype::STRING_UTF8);
+      type == Datatype::STRING_UTF8 || type == Datatype::CATEGORICAL_UTF8);
 }
 
 bool ASTNodeVal::is_expr() const {

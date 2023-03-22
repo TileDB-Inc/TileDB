@@ -74,10 +74,13 @@ Status check_template_type_to_datatype<uint8_t>(Datatype datatype) {
     return Status::Ok();
   else if (datatype == Datatype::STRING_UTF8)
     return Status::Ok();
+  else if (datatype == Datatype::CATEGORICAL_UTF8)
+    return Status::Ok();
 
   return Status_Error(
       "Template of type uint8_t but datatype is not Datatype::UINT8 nor "
-      "Datatype::STRING_ASCII nor atatype::STRING_UTF8");
+      "Datatype::STRING_ASCII nor Datatype::STRING_UTF8 nor "
+      "Datatype::CATEGORICAL_UTF8");
 }
 template <>
 Status check_template_type_to_datatype<int16_t>(Datatype datatype) {

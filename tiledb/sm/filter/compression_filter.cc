@@ -227,7 +227,8 @@ Status CompressionFilter::run_forward(
         Status_FilterError("Input is too large to be compressed."));
 
   if ((tile.type() == Datatype::STRING_ASCII ||
-       tile.type() == Datatype::STRING_UTF8) &&
+       tile.type() == Datatype::STRING_UTF8 ||
+       tile.type() == Datatype::CATEGORICAL_UTF8) &&
       offsets_tile) {
     if (compressor_ == Compressor::RLE ||
         compressor_ == Compressor::DICTIONARY_ENCODING)
@@ -300,7 +301,8 @@ Status CompressionFilter::run_reverse(
   assert(metadata_buffer != nullptr);
 
   if ((tile.type() == Datatype::STRING_ASCII ||
-       tile.type() == Datatype::STRING_UTF8) &&
+       tile.type() == Datatype::STRING_UTF8 ||
+       tile.type() == Datatype::CATEGORICAL_UTF8) &&
       version_ >= 12 && offsets_tile) {
     if (compressor_ == Compressor::RLE ||
         compressor_ == Compressor::DICTIONARY_ENCODING)

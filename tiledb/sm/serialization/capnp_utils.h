@@ -186,6 +186,7 @@ Status set_capnp_array_ptr(
       break;
     case tiledb::sm::Datatype::STRING_ASCII:
     case tiledb::sm::Datatype::STRING_UTF8:
+    case tiledb::sm::Datatype::CATEGORICAL_UTF8:
     case tiledb::sm::Datatype::BLOB:
     case tiledb::sm::Datatype::BOOL:
     case tiledb::sm::Datatype::UINT8:
@@ -579,6 +580,7 @@ Status serialize_subarray(
       case tiledb::sm::Datatype::STRING_UTF32:
       case tiledb::sm::Datatype::STRING_UCS2:
       case tiledb::sm::Datatype::STRING_UCS4:
+      case tiledb::sm::Datatype::CATEGORICAL_UTF8:
       case tiledb::sm::Datatype::ANY:
         // String dimensions not yet supported
         return LOG_STATUS(Status_SerializationError(
@@ -624,6 +626,7 @@ Status deserialize_subarray(
       case tiledb::sm::Datatype::STRING_UTF32:
       case tiledb::sm::Datatype::STRING_UCS2:
       case tiledb::sm::Datatype::STRING_UCS4:
+      case tiledb::sm::Datatype::CATEGORICAL_UTF8:
       case tiledb::sm::Datatype::ANY:
         // String dimensions not yet supported
         return LOG_STATUS(Status_SerializationError(

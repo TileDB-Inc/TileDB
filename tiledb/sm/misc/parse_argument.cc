@@ -294,6 +294,9 @@ std::string to_str(const void* value, Datatype type) {
     case Datatype::STRING_UCS4:
       ss << *(const uint32_t*)value;
       break;
+    case Datatype::CATEGORICAL_UTF8:
+      ss << *(const uint8_t*)value;
+      break;
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
     case Datatype::DATETIME_WEEK:

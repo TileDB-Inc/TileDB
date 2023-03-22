@@ -196,6 +196,9 @@ extern const uint16_t empty_ucs2;
 /** The special value for an empty UCS4. */
 extern const uint32_t empty_ucs4;
 
+/** The special value for an empty CATEGORICAL_UTF8. */
+extern const uint8_t empty_categorical_utf8;
+
 /** The special value for an empty ANY. */
 extern const uint8_t empty_any;
 
@@ -472,6 +475,9 @@ extern const std::string string_ucs2_str;
 
 /** The string representation for type STRING_UCS4. */
 extern const std::string string_ucs4_str;
+
+/** The string representation for type CATEGORICAL_UTF8. */
+extern const std::string categorical_utf8_str;
 
 /** The string representation for type ANY. */
 extern const std::string any_str;

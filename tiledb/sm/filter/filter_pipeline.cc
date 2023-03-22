@@ -564,12 +564,14 @@ Status FilterPipeline::append_encryption_filter(
 bool FilterPipeline::skip_offsets_filtering(
     const Datatype type, const uint32_t version) const {
   if (((version >= 12 && type == Datatype::STRING_ASCII) ||
-       (version >= 17 && type == Datatype::STRING_UTF8)) &&
+       (version >= 17 && type == Datatype::STRING_UTF8) ||
+       (version >= 18 && type == Datatype::CATEGORICAL_UTF8)) &&
       has_filter(FilterType::FILTER_RLE)) {
     return true;
   } else if (
       ((version >= 13 && type == Datatype::STRING_ASCII) ||
-       (version >= 17 && type == Datatype::STRING_UTF8)) &&
+       (version >= 17 && type == Datatype::STRING_UTF8) ||
+       (version >= 18 && type == Datatype::CATEGORICAL_UTF8)) &&
       has_filter(FilterType::FILTER_DICTIONARY)) {
     return true;
   }
@@ -580,7 +582,8 @@ bool FilterPipeline::skip_offsets_filtering(
 bool FilterPipeline::use_tile_chunking(
     const bool is_var, const uint32_t version, const Datatype type) const {
   if (is_var &&
-      (type == Datatype::STRING_ASCII || type == Datatype::STRING_UTF8)) {
+      (type == Datatype::STRING_ASCII || type == Datatype::STRING_UTF8 ||
+       type == Datatype::CATEGORICAL_UTF8)) {
     if (version >= 12 && has_filter(FilterType::FILTER_RLE)) {
       return false;
     } else if (version >= 13 && has_filter(FilterType::FILTER_DICTIONARY)) {

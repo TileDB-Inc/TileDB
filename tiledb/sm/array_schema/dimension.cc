@@ -1695,6 +1695,7 @@ void Dimension::ensure_datatype_is_supported(Datatype type) const {
     case Datatype::STRING_UTF32:
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
+    case Datatype::CATEGORICAL_UTF8:
     case Datatype::ANY:
       throw std::logic_error(
           "Datatype::" + datatype_str(type) +
@@ -1793,6 +1794,7 @@ std::string Dimension::tile_extent_str() const {
     case Datatype::STRING_UTF32:
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
+    case Datatype::CATEGORICAL_UTF8:
     case Datatype::ANY:
       // Not supported domain type
       assert(false);

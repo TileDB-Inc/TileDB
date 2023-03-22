@@ -98,6 +98,8 @@ inline uint64_t datatype_size(Datatype type) noexcept {
       return sizeof(uint16_t);
     case Datatype::STRING_UCS4:
       return sizeof(uint32_t);
+    case Datatype::CATEGORICAL_UTF8:
+      return sizeof(uint8_t);
     case Datatype::ANY:
       return sizeof(uint8_t);
     case Datatype::DATETIME_YEAR:
@@ -170,6 +172,8 @@ inline const std::string& datatype_str(Datatype type) {
       return constants::string_ucs2_str;
     case Datatype::STRING_UCS4:
       return constants::string_ucs4_str;
+    case Datatype::CATEGORICAL_UTF8:
+      return constants::categorical_utf8_str;
     case Datatype::ANY:
       return constants::any_str;
     case Datatype::DATETIME_YEAR:
@@ -262,6 +266,8 @@ inline Status datatype_enum(
     *datatype = Datatype::STRING_UCS2;
   else if (datatype_str == constants::string_ucs4_str)
     *datatype = Datatype::STRING_UCS4;
+  else if (datatype_str == constants::categorical_utf8_str)
+    *datatype = Datatype::CATEGORICAL_UTF8;
   else if (datatype_str == constants::any_str)
     *datatype = Datatype::ANY;
   else if (datatype_str == constants::datetime_year_str)
@@ -316,10 +322,10 @@ inline Status datatype_enum(
 
 /** Returns true if the input datatype is a string type. */
 inline bool datatype_is_string(Datatype type) {
-  return (
-      type == Datatype::STRING_ASCII || type == Datatype::STRING_UTF8 ||
-      type == Datatype::STRING_UTF16 || type == Datatype::STRING_UTF32 ||
-      type == Datatype::STRING_UCS2 || type == Datatype::STRING_UCS4);
+  return (type == Datatype::STRING_ASCII || type == Datatype::STRING_UTF8 ||
+          type == Datatype::STRING_UTF16 || type == Datatype::STRING_UTF32 ||
+          type == Datatype::STRING_UCS2 || type == Datatype::STRING_UCS4) ||
+         type == Datatype::CATEGORICAL_UTF8;
 }
 
 /** Returns true if the input datatype is an integer type. */
@@ -366,7 +372,7 @@ inline bool datatype_is_boolean(Datatype type) {
 
 /** Throws error if the input Datatype's enum is not between 0 and 41. */
 inline void ensure_datatype_is_valid(uint8_t datatype_enum) {
-  if (datatype_enum > 41) {
+  if (datatype_enum > 42) {
     throw std::runtime_error(
         "Invalid Datatype (" + std::to_string(datatype_enum) + ")");
   }

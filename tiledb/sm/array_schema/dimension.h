@@ -72,7 +72,7 @@ enum class Datatype : uint8_t;
  * the following Datatypes are not valid for Dimension:
  * TILEDB_CHAR, TILEDB_BLOB, TILEDB_BOOL, TILEDB_STRING_UTF8,
  * TILEDB_STRING_UTF16, TILEDB_STRING_UTF32, TILEDB_STRING_UCS2,
- * TILEDB_STRING_UCS4, TILEDB_ANY
+ * TILEDB_STRING_UCS4, TILEDB_CATEGORICAL_UTF8, TILEDB_ANY
  */
 class Dimension {
  public:

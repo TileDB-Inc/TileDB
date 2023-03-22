@@ -127,6 +127,15 @@ void StringEmptyFx::create_array(const std::string& array_name) {
   rc = set_attribute_compression_filter(ctx, a4, TILEDB_FILTER_ZSTD, -1);
   REQUIRE(rc == TILEDB_OK);
 
+  // Create variable-sized CATEGORICAL_UTF8 attribute
+  tiledb_attribute_t* a5;
+  rc = tiledb_attribute_alloc(ctx, "a5", TILEDB_CATEGORICAL_UTF8, &a5);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_cell_val_num(ctx, a5, TILEDB_VAR_NUM);
+  REQUIRE(rc == TILEDB_OK);
+  rc = set_attribute_compression_filter(ctx, a5, TILEDB_FILTER_ZSTD, -1);
+  REQUIRE(rc == TILEDB_OK);
+
   // Create array schema
   tiledb_array_schema_t* array_schema;
   rc = tiledb_array_schema_alloc(ctx, TILEDB_SPARSE, &array_schema);
@@ -145,6 +154,8 @@ void StringEmptyFx::create_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_add_attribute(ctx, array_schema, a4);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx, array_schema, a5);
+  REQUIRE(rc == TILEDB_OK);
 
   // Check array schema
   rc = tiledb_array_schema_check(ctx, array_schema);
@@ -159,6 +170,7 @@ void StringEmptyFx::create_array(const std::string& array_name) {
   tiledb_attribute_free(&a2);
   tiledb_attribute_free(&a3);
   tiledb_attribute_free(&a4);
+  tiledb_attribute_free(&a5);
   tiledb_dimension_free(&d1);
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
@@ -222,6 +234,22 @@ void StringEmptyFx::write_array(const std::string& array_name) {
   uint64_t buffer_a4_offsets_size = sizeof(buffer_a4_offsets);
   uint64_t buffer_a4_size = sizeof(buffer_a4);
 
+  uint64_t buffer_a5_offsets[] = {
+      UTF8_OFFSET_0_FOR_EMPTY,
+      UTF8_OFFSET_1_FOR_EMPTY,
+      UTF8_OFFSET_4_FOR_EMPTY,
+      UTF8_OFFSET_4_FOR_EMPTY,
+      UTF8_OFFSET_4_FOR_EMPTY};
+  uint64_t buffer_a5_offsets_size = sizeof(buffer_a5_offsets);
+  uint64_t buffer_a5_size =
+      sizeof(UTF8_STRINGS_VAR_FOR_EMPTY) - UTF8_NULL_SIZE_FOR_EMPTY;
+  void* buffer_a5 = std::malloc(buffer_a5_size);
+
+  std::memcpy(
+      buffer_a5,
+      UTF8_STRINGS_VAR_FOR_EMPTY,
+      sizeof(UTF8_STRINGS_VAR_FOR_EMPTY) - UTF8_NULL_SIZE_FOR_EMPTY);
+
   uint64_t buffer_d1[5] = {1, 2, 3, 4, 5};
   uint64_t buffer_size_d1 = sizeof(buffer_d1);
 
@@ -265,6 +293,11 @@ void StringEmptyFx::write_array(const std::string& array_name) {
   rc = tiledb_query_set_offsets_buffer(
       ctx, query, "a4", buffer_a4_offsets, &buffer_a4_offsets_size);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
+      ctx, query, "a5", buffer_a5, &buffer_a5_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx, query, "a5", buffer_a5_offsets, &buffer_a5_offsets_size);
 
   // Submit query
   rc = submit_query_wrapper(
@@ -286,6 +319,7 @@ void StringEmptyFx::write_array(const std::string& array_name) {
   tiledb_ctx_free(&ctx);
   std::free(buffer_a2);
   std::free(buffer_a3);
+  std::free(buffer_a5);
 }
 
 void StringEmptyFx::read_array(const std::string& array_name) {
@@ -323,6 +357,8 @@ void StringEmptyFx::read_array(const std::string& array_name) {
   uint64_t buffer_a3_val_size = 1024;
   uint64_t buffer_a4_off_size = 1024;
   uint64_t buffer_a4_val_size = 1024;
+  uint64_t buffer_a5_off_size = 1024;
+  uint64_t buffer_a5_val_size = 1024;
 
   // Check est_result_sizes
   rc = tiledb_query_get_est_result_size(ctx, query, "d1", &buffer_d1_size);
@@ -335,6 +371,9 @@ void StringEmptyFx::read_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_get_est_result_size_var(
       ctx, query, "a4", &buffer_a4_off_size, &buffer_a4_val_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_get_est_result_size_var(
+      ctx, query, "a5", &buffer_a5_off_size, &buffer_a5_val_size);
   REQUIRE(rc == TILEDB_OK);
 
   CHECK(buffer_d1_size == 5 * sizeof(uint64_t));
@@ -365,6 +404,8 @@ void StringEmptyFx::read_array(const std::string& array_name) {
   void* buffer_a3_val = std::malloc(buffer_a3_val_size);
   auto buffer_a4_off = (uint64_t*)std::malloc(buffer_a4_off_size);
   void* buffer_a4_val = std::malloc(buffer_a4_val_size);
+  auto buffer_a5_off = (uint64_t*)std::malloc(buffer_a5_off_size);
+  void* buffer_a5_val = std::malloc(buffer_a5_val_size);
 
   rc = tiledb_query_set_data_buffer(
       ctx, query, "d1", buffer_d1, &buffer_d1_size);
@@ -393,6 +434,11 @@ void StringEmptyFx::read_array(const std::string& array_name) {
   rc = tiledb_query_set_offsets_buffer(
       ctx, query, "a4", buffer_a4_off, &buffer_a4_off_size);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
+      ctx, query, "a5", buffer_a5_val, &buffer_a5_val_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx, query, "a5", buffer_a5_off, &buffer_a5_off_size);
 
   // Submit query
   rc = submit_query_wrapper(
@@ -439,6 +485,16 @@ void StringEmptyFx::read_array(const std::string& array_name) {
   CHECK(buffer_a4_off[3] == 3 * sizeof(float));
   CHECK(buffer_a4_off[4] == 4 * sizeof(float));
 
+  CHECK(!std::memcmp(
+      buffer_a5_val,
+      UTF8_STRINGS_VAR_FOR_EMPTY,
+      sizeof(UTF8_STRINGS_VAR_FOR_EMPTY) - UTF8_NULL_SIZE_FOR_EMPTY));
+  CHECK(buffer_a5_off[0] == UTF8_OFFSET_0_FOR_EMPTY);
+  CHECK(buffer_a5_off[1] == UTF8_OFFSET_1_FOR_EMPTY);
+  CHECK(buffer_a5_off[2] == UTF8_OFFSET_4_FOR_EMPTY);
+  CHECK(buffer_a5_off[3] == UTF8_OFFSET_4_FOR_EMPTY);
+  CHECK(buffer_a5_off[4] == UTF8_OFFSET_4_FOR_EMPTY);
+
   // Close array
   rc = tiledb_array_close(ctx, array);
   CHECK(rc == TILEDB_OK);
@@ -456,6 +512,8 @@ void StringEmptyFx::read_array(const std::string& array_name) {
   std::free(buffer_a3_val);
   std::free(buffer_a4_off);
   std::free(buffer_a4_val);
+  std::free(buffer_a5_off);
+  std::free(buffer_a5_val);
 }
 
 void StringEmptyFx::delete_array(const std::string& array_name) {
@@ -524,9 +582,13 @@ void StringEmptyFx2::create_array(const std::string& array_name) {
   ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain).set_order({TILEDB_ROW_MAJOR});
 
-  auto attr = Attribute(ctx, "", TILEDB_STRING_UTF8);
-  attr.set_cell_val_num(TILEDB_VAR_NUM);
-  schema.add_attribute(attr);
+  auto attr1 = Attribute(ctx, "a1", TILEDB_STRING_UTF8);
+  attr1.set_cell_val_num(TILEDB_VAR_NUM);
+  schema.add_attribute(attr1);
+
+  auto attr2 = Attribute(ctx, "a2", TILEDB_CATEGORICAL_UTF8);
+  attr2.set_cell_val_num(TILEDB_VAR_NUM);
+  schema.add_attribute(attr2);
 
   VFS vfs(ctx);
   if (vfs.is_dir(array_name)) {
@@ -545,9 +607,13 @@ void StringEmptyFx2::write_array(const std::string& array_name) {
 
   Query query(ctx, array, TILEDB_WRITE);
   query.set_data_buffer(
-      "", (char*)StringEmptyFx2::data.data(), StringEmptyFx2::data.size());
+      "a1", (char*)StringEmptyFx2::data.data(), StringEmptyFx2::data.size());
   query.set_offsets_buffer(
-      "", StringEmptyFx2::offsets.data(), StringEmptyFx2::offsets.size());
+      "a1", StringEmptyFx2::offsets.data(), StringEmptyFx2::offsets.size());
+  query.set_data_buffer(
+      "a2", (char*)StringEmptyFx2::data.data(), StringEmptyFx2::data.size());
+  query.set_offsets_buffer(
+      "a2", StringEmptyFx2::offsets.data(), StringEmptyFx2::offsets.size());
 
   query.submit();
 
@@ -560,21 +626,28 @@ void StringEmptyFx2::read_array(const std::string& array_name) {
   auto cfg = tiledb::Config();
   auto ctx = tiledb::Context(cfg);
 
-  std::vector<uint64_t> r_offsets(16);
-  std::vector<char> r_data(38);
+  std::vector<uint64_t> a1_offsets(16);
+  std::vector<char> a1_data(38);
+
+  std::vector<uint64_t> a2_offsets(16);
+  std::vector<char> a2_data(38);
 
   auto array = tiledb::Array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array, TILEDB_READ);
-  query.set_data_buffer("", r_data);
-  query.set_offsets_buffer("", r_offsets);
+  query.set_data_buffer("a1", a1_data);
+  query.set_offsets_buffer("a1", a1_offsets);
+  query.set_data_buffer("a2", a2_data);
+  query.set_offsets_buffer("a2", a2_offsets);
 
   query.add_range(0, (uint64_t)0, (uint64_t)3);
   query.add_range(1, (uint64_t)0, (uint64_t)3);
 
   query.submit();
 
-  REQUIRE(r_offsets == StringEmptyFx2::offsets);
-  REQUIRE(r_data == StringEmptyFx2::data);
+  REQUIRE(a1_offsets == StringEmptyFx2::offsets);
+  REQUIRE(a1_data == StringEmptyFx2::data);
+  REQUIRE(a2_offsets == StringEmptyFx2::offsets);
+  REQUIRE(a2_data == StringEmptyFx2::data);
 }
 
 void StringEmptyFx2::delete_array(const std::string& array_name) {
@@ -627,9 +700,13 @@ TEST_CASE_METHOD(
     ArraySchema schema(ctx, TILEDB_DENSE);
     schema.set_domain(domain).set_order({TILEDB_ROW_MAJOR});
 
-    auto attr = Attribute(ctx, "", TILEDB_STRING_UTF8);
-    attr.set_cell_val_num(TILEDB_VAR_NUM);
-    schema.add_attribute(attr);
+    auto attr1 = Attribute(ctx, "a1", TILEDB_STRING_UTF8);
+    attr1.set_cell_val_num(TILEDB_VAR_NUM);
+    schema.add_attribute(attr1);
+
+    auto attr2 = Attribute(ctx, "a2", TILEDB_CATEGORICAL_UTF8);
+    attr2.set_cell_val_num(TILEDB_VAR_NUM);
+    schema.add_attribute(attr2);
 
     VFS vfs(ctx);
     if (vfs.is_dir(array_name)) {
@@ -647,9 +724,13 @@ TEST_CASE_METHOD(
 
     Query query(ctx, array, TILEDB_WRITE);
     query.set_data_buffer(
-        "", (char*)StringEmptyFx3::data.data(), StringEmptyFx3::data.size());
+        "a1", (char*)StringEmptyFx3::data.data(), StringEmptyFx3::data.size());
     query.set_offsets_buffer(
-        "", StringEmptyFx3::offsets.data(), StringEmptyFx3::offsets.size());
+        "a1", StringEmptyFx3::offsets.data(), StringEmptyFx3::offsets.size());
+    query.set_data_buffer(
+        "a2", (char*)StringEmptyFx3::data.data(), StringEmptyFx3::data.size());
+    query.set_offsets_buffer(
+        "a2", StringEmptyFx3::offsets.data(), StringEmptyFx3::offsets.size());
 
     query.submit();
   }
@@ -659,13 +740,17 @@ TEST_CASE_METHOD(
     auto cfg = tiledb::Config();
     auto ctx = tiledb::Context(cfg);
 
-    std::vector<uint64_t> r_offsets(16);
-    std::vector<char> r_data(16);
+    std::vector<uint64_t> a1_offsets(16);
+    std::vector<char> a1_data(16);
+    std::vector<uint64_t> a2_offsets(16);
+    std::vector<char> a2_data(16);
 
     auto array = tiledb::Array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array, TILEDB_READ);
-    query.set_data_buffer("", r_data);
-    query.set_offsets_buffer("", r_offsets);
+    query.set_data_buffer("a1", a1_data);
+    query.set_offsets_buffer("a1", a1_offsets);
+    query.set_data_buffer("a2", a2_data);
+    query.set_offsets_buffer("a2", a2_offsets);
 
     query.add_range(0, (uint64_t)0, (uint64_t)3);
     query.add_range(1, (uint64_t)0, (uint64_t)3);
@@ -674,10 +759,15 @@ TEST_CASE_METHOD(
 
     auto result_els = query.result_buffer_elements();
 
-    REQUIRE(result_els[""].first == 16);
-    REQUIRE(result_els[""].second == 1);
-    REQUIRE(r_offsets == StringEmptyFx3::offsets);
-    REQUIRE(r_data[0] == StringEmptyFx3::data[0]);
+    REQUIRE(result_els["a1"].first == 16);
+    REQUIRE(result_els["a1"].second == 1);
+    REQUIRE(a1_offsets == StringEmptyFx3::offsets);
+    REQUIRE(a1_data[0] == StringEmptyFx3::data[0]);
+
+    REQUIRE(result_els["a2"].first == 16);
+    REQUIRE(result_els["a2"].second == 1);
+    REQUIRE(a2_offsets == StringEmptyFx3::offsets);
+    REQUIRE(a2_data[0] == StringEmptyFx3::data[0]);
   }
 
   // read subset of array: note that the offsets are sequentially
@@ -687,13 +777,17 @@ TEST_CASE_METHOD(
     auto cfg = tiledb::Config();
     auto ctx = tiledb::Context(cfg);
 
-    std::vector<uint64_t> r_offsets(4);
-    std::vector<char> r_data(4);
+    std::vector<uint64_t> a1_offsets(4);
+    std::vector<char> a1_data(4);
+    std::vector<uint64_t> a2_offsets(4);
+    std::vector<char> a2_data(4);
 
     auto array = tiledb::Array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array, TILEDB_READ);
-    query.set_data_buffer("", r_data);
-    query.set_offsets_buffer("", r_offsets);
+    query.set_data_buffer("a1", a1_data);
+    query.set_offsets_buffer("a1", a1_offsets);
+    query.set_data_buffer("a2", a2_data);
+    query.set_offsets_buffer("a2", a2_offsets);
 
     query.add_range(0, (uint64_t)0, (uint64_t)1);
     query.add_range(1, (uint64_t)1, (uint64_t)2);
@@ -702,12 +796,16 @@ TEST_CASE_METHOD(
 
     auto result_els = query.result_buffer_elements();
 
-    REQUIRE(result_els[""].first == 4);
-    REQUIRE(result_els[""].second == 0);
+    REQUIRE(result_els["a1"].first == 4);
+    REQUIRE(result_els["a1"].second == 0);
+    REQUIRE(result_els["a2"].first == 4);
+    REQUIRE(result_els["a2"].second == 0);
 
     std::vector<uint64_t> q2_result_offsets = {0, 0, 0, 0};
-    REQUIRE(r_offsets == q2_result_offsets);
-    REQUIRE(r_data[0] == StringEmptyFx3::data[0]);
+    REQUIRE(a1_offsets == q2_result_offsets);
+    REQUIRE(a1_data[0] == StringEmptyFx3::data[0]);
+    REQUIRE(a2_offsets == q2_result_offsets);
+    REQUIRE(a2_data[0] == StringEmptyFx3::data[0]);
   }
 
   Context ctx;

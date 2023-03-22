@@ -121,6 +121,15 @@ void StringFx::create_array(const std::string& array_name) {
   rc = set_attribute_compression_filter(ctx, a3, TILEDB_FILTER_ZSTD, -1);
   REQUIRE(rc == TILEDB_OK);
 
+  // Create variable-sized CATEGORICAL_UTF8 attribute
+  tiledb_attribute_t* a4;
+  rc = tiledb_attribute_alloc(ctx, "a4", TILEDB_CATEGORICAL_UTF8, &a4);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_attribute_set_cell_val_num(ctx, a4, TILEDB_VAR_NUM);
+  REQUIRE(rc == TILEDB_OK);
+  rc = set_attribute_compression_filter(ctx, a4, TILEDB_FILTER_ZSTD, -1);
+  REQUIRE(rc == TILEDB_OK);
+
   // Create array schema
   tiledb_array_schema_t* array_schema;
   rc = tiledb_array_schema_alloc(ctx, TILEDB_DENSE, &array_schema);
@@ -137,6 +146,8 @@ void StringFx::create_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_schema_add_attribute(ctx, array_schema, a3);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx, array_schema, a4);
+  REQUIRE(rc == TILEDB_OK);
 
   // Check array schema
   rc = tiledb_array_schema_check(ctx, array_schema);
@@ -150,6 +161,7 @@ void StringFx::create_array(const std::string& array_name) {
   tiledb_attribute_free(&a1);
   tiledb_attribute_free(&a2);
   tiledb_attribute_free(&a3);
+  tiledb_attribute_free(&a4);
   tiledb_dimension_free(&d1);
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
@@ -170,6 +182,9 @@ void StringFx::write_array(const std::string& array_name) {
   uint64_t buffer_a3_offsets[] = {
       UTF16_OFFSET_0, UTF16_OFFSET_1, UTF16_OFFSET_2, UTF16_OFFSET_3};
   void* buffer_a3 = std::malloc(sizeof(UTF16_STRINGS_VAR) - UTF16_NULL_SIZE);
+  uint64_t buffer_a4_offsets[] = {
+      UTF8_OFFSET_0, UTF8_OFFSET_1, UTF8_OFFSET_2, UTF8_OFFSET_3};
+  void* buffer_a4 = std::malloc(sizeof(UTF8_STRINGS_VAR) - UTF8_NULL_SIZE);
   std::memcpy(buffer_a1, UTF8_STRINGS, sizeof(UTF8_STRINGS) - UTF8_NULL_SIZE);
   std::memcpy(
       buffer_a2, UTF8_STRINGS_VAR, sizeof(UTF8_STRINGS_VAR) - UTF8_NULL_SIZE);
@@ -177,14 +192,24 @@ void StringFx::write_array(const std::string& array_name) {
       buffer_a3,
       UTF16_STRINGS_VAR,
       sizeof(UTF16_STRINGS_VAR) - UTF16_NULL_SIZE);
+  std::memcpy(
+      buffer_a4, UTF8_STRINGS_VAR, sizeof(UTF8_STRINGS_VAR) - UTF8_NULL_SIZE);
   void* buffers[] = {
-      buffer_a1, buffer_a2_offsets, buffer_a2, buffer_a3_offsets, buffer_a3};
+      buffer_a1,
+      buffer_a2_offsets,
+      buffer_a2,
+      buffer_a3_offsets,
+      buffer_a3,
+      buffer_a4_offsets,
+      buffer_a4};
   uint64_t buffer_sizes[] = {
       sizeof(UTF8_STRINGS) - UTF8_NULL_SIZE,
       4 * sizeof(uint64_t),
       sizeof(UTF8_STRINGS_VAR) - UTF8_NULL_SIZE,
       4 * sizeof(uint64_t),
-      sizeof(UTF16_STRINGS_VAR) - UTF16_NULL_SIZE};
+      sizeof(UTF16_STRINGS_VAR) - UTF16_NULL_SIZE,
+      4 * sizeof(uint64_t),
+      sizeof(UTF8_STRINGS_VAR) - UTF8_NULL_SIZE};
 
   // Open array
   tiledb_array_t* array;
@@ -195,7 +220,7 @@ void StringFx::write_array(const std::string& array_name) {
 
   // Create query
   tiledb_query_t* query;
-  const char* attributes[] = {"a1", "a2", "a3"};
+  const char* attributes[] = {"a1", "a2", "a3", "a4"};
   rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
@@ -215,6 +240,11 @@ void StringFx::write_array(const std::string& array_name) {
   rc = tiledb_query_set_offsets_buffer(
       ctx, query, attributes[2], (uint64_t*)buffers[3], &buffer_sizes[3]);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
+      ctx, query, attributes[3], buffers[6], &buffer_sizes[6]);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx, query, attributes[3], (uint64_t*)buffers[5], &buffer_sizes[5]);
 
   // Submit query
   rc = submit_query_wrapper(
@@ -237,6 +267,7 @@ void StringFx::write_array(const std::string& array_name) {
   std::free(buffer_a1);
   std::free(buffer_a2);
   std::free(buffer_a3);
+  std::free(buffer_a4);
 }
 
 void StringFx::read_array(const std::string& array_name) {
@@ -259,6 +290,8 @@ void StringFx::read_array(const std::string& array_name) {
   uint64_t buffer_a2_val_size = 1024;
   uint64_t buffer_a3_off_size = 1024;
   uint64_t buffer_a3_val_size = 1024;
+  uint64_t buffer_a4_off_size = 1024;
+  uint64_t buffer_a4_val_size = 1024;
 
   // Prepare cell buffers
   void* buffer_a1 = std::malloc(buffer_a1_size);
@@ -266,6 +299,8 @@ void StringFx::read_array(const std::string& array_name) {
   void* buffer_a2_val = std::malloc(buffer_a2_val_size);
   auto buffer_a3_off = (uint64_t*)std::malloc(buffer_a3_off_size);
   void* buffer_a3_val = std::malloc(buffer_a3_val_size);
+  auto buffer_a4_off = (uint64_t*)std::malloc(buffer_a4_off_size);
+  void* buffer_a4_val = std::malloc(buffer_a4_val_size);
 
   // Create query
   tiledb_query_t* query;
@@ -285,6 +320,12 @@ void StringFx::read_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_offsets_buffer(
       ctx, query, "a3", buffer_a3_off, &buffer_a3_off_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
+      ctx, query, "a4", buffer_a4_val, &buffer_a4_val_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx, query, "a4", buffer_a4_off, &buffer_a4_off_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
@@ -318,6 +359,12 @@ void StringFx::read_array(const std::string& array_name) {
   CHECK(buffer_a3_off[1] == UTF16_OFFSET_1);
   CHECK(buffer_a3_off[2] == UTF16_OFFSET_2);
   CHECK(buffer_a3_off[3] == UTF16_OFFSET_3);
+  CHECK(!std::memcmp(
+      buffer_a4_val, UTF8_STRINGS_VAR, sizeof(UTF8_STRINGS) - UTF8_NULL_SIZE));
+  CHECK(buffer_a4_off[0] == UTF8_OFFSET_0);
+  CHECK(buffer_a4_off[1] == UTF8_OFFSET_1);
+  CHECK(buffer_a4_off[2] == UTF8_OFFSET_2);
+  CHECK(buffer_a4_off[3] == UTF8_OFFSET_3);
 
   // Close array
   rc = tiledb_array_close(ctx, array);
@@ -332,6 +379,8 @@ void StringFx::read_array(const std::string& array_name) {
   std::free(buffer_a2_val);
   std::free(buffer_a3_off);
   std::free(buffer_a3_val);
+  std::free(buffer_a4_off);
+  std::free(buffer_a4_val);
 }
 
 void StringFx::delete_array(const std::string& array_name) {

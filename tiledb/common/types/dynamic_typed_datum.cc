@@ -76,6 +76,7 @@ std::ostream& operator<<(
     case Datatype::STRING_UTF32:
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
+    case Datatype::CATEGORICAL_UTF8:
     case Datatype::ANY:
       os << "???";
       break;

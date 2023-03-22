@@ -990,7 +990,8 @@ void QueryCondition::apply_ast_node(
           combination_op,
           result_cell_bitmap);
     } break;
-    case Datatype::STRING_UTF8: {
+    case Datatype::STRING_UTF8:
+    case Datatype::CATEGORICAL_UTF8: {
       apply_ast_node<uint8_t*, CombinationOp>(
           node,
           fragment_metadata,
@@ -1723,7 +1724,8 @@ void QueryCondition::apply_ast_node_dense(
           cell_slab_coords,
           result_buffer);
     } break;
-    case Datatype::STRING_UTF8: {
+    case Datatype::STRING_UTF8:
+    case Datatype::CATEGORICAL_UTF8: {
       apply_ast_node_dense<uint8_t*, CombinationOp>(
           node,
           array_schema,
@@ -2472,7 +2474,8 @@ void QueryCondition::apply_ast_node_sparse(
       apply_ast_node_sparse<int64_t, BitmapType, CombinationOp>(
           node, result_tile, var_size, nullable, combination_op, result_bitmap);
     } break;
-    case Datatype::STRING_UTF8: {
+    case Datatype::STRING_UTF8:
+    case Datatype::CATEGORICAL_UTF8: {
       apply_ast_node_sparse<uint8_t*, BitmapType, CombinationOp>(
           node, result_tile, var_size, nullable, combination_op, result_bitmap);
     } break;

@@ -225,6 +225,7 @@ TEST_CASE("Dimension: Test datatypes", "[dimension][datatypes]") {
         Datatype::STRING_UTF32,
         Datatype::STRING_UCS2,
         Datatype::STRING_UCS4,
+        Datatype::CATEGORICAL_UTF8,
         Datatype::ANY};
 
     for (Datatype type : valid_unsupported_datatypes) {
@@ -239,7 +240,7 @@ TEST_CASE("Dimension: Test datatypes", "[dimension][datatypes]") {
   }
 
   SECTION("- invalid Datatypes") {
-    std::vector<std::underlying_type_t<Datatype>> invalid_datatypes = {42, 100};
+    std::vector<std::underlying_type_t<Datatype>> invalid_datatypes = {43, 100};
 
     for (auto type : invalid_datatypes) {
       try {

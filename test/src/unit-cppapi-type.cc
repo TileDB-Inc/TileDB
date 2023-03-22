@@ -76,6 +76,8 @@ TEST_CASE("C++ API: Types", "[cppapi][types]") {
       impl::type_check<const char*>(TILEDB_STRING_UTF32, TILEDB_VAR_NUM));
   CHECK_NOTHROW(
       impl::type_check<const char*>(TILEDB_STRING_UCS4, TILEDB_VAR_NUM));
+  CHECK_NOTHROW(
+      impl::type_check<const char*>(TILEDB_CATEGORICAL_UTF8, TILEDB_VAR_NUM));
 
   // std::basic_string type typecheck should succeed for tiledb string types
   CHECK_NOTHROW(
@@ -90,6 +92,8 @@ TEST_CASE("C++ API: Types", "[cppapi][types]") {
       impl::type_check<std::u32string>(TILEDB_STRING_UTF32, TILEDB_VAR_NUM));
   CHECK_NOTHROW(
       impl::type_check<std::u32string>(TILEDB_STRING_UCS4, TILEDB_VAR_NUM));
+  CHECK_NOTHROW(
+      impl::type_check<std::string>(TILEDB_CATEGORICAL_UTF8, TILEDB_VAR_NUM));
 
   // std:: container types of char datatypes should succeed for tiledb string
   // types
@@ -105,6 +109,12 @@ TEST_CASE("C++ API: Types", "[cppapi][types]") {
       TILEDB_STRING_UTF8, TILEDB_VAR_NUM));
   CHECK_THROWS(impl::type_check<std::vector<uint32_t>>(
       TILEDB_STRING_UTF8, TILEDB_VAR_NUM));
+  CHECK_THROWS(impl::type_check<std::vector<int8_t>>(
+      TILEDB_CATEGORICAL_UTF8, TILEDB_VAR_NUM));
+  CHECK_THROWS(impl::type_check<std::vector<uint8_t>>(
+      TILEDB_CATEGORICAL_UTF8, TILEDB_VAR_NUM));
+  CHECK_THROWS(impl::type_check<std::vector<uint32_t>>(
+      TILEDB_CATEGORICAL_UTF8, TILEDB_VAR_NUM));
   CHECK_THROWS(impl::type_check<std::array<int8_t, 1>>(
       TILEDB_STRING_ASCII, TILEDB_VAR_NUM));
   CHECK_THROWS(impl::type_check<std::array<uint8_t, 1>>(
@@ -117,6 +127,12 @@ TEST_CASE("C++ API: Types", "[cppapi][types]") {
       TILEDB_STRING_UTF8, TILEDB_VAR_NUM));
   CHECK_THROWS(impl::type_check<std::array<uint32_t, 1>>(
       TILEDB_STRING_UTF8, TILEDB_VAR_NUM));
+  CHECK_THROWS(impl::type_check<std::array<int8_t, 1>>(
+      TILEDB_CATEGORICAL_UTF8, TILEDB_VAR_NUM));
+  CHECK_THROWS(impl::type_check<std::array<uint8_t, 1>>(
+      TILEDB_CATEGORICAL_UTF8, TILEDB_VAR_NUM));
+  CHECK_THROWS(impl::type_check<std::array<uint32_t, 1>>(
+      TILEDB_CATEGORICAL_UTF8, TILEDB_VAR_NUM));
 
   CHECK_NOTHROW(
       impl::type_check<std::vector<char>>(TILEDB_STRING_ASCII, TILEDB_VAR_NUM));

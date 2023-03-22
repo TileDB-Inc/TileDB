@@ -619,6 +619,13 @@ TEST_CASE(
   a1.set_cell_val_num(TILEDB_VAR_NUM);
   a1.set_filter_list(a1_filters);
 
+  FilterList a2_filters(ctx);
+  a2_filters.add_filter({ctx, TILEDB_FILTER_DICTIONARY});
+
+  auto a2 = Attribute(ctx, "a2", TILEDB_CATEGORICAL_UTF8);
+  a2.set_cell_val_num(TILEDB_VAR_NUM);
+  a2.set_filter_list(a2_filters);
+
   Domain domain(ctx);
   auto d1 = Dimension::create<int64_t>(ctx, "d1", {{0, 100}}, 10);
   auto d2 = Dimension::create<int64_t>(ctx, "d2", {{0, 100}}, 10);
