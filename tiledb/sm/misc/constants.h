@@ -391,6 +391,9 @@ extern const std::string filter_xor_str;
 /** String describing FILTER_WEBP. */
 extern const std::string filter_webp_str;
 
+/** String describing FILTER_CATEGORICAL. */
+extern const std::string filter_categorical_str;
+
 /** The string representation for FilterOption type compression_level. */
 extern const std::string filter_option_compression_level_str;
 
@@ -418,6 +421,9 @@ extern const std::string filter_option_webp_input_format;
 
 /** The string representation for FilterOption type webp_lossless. */
 extern const std::string filter_option_webp_lossless;
+
+/** The string representation for FilterOption type categories. */
+extern const std::string filter_option_categories;
 
 /** The string representation for type int32. */
 extern const std::string int32_str;

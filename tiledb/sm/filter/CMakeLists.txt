@@ -80,6 +80,14 @@ commence(object_library byteshuffle_filter)
 conclude(object_library)
 
 #
+# `categorical_filter` object library
+#
+commence(object_library categorical_filter)
+    this_target_sources(categorical_filter.cc)
+    this_target_object_libraries(constants config filter)
+conclude(object_library)
+
+#
 # `checksum_filters` object library
 #
 commence(object_library checksum_filters)
@@ -154,11 +162,21 @@ conclude(object_library)
 # `all_filters` object library
 #
 commence(object_library all_filters)
-    this_target_sources(filter_create.cc
-        bit_width_reduction_filter.cc noop_filter.cc positive_delta_filter.cc)
-    this_target_object_libraries(bitshuffle_filter byteshuffle_filter
-        checksum_filters compression_filter encryption_filters float_scaling_filter
-        xor_filter webp_filter)
+    this_target_sources(
+        filter_create.cc
+        bit_width_reduction_filter.cc
+        noop_filter.cc
+        positive_delta_filter.cc)
+    this_target_object_libraries(
+        bitshuffle_filter
+        byteshuffle_filter
+        categorical_filter
+        checksum_filters
+        compression_filter
+        encryption_filters
+        float_scaling_filter
+        xor_filter
+        webp_filter)
 conclude(object_library)
 
 #

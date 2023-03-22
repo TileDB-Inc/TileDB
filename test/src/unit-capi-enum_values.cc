@@ -80,6 +80,7 @@ TEST_CASE("C API: Test enum values", "[capi][enums]") {
   REQUIRE(TILEDB_FILTER_XOR == 16);
   REQUIRE(TILEDB_FILTER_DEPRECATED == 17);
   REQUIRE(TILEDB_FILTER_WEBP == 18);
+  REQUIRE(TILEDB_FILTER_CATEGORICAL == 19);
 
   /** Filter option */
   REQUIRE(TILEDB_COMPRESSION_LEVEL == 0);
@@ -243,6 +244,9 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
   REQUIRE(
       (tiledb_filter_type_from_str("WEBP", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_WEBP));
+  REQUIRE(
+      (tiledb_filter_type_from_str("CATEGORICAL", &filter_type) == TILEDB_OK &&
+       filter_type == TILEDB_FILTER_CATEGORICAL));
 
   tiledb_filter_option_t filter_option;
   REQUIRE(
@@ -293,6 +297,10 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
       (tiledb_filter_option_from_str("WEBP_LOSSLESS", &filter_option) ==
            TILEDB_OK &&
        filter_option == TILEDB_WEBP_LOSSLESS));
+  REQUIRE(
+      (tiledb_filter_option_from_str("CATEGORIES", &filter_option) ==
+           TILEDB_OK &&
+       filter_option == TILEDB_CATEGORIES));
 
   tiledb_encryption_type_t encryption_type;
   REQUIRE(

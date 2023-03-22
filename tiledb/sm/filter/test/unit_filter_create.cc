@@ -460,3 +460,24 @@ TEST_CASE("Filter: Test WEBP filter deserialization", "[filter][webp]") {
     CHECK(x0 == extents.second);
   }
 }
+
+TEST_CASE(
+    "Filter: Test Categorical filter deserialization",
+    "[filter][categorical]") {
+  Buffer buffer;
+  FilterType filterType = FilterType::FILTER_CATEGORICAL;
+
+  char serialized_buffer[5];
+  char* p = &serialized_buffer[0];
+
+  buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filterType);
+  buffer_offset<uint32_t, 1>(p) = 0;
+
+  Deserializer deserializer(serialized_buffer, 5);
+  auto filter{
+      FilterCreate::deserialize(deserializer, constants::format_version)};
+
+  CHECK(filter->type() == filterType);
+
+  // PJD: Todo: Actualyl write tests
+}

@@ -63,6 +63,8 @@ TILEDB_FILTER_TYPE_ENUM(FILTER_NONE) = 0,
     TILEDB_FILTER_TYPE_ENUM(FILTER_DEPRECATED) = 17,
     /** WEBP filter. */
     TILEDB_FILTER_TYPE_ENUM(FILTER_WEBP) = 18,
+    /** Categorical filter. */
+    TILEDB_FILTER_TYPE_ENUM(FILTER_CATEGORICAL) = 19,
 #endif
 
 #ifdef TILEDB_FILTER_OPTION_ENUM
@@ -84,6 +86,8 @@ TILEDB_FILTER_TYPE_ENUM(FILTER_NONE) = 0,
     TILEDB_FILTER_OPTION_ENUM(WEBP_INPUT_FORMAT) = 7,
     /** Enable lossless WebP compression Type: uint8_t */
     TILEDB_FILTER_OPTION_ENUM(WEBP_LOSSLESS) = 8,
+    /** Set the list of categories for categorical filteres Type: binary */
+    TILEDB_FILTER_OPTION_ENUM(CATEGORIES) = 9,
 #endif
 
 #ifdef TILEDB_FILTER_WEBP_FORMAT

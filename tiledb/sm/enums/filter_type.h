@@ -94,6 +94,8 @@ inline const std::string& filter_type_str(FilterType filter_type) {
       return constants::filter_xor_str;
     case FilterType::FILTER_WEBP:
       return constants::filter_webp_str;
+    case FilterType::FILTER_CATEGORICAL:
+      return constants::filter_categorical_str;
     default:
       return constants::empty_str;
   }
@@ -136,6 +138,8 @@ inline Status filter_type_enum(
     *filter_type = FilterType::FILTER_XOR;
   else if (filter_type_str == constants::filter_webp_str)
     *filter_type = FilterType::FILTER_WEBP;
+  else if (filter_type_str == constants::filter_categorical_str)
+    *filter_type = FilterType::FILTER_CATEGORICAL;
   else {
     return Status_Error("Invalid FilterType " + filter_type_str);
   }
@@ -144,7 +148,7 @@ inline Status filter_type_enum(
 
 /** Throws error if the input Filtertype enum is not between 0 and 16. */
 inline void ensure_filtertype_is_valid(uint8_t type) {
-  if (type > 18) {
+  if (type > 19) {
     throw std::runtime_error(
         "Invalid FilterType (" + std::to_string(type) + ")");
   }

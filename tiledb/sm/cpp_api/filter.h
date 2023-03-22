@@ -285,6 +285,8 @@ class Filter {
         return "DEPRECATED";
       case TILEDB_FILTER_WEBP:
         return "WEBP";
+      case TILEDB_FILTER_CATEGORICAL:
+        return "CATEGORICAL";
     }
     return "";
   }
@@ -340,6 +342,12 @@ class Filter {
       case TILEDB_WEBP_LOSSLESS:
         if (!std::is_same<uint8_t, T>::value)
           throw std::invalid_argument("Option value must be uint8_t.");
+        break;
+      case TILEDB_CATEGORIES:
+        if (!std::is_same<std::vector<std::string>, T>::value) {
+          throw std::invalid_argument(
+              "Option value must be std::vector<std::string>");
+        }
         break;
       default:
         throw std::invalid_argument("Invalid option type");

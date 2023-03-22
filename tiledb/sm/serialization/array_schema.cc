@@ -53,6 +53,7 @@
 #include "tiledb/sm/filter/bit_width_reduction_filter.h"
 #include "tiledb/sm/filter/bitshuffle_filter.h"
 #include "tiledb/sm/filter/byteshuffle_filter.h"
+#include "tiledb/sm/filter/categorical_filter.h"
 #include "tiledb/sm/filter/checksum_md5_filter.h"
 #include "tiledb/sm/filter/checksum_sha256_filter.h"
 #include "tiledb/sm/filter/compression_filter.h"
@@ -136,6 +137,7 @@ Status filter_to_capnp(
     case FilterType::FILTER_XOR:
     case FilterType::FILTER_DEPRECATED:
     case FilterType::FILTER_WEBP:
+    case FilterType::FILTER_CATEGORICAL:
       break;
   }
 
@@ -247,6 +249,10 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
       } else {
         throw WebpNotPresentError();
       }
+    }
+    case FilterType::FILTER_CATEGORICAL: {
+      return {
+          Status::Ok(), tiledb::common::make_shared<CategoricalFilter>(HERE())};
     }
     default: {
       throw std::logic_error(

@@ -35,6 +35,7 @@
 #include "bit_width_reduction_filter.h"
 #include "bitshuffle_filter.h"
 #include "byteshuffle_filter.h"
+#include "categorical_filter.h"
 #include "checksum_md5_filter.h"
 #include "checksum_sha256_filter.h"
 #include "compression_filter.h"
@@ -89,6 +90,8 @@ tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
         throw WebpNotPresentError();
       }
     }
+    case tiledb::sm::FilterType::FILTER_CATEGORICAL:
+      return tdb_new(tiledb::sm::CategoricalFilter);
     default:
       throw StatusException(
           "FilterCreate",
@@ -175,6 +178,8 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
         throw WebpNotPresentError();
       }
     }
+    case FilterType::FILTER_CATEGORICAL:
+      return make_shared<CategoricalFilter>(HERE());
     default:
       throw StatusException(
           "FilterCreate", "Deserialization error; unknown type");

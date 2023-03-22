@@ -79,6 +79,8 @@ inline const std::string& filter_option_str(FilterOption filter_option_) {
       return constants::filter_option_webp_input_format;
     case FilterOption::WEBP_LOSSLESS:
       return constants::filter_option_webp_lossless;
+    case FilterOption::CATEGORIES:
+      return constants::filter_option_categories;
     default:
       return constants::empty_str;
   }
@@ -108,6 +110,8 @@ inline Status filter_option_enum(
     *filter_option_ = FilterOption::WEBP_INPUT_FORMAT;
   else if (filter_option_str == constants::filter_option_webp_lossless)
     *filter_option_ = FilterOption::WEBP_LOSSLESS;
+  else if (filter_option_str == constants::filter_option_categories)
+    *filter_option_ = FilterOption::CATEGORIES;
   else
     return Status_Error("Invalid FilterOption " + filter_option_str);
 
