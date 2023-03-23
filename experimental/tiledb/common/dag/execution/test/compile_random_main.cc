@@ -1,5 +1,5 @@
 /**
- * @file   bounded_buffer.cc
+ * @file compile_duffs_main.cc
  *
  * @section LICENSE
  *
@@ -24,8 +24,13 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
  */
-#include "bounded_buffer.h"
+
+#include "../duffs.h"
+#include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
+
+using namespace tiledb::common;
+
+int main() {
+  (void)sizeof(RandomScheduler<node>(1));
+}

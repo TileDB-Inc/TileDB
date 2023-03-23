@@ -117,6 +117,7 @@ class consumer_node_impl : public node_base, public Sink<Mover, T> {
         auto pull_state = mover->port_pull();
 
         if (mover->is_done()) {
+          this->program_counter_ = 999;
           return mover->port_exhausted();
         } else {
           if (pull_state == scheduler_event_type::sink_wait) {
@@ -145,6 +146,10 @@ class consumer_node_impl : public node_base, public Sink<Mover, T> {
         return scheduler_event_type::yield;
       }
 
+
+      case 999: {
+        return scheduler_event_type::done;
+      }
       default: {
         break;
       }

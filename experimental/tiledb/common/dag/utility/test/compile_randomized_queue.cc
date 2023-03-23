@@ -1,5 +1,5 @@
 /**
- * @file   bounded_buffer.cc
+ * @file compile_bounded_buffer_main.cc
  *
  * @section LICENSE
  *
@@ -24,8 +24,23 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
  */
-#include "bounded_buffer.h"
+
+#include <deque>
+#include <queue>
+#include "../bounded_buffer.h"
+
+using namespace tiledb::common;
+
+int main() {
+  (void)sizeof(BoundedBuffer<size_t>);
+  (void)sizeof(ProducerConsumerQueue<size_t>);
+  (void)sizeof(BoundedBuffer<size_t, std::queue<size_t>>);
+  (void)sizeof(ProducerConsumerQueue<size_t, std::queue<size_t>>);
+  (void)sizeof(BoundedBuffer<size_t, std::deque<size_t>>);
+  (void)sizeof(ProducerConsumerQueue<size_t, std::deque<size_t>>);
+  (void)sizeof(BoundedBufferQ<size_t, std::queue<size_t>, true>);
+  (void)sizeof(BoundedBufferQ<size_t, std::queue<size_t>, false>);
+  (void)sizeof(BoundedBufferQ<size_t, std::deque<size_t>, true>);
+  (void)sizeof(BoundedBufferQ<size_t, std::deque<size_t>, false>);
+}
