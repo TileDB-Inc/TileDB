@@ -574,6 +574,10 @@ bool FilterPipeline::skip_offsets_filtering(
        (version >= 18 && type == Datatype::CATEGORICAL_UTF8)) &&
       has_filter(FilterType::FILTER_DICTIONARY)) {
     return true;
+  } else if (
+      (version >= 18 && type == Datatype::CATEGORICAL_UTF8) &&
+      has_filter(FilterType::FILTER_CATEGORICAL)) {
+    return true;
   }
 
   return false;

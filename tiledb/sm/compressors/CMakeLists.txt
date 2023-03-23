@@ -65,7 +65,15 @@ if (TILEDB_WEBP)
   #
   # perform webp build and link test for some webp routines
   #
-  find_package(Webp_EP REQUIRED)
+  if(TILEDB_VCPKG)
+   message(${CMAKE_MODULE_PATH})
+   set(CMAKE_FIND_DEBUG_MODE TRUE)
+   find_package(Threads REQUIRED)
+   find_package(WebP CONFIG REQUIRED)
+   set(CMAKE_FIND_DEBUG_MODE FALSE)
+  else()
+    find_package(Webp_EP REQUIRED)
+  endif()
   add_executable(unit_link_webp)
   if (WIN32)
     target_link_libraries(unit_link_webp PRIVATE WebP::webp WebP::webpdecoder WebP::webpdemux WebP::webpmux)
@@ -79,9 +87,9 @@ if (TILEDB_WEBP)
       PRIVATE
       test/link_webp_test1.cc
       )
-      
-  add_test(NAME "unit_link_webp" 
-    COMMAND "$<TARGET_FILE:unit_link_webp>" 
+
+  add_test(NAME "unit_link_webp"
+    COMMAND "$<TARGET_FILE:unit_link_webp>"
     WORKING_DIRECTORY  ${CMAKE_CURRENT_SOURCE_DIR}
   )
 endif()

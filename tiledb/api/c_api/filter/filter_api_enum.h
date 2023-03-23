@@ -88,6 +88,8 @@ TILEDB_FILTER_TYPE_ENUM(FILTER_NONE) = 0,
     TILEDB_FILTER_OPTION_ENUM(WEBP_LOSSLESS) = 8,
     /** Set the list of categories for categorical filteres Type: binary */
     TILEDB_FILTER_OPTION_ENUM(CATEGORIES) = 9,
+    /** Get the size of the category buffer Type: uint64_t */
+    TILEDB_FILTER_OPTION_ENUM(CATEGORY_BUFFER_LENGTH) = 10,
 #endif
 
 #ifdef TILEDB_FILTER_WEBP_FORMAT

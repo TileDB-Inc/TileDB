@@ -52,12 +52,12 @@ class CategoricalFilter : public Filter {
    * Constructor.
    */
   CategoricalFilter()
-      : CategoricalFilter(std::vector<std::string>()) {
+      : CategoricalFilter(nullptr) {
   }
 
-  CategoricalFilter(std::vector<std::string> categories)
-      : Filter(FilterType::FILTER_CATEGORICAL)
-      , categories_(categories) {
+  CategoricalFilter(const void* buffer)
+      : Filter(FilterType::FILTER_CATEGORICAL) {
+    buffer_to_categories(buffer);
   }
 
   /** Dumps the filter details in ASCII format in the selected output. */
@@ -115,8 +115,15 @@ class CategoricalFilter : public Filter {
   /** Returns a new clone of this filter. */
   CategoricalFilter* clone_impl() const override;
 
-  /** The list of categories for this filter. */
+  /** The list of categories for the filter. */
   std::vector<std::string> categories_;
+
+  /** Word to word id map */
+  std::unordered_map<std::string, uint64_t> category_ids_;
+
+  uint64_t calculate_buffer_length() const;
+  void categories_to_buffer(void* buffer) const;
+  void buffer_to_categories(const void* buffer);
 };
 
 }  // namespace sm

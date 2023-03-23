@@ -352,6 +352,12 @@ void Attribute::set_filter_pipeline(const FilterPipeline& pipeline) {
           "Dictionary filter must be the first filter to apply when used on a "
           "variable length string attribute");
     }
+    if (pipeline.has_filter(FilterType::FILTER_CATEGORICAL) &&
+        pipeline.get_filter(0)->type() != FilterType::FILTER_CATEGORICAL) {
+      throw AttributeStatusException(
+          "Categorical filter must be the first filter to apply when used on a "
+          "variable length string attribute.");
+    }
   }
 
   filters_ = pipeline;
