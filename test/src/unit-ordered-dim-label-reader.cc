@@ -36,7 +36,7 @@ using namespace Catch::Matchers;
 
 #include <test/support/src/helpers.h>
 #include <test/support/tdb_catch.h>
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/api/c_api/subarray/subarray_api_internal.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/utils.h"
@@ -120,7 +120,7 @@ struct CPPOrderedDimLabelReaderFixedFx {
     }
 
     Subarray subarray(ctx_, array);
-    subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
+    subarray.ptr()->subarray().set_attribute_ranges("labels", input_ranges);
 
     query.ptr()->query_->set_dimension_label_ordered_read(increasing_labels_);
     query.set_data_buffer("index", index);
@@ -161,7 +161,7 @@ struct CPPOrderedDimLabelReaderFixedFx {
             input_ranges.emplace_back(&second_label, &first_label, sizeof(T));
 
         Subarray subarray(ctx_, array);
-        subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
+        subarray.ptr()->subarray().set_attribute_ranges("labels", input_ranges);
 
         query.ptr()->query_->set_dimension_label_ordered_read(
             increasing_labels_);
@@ -226,7 +226,7 @@ TEST_CASE_METHOD(
   input_ranges.emplace_back(&val, &val, sizeof(double));
 
   Subarray subarray(ctx_, array);
-  subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
+  subarray.ptr()->subarray().set_attribute_ranges("labels", input_ranges);
 
   query.ptr()->query_->set_dimension_label_ordered_read(increasing_labels_);
   query.set_subarray(subarray);
@@ -257,7 +257,7 @@ TEST_CASE_METHOD(
   input_ranges.emplace_back(&val, &val, sizeof(double));
 
   Subarray subarray(ctx_, array);
-  subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
+  subarray.ptr()->subarray().set_attribute_ranges("labels", input_ranges);
 
   query.ptr()->query_->set_dimension_label_ordered_read(increasing_labels_);
   query.set_subarray(subarray);
@@ -289,7 +289,7 @@ TEST_CASE_METHOD(
   input_ranges.emplace_back(&val, &val, sizeof(double));
 
   Subarray subarray(ctx_, array);
-  subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
+  subarray.ptr()->subarray().set_attribute_ranges("labels", input_ranges);
 
   query.ptr()->query_->set_dimension_label_ordered_read(increasing_labels_);
   query.set_subarray(subarray);
@@ -322,7 +322,7 @@ TEST_CASE_METHOD(
 
   Subarray subarray(ctx_, array);
   subarray.add_range(0, 1, 1);
-  subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
+  subarray.ptr()->subarray().set_attribute_ranges("labels", input_ranges);
 
   query.ptr()->query_->set_dimension_label_ordered_read(increasing_labels_);
   query.set_subarray(subarray);
@@ -350,7 +350,7 @@ TEST_CASE_METHOD(
   input_ranges.emplace_back(&ranges[0], &ranges[1], sizeof(double));
 
   Subarray subarray(ctx_, array);
-  subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
+  subarray.ptr()->subarray().set_attribute_ranges("labels", input_ranges);
 
   query.ptr()->query_->set_dimension_label_ordered_read(increasing_labels_);
   std::vector<int> index(ranges.size());
@@ -641,7 +641,7 @@ struct CPPOrderedDimLabelReaderVarFx {
     }
 
     Subarray subarray(ctx_, array);
-    subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
+    subarray.ptr()->subarray().set_attribute_ranges("labels", input_ranges);
 
     query.ptr()->query_->set_dimension_label_ordered_read(increasing_labels_);
     query.set_data_buffer("index", index);
@@ -690,7 +690,7 @@ struct CPPOrderedDimLabelReaderVarFx {
                 labels_data.data() + 4, 4, labels_data.data(), 4);
 
         Subarray subarray(ctx_, array);
-        subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
+        subarray.ptr()->subarray().set_attribute_ranges("labels", input_ranges);
 
         query.ptr()->query_->set_dimension_label_ordered_read(
             increasing_labels_);
@@ -871,7 +871,7 @@ TEST_CASE_METHOD(
   }
 
   Subarray subarray(ctx_, array);
-  subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
+  subarray.ptr()->subarray().set_attribute_ranges("labels", input_ranges);
 
   query.ptr()->query_->set_dimension_label_ordered_read(increasing_labels_);
   query.set_data_buffer("index", index);

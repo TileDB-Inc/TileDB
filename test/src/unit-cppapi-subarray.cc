@@ -32,7 +32,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
-#include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/api/c_api/subarray/subarray_api_internal.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/utils.h"
 
@@ -710,14 +710,14 @@ TEST_CASE(
     // since the other CHECKS(range_num == 1) succeed whether or not the
     //.set_subarray() was done (accidental discovery.)
     CHECK(!subarray_equiv<int>(
-        *default_subarray_from_query.ptr().get()->subarray_,
-        *subarray.ptr().get()->subarray_));
+        default_subarray_from_query.ptr().get()->subarray(),
+        subarray.ptr().get()->subarray()));
     query.set_subarray(subarray);
     tiledb::Subarray retrieved_query_subarray(query.ctx(), query.array());
     query.update_subarray_from_query(&retrieved_query_subarray);
     CHECK(subarray_equiv<int>(
-        *retrieved_query_subarray.ptr().get()->subarray_,
-        *subarray.ptr().get()->subarray_));
+        retrieved_query_subarray.ptr().get()->subarray(),
+        subarray.ptr().get()->subarray()));
     // Test range num
     auto range_num = retrieved_query_subarray.range_num(0);
     CHECK(range_num == 1);

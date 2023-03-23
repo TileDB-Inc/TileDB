@@ -37,12 +37,22 @@ list(APPEND OTHER_SOURCES
     ../../../sm/storage_manager/context_resources.cc
     )
 
+find_package(Spdlog_EP REQUIRED)
+
+add_library(capi_context OBJECT ${SOURCES} ${OTHER_SOURCES})
+target_compile_definitions(capi_context PUBLIC -DSPDLOG_COMPILED_LIB)
+target_link_libraries(capi_context PUBLIC export)
+target_include_directories(capi_context PUBLIC
+    ${TILEDB_EP_INSTALL_PREFIX}/include
+)
+
 #
 # The stubbed object library is compiled with the `StorageManagerStub`. Anything
 # that needs actual storage manager behavior will fail. If all that's needed is
 # a reference, it will work fine.
 #
-add_library(capi_context_stub OBJECT ${SOURCES} ${OTHER_SOURCES})
+add_library(capi_context_stub OBJECT capi_context_stub.cc)
+target_link_libraries(capi_context_stub PUBLIC capi_context)
 target_link_libraries(capi_context_stub PUBLIC export)
 target_link_libraries(capi_context_stub PUBLIC storage_manager_stub)
 target_link_libraries(capi_context_stub PUBLIC capi_config_stub $<TARGET_OBJECTS:capi_config_stub>)

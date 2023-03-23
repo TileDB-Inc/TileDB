@@ -1,9 +1,9 @@
 #
-# tiledb/sm/group/CMakeLists.txt
+# tiledb/api/c_api/subarray/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,30 +26,29 @@
 
 include(common NO_POLICY_SCOPE)
 
+list(APPEND SOURCES
+  subarray_api.cc
+)
+gather_sources(${SOURCES})
+
 #
-# `group` object library
+# Object library for other units to depend upon
 #
-# This object library does not support independent linkage at present. It has
-# a dependency on `StorageManager`, which at present is incapable of being
-# linked standalone. As a result, this library is not defined with
-# `commence(object_library)`, since that mandates a link-completeness test.
-#
-add_library(group OBJECT group_directory.cc group.cc group_details.cc group_details_v1.cc group_details_v2.cc group_member.cc group_member_v1.cc group_member_v2.cc)
-target_link_libraries(group PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(group PUBLIC buffer $<TARGET_OBJECTS:buffer>)
+add_library(capi_subarray_stub OBJECT ${SOURCES})
+target_link_libraries(capi_subarray_stub PUBLIC export)
+target_link_libraries(capi_subarray_stub PUBLIC subarray $<TARGET_OBJECTS:subarray>)
+target_link_libraries(capi_subarray_stub PUBLIC config $<TARGET_OBJECTS:config>)
+target_link_libraries(capi_subarray_stub PUBLIC capi_context $<TARGET_OBJECTS:capi_context>)
+
 
 #
 # Test-compile of object library ensures link-completeness
 #
-add_executable(compile_group EXCLUDE_FROM_ALL)
-
-# TODO: fix linkage of compile_group
-#add_dependencies(all_link_complete compile_group)
-
-target_link_libraries(compile_group PRIVATE group)
-target_link_libraries(compile_group PRIVATE vfs baseline constants thread_pool uuid) # buffer range 
-target_link_libraries(compile_group PRIVATE subarray subarray_melting_pot uri_format crypto array_schema)
-
-target_sources(compile_group PRIVATE
-    test/compile_group_main.cc $<TARGET_OBJECTS:group>
+add_executable(compile_capi_subarray EXCLUDE_FROM_ALL)
+target_sources(compile_capi_subarray PRIVATE test/compile_capi_subarray_main.cc
 )
+target_link_libraries(compile_capi_subarray PRIVATE capi_subarray_stub)
+target_link_libraries(compile_capi_subarray PRIVATE capi_error)
+add_dependencies(all_link_complete compile_capi_subarray)
+
+add_test_subdirectory()
