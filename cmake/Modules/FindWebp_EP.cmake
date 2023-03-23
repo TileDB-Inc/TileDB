@@ -28,8 +28,10 @@
 include(TileDBCommon)
 
 if (TILEDB_VCPKG)
+  set(CMAKE_FIND_DEBUG_MODE TRUE)
   find_package(Threads REQUIRED)
   find_package(WebP REQUIRED)
+  set(CMAKE_FIND_DEBUG_MODE FALSE)
   return()
 endif()
 
