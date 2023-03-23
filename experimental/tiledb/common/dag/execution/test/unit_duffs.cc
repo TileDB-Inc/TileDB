@@ -73,10 +73,10 @@ TEST_CASE("Resume functions", "[duffs]") {
   SECTION("Test Producer in Isolation ") {
     // One pass through node operation
     auto x = p->resume();
-    CHECK(p->get_program_counter() == 3);
+    CHECK(p->get_program_counter() == 2);
     CHECK(str(x) == "notify_sink");
     x = p->resume();
-    CHECK(p->get_program_counter() == 5);
+    CHECK(p->get_program_counter() == 3);
     CHECK(str(x) == "noop");
     x = p->resume();
     CHECK(p->get_program_counter() == 0);
@@ -85,12 +85,12 @@ TEST_CASE("Resume functions", "[duffs]") {
     // Second pass through node operation -- this should wait since port will be
     // full
     x = p->resume();
-    CHECK(p->get_program_counter() == 3);
+    CHECK(p->get_program_counter() == 2);
     CHECK(str(x) == "notify_sink");
     x = p->resume();
 
     // Recall that wait decrements the program counter
-    CHECK(p->get_program_counter() == 4);
+    CHECK(p->get_program_counter() == 2);
     CHECK(str(x) == "source_wait");
     // Don't resume further after wait
   }
@@ -120,10 +120,10 @@ TEST_CASE("Resume functions", "[duffs]") {
 
     // Inject datum
     auto x = p->resume();
-    CHECK(p->get_program_counter() == 3);
+    CHECK(p->get_program_counter() == 2);
     CHECK(str(x) == "notify_sink");
     x = p->resume();
-    CHECK(p->get_program_counter() == 5);
+    CHECK(p->get_program_counter() == 3);
     CHECK(str(x) == "noop");
     x = p->resume();
     CHECK(p->get_program_counter() == 0);
@@ -135,15 +135,15 @@ TEST_CASE("Resume functions", "[duffs]") {
     CHECK(str(y) == "noop");
 
     y = f->resume();  // drain
-    CHECK(f->get_program_counter() == 3);
+    CHECK(f->get_program_counter() == 2);
     CHECK(str(y) == "notify_source");
 
     y = f->resume();  // fill
-    CHECK(f->get_program_counter() == 7);
+    CHECK(f->get_program_counter() == 4);
     CHECK(str(y) == "notify_sink");
 
     y = f->resume();  // push
-    CHECK(f->get_program_counter() == 9);
+    CHECK(f->get_program_counter() == 5);
     CHECK(str(y) == "noop");
 
     y = f->resume();  // yield
@@ -156,7 +156,7 @@ TEST_CASE("Resume functions", "[duffs]") {
 
     // Move datum to last node
     z = c->resume();  // drain
-    CHECK(c->get_program_counter() == 3);
+    CHECK(c->get_program_counter() == 2);
     CHECK(str(z) == "notify_source");
 
     z = c->resume();
@@ -171,22 +171,22 @@ TEST_CASE("Resume functions", "[duffs]") {
 
     // Inject datum
     auto x = p->resume();
-    CHECK(p->get_program_counter() == 3);
+    CHECK(p->get_program_counter() == 2);
     CHECK(str(x) == "notify_sink");
     x = p->resume();
-    CHECK(p->get_program_counter() == 5);
+    CHECK(p->get_program_counter() == 3);
     CHECK(str(x) == "noop");
     x = p->resume();
     CHECK(p->get_program_counter() == 0);
     CHECK(str(x) == "yield");
 
     x = p->resume();
-    CHECK(p->get_program_counter() == 3);
+    CHECK(p->get_program_counter() == 2);
     CHECK(str(x) == "notify_sink");
     x = p->resume();
 
     // Recall that wait decrements the program counter
-    CHECK(p->get_program_counter() == 4);
+    CHECK(p->get_program_counter() == 2);
     CHECK(str(x) == "source_wait");
 
     // Move datum to next node
@@ -195,15 +195,15 @@ TEST_CASE("Resume functions", "[duffs]") {
     CHECK(str(y) == "noop");
 
     y = f->resume();  // drain
-    CHECK(f->get_program_counter() == 3);
+    CHECK(f->get_program_counter() == 2);
     CHECK(str(y) == "notify_source");
 
     y = f->resume();  // fill
-    CHECK(f->get_program_counter() == 7);
+    CHECK(f->get_program_counter() == 4);
     CHECK(str(y) == "notify_sink");
 
     y = f->resume();  // push
-    CHECK(f->get_program_counter() == 9);
+    CHECK(f->get_program_counter() == 5);
     CHECK(str(y) == "noop");
 
     y = f->resume();  // yield
@@ -216,17 +216,17 @@ TEST_CASE("Resume functions", "[duffs]") {
     CHECK(str(y) == "noop");
 
     y = f->resume();  // drain
-    CHECK(f->get_program_counter() == 3);
+    CHECK(f->get_program_counter() == 2);
     CHECK(str(y) == "notify_source");
 
     y = f->resume();  // fill
-    CHECK(f->get_program_counter() == 7);
+    CHECK(f->get_program_counter() == 4);
     CHECK(str(y) == "notify_sink");
 
     y = f->resume();  // push
 
     // Recall that wait decrements the program counter
-    CHECK(f->get_program_counter() == 8);
+    CHECK(f->get_program_counter() == 4);
     CHECK(str(y) == "source_wait");
 
     auto z = c->resume();  // pull
@@ -235,7 +235,7 @@ TEST_CASE("Resume functions", "[duffs]") {
 
     // Move datum to last node
     z = c->resume();  // drain
-    CHECK(c->get_program_counter() == 3);
+    CHECK(c->get_program_counter() == 2);
     CHECK(str(z) == "notify_source");
 
     z = c->resume();
@@ -248,7 +248,7 @@ TEST_CASE("Resume functions", "[duffs]") {
 
     // Move datum to last node
     z = c->resume();  // drain
-    CHECK(c->get_program_counter() == 3);
+    CHECK(c->get_program_counter() == 2);
     CHECK(str(z) == "notify_source");
 
     z = c->resume();
@@ -269,10 +269,10 @@ TEST_CASE("Resume functions", "[duffs]") {
 
     // Inject datum
     auto x = p->resume();
-    CHECK(p->get_program_counter() == 3);
+    CHECK(p->get_program_counter() == 2);
     CHECK(str(x) == "notify_sink");
     x = p->resume();
-    CHECK(p->get_program_counter() == 5);
+    CHECK(p->get_program_counter() == 3);
     CHECK(str(x) == "noop");
     x = p->resume();
     CHECK(p->get_program_counter() == 0);
@@ -283,15 +283,15 @@ TEST_CASE("Resume functions", "[duffs]") {
     CHECK(str(y) == "noop");
 
     y = f->resume();  // drain
-    CHECK(f->get_program_counter() == 3);
+    CHECK(f->get_program_counter() == 2);
     CHECK(str(y) == "notify_source");
 
     y = f->resume();  // fill
-    CHECK(f->get_program_counter() == 7);
+    CHECK(f->get_program_counter() == 4);
     CHECK(str(y) == "notify_sink");
 
     y = f->resume();  // push
-    CHECK(f->get_program_counter() == 9);
+    CHECK(f->get_program_counter() == 5);
     CHECK(str(y) == "noop");
 
     y = f->resume();  // yield
@@ -304,7 +304,7 @@ TEST_CASE("Resume functions", "[duffs]") {
     CHECK(str(z) == "noop");
 
     z = c->resume();  // drain
-    CHECK(c->get_program_counter() == 3);
+    CHECK(c->get_program_counter() == 2);
     CHECK(str(z) == "notify_source");
 
     z = c->resume();  // yield
