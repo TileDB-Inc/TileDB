@@ -19,9 +19,9 @@ steps:
   displayName: 'Install pkg-config, remove incompatible SDKs (OSX only)'
 
 - bash: |
-    sudo apt-get install curl zip unzip tar
+    yum install curl zip unzip tar
   condition: eq(variables['Agent.OS'], 'Linux')
-  displayName: 'Install brew package for pkg-config (OSX only)'
+  displayName: 'Install vcpkg dependencies (Linux only)'
 
 - bash: |
     # Azure sets "SYSTEM=build" for unknown reasons, which breaks the OpenSSL configure script
