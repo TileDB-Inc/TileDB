@@ -5,7 +5,6 @@
     "dependencies": [
         "bzip2",
         "liblzma",
-        "libmagic",
         "lz4",
         {
             "name": "openssl",
