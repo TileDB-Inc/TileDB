@@ -36,6 +36,7 @@
 #include "test/support/src/serialization_wrappers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/misc/constants.h"
 
 #include <chrono>
@@ -1349,4 +1350,53 @@ TEST_CASE(
   vfs.remove_dir(get_fragment_dir(array_read2.uri()));
   vfs.remove_dir(get_commit_dir(array_read2.uri()));
   vfs.remove_dir(schema_folder);
+}
+
+template <class T>
+void assert_group_metadata(
+    Group& g,
+    const std::string& key,
+    tiledb_datatype_t expected_datatype,
+    T expected_value) {
+  tiledb_datatype_t datatype;
+  uint32_t value_num;
+  const void* value;
+
+  g.get_metadata(key, &datatype, &value_num, &value);
+  REQUIRE(datatype == expected_datatype);
+  REQUIRE(value_num == 1);
+  REQUIRE(value != nullptr);
+  REQUIRE(*static_cast<const T*>(value) == expected_value);
+
+  std::vector<T> expected_values(7);
+  std::fill(expected_values.begin(), expected_values.end(), expected_value);
+  g.get_metadata(key + "_multi", &datatype, &value_num, &value);
+  REQUIRE(datatype == expected_datatype);
+  REQUIRE(value != nullptr);
+  const T* valueT = static_cast<const T*>(value);
+  REQUIRE(std::vector<T>(valueT, valueT + value_num) == expected_values);
+}
+
+TEST_CASE(
+    "Backwards compatibility: Test reading group metadata written with "
+    "previous version of tiledb",
+    "[backwards-compat][group][metadata]") {
+  Context ctx;
+  std::string compat_folder(arrays_dir + "/read_compatibility_test");
+  if (Object::object(ctx, compat_folder).type() != Object::Type::Group)
+    return;
+  std::string encryption_key = "unittestunittestunittestunittest";
+
+  tiledb::ObjectIter versions_iter(ctx, compat_folder);
+  for (const auto& group_versions : versions_iter) {
+    if (group_versions.type() != Object::Type::Group)
+      continue;
+
+    Group g{ctx, group_versions.uri(), TILEDB_READ};
+
+    assert_group_metadata<uint8_t>(g, "u8", TILEDB_UINT8, 77);
+    assert_group_metadata<uint16_t>(g, "u16", TILEDB_UINT16, 777);
+    assert_group_metadata<uint32_t>(g, "u32", TILEDB_UINT32, 77777);
+    assert_group_metadata<uint64_t>(g, "u64", TILEDB_UINT64, 7777777777);
+  }
 }
