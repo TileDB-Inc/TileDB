@@ -184,10 +184,8 @@ TEST_CASE(
   std::string array_uri(arrays_dir + "/non_split_coords_v1_4_0");
   Array array(ctx, array_uri, TILEDB_READ);
   std::vector<int> subarray = {1, 4, 10, 10};
-  std::vector<int> a_read;
-  a_read.resize(4);
-  std::vector<int> coords_read;
-  coords_read.resize(8);
+  std::vector<int> a_read(4);
+  std::vector<int> coords_read(8);
 
   Query query_r(ctx, array);
   query_r.set_subarray(subarray)
@@ -1244,12 +1242,9 @@ TEST_CASE(
   // Read using upgraded version
   Array array_read1(ctx, array_name, TILEDB_READ);
   std::vector<int> subarray_read1 = {1, 4, 10, 10};
-  std::vector<int> a_read1;
-  a_read1.resize(4);
-  std::vector<int> d1_read1;
-  d1_read1.resize(4);
-  std::vector<int> d2_read1;
-  d2_read1.resize(4);
+  std::vector<int> a_read1(4);
+  std::vector<int> d1_read1(4);
+  std::vector<int> d2_read1(4);
 
   Query query_read1(ctx, array_read1);
   query_read1.set_subarray(subarray_read1)
@@ -1320,12 +1315,9 @@ TEST_CASE(
   // Read again
   Array array_read2(ctx, array_name, TILEDB_READ);
   std::vector<int> subarray_read2 = {1, 4, 10, 10};
-  std::vector<int> a_read2;
-  a_read2.resize(4);
-  std::vector<int> d1_read2;
-  d1_read2.resize(4);
-  std::vector<int> d2_read2;
-  d2_read2.resize(4);
+  std::vector<int> a_read2(4);
+  std::vector<int> d1_read2(4);
+  std::vector<int> d2_read2(4);
 
   Query query_read2(ctx, array_read2);
   query_read2.set_subarray(subarray_read2)
