@@ -160,6 +160,8 @@ class function_node_impl : public node_base,
         return source_mover->port_fill();
       }
 
+      // @todo Intermediate case here as a place for waits to go?
+
       case 4: {
         ++this->program_counter_;
         auto push_state = source_mover->port_push();
