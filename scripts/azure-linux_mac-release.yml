@@ -7,14 +7,14 @@ steps:
     echo "uname -s: " $(uname -s)
     echo "uname -v: " $(uname -v)
     printenv
-    which vcpkg
+    echo "vcpkg is: " $(which vcpkg || true)
   displayName: 'Print env'
 
 - bash: |
     # This stage is needed until https://github.com/actions/runner-images/pull/7125 or similar is merged
     # MacOS image 20230214.1 removed implicit installation of pkg-config
     set -e pipefail
-    brew install pkg-config
+    brew install pkg-config libidn2
   condition: eq(variables['Agent.OS'], 'Darwin')
   displayName: 'Install brew package for pkg-config (OSX only)'
 
