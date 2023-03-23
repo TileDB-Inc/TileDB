@@ -34,7 +34,7 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
-if(TILEDB_VCPKG)
+if(TILEDB_VCPKG AND NOT TILEDB_VCPKG_DISABLE_MAGIC)
   find_path(libmagic_INCLUDE_DIR NAMES magic.h)
   find_library(libmagic_LIBRARIES magic)
   find_file(libmagic_DICTIONARY magic.mgc

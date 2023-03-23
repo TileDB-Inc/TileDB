@@ -19,7 +19,10 @@ steps:
   displayName: 'Install pkg-config, remove incompatible SDKs (OSX only)'
 
 - bash: |
-    yum install curl zip unzip tar
+    curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
+    bin/micromamba create -p ./m
+    bin/micromamba -p ./m install -c conda-forge zip tar unzip
+    echo '##vso[task.prependpath]$(HOME)/m/bin'
   condition: eq(variables['Agent.OS'], 'Linux')
   displayName: 'Install vcpkg dependencies (Linux only)'
 
@@ -99,7 +102,7 @@ steps:
 
     # Configure and build TileDB
     echo "Running cmake with '${cmake_args}'"
-    cmake .. ${cmake_args}
+    cmake .. -DTILEDB_VCPKG_DISABLE_MAGIC=TRUE ${cmake_args}
 
     make -j4
     make -C tiledb install
