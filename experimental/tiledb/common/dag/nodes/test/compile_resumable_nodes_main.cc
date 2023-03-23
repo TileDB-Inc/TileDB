@@ -1,5 +1,5 @@
 /**
- * @file compile_segmented_nodes_main.cc
+ * @file compile_resumable_nodes_main.cc
  *
  * @section LICENSE
  *
@@ -28,7 +28,7 @@
  *
  */
 
-#include "../segmented_nodes.h"
+#include "../resumable_nodes.h"
 
 int main() {
 }

@@ -36,3 +36,4 @@ endif()
 
 dag_add_header_only_object_library(simple_nodes)
 dag_add_header_only_object_library(segmented_nodes)
+dag_add_header_only_object_library(resumable_nodes)
