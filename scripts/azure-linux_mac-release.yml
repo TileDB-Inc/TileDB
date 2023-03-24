@@ -20,8 +20,8 @@ steps:
 
 - bash: |
     curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
-    bin/micromamba create -p ./m
-    bin/micromamba -p ./m install -c conda-forge zip tar unzip
+    bin/micromamba create -p $HOME/m -y
+    bin/micromamba -p $HOME/m install -y -c conda-forge zip tar unzip
     echo '##vso[task.prependpath]$(HOME)/m/bin'
   condition: eq(variables['Agent.OS'], 'Linux')
   displayName: 'Install vcpkg dependencies (Linux only)'
