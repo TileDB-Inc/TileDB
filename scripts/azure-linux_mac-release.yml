@@ -27,6 +27,7 @@ steps:
   displayName: 'Install vcpkg dependencies (Linux only)'
 
 - bash: |
+    export PATH=$HOME/m/bin:$PATH
     # Azure sets "SYSTEM=build" for unknown reasons, which breaks the OpenSSL configure script
     #   - openssl configure uses ENV{SYSTEM} if available:
     #     https://github.com/openssl/openssl/blob/6d745d740d37d680ff696486218b650512bbbbc6/config#L56
