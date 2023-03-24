@@ -634,7 +634,7 @@ const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization base format version number. */
-const format_version_t base_format_version = 18;
+const format_version_t base_format_version = 19;
 
 /**
  * The TileDB serialization format version number.
@@ -658,6 +658,12 @@ const format_version_t deletes_min_version = 16;
 
 /** The lowest version supported for updates. */
 const format_version_t updates_min_version = 16;
+
+/** The lowest version supported for dictionaries. */
+const format_version_t dictionaries_min_version =
+  is_experimental_build ?
+    0b10000000000000000000000000000000 | 19 :
+    19;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 const uint64_t max_tile_chunk_size = 64 * 1024;

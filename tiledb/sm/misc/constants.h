@@ -635,6 +635,9 @@ extern const format_version_t deletes_min_version;
 /** The lowest version supported for updates. */
 extern const format_version_t updates_min_version;
 
+/** The lowest version supported for dictionaries. */
+extern const format_version_t dictionaries_min_version;
+
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 extern const uint64_t max_tile_chunk_size;
 

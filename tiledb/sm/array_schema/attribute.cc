@@ -37,6 +37,7 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/compression_filter.h"
+#include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parse_argument.h"
 #include "tiledb/type/range/range.h"
 
@@ -115,7 +116,8 @@ Attribute::Attribute(
     const FilterPipeline& filter_pipeline,
     const ByteVecValue& fill_value,
     uint8_t fill_value_validity,
-    DataOrder order)
+    DataOrder order,
+    shared_ptr<Dictionary> dictionary)
     : cell_val_num_(cell_val_num)
     , nullable_(nullable)
     , filters_(filter_pipeline)
@@ -123,7 +125,8 @@ Attribute::Attribute(
     , type_(type)
     , fill_value_(fill_value)
     , fill_value_validity_(fill_value_validity)
-    , order_(order) {
+    , order_(order)
+    , dictionary_(dictionary) {
 }
 
 Attribute::Attribute(const Attribute* attr) {
@@ -204,6 +207,14 @@ Attribute Attribute::deserialize(
     order = data_order_from_int(deserializer.read<uint8_t>());
   }
 
+  shared_ptr<Dictionary> dict;
+  if (version >= constants::dictionaries_min_version) {
+    auto has_dict = deserializer.read<bool>();
+    if (has_dict) {
+      dict = Dictionary::deserialize(deserializer, version);
+    }
+  }
+
   return Attribute(
       name,
       datatype,
@@ -212,7 +223,8 @@ Attribute Attribute::deserialize(
       filterpipeline,
       fill_value,
       fill_value_validity,
-      order);
+      order,
+      dict);
 }
 
 void Attribute::dump(FILE* out) const {
@@ -298,6 +310,15 @@ void Attribute::serialize(
   // Write order
   if (version >= 17) {
     serializer.write<uint8_t>(static_cast<uint8_t>(order_));
+  }
+
+  if (version >= constants::dictionaries_min_version) {
+    if (dictionary_) {
+      serializer.write<bool>(true);
+      dictionary_->serialize(serializer, version);
+    } else {
+      serializer.write<bool>(false);
+    }
   }
 }
 
@@ -478,6 +499,14 @@ bool Attribute::nullable() const {
 
 DataOrder Attribute::order() const {
   return order_;
+}
+
+void Attribute::set_dictionary(shared_ptr<Dictionary> dict) {
+  dictionary_ = dict;
+}
+
+shared_ptr<Dictionary> Attribute::dictionary() const {
+  return dictionary_;
 }
 
 /* ********************************* */

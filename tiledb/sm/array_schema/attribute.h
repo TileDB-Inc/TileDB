@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/array_schema/dictionary.h"
 #include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/types.h"
@@ -110,7 +111,8 @@ class Attribute {
       const FilterPipeline& filter_pipeline,
       const ByteVecValue& fill_value,
       uint8_t fill_value_validity,
-      DataOrder order = DataOrder::UNORDERED_DATA);
+      DataOrder order = DataOrder::UNORDERED_DATA,
+      shared_ptr<Dictionary> = nullptr);
 
   /**
    * Constructor. It clones the input attribute.
@@ -242,6 +244,11 @@ class Attribute {
   static ByteVecValue default_fill_value(
       Datatype datatype, uint32_t cell_val_num);
 
+  /** Set a dictionary for this attribute. */
+  void set_dictionary(shared_ptr<Dictionary> dict);
+
+  shared_ptr<Dictionary> dictionary() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -270,6 +277,9 @@ class Attribute {
 
   /** The required order of the data stored in the attribute. */
   DataOrder order_;
+
+  /** A dictionary for this attribute. */
+  shared_ptr<Dictionary> dictionary_;
 
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

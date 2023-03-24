@@ -73,6 +73,9 @@ add_subdirectory(datatype)
 # `data_order`: no dependencies
 add_subdirectory(data_order)
 
+# `dictionary`: depends on `context`, `datatype`
+add_subdirectory(dictionary)
+
 # `dimension_label`: depends on `context`, `datatype`, `data_order`
 add_subdirectory(dimension_label)
 
