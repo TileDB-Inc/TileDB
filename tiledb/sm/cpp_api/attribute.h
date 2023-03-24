@@ -464,6 +464,24 @@ class Attribute {
     return static_cast<bool>(nullable);
   }
 
+  void set_dictionary(Dictionary dict) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(
+        tiledb_attribute_set_dictionary(ctx.ptr().get(), attr_.get(), dict.ptr()));
+  }
+
+  std::optional<Dictionary> get_dictionary() {
+    auto& ctx = ctx_.get();
+    tiledb_dictionary_t* dict;
+    ctx.handle_error(
+      tiledb_attribute_get_dictionary(ctx.ptr().get(), attr_.get(), &dict);
+    )
+    if(dict == nullptr) {
+      return std::nullopt;
+    }
+    return Dictionary(ctx, dict);
+  }
+
   /** Returns the C TileDB attribute object pointer. */
   std::shared_ptr<tiledb_attribute_t> ptr() const {
     return attr_;

@@ -39,6 +39,7 @@
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"
 #include "tiledb/api/c_api/buffer_list/buffer_list_api_internal.h"
 #include "tiledb/api/c_api/config/config_api_internal.h"
+#include "tiledb/api/c_api/dictionary/dictionary_api_internal.h"
 #include "tiledb/api/c_api/dimension/dimension_api_internal.h"
 #include "tiledb/api/c_api/error/error_api_internal.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_internal.h"
@@ -401,6 +402,39 @@ int32_t tiledb_attribute_get_fill_value_nullable(
     return TILEDB_ERR;
 
   attr->attr_->get_fill_value(value, size, valid);
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_attribute_set_dictionary(
+  tiledb_ctx_t* ctx,
+  tiledb_attribute_t* attr,
+  tiledb_dictionary_t* dict) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  attr->attr_->set_dictionary(dict->copy_dictionary());
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_attribute_get_dictionary(
+  tiledb_ctx_t* ctx,
+  tiledb_attribute_t* attr,
+  tiledb_dictionary_t** dict) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  ensure_output_pointer_is_valid(dict);
+
+  auto dict_ptr = attr->attr_->dictionary();
+  if(!dict_ptr) {
+    *dict = nullptr;
+  } else {
+    *dict = tiledb_dictionary_handle_t::make_handle(dict_ptr);
+  }
 
   return TILEDB_OK;
 }

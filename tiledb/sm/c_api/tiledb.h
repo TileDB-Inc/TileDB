@@ -61,6 +61,7 @@
 #include "tiledb/api/c_api/context/context_api_external.h"
 #include "tiledb/api/c_api/data_order/data_order_api_external.h"
 #include "tiledb/api/c_api/datatype/datatype_api_external.h"
+#include "tiledb/api/c_api/dictionary/dictionary_api_external.h"
 #include "tiledb/api/c_api/dimension/dimension_api_external.h"
 #include "tiledb/api/c_api/error/error_api_external.h"
 #include "tiledb/api/c_api/filesystem/filesystem_api_external.h"
@@ -731,6 +732,46 @@ TILEDB_EXPORT int32_t tiledb_attribute_get_fill_value_nullable(
     const void** value,
     uint64_t* size,
     uint8_t* valid) TILEDB_NOEXCEPT;
+
+/**
+ * Set a dictionary for an attribute
+ *
+ * Only applicable to integral attribute types
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_attribute_set_dictionary(ctx, attr, dict);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param attr The target attribute.
+ * @param dict The dictionary to set
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_attribute_set_dictionary(
+    tiledb_ctx_t* ctx,
+    tiledb_attribute_t* attr,
+    tiledb_dictionary_t* dict) TILEDB_NOEXCEPT;
+
+/**
+ * Get a dictionary for an attribute
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_attribute_get_dictionary(ctx, attr, &dict);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param attr The target attribute.
+ * @param dict The dictionary to get
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_attribute_get_dictionary(
+    tiledb_ctx_t* ctx,
+    tiledb_attribute_t* attr,
+    tiledb_dictionary_t** dict) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*               DOMAIN              */

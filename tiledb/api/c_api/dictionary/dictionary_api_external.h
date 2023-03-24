@@ -93,7 +93,7 @@ TILEDB_EXPORT void tiledb_dictionary_free(tiledb_dictionary_t** dict)
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param attr The dictionary.
+ * @param dict The dictionary.
  * @param type The type to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
@@ -125,14 +125,14 @@ TILEDB_EXPORT capi_return_t tiledb_dictionary_get_type(
  * @param cell_val_num The number of values per cell.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT capi_return_t tiledb_attribute_set_cell_val_num(
+TILEDB_EXPORT capi_return_t tiledb_dictionary_set_cell_val_num(
     tiledb_ctx_t* ctx,
     tiledb_dictionary_t* dict,
     uint32_t cell_val_num) TILEDB_NOEXCEPT;
 
 /**
  * Retrieves the number of values per cell for the dictinary. For variable-sized
- * attributes result is TILEDB_VAR_NUM.
+ * dictionary result is TILEDB_VAR_NUM.
  *
  * **Example:**
  *
@@ -165,7 +165,7 @@ TILEDB_EXPORT capi_return_t tiledb_dictionary_get_cell_val_num(
  * @param nullable Non-zero if the dictionary is nullable.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT capi_return_t tiledb_attribute_set_nullable(
+TILEDB_EXPORT capi_return_t tiledb_dictionary_set_nullable(
     tiledb_ctx_t* ctx,
     tiledb_dictionary_t* dict,
     uint8_t nullable) TILEDB_NOEXCEPT;
@@ -185,7 +185,7 @@ TILEDB_EXPORT capi_return_t tiledb_attribute_set_nullable(
  * @param nullable The nullability status to be retrieved
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT capi_return_t tiledb_attribute_get_nullable(
+TILEDB_EXPORT capi_return_t tiledb_dictionary_get_nullable(
     tiledb_ctx_t* ctx,
     tiledb_dictionary_t* dict,
     uint8_t* nullable) TILEDB_NOEXCEPT;
@@ -204,7 +204,7 @@ TILEDB_EXPORT capi_return_t tiledb_attribute_get_nullable(
  * @param ordered Non-zero if the dictionary is considered ordered.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT capi_return_t tiledb_attribute_set_ordered(
+TILEDB_EXPORT capi_return_t tiledb_dictionary_set_ordered(
     tiledb_ctx_t* ctx,
     tiledb_dictionary_t* dict,
     uint8_t nullable) TILEDB_NOEXCEPT;
@@ -224,7 +224,7 @@ TILEDB_EXPORT capi_return_t tiledb_attribute_set_ordered(
  * @param ordered The ordered status to be retrieved
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_attribute_get_ordered(
+TILEDB_EXPORT int32_t tiledb_dictionary_get_ordered(
     tiledb_ctx_t* ctx,
     tiledb_dictionary_t* dict,
     uint8_t* ordered) TILEDB_NOEXCEPT;
