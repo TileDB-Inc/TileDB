@@ -1036,7 +1036,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
 
   /** Allocate space for the hilbert values vector. */
   inline void allocate_hilbert_vector() {
-    hilbert_values_.resize(ResultTile::cell_num());
+    hilbert_values_.resize(ResultTileWithBitmap<BitmapType>::cell_num_);
   }
 
   /** Get the hilbert value at an index. */
@@ -1071,7 +1071,8 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
 
   /** Allocate space for the delete condition index vector. */
   inline void allocate_per_cell_delete_condition_vector() {
-    per_cell_delete_condition_.resize(ResultTile::cell_num(), nullptr);
+    per_cell_delete_condition_.resize(
+        ResultTileWithBitmap<BitmapType>::cell_num_, nullptr);
   }
 
   /** Compute the delete condition index. */
