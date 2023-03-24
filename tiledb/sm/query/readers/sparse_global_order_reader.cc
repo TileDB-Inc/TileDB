@@ -722,7 +722,8 @@ template <class CompType>
 bool SparseGlobalOrderReader<BitmapType>::add_all_dups_to_queue(
     GlobalOrderResultCoords<BitmapType>& rc,
     std::vector<TileListIt>& result_tiles_it,
-    TileMinHeap<CompType>& tile_queue) {
+    TileMinHeap<CompType>& tile_queue,
+    std::vector<TileListIt>& to_delete) {
   auto frag_idx = rc.tile_->frag_idx();
   auto dups = array_schema_.allows_dups();
   uint64_t last_cell_pos;
@@ -765,8 +766,7 @@ bool SparseGlobalOrderReader<BitmapType>::add_all_dups_to_queue(
           if (!rc.tile_->used()) {
             ignored_tiles_.emplace(
                 frag_idx, result_tiles_it[frag_idx]->tile_idx());
-            throw_if_not_ok(
-                remove_result_tile(frag_idx, result_tiles_it[frag_idx]));
+            to_delete.emplace_back(result_tiles_it[frag_idx]);
           }
 
           result_tiles_it[frag_idx] = next_tile;
@@ -784,7 +784,8 @@ template <class CompType>
 bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
     GlobalOrderResultCoords<BitmapType>& rc,
     std::vector<TileListIt>& result_tiles_it,
-    TileMinHeap<CompType>& tile_queue) {
+    TileMinHeap<CompType>& tile_queue,
+    std::vector<TileListIt>& to_delete) {
   auto frag_idx = rc.tile_->frag_idx();
   auto dups = array_schema_.allows_dups();
 
@@ -798,13 +799,13 @@ bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
   // Try the next cell in the same tile.
   if (!rc.advance_to_next_cell()) {
     // Save the potential tile to delete and increment the tile iterator.
-    auto to_delete = result_tiles_it[frag_idx];
+    auto to_delete_it = result_tiles_it[frag_idx];
     result_tiles_it[frag_idx]++;
 
     // Remove the tile from result tiles if it wasn't used at all.
     if (!rc.tile_->used()) {
-      ignored_tiles_.emplace(frag_idx, to_delete->tile_idx());
-      throw_if_not_ok(remove_result_tile(frag_idx, to_delete));
+      ignored_tiles_.emplace(frag_idx, to_delete_it->tile_idx());
+      to_delete.push_back(to_delete_it);
     }
 
     // Try to find a new tile.
@@ -848,7 +849,7 @@ bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
     // for purge deletes with no dups mode.
     if (purge_deletes_no_dups_mode_ &&
         fragment_metadata_[frag_idx]->has_timestamps()) {
-      if (add_all_dups_to_queue(rc, result_tiles_it, tile_queue)) {
+      if (add_all_dups_to_queue(rc, result_tiles_it, tile_queue, to_delete)) {
         return true;
       }
     }
@@ -948,6 +949,7 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
   std::vector<TileListIt> rt_it(result_tiles_.size());
 
   // For all fragments, get the first tile in the sorting queue.
+  std::vector<TileListIt> to_delete;
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, result_tiles_.size(), [&](uint64_t f) {
         if (result_tiles_[f].size() > 0) {
@@ -960,7 +962,7 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
                   read_state_.frag_idx_[f].cell_idx_ :
                   0;
           GlobalOrderResultCoords rc(&*(rt_it[f]), cell_idx);
-          bool res = add_next_cell_to_queue(rc, rt_it, tile_queue);
+          bool res = add_next_cell_to_queue(rc, rt_it, tile_queue, to_delete);
           {
             std::unique_lock<std::mutex> ul(tile_queue_mutex_);
             need_more_tiles |= res;
@@ -1035,12 +1037,14 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
         tile_queue.pop();
 
         // Put the next cell from the processed tile in the queue.
-        need_more_tiles = add_next_cell_to_queue(to_remove, rt_it, tile_queue);
+        need_more_tiles =
+            add_next_cell_to_queue(to_remove, rt_it, tile_queue, to_delete);
       } else {
         update_frag_idx(tile, to_process.pos_ + 1);
 
         // Put the next cell from the processed tile in the queue.
-        need_more_tiles = add_next_cell_to_queue(to_process, rt_it, tile_queue);
+        need_more_tiles =
+            add_next_cell_to_queue(to_process, rt_it, tile_queue, to_delete);
 
         to_process = tile_queue.top();
         tile_queue.pop();
@@ -1125,7 +1129,8 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
     }
 
     // Put the next cell in the queue.
-    need_more_tiles = add_next_cell_to_queue(to_process, rt_it, tile_queue);
+    need_more_tiles =
+        add_next_cell_to_queue(to_process, rt_it, tile_queue, to_delete);
   }
 
   buffers_full_ = num_cells == 0;
@@ -1140,6 +1145,15 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
       "Done merging result cell slabs, num slabs {0}, buffers full {1}",
       result_cell_slabs.size(),
       buffers_full_);
+
+  // Delete tiles that were marked for deletion. Make one last check on the used
+  // variable as one duplicate cell might have been merged and changed the
+  // status.
+  for (auto& it : to_delete) {
+    if (!it->used()) {
+      throw_if_not_ok(remove_result_tile(it->frag_idx(), it));
+    }
+  }
 
   return {Status::Ok(), std::move(result_cell_slabs)};
 };
