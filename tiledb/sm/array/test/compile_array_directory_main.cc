@@ -1,5 +1,5 @@
 /**
- * @file compile_array_main.cc
+ * @file compile_array_directory_main.cc
  *
  * @section LICENSE
  *
@@ -26,9 +26,9 @@
  * THE SOFTWARE.
  */
 
-#include "../array.h"
+#include "../array_directory.h"
 
 int main() {
-  (void)sizeof(tiledb::sm::Array);
+  (void)sizeof(tiledb::sm::ArrayDirectory);
   return 0;
 }

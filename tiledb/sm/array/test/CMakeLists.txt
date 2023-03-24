@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,13 +26,12 @@
 
 include(unit_test)
 
-commence(unit_test array)
+commence(unit_test array_directory)
     this_target_sources(main.cc unit_array_directory.cc)
-    this_target_link_libraries(array)
+    this_target_link_libraries(array_directory)
 conclude(unit_test)
 
 commence(unit_test consistency)
     this_target_sources(main.cc unit_consistency.cc)
-    this_target_sources($<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
-    this_target_link_libraries(TILEDB_CORE_OBJECTS_ILIB)
+    this_target_link_libraries(array)
 conclude(unit_test)
