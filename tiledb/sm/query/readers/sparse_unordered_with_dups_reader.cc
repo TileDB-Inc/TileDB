@@ -1622,25 +1622,33 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_var_size_offsets(
       auto last_tile_num_cells = cell_offsets[new_result_tiles_size] -
                                  cell_offsets[new_result_tiles_size - 1];
       cell_offsets[new_result_tiles_size] =
-          new_result_tiles_size > 0 ? cell_offsets[new_result_tiles_size - 1] :
-                                      0;
+          cell_offsets[new_result_tiles_size - 1];
 
       const auto min_pos = new_result_tiles_size == 1 ? first_tile_min_pos : 0;
-      for (uint64_t c = 0; c < last_tile_num_cells - 1; c++) {
-        auto cell_count =
-            last_tile->has_bmp() ? last_tile->bitmap()[c + min_pos] : 1;
+      const auto max_pos =
+          last_tile->pos_with_given_result_sum(min_pos, last_tile_num_cells);
+      for (uint64_t c = min_pos; c <= max_pos - 1; c++) {
+        auto cell_count = last_tile->has_bmp() ? last_tile->bitmap()[c] : 1;
+
         auto new_size =
             ((OffType*)query_buffer
                  .buffer_)[cell_offsets[new_result_tiles_size] + cell_count];
-        if (new_size > query_buffer.original_buffer_var_size_)
+        if (new_size > query_buffer.original_buffer_var_size_) {
           break;
+        }
 
         cell_offsets[new_result_tiles_size] += cell_count;
       }
 
-      // Update the buffer size.
-      auto total_cells = cell_offsets[new_result_tiles_size];
-      new_var_buffer_size = ((OffType*)query_buffer.buffer_)[total_cells];
+      if (cell_offsets[new_result_tiles_size] ==
+          cell_offsets[new_result_tiles_size - 1]) {
+        // No new cell was added. Remove the tile.
+        new_result_tiles_size--;
+      } else {
+        // Update the buffer size.
+        auto total_cells = cell_offsets[new_result_tiles_size];
+        new_var_buffer_size = ((OffType*)query_buffer.buffer_)[total_cells];
+      }
     }
   }
 
@@ -1811,14 +1819,17 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
 
   // Compute the number of cells copied for the last tile before updating tile
   // index.
-  auto last_tile =
-      (UnorderedWithDupsResultTile<BitmapType>*)result_tiles.back();
-  auto& frag_tile_idx = read_state_.frag_idx_[last_tile->frag_idx()];
-  auto last_tile_cells_copied =
-      cell_offsets[result_tiles.size()] - cell_offsets[result_tiles.size() - 1];
-  if (frag_tile_idx.tile_idx_ == last_tile->tile_idx()) {
-    last_tile_cells_copied +=
-        last_tile->result_num_between_pos(0, frag_tile_idx.cell_idx_);
+  uint64_t last_tile_cells_copied = 0;
+  if (result_tiles.size() > 0) {
+    auto last_tile =
+        (UnorderedWithDupsResultTile<BitmapType>*)result_tiles.back();
+    auto& frag_tile_idx = read_state_.frag_idx_[last_tile->frag_idx()];
+    last_tile_cells_copied = cell_offsets[result_tiles.size()] -
+                             cell_offsets[result_tiles.size() - 1];
+    if (frag_tile_idx.tile_idx_ == last_tile->tile_idx()) {
+      last_tile_cells_copied +=
+          last_tile->result_num_between_pos(0, frag_tile_idx.cell_idx_);
+    }
   }
 
   // Adjust tile index.
@@ -1827,10 +1838,15 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
   }
 
   // If the last tile is not fully copied, save the cell index.
-  if (last_tile->result_num() != last_tile_cells_copied) {
-    frag_tile_idx.tile_idx_ = last_tile->tile_idx();
-    frag_tile_idx.cell_idx_ =
-        last_tile->pos_with_given_result_sum(0, last_tile_cells_copied) + 1;
+  if (result_tiles.size() > 0) {
+    auto last_tile =
+        (UnorderedWithDupsResultTile<BitmapType>*)result_tiles.back();
+    auto& frag_tile_idx = read_state_.frag_idx_[last_tile->frag_idx()];
+    if (last_tile->result_num() != last_tile_cells_copied) {
+      frag_tile_idx.tile_idx_ = last_tile->tile_idx();
+      frag_tile_idx.cell_idx_ =
+          last_tile->pos_with_given_result_sum(0, last_tile_cells_copied) + 1;
+    }
   }
 
   logger_->debug("Done copying tiles");
