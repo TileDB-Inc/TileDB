@@ -60,8 +60,8 @@ template <
     template <class>
     class SinkMover,
     class BlockIn,
-    template <class> class SourceMover = SinkMover,
-    class BlockOut = BlockIn>
+    template <class> class SourceMover,
+    class BlockOut>
 struct function_node;
 
 }  // namespace tiledb::common

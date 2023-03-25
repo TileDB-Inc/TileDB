@@ -135,6 +135,7 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
         }
         ++produced_items_;
       }
+        [[fallthrough]];
 
       case 1: {
         ++this->program_counter_;
