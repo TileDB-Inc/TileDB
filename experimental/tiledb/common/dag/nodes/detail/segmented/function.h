@@ -61,8 +61,8 @@ template <
     template <class>
     class SinkMover,
     class BlockIn,
-    template <class> class SourceMover = SinkMover,
-    class BlockOut = BlockIn>
+    template <class> class SourceMover,
+    class BlockOut>
 class function_node_impl : public node_base,
                            public Sink<SinkMover, BlockIn>,
                            public Source<SourceMover, BlockOut> {

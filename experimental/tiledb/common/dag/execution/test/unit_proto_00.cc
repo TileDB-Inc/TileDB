@@ -1,11 +1,11 @@
 /**
-* @file   resumable_nodes.h
+* @file   unit_proto_00.cc
 *
 * @section LICENSE
 *
 * The MIT License
 *
-* @copyright Copyright (c) 2022 TileDB, Inc.
+* @copyright Copyright (c) 2023 TileDB, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -27,29 +27,10 @@
 *
 * @section DESCRIPTION
 *
-* Resumable nodes
+* This file declares a throw-catch scheduler for dag.
 */
 
-#ifndef TILEDB_DAG_NODES_RESUMABLE_NODES_H
-#define TILEDB_DAG_NODES_RESUMABLE_NODES_H
+#include "unit_proto_00.h"
+#include "experimental/tiledb/common/dag/nodes/resumable_nodes.h"
 
-#include "detail/resumable/proto_00.h"
-// #include "detail/resumable/consumer.h"
-// #include "detail/resumable/function.h"
-// #include "detail/resumable/mimo.h"
-// #include "detail/resumable/producer.h"
-#include "node_traits.h"
-
-namespace tiledb::common {
-
-// using node = std::shared_ptr<node_base>;
-// using node_handle = node_handle_t<node_base>;
-
-using node = node_handle_t<node_base>;
-
-template <class T>
-struct correspondent_traits {};
-
-}  // namespace tiledb::common
-
-#endif  // TILEDB_DAG_NODES_RESUMABLE_NODES_H
+using namespace tiledb::common;

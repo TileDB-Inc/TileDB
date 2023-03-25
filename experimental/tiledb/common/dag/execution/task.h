@@ -109,10 +109,12 @@ class TaskImpl : Node {
     return (*this)->resume();
   }
 
+#if 1
   /** Decrement program counter of underlying node */
   void decrement_program_counter() {
     (*this)->decrement_program_counter();
   }
+#endif
 
   /**
    * Get correspondent of underlying node, a `Sink`.

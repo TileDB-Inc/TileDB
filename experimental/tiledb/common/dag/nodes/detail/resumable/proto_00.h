@@ -1,11 +1,11 @@
 /**
-* @file   resumable_nodes.h
+* @file   proto_00.h
 *
 * @section LICENSE
 *
 * The MIT License
 *
-* @copyright Copyright (c) 2022 TileDB, Inc.
+* @copyright Copyright (c) 2023 TileDB, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -27,29 +27,30 @@
 *
 * @section DESCRIPTION
 *
-* Resumable nodes
-*/
+* Very first prototype of a resumable node API
+ */
+#ifndef TILEDB_DAG_NODES_DETAIL_PROTO_00_H
+#define TILEDB_DAG_NODES_DETAIL_PROTO_00_H
 
-#ifndef TILEDB_DAG_NODES_RESUMABLE_NODES_H
-#define TILEDB_DAG_NODES_RESUMABLE_NODES_H
-
-#include "detail/resumable/proto_00.h"
-// #include "detail/resumable/consumer.h"
-// #include "detail/resumable/function.h"
-// #include "detail/resumable/mimo.h"
-// #include "detail/resumable/producer.h"
-#include "node_traits.h"
+#include "experimental/tiledb/common/dag/execution/duffs.h"
+#include "experimental/tiledb/common/dag/execution/task_state_machine.h"
 
 namespace tiledb::common {
 
-// using node = std::shared_ptr<node_base>;
-// using node_handle = node_handle_t<node_base>;
+template <class Node>
+struct ResumableTask;
 
-using node = node_handle_t<node_base>;
+template <class Node>
+using ResumableDuffsScheduler =
+    DuffsSchedulerImpl<ResumableTask<Node>, DuffsSchedulerPolicy>;
 
-template <class T>
-struct correspondent_traits {};
+// Same as from duffs.h...
+//template <class ResumableTask, class Scheduler>
+//struct SchedulerTraits<DuffsSchedulerPolicy<ResumableTask, Scheduler>> {
+//  using task_handle_type = ResumableTask;
+//  using task_type = typename task_handle_type::element_type;
+//};
 
 }  // namespace tiledb::common
 
-#endif  // TILEDB_DAG_NODES_RESUMABLE_NODES_H
+#endif  // TILEDB_DAG_NODES_DETAIL_PROTO_00_H

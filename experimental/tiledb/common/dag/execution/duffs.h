@@ -78,6 +78,7 @@
 #include <thread>
 #include <type_traits>
 #include <vector>
+
 #include "experimental/tiledb/common/dag/execution/jthread/jthread.hpp"
 #include "experimental/tiledb/common/dag/execution/task.h"
 #include "experimental/tiledb/common/dag/execution/task_state_machine.h"
@@ -627,7 +628,7 @@ class DuffsSchedulerPolicy
  * maintain execution state (rather than having nodes do it).  Tasks are what
  * are actually scheduled.
  *
- * @tparam Node The type of the task graph node to be scheduled as a task.
+ * @tparam Task The type of task to be scheduled.
  */
 
 template <class Task, template <class, class> class Base>
@@ -771,7 +772,7 @@ class DuffsSchedulerImpl : public Base<Task, DuffsSchedulerImpl<Task, Base>> {
       retry:
 
         /*
-         * Invoke the node's `resume` function.
+         * Invoke the task's `resume` function.
          */
         lock.unlock();
         auto evt = task_to_run->resume();

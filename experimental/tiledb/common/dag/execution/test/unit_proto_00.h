@@ -1,11 +1,11 @@
 /**
-* @file   resumable_nodes.h
+* @file unit_proto.h
 *
 * @section LICENSE
 *
 * The MIT License
 *
-* @copyright Copyright (c) 2022 TileDB, Inc.
+* @copyright Copyright (c) 2023 TileDB, Inc.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this software and associated documentation files (the "Software"), to deal
@@ -27,29 +27,9 @@
 *
 * @section DESCRIPTION
 *
-* Resumable nodes
+* Unit test for prototype resumable nodes.
 */
-
-#ifndef TILEDB_DAG_NODES_RESUMABLE_NODES_H
-#define TILEDB_DAG_NODES_RESUMABLE_NODES_H
-
-#include "detail/resumable/proto_00.h"
-// #include "detail/resumable/consumer.h"
-// #include "detail/resumable/function.h"
-// #include "detail/resumable/mimo.h"
-// #include "detail/resumable/producer.h"
-#include "node_traits.h"
-
-namespace tiledb::common {
-
-// using node = std::shared_ptr<node_base>;
-// using node_handle = node_handle_t<node_base>;
-
-using node = node_handle_t<node_base>;
-
-template <class T>
-struct correspondent_traits {};
-
-}  // namespace tiledb::common
-
-#endif  // TILEDB_DAG_NODES_RESUMABLE_NODES_H
+#ifndef TILEDB_DAG_EXECUTION_UNIT_PROTO_00_H
+#define TILEDB_DAG_EXECUTION_UNIT_PROTO_00_H
+#include <test/support/tdb_catch.h>
+#endif  // TILEDB_DAG_EXECUTION_UNIT_PROTO_00_H
