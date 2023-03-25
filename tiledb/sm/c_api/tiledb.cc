@@ -5638,6 +5638,23 @@ int32_t tiledb_attribute_get_fill_value_nullable(
       ctx, attr, value, size, valid);
 }
 
+int32_t tiledb_attribute_set_dictionary(
+  tiledb_ctx_t* ctx,
+  tiledb_attribute_t* attr,
+  tiledb_dictionary_t* dict) noexcept {
+  return api_entry<tiledb::api::tiledb_attribute_set_dictionary>(
+      ctx, attr, dict);
+}
+
+int32_t tiledb_attribute_get_dictionary(
+  tiledb_ctx_t* ctx,
+  tiledb_attribute_t* attr,
+  tiledb_dictionary_t** dict) noexcept {
+  return api_entry<tiledb::api::tiledb_attribute_get_dictionary>(
+    ctx, attr, dict);
+}
+
+
 /* ********************************* */
 /*              DOMAIN               */
 /* ********************************* */

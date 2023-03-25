@@ -53,29 +53,156 @@ class Dictionary {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  Dimension(const Context& ctx, tiledb_dictionary_t* dict)
+  Dictionary(const Context& ctx, tiledb_dictionary_t* dict)
       : ctx_(ctx) {
     dict_ = std::shared_ptr<tiledb_dictionary_t>(dict, deleter_);
   }
 
-  Dictionary(const Dimension&) = default;
-  Dictionary(Dimension&&) = default;
-  Dictionary& operator=(const Dimension&) = default;
-  Dictionary& operator=(Dimension&&) = default;
+  Dictionary(const Dictionary&) = default;
+  Dictionary(Dictionary&&) = default;
+  Dictionary& operator=(const Dictionary&) = default;
+  Dictionary& operator=(Dictionary&&) = default;
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
+  template<typename T>
+  std::vector<T> get_values() {
+    return std::vector<T>();
+  }
 
-  get/set celL_val_num
-  get/set nullable
-  get/set ordered
-  get/set data buffer
-  get/set offsets buffer
-  get/set validity buffer
+  template<>
+  std::vector<std::string> get_values() {
+    // Assert that type() == TILEDB_STRING_UTF8?
 
-  /** Returns a shared pointer to the C TileDB dimension object. */
+    void* v_buffer;
+    uint64_t buffer_size;
+    void* v_offsets;
+    uint64_t offsets_size;
+
+    get_data_buffer(static_cast<void**>(&v_buffer), &buffer_size);
+    get_offsets_buffer(static_cast<void**>(&v_offsets), &offsets_size);
+    auto num_offsets = offsets_size / sizeof(uint64_t);
+
+    char* buffer = static_cast<char*>(v_buffer);
+    uint64_t* offsets = static_cast<uint64_t*>(v_offsets);
+
+    std::vector<std::string> ret;
+
+    for(size_t i = 0; i < num_offsets; i++) {
+      uint64_t len = 0;
+      if (i < num_offsets  - 1) {
+        len = offsets[i + 1] - offsets[i];
+      } else {
+        len = buffer_size - offsets[i];
+      }
+
+      ret.emplace_back(buffer + offsets[i], len);
+    }
+
+    return ret;
+  }
+
+  /** Returns the dictionary datatype. */
+  tiledb_datatype_t type() const {
+    tiledb_datatype_t type;
+    auto& ctx = ctx_.get();
+    ctx.handle_error(
+        tiledb_dictionary_get_type(ctx.ptr().get(), dict_.get(), &type));
+    return type;
+  }
+
+  Dictionary& set_cell_val_num(uint32_t cell_val_num) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_dictionary_set_cell_val_num(
+        ctx.ptr().get(), dict_.get(), cell_val_num));
+    return *this;
+  }
+
+  uint32_t cell_val_num() const {
+    uint32_t cell_val_num;
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_dictionary_get_cell_val_num(
+      ctx.ptr().get(), dict_.get(), &cell_val_num));
+    return cell_val_num;
+  }
+
+  Dictionary& set_nullable(bool nullable) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_dictionary_set_nullable(
+      ctx.ptr().get(), dict_.get(), static_cast<uint8_t>(nullable)));
+    return *this;
+  }
+
+  bool nullable() const {
+    uint8_t nullable;
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_dictionary_get_nullable(
+        ctx.ptr().get(), dict_.get(), &nullable));
+    return static_cast<bool>(nullable);
+  }
+
+  Dictionary& set_ordered(bool ordered) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_dictionary_set_ordered(
+      ctx.ptr().get(), dict_.get(), static_cast<uint8_t>(ordered)));
+    return *this;
+  }
+
+  bool ordered() const {
+    uint8_t ordered;
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_dictionary_get_ordered(
+        ctx.ptr().get(), dict_.get(), &ordered));
+    return static_cast<bool>(ordered);
+  }
+
+  Dictionary& set_data_buffer(void* buffer, uint64_t buffer_size) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_dictionary_set_data_buffer(
+        ctx.ptr().get(), dict_.get(), buffer, buffer_size));
+    return *this;
+  }
+
+  void get_data_buffer(void** buffer, uint64_t* buffer_size) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_dictionary_get_data_buffer(
+        ctx.ptr().get(), dict_.get(), buffer, buffer_size));
+  }
+
+  Dictionary& set_offsets_buffer(void* buffer, uint64_t buffer_size) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_dictionary_set_offsets_buffer(
+        ctx.ptr().get(), dict_.get(), buffer, buffer_size));
+    return *this;
+  }
+
+  void get_offsets_buffer(void** buffer, uint64_t* buffer_size) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_dictionary_get_offsets_buffer(
+        ctx.ptr().get(), dict_.get(), buffer, buffer_size));
+  }
+
+  Dictionary& set_validity_buffer(void* buffer, uint64_t buffer_size) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_dictionary_set_validity_buffer(
+        ctx.ptr().get(), dict_.get(), buffer, buffer_size));
+    return *this;
+  }
+
+  void get_validity_buffer(void** buffer, uint64_t* buffer_size) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_dictionary_get_validity_buffer(
+        ctx.ptr().get(), dict_.get(), buffer, buffer_size));
+  }
+
+  void dump(FILE* out = nullptr) const {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_dictionary_dump(ctx.ptr().get(), dict_.get(), out));
+  }
+
+  /** Returns a shared pointer to the C TileDB dictionary object. */
   std::shared_ptr<tiledb_dictionary_t> ptr() const {
     return dict_;
   }
@@ -84,11 +211,69 @@ class Dictionary {
   /*          STATIC FUNCTIONS         */
   /* ********************************* */
 
-  template<T> when is_integral(T)
-  create(std::vector<T>, nullable = false, ordered = false);
+  static Dictionary create(
+      const Context& ctx,
+      std::vector<std::string> data,
+      bool nullable = false,
+      bool ordered = false) {
 
-  template<T>
-  create(Datatype type, std::vector<T>, nullable = false, ordered = false);
+    uint64_t buffer_size = 0;
+    for(auto s : data) {
+      buffer_size += s.size();
+    }
+
+    uint8_t buffer[buffer_size];
+    std::vector<uint64_t> offsets;
+    uint64_t offset = 0;
+    for(auto s: data) {
+      std::memcpy(buffer + offset, s.data(), s.size());
+      offsets.push_back(offset);
+      offset += s.size();
+    }
+
+    return create(
+        ctx,
+        TILEDB_STRING_UTF8,
+        std::numeric_limits<uint32_t>::max(),
+        nullable,
+        ordered,
+        buffer,
+        buffer_size,
+        offsets.data(),
+        offsets.size() * sizeof(uint64_t));
+  }
+
+  static Dictionary create(
+      const Context& ctx,
+      tiledb_datatype_t type,
+      uint32_t cell_val_num = 1,
+      bool nullable = false,
+      bool ordered = false,
+      void* buffer = nullptr,
+      uint64_t buffer_size = 0,
+      void* offsets = nullptr,
+      uint64_t offsets_size = 0) {
+
+    tiledb_dictionary_t* dict;
+    ctx.handle_error(tiledb_dictionary_alloc(
+        ctx.ptr().get(), type, &dict));
+
+    auto ret = Dictionary(ctx, dict);
+
+    ret.set_cell_val_num(cell_val_num)
+      .set_nullable(nullable)
+      .set_ordered(ordered);
+
+    if (buffer != nullptr) {
+      ret.set_data_buffer(buffer, buffer_size);
+    }
+
+    if (offsets != nullptr) {
+      ret.set_offsets_buffer(offsets, offsets_size);
+    }
+
+    return ret;
+  }
 
  private:
   /* ********************************* */
@@ -103,38 +288,7 @@ class Dictionary {
 
   /** The C TileDB dictionary object. */
   std::shared_ptr<tiledb_dictionary_t> dict_;
-
-  /* ********************************* */
-  /*     PRIVATE STATIC FUNCTIONS      */
-  /* ********************************* */
-
-  /**
-   * Creates a dimension with the input name, datatype, domain and tile
-   * extent.
-   */
-  static Dimension create_impl(
-      const Context& ctx,
-      const std::string& name,
-      tiledb_datatype_t type,
-      const void* domain,
-      const void* tile_extent) {
-    tiledb_dimension_t* d;
-    ctx.handle_error(tiledb_dimension_alloc(
-        ctx.ptr().get(), name.c_str(), type, domain, tile_extent, &d));
-    return Dimension(ctx, d);
-  }
 };
-
-/* ********************************* */
-/*               MISC                */
-/* ********************************* */
-
-/** Get a string representation of a dimension for an output stream. */
-inline std::ostream& operator<<(std::ostream& os, const Dimension& dim) {
-  os << "Dim<" << dim.name() << "," << dim.domain_to_str() << ","
-     << dim.tile_extent_to_str() << ">";
-  return os;
-}
 
 }  // namespace tiledb
 

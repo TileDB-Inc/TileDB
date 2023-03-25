@@ -99,6 +99,10 @@ class Deleter {
     tiledb_attribute_free(&p);
   }
 
+  void operator()(tiledb_dictionary_t* d) const {
+    tiledb_dictionary_free(&d);
+  }
+
   void operator()(tiledb_dimension_t* p) const {
     tiledb_dimension_free(&p);
   }

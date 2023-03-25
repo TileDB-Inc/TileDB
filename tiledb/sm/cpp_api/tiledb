@@ -52,6 +52,7 @@
 #include "config.h"
 #include "context.h"
 #include "deleter.h"
+#include "dictionary.h"
 #include "dimension.h"
 #include "domain.h"
 #include "error.h"

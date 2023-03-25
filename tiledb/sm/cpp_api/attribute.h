@@ -37,6 +37,7 @@
 
 #include "context.h"
 #include "deleter.h"
+#include "dictionary.h"
 #include "exception.h"
 #include "filter_list.h"
 #include "object.h"
@@ -464,18 +465,18 @@ class Attribute {
     return static_cast<bool>(nullable);
   }
 
-  void set_dictionary(Dictionary dict) {
+  Attribute& set_dictionary(Dictionary dict) {
     auto& ctx = ctx_.get();
     ctx.handle_error(
-        tiledb_attribute_set_dictionary(ctx.ptr().get(), attr_.get(), dict.ptr()));
+        tiledb_attribute_set_dictionary(ctx.ptr().get(), attr_.get(), dict.ptr().get()));
+    return *this;
   }
 
   std::optional<Dictionary> get_dictionary() {
     auto& ctx = ctx_.get();
     tiledb_dictionary_t* dict;
     ctx.handle_error(
-      tiledb_attribute_get_dictionary(ctx.ptr().get(), attr_.get(), &dict);
-    )
+      tiledb_attribute_get_dictionary(ctx.ptr().get(), attr_.get(), &dict));
     if(dict == nullptr) {
       return std::nullopt;
     }

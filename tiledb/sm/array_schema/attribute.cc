@@ -139,6 +139,7 @@ Attribute::Attribute(const Attribute* attr) {
   fill_value_ = attr->fill_value_;
   fill_value_validity_ = attr->fill_value_validity_;
   order_ = attr->order_;
+  dictionary_ = attr->dictionary_;
 }
 
 Attribute::~Attribute() = default;

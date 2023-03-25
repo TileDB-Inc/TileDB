@@ -214,6 +214,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-consolidation.cc
     src/unit-cppapi-consolidation-with-timestamps.cc
     src/unit-cppapi-datetimes.cc
+    src/unit-cppapi-dictionary.cc
     src/unit-cppapi-deletes.cc
     src/unit-cppapi-dense-qc-coords-mode.cc
     src/unit-cppapi-time.cc
