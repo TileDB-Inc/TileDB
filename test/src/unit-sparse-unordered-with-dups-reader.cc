@@ -63,7 +63,6 @@ struct CSparseUnorderedWithDupsFx {
   std::string ratio_tile_ranges_;
   std::string ratio_array_data_;
   std::string ratio_coords_;
-  std::string ratio_query_condition_;
   std::string partial_tile_offsets_loading_;
 
   void create_default_array_1d();
@@ -127,7 +126,6 @@ void CSparseUnorderedWithDupsFx::reset_config() {
   ratio_tile_ranges_ = "0.1";
   ratio_array_data_ = "0.1";
   ratio_coords_ = "0.5";
-  ratio_query_condition_ = "0.25";
   partial_tile_offsets_loading_ = "false";
   update_config();
 }
@@ -179,14 +177,6 @@ void CSparseUnorderedWithDupsFx::update_config() {
           config,
           "sm.mem.reader.sparse_unordered_with_dups.ratio_coords",
           ratio_coords_.c_str(),
-          &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  REQUIRE(
-      tiledb_config_set(
-          config,
-          "sm.mem.reader.sparse_unordered_with_dups.ratio_query_condition",
-          ratio_query_condition_.c_str(),
           &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
 
@@ -1092,8 +1082,9 @@ TEST_CASE_METHOD(
   uint64_t data_size = sizeof(data);
   write_1d_fragment(coords, &coords_size, data, &data_size);
 
-  // One result tile (~505) will be bigger than the budget (5).
-  total_budget_ = "10000";
+  // One result tile (~505) will be larger than leftover memory.
+  total_budget_ = "800";
+  ratio_array_data_ = "0.99";
   ratio_coords_ = "0.0005";
   update_config();
 
@@ -1117,150 +1108,6 @@ TEST_CASE_METHOD(
 
   std::string error_str(msg);
   CHECK(error_str.find("Cannot load a single tile") != std::string::npos);
-}
-
-TEST_CASE_METHOD(
-    CSparseUnorderedWithDupsFx,
-    "Sparse unordered with dups reader: qc budget too small",
-    "[sparse-unordered-with-dups][qc-budget][too-small]") {
-  // Create default array.
-  reset_config();
-  create_default_array_1d();
-
-  bool use_subarray = false;
-  SECTION("- No subarray") {
-    use_subarray = false;
-  }
-  SECTION("- Subarray") {
-    use_subarray = true;
-  }
-
-  // Write a fragment.
-  int coords[] = {1, 2, 3, 4, 5};
-  uint64_t coords_size = sizeof(coords);
-  int data[] = {1, 2, 3, 4, 5};
-  uint64_t data_size = sizeof(data);
-  write_1d_fragment(coords, &coords_size, data, &data_size);
-
-  // One qc tile (8) will be bigger than the budget (5).
-  total_budget_ = "10000";
-  ratio_query_condition_ = "0.0005";
-  update_config();
-
-  // Try to read.
-  int coords_r[5];
-  int data_r[5];
-  uint64_t coords_r_size = sizeof(coords_r);
-  uint64_t data_r_size = sizeof(data_r);
-  auto rc =
-      read(use_subarray, true, coords_r, &coords_r_size, data_r, &data_r_size);
-  CHECK(rc == TILEDB_ERR);
-
-  // Check we hit the correct error.
-  tiledb_error_t* error = NULL;
-  rc = tiledb_ctx_get_last_error(ctx_, &error);
-  CHECK(rc == TILEDB_OK);
-
-  const char* msg;
-  rc = tiledb_error_message(error, &msg);
-  CHECK(rc == TILEDB_OK);
-
-  std::string error_str(msg);
-  CHECK(error_str.find("Cannot load a single tile") != std::string::npos);
-}
-
-TEST_CASE_METHOD(
-    CSparseUnorderedWithDupsFx,
-    "Sparse unordered with dups reader: qc budget forcing one tile at a time",
-    "[sparse-unordered-with-dups][small-qc-budget]") {
-  // Create default array.
-  reset_config();
-  create_default_array_1d();
-
-  bool use_subarray = false;
-  int num_frags = 0;
-  SECTION("- No subarray") {
-    use_subarray = false;
-    SECTION("- One fragment") {
-      num_frags = 1;
-    }
-    SECTION("- Two fragments") {
-      num_frags = 2;
-    }
-  }
-  SECTION("- Subarray") {
-    use_subarray = true;
-    SECTION("- One fragment") {
-      num_frags = 1;
-    }
-    SECTION("- Two fragments") {
-      num_frags = 2;
-    }
-  }
-
-  for (int i = 0; i < num_frags; i++) {
-    // Write a fragment.
-    int coords[] = {1 + i * 5, 2 + i * 5, 3 + i * 5, 4 + i * 5, 5 + i * 5};
-    uint64_t coords_size = sizeof(coords);
-    int data[] = {1 + i * 5, 2 + i * 5, 3 + i * 5, 4 + i * 5, 5 + i * 5};
-    uint64_t data_size = sizeof(data);
-    write_1d_fragment(coords, &coords_size, data, &data_size);
-  }
-
-  // Two qc tile (16) will be bigger than the budget (10).
-  total_budget_ = "10000";
-  ratio_query_condition_ = "0.001";
-  update_config();
-
-  tiledb_array_t* array = nullptr;
-  tiledb_query_t* query = nullptr;
-
-  // Try to read.
-  int coords_r[10];
-  int data_r[10];
-  uint64_t coords_r_size = sizeof(coords_r);
-  uint64_t data_r_size = sizeof(data_r);
-
-  auto rc = read(
-      use_subarray,
-      true,
-      coords_r,
-      &coords_r_size,
-      data_r,
-      &data_r_size,
-      &query,
-      &array);
-  CHECK(rc == TILEDB_OK);
-
-  // Check the internal loop count against expected value.
-  auto stats =
-      ((SparseUnorderedWithDupsReader<uint8_t>*)query->query_->strategy())
-          ->stats();
-  REQUIRE(stats != nullptr);
-  auto counters = stats->counters();
-  REQUIRE(counters != nullptr);
-  auto loop_num =
-      counters->find("Context.StorageManager.Query.Reader.loop_num");
-  CHECK(uint64_t(num_frags * 3) == loop_num->second);
-
-  // Check query status.
-  tiledb_query_status_t status;
-  tiledb_query_get_status(ctx_, query, &status);
-  CHECK(status == TILEDB_COMPLETED);
-
-  CHECK(uint64_t(num_frags * 20) == data_r_size);
-  CHECK(uint64_t(num_frags * 20) == coords_r_size);
-
-  int coords_c[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-  int data_c[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-  CHECK(!std::memcmp(coords_c, coords_r, coords_r_size));
-  CHECK(!std::memcmp(data_c, data_r, data_r_size));
-
-  // Clean up.
-  rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
-  tiledb_query_free(&query);
 }
 
 TEST_CASE_METHOD(

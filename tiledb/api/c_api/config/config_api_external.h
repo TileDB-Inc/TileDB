@@ -235,14 +235,14 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    **Default**: true
  * - `sm.mem.tile_upper_memory_limit` <br>
  *    **Experimental** <br>
- *    This is the upper memory limit that is used when loading tiles. For now it
- *    is only used in the dense reader but will be eventually used by all
- *    readers. The readers using this value will use it as a way to limit the
- *    amount of tile data that is brought into memory at once so that we don't
- *    incur performance penalties during memory movement operations. It is a
- *    soft limit that we might go over if a single tile doesn't fit into memory,
- *    we will allow to load that tile if it still fits within
- *    `sm.mem.total_budget`. <br>
+ *    This is the upper memory limit that is used when loading tiles. For now
+ *    it is only used in the dense reader and sparse unordered with duplicates
+ *    reader but will be eventually used by all readers. The readers using
+ *    this value will use it as a way to limit the amount of tile data that is
+ *    brought into memory at once so that we don't incur performance penalties
+ *    during memory movement operations. It is a soft limit that we might go
+ *    over if a single tile doesn't fit into memory, we will allow to load
+ *    that tile if it still fits within `sm.mem.total_budget`. <br>
  *    **Default**: 2GB
  * - `sm.mem.total_budget` <br>
  *    Memory budget for readers and writers. <br>
@@ -251,10 +251,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    Ratio of the budget allocated for coordinates in the sparse global
  *    order reader. <br>
  *    **Default**: 0.5
- * - `sm.mem.reader.sparse_global_order.ratio_query_condition` <br>
- *    Ratio of the budget allocated for the query condition in the sparse
- *    global order reader. <br>
- *    **Default**: 0.25
  * - `sm.mem.reader.sparse_global_order.ratio_tile_ranges` <br>
  *    Ratio of the budget allocated for tile ranges in the sparse global
  *    order reader. <br>
@@ -267,10 +263,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    Ratio of the budget allocated for coordinates in the sparse unordered
  *    with duplicates reader. <br>
  *    **Default**: 0.5
- * - `sm.mem.reader.sparse_unordered_with_dups.ratio_query_condition` <br>
- *    Ratio of the budget allocated for the query condition in the sparse
- *    unordered with duplicates reader. <br>
- *    **Default**: 0.25
  * - `sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges` <br>
  *    Ratio of the budget allocated for tile ranges in the sparse unordered
  *    with duplicates reader. <br>
