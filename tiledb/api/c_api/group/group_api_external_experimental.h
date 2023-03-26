@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -142,10 +142,10 @@ tiledb_group_close(tiledb_ctx_t* ctx, tiledb_group_t* group) TILEDB_NOEXCEPT;
  * @code{.c}
  * tiledb_group_t* group;
  * tiledb_group_alloc(ctx, "s3://tiledb_bucket/my_group", &group);
- * tiledb_group_open(ctx, group, TILEDB_READ);
  * // Set the config for the given group.
  * tiledb_config_t* config;
  * tiledb_group_set_config(ctx, group, config);
+ * tiledb_group_open(ctx, group, TILEDB_READ);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -153,9 +153,7 @@ tiledb_group_close(tiledb_ctx_t* ctx, tiledb_group_t* group) TILEDB_NOEXCEPT;
  * @param config The config to be set.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  *
- * @note The group does not need to be opened via `tiledb_group_open_at` to use
- *      this function.
- * @note The config should be set before opening an group.
+ * @pre The config must be set on a closed group.
  */
 TILEDB_EXPORT capi_return_t tiledb_group_set_config(
     tiledb_ctx_t* ctx,
