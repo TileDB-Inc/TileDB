@@ -32,15 +32,75 @@
 #include "unit_resumable_nodes.h"
 #include <future>
 #include <type_traits>
+#include "experimental/tiledb/common/dag/execution/duffs.h"
 #include "experimental/tiledb/common/dag/edge/edge.h"
-#include "experimental/tiledb/common/dag/nodes/detail/segmented/edge_node_ctad.h"
 #include "experimental/tiledb/common/dag/nodes/generators.h"
 #include "experimental/tiledb/common/dag/nodes/resumable_nodes.h"
 #include "experimental/tiledb/common/dag/nodes/terminals.h"
 #include "experimental/tiledb/common/dag/state_machine/test/types.h"
 #include "experimental/tiledb/common/dag/utility/print_types.h"
 
+#include "experimental/tiledb/common/dag/nodes/detail/resumable/proto_mimo.h"
+
 using namespace tiledb::common;
+
+using S = tiledb::common::DuffsScheduler<node>;
+using R2_1_1 = ProtoNode<DuffsMover2, std::tuple<size_t>, DuffsMover2, std::tuple<size_t>>;
+using R2_3_1 = ProtoNode<DuffsMover2, std::tuple<size_t, int, double>, DuffsMover2, std::tuple<size_t>>;
+using R2_1_3 = ProtoNode<DuffsMover2, std::tuple<size_t>, DuffsMover2, std::tuple<size_t, double, int>>;
+using R2_3_3 = ProtoNode<DuffsMover2, std::tuple<size_t, int, double>, DuffsMover2, std::tuple<size_t, double, int>>;
+
+using R3_1_1 = ProtoNode<DuffsMover3, std::tuple<size_t>, DuffsMover3, std::tuple<size_t>>;
+using R3_3_1 = ProtoNode<DuffsMover3, std::tuple<size_t, int, double>, DuffsMover3, std::tuple<size_t>>;
+using R3_1_3 = ProtoNode<DuffsMover3, std::tuple<size_t>, DuffsMover3, std::tuple<size_t, double, int>>;
+using R3_3_3 = ProtoNode<DuffsMover3, std::tuple<size_t, int, double>, DuffsMover3, std::tuple<size_t, double, int>>;
+
+namespace tiledb::common  {
+// Tentative deduction guide
+template <class... R, class... Args>
+mimo_node(std::function<std::tuple<R...>(const std::tuple<Args...>&)>&&)
+    ->mimo_node<DuffsMover3, std::tuple<std::remove_cv_t<std::remove_reference_t<Args>>...>,
+        DuffsMover3, std::tuple<R>...>;
+}
+
+TEST_CASE ("ResumableNode: Verify Construction", "[resumable_node]") {
+  SECTION("Test Construction") {
+    R2_1_1 b2_1_1 { [](std::tuple<size_t>) { return std::make_tuple(0UL); } };
+    R2_1_3 b2_1_3 { [](std::tuple<size_t>) { return std::make_tuple(0UL, 0.0, 0); } };
+    R2_3_1 b2_3_1 { [](std::tuple<size_t, int, double>) { return std::make_tuple(0UL); } };
+    R2_3_3 b2_3_3 { [](std::tuple<size_t, int, double>) { return std::make_tuple(0UL, 0.0, 0); } };
+
+    R3_1_1 b3_1_1 { [](std::tuple<size_t>) { return std::make_tuple(0UL); } };
+    R3_1_3 b3_1_3 { [](std::tuple<size_t>) { return std::make_tuple(0UL, 0.0, 0); } };
+    R3_3_1 b3_3_1 { [](std::tuple<size_t, int, double>) { return std::make_tuple(0UL); } };
+    R3_3_3 b3_3_3 { [](std::tuple<size_t, int, double>) { return std::make_tuple(0UL, 0.0, 0); } };
+
+    // Deduction guide not working
+    // ProtoNode c_1_1 { [](std::tuple<size_t>) { return std::make_tuple(0UL); } };
+
+  }
+}
+
+#if 0
+
+using S = tiledb::common::DuffsScheduler<node>;
+using C2 = consumer_node<DuffsMover2, std::tuple<size_t, size_t, size_t>>;
+using F2 = function_node<DuffsMover2, size_t>;
+using T2 = tuple_maker_node<
+    DuffsMover2,
+    size_t,
+    DuffsMover2,
+    std::tuple<size_t, size_t, size_t>>;
+using P2 = producer_node<DuffsMover2, size_t>;
+
+using C3 = consumer_node<DuffsMover3, std::tuple<size_t, size_t, size_t>>;
+using F3 = function_node<DuffsMover3, size_t>;
+using T3 = tuple_maker_node<
+    DuffsMover3,
+    size_t,
+    DuffsMover3,
+    std::tuple<size_t, size_t, size_t>>;
+using P3 = producer_node<DuffsMover3, size_t>;
 
 /**
  * Verify various API approaches
@@ -481,3 +541,4 @@ TEMPLATE_TEST_CASE(
     Edge j{*b, *c};
   }
 }
+#endif

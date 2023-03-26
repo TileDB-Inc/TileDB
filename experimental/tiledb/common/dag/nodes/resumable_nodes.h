@@ -33,7 +33,7 @@
 #ifndef TILEDB_DAG_NODES_RESUMABLE_NODES_H
 #define TILEDB_DAG_NODES_RESUMABLE_NODES_H
 
-#include "detail/resumable/proto_00.h"
+#include "detail/resumable/proto_mimo.h"
 // #include "detail/resumable/consumer.h"
 // #include "detail/resumable/function.h"
 // #include "detail/resumable/mimo.h"
