@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -28,9 +28,9 @@ include(common NO_POLICY_SCOPE)
 include(object_library)
 
 #
-# `array` object library
+# `array_directory` object library
 #
-commence(object_library array)
+commence(object_library array_directory)
     this_target_sources(array_directory.cc)
     this_target_object_libraries(
         array_schema

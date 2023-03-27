@@ -52,4 +52,12 @@ commence(object_library generic_tile_io)
   )
 conclude(object_library)
 
+#
+# `tile_metadata_generator` object library
+#
+commence(object_library tile_metadata_generator)
+  this_target_sources(tile_metadata_generator.cc writer_tile_tuple.cc)
+  this_target_object_libraries(tile)
+conclude(object_library)
+
 add_test_subdirectory()

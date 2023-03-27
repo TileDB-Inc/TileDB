@@ -1,5 +1,5 @@
 #
-# tiledb/sm/array/test/CMakeLists.txt
+# tiledb/sm/fragment/test/CMakeLists.txt
 #
 # The MIT License
 #
@@ -23,16 +23,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-
 include(unit_test)
 
-commence(unit_test array_directory)
-    this_target_sources(main.cc unit_array_directory.cc)
-    this_target_link_libraries(array_directory)
-conclude(unit_test)
-
-commence(unit_test consistency)
-    this_target_sources(main.cc unit_consistency.cc)
-    this_target_sources($<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
-    this_target_link_libraries(TILEDB_CORE_OBJECTS_ILIB)
+commence(unit_test fragment)
+    this_target_object_libraries(fragment)
+    this_target_sources(main.cc unit_fragment.cc)
 conclude(unit_test)
