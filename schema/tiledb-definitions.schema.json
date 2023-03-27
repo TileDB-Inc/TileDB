@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "https://raw.githubusercontent.com/TileDB-Inc/TileDB/dev/schema/tiledb-definitions.schema.json",
+  "definitions": {
+    "array-type": {
+      "description": "The type of array",
+      "type": "string"
+      "oneOf": ["dense", "sparse"]
+    },
+
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://raw.githubusercontent.com/TileDB-Inc/TileDB/dev/schema/tiledb.schema.json",
+  "type": "sparse",
+  "allow_dups": true,
+  "capacity": 1000,
+  "order": ["row_major", "row_major"],
+  "attributes": [
+    ["attr1", "int32", {"nullable": false, "ordered": false, "filters": []}],
+    ["attr2", "string_ascii", {"filters": ["dictionary", "zstd"]]
+  ],
+  "dimensions": [
+    ["dim1", "int32", [1, 10000], 1000, {"cell_val_num": 2, "filters": ["zstd"]}],
+  ],
+  "filters": {
+    "cell_var_offsets": ["zstd"],
+    "cell_validity": ["something"],
+    "coords": ["coord_filter_type"]
+  }
+}

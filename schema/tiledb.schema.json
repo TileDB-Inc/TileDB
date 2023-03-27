@@ -1,0 +1,538 @@
+{
+  "$id": "https://raw.githubusercontent.com/TileDB-Inc/TileDB/dev/schema/tiledb.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "type": "object",
+  "required": ["type", "dimensions"],
+  "properties":{
+    "type": {
+      "description": "Field indicating whether this array is dense or sparse.",
+      "type": "string",
+      "enum": ["dense", "sparse"]
+    },
+    "allow_dups": {
+      "descriptioin": "Whether duplicate coordinates are allowed in the array.",
+      "type": "boolean",
+      "default": false
+    },
+    "capacity": {
+      "description": "The capacity of single tile in a sparse array",
+      "type": "integer",
+      "minimum": 1
+    },
+    "order": {
+      "cell": {
+        "description": "The cell order within a Tile I think?",
+        "$ref": "#/definitions/data-order"
+      },
+      "tile": {
+        "description": "The order of tiles in the array",
+        "$ref": "#/definitions/data-order"
+      }
+    },
+    "attributes": {
+      "description": "The list of attributes for this array."
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {"$ref": "#/definitions/attribute"},
+          {"$ref": "#/definitions/attribute_compact"}
+        ]
+      }
+    },
+    "dimensions": {
+      "description": "The list of dimensions for this array",
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {"$ref": "#/definitions/dimension"},
+          {"$ref": "#/definitions/dimension_compact"}
+        ]
+      }
+    },
+    "dimension_labels": {
+      "description": "A list of zero or more dimension labels",
+      "type": "object",
+      "required": ["dimension_name", "attribute_name"],
+      "properties": {
+        "dimension_name": {
+          "description": "The name of the dimension this label is for"
+          "type": "string"
+        },
+        "attribute_name": {
+          "description": "The attribute containing the label data.",
+          "type": "string"
+        },
+        "type": {
+          "description": "The data type of the label data",
+          "$ref": "#/definitions/data_type"
+        }.
+        "uri": {
+          "description": "The URI of an array containing the attribute",
+          "type": "string"
+        },
+        "order": {
+          "description": "The ordering of the label data",
+          "$ref": "#/definitions/data_order"
+        },
+        "cell_val_num": {
+          "description": "The number of values per cell",
+          "$ref": "#/definitions/cell_val_num"
+        }
+      }
+    },
+    "filters": {
+      "cell_var_offsets": {
+        "description": "The filter pipeline to use for var sized offsets.",
+        "$ref": "#/definitions/filter_pipeline"
+      },
+      "cell_validity": {
+        "description": "The filter pipeline to use for cell validity data.",
+        "$ref": "#/definitions/filter_pipeline"
+      },
+      "coords": {
+        "description": "The filter pipeline to use for coordinate data.",
+        "$ref": "#/definitions/filter_pipeline"
+      }
+    }
+  },
+  "definitions": {
+    "attribute": {
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": {
+          "description": "The attribute name",
+          "type": "string"
+        },
+        "type": {
+          "description": "The data type for the attribute",
+          "$ref": "#/definitions/data_type"
+        },
+        "cell_val_num": {
+          "description": "The number of elements per cell",
+          "$ref": "#/definitions/cell_val_num"
+        },
+        "nullable": {
+          "description": "Whether this attribute is nullable",
+          "type": "boolean",
+          "default": false
+        },
+        "ordered": {
+          "description": "Whether this attribute is ordered.",
+          "$ref": "#/definitions/data_order"
+        },
+        "filters": {
+          "description": "A list of filters for this attribute.",
+          "$ref": "#/definitions/filter_pipeline"
+        },
+        "fill_value": {
+          "description": "The value to replace nulls with",
+          "$ref": "#/definitions/fill_value"
+        },
+        "validity_fill_value": {
+          "description": "A different fill value for some reason?",
+          "$eef": "#/definitions/fill_value"
+        }
+      }
+    },
+    "attribute_compact": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 3,
+      "items": [
+        {
+          "description": "The attribute name",
+          "type": "string"
+        },
+        {
+          "description": "The attribute data type.",
+          "$ref": "#/definitions/data_type"
+        },
+        {
+          "description": "Attribute options",
+          "$ref": "#/definitions/attribute_compact_options"
+        }
+      ]
+    },
+    "attribute_compact_options": {
+      "type": "object",
+      "required": [],
+      "properties": {
+        "cell_val_num": {
+          "description": "The number of elements per cell",
+          "$ref": "#/definitions/cell_val_num"
+        },
+        "nullable": {
+          "description": "Whether this attribute is nullable",
+          "type": "boolean",
+          "default": false
+        },
+        "ordered": {
+          "description": "Whether this attribute is ordered.",
+          "$ref": "#/definitions/data_order"
+        },
+        "filters": {
+          "description": "A list of filters for this attribute.",
+          "$ref": "#/definitions/filter_pipeline"
+        },
+        "fill_value": {
+          "description": "The value to replace nulls with",
+          "$ref": "#/definitions/fill_value"
+        },
+        "validity_fill_value": {
+          "description": "A different fill value for some reason?",
+          "$eef": "#/definitions/fill_value"
+        }
+      }
+    },
+    "cell_val_num": {
+      "description": "The number of elements per cell, any valid uint32_t value. The special UINT32_MAX value means variable length data.",
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "data_order": {
+      "description": "The data order of an attribute",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": ["unordered", "increasing", "decreasing"]
+        },
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        }
+      ]
+    },
+    "data_order": {
+      "type": "string",
+      "enum": ["row_major", "column_major", "hilbert"]
+    },
+    "data_type": {
+      "description": "The complete set of TileDB datatypes",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "any",
+            "blob",
+            "bool",
+            "char",
+            "int8",
+            "int16",
+            "int32",
+            "int64",
+            "uint8",
+            "uint16",
+            "uint32",
+            "uint64",
+            "float32",
+            "float64",
+
+            "ascii",
+            "utf8",
+            "utf16",
+            "utf32",
+            "ucs2",
+            "ucs4",
+
+            "datetime_year",
+            "datetime_month",
+            "datetime_week",
+            "datetime_day",
+            "datetime_hour",
+            "datetime_min",
+            "datetime_sec",
+            "datetime_msec",
+            "datetime_usec",
+            "datetime_nsec",
+            "datetime_psec",
+            "datetime_fsec",
+            "datetime_asec",
+            "time_hour",
+            "time_min",
+            "time_sec",
+            "time_msec",
+            "time_usec",
+            "time_nsec",
+            "time_psec",
+            "time_fsec",
+            "time_asec",
+            "blob",
+
+            "TILEDB_ANY",
+            "TILEDB_BOOL",
+            "TILEDB_CHAR",
+            "TILEDB_INT8",
+            "TILEDB_INT16",
+            "TILEDB_INT32",
+            "TILEDB_INT64",
+            "TILEDB_UINT8",
+            "TILEDB_UINT16",
+            "TILEDB_UINT32",
+            "TILEDB_UINT64",
+            "TILEDB_FLOAT32",
+            "TILEDB_FLOAT64",
+            "TILEDB_STRING_ASCII",
+            "TILEDB_STRING_UTF8",
+            "TILEDB_STRING_UTF16",
+            "TILEDB_STRING_UTF32",
+            "TILEDB_STRING_UCS2",
+            "TILEDB_STRING_UCS4",
+            "TILEDB_DATETIME_HR",
+            "TILEDB_DATETIME_MIN",
+            "TILEDB_DATETIME_SEC",
+            "TILEDB_DATETIME_MS",
+            "TILEDB_DATETIME_US",
+            "TILEDB_DATETIME_NS",
+            "TILEDB_DATETIME_PS",
+            "TILEDB_DATETIME_FS",
+            "TILEDB_DATETIME_AS",
+            "TILEDB_TIME_HR",
+            "TILEDB_TIME_MIN",
+            "TILEDB_TIME_SEC",
+            "TILEDB_TIME_MS",
+            "TILEDB_TIME_US",
+            "TILEDB_TIME_NS",
+            "TILEDB_TIME_PS",
+            "TILEDB_TIME_FS",
+            "TILEDB_TIME_AS",
+            "TILEDB_BLOB"
+          ]
+        },
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 41
+        }
+      ]
+    },
+    "dimension": {
+      "type": "object",
+      "required": ["name", "type"]
+      "properties": {
+        "name": {
+          "description": "The dimension name",
+          "type": "string"
+        },
+        "type": {
+          "description": "The datatype of the dimension",
+          "$ref": "#/definitions/data_type"
+        },
+        "cell_val_num": {
+          "description": "The number of values per cell.",
+          "$ref": "#/definitions/cell_val_num"
+        },
+        "extent": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "numeric"
+            }
+          ]
+        },
+        "range": {
+          "description": "The range of this dimension",
+          "type": "object",
+          "properties": {
+            "min": {
+              "type": "numeric"
+            },
+            "max": {
+              "type": "numeric"
+            }
+          }
+        },
+        "filters": {
+          "description": "The list of filters to use for this dimension",
+          "$ref": "#/definitions/filter_pipeline"
+        }
+      }
+    },
+    "dimension_compact": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 5,
+      "items": [
+        {
+          "description": "The dimension name"
+          "type": "string"
+        },
+        {
+          "description": "The dimension datatype.",
+          "$ref": "#/definitions/data_type"
+        },
+        {
+          "description": "The dimension range",
+          "oneOf": [
+            {"type": "null"},
+            {
+              "oneOf": [
+                {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "array",
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "items": {
+                    "type": "numeric"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "description": "The dimension extent",
+          "oneOf": [
+            {"type": "null"},
+            {"type": "numeric"}
+          ]
+        },
+        {
+          "description": "Other dimension options",
+          "$ref": "#/definitions/dimension_compact_options"
+        }
+      ]
+    },
+    "dimension_compact_options": {
+      "type": "object",
+      "required": [],
+      "properties": {
+        "cell_val_num": {
+          "description": "The number of values per cell.",
+          "$ref": "#/definitions/cell_val_num"
+        },
+        "filters": {
+          "description": "The list of filters to use for this dimension",
+          "$ref": "#/definitions/filter_pipeline"
+        }
+      }
+    },
+    "fill_value": {
+      "descrption": "For now, encode fill values as strings I guess."
+      "type": "string"
+    },
+    "filter": {
+      "oneOf": [
+        {
+          "description": "A simple filter declaration with default options.",
+          "$ref": "#/definitions/filter_type"
+        },
+        {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "description": "Type type of filter to create.",
+              "$ref": "#/definitions/filter_type"
+            },
+            "options": {
+              "description": "Any options to for the filter.",
+              "$ref": "#/definitions/filter_options"
+            }
+          }
+        }
+      ]
+    },
+    "filter_options": {
+      "description": "Options for controlling filter behavior.",
+      "type": "object",
+      "required": [],
+      "properties": {
+        "compression_level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": -1
+        },
+        "bit_width_max_window": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": -1,
+        },
+        "positive_delta_max": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": -1
+        },
+        "scale_float_bytewidth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": -1
+        },
+        "scale_float_factor": {
+          "type": "numeric",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "scale_float_offset": {
+          "type": "numeric"
+        },
+        "webp_quality": {
+          "type": "integer"
+        },
+        "webp_input_format": {
+          "type": "string",
+          "enum": ["none", "rgb", "bgr", "rgba", "bgra"]
+        },
+        "webp_lossless": {
+          "type": "boolean"
+        }
+      }
+    },
+    "filter_pipeline": {
+      "description": "A list of filters",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/filter"
+      }
+    },
+    "filter_type": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "none",
+            "gzip",
+            "zstd",
+            "lz4",
+            "rle",
+            "bzip2",
+            "double_delta",
+            "bit_width_reduction",
+            "bit_shuffle",
+            "byte_shuffle",
+            "positive_delta",
+            "checksum_md5",
+            "checksum_sha256",
+            "dictionary",
+            "scale_float",
+            "xor",
+            "webp"
+          ]
+        },
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18
+        }
+      ]
+    }
+  }
+}
