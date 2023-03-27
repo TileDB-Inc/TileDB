@@ -45,6 +45,7 @@
 #endif
 
 #include <catch.hpp>
+#include <numeric>
 
 using namespace tiledb::sm;
 using namespace tiledb::test;
