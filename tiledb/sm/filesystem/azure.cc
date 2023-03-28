@@ -159,9 +159,6 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
         });
   });
 
-  ::Azure::Storage::Blobs::BlobClientOptions options;
-  options.Retry.MaxRetries = constants::azure_max_attempts;
-
   // Construct the Azure SDK blob service client.
   // We pass a shared kay if it was specified.
   if (!account_key.empty()) {
@@ -170,14 +167,10 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
             ::Azure::Storage::Blobs::BlobServiceClient,
             blob_endpoint,
             make_shared<::Azure::Storage::StorageSharedKeyCredential>(
-                HERE(), account_name, account_key),
-            options));
+                HERE(), account_name, account_key)));
   } else {
-    client_ =
-        tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
-            ::Azure::Storage::Blobs::BlobServiceClient,
-            blob_endpoint,
-            options));
+    client_ = tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(
+        tdb_new(::Azure::Storage::Blobs::BlobServiceClient, blob_endpoint));
   }
 
   return Status::Ok();
