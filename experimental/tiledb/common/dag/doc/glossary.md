@@ -34,8 +34,8 @@ That is, in general, a node receives data from its input port(s) and transmits d
 #### Node
 
 A node is a locus for computation in the task graph.  A node may have multiple input
-ports and multiple output ports.  A node has a contained function.  The expected
-functionality of a node is to apply its contained function to data available on the
+ports and multiple output ports.  A node has a contained discrete coroutine.  The expected
+functionality of a node is to apply its contained coroutine to data available on the
 input port(s) and to return its values to the output port(s).  
 
 [ ***Important!*** *This is probably not the right specification -- need a spec and an API that 
@@ -61,17 +61,23 @@ A function node is a single-input single-output node that is
 neither a root nor leaf in the task graph.  A function node has a contained function. 
 The expected functionality of a function node is to apply its contained function to data available on 
 its input port and to return its values to its output port.  
+The prototype for the function node is:
+```c++
+template <
+    template <class> class SinkMover, class BlockIn, 
+    template <class> class SourceMover, class BlockOut>
+class function_node;
+```
 The prototype for the contained function of a function node is:
-
 ```c++
-Ret fun (const Type& a);
+  template <class Function>
+  explicit function_node(Function&& f);
 ```
-
-Equivalently, the function must satisfy the following:
+where the enclosed `Function` must satisfy
 ```c++
-  requires std::is_invocable_r_v<Ret, Fun, const Type&>;
+     std::is_invocable_r_v<BlockOut, Function, BlockIn&>
+  || std::is_invocable_r_v<BlockOut, Function, const BlockIn&>;
 ```
-(Note that the signature does not need to have `const &`).
 
 
 #### Producer Node
