@@ -121,7 +121,8 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   if (blob_endpoint.empty()) {
     LOG_WARN("The 'vfs.azure.blob_endpoint' option is not specified.");
   }
-  if (!(utils::parse::starts_with(blob_endpoint, "http://") ||
+  if (!blob_endpoint.empty() &&
+      !(utils::parse::starts_with(blob_endpoint, "http://") ||
         utils::parse::starts_with(blob_endpoint, "https://"))) {
     LOG_WARN(
         "The 'vfs.azure.blob_endpoint' option should include the scheme (HTTP "
