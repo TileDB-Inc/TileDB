@@ -135,6 +135,13 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
       "vfs.azure.use_block_list_upload", &use_block_list_upload_, &found));
   assert(found);
 
+  int max_retries =
+      config.get<int32_t>("vfs.azure.max_retries", Config::must_find);
+  retry_delay_ = std::chrono::milliseconds(
+      config.get<uint64_t>("vfs.azure.retry_delay_ms", Config::must_find));
+  std::chrono::milliseconds max_retry_delay{
+      config.get<uint64_t>("vfs.azure.retry_delay_ms", Config::must_find)};
+
   write_cache_max_size_ = max_parallel_ops_ * block_list_block_size_;
 
   // Initialize logging from the Azure SDK.
@@ -159,6 +166,11 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
         });
   });
 
+  ::Azure::Storage::Blobs::BlobClientOptions options;
+  options.Retry.MaxRetries = max_retries;
+  options.Retry.RetryDelay = retry_delay_;
+  options.Retry.MaxRetryDelay = max_retry_delay;
+
   // Construct the Azure SDK blob service client.
   // We pass a shared kay if it was specified.
   if (!account_key.empty()) {
@@ -167,10 +179,14 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
             ::Azure::Storage::Blobs::BlobServiceClient,
             blob_endpoint,
             make_shared<::Azure::Storage::StorageSharedKeyCredential>(
-                HERE(), account_name, account_key)));
+                HERE(), account_name, account_key),
+            options));
   } else {
-    client_ = tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(
-        tdb_new(::Azure::Storage::Blobs::BlobServiceClient, blob_endpoint));
+    client_ =
+        tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
+            ::Azure::Storage::Blobs::BlobServiceClient,
+            blob_endpoint,
+            options));
   }
 
   return Status::Ok();
@@ -575,8 +591,7 @@ Status Azure::copy_blob(const URI& old_uri, const URI& new_uri) {
     client_->GetBlobContainerClient(new_container_name)
         .GetBlobClient(new_blob_path)
         .StartCopyFromUri(source_uri)
-        .PollUntilDone(
-            std::chrono::milliseconds(constants::azure_attempt_sleep_ms));
+        .PollUntilDone(retry_delay_);
   } catch (const ::Azure::Storage::StorageException& e) {
     return LOG_STATUS(Status_AzureError(
         "Copy blob failed on: " + old_uri.to_string() + "; " + e.Message));

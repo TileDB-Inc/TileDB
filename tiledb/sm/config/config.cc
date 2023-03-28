@@ -170,6 +170,9 @@ const std::string Config::VFS_AZURE_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
 const std::string Config::VFS_AZURE_BLOCK_LIST_BLOCK_SIZE = "5242880";
 const std::string Config::VFS_AZURE_USE_BLOCK_LIST_UPLOAD = "true";
+const std::string Config::VFS_AZURE_MAX_RETRIES = "3";
+const std::string Config::VFS_AZURE_RETRY_DELAY_MS = "800";
+const std::string Config::VFS_AZURE_MAX_RETRY_DELAY_MS = "60000";
 const std::string Config::VFS_GCS_PROJECT_ID = "";
 const std::string Config::VFS_GCS_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
@@ -376,6 +379,11 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "vfs.azure.use_block_list_upload",
         Config::VFS_AZURE_USE_BLOCK_LIST_UPLOAD),
+    std::make_pair("vfs.azure.max_retries", Config::VFS_AZURE_MAX_RETRIES),
+    std::make_pair(
+        "vfs.azure.retry_delay_ms", Config::VFS_AZURE_RETRY_DELAY_MS),
+    std::make_pair(
+        "vfs.azure.max_retry_delay_ms", Config::VFS_AZURE_MAX_RETRY_DELAY_MS),
     std::make_pair("vfs.gcs.project_id", Config::VFS_GCS_PROJECT_ID),
     std::make_pair(
         "vfs.gcs.max_parallel_ops", Config::VFS_GCS_MAX_PARALLEL_OPS),

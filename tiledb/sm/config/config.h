@@ -409,6 +409,15 @@ class Config {
   /** Azure use block list upload. */
   static const std::string VFS_AZURE_USE_BLOCK_LIST_UPLOAD;
 
+  /** Azure max retries. */
+  static const std::string VFS_AZURE_MAX_RETRIES;
+
+  /** Azure min retry delay. */
+  static const std::string VFS_AZURE_RETRY_DELAY_MS;
+
+  /** Azure max retry delay. */
+  static const std::string VFS_AZURE_MAX_RETRY_DELAY_MS;
+
   /** GCS project id. */
   static const std::string VFS_GCS_PROJECT_ID;
 

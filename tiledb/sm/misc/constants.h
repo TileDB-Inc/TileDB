@@ -653,16 +653,6 @@ extern const unsigned int s3_max_attempts;
 /** Milliseconds of wait time between S3 attempts. */
 extern const unsigned int s3_attempt_sleep_ms;
 
-/** Maximum number of attempts to wait for an Azure response. */
-extern const unsigned int azure_max_attempts;
-
-/**
- * Milliseconds of wait time between Azure attempts. Currently,
- * the Azure SDK only supports retries with a second-granularity.
- * This number will be floored to the nearest second.
- */
-extern const unsigned int azure_attempt_sleep_ms;
-
 /** Maximum number of attempts to wait for an GCS response. */
 extern const unsigned int gcs_max_attempts;
 

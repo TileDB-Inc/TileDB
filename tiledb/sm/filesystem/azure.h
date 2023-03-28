@@ -402,6 +402,9 @@ class Azure {
   /**  The target block size in a block list upload */
   uint64_t block_list_block_size_;
 
+  /** The minimum time to wait between retries. */
+  std::chrono::milliseconds retry_delay_;
+
   /** Whether or not to use block list upload. */
   bool use_block_list_upload_;
 

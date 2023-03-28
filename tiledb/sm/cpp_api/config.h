@@ -520,6 +520,17 @@ class Config {
    * - `vfs.azure.use_block_list_upload` <br>
    *    Determines if the Azure backend can use chunked block uploads. <br>
    *    **Default**: "true"
+   * - `vfs.azure.max_retries` <br>
+   *    The maximum number of times to retry an Azure network request. <br>
+   *    **Default**: 3
+   * -  `vfs.azure.retry_delay_ms` <br>
+   *    The minimum permissible delay between Azure netwwork request retry
+   *    attempts, in milliseconds.
+   *    **Default**: 800
+   * -  `vfs.azure.max_retry_delay_ms` <br>
+   *    The maximum permissible delay between Azure netwwork request retry
+   *    attempts, in milliseconds.
+   *    **Default**: 60000
    * - `vfs.gcs.project_id` <br>
    *    Set the GCS project id. <br>
    *    **Default**: ""
