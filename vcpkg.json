@@ -46,13 +46,13 @@
             ]
         },
         "serialization": {
-          "description": "Enable TileDB Cloud Support",
-          "dependencies": [
-              {
-                  "name": "capnproto",
-                  "version>=": "0.8.0"
-              }
-          ]
+            "description": "Enable TileDB Cloud Support",
+            "dependencies": [
+                {
+                    "name": "capnproto",
+                    "version>=": "0.8.0"
+                }
+            ]
         },
         "s3": {
             "description": "Support AWS S3 Storage",
@@ -88,7 +88,6 @@
                     "version>=": "1.2.3"
                 }
             ]
-
         }
     }
 }
