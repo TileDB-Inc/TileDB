@@ -97,13 +97,13 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   std::string account_key = config.get("vfs.azure.storage_account_key", &found);
   assert(found);
   if (account_key.empty() && ((tmp = getenv("AZURE_STORAGE_KEY")) != NULL)) {
-    account_key = std::string(getenv("AZURE_STORAGE_KEY"));
+    account_key = std::string(tmp);
   }
 
   std::string sas_token = config.get("vfs.azure.storage_sas_token", &found);
   if (sas_token.empty() &&
       ((tmp = getenv("AZURE_STORAGE_SAS_TOKEN")) != NULL)) {
-    sas_token = std::string(getenv("AZURE_STORAGE_SAS_TOKEN"));
+    sas_token = std::string(tmp);
   }
   if (!sas_token.empty()) {
     LOG_WARN(
@@ -116,7 +116,7 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   assert(found);
   if (blob_endpoint.empty() &&
       ((tmp = getenv("AZURE_BLOB_ENDPOINT")) != NULL)) {
-    blob_endpoint = std::string(getenv("AZURE_BLOB_ENDPOINT"));
+    blob_endpoint = std::string(temp);
   }
   if (blob_endpoint.empty()) {
     LOG_WARN("The 'vfs.azure.blob_endpoint' option is not specified.");
