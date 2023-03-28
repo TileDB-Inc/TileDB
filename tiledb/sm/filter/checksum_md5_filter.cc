@@ -257,7 +257,10 @@ Status ChecksumMD5Filter::compare_checksum_part(
     char md5string_existing[33];
     for (uint64_t i = 0; i < Crypto::MD5_DIGEST_BYTES; ++i) {
       snprintf(
-          &md5string_existing[i * 2], 3, "%02x", (unsigned int)existing_digest[i]);
+          &md5string_existing[i * 2],
+          3,
+          "%02x",
+          (unsigned int)existing_digest[i]);
     }
 
     std::stringstream message;
