@@ -112,24 +112,30 @@ class Dimension {
       const ByteVecValue& tile_extent);
 
   /**
-   * Constructor. It clones the input.
+   * Copy constructor is deleted.
    *
-   * @param dim The dimension to clone.
+   * `Dimension` objects are stored as `shared_ptr` within C API handles and
+   * within `Domain`. Instead of copying a `Dimension` one can copy a pointer.
    */
-  explicit Dimension(const Dimension* dim);
+  Dimension(const Dimension&) = delete;
 
-  /** Copy constructor. */
-  DISABLE_COPY(Dimension);
+  /**
+   * Copy assignment is deleted.
+   */
+  Dimension& operator=(const Dimension&) = delete;
 
   /** Destructor. */
   ~Dimension() = default;
 
-  /* ********************************* */
-  /*             OPERATORS             */
-  /* ********************************* */
+  /**
+   * Move constructor is default
+   */
+  Dimension(Dimension&&) = default;
 
-  /** Copy-assignment operator. */
-  DISABLE_COPY_ASSIGN(Dimension);
+  /**
+   * Move assignment is default
+   */
+  Dimension& operator=(Dimension&&) = default;
 
   /* ********************************* */
   /*                API                */

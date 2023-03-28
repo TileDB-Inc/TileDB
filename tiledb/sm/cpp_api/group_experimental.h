@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -112,7 +112,11 @@ class Group {
     ctx.handle_error(tiledb_group_open(c_ctx, group_.get(), query_type));
   }
 
-  /** Sets the group config. */
+  /**
+   * Sets the group config.
+   *
+   * @pre The group must be closed.
+   */
   void set_config(const Config& config) const {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_group_set_config(

@@ -37,6 +37,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/tile/filtered_buffer.h"
+#include "tiledb/storage_format/serialization/serializers.h"
 
 #include <cinttypes>
 
@@ -433,6 +434,20 @@ class WriterTile : public TileBase {
    * to override the value in tests.
    */
   static uint64_t max_tile_chunk_size_;
+};
+
+/**
+ * A deserializer that owns a Tile.
+ */
+class TileDeserializer : public Deserializer {
+ public:
+  explicit TileDeserializer(Tile&& tile)
+      : Deserializer(tile.data(), tile.size())
+      , tile_(std::move(tile)) {
+  }
+
+ private:
+  Tile tile_;
 };
 
 }  // namespace sm

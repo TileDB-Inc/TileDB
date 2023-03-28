@@ -200,7 +200,7 @@ class CAPIHandle {
     return *self_.get();
   }
 
-  inline static std::string name() {
+  inline static std::string handle_name() {
     return std::string(T::object_type_name);
   }
 };
@@ -219,10 +219,10 @@ class CAPIHandle {
 template <class T, class E = CAPIStatusException>
 void ensure_handle_is_valid(const T* p) {
   if (p == nullptr) {
-    throw E(std::string("Invalid TileDB ") + T::name() + " object");
+    throw E(std::string("Invalid TileDB ") + T::handle_name() + " object");
   }
   if (p != &p->get()) {
-    throw E(T::name() + " object is not self-consistent");
+    throw E(T::handle_name() + " object is not self-consistent");
   }
 }
 

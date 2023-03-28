@@ -210,11 +210,6 @@ class Config {
   /** Ratio of the sparse global order reader budget used for coords. */
   static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS;
 
-  /**
-   * Ratio of the sparse global order reader budget used for query condition.
-   */
-  static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION;
-
   /** Ratio of the sparse global order reader budget used for tile ranges. */
   static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES;
 
@@ -223,13 +218,6 @@ class Config {
 
   /** Ratio of the sparse unordered with dups reader budget used for coords. */
   static const std::string SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_COORDS;
-
-  /**
-   * Ratio of the sparse unordered with dups reader budget used for query
-   * condition.
-   */
-  static const std::string
-      SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_QUERY_CONDITION;
 
   /**
    * Ratio of the sparse unordered with dups reader budget used for tile
@@ -534,6 +522,9 @@ class Config {
 
   /** Verify TLS/SSL certificates (true). */
   static const std::string VFS_S3_VERIFY_SSL;
+
+  /** Force making an unsigned request to s3 (false). */
+  static const std::string VFS_S3_NO_SIGN_REQUEST;
 
   /** HDFS default kerb ticket cache path. */
   static const std::string VFS_HDFS_KERB_TICKET_CACHE_PATH;

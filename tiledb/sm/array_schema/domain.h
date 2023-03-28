@@ -236,8 +236,42 @@ class Domain {
     return dimension_ptrs_[i];
   }
 
+  /**
+   * Return a copy of the shared pointer to the dimension given by the argument
+   * index.
+   *
+   * This function does not return null pointers.
+   *
+   * This function is intended for use with the C API for initializing handles,
+   * and in life cycle management generally. Ordinary functions within the
+   * library should use `dimension_ptr`.
+   *
+   * @param i index of the dimension within the domain
+   * @return non-null pointer to the dimension
+   */
+  inline shared_ptr<Dimension> dimension_shared_ptr(
+      dimension_size_type i) const {
+    if (i > dim_num_) {
+      throw std::invalid_argument("invalid dimension index");
+    }
+    return dimensions_[i];
+  }
+
   /** Returns the dimension given a name (nullptr upon error). */
   const Dimension* dimension_ptr(const std::string& name) const;
+
+  /**
+   * A copy of the storage pointer to a dimension given a name.
+   *
+   * This function is intended for use with the C API for initializing handles,
+   * and in life cycle management generally. Ordinary functions within the
+   * library should use `dimension_ptr`.
+   *
+   * @param name candidate name of a dimension
+   * @return copy of the storage pointer to the dimension with matching name,
+   * a null pointer otherwise.
+   */
+  shared_ptr<Dimension> dimension_shared_ptr(const std::string& name) const;
 
   /** Dumps the domain in ASCII format in the selected output. */
   void dump(FILE* out) const;

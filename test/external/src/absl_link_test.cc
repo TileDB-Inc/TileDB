@@ -28,9 +28,9 @@
  *
  * @section DESCRIPTION
  *
- * Tests for linkage to libraries of the targets found to be referenced by 
+ * Tests for linkage to libraries of the targets found to be referenced by
  * gcssdk v1.22 at the time of creation of absl_link_test.cc.
- * 
+ *
  * Those targets were crudely identified by extracting from the following action:
  * ep_gcssdk\google>findstr /s absl:: *cmake*
 cloud\bigquery\CMakeLists.txt:    PUBLIC absl::memory absl::strings google_cloud_cpp_grpc_utils
@@ -77,23 +77,23 @@ cloud\testing_util\CMakeLists.txt:        PUBLIC absl::symbolize absl::failure_s
 #include <cstdlib>
 #include <sstream>
 
-#include <absl/strings/str_format.h>             // absl::str_format
-#include <include/absl/base/casts.h>             // absl::function_ref
-#include <include/absl/container/fixed_array.h>  // absl::fixed_array
-#include <include/absl/hash/hash.h>              // absl::flat_hash_map
-#include <include/absl/memory/memory.h>
-#include <include/absl/meta/type_traits.h>  // absl::function_ref
-#include <include/absl/numeric/int128.h>    // absl::numeric
-#include <include/absl/strings/numbers.h>
-#include <include/absl/strings/string_view.h>
-#include <include/absl/time/clock.h>
-#include <include/absl/types/optional.h>  // absl::optional
-#include <include/absl/types/variant.h>   // absl::variant
+#include <absl/base/casts.h>             // absl::function_ref
+#include <absl/container/fixed_array.h>  // absl::fixed_array
+#include <absl/hash/hash.h>              // absl::flat_hash_map
+#include <absl/memory/memory.h>
+#include <absl/meta/type_traits.h>  // absl::function_ref
+#include <absl/numeric/int128.h>    // absl::numeric
+#include <absl/strings/numbers.h>
+#include <absl/strings/str_format.h>  // absl::str_format
+#include <absl/strings/string_view.h>
+#include <absl/time/clock.h>
+#include <absl/types/optional.h>  // absl::optional
+#include <absl/types/variant.h>   // absl::variant
 #if 0
 // absl::symbolize, absl::failure_signal_handler both in testing_util, not
 // verifying these as we do not build gcs tests.
-#include <include/absl/symbolize/
-#include <include/absl/failure_signal_handler/
+#include <absl/symbolize/
+#include <absl/failure_signal_handler/
 #endif
 
 int main() {

@@ -99,16 +99,6 @@ inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_attribute_t* attr) {
   return TILEDB_OK;
 }
 
-inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_dimension_t* dim) {
-  if (dim == nullptr || dim->dim_ == nullptr) {
-    auto st = Status_Error("Invalid TileDB dimension object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-  return TILEDB_OK;
-}
-
 inline int32_t sanity_check(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema) {
   if (array_schema == nullptr || array_schema->array_schema_ == nullptr) {
