@@ -45,6 +45,7 @@
 #endif
 
 #include <catch.hpp>
+#include <numeric>
 
 using namespace tiledb::sm;
 using namespace tiledb::test;
@@ -70,6 +71,13 @@ struct CSparseUnorderedWithDupsFx {
   void write_1d_fragment(
       int* coords, uint64_t* coords_size, int* data, uint64_t* data_size);
   void write_1d_fragment_empty_strings(int* coords, uint64_t* coords_size);
+  void write_1d_fragment_string(
+      int* coords,
+      uint64_t* coords_size,
+      uint64_t* offsets,
+      uint64_t* offsets_size,
+      char* data,
+      uint64_t* data_size);
   int32_t read(
       bool set_subarray,
       bool set_qc,
@@ -85,7 +93,9 @@ struct CSparseUnorderedWithDupsFx {
       char* data,
       uint64_t* data_size,
       uint64_t* data_offsets,
-      uint64_t* data_offsets_size);
+      uint64_t* data_offsets_size,
+      tiledb_query_t** query = nullptr,
+      tiledb_array_t** array_ret = nullptr);
   void reset_config();
   void update_config();
 
@@ -303,6 +313,46 @@ void CSparseUnorderedWithDupsFx::write_1d_fragment_empty_strings(
   tiledb_query_free(&query);
 }
 
+void CSparseUnorderedWithDupsFx::write_1d_fragment_string(
+    int* coords,
+    uint64_t* coords_size,
+    uint64_t* offsets,
+    uint64_t* offsets_size,
+    char* data,
+    uint64_t* data_size) {
+  // Open array for writing.
+  tiledb_array_t* array;
+  auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Create the query.
+  tiledb_query_t* query;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a", data, data_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_offsets_buffer(ctx_, query, "a", offsets, offsets_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords, coords_size);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Submit query.
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Close array.
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Clean up.
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
 int32_t CSparseUnorderedWithDupsFx::read(
     bool set_subarray,
     bool set_qc,
@@ -376,7 +426,9 @@ int32_t CSparseUnorderedWithDupsFx::read_strings(
     char* data,
     uint64_t* data_size,
     uint64_t* data_offsets,
-    uint64_t* data_offsets_size) {
+    uint64_t* data_offsets_size,
+    tiledb_query_t** query_ret,
+    tiledb_array_t** array_ret) {
   // Open array for reading.
   tiledb_array_t* array;
   auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
@@ -402,11 +454,17 @@ int32_t CSparseUnorderedWithDupsFx::read_strings(
   // Submit query.
   auto ret = tiledb_query_submit(ctx_, query);
 
-  // Clean up.
-  rc = tiledb_array_close(ctx_, array);
-  CHECK(rc == TILEDB_OK);
-  tiledb_array_free(&array);
-  tiledb_query_free(&query);
+  if (query_ret == nullptr || array_ret == nullptr) {
+    // Clean up.
+    rc = tiledb_array_close(ctx_, array);
+    CHECK(rc == TILEDB_OK);
+    tiledb_array_free(&array);
+    tiledb_query_free(&query);
+  } else {
+    *query_ret = query;
+    *array_ret = array;
+  }
+
   return ret;
 }
 
@@ -422,7 +480,20 @@ struct CSparseUnorderedWithDupsVarDataFx {
   void read_and_check_data(bool set_subarray);
 
   tuple<tiledb_array_t*, std::vector<shared_ptr<FragmentMetadata>>>
-  open_default_array_1d_with_fragments();
+  open_default_array_1d_with_fragments(uint64_t capacity = 5);
+
+  void compute_var_size_offsets_test(
+      uint64_t var_buffer_size,
+      std::vector<std::vector<uint64_t>>& bitmaps,
+      uint64_t capacity,
+      uint64_t num_tiles,
+      uint64_t first_tile_min_pos,
+      std::vector<uint64_t>& offsets_buffer,
+      std::vector<uint64_t>& cell_offsets,
+      bool expected_buffers_full,
+      std::vector<uint64_t>& expected_cell_offsets,
+      uint64_t expected_result_tiles_size,
+      uint64_t expected_var_buffer_size);
 
   CSparseUnorderedWithDupsVarDataFx();
   ~CSparseUnorderedWithDupsVarDataFx();
@@ -600,9 +671,10 @@ void CSparseUnorderedWithDupsVarDataFx::read_and_check_data(bool set_subarray) {
 }
 
 tuple<tiledb_array_t*, std::vector<shared_ptr<FragmentMetadata>>>
-CSparseUnorderedWithDupsVarDataFx::open_default_array_1d_with_fragments() {
+CSparseUnorderedWithDupsVarDataFx::open_default_array_1d_with_fragments(
+    uint64_t capacity) {
   int64_t domain[] = {1, 10};
-  int64_t tile_extent = 5;
+  int64_t tile_extent = capacity;
   // Create array
   create_array(
       ctx_,
@@ -618,7 +690,7 @@ CSparseUnorderedWithDupsVarDataFx::open_default_array_1d_with_fragments() {
       {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
-      5);
+      capacity);
 
   // Open array for reading.
   tiledb_array_t* array;
@@ -639,6 +711,72 @@ CSparseUnorderedWithDupsVarDataFx::open_default_array_1d_with_fragments() {
   fragments.emplace_back(std::move(fragment));
 
   return {array, std::move(fragments)};
+}
+
+void CSparseUnorderedWithDupsVarDataFx::compute_var_size_offsets_test(
+    uint64_t var_buffer_size,
+    std::vector<std::vector<uint64_t>>& bitmaps,
+    uint64_t capacity,
+    uint64_t num_tiles,
+    uint64_t first_tile_min_pos,
+    std::vector<uint64_t>& offsets_buffer,
+    std::vector<uint64_t>& cell_offsets,
+    bool expected_buffers_full,
+    std::vector<uint64_t>& expected_cell_offsets,
+    uint64_t expected_result_tiles_size,
+    uint64_t expected_var_buffer_size) {
+  auto&& [array, fragments] = open_default_array_1d_with_fragments(capacity);
+
+  // Make a vector of tiles.
+  std::vector<UnorderedWithDupsResultTile<uint64_t>> rt;
+  for (uint64_t t = 0; t < num_tiles; t++) {
+    rt.emplace_back(0, t, array->array_->array_schema_latest());
+
+    // Allocate and set the bitmap if required.
+    if (bitmaps[t].size() > 0) {
+      rt.back().bitmap_ = bitmaps[t];
+      rt.back().bitmap_result_num_ =
+          std::accumulate(bitmaps[t].begin(), bitmaps[t].end(), 0);
+    } else {
+      rt.back().bitmap_result_num_ = capacity;
+    }
+  }
+
+  // Create the result_tiles pointer vector.
+  std::vector<ResultTile*> result_tiles(rt.size());
+  for (uint64_t i = 0; i < rt.size(); i++) {
+    result_tiles[i] = &rt[i];
+  }
+
+  // Create a Query buffer.
+  tiledb::sm::QueryBuffer query_buffer;
+  uint64_t offsets_size = offsets_buffer.size() * sizeof(uint64_t);
+  query_buffer.buffer_ = offsets_buffer.data();
+  query_buffer.buffer_size_ = &offsets_size;
+  query_buffer.original_buffer_size_ = offsets_size;
+  uint64_t buffer_var_size = 0;
+  query_buffer.buffer_var_size_ = &buffer_var_size;
+  query_buffer.original_buffer_var_size_ = var_buffer_size;
+
+  // Call the function.
+  auto&& [buffers_full, var_buffer_size_ret, result_tiles_size] =
+      SparseUnorderedWithDupsReader<uint64_t>::compute_var_size_offsets<
+          uint64_t>(
+          &tiledb::test::g_helper_stats,
+          result_tiles,
+          first_tile_min_pos,
+          cell_offsets,
+          query_buffer);
+
+  // Validate results.
+  CHECK(expected_buffers_full == buffers_full);
+  CHECK(expected_cell_offsets == cell_offsets);
+  CHECK(expected_result_tiles_size == result_tiles_size);
+  CHECK(expected_var_buffer_size == var_buffer_size_ret);
+
+  // Clean up.
+  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
+  tiledb_array_free(&array);
 }
 
 /* ********************************* */
@@ -1300,259 +1438,146 @@ TEST_CASE_METHOD(
     CSparseUnorderedWithDupsVarDataFx,
     "Sparse unordered with dups reader: test compute_var_size_offsets",
     "[sparse-unordered-with-dups][compute_var_size_offsets]") {
-  auto&& [array, fragments] = open_default_array_1d_with_fragments();
+  uint64_t var_buffer_size = 0;
+  std::vector<std::vector<uint64_t>> bitmaps;
+  uint64_t capacity = 0;
+  uint64_t num_tiles = 0;
+  uint64_t first_tile_min_pos = 0;
+  std::vector<uint64_t> offsets_buffer;
+  std::vector<uint64_t> cell_offsets;
+  bool expected_buffers_full = false;
+  std::vector<uint64_t> expected_cell_offsets;
+  uint64_t expected_result_tiles_size = 0;
+  uint64_t expected_var_buffer_size = 0;
 
-  // Make a vector of tiles.
-  UnorderedWithDupsResultTile<uint64_t> result_tile(
-      0, 0, array->array_->array_schema_latest());
-  std::vector<UnorderedWithDupsResultTile<uint64_t>> rt;
-  rt.push_back(std::move(result_tile));
+  SECTION("Basic") {
+    var_buffer_size = 6;
 
-  SECTION("- No bitmap") {
+    SECTION("- No bitmap") {
+      bitmaps = {{}};
+    }
+
+    SECTION("- With bitmap") {
+      bitmaps = {{1, 1, 1, 1, 1}};
+    }
+
+    capacity = 5;
+    num_tiles = 1;
+    first_tile_min_pos = 0;
+    offsets_buffer = {2, 2, 2, 2, 2};
+    cell_offsets = {0, 5};
+    expected_buffers_full = true;
+    expected_cell_offsets = {0, 3};
+    expected_result_tiles_size = 1;
+    expected_var_buffer_size = 6;
   }
 
-  SECTION("- With bitmap") {
-    rt[0].bitmap_.resize(5, 1);
+  SECTION("Count Bitmap") {
+    var_buffer_size = 6;
+    bitmaps = {{0, 1, 2, 2, 0}};
+    capacity = 5;
+    num_tiles = 1;
+    first_tile_min_pos = 0;
+    offsets_buffer = {2, 2, 2, 2, 2};
+    cell_offsets = {0, 5};
+    expected_buffers_full = true;
+    expected_cell_offsets = {0, 3};
+    expected_result_tiles_size = 1;
+    expected_var_buffer_size = 6;
   }
 
-  // Create the result_tiles pointer vector.
-  std::vector<ResultTile*> result_tiles(rt.size());
-  for (uint64_t i = 0; i < rt.size(); i++) {
-    result_tiles[i] = &rt[i];
+  SECTION("Continuation") {
+    var_buffer_size = 5;
+
+    SECTION("- No bitmap") {
+      bitmaps = {{}};
+    }
+
+    SECTION("- With bitmap") {
+      bitmaps = {{1, 1, 1, 1, 1}};
+    }
+
+    capacity = 5;
+    num_tiles = 1;
+    first_tile_min_pos = 2;
+    offsets_buffer = {2, 2, 2, 0, 0};
+    cell_offsets = {0, 3};
+    expected_buffers_full = true;
+    expected_cell_offsets = {0, 2};
+    expected_result_tiles_size = 1;
+    expected_var_buffer_size = 4;
   }
 
-  // Create the cell_offsets vector.
-  std::vector<uint64_t> cell_offsets(rt.size() + 1);
-  uint64_t offset = 0;
-  for (uint64_t i = 0; i < rt.size(); i++) {
-    cell_offsets[i] = offset;
-    offset += 5;
-  }
-  cell_offsets[rt.size()] = offset;
+  SECTION("Last cell") {
+    var_buffer_size = 5;
 
-  // Create a Query buffer.
-  tiledb::sm::QueryBuffer query_buffer;
-  uint64_t offsets[] = {2, 2, 2, 2, 2};
-  uint64_t offsets_size = sizeof(offsets);
-  query_buffer.buffer_ = offsets;
-  query_buffer.buffer_size_ = &offsets_size;
-  query_buffer.original_buffer_size_ = offsets_size;
-  uint64_t buffer_var_size = 0;
-  query_buffer.buffer_var_size_ = &buffer_var_size;
-  query_buffer.original_buffer_var_size_ = 6;
+    SECTION("- No bitmap") {
+      bitmaps = {{}};
+    }
 
-  // Call the function.
-  auto&& [buffers_full, var_buffer_size, result_tiles_size] =
-      SparseUnorderedWithDupsReader<uint64_t>::compute_var_size_offsets<
-          uint64_t>(
-          &tiledb::test::g_helper_stats,
-          result_tiles,
-          0,
-          cell_offsets,
-          query_buffer);
+    SECTION("- With bitmap") {
+      bitmaps = {{1, 1, 1, 1, 1}};
+    }
 
-  // Validate results.
-  CHECK(buffers_full == true);
-  CHECK(cell_offsets[1] == 3);
-  CHECK(result_tiles_size == 1);
-  CHECK(var_buffer_size == 6);
-
-  // Clean up.
-  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
-  tiledb_array_free(&array);
-}
-
-TEST_CASE_METHOD(
-    CSparseUnorderedWithDupsVarDataFx,
-    "Sparse unordered with dups reader: test compute_var_size_offsets count "
-    "bitmap",
-    "[sparse-unordered-with-dups][compute_var_size_offsets][count-bitmap]") {
-  auto&& [array, fragments] = open_default_array_1d_with_fragments();
-
-  // Make a vector of tiles.
-  UnorderedWithDupsResultTile<uint64_t> result_tile(
-      0, 0, array->array_->array_schema_latest());
-  std::vector<UnorderedWithDupsResultTile<uint64_t>> rt;
-  rt.push_back(std::move(result_tile));
-  rt[0].bitmap_.resize(5);
-  rt[0].bitmap_ = {0, 1, 2, 0, 2};
-
-  // Create the result_tiles pointer vector.
-  std::vector<ResultTile*> result_tiles(rt.size());
-  for (uint64_t i = 0; i < rt.size(); i++) {
-    result_tiles[i] = &rt[i];
+    capacity = 5;
+    num_tiles = 1;
+    first_tile_min_pos = 0;
+    offsets_buffer = {2, 2, 2, 0, 0};
+    cell_offsets = {0, 3};
+    expected_buffers_full = true;
+    expected_cell_offsets = {0, 2};
+    expected_result_tiles_size = 1;
+    expected_var_buffer_size = 4;
   }
 
-  // Create the cell_offsets vector.
-  std::vector<uint64_t> cell_offsets(rt.size() + 1);
-  uint64_t offset = 0;
-  for (uint64_t i = 0; i < rt.size(); i++) {
-    cell_offsets[i] = offset;
-    offset += 5;
-  }
-  cell_offsets[rt.size()] = offset;
+  SECTION("No empty tile") {
+    var_buffer_size = 11;
 
-  // Create a Query buffer.
-  tiledb::sm::QueryBuffer query_buffer;
-  uint64_t offsets[] = {2, 2, 2, 2, 2};
-  uint64_t offsets_size = sizeof(offsets);
-  query_buffer.buffer_ = offsets;
-  query_buffer.buffer_size_ = &offsets_size;
-  uint64_t buffer_var_size = 0;
-  query_buffer.buffer_var_size_ = &buffer_var_size;
-  query_buffer.original_buffer_var_size_ = 6;
+    SECTION("- No bitmap") {
+      bitmaps = {{}, {}};
+    }
 
-  // Call the function.
-  auto&& [buffers_full, var_buffer_size, result_tiles_size] =
-      SparseUnorderedWithDupsReader<uint64_t>::compute_var_size_offsets<
-          uint64_t>(
-          &tiledb::test::g_helper_stats,
-          result_tiles,
-          0,
-          cell_offsets,
-          query_buffer);
+    SECTION("- With bitmap") {
+      bitmaps = {{1, 1, 1, 1, 1}, {1, 1, 1, 1, 1}};
+    }
 
-  // Validate results.
-  CHECK(buffers_full == true);
-  CHECK(cell_offsets[1] == 3);
-  CHECK(result_tiles_size == 1);
-  CHECK(var_buffer_size == 6);
-
-  // Clean up.
-  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
-  tiledb_array_free(&array);
-}
-
-TEST_CASE_METHOD(
-    CSparseUnorderedWithDupsVarDataFx,
-    "Sparse unordered with dups reader: test compute_var_size_offsets "
-    "continuation",
-    "[sparse-unordered-with-dups][compute_var_size_offsets][continuation]") {
-  auto&& [array, fragments] = open_default_array_1d_with_fragments();
-
-  // Make a vector of tiles.
-  UnorderedWithDupsResultTile<uint64_t> result_tile(
-      0, 0, array->array_->array_schema_latest());
-  std::vector<UnorderedWithDupsResultTile<uint64_t>> rt;
-  rt.push_back(std::move(result_tile));
-
-  SECTION("- No bitmap") {
+    capacity = 5;
+    num_tiles = 2;
+    first_tile_min_pos = 0;
+    offsets_buffer = {2, 2, 2, 2, 2, 2, 2, 2, 2, 2};
+    cell_offsets = {0, 5, 10};
+    expected_buffers_full = true;
+    expected_cell_offsets = {0, 5, 5};
+    expected_result_tiles_size = 1;
+    expected_var_buffer_size = 10;
   }
 
-  SECTION("- With bitmap") {
-    rt[0].bitmap_.resize(5, 1);
+  SECTION("Complex") {
+    var_buffer_size = 15;
+    bitmaps = {{1, 0, 1, 0, 1, 0, 1, 0, 1, 0}, {0, 1, 0, 1, 0, 1, 0, 1, 0, 1}};
+    capacity = 10;
+    num_tiles = 2;
+    first_tile_min_pos = 2;
+    offsets_buffer = {2, 2, 2, 2, 2, 2, 2, 2, 2};
+    cell_offsets = {0, 4, 9};
+    expected_buffers_full = true;
+    expected_cell_offsets = {0, 4, 7};
+    expected_result_tiles_size = 2;
+    expected_var_buffer_size = 14;
   }
 
-  // Create the result_tiles pointer vector.
-  std::vector<ResultTile*> result_tiles(rt.size());
-  for (uint64_t i = 0; i < rt.size(); i++) {
-    result_tiles[i] = &rt[i];
-  }
-
-  // Create the cell_offsets vector.
-  std::vector<uint64_t> cell_offsets(rt.size() + 1);
-  uint64_t offset = 0;
-  for (uint64_t i = 0; i < rt.size(); i++) {
-    cell_offsets[i] = offset;
-    offset += 3;
-  }
-  cell_offsets[rt.size()] = offset;
-
-  // Create a Query buffer.
-  tiledb::sm::QueryBuffer query_buffer;
-  uint64_t offsets[] = {2, 2, 2, 0, 0};
-  uint64_t offsets_size = sizeof(offsets);
-  query_buffer.buffer_ = offsets;
-  query_buffer.buffer_size_ = &offsets_size;
-  uint64_t buffer_var_size = 0;
-  query_buffer.buffer_var_size_ = &buffer_var_size;
-  query_buffer.original_buffer_var_size_ = 5;
-
-  // Call the function.
-  auto&& [buffers_full, var_buffer_size, result_tiles_size] =
-      SparseUnorderedWithDupsReader<uint64_t>::compute_var_size_offsets<
-          uint64_t>(
-          &tiledb::test::g_helper_stats,
-          result_tiles,
-          2,
-          cell_offsets,
-          query_buffer);
-
-  // Validate results.
-  CHECK(buffers_full == true);
-  CHECK(cell_offsets[1] == 2);
-  CHECK(result_tiles_size == 1);
-  CHECK(var_buffer_size == 4);
-
-  // Clean up.
-  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
-  tiledb_array_free(&array);
-}
-
-TEST_CASE_METHOD(
-    CSparseUnorderedWithDupsVarDataFx,
-    "Sparse unordered with dups reader: test compute_var_size_offsets "
-    "last cell",
-    "[sparse-unordered-with-dups][compute_var_size_offsets][last cell]") {
-  auto&& [array, fragments] = open_default_array_1d_with_fragments();
-
-  // Make a vector of tiles.
-  UnorderedWithDupsResultTile<uint64_t> result_tile(
-      0, 0, array->array_->array_schema_latest());
-  std::vector<UnorderedWithDupsResultTile<uint64_t>> rt;
-  rt.push_back(std::move(result_tile));
-
-  SECTION("- No bitmap") {
-  }
-
-  SECTION("- With bitmap") {
-    rt[0].bitmap_.resize(5, 1);
-  }
-
-  // Create the result_tiles pointer vector.
-  std::vector<ResultTile*> result_tiles(rt.size());
-  for (uint64_t i = 0; i < rt.size(); i++) {
-    result_tiles[i] = &rt[i];
-  }
-
-  // Create the cell_offsets vector.
-  std::vector<uint64_t> cell_offsets(rt.size() + 1);
-  uint64_t offset = 0;
-  for (uint64_t i = 0; i < rt.size(); i++) {
-    cell_offsets[i] = offset;
-    offset += 3;
-  }
-  cell_offsets[rt.size()] = offset;
-
-  // Create a Query buffer.
-  tiledb::sm::QueryBuffer query_buffer;
-  uint64_t offsets[] = {2, 2, 2, 0, 0};
-  uint64_t offsets_size = sizeof(offsets);
-  query_buffer.buffer_ = offsets;
-  query_buffer.buffer_size_ = &offsets_size;
-  uint64_t buffer_var_size = 0;
-  query_buffer.buffer_var_size_ = &buffer_var_size;
-  query_buffer.original_buffer_var_size_ = 5;
-
-  // Call the function.
-  auto&& [buffers_full, var_buffer_size, result_tiles_size] =
-      SparseUnorderedWithDupsReader<uint64_t>::compute_var_size_offsets<
-          uint64_t>(
-          &tiledb::test::g_helper_stats,
-          result_tiles,
-          0,
-          cell_offsets,
-          query_buffer);
-
-  // Validate results.
-  CHECK(buffers_full == true);
-  CHECK(cell_offsets[1] == 2);
-  CHECK(result_tiles_size == 1);
-  CHECK(var_buffer_size == 4);
-
-  // Clean up.
-  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
-  tiledb_array_free(&array);
+  compute_var_size_offsets_test(
+      var_buffer_size,
+      bitmaps,
+      capacity,
+      num_tiles,
+      first_tile_min_pos,
+      offsets_buffer,
+      cell_offsets,
+      expected_buffers_full,
+      expected_cell_offsets,
+      expected_result_tiles_size,
+      expected_var_buffer_size);
 }
 
 TEST_CASE_METHOD(

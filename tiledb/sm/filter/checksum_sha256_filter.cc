@@ -250,14 +250,17 @@ Status ChecksumSHA256Filter::compare_checksum_part(
         reinterpret_cast<unsigned char*>(computed_hash->data());
     char shastring[65];
     for (uint64_t i = 0; i < computed_hash->alloced_size(); ++i) {
-      sprintf(&shastring[i * 2], "%02x", (unsigned int)digest[i]);
+      snprintf(&shastring[i * 2], 3, "%02x", (unsigned int)digest[i]);
     }
 
     unsigned char* existing_digest = reinterpret_cast<unsigned char*>(checksum);
     char shastring_existing[65];
     for (uint64_t i = 0; i < Crypto::SHA256_DIGEST_BYTES; ++i) {
-      sprintf(
-          &shastring_existing[i * 2], "%02x", (unsigned int)existing_digest[i]);
+      snprintf(
+          &shastring_existing[i * 2],
+          3,
+          "%02x",
+          (unsigned int)existing_digest[i]);
     }
 
     std::stringstream message;
