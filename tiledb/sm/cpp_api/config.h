@@ -506,9 +506,7 @@ class Config {
    *    Set the Azure Storage Account key. <br>
    *    **Default**: ""
    * - `vfs.azure.blob_endpoint` <br>
-   *    Overrides the default Azure Storage Blob endpoint. If empty, the
-   *    endpoint will be constructed from the storage account name. This
-   *    should not include an http:// or https:// prefix. <br>
+   *    Set the default Azure Storage Blob endpoint. <br>
    *    **Default**: ""
    * - `vfs.azure.block_list_block_size` <br>
    *    The block size (in bytes) used in Azure blob block list writes.
