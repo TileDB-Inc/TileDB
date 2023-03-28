@@ -113,7 +113,7 @@ const std::string Config::SM_QUERY_SPARSE_GLOBAL_ORDER_READER = "refactored";
 const std::string Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER =
     "refactored";
 const std::string Config::SM_MEM_MALLOC_TRIM = "true";
-const std::string Config::SM_UPPER_MEMORY_LIMIT = "2147483648";  // 2GB
+const std::string Config::SM_UPPER_MEMORY_LIMIT = "1073741824";  // 1GB
 const std::string Config::SM_MEM_TOTAL_BUDGET = "10737418240";   // 10GB
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS = "0.5";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES = "0.1";

@@ -417,13 +417,14 @@ class Config {
    * - `sm.mem.tile_upper_memory_limit` <br>
    *    **Experimental** <br>
    *    This is the upper memory limit that is used when loading tiles. For now
-   *    it is only used in the dense reader and sparse unordered with duplicates
-   *    reader but will be eventually used by all readers. The readers using
-   *    this value will use it as a way to limit the amount of tile data that is
-   *    brought into memory at once so that we don't incur performance penalties
-   *    during memory movement operations. It is a soft limit that we might go
-   *    over if a single tile doesn't fit into memory, we will allow to load
-   *    that tile if it still fits within `sm.mem.total_budget`. <br>
+   *    it is only used in the dense reader but will be eventually used by all
+   *    readers. The readers using this value will use it as a way to limit the
+   *    amount of tile data that is brought into memory at once so that we don't
+   *    incur performance penalties during memory movement operations. It is a
+   *    soft limit that we might go over if a single tile doesn't fit into
+   *    memory, we will allow to load that tile if it still fits within
+   *    `sm.mem.total_budget`. <br>
+   *    **Default**: 1GB
    * - `sm.mem.total_budget` <br>
    *    Memory budget for readers and writers. <br>
    *    **Default**: 10GB
