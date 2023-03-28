@@ -569,9 +569,6 @@ class ResultTileWithBitmap : public ResultTile {
    */
   uint64_t pos_with_given_result_sum(
       uint64_t start_pos, uint64_t result_num) const {
-    assert(
-        bitmap_result_num_ != std::numeric_limits<uint64_t>::max() &&
-        result_num != 0);
     if (bitmap_.size() == 0)
       return start_pos + result_num - 1;
 
