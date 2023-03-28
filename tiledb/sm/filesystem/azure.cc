@@ -84,28 +84,24 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   thread_pool_ = thread_pool;
 
   bool found;
-  char* tmp = NULL;
+  char* tmp = nullptr;
 
   std::string account_name =
       config.get("vfs.azure.storage_account_name", &found);
   assert(found);
   if (account_name.empty() &&
-      ((tmp = getenv("AZURE_STORAGE_ACCOUNT")) != NULL)) {
+      ((tmp = getenv("AZURE_STORAGE_ACCOUNT")) != nullptr)) {
     account_name = std::string(tmp);
   }
 
   std::string account_key = config.get("vfs.azure.storage_account_key", &found);
   assert(found);
-  if (account_key.empty() && ((tmp = getenv("AZURE_STORAGE_KEY")) != NULL)) {
+  if (account_key.empty() && ((tmp = getenv("AZURE_STORAGE_KEY")) != nullptr)) {
     account_key = std::string(tmp);
   }
 
-  std::string sas_token = config.get("vfs.azure.storage_sas_token", &found);
-  if (sas_token.empty() &&
-      ((tmp = getenv("AZURE_STORAGE_SAS_TOKEN")) != NULL)) {
-    sas_token = std::string(tmp);
-  }
-  if (!sas_token.empty()) {
+  if (!config.get("vfs.azure.storage_sas_token", &found).empty() ||
+      getenv("AZURE_STORAGTE_SAS_TOKEN") != nullptr) {
     LOG_WARN(
         "The 'vfs.azure.storage_sas_token' option is deprecated and unused. "
         "Make sure the 'vfs.azure.blob_endpoint' property has the SAS token "
@@ -115,8 +111,8 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   std::string blob_endpoint = config.get("vfs.azure.blob_endpoint", &found);
   assert(found);
   if (blob_endpoint.empty() &&
-      ((tmp = getenv("AZURE_BLOB_ENDPOINT")) != NULL)) {
-    blob_endpoint = std::string(temp);
+      ((tmp = getenv("AZURE_BLOB_ENDPOINT")) != nullptr)) {
+    blob_endpoint = std::string(tmp);
   }
   if (blob_endpoint.empty()) {
     LOG_WARN("The 'vfs.azure.blob_endpoint' option is not specified.");
