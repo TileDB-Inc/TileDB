@@ -189,6 +189,13 @@ set(TILEDB_EXPERIMENTAL_BASE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/experimental")
 # Perform superbuild config and exit.
 if (TILEDB_SUPERBUILD)
   project(TileDB-Superbuild)
+
+  # Override default install prefix if not set
+  if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    message(STATUS "Setting CMAKE_INSTALL_PREFIX to: '${PROJECT_BINARY_DIR}/dist'")
+    set(CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/dist" CACHE PATH "..." FORCE)
+  endif()
+
   message(STATUS "Starting TileDB superbuild.")
   include("cmake/TileDB-Superbuild.cmake")
   message(STATUS "Install prefix is ${CMAKE_INSTALL_PREFIX}")
