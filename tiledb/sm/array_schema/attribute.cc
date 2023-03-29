@@ -329,14 +329,7 @@ void Attribute::set_nullable(const bool nullable) {
 }
 
 void Attribute::set_filter_pipeline(const FilterPipeline& pipeline) {
-  for (unsigned i = 0; i < pipeline.size(); ++i) {
-    if (datatype_is_real(type_) &&
-        pipeline.get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
-      throw AttributeStatusException(
-          "Cannot set DOUBLE DELTA filter to an attribute with a real "
-          "datatype");
-  }
-
+  // TODO: move this in to FilterPipeline::check_filter_types
   if ((type_ == Datatype::STRING_ASCII || type_ == Datatype::STRING_UTF8) &&
       var_size() && pipeline.size() > 1) {
     if (pipeline.has_filter(FilterType::FILTER_RLE) &&
@@ -352,6 +345,8 @@ void Attribute::set_filter_pipeline(const FilterPipeline& pipeline) {
           "variable length string attribute");
     }
   }
+
+  FilterPipeline::check_filter_types(pipeline, type_);
 
   filters_ = pipeline;
 }

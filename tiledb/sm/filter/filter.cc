@@ -30,10 +30,13 @@
  * This file defines class Filter.
  */
 
-#include "filter.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/enums/filter_type.h"
+
+#include "filter.h"
 
 using namespace tiledb::common;
 
@@ -48,6 +51,32 @@ Filter* Filter::clone() const {
   // Call subclass-specific clone function
   auto clone = clone_impl();
   return clone;
+}
+
+bool Filter::accepts_datatype(Datatype) const {
+  return true;
+};
+
+void Filter::ensure_compatible_output(const Filter& filter) const {
+  if (filter.type() == FilterType::FILTER_NONE)
+    return;
+
+  this->ensure_accepts_datatype(filter.output_datatype());
+}
+
+Datatype Filter::output_datatype() const {
+  return Datatype::ANY;
+}
+
+void Filter::ensure_accepts_datatype(Datatype datatype) const {
+  if (this->type() == FilterType::FILTER_NONE)
+    return;
+
+  if (!this->accepts_datatype(datatype)) {
+    throw Status_FilterError(
+        "Filter " + filter_type_str(this->type()) +
+        " does not accept input type " + datatype_str(datatype));
+  };
 }
 
 Status Filter::get_option(FilterOption option, void* value) const {

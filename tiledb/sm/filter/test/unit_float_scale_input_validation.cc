@@ -37,6 +37,7 @@
 #include "../../../common/common.h"
 #include "../../enums/filter_option.h"
 #include "../float_scaling_filter.h"
+#include "../typed_view_filter.h"
 
 using namespace tiledb::sm;
 
@@ -93,4 +94,14 @@ TEST_CASE(
   check_ok(FilterOption::SCALE_FLOAT_OFFSET, &zero_example);
   check_ok(FilterOption::SCALE_FLOAT_OFFSET, &subnormal_example);
   check_ok(FilterOption::SCALE_FLOAT_OFFSET, &normal_example);
+}
+
+TEST_CASE(
+    "Float scaling filter input validation, datatype",
+    "[filter][float-scaling][datatype-validation]") {
+  // Create a typed view filter with float32 output data type
+  TypedViewFilter typed_view_filter;
+  Datatype t = Datatype::FLOAT32;
+  Status status = typed_view_filter.set_option(
+      FilterOption::TYPED_VIEW_OUTPUT_DATATYPE, &t);
 }

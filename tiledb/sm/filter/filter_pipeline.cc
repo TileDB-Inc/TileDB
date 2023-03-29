@@ -94,6 +94,47 @@ void FilterPipeline::clear() {
   filters_.clear();
 }
 
+/*
+void ensure_compatible(const Filter& first, const Filter& second) {
+  auto first_output_type = first.output_type();
+  if (!second.accepts_input_type(first_output_type)) {
+    throw std::runtime_error(
+        "Filter " + std::to_string(first.type()) + " produces " +
+        std::to_string(first_output_type) + " but second filter " +
+        std::to_string(second.type()) + " does not accept this type.");
+  }
+};
+*/
+
+void FilterPipeline::check_filter_types(
+    const FilterPipeline& pipeline, const Datatype first_input_type) {
+  (void)pipeline;
+
+  // ** Legacy checks for compatibility **
+  /*
+  for (unsigned i = 0; i < pipeline.size(); ++i) {
+    if (datatype_is_real(type_) &&
+        pipeline.get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
+      throw AttributeStatusException(
+          "Cannot set DOUBLE DELTA filter to an attribute with a real "
+          "datatype");
+  }
+  */
+
+  // TODO: move checks from attribute, dim, schema to here.
+
+  // ** Modern checks using Filter output type **
+  for (unsigned i = 0; i < pipeline.size(); ++i) {
+    auto filter = pipeline.get_filter(i);
+    if (i == 0) {
+      filter->ensure_accepts_datatype(first_input_type);
+    } else {
+      filter->ensure_accepts_datatype(
+          pipeline.get_filter(i - 1)->output_datatype());
+    }
+  }
+}
+
 tuple<Status, optional<std::vector<uint64_t>>>
 FilterPipeline::get_var_chunk_sizes(
     uint32_t chunk_size,

@@ -37,6 +37,11 @@ commence(unit_test filter_pipeline)
 conclude(unit_test)
 
 commence(unit_test float_scale_input_val)
-    this_target_object_libraries(float_scaling_filter)
+    this_target_object_libraries(float_scaling_filter typed_view_filter)
     this_target_sources(main.cc unit_float_scale_input_validation.cc)
+conclude(unit_test)
+
+commence(unit_test typed_view)
+    this_target_object_libraries(typed_view_filter)
+    this_target_sources(main.cc unit_typed_view.cc)
 conclude(unit_test)

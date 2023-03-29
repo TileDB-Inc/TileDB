@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2021-2022 TileDB, Inc.
+# Copyright (c) 2021-2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -144,6 +144,14 @@ commence(object_library webp_filter)
 conclude(object_library)
 
 #
+# `typed_view_filter` object library
+#
+commence(object_library typed_view_filter)
+    this_target_sources(typed_view_filter.cc)
+    this_target_object_libraries(filter)
+conclude(object_library)
+
+#
 # Test-compile of object library ensures link-completeness.
 #
 #add_executable(compile_webp_filter EXCLUDE_FROM_ALL)
@@ -158,7 +166,7 @@ commence(object_library all_filters)
         bit_width_reduction_filter.cc noop_filter.cc positive_delta_filter.cc)
     this_target_object_libraries(bitshuffle_filter byteshuffle_filter
         checksum_filters compression_filter encryption_filters float_scaling_filter
-        xor_filter webp_filter)
+        xor_filter webp_filter typed_view_filter)
 conclude(object_library)
 
 #

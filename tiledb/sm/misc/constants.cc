@@ -407,6 +407,9 @@ const std::string filter_xor_str = "XOR";
 /** String describing FILTER_WEBP. */
 const std::string filter_webp_str = "WEBP";
 
+/** String describing FILTER_TYPED_VIEW. */
+const std::string filter_typed_view_str = "TYPED_VIEW";
+
 /** The string representation for FilterOption type compression_level. */
 const std::string filter_option_compression_level_str = "COMPRESSION_LEVEL";
 
@@ -436,6 +439,10 @@ const std::string filter_option_webp_input_format = "WEBP_INPUT_FORMAT";
 
 /** The string representation for FilterOption type webp_lossless. */
 const std::string filter_option_webp_lossless = "WEBP_LOSSLESS";
+
+/** The string representation for FilterOption type webp_input_format. */
+const std::string filter_option_typed_view_output_type =
+    "TYPED_VIEW_OUTPUT_TYPE";
 
 /** The string representation for type int32. */
 const std::string int32_str = "INT32";

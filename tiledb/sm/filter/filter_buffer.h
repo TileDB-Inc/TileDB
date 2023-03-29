@@ -41,6 +41,7 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/enums/datatype.h"
 
 using namespace tiledb::common;
 
@@ -221,6 +222,9 @@ class FilterBuffer {
   /** Set the read-only state to the given value. */
   void set_read_only(bool read_only);
 
+  /** Set the data type of the contained data */
+  void set_data_type(Datatype t);
+
   /** Return the total size of all underlying buffers. */
   uint64_t size() const;
 
@@ -357,6 +361,12 @@ class FilterBuffer {
    * is set.
    */
   bool fixed_allocation_op_allowed_;
+
+  /**
+   * @brief Data type of contained data.
+   *
+   */
+  Datatype data_type_;
 
   /** Current global offset. */
   uint64_t offset_;

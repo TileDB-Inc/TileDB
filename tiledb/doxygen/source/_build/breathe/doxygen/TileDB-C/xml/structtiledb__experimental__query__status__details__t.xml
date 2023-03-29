@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.4" xml:lang="en-US">
+  <compounddef id="structtiledb__experimental__query__status__details__t" kind="struct" language="C++" prot="public">
+    <compoundname>tiledb_experimental_query_status_details_t</compoundname>
+    <includes refid="tiledb__experimental_8h" local="no">tiledb_experimental.h</includes>
+      <sectiondef kind="public-attrib">
+      <memberdef kind="variable" id="structtiledb__experimental__query__status__details__t_1a9c40dddc109602fc0e40dfa748d6069b" prot="public" static="no" mutable="no">
+        <type>tiledb_query_status_details_reason_t</type>
+        <definition>tiledb_query_status_details_reason_t tiledb_experimental_query_status_details_t::incomplete_reason</definition>
+        <argsstring></argsstring>
+        <name>incomplete_reason</name>
+        <qualifiedname>tiledb_experimental_query_status_details_t::incomplete_reason</qualifiedname>
+        <briefdescription>
+<para>Reason enum for the incomplete query. </para>
+        </briefdescription>
+        <detaileddescription>
+        </detaileddescription>
+        <inbodydescription>
+        </inbodydescription>
+        <location file="/Users/inorton/work/git/TileDB/tiledb/sm/c_api/tiledb_experimental.h" line="374" column="7" bodyfile="/Users/inorton/work/git/TileDB/tiledb/sm/c_api/tiledb_experimental.h" bodystart="374" bodyend="-1"/>
+      </memberdef>
+      </sectiondef>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+<para>This should move to c_api/tiledb_struct_defs.h when stabilized </para>
+    </detaileddescription>
+    <location file="/Users/inorton/work/git/TileDB/tiledb/sm/c_api/tiledb_experimental.h" line="372" column="1" bodyfile="/Users/inorton/work/git/TileDB/tiledb/sm/c_api/tiledb_experimental.h" bodystart="372" bodyend="375"/>
+    <listofallmembers>
+      <member refid="structtiledb__experimental__query__status__details__t_1a9c40dddc109602fc0e40dfa748d6069b" prot="public" virt="non-virtual"><scope>tiledb_experimental_query_status_details_t</scope><name>incomplete_reason</name></member>
+    </listofallmembers>
+  </compounddef>
+</doxygen>

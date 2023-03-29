@@ -82,6 +82,16 @@ class CompressionFilter : public Filter {
    * Constructor.
    *
    * @param compressor Compressor to use
+   * @param version Format version
+   */
+  CompressionFilter(
+      FilterType compressor,
+      const format_version_t version = constants::format_version);
+
+  /**
+   * Constructor.
+   *
+   * @param compressor Compressor to use
    * @param level Compression level to use
    * @param version Format version
    */
@@ -110,6 +120,9 @@ class CompressionFilter : public Filter {
 
   /** Dumps the filter details in ASCII format in the selected output. */
   void dump(FILE* out) const override;
+
+  /** Return whether the compression filter accepts given Datatype */
+  bool accepts_datatype(Datatype type) const override;
 
   /**
    * Compress the given input into the given output.

@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.4" xml:lang="en-US">
+  <compounddef id="dir_bc0f242c85b520934b5dba85c72d6af4" kind="dir">
+    <compoundname>/Users/inorton/work/git/TileDB/tiledb/sm</compoundname>
+    <innerdir refid="dir_e69a479053b1704b446a3b5dbd0aba5f">/Users/inorton/work/git/TileDB/tiledb/sm/cpp_api</innerdir>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <location file="/Users/inorton/work/git/TileDB/tiledb/sm/"/>
+  </compounddef>
+</doxygen>

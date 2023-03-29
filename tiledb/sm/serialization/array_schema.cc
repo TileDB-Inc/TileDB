@@ -61,6 +61,7 @@
 #include "tiledb/sm/filter/float_scaling_filter.h"
 #include "tiledb/sm/filter/noop_filter.h"
 #include "tiledb/sm/filter/positive_delta_filter.h"
+#include "tiledb/sm/filter/typed_view_filter.h"
 #include "tiledb/sm/filter/webp_filter.h"
 #include "tiledb/sm/filter/xor_filter.h"
 #include "tiledb/sm/misc/constants.h"
@@ -144,6 +145,14 @@ Status filter_to_capnp(
       webpConfig.setLossless(lossless);
       webpConfig.setExtentX(extents.first);
       webpConfig.setExtentY(extents.second);
+      break;
+    }
+    case FilterType::FILTER_TYPED_VIEW: {
+      int32_t type;
+      RETURN_NOT_OK(
+          filter->get_option(FilterOption::TYPED_VIEW_OUTPUT_DATATYPE, &type));
+      auto data = filter_builder->initData();
+      data.setInt32(type);
       break;
     }
     case FilterType::FILTER_NONE:
@@ -259,6 +268,15 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
     }
     case FilterType::FILTER_XOR: {
       return {Status::Ok(), tiledb::common::make_shared<XORFilter>(HERE())};
+    }
+    case FilterType::FILTER_TYPED_VIEW: {
+      auto data = filter_reader.getData();
+      Datatype output_type((Datatype)data.getInt32());
+      ensure_datatype_is_valid(output_type);
+      return {
+          Status::Ok(),
+          tiledb::common::make_shared<TypedViewFilter>(
+              HERE(), std::make_optional(output_type))};
     }
     case FilterType::FILTER_WEBP: {
       if constexpr (webp_filter_exists) {

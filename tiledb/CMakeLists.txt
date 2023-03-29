@@ -203,6 +203,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_storage.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/float_scaling_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/xor_filter.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/typed_view_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/webp_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/noop_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/positive_delta_filter.cc

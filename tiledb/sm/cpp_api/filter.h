@@ -287,6 +287,8 @@ class Filter {
         return "WEBP";
       case TILEDB_FILTER_DELTA:
         return "DELTA";
+      case TILEDB_FILTER_TYPED_VIEW:
+        return "TYPED_VIEW";
     }
     return "";
   }

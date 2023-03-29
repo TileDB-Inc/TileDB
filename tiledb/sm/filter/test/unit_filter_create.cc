@@ -460,3 +460,71 @@ TEST_CASE("Filter: Test WEBP filter deserialization", "[filter][webp]") {
     CHECK(x0 == extents.second);
   }
 }
+
+TEST_CASE("Filter: Test input type checks", "[filter][input-type]") {
+  auto filtertype =
+      GENERATE(/*FilterType::FILTER_DELTA,TODO*/
+               FilterType::FILTER_DOUBLE_DELTA
+               /* FilterType::FILTER_POSITIVE_DELTA why is this separate?*/
+      );
+
+  CompressionFilter f{filtertype};
+
+  auto int_type = GENERATE(
+      Datatype::INT8,
+      Datatype::INT16,
+      Datatype::INT32,
+      Datatype::INT64,
+      Datatype::UINT8,
+      Datatype::UINT16);
+  f.ensure_accepts_datatype(int_type);
+
+  auto float_type = GENERATE(Datatype::FLOAT32, Datatype::FLOAT64);
+  REQUIRE_THROWS_WITH(
+      f.ensure_accepts_datatype(float_type),
+      Catch::Matchers::ContainsSubstring(
+          "Cannot use delta filter on floating point input."));
+}
+
+TEST_CASE("Filter: Test output types", "[filter][input-type]") {
+  auto filter_type_str = GENERATE(
+      as<std::string>{},
+      "NONE",
+      "BITSHUFFLE",
+      "BYTESHUFFLE",
+      "XOR",
+      "WEBP",
+      "GZIP",
+      "ZSTD",
+      "LZ4",
+      "RLE",
+      "BZIP2");
+
+  FilterType filter_type;
+  throw_if_not_ok(filter_type_enum(filter_type_str, &filter_type));
+
+  std::shared_ptr<Filter> f{FilterCreate::make(filter_type)};
+
+  CHECK(f->output_datatype() == Datatype::ANY);
+}
+
+TEST_CASE(
+    "Filter: Test floatscale filter output type", "[filter][input-type]") {
+  // TODO
+  // DICTIONARY_ENCODING
+  // CHECKSUM_MD5, CHECKSUM_SHA256
+  // "NO_COMPRESSION", what is difference w/ NONE?
+
+  size_t byte_width;
+  Datatype output_type;
+  std::tie(byte_width, output_type) = GENERATE(
+      table<size_t, Datatype>({{4, Datatype::INT32}, {8, Datatype::INT64}}));
+
+  auto filter_type = FilterType::FILTER_SCALE_FLOAT;
+
+  std::shared_ptr<Filter> f{FilterCreate::make(filter_type)};
+  throw_if_not_ok(
+      f->set_option(FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width));
+
+  CHECK(f->output_datatype() == output_type);
+}

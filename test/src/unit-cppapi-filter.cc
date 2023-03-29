@@ -832,3 +832,86 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
+
+TEST_CASE("C++ API: Filter lists on array", "[cppapi][filter][typed-view]") {
+  using namespace tiledb;
+  Context ctx;
+  VFS vfs(ctx);
+  std::string array_name = "cpp_unit_array";
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create schema with filter lists
+  FilterList a1_filters(ctx);
+  a1_filters.set_max_chunk_size(10000);
+  Filter f1{ctx, TILEDB_FILTER_TYPED_VIEW};
+  a1_filters.add_filter(f1);
+
+  auto a1 = Attribute::create<int>(ctx, "a1");
+  a1.set_filter_list(a1_filters);
+
+  Domain domain(ctx);
+  auto d1 = Dimension::create<int>(ctx, "d1", {{0, 100}}, 10);
+  domain.add_dimensions(d1);
+
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain);
+  schema.add_attributes(a1);
+
+  // Create array
+  Array::create(array_name, schema);
+
+  // Write to array
+  std::vector<double> a1_data = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  std::vector<int> coords = {0, 10, 20, 30, 31, 32, 33, 34, 40, 50};
+  Array array(ctx, array_name, TILEDB_WRITE);
+  Query query(ctx, array);
+  query.set_data_buffer("a1", a1_data)
+      .set_coordinates(coords)
+      .set_layout(TILEDB_UNORDERED);
+  REQUIRE(query.submit() == Query::Status::COMPLETE);
+  array.close();
+
+  /*
+    // Sanity check reading
+    array.open(TILEDB_READ);
+    std::vector<int> subarray = {0, 10, 0, 10};
+    std::vector<int> a1_read(2);
+    std::vector<uint64_t> a2_read_off(2);
+    std::string a2_read_data;
+    a2_read_data.resize(7);
+    Query query_r(ctx, array);
+    query_r.set_subarray(subarray)
+        .set_layout(TILEDB_ROW_MAJOR)
+        .set_data_buffer("a1", a1_read)
+        .set_data_buffer("a2", a2_read_data)
+        .set_offsets_buffer("a2", a2_read_off);
+    REQUIRE(query_r.submit() == Query::Status::COMPLETE);
+    array.close();
+    auto ret = query_r.result_buffer_elements();
+    REQUIRE(ret.size() == 2);
+    REQUIRE(ret["a1"].first == 0);
+    REQUIRE(ret["a1"].second == 2);
+    REQUIRE(ret["a2"].first == 2);
+    REQUIRE(ret["a2"].second == 7);
+    REQUIRE(a1_read[0] == 1);
+    REQUIRE(a1_read[1] == 2);
+    REQUIRE(a2_read_off[0] == 0);
+    REQUIRE(a2_read_off[1] == 3);
+    REQUIRE(a2_read_data.substr(0, 7) == "abcdefg");
+
+    // Check reading filter lists.
+    array.open(TILEDB_READ);
+    auto schema_r = array.schema();
+    check_filters(a1_filters, schema_r.coords_filter_list());
+    check_filters(offsets_filters, schema_r.offsets_filter_list());
+    check_filters(a1_filters, schema_r.attribute("a1").filter_list());
+    check_filters(a2_filters, schema_r.attribute("a2").filter_list());
+    array.close();
+
+    // Clean up
+    if (vfs.is_dir(array_name))
+      vfs.remove_dir(array_name);
+  */
+}

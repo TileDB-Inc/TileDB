@@ -1330,13 +1330,16 @@ Status Dimension::set_domain_unsafe(const void* domain) {
 }
 
 Status Dimension::set_filter_pipeline(const FilterPipeline& pipeline) {
+  /*
   for (unsigned i = 0; i < pipeline.size(); ++i) {
+    auto current_filter = pipeline.get_filter(i);
     if (datatype_is_real(type_) &&
         pipeline.get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
       return LOG_STATUS(
           Status_DimensionError("Cannot set DOUBLE DELTA filter to a "
                                 "dimension with a real datatype"));
   }
+  */
 
   if (type_ == Datatype::STRING_ASCII && var_size() && pipeline.size() > 1) {
     if (pipeline.has_filter(FilterType::FILTER_RLE) &&

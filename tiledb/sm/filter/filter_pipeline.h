@@ -100,6 +100,10 @@ class FilterPipeline {
   /** Clears the pipeline (removes all filters. */
   void clear();
 
+  /** Checks that all filters in a pipeline have compatible types */
+  static void check_filter_types(
+      const FilterPipeline& pipeline, const Datatype first_input_type);
+
   /**
    * Populates the filter pipeline from the data in the input binary buffer.
    *
@@ -115,6 +119,12 @@ class FilterPipeline {
    * output.
    */
   void dump(FILE* out) const;
+
+  /**
+   * Dumps the filter pipeline details in ASCII format in the selected
+   * output.
+   */
+  void ensure_compatible(const Filter& first, const Filter& second) const;
 
   /**
    * Returns pointer to the first instance of a filter in the pipeline with the

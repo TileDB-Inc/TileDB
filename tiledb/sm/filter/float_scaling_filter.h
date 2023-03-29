@@ -140,6 +140,9 @@ class FloatScalingFilter : public Filter {
   /** Returns a new clone of this filter. */
   FloatScalingFilter* clone_impl() const override;
 
+  /** Return the output datatype of this filter. */
+  Datatype output_datatype() const override;
+
   /**
    * Run forward, templated on the size of the input type.
    */

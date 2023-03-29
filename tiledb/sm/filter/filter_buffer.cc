@@ -98,6 +98,7 @@ FilterBuffer::FilterBuffer(FilterStorage* storage) {
   fixed_allocation_op_allowed_ = false;
   read_only_ = false;
   storage_ = storage;
+  data_type_ = Datatype::ANY;
 }
 
 Status FilterBuffer::swap(FilterBuffer& other) {
@@ -113,6 +114,7 @@ Status FilterBuffer::swap(FilterBuffer& other) {
   std::swap(fixed_allocation_op_allowed_, other.fixed_allocation_op_allowed_);
   std::swap(read_only_, other.read_only_);
   std::swap(storage_, other.storage_);
+  std::swap(data_type_, other.data_type_);
 
   return Status::Ok();
 }

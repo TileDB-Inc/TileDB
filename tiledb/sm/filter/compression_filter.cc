@@ -56,6 +56,18 @@ namespace tiledb {
 namespace sm {
 
 CompressionFilter::CompressionFilter(
+    FilterType compressor, const uint32_t version)
+    : Filter(compressor)
+    , compressor_(filter_to_compressor(compressor))
+    , level_(0)
+    , version_(version)
+    , zstd_compress_ctx_pool_(nullptr)
+    , zstd_decompress_ctx_pool_(nullptr) {
+  // TODO this implementation should probably only allow filters which don't
+  // take a level.
+}
+
+CompressionFilter::CompressionFilter(
     FilterType compressor, int level, const uint32_t version)
     : Filter(compressor)
     , compressor_(filter_to_compressor(compressor))
@@ -77,6 +89,20 @@ CompressionFilter::CompressionFilter(
 
 Compressor CompressionFilter::compressor() const {
   return compressor_;
+}
+
+bool CompressionFilter::accepts_datatype(Datatype input_type) const {
+  auto this_filter_type = compressor_to_filter(compressor_);
+
+  if (this_filter_type == FilterType::FILTER_DOUBLE_DELTA ||
+      this_filter_type == FilterType::FILTER_POSITIVE_DELTA
+      /* TODO || this_filter_type == FilterType::FILTER_DELTA */) {
+    // Delta filters do not accept floating point types.
+    if (datatype_is_real(input_type))
+      return false;
+  }
+
+  return true;
 }
 
 int CompressionFilter::compression_level() const {

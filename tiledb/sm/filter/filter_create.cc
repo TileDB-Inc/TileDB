@@ -48,6 +48,7 @@
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filter_type.h"
+#include "tiledb/sm/filter/typed_view_filter.h"
 #include "tiledb/sm/filter/webp_filter.h"
 #include "tiledb/stdx/utility/to_underlying.h"
 #include "xor_filter.h"
@@ -89,11 +90,14 @@ tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
       } else {
         throw WebpNotPresentError();
       }
+      case tiledb::sm::FilterType::FILTER_TYPED_VIEW: {
+        return tdb_new(tiledb::sm::TypedViewFilter);
+      }
+      default:
+        throw StatusException(
+            "FilterCreate",
+            "Invalid filter type " + std::to_string(stdx::to_underlying(type)));
     }
-    default:
-      throw StatusException(
-          "FilterCreate",
-          "Invalid filter type " + std::to_string(stdx::to_underlying(type)));
   }
 }
 
@@ -176,6 +180,9 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
       } else {
         throw WebpNotPresentError();
       }
+    }
+    case FilterType::FILTER_TYPED_VIEW: {
+      return make_shared<TypedViewFilter>(HERE());
     }
     default:
       throw StatusException(

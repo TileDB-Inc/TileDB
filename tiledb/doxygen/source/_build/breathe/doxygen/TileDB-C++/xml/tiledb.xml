@@ -1,0 +1,88 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygen xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="compound.xsd" version="1.9.4" xml:lang="en-US">
+  <compounddef id="tiledb" kind="file" language="C++">
+    <compoundname>tiledb</compoundname>
+    <briefdescription>
+    </briefdescription>
+    <detaileddescription>
+    </detaileddescription>
+    <programlisting>
+<codeline><highlight class="normal">/**</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>@file<sp/><sp/><sp/>tiledb</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>@author<sp/>Ravi<sp/>Gaddipati</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>@section<sp/>LICENSE</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>The<sp/>MIT<sp/>License</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>@copyright<sp/>Copyright<sp/>(c)<sp/>2017-2021<sp/>TileDB,<sp/>Inc.</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>Permission<sp/>is<sp/>hereby<sp/>granted,<sp/>free<sp/>of<sp/>charge,<sp/>to<sp/>any<sp/>person<sp/>obtaining<sp/>a<sp/>copy</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>of<sp/>this<sp/>software<sp/>and<sp/>associated<sp/>documentation<sp/>files<sp/>(the<sp/>&quot;Software&quot;),<sp/>to<sp/>deal</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>in<sp/>the<sp/>Software<sp/>without<sp/>restriction,<sp/>including<sp/>without<sp/>limitation<sp/>the<sp/>rights</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>to<sp/>use,<sp/>copy,<sp/>modify,<sp/>merge,<sp/>publish,<sp/>distribute,<sp/>sublicense,<sp/>and/or<sp/>sell</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>copies<sp/>of<sp/>the<sp/>Software,<sp/>and<sp/>to<sp/>permit<sp/>persons<sp/>to<sp/>whom<sp/>the<sp/>Software<sp/>is</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>furnished<sp/>to<sp/>do<sp/>so,<sp/>subject<sp/>to<sp/>the<sp/>following<sp/>conditions:</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>The<sp/>above<sp/>copyright<sp/>notice<sp/>and<sp/>this<sp/>permission<sp/>notice<sp/>shall<sp/>be<sp/>included<sp/>in</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>all<sp/>copies<sp/>or<sp/>substantial<sp/>portions<sp/>of<sp/>the<sp/>Software.</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>THE<sp/>SOFTWARE<sp/>IS<sp/>PROVIDED<sp/>&quot;AS<sp/>IS&quot;,<sp/>WITHOUT<sp/>WARRANTY<sp/>OF<sp/>ANY<sp/>KIND,<sp/>EXPRESS<sp/>OR</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>IMPLIED,<sp/>INCLUDING<sp/>BUT<sp/>NOT<sp/>LIMITED<sp/>TO<sp/>THE<sp/>WARRANTIES<sp/>OF<sp/>MERCHANTABILITY,</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>FITNESS<sp/>FOR<sp/>A<sp/>PARTICULAR<sp/>PURPOSE<sp/>AND<sp/>NONINFRINGEMENT.<sp/>IN<sp/>NO<sp/>EVENT<sp/>SHALL<sp/>THE</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>AUTHORS<sp/>OR<sp/>COPYRIGHT<sp/>HOLDERS<sp/>BE<sp/>LIABLE<sp/>FOR<sp/>ANY<sp/>CLAIM,<sp/>DAMAGES<sp/>OR<sp/>OTHER</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>LIABILITY,<sp/>WHETHER<sp/>IN<sp/>AN<sp/>ACTION<sp/>OF<sp/>CONTRACT,<sp/>TORT<sp/>OR<sp/>OTHERWISE,<sp/>ARISING<sp/>FROM,</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>OUT<sp/>OF<sp/>OR<sp/>IN<sp/>CONNECTION<sp/>WITH<sp/>THE<sp/>SOFTWARE<sp/>OR<sp/>THE<sp/>USE<sp/>OR<sp/>OTHER<sp/>DEALINGS<sp/>IN</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>THE<sp/>SOFTWARE.</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>@section<sp/>DESCRIPTION</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*<sp/>This<sp/>file<sp/>declares<sp/>the<sp/>C++<sp/>API<sp/>for<sp/>TileDB.</highlight></codeline>
+<codeline><highlight class="normal"><sp/>*/</highlight></codeline>
+<codeline></codeline>
+<codeline><highlight class="normal">#ifndef<sp/>TILEDB_CPP_H</highlight></codeline>
+<codeline><highlight class="normal">#define<sp/>TILEDB_CPP_H</highlight></codeline>
+<codeline></codeline>
+<codeline><highlight class="normal">#ifdef<sp/>TILEDB_NO_API_DEPRECATION_WARNINGS</highlight></codeline>
+<codeline><highlight class="normal">//<sp/>Define<sp/>these<sp/>before<sp/>including<sp/>tiledb_export.h<sp/>to<sp/>avoid<sp/>their<sp/>normal</highlight></codeline>
+<codeline><highlight class="normal">//<sp/>definitions.</highlight></codeline>
+<codeline><highlight class="normal">#ifndef<sp/>TILEDB_DEPRECATED</highlight></codeline>
+<codeline><highlight class="normal">#define<sp/>TILEDB_DEPRECATED</highlight></codeline>
+<codeline><highlight class="normal">#endif</highlight></codeline>
+<codeline><highlight class="normal">#ifndef<sp/>TILEDB_DEPRECATED_EXPORT</highlight></codeline>
+<codeline><highlight class="normal">#define<sp/>TILEDB_DEPRECATED_EXPORT</highlight></codeline>
+<codeline><highlight class="normal">#endif</highlight></codeline>
+<codeline><highlight class="normal">#endif</highlight></codeline>
+<codeline></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;array.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;array_schema.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;attribute.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;config.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;context.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;deleter.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;dimension.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;domain.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;error.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;exception.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;filter.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;filter_list.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;fragment_info.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;group.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;object.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;object_iter.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;query.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;query_condition.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;schema_base.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;stats.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;subarray.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;tiledb.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;utils.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;version.h&quot;</highlight></codeline>
+<codeline><highlight class="normal">#include<sp/>&quot;vfs.h&quot;</highlight></codeline>
+<codeline></codeline>
+<codeline><highlight class="normal">#endif<sp/><sp/>//<sp/>TILEDB_CPP_H</highlight></codeline>
+    </programlisting>
+    <location file="/Users/inorton/work/git/TileDB/tiledb/sm/cpp_api/tiledb"/>
+  </compounddef>
+</doxygen>

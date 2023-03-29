@@ -41,6 +41,7 @@
 #include "../filter_pipeline.h"
 #include "../noop_filter.h"
 #include "../positive_delta_filter.h"
+#include "../typed_view_filter.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/compressor.h"
@@ -225,4 +226,39 @@ TEST_CASE(
   CHECK_FALSE(fp_with.skip_offsets_filtering(Datatype::BLOB, version));
   CHECK_FALSE(fp_with.skip_offsets_filtering(Datatype::INT32, version));
   CHECK_FALSE(fp_with.skip_offsets_filtering(Datatype::FLOAT64, version));
+}
+
+TEST_CASE(
+    "FilterPipeline: Test filter pipeline type checks",
+    "[filter-pipeline][filter-type]") {
+  SECTION("") {
+    FilterPipeline fp;
+    fp.add_filter(CompressionFilter(Compressor::ZSTD, 2));
+    FilterPipeline::check_filter_types(fp, Datatype::INT32);
+  }
+
+  SECTION("Check double delta filter throws on float input") {
+    auto type = GENERATE(Datatype::FLOAT32, Datatype::FLOAT64);
+    FilterPipeline fp2;
+    fp2.add_filter(CompressionFilter{Compressor::DOUBLE_DELTA, 0});
+    REQUIRE_THROWS(FilterPipeline::check_filter_types(fp2, type));
+  }
+
+  SECTION(
+      "Check double delta filter does not accept typed view with incompatible "
+      "type") {
+    FilterPipeline fp;
+    fp.add_filter(TypedViewFilter(Datatype::FLOAT32));
+    fp.add_filter(CompressionFilter{Compressor::DOUBLE_DELTA, 0});
+    REQUIRE_THROWS(FilterPipeline::check_filter_types(fp, Datatype::FLOAT32));
+  }
+
+  SECTION("Check double delta filter accepts typed view with correct type") {
+    auto type = Datatype::FLOAT32;
+
+    FilterPipeline fp;
+    fp.add_filter(TypedViewFilter(Datatype::INT32));
+    fp.add_filter(CompressionFilter{Compressor::DOUBLE_DELTA, 0});
+    FilterPipeline::check_filter_types(fp, type);
+  }
 }

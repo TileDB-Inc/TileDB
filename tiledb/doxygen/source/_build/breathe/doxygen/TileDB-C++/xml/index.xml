@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<doxygenindex xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="index.xsd" version="1.9.4" xml:lang="en-US">
+  <compound refid="tiledb" kind="file"><name>tiledb</name>
+  </compound>
+  <compound refid="tiledb__experimental" kind="file"><name>tiledb_experimental</name>
+  </compound>
+  <compound refid="dir_e69a479053b1704b446a3b5dbd0aba5f" kind="dir"><name>/Users/inorton/work/git/TileDB/tiledb/sm/cpp_api</name>
+  </compound>
+  <compound refid="dir_bc0f242c85b520934b5dba85c72d6af4" kind="dir"><name>/Users/inorton/work/git/TileDB/tiledb/sm</name>
+  </compound>
+</doxygenindex>

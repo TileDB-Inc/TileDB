@@ -394,6 +394,9 @@ extern const std::string filter_xor_str;
 /** String describing FILTER_WEBP. */
 extern const std::string filter_webp_str;
 
+/** String describing FILTER_TYPED_VIEW. */
+extern const std::string filter_typed_view_str;
+
 /** The string representation for FilterOption type compression_level. */
 extern const std::string filter_option_compression_level_str;
 
