@@ -34,7 +34,7 @@ Configuration:
     --help                          print this message
     --prefix=PREFIX                 install files in tree rooted at PREFIX
                                     ['"${default_prefix}"']
-    --enable-vcpkg                  use vcpkg for downloading and building dependnecies
+    --enable-vcpkg                  use vcpkg for downloading and building dependencies
     --dependency=DIRs               specify the dependencies at DIRs, separated by colon
                                     ['"${default_dependency}"']
     --force-build-all-deps          force building of all dependencies, even those
