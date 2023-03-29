@@ -67,12 +67,6 @@ class Dictionary {
   /*                API                */
   /* ********************************* */
 
-  template<typename T>
-  std::vector<T> get_values() {
-    return std::vector<T>();
-  }
-
-  template<>
   std::vector<std::string> get_values() {
     // Assert that type() == TILEDB_STRING_UTF8?
 

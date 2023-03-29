@@ -142,7 +142,7 @@ TEST_CASE("C++ API: Dictionary read after creation", "[cppapi][dictionary]") {
   auto r_dict = r_attr.get_dictionary();
   REQUIRE(r_dict.has_value());
 
-  auto values = r_dict->get_values<std::string>();
+  auto values = r_dict->get_values();
   REQUIRE(values.size() == dict_values.size());
 
   for(size_t i = 0; i < values.size(); i++) {
