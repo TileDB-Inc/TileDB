@@ -49,7 +49,7 @@
 
 using namespace tiledb::common;
 
-TEST_CASE("mimo_node: Verify various API approaches", "[segmented_mimo]") {
+TEST_CASE("mimo_node: Verify various API approaches, tuples", "[segmented_mimo]") {
   [[maybe_unused]] mimo_node<
       AsyncMover2,
       std::tuple<size_t, int>,
@@ -83,6 +83,14 @@ TEST_CASE("mimo_node: Verify various API approaches", "[segmented_mimo]") {
   CHECK(a->num_inputs() == 5);
   CHECK(a->num_outputs() == 1);
 }
+
+
+template <class T>
+struct EmptyMover2 {
+  void operator()() {
+  }
+};
+
 
 TEST_CASE(
     "mimo_node: Verify construction with simple function", "[segmented_mimo]") {
@@ -122,26 +130,21 @@ auto mimo(std::function<void(std::tuple<R...>, std::tuple<T...>)>&& f) {
   return tmp;
 }
 
-template <class T>
-struct foo {
-  void operator()() {
-  }
-};
 
 TEST_CASE(
     "mimo_node: Verify use of (void) template arguments for producer",
     "[segmented_mimo]") {
-  mimo_node<foo, std::tuple<>, AsyncMover3, std::tuple<size_t, double>> x{
+  mimo_node<EmptyMover2, std::tuple<>, AsyncMover3, std::tuple<size_t, double>> x{
       [](std::stop_source) { return std::tuple<size_t, double>{}; }};
-  mimo_node<AsyncMover3, std::tuple<size_t, double>, foo, std::tuple<>> y{
+  mimo_node<AsyncMover3, std::tuple<size_t, double>, EmptyMover2, std::tuple<>> y{
       [](std::tuple<size_t, double>) {}};
-  mimo_node<AsyncMover3, std::tuple<char*>, foo, std::tuple<>> z{
+  mimo_node<AsyncMover3, std::tuple<char*>, EmptyMover2, std::tuple<>> z{
       [](std::tuple<char*>) {}};
 }
 
 /*
  * @note Cannot use void for SinkMover_T nor SourceMover_T, because that must be
- * a template template.  Use dummy class `foo` instead.
+ * a template template.  Use dummy class `EmptyMover` instead.
  *
  * The mimo_node includes some special casing to support these.  There
  * may be a more elegant way, given that the tuple being used (and hence the
@@ -151,11 +154,11 @@ TEST_CASE(
  */
 template <template <class> class SourceMover_T, class... BlocksOut>
 using GeneralProducerNode =
-    mimo_node<foo, std::tuple<>, SourceMover_T, BlocksOut...>;
+    mimo_node<EmptyMover2, std::tuple<>, SourceMover_T, BlocksOut...>;
 
 template <template <class> class SinkMover_T, class... BlocksIn>
 using GeneralConsumerNode =
-    mimo_node<SinkMover_T, BlocksIn..., foo, std::tuple<>>;
+    mimo_node<SinkMover_T, BlocksIn..., EmptyMover2, std::tuple<>>;
 
 TEST_CASE(
     "mimo_node: Verify use of (void) template arguments for "

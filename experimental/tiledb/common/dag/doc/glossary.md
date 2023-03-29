@@ -306,29 +306,71 @@ There are four special cases of MIMO nodes:
 Gather nodes have M inputs and one or zero outputs.
     The inputs are conjunctive.  That is, the enclosed
     coroutine is invoked  only when all inputs are available.
+The (functional) signature of a coroutine enclosed in a gather node would look like:
+```c++
+   (std::is_invocable_r_v< std::tuple<BlocksOut...>, Function, const std::tuple<BlocksIn...>&> && (sizeof(BlocksOut...) == 1)
+||  std::is_invocable_r_v< void, Function, const std::tuple<BlocksIn...>&>
+```
 
 #### Scatter Nodes
 Scatter nodes have zero or one input and M outputs.
     The outputs are conjunctive.  That is, when the
-    enclosed coroutine completes, it places the same
-    output on every output port.  [***Question:*** *the 
-    same output or *an* output?* ]
+    enclosed coroutine completes, it places one
+    output element on each output port.
+The (functional) signature of a coroutine enclosed in a scatter node would look like:
+```c++
+   (std::is_invocable_r_v< std::tuple<BlocksOut...>, Function, const std::tuple<BlocksIn...>&> && (sizeof(BlocksIn...) == 1)
+||  std::is_invocable_r_v< std::tuple<BlocksOut...>, Function, std::stop_source>
+||  std::is_invocable_r_v< std::tuple<BlocksOut...>, Function, void>
+```
+
+#### Broadcast Nodes
+Scatter nodes have zero or one input and M outputs.
+The outputs are conjunctive.  That is, when the
+enclosed coroutine completes, it places the same
+output on every output port.
+The (functional) signature of a coroutine enclosed in a scatter node would look like:
+```c++
+   (sizeof...(BlocksIn) == 1 && sizeof...(BlocksOut) == 1 
+    && std::is_invocable_r_v<std::tuple<BlocksOut...>, Function, std::tuple<BlocksIn...>>)
+|| (sizeof...(BlocksOut) == 1 
+    && std::is_invocable_r_v<std::tuple<BlocksOut...>, Function, std::stop_source>
+```
+The node enclosing the coroutine is responsible for replicating the result of the coroutine
+invocation to each of the output ports.
+
 
 #### Combiner Nodes
-Combiner nodes have M inputs and one output.
+Combiner nodes have M inputs and zero or one output.
     The inputs are disjunctive.  That is, the enclosed
     coroutine is invoked when any input is available.
     [***just one or as many are available?***  *I think it should be just one
     for the predefined case -- we can define more complicated policies later.
     Fairness?* ]
+The (functional) signature of a coroutine enclosed in a scatter node would look like:
+```c++
+     (sizeof...(BlocksOut) == 1 
+   && std::is_invocable_r_v<std::tuple<BlocksOut...>, Function, std::tuple<BlocksIn...>>)
+|| std::is_invocable_r_v<void, Function, std::tuple<BlocksIn...>>
+```
+The node enclosing the coroutine is responsible for selecting the input port that provides
+data for the coroutine invocation.
+
 
 #### Splitter Nodes
-Splitter nodes have one input and M outputs.
+Splitter nodes have zero or one input and M outputs.
     The outputs are disjunctive.  That is, when the
     enclosed coroutine completes, it places an 
     output on one of the output ports.
     [***Question:*** *Just one? Which one?  Fairness? 
     Random?  Round Robin?  Whatever is available?*]
+```c++
+     (sizeof...(BlocksIn) == 1 
+   && std::is_invocable_r_v<std::tuple<BlocksOut...>, Function, std::tuple<BlocksIn...>>)
+|| std::is_invocable_r_v<std::tuple<BlocksOut...>, Function, void>
+```
+The node enclosing the coroutine is responsible for selecting the output port to
+which the result of the coroutine invocation will be provided.
 
 
 

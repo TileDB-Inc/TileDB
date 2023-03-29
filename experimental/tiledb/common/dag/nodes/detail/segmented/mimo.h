@@ -557,6 +557,7 @@ class mimo_node_impl<
           }
         }
       }
+        [[fallthrough]];
 
       case 1: {
         ++this->program_counter_;
@@ -565,6 +566,7 @@ class mimo_node_impl<
           return drain_all();
         }
       }
+        [[fallthrough]];
 
       case 2: {
         ++this->program_counter_;
@@ -591,6 +593,7 @@ class mimo_node_impl<
           return fill_all();
         }
       }
+        [[fallthrough]];
 
       case 4: {
         ++this->program_counter_;
@@ -598,6 +601,7 @@ class mimo_node_impl<
           return push_all();
         }
       }
+        [[fallthrough]];
 
       case 5: {
         this->program_counter_ = 0;
@@ -721,7 +725,7 @@ struct Proxy {
   // MimoNode::in_value_type>; using out_value_type = typename
   // std::tuple_element_t<portnum, typename MimoNode::out_value_type>;
   MimoNode* node_ptr_;
-  Proxy(MimoNode& node)
+  explicit Proxy(MimoNode& node)
       : node_ptr_{&node} {
   }
 };
