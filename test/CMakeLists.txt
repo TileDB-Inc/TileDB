@@ -182,6 +182,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-gcs.cc
   src/unit-gs.cc
   src/unit-hdfs-filesystem.cc
+  src/unit-json-helper.cc
   src/unit-ordered-dim-label-reader.cc
   src/unit-tile-metadata.cc
   src/unit-tile-metadata-generator.cc
