@@ -40,20 +40,20 @@
 #include "experimental/tiledb/common/dag/state_machine/test/types.h"
 #include "experimental/tiledb/common/dag/utility/print_types.h"
 
-#include "experimental/tiledb/common/dag/nodes/detail/resumable/proto_mimo.h"
+#include "experimental/tiledb/common/dag/nodes/detail/resumable/mimo.h"
 
 using namespace tiledb::common;
 
 using S = tiledb::common::DuffsScheduler<node>;
-using R2_1_1 = ProtoNode<DuffsMover2, std::tuple<size_t>, DuffsMover2, std::tuple<size_t>>;
-using R2_3_1 = ProtoNode<DuffsMover2, std::tuple<size_t, int, double>, DuffsMover2, std::tuple<size_t>>;
-using R2_1_3 = ProtoNode<DuffsMover2, std::tuple<size_t>, DuffsMover2, std::tuple<size_t, double, int>>;
-using R2_3_3 = ProtoNode<DuffsMover2, std::tuple<size_t, int, double>, DuffsMover2, std::tuple<size_t, double, int>>;
+using R2_1_1 = mimo_node<DuffsMover2, std::tuple<size_t>, DuffsMover2, std::tuple<size_t>>;
+using R2_3_1 = mimo_node<DuffsMover2, std::tuple<size_t, int, double>, DuffsMover2, std::tuple<size_t>>;
+using R2_1_3 = mimo_node<DuffsMover2, std::tuple<size_t>, DuffsMover2, std::tuple<size_t, double, int>>;
+using R2_3_3 = mimo_node<DuffsMover2, std::tuple<size_t, int, double>, DuffsMover2, std::tuple<size_t, double, int>>;
 
-using R3_1_1 = ProtoNode<DuffsMover3, std::tuple<size_t>, DuffsMover3, std::tuple<size_t>>;
-using R3_3_1 = ProtoNode<DuffsMover3, std::tuple<size_t, int, double>, DuffsMover3, std::tuple<size_t>>;
-using R3_1_3 = ProtoNode<DuffsMover3, std::tuple<size_t>, DuffsMover3, std::tuple<size_t, double, int>>;
-using R3_3_3 = ProtoNode<DuffsMover3, std::tuple<size_t, int, double>, DuffsMover3, std::tuple<size_t, double, int>>;
+using R3_1_1 = mimo_node<DuffsMover3, std::tuple<size_t>, DuffsMover3, std::tuple<size_t>>;
+using R3_3_1 = mimo_node<DuffsMover3, std::tuple<size_t, int, double>, DuffsMover3, std::tuple<size_t>>;
+using R3_1_3 = mimo_node<DuffsMover3, std::tuple<size_t>, DuffsMover3, std::tuple<size_t, double, int>>;
+using R3_3_3 = mimo_node<DuffsMover3, std::tuple<size_t, int, double>, DuffsMover3, std::tuple<size_t, double, int>>;
 
 namespace tiledb::common  {
 // Tentative deduction guide
@@ -76,7 +76,7 @@ TEST_CASE ("ResumableNode: Verify Construction", "[resumable_node]") {
     R3_3_3 b3_3_3 { [](std::tuple<size_t, int, double>) { return std::make_tuple(0UL, 0.0, 0); } };
 
     // Deduction guide not working
-    // ProtoNode c_1_1 { [](std::tuple<size_t>) { return std::make_tuple(0UL); } };
+    // mimo_node c_1_1 { [](std::tuple<size_t>) { return std::make_tuple(0UL); } };
 
   }
 }

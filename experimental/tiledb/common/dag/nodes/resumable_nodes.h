@@ -33,10 +33,11 @@
 #ifndef TILEDB_DAG_NODES_RESUMABLE_NODES_H
 #define TILEDB_DAG_NODES_RESUMABLE_NODES_H
 
-#include "detail/resumable/proto_mimo.h"
+#include "detail/resumable/resumable_base.h"
+#include "detail/resumable/resumable_fwd.h"
 // #include "detail/resumable/consumer.h"
 // #include "detail/resumable/function.h"
-// #include "detail/resumable/mimo.h"
+#include "detail/resumable/mimo.h"
 // #include "detail/resumable/producer.h"
 #include "node_traits.h"
 
@@ -45,7 +46,7 @@ namespace tiledb::common {
 // using node = std::shared_ptr<node_base>;
 // using node_handle = node_handle_t<node_base>;
 
-using node = node_handle_t<node_base>;
+using node = node_handle_t<resumable_node_base>;
 
 template <class T>
 struct correspondent_traits {};
