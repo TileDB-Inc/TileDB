@@ -1,5 +1,9 @@
 # TileDB v2.11.4 Release Notes
 
+## Packaging Notes
+
+* The linux release packages are now build with manylinux2014 (previously manylinux2010).
+
 ## Defects removed
 
 * Sparse global order reader: fixing incomplete reason for rest queries. [#3620](https://github.com/TileDB-Inc/TileDB/pull/3620)
@@ -22,6 +26,7 @@
 # TileDB v2.11.2 Release Notes
 
 ## Improvements
+
 ### Build
 * Adjust example dockerfile so layers can be cached better [#3488](https://github.com/TileDB-Inc/TileDB/pull/3488)
 
