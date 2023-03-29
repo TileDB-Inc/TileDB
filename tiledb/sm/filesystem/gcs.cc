@@ -195,7 +195,7 @@ Status GCS::create_bucket(const URI& uri) const {
         bucket_metadata.status().message() + ")")));
   }
 
-  return wait_for_bucket_to_propagate(bucket_name);
+  return Status::Ok();
 }
 
 Status GCS::empty_bucket(const URI& uri) const {
@@ -311,7 +311,7 @@ Status GCS::remove_bucket(const URI& uri) const {
         status.message() + ")")));
   }
 
-  return wait_for_bucket_to_be_deleted(bucket_name);
+  return Status::Ok();
 }
 
 Status GCS::remove_object(const URI& uri) const {
@@ -332,7 +332,7 @@ Status GCS::remove_object(const URI& uri) const {
         status.message() + ")")));
   }
 
-  return wait_for_object_to_be_deleted(bucket_name, object_path);
+  return Status::Ok();
 }
 
 Status GCS::remove_dir(const URI& uri) const {
@@ -491,85 +491,7 @@ Status GCS::copy_object(const URI& old_uri, const URI& new_uri) {
         status.message() + ")")));
   }
 
-  return wait_for_object_to_propagate(new_bucket_name, new_object_path);
-}
-
-Status GCS::wait_for_object_to_propagate(
-    const std::string& bucket_name, const std::string& object_path) const {
-  RETURN_NOT_OK(init_client());
-
-  unsigned attempts = 0;
-  while (attempts++ < constants::gcs_max_attempts) {
-    bool is_object;
-    RETURN_NOT_OK(this->is_object(bucket_name, object_path, &is_object));
-    if (is_object) {
-      return Status::Ok();
-    }
-
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(constants::gcs_attempt_sleep_ms));
-  }
-
-  return LOG_STATUS(Status_GCSError(
-      std::string("Timed out waiting on object to propogate: " + object_path)));
-}
-
-Status GCS::wait_for_object_to_be_deleted(
-    const std::string& bucket_name, const std::string& object_path) const {
-  RETURN_NOT_OK(init_client());
-
-  unsigned attempts = 0;
-  while (attempts++ < constants::gcs_max_attempts) {
-    bool is_object;
-    RETURN_NOT_OK(this->is_object(bucket_name, object_path, &is_object));
-    if (!is_object) {
-      return Status::Ok();
-    }
-
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(constants::gcs_attempt_sleep_ms));
-  }
-
-  return LOG_STATUS(Status_GCSError(std::string(
-      "Timed out waiting on object to be deleted: " + object_path)));
-}
-
-Status GCS::wait_for_bucket_to_propagate(const std::string& bucket_name) const {
-  unsigned attempts = 0;
-  while (attempts++ < constants::gcs_max_attempts) {
-    bool is_bucket;
-    RETURN_NOT_OK(this->is_bucket(bucket_name, &is_bucket));
-
-    if (is_bucket) {
-      return Status::Ok();
-    }
-
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(constants::gcs_attempt_sleep_ms));
-  }
-
-  return LOG_STATUS(Status_GCSError(
-      std::string("Timed out waiting on bucket to propogate: " + bucket_name)));
-}
-
-Status GCS::wait_for_bucket_to_be_deleted(
-    const std::string& bucket_name) const {
-  RETURN_NOT_OK(init_client());
-
-  unsigned attempts = 0;
-  while (attempts++ < constants::gcs_max_attempts) {
-    bool is_bucket;
-    RETURN_NOT_OK(this->is_bucket(bucket_name, &is_bucket));
-    if (!is_bucket) {
-      return Status::Ok();
-    }
-
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(constants::gcs_attempt_sleep_ms));
-  }
-
-  return LOG_STATUS(Status_GCSError(std::string(
-      "Timed out waiting on bucket to be deleted: " + bucket_name)));
+  return Status::Ok();
 }
 
 Status GCS::move_dir(const URI& old_uri, const URI& new_uri) {
@@ -951,24 +873,6 @@ Status GCS::flush_object(const URI& uri) {
 
   auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
-  // Wait for the last written part to propogate to ensure all parts
-  // are available for composition into a single object.
-  std::string last_part_path = part_paths.back();
-  const Status st = wait_for_object_to_propagate(bucket_name, last_part_path);
-  state->update_st(st);
-  state_lck.unlock();
-
-  if (!st.ok()) {
-    // Delete all outstanding part objects.
-    delete_parts(bucket_name, part_paths);
-
-    // Release all instance state associated with this part list
-    // transactions.
-    finish_multi_part_upload(uri);
-
-    return Status::Ok();
-  }
-
   // Build a list of objects to compose.
   std::vector<google::cloud::storage::ComposeSourceObject> source_objects;
   source_objects.reserve(part_paths.size());
@@ -1010,7 +914,7 @@ Status GCS::flush_object(const URI& uri) {
         status.message() + ")")));
   }
 
-  return wait_for_object_to_propagate(bucket_name, object_path);
+  return Status::Ok();
 }
 
 void GCS::delete_parts(
@@ -1085,7 +989,7 @@ Status GCS::flush_object_direct(const URI& uri) {
         ")")));
   }
 
-  return wait_for_object_to_propagate(bucket_name, object_path);
+  return Status::Ok();
 }
 
 Status GCS::read(
