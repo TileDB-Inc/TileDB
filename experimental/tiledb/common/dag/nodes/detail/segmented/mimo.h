@@ -73,6 +73,48 @@ namespace tiledb::common {
  *
  */
 
+
+
+template <class T, class... Ts>
+struct are_same : std::conjunction<std::is_same<T, Ts>...> {};
+
+template <class T, class... Ts>
+inline constexpr static bool are_same_v = are_same<T, Ts...>::value;
+
+
+/**
+   * Helper function to deal with tuples.  Applies the same single input single
+   * output function to elements of an input tuple to set values of an output
+   * tuple.
+   *
+   * @note Elements are processed in order from 0 to sizeof(Ts)-1
+   *
+   * @pre sizeof(Ts) == sizeof(Us)
+ */
+template <size_t I = 0, class Fn, class... Ts, class... Us>
+constexpr void tuple_map(
+    Fn&& f, const std::tuple<Ts...>& in, std::tuple<Us...>& out) {
+  static_assert(sizeof(in) == sizeof(out));
+  if constexpr (I == sizeof...(Ts)) {
+    return;
+  } else {
+    std::get<I>(out) = std::forward<Fn>(f)(std::get<I>(in));
+    tuple_map(I + 1, std::forward<Fn>(f), in, out);
+  }
+}
+
+template <size_t I = 0, class Op, class Fn, class... Ts>
+constexpr auto tuple_fold(Op&& op, Fn&& f, const std::tuple<Ts...>& in) {
+  // static_assert(I == 0);
+  static_assert(I >= 0);
+  // static_assert(sizeof...(Ts) > 0 && sizeof...(Ts) < 10);
+  if constexpr (I == sizeof...(Ts) - 1) {
+    return f(std::get<I>(in));
+  } else {
+    return op(f(std::get<I>(in)), tuple_fold<I + 1>(op, f, in));
+  }
+}
+
 /**
  * Some type aliases for the function enclosed by the node, to allow empty
  * inputs or empty outputs (for creating producer or consumer nodes for
@@ -99,30 +141,14 @@ struct fn_type<std::tuple<BlocksIn...>, std::tuple<>> {
   using type = std::function<void(const std::tuple<BlocksIn...>&)>;
 };
 
-/**
- *
- */
 template <
     template <class>
     class SinkMover,
     class BlocksIn,
     template <class> class SourceMover = SinkMover,
     class BlocksOut = BlocksIn>
-class mimo_node_impl;
+class mimo_node_impl_base;
 
-/*
- * By specializing through the use of `std::tuple`, we are able to have two
- * variadic template lists.  Thus, we can define a node with `size_t` and `int`
- * for its inputs and `size_t` and `double` for its outputs in the following
- * way:
- *
- * @code{.cpp}
- * mimo_node<AsyncMover2, std::tuple<size_t, int>,
- *                     AsyncMover3, std::tuple<size_t, double>> x{};
- * @endcode
- *
- * @todo Variadic list of movers (one per input/output)?
- */
 template <
     template <class>
     class SinkMover,
@@ -130,13 +156,15 @@ template <
     template <class>
     class SourceMover,
     class... BlocksOut>
-class mimo_node_impl<
+class mimo_node_impl_base<
     SinkMover,
     std::tuple<BlocksIn...>,
     SourceMover,
     std::tuple<BlocksOut...>>
-    : public node_base {  // @todo Inherit from tuple<Source>, tuple<Sink>?
+    : public node_base {
 
+ protected:
+  using node_base = node_base;
   // Alternatively... ?
   // std::function<std::tuple<BlocksOut...>(std::tuple<BlocksIn...>)> f_;
   //  std::function<void(const std::tuple<BlocksIn...>&,
@@ -155,8 +183,9 @@ class mimo_node_impl<
    *
    * @todo Develop better interface for `Edge` connections.
    *
-   *  @todo It would be nice to use std::array here, but it doesn't appear to
-   *  support different types for each element.
+   *  @todo It would be nice to use std::array here, but it doesn't
+   *  support different types for each element, which we need since
+   *  we aren't doing type erasure.
    */
   std::tuple<Sink<SinkMover, BlocksIn>...> inputs_;
   std::tuple<Source<SourceMover, BlocksOut>...> outputs_;
@@ -179,7 +208,7 @@ class mimo_node_impl<
     return std::tuple_size_v<decltype(outputs_)>;
   }
 
- private:
+ protected:
   /****************************************************************
    *                                                              *
    *                    Helper functions                          *
@@ -204,38 +233,6 @@ class mimo_node_impl<
   static constexpr const bool is_consumer_{
       std::is_same_v<decltype(output_items_), std::tuple<>>};
 
-  /**
-   * Helper function to deal with tuples.  Applies the same single input single
-   * output function to elements of an input tuple to set values of an output
-   * tuple.
-   *
-   * @note Elements are processed in order from 0 to sizeof(Ts)-1
-   *
-   * @pre sizeof(Ts) == sizeof(Us)
-   */
-  template <size_t I = 0, class Fn, class... Ts, class... Us>
-  constexpr void tuple_map(
-      Fn&& f, const std::tuple<Ts...>& in, std::tuple<Us...>& out) {
-    static_assert(sizeof(in) == sizeof(out));
-    if constexpr (I == sizeof...(Ts)) {
-      return;
-    } else {
-      std::get<I>(out) = std::forward<Fn>(f)(std::get<I>(in));
-      tuple_map(I + 1, std::forward<Fn>(f), in, out);
-    }
-  }
-
-  template <size_t I = 0, class Op, class Fn, class... Ts>
-  constexpr auto tuple_fold(Op&& op, Fn&& f, const std::tuple<Ts...>& in) {
-    // static_assert(I == 0);
-    static_assert(I >= 0);
-    // static_assert(sizeof...(Ts) > 0 && sizeof...(Ts) < 10);
-    if constexpr (I == sizeof...(Ts) - 1) {
-      return f(std::get<I>(in));
-    } else {
-      return op(f(std::get<I>(in)), tuple_fold<I + 1>(op, f, in));
-    }
-  }
 
   template <scheduler_event_type event>
   auto static either(scheduler_event_type a, scheduler_event_type b) {
@@ -354,7 +351,7 @@ class mimo_node_impl<
   auto pull_all() {
     static_assert(!is_producer_);
     return tuple_fold<0 /*std::tuple_size_v<decltype(inputs_)>*/>(
-        &mimo_node_impl::either<scheduler_event_type::sink_wait>,
+        &mimo_node_impl_base::either<scheduler_event_type::sink_wait>,
         [](auto& sink) { return sink.get_mover()->port_pull(); },
         inputs_);
   }
@@ -365,7 +362,7 @@ class mimo_node_impl<
   auto drain_all() {
     static_assert(!is_producer_);
     return tuple_fold<0>(
-        &mimo_node_impl::either<scheduler_event_type::notify_source>,
+        &mimo_node_impl_base::either<scheduler_event_type::notify_source>,
         [](auto& sink) { return sink.get_mover()->port_drain(); },
         inputs_);
   }
@@ -376,7 +373,7 @@ class mimo_node_impl<
   auto fill_all() {
     static_assert(!is_consumer_);
     return tuple_fold<0>(
-        &mimo_node_impl::either<scheduler_event_type::notify_sink>,
+        &mimo_node_impl_base::either<scheduler_event_type::notify_sink>,
         [](auto& source) { return source.get_mover()->port_fill(); },
         outputs_);
   }
@@ -387,7 +384,7 @@ class mimo_node_impl<
   auto push_all() {
     static_assert(!is_consumer_);
     return tuple_fold<0>(
-        &mimo_node_impl::either<scheduler_event_type::source_wait>,
+        &mimo_node_impl_base::either<scheduler_event_type::source_wait>,
         [](auto& source) { return source.get_mover()->port_push(); },
         outputs_);
   }
@@ -397,28 +394,18 @@ class mimo_node_impl<
    */
   auto stop_all() {
     return tuple_fold<0>(
-        &mimo_node_impl::either<scheduler_event_type::source_wait>,
+        &mimo_node_impl_base::either<scheduler_event_type::source_wait>,
         [](auto& source) { return source.get_mover()->port_exhausted(); },
         inputs_);
   }
 
-  template <class T, class... Ts>
-  struct are_same : std::conjunction<std::is_same<T, Ts>...> {};
-
-  template <class T, class... Ts>
-  inline constexpr static bool are_same_v = are_same<T, Ts...>::value;
 
   /****************************************************************
    *                                                              *
    *                  End Helper functions                        *
    *                                                              *
    ****************************************************************/
-
  public:
-  /**
-   * Default constructor, for testing only.
-   */
-  mimo_node_impl() = default;
 
   /**
    * Primary constructor.
@@ -434,7 +421,7 @@ class mimo_node_impl<
    * these nodes.
    */
   template <class Function>
-  explicit mimo_node_impl(
+  explicit mimo_node_impl_base(
       Function&& f,
       std::enable_if_t<
           std::is_invocable_r_v<
@@ -454,7 +441,7 @@ class mimo_node_impl<
    * @tparam The type of the function (or function object) that accepts items.
    */
   template <class Function>
-  explicit mimo_node_impl(
+  explicit mimo_node_impl_base(
       Function&& f,
       std::enable_if_t<
           are_same_v<std::tuple<>, BlocksOut...> &&
@@ -469,7 +456,7 @@ class mimo_node_impl<
   }
 
   template <class Function>
-  explicit mimo_node_impl(
+  explicit mimo_node_impl_base(
       Function&& f,
       std::enable_if_t<
           are_same_v<std::tuple<>, BlocksOut...> &&
@@ -488,7 +475,7 @@ class mimo_node_impl<
    * @tparam The type of the function (or function object) that accepts items.
    */
   template <class Function>
-  explicit mimo_node_impl(
+  explicit mimo_node_impl_base(
       Function&& f,
       std::enable_if_t<
           are_same_v<std::tuple<>, BlocksIn...> && std::is_invocable_r_v<
@@ -501,7 +488,7 @@ class mimo_node_impl<
   }
 
   template <class Function>
-  explicit mimo_node_impl(
+  explicit mimo_node_impl_base(
       Function&& f,
       std::enable_if_t<
           are_same_v<std::tuple<>, BlocksIn...> &&
@@ -512,6 +499,75 @@ class mimo_node_impl<
       : f_{std::forward<Function>(f)}
       , inputs_{} {
   }
+
+};
+
+/**
+ *
+ */
+template <
+    template <class>
+    class SinkMover,
+    class BlocksIn,
+    template <class> class SourceMover = SinkMover,
+    class BlocksOut = BlocksIn>
+class mimo_node_impl;
+
+/*
+ * By specializing through the use of `std::tuple`, we are able to have two
+ * variadic template lists.  Thus, we can define a node with `size_t` and `int`
+ * for its inputs and `size_t` and `double` for its outputs in the following
+ * way:
+ *
+ * @code{.cpp}
+ * mimo_node<AsyncMover2, std::tuple<size_t, int>,
+ *                     AsyncMover3, std::tuple<size_t, double>> x{};
+ * @endcode
+ *
+ * @todo Variadic list of movers (one per input/output)?
+ */
+template <
+    template <class>
+    class SinkMover,
+    class... BlocksIn,
+    template <class>
+    class SourceMover,
+    class... BlocksOut>
+class mimo_node_impl<
+    SinkMover,
+    std::tuple<BlocksIn...>,
+    SourceMover,
+    std::tuple<BlocksOut...>>
+    : public mimo_node_impl_base<SinkMover, std::tuple<BlocksIn...>, SourceMover, std::tuple<BlocksOut...>>
+{  // @todo Inherit from tuple<Source>, tuple<Sink>?
+  using Base = mimo_node_impl_base<SinkMover, std::tuple<BlocksIn...>, SourceMover, std::tuple<BlocksOut...>> ;
+  using Base::Base;
+
+  using scheduler_event_type = typename Base::scheduler_event_type;
+  using Base::f_;
+  using Base::inputs_;
+  using Base::outputs_;
+  using Base::input_items_;
+  using Base::output_items_;
+  using Base::pull_all;
+  using Base::drain_all;
+  using Base::extract_all;
+  using Base::inject_all;
+  using Base::fill_all;
+  using Base::push_all;
+  using Base::stop_all;
+  using Base::sink_done_all;
+  using Base::source_done_all;
+  using Base::is_producer_;
+  using Base::is_consumer_;
+
+
+ public:
+  /**
+   * Default constructor, for testing only.
+   */
+  mimo_node_impl() = default;
+
 
   /**
    * Function for applying all actions of the node: Pull the sinks, fill the
@@ -548,7 +604,7 @@ class mimo_node_impl<
         ++this->program_counter_;
 
         if constexpr (!is_producer_) {
-          auto tmp_state = pull_all();
+          auto tmp_state = this->pull_all();
 
           if (sink_done_all()) {
             return stop_all();

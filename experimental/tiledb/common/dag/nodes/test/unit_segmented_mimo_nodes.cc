@@ -176,8 +176,8 @@ TEST_CASE(
   GeneralConsumerNode<AsyncMover3, std::tuple<double, size_t>> y{
       [](std::tuple<double, size_t>) {}};
 
-  Edge g{std::get<0>(x->outputs_), std::get<1>(y->inputs_)};
-  Edge h{std::get<1>(x->outputs_), std::get<0>(y->inputs_)};
+  Edge g{std::get<0>(x->get_output_ports()), std::get<1>(y->get_input_ports())};
+  Edge h{std::get<1>(x->get_output_ports()), std::get<0>(y->get_input_ports())};
 }
 
 TEST_CASE(
@@ -197,8 +197,8 @@ TEST_CASE(
         ext2 = std::get<1>(b);
       }};
 
-  Edge g{std::get<0>(x->outputs_), std::get<1>(y->inputs_)};
-  Edge h{std::get<1>(x->outputs_), std::get<0>(y->inputs_)};
+  Edge g{std::get<0>(x->get_output_ports()), std::get<1>(y->get_input_ports())};
+  Edge h{std::get<1>(x->get_output_ports()), std::get<0>(y->get_input_ports())};
 
   [[maybe_unused]] auto foo = x->resume();
   [[maybe_unused]] auto bar = y->resume();
@@ -282,12 +282,12 @@ TEST_CASE("mimo_node: Verify simple connections", "[segmented_mimo]") {
     mimo_node<AsyncMover2, std::tuple<size_t>> e{dummy_function};
     consumer_node<AsyncMover2, size_t> f{dummy_sink};
 
-    Edge g{std::get<0>(a->outputs_), std::get<0>(b->inputs_)};
-    Edge h{std::get<0>(b->outputs_), std::get<0>(c->inputs_)};
+    Edge g{std::get<0>(a->get_output_ports()), std::get<0>(b->get_input_ports())};
+    Edge h{std::get<0>(b->get_output_ports()), std::get<0>(c->get_input_ports())};
 
     // @todo: Why were we trying this?
-    Edge<AsyncMover2, size_t> i{*d, std::get<0>(e->inputs_)};
-    Edge j{std::get<0>(e->outputs_), f};
+    Edge<AsyncMover2, size_t> i{*d, std::get<0>(e->get_input_ports())};
+    Edge j{std::get<0>(e->get_output_ports()), f};
 
     {
       producer_node_impl<AsyncMover2, size_t> x{dummy_source};
@@ -319,11 +319,11 @@ TEST_CASE("mimo_node: Verify simple connections", "[segmented_mimo]") {
     mimo_node<AsyncMover2, std::tuple<size_t>> e{dummy_function_lambda};
     consumer_node<AsyncMover2, size_t> f{dummy_sink_lambda};
 
-    Edge g{a, std::get<0>(b->inputs_)};
-    Edge h{std::get<0>(b->outputs_), c};
+    Edge g{a, std::get<0>(b->get_input_ports())};
+    Edge h{std::get<0>(b->get_output_ports()), c};
 
-    // Edge i{d, std::get<0>(e->inputs_)};
-    // Edge j{std::get<0>(e->outputs_), f};
+    // Edge i{d, std::get<0>(e->get_input_ports())};
+    // Edge j{std::get<0>(e->get_output_ports()), f};
   }
 
   SECTION("inline lambda") {
@@ -337,11 +337,11 @@ TEST_CASE("mimo_node: Verify simple connections", "[segmented_mimo]") {
         [](const std::tuple<size_t>& in) { return in; });
     consumer_node<AsyncMover2, size_t> f([](size_t) {});
 
-    Edge g{a, std::get<0>(b->inputs_)};
-    Edge h{std::get<0>(b->outputs_), c};
+    Edge g{a, std::get<0>(b->get_input_ports())};
+    Edge h{std::get<0>(b->get_output_ports()), c};
 
-    Edge i{d, std::get<0>(e->inputs_)};
-    Edge j{std::get<0>(e->outputs_), f};
+    Edge i{d, std::get<0>(e->get_input_ports())};
+    Edge j{std::get<0>(e->get_output_ports()), f};
   }
 
   SECTION("function object") {
@@ -357,11 +357,11 @@ TEST_CASE("mimo_node: Verify simple connections", "[segmented_mimo]") {
     mimo_node<AsyncMover2, std::tuple<size_t>> e{fc};
     consumer_node<AsyncMover2, size_t> f{dc};
 
-    Edge g{a, std::get<0>(b->inputs_)};
-    Edge h{std::get<0>(b->outputs_), c};
+    Edge g{a, std::get<0>(b->get_input_ports())};
+    Edge h{std::get<0>(b->get_output_ports()), c};
 
-    Edge i{d, std::get<0>(e->inputs_)};
-    Edge j{std::get<0>(e->outputs_), f};
+    Edge i{d, std::get<0>(e->get_input_ports())};
+    Edge j{std::get<0>(e->get_output_ports()), f};
   }
 
   SECTION("inline function object") {
@@ -373,11 +373,11 @@ TEST_CASE("mimo_node: Verify simple connections", "[segmented_mimo]") {
     mimo_node<AsyncMover2, std::tuple<size_t>> e{dummy_function_class{}};
     consumer_node<AsyncMover2, size_t> f{dummy_sink_class{}};
 
-    Edge g{a, std::get<0>(b->inputs_)};
-    Edge h{std::get<0>(b->outputs_), c};
+    Edge g{a, std::get<0>(b->get_input_ports())};
+    Edge h{std::get<0>(b->get_output_ports()), c};
 
-    Edge i{d, std::get<0>(e->inputs_)};
-    Edge j{std::get<0>(e->outputs_), f};
+    Edge i{d, std::get<0>(e->get_input_ports())};
+    Edge j{std::get<0>(e->get_output_ports()), f};
   }
 #if 1
   SECTION("bind") {
@@ -397,11 +397,11 @@ TEST_CASE("mimo_node: Verify simple connections", "[segmented_mimo]") {
     mimo_node<AsyncMover2, std::tuple<size_t>> e{fc};
     consumer_node<AsyncMover2, size_t> f{dc};
 
-    Edge g{a, std::get<0>(b->inputs_)};
-    Edge h{std::get<0>(b->outputs_), c};
+    Edge g{a, std::get<0>(b->get_input_ports())};
+    Edge h{std::get<0>(b->get_output_ports()), c};
 
-    Edge i{d, std::get<0>(e->inputs_)};
-    Edge j{std::get<0>(e->outputs_), f};
+    Edge i{d, std::get<0>(e->get_input_ports())};
+    Edge j{std::get<0>(e->get_output_ports()), f};
   }
 
   SECTION("inline bind") {
@@ -423,11 +423,11 @@ TEST_CASE("mimo_node: Verify simple connections", "[segmented_mimo]") {
     consumer_node<AsyncMover2, size_t> f{
         std::bind(dummy_bind_sink, y, std::placeholders::_1, z)};
 
-    Edge g{a, std::get<0>(b->inputs_)};
-    Edge h{std::get<0>(b->outputs_), c};
+    Edge g{a, std::get<0>(b->get_input_ports())};
+    Edge h{std::get<0>(b->get_output_ports()), c};
 
-    Edge i{d, std::get<0>(e->inputs_)};
-    Edge j{std::get<0>(e->outputs_), f};
+    Edge i{d, std::get<0>(e->get_input_ports())};
+    Edge j{std::get<0>(e->get_output_ports()), f};
   }
 
   SECTION("bind with move") {
@@ -449,11 +449,11 @@ TEST_CASE("mimo_node: Verify simple connections", "[segmented_mimo]") {
     mimo_node<AsyncMover2, std::tuple<size_t>> e{std::move(fc)};
     consumer_node<AsyncMover2, size_t> f{std::move(dc)};
 
-    Edge g{a, std::get<0>(b->inputs_)};
-    Edge h{std::get<0>(b->outputs_), c};
+    Edge g{a, std::get<0>(b->get_input_ports())};
+    Edge h{std::get<0>(b->get_output_ports()), c};
 
-    Edge i{d, std::get<0>(e->inputs_)};
-    Edge j{std::get<0>(e->outputs_), f};
+    Edge i{d, std::get<0>(e->get_input_ports())};
+    Edge j{std::get<0>(e->get_output_ports()), f};
   }
 #endif
 }
@@ -478,15 +478,15 @@ TEST_CASE("mimo_node: Verify compound connections", "[segmented_mimo]") {
     consumer_node<AsyncMover2, size_t> f1([](size_t) {});
     consumer_node<AsyncMover2, double> f2([](double) {});
 
-    Edge g1{a1, std::get<0>(b->inputs_)};
-    Edge g2{a2, std::get<1>(b->inputs_)};
-    Edge h1{std::get<0>(b->outputs_), c1};
-    Edge h2{std::get<1>(b->outputs_), c2};
+    Edge g1{a1, std::get<0>(b->get_input_ports())};
+    Edge g2{a2, std::get<1>(b->get_input_ports())};
+    Edge h1{std::get<0>(b->get_output_ports()), c1};
+    Edge h2{std::get<1>(b->get_output_ports()), c2};
 
-    Edge i1{d1, std::get<0>(e->inputs_)};
-    Edge i2{d2, std::get<1>(e->inputs_)};
-    Edge j1{std::get<0>(e->outputs_), f1};
-    Edge j2{std::get<1>(e->outputs_), f2};
+    Edge i1{d1, std::get<0>(e->get_input_ports())};
+    Edge i2{d2, std::get<1>(e->get_input_ports())};
+    Edge j1{std::get<0>(e->get_output_ports()), f1};
+    Edge j2{std::get<1>(e->get_output_ports()), f2};
   }
 }
 
@@ -508,8 +508,8 @@ TEST_CASE(
   std::vector<size_t> v;
   consumer_node<AsyncMover2, size_t> s([&](size_t i) { v.push_back(i); });
 
-  Edge g{q, std::get<0>(r->inputs_)};
-  Edge h{std::get<0>(r->outputs_), s};
+  Edge g{q, std::get<0>(r->get_input_ports())};
+  Edge h{std::get<0>(r->get_output_ports()), s};
   connect(q, r);
   connect(r, s);
 
@@ -593,14 +593,14 @@ TEST_CASE(
   consumer_node<AsyncMover2, double> s1([&](double i) { v.push_back(i); });
   consumer_node<AsyncMover2, size_t> s2([&](size_t i) { w.push_back(i); });
 
-  Edge g1{q1, std::get<0>(r->inputs_)};
-  Edge g2{q2, std::get<1>(r->inputs_)};
+  Edge g1{q1, std::get<0>(r->get_input_ports())};
+  Edge g2{q2, std::get<1>(r->get_input_ports())};
 
-  // print_types(r->outputs_, std::get<0>(r->outputs_),
-  // std::get<1>(r->outputs_),s1, s2);
+  // print_types(r->get_output_ports(), std::get<0>(r->get_output_ports()),
+  // std::get<1>(r->get_output_ports()),s1, s2);
 
-  Edge h1{std::get<0>(r->outputs_), s1};
-  Edge h2{std::get<1>(r->outputs_), s2};
+  Edge h1{std::get<0>(r->get_output_ports()), s1};
+  Edge h2{std::get<1>(r->get_output_ports()), s2};
   connect(q1, r);
   connect(q2, r);
   connect(r, s1);
@@ -765,10 +765,10 @@ void asynchronous_with_function_node(
     }
   });
 
-  Edge g1{q1, std::get<0>(r->inputs_)};
-  Edge g2{q2, std::get<1>(r->inputs_)};
-  Edge h1{std::get<1>(r->outputs_), s1};
-  Edge h2{std::get<0>(r->outputs_), s2};
+  Edge g1{q1, std::get<0>(r->get_input_ports())};
+  Edge g2{q2, std::get<1>(r->get_input_ports())};
+  Edge h1{std::get<1>(r->get_output_ports()), s1};
+  Edge h2{std::get<0>(r->get_output_ports()), s2};
   connect(q1, r);
   connect(q2, r);
   connect(r, s1);
@@ -959,15 +959,15 @@ GeneralConsumerNode <AsyncMover3, std::tuple<size_t>>, two>)*/
   auto sink2 = run_for(sink_node2, rounds);
 
   if constexpr (std::is_same_v<NO, zero> || std::is_same_v<NO, one>) {
-    Edge(source_node1, std::get<0>(mid_node->inputs_));
-    Edge(source_node2, std::get<1>(mid_node->inputs_));
-    Edge(std::get<0>(mid_node->outputs_), sink_node1);
-    Edge(std::get<1>(mid_node->outputs_), sink_node2);
+    Edge(source_node1, std::get<0>(mid_node->get_input_ports()));
+    Edge(source_node2, std::get<1>(mid_node->get_input_ports()));
+    Edge(std::get<0>(mid_node->get_output_ports()), sink_node1);
+    Edge(std::get<1>(mid_node->get_output_ports()), sink_node2);
   } else {
-    Edge(std::get<0>(source_node1->outputs_), std::get<0>(mid_node->inputs_));
-    Edge(std::get<0>(source_node2->outputs_), std::get<1>(mid_node->inputs_));
-    Edge(std::get<0>(mid_node->outputs_), std::get<0>(sink_node1->inputs_));
-    Edge(std::get<1>(mid_node->outputs_), std::get<0>(sink_node2->inputs_));
+    Edge(std::get<0>(source_node1->get_output_ports()), std::get<0>(mid_node->get_input_ports()));
+    Edge(std::get<0>(source_node2->get_output_ports()), std::get<1>(mid_node->get_input_ports()));
+    Edge(std::get<0>(mid_node->get_output_ports()), std::get<0>(sink_node1->get_input_ports()));
+    Edge(std::get<1>(mid_node->get_output_ports()), std::get<0>(sink_node2->get_input_ports()));
   }
 
   connect(source_node1, mid_node);
