@@ -461,12 +461,9 @@ class GCS {
    * `*bucket_name == "my-bucket"` and `*object_path == "dir1/file1"`.
    *
    * @param uri The URI to parse.
-   * @param bucket_name Mutates to the bucket name.
-   * @param object_path Mutates to the object path.
-   * @return Status
+   * @return Tuple with bucket name and object path.
    */
-  Status parse_gcs_uri(
-      const URI& uri, std::string* bucket_name, std::string* object_path) const;
+  static std::tuple<std::string, std::string> parse_gcs_uri(const URI& uri);
 
   /**
    * Removes a leading slash from 'path' if it exists.

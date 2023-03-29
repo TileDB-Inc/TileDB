@@ -183,8 +183,7 @@ Status GCS::create_bucket(const URI& uri) const {
         std::string("URI is not a GCS URI: " + uri.to_string())));
   }
 
-  std::string bucket_name;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, nullptr));
+  auto bucket_name = std::get<0>(parse_gcs_uri(uri));
 
   google::cloud::StatusOr<google::cloud::storage::BucketMetadata>
       bucket_metadata = client_->CreateBucketForProject(
@@ -219,8 +218,7 @@ Status GCS::is_empty_bucket(const URI& uri, bool* is_empty) const {
         std::string("URI is not a GCS URI: " + uri.to_string())));
   }
 
-  std::string bucket_name;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, nullptr));
+  auto bucket_name = std::get<0>(parse_gcs_uri(uri));
 
   google::cloud::storage::ListObjectsReader objects_reader =
       client_->ListObjects(bucket_name);
@@ -250,8 +248,7 @@ Status GCS::is_bucket(const URI& uri, bool* const is_bucket) const {
         std::string("URI is not a GCS URI: " + uri.to_string())));
   }
 
-  std::string bucket_name;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, nullptr));
+  auto bucket_name = std::get<0>(parse_gcs_uri(uri));
 
   return this->is_bucket(bucket_name, is_bucket);
 }
@@ -305,8 +302,7 @@ Status GCS::remove_bucket(const URI& uri) const {
   // Empty bucket
   RETURN_NOT_OK(empty_bucket(uri));
 
-  std::string bucket_name;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, nullptr));
+  auto bucket_name = std::get<0>(parse_gcs_uri(uri));
 
   const google::cloud::Status status = client_->DeleteBucket(bucket_name);
   if (!status.ok()) {
@@ -326,9 +322,7 @@ Status GCS::remove_object(const URI& uri) const {
         std::string("URI is not a GCS URI: " + uri.to_string())));
   }
 
-  std::string bucket_name;
-  std::string object_path;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
   const google::cloud::Status status =
       client_->DeleteObject(bucket_name, object_path);
@@ -412,10 +406,7 @@ tuple<Status, optional<std::vector<directory_entry>>> GCS::ls_with_sizes(
     return {st, nullopt};
   }
 
-  std::string bucket_name;
-  std::string object_path;
-  RETURN_NOT_OK_TUPLE(
-      parse_gcs_uri(uri_dir, &bucket_name, &object_path), nullopt);
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
   std::vector<directory_entry> entries;
   google::cloud::storage::Prefix prefix_option(object_path);
@@ -485,13 +476,8 @@ Status GCS::copy_object(const URI& old_uri, const URI& new_uri) {
         std::string("URI is not a GCS URI: " + new_uri.to_string())));
   }
 
-  std::string old_bucket_name;
-  std::string old_object_path;
-  RETURN_NOT_OK(parse_gcs_uri(old_uri, &old_bucket_name, &old_object_path));
-
-  std::string new_bucket_name;
-  std::string new_object_path;
-  RETURN_NOT_OK(parse_gcs_uri(new_uri, &new_bucket_name, &new_object_path));
+  auto [old_bucket_name, old_object_path] = parse_gcs_uri(old_uri);
+  auto [new_bucket_name, new_object_path] = parse_gcs_uri(new_uri);
 
   google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
       object_metadata = client_->CopyObject(
@@ -607,9 +593,7 @@ Status GCS::touch(const URI& uri) const {
         std::string("URI is not a GCS URI: " + uri.to_string())));
   }
 
-  std::string bucket_name;
-  std::string object_path;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
   google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
       object_metadata = client_->InsertObject(bucket_name, object_path, "");
@@ -634,9 +618,7 @@ Status GCS::is_object(const URI& uri, bool* const is_object) const {
         std::string("URI is not a GCS URI: " + uri.to_string())));
   }
 
-  std::string bucket_name;
-  std::string object_path;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
   return this->is_object(bucket_name, object_path, is_object);
 }
@@ -733,9 +715,7 @@ Status GCS::object_size(const URI& uri, uint64_t* const nbytes) const {
         std::string("URI is not a GCS URI: " + uri.to_string())));
   }
 
-  std::string bucket_name;
-  std::string object_path;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
   google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
       object_metadata = client_->GetObjectMetadata(bucket_name, object_path);
@@ -820,9 +800,7 @@ Status GCS::write_parts(
         Status_S3Error("Length not evenly divisible by part size"));
   }
 
-  std::string bucket_name;
-  std::string object_path;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
   MultiPartUploadState* state;
   std::unique_lock<std::mutex> state_lck;
@@ -971,9 +949,7 @@ Status GCS::flush_object(const URI& uri) {
 
   const std::vector<std::string> part_paths = state->get_part_paths();
 
-  std::string bucket_name;
-  std::string object_path;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
   // Wait for the last written part to propogate to ensure all parts
   // are available for composition into a single object.
@@ -1086,9 +1062,7 @@ Status GCS::flush_object_direct(const URI& uri) {
     return Status::Ok();
   }
 
-  std::string bucket_name;
-  std::string object_path;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
   std::string write_buffer(
       static_cast<const char*>(write_cache_buffer->data()),
@@ -1128,9 +1102,7 @@ Status GCS::read(
         std::string("URI is not an GCS URI: " + uri.to_string())));
   }
 
-  std::string bucket_name;
-  std::string object_path;
-  RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
   google::cloud::storage::ObjectReadStream stream = client_->ReadObject(
       bucket_name,
@@ -1157,10 +1129,7 @@ Status GCS::read(
   return Status::Ok();
 }
 
-Status GCS::parse_gcs_uri(
-    const URI& uri,
-    std::string* const bucket_name,
-    std::string* const object_path) const {
+std::tuple<std::string, std::string> GCS::parse_gcs_uri(const URI& uri) {
   assert(uri.is_gcs());
   const std::string uri_str = uri.to_string();
 
@@ -1169,11 +1138,7 @@ Status GCS::parse_gcs_uri(
   assert(uri_str.rfind(gcs_prefix, 0) == 0);
 
   if (uri_str.size() == gcs_prefix.size()) {
-    if (bucket_name)
-      *bucket_name = "";
-    if (object_path)
-      *object_path = "";
-    return Status::Ok();
+    return {"", ""};
   }
 
   // Find the '/' after the bucket name.
@@ -1183,11 +1148,9 @@ Status GCS::parse_gcs_uri(
   if (separator == std::string::npos) {
     const size_t c_pos_start = gcs_prefix.size();
     const size_t c_pos_end = uri_str.size();
-    if (bucket_name)
-      *bucket_name = uri_str.substr(c_pos_start, c_pos_end - c_pos_start);
-    if (object_path)
-      *object_path = "";
-    return Status::Ok();
+    std::string bucket_name =
+        uri_str.substr(c_pos_start, c_pos_end - c_pos_start);
+    return {std::move(bucket_name), ""};
   }
 
   // There is only a bucket name if there aren't any characters past the
@@ -1195,11 +1158,9 @@ Status GCS::parse_gcs_uri(
   if (uri_str.size() == separator) {
     const size_t c_pos_start = gcs_prefix.size();
     const size_t c_pos_end = separator;
-    if (bucket_name)
-      *bucket_name = uri_str.substr(c_pos_start, c_pos_end - c_pos_start);
-    if (object_path)
-      *object_path = "";
-    return Status::Ok();
+    std::string bucket_name =
+        uri_str.substr(c_pos_start, c_pos_end - c_pos_start);
+    return {std::move(bucket_name), ""};
   }
 
   const size_t c_pos_start = gcs_prefix.size();
@@ -1207,12 +1168,12 @@ Status GCS::parse_gcs_uri(
   const size_t b_pos_start = separator + 1;
   const size_t b_pos_end = uri_str.size();
 
-  if (bucket_name)
-    *bucket_name = uri_str.substr(c_pos_start, c_pos_end - c_pos_start);
-  if (object_path)
-    *object_path = uri_str.substr(b_pos_start, b_pos_end - b_pos_start);
+  std::string bucket_name =
+      uri_str.substr(c_pos_start, c_pos_end - c_pos_start);
+  std::string object_path =
+      uri_str.substr(b_pos_start, b_pos_end - b_pos_start);
 
-  return Status::Ok();
+  return {std::move(bucket_name), std::move(object_path)};
 }
 
 }  // namespace sm
