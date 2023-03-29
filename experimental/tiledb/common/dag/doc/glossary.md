@@ -2,8 +2,13 @@
 
 ## Application Glossary
 
+[ ***Question:*** *How are we deciding what is essential vs
+what is implementation?* ]
+
 
 ### Essentials
+
+[ ***Comment:*** *Basically there should be 1-1 correspondence between Essentials and the concepts we define for the task graph: task graph, node, edge, function, coroutine.  Those concepts will be parameterized -- are those parameters also Essential?  That may require us to also define a (compute) `State` concept, depending on how we define the `Coroutine` concept.  Our actual edge and node datatypes are highly parameterized, but with things that are deduced from the constructor, i.e., the signature of `Function` or of `Coroutine`.  Those types are not Essential.*]
 
 #### Task Graph
 
@@ -17,34 +22,57 @@ but does not pass data between nodes.
 
 A basic task graph is assumed to be a directed acyclic graph (DAG).
 
+[ ***Important!*** *We need to define the semantics of the task graph 
+from the user point of view (or maybe that is the distinction between
+essential and implementation?  In that case a minimal API for adding nodes
+and edges to a graph would consist of* ]
+```c++
+// These should be only internally defined concepts since users are not going to define their own types
+// (In which case do we need them at all?)  Initially it may be sufficient to just define the API.  It will
+// take some time to really get the concepts right.
+// For a very abbreviated hack, see https://godbolt.org/z/nGz9jGea8
+concept task_graph = requires { ... };
+concept function = requires { ... };  // Probably need different name to avoid naming conflicts maybe just a namespace
+concept discrete_coroutine = requires { ... };
+concept node = requires { ... };  // just node or source and sink?
+concept edge = requires { ... };
 
+template <task_graph Graph, function Function>
+node auto add_node(Graph& graph, Function&& f);
+
+template <task_graph Graph, discrete_coroutine Coroutine>
+node auto add_node(Graph& graph, Coroutine&& f);
+
+template <task_graph Graph, node From, node To>  // just node or source and sink?
+edge auto add_edge(Graph& graph, From&& from, To&& to);
+
+template <task_graph Graph>
+void sync_wait(Graph& graph);
+```
+*If we can't get everything packed into one overload of `add_node`, will need to separately
+define `initial_node`, `transform_node`, and `terminal_node` functions as well as
+potentially mimo vs siso vs function vs discrete coroutine variants*
+
+
+<!--
 #### Input
-
 
 #### Output
 
-
 #### Port
+[***Comment:*** *We don't have a concept for this and users never see ports.  Move to Implementation?*
 
 A port is a binding point between an edge and a node.
 A port can be either an input or an output, with respect to a given node.
 That is, in general, a node receives data from its input port(s) and transmits data to its output port(s).
-
+-->
 
 #### Node
 
 A node is a locus for computation in the task graph.  A node may have multiple input
-ports and multiple output ports.  A node has a contained discrete coroutine.  The expected
-functionality of a node is to apply its contained coroutine to data available on the
+ports and multiple output ports.  A node contains a discrete coroutine (the "enclosed coroutine").
+The expected functionality of a node is to apply its enclosed coroutine to data available on the
 input port(s) and to return its values to the output port(s).  
-
-[ ***Important!*** *This is probably not the right specification -- need a spec and an API that 
-accounts for multiple "pulls" from the input ports.  And pushes?  Just one push, or multiple?* ] 
-Once inputs have been supplied to the enclosed function and its execution has started,
-no more inputs will be provided to it. Similarly, once the enclosed function has
-completed its execution and supplied its results to the output ports, the function
-will not be executed again, and no further output will be produced, until its required
-inputs become available.
 
 
 #### Edge
@@ -53,7 +81,77 @@ An edge connects two nodes.  An edge has two endpoints, an output port of one no
 Edges are parametric on the number of managed data items (currently either two or three).
 
 
+#### Discrete Coroutine
+
+[ ***Important!*** *This needs to be made precise. 
+And we are going to need a state machine to implement it properly.* ] 
+A discrete coroutine is a function that may return to its caller and be 
+resumed at the point directly following the return.
+A discrete coroutine is
+invoked with an input and an initial computation state,
+and it produces an output and a final computation state.  
+In addition, a discrete coroutine may be in one of four run states:
+* *initial run state* -- the coroutine has not yet been invoked
+* *active run state* -- the coroutine has been invoked and has not yet completed
+* *final run state* -- the coroutine has completed
+* *invalid run state* -- the coroutine has been invoked after it has completed
+
+[ ***Need to distinguish states:*** *run state and computation state good enough?
+Probably also need coroutine state (yield, done), node state (equivalent to run state?) 
+and task state (running, runnable, waiting, created, finished)* ]
+
+In between the initial and final states, when the coroutine is in the active run state,
+the coroutine may return to the caller.  
+When the coroutine returns to the caller it will
+provide its current run state and its current computation state.  
+If the returned run state is *active state*, the coroutine may be resumed.  
+If the returned run state is *final state*, the coroutine may not be resumed again, it
+may only be invoked again (i.e., presented with a new input and initial computation state).
+(* Note: we do this so that the defined behavior of the coroutine in mapping inputs
+to outputs is preserved.  That is, we don't want the coroutine to get a new round of inputs
+unless it has produced its specified outputs. *)
+
+When a coroutine returns to the caller, it may request that the caller provide it with 
+additional inputs.  [ ***Note:*** *Providing the inputs is a marker, we can't back up before that.  Maybe we should consider every provision of input as the beginning of an invocation and just allow there to be one or zero outputs on completion of an invocation.* ]
+
+
+<!--
+This is probably not the right specification -- need a spec and an API that 
+accounts for multiple "pulls" from the input ports.  And pushes?  Just one push, or multiple?
+We need to define the "beginning" of the coroutine as well as the "end".  Those need to be
+related to initial and final state.  And related to when the graph computation is complete.
+
+Once inputs have been supplied to the enclosed coroutine and its execution has started,
+no more inputs will be provided to it. Similarly, once the enclosed coroutine has
+completed its execution and supplied its results to the output ports, the coroutine
+may not be executed again, and no further output will be produced, until its required
+inputs become available.
+-->
+
+#### Function
+
+A degenerate case of a discrete coroutine is simply a function that runs from initiation and 
+does not return to its caller until it has completed its execution.  
+It does not have a run state nor an execution state.
+
+
+## Implementation Glossary
+
+
 ### Stateless Nodes
+
+[ ***Question:*** *Do we need to define the stateless nodes that have functions?  
+Or can we just define the stateful nodes that have coroutines? 
+I suppose a function is a degenerate case of coroutine, though it does not 
+have a computation state and does not
+need to return any run state or computation state to the caller.  Perhaps we can
+special-case or CTAD the general resumable nodes but it might be simpler for now 
+to just keep these around, at least implementation wise.  For the glossary we could
+just indicate there are these degenerate cases.* ]
+
+[ ***Also*** *With the current task graph, I call these "initial", "transform", and "terminal"
+so perhaps we should adopt that terminology for the glossary?*]
+
 
 #### Function Node
 
@@ -78,7 +176,7 @@ where the enclosed `Function` must satisfy
      std::is_invocable_r_v<BlockOut, Function, BlockIn&>
   || std::is_invocable_r_v<BlockOut, Function, const BlockIn&>;
 ```
-
+[ ***Question:*** *Should we just go ahead and use C++20 concepts to specify requirements?* ]
 
 #### Producer Node
 
@@ -104,6 +202,7 @@ Calling the `request_stop()` method on the `stop_source` object
 signals to the rest of the task graph that the producer will
 not produce any more data.  The value returned by the
 producer `request_stop()` has been called will be ignored.
+
 
 #### Consumer Node
 
@@ -196,54 +295,112 @@ Here, "no output" is indicated by the output type `BlocksOut` to the function de
 the empty tuple `std::tuple<>`.
 
 
-### MIMO Node Activation 
+### MIMO Node Activations
+
+[ ***Comment:*** *I think we can define / implement this as a shim between the ports and the function.
+In fact, I think that is the only way that makes sense, if the number of ports is deduced from the arity
+of the function input or return type.*]
 
 There are four special cases of MIMO nodes:
 #### Gather Nodes
 Gather nodes have M inputs and one or zero outputs.
     The inputs are conjunctive.  That is, the enclosed
-    function runs only when all inputs are available.
+    coroutine is invoked  only when all inputs are available.
 
 #### Scatter Nodes
 Scatter nodes have zero or one input and M outputs.
     The outputs are conjunctive.  That is, when the
-    enclosed function is executed, it places the same
+    enclosed coroutine completes, it places the same
     output on every output port.  [***Question:*** *the 
     same output or *an* output?* ]
 
 #### Combiner Nodes
 Combiner nodes have M inputs and one output.
     The inputs are disjunctive.  That is, the enclosed
-    function runs when any input is available.
+    coroutine is invoked when any input is available.
+    [***just one or as many are available?***  *I think it should be just one
+    for the predefined case -- we can define more complicated policies later.
+    Fairness?* ]
 
 #### Splitter Nodes
 Splitter nodes have one input and M outputs.
     The outputs are disjunctive.  That is, when the
-    enclosed function is executed, it places an output on one of the output ports.
-    [***Question:*** *Just one? Which one?*]
+    enclosed coroutine completes, it places an 
+    output on one of the output ports.
+    [***Question:*** *Just one? Which one?  Fairness? 
+    Random?  Round Robin?  Whatever is available?*]
 
 
-### Resumable Nodes
 
-#### State
+### Resumable Node
 
-Resumable nodes are task graph nodes that have a specified *state*.  The state consists
-of sufficient information such that the enclosed function can return to the caller at an
+Resumable nodes are like the nodes described above, but they contain
+coroutines rather than functions.  The interface to the nodes is the same,
+but the enclosed functions must satisfy different requirements.
+
+[ ***Important:*** *What should these be? Which of output, 
+compute state, run state do we need to return?  Should we
+return something else altogether?  A coroutine state?* ]
+
+Transform node:
+```c++
+     std::is_invocable_r_v<BlockOut, Function, BlockIn&>
+```
+or
+```c++
+     std::is_invocable_r_v<std::tuple<counter, BlockOut>, Function, const BlockIn&>;
+```
+or
+```c++
+     std::is_invocable_r_v<counter, Function, const BlockIn&, BlockOut&>;
+```
+or
+```c++
+     std::is_invocable_r_v<std::tuple<compute_state, BlockOut>, Function, const BlockIn&>;
+```
+or
+```c++
+     std::is_invocable_r_v<compute_state, Function, const BlockIn&, BlockOut&>;
+```
+
+
+
+Initial node:
+```c++
+     std::is_invocable_r_v<BlockOut, Function, BlockIn&>
+  || std::is_invocable_r_v<BlockOut, Function, const BlockIn&>;
+```
+
+Terminal node:
+```c++
+     std::is_invocable_r_v<BlockOut, Function, BlockIn&>
+  || std::is_invocable_r_v<BlockOut, Function, const BlockIn&>;
+```
+
+
+#### Computation State
+
+Resumable nodes are task graph nodes that have a specified *computation state*.  
+Computation state consists
+of sufficient information such that the enclosed coroutine can return to the caller at an
 intermediate point in its execution and then be resumed at that point.  That is,
-the enclosed function must be able to return a state to the caller, and it must be able
-to be invoked with a state.  Invoking the enclosed function with *any* state must cause 
-the enclosed function to resume its execution at the intermediate execution point 
+the enclosed function must be able to return a computation state to the caller, 
+and it must be able to be invoked with a computation state.  
+When the enclosed coroutine with *any* intermediate computation state it must  
+resume its execution at the intermediate execution point 
 associated with that state.  Any side-effects of the enclosed function must be captured
-in the state.  That is, multiple invocations of the enclosed function with the same state
-must always produce the same result (i.e., the same next state or the same final result).  
+in the computation state.  That is, multiple invocations of the enclosed function with 
+the same computation state
+must always produce the same result (i.e., the same next intermediate state).
 
-If the enclosed function is invoked with returned states in any order 
+If the enclosed coroutine is invoked with returned states in any order 
 and invoked an arbitrary number of times with any stated, when it finally
 reaches the end of its execution, it must return the same final result as if it had been
-invoked once without its state being saved and restored.
+invoked once without its state being saved and restored (i.e., as if it were a
+"normal" function).
 
-The state must be able to be saved to stable storage
-and then restored to the same state.  That is, the state must be serializable.
+Computation state must be able to be saved to stable storage
+and then restored.  That is, computation state must be serializable.
 
 *Example.* (https://godbolt.org/z/vsjGo1G39)
 ```c++ 
@@ -305,10 +462,9 @@ based on the use of resumable nodes is called a *segmented computation*.
 
 
 
-
-## Implementation Glossary
-
 #### Data Item Type
+
+#### Port
 
 #### Source
 
@@ -316,15 +472,14 @@ based on the use of resumable nodes is called a *segmented computation*.
 
 #### Mover
 
-#### Handles
-
 #### Task
 
+<!--
 #### Task Graph
+#### Coroutine
+-->
 
 #### Scheduler
-
-#### Coroutine
 
 #### Duff's Device
 
