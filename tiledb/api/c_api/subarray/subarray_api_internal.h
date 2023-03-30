@@ -34,7 +34,7 @@
 #define TILEDB_CAPI_SUBARRAY_API_INTERNAL_H
 
 #include "../../c_api_support/handle/handle.h"
-#include "tiledb/sm/storage_manager/context.h"
+#include "../context/context_api_internal.h"
 #include "tiledb/sm/subarray/subarray.h"
 
 struct tiledb_subarray_handle_t

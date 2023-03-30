@@ -37,6 +37,7 @@ using namespace Catch::Matchers;
 #include <test/support/src/helpers.h>
 #include <test/support/tdb_catch.h>
 #include "tiledb/api/c_api/subarray/subarray_api_internal.h"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/utils.h"
