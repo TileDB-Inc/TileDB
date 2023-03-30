@@ -37,6 +37,7 @@
 #include "subarray_api_external.h"
 #include "subarray_api_internal.h"
 
+#include <tiledb/sm/c_api/tiledb_struct_def.h>
 #include "tiledb/sm/c_api/api_argument_validator.h"
 
 namespace tiledb::api {

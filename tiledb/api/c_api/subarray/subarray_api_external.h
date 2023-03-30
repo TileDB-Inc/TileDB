@@ -33,7 +33,6 @@
 #ifndef TILEDB_CAPI_SUBARRAY_API_EXTERNAL_H
 #define TILEDB_CAPI_SUBARRAY_API_EXTERNAL_H
 
-#include <tiledb/sm/c_api/tiledb_struct_def.h>
 #include "../api_external_common.h"
 #include "../context/context_api_external.h"
 
