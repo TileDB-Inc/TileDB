@@ -3,7 +3,9 @@
 ## Application Glossary
 
 [ ***Question:*** *How are we deciding what is essential vs
-what is implementation?* ]
+what is implementation?  
+Essential has nothing to do.
+* ]
 
 
 ### Essentials
@@ -12,96 +14,131 @@ what is implementation?* ]
 
 #### Task Graph
 
-A *task graph* is a data structure consisting of *nodes* and *edges*.  Each node applies some 
-specified computation by invoking its *contained function*.
-Edges represent dependencies between nodes.
-A *dataflow* graph (or a *flow* graph) passes data between nodes, with the 
-output data of one node supplying data to the input of another node.  A *dependency*
-graph specifies the dependencies (the ordering of computation) between nodes, 
-but does not pass data between nodes.
+A *task graph* is a data structure consisting of *nodes* and *edges*.  Each node
+applies some specified computation by invoking its *contained discrete coroutine*
+("contained coroutine" or "enclosed coroutine" for short).  Nodes have *ports* for
+data input and/or output.  Edges connect a single output port to a single input port
+and represent dependencies between nodes.  A *dataflow* graph (or a *flow* graph)
+passes data between nodes along an edge, with the output port of one node supplying
+data to the input port of another node.  A *dependency* graph uses edges to specify
+the dependencies (the ordering of computation) between nodes, but does not pass data
+between them.
 
 A basic task graph is assumed to be a directed acyclic graph (DAG).
 
+There are two different notions of a graph: a *specification graph* and an *execution graph*.
+A specification graph has no mechanism for being executed, but rather is constructed from nodes and edges.
+An execution graph is built from a given specification graph and may be executed but has no
+means of being modified (no means of adding nodes or edges).
+
+<!--
 [ ***Important!*** *We need to define the semantics of the task graph 
 from the user point of view (or maybe that is the distinction between
 essential and implementation?  In that case a minimal API for adding nodes
 and edges to a graph would consist of* ]
+-->
+
+A minimal API corresponding to the principal components associated with a task graph might look like the following:
 ```c++
-// These should be only internally defined concepts since users are not going to define their own types
-// (In which case do we need them at all?)  Initially it may be sufficient to just define the API.  It will
-// take some time to really get the concepts right.
+// The actual implementation of the concepts may only need to be internally defined since users are not going to write 
+// their own types for use with the `GraphBuilder` functions.
 // For a very abbreviated hack, see https://godbolt.org/z/nGz9jGea8
 concept task_graph = requires { ... };
-concept function = requires { ... };  // Probably need different name to avoid naming conflicts maybe just a namespace
 concept discrete_coroutine = requires { ... };
-concept node = requires { ... };  // just node or source and sink?
+concept node = requires { ... };
 concept edge = requires { ... };
+concept port = requires { ... };  // source and sink as separate concepts?
 
-template <task_graph Graph, function Function>
-node auto add_node(Graph& graph, Function&& f);
+// Add a node to the specification graph via a `graph_builder`
+template <graph_builder Builder, discrete_coroutine Coroutine>
+node auto add_node(Builder& builder, Coroutine&& body);
 
-template <task_graph Graph, discrete_coroutine Coroutine>
-node auto add_node(Graph& graph, Coroutine&& f);
+// Connect two ports with an edge in the specification graph via a `graph_builder`
+template <graph_builder Builder, port From, port To>  // just node or source and sink? (ports)
+edge auto add_edge(Builder& builder, From&& from, To&& to);
 
-template <task_graph Graph, node From, node To>  // just node or source and sink?
-edge auto add_edge(Graph& graph, From&& from, To&& to);
-
-template <task_graph Graph>
+// Execution graph has no add_edge or add_node -- Execution
+template <execution_graph Graph>
 void sync_wait(Graph& graph);
+
+// Example usage
+std::tuple<size_t, double> foo(std::tuple<int>);   // Degenerate coroutine for illustrative purposes
+std::tuple<float> bar(std::tuple<char*, size_t>);  // Degenerate coroutine for illustrative purposes
+
+graph_builder auto builder;
+
+node auto a = add_node(builder, foo);  // 1 by 2 node (input by output)
+node auto b = add_node(builder, bar);  // 2 by 1 node (input by output)
+add_edge(builder, select_port<0>(a), select_port<1>(b));  // port 0 of a (size_t) connects to port 1 of b (size_t)
+
+execution_graph auto task_graph(builder);  // Create the execution graph
+
+sync_wait(task_graph);  // execute the execution graph, block until completion
+
 ```
+Different classes of nodes (`initial_node`, `transform_node`, `terminal_node`) can be created by specifying
+coroutines with an empty tuple as input or an empty tuple as output.
+
+<!--
 *If we can't get everything packed into one overload of `add_node`, will need to separately
 define `initial_node`, `transform_node`, and `terminal_node` functions as well as
 potentially mimo vs siso vs function vs discrete coroutine variants*
 
-
-<!--
 #### Input
 
 #### Output
 
-#### Port
-[***Comment:*** *We don't have a concept for this and users never see ports.  Move to Implementation?*
+-->
 
+#### Port 
 A port is a binding point between an edge and a node.
 A port can be either an input or an output, with respect to a given node.
 That is, in general, a node receives data from its input port(s) and transmits data to its output port(s).
--->
+
 
 #### Node
 
 A node is a locus for computation in the task graph.  A node may have multiple input
 ports and multiple output ports.  A node contains a discrete coroutine (the "enclosed coroutine").
 The expected functionality of a node is to apply its enclosed coroutine to data available on the
-input port(s) and to return its values to the output port(s).  
+input port(s) and to return its values to the output port(s).
+A node has a state (*node state*) reflecting at which stage of the pull-drain-compute-fill-push
+cycle it is.
 
 
 #### Edge
 
-An edge connects two nodes.  An edge has two endpoints, an output port of one node and an input port of another node.
-Edges are parametric on the number of managed data items (currently either two or three).
+An edge connects two nodes and has two endpoints, an output port of one node and
+an input port of another node.  Edges are parametric on the number of managed data
+items (currently either two or three).  Movement of data along an edge is controlled
+by a finite state machine.  An edge has state (*edge state*) reflecting the state of
+the state machine as well as the contents of the edge.
 
 
 #### Discrete Coroutine
 
-[ ***Important!*** *This needs to be made precise. 
-And we are going to need a state machine to implement it properly.* ] 
+[ ***Important!*** *This needs to be made precise.  
+And we are going to need a state machine to implement it properly.* ]
+
+[ ***Note:*** *Body state (inner), node state (outer)* ]
+
 A discrete coroutine is a function that may return to its caller and be 
 resumed at the point directly following the return.
 A discrete coroutine is
 invoked with an input and an initial computation state,
 and it produces an output and a final computation state.  
-In addition, a discrete coroutine may be in one of four run states:
+In addition, a discrete coroutine may be in one of four node states:
 * *initial run state* -- the coroutine has not yet been invoked
 * *active run state* -- the coroutine has been invoked and has not yet completed
 * *final run state* -- the coroutine has completed
 * *invalid run state* -- the coroutine has been invoked after it has completed
 
-[ ***Need to distinguish states:*** *run state and computation state good enough?
-Probably also need coroutine state (yield, done), node state (equivalent to run state?) 
-and task state (running, runnable, waiting, created, finished)* ]
+[ ***Need to distinguish inner and outer states:*** 
+*node state and body state. In addition we will need (at least) task state
+(running, runnable, waiting, created, finished)* ]
 
 In between the initial and final states, when the coroutine is in the active run state,
-the coroutine may return to the caller.  
+the coroutine may return to the caller (the node).
 When the coroutine returns to the caller it will
 provide its current run state and its current computation state.  
 If the returned run state is *active state*, the coroutine may be resumed.  
@@ -128,12 +165,13 @@ may not be executed again, and no further output will be produced, until its req
 inputs become available.
 -->
 
+<!--
 #### Function
 
 A degenerate case of a discrete coroutine is simply a function that runs from initiation and 
 does not return to its caller until it has completed its execution.  
 It does not have a run state nor an execution state.
-
+-->
 
 ## Implementation Glossary
 
@@ -154,6 +192,8 @@ so perhaps we should adopt that terminology for the glossary?*]
 
 
 #### Function Node
+
+[***Comment:***  *This will change.  Will excise anything not mimo-coroutine*]
 
 A function node is a single-input single-output node that is
 neither a root nor leaf in the task graph.  A function node has a contained function. 
@@ -176,7 +216,8 @@ where the enclosed `Function` must satisfy
      std::is_invocable_r_v<BlockOut, Function, BlockIn&>
   || std::is_invocable_r_v<BlockOut, Function, const BlockIn&>;
 ```
-[ ***Question:*** *Should we just go ahead and use C++20 concepts to specify requirements?* ]
+[ ***Comment:*** *Should probably just go ahead and use C++20 concepts to specify requirements?* ]
+
 
 #### Producer Node
 
@@ -420,7 +461,9 @@ Terminal node:
 ```
 
 
-#### Computation State
+### Kinds of State
+
+#### Body State (Previously Computation State)
 
 Resumable nodes are task graph nodes that have a specified *computation state*.  
 Computation state consists
@@ -490,6 +533,16 @@ int main() {
   std::cout << "Final sum is " << t.sum << std::endl;
 }
 ```
+
+#### Node State
+
+#### Edge State
+State machine state and contents of edge.
+
+#### Task State
+Waiting, runnable, running, admitted, finished.
+
+### Misc
 
 #### Segment
 

@@ -89,8 +89,34 @@ constexpr auto tuple_fold(Op&& op, Fn&& f, const std::tuple<Ts...>& in) {
 }
 
 /**
+ *
+ * @tparam T
+ * @tparam I
+ * @param value
+ * @return
+ */
+template<typename T, std::size_t... I>
+constexpr auto fill_tuple(T&& value, std::index_sequence<I...>) {
+  return std::make_tuple((static_cast<void>(I), value)...);
+}
+
+/**
+ * Helper function to fill a tuple with a single value
+ * @tparam N
+ * @tparam T
+ * @param value
+ * @return
+ */
+template <size_t N, class T>
+constexpr auto fill_tuple(T&& value) {
+  return fill_tuple(std::forward<T>(value), std::make_index_sequence<N>());
+}
+
+
+/**
  * Helper function that applies a function to the nth element of as tuple, with
- * n specified at runtime.
+ * n specified at runtime.  There are probably better ways to iterate through a
+ * tuple than this way.
  *
  * Initial experiments with this on godbolt https://godbolt.org/z/Wb3jdhfvz seem
  * to indicate recursion is unrolled by the compiler, so this will be more

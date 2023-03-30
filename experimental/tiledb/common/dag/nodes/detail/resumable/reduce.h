@@ -47,6 +47,14 @@
 
 namespace tiledb::common {
 
+/**
+ * Forward Declaration
+ *
+ * @tparam SinkMover
+ * @tparam BlocksIn
+ * @tparam SourceMover
+ * @tparam BlocksOut
+ */
 template <
     template <class>
     class SinkMover,
@@ -55,15 +63,17 @@ template <
     class BlocksOut = BlocksIn>
 class reducer_node_impl;
 
-/**
- * @todo Partial specialization for non-tuple types?
- *
- * @todo CTAD deduction guides to simplify construction (and eliminate
- * redundancy, site of errors, due to template args of class and function in
- * constructor).
- *
- */
 
+/**
+ * @brief A reducer node takes in a tuple of blocks and outputs a tuple with a single value.
+ * It is a special case of a mimo node where the number of outputs is 1, which is required
+ * by the constructor.
+ *
+ * @tparam SinkMover
+ * @tparam BlocksIn
+ * @tparam SourceMover
+ * @tparam BlocksOut
+ */
 template <
     template <class>
     class SinkMover,

@@ -711,33 +711,6 @@ using consumer_mimo = mimo_node<SinkMover, BlocksIn, EmptyMover, std::tuple<>>;
 
 #endif
 
-template <class MimoNode, size_t portnum>
-struct Proxy {
-  constexpr static const size_t portnum_{portnum};
-  // @todo: Proxy doesn't have any particular port it applies to, so we don't
-  // know whether it's
-  //   proxying an input or an output
-  // using in_value_type = typename std::tuple_element_t<portnum, typename
-  // MimoNode::in_value_type>; using out_value_type = typename
-  // std::tuple_element_t<portnum, typename MimoNode::out_value_type>;
-  MimoNode* node_ptr_;
-  Proxy(MimoNode& node)
-      : node_ptr_{&node} {
-  }
-};
-
-template <size_t N, class T>
-auto make_proxy(const T& u) {
-  return Proxy<std::remove_reference_t<decltype(u)>, N>(u);
-}
-template <typename T>
-struct is_proxy : std::false_type {};
-
-template <typename T, size_t portnum>
-struct is_proxy<Proxy<T, portnum>> : std::true_type {};
-
-template <class T>
-constexpr const bool is_proxy_v{is_proxy<T>::value};
 #if 0
 /**
  * @brief A proxy class for accessing the inputs and outputs of a mimo node

@@ -42,6 +42,7 @@
 
 #include "experimental/tiledb/common/dag/nodes/detail/resumable/mimo.h"
 #include "experimental/tiledb/common/dag/nodes/detail/resumable/reduce.h"
+#include "experimental/tiledb/common/dag/nodes/detail/resumable/broadcast.h"
 
 using namespace tiledb::common;
 
@@ -92,6 +93,12 @@ using reduce_3_3 = reducer_node<
     std::tuple<size_t, size_t, size_t>,
     DuffsMover3,
     std::tuple<size_t, size_t, size_t>>;
+using broadcast_1_3 = broadcast_node<3,
+    DuffsMover3,
+    std::tuple<size_t>,
+    DuffsMover3,
+    std::tuple<size_t>>;
+
 
 namespace tiledb::common {
 // Tentative deduction guide
@@ -135,10 +142,42 @@ TEST_CASE("Resumable Node: Construct reduce node", "[reducer_node]") {
     reduce_3_1 b3_3_1{[](const std::tuple<size_t, size_t, size_t>& a) {
       return std::make_tuple(std::get<0>(a) + std::get<1>(a) + std::get<2>(a));
     }};
+    CHECK(b3_3_1->num_inputs() == 3);
+    CHECK(b3_3_1->num_outputs() == 1);
+
     // Error: reduction goes M -> 1
     // reduce_3_3 b3_3_3{[](const std::tuple<size_t, size_t, size_t>& a) {
     //   return std::make_tuple(std::get<0>(a), std::get<1>(a), std::get<2>(a));
     // }};
+  }
+}
+
+TEST_CASE("Resumable Node: Construct broadcast node", "[broadcast_node]") {
+  SECTION("Test Construction") {
+    broadcast_1_3 b3_1_3{[](const std::tuple<size_t>& a) {
+      return std::make_tuple(5*std::get<0>(a));
+    }};
+    CHECK(b3_1_3->num_inputs() == 1);
+    CHECK(b3_1_3->num_outputs() == 3);
+  }
+}
+
+//make_proxy<0>(v)
+TEST_CASE("Resumable Node: Connect broadcast to reduce", "[broadcast_node]") {
+  SECTION("Test Connection") {
+    broadcast_1_3 b3_1_3{[](const std::tuple<size_t>& a) {
+      return std::make_tuple(5*std::get<0>(a));
+    }};
+    CHECK(b3_1_3->num_inputs() == 1);
+    CHECK(b3_1_3->num_outputs() == 3);
+
+    reduce_3_1 b3_3_1{[](const std::tuple<size_t, size_t, size_t>& a) {
+      return std::make_tuple(std::get<0>(a) + std::get<1>(a) + std::get<2>(a));
+    }};
+    CHECK(b3_1_3->num_inputs() == 1);
+    CHECK(b3_1_3->num_outputs() == 3);
+
+    Edge e1{make_proxy<0>(b3_1_3), make_proxy<0>(b3_3_1)};
   }
 }
 
