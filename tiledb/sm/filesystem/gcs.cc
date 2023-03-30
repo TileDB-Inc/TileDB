@@ -259,7 +259,7 @@ Status GCS::is_bucket(
       bucket_metadata = client_->GetBucketMetadata(bucket_name);
 
   if (!bucket_metadata.ok()) {
-    const google::cloud::Status status = bucket_metadata.status();
+    const google::cloud::Status& status = bucket_metadata.status();
     const google::cloud::StatusCode code = status.code();
 
     if (code == google::cloud::StatusCode::kNotFound) {
@@ -304,7 +304,7 @@ Status GCS::remove_bucket(const URI& uri) const {
 
   auto bucket_name = std::get<0>(parse_gcs_uri(uri));
 
-  const google::cloud::Status status = client_->DeleteBucket(bucket_name);
+  const google::cloud::Status& status = client_->DeleteBucket(bucket_name);
   if (!status.ok()) {
     return LOG_STATUS(Status_GCSError(std::string(
         "Delete bucket failed on: " + uri.to_string() + " (" +
@@ -324,7 +324,7 @@ Status GCS::remove_object(const URI& uri) const {
 
   auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
-  const google::cloud::Status status =
+  const google::cloud::Status& status =
       client_->DeleteObject(bucket_name, object_path);
   if (!status.ok()) {
     return LOG_STATUS(Status_GCSError(std::string(
@@ -417,7 +417,7 @@ tuple<Status, optional<std::vector<directory_entry>>> GCS::ls_with_sizes(
           bucket_name, std::move(prefix_option), std::move(delimiter_option));
   for (const auto& object_metadata : objects_reader) {
     if (!object_metadata.ok()) {
-      const google::cloud::Status status = object_metadata.status();
+      const google::cloud::Status& status = object_metadata.status();
 
       auto st = LOG_STATUS(Status_GCSError(std::string(
           "List objects failed on: " + uri.to_string() + " (" +
@@ -484,7 +484,7 @@ Status GCS::copy_object(const URI& old_uri, const URI& new_uri) {
           old_bucket_name, old_object_path, new_bucket_name, new_object_path);
 
   if (!object_metadata.ok()) {
-    const google::cloud::Status status = object_metadata.status();
+    const google::cloud::Status& status = object_metadata.status();
 
     return LOG_STATUS(Status_GCSError(std::string(
         "Copy object failed on: " + old_uri.to_string() + " (" +
@@ -521,7 +521,7 @@ Status GCS::touch(const URI& uri) const {
       object_metadata = client_->InsertObject(bucket_name, object_path, "");
 
   if (!object_metadata.ok()) {
-    const google::cloud::Status status = object_metadata.status();
+    const google::cloud::Status& status = object_metadata.status();
 
     return LOG_STATUS(Status_GCSError(std::string(
         "Touch object failed on: " + uri.to_string() + " (" + status.message() +
@@ -555,7 +555,7 @@ Status GCS::is_object(
       object_metadata = client_->GetObjectMetadata(bucket_name, object_path);
 
   if (!object_metadata.ok()) {
-    const google::cloud::Status status = object_metadata.status();
+    const google::cloud::Status& status = object_metadata.status();
     const google::cloud::StatusCode code = status.code();
 
     if (code == google::cloud::StatusCode::kNotFound) {
@@ -643,7 +643,7 @@ Status GCS::object_size(const URI& uri, uint64_t* const nbytes) const {
       object_metadata = client_->GetObjectMetadata(bucket_name, object_path);
 
   if (!object_metadata.ok()) {
-    const google::cloud::Status status = object_metadata.status();
+    const google::cloud::Status& status = object_metadata.status();
 
     return LOG_STATUS(Status_GCSError(std::string(
         "Get object size failed on: " + object_path + " (" + status.message() +
@@ -828,7 +828,7 @@ Status GCS::upload_part(
           bucket_name, object_part_path, std::move(write_buffer));
 
   if (!object_metadata.ok()) {
-    const google::cloud::Status status = object_metadata.status();
+    const google::cloud::Status& status = object_metadata.status();
 
     return LOG_STATUS(Status_GCSError(std::string(
         "Upload part failed on: " + object_part_path + " (" + status.message() +
@@ -869,7 +869,7 @@ Status GCS::flush_object(const URI& uri) {
   std::unique_lock<std::mutex> state_lck(state->mtx_);
   unique_rl.unlock();
 
-  const std::vector<std::string> part_paths = state->get_part_paths();
+  const std::vector<std::string>& part_paths = state->get_part_paths();
 
   auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
@@ -907,7 +907,7 @@ Status GCS::flush_object(const URI& uri) {
   finish_multi_part_upload(uri);
 
   if (!object_metadata.ok()) {
-    const google::cloud::Status status = object_metadata.status();
+    const google::cloud::Status& status = object_metadata.status();
 
     return LOG_STATUS(Status_GCSError(std::string(
         "Compse object failed on: " + uri.to_string() + " (" +
@@ -937,7 +937,7 @@ void GCS::delete_parts(
 
 Status GCS::delete_part(
     const std::string& bucket_name, const std::string& part_path) {
-  const google::cloud::Status status =
+  const google::cloud::Status& status =
       client_->DeleteObject(bucket_name, part_path);
   if (!status.ok()) {
     return Status_GCSError(std::string(
@@ -982,7 +982,7 @@ Status GCS::flush_object_direct(const URI& uri) {
           bucket_name, object_path, std::move(write_buffer));
 
   if (!object_metadata.ok()) {
-    const google::cloud::Status status = object_metadata.status();
+    const google::cloud::Status& status = object_metadata.status();
 
     return LOG_STATUS(Status_GCSError(std::string(
         "Write object failed on: " + uri.to_string() + " (" + status.message() +

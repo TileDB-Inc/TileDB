@@ -354,7 +354,7 @@ class GCS {
     }
 
     /* Returns all generated part paths. */
-    std::vector<std::string> get_part_paths() const {
+    const std::vector<std::string>& get_part_paths() const {
       return part_paths_;
     }
 
