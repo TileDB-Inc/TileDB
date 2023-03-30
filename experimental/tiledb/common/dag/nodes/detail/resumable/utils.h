@@ -89,6 +89,30 @@ constexpr auto tuple_fold(Op&& op, Fn&& f, const std::tuple<Ts...>& in) {
 }
 
 /**
+ * Helper function that applies a function to the nth element of as tuple, with
+ * n specified at runtime.
+ *
+ * @tparam Func Function type
+ * @tparam Tuple Type of the tuple
+ * @tparam N Counter for the recursion
+ * @param func The function to apply to the element
+ * @param tup  The tuple to get the element from
+ * @param idx Which element of the tuple to apply `func` to
+ */
+template <class Func, class Tuple, size_t N = 0>
+void runtime_get(Func func, Tuple& tup, size_t idx) {
+  if (N == idx) {
+    std::invoke(func, std::get<N>(tup));
+    return;
+  }
+
+  if constexpr (N + 1 < std::tuple_size_v<Tuple>) {
+    return runtime_get<Func, Tuple, N + 1>(func, tup, idx);
+  }
+}
+
+
+/**
  * Some type aliases for the function enclosed by the node, to allow empty
  * inputs or empty outputs (for creating producer or consumer nodes for
  * testing/validation from function node).
