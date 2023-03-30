@@ -789,7 +789,8 @@ Status GCS::write_parts(
     state_lck.unlock();
     return st;
   } else {
-    std::vector<ThreadPool::Task> tasks(num_ops);
+    std::vector<ThreadPool::Task> tasks;
+    tasks.reserve(num_ops);
     for (uint64_t i = 0; i < num_ops; i++) {
       const uint64_t begin = i * multi_part_part_size_;
       const uint64_t end =
@@ -880,8 +881,8 @@ Status GCS::flush_object(const URI& uri) {
   state_lck.unlock();
 
   // Build a list of objects to compose.
-  std::vector<google::cloud::storage::ComposeSourceObject> source_objects(
-      part_paths.size());
+  std::vector<google::cloud::storage::ComposeSourceObject> source_objects;
+  source_objects.reserve(part_paths.size());
   for (const auto& part_path : part_paths) {
     google::cloud::storage::ComposeSourceObject source_object;
     source_object.object_name = part_path;
