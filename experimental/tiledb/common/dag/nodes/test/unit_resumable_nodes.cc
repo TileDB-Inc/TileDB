@@ -32,8 +32,8 @@
 #include "unit_resumable_nodes.h"
 #include <future>
 #include <type_traits>
-#include "experimental/tiledb/common/dag/execution/duffs.h"
 #include "experimental/tiledb/common/dag/edge/edge.h"
+#include "experimental/tiledb/common/dag/execution/duffs.h"
 #include "experimental/tiledb/common/dag/nodes/generators.h"
 #include "experimental/tiledb/common/dag/nodes/resumable_nodes.h"
 #include "experimental/tiledb/common/dag/nodes/terminals.h"
@@ -41,43 +41,104 @@
 #include "experimental/tiledb/common/dag/utility/print_types.h"
 
 #include "experimental/tiledb/common/dag/nodes/detail/resumable/mimo.h"
+#include "experimental/tiledb/common/dag/nodes/detail/resumable/reduce.h"
 
 using namespace tiledb::common;
 
 using S = tiledb::common::DuffsScheduler<node>;
-using R2_1_1 = mimo_node<DuffsMover2, std::tuple<size_t>, DuffsMover2, std::tuple<size_t>>;
-using R2_3_1 = mimo_node<DuffsMover2, std::tuple<size_t, int, double>, DuffsMover2, std::tuple<size_t>>;
-using R2_1_3 = mimo_node<DuffsMover2, std::tuple<size_t>, DuffsMover2, std::tuple<size_t, double, int>>;
-using R2_3_3 = mimo_node<DuffsMover2, std::tuple<size_t, int, double>, DuffsMover2, std::tuple<size_t, double, int>>;
+using R2_1_1 =
+    mimo_node<DuffsMover2, std::tuple<size_t>, DuffsMover2, std::tuple<size_t>>;
+using R2_3_1 = mimo_node<
+    DuffsMover2,
+    std::tuple<size_t, int, double>,
+    DuffsMover2,
+    std::tuple<size_t>>;
+using R2_1_3 = mimo_node<
+    DuffsMover2,
+    std::tuple<size_t>,
+    DuffsMover2,
+    std::tuple<size_t, double, int>>;
+using R2_3_3 = mimo_node<
+    DuffsMover2,
+    std::tuple<size_t, int, double>,
+    DuffsMover2,
+    std::tuple<size_t, double, int>>;
 
-using R3_1_1 = mimo_node<DuffsMover3, std::tuple<size_t>, DuffsMover3, std::tuple<size_t>>;
-using R3_3_1 = mimo_node<DuffsMover3, std::tuple<size_t, int, double>, DuffsMover3, std::tuple<size_t>>;
-using R3_1_3 = mimo_node<DuffsMover3, std::tuple<size_t>, DuffsMover3, std::tuple<size_t, double, int>>;
-using R3_3_3 = mimo_node<DuffsMover3, std::tuple<size_t, int, double>, DuffsMover3, std::tuple<size_t, double, int>>;
+using R3_1_1 =
+    mimo_node<DuffsMover3, std::tuple<size_t>, DuffsMover3, std::tuple<size_t>>;
+using R3_3_1 = mimo_node<
+    DuffsMover3,
+    std::tuple<size_t, int, double>,
+    DuffsMover3,
+    std::tuple<size_t>>;
+using R3_1_3 = mimo_node<
+    DuffsMover3,
+    std::tuple<size_t>,
+    DuffsMover3,
+    std::tuple<size_t, double, int>>;
+using R3_3_3 = mimo_node<
+    DuffsMover3,
+    std::tuple<size_t, int, double>,
+    DuffsMover3,
+    std::tuple<size_t, double, int>>;
 
-namespace tiledb::common  {
+using reduce_3_1 = reducer_node<
+    DuffsMover3,
+    std::tuple<size_t, size_t, size_t>,
+    DuffsMover3,
+    std::tuple<size_t>>;
+using reduce_3_3 = reducer_node<
+    DuffsMover3,
+    std::tuple<size_t, size_t, size_t>,
+    DuffsMover3,
+    std::tuple<size_t, size_t, size_t>>;
+
+namespace tiledb::common {
 // Tentative deduction guide
 template <class... R, class... Args>
 mimo_node(std::function<std::tuple<R...>(const std::tuple<Args...>&)>&&)
-    ->mimo_node<DuffsMover3, std::tuple<std::remove_cv_t<std::remove_reference_t<Args>>...>,
-        DuffsMover3, std::tuple<R>...>;
-}
+    -> mimo_node<
+        DuffsMover3,
+        std::tuple<std::remove_cv_t<std::remove_reference_t<Args>>...>,
+        DuffsMover3,
+        std::tuple<R>...>;
+}  // namespace tiledb::common
 
-TEST_CASE ("ResumableNode: Verify Construction", "[resumable_node]") {
+TEST_CASE("ResumableNode: Verify Construction", "[resumable_node]") {
   SECTION("Test Construction") {
-    R2_1_1 b2_1_1 { [](std::tuple<size_t>) { return std::make_tuple(0UL); } };
-    R2_1_3 b2_1_3 { [](std::tuple<size_t>) { return std::make_tuple(0UL, 0.0, 0); } };
-    R2_3_1 b2_3_1 { [](std::tuple<size_t, int, double>) { return std::make_tuple(0UL); } };
-    R2_3_3 b2_3_3 { [](std::tuple<size_t, int, double>) { return std::make_tuple(0UL, 0.0, 0); } };
+    R2_1_1 b2_1_1{[](std::tuple<size_t>) { return std::make_tuple(0UL); }};
+    R2_1_3 b2_1_3{
+        [](std::tuple<size_t>) { return std::make_tuple(0UL, 0.0, 0); }};
+    R2_3_1 b2_3_1{
+        [](std::tuple<size_t, int, double>) { return std::make_tuple(0UL); }};
+    R2_3_3 b2_3_3{[](std::tuple<size_t, int, double>) {
+      return std::make_tuple(0UL, 0.0, 0);
+    }};
 
-    R3_1_1 b3_1_1 { [](std::tuple<size_t>) { return std::make_tuple(0UL); } };
-    R3_1_3 b3_1_3 { [](std::tuple<size_t>) { return std::make_tuple(0UL, 0.0, 0); } };
-    R3_3_1 b3_3_1 { [](std::tuple<size_t, int, double>) { return std::make_tuple(0UL); } };
-    R3_3_3 b3_3_3 { [](std::tuple<size_t, int, double>) { return std::make_tuple(0UL, 0.0, 0); } };
+    R3_1_1 b3_1_1{[](std::tuple<size_t>) { return std::make_tuple(0UL); }};
+    R3_1_3 b3_1_3{
+        [](std::tuple<size_t>) { return std::make_tuple(0UL, 0.0, 0); }};
+    R3_3_1 b3_3_1{
+        [](std::tuple<size_t, int, double>) { return std::make_tuple(0UL); }};
+    R3_3_3 b3_3_3{[](std::tuple<size_t, int, double>) {
+      return std::make_tuple(0UL, 0.0, 0);
+    }};
 
     // Deduction guide not working
-    // mimo_node c_1_1 { [](std::tuple<size_t>) { return std::make_tuple(0UL); } };
+    // mimo_node c_1_1 { [](std::tuple<size_t>) { return std::make_tuple(0UL); }
+    // };
+  }
+}
 
+TEST_CASE("Resumable Node: Construct reduce node", "[reducer_node]") {
+  SECTION("Test Construction") {
+    reduce_3_1 b3_3_1{[](const std::tuple<size_t, size_t, size_t>& a) {
+      return std::make_tuple(std::get<0>(a) + std::get<1>(a) + std::get<2>(a));
+    }};
+    // Error: reduction goes M -> 1
+    // reduce_3_3 b3_3_3{[](const std::tuple<size_t, size_t, size_t>& a) {
+    //   return std::make_tuple(std::get<0>(a), std::get<1>(a), std::get<2>(a));
+    // }};
   }
 }
 

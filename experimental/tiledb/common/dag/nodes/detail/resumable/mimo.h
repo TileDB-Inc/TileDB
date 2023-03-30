@@ -59,7 +59,7 @@
 #include "experimental/tiledb/common/dag/utility/print_types.h"
 
 namespace tiledb::common {
-
+namespace {
 /**
  * Forward declaration of mimo_node_impl.
  */
@@ -96,9 +96,16 @@ class mimo_node_impl<
     std::tuple<BlocksIn...>,
     SourceMover,
     std::tuple<BlocksOut...>>
-    : public mimo_node_impl_base<SinkMover, std::tuple<BlocksIn...>, SourceMover, std::tuple<BlocksOut...>>
-{  // @todo Inherit from tuple<Source>, tuple<Sink>?
-  using Base = mimo_node_impl_base<SinkMover, std::tuple<BlocksIn...>, SourceMover, std::tuple<BlocksOut...>> ;
+    : public mimo_node_impl_base<
+          SinkMover,
+          std::tuple<BlocksIn...>,
+          SourceMover,
+          std::tuple<BlocksOut...>> {  // @todo Inherit from tuple<Source>, tuple<Sink>?
+  using Base = mimo_node_impl_base<
+      SinkMover,
+      std::tuple<BlocksIn...>,
+      SourceMover,
+      std::tuple<BlocksOut...>>;
   using Base::Base;
 
   // Some aliases for convenience.  @todo Possible to do this without all the verbiage?
@@ -241,7 +248,7 @@ class mimo_node_impl<
     }
   }
 };
-
+}  // namespace
 #if 0
 // @todo: Define function_node et al as degenerate mimo nodes?
 

@@ -92,6 +92,11 @@ constexpr auto tuple_fold(Op&& op, Fn&& f, const std::tuple<Ts...>& in) {
  * Helper function that applies a function to the nth element of as tuple, with
  * n specified at runtime.
  *
+ * Initial experiments with this on godbolt https://godbolt.org/z/Wb3jdhfvz seem
+ * to indicate recursion is unrolled by the compiler, so this will be more
+ * expensive than array access.  Not likely to be noticeable in the context of
+ * DAG execution, but something to keep in mind.
+ *
  * @tparam Func Function type
  * @tparam Tuple Type of the tuple
  * @tparam N Counter for the recursion
@@ -100,14 +105,14 @@ constexpr auto tuple_fold(Op&& op, Fn&& f, const std::tuple<Ts...>& in) {
  * @param idx Which element of the tuple to apply `func` to
  */
 template <class Func, class Tuple, size_t N = 0>
-void runtime_get(Func func, Tuple& tup, size_t idx) {
+void idx_get(Func func, Tuple& tup, size_t idx) {
   if (N == idx) {
     std::invoke(func, std::get<N>(tup));
     return;
   }
 
   if constexpr (N + 1 < std::tuple_size_v<Tuple>) {
-    return runtime_get<Func, Tuple, N + 1>(func, tup, idx);
+    return idx_get<Func, Tuple, N + 1>(func, tup, idx);
   }
 }
 
