@@ -221,7 +221,8 @@ Status GCS::is_empty_bucket(const URI& uri, bool* is_empty) const {
   auto bucket_name = std::get<0>(parse_gcs_uri(uri));
 
   google::cloud::storage::ListObjectsReader objects_reader =
-      client_->ListObjects(bucket_name);
+      client_->ListObjects(
+          bucket_name, ::google::cloud::storage::MaxResults(1));
 
   for (const google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>&
            object_metadata : objects_reader) {
@@ -409,12 +410,14 @@ tuple<Status, optional<std::vector<directory_entry>>> GCS::ls_with_sizes(
   auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
   std::vector<directory_entry> entries;
-  google::cloud::storage::Prefix prefix_option(object_path);
-  google::cloud::storage::Delimiter delimiter_option(delimiter);
 
   google::cloud::storage::ListObjectsAndPrefixesReader objects_reader =
       client_->ListObjectsAndPrefixes(
-          bucket_name, std::move(prefix_option), std::move(delimiter_option));
+          bucket_name,
+          google::cloud::storage::Prefix(object_path),
+          google::cloud::storage::Delimiter(delimiter),
+          // Documentation recommends a maximum of 1000 objects per page.
+          google::cloud::storage::MaxResults(std::clamp(max_paths, 0, 1000)));
   for (const auto& object_metadata : objects_reader) {
     if (!object_metadata.ok()) {
       const google::cloud::Status& status = object_metadata.status();
