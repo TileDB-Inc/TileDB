@@ -641,6 +641,7 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_offsets_tile(
                      src_max_pos - 1 :
                      src_max_pos;
   if (!use_fill_value) {
+    // Valgrind points to this for loop; Commenting it prevents errors in repro.
     for (uint64_t c = src_min_pos; c < end; c++) {
       for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
         *buffer = (OffType)(src_buff[c + 1] - src_buff[c]) / offset_div;
@@ -1744,13 +1745,9 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
         buffers_full_ |= buffers_full;
 
         // Clear tiles from memory and adjust result_tiles.
-        for (const auto& idx : *index_to_copy) {
-          const auto& name_to_clear = names[idx];
-          const auto is_dim_to_clear = array_schema_.is_dim(name_to_clear);
-          if (qc_loaded_attr_names_set_.count(name_to_clear) == 0 &&
-              (!include_coords_ || !is_dim_to_clear)) {
-            clear_tiles(name_to_clear, result_tiles, new_result_tiles_size);
-          }
+        if (qc_loaded_attr_names_set_.count(name) == 0 &&
+            (!include_coords_ || !is_dim)) {
+          clear_tiles(name, result_tiles, new_result_tiles_size);
         }
         result_tiles.resize(new_result_tiles_size);
 
@@ -1783,8 +1780,8 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
       if (nullable)
         *query_buffer.validity_vector_.buffer_size() = total_cells;
 
-      // Clear tiles from memory.
-      if (qc_loaded_attr_names_set_.count(name) == 0 &&
+      // Clear tiles from memory. Var-size tiles are cleared above.
+      if (!var_sized && qc_loaded_attr_names_set_.count(name) == 0 &&
           (!include_coords_ || !is_dim) && name != constants::timestamps &&
           name != constants::delete_timestamps) {
         clear_tiles(name, result_tiles);
