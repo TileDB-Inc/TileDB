@@ -43,6 +43,7 @@
 #include "tiledb/api/c_api/error/error_api_internal.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_internal.h"
 #include "tiledb/api/c_api/string/string_api_internal.h"
+#include "tiledb/api/c_api/subarray/subarray_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/dynamic_memory/dynamic_memory.h"
@@ -82,18 +83,6 @@
 
 #include <memory>
 #include <sstream>
-
-/**
- * Helper class to aid shimming access from _query... routines in this module to
- * _subarray... routines deprecating them.
- */
-
-struct tiledb_subarray_transient_local_t : public tiledb_subarray_t {
-  explicit tiledb_subarray_transient_local_t(const tiledb_query_t* query) {
-    this->subarray_ =
-        const_cast<tiledb::sm::Subarray*>(query->query_->subarray());
-  }
-};
 
 /*
  * The Definition for a "C" function can't be in a header.
@@ -1423,13 +1412,12 @@ int32_t tiledb_query_set_subarray_t(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const tiledb_subarray_t* subarray) {
+  ensure_subarray_is_valid(subarray);
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, query) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  query->query_->set_subarray(*subarray->subarray_);
+  query->query_->set_subarray(subarray->subarray());
 
   return TILEDB_OK;
 }
@@ -1695,10 +1683,11 @@ int32_t tiledb_query_add_range(
     const void* stride) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
+  auto& query_subarray =
+      *const_cast<tiledb::sm::Subarray*>(query->query_->subarray());
+  throw_if_not_ok(query_subarray.add_range(dim_idx, start, end, stride));
 
-  tiledb_subarray_transient_local_t query_subarray(query);
-  return tiledb_subarray_add_range(
-      ctx, &query_subarray, dim_idx, start, end, stride);
+  return TILEDB_OK;
 }
 
 int32_t tiledb_query_add_point_ranges(
@@ -1717,12 +1706,11 @@ int32_t tiledb_query_add_point_ranges(
    * An earlier version of this function was casting away `const`, which may not
    * have had the effect intended. This function deserves an audit.
    */
-  tiledb_subarray_transient_local_t query_subarray(query);
-  auto local_cfg{tiledb_config_handle_t::make_handle(query->query_->config())};
-  tiledb_subarray_set_config(ctx, &query_subarray, local_cfg);
-  tiledb_config_handle_t::break_handle(local_cfg);
-  return tiledb_subarray_add_point_ranges(
-      ctx, &query_subarray, dim_idx, start, count);
+  auto& query_subarray =
+      *const_cast<tiledb::sm::Subarray*>(query->query_->subarray());
+  throw_if_not_ok(query_subarray.set_config(query->query_->config()));
+  throw_if_not_ok(query_subarray.add_point_ranges(dim_idx, start, count));
+  return TILEDB_OK;
 }
 
 int32_t tiledb_query_add_range_by_name(
@@ -1735,9 +1723,11 @@ int32_t tiledb_query_add_range_by_name(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  tiledb_subarray_transient_local_t query_subarray(query);
-  return tiledb_subarray_add_range_by_name(
-      ctx, &query_subarray, dim_name, start, end, stride);
+  auto& query_subarray =
+      *const_cast<tiledb::sm::Subarray*>(query->query_->subarray());
+  throw_if_not_ok(
+      query_subarray.add_range_by_name(dim_name, start, end, stride));
+  return TILEDB_OK;
 }
 
 int32_t tiledb_query_add_range_var(
@@ -1751,9 +1741,11 @@ int32_t tiledb_query_add_range_var(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  tiledb_subarray_transient_local_t query_subarray(query);
-  return tiledb_subarray_add_range_var(
-      ctx, &query_subarray, dim_idx, start, start_size, end, end_size);
+  auto& query_subarray =
+      *const_cast<tiledb::sm::Subarray*>(query->query_->subarray());
+  throw_if_not_ok(
+      query_subarray.add_range_var(dim_idx, start, start_size, end, end_size));
+  return TILEDB_OK;
 }
 
 int32_t tiledb_query_add_range_var_by_name(
@@ -1767,9 +1759,11 @@ int32_t tiledb_query_add_range_var_by_name(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  tiledb_subarray_transient_local_t query_subarray(query);
-  return tiledb_subarray_add_range_var_by_name(
-      ctx, &query_subarray, dim_name, start, start_size, end, end_size);
+  auto& query_subarray =
+      *const_cast<tiledb::sm::Subarray*>(query->query_->subarray());
+  throw_if_not_ok(query_subarray.add_range_var_by_name(
+      dim_name, start, start_size, end, end_size));
+  return TILEDB_OK;
 }
 
 int32_t tiledb_query_get_range_num(
@@ -1780,9 +1774,9 @@ int32_t tiledb_query_get_range_num(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  tiledb_subarray_transient_local_t query_subarray(query);
-  return tiledb_subarray_get_range_num(
-      ctx, &query_subarray, dim_idx, range_num);
+  auto& query_subarray = *(query->query_->subarray());
+  throw_if_not_ok(query_subarray.get_range_num(dim_idx, range_num));
+  return TILEDB_OK;
 }
 
 int32_t tiledb_query_get_range_num_from_name(
@@ -1793,9 +1787,9 @@ int32_t tiledb_query_get_range_num_from_name(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  tiledb_subarray_transient_local_t query_subarray(query);
-  return tiledb_subarray_get_range_num_from_name(
-      ctx, &query_subarray, dim_name, range_num);
+  auto& query_subarray = *(query->query_->subarray());
+  throw_if_not_ok(query_subarray.get_range_num_from_name(dim_name, range_num));
+  return TILEDB_OK;
 }
 
 int32_t tiledb_query_get_range(
@@ -1809,9 +1803,10 @@ int32_t tiledb_query_get_range(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  tiledb_subarray_transient_local_t query_subarray(query);
-  return tiledb_subarray_get_range(
-      ctx, &query_subarray, dim_idx, range_idx, start, end, stride);
+  auto& query_subarray = *(query->query_->subarray());
+  throw_if_not_ok(
+      query_subarray.get_range(dim_idx, range_idx, start, end, stride));
+  return TILEDB_OK;
 }
 
 int32_t tiledb_query_get_range_from_name(
@@ -1825,9 +1820,10 @@ int32_t tiledb_query_get_range_from_name(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  tiledb_subarray_transient_local_t query_subarray(query);
-  return tiledb_subarray_get_range_from_name(
-      ctx, &query_subarray, dim_name, range_idx, start, end, stride);
+  auto& query_subarray = *(query->query_->subarray());
+  throw_if_not_ok(query_subarray.get_range_from_name(
+      dim_name, range_idx, start, end, stride));
+  return TILEDB_OK;
 }
 
 int32_t tiledb_query_get_range_var_size(
@@ -1840,9 +1836,10 @@ int32_t tiledb_query_get_range_var_size(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  tiledb_subarray_transient_local_t which_subarray(query);
-  return tiledb_subarray_get_range_var_size(
-      ctx, &which_subarray, dim_idx, range_idx, start_size, end_size);
+  auto& query_subarray = *(query->query_->subarray());
+  throw_if_not_ok(query_subarray.get_range_var_size(
+      dim_idx, range_idx, start_size, end_size));
+  return TILEDB_OK;
 }
 
 int32_t tiledb_query_get_range_var_size_from_name(
@@ -1855,9 +1852,10 @@ int32_t tiledb_query_get_range_var_size_from_name(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  tiledb_subarray_transient_local_t query_subarray(query);
-  return tiledb_subarray_get_range_var_size_from_name(
-      ctx, &query_subarray, dim_name, range_idx, start_size, end_size);
+  auto& query_subarray = *(query->query_->subarray());
+  throw_if_not_ok(query_subarray.get_range_var_size_from_name(
+      dim_name, range_idx, start_size, end_size));
+  return TILEDB_OK;
 }
 
 int32_t tiledb_query_get_range_var(
@@ -1870,9 +1868,9 @@ int32_t tiledb_query_get_range_var(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  tiledb_subarray_transient_local_t query_subarray(query);
-  return tiledb_subarray_get_range_var(
-      ctx, &query_subarray, dim_idx, range_idx, start, end);
+  auto& query_subarray = *(query->query_->subarray());
+  throw_if_not_ok(query_subarray.get_range_var(dim_idx, range_idx, start, end));
+  return TILEDB_OK;
 }
 
 int32_t tiledb_query_get_range_var_from_name(
@@ -1885,9 +1883,10 @@ int32_t tiledb_query_get_range_var_from_name(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  tiledb_subarray_transient_local_t query_subarray(query);
-  return tiledb_subarray_get_range_var_from_name(
-      ctx, &query_subarray, dim_name, range_idx, start, end);
+  auto& query_subarray = *(query->query_->subarray());
+  throw_if_not_ok(
+      query_subarray.get_range_var_from_name(dim_name, range_idx, start, end));
+  return TILEDB_OK;
 }
 
 int32_t tiledb_query_get_est_result_size(
@@ -1990,21 +1989,12 @@ int32_t tiledb_query_get_subarray_t(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     tiledb_subarray_t** subarray) {
-  *subarray = nullptr;
+  ensure_output_pointer_is_valid(subarray);
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *subarray = new (std::nothrow) tiledb_subarray_t;
-  if (*subarray == nullptr) {
-    auto st = Status_Error("Failed to allocate TileDB subarray object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  (*subarray)->subarray_ =
-      const_cast<tiledb::sm::Subarray*>(query->query_->subarray());
+  *subarray = tiledb_subarray_t::make_handle(*(query->query_->subarray()));
 
   return TILEDB_OK;
 }
@@ -2043,305 +2033,6 @@ int32_t tiledb_query_add_update_value(
   }
 
   // Success
-  return TILEDB_OK;
-}
-
-/* ****************************** */
-/*         SUBARRAY               */
-/* ****************************** */
-
-capi_return_t tiledb_subarray_alloc(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_t* array,
-    tiledb_subarray_t** subarray) {
-  api::ensure_array_is_valid(array);
-  api::ensure_output_pointer_is_valid(subarray);
-
-  // Error if array is not open
-  if (!array->array_->is_open()) {
-    throw api::CAPIStatusException("Cannot create subarray; array is not open");
-  }
-
-  // Create a new subarray object
-  *subarray = new tiledb_subarray_t;
-  try {
-    (*subarray)->subarray_ = new tiledb::sm::Subarray(
-        array->array_.get(),
-        (tiledb::sm::stats::Stats*)nullptr,
-        ctx->storage_manager()->logger(),
-        true,
-        ctx->storage_manager());
-    (*subarray)->is_allocated_ = true;
-  } catch (...) {
-    delete *subarray;
-    *subarray = nullptr;
-    throw api::CAPIStatusException("Failed to create subarray");
-  }
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_subarray_set_config(
-    tiledb_ctx_t* ctx, tiledb_subarray_t* subarray, tiledb_config_t* config) {
-  if (sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-  api::ensure_config_is_valid(config);
-  throw_if_not_ok(subarray->subarray_->set_config(config->config()));
-  return TILEDB_OK;
-}
-
-void tiledb_subarray_free(tiledb_subarray_t** subarray) {
-  if (subarray != nullptr && *subarray != nullptr) {
-    if ((*subarray)->is_allocated_) {
-      delete (*subarray)->subarray_;
-    } else {
-      (*subarray)->subarray_ = nullptr;
-    }
-    delete (*subarray);
-    *subarray = nullptr;
-  }
-}
-
-int32_t tiledb_subarray_set_coalesce_ranges(
-    tiledb_ctx_t* ctx, tiledb_subarray_t* subarray, int coalesce_ranges) {
-  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(
-      subarray->subarray_->set_coalesce_ranges(coalesce_ranges != 0));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_subarray_set_subarray(
-    tiledb_ctx_t* ctx,
-    tiledb_subarray_t* subarray_obj,
-    const void* subarray_vals) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray_obj) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(subarray_obj->subarray_->set_subarray(subarray_vals));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_subarray_add_range(
-    tiledb_ctx_t* ctx,
-    tiledb_subarray_t* subarray,
-    uint32_t dim_idx,
-    const void* start,
-    const void* end,
-    const void* stride) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(subarray->subarray_->add_range(dim_idx, start, end, stride));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_subarray_add_point_ranges(
-    tiledb_ctx_t* ctx,
-    tiledb_subarray_t* subarray,
-    uint32_t dim_idx,
-    const void* start,
-    uint64_t count) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(subarray->subarray_->add_point_ranges(dim_idx, start, count));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_subarray_add_range_by_name(
-    tiledb_ctx_t* ctx,
-    tiledb_subarray_t* subarray,
-    const char* dim_name,
-    const void* start,
-    const void* end,
-    const void* stride) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(
-      subarray->subarray_->add_range_by_name(dim_name, start, end, stride));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_subarray_add_range_var(
-    tiledb_ctx_t* ctx,
-    tiledb_subarray_t* subarray,
-    uint32_t dim_idx,
-    const void* start,
-    uint64_t start_size,
-    const void* end,
-    uint64_t end_size) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(subarray->subarray_->add_range_var(
-      dim_idx, start, start_size, end, end_size));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_subarray_add_range_var_by_name(
-    tiledb_ctx_t* ctx,
-    tiledb_subarray_t* subarray,
-    const char* dim_name,
-    const void* start,
-    uint64_t start_size,
-    const void* end,
-    uint64_t end_size) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(subarray->subarray_->add_range_var_by_name(
-      dim_name, start, start_size, end, end_size));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_subarray_get_range_num(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    uint32_t dim_idx,
-    uint64_t* range_num) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(subarray->subarray_->get_range_num(dim_idx, range_num));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_subarray_get_range_num_from_name(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    const char* dim_name,
-    uint64_t* range_num) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(
-      subarray->subarray_->get_range_num_from_name(dim_name, range_num));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_subarray_get_range(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    uint32_t dim_idx,
-    uint64_t range_idx,
-    const void** start,
-    const void** end,
-    const void** stride) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(
-      subarray->subarray_->get_range(dim_idx, range_idx, start, end, stride));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_subarray_get_range_var_size(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    uint32_t dim_idx,
-    uint64_t range_idx,
-    uint64_t* start_size,
-    uint64_t* end_size) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(subarray->subarray_->get_range_var_size(
-      dim_idx, range_idx, start_size, end_size));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_subarray_get_range_from_name(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    const char* dim_name,
-    uint64_t range_idx,
-    const void** start,
-    const void** end,
-    const void** stride) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(subarray->subarray_->get_range_from_name(
-      dim_name, range_idx, start, end, stride));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_subarray_get_range_var_size_from_name(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    const char* dim_name,
-    uint64_t range_idx,
-    uint64_t* start_size,
-    uint64_t* end_size) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(subarray->subarray_->get_range_var_size_from_name(
-      dim_name, range_idx, start_size, end_size));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_subarray_get_range_var(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    uint32_t dim_idx,
-    uint64_t range_idx,
-    void* start,
-    void* end) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(
-      subarray->subarray_->get_range_var(dim_idx, range_idx, start, end));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_subarray_get_range_var_from_name(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    const char* dim_name,
-    uint64_t range_idx,
-    void* start,
-    void* end) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  throw_if_not_ok(subarray->subarray_->get_range_var_from_name(
-      dim_name, range_idx, start, end));
-
   return TILEDB_OK;
 }
 
@@ -6360,187 +6051,6 @@ int32_t tiledb_query_get_relevant_fragment_num(
     uint64_t* relevant_fragment_num) noexcept {
   return api_entry<tiledb::api::tiledb_query_get_relevant_fragment_num>(
       ctx, query, relevant_fragment_num);
-}
-
-/* ****************************** */
-/*         SUBARRAY               */
-/* ****************************** */
-
-int32_t tiledb_subarray_alloc(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_t* array,
-    tiledb_subarray_t** subarray) noexcept {
-  return api_entry<tiledb::api::tiledb_subarray_alloc>(ctx, array, subarray);
-}
-
-int32_t tiledb_subarray_set_config(
-    tiledb_ctx_t* ctx,
-    tiledb_subarray_t* subarray,
-    tiledb_config_t* config) noexcept {
-  return api_entry<tiledb::api::tiledb_subarray_set_config>(
-      ctx, subarray, config);
-}
-
-void tiledb_subarray_free(tiledb_subarray_t** subarray) noexcept {
-  return api_entry_void<tiledb::api::tiledb_subarray_free>(subarray);
-}
-
-int32_t tiledb_subarray_set_coalesce_ranges(
-    tiledb_ctx_t* ctx,
-    tiledb_subarray_t* subarray,
-    int coalesce_ranges) noexcept {
-  return api_entry<tiledb::api::tiledb_subarray_set_coalesce_ranges>(
-      ctx, subarray, coalesce_ranges);
-}
-
-int32_t tiledb_subarray_set_subarray(
-    tiledb_ctx_t* ctx,
-    tiledb_subarray_t* subarray_obj,
-    const void* subarray_vals) noexcept {
-  return api_entry<tiledb::api::tiledb_subarray_set_subarray>(
-      ctx, subarray_obj, subarray_vals);
-}
-
-int32_t tiledb_subarray_add_range(
-    tiledb_ctx_t* ctx,
-    tiledb_subarray_t* subarray,
-    uint32_t dim_idx,
-    const void* start,
-    const void* end,
-    const void* stride) noexcept {
-  return api_entry<tiledb::api::tiledb_subarray_add_range>(
-      ctx, subarray, dim_idx, start, end, stride);
-}
-
-int32_t tiledb_subarray_add_point_ranges(
-    tiledb_ctx_t* ctx,
-    tiledb_subarray_t* subarray,
-    uint32_t dim_idx,
-    const void* start,
-    uint64_t count) noexcept {
-  return api_entry<tiledb::api::tiledb_subarray_add_point_ranges>(
-      ctx, subarray, dim_idx, start, count);
-}
-
-int32_t tiledb_subarray_add_range_by_name(
-    tiledb_ctx_t* ctx,
-    tiledb_subarray_t* subarray,
-    const char* dim_name,
-    const void* start,
-    const void* end,
-    const void* stride) noexcept {
-  return api_entry<tiledb::api::tiledb_subarray_add_range_by_name>(
-      ctx, subarray, dim_name, start, end, stride);
-}
-
-int32_t tiledb_subarray_add_range_var(
-    tiledb_ctx_t* ctx,
-    tiledb_subarray_t* subarray,
-    uint32_t dim_idx,
-    const void* start,
-    uint64_t start_size,
-    const void* end,
-    uint64_t end_size) noexcept {
-  return api_entry<tiledb::api::tiledb_subarray_add_range_var>(
-      ctx, subarray, dim_idx, start, start_size, end, end_size);
-}
-
-int32_t tiledb_subarray_add_range_var_by_name(
-    tiledb_ctx_t* ctx,
-    tiledb_subarray_t* subarray,
-    const char* dim_name,
-    const void* start,
-    uint64_t start_size,
-    const void* end,
-    uint64_t end_size) noexcept {
-  return api_entry<tiledb::api::tiledb_subarray_add_range_var_by_name>(
-      ctx, subarray, dim_name, start, start_size, end, end_size);
-}
-
-int32_t tiledb_subarray_get_range_num(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    uint32_t dim_idx,
-    uint64_t* range_num) noexcept {
-  return api_entry<tiledb::api::tiledb_subarray_get_range_num>(
-      ctx, subarray, dim_idx, range_num);
-}
-
-int32_t tiledb_subarray_get_range_num_from_name(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    const char* dim_name,
-    uint64_t* range_num) noexcept {
-  return api_entry<tiledb::api::tiledb_subarray_get_range_num_from_name>(
-      ctx, subarray, dim_name, range_num);
-}
-
-int32_t tiledb_subarray_get_range(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    uint32_t dim_idx,
-    uint64_t range_idx,
-    const void** start,
-    const void** end,
-    const void** stride) noexcept {
-  return api_entry<tiledb::api::tiledb_subarray_get_range>(
-      ctx, subarray, dim_idx, range_idx, start, end, stride);
-}
-
-int32_t tiledb_subarray_get_range_var_size(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    uint32_t dim_idx,
-    uint64_t range_idx,
-    uint64_t* start_size,
-    uint64_t* end_size) noexcept {
-  return api_entry<tiledb::api::tiledb_subarray_get_range_var_size>(
-      ctx, subarray, dim_idx, range_idx, start_size, end_size);
-}
-
-int32_t tiledb_subarray_get_range_from_name(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    const char* dim_name,
-    uint64_t range_idx,
-    const void** start,
-    const void** end,
-    const void** stride) noexcept {
-  return api_entry<tiledb::api::tiledb_subarray_get_range_from_name>(
-      ctx, subarray, dim_name, range_idx, start, end, stride);
-}
-
-int32_t tiledb_subarray_get_range_var_size_from_name(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    const char* dim_name,
-    uint64_t range_idx,
-    uint64_t* start_size,
-    uint64_t* end_size) noexcept {
-  return api_entry<tiledb::api::tiledb_subarray_get_range_var_size_from_name>(
-      ctx, subarray, dim_name, range_idx, start_size, end_size);
-}
-
-int32_t tiledb_subarray_get_range_var(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    uint32_t dim_idx,
-    uint64_t range_idx,
-    void* start,
-    void* end) noexcept {
-  return api_entry<tiledb::api::tiledb_subarray_get_range_var>(
-      ctx, subarray, dim_idx, range_idx, start, end);
-}
-
-int32_t tiledb_subarray_get_range_var_from_name(
-    tiledb_ctx_t* ctx,
-    const tiledb_subarray_t* subarray,
-    const char* dim_name,
-    uint64_t range_idx,
-    void* start,
-    void* end) noexcept {
-  return api_entry<tiledb::api::tiledb_subarray_get_range_var_from_name>(
-      ctx, subarray, dim_name, range_idx, start, end);
 }
 
 /* ****************************** */
