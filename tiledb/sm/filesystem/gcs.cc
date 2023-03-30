@@ -719,7 +719,7 @@ Status GCS::write_parts(
 
   if (!last_part && length % multi_part_part_size_ != 0) {
     return LOG_STATUS(
-        Status_S3Error("Length not evenly divisible by part size"));
+        Status_GCSError("Length not evenly divisible by part size"));
   }
 
   auto [bucket_name, object_path] = parse_gcs_uri(uri);
