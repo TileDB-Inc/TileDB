@@ -593,18 +593,29 @@ Status Curl::make_curl_request_common(
         return LOG_STATUS(Status_RestError(
             "Error checking curl error; could not get HTTP code."));
 
+      // jitterFactor is a random double number in the range [0.8 .. 1.3]
+      // https://github.com/Azure/azure-sdk-for-cpp/blob/57a4f8de9a8357ecd4fd9c0de0f67bc7d01b2fcd/sdk/core/azure-core/src/http/retry_policy.cpp#L75-L77
+      double jitterFactor =
+          0.8 +
+          ((static_cast<double>(static_cast<int32_t>(std::rand())) / RAND_MAX) *
+           0.5);
+      // Add jitter to the retry delay, cast to uint64_t and we can ignore any
+      // rounding
+      uint64_t retry_delay_with_jitter =
+          static_cast<uint64_t>(retry_delay * jitterFactor);
       global_logger().debug(
           "Request to {} failed with http response code {}, will sleep {}ms, "
           "retry count {}",
           url,
           http_code,
-          retry_delay,
+          retry_delay_with_jitter,
           i);
       // Increment counter for number of retries
       stats->add_counter("rest_http_retries", 1);
-      stats->add_counter("rest_http_retry_time", retry_delay);
+      stats->add_counter("rest_http_retry_time", retry_delay_with_jitter);
       // Sleep for retry delay
-      std::this_thread::sleep_for(std::chrono::milliseconds(retry_delay));
+      std::this_thread::sleep_for(
+          std::chrono::milliseconds(retry_delay_with_jitter));
       // Increment retry delay, cast to uint64_t and we can ignore any rounding
       retry_delay = static_cast<uint64_t>(retry_delay * retry_delay_factor_);
     }
