@@ -456,6 +456,19 @@ class GCS {
   Status init_client() const;
 
   /**
+   * Returns the GCS client object. Callers must ensure that calling init_client
+   * has succeeded before calling this method.
+   *
+   * @return A copy of client_. According to documentation, copying it instead
+   * of returning a reference to it ensures thread safety and does not impact
+   * performance.
+   */
+  inline google::cloud::storage::Client get_client() const {
+    assert(client_);
+    return *client_;
+  }
+
+  /**
    * Parses a URI into a bucket name and object path. For example,
    * URI "gcs://my-bucket/dir1/file1" will parse into
    * `*bucket_name == "my-bucket"` and `*object_path == "dir1/file1"`.
