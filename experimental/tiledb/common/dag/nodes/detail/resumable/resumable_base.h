@@ -120,6 +120,12 @@ class resumable_node_base {
   }
 };
 
+template <class T>
+struct EmptyMover {
+  void operator()() {
+  }
+};
+
 /**
  * Connect two nodes.
  * @tparam From Source node type.
