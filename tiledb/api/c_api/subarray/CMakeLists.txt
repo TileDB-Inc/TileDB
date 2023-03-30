@@ -35,9 +35,10 @@ gather_sources(${SOURCES})
 # Object library for other units to depend upon
 #
 add_library(capi_subarray OBJECT ${SOURCES})
+# 'export' pulls in definitions to make APIs publically visible
 target_link_libraries(capi_subarray PUBLIC export)
-target_include_directories(capi_subarray PRIVATE ${TILEDB_EP_INSTALL_PREFIX}/include)
-target_compile_definitions(capi_subarray PRIVATE SPDLOG_COMPILED_LIB)
+# pulls, at the least, definitions needed to find spdlog.h
+target_link_libraries(capi_subarray PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
 #
 # Test-compile of object library ensures link-completeness
