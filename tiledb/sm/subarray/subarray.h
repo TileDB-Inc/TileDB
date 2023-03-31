@@ -807,13 +807,6 @@ class Subarray {
       ThreadPool* compute_tp);
 
   /**
-   * Gets the estimated result size (in bytes) for the input fixed-sized
-   * attribute/dimension.
-   */
-  Status get_est_result_size(
-      const char* name, uint64_t* size, StorageManager* storage_manager);
-
-  /**
    * Gets the estimated result size (in bytes) for the input var-sized
    * attribute/dimension.
    */
@@ -893,9 +886,6 @@ class Subarray {
       uint64_t* size_validity,
       const Config* config,
       ThreadPool* compute_tp);
-
-  /** Retrieves the query type of the subarray's array. */
-  QueryType get_query_type() const;
 
   /**
    * Returns the range coordinates (for all dimensions) given a flattened
