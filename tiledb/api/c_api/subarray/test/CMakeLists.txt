@@ -24,15 +24,18 @@
 # THE SOFTWARE.
 #
 
-find_package(Catch_EP REQUIRED)
+# Disabling until necessary core OBJECT libraries have been created
+# to support building.
 
-add_executable(unit_capi_subarray EXCLUDE_FROM_ALL)
-target_sources(unit_capi_subarray PUBLIC unit_capi_subarray.cc)
-target_link_libraries(unit_capi_subarray PUBLIC capi_subarray_stub)
-target_link_libraries(unit_capi_subarray PUBLIC Catch2::Catch2WithMain)
+#~ find_package(Catch_EP REQUIRED)
 
-add_test(
-  NAME "unit_capi_subarray"
-  COMMAND $<TARGET_FILE:unit_capi_subarray>
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
+#~ add_executable(unit_capi_subarray EXCLUDE_FROM_ALL)
+#~ target_sources(unit_capi_subarray PUBLIC unit_capi_subarray.cc)
+#~ target_link_libraries(unit_capi_subarray PUBLIC capi_subarray)
+#~ target_link_libraries(unit_capi_subarray PUBLIC Catch2::Catch2WithMain)
+
+#~ add_test(
+  #~ NAME "unit_capi_subarray"
+  #~ COMMAND $<TARGET_FILE:unit_capi_subarray>
+  #~ WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+#~ )

@@ -103,7 +103,7 @@ add_subdirectory(query)
 # `string`: no dependencies
 add_subdirectory(string)
 
-# `subarray`: depends on `config`, `context`
+# `subarray`: depends on 'export', 'baseline'
 add_subdirectory(subarray)
 
 # `vfs`: depends on `context`

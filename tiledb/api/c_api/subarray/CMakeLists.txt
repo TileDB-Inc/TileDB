@@ -43,9 +43,10 @@ target_link_libraries(capi_subarray PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 #
 # Test-compile of object library ensures link-completeness
 #
+
 #
 # Cannot currently produce lower level OBJECT libraries needed 
-# to achieve unit linkage due to the circular dependencies and inability
+# to achieve unit/test linkage due to the circular dependencies and inability
 # of cmake to handle such circularity with OBJECT libraries.
 #
 
