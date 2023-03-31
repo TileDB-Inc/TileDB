@@ -34,21 +34,23 @@
 #include <type_traits>
 #include "experimental/tiledb/common/dag/edge/edge.h"
 #include "experimental/tiledb/common/dag/execution/duffs.h"
+#include "experimental/tiledb/common/dag/execution/random.h"
 #include "experimental/tiledb/common/dag/nodes/generators.h"
 #include "experimental/tiledb/common/dag/nodes/resumable_nodes.h"
 #include "experimental/tiledb/common/dag/nodes/terminals.h"
 #include "experimental/tiledb/common/dag/state_machine/test/types.h"
 #include "experimental/tiledb/common/dag/utility/print_types.h"
 
-#include "experimental/tiledb/common/dag/nodes/detail/resumable/mimo.h"
-#include "experimental/tiledb/common/dag/nodes/detail/resumable/reduce.h"
 #include "experimental/tiledb/common/dag/nodes/detail/resumable/broadcast.h"
+#include "experimental/tiledb/common/dag/nodes/detail/resumable/mimo.h"
 #include "experimental/tiledb/common/dag/nodes/detail/resumable/proxy.h"
+#include "experimental/tiledb/common/dag/nodes/detail/resumable/reduce.h"
 
 using namespace tiledb::common;
 
-
+using R = tiledb::common::RandomScheduler<node>;
 using S = tiledb::common::DuffsScheduler<node>;
+
 using R2_1_1 =
     mimo_node<DuffsMover2, std::tuple<size_t>, DuffsMover2, std::tuple<size_t>>;
 using R2_3_1 = mimo_node<
@@ -85,6 +87,15 @@ using R3_3_3 = mimo_node<
     DuffsMover3,
     std::tuple<size_t, double, int>>;
 
+using reduce_1_0 =
+    reducer_node<DuffsMover3, std::tuple<size_t>, EmptyMover, std::tuple<>>;
+
+using reduce_1_1 = reducer_node<
+    DuffsMover3,
+    std::tuple<size_t>,
+    DuffsMover3,
+    std::tuple<size_t>>;
+
 using reduce_3_0 = reducer_node<
     DuffsMover3,
     std::tuple<size_t, size_t, size_t>,
@@ -101,34 +112,43 @@ using reduce_3_3 = reducer_node<
     DuffsMover3,
     std::tuple<size_t, size_t, size_t>>;
 
-using broadcast_0_3 = broadcast_node<3,
-                                     EmptyMover,
-                                     std::tuple<>,
-                                     DuffsMover3,
-                                     std::tuple<size_t>>;
+using broadcast_0_1 = broadcast_node<
+    1,
+    EmptyMover,
+    std::tuple<>,
+    DuffsMover3,
+    std::tuple<size_t>>;
 
-using broadcast_1_3 = broadcast_node<3,
+using broadcast_1_1 = broadcast_node<
+    1,
     DuffsMover3,
     std::tuple<size_t>,
     DuffsMover3,
     std::tuple<size_t>>;
 
-using producer_1 = producer_mimo<
+using broadcast_0_3 = broadcast_node<
+    3,
+    EmptyMover,
+    std::tuple<>,
     DuffsMover3,
     std::tuple<size_t>>;
 
-using producer_3 = producer_mimo<
+using broadcast_1_3 = broadcast_node<
+    3,
     DuffsMover3,
-    std::tuple<size_t, size_t, size_t>>;
-
-using consumer_1 = consumer_mimo<
+    std::tuple<size_t>,
     DuffsMover3,
     std::tuple<size_t>>;
 
-using consumer_3 = consumer_mimo<
-    DuffsMover3,
-    std::tuple<size_t, size_t, size_t>>;
+using producer_1 = producer_mimo<DuffsMover3, std::tuple<size_t>>;
 
+using producer_3 =
+    producer_mimo<DuffsMover3, std::tuple<size_t, size_t, size_t>>;
+
+using consumer_1 = consumer_mimo<DuffsMover3, std::tuple<size_t>>;
+
+using consumer_3 =
+    consumer_mimo<DuffsMover3, std::tuple<size_t, size_t, size_t>>;
 
 namespace tiledb::common {
 // Tentative deduction guide
@@ -181,7 +201,7 @@ TEST_CASE("Resumable Node: Construct reduce node", "[reducer_node]") {
     // }};
   }
   SECTION("Test Construction") {
-    reduce_3_0 b3_3_0{[](const std::tuple<size_t, size_t, size_t>& ) {}};
+    reduce_3_0 b3_3_0{[](const std::tuple<size_t, size_t, size_t>&) {}};
     CHECK(b3_3_0->num_inputs() == 3);
     CHECK(b3_3_0->num_outputs() == 0);
 
@@ -190,42 +210,38 @@ TEST_CASE("Resumable Node: Construct reduce node", "[reducer_node]") {
     //   return std::make_tuple(std::get<0>(a), std::get<1>(a), std::get<2>(a));
     // }};
   }
-
 }
 
 TEST_CASE("Resumable Node: Construct broadcast node", "[broadcast_node]") {
   SECTION("Test Construction") {
     broadcast_1_3 b3_1_3{[](const std::tuple<size_t>& a) {
-      return std::make_tuple(5*std::get<0>(a));
+      return std::make_tuple(5 * std::get<0>(a));
     }};
     CHECK(b3_1_3->num_inputs() == 1);
     CHECK(b3_1_3->num_outputs() == 3);
   }
   SECTION("Test Construction") {
-    broadcast_0_3 b3_0_3{[](std::stop_source) {
-      return std::make_tuple(42UL);
-    }};
+    broadcast_0_3 b3_0_3{
+        [](std::stop_source) { return std::make_tuple(42UL); }};
     CHECK(b3_0_3->num_inputs() == 0);
     CHECK(b3_0_3->num_outputs() == 3);
   }
 }
 
-TEST_CASE("Resumable Node: Connect broadcast node to reduce node", "[broadcast_node]") {
-
+TEST_CASE(
+    "Resumable Node: Connect broadcast node to reduce node",
+    "[broadcast_node]") {
   broadcast_1_3 b3_1_3{[](const std::tuple<size_t>& a) {
-    return std::make_tuple(5*std::get<0>(a));
+    return std::make_tuple(5 * std::get<0>(a));
   }};
 
   reduce_3_1 b3_3_1{[](const std::tuple<size_t, size_t, size_t>& a) {
     return std::make_tuple(std::get<0>(a) + std::get<1>(a) + std::get<2>(a));
   }};
 
-  broadcast_0_3 b3_0_3{[](std::stop_source) {
-    return std::make_tuple(7);
-  }};
+  broadcast_0_3 b3_0_3{[](std::stop_source) { return std::make_tuple(7); }};
 
-  reduce_3_0 b3_3_0{[](const std::tuple<size_t, size_t, size_t>& a) {
-  }};
+  reduce_3_0 b3_3_0{[](const std::tuple<size_t, size_t, size_t>&) {}};
 
   SECTION("Construct broadcast and reduce nodes") {
     CHECK(b3_1_3->num_inputs() == 1);
@@ -274,6 +290,79 @@ TEST_CASE("Resumable Node: Connect broadcast node to reduce node", "[broadcast_n
   }
 }
 
+auto dummy_source(std::stop_source) {
+  return std::make_tuple(42UL);
+}
+
+auto dummy_function(const std::tuple<size_t>& i) {
+  return i;
+}
+
+auto dummy_sink(const std::tuple<size_t>&) {
+}
+
+class dummy_source_class {
+ public:
+  auto operator()(std::stop_source&) {
+    return std::tuple<size_t>{42UL};
+  }
+};
+
+class dummy_function_class {
+ public:
+  size_t operator()(const size_t&) {
+    return size_t{};
+  }
+  auto operator()(const std::tuple<size_t>& in) {
+    return in;
+  }
+};
+
+class dummy_sink_class {
+ public:
+  void operator()(size_t) {
+  }
+  void operator()(const std::tuple<size_t>&) {
+  }
+};
+
+auto dummy_bind_source = std::bind(
+    [](std::stop_source&, double) { return std::tuple<size_t>{42UL}; },
+    std::placeholders::_1,
+    1.0);
+auto dummy_bind_sink = std::bind(
+    [](size_t, const std::tuple<size_t>&, const int&) {},
+    42UL,
+    std::placeholders::_1,
+    42);
+auto dummy_bind_function = std::bind(
+    [](double, float, const std::tuple<size_t>& in) { return in; },
+    1.0,
+    1.0f,
+    std::placeholders::_1);
+
+TEST_CASE(
+    "resumable_node: Construct different flavors of resumable_node",
+    "[resumable_node]") {
+  broadcast_0_1{dummy_source};
+  broadcast_1_1{dummy_function};
+  R3_1_1{dummy_function};
+  reduce_1_0{dummy_sink};
+  reduce_1_1{dummy_function};
+
+  broadcast_0_1{dummy_source_class{}};
+  broadcast_1_1{dummy_function_class{}};
+  R3_1_1{dummy_function_class{}};
+  reduce_1_0{dummy_sink_class{}};
+  reduce_1_1{dummy_function_class{}};
+
+  broadcast_0_1{dummy_bind_source};
+  broadcast_1_1{dummy_bind_function};
+  R3_1_1{dummy_bind_function};
+  reduce_1_0{dummy_bind_sink};
+  reduce_1_1{dummy_bind_function};
+}
+
 TEST_CASE(
     "mimo_node: Pass values with void-created Producer and Consumer "
     "[segmented_mimo]") {
@@ -281,40 +370,26 @@ TEST_CASE(
   [[maybe_unused]] size_t ext2{0};
 
   broadcast_1_3 b3_1_3{[](const std::tuple<size_t>& a) {
-    return std::make_tuple(5*std::get<0>(a));
+    return std::make_tuple(5 * std::get<0>(a));
   }};
 
   reduce_3_1 b3_3_1{[](const std::tuple<size_t, size_t, size_t>& a) {
     return std::make_tuple(std::get<0>(a) + std::get<1>(a) + std::get<2>(a));
   }};
 
-  broadcast_0_3 b3_0_3{[](std::stop_source) {
-    return std::make_tuple(7);
-  }};
+  broadcast_0_3 b3_0_3{[](std::stop_source) { return std::make_tuple(7); }};
 
   reduce_3_0 b3_3_0{[&ext2](const std::tuple<size_t, size_t, size_t>& a) {
     ext2 += std::get<0>(a) + std::get<1>(a) + std::get<2>(a);
   }};
 
-  producer_1 p_1{[](std::stop_source) {
-    return std::make_tuple(11);
-  }};
-  producer_1 q_1{[](std::stop_source) {
-    return std::make_tuple(13);
-  }};
-  producer_1 r_1{[](std::stop_source) {
-    return std::make_tuple(17);
-  }};
+  producer_1 p_1{[](std::stop_source) { return std::make_tuple(11); }};
+  producer_1 q_1{[](std::stop_source) { return std::make_tuple(13); }};
+  producer_1 r_1{[](std::stop_source) { return std::make_tuple(17); }};
 
-  consumer_1 c_1{[&ext2](std::tuple<size_t> a) {
-    ext2 += std::get<0>(a);
-  }};
-  consumer_1 d_1{[&ext2](std::tuple<size_t> a) {
-    ext2 += std::get<0>(a);
-  }};
-  consumer_1 e_1{[&ext2](std::tuple<size_t> a) {
-    ext2 += std::get<0>(a);
-  }};
+  consumer_1 c_1{[&ext2](std::tuple<size_t> a) { ext2 += std::get<0>(a); }};
+  consumer_1 d_1{[&ext2](std::tuple<size_t> a) { ext2 += std::get<0>(a); }};
+  consumer_1 e_1{[&ext2](std::tuple<size_t> a) { ext2 += std::get<0>(a); }};
 
   SECTION("Connect to producer and consumer") {
     Edge e0{p_1->out_port<0>(), b3_1_3->in_port<0>()};
@@ -474,11 +549,49 @@ TEST_CASE(
     [[maybe_unused]] auto rr = b3_3_0->resume();
     CHECK(ext2 == 82);
   }
-
-
 }
 
+template <class Node>
+auto run_for(Node& node, size_t rounds) {
+  return [&node, rounds]() {
+    size_t N = rounds;
+    while (N) {
+      auto code = node->resume();
+      if (code == SchedulerAction::yield)
+        --N;
+    }
+  };
+}
 
+TEST_CASE("Resumanble nodes run some", "[resumable]") {
+  size_t ext2{0};
+  size_t ext1{0};
+  producer_3 p_3{
+    [&ext1](std::stop_source) -> std::tuple<size_t, size_t, size_t> {
+        std::cout << "producer_3: " << ext1 << std::endl;
+      return { ext1++, ext1++, ext1++ };
+    },
+  };
+  reduce_3_0 r_3_0{
+    [&ext2](const std::tuple<size_t, size_t, size_t>& t) {
+      ext2 = std::get<0>(t) + std::get<1>(t) + std::get<2>(t);
+      std::cout << "reduce_3_0: " << ext2 << std::endl;
+    },
+  };
+  Edge e0{p_3->out_port<0>(), r_3_0->in_port<0>()};
+  Edge e1{p_3->out_port<1>(), r_3_0->in_port<1>()};
+  Edge e2{p_3->out_port<2>(), r_3_0->in_port<2>()};
+
+  size_t rounds = 10;
+  auto fun_a1 = run_for(p_3, rounds);
+  auto fun_a2 = run_for(r_3_0, rounds);
+
+  auto fut_a1 = std::async(std::launch::async, fun_a1);
+  auto fut_a2 = std::async(std::launch::async, fun_a2);
+  fut_a1.wait();
+  fut_a2.wait();
+  CHECK(ext2 == 3 * rounds * (rounds - 1) / 2);
+}
 
 #if 0
 
