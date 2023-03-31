@@ -39,7 +39,6 @@ add_library(capi_subarray OBJECT ${SOURCES})
 target_link_libraries(capi_subarray PUBLIC export)
 # pulls, at the least, definitions needed to find spdlog.h
 target_link_libraries(capi_subarray PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(capi_subarray PUBLIC capi_filter_stub $<TARGET_OBJECTS:capi_filter_stub>)
 
 #
 # Test-compile of object library ensures link-completeness
