@@ -44,7 +44,7 @@
 #include "experimental/tiledb/common/dag/nodes/detail/segmented/edge_node_ctad.h"
 #include "experimental/tiledb/common/dag/nodes/node_traits.h"
 #include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
-#include "experimental/tiledb/common/dag/nodes/detail/segmented/proxy.h"
+#include "experimental/tiledb/common/dag/nodes/detail/resumable/proxy.h"
 
 #include "experimental/tiledb/common/dag/utility/print_types.h"
 

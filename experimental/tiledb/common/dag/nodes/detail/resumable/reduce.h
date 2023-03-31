@@ -98,10 +98,17 @@ class reducer_node_impl<
       std::tuple<BlocksOut...>>;
 
  public:
+
+  /**
+   * @brief Constructor to enforce reducer having one or zero outputs.
+   *
+   * @param f
+   */
   explicit reducer_node_impl(
-      std::function<std::tuple<BlocksOut...>(std::tuple<BlocksIn...>)> f,
-      std::enable_if_t<sizeof...(BlocksOut) == 1, void**> = nullptr)
-      : Base{std::move(f)} {
+    std::function<std::tuple<BlocksOut...>(std::tuple<BlocksIn...>)> f,
+    std::enable_if_t<sizeof...(BlocksOut) == 1 || sizeof...(BlocksOut) == 0
+        , void**> = nullptr)
+    : Base{std::move(f)} {
   }
 };
 
@@ -113,9 +120,9 @@ template <
     class BlocksOut = BlocksIn>
 class reducer_node
     : public std::shared_ptr<
-          reducer_node_impl<SinkMover, BlocksIn, SourceMover, BlocksOut>> {
+          mimo_node_impl<SinkMover, BlocksIn, SourceMover, BlocksOut>> {
   using PreBase =
-      reducer_node_impl<SinkMover, BlocksIn, SourceMover, BlocksOut>;
+      mimo_node_impl<SinkMover, BlocksIn, SourceMover, BlocksOut>;
   using Base = std::shared_ptr<PreBase>;
   using Base::Base;
 

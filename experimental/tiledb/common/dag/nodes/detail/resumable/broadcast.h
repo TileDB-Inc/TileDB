@@ -67,16 +67,26 @@ struct fanout;
 template <size_t N, class... In, class... Out>
 struct fanout<N, std::tuple<In...>, std::tuple<Out...>> {
 
-  std::function<std::tuple<Out...>(const std::tuple<In...>&)> f_;
+  // std::function<std::tuple<Out...>(const std::tuple<In...>&)> f_;
+  typename fn_type<std::tuple<In...>, std::tuple<Out...>>::type f_;
 
   template <class Function>
-  // requires (sizeof...(Out) == 1 && sizeof...(In) == 1)
+  // requires (sizeof...(Out) == 1 && (sizeof...(In) == 1 || sizeof...(In) == 0)))
   fanout(Function&& f) : f_{std::forward<Function>(f)}{}
 
-  auto operator()(const std::tuple<In...>& in) {
+
+  template <class T = std::tuple<In...>, typename std::enable_if_t<std::tuple_size_v<T> == 1, int> = 0>
+  auto operator()(const std::tuple<In...>& in){
     auto tmp = f_(in);
     return fill_tuple<N>(std::get<0>(tmp));
   }
+
+  template <class T = std::tuple<In...>, typename std::enable_if_t<std::tuple_size_v<T> == 0, int> = 0>
+  auto operator()(std::stop_source s) {
+    auto tmp = f_(s);
+    return fill_tuple<N>(std::get<0>(tmp));
+  }
+
 };
 
 /**
@@ -133,9 +143,15 @@ class broadcast_node_impl<
       std::tuple<BlocksOut...>>;
 
  public:
+
+  using ftype = typename fn_type<std::tuple<BlocksIn...>, std::tuple<BlocksOut...>>::type;
+
+  template <class Function>
   explicit broadcast_node_impl(
-      std::function<std::tuple<BlocksOut...>(std::tuple<BlocksIn...>)> f,
-      std::enable_if_t<sizeof...(BlocksOut) == N, void**> = nullptr)
+  //    typename fn_type<std::tuple<BlocksOut...>(std::tuple<BlocksIn...>)>::type f,
+      Function&& f,
+      std::enable_if_t<sizeof...(BlocksIn) == 1 ||sizeof...(BlocksIn) == 0
+          , void**> = nullptr)
       : Base{std::move(f)} {
   }
 };

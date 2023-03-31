@@ -43,8 +43,10 @@
 #include "experimental/tiledb/common/dag/nodes/detail/resumable/mimo.h"
 #include "experimental/tiledb/common/dag/nodes/detail/resumable/reduce.h"
 #include "experimental/tiledb/common/dag/nodes/detail/resumable/broadcast.h"
+#include "experimental/tiledb/common/dag/nodes/detail/resumable/proxy.h"
 
 using namespace tiledb::common;
+
 
 using S = tiledb::common::DuffsScheduler<node>;
 using R2_1_1 =
@@ -83,6 +85,11 @@ using R3_3_3 = mimo_node<
     DuffsMover3,
     std::tuple<size_t, double, int>>;
 
+using reduce_3_0 = reducer_node<
+    DuffsMover3,
+    std::tuple<size_t, size_t, size_t>,
+    EmptyMover,
+    std::tuple<>>;
 using reduce_3_1 = reducer_node<
     DuffsMover3,
     std::tuple<size_t, size_t, size_t>,
@@ -93,11 +100,34 @@ using reduce_3_3 = reducer_node<
     std::tuple<size_t, size_t, size_t>,
     DuffsMover3,
     std::tuple<size_t, size_t, size_t>>;
+
+using broadcast_0_3 = broadcast_node<3,
+                                     EmptyMover,
+                                     std::tuple<>,
+                                     DuffsMover3,
+                                     std::tuple<size_t>>;
+
 using broadcast_1_3 = broadcast_node<3,
     DuffsMover3,
     std::tuple<size_t>,
     DuffsMover3,
     std::tuple<size_t>>;
+
+using producer_1 = producer_mimo<
+    DuffsMover3,
+    std::tuple<size_t>>;
+
+using producer_3 = producer_mimo<
+    DuffsMover3,
+    std::tuple<size_t, size_t, size_t>>;
+
+using consumer_1 = consumer_mimo<
+    DuffsMover3,
+    std::tuple<size_t>>;
+
+using consumer_3 = consumer_mimo<
+    DuffsMover3,
+    std::tuple<size_t, size_t, size_t>>;
 
 
 namespace tiledb::common {
@@ -150,6 +180,17 @@ TEST_CASE("Resumable Node: Construct reduce node", "[reducer_node]") {
     //   return std::make_tuple(std::get<0>(a), std::get<1>(a), std::get<2>(a));
     // }};
   }
+  SECTION("Test Construction") {
+    reduce_3_0 b3_3_0{[](const std::tuple<size_t, size_t, size_t>& ) {}};
+    CHECK(b3_3_0->num_inputs() == 3);
+    CHECK(b3_3_0->num_outputs() == 0);
+
+    // Error: reduction goes M -> 1
+    // reduce_3_3 b3_3_3{[](const std::tuple<size_t, size_t, size_t>& a) {
+    //   return std::make_tuple(std::get<0>(a), std::get<1>(a), std::get<2>(a));
+    // }};
+  }
+
 }
 
 TEST_CASE("Resumable Node: Construct broadcast node", "[broadcast_node]") {
@@ -160,26 +201,284 @@ TEST_CASE("Resumable Node: Construct broadcast node", "[broadcast_node]") {
     CHECK(b3_1_3->num_inputs() == 1);
     CHECK(b3_1_3->num_outputs() == 3);
   }
-}
-
-//make_proxy<0>(v)
-TEST_CASE("Resumable Node: Connect broadcast to reduce", "[broadcast_node]") {
-  SECTION("Test Connection") {
-    broadcast_1_3 b3_1_3{[](const std::tuple<size_t>& a) {
-      return std::make_tuple(5*std::get<0>(a));
+  SECTION("Test Construction") {
+    broadcast_0_3 b3_0_3{[](std::stop_source) {
+      return std::make_tuple(42UL);
     }};
-    CHECK(b3_1_3->num_inputs() == 1);
-    CHECK(b3_1_3->num_outputs() == 3);
-
-    reduce_3_1 b3_3_1{[](const std::tuple<size_t, size_t, size_t>& a) {
-      return std::make_tuple(std::get<0>(a) + std::get<1>(a) + std::get<2>(a));
-    }};
-    CHECK(b3_1_3->num_inputs() == 1);
-    CHECK(b3_1_3->num_outputs() == 3);
-
-    Edge e1{make_proxy<0>(b3_1_3), make_proxy<0>(b3_3_1)};
+    CHECK(b3_0_3->num_inputs() == 0);
+    CHECK(b3_0_3->num_outputs() == 3);
   }
 }
+
+TEST_CASE("Resumable Node: Connect broadcast node to reduce node", "[broadcast_node]") {
+
+  broadcast_1_3 b3_1_3{[](const std::tuple<size_t>& a) {
+    return std::make_tuple(5*std::get<0>(a));
+  }};
+
+  reduce_3_1 b3_3_1{[](const std::tuple<size_t, size_t, size_t>& a) {
+    return std::make_tuple(std::get<0>(a) + std::get<1>(a) + std::get<2>(a));
+  }};
+
+  broadcast_0_3 b3_0_3{[](std::stop_source) {
+    return std::make_tuple(7);
+  }};
+
+  reduce_3_0 b3_3_0{[](const std::tuple<size_t, size_t, size_t>& a) {
+  }};
+
+  SECTION("Construct broadcast and reduce nodes") {
+    CHECK(b3_1_3->num_inputs() == 1);
+    CHECK(b3_1_3->num_outputs() == 3);
+    CHECK(b3_3_1->num_inputs() == 3);
+    CHECK(b3_3_1->num_outputs() == 1);
+    CHECK(b3_0_3->num_inputs() == 0);
+    CHECK(b3_0_3->num_outputs() == 3);
+    CHECK(b3_3_0->num_inputs() == 3);
+    CHECK(b3_3_0->num_outputs() == 0);
+  }
+
+  SECTION("Test One Connection") {
+    Edge e0{b3_1_3->out_port<0>(), b3_3_1->in_port<0>()};
+    Edge e1{b3_3_1->out_port<0>(), b3_1_3->in_port<0>()};
+  }
+
+  SECTION("Test Three Connections") {
+    Edge e0{b3_1_3->out_port<0>(), b3_3_1->in_port<0>()};
+    Edge e1{b3_1_3->out_port<1>(), b3_3_1->in_port<1>()};
+    Edge e2{b3_1_3->out_port<2>(), b3_3_1->in_port<2>()};
+  }
+
+  SECTION("Test Three Connections") {
+    Edge e0{b3_1_3->out_port<0>(), b3_3_0->in_port<0>()};
+    Edge e1{b3_1_3->out_port<1>(), b3_3_0->in_port<1>()};
+    Edge e2{b3_1_3->out_port<2>(), b3_3_0->in_port<2>()};
+  }
+
+  SECTION("Test Three Connections") {
+    Edge e0{b3_0_3->out_port<0>(), b3_3_1->in_port<0>()};
+    Edge e1{b3_0_3->out_port<1>(), b3_3_1->in_port<1>()};
+    Edge e2{b3_0_3->out_port<2>(), b3_3_1->in_port<2>()};
+  }
+
+  SECTION("Test Three Connections") {
+    Edge e0{b3_0_3->out_port<0>(), b3_3_0->in_port<0>()};
+    Edge e1{b3_0_3->out_port<1>(), b3_3_0->in_port<1>()};
+    Edge e2{b3_0_3->out_port<2>(), b3_3_0->in_port<2>()};
+  }
+
+  SECTION("Test Three Connections, vary order") {
+    Edge e0{b3_1_3->out_port<0>(), b3_3_1->in_port<1>()};
+    Edge e1{b3_1_3->out_port<1>(), b3_3_1->in_port<2>()};
+    Edge e2{b3_1_3->out_port<2>(), b3_3_1->in_port<0>()};
+  }
+}
+
+TEST_CASE(
+    "mimo_node: Pass values with void-created Producer and Consumer "
+    "[segmented_mimo]") {
+  [[maybe_unused]] double ext1{0.0};
+  [[maybe_unused]] size_t ext2{0};
+
+  broadcast_1_3 b3_1_3{[](const std::tuple<size_t>& a) {
+    return std::make_tuple(5*std::get<0>(a));
+  }};
+
+  reduce_3_1 b3_3_1{[](const std::tuple<size_t, size_t, size_t>& a) {
+    return std::make_tuple(std::get<0>(a) + std::get<1>(a) + std::get<2>(a));
+  }};
+
+  broadcast_0_3 b3_0_3{[](std::stop_source) {
+    return std::make_tuple(7);
+  }};
+
+  reduce_3_0 b3_3_0{[&ext2](const std::tuple<size_t, size_t, size_t>& a) {
+    ext2 += std::get<0>(a) + std::get<1>(a) + std::get<2>(a);
+  }};
+
+  producer_1 p_1{[](std::stop_source) {
+    return std::make_tuple(11);
+  }};
+  producer_1 q_1{[](std::stop_source) {
+    return std::make_tuple(13);
+  }};
+  producer_1 r_1{[](std::stop_source) {
+    return std::make_tuple(17);
+  }};
+
+  consumer_1 c_1{[&ext2](std::tuple<size_t> a) {
+    ext2 += std::get<0>(a);
+  }};
+  consumer_1 d_1{[&ext2](std::tuple<size_t> a) {
+    ext2 += std::get<0>(a);
+  }};
+  consumer_1 e_1{[&ext2](std::tuple<size_t> a) {
+    ext2 += std::get<0>(a);
+  }};
+
+  SECTION("Connect to producer and consumer") {
+    Edge e0{p_1->out_port<0>(), b3_1_3->in_port<0>()};
+    Edge e1{b3_3_1->out_port<0>(), c_1->in_port<0>()};
+  }
+
+  SECTION("Connect to producer and consumer") {
+    Edge e0{p_1->out_port<0>(), b3_3_1->in_port<0>()};
+    Edge e1{q_1->out_port<0>(), b3_3_1->in_port<1>()};
+    Edge e2{r_1->out_port<0>(), b3_3_1->in_port<2>()};
+  }
+
+  SECTION("Connect to producer and consumer") {
+    Edge e0{b3_1_3->out_port<0>(), c_1->in_port<0>()};
+    Edge e1{b3_1_3->out_port<1>(), d_1->in_port<0>()};
+    Edge e2{b3_1_3->out_port<2>(), e_1->in_port<0>()};
+  }
+
+  SECTION("Flow some data broadcast to consumers") {
+    Edge e0{b3_0_3->out_port<0>(), c_1->in_port<0>()};
+    Edge e1{b3_0_3->out_port<1>(), d_1->in_port<0>()};
+    Edge e2{b3_0_3->out_port<2>(), e_1->in_port<0>()};
+
+    b3_0_3->resume();
+
+    c_1->resume();
+    CHECK(ext2 == 0);
+    c_1->resume();
+    CHECK(ext2 == 0);
+    c_1->resume();
+    CHECK(ext2 == 7);
+
+    d_1->resume();
+    CHECK(ext2 == 7);
+    d_1->resume();
+    CHECK(ext2 == 7);
+    d_1->resume();
+    CHECK(ext2 == 14);
+
+    e_1->resume();
+    CHECK(ext2 == 14);
+    e_1->resume();
+    CHECK(ext2 == 14);
+    e_1->resume();
+    CHECK(ext2 == 21);
+  }
+
+  SECTION("Flow some data producers to reducers") {
+    Edge e0{p_1->out_port<0>(), b3_3_0->in_port<0>()};
+    Edge e1{q_1->out_port<0>(), b3_3_0->in_port<1>()};
+    Edge e2{r_1->out_port<0>(), b3_3_0->in_port<2>()};
+
+    // b3_3_0->resume();
+    // CHECK(ext2 == 0);
+    // Hmm.  Should be able to do this without error (maybe w/random?)
+    // b3_3_0->resume();
+    // CHECK(ext2 == 0);
+    p_1->resume();
+    q_1->resume();
+    r_1->resume();
+    CHECK(ext2 == 0);
+
+    b3_3_0->resume();
+    CHECK(ext2 == 0);
+
+    b3_3_0->resume();
+    CHECK(ext2 == 0);
+
+    b3_3_0->resume();
+    CHECK(ext2 == 41);
+  }
+
+  SECTION("Flow some data from producers to reducer") {
+    Edge e0{p_1->out_port<0>(), b3_3_0->in_port<0>()};
+    Edge e1{q_1->out_port<0>(), b3_3_0->in_port<1>()};
+    Edge e2{r_1->out_port<0>(), b3_3_0->in_port<2>()};
+
+    [[maybe_unused]] auto aa = p_1->resume();
+    q_1->resume();
+    r_1->resume();
+    CHECK(ext2 == 0);
+
+    [[maybe_unused]] auto bb = p_1->resume();
+    q_1->resume();
+    r_1->resume();
+
+    [[maybe_unused]] auto cc = p_1->resume();
+    q_1->resume();
+    r_1->resume();
+
+    [[maybe_unused]] auto dd = p_1->resume();
+    q_1->resume();
+    r_1->resume();
+
+    CHECK(ext2 == 0);
+
+    [[maybe_unused]] auto mm = b3_3_0->resume();
+    CHECK(ext2 == 0);
+
+    [[maybe_unused]] auto nn = b3_3_0->resume();
+    CHECK(ext2 == 0);
+
+    [[maybe_unused]] auto oo = b3_3_0->resume();
+    CHECK(ext2 == 41);
+
+    [[maybe_unused]] auto pp = b3_3_0->resume();
+    CHECK(ext2 == 41);
+
+    [[maybe_unused]] auto qq = b3_3_0->resume();
+    CHECK(ext2 == 41);
+
+    [[maybe_unused]] auto rr = b3_3_0->resume();
+    CHECK(ext2 == 82);
+  }
+
+  SECTION("Flow some data from producers to reducer") {
+    Edge e0{p_1->out_port<0>(), b3_3_0->in_port<0>()};
+    Edge e1{q_1->out_port<0>(), b3_3_0->in_port<1>()};
+    Edge e2{r_1->out_port<0>(), b3_3_0->in_port<2>()};
+
+    [[maybe_unused]] auto aa = p_1->resume();
+    q_1->resume();
+    r_1->resume();
+    CHECK(ext2 == 0);
+
+    [[maybe_unused]] auto bb = p_1->resume();
+    q_1->resume();
+    r_1->resume();
+
+    [[maybe_unused]] auto cc = p_1->resume();
+    q_1->resume();
+    r_1->resume();
+
+    CHECK(ext2 == 0);
+
+    [[maybe_unused]] auto mm = b3_3_0->resume();
+    CHECK(ext2 == 0);
+
+    [[maybe_unused]] auto nn = b3_3_0->resume();
+    CHECK(ext2 == 0);
+
+    [[maybe_unused]] auto dd = p_1->resume();
+    q_1->resume();
+    r_1->resume();
+
+    CHECK(ext2 == 0);
+
+    [[maybe_unused]] auto oo = b3_3_0->resume();
+    CHECK(ext2 == 41);
+
+    [[maybe_unused]] auto pp = b3_3_0->resume();
+    CHECK(ext2 == 41);
+
+    [[maybe_unused]] auto qq = b3_3_0->resume();
+    CHECK(ext2 == 41);
+
+    [[maybe_unused]] auto rr = b3_3_0->resume();
+    CHECK(ext2 == 82);
+  }
+
+
+}
+
+
 
 #if 0
 

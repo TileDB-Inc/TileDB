@@ -128,9 +128,21 @@ class mimo_node_impl_base<
   auto& get_input_ports() {
     return inputs_;
   }
+
   auto& get_output_ports() {
     return outputs_;
   }
+
+  template <size_t N>
+  auto& in_port() {
+    return std::get<N>(inputs_);
+  }
+
+  template <size_t N>
+  auto& out_port() {
+    return std::get<N>(outputs_);
+  }
+
 
   static constexpr size_t num_inputs() {
     return std::tuple_size_v<decltype(inputs_)>;

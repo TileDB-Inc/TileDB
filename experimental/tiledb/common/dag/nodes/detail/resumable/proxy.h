@@ -33,6 +33,8 @@
 #include <cstddef>
 #include <type_traits>
 
+namespace tiledb::common {
+
 template <class MimoNode, size_t portnum>
 struct Proxy {
   constexpr static const size_t portnum_{portnum};
@@ -61,6 +63,7 @@ struct is_proxy<Proxy<T, portnum>> : std::true_type {};
 template <class T>
 constexpr const bool is_proxy_v{is_proxy<T>::value};
 
+}
 #if 0
 /**
  * @brief A proxy class for accessing the inputs and outputs of a mimo node

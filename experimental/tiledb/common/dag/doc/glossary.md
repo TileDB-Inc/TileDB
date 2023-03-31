@@ -559,8 +559,6 @@ based on the use of resumable nodes is called a *segmented computation*.
 
 #### Data Item Type
 
-#### Port
-
 #### Source
 
 #### Sink
@@ -570,6 +568,7 @@ based on the use of resumable nodes is called a *segmented computation*.
 #### Task
 
 <!--
+#### Port
 #### Task Graph
 #### Coroutine
 -->
