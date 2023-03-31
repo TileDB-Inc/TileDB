@@ -34,6 +34,7 @@
 #define TILEDB_CAPI_SUBARRAY_API_EXTERNAL_H
 
 #include "../api_external_common.h"
+#include "../array/array_api_external.h"
 #include "../context/context_api_external.h"
 
 #ifdef __cplusplus
@@ -42,8 +43,6 @@ extern "C" {
 
 /** A subarray object. */
 typedef struct tiledb_subarray_handle_t tiledb_subarray_t;
-
-typedef struct tiledb_array_t tiledb_array_t;
 
 /**
  * Allocates a TileDB subarray object.

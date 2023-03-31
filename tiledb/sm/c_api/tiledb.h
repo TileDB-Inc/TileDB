@@ -55,6 +55,7 @@
 /*
  * API sections
  */
+#include "tiledb/api/c_api/array/array_api_external.h"
 #include "tiledb/api/c_api/buffer/buffer_api_external.h"
 #include "tiledb/api/c_api/buffer_list/buffer_list_api_external.h"
 #include "tiledb/api/c_api/config/config_api_external.h"
@@ -281,9 +282,6 @@ TILEDB_EXPORT void tiledb_version(int32_t* major, int32_t* minor, int32_t* rev)
 /* ********************************* */
 /*           TILEDB TYPES            */
 /* ********************************* */
-
-/** An array object. */
-typedef struct tiledb_array_t tiledb_array_t;
 
 /** A TileDB attribute. */
 typedef struct tiledb_attribute_t tiledb_attribute_t;
