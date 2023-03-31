@@ -1,4 +1,29 @@
+# Glossary
 
+This glossary is subdivided into multiple documents. Each glossary is at a different level of detail.
+
+* Task Graph Model
+  * The TileDB task graph model is a data flow graph which can suspend and resume computation.
+  * The essential elements are the Graph, the Nodes, the Ports of a node, and the Edges that connect nodes through their ports. Each graph has a Specification Graph, which describes an algorithm, and an Execution Graph, which is a particular graph that executes that algorithm with possible parallelism.
+  * The specification of a graph includes all of the following: the graph itself, the data types of its edges and ports, the discrete coroutine bodies of the nodes, and global arguments to the graph (if any).
+  * Task graphs admit suspendable computation. The execution of the graph is a discrete corouting. Each of the edges and non-running nodes has well-defined state. When no nodes are running, the graph as a whole may suspend, yielding a persistable and resumable coroutine state.
+* Node Body Implementations
+  * Segmented Computation, Duff's Device
+  * Wrapping a function as a subroutine of a discrete coroutine
+* Implementation of the Task Graph Library
+  * Edges, Movers, Source, Sink, edge state machine
+  * Schedulers. Random and otherwise. Motivation for the single-thread node policy.
+  * Task vs. Node. Task stats (waiting, runnable, etc.)
+  * Node I/O infrastructure. Ports
+* Kinds of State
+  * [one section at minimum from each level of detail]
+* Node Examples and Illustrations
+  * MIMO, etc.
+* Port Parallelism
+  * The homomorphic image of every execution graph is the specification graph from which it was built.
+  * Wide nodes
+  * conjunctive and disjunctive semantics.
+  * Other semantics.
 
 ## Application Glossary
 
