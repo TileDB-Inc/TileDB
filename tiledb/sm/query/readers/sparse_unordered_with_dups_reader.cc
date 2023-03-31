@@ -1467,7 +1467,19 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_fixed_results_to_copy(
   } else {
     buffers_full_ = true;
     cell_offsets.emplace_back(cell_offset);
-    cell_offsets.emplace_back(max_num_cells);
+
+    uint64_t num = max_num_cells - cell_offset;
+    auto rt = (ResultTileWithBitmap<BitmapType>*)result_tiles[cell_offsets.size() - 1];
+    uint64_t pos = rt->pos_with_given_result_sum(0, num);
+    uint64_t max = rt->result_num_between_pos(0, pos + 1);
+
+    if (cell_offset + max > max_num_cells) {
+      max = rt->result_num_between_pos(0, pos);
+    }
+
+    if (max != 0) {
+      cell_offsets.emplace_back(cell_offset + max);
+    }
   }
 
   // Resize the result tiles vector.
@@ -1745,9 +1757,13 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
         buffers_full_ |= buffers_full;
 
         // Clear tiles from memory and adjust result_tiles.
-        if (qc_loaded_attr_names_set_.count(name) == 0 &&
-            (!include_coords_ || !is_dim)) {
-          clear_tiles(name, result_tiles, new_result_tiles_size);
+        for (const auto& copy_idx : *index_to_copy) {
+          const auto& name_to_clear = names[copy_idx];
+          const auto is_dim_to_clear = array_schema_.is_dim(name_to_clear);
+          if (qc_loaded_attr_names_set_.count(name_to_clear) == 0 &&
+              (!include_coords_ || !is_dim_to_clear)) {
+            clear_tiles(name_to_clear, result_tiles, new_result_tiles_size);
+          }
         }
         result_tiles.resize(new_result_tiles_size);
 
@@ -1780,8 +1796,8 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
       if (nullable)
         *query_buffer.validity_vector_.buffer_size() = total_cells;
 
-      // Clear tiles from memory. Var-size tiles are cleared above.
-      if (!var_sized && qc_loaded_attr_names_set_.count(name) == 0 &&
+      // Clear tiles from memory. Var-sized tiles were cleared above.
+      if (qc_loaded_attr_names_set_.count(name) == 0 &&
           (!include_coords_ || !is_dim) && name != constants::timestamps &&
           name != constants::delete_timestamps) {
         clear_tiles(name, result_tiles);
