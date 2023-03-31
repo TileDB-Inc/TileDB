@@ -47,4 +47,4 @@ typedef struct tiledb_array_t tiledb_array_t;
 }
 #endif
 
-#endif // TILEDB_CAPI_ARRAY_API_EXTERNAL_H
+#endif  // TILEDB_CAPI_ARRAY_API_EXTERNAL_H
