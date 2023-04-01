@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -130,7 +130,7 @@ Query::Query(
     config_ = storage_manager->config();
 
   // Set initial subarray configuration
-  throw_if_not_ok(subarray_.set_config(config_));
+  subarray_.set_config(config_);
 
   rest_scratch_ = make_shared<Buffer>(HERE());
 
@@ -984,7 +984,8 @@ Status Query::check_buffer_names() {
         auto dim = array_schema_->dimension_ptr(d);
         if (buffers_.count(dim->name()) == 0) {
           throw QueryStatusException(
-              "Dimension buffer " + dim->name() + " is not set");
+              "[check_buffer_names] Dimension buffer " + dim->name() +
+              " is not set");
         }
       }
     }
@@ -1231,8 +1232,12 @@ Status Query::check_set_fixed_buffer(const std::string& name) {
   return Status::Ok();
 }
 
-Status Query::set_config(const Config& config) {
-  config_ = config;
+void Query::set_config(const Config& config) {
+  if (status_ != QueryStatus::UNINITIALIZED) {
+    throw QueryStatusException(
+        "[set_config] Cannot set config after initialization.");
+  }
+  config_.inherit(config);
 
   // Refresh memory budget configuration.
   if (strategy_ != nullptr) {
@@ -1242,9 +1247,7 @@ Status Query::set_config(const Config& config) {
   // Set subarray's config for backwards compatibility
   // Users expect the query config to effect the subarray based on existing
   // behavior before subarray was exposed directly
-  throw_if_not_ok(subarray_.set_config(config_));
-
-  return Status::Ok();
+  subarray_.set_config(config_);
 }
 
 Status Query::set_coords_buffer(void* buffer, uint64_t* buffer_size) {
@@ -1299,8 +1302,7 @@ Status Query::set_data_buffer(
   if (array_schema_->is_dim_label(name)) {
     // Check the query type is valid.
     if (type_ != QueryType::READ && type_ != QueryType::WRITE) {
-      throw StatusException(Status_SerializationError(
-          "Cannot set buffer; Unsupported query type."));
+      throw QueryStatusException("[set_data_buffer] Unsupported query type.");
     }
 
     // Set dimension label buffer on the appropriate buffer depending if the
@@ -1417,21 +1419,22 @@ Status Query::set_offsets_buffer(
   if (array_schema_->is_dim_label(name)) {
     // Check the query type is valid.
     if (type_ != QueryType::READ && type_ != QueryType::WRITE) {
-      throw QueryStatusException("Cannot set buffer; Unsupported query type.");
+      throw QueryStatusException(
+          "[set_offsets_buffer] Unsupported query type.");
     }
 
     // Check the dimension labe is in fact variable length.
     if (!array_schema_->dimension_label(name).is_var()) {
       throw QueryStatusException(
-          std::string("Cannot set buffer; Input dimension label '") + name +
+          "[set_offsets_buffer] Input dimension label '" + name +
           "' is fixed-sized");
     }
 
     // Check the query was not already initialized.
     if (status_ != QueryStatus::UNINITIALIZED) {
       throw QueryStatusException(
-          std::string("Cannot set buffer for new dimension label '") + name +
-          "' after initialization");
+          "[set_offsets_buffer] Cannot set buffer for new dimension label '" +
+          name + "' after initialization");
     }
 
     // Set dimension label offsets buffers.
@@ -1686,7 +1689,7 @@ void Query::set_subarray(const void* subarray) {
     case QueryType::MODIFY_EXCLUSIVE:
       if (!array_schema_->dense()) {
         throw QueryStatusException(
-            "Cannot set subarray; Setting a subarray is not supported on "
+            "[set_subarray] Setting a subarray is not supported on "
             "sparse writes.");
       }
       break;
@@ -1694,15 +1697,15 @@ void Query::set_subarray(const void* subarray) {
     default:
 
       throw QueryStatusException(
-          "Cannot set subarray; Setting a subarray is not supported for query "
-          "type '" +
+          "[set_subarray] Setting a subarray is not supported for query type "
+          "'" +
           query_type_str(type_) + "'.");
   }
 
   // Check this isn't an already initialized query using dimension labels.
   if (status_ != QueryStatus::UNINITIALIZED) {
     throw QueryStatusException(
-        "Cannot set subarray; Setting a subarray on an already initialized  "
+        "[set_subarray] Setting a subarray on an already initialized  "
         "query is not supported.");
   }
 
@@ -1729,22 +1732,22 @@ void Query::set_subarray(const tiledb::sm::Subarray& subarray) {
     case QueryType::MODIFY_EXCLUSIVE:
       if (!array_schema_->dense()) {
         throw QueryStatusException(
-            "Cannot set subarray; Setting a subarray is not supported on "
+            "[set_subarray] Setting a subarray is not supported on "
             "sparse writes.");
       }
       break;
 
     default:
       throw QueryStatusException(
-          "Cannot set subarray; Setting a subarray is not supported for query "
-          "type '" +
+          "[set_subarray] Setting a subarray is not supported for query type "
+          "'" +
           query_type_str(type_) + "'.");
   }
 
   // Check the query has not been initialized.
   if (status_ != tiledb::sm::QueryStatus::UNINITIALIZED) {
     throw QueryStatusException(
-        "Cannot set subarray; Setting a subarray on an already initialized "
+        "[set_subarray] Setting a subarray on an already initialized "
         "query is not supported.");
   }
 
@@ -1845,7 +1848,7 @@ Status Query::submit() {
   if (fragment_size_ != std::numeric_limits<uint64_t>::max() &&
       (layout_ != Layout::GLOBAL_ORDER || type_ != QueryType::WRITE)) {
     throw QueryStatusException(
-        "Fragment size is only supported for global order writes.");
+        "[submit] Fragment size is only supported for global order writes.");
   }
 
   // Check attribute/dimensions buffers completeness before query submits
