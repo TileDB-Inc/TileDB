@@ -1,11 +1,11 @@
 /**
- * @file   iquery_strategy.h
+ * @file tiledb/sm/query_plan/test/main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,49 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class IQueryStrategy.
+ * This file defines a test `main()`
  */
 
-#ifndef TILEDB_IQUERY_STRATEGY_H
-#define TILEDB_IQUERY_STRATEGY_H
-
-#include "tiledb/common/status.h"
-#include "tiledb/sm/enums/layout.h"
-#include "tiledb/sm/enums/query_status_details.h"
-
-using namespace tiledb::common;
-
-namespace tiledb {
-namespace sm {
-
-class IQueryStrategy {
- public:
-  /** Destructor. */
-  virtual ~IQueryStrategy() = default;
-
-  /** Initialize the memory budget variables. */
-  virtual void initialize_memory_budget() = 0;
-
-  /** Performs a query using its set members. */
-  virtual Status dowork() = 0;
-
-  /** Finalizes the strategy. */
-  virtual Status finalize() = 0;
-
-  /** Returns if the query is incomplete. */
-  virtual bool incomplete() const = 0;
-
-  /** Returns the status details reason. */
-  virtual QueryStatusDetailsReason status_incomplete_reason() const = 0;
-
-  /** Resets the object */
-  virtual void reset() = 0;
-
-  /** Returns the name of the strategy */
-  virtual std::string name() = 0;
-};
-
-}  // namespace sm
-}  // namespace tiledb
-
-#endif  // TILEDB_IQUERY_STRATEGY_H
+#define CATCH_CONFIG_MAIN
+#include <test/support/tdb_catch.h>

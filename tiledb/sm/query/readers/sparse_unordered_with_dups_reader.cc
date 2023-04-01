@@ -312,6 +312,12 @@ void SparseUnorderedWithDupsReader<BitmapType>::reset() {
 }
 
 template <class BitmapType>
+std::string SparseUnorderedWithDupsReader<BitmapType>::name() {
+  return "SparseUnorderedWithDupsReader<" +
+         std::string(typeid(BitmapType).name()) + ">";
+}
+
+template <class BitmapType>
 void SparseUnorderedWithDupsReader<BitmapType>::load_tile_offsets_data() {
   // For easy reference.
   bool initial_load =

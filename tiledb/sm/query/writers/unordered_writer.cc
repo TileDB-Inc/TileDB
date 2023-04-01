@@ -177,6 +177,10 @@ Status UnorderedWriter::finalize() {
 void UnorderedWriter::reset() {
 }
 
+std::string UnorderedWriter::name() {
+  return "UnorderedWriter";
+}
+
 /* ****************************** */
 /*        PRIVATE METHODS         */
 /* ****************************** */

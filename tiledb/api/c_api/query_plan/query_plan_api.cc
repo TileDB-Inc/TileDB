@@ -1,11 +1,11 @@
 /**
- * @file   iquery_strategy.h
+ * @file tiledb/api/c_api/query_plan/query_plan_api.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,49 +27,42 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class IQueryStrategy.
- */
+ * This file defines the query_plan C API of TileDB.
+ **/
 
-#ifndef TILEDB_IQUERY_STRATEGY_H
-#define TILEDB_IQUERY_STRATEGY_H
+#include "../string/string_api_internal.h"
+#include "query_plan_api_external_experimental.h"
+#include "tiledb/api/c_api_support/c_api_support.h"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
 
-#include "tiledb/common/status.h"
-#include "tiledb/sm/enums/layout.h"
-#include "tiledb/sm/enums/query_status_details.h"
+#include "tiledb/sm/query_plan/query_plan.h"
 
-using namespace tiledb::common;
+namespace tiledb::api {
 
-namespace tiledb {
-namespace sm {
+capi_return_t tiledb_query_get_plan(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_string_handle_t** rv) {
+  // unused for now
+  (void)ctx;
 
-class IQueryStrategy {
- public:
-  /** Destructor. */
-  virtual ~IQueryStrategy() = default;
+  if (query == nullptr) {
+    throw CAPIStatusException("argument `query` may not be nullptr");
+  }
 
-  /** Initialize the memory budget variables. */
-  virtual void initialize_memory_budget() = 0;
+  sm::QueryPlan plan(*query->query_);
 
-  /** Performs a query using its set members. */
-  virtual Status dowork() = 0;
+  *rv = tiledb_string_handle_t::make_handle(plan.dump_json());
 
-  /** Finalizes the strategy. */
-  virtual Status finalize() = 0;
+  return TILEDB_OK;
+}
 
-  /** Returns if the query is incomplete. */
-  virtual bool incomplete() const = 0;
+}  // namespace tiledb::api
 
-  /** Returns the status details reason. */
-  virtual QueryStatusDetailsReason status_incomplete_reason() const = 0;
+using tiledb::api::api_entry_with_context;
 
-  /** Resets the object */
-  virtual void reset() = 0;
-
-  /** Returns the name of the strategy */
-  virtual std::string name() = 0;
-};
-
-}  // namespace sm
-}  // namespace tiledb
-
-#endif  // TILEDB_IQUERY_STRATEGY_H
+capi_return_t tiledb_query_get_plan(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    tiledb_string_handle_t** rv) noexcept {
+  return api_entry_with_context<tiledb::api::tiledb_query_get_plan>(
+      ctx, query, rv);
+}

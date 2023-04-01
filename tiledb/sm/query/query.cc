@@ -447,7 +447,8 @@ QueryBuffer Query::buffer(const std::string& name) const {
 }
 
 Status Query::finalize() {
-  if (status_ == QueryStatus::UNINITIALIZED) {
+  if (status_ == QueryStatus::UNINITIALIZED ||
+      status_ == QueryStatus::INITIALIZED) {
     return Status::Ok();
   }
 
@@ -684,7 +685,8 @@ Status Query::get_attr_serialization_state(
 }
 
 bool Query::has_results() const {
-  if (status_ == QueryStatus::UNINITIALIZED || type_ != QueryType::READ) {
+  if (status_ == QueryStatus::UNINITIALIZED ||
+      status_ == QueryStatus::INITIALIZED || type_ != QueryType::READ) {
     return false;
   }
 
@@ -697,7 +699,8 @@ bool Query::has_results() const {
 
 void Query::init() {
   // Only if the query has not been initialized before
-  if (status_ == QueryStatus::UNINITIALIZED) {
+  if (status_ == QueryStatus::UNINITIALIZED ||
+      status_ == QueryStatus::INITIALIZED) {
     // Check if the array got closed
     if (array_ == nullptr || !array_->is_open()) {
       throw QueryStatusException(
@@ -804,7 +807,8 @@ Status Query::cancel() {
 }
 
 Status Query::process() {
-  if (status_ == QueryStatus::UNINITIALIZED)
+  if (status_ == QueryStatus::UNINITIALIZED ||
+      status_ == QueryStatus::INITIALIZED)
     return logger_->status(
         Status_QueryError("Cannot process query; Query is not initialized"));
   status_ = QueryStatus::INPROGRESS;
@@ -831,6 +835,8 @@ Status Query::process() {
         dynamic_cast<StrategyBase*>(strategy_.get())->stats()->reset();
         strategy_ = nullptr;
       }
+      // This changes the query into INITIALIZED, but it's ok as the status
+      // is updated correctly below
       throw_if_not_ok(create_strategy(true));
     }
   }
@@ -1196,6 +1202,11 @@ Status Query::create_strategy(bool skip_checks_serialization) {
     return logger_->status(
         Status_QueryError("Cannot create strategy; allocation failed"));
 
+  // Transition the query into INITIALIZED state
+  if (!skip_checks_serialization) {
+    set_status(QueryStatus::INITIALIZED);
+  }
+
   return Status::Ok();
 }
 
@@ -1263,7 +1274,8 @@ Status Query::set_data_buffer(
     const std::string& name,
     void* const buffer,
     uint64_t* const buffer_size,
-    const bool check_null_buffers) {
+    const bool check_null_buffers,
+    const bool serialization_allow_new_attr) {
   // General checks for fixed buffers
   RETURN_NOT_OK(check_set_fixed_buffer(name));
 
@@ -1328,7 +1340,7 @@ Status Query::set_data_buffer(
   // Error if setting a new attribute/dimension after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists &&
-      !allow_separate_attribute_writes_) {
+      !allow_separate_attribute_writes_ && !serialization_allow_new_attr) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
@@ -1384,7 +1396,8 @@ Status Query::set_offsets_buffer(
     const std::string& name,
     uint64_t* const buffer_offsets,
     uint64_t* const buffer_offsets_size,
-    const bool check_null_buffers) {
+    const bool check_null_buffers,
+    const bool serialization_allow_new_attr) {
   RETURN_NOT_OK(check_set_fixed_buffer(name));
 
   // Check buffer
@@ -1448,7 +1461,7 @@ Status Query::set_offsets_buffer(
   // Error if setting a new attribute/dimension after initialization
   bool exists = buffers_.find(name) != buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists &&
-      !allow_separate_attribute_writes_) {
+      !allow_separate_attribute_writes_ && !serialization_allow_new_attr) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
@@ -1491,7 +1504,8 @@ Status Query::set_validity_buffer(
     const std::string& name,
     uint8_t* const buffer_validity_bytemap,
     uint64_t* const buffer_validity_bytemap_size,
-    const bool check_null_buffers) {
+    const bool check_null_buffers,
+    const bool serialization_allow_new_attr) {
   RETURN_NOT_OK(check_set_fixed_buffer(name));
 
   ValidityVector validity_vector;
@@ -1525,7 +1539,8 @@ Status Query::set_validity_buffer(
 
   // Error if setting a new attribute after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
-  if (status_ != QueryStatus::UNINITIALIZED && !exists) {
+  if (status_ != QueryStatus::UNINITIALIZED && !exists &&
+      !serialization_allow_new_attr) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute '") + name +
         "' after initialization"));
@@ -1555,13 +1570,17 @@ Status Query::set_est_result_size(
 }
 
 Status Query::set_layout(Layout layout) {
+  if (layout == layout_) {  // Noop
+    return Status::Ok();
+  }
+
+  if (status_ != QueryStatus::UNINITIALIZED) {
+    return logger_->status(
+        Status_QueryError("Cannot set layout after initialization"));
+  }
+
   switch (type_) {
     case (QueryType::READ):
-      if (status_ != QueryStatus::UNINITIALIZED) {
-        return logger_->status(
-            Status_QueryError("Cannot set layout after initialization"));
-      }
-
       break;
 
     case (QueryType::WRITE):
@@ -1603,6 +1622,11 @@ Status Query::set_condition(const QueryCondition& condition) {
     return logger_->status(Status_QueryError(
         "Cannot set query condition; Operation not applicable "
         "to write queries"));
+  }
+  if (status_ != tiledb::sm::QueryStatus::UNINITIALIZED) {
+    return logger_->status(Status_QueryError(
+        "Cannot set query condition; Setting a query condition on an already"
+        "initialized query is not supported."));
   }
 
   if (condition.empty()) {

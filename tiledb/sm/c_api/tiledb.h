@@ -296,9 +296,6 @@ typedef struct tiledb_array_schema_t tiledb_array_schema_t;
 /** A TileDB domain. */
 typedef struct tiledb_domain_t tiledb_domain_t;
 
-/** A TileDB query. */
-typedef struct tiledb_query_t tiledb_query_t;
-
 /** A TileDB query condition object. */
 typedef struct tiledb_query_condition_t tiledb_query_condition_t;
 
