@@ -1,5 +1,5 @@
 /**
- * @file unit_validity_vector.cc
+ * @file unit_serializers.cc
  *
  * @section LICENSE
  *

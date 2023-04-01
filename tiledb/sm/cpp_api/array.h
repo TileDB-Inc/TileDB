@@ -511,7 +511,11 @@ class Array {
     return timestamp_end;
   }
 
-  /** Sets the array config. */
+  /**
+   * Sets the array config.
+   *
+   * @pre The array must be closed.
+   */
   void set_config(const Config& config) const {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_array_set_config(

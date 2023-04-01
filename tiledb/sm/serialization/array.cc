@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -151,7 +151,7 @@ Status array_to_capnp(
         *(schema.second.get()), &schema_builder, client_side));
   }
 
-  if (array->use_refactored_array_open()) {
+  if (array->use_refactored_query_submit()) {
     // Serialize array directory (load if not loaded already)
     const auto array_directory = array->load_array_directory();
     auto array_directory_builder = array_builder->initArrayDirectory();
@@ -171,7 +171,9 @@ Status array_to_capnp(
         }
       }
     }
+  }
 
+  if (array->use_refactored_array_open()) {
     if (array->serialize_non_empty_domain()) {
       auto nonempty_domain_builder = array_builder->initNonEmptyDomain();
       RETURN_NOT_OK(
@@ -343,7 +345,7 @@ Status array_open_from_capnp(
     tdb_unique_ptr<Config> decoded_config = nullptr;
     RETURN_NOT_OK(
         config_from_capnp(array_open_reader.getConfig(), &decoded_config));
-    RETURN_NOT_OK(array->set_config(*decoded_config));
+    array->unsafe_set_config(*decoded_config);
   }
 
   if (array_open_reader.hasQueryType()) {

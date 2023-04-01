@@ -25,16 +25,14 @@ You can use TileDB to store data in a variety of applications, such as Genomics,
 
 ## Quickstart
 
-You can install the TileDB library as follows:
+You can install the TileDB C++ library as follows:
 
 ```bash
-# Homebrew (macOS):
-$ brew update
-$ brew install tiledb-inc/stable/tiledb
-
-# Or Conda (macOS, Linux, Windows):
+# Conda (macOS, Linux, Windows):
 $ conda install -c conda-forge tiledb
 ```
+
+(see links below for Python, R, and other API installation instructions)
 
 Alternatively, you can use the Docker image we provide:
 

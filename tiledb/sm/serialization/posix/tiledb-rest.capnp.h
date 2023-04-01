@@ -20,6 +20,7 @@ CAPNP_DECLARE_SCHEMA(b6c95b4b8111ad36);
 CAPNP_DECLARE_SCHEMA(a45730f57e0460b4);
 CAPNP_DECLARE_SCHEMA(facceeafd4472c68);
 CAPNP_DECLARE_SCHEMA(d71de32f98e296fe);
+CAPNP_DECLARE_SCHEMA(ceff8d62d10cd1de);
 CAPNP_DECLARE_SCHEMA(a1b81d67548230d4);
 CAPNP_DECLARE_SCHEMA(92ad78f56de3d76a);
 CAPNP_DECLARE_SCHEMA(d20a578112fa92a2);
@@ -192,7 +193,24 @@ struct ArraySchema {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(d71de32f98e296fe, 2, 12)
+    CAPNP_DECLARE_STRUCT_HEADER(d71de32f98e296fe, 2, 13)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
+struct DimensionLabel {
+  DimensionLabel() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(ceff8d62d10cd1de, 2, 6)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -226,7 +244,7 @@ struct Attribute {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(92ad78f56de3d76a, 1, 4)
+    CAPNP_DECLARE_STRUCT_HEADER(92ad78f56de3d76a, 1, 5)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -2363,6 +2381,12 @@ class ArraySchema::Reader {
   inline ::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>::Reader
   getTimestampRange() const;
 
+  inline bool hasDimensionLabels() const;
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::DimensionLabel,
+      ::capnp::Kind::STRUCT>::Reader
+  getDimensionLabels() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -2540,6 +2564,28 @@ class ArraySchema::Builder {
   inline ::capnp::Orphan<::capnp::List<::uint64_t, ::capnp::Kind::PRIMITIVE>>
   disownTimestampRange();
 
+  inline bool hasDimensionLabels();
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::DimensionLabel,
+      ::capnp::Kind::STRUCT>::Builder
+  getDimensionLabels();
+  inline void setDimensionLabels(
+      ::capnp::List<
+          ::tiledb::sm::serialization::capnp::DimensionLabel,
+          ::capnp::Kind::STRUCT>::Reader value);
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::DimensionLabel,
+      ::capnp::Kind::STRUCT>::Builder
+  initDimensionLabels(unsigned int size);
+  inline void adoptDimensionLabels(
+      ::capnp::Orphan<::capnp::List<
+          ::tiledb::sm::serialization::capnp::DimensionLabel,
+          ::capnp::Kind::STRUCT>>&& value);
+  inline ::capnp::Orphan<::capnp::List<
+      ::tiledb::sm::serialization::capnp::DimensionLabel,
+      ::capnp::Kind::STRUCT>>
+  disownDimensionLabels();
+
  private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -2568,6 +2614,179 @@ class ArraySchema::Pipeline {
   getOffsetFilterPipeline();
   inline ::tiledb::sm::serialization::capnp::FilterPipeline::Pipeline
   getValidityFilterPipeline();
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class DimensionLabel::Reader {
+ public:
+  typedef DimensionLabel Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline ::uint32_t getDimensionId() const;
+
+  inline bool hasName() const;
+  inline ::capnp::Text::Reader getName() const;
+
+  inline bool hasUri() const;
+  inline ::capnp::Text::Reader getUri() const;
+
+  inline bool hasAttributeName() const;
+  inline ::capnp::Text::Reader getAttributeName() const;
+
+  inline bool hasOrder() const;
+  inline ::capnp::Text::Reader getOrder() const;
+
+  inline bool hasType() const;
+  inline ::capnp::Text::Reader getType() const;
+
+  inline ::uint32_t getCellValNum() const;
+
+  inline bool getExternal() const;
+
+  inline bool getRelative() const;
+
+  inline bool hasSchema() const;
+  inline ::tiledb::sm::serialization::capnp::ArraySchema::Reader getSchema()
+      const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class DimensionLabel::Builder {
+ public:
+  typedef DimensionLabel Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline ::uint32_t getDimensionId();
+  inline void setDimensionId(::uint32_t value);
+
+  inline bool hasName();
+  inline ::capnp::Text::Builder getName();
+  inline void setName(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initName(unsigned int size);
+  inline void adoptName(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownName();
+
+  inline bool hasUri();
+  inline ::capnp::Text::Builder getUri();
+  inline void setUri(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initUri(unsigned int size);
+  inline void adoptUri(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownUri();
+
+  inline bool hasAttributeName();
+  inline ::capnp::Text::Builder getAttributeName();
+  inline void setAttributeName(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initAttributeName(unsigned int size);
+  inline void adoptAttributeName(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownAttributeName();
+
+  inline bool hasOrder();
+  inline ::capnp::Text::Builder getOrder();
+  inline void setOrder(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initOrder(unsigned int size);
+  inline void adoptOrder(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownOrder();
+
+  inline bool hasType();
+  inline ::capnp::Text::Builder getType();
+  inline void setType(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initType(unsigned int size);
+  inline void adoptType(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownType();
+
+  inline ::uint32_t getCellValNum();
+  inline void setCellValNum(::uint32_t value);
+
+  inline bool getExternal();
+  inline void setExternal(bool value);
+
+  inline bool getRelative();
+  inline void setRelative(bool value);
+
+  inline bool hasSchema();
+  inline ::tiledb::sm::serialization::capnp::ArraySchema::Builder getSchema();
+  inline void setSchema(
+      ::tiledb::sm::serialization::capnp::ArraySchema::Reader value);
+  inline ::tiledb::sm::serialization::capnp::ArraySchema::Builder initSchema();
+  inline void adoptSchema(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArraySchema>&& value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArraySchema>
+  disownSchema();
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class DimensionLabel::Pipeline {
+ public:
+  typedef DimensionLabel Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+  inline ::tiledb::sm::serialization::capnp::ArraySchema::Pipeline getSchema();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -2766,6 +2985,9 @@ class Attribute::Reader {
 
   inline bool getFillValueValidity() const;
 
+  inline bool hasOrder() const;
+  inline ::capnp::Text::Reader getOrder() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -2847,6 +3069,13 @@ class Attribute::Builder {
 
   inline bool getFillValueValidity();
   inline void setFillValueValidity(bool value);
+
+  inline bool hasOrder();
+  inline ::capnp::Text::Builder getOrder();
+  inline void setOrder(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initOrder(unsigned int size);
+  inline void adoptOrder(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownOrder();
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -14614,6 +14843,379 @@ ArraySchema::Builder::disownTimestampRange() {
           _builder.getPointerField(::capnp::bounded<11>() * ::capnp::POINTERS));
 }
 
+inline bool ArraySchema::Reader::hasDimensionLabels() const {
+  return !_reader.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArraySchema::Builder::hasDimensionLabels() {
+  return !_builder.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<
+    ::tiledb::sm::serialization::capnp::DimensionLabel,
+    ::capnp::Kind::STRUCT>::Reader
+ArraySchema::Reader::getDimensionLabels() const {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::DimensionLabel,
+      ::capnp::Kind::STRUCT>>::get(_reader
+                                       .getPointerField(
+                                           ::capnp::bounded<12>() *
+                                           ::capnp::POINTERS));
+}
+inline ::capnp::List<
+    ::tiledb::sm::serialization::capnp::DimensionLabel,
+    ::capnp::Kind::STRUCT>::Builder
+ArraySchema::Builder::getDimensionLabels() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::DimensionLabel,
+      ::capnp::Kind::STRUCT>>::get(_builder
+                                       .getPointerField(
+                                           ::capnp::bounded<12>() *
+                                           ::capnp::POINTERS));
+}
+inline void ArraySchema::Builder::setDimensionLabels(
+    ::capnp::List<
+        ::tiledb::sm::serialization::capnp::DimensionLabel,
+        ::capnp::Kind::STRUCT>::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::DimensionLabel,
+      ::capnp::Kind::STRUCT>>::
+      set(_builder.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<
+    ::tiledb::sm::serialization::capnp::DimensionLabel,
+    ::capnp::Kind::STRUCT>::Builder
+ArraySchema::Builder::initDimensionLabels(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::DimensionLabel,
+      ::capnp::Kind::STRUCT>>::
+      init(
+          _builder.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS),
+          size);
+}
+inline void ArraySchema::Builder::adoptDimensionLabels(
+    ::capnp::Orphan<::capnp::List<
+        ::tiledb::sm::serialization::capnp::DimensionLabel,
+        ::capnp::Kind::STRUCT>>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::DimensionLabel,
+      ::capnp::Kind::STRUCT>>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<12>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<
+    ::tiledb::sm::serialization::capnp::DimensionLabel,
+    ::capnp::Kind::STRUCT>>
+ArraySchema::Builder::disownDimensionLabels() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::DimensionLabel,
+      ::capnp::Kind::STRUCT>>::disown(_builder
+                                          .getPointerField(
+                                              ::capnp::bounded<12>() *
+                                              ::capnp::POINTERS));
+}
+
+inline ::uint32_t DimensionLabel::Reader::getDimensionId() const {
+  return _reader.getDataField<::uint32_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint32_t DimensionLabel::Builder::getDimensionId() {
+  return _builder.getDataField<::uint32_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void DimensionLabel::Builder::setDimensionId(::uint32_t value) {
+  _builder.setDataField<::uint32_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool DimensionLabel::Reader::hasName() const {
+  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool DimensionLabel::Builder::hasName() {
+  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader DimensionLabel::Reader::getName() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder DimensionLabel::Builder::getName() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void DimensionLabel::Builder::setName(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder DimensionLabel::Builder::initName(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      size);
+}
+inline void DimensionLabel::Builder::adoptName(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text> DimensionLabel::Builder::disownName() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool DimensionLabel::Reader::hasUri() const {
+  return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool DimensionLabel::Builder::hasUri() {
+  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader DimensionLabel::Reader::getUri() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder DimensionLabel::Builder::getUri() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void DimensionLabel::Builder::setUri(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder DimensionLabel::Builder::initUri(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      size);
+}
+inline void DimensionLabel::Builder::adoptUri(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text> DimensionLabel::Builder::disownUri() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+
+inline bool DimensionLabel::Reader::hasAttributeName() const {
+  return !_reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool DimensionLabel::Builder::hasAttributeName() {
+  return !_builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader DimensionLabel::Reader::getAttributeName() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder DimensionLabel::Builder::getAttributeName() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline void DimensionLabel::Builder::setAttributeName(
+    ::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder DimensionLabel::Builder::initAttributeName(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+      size);
+}
+inline void DimensionLabel::Builder::adoptAttributeName(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text>
+DimensionLabel::Builder::disownAttributeName() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+
+inline bool DimensionLabel::Reader::hasOrder() const {
+  return !_reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool DimensionLabel::Builder::hasOrder() {
+  return !_builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader DimensionLabel::Reader::getOrder() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder DimensionLabel::Builder::getOrder() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline void DimensionLabel::Builder::setOrder(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder DimensionLabel::Builder::initOrder(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+      size);
+}
+inline void DimensionLabel::Builder::adoptOrder(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text> DimensionLabel::Builder::disownOrder() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+
+inline bool DimensionLabel::Reader::hasType() const {
+  return !_reader.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool DimensionLabel::Builder::hasType() {
+  return !_builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader DimensionLabel::Reader::getType() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder DimensionLabel::Builder::getType() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
+}
+inline void DimensionLabel::Builder::setType(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder DimensionLabel::Builder::initType(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+      size);
+}
+inline void DimensionLabel::Builder::adoptType(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text> DimensionLabel::Builder::disownType() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
+}
+
+inline ::uint32_t DimensionLabel::Reader::getCellValNum() const {
+  return _reader.getDataField<::uint32_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint32_t DimensionLabel::Builder::getCellValNum() {
+  return _builder.getDataField<::uint32_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+inline void DimensionLabel::Builder::setCellValNum(::uint32_t value) {
+  _builder.setDataField<::uint32_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool DimensionLabel::Reader::getExternal() const {
+  return _reader.getDataField<bool>(::capnp::bounded<64>() * ::capnp::ELEMENTS);
+}
+
+inline bool DimensionLabel::Builder::getExternal() {
+  return _builder.getDataField<bool>(
+      ::capnp::bounded<64>() * ::capnp::ELEMENTS);
+}
+inline void DimensionLabel::Builder::setExternal(bool value) {
+  _builder.setDataField<bool>(
+      ::capnp::bounded<64>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool DimensionLabel::Reader::getRelative() const {
+  return _reader.getDataField<bool>(::capnp::bounded<65>() * ::capnp::ELEMENTS);
+}
+
+inline bool DimensionLabel::Builder::getRelative() {
+  return _builder.getDataField<bool>(
+      ::capnp::bounded<65>() * ::capnp::ELEMENTS);
+}
+inline void DimensionLabel::Builder::setRelative(bool value) {
+  _builder.setDataField<bool>(
+      ::capnp::bounded<65>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool DimensionLabel::Reader::hasSchema() const {
+  return !_reader.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool DimensionLabel::Builder::hasSchema() {
+  return !_builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::ArraySchema::Reader
+DimensionLabel::Reader::getSchema() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::get(
+          _reader.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::ArraySchema::Builder
+DimensionLabel::Builder::getSchema() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::get(
+          _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::ArraySchema::Pipeline
+DimensionLabel::Pipeline::getSchema() {
+  return ::tiledb::sm::serialization::capnp::ArraySchema::Pipeline(
+      _typeless.getPointerField(5));
+}
+#endif  // !CAPNP_LITE
+inline void DimensionLabel::Builder::setSchema(
+    ::tiledb::sm::serialization::capnp::ArraySchema::Reader value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::
+      set(_builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS),
+          value);
+}
+inline ::tiledb::sm::serialization::capnp::ArraySchema::Builder
+DimensionLabel::Builder::initSchema() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::init(
+          _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
+}
+inline void DimensionLabel::Builder::adoptSchema(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArraySchema>&& value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArraySchema>
+DimensionLabel::Builder::disownSchema() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::disown(
+          _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
+}
+
 inline bool ArraySchemaEvolution::Reader::hasAttributesToDrop() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
@@ -15008,6 +15610,43 @@ inline bool Attribute::Builder::getFillValueValidity() {
 inline void Attribute::Builder::setFillValueValidity(bool value) {
   _builder.setDataField<bool>(
       ::capnp::bounded<33>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool Attribute::Reader::hasOrder() const {
+  return !_reader.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Attribute::Builder::hasOrder() {
+  return !_builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader Attribute::Reader::getOrder() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder Attribute::Builder::getOrder() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
+}
+inline void Attribute::Builder::setOrder(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder Attribute::Builder::initOrder(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+      size);
+}
+inline void Attribute::Builder::adoptOrder(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text> Attribute::Builder::disownOrder() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
 }
 
 inline bool AttributeBufferHeader::Reader::hasName() const {

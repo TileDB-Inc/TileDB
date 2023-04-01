@@ -96,7 +96,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       std::unordered_map<std::string, QueryBuffer>& buffers,
       Subarray& subarray,
       Layout layout,
-      QueryCondition& condition,
+      std::optional<QueryCondition>& condition,
       bool skip_checks_serialization = false);
 
   /** Destructor. */
@@ -139,6 +139,9 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   /** Resets the reader object. */
   void reset();
 
+  /** Returns the name of the strategy */
+  std::string name();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -162,8 +165,8 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   /** Total memory budget. */
   uint64_t memory_budget_;
 
-  /** Target memory budget for tiles. */
-  uint64_t tile_memory_budget_;
+  /** Target upper memory limit for tiles. */
+  uint64_t tile_upper_memory_limit_;
 
   /** Memory tracker object for the array. */
   MemoryTracker* array_memory_tracker_;
@@ -193,11 +196,13 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const std::unordered_set<std::string>& condition_names,
       Subarray& subarray,
       uint64_t t_start,
-      std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles);
+      std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
+      ThreadPool::Task& compute_task);
 
   /** Apply the query condition. */
   template <class DimType, class OffType>
   Status apply_query_condition(
+      ThreadPool::Task& compute_task,
       Subarray& subarray,
       const uint64_t t_start,
       const uint64_t t_end,

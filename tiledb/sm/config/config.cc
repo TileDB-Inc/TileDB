@@ -93,6 +93,7 @@ const std::string Config::REST_CURL_VERBOSE = "false";
 const std::string Config::REST_LOAD_METADATA_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_USE_REFACTORED_ARRAY_OPEN = "false";
+const std::string Config::REST_USE_REFACTORED_QUERY_SUBMIT = "false";
 const std::string Config::SM_ALLOW_SEPARATE_ATTRIBUTE_WRITES = "false";
 const std::string Config::SM_ALLOW_UPDATES_EXPERIMENTAL = "false";
 const std::string Config::SM_ENCRYPTION_KEY = "";
@@ -112,17 +113,13 @@ const std::string Config::SM_QUERY_SPARSE_GLOBAL_ORDER_READER = "refactored";
 const std::string Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER =
     "refactored";
 const std::string Config::SM_MEM_MALLOC_TRIM = "true";
-const std::string Config::SM_TILE_MEMORY_BUDGET = "2147483648";  // 2GB
+const std::string Config::SM_UPPER_MEMORY_LIMIT = "1073741824";  // 1GB
 const std::string Config::SM_MEM_TOTAL_BUDGET = "10737418240";   // 10GB
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS = "0.5";
-const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION =
-    "0.25";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES = "0.1";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA = "0.1";
 const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_COORDS =
     "0.5";
-const std::string
-    Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_QUERY_CONDITION = "0.25";
 const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_TILE_RANGES =
     "0.1";
 const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_ARRAY_DATA =
@@ -213,6 +210,7 @@ const std::string Config::VFS_S3_PROXY_USERNAME = "";
 const std::string Config::VFS_S3_PROXY_PASSWORD = "";
 const std::string Config::VFS_S3_LOGGING_LEVEL = "Off";
 const std::string Config::VFS_S3_VERIFY_SSL = "true";
+const std::string Config::VFS_S3_NO_SIGN_REQUEST = "false";
 const std::string Config::VFS_S3_BUCKET_CANNED_ACL = "NOT_SET";
 const std::string Config::VFS_S3_OBJECT_CANNED_ACL = "NOT_SET";
 const std::string Config::VFS_HDFS_KERB_TICKET_CACHE_PATH = "";
@@ -243,6 +241,9 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "rest.use_refactored_array_open",
         Config::REST_USE_REFACTORED_ARRAY_OPEN),
+    std::make_pair(
+        "rest.use_refactored_array_open_and_query_submit",
+        Config::REST_USE_REFACTORED_QUERY_SUBMIT),
     std::make_pair(
         "config.env_var_prefix", Config::CONFIG_ENVIRONMENT_VARIABLE_PREFIX),
     std::make_pair("config.logging_level", Config::CONFIG_LOGGING_LEVEL),
@@ -277,14 +278,12 @@ const std::map<std::string, std::string> default_config_values = {
         "sm.query.sparse_unordered_with_dups.reader",
         Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER),
     std::make_pair("sm.mem.malloc_trim", Config::SM_MEM_MALLOC_TRIM),
-    std::make_pair("sm.mem.tile_memory_budget", Config::SM_TILE_MEMORY_BUDGET),
+    std::make_pair(
+        "sm.mem.tile_upper_memory_limit", Config::SM_UPPER_MEMORY_LIMIT),
     std::make_pair("sm.mem.total_budget", Config::SM_MEM_TOTAL_BUDGET),
     std::make_pair(
         "sm.mem.reader.sparse_global_order.ratio_coords",
         Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS),
-    std::make_pair(
-        "sm.mem.reader.sparse_global_order.ratio_query_condition",
-        Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION),
     std::make_pair(
         "sm.mem.reader.sparse_global_order.ratio_tile_ranges",
         Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES),
@@ -294,9 +293,6 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "sm.mem.reader.sparse_unordered_with_dups.ratio_coords",
         Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_COORDS),
-    std::make_pair(
-        "sm.mem.reader.sparse_unordered_with_dups.ratio_query_condition",
-        Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_QUERY_CONDITION),
     std::make_pair(
         "sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges",
         Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_TILE_RANGES),
@@ -436,6 +432,7 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair("vfs.s3.proxy_password", Config::VFS_S3_PROXY_PASSWORD),
     std::make_pair("vfs.s3.logging_level", Config::VFS_S3_LOGGING_LEVEL),
     std::make_pair("vfs.s3.verify_ssl", Config::VFS_S3_VERIFY_SSL),
+    std::make_pair("vfs.s3.no_sign_request", Config::VFS_S3_NO_SIGN_REQUEST),
     std::make_pair(
         "vfs.s3.bucket_canned_acl", Config::VFS_S3_BUCKET_CANNED_ACL),
     std::make_pair(
@@ -772,6 +769,8 @@ Status Config::sanity_check(
   } else if (param == "vfs.s3.proxy_port") {
     RETURN_NOT_OK(utils::parse::convert(value, &vint64));
   } else if (param == "vfs.s3.verify_ssl") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
+  } else if (param == "vfs.s3.no_sign_request") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (
       (chkno = 1, param == "vfs.s3.bucket_canned_acl") ||

@@ -76,7 +76,7 @@ DenseReader::DenseReader(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    QueryCondition& condition,
+    std::optional<QueryCondition>& condition,
     bool skip_checks_serialization)
     : ReaderBase(
           stats,
@@ -140,14 +140,8 @@ void DenseReader::initialize_memory_budget() {
       config_.get<uint64_t>("sm.mem.total_budget", &memory_budget_, &found));
   assert(found);
   throw_if_not_ok(config_.get<uint64_t>(
-      "sm.mem.tile_memory_budget", &tile_memory_budget_, &found));
+      "sm.mem.tile_upper_memory_limit", &tile_upper_memory_limit_, &found));
   assert(found);
-
-  // Validate memory budget values.
-  if (tile_memory_budget_ > memory_budget_) {
-    throw DenseReaderStatusException(
-        "sm.mem.tile_memory_budget > sm.mem.total_budget");
-  }
 
   // Set the memory budget for the array
   if (!array_memory_tracker_->set_budget(memory_budget_)) {
@@ -176,7 +170,9 @@ Status DenseReader::dowork() {
   auto timer_se = stats_->start_timer("dowork");
 
   // Check that the query condition is valid.
-  RETURN_NOT_OK(condition_.check(array_schema_));
+  if (condition_.has_value()) {
+    RETURN_NOT_OK(condition_->check(array_schema_));
+  }
 
   get_dim_attr_stats();
 
@@ -218,6 +214,10 @@ Status DenseReader::dowork() {
 }
 
 void DenseReader::reset() {
+}
+
+std::string DenseReader::name() {
+  return "DenseReader";
 }
 
 template <class OffType>
@@ -367,7 +367,11 @@ Status DenseReader::dense_read() {
   std::vector<std::string> names;
   std::vector<std::string> fixed_names;
   std::vector<std::string> var_names;
-  auto condition_names = condition_.field_names();
+  std::unordered_set<std::string> condition_names;
+  if (condition_.has_value()) {
+    condition_names = condition_->field_names();
+  }
+
   for (auto& name : condition_names) {
     names.emplace_back(name);
   }
@@ -402,7 +406,7 @@ Status DenseReader::dense_read() {
   uint64_t subarray_start_cell = 0;
   uint64_t subarray_end_cell = 0;
   std::vector<uint8_t> qc_result(
-      condition_.empty() ? 0 : subarray.cell_num(), 1);
+      !condition_.has_value() ? 0 : subarray.cell_num(), 1);
 
   // Keep track of the current var buffer sizes.
   std::map<std::string, uint64_t> var_buffer_sizes;
@@ -410,13 +414,38 @@ Status DenseReader::dense_read() {
     var_buffer_sizes.emplace(name, 0);
   }
 
+  // The compute task is used to let the compute work happen while we reach the
+  // next read. There should ever be only one compute task at any given time and
+  // we wait for it to finish before we start any other piece of compute work.
+  // This is as far as we should go before implementing this properly in a task
+  // graph, where the start and end of every piece of work can clearly be
+  // identified.
+  ThreadPool::Task compute_task;
+
+  // Most of the computations in this loop are moved to a seperate thread so
+  // that we can reach the next batch of tiles while processing the current one.
+  // for all tiles:
+  //   if not enough memory:
+  //     wait(compute_task)
+  //   read qc attributes
+  //   wait(compute_task)
+  //   compute_task = proccess qc attributes
+  //   read all attributes
+  //   wait(compute_task)
+  //   compute_task = proccess all attributes
   while (t_end < tile_coords.size()) {
     stats_->add_counter("internal_loop_num", 1);
 
     // Get result tiles to process on this iteration.
-    auto&& [ret_t_end, result_tiles] = compute_result_tiles<DimType>(
-        names, condition_names, subarray, t_start, result_space_tiles);
+    auto&& [ret_t_end, result_tiles_ret] = compute_result_tiles<DimType>(
+        names,
+        condition_names,
+        subarray,
+        t_start,
+        result_space_tiles,
+        compute_task);
     t_end = ret_t_end;
+    auto result_tiles = std::move(result_tiles_ret);
 
     // Add the number of cells to process to subarray_end_cell.
     for (uint64_t t = t_start; t < t_end; t++) {
@@ -434,6 +463,7 @@ Status DenseReader::dense_read() {
 
     // Apply the query condition.
     auto st = apply_query_condition<DimType, OffType>(
+        compute_task,
         subarray,
         t_start,
         t_end,
@@ -451,10 +481,6 @@ Status DenseReader::dense_read() {
     // For `qc_coords_mode` just fill in the coordinates and skip attribute
     // processing.
     if (qc_coords_mode_) {
-      for (auto& name : names) {
-        clear_tiles(name, result_tiles);
-      }
-
       t_start = t_end;
       continue;
     }
@@ -468,44 +494,69 @@ Status DenseReader::dense_read() {
         continue;
       }
 
+      std::vector<FilteredData> filtered_data;
       if (condition_names.count(name) == 0) {
         // Read and unfilter tiles.
         to_read[0] = name;
-        RETURN_CANCEL_OR_ERROR(
-            read_and_unfilter_attribute_tiles(to_read, result_tiles));
+        filtered_data = std::move(read_attribute_tiles(to_read, result_tiles));
       }
 
-      // Only copy names that are present in the user buffers.
-      if (buffers_.count(name) != 0) {
-        // Copy attribute data to users buffers.
-        auto& var_buffer_size = var_buffer_sizes[name];
-        status = copy_attribute<DimType, OffType>(
-            name,
-            tile_extents,
-            subarray,
-            t_start,
-            t_end,
-            subarray_start_cell,
-            subarray_end_cell,
-            tile_subarrays,
-            tile_offsets,
-            var_buffer_size,
-            range_info,
-            result_space_tiles,
-            qc_result,
-            num_range_threads);
-        RETURN_CANCEL_OR_ERROR(status);
+      if (compute_task.valid()) {
+        RETURN_NOT_OK(storage_manager_->compute_tp()->wait(compute_task));
+        if (read_state_.overflowed_) {
+          return Status::Ok();
+        }
       }
 
-      clear_tiles(name, result_tiles);
-    }
+      compute_task = storage_manager_->compute_tp()->execute(
+          [&,
+           filtered_data = std::move(filtered_data),
+           name,
+           t_start,
+           t_end,
+           subarray_start_cell,
+           subarray_end_cell,
+           num_range_threads,
+           result_tiles]() {
+            // Unfilter tiles if required.
+            if (condition_names.count(name) == 0) {
+              RETURN_NOT_OK(unfilter_tiles(name, result_tiles));
+            }
 
-    if (read_state_.overflowed_) {
-      return Status::Ok();
+            // Only copy names that are present in the user buffers.
+            if (buffers_.count(name) != 0) {
+              // Copy attribute data to users buffers.
+              auto& var_buffer_size = var_buffer_sizes[name];
+              status = copy_attribute<DimType, OffType>(
+                  name,
+                  tile_extents,
+                  subarray,
+                  t_start,
+                  t_end,
+                  subarray_start_cell,
+                  subarray_end_cell,
+                  tile_subarrays,
+                  tile_offsets,
+                  var_buffer_size,
+                  range_info,
+                  result_space_tiles,
+                  qc_result,
+                  num_range_threads);
+              RETURN_CANCEL_OR_ERROR(status);
+            }
+
+            clear_tiles(name, result_tiles);
+
+            return Status::Ok();
+          });
     }
 
     t_start = t_end;
     subarray_start_cell = subarray_end_cell;
+  }
+
+  if (compute_task.valid()) {
+    RETURN_NOT_OK(storage_manager_->compute_tp()->wait(compute_task));
   }
 
   // For `qc_coords_mode` just fill in the coordinates and skip attribute
@@ -572,7 +623,7 @@ void DenseReader::init_read_state() {
   }
   assert(found);
 
-  if (qc_coords_mode_ && condition_.empty()) {
+  if (qc_coords_mode_ && !condition_.has_value()) {
     throw DenseReaderStatusException(
         "sm.query.dense.qc_coords_mode requires a query condition");
   }
@@ -639,8 +690,10 @@ void DenseReader::init_read_state() {
 }
 
 /**
- * Compute the maximum tile coords that we can process on this itereation to
- * respect the memory budget.
+ * Compute the maximum tile coords that we can process on this iteration to
+ * respect the memory budget. If the available memory is less than the tile
+ * upper memory limit, waits for compute task to complete before proceeding to
+ * the new iteration.
  */
 template <class DimType>
 tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
@@ -648,12 +701,22 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
     const std::unordered_set<std::string>& condition_names,
     Subarray& subarray,
     uint64_t t_start,
-    std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles) {
+    std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
+    ThreadPool::Task& compute_task) {
   // For easy reference.
-  const uint64_t left_over_budget = std::min(
-      tile_memory_budget_,
-      memory_budget_ - array_memory_tracker_->get_memory_usage());
   const auto& tile_coords = subarray.tile_coords();
+  uint64_t available_memory =
+      memory_budget_ - array_memory_tracker_->get_memory_usage();
+
+  // If the available memory is less than the tile upper memory limit, we cannot
+  // load two batches at once. Wait for the first compute task to complete
+  // before loading more tiles.
+  if (compute_task.valid() && available_memory < tile_upper_memory_limit_) {
+    throw_if_not_ok(storage_manager_->compute_tp()->wait(compute_task));
+  }
+
+  const uint64_t upper_memory_limit =
+      std::min(tile_upper_memory_limit_ / 2, available_memory);
 
   // Keep track of the required memory to load the result space tiles. The first
   // element of this vector is an aggregate of all query condition fields,
@@ -684,8 +747,8 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
     }
 
     // If we reached the memory budget, stop. Always include the first tile.
-    if (t_end != t_start &&
-        required_memory_query_condition + condition_memory > left_over_budget) {
+    if (t_end != t_start && required_memory_query_condition + condition_memory >
+                                upper_memory_limit) {
       done = true;
       break;
     } else {
@@ -705,7 +768,7 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
       // If we reached the memory budget, stop. Always include the first tile.
       uint64_t r_idx = n - condition_names.size();
       if (t_end != t_start &&
-          required_memory[r_idx] + tile_memory > left_over_budget) {
+          required_memory[r_idx] + tile_memory > upper_memory_limit) {
         done = true;
         break;
       } else {
@@ -748,9 +811,14 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
   return {t_end, result_tiles};
 }
 
-/** Apply the query condition. */
+/**
+ * Apply the query condition. The computation will be pushed on the compute
+ * thread pool in `compute_task`. Callers should wait on this task before using
+ * the results of the query condition.
+ */
 template <class DimType, class OffType>
 Status DenseReader::apply_query_condition(
+    ThreadPool::Task& compute_task,
     Subarray& subarray,
     const uint64_t t_start,
     const uint64_t t_end,
@@ -765,109 +833,142 @@ Status DenseReader::apply_query_condition(
     std::vector<uint8_t>& qc_result) {
   auto timer_se = stats_->start_timer("apply_query_condition");
 
-  if (!condition_.empty()) {
-    // For easy reference.
-    const auto& tile_coords = subarray.tile_coords();
-    const auto dim_num = array_schema_.dim_num();
-    auto stride = array_schema_.domain().stride<DimType>(layout_);
-    const auto cell_order = array_schema_.cell_order();
-    const auto global_order = layout_ == Layout::GLOBAL_ORDER;
-
+  if (condition_.has_value()) {
     // Compute the result of the query condition.
     std::vector<std::string> qc_names;
     qc_names.reserve(condition_names.size());
     for (auto& name : condition_names) {
-      qc_names.emplace_back(name);
+      if (!array_schema_.is_dim(name)) {
+        qc_names.emplace_back(name);
+      }
     }
 
     // Read and unfilter query condition attributes.
-    RETURN_CANCEL_OR_ERROR(
-        read_and_unfilter_attribute_tiles(qc_names, result_tiles));
+    std::vector<FilteredData> filtered_data =
+        read_attribute_tiles(qc_names, result_tiles);
 
-    if (stride == UINT64_MAX) {
-      stride = 1;
+    if (compute_task.valid()) {
+      RETURN_NOT_OK(storage_manager_->compute_tp()->wait(compute_task));
     }
 
-    // Process all tiles in parallel.
-    auto status = parallel_for_2d(
-        storage_manager_->compute_tp(),
-        t_start,
-        t_end,
-        0,
-        num_range_threads,
-        [&](uint64_t t, uint64_t range_thread_idx) {
-          // Find out result space tile and tile subarray.
-          const DimType* tc = (DimType*)&tile_coords[t][0];
-          auto it = result_space_tiles.find(tc);
-          assert(it != result_space_tiles.end());
+    compute_task = storage_manager_->compute_tp()->execute(
+        [&,
+         filtered_data = std::move(filtered_data),
+         qc_names,
+         t_start,
+         t_end,
+         num_range_threads,
+         result_tiles]() {
+          // For easy reference.
+          const auto& tile_coords = subarray.tile_coords();
+          const auto dim_num = array_schema_.dim_num();
+          auto stride = array_schema_.domain().stride<DimType>(layout_);
+          const auto cell_order = array_schema_.cell_order();
+          const auto global_order = layout_ == Layout::GLOBAL_ORDER;
 
-          // Iterate over all coordinates, retrieved in cell slab.
-          const auto& frag_domains = it->second.frag_domains();
-          TileCellSlabIter<DimType> iter(
-              range_thread_idx,
+          // Unfilter tiles.
+          for (auto& name : qc_names) {
+            RETURN_NOT_OK(unfilter_tiles(name, result_tiles));
+          }
+
+          if (stride == UINT64_MAX) {
+            stride = 1;
+          }
+
+          // Process all tiles in parallel.
+          auto status = parallel_for_2d(
+              storage_manager_->compute_tp(),
+              t_start,
+              t_end,
+              0,
               num_range_threads,
-              subarray,
-              tile_subarrays[t],
-              tile_extents,
-              it->second.start_coords(),
-              range_info,
-              cell_order);
+              [&](uint64_t t, uint64_t range_thread_idx) {
+                // Find out result space tile and tile subarray.
+                const DimType* tc = (DimType*)&tile_coords[t][0];
+                auto it = result_space_tiles.find(tc);
+                assert(it != result_space_tiles.end());
 
-          // Compute cell offset and destination pointer.
-          uint64_t cell_offset =
-              global_order ? tile_offsets[t] + iter.global_offset() : 0;
-          auto dest_ptr = qc_result.data() + cell_offset;
+                // Iterate over all coordinates, retrieved in cell slab.
+                const auto& frag_domains = it->second.frag_domains();
+                TileCellSlabIter<DimType> iter(
+                    range_thread_idx,
+                    num_range_threads,
+                    subarray,
+                    tile_subarrays[t],
+                    tile_extents,
+                    it->second.start_coords(),
+                    range_info,
+                    cell_order);
 
-          while (!iter.end()) {
-            // Compute destination pointer for row/col major orders.
-            if (!global_order) {
-              cell_offset = iter.dest_offset_row_col();
-              dest_ptr = qc_result.data() + cell_offset;
-            }
+                // Compute cell offset and destination pointer.
+                uint64_t cell_offset =
+                    global_order ? tile_offsets[t] + iter.global_offset() : 0;
+                auto dest_ptr = qc_result.data() + cell_offset;
 
-            for (int32_t i = static_cast<int32_t>(frag_domains.size()) - 1;
-                 i >= 0;
-                 --i) {
-              // If the cell slab overlaps this fragment domain range, apply
-              // clause.
-              auto&& [overlaps, start, end] = cell_slab_overlaps_range(
-                  dim_num,
-                  frag_domains[i].domain(),
-                  iter.cell_slab_coords(),
-                  iter.cell_slab_length());
-              if (overlaps) {
-                // Re-initialize the bitmap to 1 in case of overlapping
-                // domains.
-                if (i != static_cast<int32_t>(frag_domains.size()) - 1) {
-                  for (uint64_t c = start; c <= end; c++) {
-                    dest_ptr[c] = 1;
+                while (!iter.end()) {
+                  // Compute destination pointer for row/col major orders.
+                  if (!global_order) {
+                    cell_offset = iter.dest_offset_row_col();
+                    dest_ptr = qc_result.data() + cell_offset;
                   }
+
+                  for (int32_t i =
+                           static_cast<int32_t>(frag_domains.size()) - 1;
+                       i >= 0;
+                       --i) {
+                    // If the cell slab overlaps this fragment domain range,
+                    // apply clause.
+                    auto&& [overlaps, start, end] = cell_slab_overlaps_range(
+                        dim_num,
+                        frag_domains[i].domain(),
+                        iter.cell_slab_coords(),
+                        iter.cell_slab_length());
+                    if (overlaps) {
+                      // Re-initialize the bitmap to 1 in case of overlapping
+                      // domains.
+                      if (i != static_cast<int32_t>(frag_domains.size()) - 1) {
+                        for (uint64_t c = start; c <= end; c++) {
+                          dest_ptr[c] = 1;
+                        }
+                      }
+
+                      RETURN_NOT_OK(condition_->apply_dense(
+                          *(fragment_metadata_[frag_domains[i].fid()]
+                                ->array_schema()
+                                .get()),
+                          it->second.result_tile(frag_domains[i].fid()),
+                          start,
+                          end - start + 1,
+                          iter.pos_in_tile(),
+                          stride,
+                          iter.cell_slab_coords().data(),
+                          dest_ptr));
+                    }
+                  }
+
+                  // Adjust the destination pointers for global order.
+                  if (global_order) {
+                    dest_ptr += iter.cell_slab_length();
+                  }
+
+                  ++iter;
                 }
 
-                RETURN_NOT_OK(condition_.apply_dense(
-                    *(fragment_metadata_[frag_domains[i].fid()]
-                          ->array_schema()
-                          .get()),
-                    it->second.result_tile(frag_domains[i].fid()),
-                    start,
-                    end - start + 1,
-                    iter.pos_in_tile(),
-                    stride,
-                    dest_ptr));
-              }
-            }
+                return Status::Ok();
+              });
+          RETURN_NOT_OK(status);
 
-            // Adjust the destination pointers for global order.
-            if (global_order) {
-              dest_ptr += iter.cell_slab_length();
+          // For `qc_coords_mode` just fill in the coordinates and skip
+          // attribute
+          // processing.
+          if (qc_coords_mode_) {
+            for (auto& name : qc_names) {
+              clear_tiles(name, result_tiles);
             }
-
-            ++iter;
           }
 
           return Status::Ok();
         });
-    RETURN_NOT_OK(status);
   }
 
   return Status::Ok();
@@ -1150,7 +1251,6 @@ Status DenseReader::copy_fixed_tiles(
   for (uint32_t fd = 0; fd < frag_domains.size(); ++fd) {
     tile_tuples[fd] =
         result_space_tile.result_tile(frag_domains[fd].fid())->tile_tuple(name);
-    assert(tile_tuples[fd] != nullptr);
   }
 
   if (stride == UINT64_MAX) {
@@ -1179,11 +1279,18 @@ Status DenseReader::copy_fixed_tiles(
     // Iterate through all fragment domains and copy data.
     for (int32_t fd = (int32_t)frag_domains.size() - 1; fd >= 0; --fd) {
       // If the cell slab overlaps this fragment domain range, copy data.
-      auto&& [overlaps, start, end] = cell_slab_overlaps_range(
-          dim_num,
-          frag_domains[fd].domain(),
-          iter.cell_slab_coords(),
-          iter.cell_slab_length());
+      bool overlaps = false;
+      uint64_t start = 0, end = 0;
+      if (tile_tuples[fd] != nullptr) {
+        auto&& [o, s, e] = cell_slab_overlaps_range(
+            dim_num,
+            frag_domains[fd].domain(),
+            iter.cell_slab_coords(),
+            iter.cell_slab_length());
+        overlaps = o;
+        start = s;
+        end = e;
+      }
       if (overlaps) {
         // Calculate the destination pointers.
         auto dest_ptr = dst_buf + cell_offset * cell_size;
@@ -1286,7 +1393,7 @@ Status DenseReader::copy_fixed_tiles(
     }
 
     // Apply query condition results to this slab.
-    if (!condition_.empty()) {
+    if (condition_.has_value()) {
       for (uint64_t c = 0; c < iter.cell_slab_length(); c++) {
         if (!(qc_result[c + cell_offset] & 0x1)) {
           memcpy(
@@ -1341,7 +1448,6 @@ Status DenseReader::copy_offset_tiles(
   for (uint32_t fd = 0; fd < frag_domains.size(); ++fd) {
     tile_tuples[fd] =
         result_space_tile.result_tile(frag_domains[fd].fid())->tile_tuple(name);
-    assert(tile_tuples[fd] != nullptr);
   }
 
   if (stride == UINT64_MAX) {
@@ -1373,11 +1479,18 @@ Status DenseReader::copy_offset_tiles(
     // Iterate through all fragment domains and copy data.
     for (int32_t fd = (int32_t)frag_domains.size() - 1; fd >= 0; --fd) {
       // If the cell slab overlaps this fragment domain range, copy data.
-      auto&& [overlaps, start, end] = cell_slab_overlaps_range(
-          dim_num,
-          frag_domains[fd].domain(),
-          iter.cell_slab_coords(),
-          iter.cell_slab_length());
+      bool overlaps = false;
+      uint64_t start = 0, end = 0;
+      if (tile_tuples[fd] != nullptr) {
+        auto&& [o, s, e] = cell_slab_overlaps_range(
+            dim_num,
+            frag_domains[fd].domain(),
+            iter.cell_slab_coords(),
+            iter.cell_slab_length());
+        overlaps = o;
+        start = s;
+        end = e;
+      }
       if (overlaps) {
         // Calculate the destination pointers.
         auto dest_ptr = dst_buf + cell_offset * sizeof(OffType);
@@ -1473,7 +1586,7 @@ Status DenseReader::copy_offset_tiles(
       }
     }
 
-    if (!condition_.empty()) {
+    if (condition_.has_value()) {
       // Apply query condition results to this slab.
       for (uint64_t c = 0; c < iter.cell_slab_length(); c++) {
         if (!(qc_result[c + cell_offset] & 0x1)) {

@@ -168,6 +168,15 @@ class Buffer : public BufferBase {
   Buffer();
 
   /**
+   * Owning constructor for preallocated fixed size Buffer.
+   * The resulting Buffer object will have ownership of it's data.
+   * Buffers using this constructor will never reallocate.
+   *
+   * @param size The size in bytes to preallocate.
+   */
+  Buffer(uint64_t size);
+
+  /**
    * Non-owning constructor.
    *
    * Initializes the buffer to "wrap" the input data and size. The buffer being
@@ -329,6 +338,12 @@ class Buffer : public BufferBase {
    * responsible for allocating and freeing it.
    */
   bool owns_data_;
+
+  /**
+   * True if the buffer is preallocated to a fixed size.
+   * If this flag is set an error will be thrown when trying to reallocate.
+   */
+  bool preallocated_ = false;
 
   /** The allocated buffer size. */
   uint64_t alloced_size_;

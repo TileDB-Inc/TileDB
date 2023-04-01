@@ -114,6 +114,21 @@ class GenericTileIO {
   /* ********************************* */
 
   /**
+   * Load data from persistent storage.
+   *
+   * @param resources The ContextResources to use.
+   * @param uri The object URI.
+   * @param offset The offset into the file to read from.
+   * @param encryption_key The encryption key to use.
+   * @return Status, Tile with the data.
+   */
+  static Tile load(
+      ContextResources& resources,
+      const URI& uri,
+      uint64_t offset,
+      const EncryptionKey& encryption_key);
+
+  /**
    * Reads a generic tile from the file. A generic tile is a tile residing
    * together with its metadata in one contiguous byte region of a file. This is
    * as opposed to a regular tile, where the metadata resides separately from
@@ -150,7 +165,7 @@ class GenericTileIO {
    * Writes a tile generically to the file. This means that a header will be
    * prepended to the file before writing the tile contents. The reason is
    * that there will be no tile metadata retrieved from another source,
-   * other thant the file itself.
+   * other than the file itself.
    *
    * @param tile The tile to be written.
    * @param encryption_key The encryption key to use.

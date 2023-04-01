@@ -119,6 +119,42 @@ struct ArraySchema {
 
     timestampRange @13 :List(UInt64);
     # Timestamp range of array schema
+
+    dimensionLabels @14 :List(DimensionLabel);
+    # Dimension labels of the array
+}
+
+struct DimensionLabel {
+# A label of a dimension
+    dimensionId @0 :UInt32;
+    # Index of the dimension the label is attached to
+
+    name @1 :Text;
+    # Name of the dimension label
+
+    uri @2 :Text;
+    # URI of the existing dimension label
+
+    attributeName @3 :Text;
+    # Name of the attribute that stores the label data
+
+    order @4 :Text;
+    # Order of the dimension label
+
+    type @5 :Text;
+    # Datatype of label data
+
+    cellValNum @6 :UInt32;
+    # Number of cells per label value
+
+    external @7 :Bool;
+    # Is label stored in array's label directory or externally
+
+    relative @8 :Bool;
+    # Is URI relative or absolute to array directory
+
+    schema @9 :ArraySchema;
+    # Label schema
 }
 
 struct ArraySchemaEvolution {
@@ -155,6 +191,9 @@ struct Attribute {
 
     fillValueValidity @6 :Bool;
     # Default validity fill value for nullable attributes
+
+    order @7 :Text;
+    # The prescribed order of the data stored in the attribute
 }
 
 struct AttributeBufferHeader {
@@ -693,7 +732,7 @@ struct ArrayDirectory {
     offset @2 :UInt64;
   }
 
-  unfilteredFragmentUris @0 :List(Text); 
+  unfilteredFragmentUris @0 :List(Text);
   # fragment URIs
 
   consolidatedCommitUris @1 :List(Text);
@@ -703,7 +742,7 @@ struct ArrayDirectory {
   # URIs of all the array schema files
 
   latestArraySchemaUri @3 :Text;
-  # latest array schema URI. 
+  # latest array schema URI.
 
   arrayMetaUrisToVacuum @4 :List(Text);
   # the array metadata files to vacuum
@@ -732,10 +771,10 @@ struct ArrayDirectory {
   # the location of delete tiles
 
   timestampStart @12 :UInt64;
-   # Only the files created after timestamp_start are listed 
+   # Only the files created after timestamp_start are listed
 
   timestampEnd @13 :UInt64;
-  # Only the files created before timestamp_end are listed 
+  # Only the files created before timestamp_end are listed
 }
 
 
@@ -1048,4 +1087,3 @@ struct BufferedChunk {
   size@1 :UInt64;
   # the size in bytes of the intermediate chunk
 }
-

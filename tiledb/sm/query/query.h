@@ -49,6 +49,7 @@
 #include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/sm/query/query_remote_buffer_storage.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
@@ -319,13 +320,22 @@ class Query {
   std::unordered_map<std::string, Subarray::MemorySize> get_max_mem_size_map();
 
   /**
+   * Retrieve remote buffer storage for remote global order writes.
+   *
+   * @return QueryRemoteBufferStorage for this query.
+   */
+  inline std::optional<QueryRemoteBufferStorage>& get_remote_buffer_cache() {
+    return query_remote_buffer_storage_;
+  }
+
+  /**
    * Returns `true` if the query has results. Applicable only to read
    * queries (it returns `false` for write queries).
    */
   bool has_results() const;
 
   /** Initializes the query. */
-  Status init();
+  void init();
 
   /** Returns the first fragment uri. */
   URI first_fragment_uri() const;
@@ -340,7 +350,7 @@ class Query {
    * Returns the condition for filtering results in a read query.
    * @return QueryCondition
    */
-  const QueryCondition& condition() const;
+  const std::optional<QueryCondition>& condition() const;
 
   /**
    * Returns the update values for an update query.
@@ -434,13 +444,16 @@ class Query {
    *     it will contain the size of the useful (read) data in `buffer`.
    * @param check_null_buffers If true (default), null buffers are not
    * allowed.
+   * @param serialization_allow_new_attr If true, setting new attributes
+   * is allowed in INITIALIZED state
    * @return Status
    */
   Status set_data_buffer(
       const std::string& name,
       void* const buffer,
       uint64_t* const buffer_size,
-      const bool check_null_buffers = true);
+      const bool check_null_buffers = true,
+      const bool serialization_allow_new_attr = false);
 
   /**
    * Wrapper to set the internal buffer for a dimension or attribute from a
@@ -470,13 +483,16 @@ class Query {
    *     `buffer_off`.
    * @param check_null_buffers If true (default), null buffers are not
    * allowed.
+   * @param serialization_allow_new_attr If true, setting new attributes
+   * is allowed in INITIALIZED state
    * @return Status
    */
   Status set_offsets_buffer(
       const std::string& name,
       uint64_t* const buffer_offsets,
       uint64_t* const buffer_offsets_size,
-      const bool check_null_buffers = true);
+      const bool check_null_buffers = true,
+      const bool serialization_allow_new_attr = false);
 
   /**
    * Sets the validity buffer for nullable attribute/dimension.
@@ -492,13 +508,16 @@ class Query {
    * data in `buffer_validity_bytemap`.
    * @param check_null_buffers If true (default), null buffers are not
    * allowed.
+   * @param serialization_allow_new_attr If true, setting new attributes
+   * is allowed in INITIALIZED state
    * @return Status
    */
   Status set_validity_buffer(
       const std::string& name,
       uint8_t* const buffer_validity_bytemap,
       uint64_t* const buffer_validity_bytemap_size,
-      const bool check_null_buffers = true);
+      const bool check_null_buffers = true,
+      const bool serialization_allow_new_attr = false);
 
   /**
    * Get the config of the query.
@@ -738,7 +757,7 @@ class Query {
   std::vector<WrittenFragmentInfo> written_fragment_info_;
 
   /** The query condition. */
-  QueryCondition condition_;
+  std::optional<QueryCondition> condition_;
 
   /** The update values. */
   std::vector<UpdateValue> update_values_;
@@ -834,6 +853,9 @@ class Query {
   /** Already written buffers. */
   std::unordered_set<std::string> written_buffers_;
 
+  /** Cache for tile aligned remote global order writes. */
+  std::optional<QueryRemoteBufferStorage> query_remote_buffer_storage_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -853,7 +875,7 @@ class Query {
   /**
    * Internal routine for checking the completeness of all attribute
    * and dimensions buffers. Iteratively searches that all attributes &
-   * dimenstions buffers have been set correctly
+   * dimensions buffers have been set correctly
    * @return Status
    */
   Status check_buffers_correctness();

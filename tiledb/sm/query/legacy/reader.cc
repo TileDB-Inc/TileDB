@@ -112,7 +112,7 @@ Reader::Reader(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    QueryCondition& condition,
+    std::optional<QueryCondition>& condition,
     bool skip_checks_serialization)
     : ReaderBase(
           stats,
@@ -201,7 +201,9 @@ Status Reader::dowork() {
   auto timer_se = stats_->start_timer("dowork");
 
   // Check that the query condition is valid.
-  RETURN_NOT_OK(condition_.check(array_schema_));
+  if (condition_.has_value()) {
+    RETURN_NOT_OK(condition_->check(array_schema_));
+  }
 
   if (buffers_.count(constants::delete_timestamps) != 0) {
     return logger_->status(
@@ -270,6 +272,10 @@ Status Reader::dowork() {
 void Reader::reset() {
 }
 
+std::string Reader::name() {
+  return "LegacyReader";
+}
+
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
@@ -307,8 +313,8 @@ Status Reader::load_initial_data() {
   RETURN_CANCEL_OR_ERROR(generate_timestamped_conditions());
 
   // Make a list of dim/attr that will be loaded for query condition.
-  if (!condition_.empty()) {
-    qc_loaded_attr_names_set_.merge(condition_.field_names());
+  if (condition_.has_value()) {
+    qc_loaded_attr_names_set_.merge(condition_->field_names());
   }
   for (auto delete_and_update_condition : delete_and_update_conditions_) {
     qc_loaded_attr_names_set_.merge(delete_and_update_condition.field_names());
@@ -332,7 +338,7 @@ Status Reader::apply_query_condition(
     std::vector<ResultTile*>& result_tiles,
     Subarray& subarray,
     uint64_t stride) {
-  if ((condition_.empty() && delete_and_update_conditions_.empty()) ||
+  if ((!condition_.has_value() && delete_and_update_conditions_.empty()) ||
       result_cell_slabs.empty()) {
     return Status::Ok();
   }
@@ -356,8 +362,8 @@ Status Reader::apply_query_condition(
   if (stride == UINT64_MAX)
     stride = 1;
 
-  if (!condition_.empty()) {
-    RETURN_NOT_OK(condition_.apply(
+  if (condition_.has_value()) {
+    RETURN_NOT_OK(condition_->apply(
         array_schema_, fragment_metadata_, result_cell_slabs, stride));
   }
 
@@ -2227,7 +2233,7 @@ tuple<Status, optional<bool>> Reader::fill_dense_coords(
   // Query conditions mutate the result cell slabs to filter attributes.
   // This path does not use result cell slabs, which will fill coordinates
   // for cells that should be filtered out.
-  if (!condition_.empty()) {
+  if (condition_.has_value()) {
     return {
         logger_->status(Status_ReaderError(
             "Cannot read dense coordinates; dense coordinate "

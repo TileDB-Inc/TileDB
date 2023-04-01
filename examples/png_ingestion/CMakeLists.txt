@@ -25,7 +25,7 @@
 # THE SOFTWARE.
 #
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.21)
 project(TileDBPngIngestion)
 
 # Set C++17 as required standard for all C++ targets (required to use the TileDB

@@ -32,7 +32,10 @@
 
 #ifndef TILEDB_CPP_API_QUERY_EXPERIMENTAL_H
 #define TILEDB_CPP_API_QUERY_EXPERIMENTAL_H
+
+#include "array_schema_experimental.h"
 #include "context.h"
+#include "dimension_label_experimental.h"
 #include "tiledb.h"
 
 namespace tiledb {
@@ -77,6 +80,161 @@ class QueryExperimental {
     ctx.handle_error(tiledb_query_get_relevant_fragment_num(
         ctx.ptr().get(), query.ptr().get(), &relevant_fragment_num));
     return relevant_fragment_num;
+  }
+
+  /**
+   * Sets the data for a fixed/var-sized attribute/dimension.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, array_name, TILEDB_WRITE);
+   * std::vector<int> data_a1 = {0, 1, 2, 3};
+   * Query query(ctx, array);
+   * query.set_data_buffer("a1", data_a1);
+   * @endcode
+   *
+   * @tparam T Attribute/Dimension value type
+   * @param name Attribute/Dimension name
+   * @param buf Buffer vector with elements of the attribute/dimension type.
+   **/
+  template <typename T>
+  static Query& set_data_buffer(
+      Query& query, const std::string& name, std::vector<T>& buf) {
+    // Checks
+    if (name == "__coords") {
+      impl::type_check<T>(query.schema_.domain().type());
+    } else if (query.schema_.has_attribute(name)) {
+      impl::type_check<T>(query.schema_.attribute(name).type());
+    } else if (query.schema_.domain().has_dimension(name)) {
+      impl::type_check<T>(query.schema_.domain().dimension(name).type());
+    } else if (ArraySchemaExperimental::has_dimension_label(
+                   query.ctx_, query.schema_, name)) {
+      impl::type_check<T>(ArraySchemaExperimental::dimension_label(
+                              query.ctx_, query.schema_, name)
+                              .label_type());
+    } else {
+      throw TileDBError(
+          std::string("Cannot set buffer; No attribute, dimension, or "
+                      "dimension label named '") +
+          name + "' exists");
+    }
+
+    return query.set_data_buffer(name, buf.data(), buf.size(), sizeof(T));
+  }
+
+  /**
+   * Sets the data for a fixed/var-sized attribute/dimension.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Array array(ctx, array_name, TILEDB_WRITE);
+   * int data_a1[] = {0, 1, 2, 3};
+   * Query query(ctx, array);
+   * QueryExperimental::set_data_buffer(query, "a1", data_a1, 4);
+   * @endcode
+   *
+   * @note set_data_buffer(std::string, std::vector) is preferred as it is
+   * safer.
+   *
+   * @tparam T Value type of the buffer
+   * @param name Name of the attribute, dimension, or dimension label.
+   * @param buff Buffer array pointer with elements of the
+   *     attribute/dimension type.
+   * @param nelements Number of array elements.
+   */
+  template <typename T>
+  static Query& set_data_buffer(
+      Query& query, const std::string& name, T* buff, uint64_t nelements) {
+    // Checks
+    if (name == "__coords") {
+      impl::type_check<T>(query.schema_.domain().type());
+    } else if (query.schema_.has_attribute(name)) {
+      impl::type_check<T>(query.schema_.attribute(name).type());
+    } else if (query.schema_.domain().has_dimension(name)) {
+      impl::type_check<T>(query.schema_.domain().dimension(name).type());
+    } else if (ArraySchemaExperimental::has_dimension_label(
+                   query.ctx_, query.schema_, name)) {
+      impl::type_check<T>(ArraySchemaExperimental::dimension_label(
+                              query.ctx_, query.schema_, name)
+                              .label_type());
+    } else {
+      throw TileDBError(
+          std::string("Cannot set buffer; No attribute, dimension, or "
+                      "dimension label named '") +
+          name + "' exists");
+    }
+
+    return query.set_data_buffer(name, buff, nelements, sizeof(T));
+  }
+
+  /**
+   * Sets the data for a fixed/var-sized attribute/dimension.
+   *
+   * @note This unsafe version does not perform type checking; the given buffer
+   * is assumed to be the correct type, and the size of an element in the given
+   * buffer is assumed to be the size of the datatype of the attribute.
+   *
+   * @param name Name of the attribute, dimension, or dimension label
+   * @param buff Buffer array pointer with elements of the attribute type.
+   * @param nelements Number of array elements in buffer
+   **/
+  static Query& set_data_buffer(
+      Query& query, const std::string& name, void* buff, uint64_t nelements) {
+    // Compute element size (in bytes).
+    size_t element_size = 0;
+    if (name == "__coords") {
+      element_size = tiledb_datatype_size(query.schema_.domain().type());
+    } else if (query.schema_.has_attribute(name)) {
+      element_size = tiledb_datatype_size(query.schema_.attribute(name).type());
+    } else if (query.schema_.domain().has_dimension(name)) {
+      element_size =
+          tiledb_datatype_size(query.schema_.domain().dimension(name).type());
+    } else if (ArraySchemaExperimental::has_dimension_label(
+                   query.ctx_, query.schema_, name)) {
+      element_size =
+          tiledb_datatype_size(ArraySchemaExperimental::dimension_label(
+                                   query.ctx_, query.schema_, name)
+                                   .label_type());
+    } else {
+      throw TileDBError(
+          std::string("Cannot set buffer; No attribute, dimension, or "
+                      "dimension label named '") +
+          name + "' exists");
+    }
+
+    // Set the data buffer.
+    return query.set_data_buffer(name, buff, nelements, element_size);
+  }
+
+  /**
+   * Sets the data for a fixed/var-sized attribute/dimension.
+   *
+   * @param name Name of the attribute, dimension, or dimension label.
+   * @param data Pre-allocated string buffer.
+   */
+  static Query& set_data_buffer(
+      Query& query, const std::string& name, std::string& data) {
+    // Checks
+    if (query.schema_.has_attribute(name)) {
+      impl::type_check<char>(query.schema_.attribute(name).type());
+    } else if (query.schema_.domain().has_dimension(name)) {
+      impl::type_check<char>(query.schema_.domain().dimension(name).type());
+    } else if (ArraySchemaExperimental::has_dimension_label(
+                   query.ctx_, query.schema_, name)) {
+      impl::type_check<char>(ArraySchemaExperimental::dimension_label(
+                                 query.ctx_, query.schema_, name)
+                                 .label_type());
+    } else {
+      throw TileDBError(
+          std::string("Cannot set buffer; No attribute, dimension, or "
+                      "dimension label named '") +
+          name + "' exists");
+    }
+
+    // Set the data buffer.
+    return query.set_data_buffer(name, &data[0], data.size(), sizeof(char));
   }
 };
 }  // namespace tiledb

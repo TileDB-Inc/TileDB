@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -486,7 +486,7 @@ TEST_CASE_METHOD(
   const int64_t d1_domain[2] = {0, 99};
   const int64_t tile_extent[1] = {10};
   rc = tiledb_dimension_alloc(
-      ctx_, "", TILEDB_INT64, &d1_domain[0], &tile_extent[0], &d1);
+      ctx_, "d", TILEDB_INT64, &d1_domain[0], &tile_extent[0], &d1);
   REQUIRE(rc == TILEDB_OK);
 
   // Set domain
@@ -664,6 +664,8 @@ TEST_CASE_METHOD(
     tiledb_array_schema_t* read_schema;
     rc = tiledb_array_get_schema(ctx_, array, &read_schema);
     REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_close(ctx_, array);
+    REQUIRE(rc == TILEDB_OK);
     rc = tiledb_config_set(cfg, "sm.encryption_key", bad_key, &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
@@ -682,10 +684,6 @@ TEST_CASE_METHOD(
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_open(ctx_, array2, TILEDB_READ);
     REQUIRE(rc == TILEDB_ERR);
-
-    // Check reopening works
-    rc = tiledb_array_reopen(ctx_, array);
-    REQUIRE(rc == TILEDB_OK);
 
     // Close arrays
     rc = tiledb_array_close(ctx_, array2);
@@ -2387,6 +2385,7 @@ TEST_CASE_METHOD(
           ctx_, "dim", dim_type, dim_domain, &tile_extent, &dim);
       REQUIRE(rc == TILEDB_OK);
     }
+    tiledb_dimension_free(&dim);
   }
 
   SECTION("- valid and unsupported Datatypes") {
@@ -2415,8 +2414,6 @@ TEST_CASE_METHOD(
       REQUIRE(rc == TILEDB_ERR);
     }
   }
-
-  tiledb_dimension_free(&dim);
 }
 
 TEST_CASE_METHOD(

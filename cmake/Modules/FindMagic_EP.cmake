@@ -34,6 +34,40 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
+if(TILEDB_VCPKG)
+  find_path(libmagic_INCLUDE_DIR NAMES magic.h)
+  find_library(libmagic_LIBRARIES magic)
+  find_file(libmagic_DICTIONARY magic.mgc
+    PATH_SUFFIXES share/libmagic/misc
+  )
+
+  include(FindPackageHandleStandardArgs)
+  FIND_PACKAGE_HANDLE_STANDARD_ARGS(libmagic
+    REQUIRED_VARS
+      libmagic_INCLUDE_DIR
+      libmagic_LIBRARIES
+      libmagic_DICTIONARY
+  )
+
+  if(NOT libmagic_FOUND)
+    message(FATAL "Error finding libmagic")
+  endif()
+
+  add_library(libmagic UNKNOWN IMPORTED)
+  set_target_properties(libmagic PROPERTIES
+    IMPORTED_LOCATION "${libmagic_LIBRARIES}"
+    INTERFACE_INCLUDE_DIRECTORIES "${libmagic_INCLUDE_DIR}"
+  )
+
+  # Some GitHub builders were finding a system installed liblzma when
+  # building the libmagic port. Rather than fight the issue we just force
+  # liblzma support everywhere.
+  find_package(liblzma CONFIG REQUIRED)
+  target_link_libraries(libmagic INTERFACE liblzma::liblzma)
+
+  return()
+endif()
+
 # Search the path set during the superbuild for the EP.
 set(LIBMAGIC_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
@@ -102,7 +136,6 @@ if(NOT TILEDB_LIBMAGIC_EP_BUILT)
         -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
         "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
         -Dlibmagic_STATIC_LIB=ON
-        -DBUILD_MAGIC_MACOS_UNIVERSAL=$ENV{BUILD_MAGIC_MACOS_UNIVERSAL}
       LOG_DOWNLOAD TRUE
       LOG_CONFIGURE TRUE
       LOG_BUILD TRUE

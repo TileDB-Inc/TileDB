@@ -594,10 +594,14 @@ struct TemporaryDirectoryFixture {
    *
    * @param name Name of the array relative to the temporary directory.
    * @param array_schema Schema for the array to be created.
+   * @param array_schema Schema for the array to be created.
+   * @param serialize To serialize or not the creation of the schema
    * @returns URI of the array.
    */
   std::string create_temporary_array(
-      std::string&& name, tiledb_array_schema_t* array_schema);
+      std::string&& name,
+      tiledb_array_schema_t* array_schema,
+      const bool serialize = false);
 
   /**
    * Check the return code for a TileDB C-API function is TILEDB_ERR and

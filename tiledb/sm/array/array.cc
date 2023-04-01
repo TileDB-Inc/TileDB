@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -402,8 +402,7 @@ Status Array::open(
             timestamp_end_opened_at_,
             ArrayDirectoryMode::SCHEMA_ONLY);
       }
-      auto&& [st, array_schema_latest, array_schemas] =
-          storage_manager_->array_open_for_writes(this);
+      auto&& [st, array_schema_latest, array_schemas] = open_for_writes();
       throw_if_not_ok(st);
 
       // Set schemas
@@ -423,8 +422,7 @@ Status Array::open(
             timestamp_end_opened_at_,
             ArrayDirectoryMode::READ);
       }
-      auto&& [st, array_schema_latest, array_schemas] =
-          storage_manager_->array_open_for_writes(this);
+      auto&& [st, array_schema_latest, array_schemas] = open_for_writes();
       throw_if_not_ok(st);
 
       // Set schemas
@@ -540,7 +538,7 @@ void Array::delete_array(const URI& uri) {
     auto rest_client = resources_.rest_client();
     if (rest_client == nullptr) {
       throw ArrayStatusException(
-          "[Array::delete_array] Remote array with no REST client.");
+          "[delete_array] Remote array with no REST client.");
     }
     rest_client->delete_array_from_rest(uri);
   } else {
@@ -560,7 +558,7 @@ void Array::delete_fragments(
   // #TODO Add rest support for delete_fragments
   if (remote_) {
     throw ArrayStatusException(
-        "[Array::delete_fragments] Remote arrays currently unsupported.");
+        "[delete_fragments] Remote arrays currently unsupported.");
   } else {
     storage_manager_->delete_fragments(
         uri.c_str(), timestamp_start, timestamp_end);
@@ -576,7 +574,7 @@ void Array::delete_fragments_list(
   // #TODO Add rest support for delete_fragments_list
   if (remote_) {
     throw ArrayStatusException(
-        "[Array::delete_fragments_list] Remote arrays currently unsupported.");
+        "[delete_fragments_list] Remote arrays currently unsupported.");
   } else {
     auto array_dir = ArrayDirectory(
         resources_, uri, 0, std::numeric_limits<uint64_t>::max());
@@ -854,9 +852,12 @@ uint64_t Array::timestamp_end_opened_at() const {
   return timestamp_end_opened_at_;
 }
 
-Status Array::set_config(Config config) {
+void Array::set_config(Config config) {
+  if (is_open()) {
+    throw ArrayStatusException(
+        "[set_config] Cannot set a config on an open array");
+  }
   config_.inherit(config);
-  return Status::Ok();
 }
 
 Config Array::config() const {
@@ -1125,11 +1126,27 @@ bool Array::use_refactored_array_open() const {
       "rest.use_refactored_array_open", &refactored_array_open, &found);
   if (!status.ok() || !found) {
     throw std::runtime_error(
-        "Cannot get use_refactored_array_open configuration option from "
+        "Cannot get rest.use_refactored_array_open configuration option from "
         "config");
   }
 
-  return refactored_array_open;
+  return refactored_array_open || use_refactored_query_submit();
+}
+
+bool Array::use_refactored_query_submit() const {
+  auto found = false;
+  auto refactored_query_submit = false;
+  auto status = config_.get<bool>(
+      "rest.use_refactored_array_open_and_query_submit",
+      &refactored_query_submit,
+      &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error(
+        "Cannot get rest.use_refactored_array_open_and_query_submit "
+        "configuration option from config");
+  }
+
+  return refactored_query_submit;
 }
 
 std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
@@ -1238,15 +1255,66 @@ Array::open_for_reads_without_fragments() {
       "array_open_read_without_fragments_load_schemas");
 
   // Load array schemas
-  auto&& [st_schemas, array_schema_latest, array_schemas_all] =
-      storage_manager_->load_array_schemas(
-          array_directory(), *encryption_key());
-  throw_if_not_ok(st_schemas);
+  auto&& [array_schema_latest, array_schemas_all] =
+      array_dir_.load_array_schemas(*encryption_key());
 
-  auto version = array_schema_latest.value()->version();
+  auto version = array_schema_latest->version();
   ensure_supported_schema_version_for_read(version);
 
   return {array_schema_latest, array_schemas_all};
+}
+
+tuple<
+    Status,
+    optional<shared_ptr<ArraySchema>>,
+    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+Array::open_for_writes() {
+  auto timer_se =
+      resources_.stats().start_timer("array_open_write_load_schemas");
+  // Checks
+  if (!resources_.vfs().supports_uri_scheme(array_uri_))
+    return {
+        resources_.logger()->status(Status_StorageManagerError(
+            "Cannot open array; URI scheme unsupported.")),
+        nullopt,
+        nullopt};
+
+  // Load array schemas
+  auto&& [array_schema_latest, array_schemas_all] =
+      array_dir_.load_array_schemas(*encryption_key_);
+
+  // If building experimentally, this library should not be able to
+  // write to newer-versioned or older-versioned arrays
+  // Else, this library should not be able to write to newer-versioned arrays
+  // (but it is ok to write to older arrays)
+  auto version = array_schema_latest->version();
+  if constexpr (is_experimental_build) {
+    if (version != constants::format_version) {
+      std::stringstream err;
+      err << "Cannot open array for writes; Array format version (";
+      err << version;
+      err << ") is not the library format version (";
+      err << constants::format_version << ")";
+      return {
+          resources_.logger()->status(Status_StorageManagerError(err.str())),
+          nullopt,
+          nullopt};
+    }
+  } else {
+    if (version > constants::format_version) {
+      std::stringstream err;
+      err << "Cannot open array for writes; Array format version (";
+      err << version;
+      err << ") is newer than library format version (";
+      err << constants::format_version << ")";
+      return {
+          resources_.logger()->status(Status_StorageManagerError(err.str())),
+          nullopt,
+          nullopt};
+    }
+  }
+
+  return {Status::Ok(), array_schema_latest, array_schemas_all};
 }
 
 void Array::clear_last_max_buffer_sizes() {

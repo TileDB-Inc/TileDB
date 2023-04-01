@@ -258,7 +258,7 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
       std::unordered_map<std::string, QueryBuffer>& buffers,
       Subarray& subarray,
       Layout layout,
-      QueryCondition& condition,
+      std::optional<QueryCondition>& condition,
       bool increasing_order,
       bool skip_checks_serialization);
 
@@ -295,6 +295,9 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
 
   /** Resets the reader object. */
   void reset();
+
+  /** Returns the name of the strategy */
+  std::string name();
 
  private:
   /* ********************************* */

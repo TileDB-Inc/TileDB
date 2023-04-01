@@ -53,6 +53,7 @@ find_package(Threads REQUIRED)
 
 add_subdirectory(api)
 add_subdirectory(common)
+add_subdirectory(platform)
 add_subdirectory(type)
 add_subdirectory(sm)
 add_subdirectory(storage_format)
@@ -209,10 +210,13 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/signal_handlers.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/watchdog.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_details.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_details_v1.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_details_v2.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_directory.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_member.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_member_v1.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_v1.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_member_v2.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/metadata/metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/cancelable_tasks.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/constants.cc
@@ -237,6 +241,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/legacy/read_cell_slab_iter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query_condition.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query_remote_buffer_storage.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/dense_reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/ordered_dim_label_reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/reader_base.cc
@@ -251,6 +256,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/ordered_writer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/unordered_writer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/writer_base.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query_plan/query_plan.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rtree/rtree.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array.cc
@@ -529,23 +535,28 @@ endif()
 
 # GCS dependencies
 if (TILEDB_GCS)
-  message(STATUS "The TileDB library is compiled with GCS support.")
-  find_package(GCSSDK_EP REQUIRED COMPONENTS gcs)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-       storage_client
-  )
+  if (NOT TILEDB_GCS_CLASSIC)
+    find_package(google_cloud_cpp_storage CONFIG REQUIRED)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE CURL::libcurl google-cloud-cpp::storage google-cloud-cpp::experimental-storage-grpc)
+  else()
+    message(STATUS "The TileDB library is compiled with GCS support.")
+    find_package(GCSSDK_EP REQUIRED COMPONENTS gcs)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+      INTERFACE
+         storage_client
+    )
 
-  # work around for GCS finding the shared version of zlib: we will see the Zlib::Zlib
-  # transitive linkage later, and we can use the correct version there.
-  unset(ZLIB_FOUND)
-  unset(ZLIB_LIBRARIES)
-  unset(ZLIB_INCLUDE_DIR)
+    # work around for GCS finding the shared version of zlib: we will see the ZLIB::ZLIB
+    # transitive linkage later, and we can use the correct version there.
+    unset(ZLIB_FOUND)
+    unset(ZLIB_LIBRARIES)
+    unset(ZLIB_INCLUDE_DIR)
 
-  get_target_property(_GCS_INTERFACE_LIBS storage_client INTERFACE_LINK_LIBRARIES)
-  if ("ZLIB::ZLIB" IN_LIST _GCS_INTERFACE_LIBS)
-    list(REMOVE_ITEM _GCS_INTERFACE_LIBS "ZLIB::ZLIB")
-    set_property(TARGET storage_client PROPERTY INTERFACE_LINK_LIBRARIES "${_GCS_INTERFACE_LIBS}")
+    get_target_property(_GCS_INTERFACE_LIBS storage_client INTERFACE_LINK_LIBRARIES)
+    if ("ZLIB::ZLIB" IN_LIST _GCS_INTERFACE_LIBS)
+      list(REMOVE_ITEM _GCS_INTERFACE_LIBS "ZLIB::ZLIB")
+      set_property(TARGET storage_client PROPERTY INTERFACE_LINK_LIBRARIES "${_GCS_INTERFACE_LIBS}")
+    endif()
   endif()
 endif()
 
@@ -605,7 +616,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     Bzip2::Bzip2
     LZ4::LZ4
     spdlog::spdlog
-    Zlib::Zlib
+    ZLIB::ZLIB
     Zstd::Zstd
     libmagic
 )
@@ -891,7 +902,6 @@ if (TILEDB_STATIC)
 
   append_dep_lib(Bzip2::Bzip2)
   append_dep_lib(LZ4::LZ4)
-  append_dep_lib(Zlib::Zlib)
   append_dep_lib(ZLIB::ZLIB)
   append_dep_lib(Zstd::Zstd)
   append_dep_lib(CapnProto::capnp)
@@ -927,6 +937,37 @@ endif()
 ############################################################
 
 add_library(tiledb_shared SHARED $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
+
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/sm/c_api/tiledb_version.h" ver)
+
+string(REGEX MATCH "TILEDB_VERSION_MAJOR ([0-9]*)" _ ${ver})
+set(ver_major ${CMAKE_MATCH_1})
+
+string(REGEX MATCH "TILEDB_VERSION_MINOR ([0-9]*)" _ ${ver})
+set(ver_minor ${CMAKE_MATCH_1})
+
+string(REGEX MATCH "TILEDB_VERSION_PATCH ([0-9]*)" _ ${ver})
+set(ver_patch ${CMAKE_MATCH_1})
+
+set(VERSION "${ver_major}.${ver_minor}.${ver_patch}")
+
+if (WIN32)
+  # WIN32 RC file creation (for VERSIONINFO)
+  set(TDB_WIN32_FILEVERSION "${ver_major},${ver_minor},${ver_patch},0")
+  set(TDB_WIN32_FILEVERSION_STR "\"${ver_major}.${ver_minor}.${ver_patch}\"")
+  configure_file(
+          ${CMAKE_CURRENT_SOURCE_DIR}/../cmake/inputs/tiledb_win32_verinfo.rc.in
+          ${CMAKE_CURRENT_BINARY_DIR}/tiledb_win32_verinfo.rc
+          @ONLY
+  )
+
+  # The .rc file will be created elsewhere (currently below) via configure_file()
+  target_sources(tiledb_shared PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/tiledb_win32_verinfo.rc)
+  target_include_directories(tiledb_shared
+    PRIVATE
+      "${TILEDB_CORE_INCLUDE_DIR}"
+    )
+endif()
 
 # Target properties
 set_target_properties(tiledb_shared
@@ -1142,20 +1183,7 @@ install(
   DESTINATION "${CONFIG_INSTALL_DIR}"
 )
 
-file(READ "${CMAKE_CURRENT_SOURCE_DIR}/sm/c_api/tiledb_version.h" ver)
-
-string(REGEX MATCH "TILEDB_VERSION_MAJOR ([0-9]*)" _ ${ver})
-set(ver_major ${CMAKE_MATCH_1})
-
-string(REGEX MATCH "TILEDB_VERSION_MINOR ([0-9]*)" _ ${ver})
-set(ver_minor ${CMAKE_MATCH_1})
-
-string(REGEX MATCH "TILEDB_VERSION_PATCH ([0-9]*)" _ ${ver})
-set(ver_patch ${CMAKE_MATCH_1})
-
-set(VERSION "${ver_major}.${ver_minor}.${ver_patch}")
-
-if (WIN32)
+if (WIN32 AND TILEDB_WEBP)
   set(PKGCONF_REQ_PRIV "libmagic pcre2-8 pcre2-posix")
   string(CONCAT PKGCONF_REQ_PRIV ${PKGCONF_REQ_PRIV} " webp imagedec imageenc imageioutil webpdecoder webpdmux webpmux")
 endif()
@@ -1168,3 +1196,4 @@ configure_file(
 )
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/tiledb.pc
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+

@@ -37,6 +37,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/tile/filtered_buffer.h"
+#include "tiledb/storage_format/serialization/serializers.h"
 
 #include <cinttypes>
 
@@ -261,6 +262,34 @@ class Tile : public TileBase {
    */
   Status zip_coordinates();
 
+  /**
+   * Reads the chunk data of a tile buffer and populates a chunk data structure.
+   *
+   * This expects as input a Tile in the following byte format:
+   *
+   *   number_of_chunks (uint64_t)
+   *   chunk0_orig_len (uint32_t)
+   *   chunk0_data_len (uint32_t)
+   *   chunk0_metadata_len (uint32_t)
+   *   chunk0_metadata (uint8_t[])
+   *   chunk0_data (uint8_t[])
+   *   chunk1_orig_len (uint32_t)
+   *   chunk1_data_len (uint32_t)
+   *   chunk1_metadata_len (uint32_t)
+   *   chunk1_metadata (uint8_t[])
+   *   chunk1_data (uint8_t[])
+   *   ...
+   *   chunkN_orig_len (uint32_t)
+   *   chunkN_data_len (uint32_t)
+   *   chunkN_metadata_len (uint32_t)
+   *   chunkN_metadata (uint8_t[])
+   *   chunkN_data (uint8_t[])
+   *
+   * @param chunk_data Tile chunk info, buffers and offsets.
+   * @return Original size.
+   */
+  uint64_t load_chunk_data(ChunkData& chunk_data);
+
   /** Swaps the contents (all field values) of this tile with the given tile. */
   void swap(Tile& tile);
 
@@ -305,13 +334,10 @@ class WriterTile : public TileBase {
    *
    * @param tile_size The total size of the tile.
    * @param tile_cell_size The cell size.
-   * @param chunk_size Mutates to the calculated chunk size.
-   * @return Status
+   * @return Chunk size.
    */
-  static Status compute_chunk_size(
-      const uint64_t tile_size,
-      const uint64_t tile_cell_size,
-      uint32_t* const chunk_size);
+  static uint32_t compute_chunk_size(
+      const uint64_t tile_size, const uint64_t tile_cell_size);
 
   /**
    * Override max_tile_chunk_size_ used to process tile chunks in parallel.
@@ -408,6 +434,20 @@ class WriterTile : public TileBase {
    * to override the value in tests.
    */
   static uint64_t max_tile_chunk_size_;
+};
+
+/**
+ * A deserializer that owns a Tile.
+ */
+class TileDeserializer : public Deserializer {
+ public:
+  explicit TileDeserializer(Tile&& tile)
+      : Deserializer(tile.data(), tile.size())
+      , tile_(std::move(tile)) {
+  }
+
+ private:
+  Tile tile_;
 };
 
 }  // namespace sm

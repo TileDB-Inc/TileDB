@@ -233,9 +233,17 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    Should malloc_trim be called on context and query destruction? This might
  *    reduce residual memory usage. <br>
  *    **Default**: true
- * - `sm.mem.tile_memory_budget` <br>
- *    Tile memory budget, only respected in the dense reader for now. <br>
- *    **Default**: 2GB
+ * - `sm.mem.tile_upper_memory_limit` <br>
+ *    **Experimental** <br>
+ *    This is the upper memory limit that is used when loading tiles. For now it
+ *    is only used in the dense reader but will be eventually used by all
+ *    readers. The readers using this value will use it as a way to limit the
+ *    amount of tile data that is brought into memory at once so that we don't
+ *    incur performance penalties during memory movement operations. It is a
+ *    soft limit that we might go over if a single tile doesn't fit into memory,
+ *    we will allow to load that tile if it still fits within
+ *    `sm.mem.total_budget`. <br>
+ *    **Default**: 1GB
  * - `sm.mem.total_budget` <br>
  *    Memory budget for readers and writers. <br>
  *    **Default**: 10GB
@@ -243,10 +251,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    Ratio of the budget allocated for coordinates in the sparse global
  *    order reader. <br>
  *    **Default**: 0.5
- * - `sm.mem.reader.sparse_global_order.ratio_query_condition` <br>
- *    Ratio of the budget allocated for the query condition in the sparse
- *    global order reader. <br>
- *    **Default**: 0.25
  * - `sm.mem.reader.sparse_global_order.ratio_tile_ranges` <br>
  *    Ratio of the budget allocated for tile ranges in the sparse global
  *    order reader. <br>
@@ -259,10 +263,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    Ratio of the budget allocated for coordinates in the sparse unordered
  *    with duplicates reader. <br>
  *    **Default**: 0.5
- * - `sm.mem.reader.sparse_unordered_with_dups.ratio_query_condition` <br>
- *    Ratio of the budget allocated for the query condition in the sparse
- *    unordered with duplicates reader. <br>
- *    **Default**: 0.25
  * - `sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges` <br>
  *    Ratio of the budget allocated for tile ranges in the sparse unordered
  *    with duplicates reader. <br>
@@ -475,6 +475,9 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `vfs.s3.verify_ssl` <br>
  *    Enable HTTPS certificate verification. <br>
  *    **Default**: true""
+ * - `vfs.s3.no_sign_request` <br>
+ *    Make unauthenticated requests to s3. <br>
+ *    **Default**: false
  * - `vfs.s3.sse` <br>
  *    The server-side encryption algorithm to use. Supported non-empty
  *    values are "aes256" and "kms" (AWS key management service). <br>
@@ -537,10 +540,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    Authentication token for REST server (used instead of
  *    username/password). <br>
  *    **Default**: ""
- * - `rest.resubmit_incomplete` <br>
- *    If true, incomplete queries received from server are automatically
- *    resubmitted before returning to user control. <br>
- *    **Default**: "true"
  * - `rest.ignore_ssl_validation` <br>
  *    Have curl ignore ssl peer and host validation for REST server. <br>
  *    **Default**: false
@@ -577,6 +576,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `rest.use_refactored_array_open` <br>
  *    If true, the new, experimental REST routes and APIs for opening an array
  *    will be used <br>
+ *    **Default**: false
+ * - `rest.use_refactored_array_open_and_query_submit` <br>
+ *    If true, the new, experimental REST routes and APIs for opening an array
+ *    and submitting a query will be used <br>
  *    **Default**: false
  * - `rest.curl.buffer_size` <br>
  *    Set curl buffer size for REST requests <br>

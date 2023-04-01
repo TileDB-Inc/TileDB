@@ -99,7 +99,7 @@ Status array_schema_evolution_to_capnp(
     if (attr_to_add == nullptr) {
       continue;
     }
-    RETURN_NOT_OK(attribute_to_capnp(attr_to_add, &attribute_builder));
+    attribute_to_capnp(attr_to_add, &attribute_builder);
   }
 
   auto timestamp_builder =
@@ -125,10 +125,8 @@ Status array_schema_evolution_from_capnp(
   // Set attributes to add
   auto attributes_to_add_reader = evolution_reader.getAttributesToAdd();
   for (auto attr_reader : attributes_to_add_reader) {
-    auto&& [st_attr, attr]{attribute_from_capnp(attr_reader)};
-    RETURN_NOT_OK(st_attr);
-    const Attribute* attr_to_add = attr.value().get();
-    RETURN_NOT_OK((*array_schema_evolution)->add_attribute(attr_to_add));
+    auto attr = attribute_from_capnp(attr_reader);
+    RETURN_NOT_OK((*array_schema_evolution)->add_attribute(attr.get()));
   }
 
   // Set the range if we have two values

@@ -74,47 +74,48 @@ shared_ptr<ArraySchema> make_schema(
   // Create the domain/dimensions.
   Domain domain;
   for (uint64_t d = 0; d < dim_types.size(); d++) {
-    Dimension dim("d" + std::to_string(d + 1), dim_types[d]);
+    auto dim{make_shared<Dimension>(
+        HERE(), "d" + std::to_string(d + 1), dim_types[d])};
 
     switch (dim_types[d]) {
       case Datatype::INT8: {
         int8_t bounds[2] = {1, 10};
-        REQUIRE(dim.set_domain(&bounds).ok());
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::INT16: {
         int16_t bounds[2] = {1, 10};
-        REQUIRE(dim.set_domain(&bounds).ok());
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::INT32: {
         int32_t bounds[2] = {1, 10};
-        REQUIRE(dim.set_domain(&bounds).ok());
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::INT64: {
         int64_t bounds[2] = {1, 10};
-        REQUIRE(dim.set_domain(&bounds).ok());
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::UINT8: {
         uint8_t bounds[2] = {1, 10};
-        REQUIRE(dim.set_domain(&bounds).ok());
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::UINT16: {
         uint16_t bounds[2] = {1, 10};
-        REQUIRE(dim.set_domain(&bounds).ok());
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::UINT32: {
         uint32_t bounds[2] = {1, 10};
-        REQUIRE(dim.set_domain(&bounds).ok());
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::UINT64: {
         uint64_t bounds[2] = {1, 10};
-        REQUIRE(dim.set_domain(&bounds).ok());
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::DATETIME_YEAR:
@@ -140,17 +141,17 @@ shared_ptr<ArraySchema> make_schema(
       case Datatype::TIME_FS:
       case Datatype::TIME_AS: {
         uint64_t bounds[2] = {1, 10};
-        REQUIRE(dim.set_domain(&bounds).ok());
+        REQUIRE(dim->set_domain(&bounds).ok());
         break;
       }
       case Datatype::STRING_ASCII: {
-        REQUIRE(dim.set_cell_val_num(constants::var_num).ok());
+        REQUIRE(dim->set_cell_val_num(constants::var_num).ok());
       }
       default: {
       }
     }
 
-    REQUIRE(domain.add_dimension(make_shared<Dimension>(HERE(), &dim)).ok());
+    REQUIRE(domain.add_dimension(dim).ok());
   }
   REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), &domain)).ok());
 
@@ -158,9 +159,9 @@ shared_ptr<ArraySchema> make_schema(
   for (uint64_t a = 0; a < attr_types.size(); a++) {
     Attribute attr("a" + std::to_string(a + 1), attr_types[a]);
     if (attr_types[a] == Datatype::STRING_ASCII) {
-      REQUIRE(attr.set_cell_val_num(constants::var_num).ok());
+      attr.set_cell_val_num(constants::var_num);
     }
-    REQUIRE(attr.set_nullable(attr_nullable[a]).ok());
+    attr.set_nullable(attr_nullable[a]);
     REQUIRE(array_schema->add_attribute(make_shared<Attribute>(HERE(), &attr))
                 .ok());
   }
@@ -199,14 +200,14 @@ TEST_CASE(
   SECTION("int32 dim, var attr") {
     schema =
         make_schema(true, {Datatype::INT32}, {Datatype::STRING_ASCII}, {false});
-    expected_sizes = {750, 1500, 750};
+    expected_sizes = {1496, 748, 748};
     avg_cell_sizes["a1"] = 4;
   }
 
   SECTION("int32 dim, nullable var attr") {
     schema =
         make_schema(true, {Datatype::INT32}, {Datatype::STRING_ASCII}, {true});
-    expected_sizes = {941, 1882, 235, 941};
+    expected_sizes = {1880, 940, 235, 940};
     avg_cell_sizes["a1"] = 4;
   }
 
@@ -216,7 +217,7 @@ TEST_CASE(
         {Datatype::INT32, Datatype::INT64},
         {Datatype::STRING_ASCII},
         {false});
-    expected_sizes = {666, 1333, 666, 1333};
+    expected_sizes = {1328, 664, 664, 1328};
     avg_cell_sizes["a1"] = 4;
   }
 
@@ -226,7 +227,7 @@ TEST_CASE(
         {Datatype::INT32, Datatype::STRING_ASCII},
         {Datatype::UINT8},
         {true});
-    expected_sizes = {166, 166, 666, 2666, 1333};
+    expected_sizes = {166, 166, 664, 1328, 2656};
     avg_cell_sizes["d2"] = 16;
   }
 

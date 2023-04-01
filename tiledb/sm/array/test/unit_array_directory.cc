@@ -30,6 +30,7 @@
  * Tests the `ArrayDirectory` class.
  */
 
+#include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
 
@@ -63,7 +64,8 @@ TEST_CASE(
     "[array-directory][timestamp-overlap]") {
   WhiteboxArrayDirectory wb_array_dir;
   Config cfg;
-  ContextResources resources{cfg, nullptr, 1, 1, ""};
+  auto logger = make_shared<Logger>(HERE(), "foo");
+  ContextResources resources{cfg, logger, 1, 1, ""};
   ArrayDirectory array_dir(resources, URI());
   wb_array_dir.set_open_timestamps(array_dir, 2, 4);
 

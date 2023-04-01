@@ -29,7 +29,7 @@ set -e pipefail
 # Display log files if the build failed
 echo "Dumping log files for failed build"
 echo "----------------------------------"
-for f in $(find $GITHUB_WORKSPACE/build -name *.log);
+for f in $(find $GITHUB_WORKSPACE/{build,external} -name *.log);
   do echo "------"
       echo $f
       echo "======"

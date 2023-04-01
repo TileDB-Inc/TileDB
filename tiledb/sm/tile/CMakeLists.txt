@@ -31,8 +31,25 @@ include(object_library)
 # `tile` object library
 #
 commence(object_library tile)
-this_target_sources(tile.cc)
-this_target_object_libraries(baseline buffer constants)
+  this_target_sources(tile.cc)
+  this_target_object_libraries(baseline buffer constants)
+conclude(object_library)
+
+#
+# `generic_tile_io` object library
+#
+commence(object_library generic_tile_io)
+  this_target_sources(generic_tile_io.cc)
+  this_target_object_libraries(
+      baseline
+      buffer
+      constants
+      context_resources
+      crypto
+      filter_pipeline
+      tile
+      vfs
+  )
 conclude(object_library)
 
 add_test_subdirectory()

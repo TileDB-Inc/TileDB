@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -80,10 +80,11 @@ class FragmentInfo {
   /* ********************************* */
 
   /**
-   * Sets a config to the fragment info. Useful for retrieving timestamps
-   * and encryption key.
+   * Sets a config to the fragment info. Useful for encryption information.
+   *
+   * @pre The FragmentInfo object must not yet be loaded.
    */
-  Status set_config(const Config& config);
+  void set_config(const Config& config);
 
   /** Expand the non empty domain before start with a new range */
   void expand_anterior_ndrange(const Domain& domain, const NDRange& range);
@@ -228,8 +229,7 @@ class FragmentInfo {
   Status get_version(uint32_t fid, uint32_t* version) const;
 
   /** Retrieves the array schema of the fragment with the given index. */
-  tuple<Status, optional<shared_ptr<ArraySchema>>> get_array_schema(
-      uint32_t fid);
+  shared_ptr<ArraySchema> get_array_schema(uint32_t fid);
 
   /** Retrieves the array schema name of the fragment with the given index. */
   Status get_array_schema_name(uint32_t fid, const char** schema_name);

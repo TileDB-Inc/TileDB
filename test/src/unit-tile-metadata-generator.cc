@@ -81,7 +81,7 @@ TEMPLATE_LIST_TEST_CASE(
   ArraySchema schema;
   schema.set_capacity(num_cells);
   Attribute a("a", tiledb_type);
-  CHECK(a.set_cell_val_num(cell_val_num).ok());
+  a.set_cell_val_num(cell_val_num);
   CHECK(schema.add_attribute(make_shared<Attribute>(HERE(), &a)).ok());
 
   // Generate random, sorted strings for the string ascii type.
@@ -334,7 +334,7 @@ TEST_CASE(
   ArraySchema schema;
   schema.set_capacity(num_cells);
   Attribute a("a", Datatype::STRING_ASCII);
-  CHECK(a.set_cell_val_num(constants::var_num).ok());
+  a.set_cell_val_num(constants::var_num);
   CHECK(schema.add_attribute(make_shared<Attribute>(HERE(), &a)).ok());
 
   // Generate random, sorted strings for the string ascii type.
@@ -434,7 +434,7 @@ TEST_CASE(
   ArraySchema schema;
   schema.set_capacity(2);
   Attribute a("a", Datatype::CHAR);
-  CHECK(a.set_cell_val_num(constants::var_num).ok());
+  a.set_cell_val_num(constants::var_num);
   CHECK(schema.add_attribute(make_shared<Attribute>(HERE(), &a)).ok());
 
   // Store '123' and '12'

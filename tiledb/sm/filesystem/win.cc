@@ -436,28 +436,32 @@ Status Win::read(
         get_last_error_msg("CreateFile") + ")"));
   }
 
-  LARGE_INTEGER offset_lg_int;
-  offset_lg_int.QuadPart = offset;
-  if (SetFilePointerEx(file_h, offset_lg_int, NULL, FILE_BEGIN) == 0) {
-    auto gle = GetLastError();
-    CloseHandle(file_h);
-    return LOG_STATUS(Status_IOError(
-        "Cannot read from file '" + path + "'; File seek error " +
-        get_last_error_msg(gle, "SetFilePointerEx")));
-  }
-
-  unsigned long num_bytes_read = 0;
-  if (ReadFile(file_h, buffer, nbytes, &num_bytes_read, NULL) == 0 ||
-      num_bytes_read != nbytes) {
-    auto gle = GetLastError();
-    CloseHandle(file_h);
-    return LOG_STATUS(Status_IOError(
-        "Cannot read from file '" + path + "'; File read error " +
-        (gle != 0 ? get_last_error_msg(gle, "ReadFile") :
-                    "num_bytes_read " + std::to_string(num_bytes_read) +
-                        " != nbyes " + std::to_string(nbytes))));
-  }
-
+  char* byte_buffer = reinterpret_cast<char*>(buffer);
+  do {
+    LARGE_INTEGER offset_lg_int;
+    offset_lg_int.QuadPart = offset;
+    OVERLAPPED ov = {0, 0, {{0, 0}}, 0};
+    ov.Offset = offset_lg_int.LowPart;
+    ov.OffsetHigh = offset_lg_int.HighPart;
+    DWORD num_bytes_to_read = nbytes > std::numeric_limits<DWORD>::max() ?
+                                  std::numeric_limits<DWORD>::max() :
+                                  (DWORD)nbytes;
+    DWORD num_bytes_read = 0;
+    if (ReadFile(
+            file_h, byte_buffer, num_bytes_to_read, &num_bytes_read, &ov) ==
+        0) {
+      auto gle = GetLastError();
+      CloseHandle(file_h);
+      return LOG_STATUS(Status_IOError(
+          "Cannot read from file '" + path + "'; File read error " +
+          (gle != 0 ? get_last_error_msg(gle, "ReadFile") :
+                      "num_bytes_read " + std::to_string(num_bytes_read) +
+                          " != nbyes " + std::to_string(nbytes))));
+    }
+    byte_buffer += num_bytes_read;
+    offset += num_bytes_read;
+    nbytes -= num_bytes_read;
+  } while (nbytes > 0);
   if (CloseHandle(file_h) == 0) {
     return LOG_STATUS(Status_IOError(
         "Cannot read from file '" + path + "'; File closing error " +
@@ -596,10 +600,15 @@ Status Win::write_at(
   // file handle. Instead, we use the OVERLAPPED struct to specify an offset at
   // which to write. Note that the file handle does not have to be opened in
   // "overlapped" mode (i.e. async writes) to do this.
-  unsigned long bytes_written = 0;
   uint64_t byte_idx = 0;
   const char* byte_buffer = reinterpret_cast<const char*>(buffer);
-  while (buffer_size > constants::max_write_bytes) {
+  uint64_t remaining_bytes_to_write = buffer_size;
+  while (remaining_bytes_to_write > 0) {
+    DWORD bytes_to_write =
+        remaining_bytes_to_write > std::numeric_limits<DWORD>::max() ?
+            std::numeric_limits<DWORD>::max() :
+            (DWORD)remaining_bytes_to_write;
+    DWORD bytes_written = 0;
     LARGE_INTEGER offset;
     offset.QuadPart = file_offset;
     OVERLAPPED ov = {0, 0, {{0, 0}}, 0};
@@ -608,30 +617,16 @@ Status Win::write_at(
     if (WriteFile(
             file_h,
             byte_buffer + byte_idx,
-            constants::max_write_bytes,
+            bytes_to_write,
             &bytes_written,
-            &ov) == 0 ||
-        bytes_written != constants::max_write_bytes) {
+            &ov) == 0) {
       return LOG_STATUS(Status_IOError(std::string(
           "Cannot write to file; File writing error: " +
           get_last_error_msg("WriteFile"))));
     }
-    buffer_size -= constants::max_write_bytes;
-    byte_idx += constants::max_write_bytes;
-    file_offset += constants::max_write_bytes;
-  }
-  LARGE_INTEGER offset;
-  offset.QuadPart = file_offset;
-  OVERLAPPED ov = {0, 0, {{0, 0}}, 0};
-  ov.Offset = offset.LowPart;
-  ov.OffsetHigh = offset.HighPart;
-  if (WriteFile(
-          file_h, byte_buffer + byte_idx, buffer_size, &bytes_written, &ov) ==
-          0 ||
-      bytes_written != buffer_size) {
-    return LOG_STATUS(Status_IOError(std::string(
-        "Cannot write to file; File writing error: " +
-        get_last_error_msg("WriteFile"))));
+    remaining_bytes_to_write -= bytes_written;
+    byte_idx += bytes_written;
+    file_offset += bytes_written;
   }
   return Status::Ok();
 }

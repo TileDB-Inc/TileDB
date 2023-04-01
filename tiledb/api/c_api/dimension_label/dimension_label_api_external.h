@@ -40,7 +40,7 @@ extern "C" {
 #endif
 
 /**
- * C API carrier for a TileDB dimensin label
+ * C API carrier for a TileDB dimension label
  */
 typedef struct tiledb_dimension_label_handle_t tiledb_dimension_label_t;
 
@@ -77,7 +77,7 @@ TILEDB_EXPORT capi_return_t tiledb_dimension_label_get_dimension_index(
     uint32_t* dim_index) TILEDB_NOEXCEPT;
 
 /**
- * Returns the name of the dimension label.
+ * Returns the name of the attribute the label data is stored under.
  *
  * @param[in] ctx TileDB context.
  * @param[in] dim_label The target dimension label.
@@ -148,7 +148,7 @@ TILEDB_EXPORT capi_return_t tiledb_dimension_label_get_name(
  *
  * @param[in] ctx TileDB context.
  * @param[in] dim_label The target dimension label.
- * @param[out] uri The uri of the dimension label.
+ * @param[out] uri The uri of the dimension label array.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_dimension_label_get_uri(

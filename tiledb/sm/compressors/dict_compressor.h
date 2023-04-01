@@ -183,7 +183,7 @@ class DictEncoding {
       const span<const std::string> dict,
       span<std::byte> output,
       span<uint64_t> output_offsets) {
-    if (input.empty() || output.empty() || dict.size() == 0) {
+    if (input.empty() || dict.size() == 0) {
       throw std::logic_error(
           "Empty arguments when decompressing dictionary encoded strings.");
     }
@@ -196,7 +196,9 @@ class DictEncoding {
       in_index += sizeof(T);
       assert(word_id < dict.size());
       const auto& word = dict[word_id];
-      memcpy(&output[out_index], word.data(), word.size());
+      if (word.size() > 0) {
+        memcpy(&output[out_index], word.data(), word.size());
+      }
       output_offsets[offset_index++] = out_index;
       out_index += word.size();
     }
@@ -246,8 +248,12 @@ class DictEncoding {
       // increment past the size element to the per-word data block
       in_index += sizeof(T);
       // construct string in place
-      dict.emplace_back(
-          reinterpret_cast<const char*>(&serialized_dict[in_index]), str_len);
+      if (str_len > 0) {
+        dict.emplace_back(
+            reinterpret_cast<const char*>(&serialized_dict[in_index]), str_len);
+      } else {
+        dict.emplace_back();
+      }
       in_index += str_len;
     }
 

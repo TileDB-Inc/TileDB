@@ -72,7 +72,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    QueryCondition& condition)
+    std::optional<QueryCondition>& condition)
     : ReaderBase(
           stats,
           logger,
@@ -86,10 +86,8 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , memory_budget_(0)
     , array_memory_tracker_(array->memory_tracker())
     , memory_used_for_coords_total_(0)
-    , memory_used_qc_tiles_total_(0)
     , memory_used_result_tile_ranges_(0)
     , memory_budget_ratio_coords_(0.5)
-    , memory_budget_ratio_query_condition_(0.25)
     , memory_budget_ratio_tile_ranges_(0.1)
     , memory_budget_ratio_array_data_(0.1)
     , buffers_full_(false)
@@ -160,6 +158,12 @@ void SparseIndexReaderBase::init(bool skip_checks_serialization) {
 
   // Check the validity buffer sizes.
   check_validity_buffer_sizes();
+}
+
+uint64_t SparseIndexReaderBase::available_memory() {
+  return memory_budget_ - memory_used_for_coords_total_ -
+         memory_used_result_tile_ranges_ -
+         array_memory_tracker_->get_memory_usage();
 }
 
 std::vector<uint64_t> SparseIndexReaderBase::tile_offset_sizes() {
@@ -266,7 +270,7 @@ std::vector<uint64_t> SparseIndexReaderBase::tile_offset_sizes() {
 
 bool SparseIndexReaderBase::has_post_deduplication_conditions(
     FragmentMetadata& frag_meta) {
-  return frag_meta.has_delete_meta() || !condition_.empty() ||
+  return frag_meta.has_delete_meta() || condition_.has_value() ||
          (!delete_and_update_conditions_.empty() &&
           !deletes_consolidation_no_purge_);
 }
@@ -286,7 +290,7 @@ uint64_t SparseIndexReaderBase::cells_copied(
 }
 
 template <class BitmapType>
-std::pair<uint64_t, uint64_t> SparseIndexReaderBase::get_coord_tiles_size(
+uint64_t SparseIndexReaderBase::get_coord_tiles_size(
     unsigned dim_num, unsigned f, uint64_t t) {
   uint64_t tiles_size = 0;
 
@@ -312,15 +316,14 @@ std::pair<uint64_t, uint64_t> SparseIndexReaderBase::get_coord_tiles_size(
   }
 
   // Compute query condition tile sizes.
-  uint64_t tiles_size_qc = 0;
   if (!qc_loaded_attr_names_.empty()) {
     for (auto& name : qc_loaded_attr_names_) {
       // Calculate memory consumption for this tile.
-      tiles_size_qc += get_attribute_tile_size(name, f, t);
+      tiles_size += get_attribute_tile_size(name, f, t);
     }
   }
 
-  return std::make_pair(tiles_size, tiles_size_qc);
+  return tiles_size;
 }
 
 Status SparseIndexReaderBase::load_initial_data() {
@@ -360,8 +363,8 @@ Status SparseIndexReaderBase::load_initial_data() {
   }
 
   // Make a list of dim/attr that will be loaded for query condition.
-  if (!condition_.empty()) {
-    for (auto& name : condition_.field_names()) {
+  if (condition_.has_value()) {
+    for (auto& name : condition_->field_names()) {
       if (!array_schema_.is_dim(name) || !include_coords_) {
         qc_loaded_attr_names_set_.insert(name);
       }
@@ -722,7 +725,7 @@ Status SparseIndexReaderBase::apply_query_condition(
     std::vector<ResultTile*>& result_tiles) {
   auto timer_se = stats_->start_timer("apply_query_condition");
 
-  if (!condition_.empty() || !delete_and_update_conditions_.empty() ||
+  if (condition_.has_value() || !delete_and_update_conditions_.empty() ||
       use_timestamps_) {
     // Process all tiles in parallel.
     auto status = parallel_for(
@@ -768,8 +771,8 @@ Status SparseIndexReaderBase::apply_query_condition(
           }
 
           // Compute the result of the query condition for this tile
-          if (!condition_.empty()) {
-            RETURN_NOT_OK(condition_.apply_sparse<BitmapType>(
+          if (condition_.has_value()) {
+            RETURN_NOT_OK(condition_->apply_sparse<BitmapType>(
                 *(frag_meta->array_schema().get()),
                 *rt,
                 rt->post_dedup_bitmap()));
@@ -845,12 +848,12 @@ Status SparseIndexReaderBase::apply_query_condition(
 
 tuple<Status, optional<std::vector<uint64_t>>>
 SparseIndexReaderBase::read_and_unfilter_attributes(
-    const uint64_t memory_budget,
     const std::vector<std::string>& names,
     const std::vector<uint64_t>& mem_usage_per_attr,
     uint64_t* buffer_idx,
     std::vector<ResultTile*>& result_tiles) {
   auto timer_se = stats_->start_timer("read_and_unfilter_attributes");
+  const uint64_t memory_budget = available_memory();
 
   std::vector<std::string> names_to_read;
   std::vector<uint64_t> index_to_copy;
@@ -975,11 +978,9 @@ void SparseIndexReaderBase::remove_result_tile_range(uint64_t f) {
 }
 
 // Explicit template instantiations
-template std::pair<uint64_t, uint64_t>
-SparseIndexReaderBase::get_coord_tiles_size<uint64_t>(
+template uint64_t SparseIndexReaderBase::get_coord_tiles_size<uint64_t>(
     unsigned, unsigned, uint64_t);
-template std::pair<uint64_t, uint64_t>
-SparseIndexReaderBase::get_coord_tiles_size<uint8_t>(
+template uint64_t SparseIndexReaderBase::get_coord_tiles_size<uint8_t>(
     unsigned, unsigned, uint64_t);
 template Status SparseIndexReaderBase::apply_query_condition<
     UnorderedWithDupsResultTile<uint64_t>,

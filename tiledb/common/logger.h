@@ -75,6 +75,7 @@ class Logger {
   /** Constructors */
   Logger(
       const std::string& name,
+      const Logger::Level level = Logger::Level::ERR,
       const Logger::Format format = Logger::Format::DEFAULT,
       const bool root = false);
 

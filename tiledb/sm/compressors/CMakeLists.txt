@@ -40,7 +40,7 @@ commence(object_library compressors)
     find_package(LZ4_EP REQUIRED)
     find_package(Zlib_EP REQUIRED)
     find_package(Zstd_EP REQUIRED)
-    this_target_link_libraries(Bzip2::Bzip2 LZ4::LZ4 Zlib::Zlib Zstd::Zstd)
+    this_target_link_libraries(Bzip2::Bzip2 LZ4::LZ4 ZLIB::ZLIB Zstd::Zstd)
 conclude(object_library)
 
 #

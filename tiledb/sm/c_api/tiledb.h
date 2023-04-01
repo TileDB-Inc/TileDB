@@ -56,10 +56,12 @@
  * API sections
  */
 #include "tiledb/api/c_api/buffer/buffer_api_external.h"
+#include "tiledb/api/c_api/buffer_list/buffer_list_api_external.h"
 #include "tiledb/api/c_api/config/config_api_external.h"
 #include "tiledb/api/c_api/context/context_api_external.h"
 #include "tiledb/api/c_api/data_order/data_order_api_external.h"
 #include "tiledb/api/c_api/datatype/datatype_api_external.h"
+#include "tiledb/api/c_api/dimension/dimension_api_external.h"
 #include "tiledb/api/c_api/error/error_api_external.h"
 #include "tiledb/api/c_api/filesystem/filesystem_api_external.h"
 #include "tiledb/api/c_api/filter/filter_api_external.h"
@@ -285,23 +287,14 @@ typedef struct tiledb_array_t tiledb_array_t;
 /** A subarray object. */
 typedef struct tiledb_subarray_t tiledb_subarray_t;
 
-/** A generic buffer list object. */
-typedef struct tiledb_buffer_list_t tiledb_buffer_list_t;
-
 /** A TileDB attribute. */
 typedef struct tiledb_attribute_t tiledb_attribute_t;
 
 /** A TileDB array schema. */
 typedef struct tiledb_array_schema_t tiledb_array_schema_t;
 
-/** A TileDB dimension. */
-typedef struct tiledb_dimension_t tiledb_dimension_t;
-
 /** A TileDB domain. */
 typedef struct tiledb_domain_t tiledb_domain_t;
-
-/** A TileDB query. */
-typedef struct tiledb_query_t tiledb_query_t;
 
 /** A TileDB query condition object. */
 typedef struct tiledb_query_condition_t tiledb_query_condition_t;
@@ -311,151 +304,6 @@ typedef struct tiledb_fragment_info_t tiledb_fragment_info_t;
 
 /** A consolidation plan object. */
 typedef struct tiledb_consolidation_plan_t tiledb_consolidation_plan_t;
-
-/* ********************************* */
-/*            BUFFER LIST            */
-/* ********************************* */
-
-/**
- * Creates an empty buffer list object.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_buffer_list_t* buffer_list;
- * tiledb_buffer_list_alloc(ctx, &buffer_list);
- * @endcode
- *
- * @param ctx TileDB context
- * @param buffer_list The buffer list to be created
- * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_buffer_list_alloc(
-    tiledb_ctx_t* ctx, tiledb_buffer_list_t** buffer_list) TILEDB_NOEXCEPT;
-
-/**
- * Destroys a TileDB buffer list, freeing associated memory.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_buffer_t* buffer_list;
- * tiledb_buffer_list_alloc(ctx, &buffer_list);
- * tiledb_buffer_list_free(&buffer_list);
- * @endcode
- *
- * @param buffer_list The buffer list to be destroyed.
- */
-TILEDB_EXPORT void tiledb_buffer_list_free(tiledb_buffer_list_t** buffer_list)
-    TILEDB_NOEXCEPT;
-
-/**
- * Gets the number of buffers in the buffer list.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_buffer_list_t* buffer_list;
- * tiledb_buffer_list_alloc(ctx, &buffer_list);
- * uint64_t num_buffers;
- * tiledb_buffer_list_get_num_buffers(ctx, buffer_list, &num_buffers);
- * // num_buffers == 0 because the list is empty.
- * @endcode
- *
- * @param ctx TileDB context.
- * @param buffer_list The buffer list.
- * @param num_buffers Set to the number of buffers in the buffer list.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_buffer_list_get_num_buffers(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    uint64_t* num_buffers) TILEDB_NOEXCEPT;
-
-/**
- * Gets the buffer at the given index in the buffer list. The returned buffer
- * object is simply a pointer to memory managed by the underlying buffer
- * list, meaning this function does not perform a copy.
- *
- * It is the caller's responsibility to free the returned buffer with
- * `tiledb_buffer_free`. Since the returned buffer object does not "own" the
- * underlying allocation, the underlying allocation is not freed when freeing it
- * with `tiledb_buffer_free`.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_buffer_list_t* buffer_list;
- * // Create and populate the buffer_list
- *
- * // Get the buffer at index 0.
- * tiledb_buffer_t *buff0;
- * tiledb_buffer_list_get_buffer(ctx, buffer_list, 0, &buff0);
- *
- * // Always free the returned buffer object
- * tiledb_buffer_free(&buff0);
- * tiledb_buffer_list_free(&buffer_list);
- * @endcode
- *
- * @param ctx TileDB context.
- * @param buffer_list The buffer list.
- * @param buffer_idx Index of buffer to get from the buffer list.
- * @param buffer Set to a newly allocated buffer object pointing to the
- *    underlying allocation in the buffer list corresponding to the buffer.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_buffer_list_get_buffer(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    uint64_t buffer_idx,
-    tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
-
-/**
- * Gets the total number of bytes in the buffers in the buffer list.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_buffer_list_t* buffer_list;
- * tiledb_buffer_list_alloc(ctx, &buffer_list);
- * uint64_t total_size;
- * tiledb_buffer_list_get_total_size(ctx, buffer_list, &total_size);
- * // total_size == 0 because the list is empty.
- * @endcode
- *
- * @param ctx TileDB context.
- * @param buffer_list The buffer list.
- * @param total_size Set to the total number of bytes in the buffers in the
- *    buffer list.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_buffer_list_get_total_size(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    uint64_t* total_size) TILEDB_NOEXCEPT;
-
-/**
- * Copies and concatenates all the data in the buffer list into a new buffer.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_buffer_t* buff;
- * tiledb_buffer_list_flatten(ctx, buffer_list, &buff);
- * // ...
- * tiledb_buffer_free(&buff);
- * @endcode
- *
- * @param ctx TileDB context.
- * @param buffer_list The buffer list.
- * @param buffer Will be set to a newly allocated buffer holding a copy of the
- *    concatenated data from the buffer list.
- * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_buffer_list_flatten(
-    tiledb_ctx_t* ctx,
-    const tiledb_buffer_list_t* buffer_list,
-    tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*            ATTRIBUTE              */
@@ -1070,255 +918,6 @@ TILEDB_EXPORT int32_t tiledb_domain_has_dimension(
 TILEDB_EXPORT int32_t tiledb_domain_dump(
     tiledb_ctx_t* ctx,
     const tiledb_domain_t* domain,
-    FILE* out) TILEDB_NOEXCEPT;
-
-/* ********************************* */
-/*             DIMENSION             */
-/* ********************************* */
-
-/**
- * Creates a dimension.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_dimension_t* dim;
- * int64_t dim_domain[] = {1, 10};
- * int64_t tile_extent = 5;
- * tiledb_dimension_alloc(
- *     ctx, "dim_0", TILEDB_INT64, dim_domain, &tile_extent, &dim);
- * @endcode
- *
- * Note: as laid out in the Storage Format,
- * the following Datatypes are not valid for Dimension:
- * TILEDB_CHAR, TILEDB_BLOB, TILEDB_BOOL, TILEDB_STRING_UTF8,
- * TILEDB_STRING_UTF16, TILEDB_STRING_UTF32, TILEDB_STRING_UCS2,
- * TILEDB_STRING_UCS4, TILEDB_ANY
- *
- * @param ctx The TileDB context.
- * @param name The dimension name.
- * @param type The dimension type.
- * @param dim_domain The dimension domain.
- * @param tile_extent The dimension tile extent.
- * @param dim The dimension to be created.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_dimension_alloc(
-    tiledb_ctx_t* ctx,
-    const char* name,
-    tiledb_datatype_t type,
-    const void* dim_domain,
-    const void* tile_extent,
-    tiledb_dimension_t** dim) TILEDB_NOEXCEPT;
-
-/**
- * Destroys a TileDB dimension, freeing associated memory.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_dimension_free(&dim);
- * @endcode
- *
- * @param dim The dimension to be destroyed.
- */
-TILEDB_EXPORT void tiledb_dimension_free(tiledb_dimension_t** dim)
-    TILEDB_NOEXCEPT;
-
-/**
- * Sets the filter list for a dimension.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_filter_list_t* filter_list;
- * tiledb_filter_list_alloc(ctx, &filter_list);
- * tiledb_filter_list_add_filter(ctx, filter_list, filter);
- * tiledb_dimension_set_filter_list(ctx, dim, filter_list);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param dim The target dimension.
- * @param filter_list The filter_list to be set.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_dimension_set_filter_list(
-    tiledb_ctx_t* ctx,
-    tiledb_dimension_t* dim,
-    tiledb_filter_list_t* filter_list) TILEDB_NOEXCEPT;
-
-/**
- * Sets the number of values per cell for a dimension. If this is not
- * used, the default is `1`.
- *
- * **Examples:**
- *
- * For a fixed-sized dimension:
- *
- * @code{.c}
- * tiledb_dimension_set_cell_val_num(ctx, dim, 3);
- * @endcode
- *
- * For a variable-sized dimension:
- *
- * @code{.c}
- * tiledb_dimension_set_cell_val_num(ctx, dim, TILEDB_VAR_NUM);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param dim The target dimension.
- * @param cell_val_num The number of values per cell.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_dimension_set_cell_val_num(
-    tiledb_ctx_t* ctx,
-    tiledb_dimension_t* dim,
-    uint32_t cell_val_num) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the filter list for a dimension.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_filter_list_t* filter_list;
- * tiledb_dimension_get_filter_list(ctx, dim, &filter_list);
- * tiledb_filter_list_free(&filter_list);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param dim The target dimension.
- * @param filter_list The filter list to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_dimension_get_filter_list(
-    tiledb_ctx_t* ctx,
-    tiledb_dimension_t* dim,
-    tiledb_filter_list_t** filter_list) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the number of values per cell for a dimension. For variable-sized
- * dimensions the result is TILEDB_VAR_NUM.
- *
- * **Example:**
- *
- * @code{.c}
- * uint32_t num;
- * tiledb_dimension_get_cell_val_num(ctx, dim, &num);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param dim The dimension.
- * @param cell_val_num The number of values per cell to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_dimension_get_cell_val_num(
-    tiledb_ctx_t* ctx,
-    const tiledb_dimension_t* dim,
-    uint32_t* cell_val_num) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the dimension name.
- *
- * **Example:**
- *
- * @code{.c}
- * const char* dim_name;
- * tiledb_dimension_get_name(ctx, dim, &dim_name);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param dim The dimension.
- * @param name The name to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_dimension_get_name(
-    tiledb_ctx_t* ctx,
-    const tiledb_dimension_t* dim,
-    const char** name) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the dimension type.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_datatype_t dim_type;
- * tiledb_dimension_get_type(ctx, dim, &dim_type);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param dim The dimension.
- * @param type The type to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_dimension_get_type(
-    tiledb_ctx_t* ctx,
-    const tiledb_dimension_t* dim,
-    tiledb_datatype_t* type) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the domain of the dimension.
- *
- * **Example:**
- *
- * @code{.c}
- * uint64_t* domain;
- * tiledb_dimension_get_domain(ctx, dim, &domain);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param dim The dimension.
- * @param domain The domain to be retrieved. Note that the defined type of
- *     input `domain` must be the same as the dimension type, otherwise the
- *     behavior is unpredictable (it will probably segfault).
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_dimension_get_domain(
-    tiledb_ctx_t* ctx,
-    const tiledb_dimension_t* dim,
-    const void** domain) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the tile extent of the dimension.
- *
- * **Example:**
- *
- * @code{.c}
- * uint64_t* tile_extent;
- * tiledb_dimension_get_tile_extent(ctx, dim, &tile_extent);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param dim The dimension.
- * @param tile_extent The tile extent (pointer) to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_dimension_get_tile_extent(
-    tiledb_ctx_t* ctx,
-    const tiledb_dimension_t* dim,
-    const void** tile_extent) TILEDB_NOEXCEPT;
-
-/**
- * Dumps the contents of a dimension in ASCII form to some output (e.g.,
- * file or stdout).
- *
- * **Example:**
- *
- * The following prints the dimension dump to standard output.
- *
- * @code{.c}
- * tiledb_dimension_dump(ctx, dim, stdout);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param dim The dimension.
- * @param out The output.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_dimension_dump(
-    tiledb_ctx_t* ctx,
-    const tiledb_dimension_t* dim,
     FILE* out) TILEDB_NOEXCEPT;
 
 /* ********************************* */
@@ -3289,6 +2888,50 @@ TILEDB_EXPORT int32_t tiledb_query_condition_combine(
     const tiledb_query_condition_t* right_cond,
     tiledb_query_condition_combination_op_t combination_op,
     tiledb_query_condition_t** combined_cond) TILEDB_NOEXCEPT;
+
+/**
+ * Create a query condition representing a negation of the input query
+ * condition. Currently this is performed by applying De Morgan's theorem
+ * recursively to the query condition's internal representation.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_query_condition_t* query_condition_1;
+ * tiledb_query_condition_alloc(ctx, &query_condition_1);
+ * uint32_t value_1 = 5;
+ * tiledb_query_condition_init(
+ *   ctx,
+ *   query_condition_1,
+ *   "longitude",
+ *   &value_1,
+ *   sizeof(value_1),
+ *   TILEDB_LT);
+ *
+ * tiledb_query_condition_t* query_condition_2;
+ * tiledb_query_condition_negate(
+ *   ctx,
+ *   query_condition_1,
+ *   &query_condition_2);
+ *
+ * tiledb_query_condition_free(&query_condition_1);
+ *
+ * tiledb_query_set_condition(ctx, query, query_condition_2);
+ * tiledb_query_submit(ctx, query);
+ * tiledb_query_condition_free(&query_condition_2);
+ * @endcode
+ *
+ * @param[in]  ctx The TileDB context.
+ * @param[in]  left_cond The first input condition.
+ * @param[in]  right_cond The second input condition.
+ * @param[in]  combination_op The combination operation.
+ * @param[out] combined_cond The output condition holder.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_condition_negate(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_condition_t* cond,
+    tiledb_query_condition_t** negated_cond) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*             SUBARRAY              */

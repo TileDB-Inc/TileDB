@@ -47,10 +47,28 @@ if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_GCSSDK_EP_BUILT)
     PATHS ${TILEDB_EP_INSTALL_PREFIX}
           ${TILEDB_DEPS_NO_DEFAULT_PATH}
   )
-  set(GCSSDK_FOUND ${storage_client_FOUND})
+  if (${storage_client_FOUND})
+    message(STATUS "Found GCS SDK as 'storage_client'")
+    set(GCSSDK_FOUND ${storage_client_FOUND})
+  endif()
+
+  if (NOT storage_client_FOUND)
+    message(STATUS "DID NOT find GCSSDK as 'storage_client'")
+    find_package(google_cloud_cpp_storage CONFIG)
+    set(GCSSDK_FOUND ${google_cloud_cpp_storage_FOUND})
+  endif()
+  if (${google_cloud_cpp_storage_FOUND})
+    message(STATUS "Found GCS SDK as 'google_cloud_cpp_storage'")
+    set(GCSSDK_FOUND ${google_cloud_cpp_storage_FOUND})
+  endif()
 endif()
 
-if (NOT GCSSDK_FOUND)
+if (NOT TILEDB_GCS_CLASSIC)
+  find_package(google_cloud_cpp_storage CONFIG REQUIRED)
+endif()
+
+if (NOT GCSSDK_FOUND AND NOT google_cloud_cpp_storage_FOUND)
+  message(FATAL_ERROR "GCS NOT FOUND")
   if (TILEDB_SUPERBUILD)
     message(STATUS "Could NOT find GCSSDK")
     message(STATUS "Adding GCSSDK as an external project")
@@ -128,31 +146,37 @@ endif()
 
 # If we found the SDK but it didn't have a cmake target build them
 if (GCSSDK_FOUND AND NOT TARGET storage_client)
-  # Build a list of all GCS libraries to link with.
-  list(APPEND GCSSDK_LINKED_LIBS "storage_client"
-                                 "google_cloud_cpp_common"
-                                 "crc32c")
+  # ExternalProject target
+  if (${storage_client_FOUND})
+    # Build a list of all GCS libraries to link with.
+    list(APPEND GCSSDK_LINKED_LIBS "storage_client"
+                                   "google_cloud_cpp_common"
+                                   "crc32c")
 
-  foreach (LIB ${GCSSDK_LINKED_LIBS})
-    find_library(GCS_FOUND_${LIB}
-      NAMES lib${LIB}${CMAKE_STATIC_LIBRARY_SUFFIX}
-      PATHS ${TILEDB_EP_INSTALL_PREFIX}
-      PATH_SUFFIXES lib lib64
-      ${TILEDB_DEPS_NO_DEFAULT_PATH}
-    )
-    message(STATUS "Found GCS lib: ${LIB} (${GCS_FOUND_${LIB}})")
+    foreach (LIB ${GCSSDK_LINKED_LIBS})
+      find_library(GCS_FOUND_${LIB}
+        NAMES lib${LIB}${CMAKE_STATIC_LIBRARY_SUFFIX}
+        PATHS ${TILEDB_EP_INSTALL_PREFIX}
+        PATH_SUFFIXES lib lib64
+        ${TILEDB_DEPS_NO_DEFAULT_PATH}
+      )
+      message(STATUS "Found GCS lib: ${LIB} (${GCS_FOUND_${LIB}})")
 
-    # If we built a static EP, install it if required.
-    if (GCSSDK_STATIC_EP_FOUND AND TILEDB_INSTALL_STATIC_DEPS)
-      install_target_libs(GCSSDK::${LIB})
+      # If we built a static EP, install it if required.
+      if (GCSSDK_STATIC_EP_FOUND AND TILEDB_INSTALL_STATIC_DEPS)
+        install_target_libs(GCSSDK::${LIB})
+      endif()
+    endforeach ()
+
+    if (NOT TARGET storage_client)
+      add_library(storage_client UNKNOWN IMPORTED)
+      set_target_properties(storage_client PROPERTIES
+        IMPORTED_LOCATION "${GCS_FOUND_storage_client};${GCS_FOUND_google_cloud_cpp_common};${GCS_FOUND_crc32c}"
+        INTERFACE_INCLUDE_DIRECTORIES ${TILEDB_EP_INSTALL_PREFIX}/include
+      )
     endif()
-  endforeach ()
-
-  if (NOT TARGET storage_client)
-    add_library(storage_client UNKNOWN IMPORTED)
-    set_target_properties(storage_client PROPERTIES
-      IMPORTED_LOCATION "${GCS_FOUND_storage_client};${GCS_FOUND_google_cloud_cpp_common};${GCS_FOUND_crc32c}"
-      INTERFACE_INCLUDE_DIRECTORIES ${TILEDB_EP_INSTALL_PREFIX}/include
-    )
+  elseif(google_cloud_cpp_storage_FOUND)
+    add_library(storage_client INTERFACE IMPORTED)
+    target_link_libraries(storage_client INTERFACE CURL::libcurl google-cloud-cpp::storage google-cloud-cpp::experimental-storage-grpc)
   endif()
 endif()

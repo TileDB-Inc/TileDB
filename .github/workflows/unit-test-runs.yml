@@ -8,7 +8,7 @@ env:
   TILEDB_S3: OFF
   TILEDB_AZURE: OFF
   TILEDB_GCS: OFF
-  TILEDB_SERIALIZATION: OFF
+  TILEDB_SERIALIZATION: ON
   TILEDB_STATIC: ON
   TILEDB_TOOLS: ON
 
@@ -22,6 +22,11 @@ jobs:
     name: Build - ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
+
+      - name: 'Homebrew setup'
+        run: brew install pkg-config
+        if: ${{ startsWith(matrix.os, 'macos-') == true }}
+
       - name: 'Print env'
         run: |
           echo "'uname -s' is:"

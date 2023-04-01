@@ -61,6 +61,7 @@
 #include "tiledb/sm/misc/parse_argument.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_buffer.h"
+#include "tiledb/sm/query/query_remote_buffer_storage.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/serialization/array_schema.h"
 
@@ -111,18 +112,14 @@ Status RestClient::init(
     RETURN_NOT_OK(serialization_type_enum(c_str, &serialization_type_));
 
   bool found = false;
-  RETURN_NOT_OK(config_->get<bool>(
-      "rest.resubmit_incomplete", &resubmit_incomplete_, &found));
-
-  found = false;
   auto status = config_->get<bool>(
-      "rest.use_refactored_array_open",
+      "rest.use_refactored_array_open_and_query_submit",
       &use_refactored_array_and_query_,
       &found);
   if (!status.ok() || !found) {
     throw std::runtime_error(
-        "Cannot get use_refactored_array_open configuration option from "
-        "config");
+        "Cannot get rest.use_refactored_array_open_and_query_submit "
+        "configuration option from config");
   }
 
   return Status::Ok();
@@ -537,8 +534,24 @@ Status RestClient::post_query_submit(
         Status_RestError("Error submitting query to REST; null array."));
   }
 
+  // For remote global order writes only.
+  auto& cache = query->get_remote_buffer_cache();
+  if (cache.has_value()) {
+    if (cache.value().should_cache_write()) {
+      // If the entire write was less than a tile, cache all buffers and return.
+      // We will prepend this data to the next write submission.
+      cache.value().cache_write();
+      return Status::Ok();
+    }
+    // If the write is not tile-aligned adjust query buffer sizes to hold tile
+    // overflow bytes from this submission, aligning the write.
+    cache.value().make_buffers_tile_aligned();
+  }
+
   auto rest_scratch = query->rest_scratch();
 
+  // When a read query overflows the user buffer we may already have the next
+  // part loaded in the scratch buffer.
   if (rest_scratch->size() > 0) {
     bool skip;
     query_post_call_back(
@@ -604,6 +617,11 @@ Status RestClient::post_query_submit(
         st.message()));
   }
 
+  // For remote global order writes only.
+  if (cache.has_value()) {
+    // Update cache with any tile-overflow bytes held from this submission.
+    cache.value().cache_non_tile_aligned_data();
+  }
   return st;
 }
 
@@ -707,7 +725,7 @@ size_t RestClient::query_post_call_back(
       }
 
       // Deserialize the buffer and store it in 'copy_state'. If
-      // the user buffers are too small to accomodate the attribute
+      // the user buffers are too small to accommodate the attribute
       // data when deserializing read queries, this will return an
       // error status.
       aux.reset_offset();
@@ -719,7 +737,7 @@ size_t RestClient::query_post_call_back(
       }
     } else {
       // Deserialize the buffer and store it in 'copy_state'. If
-      // the user buffers are too small to accomodate the attribute
+      // the user buffers are too small to accommodate the attribute
       // data when deserializing read queries, this will return an
       // error status.
       st = serialization::query_deserialize(

@@ -221,6 +221,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-filter.cc
     src/unit-cppapi-float-scaling-filter.cc
     src/unit-cppapi-fragment_info.cc
+    src/unit-cppapi-global-order-writes-remote.cc
     src/unit-cppapi-group.cc
     src/unit-cppapi-hilbert.cc
     src/unit-cppapi-max-fragment-size.cc
@@ -340,9 +341,7 @@ if (TILEDB_WEBP)
     target_compile_definitions(tiledb_unit PRIVATE -DPNG_FOUND)
     # If libpng is available, the test can write output images for visual checking.
     # If libpng is not available, the test runs on pixel data alone with no output images.
-    target_link_libraries(tiledb_unit PRIVATE "${PNG_LIBRARIES}")
-    target_include_directories(tiledb_unit PRIVATE "${PNG_INCLUDE_DIRS}")
-    target_compile_definitions(tiledb_unit PRIVATE "${PNG_DEFINITIONS}")
+    target_link_libraries(tiledb_unit PRIVATE PNG::PNG)
   endif()
 endif()
 

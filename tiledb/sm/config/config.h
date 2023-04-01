@@ -108,6 +108,9 @@ class Config {
   /** Refactored array open is disabled by default */
   static const std::string REST_USE_REFACTORED_ARRAY_OPEN;
 
+  /** Refactored query submit is disabled by default */
+  static const std::string REST_USE_REFACTORED_QUERY_SUBMIT;
+
   /** The prefix to use for checking for parameter environmental variables. */
   static const std::string CONFIG_ENVIRONMENT_VARIABLE_PREFIX;
 
@@ -199,18 +202,13 @@ class Config {
   static const std::string SM_MEM_MALLOC_TRIM;
 
   /** Maximum tile memory budget for readers. */
-  static const std::string SM_TILE_MEMORY_BUDGET;
+  static const std::string SM_UPPER_MEMORY_LIMIT;
 
   /** Maximum memory budget for readers and writers. */
   static const std::string SM_MEM_TOTAL_BUDGET;
 
   /** Ratio of the sparse global order reader budget used for coords. */
   static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS;
-
-  /**
-   * Ratio of the sparse global order reader budget used for query condition.
-   */
-  static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION;
 
   /** Ratio of the sparse global order reader budget used for tile ranges. */
   static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES;
@@ -220,13 +218,6 @@ class Config {
 
   /** Ratio of the sparse unordered with dups reader budget used for coords. */
   static const std::string SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_COORDS;
-
-  /**
-   * Ratio of the sparse unordered with dups reader budget used for query
-   * condition.
-   */
-  static const std::string
-      SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_QUERY_CONDITION;
 
   /**
    * Ratio of the sparse unordered with dups reader budget used for tile
@@ -531,6 +522,9 @@ class Config {
 
   /** Verify TLS/SSL certificates (true). */
   static const std::string VFS_S3_VERIFY_SSL;
+
+  /** Force making an unsigned request to s3 (false). */
+  static const std::string VFS_S3_NO_SIGN_REQUEST;
 
   /** HDFS default kerb ticket cache path. */
   static const std::string VFS_HDFS_KERB_TICKET_CACHE_PATH;

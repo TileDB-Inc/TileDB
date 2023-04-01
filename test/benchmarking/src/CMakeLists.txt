@@ -25,7 +25,7 @@
 # THE SOFTWARE.
 #
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.21)
 project(TileDBBenchmark)
 
 # Set C++17 as required standard for all C++ targets (required to use the TileDB
@@ -65,6 +65,7 @@ set(BENCHMARKS
   bench_dense_write_large_tile
   bench_dense_write_small_tile
   bench_large_io
+  bench_reader_base_unfilter_tile
   bench_sparse_read_large_tile
   bench_sparse_read_small_tile
   bench_sparse_tile_cache

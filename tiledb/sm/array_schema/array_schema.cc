@@ -964,7 +964,10 @@ ArraySchema ArraySchema::deserialize(
   auto version = deserializer.read<uint32_t>();
   if (!(version <= constants::format_version)) {
     throw ArraySchemaStatusException(
-        "Failed to deserialize array schema; Incompatible format version.");
+        "Failed to deserialize array schema: incompatible format version: "
+        "got " +
+        std::to_string(version) +
+        "; expected <= " + std::to_string(constants::format_version));
   }
 
   // Load allows_dups
@@ -1158,9 +1161,9 @@ void ArraySchema::set_dimension_label_filter_pipeline(
         "Cannot set filter pipeline for dimension label '" + label_name +
         "'; No dimension label schema is set.");
   }
-  throw_if_not_ok(const_cast<Attribute*>(dim_label_ref.schema()->attribute(
-                                             dim_label_ref.label_attr_name()))
-                      ->set_filter_pipeline(pipeline));
+  const_cast<Attribute*>(
+      dim_label_ref.schema()->attribute(dim_label_ref.label_attr_name()))
+      ->set_filter_pipeline(pipeline);
 }
 
 void ArraySchema::set_dimension_label_tile_extent(

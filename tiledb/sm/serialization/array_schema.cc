@@ -44,6 +44,7 @@
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/compressor.h"
+#include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
@@ -280,26 +281,28 @@ tuple<Status, optional<shared_ptr<FilterPipeline>>> filter_pipeline_from_capnp(
           HERE(), constants::max_tile_chunk_size, filter_list)};
 }
 
-Status attribute_to_capnp(
+void attribute_to_capnp(
     const Attribute* attribute, capnp::Attribute::Builder* attribute_builder) {
-  if (attribute == nullptr)
-    return LOG_STATUS(Status_SerializationError(
-        "Error serializing attribute; attribute is null."));
+  if (attribute == nullptr) {
+    throw SerializationStatusException(
+        "Error serializing attribute; attribute is null.");
+  }
 
   attribute_builder->setName(attribute->name());
   attribute_builder->setType(datatype_str(attribute->type()));
   attribute_builder->setCellValNum(attribute->cell_val_num());
   attribute_builder->setNullable(attribute->nullable());
+  attribute_builder->setOrder(data_order_str(attribute->order()));
 
   // Get the fill value from `attribute`.
   const void* fill_value;
   uint64_t fill_value_size;
   uint8_t fill_validity = true;
-  if (!attribute->nullable())
-    RETURN_NOT_OK(attribute->get_fill_value(&fill_value, &fill_value_size));
-  else
-    RETURN_NOT_OK(attribute->get_fill_value(
-        &fill_value, &fill_value_size, &fill_validity));
+  if (!attribute->nullable()) {
+    attribute->get_fill_value(&fill_value, &fill_value_size);
+  } else {
+    attribute->get_fill_value(&fill_value, &fill_value_size, &fill_validity);
+  }
 
   // Copy the fill value buffer into a capnp vector of bytes.
   auto capnpFillValue = kj::Vector<uint8_t>();
@@ -315,27 +318,29 @@ Status attribute_to_capnp(
 
   const auto& filters = attribute->filters();
   auto filter_pipeline_builder = attribute_builder->initFilterPipeline();
-  RETURN_NOT_OK(filter_pipeline_to_capnp(&filters, &filter_pipeline_builder));
-
-  return Status::Ok();
+  throw_if_not_ok(filter_pipeline_to_capnp(&filters, &filter_pipeline_builder));
 }
 
-tuple<Status, optional<shared_ptr<Attribute>>> attribute_from_capnp(
+shared_ptr<Attribute> attribute_from_capnp(
     const capnp::Attribute::Reader& attribute_reader) {
   // Get datatype
   Datatype datatype = Datatype::ANY;
-  RETURN_NOT_OK_TUPLE(
-      datatype_enum(attribute_reader.getType(), &datatype), nullopt);
+  throw_if_not_ok(datatype_enum(attribute_reader.getType(), &datatype));
 
-  // Set nullable.
+  // Set nullable
   const bool nullable = attribute_reader.getNullable();
+
+  // Get data order
+  auto data_order = attribute_reader.hasOrder() ?
+                        data_order_from_str(attribute_reader.getOrder()) :
+                        DataOrder::UNORDERED_DATA;
 
   // Filter pipelines
   shared_ptr<FilterPipeline> filters{};
   if (attribute_reader.hasFilterPipeline()) {
     auto filter_pipeline_reader = attribute_reader.getFilterPipeline();
     auto&& [st_fp, f]{filter_pipeline_from_capnp(filter_pipeline_reader)};
-    RETURN_NOT_OK_TUPLE(st_fp, nullopt);
+    throw_if_not_ok(st_fp);
     filters = f.value();
   } else {
     filters = make_shared<FilterPipeline>(HERE());
@@ -346,8 +351,8 @@ tuple<Status, optional<shared_ptr<Attribute>>> attribute_from_capnp(
   uint8_t fill_value_validity = 0;
   if (attribute_reader.hasFillValue()) {
     // To initialize the ByteVecValue object, we do so by instantiating a
-    // vector of type uint8_t that points to the data stored in the
-    // byte vector.
+    // vector of type uint8_t that points to the data stored in the byte
+    // vector.
     auto capnp_byte_vec = attribute_reader.getFillValue().asBytes();
     auto vec_ptr = capnp_byte_vec.begin();
     std::vector<uint8_t> byte_vec(vec_ptr, vec_ptr + capnp_byte_vec.size());
@@ -361,17 +366,16 @@ tuple<Status, optional<shared_ptr<Attribute>>> attribute_from_capnp(
         datatype, attribute_reader.getCellValNum());
   }
 
-  return {
-      Status::Ok(),
-      tiledb::common::make_shared<Attribute>(
-          HERE(),
-          attribute_reader.getName(),
-          datatype,
-          nullable,
-          attribute_reader.getCellValNum(),
-          *(filters.get()),
-          fill_value_vec,
-          fill_value_validity)};
+  return tiledb::common::make_shared<Attribute>(
+      HERE(),
+      attribute_reader.getName(),
+      datatype,
+      nullable,
+      attribute_reader.getCellValNum(),
+      *(filters.get()),
+      fill_value_vec,
+      fill_value_validity,
+      data_order);
 }
 
 Status dimension_to_capnp(
@@ -664,6 +668,68 @@ shared_ptr<Domain> domain_from_capnp(
   return make_shared<Domain>(HERE(), cell_order, dims, tile_order);
 }
 
+void dimension_label_to_capnp(
+    const DimensionLabel& dimension_label,
+    capnp::DimensionLabel::Builder* dim_label_builder,
+    const bool client_side) {
+  dim_label_builder->setDimensionId(dimension_label.dimension_index());
+  dim_label_builder->setName(dimension_label.name());
+  dim_label_builder->setAttributeName(dimension_label.label_attr_name());
+  dim_label_builder->setOrder(data_order_str(dimension_label.label_order()));
+  dim_label_builder->setType(datatype_str(dimension_label.label_type()));
+  dim_label_builder->setCellValNum(dimension_label.label_cell_val_num());
+  dim_label_builder->setExternal(dimension_label.is_external());
+  dim_label_builder->setRelative(dimension_label.uri_is_relative());
+  if (dimension_label.uri_is_relative()) {
+    dim_label_builder->setUri(dimension_label.uri().to_string());
+  } else {
+    throw SerializationStatusException(
+        "[Serialization::dimension_label_to_capnp] Serialization of absolute "
+        "dimension label URIs not yet implemented.");
+  }
+
+  if (dimension_label.has_schema()) {
+    const auto& schema = dimension_label.schema();
+    auto schema_builder = dim_label_builder->initSchema();
+    throw_if_not_ok(
+        array_schema_to_capnp(*schema, &schema_builder, client_side));
+  }
+}
+
+shared_ptr<DimensionLabel> dimension_label_from_capnp(
+    const capnp::DimensionLabel::Reader& dim_label_reader) {
+  // Get datatype
+  Datatype datatype = Datatype::ANY;
+  throw_if_not_ok(datatype_enum(dim_label_reader.getType(), &datatype));
+
+  shared_ptr<ArraySchema> schema{nullptr};
+  if (dim_label_reader.hasSchema()) {
+    auto schema_reader = dim_label_reader.getSchema();
+    schema = make_shared<ArraySchema>(
+        HERE(), array_schema_from_capnp(schema_reader, URI()));
+  }
+
+  auto is_relative = dim_label_reader.getRelative();
+  if (!is_relative) {
+    throw SerializationStatusException(
+        "[Deserialization::dimension_label_from_capnp] Deserialization of "
+        "absolute dimension label URIs not yet implemented.");
+  }
+
+  return tiledb::common::make_shared<DimensionLabel>(
+      HERE(),
+      dim_label_reader.getDimensionId(),
+      dim_label_reader.getName().cStr(),
+      URI(dim_label_reader.getUri().cStr(), false),
+      dim_label_reader.getAttributeName().cStr(),
+      data_order_from_str(dim_label_reader.getOrder()),
+      datatype,
+      dim_label_reader.getCellValNum(),
+      schema,
+      dim_label_reader.getExternal(),
+      is_relative);
+}
+
 Status array_schema_to_capnp(
     const ArraySchema& array_schema,
     capnp::ArraySchema::Builder* array_schema_builder,
@@ -713,8 +779,7 @@ Status array_schema_to_capnp(
   auto attributes_buidler = array_schema_builder->initAttributes(num_attrs);
   for (size_t i = 0; i < num_attrs; i++) {
     auto attribute_builder = attributes_buidler[i];
-    RETURN_NOT_OK(
-        attribute_to_capnp(array_schema.attribute(i), &attribute_builder));
+    attribute_to_capnp(array_schema.attribute(i), &attribute_builder);
   }
 
   // Set timestamp range
@@ -722,6 +787,18 @@ Status array_schema_to_capnp(
   const auto& timestamp_range = array_schema.timestamp_range();
   timestamp_builder.set(0, timestamp_range.first);
   timestamp_builder.set(1, timestamp_range.second);
+
+  // Dimension labels
+  auto num_labels = array_schema.dim_label_num();
+  if (num_labels > 0) {
+    auto dim_labels_builder =
+        array_schema_builder->initDimensionLabels(num_labels);
+    for (size_t i = 0; i < num_labels; i++) {
+      auto dim_label_builder = dim_labels_builder[i];
+      dimension_label_to_capnp(
+          array_schema.dimension_label(i), &dim_label_builder, client_side);
+    }
+  }
 
   return Status::Ok();
 }
@@ -862,18 +939,32 @@ ArraySchema array_schema_from_capnp(
   auto attributes_reader = schema_reader.getAttributes();
   std::vector<shared_ptr<const Attribute>> attributes;
   attributes.reserve(attributes_reader.size());
-  for (auto attr_reader : attributes_reader) {
-    auto&& [st_attr, attr]{attribute_from_capnp(attr_reader)};
-    if (!st_attr.ok()) {
-      throw std::runtime_error(
-          "[Deserialization::array_schema_from_capnp] Cannot deserialize "
-          "attributes.");
+  try {
+    for (auto attr_reader : attributes_reader) {
+      attributes.emplace_back(attribute_from_capnp(attr_reader));
     }
-    attributes.emplace_back(attr.value());
+  } catch (const std::exception& e) {
+    std::throw_with_nested(std::runtime_error(
+        "[Deserialization::array_schema_from_capnp] Cannot deserialize "
+        "attributes."));
   }
 
-  // Placeholder for deserializing dimension label references
+  // Set dimension labels
   std::vector<shared_ptr<const DimensionLabel>> dimension_labels{};
+  if (schema_reader.hasDimensionLabels()) {
+    auto dim_labels_reader = schema_reader.getDimensionLabels();
+    dimension_labels.reserve(dim_labels_reader.size());
+    try {
+      for (auto dim_label_reader : dim_labels_reader) {
+        dimension_labels.emplace_back(
+            dimension_label_from_capnp(dim_label_reader));
+      }
+    } catch (const std::exception& e) {
+      std::throw_with_nested(std::runtime_error(
+          "[Deserialization::array_schema_from_capnp] Cannot deserialize "
+          "dimension labels."));
+    }
+  }
 
   // Set the range if we have two values
   // #TODO Add security validation

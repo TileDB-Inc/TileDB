@@ -292,6 +292,9 @@ extern const std::string query_status_inprogress_str;
 /** TILEDB_INCOMPLETE Query String **/
 extern const std::string query_status_incomplete_str;
 
+/** TILEDB_INITIALIZED Query String **/
+extern const std::string query_status_initialized_str;
+
 /** TILEDB_UNINITIALIZED Query String **/
 extern const std::string query_status_uninitialized_str;
 

@@ -60,7 +60,7 @@ class DeletesAndUpdates : public StrategyBase, public IQueryStrategy {
       std::unordered_map<std::string, QueryBuffer>& buffers,
       Subarray& subarray,
       Layout layout,
-      QueryCondition& condition,
+      std::optional<QueryCondition>& condition,
       std::vector<UpdateValue>& update_values,
       bool skip_checks_serialization = false);
 
@@ -96,13 +96,16 @@ class DeletesAndUpdates : public StrategyBase, public IQueryStrategy {
   /** Resets the delete object. */
   void reset();
 
+  /** Returns the name of the strategy */
+  std::string name();
+
  private:
   /* ********************************* */
   /*         PRIVATE  ATTRIBUTES       */
   /* ********************************* */
 
   /** The query condition. */
-  QueryCondition& condition_;
+  std::optional<QueryCondition>& condition_;
 
   /** The update values, owned by the query. */
   std::vector<UpdateValue>& update_values_;

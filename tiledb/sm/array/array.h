@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -333,8 +333,24 @@ class Array {
   /** Directly set the timestamp end opened at value. */
   Status set_timestamp_end_opened_at(const uint64_t timestamp_end_opened_at);
 
-  /** Directly set the array config. */
-  Status set_config(Config config);
+  /** Directly set the array config.
+   *
+   * @pre The array must be closed.
+   */
+  void set_config(Config config);
+
+  /**
+   * Directly set the array config.
+   *
+   * @param config
+   *
+   * @note This is a potentially unsafe operation. Arrays should be closed when
+   * setting a config. This is necessary to maintain current serialization
+   * behavior.
+   */
+  inline void unsafe_set_config(Config config) {
+    config_.inherit(config);
+  }
 
   /** Retrieves a reference to the array config. */
   Config config() const;
@@ -485,6 +501,9 @@ class Array {
 
   /** Checks the config to see if refactored array open should be used. */
   bool use_refactored_array_open() const;
+
+  /** Checks the config to see if refactored query submit should be used. */
+  bool use_refactored_query_submit() const;
 
   /**
    * Sets the array state as open.
@@ -679,6 +698,21 @@ class Array {
       optional<shared_ptr<ArraySchema>>,
       optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
   open_for_reads_without_fragments();
+
+  /** Opens an array for writes.
+   *
+   * @param array The array to open.
+   * @return tuple of Status, latest ArraySchema and map of all array schemas
+   *        Status Ok on success, else error
+   *        ArraySchema The array schema to be retrieved after the
+   *          array is opened.
+   *        ArraySchemaMap Map of all array schemas found keyed by name
+   */
+  tuple<
+      Status,
+      optional<shared_ptr<ArraySchema>>,
+      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+  open_for_writes();
 
   /** Clears the cached max buffer sizes and subarray. */
   void clear_last_max_buffer_sizes();

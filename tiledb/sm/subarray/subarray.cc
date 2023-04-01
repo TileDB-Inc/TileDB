@@ -895,13 +895,6 @@ bool Subarray::empty(uint32_t dim_idx) const {
   return range_subset_[dim_idx].is_empty();
 }
 
-QueryType Subarray::get_query_type() const {
-  if (array_ == nullptr)
-    throw SubarrayStatusException("[get_query_type] Invalid array");
-
-  return array_->get_query_type();
-}
-
 Status Subarray::get_range(
     uint32_t dim_idx, uint64_t range_idx, const Range** range) const {
   auto dim_num = array_->array_schema_latest().dim_num();
@@ -1193,52 +1186,6 @@ Status Subarray::get_est_result_size_internal(
     *size = cell_size;
 
   return Status::Ok();
-}
-
-Status Subarray::get_est_result_size(
-    const char* name, uint64_t* size, StorageManager* storage_manager) {
-  // Note: various items below expect array open, get_query_type() providing
-  // that audit.
-  QueryType array_query_type{array_->get_query_type()};
-  if (array_query_type != QueryType::READ) {
-    return LOG_STATUS(Status_SubarrayError(
-        "Cannot get estimated result size; unsupported query type"));
-  }
-
-  if (name == nullptr) {
-    return LOG_STATUS(Status_SubarrayError(
-        "Cannot get estimated result size; Name cannot be null"));
-  }
-
-  if (name == constants::coords &&
-      !array_->array_schema_latest().domain().all_dims_same_type()) {
-    return LOG_STATUS(Status_SubarrayError(
-        "Cannot get estimated result size; Not applicable to zipped "
-        "coordinates in arrays with heterogeneous domain"));
-  }
-
-  if (name == constants::coords &&
-      !array_->array_schema_latest().domain().all_dims_fixed()) {
-    return LOG_STATUS(Status_SubarrayError(
-        "Cannot get estimated result size; Not applicable to zipped "
-        "coordinates in arrays with domains with variable-sized dimensions"));
-  }
-
-  if (array_->array_schema_latest().is_nullable(name)) {
-    return LOG_STATUS(Status_SubarrayError(
-        std::string(
-            "Cannot get estimated result size; Input attribute/dimension '") +
-        name + "' is nullable"));
-  }
-
-  if (array_->is_remote()) {
-    return LOG_STATUS(Status_SubarrayError(
-        std::string("Error in query estimate result size; remote/REST "
-                    "array functionality not implemented.")));
-  }
-
-  return get_est_result_size_internal(
-      name, size, &config_, storage_manager->compute_tp());
 }
 
 Status Subarray::get_est_result_size(

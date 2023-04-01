@@ -55,6 +55,9 @@ add_subdirectory(array)
 # `buffer`: no dependencies
 add_subdirectory(buffer)
 
+# `buffer_list`: depends on `buffer`
+add_subdirectory(buffer_list)
+
 # `error`: no dependencies
 add_subdirectory(error)
 
@@ -82,6 +85,9 @@ add_subdirectory(filter)
 # `filter_list`: depends on `context`, `filter`
 add_subdirectory(filter_list)
 
+# `dimension`: depends on `filter_list`
+add_subdirectory(dimension)
+
 # `group`: depends on `config`, `context`
 add_subdirectory(group)
 
@@ -99,4 +105,7 @@ add_subdirectory(string)
 
 # `vfs`: depends on `context`
 add_subdirectory(vfs)
+
+# `query_plan`: no dependencies yet
+add_subdirectory(query_plan)
 

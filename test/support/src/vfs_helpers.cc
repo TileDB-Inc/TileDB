@@ -32,12 +32,14 @@
 #include "test/support/src/vfs_helpers.h"
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/serialization_wrappers.h"
 
 namespace tiledb {
 namespace test {
 
 std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
   std::vector<std::unique_ptr<SupportedFs>> fs_vec;
+
   bool supports_s3 = false;
   bool supports_hdfs = false;
   bool supports_azure = false;
@@ -385,10 +387,13 @@ void TemporaryDirectoryFixture::alloc_encrypted_ctx(
 }
 
 std::string TemporaryDirectoryFixture::create_temporary_array(
-    std::string&& name, tiledb_array_schema_t* array_schema) {
+    std::string&& name,
+    tiledb_array_schema_t* array_schema,
+    const bool serialize) {
   auto array_uri = fullpath(std::move(name));
   require_tiledb_ok(tiledb_array_schema_check(ctx, array_schema));
-  require_tiledb_ok(tiledb_array_create(ctx, array_uri.c_str(), array_schema));
+  require_tiledb_ok(tiledb_array_create_serialization_wrapper(
+      ctx, array_uri, array_schema, serialize));
   return array_uri;
 }
 

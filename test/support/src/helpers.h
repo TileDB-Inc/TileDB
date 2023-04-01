@@ -84,6 +84,8 @@ static tiledb::sm::stats::Stats g_helper_stats("test");
 // objects that require a parent `Logger` object.
 shared_ptr<Logger> g_helper_logger(void);
 
+const std::string& get_temp_path();
+
 // For easy reference
 typedef std::pair<tiledb_filter_type_t, int> Compressor;
 template <class T>
@@ -938,8 +940,8 @@ int array_open_wrapper(
  * e.g. once in the test Fixture definition or just before the call to
  * submit_query_wrapper.
  * @param serialize_query True if this is a remote array open, false if not.
- * @param refactored_query_v2 If "rest.use_refactored_array_open" should be
- * true.
+ * @param refactored_query_v2 If
+ * "rest.use_refactored_array_open_and_query_submit" should be true.
  * @param finalize Finalize or not the query after submitting it.
  */
 int submit_query_wrapper(

@@ -273,9 +273,9 @@ class Posix {
    * @param buffer Buffer to hold read data
    * @param nbytes Number of bytes to read
    * @param offset Offset in file to start reading from.
-   * @return Number of bytes actually read (< nbytes on error).
+   * @return Status
    */
-  static uint64_t read_all(
+  static Status read_all(
       int fd, void* buffer, uint64_t nbytes, uint64_t offset);
 
   static int unlink_cb(
@@ -283,18 +283,6 @@ class Posix {
       const struct stat* sb,
       int typeflag,
       struct FTW* ftwbuf);
-
-  /**
-   * Writes all nbytes to the given file descriptor, retrying as necessary.
-   *
-   * @param fd Open file descriptor to write to
-   * @param file_offset File offset at which to write.
-   * @param buffer Buffer with data to write
-   * @param nbytes Number of bytes to write
-   * @return Number of bytes actually written (< nbytes on error).
-   */
-  static uint64_t pwrite_all(
-      int fd, uint64_t file_offset, const void* buffer, uint64_t nbytes);
 
   /**
    * Write data from the given buffer to the file descriptor, beginning at the

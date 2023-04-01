@@ -31,6 +31,57 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
+if(TILEDB_VCPKG)
+  find_package(AWSSDK QUIET CONFIG COMPONENTS core s3 REQUIRED)
+  set(AWS_SERVICES s3)
+  AWSSDK_DETERMINE_LIBS_TO_LINK(AWS_SERVICES AWS_LINKED_LIBS)
+  list(APPEND AWS_LINKED_LIBS aws-c-cal
+                              aws-c-io
+                              aws-cpp-sdk-identity-management
+                              aws-cpp-sdk-sts)
+
+  foreach (LIB ${AWS_LINKED_LIBS})
+    if (NOT ${LIB} MATCHES "aws-*")
+      continue()
+    endif()
+
+    find_library("AWS_FOUND_${LIB}"
+      NAMES ${LIB}
+      PATHS ${AWSSDK_LIB_DIR}
+      NO_DEFAULT_PATH
+    )
+    message(STATUS "Found AWS lib: ${LIB} (${AWS_FOUND_${LIB}})")
+    if (NOT TARGET AWSSDK::${LIB})
+      add_library(AWSSDK::${LIB} UNKNOWN IMPORTED)
+      set_target_properties(AWSSDK::${LIB} PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${AWSSDK_INCLUDE_DIR}"
+        IMPORTED_LOCATION "${AWS_FOUND_${LIB}}"
+      )
+    endif()
+  endforeach ()
+
+  # Add missing link directives here rather than adding
+  # conditional logic in tiledb/CMakeLists.txt
+  target_link_libraries(AWSSDK::aws-cpp-sdk-s3 INTERFACE AWSSDK::aws-c-cal)
+  target_link_libraries(AWSSDK::aws-cpp-sdk-s3 INTERFACE AWSSDK::aws-c-io)
+
+  return()
+endif()
+
+##-----------------------------------
+# early WIN32 audit of path length for aws sdk build where
+# insufficient available path length causes sdk build failure.
+if (WIN32 AND NOT TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK)
+  if (TILEDB_SUPERBUILD AND TILEDB_S3)
+    string(LENGTH ${CMAKE_CURRENT_BINARY_DIR} LENGTH_CMAKE_CURRENT_BINARY_DIR)
+    if ( NOT (LENGTH_CMAKE_CURRENT_BINARY_DIR LESS 61))
+      message(FATAL_ERROR " build directory path likely too long for building awssdk/dependencies!")
+      return()
+    endif()
+  endif()
+endif()
+##-----------------------------------
+
 # If the EP was built, it will install the AWSSDKConfig.cmake file, which we
 # can use with find_package. CMake uses CMAKE_PREFIX_PATH to locate find
 # modules.
