@@ -150,6 +150,18 @@ using consumer_1 = consumer_mimo<DuffsMover3, std::tuple<size_t>>;
 using consumer_3 =
     consumer_mimo<DuffsMover3, std::tuple<size_t, size_t, size_t>>;
 
+
+using async_producer_1 = producer_mimo<AsyncMover3, std::tuple<size_t>>;
+
+using async_producer_3 =
+    producer_mimo<AsyncMover3, std::tuple<size_t, size_t, size_t>>;
+
+using async_consumer_1 = consumer_mimo<AsyncMover3, std::tuple<size_t>>;
+
+using async_consumer_3 =
+    consumer_mimo<AsyncMover3, std::tuple<size_t, size_t, size_t>>;
+
+
 namespace tiledb::common {
 // Tentative deduction guide
 template <class... R, class... Args>
@@ -557,41 +569,206 @@ auto run_for(Node& node, size_t rounds) {
     size_t N = rounds;
     while (N) {
       auto code = node->resume();
-      if (code == SchedulerAction::yield)
+      // std::cout << "code: " << str(code) << std::endl;
+      if (code == SchedulerAction::yield) {
+        // std::cout << "decrementing " << N << std::endl;
         --N;
+      }
     }
   };
 }
 
-TEST_CASE("Resumanble nodes run some", "[resumable]") {
+TEST_CASE("Resumable nodes run some", "[resumable]") {
   size_t ext2{0};
   size_t ext1{0};
-  producer_3 p_3{
+  async_producer_3 p_3{
     [&ext1](std::stop_source) -> std::tuple<size_t, size_t, size_t> {
-        std::cout << "producer_3: " << ext1 << std::endl;
-      return { ext1++, ext1++, ext1++ };
+        auto a = ext1++;
+        auto b = ext1++;
+        auto c = ext1++;
+        // std::cout << "producer_3: " << ext1 << std::endl;
+      return { a, b, c };
     },
   };
-  reduce_3_0 r_3_0{
+  async_consumer_3 c_3 {
     [&ext2](const std::tuple<size_t, size_t, size_t>& t) {
       ext2 = std::get<0>(t) + std::get<1>(t) + std::get<2>(t);
-      std::cout << "reduce_3_0: " << ext2 << std::endl;
+      // std::cout << "consume_3: " << std::get<0>(t) << " " << std::get<1>(t) << " " << std::get<2>(t) << " = " << ext2 << std::endl;
     },
   };
-  Edge e0{p_3->out_port<0>(), r_3_0->in_port<0>()};
-  Edge e1{p_3->out_port<1>(), r_3_0->in_port<1>()};
-  Edge e2{p_3->out_port<2>(), r_3_0->in_port<2>()};
+  Edge e0{p_3->out_port<0>(), c_3->in_port<0>()};
+  Edge e1{p_3->out_port<1>(), c_3->in_port<1>()};
+  Edge e2{p_3->out_port<2>(), c_3->in_port<2>()};
 
   size_t rounds = 10;
   auto fun_a1 = run_for(p_3, rounds);
-  auto fun_a2 = run_for(r_3_0, rounds);
+  auto fun_a2 = run_for(c_3, rounds);
 
   auto fut_a1 = std::async(std::launch::async, fun_a1);
   auto fut_a2 = std::async(std::launch::async, fun_a2);
-  fut_a1.wait();
   fut_a2.wait();
-  CHECK(ext2 == 3 * rounds * (rounds - 1) / 2);
+  fut_a1.wait();
+  CHECK(ext2 == 3*(rounds-1) + 3* (rounds-1) + 1 + 3*(rounds-1)+2);
 }
+
+TEST_CASE("Resumable nodes run more", "[resumable]") {
+
+  std::atomic<size_t> ext2{0};
+
+  using producer_1 = producer_mimo<AsyncMover3, std::tuple<size_t>>;
+  using consumer_1 = consumer_mimo<AsyncMover3, std::tuple<size_t>>;
+
+  producer_1 p_1{[](std::stop_source) { return std::make_tuple(11); }};
+  producer_1 q_1{[](std::stop_source) { return std::make_tuple(13); }};
+  producer_1 r_1{[](std::stop_source) { return std::make_tuple(17); }};
+
+  consumer_1 c_1{[&ext2](std::tuple<size_t> a) { ext2 += std::get<0>(a); }};
+  consumer_1 d_1{[&ext2](std::tuple<size_t> a) { ext2 += std::get<0>(a); }};
+  consumer_1 e_1{[&ext2](std::tuple<size_t> a) { ext2 += std::get<0>(a); }};
+
+  Edge e0{p_1->out_port<0>(), c_1->in_port<0>()};
+  Edge e1{q_1->out_port<0>(), d_1->in_port<0>()};
+  Edge e2{r_1->out_port<0>(), e_1->in_port<0>()};
+
+  size_t rounds = 11;
+  size_t num_tests = 17;
+
+  SECTION("single producer, single consumer") {
+    for (size_t j = 0; j < num_tests; ++j) {
+      ext2 = 0;
+
+      auto fun_a1 = run_for(p_1, rounds);
+      auto fun_a2 = run_for(c_1, rounds);
+      auto fun_b1 = run_for(q_1, rounds);
+      auto fun_b2 = run_for(d_1, rounds);
+      auto fun_c1 = run_for(r_1, rounds);
+      auto fun_c2 = run_for(e_1, rounds);
+
+      auto fut_a1 = std::async(std::launch::async, fun_a1);
+      auto fut_a2 = std::async(std::launch::async, fun_a2);
+      auto fut_b1 = std::async(std::launch::async, fun_b1);
+      auto fut_b2 = std::async(std::launch::async, fun_b2);
+      auto fut_c1 = std::async(std::launch::async, fun_c1);
+      auto fut_c2 = std::async(std::launch::async, fun_c2);
+
+      fut_c2.wait();
+      fut_c1.wait();
+      fut_b2.wait();
+      fut_b1.wait();
+      fut_a2.wait();
+      fut_a1.wait();
+      CHECK(ext2 == rounds * (11 + 13 + 17));
+    }
+  }
+
+  using reduce_3_0 = reducer_node<
+      AsyncMover3,
+      std::tuple<size_t, size_t, size_t>,
+      EmptyMover,
+      std::tuple<>>;
+
+  using broadcast_0_3 = broadcast_node<
+      3,
+      EmptyMover,
+      std::tuple<>,
+      AsyncMover3,
+      std::tuple<size_t>>;
+
+  broadcast_0_3 b3_0_3{[](std::stop_source) { return std::make_tuple(7); }};
+  reduce_3_0 b3_3_0{[](const std::tuple<size_t, size_t, size_t>&) {}};
+}
+
+TEST_CASE("Resumable nodes run some more", "[resumable]") {
+
+  std::atomic<size_t> ext2{0};
+  size_t rounds = 11;
+  size_t num_tests = 17;
+
+  using producer_1 = producer_mimo<AsyncMover3, std::tuple<size_t>>;
+  using consumer_1 = consumer_mimo<AsyncMover3, std::tuple<size_t>>;
+
+  producer_1 p_1{[](std::stop_source) { return std::make_tuple(11); }};
+  producer_1 q_1{[](std::stop_source) { return std::make_tuple(13); }};
+  producer_1 r_1{[](std::stop_source) { return std::make_tuple(17); }};
+
+  consumer_1 c_1{[&ext2](std::tuple<size_t> a) { ext2 += std::get<0>(a); }};
+  consumer_1 d_1{[&ext2](std::tuple<size_t> a) { ext2 += std::get<0>(a); }};
+  consumer_1 e_1{[&ext2](std::tuple<size_t> a) { ext2 += std::get<0>(a); }};
+
+  using reduce_3_0 = reducer_node<
+      AsyncMover3,
+      std::tuple<size_t, size_t, size_t>,
+      EmptyMover,
+      std::tuple<>>;
+
+  using broadcast_0_3 = broadcast_node<
+      3,
+      EmptyMover,
+      std::tuple<>,
+      AsyncMover3,
+      std::tuple<size_t>>;
+
+  broadcast_0_3 b3_0_3{[](std::stop_source) { return std::make_tuple(7); }};
+  reduce_3_0 b3_3_0{[&ext2](const std::tuple<size_t, size_t, size_t>& a) {
+    ext2 += std::get<0>(a) + std::get<1>(a) + std::get<2>(a);
+  }};
+
+  Edge e0{b3_0_3->out_port<0>(), c_1->in_port<0>()};
+  Edge e1{b3_0_3->out_port<1>(), d_1->in_port<0>()};
+  Edge e2{b3_0_3->out_port<2>(), e_1->in_port<0>()};
+
+  Edge f0{p_1->out_port<0>(), b3_3_0->in_port<0>()};
+  Edge f1{q_1->out_port<0>(), b3_3_0->in_port<1>()};
+  Edge f2{r_1->out_port<0>(), b3_3_0->in_port<2>()};
+
+
+  SECTION("triple producer, three consumers") {
+    for (size_t j = 0; j < num_tests; ++j) {
+      ext2 = 0;
+
+      auto fun_a1 = run_for(b3_0_3, rounds);
+      auto fun_c1 = run_for(c_1, rounds);
+      auto fun_d1 = run_for(d_1, rounds);
+      auto fun_e1 = run_for(e_1, rounds);
+
+      auto fut_a1 = std::async(std::launch::async, fun_a1);
+      auto fut_c1 = std::async(std::launch::async, fun_c1);
+      auto fut_d1 = std::async(std::launch::async, fun_d1);
+      auto fut_e1 = std::async(std::launch::async, fun_e1);
+
+      fut_a1.wait();
+      fut_c1.wait();
+      fut_d1.wait();
+      fut_e1.wait();
+
+      CHECK(ext2 == rounds * (7 + 7 + 7));
+    }
+  }
+
+  SECTION("three producers, triple consumer") {
+    for (size_t j = 0; j < num_tests; ++j) {
+      ext2 = 0;
+
+      auto fun_a1 = run_for(b3_3_0, rounds);
+      auto fun_c1 = run_for(p_1, rounds);
+      auto fun_d1 = run_for(q_1, rounds);
+      auto fun_e1 = run_for(r_1, rounds);
+
+      auto fut_a1 = std::async(std::launch::async, fun_a1);
+      auto fut_c1 = std::async(std::launch::async, fun_c1);
+      auto fut_d1 = std::async(std::launch::async, fun_d1);
+      auto fut_e1 = std::async(std::launch::async, fun_e1);
+
+      fut_a1.wait();
+      fut_c1.wait();
+      fut_d1.wait();
+      fut_e1.wait();
+
+      CHECK(ext2 == rounds * (11+ 13 + 17));
+    }
+  }
+}
+
 
 #if 0
 
