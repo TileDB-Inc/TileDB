@@ -40,8 +40,9 @@ env:
   TILEDB_CI_OS: runner.os
   CXX: ${{ inputs.matrix_compiler_cxx }}
   CC: ${{ inputs.matrix_compiler_cc }}
-  bootstrap_args: ${{ inputs.bootstrap_args }}
+  bootstrap_args: "--enable-ccache ${{ inputs.bootstrap_args }}"
   VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+  SCCACHE_GHA_ENABLED: "true"
 
 jobs:
   build:
@@ -82,6 +83,9 @@ jobs:
 
       - name: Prevent vpckg from building debug variants
         run: ./scripts/ci/posix/patch_vcpkg_triplets.sh
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: 'Ubuntu Prelim'
         if: ${{ startsWith(matrix.os, 'ubuntu-') == true }}
