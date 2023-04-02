@@ -712,6 +712,10 @@ TEST_CASE("Resumable nodes run some more", "[resumable]") {
   reduce_3_0 b3_3_0{[&ext2](const std::tuple<size_t, size_t, size_t>& a) {
     ext2 += std::get<0>(a) + std::get<1>(a) + std::get<2>(a);
   }};
+  broadcast_0_3 c3_0_3{[](std::stop_source) { return std::make_tuple(9); }};
+  reduce_3_0 c3_3_0{[&ext2](const std::tuple<size_t, size_t, size_t>& a) {
+    ext2 += std::get<0>(a) + std::get<1>(a) + std::get<2>(a);
+  }};
 
   Edge e0{b3_0_3->out_port<0>(), c_1->in_port<0>()};
   Edge e1{b3_0_3->out_port<1>(), d_1->in_port<0>()};
@@ -720,6 +724,10 @@ TEST_CASE("Resumable nodes run some more", "[resumable]") {
   Edge f0{p_1->out_port<0>(), b3_3_0->in_port<0>()};
   Edge f1{q_1->out_port<0>(), b3_3_0->in_port<1>()};
   Edge f2{r_1->out_port<0>(), b3_3_0->in_port<2>()};
+
+  Edge g0{c3_0_3->out_port<0>(), c3_3_0->in_port<0>()};
+  Edge g1{c3_0_3->out_port<1>(), c3_3_0->in_port<1>()};
+  Edge g2{c3_0_3->out_port<2>(), c3_3_0->in_port<2>()};
 
 
   SECTION("triple producer, three consumers") {
@@ -765,6 +773,22 @@ TEST_CASE("Resumable nodes run some more", "[resumable]") {
       fut_e1.wait();
 
       CHECK(ext2 == rounds * (11+ 13 + 17));
+    }
+  }
+  SECTION("triple producer, triple consumer") {
+    for (size_t j = 0; j < num_tests; ++j) {
+      ext2 = 0;
+
+      auto fun_a1 = run_for(c3_0_3, rounds);
+      auto fun_a2 = run_for(c3_3_0, rounds);
+
+      auto fut_a1 = std::async(std::launch::async, fun_a1);
+      auto fut_a2 = std::async(std::launch::async, fun_a2);
+
+      fut_a1.wait();
+      fut_a2.wait();
+
+      CHECK(ext2 == rounds * (9 + 9 + 9));
     }
   }
 }
