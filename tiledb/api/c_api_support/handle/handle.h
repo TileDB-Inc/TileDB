@@ -116,7 +116,7 @@ class CAPIHandle {
    * @param x A `shared_ptr` to this object
    */
   inline void know_self(shared_ptr_type x) {
-    self_ = move(x);
+    self_ = std::move(x);
   }
 
   /**

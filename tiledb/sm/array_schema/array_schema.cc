@@ -1026,7 +1026,7 @@ ArraySchema ArraySchema::deserialize(
   uint32_t attribute_num = deserializer.read<uint32_t>();
   for (uint32_t i = 0; i < attribute_num; ++i) {
     auto attr{Attribute::deserialize(deserializer, version)};
-    attributes.emplace_back(make_shared<Attribute>(HERE(), move(attr)));
+    attributes.emplace_back(make_shared<Attribute>(HERE(), std::move(attr)));
   }
 
   // Load dimension labels

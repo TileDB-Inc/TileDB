@@ -116,25 +116,25 @@ Domain::Domain(const Domain* domain) {
 Domain::Domain(Domain&& rhs)
     : cell_num_per_tile_(rhs.cell_num_per_tile_)
     , cell_order_(rhs.cell_order_)
-    , dimensions_(move(rhs.dimensions_))
-    , dimension_ptrs_(move(rhs.dimension_ptrs_))
+    , dimensions_(std::move(rhs.dimensions_))
+    , dimension_ptrs_(std::move(rhs.dimension_ptrs_))
     , dim_num_(rhs.dim_num_)
     , tile_order_(rhs.tile_order_)
-    , cell_order_cmp_func_(move(rhs.cell_order_cmp_func_))
-    , cell_order_cmp_func_2_(move(rhs.cell_order_cmp_func_2_))
-    , tile_order_cmp_func_(move(rhs.tile_order_cmp_func_)) {
+    , cell_order_cmp_func_(std::move(rhs.cell_order_cmp_func_))
+    , cell_order_cmp_func_2_(std::move(rhs.cell_order_cmp_func_2_))
+    , tile_order_cmp_func_(std::move(rhs.tile_order_cmp_func_)) {
 }
 
 Domain& Domain::operator=(Domain&& rhs) {
   cell_num_per_tile_ = rhs.cell_num_per_tile_;
   cell_order_ = rhs.cell_order_;
   dim_num_ = rhs.dim_num_;
-  cell_order_cmp_func_ = move(rhs.cell_order_cmp_func_);
-  tile_order_cmp_func_ = move(rhs.tile_order_cmp_func_);
-  dimensions_ = move(rhs.dimensions_);
-  dimension_ptrs_ = move(rhs.dimension_ptrs_);
+  cell_order_cmp_func_ = std::move(rhs.cell_order_cmp_func_);
+  tile_order_cmp_func_ = std::move(rhs.tile_order_cmp_func_);
+  dimensions_ = std::move(rhs.dimensions_);
+  dimension_ptrs_ = std::move(rhs.dimension_ptrs_);
   tile_order_ = rhs.tile_order_;
-  cell_order_cmp_func_2_ = move(rhs.cell_order_cmp_func_2_);
+  cell_order_cmp_func_2_ = std::move(rhs.cell_order_cmp_func_2_);
 
   return *this;
 }
