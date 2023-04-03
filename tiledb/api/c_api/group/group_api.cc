@@ -41,6 +41,7 @@
 #include "../buffer/buffer_api_internal.h"
 #include "../config/config_api_internal.h"
 #include "../context/context_api_internal.h"
+#include "../string/string_api_internal.h"
 
 #include "group_api_internal.h"
 
@@ -346,6 +347,27 @@ error:
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_group_get_member_by_index_v2(
+    tiledb_group_handle_t* group,
+    uint64_t index,
+    tiledb_string_t** uri,
+    tiledb_object_t* type,
+    tiledb_string_t** name) {
+  ensure_group_is_valid(group);
+  ensure_output_pointer_is_valid(uri);
+  ensure_output_pointer_is_valid(type);
+  ensure_output_pointer_is_valid(name);
+
+  auto&& [uri_str, object_type, name_str] =
+      group->group().member_by_index(index);
+
+  *uri = tiledb_string_handle_t::make_handle(uri_str);
+  *type = static_cast<tiledb_object_t>(object_type);
+  *name = name_str ? tiledb_string_handle_t::make_handle(*name_str) : nullptr;
+
+  return TILEDB_OK;
+}
+
 capi_return_t tiledb_group_get_member_by_name(
     tiledb_group_handle_t* group,
     const char* name,
@@ -364,6 +386,26 @@ capi_return_t tiledb_group_get_member_by_name(
     return TILEDB_ERR;
   }
 
+  *type = static_cast<tiledb_object_t>(object_type);
+
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_group_get_member_by_name_v2(
+    tiledb_group_handle_t* group,
+    const char* name,
+    tiledb_string_t** uri,
+    tiledb_object_t* type) {
+  ensure_group_is_valid(group);
+  ensure_output_pointer_is_valid(uri);
+  ensure_output_pointer_is_valid(type);
+
+  std::string uri_str;
+  sm::ObjectType object_type;
+  std::tie(uri_str, object_type, std::ignore, std::ignore) =
+      group->group().member_by_name(name);
+
+  *uri = tiledb_string_handle_t::make_handle(std::move(uri_str));
   *type = static_cast<tiledb_object_t>(object_type);
 
   return TILEDB_OK;
@@ -700,6 +742,17 @@ capi_return_t tiledb_group_get_member_by_index(
       ctx, group, index, uri, type, name);
 }
 
+capi_return_t tiledb_group_get_member_by_index_v2(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    uint64_t index,
+    tiledb_string_t** uri,
+    tiledb_object_t* type,
+    tiledb_string_t** name) TILEDB_NOEXCEPT {
+  return api_entry_context<tiledb::api::tiledb_group_get_member_by_index_v2>(
+      ctx, group, index, uri, type, name);
+}
+
 capi_return_t tiledb_group_get_member_by_name(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
@@ -707,6 +760,16 @@ capi_return_t tiledb_group_get_member_by_name(
     char** uri,
     tiledb_object_t* type) TILEDB_NOEXCEPT {
   return api_entry_context<tiledb::api::tiledb_group_get_member_by_name>(
+      ctx, group, name, uri, type);
+}
+
+capi_return_t tiledb_group_get_member_by_name_v2(
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char* name,
+    tiledb_string_t** uri,
+    tiledb_object_t* type) TILEDB_NOEXCEPT {
+  return api_entry_context<tiledb::api::tiledb_group_get_member_by_name_v2>(
       ctx, group, name, uri, type);
 }
 
