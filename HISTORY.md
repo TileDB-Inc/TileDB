@@ -1,3 +1,26 @@
+# TileDB v2.15.1 Release Notes
+
+## New features
+
+* Introduce "vfs.s3.no_sign_request" to allow unsigned s3 API calls, useful for anonymous s3 bucket access. [#3953](https://github.com/TileDB-Inc/TileDB/pull/3953)
+
+## Improvements
+
+## Deprecations
+
+## Defects removed
+* Fix support for empty strings for Dictionary and RLE encodings [#3938](https://github.com/TileDB-Inc/TileDB/pull/3938)
+* Sparse global order reader: fix read progress update for duplicates. [#3937](https://github.com/TileDB-Inc/TileDB/pull/3937)
+* Sparse unordered w/ dups: fix error on double var size overflow. [#3963](https://github.com/TileDB-Inc/TileDB/pull/3963)
+* Dense reader: fix copies for schema evolution. [#3970](https://github.com/TileDB-Inc/TileDB/pull/3970)
+* Sparse unordered w/ dups: overflow fix shouldn't include empty tile. [#3985](https://github.com/TileDB-Inc/TileDB/pull/3985)
+
+## API changes
+
+### C++ API
+
+* Add a `Group` constructor that accepts a Config in the C++ API. [#4011](https://github.com/TileDB-Inc/TileDB/pull/4011)
+
 # TileDB v2.15.0 Release Notes
 
 ## Disk Format
