@@ -233,17 +233,25 @@ std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> GroupFx::read_group(
     tiledb_group_t* group) const {
   std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> ret;
   uint64_t count = 0;
-  char* uri;
-  tiledb_object_t type;
-  char* name;
   int rc = tiledb_group_get_member_count(ctx_, group, &count);
   REQUIRE(rc == TILEDB_OK);
   for (uint64_t i = 0; i < count; i++) {
-    rc = tiledb_group_get_member_by_index(ctx_, group, i, &uri, &type, &name);
+    tiledb_string_t* uri;
+    tiledb_object_t type;
+    tiledb_string_t* name;
+    rc =
+        tiledb_group_get_member_by_index_v2(ctx_, group, i, &uri, &type, &name);
     REQUIRE(rc == TILEDB_OK);
-    ret.emplace_back(uri, type);
-    std::free(uri);
-    std::free(name);
+    const char* uri_str;
+    size_t uri_size;
+    rc = tiledb_string_view(uri, &uri_str, &uri_size);
+    ret.emplace_back(std::string(uri_str, uri_size), type);
+    rc = tiledb_string_free(&uri);
+    REQUIRE(rc == TILEDB_OK);
+    if (name) {
+      rc = tiledb_string_free(&name);
+      REQUIRE(rc == TILEDB_OK);
+    }
   }
   return ret;
 }

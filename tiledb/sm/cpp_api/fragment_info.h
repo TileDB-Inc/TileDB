@@ -99,10 +99,7 @@ class FragmentInfo {
         ctx.ptr().get(), fragment_info_.get(), fid, &name));
     auto name_ptr =
         std::unique_ptr<tiledb_string_t, tiledb::impl::Deleter>(name);
-    const char* name_c;
-    size_t length;
-    ctx.handle_error(tiledb_string_view(name_ptr.get(), &name_c, &length));
-    return std::string(name_c, length);
+    return impl::handle_to_string(name_ptr);
   }
 
   /**

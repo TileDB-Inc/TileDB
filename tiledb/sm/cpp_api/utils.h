@@ -395,6 +395,18 @@ inline void check_config_error(tiledb_error_t* err) {
   }
 }
 
+template <class Deleter>
+inline std::string handle_to_string(
+    const std::unique_ptr<tiledb_string_t, Deleter>& str) {
+  const char* name_c;
+  size_t length;
+  if (tiledb_status(tiledb_string_view(str.get(), &name_c, &length)) !=
+      TILEDB_OK) {
+    throw std::runtime_error("tiledb_string_view failed.");
+  }
+  return std::string(name_c, length);
+}
+
 }  // namespace impl
 
 }  // namespace tiledb

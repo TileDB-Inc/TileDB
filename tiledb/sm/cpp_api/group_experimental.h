@@ -413,31 +413,29 @@ class Group {
   tiledb::Object member(uint64_t index) const {
     auto& ctx = ctx_.get();
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
-    char* uri;
+    tiledb_string_t* uri;
     tiledb_object_t type;
-    char* name;
-    ctx.handle_error(tiledb_group_get_member_by_index(
+    tiledb_string_t* name;
+    ctx.handle_error(tiledb_group_get_member_by_index_v2(
         c_ctx, group_.get(), index, &uri, &type, &name));
-    std::string uri_str(uri);
-    std::free(uri);
+    auto uri_ptr = std::unique_ptr<tiledb_string_t, impl::Deleter>(uri);
+    auto name_ptr = std::unique_ptr<tiledb_string_t, impl::Deleter>(name);
     std::optional<std::string> name_opt = std::nullopt;
     if (name != nullptr) {
-      name_opt = name;
-      std::free(name);
+      name_opt = impl::handle_to_string(name_ptr);
     }
-    return tiledb::Object(type, uri_str, name_opt);
+    return tiledb::Object(type, impl::handle_to_string(uri_ptr), name_opt);
   }
 
   tiledb::Object member(std::string name) const {
     auto& ctx = ctx_.get();
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
-    char* uri;
+    tiledb_string_t* uri;
     tiledb_object_t type;
-    ctx.handle_error(tiledb_group_get_member_by_name(
+    ctx.handle_error(tiledb_group_get_member_by_name_v2(
         c_ctx, group_.get(), name.c_str(), &uri, &type));
-    std::string uri_str(uri);
-    std::free(uri);
-    return tiledb::Object(type, uri_str, name);
+    auto uri_ptr = std::unique_ptr<tiledb_string_t, impl::Deleter>(uri);
+    return tiledb::Object(type, impl::handle_to_string(uri_ptr), name);
   }
 
   /**
