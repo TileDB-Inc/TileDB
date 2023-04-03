@@ -44,6 +44,19 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+class GroupCloseGuard {
+ public:
+  GroupCloseGuard(Group& group)
+      : group_(group){};
+
+  ~GroupCloseGuard() {
+    group_.close();
+  }
+
+ private:
+  Group& group_;
+};
+
 /* ****************************** */
 /*          CONSTRUCTOR           */
 /* ****************************** */
@@ -78,28 +91,19 @@ Status GroupMetaConsolidator::consolidate(
   Group group_for_reads(group_uri, storage_manager_);
   group_for_reads.open(
       QueryType::READ, config_.timestamp_start_, config_.timestamp_end_);
+  GroupCloseGuard group_for_reads_guard(group_for_reads);
 
   // Open group for writing
   Group group_for_writes(group_uri, storage_manager_);
-  try {
-    group_for_writes.open(QueryType::WRITE);
-  } catch (...) {
-    group_for_reads.close();
-    throw;
-  }
+  group_for_writes.open(QueryType::WRITE);
+  GroupCloseGuard group_for_writes_guard(group_for_writes);
 
   // Swap the in-memory metadata between the two groups.
   // After that, the group for writes will store the (consolidated by
   // the way metadata loading works) metadata of the group for reads
   Metadata *metadata_r, *metadata_w;
-  try {
-    metadata_r = group_for_reads.metadata();
-    metadata_w = group_for_writes.metadata();
-  } catch (...) {
-    group_for_reads.close();
-    group_for_writes.close();
-    throw;
-  }
+  metadata_r = group_for_reads.metadata();
+  metadata_w = group_for_writes.metadata();
   metadata_r->swap(metadata_w);
 
   // Metadata uris to delete
@@ -107,29 +111,10 @@ Status GroupMetaConsolidator::consolidate(
 
   // Generate new name for consolidated metadata
   Status st = metadata_w->generate_uri(group_uri);
-  if (!st.ok()) {
-    group_for_reads.close();
-    group_for_writes.close();
-    return st;
-  }
 
   // Get the new URI name
   URI new_uri;
   st = metadata_w->get_uri(group_uri, &new_uri);
-  if (!st.ok()) {
-    group_for_reads.close();
-    group_for_writes.close();
-    return st;
-  }
-
-  // Close groups
-  try {
-    group_for_reads.close();
-  } catch (...) {
-    group_for_writes.close();
-    throw;
-  }
-  group_for_writes.close();
 
   // Write vacuum file
   URI vac_uri = URI(new_uri.to_string() + constants::vacuum_file_suffix);
