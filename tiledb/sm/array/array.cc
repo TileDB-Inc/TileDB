@@ -913,103 +913,90 @@ void Array::set_config(Config config) {
   config_.inherit(config);
 }
 
-Status Array::delete_metadata(const char* key) {
+void Array::delete_metadata(const char* key) {
   // Check if array is open
   if (!is_open_) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot delete metadata. Array is not open"));
+    throw ArrayException("Cannot delete metadata. Array is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::WRITE &&
       query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot delete metadata. Array was "
-                          "not opened in write or modify_exclusive mode"));
+    throw ArrayException(
+        "Cannot delete metadata. Array was "
+        "not opened in write or modify_exclusive mode");
   }
 
   // Check if key is null
   if (key == nullptr) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot delete metadata. Key cannot be null"));
+    throw ArrayException("Cannot delete metadata. Key cannot be null");
   }
 
   metadata_.del(key);
-
-  return Status::Ok();
 }
 
-Status Array::put_metadata(
+void Array::put_metadata(
     const char* key,
     Datatype value_type,
     uint32_t value_num,
     const void* value) {
   // Check if array is open
   if (!is_open_) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot put metadata; Array is not open"));
+    throw ArrayException("Cannot put metadata; Array is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::WRITE &&
       query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot put metadata; Array was "
-                          "not opened in write or modify_exclusive mode"));
+    throw ArrayException(
+        "Cannot put metadata; Array was "
+        "not opened in write or modify_exclusive mode");
   }
 
   // Check if key is null
   if (key == nullptr) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot put metadata; Key cannot be null"));
+    throw ArrayException("Cannot put metadata; Key cannot be null");
   }
 
   // Check if value type is ANY
   if (value_type == Datatype::ANY) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot put metadata; Value type cannot be ANY"));
+    throw ArrayException("Cannot put metadata; Value type cannot be ANY");
   }
 
   metadata_.put(key, value_type, value_num, value);
-
-  return Status::Ok();
 }
 
-Status Array::get_metadata(
+void Array::get_metadata(
     const char* key,
     Datatype* value_type,
     uint32_t* value_num,
     const void** value) {
   // Check if array is open
   if (!is_open_) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get metadata; Array is not open"));
+    throw ArrayException("Cannot get metadata; Array is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get metadata; Array was "
-                          "not opened in read mode"));
+    throw ArrayException(
+        "Cannot get metadata; Array was "
+        "not opened in read mode");
   }
 
   // Check if key is null
   if (key == nullptr) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get metadata; Key cannot be null"));
+    throw ArrayException("Cannot get metadata; Key cannot be null");
   }
 
   // Load array metadata, if not loaded yet
   if (!metadata_loaded_) {
-    RETURN_NOT_OK(load_metadata());
+    throw_if_not_ok(load_metadata());
   }
 
   metadata_.get(key, value_type, value_num, value);
-
-  return Status::Ok();
 }
 
-Status Array::get_metadata(
+void Array::get_metadata(
     uint64_t index,
     const char** key,
     uint32_t* key_len,
@@ -1018,80 +1005,69 @@ Status Array::get_metadata(
     const void** value) {
   // Check if array is open
   if (!is_open_) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get metadata; Array is not open"));
+    throw ArrayException("Cannot get metadata; Array is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get metadata; Array was "
-                          "not opened in read mode"));
+    throw ArrayException(
+        "Cannot get metadata; Array was "
+        "not opened in read mode");
   }
 
   // Load array metadata, if not loaded yet
   if (!metadata_loaded_) {
-    RETURN_NOT_OK(load_metadata());
+    throw_if_not_ok(load_metadata());
   }
 
   metadata_.get(index, key, key_len, value_type, value_num, value);
-
-  return Status::Ok();
 }
 
-Status Array::get_metadata_num(uint64_t* num) {
+uint64_t Array::metadata_num() {
   // Check if array is open
   if (!is_open_) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get number of metadata; Array is not open"));
+    throw ArrayException("Cannot get number of metadata; Array is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get number of metadata; Array was "
-                          "not opened in read mode"));
+    throw ArrayException(
+        "Cannot get number of metadata; Array was "
+        "not opened in read mode");
   }
 
   // Load array metadata, if not loaded yet
   if (!metadata_loaded_) {
-    RETURN_NOT_OK(load_metadata());
+    throw_if_not_ok(load_metadata());
   }
 
-  *num = metadata_.num();
-
-  return Status::Ok();
+  return metadata_.num();
 }
 
-Status Array::has_metadata_key(
-    const char* key, Datatype* value_type, bool* has_key) {
+bool Array::has_metadata_key(const char* key, Datatype& value_type) {
   // Check if array is open
   if (!is_open_) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get metadata; Array is not open"));
+    throw ArrayException("Cannot get metadata; Array is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get metadata; Array was "
-                          "not opened in read mode"));
+    throw ArrayException(
+        "Cannot get metadata; Array was "
+        "not opened in read mode");
   }
 
   // Check if key is null
   if (key == nullptr) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get metadata; Key cannot be null"));
+    throw ArrayException("Cannot get metadata; Key cannot be null");
   }
 
   // Load array metadata, if not loaded yet
   if (!metadata_loaded_) {
-    RETURN_NOT_OK(load_metadata());
+    throw_if_not_ok(load_metadata());
   }
 
-  *has_key = metadata_.has_metadata(key, *value_type);
-
-  return Status::Ok();
+  return metadata_.has_metadata(key, value_type);
 }
 
 Metadata* Array::unsafe_metadata() {
