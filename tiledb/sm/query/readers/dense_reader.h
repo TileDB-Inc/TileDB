@@ -89,7 +89,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   /** Constructor. */
   DenseReader(
       stats::Stats* stats,
-      shared_ptr<Logger> logger,
+      std::shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -191,7 +191,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
    * budget.
    */
   template <class DimType>
-  tuple<uint64_t, std::vector<ResultTile*>> compute_result_tiles(
+  std::tuple<uint64_t, std::vector<ResultTile*>> compute_result_tiles(
       const std::vector<std::string>& names,
       const std::unordered_set<std::string>& condition_names,
       Subarray& subarray,
@@ -249,7 +249,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
    * start and end of the overlap.
    */
   template <class DimType>
-  tuple<bool, uint64_t, uint64_t> cell_slab_overlaps_range(
+  std::tuple<bool, uint64_t, uint64_t> cell_slab_overlaps_range(
       const unsigned dim_num,
       const NDRange& ndrange,
       const std::vector<DimType>& coords,
@@ -323,7 +323,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   template <class T>
   void fill_dense_coords(
       const Subarray& subarray,
-      const optional<std::vector<uint8_t>> qc_results);
+      const std::optional<std::vector<uint8_t>> qc_results);
 
   /**
    * Fills the coordinate buffers with coordinates. Applicable only to dense
@@ -346,7 +346,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   template <class T>
   void fill_dense_coords_global(
       const Subarray& subarray,
-      const optional<std::vector<uint8_t>> qc_results,
+      const std::optional<std::vector<uint8_t>> qc_results,
       uint64_t& qc_results_index,
       const std::vector<unsigned>& dim_idx,
       const std::vector<QueryBuffer*>& buffers,
@@ -373,7 +373,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   template <class T>
   void fill_dense_coords_row_col(
       const Subarray& subarray,
-      const optional<std::vector<uint8_t>> qc_results,
+      const std::optional<std::vector<uint8_t>> qc_results,
       uint64_t& qc_results_index,
       const std::vector<unsigned>& dim_idx,
       const std::vector<QueryBuffer*>& buffers,
@@ -403,7 +403,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   template <class T>
   void fill_dense_coords_row_slab(
       const T* start,
-      const optional<std::vector<uint8_t>> qc_results,
+      const std::optional<std::vector<uint8_t>> qc_results,
       uint64_t& qc_results_index,
       uint64_t num,
       const std::vector<unsigned>& dim_idx,
@@ -434,7 +434,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   template <class T>
   void fill_dense_coords_col_slab(
       const T* start,
-      const optional<std::vector<uint8_t>> qc_results,
+      const std::optional<std::vector<uint8_t>> qc_results,
       uint64_t& qc_results_index,
       uint64_t num,
       const std::vector<unsigned>& dim_idx,

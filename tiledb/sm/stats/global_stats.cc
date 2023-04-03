@@ -91,7 +91,7 @@ void GlobalStats::reset() {
   iterate([](Stats& stat) { stat.reset(); });
 }
 
-void GlobalStats::register_stats(const shared_ptr<Stats>& stats) {
+void GlobalStats::register_stats(const std::shared_ptr<Stats>& stats) {
   std::unique_lock<std::mutex> ul(mtx_);
   registered_stats_.emplace_back(stats);
 }

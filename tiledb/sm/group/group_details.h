@@ -97,13 +97,13 @@ class GroupDetails {
    * Get the vector of members to modify, used in serialization only
    * @return members_to_modify
    */
-  const std::vector<shared_ptr<GroupMember>>& members_to_modify() const;
+  const std::vector<std::shared_ptr<GroupMember>>& members_to_modify() const;
 
   /**
    * Get the unordered map of members
    * @return members
    */
-  const std::unordered_map<std::string, shared_ptr<GroupMember>>& members()
+  const std::unordered_map<std::string, std::shared_ptr<GroupMember>>& members()
       const;
 
   /**
@@ -112,14 +112,14 @@ class GroupDetails {
    * @param group_member to add
    * @return void
    */
-  void add_member(const shared_ptr<GroupMember> group_member);
+  void add_member(const std::shared_ptr<GroupMember> group_member);
 
   /**
    * Delete a member from the group
    *
    * @param group_member
    */
-  void delete_member(const shared_ptr<GroupMember> group_member);
+  void delete_member(const std::shared_ptr<GroupMember> group_member);
 
   /**
    * Serializes the object members into a binary buffer.
@@ -137,7 +137,7 @@ class GroupDetails {
    * @param version The format spec version.
    * @return Status and Attribute
    */
-  static std::optional<shared_ptr<GroupDetails>> deserialize(
+  static std::optional<std::shared_ptr<GroupDetails>> deserialize(
       Deserializer& deserializer, const URI& group_uri);
 
   /**
@@ -148,8 +148,8 @@ class GroupDetails {
    * @param version The format spec version.
    * @return Status and Attribute
    */
-  static std::optional<shared_ptr<GroupDetails>> deserialize(
-      const std::vector<shared_ptr<Deserializer>>& deserializer,
+  static std::optional<std::shared_ptr<GroupDetails>> deserialize(
+      const std::vector<std::shared_ptr<Deserializer>>& deserializer,
       const URI& group_uri);
 
   /** Returns the group URI. */
@@ -174,8 +174,8 @@ class GroupDetails {
    * @param index of member
    * @return Tuple of URI string, ObjectType, optional GroupMember name
    */
-  tuple<std::string, ObjectType, optional<std::string>> member_by_index(
-      uint64_t index);
+  std::tuple<std::string, ObjectType, std::optional<std::string>>
+  member_by_index(uint64_t index);
 
   /**
    * Get a member by name
@@ -184,8 +184,8 @@ class GroupDetails {
    * @return Tuple of URI string, ObjectType, optional GroupMember name,
    * bool which is true if the URI is relative to the group.
    */
-  tuple<std::string, ObjectType, optional<std::string>, bool> member_by_name(
-      const std::string& name);
+  std::tuple<std::string, ObjectType, std::optional<std::string>, bool>
+  member_by_name(const std::string& name);
 
   /**
    * Return format version
@@ -211,17 +211,18 @@ class GroupDetails {
   URI group_uri_;
 
   /** The mapping of all members of this group. */
-  std::unordered_map<std::string, shared_ptr<GroupMember>> members_;
+  std::unordered_map<std::string, std::shared_ptr<GroupMember>> members_;
 
   /** Vector for index based lookup. */
-  std::vector<shared_ptr<GroupMember>> members_vec_;
+  std::vector<std::shared_ptr<GroupMember>> members_vec_;
 
   /** Unordered map of members by their name, if the member doesn't have a name,
    * it will not be in the map. */
-  std::unordered_map<std::string, shared_ptr<GroupMember>> members_by_name_;
+  std::unordered_map<std::string, std::shared_ptr<GroupMember>>
+      members_by_name_;
 
   /** Mapping of members slated for adding. */
-  std::vector<shared_ptr<GroupMember>> members_to_modify_;
+  std::vector<std::shared_ptr<GroupMember>> members_to_modify_;
 
   /** Mutex for thread safety. */
   mutable std::mutex mtx_;

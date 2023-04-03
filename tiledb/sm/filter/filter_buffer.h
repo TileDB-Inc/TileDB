@@ -275,7 +275,7 @@ class FilterBuffer {
     /**
      * Constructor. Initializes a non-view on the given Buffer.
      */
-    explicit BufferOrView(const shared_ptr<Buffer>& buffer);
+    explicit BufferOrView(const std::shared_ptr<Buffer>& buffer);
 
     /**
      * Constructor. Initializes a view on the given Buffer.
@@ -285,7 +285,9 @@ class FilterBuffer {
      * @param nbytes Length of view in bytes.
      */
     BufferOrView(
-        const shared_ptr<Buffer>& buffer, uint64_t offset, uint64_t nbytes);
+        const std::shared_ptr<Buffer>& buffer,
+        uint64_t offset,
+        uint64_t nbytes);
 
     /** Move constructor. */
     BufferOrView(BufferOrView&& other);
@@ -312,14 +314,14 @@ class FilterBuffer {
     bool is_view() const;
 
     /** Return a pointer to the underlying buffer. */
-    shared_ptr<Buffer> underlying_buffer() const;
+    std::shared_ptr<Buffer> underlying_buffer() const;
 
    private:
     /**
      * Pointer to the underlying buffer, regardless of whether this instance is
      * a view or not.
      */
-    shared_ptr<Buffer> underlying_buffer_;
+    std::shared_ptr<Buffer> underlying_buffer_;
 
     /** True if this instance is a view on the underlying buffer. */
     bool is_view_;

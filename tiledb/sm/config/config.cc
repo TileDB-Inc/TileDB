@@ -870,7 +870,7 @@ const char* Config::get_from_config_or_env(
 }
 
 template <class T, bool must_find_>
-optional<T> Config::get_internal(const std::string& key) const {
+std::optional<T> Config::get_internal(const std::string& key) const {
   auto value = get_internal_string<must_find_>(key);
   if (value.has_value()) {
     T converted_value;
@@ -883,11 +883,11 @@ optional<T> Config::get_internal(const std::string& key) const {
         "' for key '" + key + "'. Reason: " + status.to_string());
   }
 
-  return {nullopt};
+  return {std::nullopt};
 }
 
 template <bool must_find_>
-optional<std::string> Config::get_internal_string(
+std::optional<std::string> Config::get_internal_string(
     const std::string& key) const {
   bool found;
   const char* value = get_from_config_or_env(key, &found);
@@ -898,7 +898,7 @@ optional<std::string> Config::get_internal_string(
   if constexpr (must_find_) {
     throw_config_exception("Failed to get config value for key: " + key);
   }
-  return {nullopt};
+  return {std::nullopt};
 }
 
 /*
@@ -921,13 +921,15 @@ template Status Config::get<double>(
 template Status Config::get_vector<uint32_t>(
     const std::string& param, std::vector<uint32_t>* value, bool* found) const;
 
-template optional<bool> Config::get<bool>(const std::string&) const;
-template optional<int> Config::get<int>(const std::string&) const;
-template optional<uint32_t> Config::get<uint32_t>(const std::string&) const;
-template optional<int64_t> Config::get<int64_t>(const std::string&) const;
-template optional<uint64_t> Config::get<uint64_t>(const std::string&) const;
-template optional<float> Config::get<float>(const std::string&) const;
-template optional<double> Config::get<double>(const std::string&) const;
+template std::optional<bool> Config::get<bool>(const std::string&) const;
+template std::optional<int> Config::get<int>(const std::string&) const;
+template std::optional<uint32_t> Config::get<uint32_t>(
+    const std::string&) const;
+template std::optional<int64_t> Config::get<int64_t>(const std::string&) const;
+template std::optional<uint64_t> Config::get<uint64_t>(
+    const std::string&) const;
+template std::optional<float> Config::get<float>(const std::string&) const;
+template std::optional<double> Config::get<double>(const std::string&) const;
 
 template bool Config::get<bool>(
     const std::string&, const Config::MustFindMarker&) const;
@@ -944,38 +946,38 @@ template float Config::get<float>(
 template double Config::get<double>(
     const std::string&, const Config::MustFindMarker&) const;
 
-template optional<bool> Config::get_internal<bool, false>(
+template std::optional<bool> Config::get_internal<bool, false>(
     const std::string& key) const;
-template optional<bool> Config::get_internal<bool, true>(
+template std::optional<bool> Config::get_internal<bool, true>(
     const std::string& key) const;
-template optional<int> Config::get_internal<int, false>(
+template std::optional<int> Config::get_internal<int, false>(
     const std::string& key) const;
-template optional<int> Config::get_internal<int, true>(
+template std::optional<int> Config::get_internal<int, true>(
     const std::string& key) const;
-template optional<uint32_t> Config::get_internal<uint32_t, false>(
+template std::optional<uint32_t> Config::get_internal<uint32_t, false>(
     const std::string& key) const;
-template optional<uint32_t> Config::get_internal<uint32_t, true>(
+template std::optional<uint32_t> Config::get_internal<uint32_t, true>(
     const std::string& key) const;
-template optional<int64_t> Config::get_internal<int64_t, false>(
+template std::optional<int64_t> Config::get_internal<int64_t, false>(
     const std::string& key) const;
-template optional<int64_t> Config::get_internal<int64_t, true>(
+template std::optional<int64_t> Config::get_internal<int64_t, true>(
     const std::string& key) const;
-template optional<uint64_t> Config::get_internal<uint64_t, false>(
+template std::optional<uint64_t> Config::get_internal<uint64_t, false>(
     const std::string& key) const;
-template optional<uint64_t> Config::get_internal<uint64_t, true>(
+template std::optional<uint64_t> Config::get_internal<uint64_t, true>(
     const std::string& key) const;
-template optional<float> Config::get_internal<float, false>(
+template std::optional<float> Config::get_internal<float, false>(
     const std::string& key) const;
-template optional<float> Config::get_internal<float, true>(
+template std::optional<float> Config::get_internal<float, true>(
     const std::string& key) const;
-template optional<double> Config::get_internal<double, false>(
+template std::optional<double> Config::get_internal<double, false>(
     const std::string& key) const;
-template optional<double> Config::get_internal<double, true>(
+template std::optional<double> Config::get_internal<double, true>(
     const std::string& key) const;
 
-template optional<std::string> Config::get_internal_string<true>(
+template std::optional<std::string> Config::get_internal_string<true>(
     const std::string& key) const;
-template optional<std::string> Config::get_internal_string<false>(
+template std::optional<std::string> Config::get_internal_string<false>(
     const std::string& key) const;
 
 }  // namespace tiledb::sm

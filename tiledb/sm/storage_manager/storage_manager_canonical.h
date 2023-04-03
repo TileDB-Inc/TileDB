@@ -123,7 +123,7 @@ class StorageManagerCanonical {
    */
   StorageManagerCanonical(
       ContextResources& resources,
-      shared_ptr<Logger> logger,
+      std::shared_ptr<Logger> logger,
       const Config& config);
 
  private:
@@ -181,7 +181,8 @@ class StorageManagerCanonical {
    * @param encryption_key encryption key
    * @return tuple Status and pointer to group deserialized
    */
-  tuple<Status, optional<shared_ptr<GroupDetails>>> load_group_from_uri(
+  std::tuple<Status, std::optional<std::shared_ptr<GroupDetails>>>
+  load_group_from_uri(
       const URI& group_uri,
       const URI& uri,
       const EncryptionKey& encryption_key);
@@ -194,7 +195,8 @@ class StorageManagerCanonical {
    * @param encryption_key encryption key
    * @return tuple Status and pointer to group deserialized
    */
-  tuple<Status, optional<shared_ptr<GroupDetails>>> load_group_from_all_uris(
+  std::tuple<Status, std::optional<std::shared_ptr<GroupDetails>>>
+  load_group_from_all_uris(
       const URI& group_uri,
       const std::vector<TimestampedURI>& uris,
       const EncryptionKey& encryption_key);
@@ -207,8 +209,9 @@ class StorageManagerCanonical {
    *
    * @return tuple Status and pointer to group deserialized
    */
-  tuple<Status, optional<shared_ptr<GroupDetails>>> load_group_details(
-      const shared_ptr<GroupDirectory>& group_directory,
+  std::tuple<Status, std::optional<std::shared_ptr<GroupDetails>>>
+  load_group_details(
+      const std::shared_ptr<GroupDirectory>& group_directory,
       const EncryptionKey& encryption_key);
 
   /**
@@ -245,11 +248,12 @@ class StorageManagerCanonical {
    *        fragment_metadata The fragment metadata to be retrieved
    *           after the array is opened.
    */
-  tuple<
+  std::tuple<
       Status,
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
-      optional<std::vector<shared_ptr<FragmentMetadata>>>>
+      std::optional<std::shared_ptr<ArraySchema>>,
+      std::optional<
+          std::unordered_map<std::string, std::shared_ptr<ArraySchema>>>,
+      std::optional<std::vector<std::shared_ptr<FragmentMetadata>>>>
   load_array_schemas_and_fragment_metadata(
       const ArrayDirectory& array_dir,
       MemoryTracker* memory_tracker,
@@ -281,7 +285,9 @@ class StorageManagerCanonical {
    * @param fragment_info The list of fragment info.
    * @return Status, the fragment metadata to be loaded.
    */
-  tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
+  std::tuple<
+      Status,
+      std::optional<std::vector<std::shared_ptr<FragmentMetadata>>>>
   array_load_fragments(
       Array* array, const std::vector<TimestampedURI>& fragment_info);
 
@@ -404,7 +410,7 @@ class StorageManagerCanonical {
    */
   Status array_create(
       const URI& array_uri,
-      const shared_ptr<ArraySchema>& array_schema,
+      const std::shared_ptr<ArraySchema>& array_schema,
       const EncryptionKey& encryption_key);
 
   /**
@@ -648,10 +654,10 @@ class StorageManagerCanonical {
    * @param array The array.
    * @return Status, vector of the conditions, vector of the update values.
    */
-  tuple<
+  std::tuple<
       Status,
-      optional<std::vector<QueryCondition>>,
-      optional<std::vector<std::vector<UpdateValue>>>>
+      std::optional<std::vector<QueryCondition>>,
+      std::optional<std::vector<std::vector<UpdateValue>>>>
   load_delete_and_update_conditions(const Array& array);
 
   /** Removes a TileDB object (group, array). */
@@ -775,7 +781,7 @@ class StorageManagerCanonical {
    * @return Status
    */
   Status store_array_schema(
-      const shared_ptr<ArraySchema>& array_schema,
+      const std::shared_ptr<ArraySchema>& array_schema,
       const EncryptionKey& encryption_key);
 
   /**
@@ -815,7 +821,7 @@ class StorageManagerCanonical {
   }
 
   /** Returns the internal logger object. */
-  shared_ptr<Logger> logger() const;
+  std::shared_ptr<Logger> logger() const;
 
   /**
    * Consolidates the metadata of a group into a single file.
@@ -884,7 +890,7 @@ class StorageManagerCanonical {
   ContextResources& resources_;
 
   /** The class logger. */
-  shared_ptr<Logger> logger_;
+  std::shared_ptr<Logger> logger_;
 
   /** Set to true when tasks are being cancelled. */
   bool cancellation_in_progress_;
@@ -965,11 +971,13 @@ class StorageManagerCanonical {
    *        Status Ok on success, else error
    *        Vector of FragmentMetadata is the fragment metadata to be retrieved.
    */
-  tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
+  std::tuple<
+      Status,
+      std::optional<std::vector<std::shared_ptr<FragmentMetadata>>>>
   load_fragment_metadata(
       MemoryTracker* memory_tracker,
-      const shared_ptr<const ArraySchema>& array_schema,
-      const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+      const std::shared_ptr<const ArraySchema>& array_schema,
+      const std::unordered_map<std::string, std::shared_ptr<ArraySchema>>&
           array_schemas_all,
       const EncryptionKey& encryption_key,
       const std::vector<TimestampedURI>& fragments_to_load,
@@ -985,10 +993,10 @@ class StorageManagerCanonical {
    * @return Status, vector from the fragment name to the offset in `f_buff`
    *     where the basic fragment metadata starts.
    */
-  tuple<
+  std::tuple<
       Status,
-      optional<Tile>,
-      optional<std::vector<std::pair<std::string, uint64_t>>>>
+      std::optional<Tile>,
+      std::optional<std::vector<std::pair<std::string, uint64_t>>>>
   load_consolidated_fragment_meta(const URI& uri, const EncryptionKey& enc_key);
 
   /** Block until there are zero in-progress queries. */

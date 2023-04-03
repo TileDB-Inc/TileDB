@@ -160,7 +160,7 @@ class Dimension {
    * @param version The array schema version.
    * @return Dimension
    */
-  static shared_ptr<Dimension> deserialize(
+  static std::shared_ptr<Dimension> deserialize(
       Deserializer& deserializer, uint32_t version, Datatype type);
 
   /** Returns the domain. */

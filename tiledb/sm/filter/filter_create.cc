@@ -96,7 +96,7 @@ tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
   }
 }
 
-shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
+std::shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
     Deserializer& deserializer,
     const EncryptionKey& encryption_key,
     const uint32_t version) {
@@ -180,7 +180,7 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
           "FilterCreate", "Deserialization error; unknown type");
   }
 }
-shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
+std::shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
     Deserializer& deserializer, const uint32_t version) {
   EncryptionKey encryption_key;
   return tiledb::sm::FilterCreate::deserialize(

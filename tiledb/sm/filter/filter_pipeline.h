@@ -73,7 +73,8 @@ class FilterPipeline {
    * @param filters The vector of filters.
    */
   FilterPipeline(
-      uint32_t max_chunk_size, const std::vector<shared_ptr<Filter>>& filters);
+      uint32_t max_chunk_size,
+      const std::vector<std::shared_ptr<Filter>>& filters);
 
   /** Destructor. */
   ~FilterPipeline() = default;
@@ -304,7 +305,7 @@ class FilterPipeline {
   typedef std::pair<FilterBuffer, FilterBuffer> FilterBufferPair;
 
   /** The ordered list of filters comprising the pipeline. */
-  std::vector<shared_ptr<Filter>> filters_;
+  std::vector<std::shared_ptr<Filter>> filters_;
 
   /** The max chunk size allowed within tiles. */
   uint32_t max_chunk_size_;
@@ -323,7 +324,7 @@ class FilterPipeline {
    * @param offsets_tile Offsets tile.
    * @return Status, chunk offsets vector.
    */
-  tuple<Status, optional<std::vector<uint64_t>>> get_var_chunk_sizes(
+  std::tuple<Status, std::optional<std::vector<uint64_t>>> get_var_chunk_sizes(
       uint32_t chunk_size,
       WriterTile* const tile,
       WriterTile* const offsets_tile) const;

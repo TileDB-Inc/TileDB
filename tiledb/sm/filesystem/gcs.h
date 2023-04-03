@@ -220,7 +220,7 @@ class GCS {
    * @param max_paths The maximum number of paths to be retrieved
    * @return A list of directory_entry objects
    */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
+  std::tuple<Status, std::optional<std::vector<filesystem::directory_entry>>>
   ls_with_sizes(
       const URI& uri,
       const std::string& delimiter = "/",

@@ -70,7 +70,7 @@ class SparseGlobalOrderReaderStatusException : public StatusException {
 template <class BitmapType>
 SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
     stats::Stats* stats,
-    shared_ptr<Logger> logger,
+    std::shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -184,7 +184,7 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
   std::vector<std::string> names;
   names.reserve(buffers_.size());
 
-  std::vector<tuple<>> buffers;
+  std::vector<std::tuple<>> buffers;
   for (auto& buffer : buffers_) {
     names.emplace_back(buffer.first);
   }
@@ -679,7 +679,7 @@ Status SparseGlobalOrderReader<BitmapType>::dedup_fragments_with_timestamps() {
 }
 
 template <class BitmapType>
-tuple<Status, optional<std::vector<ResultCellSlab>>>
+std::tuple<Status, std::optional<std::vector<ResultCellSlab>>>
 SparseGlobalOrderReader<BitmapType>::compute_result_cell_slab() {
   auto timer_se = stats_->start_timer("compute_result_cell_slab");
 
@@ -707,7 +707,7 @@ SparseGlobalOrderReader<BitmapType>::compute_result_cell_slab() {
   // User gave us some empty buffers, exit.
   if (num_cells == 0) {
     buffers_full_ = true;
-    return {Status::Ok(), nullopt};
+    return {Status::Ok(), std::nullopt};
   }
 
   if (array_schema_.cell_order() == Layout::HILBERT) {
@@ -918,7 +918,7 @@ void SparseGlobalOrderReader<BitmapType>::update_frag_idx(
 
 template <class BitmapType>
 template <class CompType>
-tuple<Status, optional<std::vector<ResultCellSlab>>>
+std::tuple<Status, std::optional<std::vector<ResultCellSlab>>>
 SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
     uint64_t num_cells) {
   auto timer_se = stats_->start_timer("merge_result_cell_slabs");
@@ -970,7 +970,7 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
         return Status::Ok();
       });
   RETURN_NOT_OK_ELSE_TUPLE(
-      status, logger_->status_no_return_value(status), nullopt);
+      status, logger_->status_no_return_value(status), std::nullopt);
 
   const bool non_overlapping_ranges = std::is_same<BitmapType, uint8_t>::value;
 
@@ -1145,7 +1145,7 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
 };
 
 template <class BitmapType>
-tuple<uint64_t, uint64_t, uint64_t, bool>
+std::tuple<uint64_t, uint64_t, uint64_t, bool>
 SparseGlobalOrderReader<BitmapType>::compute_parallelization_parameters(
     const uint64_t range_thread_idx,
     const uint64_t num_range_threads,
@@ -1653,7 +1653,7 @@ Status SparseGlobalOrderReader<BitmapType>::copy_delete_meta_tiles(
 }
 
 template <class BitmapType>
-tuple<Status, optional<std::vector<uint64_t>>>
+std::tuple<Status, std::optional<std::vector<uint64_t>>>
 SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
     const std::vector<std::string>& names,
     std::vector<ResultCellSlab>& result_cell_slabs) {
@@ -1735,13 +1735,13 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
         return Status::Ok();
       });
   RETURN_NOT_OK_ELSE_TUPLE(
-      status, logger_->status_no_return_value(status), nullopt);
+      status, logger_->status_no_return_value(status), std::nullopt);
 
   if (max_cs_idx == 0) {
     return {
         Status_SparseUnorderedWithDupsReaderError(
             "Unable to copy one slab with current budget/buffers"),
-        nullopt};
+        std::nullopt};
   }
 
   // Resize the result tiles vector.
@@ -2068,7 +2068,7 @@ Status SparseGlobalOrderReader<BitmapType>::end_iteration() {
 // Explicit template instantiations
 template SparseGlobalOrderReader<uint8_t>::SparseGlobalOrderReader(
     stats::Stats*,
-    shared_ptr<Logger>,
+    std::shared_ptr<Logger>,
     StorageManager*,
     Array*,
     Config&,
@@ -2080,7 +2080,7 @@ template SparseGlobalOrderReader<uint8_t>::SparseGlobalOrderReader(
     bool);
 template SparseGlobalOrderReader<uint64_t>::SparseGlobalOrderReader(
     stats::Stats*,
-    shared_ptr<Logger>,
+    std::shared_ptr<Logger>,
     StorageManager*,
     Array*,
     Config&,

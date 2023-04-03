@@ -142,7 +142,8 @@ Status GCS::init_client() const {
   // Creates the client using the credentials file pointed to by the
   // env variable GOOGLE_APPLICATION_CREDENTIALS
   try {
-    shared_ptr<google::cloud::storage::oauth2::Credentials> creds = nullptr;
+    std::shared_ptr<google::cloud::storage::oauth2::Credentials> creds =
+        nullptr;
     if (getenv("CLOUD_STORAGE_EMULATOR_ENDPOINT")) {
       creds = google::cloud::storage::oauth2::CreateAnonymousCredentials();
     } else {
@@ -400,22 +401,23 @@ Status GCS::ls(
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<directory_entry>>> GCS::ls_with_sizes(
+std::tuple<Status, std::optional<std::vector<directory_entry>>>
+GCS::ls_with_sizes(
     const URI& uri, const std::string& delimiter, int max_paths) const {
-  RETURN_NOT_OK_TUPLE(init_client(), nullopt);
+  RETURN_NOT_OK_TUPLE(init_client(), std::nullopt);
 
   const URI uri_dir = uri.add_trailing_slash();
 
   if (!uri_dir.is_gcs()) {
     auto st = LOG_STATUS(Status_GCSError(
         std::string("URI is not a GCS URI: " + uri_dir.to_string())));
-    return {st, nullopt};
+    return {st, std::nullopt};
   }
 
   std::string bucket_name;
   std::string object_path;
   RETURN_NOT_OK_TUPLE(
-      parse_gcs_uri(uri_dir, &bucket_name, &object_path), nullopt);
+      parse_gcs_uri(uri_dir, &bucket_name, &object_path), std::nullopt);
 
   std::vector<directory_entry> entries;
   google::cloud::storage::Prefix prefix_option(object_path);
@@ -431,7 +433,7 @@ tuple<Status, optional<std::vector<directory_entry>>> GCS::ls_with_sizes(
       auto st = LOG_STATUS(Status_GCSError(std::string(
           "List objects failed on: " + uri.to_string() + " (" +
           status.message() + ")")));
-      return {st, nullopt};
+      return {st, std::nullopt};
     }
 
     if (entries.size() >= static_cast<size_t>(max_paths)) {

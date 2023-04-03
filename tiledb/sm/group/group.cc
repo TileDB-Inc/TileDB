@@ -279,11 +279,11 @@ bool Group::is_remote() const {
   return remote_;
 }
 
-shared_ptr<GroupDetails> Group::group_details() {
+std::shared_ptr<GroupDetails> Group::group_details() {
   return group_details_;
 }
 
-const shared_ptr<GroupDetails> Group::group_details() const {
+const std::shared_ptr<GroupDetails> Group::group_details() const {
   return group_details_;
 }
 
@@ -540,12 +540,12 @@ Status Group::clear() {
   return group_details_->clear();
 }
 
-void Group::add_member(const shared_ptr<GroupMember> group_member) {
+void Group::add_member(const std::shared_ptr<GroupMember> group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
   group_details_->add_member(group_member);
 }
 
-void Group::delete_member(const shared_ptr<GroupMember> group_member) {
+void Group::delete_member(const std::shared_ptr<GroupMember> group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
   group_details_->delete_member(group_member);
 }
@@ -594,13 +594,14 @@ Status Group::mark_member_for_removal(const std::string& uri) {
   return group_details_->mark_member_for_removal(uri);
 }
 
-const std::vector<shared_ptr<GroupMember>>& Group::members_to_modify() const {
+const std::vector<std::shared_ptr<GroupMember>>& Group::members_to_modify()
+    const {
   std::lock_guard<std::mutex> lck(mtx_);
   return group_details_->members_to_modify();
 }
 
-const std::unordered_map<std::string, shared_ptr<GroupMember>>& Group::members()
-    const {
+const std::unordered_map<std::string, std::shared_ptr<GroupMember>>&
+Group::members() const {
   std::lock_guard<std::mutex> lck(mtx_);
   return group_details_->members();
 }
@@ -613,11 +614,11 @@ const URI Group::group_detail_uri() const {
   return group_uri_.join_path(constants::group_detail_dir_name);
 }
 
-const shared_ptr<GroupDirectory> Group::group_directory() const {
+const std::shared_ptr<GroupDirectory> Group::group_directory() const {
   return group_dir_;
 }
 
-tuple<Status, optional<URI>> Group::generate_detail_uri() const {
+std::tuple<Status, std::optional<URI>> Group::generate_detail_uri() const {
   auto&& [st, name] = generate_name();
   RETURN_NOT_OK_TUPLE(st, std::nullopt);
 
@@ -651,8 +652,8 @@ uint64_t Group::member_count() const {
   return group_details_->member_count();
 }
 
-tuple<std::string, ObjectType, optional<std::string>> Group::member_by_index(
-    uint64_t index) {
+std::tuple<std::string, ObjectType, std::optional<std::string>>
+Group::member_by_index(uint64_t index) {
   std::lock_guard<std::mutex> lck(mtx_);
 
   // Check if group is open
@@ -669,7 +670,7 @@ tuple<std::string, ObjectType, optional<std::string>> Group::member_by_index(
   return group_details_->member_by_index(index);
 }
 
-tuple<std::string, ObjectType, optional<std::string>, bool>
+std::tuple<std::string, ObjectType, std::optional<std::string>, bool>
 Group::member_by_name(const std::string& name) {
   std::lock_guard<std::mutex> lck(mtx_);
 
@@ -725,7 +726,7 @@ std::string Group::dump(
 /*         PROTECTED METHODS         */
 /* ********************************* */
 
-tuple<Status, optional<std::string>> Group::generate_name() const {
+std::tuple<Status, std::optional<std::string>> Group::generate_name() const {
   std::string uuid;
   RETURN_NOT_OK_TUPLE(uuid::generate_uuid(&uuid, false), std::nullopt);
 

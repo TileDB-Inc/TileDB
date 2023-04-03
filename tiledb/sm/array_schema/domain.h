@@ -79,7 +79,7 @@ class Domain {
   /** Constructor.*/
   Domain(
       Layout cell_order,
-      const std::vector<shared_ptr<Dimension>> dimensions,
+      const std::vector<std::shared_ptr<Dimension>> dimensions,
       Layout tile_order);
 
   /**
@@ -118,7 +118,7 @@ class Domain {
    * @param dim The dimension to be added.
    * @return Status
    */
-  Status add_dimension(shared_ptr<Dimension> dim);
+  Status add_dimension(std::shared_ptr<Dimension> dim);
 
   /** Returns true if all dimensions have fixed-sized domain datatypes. */
   bool all_dims_fixed() const;
@@ -191,7 +191,7 @@ class Domain {
    * @param version The array schema version.
    * @return Status and Domain
    */
-  static shared_ptr<Domain> deserialize(
+  static std::shared_ptr<Domain> deserialize(
       Deserializer& deserializer,
       uint32_t version,
       Layout cell_order,
@@ -249,7 +249,7 @@ class Domain {
    * @param i index of the dimension within the domain
    * @return non-null pointer to the dimension
    */
-  inline shared_ptr<Dimension> dimension_shared_ptr(
+  inline std::shared_ptr<Dimension> dimension_shared_ptr(
       dimension_size_type i) const {
     if (i > dim_num_) {
       throw std::invalid_argument("invalid dimension index");
@@ -271,7 +271,8 @@ class Domain {
    * @return copy of the storage pointer to the dimension with matching name,
    * a null pointer otherwise.
    */
-  shared_ptr<Dimension> dimension_shared_ptr(const std::string& name) const;
+  std::shared_ptr<Dimension> dimension_shared_ptr(
+      const std::string& name) const;
 
   /** Dumps the domain in ASCII format in the selected output. */
   void dump(FILE* out) const;
@@ -532,7 +533,7 @@ class Domain {
    *
    * @invariant All pointers in the vector are non-null.
    */
-  std::vector<shared_ptr<Dimension>> dimensions_;
+  std::vector<std::shared_ptr<Dimension>> dimensions_;
 
   /**
    * Non-allocating mirror of the dimensions vector.

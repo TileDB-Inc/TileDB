@@ -193,7 +193,7 @@ class SubarrayTileOverlap final {
    * The indexed TileOverlap instances. This is a shared pointer because
    * it is shared between copies.
    */
-  shared_ptr<TileOverlapIndex> tile_overlap_idx_;
+  std::shared_ptr<TileOverlapIndex> tile_overlap_idx_;
 
   /** The real inclusive start range index. */
   uint64_t range_idx_start_;

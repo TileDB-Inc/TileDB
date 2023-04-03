@@ -138,7 +138,7 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   write_cache_max_size_ = max_parallel_ops_ * block_list_block_size_;
 
   // Initialize a credential object
-  shared_ptr<azure::storage_lite::storage_credential> credential =
+  std::shared_ptr<azure::storage_lite::storage_credential> credential =
       make_shared<azure::storage_lite::shared_key_credential>(
           HERE(), account_name, account_key);
 
@@ -580,7 +580,8 @@ Status Azure::ls(
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<directory_entry>>> Azure::ls_with_sizes(
+std::tuple<Status, std::optional<std::vector<directory_entry>>>
+Azure::ls_with_sizes(
     const URI& uri, const std::string& delimiter, int max_paths) const {
   assert(client_);
 
@@ -589,13 +590,13 @@ tuple<Status, optional<std::vector<directory_entry>>> Azure::ls_with_sizes(
   if (!uri_dir.is_azure()) {
     auto st = LOG_STATUS(Status_AzureError(
         std::string("URI is not an Azure URI: " + uri_dir.to_string())));
-    return {st, nullopt};
+    return {st, std::nullopt};
   }
 
   std::string container_name;
   std::string blob_path;
   RETURN_NOT_OK_TUPLE(
-      parse_azure_uri(uri_dir, &container_name, &blob_path), nullopt);
+      parse_azure_uri(uri_dir, &container_name, &blob_path), std::nullopt);
 
   std::vector<directory_entry> entries;
   std::string continuation_token = "";
@@ -611,7 +612,7 @@ tuple<Status, optional<std::vector<directory_entry>>> Azure::ls_with_sizes(
     if (!result.valid()) {
       auto st = LOG_STATUS(Status_AzureError(
           std::string("List blobs failed on: " + uri_dir.to_string())));
-      return {st, nullopt};
+      return {st, std::nullopt};
     }
 
     azure::storage_lite::storage_outcome<
@@ -620,7 +621,7 @@ tuple<Status, optional<std::vector<directory_entry>>> Azure::ls_with_sizes(
     if (!outcome.success()) {
       auto st = LOG_STATUS(Status_AzureError(
           std::string("List blobs failed on: " + uri_dir.to_string())));
-      return {st, nullopt};
+      return {st, std::nullopt};
     }
 
     azure::storage_lite::list_blobs_segmented_response response =

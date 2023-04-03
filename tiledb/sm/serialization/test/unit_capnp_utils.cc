@@ -74,7 +74,7 @@ void check_filter_pipelines(
 }
 
 TEST_CASE("Serialize and deserialize attribute", "[attribute][serialization]") {
-  shared_ptr<Attribute> attr{nullptr};
+  std::shared_ptr<Attribute> attr{nullptr};
 
   SECTION("Default attribute") {
     auto type = GENERATE(

@@ -59,7 +59,7 @@ class StrategyBase {
   /** Constructor. */
   StrategyBase(
       stats::Stats* stats,
-      shared_ptr<Logger> logger,
+      std::shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -104,7 +104,7 @@ class StrategyBase {
   stats::Stats* stats_;
 
   /** The class logger. */
-  shared_ptr<Logger> logger_;
+  std::shared_ptr<Logger> logger_;
 
   /** The array. */
   const Array* array_;

@@ -113,7 +113,7 @@ class WhiteboxInterval : public Interval<T> {
     return z;
   }
 
-  tuple<bool, optional<WhiteboxInterval<T>>> interval_union(
+  std::tuple<bool, std::optional<WhiteboxInterval<T>>> interval_union(
       WhiteboxInterval<T> y) {
     auto [b, z] = Base::interval_union(y);
     auto [b1, z1] = y.Base::interval_union(*this);
@@ -123,7 +123,7 @@ class WhiteboxInterval : public Interval<T> {
       zv.check_equality(z1.value());
       return {true, zv};
     } else {
-      return {false, nullopt};
+      return {false, std::nullopt};
     }
   }
 
@@ -147,7 +147,7 @@ class WhiteboxInterval : public Interval<T> {
 /**
  * List of types used to instantiate generic test cases
  */
-typedef tuple<uint16_t, uint64_t, int16_t, double> TypesUnderTest;
+typedef std::tuple<uint16_t, uint64_t, int16_t, double> TypesUnderTest;
 
 /**
  * Test type traits allow generic instantiation by Catch from a list of types.

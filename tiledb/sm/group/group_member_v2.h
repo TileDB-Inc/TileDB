@@ -73,7 +73,7 @@ class GroupMemberV2 : public GroupMember {
    * @param version The format spec version.
    * @return Status and Attribute
    */
-  static shared_ptr<GroupMember> deserialize(Deserializer& deserializer);
+  static std::shared_ptr<GroupMember> deserialize(Deserializer& deserializer);
 
  private:
   /* Format version for class. */

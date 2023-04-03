@@ -59,9 +59,9 @@ TEST_CASE(
   REQUIRE(query_condition.empty());
   REQUIRE(query_condition.field_names().empty());
 
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  std::shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   std::vector<ResultCellSlab> result_cell_slabs;
-  std::vector<shared_ptr<FragmentMetadata>> frag_md;
+  std::vector<std::shared_ptr<FragmentMetadata>> frag_md;
   REQUIRE(
       query_condition.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
 }
@@ -1018,7 +1018,7 @@ void test_apply_cells(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values);
 
@@ -1030,7 +1030,7 @@ void test_apply_cells<char*>(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
   const char* const cmp_value = "ae";
@@ -1090,7 +1090,7 @@ void test_apply_cells<char*>(
   ResultCellSlab result_cell_slab(result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  std::vector<shared_ptr<FragmentMetadata>> frag_md(1);
+  std::vector<std::shared_ptr<FragmentMetadata>> frag_md(1);
   frag_md[0] = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
@@ -1127,7 +1127,7 @@ void test_apply_cells<char*>(
       std::vector<ResultCellSlab> result_cell_slabs_eq_null;
       result_cell_slabs_eq_null.emplace_back(
           std::move(result_cell_slab_eq_null));
-      std::vector<shared_ptr<FragmentMetadata>> frag_md(1);
+      std::vector<std::shared_ptr<FragmentMetadata>> frag_md(1);
       frag_md[0] = make_shared<FragmentMetadata>(
           HERE(),
           nullptr,
@@ -1227,7 +1227,7 @@ void test_apply_cells(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
   const T cmp_value = 5;
@@ -1276,7 +1276,7 @@ void test_apply_cells(
   ResultCellSlab result_cell_slab(result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  std::vector<shared_ptr<FragmentMetadata>> frag_md(1);
+  std::vector<std::shared_ptr<FragmentMetadata>> frag_md(1);
   frag_md[0] = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
@@ -1374,7 +1374,7 @@ template <typename T>
 void test_apply_operators(
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
   test_apply_cells<T>(
@@ -1434,7 +1434,7 @@ template <typename T>
 void test_apply_tile(
     const std::string& field_name,
     uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile* result_tile);
 
 /**
@@ -1444,7 +1444,7 @@ template <>
 void test_apply_tile<char*>(
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
 
@@ -1497,7 +1497,7 @@ template <typename T>
 void test_apply_tile(
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
   Tile* const tile = &tile_tuple->fixed_tile();
@@ -1539,7 +1539,7 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
   const char* fill_value = "ac";
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  std::shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);
@@ -1592,7 +1592,7 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
   const T fill_value = 3;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  std::shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
   attr.set_cell_val_num(1);
   attr.set_fill_value(&fill_value, sizeof(T));
@@ -1684,7 +1684,7 @@ TEST_CASE(
     return;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  std::shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);
@@ -1811,7 +1811,7 @@ TEST_CASE(
   ResultCellSlab result_cell_slab(&result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  std::vector<shared_ptr<FragmentMetadata>> frag_md(1);
+  std::vector<std::shared_ptr<FragmentMetadata>> frag_md(1);
   frag_md[0] = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
@@ -1849,7 +1849,7 @@ void test_apply_cells_dense(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values);
 
@@ -1861,7 +1861,7 @@ void test_apply_cells_dense<char*>(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
   const char* const cmp_value = "ae";
@@ -1982,7 +1982,7 @@ void test_apply_cells_dense(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
   const T cmp_value = 5;
@@ -2064,7 +2064,7 @@ template <typename T>
 void test_apply_operators_dense(
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
   test_apply_cells_dense<T>(
@@ -2124,7 +2124,7 @@ template <typename T>
 void test_apply_tile_dense(
     const std::string& field_name,
     uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile* result_tile);
 
 /**
@@ -2134,7 +2134,7 @@ template <>
 void test_apply_tile_dense<char*>(
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
 
@@ -2186,7 +2186,7 @@ template <typename T>
 void test_apply_tile_dense(
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
   Tile* const tile = &tile_tuple->fixed_tile();
@@ -2229,7 +2229,7 @@ void test_apply_dense<char*>(
   const char* fill_value = "ac";
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  std::shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);
@@ -2284,7 +2284,7 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
   const T fill_value = 3;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  std::shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
   attr.set_cell_val_num(1);
   attr.set_fill_value(&fill_value, sizeof(T));
@@ -2381,7 +2381,7 @@ TEST_CASE(
     return;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  std::shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);
@@ -2541,7 +2541,7 @@ void test_apply_cells_sparse(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values);
 
@@ -2553,7 +2553,7 @@ void test_apply_cells_sparse<char*>(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
   const char* const cmp_value = "ae";
@@ -2659,7 +2659,7 @@ void test_apply_cells_sparse(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
   const T cmp_value = 5;
@@ -2733,7 +2733,7 @@ template <typename T>
 void test_apply_operators_sparse(
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
   test_apply_cells_sparse<T>(
@@ -2793,7 +2793,7 @@ template <typename T>
 void test_apply_tile_sparse(
     const std::string& field_name,
     uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile* result_tile);
 
 /**
@@ -2803,7 +2803,7 @@ template <>
 void test_apply_tile_sparse<char*>(
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
 
@@ -2855,7 +2855,7 @@ template <typename T>
 void test_apply_tile_sparse(
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
   Tile* const tile = &tile_tuple->fixed_tile();
@@ -2898,7 +2898,7 @@ void test_apply_sparse<char*>(
   const char* fill_value = "ac";
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  std::shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);
@@ -2953,7 +2953,7 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
   const T fill_value = 3;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  std::shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
   attr.set_cell_val_num(1);
   attr.set_fill_value(&fill_value, sizeof(T));
@@ -3103,13 +3103,13 @@ struct TestParams {
 void validate_qc_apply(
     TestParams& tp,
     uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile& result_tile,
     bool negated = false) {
   ResultCellSlab result_cell_slab(&result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  std::vector<shared_ptr<FragmentMetadata>> frag_md(1);
+  std::vector<std::shared_ptr<FragmentMetadata>> frag_md(1);
   frag_md[0] = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
@@ -3145,7 +3145,7 @@ void validate_qc_apply(
 void validate_qc_apply_sparse(
     TestParams& tp,
     uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile& result_tile,
     bool negated = false) {
   std::vector<uint8_t> sparse_result_bitmap(cells, 1);
@@ -3185,7 +3185,7 @@ void validate_qc_apply_sparse(
 void validate_qc_apply_dense(
     TestParams& tp,
     uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    std::shared_ptr<const ArraySchema> array_schema,
     ResultTile& result_tile,
     bool negated = false) {
   std::vector<uint8_t> dense_result_bitmap(cells, 1);
@@ -3713,7 +3713,7 @@ TEST_CASE(
   const Datatype type = Datatype::UINT64;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  std::shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
   REQUIRE(
       array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
@@ -3989,7 +3989,7 @@ TEST_CASE(
   const Datatype type = GENERATE(Datatype::STRING_ASCII, Datatype::STRING_UTF8);
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  std::shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
   attr.set_nullable(false);
   attr.set_cell_val_num(constants::var_num);
@@ -4333,7 +4333,7 @@ TEST_CASE(
   const Datatype type = Datatype::STRING_UTF8;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  std::shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
   attr.set_nullable(false);
   attr.set_cell_val_num(constants::var_num);
@@ -4645,7 +4645,7 @@ TEST_CASE(
   const Datatype type = Datatype::FLOAT32;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  std::shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
   attr.set_nullable(true);
   REQUIRE(
@@ -4732,7 +4732,7 @@ TEST_CASE(
     return;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  std::shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);

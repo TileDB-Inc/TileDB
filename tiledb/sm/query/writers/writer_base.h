@@ -69,7 +69,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   /** Constructor. */
   WriterBase(
       stats::Stats* stats,
-      shared_ptr<Logger> logger,
+      std::shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -80,7 +80,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       bool disable_checks_consolidation,
       Query::CoordsInfo& coords_info_,
       bool remote_query,
-      optional<std::string> fragment_name = nullopt,
+      std::optional<std::string> fragment_name = std::nullopt,
       bool skip_checks_serialization = false);
 
   /** Destructor. */
@@ -241,7 +241,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   void clear_coord_buffers();
 
   /** Closes all attribute files, flushing their state to storage. */
-  Status close_files(shared_ptr<FragmentMetadata> meta) const;
+  Status close_files(std::shared_ptr<FragmentMetadata> meta) const;
 
   /**
    * Computes the MBRs.
@@ -269,7 +269,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       const uint64_t end_tile_idx,
       const std::unordered_map<std::string, WriterTileTupleVector>& tiles,
       const std::vector<NDRange>& mbrs,
-      shared_ptr<FragmentMetadata> meta) const;
+      std::shared_ptr<FragmentMetadata> meta) const;
 
   /**
    * Computes the tiles metadata (min/max/sum/null count).
@@ -299,7 +299,8 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @param frag_meta The fragment metadata to be generated.
    * @return Status
    */
-  Status create_fragment(bool dense, shared_ptr<FragmentMetadata>& frag_meta);
+  Status create_fragment(
+      bool dense, std::shared_ptr<FragmentMetadata>& frag_meta);
 
   /**
    * Runs the input coordinate and attribute tiles through their
@@ -442,7 +443,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   Status write_tiles(
       const uint64_t start_tile_idx,
       const uint64_t end_tile_idx,
-      shared_ptr<FragmentMetadata> frag_meta,
+      std::shared_ptr<FragmentMetadata> frag_meta,
       std::unordered_map<std::string, WriterTileTupleVector>* tiles);
 
   /**
@@ -463,7 +464,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       const uint64_t start_tile_idx,
       const uint64_t end_tile_idx,
       const std::string& name,
-      shared_ptr<FragmentMetadata> frag_meta,
+      std::shared_ptr<FragmentMetadata> frag_meta,
       uint64_t start_tile_id,
       WriterTileTupleVector* tiles,
       bool close_files = true);

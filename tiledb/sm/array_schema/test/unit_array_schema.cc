@@ -40,9 +40,9 @@ using namespace tiledb::sm;
 
 TEST_CASE("Test repeating names", "[array_schema]") {
   SECTION("Catch label with dimension name") {
-    std::vector<shared_ptr<Dimension>> dims{
+    std::vector<std::shared_ptr<Dimension>> dims{
         test::make_dimension<uint64_t>("x", Datatype::UINT64, 1, 0, 15, 16)};
-    std::vector<shared_ptr<Attribute>> attrs{
+    std::vector<std::shared_ptr<Attribute>> attrs{
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
     schema->add_dimension_label(
@@ -51,28 +51,28 @@ TEST_CASE("Test repeating names", "[array_schema]") {
   }
 
   SECTION("Catch shared dimension/attribute name") {
-    std::vector<shared_ptr<Dimension>> dims{
+    std::vector<std::shared_ptr<Dimension>> dims{
         test::make_dimension<uint64_t>("x", Datatype::UINT64, 1, 0, 15, 16)};
-    std::vector<shared_ptr<Attribute>> attrs{
+    std::vector<std::shared_ptr<Attribute>> attrs{
         test::make_attribute<float>("x", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
     REQUIRE_THROWS(schema->check());
   }
 
   SECTION("Catch repeating dimension name") {
-    std::vector<shared_ptr<Dimension>> dims{
+    std::vector<std::shared_ptr<Dimension>> dims{
         test::make_dimension<uint64_t>("x", Datatype::UINT64, 1, 0, 15, 16),
         test::make_dimension<uint64_t>("x", Datatype::UINT64, 1, 0, 15, 16)};
-    std::vector<shared_ptr<Attribute>> attrs{
+    std::vector<std::shared_ptr<Attribute>> attrs{
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
     REQUIRE_THROWS(schema->check());
   }
 
   SECTION("Catch repeating attribute name") {
-    std::vector<shared_ptr<Dimension>> dims{
+    std::vector<std::shared_ptr<Dimension>> dims{
         test::make_dimension<uint64_t>("x", Datatype::UINT64, 1, 0, 15, 16)};
-    std::vector<shared_ptr<Attribute>> attrs{
+    std::vector<std::shared_ptr<Attribute>> attrs{
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0),
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
@@ -80,9 +80,9 @@ TEST_CASE("Test repeating names", "[array_schema]") {
   }
 
   SECTION("Catch repeating label name shared with dim when adding label") {
-    std::vector<shared_ptr<Dimension>> dims{
+    std::vector<std::shared_ptr<Dimension>> dims{
         test::make_dimension<uint64_t>("x", Datatype::UINT64, 1, 0, 15, 16)};
-    std::vector<shared_ptr<Attribute>> attrs{
+    std::vector<std::shared_ptr<Attribute>> attrs{
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
     schema->add_dimension_label(
@@ -92,9 +92,9 @@ TEST_CASE("Test repeating names", "[array_schema]") {
   }
 
   SECTION("Catch repeating label name shared with dim with check") {
-    std::vector<shared_ptr<Dimension>> dims{
+    std::vector<std::shared_ptr<Dimension>> dims{
         test::make_dimension<uint64_t>("x", Datatype::UINT64, 1, 0, 15, 16)};
-    std::vector<shared_ptr<Attribute>> attrs{
+    std::vector<std::shared_ptr<Attribute>> attrs{
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
     schema->add_dimension_label(
@@ -105,9 +105,9 @@ TEST_CASE("Test repeating names", "[array_schema]") {
   }
 
   SECTION("Catch repeating label name not shared with dim when adding label") {
-    std::vector<shared_ptr<Dimension>> dims{
+    std::vector<std::shared_ptr<Dimension>> dims{
         test::make_dimension<uint64_t>("x", Datatype::UINT64, 1, 0, 15, 16)};
-    std::vector<shared_ptr<Attribute>> attrs{
+    std::vector<std::shared_ptr<Attribute>> attrs{
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
     schema->add_dimension_label(
@@ -117,9 +117,9 @@ TEST_CASE("Test repeating names", "[array_schema]") {
   }
 
   SECTION("Catch repeating label name not shared with dim with check") {
-    std::vector<shared_ptr<Dimension>> dims{
+    std::vector<std::shared_ptr<Dimension>> dims{
         test::make_dimension<uint64_t>("x", Datatype::UINT64, 1, 0, 15, 16)};
-    std::vector<shared_ptr<Attribute>> attrs{
+    std::vector<std::shared_ptr<Attribute>> attrs{
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
     schema->add_dimension_label(
@@ -130,9 +130,9 @@ TEST_CASE("Test repeating names", "[array_schema]") {
   }
 
   SECTION("Catch shared label/attribute name when adding label") {
-    std::vector<shared_ptr<Dimension>> dims{
+    std::vector<std::shared_ptr<Dimension>> dims{
         test::make_dimension<uint64_t>("x", Datatype::UINT64, 1, 0, 15, 16)};
-    std::vector<shared_ptr<Attribute>> attrs{
+    std::vector<std::shared_ptr<Attribute>> attrs{
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
     auto status = schema->check();
@@ -142,9 +142,9 @@ TEST_CASE("Test repeating names", "[array_schema]") {
   }
 
   SECTION("Catch shared label/attribute name with schema check") {
-    std::vector<shared_ptr<Dimension>> dims{
+    std::vector<std::shared_ptr<Dimension>> dims{
         test::make_dimension<uint64_t>("x", Datatype::UINT64, 1, 0, 15, 16)};
-    std::vector<shared_ptr<Attribute>> attrs{
+    std::vector<std::shared_ptr<Attribute>> attrs{
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
     auto status = schema->check();
@@ -154,10 +154,10 @@ TEST_CASE("Test repeating names", "[array_schema]") {
   }
 
   SECTION("Catch shared label/dimension name when adding label") {
-    std::vector<shared_ptr<Dimension>> dims{
+    std::vector<std::shared_ptr<Dimension>> dims{
         test::make_dimension<uint64_t>("x", Datatype::UINT64, 1, 0, 15, 16),
         test::make_dimension<uint64_t>("y", Datatype::UINT64, 1, 0, 15, 16)};
-    std::vector<shared_ptr<Attribute>> attrs{
+    std::vector<std::shared_ptr<Attribute>> attrs{
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
     auto status = schema->check();
@@ -167,10 +167,10 @@ TEST_CASE("Test repeating names", "[array_schema]") {
   }
 
   SECTION("Catch shared label/dimension name with check") {
-    std::vector<shared_ptr<Dimension>> dims{
+    std::vector<std::shared_ptr<Dimension>> dims{
         test::make_dimension<uint64_t>("x", Datatype::UINT64, 1, 0, 15, 16),
         test::make_dimension<uint64_t>("y", Datatype::UINT64, 1, 0, 15, 16)};
-    std::vector<shared_ptr<Attribute>> attrs{
+    std::vector<std::shared_ptr<Attribute>> attrs{
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
     auto status = schema->check();
@@ -180,10 +180,10 @@ TEST_CASE("Test repeating names", "[array_schema]") {
   }
 
   SECTION("Catch shared label/dimension name when adding label") {
-    std::vector<shared_ptr<Dimension>> dims{
+    std::vector<std::shared_ptr<Dimension>> dims{
         test::make_dimension<uint64_t>("x", Datatype::UINT64, 1, 0, 15, 16),
         test::make_dimension<uint64_t>("y", Datatype::UINT64, 1, 0, 15, 16)};
-    std::vector<shared_ptr<Attribute>> attrs{
+    std::vector<std::shared_ptr<Attribute>> attrs{
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
     auto status = schema->check();
@@ -193,10 +193,10 @@ TEST_CASE("Test repeating names", "[array_schema]") {
   }
 
   SECTION("Catch shared label/dimension name with check") {
-    std::vector<shared_ptr<Dimension>> dims{
+    std::vector<std::shared_ptr<Dimension>> dims{
         test::make_dimension<uint64_t>("x", Datatype::UINT64, 1, 0, 15, 16),
         test::make_dimension<uint64_t>("y", Datatype::UINT64, 1, 0, 15, 16)};
-    std::vector<shared_ptr<Attribute>> attrs{
+    std::vector<std::shared_ptr<Attribute>> attrs{
         test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
     auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
     auto status = schema->check();
@@ -210,9 +210,9 @@ TEST_CASE(
     "Test URI generation for dimension labels",
     "[array_schema][dimension_label]") {
   // Create array schema with multiple dimension labels
-  std::vector<shared_ptr<Dimension>> dims{
+  std::vector<std::shared_ptr<Dimension>> dims{
       test::make_dimension<uint64_t>("x", Datatype::UINT64, 1, 0, 15, 16)};
-  std::vector<shared_ptr<Attribute>> attrs{
+  std::vector<std::shared_ptr<Attribute>> attrs{
       test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0)};
   auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
   auto status = schema->check();
@@ -240,9 +240,9 @@ TEST_CASE(
 TEST_CASE(
     "Test ArraySchema::has_ordered_attributes with no ordered attributes"
     "[array_schema]") {
-  std::vector<shared_ptr<Dimension>> dims{
+  std::vector<std::shared_ptr<Dimension>> dims{
       test::make_dimension<uint64_t>("x", Datatype::UINT64, 1, 0, 15, 16)};
-  std::vector<shared_ptr<Attribute>> attrs{
+  std::vector<std::shared_ptr<Attribute>> attrs{
       test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0),
       test::make_attribute<float>("b", Datatype::FLOAT64, false, 1, 0)};
   auto schema = test::make_array_schema(ArrayType::DENSE, dims, attrs);
@@ -252,9 +252,9 @@ TEST_CASE(
 TEST_CASE(
     "Test ArraySchema::has_ordered_attributes with ordered attributes"
     "[array_schema]") {
-  std::vector<shared_ptr<Dimension>> dims{
+  std::vector<std::shared_ptr<Dimension>> dims{
       test::make_dimension<uint64_t>("x", Datatype::UINT64, 1, 0, 15, 16)};
-  std::vector<shared_ptr<Attribute>> attrs{
+  std::vector<std::shared_ptr<Attribute>> attrs{
       test::make_attribute<float>("a", Datatype::UINT64, false, 1, 0),
       make_shared<Attribute>(
           HERE(), "b", Datatype::FLOAT64, 1, DataOrder::INCREASING_DATA)};

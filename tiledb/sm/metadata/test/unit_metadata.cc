@@ -51,7 +51,7 @@ inline T& buffer_metadata(void* p) {
 
 TEST_CASE(
     "Metadata: Test metadata deserialization", "[metadata][deserialization]") {
-  std::vector<shared_ptr<Tile>> metadata_tiles;
+  std::vector<std::shared_ptr<Tile>> metadata_tiles;
 
   Metadata metadata_to_serialize1, metadata_to_serialize2,
       metadata_to_serialize3;

@@ -75,7 +75,7 @@ ResultTile::ResultTile(
   attr_tiles_.resize(array_schema.attribute_num());
   for (uint64_t i = 0; i < array_schema.attribute_num(); i++) {
     auto attribute = array_schema.attribute(i);
-    attr_tiles_[i] = std::make_pair(attribute->name(), nullopt);
+    attr_tiles_[i] = std::make_pair(attribute->name(), std::nullopt);
   }
   set_compute_results_func();
 
@@ -211,7 +211,7 @@ void ResultTile::init_attr_tile(
 
   // Handle attributes
   for (auto& at : attr_tiles_) {
-    if (at.first == name && at.second == nullopt) {
+    if (at.first == name && at.second == std::nullopt) {
       at.second = std::move(tuple);
       return;
     }
@@ -512,7 +512,7 @@ void ResultTile::compute_results_dense(
     const ResultTile* result_tile,
     unsigned dim_idx,
     const Range& range,
-    const std::vector<shared_ptr<FragmentMetadata>> fragment_metadata,
+    const std::vector<std::shared_ptr<FragmentMetadata>> fragment_metadata,
     unsigned frag_idx,
     std::vector<uint8_t>* result_bitmap,
     std::vector<uint8_t>* overwritten_bitmap) {
@@ -1178,7 +1178,7 @@ void ResultTile::compute_results_count_sparse(
 Status ResultTile::compute_results_dense(
     unsigned dim_idx,
     const Range& range,
-    const std::vector<shared_ptr<FragmentMetadata>> fragment_metadata,
+    const std::vector<std::shared_ptr<FragmentMetadata>> fragment_metadata,
     unsigned frag_idx,
     std::vector<uint8_t>* result_bitmap,
     std::vector<uint8_t>* overwritten_bitmap) const {

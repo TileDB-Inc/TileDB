@@ -179,7 +179,7 @@ int main(int argc, char* argv[]) {
   }
 
   // brief sanity check that wrapper compression matches unwrapped compression
-  shared_ptr<tiledb::sm::Buffer> out_gzipped_buf =
+  std::shared_ptr<tiledb::sm::Buffer> out_gzipped_buf =
       make_shared<tiledb::sm::Buffer>(HERE());
   throw_if_not_ok(
       gzip_compress(out_gzipped_buf, inbuf->data(0), inbuf->size()));
@@ -199,7 +199,7 @@ int main(int argc, char* argv[]) {
     exit(-17);
   }
 
-  shared_ptr<tiledb::sm::ByteVecValue> expanded_buffer =
+  std::shared_ptr<tiledb::sm::ByteVecValue> expanded_buffer =
       make_shared<tiledb::sm::ByteVecValue>(HERE());
 
   // brief sanity check the decompressed()d data matches original

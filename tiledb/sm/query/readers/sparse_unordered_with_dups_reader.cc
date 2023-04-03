@@ -68,7 +68,7 @@ class SparseUnorderedWithDupsReaderStatusException : public StatusException {
 template <class BitmapType>
 SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
     stats::Stats* stats,
-    shared_ptr<Logger> logger,
+    std::shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -204,7 +204,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
   std::vector<std::string> names;
   names.reserve(buffers_.size());
 
-  std::vector<tuple<>> buffers;
+  std::vector<std::tuple<>> buffers;
   for (auto& buffer : buffers_) {
     names.emplace_back(buffer.first);
   }
@@ -564,7 +564,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
 }
 
 template <class BitmapType>
-tuple<bool, uint64_t, uint64_t, uint64_t>
+std::tuple<bool, uint64_t, uint64_t, uint64_t>
 SparseUnorderedWithDupsReader<BitmapType>::compute_parallelization_parameters(
     const uint64_t range_thread_idx,
     const uint64_t num_range_threads,
@@ -1476,7 +1476,7 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_fixed_results_to_copy(
 }
 
 template <class BitmapType>
-tuple<Status, optional<std::vector<uint64_t>>>
+std::tuple<Status, std::optional<std::vector<uint64_t>>>
 SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
     const std::vector<std::string>& names,
     std::vector<ResultTile*>& result_tiles) {
@@ -1548,13 +1548,13 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
         return Status::Ok();
       });
   RETURN_NOT_OK_ELSE_TUPLE(
-      status, logger_->status_no_return_value(status), nullopt);
+      status, logger_->status_no_return_value(status), std::nullopt);
 
   if (max_rt_idx == 0)
     return {
         Status_SparseUnorderedWithDupsReaderError(
             "Unable to copy one tile with current budget/buffers"),
-        nullopt};
+        std::nullopt};
 
   // Resize the result tiles vector.
   buffers_full_ &= max_rt_idx == result_tiles.size();
@@ -1565,7 +1565,7 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
 
 template <class BitmapType>
 template <class OffType>
-tuple<bool, uint64_t, uint64_t>
+std::tuple<bool, uint64_t, uint64_t>
 SparseUnorderedWithDupsReader<BitmapType>::compute_var_size_offsets(
     stats::Stats* stats,
     const std::vector<ResultTile*>& result_tiles,
@@ -1877,7 +1877,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::end_iteration() {
 // Explicit template instantiations
 template SparseUnorderedWithDupsReader<uint8_t>::SparseUnorderedWithDupsReader(
     stats::Stats*,
-    shared_ptr<Logger>,
+    std::shared_ptr<Logger>,
     StorageManager*,
     Array*,
     Config&,
@@ -1888,7 +1888,7 @@ template SparseUnorderedWithDupsReader<uint8_t>::SparseUnorderedWithDupsReader(
     bool);
 template SparseUnorderedWithDupsReader<uint64_t>::SparseUnorderedWithDupsReader(
     stats::Stats*,
-    shared_ptr<Logger>,
+    std::shared_ptr<Logger>,
     StorageManager*,
     Array*,
     Config&,

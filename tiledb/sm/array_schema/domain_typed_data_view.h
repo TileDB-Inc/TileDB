@@ -147,7 +147,7 @@ class DomainTypedDataView {
    * Move construction has transfer semantics.
    */
   DomainTypedDataView(DomainTypedDataView&& x) noexcept
-      : array_(move(x.array_)) {
+      : array_(std::move(x.array_)) {
   }
 
   /**

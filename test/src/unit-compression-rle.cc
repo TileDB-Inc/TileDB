@@ -426,7 +426,7 @@ TEST_CASE(
   }
 }
 
-typedef tuple<uint16_t, uint32_t, uint64_t> FixedTypesUnderTest;
+typedef std::tuple<uint16_t, uint32_t, uint64_t> FixedTypesUnderTest;
 TEMPLATE_LIST_TEST_CASE(
     "Compression-RLE: Test compression of single large run length/long string",
     "[compression][rle][rle-strings]",
@@ -555,7 +555,7 @@ TEST_CASE(
   }
 }
 
-typedef tuple<uint8_t, uint16_t, uint32_t, uint64_t> UnsignedIntegerTypes;
+typedef std::tuple<uint8_t, uint16_t, uint32_t, uint64_t> UnsignedIntegerTypes;
 TEMPLATE_LIST_TEST_CASE(
     "Compression-RLE: Test input of multiple runs of unsigned integers",
     "[compression][rle][rle-num]",
@@ -596,7 +596,7 @@ TEMPLATE_LIST_TEST_CASE(
   CHECK(decompressed == uncompressed);
 }
 
-typedef tuple<int8_t, int16_t, int32_t, int64_t> SignedIntegerTypes;
+typedef std::tuple<int8_t, int16_t, int32_t, int64_t> SignedIntegerTypes;
 TEMPLATE_LIST_TEST_CASE(
     "Compression-RLE: Test input of multiple runs of signed integers",
     "[compression][rle][rle-num]",
@@ -639,7 +639,7 @@ TEMPLATE_LIST_TEST_CASE(
   CHECK(decompressed == uncompressed);
 }
 
-typedef tuple<float, double> FloatingPointTypes;
+typedef std::tuple<float, double> FloatingPointTypes;
 TEMPLATE_LIST_TEST_CASE(
     "Compression-RLE: Test input of multiple runs of floating point numbers",
     "[compression][rle][rle-num]",

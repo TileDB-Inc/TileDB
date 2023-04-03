@@ -177,7 +177,7 @@ class QueryCondition {
    */
   Status apply(
       const ArraySchema& array_schema,
-      const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
+      const std::vector<std::shared_ptr<FragmentMetadata>>& fragment_metadata,
       std::vector<ResultCellSlab>& result_cell_slabs,
       uint64_t stride) const;
 
@@ -315,7 +315,7 @@ class QueryCondition {
   template <typename T, QueryConditionOp Op, typename CombinationOp>
   void apply_ast_node(
       const tdb_unique_ptr<ASTNode>& node,
-      const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
+      const std::vector<std::shared_ptr<FragmentMetadata>>& fragment_metadata,
       uint64_t stride,
       const bool var_size,
       const bool nullable,
@@ -340,7 +340,7 @@ class QueryCondition {
   template <typename T, typename CombinationOp>
   void apply_ast_node(
       const tdb_unique_ptr<ASTNode>& node,
-      const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
+      const std::vector<std::shared_ptr<FragmentMetadata>>& fragment_metadata,
       uint64_t stride,
       const bool var_size,
       const bool nullable,
@@ -365,7 +365,7 @@ class QueryCondition {
   void apply_ast_node(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
-      const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
+      const std::vector<std::shared_ptr<FragmentMetadata>>& fragment_metadata,
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       CombinationOp combination_op,
@@ -389,7 +389,7 @@ class QueryCondition {
   void apply_tree(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
-      const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
+      const std::vector<std::shared_ptr<FragmentMetadata>>& fragment_metadata,
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       CombinationOp combination_op,

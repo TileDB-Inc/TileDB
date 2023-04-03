@@ -71,7 +71,7 @@ Logger::Logger(
   set_format(format);
 }
 
-Logger::Logger(shared_ptr<spdlog::logger> logger) {
+Logger::Logger(std::shared_ptr<spdlog::logger> logger) {
   logger_ = std::move(logger);
 }
 
@@ -257,7 +257,7 @@ void Logger::set_name(const std::string& tags) {
   name_ = tags;
 }
 
-shared_ptr<Logger> Logger::clone(const std::string& tag, uint64_t id) {
+std::shared_ptr<Logger> Logger::clone(const std::string& tag, uint64_t id) {
   std::string new_tags = add_tag(tag, id);
   auto new_logger = make_shared<Logger>(HERE(), logger_->clone(new_tags));
   new_logger->set_name(new_tags);

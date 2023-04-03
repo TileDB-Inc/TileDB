@@ -224,8 +224,8 @@ class FragmentConsolidator : public Consolidator {
    * @return Status
    */
   Status consolidate_internal(
-      shared_ptr<Array> array_for_reads,
-      shared_ptr<Array> array_for_writes,
+      std::shared_ptr<Array> array_for_reads,
+      std::shared_ptr<Array> array_for_writes,
       const std::vector<TimestampedURI>& to_consolidate,
       const NDRange& union_non_empty_domains,
       URI* new_fragment_uri);
@@ -256,7 +256,7 @@ class FragmentConsolidator : public Consolidator {
    * @param avg_cell_sizes The average cell sizes.
    * @return Buffers, Buffer sizes.
    */
-  static tuple<std::vector<ByteVec>, std::vector<uint64_t>> create_buffers(
+  static std::tuple<std::vector<ByteVec>, std::vector<uint64_t>> create_buffers(
       stats::Stats* stats,
       const ConsolidationConfig& config,
       const ArraySchema& array_schema,
@@ -279,8 +279,8 @@ class FragmentConsolidator : public Consolidator {
    * @return Status
    */
   Status create_queries(
-      shared_ptr<Array> array_for_reads,
-      shared_ptr<Array> array_for_writes,
+      std::shared_ptr<Array> array_for_reads,
+      std::shared_ptr<Array> array_for_writes,
       const NDRange& subarray,
       Query** query_r,
       Query** query_w,

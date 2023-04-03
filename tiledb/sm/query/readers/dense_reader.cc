@@ -69,7 +69,7 @@ class DenseReaderStatusException : public StatusException {
 
 DenseReader::DenseReader(
     stats::Stats* stats,
-    shared_ptr<Logger> logger,
+    std::shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -568,7 +568,7 @@ Status DenseReader::dense_read() {
 
   // Fill coordinates if the user requested them.
   if (!read_state_.overflowed_ && has_coords()) {
-    fill_dense_coords<DimType>(subarray, nullopt);
+    fill_dense_coords<DimType>(subarray, std::nullopt);
   }
 
   return Status::Ok();
@@ -696,7 +696,8 @@ void DenseReader::init_read_state() {
  * the new iteration.
  */
 template <class DimType>
-tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
+std::tuple<uint64_t, std::vector<ResultTile*>>
+DenseReader::compute_result_tiles(
     const std::vector<std::string>& names,
     const std::unordered_set<std::string>& condition_names,
     Subarray& subarray,
@@ -1193,7 +1194,7 @@ Status DenseReader::copy_attribute(
 }
 
 template <class DimType>
-tuple<bool, uint64_t, uint64_t> DenseReader::cell_slab_overlaps_range(
+std::tuple<bool, uint64_t, uint64_t> DenseReader::cell_slab_overlaps_range(
     const unsigned dim_num,
     const NDRange& ndrange,
     const std::vector<DimType>& coords,
@@ -1728,7 +1729,8 @@ Status DenseReader::add_extra_offset() {
 
 template <class T>
 void DenseReader::fill_dense_coords(
-    const Subarray& subarray, const optional<std::vector<uint8_t>> qc_results) {
+    const Subarray& subarray,
+    const std::optional<std::vector<uint8_t>> qc_results) {
   auto timer_se = stats_->start_timer("fill_dense_coords");
 
   // Count the number of cells.
@@ -1790,7 +1792,7 @@ void DenseReader::fill_dense_coords(
 template <class T>
 void DenseReader::fill_dense_coords_global(
     const Subarray& subarray,
-    const optional<std::vector<uint8_t>> qc_results,
+    const std::optional<std::vector<uint8_t>> qc_results,
     uint64_t& qc_results_index,
     const std::vector<unsigned>& dim_idx,
     const std::vector<QueryBuffer*>& buffers,
@@ -1808,7 +1810,7 @@ void DenseReader::fill_dense_coords_global(
 template <class T>
 void DenseReader::fill_dense_coords_row_col(
     const Subarray& subarray,
-    const optional<std::vector<uint8_t>> qc_results,
+    const std::optional<std::vector<uint8_t>> qc_results,
     uint64_t& qc_results_index,
     const std::vector<unsigned>& dim_idx,
     const std::vector<QueryBuffer*>& buffers,
@@ -1852,7 +1854,7 @@ void DenseReader::fill_dense_coords_row_col(
 template <class T>
 void DenseReader::fill_dense_coords_row_slab(
     const T* start,
-    const optional<std::vector<uint8_t>> qc_results,
+    const std::optional<std::vector<uint8_t>> qc_results,
     uint64_t& qc_results_index,
     uint64_t num,
     const std::vector<unsigned>& dim_idx,
@@ -1910,7 +1912,7 @@ void DenseReader::fill_dense_coords_row_slab(
 template <class T>
 void DenseReader::fill_dense_coords_col_slab(
     const T* start,
-    const optional<std::vector<uint8_t>> qc_results,
+    const std::optional<std::vector<uint8_t>> qc_results,
     uint64_t& qc_results_index,
     uint64_t num,
     const std::vector<unsigned>& dim_idx,

@@ -66,7 +66,7 @@ Domain::Domain() {
 
 Domain::Domain(
     Layout cell_order,
-    const std::vector<shared_ptr<Dimension>> dimensions,
+    const std::vector<std::shared_ptr<Dimension>> dimensions,
     Layout tile_order)
     : cell_order_(cell_order)
     , dimensions_(dimensions)
@@ -116,25 +116,25 @@ Domain::Domain(const Domain* domain) {
 Domain::Domain(Domain&& rhs)
     : cell_num_per_tile_(rhs.cell_num_per_tile_)
     , cell_order_(rhs.cell_order_)
-    , dimensions_(move(rhs.dimensions_))
-    , dimension_ptrs_(move(rhs.dimension_ptrs_))
+    , dimensions_(std::move(rhs.dimensions_))
+    , dimension_ptrs_(std::move(rhs.dimension_ptrs_))
     , dim_num_(rhs.dim_num_)
     , tile_order_(rhs.tile_order_)
-    , cell_order_cmp_func_(move(rhs.cell_order_cmp_func_))
-    , cell_order_cmp_func_2_(move(rhs.cell_order_cmp_func_2_))
-    , tile_order_cmp_func_(move(rhs.tile_order_cmp_func_)) {
+    , cell_order_cmp_func_(std::move(rhs.cell_order_cmp_func_))
+    , cell_order_cmp_func_2_(std::move(rhs.cell_order_cmp_func_2_))
+    , tile_order_cmp_func_(std::move(rhs.tile_order_cmp_func_)) {
 }
 
 Domain& Domain::operator=(Domain&& rhs) {
   cell_num_per_tile_ = rhs.cell_num_per_tile_;
   cell_order_ = rhs.cell_order_;
   dim_num_ = rhs.dim_num_;
-  cell_order_cmp_func_ = move(rhs.cell_order_cmp_func_);
-  tile_order_cmp_func_ = move(rhs.tile_order_cmp_func_);
-  dimensions_ = move(rhs.dimensions_);
-  dimension_ptrs_ = move(rhs.dimension_ptrs_);
+  cell_order_cmp_func_ = std::move(rhs.cell_order_cmp_func_);
+  tile_order_cmp_func_ = std::move(rhs.tile_order_cmp_func_);
+  dimensions_ = std::move(rhs.dimensions_);
+  dimension_ptrs_ = std::move(rhs.dimension_ptrs_);
   tile_order_ = rhs.tile_order_;
-  cell_order_cmp_func_2_ = move(rhs.cell_order_cmp_func_2_);
+  cell_order_cmp_func_2_ = std::move(rhs.cell_order_cmp_func_2_);
 
   return *this;
 }
@@ -151,7 +151,7 @@ Layout Domain::tile_order() const {
   return tile_order_;
 }
 
-Status Domain::add_dimension(shared_ptr<Dimension> dim) {
+Status Domain::add_dimension(std::shared_ptr<Dimension> dim) {
   auto p{dim.get()};
   if (p == nullptr) {
     // Class invariant prohibits null dimensions in a domain.
@@ -329,7 +329,7 @@ void Domain::crop_ndrange(NDRange* ndrange) const {
     dimension_ptrs_[d]->crop_range(&(*ndrange)[d]);
 }
 
-shared_ptr<Domain> Domain::deserialize(
+std::shared_ptr<Domain> Domain::deserialize(
     Deserializer& deserializer,
     uint32_t version,
     Layout cell_order,
@@ -342,7 +342,7 @@ shared_ptr<Domain> Domain::deserialize(
     type = static_cast<Datatype>(type_c);
   }
 
-  std::vector<shared_ptr<Dimension>> dimensions;
+  std::vector<std::shared_ptr<Dimension>> dimensions;
   auto dim_num = deserializer.read<uint32_t>();
   for (uint32_t i = 0; i < dim_num; ++i) {
     auto dim{Dimension::deserialize(deserializer, version, type)};
@@ -370,7 +370,7 @@ const Dimension* Domain::dimension_ptr(const std::string& name) const {
   return dimension_shared_ptr(name).get();
 }
 
-shared_ptr<Dimension> Domain::dimension_shared_ptr(
+std::shared_ptr<Dimension> Domain::dimension_shared_ptr(
     const std::string& name) const {
   for (dimension_size_type i = 0; i < dim_num_; i++) {
     const auto dim = dimension_ptrs_[i];

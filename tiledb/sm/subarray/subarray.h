@@ -190,7 +190,7 @@ class Subarray {
   Subarray(
       const Array* array,
       stats::Stats* parent_stats,
-      shared_ptr<Logger> logger,
+      std::shared_ptr<Logger> logger,
       bool coalesce_ranges = true,
       StorageManager* storage_manager = nullptr);
 
@@ -210,7 +210,7 @@ class Subarray {
       const Array* array,
       Layout layout,
       stats::Stats* parent_stats,
-      shared_ptr<Logger> logger,
+      std::shared_ptr<Logger> logger,
       bool coalesce_ranges = true,
       StorageManager* storage_manager = nullptr);
 
@@ -656,7 +656,7 @@ class Subarray {
       const ArraySchema& array_schema,
       bool all_dims_same_type,
       bool all_dims_fixed,
-      const std::vector<shared_ptr<FragmentMetadata>>& fragment_meta,
+      const std::vector<std::shared_ptr<FragmentMetadata>>& fragment_meta,
       const std::vector<std::string>& name,
       const std::vector<bool>& var_sizes,
       const std::vector<bool>& nullable,
@@ -1177,7 +1177,7 @@ class Subarray {
   Status sort_ranges(ThreadPool* const compute_tp);
 
   /** Returns if all ranges for this subarray are non overlapping. */
-  tuple<Status, optional<bool>> non_overlapping_ranges(
+  std::tuple<Status, std::optional<bool>> non_overlapping_ranges(
       ThreadPool* const compute_tp);
 
  private:
@@ -1248,7 +1248,7 @@ class Subarray {
   inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /** The class logger. */
-  shared_ptr<Logger> logger_;
+  std::shared_ptr<Logger> logger_;
 
   /** The array the subarray object is associated with. */
   const Array* array_;
@@ -1281,7 +1281,7 @@ class Subarray {
   /**
    * Stores LabelRangeSubset objects for handling ranges on dimension labels.
    */
-  std::vector<optional<LabelRangeSubset>> label_range_subset_;
+  std::vector<std::optional<LabelRangeSubset>> label_range_subset_;
 
   /**
    * Stores ranges for attributes.
@@ -1437,7 +1437,7 @@ class Subarray {
    * @return Status
    */
   Status compute_relevant_fragment_tile_overlap(
-      shared_ptr<FragmentMetadata> meta,
+      std::shared_ptr<FragmentMetadata> meta,
       unsigned frag_idx,
       bool dense,
       ThreadPool* compute_tp,
@@ -1480,7 +1480,7 @@ class Subarray {
    * @return true if the ranges are non overlapping, false otherwise.
    */
   template <typename T>
-  tuple<Status, optional<bool>> non_overlapping_ranges_for_dim(
+  std::tuple<Status, std::optional<bool>> non_overlapping_ranges_for_dim(
       const uint64_t dim_idx);
 
   /**
@@ -1489,7 +1489,7 @@ class Subarray {
    * @param dim_idx dimension index.
    * @return true if the ranges are non overlapping, false otherwise.
    */
-  tuple<Status, optional<bool>> non_overlapping_ranges_for_dim(
+  std::tuple<Status, std::optional<bool>> non_overlapping_ranges_for_dim(
       const uint64_t dim_idx);
 
   /**

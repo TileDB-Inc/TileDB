@@ -79,7 +79,7 @@ class Logger {
       const Logger::Format format = Logger::Format::DEFAULT,
       const bool root = false);
 
-  Logger(shared_ptr<spdlog::logger> logger);
+  Logger(std::shared_ptr<spdlog::logger> logger);
 
   /** Destructor. */
   ~Logger();
@@ -95,7 +95,7 @@ class Logger {
    * @param name The name of the new logger
    * @param id An id to use as suffix for the name of the new logger
    */
-  shared_ptr<Logger> clone(const std::string& name, uint64_t id);
+  std::shared_ptr<Logger> clone(const std::string& name, uint64_t id);
 
   /**
    * Log a trace statement with no message formatting.
@@ -378,7 +378,7 @@ class Logger {
   /* ********************************* */
 
   /** The logger object. */
-  shared_ptr<spdlog::logger> logger_;
+  std::shared_ptr<spdlog::logger> logger_;
 
   /** The name of the logger */
   std::string name_;

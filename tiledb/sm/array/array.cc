@@ -101,7 +101,7 @@ Array::Array(
     , metadata_loaded_(false)
     , non_empty_domain_computed_(false)
     , consistency_controller_(cc)
-    , consistency_sentry_(nullopt) {
+    , consistency_sentry_(std::nullopt) {
 }
 
 /* ********************************* */
@@ -109,7 +109,7 @@ Array::Array(
 /* ********************************* */
 
 void Array::set_array_schema_latest(
-    const shared_ptr<ArraySchema>& array_schema) {
+    const std::shared_ptr<ArraySchema>& array_schema) {
   array_schema_latest_ = array_schema;
 }
 
@@ -117,12 +117,13 @@ const ArraySchema& Array::array_schema_latest() const {
   return *(array_schema_latest_.get());
 }
 
-shared_ptr<const ArraySchema> Array::array_schema_latest_ptr() const {
+std::shared_ptr<const ArraySchema> Array::array_schema_latest_ptr() const {
   return array_schema_latest_;
 }
 
 void Array::set_array_schemas_all(
-    std::unordered_map<std::string, shared_ptr<ArraySchema>>& all_schemas) {
+    std::unordered_map<std::string, std::shared_ptr<ArraySchema>>&
+        all_schemas) {
   array_schemas_all_ = all_schemas;
 }
 
@@ -595,18 +596,19 @@ bool Array::is_remote() const {
   return remote_;
 }
 
-std::vector<shared_ptr<FragmentMetadata>> Array::fragment_metadata() const {
+std::vector<std::shared_ptr<FragmentMetadata>> Array::fragment_metadata()
+    const {
   return fragment_metadata_;
 }
 
-tuple<Status, optional<shared_ptr<ArraySchema>>> Array::get_array_schema()
-    const {
+std::tuple<Status, std::optional<std::shared_ptr<ArraySchema>>>
+Array::get_array_schema() const {
   // Error if the array is not open
   if (!is_open_)
     return {
         LOG_STATUS(
             Status_ArrayError("Cannot get array schema; Array is not open")),
-        nullopt};
+        std::nullopt};
 
   return {Status::Ok(), array_schema_latest_};
 }
@@ -1070,10 +1072,10 @@ NDRange* Array::loaded_non_empty_domain() {
   return &non_empty_domain_;
 }
 
-tuple<Status, optional<const NDRange>> Array::non_empty_domain() {
+std::tuple<Status, std::optional<const NDRange>> Array::non_empty_domain() {
   if (!non_empty_domain_computed_) {
     // Compute non-empty domain
-    RETURN_NOT_OK_TUPLE(compute_non_empty_domain(), nullopt);
+    RETURN_NOT_OK_TUPLE(compute_non_empty_domain(), std::nullopt);
   }
 
   return {Status::Ok(), non_empty_domain_};
@@ -1228,10 +1230,11 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
 /*          PRIVATE METHODS          */
 /* ********************************* */
 
-tuple<
-    optional<shared_ptr<ArraySchema>>,
-    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
-    optional<std::vector<shared_ptr<FragmentMetadata>>>>
+std::tuple<
+    std::optional<std::shared_ptr<ArraySchema>>,
+    std::optional<
+        std::unordered_map<std::string, std::shared_ptr<ArraySchema>>>,
+    std::optional<std::vector<std::shared_ptr<FragmentMetadata>>>>
 Array::open_for_reads() {
   auto timer_se = resources_.stats().start_timer(
       "array_open_read_load_schemas_and_fragment_meta");
@@ -1247,9 +1250,10 @@ Array::open_for_reads() {
   return {array_schema_latest, array_schemas_all, fragment_metadata};
 }
 
-tuple<
-    optional<shared_ptr<ArraySchema>>,
-    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+std::tuple<
+    std::optional<std::shared_ptr<ArraySchema>>,
+    std::optional<
+        std::unordered_map<std::string, std::shared_ptr<ArraySchema>>>>
 Array::open_for_reads_without_fragments() {
   auto timer_se = resources_.stats().start_timer(
       "array_open_read_without_fragments_load_schemas");
@@ -1264,10 +1268,11 @@ Array::open_for_reads_without_fragments() {
   return {array_schema_latest, array_schemas_all};
 }
 
-tuple<
+std::tuple<
     Status,
-    optional<shared_ptr<ArraySchema>>,
-    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+    std::optional<std::shared_ptr<ArraySchema>>,
+    std::optional<
+        std::unordered_map<std::string, std::shared_ptr<ArraySchema>>>>
 Array::open_for_writes() {
   auto timer_se =
       resources_.stats().start_timer("array_open_write_load_schemas");
@@ -1276,8 +1281,8 @@ Array::open_for_writes() {
     return {
         resources_.logger()->status(Status_StorageManagerError(
             "Cannot open array; URI scheme unsupported.")),
-        nullopt,
-        nullopt};
+        std::nullopt,
+        std::nullopt};
 
   // Load array schemas
   auto&& [array_schema_latest, array_schemas_all] =
@@ -1297,8 +1302,8 @@ Array::open_for_writes() {
       err << constants::format_version << ")";
       return {
           resources_.logger()->status(Status_StorageManagerError(err.str())),
-          nullopt,
-          nullopt};
+          std::nullopt,
+          std::nullopt};
     }
   } else {
     if (version > constants::format_version) {
@@ -1309,8 +1314,8 @@ Array::open_for_writes() {
       err << constants::format_version << ")";
       return {
           resources_.logger()->status(Status_StorageManagerError(err.str())),
-          nullopt,
-          nullopt};
+          std::nullopt,
+          std::nullopt};
     }
   }
 

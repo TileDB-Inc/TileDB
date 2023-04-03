@@ -608,7 +608,7 @@ struct CPPFixedTileMetadataFx {
   tiledb::VFS vfs_;
 };
 
-typedef tuple<
+typedef std::tuple<
     std::byte,
     unsigned char,  // Used for TILEDB_CHAR.
     char,

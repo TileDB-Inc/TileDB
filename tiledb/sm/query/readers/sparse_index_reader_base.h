@@ -191,7 +191,7 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Constructor. */
   SparseIndexReaderBase(
       stats::Stats* stats,
-      shared_ptr<Logger> logger,
+      std::shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -429,7 +429,8 @@ class SparseIndexReaderBase : public ReaderBase {
    *
    * @return Status, index_to_copy.
    */
-  tuple<Status, optional<std::vector<uint64_t>>> read_and_unfilter_attributes(
+  std::tuple<Status, std::optional<std::vector<uint64_t>>>
+  read_and_unfilter_attributes(
       const std::vector<std::string>& names,
       const std::vector<uint64_t>& mem_usage_per_attr,
       uint64_t* buffer_idx,

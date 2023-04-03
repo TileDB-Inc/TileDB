@@ -206,7 +206,7 @@ class Azure {
    * @param max_paths The maximum number of paths to be retrieved
    * @return A list of directory_entry objects
    */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
+  std::tuple<Status, std::optional<std::vector<filesystem::directory_entry>>>
   ls_with_sizes(
       const URI& uri,
       const std::string& delimiter = "/",
@@ -463,7 +463,7 @@ class Azure {
   ThreadPool* thread_pool_;
 
   /** The Azure blob storage client. */
-  shared_ptr<azure::storage_lite::blob_client> client_;
+  std::shared_ptr<azure::storage_lite::blob_client> client_;
 
   /** Maps a blob URI to an write cache buffer. */
   std::unordered_map<std::string, Buffer> write_cache_map_;

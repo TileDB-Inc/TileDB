@@ -73,7 +73,7 @@ class Context {
   /* ********************************* */
 
   /** Returns the last error status. */
-  optional<std::string> last_error();
+  std::optional<std::string> last_error();
 
   /**
    * Saves a `Status` as the last error.
@@ -115,7 +115,7 @@ class Context {
   /* ********************************* */
 
   /** The last error occurred. */
-  optional<std::string> last_error_{nullopt};
+  std::optional<std::string> last_error_{std::nullopt};
 
   /**
    * Mutex protects access to `last_error_`.
@@ -123,7 +123,7 @@ class Context {
   std::mutex mtx_;
 
   /** The class logger. */
-  shared_ptr<Logger> logger_;
+  std::shared_ptr<Logger> logger_;
 
   /** The class unique logger prefix */
   inline static std::string logger_prefix_ =

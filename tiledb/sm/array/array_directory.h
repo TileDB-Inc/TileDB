@@ -329,7 +329,7 @@ class ArrayDirectory {
    * @param encryption_key The encryption key to use.
    * @return Status, the loaded array schema
    */
-  static shared_ptr<ArraySchema> load_array_schema_from_uri(
+  static std::shared_ptr<ArraySchema> load_array_schema_from_uri(
       ContextResources& resources,
       const URI& array_schema_uri,
       const EncryptionKey& encryption_key);
@@ -342,7 +342,7 @@ class ArrayDirectory {
    * @param encryption_key The encryption key to use.
    * @return Status, a new ArraySchema
    */
-  shared_ptr<ArraySchema> load_array_schema_latest(
+  std::shared_ptr<ArraySchema> load_array_schema_latest(
       const EncryptionKey& encryption_key) const;
 
   /**
@@ -357,9 +357,9 @@ class ArrayDirectory {
    *   ArraySchema The latest array schema.
    *   ArraySchemaMap Map of all array schemas loaded, keyed by name
    */
-  tuple<
-      shared_ptr<ArraySchema>,
-      std::unordered_map<std::string, shared_ptr<ArraySchema>>>
+  std::tuple<
+      std::shared_ptr<ArraySchema>,
+      std::unordered_map<std::string, std::shared_ptr<ArraySchema>>>
   load_array_schemas(const EncryptionKey& encryption_key) const;
 
   /**
@@ -371,7 +371,7 @@ class ArrayDirectory {
    *        Status Ok on success, else error
    *        ArraySchemaMap Map of all array schemas found keyed by name
    */
-  std::unordered_map<std::string, shared_ptr<ArraySchema>>
+  std::unordered_map<std::string, std::shared_ptr<ArraySchema>>
   load_all_array_schemas(const EncryptionKey& encryption_key) const;
 
   /** Returns the array URI. */
@@ -629,14 +629,14 @@ class ArrayDirectory {
    *
    * @return Status, vector of URIs.
    */
-  tuple<Status, optional<std::vector<URI>>> list_root_dir_uris();
+  std::tuple<Status, std::optional<std::vector<URI>>> list_root_dir_uris();
 
   /**
    * Loads the root directory uris for v1 to v11.
    *
    * @return Status, vector of fragment URIs.
    */
-  tuple<Status, optional<std::vector<URI>>> load_root_dir_uris_v1_v11(
+  std::tuple<Status, std::optional<std::vector<URI>>> load_root_dir_uris_v1_v11(
       const std::vector<URI>& root_dir_uris);
 
   /**
@@ -644,14 +644,15 @@ class ArrayDirectory {
    *
    * @return Status, vector of commit URIs.
    */
-  tuple<Status, optional<std::vector<URI>>> list_commits_dir_uris();
+  std::tuple<Status, std::optional<std::vector<URI>>> list_commits_dir_uris();
 
   /**
    * Loads the commit directory uris for v12 or higher.
    *
    * @return Status, vector of fragment URIs.
    */
-  tuple<Status, optional<std::vector<URI>>> load_commits_dir_uris_v12_or_higher(
+  std::tuple<Status, std::optional<std::vector<URI>>>
+  load_commits_dir_uris_v12_or_higher(
       const std::vector<URI>& commits_dir_uris,
       const std::vector<URI>& consolidated_uris);
 
@@ -660,7 +661,7 @@ class ArrayDirectory {
    *
    * @return Status, fragment metadata URIs.
    */
-  tuple<Status, optional<std::vector<URI>>>
+  std::tuple<Status, std::optional<std::vector<URI>>>
   list_fragment_metadata_dir_uris_v12_or_higher();
 
   /**
@@ -678,10 +679,10 @@ class ArrayDirectory {
    *
    * @return Status, consolidated uris, set of all consolidated uris.
    */
-  tuple<
+  std::tuple<
       Status,
-      optional<std::vector<URI>>,
-      optional<std::unordered_set<std::string>>>
+      std::optional<std::vector<URI>>,
+      std::optional<std::unordered_set<std::string>>>
   load_consolidated_commit_uris(const std::vector<URI>& commits_dir_uris);
 
   /** Loads the array metadata URIs. */
@@ -694,8 +695,8 @@ class ArrayDirectory {
    * Computes the fragment URIs from the input array directory URIs, for
    * versions 1 to 11.
    */
-  tuple<Status, optional<std::vector<URI>>> compute_fragment_uris_v1_v11(
-      const std::vector<URI>& array_dir_uris) const;
+  std::tuple<Status, std::optional<std::vector<URI>>>
+  compute_fragment_uris_v1_v11(const std::vector<URI>& array_dir_uris) const;
 
   /**
    * Computes the fragment meta URIs from the input array directory.
@@ -711,7 +712,10 @@ class ArrayDirectory {
    * @return Status, a vector of the URIs to vacuum, a vector of
    *     the vac file URIs to vacuum.
    */
-  tuple<Status, optional<std::vector<URI>>, optional<std::vector<URI>>>
+  std::tuple<
+      Status,
+      std::optional<std::vector<URI>>,
+      std::optional<std::vector<URI>>>
   compute_uris_to_vacuum(
       const bool full_overlap_only, const std::vector<URI>& uris) const;
 
@@ -724,7 +728,8 @@ class ArrayDirectory {
    * @param to_ignore The URIs to ignore (because they are vacuumed).
    * @return Status, vector of filtered timestamped URIs.
    */
-  tuple<Status, optional<std::vector<TimestampedURI>>> compute_filtered_uris(
+  std::tuple<Status, std::optional<std::vector<TimestampedURI>>>
+  compute_filtered_uris(
       const bool full_overlap_only,
       const std::vector<URI>& uris,
       const std::vector<URI>& to_ignore) const;

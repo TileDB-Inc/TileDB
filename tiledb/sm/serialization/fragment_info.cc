@@ -199,7 +199,7 @@ Status fragment_info_request_deserialize(
 std::tuple<Status, std::optional<SingleFragmentInfo>>
 single_fragment_info_from_capnp(
     const capnp::SingleFragmentInfo::Reader& single_frag_info_reader,
-    const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+    const std::unordered_map<std::string, std::shared_ptr<ArraySchema>>&
         array_schemas) {
   // Get array schema name
   std::string schema_name;
@@ -209,7 +209,7 @@ single_fragment_info_from_capnp(
     return {
         Status_SerializationError(
             "Missing array schema name from single fragment info capnp reader"),
-        nullopt};
+        std::nullopt};
   }
 
   // Use the array schema name to find the corresponding array schema
@@ -219,11 +219,11 @@ single_fragment_info_from_capnp(
         Status_SerializationError(
             "Could not find schema" + schema_name +
             "in map of deserialized schemas."),
-        nullopt};
+        std::nullopt};
   }
 
   // Get list of single fragment info
-  shared_ptr<FragmentMetadata> meta;
+  std::shared_ptr<FragmentMetadata> meta;
   if (single_frag_info_reader.hasMeta()) {
     auto frag_meta_reader = single_frag_info_reader.getMeta();
     meta = make_shared<FragmentMetadata>(HERE());
@@ -233,7 +233,7 @@ single_fragment_info_from_capnp(
     return {
         Status_SerializationError(
             "Missing fragment metadata from single fragment info capnp reader"),
-        nullopt};
+        std::nullopt};
   }
 
   auto expanded_non_empty_domain = meta->non_empty_domain();

@@ -87,7 +87,7 @@ ArrayDirectory::ArrayDirectory(
 /*                API                */
 /* ********************************* */
 
-shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_from_uri(
+std::shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_from_uri(
     ContextResources& resources,
     const URI& schema_uri,
     const EncryptionKey& encryption_key) {
@@ -104,7 +104,7 @@ shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_from_uri(
       HERE(), ArraySchema::deserialize(deserializer, schema_uri));
 }
 
-shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_latest(
+std::shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_latest(
     const EncryptionKey& encryption_key) const {
   auto timer_se =
       resources_.get().stats().start_timer("sm_load_array_schema_latest");
@@ -124,9 +124,9 @@ shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_latest(
   return std::move(array_schema);
 }
 
-tuple<
-    shared_ptr<ArraySchema>,
-    std::unordered_map<std::string, shared_ptr<ArraySchema>>>
+std::tuple<
+    std::shared_ptr<ArraySchema>,
+    std::unordered_map<std::string, std::shared_ptr<ArraySchema>>>
 ArrayDirectory::load_array_schemas(const EncryptionKey& encryption_key) const {
   // Load all array schemas
   auto&& array_schemas = load_all_array_schemas(encryption_key);
@@ -140,7 +140,7 @@ ArrayDirectory::load_array_schemas(const EncryptionKey& encryption_key) const {
   return {it->second, array_schemas};
 }
 
-std::unordered_map<std::string, shared_ptr<ArraySchema>>
+std::unordered_map<std::string, std::shared_ptr<ArraySchema>>
 ArrayDirectory::load_all_array_schemas(
     const EncryptionKey& encryption_key) const {
   auto timer_se =
@@ -157,7 +157,7 @@ ArrayDirectory::load_all_array_schemas(
         "Cannot get the array schema vector; No array schemas found.");
   }
 
-  std::vector<shared_ptr<ArraySchema>> schema_vector;
+  std::vector<std::shared_ptr<ArraySchema>> schema_vector;
   auto schema_num = schema_uris.size();
   schema_vector.resize(schema_num);
 
@@ -177,7 +177,7 @@ ArrayDirectory::load_all_array_schemas(
       });
   throw_if_not_ok(status);
 
-  std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas;
+  std::unordered_map<std::string, std::shared_ptr<ArraySchema>> array_schemas;
   for (const auto& schema : schema_vector) {
     array_schemas[schema->name()] = schema;
   }
@@ -577,30 +577,31 @@ bool ArrayDirectory::loaded() const {
 /*         PRIVATE METHODS           */
 /* ********************************* */
 
-tuple<Status, optional<std::vector<URI>>> ArrayDirectory::list_root_dir_uris() {
+std::tuple<Status, std::optional<std::vector<URI>>>
+ArrayDirectory::list_root_dir_uris() {
   // List the array directory URIs
   auto timer_se = stats_->start_timer("list_root_uris");
 
   std::vector<URI> array_dir_uris;
   RETURN_NOT_OK_TUPLE(
-      resources_.get().vfs().ls(uri_, &array_dir_uris), nullopt);
+      resources_.get().vfs().ls(uri_, &array_dir_uris), std::nullopt);
 
   return {Status::Ok(), array_dir_uris};
 }
 
-tuple<Status, optional<std::vector<URI>>>
+std::tuple<Status, std::optional<std::vector<URI>>>
 ArrayDirectory::load_root_dir_uris_v1_v11(
     const std::vector<URI>& root_dir_uris) {
   // Compute the fragment URIs
   auto&& [st1, fragment_uris] = compute_fragment_uris_v1_v11(root_dir_uris);
-  RETURN_NOT_OK_TUPLE(st1, nullopt);
+  RETURN_NOT_OK_TUPLE(st1, std::nullopt);
 
   fragment_meta_uris_ = compute_fragment_meta_uris(root_dir_uris);
 
   return {Status::Ok(), fragment_uris.value()};
 }
 
-tuple<Status, optional<std::vector<URI>>>
+std::tuple<Status, std::optional<std::vector<URI>>>
 ArrayDirectory::list_commits_dir_uris() {
   // List the commits folder array directory URIs
   auto timer_se = stats_->start_timer("list_commit_uris");
@@ -608,12 +609,12 @@ ArrayDirectory::list_commits_dir_uris() {
   auto commits_uri = uri_.join_path(constants::array_commits_dir_name);
   std::vector<URI> commits_dir_uris;
   RETURN_NOT_OK_TUPLE(
-      resources_.get().vfs().ls(commits_uri, &commits_dir_uris), nullopt);
+      resources_.get().vfs().ls(commits_uri, &commits_dir_uris), std::nullopt);
 
   return {Status::Ok(), commits_dir_uris};
 }
 
-tuple<Status, optional<std::vector<URI>>>
+std::tuple<Status, std::optional<std::vector<URI>>>
 ArrayDirectory::load_commits_dir_uris_v12_or_higher(
     const std::vector<URI>& commits_dir_uris,
     const std::vector<URI>& consolidated_uris) {
@@ -654,7 +655,7 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
       RETURN_NOT_OK_TUPLE(
           utils::parse::get_timestamp_range(
               commits_dir_uris[i], &timestamp_range),
-          nullopt);
+          std::nullopt);
 
       // Add the delete tile location if it overlaps the open start/end times
       if (timestamps_overlap(timestamp_range, false)) {
@@ -673,7 +674,7 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
   return {Status::Ok(), fragment_uris};
 }
 
-tuple<Status, optional<std::vector<URI>>>
+std::tuple<Status, std::optional<std::vector<URI>>>
 ArrayDirectory::list_fragment_metadata_dir_uris_v12_or_higher() {
   // List the fragment metadata directory URIs
   auto timer_se = stats_->start_timer("list_fragment_meta_uris");
@@ -683,15 +684,15 @@ ArrayDirectory::list_fragment_metadata_dir_uris_v12_or_higher() {
 
   std::vector<URI> ret;
   RETURN_NOT_OK_TUPLE(
-      resources_.get().vfs().ls(fragment_metadata_uri, &ret), nullopt);
+      resources_.get().vfs().ls(fragment_metadata_uri, &ret), std::nullopt);
 
   return {Status::Ok(), ret};
 }
 
-tuple<
+std::tuple<
     Status,
-    optional<std::vector<URI>>,
-    optional<std::unordered_set<std::string>>>
+    std::optional<std::vector<URI>>,
+    std::optional<std::unordered_set<std::string>>>
 ArrayDirectory::load_consolidated_commit_uris(
     const std::vector<URI>& commits_dir_uris) {
   // Load the commit URIs to ignore
@@ -701,13 +702,15 @@ ArrayDirectory::load_consolidated_commit_uris(
             uri.to_string(), constants::ignore_file_suffix)) {
       uint64_t size = 0;
       RETURN_NOT_OK_TUPLE(
-          resources_.get().vfs().file_size(uri, &size), nullopt, nullopt);
+          resources_.get().vfs().file_size(uri, &size),
+          std::nullopt,
+          std::nullopt);
       std::string names;
       names.resize(size);
       RETURN_NOT_OK_TUPLE(
           resources_.get().vfs().read(uri, 0, &names[0], size),
-          nullopt,
-          nullopt);
+          std::nullopt,
+          std::nullopt);
       std::stringstream ss(names);
       for (std::string uri_str; std::getline(ss, uri_str);) {
         ignore_set.emplace(uri_str);
@@ -724,15 +727,17 @@ ArrayDirectory::load_consolidated_commit_uris(
             uri.to_string(), constants::con_commits_file_suffix)) {
       uint64_t size = 0;
       RETURN_NOT_OK_TUPLE(
-          resources_.get().vfs().file_size(uri, &size), nullopt, nullopt);
+          resources_.get().vfs().file_size(uri, &size),
+          std::nullopt,
+          std::nullopt);
       meta_files.emplace_back(uri, std::string());
 
       auto& names = meta_files.back().second;
       names.resize(size);
       RETURN_NOT_OK_TUPLE(
           resources_.get().vfs().read(uri, 0, &names[0], size),
-          nullopt,
-          nullopt);
+          std::nullopt,
+          std::nullopt);
       std::stringstream ss(names);
       for (std::string condition_marker; std::getline(ss, condition_marker);) {
         if (ignore_set.count(condition_marker) == 0) {
@@ -753,8 +758,8 @@ ArrayDirectory::load_consolidated_commit_uris(
           RETURN_NOT_OK_TUPLE(
               utils::parse::get_timestamp_range(
                   URI(condition_marker), &delete_timestamp_range),
-              nullopt,
-              nullopt);
+              std::nullopt,
+              std::nullopt);
 
           // Add the delete tile location if it overlaps the open start/end
           // times
@@ -899,7 +904,7 @@ void ArrayDirectory::load_commits_uris_to_consolidate(
   }
 }
 
-tuple<Status, optional<std::vector<URI>>>
+std::tuple<Status, std::optional<std::vector<URI>>>
 ArrayDirectory::compute_fragment_uris_v1_v11(
     const std::vector<URI>& array_dir_uris) const {
   std::vector<URI> fragment_uris;
@@ -927,7 +932,7 @@ ArrayDirectory::compute_fragment_uris_v1_v11(
     is_fragment[i] = (uint8_t)flag;
     return Status::Ok();
   });
-  RETURN_NOT_OK_TUPLE(status, nullopt);
+  RETURN_NOT_OK_TUPLE(status, std::nullopt);
 
   for (size_t i = 0; i < array_dir_uris.size(); ++i) {
     if (is_fragment[i]) {
@@ -974,7 +979,10 @@ bool ArrayDirectory::timestamps_overlap(
   }
 }
 
-tuple<Status, optional<std::vector<URI>>, optional<std::vector<URI>>>
+std::tuple<
+    Status,
+    std::optional<std::vector<URI>>,
+    std::optional<std::vector<URI>>>
 ArrayDirectory::compute_uris_to_vacuum(
     const bool full_overlap_only, const std::vector<URI>& uris) const {
   // Get vacuum URIs
@@ -986,8 +994,8 @@ ArrayDirectory::compute_uris_to_vacuum(
     std::pair<uint64_t, uint64_t> fragment_timestamp_range;
     RETURN_NOT_OK_TUPLE(
         utils::parse::get_timestamp_range(uris[i], &fragment_timestamp_range),
-        nullopt,
-        nullopt);
+        std::nullopt,
+        std::nullopt);
     if (is_vacuum_file(uris[i])) {
       if (timestamps_overlap(
               fragment_timestamp_range,
@@ -1036,7 +1044,7 @@ ArrayDirectory::compute_uris_to_vacuum(
 
     return Status::Ok();
   });
-  RETURN_NOT_OK_TUPLE(status, nullopt, nullopt);
+  RETURN_NOT_OK_TUPLE(status, std::nullopt, std::nullopt);
 
   // Compute the fragment URIs to vacuum
   std::vector<URI> uris_to_vacuum;
@@ -1055,7 +1063,7 @@ ArrayDirectory::compute_uris_to_vacuum(
   return {Status::Ok(), uris_to_vacuum, vac_uris_to_vacuum};
 }
 
-tuple<Status, optional<std::vector<TimestampedURI>>>
+std::tuple<Status, std::optional<std::vector<TimestampedURI>>>
 ArrayDirectory::compute_filtered_uris(
     const bool full_overlap_only,
     const std::vector<URI>& uris,
@@ -1085,7 +1093,7 @@ ArrayDirectory::compute_filtered_uris(
     std::pair<uint64_t, uint64_t> fragment_timestamp_range;
     RETURN_NOT_OK_TUPLE(
         utils::parse::get_timestamp_range(uri, &fragment_timestamp_range),
-        nullopt);
+        std::nullopt);
     if (timestamps_overlap(
             fragment_timestamp_range,
             !full_overlap_only &&

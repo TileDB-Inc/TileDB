@@ -65,7 +65,7 @@ class SparseIndexReaderBaseStatusException : public StatusException {
 
 SparseIndexReaderBase::SparseIndexReaderBase(
     stats::Stats* stats,
-    shared_ptr<Logger> logger,
+    std::shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -846,7 +846,7 @@ Status SparseIndexReaderBase::apply_query_condition(
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<uint64_t>>>
+std::tuple<Status, std::optional<std::vector<uint64_t>>>
 SparseIndexReaderBase::read_and_unfilter_attributes(
     const std::vector<std::string>& names,
     const std::vector<uint64_t>& mem_usage_per_attr,
@@ -878,7 +878,8 @@ SparseIndexReaderBase::read_and_unfilter_attributes(
 
   // Read and unfilter tiles.
   RETURN_NOT_OK_TUPLE(
-      read_and_unfilter_attribute_tiles(names_to_read, result_tiles), nullopt);
+      read_and_unfilter_attribute_tiles(names_to_read, result_tiles),
+      std::nullopt);
 
   return {Status::Ok(), std::move(index_to_copy)};
 }

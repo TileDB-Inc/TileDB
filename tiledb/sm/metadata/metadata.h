@@ -123,7 +123,7 @@ class Metadata {
    * deleted or overwritten metadata items considering the order.
    */
   static Metadata deserialize(
-      const std::vector<shared_ptr<Tile>>& metadata_tiles);
+      const std::vector<std::shared_ptr<Tile>>& metadata_tiles);
 
   /** Serializes all key-value metadata items into the input buffer. */
   void serialize(Serializer& serializer) const;

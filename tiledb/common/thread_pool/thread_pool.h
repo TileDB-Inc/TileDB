@@ -177,8 +177,8 @@ class ThreadPool {
 
   /** Producer-consumer queue where functions to be executed are kept */
   ProducerConsumerQueue<
-      shared_ptr<std::packaged_task<Status()>>,
-      std::deque<shared_ptr<std::packaged_task<Status()>>>>
+      std::shared_ptr<std::packaged_task<Status()>>,
+      std::deque<std::shared_ptr<std::packaged_task<Status()>>>>
       task_queue_;
 
   /** The worker threads */

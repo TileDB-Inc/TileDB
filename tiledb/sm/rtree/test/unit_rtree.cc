@@ -88,7 +88,7 @@ Domain create_domain(
   assert(dim_names.size() == dim_domains.size());
   assert(dim_names.size() == dim_tile_extents.size());
 
-  std::vector<shared_ptr<Dimension>> dimensions;
+  std::vector<std::shared_ptr<Dimension>> dimensions;
   for (size_t d = 0; d < dim_names.size(); ++d) {
     uint32_t cell_val_num =
         (datatype_is_string(dim_types[d])) ? constants::var_num : 1;
@@ -102,7 +102,7 @@ Domain create_domain(
       tile_extent.resize(tile_extent_size);
       std::memcpy(tile_extent.data(), dim_tile_extents[d], tile_extent_size);
     }
-    shared_ptr<Dimension> dim = make_shared<Dimension>(
+    std::shared_ptr<Dimension> dim = make_shared<Dimension>(
         HERE(),
         dim_names[d],
         dim_types[d],

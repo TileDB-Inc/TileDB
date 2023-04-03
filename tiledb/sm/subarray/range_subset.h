@@ -189,7 +189,8 @@ class RangeSetAndSupersetImpl {
    * @param range The range to crop
    * @return An optional string with a warning message if the range is cropped.
    **/
-  virtual optional<std::string> crop_range_with_warning(Range& range) const = 0;
+  virtual std::optional<std::string> crop_range_with_warning(
+      Range& range) const = 0;
 
   /**
    * Sorts the ranges in the range manager.
@@ -219,7 +220,8 @@ class TypedRangeSetAndSupersetImpl : public RangeSetAndSupersetImpl {
     return type::check_range_is_subset<T>(superset_, range);
   }
 
-  optional<std::string> crop_range_with_warning(Range& range) const override {
+  std::optional<std::string> crop_range_with_warning(
+      Range& range) const override {
     auto domain = (const T*)superset_.data();
     auto r = (const T*)range.data();
     if (r[0] < domain[0] || r[1] > domain[1]) {
@@ -232,7 +234,7 @@ class TypedRangeSetAndSupersetImpl : public RangeSetAndSupersetImpl {
                       std::to_string(r[1]) + "]";
       return warn_message;
     }
-    return nullopt;
+    return std::nullopt;
   }
 
   Status sort_ranges(
@@ -264,9 +266,9 @@ class TypedRangeSetAndFullsetImpl : public RangeSetAndSupersetImpl {
     return Status::Ok();
   }
 
-  optional<std::string> crop_range_with_warning(Range&) const override {
+  std::optional<std::string> crop_range_with_warning(Range&) const override {
     // No check needed.
-    return nullopt;
+    return std::nullopt;
   }
 
   Status sort_ranges(
@@ -299,9 +301,9 @@ class TypedRangeSetAndFullsetImpl<std::string, CoalesceAdds>
     return Status::Ok();
   }
 
-  optional<std::string> crop_range_with_warning(Range&) const override {
+  std::optional<std::string> crop_range_with_warning(Range&) const override {
     // No-op. Superset is always full typeset.
-    return nullopt;
+    return std::nullopt;
   }
 
   Status sort_ranges(
@@ -380,7 +382,7 @@ class RangeSetAndSuperset {
    * @return {error_status, warning_message} Returns a status with any errors
    * and a warning message.
    **/
-  tuple<Status, optional<std::string>> add_range(
+  std::tuple<Status, std::optional<std::string>> add_range(
       Range& range, const bool read_range_oob_error = true);
 
   /**
@@ -452,7 +454,7 @@ class RangeSetAndSuperset {
 
  private:
   /** Pointer to typed implementation details. */
-  shared_ptr<detail::RangeSetAndSupersetImpl> impl_ = nullptr;
+  std::shared_ptr<detail::RangeSetAndSupersetImpl> impl_ = nullptr;
 
   /**
    * If ``true``, the range contains the full domain for the dimension (the

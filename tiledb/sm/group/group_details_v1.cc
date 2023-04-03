@@ -56,9 +56,9 @@ void GroupDetailsV1::serialize(Serializer& serializer) {
   }
 }
 
-shared_ptr<GroupDetails> GroupDetailsV1::deserialize(
+std::shared_ptr<GroupDetails> GroupDetailsV1::deserialize(
     Deserializer& deserializer, const URI& group_uri) {
-  shared_ptr<GroupDetailsV1> group =
+  std::shared_ptr<GroupDetailsV1> group =
       tdb::make_shared<GroupDetailsV1>(HERE(), group_uri);
 
   uint64_t member_count = deserializer.read<uint64_t>();

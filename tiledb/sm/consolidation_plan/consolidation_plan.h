@@ -63,7 +63,7 @@ class ConsolidationPlan {
   /* ********************************* */
 
   /** Constructor. */
-  ConsolidationPlan(shared_ptr<Array> array, uint64_t fragment_size);
+  ConsolidationPlan(std::shared_ptr<Array> array, uint64_t fragment_size);
 
   /** Destructor. */
   ~ConsolidationPlan();
@@ -135,7 +135,7 @@ class ConsolidationPlan {
     PlanNode() = delete;
 
     /** Constructs a plan object using a single fragment index. */
-    PlanNode(shared_ptr<Array> array, unsigned frag_idx)
+    PlanNode(std::shared_ptr<Array> array, unsigned frag_idx)
         : array_(array)
         , fragment_indexes_({frag_idx})
         , combined_non_empty_domain_(
@@ -207,7 +207,7 @@ class ConsolidationPlan {
     /* ********************************* */
 
     /** Array. */
-    shared_ptr<Array> array_;
+    std::shared_ptr<Array> array_;
 
     /** Fragment indexes included in this plan object. */
     std::vector<unsigned> fragment_indexes_;
@@ -241,7 +241,7 @@ class ConsolidationPlan {
    *
    * @param array Opened array to generate the plan for.
    */
-  void generate(shared_ptr<Array> array);
+  void generate(std::shared_ptr<Array> array);
 };
 
 }  // namespace sm

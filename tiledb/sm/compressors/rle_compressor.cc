@@ -157,8 +157,8 @@ uint8_t RLE::compute_bytesize(uint64_t param_length) {
   }
 }
 
-tuple<uint64_t, uint64_t, uint64_t, uint64_t> RLE::calculate_compression_params(
-    const span<std::string_view> input) {
+std::tuple<uint64_t, uint64_t, uint64_t, uint64_t>
+RLE::calculate_compression_params(const span<std::string_view> input) {
   if (input.empty())
     return {0, 0, 0, 0};
 

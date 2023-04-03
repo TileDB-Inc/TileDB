@@ -58,7 +58,7 @@ class FilterCreate {
    * @param version Array schema version
    * @return Filter
    */
-  static shared_ptr<Filter> deserialize(
+  static std::shared_ptr<Filter> deserialize(
       Deserializer& deserializer,
       const EncryptionKey& encryption_key,
       const uint32_t version);
@@ -70,7 +70,7 @@ class FilterCreate {
    * @param version Array schema version
    * @return Filter
    */
-  static shared_ptr<Filter> deserialize(
+  static std::shared_ptr<Filter> deserialize(
       Deserializer& deserializer, const uint32_t version);
 };
 

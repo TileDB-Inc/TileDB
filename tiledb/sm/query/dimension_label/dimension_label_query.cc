@@ -51,12 +51,12 @@ namespace tiledb::sm {
 
 DimensionLabelQuery::DimensionLabelQuery(
     StorageManager* storage_manager,
-    shared_ptr<Array> dim_label,
+    std::shared_ptr<Array> dim_label,
     const DimensionLabel& dim_label_ref,
     const Subarray& parent_subarray,
     const QueryBuffer& label_buffer,
     const QueryBuffer& index_buffer,
-    optional<std::string> fragment_name)
+    std::optional<std::string> fragment_name)
     : Query(storage_manager, dim_label, fragment_name)
     , dim_label_name_{dim_label_ref.name()} {
   switch (dim_label->get_query_type()) {
@@ -108,10 +108,10 @@ DimensionLabelQuery::DimensionLabelQuery(
 
 DimensionLabelQuery::DimensionLabelQuery(
     StorageManager* storage_manager,
-    shared_ptr<Array> dim_label,
+    std::shared_ptr<Array> dim_label,
     const DimensionLabel& dim_label_ref,
     const std::vector<Range>& label_ranges)
-    : Query(storage_manager, dim_label, nullopt)
+    : Query(storage_manager, dim_label, std::nullopt)
     , dim_label_name_{dim_label_ref.name()}
     , index_data_{IndexDataCreate::make_index_data(
           array_schema().dimension_ptr(0)->type(),

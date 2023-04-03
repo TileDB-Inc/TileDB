@@ -47,7 +47,7 @@ namespace sm {
 
 StrategyBase::StrategyBase(
     stats::Stats* stats,
-    shared_ptr<Logger> logger,
+    std::shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,

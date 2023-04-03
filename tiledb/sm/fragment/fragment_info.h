@@ -229,7 +229,7 @@ class FragmentInfo {
   Status get_version(uint32_t fid, uint32_t* version) const;
 
   /** Retrieves the array schema of the fragment with the given index. */
-  shared_ptr<ArraySchema> get_array_schema(uint32_t fid);
+  std::shared_ptr<ArraySchema> get_array_schema(uint32_t fid);
 
   /** Retrieves the array schema name of the fragment with the given index. */
   Status get_array_schema_name(uint32_t fid, const char** schema_name);
@@ -316,12 +316,12 @@ class FragmentInfo {
   uint32_t unconsolidated_metadata_num() const;
 
   /** Returns array schemas map. */
-  inline const shared_ptr<ArraySchema> array_schema_latest() const {
+  inline const std::shared_ptr<ArraySchema> array_schema_latest() const {
     return array_schema_latest_;
   }
 
   /** Returns array schemas map. */
-  inline const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+  inline const std::unordered_map<std::string, std::shared_ptr<ArraySchema>>&
   array_schemas_all() const {
     return array_schemas_all_;
   }
@@ -334,12 +334,12 @@ class FragmentInfo {
   // Accessors
 
   /** Returns array schemas latest. */
-  inline shared_ptr<ArraySchema>& array_schema_latest() {
+  inline std::shared_ptr<ArraySchema>& array_schema_latest() {
     return array_schema_latest_;
   }
 
   /** array_schemas_all accessor. */
-  inline std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+  inline std::unordered_map<std::string, std::shared_ptr<ArraySchema>>&
   array_schemas_all() {
     return array_schemas_all_;
   }
@@ -390,7 +390,8 @@ class FragmentInfo {
    * All the array schemas relevant to the loaded fragment metadata
    * keyed by their file name.
    */
-  std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas_all_;
+  std::unordered_map<std::string, std::shared_ptr<ArraySchema>>
+      array_schemas_all_;
 
   /** Information about fragments in the array. */
   std::vector<SingleFragmentInfo> single_fragment_info_vec_;
@@ -446,7 +447,7 @@ class FragmentInfo {
    *     will be loaded into the returned `SingleFragmentInfo` object.
    * @return Status, a `SingleFragmentInfo` object
    */
-  tuple<Status, optional<SingleFragmentInfo>> load(
+  std::tuple<Status, std::optional<SingleFragmentInfo>> load(
       const URI& fragment_uri) const;
 
   /**

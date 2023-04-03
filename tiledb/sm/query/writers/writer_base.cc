@@ -76,7 +76,7 @@ class WriterBaseStatusException : public StatusException {
 
 WriterBase::WriterBase(
     stats::Stats* stats,
-    shared_ptr<Logger> logger,
+    std::shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -87,7 +87,7 @@ WriterBase::WriterBase(
     bool disable_checks_consolidation,
     Query::CoordsInfo& coords_info,
     bool remote_query,
-    optional<std::string> fragment_name,
+    std::optional<std::string> fragment_name,
     bool skip_checks_serialization)
     : StrategyBase(
           stats,
@@ -599,7 +599,7 @@ std::vector<std::string> WriterBase::buffer_names() const {
   return ret;
 }
 
-Status WriterBase::close_files(shared_ptr<FragmentMetadata> meta) const {
+Status WriterBase::close_files(std::shared_ptr<FragmentMetadata> meta) const {
   // Close attribute and dimension files
   const auto buffer_name = buffer_names();
 
@@ -690,7 +690,7 @@ void WriterBase::set_coords_metadata(
     const uint64_t end_tile_idx,
     const std::unordered_map<std::string, WriterTileTupleVector>& tiles,
     const std::vector<NDRange>& mbrs,
-    shared_ptr<FragmentMetadata> meta) const {
+    std::shared_ptr<FragmentMetadata> meta) const {
   // Applicable only if there are coordinates
   if (!coords_info_.has_coords_) {
     return;
@@ -787,7 +787,7 @@ std::string WriterBase::coords_to_str(uint64_t i) const {
 }
 
 Status WriterBase::create_fragment(
-    bool dense, shared_ptr<FragmentMetadata>& frag_meta) {
+    bool dense, std::shared_ptr<FragmentMetadata>& frag_meta) {
   // Get write version, timestamp array was opened,  and a reference to the
   // array directory.
   auto write_version = array_->array_schema_latest().write_version();
@@ -1060,7 +1060,7 @@ Status WriterBase::split_coords_buffer() {
 Status WriterBase::write_tiles(
     const uint64_t start_tile_idx,
     const uint64_t end_tile_idx,
-    shared_ptr<FragmentMetadata> frag_meta,
+    std::shared_ptr<FragmentMetadata> frag_meta,
     std::unordered_map<std::string, WriterTileTupleVector>* const tiles) {
   auto timer_se = stats_->start_timer("write_num_tiles");
 
@@ -1103,7 +1103,7 @@ Status WriterBase::write_tiles(
     const uint64_t start_tile_idx,
     const uint64_t end_tile_idx,
     const std::string& name,
-    shared_ptr<FragmentMetadata> frag_meta,
+    std::shared_ptr<FragmentMetadata> frag_meta,
     uint64_t start_tile_id,
     WriterTileTupleVector* const tiles,
     bool close_files) {
@@ -1121,7 +1121,7 @@ Status WriterBase::write_tiles(
   RETURN_NOT_OK(status);
 
   Status st;
-  optional<URI> var_uri;
+  std::optional<URI> var_uri;
   if (!var_size)
     var_uri = URI("");
   else {
@@ -1129,7 +1129,7 @@ Status WriterBase::write_tiles(
     RETURN_NOT_OK(st);
   }
 
-  optional<URI> validity_uri;
+  std::optional<URI> validity_uri;
   if (!nullable)
     validity_uri = URI("");
   else {

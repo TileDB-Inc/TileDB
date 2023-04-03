@@ -43,7 +43,7 @@ using namespace tiledb::sm;
 namespace tiledb::sm {
 class WhiteboxFragmentConsolidator {
  public:
-  static tuple<std::vector<ByteVec>, std::vector<uint64_t>> create_buffers(
+  static std::tuple<std::vector<ByteVec>, std::vector<uint64_t>> create_buffers(
       stats::Stats* stats,
       const bool with_timestamps,
       const bool with_delete_meta,
@@ -62,13 +62,13 @@ class WhiteboxFragmentConsolidator {
 };
 }  // namespace tiledb::sm
 
-shared_ptr<ArraySchema> make_schema(
+std::shared_ptr<ArraySchema> make_schema(
     const bool sparse,
     const std::vector<Datatype> dim_types,
     const std::vector<Datatype> attr_types,
     const std::vector<bool> attr_nullable) {
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+  std::shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
       HERE(), sparse ? ArrayType::SPARSE : ArrayType::DENSE);
 
   // Create the domain/dimensions.
@@ -173,7 +173,7 @@ TEST_CASE(
     "Fragment consolidator: test buffer creation",
     "[fragment_consolidator][create_buffers]") {
   stats::Stats statistics("default");
-  shared_ptr<ArraySchema> schema = nullptr;
+  std::shared_ptr<ArraySchema> schema = nullptr;
   std::vector<uint64_t> expected_sizes;
   std::unordered_map<std::string, uint64_t> avg_cell_sizes;
   bool with_timestamps = false;

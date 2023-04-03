@@ -95,17 +95,17 @@ class WhiteboxConsistencyController : public ConsistencyController {
     // Create Domain
     uint64_t dim_dom[2]{0, 1};
     uint64_t tile_extent = 1;
-    shared_ptr<Dimension> dim =
+    std::shared_ptr<Dimension> dim =
         make_shared<Dimension>(HERE(), std::string("dim"), Datatype::UINT64);
     throw_if_not_ok(dim->set_domain(&dim_dom));
     throw_if_not_ok(dim->set_tile_extent(&tile_extent));
 
-    std::vector<shared_ptr<Dimension>> dims = {dim};
-    shared_ptr<Domain> domain =
+    std::vector<std::shared_ptr<Dimension>> dims = {dim};
+    std::shared_ptr<Domain> domain =
         make_shared<Domain>(HERE(), Layout::ROW_MAJOR, dims, Layout::ROW_MAJOR);
 
     // Create the ArraySchema
-    shared_ptr<ArraySchema> schema =
+    std::shared_ptr<ArraySchema> schema =
         make_shared<ArraySchema>(HERE(), ArrayType::DENSE);
     throw_if_not_ok(schema->set_domain(domain));
     throw_if_not_ok(schema->add_attribute(

@@ -253,7 +253,7 @@ TEST_CASE("Dimension: Test datatypes", "[dimension][datatypes]") {
   }
 }
 
-typedef tuple<
+typedef std::tuple<
     int8_t,
     int16_t,
     int32_t,
@@ -302,7 +302,7 @@ TEMPLATE_LIST_TEST_CASE(
   CHECK(Dimension::round_to_tile(max, min, min_extent) == max);
 }
 
-typedef tuple<int8_t, int16_t, int32_t, int64_t> SignedIntegralTypes;
+typedef std::tuple<int8_t, int16_t, int32_t, int64_t> SignedIntegralTypes;
 TEMPLATE_LIST_TEST_CASE(
     "test tile_idx signed",
     "[dimension][integral][signed][tile_idx]",
@@ -319,7 +319,7 @@ TEMPLATE_LIST_TEST_CASE(
   }
 }
 
-typedef tuple<uint8_t, uint16_t, uint32_t, uint64_t> UnsignedIntegralTypes;
+typedef std::tuple<uint8_t, uint16_t, uint32_t, uint64_t> UnsignedIntegralTypes;
 TEMPLATE_LIST_TEST_CASE(
     "test tile_idx unsigned",
     "[dimension][integral][unsigned][tile_idx]",
@@ -344,7 +344,7 @@ void check_relevant_ranges(
   }
 }
 
-typedef tuple<
+typedef std::tuple<
     int8_t,
     int16_t,
     int32_t,

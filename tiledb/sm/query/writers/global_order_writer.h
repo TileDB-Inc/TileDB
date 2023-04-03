@@ -84,7 +84,7 @@ class GlobalOrderWriter : public WriterBase {
     std::unordered_map<std::string, uint64_t> cells_written_;
 
     /** The fragment metadata that the writer will focus on. */
-    shared_ptr<FragmentMetadata> frag_meta_;
+    std::shared_ptr<FragmentMetadata> frag_meta_;
 
     /** The last cell written. */
     std::optional<SingleCoord> last_cell_coords_;
@@ -107,7 +107,7 @@ class GlobalOrderWriter : public WriterBase {
   /** Constructor. */
   GlobalOrderWriter(
       stats::Stats* stats,
-      shared_ptr<Logger> logger,
+      std::shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -120,7 +120,7 @@ class GlobalOrderWriter : public WriterBase {
       std::vector<std::string>& processed_conditions,
       Query::CoordsInfo& coords_info_,
       bool remote_query,
-      optional<std::string> fragment_name = nullopt,
+      std::optional<std::string> fragment_name = std::nullopt,
       bool skip_checks_serialization = false);
 
   /** Destructor. */

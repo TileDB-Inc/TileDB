@@ -64,7 +64,7 @@ class ContextResources {
   /** Constructor. */
   explicit ContextResources(
       const Config& config,
-      shared_ptr<Logger> logger,
+      std::shared_ptr<Logger> logger,
       size_t compute_thread_count,
       size_t io_thread_count,
       std::string stats_name);
@@ -82,7 +82,7 @@ class ContextResources {
   }
 
   /** Returns the internal logger object. */
-  [[nodiscard]] inline shared_ptr<Logger> logger() const {
+  [[nodiscard]] inline std::shared_ptr<Logger> logger() const {
     return logger_;
   }
 
@@ -105,7 +105,7 @@ class ContextResources {
     return vfs_;
   }
 
-  [[nodiscard]] inline shared_ptr<RestClient> rest_client() const {
+  [[nodiscard]] inline std::shared_ptr<RestClient> rest_client() const {
     return rest_client_;
   }
 
@@ -118,7 +118,7 @@ class ContextResources {
   mutable Config config_;
 
   /** The class logger. */
-  shared_ptr<Logger> logger_;
+  std::shared_ptr<Logger> logger_;
 
   /** The thread pool for compute-bound tasks. */
   mutable ThreadPool compute_tp_;
@@ -127,7 +127,7 @@ class ContextResources {
   mutable ThreadPool io_tp_;
 
   /** The class stats. */
-  shared_ptr<stats::Stats> stats_;
+  std::shared_ptr<stats::Stats> stats_;
 
   /**
    * Virtual filesystem handler. It directs queries to the appropriate
@@ -136,7 +136,7 @@ class ContextResources {
   mutable VFS vfs_;
 
   /** The rest client (may be null if none was configured). */
-  shared_ptr<RestClient> rest_client_;
+  std::shared_ptr<RestClient> rest_client_;
 };
 
 }  // namespace tiledb::sm

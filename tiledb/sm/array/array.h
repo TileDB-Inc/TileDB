@@ -114,16 +114,17 @@ class Array {
   /** Sets the latest array schema.
    * @param array_schema The array schema to set.
    */
-  void set_array_schema_latest(const shared_ptr<ArraySchema>& array_schema);
+  void set_array_schema_latest(
+      const std::shared_ptr<ArraySchema>& array_schema);
 
   /** Returns the latest array schema. */
   const ArraySchema& array_schema_latest() const;
 
   /** Returns the latest array schema as a shared pointer. */
-  shared_ptr<const ArraySchema> array_schema_latest_ptr() const;
+  std::shared_ptr<const ArraySchema> array_schema_latest_ptr() const;
 
   /** Returns array schemas map. */
-  inline const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+  inline const std::unordered_map<std::string, std::shared_ptr<ArraySchema>>&
   array_schemas_all() const {
     return array_schemas_all_;
   }
@@ -133,7 +134,8 @@ class Array {
    * @param all_schemas The array schemas to set.
    */
   void set_array_schemas_all(
-      std::unordered_map<std::string, shared_ptr<ArraySchema>>& all_schemas);
+      std::unordered_map<std::string, std::shared_ptr<ArraySchema>>&
+          all_schemas);
 
   /** Returns the array URI. */
   const URI& array_uri() const;
@@ -248,12 +250,12 @@ class Array {
    * Returns the fragment metadata of the array. If the array is not open,
    * an empty vector is returned.
    */
-  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata() const;
+  std::vector<std::shared_ptr<FragmentMetadata>> fragment_metadata() const;
 
   /**
    * Accessor to the fragment metadata of the array.
    */
-  inline std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata() {
+  inline std::vector<std::shared_ptr<FragmentMetadata>>& fragment_metadata() {
     return fragment_metadata_;
   }
 
@@ -270,7 +272,8 @@ class Array {
   bool is_remote() const;
 
   /** Retrieves the array schema. Errors if the array is not open. */
-  tuple<Status, optional<shared_ptr<ArraySchema>>> get_array_schema() const;
+  std::tuple<Status, std::optional<std::shared_ptr<ArraySchema>>>
+  get_array_schema() const;
 
   /** Retrieves the query type. Throws if the array is not open. */
   QueryType get_query_type() const;
@@ -470,7 +473,7 @@ class Array {
    *  If the non_empty_domain has not been computed or loaded
    *  it will be loaded first
    * */
-  tuple<Status, optional<const NDRange>> non_empty_domain();
+  std::tuple<Status, std::optional<const NDRange>> non_empty_domain();
 
   /**
    * Retrieves the array metadata object that is already loadad.
@@ -542,12 +545,13 @@ class Array {
   /* ********************************* */
 
   /** The latest array schema. */
-  shared_ptr<ArraySchema> array_schema_latest_;
+  std::shared_ptr<ArraySchema> array_schema_latest_;
 
   /**
    * A map of all array_schemas_all
    */
-  std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas_all_;
+  std::unordered_map<std::string, std::shared_ptr<ArraySchema>>
+      array_schemas_all_;
 
   /** The array URI. */
   URI array_uri_;
@@ -570,10 +574,10 @@ class Array {
    * bytes should be stored. Whenever a key is needed, a pointer to this
    * memory region should be passed instead of a copy of the bytes.
    */
-  shared_ptr<EncryptionKey> encryption_key_;
+  std::shared_ptr<EncryptionKey> encryption_key_;
 
   /** The metadata of the fragments the array was opened with. */
-  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
+  std::vector<std::shared_ptr<FragmentMetadata>> fragment_metadata_;
 
   /** `True` if the array has been opened. */
   std::atomic<bool> is_open_;
@@ -678,10 +682,11 @@ class Array {
    *        fragment_metadata The fragment metadata to be retrieved
    *           after the array is opened.
    */
-  tuple<
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
-      optional<std::vector<shared_ptr<FragmentMetadata>>>>
+  std::tuple<
+      std::optional<std::shared_ptr<ArraySchema>>,
+      std::optional<
+          std::unordered_map<std::string, std::shared_ptr<ArraySchema>>>,
+      std::optional<std::vector<std::shared_ptr<FragmentMetadata>>>>
   open_for_reads();
 
   /**
@@ -694,9 +699,10 @@ class Array {
    *          array is opened.
    *        ArraySchemaMap Map of all array schemas found keyed by name
    */
-  tuple<
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+  std::tuple<
+      std::optional<std::shared_ptr<ArraySchema>>,
+      std::optional<
+          std::unordered_map<std::string, std::shared_ptr<ArraySchema>>>>
   open_for_reads_without_fragments();
 
   /** Opens an array for writes.
@@ -708,10 +714,11 @@ class Array {
    *          array is opened.
    *        ArraySchemaMap Map of all array schemas found keyed by name
    */
-  tuple<
+  std::tuple<
       Status,
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+      std::optional<std::shared_ptr<ArraySchema>>,
+      std::optional<
+          std::unordered_map<std::string, std::shared_ptr<ArraySchema>>>>
   open_for_writes();
 
   /** Clears the cached max buffer sizes and subarray. */

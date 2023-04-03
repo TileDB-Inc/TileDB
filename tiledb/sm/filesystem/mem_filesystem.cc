@@ -84,7 +84,7 @@ class MemFilesystem::FSNode {
   virtual bool is_dir() const = 0;
 
   /** Lists the contents of a node */
-  virtual tuple<Status, optional<std::vector<directory_entry>>> ls(
+  virtual std::tuple<Status, std::optional<std::vector<directory_entry>>> ls(
       const std::string& full_path) const = 0;
 
   /** Indicates if a given node is a child of this node */
@@ -157,7 +157,7 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
   }
 
   /** Returns the full path to this file */
-  tuple<Status, optional<std::vector<directory_entry>>> ls(
+  std::tuple<Status, std::optional<std::vector<directory_entry>>> ls(
       const std::string& full_path) const override {
     assert(!mutex_.try_lock());
 
@@ -165,7 +165,7 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
 
     auto st = LOG_STATUS(Status_MemFSError(
         std::string("Cannot get children, the path is a file")));
-    return {st, nullopt};
+    return {st, std::nullopt};
   }
 
   bool has_child(const std::string& child) const override {
@@ -282,7 +282,7 @@ class MemFilesystem::Directory : public MemFilesystem::FSNode {
     return true;
   }
 
-  tuple<Status, optional<std::vector<directory_entry>>> ls(
+  std::tuple<Status, std::optional<std::vector<directory_entry>>> ls(
       const std::string& full_path) const override {
     assert(!mutex_.try_lock());
 
@@ -294,7 +294,7 @@ class MemFilesystem::Directory : public MemFilesystem::FSNode {
         names.emplace_back("mem://" + full_path + child.first, 0, true);
       } else {
         uint64_t size;
-        RETURN_NOT_OK_TUPLE(child.second->get_size(&size), nullopt);
+        RETURN_NOT_OK_TUPLE(child.second->get_size(&size), std::nullopt);
         names.emplace_back("mem://" + full_path + child.first, size, false);
       }
     }
@@ -401,7 +401,7 @@ Status MemFilesystem::ls(
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<directory_entry>>>
+std::tuple<Status, std::optional<std::vector<directory_entry>>>
 MemFilesystem::ls_with_sizes(const URI& path) const {
   auto abspath = path.to_path();
   std::vector<std::string> tokens = tokenize(abspath);
@@ -417,7 +417,7 @@ MemFilesystem::ls_with_sizes(const URI& path) const {
     if (cur->children_.count(token) != 1) {
       auto st = LOG_STATUS(Status_MemFSError(
           std::string("Unable to list on non-existent path ") + abspath));
-      return {st, nullopt};
+      return {st, std::nullopt};
     }
 
     cur = cur->children_[token].get();
@@ -428,7 +428,7 @@ MemFilesystem::ls_with_sizes(const URI& path) const {
   assert(cur_lock.mutex() == &cur->mutex_);
   auto&& [st, entries] = cur->ls(dir);
   if (!st.ok()) {
-    return {st, nullopt};
+    return {st, std::nullopt};
   }
 
   return {Status::Ok(), entries};

@@ -135,14 +135,14 @@ class WhiteboxTracedAllocator : public TracedAllocator<T, Alloc, Tracer> {
 
   template <typename... Args>
   explicit WhiteboxTracedAllocator(const TracingLabel& label, Args&&... args)
-      : base(label, forward<Args>(args)...) {
+      : base(label, std::forward<Args>(args)...) {
   }
 
   template <size_t n, typename... Args>
   explicit WhiteboxTracedAllocator(const char (&origin)[n], Args&&... args)
       : base(
             TracingLabel(std::string_view(origin, n - 1)),
-            forward<Args>(args)...) {
+            std::forward<Args>(args)...) {
   }
 };
 }  // namespace tiledb::common::detail

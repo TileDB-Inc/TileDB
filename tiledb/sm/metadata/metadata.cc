@@ -122,7 +122,7 @@ Status Metadata::generate_uri(const URI& array_uri) {
 }
 
 Metadata Metadata::deserialize(
-    const std::vector<shared_ptr<Tile>>& metadata_tiles) {
+    const std::vector<std::shared_ptr<Tile>>& metadata_tiles) {
   if (metadata_tiles.empty()) {
     return Metadata();
   }

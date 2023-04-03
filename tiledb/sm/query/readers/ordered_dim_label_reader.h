@@ -251,7 +251,7 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
   /** Constructor. */
   OrderedDimLabelReader(
       stats::Stats* stats,
-      shared_ptr<Logger> logger,
+      std::shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,

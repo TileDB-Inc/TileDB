@@ -74,7 +74,7 @@ class UnorderWriterStatusException : public StatusException {
 
 UnorderedWriter::UnorderedWriter(
     stats::Stats* stats,
-    shared_ptr<Logger> logger,
+    std::shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -85,7 +85,7 @@ UnorderedWriter::UnorderedWriter(
     Query::CoordsInfo& coords_info,
     std::unordered_set<std::string>& written_buffers,
     bool remote_query,
-    optional<std::string> fragment_name,
+    std::optional<std::string> fragment_name,
     bool skip_checks_serialization)
     : WriterBase(
           stats,

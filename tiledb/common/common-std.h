@@ -56,9 +56,6 @@ using format_version_t = uint32_t;
  * Value manipulation
  */
 #include <utility>
-using std::forward;
-using std::move;
-using std::swap;
 
 /*
  * Structured binding.
@@ -68,23 +65,14 @@ using std::swap;
  * a success boolean and the return value when successful. In order to do this,
  * the return value must be optional.
  */
-#include <tuple>
-using std::get;
-using std::ignore;
-using std::tie;
-using std::tuple;
-
 #include <optional>
-using std::nullopt;
-using std::optional;
+#include <tuple>
 
 /*
  * Span implementation, similar to std::span of C++20
  */
 #include "external/include/span/span.hpp"
 using tcb::span;
-
-using std::size_t;
 
 /**
  * @section Reference

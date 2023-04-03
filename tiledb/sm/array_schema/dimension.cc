@@ -143,7 +143,7 @@ Status Dimension::set_cell_val_num(unsigned int cell_val_num) {
   return Status::Ok();
 }
 
-shared_ptr<Dimension> Dimension::deserialize(
+std::shared_ptr<Dimension> Dimension::deserialize(
     Deserializer& deserializer, uint32_t version, Datatype type) {
   Status st;
   // Load dimension name

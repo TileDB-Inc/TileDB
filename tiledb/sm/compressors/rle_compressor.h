@@ -192,7 +192,7 @@ class RLE {
    * @param input Input in form of a memory contiguous sequence of strings
    * @return {max_run_value, max_string_size, num_of_runs, output_strings_size}
    */
-  static tuple<uint64_t, uint64_t, uint64_t, uint64_t>
+  static std::tuple<uint64_t, uint64_t, uint64_t, uint64_t>
   calculate_compression_params(const span<std::string_view> input);
 
   /**

@@ -82,7 +82,8 @@ void GroupMember::serialize(Serializer&) {
       Status_GroupMemberError("Invalid call to GroupMember::serialize"));
 }
 
-shared_ptr<GroupMember> GroupMember::deserialize(Deserializer& deserializer) {
+std::shared_ptr<GroupMember> GroupMember::deserialize(
+    Deserializer& deserializer) {
   uint32_t version = 0;
   version = deserializer.read<uint32_t>();
   if (version == 1) {

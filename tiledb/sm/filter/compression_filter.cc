@@ -437,7 +437,7 @@ Status CompressionFilter::decompress_part(
   return st;
 }
 
-tuple<std::vector<std::string_view>, uint64_t>
+std::tuple<std::vector<std::string_view>, uint64_t>
 CompressionFilter::create_input_view(
     const FilterBuffer& input, WriterTile* const offsets_tile) {
   auto input_buf = static_cast<const char*>(input.buffers()[0].data());

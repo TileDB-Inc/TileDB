@@ -54,7 +54,7 @@ class OrderedWriter : public WriterBase {
   /** Constructor. */
   OrderedWriter(
       stats::Stats* stats,
-      shared_ptr<Logger> logger,
+      std::shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -64,7 +64,7 @@ class OrderedWriter : public WriterBase {
       std::vector<WrittenFragmentInfo>& written_fragment_info,
       Query::CoordsInfo& coords_info_,
       bool remote_query,
-      optional<std::string> fragment_name = nullopt,
+      std::optional<std::string> fragment_name = std::nullopt,
       bool skip_checks_serialization = false);
 
   /** Destructor. */
@@ -134,7 +134,7 @@ class OrderedWriter : public WriterBase {
   Status prepare_filter_and_write_tiles(
       const std::string& name,
       std::vector<WriterTileTupleVector>& tile_batches,
-      shared_ptr<FragmentMetadata> frag_meta,
+      std::shared_ptr<FragmentMetadata> frag_meta,
       DenseTiler<T>* dense_tiler,
       uint64_t thread_num);
 };

@@ -67,7 +67,7 @@ namespace sm {
 
 OrderedWriter::OrderedWriter(
     stats::Stats* stats,
-    shared_ptr<Logger> logger,
+    std::shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -77,7 +77,7 @@ OrderedWriter::OrderedWriter(
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     Query::CoordsInfo& coords_info,
     bool remote_query,
-    optional<std::string> fragment_name,
+    std::optional<std::string> fragment_name,
     bool skip_checks_serialization)
     : WriterBase(
           stats,
@@ -334,7 +334,7 @@ template <class T>
 Status OrderedWriter::prepare_filter_and_write_tiles(
     const std::string& name,
     std::vector<WriterTileTupleVector>& tile_batches,
-    shared_ptr<FragmentMetadata> frag_meta,
+    std::shared_ptr<FragmentMetadata> frag_meta,
     DenseTiler<T>* dense_tiler,
     uint64_t thread_num) {
   auto timer_se = stats_->start_timer("prepare_filter_and_write_tiles");
@@ -361,7 +361,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
   uint64_t frag_tile_id = 0;
   bool close_files = false;
   tile_batches.resize(batch_num);
-  std::optional<ThreadPool::Task> write_task = nullopt;
+  std::optional<ThreadPool::Task> write_task = std::nullopt;
   for (uint64_t b = 0; b < batch_num; ++b) {
     auto batch_size = (b == batch_num - 1) ? last_batch_size : thread_num;
     assert(batch_size > 0);

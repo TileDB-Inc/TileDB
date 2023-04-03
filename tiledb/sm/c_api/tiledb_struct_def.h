@@ -51,7 +51,7 @@
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 struct tiledb_array_t {
-  shared_ptr<tiledb::sm::Array> array_;
+  std::shared_ptr<tiledb::sm::Array> array_;
 };
 
 struct tiledb_subarray_t {
@@ -64,7 +64,7 @@ struct tiledb_attribute_t {
 };
 
 struct tiledb_array_schema_t {
-  shared_ptr<tiledb::sm::ArraySchema> array_schema_;
+  std::shared_ptr<tiledb::sm::ArraySchema> array_schema_;
 };
 
 struct tiledb_array_schema_evolution_t {
@@ -88,7 +88,7 @@ struct tiledb_fragment_info_t {
 };
 
 struct tiledb_consolidation_plan_t {
-  shared_ptr<tiledb::sm::ConsolidationPlan> consolidation_plan_ = nullptr;
+  std::shared_ptr<tiledb::sm::ConsolidationPlan> consolidation_plan_ = nullptr;
 };
 
 #endif

@@ -257,7 +257,7 @@ class AttributeOrderValidator {
       bool increasing_data,
       uint64_t f,
       const std::vector<const void*>& non_empty_domains,
-      const std::vector<shared_ptr<FragmentMetadata>> fragment_metadata,
+      const std::vector<std::shared_ptr<FragmentMetadata>> fragment_metadata,
       const std::vector<uint64_t>& frag_first_array_tile_idx) {
     // For easy reference.
     auto& val_data = per_fragment_validation_data_[f];
@@ -409,7 +409,7 @@ class AttributeOrderValidator {
       bool increasing_data,
       uint64_t f,
       const std::vector<const void*>& non_empty_domains,
-      const std::vector<shared_ptr<FragmentMetadata>> fragment_metadata,
+      const std::vector<std::shared_ptr<FragmentMetadata>> fragment_metadata,
       const std::vector<uint64_t>& frag_first_array_tile_idx) {
     auto& val_data = per_fragment_validation_data_[f];
     const IndexType* non_empty_domain =
@@ -500,7 +500,7 @@ class AttributeOrderValidator {
      * If it was possible to validate the value without looking at another
      * fragment, this will be nullopt.
      */
-    optional<uint64_t> min_frag_to_compare_to_{nullopt};
+    std::optional<uint64_t> min_frag_to_compare_to_{std::nullopt};
 
     /*
      * Which fragment index to validate the max bound against.
@@ -508,19 +508,19 @@ class AttributeOrderValidator {
      * If it was possible to validate the value without looking at another
      * fragment, this will be nullopt.
      */
-    optional<uint64_t> max_frag_to_compare_to_{nullopt};
+    std::optional<uint64_t> max_frag_to_compare_to_{std::nullopt};
 
     /**
      * Which tile we should compare data against for the min. The value is an
      * index into `result_tiles_to_load_`.
      */
-    optional<uint64_t> min_tile_to_compare_to_{nullopt};
+    std::optional<uint64_t> min_tile_to_compare_to_{std::nullopt};
 
     /**
      * Which tile we should compare data against for the max. The value is an
      * index into `result_tiles_to_load_`.
      */
-    optional<uint64_t> max_tile_to_compare_to_{nullopt};
+    std::optional<uint64_t> max_tile_to_compare_to_{std::nullopt};
   };
 
   /* ********************************* */

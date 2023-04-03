@@ -364,8 +364,8 @@ bool FragmentConsolidator::are_consolidatable(
 }
 
 Status FragmentConsolidator::consolidate_internal(
-    shared_ptr<Array> array_for_reads,
-    shared_ptr<Array> array_for_writes,
+    std::shared_ptr<Array> array_for_reads,
+    std::shared_ptr<Array> array_for_writes,
     const std::vector<TimestampedURI>& to_consolidate,
     const NDRange& union_non_empty_domains,
     URI* new_fragment_uri) {
@@ -520,7 +520,7 @@ Status FragmentConsolidator::copy_array(
   return Status::Ok();
 }
 
-tuple<std::vector<ByteVec>, std::vector<uint64_t>>
+std::tuple<std::vector<ByteVec>, std::vector<uint64_t>>
 FragmentConsolidator::create_buffers(
     stats::Stats* stats,
     const ConsolidationConfig& config,
@@ -609,8 +609,8 @@ FragmentConsolidator::create_buffers(
 }
 
 Status FragmentConsolidator::create_queries(
-    shared_ptr<Array> array_for_reads,
-    shared_ptr<Array> array_for_writes,
+    std::shared_ptr<Array> array_for_reads,
+    std::shared_ptr<Array> array_for_writes,
     const NDRange& subarray,
     Query** query_r,
     Query** query_w,

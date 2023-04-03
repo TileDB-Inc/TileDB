@@ -51,7 +51,7 @@ struct tiledb_dimension_handle_t
    * the way. At some future point the life cycle of array schema objects may
    * change, and with it the benefit of allocating in this handle class.
    */
-  using dimension_type = shared_ptr<tiledb::sm::Dimension>;
+  using dimension_type = std::shared_ptr<tiledb::sm::Dimension>;
   /**
    * The underlying `Dimension` object
    */
@@ -77,7 +77,7 @@ struct tiledb_dimension_handle_t
   /**
    * Copy the underlying dimension object.
    */
-  [[nodiscard]] shared_ptr<tiledb::sm::Dimension> copy_dimension() {
+  [[nodiscard]] std::shared_ptr<tiledb::sm::Dimension> copy_dimension() {
     return dimension_;
   }
 

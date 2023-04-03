@@ -95,7 +95,8 @@ class ZStd {
    */
   static Status compress(
       int level,
-      shared_ptr<BlockingResourcePool<ZSTD_Compress_Context>> compress_ctx_pool,
+      std::shared_ptr<BlockingResourcePool<ZSTD_Compress_Context>>
+          compress_ctx_pool,
       ConstBuffer* input_buffer,
       Buffer* output_buffer);
 
@@ -118,7 +119,7 @@ class ZStd {
    * @return Status
    */
   static Status decompress(
-      shared_ptr<BlockingResourcePool<ZSTD_Decompress_Context>>
+      std::shared_ptr<BlockingResourcePool<ZSTD_Decompress_Context>>
           decompress_ctx_pool,
       ConstBuffer* input_buffer,
       PreallocatedBuffer* output_buffer);

@@ -55,26 +55,26 @@ struct QueryPlanFx {
   void destroy_array(const std::shared_ptr<Array>& array);
 
   Config cfg_;
-  shared_ptr<Logger> logger_;
+  std::shared_ptr<Logger> logger_;
   ContextResources resources_;
-  shared_ptr<StorageManager> sm_;
+  std::shared_ptr<StorageManager> sm_;
 };
 
 tdb_unique_ptr<Array> QueryPlanFx::create_array(const URI uri) {
   // Create Domain
   uint64_t dim_dom[2]{0, 1};
   uint64_t tile_extent = 1;
-  shared_ptr<Dimension> dim =
+  std::shared_ptr<Dimension> dim =
       make_shared<Dimension>(HERE(), std::string("dim"), Datatype::UINT64);
   throw_if_not_ok(dim->set_domain(&dim_dom));
   throw_if_not_ok(dim->set_tile_extent(&tile_extent));
 
-  std::vector<shared_ptr<Dimension>> dims = {dim};
-  shared_ptr<Domain> domain =
+  std::vector<std::shared_ptr<Dimension>> dims = {dim};
+  std::shared_ptr<Domain> domain =
       make_shared<Domain>(HERE(), Layout::ROW_MAJOR, dims, Layout::ROW_MAJOR);
 
   // Create the ArraySchema
-  shared_ptr<ArraySchema> schema =
+  std::shared_ptr<ArraySchema> schema =
       make_shared<ArraySchema>(HERE(), ArrayType::DENSE);
   throw_if_not_ok(schema->set_domain(domain));
   throw_if_not_ok(schema->add_attribute(
@@ -114,7 +114,7 @@ TEST_CASE_METHOD(QueryPlanFx, "Query plan dump_json", "[query_plan][dump]") {
       array->open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0);
   REQUIRE(st.ok());
 
-  shared_ptr<Array> array_shared = std::move(array);
+  std::shared_ptr<Array> array_shared = std::move(array);
   Query query(sm_.get(), array_shared);
   REQUIRE(query.set_layout(Layout::ROW_MAJOR).ok());
 

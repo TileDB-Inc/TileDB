@@ -83,7 +83,7 @@ Tile GenericTileIO::load(
   stdx::unreachable();
 }
 
-tuple<Status, optional<Tile>> GenericTileIO::read_generic(
+std::tuple<Status, std::optional<Tile>> GenericTileIO::read_generic(
     uint64_t file_offset,
     const EncryptionKey& encryption_key,
     const Config& config) {
@@ -97,11 +97,11 @@ tuple<Status, optional<Tile>> GenericTileIO::read_generic(
             encryption_type_str((EncryptionType)header.encryption_type) +
             " but given key is for " +
             encryption_type_str(encryption_key.encryption_type()))),
-        nullopt};
+        std::nullopt};
   }
 
   RETURN_NOT_OK_TUPLE(
-      configure_encryption_filter(&header, encryption_key), nullopt);
+      configure_encryption_filter(&header, encryption_key), std::nullopt);
 
   const auto tile_data_offset =
       GenericTileHeader::BASE_SIZE + header.filter_pipeline_size;
@@ -123,7 +123,7 @@ tuple<Status, optional<Tile>> GenericTileIO::read_generic(
           file_offset + tile_data_offset,
           tile.filtered_data(),
           header.persisted_size),
-      nullopt);
+      std::nullopt);
 
   // Unfilter
   assert(tile.filtered());

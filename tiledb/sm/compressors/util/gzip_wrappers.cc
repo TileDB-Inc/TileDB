@@ -36,7 +36,7 @@
 #include <inttypes.h>
 
 Status gzip_compress(
-    shared_ptr<tiledb::sm::Buffer>& out_gzipped_buf,
+    std::shared_ptr<tiledb::sm::Buffer>& out_gzipped_buf,
     const void* in_bytes,
     uint64_t nbytes) {
   assert(out_gzipped_buf.get() != nullptr);
@@ -80,7 +80,8 @@ Status gzip_compress(
 }
 
 Status gzip_decompress(
-    shared_ptr<tiledb::sm::ByteVecValue>& out_buf, const uint8_t* comp_buf) {
+    std::shared_ptr<tiledb::sm::ByteVecValue>& out_buf,
+    const uint8_t* comp_buf) {
   /**
    * Expected compressed buffer format:
    *    uint64_t uncompressed_size

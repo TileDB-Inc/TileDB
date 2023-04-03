@@ -127,7 +127,7 @@ class GroupDirectory {
    * The new fragment name is computed
    * as `__<first_URI_timestamp>_<last_URI_timestamp>_<uuid>`.
    */
-  tuple<Status, optional<std::string>> compute_new_fragment_name(
+  std::tuple<Status, std::optional<std::string>> compute_new_fragment_name(
       const URI& first, const URI& last, format_version_t format_version) const;
 
   /** Returns `true` if `load` has been run. */
@@ -213,7 +213,7 @@ class GroupDirectory {
    *
    * @return Status, vector of URIs.
    */
-  tuple<Status, optional<std::vector<URI>>> list_root_dir_uris();
+  std::tuple<Status, std::optional<std::vector<URI>>> list_root_dir_uris();
 
   /** Loads the group metadata URIs. */
   Status load_group_meta_uris();
@@ -228,7 +228,10 @@ class GroupDirectory {
    * @return Status, a vector of the URIs to vacuum, a vector of
    *     the vac file URIs to vacuum.
    */
-  tuple<Status, optional<std::vector<URI>>, optional<std::vector<URI>>>
+  std::tuple<
+      Status,
+      std::optional<std::vector<URI>>,
+      std::optional<std::vector<URI>>>
   compute_uris_to_vacuum(const std::vector<URI>& uris) const;
 
   /**
@@ -239,7 +242,8 @@ class GroupDirectory {
    * @param to_ignore The URIs to ignore (because they are vacuumed).
    * @return Status, vector of filtered timestamped URIs.
    */
-  tuple<Status, optional<std::vector<TimestampedURI>>> compute_filtered_uris(
+  std::tuple<Status, std::optional<std::vector<TimestampedURI>>>
+  compute_filtered_uris(
       const std::vector<URI>& uris, const std::vector<URI>& to_ignore) const;
 
   /** Returns true if the input URI is a vacuum file. */

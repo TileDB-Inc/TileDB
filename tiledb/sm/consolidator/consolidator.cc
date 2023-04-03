@@ -48,7 +48,7 @@ namespace tiledb::sm {
 /* ********************************* */
 
 /** Factory function to create the consolidator depending on mode. */
-shared_ptr<Consolidator> Consolidator::create(
+std::shared_ptr<Consolidator> Consolidator::create(
     const ConsolidationMode mode,
     const Config& config,
     StorageManager* storage_manager) {

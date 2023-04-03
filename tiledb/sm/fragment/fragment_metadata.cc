@@ -83,7 +83,7 @@ FragmentMetadata::FragmentMetadata() {
 FragmentMetadata::FragmentMetadata(
     StorageManager* storage_manager,
     MemoryTracker* memory_tracker,
-    const shared_ptr<const ArraySchema>& array_schema,
+    const std::shared_ptr<const ArraySchema>& array_schema,
     const URI& fragment_uri,
     const std::pair<uint64_t, uint64_t>& timestamp_range,
     bool dense,
@@ -465,7 +465,7 @@ void FragmentMetadata::compute_fragment_min_max_sum_null_count() {
 }
 
 void FragmentMetadata::set_array_schema(
-    const shared_ptr<const ArraySchema>& array_schema) {
+    const std::shared_ptr<const ArraySchema>& array_schema) {
   array_schema_ = array_schema;
 
   // Rebuild index mapping
@@ -788,7 +788,8 @@ Status FragmentMetadata::load(
     const EncryptionKey& encryption_key,
     Tile* fragment_metadata_tile,
     uint64_t offset,
-    std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas) {
+    std::unordered_map<std::string, std::shared_ptr<ArraySchema>>
+        array_schemas) {
   auto meta_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
   // Load the metadata file size when we are not reading from consolidated
@@ -1220,7 +1221,7 @@ uint64_t FragmentMetadata::tile_num() const {
   return sparse_tile_num_;
 }
 
-tuple<Status, optional<std::string>> FragmentMetadata::encode_name(
+std::tuple<Status, std::optional<std::string>> FragmentMetadata::encode_name(
     const std::string& name) const {
   if (version_ <= 7)
     return {Status::Ok(), name};
@@ -1310,7 +1311,7 @@ tuple<Status, optional<std::string>> FragmentMetadata::encode_name(
   return {Status_FragmentMetadataError(err), std::nullopt};
 }
 
-tuple<Status, optional<URI>> FragmentMetadata::uri(
+std::tuple<Status, std::optional<URI>> FragmentMetadata::uri(
     const std::string& name) const {
   auto&& [st, encoded_name] = encode_name(name);
   if (!st.ok())
@@ -1319,7 +1320,7 @@ tuple<Status, optional<URI>> FragmentMetadata::uri(
   return {st, fragment_uri_.join_path(*encoded_name + constants::file_suffix)};
 }
 
-tuple<Status, optional<URI>> FragmentMetadata::var_uri(
+std::tuple<Status, std::optional<URI>> FragmentMetadata::var_uri(
     const std::string& name) const {
   auto&& [st, encoded_name] = encode_name(name);
   if (!st.ok())
@@ -1330,7 +1331,7 @@ tuple<Status, optional<URI>> FragmentMetadata::var_uri(
       fragment_uri_.join_path(*encoded_name + "_var" + constants::file_suffix)};
 }
 
-tuple<Status, optional<URI>> FragmentMetadata::validity_uri(
+std::tuple<Status, std::optional<URI>> FragmentMetadata::validity_uri(
     const std::string& name) const {
   auto&& [st, encoded_name] = encode_name(name);
   if (!st.ok())
@@ -3634,7 +3635,7 @@ void FragmentMetadata::load_array_schema_name(Deserializer& deserializer) {
 
 Status FragmentMetadata::load_v1_v2(
     const EncryptionKey& encryption_key,
-    const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+    const std::unordered_map<std::string, std::shared_ptr<ArraySchema>>&
         array_schemas) {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
@@ -3681,7 +3682,8 @@ Status FragmentMetadata::load_v3_or_higher(
     const EncryptionKey& encryption_key,
     Tile* fragment_metadata_tile,
     uint64_t offset,
-    std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas) {
+    std::unordered_map<std::string, std::shared_ptr<ArraySchema>>
+        array_schemas) {
   RETURN_NOT_OK(load_footer(
       encryption_key, fragment_metadata_tile, offset, array_schemas));
   return Status::Ok();
@@ -3691,7 +3693,8 @@ Status FragmentMetadata::load_footer(
     const EncryptionKey& encryption_key,
     Tile* fragment_metadata_tile,
     uint64_t offset,
-    std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas) {
+    std::unordered_map<std::string, std::shared_ptr<ArraySchema>>
+        array_schemas) {
   (void)encryption_key;  // Not used for now, perhaps in the future
   std::lock_guard<std::mutex> lock(mtx_);
 
@@ -3984,7 +3987,8 @@ void FragmentMetadata::write_non_empty_domain(Serializer& serializer) const {
   }
 }
 
-tuple<Status, optional<Tile>> FragmentMetadata::read_generic_tile_from_file(
+std::tuple<Status, std::optional<Tile>>
+FragmentMetadata::read_generic_tile_from_file(
     const EncryptionKey& encryption_key, uint64_t offset) const {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
@@ -3993,7 +3997,7 @@ tuple<Status, optional<Tile>> FragmentMetadata::read_generic_tile_from_file(
   GenericTileIO tile_io(storage_manager_->resources(), fragment_metadata_uri);
   auto&& [st, tile_opt] =
       tile_io.read_generic(offset, encryption_key, storage_manager_->config());
-  RETURN_NOT_OK_TUPLE(st, nullopt);
+  RETURN_NOT_OK_TUPLE(st, std::nullopt);
 
   return {Status::Ok(), std::move(*tile_opt)};
 }
@@ -4713,7 +4717,8 @@ void FragmentMetadata::clean_up() {
   throw_if_not_ok(storage_manager_->vfs()->remove_file(fragment_metadata_uri));
 }
 
-const shared_ptr<const ArraySchema>& FragmentMetadata::array_schema() const {
+const std::shared_ptr<const ArraySchema>& FragmentMetadata::array_schema()
+    const {
   return array_schema_;
 }
 

@@ -244,7 +244,7 @@ class S3 {
    * @param max_paths The maximum number of paths to be retrieved
    * @return A list of directory_entry objects
    */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
+  std::tuple<Status, std::optional<std::vector<filesystem::directory_entry>>>
   ls_with_sizes(
       const URI& prefix,
       const std::string& delimiter = "/",
@@ -696,10 +696,11 @@ class S3 {
    * The lazily-initialized S3 client. This is mutable so that nominally const
    * functions can call init_client().
    */
-  mutable shared_ptr<Aws::S3::S3Client> client_;
+  mutable std::shared_ptr<Aws::S3::S3Client> client_;
 
   /** The AWS credetial provider. */
-  mutable shared_ptr<Aws::Auth::AWSCredentialsProvider> credentials_provider_;
+  mutable std::shared_ptr<Aws::Auth::AWSCredentialsProvider>
+      credentials_provider_;
 
   /**
    * Mutex protecting client initialization. This is mutable so that nominally
@@ -711,7 +712,7 @@ class S3 {
   mutable tdb_unique_ptr<Aws::Client::ClientConfiguration> client_config_;
 
   /** The executor used by 'client_'. */
-  mutable shared_ptr<S3ThreadPoolExecutor> s3_tp_executor_;
+  mutable std::shared_ptr<S3ThreadPoolExecutor> s3_tp_executor_;
 
   /** The size of the file buffers used in multipart uploads. */
   uint64_t file_buffer_size_;

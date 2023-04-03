@@ -93,7 +93,7 @@ class WhiteboxCAPIHandle;
 template <class T>
 class CAPIHandle {
   friend class detail::WhiteboxCAPIHandle<T>;
-  using shared_ptr_type = shared_ptr<T>;
+  using shared_ptr_type = std::shared_ptr<T>;
 
   /**
    * A pointer to the allocation used to hold this object.
@@ -116,7 +116,7 @@ class CAPIHandle {
    * @param x A `shared_ptr` to this object
    */
   inline void know_self(shared_ptr_type x) {
-    self_ = move(x);
+    self_ = std::move(x);
   }
 
   /**

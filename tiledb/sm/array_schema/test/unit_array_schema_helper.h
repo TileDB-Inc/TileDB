@@ -48,7 +48,7 @@ namespace tiledb::sm::test {
 
 /** Helper function for creating a dimension */
 template <typename T>
-shared_ptr<Dimension> make_dimension(
+std::shared_ptr<Dimension> make_dimension(
     const std::string& name,
     Datatype type,
     const uint32_t cell_val_num,
@@ -65,7 +65,7 @@ shared_ptr<Dimension> make_dimension(
 
 /** Helper function for creating an attribute */
 template <typename T>
-shared_ptr<Attribute> make_attribute(
+std::shared_ptr<Attribute> make_attribute(
     const std::string& name,
     Datatype type,
     const bool nullable,
@@ -78,10 +78,10 @@ shared_ptr<Attribute> make_attribute(
 }
 
 /** Helper function for creating an array schema */
-inline shared_ptr<ArraySchema> make_array_schema(
+inline std::shared_ptr<ArraySchema> make_array_schema(
     const ArrayType array_type,
-    const std::vector<shared_ptr<Dimension>>& dims,
-    const std::vector<shared_ptr<Attribute>>& attrs,
+    const std::vector<std::shared_ptr<Dimension>>& dims,
+    const std::vector<std::shared_ptr<Attribute>>& attrs,
     const Layout cell_layout = Layout::ROW_MAJOR,
     const Layout tile_layout = Layout::ROW_MAJOR) {
   auto array_schema = make_shared<ArraySchema>(HERE(), array_type);

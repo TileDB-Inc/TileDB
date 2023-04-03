@@ -758,7 +758,7 @@ Status FragmentInfo::get_version(uint32_t fid, uint32_t* version) const {
   return Status::Ok();
 }
 
-shared_ptr<ArraySchema> FragmentInfo::get_array_schema(uint32_t fid) {
+std::shared_ptr<ArraySchema> FragmentInfo::get_array_schema(uint32_t fid) {
   ensure_loaded();
   if (fid >= fragment_num()) {
     auto st = Status_FragmentInfoError(
@@ -1029,7 +1029,7 @@ Status FragmentInfo::set_default_timestamp_range() {
   return Status::Ok();
 }
 
-tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
+std::tuple<Status, std::optional<SingleFragmentInfo>> FragmentInfo::load(
     const URI& new_fragment_uri) const {
   SingleFragmentInfo ret;
   auto vfs = storage_manager_->vfs();
@@ -1040,18 +1040,18 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   std::pair<uint64_t, uint64_t> timestamp_range;
   RETURN_NOT_OK_TUPLE(
       utils::parse::get_timestamp_range(new_fragment_uri, &timestamp_range),
-      nullopt);
+      std::nullopt);
   uint32_t version;
   auto name = new_fragment_uri.remove_trailing_slash().last_path_part();
   RETURN_NOT_OK_TUPLE(
-      utils::parse::get_fragment_name_version(name, &version), nullopt);
+      utils::parse::get_fragment_name_version(name, &version), std::nullopt);
 
   // Check if fragment is sparse
   bool sparse = false;
   if (version == 1) {  // This corresponds to format version <=2
     URI coords_uri =
         new_fragment_uri.join_path(constants::coords + constants::file_suffix);
-    RETURN_NOT_OK_TUPLE(vfs->is_file(coords_uri, &sparse), nullopt);
+    RETURN_NOT_OK_TUPLE(vfs->is_file(coords_uri, &sparse), std::nullopt);
   } else {
     // Do nothing. It does not matter what the `sparse` value
     // is, since the FragmentMetadata object will load the correct
@@ -1070,7 +1070,7 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
       timestamp_range,
       !sparse);
   RETURN_NOT_OK_TUPLE(
-      meta->load(enc_key_, nullptr, 0, array_schemas_all_), nullopt);
+      meta->load(enc_key_, nullptr, 0, array_schemas_all_), std::nullopt);
 
   // This is important for format version > 2
   sparse = !meta->dense();

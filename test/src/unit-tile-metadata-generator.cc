@@ -39,7 +39,7 @@
 
 using namespace tiledb::sm;
 
-typedef tuple<
+typedef std::tuple<
     std::byte,
     unsigned char,  // Used for TILEDB_CHAR.
     char,
@@ -247,7 +247,7 @@ TEMPLATE_LIST_TEST_CASE(
   CHECK(writer_tile.null_count() == correct_null_count);
 }
 
-typedef tuple<uint64_t, int64_t, double> FixedTypesUnderTestOverflow;
+typedef std::tuple<uint64_t, int64_t, double> FixedTypesUnderTestOverflow;
 TEMPLATE_LIST_TEST_CASE(
     "TileMetadataGenerator: fixed data type tile overflow",
     "[tile-metadata-generator][sum-overflow]",

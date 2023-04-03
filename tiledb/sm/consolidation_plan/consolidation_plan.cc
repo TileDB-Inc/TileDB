@@ -42,7 +42,7 @@ using namespace tiledb::common;
 /* ****************************** */
 
 ConsolidationPlan::ConsolidationPlan(
-    shared_ptr<Array> array, uint64_t fragment_size)
+    std::shared_ptr<Array> array, uint64_t fragment_size)
     : desired_fragment_size_(fragment_size) {
   generate(array);
 }
@@ -84,7 +84,7 @@ std::string ConsolidationPlan::dump() const {
 /*          PRIVATE METHODS          */
 /* ********************************* */
 
-void ConsolidationPlan::generate(shared_ptr<Array> array) {
+void ConsolidationPlan::generate(std::shared_ptr<Array> array) {
   // Start with the plan being a single fragment per node.
   std::list<PlanNode> plan;
   for (unsigned f = 0;

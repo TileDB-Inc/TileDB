@@ -172,7 +172,7 @@ class SubarrayPartitioner {
       uint64_t memory_budget_validity,
       ThreadPool* compute_tp,
       stats::Stats* parent_stats,
-      shared_ptr<Logger> logger);
+      std::shared_ptr<Logger> logger);
 
   /** Destructor. */
   ~SubarrayPartitioner();
@@ -347,7 +347,7 @@ class SubarrayPartitioner {
   inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /** The class logger. */
-  shared_ptr<Logger> logger_;
+  std::shared_ptr<Logger> logger_;
 
   /** The config. */
   const Config* config_;

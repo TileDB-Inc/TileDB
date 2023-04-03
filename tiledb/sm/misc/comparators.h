@@ -60,13 +60,13 @@ class CellCmpBase {
   bool use_timestamps_;
 
   /** Pointer to access fragment metadata. */
-  const std::vector<shared_ptr<FragmentMetadata>>* frag_md_;
+  const std::vector<std::shared_ptr<FragmentMetadata>>* frag_md_;
 
  public:
   explicit CellCmpBase(
       const Domain& domain,
       const bool use_timestamps = false,
-      const std::vector<shared_ptr<FragmentMetadata>>* frag_md = nullptr)
+      const std::vector<std::shared_ptr<FragmentMetadata>>* frag_md = nullptr)
       : domain_(domain)
       , dim_num_(domain.dim_num())
       , use_timestamps_(use_timestamps)
@@ -167,7 +167,7 @@ class HilbertCmp : public CellCmpBase {
   HilbertCmp(
       const Domain& domain,
       const bool use_timestamps = false,
-      const std::vector<shared_ptr<FragmentMetadata>>* frag_md = nullptr)
+      const std::vector<std::shared_ptr<FragmentMetadata>>* frag_md = nullptr)
       : CellCmpBase(domain, use_timestamps, frag_md) {
   }
 
@@ -225,7 +225,7 @@ class HilbertCmpReverse {
   HilbertCmpReverse(
       const Domain& domain,
       const bool use_timestamps = false,
-      const std::vector<shared_ptr<FragmentMetadata>>* frag_md = nullptr)
+      const std::vector<std::shared_ptr<FragmentMetadata>>* frag_md = nullptr)
       : cmp_(domain, use_timestamps, frag_md) {
   }
 
@@ -317,7 +317,7 @@ class GlobalCmp : public CellCmpBase {
   explicit GlobalCmp(
       const Domain& domain,
       const bool use_timestamps = false,
-      const std::vector<shared_ptr<FragmentMetadata>>* frag_md = nullptr)
+      const std::vector<std::shared_ptr<FragmentMetadata>>* frag_md = nullptr)
       : CellCmpBase(domain, use_timestamps, frag_md) {
     tile_order_ = domain.tile_order();
     cell_order_ = domain.cell_order();
@@ -418,7 +418,7 @@ class GlobalCmpReverse {
   explicit GlobalCmpReverse(
       const Domain& domain,
       const bool use_timestamps = false,
-      const std::vector<shared_ptr<FragmentMetadata>>* frag_md = nullptr)
+      const std::vector<std::shared_ptr<FragmentMetadata>>* frag_md = nullptr)
       : cmp_(domain, use_timestamps, frag_md) {
   }
 

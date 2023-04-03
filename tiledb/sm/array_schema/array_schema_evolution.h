@@ -79,8 +79,8 @@ class ArraySchemaEvolution {
   /*               API                 */
   /* ********************************* */
 
-  tuple<Status, optional<shared_ptr<ArraySchema>>> evolve_schema(
-      const shared_ptr<const ArraySchema>& orig_schema);
+  std::tuple<Status, std::optional<std::shared_ptr<ArraySchema>>> evolve_schema(
+      const std::shared_ptr<const ArraySchema>& orig_schema);
 
   /**
    * Adds an attribute, copying the input.
@@ -124,7 +124,8 @@ class ArraySchemaEvolution {
 
   /** The array attributes to be added. */
   /** It maps each attribute name to the corresponding attribute object. */
-  std::unordered_map<std::string, shared_ptr<Attribute>> attributes_to_add_map_;
+  std::unordered_map<std::string, std::shared_ptr<Attribute>>
+      attributes_to_add_map_;
 
   /** The names of array attributes to be dropped. */
   std::unordered_set<std::string> attributes_to_drop_;

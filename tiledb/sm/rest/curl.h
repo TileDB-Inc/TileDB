@@ -333,7 +333,7 @@ class Curl {
    *
    * @return tuple of status and last_request
    */
-  tuple<Status, optional<long>> last_http_status_code();
+  std::tuple<Status, std::optional<long>> last_http_status_code();
 
  private:
   /**

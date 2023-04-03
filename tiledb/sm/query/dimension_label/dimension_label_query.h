@@ -77,12 +77,12 @@ class DimensionLabelQuery : public Query {
    */
   DimensionLabelQuery(
       StorageManager* storage_manager,
-      shared_ptr<Array> dim_label,
+      std::shared_ptr<Array> dim_label,
       const DimensionLabel& dim_label_ref,
       const Subarray& parent_subarray,
       const QueryBuffer& label_buffer,
       const QueryBuffer& index_buffer,
-      optional<std::string> fragment_name);
+      std::optional<std::string> fragment_name);
 
   /**
    * Constructor for range queries.
@@ -94,7 +94,7 @@ class DimensionLabelQuery : public Query {
    */
   DimensionLabelQuery(
       StorageManager* storage_manager,
-      shared_ptr<Array> dim_label,
+      std::shared_ptr<Array> dim_label,
       const DimensionLabel& dim_label_ref,
       const std::vector<Range>& label_ranges);
 

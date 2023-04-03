@@ -55,12 +55,12 @@ struct CppPartialAttrWriteFx {
 
   // Functions.
   void create_sparse_array(bool allows_dups = false);
-  tuple<Array, Query> write_sparse_dims(
+  std::tuple<Array, Query> write_sparse_dims(
       tiledb_layout_t layout,
       std::vector<uint64_t> dim1,
       std::vector<uint64_t> dim2,
       uint64_t timestamp);
-  tuple<Array, Query> write_sparse_dims_and_a1(
+  std::tuple<Array, Query> write_sparse_dims_and_a1(
       tiledb_layout_t layout,
       std::vector<uint64_t> dim1,
       std::vector<uint64_t> dim2,
@@ -124,7 +124,7 @@ void CppPartialAttrWriteFx::create_sparse_array(bool allows_dups) {
   Array::create(ARRAY_NAME, schema);
 }
 
-tuple<Array, Query> CppPartialAttrWriteFx::write_sparse_dims(
+std::tuple<Array, Query> CppPartialAttrWriteFx::write_sparse_dims(
     tiledb_layout_t layout,
     std::vector<uint64_t> dim1,
     std::vector<uint64_t> dim2,
@@ -142,7 +142,7 @@ tuple<Array, Query> CppPartialAttrWriteFx::write_sparse_dims(
   return {array, query};
 }
 
-tuple<Array, Query> CppPartialAttrWriteFx::write_sparse_dims_and_a1(
+std::tuple<Array, Query> CppPartialAttrWriteFx::write_sparse_dims_and_a1(
     tiledb_layout_t layout,
     std::vector<uint64_t> dim1,
     std::vector<uint64_t> dim2,

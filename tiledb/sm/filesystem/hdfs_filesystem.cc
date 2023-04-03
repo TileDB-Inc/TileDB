@@ -534,10 +534,10 @@ Status HDFS::ls(const URI& uri, std::vector<std::string>* paths) {
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<directory_entry>>> HDFS::ls_with_sizes(
-    const URI& uri) {
+std::tuple<Status, std::optional<std::vector<directory_entry>>>
+HDFS::ls_with_sizes(const URI& uri) {
   hdfsFS fs = nullptr;
-  RETURN_NOT_OK_TUPLE(connect(&fs), nullopt);
+  RETURN_NOT_OK_TUPLE(connect(&fs), std::nullopt);
 
   int numEntries = 0;
   hdfsFileInfo* fileList =
@@ -546,7 +546,7 @@ tuple<Status, optional<std::vector<directory_entry>>> HDFS::ls_with_sizes(
     if (errno) {
       auto st = LOG_STATUS(Status_HDFSError(
           std::string("Cannot list files in ") + uri.to_string()));
-      return {st, nullopt};
+      return {st, std::nullopt};
     }
   }
 

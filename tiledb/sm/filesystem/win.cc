@@ -340,8 +340,8 @@ Status Win::ls(const std::string& path, std::vector<std::string>* paths) const {
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<directory_entry>>> Win::ls_with_sizes(
-    const URI& uri) const {
+std::tuple<Status, std::optional<std::vector<directory_entry>>>
+Win::ls_with_sizes(const URI& uri) const {
   auto path = uri.to_path();
   bool ends_with_slash = path.length() > 0 && path[path.length() - 1] == '\\';
   const std::string glob = path + (ends_with_slash ? "*" : "\\*");
@@ -401,7 +401,7 @@ err:
       "Failed to list directory \"" + path + "\" " +
       get_last_error_msg(gle, offender.c_str()));
   auto st = LOG_STATUS(Status_IOError(errmsg));
-  return {st, nullopt};
+  return {st, std::nullopt};
 }
 
 Status Win::move_path(

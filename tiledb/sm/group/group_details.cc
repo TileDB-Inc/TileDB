@@ -66,7 +66,7 @@ Status GroupDetails::clear() {
   return Status::Ok();
 }
 
-void GroupDetails::add_member(const shared_ptr<GroupMember> group_member) {
+void GroupDetails::add_member(const std::shared_ptr<GroupMember> group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
   const std::string& uri = group_member->uri().to_string();
   members_.emplace(uri, group_member);
@@ -76,7 +76,8 @@ void GroupDetails::add_member(const shared_ptr<GroupMember> group_member) {
   }
 }
 
-void GroupDetails::delete_member(const shared_ptr<GroupMember> group_member) {
+void GroupDetails::delete_member(
+    const std::shared_ptr<GroupMember> group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
   const std::string& uri = group_member->uri().to_string();
   auto it = members_.find(uri);
@@ -178,13 +179,13 @@ Status GroupDetails::mark_member_for_removal(const std::string& uri) {
   return Status::Ok();
 }
 
-const std::vector<shared_ptr<GroupMember>>& GroupDetails::members_to_modify()
-    const {
+const std::vector<std::shared_ptr<GroupMember>>&
+GroupDetails::members_to_modify() const {
   std::lock_guard<std::mutex> lck(mtx_);
   return members_to_modify_;
 }
 
-const std::unordered_map<std::string, shared_ptr<GroupMember>>&
+const std::unordered_map<std::string, std::shared_ptr<GroupMember>>&
 GroupDetails::members() const {
   std::lock_guard<std::mutex> lck(mtx_);
   return members_;
@@ -194,7 +195,7 @@ void GroupDetails::serialize(Serializer&) {
   throw StatusException(Status_GroupError("Invalid call to Group::serialize"));
 }
 
-std::optional<shared_ptr<GroupDetails>> GroupDetails::deserialize(
+std::optional<std::shared_ptr<GroupDetails>> GroupDetails::deserialize(
     Deserializer& deserializer, const URI& group_uri) {
   uint32_t version = 0;
   version = deserializer.read<uint32_t>();
@@ -208,8 +209,8 @@ std::optional<shared_ptr<GroupDetails>> GroupDetails::deserialize(
       "Unsupported group version " + std::to_string(version)));
 }
 
-std::optional<shared_ptr<GroupDetails>> GroupDetails::deserialize(
-    const std::vector<shared_ptr<Deserializer>>& deserializer,
+std::optional<std::shared_ptr<GroupDetails>> GroupDetails::deserialize(
+    const std::vector<std::shared_ptr<Deserializer>>& deserializer,
     const URI& group_uri) {
   // Currently this is only supported for v2 on-disk format
   return GroupDetailsV2::deserialize(deserializer, group_uri);
@@ -229,7 +230,7 @@ uint64_t GroupDetails::member_count() const {
   return members_.size();
 }
 
-tuple<std::string, ObjectType, optional<std::string>>
+std::tuple<std::string, ObjectType, std::optional<std::string>>
 GroupDetails::member_by_index(uint64_t index) {
   std::lock_guard<std::mutex> lck(mtx_);
 
@@ -249,7 +250,7 @@ GroupDetails::member_by_index(uint64_t index) {
   return {uri, member->type(), member->name()};
 }
 
-tuple<std::string, ObjectType, optional<std::string>, bool>
+std::tuple<std::string, ObjectType, std::optional<std::string>, bool>
 GroupDetails::member_by_name(const std::string& name) {
   std::lock_guard<std::mutex> lck(mtx_);
 

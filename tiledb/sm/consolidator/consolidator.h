@@ -76,7 +76,7 @@ class Consolidator {
    * @param storage_manager Storage manager.
    * @return New Consolidator instance or nullptr on error.
    */
-  static shared_ptr<Consolidator> create(
+  static std::shared_ptr<Consolidator> create(
       const ConsolidationMode mode,
       const Config& config,
       StorageManager* storage_manager);
@@ -167,7 +167,7 @@ class Consolidator {
   stats::Stats* stats_;
 
   /** The class logger. */
-  shared_ptr<Logger> logger_;
+  std::shared_ptr<Logger> logger_;
 
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;

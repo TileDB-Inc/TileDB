@@ -49,7 +49,7 @@ static common::Logger::Level get_log_level(const Config& config);
 // Constructor.  Note order of construction:  storage_manager depends on the
 // preceding members to be initialized for its initialization.
 Context::Context(const Config& config)
-    : last_error_(nullopt)
+    : last_error_(std::nullopt)
     , logger_(make_shared<Logger>(
           HERE(),
           logger_prefix_ + std::to_string(++logger_id_),
@@ -74,7 +74,7 @@ Context::Context(const Config& config)
 /*                API             */
 /* ****************************** */
 
-optional<std::string> Context::last_error() {
+std::optional<std::string> Context::last_error() {
   std::lock_guard<std::mutex> lock(mtx_);
   return last_error_;
 }

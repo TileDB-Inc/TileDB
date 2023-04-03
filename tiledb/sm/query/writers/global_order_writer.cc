@@ -74,7 +74,7 @@ class GlobalOrderWriterStatusException : public StatusException {
 
 GlobalOrderWriter::GlobalOrderWriter(
     stats::Stats* stats,
-    shared_ptr<Logger> logger,
+    std::shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -87,7 +87,7 @@ GlobalOrderWriter::GlobalOrderWriter(
     std::vector<std::string>& processed_conditions,
     Query::CoordsInfo& coords_info,
     bool remote_query,
-    optional<std::string> fragment_name,
+    std::optional<std::string> fragment_name,
     bool skip_checks_serialization)
     : WriterBase(
           stats,

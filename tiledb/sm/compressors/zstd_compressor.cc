@@ -44,7 +44,8 @@ namespace sm {
 
 Status ZStd::compress(
     int level,
-    shared_ptr<BlockingResourcePool<ZSTD_Compress_Context>> compress_ctx_pool,
+    std::shared_ptr<BlockingResourcePool<ZSTD_Compress_Context>>
+        compress_ctx_pool,
     ConstBuffer* input_buffer,
     Buffer* output_buffer) {
   // Sanity check
@@ -84,7 +85,7 @@ Status ZStd::compress(
 }
 
 Status ZStd::decompress(
-    shared_ptr<BlockingResourcePool<ZSTD_Decompress_Context>>
+    std::shared_ptr<BlockingResourcePool<ZSTD_Decompress_Context>>
         decompress_ctx_pool,
     ConstBuffer* input_buffer,
     PreallocatedBuffer* output_buffer) {

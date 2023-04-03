@@ -135,7 +135,7 @@ class MemFilesystem {
    * @param path  The parent path to list sub-paths
    * @return Status
    */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
+  std::tuple<Status, std::optional<std::vector<filesystem::directory_entry>>>
   ls_with_sizes(const URI& path) const;
 
   /**

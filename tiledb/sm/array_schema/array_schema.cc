@@ -114,12 +114,12 @@ ArraySchema::ArraySchema(
     std::string name,
     ArrayType array_type,
     bool allows_dups,
-    shared_ptr<Domain> domain,
+    std::shared_ptr<Domain> domain,
     Layout cell_order,
     Layout tile_order,
     uint64_t capacity,
-    std::vector<shared_ptr<const Attribute>> attributes,
-    std::vector<shared_ptr<const DimensionLabel>> dim_label_refs,
+    std::vector<std::shared_ptr<const Attribute>> attributes,
+    std::vector<std::shared_ptr<const DimensionLabel>> dim_label_refs,
     FilterPipeline cell_var_offsets_filters,
     FilterPipeline cell_validity_filters,
     FilterPipeline coords_filters)
@@ -243,7 +243,7 @@ ArraySchema::attribute_size_type ArraySchema::attribute_num() const {
   return static_cast<attribute_size_type>(attributes_.size());
 }
 
-const std::vector<shared_ptr<const Attribute>>& ArraySchema::attributes()
+const std::vector<std::shared_ptr<const Attribute>>& ArraySchema::attributes()
     const {
   return attributes_;
 }
@@ -830,7 +830,7 @@ bool ArraySchema::var_size(const std::string& name) const {
 }
 
 Status ArraySchema::add_attribute(
-    shared_ptr<const Attribute> attr, bool check_special) {
+    std::shared_ptr<const Attribute> attr, bool check_special) {
   // Sanity check
   if (attr == nullptr) {
     return LOG_STATUS(Status_ArraySchemaError(
@@ -1022,15 +1022,15 @@ ArraySchema ArraySchema::deserialize(
   // Load attributes
   // Note: Security validation delegated to invoked API
   // #TODO Add security validation
-  std::vector<shared_ptr<const Attribute>> attributes;
+  std::vector<std::shared_ptr<const Attribute>> attributes;
   uint32_t attribute_num = deserializer.read<uint32_t>();
   for (uint32_t i = 0; i < attribute_num; ++i) {
     auto attr{Attribute::deserialize(deserializer, version)};
-    attributes.emplace_back(make_shared<Attribute>(HERE(), move(attr)));
+    attributes.emplace_back(make_shared<Attribute>(HERE(), std::move(attr)));
   }
 
   // Load dimension labels
-  std::vector<shared_ptr<const DimensionLabel>> dimension_labels;
+  std::vector<std::shared_ptr<const DimensionLabel>> dimension_labels;
   if (version >= 18) {
     uint32_t label_num = deserializer.read<uint32_t>();
     for (uint32_t i{0}; i < label_num; ++i) {
@@ -1188,7 +1188,7 @@ void ArraySchema::set_dimension_label_tile_extent(
   throw_if_not_ok(const_cast<Dimension*>(dim)->set_tile_extent(tile_extent));
 }
 
-Status ArraySchema::set_domain(shared_ptr<Domain> domain) {
+Status ArraySchema::set_domain(std::shared_ptr<Domain> domain) {
   if (domain == nullptr)
     return LOG_STATUS(
         Status_ArraySchemaError("Cannot set domain; Input domain is nullptr"));

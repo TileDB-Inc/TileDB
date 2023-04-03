@@ -250,7 +250,7 @@ Status array_from_capnp(
   }
 
   if (array_reader.hasArraySchemasAll()) {
-    std::unordered_map<std::string, shared_ptr<ArraySchema>> all_schemas;
+    std::unordered_map<std::string, std::shared_ptr<ArraySchema>> all_schemas;
     auto all_schemas_reader = array_reader.getArraySchemasAll();
 
     if (all_schemas_reader.hasEntries()) {

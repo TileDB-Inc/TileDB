@@ -105,7 +105,7 @@ inline IterT skip_invalid_elements(IterT it, const IterT& end) {
 
 Reader::Reader(
     stats::Stats* stats,
-    shared_ptr<Logger> logger,
+    std::shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -2225,7 +2225,7 @@ bool Reader::belong_to_single_fragment(
 }
 
 template <class T>
-tuple<Status, optional<bool>> Reader::fill_dense_coords(
+std::tuple<Status, std::optional<bool>> Reader::fill_dense_coords(
     const Subarray& subarray) {
   auto timer_se = stats_->start_timer("fill_dense_coords");
 
@@ -2238,7 +2238,7 @@ tuple<Status, optional<bool>> Reader::fill_dense_coords(
         logger_->status(Status_ReaderError(
             "Cannot read dense coordinates; dense coordinate "
             "reads are unsupported with a query condition")),
-        nullopt};
+        std::nullopt};
   }
 
   // Prepare buffers
@@ -2283,7 +2283,7 @@ tuple<Status, optional<bool>> Reader::fill_dense_coords(
 }
 
 template <class T>
-tuple<Status, optional<bool>> Reader::fill_dense_coords_global(
+std::tuple<Status, std::optional<bool>> Reader::fill_dense_coords_global(
     const Subarray& subarray,
     const std::vector<unsigned>& dim_idx,
     const std::vector<QueryBuffer*>& buffers,
@@ -2304,7 +2304,7 @@ tuple<Status, optional<bool>> Reader::fill_dense_coords_global(
 }
 
 template <class T>
-tuple<Status, optional<bool>> Reader::fill_dense_coords_row_col(
+std::tuple<Status, std::optional<bool>> Reader::fill_dense_coords_row_col(
     const Subarray& subarray,
     const std::vector<unsigned>& dim_idx,
     const std::vector<QueryBuffer*>& buffers,

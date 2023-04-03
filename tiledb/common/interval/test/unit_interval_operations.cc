@@ -1068,7 +1068,7 @@ template <class T>
 void check_union(
     Interval<T> left,
     Interval<T> right,
-    tuple<bool, optional<Interval<T>>> expected) {
+    std::tuple<bool, std::optional<Interval<T>>> expected) {
   typedef WhiteboxInterval<T> WI;
   if (left.is_empty()) {
     expected = {true, right};
@@ -1143,27 +1143,27 @@ TEMPLATE_LIST_TEST_CASE(
         check_union(
             I(I::open, a, b, I::open),
             I(I::open, c, d, I::open),
-            {false, nullopt});
+            {false, std::nullopt});
       }
       DYNAMIC_SECTION(
           "(" << a << "," << b << ") union [" << c << "," << d << "]") {
         check_union(
             I(I::open, a, b, I::open),
             I(I::closed, c, d, I::closed),
-            {false, nullopt});
+            {false, std::nullopt});
       }
       DYNAMIC_SECTION(
           "[" << a << "," << b << "] union (" << c << "," << d << ")") {
         check_union(
             I(I::closed, a, b, I::closed),
             I(I::open, c, d, I::open),
-            {false, nullopt});
+            {false, std::nullopt});
       }
       DYNAMIC_SECTION(
           "[" << a << "," << b << "] union [" << c << "," << d << "]") {
         bool adj = is_adjacent(b, c);
-        optional<I> expected(
-            adj ? optional(I(I::closed, a, d, I::closed)) : nullopt);
+        std::optional<I> expected(
+            adj ? std::optional(I(I::closed, a, d, I::closed)) : std::nullopt);
         check_union(
             I(I::closed, a, b, I::closed),
             I(I::closed, c, d, I::closed),
@@ -1260,14 +1260,14 @@ TEMPLATE_LIST_TEST_CASE(
         check_union(
             I(I::closed, a, a, I::closed),
             I(I::open, b, c, I::open),
-            {false, nullopt});
+            {false, std::nullopt});
       }
       DYNAMIC_SECTION(
           "[" << a << "," << a << "] union [" << b << "," << c << "]") {
         // If `a` is adjacent to `b`, then the union is defined.
         bool adj = is_adjacent(a, b);
-        optional<I> expected =
-            adj ? optional(I(I::closed, a, c, I::closed)) : nullopt;
+        std::optional<I> expected =
+            adj ? std::optional(I(I::closed, a, c, I::closed)) : std::nullopt;
         check_union(
             I(I::closed, a, a, I::closed),
             I(I::closed, b, c, I::closed),
@@ -1318,7 +1318,7 @@ TEMPLATE_LIST_TEST_CASE(
         check_union(
             I(I::closed, a, b, I::open),
             I(I::open, b, c, I::closed),
-            {false, nullopt});
+            {false, std::nullopt});
       }
       DYNAMIC_SECTION(
           "[" << a << "," << b << ") union [" << b << "," << c << "]") {
@@ -1350,14 +1350,14 @@ TEMPLATE_LIST_TEST_CASE(
         check_union(
             I(I::open, a, b, I::open),
             I(I::closed, c, c, I::closed),
-            {false, nullopt});
+            {false, std::nullopt});
       }
       DYNAMIC_SECTION(
           "[" << a << "," << b << "] union [" << c << "," << c << "]") {
         // If b and c are adjacent, the union is an interval.
         bool adj = is_adjacent(b, c);
-        optional<I> expected =
-            adj ? optional(I(I::closed, a, c, I::closed)) : nullopt;
+        std::optional<I> expected =
+            adj ? std::optional(I(I::closed, a, c, I::closed)) : std::nullopt;
         check_union(
             I(I::closed, a, b, I::closed),
             I(I::closed, c, c, I::closed),

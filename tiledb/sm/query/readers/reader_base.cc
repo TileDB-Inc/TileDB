@@ -72,7 +72,7 @@ class ReaderBaseStatusException : public StatusException {
 
 ReaderBase::ReaderBase(
     stats::Stats* stats,
-    shared_ptr<Logger> logger,
+    std::shared_ptr<Logger> logger,
     StorageManager* storage_manager,
     Array* array,
     Config& config,
@@ -113,7 +113,7 @@ ReaderBase::ReaderBase(
 
 template <class T>
 void ReaderBase::compute_result_space_tiles(
-    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
+    const std::vector<std::shared_ptr<FragmentMetadata>>& fragment_metadata,
     const std::vector<std::vector<uint8_t>>& tile_coords,
     const TileDomain<T>& array_tile_domain,
     const std::vector<TileDomain<T>>& frag_tile_domains,
@@ -674,7 +674,11 @@ std::vector<FilteredData> ReaderBase::read_tiles(
   return filtered_data;
 }
 
-tuple<Status, optional<uint64_t>, optional<uint64_t>, optional<uint64_t>>
+std::tuple<
+    Status,
+    std::optional<uint64_t>,
+    std::optional<uint64_t>,
+    std::optional<uint64_t>>
 ReaderBase::load_tile_chunk_data(
     const std::string& name,
     ResultTile* const tile,
@@ -991,7 +995,7 @@ Status ReaderBase::unfilter_tile(
   return Status::Ok();
 }
 
-tuple<uint64_t, uint64_t> ReaderBase::compute_chunk_min_max(
+std::tuple<uint64_t, uint64_t> ReaderBase::compute_chunk_min_max(
     const uint64_t num_chunks,
     const uint64_t num_range_threads,
     const uint64_t thread_idx) const {
@@ -1080,7 +1084,7 @@ bool ReaderBase::has_coords() const {
 }
 
 template <typename IndexType>
-tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+std::tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
 ReaderBase::cache_dimension_label_data() {
   // Cache the non empty domains and tile index for the first tile of each
   // fragment.
@@ -1357,21 +1361,21 @@ template void ReaderBase::compute_result_space_tiles<uint64_t>(
     const Subarray&,
     const Subarray&,
     std::map<const uint64_t*, ResultSpaceTile<uint64_t>>&) const;
-template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+template std::tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
 ReaderBase::cache_dimension_label_data<int8_t>();
-template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+template std::tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
 ReaderBase::cache_dimension_label_data<uint8_t>();
-template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+template std::tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
 ReaderBase::cache_dimension_label_data<int16_t>();
-template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+template std::tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
 ReaderBase::cache_dimension_label_data<uint16_t>();
-template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+template std::tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
 ReaderBase::cache_dimension_label_data<int32_t>();
-template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+template std::tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
 ReaderBase::cache_dimension_label_data<uint32_t>();
-template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+template std::tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
 ReaderBase::cache_dimension_label_data<int64_t>();
-template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+template std::tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
 ReaderBase::cache_dimension_label_data<uint64_t>();
 template void ReaderBase::validate_attribute_order<int8_t>(
     Datatype,

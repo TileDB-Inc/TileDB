@@ -113,7 +113,7 @@ TEST_CASE(
   }
 }
 
-typedef tuple<uint16_t, uint32_t, uint64_t> FixedTypesUnderTest;
+typedef std::tuple<uint16_t, uint32_t, uint64_t> FixedTypesUnderTest;
 TEMPLATE_LIST_TEST_CASE(
     "Compression-Dictionary: Test compression of single string repeated many "
     "times",
@@ -235,7 +235,7 @@ TEST_CASE(
   }
 }
 
-typedef tuple<uint8_t, uint16_t, uint32_t, uint64_t> AllTypesUnderTest;
+typedef std::tuple<uint8_t, uint16_t, uint32_t, uint64_t> AllTypesUnderTest;
 TEMPLATE_LIST_TEST_CASE(
     "Compression-Dictionary: Test dictionary serialization",
     "[compression][dict][dict-serialization]",

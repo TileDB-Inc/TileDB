@@ -58,7 +58,7 @@ class Group {
   ~Group() = default;
 
   /** Returns the group directory object. */
-  const shared_ptr<GroupDirectory> group_directory() const;
+  const std::shared_ptr<GroupDirectory> group_directory() const;
 
   /**
    * Opens the group for reading.
@@ -271,13 +271,13 @@ class Group {
    * Get the vector of members to modify, used in serialization only
    * @return members_to_modify
    */
-  const std::vector<shared_ptr<GroupMember>>& members_to_modify() const;
+  const std::vector<std::shared_ptr<GroupMember>>& members_to_modify() const;
 
   /**
    * Get the unordered map of members
    * @return members
    */
-  const std::unordered_map<std::string, shared_ptr<GroupMember>>& members()
+  const std::unordered_map<std::string, std::shared_ptr<GroupMember>>& members()
       const;
 
   /**
@@ -286,14 +286,14 @@ class Group {
    * @param group_member to add
    * @return void
    */
-  void add_member(const shared_ptr<GroupMember> group_member);
+  void add_member(const std::shared_ptr<GroupMember> group_member);
 
   /**
    * Delete a member from the group
    *
    * @param group_member
    */
-  void delete_member(const shared_ptr<GroupMember> group_member);
+  void delete_member(const std::shared_ptr<GroupMember> group_member);
 
   /** Returns the group URI. */
   const URI& group_uri() const;
@@ -306,7 +306,7 @@ class Group {
    *
    * @return tuple of status and uri
    */
-  tuple<Status, optional<URI>> generate_detail_uri() const;
+  std::tuple<Status, std::optional<URI>> generate_detail_uri() const;
 
   /**
    * Have changes been applied to a group in write mode
@@ -335,8 +335,8 @@ class Group {
    * @param index of member
    * @return Tuple of URI string, ObjectType, optional GroupMember name
    */
-  tuple<std::string, ObjectType, optional<std::string>> member_by_index(
-      uint64_t index);
+  std::tuple<std::string, ObjectType, std::optional<std::string>>
+  member_by_index(uint64_t index);
 
   /**
    * Get a member by name
@@ -345,8 +345,8 @@ class Group {
    * @return Tuple of URI string, ObjectType, optional GroupMember name,
    * bool which is true if the URI is relative to the group.
    */
-  tuple<std::string, ObjectType, optional<std::string>, bool> member_by_name(
-      const std::string& name);
+  std::tuple<std::string, ObjectType, std::optional<std::string>, bool>
+  member_by_name(const std::string& name);
 
   /** Returns `true` if the group is open. */
   bool is_open() const;
@@ -375,14 +375,14 @@ class Group {
    *
    * @return GroupDetails
    */
-  shared_ptr<GroupDetails> group_details();
+  std::shared_ptr<GroupDetails> group_details();
 
   /**
    * Group Details
    *
    * @return GroupDetails
    */
-  const shared_ptr<GroupDetails> group_details() const;
+  const std::shared_ptr<GroupDetails> group_details() const;
 
  protected:
   /* ********************************* */
@@ -392,7 +392,7 @@ class Group {
   URI group_uri_;
 
   /** The group directory object for listing URIs. */
-  shared_ptr<GroupDirectory> group_dir_;
+  std::shared_ptr<GroupDirectory> group_dir_;
 
   /** TileDB storage manager. */
   StorageManager* storage_manager_;
@@ -437,10 +437,10 @@ class Group {
    * bytes should be stored. Whenever a key is needed, a pointer to this
    * memory region should be passed instead of a copy of the bytes.
    */
-  shared_ptr<EncryptionKey> encryption_key_;
+  std::shared_ptr<EncryptionKey> encryption_key_;
 
   /** Group Details. */
-  shared_ptr<GroupDetails> group_details_;
+  std::shared_ptr<GroupDetails> group_details_;
 
   /** Mutex for thread safety. */
   mutable std::mutex mtx_;
@@ -463,7 +463,7 @@ class Group {
    *
    * @return tuple of status and optional string
    */
-  tuple<Status, optional<std::string>> generate_name() const;
+  std::tuple<Status, std::optional<std::string>> generate_name() const;
 };
 }  // namespace sm
 }  // namespace tiledb

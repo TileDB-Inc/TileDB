@@ -110,7 +110,7 @@ class ReaderBase : public StrategyBase {
   /** Constructor. */
   ReaderBase(
       stats::Stats* stats,
-      shared_ptr<Logger> logger,
+      std::shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -148,7 +148,7 @@ class ReaderBase : public StrategyBase {
    */
   template <class T>
   static void compute_result_space_tiles(
-      const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
+      const std::vector<std::shared_ptr<FragmentMetadata>>& fragment_metadata,
       const std::vector<std::vector<uint8_t>>& tile_coords,
       const TileDomain<T>& array_tile_domain,
       const std::vector<TileDomain<T>>& frag_tile_domains,
@@ -195,7 +195,7 @@ class ReaderBase : public StrategyBase {
   std::vector<QueryCondition> timestamped_delete_and_update_conditions_;
 
   /** The fragment metadata that the reader will focus on. */
-  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
+  std::vector<std::shared_ptr<FragmentMetadata>> fragment_metadata_;
 
   /**
    * The condition to apply on results when there is partial time overlap
@@ -508,7 +508,7 @@ class ReaderBase : public StrategyBase {
    * @param range_thread_idx Current range thread index.
    * @return {min, max}
    */
-  tuple<uint64_t, uint64_t> compute_chunk_min_max(
+  std::tuple<uint64_t, uint64_t> compute_chunk_min_max(
       const uint64_t num_chunks,
       const uint64_t num_range_threads,
       const uint64_t thread_idx) const;
@@ -576,7 +576,11 @@ class ReaderBase : public StrategyBase {
    * @return {Status, size of the unfiltered tile buffer, size of the unfiltered
    * tile_var buffer, size of the unfiltered tile validity buffer}
    */
-  tuple<Status, optional<uint64_t>, optional<uint64_t>, optional<uint64_t>>
+  std::tuple<
+      Status,
+      std::optional<uint64_t>,
+      std::optional<uint64_t>,
+      std::optional<uint64_t>>
   load_tile_chunk_data(
       const std::string& name,
       ResultTile* const tile,
@@ -615,7 +619,7 @@ class ReaderBase : public StrategyBase {
    * indexes.
    */
   template <typename IndexType>
-  tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
+  std::tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
   cache_dimension_label_data();
 
   /**

@@ -163,11 +163,11 @@ Status filter_pipeline_to_capnp(
   return Status::Ok();
 }
 
-tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
+std::tuple<Status, std::optional<std::shared_ptr<Filter>>> filter_from_capnp(
     const capnp::Filter::Reader& filter_reader) {
   FilterType type = FilterType::FILTER_NONE;
   RETURN_NOT_OK_TUPLE(
-      filter_type_enum(filter_reader.getType().cStr(), &type), nullopt);
+      filter_type_enum(filter_reader.getType().cStr(), &type), std::nullopt);
 
   switch (type) {
     case FilterType::FILTER_BIT_WIDTH_REDUCTION: {
@@ -262,16 +262,17 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
       std::nullopt};
 }
 
-tuple<Status, optional<shared_ptr<FilterPipeline>>> filter_pipeline_from_capnp(
+std::tuple<Status, std::optional<std::shared_ptr<FilterPipeline>>>
+filter_pipeline_from_capnp(
     const capnp::FilterPipeline::Reader& filter_pipeline_reader) {
   if (!filter_pipeline_reader.hasFilters())
     return {Status::Ok(), make_shared<FilterPipeline>(HERE())};
 
-  std::vector<shared_ptr<Filter>> filter_list;
+  std::vector<std::shared_ptr<Filter>> filter_list;
   auto filter_list_reader = filter_pipeline_reader.getFilters();
   for (auto filter_reader : filter_list_reader) {
     auto&& [st_f, filter]{filter_from_capnp(filter_reader)};
-    RETURN_NOT_OK_TUPLE(st_f, nullopt);
+    RETURN_NOT_OK_TUPLE(st_f, std::nullopt);
     filter_list.push_back(filter.value());
   }
 
@@ -321,7 +322,7 @@ void attribute_to_capnp(
   throw_if_not_ok(filter_pipeline_to_capnp(&filters, &filter_pipeline_builder));
 }
 
-shared_ptr<Attribute> attribute_from_capnp(
+std::shared_ptr<Attribute> attribute_from_capnp(
     const capnp::Attribute::Reader& attribute_reader) {
   // Get datatype
   Datatype datatype = Datatype::ANY;
@@ -336,7 +337,7 @@ shared_ptr<Attribute> attribute_from_capnp(
                         DataOrder::UNORDERED_DATA;
 
   // Filter pipelines
-  shared_ptr<FilterPipeline> filters{};
+  std::shared_ptr<FilterPipeline> filters{};
   if (attribute_reader.hasFilterPipeline()) {
     auto filter_pipeline_reader = attribute_reader.getFilterPipeline();
     auto&& [st_fp, f]{filter_pipeline_from_capnp(filter_pipeline_reader)};
@@ -356,7 +357,7 @@ shared_ptr<Attribute> attribute_from_capnp(
     auto capnp_byte_vec = attribute_reader.getFillValue().asBytes();
     auto vec_ptr = capnp_byte_vec.begin();
     std::vector<uint8_t> byte_vec(vec_ptr, vec_ptr + capnp_byte_vec.size());
-    fill_value_vec = ByteVecValue(move(byte_vec));
+    fill_value_vec = ByteVecValue(std::move(byte_vec));
     if (nullable) {
       fill_value_validity = attribute_reader.getFillValueValidity();
     }
@@ -526,7 +527,7 @@ Range range_from_capnp(
 }
 
 /** Deserialize a dimension from a cap'n proto object. */
-shared_ptr<Dimension> dimension_from_capnp(
+std::shared_ptr<Dimension> dimension_from_capnp(
     const capnp::Dimension::Reader& dimension_reader) {
   Status st;
 
@@ -566,7 +567,7 @@ shared_ptr<Dimension> dimension_from_capnp(
 
   // Load filters
   // Note: If there is no FilterPipeline in capnp, a default one is constructed.
-  shared_ptr<FilterPipeline> filters{};
+  std::shared_ptr<FilterPipeline> filters{};
   if (dimension_reader.hasFilterPipeline()) {
     auto reader = dimension_reader.getFilterPipeline();
     auto&& [st_fp, f]{filter_pipeline_from_capnp(reader)};
@@ -621,7 +622,7 @@ Status domain_to_capnp(
 }
 
 /* Deserialize a domain from a cap'n proto object. */
-shared_ptr<Domain> domain_from_capnp(
+std::shared_ptr<Domain> domain_from_capnp(
     const capnp::Domain::Reader& domain_reader) {
   Status st;
 
@@ -659,7 +660,7 @@ shared_ptr<Domain> domain_from_capnp(
 
   // Deserialize dimensions
   // Note: Security validation delegated to invoked API
-  std::vector<shared_ptr<Dimension>> dims;
+  std::vector<std::shared_ptr<Dimension>> dims;
   auto dimensions = domain_reader.getDimensions();
   for (auto dimension : dimensions) {
     dims.emplace_back(dimension_from_capnp(dimension));
@@ -696,13 +697,13 @@ void dimension_label_to_capnp(
   }
 }
 
-shared_ptr<DimensionLabel> dimension_label_from_capnp(
+std::shared_ptr<DimensionLabel> dimension_label_from_capnp(
     const capnp::DimensionLabel::Reader& dim_label_reader) {
   // Get datatype
   Datatype datatype = Datatype::ANY;
   throw_if_not_ok(datatype_enum(dim_label_reader.getType(), &datatype));
 
-  shared_ptr<ArraySchema> schema{nullptr};
+  std::shared_ptr<ArraySchema> schema{nullptr};
   if (dim_label_reader.hasSchema()) {
     auto schema_reader = dim_label_reader.getSchema();
     schema = make_shared<ArraySchema>(
@@ -937,7 +938,7 @@ ArraySchema array_schema_from_capnp(
   // Note: Security validation delegated to invoked API
   // #TODO Add security validation
   auto attributes_reader = schema_reader.getAttributes();
-  std::vector<shared_ptr<const Attribute>> attributes;
+  std::vector<std::shared_ptr<const Attribute>> attributes;
   attributes.reserve(attributes_reader.size());
   try {
     for (auto attr_reader : attributes_reader) {
@@ -950,7 +951,7 @@ ArraySchema array_schema_from_capnp(
   }
 
   // Set dimension labels
-  std::vector<shared_ptr<const DimensionLabel>> dimension_labels{};
+  std::vector<std::shared_ptr<const DimensionLabel>> dimension_labels{};
   if (schema_reader.hasDimensionLabels()) {
     auto dim_labels_reader = schema_reader.getDimensionLabels();
     dimension_labels.reserve(dim_labels_reader.size());

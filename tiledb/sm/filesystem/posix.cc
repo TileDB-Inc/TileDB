@@ -276,13 +276,13 @@ Status Posix::ls(
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
-    const URI& uri) const {
+std::tuple<Status, std::optional<std::vector<directory_entry>>>
+Posix::ls_with_sizes(const URI& uri) const {
   std::string path = uri.to_path();
   struct dirent* next_path = nullptr;
   DIR* dir = opendir(path.c_str());
   if (dir == nullptr) {
-    return {Status::Ok(), nullopt};
+    return {Status::Ok(), std::nullopt};
   }
 
   std::vector<directory_entry> entries;
@@ -300,7 +300,7 @@ tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
       entries.emplace_back(abspath, 0, true);
     } else {
       uint64_t size;
-      RETURN_NOT_OK_TUPLE(file_size(abspath, &size), nullopt);
+      RETURN_NOT_OK_TUPLE(file_size(abspath, &size), std::nullopt);
       entries.emplace_back(abspath, size, false);
     }
   }
@@ -308,7 +308,7 @@ tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
   if (closedir(dir) != 0) {
     auto st = LOG_STATUS(Status_IOError(
         std::string("Cannot close parent directory; ") + strerror(errno)));
-    return {st, nullopt};
+    return {st, std::nullopt};
   }
   return {Status::Ok(), entries};
 }

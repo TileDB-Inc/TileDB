@@ -239,8 +239,6 @@
 
 #include "tiledb/common/common-std.h"
 
-using std::isnan, std::isinf, std::isfinite;
-
 namespace tiledb::common {
 namespace detail {
 
@@ -266,7 +264,7 @@ struct TypeTraits {
    * is twice-adjacent to `b` if `a < b` and there exists a `c` such that `a` is
    * adjacent to `c` and `c` is adjacent to `b`.
    */
-  [[maybe_unused]] static tuple<bool, bool> adjacency(T, T);
+  [[maybe_unused]] static std::tuple<bool, bool> adjacency(T, T);
 
   /**
    * Returns the predicate "adjacent".
@@ -327,7 +325,7 @@ struct TypeTraits<
    * Adjacency for integral types means that the lower is one less than the
    * upper.
    */
-  static tuple<bool, bool> adjacency(T a, T b) {
+  static std::tuple<bool, bool> adjacency(T a, T b) {
     if (a >= b) {
       return {false, false};
     }
@@ -364,7 +362,7 @@ struct TypeTraits<
   /**
    * Floating point numbers are never adjacent.
    */
-  static tuple<bool, bool> adjacency(T, T) {
+  static std::tuple<bool, bool> adjacency(T, T) {
     return {false, false};
   };
 
@@ -379,14 +377,14 @@ struct TypeTraits<
    * An extended number is either finite or infinite, but must not be NaN.
    */
   static bool is_ordered(T x) {
-    return !isnan(x);
+    return !std::isnan(x);
   }
 
   /**
    * Floating point types have infinite elements.
    */
   static bool is_finite(T x) {
-    return isfinite(x);
+    return std::isfinite(x);
   }
 
   /**
@@ -466,14 +464,14 @@ class Interval : public detail::IntervalBase {
    * @invariant lower_bound.has_value() \iff is_lower_bound_open_ \or
    * is_lower_bound_closed_
    */
-  optional<T> lower_bound_;
+  std::optional<T> lower_bound_;
   /**
    * @var Upper bound of the interval, if one exists.
    *
    * @invariant upper_bound.has_value() \iff is_upper_bound_open_ \or
    * is_upper_bound_closed_
    */
-  optional<T> upper_bound_;
+  std::optional<T> upper_bound_;
   /*
    * The various types of interval as stored as precomputed predicate values
    * about the various aspects of the class. The predicates values are stored as
@@ -582,7 +580,7 @@ class Interval : public detail::IntervalBase {
    * is_finite_ is true
    */
   struct Bound {
-    optional<T> bound_;
+    std::optional<T> bound_;
     bool is_open_;
     bool is_closed_;
     bool is_infinite_;
@@ -599,10 +597,10 @@ class Interval : public detail::IntervalBase {
     }
 
     /**
-     * Special constructor for cases where the bound is nullopt.
+     * Special constructor for cases where the bound is std::nullopt.
      */
     Bound(bool is_infinite, bool is_satisfiable) noexcept
-        : bound_(nullopt)
+        : bound_(std::nullopt)
         , is_open_(false)
         , is_closed_(false)
         , is_infinite_(is_infinite)
@@ -614,7 +612,7 @@ class Interval : public detail::IntervalBase {
      * of an Interval.
      */
     Bound(
-        optional<T> bound,
+        std::optional<T> bound,
         bool is_open,
         bool is_closed,
         bool is_infinite) noexcept
@@ -861,7 +859,7 @@ class Interval : public detail::IntervalBase {
    *
    * @param x a tuple of lower and upper bounds and empty/single flags.
    */
-  explicit Interval(tuple<Bound, Bound, bool, bool> x) noexcept
+  explicit Interval(std::tuple<Bound, Bound, bool, bool> x) noexcept
       : Interval(
             std::get<0>(x), std::get<1>(x), std::get<2>(x), std::get<3>(x)) {
   }
@@ -877,7 +875,7 @@ class Interval : public detail::IntervalBase {
    *
    * @precondition lower and upper bounds have been normalized
    */
-  tuple<Bound, Bound, bool, bool> adjust_bounds(
+  std::tuple<Bound, Bound, bool, bool> adjust_bounds(
       Bound lower, Bound upper) noexcept {
     if (!lower.is_satisfiable_ || !upper.is_satisfiable_) {
       // If either of the bounds are not satisfiable, we have an empty set.
@@ -1020,8 +1018,8 @@ class Interval : public detail::IntervalBase {
    * the empty set as a value.
    */
   explicit Interval(const empty_set_t&) noexcept
-      : lower_bound_(nullopt)
-      , upper_bound_(nullopt)
+      : lower_bound_(std::nullopt)
+      , upper_bound_(std::nullopt)
       , is_empty_(true)
       , has_single_point_(false)
       , is_lower_open_(false)
@@ -1105,8 +1103,8 @@ class Interval : public detail::IntervalBase {
    * Bi-infinite set constructor
    */
   Interval(const minus_infinity_t&, const plus_infinity_t&) noexcept
-      : lower_bound_(nullopt)
-      , upper_bound_(nullopt)
+      : lower_bound_(std::nullopt)
+      , upper_bound_(std::nullopt)
       , is_empty_(false)
       , has_single_point_(false)
       , is_lower_open_(false)
@@ -1124,7 +1122,7 @@ class Interval : public detail::IntervalBase {
   }
   /**
    * Accessor for the lower bound. Throws std::bad_optional_access if the
-   * lower bound is nullopt.
+   * lower bound is std::nullopt.
    *
    * @precondition lower_bound_has_value()
    */
@@ -1133,7 +1131,7 @@ class Interval : public detail::IntervalBase {
   }
   /**
    * Accessor for the upper bound. Throws std::bad_optional_access if the
-   * upper bound is nullopt.
+   * upper bound is std::nullopt.
    *
    * @precondition upper_bound_has_value()
    */
@@ -1205,7 +1203,7 @@ class Interval : public detail::IntervalBase {
    * Has much of the same logic as `interval_union`, but neither is reducible
    * to the other.
    */
-  tuple<int, bool> compare(const Interval<T>& y) const {
+  std::tuple<int, bool> compare(const Interval<T>& y) const {
     if (is_empty_) {
       throw std::domain_error(
           "Interval::compare - "
@@ -1359,11 +1357,11 @@ class Interval : public detail::IntervalBase {
    *
    * The set union of two intervals is always a set, but it's not always an
    * interval. This function calculates a union when the result is an interval
-   * and returns `{false,nullopt}` when it's not.
+   * and returns `{false,std::nullopt}` when it's not.
    *
    * We can't call this function `union` because it's a reserved word.
    */
-  tuple<bool, optional<Interval<T>>> interval_union(Interval<T> y) {
+  std::tuple<bool, std::optional<Interval<T>>> interval_union(Interval<T> y) {
     /*
      * An empty set gives the identity function on the other operand.
      */
@@ -1389,7 +1387,7 @@ class Interval : public detail::IntervalBase {
     Bound greatest_lower_bound = c_lower < 0 ? right_lower : left_lower;
     Bound least_upper_bound = c_upper < 0 ? left_upper : right_upper;
     if (least_upper_bound.compare_as_mixed(greatest_lower_bound) < 0) {
-      return {false, nullopt};
+      return {false, std::nullopt};
     }
     Bound least_lower_bound =
         (c_lower < 0 || (c_lower == 0 && left_lower.is_closed_)) ? left_lower :
@@ -1422,7 +1420,7 @@ class Interval : public detail::IntervalBase {
    * and `[cut_point,+infinity)`. If false, cut with `(-infinity,cut_point]`
    * and `(cut_point,+infinity)`.
    */
-  tuple<Interval<T>, Interval<T>> cut(
+  std::tuple<Interval<T>, Interval<T>> cut(
       T cut_point, bool lower_open_upper_closed = true) {
     if (is_empty_) {
       /**

@@ -137,13 +137,13 @@ class VFS {
    */
   struct MultiPartUploadState {
     struct CompletedParts {
-      optional<std::string> e_tag;
+      std::optional<std::string> e_tag;
       uint64_t part_number;
     };
 
     uint64_t part_number;
-    optional<std::string> upload_id;
-    optional<std::vector<BufferedChunk>> buffered_chunks;
+    std::optional<std::string> upload_id;
+    std::optional<std::vector<BufferedChunk>> buffered_chunks;
     std::vector<CompletedParts> completed_parts;
     Status status;
   };
@@ -346,7 +346,7 @@ class VFS {
    * @param parent The target directory to list.
    * @return All entries that are contained in the parent
    */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
+  std::tuple<Status, std::optional<std::vector<filesystem::directory_entry>>>
   ls_with_sizes(const URI& parent) const;
 
   /**

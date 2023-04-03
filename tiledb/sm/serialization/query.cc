@@ -84,7 +84,7 @@ namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
-shared_ptr<Logger> dummy_logger = make_shared<Logger>(HERE(), "");
+std::shared_ptr<Logger> dummy_logger = make_shared<Logger>(HERE(), "");
 
 Status stats_to_capnp(Stats& stats, capnp::Stats::Builder* stats_builder) {
   // Build counters
@@ -2203,7 +2203,7 @@ Status query_serialize(
               // Fixed size buffers.
               Buffer data(buffer.buffer_, *buffer.buffer_size_);
 
-              if (query_buffer_storage != nullopt) {
+              if (query_buffer_storage != std::nullopt) {
                 const auto& buffer_cache =
                     query_buffer_storage->get_query_buffer_cache(name);
                 Buffer prepend(
@@ -2224,7 +2224,7 @@ Status query_serialize(
                   buffer.validity_vector_.buffer(),
                   *buffer.validity_vector_.buffer_size());
 
-              if (query_buffer_storage != nullopt) {
+              if (query_buffer_storage != std::nullopt) {
                 const auto& buffer_cache =
                     query_buffer_storage->get_query_buffer_cache(name);
                 Buffer prepend(

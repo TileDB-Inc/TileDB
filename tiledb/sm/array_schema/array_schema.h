@@ -121,12 +121,12 @@ class ArraySchema {
       std::string name,
       ArrayType array_type,
       bool allows_dups,
-      shared_ptr<Domain> domain,
+      std::shared_ptr<Domain> domain,
       Layout cell_order,
       Layout tile_order,
       uint64_t capacity,
-      std::vector<shared_ptr<const Attribute>> attributes,
-      std::vector<shared_ptr<const DimensionLabel>> dimension_labels,
+      std::vector<std::shared_ptr<const Attribute>> attributes,
+      std::vector<std::shared_ptr<const DimensionLabel>> dimension_labels,
       FilterPipeline cell_var_offsets_filters,
       FilterPipeline cell_validity_filters,
       FilterPipeline coords_filters);
@@ -182,7 +182,7 @@ class ArraySchema {
   attribute_size_type attribute_num() const;
 
   /** Returns the attributes. */
-  const std::vector<shared_ptr<const Attribute>>& attributes() const;
+  const std::vector<std::shared_ptr<const Attribute>>& attributes() const;
 
   /** Returns the capacity. */
   uint64_t capacity() const;
@@ -336,7 +336,7 @@ class ArraySchema {
    * @return Status
    */
   Status add_attribute(
-      shared_ptr<const Attribute> attr, bool check_special = true);
+      std::shared_ptr<const Attribute> attr, bool check_special = true);
 
   /**
    * Adds a dimension label to the array schema.
@@ -434,7 +434,7 @@ class ArraySchema {
    * Sets the domain. The function returns an error if the array has been
    * previously set to be a key-value store.
    */
-  Status set_domain(shared_ptr<Domain> domain);
+  Status set_domain(std::shared_ptr<Domain> domain);
 
   /** Sets the tile order. */
   Status set_tile_order(Layout tile_order);
@@ -508,7 +508,7 @@ class ArraySchema {
   bool allows_dups_;
 
   /** The array domain. */
-  shared_ptr<Domain> domain_;
+  std::shared_ptr<Domain> domain_;
 
   /** It maps each dimension name to the corresponding dimension object. */
   std::unordered_map<std::string, const Dimension*> dim_map_;
@@ -538,10 +538,10 @@ class ArraySchema {
 
   /** The array attributes.
    * Maintains lifespan for elements in both attributes_ and attribute_map_. */
-  std::vector<shared_ptr<const Attribute>> attributes_;
+  std::vector<std::shared_ptr<const Attribute>> attributes_;
 
   /** The array dimension labels. */
-  std::vector<shared_ptr<const DimensionLabel>> dimension_labels_;
+  std::vector<std::shared_ptr<const DimensionLabel>> dimension_labels_;
 
   /** A map from the dimension label names to the label schemas. */
   std::unordered_map<std::string, const DimensionLabel*> dimension_label_map_;

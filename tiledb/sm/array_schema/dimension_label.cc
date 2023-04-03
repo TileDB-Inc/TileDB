@@ -60,7 +60,7 @@ DimensionLabel::DimensionLabel(
     DataOrder label_order,
     Datatype label_type,
     uint32_t label_cell_val_num,
-    shared_ptr<ArraySchema> schema,
+    std::shared_ptr<ArraySchema> schema,
     bool is_external,
     bool relative_uri)
     : dim_id_(dim_id)
@@ -168,7 +168,7 @@ DimensionLabel::DimensionLabel(
   }
 
   // Create and set dimension label domain.
-  std::vector<shared_ptr<Dimension>> index_dims{
+  std::vector<std::shared_ptr<Dimension>> index_dims{
       make_shared<Dimension>(HERE(), "index", index_type)};
   throw_if_not_ok(index_dims.back()->set_domain(dim->domain().data()));
   throw_if_not_ok(
@@ -200,7 +200,7 @@ DimensionLabel::DimensionLabel(
 //| Label datatype             | `uint8_t`  |
 //| Label cell_val_num         | `uint32_t` |
 //| Is external                | `bool`     |
-shared_ptr<DimensionLabel> DimensionLabel::deserialize(
+std::shared_ptr<DimensionLabel> DimensionLabel::deserialize(
     Deserializer& deserializer, uint32_t) {
   try {
     // Read dimension ID
@@ -267,7 +267,7 @@ void DimensionLabel::dump(FILE* out) const {
   fprintf(out, "\n");
 }
 
-const shared_ptr<ArraySchema> DimensionLabel::schema() const {
+const std::shared_ptr<ArraySchema> DimensionLabel::schema() const {
   if (!schema_) {
     throw StatusException(
         "DimensionLabel",

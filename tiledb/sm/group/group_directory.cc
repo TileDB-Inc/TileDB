@@ -169,20 +169,21 @@ Status GroupDirectory::load() {
   return Status::Ok();
 }
 
-tuple<Status, optional<std::string>> GroupDirectory::compute_new_fragment_name(
+std::tuple<Status, std::optional<std::string>>
+GroupDirectory::compute_new_fragment_name(
     const URI& first, const URI& last, format_version_t format_version) const {
   // Get uuid
   std::string uuid;
-  RETURN_NOT_OK_TUPLE(uuid::generate_uuid(&uuid, false), nullopt);
+  RETURN_NOT_OK_TUPLE(uuid::generate_uuid(&uuid, false), std::nullopt);
 
   // For creating the new fragment URI
 
   // Get timestamp ranges
   std::pair<uint64_t, uint64_t> t_first, t_last;
   RETURN_NOT_OK_TUPLE(
-      utils::parse::get_timestamp_range(first, &t_first), nullopt);
+      utils::parse::get_timestamp_range(first, &t_first), std::nullopt);
   RETURN_NOT_OK_TUPLE(
-      utils::parse::get_timestamp_range(last, &t_last), nullopt);
+      utils::parse::get_timestamp_range(last, &t_last), std::nullopt);
 
   // Create new URI
   std::stringstream ss;
@@ -200,10 +201,11 @@ bool GroupDirectory::loaded() const {
 /*         PRIVATE METHODS           */
 /* ********************************* */
 
-tuple<Status, optional<std::vector<URI>>> GroupDirectory::list_root_dir_uris() {
+std::tuple<Status, std::optional<std::vector<URI>>>
+GroupDirectory::list_root_dir_uris() {
   // List the group directory URIs
   std::vector<URI> group_dir_uris;
-  RETURN_NOT_OK_TUPLE(vfs_->ls(uri_, &group_dir_uris), nullopt);
+  RETURN_NOT_OK_TUPLE(vfs_->ls(uri_, &group_dir_uris), std::nullopt);
 
   return {Status::Ok(), group_dir_uris};
 }
@@ -262,7 +264,10 @@ Status GroupDirectory::load_group_detail_uris() {
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<URI>>, optional<std::vector<URI>>>
+std::tuple<
+    Status,
+    std::optional<std::vector<URI>>,
+    std::optional<std::vector<URI>>>
 GroupDirectory::compute_uris_to_vacuum(const std::vector<URI>& uris) const {
   // Get vacuum URIs
   std::vector<URI> vac_files;
@@ -272,8 +277,8 @@ GroupDirectory::compute_uris_to_vacuum(const std::vector<URI>& uris) const {
     std::pair<uint64_t, uint64_t> timestamp_range;
     RETURN_NOT_OK_TUPLE(
         utils::parse::get_timestamp_range(uris[i], &timestamp_range),
-        nullopt,
-        nullopt);
+        std::nullopt,
+        std::nullopt);
 
     if (is_vacuum_file(uris[i])) {
       if (timestamp_range.first >= timestamp_start_ &&
@@ -316,7 +321,7 @@ GroupDirectory::compute_uris_to_vacuum(const std::vector<URI>& uris) const {
 
     return Status::Ok();
   });
-  RETURN_NOT_OK_TUPLE(status, nullopt, nullopt);
+  RETURN_NOT_OK_TUPLE(status, std::nullopt, std::nullopt);
 
   // Compute the fragment URIs to vacuum
   std::vector<URI> uris_to_vacuum;
@@ -335,7 +340,7 @@ GroupDirectory::compute_uris_to_vacuum(const std::vector<URI>& uris) const {
   return {Status::Ok(), uris_to_vacuum, vac_uris_to_vacuum};
 }
 
-tuple<Status, optional<std::vector<TimestampedURI>>>
+std::tuple<Status, std::optional<std::vector<TimestampedURI>>>
 GroupDirectory::compute_filtered_uris(
     const std::vector<URI>& uris, const std::vector<URI>& to_ignore) const {
   std::vector<TimestampedURI> filtered_uris;
@@ -365,7 +370,7 @@ GroupDirectory::compute_filtered_uris(
     // the timestamp_end
     std::pair<uint64_t, uint64_t> timestamp_range;
     RETURN_NOT_OK_TUPLE(
-        utils::parse::get_timestamp_range(uri, &timestamp_range), nullopt);
+        utils::parse::get_timestamp_range(uri, &timestamp_range), std::nullopt);
     auto t1 = timestamp_range.first;
     auto t2 = timestamp_range.second;
     if (t1 >= timestamp_start_ && t2 <= timestamp_end_)

@@ -41,7 +41,7 @@ static const char magic_mgc_compressed_bytes[] = {
 #include "magic_mgc_gzipped.bin"
 };
 
-shared_ptr<tiledb::sm::ByteVecValue> magic_dict::expanded_buffer_;
+std::shared_ptr<tiledb::sm::ByteVecValue> magic_dict::expanded_buffer_;
 
 void* magic_dict::uncompressed_magic_dict_ = nullptr;
 
@@ -75,7 +75,7 @@ int magic_dict::magic_mgc_embedded_load(magic_t magic) {
   return magic_load_buffers(magic, &data[0], &sizes[0], 1);
 }
 
-const shared_ptr<tiledb::sm::ByteVecValue> magic_dict::expanded_buffer() {
+const std::shared_ptr<tiledb::sm::ByteVecValue> magic_dict::expanded_buffer() {
   if (!uncompressed_magic_dict_)
     prepare_data();
   return expanded_buffer_;

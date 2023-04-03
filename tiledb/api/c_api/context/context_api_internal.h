@@ -62,7 +62,7 @@ struct tiledb_ctx_handle_t
   inline tiledb::sm::StorageManager* storage_manager() {
     return ctx_.storage_manager();
   }
-  inline optional<std::string> last_error() {
+  inline std::optional<std::string> last_error() {
     return ctx_.last_error();
   }
 };

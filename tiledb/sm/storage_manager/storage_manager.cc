@@ -88,7 +88,7 @@ namespace sm {
 
 StorageManagerCanonical::StorageManagerCanonical(
     ContextResources& resources,
-    shared_ptr<Logger> logger,
+    std::shared_ptr<Logger> logger,
     const Config& config)
     : resources_(resources)
     , logger_(logger)
@@ -170,9 +170,10 @@ Status StorageManagerCanonical::group_close_for_writes(Group* group) {
 
 std::tuple<
     Status,
-    optional<shared_ptr<ArraySchema>>,
-    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
-    optional<std::vector<shared_ptr<FragmentMetadata>>>>
+    std::optional<std::shared_ptr<ArraySchema>>,
+    std::optional<
+        std::unordered_map<std::string, std::shared_ptr<ArraySchema>>>,
+    std::optional<std::vector<std::shared_ptr<FragmentMetadata>>>>
 StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
     const ArrayDirectory& array_dir,
     MemoryTracker* memory_tracker,
@@ -190,7 +191,7 @@ StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
   const auto& fragments_to_load = filtered_fragment_uris.fragment_uris();
 
   // Get the consolidated fragment metadatas
-  std::vector<shared_ptr<Tile>> fragment_metadata_tiles(meta_uris.size());
+  std::vector<std::shared_ptr<Tile>> fragment_metadata_tiles(meta_uris.size());
   std::vector<std::vector<std::pair<std::string, uint64_t>>> offsets_vectors(
       meta_uris.size());
   auto status = parallel_for(compute_tp(), 0, meta_uris.size(), [&](size_t i) {
@@ -202,7 +203,7 @@ StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
     offsets_vectors[i] = std::move(offsets.value());
     return st;
   });
-  RETURN_NOT_OK_TUPLE(status, nullopt, nullopt, nullopt);
+  RETURN_NOT_OK_TUPLE(status, std::nullopt, std::nullopt, std::nullopt);
 
   // Get the unique fragment metadatas into a map.
   std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
@@ -224,15 +225,17 @@ StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
       enc_key,
       fragments_to_load,
       offsets);
-  RETURN_NOT_OK_TUPLE(st_fragment_meta, nullopt, nullopt, nullopt);
+  RETURN_NOT_OK_TUPLE(
+      st_fragment_meta, std::nullopt, std::nullopt, std::nullopt);
 
   return {
       Status::Ok(), array_schema_latest, array_schemas_all, fragment_metadata};
 }
 
-tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
-StorageManagerCanonical::array_load_fragments(
-    Array* array, const std::vector<TimestampedURI>& fragments_to_load) {
+std::
+    tuple<Status, std::optional<std::vector<std::shared_ptr<FragmentMetadata>>>>
+    StorageManagerCanonical::array_load_fragments(
+        Array* array, const std::vector<TimestampedURI>& fragments_to_load) {
   auto timer_se = stats()->start_timer("sm_array_load_fragments");
 
   // Load the fragment metadata
@@ -244,7 +247,7 @@ StorageManagerCanonical::array_load_fragments(
       *array->encryption_key(),
       fragments_to_load,
       offsets);
-  RETURN_NOT_OK_TUPLE(st_fragment_meta, nullopt);
+  RETURN_NOT_OK_TUPLE(st_fragment_meta, std::nullopt);
 
   return {Status::Ok(), fragment_metadata};
 }
@@ -584,7 +587,7 @@ Status StorageManagerCanonical::array_metadata_consolidate(
 
 Status StorageManagerCanonical::array_create(
     const URI& array_uri,
-    const shared_ptr<ArraySchema>& array_schema,
+    const std::shared_ptr<ArraySchema>& array_schema,
     const EncryptionKey& encryption_key) {
   // Check array schema
   if (array_schema == nullptr) {
@@ -1337,7 +1340,7 @@ void StorageManagerCanonical::load_array_metadata(
   const auto& array_metadata_to_load = array_dir.array_meta_uris();
 
   auto metadata_num = array_metadata_to_load.size();
-  std::vector<shared_ptr<Tile>> metadata_tiles(metadata_num);
+  std::vector<std::shared_ptr<Tile>> metadata_tiles(metadata_num);
   throw_if_not_ok(parallel_for(compute_tp(), 0, metadata_num, [&](size_t m) {
     const auto& uri = array_metadata_to_load[m].uri_;
 
@@ -1360,10 +1363,10 @@ void StorageManagerCanonical::load_array_metadata(
   metadata->set_loaded_metadata_uris(array_metadata_to_load);
 }
 
-tuple<
+std::tuple<
     Status,
-    optional<std::vector<QueryCondition>>,
-    optional<std::vector<std::vector<UpdateValue>>>>
+    std::optional<std::vector<QueryCondition>>,
+    std::optional<std::vector<std::vector<UpdateValue>>>>
 StorageManagerCanonical::load_delete_and_update_conditions(const Array& array) {
   auto& locations = array.array_directory().delete_and_update_tiles_location();
   auto conditions = std::vector<QueryCondition>(locations.size());
@@ -1398,7 +1401,7 @@ StorageManagerCanonical::load_delete_and_update_conditions(const Array& array) {
     throw_if_not_ok(conditions[i].check(array.array_schema_latest()));
     return Status::Ok();
   });
-  RETURN_NOT_OK_TUPLE(status, nullopt, nullopt);
+  RETURN_NOT_OK_TUPLE(status, std::nullopt, std::nullopt);
 
   return {Status::Ok(), conditions, update_values};
 }
@@ -1648,7 +1651,7 @@ Status StorageManagerCanonical::store_group_detail(
 }
 
 Status StorageManagerCanonical::store_array_schema(
-    const shared_ptr<ArraySchema>& array_schema,
+    const std::shared_ptr<ArraySchema>& array_schema,
     const EncryptionKey& encryption_key) {
   const URI schema_uri = array_schema->uri();
 
@@ -1733,11 +1736,11 @@ void StorageManagerCanonical::wait_for_zero_in_progress() {
       lck, [this]() { return queries_in_progress_ == 0; });
 }
 
-shared_ptr<Logger> StorageManagerCanonical::logger() const {
+std::shared_ptr<Logger> StorageManagerCanonical::logger() const {
   return logger_;
 }
 
-tuple<Status, optional<shared_ptr<GroupDetails>>>
+std::tuple<Status, std::optional<std::shared_ptr<GroupDetails>>>
 StorageManagerCanonical::load_group_from_uri(
     const URI& group_uri, const URI& uri, const EncryptionKey& encryption_key) {
   auto timer_se = stats()->start_timer("sm_load_group_from_uri");
@@ -1752,21 +1755,21 @@ StorageManagerCanonical::load_group_from_uri(
   return {Status::Ok(), opt_group};
 }
 
-tuple<Status, optional<shared_ptr<GroupDetails>>>
+std::tuple<Status, std::optional<std::shared_ptr<GroupDetails>>>
 StorageManagerCanonical::load_group_from_all_uris(
     const URI& group_uri,
     const std::vector<TimestampedURI>& uris,
     const EncryptionKey& encryption_key) {
   auto timer_se = stats()->start_timer("sm_load_group_from_uri");
 
-  std::vector<shared_ptr<Deserializer>> deserializers;
+  std::vector<std::shared_ptr<Deserializer>> deserializers;
   for (auto& uri : uris) {
     auto&& tile = GenericTileIO::load(resources_, uri.uri_, 0, encryption_key);
 
     stats()->add_counter("read_group_size", tile.size());
 
     // Deserialize
-    shared_ptr<Deserializer> deserializer =
+    std::shared_ptr<Deserializer> deserializer =
         tdb::make_shared<TileDeserializer>(HERE(), std::move(tile));
     deserializers.emplace_back(deserializer);
   }
@@ -1775,9 +1778,9 @@ StorageManagerCanonical::load_group_from_all_uris(
   return {Status::Ok(), opt_group};
 }
 
-tuple<Status, optional<shared_ptr<GroupDetails>>>
+std::tuple<Status, std::optional<std::shared_ptr<GroupDetails>>>
 StorageManagerCanonical::load_group_details(
-    const shared_ptr<GroupDirectory>& group_directory,
+    const std::shared_ptr<GroupDirectory>& group_directory,
     const EncryptionKey& encryption_key) {
   auto timer_se = stats()->start_timer("sm_load_group_details");
   const URI& latest_group_uri = group_directory->latest_group_details_uri();
@@ -1848,7 +1851,7 @@ StorageManagerCanonical::group_open_for_writes(Group* group) {
 }
 
 void StorageManagerCanonical::load_group_metadata(
-    const shared_ptr<GroupDirectory>& group_dir,
+    const std::shared_ptr<GroupDirectory>& group_dir,
     const EncryptionKey& encryption_key,
     Metadata* metadata) {
   auto timer_se = stats()->start_timer("sm_load_group_metadata");
@@ -1863,7 +1866,7 @@ void StorageManagerCanonical::load_group_metadata(
 
   auto metadata_num = group_metadata_to_load.size();
   // TBD: Might use DynamicArray when it is more capable.
-  std::vector<shared_ptr<Tile>> metadata_tiles(metadata_num);
+  std::vector<std::shared_ptr<Tile>> metadata_tiles(metadata_num);
   throw_if_not_ok(parallel_for(compute_tp(), 0, metadata_num, [&](size_t m) {
     const auto& uri = group_metadata_to_load[m].uri_;
 
@@ -1889,21 +1892,22 @@ void StorageManagerCanonical::load_group_metadata(
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
-tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
-StorageManagerCanonical::load_fragment_metadata(
-    MemoryTracker* memory_tracker,
-    const shared_ptr<const ArraySchema>& array_schema_latest,
-    const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
-        array_schemas_all,
-    const EncryptionKey& encryption_key,
-    const std::vector<TimestampedURI>& fragments_to_load,
-    const std::unordered_map<std::string, std::pair<Tile*, uint64_t>>&
-        offsets) {
+std::
+    tuple<Status, std::optional<std::vector<std::shared_ptr<FragmentMetadata>>>>
+    StorageManagerCanonical::load_fragment_metadata(
+        MemoryTracker* memory_tracker,
+        const std::shared_ptr<const ArraySchema>& array_schema_latest,
+        const std::unordered_map<std::string, std::shared_ptr<ArraySchema>>&
+            array_schemas_all,
+        const EncryptionKey& encryption_key,
+        const std::vector<TimestampedURI>& fragments_to_load,
+        const std::unordered_map<std::string, std::pair<Tile*, uint64_t>>&
+            offsets) {
   auto timer_se = stats()->start_timer("sm_load_fragment_metadata");
 
   // Load the metadata for each fragment
   auto fragment_num = fragments_to_load.size();
-  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata;
+  std::vector<std::shared_ptr<FragmentMetadata>> fragment_metadata;
   fragment_metadata.resize(fragment_num);
   auto status = parallel_for(compute_tp(), 0, fragment_num, [&](size_t f) {
     const auto& sf = fragments_to_load[f];
@@ -1918,7 +1922,7 @@ StorageManagerCanonical::load_fragment_metadata(
     // Note that the fragment metadata version is >= the array schema
     // version. Therefore, the check below is defensive and will always
     // ensure backwards compatibility.
-    shared_ptr<FragmentMetadata> metadata;
+    std::shared_ptr<FragmentMetadata> metadata;
     if (f_version == 1) {  // This is equivalent to format version <=2
       bool sparse;
       RETURN_NOT_OK(vfs()->is_file(coords_uri, &sparse));
@@ -1963,22 +1967,22 @@ StorageManagerCanonical::load_fragment_metadata(
     fragment_metadata[f] = metadata;
     return Status::Ok();
   });
-  RETURN_NOT_OK_TUPLE(status, nullopt);
+  RETURN_NOT_OK_TUPLE(status, std::nullopt);
 
   return {Status::Ok(), fragment_metadata};
 }
 
-tuple<
+std::tuple<
     Status,
-    optional<Tile>,
-    optional<std::vector<std::pair<std::string, uint64_t>>>>
+    std::optional<Tile>,
+    std::optional<std::vector<std::pair<std::string, uint64_t>>>>
 StorageManagerCanonical::load_consolidated_fragment_meta(
     const URI& uri, const EncryptionKey& enc_key) {
   auto timer_se = stats()->start_timer("sm_read_load_consolidated_frag_meta");
 
   // No consolidated fragment metadata file
   if (uri.to_string().empty())
-    return {Status::Ok(), nullopt, nullopt};
+    return {Status::Ok(), std::nullopt, std::nullopt};
 
   auto&& tile = GenericTileIO::load(resources_, uri, 0, enc_key);
 

@@ -107,7 +107,7 @@ struct CPPAverageCellSizeFx {
   sm::TimestampedURI write_array(
       std::vector<uint64_t> d2_sizes,
       std::vector<uint64_t> a2_sizes,
-      optional<std::vector<uint64_t>> a3_sizes = std::nullopt) {
+      std::optional<std::vector<uint64_t>> a3_sizes = std::nullopt) {
     REQUIRE(d2_sizes.size() == a2_sizes.size());
     if (a3_sizes.has_value()) {
       REQUIRE(d2_sizes.size() == a3_sizes->size());
@@ -181,7 +181,7 @@ struct CPPAverageCellSizeFx {
   void check_avg_cell_size(
       uint64_t d2_size,
       uint64_t a2_size,
-      optional<uint64_t> a3_size = std::nullopt) {
+      std::optional<uint64_t> a3_size = std::nullopt) {
     Array array(ctx_, array_name, TILEDB_READ);
     auto avg_cell_sizes = array.ptr()->array_->get_average_var_cell_sizes();
 
@@ -205,7 +205,7 @@ struct CPPAverageCellSizeFx {
       std::vector<sm::TimestampedURI> uris,
       uint64_t d2_size,
       uint64_t a2_size,
-      optional<uint64_t> a3_size = std::nullopt) {
+      std::optional<uint64_t> a3_size = std::nullopt) {
     auto array_for_reads{make_shared<sm::Array>(
         HERE(), sm::URI(array_name), ctx_.ptr().get()->storage_manager())};
     REQUIRE(array_for_reads

@@ -324,7 +324,7 @@ struct VariableOffsetsFx {
       std::vector<int32_t>& data,
       std::vector<uint64_t>& data_offsets,
       tiledb_layout_t layout,
-      shared_ptr<Config> config = nullptr) {
+      std::shared_ptr<Config> config = nullptr) {
     std::vector<int64_t> d1 = {1, 1, 2, 2};
     std::vector<int64_t> d2 = {1, 2, 1, 2};
 
@@ -370,7 +370,7 @@ struct VariableOffsetsFx {
       std::vector<int32_t>& data,
       std::vector<uint32_t>& data_offsets,
       tiledb_layout_t layout,
-      shared_ptr<Config> config = nullptr) {
+      std::shared_ptr<Config> config = nullptr) {
     std::vector<int64_t> d1 = {1, 1, 2, 2};
     std::vector<int64_t> d2 = {1, 2, 1, 2};
 
@@ -418,7 +418,7 @@ struct VariableOffsetsFx {
       const std::string& array_name,
       std::vector<int32_t>& expected_data,
       std::vector<uint64_t>& expected_offsets,
-      shared_ptr<Config> config = nullptr) {
+      std::shared_ptr<Config> config = nullptr) {
     Array array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array, TILEDB_READ);
 
@@ -460,7 +460,7 @@ struct VariableOffsetsFx {
       const std::string& array_name,
       std::vector<int32_t>& expected_data,
       std::vector<uint32_t>& expected_offsets,
-      shared_ptr<Config> config = nullptr) {
+      std::shared_ptr<Config> config = nullptr) {
     Array array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array, TILEDB_READ);
 

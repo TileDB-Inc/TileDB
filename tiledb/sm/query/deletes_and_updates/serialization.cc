@@ -212,7 +212,7 @@ std::vector<UpdateValue> deserialize_update_values_impl(
   return ret;
 }
 
-tuple<QueryCondition, std::vector<UpdateValue>>
+std::tuple<QueryCondition, std::vector<UpdateValue>>
 deserialize_update_condition_and_values(
     const uint64_t condition_index,
     const std::string& condition_marker,

@@ -163,7 +163,7 @@ class FilteredData {
       const uint64_t min_batch_size,
       const uint64_t max_batch_size,
       const uint64_t min_batch_gap,
-      const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
+      const std::vector<std::shared_ptr<FragmentMetadata>>& fragment_metadata,
       const std::vector<ResultTile*>& result_tiles,
       const std::string& name,
       const bool var_sized,
@@ -181,7 +181,7 @@ class FilteredData {
     }
 
     // Store data on the datablock in progress for fixed, var and nullable data.
-    std::optional<unsigned> current_frag_idx{nullopt};
+    std::optional<unsigned> current_frag_idx{std::nullopt};
     storage_size_t current_fixed_offset{0};
     storage_size_t current_fixed_size{0};
     storage_size_t current_var_offset{0};
@@ -485,7 +485,7 @@ class FilteredData {
       const uint64_t min_batch_size,
       const uint64_t max_batch_size,
       const uint64_t min_batch_gap,
-      optional<unsigned> current_block_frag_idx,
+      std::optional<unsigned> current_block_frag_idx,
       storage_size_t& current_block_offset,
       storage_size_t& current_block_size,
       const ResultTile* rt,
@@ -494,7 +494,7 @@ class FilteredData {
     storage_size_t offset{file_offset(fragment, type, tile_idx)};
     storage_size_t size{persisted_tile_size(fragment, type, tile_idx)};
 
-    if (current_block_frag_idx == nullopt) {
+    if (current_block_frag_idx == std::nullopt) {
       current_block_offset = offset;
       current_block_size = size;
       return;
@@ -570,7 +570,7 @@ class FilteredData {
   const std::string& name_;
 
   /** Fragment metadata. */
-  const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata_;
+  const std::vector<std::shared_ptr<FragmentMetadata>>& fragment_metadata_;
 
   /** Is the attribute var sized? */
   const bool var_sized_;

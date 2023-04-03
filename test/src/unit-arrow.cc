@@ -331,7 +331,7 @@ void test_for_column_size(size_t col_size) {
       // structured binding with MSVC 15
       // https://developercommunity.visualstudio.com/t/structured-bindings-with-auto-is-incorrectly-const/562665
       auto [offsets_nelem, data_nelem, validity_nelem] =
-          tuple<uint64_t, uint64_t, uint64_t>(res);
+          std::tuple<uint64_t, uint64_t, uint64_t>(res);
 
       // fake an empty result set, which is not otherwise possible with
       // a dense array. test for ch10191

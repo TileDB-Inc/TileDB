@@ -49,7 +49,7 @@ constexpr bool TILEDB_SERIALIZATION_ENABLED = false;
 
 ContextResources::ContextResources(
     const Config& config,
-    shared_ptr<Logger> logger,
+    std::shared_ptr<Logger> logger,
     size_t compute_thread_count,
     size_t io_thread_count,
     std::string stats_name)

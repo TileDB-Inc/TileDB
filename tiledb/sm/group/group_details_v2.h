@@ -75,7 +75,7 @@ class GroupDetailsV2 : public GroupDetails {
    * @param version The format spec version.
    * @return Status and Attribute
    */
-  static shared_ptr<GroupDetails> deserialize(
+  static std::shared_ptr<GroupDetails> deserialize(
       Deserializer& deserializer, const URI& group_uri);
 
   /**
@@ -85,8 +85,8 @@ class GroupDetailsV2 : public GroupDetails {
    * @param version The format spec version.
    * @return Status and Attribute
    */
-  static shared_ptr<GroupDetails> deserialize(
-      const std::vector<shared_ptr<Deserializer>>& deserializer,
+  static std::shared_ptr<GroupDetails> deserialize(
+      const std::vector<std::shared_ptr<Deserializer>>& deserializer,
       const URI& group_uri);
 
  protected:

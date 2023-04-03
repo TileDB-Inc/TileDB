@@ -230,7 +230,7 @@ void array_directory_to_capnp(
   array_directory_builder->setTimestampEnd(array_directory.timestamp_end());
 }
 
-shared_ptr<ArrayDirectory> array_directory_from_capnp(
+std::shared_ptr<ArrayDirectory> array_directory_from_capnp(
     const capnp::ArrayDirectory::Reader& array_directory_reader,
     ContextResources& resources,
     const URI& array_uri) {

@@ -243,9 +243,9 @@ TEST_CASE_METHOD(
   auto schema = make_shared<ArraySchema>(HERE());
   CHECK(schema->set_domain(make_shared<Domain>(HERE(), &dom)).ok());
 
-  std::vector<shared_ptr<FragmentMetadata>> fragments;
+  std::vector<std::shared_ptr<FragmentMetadata>> fragments;
   for (uint64_t i = 0; i < frag_tile_domains.size() + 1; i++) {
-    shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
+    std::shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
         HERE(),
         nullptr,
         nullptr,

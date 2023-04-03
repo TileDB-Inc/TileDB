@@ -82,7 +82,7 @@ class ArrayDimensionLabelQueries {
       const Subarray& subarray,
       const std::unordered_map<std::string, QueryBuffer>& label_buffers,
       const std::unordered_map<std::string, QueryBuffer>& array_buffers,
-      const optional<std::string>& fragment_name);
+      const std::optional<std::string>& fragment_name);
 
   /** Disable copy and move. */
   DISABLE_COPY_AND_COPY_ASSIGN(ArrayDimensionLabelQueries);
@@ -132,7 +132,7 @@ class ArrayDimensionLabelQueries {
   StorageManager* storage_manager_;
 
   /** Map from label name to dimension label opened by this query. */
-  std::unordered_map<std::string, shared_ptr<Array>> dimension_labels_;
+  std::unordered_map<std::string, std::shared_ptr<Array>> dimension_labels_;
 
   /** Dimension label range queries */
   std::vector<tdb_unique_ptr<DimensionLabelQuery>> range_queries_;
@@ -172,7 +172,7 @@ class ArrayDimensionLabelQueries {
    * If not set, the fragment will be created using the latest array timestamp
    * and a generated UUID.
    */
-  optional<std::string> fragment_name_;
+  std::optional<std::string> fragment_name_;
 
   /**
    * Initializes read queries.
@@ -210,7 +210,7 @@ class ArrayDimensionLabelQueries {
    * @param dim_label_name Name of the dimension label.
    * @param query_type Query type to open the dimension label as.
    */
-  shared_ptr<Array> open_dimension_label(
+  std::shared_ptr<Array> open_dimension_label(
       Array* array,
       const URI& dim_label_uri,
       const std::string& dim_label_name,

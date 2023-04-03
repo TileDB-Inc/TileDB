@@ -94,7 +94,7 @@ void attribute_to_capnp(
  * @param attribute attribute to deserialize into
  * @return The generated attribute
  */
-shared_ptr<Attribute> attribute_from_capnp(
+std::shared_ptr<Attribute> attribute_from_capnp(
     const capnp::Attribute::Reader& attribute_reader);
 
 /**

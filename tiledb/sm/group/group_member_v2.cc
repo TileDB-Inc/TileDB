@@ -80,7 +80,8 @@ void GroupMemberV2::serialize(Serializer& serializer) {
   serializer.write<uint8_t>(deleted_);
 }
 
-shared_ptr<GroupMember> GroupMemberV2::deserialize(Deserializer& deserializer) {
+std::shared_ptr<GroupMember> GroupMemberV2::deserialize(
+    Deserializer& deserializer) {
   // We skip reading "version" because it is already read by
   // GroupMember::deserialize to determine the version and class to call
 
@@ -114,7 +115,7 @@ shared_ptr<GroupMember> GroupMemberV2::deserialize(Deserializer& deserializer) {
   deleted_int = deserializer.read<uint8_t>();
   auto deleted = static_cast<bool>(deleted_int);
 
-  shared_ptr<GroupMemberV2> group_member = tdb::make_shared<GroupMemberV2>(
+  std::shared_ptr<GroupMemberV2> group_member = tdb::make_shared<GroupMemberV2>(
       HERE(), URI(uri_string, !relative), type, relative, name, deleted);
   return group_member;
 }

@@ -78,7 +78,7 @@ class RestClient {
    * @param uri to check
    * @return tuple of Status and if array exists
    */
-  tuple<Status, std::optional<bool>> check_array_exists_from_rest(
+  std::tuple<Status, std::optional<bool>> check_array_exists_from_rest(
       const URI& uri);
 
   /**
@@ -88,7 +88,7 @@ class RestClient {
    * @param uri to check
    * @return tuple of Status and if group exists
    */
-  tuple<Status, std::optional<bool>> check_group_exists_from_rest(
+  std::tuple<Status, std::optional<bool>> check_group_exists_from_rest(
       const URI& uri);
 
   /**
@@ -97,8 +97,8 @@ class RestClient {
    * @param uri of array being loaded
    * @return Status and new ArraySchema shared pointer.
    */
-  tuple<Status, optional<shared_ptr<ArraySchema>>> get_array_schema_from_rest(
-      const URI& uri);
+  std::tuple<Status, std::optional<std::shared_ptr<ArraySchema>>>
+  get_array_schema_from_rest(const URI& uri);
 
   /**
    * Post the array config and get an array from rest server
@@ -351,7 +351,7 @@ class RestClient {
   mutable std::mutex redirect_mtx_;
 
   /** The class logger. */
-  shared_ptr<Logger> logger_;
+  std::shared_ptr<Logger> logger_;
 
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;
@@ -407,7 +407,7 @@ class RestClient {
       void* constcontents,
       const size_t content_nbytes,
       bool* constskip_retries,
-      shared_ptr<Buffer> scratch,
+      std::shared_ptr<Buffer> scratch,
       Query* query,
       serialization::CopyState* copy_state);
 

@@ -60,7 +60,7 @@ namespace serialization {
  * @param array_uri uri of the array that the directory belongs to
  * @return array_directory array directory object to deserialize into
  */
-shared_ptr<ArrayDirectory> array_directory_from_capnp(
+std::shared_ptr<ArrayDirectory> array_directory_from_capnp(
     const capnp::ArrayDirectory::Reader& array_directory_reader,
     ContextResources& resources,
     const URI& array_uri);

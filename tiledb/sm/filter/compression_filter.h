@@ -160,12 +160,12 @@ class CompressionFilter : public Filter {
   std::mutex zstd_decompress_ctx_pool_mtx_;
 
   /** A resource pool to be used in ZStd compressor for improved performance */
-  shared_ptr<BlockingResourcePool<ZStd::ZSTD_Compress_Context>>
+  std::shared_ptr<BlockingResourcePool<ZStd::ZSTD_Compress_Context>>
       zstd_compress_ctx_pool_;
 
   /** A resource pool to be used in ZStd decompressor for improved performance
    */
-  shared_ptr<BlockingResourcePool<ZStd::ZSTD_Decompress_Context>>
+  std::shared_ptr<BlockingResourcePool<ZStd::ZSTD_Decompress_Context>>
       zstd_decompress_ctx_pool_;
 
   /** Returns a new clone of this filter. */
@@ -240,7 +240,7 @@ class CompressionFilter : public Filter {
 
   /** Creates a vector of views of the input strings and returns the max string
    * size */
-  static tuple<std::vector<std::string_view>, uint64_t> create_input_view(
+  static std::tuple<std::vector<std::string_view>, uint64_t> create_input_view(
       const FilterBuffer& input, WriterTile* const offsets_tile);
 
   /**

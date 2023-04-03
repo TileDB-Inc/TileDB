@@ -735,21 +735,21 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
-    const URI& parent) const {
+std::tuple<Status, std::optional<std::vector<directory_entry>>>
+VFS::ls_with_sizes(const URI& parent) const {
   // Noop if `parent` is not a directory, do not error out.
   // For S3, GCS and Azure, `ls` on a non-directory will just
   // return an empty `uris` vector.
   if (!(parent.is_s3() || parent.is_gcs() || parent.is_azure())) {
     bool flag = false;
-    RETURN_NOT_OK_TUPLE(is_dir(parent, &flag), nullopt);
+    RETURN_NOT_OK_TUPLE(is_dir(parent, &flag), std::nullopt);
 
     if (!flag) {
       return {Status::Ok(), std::vector<directory_entry>()};
     }
   }
 
-  optional<std::vector<directory_entry>> entries;
+  std::optional<std::vector<directory_entry>> entries;
   if (parent.is_file()) {
 #ifdef _WIN32
     Status st;
@@ -758,7 +758,7 @@ tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
     Status st;
     std::tie(st, entries) = posix_.ls_with_sizes(parent);
 #endif
-    RETURN_NOT_OK_TUPLE(st, nullopt);
+    RETURN_NOT_OK_TUPLE(st, std::nullopt);
   } else if (parent.is_s3()) {
 #ifdef HAVE_S3
     Status st;
@@ -767,7 +767,7 @@ tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
     auto st =
         LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
 #endif
-    RETURN_NOT_OK_TUPLE(st, nullopt);
+    RETURN_NOT_OK_TUPLE(st, std::nullopt);
   } else if (parent.is_azure()) {
 #ifdef HAVE_AZURE
     Status st;
@@ -776,7 +776,7 @@ tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
     auto st =
         LOG_STATUS(Status_VFSError("TileDB was built without Azure support"));
 #endif
-    RETURN_NOT_OK_TUPLE(st, nullopt);
+    RETURN_NOT_OK_TUPLE(st, std::nullopt);
   } else if (parent.is_gcs()) {
 #ifdef HAVE_GCS
     Status st;
@@ -785,7 +785,7 @@ tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
     auto st =
         LOG_STATUS(Status_VFSError("TileDB was built without GCS support"));
 #endif
-    RETURN_NOT_OK_TUPLE(st, nullopt);
+    RETURN_NOT_OK_TUPLE(st, std::nullopt);
   } else if (parent.is_hdfs()) {
 #ifdef HAVE_HDFS
     Status st;
@@ -794,12 +794,12 @@ tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
     auto st =
         LOG_STATUS(Status_VFSError("TileDB was built without HDFS support"));
 #endif
-    RETURN_NOT_OK_TUPLE(st, nullopt);
+    RETURN_NOT_OK_TUPLE(st, std::nullopt);
   } else if (parent.is_memfs()) {
     Status st;
     std::tie(st, entries) =
         memfs_.ls_with_sizes(URI("mem://" + parent.to_path()));
-    RETURN_NOT_OK_TUPLE(st, nullopt);
+    RETURN_NOT_OK_TUPLE(st, std::nullopt);
   } else {
     auto st = LOG_STATUS(
         Status_VFSError("Unsupported URI scheme: " + parent.to_string()));
@@ -1585,7 +1585,7 @@ VFS::multipart_upload_state(const URI& uri) {
     VFS::MultiPartUploadState state;
     auto s3_state = s3_.multipart_upload_state(uri);
     if (!s3_state.has_value()) {
-      return {Status::Ok(), nullopt};
+      return {Status::Ok(), std::nullopt};
     }
     state.upload_id = s3_state->upload_id;
     state.part_number = s3_state->part_number;
@@ -1609,31 +1609,33 @@ VFS::multipart_upload_state(const URI& uri) {
 #else
     return {
         LOG_STATUS(Status_VFSError("TileDB was built without S3 support")),
-        nullopt};
+        std::nullopt};
 #endif
   } else if (uri.is_azure()) {
 #ifdef HAVE_AZURE
     return {
-        LOG_STATUS(Status_VFSError("Not yet supported for Azure")), nullopt};
+        LOG_STATUS(Status_VFSError("Not yet supported for Azure")),
+        std::nullopt};
 #else
     return {
         LOG_STATUS(Status_VFSError("TileDB was built without Azure support")),
-        nullopt};
+        std::nullopt};
 #endif
   } else if (uri.is_gcs()) {
 #ifdef HAVE_GCS
-    return {LOG_STATUS(Status_VFSError("Not yet supported for GCS")), nullopt};
+    return {
+        LOG_STATUS(Status_VFSError("Not yet supported for GCS")), std::nullopt};
 #else
     return {
         LOG_STATUS(Status_VFSError("TileDB was built without GCS support")),
-        nullopt};
+        std::nullopt};
 #endif
   }
 
   return {
       LOG_STATUS(
           Status_VFSError("Unsupported URI schemes: " + uri.to_string())),
-      nullopt};
+      std::nullopt};
 }
 
 Status VFS::set_multipart_upload_state(

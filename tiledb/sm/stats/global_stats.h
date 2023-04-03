@@ -97,7 +97,7 @@ class GlobalStats {
    * will be aggregated and dumped with the other registered
    * stats.
    */
-  void register_stats(const shared_ptr<Stats>& stats);
+  void register_stats(const std::shared_ptr<Stats>& stats);
 
   /** Dump the current stats to the given file. */
   void dump(FILE* out) const;

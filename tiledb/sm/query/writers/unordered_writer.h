@@ -54,7 +54,7 @@ class UnorderedWriter : public WriterBase {
   /** Constructor. */
   UnorderedWriter(
       stats::Stats* stats,
-      shared_ptr<Logger> logger,
+      std::shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -65,7 +65,7 @@ class UnorderedWriter : public WriterBase {
       Query::CoordsInfo& coords_info,
       std::unordered_set<std::string>& written_buffers,
       bool remote_query,
-      optional<std::string> fragment_name = nullopt,
+      std::optional<std::string> fragment_name = std::nullopt,
       bool skip_checks_serialization = false);
 
   /** Destructor. */
@@ -108,7 +108,7 @@ class UnorderedWriter : public WriterBase {
   std::set<uint64_t> coord_dups_;
 
   /** Pointer to the fragment metadata. */
-  shared_ptr<FragmentMetadata> frag_meta_;
+  std::shared_ptr<FragmentMetadata> frag_meta_;
 
   /** Already written buffers. */
   std::unordered_set<std::string>& written_buffers_;

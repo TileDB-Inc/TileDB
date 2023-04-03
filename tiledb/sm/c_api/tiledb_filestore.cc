@@ -57,15 +57,15 @@ namespace tiledb::common::detail {
 
 // Forward declarations
 uint64_t compute_tile_extent_based_on_file_size(uint64_t file_size);
-std::pair<Status, optional<std::string>> libmagic_get_mime(
+std::pair<Status, std::optional<std::string>> libmagic_get_mime(
     void* data, uint64_t size);
-std::pair<Status, optional<std::string>> libmagic_get_mime_encoding(
+std::pair<Status, std::optional<std::string>> libmagic_get_mime_encoding(
     void* data, uint64_t size);
 bool libmagic_file_is_compressed(void* data, uint64_t size);
 Status read_file_header(
     const VFS& vfs, const char* uri, std::vector<char>& header);
 std::pair<std::string, std::string> strip_file_extension(const char* file_uri);
-std::pair<Status, optional<uint64_t>> get_buffer_size_from_config(
+std::pair<Status, std::optional<uint64_t>> get_buffer_size_from_config(
     const Context& context, uint64_t tile_extent);
 
 TILEDB_EXPORT int32_t tiledb_filestore_schema_create(
@@ -618,7 +618,7 @@ uint64_t compute_tile_extent_based_on_file_size(uint64_t file_size) {
   }
 }
 
-std::pair<Status, optional<std::string>> libmagic_get_mime(
+std::pair<Status, std::optional<std::string>> libmagic_get_mime(
     void* data, uint64_t size) {
   magic_t magic = magic_open(MAGIC_MIME_TYPE);
   if (tiledb::sm::magic_dict::magic_mgc_embedded_load(magic)) {
@@ -626,7 +626,7 @@ std::pair<Status, optional<std::string>> libmagic_get_mime(
     magic_close(magic);
     return {
         Status_Error(std::string("Cannot load magic database - ") + errmsg),
-        nullopt};
+        std::nullopt};
   }
   auto rv = magic_buffer(magic, data, size);
   if (!rv) {
@@ -634,14 +634,14 @@ std::pair<Status, optional<std::string>> libmagic_get_mime(
     magic_close(magic);
     return {
         Status_Error(std::string("Cannot get the mime type - ") + errmsg),
-        nullopt};
+        std::nullopt};
   }
   std::string mime(rv);
   magic_close(magic);
   return {Status::Ok(), mime};
 }
 
-std::pair<Status, optional<std::string>> libmagic_get_mime_encoding(
+std::pair<Status, std::optional<std::string>> libmagic_get_mime_encoding(
     void* data, uint64_t size) {
   magic_t magic = magic_open(MAGIC_MIME_ENCODING);
   if (tiledb::sm::magic_dict::magic_mgc_embedded_load(magic)) {
@@ -649,7 +649,7 @@ std::pair<Status, optional<std::string>> libmagic_get_mime_encoding(
     magic_close(magic);
     return {
         Status_Error(std::string("Cannot load magic database - ") + errmsg),
-        nullopt};
+        std::nullopt};
   }
   auto rv = magic_buffer(magic, data, size);
   if (!rv) {
@@ -657,7 +657,7 @@ std::pair<Status, optional<std::string>> libmagic_get_mime_encoding(
     magic_close(magic);
     return {
         Status_Error(std::string("Cannot get the mime encoding - ") + errmsg),
-        nullopt};
+        std::nullopt};
   }
   std::string mime(rv);
   magic_close(magic);
@@ -713,14 +713,14 @@ std::pair<std::string, std::string> strip_file_extension(const char* file_uri) {
   return {uri.substr(fname_pos, ext_pos - fname_pos), ext};
 }
 
-std::pair<Status, optional<uint64_t>> get_buffer_size_from_config(
+std::pair<Status, std::optional<uint64_t>> get_buffer_size_from_config(
     const Context& context, uint64_t tile_extent) {
   bool found = false;
   uint64_t buffer_size;
   auto st = context.config().ptr()->config().get<uint64_t>(
       "filestore.buffer_size", &buffer_size, &found);
 
-  RETURN_NOT_OK_TUPLE(st, nullopt);
+  RETURN_NOT_OK_TUPLE(st, std::nullopt);
   assert(found);
 
   if (buffer_size < tile_extent) {
@@ -728,7 +728,7 @@ std::pair<Status, optional<uint64_t>> get_buffer_size_from_config(
         "The buffer size configured via filestore.buffer_size"
         "is smaller than current " +
         std::to_string(tile_extent) + " tile extent");
-    return {st, nullopt};
+    return {st, std::nullopt};
   }
   // Round the buffer size down to the nearest tile
   buffer_size = buffer_size / tile_extent * tile_extent;

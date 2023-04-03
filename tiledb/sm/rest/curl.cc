@@ -638,7 +638,7 @@ Status Curl::should_retry_based_on_http_status(bool* retry) const {
   return Status::Ok();
 }
 
-tuple<Status, optional<long>> Curl::last_http_status_code() {
+std::tuple<Status, std::optional<long>> Curl::last_http_status_code() {
   CURL* curl = curl_.get();
   if (curl == nullptr)
     return {

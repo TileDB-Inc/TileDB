@@ -87,7 +87,7 @@ WriterTile serialize_update_condition_and_values(
  * @param size Size of the serialized data.
  * @return Deserialized query condition and update values.
  */
-tuple<QueryCondition, std::vector<UpdateValue>>
+std::tuple<QueryCondition, std::vector<UpdateValue>>
 deserialize_update_condition_and_values(
     const uint64_t condition_index,
     const std::string& condition_marker,

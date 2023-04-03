@@ -82,7 +82,7 @@ static tiledb::sm::stats::Stats g_helper_stats("test");
 
 // A dummy `Logger` instance. This is useful for constructing
 // objects that require a parent `Logger` object.
-shared_ptr<Logger> g_helper_logger(void);
+std::shared_ptr<Logger> g_helper_logger(void);
 
 const std::string& get_temp_path();
 
@@ -416,7 +416,7 @@ void create_azure_container(
  */
 template <class T>
 void create_subarray(
-    shared_ptr<tiledb::sm::Array> array,
+    std::shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<T>& ranges,
     tiledb::sm::Layout layout,
     tiledb::sm::Subarray* subarray,
@@ -435,7 +435,7 @@ void create_subarray(
 template <class T>
 void create_subarray(
     tiledb_ctx_t* ctx,
-    shared_ptr<tiledb::sm::Array> array,
+    std::shared_ptr<tiledb::sm::Array> array,
     const SubarrayRanges<T>& ranges,
     tiledb::sm::Layout layout,
     tiledb_subarray_t** subarray,

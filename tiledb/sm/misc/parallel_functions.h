@@ -191,8 +191,8 @@ Status parallel_for(
    * loop that is not the first to fail.
    */
   bool failed = false;
-  optional<std::exception_ptr> failed_exception{nullopt};
-  optional<Status> failed_status{nullopt};
+  std::optional<std::exception_ptr> failed_exception{std::nullopt};
+  std::optional<Status> failed_status{std::nullopt};
 
   /*
    * Executes subrange [subrange_start, subrange_end) that exists within the

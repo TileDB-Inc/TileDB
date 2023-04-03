@@ -231,8 +231,8 @@ Status group_update_details_to_capnp(
   }
 
   const auto& members_to_modify = group->members_to_modify();
-  std::vector<shared_ptr<GroupMember>> group_members_to_add;
-  std::vector<shared_ptr<GroupMember>> group_members_to_remove;
+  std::vector<std::shared_ptr<GroupMember>> group_members_to_add;
+  std::vector<std::shared_ptr<GroupMember>> group_members_to_remove;
   for (const auto& member : members_to_modify) {
     if (member->deleted()) {
       group_members_to_remove.emplace_back(member);

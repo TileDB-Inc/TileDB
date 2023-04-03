@@ -56,7 +56,8 @@ FilterPipeline::FilterPipeline()
 }
 
 FilterPipeline::FilterPipeline(
-    uint32_t max_chunk_size, const std::vector<shared_ptr<Filter>>& filters)
+    uint32_t max_chunk_size,
+    const std::vector<std::shared_ptr<Filter>>& filters)
     : filters_(filters)
     , max_chunk_size_(max_chunk_size) {
 }
@@ -86,7 +87,7 @@ FilterPipeline& FilterPipeline::operator=(FilterPipeline&& other) {
 }
 
 void FilterPipeline::add_filter(const Filter& filter) {
-  shared_ptr<Filter> copy(filter.clone());
+  std::shared_ptr<Filter> copy(filter.clone());
   filters_.push_back(std::move(copy));
 }
 
@@ -94,7 +95,7 @@ void FilterPipeline::clear() {
   filters_.clear();
 }
 
-tuple<Status, optional<std::vector<uint64_t>>>
+std::tuple<Status, std::optional<std::vector<uint64_t>>>
 FilterPipeline::get_var_chunk_sizes(
     uint32_t chunk_size,
     WriterTile* const tile,
@@ -121,7 +122,7 @@ FilterPipeline::get_var_chunk_sizes(
           if (new_size > std::numeric_limits<uint32_t>::max()) {
             return {
                 LOG_STATUS(Status_FilterError("Chunk size exceeds uint32_t")),
-                nullopt};
+                std::nullopt};
           }
           chunk_offsets.emplace_back(offsets[c] + cell_size);
           current_size = 0;
@@ -133,7 +134,7 @@ FilterPipeline::get_var_chunk_sizes(
             if (cell_size > std::numeric_limits<uint32_t>::max()) {
               return {
                   LOG_STATUS(Status_FilterError("Chunk size exceeds uint32_t")),
-                  nullopt};
+                  std::nullopt};
             }
 
             if (c != num_offsets - 1)
@@ -502,7 +503,7 @@ FilterPipeline FilterPipeline::deserialize(
     Deserializer& deserializer, const uint32_t version) {
   auto max_chunk_size = deserializer.read<uint32_t>();
   auto num_filters = deserializer.read<uint32_t>();
-  std::vector<shared_ptr<Filter>> filters;
+  std::vector<std::shared_ptr<Filter>> filters;
 
   for (uint32_t i = 0; i < num_filters; i++) {
     auto filter{FilterCreate::deserialize(deserializer, version)};

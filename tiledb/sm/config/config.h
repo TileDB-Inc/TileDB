@@ -586,7 +586,7 @@ class Config {
    * @return If a configuration item is present, its value. If not, `nullopt`.
    */
   template <class T>
-  [[nodiscard]] inline optional<T> get(const std::string& key) const {
+  [[nodiscard]] inline std::optional<T> get(const std::string& key) const {
     return get_internal<T, false>(key);
   }
 
@@ -718,10 +718,10 @@ class Config {
       const std::string& param, bool* found) const;
 
   template <class T, bool must_find_>
-  optional<T> get_internal(const std::string& key) const;
+  std::optional<T> get_internal(const std::string& key) const;
 
   template <bool must_find_>
-  optional<std::string> get_internal_string(const std::string& key) const;
+  std::optional<std::string> get_internal_string(const std::string& key) const;
 };
 
 /**
@@ -729,7 +729,7 @@ class Config {
  * function and it is thus the same as `get_internal_string<false>`.
  */
 template <>
-[[nodiscard]] inline optional<std::string> Config::get<std::string>(
+[[nodiscard]] inline std::optional<std::string> Config::get<std::string>(
     const std::string& key) const {
   return get_internal_string<false>(key);
 }

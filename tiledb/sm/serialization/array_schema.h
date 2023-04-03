@@ -71,7 +71,7 @@ Status filter_to_capnp(
  * @param filter_reader Cap'n proto object
  * @return Status
  */
-tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
+std::tuple<Status, std::optional<std::shared_ptr<Filter>>> filter_from_capnp(
     const capnp::Filter::Reader& filter_reader);
 
 /**
@@ -116,7 +116,7 @@ void dimension_label_to_capnp(
  * @param reader Cap'n proto reader object.
  * @return A new DimensionLabel.
  */
-shared_ptr<DimensionLabel> dimension_label_from_capnp(
+std::shared_ptr<DimensionLabel> dimension_label_from_capnp(
     const capnp::DimensionLabel::Reader& reader);
 
 #endif  // TILEDB_SERIALIZATION

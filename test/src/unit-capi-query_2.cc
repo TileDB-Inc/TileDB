@@ -44,7 +44,6 @@
 #include <iostream>
 
 using namespace tiledb::test;
-using std::ceil;
 
 const uint64_t DIM_DOMAIN[4] = {1, 10, 1, 10};
 

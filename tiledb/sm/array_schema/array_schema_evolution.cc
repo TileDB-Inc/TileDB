@@ -73,30 +73,32 @@ ArraySchemaEvolution::~ArraySchemaEvolution() {
 /*               API              */
 /* ****************************** */
 
-tuple<Status, optional<shared_ptr<ArraySchema>>>
+std::tuple<Status, std::optional<std::shared_ptr<ArraySchema>>>
 ArraySchemaEvolution::evolve_schema(
-    const shared_ptr<const ArraySchema>& orig_schema) {
+    const std::shared_ptr<const ArraySchema>& orig_schema) {
   std::lock_guard<std::mutex> lock(mtx_);
   if (orig_schema == nullptr) {
     return {
         LOG_STATUS(Status_ArraySchemaEvolutionError(
             "Cannot evolve schema; Input array schema is null")),
-        nullopt};
+        std::nullopt};
   }
 
   auto schema = make_shared<ArraySchema>(HERE(), *(orig_schema.get()));
 
   // Add attributes.
   for (auto& attr : attributes_to_add_map_) {
-    RETURN_NOT_OK_TUPLE(schema->add_attribute(attr.second, false), nullopt);
+    RETURN_NOT_OK_TUPLE(
+        schema->add_attribute(attr.second, false), std::nullopt);
   }
 
   // Drop attributes.
   for (auto& attr_name : attributes_to_drop_) {
     bool has_attr = false;
-    RETURN_NOT_OK_TUPLE(schema->has_attribute(attr_name, &has_attr), nullopt);
+    RETURN_NOT_OK_TUPLE(
+        schema->has_attribute(attr_name, &has_attr), std::nullopt);
     if (has_attr) {
-      RETURN_NOT_OK_TUPLE(schema->drop_attribute(attr_name), nullopt);
+      RETURN_NOT_OK_TUPLE(schema->drop_attribute(attr_name), std::nullopt);
     }
   }
 
@@ -105,11 +107,11 @@ ArraySchemaEvolution::evolve_schema(
   // Set timestamp, if specified
   if (std::get<0>(timestamp_range_) != 0) {
     RETURN_NOT_OK_TUPLE(
-        schema.get()->set_timestamp_range(timestamp_range_), nullopt);
-    RETURN_NOT_OK_TUPLE(schema->generate_uri(timestamp_range_), nullopt);
+        schema.get()->set_timestamp_range(timestamp_range_), std::nullopt);
+    RETURN_NOT_OK_TUPLE(schema->generate_uri(timestamp_range_), std::nullopt);
   } else {
     // Generate new schema URI
-    RETURN_NOT_OK_TUPLE(schema->generate_uri(), nullopt);
+    RETURN_NOT_OK_TUPLE(schema->generate_uri(), std::nullopt);
   }
 
   return {Status::Ok(), schema};

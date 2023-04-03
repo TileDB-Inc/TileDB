@@ -66,7 +66,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
   /** Constructor. */
   Reader(
       stats::Stats* stats,
-      shared_ptr<Logger> logger,
+      std::shared_ptr<Logger> logger,
       StorageManager* storage_manager,
       Array* array,
       Config& config,
@@ -723,7 +723,8 @@ class Reader : public ReaderBase, public IQueryStrategy {
    * @return Status, overflowed
    */
   template <class T>
-  tuple<Status, optional<bool>> fill_dense_coords(const Subarray& subarray);
+  std::tuple<Status, std::optional<bool>> fill_dense_coords(
+      const Subarray& subarray);
 
   /**
    * Fills the coordinate buffers with coordinates. Applicable only to dense
@@ -744,7 +745,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
    * @return Status, overflowed.
    */
   template <class T>
-  tuple<Status, optional<bool>> fill_dense_coords_global(
+  std::tuple<Status, std::optional<bool>> fill_dense_coords_global(
       const Subarray& subarray,
       const std::vector<unsigned>& dim_idx,
       const std::vector<QueryBuffer*>& buffers,
@@ -769,7 +770,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
    * @return Status, overflowed.
    */
   template <class T>
-  tuple<Status, optional<bool>> fill_dense_coords_row_col(
+  std::tuple<Status, std::optional<bool>> fill_dense_coords_row_col(
       const Subarray& subarray,
       const std::vector<unsigned>& dim_idx,
       const std::vector<QueryBuffer*>& buffers,

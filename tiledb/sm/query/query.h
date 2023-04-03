@@ -147,8 +147,8 @@ class Query {
    */
   Query(
       StorageManager* storage_manager,
-      shared_ptr<Array> array,
-      optional<std::string> fragment_name = nullopt);
+      std::shared_ptr<Array> array,
+      std::optional<std::string> fragment_name = std::nullopt);
 
   /** Destructor. */
   virtual ~Query();
@@ -204,7 +204,7 @@ class Query {
       uint32_t idx, uint64_t* t1, uint64_t* t2) const;
 
   /** Returns the array's smart pointer. */
-  inline shared_ptr<Array> array_shared() {
+  inline std::shared_ptr<Array> array_shared() {
     return array_shared_;
   }
 
@@ -642,7 +642,7 @@ class Query {
   stats::Stats* stats() const;
 
   /** Returns the scratch space used for REST requests. */
-  shared_ptr<Buffer> rest_scratch() const;
+  std::shared_ptr<Buffer> rest_scratch() const;
 
   /** Use the refactored dense reader or not. */
   bool use_refactored_dense_reader(
@@ -657,7 +657,7 @@ class Query {
       Layout layout, const ArraySchema& array_schema);
 
   /** Returns if all ranges for this query are non overlapping. */
-  tuple<Status, optional<bool>> non_overlapping_ranges();
+  std::tuple<Status, std::optional<bool>> non_overlapping_ranges();
 
   /** Returns true if this is a dense query */
   bool is_dense() const;
@@ -692,14 +692,14 @@ class Query {
 
   /** A smart pointer to the array the query is associated with.
    * Ensures that the Array object exists as long as the Query object exists. */
-  shared_ptr<Array> array_shared_;
+  std::shared_ptr<Array> array_shared_;
 
   /** The array the query is associated with.
    * Cached copy of array_shared_.get(). */
   Array* array_;
 
   /** The array schema. */
-  shared_ptr<const ArraySchema> array_schema_;
+  std::shared_ptr<const ArraySchema> array_schema_;
 
   /** The config for query-level parameters only. */
   Config config_;
@@ -732,7 +732,7 @@ class Query {
   stats::Stats* stats_;
 
   /** The class logger. */
-  shared_ptr<Logger> logger_;
+  std::shared_ptr<Logger> logger_;
 
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;
@@ -766,7 +766,7 @@ class Query {
   std::set<std::string> attributes_with_update_value_;
 
   /** The fragment metadata that this query will focus on. */
-  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
+  std::vector<std::shared_ptr<FragmentMetadata>> fragment_metadata_;
 
   /** The current serialization state. */
   SerializationState serialization_state_;
@@ -804,7 +804,7 @@ class Query {
   bool consolidation_with_timestamps_;
 
   /* Scratch space used for REST requests. */
-  shared_ptr<Buffer> rest_scratch_;
+  std::shared_ptr<Buffer> rest_scratch_;
 
   /* Processed conditions, used for consolidation. */
   std::vector<std::string> processed_conditions_;
@@ -823,7 +823,7 @@ class Query {
    * If not set, the fragment name will be created using the latest array
    * timestamp and a generated UUID.
    */
-  optional<std::string> fragment_name_;
+  std::optional<std::string> fragment_name_;
 
   /** It tracks if this is a remote query */
   bool remote_query_;

@@ -80,8 +80,8 @@ class QueryStatusException : public StatusException {
 
 Query::Query(
     StorageManager* storage_manager,
-    shared_ptr<Array> array,
-    optional<std::string> fragment_name)
+    std::shared_ptr<Array> array,
+    std::optional<std::string> fragment_name)
     : array_shared_(array)
     , array_(array_shared_.get())
     , array_schema_(array->array_schema_latest_ptr())
@@ -1924,7 +1924,7 @@ stats::Stats* Query::stats() const {
   return stats_;
 }
 
-shared_ptr<Buffer> Query::rest_scratch() const {
+std::shared_ptr<Buffer> Query::rest_scratch() const {
   return rest_scratch_;
 }
 
@@ -2017,7 +2017,7 @@ bool Query::use_refactored_sparse_unordered_with_dups_reader(
          layout == Layout::UNORDERED && array_schema.allows_dups();
 }
 
-tuple<Status, optional<bool>> Query::non_overlapping_ranges() {
+std::tuple<Status, std::optional<bool>> Query::non_overlapping_ranges() {
   return subarray_.non_overlapping_ranges(storage_manager_->compute_tp());
 }
 

@@ -55,7 +55,7 @@ ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
     const Subarray& subarray,
     const std::unordered_map<std::string, QueryBuffer>& label_buffers,
     const std::unordered_map<std::string, QueryBuffer>& array_buffers,
-    const optional<std::string>& fragment_name)
+    const std::optional<std::string>& fragment_name)
     : storage_manager_(storage_manager)
     , label_range_queries_by_dim_idx_(subarray.dim_num(), nullptr)
     , label_data_queries_by_dim_idx_(subarray.dim_num())
@@ -266,7 +266,7 @@ void ArrayDimensionLabelQueries::add_read_queries(
           subarray,
           label_buffer,
           QueryBuffer(),
-          nullopt));
+          std::nullopt));
       label_data_queries_by_dim_idx_[dim_label_ref.dimension_index()].push_back(
           data_queries_.back().get());
     } catch (const StatusException& err) {
@@ -330,7 +330,7 @@ void ArrayDimensionLabelQueries::add_write_queries(
   }
 }
 
-shared_ptr<Array> ArrayDimensionLabelQueries::open_dimension_label(
+std::shared_ptr<Array> ArrayDimensionLabelQueries::open_dimension_label(
     Array* array,
     const URI& dim_label_uri,
     const std::string& dim_label_name,

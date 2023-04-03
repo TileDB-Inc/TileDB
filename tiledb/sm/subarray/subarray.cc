@@ -93,7 +93,7 @@ Subarray::Subarray()
 Subarray::Subarray(
     const Array* array,
     Stats* const parent_stats,
-    shared_ptr<Logger> logger,
+    std::shared_ptr<Logger> logger,
     const bool coalesce_ranges,
     StorageManager* storage_manager)
     : Subarray(
@@ -109,7 +109,7 @@ Subarray::Subarray(
     const Array* const array,
     const Layout layout,
     Stats* const parent_stats,
-    shared_ptr<Logger> logger,
+    std::shared_ptr<Logger> logger,
     const bool coalesce_ranges,
     StorageManager* storage_manager)
     : stats_(
@@ -2048,9 +2048,9 @@ Status Subarray::sort_ranges(ThreadPool* const compute_tp) {
   return Status::Ok();
 }
 
-tuple<Status, optional<bool>> Subarray::non_overlapping_ranges(
+std::tuple<Status, std::optional<bool>> Subarray::non_overlapping_ranges(
     ThreadPool* const compute_tp) {
-  RETURN_NOT_OK_TUPLE(sort_ranges(compute_tp), nullopt);
+  RETURN_NOT_OK_TUPLE(sort_ranges(compute_tp), std::nullopt);
 
   std::atomic<bool> non_overlapping_ranges = true;
   auto st = parallel_for(
@@ -2066,7 +2066,7 @@ tuple<Status, optional<bool>> Subarray::non_overlapping_ranges(
 
         return status;
       });
-  RETURN_NOT_OK_TUPLE(st, nullopt);
+  RETURN_NOT_OK_TUPLE(st, std::nullopt);
 
   return {Status::Ok(), non_overlapping_ranges};
 }
@@ -2087,7 +2087,7 @@ void Subarray::add_default_ranges() {
   }
   is_default_.resize(dim_num, true);
   label_range_subset_.clear();
-  label_range_subset_.resize(dim_num, nullopt);
+  label_range_subset_.resize(dim_num, std::nullopt);
 }
 
 void Subarray::compute_range_offsets() {
@@ -2242,7 +2242,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
     const ArraySchema& array_schema,
     bool all_dims_same_type,
     bool all_dims_fixed,
-    const std::vector<shared_ptr<FragmentMetadata>>& fragment_meta,
+    const std::vector<std::shared_ptr<FragmentMetadata>>& fragment_meta,
     const std::vector<std::string>& names,
     const std::vector<bool>& var_sizes,
     const std::vector<bool>& nullable,
@@ -2993,7 +2993,7 @@ Status Subarray::compute_relevant_fragment_tile_overlap(
 }
 
 Status Subarray::compute_relevant_fragment_tile_overlap(
-    shared_ptr<FragmentMetadata> meta,
+    std::shared_ptr<FragmentMetadata> meta,
     unsigned frag_idx,
     bool dense,
     ThreadPool* const compute_tp,
@@ -3077,8 +3077,8 @@ stats::Stats* Subarray::stats() const {
 }
 
 template <typename T>
-tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(
-    const uint64_t dim_idx) {
+std::tuple<Status, std::optional<bool>>
+Subarray::non_overlapping_ranges_for_dim(const uint64_t dim_idx) {
   const auto& ranges = range_subset_[dim_idx].ranges();
   auto dim{array_->array_schema_latest().dimension_ptr(dim_idx)};
 
@@ -3092,8 +3092,8 @@ tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(
   return {Status::Ok(), true};
 }
 
-tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(
-    const uint64_t dim_idx) {
+std::tuple<Status, std::optional<bool>>
+Subarray::non_overlapping_ranges_for_dim(const uint64_t dim_idx) {
   const Datatype& datatype{
       array_->array_schema_latest().dimension_ptr(dim_idx)->type()};
   switch (datatype) {

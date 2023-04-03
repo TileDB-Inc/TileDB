@@ -116,10 +116,10 @@ class ResultTile {
     TileSizes(
         const uint64_t tile_size,
         const uint64_t tile_persisted_size,
-        const optional<uint64_t> tile_var_size,
-        const optional<uint64_t> tile_var_persisted_size,
-        const optional<uint64_t> tile_validity_size,
-        const optional<uint64_t> tile_validity_persisted_size)
+        const std::optional<uint64_t> tile_var_size,
+        const std::optional<uint64_t> tile_var_persisted_size,
+        const std::optional<uint64_t> tile_validity_size,
+        const std::optional<uint64_t> tile_validity_persisted_size)
         : tile_size_(tile_size)
         , tile_persisted_size_(tile_persisted_size)
         , tile_var_size_(tile_var_size)
@@ -184,16 +184,16 @@ class ResultTile {
     const uint64_t tile_persisted_size_;
 
     /** Stores the var tile in memory size. */
-    const optional<uint64_t> tile_var_size_;
+    const std::optional<uint64_t> tile_var_size_;
 
     /** Stores the var tile on disk size. */
-    const optional<uint64_t> tile_var_persisted_size_;
+    const std::optional<uint64_t> tile_var_persisted_size_;
 
     /** Stores the validity tile in memory size. */
-    const optional<uint64_t> tile_validity_size_;
+    const std::optional<uint64_t> tile_validity_size_;
 
     /** Stores the validity tile on disk size. */
-    const optional<uint64_t> tile_validity_persisted_size_;
+    const std::optional<uint64_t> tile_validity_persisted_size_;
   };
 
   /**
@@ -351,10 +351,10 @@ class ResultTile {
     Tile fixed_tile_;
 
     /** Stores the var data tile. */
-    optional<Tile> var_tile_;
+    std::optional<Tile> var_tile_;
 
     /** Stores the validity data tile. */
-    optional<Tile> validity_tile_;
+    std::optional<Tile> validity_tile_;
   };
 
   /* ********************************* */
@@ -529,7 +529,7 @@ class ResultTile {
       const ResultTile* result_tile,
       unsigned dim_idx,
       const Range& range,
-      const std::vector<shared_ptr<FragmentMetadata>> fragment_metadata,
+      const std::vector<std::shared_ptr<FragmentMetadata>> fragment_metadata,
       unsigned frag_idx,
       std::vector<uint8_t>* result_bitmap,
       std::vector<uint8_t>* overwritten_bitmap);
@@ -631,7 +631,7 @@ class ResultTile {
   Status compute_results_dense(
       unsigned dim_idx,
       const Range& range,
-      const std::vector<shared_ptr<FragmentMetadata>> fragment_metadata,
+      const std::vector<std::shared_ptr<FragmentMetadata>> fragment_metadata,
       unsigned frag_idx,
       std::vector<uint8_t>* result_bitmap,
       std::vector<uint8_t>* overwritten_bitmap) const;
@@ -685,25 +685,25 @@ class ResultTile {
   uint64_t tile_idx_ = UINT64_MAX;
 
   /** Attribute names to tiles based on attribute ordering from array schema. */
-  std::vector<std::pair<std::string, optional<TileTuple>>> attr_tiles_;
+  std::vector<std::pair<std::string, std::optional<TileTuple>>> attr_tiles_;
 
   /** The timestamp attribute tile. */
-  optional<TileTuple> timestamps_tile_;
+  std::optional<TileTuple> timestamps_tile_;
 
   /** The delete timestamp attribute tile. */
-  optional<TileTuple> delete_timestamps_tile_;
+  std::optional<TileTuple> delete_timestamps_tile_;
 
   /** The delete condition marker hash attribute tile. */
-  optional<TileTuple> delete_condition_index_tile_;
+  std::optional<TileTuple> delete_condition_index_tile_;
 
   /** The zipped coordinates tile. */
-  optional<TileTuple> coords_tile_;
+  std::optional<TileTuple> coords_tile_;
 
   /**
    * The separate coordinate tiles along with their names, sorted on the
    * dimension order.
    */
-  std::vector<std::pair<std::string, optional<TileTuple>>> coord_tiles_;
+  std::vector<std::pair<std::string, std::optional<TileTuple>>> coord_tiles_;
 
   /**
    * Stores the appropriate templated compute_results_dense() function based for
@@ -713,7 +713,7 @@ class ResultTile {
       const ResultTile*,
       unsigned,
       const Range&,
-      const std::vector<shared_ptr<FragmentMetadata>>,
+      const std::vector<std::shared_ptr<FragmentMetadata>>,
       unsigned,
       std::vector<uint8_t>*,
       std::vector<uint8_t>*)>>
@@ -1000,8 +1000,9 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
       const FragmentMetadata& frag_md)
       : ResultTileWithBitmap<BitmapType>(frag_idx, tile_idx, frag_md)
       , post_dedup_bitmap_(
-            !dups || include_delete_meta ? optional(std::vector<BitmapType>()) :
-                                           nullopt)
+            !dups || include_delete_meta ?
+                std::optional(std::vector<BitmapType>()) :
+                std::nullopt)
       , used_(false) {
   }
 
@@ -1196,7 +1197,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
    * will contain the results before query condition, and post_dedup_bitmap_
    * will contain results after query condition.
    */
-  optional<std::vector<BitmapType>> post_dedup_bitmap_;
+  std::optional<std::vector<BitmapType>> post_dedup_bitmap_;
 
   /**
    * Delete condition index that deleted a cell. Used for consolidation with

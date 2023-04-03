@@ -536,7 +536,8 @@ Status S3::flush_object(const URI& uri) {
     // It is safe to unlock the state here
     state_lck.unlock();
 
-    throw_if_not_ok(wait_for_object_to_propagate(move(bucket), move(key)));
+    throw_if_not_ok(
+        wait_for_object_to_propagate(std::move(bucket), std::move(key)));
 
     return finish_flush_object(std::move(outcome), uri, buff);
   } else {
@@ -800,9 +801,10 @@ Status S3::ls(
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
+std::tuple<Status, std::optional<std::vector<directory_entry>>>
+S3::ls_with_sizes(
     const URI& prefix, const std::string& delimiter, int max_paths) const {
-  RETURN_NOT_OK_TUPLE(init_client(), nullopt);
+  RETURN_NOT_OK_TUPLE(init_client(), std::nullopt);
 
   const auto prefix_dir = prefix.add_trailing_slash();
 
@@ -810,7 +812,7 @@ tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
   if (!prefix_dir.is_s3()) {
     auto st = LOG_STATUS(
         Status_S3Error(std::string("URI is not an S3 URI: " + prefix_str)));
-    return {st, nullopt};
+    return {st, std::nullopt};
   }
 
   Aws::Http::URI aws_uri = prefix_str.c_str();
@@ -838,7 +840,7 @@ tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
           std::string("Error while listing with prefix '") + prefix_str +
           "' and delimiter '" + delimiter + "'" +
           outcome_error_message(list_objects_outcome)));
-      return {st, nullopt};
+      return {st, std::nullopt};
     }
 
     for (const auto& object : list_objects_outcome.GetResult().GetContents()) {
@@ -1809,7 +1811,7 @@ void S3::write_direct(const URI& uri, const void* buffer, uint64_t length) {
 
   Aws::S3::Model::PutObjectRequest put_object_request;
 
-  auto stream = shared_ptr<Aws::IOStream>(
+  auto stream = std::shared_ptr<Aws::IOStream>(
       new boost::interprocess::bufferstream((char*)buffer, length));
 
   put_object_request.SetBody(stream);
@@ -1990,7 +1992,7 @@ S3::MakeUploadPartCtx S3::make_upload_part_req(
     const uint64_t length,
     const Aws::String& upload_id,
     const int upload_part_num) {
-  auto stream = shared_ptr<Aws::IOStream>(
+  auto stream = std::shared_ptr<Aws::IOStream>(
       new boost::interprocess::bufferstream((char*)buffer, length));
 
   Aws::S3::Model::UploadPartRequest upload_part_request;
@@ -2064,7 +2066,7 @@ std::optional<S3::MultiPartUploadState> S3::multipart_upload_state(
   UniqueReadLock unique_rl(&multipart_upload_rwlock_);
   auto state_iter = multipart_upload_states_.find(uri_path);
   if (state_iter == multipart_upload_states_.end()) {
-    return nullopt;
+    return std::nullopt;
   }
 
   // Delete the multipart state from the internal map to avoid

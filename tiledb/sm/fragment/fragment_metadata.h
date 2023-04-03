@@ -90,7 +90,7 @@ class FragmentMetadata {
   FragmentMetadata(
       StorageManager* storage_manager,
       MemoryTracker* memory_tracker,
-      const shared_ptr<const ArraySchema>& array_schema,
+      const std::shared_ptr<const ArraySchema>& array_schema,
       const URI& fragment_uri,
       const std::pair<uint64_t, uint64_t>& timestamp_range,
       bool dense = true,
@@ -451,7 +451,8 @@ class FragmentMetadata {
       const EncryptionKey& encryption_key,
       Tile* fragment_metadata_tile,
       uint64_t offset,
-      std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas);
+      std::unordered_map<std::string, std::shared_ptr<ArraySchema>>
+          array_schemas);
 
   /** Stores all the metadata to storage. */
   void store(const EncryptionKey& encryption_key);
@@ -672,7 +673,7 @@ class FragmentMetadata {
    * @param array_schema The schema pointer.
    * @return void
    */
-  void set_array_schema(const shared_ptr<const ArraySchema>& array_schema);
+  void set_array_schema(const std::shared_ptr<const ArraySchema>& array_schema);
 
   /** Sets the array_schema name */
   void set_schema_name(const std::string& name);
@@ -684,13 +685,14 @@ class FragmentMetadata {
   uint64_t tile_num() const;
 
   /** Returns the URI of the input attribute/dimension. */
-  tuple<Status, optional<URI>> uri(const std::string& name) const;
+  std::tuple<Status, std::optional<URI>> uri(const std::string& name) const;
 
   /** Returns the URI of the input variable-sized attribute/dimension. */
-  tuple<Status, optional<URI>> var_uri(const std::string& name) const;
+  std::tuple<Status, std::optional<URI>> var_uri(const std::string& name) const;
 
   /** Returns the validity URI of the input nullable attribute. */
-  tuple<Status, optional<URI>> validity_uri(const std::string& name) const;
+  std::tuple<Status, std::optional<URI>> validity_uri(
+      const std::string& name) const;
 
   /** Return the array schema name. */
   const std::string& array_schema_name();
@@ -1025,7 +1027,7 @@ class FragmentMetadata {
    *
    * @return
    */
-  const shared_ptr<const ArraySchema>& array_schema() const;
+  const std::shared_ptr<const ArraySchema>& array_schema() const;
 
   /** File sizes accessor */
   std::vector<uint64_t>& file_sizes() {
@@ -1216,7 +1218,7 @@ class FragmentMetadata {
   MemoryTracker* memory_tracker_;
 
   /** The array schema */
-  shared_ptr<const ArraySchema> array_schema_;
+  std::shared_ptr<const ArraySchema> array_schema_;
 
   /** The array schema name */
   std::string array_schema_name_;
@@ -1733,7 +1735,7 @@ class FragmentMetadata {
   /** Loads the basic metadata from storage (version 2 or before). */
   Status load_v1_v2(
       const EncryptionKey& encryption_key,
-      const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+      const std::unordered_map<std::string, std::shared_ptr<ArraySchema>>&
           array_schemas);
 
   /**
@@ -1744,7 +1746,8 @@ class FragmentMetadata {
       const EncryptionKey& encryption_key,
       Tile* fragment_metadata_tile,
       uint64_t offset,
-      std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas);
+      std::unordered_map<std::string, std::shared_ptr<ArraySchema>>
+          array_schemas);
 
   /**
    * Loads the footer of the metadata file, which contains
@@ -1756,7 +1759,8 @@ class FragmentMetadata {
       const EncryptionKey& encryption_key,
       Tile* fragment_metadata_tile,
       uint64_t offset,
-      std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas);
+      std::unordered_map<std::string, std::shared_ptr<ArraySchema>>
+          array_schemas);
 
   /** Writes the sizes of each attribute file to the buffer. */
   void write_file_sizes(Serializer& serializer) const;
@@ -1993,7 +1997,7 @@ class FragmentMetadata {
    * Reads the contents of a generic tile starting at the input offset,
    * and returns a tile.
    */
-  tuple<Status, optional<Tile>> read_generic_tile_from_file(
+  std::tuple<Status, std::optional<Tile>> read_generic_tile_from_file(
       const EncryptionKey& encryption_key, uint64_t offset) const;
 
   /**
@@ -2040,7 +2044,7 @@ class FragmentMetadata {
    * @param name The dimension/attribute name.
    * return Status, the encoded dimension/attribute name.
    */
-  tuple<Status, optional<std::string>> encode_name(
+  std::tuple<Status, std::optional<std::string>> encode_name(
       const std::string& name) const;
 
   /**

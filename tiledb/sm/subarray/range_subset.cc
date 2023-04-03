@@ -40,7 +40,7 @@ using namespace tiledb::type;
 namespace tiledb::sm {
 
 template <typename T>
-shared_ptr<detail::RangeSetAndSupersetImpl> create_range_subset_internals(
+std::shared_ptr<detail::RangeSetAndSupersetImpl> create_range_subset_internals(
     const Range& superset, bool coalesce_ranges) {
   if (coalesce_ranges) {
     if (superset.empty()) {
@@ -58,7 +58,7 @@ shared_ptr<detail::RangeSetAndSupersetImpl> create_range_subset_internals(
   }
 }
 
-shared_ptr<detail::RangeSetAndSupersetImpl> range_subset_internals(
+std::shared_ptr<detail::RangeSetAndSupersetImpl> range_subset_internals(
     Datatype datatype, const Range& superset, bool coalesce_ranges) {
   switch (datatype) {
     case Datatype::INT8:
@@ -135,16 +135,16 @@ Status RangeSetAndSuperset::sort_ranges(ThreadPool* const compute_tp) {
   return impl_->sort_ranges(compute_tp, ranges_);
 }
 
-tuple<Status, optional<std::string>> RangeSetAndSuperset::add_range(
+std::tuple<Status, std::optional<std::string>> RangeSetAndSuperset::add_range(
     Range& range, const bool read_range_oob_error) {
   // Check range is valid
   impl_->check_range_is_valid(range);
   // Check or crop range (depending on if range out-of-bounds is an error),
   // then add range to array.
   if (read_range_oob_error) {
-    RETURN_NOT_OK_TUPLE(impl_->check_range_is_subset(range), nullopt);
+    RETURN_NOT_OK_TUPLE(impl_->check_range_is_subset(range), std::nullopt);
     auto error_status = add_range_unrestricted(range);
-    return {error_status, nullopt};
+    return {error_status, std::nullopt};
   } else {
     auto warn_message = impl_->crop_range_with_warning(range);
     auto error_status = add_range_unrestricted(range);

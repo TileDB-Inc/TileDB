@@ -478,7 +478,7 @@ struct CSparseUnorderedWithDupsVarDataFx {
   void write_2d_fragment();
   void read_and_check_data(bool set_subarray);
 
-  tuple<tiledb_array_t*, std::vector<shared_ptr<FragmentMetadata>>>
+  std::tuple<tiledb_array_t*, std::vector<std::shared_ptr<FragmentMetadata>>>
   open_default_array_1d_with_fragments(uint64_t capacity = 5);
 
   void compute_var_size_offsets_test(
@@ -669,7 +669,7 @@ void CSparseUnorderedWithDupsVarDataFx::read_and_check_data(bool set_subarray) {
   tiledb_query_free(&query);
 }
 
-tuple<tiledb_array_t*, std::vector<shared_ptr<FragmentMetadata>>>
+std::tuple<tiledb_array_t*, std::vector<std::shared_ptr<FragmentMetadata>>>
 CSparseUnorderedWithDupsVarDataFx::open_default_array_1d_with_fragments(
     uint64_t capacity) {
   int64_t domain[] = {1, 10};
@@ -698,8 +698,8 @@ CSparseUnorderedWithDupsVarDataFx::open_default_array_1d_with_fragments(
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
-  std::vector<shared_ptr<FragmentMetadata>> fragments;
-  shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
+  std::vector<std::shared_ptr<FragmentMetadata>> fragments;
+  std::shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
       nullptr,
