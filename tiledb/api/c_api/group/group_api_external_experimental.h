@@ -399,7 +399,8 @@ TILEDB_EXPORT capi_return_t tiledb_group_get_member_count(
     tiledb_ctx_t* ctx, tiledb_group_t* group, uint64_t* count) TILEDB_NOEXCEPT;
 
 /**
- * Get a member of a group by index and details of group
+ * Get a member of a group by index and details of group.
+ * Deprecated, use \p tiledb_group_get_member_by_index_v2 instead.
  *
  * **Example:**
  *
@@ -428,7 +429,7 @@ TILEDB_EXPORT capi_return_t tiledb_group_get_member_count(
  * @param name name of member. NULL if name was not set
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT capi_return_t tiledb_group_get_member_by_index(
+TILEDB_DEPRECATED_EXPORT capi_return_t tiledb_group_get_member_by_index(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     uint64_t index,
@@ -476,7 +477,8 @@ TILEDB_EXPORT capi_return_t tiledb_group_get_member_by_index_v2(
     tiledb_string_t** name) TILEDB_NOEXCEPT;
 
 /**
- * Get a member of a group by name and details of group
+ * Get a member of a group by name and details of group.
+ * Deprecated, use \p tiledb_group_get_member_by_name_v2.
  *
  * **Example:**
  *
@@ -505,7 +507,7 @@ TILEDB_EXPORT capi_return_t tiledb_group_get_member_by_index_v2(
  * @param type type of member
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT capi_return_t tiledb_group_get_member_by_name(
+TILEDB_DEPRECATED_EXPORT capi_return_t tiledb_group_get_member_by_name(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     const char* name,

@@ -310,6 +310,10 @@ capi_return_t tiledb_group_get_member_by_index(
   ensure_output_pointer_is_valid(type);
   ensure_output_pointer_is_valid(name);
 
+  LOG_WARN(
+      "tiledb_group_get_member_by_index is deprecated. Please use "
+      "tiledb_group_get_member_by_index_v2 instead.");
+
   char* tmp_uri = nullptr;
   char* tmp_name = nullptr;
 
@@ -377,6 +381,10 @@ capi_return_t tiledb_group_get_member_by_name(
   ensure_name_argument_is_valid(name);
   ensure_output_pointer_is_valid(uri);
   ensure_output_pointer_is_valid(type);
+
+  LOG_WARN(
+      "tiledb_group_get_member_by_name is deprecated. Please use "
+      "tiledb_group_get_member_by_name_v2 instead.");
 
   auto&& [uri_str, object_type, name_str, ignored_relative] =
       group->group().member_by_name(name);
