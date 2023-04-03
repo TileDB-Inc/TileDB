@@ -36,6 +36,7 @@
 #define TILEDB_CPP_API_GROUP_EXPERIMENTAL_H
 
 #include "context.h"
+#include "string_handle_holder.h"
 #include "tiledb.h"
 
 namespace tiledb {
@@ -413,29 +414,22 @@ class Group {
   tiledb::Object member(uint64_t index) const {
     auto& ctx = ctx_.get();
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
-    tiledb_string_t* uri;
+    impl::StringHandleHolder uri;
     tiledb_object_t type;
-    tiledb_string_t* name;
+    impl::StringHandleHolder name;
     ctx.handle_error(tiledb_group_get_member_by_index_v2(
-        c_ctx, group_.get(), index, &uri, &type, &name));
-    auto uri_ptr = std::unique_ptr<tiledb_string_t, impl::Deleter>(uri);
-    auto name_ptr = std::unique_ptr<tiledb_string_t, impl::Deleter>(name);
-    std::optional<std::string> name_opt = std::nullopt;
-    if (name != nullptr) {
-      name_opt = impl::handle_to_string(name_ptr);
-    }
-    return tiledb::Object(type, impl::handle_to_string(uri_ptr), name_opt);
+        c_ctx, group_.get(), index, uri.c_ptr(), &type, name.c_ptr()));
+    return tiledb::Object(type, uri.str(), name.str_opt());
   }
 
   tiledb::Object member(std::string name) const {
     auto& ctx = ctx_.get();
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
-    tiledb_string_t* uri;
+    impl::StringHandleHolder uri;
     tiledb_object_t type;
     ctx.handle_error(tiledb_group_get_member_by_name_v2(
-        c_ctx, group_.get(), name.c_str(), &uri, &type));
-    auto uri_ptr = std::unique_ptr<tiledb_string_t, impl::Deleter>(uri);
-    return tiledb::Object(type, impl::handle_to_string(uri_ptr), name);
+        c_ctx, group_.get(), name.c_str(), uri.c_ptr(), &type));
+    return tiledb::Object(type, uri.str(), name);
   }
 
   /**

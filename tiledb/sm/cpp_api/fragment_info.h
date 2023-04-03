@@ -38,6 +38,7 @@
 #include "deleter.h"
 #include "exception.h"
 #include "object.h"
+#include "string_handle_holder.h"
 #include "tiledb.h"
 #include "type.h"
 
@@ -94,12 +95,10 @@ class FragmentInfo {
   /** Returns the name of the fragment with the given index. */
   std::string fragment_name(uint32_t fid) const {
     auto& ctx = ctx_.get();
-    tiledb_string_t* name;
+    impl::StringHandleHolder name;
     ctx.handle_error(tiledb_fragment_info_get_fragment_name_v2(
-        ctx.ptr().get(), fragment_info_.get(), fid, &name));
-    auto name_ptr =
-        std::unique_ptr<tiledb_string_t, tiledb::impl::Deleter>(name);
-    return impl::handle_to_string(name_ptr);
+        ctx.ptr().get(), fragment_info_.get(), fid, name.c_ptr()));
+    return name.str();
   }
 
   /**
