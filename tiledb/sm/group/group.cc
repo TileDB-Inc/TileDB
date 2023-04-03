@@ -368,7 +368,7 @@ Status Group::delete_metadata(const char* key) {
   if (key == nullptr)
     return Status_GroupError("Cannot delete metadata. Key cannot be null");
 
-  RETURN_NOT_OK(metadata_.del(key));
+  metadata_.del(key);
 
   return Status::Ok();
 }
@@ -397,7 +397,7 @@ Status Group::put_metadata(
   if (value_type == Datatype::ANY)
     return Status_GroupError("Cannot put metadata; Value type cannot be ANY");
 
-  RETURN_NOT_OK(metadata_.put(key, value_type, value_num, value));
+  metadata_.put(key, value_type, value_num, value);
 
   return Status::Ok();
 }
@@ -425,7 +425,7 @@ Status Group::get_metadata(
   if (!metadata_loaded_)
     RETURN_NOT_OK(load_metadata());
 
-  RETURN_NOT_OK(metadata_.get(key, value_type, value_num, value));
+  metadata_.get(key, value_type, value_num, value);
 
   return Status::Ok();
 }
@@ -451,8 +451,7 @@ Status Group::get_metadata(
   if (!metadata_loaded_)
     RETURN_NOT_OK(load_metadata());
 
-  RETURN_NOT_OK(
-      metadata_.get(index, key, key_len, value_type, value_num, value));
+  metadata_.get(index, key, key_len, value_type, value_num, value);
 
   return Status::Ok();
 }
@@ -498,7 +497,7 @@ Status Group::has_metadata_key(
   if (!metadata_loaded_)
     RETURN_NOT_OK(load_metadata());
 
-  RETURN_NOT_OK(metadata_.has_key(key, value_type, has_key));
+  *has_key = metadata_.has_metadata(key, *value_type);
 
   return Status::Ok();
 }

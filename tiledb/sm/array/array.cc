@@ -934,7 +934,7 @@ Status Array::delete_metadata(const char* key) {
         Status_ArrayError("Cannot delete metadata. Key cannot be null"));
   }
 
-  RETURN_NOT_OK(metadata_.del(key));
+  metadata_.del(key);
 
   return Status::Ok();
 }
@@ -970,7 +970,7 @@ Status Array::put_metadata(
         Status_ArrayError("Cannot put metadata; Value type cannot be ANY"));
   }
 
-  RETURN_NOT_OK(metadata_.put(key, value_type, value_num, value));
+  metadata_.put(key, value_type, value_num, value);
 
   return Status::Ok();
 }
@@ -1004,7 +1004,7 @@ Status Array::get_metadata(
     RETURN_NOT_OK(load_metadata());
   }
 
-  RETURN_NOT_OK(metadata_.get(key, value_type, value_num, value));
+  metadata_.get(key, value_type, value_num, value);
 
   return Status::Ok();
 }
@@ -1034,8 +1034,7 @@ Status Array::get_metadata(
     RETURN_NOT_OK(load_metadata());
   }
 
-  RETURN_NOT_OK(
-      metadata_.get(index, key, key_len, value_type, value_num, value));
+  metadata_.get(index, key, key_len, value_type, value_num, value);
 
   return Status::Ok();
 }
@@ -1090,7 +1089,7 @@ Status Array::has_metadata_key(
     RETURN_NOT_OK(load_metadata());
   }
 
-  RETURN_NOT_OK(metadata_.has_key(key, value_type, has_key));
+  *has_key = metadata_.has_metadata(key, *value_type);
 
   return Status::Ok();
 }

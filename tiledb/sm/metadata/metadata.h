@@ -40,7 +40,6 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
-#include "tiledb/common/status.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/storage_format/serialization/serializers.h"
@@ -135,9 +134,8 @@ class Metadata {
    * Deletes a metadata item.
    *
    * @param key The key of the metadata to be deleted.
-   * @return Status
    */
-  Status del(const char* key);
+  void del(const char* key);
 
   /**
    * Puts a metadata item as a key-value pair.
@@ -147,9 +145,8 @@ class Metadata {
    * @param value_num The number of items in the value part (they could be more
    *     than one).
    * @param value The metadata value.
-   * @return Status
    */
-  Status put(
+  void put(
       const char* key,
       Datatype value_type,
       uint32_t value_num,
@@ -164,9 +161,8 @@ class Metadata {
    * more than one).
    * @param[out] value The metadata value. It will be `nullptr` if the key does
    *     not exist
-   * @return Status
    */
-  Status get(
+  void get(
       const char* key,
       Datatype* value_type,
       uint32_t* value_num,
@@ -183,9 +179,8 @@ class Metadata {
    * more than one).
    * @param[out] value The metadata value. It will be `nullptr` if the key does
    *     not exist
-   * @return Status
    */
-  Status get(
+  void get(
       uint64_t index,
       const char** key,
       uint32_t* key_len,
@@ -200,12 +195,10 @@ class Metadata {
    * Checks if metadata has specified key.
    *
    * @param key The metadata key.
-   * @param value_type The datatype of the value.
-   * @param value Set to `1` if the array metadata has a key of the
-   *      given name, else `0`.
-   * @return Status
+   * @param value_type A reference to store the metadata's type if it exists.
+   * @return Whether the metadata with the given key exists.
    */
-  Status has_key(const char* key, Datatype* value_type, bool* has_key);
+  bool has_metadata(const char* key, Datatype& value_type);
 
   /**
    * Sets the URIs of the metadata files that have been loaded
