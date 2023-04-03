@@ -51,13 +51,6 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class GroupStatusException : public StatusException {
- public:
-  explicit GroupStatusException(const std::string& message)
-      : StatusException("Group", message) {
-  }
-};
-
 Group::Group(const URI& group_uri, StorageManager* storage_manager)
     : group_uri_(group_uri)
     , storage_manager_(storage_manager)
@@ -294,13 +287,12 @@ QueryType Group::query_type_checked() const {
 void Group::delete_group(const URI& uri, bool recursive) {
   // Check that group is open
   if (!is_open_) {
-    throw GroupStatusException("[delete_group] Group is not open");
+    throw GroupException("[delete_group] Group is not open");
   }
 
   // Check that query type is MODIFY_EXCLUSIVE
   if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    throw GroupStatusException(
-        "[delete_group] Query type must be MODIFY_EXCLUSIVE");
+    throw GroupException("[delete_group] Query type must be MODIFY_EXCLUSIVE");
   }
 
   // Delete group members within the group when deleting recursively
@@ -326,8 +318,7 @@ void Group::delete_group(const URI& uri, bool recursive) {
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
-      throw GroupStatusException(
-          "[delete_group] Remote group with no REST client.");
+      throw GroupException("[delete_group] Remote group with no REST client.");
     rest_client->delete_group_from_rest(uri);
   } else {
     storage_manager_->delete_group(uri.c_str());
@@ -513,7 +504,7 @@ const Config& Group::config() const {
 
 void Group::set_config(Config config) {
   if (is_open()) {
-    throw GroupStatusException("[set_config] Cannot set config; Group is open");
+    throw GroupException("[set_config] Cannot set config; Group is open");
   }
   config_.inherit(config);
 }
