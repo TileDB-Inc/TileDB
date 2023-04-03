@@ -292,6 +292,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @param rc Current result coords for the fragment.
    * @param result_tiles_it Iterator, per frag, in the list of retult tiles.
    * @param tile_queue Queue of one result coords, per fragment, sorted.
+   * @param to_delete List of tiles to delete.
    *
    * @return If more tiles are needed.
    */
@@ -299,7 +300,8 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   bool add_all_dups_to_queue(
       GlobalOrderResultCoords<BitmapType>& rc,
       std::vector<TileListIt>& result_tiles_it,
-      TileMinHeap<CompType>& tile_queue);
+      TileMinHeap<CompType>& tile_queue,
+      std::vector<TileListIt>& to_delete);
 
   /**
    * Add a cell (for a specific fragment) to the queue of cells currently being
@@ -308,6 +310,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @param rc Current result coords for the fragment.
    * @param result_tiles_it Iterator, per frag, in the list of retult tiles.
    * @param tile_queue Queue of one result coords, per fragment, sorted.
+   * @param to_delete List of tiles to delete.
    *
    * @return If more tiles are needed.
    */
@@ -315,7 +318,8 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   bool add_next_cell_to_queue(
       GlobalOrderResultCoords<BitmapType>& rc,
       std::vector<TileListIt>& result_tiles_it,
-      TileMinHeap<CompType>& tile_queue);
+      TileMinHeap<CompType>& tile_queue,
+      std::vector<TileListIt>& to_delete);
 
   /**
    * Computes a tile's Hilbert values for a tile.
