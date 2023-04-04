@@ -434,12 +434,9 @@ Status UnorderedWriter::prepare_tiles_fixed(
       (unsigned char*)buffers_.find(name)->second.validity_vector_.buffer();
   auto cell_size = array_schema_.cell_size(name);
   auto cell_num = (uint64_t)cell_pos_.size();
-  auto capacity = array_schema_.capacity();
+  auto cell_num_per_tile = array_schema_.capacity();
   auto dups_num = coord_dups_.size();
-  auto tile_num = utils::math::ceil(cell_num - dups_num, capacity);
-  auto& domain{array_schema_.domain()};
-  auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
+  auto tile_num = utils::math::ceil(cell_num - dups_num, cell_num_per_tile);
 
   // Initialize tiles
   tiles->reserve(tile_num);
@@ -487,7 +484,7 @@ Status UnorderedWriter::prepare_tiles_fixed(
     }
   }
 
-  uint64_t last_tile_cell_num = (cell_num - dups_num) % capacity;
+  uint64_t last_tile_cell_num = (cell_num - dups_num) % cell_num_per_tile;
   if (last_tile_cell_num != 0) {
     tile_it->set_final_size(last_tile_cell_num);
   }
@@ -507,13 +504,10 @@ Status UnorderedWriter::prepare_tiles_var(
   auto buffer_validity = (uint8_t*)it->second.validity_vector_.buffer();
   auto buffer_var_size = it->second.buffer_var_size_;
   auto cell_num = (uint64_t)cell_pos_.size();
-  auto capacity = array_schema_.capacity();
+  auto cell_num_per_tile = array_schema_.capacity();
   auto dups_num = coord_dups_.size();
-  auto tile_num = utils::math::ceil(cell_num - dups_num, capacity);
+  auto tile_num = utils::math::ceil(cell_num - dups_num, cell_num_per_tile);
   auto attr_datatype_size = datatype_size(array_schema_.type(name));
-  auto cell_num_per_tile = coords_info_.has_coords_ ?
-                               capacity :
-                               array_schema_.domain().cell_num_per_tile();
 
   // Initialize tiles
   tiles->reserve(tile_num);
@@ -605,7 +599,7 @@ Status UnorderedWriter::prepare_tiles_var(
     tile_it->var_tile().set_size(offset);
   }
 
-  uint64_t last_tile_cell_num = (cell_num - dups_num) % capacity;
+  uint64_t last_tile_cell_num = (cell_num - dups_num) % cell_num_per_tile;
   if (last_tile_cell_num != 0) {
     tile_it->set_final_size(last_tile_cell_num);
   }
@@ -654,14 +648,15 @@ Status UnorderedWriter::unordered_write() {
     throw UnorderWriterStatusException("All buffers already written");
   }
 
-  for (ArraySchema::dimension_size_type d = 0; d < array_schema_.dim_num();
-       d++) {
-    if (buffers_.count(array_schema_.dimension_ptr(d)->name()) == 0) {
-      throw UnorderWriterStatusException("All dimension buffers should be set");
-    }
-  }
-
   if (is_coords_pass_) {
+    for (ArraySchema::dimension_size_type d = 0; d < array_schema_.dim_num();
+         d++) {
+      if (buffers_.count(array_schema_.dimension_ptr(d)->name()) == 0) {
+        throw UnorderWriterStatusException(
+            "All dimension buffers should be set");
+      }
+    }
+
     // Sort coordinates first
     RETURN_CANCEL_OR_ERROR(sort_coords());
 
@@ -740,7 +735,10 @@ Status UnorderedWriter::unordered_write() {
 
     RETURN_NOT_OK(storage_manager_->vfs()->touch(commit_uri));
 
-    // TODO: Clear data.
+    // Clear some data to prevent it from being serialized.
+    cell_pos_.clear();
+    coord_dups_.clear();
+    frag_meta_ = nullptr;
   }
 
   is_coords_pass_ = false;

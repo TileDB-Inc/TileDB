@@ -419,6 +419,17 @@ std::vector<std::string> Query::buffer_names() const {
   return ret;
 }
 
+std::vector<std::string> Query::unwritten_buffer_names() const {
+  std::vector<std::string> ret;
+  for (auto& name : buffer_names()) {
+    if (written_buffers_.count(name) == 0) {
+      ret.push_back(name);
+    }
+  }
+
+  return ret;
+}
+
 QueryBuffer Query::buffer(const std::string& name) const {
   // Special zipped coordinates
   if ((type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) &&

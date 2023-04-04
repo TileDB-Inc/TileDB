@@ -1294,7 +1294,8 @@ Status query_to_capnp(
   }
 
   // Serialize attribute buffer metadata
-  const auto buffer_names = query.buffer_names();
+  const auto buffer_names =
+      client_side ? query.unwritten_buffer_names() : query.buffer_names();
   auto attr_buffers_builder =
       query_builder->initAttributeBufferHeaders(buffer_names.size());
   uint64_t total_fixed_len_bytes = 0;

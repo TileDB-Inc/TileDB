@@ -224,6 +224,12 @@ class Query {
   std::vector<std::string> buffer_names() const;
 
   /**
+   * Returns the names of the buffers set by the user for the query not already
+   * written by a previous partial attribute write.
+   */
+  std::vector<std::string> unwritten_buffer_names() const;
+
+  /**
    * Gets the query buffer for the input attribute/dimension.
    * An empty string means the special default attribute.
    */
