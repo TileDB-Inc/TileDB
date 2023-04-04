@@ -160,7 +160,7 @@ void Group::open(
       throw GroupDirectoryException(le.what());
     }
 
-    auto&& group_details = storage_manager_->group_open_for_reads(this);
+    auto group_details = storage_manager_->group_open_for_reads(this);
     if (group_details.has_value()) {
       group_details_ = group_details.value();
     }
@@ -178,7 +178,7 @@ void Group::open(
       throw GroupDirectoryException(le.what());
     }
 
-    auto&& group_details = storage_manager_->group_open_for_writes(this);
+    auto group_details = storage_manager_->group_open_for_writes(this);
 
     if (group_details.has_value()) {
       group_details_ = group_details.value();
@@ -591,7 +591,7 @@ const shared_ptr<GroupDirectory> Group::group_directory() const {
 }
 
 URI Group::generate_detail_uri() const {
-  auto&& name = generate_name();
+  std::string name = generate_name();
 
   return group_uri_.join_path(constants::group_detail_dir_name).join_path(name);
 }
