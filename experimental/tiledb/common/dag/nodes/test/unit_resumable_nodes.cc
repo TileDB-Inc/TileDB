@@ -33,6 +33,7 @@
 #include <future>
 #include <type_traits>
 #include "experimental/tiledb/common/dag/edge/edge.h"
+#include "experimental/tiledb/common/dag/execution/bountiful.h"
 #include "experimental/tiledb/common/dag/execution/duffs.h"
 #include "experimental/tiledb/common/dag/execution/random.h"
 #include "experimental/tiledb/common/dag/nodes/generators.h"
@@ -48,6 +49,7 @@
 
 using namespace tiledb::common;
 
+using B = tiledb::common::BountifulScheduler<node>;
 using R = tiledb::common::RandomScheduler<node>;
 using S = tiledb::common::DuffsScheduler<node>;
 
@@ -150,7 +152,6 @@ using consumer_1 = consumer_mimo<DuffsMover3, std::tuple<size_t>>;
 using consumer_3 =
     consumer_mimo<DuffsMover3, std::tuple<size_t, size_t, size_t>>;
 
-
 using async_producer_1 = producer_mimo<AsyncMover3, std::tuple<size_t>>;
 
 using async_producer_3 =
@@ -160,7 +161,6 @@ using async_consumer_1 = consumer_mimo<AsyncMover3, std::tuple<size_t>>;
 
 using async_consumer_3 =
     consumer_mimo<AsyncMover3, std::tuple<size_t, size_t, size_t>>;
-
 
 namespace tiledb::common {
 // Tentative deduction guide
@@ -578,23 +578,24 @@ auto run_for(Node& node, size_t rounds) {
   };
 }
 
-TEST_CASE("Resumable nodes run some", "[resumable]") {
+TEST_CASE("Resumable nodes run some with std::async", "[resumable]") {
   size_t ext2{0};
   size_t ext1{0};
   async_producer_3 p_3{
-    [&ext1](std::stop_source) -> std::tuple<size_t, size_t, size_t> {
+      [&ext1](std::stop_source) -> std::tuple<size_t, size_t, size_t> {
         auto a = ext1++;
         auto b = ext1++;
         auto c = ext1++;
         // std::cout << "producer_3: " << ext1 << std::endl;
-      return { a, b, c };
-    },
+        return {a, b, c};
+      },
   };
-  async_consumer_3 c_3 {
-    [&ext2](const std::tuple<size_t, size_t, size_t>& t) {
-      ext2 = std::get<0>(t) + std::get<1>(t) + std::get<2>(t);
-      // std::cout << "consume_3: " << std::get<0>(t) << " " << std::get<1>(t) << " " << std::get<2>(t) << " = " << ext2 << std::endl;
-    },
+  async_consumer_3 c_3{
+      [&ext2](const std::tuple<size_t, size_t, size_t>& t) {
+        ext2 = std::get<0>(t) + std::get<1>(t) + std::get<2>(t);
+        // std::cout << "consume_3: " << std::get<0>(t) << " " << std::get<1>(t)
+        // << " " << std::get<2>(t) << " = " << ext2 << std::endl;
+      },
   };
   Edge e0{p_3->out_port<0>(), c_3->in_port<0>()};
   Edge e1{p_3->out_port<1>(), c_3->in_port<1>()};
@@ -608,11 +609,10 @@ TEST_CASE("Resumable nodes run some", "[resumable]") {
   auto fut_a2 = std::async(std::launch::async, fun_a2);
   fut_a2.wait();
   fut_a1.wait();
-  CHECK(ext2 == 3*(rounds-1) + 3* (rounds-1) + 1 + 3*(rounds-1)+2);
+  CHECK(ext2 == 3 * (rounds - 1) + 3 * (rounds - 1) + 1 + 3 * (rounds - 1) + 2);
 }
 
 TEST_CASE("Resumable nodes run more", "[resumable]") {
-
   std::atomic<size_t> ext2{0};
 
   using producer_1 = producer_mimo<AsyncMover3, std::tuple<size_t>>;
@@ -679,7 +679,6 @@ TEST_CASE("Resumable nodes run more", "[resumable]") {
 }
 
 TEST_CASE("Resumable nodes run some more", "[resumable]") {
-
   std::atomic<size_t> ext2{0};
   size_t rounds = 11;
   size_t num_tests = 17;
@@ -687,9 +686,27 @@ TEST_CASE("Resumable nodes run some more", "[resumable]") {
   using producer_1 = producer_mimo<AsyncMover3, std::tuple<size_t>>;
   using consumer_1 = consumer_mimo<AsyncMover3, std::tuple<size_t>>;
 
-  producer_1 p_1{[](std::stop_source) { return std::make_tuple(11); }};
-  producer_1 q_1{[](std::stop_source) { return std::make_tuple(13); }};
-  producer_1 r_1{[](std::stop_source) { return std::make_tuple(17); }};
+  producer_1 p_1{[rounds](std::stop_source stop) {
+    static size_t count = 0;
+    if (count++ == rounds) {
+      stop.request_stop();
+    }
+    return std::make_tuple(11);
+  }};
+  producer_1 q_1{[rounds](std::stop_source stop) {
+    static size_t count = 0;
+    if (count++ == rounds) {
+      stop.request_stop();
+    }
+    return std::make_tuple(13);
+  }};
+  producer_1 r_1{[rounds](std::stop_source stop) {
+    static size_t count = 0;
+    if (count++ == rounds) {
+      stop.request_stop();
+    }
+    return std::make_tuple(17);
+  }};
 
   consumer_1 c_1{[&ext2](std::tuple<size_t> a) { ext2 += std::get<0>(a); }};
   consumer_1 d_1{[&ext2](std::tuple<size_t> a) { ext2 += std::get<0>(a); }};
@@ -700,7 +717,6 @@ TEST_CASE("Resumable nodes run some more", "[resumable]") {
       std::tuple<size_t, size_t, size_t>,
       EmptyMover,
       std::tuple<>>;
-
   using broadcast_0_3 = broadcast_node<
       3,
       EmptyMover,
@@ -708,11 +724,24 @@ TEST_CASE("Resumable nodes run some more", "[resumable]") {
       AsyncMover3,
       std::tuple<size_t>>;
 
-  broadcast_0_3 b3_0_3{[](std::stop_source) { return std::make_tuple(7); }};
+  broadcast_0_3 b3_0_3{[rounds](std::stop_source stop) {
+    static size_t count = 0;
+    if (count++ == rounds) {
+      stop.request_stop();
+    }
+    return std::make_tuple(7);
+  }};
   reduce_3_0 b3_3_0{[&ext2](const std::tuple<size_t, size_t, size_t>& a) {
     ext2 += std::get<0>(a) + std::get<1>(a) + std::get<2>(a);
   }};
-  broadcast_0_3 c3_0_3{[](std::stop_source) { return std::make_tuple(9); }};
+
+  broadcast_0_3 c3_0_3{[rounds](std::stop_source stop) {
+    static size_t count = 0;
+    if (count++ == rounds) {
+      stop.request_stop();
+    }
+    return std::make_tuple(9);
+  }};
   reduce_3_0 c3_3_0{[&ext2](const std::tuple<size_t, size_t, size_t>& a) {
     ext2 += std::get<0>(a) + std::get<1>(a) + std::get<2>(a);
   }};
@@ -728,7 +757,6 @@ TEST_CASE("Resumable nodes run some more", "[resumable]") {
   Edge g0{c3_0_3->out_port<0>(), c3_3_0->in_port<0>()};
   Edge g1{c3_0_3->out_port<1>(), c3_3_0->in_port<1>()};
   Edge g2{c3_0_3->out_port<2>(), c3_3_0->in_port<2>()};
-
 
   SECTION("triple producer, three consumers") {
     for (size_t j = 0; j < num_tests; ++j) {
@@ -772,10 +800,28 @@ TEST_CASE("Resumable nodes run some more", "[resumable]") {
       fut_d1.wait();
       fut_e1.wait();
 
-      CHECK(ext2 == rounds * (11+ 13 + 17));
+      CHECK(ext2 == rounds * (11 + 13 + 17));
     }
   }
+
   SECTION("triple producer, triple consumer") {
+    for (size_t j = 0; j < num_tests; ++j) {
+      ext2 = 0;
+
+      auto fun_a1 = run_for(c3_0_3, rounds);
+      auto fun_a2 = run_for(c3_3_0, rounds);
+
+      auto fut_a1 = std::async(std::launch::async, fun_a1);
+      auto fut_a2 = std::async(std::launch::async, fun_a2);
+
+      fut_a1.wait();
+      fut_a2.wait();
+
+      CHECK(ext2 == rounds * (9 + 9 + 9));
+    }
+  }
+
+  SECTION("triple producer, triple consumer, bountiful mover") {
     for (size_t j = 0; j < num_tests; ++j) {
       ext2 = 0;
 
@@ -793,6 +839,65 @@ TEST_CASE("Resumable nodes run some more", "[resumable]") {
   }
 }
 
+TEST_CASE("Resumable nodes schedulers", "[resumable]") {
+  size_t rounds = 17;
+  std::atomic<size_t> ext2{0};
+  SECTION("single producer, single consumer, random scheduler") {
+
+    using producer_1 = producer_mimo<RandomMover3, std::tuple<size_t>>;
+    using consumer_1 = consumer_mimo<RandomMover3, std::tuple<size_t>>;
+
+    producer_1 p_1{[rounds](std::stop_source stop) {
+      static size_t count = 0;
+      if (count == rounds) {
+        stop.request_stop();
+      } else {
+        ++count;
+      }
+      return std::make_tuple(11);
+    }};
+    producer_1 q_1{[rounds](std::stop_source stop) {
+      static size_t count = 0;
+      if (count == rounds) {
+        stop.request_stop();
+      } else {
+        ++count;
+      }
+      return std::make_tuple(13);
+    }};
+    producer_1 r_1{[rounds](std::stop_source stop) {
+      static size_t count = 0;
+      if (count == rounds) {
+        stop.request_stop();
+      } else ++count;
+      return std::make_tuple(17);
+    }};
+
+    consumer_1 c_1{[&ext2](std::tuple<size_t> a) { ext2 += std::get<0>(a); }};
+    consumer_1 d_1{[&ext2](std::tuple<size_t> a) { ext2 += std::get<0>(a); }};
+    consumer_1 e_1{[&ext2](std::tuple<size_t> a) { ext2 += std::get<0>(a); }};
+    Edge e0{p_1->out_port<0>(), c_1->in_port<0>()};
+    Edge e1{q_1->out_port<0>(), d_1->in_port<0>()};
+    Edge e2{r_1->out_port<0>(), e_1->in_port<0>()};
+
+    size_t rounds = 10;
+    size_t num_threads = 4;
+
+    R sched{num_threads};
+
+    sched.submit(p_1);
+    sched.submit(q_1);
+    sched.submit(r_1);
+    sched.submit(c_1);
+    sched.submit(d_1);
+    sched.submit(e_1);
+
+    sched.sync_wait_all();
+
+    CHECK(
+        ext2 == 3 * (rounds - 1) + 3 * (rounds - 1) + 1 + 3 * (rounds - 1) + 2);
+  }
+}
 
 #if 0
 

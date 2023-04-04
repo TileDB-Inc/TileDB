@@ -151,7 +151,7 @@ class BountifulScheduler {
    */
   void submit(Node&& n) {
     if (debug_enabled()) {
-      std::cout << "Submitting node " << n->id() << std::endl;
+      // std::cout << "Submitting node " << n->id() << std::endl;
     }
     nodes_.emplace_back(std::move(n));
   }
@@ -161,6 +161,8 @@ class BountifulScheduler {
    * scheduler lazily launches its task, they are launched here.
    */
   void sync_wait_all() {
+
+
     if (debug_enabled()) {
       std::cout << "Starting sync_wait_all()\n";
       std::cout << "About to launch all tasks\n";
@@ -172,13 +174,13 @@ class BountifulScheduler {
     for (auto&& n : nodes_) {
       auto f = std::async(std::launch::async, [this, n]() mutable {
         if (debug_enabled()) {
-          std::cout << "Running node " << n->id() << std::endl;
+          // std::cout << "Running node " << n->id() << std::endl;
         }
 
         n->run();
 
         if (debug_enabled()) {
-          std::cout << "Completed node " << n->id() << std::endl;
+          // std::cout << "Completed node " << n->id() << std::endl;
         }
       });
       futures_.emplace_back(std::move(f));

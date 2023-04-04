@@ -173,6 +173,9 @@ class mimo_node_impl<
           if (sink_done_all()) {
             return stop_all();
           } else {
+            if (tmp_state == scheduler_event_type::sink_wait) {
+              this->decrement_program_counter();
+            }
             return tmp_state;
           }
         }
@@ -218,7 +221,11 @@ class mimo_node_impl<
       case 4: {
         ++this->program_counter_;
         if constexpr (!is_consumer_) {
-          return push_all();
+          auto push_state = push_all();
+          if (push_state == scheduler_event_type::source_wait) {
+            this->decrement_program_counter();
+          }
+          return push_state;
         }
       }
         [[fallthrough]];
