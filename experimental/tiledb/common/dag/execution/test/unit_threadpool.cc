@@ -45,6 +45,7 @@
 #include "experimental/tiledb/common/dag/execution/threadpool.h"
 
 using namespace tiledb::common;
+using namespace tiledb::common::dag;
 
 template <bool A, bool B, bool C>
 void test_construct() {

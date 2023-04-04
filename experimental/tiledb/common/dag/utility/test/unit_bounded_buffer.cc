@@ -37,6 +37,7 @@
 #include "experimental/tiledb/common/dag/utility/bounded_buffer.h"
 
 using namespace tiledb::common;
+using namespace tiledb::common::dag;
 
 template <class T, class Q>
 struct foo {};

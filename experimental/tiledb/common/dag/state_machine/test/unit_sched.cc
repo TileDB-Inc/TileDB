@@ -56,6 +56,7 @@
 #include "unit_fsm.h"
 
 using namespace tiledb::common;
+using namespace tiledb::common::dag;
 
 template <class T, size_t N = 3UL>
 struct triple_maker_state {

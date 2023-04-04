@@ -46,6 +46,8 @@
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/tile/tile.h"
 
+#include "experimental/tiledb/common/dag/graph/taskgraph.h"
+
 using namespace tiledb::common;
 
 namespace tiledb {
@@ -152,6 +154,26 @@ FilterPipeline::get_var_chunk_sizes(
   return {Status::Ok(), std::move(chunk_offsets)};
 }
 
+// Acts as starter motor for the filter_chunks_forward taskgraph
+// For now it just makes sure the task graph is executed only once.
+class graph_executions {
+  bool second_execution_;
+
+ public:
+  graph_executions()
+      : second_execution_(false) {
+  }
+
+  Status operator()(std::stop_source& stop_source) {
+    if (second_execution_) {
+      stop_source.request_stop();
+      return Status::Ok();
+    }
+    second_execution_ = true;
+    return Status::Ok();
+  }
+};
+
 Status FilterPipeline::filter_chunks_forward(
     const WriterTile& tile,
     WriterTile* const offsets_tile,
@@ -198,50 +220,86 @@ Status FilterPipeline::filter_chunks_forward(
                            chunk_size;
     RETURN_NOT_OK(input_data.init(chunk_buffer, chunk_buffer_size));
 
-    // Apply the filters sequentially.
+    TaskGraph<DuffsScheduler<node>> graph(1);
+
+    graph_executions exec;
+    auto a = initial_node(graph, exec);
+
+    // Iterate over all filters, create taskgraph nodes that will run the
+    // filters forward and make the edges that will define the order in the
+    // pipeline.
+    std::vector<function_node<DuffsMover3, Status, DuffsMover3, Status>> nodes;
     for (auto it = filters_.begin(), ite = filters_.end(); it != ite; ++it) {
       auto& f = *it;
 
-      // Clear and reset I/O buffers
-      input_data.reset_offset();
-      input_data.set_read_only(true);
-      input_metadata.reset_offset();
-      input_metadata.set_read_only(true);
+      auto n = transform_node(graph, [&]([[maybe_unused]] const Status& st) {
+        // Clear and reset I/O buffers
+        input_data.reset_offset();
+        input_data.set_read_only(true);
+        input_metadata.reset_offset();
+        input_metadata.set_read_only(true);
 
-      throw_if_not_ok(output_data.clear());
-      throw_if_not_ok(output_metadata.clear());
+        throw_if_not_ok(output_data.clear());
+        throw_if_not_ok(output_metadata.clear());
 
-      f->init_compression_resource_pool(compute_tp->concurrency_level());
+        f->init_compression_resource_pool(compute_tp->concurrency_level());
 
-      RETURN_NOT_OK(f->run_forward(
-          tile,
-          offsets_tile,
-          &input_metadata,
-          &input_data,
-          &output_metadata,
-          &output_data));
+        RETURN_NOT_OK(f->run_forward(
+            tile,
+            offsets_tile,
+            &input_metadata,
+            &input_data,
+            &output_metadata,
+            &output_data));
 
-      input_data.set_read_only(false);
-      throw_if_not_ok(input_data.swap(output_data));
-      input_metadata.set_read_only(false);
-      throw_if_not_ok(input_metadata.swap(output_metadata));
-      // Next input (input_buffers) now stores this output (output_buffers).
+        input_data.set_read_only(false);
+        throw_if_not_ok(input_data.swap(output_data));
+        input_metadata.set_read_only(false);
+        throw_if_not_ok(input_metadata.swap(output_metadata));
+        // Next input (input_buffers) now stores this output (output_buffers).
+        return Status::Ok();
+      });
+
+      if (it == filters_.begin()) {
+        make_edge(graph, a, n);
+      } else {
+        make_edge(graph, nodes.back(), n);
+      }
+      nodes.push_back(n);
     }
 
-    // Save the finished chunk (last stage's output). This is safe to do
-    // because when the local FilterStorage goes out of scope, it will not
-    // free the buffers saved here as their shared_ptr counters will not
-    // be zero. However, as the output may have been a view on the input, we
-    // do need to save both here to prevent the input buffer from being
-    // freed.
-    auto& io = final_stage_io[i];
-    auto& io_input = io.first;
-    auto& io_output = io.second;
-    throw_if_not_ok(io_input.first.swap(input_metadata));
-    throw_if_not_ok(io_input.second.swap(input_data));
-    throw_if_not_ok(io_output.first.swap(output_metadata));
-    throw_if_not_ok(io_output.second.swap(output_data));
-    return Status::Ok();
+    Status st = Status::Ok();
+    auto e = terminal_node(graph, [&](const Status& st_in) {
+      if (!st_in.ok()) {
+        st = st_in;
+        return;
+      }
+
+      // Save the finished chunk (last stage's output). This is safe to do
+      // because when the local FilterStorage goes out of scope, it will not
+      // free the buffers saved here as their shared_ptr counters will not
+      // be zero. However, as the output may have been a view on the input, we
+      // do need to save both here to prevent the input buffer from being
+      // freed.
+      auto& io = final_stage_io[i];
+      auto& io_input = io.first;
+      auto& io_output = io.second;
+      throw_if_not_ok(io_input.first.swap(input_metadata));
+      throw_if_not_ok(io_input.second.swap(input_data));
+      throw_if_not_ok(io_output.first.swap(output_metadata));
+      throw_if_not_ok(io_output.second.swap(output_data));
+    });
+
+    if (nodes.empty()) {
+      make_edge(graph, a, e);
+    } else {
+      make_edge(graph, nodes.back(), e);
+    }
+
+    schedule(graph);
+    sync_wait(graph);
+
+    return st;
   });
 
   RETURN_NOT_OK(status);

@@ -36,11 +36,7 @@
 #include <iostream>
 
 #include <tiledb/tiledb>
-#include "experimental/tiledb/common/dag/edge/edge.h"
-#include "experimental/tiledb/common/dag/execution/bountiful.h"
-#include "experimental/tiledb/common/dag/execution/throw_catch.h"
 #include "experimental/tiledb/common/dag/graph/taskgraph.h"
-#include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
 
 #include <bzlib.h>
 

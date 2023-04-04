@@ -87,6 +87,7 @@
 // #include "experimental/tiledb/common/dag/execution/threadpool.h"
 
 using namespace tiledb::common;
+using namespace tiledb::common::dag;
 using namespace std::placeholders;
 
 /*

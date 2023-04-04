@@ -304,8 +304,10 @@ class BoundedBufferQ {
   std::atomic<bool> shutdown_{false};
 };
 
+namespace dag {
 template <class Item, class Container = std::deque<Item>>
 using ProducerConsumerQueue = BoundedBufferQ<Item, Container, false>;
+}  // namespace dag
 
 template <class Item, class Container = std::deque<Item>>
 using BoundedBuffer = BoundedBufferQ<Item, Container, true>;
