@@ -44,17 +44,24 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-class GroupCloseGuard {
+class AutoCloseGroup {
  public:
-  GroupCloseGuard(Group& group)
-      : group_(group){};
+  template <class... OpenArgs>
+  AutoCloseGroup(const URI& uri, StorageManager* sm, OpenArgs... open_args)
+      : group_(uri, sm) {
+    group_.open(std::forward<OpenArgs>(open_args)...);
+  };
 
-  ~GroupCloseGuard() {
+  ~AutoCloseGroup() {
     group_.close();
   }
 
+  inline Group* operator->() {
+    return &group_;
+  }
+
  private:
-  Group& group_;
+  Group group_;
 };
 
 /* ****************************** */
@@ -88,22 +95,22 @@ Status GroupMetaConsolidator::consolidate(
 
   // Open group for reading
   auto group_uri = URI(group_name);
-  Group group_for_reads(group_uri, storage_manager_);
-  group_for_reads.open(
-      QueryType::READ, config_.timestamp_start_, config_.timestamp_end_);
-  GroupCloseGuard group_for_reads_guard(group_for_reads);
+  AutoCloseGroup group_for_reads(
+      group_uri,
+      storage_manager_,
+      QueryType::READ,
+      config_.timestamp_start_,
+      config_.timestamp_end_);
 
   // Open group for writing
-  Group group_for_writes(group_uri, storage_manager_);
-  group_for_writes.open(QueryType::WRITE);
-  GroupCloseGuard group_for_writes_guard(group_for_writes);
+  AutoCloseGroup group_for_writes(
+      group_uri, storage_manager_, QueryType::WRITE);
 
   // Swap the in-memory metadata between the two groups.
   // After that, the group for writes will store the (consolidated by
   // the way metadata loading works) metadata of the group for reads
-  Metadata *metadata_r, *metadata_w;
-  metadata_r = group_for_reads.metadata();
-  metadata_w = group_for_writes.metadata();
+  Metadata* metadata_r{group_for_reads->metadata()};
+  Metadata* metadata_w{group_for_writes->metadata()};
   metadata_r->swap(metadata_w);
 
   // Metadata uris to delete
