@@ -164,11 +164,9 @@ Status UnorderedWriter::dowork() {
 Status UnorderedWriter::finalize() {
   auto timer_se = stats_->start_timer("finalize");
 
-  if (!array_->is_remote() && !remote_query()) {
-    if (written_buffers_.size() <
-        array_schema_.dim_num() + array_schema_.attribute_num()) {
-      throw UnorderWriterStatusException("Not all buffers already written");
-    }
+  if (written_buffers_.size() <
+      array_schema_.dim_num() + array_schema_.attribute_num()) {
+    throw UnorderWriterStatusException("Not all buffers already written");
   }
 
   return Status::Ok();
@@ -179,6 +177,15 @@ void UnorderedWriter::reset() {
 
 std::string UnorderedWriter::name() {
   return "UnorderedWriter";
+}
+
+Status UnorderedWriter::alloc_frag_meta() {
+  // Alloc FragmentMetadata object.
+  frag_meta_ = make_shared<FragmentMetadata>(HERE());
+  // Used in serialization when FragmentMetadata is built from ground up.
+  frag_meta_->set_storage_manager(storage_manager_);
+
+  return Status::Ok();
 }
 
 /* ****************************** */
@@ -670,8 +677,9 @@ Status UnorderedWriter::unordered_write() {
     // Create new fragment
     frag_meta_ = make_shared<FragmentMetadata>(HERE());
     RETURN_CANCEL_OR_ERROR(create_fragment(false, frag_meta_));
-    frag_uri_ = frag_meta_->fragment_uri();
   }
+
+  frag_uri_ = frag_meta_->fragment_uri();
 
   // Prepare tiles
   std::unordered_map<std::string, WriterTileTupleVector> tiles;
@@ -731,6 +739,8 @@ Status UnorderedWriter::unordered_write() {
         array_->array_directory().get_commit_uri(frag_uri_.value());
 
     RETURN_NOT_OK(storage_manager_->vfs()->touch(commit_uri));
+
+    // TODO: Clear data.
   }
 
   is_coords_pass_ = false;

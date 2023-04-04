@@ -143,12 +143,6 @@ Query::Query(
     throw QueryStatusException(
         "Cannot find sm.allow_separate_attribute_writes in settings");
   }
-
-  // Disallow partial attribute writes for remote arrays.
-  if (allow_separate_attribute_writes_ && array_->is_remote()) {
-    throw QueryStatusException(
-        "Cannot allow partial attribute writes on remote arrays.");
-  }
 }
 
 Query::~Query() {
@@ -2027,6 +2021,10 @@ bool Query::is_dense() const {
 
 std::vector<WrittenFragmentInfo>& Query::get_written_fragment_info() {
   return written_fragment_info_;
+}
+
+std::unordered_set<std::string>& Query::get_written_buffers() {
+  return written_buffers_;
 }
 
 void Query::reset_coords_markers() {

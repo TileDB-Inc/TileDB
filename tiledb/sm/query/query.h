@@ -665,6 +665,9 @@ class Query {
   /** Returns a reference to the internal WrittenFragmentInfo list */
   std::vector<WrittenFragmentInfo>& get_written_fragment_info();
 
+  /** Returns a reference to the internal written buffer set */
+  std::unordered_set<std::string>& get_written_buffers();
+
   /** Called from serialization to mark the query as remote */
   void set_remote_query();
 
