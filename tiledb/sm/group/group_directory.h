@@ -129,9 +129,6 @@ class GroupDirectory {
   std::string compute_new_fragment_name(
       const URI& first, const URI& last, format_version_t format_version) const;
 
-  /** Returns `true` if `load` has been run. */
-  bool loaded() const;
-
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -197,15 +194,9 @@ class GroupDirectory {
   /** Mode for the group directory. */
   GroupDirectoryMode mode_;
 
-  /** True if `load` has been run. */
-  bool loaded_;
-
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
-
-  /** Loads the URIs from the various group subdirectories. */
-  void load();
 
   /**
    * List the root directory uris for v1 to v11.

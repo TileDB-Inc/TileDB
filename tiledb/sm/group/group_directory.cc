@@ -62,58 +62,7 @@ GroupDirectory::GroupDirectory(
     , tp_(tp)
     , timestamp_start_(timestamp_start)
     , timestamp_end_(timestamp_end)
-    , mode_(mode)
-    , loaded_(false) {
-  load();
-}
-
-/* ********************************* */
-/*                API                */
-/* ********************************* */
-
-const URI& GroupDirectory::uri() const {
-  return uri_;
-}
-
-const std::vector<URI>& GroupDirectory::group_file_uris() const {
-  return group_file_uris_;
-}
-
-/** Returns the latest array schema URI. */
-const URI& GroupDirectory::latest_group_details_uri() const {
-  return latest_group_details_uri_;
-}
-
-const std::vector<URI>& GroupDirectory::group_meta_uris_to_vacuum() const {
-  return group_meta_uris_to_vacuum_;
-}
-
-const std::vector<URI>& GroupDirectory::group_meta_vac_uris_to_vacuum() const {
-  return group_meta_vac_uris_to_vacuum_;
-}
-
-const std::vector<TimestampedURI>& GroupDirectory::group_meta_uris() const {
-  return group_meta_uris_;
-}
-
-/** Returns the URIs of the group metadata files to vacuum. */
-const std::vector<URI>& GroupDirectory::group_detail_uris_to_vacuum() const {
-  return group_detail_uris_to_vacuum_;
-}
-
-/** Returns the URIs of the group metadata vacuum files to vacuum. */
-const std::vector<URI>& GroupDirectory::group_detail_vac_uris_to_vacuum()
-    const {
-  return group_detail_vac_uris_to_vacuum_;
-}
-
-/** Returns the filtered group metadata URIs. */
-const std::vector<TimestampedURI>& GroupDirectory::group_detail_uris() const {
-  return group_detail_uris_;
-}
-
-void GroupDirectory::load() {
-  assert(!loaded_);
+    , mode_(mode) {
   // We use mode here to avoid warning on errors
   // Mode will be used for consolidation settings
   (void)mode_;
@@ -161,9 +110,51 @@ void GroupDirectory::load() {
   if (!is_group) {
     throw GroupDirectoryException("Cannot open group; Group does not exist.");
   }
+}
 
-  // The URI manager has been loaded successfully
-  loaded_ = true;
+/* ********************************* */
+/*                API                */
+/* ********************************* */
+
+const URI& GroupDirectory::uri() const {
+  return uri_;
+}
+
+const std::vector<URI>& GroupDirectory::group_file_uris() const {
+  return group_file_uris_;
+}
+
+/** Returns the latest array schema URI. */
+const URI& GroupDirectory::latest_group_details_uri() const {
+  return latest_group_details_uri_;
+}
+
+const std::vector<URI>& GroupDirectory::group_meta_uris_to_vacuum() const {
+  return group_meta_uris_to_vacuum_;
+}
+
+const std::vector<URI>& GroupDirectory::group_meta_vac_uris_to_vacuum() const {
+  return group_meta_vac_uris_to_vacuum_;
+}
+
+const std::vector<TimestampedURI>& GroupDirectory::group_meta_uris() const {
+  return group_meta_uris_;
+}
+
+/** Returns the URIs of the group metadata files to vacuum. */
+const std::vector<URI>& GroupDirectory::group_detail_uris_to_vacuum() const {
+  return group_detail_uris_to_vacuum_;
+}
+
+/** Returns the URIs of the group metadata vacuum files to vacuum. */
+const std::vector<URI>& GroupDirectory::group_detail_vac_uris_to_vacuum()
+    const {
+  return group_detail_vac_uris_to_vacuum_;
+}
+
+/** Returns the filtered group metadata URIs. */
+const std::vector<TimestampedURI>& GroupDirectory::group_detail_uris() const {
+  return group_detail_uris_;
 }
 
 std::string GroupDirectory::compute_new_fragment_name(
@@ -185,10 +176,6 @@ std::string GroupDirectory::compute_new_fragment_name(
      << format_version;
 
   return ss.str();
-}
-
-bool GroupDirectory::loaded() const {
-  return loaded_;
 }
 
 /* ********************************* */

@@ -720,7 +720,6 @@ void Group::load_metadata() {
     throw_if_not_ok(
         rest_client->post_group_metadata_from_rest(group_uri_, this));
   } else {
-    assert(group_dir_->loaded());
     storage_manager_->load_group_metadata(
         group_dir_, *encryption_key_, &metadata_);
   }
