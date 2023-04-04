@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/group/group_member.h"
+#include "tiledb/sm/group/group_internal.h"
 #include "tiledb/sm/group/group_member_v1.h"
 #include "tiledb/sm/group/group_member_v2.h"
 

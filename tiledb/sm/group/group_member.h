@@ -46,25 +46,6 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class GroupDirectoryException : public StatusException {
- public:
-  explicit GroupDirectoryException(const std::string& message)
-      : StatusException("GroupDirectory", message) {
-  }
-};
-class GroupException : public StatusException {
- public:
-  explicit GroupException(const std::string& message)
-      : StatusException("Group", message) {
-  }
-};
-class GroupMemberException : public StatusException {
- public:
-  explicit GroupMemberException(const std::string& message)
-      : StatusException("GroupMember", message) {
-  }
-};
-
 class GroupMember {
  public:
   GroupMember(

@@ -35,6 +35,7 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/group/group.h"
+#include "tiledb/sm/group/group_internal.h"
 #include "tiledb/sm/group/group_details_v1.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/stats/global_stats.h"
