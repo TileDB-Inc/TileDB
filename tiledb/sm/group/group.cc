@@ -443,7 +443,7 @@ uint64_t Group::metadata_num() {
   return metadata_.num();
 }
 
-bool Group::has_metadata_key(const char* key, Datatype* value_type) {
+std::optional<Datatype> Group::get_metadata_type_if_exists(const char* key) {
   // Check if group is open
   if (!is_open_)
     throw GroupException("Cannot get metadata; Group is not open");
@@ -464,9 +464,10 @@ bool Group::has_metadata_key(const char* key, Datatype* value_type) {
   }
 
   bool has_key;
-  throw_if_not_ok(metadata_.has_key(key, value_type, &has_key));
+  Datatype value_type;
+  throw_if_not_ok(metadata_.has_key(key, &value_type, &has_key));
 
-  return has_key;
+  return has_key ? std::optional(value_type) : std::nullopt;
 }
 
 Metadata* Group::unsafe_metadata() {

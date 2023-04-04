@@ -166,8 +166,8 @@ class Group {
   /** Returns the number of group metadata items. */
   uint64_t metadata_num();
 
-  /** Sets has_key == 1 and corresponding value_type if the group has key. */
-  bool has_metadata_key(const char* key, Datatype* value_type);
+  /** Gets the type of the given metadata or nullopt if it does not exist. */
+  std::optional<Datatype> get_metadata_type_if_exists(const char* key);
 
   /** Retrieves the group metadata object. */
   Metadata* metadata();
