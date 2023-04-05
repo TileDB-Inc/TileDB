@@ -96,6 +96,7 @@ TEST_CASE("C API: Test enum values", "[capi][enums]") {
   REQUIRE(TILEDB_INPROGRESS == 2);
   REQUIRE(TILEDB_INCOMPLETE == 3);
   REQUIRE(TILEDB_UNINITIALIZED == 4);
+  REQUIRE(TILEDB_INITIALIZED == 5);
 
   /** Walk order */
   REQUIRE(TILEDB_PREORDER == 0);
@@ -343,6 +344,12 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
       (tiledb_query_status_from_str("UNINITIALIZED", &query_status) ==
            TILEDB_OK &&
        query_status == TILEDB_UNINITIALIZED));
+  REQUIRE(
+      (tiledb_query_status_to_str(TILEDB_INITIALIZED, &c_str) == TILEDB_OK &&
+       std::string(c_str) == "INITIALIZED"));
+  REQUIRE((
+      tiledb_query_status_from_str("INITIALIZED", &query_status) == TILEDB_OK &&
+      query_status == TILEDB_INITIALIZED));
 
   tiledb_walk_order_t walk_order;
   REQUIRE(

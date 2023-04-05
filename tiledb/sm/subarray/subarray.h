@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -248,7 +248,7 @@ class Subarray {
   /* ********************************* */
 
   /** Sets config for query-level parameters only. */
-  Status set_config(const Config& config);
+  void set_config(const Config& config);
 
   /**
    * Get the config of the writer
@@ -823,13 +823,6 @@ class Subarray {
       ThreadPool* compute_tp);
 
   /**
-   * Gets the estimated result size (in bytes) for the input fixed-sized
-   * attribute/dimension.
-   */
-  Status get_est_result_size(
-      const char* name, uint64_t* size, StorageManager* storage_manager);
-
-  /**
    * Gets the estimated result size (in bytes) for the input var-sized
    * attribute/dimension.
    */
@@ -909,9 +902,6 @@ class Subarray {
       uint64_t* size_validity,
       const Config* config,
       ThreadPool* compute_tp);
-
-  /** Retrieves the query type of the subarray's array. */
-  QueryType get_query_type() const;
 
   /**
    * Returns the range coordinates (for all dimensions) given a flattened

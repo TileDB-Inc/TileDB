@@ -1551,11 +1551,11 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), &attr)).ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
-  REQUIRE(domain.add_dimension(make_shared<Dimension>(HERE(), &dim)).ok());
+  REQUIRE(dim->set_domain(range).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), &domain)).ok());
 
   // Initialize the result tile.
@@ -1599,11 +1599,11 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), &attr)).ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
-  REQUIRE(domain.add_dimension(make_shared<Dimension>(HERE(), &dim)).ok());
+  REQUIRE(dim->set_domain(range).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), &domain)).ok());
 
   // Initialize the result tile.
@@ -1697,14 +1697,12 @@ TEST_CASE(
       array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
           .ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{
+      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
-  REQUIRE(
-      domain
-          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
-          .ok());
+  REQUIRE(dim->set_domain(range).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
       array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
           .ok());
@@ -2244,14 +2242,12 @@ void test_apply_dense<char*>(
       array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
           .ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{
+      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
-  REQUIRE(
-      domain
-          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
-          .ok());
+  REQUIRE(dim->set_domain(range).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
       array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
           .ok());
@@ -2296,14 +2292,12 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
       array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
           .ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{
+      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
-  REQUIRE(
-      domain
-          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
-          .ok());
+  REQUIRE(dim->set_domain(range).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
       array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
           .ok());
@@ -2399,14 +2393,12 @@ TEST_CASE(
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), &attr)).ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{
+      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
-  REQUIRE(
-      domain
-          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
-          .ok());
+  REQUIRE(dim->set_domain(range).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
       array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
           .ok());
@@ -2919,14 +2911,12 @@ void test_apply_sparse<char*>(
       array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
           .ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{
+      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
-  REQUIRE(
-      domain
-          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
-          .ok());
+  REQUIRE(dim->set_domain(range).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
       array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
           .ok());
@@ -2971,14 +2961,12 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
       array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
           .ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{
+      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
-  REQUIRE(
-      domain
-          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
-          .ok());
+  REQUIRE(dim->set_domain(range).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
       array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
           .ok());
@@ -3731,14 +3719,12 @@ TEST_CASE(
       array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
           .ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{
+      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
-  REQUIRE(
-      domain
-          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
-          .ok());
+  REQUIRE(dim->set_domain(range).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
       array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
           .ok());
@@ -4012,11 +3998,11 @@ TEST_CASE(
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), &attr)).ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
-  REQUIRE(domain.add_dimension(make_shared<Dimension>(HERE(), &dim)).ok());
+  REQUIRE(dim->set_domain(range).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), &domain)).ok());
 
   // Initialize the result tile.
@@ -4356,11 +4342,11 @@ TEST_CASE(
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), &attr)).ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
-  REQUIRE(domain.add_dimension(make_shared<Dimension>(HERE(), &dim)).ok());
+  REQUIRE(dim->set_domain(range).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), &domain)).ok());
 
   // For pasting into a Python shell:
@@ -4666,14 +4652,12 @@ TEST_CASE(
       array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
           .ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{
+      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
-  REQUIRE(
-      domain
-          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
-          .ok());
+  REQUIRE(dim->set_domain(range).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
       array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
           .ok());
@@ -4760,11 +4744,11 @@ TEST_CASE(
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), &attr)).ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
-  REQUIRE(domain.add_dimension(make_shared<Dimension>(HERE(), &dim)).ok());
+  REQUIRE(dim->set_domain(range).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), &domain)).ok());
 
   // Initialize the result tile.

@@ -472,98 +472,46 @@ class ReaderBase : public StrategyBase {
       const std::vector<ResultTile*>& result_tiles) const;
 
   /**
-   * Runs the input fixed-sized tile for the input attribute or dimension
-   * through the filter pipeline. The tile buffer is modified to contain the
-   * output of the pipeline.
+   * Unfilter a specific range of chunks in tile
    *
-   * @param num_range_threads Total number of range threads.
-   * @param range_thread_idx Current range thread index.
-   * @param name Attribute/dimension the tile belong to.
-   * @param tile Tile to be unfiltered.
-   * @param tile_chunk_data Tile chunk info, buffers and offsets
-   * @return Status
-   */
-  Status unfilter_tile(
-      uint64_t num_range_threads,
-      uint64_t thread_idx,
-      const std::string& name,
-      Tile* tile,
-      const ChunkData& tile_chunk_data) const;
-
-  /**
-   * Runs the input var-sized tile for the input attribute or dimension through
-   * the filter pipeline. The tile buffer is modified to contain the output of
-   * the pipeline.
-   *
-   * @param num_range_threads Total number of range threads.
-   * @param range_thread_idx Current range thread index.
    * @param name Attribute/dimension the tile belong to.
    * @param tile Offsets tile to be unfiltered.
-   * @param tile_chunk_data Offsets tile chunk info, buffers and offsets
-   * @param tile_var Value tile to be unfiltered.
-   * @param tile_var_chunk_data Value tile chunk info, buffers and offsets
-   * @return Status
-   */
-  Status unfilter_tile(
-      uint64_t num_range_threads,
-      uint64_t thread_idx,
-      const std::string& name,
-      Tile* tile,
-      const ChunkData& tile_chunk_data,
-      Tile* tile_var,
-      const ChunkData& tile_var_chunk_data) const;
-
-  /**
-   * Runs the input fixed-sized tile for the input nullable attribute
-   * through the filter pipeline. The tile buffer is modified to contain the
-   * output of the pipeline.
-   *
-   * @param num_range_threads Total number of range threads.
+   * @param var_size True if the attribute/dimension is var-sized, false
+   * otherwise
+   * @param nullable True if the attribute/dimension is nullable, false
+   * otherwise
    * @param range_thread_idx Current range thread index.
-   * @param name Attribute/dimension the tile belong to.
-   * @param tile Tile to be unfiltered.
+   * @param num_range_threads Total number of range threads.
    * @param tile_chunk_data Tile chunk info, buffers and offsets
-   * @param tile_validity Validity tile to be unfiltered.
+   * @param tile_var_chunk_data Value tile chunk info, buffers and offsets
    * @param tile_validity_chunk_data Validity tile chunk info, buffers and
    * offsets
    * @return Status
    */
-  Status unfilter_tile_nullable(
-      uint64_t num_range_threads,
-      uint64_t thread_idx,
+  Status unfilter_tile(
       const std::string& name,
-      Tile* tile,
+      ResultTile* const tile,
+      const bool var_size,
+      const bool nullable,
+      uint64_t range_thread_idx,
+      uint64_t num_range_threads,
       const ChunkData& tile_chunk_data,
-      Tile* tile_validity,
-      const ChunkData& tile_validity_chunk_data) const;
+      const ChunkData& tile_chunk_var_data,
+      const ChunkData& tile_chunk_validity_data) const;
 
   /**
-   * Runs the input var-sized tile for the input nullable attribute through
-   * the filter pipeline. The tile buffer is modified to contain the output of
-   * the pipeline.
+   * Computes the minimum and maximum indexes of tile chunks to process based on
+   * the available threads.
    *
+   * @param num_chunks Total number of chunks in a tile
    * @param num_range_threads Total number of range threads.
    * @param range_thread_idx Current range thread index.
-   * @param name Attribute/dimension the tile belong to.
-   * @param tile Offsets tile to be unfiltered.
-   * @param tile_chunk_data Offsets tile chunk info, buffers and offsets
-   * @param tile_var Value tile to be unfiltered.
-   * @param tile_var_chunk_data Value tile chunk info, buffers and offsets
-   * @param tile_validity Validity tile to be unfiltered.
-   * @param tile_validity_chunk_data Validity tile chunk info, buffers and
-   * offsets
-   * @return Status
+   * @return {min, max}
    */
-  Status unfilter_tile_nullable(
-      uint64_t num_range_threads,
-      uint64_t thread_idx,
-      const std::string& name,
-      Tile* tile,
-      const ChunkData& tile_chunk_data,
-      Tile* tile_var,
-      const ChunkData& tile_var_chunk_data,
-      Tile* tile_validity,
-      const ChunkData& tile_validity_chunk_data) const;
+  tuple<uint64_t, uint64_t> compute_chunk_min_max(
+      const uint64_t num_chunks,
+      const uint64_t num_range_threads,
+      const uint64_t thread_idx) const;
 
   /**
    * Returns the configured bytesize for var-sized attribute offsets
@@ -611,20 +559,6 @@ class ReaderBase : public StrategyBase {
   Status zip_tile_coordinates(const std::string& name, Tile* tile) const;
 
   /**
-   * Computes the minimum and maximum indexes of tile chunks to process based on
-   * the available threads.
-   *
-   * @param num_chunks Total number of chunks in a tile
-   * @param num_range_threads Total number of range threads.
-   * @param range_thread_idx Current range thread index.
-   * @return {min, max}
-   */
-  tuple<uint64_t, uint64_t> compute_chunk_min_max(
-      const uint64_t num_chunks,
-      const uint64_t num_range_threads,
-      const uint64_t thread_idx) const;
-
-  /**
    * Reads the chunk data of all tile buffers and stores them in a data
    * structure together with the offsets between them
    *
@@ -651,34 +585,6 @@ class ReaderBase : public StrategyBase {
       ChunkData& tile_chunk_data,
       ChunkData& tile_chunk_var_data,
       ChunkData& tile_chunk_validity_data) const;
-
-  /**
-   * Unfilter a specific range of chunks in tile
-   *
-   * @param name Attribute/dimension the tile belong to.
-   * @param tile Offsets tile to be unfiltered.
-   * @param var_size True if the attribute/dimension is var-sized, false
-   * otherwise
-   * @param nullable True if the attribute/dimension is nullable, false
-   * otherwise
-   * @param range_thread_idx Current range thread index.
-   * @param num_range_threads Total number of range threads.
-   * @param tile_chunk_data Tile chunk info, buffers and offsets
-   * @param tile_var_chunk_data Value tile chunk info, buffers and offsets
-   * @param tile_validity_chunk_data Validity tile chunk info, buffers and
-   * offsets
-   * @return Status
-   */
-  Status unfilter_tile(
-      const std::string& name,
-      ResultTile* const tile,
-      const bool var_size,
-      const bool nullable,
-      uint64_t range_thread_idx,
-      uint64_t num_range_threads,
-      const ChunkData& tile_chunk_data,
-      const ChunkData& tile_chunk_var_data,
-      const ChunkData& tile_chunk_validity_data) const;
 
   /**
    * Perform some necessary post-processing on a tile that was just unfiiltered

@@ -291,6 +291,9 @@ class URI {
   /** Returns the parent dir URI */
   URI parent_path() const;
 
+  /** Returns the backend name given by backend://my/path */
+  std::string backend_name() const;
+
   /** For comparing URIs alphanumerically. */
   bool operator==(const URI& uri) const;
 

@@ -139,6 +139,9 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   /** Resets the reader object. */
   void reset();
 
+  /** Returns the name of the strategy */
+  std::string name();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -193,11 +196,13 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const std::unordered_set<std::string>& condition_names,
       Subarray& subarray,
       uint64_t t_start,
-      std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles);
+      std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
+      ThreadPool::Task& compute_task);
 
   /** Apply the query condition. */
   template <class DimType, class OffType>
   Status apply_query_condition(
+      ThreadPool::Task& compute_task,
       Subarray& subarray,
       const uint64_t t_start,
       const uint64_t t_end,

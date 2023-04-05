@@ -113,17 +113,13 @@ const std::string Config::SM_QUERY_SPARSE_GLOBAL_ORDER_READER = "refactored";
 const std::string Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER =
     "refactored";
 const std::string Config::SM_MEM_MALLOC_TRIM = "true";
-const std::string Config::SM_UPPER_MEMORY_LIMIT = "2147483648";  // 2GB
+const std::string Config::SM_UPPER_MEMORY_LIMIT = "1073741824";  // 1GB
 const std::string Config::SM_MEM_TOTAL_BUDGET = "10737418240";   // 10GB
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS = "0.5";
-const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION =
-    "0.25";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES = "0.1";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA = "0.1";
 const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_COORDS =
     "0.5";
-const std::string
-    Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_QUERY_CONDITION = "0.25";
 const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_TILE_RANGES =
     "0.1";
 const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_ARRAY_DATA =
@@ -289,9 +285,6 @@ const std::map<std::string, std::string> default_config_values = {
         "sm.mem.reader.sparse_global_order.ratio_coords",
         Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS),
     std::make_pair(
-        "sm.mem.reader.sparse_global_order.ratio_query_condition",
-        Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION),
-    std::make_pair(
         "sm.mem.reader.sparse_global_order.ratio_tile_ranges",
         Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES),
     std::make_pair(
@@ -300,9 +293,6 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "sm.mem.reader.sparse_unordered_with_dups.ratio_coords",
         Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_COORDS),
-    std::make_pair(
-        "sm.mem.reader.sparse_unordered_with_dups.ratio_query_condition",
-        Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_QUERY_CONDITION),
     std::make_pair(
         "sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges",
         Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_TILE_RANGES),

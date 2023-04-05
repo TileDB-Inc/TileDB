@@ -96,6 +96,9 @@ class DeletesAndUpdates : public StrategyBase, public IQueryStrategy {
   /** Resets the delete object. */
   void reset();
 
+  /** Returns the name of the strategy */
+  std::string name();
+
  private:
   /* ********************************* */
   /*         PRIVATE  ATTRIBUTES       */

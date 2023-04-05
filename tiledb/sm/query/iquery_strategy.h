@@ -64,6 +64,9 @@ class IQueryStrategy {
 
   /** Resets the object */
   virtual void reset() = 0;
+
+  /** Returns the name of the strategy */
+  virtual std::string name() = 0;
 };
 
 }  // namespace sm

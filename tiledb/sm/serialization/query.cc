@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -67,6 +67,7 @@
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
 #include "tiledb/sm/query/readers/sparse_unordered_with_dups_reader.h"
 #include "tiledb/sm/query/writers/global_order_writer.h"
+#include "tiledb/sm/query/writers/unordered_writer.h"
 #include "tiledb/sm/query/writers/writer_base.h"
 #include "tiledb/sm/serialization/config.h"
 #include "tiledb/sm/serialization/fragment_metadata.h"
@@ -1274,8 +1275,8 @@ Status writer_to_capnp(
   }
 
   if (query.layout() == Layout::GLOBAL_ORDER) {
-    auto& globalwriter = dynamic_cast<GlobalOrderWriter&>(writer);
-    auto globalstate = globalwriter.get_global_state();
+    auto& global_writer = dynamic_cast<GlobalOrderWriter&>(writer);
+    auto globalstate = global_writer.get_global_state();
     // Remote global order writes have global_write_state equal to nullptr
     // before the first submit(). The state gets initialized when do_work() gets
     // invoked. Once GlobalOrderWriter becomes C41 compliant, we can delete this
@@ -1283,8 +1284,14 @@ Status writer_to_capnp(
     if (globalstate) {
       auto global_state_builder = writer_builder->initGlobalWriteStateV1();
       RETURN_NOT_OK(global_write_state_to_capnp(
-          query, globalwriter, &global_state_builder, client_side));
+          query, global_writer, &global_state_builder, client_side));
     }
+  } else if (query.layout() == Layout::UNORDERED) {
+    auto& unordered_writer = dynamic_cast<UnorderedWriter&>(writer);
+    auto unordered_writer_state_builder =
+        writer_builder->initUnorderedWriterState();
+    RETURN_NOT_OK(unordered_write_state_to_capnp(
+        query, unordered_writer, &unordered_writer_state_builder));
   }
 
   return Status::Ok();
@@ -1320,6 +1327,20 @@ Status writer_from_capnp(
     }
     RETURN_NOT_OK(global_write_state_from_capnp(
         query, writer_reader.getGlobalWriteStateV1(), global_writer, context));
+  } else if (query.layout() == Layout::UNORDERED) {
+    auto unordered_writer = dynamic_cast<UnorderedWriter*>(writer);
+
+    // Fragment metadata is not allocated when deserializing into a new Query
+    // object.
+    if (unordered_writer->frag_meta() == nullptr) {
+      RETURN_NOT_OK(unordered_writer->alloc_frag_meta());
+    }
+
+    RETURN_NOT_OK(unordered_write_state_from_capnp(
+        query,
+        writer_reader.getUnorderedWriterState(),
+        unordered_writer,
+        context));
   }
 
   return Status::Ok();
@@ -1359,7 +1380,8 @@ Status query_to_capnp(
   }
 
   // Serialize attribute buffer metadata
-  const auto buffer_names = query.buffer_names();
+  const auto buffer_names =
+      client_side ? query.unwritten_buffer_names() : query.buffer_names();
   auto attr_buffers_builder =
       query_builder->initAttributeBufferHeaders(buffer_names.size());
   uint64_t total_fixed_len_bytes = 0;
@@ -1512,6 +1534,15 @@ Status query_to_capnp(
     }
   }
 
+  auto& written_buffers = query.get_written_buffers();
+  if (!written_buffers.empty()) {
+    auto builder = query_builder->initWrittenBuffers(written_buffers.size());
+    int i = 0;
+    for (auto& written_buffer : written_buffers) {
+      builder.set(i++, written_buffer);
+    }
+  }
+
   return Status::Ok();
 }
 
@@ -1572,7 +1603,7 @@ Status query_from_capnp(
     auto config_reader = query_reader.getConfig();
     RETURN_NOT_OK(config_from_capnp(config_reader, &decoded_config));
     if (decoded_config != nullptr) {
-      RETURN_NOT_OK(query->set_config(*decoded_config));
+      query->unsafe_set_config(*decoded_config);
     }
   }
 
@@ -1924,19 +1955,19 @@ Status query_from_capnp(
         attr_state->validity_len_data.swap(validitylen_buff);
         if (var_size) {
           throw_if_not_ok(query->set_data_buffer(
-              name, nullptr, &attr_state->var_len_size, false));
+              name, nullptr, &attr_state->var_len_size, false, true));
           throw_if_not_ok(query->set_offsets_buffer(
-              name, nullptr, &attr_state->fixed_len_size, false));
+              name, nullptr, &attr_state->fixed_len_size, false, true));
           if (nullable) {
             throw_if_not_ok(query->set_validity_buffer(
-                name, nullptr, &attr_state->validity_len_size, false));
+                name, nullptr, &attr_state->validity_len_size, false, true));
           }
         } else {
           throw_if_not_ok(query->set_data_buffer(
-              name, nullptr, &attr_state->fixed_len_size, false));
+              name, nullptr, &attr_state->fixed_len_size, false, true));
           if (nullable) {
             throw_if_not_ok(query->set_validity_buffer(
-                name, nullptr, &attr_state->validity_len_size, false));
+                name, nullptr, &attr_state->validity_len_size, false, true));
           }
         }
       } else if (query_type == QueryType::WRITE) {
@@ -1964,12 +1995,12 @@ Status query_from_capnp(
           attr_state->validity_len_data.swap(validity_buff);
 
           throw_if_not_ok(query->set_data_buffer(
-              name, varlen_data, &attr_state->var_len_size));
+              name, varlen_data, &attr_state->var_len_size, true, true));
           throw_if_not_ok(query->set_offsets_buffer(
-              name, offsets, &attr_state->fixed_len_size));
+              name, offsets, &attr_state->fixed_len_size, true, true));
           if (nullable) {
             throw_if_not_ok(query->set_validity_buffer(
-                name, validity, &attr_state->validity_len_size));
+                name, validity, &attr_state->validity_len_size, true, true));
           }
         } else {
           auto* data = attribute_buffer_start;
@@ -1991,11 +2022,11 @@ Status query_from_capnp(
           attr_state->var_len_data.swap(varlen_buff);
           attr_state->validity_len_data.swap(validity_buff);
 
-          throw_if_not_ok(
-              query->set_data_buffer(name, data, &attr_state->fixed_len_size));
+          throw_if_not_ok(query->set_data_buffer(
+              name, data, &attr_state->fixed_len_size, true, true));
           if (nullable) {
             throw_if_not_ok(query->set_validity_buffer(
-                name, validity, &attr_state->validity_len_size));
+                name, validity, &attr_state->validity_len_size, true, true));
           }
         }
       } else {
@@ -2126,6 +2157,16 @@ Status query_from_capnp(
     }
   }
 
+  if (query_reader.hasWrittenBuffers()) {
+    auto& written_buffers = query->get_written_buffers();
+    written_buffers.clear();
+
+    auto written_buffer_list = query_reader.getWrittenBuffers();
+    for (auto written_buffer : written_buffer_list) {
+      written_buffers.emplace(written_buffer.cStr());
+    }
+  }
+
   return Status::Ok();
 }
 
@@ -2249,7 +2290,8 @@ Status query_serialize(
               Buffer data;
               Buffer var(buffer.buffer_var_, *buffer.buffer_var_size_);
 
-              // If we are not appending offsets we can use non-owning buffers.
+              // If we are not appending offsets we can use non-owning
+              // buffers.
               if (query_buffer_storage.has_value()) {
                 const auto& buffer_cache =
                     query_buffer_storage->get_query_buffer_cache(name);
@@ -2263,7 +2305,8 @@ Status query_serialize(
 
                 if (buffer_cache.buffer_.size() > 0) {
                   // Ensure ascending order for appended user offsets.
-                  // Copy user offsets so we don't modify buffer in client code.
+                  // Copy user offsets so we don't modify buffer in client
+                  // code.
                   throw_if_not_ok(
                       data.write(buffer.buffer_, *buffer.buffer_size_));
                   uint64_t var_buffer_size = buffer_cache.buffer_var_.size();
@@ -2655,10 +2698,10 @@ Status query_est_result_size_deserialize(
 
 Status global_write_state_to_capnp(
     const Query& query,
-    GlobalOrderWriter& globalwriter,
+    GlobalOrderWriter& global_writer,
     capnp::GlobalWriteState::Builder* state_builder,
     bool client_side) {
-  auto& write_state = *globalwriter.get_global_state();
+  auto& write_state = *global_writer.get_global_state();
 
   auto& cells_written = write_state.cells_written_;
   if (!cells_written.empty()) {
@@ -2713,7 +2756,7 @@ Status global_write_state_to_capnp(
 
   // Serialize the multipart upload state
   auto&& [st, multipart_states] =
-      globalwriter.multipart_upload_state(client_side);
+      global_writer.multipart_upload_state(client_side);
   RETURN_NOT_OK(st);
 
   if (!multipart_states.empty()) {
@@ -2861,6 +2904,75 @@ Status global_write_state_from_capnp(
             context == SerializationContext::CLIENT));
       }
     }
+  }
+
+  return Status::Ok();
+}
+
+Status unordered_write_state_to_capnp(
+    const Query& query,
+    UnorderedWriter& unordered_writer,
+    capnp::UnorderedWriterState::Builder* state_builder) {
+  state_builder->setIsCoordsPass(unordered_writer.is_coords_pass());
+
+  auto& cell_pos = unordered_writer.cell_pos();
+  if (!cell_pos.empty()) {
+    auto builder = state_builder->initCellPos(cell_pos.size());
+    int i = 0;
+    for (auto& pos : cell_pos) {
+      builder.set(i++, pos);
+    }
+  }
+
+  auto& coord_dups = unordered_writer.coord_dups();
+  if (!coord_dups.empty()) {
+    auto builder = state_builder->initCoordDups(coord_dups.size());
+    int i = 0;
+    for (auto& duplicate : coord_dups) {
+      builder.set(i++, duplicate);
+    }
+  }
+
+  auto frag_meta = unordered_writer.frag_meta();
+  if (frag_meta != nullptr) {
+    auto frag_meta_builder = state_builder->initFragMeta();
+    RETURN_NOT_OK(fragment_metadata_to_capnp(*frag_meta, &frag_meta_builder));
+  }
+
+  return Status::Ok();
+}
+
+Status unordered_write_state_from_capnp(
+    const Query& query,
+    const capnp::UnorderedWriterState::Reader& state_reader,
+    UnorderedWriter* unordered_writer,
+    SerializationContext context) {
+  unordered_writer->is_coords_pass() = state_reader.getIsCoordsPass();
+
+  if (state_reader.hasCellPos()) {
+    auto& cell_pos = unordered_writer->cell_pos();
+    cell_pos.clear();
+    auto cell_pos_list = state_reader.getCellPos();
+    cell_pos.reserve(cell_pos_list.size());
+    for (auto pos : cell_pos_list) {
+      cell_pos.emplace_back(pos);
+    }
+  }
+
+  if (state_reader.hasCoordDups()) {
+    auto& coord_dups = unordered_writer->coord_dups();
+    coord_dups.clear();
+    auto coord_dups_list = state_reader.getCoordDups();
+    for (auto duplicate : coord_dups_list) {
+      coord_dups.emplace(duplicate);
+    }
+  }
+
+  if (state_reader.hasFragMeta()) {
+    auto frag_meta = unordered_writer->frag_meta();
+    auto frag_meta_reader = state_reader.getFragMeta();
+    RETURN_NOT_OK(fragment_metadata_from_capnp(
+        query.array_schema_shared(), frag_meta_reader, frag_meta));
   }
 
   return Status::Ok();
