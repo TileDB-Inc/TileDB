@@ -49,22 +49,22 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class GroupDirectoryException : public StatusException {
+class GroupDirectoryStatusException : public StatusException {
  public:
-  explicit GroupDirectoryException(const std::string& message)
+  explicit GroupDirectoryStatusException(const std::string& message)
       : StatusException("GroupDirectory", message) {
   }
 };
-class GroupException : public StatusException {
+class GroupMemberStatusException : public StatusException {
  public:
-  explicit GroupException(const std::string& message)
-      : StatusException("Group", message) {
+  explicit GroupMemberStatusException(const std::string& message)
+      : StatusException("GroupMember", message) {
   }
 };
-class GroupMemberException : public StatusException {
+class GroupStatusException : public StatusException {
  public:
-  explicit GroupMemberException(const std::string& message)
-      : StatusException("GroupMember", message) {
+  explicit GroupStatusException(const std::string& message)
+      : StatusException("Group", message) {
   }
 };
 

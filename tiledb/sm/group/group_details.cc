@@ -114,7 +114,7 @@ void GroupDetails::mark_member_for_addition(
   throw_if_not_ok(
       storage_manager->object_type(absolute_group_member_uri, &type));
   if (type == ObjectType::INVALID) {
-    throw GroupException(
+    throw GroupStatusException(
         "Cannot add group member " + absolute_group_member_uri.to_string() +
         ", type is INVALID. The member likely does not exist.");
   }
@@ -164,7 +164,7 @@ void GroupDetails::mark_member_for_removal(const std::string& uri) {
           true);
       members_to_modify_.emplace_back(member_to_delete);
     } else {
-      throw GroupException(
+      throw GroupStatusException(
           "Cannot remove group member " + uri +
           ", member does not exist in group.");
     }
@@ -184,7 +184,7 @@ GroupDetails::members() const {
 }
 
 void GroupDetails::serialize(Serializer&) {
-  throw GroupException("Invalid call to Group::serialize");
+  throw GroupStatusException("Invalid call to Group::serialize");
 }
 
 shared_ptr<GroupDetails> GroupDetails::deserialize(
@@ -197,7 +197,8 @@ shared_ptr<GroupDetails> GroupDetails::deserialize(
     return GroupDetailsV2::deserialize(deserializer, group_uri);
   }
 
-  throw GroupException("Unsupported group version " + std::to_string(version));
+  throw GroupStatusException(
+      "Unsupported group version " + std::to_string(version));
 }
 
 shared_ptr<GroupDetails> GroupDetails::deserialize(
@@ -226,7 +227,7 @@ GroupDetails::member_by_index(uint64_t index) {
   std::lock_guard<std::mutex> lck(mtx_);
 
   if (index >= members_vec_.size()) {
-    throw GroupException(
+    throw GroupStatusException(
         "index " + std::to_string(index) + " is larger than member count " +
         std::to_string(members_vec_.size()));
   }
@@ -247,7 +248,7 @@ GroupDetails::member_by_name(const std::string& name) {
 
   auto it = members_by_name_.find(name);
   if (it == members_by_name_.end()) {
-    throw GroupException(name + " does not exist in group");
+    throw GroupStatusException(name + " does not exist in group");
   }
 
   auto member = it->second;
