@@ -34,6 +34,8 @@
 #define TILEDB_AZURE_H
 
 #ifdef HAVE_AZURE
+#include <azure/core/base64.hpp>
+
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
@@ -45,7 +47,6 @@
 #if !defined(NOMINMAX)
 #define NOMINMAX  // avoid min/max macros from windows headers
 #endif
-#include <azure/core/base64.hpp>
 #include <list>
 #include <unordered_map>
 

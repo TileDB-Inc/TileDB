@@ -38,6 +38,9 @@
 
 #include <future>
 
+#include <azure/core/diagnostics/logger.hpp>
+#include <azure/storage/blobs.hpp>
+
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/logger_public.h"
@@ -47,9 +50,6 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
-
-#include <azure/core/diagnostics/logger.hpp>
-#include <azure/storage/blobs.hpp>
 
 using namespace tiledb::common;
 using tiledb::common::filesystem::directory_entry;
