@@ -122,3 +122,17 @@ TEST_CASE(
   CHECK(wb_array_dir.timestamps_overlap(
       array_dir, std::pair<uint64_t, uint64_t>(2, 4), true));
 }
+
+TEST_CASE("Array directory: Vac file fix", "[array-directory][vac-file-fix]") {
+  CHECK(
+      ArrayDirectory::get_full_vac_uri(
+          "base/", "file://not/related/__fragments/test.vac") ==
+      "base/__fragments/test.vac");
+  CHECK(
+      ArrayDirectory::get_full_vac_uri(
+          "base/", "file://not/related/__meta/test.vac") ==
+      "base/__meta/test.vac");
+  CHECK(
+      ArrayDirectory::get_full_vac_uri(
+          "base/", "file://not/related/test.vac") == "base/test.vac");
+}

@@ -464,7 +464,11 @@ Status FragmentConsolidator::consolidate_internal(
   }
 
   // Write vacuum file
-  st = write_vacuum_file(vac_uri, to_consolidate);
+  st = write_vacuum_file(
+      array_for_reads->array_schema_latest().write_version(),
+      array_for_reads->array_uri(),
+      vac_uri,
+      to_consolidate);
   if (!st.ok()) {
     tdb_delete(query_r);
     tdb_delete(query_w);
@@ -950,11 +954,22 @@ Status FragmentConsolidator::set_config(const Config& config) {
 }
 
 Status FragmentConsolidator::write_vacuum_file(
+    const format_version_t write_version,
+    const URI& array_uri,
     const URI& vac_uri,
     const std::vector<TimestampedURI>& to_consolidate) const {
   std::stringstream ss;
-  for (const auto& timestampedURI : to_consolidate)
-    ss << timestampedURI.uri_.to_string() << "\n";
+  size_t base_uri_size = 0;
+
+  // Write vac files relative to the array URI. This was fixed for reads in
+  // version 19 so only do this for arrays starting with version 19.
+  if (write_version >= 19) {
+    base_uri_size = array_uri.to_string().size();
+  }
+
+  for (const auto& timestampedURI : to_consolidate) {
+    ss << timestampedURI.uri_.to_string().substr(base_uri_size) << "\n";
+  }
 
   auto data = ss.str();
   RETURN_NOT_OK(
