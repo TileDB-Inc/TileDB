@@ -82,6 +82,13 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+class StorageManagerStatusException : public StatusException {
+ public:
+  explicit StorageManagerStatusException(const std::string& message)
+      : StatusException("StorageManager", message) {
+  }
+};
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -433,7 +440,8 @@ void StorageManagerCanonical::write_consolidated_commits_file(
 
 void StorageManagerCanonical::delete_array(const char* array_name) {
   if (array_name == nullptr) {
-    throw std::invalid_argument("[delete_array] Array name cannot be null");
+    throw StorageManagerStatusException(
+        "[delete_array] Array name cannot be null");
   }
 
   // Delete fragments and commits
@@ -452,7 +460,8 @@ void StorageManagerCanonical::delete_array(const char* array_name) {
 void StorageManagerCanonical::delete_fragments(
     const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end) {
   if (array_name == nullptr) {
-    throw std::invalid_argument("[delete_fragments] Array name cannot be null");
+    throw StorageManagerStatusException(
+        "[delete_fragments] Array name cannot be null");
   }
 
   auto array_dir = ArrayDirectory(
@@ -494,7 +503,7 @@ void StorageManagerCanonical::delete_fragments(
 
 void StorageManagerCanonical::delete_group(const char* group_name) {
   if (group_name == nullptr) {
-    throw Status_StorageManagerError(
+    throw StorageManagerStatusException(
         "[delete_group] Group name cannot be null");
   }
 
@@ -1230,13 +1239,13 @@ void StorageManagerCanonical::group_create(const std::string& group_uri) {
   // Create group URI
   URI uri(group_uri);
   if (uri.is_invalid())
-    throw std::invalid_argument(
+    throw StorageManagerStatusException(
         "Cannot create group '" + group_uri + "'; Invalid group URI");
 
   // Check if group exists
   bool exists = is_group(uri);
   if (exists)
-    throw std::invalid_argument(
+    throw StorageManagerStatusException(
         std::string("Cannot create group; Group '") + uri.c_str() +
         "' already exists");
 
@@ -1390,7 +1399,7 @@ StorageManagerCanonical::load_delete_and_update_conditions(const Array& array) {
       conditions[i] = std::move(cond);
       update_values[i] = std::move(uvs);
     } else {
-      throw Status_StorageManagerError("Unknown condition marker extension");
+      throw StorageManagerStatusException("Unknown condition marker extension");
     }
 
     throw_if_not_ok(conditions[i].check(array.array_schema_latest()));
@@ -2002,16 +2011,16 @@ void StorageManagerCanonical::group_metadata_consolidate(
   // Check group URI
   URI group_uri(group_name);
   if (group_uri.is_invalid()) {
-    throw std::invalid_argument(
-        "Cannot consolidate group metadata; Invalid URI");
+    throw_if_not_ok(Status_StorageManagerError(
+        "Cannot consolidate group metadata; Invalid URI"));
   }
   // Check if group exists
   ObjectType obj_type;
   throw_if_not_ok(object_type(group_uri, &obj_type));
 
   if (obj_type != ObjectType::GROUP) {
-    throw std::invalid_argument(
-        "Cannot consolidate group metadata; Group does not exist");
+    throw_if_not_ok(Status_StorageManagerError(
+        "Cannot consolidate group metadata; Group does not exist"));
   }
 
   // Consolidate
@@ -2027,7 +2036,7 @@ void StorageManagerCanonical::group_metadata_vacuum(
   // Check group URI
   URI group_uri(group_name);
   if (group_uri.is_invalid()) {
-    throw Status_StorageManagerError(
+    throw StorageManagerStatusException(
         "Cannot vacuum group metadata; Invalid URI");
   }
 
@@ -2036,7 +2045,7 @@ void StorageManagerCanonical::group_metadata_vacuum(
   throw_if_not_ok(object_type(group_uri, &obj_type));
 
   if (obj_type != ObjectType::GROUP) {
-    throw Status_StorageManagerError(
+    throw StorageManagerStatusException(
         "Cannot vacuum group metadata; Group does not exist");
   }
 
