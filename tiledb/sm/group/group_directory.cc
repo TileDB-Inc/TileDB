@@ -108,7 +108,8 @@ GroupDirectory::GroupDirectory(
   }
 
   if (!is_group) {
-    throw GroupDirectoryStatusException("Cannot open group; Group does not exist.");
+    throw GroupDirectoryStatusException(
+        "Cannot open group; Group does not exist.");
   }
 }
 
