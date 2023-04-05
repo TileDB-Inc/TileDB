@@ -44,26 +44,6 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-class AutoCloseGroup {
- public:
-  template <class... OpenArgs>
-  AutoCloseGroup(const URI& uri, StorageManager* sm, OpenArgs... open_args)
-      : group_(uri, sm) {
-    group_.open(std::forward<OpenArgs>(open_args)...);
-  };
-
-  ~AutoCloseGroup() {
-    group_.close();
-  }
-
-  inline Group* operator->() {
-    return &group_;
-  }
-
- private:
-  Group group_;
-};
-
 /* ****************************** */
 /*          CONSTRUCTOR           */
 /* ****************************** */

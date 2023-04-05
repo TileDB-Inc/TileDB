@@ -285,7 +285,7 @@ QueryType Group::query_type_checked() const {
   return query_type_;
 }
 
-void Group::delete_group(const URI& uri, bool recursive) {
+void Group::delete_group(const URI& uri, bool recursive, bool close) {
   // Check that group is open
   if (!is_open_) {
     throw GroupStatusException("[delete_group] Group is not open");
@@ -309,9 +309,9 @@ void Group::delete_group(const URI& uri, bool recursive) {
       if (member->type() == ObjectType::ARRAY) {
         storage_manager_->delete_array(member_uri.to_string().c_str());
       } else if (member->type() == ObjectType::GROUP) {
-        Group group_rec(member_uri, storage_manager_);
-        group_rec.open(QueryType::MODIFY_EXCLUSIVE);
-        group_rec.delete_group(member_uri, true);
+        AutoCloseGroup(
+            member_uri, storage_manager_, QueryType::MODIFY_EXCLUSIVE)
+            ->delete_group(member_uri, true, false);
       }
     }
   }
@@ -328,7 +328,9 @@ void Group::delete_group(const URI& uri, bool recursive) {
   }
 
   // Close the deleted group
-  this->close();
+  if (close) {
+    this->close();
+  }
 }
 
 void Group::delete_metadata(const char* key) {

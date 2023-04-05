@@ -98,8 +98,9 @@ class Group {
    *
    * @param uri The address of the group to be deleted.
    * @param recursive True if all data inside the group is to be deleted.
+   * @param close True if the group should also be closed after deletion.
    */
-  void delete_group(const URI& uri, bool recursive = false);
+  void delete_group(const URI& uri, bool recursive = false, bool close = true);
 
   /**
    * Deletes metadata from an group opened in WRITE mode.
@@ -454,6 +455,39 @@ class Group {
    */
   std::string generate_name() const;
 };
+
+/**
+ * Automatically opens and closes a Group.
+ */
+class AutoCloseGroup {
+ public:
+  /**
+   * Constructor.
+   * @param uri The group's URI.
+   * @param sm The group's associated StorageManager.
+   * @param open_args Additional arguments to be passed in Group::open.
+   */
+  template <class... OpenArgs>
+  AutoCloseGroup(const URI& uri, StorageManager* sm, OpenArgs... open_args)
+      : group_(uri, sm) {
+    group_.open(std::forward<OpenArgs>(open_args)...);
+  };
+
+  ~AutoCloseGroup() {
+    group_.close();
+  }
+
+  /**
+   * Provides access to the underlying Group object.
+   */
+  inline Group* operator->() {
+    return &group_;
+  }
+
+ private:
+  Group group_;
+};
+
 }  // namespace sm
 }  // namespace tiledb
 
