@@ -70,12 +70,12 @@ int main() {
   // corrupted double-linked list
   // double free or corruption (!prev)
   // corrupted size vs. prev_size while consolidating
-//  uint64_t buffer_size = 1024 * 1024 * 87;
+  //  uint64_t buffer_size = 1024 * 1024 * 87;
   // 91226112 / 8 = 11403264; Not large enough for (11416289) offsets
 
   // Completes normally
   uint64_t buffer_size = 1024 * 1024 * 88;
-//   92274688 / 8 = 11534336; Large enough for all data
+  //   92274688 / 8 = 11534336; Large enough for all data
 
   // Dimensions
   std::string contig_data(buffer_size, '0');
@@ -91,7 +91,7 @@ int main() {
   std::string alleles_data(buffer_size, '0');
 
   std::vector<uint64_t> alleles_offsets(11403264);
-//  std::vector<uint64_t> alleles_offsets(buffer_size / sizeof(uint64_t));
+  //  std::vector<uint64_t> alleles_offsets(buffer_size / sizeof(uint64_t));
 
   // I have not ran into issues with fixed-size data members.
   std::vector<int32_t> ac_data(buffer_size / sizeof(int32_t));
@@ -108,17 +108,17 @@ int main() {
   subarray.add_range("pos", (uint32_t)60678739, (uint32_t)60868027);
   query.set_subarray(subarray);
 
-//  for (const auto& name : {"pos", "contig", "ac", "allele"}) {
-//    if (!strcmp(name, "contig") || !strcmp(name, "allele")) {
-//      auto est = query.est_result_size_var(name);
-//      std::cout << "Estimated var-sized result for '" << name << "': " <<
-//          est[0]
-//                << ", " << est[1] << std::endl;
-//    } else {
-//      std::cout << "Estimated result size for '" << name
-//                << "': " << query.est_result_size(name) << std::endl;
-//    }
-//  }
+  //  for (const auto& name : {"pos", "contig", "ac", "allele"}) {
+  //    if (!strcmp(name, "contig") || !strcmp(name, "allele")) {
+  //      auto est = query.est_result_size_var(name);
+  //      std::cout << "Estimated var-sized result for '" << name << "': " <<
+  //          est[0]
+  //                << ", " << est[1] << std::endl;
+  //    } else {
+  //      std::cout << "Estimated result size for '" << name
+  //                << "': " << query.est_result_size(name) << std::endl;
+  //    }
+  //  }
 
   auto st = query.submit();
   if (st != Query::Status::COMPLETE) {

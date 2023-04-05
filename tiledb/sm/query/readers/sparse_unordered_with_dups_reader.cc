@@ -1469,7 +1469,8 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_fixed_results_to_copy(
     cell_offsets.emplace_back(cell_offset);
 
     uint64_t num = max_num_cells - cell_offset;
-    auto rt = (ResultTileWithBitmap<BitmapType>*)result_tiles[cell_offsets.size() - 1];
+    auto rt = (ResultTileWithBitmap<BitmapType>*)
+        result_tiles[cell_offsets.size() - 1];
     uint64_t pos = rt->pos_with_given_result_sum(0, num);
     uint64_t max = rt->result_num_between_pos(0, pos + 1);
 
