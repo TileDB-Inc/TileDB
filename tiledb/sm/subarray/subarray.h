@@ -1270,8 +1270,7 @@ class Subarray {
     /**
      * Constructor
      *
-     * @param ref Dimension label reference to the label this will contain
-     * ranges for.
+     * @param ref Dimension label the ranges will be set on.
      * @param coalesce_ranges Set if ranges should be combined when adjacent.
      */
     LabelRangeSubset(const DimensionLabel& ref, bool coalesce_ranges = true);
@@ -1279,8 +1278,8 @@ class Subarray {
     /**
      * Constructor
      *
-     * @param ref Dimension label reference to the label this will contain
-     * ranges for.
+     * @param name The name of the dimension label the ranges will be set on.
+     * @param type The type of the label the ranges will be set on.
      * @param coalesce_ranges Set if ranges should be combined when adjacent.
      */
     LabelRangeSubset(
