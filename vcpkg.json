@@ -4,8 +4,8 @@
     "builtin-baseline": "f14984af3738e69f197bf0e647a8dca12de92996",
     "dependencies": [
         "bzip2",
+        "file-windows",
         "liblzma",
-        "libmagic",
         "lz4",
         {
             "name": "openssl",
