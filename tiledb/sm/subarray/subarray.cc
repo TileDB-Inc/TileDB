@@ -184,11 +184,11 @@ void Subarray::add_label_range(
   if (label_range_subset_[dim_idx].has_value()) {
     // A label range has already been set on this dimension. Do the following:
     //  * Check this label is the same label that rangers were already set.
-    if (dim_label_ref.name() != label_range_subset_[dim_idx].value().name) {
+    if (dim_label_ref.name() != label_range_subset_[dim_idx].value().name_) {
       throw SubarrayStatusException(
           "[add_label_range] Dimension is already to set to use "
           "dimension label '" +
-          label_range_subset_[dim_idx].value().name + "'");
+          label_range_subset_[dim_idx].value().name_ + "'");
     }
   } else {
     // A label range has not yet been set on this dimension. Do the following:
@@ -597,7 +597,7 @@ void Subarray::get_label_range(
                      .dimension_label(label_name)
                      .dimension_index();
   if (!label_range_subset_[dim_idx].has_value() ||
-      label_range_subset_[dim_idx].value().name != label_name) {
+      label_range_subset_[dim_idx].value().name_ != label_name) {
     throw SubarrayStatusException(
         "[get_label_range] No ranges set on dimension label '" + label_name +
         "'");
@@ -628,7 +628,7 @@ void Subarray::get_label_range_var(
                      .dimension_label(label_name)
                      .dimension_index();
   if (!label_range_subset_[dim_idx].has_value() ||
-      label_range_subset_[dim_idx].value().name != label_name) {
+      label_range_subset_[dim_idx].value().name_ != label_name) {
     throw SubarrayStatusException(
         "[get_label_range_var] No ranges set on dimension label '" +
         label_name + "'");
@@ -647,7 +647,7 @@ void Subarray::get_label_range_var_size(
                      .dimension_label(label_name)
                      .dimension_index();
   if (!label_range_subset_[dim_idx].has_value() ||
-      label_range_subset_[dim_idx].value().name != label_name) {
+      label_range_subset_[dim_idx].value().name_ != label_name) {
     throw SubarrayStatusException(
         "[get_label_range_var_size] No ranges set on dimension label '" +
         label_name + "'");
@@ -1747,7 +1747,7 @@ const std::vector<Range>& Subarray::ranges_for_label(
                      .dimension_label(label_name)
                      .dimension_index();
   if (!label_range_subset_[dim_idx].has_value() ||
-      label_range_subset_[dim_idx].value().name != label_name) {
+      label_range_subset_[dim_idx].value().name_ != label_name) {
     throw SubarrayStatusException(
         "[ranges_for_label] No ranges set on dimension label '" + label_name +
         "'");
