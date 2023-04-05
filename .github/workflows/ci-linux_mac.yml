@@ -117,6 +117,9 @@ jobs:
         run: |
           set -e pipefail
 
+          # Show CMake Version
+          cmake --version
+
           #####################################################
           # We want to run bootstrap in an isolated step in order to
           # cache vcpkg deps across runs if the libtiledb build fails.
