@@ -63,7 +63,7 @@ shared_ptr<GroupDetails> GroupDetailsV1::deserialize(
 
   uint64_t member_count = deserializer.read<uint64_t>();
   for (uint64_t i = 0; i < member_count; i++) {
-    auto&& member = GroupMember::deserialize(deserializer);
+    auto member = GroupMember::deserialize(deserializer);
     group->add_member(member);
   }
 
