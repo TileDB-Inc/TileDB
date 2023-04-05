@@ -203,6 +203,8 @@ Status FilterPipeline::filter_chunks_forward(
   std::vector<std::pair<FilterBufferPair, FilterBufferPair>> final_stage_io(
       nchunks);
 
+  auto graph_width = compute_tp->concurrency_level();
+
   // Run each chunk through the entire pipeline.
   auto status = parallel_for(compute_tp, 0, nchunks, [&](uint64_t i) {
     // TODO(ttd): can we instead allocate one FilterStorage per thread?
