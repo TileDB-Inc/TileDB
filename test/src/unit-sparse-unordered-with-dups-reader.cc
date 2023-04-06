@@ -481,19 +481,6 @@ struct CSparseUnorderedWithDupsVarDataFx {
   tuple<tiledb_array_t*, std::vector<shared_ptr<FragmentMetadata>>>
   open_default_array_1d_with_fragments(uint64_t capacity = 5);
 
-  void compute_var_size_offsets_test(
-      uint64_t var_buffer_size,
-      std::vector<std::vector<uint64_t>>& bitmaps,
-      uint64_t capacity,
-      uint64_t num_tiles,
-      uint64_t first_tile_min_pos,
-      std::vector<uint64_t>& offsets_buffer,
-      std::vector<uint64_t>& cell_offsets,
-      bool expected_buffers_full,
-      std::vector<uint64_t>& expected_cell_offsets,
-      uint64_t expected_result_tiles_size,
-      uint64_t expected_var_buffer_size);
-
   CSparseUnorderedWithDupsVarDataFx();
   ~CSparseUnorderedWithDupsVarDataFx();
 };
@@ -710,68 +697,6 @@ CSparseUnorderedWithDupsVarDataFx::open_default_array_1d_with_fragments(
   fragments.emplace_back(std::move(fragment));
 
   return {array, std::move(fragments)};
-}
-
-void CSparseUnorderedWithDupsVarDataFx::compute_var_size_offsets_test(
-    uint64_t var_buffer_size,
-    std::vector<std::vector<uint64_t>>& bitmaps,
-    uint64_t capacity,
-    uint64_t num_tiles,
-    uint64_t first_tile_min_pos,
-    std::vector<uint64_t>& offsets_buffer,
-    std::vector<uint64_t>& cell_offsets,
-    bool expected_buffers_full,
-    std::vector<uint64_t>& expected_cell_offsets,
-    uint64_t expected_result_tiles_size,
-    uint64_t expected_var_buffer_size) {
-  auto&& [array, fragments] = open_default_array_1d_with_fragments(capacity);
-
-  // Make a vector of tiles.
-  std::vector<UnorderedWithDupsResultTile<uint64_t>> rt;
-  for (uint64_t t = 0; t < num_tiles; t++) {
-    rt.emplace_back(0, t, *fragments[0]);
-
-    // Allocate and set the bitmap if required.
-    if (bitmaps[t].size() > 0) {
-      rt.back().bitmap() = bitmaps[t];
-    }
-  }
-
-  // Create the result_tiles pointer vector.
-  std::vector<ResultTile*> result_tiles(rt.size());
-  for (uint64_t i = 0; i < rt.size(); i++) {
-    result_tiles[i] = &rt[i];
-  }
-
-  // Create a Query buffer.
-  tiledb::sm::QueryBuffer query_buffer;
-  uint64_t offsets_size = offsets_buffer.size() * sizeof(uint64_t);
-  query_buffer.buffer_ = offsets_buffer.data();
-  query_buffer.buffer_size_ = &offsets_size;
-  query_buffer.original_buffer_size_ = offsets_size;
-  uint64_t buffer_var_size = 0;
-  query_buffer.buffer_var_size_ = &buffer_var_size;
-  query_buffer.original_buffer_var_size_ = var_buffer_size;
-
-  // Call the function.
-  auto&& [buffers_full, var_buffer_size_ret, result_tiles_size] =
-      SparseUnorderedWithDupsReader<uint64_t>::compute_var_size_offsets<
-          uint64_t>(
-          &tiledb::test::g_helper_stats,
-          result_tiles,
-          first_tile_min_pos,
-          cell_offsets,
-          query_buffer);
-
-  // Validate results.
-  CHECK(expected_buffers_full == buffers_full);
-  CHECK(expected_cell_offsets == cell_offsets);
-  CHECK(expected_result_tiles_size == result_tiles_size);
-  CHECK(expected_var_buffer_size == var_buffer_size_ret);
-
-  // Clean up.
-  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
-  tiledb_array_free(&array);
 }
 
 /* ********************************* */
@@ -1518,18 +1443,55 @@ TEST_CASE_METHOD(
     expected_var_buffer_size = 14;
   }
 
-  compute_var_size_offsets_test(
-      var_buffer_size,
-      bitmaps,
-      capacity,
-      num_tiles,
-      first_tile_min_pos,
-      offsets_buffer,
-      cell_offsets,
-      expected_buffers_full,
-      expected_cell_offsets,
-      expected_result_tiles_size,
-      expected_var_buffer_size);
+  auto&& [array, fragments] = open_default_array_1d_with_fragments(capacity);
+
+  // Make a vector of tiles.
+  std::vector<UnorderedWithDupsResultTile<uint64_t>> rt;
+  for (uint64_t t = 0; t < num_tiles; t++) {
+    rt.emplace_back(0, t, *fragments[0]);
+
+    // Allocate and set the bitmap if required.
+    if (bitmaps[t].size() > 0) {
+      rt.back().bitmap() = bitmaps[t];
+      rt.back().count_cells();
+    }
+  }
+
+  // Create the result_tiles pointer vector.
+  std::vector<ResultTile*> result_tiles(rt.size());
+  for (uint64_t i = 0; i < rt.size(); i++) {
+    result_tiles[i] = &rt[i];
+  }
+
+  // Create a Query buffer.
+  tiledb::sm::QueryBuffer query_buffer;
+  uint64_t offsets_size = offsets_buffer.size() * sizeof(uint64_t);
+  query_buffer.buffer_ = offsets_buffer.data();
+  query_buffer.buffer_size_ = &offsets_size;
+  query_buffer.original_buffer_size_ = offsets_size;
+  uint64_t buffer_var_size = 0;
+  query_buffer.buffer_var_size_ = &buffer_var_size;
+  query_buffer.original_buffer_var_size_ = var_buffer_size;
+
+  // Call the function.
+  auto&& [buffers_full, var_buffer_size_ret, result_tiles_size] =
+      SparseUnorderedWithDupsReader<uint64_t>::compute_var_size_offsets<
+          uint64_t>(
+          &tiledb::test::g_helper_stats,
+          result_tiles,
+          first_tile_min_pos,
+          cell_offsets,
+          query_buffer);
+
+  // Validate results.
+  CHECK(expected_buffers_full == buffers_full);
+  CHECK(expected_cell_offsets == cell_offsets);
+  CHECK(expected_result_tiles_size == result_tiles_size);
+  CHECK(expected_var_buffer_size == var_buffer_size_ret);
+
+  // Clean up.
+  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
+  tiledb_array_free(&array);
 }
 
 TEST_CASE_METHOD(
@@ -1560,4 +1522,170 @@ TEST_CASE_METHOD(
       data_offsets_r,
       &data_offsets_r_size);
   CHECK(rc == TILEDB_OK);
+}
+
+TEST_CASE_METHOD(
+    CSparseUnorderedWithDupsVarDataFx,
+    "Sparse unordered with dups reader: test "
+    "compute_fixed_result_tiles_to_copy",
+    "[sparse-unordered-with-dups][compute_fixed_result_tiles_to_copy]") {
+  std::vector<std::vector<uint64_t>> bitmaps;
+  uint64_t capacity = 0;
+  uint64_t num_tiles = 0;
+  uint64_t max_num_cells = 0;
+  uint64_t initial_cell_offset = 0;
+  uint64_t first_tile_min_pos = 0;
+  bool expected_buffers_full = false;
+  std::vector<uint64_t> expected_cell_offsets;
+  uint64_t expected_result_tiles_size = 0;
+
+  SECTION("Basic all") {
+    SECTION("- No bitmap") {
+      bitmaps = {{}};
+    }
+
+    SECTION("- With bitmap") {
+      bitmaps = {{1, 1, 1, 1, 1}};
+    }
+
+    capacity = 5;
+    num_tiles = 1;
+    max_num_cells = 10;
+    initial_cell_offset = 0;
+    first_tile_min_pos = 0;
+    expected_buffers_full = false;
+    expected_cell_offsets = {0, 5};
+    expected_result_tiles_size = 1;
+  }
+
+  SECTION("Basic full") {
+    SECTION("- No bitmap") {
+      bitmaps = {{}};
+    }
+
+    SECTION("- With bitmap") {
+      bitmaps = {{1, 1, 1, 1, 1}};
+    }
+
+    capacity = 5;
+    num_tiles = 1;
+    max_num_cells = 3;
+    initial_cell_offset = 0;
+    first_tile_min_pos = 0;
+    expected_buffers_full = true;
+    expected_cell_offsets = {0, 3};
+    expected_result_tiles_size = 1;
+  }
+
+  SECTION("Basic last cell") {
+    SECTION("- No bitmap") {
+      bitmaps = {{}};
+    }
+
+    SECTION("- With bitmap") {
+      bitmaps = {{1, 1, 1, 1, 1}};
+    }
+
+    capacity = 5;
+    num_tiles = 1;
+    max_num_cells = 5;
+    initial_cell_offset = 0;
+    first_tile_min_pos = 0;
+    expected_buffers_full = true;
+    expected_cell_offsets = {0, 5};
+    expected_result_tiles_size = 1;
+  }
+
+  SECTION("Basic last cell, initial cell offset") {
+    SECTION("- No bitmap") {
+      bitmaps = {{}};
+    }
+
+    SECTION("- With bitmap") {
+      bitmaps = {{1, 1, 1, 1, 1}};
+    }
+
+    capacity = 5;
+    num_tiles = 1;
+    max_num_cells = 7;
+    initial_cell_offset = 2;
+    first_tile_min_pos = 0;
+    expected_buffers_full = true;
+    expected_cell_offsets = {2, 7};
+    expected_result_tiles_size = 1;
+  }
+
+  SECTION("Last cell with count doesn't fit") {
+    bitmaps = {{1, 1, 1, 1, 2}};
+    capacity = 5;
+    num_tiles = 1;
+    max_num_cells = 5;
+    initial_cell_offset = 0;
+    first_tile_min_pos = 0;
+    expected_buffers_full = true;
+    expected_cell_offsets = {0, 4};
+    expected_result_tiles_size = 1;
+  }
+
+  SECTION("First cell with count doesn't fit") {
+    bitmaps = {{1, 1, 1, 1, 1}, {2, 1, 1, 1, 1}};
+    capacity = 5;
+    num_tiles = 2;
+    max_num_cells = 6;
+    initial_cell_offset = 0;
+    first_tile_min_pos = 0;
+    expected_buffers_full = true;
+    expected_cell_offsets = {0, 5};
+    expected_result_tiles_size = 1;
+  }
+
+  SECTION("Resume, last cell with count doesn't fit") {
+    bitmaps = {{1, 1, 1, 1, 2}};
+    capacity = 5;
+    num_tiles = 1;
+    max_num_cells = 3;
+    initial_cell_offset = 0;
+    first_tile_min_pos = 2;
+    expected_buffers_full = true;
+    expected_cell_offsets = {0, 2};
+    expected_result_tiles_size = 1;
+  }
+
+  auto&& [array, fragments] = open_default_array_1d_with_fragments(capacity);
+
+  // Make a vector of tiles.
+  std::vector<UnorderedWithDupsResultTile<uint64_t>> rt;
+  for (uint64_t t = 0; t < num_tiles; t++) {
+    rt.emplace_back(0, t, *fragments[0]);
+
+    // Allocate and set the bitmap if required.
+    if (bitmaps[t].size() > 0) {
+      rt.back().bitmap() = bitmaps[t];
+      rt.back().count_cells();
+    }
+  }
+
+  // Create the result_tiles pointer vector.
+  std::vector<ResultTile*> result_tiles(rt.size());
+  for (uint64_t i = 0; i < rt.size(); i++) {
+    result_tiles[i] = &rt[i];
+  }
+
+  // Call the function.
+  auto&& [buffers_full, cell_offsets] =
+      SparseUnorderedWithDupsReader<uint64_t>::
+          compute_fixed_result_tiles_to_copy(
+              max_num_cells,
+              initial_cell_offset,
+              first_tile_min_pos,
+              result_tiles);
+
+  // Validate results.
+  CHECK(expected_buffers_full == buffers_full);
+  CHECK(expected_cell_offsets == cell_offsets);
+  CHECK(expected_result_tiles_size == result_tiles.size());
+
+  // Clean up.
+  REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
+  tiledb_array_free(&array);
 }
