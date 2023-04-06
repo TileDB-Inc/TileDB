@@ -47,27 +47,20 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-Status Win32CNG::get_random_bytes(unsigned num_bytes, Buffer* output) {
-  if (output->free_space() < num_bytes)
-    RETURN_NOT_OK(output->realloc(output->alloced_size() + num_bytes));
-
+Status Win32CNG::get_random_bytes(unsigned char* output, unsigned num_bytes) {
   BCRYPT_ALG_HANDLE alg_handle;
   if (!NT_SUCCESS(BCryptOpenAlgorithmProvider(
           &alg_handle, BCRYPT_RNG_ALGORITHM, nullptr, 0)))
     return Status_EncryptionError(
         "Win32CNG error; generating random bytes: error opening algorithm.");
 
-  if (!NT_SUCCESS(BCryptGenRandom(
-          alg_handle, (unsigned char*)output->cur_data(), num_bytes, 0))) {
+  if (!NT_SUCCESS(BCryptGenRandom(alg_handle, output, num_bytes, 0))) {
     BCryptCloseAlgorithmProvider(alg_handle, 0);
     return Status_EncryptionError(
         "Win32CNG error; generating random bytes: error generating bytes.");
   }
 
   BCryptCloseAlgorithmProvider(alg_handle, 0);
-
-  output->advance_size(num_bytes);
-  output->advance_offset(num_bytes);
 
   return Status::Ok();
 }
@@ -87,11 +80,12 @@ Status Win32CNG::encrypt_aes256gcm(
   // Generate IV if the given IV buffer is null.
   ULONG iv_len;
   unsigned char* iv_buf;
-  Buffer generated_iv;
+  std::array<unsigned char, Crypto::AES256GCM_IV_BYTES> generated_iv;
   if (iv == nullptr || iv->data() == nullptr) {
-    RETURN_NOT_OK(get_random_bytes(Crypto::AES256GCM_IV_BYTES, &generated_iv));
+    RETURN_NOT_OK(get_random_bytes(
+        generated_iv.data(), static_cast<unsigned>(generated_iv.size())));
     iv_len = (ULONG)generated_iv.size();
-    iv_buf = (unsigned char*)generated_iv.data();
+    iv_buf = generated_iv.data();
   } else {
     iv_len = (ULONG)iv->size();
     iv_buf = (unsigned char*)iv->data();

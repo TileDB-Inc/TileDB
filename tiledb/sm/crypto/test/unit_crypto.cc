@@ -52,15 +52,10 @@ using PlatformCrypto = OpenSSL;
 // is not the same. The probability of having the same content is vanishingly
 // small.
 TEST_CASE("Crypto: Test Random Number Generator", "[crypto][random]") {
-  const int size = 64;
-  Buffer buf1{size}, buf2{size};
-  std::memset(buf1.data(), 0, buf1.alloced_size());
-  std::memset(buf2.data(), 0, buf2.alloced_size());
-  CHECK(PlatformCrypto::get_random_bytes(size, &buf1).ok());
-  CHECK(PlatformCrypto::get_random_bytes(size, &buf2).ok());
-  CHECK(buf1.size() == size);
-  CHECK(buf2.size() == size);
-  CHECK(std::memcmp(buf1.data(), buf2.data(), size) != 0);
+  std::array<unsigned char, 64> buf1 = {}, buf2 = {};
+  CHECK(PlatformCrypto::get_random_bytes(buf1.data(), static_cast<unsigned>(buf1.size())).ok());
+  CHECK(PlatformCrypto::get_random_bytes(buf2.data(), static_cast<unsigned>(buf2.size())).ok());
+  CHECK(buf1 != buf2);
 }
 
 TEST_CASE("Crypto: Test AES-256-GCM", "[crypto][aes]") {

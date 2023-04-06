@@ -111,11 +111,11 @@ class OpenSSL {
   /**
    * Generates a number of cryptographically random bytes.
    *
+   * @param output Pointer to buffer to store random bytes.
    * @param num_bytes Number of bytes to generate.
-   * @param output Buffer to store random bytes.
    * @return Status
    */
-  static Status get_random_bytes(unsigned num_bytes, Buffer* output);
+  static Status get_random_bytes(unsigned char* output, unsigned num_bytes);
 };
 
 }  // namespace sm
