@@ -29,6 +29,23 @@
  * @section DESCRIPTION
  *
  * Tests the `Crypto` class
+ *
+ * @section Test plan
+ *
+ * The random number generator is tested by generating two 64-byte buffers with
+ * cryptographically random data and checking that their content is not the
+ * same. The probability of having the same content is vanishingly small.
+ * 
+ * TODO: add documentation for the AES-GCM tests.
+ *
+ * The hash algorithms are tested using official test vectors:
+ *
+ * MD5 test vectors are taken from RFC 1321's section A.5
+ * (https://www.ietf.org/rfc/rfc1321.txt)
+ *
+ * SHA-256 test vectors were taken from SHA256ShortMsg.rsp, from "SHA Test
+ * Vectors for Hashing Bit-Oriented Messages"
+ * (https://csrc.nist.gov/Projects/cryptographic-algorithm-validation-program/Secure-Hashing)
  */
 
 #include "tiledb/sm/buffer/buffer.h"
@@ -40,9 +57,6 @@
 
 using namespace tiledb::sm;
 
-// We fill two 64-byte buffers with random data and check that their content
-// is not the same. The probability of having the same content is vanishingly
-// small.
 TEST_CASE("Crypto: Test Random Number Generator", "[crypto][random]") {
   std::array<unsigned char, 64> buf1 = {}, buf2 = {};
   CHECK(
@@ -525,12 +539,14 @@ static std::string to_hex(const uint8_t* data, uint64_t length) {
   return ss.str();
 }
 
-// Test that the given input (optionally in hex) has the expected hash value in
-// hex. The function is generic over the hash and the input type.
+/**
+ * Test that the given input (optionally in hex) has the expected hash value in
+ * hex. The function is generic over the hash and the input size.
+ */
 template <Status Hash(const void*, uint64_t, Buffer*), int Digest_Bytes>
-static void test_hash(
-    const std::string& input, const std::string& expected_hash, bool hex) {
-  REQUIRE(expected_hash.length() == Digest_Bytes * 2);
+static void test_expected_hash_value(
+    const std::string& input, const std::string& expected_value, bool hex) {
+  REQUIRE(expected_value.length() == Digest_Bytes * 2);
 
   const std::string& processed_input = hex ? from_hex(input) : input;
 
@@ -541,13 +557,12 @@ static void test_hash(
   // Compare the strings for a better error message in case of failure.
   CHECK(
       to_hex((uint8_t*)hash_buf.data(), hash_buf.alloced_size()) ==
-      expected_hash);
+      expected_value);
 }
 
 TEST_CASE("Crypto: Test MD5", "[crypto][md5]") {
-  auto test_md5 = test_hash<Crypto::md5, Crypto::MD5_DIGEST_BYTES>;
-  // Values taken from section A.5 in https://www.ietf.org/rfc/rfc1321.txt
-  std::vector<std::pair<std::string, std::string>> test_cases{
+  auto test_md5 = test_expected_hash_value<Crypto::md5, Crypto::MD5_DIGEST_BYTES>;
+  static const std::vector<std::pair<std::string, std::string>> test_cases{
       {"", "d41d8cd98f00b204e9800998ecf8427e"},
       {"a", "0cc175b9c0f1b6a831c399e269772661"},
       {"abc", "900150983cd24fb0d6963f7d28e17f72"},
@@ -565,10 +580,7 @@ TEST_CASE("Crypto: Test MD5", "[crypto][md5]") {
 }
 
 TEST_CASE("Crypto: Test SHA256", "[crypto][sha256]") {
-  auto test_sha256 = test_hash<Crypto::sha256, Crypto::SHA256_DIGEST_BYTES>;
-  // Values taken from SHA256ShortMsg.rsp, from "SHA Test Vectors for Hashing
-  // Bit-Oriented Messages", found at
-  // https://csrc.nist.gov/Projects/cryptographic-algorithm-validation-program/Secure-Hashing
+  auto test_sha256 = test_expected_hash_value<Crypto::sha256, Crypto::SHA256_DIGEST_BYTES>;
   std::vector<std::pair<std::string, std::string>> test_cases{
       // Len = 0
       {"", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
