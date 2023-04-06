@@ -47,31 +47,47 @@ namespace tiledb::sm {
 
 class FragmentsList {
  public:
+  using size_type = std::vector<URI>::size_type;
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /** Constructor. */
-  FragmentsList();
+  FragmentsList()
+      : fragments_() {
+  }
 
   /** Constructor. */
-  FragmentsList(const std::vector<URI>& fragments);
+  // #TODO Check for dups
+  FragmentsList(const std::vector<URI>& fragments)
+      : fragments_(fragments) {
+  }
 
   /** Destructor. */
-  ~FragmentsList();
+  ~FragmentsList() = default;
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
   /** Returns the fragment URI at the given index. */
-  URI& get_fragment_uri(int index);
+  const URI& fragment_uri(unsigned index) const;
 
   /**
    * Returns the index at which the given fragment resides in the list.
    * Throws if the fragment is not in the list.
    */
-  int get_fragment_index(const URI& fragment);
+  size_type fragment_index(const URI& fragment);
+
+  /**
+   * Returns true if the FragmentsList is empty, false if it contains fragments.
+   */
+  inline bool empty() const {
+    return fragments_.empty();
+  }
+
+  /** Checks the FragmentsList contains fragments, throws if it's empty. */
+  void ensure_fragments_list_has_fragments() const;
 
  private:
   /* ********************************* */

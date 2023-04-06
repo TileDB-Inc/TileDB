@@ -33,24 +33,50 @@
 
 using namespace tiledb::sm;
 
+TEST_CASE("FragmentsList: Test default constructor", "[fragments_list]") {
+  FragmentsList f;
+  CHECK(f.empty() == true);
+}
+
+TEST_CASE("FragmentsList: Test non-default constructor", "[fragments_list]") {
+  URI a{URI("a")};
+  std::vector<URI> uris = {a};
+  FragmentsList f(uris);
+  CHECK(f.empty() == false);
+}
+
 TEST_CASE("FragmentsList", "[fragments_list]") {
   URI a{URI("a")};
   URI b{URI("b")};
   URI c{URI("c")};
   std::vector<URI> uris = {a, b, c};
-  FragmentsList fragments(uris);
+  FragmentsList f(uris);
+  CHECK(f.empty() == false);
 
-  CHECK(fragments.get_fragment_uri(0) == a);
-  CHECK(fragments.get_fragment_uri(1) == b);
-  CHECK(fragments.get_fragment_uri(2) == c);
-  REQUIRE_THROWS_WITH(
-      fragments.get_fragment_uri(3),
-      Catch::Matchers::ContainsSubstring("no fragment at the given index"));
+  FragmentsList f_empty;
+  CHECK(f_empty.empty() == true);
 
-  CHECK(fragments.get_fragment_index(a) == 0);
-  CHECK(fragments.get_fragment_index(b) == 1);
-  CHECK(fragments.get_fragment_index(c) == 2);
-  REQUIRE_THROWS_WITH(
-      fragments.get_fragment_index(URI("d")),
-      Catch::Matchers::ContainsSubstring("not in the FragmentsList"));
+  SECTION("get index by URI") {
+    CHECK(f.fragment_index(a) == 0);
+    CHECK(f.fragment_index(b) == 1);
+    CHECK(f.fragment_index(c) == 2);
+    REQUIRE_THROWS_WITH(
+        f.fragment_index(URI("d")),
+        Catch::Matchers::ContainsSubstring("not in the FragmentsList"));
+    REQUIRE_THROWS_WITH(
+        f_empty.fragment_uri(0),
+        Catch::Matchers::ContainsSubstring("FragmentsList is empty"));
+  }
+
+  SECTION("get URI by index") {
+    CHECK(f.fragment_uri(0) == a);
+    CHECK(f.fragment_uri(1) == b);
+    CHECK(f.fragment_uri(2) == c);
+    REQUIRE_THROWS_WITH(
+        f.fragment_uri(3),
+        Catch::Matchers::ContainsSubstring("no fragment at the given index"));
+    REQUIRE_THROWS_WITH(
+        f_empty.fragment_uri(0),
+        Catch::Matchers::ContainsSubstring("FragmentsList is empty"));
+  }
 }

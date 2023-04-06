@@ -37,28 +37,24 @@
 namespace tiledb::api {
 
 capi_return_t tiledb_fragments_list_get_fragment_uri(
-    tiledb_fragments_list_t* f, int index, const char** uri) {
+    tiledb_fragments_list_t* f,
+    uint32_t index,
+    const char** uri,
+    size_t* uri_length) {
   ensure_fragments_list_is_valid(f);
   ensure_output_pointer_is_valid(uri);
 
-  try {
-    *uri = f->get_fragment_uri(index).c_str();
-  } catch (StatusException& e) {
-    return TILEDB_ERR;
-  }
+  *uri = f->fragment_uri(index).c_str();
+  *uri_length = sizeof(uri) / sizeof(*uri);
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_fragments_list_get_fragment_index(
-    tiledb_fragments_list_t* f, const char* uri, int* index) {
+    tiledb_fragments_list_t* f, const char* uri, uint32_t* index) {
   ensure_fragments_list_is_valid(f);
   ensure_output_pointer_is_valid(index);
 
-  try {
-    *index = f->get_fragment_index(uri);
-  } catch (StatusException& e) {
-    return TILEDB_ERR;
-  }
+  *index = static_cast<uint32_t>(f->fragment_index(uri));
   return TILEDB_OK;
 }
 
@@ -74,13 +70,16 @@ using tiledb::api::api_entry_plain;
 using tiledb::api::api_entry_void;
 
 capi_return_t tiledb_fragments_list_get_fragment_uri(
-    tiledb_fragments_list_t* f, int index, const char** uri) noexcept {
+    tiledb_fragments_list_t* f,
+    uint32_t index,
+    const char** uri,
+    size_t* uri_length) noexcept {
   return api_entry_plain<tiledb::api::tiledb_fragments_list_get_fragment_uri>(
-      f, index, uri);
+      f, index, uri, uri_length);
 }
 
 capi_return_t tiledb_fragments_list_get_fragment_index(
-    tiledb_fragments_list_t* f, const char* uri, int* index) noexcept {
+    tiledb_fragments_list_t* f, const char* uri, uint32_t* index) noexcept {
   return api_entry_plain<tiledb::api::tiledb_fragments_list_get_fragment_index>(
       f, uri, index);
 }

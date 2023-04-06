@@ -40,20 +40,26 @@ TEST_CASE("C API: Test fragments list", "[capi][fragments_list]") {
 
   // Check fragment uris
   const char* uri_a;
-  REQUIRE(tiledb_fragments_list_get_fragment_uri(f, 0, &uri_a) == TILEDB_OK);
+  size_t len;
+  REQUIRE(
+      tiledb_fragments_list_get_fragment_uri(f, 0, &uri_a, &len) == TILEDB_OK);
   CHECK(tiledb::sm::URI(uri_a) == a);
+  CHECK(len == (sizeof(a) / sizeof(tiledb::sm::URI)));
   const char* uri_b;
-  REQUIRE(tiledb_fragments_list_get_fragment_uri(f, 1, &uri_b) == TILEDB_OK);
+  REQUIRE(
+      tiledb_fragments_list_get_fragment_uri(f, 1, &uri_b, &len) == TILEDB_OK);
+  CHECK(len == (sizeof(b) / sizeof(tiledb::sm::URI)));
   CHECK(tiledb::sm::URI(uri_b) == b);
-  REQUIRE(tiledb_fragments_list_get_fragment_uri(f, 2, &uri_b) == TILEDB_ERR);
+  REQUIRE(
+      tiledb_fragments_list_get_fragment_uri(f, 2, &uri_b, &len) == TILEDB_ERR);
 
   // Check fragment indices
-  int index_a;
+  unsigned index_a;
   REQUIRE(
       tiledb_fragments_list_get_fragment_index(f, uri_a, &index_a) ==
       TILEDB_OK);
   CHECK(index_a == 0);
-  int index_b;
+  unsigned index_b;
   REQUIRE(
       tiledb_fragments_list_get_fragment_index(f, uri_b, &index_b) ==
       TILEDB_OK);

@@ -38,46 +38,42 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-class FragmentsListStatusException : public StatusException {
+class FragmentsListException : public StatusException {
  public:
-  explicit FragmentsListStatusException(const std::string& message)
+  explicit FragmentsListException(const std::string& message)
       : StatusException("FragmentsList", message) {
   }
 };
-
-/* ****************************** */
-/*   CONSTRUCTORS & DESTRUCTORS   */
-/* ****************************** */
-
-FragmentsList::FragmentsList()
-    : fragments_() {
-}
-
-FragmentsList::FragmentsList(const std::vector<URI>& fragments)
-    : fragments_(fragments) {
-}
-
-FragmentsList::~FragmentsList() = default;
 
 /* ********************************* */
 /*                API                */
 /* ********************************* */
 
-URI& FragmentsList::get_fragment_uri(int index) {
-  if (index >= int(fragments_.size())) {
-    throw FragmentsListStatusException(
+const URI& FragmentsList::fragment_uri(unsigned index) const {
+  ensure_fragments_list_has_fragments();
+  if (index >= fragments_.size()) {
+    throw FragmentsListException(
         "[get_fragment_uri] There is no fragment at the given index");
   }
   return fragments_[index];
 }
 
-int FragmentsList::get_fragment_index(const URI& fragment) {
-  auto iter = std::find(fragments_.begin(), fragments_.end(), fragment);
-  if (iter == fragments_.end()) {
-    throw FragmentsListStatusException(
-        "[get_fragment_index] Given fragment is not in the FragmentsList");
-  } else {
-    return std::distance(fragments_.begin(), iter);
+FragmentsList::size_type FragmentsList::fragment_index(const URI& fragment) {
+  ensure_fragments_list_has_fragments();
+  for (size_type i = 0; i < fragments_.size(); i++) {
+    if (fragments_[i] == fragment) {
+      return i;
+    }
+  }
+
+  throw FragmentsListException(
+      "[get_fragment_index] Given fragment is not in the FragmentsList");
+}
+
+void FragmentsList::ensure_fragments_list_has_fragments() const {
+  if (empty()) {
+    throw FragmentsListException(
+        "[ensure_fragments_list_has_fragments] FragmentsList is empty");
   }
 }
 

@@ -68,12 +68,12 @@ struct tiledb_fragments_list_handle_t
     return frag_list_;
   }
 
-  tiledb::sm::URI& get_fragment_uri(int index) {
-    return frag_list_.get_fragment_uri(index);
+  const tiledb::sm::URI& fragment_uri(unsigned index) const {
+    return frag_list_.fragment_uri(index);
   }
 
-  int get_fragment_index(const char* uri) {
-    return frag_list_.get_fragment_index(tiledb::sm::URI(uri));
+  tiledb::sm::FragmentsList::size_type fragment_index(const char* uri) {
+    return frag_list_.fragment_index(tiledb::sm::URI(uri));
   }
 };
 

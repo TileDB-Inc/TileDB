@@ -52,19 +52,26 @@ typedef struct tiledb_fragments_list_handle_t tiledb_fragments_list_t;
  * @code{.c}
  * tiledb_fragments_list_t* f = NULL;
  * // tiledb_deserialize_fragments_list(..., &f);
- * int index = 0;
+ * uint32_t index = 0;
  * const char* uri;
- * tiledb_fragments_list_get_fragment_uri(f, index, &uri);
- * printf("f[%i] = \"%s\"\n", index, uri);
+ * size_t uri_length;
+ * tiledb_fragments_list_get_fragment_uri(f, index, &uri, &uri_length);
+ * printf("f[%u] = \"%s\"\n", index, uri);
  * tiledb_fragments_list_free(&f);
  * @endcode
  *
  * @param f A TileDB fragments list object
  * @param index The index at which to retrieve a fragment uri
  * @param uri The fragment uri at the given index
+ * @param uri_length The length of the fragment uri at the given index
+ *
+ * @note Lifespan of the uri is maintained by the fragments list.
  */
 TILEDB_EXPORT capi_return_t tiledb_fragments_list_get_fragment_uri(
-    tiledb_fragments_list_t* f, int index, const char** uri) TILEDB_NOEXCEPT;
+    tiledb_fragments_list_t* f,
+    uint32_t index,
+    const char** uri,
+    size_t* uri_length) TILEDB_NOEXCEPT;
 
 /**
  * Returns the index of the fragment with the given uri in the given TileDB
@@ -74,10 +81,10 @@ TILEDB_EXPORT capi_return_t tiledb_fragments_list_get_fragment_uri(
  * @code{.c}
  * tiledb_fragments_list_t* f = NULL;
  * // tiledb_deserialize_fragments_list(..., &f);
- * int index;
+ * unsigned index;
  * const char* uri = "array/__fragments/1";
  * tiledb_fragments_list_get_fragment_index(f, uri, &index);
- * printf("Fragment %s is at index %i\n", uri, index);
+ * printf("Fragment %s is at index %u\n", uri, index);
  * tiledb_fragments_list_free(&f);
  * @endcode
  *
@@ -86,7 +93,9 @@ TILEDB_EXPORT capi_return_t tiledb_fragments_list_get_fragment_uri(
  * @param index The index of the given uri
  */
 TILEDB_EXPORT capi_return_t tiledb_fragments_list_get_fragment_index(
-    tiledb_fragments_list_t* f, const char* uri, int* index) TILEDB_NOEXCEPT;
+    tiledb_fragments_list_t* f,
+    const char* uri,
+    uint32_t* index) TILEDB_NOEXCEPT;
 
 /**
  * Frees the resources associated with a TileDB fragments list object.

@@ -58,9 +58,9 @@ namespace tiledb {
 namespace sm {
 namespace serialization {
 
-class ArraySerializationStatusException : public StatusException {
+class ArraySerializationException : public StatusException {
  public:
-  explicit ArraySerializationStatusException(const std::string& message)
+  explicit ArraySerializationException(const std::string& message)
       : StatusException("[TileDB::Serialization][Array]", message) {
   }
 };
@@ -428,18 +428,18 @@ void fragments_timestamps_serialize(
         break;
       }
       default: {
-        throw ArraySerializationStatusException(
+        throw ArraySerializationException(
             "[fragments_timestamps_serialize] Unknown serialization type "
             "passed");
       }
     }
 
   } catch (kj::Exception& e) {
-    throw ArraySerializationStatusException(
+    throw ArraySerializationException(
         "[fragments_timestamps_serialize] kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw ArraySerializationStatusException(
+    throw ArraySerializationException(
         "[fragments_timestamps_serialize] exception " + std::string(e.what()));
   }
 }
@@ -471,17 +471,17 @@ std::tuple<uint64_t, uint64_t> fragments_timestamps_deserialize(
         return fragments_timestamps_from_capnp(reader);
       }
       default: {
-        throw ArraySerializationStatusException(
+        throw ArraySerializationException(
             "[fragments_timestamps_deserialize] "
             "Unknown serialization type passed");
       }
     }
   } catch (kj::Exception& e) {
-    throw ArraySerializationStatusException(
+    throw ArraySerializationException(
         "[fragments_timestamps_deserialize] kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw ArraySerializationStatusException(
+    throw ArraySerializationException(
         "[fragments_timestamps_deserialize] exception " +
         std::string(e.what()));
   }
@@ -510,8 +510,8 @@ std::vector<URI> fragments_list_from_capnp(
     }
     return fragments;
   } else {
-    throw ArraySerializationStatusException(
-        "[fragments_list_deserialize] There are no fragments to deserialize");
+    throw ArraySerializationException(
+        "[fragments_list_from_capnp] There are no fragments to deserialize");
   }
 }
 
@@ -520,7 +520,7 @@ void fragments_list_serialize(
     SerializationType serialize_type,
     Buffer* serialized_buffer) {
   if (fragments.empty()) {
-    throw ArraySerializationStatusException(
+    throw ArraySerializationException(
         "[fragments_list_serialize] Fragments vector is empty");
   }
 
@@ -555,17 +555,17 @@ void fragments_list_serialize(
         break;
       }
       default: {
-        throw ArraySerializationStatusException(
+        throw ArraySerializationException(
             "[fragments_list_serialize] Unknown serialization type passed");
       }
     }
 
   } catch (kj::Exception& e) {
-    throw ArraySerializationStatusException(
+    throw ArraySerializationException(
         "[fragments_list_serialize] kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw ArraySerializationStatusException(
+    throw ArraySerializationException(
         "[fragments_list_serialize] exception " + std::string(e.what()));
   }
 }
@@ -575,7 +575,7 @@ std::vector<URI> fragments_list_deserialize(
     SerializationType serialize_type,
     const Buffer& serialized_buffer) {
   if (array_uri.is_invalid()) {
-    throw ArraySerializationStatusException(
+    throw ArraySerializationException(
         "[fragments_list_deserialize] Invalid Array URI");
   }
 
@@ -603,16 +603,16 @@ std::vector<URI> fragments_list_deserialize(
         return fragments_list_from_capnp(reader, array_uri);
       }
       default: {
-        throw ArraySerializationStatusException(
+        throw ArraySerializationException(
             "[fragments_list_deserialize] Unknown serialization type passed");
       }
     }
   } catch (kj::Exception& e) {
-    throw ArraySerializationStatusException(
+    throw ArraySerializationException(
         "[fragments_list_deserialize] kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw ArraySerializationStatusException(
+    throw ArraySerializationException(
         "[fragments_list_deserialize] exception " + std::string(e.what()));
   }
 }
@@ -959,25 +959,25 @@ Status array_open_deserialize(Array*, SerializationType, const Buffer&) {
 
 void fragments_timestamps_serialize(
     uint64_t, uint64_t, SerializationType, Buffer*) {
-  throw ArraySerializationStatusException(
+  throw ArraySerializationException(
       "Cannot serialize; serialization not enabled.");
 }
 
 std::tuple<uint64_t, uint64_t> fragments_timestamps_deserialize(
     SerializationType, const Buffer&) {
-  throw ArraySerializationStatusException(
+  throw ArraySerializationException(
       "Cannot deserialize; serialization not enabled.");
 }
 
 void fragments_list_serialize(
     const std::vector<URI>&, SerializationType, Buffer*) {
-  throw ArraySerializationStatusException(
+  throw ArraySerializationException(
       "Cannot serialize; serialization not enabled.");
 }
 
 std::vector<URI> fragments_list_deserialize(
     const URI&, SerializationType, const Buffer&) {
-  throw ArraySerializationStatusException(
+  throw ArraySerializationException(
       "Cannot deserialize; serialization not enabled.");
 }
 

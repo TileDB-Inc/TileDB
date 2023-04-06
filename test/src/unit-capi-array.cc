@@ -2739,14 +2739,15 @@ TEST_CASE_METHOD(
 
   // Compare original fragments to deserialized_fragments
   const char* deserialized_uri1;
+  size_t length;
   REQUIRE(
       tiledb_fragments_list_get_fragment_uri(
-          deserialized_fragments, 0, &deserialized_uri1) == TILEDB_OK);
+          deserialized_fragments, 0, &deserialized_uri1, &length) == TILEDB_OK);
   CHECK(*deserialized_uri1 == *uri1);
   const char* deserialized_uri2;
   REQUIRE(
       tiledb_fragments_list_get_fragment_uri(
-          deserialized_fragments, 1, &deserialized_uri2) == TILEDB_OK);
+          deserialized_fragments, 1, &deserialized_uri2, &length) == TILEDB_OK);
   CHECK(*deserialized_uri2 == *uri2);
 
   // Clean up
