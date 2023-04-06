@@ -158,6 +158,15 @@ class Crypto {
    */
   static Status sha256(
       const void* input, uint64_t input_read_size, Buffer* output);
+
+  /**
+   * Generates a number of cryptographically random bytes.
+   *
+   * @param output Pointer to buffer to store random bytes.
+   * @param num_bytes Number of bytes to generate.
+   * @return Status
+   */
+  static Status get_random_bytes(unsigned char* output, unsigned num_bytes);
 };
 
 }  // namespace sm

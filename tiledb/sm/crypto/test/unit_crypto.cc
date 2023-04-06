@@ -40,21 +40,17 @@
 
 using namespace tiledb::sm;
 
-#ifdef _WIN32
-#include "tiledb/sm/crypto/crypto_win32.h"
-using PlatformCrypto = Win32CNG;
-#else
-#include "tiledb/sm/crypto/crypto_openssl.h"
-using PlatformCrypto = OpenSSL;
-#endif
-
 // We fill two 64-byte buffers with random data and check that their content
 // is not the same. The probability of having the same content is vanishingly
 // small.
 TEST_CASE("Crypto: Test Random Number Generator", "[crypto][random]") {
   std::array<unsigned char, 64> buf1 = {}, buf2 = {};
-  CHECK(PlatformCrypto::get_random_bytes(buf1.data(), static_cast<unsigned>(buf1.size())).ok());
-  CHECK(PlatformCrypto::get_random_bytes(buf2.data(), static_cast<unsigned>(buf2.size())).ok());
+  CHECK(
+      Crypto::get_random_bytes(buf1.data(), static_cast<unsigned>(buf1.size()))
+          .ok());
+  CHECK(
+      Crypto::get_random_bytes(buf2.data(), static_cast<unsigned>(buf2.size()))
+          .ok());
   CHECK(buf1 != buf2);
 }
 
