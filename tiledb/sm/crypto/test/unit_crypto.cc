@@ -508,13 +508,13 @@ TEST_CASE("Crypto: Test AES-256-GCM", "[crypto][aes]") {
   }
 }
 
-static std::vector<uint8_t> from_hex(const std::string& str) {
-  std::vector<uint8_t> vec;
+static std::string from_hex(const std::string& str) {
+  std::string output;
   for (size_t i = 0; i < str.length(); i += 2) {
     char byte_str[3] = {str[i], str[i + 1], '\0'};
-    vec.push_back((uint8_t)std::strtoul(byte_str, nullptr, 16));
+    output.push_back((uint8_t)std::strtoul(byte_str, nullptr, 16));
   }
-  return vec;
+  return output;
 }
 
 static std::string to_hex(const uint8_t* data, uint64_t length) {
@@ -525,15 +525,18 @@ static std::string to_hex(const uint8_t* data, uint64_t length) {
   return ss.str();
 }
 
-// Test that the given input has the expected hash value in
+// Test that the given input (optionally in hex) has the expected hash value in
 // hex. The function is generic over the hash and the input type.
-template <class Hash>
+template <Status Hash(const void*, uint64_t, Buffer*), int Digest_Bytes>
 static void test_hash(
-    const uint8_t* input, uint64_t length, const std::string& expected_hash) {
-  REQUIRE(expected_hash.length() % 2 == 0);
+    const std::string& input, const std::string& expected_hash, bool hex) {
+  REQUIRE(expected_hash.length() == Digest_Bytes * 2);
 
-  Buffer hash_buf(Hash::digest_bytes);
-  CHECK((Hash::hash(input, length, &hash_buf)).ok());
+  const std::string& processed_input = hex ? from_hex(input) : input;
+
+  Buffer hash_buf(Digest_Bytes);
+  CHECK(
+      (Hash(processed_input.data(), processed_input.length(), &hash_buf)).ok());
 
   // Compare the strings for a better error message in case of failure.
   CHECK(
@@ -541,17 +544,8 @@ static void test_hash(
       expected_hash);
 }
 
-struct MD5Hash {
-  static const int digest_bytes = Crypto::MD5_DIGEST_BYTES;
-  static Status hash(const uint8_t* input, uint64_t length, Buffer* output) {
-    return Crypto::md5(input, length, output);
-  }
-};
-
 TEST_CASE("Crypto: Test MD5", "[crypto][md5]") {
-  auto test_md5 = [](const std::string input, const std::string expected_hash) {
-    test_hash<MD5Hash>((uint8_t*)(input.data()), input.length(), expected_hash);
-  };
+  auto test_md5 = test_hash<Crypto::md5, Crypto::MD5_DIGEST_BYTES>;
   // Values taken from section A.5 in https://www.ietf.org/rfc/rfc1321.txt
   test_md5("", "d41d8cd98f00b204e9800998ecf8427e");
   test_md5("a", "0cc175b9c0f1b6a831c399e269772661");
@@ -575,11 +569,7 @@ struct SHA256Hash {
 };
 
 TEST_CASE("Crypto: Test SHA256", "[crypto][sha256]") {
-  auto test_sha256 = [](const std::string& input,
-                        const std::string& expected_hash) {
-    auto data = from_hex(input);
-    test_hash<SHA256Hash>(data.data(), data.size(), expected_hash);
-  };
+  auto test_sha256 = test_hash<Crypto::sha256, Crypto::SHA256_DIGEST_BYTES>;
   // Values taken from SHA256ShortMsg.rsp, from "SHA Test Vectors for Hashing
   // Bit-Oriented Messages", found at
   // https://csrc.nist.gov/Projects/cryptographic-algorithm-validation-program/Secure-Hashing
