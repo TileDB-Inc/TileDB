@@ -66,7 +66,7 @@ struct CSparseUnorderedWithDupsFx {
   std::string partial_tile_offsets_loading_;
 
   void create_default_array_1d();
-  void create_default_array_1d_string(int tile_extent = 2);
+  void create_default_array_1d_string(int tile_extent = 2, int capacity = 2);
   void write_1d_fragment(
       int* coords, uint64_t* coords_size, int* data, uint64_t* data_size);
   void write_1d_fragment_empty_strings(int* coords, uint64_t* coords_size);
@@ -217,7 +217,7 @@ void CSparseUnorderedWithDupsFx::create_default_array_1d() {
 }
 
 void CSparseUnorderedWithDupsFx::create_default_array_1d_string(
-    int tile_extent) {
+    int tile_extent, int capacity) {
   int domain[] = {1, 20};
   create_array(
       ctx_,
@@ -233,7 +233,7 @@ void CSparseUnorderedWithDupsFx::create_default_array_1d_string(
       {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
-      2,
+      capacity,
       true);  // allows dups.
 }
 
@@ -1807,4 +1807,93 @@ TEST_CASE_METHOD(
     tiledb_array_free(&array);
     tiledb_query_free(&query);
   }
+}
+
+TEST_CASE_METHOD(
+    CSparseUnorderedWithDupsFx,
+    "Sparse unordered with dups reader: Increasing dups with overlapping range",
+    "[sparse-unordered-with-dups][dup-data-test][overlapping-ranges]") {
+  // Create default array.
+  reset_config();
+  int32_t extent = GENERATE(2, 7, 5, 10, 11);
+  create_default_array_1d_string(extent, extent * 2);
+
+  int32_t coords[] = {1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
+                      11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
+  uint64_t coords_size = sizeof(coords);
+  uint64_t offsets[] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
+                        10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
+  uint64_t offsets_size = sizeof(offsets);
+  std::string data = "123456789abcdefghijk";
+  uint64_t data_size = data.size();
+  uint64_t cells = offsets_size / sizeof(uint64_t);
+  // Write dups for all cells up to capacity
+  uint64_t total_cells = 0;
+  for (int32_t i = 0; i < extent * 2; i++) {
+    write_1d_fragment_string(
+        coords, &coords_size, offsets, &offsets_size, data.data(), &data_size);
+    total_cells += cells;
+  }
+  tiledb_array_t* array;
+  auto st = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+  CHECK(st == TILEDB_OK);
+  st = tiledb_array_open(ctx_, array, TILEDB_READ);
+  CHECK(st == TILEDB_OK);
+  tiledb_query_t* query;
+  st = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(st == TILEDB_OK);
+
+  tiledb_subarray_t* subarray;
+  st = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(st == TILEDB_OK);
+  int64_t start = 1;
+  int64_t end = 20;
+  int64_t end_2 = 10;
+  // The first half of the array will be read twice, including dups.
+  total_cells += total_cells / 2;
+  st = tiledb_subarray_add_range(ctx_, subarray, 0, &start, &end, nullptr);
+  CHECK(st == TILEDB_OK);
+  st = tiledb_subarray_add_range(ctx_, subarray, 0, &start, &end_2, nullptr);
+  CHECK(st == TILEDB_OK);
+  st = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(st == TILEDB_OK);
+  st = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
+  CHECK(st == TILEDB_OK);
+
+  // Submit incomplete reads with varying number of duplicates.
+  tiledb_query_status_t status;
+  uint64_t total_cells_r = 0;
+  // Minimum buffer size should hold number of dups in a single cell.
+  uint64_t buffer_size = 2;
+  do {
+    int32_t coords_r[buffer_size];
+    uint64_t coords_r_size = sizeof(coords_r);
+    uint64_t offsets_r[buffer_size];
+    uint64_t offsets_r_size = sizeof(offsets_r);
+    std::string data_r(buffer_size++, 0);
+    uint64_t data_r_size = data_r.size();
+
+    st = tiledb_query_set_data_buffer(
+        ctx_, query, "d", coords_r, &coords_r_size);
+    CHECK(st == TILEDB_OK);
+    st = tiledb_query_set_offsets_buffer(
+        ctx_, query, "a", offsets_r, &offsets_r_size);
+    CHECK(st == TILEDB_OK);
+    st = tiledb_query_set_data_buffer(
+        ctx_, query, "a", data_r.data(), &data_r_size);
+    CHECK(st == TILEDB_OK);
+    st = tiledb_query_submit(ctx_, query);
+    CHECK(st == TILEDB_OK);
+
+    st = tiledb_query_get_status(ctx_, query, &status);
+    CHECK(st == TILEDB_OK);
+    uint64_t cells_r = offsets_r_size / sizeof(uint64_t);
+    total_cells_r += cells_r;
+  } while (status == TILEDB_INCOMPLETE);
+  CHECK(total_cells_r == total_cells);
+  CHECK(status == TILEDB_COMPLETED);
+
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }

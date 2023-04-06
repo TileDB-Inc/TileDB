@@ -641,7 +641,6 @@ Status SparseUnorderedWithDupsReader<uint64_t>::copy_offsets_tile(
                      src_max_pos - 1 :
                      src_max_pos;
   if (!use_fill_value) {
-    // Valgrind points to this for loop; Commenting it prevents errors in repro.
     for (uint64_t c = src_min_pos; c < end; c++) {
       for (uint64_t i = 0; i < rt->bitmap()[c]; i++) {
         *buffer = (OffType)(src_buff[c + 1] - src_buff[c]) / offset_div;
@@ -1441,7 +1440,7 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_fixed_result_tiles_to_copy(
 
     // For overlapping ranges, a cell might be included multiple times and we
     // can only process it if we can include all of the values as the progress
-    // we save in the read state doens't allow to track partial progress for a
+    // we save in the read state doesn't allow to track partial progress for a
     // cell.
     uint64_t rt_idx = cell_offsets.size() - 1;
     auto rt = (ResultTileWithBitmap<BitmapType>*)result_tiles[rt_idx];
@@ -1713,7 +1712,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
     num_range_threads = 1 + ((num_threads - 1) / result_tiles.size());
   }
 
-  // Read a few attributes a a time.
+  // Read a few attributes at a time.
   uint64_t buffer_idx = 0;
   while (buffer_idx < names.size()) {
     // Read and unfilter as many attributes as can fit in the budget.
@@ -1827,7 +1826,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
       if (nullable)
         *query_buffer.validity_vector_.buffer_size() = total_cells;
 
-      // Clear tiles from memory. Var-sized tiles were cleared above.
+      // Clear tiles from memory.
       if (qc_loaded_attr_names_set_.count(name) == 0 &&
           (!include_coords_ || !is_dim) && name != constants::timestamps &&
           name != constants::delete_timestamps) {
