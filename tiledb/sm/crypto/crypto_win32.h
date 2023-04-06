@@ -38,6 +38,9 @@
 #if !defined(NOMINMAX)
 #define NOMINMAX
 #endif
+#include <windows.h>
+
+#include <bcrypt.h>
 
 #include "tiledb/common/status.h"
 
@@ -99,7 +102,9 @@ class Win32CNG {
    * @return Status
    */
   static Status md5(
-      const void* input, uint64_t input_read_size, Buffer* output);
+      const void* input, uint64_t input_read_size, Buffer* output) {
+    return hash_bytes(input, input_read_size, output, BCRYPT_MD5_ALGORITHM);
+  }
 
   /**
    * Compute sha256 checksum of data
@@ -110,7 +115,9 @@ class Win32CNG {
    * @return Status
    */
   static Status sha256(
-      const void* input, uint64_t input_read_size, Buffer* output);
+      const void* input, uint64_t input_read_size, Buffer* output) {
+    return hash_bytes(input, input_read_size, output, BCRYPT_SHA256_ALGORITHM);
+  }
 
   /**
    * Generates a number of cryptographically random bytes.
@@ -120,6 +127,23 @@ class Win32CNG {
    * @return Status
    */
   static Status get_random_bytes(unsigned num_bytes, Buffer* output);
+
+ private:
+  /**
+   *
+   * Compute a hash using Win32CNG functions
+   *
+   * @param input Plaintext to compute hash of
+   * @param input_read_size size of input to read for hash
+   * @param output Buffer to store store hash bytes.
+   * @param alg_handle hash algorithm handle
+   * @return Status
+   */
+  static Status hash_bytes(
+      const void* input,
+      uint64_t input_read_size,
+      Buffer* output,
+      LPCWSTR hash_algorithm);
 };
 
 }  // namespace sm

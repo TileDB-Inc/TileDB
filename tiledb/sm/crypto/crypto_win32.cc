@@ -32,15 +32,11 @@
 
 #ifdef _WIN32
 
-#include <windows.h>
-
-#include <bcrypt.h>
-
+#include "tiledb/sm/crypto/crypto_win32.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/crypto/crypto.h"
-#include "tiledb/sm/crypto/crypto_win32.h"
 
 #ifndef NT_SUCCESS
 #define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0)
@@ -298,7 +294,7 @@ Status Win32CNG::decrypt_aes256gcm(
   return Status::Ok();
 }
 
-static Status hash_bytes(
+Status Win32CNG::hash_bytes(
     const void* input,
     uint64_t input_read_size,
     Buffer* output,
@@ -356,16 +352,6 @@ static Status hash_bytes(
   }
 
   return Status::Ok();
-}
-
-Status Win32CNG::md5(
-    const void* input, uint64_t input_read_size, Buffer* output) {
-  return hash_bytes(input, input_read_size, output, BCRYPT_MD5_ALGORITHM);
-}
-
-Status Win32CNG::sha256(
-    const void* input, uint64_t input_read_size, Buffer* output) {
-  return hash_bytes(input, input_read_size, output, BCRYPT_SHA256_ALGORITHM);
 }
 
 }  // namespace sm
