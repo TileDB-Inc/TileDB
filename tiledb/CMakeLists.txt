@@ -85,10 +85,12 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/tiledb_experimental
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_deprecated.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema_evolution.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/attribute.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/attribute_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/config.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/consolidation_plan_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/context.h
@@ -97,6 +99,7 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/dimension.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/dimension_label_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/domain.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/enumeration_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/error.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/exception.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/filter.h
@@ -108,6 +111,7 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object_iter.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_condition_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_condition.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/schema_base.h
@@ -148,6 +152,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/dimension.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/dimension_label.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/domain.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/enumeration.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer_list.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/api_argument_validator.cc
@@ -883,14 +888,22 @@ if(TILEDB_SERIALIZATION)
       ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/${TILEDB_SERIALIZATION_GENERATED_SUBDIR})
 
   # We only need to override the include path and PATH env for EP builds
+  # note: We run the compiler under `cmake -E env ...` because we need to run capnp executable
+  #       the capnp driver needs to be able to find the plugin executables (eg capnpc-c++).
+  #       For system installed capnp binaries we rely on the user to have their PATH
+  #       include the directory with CapNProto plugin binaries.
   if(TILEDB_CAPNP_EP_BUILT)
-    list(APPEND CAPNP_COMPILE_COMMAND "${CMAKE_COMMAND}" -E env PATH="${TILEDB_EP_BASE}/install/bin" "${CAPNP_EXECUTABLE}" compile -I "${TILEDB_EP_BASE}/install/include" -oc++:"${TILEDB_SERIALIZATION_GENERATED_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp" --src-prefix="${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization")
+    list(APPEND CAPNP_COMPILE_COMMAND "${CMAKE_COMMAND}" -E env PATH="${TILEDB_EP_BASE}/install/bin" "${CAPNP_EXECUTABLE}" compile -I "${TILEDB_EP_BASE}/install/include")
+  elseif(TILEDB_VCPKG)
+    set(CAPNP_PLUGIN_DIR $<TARGET_FILE_DIR:CapnProto::capnp_tool>)
+    list(APPEND CAPNP_COMPILE_COMMAND "${CMAKE_COMMAND}" -E env PATH="${CAPNP_PLUGIN_DIR}" "${CAPNP_EXECUTABLE}" compile "-I${CAPNP_INCLUDE_DIRECTORY}")
   else()
-    list(APPEND CAPNP_COMPILE_COMMAND "${CAPNP_EXECUTABLE}" compile -oc++:"${TILEDB_SERIALIZATION_GENERATED_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp" --src-prefix "${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization")
+    list(APPEND CAPNP_COMPILE_COMMAND "${CAPNP_EXECUTABLE}" compile)
   endif()
 
-  # note: run the compiler under `cmake -E env ...` because we need to run capnp executable
-  #       the capnp driver needs to be able to find the plugin executables (eg capnpc-c++)
+  # Add the rest of the capnp compile command
+  list(APPEND CAPNP_COMPILE_COMMAND -oc++:"${TILEDB_SERIALIZATION_GENERATED_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp" --src-prefix="${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization")
+
   add_custom_target(
     update-serialization
       ${CMAKE_COMMAND} -E echo "CAPNP_COMPILE_COMMAND: '${CAPNP_COMPILE_COMMAND}'"

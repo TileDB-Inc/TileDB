@@ -134,6 +134,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-dense_neg.cc
   src/unit-capi-dense_vector.cc
   src/unit-capi-enum_values.cc
+  src/unit-capi-enumerations.cc
   src/unit-capi-error.cc
   src/unit-capi-filestore.cc
   src/unit-capi-fill_values.cc
@@ -172,6 +173,8 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-dimension.cc
   src/unit-duplicates.cc
   src/unit-empty-var-length.cc
+  src/unit-enumerations.cc
+  src/unit-enum-helpers.cc
   src/unit-filter-buffer.cc
   src/unit-filter-pipeline.cc
   src/unit-global-order.cc
@@ -213,6 +216,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-deletes.cc
     src/unit-cppapi-dense-qc-coords-mode.cc
     src/unit-cppapi-time.cc
+    src/unit-cppapi-enumerations.cc
     src/unit-cppapi-fill_values.cc
     src/unit-cppapi-filter.cc
     src/unit-cppapi-float-scaling-filter.cc

@@ -795,6 +795,37 @@ Status Query::process() {
     }
   }
 
+  if (condition_.has_value()) {
+    auto& names = condition_->enumeration_field_names();
+    std::unordered_set<std::string> deduped_enmr_names;
+    for (auto name : names) {
+      auto attr = array_schema_->attribute(name);
+      if (attr == nullptr) {
+        continue;
+      }
+      auto enmr_name = attr->get_enumeration_name();
+      if (enmr_name.has_value()) {
+        deduped_enmr_names.insert(enmr_name.value());
+      }
+    }
+    std::vector<std::string> enmr_names;
+    enmr_names.reserve(deduped_enmr_names.size());
+    for (auto& enmr_name : deduped_enmr_names) {
+      enmr_names.emplace_back(enmr_name);
+    }
+
+    throw_if_not_ok(parallel_for(
+        storage_manager_->compute_tp(),
+        0,
+        enmr_names.size(),
+        [&](const uint64_t i) {
+          array_->get_enumeration(enmr_names[i]);
+          return Status::Ok();
+        }));
+
+    condition_->rewrite_enumeration_conditions(array_schema());
+  }
+
   // Update query status.
   status_ = QueryStatus::INPROGRESS;
 

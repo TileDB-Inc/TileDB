@@ -152,6 +152,48 @@ class ArraySchemaEvolution {
   }
 
   /**
+   * Adds an Enumeration to the array schema evolution.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::ArraySchemaEvolution schema_evolution(ctx);
+   * std::vector<std::string> values = {"red", "green", "blue"};
+   * schema_evolution.add_enumeration(Enumeration::create(ctx, "an_enumeration",
+   * values));
+   * @endcode
+   *
+   * @param attr The Attribute to add
+   * @return Reference to this `ArraySchemaEvolution` instance.
+   */
+  ArraySchemaEvolution& add_enumeration(const Enumeration& enmr) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_array_schema_evolution_add_enumeration(
+        ctx.ptr().get(), evolution_.get(), enmr.ptr().get()));
+    return *this;
+  }
+
+  /**
+   * Drops an enumeration.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::ArraySchemaEvolution schema_evolution(ctx);
+   * schema_evolution.drop_enumeration("enumeration_name");
+   * @endcode
+   *
+   * @param enumeration_name The enumeration to be dropped
+   * @return Reference to this `ArraySchemaEvolution` instance.
+   */
+  ArraySchemaEvolution& drop_enumeration(const std::string& enumeration_name) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_array_schema_evolution_drop_enumeration(
+        ctx.ptr().get(), evolution_.get(), enumeration_name.c_str()));
+    return *this;
+  }
+
+  /**
    * Sets timestamp range.
    *
    * **Example:**

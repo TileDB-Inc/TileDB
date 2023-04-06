@@ -45,6 +45,12 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+#if defined(_WIN32) && defined(TIME_MS)
+#pragma message("WARNING: Windows.h may have already been included before")
+#pragma message("         tiledb/sm/enums/datatype.h which will likely cause a")
+#pragma message("         syntax error while defining the Datatype enum class.")
+#endif
+
 /** Defines a datatype. */
 enum class Datatype : uint8_t {
 #define TILEDB_DATATYPE_ENUM(id) id
@@ -325,11 +331,43 @@ inline bool datatype_is_string(Datatype type) {
 /** Returns true if the input datatype is an integer type. */
 inline bool datatype_is_integer(Datatype type) {
   return (
-      type == Datatype::BLOB || type == Datatype::BOOL ||
-      type == Datatype::INT8 || type == Datatype::UINT8 ||
-      type == Datatype::INT16 || type == Datatype::UINT16 ||
-      type == Datatype::INT32 || type == Datatype::UINT32 ||
-      type == Datatype::INT64 || type == Datatype::UINT64);
+      type == Datatype::BOOL || type == Datatype::INT8 ||
+      type == Datatype::UINT8 || type == Datatype::INT16 ||
+      type == Datatype::UINT16 || type == Datatype::INT32 ||
+      type == Datatype::UINT32 || type == Datatype::INT64 ||
+      type == Datatype::UINT64);
+}
+
+/**
+ * Return the largest integral value for the provided type.
+ *
+ * @param type The Datatype to return the maximum value of.
+ * @returns uint64_t The maximum integral value for the provided type.
+ */
+inline uint64_t datatype_max_integral_value(Datatype type) {
+  switch (type) {
+    case Datatype::BOOL:
+      return static_cast<uint64_t>(std::numeric_limits<uint8_t>::max());
+    case Datatype::INT8:
+      return static_cast<uint64_t>(std::numeric_limits<int8_t>::max());
+    case Datatype::UINT8:
+      return static_cast<uint64_t>(std::numeric_limits<uint8_t>::max());
+    case Datatype::INT16:
+      return static_cast<uint64_t>(std::numeric_limits<int16_t>::max());
+    case Datatype::UINT16:
+      return static_cast<uint64_t>(std::numeric_limits<uint16_t>::max());
+    case Datatype::INT32:
+      return static_cast<uint64_t>(std::numeric_limits<int32_t>::max());
+    case Datatype::UINT32:
+      return static_cast<uint64_t>(std::numeric_limits<uint32_t>::max());
+    case Datatype::INT64:
+      return static_cast<uint64_t>(std::numeric_limits<int64_t>::max());
+    case Datatype::UINT64:
+      return static_cast<uint64_t>(std::numeric_limits<uint64_t>::max());
+    default:
+      throw std::runtime_error(
+          "Datatype (" + datatype_str(type) + ") is not integral.");
+  }
 }
 
 /** Returns true if the input datatype is a real type. */

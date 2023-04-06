@@ -227,7 +227,10 @@ else()
     "$<$<CONFIG:Release,RelWithDebInfo>:-O3>"
     "$<$<CONFIG:RelWithDebInfo>:-g3;-ggdb3;-gdwarf-3>")
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    add_compile_options("$<$<CONFIG:Debug>:-fstandalone-debug>")
+    add_compile_options(
+      "$<$<CONFIG:Debug>:-fstandalone-debug>"
+      "$<$<CONFIG:Coverage>:-fprofile-instr-generate;-fcoverage-mapping>")
+    add_link_options("$<$<CONFIG:Coverage>:--coverage;-fprofile-instr-generate;-fcoverage-mapping>")
   endif()
 
   # Disable newer Apple Clang warnings about unqualified calls to std::move
@@ -345,6 +348,7 @@ list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/dimension/dimension_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/dimension_label/dimension_label_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/domain/domain_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/enumeration/enumeration_api_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/error/error_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filesystem/filesystem_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filesystem/filesystem_api_external.h"

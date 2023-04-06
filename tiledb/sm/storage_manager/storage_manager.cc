@@ -46,6 +46,7 @@
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
+#include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/consolidator/fragment_consolidator.h"
 #include "tiledb/sm/enums/array_type.h"
@@ -630,6 +631,11 @@ Status StorageManagerCanonical::array_create(
       array_uri.join_path(constants::array_schema_dir_name);
   RETURN_NOT_OK(vfs()->create_dir(array_schema_dir_uri));
 
+  // Create the enumerations directory inside the array schema directory
+  URI array_enumerations_uri =
+      array_schema_dir_uri.join_path(constants::array_enumerations_dir_name);
+  RETURN_NOT_OK(vfs()->create_dir(array_enumerations_uri));
+
   // Create commit directory
   URI array_commit_uri = array_uri.join_path(constants::array_commits_dir_name);
   RETURN_NOT_OK(vfs()->create_dir(array_commit_uri));
@@ -736,11 +742,9 @@ Status StorageManager::array_evolve_schema(
   auto&& array_schema = array_dir.load_array_schema_latest(encryption_key);
 
   // Evolve schema
-  auto&& [st1, array_schema_evolved] =
-      schema_evolution->evolve_schema(array_schema);
-  RETURN_NOT_OK(st1);
+  auto array_schema_evolved = schema_evolution->evolve_schema(array_schema);
 
-  Status st = store_array_schema(array_schema_evolved.value(), encryption_key);
+  Status st = store_array_schema(array_schema_evolved, encryption_key);
   if (!st.ok()) {
     logger_->status_no_return_value(st);
     return logger_->status(Status_StorageManagerError(
@@ -1692,10 +1696,45 @@ Status StorageManagerCanonical::store_array_schema(
   URI array_schema_dir_uri =
       array_schema->array_uri().join_path(constants::array_schema_dir_name);
   RETURN_NOT_OK(vfs()->is_dir(array_schema_dir_uri, &schema_dir_exists));
+
   if (!schema_dir_exists)
     RETURN_NOT_OK(vfs()->create_dir(array_schema_dir_uri));
 
   RETURN_NOT_OK(store_data_to_generic_tile(tile, schema_uri, encryption_key));
+
+  // Create the `__enumerations` directory under `__schema` if it doesn't
+  // exist. This might happen if someone tries to add an enumeration to an
+  // array created before version 19.
+  bool enumerations_dir_exists = false;
+  URI array_enumerations_dir_uri =
+      array_schema_dir_uri.join_path(constants::array_enumerations_dir_name);
+  RETURN_NOT_OK(
+      vfs()->is_dir(array_enumerations_dir_uri, &enumerations_dir_exists));
+
+  if (!enumerations_dir_exists) {
+    RETURN_NOT_OK(vfs()->create_dir(array_enumerations_dir_uri));
+  }
+
+  // Serialize all enumerations into the `__enumerations` directory
+  for (auto& enmr_name : array_schema->get_loaded_enumeration_names()) {
+    auto enmr = array_schema->get_enumeration(enmr_name);
+    if (enmr == nullptr) {
+      return logger_->status(Status_StorageManagerError(
+          "Error serializing enumeration; Loaded enumeration is null"));
+    }
+
+    SizeComputationSerializer enumeration_size_serializer;
+    enmr->serialize(enumeration_size_serializer);
+
+    WriterTile tile{
+        WriterTile::from_generic(enumeration_size_serializer.size())};
+    Serializer serializer(tile.data(), tile.size());
+    enmr->serialize(serializer);
+
+    auto abs_enmr_uri = array_enumerations_dir_uri.join_path(enmr->path_name());
+    RETURN_NOT_OK(
+        store_data_to_generic_tile(tile, abs_enmr_uri, encryption_key));
+  }
 
   return Status::Ok();
 }
