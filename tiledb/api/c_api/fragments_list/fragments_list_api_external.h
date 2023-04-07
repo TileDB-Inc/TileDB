@@ -45,8 +45,8 @@ extern "C" {
 typedef struct tiledb_fragments_list_handle_t tiledb_fragments_list_t;
 
 /**
- * Returns the uri of the fragment at the given index of a TileDB fragments
- * list object.
+ * Returns a view (i.e. data and length) of the uri of the fragment at the
+ * given index of a TileDB fragments list object.
  *
  * **Example**
  * @code{.c}

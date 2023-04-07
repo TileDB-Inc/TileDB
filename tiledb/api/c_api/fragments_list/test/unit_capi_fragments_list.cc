@@ -44,11 +44,11 @@ TEST_CASE("C API: Test fragments list", "[capi][fragments_list]") {
   REQUIRE(
       tiledb_fragments_list_get_fragment_uri(f, 0, &uri_a, &len) == TILEDB_OK);
   CHECK(tiledb::sm::URI(uri_a) == a);
-  CHECK(len == (sizeof(a) / sizeof(tiledb::sm::URI)));
+  CHECK(len == strlen(a.c_str()));
   const char* uri_b;
   REQUIRE(
       tiledb_fragments_list_get_fragment_uri(f, 1, &uri_b, &len) == TILEDB_OK);
-  CHECK(len == (sizeof(b) / sizeof(tiledb::sm::URI)));
+  CHECK(len == strlen(b.c_str()));
   CHECK(tiledb::sm::URI(uri_b) == b);
   REQUIRE(
       tiledb_fragments_list_get_fragment_uri(f, 2, &uri_b, &len) == TILEDB_ERR);

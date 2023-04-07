@@ -38,6 +38,7 @@ gather_sources(${SOURCES})
 commence(object_library capi_fragments_list)
   this_target_sources(${SOURCES})
   this_target_link_libraries(export)
+  this_target_object_libraries(capi_string)
   this_target_object_libraries(fragment)
 conclude(object_library)
 

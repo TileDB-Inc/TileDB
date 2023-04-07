@@ -32,6 +32,8 @@
 
 #include "fragments_list_api_external.h"
 #include "fragments_list_api_internal.h"
+#include "tiledb/api/c_api/string/string_api_external.h"
+#include "tiledb/api/c_api/string/string_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 
 namespace tiledb::api {
@@ -44,9 +46,11 @@ capi_return_t tiledb_fragments_list_get_fragment_uri(
   ensure_fragments_list_is_valid(f);
   ensure_output_pointer_is_valid(uri);
 
-  *uri = f->fragment_uri(index).c_str();
-  *uri_length = strlen(f->fragment_uri(index).last_path_part().c_str());
-  return TILEDB_OK;
+  // Convert URI to string view
+  return tiledb_string_view(
+      tiledb_string_handle_t::make_handle(f->fragment_uri(index).to_string()),
+      uri,
+      uri_length);
 }
 
 capi_return_t tiledb_fragments_list_get_fragment_index(
