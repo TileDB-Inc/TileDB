@@ -207,6 +207,7 @@ endif()
 
 project(TileDB)
 message(STATUS "Starting TileDB regular build.")
+message(STATUS "  CMake version: ${CMAKE_VERSION}")
 # Paths to locate the installed external projects.
 set(TILEDB_EP_SOURCE_DIR "${TILEDB_EP_BASE}/src")
 set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")
