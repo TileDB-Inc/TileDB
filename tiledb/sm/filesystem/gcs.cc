@@ -39,6 +39,7 @@
 
 #include <sstream>
 #include <unordered_set>
+#include <variant>
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
@@ -435,21 +436,21 @@ tuple<Status, optional<std::vector<directory_entry>>> GCS::ls_with_sizes(
     auto& results = object_metadata.value();
     const std::string gcs_prefix = uri_dir.is_gcs() ? "gcs://" : "gs://";
 
-    if (absl::holds_alternative<google::cloud::storage::ObjectMetadata>(
+    if (std::holds_alternative<google::cloud::storage::ObjectMetadata>(
             results)) {
-      auto obj = absl::get<google::cloud::storage::ObjectMetadata>(results);
+      auto obj = std::get<google::cloud::storage::ObjectMetadata>(results);
       entries.emplace_back(
           gcs_prefix + bucket_name + "/" +
               remove_front_slash(remove_trailing_slash(obj.name())),
           obj.size(),
           false);
-    } else if (absl::holds_alternative<std::string>(results)) {
+    } else if (std::holds_alternative<std::string>(results)) {
       // "Directories" are returned as strings here so we can't return
       // any metadata for them.
       entries.emplace_back(
           gcs_prefix + bucket_name + "/" +
               remove_front_slash(
-                  remove_trailing_slash(absl::get<std::string>(results))),
+                  remove_trailing_slash(std::get<std::string>(results))),
           0,
           true);
     }
@@ -824,7 +825,7 @@ Status GCS::upload_part(
     const std::string& object_part_path,
     const void* const buffer,
     const uint64_t length) {
-  absl::string_view write_buffer(
+  std::string_view write_buffer(
       static_cast<const char*>(buffer), static_cast<size_t>(length));
 
   google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
