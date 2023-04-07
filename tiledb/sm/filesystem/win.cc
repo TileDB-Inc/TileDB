@@ -31,7 +31,20 @@
  */
 #ifdef _WIN32
 
-#include "win.h"
+#if !defined(NOMINMAX)
+#define NOMINMAX  // suppress definition of min/max macros in Windows headers
+#endif
+#include <Shlwapi.h>
+#include <Windows.h>
+#include <algorithm>
+#include <cassert>
+#include <codecvt>
+#include <fstream>
+#include <iostream>
+#include <locale>
+#include <sstream>
+#include <string_view>
+
 #include "path_win.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
@@ -43,21 +56,7 @@
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
 #include "uri.h"
-
-#if !defined(NOMINMAX)
-#define NOMINMAX  // suppress definition of min/max macros in Windows headers
-#endif
-#include <Shlwapi.h>
-#include <Windows.h>
-#include <strsafe.h>
-#include <wininet.h>  // For INTERNET_MAX_URL_LENGTH
-#include <algorithm>
-#include <cassert>
-#include <codecvt>
-#include <fstream>
-#include <iostream>
-#include <sstream>
-#include <string_view>
+#include "win.h"
 
 using namespace tiledb::common;
 using tiledb::common::filesystem::directory_entry;
