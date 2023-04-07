@@ -35,7 +35,7 @@
  * The random number generator is tested by generating two 64-byte buffers with
  * cryptographically random data and checking that their content is not the
  * same. The probability of having the same content is vanishingly small.
- * 
+ *
  * TODO: add documentation for the AES-GCM tests.
  *
  * The hash algorithms are tested using official test vectors:
@@ -561,7 +561,8 @@ static void test_expected_hash_value(
 }
 
 TEST_CASE("Crypto: Test MD5", "[crypto][md5]") {
-  auto test_md5 = test_expected_hash_value<Crypto::md5, Crypto::MD5_DIGEST_BYTES>;
+  auto test_md5 =
+      test_expected_hash_value<Crypto::md5, Crypto::MD5_DIGEST_BYTES>;
   static const std::vector<std::pair<std::string, std::string>> test_cases{
       {"", "d41d8cd98f00b204e9800998ecf8427e"},
       {"a", "0cc175b9c0f1b6a831c399e269772661"},
@@ -580,7 +581,8 @@ TEST_CASE("Crypto: Test MD5", "[crypto][md5]") {
 }
 
 TEST_CASE("Crypto: Test SHA256", "[crypto][sha256]") {
-  auto test_sha256 = test_expected_hash_value<Crypto::sha256, Crypto::SHA256_DIGEST_BYTES>;
+  auto test_sha256 =
+      test_expected_hash_value<Crypto::sha256, Crypto::SHA256_DIGEST_BYTES>;
   std::vector<std::pair<std::string, std::string>> test_cases{
       // Len = 0
       {"", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
