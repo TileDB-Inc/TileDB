@@ -1726,14 +1726,20 @@ TEST_CASE_METHOD(
   create_default_array_1d_string(5);
 
   // Write a fragment.
-  int coords[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
-  uint64_t coords_size = sizeof(coords);
-  uint64_t offsets[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
-  uint64_t offsets_size = sizeof(offsets);
+  std::vector<int32_t> coords = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
+  uint64_t coords_size = coords.size() * sizeof(int32_t);
+  std::vector<uint64_t> offsets = {
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
+  uint64_t offsets_size = offsets.size() * sizeof(uint64_t);
   std::string data = "123456789abcde";
   uint64_t data_size = data.size();
   write_1d_fragment_string(
-      coords, &coords_size, offsets, &offsets_size, data.data(), &data_size);
+      coords.data(),
+      &coords_size,
+      offsets.data(),
+      &offsets_size,
+      data.data(),
+      &data_size);
 
   tiledb_array_t* array = nullptr;
   tiledb_query_t* query = nullptr;
@@ -1752,18 +1758,18 @@ TEST_CASE_METHOD(
        buffer_size++) {
     // Only make the coordinate buffer change, the rest of the buffers are big
     // enough for everything.
-    int coords_r[vary_fixed_buffer ? buffer_size : 1000];
-    char data_r[vary_fixed_buffer ? 1000 : buffer_size];
-    uint64_t data_offsets_r[1000];
-    uint64_t coords_r_size = sizeof(coords_r);
-    uint64_t data_r_size = sizeof(data_r);
-    uint64_t data_offsets_r_size = sizeof(data_offsets_r);
+    std::vector<int> coords_r(vary_fixed_buffer ? buffer_size : 1000, 0);
+    std::string data_r(vary_fixed_buffer ? 1000 : buffer_size, 0);
+    std::vector<uint64_t> data_offsets_r(1000, 0);
+    uint64_t coords_r_size = coords_r.size() * sizeof(int32_t);
+    uint64_t data_r_size = data_r.size();
+    uint64_t data_offsets_r_size = data_offsets_r.size() * sizeof(uint64_t);
     auto rc = read_strings(
-        coords_r,
+        coords_r.data(),
         &coords_r_size,
-        data_r,
+        data_r.data(),
         &data_r_size,
-        data_offsets_r,
+        data_offsets_r.data(),
         &data_offsets_r_size,
         num_dups,
         &query,
@@ -1818,21 +1824,25 @@ TEST_CASE_METHOD(
   int32_t extent = GENERATE(2, 7, 5, 10, 11);
   create_default_array_1d_string(extent, extent * 2);
 
-  int32_t coords[] = {1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
-                      11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
-  uint64_t coords_size = sizeof(coords);
-  uint64_t offsets[] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
-                        10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
-  uint64_t offsets_size = sizeof(offsets);
+  std::vector<int32_t> coords = {1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
+                                 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
+  uint64_t coords_size = coords.size() * sizeof(int32_t);
+  std::vector<uint64_t> offsets = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
+                                   10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
+  uint64_t offsets_size = offsets.size() * sizeof(uint64_t);
   std::string data = "123456789abcdefghijk";
   uint64_t data_size = data.size();
-  uint64_t cells = offsets_size / sizeof(uint64_t);
   // Write dups for all cells up to capacity
   uint64_t total_cells = 0;
   for (int32_t i = 0; i < extent * 2; i++) {
     write_1d_fragment_string(
-        coords, &coords_size, offsets, &offsets_size, data.data(), &data_size);
-    total_cells += cells;
+        coords.data(),
+        &coords_size,
+        offsets.data(),
+        &offsets_size,
+        data.data(),
+        &data_size);
+    total_cells += coords_size / sizeof(int32_t);
   }
   tiledb_array_t* array;
   auto st = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
@@ -1866,18 +1876,18 @@ TEST_CASE_METHOD(
   // Minimum buffer size should hold number of dups in a single cell.
   uint64_t buffer_size = 2;
   do {
-    int32_t coords_r[buffer_size];
-    uint64_t coords_r_size = sizeof(coords_r);
-    uint64_t offsets_r[buffer_size];
-    uint64_t offsets_r_size = sizeof(offsets_r);
+    std::vector<int32_t> coords_r(buffer_size, 0);
+    uint64_t coords_r_size = coords_r.size() * sizeof(int32_t);
+    std::vector<uint64_t> offsets_r(buffer_size, 0);
+    uint64_t offsets_r_size = offsets_r.size() * sizeof(uint64_t);
     std::string data_r(buffer_size++, 0);
     uint64_t data_r_size = data_r.size();
 
     st = tiledb_query_set_data_buffer(
-        ctx_, query, "d", coords_r, &coords_r_size);
+        ctx_, query, "d", coords_r.data(), &coords_r_size);
     CHECK(st == TILEDB_OK);
     st = tiledb_query_set_offsets_buffer(
-        ctx_, query, "a", offsets_r, &offsets_r_size);
+        ctx_, query, "a", offsets_r.data(), &offsets_r_size);
     CHECK(st == TILEDB_OK);
     st = tiledb_query_set_data_buffer(
         ctx_, query, "a", data_r.data(), &data_r_size);
