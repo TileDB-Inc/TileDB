@@ -877,6 +877,8 @@ Status GCS::flush_object(const URI& uri) {
 
   auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
+  state_lck.unlock();
+
   // Build a list of objects to compose.
   std::vector<google::cloud::storage::ComposeSourceObject> source_objects(
       part_paths.size());
