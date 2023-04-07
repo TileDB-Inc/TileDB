@@ -45,7 +45,7 @@ capi_return_t tiledb_fragments_list_get_fragment_uri(
   ensure_output_pointer_is_valid(uri);
 
   *uri = f->fragment_uri(index).c_str();
-  *uri_length = sizeof(uri) / sizeof(*uri);
+  *uri_length = strlen(f->fragment_uri(index).last_path_part().c_str());
   return TILEDB_OK;
 }
 
