@@ -97,11 +97,11 @@ Status GroupMetaConsolidator::consolidate(
   const auto to_vacuum = metadata_w->loaded_metadata_uris();
 
   // Generate new name for consolidated metadata
-  Status st = metadata_w->generate_uri(group_uri);
+  RETURN_NOT_OK(metadata_w->generate_uri(group_uri));
 
   // Get the new URI name
   URI new_uri;
-  st = metadata_w->get_uri(group_uri, &new_uri);
+  RETURN_NOT_OK(metadata_w->get_uri(group_uri, &new_uri));
 
   // Write vacuum file
   URI vac_uri = URI(new_uri.to_string() + constants::vacuum_file_suffix);
