@@ -824,7 +824,7 @@ Status GCS::upload_part(
     const std::string& object_part_path,
     const void* const buffer,
     const uint64_t length) {
-  std::string write_buffer(
+  absl::string_view write_buffer(
       static_cast<const char*>(buffer), static_cast<size_t>(length));
 
   google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
