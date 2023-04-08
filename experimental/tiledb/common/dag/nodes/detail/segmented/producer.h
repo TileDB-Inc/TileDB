@@ -225,9 +225,8 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
     std::stop_source stop_source_;
     assert(!stop_source_.stop_requested());
 
-
-// #pragma clang diagnostic push
-// #pragma ide diagnostic ignored "UnreachableCode"
+    // #pragma clang diagnostic push
+    // #pragma ide diagnostic ignored "UnreachableCode"
 
     switch (this->program_counter_) {
       case 0: {
@@ -315,8 +314,7 @@ struct producer_node : public std::shared_ptr<producer_node_impl<Mover, T>> {
 
   template <class Function>
   explicit producer_node(Function&& f)
-      : Base{std::make_shared<PreBase>(
-            std::forward<Function>(f))} {
+      : Base{std::make_shared<PreBase>(std::forward<Function>(f))} {
   }
 
   explicit producer_node(producer_node_impl<Mover, T>& impl)
