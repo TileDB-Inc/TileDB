@@ -91,7 +91,6 @@ class consumer_node_impl : public node_base, public Sink<Mover, T> {
     return *reinterpret_cast<SinkBase*>(this);
   }
 
-
   /** Utility functions for indicating what kind of node and state of the ports
    * being used.
    *

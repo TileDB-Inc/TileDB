@@ -41,25 +41,25 @@
 #include "experimental/tiledb/common/dag/execution/task.h"
 #include "experimental/tiledb/common/dag/execution/task_state_machine.h"
 #include "experimental/tiledb/common/dag/execution/task_traits.h"
+#include "experimental/tiledb/common/dag/nodes/detail/segmented/edge_node_ctad.h"
 #include "experimental/tiledb/common/dag/nodes/node_traits.h"
 #include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
-#include "experimental/tiledb/common/dag/nodes/detail/segmented/edge_node_ctad.h"
 #include "experimental/tiledb/common/dag/utility/print_types.h"
 
 #include "experimental/tiledb/common/dag/nodes/detail/segmented/mimo.h"
 
 namespace tiledb::common {
 
-
 template <class... R, class... T>
 auto aaa(std::function<void(std::tuple<R...>, std::tuple<T...>)>&& f) {
   // using U... = std::remove_cv_t<std::remove_reference_t<T...>>;
-  auto tmp = mimo_node<DuffsMover3, std::remove_cv_t<std::remove_reference_t<T>>..., DuffsMover3, R...>{f};
+  auto tmp = mimo_node<
+      DuffsMover3,
+      std::remove_cv_t<std::remove_reference_t<T>>...,
+      DuffsMover3,
+      R...>{f};
   return tmp;
 }
-
-
-
 
 template <class Scheduler>
 class TaskGraph {
@@ -155,7 +155,6 @@ class TaskGraph {
     return tmp;
   }
 
-
   /**
    * Create a function node and add it to the graph.
    *
@@ -178,10 +177,16 @@ class TaskGraph {
     return transform_node(std::function{std::forward<Function>(f)});
   }
 
-  template <template <class> class a, class b, template <class> class c, class d>
+  template <
+      template <class>
+      class a,
+      class b,
+      template <class>
+      class c,
+      class d>
   class e : public mimo_node<a, b, c, d> {};
 
-/**
+  /**
    * Create a multi-input, multi-output function node and add it to the graph.
    *
    * @param f The function to store in the node.
@@ -190,14 +195,17 @@ class TaskGraph {
    * The function must take an item as input
    * and return an item as output.
    */
-   template <class... R, class... T>
-   auto mimo(std::function<std::tuple<R...>(const std::tuple<T...>&)>&& f ){
-     // using U... = std::remove_cv_t<std::remove_reference_t<T...>>;
-    auto tmp = mimo_node<DuffsMover3, std::tuple<std::remove_cv_t<std::remove_reference_t<T>>...>, DuffsMover3, std::tuple<R...>> {f};
+  template <class... R, class... T>
+  auto mimo(std::function<std::tuple<R...>(const std::tuple<T...>&)>&& f) {
+    // using U... = std::remove_cv_t<std::remove_reference_t<T...>>;
+    auto tmp = mimo_node<
+        DuffsMover3,
+        std::tuple<std::remove_cv_t<std::remove_reference_t<T>>...>,
+        DuffsMover3,
+        std::tuple<R...>>{f};
     nodes_.emplace_back(tmp);
     return tmp;
-   }
-
+  }
 
   /**
    * Create a multi-input, multi-output function node and add it to the graph.
@@ -243,7 +251,6 @@ class TaskGraph {
   auto terminal_node(Func&& f) {
     return terminal_node(std::function{std::forward<Func>(f)});
   }
-
 
   /**
    * Create a terminal node and add it to the graph.
@@ -296,35 +303,51 @@ class TaskGraph {
   }
 #endif
 
-
-
   template <class From, class To>
-  std::enable_if_t<(!is_proxy_v<From> && !is_proxy_v<To>), void>
-  make_edge(From& from, To& to){
+  std::enable_if_t<(!is_proxy_v<From> && !is_proxy_v<To>), void> make_edge(
+      From& from, To& to) {
     connect(from, to);
     Edge(from, to);
   }
 
   template <class From, class To>
-  std::enable_if_t<!is_proxy_v<std::remove_reference_t<From>> && is_proxy_v<std::remove_reference_t<To>>, void>
-  make_edge(From&& from, To&& to){
+  std::enable_if_t<
+      !is_proxy_v<std::remove_reference_t<From>> &&
+          is_proxy_v<std::remove_reference_t<To>>,
+      void>
+  make_edge(From&& from, To&& to) {
     connect(from, *(to.node_ptr_));
-    Edge(from, std::get<std::remove_reference_t<To>::portnum_>((*(to.node_ptr_))->get_input_ports()));
+    Edge(
+        from,
+        std::get<std::remove_reference_t<To>::portnum_>(
+            (*(to.node_ptr_))->get_input_ports()));
   }
 
   template <class From, class To>
-  std::enable_if_t<(is_proxy_v<std::remove_reference_t<From>> && !is_proxy_v<std::remove_reference_t<To>>), void>
-  make_edge(From&& from, To&& to){
+  std::enable_if_t<
+      (is_proxy_v<std::remove_reference_t<From>> &&
+       !is_proxy_v<std::remove_reference_t<To>>),
+      void>
+  make_edge(From&& from, To&& to) {
     connect(*(from.node_ptr_), to);
-    Edge(std::get<std::remove_reference_t<From>::portnum_>((*(from.node_ptr_))->get_output_ports()), to);
+    Edge(
+        std::get<std::remove_reference_t<From>::portnum_>(
+            (*(from.node_ptr_))->get_output_ports()),
+        to);
   }
 
   template <class From, class To>
-  std::enable_if_t<is_proxy_v<std::remove_reference_t<From>> && is_proxy_v<std::remove_reference_t<To>>, void>
-  make_edge(From&& from, To&& to){
+  std::enable_if_t<
+      is_proxy_v<std::remove_reference_t<From>> &&
+          is_proxy_v<std::remove_reference_t<To>>,
+      void>
+  make_edge(From&& from, To&& to) {
     connect(*(from.node_ptr_), *(to.node_ptr_));
-    Edge(std::get<std::remove_reference_t<From>::portnum_>((*(from.node_ptr_))->get_output_ports()),
-         std::get<std::remove_reference_t<To>::portnum_>((*(to.node_ptr_))->get_input_ports()));
+    Edge(
+        std::get<std::remove_reference_t<From>::portnum_>(
+            (*(from.node_ptr_))->get_output_ports()),
+        std::get<std::remove_reference_t<To>::portnum_>(
+            (*(to.node_ptr_))->get_input_ports()));
   }
 
   /**

@@ -70,8 +70,8 @@
 
 #include "detail/segmented/consumer.h"
 #include "detail/segmented/function.h"
-#include "detail/segmented/producer.h"
 #include "detail/segmented/mimo.h"
+#include "detail/segmented/producer.h"
 #include "node_traits.h"
 
 namespace tiledb::common {

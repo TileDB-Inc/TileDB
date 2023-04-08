@@ -34,9 +34,9 @@
 #include <type_traits>
 #include <variant>
 #include "experimental/tiledb/common/dag/edge/edge.h"
+#include "experimental/tiledb/common/dag/nodes/detail/segmented/edge_node_ctad.h"
 #include "experimental/tiledb/common/dag/nodes/generators.h"
 #include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
-#include "experimental/tiledb/common/dag/nodes/detail/segmented/edge_node_ctad.h"
 #include "experimental/tiledb/common/dag/nodes/terminals.h"
 #include "experimental/tiledb/common/dag/state_machine/test/types.h"
 #include "experimental/tiledb/common/dag/utility/print_types.h"
@@ -285,7 +285,6 @@ TEMPLATE_TEST_CASE(
     C c{dummy_const_sink};
     Edge g{b, c};
   }
-
 
   SECTION("lambda") {
     auto dummy_source_lambda = [](std::stop_source&) { return 0UL; };
