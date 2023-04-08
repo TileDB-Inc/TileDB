@@ -305,6 +305,9 @@ const std::string query_status_inprogress_str = "INPROGRESS";
 /** TILEDB_INCOMPLETE Query String **/
 const std::string query_status_incomplete_str = "INCOMPLETE";
 
+/** TILEDB_INITIALIZED Query String **/
+const std::string query_status_initialized_str = "INITIALIZED";
+
 /** TILEDB_UNINITIALIZED Query String **/
 const std::string query_status_uninitialized_str = "UNINITIALIZED";
 

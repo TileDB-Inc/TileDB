@@ -357,6 +357,20 @@ struct Stats {
   # counters
 }
 
+struct UnorderedWriterState {
+  isCoordsPass @0 :Bool;
+  # Coordinate pass boolean for partial attribute write
+
+  cellPos @1 : List(UInt64);
+  # Cell positions for partial attribute writes
+
+  coordDups @2 : List(UInt64);
+  # Coordinate duplicates for partial attribute writes
+
+  fragMeta @3 : FragmentMetadata;
+  # Fragment metadata for partial attribute writes
+}
+
 struct Writer {
   # Write struct
   checkCoordDups @0 :Bool;
@@ -376,6 +390,9 @@ struct Writer {
 
   globalWriteStateV1 @6 :GlobalWriteState;
   # All the state necessary for global writes to work in TileDB Cloud
+
+  unorderedWriterState @7 :UnorderedWriterState;
+  # Unordered writer state
 }
 
 struct SubarrayRanges {
@@ -661,6 +678,9 @@ struct Query {
     writtenFragmentInfo @18 :List(WrittenFragmentInfo);
     # Needed in global order writes when WrittenFragmentInfo gets updated
     # during finalize, but doesn't end up back on the client Query object
+
+    writtenBuffers @19 : List(Text);
+    # written buffers for partial attribute writes
 }
 
 struct NonEmptyDomain {

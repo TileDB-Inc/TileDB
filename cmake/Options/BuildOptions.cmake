@@ -6,6 +6,7 @@
 # in TileDB-Superbuild.cmake.
 
 option(TILEDB_SUPERBUILD "If true, perform a superbuild (builds all missing dependencies)." ON)
+option(TILEDB_VCPKG "If true, use vcpkg to download and build dependencies." OFF)
 option(TILEDB_FORCE_ALL_DEPS "If true, force superbuild to download and build all dependencies, even those installed on the system." OFF)
 option(TILEDB_REMOVE_DEPRECATIONS "If true, do not build deprecated APIs." OFF)
 option(TILEDB_VERBOSE "Prints TileDB errors with verbosity" OFF)

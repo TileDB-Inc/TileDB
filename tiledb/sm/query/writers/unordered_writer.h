@@ -87,6 +87,32 @@ class UnorderedWriter : public WriterBase {
   /** Resets the writer object, rendering it incomplete. */
   void reset();
 
+  /** Returns the name of the strategy. */
+  std::string name();
+
+  /** Alloc a new fragment metadata. */
+  Status alloc_frag_meta();
+
+  /** Returns the cell position vector. */
+  std::vector<uint64_t>& cell_pos() {
+    return cell_pos_;
+  }
+
+  /** Returns the coord duplicates set. */
+  std::set<uint64_t>& coord_dups() {
+    return coord_dups_;
+  }
+
+  /** Returns the fragment metadata. */
+  shared_ptr<FragmentMetadata> frag_meta() {
+    return frag_meta_;
+  }
+
+  /** Return the is coords pass boolean. */
+  bool& is_coords_pass() {
+    return is_coords_pass_;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

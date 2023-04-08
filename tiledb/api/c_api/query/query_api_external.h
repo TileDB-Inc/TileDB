@@ -39,6 +39,8 @@
 extern "C" {
 #endif
 
+typedef struct tiledb_query_t tiledb_query_t;
+
 /** TileDB query type. */
 typedef enum {
 /** Helper macro for defining query type enums. */

@@ -174,6 +174,29 @@ void GroupCPPFx::create_array(const std::string& path) const {
 }
 
 TEST_CASE_METHOD(
+    GroupCPPFx,
+    "C++ API: Test creating group with config",
+    "[cppapi][group][config]") {
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+
+  std::string group1_uri = temp_dir + "group1";
+  tiledb::Group::create(ctx_, group1_uri);
+
+  const std::string& test_key = "foo";
+  const std::string& test_value = "bar";
+  tiledb::Config config;
+  config[test_key] = test_value;
+
+  tiledb::Group group(ctx_, group1_uri, TILEDB_WRITE, config);
+
+  CHECK(group.config().get(test_key) == test_value);
+
+  group.close();
+}
+
+TEST_CASE_METHOD(
     GroupCPPFx, "C++ API: Test group metadata", "[cppapi][group][metadata]") {
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();

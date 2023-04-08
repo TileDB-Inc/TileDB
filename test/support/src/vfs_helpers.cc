@@ -39,6 +39,7 @@ namespace test {
 
 std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
   std::vector<std::unique_ptr<SupportedFs>> fs_vec;
+
   bool supports_s3 = false;
   bool supports_hdfs = false;
   bool supports_azure = false;

@@ -189,6 +189,10 @@ Status OrderedDimLabelReader::dowork() {
 void OrderedDimLabelReader::reset() {
 }
 
+std::string OrderedDimLabelReader::name() {
+  return "OrderedDimLabelReader";
+}
+
 /* ********************************* */
 /*           PRIVATE METHODS         */
 /* ********************************* */

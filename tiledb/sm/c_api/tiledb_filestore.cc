@@ -35,6 +35,7 @@
 #define TILEDB_DEPRECATED
 
 #include "tiledb/api/c_api/config/config_api_internal.h"
+#include "tiledb/api/c_api/dimension/dimension_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/common/common-std.h"
 #include "tiledb/sm/c_api/api_argument_validator.h"

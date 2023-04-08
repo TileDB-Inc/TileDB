@@ -1760,9 +1760,6 @@ StorageManagerCanonical::load_group_from_all_uris(
   auto timer_se = stats()->start_timer("sm_load_group_from_uri");
 
   std::vector<shared_ptr<Deserializer>> deserializers;
-  // We collect tiles, so they outlive the for loop but stoll scoped to this
-  // function We need to have a deserializer that takes ownership
-  std::vector<optional<Tile>> tiles;
   for (auto& uri : uris) {
     auto&& tile = GenericTileIO::load(resources_, uri.uri_, 0, encryption_key);
 
@@ -1770,9 +1767,8 @@ StorageManagerCanonical::load_group_from_all_uris(
 
     // Deserialize
     shared_ptr<Deserializer> deserializer =
-        tdb::make_shared<Deserializer>(HERE(), tile.data(), tile.size());
+        tdb::make_shared<TileDeserializer>(HERE(), std::move(tile));
     deserializers.emplace_back(deserializer);
-    tiles.emplace_back(std::move(tile));
   }
 
   auto opt_group = GroupDetails::deserialize(deserializers, group_uri);

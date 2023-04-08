@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -98,7 +98,9 @@ class Query {
     /** Query completed (but not all data has been read) */
     INCOMPLETE,
     /** Query not initialized.  */
-    UNINITIALIZED
+    UNINITIALIZED,
+    /** Query initialized (strategy created).  */
+    INITIALIZED
   };
 
   /* ********************************* */
@@ -2317,6 +2319,8 @@ class Query {
         return Status::FAILED;
       case TILEDB_UNINITIALIZED:
         return Status::UNINITIALIZED;
+      case TILEDB_INITIALIZED:
+        return Status::INITIALIZED;
     }
     assert(false);
     return Status::UNINITIALIZED;
@@ -2605,6 +2609,9 @@ inline std::ostream& operator<<(std::ostream& os, const Query::Status& stat) {
       break;
     case tiledb::Query::Status::UNINITIALIZED:
       os << "UNINITIALIZED";
+      break;
+    case tiledb::Query::Status::INITIALIZED:
+      os << "INITIALIZED";
       break;
   }
   return os;

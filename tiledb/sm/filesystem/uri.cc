@@ -299,6 +299,10 @@ std::string URI::to_path(const std::string& uri) {
   return "";
 }
 
+std::string URI::backend_name() const {
+  return uri_.substr(0, uri_.find_first_of(':'));
+}
+
 std::string URI::to_path() const {
   return to_path(uri_);
 }
