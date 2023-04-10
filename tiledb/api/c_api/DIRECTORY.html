@@ -249,9 +249,15 @@ ul.task-list li input[type="checkbox"] {
 </ul></li>
 <li><strong>Internal header</strong>. This header is not user-visible and is for inclusion in API source files.
 <ul>
-<li>Only included in API sources and API white-box unit tests. Since these headers are not user-visible, they do not appear in integration tests; such test should only use external headers.</li>
+<li>Only included in API sources and API white-box unit tests. Since these headers are not user-visible, they do not appear in integration tests; such tests should only use external headers.</li>
 <li>Included source files in other sections as the arguments of C API function dictate.</li>
 <li>Uses name convention <code>&lt;section&gt;_api_internal.h</code></li>
+</ul></li>
+<li><strong>Enumeration header</strong>. This header is user-visible by inclusion through the external header, but should never be included directly. This header contains code fragments that define values for enumeration symbols; the fragments require a particular pattern of use for the preprocessor.
+<ul>
+<li>Included in the external header, where it defines a plain <code>enum</code> for C.</li>
+<li>Included in the internal header, where it defines an <code>enum class</code> for C++</li>
+<li>Uses name convention <code>&lt;section&gt;_api_enum.h</code></li>
 </ul></li>
 <li><strong>API source</strong>
 <ul>
