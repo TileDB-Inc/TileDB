@@ -34,11 +34,11 @@
 #define TILEDB_CPP_API_FRAGMENT_INFO_H
 
 #include "array_schema.h"
+#include "capi_string.h"
 #include "context.h"
 #include "deleter.h"
 #include "exception.h"
 #include "object.h"
-#include "string_handle_holder.h"
 #include "tiledb.h"
 #include "type.h"
 
@@ -95,10 +95,10 @@ class FragmentInfo {
   /** Returns the name of the fragment with the given index. */
   std::string fragment_name(uint32_t fid) const {
     auto& ctx = ctx_.get();
-    impl::StringHandleHolder name;
+    tiledb_string_t* name;
     ctx.handle_error(tiledb_fragment_info_get_fragment_name_v2(
-        ctx.ptr().get(), fragment_info_.get(), fid, name.c_ptr()));
-    return name.str();
+        ctx.ptr().get(), fragment_info_.get(), fid, &name));
+    return impl::CAPIString(std::move(name)).str();
   }
 
   /**

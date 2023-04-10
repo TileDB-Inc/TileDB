@@ -1,5 +1,5 @@
 /**
- * @file   string_handle_holder.h
+ * @file   capi_string.h
  *
  * @section LICENSE
  *
@@ -27,11 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C++ API for the TileDB StringHandleHolder object.
+ * This file declares the C++ API for the TileDB CAPIString object.
  */
 
-#ifndef TILEDB_CPP_API_STRING_HANDLE_HOLDER_H
-#define TILEDB_CPP_API_STRING_HANDLE_HOLDER_H
+#ifndef TILEDB_CPP_API_CAPI_STRING_H
+#define TILEDB_CPP_API_CAPI_STRING_H
 
 #include <cassert>
 #include <optional>
@@ -44,12 +44,13 @@ namespace tiledb::impl {
  * Manages the lifetime of a tiledb_string_t* handle and provides operations on
  * it.
  */
-class StringHandleHolder {
+class CAPIString {
  public:
-  StringHandleHolder() {
-    string_ = nullptr;
+  CAPIString(tiledb_string_t*&& handle) {
+    string_ = handle;
+    handle = nullptr;
   }
-  ~StringHandleHolder() {
+  ~CAPIString() {
     if (string_ == nullptr) {
       return;
     }
@@ -61,20 +62,10 @@ class StringHandleHolder {
   }
 
   // Disable copy and move.
-  StringHandleHolder(const StringHandleHolder&) = delete;
-  StringHandleHolder operator=(const StringHandleHolder&) = delete;
-  StringHandleHolder(const StringHandleHolder&&) = delete;
-  StringHandleHolder operator=(const StringHandleHolder&&) = delete;
-
-  /**
-   * Returns a tiledb_string_t** pointer to be passed in native code.
-   * This method should be called only once.
-   */
-  inline tiledb_string_t** c_ptr() {
-    // We should call this function only once when the object is uninitialized.
-    assert(string_ == nullptr);
-    return &string_;
-  }
+  CAPIString(const CAPIString&) = delete;
+  CAPIString operator=(const CAPIString&) = delete;
+  CAPIString(const CAPIString&&) = delete;
+  CAPIString operator=(const CAPIString&&) = delete;
 
   /**
    * Returns a C++ string with the handle's data.
@@ -82,7 +73,7 @@ class StringHandleHolder {
    * If the handle is null, returns a defaullt value, which is the empty string
    * if not specified.
    */
-  inline std::string str(const std::string& default_value = "") const {
+  std::string str(const std::string& default_value = "") const {
     return str_opt().value_or(default_value);
   }
 
@@ -111,4 +102,4 @@ class StringHandleHolder {
 
 }  // namespace tiledb::impl
 
-#endif  // TILEDB_CPP_API_STRING_HANDLE_HOLDER_H
+#endif  // TILEDB_CPP_API_CAPI_STRING_H

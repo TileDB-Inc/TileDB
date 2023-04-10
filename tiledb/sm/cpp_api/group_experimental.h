@@ -35,8 +35,8 @@
 #ifndef TILEDB_CPP_API_GROUP_EXPERIMENTAL_H
 #define TILEDB_CPP_API_GROUP_EXPERIMENTAL_H
 
+#include "capi_string.h"
 #include "context.h"
-#include "string_handle_holder.h"
 #include "tiledb.h"
 
 namespace tiledb {
@@ -414,22 +414,25 @@ class Group {
   tiledb::Object member(uint64_t index) const {
     auto& ctx = ctx_.get();
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
-    impl::StringHandleHolder uri;
+    tiledb_string_t* uri;
     tiledb_object_t type;
-    impl::StringHandleHolder name;
+    tiledb_string_t* name;
     ctx.handle_error(tiledb_group_get_member_by_index_v2(
-        c_ctx, group_.get(), index, uri.c_ptr(), &type, name.c_ptr()));
-    return tiledb::Object(type, uri.str(), name.str_opt());
+        c_ctx, group_.get(), index, &uri, &type, &name));
+    return tiledb::Object(
+        type,
+        impl::CAPIString(std::move(uri)).str(),
+        impl::CAPIString(std::move(name)).str_opt());
   }
 
   tiledb::Object member(std::string name) const {
     auto& ctx = ctx_.get();
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
-    impl::StringHandleHolder uri;
+    tiledb_string_t* uri;
     tiledb_object_t type;
     ctx.handle_error(tiledb_group_get_member_by_name_v2(
-        c_ctx, group_.get(), name.c_str(), uri.c_ptr(), &type));
-    return tiledb::Object(type, uri.str(), name);
+        c_ctx, group_.get(), name.c_str(), &uri, &type));
+    return tiledb::Object(type, impl::CAPIString(std::move(uri)).str(), name);
   }
 
   /**
