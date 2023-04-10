@@ -367,7 +367,12 @@ capi_return_t tiledb_group_get_member_by_index_v2(
 
   *uri = tiledb_string_handle_t::make_handle(uri_str);
   *type = static_cast<tiledb_object_t>(object_type);
-  *name = name_str ? tiledb_string_handle_t::make_handle(*name_str) : nullptr;
+  try {
+    *name = name_str ? tiledb_string_handle_t::make_handle(*name_str) : nullptr;
+  } catch (...) {
+    tiledb_string_handle_t::break_handle(*uri);
+    throw;
+  }
 
   return TILEDB_OK;
 }
