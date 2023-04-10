@@ -574,11 +574,14 @@ Status Azure::copy_blob(const URI& old_uri, const URI& new_uri) {
     client_->GetBlobContainerClient(new_container_name)
         .GetBlobClient(new_blob_path)
         .StartCopyFromUri(source_uri)
-        .PollUntilDone(std::chrono::milliseconds(constants::azure_attempt_sleep_ms));
+        .PollUntilDone(
+            std::chrono::milliseconds(constants::azure_attempt_sleep_ms));
   } catch (const ::Azure::Storage::StorageException& e) {
     return LOG_STATUS(Status_AzureError(
         "Copy blob failed on: " + old_uri.to_string() + "; " + e.Message));
   }
+
+  return Status::Ok();
 }
 
 Status Azure::move_dir(const URI& old_uri, const URI& new_uri) {
