@@ -421,8 +421,8 @@ class Group {
         c_ctx, group_.get(), index, &uri, &type, &name));
     return tiledb::Object(
         type,
-        impl::CAPIString(std::move(uri)).str(),
-        impl::CAPIString(std::move(name)).str_opt());
+        impl::CAPIString::to_string(std::move(uri)),
+        impl::CAPIString::to_string_optional(std::move(name)));
   }
 
   tiledb::Object member(std::string name) const {
@@ -432,7 +432,8 @@ class Group {
     tiledb_object_t type;
     ctx.handle_error(tiledb_group_get_member_by_name_v2(
         c_ctx, group_.get(), name.c_str(), &uri, &type));
-    return tiledb::Object(type, impl::CAPIString(std::move(uri)).str(), name);
+    return tiledb::Object(
+        type, impl::CAPIString::to_string(std::move(uri)), name);
   }
 
   /**

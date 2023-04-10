@@ -70,21 +70,24 @@ class CAPIString {
   /**
    * Returns a C++ string with the handle's data.
    *
-   * If the handle is null, returns a defaullt value, which is the empty string
-   * if not specified.
+   * If the handle is null returns nullopt.
    */
-  std::string str(const std::string& default_value = "") const {
-    return str_opt().value_or(default_value);
+  static std::optional<std::string> to_string_optional(
+      tiledb_string_t*&& handle) {
+    if (handle == nullptr) {
+      return std::nullopt;
+    }
+    return to_string(std::move(handle));
   }
 
   /**
-   * Returns a C++ string with the handle's data, or nullopt if the handle is
-   * null.
+   * Returns a C++ string with the handle's data.
    */
-  std::optional<std::string> str_opt() const {
-    if (string_ == nullptr) {
-      return std::nullopt;
-    }
+  static std::string to_string(tiledb_string_t*&& handle) {
+    return CAPIString(std::move(handle)).str();
+  }
+
+  std::string str() const {
     const char* c;
     size_t size;
     capi_status_t status =
