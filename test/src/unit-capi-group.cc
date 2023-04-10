@@ -245,9 +245,10 @@ std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> GroupFx::read_group(
     const char* uri_str;
     size_t uri_size;
     rc = tiledb_string_view(uri, &uri_str, &uri_size);
+    CHECK(rc == TILEDB_OK);
     ret.emplace_back(std::string(uri_str, uri_size), type);
     rc = tiledb_string_free(&uri);
-    REQUIRE(rc == TILEDB_OK);
+    CHECK(rc == TILEDB_OK);
     if (name) {
       rc = tiledb_string_free(&name);
       REQUIRE(rc == TILEDB_OK);
