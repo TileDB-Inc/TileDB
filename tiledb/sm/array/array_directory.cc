@@ -965,7 +965,7 @@ std::string ArrayDirectory::get_full_vac_uri(
   } else {
     size_t last_slash_pos = vac_uri.find_last_of('/');
     if (last_slash_pos == std::string::npos) {
-      throw std::logic_error("Invalid URI");
+      throw std::logic_error("Invalid URI: " + vac_uri);
     }
 
     vac_uri = vac_uri.substr(last_slash_pos + 1);
