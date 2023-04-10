@@ -46,7 +46,7 @@ namespace tiledb::impl {
  */
 class CAPIString {
  public:
-  CAPIString(tiledb_string_t*&& handle) {
+  CAPIString(tiledb_string_t*&& handle) noexcept {
     string_ = handle;
     handle = nullptr;
   }
