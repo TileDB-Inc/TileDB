@@ -954,6 +954,26 @@ std::vector<URI> ArrayDirectory::compute_fragment_meta_uris(
   return ret;
 }
 
+std::string ArrayDirectory::get_full_vac_uri(
+    std::string base, std::string vac_uri) {
+  size_t frag_pos = vac_uri.find(constants::array_fragments_dir_name);
+  if (frag_pos != std::string::npos) {
+    vac_uri = vac_uri.substr(frag_pos);
+  } else if (
+      vac_uri.find(constants::array_metadata_dir_name) != std::string::npos) {
+    vac_uri = vac_uri.substr(vac_uri.find(constants::array_metadata_dir_name));
+  } else {
+    size_t last_slash_pos = vac_uri.find_last_of('/');
+    if (last_slash_pos == std::string::npos) {
+      throw std::logic_error("Invalid URI: " + vac_uri);
+    }
+
+    vac_uri = vac_uri.substr(last_slash_pos + 1);
+  }
+
+  return base + vac_uri;
+}
+
 bool ArrayDirectory::timestamps_overlap(
     const std::pair<uint64_t, uint64_t> fragment_timestamp_range,
     const bool consolidation_with_timestamps) const {
@@ -1022,6 +1042,8 @@ ArrayDirectory::compute_uris_to_vacuum(
     std::stringstream ss(names);
     bool vacuum_vac_file = true;
     for (std::string uri_str; std::getline(ss, uri_str);) {
+      uri_str =
+          get_full_vac_uri(uri_.add_trailing_slash().to_string(), uri_str);
       auto it = uris_map.find(uri_str);
       if (it != uris_map.end())
         to_vacuum_vec[it->second] = 1;

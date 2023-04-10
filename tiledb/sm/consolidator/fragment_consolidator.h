@@ -324,6 +324,8 @@ class FragmentConsolidator : public Consolidator {
   /** Writes the vacuum file that contains the URIs of the consolidated
    * fragments. */
   Status write_vacuum_file(
+      const format_version_t write_version,
+      const URI& array_uri,
       const URI& vac_uri,
       const std::vector<TimestampedURI>& to_consolidate) const;
 
