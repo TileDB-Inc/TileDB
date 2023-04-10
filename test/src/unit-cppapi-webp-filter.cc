@@ -341,7 +341,9 @@ using DimensionTypes = std::tuple<
     int32_t,
     int64_t>;
 TEMPLATE_LIST_TEST_CASE(
-    "C++ API: WEBP Filter", "[cppapi][filter][webp]", DimensionTypes) {
+    "C++ API: WEBP Filter",
+    "[cppapi][filter][webp][longtest]",
+    DimensionTypes) {
   if constexpr (webp_filter_exists) {
     Context ctx;
     VFS vfs(ctx);

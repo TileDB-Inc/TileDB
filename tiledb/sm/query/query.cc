@@ -143,12 +143,6 @@ Query::Query(
     throw QueryStatusException(
         "Cannot find sm.allow_separate_attribute_writes in settings");
   }
-
-  // Disallow partial attribute writes for remote arrays.
-  if (allow_separate_attribute_writes_ && array_->is_remote()) {
-    throw QueryStatusException(
-        "Cannot allow partial attribute writes on remote arrays.");
-  }
 }
 
 Query::~Query() {
@@ -420,6 +414,17 @@ std::vector<std::string> Query::buffer_names() const {
   // Special zipped coordinates name
   if (coords_info_.coords_buffer_) {
     ret.push_back(constants::coords);
+  }
+
+  return ret;
+}
+
+std::vector<std::string> Query::unwritten_buffer_names() const {
+  std::vector<std::string> ret;
+  for (auto& name : buffer_names()) {
+    if (written_buffers_.count(name) == 0) {
+      ret.push_back(name);
+    }
   }
 
   return ret;
@@ -2027,6 +2032,10 @@ bool Query::is_dense() const {
 
 std::vector<WrittenFragmentInfo>& Query::get_written_fragment_info() {
   return written_fragment_info_;
+}
+
+std::unordered_set<std::string>& Query::get_written_buffers() {
+  return written_buffers_;
 }
 
 void Query::reset_coords_markers() {
