@@ -57,8 +57,9 @@ class Benchmark : public BenchmarkBase {
     Array array(ctx_, array_uri_, TILEDB_WRITE);
     Query query(ctx_, array, TILEDB_WRITE);
 
-    std::array<uint64_t, 2> subarray = {1ul, array_rows};
-    query.set_subarray({subarray})
+    query
+        .set_subarray(
+            Subarray(ctx_, array).set_subarray<uint64_t>({1ul, array_rows}))
         .set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a", data_);
     query.submit();
@@ -78,11 +79,12 @@ class Benchmark : public BenchmarkBase {
   virtual void run() {
     Array array(ctx_, array_uri_, TILEDB_READ);
     Query query(ctx_, array);
-    std::array<uint64_t, 2> subarray = {1ul, array_rows};
     const int cmp_value = array_rows / 2;
     QueryCondition condition =
         QueryCondition::create(ctx_, "a", cmp_value, TILEDB_LT);
-    query.set_subarray({subarray})
+    query
+        .set_subarray(
+            Subarray(ctx_, array).set_subarray<uint64_t>({1ul, array_rows}))
         .set_layout(TILEDB_ROW_MAJOR)
         .set_condition(condition)
         .set_data_buffer("a", data_);

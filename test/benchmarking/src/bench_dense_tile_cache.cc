@@ -45,7 +45,7 @@ class Benchmark : public BenchmarkBase {
     // hold all of our tiles.
     Config config;
     config["sm.tile_cache_size"] = "10000000000";
-    ctx_ = std::unique_ptr<Context>(new Context(config));
+    ctx_ = std::make_unique<Context>(config);
   }
 
  protected:
@@ -71,7 +71,9 @@ class Benchmark : public BenchmarkBase {
     // Write the array one time.
     Array write_array(*ctx_, array_uri_, TILEDB_WRITE);
     Query write_query(*ctx_, write_array, TILEDB_WRITE);
-    write_query.set_subarray({1u, array_rows, 1u, array_cols})
+    write_query
+        .set_subarray(Subarray(*ctx_, write_array)
+                          .set_subarray({1u, array_rows, 1u, array_cols}))
         .set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a", data_);
     write_query.submit();
@@ -90,7 +92,9 @@ class Benchmark : public BenchmarkBase {
     // Read the array one time, populating the entire tile cache.
     Array read_array(*ctx_, array_uri_, TILEDB_READ);
     Query read_query(*ctx_, read_array);
-    read_query.set_subarray({1u, array_rows, 1u, array_cols})
+    read_query
+        .set_subarray(Subarray(*ctx_, read_array)
+                          .set_subarray({1u, array_rows, 1u, array_cols}))
         .set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a", data_);
     read_query.submit();
@@ -103,7 +107,9 @@ class Benchmark : public BenchmarkBase {
     for (int i = 0; i < 10; ++i) {
       Array array(*ctx_, array_uri_, TILEDB_READ);
       Query query(*ctx_, array);
-      query.set_subarray({1u, array_rows, 1u, array_cols})
+      query
+          .set_subarray(Subarray(*ctx_, array)
+                            .set_subarray({1u, array_rows, 1u, array_cols}))
           .set_layout(TILEDB_ROW_MAJOR)
           .set_data_buffer("a", data_);
       query.submit();
