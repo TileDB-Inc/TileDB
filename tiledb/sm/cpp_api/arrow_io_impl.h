@@ -121,6 +121,7 @@ struct TypeInfo {
   tiledb_datatype_t type;
   uint64_t elem_size;
   uint32_t cell_val_num;
+  bool nullable;
 
   // is this represented as "Arrow large"
   bool arrow_large;
@@ -129,12 +130,14 @@ struct TypeInfo {
 struct BufferInfo {
   TypeInfo tdbtype;
   bool is_var;               // is var-length
+  bool is_nullable;          // is nullable
   uint64_t data_num;         // number of data elements
   void* data;                // data pointer
   uint64_t data_elem_size;   // bytes per data element
   uint64_t offsets_num;      // number of offsets
   void* offsets;             // offsets pointer
   size_t offsets_elem_size;  // bytes per offset element
+  uint8_t* validity;         // optional validity buffer (if is_nullable)
 };
 
 /* ****************************** */
@@ -313,9 +316,11 @@ TypeInfo tiledb_dt_info(const ArraySchema& schema, const std::string& name) {
   if (schema.has_attribute(name)) {
     auto attr = schema.attribute(name);
     auto retval = TypeInfo();
-    retval.type = attr.type(),
-    retval.elem_size = tiledb::impl::type_size(attr.type()),
-    retval.cell_val_num = attr.cell_val_num(), retval.arrow_large = false;
+    retval.type = attr.type();
+    retval.elem_size = tiledb::impl::type_size(attr.type());
+    retval.cell_val_num = attr.cell_val_num();
+    retval.arrow_large = false;
+    retval.nullable = attr.nullable();
     return retval;
   } else if (schema.domain().has_dimension(name)) {
     auto dom = schema.domain();
@@ -326,6 +331,7 @@ TypeInfo tiledb_dt_info(const ArraySchema& schema, const std::string& name) {
     retval.elem_size = tiledb::impl::type_size(dim.type());
     retval.cell_val_num = dim.cell_val_num();
     retval.arrow_large = false;
+    retval.nullable = false;
     return retval;
   } else {
     throw TDB_LERROR("Schema does not have attribute named '" + name + "'");
@@ -669,6 +675,7 @@ BufferInfo ArrowExporter::buffer_info(const std::string& name) {
   uint64_t* offsets = nullptr;
   uint64_t offsets_nelem = 0;
   uint64_t elem_size = 0;
+  uint8_t* validity = nullptr;
 
   auto typeinfo = tiledb_dt_info(query_->array().schema(), name);
 
@@ -713,6 +720,10 @@ BufferInfo ArrowExporter::buffer_info(const std::string& name) {
     query_->get_data_buffer(name, &data, &data_nelem, &elem_size);
   }
 
+  if (typeinfo.nullable) {
+    query_->get_validity_buffer(name, &validity, &data_nelem);
+  }
+
   auto retval = BufferInfo();
   retval.tdbtype = typeinfo;
   retval.is_var = is_var;
@@ -722,6 +733,8 @@ BufferInfo ArrowExporter::buffer_info(const std::string& name) {
   retval.offsets_num = (is_var ? offsets_nelem : 1);
   retval.offsets = offsets;
   retval.offsets_elem_size = offsets_elem_nbytes;
+  retval.is_nullable = typeinfo.nullable;
+  retval.validity = validity;
 
   return retval;
 }
@@ -732,8 +745,32 @@ int64_t flags_for_buffer(BufferInfo binfo) {
       #define ARROW_FLAG_NULLABLE 2
       #define ARROW_FLAG_MAP_KEYS_SORTED 4
   */
-  (void)binfo;
-  return 0;
+  int64_t val = 0;
+  if (binfo.is_nullable)
+    val |= ARROW_FLAG_NULLABLE;
+  return val;
+}
+
+int64_t bytemap_to_bitmap(uint8_t* bytemap, int64_t num) {
+  // helper function from column_buffer class in libtiledbsoma
+  // not that it transforms bytemap _in place_ by design
+  // added null count return for convenience
+  int64_t nulls = 0;
+  int i_dst = 0;
+  for (unsigned int i_src = 0; i_src < num; i_src++) {
+    nulls += bytemap[i_src] == 0;
+    // Overwrite every 8 bytes with a one-byte bitmap
+    if (i_src % 8 == 0) {
+      // Each bit in the bitmap corresponds to one byte in the bytemap
+      // Note: the bitmap must be byte-aligned (8 bits)
+      int bitmap = 0;
+      for (unsigned int i = i_src; i < i_src + 8 && i < num; i++) {
+        bitmap |= bytemap[i] << (i % 8);
+      }
+      bytemap[i_dst++] = bitmap;
+    }
+  }
+  return nulls;
 }
 
 void ArrowExporter::export_(
@@ -758,11 +795,15 @@ void ArrowExporter::export_(
   if (bufferinfo.is_var) {
     buffers = {nullptr, bufferinfo.offsets, bufferinfo.data};
   } else {
-    cpp_schema = new CPPArrowSchema(
-        name, arrow_fmt.fmt_, std::nullopt, arrow_flags, {}, {});
     buffers = {nullptr, bufferinfo.data};
   }
   cpp_schema->export_ptr(schema);
+
+  int64_t null_num = 0;
+  if (bufferinfo.is_nullable) {
+    null_num = bytemap_to_bitmap(bufferinfo.validity, bufferinfo.data_num);
+    buffers[0] = bufferinfo.validity;
+  }
 
   size_t elem_num = 0;
   if (bufferinfo.is_var) {
@@ -774,7 +815,7 @@ void ArrowExporter::export_(
 
   auto cpp_arrow_array = new CPPArrowArray(
       elem_num,  // elem_num
-      0,         // null_num
+      null_num,  // null_num
       0,         // offset
       {},        // children
       buffers);
