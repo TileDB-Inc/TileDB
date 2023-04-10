@@ -573,33 +573,12 @@ Status Azure::copy_blob(const URI& old_uri, const URI& new_uri) {
   try {
     client_->GetBlobContainerClient(new_container_name)
         .GetBlobClient(new_blob_path)
-        .StartCopyFromUri(source_uri);
+        .StartCopyFromUri(source_uri)
+        .PollUntilDone(std::chrono::milliseconds(constants::azure_attempt_sleep_ms));
   } catch (const ::Azure::Storage::StorageException& e) {
     return LOG_STATUS(Status_AzureError(
         "Copy blob failed on: " + old_uri.to_string() + "; " + e.Message));
   }
-
-  return wait_for_blob_to_propagate(new_container_name, new_blob_path);
-}
-
-Status Azure::wait_for_blob_to_propagate(
-    const std::string& container_name, const std::string& blob_path) const {
-  assert(client_);
-
-  unsigned attempts = 0;
-  while (attempts++ < constants::azure_max_attempts) {
-    bool is_blob;
-    RETURN_NOT_OK(this->is_blob(container_name, blob_path, &is_blob));
-    if (is_blob) {
-      return Status::Ok();
-    }
-
-    std::this_thread::sleep_for(
-        std::chrono::milliseconds(constants::azure_attempt_sleep_ms));
-  }
-
-  return LOG_STATUS(Status_AzureError(
-      std::string("Timed out waiting on blob to propogate: " + blob_path)));
 }
 
 Status Azure::move_dir(const URI& old_uri, const URI& new_uri) {
