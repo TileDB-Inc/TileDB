@@ -442,7 +442,7 @@ TEMPLATE_LIST_TEST_CASE(
         1, height, 1, (TestType)(width * pixel_depth)};
     Query read(ctx, array);
     read.set_layout(TILEDB_ROW_MAJOR)
-        .set_subarray(subarray)
+        .set_subarray(Subarray(ctx, array).set_subarray(subarray))
         .set_data_buffer("rgb", read_rgb);
     read.submit();
     array.close();
