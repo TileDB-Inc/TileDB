@@ -139,13 +139,13 @@ TEST_CASE(
   std::vector<float> a2({2.0});
 
   query.set_layout(TILEDB_ROW_MAJOR);
-  query.set_subarray({10, 109});
+  query.set_subarray(Subarray(ctx, array).set_subarray({10, 109}));
   query.set_data_buffer("a", a1);
   query.submit();
 
   query = Query(ctx, array, TILEDB_WRITE);
   query.set_layout(TILEDB_ROW_MAJOR);
-  query.set_subarray({110, 110});
+  query.set_subarray(Subarray(ctx, array).set_subarray({110, 110}));
   query.set_data_buffer("a", a2);
   query.submit();
   array.close();
@@ -154,7 +154,7 @@ TEST_CASE(
   Array array_r(ctx, array_name, TILEDB_READ);
   Query query_r(ctx, array_r, TILEDB_READ);
   query_r.set_layout(TILEDB_ROW_MAJOR);
-  query_r.set_subarray({10, 110});
+  query_r.set_subarray(Subarray(ctx, array_r).set_subarray({10, 110}));
   std::vector<float> a_r(101);
   query_r.set_data_buffer("a", a_r);
   query_r.submit();
@@ -171,7 +171,7 @@ TEST_CASE(
   Array array_c(ctx, array_name, TILEDB_READ);
   query_r = Query(ctx, array_c, TILEDB_READ);
   query_r.set_layout(TILEDB_ROW_MAJOR);
-  query_r.set_subarray({10, 110});
+  query_r.set_subarray(Subarray(ctx, array_c).set_subarray({10, 110}));
   query_r.set_data_buffer("a", a_r);
   query_r.submit();
   array_c.close();

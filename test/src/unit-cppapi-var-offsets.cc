@@ -348,7 +348,8 @@ struct VariableOffsetsFx {
       query.set_data_buffer("d1", d1);
       query.set_data_buffer("d2", d2);
     } else {
-      query.set_subarray<int64_t>({1, 2, 1, 2});
+      query.set_subarray(
+          Subarray(ctx, array).set_subarray<int64_t>({1, 2, 1, 2}));
     }
 
     // Submit query
@@ -399,7 +400,8 @@ struct VariableOffsetsFx {
       query.set_data_buffer("d1", d1);
       query.set_data_buffer("d2", d2);
     } else {
-      query.set_subarray<int64_t>({1, 2, 1, 2});
+      query.set_subarray(
+          Subarray(ctx, array).set_subarray<int64_t>({1, 2, 1, 2}));
     }
 
     /* TODO: enable this when sc21681 is fixed
@@ -433,7 +435,8 @@ struct VariableOffsetsFx {
 
     std::vector<int32_t> attr_val(expected_data.size());
     std::vector<uint64_t> attr_off(expected_offsets.size());
-    query.set_subarray<int64_t>({1, 2, 1, 2});
+    query.set_subarray(
+        Subarray(ctx, array).set_subarray<int64_t>({1, 2, 1, 2}));
     query.set_data_buffer("attr", attr_val);
     query.set_offsets_buffer("attr", attr_off);
 
@@ -475,7 +478,8 @@ struct VariableOffsetsFx {
 
     std::vector<int32_t> attr_val(expected_data.size());
     std::vector<uint32_t> attr_off(expected_offsets.size());
-    query.set_subarray<int64_t>({1, 2, 1, 2});
+    query.set_subarray(
+        Subarray(ctx, array).set_subarray<int64_t>({1, 2, 1, 2}));
     // Read using a 32-bit vector, but cast it to 64-bit pointer so that the API
     // accepts it
     query.set_data_buffer("attr", attr_val.data(), attr_val.size());
@@ -512,7 +516,8 @@ struct VariableOffsetsFx {
 
     Array array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array, TILEDB_READ);
-    query.set_subarray<int64_t>({1, 2, 1, 2});
+    query.set_subarray(
+        Subarray(ctx, array).set_subarray<int64_t>({1, 2, 1, 2}));
     query.set_data_buffer("attr", attr_val);
     query.set_offsets_buffer("attr", attr_off);
 
@@ -1319,7 +1324,8 @@ TEST_CASE_METHOD(
         Array array_w(ctx, array_name, TILEDB_WRITE);
         Query query_w(ctx, array_w, TILEDB_WRITE);
         query_w.set_layout(TILEDB_ROW_MAJOR)
-            .set_subarray<int64_t>({1, 2, 1, 2});
+            .set_subarray(
+                Subarray(ctx, array_w).set_subarray<int64_t>({1, 2, 1, 2}));
 
         // Try to write without allocating memory for the extra element
         query_w.set_data_buffer("attr", data);
@@ -1342,7 +1348,8 @@ TEST_CASE_METHOD(
         std::vector<uint64_t> attr_off(element_offsets.size() - 1);
         query_r.set_data_buffer("attr", attr_val);
         query_r.set_offsets_buffer("attr", attr_off);
-        query_r.set_subarray<int64_t>({1, 2, 1, 2});
+        query_r.set_subarray(
+            Subarray(ctx, array_r).set_subarray<int64_t>({1, 2, 1, 2}));
 
         // First partial read because offsets don't fit
         CHECK_NOTHROW(query_r.submit());
@@ -1493,7 +1500,8 @@ TEST_CASE_METHOD(
         std::vector<uint64_t> attr_off(data_off_part1.size());
         query.set_data_buffer("attr", attr_val);
         query.set_offsets_buffer("attr", attr_off);
-        query.set_subarray<int64_t>({1, 2, 1, 2});
+        query.set_subarray(
+            Subarray(ctx, array).set_subarray<int64_t>({1, 2, 1, 2}));
 
         // First partial read
         CHECK_NOTHROW(query.submit());

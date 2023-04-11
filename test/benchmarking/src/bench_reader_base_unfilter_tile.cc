@@ -94,6 +94,7 @@ class Benchmark : public BenchmarkBase {
 
       Query query(ctx_, array);
       query.set_layout(TILEDB_ROW_MAJOR)
+          .set_subarray(Subarray(ctx_, array).set_subarray(subarray))
           .set_data_buffer("d", dim_data_)
           .set_data_buffer("a", attr_data_);
       query.submit();

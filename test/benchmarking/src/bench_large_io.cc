@@ -115,7 +115,10 @@ class Benchmark : public BenchmarkBase {
     // Write the dense array 1 time.
     Array d_write_array(ctx_, dense_array_uri_, TILEDB_WRITE);
     Query d_write_query(ctx_, d_write_array, TILEDB_WRITE);
-    d_write_query.set_subarray({1u, dense_array_rows, 1u, dense_array_cols})
+    d_write_query
+        .set_subarray(
+            Subarray(ctx_, d_write_array)
+                .set_subarray({1u, dense_array_rows, 1u, dense_array_cols}))
         .set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a", data_a_)
         .set_data_buffer("b", data_b_)
@@ -140,7 +143,10 @@ class Benchmark : public BenchmarkBase {
     for (int i = 0; i < 2; ++i) {
       Array array(ctx_, dense_array_uri_, TILEDB_READ);
       Query query(ctx_, array);
-      query.set_subarray({1u, dense_array_rows, 1u, dense_array_cols})
+      query
+          .set_subarray(
+              Subarray(ctx_, array)
+                  .set_subarray({1u, dense_array_rows, 1u, dense_array_cols}))
           .set_layout(TILEDB_ROW_MAJOR)
           .set_data_buffer("a", data_a_)
           .set_data_buffer("b", data_b_)
@@ -163,7 +169,7 @@ class Benchmark : public BenchmarkBase {
       Query query(ctx_, array);
       data_a_.resize(query.est_result_size("a"));
       sparse_coords_.resize(query.est_result_size("TILEDB_COORDS"));
-      query.set_subarray(subarray)
+      query.set_subarray(Subarray(ctx_, array).set_subarray(subarray))
           .set_layout(TILEDB_ROW_MAJOR)
           .set_data_buffer("a", data_a_)
           .set_data_buffer("b", data_b_)

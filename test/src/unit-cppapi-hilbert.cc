@@ -549,7 +549,7 @@ TEST_CASE(
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
-    query_r.set_subarray({1, 5, 1, 7});
+    query_r.set_subarray(Subarray(ctx, array_r).set_subarray({1, 5, 1, 7}));
     CHECK_NOTHROW(query_r.submit());
 
     // Check results
@@ -669,7 +669,7 @@ TEST_CASE(
     query_r.set_data_buffer("a", r_buff_a);
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
-    query_r.set_subarray({1, 4, 1, 4});
+    query_r.set_subarray(Subarray(ctx, array_r).set_subarray({1, 4, 1, 4}));
     query_r.set_layout(TILEDB_ROW_MAJOR);
     CHECK_NOTHROW(query_r.submit());
     array_r.close();
@@ -692,7 +692,7 @@ TEST_CASE(
     query_r.set_data_buffer("a", r_buff_a);
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
-    query_r.set_subarray({1, 4, 1, 4});
+    query_r.set_subarray(Subarray(ctx, array_r).set_subarray({1, 4, 1, 4}));
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     CHECK_NOTHROW(query_r.submit());
     array_r.close();
@@ -1033,7 +1033,8 @@ TEST_CASE(
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
-    query_r.set_subarray({-49, -45, -99, -93});
+    query_r.set_subarray(
+        Subarray(ctx, array_r).set_subarray({-49, -45, -99, -93}));
     CHECK_NOTHROW(query_r.submit());
 
     // Check results
@@ -1097,7 +1098,8 @@ TEST_CASE(
     query_r.set_data_buffer("a", r_buff_a);
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
-    query_r.set_subarray({-49, -46, -99, -96});
+    query_r.set_subarray(
+        Subarray(ctx, array_r).set_subarray({-49, -46, -99, -96}));
     query_r.set_layout(TILEDB_ROW_MAJOR);
     CHECK_NOTHROW(query_r.submit());
     array_r.close();
@@ -1120,7 +1122,8 @@ TEST_CASE(
     query_r.set_data_buffer("a", r_buff_a);
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
-    query_r.set_subarray({-49, -46, -99, -96});
+    query_r.set_subarray(
+        Subarray(ctx, array_r).set_subarray({-49, -46, -99, -96}));
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     CHECK_NOTHROW(query_r.submit());
     array_r.close();
@@ -1452,7 +1455,8 @@ TEST_CASE(
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
-    query_r.set_subarray({0.1f, 0.6f, 0.1f, 0.7f});
+    query_r.set_subarray(
+        Subarray(ctx, array_r).set_subarray({0.1f, 0.6f, 0.1f, 0.7f}));
     CHECK_NOTHROW(query_r.submit());
 
     // Check results
@@ -1531,7 +1535,8 @@ TEST_CASE(
     query_r.set_data_buffer("a", r_buff_a);
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
-    query_r.set_subarray({0.1f, 0.4f, 0.1f, 0.6f});
+    query_r.set_subarray(
+        Subarray(ctx, array_r).set_subarray({0.1f, 0.4f, 0.1f, 0.6f}));
     query_r.set_layout(TILEDB_COL_MAJOR);
     CHECK_NOTHROW(query_r.submit());
     array_r.close();
@@ -1554,7 +1559,8 @@ TEST_CASE(
     query_r.set_data_buffer("a", r_buff_a);
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
-    query_r.set_subarray({0.1f, 0.4f, 0.1f, 0.6f});
+    query_r.set_subarray(
+        Subarray(ctx, array_r).set_subarray({0.1f, 0.4f, 0.1f, 0.6f}));
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     CHECK_NOTHROW(query_r.submit());
     array_r.close();
