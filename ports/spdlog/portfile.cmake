@@ -8,6 +8,8 @@ vcpkg_from_github(
         fmt-header.patch # https://github.com/gabime/spdlog/pull/2545
 )
 
+vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
+
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
     FEATURES
         benchmark SPDLOG_BUILD_BENCH
