@@ -283,8 +283,7 @@ std::string Logger::add_tag(const std::string& tag, uint64_t id) {
 /*              GLOBAL               */
 /* ********************************* */
 
-std::string global_logger_name(
-    const Logger::Format format) {
+std::string global_logger_name(const Logger::Format format) {
   /*
    * The not-very-compact syntax here is a workaround for a known GCC defect.
    * We're avoiding using `operator+` with string constants.
