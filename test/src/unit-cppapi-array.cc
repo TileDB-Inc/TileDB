@@ -1842,7 +1842,8 @@ TEST_CASE("C++ API: Array write and read from MemFS", "[cppapi][memfs]") {
   Context ctx_non_global;
   REQUIRE_THROWS_WITH(
       Array(ctx_non_global, array_name, TILEDB_WRITE),
-      Catch::Contains("Cannot open array; Array does not exist"));
+      Catch::Matchers::ContainsSubstring(
+          "Cannot open array; Array does not exist"));
 
   // Write
   std::vector<int> data_w = {
@@ -1872,7 +1873,7 @@ TEST_CASE("C++ API: Array write and read from MemFS", "[cppapi][memfs]") {
   VFS vfs(ctx);
   REQUIRE_THROWS_WITH(
       vfs.remove_dir(array_name),
-      Catch::Contains("File not found, remove failed"));
+      Catch::Matchers::ContainsSubstring("File not found, remove failed"));
 }
 
 TEST_CASE(
