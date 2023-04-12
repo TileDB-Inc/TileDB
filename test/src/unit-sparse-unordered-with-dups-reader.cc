@@ -1548,8 +1548,8 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseUnorderedWithDupsVarDataFx,
     "Sparse unordered with dups reader: test "
-    "compute_fixed_result_tiles_to_copy",
-    "[sparse-unordered-with-dups][compute_fixed_result_tiles_to_copy]") {
+    "resize_fixed_result_tiles_to_copy",
+    "[sparse-unordered-with-dups][resize_fixed_result_tiles_to_copy]") {
   std::vector<std::vector<uint64_t>> bitmaps;
   uint64_t capacity = 0;
   uint64_t num_tiles = 0;
@@ -1695,7 +1695,7 @@ TEST_CASE_METHOD(
   // Call the function.
   auto&& [buffers_full, cell_offsets] =
       SparseUnorderedWithDupsReader<uint64_t>::
-          compute_fixed_result_tiles_to_copy(
+          resize_fixed_result_tiles_to_copy(
               max_num_cells,
               initial_cell_offset,
               first_tile_min_pos,
@@ -1717,7 +1717,7 @@ TEST_CASE_METHOD(
     "[sparse-unordered-with-dups][cell-offsets-test]") {
   // Either vary the fixed buffer or the var buffer. Varying the fixed buffer
   // will trigger the first overflow protection in
-  // compute_fixed_result_tiles_to_copy and varying the var buffer will trigger
+  // resize_fixed_result_tiles_to_copy and varying the var buffer will trigger
   // the second overflow protection in compute_var_size_offsets.
   bool vary_fixed_buffer = GENERATE(true, false);
 

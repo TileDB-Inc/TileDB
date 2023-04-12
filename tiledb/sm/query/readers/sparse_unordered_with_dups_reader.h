@@ -119,7 +119,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    *
    * @return buffers_full, cell_offsets.
    */
-  static tuple<bool, std::vector<uint64_t>> compute_fixed_result_tiles_to_copy(
+  static tuple<bool, std::vector<uint64_t>> resize_fixed_result_tiles_to_copy(
       uint64_t max_num_cells,
       uint64_t initial_cell_offset,
       uint64_t first_tile_min_pos,
@@ -429,7 +429,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    *
    * @return Cell offsets.
    */
-  std::vector<uint64_t> compute_fixed_results_to_copy(
+  std::vector<uint64_t> resize_fixed_results_to_copy(
       const std::vector<std::string>& names,
       std::vector<ResultTile*>& result_tiles);
 

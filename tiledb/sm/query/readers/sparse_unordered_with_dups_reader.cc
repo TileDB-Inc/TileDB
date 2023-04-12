@@ -1396,7 +1396,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_fixed_data_tiles(
 
 template <class BitmapType>
 tuple<bool, std::vector<uint64_t>>
-SparseUnorderedWithDupsReader<BitmapType>::compute_fixed_result_tiles_to_copy(
+SparseUnorderedWithDupsReader<BitmapType>::resize_fixed_result_tiles_to_copy(
     uint64_t max_num_cells,
     uint64_t initial_cell_offset,
     uint64_t first_tile_min_pos,
@@ -1476,10 +1476,10 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_fixed_result_tiles_to_copy(
 
 template <class BitmapType>
 std::vector<uint64_t>
-SparseUnorderedWithDupsReader<BitmapType>::compute_fixed_results_to_copy(
+SparseUnorderedWithDupsReader<BitmapType>::resize_fixed_results_to_copy(
     const std::vector<std::string>& names,
     std::vector<ResultTile*>& result_tiles) {
-  auto timer_se = stats_->start_timer("compute_fixed_results_to_copy");
+  auto timer_se = stats_->start_timer("resize_fixed_results_to_copy");
 
   // First try to limit the maximum number of cells we copy using the size
   // of the output buffers for fixed sized attributes. Later we will validate
@@ -1490,10 +1490,14 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_fixed_results_to_copy(
     const auto& name = it.first;
     const auto size = it.second.original_buffer_size_;
     if (array_schema_.var_size(name)) {
+      // we only check the var-size buffer here because we enforce
+      // size(offsets_buf) == size(validity_buf) and/or
+      // size(validity_buf) == size(data_buf) in the Query:set calls
       auto temp_num_cells = size / constants::cell_var_offset_size;
 
-      if (offsets_extra_element_ && temp_num_cells > 0)
+      if (offsets_extra_element_ && temp_num_cells > 0) {
         temp_num_cells--;
+      }
 
       max_num_cells = std::min(max_num_cells, temp_num_cells);
     } else {
@@ -1512,7 +1516,7 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_fixed_results_to_copy(
   uint64_t first_tile_min_pos =
       read_state_.frag_idx_[result_tiles[0]->frag_idx()].cell_idx_;
 
-  auto&& [buffers_full, cell_offsets] = compute_fixed_result_tiles_to_copy(
+  auto&& [buffers_full, cell_offsets] = resize_fixed_result_tiles_to_copy(
       max_num_cells, initial_cell_offset, first_tile_min_pos, result_tiles);
   buffers_full_ |= buffers_full;
   return cell_offsets;
@@ -1692,7 +1696,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
   // Vector for storing the cell offsets of each tiles into the user buffers.
   // This also stores the last offset to facilitate calculations later on.
   std::vector<uint64_t> cell_offsets =
-      compute_fixed_results_to_copy(names, result_tiles);
+      resize_fixed_results_to_copy(names, result_tiles);
 
   // Making sure we respect the memory budget for the copy operation.
   auto&& [st, mem_usage_per_attr] =
