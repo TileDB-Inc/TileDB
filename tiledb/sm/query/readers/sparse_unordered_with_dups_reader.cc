@@ -1408,47 +1408,21 @@ Status SparseUnorderedWithDupsReader<BitmapType>::copy_fixed_data_tiles(
 }
 
 template <class BitmapType>
-std::vector<uint64_t>
-SparseUnorderedWithDupsReader<BitmapType>::compute_fixed_results_to_copy(
-    const std::vector<std::string>& names,
+tuple<bool, std::vector<uint64_t>>
+SparseUnorderedWithDupsReader<BitmapType>::resize_fixed_result_tiles_to_copy(
+    uint64_t max_num_cells,
+    uint64_t initial_cell_offset,
+    uint64_t first_tile_min_pos,
     std::vector<ResultTile*>& result_tiles) {
-  auto timer_se = stats_->start_timer("compute_fixed_results_to_copy");
-
+  bool buffers_full;
   std::vector<uint64_t> cell_offsets;
   cell_offsets.reserve(result_tiles.size() + 1);
-
-  // First try to limit the maximum number of cells we copy using the size
-  // of the output buffers for fixed sized attributes. Later we will validate
-  // the memory budget. This is the first line of defence used to try to
-  // prevent overflows when copying data.
-  auto max_num_cells = std::numeric_limits<uint64_t>::max();
-  for (const auto& it : buffers_) {
-    const auto& name = it.first;
-    const auto size = it.second.original_buffer_size_;
-    if (array_schema_.var_size(name)) {
-      auto temp_num_cells = size / constants::cell_var_offset_size;
-
-      if (offsets_extra_element_ && temp_num_cells > 0)
-        temp_num_cells--;
-
-      max_num_cells = std::min(max_num_cells, temp_num_cells);
-    } else {
-      auto temp_num_cells = size / array_schema_.cell_size(name);
-      max_num_cells = std::min(max_num_cells, temp_num_cells);
-    }
-  }
-
-  // User gave us some empty buffers, exit.
-  if (max_num_cells == 0) {
-    result_tiles.clear();
-    return cell_offsets;
-  }
 
   // Compute initial bound for result tiles by looking at what can fit into
   // the user's buffer. We use either the number of cells in the bitmap when
   // a subarray is set (or we have a query condition) or the number of cells
   // in the fragment metadata to do so.
-  uint64_t cell_offset = cells_copied(names);
+  uint64_t cell_offset = initial_cell_offset;
   for (uint64_t i = 0; i < result_tiles.size(); i++) {
     auto rt = (ResultTileWithBitmap<BitmapType>*)result_tiles[i];
     auto cell_num = rt->result_num();
@@ -1456,10 +1430,7 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_fixed_results_to_copy(
     // First tile might have been partially copied. Adjust cell_num to account
     // for it.
     if (i == 0) {
-      if (read_state_.frag_idx_[rt->frag_idx()].tile_idx_ == rt->tile_idx()) {
-        auto pos = read_state_.frag_idx_[rt->frag_idx()].cell_idx_;
-        cell_num -= rt->result_num_between_pos(0, pos);
-      }
+      cell_num -= rt->result_num_between_pos(0, first_tile_min_pos);
     }
 
     if (cell_offset + cell_num > max_num_cells) {
@@ -1474,17 +1445,93 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_fixed_results_to_copy(
   // later on. If not, add a partial tile at the end.
   if (cell_offset == max_num_cells ||
       cell_offsets.size() == result_tiles.size()) {
-    buffers_full_ = cell_offset == max_num_cells;
+    buffers_full = cell_offset == max_num_cells;
     cell_offsets.emplace_back(cell_offset);
   } else {
-    buffers_full_ = true;
+    buffers_full = true;
     cell_offsets.emplace_back(cell_offset);
-    cell_offsets.emplace_back(max_num_cells);
+
+    // For overlapping ranges, a cell might be included multiple times and we
+    // can only process it if we can include all of the values as the progress
+    // we save in the read state doesn't allow to track partial progress for a
+    // cell.
+    uint64_t rt_idx = cell_offsets.size() - 1;
+    auto rt = (ResultTileWithBitmap<BitmapType>*)result_tiles[rt_idx];
+    uint64_t min_pos = rt_idx == 0 ? first_tile_min_pos : 0;
+    uint64_t cells_to_copy = max_num_cells - cell_offset;
+
+    // Get the position of the cell that gets us to the desired number of
+    // cells.
+    uint64_t pos = rt->pos_with_given_result_sum(min_pos, cells_to_copy);
+
+    // Count the actual number of results.
+    uint64_t actual_cells_to_copy =
+        rt->result_num_between_pos(min_pos, pos + 1);
+
+    // If the last cell has a count > 1, it is possible to overflow the number
+    // of cells to copy. Don't include the last cell if that is the case.
+    if (cell_offset + actual_cells_to_copy > max_num_cells) {
+      actual_cells_to_copy = rt->result_num_between_pos(min_pos, pos);
+    }
+
+    // It is possible that the first cell of the partial tile doesn't fit. In
+    // that case, we don't include an extra cell offset.
+    if (actual_cells_to_copy != 0) {
+      cell_offsets.emplace_back(cell_offset + actual_cells_to_copy);
+    }
   }
 
   // Resize the result tiles vector.
   result_tiles.resize(cell_offsets.size() - 1);
 
+  return {buffers_full, cell_offsets};
+}
+
+template <class BitmapType>
+std::vector<uint64_t>
+SparseUnorderedWithDupsReader<BitmapType>::resize_fixed_results_to_copy(
+    const std::vector<std::string>& names,
+    std::vector<ResultTile*>& result_tiles) {
+  auto timer_se = stats_->start_timer("resize_fixed_results_to_copy");
+
+  // First try to limit the maximum number of cells we copy using the size
+  // of the output buffers for fixed sized attributes. Later we will validate
+  // the memory budget. This is the first line of defence used to try to
+  // prevent overflows when copying data.
+  auto max_num_cells = std::numeric_limits<uint64_t>::max();
+  for (const auto& it : buffers_) {
+    const auto& name = it.first;
+    const auto size = it.second.original_buffer_size_;
+    if (array_schema_.var_size(name)) {
+      // we only check the var-size buffer here because we enforce
+      // size(offsets_buf) == size(validity_buf) and/or
+      // size(validity_buf) == size(data_buf) in the Query:set calls
+      auto temp_num_cells = size / constants::cell_var_offset_size;
+
+      if (offsets_extra_element_ && temp_num_cells > 0) {
+        temp_num_cells--;
+      }
+
+      max_num_cells = std::min(max_num_cells, temp_num_cells);
+    } else {
+      auto temp_num_cells = size / array_schema_.cell_size(name);
+      max_num_cells = std::min(max_num_cells, temp_num_cells);
+    }
+  }
+
+  // User gave us some empty buffers, exit.
+  if (max_num_cells == 0) {
+    result_tiles.clear();
+    return std::vector<uint64_t>();
+  }
+
+  uint64_t initial_cell_offset = cells_copied(names);
+  uint64_t first_tile_min_pos =
+      read_state_.frag_idx_[result_tiles[0]->frag_idx()].cell_idx_;
+
+  auto&& [buffers_full, cell_offsets] = resize_fixed_result_tiles_to_copy(
+      max_num_cells, initial_cell_offset, first_tile_min_pos, result_tiles);
+  buffers_full_ |= buffers_full;
   return cell_offsets;
 }
 
@@ -1654,7 +1701,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
   // Vector for storing the cell offsets of each tiles into the user buffers.
   // This also stores the last offset to facilitate calculations later on.
   std::vector<uint64_t> cell_offsets =
-      compute_fixed_results_to_copy(names, result_tiles);
+      resize_fixed_results_to_copy(names, result_tiles);
 
   // Making sure we respect the memory budget for the copy operation.
   uint64_t memory_budget = memory_budget_ - memory_used_qc_tiles_total_ -
@@ -1678,7 +1725,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
     num_range_threads = 1 + ((num_threads - 1) / result_tiles.size());
   }
 
-  // Read a few attributes a a time.
+  // Read a few attributes at a time.
   uint64_t buffer_idx = 0;
   while (buffer_idx < names.size()) {
     // Read and unfilter as many attributes as can fit in the budget.
@@ -1739,7 +1786,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
       uint64_t var_buffer_size = 0;
 
       if (var_sized) {
-        auto first_tile_min_pos =
+        uint64_t first_tile_min_pos =
             read_state_.frag_idx_[result_tiles[0]->frag_idx()].cell_idx_;
 
         // Adjust the offsets buffer and make sure all data fits.
@@ -1753,8 +1800,8 @@ Status SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
         buffers_full_ |= buffers_full;
 
         // Clear tiles from memory and adjust result_tiles.
-        for (const auto& idx : *index_to_copy) {
-          const auto& name_to_clear = names[idx];
+        for (const auto& copy_idx : *index_to_copy) {
+          const auto& name_to_clear = names[copy_idx];
           const auto is_dim_to_clear = array_schema_.is_dim(name_to_clear);
           if (qc_loaded_attr_names_set_.count(name_to_clear) == 0 &&
               (!include_coords_ || !is_dim_to_clear)) {

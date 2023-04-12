@@ -173,7 +173,7 @@ void ResultTile::erase_tile(const std::string& name) {
 
   // Handle attribute tile
   for (auto& at : attr_tiles_) {
-    if (at.first == name) {
+    if (at.second.has_value() && at.first == name) {
       at.second.reset();
       return;
     }
