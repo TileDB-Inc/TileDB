@@ -615,19 +615,15 @@ static inline int8_t bitmap_get(const uint8_t* bits, int64_t i) {
   return (bits[i >> 3] >> (i & 0x07)) & 1;
 }
 
-static int64_t bitmap_to_bytemap(void* bitmap, int64_t n) {
-  int64_t cnt = 0;            	// just to check our logic count is returned
-  //int64_t n = arw_array->length;
-  uint8_t valcpy[n];            // we make a copy so that we overwrite
-  std::memcpy(valcpy, bitmap, n*sizeof(uint8_t));
+static void bitmap_to_bytemap(void* bitmap, int64_t n) {
+  uint8_t valcpy[n];  // we make a copy so that we overwrite
+  std::memcpy(valcpy, bitmap, n * sizeof(uint8_t));
   uint8_t valarr[n];
-  std::memcpy(valarr, bitmap, n*sizeof(uint8_t));
+  std::memcpy(valarr, bitmap, n * sizeof(uint8_t));
   for (auto i = 0; i < n; i++) {
     valarr[i] = bitmap_get(valcpy, i);
-    if (valarr[i] == 0) cnt++;
   }
-  std::memcpy(bitmap, valarr, n*sizeof(uint8_t));
-  return cnt;
+  std::memcpy(bitmap, valarr, n * sizeof(uint8_t));
 }
 
 void ArrowImporter::import_(
@@ -651,15 +647,19 @@ void ArrowImporter::import_(
           static_cast<uint32_t*>(p_offsets)[num_offsets] * typeinfo.elem_size;
 
       // in the 'small' case convert 32 bit offsets to 64 bit offsets
-      int32_t curroffsets[num_offsets+1];
-      int64_t updtoffsets[num_offsets+1];
-      std::memcpy(curroffsets, arw_array->buffers[1], (num_offsets+1)*sizeof(int32_t));
-      for (int i=0; i<=num_offsets; i++) {
+      int32_t curroffsets[num_offsets + 1];
+      int64_t updtoffsets[num_offsets + 1];
+      std::memcpy(
+          curroffsets,
+          arw_array->buffers[1],
+          (num_offsets + 1) * sizeof(int32_t));
+      for (int i = 0; i <= num_offsets; i++) {
         updtoffsets[i] = static_cast<uint64_t>(curroffsets[i]);
       }
-      std::memcpy(const_cast<void*>(arw_array->buffers[1]),
-                  updtoffsets, (num_offsets+1)*sizeof(int64_t));
-
+      std::memcpy(
+          const_cast<void*>(arw_array->buffers[1]),
+          updtoffsets,
+          (num_offsets + 1) * sizeof(int64_t));
     }
 
     // Set the TileDB buffer, adding `1` to `num_offsets` to account for
@@ -679,12 +679,13 @@ void ArrowImporter::import_(
   }
 
   if (typeinfo.nullable && arw_array->buffers[0] != nullptr) {
-    int64_t cnt = bitmap_to_bytemap(const_cast<void*>(arw_array->buffers[0]), arw_array->length);
-    query_->set_validity_buffer(name,
-                                static_cast<uint8_t*>(const_cast<void*>(arw_array->buffers[0])),
-                                arw_array->length);
+    bitmap_to_bytemap(
+        const_cast<void*>(arw_array->buffers[0]), arw_array->length);
+    query_->set_validity_buffer(
+        name,
+        static_cast<uint8_t*>(const_cast<void*>(arw_array->buffers[0])),
+        arw_array->length);
   }
-
 }
 
 /* ****************************** */
