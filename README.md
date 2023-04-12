@@ -63,6 +63,8 @@ The TileDB data format is open-source and can be found [here](format_spec/FORMAT
 
 The TileDB team maintains a variety of APIs built on top of the C++ library:
 
+* C ([examples](https://github.com/TileDB-Inc/TileDB/tree/dev/examples/c_api), [API docs](https://tiledb-inc-tiledb.readthedocs-hosted.com/en/stable/c-api.html))
+* C++ ([examples](https://github.com/TileDB-Inc/TileDB/tree/dev/examples/cpp_api), [API docs](https://tiledb-inc-tiledb.readthedocs-hosted.com/en/stable/c++-api.html))
 * [Python](https://github.com/TileDB-Inc/TileDB-Py)
 * [R](https://github.com/TileDB-Inc/TileDB-R)
 * [Java](https://github.com/TileDB-Inc/TileDB-Java)
