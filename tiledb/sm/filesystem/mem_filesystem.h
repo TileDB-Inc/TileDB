@@ -52,6 +52,12 @@ namespace sm {
 
 class URI;
 
+/**
+ * The in-memory filesystem.
+ *
+ * @invariant The MemFilesystem is associated with a single VFS instance.
+ * @invariant The MemFilesystem exists on a single, global Context.
+ */
 class MemFilesystem {
  public:
   /* ********************************* */

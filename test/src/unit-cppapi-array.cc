@@ -1825,6 +1825,57 @@ TEST_CASE(
       std::string::npos);
 }
 
+TEST_CASE("C++ API: Array write and read from MemFS", "[cppapi][memfs]") {
+  const std::string array_name = "mem://cpp_unit_array";
+  Context ctx;
+
+  // Create
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 4))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 4}}, 4));
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+  Array::create(array_name, schema);
+
+  // Try writing on a non-process-global Context
+  Context ctx_non_global;
+  REQUIRE_THROWS_WITH(
+      Array(ctx_non_global, array_name, TILEDB_WRITE),
+      Catch::Matchers::ContainsSubstring(
+          "Cannot open array; Array does not exist"));
+
+  // Write
+  std::vector<int> data_w = {
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+  Array array_w(ctx, array_name, TILEDB_WRITE);
+  Query query_w(ctx, array_w);
+  query_w.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data_w);
+  query_w.submit();
+  array_w.close();
+
+  // Read
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array, TILEDB_READ);
+  std::vector<int> data(6);
+  query.add_range(0, 1, 2)
+      .add_range(1, 2, 4)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a", data);
+  query.submit();
+  array.close();
+  std::vector<int> data_expected = {2, 3, 4, 6, 7, 8};
+  for (int i = 0; i < 6; i++) {
+    REQUIRE(data[i] == data_expected[i]);
+  }
+
+  // Try removing on a different VFS instance
+  VFS vfs(ctx);
+  REQUIRE_THROWS_WITH(
+      vfs.remove_dir(array_name),
+      Catch::Matchers::ContainsSubstring("File not found, remove failed"));
+}
+
 TEST_CASE(
     "C++ API: Write and read to an array with experimental build enabled",
     "[cppapi][array][experimental]") {
