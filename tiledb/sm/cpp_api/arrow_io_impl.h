@@ -121,10 +121,11 @@ struct TypeInfo {
   tiledb_datatype_t type;
   uint64_t elem_size;
   uint32_t cell_val_num;
-  bool nullable;
 
   // is this represented as "Arrow large"
   bool arrow_large;
+
+  bool nullable;
 };
 
 struct BufferInfo {
@@ -264,6 +265,7 @@ ArrowInfo tiledb_buffer_arrow_fmt(BufferInfo bufferinfo, bool use_list = true) {
 
 TypeInfo arrow_type_to_tiledb(ArrowSchema* arw_schema) {
   auto fmt = std::string(arw_schema->format);
+  bool nullable = arw_schema->flags & ARROW_FLAG_NULLABLE;
   bool large = false;
   if (fmt == "+l") {
     large = false;
@@ -276,36 +278,36 @@ TypeInfo arrow_type_to_tiledb(ArrowSchema* arw_schema) {
   }
 
   if (fmt == "i")
-    return {TILEDB_INT32, 4, 1, large};
+    return {TILEDB_INT32, 4, 1, large, nullable};
   else if (fmt == "l")
-    return {TILEDB_INT64, 8, 1, large};
+    return {TILEDB_INT64, 8, 1, large, nullable};
   else if (fmt == "f")
-    return {TILEDB_FLOAT32, 4, 1, large};
+    return {TILEDB_FLOAT32, 4, 1, large, nullable};
   else if (fmt == "g")
-    return {TILEDB_FLOAT64, 8, 1, large};
+    return {TILEDB_FLOAT64, 8, 1, large, nullable};
   else if (fmt == "B")
-    return {TILEDB_BLOB, 1, 1, large};
+    return {TILEDB_BLOB, 1, 1, large, nullable};
   else if (fmt == "c")
-    return {TILEDB_INT8, 1, 1, large};
+    return {TILEDB_INT8, 1, 1, large, nullable};
   else if (fmt == "C")
-    return {TILEDB_UINT8, 1, 1, large};
+    return {TILEDB_UINT8, 1, 1, large, nullable};
   else if (fmt == "s")
-    return {TILEDB_INT16, 2, 1, large};
+    return {TILEDB_INT16, 2, 1, large, nullable};
   else if (fmt == "S")
-    return {TILEDB_UINT16, 2, 1, large};
+    return {TILEDB_UINT16, 2, 1, large, nullable};
   else if (fmt == "I")
-    return {TILEDB_UINT32, 4, 1, large};
+    return {TILEDB_UINT32, 4, 1, large, nullable};
   else if (fmt == "L")
-    return {TILEDB_UINT64, 8, 1, large};
+    return {TILEDB_UINT64, 8, 1, large, nullable};
   // this is kind of a hack
   // technically 'tsn:' is timezone-specific, which we don't support
   // however, the blank (no suffix) base is interconvertible w/ np.datetime64
   else if (fmt == "tsn:")
-    return {TILEDB_DATETIME_NS, 8, 1, large};
+    return {TILEDB_DATETIME_NS, 8, 1, large, nullable};
   else if (fmt == "z" || fmt == "Z")
-    return {TILEDB_CHAR, 1, TILEDB_VAR_NUM, fmt == "Z"};
+    return {TILEDB_CHAR, 1, TILEDB_VAR_NUM, fmt == "Z", nullable};
   else if (fmt == "u" || fmt == "U")
-    return {TILEDB_STRING_UTF8, 1, TILEDB_VAR_NUM, fmt == "U"};
+    return {TILEDB_STRING_UTF8, 1, TILEDB_VAR_NUM, fmt == "U", nullable};
   else
     throw tiledb::TileDBError(
         "[TileDB-Arrow]: Unknown or unsupported Arrow format string '" + fmt +
@@ -609,6 +611,25 @@ ArrowImporter::~ArrowImporter() {
   }
 }
 
+static inline int8_t bitmap_get(const uint8_t* bits, int64_t i) {
+  return (bits[i >> 3] >> (i & 0x07)) & 1;
+}
+
+static int64_t bitmap_to_bytemap(void* bitmap, int64_t n) {
+  int64_t cnt = 0;            	// just to check our logic count is returned
+  //int64_t n = arw_array->length;
+  uint8_t valcpy[n];            // we make a copy so that we overwrite
+  std::memcpy(valcpy, bitmap, n*sizeof(uint8_t));
+  uint8_t valarr[n];
+  std::memcpy(valarr, bitmap, n*sizeof(uint8_t));
+  for (auto i = 0; i < n; i++) {
+    valarr[i] = bitmap_get(valcpy, i);
+    if (valarr[i] == 0) cnt++;
+  }
+  std::memcpy(bitmap, valarr, n*sizeof(uint8_t));
+  return cnt;
+}
+
 void ArrowImporter::import_(
     std::string name, ArrowArray* arw_array, ArrowSchema* arw_schema) {
   auto typeinfo = arrow_type_to_tiledb(arw_schema);
@@ -628,6 +649,17 @@ void ArrowImporter::import_(
     } else {
       data_nbytes =
           static_cast<uint32_t*>(p_offsets)[num_offsets] * typeinfo.elem_size;
+
+      // in the 'small' case convert 32 bit offsets to 64 bit offsets
+      int32_t curroffsets[num_offsets+1];
+      int64_t updtoffsets[num_offsets+1];
+      std::memcpy(curroffsets, arw_array->buffers[1], (num_offsets+1)*sizeof(int32_t));
+      for (int i=0; i<=num_offsets; i++) {
+        updtoffsets[i] = static_cast<uint64_t>(curroffsets[i]);
+      }
+      std::memcpy(const_cast<void*>(arw_array->buffers[1]),
+                  updtoffsets, (num_offsets+1)*sizeof(int64_t));
+
     }
 
     // Set the TileDB buffer, adding `1` to `num_offsets` to account for
@@ -635,6 +667,7 @@ void ArrowImporter::import_(
     query_->set_data_buffer(name, p_data, data_nbytes);
     query_->set_offsets_buffer(
         name, static_cast<uint64_t*>(p_offsets), num_offsets + 1);
+
   } else {
     // fixed-size attribute (not TILEDB_VAR_NUM)
     assert(arw_array->n_buffers == 2);
@@ -644,6 +677,14 @@ void ArrowImporter::import_(
 
     query_->set_data_buffer(name, static_cast<void*>(p_data), data_num);
   }
+
+  if (typeinfo.nullable && arw_array->buffers[0] != nullptr) {
+    int64_t cnt = bitmap_to_bytemap(const_cast<void*>(arw_array->buffers[0]), arw_array->length);
+    query_->set_validity_buffer(name,
+                                static_cast<uint8_t*>(const_cast<void*>(arw_array->buffers[0])),
+                                arw_array->length);
+  }
+
 }
 
 /* ****************************** */
