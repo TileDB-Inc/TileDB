@@ -1811,9 +1811,8 @@ TEST_CASE_METHOD(
   uint64_t num_dups = GENERATE(1, 2);
   uint64_t min_buffer_size =
       vary_fixed_buffer ? num_dups * sizeof(int) : num_dups;
-  uint64_t max_buffer_size = min_buffer_size;
-  // vary_fixed_buffer ? coords_size * num_dups : data_size *
-  // num_dups;
+  uint64_t max_buffer_size =
+      vary_fixed_buffer ? coords_size * num_dups : a1_data_size * num_dups;
   for (uint64_t buffer_size = min_buffer_size; buffer_size <= max_buffer_size;
        buffer_size++) {
     // Only make the coordinate buffer change, the rest of the buffers
