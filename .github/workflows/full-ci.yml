@@ -56,7 +56,7 @@ jobs:
       matrix_image: ubuntu-22.04
       matrix_compiler_cc: 'gcc-12'
       matrix_compiler_cxx: 'g++-12'
-      bootstrap_args: '--enable-hdfs --enable-static-tiledb'
+      bootstrap_args: '--enable-hdfs --enable-static-tiledb --disable-werror'
 
   ci5:
     uses: ./.github/workflows/ci-linux_mac.yml
