@@ -92,15 +92,29 @@ class Group {
   void clear();
 
   /**
-   * Deletes data from and closes a group opened in MODIFY_EXCLUSIVE mode.
+   * Deletes data from a group opened in MODIFY_EXCLUSIVE mode and closes it.
    *
    * Note: if recursive == false, data added to the group will be left as-is.
    *
    * @param uri The address of the group to be deleted.
    * @param recursive True if all data inside the group is to be deleted.
-   * @param close True if the group should also be closed after deletion.
    */
-  void delete_group(const URI& uri, bool recursive = false, bool close = true);
+  void delete_group(const URI& uri, bool recursive = false) {
+    delete_group_internal(uri, recursive, true);
+  }
+
+  /**
+   * Deletes data from a group opened in MODIFY_EXCLUSIVE mode and keeps it
+   * open.
+   *
+   * Note: if recursive == false, data added to the group will be left as-is.
+   *
+   * @param uri The address of the group to be deleted.
+   * @param recursive True if all data inside the group is to be deleted.
+   */
+  void delete_group_and_keep_open(const URI& uri, bool recursive = false) {
+    delete_group_internal(uri, recursive, false);
+  }
 
   /**
    * Deletes metadata from an group opened in WRITE mode.
@@ -454,6 +468,24 @@ class Group {
    * @return string
    */
   std::string generate_name() const;
+
+ private:
+  /**
+   * The common implementation of delete_group and delete_group_and_keep_open.
+   * Please call one of these two instead.
+   *
+   * Both these functions exist for legacy reasons. tiledb_group_delete_group
+   * accepts a group object which we cannot automatically close using
+   * AutoCloseGroup. But if we are doing recursive deletes, any temporary groups
+   * we recursively open are not exposed to the C API and we use
+   * delete_group_and_keep_open instead, leaving the closing to AutoCloseGroup's
+   * destructor.
+   *
+   * When in the future we add a new C API that deletes groups with just a URI
+   * (like we did with arrays), this whole logic can be simplified by having
+   * just one delete method.
+   */
+  void delete_group_internal(const URI& uri, bool recursive, bool close);
 };
 
 /**
