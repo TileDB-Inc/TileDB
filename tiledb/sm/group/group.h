@@ -168,7 +168,7 @@ class Group {
   uint64_t metadata_num();
 
   /** Gets the type of the given metadata or nullopt if it does not exist. */
-  std::optional<Datatype> get_metadata_type_if_exists(const char* key);
+  std::optional<Datatype> metadata_type(const char* key);
 
   /** Retrieves the group metadata object. */
   Metadata* metadata();
