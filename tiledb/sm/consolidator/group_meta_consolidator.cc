@@ -97,11 +97,11 @@ Status GroupMetaConsolidator::consolidate(
   const auto to_vacuum = metadata_w->loaded_metadata_uris();
 
   // Generate new name for consolidated metadata
-  RETURN_NOT_OK(metadata_w->generate_uri(group_uri));
+  throw_if_not_ok(metadata_w->generate_uri(group_uri));
 
   // Get the new URI name
   URI new_uri;
-  RETURN_NOT_OK(metadata_w->get_uri(group_uri, &new_uri));
+  throw_if_not_ok(metadata_w->get_uri(group_uri, &new_uri));
 
   // Write vacuum file
   URI vac_uri = URI(new_uri.to_string() + constants::vacuum_file_suffix);
@@ -111,9 +111,9 @@ Status GroupMetaConsolidator::consolidate(
     ss << uri.to_string() << "\n";
 
   auto data = ss.str();
-  RETURN_NOT_OK(
+  throw_if_not_ok(
       storage_manager_->vfs()->write(vac_uri, data.c_str(), data.size()));
-  RETURN_NOT_OK(storage_manager_->vfs()->close_file(vac_uri));
+  throw_if_not_ok(storage_manager_->vfs()->close_file(vac_uri));
 
   return Status::Ok();
 }
