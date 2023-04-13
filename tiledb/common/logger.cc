@@ -284,24 +284,15 @@ std::string Logger::add_tag(const std::string& tag, uint64_t id) {
 /* ********************************* */
 
 std::string global_logger_name(const Logger::Format format) {
-  /*
-   * The not-very-compact syntax here is a workaround for a known GCC defect.
-   * We're avoiding using `operator+` with string constants.
-   *
-   * See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105651
-   */
   std::string name{
       std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(
                          std::chrono::system_clock::now().time_since_epoch())
-                         .count())};
-  name += "-Global";
+                         .count()) +
+      "-Global"};
   if (format != Logger::Format::JSON) {
     return name;
   }
-  std::string name_json{"\""};
-  name_json += name;
-  name_json += "\":\"1\"";
-  return name_json;
+  return {"\"" + name + "\":\"1\""};
 }
 
 Logger& global_logger(Logger::Format format) {
