@@ -277,7 +277,7 @@ const shared_ptr<GroupDetails> Group::group_details() const {
   return group_details_;
 }
 
-QueryType Group::query_type_checked() const {
+QueryType Group::query_type() const {
   // Error if the group is not open
   if (!is_open_)
     throw GroupException("Cannot get query_type; Group is not open");
