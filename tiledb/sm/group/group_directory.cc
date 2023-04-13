@@ -94,7 +94,7 @@ GroupDirectory::GroupDirectory(
   // Wait for all tasks to complete
   throw_if_not_ok(tp_->wait_all(tasks));
 
-  // Error check
+  // Look for files whose existence indicates that this directory is a group.
   bool is_group = false;
   for (const auto& uri : root_dir_uris) {
     if (uri.last_path_part() == constants::group_filename) {
@@ -107,6 +107,7 @@ GroupDirectory::GroupDirectory(
     }
   }
 
+  // If we haven't seen any such file, throw.
   if (!is_group) {
     throw GroupDirectoryException("Cannot open group; Group does not exist.");
   }
