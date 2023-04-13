@@ -75,7 +75,7 @@ Status GroupMetaConsolidator::consolidate(
 
   // Open group for reading
   auto group_uri = URI(group_name);
-  AutoCloseGroup group_for_reads(
+  ManagedGroup group_for_reads(
       group_uri,
       storage_manager_,
       QueryType::READ,
@@ -83,14 +83,13 @@ Status GroupMetaConsolidator::consolidate(
       config_.timestamp_end_);
 
   // Open group for writing
-  AutoCloseGroup group_for_writes(
-      group_uri, storage_manager_, QueryType::WRITE);
+  ManagedGroup group_for_writes(group_uri, storage_manager_, QueryType::WRITE);
 
   // Swap the in-memory metadata between the two groups.
   // After that, the group for writes will store the (consolidated by
   // the way metadata loading works) metadata of the group for reads
-  Metadata* metadata_r{group_for_reads->metadata()};
-  Metadata* metadata_w{group_for_writes->metadata()};
+  Metadata* metadata_r{group_for_reads.metadata()};
+  Metadata* metadata_w{group_for_writes.metadata()};
   metadata_r->swap(metadata_w);
 
   // Metadata uris to delete

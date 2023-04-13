@@ -308,9 +308,8 @@ void Group::delete_group_internal(const URI& uri, bool recursive, bool close) {
       if (member->type() == ObjectType::ARRAY) {
         storage_manager_->delete_array(member_uri.to_string().c_str());
       } else if (member->type() == ObjectType::GROUP) {
-        AutoCloseGroup(
-            member_uri, storage_manager_, QueryType::MODIFY_EXCLUSIVE)
-            ->delete_group_and_keep_open(member_uri, true);
+        ManagedGroup(member_uri, storage_manager_, QueryType::MODIFY_EXCLUSIVE)
+            .delete_group_and_keep_open(member_uri, true);
       }
     }
   }

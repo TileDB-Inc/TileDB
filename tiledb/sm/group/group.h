@@ -476,9 +476,9 @@ class Group {
    *
    * Both these functions exist for legacy reasons. tiledb_group_delete_group
    * accepts a group object which we cannot automatically close using
-   * AutoCloseGroup. But if we are doing recursive deletes, any temporary groups
+   * ManagedGroup. But if we are doing recursive deletes, any temporary groups
    * we recursively open are not exposed to the C API and we use
-   * delete_group_and_keep_open instead, leaving the closing to AutoCloseGroup's
+   * delete_group_and_keep_open instead, leaving the closing to ManagedGroup's
    * destructor.
    *
    * When in the future we add a new C API that deletes groups with just a URI
@@ -489,34 +489,46 @@ class Group {
 };
 
 /**
- * Automatically opens and closes a Group.
+ * Encapsulates a Group and automatically opens and closes it.
  */
-class AutoCloseGroup {
+class ManagedGroup {
  public:
   /**
    * Constructor.
    * @param uri The group's URI.
    * @param sm The group's associated StorageManager.
-   * @param open_args Additional arguments to be passed in Group::open.
+   * @param open_args Additional arguments to be passed to Group::open.
    */
   template <class... OpenArgs>
-  AutoCloseGroup(const URI& uri, StorageManager* sm, OpenArgs... open_args)
+  ManagedGroup(const URI& uri, StorageManager* sm, OpenArgs... open_args)
       : group_(uri, sm) {
     group_.open(std::forward<OpenArgs>(open_args)...);
   };
 
-  ~AutoCloseGroup() {
+  ~ManagedGroup() {
     group_.close();
   }
 
   /**
-   * Provides access to the underlying Group object.
+   * Forwards to Group::metadata.
    */
-  inline Group* operator->() {
-    return &group_;
+  Metadata* metadata() {
+    return group_.metadata();
+  }
+
+  /**
+   * Forwards to Group::delete_group_and_keep_open.
+   */
+  void delete_group_and_keep_open(const URI& uri, bool recursive = false) {
+    group_.delete_group_and_keep_open(uri, recursive);
   }
 
  private:
+  /**
+   * The object's inner group.
+   *
+   * @invariant group_.isOpen() is always true for the lifetime of the class.
+   */
   Group group_;
 };
 
