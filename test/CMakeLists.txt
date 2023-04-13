@@ -362,9 +362,17 @@ endif()
 
 add_test(
   NAME "tiledb_unit"
-  COMMAND $<TARGET_FILE:tiledb_unit> --durations=yes
+  COMMAND tiledb_unit --durations=yes
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+if (DEFINED ENV{TILEDB_NIGHTLY_BUILD})
+  add_test(
+    NAME "tiledb_unit_nightly"
+    COMMAND tiledb_unit --durations=yes [nightly_only]
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  )
+endif()
 
 if(TILEDB_HDFS)
   # need to force flat namespace for the signal chaining to work on macOS
