@@ -403,7 +403,10 @@ capi_return_t tiledb_group_get_query_type(
   ensure_group_is_valid(group);
   ensure_output_pointer_is_valid(query_type);
 
-  *query_type = static_cast<tiledb_query_type_t>(group->group().query_type());
+  // Get query_type
+  tiledb::sm::QueryType type = group->group().query_type_checked();
+
+  *query_type = static_cast<tiledb_query_type_t>(type);
 
   return TILEDB_OK;
 }

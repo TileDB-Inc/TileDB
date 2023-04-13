@@ -360,7 +360,7 @@ class Group {
   bool is_remote() const;
 
   /** Retrieves the query type. Errors if the group is not open. */
-  QueryType query_type() const;
+  QueryType query_type_checked() const;
 
   /**
    * Dump a string representation of a group
