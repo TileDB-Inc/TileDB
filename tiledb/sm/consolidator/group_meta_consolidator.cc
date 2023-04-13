@@ -127,12 +127,12 @@ void GroupMetaConsolidator::vacuum(const char* group_name) {
   // Get the group metadata URIs and vacuum file URIs to be vacuumed
   auto vfs = storage_manager_->vfs();
   auto compute_tp = storage_manager_->compute_tp();
-  GroupDirectory group_dir(
+  GroupDirectory group_dir{
       vfs,
       compute_tp,
       URI(group_name),
       0,
-      std::numeric_limits<uint64_t>::max());
+      std::numeric_limits<uint64_t>::max()};
 
   // Delete the group metadata and vacuum files
   vfs->remove_files(compute_tp, group_dir.group_meta_uris_to_vacuum());
