@@ -594,9 +594,8 @@ const shared_ptr<GroupDirectory> Group::group_directory() const {
 }
 
 URI Group::generate_detail_uri() const {
-  std::string name = generate_name();
-
-  return group_uri_.join_path(constants::group_detail_dir_name).join_path(name);
+  return group_uri_.join_path(constants::group_detail_dir_name)
+      .join_path(generate_name());
 }
 
 bool Group::changes_applied() const {
