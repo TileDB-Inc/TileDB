@@ -79,7 +79,7 @@ format_version_t GroupMember::version() const {
 }
 
 void GroupMember::serialize(Serializer&) {
-  throw GroupMemberStatusException("Invalid call to GroupMember::serialize");
+  throw GroupMemberException("Invalid call to GroupMember::serialize");
 }
 
 shared_ptr<GroupMember> GroupMember::deserialize(Deserializer& deserializer) {
@@ -90,7 +90,7 @@ shared_ptr<GroupMember> GroupMember::deserialize(Deserializer& deserializer) {
   } else if (version == 2) {
     return GroupMemberV2::deserialize(deserializer);
   }
-  throw GroupStatusException(
+  throw GroupException(
       "Unsupported group member version " + std::to_string(version));
 }
 }  // namespace sm
