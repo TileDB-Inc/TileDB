@@ -33,21 +33,11 @@
 #ifndef TILEDB_GROUP_INTERNAL_H
 #define TILEDB_GROUP_INTERNAL_H
 
-#include <atomic>
-
-#include "tiledb/sm/config/config.h"
-#include "tiledb/sm/crypto/encryption_key.h"
-#include "tiledb/sm/enums/query_type.h"
-#include "tiledb/sm/group/group_details.h"
-#include "tiledb/sm/group/group_directory.h"
-#include "tiledb/sm/group/group_member.h"
-#include "tiledb/sm/metadata/metadata.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
+#include "tiledb/common/exception/exception.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class GroupDirectoryException : public StatusException {
  public:
@@ -68,7 +58,6 @@ class GroupMemberException : public StatusException {
   }
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_GROUP_INTERNAL_H
