@@ -369,7 +369,7 @@ add_test(
 if (DEFINED ENV{TILEDB_NIGHTLY_BUILD})
   add_test(
     NAME "tiledb_unit_nightly"
-    COMMAND tiledb_unit --durations=yes [nightly_only]
+    COMMAND tiledb_unit --durations=yes --allow-running-no-tests [nightly_only]
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   )
 endif()
