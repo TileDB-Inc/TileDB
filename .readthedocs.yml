@@ -14,7 +14,6 @@ build:
     python: "3.8"
 
 python:
-  version: 3.8
   install:
     # this order is important: we need cmake to build doxygen XML for breathe
     - requirements: tiledb/doxygen/source/requirements.txt
