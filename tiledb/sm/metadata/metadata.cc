@@ -198,7 +198,7 @@ Status Metadata::del(const char* key) {
 
   MetadataValue value;
   value.del_ = 1;
-  metadata_map_.emplace(std::make_pair(std::string(key), std::move(value)));
+  metadata_map_.insert_or_assign(key, std::move(value));
   build_metadata_index();
 
   return Status::Ok();
