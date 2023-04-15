@@ -182,7 +182,8 @@ TILEDB_EXPORT capi_return_t tiledb_buffer_get_data(
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_buffer_set_data(
-    tiledb_ctx_t* ctx, tiledb_buffer_t* buffer, void* data, uint64_t size);
+    tiledb_ctx_t* ctx, tiledb_buffer_t* buffer, void* data, uint64_t size)
+    TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }

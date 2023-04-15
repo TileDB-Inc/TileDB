@@ -133,7 +133,10 @@ capi_return_t tiledb_buffer_get_data(
 }
 
 capi_return_t tiledb_buffer_set_data(
-    tiledb_ctx_t* ctx, tiledb_buffer_t* buffer, void* data, uint64_t size) {
+    tiledb_ctx_t* ctx,
+    tiledb_buffer_t* buffer,
+    void* data,
+    uint64_t size) noexcept {
   return api_entry_context<tiledb::api::tiledb_buffer_set_data>(
       ctx, buffer, data, size);
 }

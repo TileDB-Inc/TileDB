@@ -930,7 +930,7 @@ class ResultTileWithBitmap : public ResultTile {
     uint64_t sum = 0;
     for (uint64_t c = start_pos; c < bitmap_.size(); c++) {
       sum += bitmap_[c];
-      if (sum == result_num) {
+      if (sum >= result_num) {
         return c;
       }
     }

@@ -45,7 +45,7 @@ class Benchmark : public BenchmarkBase {
     // hold all of our tiles.
     Config config;
     config["sm.tile_cache_size"] = "10000000000";
-    ctx_ = std::unique_ptr<Context>(new Context(config));
+    ctx_ = std::make_unique<Context>(config);
   }
 
  protected:
@@ -113,7 +113,7 @@ class Benchmark : public BenchmarkBase {
     Query read_query(*ctx_, read_array);
     data_.resize(read_query.est_result_size("a"));
     coords_.resize(read_query.est_result_size("TILEDB_COORDS"));
-    read_query.set_subarray(subarray_)
+    read_query.set_subarray(Subarray(*ctx_, read_array).set_subarray(subarray_))
         .set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a", data_)
         .set_coordinates(coords_);
@@ -127,7 +127,7 @@ class Benchmark : public BenchmarkBase {
     for (int i = 0; i < 5; ++i) {
       Array array(*ctx_, array_uri_, TILEDB_READ);
       Query query(*ctx_, array);
-      query.set_subarray(subarray_)
+      query.set_subarray(Subarray(*ctx_, array).set_subarray(subarray_))
           .set_layout(TILEDB_ROW_MAJOR)
           .set_data_buffer("a", data_)
           .set_coordinates(coords_);

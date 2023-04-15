@@ -31,7 +31,9 @@
  * labels.
  */
 
+#include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/serialization_wrappers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
@@ -39,7 +41,6 @@
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/enums/encryption_type.h"
 
-#include <test/support/tdb_catch.h>
 #include <iostream>
 #include <string>
 
@@ -247,6 +248,10 @@ class SparseArrayExample1 : public TemporaryDirectoryFixture {
     for (uint64_t r{0}; r < ranges.size() / 2; r++) {
       require_tiledb_ok(tiledb_subarray_add_label_range(
           ctx, subarray, "x", &ranges[2 * r], &ranges[2 * r + 1], nullptr));
+    }
+
+    if (serialize_) {
+      tiledb_subarray_serialize(ctx, array, &subarray);
     }
 
     // Define label buffer and size.

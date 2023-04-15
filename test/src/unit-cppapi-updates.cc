@@ -84,7 +84,9 @@ TEST_CASE(
   // First write
   Array array_w1(ctx, array_name, TILEDB_WRITE);
   Query query_w1(ctx, array_w1);
-  query_w1.set_subarray({rowmin, rowmax, colmin, colmax})
+  query_w1
+      .set_subarray(Subarray(ctx, array_w1)
+                        .set_subarray({rowmin, rowmax, colmin, colmax}))
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a1", data_a1)
       .set_offsets_buffer("a1", offsets_a1);
@@ -102,7 +104,9 @@ TEST_CASE(
   // Second write
   Array array_w2(ctx, array_name, TILEDB_WRITE);
   Query query_w2(ctx, array_w2);
-  query_w2.set_subarray({rowmin, rowmax, colmin, colmax})
+  query_w2
+      .set_subarray(Subarray(ctx, array_w2)
+                        .set_subarray({rowmin, rowmax, colmin, colmax}))
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a1", data_a1)
       .set_offsets_buffer("a1", offsets_a1);

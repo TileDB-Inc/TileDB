@@ -39,6 +39,7 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
+#include "tiledb/sm/subarray/subarray.h"
 
 #ifdef TILEDB_SERIALIZATION
 #include "tiledb/sm/serialization/tiledb-rest.h"
@@ -244,6 +245,14 @@ Status condition_from_capnp(
 Status condition_to_capnp(
     const QueryCondition& condition,
     capnp::Condition::Builder* condition_builder);
+
+Status subarray_to_capnp(
+    const ArraySchema& schema,
+    const Subarray* subarray,
+    capnp::Subarray::Builder* builder);
+
+Status subarray_from_capnp(
+    const capnp::Subarray::Reader& reader, Subarray* subarray);
 #endif
 
 }  // namespace serialization

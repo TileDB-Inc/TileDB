@@ -454,7 +454,7 @@ void write_dense_array_string_attr(
   query.set_data_buffer("a1", data);
   query.set_offsets_buffer("a1", data_offsets);
   query.set_layout(layout);
-  query.set_subarray<int64_t>({0, 1, 0, 2});
+  query.set_subarray(Subarray(ctx, array).set_subarray<int64_t>({0, 1, 0, 2}));
 
   test::ServerQueryBuffers server_buffers_;
   auto rc = test::submit_query_wrapper(
@@ -484,7 +484,7 @@ void read_and_check_dense_array_string_attr(
   attr_val.resize(expected_data.size());
   std::vector<uint64_t> attr_off(expected_offsets.size());
 
-  query.set_subarray<int64_t>({0, 1, 0, 2});
+  query.set_subarray(Subarray(ctx, array).set_subarray<int64_t>({0, 1, 0, 2}));
   query.set_data_buffer("a1", (char*)attr_val.data(), attr_val.size());
   query.set_offsets_buffer("a1", attr_off);
 

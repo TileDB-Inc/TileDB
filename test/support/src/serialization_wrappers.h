@@ -128,4 +128,14 @@ int tiledb_fragment_info_serialize(
     tiledb_fragment_info_t* fragment_info_before_serialization,
     tiledb_fragment_info_t* fragment_info_deserialized,
     tiledb_serialization_type_t serialize_type);
+
+/**
+ * Return a subarray after serializing and deserializing it
+ *
+ * @param ctx tiledb context
+ * @param array the array the subarray belongs to
+ * @param subarray the subarray to serialize and deserialize
+ */
+void tiledb_subarray_serialize(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_subarray_t** subarray);
 #endif  // TILEDB_TEST_SERIALIZATION_WRAPPERS_H
