@@ -2,4 +2,3 @@ build
 builds
 scripts
 !scripts/capnpupdate.sh
-.git
