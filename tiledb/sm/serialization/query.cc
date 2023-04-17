@@ -186,6 +186,7 @@ Status subarray_to_capnp(
     const Subarray* subarray,
     capnp::Subarray::Builder* builder) {
   builder->setLayout(layout_str(subarray->layout()));
+  builder->setCoalesceRanges(subarray->coalesce_ranges());
 
   // Add ranges
   const uint32_t dim_num = subarray->dim_num();
@@ -262,6 +263,7 @@ Status subarray_to_capnp(
 
 Status subarray_from_capnp(
     const capnp::Subarray::Reader& reader, Subarray* subarray) {
+  RETURN_NOT_OK(subarray->set_coalesce_ranges(reader.getCoalesceRanges()));
   auto ranges_reader = reader.getRanges();
   uint32_t dim_num = ranges_reader.size();
   for (uint32_t i = 0; i < dim_num; i++) {

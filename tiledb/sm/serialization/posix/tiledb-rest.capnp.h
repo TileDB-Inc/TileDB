@@ -715,7 +715,7 @@ struct Subarray {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(dba20dec138adac9, 0, 6)
+    CAPNP_DECLARE_STRUCT_HEADER(dba20dec138adac9, 1, 6)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -6248,6 +6248,8 @@ class Subarray::Reader {
       ::tiledb::sm::serialization::capnp::SubarrayRanges>::Reader
   getAttributeRanges() const;
 
+  inline bool getCoalesceRanges() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -6381,6 +6383,9 @@ class Subarray::Builder {
       ::capnp::Text,
       ::tiledb::sm::serialization::capnp::SubarrayRanges>>
   disownAttributeRanges();
+
+  inline bool getCoalesceRanges();
+  inline void setCoalesceRanges(bool value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -19639,6 +19644,17 @@ Subarray::Builder::disownAttributeRanges() {
       ::tiledb::sm::serialization::capnp::SubarrayRanges>>::
       disown(
           _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
+}
+
+inline bool Subarray::Reader::getCoalesceRanges() const {
+  return _reader.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline bool Subarray::Builder::getCoalesceRanges() {
+  return _builder.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void Subarray::Builder::setCoalesceRanges(bool value) {
+  _builder.setDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
 inline bool SubarrayPartitioner::Reader::hasSubarray() const {

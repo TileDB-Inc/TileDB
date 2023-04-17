@@ -447,6 +447,9 @@ struct Subarray {
 
   attributeRanges @5 :Map(Text, SubarrayRanges);
   # List of 1D ranges for each attribute
+
+  coalesceRanges @6 :Bool;
+  # True if Subarray should coalesce overlapping ranges.
 }
 
 struct SubarrayPartitioner {
