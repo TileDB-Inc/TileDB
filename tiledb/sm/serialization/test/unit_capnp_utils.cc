@@ -30,6 +30,8 @@
  * This file contains unit tests for the array schema
  */
 
+#include <capnp/message.h>
+
 #include <test/support/tdb_catch.h>
 
 #include "tiledb/sm/array_schema/attribute.h"
@@ -37,8 +39,6 @@
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/serialization/capnp_utils.h"
-
-#include <capnp/message.h>
 
 using namespace tiledb::common;
 using namespace tiledb::sm;

@@ -33,12 +33,12 @@
 #ifndef TILEDB_CONFIG_H
 #define TILEDB_CONFIG_H
 
-#include "tiledb/common/status.h"
-
 #include <map>
 #include <set>
 #include <string>
 #include <vector>
+
+#include "tiledb/common/status.h"
 
 /*
  * C++14 introduced the attribute [[deprecated]], but no conditional syntax

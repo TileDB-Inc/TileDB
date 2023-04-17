@@ -110,8 +110,7 @@ class TaskGraph {
    */
   template <class Function>
   auto initial_node(Function&& f) {
-    using T = std::invoke_result_t<Function, std::stop_source&>;
-    auto tmp = producer_node<DuffsMover3, T>(std::forward<Function>(f));
+    auto tmp = producer_node<DuffsMover3, std::invoke_result_t<Function, std::stop_source&>>(std::forward<Function>(f));
     nodes_.emplace_back(tmp);
     return tmp;
   }

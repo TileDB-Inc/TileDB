@@ -35,10 +35,10 @@
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <stop_token>
 #include <string>
 #include <type_traits>
 #include <utility>
-#include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
 
 #include "experimental/tiledb/common/dag/ports/ports.h"
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"

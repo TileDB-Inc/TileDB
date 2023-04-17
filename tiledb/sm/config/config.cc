@@ -30,15 +30,15 @@
  * This file implements class Config.
  */
 
+#include <fstream>
+#include <iostream>
+#include <sstream>
+
 #include "config.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parse_argument.h"
-
-#include <fstream>
-#include <iostream>
-#include <sstream>
 
 using namespace tiledb::common;
 
