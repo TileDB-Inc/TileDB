@@ -46,8 +46,9 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
   tiledb::Context ctx(cfg);
   tiledb::VFS vfs(ctx);
 
-  if (vfs.is_dir(array_name))
+  if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
+  }
 
   // Create
   tiledb::Domain domain(ctx);
@@ -61,10 +62,13 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
   // Write
   std::vector<int> data_w = {1, 2, 3, 4};
   std::vector<int> coords_w = {0, 0, 1, 1, 2, 2, 3, 3};
+  std::vector<int> rows_w = {0, 1, 2, 3};
+  std::vector<int> cols_w = {0, 1, 2, 3};
   tiledb::Array array_w(ctx, array_name, TILEDB_WRITE);
   tiledb::Query query_w(ctx, array_w);
-  query_w.set_coordinates(coords_w)
-      .set_layout(TILEDB_UNORDERED)
+  query_w.set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("rows", rows_w)
+      .set_data_buffer("cols", cols_w)
       .set_data_buffer("a", data_w);
   query_w.submit();
   query_w.finalize();
@@ -101,7 +105,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     REQUIRE(est_size == 4);
 
     std::vector<int> data(est_size);
-    query.set_buffer("a", data);
+    query.set_data_buffer("a", data);
     query.set_subarray(subarray);
     query.submit();
     REQUIRE(query.result_buffer_elements()["a"].second == 1);
@@ -141,7 +145,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     CHECK_THROWS(est_size_var = query.est_result_size_var("a"));
 
     std::vector<int> data(est_size);
-    query.set_layout(TILEDB_ROW_MAJOR).set_buffer("a", data);
+    query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
     query.submit();
     REQUIRE(query.result_buffer_elements()["a"].second == 2);
     REQUIRE(data[0] == 2);
@@ -217,7 +221,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     REQUIRE(est_size == 4);
 
     std::vector<int> data(est_size);
-    query.set_layout(TILEDB_UNORDERED).set_buffer("a", data);
+    query.set_layout(TILEDB_UNORDERED).set_data_buffer("a", data);
     query.set_subarray(subarray);
     query.submit();
     REQUIRE(query.result_buffer_elements()["a"].second == 2);
@@ -258,7 +262,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     query.set_subarray(subarray);
     auto est_size = query.est_result_size("a");
     std::vector<int> data(est_size);
-    query.set_layout(TILEDB_UNORDERED).set_buffer("a", data);
+    query.set_layout(TILEDB_UNORDERED).set_data_buffer("a", data);
     query.set_subarray(subarray);
     query.submit();
     REQUIRE(query.result_buffer_elements()["a"].second == 4);
@@ -360,7 +364,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     CHECK_THROWS(est_size_var = query.est_result_size_var("a"));
 
     std::vector<int> data(est_size);
-    query.set_layout(TILEDB_ROW_MAJOR).set_buffer("a", data);
+    query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
     query.set_subarray(subarray);
     query.submit();
     REQUIRE(query.result_buffer_elements()["a"].second == 3);
@@ -368,8 +372,9 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     REQUIRE(data[1] == 3);
   }
 
-  if (vfs.is_dir(array_name))
+  if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
+  }
 }
 
 TEST_CASE("C++ API: Test subarray (dense)", "[cppapi][dense][subarray]") {
@@ -379,8 +384,9 @@ TEST_CASE("C++ API: Test subarray (dense)", "[cppapi][dense][subarray]") {
   tiledb::Context ctx(cfg);
   tiledb::VFS vfs(ctx);
 
-  if (vfs.is_dir(array_name))
+  if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
+  }
 
   // Create
   tiledb::Domain domain(ctx);
@@ -437,8 +443,9 @@ TEST_CASE("C++ API: Test subarray (dense)", "[cppapi][dense][subarray]") {
     REQUIRE_THROWS(subarray.set_subarray({1, 4, -1, 3}));
   }
 
-  if (vfs.is_dir(array_name))
+  if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
+  }
 }
 
 TEST_CASE(
@@ -448,8 +455,9 @@ TEST_CASE(
   tiledb::Context ctx;
   tiledb::VFS vfs(ctx);
 
-  if (vfs.is_dir(array_name))
+  if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
+  }
 
   // Create
   tiledb::Domain domain(ctx);
@@ -468,13 +476,27 @@ TEST_CASE(
   // Write
   std::vector<char> data_w = {
       'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n'};
-  std::vector<int> coords_w = {0, 12277, 0, 12771, 0, 13374, 0, 13395, 0, 13413,
-                               0, 13451, 0, 13519, 0, 13544, 0, 13689, 0, 17479,
-                               0, 17486, 1, 12277, 1, 12771, 1, 13389};
+  std::vector<int> rows_w = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1};
+  std::vector<int> cols_w = {
+      12277,
+      12771,
+      13374,
+      13395,
+      13413,
+      13451,
+      13519,
+      13544,
+      13689,
+      17479,
+      17486,
+      12277,
+      12771,
+      13389};
   tiledb::Array array_w(ctx, array_name, TILEDB_WRITE);
   tiledb::Query query_w(ctx, array_w);
-  query_w.set_coordinates(coords_w)
-      .set_layout(TILEDB_UNORDERED)
+  query_w.set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("rows", rows_w)
+      .set_data_buffer("cols", cols_w)
       .set_data_buffer("a", data_w);
   query_w.submit();
   query_w.finalize();
@@ -623,8 +645,9 @@ TEST_CASE(
   // Close array.
   array.close();
 
-  if (vfs.is_dir(array_name))
+  if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
+  }
 }
 
 TEST_CASE(
@@ -634,8 +657,9 @@ TEST_CASE(
   tiledb::Context ctx;
   tiledb::VFS vfs(ctx);
 
-  if (vfs.is_dir(array_name))
+  if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
+  }
 
   // Create
   tiledb::Domain domain(ctx);
@@ -654,13 +678,27 @@ TEST_CASE(
   // Write
   std::vector<char> data_w = {
       'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n'};
-  std::vector<int> coords_w = {0, 12277, 0, 12771, 0, 13374, 0, 13395, 0, 13413,
-                               0, 13451, 0, 13519, 0, 13544, 0, 13689, 0, 17479,
-                               0, 17486, 1, 12277, 1, 12771, 1, 13389};
+  std::vector<int> rows_w = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1};
+  std::vector<int> cols_w = {
+      12277,
+      12771,
+      13374,
+      13395,
+      13413,
+      13451,
+      13519,
+      13544,
+      13689,
+      17479,
+      17486,
+      12277,
+      12771,
+      13389};
   tiledb::Array array_w(ctx, array_name, TILEDB_WRITE);
   tiledb::Query query_w(ctx, array_w);
-  query_w.set_coordinates(coords_w)
-      .set_layout(TILEDB_UNORDERED)
+  query_w.set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("rows", rows_w)
+      .set_data_buffer("cols", cols_w)
       .set_data_buffer("a", data_w);
   query_w.submit();
   query_w.finalize();
@@ -849,8 +887,9 @@ TEST_CASE(
   // Close array.
   array.close();
 
-  if (vfs.is_dir(array_name))
+  if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
+  }
 }
 
 TEST_CASE(
@@ -860,8 +899,9 @@ TEST_CASE(
   tiledb::Context ctx;
   tiledb::VFS vfs(ctx);
 
-  if (vfs.is_dir(array_name))
+  if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
+  }
 
   // Create
   tiledb::Domain domain(ctx);
@@ -880,14 +920,28 @@ TEST_CASE(
   // Write
   std::vector<char> data_w = {
       'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n'};
-  std::vector<int> coords_w = {0, 12277, 0, 12771, 0, 13374, 0, 13395, 0, 13413,
-                               0, 13451, 0, 13519, 0, 13544, 0, 13689, 0, 17479,
-                               0, 17486, 1, 12277, 1, 12771, 1, 13389};
+  std::vector<int> rows_w = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1};
+  std::vector<int> cols_w = {
+      12277,
+      12771,
+      13374,
+      13395,
+      13413,
+      13451,
+      13519,
+      13544,
+      13689,
+      17479,
+      17486,
+      12277,
+      12771,
+      13389};
   tiledb::Array array_w(ctx, array_name, TILEDB_WRITE);
   tiledb::Query query_w(ctx, array_w);
-  query_w.set_coordinates(coords_w)
-      .set_layout(TILEDB_UNORDERED)
-      .set_buffer("a", data_w);
+  query_w.set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("rows", rows_w)
+      .set_data_buffer("cols", cols_w)
+      .set_data_buffer("a", data_w);
   query_w.submit();
   query_w.finalize();
   array_w.close();
@@ -945,8 +999,9 @@ TEST_CASE(
   // Close array.
   array.close();
 
-  if (vfs.is_dir(array_name))
+  if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
+  }
 }
 
 TEST_CASE(
@@ -956,8 +1011,9 @@ TEST_CASE(
   tiledb::Context ctx;
   tiledb::VFS vfs(ctx);
 
-  if (vfs.is_dir(array_name))
+  if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
+  }
 
   // Create
   tiledb::Domain domain(ctx);
@@ -976,14 +1032,28 @@ TEST_CASE(
   // Write
   std::vector<char> data_w = {
       'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n'};
-  std::vector<int> coords_w = {0, 12277, 0, 12771, 0, 13374, 0, 13395, 0, 13413,
-                               0, 13451, 0, 13519, 0, 13544, 0, 13689, 0, 17479,
-                               0, 17486, 1, 12277, 1, 12771, 1, 13389};
+  std::vector<int> rows_w = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1};
+  std::vector<int> cols_w = {
+      12277,
+      12771,
+      13374,
+      13395,
+      13413,
+      13451,
+      13519,
+      13544,
+      13689,
+      17479,
+      17486,
+      12277,
+      12771,
+      13389};
   tiledb::Array array_w(ctx, array_name, TILEDB_WRITE);
   tiledb::Query query_w(ctx, array_w);
-  query_w.set_coordinates(coords_w)
-      .set_layout(TILEDB_UNORDERED)
-      .set_buffer("a", data_w);
+  query_w.set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("rows", rows_w)
+      .set_data_buffer("cols", cols_w)
+      .set_data_buffer("a", data_w);
   query_w.submit();
   query_w.finalize();
   array_w.close();
@@ -1043,8 +1113,9 @@ TEST_CASE(
   // Close array.
   array.close();
 
-  if (vfs.is_dir(array_name))
+  if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
+  }
 }
 
 TEST_CASE(
@@ -1059,8 +1130,9 @@ TEST_CASE(
   tiledb::Context ctx;
   tiledb::VFS vfs(ctx);
 
-  if (vfs.is_dir(array_name))
+  if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
+  }
 
   // Create
   tiledb::Domain domain(ctx);
@@ -1081,13 +1153,16 @@ TEST_CASE(
   tiledb::Query query(ctx, array);
 
   query.set_layout(test_pair.second);
-  query.add_range(0, 0, 0);
-  query.add_range(0, 1, 1);
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, 0, 0);
+  subarray.add_range(0, 1, 1);
+  query.set_subarray(subarray);
   CHECK_THROWS(query.submit());
 
   // Close array.
   array.close();
 
-  if (vfs.is_dir(array_name))
+  if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
+  }
 }
