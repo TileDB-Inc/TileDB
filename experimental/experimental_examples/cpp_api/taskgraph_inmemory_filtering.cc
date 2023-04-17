@@ -146,7 +146,7 @@ auto compress_chunk(const input_info<uint32_t>& in) {
 
   // Alloc a buffer big enough to fit the resulted compressed buffer
   auto in_size = static_cast<unsigned int>(data_ptr->size() * sizeof(uint32_t));
-  std::vector<char> compressed_data(2*in_size);
+  std::vector<char> compressed_data(2 * in_size);
   unsigned int out_size;
 
   // Bzip2 compress the data
