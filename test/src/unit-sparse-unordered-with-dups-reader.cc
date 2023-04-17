@@ -900,7 +900,7 @@ TEST_CASE_METHOD(
   auto counters = stats->counters();
   REQUIRE(counters != nullptr);
   auto loop_num =
-      counters->find("Context.StorageManager.Query.Reader.loop_num");
+      counters->find("Context.StorageManager.Query.Reader.internal_loop_num");
   CHECK(2 == loop_num->second);
 
   // Clean up.
@@ -982,7 +982,7 @@ TEST_CASE_METHOD(
   auto counters = stats->counters();
   REQUIRE(counters != nullptr);
   auto loop_num =
-      counters->find("Context.StorageManager.Query.Reader.loop_num");
+      counters->find("Context.StorageManager.Query.Reader.internal_loop_num");
   CHECK(uint64_t(num_frags * 3) == loop_num->second);
 
   // Check query status.

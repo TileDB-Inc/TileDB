@@ -78,6 +78,7 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
     std::optional<QueryCondition>& condition,
     bool skip_checks_serialization)
     : SparseIndexReaderBase(
+          "sparse_unordered_with_dups",
           stats,
           logger->clone("SparseUnorderedWithDupsReader", ++logger_id_),
           storage_manager,
@@ -86,14 +87,13 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
           buffers,
           subarray,
           layout,
-          condition)
+          condition,
+          skip_checks_serialization,
+          false)
     , tile_offsets_min_frag_idx_(std::numeric_limits<unsigned>::max())
     , tile_offsets_max_frag_idx_(0) {
-  include_coords_ = false;
-  SparseIndexReaderBase::init(skip_checks_serialization);
-
   // Initialize memory budget variables.
-  initialize_memory_budget();
+  refresh_config();
 
   // Get the setting that allows to partially load tile offsets. This is done
   // for this reader only for now.
@@ -135,33 +135,8 @@ SparseUnorderedWithDupsReader<BitmapType>::status_incomplete_reason() const {
 }
 
 template <class BitmapType>
-void SparseUnorderedWithDupsReader<BitmapType>::initialize_memory_budget() {
-  bool found = false;
-  throw_if_not_ok(
-      config_.get<uint64_t>("sm.mem.total_budget", &memory_budget_, &found));
-  assert(found);
-
-  throw_if_not_ok(config_.get<double>(
-      "sm.mem.reader.sparse_unordered_with_dups.ratio_array_data",
-      &memory_budget_ratio_array_data_,
-      &found));
-  assert(found);
-
-  throw_if_not_ok(config_.get<double>(
-      "sm.mem.reader.sparse_unordered_with_dups.ratio_coords",
-      &memory_budget_ratio_coords_,
-      &found));
-  assert(found);
-
-  throw_if_not_ok(config_.get<double>(
-      "sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges",
-      &memory_budget_ratio_tile_ranges_,
-      &found));
-  assert(found);
-
-  throw_if_not_ok(config_.get<uint64_t>(
-      "sm.mem.tile_upper_memory_limit", &tile_upper_memory_limit_, &found));
-  assert(found);
+void SparseUnorderedWithDupsReader<BitmapType>::refresh_config() {
+  memory_budget_.refresh_config(config_, "sparse_unordered_with_dups");
 }
 
 template <class BitmapType>
@@ -170,6 +145,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
   include_coords_ = subarray_.is_set();
 
   auto timer_se = stats_->start_timer("dowork");
+  stats_->add_counter("loop_num", 1);
 
   // Make sure user didn't request delete timestamps.
   if (buffers_.count(constants::delete_timestamps) != 0) {
@@ -211,7 +187,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
 
   buffers_full_ = false;
   do {
-    stats_->add_counter("loop_num", 1);
+    stats_->add_counter("internal_loop_num", 1);
 
     // Load as much tile offsets data in memory as possible.
     load_tile_offsets_data();
@@ -438,7 +414,8 @@ bool SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
   // Use either the coordinate portion of the total budget or the tile upper
   // memory limit as the upper memory limit, whichever is smaller.
   const uint64_t upper_memory_limit = std::min<uint64_t>(
-      tile_upper_memory_limit_, memory_budget_ * memory_budget_ratio_coords_);
+      memory_budget_.tile_upper_memory_limit(),
+      memory_budget_.total_budget() * memory_budget_.ratio_coords());
 
   // Calculate memory consumption for this tile.
   auto tiles_size = get_coord_tiles_size(dim_num, f, t);
@@ -1530,7 +1507,7 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
   // Use either the tile upper memory limit, or the available memory as the
   // upper memory limit, whichever is smaller.
   uint64_t upper_memory_limit =
-      std::min(tile_upper_memory_limit_, available_memory());
+      std::min(memory_budget_.tile_upper_memory_limit(), available_memory());
 
   // Process all attributes in parallel.
   uint64_t max_rt_idx = result_tiles.size();
@@ -1885,7 +1862,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::remove_result_tile(
       get_coord_tiles_size(array_schema_.dim_num(), frag_idx, tile_idx);
 
   {
-    std::unique_lock<std::mutex> lck(mem_budget_mtx_);
+    std::unique_lock<std::mutex> lck(used_memory_mtx_);
     memory_used_for_coords_total_ -= tiles_size;
   }
 

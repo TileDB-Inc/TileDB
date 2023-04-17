@@ -64,6 +64,7 @@ class SparseIndexReaderBaseStatusException : public StatusException {
 /* ****************************** */
 
 SparseIndexReaderBase::SparseIndexReaderBase(
+    std::string reader_string,
     stats::Stats* stats,
     shared_ptr<Logger> logger,
     StorageManager* storage_manager,
@@ -72,7 +73,9 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    std::optional<QueryCondition>& condition)
+    std::optional<QueryCondition>& condition,
+    bool skip_checks_serialization,
+    bool include_coords)
     : ReaderBase(
           stats,
           logger,
@@ -83,33 +86,15 @@ SparseIndexReaderBase::SparseIndexReaderBase(
           subarray,
           layout,
           condition)
-    , memory_budget_(0)
+    , memory_budget_(config, reader_string)
+    , include_coords_(include_coords)
     , array_memory_tracker_(array->memory_tracker())
     , memory_used_for_coords_total_(0)
     , memory_used_result_tile_ranges_(0)
-    , memory_budget_ratio_coords_(0.5)
-    , memory_budget_ratio_tile_ranges_(0.1)
-    , memory_budget_ratio_array_data_(0.1)
     , buffers_full_(false)
     , deletes_consolidation_no_purge_(
           buffers_.count(constants::delete_timestamps) != 0)
     , partial_tile_offsets_loading_(false) {
-}
-
-/* ****************************** */
-/*        PROTECTED METHODS       */
-/* ****************************** */
-
-const typename SparseIndexReaderBase::ReadState*
-SparseIndexReaderBase::read_state() const {
-  return &read_state_;
-}
-
-typename SparseIndexReaderBase::ReadState* SparseIndexReaderBase::read_state() {
-  return &read_state_;
-}
-
-void SparseIndexReaderBase::init(bool skip_checks_serialization) {
   // Sanity checks
   if (storage_manager_ == nullptr) {
     throw SparseIndexReaderBaseStatusException(
@@ -160,8 +145,21 @@ void SparseIndexReaderBase::init(bool skip_checks_serialization) {
   check_validity_buffer_sizes();
 }
 
+/* ****************************** */
+/*        PROTECTED METHODS       */
+/* ****************************** */
+
+const typename SparseIndexReaderBase::ReadState*
+SparseIndexReaderBase::read_state() const {
+  return &read_state_;
+}
+
+typename SparseIndexReaderBase::ReadState* SparseIndexReaderBase::read_state() {
+  return &read_state_;
+}
+
 uint64_t SparseIndexReaderBase::available_memory() {
-  return memory_budget_ - memory_used_for_coords_total_ -
+  return memory_budget_.total_budget() - memory_used_for_coords_total_ -
          memory_used_result_tile_ranges_ -
          array_memory_tracker_->get_memory_usage();
 }
@@ -394,7 +392,7 @@ Status SparseIndexReaderBase::load_initial_data() {
   // Calculate ranges of tiles in the subarray, if set.
   if (subarray_.is_set()) {
     // At this point, full memory budget is available.
-    if (!array_memory_tracker_->set_budget(memory_budget_)) {
+    if (!array_memory_tracker_->set_budget(memory_budget_.total_budget())) {
       throw SparseIndexReaderBaseStatusException(
           "Cannot set array memory budget, already over limit.");
     }
@@ -421,7 +419,7 @@ Status SparseIndexReaderBase::load_initial_data() {
     }
 
     if (memory_used_result_tile_ranges_ >
-        memory_budget_ratio_tile_ranges_ * memory_budget_)
+        memory_budget_.ratio_tile_ranges() * memory_budget_.total_budget())
       return logger_->status(
           Status_ReaderError("Exceeded memory budget for result tile ranges"));
   }
@@ -464,7 +462,7 @@ Status SparseIndexReaderBase::load_initial_data() {
 
   // Set a limit to the array memory.
   if (!array_memory_tracker_->set_budget(
-          memory_budget_ * memory_budget_ratio_array_data_)) {
+          memory_budget_.total_budget() * memory_budget_.ratio_array_data())) {
     throw SparseIndexReaderBaseStatusException(
         "Cannot set array memory budget, already over limit.");
   }
@@ -972,7 +970,7 @@ Status SparseIndexReaderBase::add_extra_offset() {
 void SparseIndexReaderBase::remove_result_tile_range(uint64_t f) {
   result_tile_ranges_[f].pop_back();
   {
-    std::unique_lock<std::mutex> lck(mem_budget_mtx_);
+    std::unique_lock<std::mutex> lck(used_memory_mtx_);
     memory_used_result_tile_ranges_ -= sizeof(std::pair<uint64_t, uint64_t>);
   }
 }

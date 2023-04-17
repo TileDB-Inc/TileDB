@@ -81,6 +81,7 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
     bool consolidation_with_timestamps,
     bool skip_checks_serialization)
     : SparseIndexReaderBase(
+          "sparse_global_order",
           stats,
           logger->clone("SparseGlobalOrderReader", ++logger_id_),
           storage_manager,
@@ -89,17 +90,16 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
           buffers,
           subarray,
           layout,
-          condition)
+          condition,
+          skip_checks_serialization,
+          true)
     , result_tiles_(array->fragment_metadata().size())
     , memory_used_for_coords_(array->fragment_metadata().size())
     , consolidation_with_timestamps_(consolidation_with_timestamps)
     , last_cells_(array->fragment_metadata().size())
     , tile_offsets_loaded_(false) {
-  include_coords_ = true;
-  SparseIndexReaderBase::init(skip_checks_serialization);
-
   // Initialize memory budget variables.
-  initialize_memory_budget();
+  refresh_config();
 }
 
 /* ****************************** */
@@ -124,31 +124,14 @@ SparseGlobalOrderReader<BitmapType>::status_incomplete_reason() const {
 }
 
 template <class BitmapType>
-void SparseGlobalOrderReader<BitmapType>::initialize_memory_budget() {
-  bool found = false;
-  throw_if_not_ok(
-      config_.get<uint64_t>("sm.mem.total_budget", &memory_budget_, &found));
-  assert(found);
-  throw_if_not_ok(config_.get<double>(
-      "sm.mem.reader.sparse_global_order.ratio_array_data",
-      &memory_budget_ratio_array_data_,
-      &found));
-  assert(found);
-  throw_if_not_ok(config_.get<double>(
-      "sm.mem.reader.sparse_global_order.ratio_coords",
-      &memory_budget_ratio_coords_,
-      &found));
-  assert(found);
-  throw_if_not_ok(config_.get<double>(
-      "sm.mem.reader.sparse_global_order.ratio_tile_ranges",
-      &memory_budget_ratio_tile_ranges_,
-      &found));
-  assert(found);
+void SparseGlobalOrderReader<BitmapType>::refresh_config() {
+  memory_budget_.refresh_config(config_, "sparse_global_order");
 }
 
 template <class BitmapType>
 Status SparseGlobalOrderReader<BitmapType>::dowork() {
   auto timer_se = stats_->start_timer("dowork");
+  stats_->add_counter("loop_num", 1);
 
   // For easy reference.
   auto fragment_num = fragment_metadata_.size();
@@ -191,7 +174,7 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
 
   buffers_full_ = false;
   do {
-    stats_->add_counter("loop_num", 1);
+    stats_->add_counter("internal_loop_num", 1);
 
     // Create the result tiles we are going to process.
     auto tiles_found = create_result_tiles();
@@ -377,7 +360,7 @@ bool SparseGlobalOrderReader<BitmapType>::add_result_tile(
 
   // Adjust total memory used.
   {
-    std::unique_lock<std::mutex> lck(mem_budget_mtx_);
+    std::unique_lock<std::mutex> lck(used_memory_mtx_);
     memory_used_for_coords_total_ += tiles_size;
   }
 
@@ -409,8 +392,9 @@ bool SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
     num_fragments_to_process += !all_loaded;
   }
 
-  per_fragment_memory_ =
-      memory_budget_ * memory_budget_ratio_coords_ / num_fragments_to_process;
+  per_fragment_memory_ = memory_budget_.total_budget() *
+                         memory_budget_.ratio_coords() /
+                         num_fragments_to_process;
 
   // Create result tiles.
   bool tiles_found = false;
@@ -440,7 +424,7 @@ bool SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
                       "budget, tile size : " +
                       std::to_string(tiles_size) + ", per fragment memory " +
                       std::to_string(per_fragment_memory_) + ", total budget " +
-                      std::to_string(memory_budget_) +
+                      std::to_string(memory_budget_.total_budget()) +
                       ", num fragments to process " +
                       std::to_string(num_fragments_to_process));
                 }
@@ -488,7 +472,7 @@ bool SparseGlobalOrderReader<BitmapType>::create_result_tiles() {
                     "budget, tile size : " +
                     std::to_string(tiles_size) + ", per fragment memory " +
                     std::to_string(per_fragment_memory_) + ", total budget " +
-                    std::to_string(memory_budget_) +
+                    std::to_string(memory_budget_.total_budget()) +
                     ", num fragments to process " +
                     std::to_string(num_fragments_to_process)));
               }
@@ -2035,7 +2019,7 @@ Status SparseGlobalOrderReader<BitmapType>::remove_result_tile(
 
   // Adjust total memory usage.
   {
-    std::unique_lock<std::mutex> lck(mem_budget_mtx_);
+    std::unique_lock<std::mutex> lck(used_memory_mtx_);
     memory_used_for_coords_total_ -= tiles_size;
   }
 

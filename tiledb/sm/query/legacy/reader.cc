@@ -169,7 +169,7 @@ QueryStatusDetailsReason Reader::status_incomplete_reason() const {
                         QueryStatusDetailsReason::REASON_NONE;
 }
 
-void Reader::initialize_memory_budget() {
+void Reader::refresh_config() {
 }
 
 const Reader::ReadState* Reader::read_state() const {
