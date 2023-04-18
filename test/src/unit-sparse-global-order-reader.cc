@@ -794,7 +794,7 @@ TEST_CASE_METHOD(
   auto counters = stats->counters();
   REQUIRE(counters != nullptr);
   auto loop_num =
-      counters->find("Context.StorageManager.Query.Reader.loop_num");
+      counters->find("Context.StorageManager.Query.Reader.internal_loop_num");
   CHECK(5 == loop_num->second);
 
   // Check incomplete query status.
