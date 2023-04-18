@@ -926,10 +926,10 @@ Status SparseIndexReaderBase::resize_output_buffers(uint64_t cells_copied) {
     }
 
     // Always adjust validity vector size, if present.
-    if (num_cells > cells_copied) {
+    if (array_schema_.is_nullable(name)) {
       if (it.second.validity_vector_.buffer_size() != nullptr)
         *(it.second.validity_vector_.buffer_size()) =
-            num_cells * constants::cell_validity_size;
+            cells_copied * constants::cell_validity_size;
     }
   }
 
