@@ -266,8 +266,9 @@ int array_create_wrapper(
  * @param cell_order The cell order.
  * @param capacity The tile capacity.
  * @param allows_dups Whether the array allows coordinate duplicates.
- * @param serialize_array_schema whether to round-trip through serialization or
- * not
+ * @param serialize_array_schema Whether to round-trip through serialization or
+ * not.
+ * @param nullable Whether the attributes are nullable or not.
  */
 
 void create_array(
@@ -286,7 +287,8 @@ void create_array(
     tiledb_layout_t cell_order,
     uint64_t capacity,
     bool allows_dups = false,
-    bool serialize_array_schema = false);
+    bool serialize_array_schema = false,
+    const optional<std::vector<bool>>& nullable = nullopt);
 
 /**
  * Helper method to create an encrypted array.
