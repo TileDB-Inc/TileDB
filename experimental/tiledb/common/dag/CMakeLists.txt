@@ -25,7 +25,7 @@
 # THE SOFTWARE.
 #
 
-
+set(CMAKE_CXX_STANDARD 20)
 #
 # Define helper macro for many header only object libraries
 #
@@ -45,6 +45,10 @@ macro (dag_add_header_only_object_library OBJLIBNAME)
   add_executable(compile_${OBJLIBNAME} EXCLUDE_FROM_ALL)
   add_dependencies(all_link_complete compile_${OBJLIBNAME})
 
+  # Add C++20 support
+  target_compile_features(compile_${OBJLIBNAME} PUBLIC cxx_std_20)
+
+# For debugging, if needed
 # message("==== ${OBJLIBNAME}")
 # message("====---- compile_${OBJLIBNAME} PRIVATE ${OBJLIBNAME}")
 
@@ -61,6 +65,9 @@ macro (dag_add_header_only_unit_test TESTNAME)
     # Define unit test
     #
     add_executable(unit_${TESTNAME} EXCLUDE_FROM_ALL)
+    #
+    # C++20
+    target_compile_features(unit_${TESTNAME} PUBLIC cxx_std_20)
     #
     # Required libraries
     #

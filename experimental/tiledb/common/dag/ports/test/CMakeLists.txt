@@ -39,8 +39,10 @@ dag_add_header_only_unit_test(ports)
 #
 add_executable(unit_ports_sieve EXCLUDE_FROM_ALL)
 #
-# Required libraries
+# Add C++20 support
+target_compile_features(unit_ports_sieve PUBLIC cxx_std_20)
 #
+# Required libraries
 #
 # Define sources for test
 #

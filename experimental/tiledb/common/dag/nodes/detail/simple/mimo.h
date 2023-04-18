@@ -50,12 +50,11 @@
 #define TILEDB_DAG_NODES_GENERAL_NODES_H
 
 #include <functional>
+#include <stop_token>
 #include <type_traits>
 
 #include "experimental/tiledb/common/dag/ports/ports.h"
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
-
-#include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
 
 #include "experimental/tiledb/common/dag/nodes/detail/simple/simple_base.h"
 
@@ -99,19 +98,18 @@ constexpr unsigned short num_states = to_index(NodeState::last) + 1;
  * A vector of strings corresponding to the states.  Useful for diagnostics,
  * testing, and debugging.
  */
-std::vector<std::string> node_state_strings{
-    "init",
-    "input",
-    "compute",
-    "output",
-    "waiting",
-    "runnable",
-    "running",
-    "done",
-    "exit",
-    "error",
-    "abort",
-    "last"};
+std::vector<std::string> node_state_strings{"init",
+                                            "input",
+                                            "compute",
+                                            "output",
+                                            "waiting",
+                                            "runnable",
+                                            "running",
+                                            "done",
+                                            "exit",
+                                            "error",
+                                            "abort",
+                                            "last"};
 }  // namespace
 
 /**

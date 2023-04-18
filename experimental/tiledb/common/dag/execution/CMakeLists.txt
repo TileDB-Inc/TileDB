@@ -35,7 +35,6 @@ if (TILEDB_TESTS)
 endif()
 
 dag_add_header_only_object_library(threadpool)
-dag_add_header_only_object_library(stop_token)
 dag_add_header_only_object_library(bountiful)
 dag_add_header_only_object_library(throw_catch)
 dag_add_header_only_object_library(frugal)

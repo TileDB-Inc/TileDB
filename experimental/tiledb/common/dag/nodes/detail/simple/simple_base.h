@@ -35,12 +35,11 @@
 #define TILEDB_DAG_NODE_DETAIL_SIMPLE_SIMPLE_BASE_H
 
 #include <functional>
+#include <stop_token>
 #include <type_traits>
 #include <variant>
 
-#include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
 #include "experimental/tiledb/common/dag/ports/ports.h"
-
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
 
 namespace tiledb::common {

@@ -44,6 +44,9 @@ dag_add_header_only_unit_test(nodes_concurrency)
 #
 add_executable(unit_nodes_sieve EXCLUDE_FROM_ALL)
 #
+# Add C++20 support
+target_compile_features(unit_nodes_sieve PUBLIC cxx_std_20)
+#
 # Required libraries
 #
 #

@@ -34,7 +34,6 @@
 dag_add_header_only_unit_test(scheduler)
 dag_add_header_only_unit_test(duffs)
 dag_add_header_only_unit_test(threadpool)
-dag_add_header_only_unit_test(stop_token)
 dag_add_header_only_unit_test(tasks)
 dag_add_header_only_unit_test(task_state_machine)
 dag_add_header_only_unit_test(scheduler_sieve)
