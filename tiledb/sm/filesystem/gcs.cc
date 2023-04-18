@@ -955,14 +955,16 @@ Status GCS::delete_part(
 
 void GCS::finish_multi_part_upload(const URI& uri) {
   // Protect 'multi_part_upload_states_' from multiple writers.
-  UniqueWriteLock unique_wl(&multipart_upload_rwlock_);
-  multi_part_upload_states_.erase(uri.to_string());
-  unique_wl.unlock();
+  {
+    UniqueWriteLock unique_wl(&multipart_upload_rwlock_);
+    multi_part_upload_states_.erase(uri.to_string());
+  }
 
   // Protect 'write_cache_map_' from multiple writers.
-  std::unique_lock<std::mutex> cache_lock(write_cache_map_lock_);
-  write_cache_map_.erase(uri.to_string());
-  cache_lock.unlock();
+  {
+    std::unique_lock<std::mutex> cache_lock(write_cache_map_lock_);
+    write_cache_map_.erase(uri.to_string());
+  }
 }
 
 Status GCS::flush_object_direct(const URI& uri) {
@@ -979,9 +981,10 @@ Status GCS::flush_object_direct(const URI& uri) {
       write_cache_buffer->size());
 
   // Protect 'write_cache_map_' from multiple writers.
-  std::unique_lock<std::mutex> cache_lock(write_cache_map_lock_);
-  write_cache_map_.erase(uri.to_string());
-  cache_lock.unlock();
+  {
+    std::unique_lock<std::mutex> cache_lock(write_cache_map_lock_);
+    write_cache_map_.erase(uri.to_string());
+  }
 
   google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
       object_metadata = get_client().InsertObject(
