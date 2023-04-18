@@ -125,32 +125,22 @@ class MemoryBudget {
    * @param reader_string String to identify the reader settings to load.
    */
   void refresh_config(Config& config, std::string reader_string) {
-    bool found = false;
-    throw_if_not_ok(
-        config.get<uint64_t>("sm.mem.total_budget", &total_budget_, &found));
-    assert(found);
+    total_budget_ =
+        config.get<uint64_t>("sm.mem.total_budget", Config::must_find);
 
-    throw_if_not_ok(config.get<double>(
-        "sm.mem.reader." + reader_string + ".ratio_coords",
-        &ratio_coords_,
-        &found));
-    assert(found);
+    ratio_coords_ = config.get<double>(
+        "sm.mem.reader." + reader_string + ".ratio_coords", Config::must_find);
 
-    throw_if_not_ok(config.get<double>(
+    ratio_tile_ranges_ = config.get<double>(
         "sm.mem.reader." + reader_string + ".ratio_tile_ranges",
-        &ratio_tile_ranges_,
-        &found));
-    assert(found);
+        Config::must_find);
 
-    throw_if_not_ok(config.get<double>(
+    ratio_array_data_ = config.get<double>(
         "sm.mem.reader." + reader_string + ".ratio_array_data",
-        &ratio_array_data_,
-        &found));
-    assert(found);
+        Config::must_find);
 
-    throw_if_not_ok(config.get<uint64_t>(
-        "sm.mem.tile_upper_memory_limit", &tile_upper_memory_limit_, &found));
-    assert(found);
+    tile_upper_memory_limit_ = config.get<uint64_t>(
+        "sm.mem.tile_upper_memory_limit", Config::must_find);
   }
 
   /** @return Total memory budget for the reader. */
