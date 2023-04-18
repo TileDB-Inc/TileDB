@@ -417,7 +417,8 @@ tuple<Status, optional<std::vector<directory_entry>>> GCS::ls_with_sizes(
           google::cloud::storage::Prefix(object_path),
           google::cloud::storage::Delimiter(delimiter),
           // Documentation recommends a maximum of 1000 objects per page.
-          google::cloud::storage::MaxResults(std::clamp(max_paths, 0, 1000)));
+          google::cloud::storage::MaxResults(
+              max_paths < 0 || max_paths > 1000 ? 1000 : max_paths));
   for (const auto& object_metadata : objects_reader) {
     if (!object_metadata.ok()) {
       const google::cloud::Status& status = object_metadata.status();
@@ -876,8 +877,6 @@ Status GCS::flush_object(const URI& uri) {
 
   const std::vector<std::string>& part_paths = state->get_part_paths();
 
-  auto [bucket_name, object_path] = parse_gcs_uri(uri);
-
   state_lck.unlock();
 
   // Build a list of objects to compose.
@@ -888,6 +887,8 @@ Status GCS::flush_object(const URI& uri) {
     source_object.object_name = part_path;
     source_objects.emplace_back(std::move(source_object));
   }
+
+  auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
   // Provide a best-effort attempt to delete any stale, intermediate
   // composed objects.
