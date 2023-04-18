@@ -390,7 +390,7 @@ Status Azure::is_container(
       return Status_Ok();
     }
     return LOG_STATUS(Status_AzureError(
-        "Get blob properties failed on: " + container_name + "; " + e.Message));
+        "Get container properties failed on: " + container_name + "; " + e.Message));
   }
 
   *is_container = true;
