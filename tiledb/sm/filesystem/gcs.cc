@@ -407,7 +407,7 @@ tuple<Status, optional<std::vector<directory_entry>>> GCS::ls_with_sizes(
     return {st, nullopt};
   }
 
-  auto [bucket_name, object_path] = parse_gcs_uri(uri);
+  auto [bucket_name, object_path] = parse_gcs_uri(uri_dir);
 
   std::vector<directory_entry> entries;
 
