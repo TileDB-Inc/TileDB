@@ -152,7 +152,7 @@ class MemoryBudget {
    * @return Ratio of the budget dedicated to loading coordinate tiles into
    * memory.
    */
-  double ratio_coords() {
+  double ratio_coords() const {
     return ratio_coords_;
   }
 
@@ -161,7 +161,7 @@ class MemoryBudget {
    * memory. Tile ranges contain ranges of tiles, per fragments to consider for
    * results.
    */
-  double ratio_tile_ranges() {
+  double ratio_tile_ranges() const {
     return ratio_tile_ranges_;
   }
 
@@ -169,7 +169,7 @@ class MemoryBudget {
    * @return Ratio of the budget dedicated to loading tile array data into
    * memory. Array data contains rtrees, tile offsets, fragment footers, etc.
    */
-  double ratio_array_data() {
+  double ratio_array_data() const {
     return ratio_array_data_;
   }
 
@@ -177,7 +177,7 @@ class MemoryBudget {
    * @return Returns the tile upper memory limit, which is used to limit the
    * amount of tile data loaded in memory at any given time.
    */
-  uint64_t tile_upper_memory_limit() {
+  uint64_t tile_upper_memory_limit() const {
     return tile_upper_memory_limit_;
   }
 
