@@ -345,7 +345,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    **Default**: "true"
  * - `vfs.azure.max_retries` <br>
  *    The maximum number of times to retry an Azure network request. <br>
- *    **Default**: 3
+ *    **Default**: 5
  * -  `vfs.azure.retry_delay_ms` <br>
  *    The minimum permissible delay between Azure netwwork request retry
  *    attempts, in milliseconds.

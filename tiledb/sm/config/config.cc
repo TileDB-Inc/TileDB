@@ -170,7 +170,7 @@ const std::string Config::VFS_AZURE_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
 const std::string Config::VFS_AZURE_BLOCK_LIST_BLOCK_SIZE = "5242880";
 const std::string Config::VFS_AZURE_USE_BLOCK_LIST_UPLOAD = "true";
-const std::string Config::VFS_AZURE_MAX_RETRIES = "3";
+const std::string Config::VFS_AZURE_MAX_RETRIES = "5";
 const std::string Config::VFS_AZURE_RETRY_DELAY_MS = "800";
 const std::string Config::VFS_AZURE_MAX_RETRY_DELAY_MS = "60000";
 const std::string Config::VFS_GCS_PROJECT_ID = "";
