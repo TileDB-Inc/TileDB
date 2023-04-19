@@ -1211,6 +1211,8 @@ TEST_CASE(
     tiledb_subarray_serialize(ctx.ptr().get(), array.ptr().get(), &ptr);
     subarray.replace_subarray_data(ptr);
   }
+  CHECK(coalesce == subarray.ptr()->subarray_->coalesce_ranges());
+
   subarray.add_range(0, 1, 10);
   subarray.add_range(0, 11, 20);
   subarray.add_range(0, 21, 30);
@@ -1219,9 +1221,6 @@ TEST_CASE(
   // We can coalesce ranges on dimension 0, but not dimension 1.
   CHECK((coalesce ? 1 : 3) == subarray.range_num(0));
   CHECK(2 == subarray.range_num(1));
-
-  Query query(ctx, array);
-  query.set_subarray(subarray);
 
   if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
