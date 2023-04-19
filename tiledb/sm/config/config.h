@@ -397,14 +397,8 @@ class Config {
   /** Azure storage account key. */
   static const std::string VFS_AZURE_STORAGE_ACCOUNT_KEY;
 
-  /** Azure storage account SAS (shared access signature) token. */
-  static const std::string VFS_AZURE_STORAGE_SAS_TOKEN;
-
   /** Azure blob endpoint. */
   static const std::string VFS_AZURE_BLOB_ENDPOINT;
-
-  /** Azure use https. */
-  static const std::string VFS_AZURE_USE_HTTPS;
 
   /** Azure max parallel ops. */
   static const std::string VFS_AZURE_MAX_PARALLEL_OPS;
