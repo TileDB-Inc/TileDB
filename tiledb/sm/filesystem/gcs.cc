@@ -1090,7 +1090,7 @@ Status GCS::flush_object_direct(const URI& uri) {
   std::string object_path;
   RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
 
-  std::string write_buffer(
+  absl::string_view write_buffer(
       static_cast<const char*>(write_cache_buffer->data()),
       write_cache_buffer->size());
 
