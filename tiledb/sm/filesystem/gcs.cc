@@ -978,7 +978,7 @@ Status GCS::flush_object_direct(const URI& uri) {
 
   auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
-  std::string write_buffer(
+  absl::string_view write_buffer(
       static_cast<const char*>(write_cache_buffer->data()),
       write_cache_buffer->size());
 
