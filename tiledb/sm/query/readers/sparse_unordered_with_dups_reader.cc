@@ -1847,10 +1847,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::remove_result_tile(
   auto tiles_size =
       get_coord_tiles_size(array_schema_.dim_num(), frag_idx, tile_idx);
 
-  {
-    std::unique_lock<std::mutex> lck(used_memory_mtx_);
-    memory_used_for_coords_total_ -= tiles_size;
-  }
+  memory_used_for_coords_total_ -= tiles_size;
 
   // Delete the tile.
   result_tiles.erase(rt);

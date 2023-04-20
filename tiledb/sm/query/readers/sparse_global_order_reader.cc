@@ -339,10 +339,7 @@ bool SparseGlobalOrderReader<BitmapType>::add_result_tile(
   }
 
   // Adjust total memory used.
-  {
-    std::unique_lock<std::mutex> lck(used_memory_mtx_);
-    memory_used_for_coords_total_ += tiles_size;
-  }
+  memory_used_for_coords_total_ += tiles_size;
 
   // Adjust per fragment memory used.
   memory_used_for_coords_[f] += tiles_size;
@@ -513,16 +510,12 @@ void SparseGlobalOrderReader<BitmapType>::clean_tile_list(
     std::vector<ResultTilesList>& result_tiles) {
   // Clear result tiles that are not necessary anymore.
   auto fragment_num = fragment_metadata_.size();
-  std::mutex ignored_tiles_mutex;
   throw_if_not_ok(parallel_for(
       storage_manager_->compute_tp(), 0, fragment_num, [&](uint64_t f) {
         auto it = result_tiles[f].begin();
         while (it != result_tiles[f].end()) {
           if (it->result_num() == 0) {
-            {
-              std::unique_lock<std::mutex> lck(ignored_tiles_mutex);
-              tmp_read_state_.add_ignored_tile(*it);
-            }
+            tmp_read_state_.add_ignored_tile(*it);
             remove_result_tile(f, it++, result_tiles);
           } else {
             it++;
@@ -620,7 +613,6 @@ void SparseGlobalOrderReader<BitmapType>::dedup_fragments_with_timestamps(
   auto timer_se = stats_->start_timer("dedup_fragments_with_timestamps");
 
   // Run all fragments in parallel.
-  std::mutex ignored_tiles_mutex;
   auto fragment_num = fragment_metadata_.size();
   throw_if_not_ok(parallel_for(
       storage_manager_->compute_tp(), 0, fragment_num, [&](uint64_t f) {
@@ -652,10 +644,7 @@ void SparseGlobalOrderReader<BitmapType>::dedup_fragments_with_timestamps(
                   if (next_tile->result_num() == 1) {
                     // Only one cell in the bitmap, delete next tile.
                     // Stay on this tile as we will compare to the new next.
-                    {
-                      std::unique_lock<std::mutex> lck(ignored_tiles_mutex);
-                      tmp_read_state_.add_ignored_tile(*next_tile);
-                    }
+                    tmp_read_state_.add_ignored_tile(*next_tile);
                     remove_result_tile(f, next_tile, result_tiles);
                   } else {
                     // Remove the cell in the bitmap and move to the next tile.
@@ -668,10 +657,7 @@ void SparseGlobalOrderReader<BitmapType>::dedup_fragments_with_timestamps(
                     // Only one cell in the bitmap, delete current tile.
                     auto to_delete = it;
                     it++;
-                    {
-                      std::unique_lock<std::mutex> lck(ignored_tiles_mutex);
-                      tmp_read_state_.add_ignored_tile(*to_delete);
-                    }
+                    tmp_read_state_.add_ignored_tile(*to_delete);
                     remove_result_tile(f, to_delete, result_tiles);
                   } else {
                     // Remove the cell in the bitmap and move to the next tile.
@@ -2027,10 +2013,7 @@ void SparseGlobalOrderReader<BitmapType>::remove_result_tile(
   memory_used_for_coords_[frag_idx] -= tiles_size;
 
   // Adjust total memory usage.
-  {
-    std::unique_lock<std::mutex> lck(used_memory_mtx_);
-    memory_used_for_coords_total_ -= tiles_size;
-  }
+  memory_used_for_coords_total_ -= tiles_size;
 
   // Delete the tile.
   result_tiles[frag_idx].erase(rt);

@@ -203,9 +203,6 @@ class MemoryBudget {
 
   /** Target upper memory limit for tiles. */
   uint64_t tile_upper_memory_limit_;
-
-  /** Mutex protecting memory budget variables. */
-  std::mutex used_memory_mtx_;
 };
 
 /**
@@ -396,10 +393,7 @@ class SparseIndexReaderBase : public ReaderBase {
      */
     void remove_tile_range(unsigned f) {
       tile_ranges_[f].pop_back();
-      {
-        std::unique_lock<std::mutex> lck(memory_used_tile_ranges_mtx_);
-        memory_used_tile_ranges_ -= sizeof(std::pair<uint64_t, uint64_t>);
-      }
+      memory_used_tile_ranges_ -= sizeof(std::pair<uint64_t, uint64_t>);
     }
 
     /** @ereturn Memory usage for the tile ranges. */
@@ -446,6 +440,7 @@ class SparseIndexReaderBase : public ReaderBase {
      * @param rt Result tile.
      */
     void add_ignored_tile(ResultTile& rt) {
+      std::unique_lock<std::mutex> lck(ignored_tiles_mutex_);
       ignored_tiles_.emplace(rt.frag_idx(), rt.tile_idx());
     }
 
@@ -477,16 +472,16 @@ class SparseIndexReaderBase : public ReaderBase {
     std::vector<std::vector<std::pair<uint64_t, uint64_t>>> tile_ranges_;
 
     /** Memory used for tile ranges. */
-    uint64_t memory_used_tile_ranges_;
-
-    /** Mutex protecting memory_used_tile_ranges_. */
-    std::mutex memory_used_tile_ranges_mtx_;
+    std::atomic<uint64_t> memory_used_tile_ranges_;
 
     /** Have we loaded all tiles for this fragment. */
     std::vector<uint8_t> all_tiles_loaded_;
 
     /** List of tiles to ignore. */
     std::unordered_set<IgnoredTile, ignored_tile_hash> ignored_tiles_;
+
+    /** Mutex protecting ignored_tiles_. */
+    std::mutex ignored_tiles_mutex_;
   };
 
   /* ********************************* */
@@ -530,13 +525,6 @@ class SparseIndexReaderBase : public ReaderBase {
   ReadState* read_state();
 
   /**
-   * Initializes the reader.
-   *
-   * @param skip_checks_serialization Skip checks during serialization.
-   */
-  void init(bool skip_checks_serialization);
-
-  /**
    * Resize the output buffers to the correct size after copying.
    *
    * @param cells_copied Number of cells copied.
@@ -566,14 +554,11 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Are dimensions var sized. */
   std::vector<bool> is_dim_var_size_;
 
-  /** Mutex protecting memory budget variables. */
-  std::mutex used_memory_mtx_;
-
   /** Memory tracker object for the array. */
   MemoryTracker* array_memory_tracker_;
 
   /** Memory used for coordinates tiles. */
-  uint64_t memory_used_for_coords_total_;
+  std::atomic<uint64_t> memory_used_for_coords_total_;
 
   /** Are we in elements mode. */
   bool elements_mode_;
