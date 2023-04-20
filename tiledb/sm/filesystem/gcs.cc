@@ -691,8 +691,9 @@ Status GCS::write(
   if (!use_multi_part_upload_) {
     if (nbytes_filled != length) {
       std::stringstream errmsg;
-      errmsg << "Direct write failed! " << nbytes_filled
-             << " bytes written to buffer, " << length << " bytes requested.";
+      errmsg << "Cannot write more than " << write_cache_max_size_
+             << " bytes without multi-part uploads. This limit can be "
+                "configured with the 'vfs.gcs.max_direct_upload_size' option.";
       return LOG_STATUS(Status_GCSError(errmsg.str()));
     } else {
       return Status::Ok();
