@@ -430,6 +430,9 @@ class Config {
   /** GCS request timeout in milliseconds. */
   static const std::string VFS_GCS_REQUEST_TIMEOUT_MS;
 
+  /** GCS maximum buffer size for non-multipart uploads. */
+  static const std::string VFS_GCS_MAX_DIRECT_UPLOAD_SIZE;
+
   /** S3 region. */
   static const std::string VFS_S3_REGION;
 

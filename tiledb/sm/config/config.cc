@@ -178,6 +178,7 @@ const std::string Config::VFS_GCS_MAX_PARALLEL_OPS =
 const std::string Config::VFS_GCS_MULTI_PART_SIZE = "5242880";
 const std::string Config::VFS_GCS_USE_MULTI_PART_UPLOAD = "true";
 const std::string Config::VFS_GCS_REQUEST_TIMEOUT_MS = "3000";
+const std::string Config::VFS_GCS_MAX_DIRECT_UPLOAD_SIZE = "10737418240";
 const std::string Config::VFS_S3_REGION = "us-east-1";
 const std::string Config::VFS_S3_AWS_ACCESS_KEY_ID = "";
 const std::string Config::VFS_S3_AWS_SECRET_ACCESS_KEY = "";
@@ -389,6 +390,9 @@ const std::map<std::string, std::string> default_config_values = {
         "vfs.gcs.use_multi_part_upload", Config::VFS_GCS_USE_MULTI_PART_UPLOAD),
     std::make_pair(
         "vfs.gcs.request_timeout_ms", Config::VFS_GCS_REQUEST_TIMEOUT_MS),
+    std::make_pair(
+        "vfs.gcs.max_direct_upload_size",
+        Config::VFS_GCS_MAX_DIRECT_UPLOAD_SIZE),
     std::make_pair("vfs.s3.region", Config::VFS_S3_REGION),
     std::make_pair(
         "vfs.s3.aws_access_key_id", Config::VFS_S3_AWS_ACCESS_KEY_ID),
