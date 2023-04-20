@@ -121,7 +121,7 @@ endif()
 # If this is an in-IDE build, we need to disable the superbuild and explicitly
 # set the EP base dir. The normal 'cmake && make' process won't need this step,
 # it is for better CLion support of this superbuild architecture.
-if (TILEDB_CMAKE_IDE)
+if (TILEDB_CMAKE_IDE OR TILEDB_VCPKG)
   set(TILEDB_SUPERBUILD OFF)
   set(TILEDB_EP_BASE "${CMAKE_CURRENT_BINARY_DIR}/externals")
 endif()
