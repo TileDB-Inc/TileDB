@@ -74,16 +74,20 @@ using enable_trivial = typename std::enable_if<
     IS_TRIVIALLY_COPYABLE(T) && !std::is_pointer<T>::value &&
     !std::is_array<T>::value && !is_stl_array<T>::value>::type;
 
+/** Used in the default template for type_to_tiledb in lieu of passing false.
+ * Otherwise, the compiler will automatically reject the function template
+ * because the assert statement is always evaluated as false.
+ */
+template <typename...>
+inline constexpr bool reject_default_type = false;
+
 /**
- * Convert a type into a tiledb_datatype_t. The default for all
- * copyable types is char.
+ * Convert a type into a tiledb_datatype_t.
  */
 template <typename T>
 struct type_to_tiledb {
-  static_assert(IS_TRIVIALLY_COPYABLE(T), "Type must be trivially copyable.");
-  using type = char;
-  static const tiledb_datatype_t tiledb_type = TILEDB_STRING_ASCII;
-  static constexpr const char* name = "Trivially Copyable (CHAR)";
+  static_assert(
+      reject_default_type<T>, "Given type does not map to tiledb_datatype_t.");
 };
 
 template <>
@@ -98,6 +102,34 @@ struct type_to_tiledb<bool> {
   using type = bool;
   static const tiledb_datatype_t tiledb_type = TILEDB_BOOL;
   static constexpr const char* name = "BOOL";
+};
+
+template <>
+struct type_to_tiledb<char> {
+  using type = char;
+  static const tiledb_datatype_t tiledb_type = TILEDB_STRING_ASCII;
+  static constexpr const char* name = "CHAR";
+};
+
+template <>
+struct type_to_tiledb<wchar_t> {
+  using type = char;
+  static const tiledb_datatype_t tiledb_type = TILEDB_STRING_ASCII;
+  static constexpr const char* name = "CHAR";
+};
+
+template <>
+struct type_to_tiledb<char16_t> {
+  using type = char;
+  static const tiledb_datatype_t tiledb_type = TILEDB_STRING_ASCII;
+  static constexpr const char* name = "CHAR";
+};
+
+template <>
+struct type_to_tiledb<char32_t> {
+  using type = char;
+  static const tiledb_datatype_t tiledb_type = TILEDB_STRING_ASCII;
+  static constexpr const char* name = "CHAR";
 };
 
 template <>
