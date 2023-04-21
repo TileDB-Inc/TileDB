@@ -2624,7 +2624,7 @@ TEST_CASE(
   CHECK(table["labs"].second == 10);
 
   for (size_t i = 0; i < table["labs"].second; ++i) {
-    CHECK(rlabs[i] == wlabs[i]);
+    CHECK(rlabs[i] == !!wlabs[i]);
   }
 
   if (vfs.is_dir(array_name)) {
