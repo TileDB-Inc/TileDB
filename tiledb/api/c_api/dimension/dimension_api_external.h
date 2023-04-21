@@ -27,8 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the configuration section of the C API for TileDB. It
- * include both configurations and their iterators.
+ * This file declares the dimension section of the C API for TileDB.
  */
 
 #ifndef TILEDB_CAPI_DIMENSION_EXTERNAL_H

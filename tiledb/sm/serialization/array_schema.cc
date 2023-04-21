@@ -72,9 +72,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
-namespace serialization {
+namespace tiledb::sm::serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
@@ -989,7 +987,7 @@ ArraySchema array_schema_from_capnp(
       name,
       array_type,
       allows_dups,
-      make_shared<Domain>(HERE(), domain.get()),
+      domain,
       cell_order,
       tile_order,
       capacity,
@@ -1707,6 +1705,4 @@ Status max_buffer_sizes_deserialize(
 
 #endif  // TILEDB_SERIALIZATION
 
-}  // namespace serialization
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::serialization
