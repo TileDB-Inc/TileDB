@@ -378,6 +378,13 @@ class ArraySchema {
   }
 
   /**
+   * Return a copy of the shared_pointer to the domain.
+   */
+  inline shared_ptr<Domain> shared_domain() const {
+    return domain_;
+  };
+
+  /**
    * Initializes the ArraySchema object. It also performs a check to see if
    * all the member attributes have been properly set.
    *

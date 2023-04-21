@@ -82,13 +82,6 @@ class Domain {
       const std::vector<shared_ptr<Dimension>> dimensions,
       Layout tile_order);
 
-  /**
-   * Constructor that clones the input domain.
-   *
-   * @param domain The object to clone.
-   */
-  explicit Domain(const Domain* domain);
-
   /** Copy constructor. */
   DISABLE_COPY(Domain);
 
@@ -249,9 +242,8 @@ class Domain {
    * @param i index of the dimension within the domain
    * @return non-null pointer to the dimension
    */
-  inline shared_ptr<Dimension> dimension_shared_ptr(
-      dimension_size_type i) const {
-    if (i > dim_num_) {
+  inline shared_ptr<Dimension> shared_dimension(dimension_size_type i) const {
+    if (i >= dim_num_) {
       throw std::invalid_argument("invalid dimension index");
     }
     return dimensions_[i];
@@ -271,7 +263,7 @@ class Domain {
    * @return copy of the storage pointer to the dimension with matching name,
    * a null pointer otherwise.
    */
-  shared_ptr<Dimension> dimension_shared_ptr(const std::string& name) const;
+  shared_ptr<Dimension> shared_dimension(const std::string& name) const;
 
   /** Dumps the domain in ASCII format in the selected output. */
   void dump(FILE* out) const;
