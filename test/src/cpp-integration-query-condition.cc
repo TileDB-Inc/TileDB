@@ -2600,7 +2600,7 @@ TEST_CASE(
   wquery.submit();
   warray.close();
 
-  // Read the data with query condition on the string dimension.
+  // Read the data with query condition on the Boolean attribute.
   Array rarray(ctx, array_name, TILEDB_READ);
   const std::vector<int> subarray = {1, 10};
   std::vector<int> rrows(10);
@@ -2615,7 +2615,7 @@ TEST_CASE(
   rarray.close();
   CHECK(rquery.query_status() == Query::Status::COMPLETE);
 
-  // Check the query for accuracy. The query results should contain 1 element.
+  // Check the query for accuracy.
   auto table = rquery.result_buffer_elements();
   CHECK(table.size() == 2);
   CHECK(table["rows"].first == 0);
