@@ -120,6 +120,27 @@ Edge(
     std::shared_ptr<mimo_node_impl<SourceMover, T, SinkMover, U>>&)
     -> Edge<SourceMover, T>;
 
+template <
+    template <class>
+    class Mover,
+    class T,
+    template <class>
+    class Mover2,
+    class U>
+Edge(function_node<Mover, T, Mover2, U>&, Sink<Mover2, U>) -> Edge<Mover2, U>;
+
+template <
+    template <class>
+    class SinkMover,
+    class T,
+    template <class>
+    class SourceMover,
+    class U>
+Edge(
+    std::shared_ptr<function_node_impl<SinkMover, T, SourceMover, U>>&,
+    std::shared_ptr<mimo_node_impl<SourceMover, U, SinkMover, U>>&)
+    -> Edge<SourceMover, U>;
+
 }  // namespace tiledb::common
 
 #endif  // TILEDB_DAG_NODES_EDGE_NODE_CTAD_H
