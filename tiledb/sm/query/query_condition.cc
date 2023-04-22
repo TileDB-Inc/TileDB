@@ -798,6 +798,7 @@ void QueryCondition::apply_ast_node(
           combination_op,
           result_cell_bitmap);
     } break;
+    case Datatype::BOOL:
     case Datatype::UINT8: {
       apply_ast_node<uint8_t, CombinationOp>(
           node,

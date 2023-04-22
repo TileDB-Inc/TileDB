@@ -2179,3 +2179,67 @@ TEST_CASE(
     vfs.remove_dir(array_name);
   }
 }
+
+TEST_CASE(
+    "Testing read query with simple QC, condition on attribute, bool attr",
+    "[query][query-condition][dimension]") {
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 10}}, 10));
+
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain)
+      .set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}})
+      .add_attribute(Attribute::create<bool>(ctx, "labs"));
+  Array::create(array_name, schema);
+
+  // Write some initial data and close the array.
+  std::vector<int> wrows{1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  bool wlabs[10] = {
+      false, true, false, true, true, false, false, true, false, false};
+
+  Array warray(ctx, array_name, TILEDB_WRITE);
+  Query wquery(ctx, warray, TILEDB_WRITE);
+  wquery.set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("rows", wrows)
+      .set_data_buffer("labs", wlabs, 10);
+  wquery.submit();
+  warray.close();
+
+  // Read the data with query condition on the Boolean attribute.
+  Array rarray(ctx, array_name, TILEDB_READ);
+  const std::vector<int> subarray = {1, 10};
+  std::vector<int> rrows(10);
+  std::vector<uint8_t> rlabs(10);
+
+  Query rquery(ctx, rarray, TILEDB_READ);
+  rquery.set_subarray(subarray)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("rows", rrows)
+      .set_data_buffer("labs", rlabs);
+  rquery.submit();  // Submit the query and close the array.
+  rarray.close();
+  CHECK(rquery.query_status() == Query::Status::COMPLETE);
+
+  // Check the query for accuracy.
+  auto table = rquery.result_buffer_elements();
+  CHECK(table.size() == 2);
+  CHECK(table["rows"].first == 0);
+  CHECK(table["rows"].second == 10);
+  CHECK(table["labs"].first == 0);
+  CHECK(table["labs"].second == 10);
+
+  for (size_t i = 0; i < table["labs"].second; ++i) {
+    CHECK(rlabs[i] == !!wlabs[i]);
+  }
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+}
