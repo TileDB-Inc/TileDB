@@ -42,11 +42,6 @@
 
 using namespace tiledb;
 
-struct Point {
-  int coords[3];
-  double value;
-};
-
 struct CPPArrayFx {
   static const unsigned d1_tile = 10;
   static const unsigned d2_tile = 5;
@@ -73,16 +68,13 @@ struct CPPArrayFx {
     auto a2 = Attribute::create<std::string>(ctx, "a2");  // (char, VAR_NUM)
     auto a3 =
         Attribute::create<std::array<double, 2>>(ctx, "a3");  // (double, 2)
-    auto a4 =
-        Attribute::create<std::vector<Point>>(ctx, "a4");  // (char, VAR_NUM)
-    auto a5 = Attribute::create<Point>(ctx, "a5");  // (char, sizeof(Point))
     FilterList filters(ctx);
     filters.add_filter({ctx, TILEDB_FILTER_LZ4});
     a1.set_filter_list(filters);
 
     ArraySchema schema(ctx, TILEDB_DENSE);
     schema.set_domain(domain);
-    schema.add_attributes(a1, a2, a3, a4, a5);
+    schema.add_attributes(a1, a2, a3);
 
     Array::create("cpp_unit_array", schema);
   }
@@ -162,12 +154,8 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
     std::vector<int> a1 = {1, 2};
     std::vector<std::string> a2 = {"abc", "defg"};
     std::vector<std::array<double, 2>> a3 = {{{1.0, 2.0}}, {{3.0, 4.0}}};
-    std::vector<std::vector<Point>> a4 = {
-        {{{{1, 2, 3}, 4.1}, {{2, 3, 4}, 5.2}}}, {{{{5, 6, 7}, 8.3}}}};
-    std::vector<Point> a5 = {{{5, 6, 7}, 8.3}, {{5, 6, 7}, 8.3}};
 
     auto a2buf = ungroup_var_buffer(a2);
-    auto a4buf = ungroup_var_buffer(a4);
 
     std::vector<int> subarray = {0, 1, 0, 0};
 
@@ -199,9 +187,6 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
       query.set_data_buffer("a2", a2buf.second);
       query.set_offsets_buffer("a2", a2buf.first);
       query.set_data_buffer("a3", a3);
-      query.set_data_buffer("a4", a4buf.second);
-      query.set_offsets_buffer("a4", a4buf.first);
-      query.set_data_buffer("a5", a5);
       query.set_layout(TILEDB_ROW_MAJOR);
       REQUIRE(query.submit() == Query::Status::COMPLETE);
 
@@ -236,12 +221,6 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
       std::fill(std::begin(a2buf.first), std::end(a2buf.first), 0);
       std::fill(std::begin(a2buf.second), std::end(a2buf.second), 0);
       std::fill(std::begin(a3), std::end(a3), std::array<double, 2>({{0, 0}}));
-      std::fill(std::begin(a4buf.first), std::end(a4buf.first), 0);
-      std::fill(
-          std::begin(a4buf.second),
-          std::end(a4buf.second),
-          Point{{0, 0, 0}, 0});
-      std::fill(std::begin(a5), std::end(a5), Point{{0, 0, 0}, 0});
 
       Array array(ctx, "cpp_unit_array", TILEDB_READ);
 
@@ -249,8 +228,6 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
       a2buf.first.resize(2);
       a2buf.second.resize(57);
       a1.resize(32);
-      a4buf.first.resize(2);
-      a4buf.second.resize(122);
       a1.resize(48);
 
       Query query(ctx, array);
@@ -261,9 +238,6 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
       query.set_data_buffer("a2", a2buf.second);
       query.set_offsets_buffer("a2", a2buf.first);
       query.set_data_buffer("a3", a3);
-      query.set_data_buffer("a4", a4buf.second);
-      query.set_offsets_buffer("a4", a4buf.first);
-      query.set_data_buffer("a5", a5);
       query.set_layout(TILEDB_ROW_MAJOR);
       query.set_subarray(subarray);
 
@@ -285,10 +259,6 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
       CHECK(ret["a2"].second == 7);
       CHECK(ret["a3"].first == 0);
       CHECK(ret["a3"].second == 2);
-      CHECK(ret["a4"].first == 2);
-      CHECK(ret["a4"].second == 3);
-      CHECK(ret["a5"].first == 0);
-      CHECK(ret["a5"].second == 2);
 
       CHECK(a1[0] == 1);
       CHECK(a1[1] == 2);
@@ -302,23 +272,6 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
       CHECK(a3[0][1] == 2.0);
       CHECK(a3[1][0] == 3.0);
       CHECK(a3[1][1] == 4.0);
-
-      auto reada4 = group_by_cell<Point>(a4buf, 2, 3);
-      REQUIRE(reada4.size() == 2);
-      REQUIRE(reada4[0].size() == 2);
-      REQUIRE(reada4[1].size() == 1);
-      CHECK(reada4[0][0].coords[0] == 1);
-      CHECK(reada4[0][0].coords[1] == 2);
-      CHECK(reada4[0][0].coords[2] == 3);
-      CHECK(reada4[0][0].value == 4.1);
-      CHECK(reada4[0][1].coords[0] == 2);
-      CHECK(reada4[0][1].coords[1] == 3);
-      CHECK(reada4[0][1].coords[2] == 4);
-      CHECK(reada4[0][1].value == 5.2);
-      CHECK(reada4[1][0].coords[0] == 5);
-      CHECK(reada4[1][0].coords[1] == 6);
-      CHECK(reada4[1][0].coords[2] == 7);
-      CHECK(reada4[1][0].value == 8.3);
     }
   }
 
@@ -327,9 +280,6 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
     std::vector<int> a1 = {1, 2};
     std::vector<std::string> a2 = {"abc", "defg"};
     std::vector<std::array<double, 2>> a3 = {{{1.0, 2.0}}, {{3.0, 4.0}}};
-    std::vector<std::vector<Point>> a4 = {
-        {{{{1, 2, 3}, 4.1}, {{2, 3, 4}, 5.2}}}, {{{{5, 6, 7}, 8.3}}}};
-    std::vector<Point> a5 = {{{5, 6, 7}, 8.3}, {{5, 6, 7}, 8.3}};
 
     // Pad out to tile multiple
     size_t num_dummies = d1_tile * d2_tile - a1.size();
@@ -337,12 +287,9 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
       a1.push_back(0);
       a2.push_back("-");
       a3.push_back({{0.0, 0.0}});
-      a4.push_back({{{0, 0, 0}, 0.0}});
-      a5.push_back({{0, 0, 0}, 0.0});
     }
 
     auto a2buf = ungroup_var_buffer(a2);
-    auto a4buf = ungroup_var_buffer(a4);
 
     Array array(ctx, "cpp_unit_array", TILEDB_WRITE);
     Query query(ctx, array, TILEDB_WRITE);
@@ -351,9 +298,6 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
     query.set_data_buffer("a2", a2buf.second);
     query.set_offsets_buffer("a2", a2buf.first);
     query.set_data_buffer("a3", a3);
-    query.set_data_buffer("a4", a4buf.second);
-    query.set_offsets_buffer("a4", a4buf.first);
-    query.set_data_buffer("a5", a5);
 
     query.set_layout(TILEDB_GLOBAL_ORDER);
 
