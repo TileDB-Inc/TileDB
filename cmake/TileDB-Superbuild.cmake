@@ -119,7 +119,7 @@ if (NOT WIN32)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindOpenSSL_EP.cmake)
 endif()
 
-if (TILEDB_S3 OR TILEDB_AZURE OR TILEDB_GCS OR TILEDB_SERIALIZATION)
+if (TILEDB_S3 OR TILEDB_GCS OR TILEDB_SERIALIZATION)
   # Need libcurl either with S3 or serialization support.
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCurl_EP.cmake)
 endif()
@@ -128,10 +128,6 @@ if (TILEDB_S3)
   # Note on Win32: AWS SDK uses builtin WinHTTP instead of libcurl,
   # and builtin BCrypt instead of OpenSSL.
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAWSSDK_EP.cmake)
-endif()
-
-if (TILEDB_AZURE)
-  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAzureSDK_EP.cmake)
 endif()
 
 if (TILEDB_GCS)

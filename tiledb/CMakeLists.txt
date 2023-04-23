@@ -519,19 +519,11 @@ endif()
 # Azure dependencies
 if (TILEDB_AZURE)
   message(STATUS "The TileDB library is compiled with Azure support.")
-  find_package(AzureSDK_EP REQUIRED COMPONENTS azure)
+  find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
-      AzureSDK::AzureSDK
+      Azure::azure-storage-blobs
   )
-
-  if(MSVC)
-    if (TILEDB_CURL_EP_BUILT)
-      target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -DCURL_STATICLIB=1 -Dazure_storage_lite_EXPORTS)
-    else()
-      target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE                    -Dazure_storage_lite_EXPORTS)
-    endif()
-  endif()
 endif()
 
 # GCS dependencies
@@ -562,14 +554,14 @@ if (TILEDB_GCS)
 endif()
 
 # Libcurl
-if (TILEDB_S3 OR TILEDB_AZURE OR TILEDB_GCS OR TILEDB_SERIALIZATION)
+if (TILEDB_S3 OR TILEDB_GCS OR TILEDB_SERIALIZATION)
   if (NOT WIN32)
     find_package(Curl_EP REQUIRED)
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
       INTERFACE
         CURL::libcurl
     )
-  elseif (WIN32 AND (TILEDB_AZURE OR TILEDB_SERIALIZATION))
+  elseif (WIN32 AND TILEDB_SERIALIZATION)
     find_package(Curl_EP REQUIRED)
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
       INTERFACE
@@ -665,7 +657,7 @@ endif()
 # Win32 specific libraries
 if (WIN32)
   set(WIN32_LIBS shlwapi rpcrt4 bcrypt)
-  if(TILEDB_AZURE OR TILEDB_SERIALIZATION)
+  if(TILEDB_SERIALIZATION)
     #ws2_32.lib, crypt32.lib needed to satisfy curl dependencies
     set(WIN32_LIBS ${WIN32_LIBS} ws2_32 crypt32)
   endif()
@@ -726,7 +718,7 @@ target_include_directories(TILEDB_CORE_OBJECTS
 #   - https://github.com/TileDB-Inc/TileDB/pull/1253
 # NOTE: just like the static dependencies in TileDBConfig create above
 #       (via TILEDB_DEP_STRING), this linkage embeds absolute paths.
-if ((TILEDB_S3 OR TILEDB_AZURE OR TILEDB_GCS OR TILEDB_SERIALIZATION) AND NOT WIN32)
+if ((TILEDB_S3 OR TILEDB_GCS OR TILEDB_SERIALIZATION) AND NOT WIN32)
   if (TILEDB_CURL_EP_BUILT)
     set(CURL_CONFIG_BINARY "${TILEDB_EP_BASE}/install/bin/curl-config")
 

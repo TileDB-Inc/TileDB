@@ -102,6 +102,9 @@ jobs:
       - name: Prepare git
         run: git config --global core.autocrlf false
       - uses: actions/checkout@v3
+        with:
+          submodules: true
+          fetch-depth: 0
       - name: core tiledb windows build
         run: |
           $ErrorView = "NormalView"
