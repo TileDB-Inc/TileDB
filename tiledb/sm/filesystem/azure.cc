@@ -97,11 +97,11 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   }
 
   if (!config.get("vfs.azure.storage_sas_token", &found).empty() ||
-      getenv("AZURE_STORAGTE_SAS_TOKEN") != nullptr) {
+      getenv("AZURE_STORAGE_SAS_TOKEN") != nullptr) {
     LOG_WARN(
         "The 'vfs.azure.storage_sas_token' option is deprecated and unused. "
-        "Make sure the 'vfs.azure.blob_endpoint' property has the SAS token "
-        "instead.");
+        "Sppecify a URI with the SAS token in the 'vfs.azure.blob_endpoint' "
+        "option instead.");
   }
 
   std::string blob_endpoint = config.get("vfs.azure.blob_endpoint", &found);
