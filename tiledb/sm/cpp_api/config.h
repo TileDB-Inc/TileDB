@@ -500,16 +500,23 @@ class Config {
    *    URIs. <br>
    *    **Default**: `1`
    * - `vfs.azure.storage_account_name` <br>
-   *    Set the Azure Storage Account name. <br>
+   *    Set the name of the Azure Storage account to use. <br>
    *    **Default**: ""
    * - `vfs.azure.storage_account_key` <br>
-   *    Set the Azure Storage Account key. <br>
+   *    Set the Shared Key to authenticate to Azure Storage. <br>
    *    **Default**: ""
    * - `vfs.azure.storage_sas_token` <br>
-   *    Set the Azure Storage SAS (shared access signature) token. <br>
+   *    Set the Azure Storage SAS (shared access signature) token to use.
+   *    If this option is set along with `vfs.azure.blob_endpoint`, the
+   *    latter must not include a SAS token. <br>
    *    **Default**: ""
    * - `vfs.azure.blob_endpoint` <br>
    *    Set the default Azure Storage Blob endpoint. <br>
+   *    If not specified, it will take a value of
+   *    `https://<account-name>.blob.core.windows.net`, where `<account-name>`
+   *    is the value of the `vfs.azure.storage_account_name` option. This means
+   *    that at least one of these two options must be set (or both if shared
+   *    key authentication is used). <br>
    *    **Default**: ""
    * - `vfs.azure.block_list_block_size` <br>
    *    The block size (in bytes) used in Azure blob block list writes.
