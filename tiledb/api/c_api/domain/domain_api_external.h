@@ -33,6 +33,10 @@
 #include "../datatype/datatype_api_external.h"
 #include "../dimension/dimension_api_external.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** A TileDB domain. */
 typedef struct tiledb_domain_handle_t tiledb_domain_t;
 
@@ -222,5 +226,9 @@ TILEDB_EXPORT int32_t tiledb_domain_dump(
     tiledb_ctx_t* ctx,
     const tiledb_domain_t* domain,
     FILE* out) TILEDB_NOEXCEPT;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
