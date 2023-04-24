@@ -32,11 +32,6 @@
 
 #ifdef HAVE_AZURE
 
-#if !defined(NOMINMAX)
-#define NOMINMAX  // avoid min/max macros from windows headers
-#endif
-
-#include <future>
 #include <sstream>
 
 #include <azure/core/diagnostics/logger.hpp>
