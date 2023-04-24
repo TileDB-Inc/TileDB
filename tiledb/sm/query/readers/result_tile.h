@@ -930,7 +930,7 @@ class ResultTileWithBitmap : public ResultTile {
     uint64_t sum = 0;
     for (uint64_t c = start_pos; c < bitmap_.size(); c++) {
       sum += bitmap_[c];
-      if (sum == result_num) {
+      if (sum >= result_num) {
         return c;
       }
     }
@@ -1106,7 +1106,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
 
   /** Allocate space for the hilbert values vector. */
   inline void allocate_hilbert_vector() {
-    hilbert_values_.resize(ResultTile::cell_num());
+    hilbert_values_.resize(ResultTileWithBitmap<BitmapType>::cell_num_);
   }
 
   /** Get the hilbert value at an index. */
@@ -1141,7 +1141,8 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
 
   /** Allocate space for the delete condition index vector. */
   inline void allocate_per_cell_delete_condition_vector() {
-    per_cell_delete_condition_.resize(ResultTile::cell_num(), nullptr);
+    per_cell_delete_condition_.resize(
+        ResultTileWithBitmap<BitmapType>::cell_num_, nullptr);
   }
 
   /** Compute the delete condition index. */

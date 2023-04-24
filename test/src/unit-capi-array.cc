@@ -486,7 +486,7 @@ TEST_CASE_METHOD(
   const int64_t d1_domain[2] = {0, 99};
   const int64_t tile_extent[1] = {10};
   rc = tiledb_dimension_alloc(
-      ctx_, "", TILEDB_INT64, &d1_domain[0], &tile_extent[0], &d1);
+      ctx_, "d", TILEDB_INT64, &d1_domain[0], &tile_extent[0], &d1);
   REQUIRE(rc == TILEDB_OK);
 
   // Set domain
@@ -2385,6 +2385,7 @@ TEST_CASE_METHOD(
           ctx_, "dim", dim_type, dim_domain, &tile_extent, &dim);
       REQUIRE(rc == TILEDB_OK);
     }
+    tiledb_dimension_free(&dim);
   }
 
   SECTION("- valid and unsupported Datatypes") {
@@ -2413,8 +2414,6 @@ TEST_CASE_METHOD(
       REQUIRE(rc == TILEDB_ERR);
     }
   }
-
-  tiledb_dimension_free(&dim);
 }
 
 TEST_CASE_METHOD(

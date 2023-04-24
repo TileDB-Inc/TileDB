@@ -99,6 +99,112 @@ class FragIdx {
   uint64_t cell_idx_;
 };
 
+class MemoryBudget {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  MemoryBudget() = delete;
+
+  MemoryBudget(Config& config, std::string reader_string) {
+    refresh_config(config, reader_string);
+  }
+
+  DISABLE_COPY_AND_COPY_ASSIGN(MemoryBudget);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(MemoryBudget);
+
+  /* ********************************* */
+  /*          PUBLIC METHODS           */
+  /* ********************************* */
+
+  /**
+   * Refresh the configuration.
+   *
+   * @param config Config object.
+   * @param reader_string String to identify the reader settings to load.
+   */
+  void refresh_config(Config& config, std::string reader_string) {
+    total_budget_ =
+        config.get<uint64_t>("sm.mem.total_budget", Config::must_find);
+
+    ratio_coords_ = config.get<double>(
+        "sm.mem.reader." + reader_string + ".ratio_coords", Config::must_find);
+
+    ratio_tile_ranges_ = config.get<double>(
+        "sm.mem.reader." + reader_string + ".ratio_tile_ranges",
+        Config::must_find);
+
+    ratio_array_data_ = config.get<double>(
+        "sm.mem.reader." + reader_string + ".ratio_array_data",
+        Config::must_find);
+
+    tile_upper_memory_limit_ = config.get<uint64_t>(
+        "sm.mem.tile_upper_memory_limit", Config::must_find);
+  }
+
+  /** @return Total memory budget for the reader. */
+  uint64_t total_budget() {
+    return total_budget_;
+  }
+
+  /**
+   * @return Ratio of the budget dedicated to loading coordinate tiles into
+   * memory.
+   */
+  double ratio_coords() const {
+    return ratio_coords_;
+  }
+
+  /**
+   * @return Ratio of the budget dedicated to loading tile ranges into
+   * memory. Tile ranges contain ranges of tiles, per fragments to consider for
+   * results.
+   */
+  double ratio_tile_ranges() const {
+    return ratio_tile_ranges_;
+  }
+
+  /**
+   * @return Ratio of the budget dedicated to loading tile array data into
+   * memory. Array data contains rtrees, tile offsets, fragment footers, etc.
+   */
+  double ratio_array_data() const {
+    return ratio_array_data_;
+  }
+
+  /**
+   * @return Returns the tile upper memory limit, which is used to limit the
+   * amount of tile data loaded in memory at any given time.
+   */
+  uint64_t tile_upper_memory_limit() const {
+    return tile_upper_memory_limit_;
+  }
+
+ private:
+  /* ********************************* */
+  /*        PRIVATE ATTRIBUTES         */
+  /* ********************************* */
+
+  /** Total memory budget. */
+  uint64_t total_budget_;
+
+  /** How much of the memory budget is reserved for coords. */
+  double ratio_coords_;
+
+  /** How much of the memory budget is reserved for tile ranges. */
+  double ratio_tile_ranges_;
+
+  /** How much of the memory budget is reserved for array data. */
+  double ratio_array_data_;
+
+  /** Target upper memory limit for tiles. */
+  uint64_t tile_upper_memory_limit_;
+
+  /** Mutex protecting memory budget variables. */
+  std::mutex used_memory_mtx_;
+};
+
 class IgnoredTile {
  public:
   /* ********************************* */
@@ -190,6 +296,7 @@ class SparseIndexReaderBase : public ReaderBase {
 
   /** Constructor. */
   SparseIndexReaderBase(
+      std::string reader_string,
       stats::Stats* stats,
       shared_ptr<Logger> logger,
       StorageManager* storage_manager,
@@ -198,7 +305,9 @@ class SparseIndexReaderBase : public ReaderBase {
       std::unordered_map<std::string, QueryBuffer>& buffers,
       Subarray& subarray,
       Layout layout,
-      std::optional<QueryCondition>& condition);
+      std::optional<QueryCondition>& condition,
+      bool skip_checks_serialization,
+      bool include_coords);
 
   /** Destructor. */
   ~SparseIndexReaderBase() = default;
@@ -222,14 +331,6 @@ class SparseIndexReaderBase : public ReaderBase {
   ReadState* read_state();
 
   /**
-   * Initializes the reader.
-   *
-   * @param skip_checks_serialization Skip checks during serialization.
-   * @return Status.
-   */
-  void init(bool skip_checks_serialization);
-
-  /**
    * Resize the output buffers to the correct size after copying.
    *
    * @param cells_copied Number of cells copied.
@@ -245,6 +346,9 @@ class SparseIndexReaderBase : public ReaderBase {
 
   /** Read state. */
   ReadState read_state_;
+
+  /** Memory budget. */
+  MemoryBudget memory_budget_;
 
   /** Have we loaded all tiles for this fragment. */
   std::vector<uint8_t> all_tiles_loaded_;
@@ -264,11 +368,8 @@ class SparseIndexReaderBase : public ReaderBase {
    */
   std::vector<std::vector<std::pair<uint64_t, uint64_t>>> result_tile_ranges_;
 
-  /** Total memory budget. */
-  uint64_t memory_budget_;
-
   /** Mutex protecting memory budget variables. */
-  std::mutex mem_budget_mtx_;
+  std::mutex used_memory_mtx_;
 
   /** Memory tracker object for the array. */
   MemoryTracker* array_memory_tracker_;
@@ -276,23 +377,8 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Memory used for coordinates tiles. */
   uint64_t memory_used_for_coords_total_;
 
-  /** Memory used for query condition tiles. */
-  uint64_t memory_used_qc_tiles_total_;
-
   /** Memory used for result tile ranges. */
   uint64_t memory_used_result_tile_ranges_;
-
-  /** How much of the memory budget is reserved for coords. */
-  double memory_budget_ratio_coords_;
-
-  /** How much of the memory budget is reserved for query condition. */
-  double memory_budget_ratio_query_condition_;
-
-  /** How much of the memory budget is reserved for tile ranges. */
-  double memory_budget_ratio_tile_ranges_;
-
-  /** How much of the memory budget is reserved for array data. */
-  double memory_budget_ratio_array_data_;
 
   /** Are we in elements mode. */
   bool elements_mode_;
@@ -324,6 +410,9 @@ class SparseIndexReaderBase : public ReaderBase {
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
+
+  /** @return Available memory. */
+  uint64_t available_memory();
 
   /**
    * Computes the required size for loading tile offsets, per fragments.
@@ -360,11 +449,10 @@ class SparseIndexReaderBase : public ReaderBase {
    * @param f Fragment index.
    * @param t Tile index.
    *
-   * @return Tiles_size, tiles_size_qc.
+   * @return Tiles size.
    */
   template <class BitmapType>
-  std::pair<uint64_t, uint64_t> get_coord_tiles_size(
-      unsigned dim_num, unsigned f, uint64_t t);
+  uint64_t get_coord_tiles_size(unsigned dim_num, unsigned f, uint64_t t);
 
   /**
    * Load result tile ranges and dimension/attributes to load tile offsets for.
@@ -423,7 +511,6 @@ class SparseIndexReaderBase : public ReaderBase {
    * return the names loaded in 'names_to_copy'. Also keep the 'buffer_idx'
    * updated to keep track of progress.
    *
-   * @param memory_budget Memory budget allowed for this operation.
    * @param names Attribute/dimensions to compute for.
    * @param mem_usage_per_attr Computed per attribute memory usage.
    * @param buffer_idx Stores/return the current buffer index in process.
@@ -432,7 +519,6 @@ class SparseIndexReaderBase : public ReaderBase {
    * @return Status, index_to_copy.
    */
   tuple<Status, optional<std::vector<uint64_t>>> read_and_unfilter_attributes(
-      const uint64_t memory_budget,
       const std::vector<std::string>& names,
       const std::vector<uint64_t>& mem_usage_per_attr,
       uint64_t* buffer_idx,

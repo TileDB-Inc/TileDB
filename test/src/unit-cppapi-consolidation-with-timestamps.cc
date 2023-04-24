@@ -779,7 +779,8 @@ TEST_CASE_METHOD(
 
   // Make sure there was an internal loop on the reader.
   CHECK(
-      stats.find("\"Context.StorageManager.Query.Reader.loop_num\": 2") !=
+      stats.find(
+          "\"Context.StorageManager.Query.Reader.internal_loop_num\": 2") !=
       std::string::npos);
 
   remove_sparse_array();
@@ -840,7 +841,8 @@ TEST_CASE_METHOD(
 
   // Make sure there was an internal loop on the reader.
   CHECK(
-      stats.find("\"Context.StorageManager.Query.Reader.loop_num\": 2") !=
+      stats.find(
+          "\"Context.StorageManager.Query.Reader.internal_loop_num\": 2") !=
       std::string::npos);
 
   remove_sparse_array();

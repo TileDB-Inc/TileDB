@@ -23,6 +23,12 @@ ENV HOME /home/tiledb
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     build-essential \
     wget \
+    zip \
+    autoconf \
+    automake \
+    libtool \
+    pkg-config \
+    curl \
     unzip \
     git \
     python3 \
@@ -44,6 +50,7 @@ RUN cd /home/tiledb/TileDB \
     && ../bootstrap \
         --prefix=/usr/local \
         --enable-verbose \
+        --enable-vcpkg \
         --enable-azure \
         --enable-s3 \
         --enable-serialization \

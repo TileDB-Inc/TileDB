@@ -124,9 +124,9 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
 
   SECTION("Make Buffer") {
     Array array(ctx, "cpp_unit_array", TILEDB_WRITE);
-    Query query(ctx, array, TILEDB_WRITE);
-    CHECK_THROWS(query.set_subarray<unsigned>({1, 2}));  // Wrong type
-    CHECK_THROWS(query.set_subarray<int>({1, 2}));       // Wrong num
+    Subarray subarray(ctx, array);
+    CHECK_THROWS(subarray.set_subarray<unsigned>({1, 2}));  // Wrong type
+    CHECK_THROWS(subarray.set_subarray<int>({1, 2}));       // Wrong num
     array.close();
   }
 
@@ -634,7 +634,7 @@ TEST_CASE("C++ API: Read subarray with expanded domain", "[cppapi][dense]") {
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
         Array array_w(ctx, array_name, TILEDB_WRITE);
         Query query_w(ctx, array_w);
-        query_w.set_subarray({0, 3, 0, 3})
+        query_w.set_subarray(Subarray(ctx, array_w).set_subarray({0, 3, 0, 3}))
             .set_layout(TILEDB_ROW_MAJOR)
             .set_data_buffer("a", data_w);
         query_w.submit();
@@ -712,16 +712,22 @@ TEST_CASE(
   std::vector<int> data = {0, 1};
 
   auto query_1 = tiledb::Query(ctx, array_w, TILEDB_WRITE);
-  query_1.set_data_buffer("a", data).set_subarray({0, 1}).submit();
+  query_1.set_data_buffer("a", data)
+      .set_subarray(Subarray(ctx, array_w).set_subarray({0, 1}))
+      .submit();
 
   auto query_2 = tiledb::Query(ctx, array_w, TILEDB_WRITE);
-  query_2.set_data_buffer("a", data).set_subarray({2, 3}).submit();
+  query_2.set_data_buffer("a", data)
+      .set_subarray(Subarray(ctx, array_w).set_subarray({2, 3}))
+      .submit();
 
   // this fragment write caused crash during consolidation
   //   https://github.com/TileDB-Inc/TileDB/issues/1205
   //   https://github.com/TileDB-Inc/TileDB/issues/1212
   auto query_3 = tiledb::Query(ctx, array_w, TILEDB_WRITE);
-  query_3.set_data_buffer("a", data).set_subarray({4, 5}).submit();
+  query_3.set_data_buffer("a", data)
+      .set_subarray(Subarray(ctx, array_w).set_subarray({4, 5}))
+      .submit();
 
   array_w.close();
   CHECK(tiledb::test::num_fragments(array_name) == 3);
@@ -1676,7 +1682,7 @@ TEST_CASE(
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w);
-  query_w.set_subarray({0, 3, 0, 3})
+  query_w.set_subarray(Subarray(ctx, array_w).set_subarray({0, 3, 0, 3}))
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", data_w);
   query_w.submit();
@@ -1729,7 +1735,7 @@ TEST_CASE(
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w);
-  query_w.set_subarray({0, 3, 0, 3})
+  query_w.set_subarray(Subarray(ctx, array_w).set_subarray({0, 3, 0, 3}))
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", data_w);
   query_w.submit();
@@ -1817,6 +1823,57 @@ TEST_CASE(
   CHECK(
       stats.find("\"Context.StorageManager.VFS.file_size_num\": 1") !=
       std::string::npos);
+}
+
+TEST_CASE("C++ API: Array write and read from MemFS", "[cppapi][memfs]") {
+  const std::string array_name = "mem://cpp_unit_array";
+  Context ctx;
+
+  // Create
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 4))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 4}}, 4));
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+  Array::create(array_name, schema);
+
+  // Try writing on a non-process-global Context
+  Context ctx_non_global;
+  REQUIRE_THROWS_WITH(
+      Array(ctx_non_global, array_name, TILEDB_WRITE),
+      Catch::Matchers::ContainsSubstring(
+          "Cannot open array; Array does not exist"));
+
+  // Write
+  std::vector<int> data_w = {
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+  Array array_w(ctx, array_name, TILEDB_WRITE);
+  Query query_w(ctx, array_w);
+  query_w.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data_w);
+  query_w.submit();
+  array_w.close();
+
+  // Read
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array, TILEDB_READ);
+  std::vector<int> data(6);
+  query.add_range(0, 1, 2)
+      .add_range(1, 2, 4)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a", data);
+  query.submit();
+  array.close();
+  std::vector<int> data_expected = {2, 3, 4, 6, 7, 8};
+  for (int i = 0; i < 6; i++) {
+    REQUIRE(data[i] == data_expected[i]);
+  }
+
+  // Try removing on a different VFS instance
+  VFS vfs(ctx);
+  REQUIRE_THROWS_WITH(
+      vfs.remove_dir(array_name),
+      Catch::Matchers::ContainsSubstring("File not found, remove failed"));
 }
 
 TEST_CASE(

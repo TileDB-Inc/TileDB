@@ -305,6 +305,9 @@ const std::string query_status_inprogress_str = "INPROGRESS";
 /** TILEDB_INCOMPLETE Query String **/
 const std::string query_status_incomplete_str = "INCOMPLETE";
 
+/** TILEDB_INITIALIZED Query String **/
+const std::string query_status_initialized_str = "INITIALIZED";
+
 /** TILEDB_UNINITIALIZED Query String **/
 const std::string query_status_uninitialized_str = "UNINITIALIZED";
 
@@ -634,7 +637,7 @@ const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization base format version number. */
-const format_version_t base_format_version = 18;
+const format_version_t base_format_version = 19;
 
 /**
  * The TileDB serialization format version number.
@@ -673,12 +676,6 @@ const unsigned int s3_max_attempts = 100;
 
 /** Milliseconds of wait time between S3 attempts. */
 const unsigned int s3_attempt_sleep_ms = 100;
-
-/** Maximum number of attempts to wait for an Azure response. */
-const unsigned int azure_max_attempts = 10;
-
-/** Milliseconds of wait time between Azure attempts. */
-const unsigned int azure_attempt_sleep_ms = 1000;
 
 /** Maximum number of attempts to wait for a GCS response. */
 const unsigned int gcs_max_attempts = 100;

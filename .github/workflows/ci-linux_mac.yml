@@ -40,7 +40,9 @@ env:
   TILEDB_CI_OS: runner.os
   CXX: ${{ inputs.matrix_compiler_cxx }}
   CC: ${{ inputs.matrix_compiler_cc }}
-  bootstrap_args: ${{ inputs.bootstrap_args }}
+  bootstrap_args: "--enable-ccache ${{ inputs.bootstrap_args }}"
+  VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+  SCCACHE_GHA_ENABLED: "true"
 
 jobs:
   build:
@@ -59,24 +61,20 @@ jobs:
             submodules: true
             fetch-depth: 0
 
-      - name: Generate vcpkg cache key data
-        run: |
-          echo "${CC}" > $GITHUB_WORKSPACE/vcpkg-cache-key.data
-          echo "${CXX}" >> $GITHUB_WORKSPACE/vcpkg-cache-key.data
-          echo "${bootstrap_args}" >> $GITHUB_WORKSPACE/vcpkg-cache-key.data
-        shell: bash
+      # Configure required environment variables for vcpkg to use
+      # GitHub's Action Cache
+      - uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-      - name: Create vcpkg cache key
-        id: vcpkg_cache_key
-        run: echo "value=${{ hashFiles('vcpkg-cache-key.data') }}" >> $GITHUB_OUTPUT
-
-      - name: Restore artifacts, or setup vcpkg for building artifacts
-        uses: lukka/run-vcpkg@v10
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
         id: runvcpkg
         with:
           vcpkgJsonGlob: 'vcpkg.json'
           vcpkgDirectory: '${{ github.workspace }}/external/vcpkg'
-          prependedCacheKey: 'tiledb-${{steps.vcpkg_cache_key.outputs.value}}'
 
       - name: Prints output of run-vcpkg's action.
         run: |
@@ -85,6 +83,9 @@ jobs:
 
       - name: Prevent vpckg from building debug variants
         run: ./scripts/ci/posix/patch_vcpkg_triplets.sh
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: 'Ubuntu Prelim'
         if: ${{ startsWith(matrix.os, 'ubuntu-') == true }}
@@ -115,6 +116,9 @@ jobs:
         shell: bash
         run: |
           set -e pipefail
+
+          # Show CMake Version
+          cmake --version
 
           #####################################################
           # We want to run bootstrap in an isolated step in order to

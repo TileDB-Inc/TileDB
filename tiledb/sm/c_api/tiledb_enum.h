@@ -70,6 +70,8 @@
     TILEDB_QUERY_STATUS_ENUM(INCOMPLETE) = 3,
     /** Query not initialized.  */
     TILEDB_QUERY_STATUS_ENUM(UNINITIALIZED) = 4,
+    /** Query initialized (strategy created)  */
+    TILEDB_QUERY_STATUS_ENUM(INITIALIZED) = 5,
 #endif
 
 #ifdef TILEDB_QUERY_STATUS_DETAILS_ENUM

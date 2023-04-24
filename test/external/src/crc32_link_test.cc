@@ -32,7 +32,7 @@
 
 #include <stdio.h>
 
-#include <include/crc32c/crc32c.h>
+#include <crc32c/crc32c.h>
 
 int main() {
   uint8_t buf[32];

@@ -142,6 +142,9 @@ class GlobalOrderWriter : public WriterBase {
   /** Resets the writer object, rendering it incomplete. */
   void reset();
 
+  /** Returns the name of the strategy */
+  std::string name();
+
   /** Alloc a new global_write_state and its associated fragment metadata */
   Status alloc_global_write_state();
 

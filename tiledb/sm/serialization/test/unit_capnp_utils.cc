@@ -66,7 +66,7 @@ void check_filter_pipelines(
     const FilterPipeline& pipeline1, const FilterPipeline& pipeline2) {
   CHECK(pipeline1.size() == pipeline2.size());
   CHECK(pipeline1.max_chunk_size() == pipeline2.max_chunk_size());
-  for (size_t index{0}; index < pipeline1.size(); ++index) {
+  for (decltype(pipeline1.size()) index{0}; index < pipeline1.size(); ++index) {
     auto filter1 = pipeline1.get_filter(index);
     auto filter2 = pipeline2.get_filter(index);
     CHECK(filter1->type() == filter2->type());

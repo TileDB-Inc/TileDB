@@ -161,7 +161,7 @@ QueryStatusDetailsReason OrderedDimLabelReader::status_incomplete_reason()
   return QueryStatusDetailsReason::REASON_NONE;
 }
 
-void OrderedDimLabelReader::initialize_memory_budget() {
+void OrderedDimLabelReader::refresh_config() {
 }
 
 Status OrderedDimLabelReader::dowork() {
@@ -187,6 +187,10 @@ Status OrderedDimLabelReader::dowork() {
 }
 
 void OrderedDimLabelReader::reset() {
+}
+
+std::string OrderedDimLabelReader::name() {
+  return "OrderedDimLabelReader";
 }
 
 /* ********************************* */

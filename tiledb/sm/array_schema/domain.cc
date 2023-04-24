@@ -367,13 +367,18 @@ NDRange Domain::domain() const {
 }
 
 const Dimension* Domain::dimension_ptr(const std::string& name) const {
+  return dimension_shared_ptr(name).get();
+}
+
+shared_ptr<Dimension> Domain::dimension_shared_ptr(
+    const std::string& name) const {
   for (dimension_size_type i = 0; i < dim_num_; i++) {
     const auto dim = dimension_ptrs_[i];
     if (dim->name() == name) {
-      return dim;
+      return dimensions_[i];
     }
   }
-  return nullptr;
+  return {nullptr};
 }
 
 void Domain::dump(FILE* out) const {

@@ -1,0 +1,6 @@
+Source: aws-sdk-cpp
+Version: 1.8.84
+Port-Version: 0
+Description: AWS SDK for C++
+Build-Depends: openssl (!uwp&!windows), curl (!uwp&!windows), aws-c-event-stream
+Default-Features: dynamodb, s3, kinesis

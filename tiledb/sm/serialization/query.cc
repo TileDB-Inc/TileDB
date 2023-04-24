@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -67,12 +67,12 @@
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
 #include "tiledb/sm/query/readers/sparse_unordered_with_dups_reader.h"
 #include "tiledb/sm/query/writers/global_order_writer.h"
+#include "tiledb/sm/query/writers/unordered_writer.h"
 #include "tiledb/sm/query/writers/writer_base.h"
 #include "tiledb/sm/serialization/config.h"
 #include "tiledb/sm/serialization/fragment_metadata.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
-#include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 using namespace tiledb::common;
@@ -137,12 +137,57 @@ Status stats_from_capnp(
   return Status::Ok();
 }
 
+void range_buffers_to_capnp(
+    const std::vector<Range>& ranges,
+    capnp::SubarrayRanges::Builder& range_builder) {
+  auto range_sizes = range_builder.initBufferSizes(ranges.size());
+  auto range_start_sizes = range_builder.initBufferStartSizes(ranges.size());
+  // This will copy all of the ranges into one large byte vector
+  // Future improvement is to do this in a zero copy manner
+  // (kj::ArrayBuilder?)
+  auto capnpVector = kj::Vector<uint8_t>();
+  uint64_t range_idx = 0;
+  for (auto& range : ranges) {
+    capnpVector.addAll(kj::ArrayPtr<uint8_t>(
+        const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(range.data())),
+        range.size()));
+    range_sizes.set(range_idx, range.size());
+    range_start_sizes.set(range_idx, range.start_size());
+    ++range_idx;
+  }
+  range_builder.setBuffer(capnpVector.asPtr());
+}
+
+std::vector<Range> range_buffers_from_capnp(
+    capnp::SubarrayRanges::Reader& range_reader) {
+  auto data_ptr = range_reader.getBuffer().asBytes();
+  auto buffer_sizes = range_reader.getBufferSizes();
+  auto buffer_start_sizes = range_reader.getBufferStartSizes();
+  size_t range_count = buffer_sizes.size();
+  std::vector<Range> ranges(range_count);
+  uint64_t offset = 0;
+  for (size_t j = 0; j < range_count; j++) {
+    uint64_t range_size = buffer_sizes[j];
+    uint64_t range_start_size = buffer_start_sizes[j];
+    if (range_start_size != 0) {
+      ranges[j] =
+          Range(data_ptr.begin() + offset, range_size, range_start_size);
+    } else {
+      ranges[j] = Range(data_ptr.begin() + offset, range_size);
+    }
+    offset += range_size;
+  }
+
+  return ranges;
+}
+
 Status subarray_to_capnp(
     const ArraySchema& schema,
     const Subarray* subarray,
     capnp::Subarray::Builder* builder) {
   builder->setLayout(layout_str(subarray->layout()));
 
+  // Add ranges
   const uint32_t dim_num = subarray->dim_num();
   auto ranges_builder = builder->initRanges(dim_num);
   for (uint32_t i = 0; i < dim_num; i++) {
@@ -150,24 +195,49 @@ Status subarray_to_capnp(
     auto range_builder = ranges_builder[i];
     const auto& ranges = subarray->ranges_for_dim(i);
     range_builder.setType(datatype_str(datatype));
-
     range_builder.setHasDefaultRange(subarray->is_default(i));
-    auto range_sizes = range_builder.initBufferSizes(ranges.size());
-    auto range_start_sizes = range_builder.initBufferStartSizes(ranges.size());
-    // This will copy all of the ranges into one large byte vector
-    // Future improvement is to do this in a zero copy manner
-    // (kj::ArrayBuilder?)
-    auto capnpVector = kj::Vector<uint8_t>();
-    uint64_t range_idx = 0;
-    for (auto& range : ranges) {
-      capnpVector.addAll(kj::ArrayPtr<uint8_t>(
-          const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(range.data())),
-          range.size()));
-      range_sizes.set(range_idx, range.size());
-      range_start_sizes.set(range_idx, range.start_size());
-      ++range_idx;
+    range_buffers_to_capnp(ranges, range_builder);
+  }
+
+  // Add label ranges
+  const auto label_ranges_num = subarray->label_ranges_num();
+  if (label_ranges_num > 0) {
+    auto label_ranges_builder = builder->initLabelRanges(label_ranges_num);
+    auto label_id = 0;
+    for (uint32_t i = 0; i < dim_num; i++) {
+      if (subarray->has_label_ranges(i)) {
+        auto label_range_builder = label_ranges_builder[label_id++];
+        if (label_id > label_ranges_num) {
+          throw StatusException(
+              Status_SerializationError("Label id exceeds the total number of "
+                                        "label ranges for the subarray."));
+        }
+        label_range_builder.setDimensionId(i);
+        const auto& label_name = subarray->get_label_name(i);
+        label_range_builder.setName(label_name);
+
+        auto range_builder = label_range_builder.initRanges();
+        const auto datatype{schema.dimension_ptr(i)->type()};
+        const auto& label_ranges = subarray->ranges_for_label(label_name);
+        range_builder.setType(datatype_str(datatype));
+        range_buffers_to_capnp(label_ranges, range_builder);
+      }
     }
-    range_builder.setBuffer(capnpVector.asPtr());
+  }
+
+  // Add attribute ranges
+  const auto& attr_ranges = subarray->get_attribute_ranges();
+  if (attr_ranges.size() > 0) {
+    auto attribute_ranges_builder = builder->initAttributeRanges();
+    auto entries_builder =
+        attribute_ranges_builder.initEntries(attr_ranges.size());
+    size_t i = 0;
+    for (const auto& attr_range : attr_ranges) {
+      auto entry = entries_builder[i++];
+      entry.setKey(attr_range.first);
+      auto attr_range_builder = entry.initValue();
+      range_buffers_to_capnp(attr_range.second, attr_range_builder);
+    }
   }
 
   // If stats object exists set its cap'n proto object
@@ -202,23 +272,7 @@ Status subarray_from_capnp(
     auto data = range_reader.getBuffer();
     auto data_ptr = data.asBytes();
     if (range_reader.hasBufferSizes()) {
-      auto buffer_sizes = range_reader.getBufferSizes();
-      auto buffer_start_sizes = range_reader.getBufferStartSizes();
-      size_t range_count = buffer_sizes.size();
-      std::vector<Range> ranges(range_count);
-      uint64_t offset = 0;
-      for (size_t j = 0; j < range_count; j++) {
-        uint64_t range_size = buffer_sizes[j];
-        uint64_t range_start_size = buffer_start_sizes[j];
-        if (range_start_size != 0) {
-          ranges[j] =
-              Range(data_ptr.begin() + offset, range_size, range_start_size);
-        } else {
-          ranges[j] = Range(data_ptr.begin() + offset, range_size);
-        }
-        offset += range_size;
-      }
-
+      auto ranges = range_buffers_from_capnp(range_reader);
       RETURN_NOT_OK(subarray->set_ranges_for_dim(i, ranges));
 
       // Set default indicator
@@ -229,6 +283,39 @@ Status subarray_from_capnp(
       RETURN_NOT_OK(subarray->set_ranges_for_dim(i, {range}));
       subarray->set_is_default(i, range_reader.getHasDefaultRange());
     }
+  }
+
+  if (reader.hasLabelRanges()) {
+    subarray->add_default_label_ranges(dim_num);
+    auto label_ranges_reader = reader.getLabelRanges();
+    uint32_t label_num = label_ranges_reader.size();
+    for (uint32_t i = 0; i < label_num; i++) {
+      auto label_range_reader = label_ranges_reader[i];
+      auto dim_id = label_range_reader.getDimensionId();
+      auto label_name = label_range_reader.getName();
+
+      // Deserialize ranges for this dim label
+      auto range_reader = label_range_reader.getRanges();
+      auto ranges = range_buffers_from_capnp(range_reader);
+
+      // Set ranges for this dim label on the subarray
+      subarray->set_label_ranges_for_dim(dim_id, label_name, ranges);
+    }
+  }
+
+  if (reader.hasAttributeRanges()) {
+    std::unordered_map<std::string, std::vector<Range>> attr_ranges;
+    auto attr_ranges_reader = reader.getAttributeRanges();
+    if (attr_ranges_reader.hasEntries()) {
+      for (auto attr_ranges_entry : attr_ranges_reader.getEntries()) {
+        auto range_reader = attr_ranges_entry.getValue();
+        attr_ranges[attr_ranges_entry.getKey()] =
+            range_buffers_from_capnp(range_reader);
+      }
+    }
+
+    for (const auto& attr_range : attr_ranges)
+      subarray->set_attribute_ranges(attr_range.first, attr_range.second);
   }
 
   // If cap'n proto object has stats set it on c++ object
@@ -1188,8 +1275,8 @@ Status writer_to_capnp(
   }
 
   if (query.layout() == Layout::GLOBAL_ORDER) {
-    auto& globalwriter = dynamic_cast<GlobalOrderWriter&>(writer);
-    auto globalstate = globalwriter.get_global_state();
+    auto& global_writer = dynamic_cast<GlobalOrderWriter&>(writer);
+    auto globalstate = global_writer.get_global_state();
     // Remote global order writes have global_write_state equal to nullptr
     // before the first submit(). The state gets initialized when do_work() gets
     // invoked. Once GlobalOrderWriter becomes C41 compliant, we can delete this
@@ -1197,8 +1284,14 @@ Status writer_to_capnp(
     if (globalstate) {
       auto global_state_builder = writer_builder->initGlobalWriteStateV1();
       RETURN_NOT_OK(global_write_state_to_capnp(
-          query, globalwriter, &global_state_builder, client_side));
+          query, global_writer, &global_state_builder, client_side));
     }
+  } else if (query.layout() == Layout::UNORDERED) {
+    auto& unordered_writer = dynamic_cast<UnorderedWriter&>(writer);
+    auto unordered_writer_state_builder =
+        writer_builder->initUnorderedWriterState();
+    RETURN_NOT_OK(unordered_write_state_to_capnp(
+        query, unordered_writer, &unordered_writer_state_builder));
   }
 
   return Status::Ok();
@@ -1234,6 +1327,20 @@ Status writer_from_capnp(
     }
     RETURN_NOT_OK(global_write_state_from_capnp(
         query, writer_reader.getGlobalWriteStateV1(), global_writer, context));
+  } else if (query.layout() == Layout::UNORDERED) {
+    auto unordered_writer = dynamic_cast<UnorderedWriter*>(writer);
+
+    // Fragment metadata is not allocated when deserializing into a new Query
+    // object.
+    if (unordered_writer->frag_meta() == nullptr) {
+      RETURN_NOT_OK(unordered_writer->alloc_frag_meta());
+    }
+
+    RETURN_NOT_OK(unordered_write_state_from_capnp(
+        query,
+        writer_reader.getUnorderedWriterState(),
+        unordered_writer,
+        context));
   }
 
   return Status::Ok();
@@ -1273,7 +1380,8 @@ Status query_to_capnp(
   }
 
   // Serialize attribute buffer metadata
-  const auto buffer_names = query.buffer_names();
+  const auto buffer_names =
+      client_side ? query.unwritten_buffer_names() : query.buffer_names();
   auto attr_buffers_builder =
       query_builder->initAttributeBufferHeaders(buffer_names.size());
   uint64_t total_fixed_len_bytes = 0;
@@ -1426,6 +1534,15 @@ Status query_to_capnp(
     }
   }
 
+  auto& written_buffers = query.get_written_buffers();
+  if (!written_buffers.empty()) {
+    auto builder = query_builder->initWrittenBuffers(written_buffers.size());
+    int i = 0;
+    for (auto& written_buffer : written_buffers) {
+      builder.set(i++, written_buffer);
+    }
+  }
+
   return Status::Ok();
 }
 
@@ -1486,7 +1603,7 @@ Status query_from_capnp(
     auto config_reader = query_reader.getConfig();
     RETURN_NOT_OK(config_from_capnp(config_reader, &decoded_config));
     if (decoded_config != nullptr) {
-      RETURN_NOT_OK(query->set_config(*decoded_config));
+      query->unsafe_set_config(*decoded_config);
     }
   }
 
@@ -1838,19 +1955,19 @@ Status query_from_capnp(
         attr_state->validity_len_data.swap(validitylen_buff);
         if (var_size) {
           throw_if_not_ok(query->set_data_buffer(
-              name, nullptr, &attr_state->var_len_size, false));
+              name, nullptr, &attr_state->var_len_size, false, true));
           throw_if_not_ok(query->set_offsets_buffer(
-              name, nullptr, &attr_state->fixed_len_size, false));
+              name, nullptr, &attr_state->fixed_len_size, false, true));
           if (nullable) {
             throw_if_not_ok(query->set_validity_buffer(
-                name, nullptr, &attr_state->validity_len_size, false));
+                name, nullptr, &attr_state->validity_len_size, false, true));
           }
         } else {
           throw_if_not_ok(query->set_data_buffer(
-              name, nullptr, &attr_state->fixed_len_size, false));
+              name, nullptr, &attr_state->fixed_len_size, false, true));
           if (nullable) {
             throw_if_not_ok(query->set_validity_buffer(
-                name, nullptr, &attr_state->validity_len_size, false));
+                name, nullptr, &attr_state->validity_len_size, false, true));
           }
         }
       } else if (query_type == QueryType::WRITE) {
@@ -1878,12 +1995,12 @@ Status query_from_capnp(
           attr_state->validity_len_data.swap(validity_buff);
 
           throw_if_not_ok(query->set_data_buffer(
-              name, varlen_data, &attr_state->var_len_size));
+              name, varlen_data, &attr_state->var_len_size, true, true));
           throw_if_not_ok(query->set_offsets_buffer(
-              name, offsets, &attr_state->fixed_len_size));
+              name, offsets, &attr_state->fixed_len_size, true, true));
           if (nullable) {
             throw_if_not_ok(query->set_validity_buffer(
-                name, validity, &attr_state->validity_len_size));
+                name, validity, &attr_state->validity_len_size, true, true));
           }
         } else {
           auto* data = attribute_buffer_start;
@@ -1905,11 +2022,11 @@ Status query_from_capnp(
           attr_state->var_len_data.swap(varlen_buff);
           attr_state->validity_len_data.swap(validity_buff);
 
-          throw_if_not_ok(
-              query->set_data_buffer(name, data, &attr_state->fixed_len_size));
+          throw_if_not_ok(query->set_data_buffer(
+              name, data, &attr_state->fixed_len_size, true, true));
           if (nullable) {
             throw_if_not_ok(query->set_validity_buffer(
-                name, validity, &attr_state->validity_len_size));
+                name, validity, &attr_state->validity_len_size, true, true));
           }
         }
       } else {
@@ -2040,6 +2157,16 @@ Status query_from_capnp(
     }
   }
 
+  if (query_reader.hasWrittenBuffers()) {
+    auto& written_buffers = query->get_written_buffers();
+    written_buffers.clear();
+
+    auto written_buffer_list = query_reader.getWrittenBuffers();
+    for (auto written_buffer : written_buffer_list) {
+      written_buffers.emplace(written_buffer.cStr());
+    }
+  }
+
   return Status::Ok();
 }
 
@@ -2163,7 +2290,8 @@ Status query_serialize(
               Buffer data;
               Buffer var(buffer.buffer_var_, *buffer.buffer_var_size_);
 
-              // If we are not appending offsets we can use non-owning buffers.
+              // If we are not appending offsets we can use non-owning
+              // buffers.
               if (query_buffer_storage.has_value()) {
                 const auto& buffer_cache =
                     query_buffer_storage->get_query_buffer_cache(name);
@@ -2177,7 +2305,8 @@ Status query_serialize(
 
                 if (buffer_cache.buffer_.size() > 0) {
                   // Ensure ascending order for appended user offsets.
-                  // Copy user offsets so we don't modify buffer in client code.
+                  // Copy user offsets so we don't modify buffer in client
+                  // code.
                   throw_if_not_ok(
                       data.write(buffer.buffer_, *buffer.buffer_size_));
                   uint64_t var_buffer_size = buffer_cache.buffer_var_.size();
@@ -2569,10 +2698,10 @@ Status query_est_result_size_deserialize(
 
 Status global_write_state_to_capnp(
     const Query& query,
-    GlobalOrderWriter& globalwriter,
+    GlobalOrderWriter& global_writer,
     capnp::GlobalWriteState::Builder* state_builder,
     bool client_side) {
-  auto& write_state = *globalwriter.get_global_state();
+  auto& write_state = *global_writer.get_global_state();
 
   auto& cells_written = write_state.cells_written_;
   if (!cells_written.empty()) {
@@ -2627,7 +2756,7 @@ Status global_write_state_to_capnp(
 
   // Serialize the multipart upload state
   auto&& [st, multipart_states] =
-      globalwriter.multipart_upload_state(client_side);
+      global_writer.multipart_upload_state(client_side);
   RETURN_NOT_OK(st);
 
   if (!multipart_states.empty()) {
@@ -2775,6 +2904,75 @@ Status global_write_state_from_capnp(
             context == SerializationContext::CLIENT));
       }
     }
+  }
+
+  return Status::Ok();
+}
+
+Status unordered_write_state_to_capnp(
+    const Query& query,
+    UnorderedWriter& unordered_writer,
+    capnp::UnorderedWriterState::Builder* state_builder) {
+  state_builder->setIsCoordsPass(unordered_writer.is_coords_pass());
+
+  auto& cell_pos = unordered_writer.cell_pos();
+  if (!cell_pos.empty()) {
+    auto builder = state_builder->initCellPos(cell_pos.size());
+    int i = 0;
+    for (auto& pos : cell_pos) {
+      builder.set(i++, pos);
+    }
+  }
+
+  auto& coord_dups = unordered_writer.coord_dups();
+  if (!coord_dups.empty()) {
+    auto builder = state_builder->initCoordDups(coord_dups.size());
+    int i = 0;
+    for (auto& duplicate : coord_dups) {
+      builder.set(i++, duplicate);
+    }
+  }
+
+  auto frag_meta = unordered_writer.frag_meta();
+  if (frag_meta != nullptr) {
+    auto frag_meta_builder = state_builder->initFragMeta();
+    RETURN_NOT_OK(fragment_metadata_to_capnp(*frag_meta, &frag_meta_builder));
+  }
+
+  return Status::Ok();
+}
+
+Status unordered_write_state_from_capnp(
+    const Query& query,
+    const capnp::UnorderedWriterState::Reader& state_reader,
+    UnorderedWriter* unordered_writer,
+    SerializationContext context) {
+  unordered_writer->is_coords_pass() = state_reader.getIsCoordsPass();
+
+  if (state_reader.hasCellPos()) {
+    auto& cell_pos = unordered_writer->cell_pos();
+    cell_pos.clear();
+    auto cell_pos_list = state_reader.getCellPos();
+    cell_pos.reserve(cell_pos_list.size());
+    for (auto pos : cell_pos_list) {
+      cell_pos.emplace_back(pos);
+    }
+  }
+
+  if (state_reader.hasCoordDups()) {
+    auto& coord_dups = unordered_writer->coord_dups();
+    coord_dups.clear();
+    auto coord_dups_list = state_reader.getCoordDups();
+    for (auto duplicate : coord_dups_list) {
+      coord_dups.emplace(duplicate);
+    }
+  }
+
+  if (state_reader.hasFragMeta()) {
+    auto frag_meta = unordered_writer->frag_meta();
+    auto frag_meta_reader = state_reader.getFragMeta();
+    RETURN_NOT_OK(fragment_metadata_from_capnp(
+        query.array_schema_shared(), frag_meta_reader, frag_meta));
   }
 
   return Status::Ok();

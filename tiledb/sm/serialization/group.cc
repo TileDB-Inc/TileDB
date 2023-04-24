@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -210,7 +210,7 @@ Status group_from_capnp(
   if (group_reader.hasConfig()) {
     tdb_unique_ptr<Config> decoded_config = nullptr;
     RETURN_NOT_OK(config_from_capnp(group_reader.getConfig(), &decoded_config));
-    RETURN_NOT_OK(group->set_config(*decoded_config));
+    group->unsafe_set_config(*decoded_config);
   }
 
   if (group_reader.hasGroup()) {
@@ -312,7 +312,7 @@ Status group_update_from_capnp(
   if (group_reader.hasConfig()) {
     tdb_unique_ptr<Config> decoded_config = nullptr;
     RETURN_NOT_OK(config_from_capnp(group_reader.getConfig(), &decoded_config));
-    RETURN_NOT_OK(group->set_config(*decoded_config));
+    group->unsafe_set_config(*decoded_config);
   }
 
   if (group_reader.hasGroupUpdate()) {

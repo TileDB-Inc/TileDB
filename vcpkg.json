@@ -4,22 +4,88 @@
     "builtin-baseline": "f14984af3738e69f197bf0e647a8dca12de92996",
     "dependencies": [
         "bzip2",
-        "openssl",
-        "zstd",
+        "liblzma",
+        "libmagic",
+        "lz4",
         {
-            "name": "catch2",
-            "version>=": "3.1.0"
-        }
+            "name": "openssl",
+            "platform": "!windows"
+        },
+        "spdlog",
+        "zlib",
+        "zstd"
     ],
     "features": {
+        "abseil": {
+            "description": "Enables building of abseil library and linkage test",
+            "dependencies": [
+                {
+                    "name": "abseil",
+                    "version>=": "20211102.0"
+                }
+            ]
+        },
+        "azure": {
+            "description": "Support Azure Blob Storage",
+            "dependencies": [
+                {
+                    "name": "azure-storage-blobs-cpp",
+                    "version>=": "12.6.1"
+                }
+            ]
+        },
         "gcs": {
-            "description": "Support google cloud storage",
+            "description": "Support Google Cloud Storage",
             "dependencies": [
                 {
                     "name": "google-cloud-cpp",
                     "version>=": "2.6.0",
                     "features": [ "storage" ],
                     "default-features": false
+                }
+            ]
+        },
+        "serialization": {
+            "description": "Enable TileDB Cloud Support",
+            "dependencies": [
+                {
+                    "name": "capnproto",
+                    "version>=": "0.8.0"
+                }
+            ]
+        },
+        "s3": {
+            "description": "Support AWS S3 Storage",
+            "dependencies": [
+                {
+                    "name": "aws-sdk-cpp",
+                    "version>=": "1.8.84",
+                    "features": ["s3", "identity-management", "sts"],
+                    "default-features": false
+                }
+            ]
+        },
+        "tests": {
+            "description": "Build tiledb tests",
+            "dependencies": [
+                "catch2"
+            ]
+        },
+        "tools": {
+            "description": "Build tiledb command line tool",
+            "dependencies": [
+                {
+                    "name": "clipp",
+                    "version>=": "1.2.3"
+                }
+            ]
+        },
+        "webp": {
+            "description": "Support WebP compression",
+            "dependencies": [
+                {
+                    "name": "libwebp",
+                    "version>=": "1.2.3"
                 }
             ]
         }

@@ -119,43 +119,6 @@ Dimension::Dimension(
   set_smaller_than_func();
 }
 
-Dimension::Dimension(const Dimension* dim) {
-  assert(dim != nullptr);
-
-  cell_val_num_ = dim->cell_val_num_;
-  domain_ = dim->domain();
-  filters_ = dim->filters_;
-  name_ = dim->name();
-  tile_extent_ = dim->tile_extent();
-  type_ = dim->type_;
-
-  // Validate type
-  ensure_datatype_is_supported(type_);
-
-  // Set fuctions
-  ceil_to_tile_func_ = dim->ceil_to_tile_func_;
-  coincides_with_tiles_func_ = dim->coincides_with_tiles_func_;
-  compute_mbr_func_ = dim->compute_mbr_func_;
-  compute_mbr_var_func_ = dim->compute_mbr_var_func_;
-  crop_range_func_ = dim->crop_range_func_;
-  domain_range_func_ = dim->domain_range_func_;
-  expand_range_v_func_ = dim->expand_range_v_func_;
-  expand_range_func_ = dim->expand_range_func_;
-  expand_to_tile_func_ = dim->expand_to_tile_func_;
-  oob_func_ = dim->oob_func_;
-  covered_func_ = dim->covered_func_;
-  overlap_func_ = dim->overlap_func_;
-  overlap_ratio_func_ = dim->overlap_ratio_func_;
-  relevant_ranges_func_ = dim->relevant_ranges_func_;
-  covered_vec_func_ = dim->covered_vec_func_;
-  split_range_func_ = dim->split_range_func_;
-  splitting_value_func_ = dim->splitting_value_func_;
-  tile_num_func_ = dim->tile_num_func_;
-  map_to_uint64_2_func_ = dim->map_to_uint64_2_func_;
-  map_from_uint64_func_ = dim->map_from_uint64_func_;
-  smaller_than_func_ = dim->smaller_than_func_;
-}
-
 /* ********************************* */
 /*                API                */
 /* ********************************* */

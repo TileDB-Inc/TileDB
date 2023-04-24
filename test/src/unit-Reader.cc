@@ -230,15 +230,15 @@ TEST_CASE_METHOD(
   TileDomain<int32_t> array_tile_domain(
       UINT32_MAX, domain, dsd, tile_extents, layout);
 
-  Dimension d1("d1", Datatype::INT32);
-  CHECK(d1.set_domain(domain_vec).ok());
-  CHECK(d1.set_tile_extent(&tile_extents_vec[0]).ok());
-  Dimension d2("d2", Datatype::INT32);
-  CHECK(d2.set_domain(&domain_vec[2]).ok());
-  CHECK(d2.set_tile_extent(&tile_extents_vec[1]).ok());
+  auto d1{make_shared<Dimension>(HERE(), "d1", Datatype::INT32)};
+  CHECK(d1->set_domain(domain_vec).ok());
+  CHECK(d1->set_tile_extent(&tile_extents_vec[0]).ok());
+  auto d2{make_shared<Dimension>(HERE(), "d2", Datatype::INT32)};
+  CHECK(d2->set_domain(&domain_vec[2]).ok());
+  CHECK(d2->set_tile_extent(&tile_extents_vec[1]).ok());
   Domain dom;
-  CHECK(dom.add_dimension(make_shared<Dimension>(HERE(), &d1)).ok());
-  CHECK(dom.add_dimension(make_shared<Dimension>(HERE(), &d2)).ok());
+  CHECK(dom.add_dimension(d1).ok());
+  CHECK(dom.add_dimension(d2).ok());
 
   auto schema = make_shared<ArraySchema>(HERE());
   CHECK(schema->set_domain(make_shared<Domain>(HERE(), &dom)).ok());

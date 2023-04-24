@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -220,9 +220,23 @@ class Group {
    * Set the config on the group
    *
    * @param config
-   * @return status
+   *
+   * @pre The Group must be closed
    */
-  Status set_config(Config config);
+  void set_config(Config config);
+
+  /**
+   * Set the config on the group
+   *
+   * @param config
+   *
+   * @note This is a potentially unsafe operation. Groups should be closed when
+   * setting a config. Until C.41 compliance, this is necessary for
+   * serialization.
+   */
+  inline void unsafe_set_config(Config config) {
+    config_.inherit(config);
+  }
 
   /**
    * Add a member to a group, this will be flushed to disk on close

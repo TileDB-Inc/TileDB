@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -128,6 +128,14 @@ class Subarray {
   /* ********************************* */
   /*         PUBLIC DATA TYPES         */
   /* ********************************* */
+  /**
+   * Size type for the number of dimensions of an array and for dimension
+   * indices.
+   *
+   * Note: This should be the same as `Domain::dimension_size_type`. We're
+   * not including `domain.h`, otherwise we'd use that definition here.
+   */
+  using dimension_size_type = unsigned int;
 
   /**
    * Result size (in bytes) for an attribute/dimension used for
@@ -240,7 +248,7 @@ class Subarray {
   /* ********************************* */
 
   /** Sets config for query-level parameters only. */
-  Status set_config(const Config& config);
+  void set_config(const Config& config);
 
   /**
    * Get the config of the writer
@@ -430,6 +438,14 @@ class Subarray {
    */
   const std::vector<Range>& get_attribute_ranges(
       const std::string& attr_name) const;
+
+  /**
+   * Get all attribute ranges.
+   */
+  inline const std::unordered_map<std::string, std::vector<Range>>&
+  get_attribute_ranges() const {
+    return attr_range_subset_;
+  }
 
   /**
    * Returns the name of the dimension label at the dimension index.
@@ -807,13 +823,6 @@ class Subarray {
       ThreadPool* compute_tp);
 
   /**
-   * Gets the estimated result size (in bytes) for the input fixed-sized
-   * attribute/dimension.
-   */
-  Status get_est_result_size(
-      const char* name, uint64_t* size, StorageManager* storage_manager);
-
-  /**
    * Gets the estimated result size (in bytes) for the input var-sized
    * attribute/dimension.
    */
@@ -894,9 +903,6 @@ class Subarray {
       const Config* config,
       ThreadPool* compute_tp);
 
-  /** Retrieves the query type of the subarray's array. */
-  QueryType get_query_type() const;
-
   /**
    * Returns the range coordinates (for all dimensions) given a flattened
    * 1D range id. The range coordinates is a tuple with an index
@@ -934,6 +940,11 @@ class Subarray {
    * @param dim_idx The dimension index to check for ranges.
    */
   bool has_label_ranges(const uint32_t dim_index) const;
+
+  /**
+   * Returns the number of dimensions that have label ranges set
+   */
+  int label_ranges_num() const;
 
   /**
    * Set default indicator for dimension subarray. Used by serialization only
@@ -1026,6 +1037,22 @@ class Subarray {
    * @note Intended for serialization only
    */
   Status set_ranges_for_dim(uint32_t dim_idx, const std::vector<Range>& ranges);
+
+  /**
+   * Directly sets the dimension label ranges for the given dimension index,
+   * making a deep copy.
+   *
+   * @param dim_idx Index of dimension to set
+   * @param name Name of the dimension label to set
+   * @param ranges `Range` vector that will be copied and set
+   * @return Status
+   *
+   * @note Intended for serialization only
+   */
+  void set_label_ranges_for_dim(
+      const uint32_t dim_idx,
+      const std::string& name,
+      const std::vector<Range>& ranges);
 
   /**
    * Splits the subarray along the splitting dimension and value into
@@ -1190,6 +1217,19 @@ class Subarray {
   tuple<Status, optional<bool>> non_overlapping_ranges(
       ThreadPool* const compute_tp);
 
+  /** Returns if ranges are sorted. */
+  inline bool coalesce_ranges() const {
+    return coalesce_ranges_;
+  }
+
+  /**
+   * Initialize the label ranges vector to nullopt for every
+   * dimension
+   *
+   * @param dim_num Total number of dimensions of the schema
+   */
+  void add_default_label_ranges(dimension_size_type dim_num);
+
  private:
   /* ********************************* */
   /*        PRIVATE DATA TYPES         */
@@ -1230,21 +1270,30 @@ class Subarray {
     /**
      * Constructor
      *
-     * @param ref Dimension label reference to the label this will contain
-     * ranges for.
+     * @param ref Dimension label the ranges will be set on.
      * @param coalesce_ranges Set if ranges should be combined when adjacent.
      */
     LabelRangeSubset(const DimensionLabel& ref, bool coalesce_ranges = true);
 
+    /**
+     * Constructor
+     *
+     * @param name The name of the dimension label the ranges will be set on.
+     * @param type The type of the label the ranges will be set on.
+     * @param coalesce_ranges Set if ranges should be combined when adjacent.
+     */
+    LabelRangeSubset(
+        const std::string& name, Datatype type, bool coalesce_ranges = true);
+
     inline const std::vector<Range>& get_ranges() const {
-      return ranges.ranges();
+      return ranges_.ranges();
     }
 
     /** Name of the dimension label. */
-    std::string name;
+    std::string name_;
 
     /** The ranges set on the dimension label. */
-    RangeSetAndSuperset ranges;
+    RangeSetAndSuperset ranges_;
   };
 
   /* ********************************* */

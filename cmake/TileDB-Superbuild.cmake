@@ -18,10 +18,14 @@ set(FORWARD_EP_CMAKE_ARGS)
 # as a part of the superbuild.
 set(TILEDB_EXTERNAL_PROJECTS)
 
+# Passing lists through ExternalProject_Add requires using a separator
+# character other than a semicolon.
+list(JOIN CMAKE_PREFIX_PATH "|" CMAKE_PREFIX_PATH_STR)
+
 # Forward any additional CMake args to the non-superbuild.
 set(INHERITED_CMAKE_ARGS
   -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
-  -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
+  -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH_STR}
   -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
   -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
   -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
@@ -29,6 +33,7 @@ set(INHERITED_CMAKE_ARGS
   -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
   -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
   -DCOMPILER_SUPPORTS_AVX2=${COMPILER_SUPPORTS_AVX2}
+  -DTILEDB_VCPKG=${TILEDB_VCPKG}
   -DTILEDB_VERBOSE=${TILEDB_VERBOSE}
   -DTILEDB_ASSERTIONS=${TILEDB_ASSERTIONS}
   -DTILEDB_S3=${TILEDB_S3}
@@ -114,7 +119,7 @@ if (NOT WIN32)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindOpenSSL_EP.cmake)
 endif()
 
-if (TILEDB_S3 OR TILEDB_AZURE OR TILEDB_GCS OR TILEDB_SERIALIZATION)
+if (TILEDB_S3 OR TILEDB_GCS OR TILEDB_SERIALIZATION)
   # Need libcurl either with S3 or serialization support.
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCurl_EP.cmake)
 endif()
@@ -123,10 +128,6 @@ if (TILEDB_S3)
   # Note on Win32: AWS SDK uses builtin WinHTTP instead of libcurl,
   # and builtin BCrypt instead of OpenSSL.
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAWSSDK_EP.cmake)
-endif()
-
-if (TILEDB_AZURE)
-  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAzureSDK_EP.cmake)
 endif()
 
 if (TILEDB_GCS)
@@ -154,6 +155,7 @@ ExternalProject_Add(tiledb
   INSTALL_COMMAND ""
   BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/tiledb
   DEPENDS ${TILEDB_EXTERNAL_PROJECTS}
+  LIST_SEPARATOR "|"
 )
 
 ############################################################

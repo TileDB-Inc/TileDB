@@ -335,6 +335,17 @@ class ArrayDirectory {
       const EncryptionKey& encryption_key);
 
   /**
+   * Get the full vac uri using the base URI and a vac uri that might be
+   * relative or not. It also fixes URIs that were not relative and the array
+   * has moved since consolidation.
+   *
+   * @param base Base URI for the array.
+   * @param vac_uri The vac URI that might or not be relative to the array.
+   * @return std::string Full vac URI.
+   */
+  static std::string get_full_vac_uri(std::string base, std::string vac_uri);
+
+  /**
    * Loads the latest schema of an array from persistent storage into memory.
    *
    * @param array_dir The ArrayDirectory object used to retrieve the

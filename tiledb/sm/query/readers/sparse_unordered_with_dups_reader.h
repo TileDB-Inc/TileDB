@@ -107,6 +107,24 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       std::vector<uint64_t>& cell_offsets,
       QueryBuffer& query_buffer);
 
+  /**
+   * Compute the fixed result tiles to copy using the list of result tiles. This
+   * will resize the list of result tiles to the actual size we can copy.
+   *
+   * @param max_num_cells Max number of cells we can fit in the fixed size
+   * buffers.
+   * @param initial_cell_offset Initial cell offset in the user buffers.
+   * @param first_tile_min_pos Cell progress of the first tile.
+   * @param result_tiles Result tiles to process, might be truncated.
+   *
+   * @return buffers_full, cell_offsets.
+   */
+  static tuple<bool, std::vector<uint64_t>> resize_fixed_result_tiles_to_copy(
+      uint64_t max_num_cells,
+      uint64_t initial_cell_offset,
+      uint64_t first_tile_min_pos,
+      std::vector<ResultTile*>& result_tiles);
+
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
@@ -139,7 +157,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    *
    * @return Status.
    */
-  void initialize_memory_budget();
+  void refresh_config();
 
   /**
    * Performs a read query using its set members.
@@ -150,6 +168,9 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
 
   /** Resets the reader object. */
   void reset();
+
+  /** Returns the name of the strategy */
+  std::string name();
 
  private:
   /* ********************************* */
@@ -182,17 +203,14 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * @param f Fragment index.
    * @param t Tile index.
    *
-   * @return Tiles_size, tiles_size_qc.
+   * @return Tiles size.
    */
-  std::pair<uint64_t, uint64_t> get_coord_tiles_size(
-      unsigned dim_num, unsigned f, uint64_t t);
+  uint64_t get_coord_tiles_size(unsigned dim_num, unsigned f, uint64_t t);
 
   /**
    * Add a result tile to process, making sure maximum budget is respected.
    *
    * @param dim_num Number of dimensions.
-   * @param memory_budget_qc_tiles Memory budget for query condition tiles.
-   * @param memory_budget_coords_tiles Memory budget for coordinate tiles.
    * @param f Fragment index.
    * @param t Tile index.
    * @param last_t Last tile index.
@@ -202,8 +220,6 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    */
   bool add_result_tile(
       const unsigned dim_num,
-      const uint64_t memory_budget_qc_tiles,
-      const uint64_t memory_budget_coords_tiles,
       const unsigned f,
       const uint64_t t,
       const uint64_t last_t,
@@ -405,32 +421,30 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       QueryBuffer& query_buffer);
 
   /**
-   * Compute the maximum vector of result tiles to process and cell offsets for
-   * each tiles using the fixed size buffers from the user.
+   * Compute the maximum vector of result tiles to process and cell offsets
+   * for each tiles using the fixed size buffers from the user.
    *
    * @param names Attribute/dimensions to compute for.
    * @param result_tiles The result tiles to process.
    *
-   * @return Cell o
+   * @return Cell offsets.
    */
-  std::vector<uint64_t> compute_fixed_results_to_copy(
+  std::vector<uint64_t> resize_fixed_results_to_copy(
       const std::vector<std::string>& names,
       std::vector<ResultTile*>& result_tiles);
 
   /**
-   * Make sure we respect memory budget for copy operation by making sure that,
-   * for all attributes to be copied, the size of tiles in memory can fit into
-   * the budget.
+   * Make sure we respect memory budget for copy operation by making sure
+   * that, for all attributes to be copied, the size of tiles in memory can
+   * fit into the budget.
    *
    * @param names Attribute/dimensions to compute for.
-   * @param memory_budget Memory budget allowed for copy operation.
    * @param result_tiles Result tiles to process, might be truncated.
    *
    * @return Status, total_mem_usage_per_attr.
    */
   tuple<Status, optional<std::vector<uint64_t>>> respect_copy_memory_budget(
       const std::vector<std::string>& names,
-      const uint64_t memory_budget,
       std::vector<ResultTile*>& result_tiles);
 
   /**

@@ -1,6 +1,6 @@
 <a href="https://tiledb.com"><img src="https://github.com/TileDB-Inc/TileDB/raw/dev/doc/source/_static/tiledb-logo_color_no_margin_@4x.png" alt="TileDB logo" width="400"></a>
 
-[![Azure Pipelines](https://dev.azure.com/TileDB-Inc/CI/_apis/build/status/TileDB-Inc.TileDB?branchName=dev)](https://dev.azure.com/TileDB-Inc/CI/_build/latest?definitionId=2&branchName=dev) ![](doc/anaconda.svg)[![Anaconda download count badge](https://anaconda.org/conda-forge/TileDB/badges/downloads.svg)](https://anaconda.org/conda-forge/TileDB)
+[![Full CI](https://github.com/TileDB-Inc/TileDB/actions/workflows/full-ci.yml/badge.svg?branch=dev)](https://github.com/TileDB-Inc/TileDB/actions/workflows/full-ci.yml) [![Azure Pipelines](https://dev.azure.com/TileDB-Inc/CI/_apis/build/status/TileDB-Inc.TileDB?branchName=dev)](https://dev.azure.com/TileDB-Inc/CI/_build/latest?definitionId=2&branchName=dev) [![](doc/anaconda.svg)![Anaconda download count badge](https://anaconda.org/conda-forge/TileDB/badges/downloads.svg)](https://anaconda.org/conda-forge/TileDB)
 
 # The Universal Storage Engine
 
@@ -63,6 +63,8 @@ The TileDB data format is open-source and can be found [here](format_spec/FORMAT
 
 The TileDB team maintains a variety of APIs built on top of the C++ library:
 
+* C ([examples](https://github.com/TileDB-Inc/TileDB/tree/dev/examples/c_api), [API docs](https://tiledb-inc-tiledb.readthedocs-hosted.com/en/stable/c-api.html))
+* C++ ([examples](https://github.com/TileDB-Inc/TileDB/tree/dev/examples/cpp_api), [API docs](https://tiledb-inc-tiledb.readthedocs-hosted.com/en/stable/c++-api.html))
 * [Python](https://github.com/TileDB-Inc/TileDB-Py)
 * [R](https://github.com/TileDB-Inc/TileDB-R)
 * [Java](https://github.com/TileDB-Inc/TileDB-Java)

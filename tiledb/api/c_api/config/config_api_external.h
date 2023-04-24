@@ -243,7 +243,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    soft limit that we might go over if a single tile doesn't fit into memory,
  *    we will allow to load that tile if it still fits within
  *    `sm.mem.total_budget`. <br>
- *    **Default**: 2GB
+ *    **Default**: 1GB
  * - `sm.mem.total_budget` <br>
  *    Memory budget for readers and writers. <br>
  *    **Default**: 10GB
@@ -251,10 +251,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    Ratio of the budget allocated for coordinates in the sparse global
  *    order reader. <br>
  *    **Default**: 0.5
- * - `sm.mem.reader.sparse_global_order.ratio_query_condition` <br>
- *    Ratio of the budget allocated for the query condition in the sparse
- *    global order reader. <br>
- *    **Default**: 0.25
  * - `sm.mem.reader.sparse_global_order.ratio_tile_ranges` <br>
  *    Ratio of the budget allocated for tile ranges in the sparse global
  *    order reader. <br>
@@ -267,10 +263,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    Ratio of the budget allocated for coordinates in the sparse unordered
  *    with duplicates reader. <br>
  *    **Default**: 0.5
- * - `sm.mem.reader.sparse_unordered_with_dups.ratio_query_condition` <br>
- *    Ratio of the budget allocated for the query condition in the sparse
- *    unordered with duplicates reader. <br>
- *    **Default**: 0.25
  * - `sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges` <br>
  *    Ratio of the budget allocated for tile ranges in the sparse unordered
  *    with duplicates reader. <br>
@@ -332,13 +324,8 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `vfs.azure.storage_account_key` <br>
  *    Set the Azure Storage Account key. <br>
  *    **Default**: ""
- * - `vfs.azure.storage_sas_token` <br>
- *    Set the Azure Storage SAS (shared access signature) token. <br>
- *    **Default**: ""
  * - `vfs.azure.blob_endpoint` <br>
- *    Overrides the default Azure Storage Blob endpoint. If empty, the endpoint
- *    will be constructed from the storage account name. This should not include
- *    an http:// or https:// prefix. <br>
+ *    Overrides the default Azure Storage Blob endpoint. <br>
  *    **Default**: ""
  * - `vfs.azure.block_list_block_size` <br>
  *    The block size (in bytes) used in Azure blob block list writes.
@@ -352,9 +339,17 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `vfs.azure.use_block_list_upload` <br>
  *    Determines if the Azure backend can use chunked block uploads. <br>
  *    **Default**: "true"
- * - `vfs.azure.use_https` <br>
- *    Determines if the blob endpoint should use HTTP or HTTPS.
- *    **Default**: "true"
+ * - `vfs.azure.max_retries` <br>
+ *    The maximum number of times to retry an Azure network request. <br>
+ *    **Default**: 5
+ * -  `vfs.azure.retry_delay_ms` <br>
+ *    The minimum permissible delay between Azure netwwork request retry
+ *    attempts, in milliseconds.
+ *    **Default**: 800
+ * -  `vfs.azure.max_retry_delay_ms` <br>
+ *    The maximum permissible delay between Azure netwwork request retry
+ *    attempts, in milliseconds.
+ *    **Default**: 60000
  * - `vfs.gcs.project_id` <br>
  *    Set the GCS project id. <br>
  *    **Default**: ""

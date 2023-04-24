@@ -210,11 +210,6 @@ class Config {
   /** Ratio of the sparse global order reader budget used for coords. */
   static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS;
 
-  /**
-   * Ratio of the sparse global order reader budget used for query condition.
-   */
-  static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION;
-
   /** Ratio of the sparse global order reader budget used for tile ranges. */
   static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES;
 
@@ -223,13 +218,6 @@ class Config {
 
   /** Ratio of the sparse unordered with dups reader budget used for coords. */
   static const std::string SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_COORDS;
-
-  /**
-   * Ratio of the sparse unordered with dups reader budget used for query
-   * condition.
-   */
-  static const std::string
-      SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_QUERY_CONDITION;
 
   /**
    * Ratio of the sparse unordered with dups reader budget used for tile
@@ -406,14 +394,8 @@ class Config {
   /** Azure storage account key. */
   static const std::string VFS_AZURE_STORAGE_ACCOUNT_KEY;
 
-  /** Azure storage account SAS (shared access signature) token. */
-  static const std::string VFS_AZURE_STORAGE_SAS_TOKEN;
-
   /** Azure blob endpoint. */
   static const std::string VFS_AZURE_BLOB_ENDPOINT;
-
-  /** Azure use https. */
-  static const std::string VFS_AZURE_USE_HTTPS;
 
   /** Azure max parallel ops. */
   static const std::string VFS_AZURE_MAX_PARALLEL_OPS;
@@ -423,6 +405,15 @@ class Config {
 
   /** Azure use block list upload. */
   static const std::string VFS_AZURE_USE_BLOCK_LIST_UPLOAD;
+
+  /** Azure max retries. */
+  static const std::string VFS_AZURE_MAX_RETRIES;
+
+  /** Azure min retry delay. */
+  static const std::string VFS_AZURE_RETRY_DELAY_MS;
+
+  /** Azure max retry delay. */
+  static const std::string VFS_AZURE_MAX_RETRY_DELAY_MS;
 
   /** GCS project id. */
   static const std::string VFS_GCS_PROJECT_ID;

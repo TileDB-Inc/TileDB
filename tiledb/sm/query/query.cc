@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -130,7 +130,7 @@ Query::Query(
     config_ = storage_manager->config();
 
   // Set initial subarray configuration
-  throw_if_not_ok(subarray_.set_config(config_));
+  subarray_.set_config(config_);
 
   rest_scratch_ = make_shared<Buffer>(HERE());
 
@@ -142,12 +142,6 @@ Query::Query(
   if (!found) {
     throw QueryStatusException(
         "Cannot find sm.allow_separate_attribute_writes in settings");
-  }
-
-  // Disallow partial attribute writes for remote arrays.
-  if (allow_separate_attribute_writes_ && array_->is_remote()) {
-    throw QueryStatusException(
-        "Cannot allow partial attribute writes on remote arrays.");
   }
 }
 
@@ -425,6 +419,17 @@ std::vector<std::string> Query::buffer_names() const {
   return ret;
 }
 
+std::vector<std::string> Query::unwritten_buffer_names() const {
+  std::vector<std::string> ret;
+  for (auto& name : buffer_names()) {
+    if (written_buffers_.count(name) == 0) {
+      ret.push_back(name);
+    }
+  }
+
+  return ret;
+}
+
 QueryBuffer Query::buffer(const std::string& name) const {
   // Special zipped coordinates
   if ((type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) &&
@@ -447,7 +452,8 @@ QueryBuffer Query::buffer(const std::string& name) const {
 }
 
 Status Query::finalize() {
-  if (status_ == QueryStatus::UNINITIALIZED) {
+  if (status_ == QueryStatus::UNINITIALIZED ||
+      status_ == QueryStatus::INITIALIZED) {
     return Status::Ok();
   }
 
@@ -684,7 +690,8 @@ Status Query::get_attr_serialization_state(
 }
 
 bool Query::has_results() const {
-  if (status_ == QueryStatus::UNINITIALIZED || type_ != QueryType::READ) {
+  if (status_ == QueryStatus::UNINITIALIZED ||
+      status_ == QueryStatus::INITIALIZED || type_ != QueryType::READ) {
     return false;
   }
 
@@ -697,7 +704,8 @@ bool Query::has_results() const {
 
 void Query::init() {
   // Only if the query has not been initialized before
-  if (status_ == QueryStatus::UNINITIALIZED) {
+  if (status_ == QueryStatus::UNINITIALIZED ||
+      status_ == QueryStatus::INITIALIZED) {
     // Check if the array got closed
     if (array_ == nullptr || !array_->is_open()) {
       throw QueryStatusException(
@@ -804,7 +812,8 @@ Status Query::cancel() {
 }
 
 Status Query::process() {
-  if (status_ == QueryStatus::UNINITIALIZED)
+  if (status_ == QueryStatus::UNINITIALIZED ||
+      status_ == QueryStatus::INITIALIZED)
     return logger_->status(
         Status_QueryError("Cannot process query; Query is not initialized"));
   status_ = QueryStatus::INPROGRESS;
@@ -831,6 +840,8 @@ Status Query::process() {
         dynamic_cast<StrategyBase*>(strategy_.get())->stats()->reset();
         strategy_ = nullptr;
       }
+      // This changes the query into INITIALIZED, but it's ok as the status
+      // is updated correctly below
       throw_if_not_ok(create_strategy(true));
     }
   }
@@ -978,7 +989,8 @@ Status Query::check_buffer_names() {
         auto dim = array_schema_->dimension_ptr(d);
         if (buffers_.count(dim->name()) == 0) {
           throw QueryStatusException(
-              "Dimension buffer " + dim->name() + " is not set");
+              "[check_buffer_names] Dimension buffer " + dim->name() +
+              " is not set");
         }
       }
     }
@@ -1196,6 +1208,11 @@ Status Query::create_strategy(bool skip_checks_serialization) {
     return logger_->status(
         Status_QueryError("Cannot create strategy; allocation failed"));
 
+  // Transition the query into INITIALIZED state
+  if (!skip_checks_serialization) {
+    set_status(QueryStatus::INITIALIZED);
+  }
+
   return Status::Ok();
 }
 
@@ -1220,20 +1237,22 @@ Status Query::check_set_fixed_buffer(const std::string& name) {
   return Status::Ok();
 }
 
-Status Query::set_config(const Config& config) {
-  config_ = config;
+void Query::set_config(const Config& config) {
+  if (status_ != QueryStatus::UNINITIALIZED) {
+    throw QueryStatusException(
+        "[set_config] Cannot set config after initialization.");
+  }
+  config_.inherit(config);
 
   // Refresh memory budget configuration.
   if (strategy_ != nullptr) {
-    strategy_->initialize_memory_budget();
+    strategy_->refresh_config();
   }
 
   // Set subarray's config for backwards compatibility
   // Users expect the query config to effect the subarray based on existing
   // behavior before subarray was exposed directly
-  throw_if_not_ok(subarray_.set_config(config_));
-
-  return Status::Ok();
+  subarray_.set_config(config_);
 }
 
 Status Query::set_coords_buffer(void* buffer, uint64_t* buffer_size) {
@@ -1263,7 +1282,8 @@ Status Query::set_data_buffer(
     const std::string& name,
     void* const buffer,
     uint64_t* const buffer_size,
-    const bool check_null_buffers) {
+    const bool check_null_buffers,
+    const bool serialization_allow_new_attr) {
   // General checks for fixed buffers
   RETURN_NOT_OK(check_set_fixed_buffer(name));
 
@@ -1287,8 +1307,7 @@ Status Query::set_data_buffer(
   if (array_schema_->is_dim_label(name)) {
     // Check the query type is valid.
     if (type_ != QueryType::READ && type_ != QueryType::WRITE) {
-      throw StatusException(Status_SerializationError(
-          "Cannot set buffer; Unsupported query type."));
+      throw QueryStatusException("[set_data_buffer] Unsupported query type.");
     }
 
     // Set dimension label buffer on the appropriate buffer depending if the
@@ -1328,7 +1347,7 @@ Status Query::set_data_buffer(
   // Error if setting a new attribute/dimension after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists &&
-      !allow_separate_attribute_writes_) {
+      !allow_separate_attribute_writes_ && !serialization_allow_new_attr) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
@@ -1384,7 +1403,8 @@ Status Query::set_offsets_buffer(
     const std::string& name,
     uint64_t* const buffer_offsets,
     uint64_t* const buffer_offsets_size,
-    const bool check_null_buffers) {
+    const bool check_null_buffers,
+    const bool serialization_allow_new_attr) {
   RETURN_NOT_OK(check_set_fixed_buffer(name));
 
   // Check buffer
@@ -1404,21 +1424,22 @@ Status Query::set_offsets_buffer(
   if (array_schema_->is_dim_label(name)) {
     // Check the query type is valid.
     if (type_ != QueryType::READ && type_ != QueryType::WRITE) {
-      throw QueryStatusException("Cannot set buffer; Unsupported query type.");
+      throw QueryStatusException(
+          "[set_offsets_buffer] Unsupported query type.");
     }
 
     // Check the dimension labe is in fact variable length.
     if (!array_schema_->dimension_label(name).is_var()) {
       throw QueryStatusException(
-          std::string("Cannot set buffer; Input dimension label '") + name +
+          "[set_offsets_buffer] Input dimension label '" + name +
           "' is fixed-sized");
     }
 
     // Check the query was not already initialized.
     if (status_ != QueryStatus::UNINITIALIZED) {
       throw QueryStatusException(
-          std::string("Cannot set buffer for new dimension label '") + name +
-          "' after initialization");
+          "[set_offsets_buffer] Cannot set buffer for new dimension label '" +
+          name + "' after initialization");
     }
 
     // Set dimension label offsets buffers.
@@ -1448,7 +1469,7 @@ Status Query::set_offsets_buffer(
   // Error if setting a new attribute/dimension after initialization
   bool exists = buffers_.find(name) != buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists &&
-      !allow_separate_attribute_writes_) {
+      !allow_separate_attribute_writes_ && !serialization_allow_new_attr) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
@@ -1491,7 +1512,8 @@ Status Query::set_validity_buffer(
     const std::string& name,
     uint8_t* const buffer_validity_bytemap,
     uint64_t* const buffer_validity_bytemap_size,
-    const bool check_null_buffers) {
+    const bool check_null_buffers,
+    const bool serialization_allow_new_attr) {
   RETURN_NOT_OK(check_set_fixed_buffer(name));
 
   ValidityVector validity_vector;
@@ -1525,7 +1547,8 @@ Status Query::set_validity_buffer(
 
   // Error if setting a new attribute after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
-  if (status_ != QueryStatus::UNINITIALIZED && !exists) {
+  if (status_ != QueryStatus::UNINITIALIZED && !exists &&
+      !serialization_allow_new_attr) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute '") + name +
         "' after initialization"));
@@ -1555,13 +1578,17 @@ Status Query::set_est_result_size(
 }
 
 Status Query::set_layout(Layout layout) {
+  if (layout == layout_) {  // Noop
+    return Status::Ok();
+  }
+
+  if (status_ != QueryStatus::UNINITIALIZED) {
+    return logger_->status(
+        Status_QueryError("Cannot set layout after initialization"));
+  }
+
   switch (type_) {
     case (QueryType::READ):
-      if (status_ != QueryStatus::UNINITIALIZED) {
-        return logger_->status(
-            Status_QueryError("Cannot set layout after initialization"));
-      }
-
       break;
 
     case (QueryType::WRITE):
@@ -1603,6 +1630,11 @@ Status Query::set_condition(const QueryCondition& condition) {
     return logger_->status(Status_QueryError(
         "Cannot set query condition; Operation not applicable "
         "to write queries"));
+  }
+  if (status_ != tiledb::sm::QueryStatus::UNINITIALIZED) {
+    return logger_->status(Status_QueryError(
+        "Cannot set query condition; Setting a query condition on an already"
+        "initialized query is not supported."));
   }
 
   if (condition.empty()) {
@@ -1662,7 +1694,7 @@ void Query::set_subarray(const void* subarray) {
     case QueryType::MODIFY_EXCLUSIVE:
       if (!array_schema_->dense()) {
         throw QueryStatusException(
-            "Cannot set subarray; Setting a subarray is not supported on "
+            "[set_subarray] Setting a subarray is not supported on "
             "sparse writes.");
       }
       break;
@@ -1670,15 +1702,15 @@ void Query::set_subarray(const void* subarray) {
     default:
 
       throw QueryStatusException(
-          "Cannot set subarray; Setting a subarray is not supported for query "
-          "type '" +
+          "[set_subarray] Setting a subarray is not supported for query type "
+          "'" +
           query_type_str(type_) + "'.");
   }
 
   // Check this isn't an already initialized query using dimension labels.
   if (status_ != QueryStatus::UNINITIALIZED) {
     throw QueryStatusException(
-        "Cannot set subarray; Setting a subarray on an already initialized  "
+        "[set_subarray] Setting a subarray on an already initialized  "
         "query is not supported.");
   }
 
@@ -1705,22 +1737,22 @@ void Query::set_subarray(const tiledb::sm::Subarray& subarray) {
     case QueryType::MODIFY_EXCLUSIVE:
       if (!array_schema_->dense()) {
         throw QueryStatusException(
-            "Cannot set subarray; Setting a subarray is not supported on "
+            "[set_subarray] Setting a subarray is not supported on "
             "sparse writes.");
       }
       break;
 
     default:
       throw QueryStatusException(
-          "Cannot set subarray; Setting a subarray is not supported for query "
-          "type '" +
+          "[set_subarray] Setting a subarray is not supported for query type "
+          "'" +
           query_type_str(type_) + "'.");
   }
 
   // Check the query has not been initialized.
   if (status_ != tiledb::sm::QueryStatus::UNINITIALIZED) {
     throw QueryStatusException(
-        "Cannot set subarray; Setting a subarray on an already initialized "
+        "[set_subarray] Setting a subarray on an already initialized "
         "query is not supported.");
   }
 
@@ -1821,7 +1853,7 @@ Status Query::submit() {
   if (fragment_size_ != std::numeric_limits<uint64_t>::max() &&
       (layout_ != Layout::GLOBAL_ORDER || type_ != QueryType::WRITE)) {
     throw QueryStatusException(
-        "Fragment size is only supported for global order writes.");
+        "[submit] Fragment size is only supported for global order writes.");
   }
 
   // Check attribute/dimensions buffers completeness before query submits
@@ -2000,6 +2032,10 @@ bool Query::is_dense() const {
 
 std::vector<WrittenFragmentInfo>& Query::get_written_fragment_info() {
   return written_fragment_info_;
+}
+
+std::unordered_set<std::string>& Query::get_written_buffers() {
+  return written_buffers_;
 }
 
 void Query::reset_coords_markers() {

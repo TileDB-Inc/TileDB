@@ -125,7 +125,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   QueryStatusDetailsReason status_incomplete_reason() const;
 
   /** Initialize the memory budget variables. */
-  void initialize_memory_budget();
+  void refresh_config();
 
   /** Returns the current read state. */
   const ReadState* read_state() const;
@@ -138,6 +138,9 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
 
   /** Resets the reader object. */
   void reset();
+
+  /** Returns the name of the strategy */
+  std::string name();
 
  private:
   /* ********************************* */
@@ -193,11 +196,13 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const std::unordered_set<std::string>& condition_names,
       Subarray& subarray,
       uint64_t t_start,
-      std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles);
+      std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
+      ThreadPool::Task& compute_task);
 
   /** Apply the query condition. */
   template <class DimType, class OffType>
   Status apply_query_condition(
+      ThreadPool::Task& compute_task,
       Subarray& subarray,
       const uint64_t t_start,
       const uint64_t t_end,

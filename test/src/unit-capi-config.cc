@@ -183,12 +183,6 @@ void check_save_to_file() {
   REQUIRE(rc == TILEDB_OK);
   CHECK(error == nullptr);
 
-  // Check that azure SAS token is not serialized.
-  rc = tiledb_config_set(
-      config, "vfs.azure.storage_sas_token", "secret", &error);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK(error == nullptr);
-
   // Check that password is not serialized.
   rc = tiledb_config_set(config, "vfs.s3.proxy_password", "password", &error);
   REQUIRE(rc == TILEDB_OK);
@@ -270,14 +264,11 @@ void check_save_to_file() {
   ss << "sm.mem.malloc_trim true\n";
   ss << "sm.mem.reader.sparse_global_order.ratio_array_data 0.1\n";
   ss << "sm.mem.reader.sparse_global_order.ratio_coords 0.5\n";
-  ss << "sm.mem.reader.sparse_global_order.ratio_query_condition 0.25\n";
   ss << "sm.mem.reader.sparse_global_order.ratio_tile_ranges 0.1\n";
   ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_array_data 0.1\n";
   ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_coords 0.5\n";
-  ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_query_condition "
-        "0.25\n";
   ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges 0.1\n";
-  ss << "sm.mem.tile_upper_memory_limit 2147483648\n";
+  ss << "sm.mem.tile_upper_memory_limit 1073741824\n";
   ss << "sm.mem.total_budget 10737418240\n";
   ss << "sm.memory_budget 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
@@ -297,8 +288,10 @@ void check_save_to_file() {
   ss << "vfs.azure.block_list_block_size 5242880\n";
   ss << "vfs.azure.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
+  ss << "vfs.azure.max_retries 5\n";
+  ss << "vfs.azure.max_retry_delay_ms 60000\n";
+  ss << "vfs.azure.retry_delay_ms 800\n";
   ss << "vfs.azure.use_block_list_upload true\n";
-  ss << "vfs.azure.use_https true\n";
   ss << "vfs.file.posix_directory_permissions 755\n";
   ss << "vfs.file.posix_file_permissions 644\n";
   ss << "vfs.gcs.max_parallel_ops " << std::thread::hardware_concurrency()
@@ -615,20 +608,15 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.query.sparse_global_order.reader"] = "refactored";
   all_param_values["sm.query.sparse_unordered_with_dups.reader"] = "refactored";
   all_param_values["sm.mem.malloc_trim"] = "true";
-  all_param_values["sm.mem.tile_upper_memory_limit"] = "2147483648";
+  all_param_values["sm.mem.tile_upper_memory_limit"] = "1073741824";
   all_param_values["sm.mem.total_budget"] = "10737418240";
   all_param_values["sm.mem.reader.sparse_global_order.ratio_coords"] = "0.5";
-  all_param_values["sm.mem.reader.sparse_global_order.ratio_query_condition"] =
-      "0.25";
   all_param_values["sm.mem.reader.sparse_global_order.ratio_tile_ranges"] =
       "0.1";
   all_param_values["sm.mem.reader.sparse_global_order.ratio_array_data"] =
       "0.1";
   all_param_values["sm.mem.reader.sparse_unordered_with_dups.ratio_coords"] =
       "0.5";
-  all_param_values
-      ["sm.mem.reader.sparse_unordered_with_dups.ratio_query_condition"] =
-          "0.25";
   all_param_values
       ["sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges"] = "0.1";
   all_param_values
@@ -677,13 +665,14 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.gcs.request_timeout_ms"] = "3000";
   all_param_values["vfs.azure.storage_account_name"] = "";
   all_param_values["vfs.azure.storage_account_key"] = "";
-  all_param_values["vfs.azure.storage_sas_token"] = "";
   all_param_values["vfs.azure.blob_endpoint"] = "";
   all_param_values["vfs.azure.block_list_block_size"] = "5242880";
   all_param_values["vfs.azure.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   all_param_values["vfs.azure.use_block_list_upload"] = "true";
-  all_param_values["vfs.azure.use_https"] = "true";
+  all_param_values["vfs.azure.max_retries"] = "5";
+  all_param_values["vfs.azure.retry_delay_ms"] = "800";
+  all_param_values["vfs.azure.max_retry_delay_ms"] = "60000";
   all_param_values["vfs.file.posix_file_permissions"] = "644";
   all_param_values["vfs.file.posix_directory_permissions"] = "755";
   all_param_values["vfs.s3.scheme"] = "https";
@@ -740,13 +729,14 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["gcs.request_timeout_ms"] = "3000";
   vfs_param_values["azure.storage_account_name"] = "";
   vfs_param_values["azure.storage_account_key"] = "";
-  vfs_param_values["azure.storage_sas_token"] = "";
   vfs_param_values["azure.blob_endpoint"] = "";
   vfs_param_values["azure.block_list_block_size"] = "5242880";
   vfs_param_values["azure.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   vfs_param_values["azure.use_block_list_upload"] = "true";
-  vfs_param_values["azure.use_https"] = "true";
+  vfs_param_values["azure.max_retries"] = "5";
+  vfs_param_values["azure.retry_delay_ms"] = "800";
+  vfs_param_values["azure.max_retry_delay_ms"] = "60000";
   vfs_param_values["file.posix_file_permissions"] = "644";
   vfs_param_values["file.posix_directory_permissions"] = "755";
   vfs_param_values["s3.scheme"] = "https";
@@ -799,13 +789,14 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   std::map<std::string, std::string> azure_param_values;
   azure_param_values["storage_account_name"] = "";
   azure_param_values["storage_account_key"] = "";
-  azure_param_values["storage_sas_token"] = "";
   azure_param_values["blob_endpoint"] = "";
   azure_param_values["block_list_block_size"] = "5242880";
   azure_param_values["max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   azure_param_values["use_block_list_upload"] = "true";
-  azure_param_values["use_https"] = "true";
+  azure_param_values["max_retries"] = "5";
+  azure_param_values["retry_delay_ms"] = "800";
+  azure_param_values["max_retry_delay_ms"] = "60000";
 
   std::map<std::string, std::string> s3_param_values;
   s3_param_values["scheme"] = "https";

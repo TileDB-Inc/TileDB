@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -61,12 +61,35 @@ class Group {
       const Context& ctx,
       const std::string& group_uri,
       tiledb_query_type_t query_type)
-      : ctx_(ctx) {
-    tiledb_ctx_t* c_ctx = ctx.ptr().get();
-    tiledb_group_t* group;
-    ctx.handle_error(tiledb_group_alloc(c_ctx, group_uri.c_str(), &group));
-    group_ = std::shared_ptr<tiledb_group_t>(group, deleter_);
-    ctx.handle_error(tiledb_group_open(c_ctx, group, query_type));
+      : Group(ctx, group_uri, query_type, nullptr) {
+  }
+
+  /**
+   * @brief Constructor. Sets a config to the group and opens it for the given
+   * query type. The destructor calls the `close()` method.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * // Open the group for reading
+   * tiledb::Context ctx;
+   * tiledb::Config cfg;
+   * cfg["rest.username"] = "user";
+   * cfg["rest.password"] = "pass";
+   * tiledb::Group group(ctx, "s3://bucket-name/group-name", TILEDB_READ, cfg);
+   * @endcode
+   *
+   * @param ctx TileDB context.
+   * @param group_uri The group URI.
+   * @param query_type Query type to open the group for.
+   * @param config COnfiguration parameters
+   */
+  Group(
+      const Context& ctx,
+      const std::string& group_uri,
+      tiledb_query_type_t query_type,
+      const Config& config)
+      : Group(ctx, group_uri, query_type, config.ptr().get()) {
   }
 
   Group(const Group&) = default;
@@ -112,7 +135,11 @@ class Group {
     ctx.handle_error(tiledb_group_open(c_ctx, group_.get(), query_type));
   }
 
-  /** Sets the group config. */
+  /**
+   * Sets the group config.
+   *
+   * @pre The group must be closed.
+   */
   void set_config(const Config& config) const {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_group_set_config(
@@ -480,6 +507,22 @@ class Group {
   }
 
  private:
+  Group(
+      const Context& ctx,
+      const std::string& group_uri,
+      tiledb_query_type_t query_type,
+      tiledb_config_t* config)
+      : ctx_(ctx) {
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    tiledb_group_t* group;
+    ctx.handle_error(tiledb_group_alloc(c_ctx, group_uri.c_str(), &group));
+    group_ = std::shared_ptr<tiledb_group_t>(group, deleter_);
+    if (config) {
+      ctx.handle_error(tiledb_group_set_config(c_ctx, group, config));
+    }
+    ctx.handle_error(tiledb_group_open(c_ctx, group, query_type));
+  }
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */

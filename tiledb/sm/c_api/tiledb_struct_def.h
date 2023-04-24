@@ -41,7 +41,6 @@
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/consolidation_plan/consolidation_plan.h"
 #include "tiledb/sm/filesystem/vfs_file_handle.h"
-#include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/group/group.h"
 #include "tiledb/sm/query/query.h"
@@ -70,10 +69,6 @@ struct tiledb_array_schema_t {
 
 struct tiledb_array_schema_evolution_t {
   tiledb::sm::ArraySchemaEvolution* array_schema_evolution_ = nullptr;
-};
-
-struct tiledb_dimension_t {
-  tiledb::sm::Dimension* dim_ = nullptr;
 };
 
 struct tiledb_domain_t {

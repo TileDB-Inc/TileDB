@@ -34,6 +34,7 @@ Configuration:
     --help                          print this message
     --prefix=PREFIX                 install files in tree rooted at PREFIX
                                     ['"${default_prefix}"']
+    --enable-vcpkg                  use vcpkg for downloading and building dependencies
     --dependency=DIRs               specify the dependencies at DIRs, separated by colon
                                     ['"${default_dependency}"']
     --force-build-all-deps          force building of all dependencies, even those
@@ -84,6 +85,7 @@ Example:
 
 # Parse arguments
 prefix_dirs="${default_prefix}"
+tiledb_vcpkg="OFF"
 dependency_dir="${default_dependency}"
 sanitizer=""
 build_type="Release"
@@ -114,6 +116,7 @@ while test $# != 0; do
     case "$1" in
     --prefix=*) dir=`arg "$1"`
                 prefix_dirs="$dir";;
+    --enable-vcpkg) tiledb_vcpkg="ON";;
     --dependency=*) dir=`arg "$1"`
                 dependency_dir="$dir";;
     --force-build-all-deps) tiledb_force_all_deps="ON";;
@@ -155,6 +158,7 @@ done
 IFS=',' read -ra enables <<< "$enable_multiple"
 for en in "${enables[@]}"; do
   case "$en" in
+    vcpkg) tiledb_vcpkg="ON";;
     assertions) tiledb_assertions="ON";;
     debug) build_type="Debug";;
     release-symbols) build_type="RelWithDebInfo";;
@@ -211,6 +215,7 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DCMAKE_C_COMPILER="${c_compiler}" \
     -DCMAKE_CXX_COMPILER="${cxx_compiler}" \
     -DCMAKE_PREFIX_PATH="${dependency_dir}" \
+    -DTILEDB_VCPKG=${tiledb_vcpkg} \
     -DTILEDB_ASSERTIONS=${tiledb_assertions} \
     -DTILEDB_VERBOSE=${tiledb_verbose} \
     -DTILEDB_HDFS=${tiledb_hdfs} \
