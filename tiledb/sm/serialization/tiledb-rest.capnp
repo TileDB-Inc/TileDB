@@ -718,6 +718,8 @@ struct Query {
 
     writtenBuffers @19 : List(Text);
     # written buffers for partial attribute writes
+
+    labelBuffers @20 :List(AttributeBufferHeader);
 }
 
 struct NonEmptyDomain {

@@ -414,6 +414,12 @@ std::vector<std::string> Query::buffer_names() const {
     ret.push_back(constants::coords);
   }
 
+  if (uses_dimension_labels()) {
+    for (const auto& buffer : label_buffers_) {
+      ret.push_back(buffer.first);
+    }
+  }
+
   return ret;
 }
 
@@ -439,10 +445,18 @@ QueryBuffer Query::buffer(const std::string& name) const {
         nullptr);
   }
 
-  // Attribute or dimension
-  auto buf = buffers_.find(name);
-  if (buf != buffers_.end()) {
-    return buf->second;
+  if (array_schema_->is_dim_label(name)) {
+    // Dimension label buffer
+    auto buf = label_buffers_.find(name);
+    if (buf != label_buffers_.end()) {
+      return buf->second;
+    }
+  } else {
+    // Attribute or dimension
+    auto buf = buffers_.find(name);
+    if (buf != buffers_.end()) {
+      return buf->second;
+    }
   }
 
   // Named buffer does not exist
@@ -607,7 +621,8 @@ Status Query::get_data_buffer(
   // Check attribute
   if (!ArraySchema::is_special_attribute(name)) {
     if (array_schema_->attribute(name) == nullptr &&
-        array_schema_->dimension_ptr(name) == nullptr)
+        array_schema_->dimension_ptr(name) == nullptr &&
+        !array_schema_->is_dim_label(name))
       return logger_->status(Status_QueryError(
           std::string("Cannot get buffer; Invalid attribute/dimension name '") +
           name + "'"));
@@ -1236,10 +1251,10 @@ Status Query::check_set_fixed_buffer(const std::string& name) {
 }
 
 void Query::set_config(const Config& config) {
-  if (status_ != QueryStatus::UNINITIALIZED) {
-    throw QueryStatusException(
-        "[set_config] Cannot set config after initialization.");
-  }
+  //  if (status_ != QueryStatus::UNINITIALIZED) {
+  //    throw QueryStatusException(
+  //        "[set_config] Cannot set config after initialization.");
+  //  }
   config_.inherit(config);
 
   // Refresh memory budget configuration.

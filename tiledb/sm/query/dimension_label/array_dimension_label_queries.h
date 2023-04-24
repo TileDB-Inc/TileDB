@@ -141,8 +141,8 @@ class ArrayDimensionLabelQueries {
    * Non-owning vector for accessing range query by dimension index.
    *
    * Note: This vector is always sized to the number of dimensions in the array.
-   * There can be at most on query per dimension. If there is no query on the
-   * dimension, it contains a nullpointer.
+   * There can be at most one query per dimension. If there is no query on the
+   * dimension, it contains a null pointer.
    */
   std::vector<DimensionLabelQuery*> label_range_queries_by_dim_idx_;
 
