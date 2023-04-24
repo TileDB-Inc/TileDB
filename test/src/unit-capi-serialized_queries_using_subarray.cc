@@ -149,7 +149,6 @@ struct SerializationFx {
     auto loop_num =
         counters->find("Context.StorageManager.Query.Writer.attr_num");
     REQUIRE((loop_num != counters->end()));
-
     REQUIRE(loop_num->second > 0);
   }
 
