@@ -153,7 +153,7 @@ shared_ptr<ArraySchema> make_schema(
 
     REQUIRE(domain.add_dimension(dim).ok());
   }
-  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), &domain)).ok());
+  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
 
   // Create the attributes.
   for (uint64_t a = 0; a < attr_types.size(); a++) {

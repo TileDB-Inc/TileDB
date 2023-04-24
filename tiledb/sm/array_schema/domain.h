@@ -83,7 +83,7 @@ class Domain {
       Layout tile_order);
 
   /** Copy constructor. */
-  DISABLE_COPY(Domain);
+  Domain(const Domain&) = default;
 
   /** Move constructor. */
   Domain(Domain&& rhs);

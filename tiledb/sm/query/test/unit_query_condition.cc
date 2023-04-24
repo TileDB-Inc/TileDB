@@ -1556,7 +1556,7 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
   REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), &domain)).ok());
+  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, *array_schema);
