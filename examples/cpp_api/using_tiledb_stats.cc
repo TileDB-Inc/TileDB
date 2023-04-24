@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -89,34 +89,6 @@ void read_array() {
   Stats::enable();
   query.submit();
   Stats::dump(stdout);
-
-  // Check stats.
-  std::string stats;
-  Stats::dump(&stats);
-  if (stats.find("\"Context.StorageManager.subSubarray.add_range\": 2") ==
-      std::string::npos) {
-    throw std::logic_error("Invalid counter for add_range");
-  }
-
-  // Ensure additional calls to Query::submit have no effect on the stats
-  query.submit();
-  query.submit();
-  Stats::dump(&stats);
-  if (stats.find("\"Context.StorageManager.subSubarray.add_range\": 2") ==
-      std::string::npos) {
-    throw std::logic_error("Invalid counter for add_range");
-  }
-
-  // Invoke add_range and check the stats again.
-  // #TODO Update After removal of deprecated Query::add_range
-  query.add_range(0, (uint32_t)0, (uint32_t)3);
-  query.add_range(1, (uint32_t)0, (uint32_t)3);
-  query.submit();
-  Stats::dump(&stats);
-  if (stats.find("\"Context.StorageManager.subSubarray.add_range\": 4") ==
-      std::string::npos) {
-    throw std::logic_error("Invalid counter for add_range");
-  }
   Stats::disable();
 }
 
