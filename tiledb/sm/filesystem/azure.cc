@@ -96,12 +96,11 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
     account_key = std::string(tmp);
   }
 
-  if (!config.get("vfs.azure.storage_sas_token", &found).empty() ||
-      getenv("AZURE_STORAGE_SAS_TOKEN") != nullptr) {
-    LOG_WARN(
-        "The 'vfs.azure.storage_sas_token' option is deprecated and unused. "
-        "Sppecify a URI with the SAS token in the 'vfs.azure.blob_endpoint' "
-        "option instead.");
+  std::string sas_token =
+      config.get<std::string>("vfs.azure.storage_sas_token", Config::must_find);
+  if (sas_token.empty() &&
+      ((tmp = getenv("AZURE_STORAGE_SAS_TOKEN")) != nullptr)) {
+    sas_token = std::string(tmp);
   }
 
   std::string blob_endpoint = config.get("vfs.azure.blob_endpoint", &found);
@@ -123,6 +122,9 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
     LOG_WARN(
         "The 'vfs.azure.blob_endpoint' option should include the scheme (HTTP "
         "or HTTPS).");
+  }
+  if (!blob_endpoint.empty()) {
+    blob_endpoint += sas_token;
   }
 
   RETURN_NOT_OK(config.get<uint64_t>(
@@ -172,7 +174,7 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   options.Retry.MaxRetryDelay = max_retry_delay;
 
   // Construct the Azure SDK blob service client.
-  // We pass a shared kay if it was specified.
+  // We pass a shared key if it was specified.
   if (!account_key.empty()) {
     client_ =
         tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
