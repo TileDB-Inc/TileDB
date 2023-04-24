@@ -523,7 +523,7 @@ TEST_CASE(
       {&uint8_extent, &int32_extent});
   std::vector<NDRange> mbrs =
       create_mbrs<uint8_t, int32_t>({0, 1, 3, 5}, {5, 6, 7, 9});
-   const Domain d1{dom};
+  const Domain d1{dom};
   RTree rtree(&d1, 5);
   CHECK(rtree.set_leaves(mbrs).ok());
   rtree.build_tree();
@@ -579,7 +579,7 @@ TEST_CASE(
       {&uint64_extent, &float_extent});
   std::vector<NDRange> mbrs =
       create_mbrs<uint64_t, float>({0, 1, 3, 5}, {.5f, .6f, .7f, .9f});
-   const Domain d1{dom};
+  const Domain d1{dom};
   RTree rtree(&d1, 5);
   CHECK(rtree.set_leaves(mbrs).ok());
   rtree.build_tree();
@@ -635,7 +635,7 @@ TEST_CASE(
       {&uint8_extent, &int32_extent});
   std::vector<NDRange> mbrs =
       create_mbrs<uint8_t, int32_t>({0, 1, 3, 5, 11, 20}, {5, 6, 7, 9, 11, 30});
-   const Domain d1{dom};
+  const Domain d1{dom};
   RTree rtree(&d1, 3);
   CHECK(rtree.set_leaves(mbrs).ok());
   rtree.build_tree();
@@ -704,7 +704,7 @@ TEST_CASE(
       {&uint8_extent, &int32_extent});
   std::vector<NDRange> mbrs = create_mbrs<uint8_t, int32_t>(
       {0, 1, 3, 5, 11, 20, 21, 26}, {5, 6, 7, 9, 11, 30, 31, 40});
-   const Domain d1{dom};
+  const Domain d1{dom};
   RTree rtree(&d1, 2);
   CHECK(rtree.set_leaves(mbrs).ok());
   rtree.build_tree();
@@ -1025,7 +1025,7 @@ TEST_CASE(
        "oo",
        "qqq"});
 
-   const Domain d1{dom};
+  const Domain d1{dom};
   RTree rtree(&d1, 3);
   CHECK(rtree.set_leaves(mbrs).ok());
   rtree.build_tree();
