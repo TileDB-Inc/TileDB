@@ -135,6 +135,10 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
       set(WITH_ZLIB "--with-zlib")
     endif()
 
+    if (DARWIN)
+      set(WITH_CA_BUNDLE "--with-ca-bundle=/etc/ssl/cert.pem")
+    endif()
+
     if (TARGET ep_zstd)
       list(APPEND DEPENDS ep_zstd)
       set(WITH_ZLIB "--with-zstd=${TILEDB_EP_INSTALL_PREFIX}")
@@ -200,6 +204,7 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
           ${WITH_SSL}
           ${WITH_ZLIB}
           ${WITH_ZSTD}
+          ${WITH_CA_BUNDLE}
           ${CURL_CROSS_COMPILATION_FLAGS}
       BUILD_IN_SOURCE TRUE
       BUILD_COMMAND $(MAKE)
