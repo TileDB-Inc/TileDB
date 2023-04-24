@@ -111,11 +111,15 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
     blob_endpoint = std::string(tmp);
   }
   if (blob_endpoint.empty()) {
-    LOG_WARN("The 'vfs.azure.blob_endpoint' option is not specified.");
-  }
-  if (!blob_endpoint.empty() &&
-      !(utils::parse::starts_with(blob_endpoint, "http://") ||
-        utils::parse::starts_with(blob_endpoint, "https://"))) {
+    if (!account_name.empty()) {
+      blob_endpoint = "https://" + account_name + "blob.core.windows.net";
+    } else {
+      LOG_WARN(
+          "Neither the 'vfs.azure.storage_account_name' nor the "
+          "'vfs.azure.blob_endpoint' options are specified.");
+    }
+  } else if (!(utils::parse::starts_with(blob_endpoint, "http://") ||
+               utils::parse::starts_with(blob_endpoint, "https://"))) {
     LOG_WARN(
         "The 'vfs.azure.blob_endpoint' option should include the scheme (HTTP "
         "or HTTPS).");
