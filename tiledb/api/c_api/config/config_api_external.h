@@ -328,6 +328,9 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `vfs.azure.storage_account_key` <br>
  *    Set the Azure Storage Account key. <br>
  *    **Default**: ""
+ * - `vfs.azure.storage_sas_token` <br>
+ *    Set the Azure Storage SAS (shared access signature) token. <br>
+ *    **Default**: ""
  * - `vfs.azure.blob_endpoint` <br>
  *    Overrides the default Azure Storage Blob endpoint. <br>
  *    **Default**: ""
