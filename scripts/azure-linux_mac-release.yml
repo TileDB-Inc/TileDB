@@ -24,12 +24,6 @@ steps:
 
 - bash: |
     set -e pipefail
-    brew uninstall --ignore-dependencies libidn2 brotli rtmpdump
-  condition: eq(variables['Agent.OS'], 'Darwin')
-  displayName: 'Uninstall brew packages for curl (OSX only)'
-
-- bash: |
-    set -e pipefail
     $SUDO rm -Rf /Library/Developer/CommandLineTools/SDKs/* # Remove SDKs without ARM support
 
   condition: eq(variables['Agent.OS'], 'Darwin')
