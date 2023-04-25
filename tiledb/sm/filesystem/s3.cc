@@ -1349,14 +1349,21 @@ Status S3::init_client() const {
 
   std::lock_guard<std::mutex> lck(client_init_mtx_);
 
+  auto aws_no_sign_request =
+      config_.get<bool>("vfs.s3.no_sign_request", Config::MustFindMarker());
+
   if (client_ != nullptr) {
-    // Check credentials. If expired, referesh it
+    // Check credentials. If expired, refresh it
     if (credentials_provider_) {
       Aws::Auth::AWSCredentials credentials =
           credentials_provider_->GetAWSCredentials();
-      if (credentials.IsExpiredOrEmpty()) {
+      if (credentials.IsExpired()) {
         return LOG_STATUS(
-            Status_S3Error(std::string("Credentials is expired or empty.")));
+            Status_S3Error(std::string("AWS credentials are expired.")));
+      } else if (!aws_no_sign_request && credentials.IsEmpty()) {
+        return LOG_STATUS(Status_S3Error(std::string(
+            "AWS credentials were not provided. For public S3 data, consider "
+            "setting the vfs.s3.no_sign_request config option.")));
       }
     }
     return Status::Ok();
@@ -1456,11 +1463,6 @@ Status S3::init_client() const {
   assert(found);
 
   auto aws_session_name = config_.get("vfs.s3.aws_session_name", &found);
-  assert(found);
-
-  bool aws_no_sign_request = false;
-  RETURN_NOT_OK(config_.get<bool>(
-      "vfs.s3.no_sign_request", &aws_no_sign_request, &found));
   assert(found);
 
   int64_t connect_max_tries = 0;
