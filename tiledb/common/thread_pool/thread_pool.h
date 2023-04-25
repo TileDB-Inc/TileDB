@@ -91,28 +91,21 @@ class ThreadPool {
    * @return std::future referring to the shared state created by this call
    */
 
-  template <class Fn, class... Args>
-  auto async(Fn&& f, Args&&... args) {
+  template <
+      class Fn,
+      class... Args,
+      class R = std::invoke_result_t<std::decay_t<Fn>, std::decay_t<Args>...>>
+  std::future<R> async(Fn&& f, Args&&... args) {
     if (concurrency_level_ == 0) {
-      Task invalid_future;
       LOG_ERROR("Cannot execute task; thread pool uninitialized.");
-      return invalid_future;
+      return {};
     }
 
-    using R = std::invoke_result_t<std::decay_t<Fn>, std::decay_t<Args>...>;
+    auto task =
+        make_shared<std::packaged_task<R()>>(HERE(), std::bind(f, args...));
+    task_queue_.push([task]() { (*task)(); });
 
-    auto task = make_shared<std::packaged_task<R()>>(
-        HERE(),
-        [f = std::forward<Fn>(f),
-         args = std::make_tuple(std::forward<Args>(args)...)]() mutable {
-          return std::apply(std::move(f), std::move(args));
-        });
-
-    std::future<R> future = task->get_future();
-
-    task_queue_.push(task);
-
-    return future;
+    return task->get_future();
   }
 
   /**
@@ -205,8 +198,8 @@ class ThreadPool {
 
   /** Producer-consumer queue where functions to be executed are kept */
   ProducerConsumerQueue<
-      shared_ptr<std::packaged_task<Status()>>,
-      std::deque<shared_ptr<std::packaged_task<Status()>>>>
+      std::function<void()>,
+      std::deque<std::function<void()>>>
       task_queue_;
 
   /** The worker threads */

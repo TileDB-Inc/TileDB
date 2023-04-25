@@ -102,7 +102,15 @@ ThreadPool::ThreadPool(size_t n)
 bool ThreadPool::pump() {
   auto val = task_queue_.pop();
   if (val) {
-    (**val)();
+    try {
+      (*val)();
+    } catch (const std::exception& e) {
+      LOG_ERROR(
+          "Unhandled exception when running thread pool task: " +
+          std::string(e.what()));
+    } catch (...) {
+      LOG_ERROR("Unhandled exception when running thread pool task.");
+    }
     return true;
   } else {
     return false;
