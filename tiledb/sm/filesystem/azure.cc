@@ -111,7 +111,7 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   }
   if (blob_endpoint.empty()) {
     if (!account_name.empty()) {
-      blob_endpoint = "https://" + account_name + "blob.core.windows.net";
+      blob_endpoint = "https://" + account_name + ".blob.core.windows.net";
     } else {
       LOG_WARN(
           "Neither the 'vfs.azure.storage_account_name' nor the "
