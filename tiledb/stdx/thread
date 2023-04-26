@@ -28,8 +28,9 @@
  * @section DESCRIPTION
  */
 
-#include <thread>
 
+#include <version>
+#include <thread>
 #if __cpp_lib_jthread < 201911L
 #include "bits/jthread.h"
 #endif
