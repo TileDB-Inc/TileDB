@@ -1378,24 +1378,34 @@ Status query_to_capnp(
   // Serialize attribute buffer metadata
   const auto buffer_names =
       client_side ? query.unwritten_buffer_names() : query.buffer_names();
-  auto attr_buffers_builder =
-      query_builder->initAttributeBufferHeaders(buffer_names.size());
   uint64_t total_fixed_len_bytes = 0;
   uint64_t total_var_len_bytes = 0;
   uint64_t total_validity_len_bytes = 0;
   auto& query_buffer_storage = query.get_remote_buffer_cache();
 
+  // Builder for dimension label buffers.
+  auto label_buffer_builder =
+      query_builder->initLabelBuffers(query.array_schema().dim_label_num());
+  // Builder for query attribute / dimension buffers.
+  auto attr_buffers_builder = query_builder->initAttributeBufferHeaders(
+      buffer_names.empty() ? 0 :
+                             buffer_names.size() - label_buffer_builder.size());
+  size_t attr_buffers = 0, label_buffers = 0;
   for (uint64_t i = 0; i < buffer_names.size(); i++) {
-    auto attr_buffer_builder = attr_buffers_builder[i];
     const auto& name = buffer_names[i];
     const auto& buff = query.buffer(name);
+    bool is_dim_label = query.array_schema().is_dim_label(name);
+
+    auto buffer_builder = is_dim_label ? label_buffer_builder[label_buffers++] :
+                                         attr_buffers_builder[attr_buffers++];
 
     // Adjust buffer sizes if cache exists for remote global order writes.
     uint64_t cached_fixed_size = 0;
     uint64_t cached_var_size = 0;
     uint64_t cached_validity_size = 0;
     // The cache will only exist if the query is a remote global order write.
-    if (query_buffer_storage.has_value()) {
+    // Dimension labels do not support global order writes.
+    if (!is_dim_label && query_buffer_storage.has_value()) {
       // Remote global order writes must be tile-aligned.
       // The cache sizes here reflect the bytes prepended to this query.
       // If all writes were tile-aligned these will be zero.
@@ -1411,34 +1421,34 @@ Status query_to_capnp(
       cached_validity_size = buff_cache.buffer_validity_.size();
     }
 
-    attr_buffer_builder.setName(name);
+    buffer_builder.setName(name);
     if (buff.buffer_var_ != nullptr && buff.buffer_var_size_ != nullptr) {
       // Variable-sized buffer
       // Include cached bytes for remote global order writes prepend data.
       uint64_t var_buff_size = *buff.buffer_var_size_ + cached_var_size;
       total_var_len_bytes += var_buff_size;
-      attr_buffer_builder.setVarLenBufferSizeInBytes(var_buff_size);
+      buffer_builder.setVarLenBufferSizeInBytes(var_buff_size);
 
       uint64_t offset_buff_size = *buff.buffer_size_ + cached_fixed_size;
       total_fixed_len_bytes += offset_buff_size;
-      attr_buffer_builder.setFixedLenBufferSizeInBytes(offset_buff_size);
+      buffer_builder.setFixedLenBufferSizeInBytes(offset_buff_size);
 
       // Set original user requested sizes
-      attr_buffer_builder.setOriginalVarLenBufferSizeInBytes(
+      buffer_builder.setOriginalVarLenBufferSizeInBytes(
           buff.original_buffer_var_size_);
-      attr_buffer_builder.setOriginalFixedLenBufferSizeInBytes(
+      buffer_builder.setOriginalFixedLenBufferSizeInBytes(
           buff.original_buffer_size_);
     } else if (buff.buffer_ != nullptr && buff.buffer_size_ != nullptr) {
       // Fixed-length buffer
       // Include cached bytes for remote global order writes prepend data.
       uint64_t buff_size = *buff.buffer_size_ + cached_fixed_size;
       total_fixed_len_bytes += buff_size;
-      attr_buffer_builder.setFixedLenBufferSizeInBytes(buff_size);
+      buffer_builder.setFixedLenBufferSizeInBytes(buff_size);
 
-      attr_buffer_builder.setVarLenBufferSizeInBytes(0);
+      buffer_builder.setVarLenBufferSizeInBytes(0);
       // Set original user requested sizes
-      attr_buffer_builder.setOriginalVarLenBufferSizeInBytes(0);
-      attr_buffer_builder.setOriginalFixedLenBufferSizeInBytes(
+      buffer_builder.setOriginalVarLenBufferSizeInBytes(0);
+      buffer_builder.setOriginalFixedLenBufferSizeInBytes(
           buff.original_buffer_size_);
     } else {
       throw StatusException(Status_SerializationError(
@@ -1450,10 +1460,10 @@ Status query_to_capnp(
       uint64_t buff_size =
           *buff.validity_vector_.buffer_size() + cached_validity_size;
       total_validity_len_bytes += buff_size;
-      attr_buffer_builder.setValidityLenBufferSizeInBytes(buff_size);
+      buffer_builder.setValidityLenBufferSizeInBytes(buff_size);
 
       // Set original user requested sizes
-      attr_buffer_builder.setOriginalValidityLenBufferSizeInBytes(
+      buffer_builder.setOriginalValidityLenBufferSizeInBytes(
           buff.original_validity_vector_size_);
     }
   }
@@ -1610,423 +1620,441 @@ Status query_from_capnp(
         "Cannot deserialize; no attribute buffer headers in message."));
   }
 
-  auto buffer_headers = query_reader.getAttributeBufferHeaders();
+  auto query_buffer_headers = query_reader.getAttributeBufferHeaders();
+  auto label_buffer_headers = query_reader.getLabelBuffers();
+  size_t buffer_num = 0, label_buffer_num = 0;
   auto attribute_buffer_start = static_cast<char*>(buffer_start);
-  for (auto buffer_header : buffer_headers) {
-    const std::string name = buffer_header.getName().cStr();
+  for (auto buffer_headers : {query_buffer_headers, label_buffer_headers}) {
+    for (auto buffer_header : buffer_headers) {
+      const std::string name = buffer_header.getName().cStr();
 
-    // Get buffer sizes required
-    const uint64_t fixedlen_size = buffer_header.getFixedLenBufferSizeInBytes();
-    const uint64_t varlen_size = buffer_header.getVarLenBufferSizeInBytes();
-    const uint64_t validitylen_size =
-        buffer_header.getValidityLenBufferSizeInBytes();
+      // Get buffer sizes required
+      const uint64_t fixedlen_size =
+          buffer_header.getFixedLenBufferSizeInBytes();
+      const uint64_t varlen_size = buffer_header.getVarLenBufferSizeInBytes();
+      const uint64_t validitylen_size =
+          buffer_header.getValidityLenBufferSizeInBytes();
 
-    // Get current copy state for the attribute (contains destination offsets
-    // for memcpy into user buffers).
-    QueryBufferCopyState* attr_copy_state = nullptr;
-    if (copy_state != nullptr)
-      attr_copy_state = &(*copy_state)[name];
+      // Get current copy state for the attribute (contains destination offsets
+      // for memcpy into user buffers).
+      QueryBufferCopyState* attr_copy_state = nullptr;
+      if (copy_state != nullptr)
+        attr_copy_state = &(*copy_state)[name];
 
-    // Get any buffers already set on this query object.
-    uint64_t* existing_offset_buffer = nullptr;
-    uint64_t existing_offset_buffer_size = 0;
-    void* existing_buffer = nullptr;
-    uint64_t existing_buffer_size = 0;
-    uint8_t* existing_validity_buffer = nullptr;
-    uint64_t existing_validity_buffer_size = 0;
+      // Get any buffers already set on this query object.
+      uint64_t* existing_offset_buffer = nullptr;
+      uint64_t existing_offset_buffer_size = 0;
+      void* existing_buffer = nullptr;
+      uint64_t existing_buffer_size = 0;
+      uint8_t* existing_validity_buffer = nullptr;
+      uint64_t existing_validity_buffer_size = 0;
 
-    auto var_size = schema.var_size(name);
-    auto nullable = schema.is_nullable(name);
-    const QueryBuffer& query_buffer = query->buffer(name);
-    if (type == QueryType::READ) {
-      // We use the query_buffer directly in order to get the original buffer
-      // sizes. This avoid a problem where an incomplete query will change the
-      // users buffer size to the smaller results and we end up not being able
-      // to correctly calculate if the new results can fit into the users buffer
-      if (var_size) {
-        if (!nullable) {
-          existing_offset_buffer = static_cast<uint64_t*>(query_buffer.buffer_);
-          existing_offset_buffer_size = query_buffer.original_buffer_size_;
-          existing_buffer = query_buffer.buffer_var_;
-          existing_buffer_size = query_buffer.original_buffer_var_size_;
-        } else {
-          existing_offset_buffer = static_cast<uint64_t*>(query_buffer.buffer_);
-          existing_offset_buffer_size = query_buffer.original_buffer_size_;
-          existing_buffer = query_buffer.buffer_var_;
-          existing_buffer_size = query_buffer.original_buffer_var_size_;
-          existing_validity_buffer = query_buffer.validity_vector_.buffer();
-          existing_validity_buffer_size =
-              query_buffer.original_validity_vector_size_;
-        }
-      } else {
-        if (!nullable) {
-          existing_buffer = query_buffer.buffer_;
-          existing_buffer_size = query_buffer.original_buffer_size_;
-        } else {
-          existing_buffer = query_buffer.buffer_;
-          existing_buffer_size = query_buffer.original_buffer_size_;
-          existing_validity_buffer = query_buffer.validity_vector_.buffer();
-          existing_validity_buffer_size =
-              query_buffer.original_validity_vector_size_;
-        }
-      }
-    } else if (query_type == QueryType::WRITE) {
-      // For writes we need ptrs to set the sizes properly
-      uint64_t* existing_buffer_size_ptr = nullptr;
-      uint64_t* existing_offset_buffer_size_ptr = nullptr;
-      uint64_t* existing_validity_buffer_size_ptr = nullptr;
-
-      if (var_size) {
-        if (!nullable) {
-          RETURN_NOT_OK(query->get_data_buffer(
-              name.c_str(), &existing_buffer, &existing_buffer_size_ptr));
-          RETURN_NOT_OK(query->get_offsets_buffer(
-              name.c_str(),
-              &existing_offset_buffer,
-              &existing_offset_buffer_size_ptr));
-
-          if (existing_offset_buffer_size_ptr != nullptr)
-            existing_offset_buffer_size = *existing_offset_buffer_size_ptr;
-          if (existing_buffer_size_ptr != nullptr)
-            existing_buffer_size = *existing_buffer_size_ptr;
-        } else {
-          RETURN_NOT_OK(query->get_data_buffer(
-              name.c_str(), &existing_buffer, &existing_buffer_size_ptr));
-          RETURN_NOT_OK(query->get_offsets_buffer(
-              name.c_str(),
-              &existing_offset_buffer,
-              &existing_offset_buffer_size_ptr));
-          RETURN_NOT_OK(query->get_validity_buffer(
-              name.c_str(),
-              &existing_validity_buffer,
-              &existing_validity_buffer_size_ptr));
-
-          if (existing_offset_buffer_size_ptr != nullptr)
-            existing_offset_buffer_size = *existing_offset_buffer_size_ptr;
-          if (existing_buffer_size_ptr != nullptr)
-            existing_buffer_size = *existing_buffer_size_ptr;
-          if (existing_validity_buffer_size_ptr != nullptr)
-            existing_validity_buffer_size = *existing_validity_buffer_size_ptr;
-        }
-      } else {
-        if (!nullable) {
-          RETURN_NOT_OK(query->get_data_buffer(
-              name.c_str(), &existing_buffer, &existing_buffer_size_ptr));
-
-          if (existing_buffer_size_ptr != nullptr)
-            existing_buffer_size = *existing_buffer_size_ptr;
-        } else {
-          RETURN_NOT_OK(query->get_data_buffer(
-              name.c_str(), &existing_buffer, &existing_buffer_size_ptr));
-          RETURN_NOT_OK(query->get_validity_buffer(
-              name.c_str(),
-              &existing_validity_buffer,
-              &existing_validity_buffer_size_ptr));
-
-          if (existing_buffer_size_ptr != nullptr)
-            existing_buffer_size = *existing_buffer_size_ptr;
-          if (existing_validity_buffer_size_ptr != nullptr)
-            existing_validity_buffer_size = *existing_validity_buffer_size_ptr;
-        }
-      }
-    } else {
-      // Delete queries have nothing to deserialize.
-    }
-
-    if (context == SerializationContext::CLIENT) {
-      // For reads, copy the response data into user buffers. For writes,
-      // nothing to do.
+      auto var_size = schema.var_size(name);
+      auto nullable = schema.is_nullable(name);
+      const QueryBuffer& query_buffer = query->buffer(name);
       if (type == QueryType::READ) {
-        // For read queries on the client side, we require buffers have been set
-        // by the user, and that they are large enough for all serialized data.
-        const uint64_t curr_data_size =
-            attr_copy_state == nullptr ? 0 : attr_copy_state->data_size;
-        const uint64_t data_size_left = existing_buffer_size - curr_data_size;
-        const uint64_t curr_offset_size =
-            attr_copy_state == nullptr ? 0 : attr_copy_state->offset_size;
-        const uint64_t offset_size_left =
-            existing_offset_buffer_size == 0 ?
-                0 :
-                existing_offset_buffer_size - curr_offset_size;
-        const uint64_t curr_validity_size =
-            attr_copy_state == nullptr ? 0 : attr_copy_state->validity_size;
-        const uint64_t validity_size_left =
-            existing_validity_buffer_size == 0 ?
-                0 :
-                existing_validity_buffer_size - curr_validity_size;
-
-        const bool has_mem_for_data =
-            (var_size && data_size_left >= varlen_size) ||
-            (!var_size && data_size_left >= fixedlen_size);
-        const bool has_mem_for_offset =
-            (var_size && offset_size_left >= fixedlen_size) || !var_size;
-        const bool has_mem_for_validity =
-            validity_size_left >= validitylen_size;
-
-        if (!has_mem_for_data || !has_mem_for_offset || !has_mem_for_validity) {
-          return LOG_STATUS(Status_SerializationError(
-              "Error deserializing query; buffer too small for buffer '" +
-              name + "'."));
-        }
-
-        // Copy the response data into user buffers.
+        // We use the query_buffer directly in order to get the original buffer
+        // sizes. This avoid a problem where an incomplete query will change the
+        // users buffer size to the smaller results and we end up not being able
+        // to correctly calculate if the new results can fit into the users
+        // buffer
         if (var_size) {
-          // Var size attribute; buffers already set.
-          char* offset_dest = (char*)existing_offset_buffer + curr_offset_size;
-          char* data_dest = (char*)existing_buffer + curr_data_size;
-          char* validity_dest =
-              (char*)existing_validity_buffer + curr_validity_size;
-          uint64_t fixedlen_size_to_copy = fixedlen_size;
-
-          // If the last query included an extra offset we will skip the first
-          // offset in this query The first offset is the 0 position which ends
-          // up the same as the extra offset in the last query 0th is converted
-          // below to curr_data_size which is also the n+1 offset in arrow mode
-          if (attr_copy_state != nullptr &&
-              attr_copy_state->last_query_added_extra_offset) {
-            attribute_buffer_start += sizeof(uint64_t);
-            fixedlen_size_to_copy -= sizeof(uint64_t);
-          }
-
-          std::memcpy(
-              offset_dest, attribute_buffer_start, fixedlen_size_to_copy);
-          attribute_buffer_start += fixedlen_size_to_copy;
-          std::memcpy(data_dest, attribute_buffer_start, varlen_size);
-          attribute_buffer_start += varlen_size;
-          if (nullable) {
-            std::memcpy(
-                validity_dest, attribute_buffer_start, validitylen_size);
-            attribute_buffer_start += validitylen_size;
-          }
-
-          // The offsets in each buffer correspond to the values in its
-          // data buffer. To build a single contiguous buffer, we must
-          // ensure the offset values continue in ascending order from the
-          // previous buffer. For example, consider the following example
-          // storing int32 values.
-          //
-          // Buffer #1:
-          //   offsets: [0, 8, 16]
-          //   values:  [1, 2, 3, 4, 5, 6, 7]
-          //
-          // Buffer #2:
-          //   offsets: [0, 12]
-          //   values:  [100, 200, 300, 400, 500]
-          //
-          // The final, contiguous buffer will be:
-          //   offsets: [0, 8, 16, 28, 40]
-          //   values:  [1, 2, 3, 4, 5, 6, 7, 100, 200, 300, 400, 500]
-          //
-          // The last two offsets, `28, 40` were calculated by adding `28`
-          // to offsets of Buffer #2: [0, 12]. The `28` was calculated as
-          // the byte size of the values in Buffer #1.
-          if (curr_data_size > 0) {
-            for (uint64_t i = 0; i < (fixedlen_size_to_copy / sizeof(uint64_t));
-                 ++i) {
-              reinterpret_cast<uint64_t*>(offset_dest)[i] += curr_data_size;
-            }
-          }
-
-          // attr_copy_state==nulptr models the case of deserialization code
-          // being called via the C API tiledb_query_deserialize (e.g. unit
-          // test serialization wrappers).
-          // When a rest_client exists, there is always a non null copy_state
-          // incoming argument from which attr_copy_state is initialized
-          if (attr_copy_state == nullptr) {
-            // Set the size directly on the query (so user can introspect on
-            // result size).
-            // Subsequent incomplete submits will use the original buffer
-            // sizes members from the query in the beginning of the loop
-            // to calculate if user buffers have enough space to hold the data,
-            // here we only care that after data received from the wire is
-            // copied within the user buffers, the buffer sizes are accurate so
-            // user can introspect.
-            *query_buffer.buffer_size_ =
-                curr_offset_size + fixedlen_size_to_copy;
-            *query_buffer.buffer_var_size_ = curr_data_size + varlen_size;
-            if (nullable) {
-              *query_buffer.validity_vector_.buffer_size() =
-                  curr_validity_size + validitylen_size;
-            }
+          if (!nullable) {
+            existing_offset_buffer =
+                static_cast<uint64_t*>(query_buffer.buffer_);
+            existing_offset_buffer_size = query_buffer.original_buffer_size_;
+            existing_buffer = query_buffer.buffer_var_;
+            existing_buffer_size = query_buffer.original_buffer_var_size_;
           } else {
-            // Accumulate total bytes copied (caller's responsibility to
-            // eventually update the query).
-            attr_copy_state->offset_size += fixedlen_size_to_copy;
-            attr_copy_state->data_size += varlen_size;
-            attr_copy_state->validity_size += validitylen_size;
-            // Set whether the extra offset was included or not
-            attr_copy_state->last_query_added_extra_offset =
-                query_reader.getVarOffsetsAddExtraElement();
+            existing_offset_buffer =
+                static_cast<uint64_t*>(query_buffer.buffer_);
+            existing_offset_buffer_size = query_buffer.original_buffer_size_;
+            existing_buffer = query_buffer.buffer_var_;
+            existing_buffer_size = query_buffer.original_buffer_var_size_;
+            existing_validity_buffer = query_buffer.validity_vector_.buffer();
+            existing_validity_buffer_size =
+                query_buffer.original_validity_vector_size_;
           }
         } else {
-          // Fixed size attribute; buffers already set.
-          char* data_dest = (char*)existing_buffer + curr_data_size;
-
-          std::memcpy(data_dest, attribute_buffer_start, fixedlen_size);
-          attribute_buffer_start += fixedlen_size;
-          if (nullable) {
-            char* validity_dest =
-                (char*)existing_validity_buffer + curr_validity_size;
-            std::memcpy(
-                validity_dest, attribute_buffer_start, validitylen_size);
-            attribute_buffer_start += validitylen_size;
-          }
-
-          // attr_copy_state==nulptr models the case of deserialization code
-          // being called via the C API tiledb_query_deserialize (e.g. unit
-          // test serialization wrappers).
-          // When a rest_client exists, there is always a non null copy_state
-          // incoming argument from which attr_copy_state is initialized
-          if (attr_copy_state == nullptr) {
-            // Set the size directly on the query (so user can introspect on
-            // result size).
-            // Subsequent incomplete submits will use the original buffer
-            // sizes members from the query in the beginning of the loop
-            // to calculate if user buffers have enough space to hold the data,
-            // here we only care that after data received from the wire is
-            // copied within the user buffers, the buffer sizes are accurate so
-            // user can introspect.
-            *query_buffer.buffer_size_ = curr_data_size + fixedlen_size;
-            if (nullable) {
-              *query_buffer.validity_vector_.buffer_size() =
-                  curr_validity_size + validitylen_size;
-            }
+          if (!nullable) {
+            existing_buffer = query_buffer.buffer_;
+            existing_buffer_size = query_buffer.original_buffer_size_;
           } else {
-            attr_copy_state->data_size += fixedlen_size;
-            if (nullable)
-              attr_copy_state->validity_size += validitylen_size;
-          }
-        }
-      }
-      // Nothing to do for writes on client side.
-
-    } else if (context == SerializationContext::SERVER) {
-      // Always expect null buffers when deserializing.
-      if (existing_buffer != nullptr || existing_offset_buffer != nullptr ||
-          existing_validity_buffer != nullptr)
-        return LOG_STATUS(
-            Status_SerializationError("Error deserializing query; unexpected "
-                                      "buffer set on server-side."));
-
-      Query::SerializationState::AttrState* attr_state;
-      RETURN_NOT_OK(query->get_attr_serialization_state(name, &attr_state));
-      if (type == QueryType::READ) {
-        // On reads, just set null pointers with accurate size so that the
-        // server can introspect and allocate properly sized buffers separately.
-        Buffer offsets_buff(nullptr, fixedlen_size);
-        Buffer varlen_buff(nullptr, varlen_size);
-        Buffer validitylen_buff(nullptr, validitylen_size);
-        // For the server on reads we want to set the original user requested
-        // buffer sizes This handles the case of incomplete queries where on the
-        // second `submit()` call the client's buffer size will be the first
-        // submit's result size not the original user set buffer size. To work
-        // around this we revert the server to always use the full original user
-        // requested buffer sizes.
-        // We check for > 0 for fallback for clients older than 2.2.5
-        if (buffer_header.getOriginalFixedLenBufferSizeInBytes() > 0) {
-          attr_state->fixed_len_size =
-              buffer_header.getOriginalFixedLenBufferSizeInBytes();
-        } else {
-          attr_state->fixed_len_size =
-              buffer_header.getFixedLenBufferSizeInBytes();
-        }
-
-        if (buffer_header.getOriginalVarLenBufferSizeInBytes() > 0) {
-          attr_state->var_len_size =
-              buffer_header.getOriginalVarLenBufferSizeInBytes();
-        } else {
-          attr_state->var_len_size = buffer_header.getVarLenBufferSizeInBytes();
-        }
-
-        if (buffer_header.getOriginalValidityLenBufferSizeInBytes() > 0) {
-          attr_state->validity_len_size =
-              buffer_header.getOriginalValidityLenBufferSizeInBytes();
-        } else {
-          attr_state->validity_len_size =
-              buffer_header.getValidityLenBufferSizeInBytes();
-        }
-
-        attr_state->fixed_len_data.swap(offsets_buff);
-        attr_state->var_len_data.swap(varlen_buff);
-        attr_state->validity_len_data.swap(validitylen_buff);
-        if (var_size) {
-          throw_if_not_ok(query->set_data_buffer(
-              name, nullptr, &attr_state->var_len_size, false, true));
-          throw_if_not_ok(query->set_offsets_buffer(
-              name, nullptr, &attr_state->fixed_len_size, false, true));
-          if (nullable) {
-            throw_if_not_ok(query->set_validity_buffer(
-                name, nullptr, &attr_state->validity_len_size, false, true));
-          }
-        } else {
-          throw_if_not_ok(query->set_data_buffer(
-              name, nullptr, &attr_state->fixed_len_size, false, true));
-          if (nullable) {
-            throw_if_not_ok(query->set_validity_buffer(
-                name, nullptr, &attr_state->validity_len_size, false, true));
+            existing_buffer = query_buffer.buffer_;
+            existing_buffer_size = query_buffer.original_buffer_size_;
+            existing_validity_buffer = query_buffer.validity_vector_.buffer();
+            existing_validity_buffer_size =
+                query_buffer.original_validity_vector_size_;
           }
         }
       } else if (query_type == QueryType::WRITE) {
-        // On writes, just set buffer pointers wrapping the data in the message.
+        // For writes we need ptrs to set the sizes properly
+        uint64_t* existing_buffer_size_ptr = nullptr;
+        uint64_t* existing_offset_buffer_size_ptr = nullptr;
+        uint64_t* existing_validity_buffer_size_ptr = nullptr;
+
         if (var_size) {
-          auto* offsets = reinterpret_cast<uint64_t*>(attribute_buffer_start);
-          auto* varlen_data = attribute_buffer_start + fixedlen_size;
-          auto* validity = reinterpret_cast<uint8_t*>(
-              attribute_buffer_start + fixedlen_size + varlen_size);
+          if (!nullable) {
+            RETURN_NOT_OK(query->get_data_buffer(
+                name.c_str(), &existing_buffer, &existing_buffer_size_ptr));
+            RETURN_NOT_OK(query->get_offsets_buffer(
+                name.c_str(),
+                &existing_offset_buffer,
+                &existing_offset_buffer_size_ptr));
 
-          attribute_buffer_start +=
-              fixedlen_size + varlen_size + validitylen_size;
+            if (existing_offset_buffer_size_ptr != nullptr)
+              existing_offset_buffer_size = *existing_offset_buffer_size_ptr;
+            if (existing_buffer_size_ptr != nullptr)
+              existing_buffer_size = *existing_buffer_size_ptr;
+          } else {
+            RETURN_NOT_OK(query->get_data_buffer(
+                name.c_str(), &existing_buffer, &existing_buffer_size_ptr));
+            RETURN_NOT_OK(query->get_offsets_buffer(
+                name.c_str(),
+                &existing_offset_buffer,
+                &existing_offset_buffer_size_ptr));
+            RETURN_NOT_OK(query->get_validity_buffer(
+                name.c_str(),
+                &existing_validity_buffer,
+                &existing_validity_buffer_size_ptr));
 
-          Buffer offsets_buff(offsets, fixedlen_size);
-          Buffer varlen_buff(varlen_data, varlen_size);
-          Buffer validity_buff(
-              validitylen_size > 0 ? validity : nullptr, validitylen_size);
-
-          attr_state->fixed_len_size = fixedlen_size;
-          attr_state->var_len_size = varlen_size;
-          attr_state->validity_len_size = validitylen_size;
-
-          attr_state->fixed_len_data.swap(offsets_buff);
-          attr_state->var_len_data.swap(varlen_buff);
-          attr_state->validity_len_data.swap(validity_buff);
-
-          throw_if_not_ok(query->set_data_buffer(
-              name, varlen_data, &attr_state->var_len_size, true, true));
-          throw_if_not_ok(query->set_offsets_buffer(
-              name, offsets, &attr_state->fixed_len_size, true, true));
-          if (nullable) {
-            throw_if_not_ok(query->set_validity_buffer(
-                name, validity, &attr_state->validity_len_size, true, true));
+            if (existing_offset_buffer_size_ptr != nullptr)
+              existing_offset_buffer_size = *existing_offset_buffer_size_ptr;
+            if (existing_buffer_size_ptr != nullptr)
+              existing_buffer_size = *existing_buffer_size_ptr;
+            if (existing_validity_buffer_size_ptr != nullptr)
+              existing_validity_buffer_size =
+                  *existing_validity_buffer_size_ptr;
           }
         } else {
-          auto* data = attribute_buffer_start;
-          auto* validity = reinterpret_cast<uint8_t*>(
-              attribute_buffer_start + fixedlen_size);
+          if (!nullable) {
+            RETURN_NOT_OK(query->get_data_buffer(
+                name.c_str(), &existing_buffer, &existing_buffer_size_ptr));
 
-          attribute_buffer_start += fixedlen_size + validitylen_size;
+            if (existing_buffer_size_ptr != nullptr)
+              existing_buffer_size = *existing_buffer_size_ptr;
+          } else {
+            RETURN_NOT_OK(query->get_data_buffer(
+                name.c_str(), &existing_buffer, &existing_buffer_size_ptr));
+            RETURN_NOT_OK(query->get_validity_buffer(
+                name.c_str(),
+                &existing_validity_buffer,
+                &existing_validity_buffer_size_ptr));
 
-          Buffer buff(data, fixedlen_size);
-          Buffer varlen_buff(nullptr, 0);
-          Buffer validity_buff(
-              validitylen_size > 0 ? validity : nullptr, validitylen_size);
-
-          attr_state->fixed_len_size = fixedlen_size;
-          attr_state->var_len_size = varlen_size;
-          attr_state->validity_len_size = validitylen_size;
-
-          attr_state->fixed_len_data.swap(buff);
-          attr_state->var_len_data.swap(varlen_buff);
-          attr_state->validity_len_data.swap(validity_buff);
-
-          throw_if_not_ok(query->set_data_buffer(
-              name, data, &attr_state->fixed_len_size, true, true));
-          if (nullable) {
-            throw_if_not_ok(query->set_validity_buffer(
-                name, validity, &attr_state->validity_len_size, true, true));
+            if (existing_buffer_size_ptr != nullptr)
+              existing_buffer_size = *existing_buffer_size_ptr;
+            if (existing_validity_buffer_size_ptr != nullptr)
+              existing_validity_buffer_size =
+                  *existing_validity_buffer_size_ptr;
           }
         }
       } else {
-        // Delete queries have no buffers to deserialize.
+        // Delete queries have nothing to deserialize.
+      }
+
+      if (context == SerializationContext::CLIENT) {
+        // For reads, copy the response data into user buffers. For writes,
+        // nothing to do.
+        if (type == QueryType::READ) {
+          // For read queries on the client side, we require buffers have been
+          // set by the user, and that they are large enough for all serialized
+          // data.
+          const uint64_t curr_data_size =
+              attr_copy_state == nullptr ? 0 : attr_copy_state->data_size;
+          const uint64_t data_size_left = existing_buffer_size - curr_data_size;
+          const uint64_t curr_offset_size =
+              attr_copy_state == nullptr ? 0 : attr_copy_state->offset_size;
+          const uint64_t offset_size_left =
+              existing_offset_buffer_size == 0 ?
+                  0 :
+                  existing_offset_buffer_size - curr_offset_size;
+          const uint64_t curr_validity_size =
+              attr_copy_state == nullptr ? 0 : attr_copy_state->validity_size;
+          const uint64_t validity_size_left =
+              existing_validity_buffer_size == 0 ?
+                  0 :
+                  existing_validity_buffer_size - curr_validity_size;
+
+          const bool has_mem_for_data =
+              (var_size && data_size_left >= varlen_size) ||
+              (!var_size && data_size_left >= fixedlen_size);
+          const bool has_mem_for_offset =
+              (var_size && offset_size_left >= fixedlen_size) || !var_size;
+          const bool has_mem_for_validity =
+              validity_size_left >= validitylen_size;
+
+          if (!has_mem_for_data || !has_mem_for_offset ||
+              !has_mem_for_validity) {
+            return LOG_STATUS(Status_SerializationError(
+                "Error deserializing query; buffer too small for buffer '" +
+                name + "'."));
+          }
+
+          // Copy the response data into user buffers.
+          if (var_size) {
+            // Var size attribute; buffers already set.
+            char* offset_dest =
+                (char*)existing_offset_buffer + curr_offset_size;
+            char* data_dest = (char*)existing_buffer + curr_data_size;
+            char* validity_dest =
+                (char*)existing_validity_buffer + curr_validity_size;
+            uint64_t fixedlen_size_to_copy = fixedlen_size;
+
+            // If the last query included an extra offset we will skip the first
+            // offset in this query The first offset is the 0 position which
+            // ends up the same as the extra offset in the last query 0th is
+            // converted below to curr_data_size which is also the n+1 offset in
+            // arrow mode
+            if (attr_copy_state != nullptr &&
+                attr_copy_state->last_query_added_extra_offset) {
+              attribute_buffer_start += sizeof(uint64_t);
+              fixedlen_size_to_copy -= sizeof(uint64_t);
+            }
+
+            std::memcpy(
+                offset_dest, attribute_buffer_start, fixedlen_size_to_copy);
+            attribute_buffer_start += fixedlen_size_to_copy;
+            std::memcpy(data_dest, attribute_buffer_start, varlen_size);
+            attribute_buffer_start += varlen_size;
+            if (nullable) {
+              std::memcpy(
+                  validity_dest, attribute_buffer_start, validitylen_size);
+              attribute_buffer_start += validitylen_size;
+            }
+
+            // The offsets in each buffer correspond to the values in its
+            // data buffer. To build a single contiguous buffer, we must
+            // ensure the offset values continue in ascending order from the
+            // previous buffer. For example, consider the following example
+            // storing int32 values.
+            //
+            // Buffer #1:
+            //   offsets: [0, 8, 16]
+            //   values:  [1, 2, 3, 4, 5, 6, 7]
+            //
+            // Buffer #2:
+            //   offsets: [0, 12]
+            //   values:  [100, 200, 300, 400, 500]
+            //
+            // The final, contiguous buffer will be:
+            //   offsets: [0, 8, 16, 28, 40]
+            //   values:  [1, 2, 3, 4, 5, 6, 7, 100, 200, 300, 400, 500]
+            //
+            // The last two offsets, `28, 40` were calculated by adding `28`
+            // to offsets of Buffer #2: [0, 12]. The `28` was calculated as
+            // the byte size of the values in Buffer #1.
+            if (curr_data_size > 0) {
+              for (uint64_t i = 0;
+                   i < (fixedlen_size_to_copy / sizeof(uint64_t));
+                   ++i) {
+                reinterpret_cast<uint64_t*>(offset_dest)[i] += curr_data_size;
+              }
+            }
+
+            // attr_copy_state==nulptr models the case of deserialization code
+            // being called via the C API tiledb_query_deserialize (e.g. unit
+            // test serialization wrappers).
+            // When a rest_client exists, there is always a non null copy_state
+            // incoming argument from which attr_copy_state is initialized
+            if (attr_copy_state == nullptr) {
+              // Set the size directly on the query (so user can introspect on
+              // result size).
+              // Subsequent incomplete submits will use the original buffer
+              // sizes members from the query in the beginning of the loop
+              // to calculate if user buffers have enough space to hold the
+              // data, here we only care that after data received from the wire
+              // is copied within the user buffers, the buffer sizes are
+              // accurate so user can introspect.
+              *query_buffer.buffer_size_ =
+                  curr_offset_size + fixedlen_size_to_copy;
+              *query_buffer.buffer_var_size_ = curr_data_size + varlen_size;
+              if (nullable) {
+                *query_buffer.validity_vector_.buffer_size() =
+                    curr_validity_size + validitylen_size;
+              }
+            } else {
+              // Accumulate total bytes copied (caller's responsibility to
+              // eventually update the query).
+              attr_copy_state->offset_size += fixedlen_size_to_copy;
+              attr_copy_state->data_size += varlen_size;
+              attr_copy_state->validity_size += validitylen_size;
+              // Set whether the extra offset was included or not
+              attr_copy_state->last_query_added_extra_offset =
+                  query_reader.getVarOffsetsAddExtraElement();
+            }
+          } else {
+            // Fixed size attribute; buffers already set.
+            char* data_dest = (char*)existing_buffer + curr_data_size;
+
+            std::memcpy(data_dest, attribute_buffer_start, fixedlen_size);
+            attribute_buffer_start += fixedlen_size;
+            if (nullable) {
+              char* validity_dest =
+                  (char*)existing_validity_buffer + curr_validity_size;
+              std::memcpy(
+                  validity_dest, attribute_buffer_start, validitylen_size);
+              attribute_buffer_start += validitylen_size;
+            }
+
+            // attr_copy_state==nulptr models the case of deserialization code
+            // being called via the C API tiledb_query_deserialize (e.g. unit
+            // test serialization wrappers).
+            // When a rest_client exists, there is always a non null copy_state
+            // incoming argument from which attr_copy_state is initialized
+            if (attr_copy_state == nullptr) {
+              // Set the size directly on the query (so user can introspect on
+              // result size).
+              // Subsequent incomplete submits will use the original buffer
+              // sizes members from the query in the beginning of the loop
+              // to calculate if user buffers have enough space to hold the
+              // data, here we only care that after data received from the wire
+              // is copied within the user buffers, the buffer sizes are
+              // accurate so user can introspect.
+              *query_buffer.buffer_size_ = curr_data_size + fixedlen_size;
+              if (nullable) {
+                *query_buffer.validity_vector_.buffer_size() =
+                    curr_validity_size + validitylen_size;
+              }
+            } else {
+              attr_copy_state->data_size += fixedlen_size;
+              if (nullable)
+                attr_copy_state->validity_size += validitylen_size;
+            }
+          }
+        }
+        // Nothing to do for writes on client side.
+
+      } else if (context == SerializationContext::SERVER) {
+        // Always expect null buffers when deserializing.
+        if (existing_buffer != nullptr || existing_offset_buffer != nullptr ||
+            existing_validity_buffer != nullptr)
+          return LOG_STATUS(
+              Status_SerializationError("Error deserializing query; unexpected "
+                                        "buffer set on server-side."));
+
+        Query::SerializationState::AttrState* attr_state;
+        RETURN_NOT_OK(query->get_attr_serialization_state(name, &attr_state));
+        if (type == QueryType::READ) {
+          // On reads, just set null pointers with accurate size so that the
+          // server can introspect and allocate properly sized buffers
+          // separately.
+          Buffer offsets_buff(nullptr, fixedlen_size);
+          Buffer varlen_buff(nullptr, varlen_size);
+          Buffer validitylen_buff(nullptr, validitylen_size);
+          // For the server on reads we want to set the original user requested
+          // buffer sizes This handles the case of incomplete queries where on
+          // the second `submit()` call the client's buffer size will be the
+          // first submit's result size not the original user set buffer size.
+          // To work around this we revert the server to always use the full
+          // original user requested buffer sizes. We check for > 0 for fallback
+          // for clients older than 2.2.5
+          if (buffer_header.getOriginalFixedLenBufferSizeInBytes() > 0) {
+            attr_state->fixed_len_size =
+                buffer_header.getOriginalFixedLenBufferSizeInBytes();
+          } else {
+            attr_state->fixed_len_size =
+                buffer_header.getFixedLenBufferSizeInBytes();
+          }
+
+          if (buffer_header.getOriginalVarLenBufferSizeInBytes() > 0) {
+            attr_state->var_len_size =
+                buffer_header.getOriginalVarLenBufferSizeInBytes();
+          } else {
+            attr_state->var_len_size =
+                buffer_header.getVarLenBufferSizeInBytes();
+          }
+
+          if (buffer_header.getOriginalValidityLenBufferSizeInBytes() > 0) {
+            attr_state->validity_len_size =
+                buffer_header.getOriginalValidityLenBufferSizeInBytes();
+          } else {
+            attr_state->validity_len_size =
+                buffer_header.getValidityLenBufferSizeInBytes();
+          }
+
+          attr_state->fixed_len_data.swap(offsets_buff);
+          attr_state->var_len_data.swap(varlen_buff);
+          attr_state->validity_len_data.swap(validitylen_buff);
+          if (var_size) {
+            throw_if_not_ok(query->set_data_buffer(
+                name, nullptr, &attr_state->var_len_size, false, true));
+            throw_if_not_ok(query->set_offsets_buffer(
+                name, nullptr, &attr_state->fixed_len_size, false, true));
+            if (nullable) {
+              throw_if_not_ok(query->set_validity_buffer(
+                  name, nullptr, &attr_state->validity_len_size, false, true));
+            }
+          } else {
+            throw_if_not_ok(query->set_data_buffer(
+                name, nullptr, &attr_state->fixed_len_size, false, true));
+            if (nullable) {
+              throw_if_not_ok(query->set_validity_buffer(
+                  name, nullptr, &attr_state->validity_len_size, false, true));
+            }
+          }
+        } else if (query_type == QueryType::WRITE) {
+          // On writes, just set buffer pointers wrapping the data in the
+          // message.
+          if (var_size) {
+            auto* offsets = reinterpret_cast<uint64_t*>(attribute_buffer_start);
+            auto* varlen_data = attribute_buffer_start + fixedlen_size;
+            auto* validity = reinterpret_cast<uint8_t*>(
+                attribute_buffer_start + fixedlen_size + varlen_size);
+
+            attribute_buffer_start +=
+                fixedlen_size + varlen_size + validitylen_size;
+
+            Buffer offsets_buff(offsets, fixedlen_size);
+            Buffer varlen_buff(varlen_data, varlen_size);
+            Buffer validity_buff(
+                validitylen_size > 0 ? validity : nullptr, validitylen_size);
+
+            attr_state->fixed_len_size = fixedlen_size;
+            attr_state->var_len_size = varlen_size;
+            attr_state->validity_len_size = validitylen_size;
+
+            attr_state->fixed_len_data.swap(offsets_buff);
+            attr_state->var_len_data.swap(varlen_buff);
+            attr_state->validity_len_data.swap(validity_buff);
+
+            throw_if_not_ok(query->set_data_buffer(
+                name, varlen_data, &attr_state->var_len_size, true, true));
+            throw_if_not_ok(query->set_offsets_buffer(
+                name, offsets, &attr_state->fixed_len_size, true, true));
+            if (nullable) {
+              throw_if_not_ok(query->set_validity_buffer(
+                  name, validity, &attr_state->validity_len_size, true, true));
+            }
+          } else {
+            auto* data = attribute_buffer_start;
+            auto* validity = reinterpret_cast<uint8_t*>(
+                attribute_buffer_start + fixedlen_size);
+
+            attribute_buffer_start += fixedlen_size + validitylen_size;
+
+            Buffer buff(data, fixedlen_size);
+            Buffer varlen_buff(nullptr, 0);
+            Buffer validity_buff(
+                validitylen_size > 0 ? validity : nullptr, validitylen_size);
+
+            attr_state->fixed_len_size = fixedlen_size;
+            attr_state->var_len_size = varlen_size;
+            attr_state->validity_len_size = validitylen_size;
+
+            attr_state->fixed_len_data.swap(buff);
+            attr_state->var_len_data.swap(varlen_buff);
+            attr_state->validity_len_data.swap(validity_buff);
+
+            throw_if_not_ok(query->set_data_buffer(
+                name, data, &attr_state->fixed_len_size, true, true));
+            if (nullable) {
+              throw_if_not_ok(query->set_validity_buffer(
+                  name, validity, &attr_state->validity_len_size, true, true));
+            }
+          }
+        } else {
+          // Delete queries have no buffers to deserialize.
+        }
       }
     }
   }
