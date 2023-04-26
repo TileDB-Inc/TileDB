@@ -99,14 +99,18 @@ ThreadPool::ThreadPool(size_t n)
   }
 }
 
+bool ThreadPool::pump() {
+  auto val = task_queue_.pop();
+  if (val) {
+    (**val)();
+    return true;
+  } else {
+    return false;
+  }
+}
+
 void ThreadPool::worker() {
-  while (true) {
-    auto val = task_queue_.pop();
-    if (val) {
-      (*(*val))();
-    } else {
-      break;
-    }
+  while (pump()) {
   }
 }
 
@@ -188,9 +192,7 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
 
       // In the meantime, try to do something useful to make progress (and avoid
       // deadlock)
-      if (auto val = task_queue_.try_pop()) {
-        (*(*val))();
-      } else {
+      if (!pump()) {
         // If nothing useful to do, yield so we don't burn cycles
         // going through the task list over and over (thereby slowing down other
         // threads).
@@ -237,9 +239,7 @@ Status ThreadPool::wait(Task& task) {
     } else {
       // In the meantime, try to do something useful to make progress (and avoid
       // deadlock)
-      if (auto val = task_queue_.try_pop()) {
-        (*(*val))();
-      } else {
+      if (pump()) {
         std::this_thread::yield();
       }
     }

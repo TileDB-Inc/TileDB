@@ -154,9 +154,34 @@ class ThreadPool {
   std::vector<Status> wait_all_status(std::vector<Task>& tasks);
 
   /**
-   * Wait on a single tasks to complete. This function is safe to call
+   * Wait on a single task to complete. This function is safe to call
    * recursively and may execute pending tasks on the calling thread while
    * waiting.
+   *
+   * @param task Task to wait on.
+   * @return The task's result.
+   */
+  template <class R>
+  R wait(std::future<R>& task) {
+    if (!task.valid()) {
+      throw std::runtime_error("Invalid task future");
+    }
+    while (task.wait_for(std::chrono::milliseconds(0)) ==
+           std::future_status::timeout) {
+      // Until the task completes, try to do something useful to make progress
+      // (and avoid deadlock)
+      if (!pump()) {
+        std::this_thread::yield();
+      }
+    }
+    // Task is completed, get result, throwing possible exceptions
+    return task.get();
+  }
+
+  /**
+   * Wait on a single task returning Status to complete. This function is safe
+   * to call recursively and may execute pending tasks on the calling thread
+   * while waiting.
    *
    * @param task Task to wait on.
    * @return Status::Ok if the task returned Status::Ok, otherwise the error
@@ -169,6 +194,9 @@ class ThreadPool {
   /* ********************************* */
 
  private:
+  /** Tries to run a queued task. Returns whether such task was found. */
+  bool pump();
+
   /** The worker thread routine */
   void worker();
 
