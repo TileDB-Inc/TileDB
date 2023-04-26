@@ -91,7 +91,9 @@ add_library(flat_blas INTERFACE)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     # include macOS-specific flags for native BLAS
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -framework Accelerate")
+    # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -framework Accelerate")
+    target_compile_options(flat_blas INTERFACE -framework Accelerate)
+    target_link_options(flat_blas INTERFACE -framework Accelerate)
 else()
     # include flags for other operating systems BLAS
     # find_package(MKL CONFIG REQUIRED)
