@@ -47,6 +47,43 @@
 namespace tiledb::common {
 
 class ThreadPool {
+ private:
+  /**
+   * Evaluates std::future<T> values and accumulates their result into a vector.
+   */
+  template <class T>
+  struct ResultAccumulator {
+    using collection_type = std::vector<T>;
+    ResultAccumulator(size_t capacity)
+        : results_(capacity) {
+    }
+    void add(size_t index, std::future<T>& task) {
+      results_[index] = task.get();
+    }
+    collection_type results() {
+      return results_;
+    }
+
+   private:
+    collection_type results_;
+  };
+
+  /**
+   * Specialization of ResultAccumulator for void, which does not accumulate
+   * anything.
+   */
+  template <>
+  struct ResultAccumulator<void> {
+    using collection_type = void;
+    ResultAccumulator(size_t) {
+    }
+    void add(size_t, std::future<void>& task) {
+      task.get();
+    }
+    collection_type results() {
+    }
+  };
+
  public:
   using Task = std::future<Status>;
 
@@ -131,11 +168,12 @@ class ThreadPool {
    * with the calling thread while waiting.
    *
    * @param tasks Task list to wait on
-   * @return Vector of each task's result.
+   * @return Vector of each task's result or void if the tasks return void.
    */
   template <class R>
-  std::vector<R> wait_all(std::vector<std::future<R>>& tasks) {
-    std::vector<R> results(tasks.size());
+  typename ResultAccumulator<R>::collection_type wait_all(
+      std::vector<std::future<R>>& tasks) {
+    ResultAccumulator<R> results(tasks.size());
     std::stringstream exceptions;
 
     auto log_exception = [&exceptions](const char* message) {
@@ -166,7 +204,7 @@ class ThreadPool {
           std::future_status::timeout) {
         // Task is completed, get result, handling possible exceptions
         try {
-          results[task_id] = task.get();
+          results.add(task_id, task);
         } catch (const std::exception& e) {
           log_exception(e.what());
         } catch (const std::string& msg) {
@@ -197,7 +235,7 @@ class ThreadPool {
     if (exceptions.tellp() > 0) {
       throw StatusException(Status_ThreadPoolError(exceptions.str()));
     }
-    return results;
+    return results.results();
   }
 
   /**
