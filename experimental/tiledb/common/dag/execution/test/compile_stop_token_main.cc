@@ -26,7 +26,7 @@
  * THE SOFTWARE.
  */
 
-#include "../jthread/stop_token.hpp"
+#include "tiledb/stdx/stop_token"
 
 int main() {
 }

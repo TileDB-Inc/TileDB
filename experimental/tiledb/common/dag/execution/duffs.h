@@ -75,7 +75,6 @@
 #include <memory>
 #include <mutex>
 #include <string>
-#include <thread>
 #include <type_traits>
 #include <vector>
 #include "experimental/tiledb/common/dag/execution/task.h"
