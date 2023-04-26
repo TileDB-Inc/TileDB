@@ -1,5 +1,5 @@
 /**
- * @file tiledb/stdx/thread
+ * @file tiledb/stdx/stop_token
  *
  * @section LICENSE
  *
@@ -30,8 +30,8 @@
 
 
 #include <version>
-#include <thread>
-#if __cpp_lib_jthread < 201911L
-#include "bits/jthread.h"
+#if __cpp_lib_jthread >= 201911L
+#include <stop_token>
+#else
+#include "bits/stop_token.h"
 #endif
-

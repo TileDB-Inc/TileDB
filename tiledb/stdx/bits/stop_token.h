@@ -2,6 +2,7 @@
 // <stop_token> header
 
 #include <atomic>
+
 #include <thread>
 #include <type_traits>
 #include <utility>
@@ -21,13 +22,12 @@ inline void __spin_yield() noexcept {
 #endif
 }
 
-
 //-----------------------------------------------
 // internal types for shared stop state
 //-----------------------------------------------
 
 struct __stop_callback_base {
-  void(*__callback_)(__stop_callback_base*) = nullptr;
+  void (*__callback_)(__stop_callback_base*) = nullptr;
 
   __stop_callback_base* __next_ = nullptr;
   __stop_callback_base** __prev_ = nullptr;
@@ -71,7 +71,6 @@ struct __stop_state {
   }
 
   bool __request_stop() noexcept {
-
     if (!__try_lock_and_signal_until_signalled()) {
       // Stop has already been requested.
       return false;
@@ -303,7 +302,6 @@ struct __stop_state {
   std::thread::id __signallingThread_{};
 };
 
-
 //-----------------------------------------------
 // forward declarations
 //-----------------------------------------------
@@ -314,9 +312,10 @@ class stop_callback;
 
 // std::nostopstate
 // - to initialize a stop_source without shared stop state
-struct nostopstate_t { explicit nostopstate_t() = default; };
+struct nostopstate_t {
+  explicit nostopstate_t() = default;
+};
 inline constexpr nostopstate_t nostopstate{};
-
 
 //-----------------------------------------------
 // stop_token
@@ -327,19 +326,19 @@ class stop_token {
   // construct:
   // - TODO: explicit?
   stop_token() noexcept
-   : __state_(nullptr) {
+      : __state_(nullptr) {
   }
 
   // copy/move/assign/destroy:
   stop_token(const stop_token& __it) noexcept
-   : __state_(__it.__state_) {
+      : __state_(__it.__state_) {
     if (__state_ != nullptr) {
       __state_->__add_token_reference();
     }
   }
 
   stop_token(stop_token&& __it) noexcept
-   : __state_(std::exchange(__it.__state_, nullptr)) {
+      : __state_(std::exchange(__it.__state_, nullptr)) {
   }
 
   ~stop_token() {
@@ -376,13 +375,11 @@ class stop_token {
   }
 
   [[nodiscard]] friend bool operator==(
-      const stop_token& __a,
-      const stop_token& __b) noexcept {
+      const stop_token& __a, const stop_token& __b) noexcept {
     return __a.__state_ == __b.__state_;
   }
   [[nodiscard]] friend bool operator!=(
-      const stop_token& __a,
-      const stop_token& __b) noexcept {
+      const stop_token& __a, const stop_token& __b) noexcept {
     return __a.__state_ != __b.__state_;
   }
 
@@ -391,7 +388,8 @@ class stop_token {
   template <typename _Callback>
   friend class stop_callback;
 
-  explicit stop_token(__stop_state* __state) noexcept : __state_(__state) {
+  explicit stop_token(__stop_state* __state) noexcept
+      : __state_(__state) {
     if (__state_ != nullptr) {
       __state_->__add_token_reference();
     }
@@ -400,16 +398,19 @@ class stop_token {
   __stop_state* __state_;
 };
 
-
 //-----------------------------------------------
 // stop_source
 //-----------------------------------------------
 
 class stop_source {
  public:
-  stop_source() : __state_(new __stop_state()) {}
+  stop_source()
+      : __state_(new __stop_state()) {
+  }
 
-  explicit stop_source(nostopstate_t) noexcept : __state_(nullptr) {}
+  explicit stop_source(nostopstate_t) noexcept
+      : __state_(nullptr) {
+  }
 
   ~stop_source() {
     if (__state_ != nullptr) {
@@ -425,7 +426,8 @@ class stop_source {
   }
 
   stop_source(stop_source&& __other) noexcept
-      : __state_(std::exchange(__other.__state_, nullptr)) {}
+      : __state_(std::exchange(__other.__state_, nullptr)) {
+  }
 
   stop_source& operator=(stop_source&& __other) noexcept {
     stop_source __tmp{std::move(__other)};
@@ -465,20 +467,17 @@ class stop_source {
   }
 
   [[nodiscard]] friend bool operator==(
-      const stop_source& __a,
-      const stop_source& __b) noexcept {
+      const stop_source& __a, const stop_source& __b) noexcept {
     return __a.__state_ == __b.__state_;
   }
   [[nodiscard]] friend bool operator!=(
-      const stop_source& __a,
-      const stop_source& __b) noexcept {
+      const stop_source& __a, const stop_source& __b) noexcept {
     return __a.__state_ != __b.__state_;
   }
 
  private:
   __stop_state* __state_;
 };
-
 
 //-----------------------------------------------
 // stop_callback
@@ -491,16 +490,16 @@ class [[nodiscard]] stop_callback : private __stop_callback_base {
   using callback_type = _Callback;
 
   template <
-    typename _CB,
-    std::enable_if_t<std::is_constructible_v<_Callback, _CB>, int> = 0>
-    // requires Constructible<Callback, C>
+      typename _CB,
+      std::enable_if_t<std::is_constructible_v<_Callback, _CB>, int> = 0>
+  // requires Constructible<Callback, C>
   explicit stop_callback(const stop_token& __token, _CB&& __cb) noexcept(
       std::is_nothrow_constructible_v<_Callback, _CB>)
-      : __stop_callback_base{[](__stop_callback_base *__that) noexcept {
-          static_cast<stop_callback*>(__that)->__execute();
-        }},
-        __state_(nullptr),
-        __cb_(static_cast<_CB&&>(__cb)) {
+      : __stop_callback_base{[](__stop_callback_base* __that) noexcept {
+        static_cast<stop_callback*>(__that)->__execute();
+      }}
+      , __state_(nullptr)
+      , __cb_(static_cast<_CB&&>(__cb)) {
     if (__token.__state_ != nullptr &&
         __token.__state_->__try_add_callback(this, true)) {
       __state_ = __token.__state_;
@@ -508,16 +507,16 @@ class [[nodiscard]] stop_callback : private __stop_callback_base {
   }
 
   template <
-    typename _CB,
-    std::enable_if_t<std::is_constructible_v<_Callback, _CB>, int> = 0>
-    // requires Constructible<Callback, C>
+      typename _CB,
+      std::enable_if_t<std::is_constructible_v<_Callback, _CB>, int> = 0>
+  // requires Constructible<Callback, C>
   explicit stop_callback(stop_token&& __token, _CB&& __cb) noexcept(
       std::is_nothrow_constructible_v<_Callback, _CB>)
-      : __stop_callback_base{[](__stop_callback_base *__that) noexcept {
-          static_cast<stop_callback*>(__that)->__execute();
-        }},
-        __state_(nullptr),
-        __cb_(static_cast<_CB&&>(__cb)) {
+      : __stop_callback_base{[](__stop_callback_base* __that) noexcept {
+        static_cast<stop_callback*>(__that)->__execute();
+      }}
+      , __state_(nullptr)
+      , __cb_(static_cast<_CB&&>(__cb)) {
     if (__token.__state_ != nullptr &&
         __token.__state_->__try_add_callback(this, false)) {
       __state_ = std::exchange(__token.__state_, nullptr);
@@ -560,7 +559,7 @@ class [[nodiscard]] stop_callback : private __stop_callback_base {
 #endif
 };
 
-template<typename _Callback>
-  stop_callback(stop_token, _Callback) -> stop_callback<_Callback>;
+template <typename _Callback>
+stop_callback(stop_token, _Callback) -> stop_callback<_Callback>;
 
-} // namespace std
+}  // namespace std

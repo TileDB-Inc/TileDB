@@ -33,8 +33,8 @@
 #ifndef TILEDB_DAG_GENERATOR_H
 #define TILEDB_DAG_GENERATOR_H
 
-#include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
 #include "experimental/tiledb/common/dag/ports/ports.h"
+#include "tiledb/stdx/stop_token"
 
 namespace tiledb::common {
 

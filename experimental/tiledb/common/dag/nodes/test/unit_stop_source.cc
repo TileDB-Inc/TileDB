@@ -34,11 +34,11 @@
 #include <atomic>
 #include <future>
 #include "experimental/tiledb/common/dag/edge/edge.h"
-#include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
 #include "experimental/tiledb/common/dag/nodes/generators.h"
 #include "experimental/tiledb/common/dag/nodes/nodes.h"
 #include "experimental/tiledb/common/dag/nodes/terminals.h"
 #include "experimental/tiledb/common/dag/state_machine/test/types.h"
+#include "tiledb/stdx/stop_token"
 
 using namespace tiledb::common;
 

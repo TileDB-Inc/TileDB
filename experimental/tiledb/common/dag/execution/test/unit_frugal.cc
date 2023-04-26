@@ -39,9 +39,9 @@
 #include <type_traits>
 #include "../frugal.h"
 #include "experimental/tiledb/common/dag/edge/edge.h"
-#include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
 #include "experimental/tiledb/common/dag/execution/task.h"
 #include "experimental/tiledb/common/dag/execution/task_state_machine.h"
+#include "tiledb/stdx/stop_token"
 #include "unit_frugal.h"
 
 #include "experimental/tiledb/common/dag/nodes/terminals.h"

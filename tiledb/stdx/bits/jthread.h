@@ -174,4 +174,4 @@ inline void jthread::swap(jthread& t) noexcept {
 
 }  // namespace std
 
-#endif // JTHREAD_HPP
+#endif  // JTHREAD_HPP

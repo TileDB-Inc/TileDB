@@ -34,6 +34,7 @@
 #define TILEDB_CAPI_BUFFER_LIST_API_INTERNAL_H
 
 #include "../../c_api_support/handle/handle.h"
+#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/buffer_list.h"
 
 struct tiledb_buffer_list_handle_t

@@ -99,18 +99,19 @@ constexpr unsigned short num_states = to_index(NodeState::last) + 1;
  * A vector of strings corresponding to the states.  Useful for diagnostics,
  * testing, and debugging.
  */
-std::vector<std::string> node_state_strings{"init",
-                                            "input",
-                                            "compute",
-                                            "output",
-                                            "waiting",
-                                            "runnable",
-                                            "running",
-                                            "done",
-                                            "exit",
-                                            "error",
-                                            "abort",
-                                            "last"};
+std::vector<std::string> node_state_strings{
+    "init",
+    "input",
+    "compute",
+    "output",
+    "waiting",
+    "runnable",
+    "running",
+    "done",
+    "exit",
+    "error",
+    "abort",
+    "last"};
 }  // namespace
 
 /**
@@ -495,6 +496,8 @@ class GeneralFunctionNode<
       case NodeState::init:
 
         instruction_counter_ = NodeState::input;
+
+        [[fallthrough]];
       case NodeState::input:
         /*
          * Here begins pull-check-extract-drain (aka `input`)
@@ -530,6 +533,8 @@ class GeneralFunctionNode<
         drain_all();
 
         instruction_counter_ = NodeState::compute;
+
+        [[fallthrough]];
       case NodeState::compute:
 
         /*
@@ -550,6 +555,8 @@ class GeneralFunctionNode<
         }
 
         instruction_counter_ = NodeState::output;
+
+        [[fallthrough]];
       case NodeState::output:
         if constexpr (!is_consumer_) {
           /*
