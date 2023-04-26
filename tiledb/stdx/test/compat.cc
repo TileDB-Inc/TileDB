@@ -1,5 +1,5 @@
 /**
- * @file tiledb/stdx/thread
+ * @file tiledb/stdx/test/compat.cc
  *
  * @section LICENSE
  *
@@ -27,16 +27,14 @@
  *
  * @section DESCRIPTION
  *
- * This is a header to support transition from C++17 to C++20.  Not all compilers yet 
- * support C++20 `jthread`.  This header includes the reference implementation of
- * `jthread` from https://github.com/josuttis/jthread for compilers that do not yet
- * support C++20 `jthread`.
+ * This is a very simple compile-only program that ensures `jthread` and
+ * `stop_token` are available.
  */
 
+#include "tiledb/stdx/stop_token"
+#include "tiledb/stdx/thread"
 
-#include <version>
-#include <thread>
-#if __cpp_lib_jthread < 201911L
-#include "bits/jthread.h"
-#endif
-
+int main() {
+  std::jthread j;
+  std::stop_token s;
+}

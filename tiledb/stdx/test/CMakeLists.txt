@@ -1,5 +1,5 @@
 #
-# tiledb/stdx/CMakeLists.txt
+# tiledb/stdx/test/CMakeLists.txt
 #
 # The MIT License
 #
@@ -23,8 +23,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-include(common NO_POLICY_SCOPE)
+include(unit_test)
 
-add_test_subdirectory()
-
-add_subdirectory(synchronized_optional)
+commence(unit_test stdx)
+  this_target_sources(
+      compat.cc)
+conclude(unit_test)
