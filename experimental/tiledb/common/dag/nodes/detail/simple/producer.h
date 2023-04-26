@@ -40,7 +40,7 @@
 
 #include <thread>  //  @todo debugging
 
-#include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
+#include "tiledb/stdx/stop_token"
 
 #include "experimental/tiledb/common/dag/nodes/detail/simple/simple_base.h"
 

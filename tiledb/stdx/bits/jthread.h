@@ -1,11 +1,3 @@
-/*
- * Main authors:  Nicolai Josuttis (http://www.josuttis.com/contact.html) and
- * Lewis Baker
- *
- * The code is licensed under a Creative Commons Attribution 4.0 International
- * License (http://creativecommons.org/licenses/by/4.0/).
- */
-
 // -----------------------------------------------------
 // cooperative interruptable and joining thread:
 // -----------------------------------------------------
@@ -17,7 +9,7 @@
 #include <iostream>  // for debugging output
 #include <thread>
 #include <type_traits>
-#include "stop_token.hpp"
+#include "stop_token.h"
 
 namespace std {
 

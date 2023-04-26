@@ -38,8 +38,8 @@
 #include <type_traits>
 #include <variant>
 
-#include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
 #include "experimental/tiledb/common/dag/ports/ports.h"
+#include "tiledb/stdx/stop_token"
 
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
 

@@ -1,11 +1,11 @@
 /**
- * @file stop_token.cc
+ * @file tiledb/stdx/thread
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,4 +28,9 @@
  * @section DESCRIPTION
  */
 
-#include "tiledb/stdx/stop_token"
+#include <thread>
+
+#if __cpp_lib_jthread < 201911L
+#include "bits/jthread.h"
+#endif
+
