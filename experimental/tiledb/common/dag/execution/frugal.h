@@ -48,6 +48,17 @@
 
 namespace tiledb::common {
 
+template <class Policy>
+struct PortPolicyTraits;
+
+template <class Mover, class PortState>
+class FrugalPortPolicy;
+
+template <class Mover, class PortState>
+struct PortPolicyTraits<FrugalPortPolicy<Mover, PortState>> {
+  constexpr static bool wait_returns_{true};
+};
+
 /**
  * @brief A "frugal" scheduler.  This scheduler is similar to the bountiful
  * scheduler, but uses a fixed-size thread pool.
@@ -72,8 +83,6 @@ class FrugalPortPolicy : public PortFiniteStateMachine<
   using state_machine_type =
       PortFiniteStateMachine<FrugalPortPolicy<Mover, PortState>, PortState>;
   using lock_type = typename state_machine_type::lock_type;
-
-  constexpr static bool wait_returns_{true};
 
   FrugalPortPolicy() = default;
   FrugalPortPolicy(const FrugalPortPolicy&) {

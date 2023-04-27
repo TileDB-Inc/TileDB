@@ -96,6 +96,17 @@ using namespace std::placeholders;
 
 namespace tiledb::common {
 
+template <class Policy>
+struct PortPolicyTraits;
+
+template <class Mover, class PortState>
+class DuffsPortPolicy;
+
+template <class Mover, class PortState>
+struct PortPolicyTraits<DuffsPortPolicy<Mover, PortState>> {
+  constexpr static bool wait_returns_{false};
+};
+
 /**
  * @brief A scheduler that uses a fixed number of threads to execute tasks and
  * an experimental "throw-catch" mechanism for signalling from port to
@@ -118,7 +129,6 @@ class DuffsPortPolicy : public PortFiniteStateMachine<
   using scheduler_event_type = SchedulerAction;
 
  public:
-  constexpr static bool wait_returns_{false};
   /**
    * @brief Constructs a port policy.  Initializes the port state to empty.
    * Uses `enable_if` to select between two-stage and three-stage port state for
