@@ -309,13 +309,12 @@ class GeneralFunctionNode<
       Function&& f,
       std::enable_if_t<
           (std::is_invocable_r_v<
-              void,
-              Function,
-              const std::tuple<BlocksIn...>&,
-              std::tuple<BlocksOut...>&>
-               && !are_same_v<std::tuple<>, BlocksOut...> 
-               && !are_same_v<std::tuple<>, BlocksIn...>
-              ),
+               void,
+               Function,
+               const std::tuple<BlocksIn...>&,
+               std::tuple<BlocksOut...>&> &&
+           !are_same_v<std::tuple<>, BlocksOut...> &&
+           !are_same_v<std::tuple<>, BlocksIn...>),
           void**> = nullptr)
       : f_{std::forward<Function>(f)}
       , inputs_{} {

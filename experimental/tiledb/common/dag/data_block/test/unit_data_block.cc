@@ -1036,4 +1036,4 @@ TEST_CASE("DataBlock: Join data_blocks loops operator[]", "[data_block]") {
     test_operator_bracket_loops(chunk_size_ / 2 - 1);
   }
 }
-#endif // _MSC_VER
+#endif  // _MSC_VER

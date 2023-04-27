@@ -424,7 +424,6 @@ TEMPLATE_TEST_CASE(
 
   generators g{size_t{0}, N};
 
-
   std::vector<size_t> v;
   auto w = std::back_inserter(v);
   terminal c{w};

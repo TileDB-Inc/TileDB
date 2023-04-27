@@ -125,11 +125,17 @@ using GeneralConsumerNode =
 TEST_CASE(
     "GeneralNode: Verify use of (void) template arguments for "
     "producer/consumer [general]") {
-    GeneralFunctionNode<foo, std::tuple<>, AsyncMover3, std::tuple<size_t, double>>  w{
+  GeneralFunctionNode<
+      foo,
+      std::tuple<>,
+      AsyncMover3,
+      std::tuple<size_t, double>>
+      w{[](std::tuple<size_t, double>) {}};
+  GeneralProducerNode<AsyncMover3, std::tuple<size_t, double>> x{
       [](std::tuple<size_t, double>) {}};
-    GeneralProducerNode<AsyncMover3, std::tuple<size_t, double>> x{
+  GeneralProducerNode<AsyncMover3, std::tuple<size_t, double>> x{
       [](std::tuple<size_t, double>) {}};
-    GeneralConsumerNode<AsyncMover3, std::tuple<size_t, double>> y{
+  GeneralConsumerNode<AsyncMover3, std::tuple<size_t, double>> y{
       [](std::tuple<size_t, double>) {}};
 }
 
