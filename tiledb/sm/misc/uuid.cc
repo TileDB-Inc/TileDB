@@ -28,6 +28,9 @@
  * @section DESCRIPTION
  *
  * This file defines a platform-independent UUID generator.
+ *
+ * Initially from: https://gist.github.com/kvelakur/9069c9896577c3040030
+ * "Generating a Version 4 UUID using OpenSSL"
  */
 
 #include <cstdio>
@@ -50,6 +53,7 @@
 #endif
 
 namespace tiledb::sm::uuid {
+
 struct Uuid {
   uint32_t time_low;
   uint16_t time_mid;
@@ -57,17 +61,10 @@ struct Uuid {
   uint8_t clk_seq_hi_res;
   uint8_t clk_seq_low;
   uint8_t node[6];
-};
-/**
- * Generate a UUID using the system's cryptographic random number generator.
- *
- * Initially from: https://gist.github.com/kvelakur/9069c9896577c3040030
- * "Generating a Version 4 UUID using OpenSSL"
- */
-std::string generate_uuid(bool hyphenate) {
-  Uuid uuid = {};
 
-  {
+  static Uuid new_uuid_v4() {
+    Uuid uuid = {};
+
 #ifdef _WIN32
     int rc = BCryptGenRandom(
         BCRYPT_RNG_ALG_HANDLE,
@@ -82,18 +79,23 @@ std::string generate_uuid(bool hyphenate) {
     if (rc < 1) {
       char err_msg[256];
       ERR_error_string_n(ERR_get_error(), err_msg, sizeof(err_msg));
-      return Status_UtilsError(
+      throw std::runtime_error(
           "Cannot generate random bytes with OpenSSL: " + std::string(err_msg));
     }
 #endif
+
+    // Refer Section 4.2 of RFC-4122
+    // https://tools.ietf.org/html/rfc4122#section-4.2
+    uuid.clk_seq_hi_res = (uint8_t)((uuid.clk_seq_hi_res & 0x3F) | 0x80);
+    uuid.time_hi_and_version =
+        (uint16_t)((uuid.time_hi_and_version & 0x0FFF) | 0x4000);
+
+    return uuid;
   }
+};
 
-  // Refer Section 4.2 of RFC-4122
-  // https://tools.ietf.org/html/rfc4122#section-4.2
-  uuid.clk_seq_hi_res = (uint8_t)((uuid.clk_seq_hi_res & 0x3F) | 0x80);
-  uuid.time_hi_and_version =
-      (uint16_t)((uuid.time_hi_and_version & 0x0FFF) | 0x4000);
-
+std::string generate_uuid(bool hyphenate) {
+  Uuid uuid{Uuid::new_uuid_v4()};
   // Format the UUID as a string.
   const char* format_str =
       hyphenate ? "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x" :
