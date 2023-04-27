@@ -322,7 +322,7 @@ TEMPLATE_TEST_CASE(
 
   SECTION("bind") {
     double x = 0.01;
-    float y = -0.001;
+    float y = -0.001F;
     int z = 8675309;
 
     auto a = std::bind(dummy_bind_source, x);
@@ -336,7 +336,7 @@ TEMPLATE_TEST_CASE(
 
   SECTION("inline bind") {
     double x = 0.01;
-    float y = -0.001;
+    float y = -0.001F;
     int z = 8675309;
 
     P b{std::bind(dummy_bind_source, x)};
@@ -347,7 +347,7 @@ TEMPLATE_TEST_CASE(
 
   SECTION("bind with move") {
     double x = 0.01;
-    float y = -0.001;
+    float y = -0.001F;
     int z = 8675309;
 
     auto a = std::bind(dummy_bind_source, std::move(x));
@@ -435,7 +435,7 @@ TEMPLATE_TEST_CASE(
   }
   SECTION("bind") {
     double x = 0.01;
-    float y = -0.001;
+    float y = -0.001F;
     int z = 8675309;
 
     auto ac = std::bind(dummy_bind_source, x);
@@ -452,7 +452,7 @@ TEMPLATE_TEST_CASE(
 
   SECTION("inline bind") {
     double x = 0.01;
-    float y = -0.001;
+    float y = -0.001F;
     int z = 8675309;
 
     P a{std::bind(dummy_bind_source, x)};
@@ -465,7 +465,7 @@ TEMPLATE_TEST_CASE(
 
   SECTION("bind with move") {
     double x = 0.01;
-    float y = -0.001;
+    float y = -0.001F;
     int z = 8675309;
 
     auto ac = std::bind(dummy_bind_source, std::move(x));
