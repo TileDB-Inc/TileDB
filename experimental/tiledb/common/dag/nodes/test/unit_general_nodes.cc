@@ -323,7 +323,7 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
 
   SECTION("bind") {
     double x = 0.01;
-    float y = -0.001;
+    float y = -0.001F;
     int z = 8675309;
 
     auto ac = std::bind(dummy_bind_source, x);
@@ -352,7 +352,7 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
 
   SECTION("inline bind") {
     double x = 0.01;
-    float y = -0.001;
+    float y = -0.001F;
     int z = 8675309;
 
     ProducerNode<AsyncMover3, size_t> a{std::bind(dummy_bind_source, x)};
@@ -384,7 +384,7 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
 
   SECTION("bind with move") {
     double x = 0.01;
-    float y = -0.001;
+    float y = -0.001F;
     int z = 8675309;
 
     auto ac = std::bind(dummy_bind_source, std::move(x));
