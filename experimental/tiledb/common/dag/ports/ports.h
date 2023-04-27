@@ -126,7 +126,7 @@ class Port {
    *
    */
   void detach() {
-    auto lock = std::lock_guard(this->mutex_);
+    std::lock_guard lock(this->mutex_);
     if (!is_attached()) {
       throw std::runtime_error(
           "Attempting to unattached unattached correspondent");
@@ -177,7 +177,7 @@ class Source : public Port<Mover_T, Block> {
    * @pre The `Source` port is attached to a `Sink` port.
    */
   bool inject(const Block& value) {
-    auto lock = std::lock_guard(this->mutex_);
+    std::lock_guard lock(this->mutex_);
     if (!this->is_attached()) {
       throw std::logic_error("Sink not attached in inject");
       return {};
@@ -198,7 +198,7 @@ class Source : public Port<Mover_T, Block> {
    * @post `item_` will be empty.
    */
   std::optional<Block> extract() {
-    auto lock = std::lock_guard(this->mutex_);
+    std::lock_guard lock(this->mutex_);
     if (!this->is_attached()) {
       throw std::logic_error("Source not attached in extract");
       return {};
@@ -253,7 +253,7 @@ class Sink : public Port<Mover_T, Block> {
    * `Sink` and `Source` ports.
    */
   void attach(source_type& predecessor) {
-    auto lock = std::lock_guard(this->mutex_);
+    std::lock_guard lock(this->mutex_);
     if (this->is_attached() || predecessor.is_attached()) {
       throw std::runtime_error(
           "Sink attempting to attach to already attached ports");
@@ -267,7 +267,7 @@ class Sink : public Port<Mover_T, Block> {
   }
 
   void attach(source_type& predecessor, std::shared_ptr<mover_type> mover) {
-    auto lock = std::lock_guard(this->mutex_);
+    std::lock_guard lock(this->mutex_);
     if (this->is_attached() || predecessor.is_attached()) {
       throw std::runtime_error(
           "Sink attempting to attach to already attached ports");
@@ -280,108 +280,104 @@ class Sink : public Port<Mover_T, Block> {
   }
 
   void detach(source_type& predecessor) {
-    auto lock = std::lock_guard(this->mutex_);
-    if (!this->is_attached() || !predecessor.is_attached()) {
-      throw std::runtime_error("Sink attempting to detach unattached ports");
-    } else {
-      this->item_mover_->deregister_items();
-      this->clear_attached();
-      predecessor.detach();
-    }
+    std::lock_guard lock(this->mutex_);
+  }
+  else {
+    this->clear_attached();
+    predecessor.detach();
+  }
+}
+
+public :
+    /**
+     * Free functions for attachment / unattachment Source and Sink.
+     */
+
+    /**
+     * Assign sink as correspondent to source and vice versa.  Acquires lock
+     * before calling any member functions.
+     *
+     * @pre Both source and sink are unattached
+     */
+    template <template <class> class Mver_T, class Blck>
+    friend inline void
+    attach(Source<Mver_T, Blck>& source, Sink<Mver_T, Blck>& sink);
+
+friend inline void attach(source_type& source, sink_type& sink) {
+  sink.attach(source);
+}
+
+template <template <class> class Mver_T, class Blck>
+friend inline void attach(
+    Source<Mver_T, Blck>& source,
+    Sink<Mver_T, Blck>& sink,
+    std::shared_ptr<Mver_T<Blck>>& mover);
+
+friend inline void attach(
+    source_type& source, sink_type& sink, std::shared_ptr<mover_type>& mover) {
+  sink.attach(source, mover);
+}
+
+template <template <class> class Mver_T, class Blck>
+friend inline void detach(
+    Source<Mver_T, Blck>& source, Sink<Mver_T, Blck>& sink);
+
+friend inline void detach(source_type& source, sink_type& sink) {
+  sink.detach(source);
+}
+
+template <template <class> class Mver_T, class Blck>
+friend inline void detach(
+    Source<Mver_T, Blck>& source,
+    Sink<Mver_T, Blck>& sink,
+    Mver_T<Blck>& mover);
+
+friend inline void detach(
+    source_type& source, sink_type& sink, mover_type& mover) {
+  sink.detach(source, mover);
+}
+
+public:
+/**
+ * Inject an item into the `Sink`.  Used only for testing.
+ */
+bool inject(const Block& value) {
+  std::lock_guard lock(this->mutex_);
+  if (!this->is_attached()) {
+    throw std::logic_error("Sink not attached in inject");
+    return {};
   }
 
- public:
-  /**
-   * Free functions for attachment / unattachment Source and Sink.
-   */
-
-  /**
-   * Assign sink as correspondent to source and vice versa.  Acquires lock
-   * before calling any member functions.
-   *
-   * @pre Both source and sink are unattached
-   */
-  template <template <class> class Mver_T, class Blck>
-  friend inline void attach(
-      Source<Mver_T, Blck>& source, Sink<Mver_T, Blck>& sink);
-
-  friend inline void attach(source_type& source, sink_type& sink) {
-    sink.attach(source);
+  if (this->item_.has_value()) {
+    return false;
   }
 
-  template <template <class> class Mver_T, class Blck>
-  friend inline void attach(
-      Source<Mver_T, Blck>& source,
-      Sink<Mver_T, Blck>& sink,
-      std::shared_ptr<Mver_T<Blck>>& mover);
+  this->item_ = value;
+  return true;
+}
 
-  friend inline void attach(
-      source_type& source,
-      sink_type& sink,
-      std::shared_ptr<mover_type>& mover) {
-    sink.attach(source, mover);
+/**
+ * Extract an item from the `Sink` by swapping `item_` with an empty
+ * `std::optional<Block>`.
+ *
+ * @post `item_` will be empty.
+ */
+std::optional<Block> extract() {
+  std::lock_guard lock(this->mutex_);
+  if (!this->is_attached()) {
+    throw std::logic_error("Sink not attached in extract");
+    return {};
+  }
+  if (!this->item_.has_value() && this->get_mover()->debug_enabled()) {
+    std::cout << "Sink extract no value with state = "
+              << str(this->item_mover_->state()) << std::endl;
   }
 
-  template <template <class> class Mver_T, class Blck>
-  friend inline void detach(
-      Source<Mver_T, Blck>& source, Sink<Mver_T, Blck>& sink);
+  std::optional<Block> ret{};
+  std::swap(ret, this->item_);
 
-  friend inline void detach(source_type& source, sink_type& sink) {
-    sink.detach(source);
-  }
-
-  template <template <class> class Mver_T, class Blck>
-  friend inline void detach(
-      Source<Mver_T, Blck>& source,
-      Sink<Mver_T, Blck>& sink,
-      Mver_T<Blck>& mover);
-
-  friend inline void detach(
-      source_type& source, sink_type& sink, mover_type& mover) {
-    sink.detach(source, mover);
-  }
-
- public:
-  /**
-   * Inject an item into the `Sink`.  Used only for testing.
-   */
-  bool inject(const Block& value) {
-    auto lock = std::lock_guard(this->mutex_);
-    if (!this->is_attached()) {
-      throw std::logic_error("Sink not attached in inject");
-      return {};
-    }
-
-    if (this->item_.has_value()) {
-      return false;
-    }
-
-    this->item_ = value;
-    return true;
-  }
-
-  /**
-   * Extract an item from the `Sink` by swapping `item_` with an empty
-   * `std::optional<Block>`.
-   *
-   * @post `item_` will be empty.
-   */
-  std::optional<Block> extract() {
-    auto lock = std::lock_guard(this->mutex_);
-    if (!this->is_attached()) {
-      throw std::logic_error("Sink not attached in extract");
-      return {};
-    }
-    if (!this->item_.has_value() && this->get_mover()->debug_enabled()) {
-      std::cout << "Sink extract no value with state = "
-                << str(this->item_mover_->state()) << std::endl;
-    }
-
-    std::optional<Block> ret{};
-    std::swap(ret, this->item_);
-
-    return ret;
-  }
+  return ret;
+}
 };
 
 /**

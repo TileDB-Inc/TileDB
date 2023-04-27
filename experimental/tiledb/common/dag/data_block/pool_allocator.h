@@ -209,7 +209,7 @@ class PoolAllocatorImpl {
      */
     auto aligned_start{reinterpret_cast<std::byte*>(
         reinterpret_cast<ptrdiff_t>(new_bytes + sizeof(pointer) + (align - 1)) &
-        reinterpret_cast<ptrdiff_t>(page_mask))};
+        static_cast<ptrdiff_t>(page_mask))};
 
     for (size_t i = 0; i < chunks_per_array; ++i) {
       push_chunk(aligned_start + i * chunk_size);
