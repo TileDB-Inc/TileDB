@@ -1,4 +1,13 @@
-#pragma once
+/*
+ * Main authors:  Nicolai Josuttis (http://www.josuttis.com/contact.html) and
+ * Lewis Baker
+ *
+ * The code is licensed under a Creative Commons Attribution 4.0 International
+ * License (http://creativecommons.org/licenses/by/4.0/).
+ */
+
+#ifndef STOP_TOKEN_H
+#define STOP_TOKEN_H
 // <stop_token> header
 
 #include <atomic>
@@ -563,3 +572,4 @@ template <typename _Callback>
 stop_callback(stop_token, _Callback) -> stop_callback<_Callback>;
 
 }  // namespace std
+#endif  // STOP_TOKEN_H

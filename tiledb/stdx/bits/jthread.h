@@ -1,8 +1,16 @@
+/*
+ * Main authors:  Nicolai Josuttis (http://www.josuttis.com/contact.html) and
+ * Lewis Baker
+ *
+ * The code is licensed under a Creative Commons Attribution 4.0 International
+ * License (http://creativecommons.org/licenses/by/4.0/).
+ */
+
 // -----------------------------------------------------
 // cooperative interruptable and joining thread:
 // -----------------------------------------------------
-#ifndef JTHREAD_HPP
-#define JTHREAD_HPP
+#ifndef JTHREAD_H
+#define JTHREAD_H
 
 #include <functional>  // for invoke()
 #include <future>
@@ -174,4 +182,4 @@ inline void jthread::swap(jthread& t) noexcept {
 
 }  // namespace std
 
-#endif  // JTHREAD_HPP
+#endif  // JTHREAD_H
