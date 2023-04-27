@@ -30,82 +30,62 @@
  * This file defines a platform-independent UUID generator.
  */
 
+#include <cstdio>
 #include <mutex>
 #include <vector>
 
 #include "tiledb/sm/misc/uuid.h"
 
 #ifdef _WIN32
-#include <Rpc.h>
+#include <windows.h>
+#ifndef NT_SUCCESS
+#define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0)
+#endif
+#ifndef BCRYPT_RNG_ALG_HANDLE
+#define BCRYPT_RNG_ALG_HANDLE ((BCRYPT_ALG_HANDLE)0x00000081)
+#endif
 #else
 #include <openssl/err.h>
 #include <openssl/rand.h>
-#include <cstdio>
 #endif
 
-using namespace tiledb::common;
-
 namespace tiledb::sm::uuid {
-
-/** Mutex to guard UUID generation. */
-static std::mutex uuid_mtx;
-
-#ifdef _WIN32
-
+struct Uuid {
+  uint32_t time_low;
+  uint16_t time_mid;
+  uint16_t time_hi_and_version;
+  uint8_t clk_seq_hi_res;
+  uint8_t clk_seq_low;
+  uint8_t node[6];
+};
 /**
- * Generate a UUID using Win32 RPC API.
- */
-std::string generate_uuid_win32() {
-  UUID uuid;
-  RPC_STATUS rc = UuidCreate(&uuid);
-  if (rc != RPC_S_OK)
-    throw std::runtime_error("Unable to generate Win32 UUID: creation error");
-
-  char* buf = nullptr;
-  rc = UuidToStringA(&uuid, reinterpret_cast<RPC_CSTR*>(&buf));
-  if (rc != RPC_S_OK)
-    throw std::runtime_error(
-        "Unable to generate Win32 UUID: string conversion error");
-
-  std::string result{buf};
-
-  rc = RpcStringFreeA(reinterpret_cast<RPC_CSTR*>(&buf));
-  if (rc != RPC_S_OK)
-    throw std::runtime_error("Unable to generate Win32 UUID: free error");
-
-  return result;
-}
-
-#else
-
-/**
- * Generate a UUID using OpenSSL.
+ * Generate a UUID using the system's cryptographic random number generator.
  *
  * Initially from: https://gist.github.com/kvelakur/9069c9896577c3040030
  * "Generating a Version 4 UUID using OpenSSL"
  */
-Status generate_uuid_openssl(std::string* uuid_str) {
-  if (uuid_str == nullptr)
-    return Status_UtilsError("Null UUID string argument");
+std::string generate_uuid(bool hyphenate) {
+  Uuid uuid = {};
 
-  union {
-    struct {
-      uint32_t time_low;
-      uint16_t time_mid;
-      uint16_t time_hi_and_version;
-      uint8_t clk_seq_hi_res;
-      uint8_t clk_seq_low;
-      uint8_t node[6];
-    };
-    uint8_t __rnd[16];
-  } uuid;
-
-  int rc = RAND_bytes(uuid.__rnd, sizeof(uuid));
-  if (rc < 1) {
-    char err_msg[256];
-    ERR_error_string_n(ERR_get_error(), err_msg, sizeof(err_msg));
-    return Status_UtilsError(
-        "Cannot generate random bytes with OpenSSL: " + std::string(err_msg));
+  {
+#ifdef _WIN32
+    int rc = BCryptGenRandom(
+        BCRYPT_RNG_ALG_HANDLE,
+        reinterpret_cast<uint8_t*>(&uuid),
+        sizeof(uuid),
+        0);
+    if (!NT_SUCCESS(rc)) {
+      throw std::runtime_error("Cannot generate GUID: BCryptGenRandom failed.");
+    }
+#else
+    int rc = RAND_bytes(reinterpret_cast<uint8_t*>(&uuid), sizeof(uuid));
+    if (rc < 1) {
+      char err_msg[256];
+      ERR_error_string_n(ERR_get_error(), err_msg, sizeof(err_msg));
+      return Status_UtilsError(
+          "Cannot generate random bytes with OpenSSL: " + std::string(err_msg));
+    }
+#endif
   }
 
   // Refer Section 4.2 of RFC-4122
@@ -115,11 +95,14 @@ Status generate_uuid_openssl(std::string* uuid_str) {
       (uint16_t)((uuid.time_hi_and_version & 0x0FFF) | 0x4000);
 
   // Format the UUID as a string.
+  const char* format_str =
+      hyphenate ? "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x" :
+                  "%08x%04x%04x%02x%02x%02x%02x%02x%02x%02x%02x";
   char buf[128];
-  rc = snprintf(
+  int rc = snprintf(
       buf,
       sizeof(buf),
-      "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+      format_str,
       uuid.time_low,
       uuid.time_mid,
       uuid.time_hi_and_version,
@@ -133,36 +116,9 @@ Status generate_uuid_openssl(std::string* uuid_str) {
       uuid.node[5]);
 
   if (rc < 0)
-    return Status_UtilsError("Error formatting UUID string");
+    throw std::runtime_error("Error formatting UUID string");
 
-  *uuid_str = std::string(buf);
-
-  return Status::Ok();
-}
-
-#endif
-
-std::string generate_uuid(bool hyphenate) {
-  std::string uuid_str;
-  {
-    // OpenSSL is not threadsafe, so grab a lock here. We are locking in the
-    // Windows case as well just to be careful.
-    std::unique_lock<std::mutex> lck(uuid_mtx);
-#ifdef _WIN32
-    uuid_str = generate_uuid_win32();
-#else
-    throw_if_not_ok(generate_uuid_openssl(&uuid_str));
-#endif
-  }
-
-  std::string result;
-  for (unsigned i = 0; i < uuid_str.length(); i++) {
-    if (uuid_str[i] == '-' && !hyphenate)
-      continue;
-    result.push_back(uuid_str[i]);
-  }
-
-  return result;
+  return std::string(buf);
 }
 
 }  // namespace tiledb::sm::uuid
