@@ -220,10 +220,9 @@ TEST_CASE("ThreadPool: Test no wait", "[threadpool]") {
     ThreadPool pool{4};
     auto ptr = tdb::make_shared<AtomicHolder>(HERE(), 0);
     for (int i = 0; i < 5; i++) {
-      ThreadPool::Task task = pool.execute([result = ptr]() {
+      auto task = pool.execute([result = ptr]() {
         result->val_++;
         std::this_thread::sleep_for(std::chrono::milliseconds(random_ms(1000)));
-        return Status::Ok();
       });
       REQUIRE(task.valid());
     }
@@ -664,4 +663,10 @@ TEST_CASE("ThreadPool: Deferred futures", "[threadpool][deferred]") {
     auto future{
         std::async(std::launch::deferred, []() { return Status::Ok(); })};
     CHECK(tp.wait(future).ok());
+  }
+
+  SECTION("Returning void") {
+    auto future{std::async(std::launch::deferred, []() {})};
+    CHECK_NOTHROW(tp.wait(future));
+  }
 }
