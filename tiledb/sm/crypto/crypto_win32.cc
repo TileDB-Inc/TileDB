@@ -33,6 +33,8 @@
 #ifdef _WIN32
 
 #include "tiledb/sm/crypto/crypto_win32.h"
+
+#include <algorithm>
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -47,17 +49,22 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-Status Win32CNG::get_random_bytes(unsigned char* output, unsigned num_bytes) {
+Status Win32CNG::get_random_bytes(span<uint8_t> buffer) {
   BCRYPT_ALG_HANDLE alg_handle;
   if (!NT_SUCCESS(BCryptOpenAlgorithmProvider(
           &alg_handle, BCRYPT_RNG_ALGORITHM, nullptr, 0)))
     return Status_EncryptionError(
         "Win32CNG error; generating random bytes: error opening algorithm.");
 
-  if (!NT_SUCCESS(BCryptGenRandom(alg_handle, output, num_bytes, 0))) {
-    BCryptCloseAlgorithmProvider(alg_handle, 0);
-    return Status_EncryptionError(
-        "Win32CNG error; generating random bytes: error generating bytes.");
+  while (!buffer.empty()) {
+    ULONG num_bytes = ULONG(
+        std::max(buffer.size(), size_t(std::numeric_limits<ULONG>::max())));
+    if (!(BCryptGenRandom(alg_handle, buffer.data(), num_bytes, 0))) {
+      BCryptCloseAlgorithmProvider(alg_handle, 0);
+      return Status_EncryptionError(
+          "Win32CNG error; generating random bytes: error generating bytes.");
+    }
+    buffer = buffer.subspan(num_bytes);
   }
 
   BCryptCloseAlgorithmProvider(alg_handle, 0);
@@ -82,8 +89,7 @@ Status Win32CNG::encrypt_aes256gcm(
   unsigned char* iv_buf;
   std::array<unsigned char, Crypto::AES256GCM_IV_BYTES> generated_iv;
   if (iv == nullptr || iv->data() == nullptr) {
-    RETURN_NOT_OK(get_random_bytes(
-        generated_iv.data(), static_cast<unsigned>(generated_iv.size())));
+    RETURN_NOT_OK(get_random_bytes(generated_iv));
     iv_len = (ULONG)generated_iv.size();
     iv_buf = generated_iv.data();
   } else {

@@ -122,8 +122,8 @@ Status Crypto::sha256(
   return PlatformCrypto::sha256(input, input_read_size, output);
 }
 
-Status Crypto::get_random_bytes(unsigned char* output, unsigned num_bytes) {
-  return PlatformCrypto::get_random_bytes(output, num_bytes);
+Status Crypto::get_random_bytes(span<uint8_t> buffer) {
+  return PlatformCrypto::get_random_bytes(buffer);
 }
 
 }  // namespace sm

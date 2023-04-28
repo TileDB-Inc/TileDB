@@ -162,11 +162,10 @@ class Crypto {
   /**
    * Generates a number of cryptographically random bytes.
    *
-   * @param output Pointer to buffer to store random bytes.
-   * @param num_bytes Number of bytes to generate.
+   * @param buffer Span to fill with random bytes.
    * @return Status
    */
-  static Status get_random_bytes(unsigned char* output, unsigned num_bytes);
+  static Status get_random_bytes(span<uint8_t> buffer);
 };
 
 }  // namespace sm

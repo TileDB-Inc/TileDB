@@ -59,12 +59,8 @@ using namespace tiledb::sm;
 
 TEST_CASE("Crypto: Test Random Number Generator", "[crypto][random]") {
   std::array<unsigned char, 64> buf1 = {}, buf2 = {};
-  CHECK(
-      Crypto::get_random_bytes(buf1.data(), static_cast<unsigned>(buf1.size()))
-          .ok());
-  CHECK(
-      Crypto::get_random_bytes(buf2.data(), static_cast<unsigned>(buf2.size()))
-          .ok());
+  CHECK(Crypto::get_random_bytes(buf1).ok());
+  CHECK(Crypto::get_random_bytes(buf2).ok());
   CHECK(buf1 != buf2);
 }
 

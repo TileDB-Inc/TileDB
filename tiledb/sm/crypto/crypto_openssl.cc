@@ -48,13 +48,17 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-Status OpenSSL::get_random_bytes(unsigned char* output, unsigned num_bytes) {
-  int rc = RAND_bytes(output, num_bytes);
-  if (rc < 1) {
-    char err_msg[256];
-    ERR_error_string_n(ERR_get_error(), err_msg, sizeof(err_msg));
-    return Status_EncryptionError(
-        "Cannot generate random bytes with OpenSSL: " + std::string(err_msg));
+Status OpenSSL::get_random_bytes(span<uint8_t> buffer) {
+  while (!buffer.empty()) {
+    int num_bytes =
+        int(std::max(buffer.size(), size_t(std::numeric_limits<int>::max())));
+    int rc = RAND_bytes(buffer.data(), num_bytes);
+    if (rc < 1) {
+      char err_msg[256];
+      ERR_error_string_n(ERR_get_error(), err_msg, sizeof(err_msg));
+      return Status_EncryptionError(
+          "Cannot generate random bytes with OpenSSL: " + std::string(err_msg));
+    }
   }
   return Status::Ok();
 }
