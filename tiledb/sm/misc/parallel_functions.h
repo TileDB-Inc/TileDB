@@ -92,20 +92,20 @@ void parallel_sort(
 
   // Define a work routine that encapsulates steps #1 - #3 in the
   // algorithm.
-  std::function<Status(uint64_t, IterT, IterT)> quick_sort;
-  quick_sort = [&](const uint64_t depth, IterT begin, IterT end) -> Status {
+  std::function<void(uint64_t, IterT, IterT)> quick_sort;
+  quick_sort = [&](const uint64_t depth, IterT begin, IterT end) {
     const size_t elements = std::distance(begin, end);
 
     // Stop the recursion if this subrange does not contain
     // any elements to sort.
     if (elements <= 1) {
-      return Status::Ok();
+      return;
     }
 
     // If there are only two elements remaining, directly sort them.
     if (elements <= 2) {
       std::sort(begin, end, cmp);
-      return Status::Ok();
+      return;
     }
 
     // If we have reached the target height of the call stack tree,
@@ -115,7 +115,7 @@ void parallel_sort(
     // evenly distributed among them.
     if (depth + 1 == height) {
       std::sort(begin, end, cmp);
-      return Status::Ok();
+      return;
     }
 
     // Step #1: Pick a pivot value in the range.
@@ -135,26 +135,22 @@ void parallel_sort(
     std::iter_swap(middle, (end - 1));
 
     // Step #3: Recursively sort the left and right partitions.
-    std::vector<ThreadPool::Task> tasks;
+    std::vector<std::future<void>> tasks;
     if (begin != middle) {
-      std::function<Status()> quick_sort_left =
-          std::bind(quick_sort, depth + 1, begin, middle);
-      ThreadPool::Task left_task = tp->execute(std::move(quick_sort_left));
-      tasks.emplace_back(std::move(left_task));
+      tasks.emplace_back(
+          tp->execute(std::bind(quick_sort, depth + 1, begin, middle)));
     }
     if (middle != end) {
-      std::function<Status()> quick_sort_right =
-          std::bind(quick_sort, depth + 1, middle + 1, end);
-      ThreadPool::Task right_task = tp->execute(std::move(quick_sort_right));
-      tasks.emplace_back(std::move(right_task));
+      tasks.emplace_back(
+          tp->execute(std::bind(quick_sort, depth + 1, middle + 1, end)));
     }
 
     // Wait for the sorted partitions.
-    return tp->wait_all(tasks);
+    tp->wait_all(tasks);
   };
 
   // Start the quicksort from the entire range.
-  throw_if_not_ok(quick_sort(0, begin, end));
+  quick_sort(0, begin, end);
 }
 
 /**
