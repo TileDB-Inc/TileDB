@@ -36,9 +36,12 @@
  * cryptographically random data and checking that their content is not the
  * same. The probability of having the same content is vanishingly small.
  *
- * TODO: add documentation for the AES-GCM tests.
+ * The algorithms are tested using official test vectors:
  *
- * The hash algorithms are tested using official test vectors:
+ * AES-GCM test vectors are taken from gcmEncryptExtIV256.rsp, from "GCM Test
+ * Vectors (SP 800-38D)"
+ * (https://csrc.nist.gov/Projects/cryptographic-algorithm-validation-program/cavp-testing-block-cipher-modes).
+ * We also test that modifying the ciphertext causes failures in decrypting it.
  *
  * MD5 test vectors are taken from RFC 1321's section A.5
  * (https://www.ietf.org/rfc/rfc1321.txt)
