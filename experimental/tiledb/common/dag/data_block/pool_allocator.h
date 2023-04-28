@@ -98,27 +98,33 @@ namespace tiledb::common {
 
 namespace {
 
+template <size_t chunk_size>
+struct chunker {
+  static constexpr size_t value = chunk_size;
+};
+
+template <class T>
+concept is_chunker = requires {
+  chunker<T::value>::value == T::value;
+};
+
+
 /**
  * The PoolAllocator implementation class.  Allocates a fixed-size block
  * of bytes.
  *
  * @tparam chunk_size Number of Ts to allocate per chunk* /
  */
-
-template <size_t chunk_size>
+template <class T>
 class PoolAllocatorImpl {
  public:
   using value_type = std::byte;
   using pointer = value_type*;
 
  private:
+  static constexpr size_t chunk_size = T::value;
   bool debug_{false};
   mutable std::mutex mutex_;
-
-   // template <class U>
-  struct rebind {
-    typedef PoolAllocatorImpl<chunk_size> other;
-  };
 
   /*
    * Pointers and counters for managing the pool
@@ -376,7 +382,7 @@ class PoolAllocatorImpl {
  * Define a class that will only allow the creation of a single instance.
  */
 template <size_t chunk_size>
-class SingletonPoolAllocator : public PoolAllocatorImpl<chunk_size> {
+class SingletonPoolAllocator : public PoolAllocatorImpl<chunker<chunk_size>> {
   // Private constructor so that no objects can be created.
   SingletonPoolAllocator() = default;
 
