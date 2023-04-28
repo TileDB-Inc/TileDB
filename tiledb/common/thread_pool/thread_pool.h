@@ -46,44 +46,45 @@
 
 namespace tiledb::common {
 
-class ThreadPool {
+namespace threadpool_impl {
+/**
+ * Evaluates std::future<T> values and accumulates their result into a vector.
+ */
+template <class T>
+struct ResultAccumulator {
+  using collection_type = std::vector<T>;
+  ResultAccumulator(size_t capacity)
+      : results_(capacity) {
+  }
+  void add(size_t index, std::future<T>& task) {
+    results_[index] = task.get();
+  }
+  collection_type results() {
+    return results_;
+  }
+
  private:
-  /**
-   * Evaluates std::future<T> values and accumulates their result into a vector.
-   */
-  template <class T>
-  struct ResultAccumulator {
-    using collection_type = std::vector<T>;
-    ResultAccumulator(size_t capacity)
-        : results_(capacity) {
-    }
-    void add(size_t index, std::future<T>& task) {
-      results_[index] = task.get();
-    }
-    collection_type results() {
-      return results_;
-    }
+  collection_type results_;
+};
 
-   private:
-    collection_type results_;
-  };
+/**
+ * Specialization of ResultAccumulator for void, which does not accumulate
+ * anything.
+ */
+template <>
+struct ResultAccumulator<void> {
+  using collection_type = void;
+  ResultAccumulator(size_t) {
+  }
+  void add(size_t, std::future<void>& task) {
+    task.get();
+  }
+  collection_type results() {
+  }
+};
+}  // namespace threadpool_impl
 
-  /**
-   * Specialization of ResultAccumulator for void, which does not accumulate
-   * anything.
-   */
-  template <>
-  struct ResultAccumulator<void> {
-    using collection_type = void;
-    ResultAccumulator(size_t) {
-    }
-    void add(size_t, std::future<void>& task) {
-      task.get();
-    }
-    collection_type results() {
-    }
-  };
-
+class ThreadPool {
  public:
   using Task = std::future<Status>;
 
@@ -171,9 +172,9 @@ class ThreadPool {
    * @return Vector of each task's result or void if the tasks return void.
    */
   template <class R>
-  typename ResultAccumulator<R>::collection_type wait_all(
+  typename threadpool_impl::ResultAccumulator<R>::collection_type wait_all(
       std::vector<std::future<R>>& tasks) {
-    ResultAccumulator<R> results(tasks.size());
+    threadpool_impl::ResultAccumulator<R> results(tasks.size());
     std::stringstream exceptions;
 
     auto log_exception = [&exceptions](const char* message) {
