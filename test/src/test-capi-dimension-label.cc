@@ -97,7 +97,7 @@ TEST_CASE_METHOD(
       ctx, array_schema, &dim_label_num));
   REQUIRE(dim_label_num == 1);
 
-  tiledb_dimension_label_t* dim_label;
+  tiledb_dimension_label_t* dim_label{nullptr};
   SECTION("get dimension label from index -") {
     require_tiledb_ok(tiledb_array_schema_get_dimension_label_from_index(
         ctx, array_schema, 0, &dim_label));

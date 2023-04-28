@@ -198,7 +198,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_set_dimension_label_tile_extent(
  *
  * @param ctx The TileDB context.
  * @param array_schema The array schema.
- * @param dim_label_num Retrieves the number of dimension labels for the schema.
+ * @param dim_label_num Retrieved number of dimension labels for the schema.
  * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_array_schema_get_dimension_label_num(
