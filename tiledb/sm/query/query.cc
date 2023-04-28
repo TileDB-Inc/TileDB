@@ -1272,17 +1272,14 @@ Status Query::set_validity_buffer(
     const bool serialization_allow_new_attr) {
   RETURN_NOT_OK(check_set_fixed_buffer(name));
 
-  ValidityVector validity_vector;
-  RETURN_NOT_OK(validity_vector.init_bytemap(
-      buffer_validity_bytemap, buffer_validity_bytemap_size));
   // Check validity buffer
-  if (check_null_buffers && validity_vector.buffer() == nullptr) {
+  if (check_null_buffers && buffer_validity_bytemap == nullptr) {
     return logger_->status(Status_QueryError(
         "Cannot set buffer; " + name + " validity buffer is null"));
   }
 
   // Check validity buffer size
-  if (check_null_buffers && validity_vector.buffer_size() == nullptr) {
+  if (check_null_buffers && buffer_validity_bytemap_size == nullptr) {
     return logger_->status(Status_QueryError(
         "Cannot set buffer; " + name + " validity buffer size is null"));
   }
@@ -1331,7 +1328,8 @@ Status Query::set_validity_buffer(
   }
 
   // Set attribute/dimension buffer
-  buffers_[name].set_validity_buffer(std::move(validity_vector));
+  buffers_[name].set_validity_buffer(
+      {buffer_validity_bytemap, buffer_validity_bytemap_size});
 
   return Status::Ok();
 }

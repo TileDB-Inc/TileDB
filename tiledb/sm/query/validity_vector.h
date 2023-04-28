@@ -36,7 +36,6 @@
 #include <vector>
 
 #include "tiledb/common/macros.h"
-#include "tiledb/common/status.h"
 
 using namespace tiledb::common;
 
@@ -96,26 +95,6 @@ class ValidityVector {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
-
-  /**
-   * Initializes the validity vector with a bytemap. This does
-   * not take ownership of the bytemap. Each non-zero byte represents
-   * a valid attribute value.
-   *
-   * @param bytemap The byte map.
-   * @param bytemap_size The byte size of `bytemap`.
-   * @return Status
-   */
-  Status init_bytemap(uint8_t* const bytemap, uint64_t* bytemap_size) {
-    if (buffer_ != nullptr)
-      return Status_ValidityVectorError(
-          "ValidityVector instance already initialized");
-
-    buffer_ = bytemap;
-    buffer_size_ = bytemap_size;
-
-    return Status::Ok();
-  }
 
   /** Returns the bytemap that this instance was initialized with. */
   uint8_t* bytemap() const {
