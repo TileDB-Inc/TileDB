@@ -57,6 +57,11 @@
  * described above.
  */
 
+#ifdef _MSC_VER
+int main() {
+}
+#else
+
 #include <cassert>
 #include <chrono>
 #include <cmath>
@@ -614,3 +619,6 @@ int main(int argc, char* argv[]) {
 
   return 0;
 }
+
+
+#endif

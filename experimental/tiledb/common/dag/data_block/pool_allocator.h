@@ -115,6 +115,11 @@ class PoolAllocatorImpl {
   bool debug_{false};
   mutable std::mutex mutex_;
 
+   // template <class U>
+  struct rebind {
+    typedef PoolAllocatorImpl<chunk_size> other;
+  };
+
   /*
    * Pointers and counters for managing the pool
    */

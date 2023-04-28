@@ -142,7 +142,7 @@ TEST_CASE(
   auto i = input.begin();
   auto j = output.begin();
 
-  generators g{19UL, 19 + rounds};
+  generators g{size_t{19}, 19 + rounds};
 
   if (rounds + offset != 0) {
     CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);

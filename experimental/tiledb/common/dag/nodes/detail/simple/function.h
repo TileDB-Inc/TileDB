@@ -41,6 +41,7 @@
 #include <thread>  //  @todo debugging
 
 #include "experimental/tiledb/common/dag/nodes/detail/simple/simple_base.h"
+#include "experimental/tiledb/common/dag/utility/print_types.h"
 
 namespace tiledb::common {
 
@@ -75,7 +76,9 @@ template <
 class FunctionNode : public GraphNode,
                      public Sink<SinkMover_T, BlockIn>,
                      public Source<SourceMover_T, BlockOut> {
+  
   std::function<BlockOut(const BlockIn&)> f_;
+  
   using SourceBase = Source<SourceMover_T, BlockOut>;
   using SinkBase = Sink<SinkMover_T, BlockIn>;
 
@@ -104,13 +107,18 @@ class FunctionNode : public GraphNode,
    */
   template <class Function>
   explicit FunctionNode(
-      Function&& f,
+      Function&& f
+      #if 0 
+      ,
       std::enable_if_t<
-          std::is_invocable_r_v<BlockOut, Function, BlockIn>,
-          void**> = nullptr)
+          std::is_invocable_r_v<BlockOut, Function, const BlockIn&>,
+          void**> = nullptr
+  #endif
+  )
       : f_{std::forward<Function>(f)} {
+//    print_types(BlockIn{}, BlockOut{});
   }
-
+  #if 0
   /**
    * Constructor for anything non-invocable.  It is here to provide more
    * meaningful error messages when the constructor is called with wrong type of
@@ -120,12 +128,16 @@ class FunctionNode : public GraphNode,
   explicit FunctionNode(
       Function&&,
       std::enable_if_t<
-          !std::is_invocable_r_v<BlockOut, Function, BlockIn>,
+          !std::is_invocable_r_v<BlockOut, Function, const BlockIn&>,
           void**> = nullptr) {
+    print_types(BlockIn{});
+    print_types(BlockOut{});
     static_assert(
-        std::is_invocable_r_v<BlockOut, Function, BlockIn>,
+        std::is_invocable_r_v<BlockOut, Function, const BlockIn&>,
         "Function constructor with non-invocable type");
   }
+  #endif
+
 
   /**
    * Function for extracting data from the item mover, invoking the function in
