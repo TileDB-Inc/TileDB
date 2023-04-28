@@ -71,7 +71,7 @@ void parallel_sort(
 
   // Calculate the maximum height of the recursive call stack tree
   // where each leaf node can be assigned to a single level of
-  // concurrency on the thread pool. The motiviation is to stop the
+  // concurrency on the thread pool. The motivation is to stop the
   // recursion when all concurrency levels are utilized. When all
   // concurrency levels have their own subrange to operate on, we
   // will stop the quicksort and invoke std::sort() to sort the

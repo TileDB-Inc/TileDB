@@ -180,7 +180,7 @@ class ThreadPool {
     auto log_exception = [&exceptions](const char* message) {
       // If this is the first exception, add an intro message.
       if (exceptions.tellp() <= 0) {
-        exceptions << "One or more errors occured";
+        exceptions << "One or more errors occurred";
       }
       exceptions << "\n * " << message;
     };
