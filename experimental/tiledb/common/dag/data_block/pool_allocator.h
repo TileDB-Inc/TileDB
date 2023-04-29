@@ -89,8 +89,6 @@
 #ifndef TILEDB_DAG_POOL_ALLOCATOR_H
 #define TILEDB_DAG_POOL_ALLOCATOR_H
 
-#ifndef _MSC_VER
-
 #include <atomic>
 #include <cassert>
 #include <iostream>
@@ -100,31 +98,20 @@ namespace tiledb::common {
 
 namespace {
 
-template <size_t chunk_size>
-struct chunker {
-  static constexpr size_t value = chunk_size;
-};
-
-template <class T>
-concept is_chunker = requires {
-  chunker<T::value>::value == T::value;
-};
-
-
 /**
  * The PoolAllocator implementation class.  Allocates a fixed-size block
  * of bytes.
  *
  * @tparam chunk_size Number of Ts to allocate per chunk* /
  */
-template <class T>
+
+template <size_t chunk_size>
 class PoolAllocatorImpl {
  public:
   using value_type = std::byte;
   using pointer = value_type*;
 
  private:
-  static constexpr size_t chunk_size = T::value;
   bool debug_{false};
   mutable std::mutex mutex_;
 
@@ -222,7 +209,7 @@ class PoolAllocatorImpl {
      */
     auto aligned_start{reinterpret_cast<std::byte*>(
         reinterpret_cast<ptrdiff_t>(new_bytes + sizeof(pointer) + (align - 1)) &
-        static_cast<ptrdiff_t>(page_mask))};
+        reinterpret_cast<ptrdiff_t>(page_mask))};
 
     for (size_t i = 0; i < chunks_per_array; ++i) {
       push_chunk(aligned_start + i * chunk_size);
@@ -384,7 +371,7 @@ class PoolAllocatorImpl {
  * Define a class that will only allow the creation of a single instance.
  */
 template <size_t chunk_size>
-class SingletonPoolAllocator : public PoolAllocatorImpl<chunker<chunk_size>> {
+class SingletonPoolAllocator : public PoolAllocatorImpl<chunk_size> {
   // Private constructor so that no objects can be created.
   SingletonPoolAllocator() = default;
 
@@ -451,5 +438,4 @@ class PoolAllocator {
 
 }  // namespace tiledb::common
 
-#endif // _MSC_VER
 #endif  // TILEDB_DAG_POOL_ALLOCATOR_H
