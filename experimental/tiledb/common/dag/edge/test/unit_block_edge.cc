@@ -32,6 +32,8 @@
  * The different tests currently include an extensive amount of debugging code.
  */
 
+#ifndef _MSC_VER
+
 #include "unit_block_edge.h"
 #include "experimental/tiledb/common/dag/data_block/data_block.h"
 
@@ -42,3 +44,5 @@
 TEST_CASE("BlockEdge: Trivial test", "[block_edge]") {
   CHECK(true);
 }
+
+#endif

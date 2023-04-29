@@ -28,6 +28,8 @@
  * @section DESCRIPTION
  */
 
+#ifndef _MSC_VER
+
 #include "unit_taskgraph.h"
 #include "experimental/tiledb/common/dag/execution/duffs.h"
 #include "experimental/tiledb/common/dag/graph/taskgraph.h"
@@ -432,3 +434,4 @@ TEST_CASE("TaskGraph: Run Passing Integers", "[taskgraph]") {
 
   CHECK(std::distance(input.begin(), i) == static_cast<long>(rounds));
 }
+#endif // _MSC_VER

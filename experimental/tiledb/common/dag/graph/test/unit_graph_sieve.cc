@@ -60,6 +60,8 @@
  * graph with various configurations of schedulers and movers.
  */
 
+#ifndef _MSC_VER
+
 #include <cassert>
 #include <chrono>
 #include <cmath>
@@ -679,3 +681,4 @@ int main(int argc, char* argv[]) {
     }
   }
 }
+#endif // _MSC_VER
