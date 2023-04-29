@@ -89,6 +89,8 @@
 #ifndef TILEDB_DAG_POOL_ALLOCATOR_H
 #define TILEDB_DAG_POOL_ALLOCATOR_H
 
+#ifndef _MSC_VER
+
 #include <atomic>
 #include <cassert>
 #include <iostream>
@@ -449,4 +451,5 @@ class PoolAllocator {
 
 }  // namespace tiledb::common
 
+#endif // _MSC_VER
 #endif  // TILEDB_DAG_POOL_ALLOCATOR_H

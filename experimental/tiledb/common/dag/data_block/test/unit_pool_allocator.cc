@@ -30,6 +30,8 @@
  * Tests the pool_allocator class.
  */
 
+#ifndef _MSC_VER
+
 #include "unit_pool_allocator.h"
 #include <array>
 #include <memory>
@@ -532,3 +534,4 @@ TEST_CASE(
     test_statistics<small_class>();
   }
 }
+#endif
