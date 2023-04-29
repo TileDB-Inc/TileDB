@@ -31,6 +31,7 @@
  *
  */
 
+#ifndef _MSC_VER
 #include <future>
 
 #include "unit_data_block.h"
@@ -549,3 +550,4 @@ TEST_CASE("BlocksAndPorts: Async pass n blocks", "[blocks_and_ports]") {
   // All blocks should have been freed
   CHECK(p.num_allocated() == 0);
 }
+#endif  // _MSC_VER
