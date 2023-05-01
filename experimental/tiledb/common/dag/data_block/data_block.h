@@ -122,12 +122,15 @@ class DataBlockImpl {
 
 #endif
 
-  // @todo: make allocator_ static constexpr, etc.
-  void* operator new (size_t size) {
-    return reinterpret_cast<void*> (allocator_t{}.allocate());
+  // @todo: Do some initialization here.
+  // @todo: Default initialize?
+  // Although there is a "size" argument, we don't actually do anything with it.
+  // We always return a single datablock of size chunk_size_.
+  void* operator new(size_t) {
+    return reinterpret_cast<void*>(allocator_t{}.allocate());
   }
 
-  void operator delete (void* ptr) {
+  void operator delete(void* ptr) {
     allocator_t{}.deallocate(reinterpret_cast<std::byte*>(ptr));
   }
 
@@ -137,7 +140,7 @@ class DataBlockImpl {
    * `shared_ptr` constructor.  It is expected that his deleter will simply
    * return the chunk to the pool.  See pool_allocator.h for details.
    */
-    DataBlockImpl(size_t init_size = 0UL)
+  DataBlockImpl(size_t init_size = 0UL)
               : capacity_{chunk_size_}
       , size_{init_size}
       , storage_{allocator_t{}.allocate(),
@@ -285,7 +288,6 @@ class DataBlockImpl {
     return storage_.use_count();
   }
 };
-
 
 /**
  * The `DataBlock` class is the `DataBlockImpl` above, specialized to the

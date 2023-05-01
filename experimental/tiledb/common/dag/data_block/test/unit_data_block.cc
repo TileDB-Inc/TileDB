@@ -40,8 +40,8 @@
 
 #include "unit_data_block.h"
 #include <algorithm>
-#include <list>
 #include <forward_list>
+#include <list>
 
 /**
  * @todo Use proper checks for preprocessor directives to selectively include
@@ -58,8 +58,8 @@
 #include "experimental/tiledb/common/dag/utility/range_join.h"
 using namespace tiledb::common;
 
-
-TEST_CASE("DataBlock: Test create DataBlock with constructors", "[data_block]") {
+TEST_CASE(
+    "DataBlock: Test create DataBlock with constructors", "[data_block]") {
   [[maybe_unused]] auto da = DataBlock<4'096>{};
   CHECK(da.size() == 0);
   CHECK(da.capacity() == 4096);
@@ -204,7 +204,6 @@ void db_test_1(const DB& db) {
   CHECK(a <= g);
 }
 
-
 /**
  * Invoke simple API tests with a basic `DataBlock`
  */
@@ -213,7 +212,6 @@ TEST_CASE("DataBlock: Test API of variously sized DataBlock", "[data_block]") {
   size_t chunk_size_ = 4'096;
 
   SECTION("Specific size constructed") {
-
     auto db = DataBlock{1};
     db_test_0(db);
     db_test_1(db);
@@ -250,7 +248,6 @@ TEST_CASE("DataBlock: Test API of variously sized DataBlock", "[data_block]") {
   }
 }
 
-
 /**
  * Test iterating through a `DataBlock`
  */
@@ -284,9 +281,6 @@ TEST_CASE("DataBlock: Iterate through data_block", "[data_block]") {
   db_test_2(dc);
 }
 
-
-
-
 /**
  * Run iteration test on multiple DataBlocks, again allocated with
  * `std::allocator` and with our `PoolAllocator`.
@@ -303,14 +297,11 @@ TEST_CASE("DataBlock: Iterate through 8 data_blocks", "[data_block]") {
   }
 }
 
-
-
 /**
  * Verify some properties of `DataBlock`s
  */
 TEST_CASE("DataBlock: Get span", "[data_block]") {
-using DataBlock = DataBlock<4'194'304>;
-
+  using DataBlock = DataBlock<4'194'304>;
 
   auto a = DataBlock{};
   auto b = DataBlock{};
@@ -385,7 +376,6 @@ TEST_CASE("DataBlock: Test resize", "[data_block]") {
 }
 
 TEST_CASE("DataBlock: Test (shallow) copying", "[data_block]") {
-
   using DataBlock = DataBlock<4'194'304>;
 
   auto a = DataBlock{DataBlock::max_size()};
@@ -589,7 +579,6 @@ TEST_CASE(
 TEST_CASE(
     "DataBlock: Test DataBlock allocation/deallocation from pool, etc",
     "[data_block]") {
-
   constexpr size_t chunk_size_ = 4'194'304;
   using DataBlock = DataBlock<chunk_size_>;
 
@@ -632,7 +621,6 @@ TEST_CASE(
 TEST_CASE(
     "DataBlock: Test DataBlock allocation/deallocation on copying, etc",
     "[data_block]") {
-
   constexpr size_t chunk_size_ = 4'194'304;
   using DataBlock = DataBlock<chunk_size_>;
 
@@ -729,7 +717,6 @@ TEST_CASE(
  * `std::fill` algorithm.
  */
 void test_std_fill(size_t test_size) {
-
   constexpr size_t chunk_size_ = 4'194'304;
   using DataBlock = DataBlock<chunk_size_>;
 
@@ -805,9 +792,7 @@ void test_std_fill(size_t test_size) {
  * `std::fill` algorithm.
  */
 TEST_CASE("DataBlock: Fill with std::fill", "[data_block]") {
-
   constexpr size_t chunk_size_ = 4'194'304;
-  using DataBlock = DataBlock<chunk_size_>;
 
   SECTION("chunk_size") {
     test_std_fill(chunk_size_);
@@ -824,7 +809,6 @@ TEST_CASE("DataBlock: Fill with std::fill", "[data_block]") {
  * Verify some properties of joined `DataBlock`s.
  */
 void test_join(size_t test_size) {
-
   constexpr size_t chunk_size_ = 4'194'304;
   using DataBlock = DataBlock<chunk_size_>;
 
@@ -888,9 +872,7 @@ void test_join(size_t test_size) {
 }
 
 TEST_CASE("DataBlock: Join data_blocks (join view)", "[data_block]") {
-
   constexpr size_t chunk_size_ = 4'194'304;
-  using DataBlock = DataBlock<chunk_size_>;
 
   SECTION("chunk_size") {
     test_join(chunk_size_);
@@ -908,7 +890,6 @@ TEST_CASE("DataBlock: Join data_blocks (join view)", "[data_block]") {
  * library algorithms.
  */
 void test_join_std_fill(size_t test_size) {
-
   constexpr size_t chunk_size_ = 4'194'304;
   using DataBlock = DataBlock<chunk_size_>;
 
@@ -948,9 +929,7 @@ void test_join_std_fill(size_t test_size) {
 }
 
 TEST_CASE("DataBlock: Join data_blocks std::fill", "[data_block]") {
-
   constexpr size_t chunk_size_ = 4'194'304;
-  using DataBlock = DataBlock<chunk_size_>;
 
   SECTION("chunk_size") {
     test_join_std_fill(chunk_size_);
@@ -967,7 +946,6 @@ TEST_CASE("DataBlock: Join data_blocks std::fill", "[data_block]") {
  * Test `operator[]` of joined `DataBlock`s.
  */
 void test_join_operator_bracket(size_t test_size) {
-
   constexpr size_t chunk_size_ = 4'194'304;
   using DataBlock = DataBlock<chunk_size_>;
 
@@ -1013,9 +991,7 @@ void test_join_operator_bracket(size_t test_size) {
 }
 
 TEST_CASE("DataBlock: Join data_blocks operator[]", "[data_block]") {
-
   constexpr size_t chunk_size_ = 4'194'304;
-  using DataBlock = DataBlock<chunk_size_>;
 
   SECTION("chunk_size") {
     test_join_operator_bracket(chunk_size_);
@@ -1032,7 +1008,6 @@ TEST_CASE("DataBlock: Join data_blocks operator[]", "[data_block]") {
  * Additional standard library uses of joined `DataBlock`s.
  */
 void test_operator_bracket_loops(size_t test_size) {
-
   constexpr size_t chunk_size_ = 4'194'304;
   using DataBlock = DataBlock<chunk_size_>;
 
@@ -1113,7 +1088,6 @@ void test_operator_bracket_loops(size_t test_size) {
 
 TEST_CASE("DataBlock: Join data_blocks loops operator[]", "[data_block]") {
   constexpr size_t chunk_size_ = 4'194'304;
-  using DataBlock = DataBlock<chunk_size_>;
 
   SECTION("chunk_size") {
     test_operator_bracket_loops(chunk_size_);
