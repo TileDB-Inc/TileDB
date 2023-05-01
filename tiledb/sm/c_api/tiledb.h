@@ -1077,7 +1077,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_domain(
  * @param array_schema The array schema.
  * @param capacity The capacity of a sparse data tile. Note that
  * sparse data tiles exist in sparse fragments, which can be created
- * in both sparse and dense arrays. For more details,
+ * in sparse arrays only. For more details,
  * see [tutorials/tiling-sparse.html](tutorials/tiling-sparse.html).
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
