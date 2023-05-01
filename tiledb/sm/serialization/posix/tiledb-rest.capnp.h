@@ -973,7 +973,7 @@ struct Query {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(96ba49d0f8b23ccc, 4, 16)
+    CAPNP_DECLARE_STRUCT_HEADER(96ba49d0f8b23ccc, 4, 15)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -8455,12 +8455,6 @@ class Query::Reader {
   inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
   getWrittenBuffers() const;
 
-  inline bool hasLabelBuffers() const;
-  inline ::capnp::List<
-      ::tiledb::sm::serialization::capnp::AttributeBufferHeader,
-      ::capnp::Kind::STRUCT>::Reader
-  getLabelBuffers() const;
-
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -8683,28 +8677,6 @@ class Query::Builder {
           value);
   inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
   disownWrittenBuffers();
-
-  inline bool hasLabelBuffers();
-  inline ::capnp::List<
-      ::tiledb::sm::serialization::capnp::AttributeBufferHeader,
-      ::capnp::Kind::STRUCT>::Builder
-  getLabelBuffers();
-  inline void setLabelBuffers(
-      ::capnp::List<
-          ::tiledb::sm::serialization::capnp::AttributeBufferHeader,
-          ::capnp::Kind::STRUCT>::Reader value);
-  inline ::capnp::List<
-      ::tiledb::sm::serialization::capnp::AttributeBufferHeader,
-      ::capnp::Kind::STRUCT>::Builder
-  initLabelBuffers(unsigned int size);
-  inline void adoptLabelBuffers(
-      ::capnp::Orphan<::capnp::List<
-          ::tiledb::sm::serialization::capnp::AttributeBufferHeader,
-          ::capnp::Kind::STRUCT>>&& value);
-  inline ::capnp::Orphan<::capnp::List<
-      ::tiledb::sm::serialization::capnp::AttributeBufferHeader,
-      ::capnp::Kind::STRUCT>>
-  disownLabelBuffers();
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -22870,80 +22842,6 @@ Query::Builder::disownWrittenBuffers() {
   return ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
           _builder.getPointerField(::capnp::bounded<14>() * ::capnp::POINTERS));
-}
-
-inline bool Query::Reader::hasLabelBuffers() const {
-  return !_reader.getPointerField(::capnp::bounded<15>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline bool Query::Builder::hasLabelBuffers() {
-  return !_builder.getPointerField(::capnp::bounded<15>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline ::capnp::List<
-    ::tiledb::sm::serialization::capnp::AttributeBufferHeader,
-    ::capnp::Kind::STRUCT>::Reader
-Query::Reader::getLabelBuffers() const {
-  return ::capnp::_::PointerHelpers<::capnp::List<
-      ::tiledb::sm::serialization::capnp::AttributeBufferHeader,
-      ::capnp::Kind::STRUCT>>::get(_reader
-                                       .getPointerField(
-                                           ::capnp::bounded<15>() *
-                                           ::capnp::POINTERS));
-}
-inline ::capnp::List<
-    ::tiledb::sm::serialization::capnp::AttributeBufferHeader,
-    ::capnp::Kind::STRUCT>::Builder
-Query::Builder::getLabelBuffers() {
-  return ::capnp::_::PointerHelpers<::capnp::List<
-      ::tiledb::sm::serialization::capnp::AttributeBufferHeader,
-      ::capnp::Kind::STRUCT>>::get(_builder
-                                       .getPointerField(
-                                           ::capnp::bounded<15>() *
-                                           ::capnp::POINTERS));
-}
-inline void Query::Builder::setLabelBuffers(
-    ::capnp::List<
-        ::tiledb::sm::serialization::capnp::AttributeBufferHeader,
-        ::capnp::Kind::STRUCT>::Reader value) {
-  ::capnp::_::PointerHelpers<::capnp::List<
-      ::tiledb::sm::serialization::capnp::AttributeBufferHeader,
-      ::capnp::Kind::STRUCT>>::
-      set(_builder.getPointerField(::capnp::bounded<15>() * ::capnp::POINTERS),
-          value);
-}
-inline ::capnp::List<
-    ::tiledb::sm::serialization::capnp::AttributeBufferHeader,
-    ::capnp::Kind::STRUCT>::Builder
-Query::Builder::initLabelBuffers(unsigned int size) {
-  return ::capnp::_::PointerHelpers<::capnp::List<
-      ::tiledb::sm::serialization::capnp::AttributeBufferHeader,
-      ::capnp::Kind::STRUCT>>::
-      init(
-          _builder.getPointerField(::capnp::bounded<15>() * ::capnp::POINTERS),
-          size);
-}
-inline void Query::Builder::adoptLabelBuffers(
-    ::capnp::Orphan<::capnp::List<
-        ::tiledb::sm::serialization::capnp::AttributeBufferHeader,
-        ::capnp::Kind::STRUCT>>&& value) {
-  ::capnp::_::PointerHelpers<::capnp::List<
-      ::tiledb::sm::serialization::capnp::AttributeBufferHeader,
-      ::capnp::Kind::STRUCT>>::
-      adopt(
-          _builder.getPointerField(::capnp::bounded<15>() * ::capnp::POINTERS),
-          kj::mv(value));
-}
-inline ::capnp::Orphan<::capnp::List<
-    ::tiledb::sm::serialization::capnp::AttributeBufferHeader,
-    ::capnp::Kind::STRUCT>>
-Query::Builder::disownLabelBuffers() {
-  return ::capnp::_::PointerHelpers<::capnp::List<
-      ::tiledb::sm::serialization::capnp::AttributeBufferHeader,
-      ::capnp::Kind::STRUCT>>::disown(_builder
-                                          .getPointerField(
-                                              ::capnp::bounded<15>() *
-                                              ::capnp::POINTERS));
 }
 
 inline bool NonEmptyDomain::Reader::hasNonEmptyDomain() const {
