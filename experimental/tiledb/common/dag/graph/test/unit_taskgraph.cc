@@ -434,4 +434,5 @@ TEST_CASE("TaskGraph: Run Passing Integers", "[taskgraph]") {
 
   CHECK(std::distance(input.begin(), i) == static_cast<long>(rounds));
 }
+
 #endif  // _MSC_VER

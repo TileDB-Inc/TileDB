@@ -133,8 +133,6 @@ TEST_CASE(
       w{[](std::tuple<size_t, double>) {}};
   GeneralProducerNode<AsyncMover3, std::tuple<size_t, double>> x{
       [](std::tuple<size_t, double>) {}};
-  GeneralProducerNode<AsyncMover3, std::tuple<size_t, double>> x{
-      [](std::tuple<size_t, double>) {}};
   GeneralConsumerNode<AsyncMover3, std::tuple<size_t, double>> y{
       [](std::tuple<size_t, double>) {}};
 }

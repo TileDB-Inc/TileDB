@@ -113,6 +113,8 @@ class FunctionNode : public GraphNode,
 #endif
                         )
       : f_{std::forward<Function>(f)} {
+            //    print_types(BlockIn{}, BlockOut{});
+        } : f_{std::forward<Function>(f)} {
     //    print_types(BlockIn{}, BlockOut{});
   }
 #if 0

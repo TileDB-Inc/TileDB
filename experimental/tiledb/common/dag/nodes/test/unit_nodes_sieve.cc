@@ -516,31 +516,31 @@ auto sieve_async_block(
         sieve_to_primes_part<bool_t>,
         std::bind(output_body, _1, std::ref(prime_list)));
 #else
-    // std::bind(gen_range<bool_t>, _1, block_size, sqrt_n, n),
-    // std::bind(range_sieve<bool_t>, _1, std::cref(base_primes)),
+    graph.emplace_back(
+        std::ref(gen),
+        // std::bind(range_sieve<bool_t>, _1, std::cref(base_primes)),
         [&](auto&& x) {
-      return range_sieve<bool_t>(x, std::cref(base_primes));
+          return range_sieve<bool_t>(x, std::cref(base_primes));
         },
         sieve_to_primes_part<bool_t>,
         // std::bind(output_body, _1, std::ref(prime_list))
-        [&](auto&& x) {
-      output_body(x, std::ref(prime_list)); });
+        [&](auto&& x) { output_body(x, std::ref(prime_list)); });
 #endif
 
-        /*
-         * Connect the nodes in the graph.  We try to keep the edges from going
-         * out of scope by putting them into a vector.
-         */
-        edges.emplace_back(std::move(
-            Edge(std::get<0>(graph.back()), std::get<1>(graph.back()))));
-        edges.emplace_back(std::move(
-            Edge(std::get<1>(graph.back()), std::get<2>(graph.back()))));
-        edges.emplace_back(std::move(
-            Edge(std::get<2>(graph.back()), std::get<3>(graph.back()))));
-        edges.emplace_back(std::move(
-            Edge(std::get<3>(graph.back()), std::get<4>(graph.back()))));
-        if (debug)
-          std::cout << "Post edge" << std::endl;
+    /*
+     * Connect the nodes in the graph.  We try to keep the edges from going
+     * out of scope by putting them into a vector.
+     */
+    edges.emplace_back(
+        std::move(Edge(std::get<0>(graph.back()), std::get<1>(graph.back()))));
+    edges.emplace_back(
+        std::move(Edge(std::get<1>(graph.back()), std::get<2>(graph.back()))));
+    edges.emplace_back(
+        std::move(Edge(std::get<2>(graph.back()), std::get<3>(graph.back()))));
+    edges.emplace_back(
+        std::move(Edge(std::get<3>(graph.back()), std::get<4>(graph.back()))));
+    if (debug)
+      std::cout << "Post edge" << std::endl;
   }
 
   size_t N = rounds;
