@@ -198,31 +198,53 @@ Status FilterPipeline::filter_chunks_forward(
     }
   }
 
+  std::vector<Status> status_codes(nchunks, Status::Ok());
+
   // Vector storing the input and output of the final pipeline stage for each
   // chunk.
+  std::vector<FilterStorage> filter_storages(nchunks);
   std::vector<std::pair<FilterBufferPair, FilterBufferPair>> final_stage_io(
       nchunks);
+  for (uint64_t i = 0; i < nchunks; ++i) {
+    FilterBuffer input_data(filter_storages.data() + i),
+        output_data(filter_storages.data() + i);
+    FilterBuffer input_metadata(filter_storages.data() + i),
+        output_metadata(filter_storages.data() + i);
+
+    throw_if_not_ok(final_stage_io[i].first.first.swap(input_metadata));
+    throw_if_not_ok(final_stage_io[i].first.second.swap(input_data));
+    throw_if_not_ok(final_stage_io[i].second.first.swap(output_metadata));
+    throw_if_not_ok(final_stage_io[i].second.second.swap(output_data));
+  }
 
   auto graph_width = compute_tp->concurrency_level();
+  TaskGraph<DuffsScheduler<node>> graph(graph_width);
 
-  // Run each chunk through the entire pipeline.
-  auto status = parallel_for(compute_tp, 0, nchunks, [&](uint64_t i) {
-    // TODO(ttd): can we instead allocate one FilterStorage per thread?
-    // or make it threadsafe?
-    FilterStorage storage;
-    FilterBuffer input_data(&storage), output_data(&storage);
-    FilterBuffer input_metadata(&storage), output_metadata(&storage);
+  // TODO:
+  // - now the graph is as wide as the no. of chunks. Immediate change is to
+  // make the initial node generate next chunk, thread safe and make graph
+  // width=compute_concurrency_level. Once we add support for specifying node
+  // width, wideness will just be specified as a number and the for loop below
+  // won't be needed anymore.
+  // - Implement move constructor for FilterBuffer, this way we can remove
+  // input_* and output_* vars and the swap logic around them,
+  // the nodes will just move the filter buffers from one another via edges.
+  for (uint64_t chunk = 0; chunk < nchunks; ++chunk) {
+    auto& input_metadata = final_stage_io[chunk].first.first;
+    auto& input_data = final_stage_io[chunk].first.second;
+    auto& output_metadata = final_stage_io[chunk].second.first;
+    auto& output_data = final_stage_io[chunk].second.second;
 
     // First filter's input is the original chunk.
-    uint64_t offset = var_sizes ? chunk_offsets[i] : i * chunk_size;
+    uint64_t offset = var_sizes ? chunk_offsets[chunk] : chunk * chunk_size;
     void* chunk_buffer = static_cast<char*>(tile.data()) + offset;
     uint32_t chunk_buffer_size =
-        i == nchunks - 1 ? last_buffer_size :
-        var_sizes        ? chunk_offsets[i + 1] - chunk_offsets[i] :
-                           chunk_size;
+        chunk == nchunks - 1 ? last_buffer_size :
+        var_sizes            ? chunk_offsets[chunk + 1] - chunk_offsets[chunk] :
+                               chunk_size;
     RETURN_NOT_OK(input_data.init(chunk_buffer, chunk_buffer_size));
 
-    TaskGraph<DuffsScheduler<node>> graph(1);
+    Status status = Status::Ok();
 
     graph_executions exec;
     auto a = initial_node(graph, exec);
@@ -235,6 +257,11 @@ Status FilterPipeline::filter_chunks_forward(
       auto& f = *it;
 
       auto n = transform_node(graph, [&]([[maybe_unused]] const Status& st) {
+        // Graph nodes should quit early if an error status was produced earlier
+        // in the execution. Ideally they should quit even earlier by throwing
+        // when code depending on this Status code will be refactored.
+        RETURN_NOT_OK(st);
+
         // Clear and reset I/O buffers
         input_data.reset_offset();
         input_data.set_read_only(true);
@@ -268,43 +295,28 @@ Status FilterPipeline::filter_chunks_forward(
         make_edge(graph, nodes.back(), n);
       }
       nodes.push_back(n);
-    }
 
-    Status st = Status::Ok();
-    auto e = terminal_node(graph, [&](const Status& st_in) {
-      if (!st_in.ok()) {
-        st = st_in;
-        return;
+      auto e = terminal_node(graph, [&](const Status& st_in) {
+        if (!st_in.ok()) {
+          status_codes[chunk] = st_in;
+          return;
+        }
+      });
+
+      if (nodes.empty()) {
+        make_edge(graph, a, e);
+      } else {
+        make_edge(graph, nodes.back(), e);
       }
-
-      // Save the finished chunk (last stage's output). This is safe to do
-      // because when the local FilterStorage goes out of scope, it will not
-      // free the buffers saved here as their shared_ptr counters will not
-      // be zero. However, as the output may have been a view on the input, we
-      // do need to save both here to prevent the input buffer from being
-      // freed.
-      auto& io = final_stage_io[i];
-      auto& io_input = io.first;
-      auto& io_output = io.second;
-      throw_if_not_ok(io_input.first.swap(input_metadata));
-      throw_if_not_ok(io_input.second.swap(input_data));
-      throw_if_not_ok(io_output.first.swap(output_metadata));
-      throw_if_not_ok(io_output.second.swap(output_data));
-    });
-
-    if (nodes.empty()) {
-      make_edge(graph, a, e);
-    } else {
-      make_edge(graph, nodes.back(), e);
     }
+  }
 
-    schedule(graph);
-    sync_wait(graph);
+  schedule(graph);
+  sync_wait(graph);
 
-    return st;
-  });
-
-  RETURN_NOT_OK(status);
+  for (auto s : status_codes) {
+    RETURN_NOT_OK(s);
+  }
 
   uint64_t total_processed_size = 0;
   std::vector<uint32_t> var_chunk_sizes(final_stage_io.size());
@@ -340,35 +352,40 @@ Status FilterPipeline::filter_chunks_forward(
   memcpy(output.data(), &nchunks, sizeof(uint64_t));
 
   // Concatenate all processed chunks into the final output buffer.
-  status = parallel_for(compute_tp, 0, final_stage_io.size(), [&](uint64_t i) {
-    auto& final_stage_output_metadata = final_stage_io[i].first.first;
-    auto& final_stage_output_data = final_stage_io[i].first.second;
-    auto filtered_size = (uint32_t)final_stage_output_data.size();
-    uint32_t orig_chunk_size =
-        i == final_stage_io.size() - 1 ? last_buffer_size :
-        var_sizes ? chunk_offsets[i + 1] - chunk_offsets[i] :
-                    chunk_size;
-    auto metadata_size = (uint32_t)final_stage_output_metadata.size();
-    void* dest = output.data() + offsets[i];
-    uint64_t dest_offset = 0;
+  Status status =
+      parallel_for(compute_tp, 0, final_stage_io.size(), [&](uint64_t i) {
+        auto& final_stage_output_metadata = final_stage_io[i].first.first;
+        auto& final_stage_output_data = final_stage_io[i].first.second;
+        auto filtered_size = (uint32_t)final_stage_output_data.size();
+        uint32_t orig_chunk_size =
+            i == final_stage_io.size() - 1 ? last_buffer_size :
+            var_sizes ? chunk_offsets[i + 1] - chunk_offsets[i] :
+                        chunk_size;
+        auto metadata_size = (uint32_t)final_stage_output_metadata.size();
+        void* dest = output.data() + offsets[i];
+        uint64_t dest_offset = 0;
 
-    // Write the original (unfiltered) chunk size
-    std::memcpy((char*)dest + dest_offset, &orig_chunk_size, sizeof(uint32_t));
-    dest_offset += sizeof(uint32_t);
-    // Write the filtered chunk size
-    std::memcpy((char*)dest + dest_offset, &filtered_size, sizeof(uint32_t));
-    dest_offset += sizeof(uint32_t);
-    // Write the metadata size
-    std::memcpy((char*)dest + dest_offset, &metadata_size, sizeof(uint32_t));
-    dest_offset += sizeof(uint32_t);
-    // Write the chunk metadata
-    RETURN_NOT_OK(
-        final_stage_output_metadata.copy_to((char*)dest + dest_offset));
-    dest_offset += metadata_size;
-    // Write the chunk data
-    RETURN_NOT_OK(final_stage_output_data.copy_to((char*)dest + dest_offset));
-    return Status::Ok();
-  });
+        // Write the original (unfiltered) chunk size
+        std::memcpy(
+            (char*)dest + dest_offset, &orig_chunk_size, sizeof(uint32_t));
+        dest_offset += sizeof(uint32_t);
+        // Write the filtered chunk size
+        std::memcpy(
+            (char*)dest + dest_offset, &filtered_size, sizeof(uint32_t));
+        dest_offset += sizeof(uint32_t);
+        // Write the metadata size
+        std::memcpy(
+            (char*)dest + dest_offset, &metadata_size, sizeof(uint32_t));
+        dest_offset += sizeof(uint32_t);
+        // Write the chunk metadata
+        RETURN_NOT_OK(
+            final_stage_output_metadata.copy_to((char*)dest + dest_offset));
+        dest_offset += metadata_size;
+        // Write the chunk data
+        RETURN_NOT_OK(
+            final_stage_output_data.copy_to((char*)dest + dest_offset));
+        return Status::Ok();
+      });
 
   RETURN_NOT_OK(status);
 
