@@ -86,7 +86,7 @@ struct GroupFx {
   std::string get_golden_ls(const std::string& path);
   static std::string random_name(const std::string& prefix);
   std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> read_group(
-      tiledb_group_t* group) const;
+      tiledb_group_t* group, bool use_get_member_by_index_v2 = true) const;
   void set_group_timestamp(
       tiledb_group_t* group, const uint64_t& timestamp) const;
   void write_group_metadata(const char* group_uri) const;
@@ -230,12 +230,12 @@ void GroupFx::vacuum(const char* group_uri) const {
 }
 
 std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> GroupFx::read_group(
-    tiledb_group_t* group) const {
+    tiledb_group_t* group, bool use_get_member_by_index_v2) const {
   std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> ret;
   uint64_t count = 0;
   int rc = tiledb_group_get_member_count(ctx_, group, &count);
   REQUIRE(rc == TILEDB_OK);
-  SECTION("Using tiledb_group_get_member_by_index_v2") {
+  if (use_get_member_by_index_v2) {
     for (uint64_t i = 0; i < count; i++) {
       std::string uri;
       tiledb_object_t type;
@@ -256,10 +256,9 @@ std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> GroupFx::read_group(
       }
       ret.emplace_back(uri, type);
     }
-  }
-  // When tiledb_group_get_member_by_index gets removed, this section can simply
-  // be removed.
-  SECTION("Using tiledb_group_get_member_by_index") {
+  } else {
+    // When tiledb_group_get_member_by_index gets removed, the else part can
+    // simply be removed.
     for (uint64_t i = 0; i < count; i++) {
       std::string uri;
       tiledb_object_t type;
@@ -521,6 +520,13 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     GroupFx, "C API: Group, write/read", "[capi][group][metadata][read]") {
+  bool use_get_member_by_index_v2 = true;
+  SECTION("Using tiledb_group_get_member_by_index_v2") {
+    use_get_member_by_index_v2 = true;
+  }
+  SECTION("Using tiledb_group_get_member_by_index") {
+    use_get_member_by_index_v2 = false;
+  }
   // Create and open group in write mode
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
@@ -590,12 +596,12 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> group1_received =
-      read_group(group1);
+      read_group(group1, use_get_member_by_index_v2);
   REQUIRE_THAT(
       group1_received, Catch::Matchers::UnorderedEquals(group1_expected));
 
   std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> group2_received =
-      read_group(group2);
+      read_group(group2, use_get_member_by_index_v2);
   REQUIRE_THAT(
       group2_received, Catch::Matchers::UnorderedEquals(group2_expected));
 
