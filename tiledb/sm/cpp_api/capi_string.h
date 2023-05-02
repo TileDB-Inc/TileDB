@@ -88,11 +88,12 @@ class CAPIString {
 };
 
 /**
- * Returns a C++ string with the handle's data. The handle is subsequently freed.
+ * Returns a C++ string with the handle's data. The handle is subsequently
+ * freed.
  *
  * If the handle is null returns nullopt.
  */
-inline std::optional<std::string> make_CAPIString(tiledb_string_t*&& handle) {
+inline std::optional<std::string> to_string(tiledb_string_t*&& handle) {
   if (handle == nullptr) {
     return std::nullopt;
   }
