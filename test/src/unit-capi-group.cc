@@ -235,13 +235,10 @@ std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> GroupFx::read_group(
   uint64_t count = 0;
   int rc = tiledb_group_get_member_count(ctx_, group, &count);
   REQUIRE(rc == TILEDB_OK);
-  for (uint64_t i = 0; i < count; i++) {
-    std::string uri;
-    tiledb_object_t type;
-    // TODO: When tiledb_group_get_member_by_index gets removed, replace the
-    // following value generation and if with the statement-true of the if.
-    bool use_v2 = GENERATE(true, false);
-    if (use_v2) {
+  SECTION("Using tiledb_group_get_member_by_index_v2") {
+    for (uint64_t i = 0; i < count; i++) {
+      std::string uri;
+      tiledb_object_t type;
       tiledb_string_t *uri_handle, *name_handle;
       rc = tiledb_group_get_member_by_index_v2(
           ctx_, group, i, &uri_handle, &type, &name_handle);
@@ -257,14 +254,23 @@ std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> GroupFx::read_group(
         rc = tiledb_string_free(&name_handle);
         CHECK(rc == TILEDB_OK);
       }
-    } else {
+      ret.emplace_back(uri, type);
+    }
+  }
+  // When tiledb_group_get_member_by_index gets removed, this section can simply
+  // be removed.
+  SECTION("Using tiledb_group_get_member_by_index") {
+    for (uint64_t i = 0; i < count; i++) {
+      std::string uri;
+      tiledb_object_t type;
       char *uri_ptr, *name_ptr;
+      // NOTE: The following function leaks memory.
       rc = tiledb_group_get_member_by_index(
           ctx_, group, i, &uri_ptr, &type, &name_ptr);
       REQUIRE(rc == TILEDB_OK);
       uri = uri_ptr == nullptr ? "" : std::string(uri_ptr);
+      ret.emplace_back(uri, type);
     }
-    ret.emplace_back(uri, type);
   }
   return ret;
 }
