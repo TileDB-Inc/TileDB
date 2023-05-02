@@ -2552,6 +2552,84 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_get_range_var_from_name(
     void* end) TILEDB_NOEXCEPT;
 
 /**
+ * Retrieves the estimated result size for the data buffer of an attribute or
+ * dimension. This is an estimate and may not be sufficient to read all results
+ * for the requested range, in particular for sparse arrays or arrays with
+ * var-length attributes. Query status must be checked and resubmitted if not
+ * complete.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t size;
+ * tiledb_query_get_est_result_data_size(ctx, query, "a", &size);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param query The query.
+ * @param name The attribute/dimension name.
+ * @param size The size (in bytes) to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_est_result_data_size(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* name,
+    uint64_t* size) TILEDB_NOEXCEPT;
+
+/**
+ * Retrieves the estimated result size for the offsets buffer of a
+ * variable-sized attribute or dimension. This is an estimate and may not be
+ * sufficient to read all results for the requested range, in particular for
+ * sparse arrays or arrays with var-length attributes. Query status must be
+ * checked and resubmitted if not complete.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t size;
+ * tiledb_query_get_est_result_offsets_size(ctx, query, "a", &size);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param query The query.
+ * @param name The attribute/dimension name.
+ * @param size The size (in bytes) to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_est_result_offsets_size(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* name,
+    uint64_t* size) TILEDB_NOEXCEPT;
+
+/**
+ * Retrieves the estimated result size for the validity buffer of a nullable
+ * attribute. This is an estimate and may not be sufficient to read all results
+ * for the requested range, in particular for sparse arrays or arrays with
+ * var-length attributes. Query status must be checked and resubmitted if not
+ * complete.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t size;
+ * tiledb_query_get_est_result_validity_size(ctx, query, "a", &size);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param query The query.
+ * @param name The attribute name.
+ * @param size The size (in bytes) to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_get_est_result_validity_size(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* name,
+    uint64_t* size) TILEDB_NOEXCEPT;
+
+/**
  * Retrieves the estimated result size for a fixed-sized attribute/dimension.
  * This is an estimate and may not be sufficient to read all results for the
  * requested range, in particular for sparse arrays or array with

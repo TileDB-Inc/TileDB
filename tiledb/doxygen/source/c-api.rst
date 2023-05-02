@@ -498,6 +498,12 @@ Query
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_get_range_num_from_name
     :project: TileDB-C
+.. doxygenfunction:: tiledb_query_get_est_result_data_size
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_get_est_result_offsets_size
+    :project: TileDB-C
+.. doxygenfunction:: tiledb_query_get_est_result_validity_size
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_query_get_est_result_size
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_get_est_result_size_var

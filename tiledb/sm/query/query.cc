@@ -159,6 +159,100 @@ Query::~Query() {
 /*               API              */
 /* ****************************** */
 
+uint64_t Query::est_result_data_size(const std::string& name) {
+  if (type_ != QueryType::READ) {
+    throw QueryStatusException(
+        "Cannot get estimated result size; Operation currently "
+        "only supported for read queries");
+  }
+
+  if (name == constants::coords &&
+      !array_schema_->domain().all_dims_same_type()) {
+    throw QueryStatusException(
+        "Cannot get estimated result size; Not applicable to zipped "
+        "coordinates in arrays with heterogeneous domain");
+  }
+
+  if (name == constants::coords && !array_schema_->domain().all_dims_fixed()) {
+    throw QueryStatusException(
+        "Cannot get estimated result size; Not applicable to zipped "
+        "coordinates in arrays with domains with variable-sized dimensions");
+  }
+
+  if (array_->is_remote() && !subarray_.est_result_size_computed()) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr) {
+      throw QueryStatusException(
+          "Error in query estimate result size; remote "
+          "array with no rest client.");
+    }
+
+    throw_if_not_ok(
+        rest_client->get_query_est_result_sizes(array_->array_uri(), this));
+  }
+
+  return subarray_.est_result_data_size(
+      name, &config_, storage_manager_->compute_tp());
+}
+
+uint64_t Query::est_result_offsets_size(const std::string& name) {
+  if (type_ != QueryType::READ) {
+    throw QueryStatusException(
+        "Cannot get estimated result size; Operation currently "
+        "only supported for read queries");
+  }
+
+  if (array_->is_remote() && !subarray_.est_result_size_computed()) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr) {
+      throw QueryStatusException(
+          "Error in query estimate result size; remote "
+          "array with no rest client.");
+    }
+
+    throw_if_not_ok(
+        rest_client->get_query_est_result_sizes(array_->array_uri(), this));
+  }
+
+  return subarray_.est_result_offsets_size(
+      name, &config_, storage_manager_->compute_tp());
+}
+
+uint64_t Query::est_result_validity_size(const std::string& name) {
+  if (type_ != QueryType::READ) {
+    throw QueryStatusException(
+        "Cannot get estimated result size; Operation currently "
+        "only supported for read queries");
+  }
+
+  if (!array_schema_->attribute(name)) {
+    throw QueryStatusException(
+        "Cannot get estimated result size; Nullable API is only"
+        "applicable to attributes");
+  }
+
+  if (!array_schema_->is_nullable(name)) {
+    throw QueryStatusException(
+        std::string("Cannot get estimated result size; Input attribute '") +
+        name + "' is not nullable");
+  }
+
+  if (array_->is_remote() && !subarray_.est_result_size_computed()) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr) {
+      throw QueryStatusException(
+          "Error in query estimate result size; remote "
+          "array with no rest client.");
+    }
+
+    throw_if_not_ok(
+        rest_client->get_query_est_result_sizes(array_->array_uri(), this));
+  }
+
+  return subarray_.est_result_validity_size(
+      name, &config_, storage_manager_->compute_tp());
+}
+
 Status Query::get_est_result_size(const char* name, uint64_t* size) {
   if (type_ != QueryType::READ) {
     return logger_->status(Status_QueryError(

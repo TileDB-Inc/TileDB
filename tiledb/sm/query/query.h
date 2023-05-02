@@ -161,6 +161,24 @@ class Query {
   /* ********************************* */
 
   /**
+   * Gets the estimated result size (in bytes) for the data buffer of the input
+   * attribute/dimension.
+   */
+  uint64_t est_result_data_size(const std::string& name);
+
+  /**
+   * Gets the estimated result size (in bytes) for the offsets buffer of the
+   * input attribute/dimension.
+   */
+  uint64_t est_result_offsets_size(const std::string& name);
+
+  /**
+   * Gets the estimated result size (in bytes) for the validity buffer of the
+   * input attribute.
+   */
+  uint64_t est_result_validity_size(const std::string& name);
+
+  /**
    * Gets the estimated result size (in bytes) for the input fixed-sized
    * attribute/dimension.
    */

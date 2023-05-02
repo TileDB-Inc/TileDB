@@ -1140,6 +1140,115 @@ Layout Subarray::layout() const {
   return layout_;
 }
 
+uint64_t Subarray::est_result_data_size(
+    const std::string& name,
+    const Config* const config,
+    ThreadPool* const compute_tp) {
+  const auto& array_schema = array_->array_schema_latest();
+
+  // Check if name exists
+  if (!array_schema.is_field(name)) {
+    throw SubarrayStatusException(
+        std::string("Cannot get estimated result size; Attribute/Dimension '") +
+        name + "' does not exist");
+  }
+
+  bool is_var = array_schema.var_size(name);
+
+  // Compute tile overlap for each fragment
+  throw_if_not_ok(compute_est_result_size(config, compute_tp));
+  const ResultSize& result_size = est_result_size_[name];
+  uint64_t size = static_cast<uint64_t>(
+      std::ceil(is_var ? result_size.size_var_ : result_size.size_fixed_));
+
+  // If the size is non-zero, ensure it is large enough to contain at least one
+  // cell, or one value if the dimension/attribute is var-sized.
+  if (size > 0) {
+    uint64_t min_size = is_var ? datatype_size(array_schema.type(name)) :
+                                 array_schema.cell_size(name);
+    size = std::max(size, min_size);
+  }
+
+  return size;
+}
+
+uint64_t Subarray::est_result_offsets_size(
+    const std::string& name,
+    const Config* const config,
+    ThreadPool* const compute_tp) {
+  const auto& array_schema = array_->array_schema_latest();
+
+  // Check if name exists
+  if (!array_schema.is_field(name)) {
+    throw SubarrayStatusException(
+        std::string("Cannot get estimated result size; Attribute/Dimension '") +
+        name + "' does not exist");
+  }
+
+  // Check if the attribute/dimension is var-sized
+  if (!array_schema.var_size(name)) {
+    throw SubarrayStatusException(
+        "Cannot get estimated result size; Attribute/Dimension must be "
+        "var-sized");
+  }
+
+  // Compute tile overlap for each fragment
+  throw_if_not_ok(compute_est_result_size(config, compute_tp));
+  const ResultSize& result_size = est_result_size_[name];
+
+  // If the value size is non-zero, ensure the offsets size is large enough to
+  // contain at least one cell. Otherwise, return zero.
+  if (result_size.size_var_ > 0) {
+    return std::max(
+        constants::cell_var_offset_size,
+        static_cast<uint64_t>(std::ceil(result_size.size_fixed_)));
+  } else {
+    return 0;
+  }
+}
+
+uint64_t Subarray::est_result_validity_size(
+    const std::string& name,
+    const Config* const config,
+    ThreadPool* const compute_tp) {
+  const auto& array_schema = array_->array_schema_latest();
+
+  // Check if attribute exists
+  if (!array_schema.is_attr(name))
+    throw SubarrayStatusException(
+        std::string("Cannot get estimated result size; Attribute '") + name +
+        "' does not exist");
+
+  // Check if attribute is nullable
+  if (!array_schema.is_nullable(name))
+    throw SubarrayStatusException(
+        "Cannot get estimated result size; Attribute must be nullable");
+
+  // Compute tile overlap for each fragment
+  throw_if_not_ok(compute_est_result_size(config, compute_tp));
+  const ResultSize& result_size = est_result_size_[name];
+  uint64_t size = static_cast<uint64_t>(std::ceil(result_size.size_validity_));
+
+  if (array_schema.var_size(name)) {
+    // If the value size is non-zero, ensure the validity size is large enough
+    // to contain at least one cell.
+    if (result_size.size_var_ > 0) {
+      return std::max(constants::cell_validity_size, size);
+    } else {
+      return 0;
+    }
+  } else {
+    // If the value size is bigger than zero but smaller than the cell size,
+    // ensure the validity size is large enough to contain at least one cell.
+    if (result_size.size_fixed_ > 0 &&
+        result_size.size_fixed_ < array_schema.cell_size(name)) {
+      return 1;
+    } else {
+      return size;
+    }
+  }
+}
+
 Status Subarray::get_est_result_size_internal(
     const char* name,
     uint64_t* size,
@@ -2250,8 +2359,9 @@ Status Subarray::compute_est_result_size(
   est_result_size_.clear();
   max_mem_size_.clear();
   for (unsigned i = 0; i < num; ++i) {
-    est_result_size_[names[i]] = est_vec[i];
-    max_mem_size_[names[i]] = mem_vec[i];
+    auto& name = names[i];
+    est_result_size_[name] = est_vec[i];
+    max_mem_size_[name] = mem_vec[i];
   }
   est_result_size_computed_ = true;
 

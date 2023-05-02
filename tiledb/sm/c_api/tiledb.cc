@@ -1890,6 +1890,57 @@ int32_t tiledb_query_get_range_var_from_name(
       ctx, &query_subarray, dim_name, range_idx, start, end);
 }
 
+int32_t tiledb_query_get_est_result_data_size(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* name,
+    uint64_t* size) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (size == nullptr) {
+    throw api::CAPIStatusException("Size pointer cannot be null");
+  }
+
+  *size = query->query_->est_result_data_size(name);
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_get_est_result_offsets_size(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* name,
+    uint64_t* size) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (size == nullptr) {
+    throw api::CAPIStatusException("Size pointer cannot be null");
+  }
+
+  *size = query->query_->est_result_offsets_size(name);
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_query_get_est_result_validity_size(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* name,
+    uint64_t* size) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (size == nullptr) {
+    throw api::CAPIStatusException("Size pointer cannot be null");
+  }
+
+  *size = query->query_->est_result_validity_size(name);
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_query_get_est_result_size(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
@@ -6280,6 +6331,33 @@ int32_t tiledb_query_get_range_var_from_name(
     void* end) noexcept {
   return api_entry<tiledb::api::tiledb_query_get_range_var_from_name>(
       ctx, query, dim_name, range_idx, start, end);
+}
+
+int32_t tiledb_query_get_est_result_data_size(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* name,
+    uint64_t* size) noexcept {
+  return api_entry<tiledb::api::tiledb_query_get_est_result_data_size>(
+      ctx, query, name, size);
+}
+
+int32_t tiledb_query_get_est_result_offsets_size(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* name,
+    uint64_t* size) noexcept {
+  return api_entry<tiledb::api::tiledb_query_get_est_result_offsets_size>(
+      ctx, query, name, size);
+}
+
+int32_t tiledb_query_get_est_result_validity_size(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* name,
+    uint64_t* size) noexcept {
+  return api_entry<tiledb::api::tiledb_query_get_est_result_validity_size>(
+      ctx, query, name, size);
 }
 
 int32_t tiledb_query_get_est_result_size(
