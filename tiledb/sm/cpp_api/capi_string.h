@@ -58,7 +58,7 @@ class CAPIString {
       return;
     }
 
-    capi_status_t result = tiledb_status(tiledb_string_free(&string_));
+    auto result = tiledb_status(tiledb_string_free(&string_));
     if (result != TILEDB_OK) {
       log_warn("Could not free string; Error code: " + std::to_string(result));
     }
