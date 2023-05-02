@@ -196,6 +196,7 @@ enum class SchedulerAction : unsigned short {
   sink_wait,      // To scheduler
   source_exit,    // To scheduler
   sink_exit,      // To scheduler
+  done,           //
   error,          // General error condition
   last,
 };
@@ -221,6 +222,7 @@ static std::vector<std::string> sch_action_strings{
     "sink_wait",
     "source_exit",
     "sink_exit",
+    "done",
     "error",
     "last",
 };

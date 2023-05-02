@@ -38,7 +38,7 @@ add_subdirectory(tiledb)
 #
 # Test-compile of object library ensures link-completeness
 #
-add_executable(compile_experimental EXCLUDE_FROM_ALL)
+add_executable(compile_experimental EXCLUDE_FROM_ALL tiledb/common/dag/graph/test/unit_mimo_taskgraph.cc)
 add_dependencies(all_link_complete compile_experimental)
 target_sources(compile_experimental PRIVATE
         test/compile_experimental_main.cc

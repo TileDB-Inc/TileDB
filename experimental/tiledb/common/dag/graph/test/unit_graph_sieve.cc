@@ -83,6 +83,7 @@
 #include "experimental/tiledb/common/dag/execution/throw_catch.h"
 #include "experimental/tiledb/common/dag/graph/taskgraph.h"
 #include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
+#include "experimental/tiledb/common/dag/utility/print_types.h"
 
 using namespace tiledb::common;
 using namespace std::placeholders;

@@ -201,7 +201,7 @@ However, in addition to the await, `push` includes a data transfer step (a "move
 ```
 This represents moving a data item from the `Source` to the `Sink`.  Note that both the state machine `state` and the actual data items being held are (atomically) changed in the move.
 
-Based on these properties of the `push`, we have the following valide states that can occur directly following a `push`:
+Based on these properties of the `push`, we have the following valid states that can occur directly following a `push`:
 ```C
      /* { state = 00 ∧ items = 00 } ∨ */
      /* { state = 01 ∧ items = 01 }   */
@@ -313,7 +313,7 @@ Asynchronous operation of the `Source` can change this predicate to
 
 #### Final Sink Proof Outline
 
-Thus, the complete `Sink` proof outline iw
+Thus, the complete `Sink` proof outline is
 
 ```C
    while (not done) {

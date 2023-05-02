@@ -38,6 +38,7 @@ dag_add_header_only_unit_test(stop_token)
 dag_add_header_only_unit_test(tasks)
 dag_add_header_only_unit_test(task_state_machine)
 dag_add_header_only_unit_test(scheduler_sieve)
+dag_add_header_only_unit_test(random)
 
 # The unit test for frugal needs to be brought up date
 # dag_add_header_only_unit_test(frugal)
