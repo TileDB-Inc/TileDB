@@ -71,14 +71,6 @@ TEST_CASE("C++ API: Types", "[cppapi][types]") {
       impl::type_check<std::string>(TILEDB_STRING_ASCII, TILEDB_VAR_NUM));
   CHECK_NOTHROW(
       impl::type_check<std::string>(TILEDB_STRING_UTF8, TILEDB_VAR_NUM));
-  CHECK_NOTHROW(
-      impl::type_check<std::u16string>(TILEDB_STRING_UTF16, TILEDB_VAR_NUM));
-  CHECK_NOTHROW(
-      impl::type_check<std::u16string>(TILEDB_STRING_UCS2, TILEDB_VAR_NUM));
-  CHECK_NOTHROW(
-      impl::type_check<std::u32string>(TILEDB_STRING_UTF32, TILEDB_VAR_NUM));
-  CHECK_NOTHROW(
-      impl::type_check<std::u32string>(TILEDB_STRING_UCS4, TILEDB_VAR_NUM));
 
   // std:: container types of char datatypes should succeed for tiledb string
   // types

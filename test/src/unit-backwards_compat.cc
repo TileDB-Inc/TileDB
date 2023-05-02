@@ -451,32 +451,8 @@ TEST_CASE(
                 &buffers);
             break;
           }
-          case TILEDB_STRING_UTF16:
-          case TILEDB_STRING_UCS2: {
-            set_buffer_wrapper<char16_t>(
-                query,
-                attribute_name,
-                var_sized,
-                nullable,
-                offsets,
-                values,
-                validity,
-                &buffers);
-            break;
-          }
-          case TILEDB_STRING_UTF32:
-          case TILEDB_STRING_UCS4: {
-            set_buffer_wrapper<char32_t>(
-                query,
-                attribute_name,
-                var_sized,
-                nullable,
-                offsets,
-                values,
-                validity,
-                &buffers);
-            break;
-          }
+          default:
+            REQUIRE(false);
         }
       }
 
@@ -951,32 +927,8 @@ TEST_CASE(
                 &buffers);
             break;
           }
-          case TILEDB_STRING_UTF16:
-          case TILEDB_STRING_UCS2: {
-            set_buffer_wrapper<char16_t>(
-                query,
-                attribute_name,
-                attr.second.variable_sized(),
-                attr.second.nullable(),
-                offsets,
-                values,
-                validity,
-                &buffers);
-            break;
-          }
-          case TILEDB_STRING_UTF32:
-          case TILEDB_STRING_UCS4: {
-            set_buffer_wrapper<char32_t>(
-                query,
-                attribute_name,
-                attr.second.variable_sized(),
-                attr.second.nullable(),
-                offsets,
-                values,
-                validity,
-                &buffers);
-            break;
-          }
+          default:
+            REQUIRE(false);
         }
       }
 

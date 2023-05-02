@@ -118,19 +118,19 @@ struct type_to_tiledb<wchar_t> {
   static constexpr const char* name = "CHAR";
 };
 
-template <>
-struct type_to_tiledb<char16_t> {
-  using type = char;
-  static const tiledb_datatype_t tiledb_type = TILEDB_STRING_ASCII;
-  static constexpr const char* name = "CHAR";
-};
+// template <>
+// struct type_to_tiledb<char16_t> {
+//   using type = char;
+//   static const tiledb_datatype_t tiledb_type = TILEDB_STRING_ASCII;
+//   static constexpr const char* name = "CHAR";
+// };
 
-template <>
-struct type_to_tiledb<char32_t> {
-  using type = char;
-  static const tiledb_datatype_t tiledb_type = TILEDB_STRING_ASCII;
-  static constexpr const char* name = "CHAR";
-};
+// template <>
+// struct type_to_tiledb<char32_t> {
+//   using type = char;
+//   static const tiledb_datatype_t tiledb_type = TILEDB_STRING_ASCII;
+//   static constexpr const char* name = "CHAR";
+// };
 
 template <>
 struct type_to_tiledb<int8_t> {
