@@ -117,7 +117,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    *
    * @return Status.
    */
-  void initialize_memory_budget();
+  void refresh_config();
 
   /**
    * Performs a read query using its set members.

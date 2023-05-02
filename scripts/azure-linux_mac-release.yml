@@ -18,15 +18,9 @@ steps:
     # This stage is needed until https://github.com/actions/runner-images/pull/7125 or similar is merged
     # MacOS image 20230214.1 removed implicit installation of pkg-config
     set -e pipefail
-    brew install pkg-config
+    brew install pkg-config autoconf automake
   condition: eq(variables['Agent.OS'], 'Darwin')
-  displayName: 'Install brew package for pkg-config (OSX only)'
-
-- bash: |
-    set -e pipefail
-    brew uninstall --ignore-dependencies libidn2 brotli rtmpdump
-  condition: eq(variables['Agent.OS'], 'Darwin')
-  displayName: 'Uninstall brew packages for curl (OSX only)'
+  displayName: 'Install brew packages for macOS build'
 
 - bash: |
     set -e pipefail

@@ -165,13 +165,14 @@ const std::string Config::VFS_READ_AHEAD_SIZE = "102400";          // 100KiB
 const std::string Config::VFS_READ_AHEAD_CACHE_SIZE = "10485760";  // 10MiB;
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_NAME = "";
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_KEY = "";
-const std::string Config::VFS_AZURE_STORAGE_SAS_TOKEN = "";
 const std::string Config::VFS_AZURE_BLOB_ENDPOINT = "";
-const std::string Config::VFS_AZURE_USE_HTTPS = "true";
 const std::string Config::VFS_AZURE_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
 const std::string Config::VFS_AZURE_BLOCK_LIST_BLOCK_SIZE = "5242880";
 const std::string Config::VFS_AZURE_USE_BLOCK_LIST_UPLOAD = "true";
+const std::string Config::VFS_AZURE_MAX_RETRIES = "5";
+const std::string Config::VFS_AZURE_RETRY_DELAY_MS = "800";
+const std::string Config::VFS_AZURE_MAX_RETRY_DELAY_MS = "60000";
 const std::string Config::VFS_GCS_PROJECT_ID = "";
 const std::string Config::VFS_GCS_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
@@ -369,10 +370,7 @@ const std::map<std::string, std::string> default_config_values = {
         Config::VFS_AZURE_STORAGE_ACCOUNT_NAME),
     std::make_pair(
         "vfs.azure.storage_account_key", Config::VFS_AZURE_STORAGE_ACCOUNT_KEY),
-    std::make_pair(
-        "vfs.azure.storage_sas_token", Config::VFS_AZURE_STORAGE_SAS_TOKEN),
     std::make_pair("vfs.azure.blob_endpoint", Config::VFS_AZURE_BLOB_ENDPOINT),
-    std::make_pair("vfs.azure.use_https", Config::VFS_AZURE_USE_HTTPS),
     std::make_pair(
         "vfs.azure.max_parallel_ops", Config::VFS_AZURE_MAX_PARALLEL_OPS),
     std::make_pair(
@@ -381,6 +379,11 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "vfs.azure.use_block_list_upload",
         Config::VFS_AZURE_USE_BLOCK_LIST_UPLOAD),
+    std::make_pair("vfs.azure.max_retries", Config::VFS_AZURE_MAX_RETRIES),
+    std::make_pair(
+        "vfs.azure.retry_delay_ms", Config::VFS_AZURE_RETRY_DELAY_MS),
+    std::make_pair(
+        "vfs.azure.max_retry_delay_ms", Config::VFS_AZURE_MAX_RETRY_DELAY_MS),
     std::make_pair("vfs.gcs.project_id", Config::VFS_GCS_PROJECT_ID),
     std::make_pair(
         "vfs.gcs.max_parallel_ops", Config::VFS_GCS_MAX_PARALLEL_OPS),
@@ -454,7 +457,6 @@ const char Config::COMMENT_START = '#';
 const std::set<std::string> Config::unserialized_params_ = {
     "vfs.azure.storage_account_name",
     "vfs.azure.storage_account_key",
-    "vfs.azure.storage_sas_token",
     "vfs.s3.proxy_username",
     "vfs.s3.proxy_password",
     "vfs.s3.aws_access_key_id",

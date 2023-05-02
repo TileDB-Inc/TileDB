@@ -94,6 +94,13 @@ struct type_to_tiledb<std::byte> {
 };
 
 template <>
+struct type_to_tiledb<bool> {
+  using type = bool;
+  static const tiledb_datatype_t tiledb_type = TILEDB_BOOL;
+  static constexpr const char* name = "BOOL";
+};
+
+template <>
 struct type_to_tiledb<int8_t> {
   using type = int8_t;
   static const tiledb_datatype_t tiledb_type = TILEDB_INT8;

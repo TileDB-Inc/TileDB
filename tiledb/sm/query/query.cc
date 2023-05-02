@@ -1246,7 +1246,7 @@ void Query::set_config(const Config& config) {
 
   // Refresh memory budget configuration.
   if (strategy_ != nullptr) {
-    strategy_->initialize_memory_budget();
+    strategy_->refresh_config();
   }
 
   // Set subarray's config for backwards compatibility

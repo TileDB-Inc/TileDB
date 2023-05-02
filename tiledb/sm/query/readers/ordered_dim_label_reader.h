@@ -288,7 +288,7 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
   QueryStatusDetailsReason status_incomplete_reason() const;
 
   /** Initialize the memory budget variables. */
-  void initialize_memory_budget();
+  void refresh_config();
 
   /** Performs a read query using its set members. */
   Status dowork();

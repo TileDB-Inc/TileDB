@@ -111,7 +111,7 @@ DenseReader::DenseReader(
   check_subarray();
 
   // Initialize memory budget.
-  initialize_memory_budget();
+  refresh_config();
 
   // Initialize the read state.
   init_read_state();
@@ -133,7 +133,7 @@ QueryStatusDetailsReason DenseReader::status_incomplete_reason() const {
                         QueryStatusDetailsReason::REASON_NONE;
 }
 
-void DenseReader::initialize_memory_budget() {
+void DenseReader::refresh_config() {
   // Get config values.
   bool found = false;
   throw_if_not_ok(

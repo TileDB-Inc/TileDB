@@ -317,7 +317,7 @@ void WriterBase::check_var_attr_offsets() const {
   }
 }
 
-void WriterBase::initialize_memory_budget() {
+void WriterBase::refresh_config() {
 }
 
 /* ****************************** */

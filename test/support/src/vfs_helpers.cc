@@ -47,32 +47,25 @@ std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
   get_supported_fs(
       &supports_s3, &supports_hdfs, &supports_azure, &supports_gcs);
   if (supports_s3) {
-    SupportedFsS3* s3_fs = new SupportedFsS3();
-    fs_vec.emplace_back(s3_fs);
+    fs_vec.emplace_back(std::make_unique<SupportedFsS3>());
   }
 
   if (supports_hdfs) {
-    SupportedFsHDFS* hdfs_fs = new SupportedFsHDFS();
-    fs_vec.emplace_back(hdfs_fs);
+    fs_vec.emplace_back(std::make_unique<SupportedFsHDFS>());
   }
 
   if (supports_azure) {
-    SupportedFsAzure* azure_fs = new SupportedFsAzure();
-    fs_vec.emplace_back(azure_fs);
+    fs_vec.emplace_back(std::make_unique<SupportedFsAzure>());
   }
 
   if (supports_gcs) {
-    SupportedFsGCS* gcs_fs = new SupportedFsGCS();
-    fs_vec.emplace_back(gcs_fs);
-    SupportedFsGCS* gs_fs = new SupportedFsGCS("gs://");
-    fs_vec.emplace_back(gs_fs);
+    fs_vec.emplace_back(std::make_unique<SupportedFsGCS>());
+    fs_vec.emplace_back(std::make_unique<SupportedFsGCS>("gs://"));
   }
 
-  SupportedFsLocal* local_fs = new SupportedFsLocal();
-  fs_vec.emplace_back(local_fs);
+  fs_vec.emplace_back(std::make_unique<SupportedFsLocal>());
 
-  SupportedFsMem* mem_fs = new SupportedFsMem();
-  fs_vec.emplace_back(mem_fs);
+  fs_vec.emplace_back(std::make_unique<SupportedFsMem>());
 
   return fs_vec;
 }
@@ -226,11 +219,8 @@ Status SupportedFsAzure::prepare_config(
       tiledb_config_set(
           config,
           "vfs.azure.blob_endpoint",
-          "127.0.0.1:10000/devstoreaccount1",
+          "http://127.0.0.1:10000/devstoreaccount1",
           &error) == TILEDB_OK);
-  REQUIRE(
-      tiledb_config_set(config, "vfs.azure.use_https", "false", &error) ==
-      TILEDB_OK);
   return Status::Ok();
 }
 

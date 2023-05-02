@@ -414,6 +414,19 @@ struct SubarrayRanges {
   # The list of start sizes per range
 }
 
+struct LabelSubarrayRanges {
+  # A set of label 1D ranges for a subarray
+
+  dimensionId @0 :UInt32;
+  # Index of the dimension the label is attached to
+
+  name @1 :Text;
+  # Name of the dimension label
+
+  ranges @2 :SubarrayRanges;
+  # A set of 1D ranges for a subarray
+}
+
 struct Subarray {
   # A Subarray
 
@@ -428,6 +441,15 @@ struct Subarray {
 
   relevantFragments @3 :List(UInt32);
   # Relevant fragments
+
+  labelRanges @4 :List(LabelSubarrayRanges);
+  # List of 1D ranges for dimensions that have labels
+
+  attributeRanges @5 :Map(Text, SubarrayRanges);
+  # List of 1D ranges for each attribute
+
+  coalesceRanges @6 :Bool;
+  # True if Subarray should coalesce overlapping ranges.
 }
 
 struct SubarrayPartitioner {
