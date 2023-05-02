@@ -46,7 +46,10 @@ namespace tiledb::impl {
  */
 class CAPIString {
  public:
-  CAPIString(tiledb_string_t*&& handle) noexcept {
+  CAPIString(tiledb_string_t*&& handle) {
+    if (handle == nullptr) {
+      throw std::invalid_argument("String handle cannot be null.");
+    }
     string_ = handle;
     handle = nullptr;
   }
@@ -61,47 +64,40 @@ class CAPIString {
     }
   }
 
-  // Disable copy and move.
+  // Disable copy and move. Because this class owns a resource,
+  // copying it must not be supported, but moving it could be.
   CAPIString(const CAPIString&) = delete;
   CAPIString operator=(const CAPIString&) = delete;
   CAPIString(const CAPIString&&) = delete;
   CAPIString operator=(const CAPIString&&) = delete;
 
-  /**
-   * Returns a C++ string with the handle's data.
-   *
-   * If the handle is null returns nullopt.
-   */
-  static std::optional<std::string> to_string_optional(
-      tiledb_string_t*&& handle) {
-    if (handle == nullptr) {
-      return std::nullopt;
-    }
-    return to_string(std::move(handle));
-  }
-
-  /**
-   * Returns a C++ string with the handle's data.
-   */
-  static std::string to_string(tiledb_string_t*&& handle) {
-    return CAPIString(std::move(handle)).str();
-  }
-
   std::string str() const {
     const char* c;
     size_t size;
-    capi_status_t status =
-        tiledb_status(tiledb_string_view(string_, &c, &size));
+    auto status = tiledb_status(tiledb_string_view(string_, &c, &size));
     if (status != TILEDB_OK) {
-      throw std::runtime_error(
+      throw TileDBError(
           "Could not view string; Error code: " + std::to_string(status));
     }
-    return std::string(c, size);
+    return {c, size};
   }
 
  private:
+  /** The C API string handle. Invariant: must not be null. */
   tiledb_string_t* string_;
 };
+
+/**
+ * Returns a C++ string with the handle's data. The handle is subsequently freed.
+ *
+ * If the handle is null returns nullopt.
+ */
+inline std::optional<std::string> make_CAPIString(tiledb_string_t*&& handle) {
+  if (handle == nullptr) {
+    return std::nullopt;
+  }
+  return CAPIString(std::move(handle)).str();
+}
 
 }  // namespace tiledb::impl
 

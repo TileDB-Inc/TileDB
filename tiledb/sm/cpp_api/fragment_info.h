@@ -98,7 +98,7 @@ class FragmentInfo {
     tiledb_string_t* name;
     ctx.handle_error(tiledb_fragment_info_get_fragment_name_v2(
         ctx.ptr().get(), fragment_info_.get(), fid, &name));
-    return impl::CAPIString::to_string(std::move(name));
+    return impl::make_CAPIString(std::move(name)).value();
   }
 
   /**
