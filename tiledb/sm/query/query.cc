@@ -163,7 +163,7 @@ Status Query::get_est_result_size(const char* name, uint64_t* size) {
   if (type_ != QueryType::READ) {
     return logger_->status(Status_QueryError(
         "Cannot get estimated result size; Operation currently "
-        "only unsupported for read queries"));
+        "only supported for read queries"));
   }
 
   if (name == nullptr) {
