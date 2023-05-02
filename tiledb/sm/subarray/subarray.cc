@@ -2173,12 +2173,9 @@ Status Subarray::compute_est_result_size(
   const auto& array_schema = array_->array_schema_latest();
   auto attribute_num = array_schema.attribute_num();
   auto dim_num = array_schema.dim_num();
-  auto attributes = array_schema.attributes();
+  const auto& attributes = array_schema.attributes();
   auto num = attribute_num + dim_num + 1;
   auto range_num = this->range_num();
-
-  // Compute estimated result in parallel over fragments and ranges
-  auto meta = array_->fragment_metadata();
 
   // Get attribute and dimension names
   std::vector<std::string> names(num);
@@ -2212,8 +2209,8 @@ Status Subarray::compute_est_result_size(
   }
 
   // Calibrate for dense arrays
-  uint64_t min_size_fixed, min_size_var, min_size_validity;
   if (array_schema.dense()) {
+    uint64_t min_size_fixed, min_size_var, min_size_validity;
     auto cell_num = this->cell_num();
     for (unsigned i = 0; i < num; ++i) {
       if (!array_schema.var_size(names[i])) {
