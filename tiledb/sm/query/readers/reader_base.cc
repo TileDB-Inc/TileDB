@@ -95,7 +95,9 @@ ReaderBase::ReaderBase(
     , initial_data_loaded_(false)
     , max_batch_size_(config.get<uint64_t>("vfs.max_batch_size").value())
     , min_batch_gap_(config.get<uint64_t>("vfs.min_batch_gap").value())
-    , min_batch_size_(config.get<uint64_t>("vfs.min_batch_size").value()) {
+    , min_batch_size_(config.get<uint64_t>("vfs.min_batch_size").value())
+    , unfiltered_data_block_size_(
+          config.get<uint64_t>("sm.mem.unfiltered_data_block_size").value()) {
   if (array != nullptr)
     fragment_metadata_ = array->fragment_metadata();
   timestamps_needed_for_deletes_and_updates_.resize(fragment_metadata_.size());
@@ -528,7 +530,8 @@ Status ReaderBase::load_processed_conditions() {
 
 Status ReaderBase::read_and_unfilter_attribute_tiles(
     const std::vector<std::string>& names,
-    const std::vector<ResultTile*>& result_tiles) const {
+    const std::vector<ResultTile*>& result_tiles,
+    UnfilteredDataMap& unfiltered_data) const {
   // The filtered data here contains the memory allocations for all of the
   // filtered data that is read by `read_attribute_tiles`. To prevent
   // modifications to the filter pipeline at the moment, the `result_tiles`
@@ -544,7 +547,8 @@ Status ReaderBase::read_and_unfilter_attribute_tiles(
   // eventually get rid of it altogether so that we can clarify the data flow.
   // At the end of this function call, all memory inside of 'filtered_data' has
   // been used and the tiles are unfiltered so the data can be deleted.
-  auto filtered_data{read_attribute_tiles(names, result_tiles)};
+  auto filtered_data{
+      read_attribute_tiles(names, result_tiles, unfiltered_data)};
   for (auto& name : names) {
     RETURN_NOT_OK(unfilter_tiles(name, result_tiles));
   }
@@ -554,10 +558,12 @@ Status ReaderBase::read_and_unfilter_attribute_tiles(
 
 Status ReaderBase::read_and_unfilter_coordinate_tiles(
     const std::vector<std::string>& names,
-    const std::vector<ResultTile*>& result_tiles) const {
+    const std::vector<ResultTile*>& result_tiles,
+    UnfilteredDataMap& unfiltered_data) const {
   // See the comment in 'read_and_unfilter_attribute_tiles' to get more
   // information about the lifetime of this object.
-  auto filtered_data{read_coordinate_tiles(names, result_tiles)};
+  auto filtered_data{
+      read_coordinate_tiles(names, result_tiles, unfiltered_data)};
   for (auto& name : names) {
     RETURN_NOT_OK(unfilter_tiles(name, result_tiles));
   }
@@ -567,21 +573,24 @@ Status ReaderBase::read_and_unfilter_coordinate_tiles(
 
 std::vector<FilteredData> ReaderBase::read_attribute_tiles(
     const std::vector<std::string>& names,
-    const std::vector<ResultTile*>& result_tiles) const {
+    const std::vector<ResultTile*>& result_tiles,
+    UnfilteredDataMap& unfiltered_data) const {
   auto timer_se = stats_->start_timer("read_attribute_tiles");
-  return read_tiles(names, result_tiles);
+  return read_tiles(names, result_tiles, unfiltered_data);
 }
 
 std::vector<FilteredData> ReaderBase::read_coordinate_tiles(
     const std::vector<std::string>& names,
-    const std::vector<ResultTile*>& result_tiles) const {
+    const std::vector<ResultTile*>& result_tiles,
+    UnfilteredDataMap& unfiltered_data) const {
   auto timer_se = stats_->start_timer("read_coordinate_tiles");
-  return read_tiles(names, result_tiles);
+  return read_tiles(names, result_tiles, unfiltered_data);
 }
 
 std::vector<FilteredData> ReaderBase::read_tiles(
     const std::vector<std::string>& names,
-    const std::vector<ResultTile*>& result_tiles) const {
+    const std::vector<ResultTile*>& result_tiles,
+    UnfilteredDataMap& unfiltered_data) const {
   auto timer_se = stats_->start_timer("read_tiles");
   std::vector<FilteredData> filtered_data;
 
@@ -601,6 +610,7 @@ std::vector<FilteredData> ReaderBase::read_tiles(
     // read and memory allocations.
     const bool var_sized{array_schema_.var_size(name)};
     const bool nullable{array_schema_.is_nullable(name)};
+    const bool dups{array_schema_.allows_dups()};
     filtered_data.emplace_back(
         *this,
         min_batch_size_,
@@ -614,12 +624,23 @@ std::vector<FilteredData> ReaderBase::read_tiles(
         storage_manager_,
         read_tasks);
 
+    unfiltered_data.add_tiles(
+        *this,
+        unfiltered_data_block_size_,
+        fragment_metadata_,
+        result_tiles,
+        name,
+        var_sized,
+        nullable,
+        dups);
+
     // Go through each tiles and create the attribute tiles.
     for (auto tile : result_tiles) {
-      auto const fragment{fragment_metadata_[tile->frag_idx()]};
+      auto frag_idx{tile->frag_idx()};
+      auto const fragment{fragment_metadata_[frag_idx]};
       const auto& array_schema{fragment->array_schema()};
 
-      if (skip_field(tile->frag_idx(), name)) {
+      if (skip_field(frag_idx, name)) {
         continue;
       }
 
@@ -639,10 +660,18 @@ std::vector<FilteredData> ReaderBase::read_tiles(
       // 'TileData' objects should be returned by this function and passed into
       // 'unfilter_tiles' so that the filter pipeline can stop using the
       // 'ResultTile' object to get access to the filtered data.
+      auto& unfiltered_field_data = unfiltered_data.get(name);
       ResultTile::TileData tile_data{
           filtered_data.back().fixed_filtered_data(fragment.get(), tile),
           filtered_data.back().var_filtered_data(fragment.get(), tile),
-          filtered_data.back().nullable_filtered_data(fragment.get(), tile)};
+          filtered_data.back().nullable_filtered_data(fragment.get(), tile),
+          unfiltered_field_data.tile_data(
+              frag_idx, tile_idx, UnfilteredTileType::FIXED),
+          unfiltered_field_data.tile_data(
+              frag_idx, tile_idx, UnfilteredTileType::VAR),
+          unfiltered_field_data.tile_data(
+              frag_idx, tile_idx, UnfilteredTileType::NULLABLE),
+      };
 
       // Initialize the tile(s)
       const format_version_t format_version{fragment->format_version()};
@@ -1170,8 +1199,10 @@ void ReaderBase::validate_attribute_order(
   if (validator.need_to_load_tiles()) {
     auto tiles_to_load = validator.tiles_to_load();
 
-    throw_if_not_ok(
-        read_and_unfilter_attribute_tiles({attribute_name}, tiles_to_load));
+    UnfilteredDataMap unfiltered_data;
+
+    throw_if_not_ok(read_and_unfilter_attribute_tiles(
+        {attribute_name}, tiles_to_load, unfiltered_data));
 
     // Validate bounds not validated using tile data.
     throw_if_not_ok(parallel_for(

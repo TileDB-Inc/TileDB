@@ -124,6 +124,8 @@ const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_TILE_RANGES =
     "0.1";
 const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_ARRAY_DATA =
     "0.1";
+const std::string Config::SM_MEM_UNFILTERED_DATA_BLOCK_SIZE =
+    "104857600";  // 100 MB
 const std::string Config::SM_ENABLE_SIGNAL_HANDLERS = "true";
 const std::string Config::SM_COMPUTE_CONCURRENCY_LEVEL =
     utils::parse::to_str(std::thread::hardware_concurrency());
@@ -300,6 +302,9 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "sm.mem.reader.sparse_unordered_with_dups.ratio_array_data",
         Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_ARRAY_DATA),
+    std::make_pair(
+        "sm.mem.unfiltered_data_block_size",
+        Config::SM_MEM_UNFILTERED_DATA_BLOCK_SIZE),
     std::make_pair(
         "sm.enable_signal_handlers", Config::SM_ENABLE_SIGNAL_HANDLERS),
     std::make_pair(

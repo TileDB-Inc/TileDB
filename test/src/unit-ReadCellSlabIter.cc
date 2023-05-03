@@ -165,7 +165,8 @@ void ReadCellSlabIterFx::create_result_space_tiles(
       result_space_tiles);
 }
 
-void set_result_tile_dim(
+tuple<std::vector<uint8_t>, std::vector<uint8_t>, std::vector<uint8_t>>
+set_result_tile_dim(
     const ArraySchema& array_schema,
     ResultTile& result_tile,
     std::string dim,
@@ -178,7 +179,18 @@ void set_result_tile_dim(
       std::nullopt,
       std::nullopt,
       std::nullopt);
-  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  std::vector<uint8_t> fixed_buffer(tile_sizes.tile_size());
+  std::vector<uint8_t> var_buffer(
+      tile_sizes.has_var_tile() ? tile_sizes.tile_var_size() : 0);
+  std::vector<uint8_t> validity_buffer(
+      tile_sizes.has_validity_tile() ? tile_sizes.tile_validity_size() : 0);
+  ResultTile::TileData tile_data{
+      nullptr,
+      nullptr,
+      nullptr,
+      fixed_buffer.data(),
+      var_buffer.data(),
+      validity_buffer.data()};
   result_tile.init_coord_tile(
       constants::format_version,
       array_schema,
@@ -192,6 +204,11 @@ void set_result_tile_dim(
   for (uint64_t i = 0; i < v.size(); i++) {
     data[i] = v[i];
   }
+
+  return {
+      std::move(fixed_buffer),
+      std::move(var_buffer),
+      std::move(validity_buffer)};
 }
 
 /* ********************************* */
@@ -514,12 +531,21 @@ TEST_CASE_METHOD(
   ResultTile result_tile_3_0(2, 0, array_schema);
   ResultTile result_tile_3_1(2, 1, array_schema);
 
-  set_result_tile_dim(
+  auto&& [fixed1, var1, validity1] = set_result_tile_dim(
       array_schema, result_tile_2_0, "d", 0, {{1000, 3, 1000, 5}});
-  set_result_tile_dim(
+  auto&& [fixed2, var2, validity2] = set_result_tile_dim(
       array_schema, result_tile_3_0, "d", 0, {{1000, 1000, 8, 9}});
-  set_result_tile_dim(
+  auto&& [fixed3, var3, validity3] = set_result_tile_dim(
       array_schema, result_tile_3_1, "d", 0, {{1000, 12, 19, 1000}});
+  (void)fixed1;
+  (void)var1;
+  (void)validity1;
+  (void)fixed2;
+  (void)var2;
+  (void)validity2;
+  (void)fixed3;
+  (void)var3;
+  (void)validity3;
 
   result_coords.emplace_back(&result_tile_2_0, 1);
   result_coords.emplace_back(&result_tile_2_0, 3);
@@ -1364,14 +1390,26 @@ TEST_CASE_METHOD(
   ResultTile result_tile_3_0(2, 0, array_schema);
   ResultTile result_tile_3_1(2, 1, array_schema);
 
-  set_result_tile_dim(
+  auto&& [fixed1, var1, validity1] = set_result_tile_dim(
       array_schema, result_tile_3_0, "d1", 0, {{1000, 3, 1000, 1000}});
-  set_result_tile_dim(
+  auto&& [fixed2, var2, validity2] = set_result_tile_dim(
       array_schema, result_tile_3_0, "d2", 1, {{1000, 3, 1000, 1000}});
-  set_result_tile_dim(
+  auto&& [fixed3, var3, validity3] = set_result_tile_dim(
       array_schema, result_tile_3_1, "d1", 0, {{5, 1000, 5, 1000}});
-  set_result_tile_dim(
+  auto&& [fixed4, var4, validity4] = set_result_tile_dim(
       array_schema, result_tile_3_1, "d2", 1, {{5, 1000, 6, 1000}});
+  (void)fixed1;
+  (void)var1;
+  (void)validity1;
+  (void)fixed2;
+  (void)var2;
+  (void)validity2;
+  (void)fixed3;
+  (void)var3;
+  (void)validity3;
+  (void)fixed4;
+  (void)var4;
+  (void)validity4;
 
   result_coords.emplace_back(&result_tile_3_0, 1);
   result_coords.emplace_back(&result_tile_3_1, 0);

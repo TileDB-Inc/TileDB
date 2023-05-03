@@ -452,6 +452,10 @@ class Config {
    *    Ratio of the budget allocated for array data in the sparse unordered
    *    with duplicates reader. <br>
    *    **Default**: 0.1
+   * - `sm.mem.unfiltered_data_block_size` <br>
+   *    **Experimental** <br>
+   *    Target size for an unfiltered data block. <br>
+   *    **Default**: 104857600
    *    The maximum byte size to read-ahead from the backend. <br>
    *    **Default**: 102400
    * - `sm.group.timestamp_start` <br>

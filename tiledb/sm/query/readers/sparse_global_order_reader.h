@@ -525,18 +525,6 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       bool& user_buffers_full);
 
   /**
-   * Remove a result tile from memory
-   *
-   * @param frag_idx Fragment index.
-   * @param rt Iterator to the result tile to remove.
-   * @param result_tiles Result tiles per fragment.
-   */
-  void remove_result_tile(
-      const unsigned frag_idx,
-      TileListIt rt,
-      std::vector<ResultTilesList>& result_tiles);
-
-  /**
    * Clean up processed data after copying and get ready for the next
    * iteration.
    *

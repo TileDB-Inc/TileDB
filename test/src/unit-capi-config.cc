@@ -270,6 +270,7 @@ void check_save_to_file() {
   ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges 0.1\n";
   ss << "sm.mem.tile_upper_memory_limit 1073741824\n";
   ss << "sm.mem.total_budget 10737418240\n";
+  ss << "sm.mem.unfiltered_data_block_size 104857600\n";
   ss << "sm.memory_budget 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
   ss << "sm.partial_tile_offsets_loading false\n";
@@ -622,6 +623,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
       ["sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges"] = "0.1";
   all_param_values
       ["sm.mem.reader.sparse_unordered_with_dups.ratio_array_data"] = "0.1";
+  all_param_values["sm.mem.unfiltered_data_block_size"] = "104857600";
   all_param_values["sm.enable_signal_handlers"] = "true";
   all_param_values["sm.group.timestamp_end"] = "18446744073709551615";
   all_param_values["sm.group.timestamp_start"] = "0";

@@ -462,6 +462,7 @@ Status DenseReader::dense_read() {
     }
 
     // Apply the query condition.
+    UnfilteredDataMap qc_unfiltered_data;
     auto st = apply_query_condition<DimType, OffType>(
         compute_task,
         subarray,
@@ -475,6 +476,7 @@ Status DenseReader::dense_read() {
         range_info,
         result_space_tiles,
         num_range_threads,
+        qc_unfiltered_data,
         qc_result);
     RETURN_CANCEL_OR_ERROR(st);
 
@@ -482,6 +484,11 @@ Status DenseReader::dense_read() {
     // processing.
     if (qc_coords_mode_) {
       t_start = t_end;
+
+      if (compute_task.valid()) {
+        RETURN_NOT_OK(storage_manager_->compute_tp()->wait(compute_task));
+      }
+
       continue;
     }
 
@@ -495,10 +502,12 @@ Status DenseReader::dense_read() {
       }
 
       std::vector<FilteredData> filtered_data;
+      UnfilteredDataMap unfiltered_data;
       if (condition_names.count(name) == 0) {
         // Read and unfilter tiles.
         to_read[0] = name;
-        filtered_data = std::move(read_attribute_tiles(to_read, result_tiles));
+        filtered_data = std::move(
+            read_attribute_tiles(to_read, result_tiles, unfiltered_data));
       }
 
       if (compute_task.valid()) {
@@ -511,6 +520,7 @@ Status DenseReader::dense_read() {
       compute_task = storage_manager_->compute_tp()->execute(
           [&,
            filtered_data = std::move(filtered_data),
+           unfiltered_data = std::move(unfiltered_data),
            name,
            t_start,
            t_end,
@@ -549,6 +559,14 @@ Status DenseReader::dense_read() {
 
             return Status::Ok();
           });
+
+      // Wait for query condition copies.
+      if (condition_names.count(name) != 0) {
+        RETURN_NOT_OK(storage_manager_->compute_tp()->wait(compute_task));
+        if (read_state_.overflowed_) {
+          return Status::Ok();
+        }
+      }
     }
 
     t_start = t_end;
@@ -830,6 +848,7 @@ Status DenseReader::apply_query_condition(
     const std::vector<RangeInfo<DimType>>& range_info,
     std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
     const uint64_t num_range_threads,
+    UnfilteredDataMap& unfiltered_data,
     std::vector<uint8_t>& qc_result) {
   auto timer_se = stats_->start_timer("apply_query_condition");
 
@@ -845,7 +864,7 @@ Status DenseReader::apply_query_condition(
 
     // Read and unfilter query condition attributes.
     std::vector<FilteredData> filtered_data =
-        read_attribute_tiles(qc_names, result_tiles);
+        read_attribute_tiles(qc_names, result_tiles, unfiltered_data);
 
     if (compute_task.valid()) {
       RETURN_NOT_OK(storage_manager_->compute_tp()->wait(compute_task));

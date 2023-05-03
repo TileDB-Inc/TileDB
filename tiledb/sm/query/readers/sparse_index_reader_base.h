@@ -460,10 +460,23 @@ class SparseIndexReaderBase : public ReaderBase {
       return ignored_tiles_.size();
     }
 
+    /** @return UnfilteredDataMap object. */
+    UnfilteredDataMap& unfiltered_data() {
+      return unfiltered_data_;
+    }
+
+    /** @return const UnfilteredDataMap object. */
+    const UnfilteredDataMap& unfiltered_data() const {
+      return unfiltered_data_;
+    }
+
    private:
     /* ********************************* */
     /*        PRIVATE ATTRIBUTES         */
     /* ********************************* */
+
+    /** Unfiltered tile data. */
+    UnfilteredDataMap unfiltered_data_;
 
     /**
      * Reverse sorted vector, per fragments, of tiles ranges in the subarray, if
@@ -654,11 +667,14 @@ class SparseIndexReaderBase : public ReaderBase {
   /**
    * Read and unfilter coord tiles.
    *
-   * @param result_tiles The result tiles to process.
+   * @param result_tiles Result tiles to process.
+   * @param unfiltered_data Map containing the unfiltered data per field.
    *
    * @return Status.
    */
-  Status read_and_unfilter_coords(const std::vector<ResultTile*>& result_tiles);
+  Status read_and_unfilter_coords(
+      const std::vector<ResultTile*>& result_tiles,
+      UnfilteredDataMap& unfiltered_data);
 
   /**
    * Compute tile bitmaps.
@@ -685,6 +701,7 @@ class SparseIndexReaderBase : public ReaderBase {
    * @param mem_usage_per_attr Computed per attribute memory usage.
    * @param buffer_idx Stores/return the current buffer index in process.
    * @param result_tiles Result tiles to process.
+   * @param unfiltered_data Map containing the unfiltered data per field.
    *
    * @return index_to_copy.
    */
@@ -692,7 +709,8 @@ class SparseIndexReaderBase : public ReaderBase {
       const std::vector<std::string>& names,
       const std::vector<uint64_t>& mem_usage_per_attr,
       uint64_t* buffer_idx,
-      std::vector<ResultTile*>& result_tiles);
+      std::vector<ResultTile*>& result_tiles,
+      UnfilteredDataMap& unfiltered_data);
 
   /**
    * Adds an extra offset in the end of the offsets buffer indicating the

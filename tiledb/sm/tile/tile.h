@@ -65,6 +65,22 @@ class TileBase {
       const uint64_t cell_size,
       const uint64_t size);
 
+  /**
+   * Non-owning constructor.
+   *
+   * @param format_version The format version.
+   * @param type The data type.
+   * @param cell_size The cell size.
+   * @param size The size of the tile.
+   * @param unfiltered_data Pointer to the unfiltered data.
+   */
+  TileBase(
+      const format_version_t format_version,
+      const Datatype type,
+      const uint64_t cell_size,
+      const uint64_t size,
+      void* unfiltered_data);
+
   /** Move constructor. */
   TileBase(TileBase&& tile);
 
@@ -197,6 +213,29 @@ class Tile : public TileBase {
       const Datatype type,
       const uint64_t cell_size,
       const unsigned int zipped_coords_dim_num,
+      const uint64_t size,
+      void* filtered_data,
+      uint64_t filtered_size);
+
+  /**
+   * Non-owning constructor.
+   *
+   * @param format_version The format version.
+   * @param type The data type.
+   * @param cell_size The cell size.
+   * @param zipped_coords_dim_num The number of dimensions in case the tile
+   *      stores coordinates.
+   * @param unfiltered_data Pointer to the external unfiltered data.
+   * @param size The size of the tile.
+   * @param filtered_data Pointer to the external filtered data.
+   * @param filtered_size The filtered size to allocate.
+   */
+  Tile(
+      const format_version_t format_version,
+      const Datatype type,
+      const uint64_t cell_size,
+      const unsigned int zipped_coords_dim_num,
+      void* unfiltered_data,
       const uint64_t size,
       void* filtered_data,
       uint64_t filtered_size);

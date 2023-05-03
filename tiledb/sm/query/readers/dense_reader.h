@@ -214,6 +214,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const std::vector<RangeInfo<DimType>>& range_info,
       std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
       const uint64_t num_range_threads,
+      UnfilteredDataMap& unfiltered_data,
       std::vector<uint8_t>& qc_result);
 
   /** Fix offsets buffer after reading all offsets. */

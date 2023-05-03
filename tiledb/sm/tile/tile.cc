@@ -121,6 +121,22 @@ TileBase::TileBase(
   }
 }
 
+void nop_free(void* const) {
+}
+
+TileBase::TileBase(
+    const format_version_t format_version,
+    const Datatype type,
+    const uint64_t cell_size,
+    const uint64_t size,
+    void* unfiltered_data)
+    : data_(static_cast<char*>(unfiltered_data), nop_free)
+    , size_(size)
+    , cell_size_(cell_size)
+    , format_version_(format_version)
+    , type_(type) {
+}
+
 TileBase::TileBase(TileBase&& tile)
     : data_(std::move(tile.data_))
     , size_(std::move(tile.size_))
@@ -145,6 +161,21 @@ Tile::Tile(
     void* filtered_data,
     uint64_t filtered_size)
     : TileBase(format_version, type, cell_size, size)
+    , zipped_coords_dim_num_(zipped_coords_dim_num)
+    , filtered_data_(filtered_data)
+    , filtered_size_(filtered_size) {
+}
+
+Tile::Tile(
+    const format_version_t format_version,
+    const Datatype type,
+    const uint64_t cell_size,
+    const unsigned int zipped_coords_dim_num,
+    void* unfiltered_data,
+    const uint64_t size,
+    void* filtered_data,
+    uint64_t filtered_size)
+    : TileBase(format_version, type, cell_size, size, unfiltered_data)
     , zipped_coords_dim_num_(zipped_coords_dim_num)
     , filtered_data_(filtered_data)
     , filtered_size_(filtered_size) {

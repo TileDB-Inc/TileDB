@@ -197,7 +197,18 @@ TEST_CASE_METHOD(
         0,
         std::nullopt,
         std::nullopt);
-    ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+    std::vector<uint8_t> fixed_buffer(tile_sizes.tile_size());
+    std::vector<uint8_t> var_buffer(
+        tile_sizes.has_var_tile() ? tile_sizes.tile_var_size() : 0);
+    std::vector<uint8_t> validity_buffer(
+        tile_sizes.has_validity_tile() ? tile_sizes.tile_validity_size() : 0);
+    ResultTile::TileData tile_data{
+        nullptr,
+        nullptr,
+        nullptr,
+        fixed_buffer.data(),
+        var_buffer.data(),
+        validity_buffer.data()};
     rt.init_coord_tile(
         constants::format_version,
         array_schema,
@@ -214,7 +225,18 @@ TEST_CASE_METHOD(
       0,
       std::nullopt,
       std::nullopt);
-  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  std::vector<uint8_t> fixed_buffer(tile_sizes.tile_size());
+  std::vector<uint8_t> var_buffer(
+      tile_sizes.has_var_tile() ? tile_sizes.tile_var_size() : 0);
+  std::vector<uint8_t> validity_buffer(
+      tile_sizes.has_validity_tile() ? tile_sizes.tile_validity_size() : 0);
+  ResultTile::TileData tile_data{
+      nullptr,
+      nullptr,
+      nullptr,
+      fixed_buffer.data(),
+      var_buffer.data(),
+      validity_buffer.data()};
   rt.init_coord_tile(
       constants::format_version,
       array_schema,
@@ -300,7 +322,18 @@ TEST_CASE_METHOD(
         0,
         std::nullopt,
         std::nullopt);
-    ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+    std::vector<uint8_t> fixed_buffer(tile_sizes.tile_size());
+    std::vector<uint8_t> var_buffer(
+        tile_sizes.has_var_tile() ? tile_sizes.tile_var_size() : 0);
+    std::vector<uint8_t> validity_buffer(
+        tile_sizes.has_validity_tile() ? tile_sizes.tile_validity_size() : 0);
+    ResultTile::TileData tile_data{
+        nullptr,
+        nullptr,
+        nullptr,
+        fixed_buffer.data(),
+        var_buffer.data(),
+        validity_buffer.data()};
     rt.init_coord_tile(
         constants::format_version,
         array_schema,
@@ -317,7 +350,18 @@ TEST_CASE_METHOD(
       0,
       std::nullopt,
       std::nullopt);
-  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  std::vector<uint8_t> fixed_buffer(tile_sizes.tile_size());
+  std::vector<uint8_t> var_buffer(
+      tile_sizes.has_var_tile() ? tile_sizes.tile_var_size() : 0);
+  std::vector<uint8_t> validity_buffer(
+      tile_sizes.has_validity_tile() ? tile_sizes.tile_validity_size() : 0);
+  ResultTile::TileData tile_data{
+      nullptr,
+      nullptr,
+      nullptr,
+      fixed_buffer.data(),
+      var_buffer.data(),
+      validity_buffer.data()};
   rt.init_coord_tile(
       constants::format_version,
       array_schema,

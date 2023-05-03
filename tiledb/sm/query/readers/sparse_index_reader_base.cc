@@ -501,19 +501,20 @@ void SparseIndexReaderBase::load_tile_offsets_for_fragments(
 }
 
 Status SparseIndexReaderBase::read_and_unfilter_coords(
-    const std::vector<ResultTile*>& result_tiles) {
+    const std::vector<ResultTile*>& result_tiles,
+    UnfilteredDataMap& unfiltered_data) {
   auto timer_se = stats_->start_timer("read_and_unfilter_coords");
 
   if (include_coords_) {
     // Read and unfilter zipped coordinate tiles. Note that
     // this will ignore fragments with a version >= 5.
-    RETURN_CANCEL_OR_ERROR(
-        read_and_unfilter_coordinate_tiles({constants::coords}, result_tiles));
+    RETURN_CANCEL_OR_ERROR(read_and_unfilter_coordinate_tiles(
+        {constants::coords}, result_tiles, unfiltered_data));
 
     // Read and unfilter unzipped coordinate tiles. Note that
     // this will ignore fragments with a version < 5.
-    RETURN_CANCEL_OR_ERROR(
-        read_and_unfilter_coordinate_tiles(dim_names_, result_tiles));
+    RETURN_CANCEL_OR_ERROR(read_and_unfilter_coordinate_tiles(
+        dim_names_, result_tiles, unfiltered_data));
   }
 
   // Compute attributes to load.
@@ -534,8 +535,8 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
       std::back_inserter(attr_to_load));
 
   // Read and unfilter attribute tiles.
-  RETURN_CANCEL_OR_ERROR(
-      read_and_unfilter_attribute_tiles(attr_to_load, result_tiles));
+  RETURN_CANCEL_OR_ERROR(read_and_unfilter_attribute_tiles(
+      attr_to_load, result_tiles, tmp_read_state_.unfiltered_data()));
 
   logger_->debug("Done reading and unfiltering coords tiles");
   return Status::Ok();
@@ -821,7 +822,8 @@ std::vector<uint64_t> SparseIndexReaderBase::read_and_unfilter_attributes(
     const std::vector<std::string>& names,
     const std::vector<uint64_t>& mem_usage_per_attr,
     uint64_t* buffer_idx,
-    std::vector<ResultTile*>& result_tiles) {
+    std::vector<ResultTile*>& result_tiles,
+    UnfilteredDataMap& unfiltered_data) {
   auto timer_se = stats_->start_timer("read_and_unfilter_attributes");
   const uint64_t memory_budget = available_memory();
 
@@ -847,8 +849,8 @@ std::vector<uint64_t> SparseIndexReaderBase::read_and_unfilter_attributes(
   }
 
   // Read and unfilter tiles.
-  throw_if_not_ok(
-      read_and_unfilter_attribute_tiles(names_to_read, result_tiles));
+  throw_if_not_ok(read_and_unfilter_attribute_tiles(
+      names_to_read, result_tiles, unfiltered_data));
 
   return index_to_copy;
 }
