@@ -271,9 +271,8 @@ Status Query::get_est_result_size_nullable(
                             "array with no rest client."));
     }
 
-    return logger_->status(
-        Status_QueryError("Error in query estimate result size; unimplemented "
-                          "for nullable attributes in remote arrays."));
+    RETURN_NOT_OK(
+        rest_client->get_query_est_result_sizes(array_->array_uri(), this));
   }
 
   return subarray_.get_est_result_size_nullable(
@@ -311,9 +310,8 @@ Status Query::get_est_result_size_nullable(
                             "array with no rest client."));
     }
 
-    return logger_->status(
-        Status_QueryError("Error in query estimate result size; unimplemented "
-                          "for nullable attributes in remote arrays."));
+    RETURN_NOT_OK(
+        rest_client->get_query_est_result_sizes(array_->array_uri(), this));
   }
 
   return subarray_.get_est_result_size_nullable(
