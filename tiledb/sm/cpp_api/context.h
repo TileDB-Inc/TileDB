@@ -104,6 +104,26 @@ class Context {
   }
 
   /**
+   * Constructor. Creates a TileDB context with an optional configuration.
+   * @throws TileDBError if construction fails
+   */
+  explicit Context(std::optional<Config> config) {
+    tiledb_ctx_t* ctx;
+    if (config == std::nullopt) {
+      if (tiledb_ctx_alloc(nullptr, &ctx) != TILEDB_OK)
+        throw TileDBError("[TileDB::C++API] Error: Failed to create context");
+    } else {
+      if (tiledb_ctx_alloc(config->ptr().get(), &ctx) != TILEDB_OK)
+        throw TileDBError("[TileDB::C++API] Error: Failed to create context");
+    }
+
+    ctx_ = std::shared_ptr<tiledb_ctx_t>(ctx, Context::free);
+    error_handler_ = default_error_handler;
+
+    set_tag("x-tiledb-api-language", "c++");
+  }
+
+  /**
    * Constructor. Creates a TileDB context from the given pointer.
    * @param own=true If false, disables underlying cleanup upon destruction.
    * @throws TileDBError if construction fails

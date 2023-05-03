@@ -135,6 +135,29 @@ TEST_CASE("C++ API: Config Equality", "[cppapi][config]") {
   CHECK(config_not_equal);
 }
 
+TEST_CASE("C++ API: Optional Config", "[cppapi][config][optional]") {
+  tiledb::Config config;
+  const std::string filename = "test_config_filename";
+  config.save_to_file(filename);
+
+  const char* filenames[2] = {nullptr, filename.c_str()};
+  for (auto filename : filenames) {
+    // Construct a Config
+    std::optional<tiledb::Config> config_optional =
+        (filename != nullptr) ? std::optional<tiledb::Config>{filename} :
+                                std::nullopt;
+
+    // Construct a Context from the Config
+    tiledb::Context ctx(config_optional);
+    if (filename != nullptr) {
+      tiledb::VFS vfs(ctx);
+      if (vfs.is_file(filename)) {
+        vfs.remove_file(filename);
+      }
+    }
+  }
+}
+
 #ifdef TILEDB_SERIALIZATION
 TEST_CASE("C++ API: Config Serialization", "[cppapi][config][serialization]") {
   // this variable is parameterized below, but we initialize
