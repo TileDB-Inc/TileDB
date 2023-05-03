@@ -180,7 +180,7 @@ void allocate_query_buffers(tiledb::Query* const query) {
     auto attr = attr_iter.second;
 
     if (attr.cell_val_num() != TILEDB_VAR_NUM) {
-      auto est_size = query->est_result_size(attr.name());
+      auto est_size = query->est_result_data_size(attr.name());
       void* data = std::malloc(est_size);
       query->set_data_buffer(name, data, est_size);
     } else {
@@ -200,7 +200,7 @@ void allocate_query_buffers(tiledb::Query* const query) {
     auto name = dim.name();
 
     if (dim.cell_val_num() != TILEDB_VAR_NUM) {
-      auto est_size = query->est_result_size(dim.name());
+      auto est_size = query->est_result_data_size(dim.name());
       void* data = std::malloc(est_size);
       query->set_data_buffer(name, data, est_size);
     } else {

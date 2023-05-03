@@ -271,10 +271,10 @@ void slice_and_desaturate(
   query.set_layout(TILEDB_ROW_MAJOR).set_subarray(subarray);
 
   // Allocate buffers to read into.
-  std::vector<uint8_t> red(query.est_result_size("red"));
-  std::vector<uint8_t> green(query.est_result_size("green"));
-  std::vector<uint8_t> blue(query.est_result_size("blue"));
-  std::vector<uint8_t> alpha(query.est_result_size("alpha"));
+  std::vector<uint8_t> red(query.est_result_data_size("red"));
+  std::vector<uint8_t> green(query.est_result_data_size("green"));
+  std::vector<uint8_t> blue(query.est_result_data_size("blue"));
+  std::vector<uint8_t> alpha(query.est_result_data_size("alpha"));
 
   // Set buffers
   query.set_data_buffer("red", red)

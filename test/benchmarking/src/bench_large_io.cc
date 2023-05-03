@@ -167,8 +167,8 @@ class Benchmark : public BenchmarkBase {
           non_empty[1].second.second};
 
       Query query(ctx_, array);
-      data_a_.resize(query.est_result_size("a"));
-      sparse_coords_.resize(query.est_result_size("TILEDB_COORDS"));
+      data_a_.resize(query.est_result_data_size("a"));
+      sparse_coords_.resize(query.est_result_data_size("TILEDB_COORDS"));
       query.set_subarray(Subarray(ctx_, array).set_subarray(subarray))
           .set_layout(TILEDB_ROW_MAJOR)
           .set_data_buffer("a", data_a_)

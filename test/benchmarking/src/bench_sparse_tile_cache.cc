@@ -111,8 +111,8 @@ class Benchmark : public BenchmarkBase {
     // Read the array one time, populating the entire tile cache.
     Array read_array(*ctx_, array_uri_, TILEDB_READ);
     Query read_query(*ctx_, read_array);
-    data_.resize(read_query.est_result_size("a"));
-    coords_.resize(read_query.est_result_size("TILEDB_COORDS"));
+    data_.resize(read_query.est_result_data_size("a"));
+    coords_.resize(read_query.est_result_data_size("TILEDB_COORDS"));
     read_query.set_subarray(Subarray(*ctx_, read_array).set_subarray(subarray_))
         .set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a", data_)

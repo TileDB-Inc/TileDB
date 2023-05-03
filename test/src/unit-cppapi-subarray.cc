@@ -77,7 +77,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     query.add_range(0, range[0], range[1]);
     query.add_range(1, range[0], range[1]);
 
-    auto est_size = query.est_result_size("a");
+    auto est_size = query.est_result_data_size("a");
     REQUIRE(est_size == 4);
 
     std::vector<int> data(est_size);
@@ -97,7 +97,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
 
     query.set_layout(TILEDB_ROW_MAJOR);
     query.set_subarray(subarray);
-    auto est_size = query.est_result_size("a");
+    auto est_size = query.est_result_data_size("a");
     REQUIRE(est_size == 4);
 
     std::vector<int> data(est_size);
@@ -114,10 +114,10 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     int range[] = {1, 2};
     query.add_range(0, range[0], range[1]).add_range(1, range[0], range[1]);
 
-    auto est_size = query.est_result_size("a");
+    auto est_size = query.est_result_data_size("a");
     REQUIRE(est_size == 4);
-    std::array<uint64_t, 2> est_size_var;
-    CHECK_THROWS(est_size_var = query.est_result_size_var("a"));
+    CHECK_THROWS(query.est_result_size_var("a"));
+    CHECK_THROWS(query.est_result_offsets_size("a"));
 
     std::vector<int> data(est_size);
     query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
@@ -135,10 +135,10 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     subarray.add_range(0, range[0], range[1]).add_range(1, range[0], range[1]);
 
     query.set_subarray(subarray);
-    auto est_size = query.est_result_size("a");
+    auto est_size = query.est_result_data_size("a");
     REQUIRE(est_size == 4);
-    std::array<uint64_t, 2> est_size_var;
-    CHECK_THROWS(est_size_var = query.est_result_size_var("a"));
+    CHECK_THROWS(query.est_result_size_var("a"));
+    CHECK_THROWS(query.est_result_offsets_size("a"));
 
     std::vector<int> data(est_size);
     query.set_layout(TILEDB_ROW_MAJOR).set_buffer("a", data);
@@ -174,7 +174,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     std::array<int64_t, 3> range2 = {{0, 0, 0}};
     CHECK_THROWS(range2 = query.range<int64_t>(1, 1));
 
-    auto est_size = query.est_result_size("a");
+    auto est_size = query.est_result_data_size("a");
     REQUIRE(est_size == 4);
 
     std::vector<int> data(est_size);
@@ -213,7 +213,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     CHECK_THROWS(range2 = subarray.range<int64_t>(1, 1));
 
     query.set_subarray(subarray);
-    auto est_size = query.est_result_size("a");
+    auto est_size = query.est_result_data_size("a");
     REQUIRE(est_size == 4);
 
     std::vector<int> data(est_size);
@@ -234,7 +234,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     query.add_range(0, range1[0], range1[1]);
     query.add_range(1, range1[0], range1[1]);
 
-    auto est_size = query.est_result_size("a");
+    auto est_size = query.est_result_data_size("a");
     std::vector<int> data(est_size);
     query.set_layout(TILEDB_UNORDERED).set_data_buffer("a", data);
     query.submit();
@@ -256,7 +256,7 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     subarray.add_range(1, range1[0], range1[1]);
 
     query.set_subarray(subarray);
-    auto est_size = query.est_result_size("a");
+    auto est_size = query.est_result_data_size("a");
     std::vector<int> data(est_size);
     query.set_layout(TILEDB_UNORDERED).set_buffer("a", data);
     query.set_subarray(subarray);
@@ -316,10 +316,10 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     query.add_range(0, range[0], range[1]);
     query.add_range(1, range2[0], range2[1]);
 
-    auto est_size = query.est_result_size("a");
+    auto est_size = query.est_result_data_size("a");
     REQUIRE(est_size == 12);
-    std::array<uint64_t, 2> est_size_var;
-    CHECK_THROWS(est_size_var = query.est_result_size_var("a"));
+    CHECK_THROWS(query.est_result_size_var("a"));
+    CHECK_THROWS(query.est_result_offsets_size("a"));
 
     std::vector<int> data(est_size);
     query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
@@ -354,10 +354,10 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
 
     tiledb::Query query(ctx, array);
     query.set_subarray(subarray);
-    auto est_size = query.est_result_size("a");
+    auto est_size = query.est_result_data_size("a");
     REQUIRE(est_size == 12);
-    std::array<uint64_t, 2> est_size_var;
-    CHECK_THROWS(est_size_var = query.est_result_size_var("a"));
+    CHECK_THROWS(query.est_result_size_var("a"));
+    CHECK_THROWS(query.est_result_offsets_size("a"));
 
     std::vector<int> data(est_size);
     query.set_layout(TILEDB_ROW_MAJOR).set_buffer("a", data);

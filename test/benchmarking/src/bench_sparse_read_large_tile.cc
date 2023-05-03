@@ -102,8 +102,8 @@ class Benchmark : public BenchmarkBase {
   virtual void run() {
     Array array(ctx_, array_uri_, TILEDB_READ);
     Query query(ctx_, array);
-    data_.resize(query.est_result_size("a"));
-    coords_.resize(query.est_result_size("TILEDB_COORDS"));
+    data_.resize(query.est_result_data_size("a"));
+    coords_.resize(query.est_result_data_size("TILEDB_COORDS"));
     query.set_subarray(Subarray(ctx_, array).set_subarray(subarray_))
         .set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a", data_)

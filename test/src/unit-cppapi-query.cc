@@ -207,7 +207,7 @@ TEST_CASE(
   Query query1(ctx, array1);
   int range[] = {1, 2};
   query1.add_range(0, range[0], range[1]).add_range(1, range[0], range[1]);
-  auto est_size = query1.est_result_size("a");
+  auto est_size = query1.est_result_data_size("a");
   std::vector<int> data(est_size);
   query1.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
   query1.submit();

@@ -554,10 +554,10 @@ TEST_CASE(
 
     Array array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array, TILEDB_READ);
-    auto est_a1 = query.est_result_size("a1");
+    auto est_a1 = query.est_result_data_size("a1");
     auto est_a2 = query.est_result_size_var("a2");
-    auto est_a3 = query.est_result_size("a3");
-    auto est_d = query.est_result_size("d");
+    auto est_a3 = query.est_result_data_size("a3");
+    auto est_d = query.est_result_data_size("d");
     CHECK(est_d == 10 * sizeof(int32_t));
     CHECK(est_a1 == 10 * sizeof(int32_t));
     CHECK(est_a2[0] == 80);
@@ -571,10 +571,10 @@ TEST_CASE(
 
     Array array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array, TILEDB_READ);
-    auto est_a1 = query.est_result_size("a1");
+    auto est_a1 = query.est_result_data_size("a1");
     auto est_a2 = query.est_result_size_var("a2");
-    auto est_a3 = query.est_result_size("a3");
-    auto est_d = query.est_result_size("d");
+    auto est_a3 = query.est_result_data_size("a3");
+    auto est_d = query.est_result_data_size("d");
     CHECK(est_d == 10 * sizeof(int32_t));
     CHECK(est_a1 == 10 * sizeof(int32_t));
     CHECK(est_a2[0] == 80);
@@ -589,10 +589,10 @@ TEST_CASE(
     Query query(ctx, array, TILEDB_READ);
     query.add_range<int32_t>(0, 2, 3);
     query.add_range<int32_t>(0, 9, 10);
-    auto est_a1 = query.est_result_size("a1");
+    auto est_a1 = query.est_result_data_size("a1");
     auto est_a2 = query.est_result_size_var("a2");
-    auto est_a3 = query.est_result_size("a3");
-    auto est_d = query.est_result_size("d");
+    auto est_a3 = query.est_result_data_size("a3");
+    auto est_d = query.est_result_data_size("d");
     CHECK(est_d == 4 * sizeof(int32_t));
     CHECK(est_a1 == 4 * sizeof(int32_t));
     CHECK(est_a2[0] == 32);
@@ -620,10 +620,10 @@ TEST_CASE(
 
     Array array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array, TILEDB_READ);
-    auto est_a1 = query.est_result_size("a1");
+    auto est_a1 = query.est_result_data_size("a1");
     auto est_a2 = query.est_result_size_var("a2");
-    auto est_a3 = query.est_result_size("a3");
-    auto est_d = query.est_result_size("d");
+    auto est_a3 = query.est_result_data_size("a3");
+    auto est_d = query.est_result_data_size("d");
     CHECK(est_d == 10 * sizeof(int32_t));
     CHECK(est_a1 == 10 * sizeof(int32_t));
     CHECK(est_a2[0] == 80);
@@ -638,10 +638,10 @@ TEST_CASE(
 
     Array array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array, TILEDB_READ);
-    auto est_a1 = query.est_result_size("a1");
+    auto est_a1 = query.est_result_data_size("a1");
     auto est_a2 = query.est_result_size_var("a2");
-    auto est_a3 = query.est_result_size("a3");
-    auto est_d = query.est_result_size("d");
+    auto est_a3 = query.est_result_data_size("a3");
+    auto est_d = query.est_result_data_size("d");
     CHECK(est_d == 10 * sizeof(int32_t));
     CHECK(est_a1 == 10 * sizeof(int32_t));
     CHECK(est_a2[0] == 80);
@@ -657,10 +657,10 @@ TEST_CASE(
     Query query(ctx, array, TILEDB_READ);
     query.add_range<int32_t>(0, 2, 3);
     query.add_range<int32_t>(0, 9, 10);
-    auto est_a1 = query.est_result_size("a1");
+    auto est_a1 = query.est_result_data_size("a1");
     auto est_a2 = query.est_result_size_var("a2");
-    auto est_a3 = query.est_result_size("a3");
-    auto est_d = query.est_result_size("d");
+    auto est_a3 = query.est_result_data_size("a3");
+    auto est_d = query.est_result_data_size("d");
     CHECK(est_d == 4 * sizeof(int32_t));
     CHECK(est_a1 == 4 * sizeof(int32_t));
     CHECK(est_a2[0] == 32);
@@ -716,7 +716,7 @@ TEST_CASE(
     auto est_a1 = query.est_result_size_nullable("a1");
     auto est_a2 = query.est_result_size_var_nullable("a2");
     auto est_a3 = query.est_result_size_nullable("a3");
-    auto est_d = query.est_result_size("d");
+    auto est_d = query.est_result_data_size("d");
     CHECK(est_d == 10 * sizeof(int32_t));
     CHECK(est_a1[0] == 10 * sizeof(int32_t));
     CHECK(est_a1[1] == 10 * sizeof(uint8_t));
@@ -737,7 +737,7 @@ TEST_CASE(
     auto est_a1 = query.est_result_size_nullable("a1");
     auto est_a2 = query.est_result_size_var_nullable("a2");
     auto est_a3 = query.est_result_size_nullable("a3");
-    auto est_d = query.est_result_size("d");
+    auto est_d = query.est_result_data_size("d");
     CHECK(est_d == 10 * sizeof(int32_t));
     CHECK(est_a1[0] == 10 * sizeof(int32_t));
     CHECK(est_a1[1] == 10 * sizeof(uint8_t));
@@ -759,7 +759,7 @@ TEST_CASE(
     auto est_a1 = query.est_result_size_nullable("a1");
     auto est_a2 = query.est_result_size_var_nullable("a2");
     auto est_a3 = query.est_result_size_nullable("a3");
-    auto est_d = query.est_result_size("d");
+    auto est_d = query.est_result_data_size("d");
     CHECK(est_d == 4 * sizeof(int32_t));
     CHECK(est_a1[0] == 4 * sizeof(int32_t));
     CHECK(est_a1[1] == 4 * sizeof(uint8_t));
