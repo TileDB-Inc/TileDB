@@ -870,6 +870,78 @@ class Query {
   }
 
   /**
+   * Retrieves the estimated result size for the data buffer of an attribute or
+   * dimension. This is an estimate and may not be sufficient to read all
+   * results for the requested range, in particular for sparse arrays or arrays
+   * with var-length attributes. Query status must be checked and resubmitted if
+   * not complete.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * uint64_t est_size = query.est_result_data_size("attr1");
+   * @endcode
+   *
+   * @param attr_name The attribute or dimension name.
+   * @return The estimated size in bytes.
+   */
+  uint64_t est_result_data_size(const std::string& attr_name) const {
+    auto& ctx = ctx_.get();
+    uint64_t size = 0;
+    ctx.handle_error(tiledb_query_get_est_result_data_size(
+        ctx.ptr().get(), query_.get(), attr_name.c_str(), &size));
+    return size;
+  }
+
+  /**
+   * Retrieves the estimated result size for the offsets buffer of a
+   * variable-sized attribute or dimension. This is an estimate and may not be
+   * sufficient to read all results for the requested range, in particular for
+   * sparse arrays or arrays with var-length attributes. Query status must be
+   * checked and resubmitted if not complete.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * uint64_t est_size = query.est_result_offsets_size("attr1");
+   * @endcode
+   *
+   * @param attr_name The attribute or dimension name.
+   * @return The estimated size in bytes.
+   */
+  uint64_t est_result_offsets_size(const std::string& attr_name) const {
+    auto& ctx = ctx_.get();
+    uint64_t size = 0;
+    ctx.handle_error(tiledb_query_get_est_result_offsets_size(
+        ctx.ptr().get(), query_.get(), attr_name.c_str(), &size));
+    return size;
+  }
+
+  /**
+   * Retrieves the estimated result size for the validity buffer of a nullable
+   * attribute. This is an estimate and may not be sufficient to read all
+   * results for the requested range, in particular for sparse arrays or arrays
+   * with var-length attributes. Query status must be checked and resubmitted if
+   * not complete.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * uint64_t est_size = query.est_result_validity_size("attr1");
+   * @endcode
+   *
+   * @param attr_name The attribute name.
+   * @return The estimated size in bytes.
+   */
+  uint64_t est_result_validity_size(const std::string& attr_name) const {
+    auto& ctx = ctx_.get();
+    uint64_t size = 0;
+    ctx.handle_error(tiledb_query_get_est_result_data_size(
+        ctx.ptr().get(), query_.get(), attr_name.c_str(), &size));
+    return size;
+  }
+
+  /**
    * Retrieves the estimated result size for a fixed-size attribute.
    * This is an estimate and may not be sufficient to read all results for the
    * requested range, for sparse arrays or array with
