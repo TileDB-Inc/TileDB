@@ -325,17 +325,42 @@ void StringEmptyFx::read_array(const std::string& array_name) {
   uint64_t buffer_a4_val_size = 1024;
 
   // Check est_result_sizes
-  rc = tiledb_query_get_est_result_size(ctx, query, "d1", &buffer_d1_size);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_get_est_result_size_var(
-      ctx, query, "a1", &buffer_a1_off_size, &buffer_a1_val_size);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_get_est_result_size_var(
-      ctx, query, "a2", &buffer_a2_off_size, &buffer_a2_val_size);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_get_est_result_size_var(
-      ctx, query, "a4", &buffer_a4_off_size, &buffer_a4_val_size);
-  REQUIRE(rc == TILEDB_OK);
+  SECTION("Using the old result size estimation APIs") {
+    rc = tiledb_query_get_est_result_size(ctx, query, "d1", &buffer_d1_size);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_get_est_result_size_var(
+        ctx, query, "a1", &buffer_a1_off_size, &buffer_a1_val_size);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_get_est_result_size_var(
+        ctx, query, "a2", &buffer_a2_off_size, &buffer_a2_val_size);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_get_est_result_size_var(
+        ctx, query, "a4", &buffer_a4_off_size, &buffer_a4_val_size);
+    REQUIRE(rc == TILEDB_OK);
+  }
+  SECTION("Using the new result size estimation APIs") {
+    rc = tiledb_query_get_est_result_data_size(
+        ctx, query, "d1", &buffer_d1_size);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_get_est_result_data_size(
+        ctx, query, "a1", &buffer_a1_val_size);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_get_est_result_offsets_size(
+        ctx, query, "a1", &buffer_a1_off_size);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_get_est_result_data_size(
+        ctx, query, "a2", &buffer_a2_val_size);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_get_est_result_offsets_size(
+        ctx, query, "a2", &buffer_a2_off_size);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_get_est_result_data_size(
+        ctx, query, "a4", &buffer_a4_val_size);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_query_get_est_result_offsets_size(
+        ctx, query, "a4", &buffer_a4_off_size);
+    REQUIRE(rc == TILEDB_OK);
+  }
 
   CHECK(buffer_d1_size == 5 * sizeof(uint64_t));
   // est_result_size should return 4 element for the values since one is empty

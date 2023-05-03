@@ -128,7 +128,7 @@ int32_t Query2Fx::tiledb_query_get_est_result_size_wrapper(
     tiledb_query_t* query,
     const char* name,
     uint64_t* size) {
-  int ret = tiledb_query_get_est_result_size(ctx, query, name, size);
+  int ret = tiledb_query_get_est_result_data_size(ctx, query, name, size);
 #ifndef TILEDB_SERIALIZATION
   return ret;
 #endif
@@ -156,7 +156,7 @@ int32_t Query2Fx::tiledb_query_get_est_result_size_wrapper(
           buff) == TILEDB_OK);
 
   tiledb_buffer_free(&buff);
-  return tiledb_query_get_est_result_size(ctx, query, name, size);
+  return tiledb_query_get_est_result_data_size(ctx, query, name, size);
 }
 
 int32_t Query2Fx::tiledb_query_get_est_result_size_var_wrapper(
@@ -165,8 +165,11 @@ int32_t Query2Fx::tiledb_query_get_est_result_size_var_wrapper(
     const char* name,
     uint64_t* size_off,
     uint64_t* size_val) {
-  int ret = tiledb_query_get_est_result_size_var(
-      ctx, query, name, size_off, size_val);
+  int ret = tiledb_query_get_est_result_data_size(ctx, query, name, size_val);
+  if (ret != TILEDB_OK) {
+    return ret;
+  }
+  ret = tiledb_query_get_est_result_offsets_size(ctx, query, name, size_off);
 #ifndef TILEDB_SERIALIZATION
   return ret;
 #endif
@@ -194,8 +197,11 @@ int32_t Query2Fx::tiledb_query_get_est_result_size_var_wrapper(
           buff) == TILEDB_OK);
 
   tiledb_buffer_free(&buff);
-  return tiledb_query_get_est_result_size_var(
-      ctx, query, name, size_off, size_val);
+  ret = tiledb_query_get_est_result_data_size(ctx, query, name, size_val);
+  if (ret != TILEDB_OK) {
+    return ret;
+  }
+  return tiledb_query_get_est_result_offsets_size(ctx, query, name, size_off);
 }
 
 void Query2Fx::create_dense_array(const std::string& array_name, bool anon) {

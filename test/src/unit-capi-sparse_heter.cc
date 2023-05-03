@@ -136,12 +136,6 @@ struct SparseHeterFx {
       tiledb_query_t* query,
       const char* name,
       uint64_t* size);
-  int32_t tiledb_query_get_est_result_size_var_wrapper(
-      tiledb_ctx_t* ctx,
-      tiledb_query_t* query,
-      const char* name,
-      uint64_t* size_off,
-      uint64_t* size_val);
 };
 
 SparseHeterFx::SparseHeterFx()
@@ -240,7 +234,7 @@ int32_t SparseHeterFx::tiledb_query_get_est_result_size_wrapper(
     tiledb_query_t* query,
     const char* name,
     uint64_t* size) {
-  int ret = tiledb_query_get_est_result_size(ctx, query, name, size);
+  int ret = tiledb_query_get_est_result_data_size(ctx, query, name, size);
 #ifndef TILEDB_SERIALIZATION
   return ret;
 #endif
@@ -268,46 +262,7 @@ int32_t SparseHeterFx::tiledb_query_get_est_result_size_wrapper(
           buff) == TILEDB_OK);
 
   tiledb_buffer_free(&buff);
-  return tiledb_query_get_est_result_size(ctx, query, name, size);
-}
-
-int32_t SparseHeterFx::tiledb_query_get_est_result_size_var_wrapper(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const char* name,
-    uint64_t* size_off,
-    uint64_t* size_val) {
-  int ret = tiledb_query_get_est_result_size_var(
-      ctx, query, name, size_off, size_val);
-#ifndef TILEDB_SERIALIZATION
-  return ret;
-#endif
-
-  if (ret != TILEDB_OK || !serialize_)
-    return ret;
-
-  // Serialize the non_empty_domain
-  tiledb_buffer_t* buff;
-  REQUIRE(
-      tiledb_serialize_query_est_result_sizes(
-          ctx,
-          query,
-          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
-          0,
-          &buff) == TILEDB_OK);
-
-  // Deserialize to validate we can round-trip
-  REQUIRE(
-      tiledb_deserialize_query_est_result_sizes(
-          ctx,
-          query,
-          (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
-          1,
-          buff) == TILEDB_OK);
-
-  tiledb_buffer_free(&buff);
-  return tiledb_query_get_est_result_size_var(
-      ctx, query, name, size_off, size_val);
+  return tiledb_query_get_est_result_data_size(ctx, query, name, size);
 }
 
 void SparseHeterFx::create_temp_dir(const std::string& path) {

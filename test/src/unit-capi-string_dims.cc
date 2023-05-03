@@ -648,8 +648,11 @@ void StringDimsFx::get_est_result_size_var(
   rc = tiledb_query_add_range_var(
       ctx_, query, dim_idx, start.data(), start.size(), end.data(), end.size());
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_get_est_result_size_var(
-      ctx_, query, dim_name.c_str(), size_off, size_val);
+  rc = tiledb_query_get_est_result_data_size(
+      ctx_, query, dim_name.c_str(), size_val);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_get_est_result_offsets_size(
+      ctx_, query, dim_name.c_str(), size_off);
   CHECK(rc == TILEDB_OK);
   tiledb_query_free(&query);
 }
@@ -1406,8 +1409,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_ERR);
   int32_t buff[10];
   uint64_t buff_size = sizeof(buff);
-  rc = tiledb_query_set_data_buffer(
-      ctx_, query, TILEDB_COORDS, buff, &buff_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d", buff, &buff_size);
   REQUIRE(rc == TILEDB_ERR);
   int data[1];
   uint64_t data_size;
@@ -1415,10 +1417,8 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Get estimated buffer size
-  rc = tiledb_query_get_est_result_size(ctx_, query, TILEDB_COORDS, &size);
-  CHECK(rc == TILEDB_ERR);
-  rc = tiledb_query_get_est_result_size(ctx_, query, "d", &size);
-  CHECK(rc == TILEDB_ERR);
+  rc = tiledb_query_get_est_result_data_size(ctx_, query, "d", &size);
+  CHECK(rc == TILEDB_OK);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -1543,17 +1543,26 @@ TEST_CASE_METHOD(
   rc = tiledb_query_add_range_var(ctx_, query, 0, s1, 1, s2, 2);
   CHECK(rc == TILEDB_OK);
 
-  // Check error on getting estimated result size
-  uint64_t size_off = 0, size_val = 0;
-  rc = tiledb_query_get_est_result_size(ctx_, query, "d", &size_off);
-  CHECK(rc == TILEDB_ERR);
-
   // Get estimated result size
-  rc = tiledb_query_get_est_result_size_var(
-      ctx_, query, "d", &size_off, &size_val);
-  CHECK(rc == TILEDB_OK);
-  CHECK(size_off == 32);
+  uint64_t size_off = 0, size_val = 0;
+  SECTION("Use the old result size estimation APIs") {
+    // Check error on getting estimated result size
+    rc = tiledb_query_get_est_result_size(ctx_, query, "d", &size_off);
+    CHECK(rc == TILEDB_ERR);
+
+    rc = tiledb_query_get_est_result_size_var(
+        ctx_, query, "d", &size_off, &size_val);
+    CHECK(rc == TILEDB_OK);
+  }
+  SECTION("Use the new result size estimation APIs") {
+    rc = tiledb_query_get_est_result_data_size(ctx_, query, "d", &size_val);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_get_est_result_offsets_size(ctx_, query, "d", &size_off);
+    CHECK(rc == TILEDB_OK);
+  }
+
   CHECK(size_val == 10);
+  CHECK(size_off == 32);
 
   // Clean query
   tiledb_query_free(&query);

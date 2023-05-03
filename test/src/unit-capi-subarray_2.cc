@@ -120,7 +120,7 @@ int32_t Subarray2Fx::tiledb_subarray_get_est_result_size_wrapper(
       tiledb_query_set_subarray_t(ctx, serialization_query, subarray) ==
       TILEDB_OK);
   int ret =
-      tiledb_query_get_est_result_size(ctx, serialization_query, name, size);
+      tiledb_query_get_est_result_data_size(ctx, serialization_query, name, size);
 #ifndef TILEDB_SERIALIZATION
   return ret;
 #endif
@@ -148,7 +148,7 @@ int32_t Subarray2Fx::tiledb_subarray_get_est_result_size_wrapper(
           buff) == TILEDB_OK);
 
   tiledb_buffer_free(&buff);
-  return tiledb_query_get_est_result_size(ctx, serialization_query, name, size);
+  return tiledb_query_get_est_result_data_size(ctx, serialization_query, name, size);
 }
 
 int32_t Subarray2Fx::tiledb_subarray_get_est_result_size_var_wrapper(
@@ -158,8 +158,11 @@ int32_t Subarray2Fx::tiledb_subarray_get_est_result_size_var_wrapper(
     uint64_t* size_off,
     uint64_t* size_val,
     tiledb_query_t* serialization_query) {
-  int ret = tiledb_query_get_est_result_size_var(
-      ctx, serialization_query, name, size_off, size_val);
+  int ret = tiledb_query_get_est_result_data_size(ctx, query, name, size_val);
+  if (ret != TILEDB_OK) {
+    return ret;
+  }
+  ret = tiledb_query_get_est_result_offsets_size(ctx, query, name, size_off);
 #ifndef TILEDB_SERIALIZATION
   return ret;
 #endif
@@ -191,8 +194,11 @@ int32_t Subarray2Fx::tiledb_subarray_get_est_result_size_var_wrapper(
           buff) == TILEDB_OK);
 
   tiledb_buffer_free(&buff);
-  return tiledb_query_get_est_result_size_var(
-      ctx, serialization_query, name, size_off, size_val);
+  ret = tiledb_query_get_est_result_data_size(ctx, query, name, size_val);
+  if (ret != TILEDB_OK) {
+    return ret;
+  }
+  return tiledb_query_get_est_result_offsets_size(ctx, query, name, size_off);
 }
 #endif
 
