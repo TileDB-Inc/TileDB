@@ -78,6 +78,31 @@ enum class Layout : uint8_t;
 enum class QueryType : uint8_t;
 
 /**
+ * Interface to implement for a class that can store tile ranges computed by
+ * this class.
+ */
+class ITileRange {
+ public:
+  /** Destructor. */
+  virtual ~ITileRange() = default;
+
+  /** Clears all tile ranges data. */
+  virtual void clear_tile_ranges() = 0;
+
+  /**
+   * Add a tile range for a fragment.
+   *
+   * @param f Fragment index.
+   * @param min Min tile index for the range.
+   * @param max Max tile index for the range.
+   */
+  virtual void add_tile_range(unsigned f, uint64_t min, uint64_t max) = 0;
+
+  /** Signals we are done adding tile ranges. */
+  virtual void done_adding_tile_ranges() = 0;
+};
+
+/**
  * A Subarray object is associated with an array, and
  * is oriented by a set of 1D ranges per dimension over the array
  * domain. The ranges may overlap. The subarray essentially represents
@@ -637,13 +662,12 @@ class Subarray {
    *
    * @param compute_tp The compute thread pool.
    * @param frag_tile_idx The current tile index, per fragment.
-   * @param result_tile_ranges The resulting tile ranges.
+   * @param tile_ranges The resulting tile ranges.
    */
   Status precompute_all_ranges_tile_overlap(
       ThreadPool* const compute_tp,
       std::vector<FragIdx>& frag_tile_idx,
-      std::vector<std::vector<std::pair<uint64_t, uint64_t>>>*
-          result_tile_ranges);
+      ITileRange* tile_ranges);
 
   /**
    * Computes the estimated result size (calibrated using the maximum size)
