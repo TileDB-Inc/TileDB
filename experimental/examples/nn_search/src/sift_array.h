@@ -79,7 +79,7 @@ class sift_array : public std::vector<std::span<T>> {
                           subset)
 #ifndef __APPLE__
       , data_ {
-    std::make_unique_for_overwrite<T[]>(num_rows_ * num_cols_)
+    std::make_unique_for_overwrite<T[]>(((size_t)num_rows_) * ((size_t)subset))
   }
 #else
       //, data_ {std::make_unique<T[]>(new T[num_rows_ * num_cols_])}
