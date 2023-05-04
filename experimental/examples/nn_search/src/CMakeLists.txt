@@ -25,12 +25,16 @@
 # THE SOFTWARE.
 #
 
-add_executable(flat flat.cc query.h defs.h sift_db.h timer.h sift_array.h)
+add_executable(flat flat.cc query.h defs.h sift_db.h timer.h sift_array.h linalg.h)
 
 target_link_libraries(flat PUBLIC docopt)
-target_link_libraries(flat PUBLIC flat_tbb)
+target_link_libraries(flat PUBLIC flat_mt)
 target_link_libraries(flat PUBLIC flat_blas)
 target_link_libraries(flat PUBLIC TileDB::tiledb_shared)
+target_link_libraries(flat PUBLIC mdspan)
+
+
+add_executable(latency latency.cc sift_array.h timer.h)
 
 # add_executable(ingest ingest.cc sift_db.h timer.h)
 # target_include_directories(ingest PUBLIC

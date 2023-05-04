@@ -74,40 +74,20 @@ endif()
 # Control compiler-specific flags.
 include(CompilerFlags)
 
-add_library(flat_tbb INTERFACE)
-target_compile_definitions(flat_tbb INTERFACE EXECUTION_POLICY)
+# -----------------------------------------------------------------------------
+# Interface library for multi-threading
+# -----------------------------------------------------------------------------
+# Control compiler-specific flags.
+include(MultiThreading)
 
-find_package(Threads REQUIRED)
-target_link_libraries(flat_tbb INTERFACE Threads::Threads)
+# -----------------------------------------------------------------------------
+# Interface library for BLAS
+# -----------------------------------------------------------------------------
+# Control compiler-specific flags.
+include(BLAS)
 
-find_package(TBB REQUIRED)
-target_link_libraries(flat_tbb INTERFACE TBB::tbb)
 
-# find_package(OpenMP REQUIRED)
-# include(FindOpenMP)
-# target_link_libraries(flat_tbb INTERFACE OpenMP::OpenMP_CXX)
 
-add_library(flat_blas INTERFACE)
-
-if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    # include macOS-specific flags for native BLAS
-    # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -framework Accelerate")
-    target_compile_options(flat_blas INTERFACE -framework Accelerate)
-    target_link_options(flat_blas INTERFACE -framework Accelerate)
-else()
-    # include flags for other operating systems BLAS
-    # find_package(MKL CONFIG REQUIRED)
-    find_package(MKL REQUIRED)
-    include_directories(${MKL_INCLUDE_DIRS})
-    # target_link_libraries(${PROJECT_NAME} ${MKL_LIBRARIES})
-
-    target_compile_options(flat_blas INTERFACE $<TARGET_PROPERTY:MKL::MKL,INTERFACE_COMPILE_OPTIONS>)
-    target_include_directories(flat_blas INTERFACE $<TARGET_PROPERTY:MKL::MKL,INTERFACE_INCLUDE_DIRECTORIES>)
-    target_link_libraries(flat_blas INTERFACE $<LINK_ONLY:MKL::MKL>)
-
-endif()
-
-include(Docopt)
 
 if (DEFINED TileDB_DIR)
     set(CMAKE_PREFIX_PATH "${TileDB_DIR};{CMAKE_PREFIX_PATH}")
@@ -122,8 +102,11 @@ if (TileDB_FOUND)
     message(STATUS "Found TileDB")
     get_target_property(_TDB_INCLUDES TileDB::tiledb_shared INTERFACE_INCLUDE_DIRECTORIES)
     message(STATUS "TileDB include directories are ${_TDB_INCLUDES}")
-
 endif()
+
+include(Docopt)
+
+include(mdspan)
 
 add_subdirectory(src)
 add_subdirectory(src/test)
