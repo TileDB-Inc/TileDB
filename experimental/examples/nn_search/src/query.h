@@ -260,8 +260,7 @@ void query_vq_ew(
   life_timer _{"Total time (vq loop nesting, set way)"};
 
   using element = std::pair<float, int>;
-  std::vector<fixed_min_set<element>> scores(
-      size(q), fixed_min_set<element>(k));
+  std::vector<std::vector<fixed_min_set<element>>> scores(nthreads, std::vector<fixed_min_set<element>>(size(q), fixed_min_set<element>(k)));
 
   {
     life_timer _{"L2 distance"};
@@ -269,52 +268,46 @@ void query_vq_ew(
     int size_q = size(q);
     int size_db = size(db);
 
-    // For each database vector
-    for (int i = 0; i < size_db; ++i) {
-#if 0
-      // Can't parallelize outer loop b/c there is only one scores vector
-      // Don't parallelize each inner loop -- thread explosion
+    int db_block_size = (size(db) + nthreads - 1) / nthreads;
+    std::vector<std::future<void>> futs;
+    futs.reserve(nthreads);
 
-      int q_block_size = (size(q) + nthreads -1) / nthreads;
-      std::vector<std::future<void>> futs;
-      futs.reserve(nthreads);
-    
-      for (int n = 0; n < nthreads; ++n) {
-	
-	int q_start = n*q_block_size;
-	int q_stop = std::min<int>((n+1)*q_block_size, size(q));
-      
-	futs.emplace_back(std::async(std::launch::async, [&scores, &g, &db, &q, i, q_start, q_stop, &top_k, k]() {
+    for (int n = 0; n < nthreads; ++n) {
+      int db_start = n * db_block_size;
+      int db_stop = std::min<int>((n + 1) * db_block_size, size(db));
 
-	  // Compare with each query
-	  for (int j = q_start; j < q_stop; ++j) {
-	    auto score = L2(q[j], db[i]);
-	    scores[j].insert(element{score, i});
-	  }
-	}));
-      }
-      for (int n = 0; n < nthreads; ++n) {
-	futs[n].get();
-      }
-#else
+      futs.emplace_back(std::async(
+          std::launch::async, [&scores, &q, size_q, &db, db_start, db_stop, size_db, n]() {
+            // For each database vector
+            for (int i = db_start; i < db_stop; ++i) {
+              for (int j = 0; j < size_q; ++j) {
+                auto score = L2(q[j], db[i]);
+                scores[n][j].insert(element{score, i});
+              }
+            }
+          }));
 
-      for (int j = 0; j < size_q; ++j) {
-        auto score = L2(q[j], db[i]);
-        scores[j].insert(element{score, i});
-      }
-
-#endif
     }
+  }
+
+  { life_timer _{"Merge"};
+   for (int j = 0; j < size(q); ++j) {
+     for (int n = 1; n < nthreads; ++n) {
+       for (auto&& e : scores[n][j]) {
+         scores[0][j].insert(e);
+       }
+     }
+   }
   }
 
   {
     life_timer _{"Get top k and check results"};
 
-    int q_block_size = (size(q) + nthreads - 1) / nthreads;
+    int q_block_size = (size(q) + std::min<int>(nthreads, size(q)) - 1) / std::min<int>(nthreads,size(q));
     std::vector<std::future<void>> futs;
     futs.reserve(nthreads);
 
-    for (int n = 0; n < nthreads; ++n) {
+    for (int n = 0; n < std::min<int>(nthreads, size(q)); ++n) {
       int q_start = n * q_block_size;
       int q_stop = std::min<int>((n + 1) * q_block_size, size(q));
 
@@ -323,8 +316,8 @@ void query_vq_ew(
             // For each query
             for (int j = q_start; j < q_stop; ++j) {
               std::transform(
-                  scores[j].begin(),
-                  scores[j].end(),
+                  scores[0][j].begin(),
+                  scores[0][j].end(),
                   top_k[j].begin(),
                   ([](auto& e) { return e.second; }));
               std::sort(begin(top_k[j]), end(top_k[j]));
@@ -334,7 +327,7 @@ void query_vq_ew(
             }
           }));
     }
-    for (int n = 0; n < nthreads; ++n) {
+    for (int n = 0; n < std::min<int>(nthreads, size(q)); ++n) {
       futs[n].get();
     }
   }
