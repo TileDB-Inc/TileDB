@@ -154,23 +154,30 @@ FilterPipeline::get_var_chunk_sizes(
   return {Status::Ok(), std::move(chunk_offsets)};
 }
 
-// Acts as starter motor for the filter_chunks_forward taskgraph
-// For now it just makes sure the task graph is executed only once.
-class graph_executions {
-  bool second_execution_;
+class chunk_generator {
+  // needs to be thread safe, multiple nodes might change it simultaneously
+  std::shared_ptr<std::atomic<uint64_t>> _chunk_id;
+  uint64_t _nchunks;
 
  public:
-  graph_executions()
-      : second_execution_(false) {
+  chunk_generator(uint64_t nchunks)
+      : _chunk_id(std::make_shared<std::atomic<uint64_t>>(0))
+      , _nchunks(nchunks) {
   }
 
-  Status operator()(std::stop_source& stop_source) {
-    if (second_execution_) {
+  void reset() {
+    _chunk_id->store(0);
+  }
+
+  // The task graph calls this operator to get the id of the next chunk
+  uint64_t operator()(std::stop_source& stop_source) {
+    if (*_chunk_id >= _nchunks) {
       stop_source.request_stop();
-      return Status::Ok();
     }
-    second_execution_ = true;
-    return Status::Ok();
+
+    uint64_t rv = *_chunk_id;
+    *_chunk_id += 1;
+    return rv;
   }
 };
 
@@ -202,6 +209,8 @@ Status FilterPipeline::filter_chunks_forward(
 
   // Vector storing the input and output of the final pipeline stage for each
   // chunk.
+  // TODO: can be moved in chunk generator constructor or first node that
+  // processes a chunk once we add FilterBuffer move constructor
   std::vector<FilterStorage> filter_storages(nchunks);
   std::vector<std::pair<FilterBufferPair, FilterBufferPair>> final_stage_io(
       nchunks);
@@ -217,50 +226,70 @@ Status FilterPipeline::filter_chunks_forward(
     throw_if_not_ok(final_stage_io[i].second.second.swap(output_data));
   }
 
-  auto graph_width = compute_tp->concurrency_level();
+  // TODO: there is a race condition on input_data.init() which is noticed on my
+  // computer starting with width=3
+  uint64_t graph_width = 3;
+  // uint64_t graph_width = std::min(compute_tp->concurrency_level(),
+  // static_cast<size_t>(nchunks));
+
   TaskGraph<DuffsScheduler<node>> graph(graph_width);
+  chunk_generator gen(nchunks);
+  gen.reset();
 
   // TODO:
-  // - now the graph is as wide as the no. of chunks. Immediate change is to
-  // make the initial node generate next chunk, thread safe and make graph
-  // width=compute_concurrency_level. Once we add support for specifying node
+  // - Once we add support for specifying node
   // width, wideness will just be specified as a number and the for loop below
   // won't be needed anymore.
   // - Implement move constructor for FilterBuffer, this way we can remove
   // input_* and output_* vars and the swap logic around them,
   // the nodes will just move the filter buffers from one another via edges.
-  for (uint64_t chunk = 0; chunk < nchunks; ++chunk) {
-    auto& input_metadata = final_stage_io[chunk].first.first;
-    auto& input_data = final_stage_io[chunk].first.second;
-    auto& output_metadata = final_stage_io[chunk].second.first;
-    auto& output_data = final_stage_io[chunk].second.second;
+  for (uint64_t w = 0; w < graph_width; ++w) {
+    auto a = initial_node(graph, gen);
 
-    // First filter's input is the original chunk.
-    uint64_t offset = var_sizes ? chunk_offsets[chunk] : chunk * chunk_size;
-    void* chunk_buffer = static_cast<char*>(tile.data()) + offset;
-    uint32_t chunk_buffer_size =
-        chunk == nchunks - 1 ? last_buffer_size :
-        var_sizes            ? chunk_offsets[chunk + 1] - chunk_offsets[chunk] :
-                               chunk_size;
-    RETURN_NOT_OK(input_data.init(chunk_buffer, chunk_buffer_size));
+    auto b = transform_node(graph, [&](uint64_t chunk) {
+      auto& input_data = final_stage_io[chunk].first.second;
 
-    Status status = Status::Ok();
+      // First filter's input is the original chunk.
+      uint64_t offset = var_sizes ? chunk_offsets[chunk] : chunk * chunk_size;
+      void* chunk_buffer = static_cast<char*>(tile.data()) + offset;
+      uint32_t chunk_buffer_size =
+          chunk == nchunks - 1 ? last_buffer_size :
+          var_sizes ? chunk_offsets[chunk + 1] - chunk_offsets[chunk] :
+                      chunk_size;
+      Status st = input_data.init(chunk_buffer, chunk_buffer_size);
+      if (!st.ok()) {
+        return std::make_tuple(st, chunk);
+      }
 
-    graph_executions exec;
-    auto a = initial_node(graph, exec);
+      return std::make_tuple(Status::Ok(), chunk);
+    });
+    make_edge(graph, a, b);
 
     // Iterate over all filters, create taskgraph nodes that will run the
     // filters forward and make the edges that will define the order in the
     // pipeline.
-    std::vector<function_node<DuffsMover3, Status, DuffsMover3, Status>> nodes;
+    // TODO: check if nodes vector needs to hold all nodes for all widths
+    // in case refcounts are not properly increased by edges
+    using input_info = std::tuple<Status, uint64_t>;
+    std::vector<function_node<DuffsMover3, input_info, DuffsMover3, input_info>>
+        nodes;
     for (auto it = filters_.begin(), ite = filters_.end(); it != ite; ++it) {
       auto& f = *it;
 
-      auto n = transform_node(graph, [&]([[maybe_unused]] const Status& st) {
+      auto n = transform_node(graph, [&](const input_info& in) {
+        auto [st, chunk] = in;
+        auto& input_metadata = final_stage_io[chunk].first.first;
+        auto& input_data = final_stage_io[chunk].first.second;
+        auto& output_metadata = final_stage_io[chunk].second.first;
+        auto& output_data = final_stage_io[chunk].second.second;
+
         // Graph nodes should quit early if an error status was produced earlier
-        // in the execution. Ideally they should quit even earlier by throwing
+        // in the execution.
+        // TODO: Ideally they should quit even earlier by throwing
         // when code depending on this Status code will be refactored.
-        RETURN_NOT_OK(st);
+        if (!st.ok()) {
+          return std::make_tuple(st, chunk);
+        }
 
         // Clear and reset I/O buffers
         input_data.reset_offset();
@@ -273,41 +302,45 @@ Status FilterPipeline::filter_chunks_forward(
 
         f->init_compression_resource_pool(compute_tp->concurrency_level());
 
-        RETURN_NOT_OK(f->run_forward(
+        st = f->run_forward(
             tile,
             offsets_tile,
             &input_metadata,
             &input_data,
             &output_metadata,
-            &output_data));
+            &output_data);
+        if (!st.ok()) {
+          return std::make_tuple(st, chunk);
+        }
 
         input_data.set_read_only(false);
         throw_if_not_ok(input_data.swap(output_data));
         input_metadata.set_read_only(false);
         throw_if_not_ok(input_metadata.swap(output_metadata));
         // Next input (input_buffers) now stores this output (output_buffers).
-        return Status::Ok();
+        return std::make_tuple(Status::Ok(), chunk);
       });
 
       if (it == filters_.begin()) {
-        make_edge(graph, a, n);
+        make_edge(graph, b, n);
       } else {
         make_edge(graph, nodes.back(), n);
       }
       nodes.push_back(n);
+    }
 
-      auto e = terminal_node(graph, [&](const Status& st_in) {
-        if (!st_in.ok()) {
-          status_codes[chunk] = st_in;
-          return;
-        }
-      });
-
-      if (nodes.empty()) {
-        make_edge(graph, a, e);
-      } else {
-        make_edge(graph, nodes.back(), e);
+    auto e = terminal_node(graph, [&](const input_info& in) {
+      auto [st_in, chunk] = in;
+      if (!st_in.ok()) {
+        status_codes[chunk] = st_in;
+        return;
       }
+    });
+
+    if (nodes.empty()) {
+      make_edge(graph, b, e);
+    } else {
+      make_edge(graph, nodes.back(), e);
     }
   }
 
