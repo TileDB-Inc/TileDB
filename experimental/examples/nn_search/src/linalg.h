@@ -45,9 +45,9 @@
 
 namespace tiledb::common {
 
-template <class T, class I = size_t, class LayoutPolicy = Kokkos::layout_right>
+template <class T, class LayoutPolicy = Kokkos::layout_right, class I = size_t>
 class Matrix
-    : Kokkos::mdspan<
+    : public Kokkos::mdspan<
           T,
           Kokkos::extents<I, std::dynamic_extent, std::dynamic_extent>> {
   using Base = Kokkos::
@@ -59,7 +59,7 @@ class Matrix
   index_type nrows_{0};
   index_type ncols_{0};
 
-  std::unique_ptr<T[]> data_;
+  std::unique_ptr<T[]> storage_;
 
  public:
   Matrix(
@@ -68,25 +68,38 @@ class Matrix
       LayoutPolicy policy = LayoutPolicy()) noexcept
       : nrows_(nrows)
       , ncols_(ncols)
-      , data_{new T[nrows_ * ncols_]}
-      , Base{data_.get(), nrows_, ncols_} {
+      , storage_{new T[nrows_ * ncols_]} {
+    Base::operator=(Base{storage_.get(), nrows_, ncols_});
   }
 
   Matrix(
       index_type nrows,
       index_type ncols,
-      std::unique_ptr<T[]> data,
+      std::unique_ptr<T[]> storage,
       LayoutPolicy policy = LayoutPolicy()) noexcept
       : nrows_(nrows)
       , ncols_(ncols)
-      , data_{std::move(data)}
-      , Base{data_.get(), nrows_, ncols_} {
+      , storage_{std::move(storage)} {
+    Base::operator=(Base{storage_.get(), nrows_, ncols_});
   }
 
   auto data() {
-    return data_.get();
+    return storage_.get();
+  }
+
+  index_type num_rows() const noexcept {
+    return nrows_;
+  }
+  index_type num_cols() const noexcept {
+    return ncols_;
   }
 };
+
+template <class T, class I = size_t>
+using RowMajorMatrix = Matrix<T, I, Kokkos::layout_right>;
+
+template <class T, class I = size_t>
+using ColMajorMatrix = Matrix<T, I, Kokkos::layout_left>;
 
 }  // namespace tiledb::common
 

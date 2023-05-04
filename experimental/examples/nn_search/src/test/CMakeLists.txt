@@ -48,6 +48,8 @@ target_link_libraries(unit_defs PRIVATE Catch2::Catch2WithMain)
 add_executable(unit_gemm unit_gemm.cc)
 target_link_libraries(unit_gemm PRIVATE sift_test)
 
+add_executable(unit_linalg unit_linalg.cc)
+target_link_libraries(unit_linalg PRIVATE sift_test mdspan)
 
 # Create the subdirectory for the extracted files
 file(MAKE_DIRECTORY ${SIFT_TEST_DIR}/siftsmall)
