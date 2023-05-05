@@ -449,7 +449,7 @@ void StorageManagerCanonical::delete_array(const char* array_name) {
   vfs()->remove_files(compute_tp(), array_dir.fragment_meta_uris());
   vfs()->remove_files(compute_tp(), array_dir.array_schema_uris());
 
-  // Delete all array child directories
+  // Delete all tiledb child directories
   // Note: using vfs()->ls() here could delete user data
   std::vector<URI> dirs;
   auto parent_dir = array_dir.uri().c_str();
@@ -525,6 +525,14 @@ void StorageManagerCanonical::delete_group(const char* group_name) {
   vfs()->remove_files(compute_tp(), group_dir.group_meta_uris_to_vacuum());
   vfs()->remove_files(compute_tp(), group_dir.group_meta_vac_uris_to_vacuum());
   vfs()->remove_files(compute_tp(), group_dir.group_file_uris());
+
+  // Delete all tiledb child directories
+  // Note: using vfs()->ls() here could delete user data
+  std::vector<URI> dirs;
+  auto parent_dir = group_dir.uri().c_str();
+  dirs.emplace_back(URI(parent_dir + constants::group_detail_dir_name));
+  dirs.emplace_back(URI(parent_dir + constants::group_metadata_dir_name));
+  vfs()->remove_dirs(compute_tp(), dirs);
 }
 
 void StorageManagerCanonical::array_vacuum(

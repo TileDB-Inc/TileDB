@@ -109,6 +109,8 @@ struct DeletesFx {
   void remove_sparse_array();
   void remove_array(const std::string& array_name);
   bool is_array(const std::string& array_name);
+  void validate_array_dir_after_delete(const std::string& path);
+  void validate_group_dir_after_delete(const std::string& path);
 };
 
 DeletesFx::DeletesFx()
@@ -486,6 +488,23 @@ void DeletesFx::remove_sparse_array() {
 
 bool DeletesFx::is_array(const std::string& array_name) {
   return vfs_.is_dir(array_name);
+}
+
+void DeletesFx::validate_array_dir_after_delete(const std::string& path) {
+  REQUIRE(!vfs_.is_dir(path + tiledb::sm::constants::array_commits_dir_name));
+  REQUIRE(
+      !vfs_.is_dir(path + tiledb::sm::constants::array_fragment_meta_dir_name));
+  REQUIRE(!vfs_.is_dir(path + tiledb::sm::constants::array_fragments_dir_name));
+  REQUIRE(!vfs_.is_dir(
+      path + tiledb::sm::constants::array_dimension_labels_dir_name));
+  REQUIRE(!vfs_.is_dir(path + tiledb::sm::constants::array_metadata_dir_name));
+  REQUIRE(!vfs_.is_dir(path + tiledb::sm::constants::array_schema_dir_name));
+}
+
+void DeletesFx::validate_group_dir_after_delete(const std::string& path) {
+  REQUIRE(!vfs_.is_file(path + tiledb::sm::constants::group_filename));
+  REQUIRE(!vfs_.is_dir(path + tiledb::sm::constants::group_detail_dir_name));
+  REQUIRE(!vfs_.is_dir(path + tiledb::sm::constants::group_metadata_dir_name));
 }
 
 TEST_CASE_METHOD(
@@ -1926,7 +1945,7 @@ TEST_CASE_METHOD(
 #endif
 
   remove_sparse_array();
-  auto array_name = std::string(SPARSE_ARRAY_NAME);
+  auto array_name = std::string(SPARSE_ARRAY_NAME) + "/";
 
   // Conditionally consolidate
   // Note: there's no need to vacuum; delete_array will delete all fragments
@@ -1938,7 +1957,7 @@ TEST_CASE_METHOD(
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 3);
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 5);
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 7);
-  std::string extraneous_file_path = array_name + "/extraneous_file";
+  std::string extraneous_file_path = array_name + "extraneous_file";
   vfs_.touch(extraneous_file_path);
   std::unique_ptr<Array> array =
       std::make_unique<Array>(ctx_, SPARSE_ARRAY_NAME, TILEDB_WRITE);
@@ -1950,10 +1969,10 @@ TEST_CASE_METHOD(
   CHECK(tiledb::test::num_commits(SPARSE_ARRAY_NAME) == 4);
   CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 4);
   auto schemas =
-      vfs_.ls(array_name + "/" + tiledb::sm::constants::array_schema_dir_name);
+      vfs_.ls(array_name + tiledb::sm::constants::array_schema_dir_name);
   CHECK(schemas.size() == 1);
-  auto meta = vfs_.ls(
-      array_name + "/" + tiledb::sm::constants::array_metadata_dir_name);
+  auto meta =
+      vfs_.ls(array_name + tiledb::sm::constants::array_metadata_dir_name);
   CHECK(meta.size() == 1);
 
   if (consolidate) {
@@ -1974,7 +1993,7 @@ TEST_CASE_METHOD(
             tiledb::sm::constants::con_commits_file_suffix) == 1);
     CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 4);
     auto frag_meta = vfs_.ls(
-        array_name + "/" + tiledb::sm::constants::array_fragment_meta_dir_name);
+        array_name + tiledb::sm::constants::array_fragment_meta_dir_name);
     CHECK(frag_meta.size() == 1);
   }
 
@@ -1984,19 +2003,7 @@ TEST_CASE_METHOD(
   // Check working directory after delete
   REQUIRE(vfs_.is_file(extraneous_file_path));
   CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 0);
-  REQUIRE(!vfs_.is_dir(
-      array_name + "/" + tiledb::sm::constants::array_commits_dir_name));
-  REQUIRE(!vfs_.is_dir(
-      array_name + "/" + tiledb::sm::constants::array_fragment_meta_dir_name));
-  REQUIRE(!vfs_.is_dir(
-      array_name + "/" + tiledb::sm::constants::array_fragments_dir_name));
-  REQUIRE(!vfs_.is_dir(
-      array_name + "/" +
-      tiledb::sm::constants::array_dimension_labels_dir_name));
-  REQUIRE(!vfs_.is_dir(
-      array_name + "/" + tiledb::sm::constants::array_metadata_dir_name));
-  REQUIRE(!vfs_.is_dir(
-      array_name + "/" + tiledb::sm::constants::array_schema_dir_name));
+  validate_array_dir_after_delete(array_name);
 
   // Try to open array
   REQUIRE_THROWS_WITH(
@@ -2024,17 +2031,17 @@ TEST_CASE_METHOD(
 #endif
 
   remove_sparse_array();
-  auto array_name = std::string(SPARSE_ARRAY_NAME);
+  auto array_name = std::string(SPARSE_ARRAY_NAME) + "/";
 
   // Write to v11 array
   create_sparse_array_v11();
   write_sparse_v11(1);
-  std::string extraneous_file_path = array_name + "/extraneous_file";
+  std::string extraneous_file_path = array_name + "extraneous_file";
   vfs_.touch(extraneous_file_path);
 
   // Check write
   auto schemas =
-      vfs_.ls(array_name + "/" + tiledb::sm::constants::array_schema_dir_name);
+      vfs_.ls(array_name + tiledb::sm::constants::array_schema_dir_name);
   CHECK(schemas.size() == 1);
   auto uris = vfs_.ls(array_name);
   bool ok_exists = false;
@@ -2063,8 +2070,7 @@ TEST_CASE_METHOD(
     CHECK(!tiledb::sm::utils::parse::starts_with(uri, ok_prefix));
   }
   REQUIRE(vfs_.is_file(extraneous_file_path));
-  REQUIRE(!vfs_.is_dir(
-      array_name + "/" + tiledb::sm::constants::array_schema_dir_name));
+  validate_array_dir_after_delete(array_name);
 
   remove_sparse_array();
 }
@@ -2177,13 +2183,17 @@ TEST_CASE_METHOD(
 
   // Validate group data
   REQUIRE(vfs_.is_file(extraneous_file_path));
-  REQUIRE(!vfs_.is_file(GROUP_NAME + tiledb::sm::constants::group_filename));
-  group_detail_dir =
-      vfs_.ls(GROUP_NAME + tiledb::sm::constants::group_detail_dir_name);
-  CHECK(group_detail_dir.size() == 0);
-  group_meta_dir =
-      vfs_.ls(GROUP_NAME + tiledb::sm::constants::group_metadata_dir_name);
-  CHECK(group_meta_dir.size() == 0);
+  validate_group_dir_after_delete(GROUP_NAME);
+
+  // Try to open group
+  REQUIRE_THROWS_WITH(
+      group.open(TILEDB_READ),
+      Catch::Matchers::ContainsSubstring("Group does not exist"));
+
+  // Ensure array can still be opened
+  std::unique_ptr<Array> array =
+      std::make_unique<Array>(ctx_, array_path, TILEDB_READ);
+  array->close();
 
   // Clean up
   remove_dir(GROUP_NAME);
@@ -2262,23 +2272,18 @@ TEST_CASE_METHOD(
 
   // Validate group data
   REQUIRE(vfs_.is_file(extraneous_file_path));
-  REQUIRE(!vfs_.is_file(GROUP_NAME + tiledb::sm::constants::group_filename));
-  group_detail_dir =
-      vfs_.ls(GROUP_NAME + tiledb::sm::constants::group_detail_dir_name);
-  CHECK(group_detail_dir.size() == 0);
-  group_meta_dir =
-      vfs_.ls(GROUP_NAME + tiledb::sm::constants::group_metadata_dir_name);
-  CHECK(group_meta_dir.size() == 0);
-  REQUIRE(!vfs_.is_file(group2_path + tiledb::sm::constants::group_filename));
-  auto group2_detail_dir =
-      vfs_.ls(group2_path + tiledb::sm::constants::group_detail_dir_name);
-  CHECK(group2_detail_dir.size() == 0);
-  array_schema =
-      vfs_.ls(array_path + tiledb::sm::constants::array_schema_dir_name);
-  CHECK(array_schema.size() == 0);
-  array2_schema =
-      vfs_.ls(array2_path + tiledb::sm::constants::array_schema_dir_name);
-  CHECK(array2_schema.size() == 0);
+  validate_group_dir_after_delete(GROUP_NAME);
+  validate_group_dir_after_delete(group2_path);
+  validate_array_dir_after_delete(array_path);
+  validate_array_dir_after_delete(array2_path);
+
+  // Try to open objects
+  REQUIRE_THROWS_WITH(
+      group.open(TILEDB_READ),
+      Catch::Matchers::ContainsSubstring("Group does not exist"));
+  REQUIRE_THROWS_WITH(
+      std::make_unique<Array>(ctx_, array_path, TILEDB_READ),
+      Catch::Matchers::ContainsSubstring("Array does not exist"));
 
   // Clean up
   remove_dir(GROUP_NAME);
