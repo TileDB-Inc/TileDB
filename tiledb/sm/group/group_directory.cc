@@ -171,10 +171,6 @@ Status GroupDirectory::load() {
 
 tuple<Status, optional<std::string>> GroupDirectory::compute_new_fragment_name(
     const URI& first, const URI& last, format_version_t format_version) const {
-  // Get uuid
-  std::string uuid;
-  RETURN_NOT_OK_TUPLE(uuid::generate_uuid(&uuid, false), nullopt);
-
   // For creating the new fragment URI
 
   // Get timestamp ranges
@@ -186,8 +182,8 @@ tuple<Status, optional<std::string>> GroupDirectory::compute_new_fragment_name(
 
   // Create new URI
   std::stringstream ss;
-  ss << "/__" << t_first.first << "_" << t_last.second << "_" << uuid << "_"
-     << format_version;
+  ss << "/__" << t_first.first << "_" << t_last.second << "_"
+     << uuid::generate_uuid(false) << "_" << format_version;
 
   return {Status::Ok(), ss.str()};
 }

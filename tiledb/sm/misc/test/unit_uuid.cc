@@ -49,19 +49,26 @@ std::mutex catch2_macro_mutex;
     REQUIRE(a);                                           \
   }
 
+// A thread-safe variant of the REQUIRE_NOTHROW macro.
+#define REQUIRE_NOTHROW_SAFE(a)                                   \
+  {                                                       \
+    std::lock_guard<std::mutex> lock(catch2_macro_mutex); \
+    REQUIRE_NOTHROW(a);                                           \
+  }
+
 void cancel_all_tasks(StorageManager*) {
 }
 
 TEST_CASE("UUID: Test generate", "[uuid]") {
   SECTION("- Serial") {
     std::string uuid0, uuid1, uuid2;
-    REQUIRE(uuid::generate_uuid(&uuid0).ok());
+    REQUIRE_NOTHROW(uuid0 = uuid::generate_uuid());
     REQUIRE(uuid0.length() == 36);
-    REQUIRE(uuid::generate_uuid(&uuid1).ok());
+    REQUIRE_NOTHROW(uuid1 = uuid::generate_uuid());
     REQUIRE(uuid1.length() == 36);
     REQUIRE(uuid0 != uuid1);
 
-    REQUIRE(uuid::generate_uuid(&uuid2, false).ok());
+    REQUIRE_NOTHROW(uuid2 = uuid::generate_uuid(false));
     REQUIRE(uuid2.length() == 32);
   }
 
@@ -72,7 +79,7 @@ TEST_CASE("UUID: Test generate", "[uuid]") {
     for (unsigned i = 0; i < nthreads; i++) {
       threads.emplace_back([&uuids, i]() {
         std::string& uuid = uuids[i];
-        REQUIRE_SAFE(uuid::generate_uuid(&uuid).ok());
+        REQUIRE_NOTHROW_SAFE(uuid = uuid::generate_uuid());
         REQUIRE_SAFE(uuid.length() == 36);
       });
     }

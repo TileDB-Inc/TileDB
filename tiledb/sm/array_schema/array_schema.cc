@@ -104,7 +104,7 @@ ArraySchema::ArraySchema(ArrayType array_type)
       constants::cell_validity_compression_level));
 
   // Generate URI and name for ArraySchema
-  throw_if_not_ok(generate_uri());
+  generate_uri();
 }
 
 ArraySchema::ArraySchema(
@@ -1385,36 +1385,26 @@ void ArraySchema::clear() {
   timestamp_range_ = std::make_pair(0, 0);
 }
 
-Status ArraySchema::generate_uri() {
-  std::string uuid;
-  RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
-
+void ArraySchema::generate_uri() {
   auto timestamp = utils::time::timestamp_now_ms();
   timestamp_range_ = std::make_pair(timestamp, timestamp);
   std::stringstream ss;
   ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second << "_"
-     << uuid;
+     << uuid::generate_uuid(false);
   name_ = ss.str();
   uri_ =
       array_uri_.join_path(constants::array_schema_dir_name).join_path(name_);
-
-  return Status::Ok();
 }
 
-Status ArraySchema::generate_uri(
+void ArraySchema::generate_uri(
     const std::pair<uint64_t, uint64_t>& timestamp_range) {
-  std::string uuid;
-  RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
-
   timestamp_range_ = timestamp_range;
   std::stringstream ss;
   ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second << "_"
-     << uuid;
+     << uuid::generate_uuid(false);
   name_ = ss.str();
   uri_ =
       array_uri_.join_path(constants::array_schema_dir_name).join_path(name_);
-
-  return Status::Ok();
 }
 
 }  // namespace sm

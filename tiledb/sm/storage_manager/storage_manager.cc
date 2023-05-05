@@ -601,7 +601,7 @@ Status StorageManagerCanonical::array_create(
 
   std::lock_guard<std::mutex> lock{object_create_mtx_};
   array_schema->set_array_uri(array_uri);
-  RETURN_NOT_OK(array_schema->generate_uri());
+  array_schema->generate_uri();
   RETURN_NOT_OK(array_schema->check());
 
   // Create array directory
@@ -784,14 +784,13 @@ Status StorageManagerCanonical::array_upgrade_version(
   auto&& array_schema = array_dir.load_array_schema_latest(encryption_key_cfg);
 
   if (array_schema->version() < constants::format_version) {
-    auto st = array_schema->generate_uri();
-    RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
+    array_schema->generate_uri();
     array_schema->set_version(constants::format_version);
 
     // Create array schema directory if necessary
     URI array_schema_dir_uri =
         array_uri.join_path(constants::array_schema_dir_name);
-    st = vfs()->create_dir(array_schema_dir_uri);
+    auto st = vfs()->create_dir(array_schema_dir_uri);
     RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
 
     // Store array schema

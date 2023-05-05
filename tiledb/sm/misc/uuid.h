@@ -33,27 +33,20 @@
 #ifndef TILEDB_UUID_H
 #define TILEDB_UUID_H
 
-#include "tiledb/common/status.h"
+#include <string>
 
-using namespace tiledb::common;
-
-namespace tiledb {
-namespace sm {
-namespace uuid {
+namespace tiledb::sm::uuid {
 
 /**
  * Generates a 128-bit UUID. The string is formatted with hyphens like:
  * 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxx' where 'x' is a hexadecimal digit.
  * Note: this function internally acquires a lock.
  *
- * @param uuid Output parameter which will store the UUID in string format.
  * @param hyphenate If false, the UUID string will not be hyphenated.
- * @return Status
+ * @return The UUID in string format.
  */
-Status generate_uuid(std::string* uuid, bool hyphenate = true);
+std::string generate_uuid(bool hyphenate = true);
 
-}  // namespace uuid
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::uuid
 
 #endif

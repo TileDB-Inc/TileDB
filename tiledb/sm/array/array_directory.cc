@@ -550,10 +550,6 @@ URI ArrayDirectory::get_vacuum_uri(const URI& fragment_uri) const {
 
 std::string ArrayDirectory::compute_new_fragment_name(
     const URI& first, const URI& last, format_version_t format_version) const {
-  // Get uuid
-  std::string uuid;
-  throw_if_not_ok(uuid::generate_uuid(&uuid, false));
-
   // For creating the new fragment URI
 
   // Get timestamp ranges
@@ -563,8 +559,8 @@ std::string ArrayDirectory::compute_new_fragment_name(
 
   // Create new URI
   std::stringstream ss;
-  ss << "/__" << t_first.first << "_" << t_last.second << "_" << uuid << "_"
-     << format_version;
+  ss << "/__" << t_first.first << "_" << t_last.second << "_"
+     << uuid::generate_uuid(false) << "_" << format_version;
 
   return ss.str();
 }

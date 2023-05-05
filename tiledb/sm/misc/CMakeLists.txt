@@ -76,7 +76,6 @@ conclude(object_library)
 #
 commence(object_library uuid)
     this_target_sources(uuid.cc)
-    this_target_object_libraries(baseline)
     if(WIN32)
         if(MSVC)
             find_library(RPCRT4_LIBRARY rpcrt4)

@@ -45,9 +45,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
-namespace uuid {
+namespace tiledb::sm::uuid {
 
 /** Mutex to guard UUID generation. */
 static std::mutex uuid_mtx;
@@ -57,28 +55,25 @@ static std::mutex uuid_mtx;
 /**
  * Generate a UUID using Win32 RPC API.
  */
-Status generate_uuid_win32(std::string* uuid_str) {
-  if (uuid_str == nullptr)
-    return Status_UtilsError("Null UUID string argument");
-
+std::string generate_uuid_win32() {
   UUID uuid;
   RPC_STATUS rc = UuidCreate(&uuid);
   if (rc != RPC_S_OK)
-    return Status_UtilsError("Unable to generate Win32 UUID: creation error");
+    throw std::runtime_error("Unable to generate Win32 UUID: creation error");
 
   char* buf = nullptr;
   rc = UuidToStringA(&uuid, reinterpret_cast<RPC_CSTR*>(&buf));
   if (rc != RPC_S_OK)
-    return Status_UtilsError(
+    throw std::runtime_error(
         "Unable to generate Win32 UUID: string conversion error");
 
-  *uuid_str = std::string(buf);
+  std::string result{buf};
 
   rc = RpcStringFreeA(reinterpret_cast<RPC_CSTR*>(&buf));
   if (rc != RPC_S_OK)
-    return Status_UtilsError("Unable to generate Win32 UUID: free error");
+    throw std::runtime_error("Unable to generate Win32 UUID: free error");
 
-  return Status::Ok();
+  return result;
 }
 
 #else
@@ -147,32 +142,27 @@ Status generate_uuid_openssl(std::string* uuid_str) {
 
 #endif
 
-Status generate_uuid(std::string* uuid, bool hyphenate) {
-  if (uuid == nullptr)
-    return Status_UtilsError("Null UUID string argument");
-
+std::string generate_uuid(bool hyphenate) {
   std::string uuid_str;
   {
     // OpenSSL is not threadsafe, so grab a lock here. We are locking in the
     // Windows case as well just to be careful.
     std::unique_lock<std::mutex> lck(uuid_mtx);
 #ifdef _WIN32
-    RETURN_NOT_OK(generate_uuid_win32(&uuid_str));
+    uuid_str = generate_uuid_win32();
 #else
-    RETURN_NOT_OK(generate_uuid_openssl(&uuid_str));
+    throw_if_not_ok(generate_uuid_openssl(&uuid_str));
 #endif
   }
 
-  uuid->clear();
+  std::string result;
   for (unsigned i = 0; i < uuid_str.length(); i++) {
     if (uuid_str[i] == '-' && !hyphenate)
       continue;
-    uuid->push_back(uuid_str[i]);
+    result.push_back(uuid_str[i]);
   }
 
-  return Status::Ok();
+  return result;
 }
 
-}  // namespace uuid
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::uuid

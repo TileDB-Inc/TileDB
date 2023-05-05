@@ -726,14 +726,12 @@ std::string Group::dump(
 /* ********************************* */
 
 tuple<Status, optional<std::string>> Group::generate_name() const {
-  std::string uuid;
-  RETURN_NOT_OK_TUPLE(uuid::generate_uuid(&uuid, false), std::nullopt);
-
   const auto& version = group_details_->version();
   auto timestamp =
       (timestamp_end_ != 0) ? timestamp_end_ : utils::time::timestamp_now_ms();
   std::stringstream ss;
-  ss << "__" << timestamp << "_" << timestamp << "_" << uuid;
+  ss << "__" << timestamp << "_" << timestamp << "_"
+     << uuid::generate_uuid(false);
   if (version > 1) {
     ss << "_" << version;
   }
