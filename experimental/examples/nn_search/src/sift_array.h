@@ -92,7 +92,7 @@ class sift_array : public std::vector<std::span<T>> {
 
     for (decltype(num_cols_) j = 0; j < num_cols_; ++j) {
       Base::operator[](j) =
-          std::span<T>(data_.get() + j * num_rows_, num_rows_);
+          std::span<T>(data_.get() + ((size_t) j) * ((size_t) num_rows_), num_rows_);
     }
 
     std::vector<int> subarray_vals = {0, num_rows_ - 1, 0, num_cols_ - 1};
@@ -103,7 +103,7 @@ class sift_array : public std::vector<std::span<T>> {
     tiledb::Query query(ctx_, array_);
     query.set_subarray(subarray)
         .set_layout(TILEDB_COL_MAJOR)
-        .set_data_buffer("a", data_.get(), num_rows_ * num_cols_);
+        .set_data_buffer("a", data_.get(), ((size_t)num_rows_) * ((size_t)num_cols_));
     // Read from the array.
     query.submit();
     array_.close();
