@@ -85,8 +85,7 @@ Status OpenSSL::encrypt_aes256gcm(
   int iv_len;
   unsigned char* iv_buf;
   if (iv == nullptr || iv->data() == nullptr) {
-    RETURN_NOT_OK(get_random_bytes(
-        generated_iv.data(), static_cast<unsigned>(generated_iv.size())));
+    RETURN_NOT_OK(get_random_bytes(generated_iv));
     iv_len = (int)generated_iv.size();
     iv_buf = (unsigned char*)generated_iv.data();
   } else {
