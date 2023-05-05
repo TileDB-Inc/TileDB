@@ -334,7 +334,10 @@ class Array {
   }
 
   /**
-   * Deletes the data written to the array with the input uri.
+   * Deletes all data written to the array with the input uri.
+   *
+   * @post This is destructive; the array may not be reopened after delete.
+   * @note Only consolidated commits may persist after this function call.
    */
   static void delete_array(const Context& ctx, const std::string& uri) {
     ctx.handle_error(tiledb_array_delete(ctx.ptr().get(), uri.c_str()));

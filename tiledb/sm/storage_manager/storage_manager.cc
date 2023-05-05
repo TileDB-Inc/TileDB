@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -448,6 +448,19 @@ void StorageManagerCanonical::delete_array(const char* array_name) {
   vfs()->remove_files(compute_tp(), array_dir.array_meta_uris());
   vfs()->remove_files(compute_tp(), array_dir.fragment_meta_uris());
   vfs()->remove_files(compute_tp(), array_dir.array_schema_uris());
+
+  // Delete all array child directories
+  // Note: using vfs()->ls() here could delete user data
+  std::vector<URI> dirs;
+  auto parent_dir = array_dir.uri().c_str();
+  dirs.emplace_back(URI(parent_dir + constants::array_commits_dir_name));
+  dirs.emplace_back(URI(parent_dir + constants::array_fragment_meta_dir_name));
+  dirs.emplace_back(URI(parent_dir + constants::array_fragments_dir_name));
+  dirs.emplace_back(
+      URI(parent_dir + constants::array_dimension_labels_dir_name));
+  dirs.emplace_back(URI(parent_dir + constants::array_metadata_dir_name));
+  dirs.emplace_back(URI(parent_dir + constants::array_schema_dir_name));
+  vfs()->remove_dirs(compute_tp(), dirs);
 }
 
 void StorageManagerCanonical::delete_fragments(

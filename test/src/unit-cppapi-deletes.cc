@@ -1984,28 +1984,19 @@ TEST_CASE_METHOD(
   // Check working directory after delete
   REQUIRE(vfs_.is_file(extraneous_file_path));
   CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 0);
-  schemas =
-      vfs_.ls(array_name + "/" + tiledb::sm::constants::array_schema_dir_name);
-  CHECK(schemas.size() == 0);
-  meta = vfs_.ls(
-      array_name + "/" + tiledb::sm::constants::array_metadata_dir_name);
-  CHECK(meta.size() == 0);
-  auto frag_meta = vfs_.ls(
-      array_name + "/" + tiledb::sm::constants::array_fragment_meta_dir_name);
-  CHECK(frag_meta.size() == 0);
-
-  // Check commit directory after delete
-  if (consolidate) {
-    /* Note: An ignore file is written by delete_fragments if there are
-     * consolidated commits to be ignored by the delete. */
-    CommitsDirectory commits_dir(vfs_, SPARSE_ARRAY_NAME);
-    CHECK(
-        commits_dir.file_count(
-            tiledb::sm::constants::con_commits_file_suffix) == 1);
-    CHECK(
-        commits_dir.file_count(tiledb::sm::constants::ignore_file_suffix) == 1);
-  }
-  CHECK(tiledb::test::num_commits(array_name) == 0);
+  REQUIRE(!vfs_.is_dir(
+      array_name + "/" + tiledb::sm::constants::array_commits_dir_name));
+  REQUIRE(!vfs_.is_dir(
+      array_name + "/" + tiledb::sm::constants::array_fragment_meta_dir_name));
+  REQUIRE(!vfs_.is_dir(
+      array_name + "/" + tiledb::sm::constants::array_fragments_dir_name));
+  REQUIRE(!vfs_.is_dir(
+      array_name + "/" +
+      tiledb::sm::constants::array_dimension_labels_dir_name));
+  REQUIRE(!vfs_.is_dir(
+      array_name + "/" + tiledb::sm::constants::array_metadata_dir_name));
+  REQUIRE(!vfs_.is_dir(
+      array_name + "/" + tiledb::sm::constants::array_schema_dir_name));
 
   // Try to open array
   REQUIRE_THROWS_WITH(
@@ -2072,9 +2063,8 @@ TEST_CASE_METHOD(
     CHECK(!tiledb::sm::utils::parse::starts_with(uri, ok_prefix));
   }
   REQUIRE(vfs_.is_file(extraneous_file_path));
-  schemas =
-      vfs_.ls(array_name + "/" + tiledb::sm::constants::array_schema_dir_name);
-  CHECK(schemas.size() == 0);
+  REQUIRE(!vfs_.is_dir(
+      array_name + "/" + tiledb::sm::constants::array_schema_dir_name));
 
   remove_sparse_array();
 }
