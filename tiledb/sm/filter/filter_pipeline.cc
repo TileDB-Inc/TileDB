@@ -170,14 +170,14 @@ class chunk_generator {
   }
 
   // The task graph calls this operator to get the id of the next chunk
-  uint64_t operator()(std::stop_source& stop_source) {
+  auto operator()(std::stop_source& stop_source) {
     if (*_chunk_id >= _nchunks) {
       stop_source.request_stop();
     }
 
     uint64_t rv = *_chunk_id;
     *_chunk_id += 1;
-    return rv;
+    return std::make_tuple(rv, _nchunks);
   }
 };
 
@@ -228,7 +228,7 @@ Status FilterPipeline::filter_chunks_forward(
 
   // TODO: there is a race condition on input_data.init() which is noticed on my
   // computer starting with width=3
-  uint64_t graph_width = 3;
+  uint64_t graph_width = 4;
   // uint64_t graph_width = std::min(compute_tp->concurrency_level(),
   // static_cast<size_t>(nchunks));
 
@@ -246,23 +246,28 @@ Status FilterPipeline::filter_chunks_forward(
   for (uint64_t w = 0; w < graph_width; ++w) {
     auto a = initial_node(graph, gen);
 
-    auto b = transform_node(graph, [&](uint64_t chunk) {
-      auto& input_data = final_stage_io[chunk].first.second;
+    auto b =
+        transform_node(graph, [&](const std::tuple<uint64_t, uint64_t>& in) {
+          auto [chunk, nc2] = in;
+          std::cerr << "#######: " << chunk << " " << nc2 << " " << nchunks
+                    << std::endl;
+          auto& input_data = final_stage_io[chunk].first.second;
 
-      // First filter's input is the original chunk.
-      uint64_t offset = var_sizes ? chunk_offsets[chunk] : chunk * chunk_size;
-      void* chunk_buffer = static_cast<char*>(tile.data()) + offset;
-      uint32_t chunk_buffer_size =
-          chunk == nchunks - 1 ? last_buffer_size :
-          var_sizes ? chunk_offsets[chunk + 1] - chunk_offsets[chunk] :
-                      chunk_size;
-      Status st = input_data.init(chunk_buffer, chunk_buffer_size);
-      if (!st.ok()) {
-        return std::make_tuple(st, chunk);
-      }
+          // First filter's input is the original chunk.
+          uint64_t offset =
+              var_sizes ? chunk_offsets[chunk] : chunk * chunk_size;
+          void* chunk_buffer = static_cast<char*>(tile.data()) + offset;
+          uint32_t chunk_buffer_size =
+              chunk == nchunks - 1 ? last_buffer_size :
+              var_sizes ? chunk_offsets[chunk + 1] - chunk_offsets[chunk] :
+                          chunk_size;
+          Status st = input_data.init(chunk_buffer, chunk_buffer_size);
+          if (!st.ok()) {
+            return std::make_tuple(st, chunk);
+          }
 
-      return std::make_tuple(Status::Ok(), chunk);
-    });
+          return std::make_tuple(Status::Ok(), chunk);
+        });
     make_edge(graph, a, b);
 
     // Iterate over all filters, create taskgraph nodes that will run the
