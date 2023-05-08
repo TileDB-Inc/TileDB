@@ -51,7 +51,7 @@ namespace sm {
 Status OpenSSL::get_random_bytes(span<uint8_t> buffer) {
   while (!buffer.empty()) {
     int num_bytes =
-        int(std::max(buffer.size(), size_t(std::numeric_limits<int>::max())));
+        int(std::min(buffer.size(), size_t(std::numeric_limits<int>::max())));
     int rc = RAND_bytes(buffer.data(), num_bytes);
     if (rc < 1) {
       char err_msg[256];

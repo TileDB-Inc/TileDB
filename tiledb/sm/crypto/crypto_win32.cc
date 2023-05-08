@@ -58,8 +58,8 @@ Status Win32CNG::get_random_bytes(span<uint8_t> buffer) {
 
   while (!buffer.empty()) {
     ULONG num_bytes = ULONG(
-        std::max(buffer.size(), size_t(std::numeric_limits<ULONG>::max())));
-    if (!(BCryptGenRandom(alg_handle, buffer.data(), num_bytes, 0))) {
+        std::min(buffer.size(), size_t(std::numeric_limits<ULONG>::max())));
+    if (!NT_SUCCESS(BCryptGenRandom(alg_handle, buffer.data(), num_bytes, 0))) {
       BCryptCloseAlgorithmProvider(alg_handle, 0);
       return Status_EncryptionError(
           "Win32CNG error; generating random bytes: error generating bytes.");
