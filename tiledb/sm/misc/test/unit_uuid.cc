@@ -50,10 +50,10 @@ std::mutex catch2_macro_mutex;
   }
 
 // A thread-safe variant of the REQUIRE_NOTHROW macro.
-#define REQUIRE_NOTHROW_SAFE(a)                                   \
+#define REQUIRE_NOTHROW_SAFE(a)                           \
   {                                                       \
     std::lock_guard<std::mutex> lock(catch2_macro_mutex); \
-    REQUIRE_NOTHROW(a);                                           \
+    REQUIRE_NOTHROW(a);                                   \
   }
 
 void cancel_all_tasks(StorageManager*) {
