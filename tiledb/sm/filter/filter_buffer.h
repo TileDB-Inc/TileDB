@@ -67,6 +67,12 @@ class FilterBuffer {
    */
   explicit FilterBuffer(FilterStorage* storage);
 
+  /** Move constructor. */
+  FilterBuffer(FilterBuffer&& f) noexcept;
+
+  /** Move assignment operator. */
+  FilterBuffer& operator=(FilterBuffer&& other) noexcept;
+
   /**
    * Advance the offset (global across buffers) by the given number of bytes.
    */

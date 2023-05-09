@@ -100,6 +100,23 @@ FilterBuffer::FilterBuffer(FilterStorage* storage) {
   storage_ = storage;
 }
 
+FilterBuffer& FilterBuffer::operator=(FilterBuffer&& other) noexcept {
+  buffers_ = std::move(other.buffers_);
+  std::swap(offset_, other.offset_);
+  std::swap(current_buffer_, other.current_buffer_);
+  std::swap(current_relative_offset_, other.current_relative_offset_);
+  std::swap(fixed_allocation_data_, other.fixed_allocation_data_);
+  std::swap(fixed_allocation_op_allowed_, other.fixed_allocation_op_allowed_);
+  std::swap(read_only_, other.read_only_);
+  storage_ = std::move(other.storage_);
+
+  return *this;
+}
+
+FilterBuffer::FilterBuffer(FilterBuffer&& f) noexcept {
+  *this = std::move(f);
+}
+
 Status FilterBuffer::swap(FilterBuffer& other) {
   if (read_only_ || other.read_only_)
     return LOG_STATUS(Status_FilterError(
