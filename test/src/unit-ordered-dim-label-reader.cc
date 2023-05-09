@@ -1097,7 +1097,8 @@ TEST_CASE_METHOD(
   }
 
   REQUIRE_THROWS_WITH(
-      read_labels({8, 9}), "ReaderBase: Discontiuity found in array domain");
+      read_labels({8, 9}),
+      ContainsSubstring("ReaderBase: Discontiuity found in array domain"));
 }
 
 TEST_CASE_METHOD(
@@ -1190,7 +1191,8 @@ TEST_CASE_METHOD(
   }
 
   REQUIRE_THROWS_WITH(
-      read_labels({8, 9}), "ReaderBase: Attribute out of order");
+      read_labels({8, 9}),
+      ContainsSubstring("ReaderBase: Attribute out of order"));
 }
 
 TEST_CASE_METHOD(
@@ -1285,7 +1287,8 @@ TEST_CASE_METHOD(
   }
 
   REQUIRE_THROWS_WITH(
-      read_labels({0.8, 0.9}), "ReaderBase: Attribute out of order");
+      read_labels({0.8, 0.9}),
+      ContainsSubstring("ReaderBase: Attribute out of order"));
 }
 
 TEST_CASE_METHOD(
@@ -1380,5 +1383,6 @@ TEST_CASE_METHOD(
   }
 
   REQUIRE_THROWS_WITH(
-      read_labels({0.8, 0.9}), "ReaderBase: Attribute out of order");
+      read_labels({0.8, 0.9}),
+      ContainsSubstring("ReaderBase: Attribute out of order"));
 }
