@@ -64,6 +64,7 @@
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_remote_buffer_storage.h"
 #include "tiledb/sm/query/readers/dense_reader.h"
+#include "tiledb/sm/query/readers/ordered_dim_label_reader.h"
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
 #include "tiledb/sm/query/readers/sparse_unordered_with_dups_reader.h"
 #include "tiledb/sm/query/writers/global_order_writer.h"
@@ -1483,6 +1484,11 @@ Status query_to_capnp(
       auto builder = query_builder->initReaderIndex();
       auto reader = dynamic_cast<SparseIndexReaderBase*>(query.strategy(true));
       RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
+    } else if (query.dimension_label_ordered_read()) {
+      auto builder = query_builder->initOrderedDimLabelReader();
+      auto reader = dynamic_cast<OrderedDimLabelReader*>(query.strategy(true));
+      RETURN_NOT_OK(
+          ordered_dim_label_reader_to_capnp(query, *reader, &builder));
     } else if (query.use_refactored_dense_reader(schema, all_dense)) {
       auto builder = query_builder->initDenseReader();
       auto reader = dynamic_cast<DenseReader*>(query.strategy(true));
@@ -2064,6 +2070,13 @@ Status query_from_capnp(
           reader_reader,
           query,
           dynamic_cast<SparseIndexReaderBase*>(query->strategy())));
+    } else if (query_reader.hasOrderedDimLabelReader()) {
+      auto reader_reader = query_reader.getOrderedDimLabelReader();
+      RETURN_NOT_OK(ordered_dim_label_reader_from_capnp(
+          reader_reader,
+          query,
+          dynamic_cast<OrderedDimLabelReader*>(query->strategy()),
+          compute_tp));
     } else if (query_reader.hasDenseReader()) {
       auto reader_reader = query_reader.getDenseReader();
       RETURN_NOT_OK(dense_reader_from_capnp(
@@ -2977,6 +2990,69 @@ Status unordered_write_state_from_capnp(
     auto frag_meta_reader = state_reader.getFragMeta();
     RETURN_NOT_OK(fragment_metadata_from_capnp(
         query.array_schema_shared(), frag_meta_reader, frag_meta));
+  }
+
+  return Status::Ok();
+}
+
+Status ordered_dim_label_reader_to_capnp(
+    const Query& query,
+    const OrderedDimLabelReader& reader,
+    capnp::QueryReader::Builder* reader_builder) {
+  const auto& array_schema = query.array_schema();
+
+  // Subarray layout
+  const auto& layout = layout_str(query.layout());
+  reader_builder->setLayout(layout);
+
+  // Subarray
+  auto subarray_builder = reader_builder->initSubarray();
+  RETURN_NOT_OK(
+      subarray_to_capnp(array_schema, query.subarray(), &subarray_builder));
+
+  reader_builder->setDimLabelIncreasing(
+      query.dimension_label_increasing_order());
+
+  // If stats object exists set its cap'n proto object
+  stats::Stats* stats = reader.stats();
+  if (stats != nullptr) {
+    auto stats_builder = reader_builder->initStats();
+    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
+  }
+
+  return Status::Ok();
+}
+
+Status ordered_dim_label_reader_from_capnp(
+    const capnp::QueryReader::Reader& reader_reader,
+    Query* query,
+    OrderedDimLabelReader* reader,
+    ThreadPool* compute_tp) {
+  auto array = query->array();
+
+  // Layout
+  Layout layout = Layout::ROW_MAJOR;
+  RETURN_NOT_OK(layout_enum(reader_reader.getLayout(), &layout));
+
+  // Subarray
+  Subarray subarray(array, layout, query->stats(), dummy_logger, false);
+  auto subarray_reader = reader_reader.getSubarray();
+  RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
+  RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
+
+  // OrderedDimLabelReader requires an initialized subarray for construction.
+  query->set_dimension_label_ordered_read(
+      reader_reader.getDimLabelIncreasing());
+  RETURN_NOT_OK(query->reset_strategy_with_layout(layout, false));
+  reader = dynamic_cast<OrderedDimLabelReader*>(query->strategy(true));
+
+  // If cap'n proto object has stats set it on c++ object
+  if (reader_reader.hasStats()) {
+    stats::Stats* stats = reader->stats();
+    // We should always have a stats here
+    if (stats != nullptr) {
+      RETURN_NOT_OK(stats_from_capnp(reader_reader.getStats(), stats));
+    }
   }
 
   return Status::Ok();

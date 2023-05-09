@@ -1121,16 +1121,28 @@ Status Subarray::set_coalesce_ranges(bool coalesce_ranges) {
 }
 
 Status Subarray::to_byte_vec(std::vector<uint8_t>* byte_vec) const {
-  if (range_num() != 1)
+  if (range_num() != 1) {
     return logger_->status(Status_SubarrayError(
         "Cannot export to byte vector; The subarray must be unary"));
+  }
 
   byte_vec->clear();
 
-  for (const auto& subset : range_subset_) {
-    auto offset = byte_vec->size();
-    byte_vec->resize(offset + subset[0].size());
-    std::memcpy(&(*byte_vec)[offset], subset[0].data(), subset[0].size());
+  if (range_subset_.size() > 0 && range_subset_[0].num_ranges() > 0) {
+    for (const auto& subset : range_subset_) {
+      auto offset = byte_vec->size();
+      byte_vec->resize(offset + subset[0].size());
+      std::memcpy(&(*byte_vec)[offset], subset[0].data(), subset[0].size());
+    }
+  } else {
+    for (const auto& subset : label_range_subset_) {
+      auto offset = byte_vec->size();
+      byte_vec->resize(offset + subset->ranges_[0].size());
+      std::memcpy(
+          &(*byte_vec)[offset],
+          subset->ranges_[0].data(),
+          subset->ranges_[0].size());
+    }
   }
 
   return Status::Ok();
@@ -1666,12 +1678,26 @@ uint64_t Subarray::range_idx(const std::vector<uint64_t>& range_coords) const {
 }
 
 uint64_t Subarray::range_num() const {
-  if (range_subset_.empty())
+  if (range_subset_.empty() && label_range_subset_.empty()) {
     return 0;
+  }
 
   uint64_t ret = 1;
   for (const auto& subset : range_subset_) {
     ret *= subset.num_ranges();
+  }
+  // Label ranges are resized to dimension num and initialized with nullopt.
+  // Only check dimension label ranges if they were later assigned values.
+  bool label_ranges_set = std::any_of(
+      label_range_subset_.begin(),
+      label_range_subset_.end(),
+      [](const auto& r) { return r.has_value(); });
+  if (label_ranges_set) {
+    // Dimension range may have been cleared by Subarray::add_label_range.
+    ret = ret == 0 ? 1 : ret;
+    for (const auto& subset : label_range_subset_) {
+      ret *= subset.has_value() ? subset->ranges_.num_ranges() : 1;
+    }
   }
 
   return ret;

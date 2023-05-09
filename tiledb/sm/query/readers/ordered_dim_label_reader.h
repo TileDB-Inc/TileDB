@@ -307,7 +307,7 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;
 
-  /** Ranges to be retreived for the attribute. */
+  /** Ranges to be retrieved for the attribute. */
   std::vector<Range> ranges_;
 
   /** Stores the label attribute name. */

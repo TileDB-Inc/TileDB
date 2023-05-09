@@ -576,7 +576,8 @@ Status Query::get_offsets_buffer(
         Status_QueryError("Cannot get buffer; Coordinates are not var-sized"));
   }
   if (array_schema_->attribute(name) == nullptr &&
-      array_schema_->dimension_ptr(name) == nullptr) {
+      array_schema_->dimension_ptr(name) == nullptr &&
+      !array_schema_->is_dim_label(name)) {
     return logger_->status(Status_QueryError(
         std::string("Cannot get buffer; Invalid attribute/dimension name '") +
         name + "'"));
@@ -776,9 +777,12 @@ void Query::init() {
     }
 
     // Create the query strategy if querying main array and the Subarray does
-    // not need to be updated.
-    if (!only_dim_label_query() && !subarray_.has_label_ranges()) {
-      throw_if_not_ok(create_strategy());
+    // not need to be updated. For remote queries, ensure the query strategy is
+    // initialized server side for serialization back to the client.
+    if (remote_query_ ||
+        (!only_dim_label_query() && !subarray_.has_label_ranges())) {
+      // Skip checks if the strategy was initialized to support serialization.
+      throw_if_not_ok(create_strategy(remote_query_ && only_dim_label_query()));
     }
   }
 
@@ -1879,7 +1883,8 @@ Status Query::submit() {
           "Error in query submission; remote array with no rest client."));
 
     if (status_ == QueryStatus::UNINITIALIZED) {
-      RETURN_NOT_OK(create_strategy());
+      // Create query strategy, skip checks for serialization.
+      RETURN_NOT_OK(create_strategy(true));
 
       // Allocate remote buffer storage for global order writes if necessary.
       // If we cache an entire write a query may be uninitialized for N submits.

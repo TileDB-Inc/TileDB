@@ -66,13 +66,14 @@ class ArrayDimensionLabelQueries {
   /** Default constructor is not C.41 compliant. */
   ArrayDimensionLabelQueries() = delete;
 
-  /** Constructor.
+  /**
+   * Constructor.
    *
    * @param storage_manager Storage manager object.
    * @param array Parent array the dimension labels are defined on.
    * @param subarray Subarray for the query on the parent array.
    * @param label_buffers A map of query buffers containing label data.
-   * @param array_bufffers A map of query buffers containing dimension and
+   * @param array_buffers A map of query buffers containing dimension and
    *     attribute data for the parent array.
    * @param fragment_name Optional fragment name for writing fragments.
    */

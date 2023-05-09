@@ -77,7 +77,7 @@ OrderedDimLabelReader::OrderedDimLabelReader(
     Layout layout,
     std::optional<QueryCondition>& condition,
     bool increasing_labels,
-    bool skip_checks_serialization)
+    bool)
     : ReaderBase(
           stats,
           logger->clone("OrderedDimLabelReader", ++logger_id_),
@@ -102,14 +102,15 @@ OrderedDimLabelReader::OrderedDimLabelReader(
         "Cannot initialize ordered dim label reader; Storage manager not set");
   }
 
-  if (!skip_checks_serialization && buffers_.empty()) {
+  if (buffers_.empty()) {
     throw OrderedDimLabelReaderStatusException(
         "Cannot initialize ordered dim label reader; Buffers not set");
   }
 
   if (buffers_.size() != 1) {
     throw OrderedDimLabelReaderStatusException(
-        "Cannot initialize ordered dim label reader; Only one buffer allowed");
+        "Cannot initialize ordered dim label reader with " +
+        std::to_string(buffers_.size()) + " buffers; Only one buffer allowed");
   }
 
   for (const auto& b : buffers_) {
@@ -130,14 +131,14 @@ OrderedDimLabelReader::OrderedDimLabelReader(
     }
   }
 
-  if (!skip_checks_serialization && subarray_.is_set()) {
+  if (subarray_.is_set()) {
     throw OrderedDimLabelReaderStatusException(
         "Cannot initialize ordered dim label reader; Subarray is set");
   }
 
   if (condition_.has_value()) {
     throw OrderedDimLabelReaderStatusException(
-        "Ordered dimension laber reader cannot process query condition");
+        "Ordered dimension label reader cannot process query condition");
   }
 
   bool found = false;
