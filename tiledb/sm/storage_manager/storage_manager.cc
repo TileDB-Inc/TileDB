@@ -453,13 +453,9 @@ void StorageManagerCanonical::delete_array(const char* array_name) {
   // Note: using vfs()->ls() here could delete user data
   std::vector<URI> dirs;
   auto parent_dir = array_dir.uri().c_str();
-  dirs.emplace_back(URI(parent_dir + constants::array_commits_dir_name));
-  dirs.emplace_back(URI(parent_dir + constants::array_fragment_meta_dir_name));
-  dirs.emplace_back(URI(parent_dir + constants::array_fragments_dir_name));
-  dirs.emplace_back(
-      URI(parent_dir + constants::array_dimension_labels_dir_name));
-  dirs.emplace_back(URI(parent_dir + constants::array_metadata_dir_name));
-  dirs.emplace_back(URI(parent_dir + constants::array_schema_dir_name));
+  for (auto array_dir_name : constants::array_dir_names) {
+    dirs.emplace_back(URI(parent_dir + array_dir_name));
+  }
   vfs()->remove_dirs(compute_tp(), dirs);
 }
 
@@ -530,8 +526,9 @@ void StorageManagerCanonical::delete_group(const char* group_name) {
   // Note: using vfs()->ls() here could delete user data
   std::vector<URI> dirs;
   auto parent_dir = group_dir.uri().c_str();
-  dirs.emplace_back(URI(parent_dir + constants::group_detail_dir_name));
-  dirs.emplace_back(URI(parent_dir + constants::group_metadata_dir_name));
+  for (auto group_dir_name : constants::group_dir_names) {
+    dirs.emplace_back(URI(parent_dir + group_dir_name));
+  }
   vfs()->remove_dirs(compute_tp(), dirs);
 }
 
