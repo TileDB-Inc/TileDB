@@ -136,6 +136,21 @@ Status filter_to_capnp(
     case FilterType::FILTER_XOR:
     case FilterType::FILTER_DEPRECATED:
     case FilterType::FILTER_WEBP:
+      float quality;
+      WebpInputFormat format;
+      bool lossless;
+      RETURN_NOT_OK(filter->get_option(FilterOption::WEBP_QUALITY, &quality));
+      RETURN_NOT_OK(
+          filter->get_option(FilterOption::WEBP_INPUT_FORMAT, &format));
+      RETURN_NOT_OK(filter->get_option(FilterOption::WEBP_LOSSLESS, &lossless));
+      auto extents = dynamic_cast<const WebpFilter*>(filter)->get_extents();
+
+      auto webpConfig = filter_builder->initWebpConfig();
+      webpConfig.setQuality(quality);
+      webpConfig.setFormat(static_cast<uint8_t>(format));
+      webpConfig.setLossless(lossless);
+      webpConfig.setExtentX(extents.first);
+      webpConfig.setExtentY(extents.second);
       break;
   }
 
@@ -243,7 +258,21 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
     }
     case FilterType::FILTER_WEBP: {
       if constexpr (webp_filter_exists) {
-        return {Status::Ok(), tiledb::common::make_shared<WebpFilter>(HERE())};
+        if (filter_reader.hasWebpConfig()) {
+          auto webpConfig = filter_reader.getWebpConfig();
+          float quality = webpConfig.getQuality();
+          auto format = static_cast<WebpInputFormat>(webpConfig.getFormat());
+          bool lossless = webpConfig.getLossless();
+          uint16_t extent_x = webpConfig.getExtentX();
+          uint16_t extent_y = webpConfig.getExtentY();
+          return {
+              Status::Ok(),
+              tiledb::common::make_shared<WebpFilter>(
+                  HERE(), quality, format, lossless, extent_x, extent_y)};
+        } else {
+          return {
+              Status::Ok(), tiledb::common::make_shared<WebpFilter>(HERE())};
+        }
       } else {
         throw WebpNotPresentError();
       }
