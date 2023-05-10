@@ -779,10 +779,10 @@ void Query::init() {
     // Create the query strategy if querying main array and the Subarray does
     // not need to be updated. For remote queries, ensure the query strategy is
     // initialized server side for serialization back to the client.
-    if (remote_query_ ||
-        (!only_dim_label_query() && !subarray_.has_label_ranges())) {
-      // Skip checks if the strategy was initialized to support serialization.
-      throw_if_not_ok(create_strategy(remote_query_ && only_dim_label_query()));
+    if (!only_dim_label_query() && !subarray_.has_label_ranges()) {
+      throw_if_not_ok(create_strategy());
+    } else if (remote_query_) {
+      throw_if_not_ok(create_strategy(true));
     }
   }
 
@@ -1255,10 +1255,10 @@ Status Query::check_set_fixed_buffer(const std::string& name) {
 }
 
 void Query::set_config(const Config& config) {
-  //  if (status_ != QueryStatus::UNINITIALIZED) {
-  //    throw QueryStatusException(
-  //        "[set_config] Cannot set config after initialization.");
-  //  }
+  if (status_ != QueryStatus::UNINITIALIZED) {
+    throw QueryStatusException(
+        "[set_config] Cannot set config after initialization.");
+  }
   config_.inherit(config);
 
   // Refresh memory budget configuration.

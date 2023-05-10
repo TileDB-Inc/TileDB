@@ -96,7 +96,6 @@ void print_timestamp(int64_t timestamp) {
  *
  * @param ctx TileDB context to call TileDB API with.
  * @param array_uri The URI to create the array at.
- * @returns TileDB return code.
  */
 void create_array(const Context& ctx, const char* array_uri) {
   // Create dimensions.
@@ -140,7 +139,7 @@ void create_array(const Context& ctx, const char* array_uri) {
  * @param ctx TileDB context to call TileDB API with.
  * @param array_uri URI of the array to write to.
  */
-void write_array_and_labels(Context ctx, const char* array_uri) {
+void write_array_and_labels(const Context& ctx, const char* array_uri) {
   // Define attribute data.
   std::vector<int16_t> a = {1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
                             13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
@@ -174,7 +173,6 @@ void write_array_and_labels(Context ctx, const char* array_uri) {
  *
  * @param ctx TileDB context to call TileDB API with.
  * @param array_uri URI of the array to read from.
- * @returns TileDB return code.
  */
 void read_array_and_labels(const Context& ctx, const char* array_uri) {
   printf("\nRead from main array\n");
@@ -231,7 +229,6 @@ void read_array_and_labels(const Context& ctx, const char* array_uri) {
  *
  * @param ctx TileDB context to call TileDB API with.
  * @param array_uri URI of the array to read from.
- * @returns TileDB return code.
  */
 void read_timestamp_data(const Context& ctx, const char* array_uri) {
   printf("\nRead from dimension label\n");
@@ -274,7 +271,6 @@ void read_timestamp_data(const Context& ctx, const char* array_uri) {
  *
  * @param ctx TileDB context to call TileDB API with.
  * @param array_uri URI of the array to read from.
- * @returns TileDB return code.
  */
 void read_array_by_label(const Context& ctx, const char* array_uri) {
   printf("\nRead array from label ranges\n");
