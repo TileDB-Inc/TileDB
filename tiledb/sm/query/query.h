@@ -694,6 +694,14 @@ class Query {
     fragment_size_ = fragment_size;
   }
 
+  /**
+   * Return the RESt client instance or nullptr if the storage manager
+   * wasn't configured with one.
+   */
+  RestClient* rest_client() const {
+    return storage_manager_->rest_client();
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

@@ -50,9 +50,21 @@ namespace sm {
 /* ********************************* */
 QueryPlan::QueryPlan(Query& query) {
   if (query.array()->is_remote()) {
-    throw std::logic_error(
-        "Failed to create a query plan; Remote arrays"
-        "are not currently supported.");
+    auto rest_client = query.rest_client();
+    if (!rest_client) {
+      throw std::logic_error(
+          "Failed to create a query plan; Remote query"
+          "with no REST client.");
+    }
+    // TODO: call remote api
+    // This API needs to serialize the query
+    // Send serialized query to Rest
+    // Rest deserializes, generates query plan string, alters the state machine
+    // of the query Rest sends response back with modified query.
+    rest_client->get_query_plan_from_rest(
+        query.array()->array_uri(), this, &query);
+
+    return;
   }
 
   array_uri_ = query.array()->array_uri().to_string();
@@ -92,6 +104,24 @@ std::string QueryPlan::dump_json(uint32_t indent) {
         {"Query.Dimensions", dimensions_}}}};
 
   return rv.dump(indent);
+}
+
+void QueryPlan::from_json(const std::string& json) {
+  auto j = nlohmann::json::parse(json);
+
+  j = j["TileDB Query Plan"];
+
+  array_uri_ = j["Array.URI"];
+  throw_if_not_ok(array_type_enum(j["Array.Type"], &array_type_));
+  vfs_backend_ = j["VFS.Backend"];
+  throw_if_not_ok(layout_enum(j["Query.Layout"], &query_layout_));
+  strategy_name_ = j["Query.Strategy.Name"];
+  for (auto& a : j["Query.Attributes"]) {
+    attributes_.push_back(a);
+  }
+  for (auto& d : j["Query.Dimensions"]) {
+    dimensions_.push_back(d);
+  }
 }
 
 }  // namespace sm

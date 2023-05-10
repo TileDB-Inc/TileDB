@@ -81,6 +81,15 @@ class QueryPlan {
    */
   std::string dump_json(uint32_t indent = 4);
 
+  /**
+   * Populate from a valid json representation.
+   * Only meant to be used during construction when a remote query
+   * plan comes as a json string from rest serialization.
+   *
+   * @param json a json representation of the query plan
+   */
+  void from_json(const std::string& json);
+
  private:
   /* ****************************** */
   /*       PRIVATE ATTRIBUTES       */
