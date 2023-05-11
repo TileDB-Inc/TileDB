@@ -127,15 +127,7 @@ Status filter_to_capnp(
       config.setByteWidth(byte_width);
       break;
     }
-    case FilterType::FILTER_NONE:
-    case FilterType::FILTER_BITSHUFFLE:
-    case FilterType::FILTER_BYTESHUFFLE:
-    case FilterType::FILTER_CHECKSUM_MD5:
-    case FilterType::FILTER_CHECKSUM_SHA256:
-    case FilterType::INTERNAL_FILTER_AES_256_GCM:
-    case FilterType::FILTER_XOR:
-    case FilterType::FILTER_DEPRECATED:
-    case FilterType::FILTER_WEBP:
+    case FilterType::FILTER_WEBP: {
       float quality;
       WebpInputFormat format;
       bool lossless;
@@ -151,6 +143,16 @@ Status filter_to_capnp(
       webpConfig.setLossless(lossless);
       webpConfig.setExtentX(extents.first);
       webpConfig.setExtentY(extents.second);
+      break;
+    }
+    case FilterType::FILTER_NONE:
+    case FilterType::FILTER_BITSHUFFLE:
+    case FilterType::FILTER_BYTESHUFFLE:
+    case FilterType::FILTER_CHECKSUM_MD5:
+    case FilterType::FILTER_CHECKSUM_SHA256:
+    case FilterType::INTERNAL_FILTER_AES_256_GCM:
+    case FilterType::FILTER_XOR:
+    case FilterType::FILTER_DEPRECATED:
       break;
   }
 
