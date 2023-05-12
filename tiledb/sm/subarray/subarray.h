@@ -596,13 +596,27 @@ class Subarray {
   /** Returns the array the subarray is associated with. */
   const Array* array() const;
 
-  /** Returns the number of cells in the subarray. */
+  /**
+   * Returns the number of cells in the subarray.
+   *
+   * This only returns the number of cells for dimension ranges, not label or
+   * attribute ranges.
+   */
   uint64_t cell_num() const;
 
-  /** Returns the number of cells in the input ND range. */
+  /**
+   * Returns the number of cells in the input ND range.
+   *
+   * This only returns the number of cells for dimension ranges, not label or
+   * attribute ranges.
+   */
   uint64_t cell_num(uint64_t range_idx) const;
 
-  /** Returns the number of cells in the input ND range. */
+  /** Returns the number of cells in the input ND range.
+   *
+   * This only returns the number of cells for dimension ranges, not label or
+   * attribute ranges.
+   */
   uint64_t cell_num(const std::vector<uint64_t>& range_coords) const;
 
   /** Clears the contents of the subarray. */
@@ -730,7 +744,11 @@ class Subarray {
   /** ``True`` if the dimension of the subarray does not contain any ranges. */
   bool empty(uint32_t dim_idx) const;
 
-  /** ``True`` if the subarray does not contain any ranges. */
+  /**
+   * `True`` if the subarray does not contain ranges on any of the dimensions.
+   *
+   * This function does not check for ranges on labels or attributes.
+   */
   bool empty() const;
 
   /**
@@ -808,6 +826,7 @@ class Subarray {
       const void** stride) const;
 
   /**
+   * ``True`` if the specified dimension is set by default.
    *
    * @param dim_index
    * @return returns true if the specified dimension is set to default subarray
@@ -817,7 +836,7 @@ class Subarray {
   /** Returns `true` if at least one dimension has non-default ranges set. */
   bool is_set() const;
 
-  /** Returns number of non-default (set) ranges */
+  /** Returns the number of dimensions with non-default (set) ranges. */
   int32_t count_set_ranges() const;
 
   /** Returns `true` if the input dimension has non-default range set. */
@@ -880,12 +899,12 @@ class Subarray {
       const Config* config,
       ThreadPool* compute_tp);
 
-  /** returns whether the estimated result size has been computed or not */
+  /** Returns whether the estimated result size has been computed or not. */
   bool est_result_size_computed();
 
   /*
    * Gets the maximum memory required to produce the result (in bytes)
-   * for the input fixed-sized attribute/dimensiom.
+   * for the input fixed-sized attribute/dimension.
    */
   Status get_max_memory_size(
       const char* name,
@@ -942,7 +961,7 @@ class Subarray {
   void get_next_range_coords(std::vector<uint64_t>* range_coords) const;
 
   /**
-   * Returns a subarray consisting of the ranges specified by
+   * Returns a subarray consisting of the dimension ranges specified by
    * the input.
    *
    * @param start The subarray will be constructed from ranges in
@@ -972,6 +991,7 @@ class Subarray {
 
   /**
    * Set default indicator for dimension subarray. Used by serialization only
+   *
    * @param dim_index
    * @param is_default
    */
@@ -1003,7 +1023,12 @@ class Subarray {
     return original_range_idx_;
   }
 
-  /** The total number of multi-dimensional ranges in the subarray. */
+  /**
+   * The total number of multi-dimensional ranges in the subarray.
+   *
+   * This only returns the number of multi-dimension ranges on the dimension
+   * space. It does not include ranges set on labels or attributes.
+   */
   uint64_t range_num() const;
 
   /**
@@ -1229,7 +1254,7 @@ class Subarray {
   /** Stores a vector of 1D ranges per dimension. */
   std::vector<std::vector<uint64_t>> original_range_idx_;
 
-  /** Returns if ranges are sorted. */
+  /** Returns if dimension ranges are sorted. */
   bool ranges_sorted() {
     return ranges_sorted_;
   }
@@ -1241,7 +1266,7 @@ class Subarray {
   tuple<Status, optional<bool>> non_overlapping_ranges(
       ThreadPool* const compute_tp);
 
-  /** Returns if ranges are sorted. */
+  /** Returns if ranges will be coalesced as they are added. */
   inline bool coalesce_ranges() const {
     return coalesce_ranges_;
   }
@@ -1363,6 +1388,16 @@ class Subarray {
 
   /**
    * Stores LabelRangeSubset objects for handling ranges on dimension labels.
+   *
+   * Users cannot set label ranges on dimensions that already have normal ranges
+   * set. Once the label query on a dimension is finished, the query will add
+   * the dimension ranges that correspond to the same regions as the label
+   * ranges.
+   *
+   * Valid states for each dimension:
+   *  - No label ranges.
+   *  - Label ranges with no dimension ranges.
+   *  - Label ranges and dimension ranges that correspond to the same regions.
    */
   std::vector<optional<LabelRangeSubset>> label_range_subset_;
 
@@ -1419,7 +1454,7 @@ class Subarray {
   /** State of specific Config item needed from multiple locations. */
   bool err_on_range_oob_ = true;
 
-  /** Indicate if ranges are sorted. */
+  /** Indicate if dimension ranges are sorted. */
   bool ranges_sorted_;
 
   /** Mutext to protect sorting ranges. */
