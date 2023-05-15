@@ -23,6 +23,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 #
+set -xe
 
 # Starts an Azurite server
 
@@ -38,11 +39,21 @@ run_azurite() {
   export AZURITE_PID=$!
 }
 
+run_azurite_ssl_proxy() {
+  $DIR/run-ssl-proxy.py \
+    --source-port 10001 \
+    --target-port 10000 \
+    --public-certificate /tmp/azurite-data/test_certs/public.crt \
+    --private-key /tmp/azurite-data/test_certs/private.key &
+  export AZURITE_SSL_PID=$!
+}
+
 run() {
   mkdir -p /tmp/azurite-data
   cp -f -r $DIR/../test/inputs/test_certs /tmp/azurite-data
 
   run_azurite
+  run_azurite_ssl_proxy
 }
 
 run

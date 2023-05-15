@@ -48,6 +48,7 @@
 #include <aws/core/utils/logging/DefaultLogSystem.h>
 #include <aws/core/utils/logging/LogLevel.h>
 #include <aws/core/utils/memory/stl/AWSString.h>
+#include <aws/core/utils/memory/stl/AWSStringStream.h>
 #include <aws/s3/model/AbortMultipartUploadRequest.h>
 #include <aws/s3/model/CreateMultipartUploadRequest.h>
 #include <boost/interprocess/streams/bufferstream.hpp>
@@ -56,7 +57,8 @@
 
 #include "tiledb/common/logger.h"
 #include "tiledb/common/unique_rwlock.h"
-#include "tiledb/platform/cert_file.h"
+#include "tiledb/platform/platform.h"
+#include "tiledb/sm/filesystem/ssl_config.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
@@ -173,10 +175,44 @@ namespace {
  */
 template <typename R, typename E>
 std::string outcome_error_message(const Aws::Utils::Outcome<R, E>& outcome) {
-  return std::string("\nException:  ") +
-         outcome.GetError().GetExceptionName().c_str() +
-         std::string("\nError message:  ") +
-         outcome.GetError().GetMessage().c_str();
+  if (outcome.IsSuccess()) {
+    return "Success";
+  }
+
+  auto err = outcome.GetError();
+  Aws::StringStream ss;
+
+  ss << "[Error Type: " << static_cast<int>(err.GetErrorType()) << "]"
+     << " [HTTP Response Code: " << static_cast<int>(err.GetResponseCode())
+     << "]";
+
+  if (!err.GetExceptionName().empty()) {
+    ss << " [Exception: " << err.GetExceptionName() << "]";
+  }
+
+  // For some reason, these symbols are not exposed when building with MINGW
+  // so for now we just disable adding the tags on Windows.
+  if constexpr (!platform::is_os_windows) {
+    if (!err.GetRemoteHostIpAddress().empty()) {
+      ss << " [Remote IP: " << err.GetRemoteHostIpAddress() << "]";
+    }
+
+    if (!err.GetRequestId().empty()) {
+      ss << " [Request ID: " << err.GetRequestId() << "]";
+    }
+  }
+
+  if (err.GetResponseHeaders().size() > 0) {
+    ss << " [Headers:";
+    for (auto&& h : err.GetResponseHeaders()) {
+      ss << " '" << h.first << "' = '" << h.second << "'";
+    }
+    ss << "]";
+  }
+
+  ss << " : " << err.GetMessage();
+
+  return ss.str();
 }
 
 }  // namespace
@@ -746,9 +782,23 @@ Status S3::is_bucket(const URI& uri, bool* const exists) const {
   Aws::S3::Model::HeadBucketRequest head_bucket_request;
   head_bucket_request.SetBucket(aws_uri.GetAuthority());
   auto head_bucket_outcome = client_->HeadBucket(head_bucket_request);
-  *exists = head_bucket_outcome.IsSuccess();
 
-  return Status::Ok();
+  if (head_bucket_outcome.IsSuccess()) {
+    *exists = true;
+    return Status::Ok();
+  }
+
+  auto err = head_bucket_outcome.GetError();
+
+  if (err.GetErrorType() == Aws::S3::S3Errors::NO_SUCH_BUCKET ||
+      err.GetErrorType() == Aws::S3::S3Errors::RESOURCE_NOT_FOUND) {
+    *exists = false;
+    return Status::Ok();
+  }
+
+  return LOG_STATUS(Status_S3Error(
+      "Failed to check if S3 bucket '" + uri.to_string() +
+      "' exists: " + outcome_error_message(head_bucket_outcome)));
 }
 
 Status S3::is_object(const URI& uri, bool* const exists) const {
@@ -776,9 +826,23 @@ Status S3::is_object(
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     head_object_request.SetRequestPayer(request_payer_);
   auto head_object_outcome = client_->HeadObject(head_object_request);
-  *exists = head_object_outcome.IsSuccess();
 
-  return Status::Ok();
+  if (head_object_outcome.IsSuccess()) {
+    *exists = true;
+    return Status::Ok();
+  }
+
+  auto err = head_object_outcome.GetError();
+
+  if (err.GetErrorType() == Aws::S3::S3Errors::NO_SUCH_KEY ||
+      err.GetErrorType() == Aws::S3::S3Errors::RESOURCE_NOT_FOUND) {
+    *exists = false;
+    return Status::Ok();
+  }
+
+  return LOG_STATUS(Status_S3Error(
+      "Failed to check if S3 object 's3://" + bucket_name + "/" + object_key +
+      "' exists: " + outcome_error_message(head_object_outcome)));
 }
 
 Status S3::is_dir(const URI& uri, bool* exists) const {
@@ -1444,15 +1508,6 @@ Status S3::init_client() const {
   auto request_timeout_ms = config_.get<int64_t>(
       "vfs.s3.request_timeout_ms", Config::MustFindMarker());
 
-  auto ca_file =
-      config_.get<std::string>("vfs.s3.ca_file", Config::MustFindMarker());
-
-  auto ca_path =
-      config_.get<std::string>("vfs.s3.ca_path", Config::MustFindMarker());
-
-  auto verify_ssl =
-      config_.get<bool>("vfs.s3.verify_ssl", Config::MustFindMarker());
-
   auto aws_access_key_id = config_.get<std::string>(
       "vfs.s3.aws_access_key_id", Config::MustFindMarker());
 
@@ -1480,30 +1535,21 @@ Status S3::init_client() const {
   auto connect_scale_factor = config_.get<int64_t>(
       "vfs.s3.connect_scale_factor", Config::MustFindMarker());
 
+  SSLConfig ssl_cfg = S3SSLConfig(config_);
+
   client_config.scheme = (s3_scheme == "http") ? Aws::Http::Scheme::HTTP :
                                                  Aws::Http::Scheme::HTTPS;
   client_config.connectTimeoutMs = (long)connect_timeout_ms;
   client_config.requestTimeoutMs = (long)request_timeout_ms;
-  client_config.caFile = ca_file;
-  client_config.caPath = ca_path;
-  client_config.verifySSL = verify_ssl;
+  client_config.caFile = ssl_cfg.ca_file();
+  client_config.caPath = ssl_cfg.ca_path();
+  client_config.verifySSL = ssl_cfg.verify();
 
   client_config.retryStrategy = Aws::MakeShared<S3RetryStrategy>(
       constants::s3_allocation_tag.c_str(),
       stats_,
       connect_max_tries,
       connect_scale_factor);
-
-  if constexpr (tiledb::platform::PlatformCertFile::enabled) {
-    // If the user has not set a s3 ca file or ca path then let's attempt to set
-    // the cert file if we've autodetected it
-    if (ca_file.empty() && ca_path.empty()) {
-      const std::string cert_file = tiledb::platform::PlatformCertFile::get();
-      if (!cert_file.empty()) {
-        client_config.caFile = cert_file;
-      }
-    }
-  }
 
   // If the user says not to sign a request, use the
   // AnonymousAWSCredentialsProvider This is equivalent to --no-sign-request on

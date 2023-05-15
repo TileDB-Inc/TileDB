@@ -362,6 +362,15 @@ class Config {
   /** If `true` the readers might partially load/unload tile offsets. */
   static const std::string SM_PARTIAL_TILE_OFFSETS_LOADING;
 
+  /** Certificate file path. */
+  static const std::string SSL_CA_FILE;
+
+  /** Certificate directory path. */
+  static const std::string SSL_CA_PATH;
+
+  /** Whether to verify SSL connections. */
+  static const std::string SSL_VERIFY;
+
   /** The default minimum number of bytes in a parallel VFS operation. */
   static const std::string VFS_MIN_PARALLEL_SIZE;
 
@@ -420,6 +429,9 @@ class Config {
 
   /** Azure max retry delay. */
   static const std::string VFS_AZURE_MAX_RETRY_DELAY_MS;
+
+  /** GCS Endpoint. */
+  static const std::string VFS_GCS_ENDPOINT;
 
   /** GCS project id. */
   static const std::string VFS_GCS_PROJECT_ID;
