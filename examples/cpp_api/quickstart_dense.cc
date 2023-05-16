@@ -100,11 +100,11 @@ void read_array() {
   std::string attr_name;
   if (array_name.find("quickstart") != std::string::npos) {
     // Read [[1,2],[1,2]]
-    subarray.add_range(0, -2, 2).add_range(1, -2, 2);
+    //    subarray.add_range(0, -2, 2).add_range(1, -2, 2);
     // Read [[2,4],[2,4]]
-    subarray.add_range(0, 2, 42).add_range(1, 2, 42);
+    //    subarray.add_range(0, 2, 42).add_range(1, 2, 42);
     // Read all data [[1,4],[1,4]]
-    subarray.add_range(0, -2, 42).add_range(1, -2, 42);
+    //    subarray.add_range(0, -2, 42).add_range(1, -2, 42);
     // Throws in all cases. The range isn't valid for any portion of the domain.
     subarray.add_range(0, -200, -20).add_range(1, -200, 20);
     attr_name = "rows";

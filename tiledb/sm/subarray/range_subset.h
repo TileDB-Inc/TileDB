@@ -222,9 +222,8 @@ class TypedRangeSetAndSupersetImpl : public RangeSetAndSupersetImpl {
   optional<std::string> crop_range_with_warning(Range& range) const override {
     auto domain = (const T*)superset_.data();
     auto r = (const T*)range.data();
-    // Throw if the range lower bound is greater than the domain upper bound.
+    // Throw if neither range falls within the domain.
     if (r[0] > domain[1] || r[1] < domain[0]) {
-      // Neither range falls within the domain.
       throw std::logic_error(
           "Failed to crop range. Range [" + std::to_string(r[0]) + ", " +
           std::to_string(r[1]) + "] is entirely outside of domain bounds [" +
@@ -429,20 +428,15 @@ class RangeSetAndSuperset {
     return ranges_.empty();
   };
 
-  inline Status is_valid(bool err_on_range_oob) {
-    for (auto& range : ranges_) {
-      impl_->check_range_is_valid(range);
-      if (err_on_range_oob) {
-        RETURN_NOT_OK(impl_->check_range_is_subset(range));
-      } else {
-        auto err = impl_->crop_range_with_warning(range);
-        if (err.has_value()) {
-          LOG_WARN(err.value());
-        }
-      }
-    }
-    return Status::Ok();
-  }
+  /**
+   * Checks if Subarray ranges are all valid for the domain.
+   * Throws in all cases if the ranges are entirely outside of the domain.
+   *
+   * @param err_on_range_oob If true, throws when any range is OOB.
+   *    If false, log warning and crop ranges to domain bounds if possible.
+   * @return
+   */
+  Status is_valid(bool err_on_range_oob);
 
   /**
    * Returns ``true`` if the range subset was set after instantiation and

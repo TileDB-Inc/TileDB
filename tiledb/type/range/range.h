@@ -393,7 +393,6 @@ template <
 void crop_range(const Range& bounds, Range& range) {
   auto bounds_data = (const T*)bounds.data();
   auto range_data = (T*)range.data();
-  // Ensure that the lower bound
   range_data[0] = std::max(bounds_data[0], range_data[0]);
   range_data[1] = std::min(bounds_data[1], range_data[1]);
 };

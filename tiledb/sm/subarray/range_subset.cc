@@ -160,4 +160,19 @@ Status RangeSetAndSuperset::add_range_unrestricted(const Range& range) {
   return impl_->add_range(ranges_, range);
 }
 
+Status RangeSetAndSuperset::is_valid(bool err_on_range_oob) {
+  for (auto& range : ranges_) {
+    impl_->check_range_is_valid(range);
+    if (err_on_range_oob) {
+      RETURN_NOT_OK(impl_->check_range_is_subset(range));
+    } else {
+      auto err = impl_->crop_range_with_warning(range);
+      if (err.has_value()) {
+        LOG_WARN(err.value());
+      }
+    }
+  }
+  return Status::Ok();
+}
+
 }  // namespace tiledb::sm

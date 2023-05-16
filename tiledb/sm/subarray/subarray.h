@@ -856,7 +856,9 @@ class Subarray {
   bool is_unary(uint64_t range_idx) const;
 
   /**
-   * TODO
+   * Checks if the Subarray is OOB for the domain.
+   * Handles cropping ranges if sm.read_range_oob is set to 'warn'.
+   * Throws if sm.read_range_oob is 'error'.
    */
   Status is_oob();
 
