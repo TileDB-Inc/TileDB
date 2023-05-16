@@ -77,38 +77,55 @@ void write_array() {
 }
 
 void read_array() {
-  // Prepare the array for reading
-  Array array(ctx_, array_name_, TILEDB_READ);
+  std::string array_name = "tiledb://demo/C3L-00445-21-WebP.tdb/l_3.tdb";
+  //  array_name = "/home/shaun/Documents/Arrays/C3L-00445-21-WebP.tdb/l_3.tdb";
+  array_name = "/home/shaun/Documents/Arrays/quickstart_dense_array";
+  Config config;
+  config["sm.read_range_oob"] = "warn";
+  //  config["sm.query.dense.reader"] = "legacy";
 
-  // Slice only rows 1, 2 and cols 2, 3, 4
-  Subarray subarray(ctx_, array);
-  subarray.add_range(0, 1, 2).add_range(1, 2, 4);
+  {
+    // REST config options
+    //      array_name = "tiledb://demo/0ca47bf6-5732-45fd-a046-be9c4123b6ec";
+    //      config["rest.server_address"] = "http://localhost:8181";
+    //      config["rest.token"] =
+    //      "YOUR_TOKEN";
+  }
 
-  // Prepare the vector that will hold the result (of size 6 elements)
-  std::vector<int> data(6);
+  Context ctx(config);
+  Array array(ctx, array_name, TILEDB_READ);
+  Subarray subarray(ctx, array);
+  // sm.read_range_oob is only applied if this call is made.
+  subarray.set_config(config);
+  std::string attr_name;
+  if (array_name.find("quickstart") != std::string::npos) {
+    subarray.add_range(0, 0, 4).add_range(1, 0, 4);
+    attr_name = "rows";
+  } else {
+    subarray.add_range(0, 0U, 1023U).add_range(1, 24576U, 24578U);
+    attr_name = "intensity";
+  }
 
-  // Prepare the query
-  Query query(ctx_, array, TILEDB_READ);
+  std::vector<int8_t> intensity(2048);
+  Query query(ctx, array, TILEDB_READ);
   query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
-      .set_data_buffer("a", data);
+      .set_data_buffer(attr_name, intensity);
 
-  // Submit the query and close the array.
   query.submit();
   array.close();
 
-  // Print out the results.
-  for (auto d : data)
-    std::cout << d << " ";
+  for (auto d : intensity) {
+    std::cout << (int)d << " ";
+  }
   std::cout << "\n";
 }
 
 int main() {
-  if (Object::object(ctx_, array_name_).type() != Object::Type::Array) {
-    create_array();
-    write_array();
-  }
+  //  if (Object::object(ctx_, array_name_).type() != Object::Type::Array) {
+  //    create_array();
+  //    write_array();
+  //  }
 
   read_array();
-  return 0;
 }

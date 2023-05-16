@@ -181,7 +181,7 @@ class RangeSetAndSupersetImpl {
   virtual Status check_range_is_subset(const Range& range) const = 0;
 
   /**
-   * Crops a range tot he superset of this ``RangeSetAndSuperset``.
+   * Crops a range to the superset of this ``RangeSetAndSuperset``.
    *
    * If the range is cropped, a string is returned with a warning for the
    * logger.
@@ -318,7 +318,7 @@ class TypedRangeSetAndFullsetImpl<std::string, CoalesceAdds>
  * defined TileDB datatype.
  *
  * If constructed with the ``implicitly_initialize`` flag set to ``true``, the
- * superset will be added to the Ranges in the set until any additional ranages
+ * superset will be added to the Ranges in the set until any additional ranges
  * are added.
  *
  * Current state of the RangeSetAndSuperset:
@@ -420,6 +420,20 @@ class RangeSetAndSuperset {
   inline bool is_empty() const {
     return ranges_.empty();
   };
+
+  inline Status is_valid(bool err_on_range_oob) {
+    for (auto& range : ranges_) {
+      if (err_on_range_oob) {
+        RETURN_NOT_OK(impl_->check_range_is_subset(range));
+      } else {
+        auto err = impl_->crop_range_with_warning(range);
+        if (err.has_value()) {
+          LOG_WARN(err.value());
+        }
+      }
+    }
+    return Status::Ok();
+  }
 
   /**
    * Returns ``true`` if the range subset was set after instantiation and

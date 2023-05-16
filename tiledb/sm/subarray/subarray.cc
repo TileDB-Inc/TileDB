@@ -1075,6 +1075,13 @@ bool Subarray::is_unary(uint64_t range_idx) const {
   return true;
 }
 
+Status Subarray::is_oob() {
+  for (auto& subset : range_subset_) {
+    RETURN_NOT_OK(subset.is_valid(err_on_range_oob_));
+  }
+  return Status::Ok();
+}
+
 void Subarray::set_is_default(uint32_t dim_index, bool is_default) {
   if (is_default) {
     auto dim{array_->array_schema_latest().dimension_ptr(dim_index)};

@@ -856,6 +856,11 @@ class Subarray {
   bool is_unary(uint64_t range_idx) const;
 
   /**
+   * @return True if the Subarray is within Domain bounds, else False.
+   */
+  Status is_oob();
+
+  /**
    * Gets the estimated result size (in bytes) for the input fixed-sized
    * attribute/dimension.
    */

@@ -168,6 +168,7 @@ Status DenseReader::complete_read_loop() {
 
 Status DenseReader::dowork() {
   auto timer_se = stats_->start_timer("dowork");
+  check_subarray();
 
   // Check that the query condition is valid.
   if (condition_.has_value()) {

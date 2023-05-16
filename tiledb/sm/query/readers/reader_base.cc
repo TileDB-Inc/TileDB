@@ -313,6 +313,7 @@ void ReaderBase::check_subarray() const {
         "Cannot initialize reader; Multi-range subarrays with "
         "global order layout are not supported");
   }
+  throw_if_not_ok(subarray_.is_oob());
 }
 
 void ReaderBase::check_validity_buffer_sizes() const {
