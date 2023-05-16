@@ -31,7 +31,6 @@ macro(tiledb_vcpkg_enable_if tiledb_feature vcpkg_feature)
     endif()
 endmacro()
 
-tiledb_vcpkg_enable_if(TILEDB_ABSEIL "abseil")
 tiledb_vcpkg_enable_if(TILEDB_AZURE "azure")
 tiledb_vcpkg_enable_if(TILEDB_GCS "gcs")
 tiledb_vcpkg_enable_if(TILEDB_SERIALIZATION "serialization")

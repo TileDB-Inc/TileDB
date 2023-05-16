@@ -180,6 +180,10 @@ for en in "${enables[@]}"; do
   esac
 done
 
+if [ "${tiledb_build_abseil}" = "ON" ]; then
+    echo "Argument '--build-abseil' is obsolete and will be removed in TileDB 2.18"
+fi
+
 if [ "${source_dir}" = "${binary_dir}" ]; then
     die "cannot build the project in the source directory! Out-of-source build is enforced!"
 fi
@@ -233,7 +237,6 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_ARROW_TESTS=${tiledb_arrow_tests} \
     -DTILEDB_CRC32=${tiledb_build_crc32} \
     -DTILEDB_WEBP=${tiledb_build_webp} \
-    -DTILEDB_ABSEIL=${tiledb_build_abseil} \
     -DTILEDB_FORCE_ALL_DEPS=${tiledb_force_all_deps} \
     -DTILEDB_REMOVE_DEPRECATIONS=${tiledb_remove_deprecations} \
     -DSANITIZER="${sanitizer}" \
