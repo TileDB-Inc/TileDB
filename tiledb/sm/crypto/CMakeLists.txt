@@ -30,7 +30,7 @@ include(object_library)
 #
 # `crypto` object library
 #
-commence(object_library crypto)
+commence(object_library tiledb_crypto)
     this_target_sources(crypto.cc crypto_openssl.cc crypto_win32.cc encryption_key.cc)
     this_target_object_libraries(buffer config constants)
     if(WIN32)
@@ -44,7 +44,8 @@ commence(object_library crypto)
         endif()
     else()
         find_package(OpenSSL_EP REQUIRED)
-        this_target_link_libraries(OpenSSL::Crypto)
+	#this_target_link_libraries(OpenSSL::Crypto)
+	target_link_libraries(tiledb_crypto PRIVATE OpenSSL::Crypto)
     endif()
     # OpenSSL-3 deprecates MD5
     if(MSVC)

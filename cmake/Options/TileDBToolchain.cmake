@@ -2,14 +2,8 @@
 # TileDB Toolchain Setup
 ############################################################
 
-# Only enable vcpkg on Azure and GCS builds for now
-if (NOT TILEDB_VCPKG AND NOT (TILEDB_AZURE OR TILEDB_GCS))
+if (NOT TILEDB_VCPKG)
     return()
-endif()
-
-# For testing we're using --enable-gcs or --enable-azure
-if((TILEDB_AZURE OR TILEDB_GCS) AND NOT TILEDB_VCPKG)
-    set(TILEDB_VCPKG ON)
 endif()
 
 # We've already run vcpkg by the time the super build is finished
@@ -23,6 +17,7 @@ if(DEFINED ENV{VCPKG_ROOT})
         CACHE STRING "Vcpkg toolchain file")
 else()
     include(init-submodule)
+    include(ConfigTriplet)
     set(CMAKE_TOOLCHAIN_FILE
         "${CMAKE_CURRENT_SOURCE_DIR}/external/vcpkg/scripts/buildsystems/vcpkg.cmake"
         CACHE STRING "Vcpkg toolchain file")
