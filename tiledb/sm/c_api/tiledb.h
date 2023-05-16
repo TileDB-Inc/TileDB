@@ -1065,7 +1065,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_domain(
     tiledb_domain_t* domain) TILEDB_NOEXCEPT;
 
 /**
- * Sets the tile capacity.
+ * Sets the tile capacity. Applies to sparse arrays only.
  *
  * **Example:**
  *
