@@ -99,7 +99,7 @@ void read_array() {
   subarray.set_config(config);
   std::string attr_name;
   if (array_name.find("quickstart") != std::string::npos) {
-    subarray.add_range(0, 0, 4).add_range(1, 0, 4);
+    subarray.add_range(0, 2, 42).add_range(1, 2, 42);
     attr_name = "rows";
   } else {
     subarray.add_range(0, 0U, 1023U).add_range(1, 24576U, 24578U);

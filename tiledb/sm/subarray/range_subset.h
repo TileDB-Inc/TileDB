@@ -222,6 +222,14 @@ class TypedRangeSetAndSupersetImpl : public RangeSetAndSupersetImpl {
   optional<std::string> crop_range_with_warning(Range& range) const override {
     auto domain = (const T*)superset_.data();
     auto r = (const T*)range.data();
+    // Throw if the range lower bound is greater than the domain upper bound.
+    if (r[0] > domain[1] || r[1] < domain[0]) {
+      // Neither range falls within the domain.
+      throw std::logic_error(
+          "Failed to crop range. Range [" + std::to_string(r[0]) + ", " +
+          std::to_string(r[1]) + "] is entirely outside of domain bounds [" +
+          std::to_string(domain[0]) + ", " + std::to_string(domain[1]) + "]");
+    }
     if (r[0] < domain[0] || r[1] > domain[1]) {
       std::string warn_message{
           "Range [" + std::to_string(r[0]) + ", " + std::to_string(r[1]) +
@@ -423,6 +431,7 @@ class RangeSetAndSuperset {
 
   inline Status is_valid(bool err_on_range_oob) {
     for (auto& range : ranges_) {
+      impl_->check_range_is_valid(range);
       if (err_on_range_oob) {
         RETURN_NOT_OK(impl_->check_range_is_subset(range));
       } else {

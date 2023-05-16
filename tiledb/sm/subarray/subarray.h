@@ -856,7 +856,7 @@ class Subarray {
   bool is_unary(uint64_t range_idx) const;
 
   /**
-   * @return True if the Subarray is within Domain bounds, else False.
+   * TODO
    */
   Status is_oob();
 
