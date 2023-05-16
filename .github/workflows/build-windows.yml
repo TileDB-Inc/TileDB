@@ -415,11 +415,10 @@ jobs:
           Write-Host "cmd: '$cmd'"
           Invoke-Expression $cmd
 
-          # TODO: re-enable
-          ##.\$CMakeBuildType\ExampleExe_static.exe
-          #$cmd = ".\$CMakeBuildType\ExampleExe_static.exe"
-          #Write-Host "cmd: '$cmd'"
-          #Invoke-Expression $cmd
+          #.\$CMakeBuildType\ExampleExe_static.exe
+          $cmd = ".\$CMakeBuildType\ExampleExe_static.exe"
+          Write-Host "cmd: '$cmd'"
+          Invoke-Expression $cmd
 
           # Packaging test
           cd $env:BUILD_SOURCESDIRECTORY\test\packaging
