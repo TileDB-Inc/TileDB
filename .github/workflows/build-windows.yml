@@ -41,7 +41,7 @@ jobs:
             TILEDB_AZURE: OFF
             TILEDB_ARROW_TESTS: OFF
             TILEDB_SERIALIZATION: ON
-            TILEDB_WEBP: OFF
+            TILEDB_WEBP: ON
     env:
       TILEDB_HOME: ${{ github.workspace }}
       TILEDB_GA_IMAGE_NAME: ${{ matrix.os }}
