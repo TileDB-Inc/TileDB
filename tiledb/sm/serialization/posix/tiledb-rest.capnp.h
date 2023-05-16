@@ -19916,14 +19916,17 @@ Subarray::Builder::disownAttributeRanges() {
 }
 
 inline bool Subarray::Reader::getCoalesceRanges() const {
-  return _reader.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
+  return _reader.getDataField<bool>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, true);
 }
 
 inline bool Subarray::Builder::getCoalesceRanges() {
-  return _builder.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
+  return _builder.getDataField<bool>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, true);
 }
 inline void Subarray::Builder::setCoalesceRanges(bool value) {
-  _builder.setDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+  _builder.setDataField<bool>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value, true);
 }
 
 inline bool SubarrayPartitioner::Reader::hasSubarray() const {

@@ -463,7 +463,7 @@ struct Subarray {
   attributeRanges @5 :Map(Text, SubarrayRanges);
   # List of 1D ranges for each attribute
 
-  coalesceRanges @6 :Bool;
+  coalesceRanges @6 :Bool = true;
   # True if Subarray should coalesce overlapping ranges.
 }
 
