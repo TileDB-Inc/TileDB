@@ -388,7 +388,7 @@ struct Subarray {
   relevantFragments @3 :List(UInt32);
   # Relevant fragments
 
-  coalesceRanges @4 :Bool;
+  coalesceRanges @4 :Bool = true;
   # True if Subarray should coalesce overlapping ranges.
 }
 
