@@ -1190,6 +1190,11 @@ class Subarray {
   tuple<Status, optional<bool>> non_overlapping_ranges(
       ThreadPool* const compute_tp);
 
+  /** Returns if ranges will be coalesced as they are added. */
+  inline bool coalesce_ranges() const {
+    return coalesce_ranges_;
+  }
+
  private:
   /* ********************************* */
   /*        PRIVATE DATA TYPES         */
