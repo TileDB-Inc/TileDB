@@ -102,10 +102,8 @@ endfunction()
 # manifest.
 #
 function (install_all_target_libs TARGET_LIST)
-  message(STATUS "  __all__: '${TARGET_LIST}'")
   foreach(TGT ${TARGET_LIST})
     if (TARGET ${TGT})
-      message(STATUS "  -- installing: '${TGT}'")
       install_target_libs(${TGT})
     endif()
   endforeach()
