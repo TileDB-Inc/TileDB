@@ -1,6 +1,0 @@
-breathe==4.26.1
-sphinxcontrib-contentui==0.2.5
-sphinx_rtd_theme==0.5.0
-docutils < 0.18 # pin pending https://github.com/sphinx-doc/sphinx/issues/9777
-cmake>=3.21
-jinja2<3.1 # pinned due to incompatibility with sphinx 3.4

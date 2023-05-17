@@ -1,5 +1,0 @@
-<long description>
-
----
-TYPE: NO_HISTORY | FEATURE | BUG | IMPROVEMENT | DEPRECATION | C_API | CPP_API | BREAKING_BEHAVIOR | BREAKING_API | FORMAT
-DESC: <short description>
