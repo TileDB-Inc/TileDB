@@ -1,0 +1,39 @@
+diff --git a/aws-cpp-sdk-core/source/http/curl/CurlHttpClient.cpp b/aws-cpp-sdk-core/source/http/curl/CurlHttpClient.cpp
+index 5e6c8fc379..5d46008aef 100644
+--- a/aws-cpp-sdk-core/source/http/curl/CurlHttpClient.cpp
++++ b/aws-cpp-sdk-core/source/http/curl/CurlHttpClient.cpp
+@@ -362,7 +362,7 @@ void SetOptCodeForHttpMethod(CURL* requestHandle, const std::shared_ptr<HttpRequ
+             }
+             else
+             {
+-                curl_easy_setopt(requestHandle, CURLOPT_PUT, 1L);
++                curl_easy_setopt(requestHandle, CURLOPT_UPLOAD, 1L);
+             }
+             break;
+         case HttpMethod::HTTP_HEAD:
+diff --git a/aws-cpp-sdk-core/source/utils/event/EventStreamDecoder.cpp b/aws-cpp-sdk-core/source/utils/event/EventStreamDecoder.cpp
+index f70a6c88f6..053ff938d4 100644
+--- a/aws-cpp-sdk-core/source/utils/event/EventStreamDecoder.cpp
++++ b/aws-cpp-sdk-core/source/utils/event/EventStreamDecoder.cpp
+@@ -72,9 +72,7 @@ namespace Aws
+                 assert(handler);
+                 if (!handler)
+                 {
+-                    AWS_LOGSTREAM_ERROR(EVENT_STREAM_DECODER_CLASS_TAG, "Payload received, but decoder encountered internal errors before."
+-                        "ErrorCode: " << EventStreamErrorsMapper::GetNameForError(handler->GetInternalError()) << ", "
+-                        "ErrorMessage: " << handler->GetEventPayloadAsString());
++                    AWS_LOGSTREAM_ERROR(EVENT_STREAM_DECODER_CLASS_TAG, "Payload received, but handler is null.");
+                     return;
+                 }
+                 handler->WriteMessageEventPayload(static_cast<unsigned char*>(payload->buffer), payload->len);
+@@ -129,9 +127,7 @@ namespace Aws
+                 assert(handler);
+                 if (!handler)
+                 {
+-                    AWS_LOGSTREAM_ERROR(EVENT_STREAM_DECODER_CLASS_TAG, "Payload received, but decoder encountered internal errors before."
+-                        "ErrorCode: " << EventStreamErrorsMapper::GetNameForError(handler->GetInternalError()) << ", "
+-                        "ErrorMessage: " << handler->GetEventPayloadAsString());
++                    AWS_LOGSTREAM_ERROR(EVENT_STREAM_DECODER_CLASS_TAG, "Header received, but handler is null.");
+                     return;
+                 }
+
