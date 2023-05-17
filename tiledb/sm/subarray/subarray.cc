@@ -862,6 +862,13 @@ bool Subarray::coincides_with_tiles() const {
   return true;
 }
 
+Status Subarray::check_oob() {
+  for (auto& subset : range_subset_) {
+    RETURN_NOT_OK(subset.is_valid(err_on_range_oob_));
+  }
+  return Status::Ok();
+}
+
 template <class T>
 Subarray Subarray::crop_to_tile(const T* tile_coords, Layout layout) const {
   // TBD: is it ok that Subarray log id will increase as if it's a new subarray?
@@ -1073,13 +1080,6 @@ bool Subarray::is_unary(uint64_t range_idx) const {
   }
 
   return true;
-}
-
-Status Subarray::is_oob() {
-  for (auto& subset : range_subset_) {
-    RETURN_NOT_OK(subset.is_valid(err_on_range_oob_));
-  }
-  return Status::Ok();
 }
 
 void Subarray::set_is_default(uint32_t dim_index, bool is_default) {

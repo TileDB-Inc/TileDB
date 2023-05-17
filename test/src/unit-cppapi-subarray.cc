@@ -637,7 +637,6 @@ TEST_CASE("C++ API: Test subarray (dense)", "[cppapi][dense][subarray]") {
     }
 
     SECTION("- Overlap domain upper bound") {
-      subarray.set_config(config);
       subarray.add_range(0, 1, 10);
       auto rangeCropped = subarray.range<int>(0, 0);
       REQUIRE(rangeCropped[0] == 1);

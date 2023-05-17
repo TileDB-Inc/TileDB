@@ -434,7 +434,6 @@ class RangeSetAndSuperset {
    *
    * @param err_on_range_oob If true, throws when any range is OOB.
    *    If false, log warning and crop ranges to domain bounds if possible.
-   * @return
    */
   Status is_valid(bool err_on_range_oob);
 

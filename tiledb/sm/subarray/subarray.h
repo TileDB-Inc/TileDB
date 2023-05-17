@@ -639,6 +639,15 @@ class Subarray {
   bool coincides_with_tiles() const;
 
   /**
+   * Checks if the Subarray is OOB for the domain.
+   * Handles cropping ranges if sm.read_range_oob is set to 'warn'.
+   * Throws on OOB range if sm.read_range_oob is 'error'.
+   *
+   * @return Status
+   */
+  Status check_oob();
+
+  /**
    * Computes the range offsets which are important for getting
    * an ND range index from a flat serialized index.
    */
@@ -854,13 +863,6 @@ class Subarray {
    * (i.e., consisting of a single point in the 1D domain).
    */
   bool is_unary(uint64_t range_idx) const;
-
-  /**
-   * Checks if the Subarray is OOB for the domain.
-   * Handles cropping ranges if sm.read_range_oob is set to 'warn'.
-   * Throws if sm.read_range_oob is 'error'.
-   */
-  Status is_oob();
 
   /**
    * Gets the estimated result size (in bytes) for the input fixed-sized
