@@ -4,6 +4,7 @@ trigger:
     - dev
     - release-*
     - refs/tags/*
+    - build-
 pr:
   branches:
     include:
@@ -18,7 +19,9 @@ pr:
 
 variables:
   - name: MANYLINUX_IMAGE
-    value: quay.io/pypa/manylinux2014_x86_64:2022-11-06-7be974c
+    #value: quay.io/pypa/manylinux2014_x86_64:2022-11-06-7be974c
+    # modified from above tag to add linux-headers
+    value: ghcr.io/ihnorton/tiledb-manylinux2014_x86_64:2023-04-02
 
 stages:
   - stage: CI
@@ -92,6 +95,7 @@ stages:
              TILEDB_GCS: OFF
              TILEDB_WERROR: OFF
              CMAKE_OSX_ARCHITECTURES: "arm64"
+             BUILD_MAGIC_MACOS_UNIVERSAL: "ON"
              MACOSX_DEPLOYMENT_TARGET: 11
        pool:
          vmImage: $(imageName)

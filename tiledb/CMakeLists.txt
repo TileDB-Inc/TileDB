@@ -490,30 +490,37 @@ endif()
 # so we can use the targets created by the calls to find_package().
 add_library(TILEDB_CORE_OBJECTS_ILIB INTERFACE)
 
-# Object Store Configuration
-target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE object_store_definitions)
-
 # blosc link dependencies
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${TileDB_blosc_LINK_OPTIONS})
 
 # Find OpenSSL first in case it's needed for S3 or Azure
 if (NOT WIN32)
   find_package(OpenSSL_EP REQUIRED)
+  if (TILEDB_VCPKG)
+    install_target_libs(OpenSSL::SSL)
+    install_target_libs(OpenSSL::Crypto)
+  endif()
 endif()
 
 # S3 dependencies
 if (TILEDB_S3)
   message(STATUS "The TileDB library is compiled with S3 support.")
-  find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-      AWSSDK::aws-cpp-sdk-s3
-      AWSSDK::aws-cpp-sdk-core
-      AWSSDK::aws-c-event-stream
-      AWSSDK::aws-checksums
-      AWSSDK::aws-c-common
-      AWSSDK::aws-cpp-sdk-identity-management
-      AWSSDK::aws-cpp-sdk-sts)
+
+  if (TILEDB_VCPKG)
+    find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${AWSSDK_LINK_LIBRARIES})
+  else()
+    find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+      INTERFACE
+        AWSSDK::aws-cpp-sdk-s3
+        AWSSDK::aws-cpp-sdk-core
+        AWSSDK::aws-c-event-stream
+        AWSSDK::aws-checksums
+        AWSSDK::aws-c-common
+        AWSSDK::aws-cpp-sdk-identity-management
+        AWSSDK::aws-cpp-sdk-sts)
+  endif()
 endif()
 
 # Azure dependencies
@@ -524,13 +531,15 @@ if (TILEDB_AZURE)
     INTERFACE
       Azure::azure-storage-blobs
   )
+  install_target_libs(Azure::azure-storage-blobs)
 endif()
 
 # GCS dependencies
 if (TILEDB_GCS)
-  if (NOT TILEDB_GCS_CLASSIC)
+  if (TILEDB_VCPKG)
     find_package(google_cloud_cpp_storage CONFIG REQUIRED)
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE CURL::libcurl google-cloud-cpp::storage google-cloud-cpp::experimental-storage-grpc)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE google-cloud-cpp::storage)
+    install_all_target_libs(google-cloud-cpp::storage)
   else()
     message(STATUS "The TileDB library is compiled with GCS support.")
     find_package(GCSSDK_EP REQUIRED COMPONENTS gcs)
@@ -608,11 +617,24 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     Bzip2::Bzip2
     LZ4::LZ4
-    spdlog::spdlog
     ZLIB::ZLIB
     Zstd::Zstd
     libmagic
 )
+if (TILEDB_VCPKG)
+  # vcpkg uses SPDLOG_FMT_EXTERNAL=1
+
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+    INTERFACE
+      fmt::fmt
+      spdlog::spdlog
+  )
+else()
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+    INTERFACE
+      spdlog::spdlog
+  )
+endif()
 
 if(TILEDB_CRC32)
   find_package(crc32c_EP REQUIRED)
@@ -634,16 +656,6 @@ if(TILEDB_WEBP)
     WebP::webp
   )
   add_definitions(-DTILEDB_WEBP)
-endif()
-
-if(TILEDB_ABSEIL)
-  find_package(absl_EP REQUIRED)
-
-  include(${CMAKE_SOURCE_DIR}/test/external/src/absl_library_targets.cmake)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-    ${TILEDB_ABSL_LIBRARY_TARGETS}
-  )
 endif()
 
 if (NOT WIN32)
@@ -682,7 +694,7 @@ endif()
 if(APPLE)
   if(TILEDB_S3)
     # this is a transitive dependency for statically linking S3 SDK
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE "-framework CoreFoundation")
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE "-framework CoreFoundation -framework SystemConfiguration -framework Security")
   endif()
 endif()
 
@@ -903,26 +915,30 @@ if (TILEDB_STATIC)
   append_dep_lib(OpenSSL::SSL)
   append_dep_lib(OpenSSL::Crypto)
   append_dep_lib(CURL::libcurl)
-  append_dep_lib(AWSSDK::aws-cpp-sdk-s3)
-  append_dep_lib(AWSSDK::aws-cpp-sdk-core)
-  append_dep_lib(AWSSDK::aws-c-event-stream)
-  append_dep_lib(AWSSDK::aws-checksums)
-  append_dep_lib(AWSSDK::aws-c-common)
-  append_dep_lib(AWSSDK::aws-cpp-sdk-sts)
-  append_dep_lib(AWSSDK::aws-cpp-sdk-identity-management)
-  append_dep_lib(AzureSDK::AzureSDK)
-  append_dep_lib(GCSSDK::storage_client)
-  append_dep_lib(GCSSDK::google_cloud_cpp_common)
-  append_dep_lib(GCSSDK::crc32c)
+
+  if(TILEDB_S3 AND TILEDB_VCPKG)
+    foreach(tgt ${AWSSDK_LINK_LIBRARIES})
+      append_dep_lib(${tgt})
+    endforeach()
+  elseif(TILEDB_S3)
+    append_dep_lib(AWSSDK::aws-cpp-sdk-s3)
+    append_dep_lib(AWSSDK::aws-cpp-sdk-core)
+    append_dep_lib(AWSSDK::aws-c-event-stream)
+    append_dep_lib(AWSSDK::aws-checksums)
+    append_dep_lib(AWSSDK::aws-c-common)
+    append_dep_lib(AWSSDK::aws-cpp-sdk-sts)
+    append_dep_lib(AWSSDK::aws-cpp-sdk-identity-management)
+  endif()
+
+  append_dep_lib(fmt::fmt)
   append_dep_lib(spdlog::spdlog)
+  append_dep_lib(Azure::azure-storage-blobs)
+  append_dep_lib(google-cloud-cpp::storage)
+  append_dep_lib(google-cloud-cpp::experimental-storage-grpc)
   append_dep_lib(libmagic)
   append_dep_lib(Crc32c::crc32c)
   append_dep_lib(WebP::webp)
-  if(TILEDB_ABSEIL)
-    foreach(tgt ${TILEDB_ABSL_LIBRARIES})
-      append_dep_lib(${tgt})
-    endforeach()
-  endif()
+
 endif()
 
 ############################################################
@@ -1098,7 +1114,6 @@ if (TILEDB_STATIC)
   list(APPEND TILEDB_INSTALL_TARGETS
     tiledb_static
     TILEDB_CORE_OBJECTS_ILIB
-    object_store_definitions
   )
 endif()
 

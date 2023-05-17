@@ -32,6 +32,13 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
+if (TILEDB_VCPKG AND TILEDB_SERIALIZATION)
+  find_package(CapnProto REQUIRED)
+  install_all_target_libs("CapnProto::capnp;CapnProto::capnp-json;CapnProto::kj")
+  return()
+endif()
+
+
 # If the EP was built, it will install the CapnProtoConfig.cmake file, which we
 # can use with find_package.
 
@@ -65,8 +72,8 @@ if (NOT CAPNP_FOUND)
 
     if (WIN32)
       find_package(Git REQUIRED)
-      set(CONDITIONAL_PATCH 
-           cd ${CMAKE_SOURCE_DIR} && 
+      set(CONDITIONAL_PATCH
+           cd ${CMAKE_SOURCE_DIR} &&
            ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_capnp < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/capnp_CMakeLists.txt.patch &&
            ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_capnp < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/windows-sanity.h.patch)
     else()
