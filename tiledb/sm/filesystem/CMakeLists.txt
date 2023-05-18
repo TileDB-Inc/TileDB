@@ -31,10 +31,33 @@ include(object_library)
 # `vfs` object library
 #
 commence(object_library vfs)
-    this_target_sources(
-        vfs.cc vfs_file_handle.cc mem_filesystem.cc path_win.cc posix.cc win.cc uri.cc)
+    list(APPEND VFS_SOURCES
+        mem_filesystem.cc
+        path_win.cc
+        posix.cc
+        uri.cc
+        vfs.cc
+        vfs_file_handle.cc
+        win.cc
+    )
+    if (TILEDB_S3)
+        list(APPEND VFS_SOURCES
+            s3.cc
+            s3_thread_pool_executor.cc
+        )
+    endif()
+    this_target_sources(${VFS_SOURCES})
     this_target_object_libraries(
-        baseline buffer cancelable_tasks config math stats stringx thread_pool)
+        baseline
+        buffer
+        cancelable_tasks
+        cert_file
+        config
+        math
+        stats
+        stringx
+        thread_pool
+    )
     if(WIN32)
         if(MSVC)
             find_library(SHLWAPI_LIBRARY shlwapi)
@@ -43,6 +66,24 @@ commence(object_library vfs)
         else()
             message(STATUS "Linking to Win32 lib shlwapi")
             this_target_link_libraries(-lshlwapi)
+        endif()
+    endif()
+    # Add S3 dependencies
+    if (TILEDB_S3)
+        if (TILEDB_VCPKG)
+            find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
+            target_link_libraries(vfs INTERFACE ${AWSSDK_LINK_LIBRARIES})
+        else()
+            find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
+            target_link_libraries(vfs INTERFACE
+                AWSSDK::aws-cpp-sdk-s3
+                AWSSDK::aws-cpp-sdk-core
+                AWSSDK::aws-c-event-stream
+                AWSSDK::aws-checksums
+                AWSSDK::aws-c-common
+                AWSSDK::aws-cpp-sdk-identity-management
+                AWSSDK::aws-cpp-sdk-sts
+            )
         endif()
     endif()
 conclude(object_library)
