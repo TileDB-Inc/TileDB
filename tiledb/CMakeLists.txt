@@ -380,6 +380,7 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
 # Use BUILD_INTERFACE generator to work around
 #   https://gitlab.kitware.com/cmake/cmake/-/issues/20736
 target_link_libraries(TILEDB_CORE_OBJECTS PRIVATE $<BUILD_INTERFACE:common>)
+
 target_link_libraries(TILEDB_CORE_OBJECTS INTERFACE object_store_definitions)
 
 ############################################################
@@ -472,12 +473,8 @@ if (TILEDB_SERIALIZATION)
   add_definitions(-DTILEDB_SERIALIZATION)
   message(STATUS "The TileDB library is compiled with query serialization enabled.")
 
-  if(MSVC)
-    if (TILEDB_CURL_EP_BUILT)
-      target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -DCURL_STATICLIB=1)
-    else()
-      target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE                   )
-    endif()
+  if(MSVC AND TILEDB_CURL_EP_BUILT)
+    target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -DCURL_STATICLIB=1)
   endif()
 endif()
 
@@ -489,6 +486,9 @@ endif()
 # on TILEDB_CORE_OBJECTS. This workaround uses an interface library
 # so we can use the targets created by the calls to find_package().
 add_library(TILEDB_CORE_OBJECTS_ILIB INTERFACE)
+
+# object store definitions
+target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE object_store_definitions)
 
 # blosc link dependencies
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${TileDB_blosc_LINK_OPTIONS})
@@ -1114,6 +1114,7 @@ if (TILEDB_STATIC)
   list(APPEND TILEDB_INSTALL_TARGETS
     tiledb_static
     TILEDB_CORE_OBJECTS_ILIB
+    object_store_definitions
   )
 endif()
 
