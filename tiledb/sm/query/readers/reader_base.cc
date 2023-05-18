@@ -306,14 +306,16 @@ void ReaderBase::zero_out_buffer_sizes() {
   }
 }
 
-void ReaderBase::check_subarray() const {
+void ReaderBase::check_subarray(bool skip_checks_consolidation) const {
   if (subarray_.layout() == Layout::GLOBAL_ORDER &&
       subarray_.range_num() != 1) {
     throw ReaderBaseStatusException(
         "Cannot initialize reader; Multi-range subarrays with "
         "global order layout are not supported");
   }
-  throw_if_not_ok(subarray_.check_oob());
+  if (!skip_checks_consolidation) {
+    throw_if_not_ok(subarray_.check_oob());
+  }
 }
 
 void ReaderBase::check_validity_buffer_sizes() const {

@@ -97,7 +97,8 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       Subarray& subarray,
       Layout layout,
       std::optional<QueryCondition>& condition,
-      bool skip_checks_serialization = false);
+      bool skip_checks_serialization = false,
+      bool consolidation = false);
 
   /** Destructor. */
   ~DenseReader() = default;

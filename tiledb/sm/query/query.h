@@ -335,6 +335,13 @@ class Query {
   }
 
   /**
+   * @return True if the Query is used for consolidation, else false.
+   */
+  inline bool get_consolidation() const {
+    return consolidation_;
+  }
+
+  /**
    * Returns `true` if the query has results. Applicable only to read
    * queries (it returns `false` for write queries).
    */
@@ -694,6 +701,15 @@ class Query {
     fragment_size_ = fragment_size;
   }
 
+  /**
+   * Set a flag to indicate the Query is being used for consolidation.
+   *
+   * @param consolidation True if performing consolidation, else false.
+   */
+  inline void set_consolidation(bool consolidation) {
+    consolidation_ = consolidation;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -811,6 +827,11 @@ class Query {
    * If `true`, it will enable consolidation with timestamps on the reader.
    */
   bool consolidation_with_timestamps_;
+
+  /**
+   * If `true`, this Query is being used to perform consolidation.
+   */
+  bool consolidation_;
 
   /* Scratch space used for REST requests. */
   shared_ptr<Buffer> rest_scratch_;
