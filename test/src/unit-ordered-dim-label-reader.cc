@@ -1098,7 +1098,7 @@ TEST_CASE_METHOD(
 
   REQUIRE_THROWS_WITH(
       read_labels({8, 9}),
-      ContainsSubstring("ReaderBase: Discontiuity found in array domain"));
+      ContainsSubstring("ReaderBase: Discontinuity found in array domain"));
 }
 
 TEST_CASE_METHOD(
