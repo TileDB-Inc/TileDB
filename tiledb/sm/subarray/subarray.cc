@@ -1686,19 +1686,6 @@ uint64_t Subarray::range_num() const {
   for (const auto& subset : range_subset_) {
     ret *= subset.num_ranges();
   }
-  // Label ranges are resized to dimension num and initialized with nullopt.
-  // Only check dimension label ranges if they were later assigned values.
-  bool label_ranges_set = std::any_of(
-      label_range_subset_.begin(),
-      label_range_subset_.end(),
-      [](const auto& r) { return r.has_value(); });
-  if (label_ranges_set) {
-    // Dimension range may have been cleared by Subarray::add_label_range.
-    ret = ret == 0 ? 1 : ret;
-    for (const auto& subset : label_range_subset_) {
-      ret *= subset.has_value() ? subset->ranges_.num_ranges() : 1;
-    }
-  }
 
   return ret;
 }

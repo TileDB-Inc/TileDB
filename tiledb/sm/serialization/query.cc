@@ -1254,20 +1254,11 @@ Status writer_to_capnp(
 
   const auto& array_schema = query.array_schema();
 
-  if (array_schema.dense()) {
-    std::vector<uint8_t> subarray_flat;
-    RETURN_NOT_OK(query.subarray()->to_byte_vec(&subarray_flat));
-    auto subarray_builder = writer_builder->initSubarray();
-    RETURN_NOT_OK(utils::serialize_subarray(
-        subarray_builder, array_schema, &subarray_flat[0]));
-  }
-
   // Subarray
-  const auto subarray_ranges = query.subarray();
-  if (!subarray_ranges->empty()) {
+  const auto subarray = query.subarray();
+  if (!subarray->empty() || subarray->has_label_ranges()) {
     auto subarray_builder = writer_builder->initSubarrayRanges();
-    RETURN_NOT_OK(
-        subarray_to_capnp(array_schema, subarray_ranges, &subarray_builder));
+    RETURN_NOT_OK(subarray_to_capnp(array_schema, subarray, &subarray_builder));
   }
 
   // If stats object exists set its cap'n proto object
@@ -1487,8 +1478,7 @@ Status query_to_capnp(
     } else if (query.dimension_label_ordered_read()) {
       auto builder = query_builder->initOrderedDimLabelReader();
       auto reader = dynamic_cast<OrderedDimLabelReader*>(query.strategy(true));
-      RETURN_NOT_OK(
-          ordered_dim_label_reader_to_capnp(query, *reader, &builder));
+      ordered_dim_label_reader_to_capnp(query, *reader, &builder);
     } else if (query.use_refactored_dense_reader(schema, all_dense)) {
       auto builder = query_builder->initDenseReader();
       auto reader = dynamic_cast<DenseReader*>(query.strategy(true));
@@ -2072,11 +2062,11 @@ Status query_from_capnp(
           dynamic_cast<SparseIndexReaderBase*>(query->strategy())));
     } else if (query_reader.hasOrderedDimLabelReader()) {
       auto reader_reader = query_reader.getOrderedDimLabelReader();
-      RETURN_NOT_OK(ordered_dim_label_reader_from_capnp(
+      ordered_dim_label_reader_from_capnp(
           reader_reader,
           query,
           dynamic_cast<OrderedDimLabelReader*>(query->strategy()),
-          compute_tp));
+          compute_tp);
     } else if (query_reader.hasDenseReader()) {
       auto reader_reader = query_reader.getDenseReader();
       RETURN_NOT_OK(dense_reader_from_capnp(
@@ -2995,7 +2985,7 @@ Status unordered_write_state_from_capnp(
   return Status::Ok();
 }
 
-Status ordered_dim_label_reader_to_capnp(
+void ordered_dim_label_reader_to_capnp(
     const Query& query,
     const OrderedDimLabelReader& reader,
     capnp::QueryReader::Builder* reader_builder) {
@@ -3007,7 +2997,7 @@ Status ordered_dim_label_reader_to_capnp(
 
   // Subarray
   auto subarray_builder = reader_builder->initSubarray();
-  RETURN_NOT_OK(
+  throw_if_not_ok(
       subarray_to_capnp(array_schema, query.subarray(), &subarray_builder));
 
   reader_builder->setDimLabelIncreasing(
@@ -3017,13 +3007,11 @@ Status ordered_dim_label_reader_to_capnp(
   stats::Stats* stats = reader.stats();
   if (stats != nullptr) {
     auto stats_builder = reader_builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
+    throw_if_not_ok(stats_to_capnp(*stats, &stats_builder));
   }
-
-  return Status::Ok();
 }
 
-Status ordered_dim_label_reader_from_capnp(
+void ordered_dim_label_reader_from_capnp(
     const capnp::QueryReader::Reader& reader_reader,
     Query* query,
     OrderedDimLabelReader* reader,
@@ -3032,18 +3020,18 @@ Status ordered_dim_label_reader_from_capnp(
 
   // Layout
   Layout layout = Layout::ROW_MAJOR;
-  RETURN_NOT_OK(layout_enum(reader_reader.getLayout(), &layout));
+  throw_if_not_ok(layout_enum(reader_reader.getLayout(), &layout));
 
   // Subarray
   Subarray subarray(array, layout, query->stats(), dummy_logger, false);
   auto subarray_reader = reader_reader.getSubarray();
-  RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
-  RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
+  throw_if_not_ok(subarray_from_capnp(subarray_reader, &subarray));
+  throw_if_not_ok(query->set_subarray_unsafe(subarray));
 
   // OrderedDimLabelReader requires an initialized subarray for construction.
   query->set_dimension_label_ordered_read(
       reader_reader.getDimLabelIncreasing());
-  RETURN_NOT_OK(query->reset_strategy_with_layout(layout, false));
+  throw_if_not_ok(query->reset_strategy_with_layout(layout, false));
   reader = dynamic_cast<OrderedDimLabelReader*>(query->strategy(true));
 
   // If cap'n proto object has stats set it on c++ object
@@ -3051,11 +3039,9 @@ Status ordered_dim_label_reader_from_capnp(
     stats::Stats* stats = reader->stats();
     // We should always have a stats here
     if (stats != nullptr) {
-      RETURN_NOT_OK(stats_from_capnp(reader_reader.getStats(), stats));
+      throw_if_not_ok(stats_from_capnp(reader_reader.getStats(), stats));
     }
   }
-
-  return Status::Ok();
 }
 
 #else

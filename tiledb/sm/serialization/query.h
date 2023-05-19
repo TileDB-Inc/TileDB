@@ -255,12 +255,12 @@ Status subarray_to_capnp(
 Status subarray_from_capnp(
     const capnp::Subarray::Reader& reader, Subarray* subarray);
 
-Status ordered_dim_label_reader_to_capnp(
+void ordered_dim_label_reader_to_capnp(
     const Query& query,
     const OrderedDimLabelReader& reader,
     capnp::QueryReader::Builder* reader_builder);
 
-Status ordered_dim_label_reader_from_capnp(
+void ordered_dim_label_reader_from_capnp(
     const capnp::QueryReader::Reader& reader_reader,
     Query* query,
     OrderedDimLabelReader* reader,
