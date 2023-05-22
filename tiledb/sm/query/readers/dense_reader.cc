@@ -77,8 +77,7 @@ DenseReader::DenseReader(
     Subarray& subarray,
     Layout layout,
     std::optional<QueryCondition>& condition,
-    bool skip_checks_serialization,
-    bool consolidation)
+    bool skip_checks_serialization)
     : ReaderBase(
           stats,
           logger->clone("DenseReader", ++logger_id_),
@@ -109,7 +108,7 @@ DenseReader::DenseReader(
   }
 
   // Check subarray.
-  check_subarray(consolidation);
+  check_subarray();
 
   // Initialize memory budget.
   refresh_config();

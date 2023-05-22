@@ -289,14 +289,8 @@ class ReaderBase : public StrategyBase {
   /** Zeroes out the user buffer sizes, indicating an empty result. */
   void zero_out_buffer_sizes();
 
-  /**
-   * Correctness checks for `subarray_`.
-   *
-   * @param skip_checks_consolidation If true, skip subarray range checks during
-   * consolidation. This prevents cropping tile-aligned ranges for consolidation
-   * using global order layout when sm.read_range_oob is `warn`.
-   */
-  void check_subarray(bool skip_checks_consolidation = false) const;
+  /** Correctness checks for `subarray_`. */
+  void check_subarray() const;
 
   /** Correctness checks validity buffer sizes in `buffers_`. */
   void check_validity_buffer_sizes() const;

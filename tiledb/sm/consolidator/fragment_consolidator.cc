@@ -630,7 +630,6 @@ Status FragmentConsolidator::create_queries(
   // Create read query
   *query_r = tdb_new(Query, storage_manager_, array_for_reads);
   RETURN_NOT_OK((*query_r)->set_layout(Layout::GLOBAL_ORDER));
-  (*query_r)->set_consolidation(true);
 
   // Dense consolidation will do a tile aligned read.
   if (dense) {

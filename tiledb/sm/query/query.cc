@@ -1168,8 +1168,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           subarray_,
           layout_,
           condition_,
-          skip_checks_serialization,
-          consolidation_));
+          skip_checks_serialization));
     } else {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           Reader,

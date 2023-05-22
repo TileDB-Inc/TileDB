@@ -864,7 +864,7 @@ bool Subarray::coincides_with_tiles() const {
 
 Status Subarray::check_oob() {
   for (auto& subset : range_subset_) {
-    RETURN_NOT_OK(subset.is_valid(err_on_range_oob_));
+    RETURN_NOT_OK(subset.check_valid(err_on_range_oob_));
   }
   return Status::Ok();
 }

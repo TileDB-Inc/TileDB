@@ -429,13 +429,13 @@ class RangeSetAndSuperset {
   };
 
   /**
-   * Checks if Subarray ranges are all valid for the domain.
-   * Throws in all cases if the ranges are entirely outside of the domain.
+   * Checks if Subarray ranges are all valid. Throws is any range is found to be
+   * invalid.
    *
-   * @param err_on_range_oob If true, throws when any range is OOB.
-   *    If false, log warning and crop ranges to domain bounds if possible.
+   * @param err_on_range_oob If true, ranges are checked to ensure they are
+   * within their domain. If false, only basic checks are performed.
    */
-  Status is_valid(bool err_on_range_oob);
+  Status check_valid(bool err_on_range_oob);
 
   /**
    * Returns ``true`` if the range subset was set after instantiation and

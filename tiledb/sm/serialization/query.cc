@@ -2078,6 +2078,18 @@ Status query_from_capnp(
           dynamic_cast<Reader*>(query->strategy()),
           compute_tp));
     }
+
+    // We can't trust that the serialized query contains valid ranges.
+    // For DenseReader or legacy reader on dense arrays, ensure we error on
+    // OOB read ranges server-side, regardless of user config setting.
+    bool range_oob_err = query_reader.hasDenseReader() ||
+                         (query_reader.hasReader() && query->is_dense());
+    if (context == SerializationContext::SERVER && range_oob_err) {
+      Config config;
+      RETURN_NOT_OK(config.set("sm.read_range_oob", "error"));
+      // Inherit the set parameter from this config.
+      query->unsafe_set_config(config);
+    }
   } else if (query_type == QueryType::WRITE) {
     auto writer_reader = query_reader.getWriter();
     auto writer = dynamic_cast<WriterBase*>(query->strategy());
