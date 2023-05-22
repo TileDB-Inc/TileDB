@@ -28,7 +28,8 @@
 include(TileDBCommon)
 
 if (TILEDB_WEBP_EP_BUILT)
-  find_package(WebP REQUIRED PATHS ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH})
+  # If we *know* we built as EP, use NO_DEFAULT_PATH unconditionally
+  find_package(WebP REQUIRED PATHS ${TILEDB_EP_INSTALL_PREFIX} NO_DEFAULT_PATH)
 endif()
 
 # if not yet built add it as an external project
