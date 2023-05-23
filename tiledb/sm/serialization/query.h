@@ -217,29 +217,6 @@ Status query_est_result_size_deserialize(
 
 enum class SerializationContext { CLIENT, SERVER, BACKUP };
 
-Status reader_to_capnp(
-    const Query& query,
-    const Reader& reader,
-    capnp::QueryReader::Builder* reader_builder);
-
-Status reader_from_capnp(
-    const capnp::QueryReader::Reader& reader_reader,
-    Query* query,
-    Reader* reader,
-    ThreadPool* compute_tp);
-
-Status dense_reader_to_capnp(
-    const Query& query,
-    const DenseReader& reader,
-    capnp::QueryReader::Builder* reader_builder);
-
-Status dense_reader_from_capnp(
-    const ArraySchema& schema,
-    const capnp::QueryReader::Reader& reader_reader,
-    Query* query,
-    DenseReader* reader,
-    ThreadPool* compute_tp);
-
 Status global_write_state_to_capnp(
     const Query& query,
     GlobalOrderWriter& global_writer,

@@ -306,14 +306,14 @@ void ReaderBase::zero_out_buffer_sizes() {
   }
 }
 
-void ReaderBase::check_subarray(bool remote_query) const {
+void ReaderBase::check_subarray(bool check_ranges_oob) const {
   if (subarray_.layout() == Layout::GLOBAL_ORDER &&
       subarray_.range_num() != 1) {
     throw ReaderBaseStatusException(
         "Cannot initialize reader; Multi-range subarrays with "
         "global order layout are not supported");
   }
-  if (remote_query) {
+  if (check_ranges_oob) {
     subarray_.check_oob();
   }
 }

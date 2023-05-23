@@ -458,6 +458,7 @@ TEST_CASE(
   std::string array_name = "cpp_unit_array";
   tiledb::Config cfg;
   cfg.set("config.logging_level", "3");
+  cfg["sm.query.dense.reader"] = GENERATE("legacy", "refactored");
   tiledb::Context ctx(cfg);
 
   VFS vfs(ctx);

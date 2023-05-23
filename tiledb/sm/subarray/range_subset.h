@@ -424,9 +424,6 @@ class RangeSetAndSuperset {
   /**
    * Checks if Subarray ranges are all valid. Throws is any range is found to be
    * invalid.
-   *
-   * @param err_on_range_oob If true, ranges are checked to ensure they are
-   * within their domain. If false, only basic checks are performed.
    */
   void check_oob();
 
