@@ -142,7 +142,7 @@ Reader::Reader(
   }
 
   // Check subarray
-  check_subarray(remote_query);
+  check_subarray(remote_query && array->array_schema_latest().dense());
 
   // Initialize the read state
   init_read_state();
