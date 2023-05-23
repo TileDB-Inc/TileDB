@@ -39,7 +39,6 @@
 
 using namespace tiledb;
 using namespace tiledb::test;
-using namespace Catch::Matchers;
 
 TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
   const std::string array_name = "cpp_unit_array";
@@ -89,7 +88,6 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     std::vector<int> data(est_size);
     query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
     query.submit();
-    REQUIRE(query.query_status() == Query::Status::COMPLETE);
     REQUIRE(query.result_buffer_elements()["a"].second == 1);
     REQUIRE(data[0] == 1);
   }
@@ -111,7 +109,6 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     query.set_data_buffer("a", data);
     query.set_subarray(subarray);
     query.submit();
-    REQUIRE(query.query_status() == Query::Status::COMPLETE);
     REQUIRE(query.result_buffer_elements()["a"].second == 1);
     REQUIRE(data[0] == 1);
   }
@@ -130,7 +127,6 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     std::vector<int> data(est_size);
     query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
     query.submit();
-    REQUIRE(query.query_status() == Query::Status::COMPLETE);
     REQUIRE(query.result_buffer_elements()["a"].second == 2);
     REQUIRE(data[0] == 2);
     REQUIRE(data[1] == 3);
@@ -152,7 +148,6 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     std::vector<int> data(est_size);
     query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
     query.submit();
-    REQUIRE(query.query_status() == Query::Status::COMPLETE);
     REQUIRE(query.result_buffer_elements()["a"].second == 2);
     REQUIRE(data[0] == 2);
     REQUIRE(data[1] == 3);
@@ -190,7 +185,6 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     std::vector<int> data(est_size);
     query.set_layout(TILEDB_UNORDERED).set_data_buffer("a", data);
     query.submit();
-    REQUIRE(query.query_status() == Query::Status::COMPLETE);
     REQUIRE(query.result_buffer_elements()["a"].second == 2);
     REQUIRE(data[0] == 1);
     REQUIRE(data[1] == 3);
@@ -231,7 +225,6 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     query.set_layout(TILEDB_UNORDERED).set_data_buffer("a", data);
     query.set_subarray(subarray);
     query.submit();
-    REQUIRE(query.query_status() == Query::Status::COMPLETE);
     REQUIRE(query.result_buffer_elements()["a"].second == 2);
     REQUIRE(data[0] == 1);
     REQUIRE(data[1] == 3);
@@ -250,7 +243,6 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     std::vector<int> data(est_size);
     query.set_layout(TILEDB_UNORDERED).set_data_buffer("a", data);
     query.submit();
-    REQUIRE(query.query_status() == Query::Status::COMPLETE);
     REQUIRE(query.result_buffer_elements()["a"].second == 4);
     REQUIRE(data[0] == 1);
     REQUIRE(data[1] == 2);
@@ -274,7 +266,6 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     query.set_layout(TILEDB_UNORDERED).set_data_buffer("a", data);
     query.set_subarray(subarray);
     query.submit();
-    REQUIRE(query.query_status() == Query::Status::COMPLETE);
     REQUIRE(query.result_buffer_elements()["a"].second == 4);
     REQUIRE(data[0] == 1);
     REQUIRE(data[1] == 2);
@@ -338,7 +329,6 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     std::vector<int> data(est_size);
     query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
     query.submit();
-    REQUIRE(query.query_status() == Query::Status::COMPLETE);
     REQUIRE(query.result_buffer_elements()["a"].second == 3);
     REQUIRE(data[0] == 2);
     REQUIRE(data[1] == 3);
@@ -367,13 +357,6 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     subarray.add_range(0, range[0], range[1]);
     subarray.add_range(1, range2[0], range2[1]);
 
-    auto rangeCropped = subarray.range<int>(0, 0);
-    REQUIRE(rangeCropped[0] == 1);
-    REQUIRE(rangeCropped[1] == 3);
-    rangeCropped = subarray.range<int>(1, 0);
-    REQUIRE(rangeCropped[0] == 0);
-    REQUIRE(rangeCropped[1] == 3);
-
     tiledb::Query query(ctx, array);
     query.set_subarray(subarray);
     auto est_size = query.est_result_size("a");
@@ -385,108 +368,9 @@ TEST_CASE("C++ API: Test subarray", "[cppapi][sparse][subarray]") {
     query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
     query.set_subarray(subarray);
     query.submit();
-    REQUIRE(query.query_status() == Query::Status::COMPLETE);
     REQUIRE(query.result_buffer_elements()["a"].second == 3);
     REQUIRE(data[0] == 2);
     REQUIRE(data[1] == 3);
-    REQUIRE(data[2] == 4);
-  }
-
-  SECTION("- Read ranges oob warn and crop - Subarray-cppapi") {
-    tiledb::Array array(ctx, array_name, TILEDB_READ);
-    tiledb::Config config;
-    config.set("sm.read_range_oob", "warn");
-    tiledb::Query query(ctx, array);
-    tiledb::Subarray subarray(ctx, array);
-    subarray.set_config(config);
-
-    SECTION(" - Single cell") {
-      subarray.add_range(0, -1, 0);
-      auto rangeCropped = subarray.range<int>(0, 0);
-      REQUIRE(rangeCropped[0] == 0);
-      REQUIRE(rangeCropped[1] == 0);
-      query.set_subarray(subarray);
-      auto est_size = query.est_result_size("a");
-      REQUIRE(est_size == 4);
-      std::vector<int> data(est_size);
-      query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
-      query.submit();
-      REQUIRE(query.result_buffer_elements()["a"].second == 1);
-      REQUIRE(data[0] == 1);
-    }
-
-    SECTION(" - Overlap entire domain ") {
-      subarray.add_range(0, -10, 10);
-      auto rangeCropped = subarray.range<int>(0, 0);
-      REQUIRE(rangeCropped[0] == 0);
-      REQUIRE(rangeCropped[1] == 3);
-      query.set_subarray(subarray);
-      auto est_size = query.est_result_size("a");
-      REQUIRE(est_size == 16);
-      std::vector<int> data(est_size);
-      query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
-      query.submit();
-      REQUIRE(query.result_buffer_elements()["a"].second == 4);
-      REQUIRE(data[0] == 1);
-      REQUIRE(data[1] == 2);
-      REQUIRE(data[2] == 3);
-      REQUIRE(data[3] == 4);
-    }
-
-    SECTION("- Overlap domain lower bound") {
-      subarray.add_range(0, -10, 1);
-      auto rangeCropped = subarray.range<int>(0, 0);
-      REQUIRE(rangeCropped[0] == 0);
-      REQUIRE(rangeCropped[1] == 1);
-      query.set_subarray(subarray);
-      auto est_size = query.est_result_size("a");
-      REQUIRE(est_size == 8);
-      std::vector<int> data(est_size);
-      query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
-      query.submit();
-      REQUIRE(query.result_buffer_elements()["a"].second == 2);
-      REQUIRE(data[0] == 1);
-      REQUIRE(data[1] == 2);
-    }
-
-    SECTION("- Overlap domain upper bound") {
-      subarray.set_config(config);
-      subarray.add_range(0, 2, 10);
-      auto rangeCropped = subarray.range<int>(0, 0);
-      REQUIRE(rangeCropped[0] == 2);
-      REQUIRE(rangeCropped[1] == 3);
-      query.set_subarray(subarray);
-      auto est_size = query.est_result_size("a");
-      REQUIRE(est_size == 8);
-      std::vector<int> data(est_size);
-      query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
-      query.submit();
-      REQUIRE(query.result_buffer_elements()["a"].second == 2);
-      REQUIRE(data[0] == 3);
-      REQUIRE(data[1] == 4);
-    }
-
-    REQUIRE(query.query_status() == Query::Status::COMPLETE);
-  }
-
-  SECTION("- Read ranges oob warn entirely oob ranges - Subarray-cppapi") {
-    tiledb::Array array(ctx, array_name, TILEDB_READ);
-    tiledb::Subarray subarray(ctx, array);
-    tiledb::Config config;
-    config.set("sm.read_range_oob", "warn");
-    subarray.set_config(config);
-    int range[] = {-4, -1};
-    int range2[] = {10, 30};
-    CHECK_THROWS_WITH(
-        subarray.add_range(0, range[0], range[1]),
-        Catch::Matchers::ContainsSubstring("Failed to crop range. Range [-4, "
-                                           "-1] is entirely outside of domain "
-                                           "bounds [0, 3]"));
-    CHECK_THROWS_WITH(
-        subarray.add_range(0, range2[0], range2[1]),
-        Catch::Matchers::ContainsSubstring("Failed to crop range. Range [10, "
-                                           "30] is entirely outside of domain "
-                                           "bounds [0, 3]"));
   }
 
   if (vfs.is_dir(array_name)) {
@@ -525,8 +409,6 @@ TEST_CASE("C++ API: Test subarray (dense)", "[cppapi][dense][subarray]") {
   query_w.finalize();
   array_w.close();
 
-  int fill_val = -2147483648;
-
   SECTION("-  set_subarray Write ranges oob error - Subarray-cppapi") {
     tiledb::Array array(ctx, array_name, TILEDB_WRITE);
     tiledb::Subarray subarray(ctx, array);
@@ -560,112 +442,6 @@ TEST_CASE("C++ API: Test subarray (dense)", "[cppapi][dense][subarray]") {
     config.set("sm.read_range_oob", "warn");
     subarray.set_config(config);
     REQUIRE_THROWS(subarray.set_subarray({1, 4, -1, 3}));
-  }
-
-  SECTION("- Read ranges oob warn and crop - Subarray-cppapi") {
-    tiledb::Array array(ctx, array_name, TILEDB_READ);
-    tiledb::Config config;
-    config.set("sm.read_range_oob", "warn");
-    tiledb::Query query(ctx, array);
-    tiledb::Subarray subarray(ctx, array);
-    subarray.set_config(config);
-
-    SECTION(" - Single cell") {
-      subarray.add_range(0, -1, 0);
-      auto rangeCropped = subarray.range<int>(0, 0);
-      REQUIRE(rangeCropped[0] == 0);
-      REQUIRE(rangeCropped[1] == 0);
-      query.set_subarray(subarray);
-      auto est_size = query.est_result_size("a");
-      REQUIRE(est_size == 16);
-      std::vector<int> data(est_size / sizeof(int));
-      query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
-      query.submit();
-      REQUIRE(query.result_buffer_elements()["a"].second == 4);
-      REQUIRE_THAT(data, Equals(std::vector<int>{1, 2, fill_val, fill_val}));
-    }
-
-    SECTION(" - Overlap entire domain ") {
-      subarray.add_range(0, -10, 10);
-      auto rangeCropped = subarray.range<int>(0, 0);
-      REQUIRE(rangeCropped[0] == 0);
-      REQUIRE(rangeCropped[1] == 3);
-      query.set_subarray(subarray);
-      auto est_size = query.est_result_size("a");
-      REQUIRE(est_size == 64);
-      std::vector<int> data(est_size / sizeof(int));
-      query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
-      query.submit();
-      REQUIRE(query.result_buffer_elements()["a"].second == 16);
-      REQUIRE_THAT(
-          data,
-          Equals(std::vector<int>{
-              1,
-              2,
-              fill_val,
-              fill_val,
-              3,
-              4,
-              fill_val,
-              fill_val,
-              fill_val,
-              fill_val,
-              fill_val,
-              fill_val,
-              fill_val,
-              fill_val,
-              fill_val,
-              fill_val}));
-    }
-
-    SECTION("- Overlap domain lower bound") {
-      subarray.add_range(0, -10, 1);
-      auto rangeCropped = subarray.range<int>(0, 0);
-      REQUIRE(rangeCropped[0] == 0);
-      REQUIRE(rangeCropped[1] == 1);
-      query.set_subarray(subarray);
-      auto est_size = query.est_result_size("a");
-      REQUIRE(est_size == 32);
-      std::vector<int> data(est_size / sizeof(int));
-      query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
-      query.submit();
-      REQUIRE(query.result_buffer_elements()["a"].second == 8);
-      REQUIRE_THAT(
-          data,
-          Equals(std::vector<int>{
-              1, 2, fill_val, fill_val, 3, 4, fill_val, fill_val}));
-    }
-
-    SECTION("- Overlap domain upper bound") {
-      subarray.add_range(0, 1, 10);
-      auto rangeCropped = subarray.range<int>(0, 0);
-      REQUIRE(rangeCropped[0] == 1);
-      REQUIRE(rangeCropped[1] == 3);
-      query.set_subarray(subarray);
-      auto est_size = query.est_result_size("a");
-      REQUIRE(est_size == 48);
-      std::vector<int> data(est_size / sizeof(int));
-      query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
-      query.submit();
-      REQUIRE(query.result_buffer_elements()["a"].second == 12);
-      REQUIRE_THAT(
-          data,
-          Equals(std::vector<int>{
-              3,
-              4,
-              fill_val,
-              fill_val,
-              fill_val,
-              fill_val,
-              fill_val,
-              fill_val,
-              fill_val,
-              fill_val,
-              fill_val,
-              fill_val,
-          }));
-    }
-    REQUIRE(query.query_status() == Query::Status::COMPLETE);
   }
 
   if (vfs.is_dir(array_name)) {

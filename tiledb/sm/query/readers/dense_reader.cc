@@ -88,8 +88,7 @@ DenseReader::DenseReader(
           buffers,
           subarray,
           layout,
-          condition,
-          remote_query)
+          condition)
     , array_memory_tracker_(array->memory_tracker()) {
   elements_mode_ = false;
 
@@ -110,7 +109,7 @@ DenseReader::DenseReader(
   }
 
   // Check subarray.
-  check_subarray();
+  check_subarray(remote_query);
 
   // Initialize memory budget.
   refresh_config();

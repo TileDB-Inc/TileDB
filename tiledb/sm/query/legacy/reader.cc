@@ -124,8 +124,7 @@ Reader::Reader(
           buffers,
           subarray,
           layout,
-          condition,
-          remote_query) {
+          condition) {
   // Sanity checks
   if (storage_manager_ == nullptr) {
     throw ReaderStatusException(
@@ -143,7 +142,7 @@ Reader::Reader(
   }
 
   // Check subarray
-  check_subarray();
+  check_subarray(remote_query);
 
   // Initialize the read state
   init_read_state();

@@ -117,8 +117,7 @@ class ReaderBase : public StrategyBase {
       std::unordered_map<std::string, QueryBuffer>& buffers,
       Subarray& subarray,
       Layout layout,
-      std::optional<QueryCondition>& condition,
-      bool remote_query = false);
+      std::optional<QueryCondition>& condition);
 
   /** Destructor. */
   ~ReaderBase() = default;
@@ -291,7 +290,7 @@ class ReaderBase : public StrategyBase {
   void zero_out_buffer_sizes();
 
   /** Correctness checks for `subarray_`. */
-  void check_subarray() const;
+  void check_subarray(bool remote_query = false) const;
 
   /** Correctness checks validity buffer sizes in `buffers_`. */
   void check_validity_buffer_sizes() const;
