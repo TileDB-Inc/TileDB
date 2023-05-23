@@ -113,7 +113,8 @@ Reader::Reader(
     Subarray& subarray,
     Layout layout,
     std::optional<QueryCondition>& condition,
-    bool skip_checks_serialization)
+    bool skip_checks_serialization,
+    bool remote_query)
     : ReaderBase(
           stats,
           logger->clone("Reader", ++logger_id_),
@@ -123,7 +124,8 @@ Reader::Reader(
           buffers,
           subarray,
           layout,
-          condition) {
+          condition,
+          remote_query) {
   // Sanity checks
   if (storage_manager_ == nullptr) {
     throw ReaderStatusException(

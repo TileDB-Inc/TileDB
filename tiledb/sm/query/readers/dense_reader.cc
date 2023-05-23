@@ -77,7 +77,8 @@ DenseReader::DenseReader(
     Subarray& subarray,
     Layout layout,
     std::optional<QueryCondition>& condition,
-    bool skip_checks_serialization)
+    bool skip_checks_serialization,
+    bool remote_query)
     : ReaderBase(
           stats,
           logger->clone("DenseReader", ++logger_id_),
@@ -87,7 +88,8 @@ DenseReader::DenseReader(
           buffers,
           subarray,
           layout,
-          condition)
+          condition,
+          remote_query)
     , array_memory_tracker_(array->memory_tracker()) {
   elements_mode_ = false;
 

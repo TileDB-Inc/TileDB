@@ -117,7 +117,8 @@ class ReaderBase : public StrategyBase {
       std::unordered_map<std::string, QueryBuffer>& buffers,
       Subarray& subarray,
       Layout layout,
-      std::optional<QueryCondition>& condition);
+      std::optional<QueryCondition>& condition,
+      bool remote_query = false);
 
   /** Destructor. */
   ~ReaderBase() = default;

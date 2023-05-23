@@ -640,12 +640,9 @@ class Subarray {
 
   /**
    * Checks if the Subarray is OOB for the domain.
-   * Handles cropping ranges if sm.read_range_oob is set to 'warn'.
-   * Throws on OOB range if sm.read_range_oob is 'error'.
-   *
-   * @return Status
+   * Throws if any range if found to be OOB.
    */
-  Status check_oob();
+  void check_oob();
 
   /**
    * Computes the range offsets which are important for getting

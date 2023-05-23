@@ -79,7 +79,8 @@ ReaderBase::ReaderBase(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    std::optional<QueryCondition>& condition)
+    std::optional<QueryCondition>& condition,
+    bool remote_query)
     : StrategyBase(
           stats,
           logger,
@@ -104,6 +105,9 @@ ReaderBase::ReaderBase(
     throw ReaderBaseStatusException(
         "Cannot initialize reader; Multi-range reads are not supported on a "
         "global order query.");
+  }
+  if (remote_query) {
+    subarray_.check_oob();
   }
 }
 
@@ -313,7 +317,7 @@ void ReaderBase::check_subarray() const {
         "Cannot initialize reader; Multi-range subarrays with "
         "global order layout are not supported");
   }
-  throw_if_not_ok(subarray_.check_oob());
+  subarray_.check_oob();
 }
 
 void ReaderBase::check_validity_buffer_sizes() const {

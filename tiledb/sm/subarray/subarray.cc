@@ -862,11 +862,10 @@ bool Subarray::coincides_with_tiles() const {
   return true;
 }
 
-Status Subarray::check_oob() {
+void Subarray::check_oob() {
   for (auto& subset : range_subset_) {
-    RETURN_NOT_OK(subset.check_valid(err_on_range_oob_));
+    subset.check_oob();
   }
-  return Status::Ok();
 }
 
 template <class T>
