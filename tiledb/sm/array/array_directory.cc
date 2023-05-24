@@ -588,6 +588,18 @@ tuple<Status, optional<std::vector<URI>>> ArrayDirectory::list_root_dir_uris() {
   return {Status::Ok(), array_dir_uris};
 }
 
+std::vector<URI> ArrayDirectory::list_non_empty_uris(const URI& uri) const {
+  auto&& [st, all_uris] = resources_.get().vfs().ls_with_sizes(uri);
+  throw_if_not_ok(st);
+  std::vector<URI> non_empty_uris;
+  for (auto u : *all_uris) {
+    if (u.file_size() != 0) {
+      non_empty_uris.emplace_back(u.path().native());
+    }
+  }
+  return non_empty_uris;
+}
+
 tuple<Status, optional<std::vector<URI>>>
 ArrayDirectory::load_root_dir_uris_v1_v11(
     const std::vector<URI>& root_dir_uris) {
@@ -677,13 +689,17 @@ tuple<Status, optional<std::vector<URI>>>
 ArrayDirectory::list_fragment_metadata_dir_uris_v12_or_higher() {
   // List the fragment metadata directory URIs
   auto timer_se = stats_->start_timer("list_fragment_meta_uris");
-
   auto fragment_metadata_uri =
       uri_.join_path(constants::array_fragment_meta_dir_name);
-
   std::vector<URI> ret;
-  RETURN_NOT_OK_TUPLE(
-      resources_.get().vfs().ls(fragment_metadata_uri, &ret), nullopt);
+
+  // Only list non-empty URIs for s3
+  if (uri_.is_s3()) {
+    ret = list_non_empty_uris(fragment_metadata_uri);
+  } else {
+    RETURN_NOT_OK_TUPLE(
+        resources_.get().vfs().ls(fragment_metadata_uri, &ret), nullopt);
+  }
 
   return {Status::Ok(), ret};
 }
@@ -814,8 +830,13 @@ Status ArrayDirectory::load_array_meta_uris() {
   auto array_meta_uri = uri_.join_path(constants::array_metadata_dir_name);
   {
     auto timer_se = stats_->start_timer("list_array_meta_uris");
-    RETURN_NOT_OK(
-        resources_.get().vfs().ls(array_meta_uri, &array_meta_dir_uris));
+    // Only list non-empty URIs for s3
+    if (uri_.is_s3()) {
+      array_meta_dir_uris = list_non_empty_uris(array_meta_uri);
+    } else {
+      RETURN_NOT_OK(
+          resources_.get().vfs().ls(array_meta_uri, &array_meta_dir_uris));
+    }
   }
 
   // Compute array metadata URIs and vacuum URIs to vacuum. */

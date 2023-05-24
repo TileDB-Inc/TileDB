@@ -643,6 +643,14 @@ class ArrayDirectory {
   tuple<Status, optional<std::vector<URI>>> list_root_dir_uris();
 
   /**
+   * Lists the given URI and returns only the non-empty results
+   *
+   * @param uri The URI to list
+   * @return vector of non-empty URIs
+   */
+  std::vector<URI> list_non_empty_uris(const URI& uri) const;
+
+  /**
    * Loads the root directory uris for v1 to v11.
    *
    * @return Status, vector of fragment URIs.
