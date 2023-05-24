@@ -54,8 +54,6 @@ class Array;
 class Buffer;
 class BufferList;
 class Query;
-class Reader;
-class DenseReader;
 class GlobalOrderWriter;
 class UnorderedWriter;
 
