@@ -37,6 +37,7 @@
 using namespace tiledb;
 
 // Name of array.
+//std::string array_name("quickstart_sparse_array");
 std::string array_name(
     "tiledb://demo/s3://tiledb-shaun/arrays/quickstart_sparse_array");
 
@@ -82,6 +83,29 @@ void write_array() {
   array.close();
 }
 
+void write_array_separate() {
+  Array array(ctx, array_name, TILEDB_WRITE);
+  Config config = ctx.config();
+
+  // Write dimensions separate from attributes.
+  std::vector<int> coords_rows = {1, 2, 2};
+  std::vector<int> coords_cols = {1, 4, 3};
+  Query query(ctx, array, TILEDB_WRITE);
+  query.set_config(config);
+  query.set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("rows", coords_rows)
+      .set_data_buffer("cols", coords_cols);
+  query.submit();
+
+  // Write attributes.
+  std::vector<int> data = {1, 2, 3};
+  query.set_data_buffer("a", data);
+  query.submit();
+  query.finalize();
+
+  array.close();
+}
+
 void read_array() {
   // Prepare the array for reading
   Array array(ctx, array_name, TILEDB_READ);
@@ -121,15 +145,24 @@ void read_array() {
 
 int main() {
   Config config;
-  config["rest.server_address"] = "127.0.0.1:8181";
+  config["sm.allow_separate_attribute_writes"] = "true";
+  config["rest.server_address"] = "127.0.0.1:9191";
   config["rest.token"] = "YOUR_TOKEN";
   ctx = Context(config);
 
-  if (Object::object(ctx, array_name).type() == Object::Type::Array) {
-    Array::delete_array(ctx, array_name);
+  if (array_name.find("tiledb://") != std::string::npos) {
+    if (Object::object(ctx, array_name).type() == Object::Type::Array) {
+      Array::delete_array(ctx, array_name);
+    }
+  } else {
+    VFS vfs(ctx);
+    if (vfs.is_dir(array_name)) {
+      vfs.remove_dir(array_name);
+    }
   }
 
   create_array();
-  write_array();
+//  write_array();
+  write_array_separate();
   read_array();
 }
