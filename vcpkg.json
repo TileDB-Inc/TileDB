@@ -12,7 +12,8 @@
         },
         "spdlog",
         "zlib",
-        "zstd"
+        "zstd",
+        "libxml2"
     ],
     "features": {
         "abseil": {
