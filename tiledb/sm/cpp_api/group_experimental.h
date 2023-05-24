@@ -100,7 +100,7 @@ class Group {
   /** Destructor; calls `close()`. */
   ~Group() {
     if (owns_c_ptr_ && is_open()) {
-      close();
+      close(false);
     }
   }
 
@@ -156,8 +156,10 @@ class Group {
   }
 
   /**
-   * Closes the group. The destructor calls this automatically
-   * if the underlying pointer is owned.
+   * Closes the group. This must be called directly if you wish to check that
+   * any changes to the group were committed. This is automatically called
+   * by the destructor but any errors encountered are logged instead of throwing
+   * an exception from a destructor.
    *
    * **Example:**
    * @code{.cpp}
@@ -165,9 +167,15 @@ class Group {
    * group.close();
    * @endcode
    */
-  void close() {
+  void close(bool should_throw = true) {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_group_close(ctx.ptr().get(), group_.get()));
+    auto rc = tiledb_group_close(ctx.ptr().get(), group_.get());
+    if (rc != TILEDB_OK and should_throw) {
+      ctx.handle_error(rc);
+    } else if (rc != TILEDB_OK) {
+      auto msg = ctx.get_last_error_message();
+      tiledb_log_warn(ctx.ptr().get(), msg.c_str());
+    }
   }
 
   /**

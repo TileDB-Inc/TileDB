@@ -256,12 +256,18 @@ Status Group::close() {
     } else if (
         query_type_ == QueryType::WRITE ||
         query_type_ == QueryType::MODIFY_EXCLUSIVE) {
-      // If changes haven't been applied, apply them
-      if (!changes_applied_) {
-        RETURN_NOT_OK(group_details_->apply_pending_changes());
-        changes_applied_ = group_details_->changes_applied();
+      try {
+        // If changes haven't been applied, apply them
+        if (!changes_applied_) {
+          RETURN_NOT_OK(group_details_->apply_pending_changes());
+          changes_applied_ = group_details_->changes_applied();
+        }
+        RETURN_NOT_OK(storage_manager_->group_close_for_writes(this));
+      } catch (StatusException& exc) {
+        std::string msg = exc.what();
+        msg += " : Was storage for the group moved or deleted before closing?";
+        throw GroupStatusException(msg);
       }
-      RETURN_NOT_OK(storage_manager_->group_close_for_writes(this));
     }
   }
 
