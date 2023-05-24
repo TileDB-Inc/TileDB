@@ -507,8 +507,13 @@ if (TILEDB_S3)
   message(STATUS "The TileDB library is compiled with S3 support.")
 
   if (TILEDB_VCPKG)
-    find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${AWSSDK_LINK_LIBRARIES})
+    find_package(AWSSDK_EP REQUIRED)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+      INTERFACE
+        ${AWSSDK_LINK_LIBRARIES}
+        ${AWSSDK_EXTRA_LIBS}
+        )
+
   else()
     find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
@@ -527,11 +532,22 @@ endif()
 if (TILEDB_AZURE)
   message(STATUS "The TileDB library is compiled with Azure support.")
   find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
+  if (NOT TARGET LibLZMA)
+	  find_package(LibLZMA REQUIRED)
+  endif()
+  if (NOT TARGET LibXml2::LibXml2)
+      find_package(libxml2 CONFIG REQUIRED)
+      install_target_libs(LibXml2::LibXml2)
+  endif()
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
       Azure::azure-storage-blobs
+      Azure::azure-storage-common
+      Azure::azure-core
+      LibXml2::LibXml2
+      LibLZMA::LibLZMA
   )
-  install_target_libs(Azure::azure-storage-blobs)
+  install_all_target_libs("Azure::azure-storage-blobs;Azure::azure-storage-common;Azure::azure-core")
 endif()
 
 # GCS dependencies
@@ -917,7 +933,7 @@ if (TILEDB_STATIC)
   append_dep_lib(CURL::libcurl)
 
   if(TILEDB_S3 AND TILEDB_VCPKG)
-    foreach(tgt ${AWSSDK_LINK_LIBRARIES})
+    foreach(tgt ${AWSSDK_LINK_LIBRARIES} ${AWSSDK_EXTRA_LIBS})
       append_dep_lib(${tgt})
     endforeach()
   elseif(TILEDB_S3)
@@ -932,9 +948,16 @@ if (TILEDB_STATIC)
 
   append_dep_lib(fmt::fmt)
   append_dep_lib(spdlog::spdlog)
+
   append_dep_lib(Azure::azure-storage-blobs)
+  append_dep_lib(Azure::azure-storage-common)
+  append_dep_lib(Azure::azure-core)
+  append_dep_lib(LibXml2::LibXml2)
+  append_dep_lib(LibLZMA::LibLZMA)
+
   append_dep_lib(google-cloud-cpp::storage)
   append_dep_lib(google-cloud-cpp::experimental-storage-grpc)
+
   append_dep_lib(libmagic)
   append_dep_lib(Crc32c::crc32c)
   append_dep_lib(WebP::webp)

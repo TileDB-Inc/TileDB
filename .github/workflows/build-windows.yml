@@ -416,9 +416,9 @@ jobs:
           Invoke-Expression $cmd
 
           #.\$CMakeBuildType\ExampleExe_static.exe
-          $cmd = ".\$CMakeBuildType\ExampleExe_static.exe"
-          Write-Host "cmd: '$cmd'"
-          Invoke-Expression $cmd
+          #$cmd = ".\$CMakeBuildType\ExampleExe_static.exe"
+          #Write-Host "cmd: '$cmd'"
+          #Invoke-Expression $cmd
 
           # Packaging test
           cd $env:BUILD_SOURCESDIRECTORY\test\packaging

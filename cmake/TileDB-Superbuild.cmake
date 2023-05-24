@@ -120,13 +120,13 @@ if (TILEDB_GCS OR TILEDB_SERIALIZATION)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCurl_EP.cmake)
 endif()
 
-if (TILEDB_S3)
+if (TILEDB_S3 AND NOT TILEDB_VCPKG)
   # Note on Win32: AWS SDK uses builtin WinHTTP instead of libcurl,
   # and builtin BCrypt instead of OpenSSL.
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAWSSDK_EP.cmake)
 endif()
 
-if (TILEDB_GCS)
+if (TILEDB_GCS AND NOT TILEDB_VCPKG)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindGCSSDK_EP.cmake)
 endif()
 
