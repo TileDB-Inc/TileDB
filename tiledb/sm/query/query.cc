@@ -781,8 +781,6 @@ void Query::init() {
     // initialized server side for serialization back to the client.
     if (!only_dim_label_query() && !subarray_.has_label_ranges()) {
       throw_if_not_ok(create_strategy());
-    } else if (remote_query_) {
-      throw_if_not_ok(create_strategy(true));
     }
   }
 

@@ -1128,21 +1128,10 @@ Status Subarray::to_byte_vec(std::vector<uint8_t>* byte_vec) const {
 
   byte_vec->clear();
 
-  if (range_subset_.size() > 0 && range_subset_[0].num_ranges() > 0) {
-    for (const auto& subset : range_subset_) {
-      auto offset = byte_vec->size();
-      byte_vec->resize(offset + subset[0].size());
-      std::memcpy(&(*byte_vec)[offset], subset[0].data(), subset[0].size());
-    }
-  } else {
-    for (const auto& subset : label_range_subset_) {
-      auto offset = byte_vec->size();
-      byte_vec->resize(offset + subset->ranges_[0].size());
-      std::memcpy(
-          &(*byte_vec)[offset],
-          subset->ranges_[0].data(),
-          subset->ranges_[0].size());
-    }
+  for (const auto& subset : range_subset_) {
+    auto offset = byte_vec->size();
+    byte_vec->resize(offset + subset[0].size());
+    std::memcpy(&(*byte_vec)[offset], subset[0].data(), subset[0].size());
   }
 
   return Status::Ok();
@@ -1678,7 +1667,7 @@ uint64_t Subarray::range_idx(const std::vector<uint64_t>& range_coords) const {
 }
 
 uint64_t Subarray::range_num() const {
-  if (range_subset_.empty() && label_range_subset_.empty()) {
+  if (range_subset_.empty()) {
     return 0;
   }
 
