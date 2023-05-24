@@ -1334,7 +1334,8 @@ Status writer_from_capnp(
 
     // Fragment metadata is not allocated when deserializing into a new Query
     // object.
-    if (unordered_writer->frag_meta() == nullptr) {
+    if (writer_reader.getUnorderedWriterState().hasFragMeta() &&
+        unordered_writer->frag_meta() == nullptr) {
       RETURN_NOT_OK(unordered_writer->alloc_frag_meta());
     }
 
