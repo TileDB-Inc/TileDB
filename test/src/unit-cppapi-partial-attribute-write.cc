@@ -43,11 +43,10 @@ using namespace tiledb::test;
 /** Tests for CPP API partial attribute write. */
 struct CppPartialAttrWriteFx {
   // Constants.
-  const std::string ARRAY_NAME = "test_partial_attr_write_array";
+  const std::string ARRAY_NAME = "tiledb://demo/s3://tiledb-shaun/arrays/test_partial_attr_write_array";
 
   // TileDB context.
   Context ctx_;
-  VFS vfs_;
 
   // Buffers to allocate on server side for serialized queries
   test::ServerQueryBuffers server_buffers_;
@@ -98,12 +97,12 @@ struct CppPartialAttrWriteFx {
   bool is_array(const std::string& array_name);
 };
 
-CppPartialAttrWriteFx::CppPartialAttrWriteFx()
-    : vfs_(ctx_) {
+CppPartialAttrWriteFx::CppPartialAttrWriteFx() {
   Config config;
   config["sm.allow_separate_attribute_writes"] = "true";
+  config["rest.server_address"] = "127.0.0.1:8181";
+  config["rest.token"] = "YOUR_TOKEN";
   ctx_ = Context(config);
-  vfs_ = VFS(ctx_);
 }
 
 CppPartialAttrWriteFx::~CppPartialAttrWriteFx() {
@@ -218,7 +217,9 @@ void CppPartialAttrWriteFx::write_sparse_a1(
                        server_buffers_,
                        serialized,
                        refactored_query_v2,
-                       false));
+                       true)); // Test segfault using finalize.
+  // We never make it to finalize because the writes fail, so there's no seg.
+  // The failing writes could be user error on my part.
 }
 
 void CppPartialAttrWriteFx::write_sparse_a2(
@@ -268,7 +269,7 @@ void CppPartialAttrWriteFx::remove_array(const std::string& array_name) {
     return;
   }
 
-  vfs_.remove_dir(array_name);
+  Array::delete_array(ctx_, array_name);
 }
 
 void CppPartialAttrWriteFx::remove_array() {
@@ -276,7 +277,7 @@ void CppPartialAttrWriteFx::remove_array() {
 }
 
 bool CppPartialAttrWriteFx::is_array(const std::string& array_name) {
-  return vfs_.is_dir(array_name);
+  return Object::object(ctx_, array_name).type() == Object::Type::Array;
 }
 
 TEST_CASE_METHOD(
@@ -310,10 +311,10 @@ TEST_CASE_METHOD(
     "[cppapi][partial-attribute-write][basic]") {
   bool serialized = false, refactored_query_v2 = false;
 #ifdef TILEDB_SERIALIZATION
-  serialized = GENERATE(true, false);
-  if (serialized) {
-    refactored_query_v2 = GENERATE(true, false);
-  }
+//  serialized = GENERATE(true, false);
+//  if (serialized) {
+//    refactored_query_v2 = GENERATE(true, false);
+//  }
 #endif
   remove_array();
   create_sparse_array();
@@ -358,10 +359,10 @@ TEST_CASE_METHOD(
     "[cppapi][partial-attribute-write][basic2]") {
   bool serialized = false, refactored_query_v2 = false;
 #ifdef TILEDB_SERIALIZATION
-  serialized = GENERATE(true, false);
-  if (serialized) {
-    refactored_query_v2 = GENERATE(true, false);
-  }
+//  serialized = GENERATE(true, false);
+//  if (serialized) {
+//    refactored_query_v2 = GENERATE(true, false);
+//  }
 #endif
   remove_array();
   create_sparse_array();

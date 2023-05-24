@@ -37,12 +37,12 @@
 using namespace tiledb;
 
 // Name of array.
-std::string array_name("quickstart_sparse_array");
+std::string array_name(
+    "tiledb://demo/s3://tiledb-shaun/arrays/quickstart_sparse_array");
+
+Context ctx;
 
 void create_array() {
-  // Create a TileDB context.
-  Context ctx;
-
   // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
   Domain domain(ctx);
   domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 4))
@@ -60,8 +60,6 @@ void create_array() {
 }
 
 void write_array() {
-  Context ctx;
-
   // Write some simple data to cells (1, 1), (2, 4) and (2, 3).
   std::vector<int> coords_rows = {1, 2, 2};
   std::vector<int> coords_cols = {1, 4, 3};
@@ -77,12 +75,14 @@ void write_array() {
 
   // Perform the write and close the array.
   query.submit();
+  // A second REST request segfaults during fragment metadata serialization.
+  // We can use finalize as the second request to test with any example using
+  // UnorderedWriter.
+  query.finalize();
   array.close();
 }
 
 void read_array() {
-  Context ctx;
-
   // Prepare the array for reading
   Array array(ctx, array_name, TILEDB_READ);
 
@@ -120,13 +120,16 @@ void read_array() {
 }
 
 int main() {
-  Context ctx;
+  Config config;
+  config["rest.server_address"] = "127.0.0.1:8181";
+  config["rest.token"] = "YOUR_TOKEN";
+  ctx = Context(config);
 
-  if (Object::object(ctx, array_name).type() != Object::Type::Array) {
-    create_array();
-    write_array();
+  if (Object::object(ctx, array_name).type() == Object::Type::Array) {
+    Array::delete_array(ctx, array_name);
   }
 
+  create_array();
+  write_array();
   read_array();
-  return 0;
 }
