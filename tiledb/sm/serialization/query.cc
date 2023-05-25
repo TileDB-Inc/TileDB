@@ -1332,13 +1332,6 @@ Status writer_from_capnp(
   } else if (query.layout() == Layout::UNORDERED) {
     auto unordered_writer = dynamic_cast<UnorderedWriter*>(writer);
 
-    // Fragment metadata is not allocated when deserializing into a new Query
-    // object.
-    if (writer_reader.getUnorderedWriterState().hasFragMeta() &&
-        unordered_writer->frag_meta() == nullptr) {
-      RETURN_NOT_OK(unordered_writer->alloc_frag_meta());
-    }
-
     RETURN_NOT_OK(unordered_write_state_from_capnp(
         query,
         writer_reader.getUnorderedWriterState(),
@@ -2972,6 +2965,11 @@ Status unordered_write_state_from_capnp(
   }
 
   if (state_reader.hasFragMeta()) {
+    // Fragment metadata is not allocated when deserializing into a new Query
+    // object.
+    if (unordered_writer->frag_meta() == nullptr) {
+      RETURN_NOT_OK(unordered_writer->alloc_frag_meta());
+    }
     auto frag_meta = unordered_writer->frag_meta();
     auto frag_meta_reader = state_reader.getFragMeta();
     RETURN_NOT_OK(fragment_metadata_from_capnp(
