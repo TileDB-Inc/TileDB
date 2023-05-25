@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -962,12 +962,20 @@ ArraySchema ArraySchema::deserialize(
   // Load version
   // #TODO Add security validation
   auto version = deserializer.read<uint32_t>();
-  if (!(version <= constants::format_version)) {
-    throw ArraySchemaStatusException(
-        "Failed to deserialize array schema: incompatible format version: "
-        "got " +
-        std::to_string(version) +
-        "; expected <= " + std::to_string(constants::format_version));
+  if constexpr (is_experimental_build) {
+    if (version != constants::format_version) {
+      throw ArraySchemaStatusException(
+          "[deserialize] Array format version (" + std::to_string(version) +
+          ") is not the library format version (" +
+          std::to_string(constants::format_version) + ")");
+    }
+  } else {
+    if (!(version <= constants::format_version)) {
+      throw ArraySchemaStatusException(
+          "[deserialize] Array format version (" + std::to_string(version) +
+          ") is newer than the library format version (" +
+          std::to_string(constants::format_version) + ")");
+    }
   }
 
   // Load allows_dups
