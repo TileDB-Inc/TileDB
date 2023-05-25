@@ -55,6 +55,8 @@ namespace sm {
 class Array;
 class DomainBuffersView;
 class FragmentMetadata;
+
+template <class T>
 class TileMetadataGenerator;
 
 using WriterTileTupleVector = std::vector<WriterTileTuple>;

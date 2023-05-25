@@ -41,6 +41,7 @@
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/parse_argument.h"
+#include "tiledb/sm/misc/typed_object_creation.h"
 #include "tiledb/sm/query/deletes_and_updates/deletes_and_updates.h"
 #include "tiledb/sm/query/dimension_label/array_dimension_label_queries.h"
 #include "tiledb/sm/query/legacy/reader.h"
@@ -1072,19 +1073,21 @@ Status Query::create_strategy(bool skip_checks_serialization) {
     }
 
     if (is_dimension_label_ordered_read_) {
-      strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
-          OrderedDimLabelReader,
-          stats_->create_child("Reader"),
-          logger_,
-          storage_manager_,
-          array_,
-          config_,
-          buffers_,
-          subarray_,
-          layout_,
-          condition_,
-          dimension_label_increasing_,
-          skip_checks_serialization));
+      auto type{array_schema_->domain().dimension_ptr(0)->type()};
+      strategy_ = tdb_unique_ptr<IQueryStrategy>(static_cast<IQueryStrategy*>(
+          typed_objects<dense_dims_t>::allocate_for_type<OrderedDimLabelReader>(
+              type,
+              stats_->create_child("Reader"),
+              logger_,
+              storage_manager_,
+              array_,
+              config_,
+              buffers_,
+              subarray_,
+              layout_,
+              condition_,
+              dimension_label_increasing_,
+              skip_checks_serialization)));
     } else if (use_refactored_sparse_unordered_with_dups_reader(
                    layout_, *array_schema_)) {
       auto&& [st, non_overlapping_ranges]{Query::non_overlapping_ranges()};
@@ -1157,18 +1160,20 @@ Status Query::create_strategy(bool skip_checks_serialization) {
             skip_checks_serialization));
       }
     } else if (use_refactored_dense_reader(*array_schema_, all_dense)) {
-      strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
-          DenseReader,
-          stats_->create_child("Reader"),
-          logger_,
-          storage_manager_,
-          array_,
-          config_,
-          buffers_,
-          subarray_,
-          layout_,
-          condition_,
-          skip_checks_serialization));
+      auto type{array_schema_->domain().dimension_ptr(0)->type()};
+      strategy_ = tdb_unique_ptr<IQueryStrategy>(static_cast<IQueryStrategy*>(
+          typed_objects<dense_dims_t>::allocate_for_type<DenseReader>(
+              type,
+              stats_->create_child("Reader"),
+              logger_,
+              storage_manager_,
+              array_,
+              config_,
+              buffers_,
+              subarray_,
+              layout_,
+              condition_,
+              skip_checks_serialization)));
     } else {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           Reader,

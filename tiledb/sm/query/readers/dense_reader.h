@@ -54,8 +54,21 @@ namespace sm {
 
 class Array;
 
+/** Interface used in serialization to get the read state. */
+class IDenseReader {
+ public:
+  /** Returns the current read state. */
+  virtual const ReaderBase::ReadState* read_state() const = 0;
+
+  /** Returns the current read state. */
+  virtual ReaderBase::ReadState* read_state() = 0;
+};
+
 /** Processes dense read queries. */
-class DenseReader : public ReaderBase, public IQueryStrategy {
+template <class DimType>
+class DenseReader : public ReaderBase,
+                    public IQueryStrategy,
+                    public IDenseReader {
   /**
    * TileSubarrays class to store tile subarrays inside of a dynamic array with
    * custom destructor.
@@ -110,7 +123,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   /* ********************************* */
 
   /** Finalizes the reader. */
-  Status finalize() {
+  Status finalize() override {
     return Status::Ok();
   }
 
@@ -119,28 +132,28 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
    * partitions in the read state have not been processed or there
    * was some buffer overflow.
    */
-  bool incomplete() const;
+  bool incomplete() const override;
 
   /** Returns the status details reason. */
-  QueryStatusDetailsReason status_incomplete_reason() const;
+  QueryStatusDetailsReason status_incomplete_reason() const override;
 
   /** Initialize the memory budget variables. */
-  void refresh_config();
+  void refresh_config() override;
 
   /** Returns the current read state. */
-  const ReadState* read_state() const;
+  const ReadState* read_state() const override;
 
   /** Returns the current read state. */
-  ReadState* read_state();
+  ReadState* read_state() override;
 
   /** Performs a read query using its set members. */
-  Status dowork();
+  Status dowork() override;
 
   /** Resets the reader object. */
-  void reset();
+  void reset() override;
 
   /** Returns the name of the strategy */
-  std::string name();
+  std::string name() override;
 
  private:
   /* ********************************* */
@@ -179,10 +192,6 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   template <class OffType>
   Status dense_read();
 
-  /** Performs a read on a dense array. */
-  template <class DimType, class OffType>
-  Status dense_read();
-
   /** Initializes the read state. */
   void init_read_state();
 
@@ -190,7 +199,6 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
    * Compute the result tiles to process on an iteration to respect the memory
    * budget.
    */
-  template <class DimType>
   tuple<uint64_t, std::vector<ResultTile*>> compute_result_tiles(
       const std::vector<std::string>& names,
       const std::unordered_set<std::string>& condition_names,
@@ -200,7 +208,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       ThreadPool::Task& compute_task);
 
   /** Apply the query condition. */
-  template <class DimType, class OffType>
+  template <class OffType>
   Status apply_query_condition(
       ThreadPool::Task& compute_task,
       Subarray& subarray,
@@ -227,7 +235,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       std::vector<void*>& var_data);
 
   /** Copy attribute into the users buffers. */
-  template <class DimType, class OffType>
+  template <class OffType>
   Status copy_attribute(
       const std::string& name,
       const std::vector<DimType>& tile_extents,
@@ -248,7 +256,6 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
    * Checks if a cell slab overlaps a fragment domain range and returns the
    * start and end of the overlap.
    */
-  template <class DimType>
   tuple<bool, uint64_t, uint64_t> cell_slab_overlaps_range(
       const unsigned dim_num,
       const NDRange& ndrange,
@@ -256,7 +263,6 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const uint64_t length);
 
   /** Copy fixed tiles to the output buffers. */
-  template <class DimType>
   Status copy_fixed_tiles(
       const std::string& name,
       const std::vector<DimType>& tile_extents,
@@ -270,7 +276,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const uint64_t num_range_threads);
 
   /** Copy a tile var offsets to the output buffers. */
-  template <class DimType, class OffType>
+  template <class OffType>
   Status copy_offset_tiles(
       const std::string& name,
       const std::vector<DimType>& tile_extents,
@@ -286,7 +292,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const uint64_t num_range_threads);
 
   /** Copy a var tile to the output buffers. */
-  template <class DimType, class OffType>
+  template <class OffType>
   Status copy_var_tiles(
       const std::string& name,
       const std::vector<DimType>& tile_extents,
@@ -316,11 +322,9 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
    * arrays when the user explicitly requests the coordinates to be
    * materialized.
    *
-   * @tparam T Domain type.
    * @param subarray Input subarray.
    * @param qc_results Results from the query condition.
    */
-  template <class T>
   void fill_dense_coords(
       const Subarray& subarray,
       const optional<std::vector<uint8_t>> qc_results);
@@ -330,7 +334,6 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
    * arrays when the user explicitly requests the coordinates to be
    * materialized. Also applicable only to global order.
    *
-   * @tparam T Domain type.
    * @param subarray Input subarray.
    * @param qc_results Results from the query condition.
    * @param qc_results_index Current index in the `qc_results` buffer.
@@ -343,7 +346,6 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
    * @param offsets Offsets that will be used eventually to update the buffer
    *     sizes, determining the useful results written in the buffers.
    */
-  template <class T>
   void fill_dense_coords_global(
       const Subarray& subarray,
       const optional<std::vector<uint8_t>> qc_results,
@@ -357,7 +359,6 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
    * arrays when the user explicitly requests the coordinates to be
    * materialized. Also applicable only to row-/col-major order.
    *
-   * @tparam T Domain type.
    * @param subarray Input subarray.
    * @param qc_results Results from the query condition.
    * @param qc_results_index Current index in the `qc_results` buffer.
@@ -370,7 +371,6 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
    * @param offsets Offsets that will be used eventually to update the buffer
    *     sizes, determining the useful results written in the buffers.
    */
-  template <class T>
   void fill_dense_coords_row_col(
       const Subarray& subarray,
       const optional<std::vector<uint8_t>> qc_results,
@@ -386,7 +386,6 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
    * write to the input buffer (starting at the input offset) coordinates
    * [3, 1], [3, 2], and [3, 3].
    *
-   * @tparam T Domain type.
    * @param start Starting coordinates in the slab.
    * @param qc_results Results from the query condition.
    * @param qc_results_index Current index in the `qc_results` buffer.
@@ -400,9 +399,8 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
    * @param offsets Offsets that will be used eventually to update the buffer
    *     sizes, determining the useful results written in the buffers.
    */
-  template <class T>
   void fill_dense_coords_row_slab(
-      const T* start,
+      const DimType* start,
       const optional<std::vector<uint8_t>> qc_results,
       uint64_t& qc_results_index,
       uint64_t num,
@@ -417,7 +415,6 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
    * write to the input buffer (starting at the input offset) coordinates
    * [4, 1], [5, 1], and [6, 1].
    *
-   * @tparam T Domain type.
    * @param start Starting coordinates in the slab.
    * @param qc_results Results from the query condition.
    * @param qc_results_index Current index in the `qc_results` buffer.
@@ -431,9 +428,8 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
    * @param offsets Offsets that will be used eventually to update the buffer
    *     sizes, determining the useful results written in the buffers.
    */
-  template <class T>
   void fill_dense_coords_col_slab(
-      const T* start,
+      const DimType* start,
       const optional<std::vector<uint8_t>> qc_results,
       uint64_t& qc_results_index,
       uint64_t num,

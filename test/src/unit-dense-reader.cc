@@ -486,7 +486,7 @@ void CDenseFx::read(
 
   // Check the internal loop count against expected value.
   if (rc == TILEDB_OK) {
-    auto stats = ((DenseReader*)query->query_->strategy())->stats();
+    auto stats = ((StrategyBase*)query->query_->strategy())->stats();
     REQUIRE(stats != nullptr);
     auto counters = stats->counters();
     REQUIRE(counters != nullptr);
@@ -603,7 +603,7 @@ void CDenseFx::read_strings(
 
   if (rc == TILEDB_OK) {
     // Check the internal loop count against expected value.
-    auto stats = ((DenseReader*)query->query_->strategy())->stats();
+    auto stats = ((StrategyBase*)query->query_->strategy())->stats();
     REQUIRE(stats != nullptr);
     auto counters = stats->counters();
     REQUIRE(counters != nullptr);
@@ -771,7 +771,7 @@ void CDenseFx::read_fixed_strings(
 
   if (rc == TILEDB_OK) {
     // Check the internal loop count against expected value.
-    auto stats = ((DenseReader*)query->query_->strategy())->stats();
+    auto stats = ((StrategyBase*)query->query_->strategy())->stats();
     REQUIRE(stats != nullptr);
     auto counters = stats->counters();
     REQUIRE(counters != nullptr);

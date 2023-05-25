@@ -67,7 +67,8 @@ class DenseReaderStatusException : public StatusException {
 /*          CONSTRUCTORS          */
 /* ****************************** */
 
-DenseReader::DenseReader(
+template <class DimType>
+DenseReader<DimType>::DenseReader(
     stats::Stats* stats,
     shared_ptr<Logger> logger,
     StorageManager* storage_manager,
@@ -124,16 +125,20 @@ DenseReader::DenseReader(
 /*               API              */
 /* ****************************** */
 
-bool DenseReader::incomplete() const {
+template <class DimType>
+bool DenseReader<DimType>::incomplete() const {
   return read_state_.overflowed_ || !read_state_.done();
 }
 
-QueryStatusDetailsReason DenseReader::status_incomplete_reason() const {
+template <class DimType>
+QueryStatusDetailsReason DenseReader<DimType>::status_incomplete_reason()
+    const {
   return incomplete() ? QueryStatusDetailsReason::REASON_USER_BUFFER_SIZE :
                         QueryStatusDetailsReason::REASON_NONE;
 }
 
-void DenseReader::refresh_config() {
+template <class DimType>
+void DenseReader<DimType>::refresh_config() {
   // Get config values.
   bool found = false;
   throw_if_not_ok(
@@ -150,15 +155,19 @@ void DenseReader::refresh_config() {
   }
 }
 
-const DenseReader::ReadState* DenseReader::read_state() const {
+template <class DimType>
+const typename DenseReader<DimType>::ReadState*
+DenseReader<DimType>::read_state() const {
   return &read_state_;
 }
 
-DenseReader::ReadState* DenseReader::read_state() {
+template <class DimType>
+typename DenseReader<DimType>::ReadState* DenseReader<DimType>::read_state() {
   return &read_state_;
 }
 
-Status DenseReader::complete_read_loop() {
+template <class DimType>
+Status DenseReader<DimType>::complete_read_loop() {
   if (offsets_extra_element_) {
     RETURN_NOT_OK(add_extra_offset());
   }
@@ -166,7 +175,8 @@ Status DenseReader::complete_read_loop() {
   return Status::Ok();
 }
 
-Status DenseReader::dowork() {
+template <class DimType>
+Status DenseReader<DimType>::dowork() {
   auto timer_se = stats_->start_timer("dowork");
 
   // Check that the query condition is valid.
@@ -213,73 +223,31 @@ Status DenseReader::dowork() {
   return Status::Ok();
 }
 
-void DenseReader::reset() {
+template <class DimType>
+void DenseReader<DimType>::reset() {
 }
 
-std::string DenseReader::name() {
+template <class DimType>
+std::string DenseReader<DimType>::name() {
   return "DenseReader";
 }
 
+template <>
 template <class OffType>
-Status DenseReader::dense_read() {
-  auto type{array_schema_.domain().dimension_ptr(0)->type()};
-  switch (type) {
-    case Datatype::INT8:
-      return dense_read<int8_t, OffType>();
-    case Datatype::UINT8:
-      return dense_read<uint8_t, OffType>();
-    case Datatype::INT16:
-      return dense_read<int16_t, OffType>();
-    case Datatype::UINT16:
-      return dense_read<uint16_t, OffType>();
-    case Datatype::INT32:
-      return dense_read<int, OffType>();
-    case Datatype::UINT32:
-      return dense_read<unsigned, OffType>();
-    case Datatype::INT64:
-      return dense_read<int64_t, OffType>();
-    case Datatype::UINT64:
-      return dense_read<uint64_t, OffType>();
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      return dense_read<int64_t, OffType>();
-    default:
-      return LOG_STATUS(Status_ReaderError(
-          "Cannot read dense array; Unsupported domain type"));
-  }
-
+Status DenseReader<std::byte>::dense_read() {
   return Status::Ok();
 }
 
-template <class DimType, class OffType>
-Status DenseReader::dense_read() {
+template <class DimType>
+template <class OffType>
+Status DenseReader<DimType>::dense_read() {
   // Sanity checks.
   assert(std::is_integral<DimType>::value);
 
   // For easy reference.
   const auto dim_num = array_schema_.dim_num();
   auto& subarray = read_state_.partitioner_.current();
-  RETURN_NOT_OK(subarray.compute_tile_coords<DimType>());
+  RETURN_NOT_OK(subarray.template compute_tile_coords<DimType>());
   const auto& domain{array_schema_.domain()};
 
   // Cache tile extents.
@@ -437,7 +405,7 @@ Status DenseReader::dense_read() {
     stats_->add_counter("internal_loop_num", 1);
 
     // Get result tiles to process on this iteration.
-    auto&& [ret_t_end, result_tiles_ret] = compute_result_tiles<DimType>(
+    auto&& [ret_t_end, result_tiles_ret] = compute_result_tiles(
         names,
         condition_names,
         subarray,
@@ -462,7 +430,7 @@ Status DenseReader::dense_read() {
     }
 
     // Apply the query condition.
-    auto st = apply_query_condition<DimType, OffType>(
+    auto st = apply_query_condition<OffType>(
         compute_task,
         subarray,
         t_start,
@@ -527,7 +495,7 @@ Status DenseReader::dense_read() {
             if (buffers_.count(name) != 0) {
               // Copy attribute data to users buffers.
               auto& var_buffer_size = var_buffer_sizes[name];
-              status = copy_attribute<DimType, OffType>(
+              status = copy_attribute<OffType>(
                   name,
                   tile_extents,
                   subarray,
@@ -562,19 +530,20 @@ Status DenseReader::dense_read() {
   // For `qc_coords_mode` just fill in the coordinates and skip attribute
   // processing.
   if (qc_coords_mode_) {
-    fill_dense_coords<DimType>(subarray, qc_result);
+    fill_dense_coords(subarray, qc_result);
     return Status::Ok();
   }
 
   // Fill coordinates if the user requested them.
   if (!read_state_.overflowed_ && has_coords()) {
-    fill_dense_coords<DimType>(subarray, nullopt);
+    fill_dense_coords(subarray, nullopt);
   }
 
   return Status::Ok();
 }
 
-void DenseReader::init_read_state() {
+template <class DimType>
+void DenseReader<DimType>::init_read_state() {
   auto timer_se = stats_->start_timer("init_state");
 
   // Check subarray.
@@ -696,7 +665,8 @@ void DenseReader::init_read_state() {
  * the new iteration.
  */
 template <class DimType>
-tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
+tuple<uint64_t, std::vector<ResultTile*>>
+DenseReader<DimType>::compute_result_tiles(
     const std::vector<std::string>& names,
     const std::unordered_set<std::string>& condition_names,
     Subarray& subarray,
@@ -816,8 +786,9 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
  * thread pool in `compute_task`. Callers should wait on this task before using
  * the results of the query condition.
  */
-template <class DimType, class OffType>
-Status DenseReader::apply_query_condition(
+template <class DimType>
+template <class OffType>
+Status DenseReader<DimType>::apply_query_condition(
     ThreadPool::Task& compute_task,
     Subarray& subarray,
     const uint64_t t_start,
@@ -862,7 +833,8 @@ Status DenseReader::apply_query_condition(
           // For easy reference.
           const auto& tile_coords = subarray.tile_coords();
           const auto dim_num = array_schema_.dim_num();
-          auto stride = array_schema_.domain().stride<DimType>(layout_);
+          auto stride =
+              array_schema_.domain().template stride<DimType>(layout_);
           const auto cell_order = array_schema_.cell_order();
           const auto global_order = layout_ == Layout::GLOBAL_ORDER;
 
@@ -974,8 +946,9 @@ Status DenseReader::apply_query_condition(
   return Status::Ok();
 }
 
+template <class DimType>
 template <class OffType>
-void DenseReader::fix_offsets_buffer(
+void DenseReader<DimType>::fix_offsets_buffer(
     const std::string& name,
     const bool nullable,
     const uint64_t subarray_start_cell,
@@ -1010,8 +983,9 @@ void DenseReader::fix_offsets_buffer(
   }
 }
 
-template <class DimType, class OffType>
-Status DenseReader::copy_attribute(
+template <class DimType>
+template <class OffType>
+Status DenseReader<DimType>::copy_attribute(
     const std::string& name,
     const std::vector<DimType>& tile_extents,
     const Subarray& subarray,
@@ -1060,7 +1034,7 @@ Status DenseReader::copy_attribute(
             assert(it != result_space_tiles.end());
 
             // Copy the tile offsets.
-            return copy_offset_tiles<DimType, OffType>(
+            return copy_offset_tiles<OffType>(
                 name,
                 tile_extents,
                 it->second,
@@ -1120,7 +1094,7 @@ Status DenseReader::copy_attribute(
             auto it = result_space_tiles.find(tc);
             assert(it != result_space_tiles.end());
 
-            return copy_var_tiles<DimType, OffType>(
+            return copy_var_tiles<OffType>(
                 name,
                 tile_extents,
                 it->second,
@@ -1193,7 +1167,7 @@ Status DenseReader::copy_attribute(
 }
 
 template <class DimType>
-tuple<bool, uint64_t, uint64_t> DenseReader::cell_slab_overlaps_range(
+tuple<bool, uint64_t, uint64_t> DenseReader<DimType>::cell_slab_overlaps_range(
     const unsigned dim_num,
     const NDRange& ndrange,
     const std::vector<DimType>& coords,
@@ -1222,7 +1196,7 @@ tuple<bool, uint64_t, uint64_t> DenseReader::cell_slab_overlaps_range(
 }
 
 template <class DimType>
-Status DenseReader::copy_fixed_tiles(
+Status DenseReader<DimType>::copy_fixed_tiles(
     const std::string& name,
     const std::vector<DimType>& tile_extents,
     ResultSpaceTile<DimType>& result_space_tile,
@@ -1236,7 +1210,7 @@ Status DenseReader::copy_fixed_tiles(
   // For easy reference
   const auto dim_num = array_schema_.dim_num();
   const auto cell_order = array_schema_.cell_order();
-  auto stride = array_schema_.domain().stride<DimType>(layout_);
+  auto stride = array_schema_.domain().template stride<DimType>(layout_);
   const auto& frag_domains = result_space_tile.frag_domains();
   auto dst_buf = static_cast<uint8_t*>(buffers_[name].buffer_);
   auto dst_val_buf = buffers_[name].validity_vector_.buffer();
@@ -1417,8 +1391,9 @@ Status DenseReader::copy_fixed_tiles(
   return Status::Ok();
 }
 
-template <class DimType, class OffType>
-Status DenseReader::copy_offset_tiles(
+template <class DimType>
+template <class OffType>
+Status DenseReader<DimType>::copy_offset_tiles(
     const std::string& name,
     const std::vector<DimType>& tile_extents,
     ResultSpaceTile<DimType>& result_space_tile,
@@ -1435,7 +1410,7 @@ Status DenseReader::copy_offset_tiles(
   const auto dim_num = array_schema_.dim_num();
   const auto cell_order = array_schema_.cell_order();
   const auto cell_num_per_tile = array_schema_.domain().cell_num_per_tile();
-  auto stride = array_schema_.domain().stride<DimType>(layout_);
+  auto stride = array_schema_.domain().template stride<DimType>(layout_);
   const auto& frag_domains = result_space_tile.frag_domains();
   auto dst_buf = static_cast<uint8_t*>(buffers_[name].buffer_);
   auto dst_val_buf = buffers_[name].validity_vector_.buffer();
@@ -1610,8 +1585,9 @@ Status DenseReader::copy_offset_tiles(
   return Status::Ok();
 }
 
-template <class DimType, class OffType>
-Status DenseReader::copy_var_tiles(
+template <class DimType>
+template <class OffType>
+Status DenseReader<DimType>::copy_var_tiles(
     const std::string& name,
     const std::vector<DimType>& tile_extents,
     ResultSpaceTile<DimType>& result_space_tile,
@@ -1691,7 +1667,8 @@ Status DenseReader::copy_var_tiles(
   return Status::Ok();
 }
 
-Status DenseReader::add_extra_offset() {
+template <class DimType>
+Status DenseReader<DimType>::add_extra_offset() {
   // Add extra offset element for all var size offset buffers.
   for (const auto& it : buffers_) {
     const auto& name = it.first;
@@ -1726,8 +1703,8 @@ Status DenseReader::add_extra_offset() {
   return Status::Ok();
 }
 
-template <class T>
-void DenseReader::fill_dense_coords(
+template <class DimType>
+void DenseReader<DimType>::fill_dense_coords(
     const Subarray& subarray, const optional<std::vector<uint8_t>> qc_results) {
   auto timer_se = stats_->start_timer("fill_dense_coords");
 
@@ -1773,11 +1750,11 @@ void DenseReader::fill_dense_coords(
   uint64_t qc_results_index = 0;
   std::vector<uint64_t> offsets(buffers.size(), 0);
   if (layout_ == Layout::GLOBAL_ORDER) {
-    fill_dense_coords_global<T>(
+    fill_dense_coords_global(
         subarray, qc_results, qc_results_index, dim_idx, buffers, offsets);
   } else {
     assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
-    fill_dense_coords_row_col<T>(
+    fill_dense_coords_row_col(
         subarray, qc_results, qc_results_index, dim_idx, buffers, offsets);
   }
 
@@ -1787,8 +1764,8 @@ void DenseReader::fill_dense_coords(
   }
 }
 
-template <class T>
-void DenseReader::fill_dense_coords_global(
+template <class DimType>
+void DenseReader<DimType>::fill_dense_coords_global(
     const Subarray& subarray,
     const optional<std::vector<uint8_t>> qc_results,
     uint64_t& qc_results_index,
@@ -1799,14 +1776,15 @@ void DenseReader::fill_dense_coords_global(
   auto cell_order = array_schema_.cell_order();
 
   for (const auto& tc : tile_coords) {
-    auto tile_subarray = subarray.crop_to_tile((const T*)&tc[0], cell_order);
-    fill_dense_coords_row_col<T>(
+    auto tile_subarray =
+        subarray.crop_to_tile((const DimType*)&tc[0], cell_order);
+    fill_dense_coords_row_col(
         tile_subarray, qc_results, qc_results_index, dim_idx, buffers, offsets);
   }
 }
 
-template <class T>
-void DenseReader::fill_dense_coords_row_col(
+template <class DimType>
+void DenseReader<DimType>::fill_dense_coords_row_col(
     const Subarray& subarray,
     const optional<std::vector<uint8_t>> qc_results,
     uint64_t& qc_results_index,
@@ -1816,7 +1794,7 @@ void DenseReader::fill_dense_coords_row_col(
   auto cell_order = array_schema_.cell_order();
 
   // Iterate over all coordinates, retrieved in cell slabs.
-  CellSlabIter<T> iter(&subarray);
+  CellSlabIter<DimType> iter(&subarray);
   if (!iter.begin().ok()) {
     throw DenseReaderStatusException("Cannot begin iteration");
   }
@@ -1849,9 +1827,9 @@ void DenseReader::fill_dense_coords_row_col(
   }
 }
 
-template <class T>
-void DenseReader::fill_dense_coords_row_slab(
-    const T* start,
+template <class DimType>
+void DenseReader<DimType>::fill_dense_coords_row_slab(
+    const DimType* start,
     const optional<std::vector<uint8_t>> qc_results,
     uint64_t& qc_results_index,
     uint64_t num,
@@ -1871,15 +1849,15 @@ void DenseReader::fill_dense_coords_row_slab(
       if (!qc_results.has_value() || qc_results.value()[qc_results_index]) {
         // First dim-1 dimensions are copied as they are.
         if (dim_num > 1) {
-          auto bytes_to_copy = (dim_num - 1) * sizeof(T);
+          auto bytes_to_copy = (dim_num - 1) * sizeof(DimType);
           std::memcpy(c_buff + *offset, start, bytes_to_copy);
           *offset += bytes_to_copy;
         }
 
         // Last dimension is incremented by `i`.
         auto new_coord = start[dim_num - 1] + i;
-        std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
-        *offset += sizeof(T);
+        std::memcpy(c_buff + *offset, &new_coord, sizeof(DimType));
+        *offset += sizeof(DimType);
       }
       qc_results_index++;
     }
@@ -1892,13 +1870,13 @@ void DenseReader::fill_dense_coords_row_slab(
 
           // First dim-1 dimensions are copied as they are.
           if (dim_num > 1 && dim_idx[b] < dim_num - 1) {
-            std::memcpy(c_buff + *offset, &start[dim_idx[b]], sizeof(T));
-            *offset += sizeof(T);
+            std::memcpy(c_buff + *offset, &start[dim_idx[b]], sizeof(DimType));
+            *offset += sizeof(DimType);
           } else {
             // Last dimension is incremented by `i`.
             auto new_coord = start[dim_num - 1] + i;
-            std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
-            *offset += sizeof(T);
+            std::memcpy(c_buff + *offset, &new_coord, sizeof(DimType));
+            *offset += sizeof(DimType);
           }
         }
       }
@@ -1907,9 +1885,9 @@ void DenseReader::fill_dense_coords_row_slab(
   }
 }
 
-template <class T>
-void DenseReader::fill_dense_coords_col_slab(
-    const T* start,
+template <class DimType>
+void DenseReader<DimType>::fill_dense_coords_col_slab(
+    const DimType* start,
     const optional<std::vector<uint8_t>> qc_results,
     uint64_t& qc_results_index,
     uint64_t num,
@@ -1929,12 +1907,12 @@ void DenseReader::fill_dense_coords_col_slab(
       if (!qc_results.has_value() || qc_results.value()[qc_results_index]) {
         // First dimension is incremented by `i`.
         auto new_coord = start[0] + i;
-        std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
-        *offset += sizeof(T);
+        std::memcpy(c_buff + *offset, &new_coord, sizeof(DimType));
+        *offset += sizeof(DimType);
 
         // Last dim-1 dimensions are copied as they are.
         if (dim_num > 1) {
-          auto bytes_to_copy = (dim_num - 1) * sizeof(T);
+          auto bytes_to_copy = (dim_num - 1) * sizeof(DimType);
           std::memcpy(c_buff + *offset, &start[1], bytes_to_copy);
           *offset += bytes_to_copy;
         }
@@ -1951,11 +1929,11 @@ void DenseReader::fill_dense_coords_col_slab(
           // First dimension is incremented by `i`.
           if (dim_idx[b] == 0) {
             auto new_coord = start[0] + i;
-            std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
-            *offset += sizeof(T);
+            std::memcpy(c_buff + *offset, &new_coord, sizeof(DimType));
+            *offset += sizeof(DimType);
           } else {  // Last dim-1 dimensions are copied as they are
-            std::memcpy(c_buff + *offset, &start[dim_idx[b]], sizeof(T));
-            *offset += sizeof(T);
+            std::memcpy(c_buff + *offset, &start[dim_idx[b]], sizeof(DimType));
+            *offset += sizeof(DimType);
           }
         }
       }
@@ -1963,6 +1941,96 @@ void DenseReader::fill_dense_coords_col_slab(
     }
   }
 }
+
+// Explicit template instantiations
+template DenseReader<int8_t>::DenseReader(
+    stats::Stats*,
+    shared_ptr<Logger>,
+    StorageManager*,
+    Array*,
+    Config&,
+    std::unordered_map<std::string, QueryBuffer>&,
+    Subarray&,
+    Layout,
+    std::optional<QueryCondition>&,
+    bool);
+template DenseReader<int16_t>::DenseReader(
+    stats::Stats*,
+    shared_ptr<Logger>,
+    StorageManager*,
+    Array*,
+    Config&,
+    std::unordered_map<std::string, QueryBuffer>&,
+    Subarray&,
+    Layout,
+    std::optional<QueryCondition>&,
+    bool);
+template DenseReader<int32_t>::DenseReader(
+    stats::Stats*,
+    shared_ptr<Logger>,
+    StorageManager*,
+    Array*,
+    Config&,
+    std::unordered_map<std::string, QueryBuffer>&,
+    Subarray&,
+    Layout,
+    std::optional<QueryCondition>&,
+    bool);
+template DenseReader<int64_t>::DenseReader(
+    stats::Stats*,
+    shared_ptr<Logger>,
+    StorageManager*,
+    Array*,
+    Config&,
+    std::unordered_map<std::string, QueryBuffer>&,
+    Subarray&,
+    Layout,
+    std::optional<QueryCondition>&,
+    bool);
+template DenseReader<uint8_t>::DenseReader(
+    stats::Stats*,
+    shared_ptr<Logger>,
+    StorageManager*,
+    Array*,
+    Config&,
+    std::unordered_map<std::string, QueryBuffer>&,
+    Subarray&,
+    Layout,
+    std::optional<QueryCondition>&,
+    bool);
+template DenseReader<uint16_t>::DenseReader(
+    stats::Stats*,
+    shared_ptr<Logger>,
+    StorageManager*,
+    Array*,
+    Config&,
+    std::unordered_map<std::string, QueryBuffer>&,
+    Subarray&,
+    Layout,
+    std::optional<QueryCondition>&,
+    bool);
+template DenseReader<uint32_t>::DenseReader(
+    stats::Stats*,
+    shared_ptr<Logger>,
+    StorageManager*,
+    Array*,
+    Config&,
+    std::unordered_map<std::string, QueryBuffer>&,
+    Subarray&,
+    Layout,
+    std::optional<QueryCondition>&,
+    bool);
+template DenseReader<uint64_t>::DenseReader(
+    stats::Stats*,
+    shared_ptr<Logger>,
+    StorageManager*,
+    Array*,
+    Config&,
+    std::unordered_map<std::string, QueryBuffer>&,
+    Subarray&,
+    Layout,
+    std::optional<QueryCondition>&,
+    bool);
 
 }  // namespace sm
 }  // namespace tiledb

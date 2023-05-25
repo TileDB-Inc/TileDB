@@ -1055,8 +1055,7 @@ TEST_CASE_METHOD(
   CHECK(index == std::vector({17, 18, 23, 23}));
 
   // Check the internal loop count against expected value.
-  auto stats =
-      ((sm::OrderedDimLabelReader*)query.ptr()->query_->strategy())->stats();
+  auto stats = ((sm::StrategyBase*)query.ptr()->query_->strategy())->stats();
   REQUIRE(stats != nullptr);
   auto counters = stats->counters();
   REQUIRE(counters != nullptr);

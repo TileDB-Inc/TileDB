@@ -309,6 +309,22 @@ class Range {
     return partition_depth_;
   }
 
+  /** Returns the range as a specific type. */
+  template <typename T>
+  T get_range_as(uint8_t range_index) {
+    return typed_data<T>()[range_index];
+  }
+
+  /** Returns the range as a specific type, specialized for strings. */
+  template <>
+  std::string_view get_range_as<std::string_view>(uint8_t range_index) {
+    if (range_index == 0) {
+      return start_str();
+    } else {
+      return end_str();
+    }
+  }
+
  private:
   /** The range as a flat byte vector. */
   std::vector<uint8_t> range_;

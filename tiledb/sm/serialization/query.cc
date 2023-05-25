@@ -609,9 +609,9 @@ Status index_read_state_to_capnp(
 
 Status dense_read_state_to_capnp(
     const ArraySchema& schema,
-    const DenseReader& reader,
+    const IDenseReader* reader,
     capnp::QueryReader::Builder* builder) {
-  auto read_state = reader.read_state();
+  auto read_state = reader->read_state();
   auto read_state_builder = builder->initReadState();
   read_state_builder.setOverflowed(read_state->overflowed_);
   read_state_builder.setUnsplittable(read_state->unsplittable_);
@@ -682,9 +682,10 @@ Status dense_read_state_from_capnp(
     const Array* array,
     const capnp::ReadState::Reader& read_state_reader,
     Query* query,
-    DenseReader* reader,
+    IDenseReader* reader,
     ThreadPool* compute_tp) {
   auto read_state = reader->read_state();
+  auto strategy = dynamic_cast<StrategyBase*>(reader);
 
   read_state->overflowed_ = read_state_reader.getOverflowed();
   read_state->unsplittable_ = read_state_reader.getUnsplittable();
@@ -694,7 +695,7 @@ Status dense_read_state_from_capnp(
   if (read_state_reader.hasSubarrayPartitioner()) {
     RETURN_NOT_OK(subarray_partitioner_from_capnp(
         query->stats(),
-        reader->stats(),
+        strategy->stats(),
         query->config(),
         array,
         read_state_reader.getSubarrayPartitioner(),
@@ -940,9 +941,10 @@ Status index_reader_to_capnp(
 
 Status dense_reader_to_capnp(
     const Query& query,
-    const DenseReader& reader,
+    const IDenseReader* reader,
     capnp::QueryReader::Builder* reader_builder) {
   const auto& array_schema = query.array_schema();
+  auto strategy = dynamic_cast<const StrategyBase*>(reader);
 
   // Subarray layout
   const auto& layout = layout_str(query.layout());
@@ -964,7 +966,7 @@ Status dense_reader_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = reader.stats();
+  stats::Stats* stats = strategy->stats();
   if (stats != nullptr) {
     auto stats_builder = reader_builder->initStats();
     RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
@@ -1159,9 +1161,10 @@ Status dense_reader_from_capnp(
     const ArraySchema& schema,
     const capnp::QueryReader::Reader& reader_reader,
     Query* query,
-    DenseReader* reader,
+    IDenseReader* reader,
     ThreadPool* compute_tp) {
   auto array = query->array();
+  auto strategy = dynamic_cast<const StrategyBase*>(reader);
 
   // Layout
   Layout layout = Layout::ROW_MAJOR;
@@ -1188,7 +1191,7 @@ Status dense_reader_from_capnp(
 
   // If cap'n proto object has stats set it on c++ object
   if (reader_reader.hasStats()) {
-    stats::Stats* stats = reader->stats();
+    stats::Stats* stats = strategy->stats();
     // We should always have a stats here
     if (stats != nullptr) {
       RETURN_NOT_OK(stats_from_capnp(reader_reader.getStats(), stats));
@@ -1488,8 +1491,8 @@ Status query_to_capnp(
       RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
     } else if (query.use_refactored_dense_reader(schema, all_dense)) {
       auto builder = query_builder->initDenseReader();
-      auto reader = dynamic_cast<DenseReader*>(query.strategy(true));
-      RETURN_NOT_OK(dense_reader_to_capnp(query, *reader, &builder));
+      auto reader = dynamic_cast<IDenseReader*>(query.strategy(true));
+      RETURN_NOT_OK(dense_reader_to_capnp(query, reader, &builder));
     } else {
       auto builder = query_builder->initReader();
       auto reader = dynamic_cast<Reader*>(query.strategy());
@@ -2068,7 +2071,7 @@ Status query_from_capnp(
           schema,
           reader_reader,
           query,
-          dynamic_cast<DenseReader*>(query->strategy()),
+          dynamic_cast<IDenseReader*>(query->strategy()),
           compute_tp));
     } else {
       auto reader_reader = query_reader.getReader();

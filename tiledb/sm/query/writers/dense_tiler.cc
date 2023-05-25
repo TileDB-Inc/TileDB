@@ -585,8 +585,8 @@ void DenseTiler<T>::compute_tile_metadata(
   const bool var = array_schema_.var_size(name);
   const auto cell_size = array_schema_.cell_size(name);
   const auto cell_val_num = array_schema_.cell_val_num(name);
-  TileMetadataGenerator md_generator(
-      type, is_dim, var, cell_size, cell_val_num);
+  auto md_generator(ITileMetadataGenerator::create_for_type(
+      type, is_dim, var, cell_size, cell_val_num));
 
   // For easy reference
   auto tile_offset = copy_plan.tile_start_el_;
@@ -611,7 +611,7 @@ void DenseTiler<T>::compute_tile_metadata(
   auto d = dim_num - 1;
   while (true) {
     // Copy a slab
-    md_generator.process_cell_slab(
+    md_generator->process_cell_slab(
         tile, tile_offsets[d], tile_offsets[d] + copy_plan.copy_el_);
 
     // Advance cell coordinates, tile and buffer offsets
@@ -638,7 +638,7 @@ void DenseTiler<T>::compute_tile_metadata(
     }
   }
 
-  md_generator.set_tile_metadata(tile);
+  md_generator->set_tile_metadata(tile);
 }
 
 // Explicit template instantiations

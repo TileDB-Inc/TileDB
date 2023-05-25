@@ -141,6 +141,8 @@ struct metadata_generator_type_data;
 
 METADATA_GENERATOR_TYPE_DATA(std::byte, int64_t);
 METADATA_GENERATOR_TYPE_DATA(char, int64_t);
+METADATA_GENERATOR_TYPE_DATA(char16_t, int64_t);
+METADATA_GENERATOR_TYPE_DATA(char32_t, int64_t);
 METADATA_GENERATOR_TYPE_DATA(int8_t, int64_t);
 METADATA_GENERATOR_TYPE_DATA(uint8_t, uint64_t);
 METADATA_GENERATOR_TYPE_DATA(int16_t, int64_t);
@@ -155,7 +157,8 @@ METADATA_GENERATOR_TYPE_DATA(double, double);
 /**
  * Generate metadata for a tile using the tile, tile var, and tile validity.
  */
-class TileMetadataGenerator {
+
+class ITileMetadataGenerator {
  public:
   /* ****************************** */
   /*           STATIC API           */
@@ -188,6 +191,61 @@ class TileMetadataGenerator {
   static bool has_sum_metadata(
       const Datatype type, const bool var_size, const uint64_t cell_val_num);
 
+  /**
+   * Create a tile metadata generator for a tiledb type.
+   *
+   * @param type Data type.
+   * @param is_dim Is it a dimension.
+   * @param var_size Is the attribute/dimension var size?
+   * @param cell_size Cell size.
+   * @param cell_val_num Number of values per cell.
+   * @return Shared pointer to the generator.
+   */
+  static tdb_shared_ptr<ITileMetadataGenerator> create_for_type(
+      const Datatype type,
+      const bool is_dim,
+      const bool var_size,
+      const uint64_t cell_size,
+      const uint64_t cell_val_num);
+
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  virtual ~ITileMetadataGenerator() = default;
+
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
+  /**
+   * Compute metatada for full tile.
+   *
+   * @param tile Writer tile that contains the data.
+   */
+  virtual void process_full_tile(const WriterTileTuple& tile) = 0;
+
+  /**
+   * Compute metatada for a slab.
+   *
+   * @param tile Writer tile that contains the data.
+   * @param start Start cell index.
+   * @param end End cell index.
+   */
+  virtual void process_cell_slab(
+      const WriterTileTuple& tile, uint64_t start, uint64_t end) = 0;
+
+  /**
+   * Copies the metadata to the tile once done processing slabs.
+   *
+   * @param tile Writer tile to copy the metadata to.
+   */
+  virtual void set_tile_metadata(WriterTileTuple& tile) = 0;
+};
+
+template <class T>
+class TileMetadataGenerator : public ITileMetadataGenerator {
+ public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -215,7 +273,7 @@ class TileMetadataGenerator {
    *
    * @param tile Writer tile that contains the data.
    */
-  void process_full_tile(const WriterTileTuple& tile);
+  void process_full_tile(const WriterTileTuple& tile) override;
 
   /**
    * Compute metatada for a slab.
@@ -225,14 +283,14 @@ class TileMetadataGenerator {
    * @param end End cell index.
    */
   void process_cell_slab(
-      const WriterTileTuple& tile, uint64_t start, uint64_t end);
+      const WriterTileTuple& tile, uint64_t start, uint64_t end) override;
 
   /**
    * Copies the metadata to the tile once done processing slabs.
    *
    * @param tile Writer tile to copy the metadata to.
    */
-  void set_tile_metadata(WriterTileTuple& tile);
+  void set_tile_metadata(WriterTileTuple& tile) override;
 
  private:
   /* ********************************* */
@@ -283,7 +341,6 @@ class TileMetadataGenerator {
    * @param start Start cell index.
    * @param end End cell index.
    */
-  template <class T>
   void min_max(const WriterTile& tile, uint64_t start, uint64_t end);
 
   /**
@@ -294,7 +351,6 @@ class TileMetadataGenerator {
    * @param start Start cell index.
    * @param end End cell index.
    */
-  template <class T>
   void min_max_nullable(
       const WriterTile& tile,
       const WriterTile& tile_validity,
@@ -318,7 +374,6 @@ class TileMetadataGenerator {
    * @param start Start index.
    * @param end End index.
    */
-  template <class T>
   void process_cell_range(
       const WriterTileTuple& tile, uint64_t start, uint64_t end);
 

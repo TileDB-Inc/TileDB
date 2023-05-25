@@ -736,10 +736,10 @@ Status WriterBase::compute_tiles_metadata(
       const auto cell_size = array_schema_.cell_size(attr);
       const auto cell_val_num = array_schema_.cell_val_num(attr);
       for (auto& tile : attr_tiles) {
-        TileMetadataGenerator md_generator(
-            type, is_dim, var_size, cell_size, cell_val_num);
-        md_generator.process_full_tile(tile);
-        md_generator.set_tile_metadata(tile);
+        auto md_generator(ITileMetadataGenerator::create_for_type(
+            type, is_dim, var_size, cell_size, cell_val_num));
+        md_generator->process_full_tile(tile);
+        md_generator->set_tile_metadata(tile);
       }
 
       return Status::Ok();
@@ -755,10 +755,10 @@ Status WriterBase::compute_tiles_metadata(
       const auto cell_size = array_schema_.cell_size(attr);
       const auto cell_val_num = array_schema_.cell_val_num(attr);
       auto st = parallel_for(compute_tp, 0, tile_num, [&](uint64_t t) {
-        TileMetadataGenerator md_generator(
-            type, is_dim, var_size, cell_size, cell_val_num);
-        md_generator.process_full_tile(attr_tiles[t]);
-        md_generator.set_tile_metadata(attr_tiles[t]);
+        auto md_generator(ITileMetadataGenerator::create_for_type(
+            type, is_dim, var_size, cell_size, cell_val_num));
+        md_generator->process_full_tile(attr_tiles[t]);
+        md_generator->set_tile_metadata(attr_tiles[t]);
 
         return Status::Ok();
       });
@@ -944,7 +944,7 @@ bool WriterBase::has_min_max_metadata(
   const auto type = array_schema_.type(name);
   const auto is_dim = array_schema_.is_dim(name);
   const auto cell_val_num = array_schema_.cell_val_num(name);
-  return TileMetadataGenerator::has_min_max_metadata(
+  return ITileMetadataGenerator::has_min_max_metadata(
       type, is_dim, var_size, cell_val_num);
 }
 
@@ -952,7 +952,7 @@ bool WriterBase::has_sum_metadata(
     const std::string& name, const bool var_size) {
   const auto type = array_schema_.type(name);
   const auto cell_val_num = array_schema_.cell_val_num(name);
-  return TileMetadataGenerator::has_sum_metadata(type, var_size, cell_val_num);
+  return ITileMetadataGenerator::has_sum_metadata(type, var_size, cell_val_num);
 }
 
 Status WriterBase::init_tiles(

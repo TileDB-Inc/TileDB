@@ -1183,13 +1183,13 @@ Status FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
       const auto type = array_schema_->type(it.first);
       const auto cell_val_num = array_schema_->cell_val_num(it.first);
 
-      if (TileMetadataGenerator::has_min_max_metadata(
+      if (ITileMetadataGenerator::has_min_max_metadata(
               type, is_dim, var_size, cell_val_num)) {
         tile_min_buffer_[i].resize(num_tiles * cell_size, 0);
         tile_max_buffer_[i].resize(num_tiles * cell_size, 0);
       }
 
-      if (TileMetadataGenerator::has_sum_metadata(
+      if (ITileMetadataGenerator::has_sum_metadata(
               type, var_size, cell_val_num)) {
         if (!var_size)
           tile_sums_[i].resize(num_tiles * sizeof(uint64_t), 0);
@@ -1673,7 +1673,7 @@ T FragmentMetadata::get_tile_min_as(
   const auto type = array_schema_->type(name);
   const auto is_dim = array_schema_->is_dim(name);
   const auto cell_val_num = array_schema_->cell_val_num(name);
-  if (!TileMetadataGenerator::has_min_max_metadata(
+  if (!ITileMetadataGenerator::has_min_max_metadata(
           type, is_dim, var_size, cell_val_num)) {
     throw FragmentMetadataStatusException(
         "Trying to access tile min metadata that's not present");
@@ -1704,7 +1704,7 @@ std::string_view FragmentMetadata::get_tile_min_as<std::string_view>(
 
   const auto is_dim = array_schema_->is_dim(name);
   const auto cell_val_num = array_schema_->cell_val_num(name);
-  if (!TileMetadataGenerator::has_min_max_metadata(
+  if (!ITileMetadataGenerator::has_min_max_metadata(
           type, is_dim, var_size, cell_val_num)) {
     throw FragmentMetadataStatusException(
         "Trying to access tile min metadata that's not present");
@@ -1749,7 +1749,7 @@ T FragmentMetadata::get_tile_max_as(
   const auto type = array_schema_->type(name);
   const auto is_dim = array_schema_->is_dim(name);
   const auto cell_val_num = array_schema_->cell_val_num(name);
-  if (!TileMetadataGenerator::has_min_max_metadata(
+  if (!ITileMetadataGenerator::has_min_max_metadata(
           type, is_dim, var_size, cell_val_num)) {
     throw FragmentMetadataStatusException(
         "Trying to access tile max metadata that's not present");
@@ -1780,7 +1780,7 @@ std::string_view FragmentMetadata::get_tile_max_as<std::string_view>(
 
   const auto is_dim = array_schema_->is_dim(name);
   const auto cell_val_num = array_schema_->cell_val_num(name);
-  if (!TileMetadataGenerator::has_min_max_metadata(
+  if (!ITileMetadataGenerator::has_min_max_metadata(
           type, is_dim, var_size, cell_val_num)) {
     throw FragmentMetadataStatusException(
         "Trying to access tile max metadata that's not present");
@@ -1818,7 +1818,7 @@ void* FragmentMetadata::get_tile_sum(
   auto type = array_schema_->type(name);
   auto var_size = array_schema_->var_size(name);
   auto cell_val_num = array_schema_->cell_val_num(name);
-  if (!TileMetadataGenerator::has_sum_metadata(type, var_size, cell_val_num)) {
+  if (!ITileMetadataGenerator::has_sum_metadata(type, var_size, cell_val_num)) {
     throw FragmentMetadataStatusException(
         "Trying to access tile sum metadata that's not present");
   }
@@ -1858,7 +1858,7 @@ std::vector<uint8_t>& FragmentMetadata::get_min(const std::string& name) {
   const auto is_dim = array_schema_->is_dim(name);
   const auto var_size = array_schema_->var_size(name);
   const auto cell_val_num = array_schema_->cell_val_num(name);
-  if (!TileMetadataGenerator::has_min_max_metadata(
+  if (!ITileMetadataGenerator::has_min_max_metadata(
           type, is_dim, var_size, cell_val_num)) {
     throw FragmentMetadataStatusException(
         "Trying to access fragment min metadata that's not present");
@@ -1880,7 +1880,7 @@ std::vector<uint8_t>& FragmentMetadata::get_max(const std::string& name) {
   const auto is_dim = array_schema_->is_dim(name);
   const auto var_size = array_schema_->var_size(name);
   const auto cell_val_num = array_schema_->cell_val_num(name);
-  if (!TileMetadataGenerator::has_min_max_metadata(
+  if (!ITileMetadataGenerator::has_min_max_metadata(
           type, is_dim, var_size, cell_val_num)) {
     throw FragmentMetadataStatusException(
         "Trying to access fragment max metadata that's not present");
@@ -1901,7 +1901,7 @@ void* FragmentMetadata::get_sum(const std::string& name) {
   const auto type = array_schema_->type(name);
   const auto var_size = array_schema_->var_size(name);
   const auto cell_val_num = array_schema_->cell_val_num(name);
-  if (!TileMetadataGenerator::has_sum_metadata(type, var_size, cell_val_num)) {
+  if (!ITileMetadataGenerator::has_sum_metadata(type, var_size, cell_val_num)) {
     throw FragmentMetadataStatusException(
         "Trying to access fragment sum metadata that's not present");
   }
@@ -4383,10 +4383,10 @@ void FragmentMetadata::compute_fragment_min_max_sum(const std::string& name) {
 
   // No metadata for dense coords
   if (!array_schema_->dense() || !is_dim) {
-    const auto has_min_max = TileMetadataGenerator::has_min_max_metadata(
+    const auto has_min_max = ITileMetadataGenerator::has_min_max_metadata(
         type, is_dim, false, cell_val_num);
     const auto has_sum =
-        TileMetadataGenerator::has_sum_metadata(type, false, cell_val_num);
+        ITileMetadataGenerator::has_sum_metadata(type, false, cell_val_num);
 
     if (has_min_max) {
       // Initialize defaults.
@@ -4435,7 +4435,7 @@ void FragmentMetadata::compute_fragment_min_max_sum<char>(
   const auto cell_val_num = array_schema_->cell_val_num(name);
 
   // Return if there's no min/max.
-  const auto has_min_max = TileMetadataGenerator::has_min_max_metadata(
+  const auto has_min_max = ITileMetadataGenerator::has_min_max_metadata(
       type, is_dim, false, cell_val_num);
   if (!has_min_max)
     return;
@@ -4583,7 +4583,7 @@ void FragmentMetadata::min_max_var(const std::string& name) {
   const auto idx = idx_map_[name];
 
   // Return if there's no min/max.
-  const auto has_min_max = TileMetadataGenerator::has_min_max_metadata(
+  const auto has_min_max = ITileMetadataGenerator::has_min_max_metadata(
       type, is_dim, true, cell_val_num);
   if (!has_min_max)
     return;

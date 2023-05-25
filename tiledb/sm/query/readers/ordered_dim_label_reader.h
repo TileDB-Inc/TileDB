@@ -53,6 +53,7 @@ namespace sm {
 class Array;
 
 /** Processes dense read queries. */
+template <class IndexType>
 class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
  public:
   /**
@@ -359,14 +360,6 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
   void label_read();
 
   /**
-   * Performs a read on an ordered label array.
-   *
-   * @tparam The index type.
-   */
-  template <typename IndexType>
-  void label_read();
-
-  /**
    * Compute the tile indexes (min/max) that can potentially contain the label
    * value for each range start/end.
    *
@@ -375,7 +368,6 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
    *
    * @tparam The index type.
    */
-  template <typename IndexType>
   void compute_array_tile_indexes_for_ranges();
 
   /** Load the tile min max values for the index attribute. */
@@ -418,14 +410,12 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
   /**
    * Returns if a particular tile is covered by a later fragment.
    *
-   * @tparam Index type.
    * @param frag_idx Fragment index.
    * @param tile_idx Tile index.
    * @param domain_low Lowest possible value for the index domain.
    * @param tile_extent Tile extent.
    * @return 'true' if the tile is covered by a later fragment.
    */
-  template <typename IndexType>
   bool tile_overwritten(
       unsigned frag_idx,
       uint64_t tile_idx,
@@ -435,10 +425,8 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
   /**
    * Creates the result tiles required to do the range to index search.
    *
-   * @tparam Index type.
    * @return Max range result tiles were processed for.
    */
-  template <typename IndexType>
   uint64_t create_result_tiles();
 
   /**
@@ -457,34 +445,21 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
   /**
    * Get the fixed label value at a specific index.
    *
-   * @tparam Index type.
    * @tparam Label type.
    * @param index Index value.
    * @param domain_low Lowest possible value for the index domain.
    * @param tile_extent Tile extent.
    * @return Label value.
    */
-  template <typename IndexType, typename LabelType>
+  template <typename LabelType>
   LabelType get_value_at(
       const IndexType& index,
       const IndexType& domain_low,
       const IndexType& tile_extent);
 
   /**
-   * Get a range value.
-   *
-   * @tparam Label type.
-   * @param r Range to get the value for.
-   * @param range_index Range index (start/end).
-   * @return Label value.
-   */
-  template <typename LabelType>
-  LabelType get_range_as(uint64_t r, uint8_t range_index);
-
-  /**
    * Search for a label defined in the specified range.
    *
-   * @tparam Index type.
    * @tparam Label type.
    * @tparam Op type (std::greater for increasing and std::less for
    * decreasing).
@@ -494,7 +469,7 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
    * @param tile_extent Tile extent.
    * @return Index for the searched label.
    */
-  template <typename IndexType, typename LabelType, typename Op>
+  template <typename LabelType, typename Op>
   IndexType search_for_range(
       uint64_t r,
       uint8_t range_index,
@@ -504,22 +479,19 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
   /**
    * Compute the indexes value for a fixed label range.
    *
-   * @tparam Index type.
    * @tparam Label type.
    * @param dest Destination inside of the user buffers.
    * @param r Range to compute indexes for.
    */
-  template <typename IndexType, typename LabelType>
+  template <typename LabelType>
   void compute_and_copy_range_indexes(IndexType* dest, uint64_t r);
 
   /**
    * Compute and copy the range indexes for a specific range.
    *
-   * @tparam Index type.
    * @param buffer_offset Current offset into the user buffer.
    * @param r Range index to compute/copy.
    */
-  template <typename IndexType>
   void compute_and_copy_range_indexes(uint64_t buffer_offset, uint64_t r);
 };  // namespace sm
 
