@@ -147,18 +147,6 @@ jobs:
           #directory $env:BUILD_BUILDDIRECTORY was created in step 'tiledb env prep'
           cd $env:BUILD_BUILDDIRECTORY
 
-          $VSCategory = "Enterprise" # alternate 'Community'
-          if ($env:TILEDB_GA_IMAGE_NAME -eq "windows-2019") {
-            if (!(Test-Path "C:\Program Files (x86)\Microsoft Visual Studio\2019\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin")) {
-              Write-Host "ERROR***: Missing C:\Program Files (x86)\Microsoft Visual Studio\2019\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
-              exit $LastExitCode
-            }
-            $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
-          } else {
-            Write-Host "Unknown image name: '$($env:TILEDB_GA_IMAGE_NAME)'"
-            exit $LastExitCode
-          }
-
           # allow double-checking path
           cmd /c "echo $PATH"
 
