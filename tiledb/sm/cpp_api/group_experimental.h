@@ -170,7 +170,7 @@ class Group {
   void close(bool should_throw = true) {
     auto& ctx = ctx_.get();
     auto rc = tiledb_group_close(ctx.ptr().get(), group_.get());
-    if (rc != TILEDB_OK and should_throw) {
+    if (rc != TILEDB_OK && should_throw) {
       ctx.handle_error(rc);
     } else if (rc != TILEDB_OK) {
       auto msg = ctx.get_last_error_message();
