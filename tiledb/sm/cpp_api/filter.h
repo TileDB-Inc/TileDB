@@ -345,6 +345,10 @@ class Filter {
         if (!std::is_same<uint8_t, T>::value)
           throw std::invalid_argument("Option value must be uint8_t.");
         break;
+      case TILEDB_TYPED_VIEW_OUTPUT_DATATYPE:
+        if (!std::is_same<tiledb_datatype_t, T>::value)
+          throw std::invalid_argument("Option value must be tiledb_datatype_t.");
+        break;
       default:
         throw std::invalid_argument("Invalid option type");
     }
