@@ -65,7 +65,7 @@ void TypedViewFilter::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
 
-  fprintf(out, "TypedView");
+  fprintf(out, "TypedView, OUTPUT_DATATYPE=%s", datatype_str(output_datatype_.value()).c_str());
 }
 
 Datatype TypedViewFilter::output_datatype() const {
