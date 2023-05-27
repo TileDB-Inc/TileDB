@@ -71,9 +71,12 @@ class FilterPipeline {
    *
    * @param max_chunk_size.
    * @param filters The vector of filters.
+   * @param use_tile_chunking_.
    */
   FilterPipeline(
-      uint32_t max_chunk_size, const std::vector<shared_ptr<Filter>>& filters);
+      uint32_t max_chunk_size,
+      const std::vector<shared_ptr<Filter>>& filters,
+      bool use_tile_chunking_);
 
   /** Destructor. */
   ~FilterPipeline() = default;
@@ -296,8 +299,20 @@ class FilterPipeline {
    * @param type Datatype of the input attribute/dimension
    * @return True if chunking needs to be used, false if not
    */
-  bool use_tile_chunking(
-      const bool is_var, const uint32_t version, const Datatype type) const;
+  bool compute_use_tile_chunking(
+      const bool is_var, const uint32_t version, const Datatype type);
+
+  /**
+   *
+   * @return use_tile_chunking
+   */
+  bool use_tile_chunking() const;
+
+  /**
+   *
+   * @param use_tile_chunking Should pipeline use chunking inside the tile?
+   */
+  void set_use_tile_chunking(const bool use_tile_chunking);
 
  private:
   /** A pair of FilterBuffers. */
@@ -308,6 +323,9 @@ class FilterPipeline {
 
   /** The max chunk size allowed within tiles. */
   uint32_t max_chunk_size_;
+
+  /** Shoudl chunking inside a tile be used. Defaults to true. */
+  bool use_tile_chunking_;
 
   /**
    * Get the chunk offsets for a var sized tile so that integral cells are

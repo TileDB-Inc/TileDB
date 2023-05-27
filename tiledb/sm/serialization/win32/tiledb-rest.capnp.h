@@ -445,7 +445,7 @@ struct FilterPipeline {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(bc4583f733eac4f5, 0, 1)
+    CAPNP_DECLARE_STRUCT_HEADER(bc4583f733eac4f5, 1, 1)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -4410,6 +4410,10 @@ class FilterPipeline::Reader {
       ::capnp::Kind::STRUCT>::Reader
   getFilters() const;
 
+  inline ::uint32_t getMaxChunkSize() const;
+
+  inline bool getUseTileChunking() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -4468,6 +4472,12 @@ class FilterPipeline::Builder {
       ::tiledb::sm::serialization::capnp::Filter,
       ::capnp::Kind::STRUCT>>
   disownFilters();
+
+  inline ::uint32_t getMaxChunkSize();
+  inline void setMaxChunkSize(::uint32_t value);
+
+  inline bool getUseTileChunking();
+  inline void setUseTileChunking(bool value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -17864,6 +17874,33 @@ FilterPipeline::Builder::disownFilters() {
                                           .getPointerField(
                                               ::capnp::bounded<0>() *
                                               ::capnp::POINTERS));
+}
+
+inline ::uint32_t FilterPipeline::Reader::getMaxChunkSize() const {
+  return _reader.getDataField<::uint32_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint32_t FilterPipeline::Builder::getMaxChunkSize() {
+  return _builder.getDataField<::uint32_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void FilterPipeline::Builder::setMaxChunkSize(::uint32_t value) {
+  _builder.setDataField<::uint32_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool FilterPipeline::Reader::getUseTileChunking() const {
+  return _reader.getDataField<bool>(::capnp::bounded<32>() * ::capnp::ELEMENTS);
+}
+
+inline bool FilterPipeline::Builder::getUseTileChunking() {
+  return _builder.getDataField<bool>(
+      ::capnp::bounded<32>() * ::capnp::ELEMENTS);
+}
+inline void FilterPipeline::Builder::setUseTileChunking(bool value) {
+  _builder.setDataField<bool>(
+      ::capnp::bounded<32>() * ::capnp::ELEMENTS, value);
 }
 
 template <typename Key, typename Value>

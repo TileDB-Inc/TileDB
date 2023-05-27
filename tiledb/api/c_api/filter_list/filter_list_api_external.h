@@ -192,6 +192,49 @@ TILEDB_EXPORT capi_return_t tiledb_filter_list_get_max_chunk_size(
     const tiledb_filter_list_t* filter_list,
     uint32_t* max_chunk_size) TILEDB_NOEXCEPT;
 
+/**
+ *  Sets the if tile chunking is enabled for a filter list.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint8_t use_tile_chunking;
+ * tiledb_filter_list_get_use_tile_chunking(ctx, filter_list,
+ * &use_tile_chunking);
+ * @endcode
+ *
+ * @param ctx  The TileDB context
+ * @param filter_list The target filter list
+ * @param use_tile_chunking Enable tile chunking
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_filter_list_set_use_tile_chunking(
+    tiledb_ctx_t* ctx,
+    tiledb_filter_list_t* filter_list,
+    uint8_t use_tile_chunking) TILEDB_NOEXCEPT;
+
+/**
+ *
+ * Gets the if tile chunking is enabled for a filter list.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint8_t use_tile_chunking;
+ * tiledb_filter_list_get_use_tile_chunking(ctx, filter_list,
+ * &use_tile_chunking);
+ * @endcode
+ *
+ * @param ctx  The TileDB context
+ * @param filter_list The target filter list
+ * @param use_tile_chunking Enable tile chunking
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_filter_list_get_use_tile_chunking(
+    tiledb_ctx_t* ctx,
+    const tiledb_filter_list_t* filter_list,
+    uint8_t* use_tile_chunking) TILEDB_NOEXCEPT;
+
 #ifdef __cplusplus
 }
 #endif

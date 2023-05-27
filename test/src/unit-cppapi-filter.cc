@@ -128,6 +128,14 @@ TEST_CASE("C++ API: Filter lists", "[cppapi][filter]") {
 }
 
 TEST_CASE("C++ API: Filter lists on array", "[cppapi][filter]") {
+  bool use_tile_chunking = true;
+  SECTION("no tile chunking") {
+    use_tile_chunking = false;
+  }
+  SECTION("tile chunking") {
+    use_tile_chunking = true;
+  }
+
   using namespace tiledb;
   Context ctx;
   VFS vfs(ctx);
@@ -143,11 +151,13 @@ TEST_CASE("C++ API: Filter lists on array", "[cppapi][filter]") {
       .add_filter({ctx, TILEDB_FILTER_BZIP2})
       .add_filter({ctx, TILEDB_FILTER_CHECKSUM_MD5})
       .add_filter({ctx, TILEDB_FILTER_CHECKSUM_SHA256});
+  a1_filters.set_use_tile_chunking(use_tile_chunking);
 
   FilterList a2_filters(ctx);
   a2_filters.add_filter({ctx, TILEDB_FILTER_ZSTD})
       .add_filter({ctx, TILEDB_FILTER_CHECKSUM_MD5})
       .add_filter({ctx, TILEDB_FILTER_CHECKSUM_SHA256});
+  a2_filters.set_use_tile_chunking(use_tile_chunking);
 
   auto a1 = Attribute::create<int>(ctx, "a1");
   auto a2 = Attribute::create<std::string>(ctx, "a2");

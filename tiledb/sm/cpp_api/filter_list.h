@@ -189,6 +189,19 @@ class FilterList {
   }
 
   /**
+   * Use tile chunking for the filter list.
+   *
+   * @return Use tile chunking
+   */
+  bool use_tile_chunking() const {
+    auto& ctx = ctx_.get();
+    uint8_t use_tile_chunking;
+    ctx.handle_error(tiledb_filter_list_get_use_tile_chunking(
+        ctx.ptr().get(), filter_list_.get(), &use_tile_chunking));
+    return use_tile_chunking;
+  }
+
+  /**
    * Sets the maximum tile chunk size for the filter list.
    *
    * @param max_chunk_size Maximum tile chunk size to set
@@ -198,6 +211,19 @@ class FilterList {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_filter_list_set_max_chunk_size(
         ctx.ptr().get(), filter_list_.get(), max_chunk_size));
+    return *this;
+  }
+
+  /**
+   * Sets if tile chunking should be used for the filter list.
+   *
+   * @param use_tile_chunking Use tile chunking
+   * @return Reference to this FilterList
+   */
+  FilterList& set_use_tile_chunking(bool use_tile_chunking) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_filter_list_set_use_tile_chunking(
+        ctx.ptr().get(), filter_list_.get(), use_tile_chunking));
     return *this;
   }
 

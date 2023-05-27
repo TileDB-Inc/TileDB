@@ -104,6 +104,21 @@ capi_return_t tiledb_filter_list_get_max_chunk_size(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_filter_list_set_use_tile_chunking(
+    tiledb_filter_list_t* filter_list, uint8_t use_tile_chunking) {
+  ensure_filter_list_is_valid(filter_list);
+  filter_list->pipeline().set_use_tile_chunking(use_tile_chunking);
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_filter_list_get_use_tile_chunking(
+    const tiledb_filter_list_t* filter_list, uint8_t* use_tile_chunking) {
+  ensure_filter_list_is_valid(filter_list);
+  ensure_output_pointer_is_valid(use_tile_chunking);
+  *use_tile_chunking = filter_list->pipeline().use_tile_chunking();
+  return TILEDB_OK;
+}
+
 }  // namespace tiledb::api
 
 using tiledb::api::api_entry_context;
@@ -159,4 +174,24 @@ capi_return_t tiledb_filter_list_get_max_chunk_size(
     uint32_t* max_chunk_size) noexcept {
   return api_entry_context<tiledb::api::tiledb_filter_list_get_max_chunk_size>(
       ctx, filter_list, max_chunk_size);
+}
+
+capi_return_t tiledb_filter_list_set_use_tile_chunking(
+    tiledb_ctx_t* ctx,
+    tiledb_filter_list_t* filter_list,
+    uint8_t use_tile_chunking) noexcept {
+  ensure_filter_list_is_valid(filter_list);
+  return api_entry_context<
+      tiledb::api::tiledb_filter_list_set_use_tile_chunking>(
+      ctx, filter_list, use_tile_chunking);
+}
+
+capi_return_t tiledb_filter_list_get_use_tile_chunking(
+    tiledb_ctx_t* ctx,
+    const tiledb_filter_list_t* filter_list,
+    uint8_t* use_tile_chunking) noexcept {
+  ensure_filter_list_is_valid(filter_list);
+  return api_entry_context<
+      tiledb::api::tiledb_filter_list_get_use_tile_chunking>(
+      ctx, filter_list, use_tile_chunking);
 }

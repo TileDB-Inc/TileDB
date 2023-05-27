@@ -52,13 +52,17 @@ namespace tiledb {
 namespace sm {
 
 FilterPipeline::FilterPipeline()
-    : max_chunk_size_(constants::max_tile_chunk_size) {
+    : max_chunk_size_(constants::max_tile_chunk_size)
+    , use_tile_chunking_(true) {
 }
 
 FilterPipeline::FilterPipeline(
-    uint32_t max_chunk_size, const std::vector<shared_ptr<Filter>>& filters)
+    uint32_t max_chunk_size,
+    const std::vector<shared_ptr<Filter>>& filters,
+    bool use_tile_chunking_)
     : filters_(filters)
-    , max_chunk_size_(max_chunk_size) {
+    , max_chunk_size_(max_chunk_size)
+    , use_tile_chunking_(use_tile_chunking_) {
 }
 
 FilterPipeline::FilterPipeline(const FilterPipeline& other) {
@@ -66,6 +70,7 @@ FilterPipeline::FilterPipeline(const FilterPipeline& other) {
     add_filter(*filter);
   }
   max_chunk_size_ = other.max_chunk_size_;
+  use_tile_chunking_ = other.use_tile_chunking_;
 }
 
 FilterPipeline::FilterPipeline(FilterPipeline&& other) {
@@ -481,6 +486,7 @@ Status FilterPipeline::run_reverse(
 // filter1...
 void FilterPipeline::serialize(Serializer& serializer) const {
   serializer.write<uint32_t>(max_chunk_size_);
+  serializer.write<uint8_t>(use_tile_chunking_);
   auto num_filters = static_cast<uint32_t>(filters_.size());
   serializer.write<uint32_t>(num_filters);
 
@@ -501,6 +507,13 @@ void FilterPipeline::serialize(Serializer& serializer) const {
 FilterPipeline FilterPipeline::deserialize(
     Deserializer& deserializer, const uint32_t version) {
   auto max_chunk_size = deserializer.read<uint32_t>();
+
+  // TODO: Split this into separate deserialize classes like groups
+  // Default to true for pre-format version 19
+  bool use_tile_chunking = true;
+  if (constants::is_version_greater_than(version, 18)) {
+    use_tile_chunking = deserializer.read<uint8_t>();
+  }
   auto num_filters = deserializer.read<uint32_t>();
   std::vector<shared_ptr<Filter>> filters;
 
@@ -509,7 +522,7 @@ FilterPipeline FilterPipeline::deserialize(
     filters.push_back(std::move(filter));
   }
 
-  return FilterPipeline(max_chunk_size, filters);
+  return FilterPipeline(max_chunk_size, filters, use_tile_chunking);
 }
 
 void FilterPipeline::dump(FILE* out) const {
@@ -545,6 +558,7 @@ bool FilterPipeline::empty() const {
 void FilterPipeline::swap(FilterPipeline& other) {
   filters_.swap(other.filters_);
   std::swap(max_chunk_size_, other.max_chunk_size_);
+  std::swap(use_tile_chunking_, other.use_tile_chunking_);
 }
 
 Status FilterPipeline::append_encryption_filter(
@@ -577,18 +591,27 @@ bool FilterPipeline::skip_offsets_filtering(
   return false;
 }
 
-bool FilterPipeline::use_tile_chunking(
-    const bool is_var, const uint32_t version, const Datatype type) const {
+bool FilterPipeline::use_tile_chunking() const {
+  return use_tile_chunking_;
+}
+
+bool FilterPipeline::compute_use_tile_chunking(
+    const bool is_var, const uint32_t version, const Datatype type) {
+  bool chunking = use_tile_chunking_;
   if (is_var &&
       (type == Datatype::STRING_ASCII || type == Datatype::STRING_UTF8)) {
     if (version >= 12 && has_filter(FilterType::FILTER_RLE)) {
-      return false;
+      chunking = false;
     } else if (version >= 13 && has_filter(FilterType::FILTER_DICTIONARY)) {
-      return false;
+      chunking = false;
     }
   }
 
-  return true;
+  return chunking;
+}
+
+void FilterPipeline::set_use_tile_chunking(const bool use_tile_chunking) {
+  use_tile_chunking_ = use_tile_chunking;
 }
 
 }  // namespace sm

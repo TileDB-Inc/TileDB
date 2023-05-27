@@ -75,32 +75,33 @@ TEST_CASE(
   Compressor compressor3 = Compressor::GZIP;
   FilterType filtertype3 = FilterType::FILTER_GZIP;
 
-  char serialized_buffer[38];
+  char serialized_buffer[39];
   char* p = &serialized_buffer[0];
 
   filters_buffer_offset<uint32_t, 0>(p) = max_chunk_size;
+  filters_buffer_offset<uint32_t, 4>(p) = true;
   // Set number of filters
-  filters_buffer_offset<uint32_t, 4>(p) = num_filters;
+  filters_buffer_offset<uint32_t, 5>(p) = num_filters;
 
   // Set filter1
-  filters_buffer_offset<uint8_t, 8>(p) = static_cast<uint8_t>(filtertype1);
-  filters_buffer_offset<uint32_t, 9>(p) =
+  filters_buffer_offset<uint8_t, 9>(p) = static_cast<uint8_t>(filtertype1);
+  filters_buffer_offset<uint32_t, 10>(p) =
       sizeof(uint8_t) + sizeof(int32_t);  // metadata_length
-  filters_buffer_offset<uint8_t, 13>(p) = static_cast<uint8_t>(compressor1);
-  filters_buffer_offset<int32_t, 14>(p) = compressor_level1;
+  filters_buffer_offset<uint8_t, 14>(p) = static_cast<uint8_t>(compressor1);
+  filters_buffer_offset<int32_t, 15>(p) = compressor_level1;
 
   // Set filter2
-  filters_buffer_offset<uint8_t, 18>(p) = static_cast<uint8_t>(filtertype2);
-  filters_buffer_offset<uint32_t, 19>(p) =
+  filters_buffer_offset<uint8_t, 19>(p) = static_cast<uint8_t>(filtertype2);
+  filters_buffer_offset<uint32_t, 20>(p) =
       sizeof(uint8_t) + sizeof(int32_t);  // metadata_length
-  filters_buffer_offset<uint8_t, 23>(p) = static_cast<uint8_t>(compressor2);
+  filters_buffer_offset<uint8_t, 24>(p) = static_cast<uint8_t>(compressor2);
 
   // Set filter3
-  filters_buffer_offset<uint8_t, 28>(p) = static_cast<uint8_t>(filtertype3);
-  filters_buffer_offset<uint32_t, 29>(p) =
+  filters_buffer_offset<uint8_t, 29>(p) = static_cast<uint8_t>(filtertype3);
+  filters_buffer_offset<uint32_t, 30>(p) =
       sizeof(uint8_t) + sizeof(int32_t);  // metadata_length
-  filters_buffer_offset<uint8_t, 33>(p) = static_cast<uint8_t>(compressor3);
-  filters_buffer_offset<int32_t, 34>(p) = compressor_level3;
+  filters_buffer_offset<uint8_t, 34>(p) = static_cast<uint8_t>(compressor3);
+  filters_buffer_offset<int32_t, 35>(p) = compressor_level3;
 
   Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
   auto filters{
@@ -169,24 +170,81 @@ TEST_CASE(
 
   // Do not chunk the Tile for filtering if RLE or Dicionary is used for
   // var-sized strings
-  CHECK_FALSE(
-      fp_with.use_tile_chunking(is_var_sized, version, Datatype::STRING_ASCII));
+  CHECK_FALSE(fp_with.compute_use_tile_chunking(
+      is_var_sized, version, Datatype::STRING_ASCII));
 
   // Chunk in any other case
-  CHECK(fp_without.use_tile_chunking(
+  CHECK(fp_without.compute_use_tile_chunking(
       is_var_sized, version, Datatype::STRING_ASCII));
-  CHECK(fp_without.use_tile_chunking(
+  CHECK(fp_without.compute_use_tile_chunking(
       is_var_sized, version, Datatype::STRING_ASCII));
-  CHECK(fp_with.use_tile_chunking(
+  CHECK(fp_with.compute_use_tile_chunking(
       is_var_sized, version - 1, Datatype::STRING_ASCII));
-  CHECK(fp_with.use_tile_chunking(
+  CHECK(fp_with.compute_use_tile_chunking(
       !is_var_sized, version, Datatype::STRING_ASCII));
-  CHECK(fp_with.use_tile_chunking(is_var_sized, version, Datatype::TIME_MS));
+  CHECK(fp_with.compute_use_tile_chunking(
+      is_var_sized, version, Datatype::TIME_MS));
+  CHECK(fp_with.compute_use_tile_chunking(
+      is_var_sized, version, Datatype::DATETIME_AS));
   CHECK(
-      fp_with.use_tile_chunking(is_var_sized, version, Datatype::DATETIME_AS));
-  CHECK(fp_with.use_tile_chunking(is_var_sized, version, Datatype::BLOB));
-  CHECK(fp_with.use_tile_chunking(is_var_sized, version, Datatype::INT32));
-  CHECK(fp_with.use_tile_chunking(is_var_sized, version, Datatype::FLOAT64));
+      fp_with.compute_use_tile_chunking(is_var_sized, version, Datatype::BLOB));
+  CHECK(fp_with.compute_use_tile_chunking(
+      is_var_sized, version, Datatype::INT32));
+  CHECK(fp_with.compute_use_tile_chunking(
+      is_var_sized, version, Datatype::FLOAT64));
+}
+
+TEST_CASE(
+    "FilterPipeline: Test if user set no tile chunking", "[filter-pipeline]") {
+  // Parametrize test to be check for both RLE and Dictionary compression
+  using record = std::tuple<tiledb::sm::Compressor, uint32_t>;
+  auto filter = GENERATE(
+      record{Compressor::RLE, 12}, record{Compressor::DICTIONARY_ENCODING, 13});
+  auto f = std::get<0>(filter);
+  auto version = std::get<1>(filter);
+
+  // pipeline that contains an RLE or Dictionary compressor
+  FilterPipeline fp_with;
+  fp_with.add_filter(CompressionFilter(Compressor::ZSTD, 2));
+  fp_with.add_filter(BitWidthReductionFilter());
+  fp_with.add_filter(CompressionFilter(f, 1));
+  fp_with.set_use_tile_chunking(false);
+
+  // pipeline that doesn't contain an RLE or Dictionary compressor
+  FilterPipeline fp_without;
+  fp_without.add_filter(CompressionFilter(Compressor::ZSTD, 2));
+  fp_without.add_filter(BitWidthReductionFilter());
+  fp_without.set_use_tile_chunking(false);
+
+  bool is_var_sized = true;
+
+  // Do not chunk the Tile for filtering if RLE or Dicionary is used for
+  // var-sized strings
+  CHECK_FALSE(fp_with.compute_use_tile_chunking(
+      is_var_sized, version, Datatype::STRING_ASCII));
+
+  // There should not be any chunking in any other case since user set to false
+  CHECK_FALSE(fp_without.compute_use_tile_chunking(
+      is_var_sized, version, Datatype::STRING_ASCII));
+  CHECK_FALSE(fp_without.compute_use_tile_chunking(
+      is_var_sized, version, Datatype::STRING_ASCII));
+  CHECK_FALSE(fp_without.compute_use_tile_chunking(
+      is_var_sized, version - 1, Datatype::STRING_ASCII));
+  CHECK_FALSE(fp_without.compute_use_tile_chunking(
+      !is_var_sized, version, Datatype::STRING_ASCII));
+  CHECK_FALSE(fp_without.compute_use_tile_chunking(
+      is_var_sized, version, Datatype::TIME_MS));
+  CHECK_FALSE(fp_without.compute_use_tile_chunking(
+      is_var_sized, version, Datatype::DATETIME_AS));
+  CHECK_FALSE(fp_without.compute_use_tile_chunking(
+      is_var_sized, version, Datatype::BLOB));
+  CHECK_FALSE(fp_without.compute_use_tile_chunking(
+      is_var_sized, version, Datatype::INT32));
+  CHECK_FALSE(fp_without.compute_use_tile_chunking(
+      is_var_sized, version, Datatype::FLOAT64));
+
+  // Also validate retrieval
+  CHECK_FALSE(fp_without.use_tile_chunking());
 }
 
 TEST_CASE(

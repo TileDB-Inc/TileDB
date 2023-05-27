@@ -722,6 +722,21 @@ extern const uint64_t s3_min_multipart_part_size;
  */
 extern const std::string s3_multipart_buffering_dirname;
 
+/**
+ *
+ * Check if the current version is greater than. Handles experimental versions.
+ *
+ * @param a format version to check
+ * @param b format version to compare against
+ * @return true if a > b
+ */
+constexpr bool is_version_greater_than(format_version_t a, format_version_t b) {
+  if (is_experimental_build) {
+    return (0b10000000000000000000000000000000 | a) > b;
+  }
+  return a > b;
+};
+
 }  // namespace constants
 
 }  // namespace sm

@@ -320,6 +320,12 @@ struct Filter {
 
 struct FilterPipeline {
   filters @0 :List(Filter);
+
+  maxChunkSize @1 :UInt32 = 65536;
+  # Max chunk size, defaults to 64kib
+
+  useTileChunking @2 :Bool = true;
+  # Use tile chunking
 }
 
 struct Map(Key, Value) {

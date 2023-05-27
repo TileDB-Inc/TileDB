@@ -166,6 +166,10 @@ Status filter_pipeline_to_capnp(
     return LOG_STATUS(Status_SerializationError(
         "Error serializing filter pipeline; filter pipeline is null."));
 
+  filter_pipeline_builder->setMaxChunkSize(filter_pipeline->max_chunk_size());
+  filter_pipeline_builder->setUseTileChunking(
+      filter_pipeline->use_tile_chunking());
+
   const unsigned num_filters = filter_pipeline->size();
   if (num_filters == 0)
     return Status::Ok();
@@ -309,7 +313,10 @@ tuple<Status, optional<shared_ptr<FilterPipeline>>> filter_pipeline_from_capnp(
   return {
       Status::Ok(),
       make_shared<FilterPipeline>(
-          HERE(), constants::max_tile_chunk_size, filter_list)};
+          HERE(),
+          filter_pipeline_reader.getMaxChunkSize(),
+          filter_list,
+          filter_pipeline_reader.getUseTileChunking())};
 }
 
 void attribute_to_capnp(

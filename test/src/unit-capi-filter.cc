@@ -98,3 +98,76 @@ TEST_CASE("C API: Test filter list on attribute", "[capi][filter-list]") {
   tiledb_filter_list_free(&filter_list);
   tiledb_ctx_free(&ctx);
 }
+
+TEST_CASE("C API: Test tile filter list on attribute", "[capi][filter-list]") {
+  tiledb_ctx_t* ctx;
+  int rc = tiledb_ctx_alloc(nullptr, &ctx);
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
+
+  tiledb_filter_t* filter;
+  rc = tiledb_filter_alloc(ctx, TILEDB_FILTER_BZIP2, &filter);
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
+
+  int level = 5;
+  rc = tiledb_filter_set_option(ctx, filter, TILEDB_COMPRESSION_LEVEL, &level);
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
+
+  tiledb_filter_list_t* filter_list;
+  rc = tiledb_filter_list_alloc(ctx, &filter_list);
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  rc = tiledb_filter_list_add_filter(ctx, filter_list, filter);
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  rc = tiledb_filter_list_set_max_chunk_size(ctx, filter_list, 1024);
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  rc = tiledb_filter_list_set_use_tile_chunking(ctx, filter_list, false);
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
+
+  tiledb_attribute_t* attr;
+  rc = tiledb_attribute_alloc(ctx, "a", TILEDB_INT32, &attr);
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
+
+  rc = tiledb_attribute_set_filter_list(ctx, attr, filter_list);
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
+
+  tiledb_filter_list_t* filter_list_out;
+  rc = tiledb_attribute_get_filter_list(ctx, attr, &filter_list_out);
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
+
+  unsigned nfilters;
+  rc = tiledb_filter_list_get_nfilters(ctx, filter_list_out, &nfilters);
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  REQUIRE(nfilters == 1);
+
+  tiledb_filter_t* filter_out;
+  rc = tiledb_filter_list_get_filter_from_index(
+      ctx, filter_list_out, 0, &filter_out);
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  REQUIRE(filter_out != nullptr);
+
+  level = 0;
+  rc = tiledb_filter_get_option(
+      ctx, filter_out, TILEDB_COMPRESSION_LEVEL, &level);
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  REQUIRE(level == 5);
+
+  uint32_t max_chunk_size;
+  rc = tiledb_filter_list_get_max_chunk_size(
+      ctx, filter_list_out, &max_chunk_size);
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
+  REQUIRE(max_chunk_size == 1024);
+
+  uint8_t use_tile_chunking;
+  rc = tiledb_filter_list_get_use_tile_chunking(
+      ctx, filter_list_out, &use_tile_chunking);
+  REQUIRE(tiledb_status(rc) == use_tile_chunking);
+  REQUIRE(use_tile_chunking == false);
+
+  tiledb_filter_free(&filter_out);
+  tiledb_filter_list_free(&filter_list_out);
+
+  // Clean up
+  tiledb_attribute_free(&attr);
+  tiledb_filter_free(&filter);
+  tiledb_filter_list_free(&filter_list);
+  tiledb_ctx_free(&ctx);
+}
