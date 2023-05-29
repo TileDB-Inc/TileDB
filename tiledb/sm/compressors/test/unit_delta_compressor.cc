@@ -33,10 +33,10 @@
 #include <test/support/tdb_catch.h>
 
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/compressors/delta_compressor.h"
 #include "tiledb/sm/enums/datatype.h"
 
-#include "../delta_compressor.h"
-
+#include <cstring>
 #include <iterator>
 
 using namespace tiledb::common;
@@ -85,7 +85,7 @@ TEST_CASE("Test delta compression of a vector", "[decompression][delta]") {
   size_t uncompressed_bytes =
       compressed_data.size() * sizeof(decltype(compressed_data)::value_type);
 
-  auto uncompressed_rawbuf = new Buffer();
+  auto uncompressed_rawbuf = tdb_new(Buffer);
   auto st = uncompressed_rawbuf->realloc(uncompressed_bytes);
   REQUIRE(st.ok());
 
@@ -110,4 +110,6 @@ TEST_CASE("Test delta compression of a vector", "[decompression][delta]") {
 
   std::vector<int64_t> expected{0, 1, 1, 15, 3, 0, 2, 7, 1};
   CHECK(uncompressed == expected);
+
+  tdb_delete(uncompressed_rawbuf);
 }
