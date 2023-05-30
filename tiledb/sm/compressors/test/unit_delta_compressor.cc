@@ -56,11 +56,11 @@ TEST_CASE("Test delta compression of a vector", "[compression][delta]") {
 
   CHECK(st.ok());
 
-  std::vector<int64_t> compressed(uncompressed.size());
+  std::vector<int64_t> compressed(expected.size());
   compressed.assign(
-      reinterpret_cast<int64_t*>((char*)compressed_buff.data() + 9),
+      reinterpret_cast<int64_t*>((char*)compressed_buff.data() + 8),
       reinterpret_cast<int64_t*>(compressed_buff.data()) +
-          compressed_buff.size() / sizeof(decltype(compressed)::value_type));
+          (compressed_buff.size() / sizeof(decltype(compressed)::value_type) - 1));
   CHECK(compressed == expected);
 }
 
@@ -68,14 +68,13 @@ TEST_CASE("Test delta compression of a vector", "[decompression][delta]") {
   // NOTE: first two values are [bitsize, num_values]
   std::vector<int64_t> compressed_data{0, 1, 0, 14, -12, -3, 2, 5, -6};
   std::vector<std::byte> compressed_raw(
-      9 +
+      8 +
       compressed_data.size() * sizeof(decltype(compressed_data)::value_type));
 
-  ((uint8_t*)compressed_raw.data())[0] = (uint8_t)8;
-  ((int64_t*)((char*)compressed_raw.data() + 1))[0] = compressed_data.size();
+  ((uint64_t*)(compressed_raw.data()))[0] = compressed_data.size();
 
   std::memcpy(
-      (std::byte*)compressed_raw.data() + 9,
+      (std::byte*)compressed_raw.data() + 8,
       compressed_data.data(),
       compressed_data.size() * sizeof(decltype(compressed_data)::value_type));
 
