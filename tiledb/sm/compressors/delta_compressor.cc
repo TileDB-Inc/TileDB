@@ -211,10 +211,10 @@ Status Delta::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
   RETURN_NOT_OK(output_buffer->write(&num, sizeof(uint64_t)));
 
   // Trivial case - no compression
-  // if (bitsize >= sizeof(T) * 8 - 1) {
-  //  RETURN_NOT_OK(output_buffer->write(in, input_buffer->size()));
-  //  return Status::Ok();
-  //}
+   if (bitsize >= sizeof(T) * 8 - 1) {
+    RETURN_NOT_OK(output_buffer->write(in, input_buffer->size()));
+    return Status::Ok();
+  }
 
   // Write first value
   RETURN_NOT_OK(output_buffer->write(&in[0], value_size));
@@ -239,12 +239,12 @@ Status Delta::decompress(
   RETURN_NOT_OK(input_buffer->read(&bitsize_c, sizeof(uint8_t)));
   RETURN_NOT_OK(input_buffer->read(&num, sizeof(uint64_t)));
 
-  // auto in = (T*)input_buffer->data();
+//   auto in = (T*)input_buffer->data();
 
   // Practically speaking, this would never overflow, but it's weird to downcast
   // here..
-  // auto bitsize = static_cast<unsigned int>(bitsize_c);
-  // auto out = (T*)output_buffer->cur_data();
+   auto bitsize = static_cast<unsigned int>(bitsize_c);
+   auto out = (T*)output_buffer->cur_data();
 
   // Read first value
   T last_value;
@@ -263,6 +263,28 @@ Status Delta::decompress(
   }
 
   return Status::Ok();
+}
+
+template <class T>
+tuple<Status, std::optional<unsigned int>> Delta::compute_bitsize(T* in, uint64_t num) {
+  // Find maximum absolute double delta
+  unsigned bitsize = 0;
+  int64_t max = 0;
+  if (num <= 2) {
+    bitsize = 0;
+    return {Status::Ok(), bitsize};
+  }
+  char delta_out_of_bounds = 0;
+  for (uint64_t i = 1; i < num; ++i) {
+    int64_t cur_delta = in[i] - in[i - 1];
+    max = std::max(std::abs(cur_delta), max);
+  }
+  // Calculate bitsize of the maximum absolute delta
+  do {
+    ++(bitsize);
+    max >>= 1;
+  } while (max);
+  return {Status::Ok(), bitsize};
 }
 
 // Explicit template instantiations

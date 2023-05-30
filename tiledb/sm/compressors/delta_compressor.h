@@ -119,6 +119,18 @@ class Delta {
   template <class T>
   static Status decompress(
       ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
+
+  /**
+   * Calculates the bitsize all the deltas will have. Note that
+   * the sign bit is not counted.
+   *
+   * @tparam The datatype of the values.
+   * @param in The input buffer.
+   * @param num The number of values in the buffer.
+   * @return tuple<Status, optional<bitsize>>
+   */
+  template <class T>
+  tuple<Status, std::optional<unsigned int>> compute_bitsize(T* in, uint64_t num);
 };
 }  // namespace sm
 }  // namespace tiledb
