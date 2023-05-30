@@ -566,6 +566,15 @@ class ArrayDirectory {
   /** The class stats. */
   stats::Stats* stats_;
 
+  /** The known TileDB array directory names. */
+  inline static const std::set<std::string> dir_names_ = {
+      constants::array_schema_dir_name,
+      constants::array_metadata_dir_name,
+      constants::array_fragment_meta_dir_name,
+      constants::array_fragments_dir_name,
+      constants::array_commits_dir_name,
+      constants::array_dimension_labels_dir_name};
+
   /** Fragment URIs. */
   std::vector<URI> unfiltered_fragment_uris_;
 
@@ -636,19 +645,19 @@ class ArrayDirectory {
   Status load();
 
   /**
+   * Lists the given URI and returns filtered results.
+   *
+   * @param uri The URI to list
+   * @return vector of URIs
+   */
+  std::vector<URI> ls(const URI& uri) const;
+
+  /**
    * List the root directory uris for v1 to v11.
    *
    * @return Status, vector of URIs.
    */
   tuple<Status, optional<std::vector<URI>>> list_root_dir_uris();
-
-  /**
-   * Lists the given URI and returns only the non-empty results
-   *
-   * @param uri The URI to list
-   * @return vector of non-empty URIs
-   */
-  std::vector<URI> list_non_empty_uris(const URI& uri) const;
 
   /**
    * Loads the root directory uris for v1 to v11.
@@ -677,10 +686,9 @@ class ArrayDirectory {
   /**
    * Loads the fragment metadata directory uris for v12 or higher.
    *
-   * @return Status, fragment metadata URIs.
+   * @return fragment metadata URIs.
    */
-  tuple<Status, optional<std::vector<URI>>>
-  list_fragment_metadata_dir_uris_v12_or_higher();
+  std::vector<URI> list_fragment_metadata_dir_uris_v12_or_higher();
 
   /**
    * Loads the commits URIs to consolidate.
@@ -704,7 +712,7 @@ class ArrayDirectory {
   load_consolidated_commit_uris(const std::vector<URI>& commits_dir_uris);
 
   /** Loads the array metadata URIs. */
-  Status load_array_meta_uris();
+  void load_array_meta_uris();
 
   /** Loads the array schema URIs. */
   Status load_array_schema_uris();

@@ -1756,10 +1756,8 @@ TEST_CASE(
   // cpp_unit_array/
   // cpp_unit_array/__commits
   // cpp_unit_array/__schema
-  // cpp_unit_array/__meta
-  // cpp_unit_array/__fragment_meta
   CHECK(
-      stats.find("\"Context.StorageManager.VFS.ls_num\": 5") !=
+      stats.find("\"Context.StorageManager.VFS.ls_num\": 3") !=
       std::string::npos);
 
   // Expect file_size on the fragment.
@@ -1813,10 +1811,8 @@ TEST_CASE(
   // cpp_unit_array/
   // cpp_unit_array/__commits
   // cpp_unit_array/__schema
-  // cpp_unit_array/__meta
-  // cpp_unit_array/__fragment_meta
   CHECK(
-      stats.find("\"Context.StorageManager.VFS.ls_num\": 5") !=
+      stats.find("\"Context.StorageManager.VFS.ls_num\": 3") !=
       std::string::npos);
 
   // Expect file_size on the fragment.
@@ -1874,6 +1870,71 @@ TEST_CASE("C++ API: Array write and read from MemFS", "[cppapi][memfs]") {
   REQUIRE_THROWS_WITH(
       vfs.remove_dir(array_name),
       Catch::Matchers::ContainsSubstring("File not found, remove failed"));
+}
+
+TEST_CASE(
+    "C++ API: Array on s3 with empty subfolders",
+    "[cppapi][s3][empty_subfolders]") {
+  const std::string array_bucket = "s3://" + random_name("tiledb") + "/";
+  const std::string array_name = array_bucket + "cpp_unit_array/";
+
+  tiledb::Config cfg;
+  cfg["vfs.s3.endpoint_override"] = "localhost:9999";
+  cfg["vfs.s3.scheme"] = "https";
+  cfg["vfs.s3.use_virtual_addressing"] = "false";
+  cfg["vfs.s3.verify_ssl"] = "false";
+
+  Context ctx(cfg);
+  if (!ctx.is_supported_fs(TILEDB_S3))
+    return;
+
+  // Create bucket on s3
+  VFS vfs(ctx);
+  if (vfs.is_bucket(array_bucket)) {
+    vfs.remove_bucket(array_bucket);
+  }
+  vfs.create_bucket(array_bucket);
+  REQUIRE(vfs.is_bucket(array_bucket));
+
+  // Create array with only a __schema folder
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{0, 3}}, 4))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{0, 3}}, 4));
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  Attribute attr = Attribute::create<int>(ctx, "a");
+  schema.add_attribute(attr);
+  Array::create(array_name, schema);
+  Array array(ctx, array_name, TILEDB_WRITE);
+  Query query(ctx, array);
+  array.close();
+  REQUIRE(vfs.ls(array_name).size() == 1);
+
+  // Manually add empty folders to the array
+  std::vector<std::string> uris = {
+      array_name + "__meta",
+      array_name + "__fragment_meta",
+      array_name + "__fragments",
+      array_name + "__commits",
+      array_name + "__labels"};
+  for (auto u : uris) {
+    vfs.touch(u);
+    CHECK(vfs.file_size(u) == 0);
+  }
+  REQUIRE(vfs.ls(array_name).size() == 6);
+
+  // Ensure the array can still be opened
+  array.open(TILEDB_READ);
+  REQUIRE(array.is_open());
+  REQUIRE(array.metadata_num() == 0);
+  array.close();
+
+  // Clean up
+  array.delete_array(ctx, array_name);
+  if (vfs.is_bucket(array_bucket)) {
+    vfs.remove_bucket(array_bucket);
+  }
+  REQUIRE(!vfs.is_bucket(array_bucket));
 }
 
 TEST_CASE(

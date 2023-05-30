@@ -335,18 +335,16 @@ Status ArrayDirectory::load() {
     if (mode_ != ArrayDirectoryMode::COMMITS) {
       // Load (in parallel) the fragment metadata directory URIs
       tasks.emplace_back(resources_.get().compute_tp().execute([&]() {
-        auto&& [st, fragment_meta_uris] =
-            list_fragment_metadata_dir_uris_v12_or_higher();
-        RETURN_NOT_OK(st);
         fragment_meta_uris_v12_or_higher =
-            std::move(fragment_meta_uris.value());
-
+            list_fragment_metadata_dir_uris_v12_or_higher();
         return Status::Ok();
       }));
 
       // Load (in parallel) the array metadata URIs
-      tasks.emplace_back(resources_.get().compute_tp().execute(
-          [&]() { return load_array_meta_uris(); }));
+      tasks.emplace_back(resources_.get().compute_tp().execute([&]() {
+        load_array_meta_uris();
+        return Status::Ok();
+      }));
     }
   }
 
@@ -577,6 +575,28 @@ bool ArrayDirectory::loaded() const {
 /*         PRIVATE METHODS           */
 /* ********************************* */
 
+std::vector<URI> ArrayDirectory::ls(const URI& uri) const {
+  auto&& [st, opt_dir_entries] = resources_.get().vfs().ls_with_sizes(uri);
+  throw_if_not_ok(st);
+  auto dir_entries = opt_dir_entries.value();
+  std::vector<URI> uris;
+
+  for (auto entry : dir_entries) {
+    auto entry_uri = URI(entry.path().native());
+    if (entry.is_directory()) {
+      uris.emplace_back(entry_uri);
+      continue;
+    }
+
+    auto iter = dir_names_.find(entry_uri.last_path_part());
+    if (iter == dir_names_.end() || entry.file_size() > 0) {
+      uris.emplace_back(entry_uri);
+    }
+  }
+
+  return uris;
+}
+
 tuple<Status, optional<std::vector<URI>>> ArrayDirectory::list_root_dir_uris() {
   // List the array directory URIs
   auto timer_se = stats_->start_timer("list_root_uris");
@@ -586,18 +606,6 @@ tuple<Status, optional<std::vector<URI>>> ArrayDirectory::list_root_dir_uris() {
       resources_.get().vfs().ls(uri_, &array_dir_uris), nullopt);
 
   return {Status::Ok(), array_dir_uris};
-}
-
-std::vector<URI> ArrayDirectory::list_non_empty_uris(const URI& uri) const {
-  auto&& [st, all_uris] = resources_.get().vfs().ls_with_sizes(uri);
-  throw_if_not_ok(st);
-  std::vector<URI> non_empty_uris;
-  for (auto u : *all_uris) {
-    if (u.file_size() != 0) {
-      non_empty_uris.emplace_back(u.path().native());
-    }
-  }
-  return non_empty_uris;
 }
 
 tuple<Status, optional<std::vector<URI>>>
@@ -685,23 +693,14 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
   return {Status::Ok(), fragment_uris};
 }
 
-tuple<Status, optional<std::vector<URI>>>
+std::vector<URI>
 ArrayDirectory::list_fragment_metadata_dir_uris_v12_or_higher() {
   // List the fragment metadata directory URIs
   auto timer_se = stats_->start_timer("list_fragment_meta_uris");
-  auto fragment_metadata_uri =
-      uri_.join_path(constants::array_fragment_meta_dir_name);
-  std::vector<URI> ret;
+  std::vector<URI> fragment_meta_uris{
+      ls(uri_.join_path(constants::array_fragment_meta_dir_name))};
 
-  // Only list non-empty URIs for s3
-  if (uri_.is_s3()) {
-    ret = list_non_empty_uris(fragment_metadata_uri);
-  } else {
-    RETURN_NOT_OK_TUPLE(
-        resources_.get().vfs().ls(fragment_metadata_uri, &ret), nullopt);
-  }
-
-  return {Status::Ok(), ret};
+  return fragment_meta_uris;
 }
 
 tuple<
@@ -824,25 +823,19 @@ ArrayDirectory::load_consolidated_commit_uris(
   return {Status::Ok(), uris, uris_set};
 }
 
-Status ArrayDirectory::load_array_meta_uris() {
+void ArrayDirectory::load_array_meta_uris() {
   // Load the URIs in the array metadata directory
   std::vector<URI> array_meta_dir_uris;
-  auto array_meta_uri = uri_.join_path(constants::array_metadata_dir_name);
   {
     auto timer_se = stats_->start_timer("list_array_meta_uris");
-    // Only list non-empty URIs for s3
-    if (uri_.is_s3()) {
-      array_meta_dir_uris = list_non_empty_uris(array_meta_uri);
-    } else {
-      RETURN_NOT_OK(
-          resources_.get().vfs().ls(array_meta_uri, &array_meta_dir_uris));
-    }
+    array_meta_dir_uris =
+        ls(uri_.join_path(constants::array_metadata_dir_name));
   }
 
   // Compute array metadata URIs and vacuum URIs to vacuum. */
   auto&& [st1, array_meta_uris_to_vacuum, array_meta_vac_uris_to_vacuum] =
       compute_uris_to_vacuum(true, array_meta_dir_uris);
-  RETURN_NOT_OK(st1);
+  throw_if_not_ok(st1);
   array_meta_uris_to_vacuum_ = std::move(array_meta_uris_to_vacuum.value());
   array_meta_vac_uris_to_vacuum_ =
       std::move(array_meta_vac_uris_to_vacuum.value());
@@ -850,11 +843,9 @@ Status ArrayDirectory::load_array_meta_uris() {
   // Compute filtered array metadata URIs
   auto&& [st2, array_meta_filtered_uris] = compute_filtered_uris(
       true, array_meta_dir_uris, array_meta_uris_to_vacuum_);
-  RETURN_NOT_OK(st2);
+  throw_if_not_ok(st2);
   array_meta_uris_ = std::move(array_meta_filtered_uris.value());
   array_meta_dir_uris.clear();
-
-  return Status::Ok();
 }
 
 Status ArrayDirectory::load_array_schema_uris() {
