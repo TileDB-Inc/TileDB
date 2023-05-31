@@ -1898,15 +1898,14 @@ TEST_CASE(
 
   // Create array with only a __schema folder
   Domain domain(ctx);
-  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{0, 3}}, 4))
-      .add_dimension(Dimension::create<int>(ctx, "cols", {{0, 3}}, 4));
-  ArraySchema schema(ctx, TILEDB_SPARSE);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 4))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 4}}, 4));
+  ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
   Attribute attr = Attribute::create<int>(ctx, "a");
   schema.add_attribute(attr);
   Array::create(array_name, schema);
   Array array(ctx, array_name, TILEDB_WRITE);
-  Query query(ctx, array);
   array.close();
   REQUIRE(vfs.ls(array_name).size() == 1);
 
@@ -1928,6 +1927,32 @@ TEST_CASE(
   REQUIRE(array.is_open());
   REQUIRE(array.metadata_num() == 0);
   array.close();
+
+  // Write to the array
+  std::vector<int> a_w = {
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+  array.open(TILEDB_WRITE);
+  Query query_w(ctx, array, TILEDB_WRITE);
+  query_w.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", a_w);
+  REQUIRE(query_w.submit() == Query::Status::COMPLETE);
+  array.close();
+
+  // Read from the array
+  array.open(TILEDB_READ);
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, 1, 2).add_range(1, 2, 4);
+  std::vector<int> a_r(6);
+  Query query_r(ctx, array, TILEDB_READ);
+  query_r.set_subarray(subarray)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a", a_r);
+  REQUIRE(query_r.submit() == Query::Status::COMPLETE);
+  array.close();
+
+  // Validate write / read
+  for (int i = 0; i < 4; i++) {
+    CHECK(a_r[i] == a_w[i]);
+  }
 
   // Clean up
   array.delete_array(ctx, array_name);
