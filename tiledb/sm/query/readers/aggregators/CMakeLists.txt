@@ -1,9 +1,9 @@
 #
-# tiledb/sm/query/CMakeLists.txt
+# tiledb/sm/query/readers/aggregators/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021-2022 TileDB, Inc.
+# Copyright (c) 2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,14 +25,14 @@
 #
 
 include(common NO_POLICY_SCOPE)
-add_subdirectory(ast)
-add_subdirectory(deletes_and_updates)
-add_subdirectory(readers)
+include(object_library)
 
 #
-# Note that this `query` directory does not define any object libraries at
-# present. When the code is better structured so that query objects don't
-# require linking the whole library, we'll have object libraries here.
+# `aggregators` object library
 #
+commence(object_library aggregators)
+    this_target_sources(aggregate_buffer.cc count_aggregator.cc sum_aggregator.cc)
+    this_target_object_libraries(baseline array_schema result_tile)
+conclude(object_library)
 
 add_test_subdirectory()

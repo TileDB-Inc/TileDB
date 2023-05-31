@@ -41,6 +41,8 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
+#include "tiledb/sm/query/readers/aggregators/iaggregator.h"
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 #include "tiledb/sm/query/readers/result_space_tile.h"
 #include "tiledb/sm/query/writers/domain_buffer.h"
@@ -117,7 +119,8 @@ class ReaderBase : public StrategyBase {
       std::unordered_map<std::string, QueryBuffer>& buffers,
       Subarray& subarray,
       Layout layout,
-      std::optional<QueryCondition>& condition);
+      std::optional<QueryCondition>& condition,
+      DefaultChannelAggregates& default_channel_aggregates);
 
   /** Destructor. */
   ~ReaderBase() = default;
@@ -238,6 +241,10 @@ class ReaderBase : public StrategyBase {
 
   /** The minimum number of bytes in a batched read operation. */
   uint64_t min_batch_size_;
+
+  /** Default channel aggregates, stored by field name. */
+  std::unordered_map<std::string, std::vector<shared_ptr<IAggregator>>>
+      aggregates_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */

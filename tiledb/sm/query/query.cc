@@ -459,6 +459,8 @@ Status Query::finalize() {
   }
 
   RETURN_NOT_OK(strategy_->finalize());
+
+  finalize_aggregates();
   status_ = QueryStatus::COMPLETED;
   return Status::Ok();
 }
@@ -823,6 +825,8 @@ Status Query::process() {
     if (callback_ != nullptr) {
       callback_(callback_data_);
     }
+
+    finalize_aggregates();
     status_ = QueryStatus::COMPLETED;
   } else {
     // Either the main query or the dimension lable query are incomplete.
@@ -979,12 +983,13 @@ Status Query::set_data_buffer(
   // For easy reference
   const bool is_dim = array_schema_->is_dim(name);
   const bool is_attr = array_schema_->is_attr(name);
+  const bool is_aggr = is_aggregate(name);
 
   // Check that attribute/dimension exists
-  if (!ArraySchema::is_special_attribute(name) && !is_dim && !is_attr) {
+  if (!ArraySchema::is_special_attribute(name) && !is_dim && !is_attr &&
+      !is_aggr) {
     return logger_->status(Status_QueryError(
-        std::string("Cannot set buffer; Invalid attribute/dimension/label '") +
-        name + "'"));
+        std::string("Cannot set buffer; Invalid field '") + name + "'"));
   }
 
   if (array_schema_->dense() &&
@@ -1019,8 +1024,9 @@ Status Query::set_data_buffer(
       return set_coords_buffer(buffer, buffer_size);
   }
 
-  const bool is_var = array_schema_->var_size(name);
-  if (is_dim && !is_var &&
+  const bool is_var = is_aggr ? default_channel_aggregates_[name]->var_sized() :
+                                array_schema_->var_size(name);
+  if (!is_aggr && is_dim && !is_var &&
       (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE)) {
     // Check number of coordinates
     uint64_t coords_num = *buffer_size / array_schema_->cell_size(name);
@@ -1189,15 +1195,24 @@ Status Query::set_validity_buffer(
         "Cannot set buffer; " + name + " validity buffer size is null"));
   }
 
-  // Must be an attribute
-  if (!array_schema_->is_attr(name)) {
+  // Must be an attribute or aggregate
+  const bool is_aggr = is_aggregate(name);
+  if (!array_schema_->is_attr(name) && !is_aggr) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer; Buffer name '") + name +
         "' is not an attribute"));
   }
 
   // Must be nullable
-  if (!array_schema_->is_nullable(name)) {
+  bool is_nullable;
+  if (is_aggr) {
+    is_nullable = array_schema_->is_nullable(
+        default_channel_aggregates_[name]->field_name());
+  } else {
+    is_nullable = array_schema_->is_nullable(name);
+  }
+
+  if (!is_nullable) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer; Input attribute '") + name +
         "' is not nullable"));
@@ -1643,6 +1658,10 @@ void Query::set_dimension_label_ordered_read(bool increasing_order) {
   dimension_label_increasing_ = increasing_order;
 }
 
+bool Query::is_aggregate(std::string field_name) const {
+  return default_channel_aggregates_.count(field_name) != 0;
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
@@ -1733,6 +1752,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           subarray_,
           layout_,
           condition_,
+          default_channel_aggregates_,
           dimension_label_increasing_,
           skip_checks_serialization));
     } else if (use_refactored_sparse_unordered_with_dups_reader(
@@ -1753,6 +1773,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
             subarray_,
             layout_,
             condition_,
+            default_channel_aggregates_,
             skip_checks_serialization));
       } else {
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
@@ -1766,6 +1787,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
             subarray_,
             layout_,
             condition_,
+            default_channel_aggregates_,
             skip_checks_serialization));
       }
     } else if (
@@ -1789,6 +1811,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
             subarray_,
             layout_,
             condition_,
+            default_channel_aggregates_,
             consolidation_with_timestamps_,
             skip_checks_serialization));
       } else {
@@ -1803,6 +1826,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
             subarray_,
             layout_,
             condition_,
+            default_channel_aggregates_,
             consolidation_with_timestamps_,
             skip_checks_serialization));
       }
@@ -1818,6 +1842,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           subarray_,
           layout_,
           condition_,
+          default_channel_aggregates_,
           skip_checks_serialization,
           remote_query_));
     } else {
@@ -1832,6 +1857,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           subarray_,
           layout_,
           condition_,
+          default_channel_aggregates_,
           skip_checks_serialization,
           remote_query_));
     }
@@ -1945,6 +1971,11 @@ Status Query::check_buffers_correctness() {
 
   // Iterate through each attribute
   for (auto& attr : buffer_names()) {
+    // Skip aggregate buffers.
+    if (default_channel_aggregates_.count(attr) != 0) {
+      continue;
+    }
+
     if (array_schema_->var_size(attr)) {
       // Check for data buffer under buffer_var and offsets buffer under
       // buffer
@@ -2048,6 +2079,13 @@ void Query::reset_coords_markers() {
     coord_buffer_is_set_ = false;
     coord_data_buffer_is_set_ = false;
     coord_offsets_buffer_is_set_ = false;
+  }
+}
+
+void Query::finalize_aggregates() {
+  for (auto& default_channel_aggregate : default_channel_aggregates_) {
+    default_channel_aggregate.second->copy_to_user_buffer(
+        default_channel_aggregate.first, buffers_);
   }
 }
 

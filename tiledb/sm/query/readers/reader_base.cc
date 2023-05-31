@@ -79,7 +79,8 @@ ReaderBase::ReaderBase(
     std::unordered_map<std::string, QueryBuffer>& buffers,
     Subarray& subarray,
     Layout layout,
-    std::optional<QueryCondition>& condition)
+    std::optional<QueryCondition>& condition,
+    DefaultChannelAggregates& default_channel_aggregates)
     : StrategyBase(
           stats,
           logger,
@@ -104,6 +105,12 @@ ReaderBase::ReaderBase(
     throw ReaderBaseStatusException(
         "Cannot initialize reader; Multi-range reads are not supported on a "
         "global order query.");
+  }
+
+  // Validate the aggregates and store the requested aggregates by field name.
+  for (auto& aggregate : default_channel_aggregates) {
+    aggregate.second->validate_output_buffer(aggregate.first, buffers_);
+    aggregates_[aggregate.second->field_name()].emplace_back(aggregate.second);
   }
 }
 

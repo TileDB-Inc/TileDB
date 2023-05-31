@@ -74,6 +74,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     Subarray& subarray,
     Layout layout,
     std::optional<QueryCondition>& condition,
+    DefaultChannelAggregates& default_channel_aggregates,
     bool skip_checks_serialization,
     bool include_coords)
     : ReaderBase(
@@ -85,7 +86,8 @@ SparseIndexReaderBase::SparseIndexReaderBase(
           buffers,
           subarray,
           layout,
-          condition)
+          condition,
+          default_channel_aggregates)
     , tmp_read_state_(array->fragment_metadata().size())
     , memory_budget_(config, reader_string)
     , include_coords_(include_coords)
@@ -273,16 +275,23 @@ bool SparseIndexReaderBase::has_post_deduplication_conditions(
 
 uint64_t SparseIndexReaderBase::cells_copied(
     const std::vector<std::string>& names) {
-  auto& last_name = names.back();
-  auto buffer_size = *buffers_[last_name].buffer_size_;
-  if (array_schema_.var_size(last_name)) {
-    if (buffer_size == 0)
-      return 0;
-    else
-      return buffer_size / (offsets_bitsize_ / 8) - offsets_extra_element_;
-  } else {
-    return buffer_size / array_schema_.cell_size(last_name);
+  for (auto it = names.rbegin(); it != names.rend(); ++it) {
+    auto& name = *it;
+    if (array_schema_.is_field(name) && buffers_.count(name) != 0) {
+      auto buffer_size = *buffers_[name].buffer_size_;
+      if (array_schema_.var_size(name)) {
+        if (buffer_size == 0) {
+          return 0;
+        } else {
+          return buffer_size / (offsets_bitsize_ / 8) - offsets_extra_element_;
+        }
+      } else {
+        return buffer_size / array_schema_.cell_size(name);
+      }
+    }
   }
+
+  return 0;
 }
 
 template <class BitmapType>
@@ -404,8 +413,11 @@ Status SparseIndexReaderBase::load_initial_data() {
   }
 
   // Compute tile offsets to load and var size to load for attributes.
-  for (auto& it : buffers_) {
-    const auto& name = it.first;
+  for (auto& name : field_names_to_process()) {
+    if (!array_schema_.is_field(name)) {
+      continue;
+    }
+
     if (array_schema_.is_dim(name) ||
         qc_loaded_attr_names_set_.count(name) != 0) {
       continue;
@@ -817,7 +829,7 @@ void SparseIndexReaderBase::apply_query_condition(
   logger_->debug("Done applying query condition");
 }
 
-std::vector<uint64_t> SparseIndexReaderBase::read_and_unfilter_attributes(
+std::vector<std::string> SparseIndexReaderBase::read_and_unfilter_attributes(
     const std::vector<std::string>& names,
     const std::vector<uint64_t>& mem_usage_per_attr,
     uint64_t* buffer_idx,
@@ -826,7 +838,7 @@ std::vector<uint64_t> SparseIndexReaderBase::read_and_unfilter_attributes(
   const uint64_t memory_budget = available_memory();
 
   std::vector<std::string> names_to_read;
-  std::vector<uint64_t> index_to_copy;
+  std::vector<std::string> names_to_copy;
   uint64_t memory_used = 0;
   while (*buffer_idx < names.size()) {
     auto& name = names[*buffer_idx];
@@ -836,10 +848,11 @@ std::vector<uint64_t> SparseIndexReaderBase::read_and_unfilter_attributes(
       memory_used += attr_mem_usage;
 
       // We only read attributes, so dimensions have 0 cost.
-      if (attr_mem_usage != 0)
+      if (attr_mem_usage != 0) {
         names_to_read.emplace_back(name);
+      }
 
-      index_to_copy.emplace_back(*buffer_idx);
+      names_to_copy.emplace_back(name);
       (*buffer_idx)++;
     } else {
       break;
@@ -850,13 +863,78 @@ std::vector<uint64_t> SparseIndexReaderBase::read_and_unfilter_attributes(
   throw_if_not_ok(
       read_and_unfilter_attribute_tiles(names_to_read, result_tiles));
 
-  return index_to_copy;
+  return names_to_copy;
+}
+
+std::vector<std::string> SparseIndexReaderBase::field_names_to_process() {
+  std::vector<std::string> ret;
+  std::unordered_set<std::string> added_names;
+
+  // First add var fields with no aggregates that need recompute in case of
+  // overflow.
+  for (auto& buffer : buffers_) {
+    auto& name = buffer.first;
+    if (!array_schema_.is_field(name) || !array_schema_.var_size(name)) {
+      continue;
+    }
+
+    // Skip aggregates buffers.
+    if (array_schema_.is_field(name)) {
+      // See if any of the aggregates for this field would need a recompute.
+      bool any_need_recompute = false;
+      if (aggregates_.count(name) != 0) {
+        for (auto& aggregate : aggregates_[name]) {
+          any_need_recompute |= aggregate->need_recompute_on_overflow();
+        }
+      }
+
+      // Only add fields that don't need recompute.
+      if (!any_need_recompute) {
+        ret.emplace_back(name);
+        added_names.emplace(name);
+      }
+    }
+  }
+
+  // Second add the rest of the var fields.
+  for (auto& buffer : buffers_) {
+    auto& name = buffer.first;
+    if (array_schema_.is_field(name) && array_schema_.var_size(name) &&
+        added_names.count(name) == 0) {
+      ret.emplace_back(name);
+      added_names.emplace(name);
+    }
+  }
+
+  // Now for the fixed fields.
+  for (auto& buffer : buffers_) {
+    auto& name = buffer.first;
+    if (array_schema_.is_field(name) && !array_schema_.var_size(name)) {
+      ret.emplace_back(name);
+      added_names.emplace(name);
+    }
+  }
+
+  // Add field names for aggregates not requested in user buffers.
+  for (auto& item : aggregates_) {
+    auto name = item.first;
+    if (added_names.count(name) == 0) {
+      ret.emplace_back(name);
+      added_names.emplace(name);
+    }
+  }
+
+  return ret;
 }
 
 void SparseIndexReaderBase::resize_output_buffers(uint64_t cells_copied) {
   // Resize buffers if the result cell slabs was truncated.
   for (auto& it : buffers_) {
     const auto& name = it.first;
+    if (!array_schema_.is_field(name)) {
+      continue;
+    }
+
     const auto size = *it.second.buffer_size_;
     uint64_t num_cells = 0;
 

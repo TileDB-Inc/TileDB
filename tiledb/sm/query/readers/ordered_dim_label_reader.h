@@ -259,6 +259,7 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
       Subarray& subarray,
       Layout layout,
       std::optional<QueryCondition>& condition,
+      DefaultChannelAggregates& default_channel_aggregates,
       bool increasing_order,
       bool skip_checks_serialization);
 

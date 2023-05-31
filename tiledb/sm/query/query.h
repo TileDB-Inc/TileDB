@@ -50,6 +50,7 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/query_remote_buffer_storage.h"
+#include "tiledb/sm/query/readers/aggregators/iaggregator.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
@@ -700,6 +701,20 @@ class Query {
     fragment_size_ = fragment_size;
   }
 
+  /** Returns true if the field is an aggregate. */
+  bool is_aggregate(std::string field_name) const;
+
+  /**
+   * Adds an aggregator to the default channel.
+   *
+   * @param output_field_name Output field name for the aggregate.
+   * @param aggregator Aggregator to add.
+   */
+  void add_aggregator_to_default_channel(
+      std::string output_field_name, shared_ptr<IAggregator> aggregator) {
+    default_channel_aggregates_.emplace(output_field_name, aggregator);
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -868,6 +883,10 @@ class Query {
   /** Cache for tile aligned remote global order writes. */
   std::optional<QueryRemoteBufferStorage> query_remote_buffer_storage_;
 
+  /** Aggregates for the default channel, by output field name. */
+  std::unordered_map<std::string, shared_ptr<IAggregator>>
+      default_channel_aggregates_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -914,6 +933,9 @@ class Query {
    * This will allow for the user to properly set the next write batch.
    */
   void reset_coords_markers();
+
+  /** Copies the data from the aggregates to the user buffers. */
+  void finalize_aggregates();
 };
 
 }  // namespace sm

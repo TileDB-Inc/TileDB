@@ -97,6 +97,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       Subarray& subarray,
       Layout layout,
       std::optional<QueryCondition>& condition,
+      DefaultChannelAggregates& default_channel_aggregates,
       bool skip_checks_serialization = false,
       bool remote_query = false);
 

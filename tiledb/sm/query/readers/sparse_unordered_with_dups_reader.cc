@@ -76,6 +76,7 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
     Subarray& subarray,
     Layout layout,
     std::optional<QueryCondition>& condition,
+    DefaultChannelAggregates& default_channel_aggregates,
     bool skip_checks_serialization)
     : SparseIndexReaderBase(
           "sparse_unordered_with_dups",
@@ -88,6 +89,7 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
           subarray,
           layout,
           condition,
+          default_channel_aggregates,
           skip_checks_serialization,
           false)
     , tile_offsets_min_frag_idx_(std::numeric_limits<unsigned>::max())
@@ -177,14 +179,8 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
   // subarray is set.
   throw_if_not_ok(load_initial_data());
 
-  // Attributes names to process.
-  std::vector<std::string> names;
-  names.reserve(buffers_.size());
-
-  std::vector<tuple<>> buffers;
-  for (auto& buffer : buffers_) {
-    names.emplace_back(buffer.first);
-  }
+  // Field names to process.
+  std::vector<std::string> names = field_names_to_process();
 
   bool user_buffers_full = false;
   do {
@@ -1338,6 +1334,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::copy_fixed_data_tiles(
           return Status::Ok();
         }
 
+        // Copy tile.
         if (name == constants::timestamps) {
           copy_timestamp_data_tile(
               &*rt,
@@ -1345,7 +1342,6 @@ void SparseUnorderedWithDupsReader<BitmapType>::copy_fixed_data_tiles(
               src_max_pos,
               buffer + dest_cell_offset * cell_size);
         } else {
-          // Copy tile.
           copy_fixed_data_tile(
               name,
               is_dim,
@@ -1457,6 +1453,10 @@ SparseUnorderedWithDupsReader<BitmapType>::resize_fixed_results_to_copy(
   auto max_num_cells = std::numeric_limits<uint64_t>::max();
   for (const auto& it : buffers_) {
     const auto& name = it.first;
+    if (!array_schema_.is_field(name)) {
+      continue;
+    }
+
     const auto size = it.second.original_buffer_size_;
     if (array_schema_.var_size(name)) {
       // we only check the var-size buffer here because we enforce
@@ -1508,6 +1508,10 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
       storage_manager_->compute_tp(), 0, names.size(), [&](uint64_t i) {
         // For easy reference.
         const auto& name = names[i];
+        if (name == constants::all_attributes) {
+          return Status::Ok();
+        }
+
         const auto var_sized = array_schema_.var_size(name);
         auto mem_usage = &total_mem_usage_per_attr[i];
         const bool is_timestamps = name == constants::timestamps ||
@@ -1588,7 +1592,7 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_var_size_offsets(
 
   auto new_var_buffer_size = *query_buffer.buffer_var_size_;
   auto new_result_tiles_size = result_tiles.size();
-  bool user_buffers_full = false;
+  bool caused_overflow = false;
 
   // Switch offsets buffer from cell size to offsets.
   auto offsets_buff = (OffType*)query_buffer.buffer_;
@@ -1602,7 +1606,7 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_var_size_offsets(
   // Make sure var size buffer can fit the data.
   if (query_buffer.original_buffer_var_size_ < new_var_buffer_size) {
     // Buffers are full.
-    user_buffers_full = true;
+    caused_overflow = true;
 
     // First find the last full result tile that we can fit.
     while (query_buffer.original_buffer_var_size_ < new_var_buffer_size) {
@@ -1649,7 +1653,7 @@ SparseUnorderedWithDupsReader<BitmapType>::compute_var_size_offsets(
     }
   }
 
-  return {user_buffers_full, new_var_buffer_size, new_result_tiles_size};
+  return {caused_overflow, new_var_buffer_size, new_result_tiles_size};
 }
 
 template <class BitmapType>
@@ -1681,122 +1685,61 @@ bool SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
   }
 
   // Read a few attributes at a time.
-  uint64_t buffer_idx = 0;
+  std::optional<std::string> last_field_to_overflow{std::nullopt};
+  uint64_t buffer_idx{0};
   while (buffer_idx < names.size()) {
     // Read and unfilter as many attributes as can fit in the budget.
-    auto index_to_copy = read_and_unfilter_attributes(
+    auto names_to_copy = read_and_unfilter_attributes(
         names, mem_usage_per_attr, &buffer_idx, result_tiles);
 
-    // Copy one attribute at a time for buffers in memory.
-    for (const auto& idx : index_to_copy) {
+    // Process one field at a time for buffers in memory.
+    for (const auto& name : names_to_copy) {
       // For easy reference.
-      const auto& name = names[idx];
       const auto is_dim = array_schema_.is_dim(name);
-      const auto var_sized = array_schema_.var_size(name);
-      const auto nullable = array_schema_.is_nullable(name);
-      const auto cell_size = array_schema_.cell_size(name);
-      auto& query_buffer = buffers_[name];
 
-      // Get dim idx for zipped coords copy.
-      auto dim_idx = 0;
-      if (is_dim) {
-        const auto& dim_names = array_schema_.dim_names();
-        while (name != dim_names[dim_idx])
-          dim_idx++;
-      }
-
-      // Pointers to var size data, generated when offsets are processed.
-      std::vector<const void*> var_data;
-      if (var_sized) {
-        var_data.resize(cell_offsets[result_tiles.size()] - cell_offsets[0]);
-      }
-
-      // Process all fixed tiles in parallel.
-      OffType offset_div =
-          elements_mode_ ? datatype_size(array_schema_.type(name)) : 1;
-      if (var_sized) {
-        copy_offsets_tiles<OffType>(
-            name,
+      // Copy the data only if the name is in the buffer list.
+      if (buffers_.count(name) != 0) {
+        user_buffers_full |= copy_tiles<OffType>(
             num_range_threads,
-            nullable,
-            offset_div,
-            result_tiles,
-            cell_offsets,
-            query_buffer,
-            var_data);
-      } else {
-        copy_fixed_data_tiles(
             name,
-            num_range_threads,
+            names_to_copy,
             is_dim,
-            nullable,
-            dim_idx,
-            cell_size,
-            result_tiles,
             cell_offsets,
-            query_buffer);
-      }
-
-      uint64_t var_buffer_size = 0;
-      if (var_sized) {
-        uint64_t first_tile_min_pos =
-            read_state_.frag_idx_[result_tiles[0]->frag_idx()].cell_idx_;
-
-        // Adjust the offsets buffer and make sure all data fits.
-        auto&& [user_buffs_full, new_var_buffer_size, new_result_tiles_size] =
-            compute_var_size_offsets<OffType>(
-                stats_,
-                result_tiles,
-                first_tile_min_pos,
-                cell_offsets,
-                query_buffer);
-        user_buffers_full |= user_buffs_full;
-
-        // Clear tiles from memory and adjust result_tiles.
-        for (const auto& copy_idx : index_to_copy) {
-          const auto& name_to_clear = names[copy_idx];
-          const auto is_dim_to_clear = array_schema_.is_dim(name_to_clear);
-          if (qc_loaded_attr_names_set_.count(name_to_clear) == 0 &&
-              (!include_coords_ || !is_dim_to_clear)) {
-            clear_tiles(name_to_clear, result_tiles, new_result_tiles_size);
-          }
-        }
-        result_tiles.resize(new_result_tiles_size);
-
-        // Now copy the var size data.
-        copy_var_data_tiles(
-            num_range_threads,
-            offset_div,
-            new_var_buffer_size,
             result_tiles,
-            cell_offsets,
-            query_buffer,
-            var_data);
-
-        var_buffer_size = new_var_buffer_size;
+            last_field_to_overflow);
       }
 
-      // Adjust buffer sizes.
-      auto total_cells = cell_offsets[result_tiles.size()];
-      if (var_sized) {
-        *query_buffer.buffer_size_ = total_cells * sizeof(OffType);
-
-        if (offsets_extra_element_)
-          (*query_buffer.buffer_size_) += sizeof(OffType);
-
-        *query_buffer.buffer_var_size_ = var_buffer_size * offset_div;
-      } else {
-        *query_buffer.buffer_size_ = total_cells * cell_size;
+      // Process aggregates.
+      if (aggregates_.count(name) != 0) {
+        process_aggregates(num_range_threads, name, cell_offsets, result_tiles);
       }
-
-      if (nullable)
-        *query_buffer.validity_vector_.buffer_size() = total_cells;
 
       // Clear tiles from memory.
       if (qc_loaded_attr_names_set_.count(name) == 0 &&
           (!include_coords_ || !is_dim) && name != constants::timestamps &&
           name != constants::delete_timestamps) {
         clear_tiles(name, result_tiles);
+      }
+    }
+  }
+
+  // If any overflow happened after a field with aggregates, we would need to
+  // recompute the aggregate. For now just throw an exception as this will only
+  // happen in very rare cases.
+  if (last_field_to_overflow.has_value()) {
+    for (auto& name : names) {
+      if (name == last_field_to_overflow.value()) {
+        break;
+      }
+
+      if (aggregates_.count(name) != 0) {
+        for (auto& aggregates : aggregates_[name]) {
+          if (aggregates->need_recompute_on_overflow()) {
+            throw SparseUnorderedWithDupsReaderStatusException(
+                "Overflow happened after aggregate was computed, aggregate "
+                "recompute pass is not yet implemented");
+          }
+        }
       }
     }
   }
@@ -1833,8 +1776,209 @@ bool SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
     }
   }
 
-  logger_->debug("Done copying tiles");
+  logger_->debug("Done processing tiles");
   return user_buffers_full;
+}
+
+template <class BitmapType>
+template <class OffType>
+bool SparseUnorderedWithDupsReader<BitmapType>::copy_tiles(
+    const uint64_t num_range_threads,
+    const std::string name,
+    const std::vector<std::string>& names_to_copy,
+    const bool is_dim,
+    std::vector<uint64_t>& cell_offsets,
+    std::vector<ResultTile*>& result_tiles,
+    std::optional<std::string>& last_field_to_overflow) {
+  const auto var_sized = array_schema_.var_size(name);
+  const auto nullable = array_schema_.is_nullable(name);
+  const auto cell_size = array_schema_.cell_size(name);
+  auto& query_buffer = buffers_[name];
+
+  bool user_buffers_full = false;
+
+  // Get dim idx for zipped coords copy.
+  auto dim_idx = 0;
+  if (is_dim) {
+    const auto& dim_names = array_schema_.dim_names();
+    while (name != dim_names[dim_idx])
+      dim_idx++;
+  }
+
+  // Pointers to var size data, generated when offsets are processed.
+  std::vector<const void*> var_data;
+  if (var_sized) {
+    var_data.resize(cell_offsets[result_tiles.size()] - cell_offsets[0]);
+  }
+
+  // Process all fixed tiles in parallel.
+  OffType offset_div =
+      elements_mode_ ? datatype_size(array_schema_.type(name)) : 1;
+  if (var_sized) {
+    copy_offsets_tiles<OffType>(
+        name,
+        num_range_threads,
+        nullable,
+        offset_div,
+        result_tiles,
+        cell_offsets,
+        query_buffer,
+        var_data);
+  } else {
+    copy_fixed_data_tiles(
+        name,
+        num_range_threads,
+        is_dim,
+        nullable,
+        dim_idx,
+        cell_size,
+        result_tiles,
+        cell_offsets,
+        query_buffer);
+  }
+
+  uint64_t var_buffer_size = 0;
+  if (var_sized) {
+    uint64_t first_tile_min_pos =
+        read_state_.frag_idx_[result_tiles[0]->frag_idx()].cell_idx_;
+
+    // Adjust the offsets buffer and make sure all data fits.
+    auto&& [caused_overflow, new_var_buffer_size, new_result_tiles_size] =
+        compute_var_size_offsets<OffType>(
+            stats_,
+            result_tiles,
+            first_tile_min_pos,
+            cell_offsets,
+            query_buffer);
+    user_buffers_full |= caused_overflow;
+
+    // Save the last field to overflow.
+    if (caused_overflow) {
+      last_field_to_overflow = name;
+    }
+
+    // Clear tiles from memory and adjust result_tiles.
+    for (const auto& name_to_clear : names_to_copy) {
+      const auto is_dim_to_clear = array_schema_.is_dim(name_to_clear);
+      if (qc_loaded_attr_names_set_.count(name_to_clear) == 0 &&
+          (!include_coords_ || !is_dim_to_clear)) {
+        clear_tiles(name_to_clear, result_tiles, new_result_tiles_size);
+      }
+    }
+
+    // If we shrink the size of the result tiles, we might have aggregates to
+    // recompute.
+    if (result_tiles.size() != new_result_tiles_size) {
+    }
+
+    result_tiles.resize(new_result_tiles_size);
+
+    // Now copy the var size data.
+    copy_var_data_tiles(
+        num_range_threads,
+        offset_div,
+        new_var_buffer_size,
+        result_tiles,
+        cell_offsets,
+        query_buffer,
+        var_data);
+
+    var_buffer_size = new_var_buffer_size;
+  }
+
+  // Adjust buffer sizes.
+  auto total_cells = cell_offsets[result_tiles.size()];
+  if (var_sized) {
+    *query_buffer.buffer_size_ = total_cells * sizeof(OffType);
+
+    if (offsets_extra_element_)
+      (*query_buffer.buffer_size_) += sizeof(OffType);
+
+    *query_buffer.buffer_var_size_ = var_buffer_size * offset_div;
+  } else {
+    *query_buffer.buffer_size_ = total_cells * cell_size;
+  }
+
+  if (nullable) {
+    *query_buffer.validity_vector_.buffer_size() = total_cells;
+  }
+
+  return user_buffers_full;
+}
+
+template <class BitmapType>
+void SparseUnorderedWithDupsReader<BitmapType>::process_aggregates(
+    const uint64_t num_range_threads,
+    const std::string name,
+    std::vector<uint64_t>& cell_offsets,
+    std::vector<ResultTile*>& result_tiles) {
+  auto& aggregates = aggregates_[name];
+
+  bool var_sized = false;
+  bool nullable = false;
+
+  if (name != constants::all_attributes) {
+    var_sized = array_schema_.var_size(name);
+    nullable = array_schema_.is_nullable(name);
+  }
+
+  const bool count_bitmap = std::is_same<BitmapType, uint64_t>::value;
+
+  // Process all tiles/cells in parallel.
+  throw_if_not_ok(parallel_for_2d(
+      storage_manager_->compute_tp(),
+      0,
+      result_tiles.size(),
+      0,
+      num_range_threads,
+      [&](uint64_t i, uint64_t range_thread_idx) {
+        // For easy reference.
+        auto rt = (UnorderedWithDupsResultTile<BitmapType>*)result_tiles[i];
+
+        // The first tile might have already been processed by the last
+        // computation. We only process a tile the first time.
+        if (i == 0 && read_state_.frag_idx_[rt->frag_idx()].cell_idx_ != 0) {
+          return Status::Ok();
+        }
+
+        uint64_t min_pos_tile = 0;
+        uint64_t max_pos_tile =
+            fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
+        // Adjust max cell if this is the last tile.
+        if (i == result_tiles.size() - 1) {
+          uint64_t to_copy = cell_offsets[i + 1] - cell_offsets[i];
+          max_pos_tile =
+              rt->pos_with_given_result_sum(min_pos_tile, to_copy) + 1;
+        }
+
+        auto&& [skip_aggregate, src_min_pos, src_max_pos, dest_cell_offset] =
+            compute_parallelization_parameters(
+                range_thread_idx,
+                num_range_threads,
+                min_pos_tile,
+                max_pos_tile,
+                cell_offsets[i],
+                nullptr);
+        if (skip_aggregate) {
+          return Status::Ok();
+        }
+
+        // Compute aggregate.
+        AggregateBuffer aggregate_buffer{
+            name,
+            var_sized,
+            nullable,
+            count_bitmap,
+            src_min_pos,
+            src_max_pos,
+            *rt,
+            rt->bitmap().data()};
+        for (auto& aggregate : aggregates) {
+          aggregate->aggregate_data(aggregate_buffer);
+        }
+
+        return Status::Ok();
+      }));
 }
 
 template <class BitmapType>
@@ -1891,6 +2035,7 @@ template SparseUnorderedWithDupsReader<uint8_t>::SparseUnorderedWithDupsReader(
     Subarray&,
     Layout,
     std::optional<QueryCondition>&,
+    DefaultChannelAggregates&,
     bool);
 template SparseUnorderedWithDupsReader<uint64_t>::SparseUnorderedWithDupsReader(
     stats::Stats*,
@@ -1902,6 +2047,7 @@ template SparseUnorderedWithDupsReader<uint64_t>::SparseUnorderedWithDupsReader(
     Subarray&,
     Layout,
     std::optional<QueryCondition>&,
+    DefaultChannelAggregates&,
     bool);
 
 }  // namespace sm

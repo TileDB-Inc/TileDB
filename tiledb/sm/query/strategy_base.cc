@@ -79,6 +79,10 @@ stats::Stats* StrategyBase::stats() const {
 void StrategyBase::get_dim_attr_stats() const {
   for (const auto& it : buffers_) {
     const auto& name = it.first;
+    if (!array_schema_.is_field(name)) {
+      continue;
+    }
+
     auto var_size = array_schema_.var_size(name);
     if (array_schema_.is_attr(name)) {
       stats_->add_counter("attr_num", 1);

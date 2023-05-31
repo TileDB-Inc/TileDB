@@ -76,6 +76,7 @@ OrderedDimLabelReader::OrderedDimLabelReader(
     Subarray& subarray,
     Layout layout,
     std::optional<QueryCondition>& condition,
+    DefaultChannelAggregates& default_channel_aggregates,
     bool increasing_labels,
     bool skip_checks_serialization)
     : ReaderBase(
@@ -87,7 +88,8 @@ OrderedDimLabelReader::OrderedDimLabelReader(
           buffers,
           subarray,
           layout,
-          condition)
+          condition,
+          default_channel_aggregates)
     , ranges_(
           subarray.get_attribute_ranges(array_schema_.attributes()[0]->name()))
     , label_name_(array_schema_.attributes()[0]->name())
@@ -100,6 +102,11 @@ OrderedDimLabelReader::OrderedDimLabelReader(
   if (storage_manager_ == nullptr) {
     throw OrderedDimLabelReaderStatusException(
         "Cannot initialize ordered dim label reader; Storage manager not set");
+  }
+
+  if (!default_channel_aggregates.empty()) {
+    throw OrderedDimLabelReaderStatusException(
+        "Cannot initialize reader; Reader cannot process aggregates");
   }
 
   if (!skip_checks_serialization && buffers_.empty()) {
