@@ -1599,14 +1599,17 @@ Status Dimension::check_tile_extent() const {
       return check_tile_extent<int64_t>();
     default:
       throw DimensionException(
-          name() + " [check_tile_extent] Invalid dimension domain type");
+          "Tile extent check failed on dimension '" + name() +
+          "'; Invalid dimension domain type");
   }
 }
 
 template <class T>
 Status Dimension::check_tile_extent() const {
   if (domain_.empty())
-    throw DimensionException(name() + " [check_tile_extent] Domain not set");
+    throw DimensionException(
+        "Tile extent check failed on dimension '" + name() +
+        "'; Domain not set");
 
   if (!tile_extent_)
     return Status::Ok();
@@ -1620,26 +1623,28 @@ Status Dimension::check_tile_extent() const {
     // Check if tile extent is negative or 0
     if (*tile_extent <= 0)
       throw DimensionException(
-          name() + " [check_tile_extent] Tile extent must be greater than 0");
+          "Tile extent check failed on dimension '" + name() +
+          "'; Tile extent must be greater than 0");
 
     if (*tile_extent > (domain[1] - domain[0] + 1))
       throw DimensionException(
-          name() + " [check_tile_extent] Tile extent " +
-          std::to_string(*tile_extent) +
+          "Tile extent check failed on dimension '" + name() +
+          "'; Tile extent " + std::to_string(*tile_extent) +
           " exceeds range on dimension domain [" + std::to_string(domain[0]) +
           ", " + std::to_string(domain[1]) + "]");
   } else {
     // Check if tile extent is 0
     if (*tile_extent == 0)
       throw DimensionException(
-          name() + " [check_tile_extent] Tile extent must not be 0");
+          "Tile extent check failed on dimension '" + name() +
+          "'; Tile extent must not be 0");
 
     // Check if tile extent exceeds domain
     uint64_t range = (uint64_t)domain[1] - (uint64_t)domain[0] + 1;
     if (uint64_t(*tile_extent) > range)
       throw DimensionException(
-          name() + " [check_tile_extent] Tile extent " +
-          std::to_string(*tile_extent) +
+          "Tile extent check failed on dimension '" + name() +
+          "'; Tile extent " + std::to_string(*tile_extent) +
           " exceeds range on dimension domain [" + std::to_string(domain[0]) +
           ", " + std::to_string(domain[1]) + "]");
 
