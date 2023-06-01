@@ -107,7 +107,6 @@ jobs:
     uses: ./.github/workflows/build-dockerfile.yml
 
   ci_rest:
-    if: contains(github.event.head_commit.message, '[rest ci]') || contains(github.event.head_commit.message, '[ci rest]')
     uses: ./.github/workflows/ci-rest.yml
 
   # dummy job for branch protection check
