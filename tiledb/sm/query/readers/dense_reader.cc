@@ -359,7 +359,6 @@ Status DenseReader::dense_read() {
 
   // Compute attribute names to load and copy.
   std::vector<std::string> names;
-  std::vector<std::string> fixed_names;
   std::vector<std::string> var_names;
   auto condition_names = condition_.field_names();
   for (auto& name : condition_names) {
@@ -376,11 +375,11 @@ Status DenseReader::dense_read() {
     if (condition_names.count(name) == 0) {
       names.emplace_back(name);
     }
+  }
 
+  for (auto& name : names) {
     if (array_schema_.var_size(name)) {
       var_names.emplace_back(name);
-    } else {
-      fixed_names.emplace_back(name);
     }
   }
 
