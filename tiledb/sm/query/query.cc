@@ -1236,7 +1236,7 @@ Status Query::check_set_fixed_buffer(const std::string& name) {
 }
 
 void Query::set_config(const Config& config) {
-  if (status_ != QueryStatus::UNINITIALIZED) {
+  if (!remote_query_ && status_ != QueryStatus::UNINITIALIZED) {
     throw QueryStatusException(
         "[set_config] Cannot set config after initialization.");
   }

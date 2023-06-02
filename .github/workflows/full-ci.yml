@@ -108,6 +108,7 @@ jobs:
 
   ci_rest:
     uses: ./.github/workflows/ci-rest.yml
+    secrets: inherit
 
   # dummy job for branch protection check
   full_ci_passed:

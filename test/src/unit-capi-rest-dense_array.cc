@@ -1668,7 +1668,6 @@ TEST_CASE_METHOD(
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
   std::string array_name = TILEDB_URI_PREFIX + temp_dir + "dense_is_open/";
-  create_temp_dir(temp_dir);
   create_dense_array(array_name);
 
   tiledb_array_t* array;
