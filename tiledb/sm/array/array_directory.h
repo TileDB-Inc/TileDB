@@ -566,15 +566,6 @@ class ArrayDirectory {
   /** The class stats. */
   stats::Stats* stats_;
 
-  /** The known TileDB array directory names. */
-  inline static const std::set<std::string> dir_names_ = {
-      constants::array_schema_dir_name,
-      constants::array_metadata_dir_name,
-      constants::array_fragment_meta_dir_name,
-      constants::array_fragments_dir_name,
-      constants::array_commits_dir_name,
-      constants::array_dimension_labels_dir_name};
-
   /** Fragment URIs. */
   std::vector<URI> unfiltered_fragment_uris_;
 
@@ -643,6 +634,9 @@ class ArrayDirectory {
 
   /** Loads the URIs from the various array subdirectories. */
   Status load();
+
+  /** Returns a set of the known TileDB array directory names. */
+  static const std::set<const std::string>& dir_names();
 
   /**
    * Lists the given URI and returns filtered results.
