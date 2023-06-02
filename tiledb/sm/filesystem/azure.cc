@@ -35,6 +35,7 @@
 #include <sstream>
 
 #include <azure/core/diagnostics/logger.hpp>
+#include <azure/identity.hpp>
 #include <azure/storage/blobs.hpp>
 
 #include "tiledb/common/common.h"
@@ -196,6 +197,19 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
             blob_endpoint,
             make_shared<::Azure::Storage::StorageSharedKeyCredential>(
                 HERE(), account_name, account_key),
+            options));
+  }
+  // Otherwise, if we did not specify an SAS token
+  // and we are connecting to an HTTPS endpoint,
+  // use DefaultAzureCredential to authenticate using Azure AD.
+  else if (
+      sas_token.empty() &&
+      utils::parse::starts_with(blob_endpoint, "https://")) {
+    client_ =
+        tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
+            ::Azure::Storage::Blobs::BlobServiceClient,
+            blob_endpoint,
+            make_shared<::Azure::Identity::DefaultAzureCredential>(HERE()),
             options));
   } else {
     client_ =
