@@ -539,9 +539,11 @@ if (TILEDB_AZURE)
   message(STATUS "The TileDB library is compiled with Azure support.")
 
   if (TILEDB_VCPKG)
+    find_package(azure-identity-cpp CONFIG REQUIRED)
     find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
             INTERFACE
+            Azure::azure-identity
             Azure::azure-storage-blobs
             )
   else()
