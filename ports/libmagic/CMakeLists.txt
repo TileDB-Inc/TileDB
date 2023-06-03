@@ -1,8 +1,10 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.12)
 
-INCLUDE(CheckIncludeFile)
+file(READ ${CMAKE_CURRENT_SOURCE_DIR}/configure.ac CONFIGURE_AC_CONTENT)
+string(REGEX MATCH "AC_INIT\\(\\[file\\],\\[([0-9]+\\.[0-9]+)\\]" _ ${CONFIGURE_AC_CONTENT})
+unset(CONFIGURE_AC_CONTENT)
 
-project(file)
+project(file VERSION ${CMAKE_MATCH_1})
 
 option(FILE_TESTS "Enable file tests" OFF)
 
@@ -23,8 +25,6 @@ endif()
 
 set(LIBMAGIC_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(LIBMAGIC_TEST_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tests")
-
-set(FILE_VERSION 5.39)
 
 set(WIN_COMPAT_SOURCES
   ${LIBMAGIC_SOURCE_DIR}/asctime_r.c
@@ -82,11 +82,11 @@ endif()
 
 # replace the version in the magic.h.in and write it to magic.h
 FILE(READ ${LIBMAGIC_SOURCE_DIR}/magic.h.in MAGIC_H_CONTENT)
-STRING(REPLACE "." "" FILE_VERSION_WITHOUT_DOT "${FILE_VERSION}")
+STRING(REPLACE "." "" FILE_VERSION_WITHOUT_DOT "${CMAKE_PROJECT_VERSION}")
 STRING(REPLACE "X.YY" ${FILE_VERSION_WITHOUT_DOT} MAGIC_H_CONTENT_NEW "${MAGIC_H_CONTENT}")
 FILE(WRITE ${LIBMAGIC_SOURCE_DIR}/magic.h "${MAGIC_H_CONTENT_NEW}")
 
-add_compile_definitions(-DHAVE_CONFIG_H -DVERSION="${FILE_VERSION}")
+add_compile_definitions(-DHAVE_CONFIG_H -DVERSION="${CMAKE_PROJECT_VERSION}")
 if(WIN32)
   add_compile_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32)
 endif()
@@ -136,14 +136,8 @@ include(CMakePackageConfigHelpers)
 # Copy the temporary file to the final location
 configure_file(magic.in magic COPYONLY)
 
-set(FILE_COMMAND "file")
-if (DEFINED ENV{FILE_COMMAND_OVERRIDE})
-  set(FILE_COMMAND "$ENV{FILE_COMMAND_OVERRIDE}")
-endif()
-
 add_custom_command(OUTPUT magic.mgc
-  COMMAND ${FILE_COMMAND} -C -m magic
-  DEPENDS file
+  COMMAND file -C -m magic
   COMMENT "Compiling magic file"
 )
 
@@ -153,20 +147,29 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/magic.mgc DESTINATION ${CMAKE_INSTALL_
 
 install(FILES ${LIBMAGIC_SOURCE_DIR}/magic.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
+set(PORT_NAME unofficial-libmagic)
+set(TARGETS_EXPORT_NAME ${PORT_NAME}-targets)
 install(TARGETS ${targets}
-        EXPORT libmagic-target
+        EXPORT ${TARGETS_EXPORT_NAME}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
-install(EXPORT libmagic-target
-        FILE libmagic-targets.cmake
-        DESTINATION lib/cmake/libmagic
+install(EXPORT ${TARGETS_EXPORT_NAME}
+        FILE ${TARGETS_EXPORT_NAME}.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PORT_NAME}
+        NAMESPACE unofficial::libmagic::
         )
-file(WRITE
-        ${CMAKE_BINARY_DIR}/libmagic-config.cmake
-        "include(\${CMAKE_CURRENT_LIST_DIR}/libmagic-targets.cmake)\n")
+configure_package_config_file(
+  unofficial-libmagic-config.cmake.in
+  unofficial-libmagic-config.cmake
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PORT_NAME})
+write_basic_package_version_file(
+  unofficial-libmagic-config-version.cmake
+  VERSION ${CMAKE_PROJECT_VERSION}
+  COMPATIBILITY SameMajorVersion)
 install(FILES
-        ${CMAKE_BINARY_DIR}/libmagic-config.cmake
-        DESTINATION lib/cmake/libmagic)
+        ${CMAKE_BINARY_DIR}/${PORT_NAME}-config.cmake
+        ${CMAKE_BINARY_DIR}/${PORT_NAME}-config-version.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PORT_NAME})

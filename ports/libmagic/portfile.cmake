@@ -29,6 +29,7 @@ vcpkg_from_github(
 )
 
 file(COPY "${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt" DESTINATION "${SOURCE_PATH}")
+file(COPY "${CMAKE_CURRENT_LIST_DIR}/unofficial-libmagic-config.cmake.in" DESTINATION "${SOURCE_PATH}")
 file(COPY "${CMAKE_CURRENT_LIST_DIR}/magic.def" DESTINATION "${SOURCE_PATH}/src")
 file(COPY "${CMAKE_CURRENT_LIST_DIR}/config.h" DESTINATION "${SOURCE_PATH}/src")
 
@@ -40,22 +41,19 @@ vcpkg_cmake_install()
 vcpkg_copy_pdbs()
 vcpkg_fixup_pkgconfig()
 vcpkg_copy_tools(TOOL_NAMES file AUTO_CLEAN)
-vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/libmagic)
+vcpkg_cmake_config_fixup(
+    CONFIG_PATH lib/cmake/unofficial-libmagic
+    PACKAGE_NAME unofficial-libmagic)
 
-# Handle copyright
-vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING")
-
-return()
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/share/${PORT}/man5")
 
 if(VCPKG_CROSSCOMPILING)
     vcpkg_add_to_path(PREPEND "${CURRENT_HOST_INSTALLED_DIR}/tools/libmagic/bin")
 elseif(VCPKG_TARGET_IS_WINDOWS AND VCPKG_LIBRARY_LINKAGE STREQUAL dynamic)
     set(EXTRA_ARGS "ADD_BIN_TO_PATH")
 endif()
-
-vcpkg_install_make(${EXTRA_ARGS})
-vcpkg_copy_tool_dependencies("${CURRENT_PACKAGES_DIR}/tools/${PORT}/bin")
-vcpkg_copy_tool_dependencies("${CURRENT_PACKAGES_DIR}/tools/${PORT}/debug/bin")
 
 if(VCPKG_LIBRARY_LINKAGE STREQUAL static)
     file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/bin" "${CURRENT_PACKAGES_DIR}/debug/bin")
@@ -64,14 +62,14 @@ endif()
 if(VCPKG_TARGET_IS_WINDOWS)
     if(NOT VCPKG_BUILD_TYPE OR VCPKG_BUILD_TYPE STREQUAL "release")
         file(MAKE_DIRECTORY "${CURRENT_PACKAGES_DIR}/tools/${PORT}/share/misc")
-        file(COPY "${CURRENT_PACKAGES_DIR}/share/${PORT}/misc/magic.mgc" DESTINATION "${CURRENT_PACKAGES_DIR}/tools/${PORT}/share/misc")
+        file(COPY "${CURRENT_PACKAGES_DIR}/share/${PORT}/magic.mgc" DESTINATION "${CURRENT_PACKAGES_DIR}/tools/${PORT}/share/misc")
     endif()
     if(NOT VCPKG_BUILD_TYPE OR VCPKG_BUILD_TYPE STREQUAL "debug")
         file(MAKE_DIRECTORY "${CURRENT_PACKAGES_DIR}/tools/${PORT}/debug/share/misc")
-        file(COPY "${CURRENT_PACKAGES_DIR}/share/${PORT}/misc/magic.mgc" DESTINATION "${CURRENT_PACKAGES_DIR}/tools/${PORT}/debug/share/misc")
+        file(COPY "${CURRENT_PACKAGES_DIR}/share/${PORT}/magic.mgc" DESTINATION "${CURRENT_PACKAGES_DIR}/tools/${PORT}/debug/share/misc")
     endif()
 endif()
 
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/share/${PORT}/man5")
+# Handle copyright and usage
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING")
+file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
