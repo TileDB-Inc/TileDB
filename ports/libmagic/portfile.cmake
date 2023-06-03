@@ -31,10 +31,12 @@ if(VCPKG_TARGET_IS_WINDOWS)
     file(COPY "${CMAKE_CURRENT_LIST_DIR}/unistd.h" DESTINATION "${SOURCE_PATH}/src")
 endif()
 
-vcpkg_configure_make(
-    AUTOCONFIG
-    SOURCE_PATH "${SOURCE_PATH}"
+vcpkg_cmake_configure(
+    SOURCE_PATH ${SOURCE_PATH}
 )
+
+vcpkg_cmake_install()
+vcpkg_copy_pdbs()
 
 if(VCPKG_CROSSCOMPILING)
     vcpkg_add_to_path(PREPEND "${CURRENT_HOST_INSTALLED_DIR}/tools/libmagic/bin")
@@ -67,4 +69,4 @@ file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/share/${PORT}/man5")
 
 # Handle copyright
-file(INSTALL "${SOURCE_PATH}/COPYING" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING")
