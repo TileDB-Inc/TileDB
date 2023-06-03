@@ -1,7 +1,6 @@
 if(VCPKG_TARGET_IS_WINDOWS)
     set(PATCHES
         "0001-Use-libtre.patch"
-        "0002-Change-zlib-lib-name-to-match-CMake-output.patch"
         "0003-Fix-WIN32-macro-checks.patch"
         "0004-Typedef-POSIX-types-on-Windows.patch"
         "0005-Include-dirent.h-for-S_ISREG-and-S_ISDIR.patch"
@@ -11,8 +10,6 @@ if(VCPKG_TARGET_IS_WINDOWS)
         "0009-No-fcntl-in-magic.c.patch"
         "0010-Properly-check-for-the-presence-of-bitmasks.patch"
         "0011-Remove-pipe-related-functions-in-funcs.c.patch"
-        "0012-Convert-MSYS2-paths-to-Windows-paths.patch"
-        "0013-Check-for-backslash-in-argv-0-on-Windows.patch"
         "0014-Define-POSIX-macros-if-missing.patch"
         "0015-MSYS2-Remove-ioctl-call.patch"
     )
