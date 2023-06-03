@@ -1,6 +1,6 @@
 if(VCPKG_TARGET_IS_WINDOWS)
     set(PATCHES
-        "0001-Use-libtre.patch"
+        "0001-Use-pcre2.patch"
         "0003-Fix-WIN32-macro-checks.patch"
         "0004-Typedef-POSIX-types-on-Windows.patch"
         "0005-Include-dirent.h-for-S_ISREG-and-S_ISDIR.patch"
