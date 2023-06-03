@@ -1,10 +1,11 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO PCRE2Project/pcre2
-    REF pcre2-10.40
-    SHA512 098c21d60ecb3bb8449173f50c9ab8e6018fafd5d55548be08b15df37f8e08bcd4f851d75758c4d22505db30a3444bb65783d83cd876c63fdf0de2850815ef93
+    REF 0ef82f7eb78e9effd662239c6dac70c534a6d60b
+    SHA512 e8274e98d183f174eb882ff69a4e74e9b03207c6511561622d28751bf9e3f020fb944e820fa50940e4941773aa497cf5e38a5b35e375f3cac6daa6d015f7d0e8
     HEAD_REF master
     PATCHES
+        cmake-fix.patch
         pcre2-10.35_fix-uwp.patch
         no-static-suffix.patch
 )
@@ -17,6 +18,8 @@ vcpkg_check_features(
     OUT_FEATURE_OPTIONS FEATURE_OPTIONS
     FEATURES
         jit   PCRE2_SUPPORT_JIT
+        bzip2 PCRE2_SUPPORT_LIBBZ2
+        zlib  PCRE2_SUPPORT_LIBZ
 )
 
 vcpkg_cmake_configure(
@@ -40,26 +43,15 @@ vcpkg_cmake_configure(
 
 vcpkg_cmake_install()
 vcpkg_copy_pdbs()
-
-# file(READ "${CURRENT_PACKAGES_DIR}/include/pcre2.h" PCRE2_H)
-# if(BUILD_STATIC)
-#     string(REPLACE "defined(PCRE2_STATIC)" "1" PCRE2_H "${PCRE2_H}")
-# else()
-#     string(REPLACE "defined(PCRE2_STATIC)" "0" PCRE2_H "${PCRE2_H}")
-# endif()
-# file(WRITE "${CURRENT_PACKAGES_DIR}/include/pcre2.h" "${PCRE2_H}")
-
 vcpkg_fixup_pkgconfig()
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/pcre2)
 
-# The cmake file provided by pcre2 has some problems, so don't use it for now.
-vcpkg_cmake_config_fixup(CONFIG_PATH cmake)
-# file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/cmake" "${CURRENT_PACKAGES_DIR}/debug/cmake")
-
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/man")
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/share/doc")
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/man")
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
+file(REMOVE_RECURSE
+    "${CURRENT_PACKAGES_DIR}/man"
+    "${CURRENT_PACKAGES_DIR}/share/doc"
+    "${CURRENT_PACKAGES_DIR}/debug/include"
+    "${CURRENT_PACKAGES_DIR}/debug/man"
+    "${CURRENT_PACKAGES_DIR}/debug/share")
 
 if(BUILD_STATIC)
     file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/bin" "${CURRENT_PACKAGES_DIR}/debug/bin")
@@ -70,4 +62,5 @@ elseif(VCPKG_TARGET_IS_WINDOWS)
     endif()
 endif()
 
+file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
 vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING")

@@ -20,24 +20,24 @@
     },
     "zlib"
   ],
-  "default-features": [
-    "platform-default-features"
-  ],
   "features": {
     "jit": {
-      "description": "Build JIT support",
+      "description": "Enable support for Just-In-Time compiling",
       "supports": "!emscripten"
     },
-    "platform-default-features": {
-      "description": "Enable default features",
+    "bzip2": {
+      "description": "Enable support for bzip2",
       "dependencies": [
         {
-          "name": "pcre2",
-          "features": [
-            "jit"
-          ],
-          "platform": "!emscripten"
+          "name": "bzip2",
+          "default-features": false
         }
+      ]
+    },
+    "zlib": {
+      "description": "Enable support for zlib",
+      "dependencies": [
+        "zlib"
       ]
     }
   }
