@@ -21,10 +21,6 @@
       "name": "getopt",
       "platform": "windows"
     },
-    {
-      "name": "libmagic",
-      "host": true
-    },
     "pcre2"
   ]
 }
