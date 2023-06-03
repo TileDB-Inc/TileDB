@@ -34,37 +34,13 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
-if(FALSE) #NOT WINDOWS AND TILEDB_VCPKG AND NOT TILEDB_VCPKG_DISABLE_MAGIC)
-  find_path(libmagic_INCLUDE_DIR NAMES magic.h)
-  find_library(libmagic_LIBRARIES magic)
+if(TILEDB_VCPKG)
+  find_package(unofficial-libmagic CONFIG REQUIRED)
   find_file(libmagic_DICTIONARY magic.mgc
-    PATH_SUFFIXES share/libmagic/misc
-  )
-
-  include(FindPackageHandleStandardArgs)
-  FIND_PACKAGE_HANDLE_STANDARD_ARGS(libmagic
-    REQUIRED_VARS
-      libmagic_INCLUDE_DIR
-      libmagic_LIBRARIES
-      libmagic_DICTIONARY
-  )
-
-  if(NOT libmagic_FOUND)
-    message(FATAL "Error finding libmagic")
-  endif()
-
-  add_library(libmagic UNKNOWN IMPORTED)
-  set_target_properties(libmagic PROPERTIES
-    IMPORTED_LOCATION "${libmagic_LIBRARIES}"
-    INTERFACE_INCLUDE_DIRECTORIES "${libmagic_INCLUDE_DIR}"
-  )
-
-  # Some GitHub builders were finding a system installed liblzma when
-  # building the libmagic port. Rather than fight the issue we just force
-  # liblzma support everywhere.
-  find_package(liblzma CONFIG REQUIRED)
-  target_link_libraries(libmagic INTERFACE liblzma::liblzma)
-
+    PATHS ${TILEDB_EP_INSTALL_PREFIX}
+    PATH_SUFFIXES bin share
+    ${NO_DEFAULT_PATH})
+  add_library(libmagic ALIAS unofficial::libmagic::libmagic)
   return()
 endif()
 
