@@ -17,6 +17,9 @@ endfunction()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 set(targets)
 find_package(PCRE2 CONFIG REQUIRED COMPONENTS 8BIT)
+if(WIN32)
+  find_package(unofficial-getopt-win32 CONFIG REQUIRED)
+endif()
 
 set(LIBMAGIC_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(LIBMAGIC_TEST_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tests")
@@ -41,16 +44,11 @@ set(WIN_COMPAT_SOURCES
 )
 
 if(WIN32)
-  set(LIBMAGIC_SOURCE_FILES
-    ${WIN_COMPAT_SOURCES}
-  )
+  set(LIBMAGIC_SOURCE_FILES ${WIN_COMPAT_SOURCES})
 else()
-  set(LIBMAGIC_SOURCE_FILES
-  )
+  set(LIBMAGIC_SOURCE_FILES)
 endif()
 
-#set(LIBMAGIC_SOURCE_FILES
-#  ${WIN_COMPAT_SOURCES}
 list(APPEND LIBMAGIC_SOURCE_FILES
   ${LIBMAGIC_SOURCE_DIR}/apprentice.c
   ${LIBMAGIC_SOURCE_DIR}/apptype.c
@@ -88,8 +86,7 @@ STRING(REPLACE "." "" FILE_VERSION_WITHOUT_DOT "${FILE_VERSION}")
 STRING(REPLACE "X.YY" ${FILE_VERSION_WITHOUT_DOT} MAGIC_H_CONTENT_NEW "${MAGIC_H_CONTENT}")
 FILE(WRITE ${LIBMAGIC_SOURCE_DIR}/magic.h "${MAGIC_H_CONTENT_NEW}")
 
-#add_definitions(-DHAVE_CONFIG_H -DVERSION="${FILE_VERSION}" -DWIN32_LEAN_AND_MEAN -DWIN32 -DPCRE2_STATIC )
-add_compile_definitions(-DHAVE_CONFIG_H -DVERSION="${FILE_VERSION}" -DPCRE2_STATIC )
+add_compile_definitions(-DHAVE_CONFIG_H -DVERSION="${FILE_VERSION}")
 if(WIN32)
   add_compile_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32)
 endif()
@@ -97,30 +94,19 @@ endif()
 add_library(libmagic ${LIBMAGIC_SOURCE_FILES})
 set(targets ${targets} libmagic)
 
-if(WIN32)
-  include_directories(dirent/include)
-endif()
-include_directories(${LIBMAGIC_SOURCE_DIR})
-#if(WIN32)
 if(MSVC)
-  include_directories (getopt)
+  include_directories(getopt)
 endif()
 
-#include_directories (pcre2/src file/src getopt)
-#include_directories (BEFORE pcre2/src file/src)
-include_directories (pcre2/src file/src)
-
-#target_link_libraries(libmagic PRIVATE ${PCRE2_LIBRARIES} ${PCRE2_POSIX_LIBRARIES} shlwapi)
-#target_link_libraries(libmagic PRIVATE pcre2-posix pcre2-8 shlwapi)
 target_link_libraries(libmagic pcre2::pcre2-posix)
 if(WIN32)
-  target_link_libraries(libmagic shlwapi)
+  target_link_libraries(libmagic shlwapi unofficial::getopt-win32::getopt)
 endif()
 
 target_include_directories(libmagic
-        PUBLIC
-        "$<BUILD_INTERFACE:${LIBMAGIC_SOURCE_DIR}>"
-        "$<INSTALL_INTERFACE:include>"
+  PUBLIC
+    "$<BUILD_INTERFACE:${LIBMAGIC_SOURCE_DIR}>"
+    "$<INSTALL_INTERFACE:include>"
 )
 
 # 'file' CLI
@@ -129,36 +115,6 @@ set(targets ${targets} file)
 target_link_libraries(file libmagic)
 if (WIN32)
   target_link_libraries(file shlwapi)
-endif()
-
-# Tests
-if (FILE_TESTS)
-  add_executable(file_test ${LIBMAGIC_TEST_DIR}/test.c)
-  set(targets ${targets} file_test)
-  target_link_libraries(file_test libmagic pcre2::pcre2-posix)
-  if(WIN32)
-    target_link_libraries(file_test shlwapi)
-  endif()
-
-  # this tests all because of time-zone or crlf errors
-  set(DISABLED_TESTS
-    gedcom
-    fit-map-data
-    regex-eol
-    )
-
-  enable_testing()
-
-  file(GLOB TESTFILES "${LIBMAGIC_TEST_DIR}/*.testfile")
-  foreach(TEST_FILE ${TESTFILES})
-    # extract testname from path and generate command
-    string(REGEX MATCH  "(.*)\.testfile" TESTPATH ${TEST_FILE})
-    set(TESTPATH ${CMAKE_MATCH_1})
-    string(REGEX MATCH  "([a-zA-Z0-9_]|-|\\.)+$" TESTNAME ${TESTPATH})
-    if(NOT ${TESTNAME} IN_LIST DISABLED_TESTS)
-        add_test(NAME ${TESTNAME} COMMAND ${CMAKE_CURRENT_BINARY_DIR}/file_test ${TEST_FILE} ${TESTPATH}.result)
-    endif()
-  endforeach()
 endif()
 
 # Following is the compilation of the magic file
@@ -193,8 +149,7 @@ add_custom_command(OUTPUT magic.mgc
 
 add_custom_target(magic_mgc ALL DEPENDS magic.mgc)
 
-#install(TARGETS file file_test DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/magic.mgc DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/magic.mgc DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/libmagic)
 
 install(FILES ${LIBMAGIC_SOURCE_DIR}/magic.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 

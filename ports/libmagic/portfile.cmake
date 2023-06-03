@@ -1,6 +1,10 @@
+set(PATCHES
+    "0001-Use-pcre2.patch"
+)
+
 if(VCPKG_TARGET_IS_WINDOWS)
     set(PATCHES
-        "0001-Use-pcre2.patch"
+        ${PATCHES}
         "0003-Fix-WIN32-macro-checks.patch"
         "0004-Typedef-POSIX-types-on-Windows.patch"
         "0005-Include-dirent.h-for-S_ISREG-and-S_ISDIR.patch"
@@ -27,9 +31,6 @@ vcpkg_from_github(
 file(COPY "${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt" DESTINATION "${SOURCE_PATH}")
 file(COPY "${CMAKE_CURRENT_LIST_DIR}/magic.def" DESTINATION "${SOURCE_PATH}/src")
 file(COPY "${CMAKE_CURRENT_LIST_DIR}/config.h" DESTINATION "${SOURCE_PATH}/src")
-if(VCPKG_TARGET_IS_WINDOWS)
-    file(COPY "${CMAKE_CURRENT_LIST_DIR}/unistd.h" DESTINATION "${SOURCE_PATH}/src")
-endif()
 
 vcpkg_cmake_configure(
     SOURCE_PATH ${SOURCE_PATH}
@@ -37,6 +38,14 @@ vcpkg_cmake_configure(
 
 vcpkg_cmake_install()
 vcpkg_copy_pdbs()
+vcpkg_fixup_pkgconfig()
+vcpkg_copy_tools(TOOL_NAMES file AUTO_CLEAN)
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/libmagic)
+
+# Handle copyright
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING")
+
+return()
 
 if(VCPKG_CROSSCOMPILING)
     vcpkg_add_to_path(PREPEND "${CURRENT_HOST_INSTALLED_DIR}/tools/libmagic/bin")
@@ -47,7 +56,6 @@ endif()
 vcpkg_install_make(${EXTRA_ARGS})
 vcpkg_copy_tool_dependencies("${CURRENT_PACKAGES_DIR}/tools/${PORT}/bin")
 vcpkg_copy_tool_dependencies("${CURRENT_PACKAGES_DIR}/tools/${PORT}/debug/bin")
-vcpkg_fixup_pkgconfig()
 
 if(VCPKG_LIBRARY_LINKAGE STREQUAL static)
     file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/bin" "${CURRENT_PACKAGES_DIR}/debug/bin")
@@ -67,6 +75,3 @@ endif()
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/share/${PORT}/man5")
-
-# Handle copyright
-vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING")

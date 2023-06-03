@@ -60,7 +60,7 @@
 #ifdef _WIN32
 #define HAVE_GETOPT_H 1
 #endif
- 
+
 /* Define to 1 if you have the `getopt_long' function. */
 #undef HAVE_GETOPT_LONG
 
@@ -212,7 +212,9 @@
 
 /* Define to 1 if you have the <unistd.h> header file. */
 /* turns out, v5.39 file/src/buffer.c does -not- subject inclusion to this define */
+#ifndef _WIN32
 #define HAVE_UNISTD_H 1
+#endif
 
 /* Define to 1 if you have the `utime' function. */
 #undef HAVE_UTIME
