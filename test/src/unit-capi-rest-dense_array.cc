@@ -80,7 +80,6 @@ struct DenseArrayRESTFx {
   // Vector of supported filsystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
-  // TODO: Add CI username to constants?
   const std::string rest_server_username_ = "unit";
   const std::string TILEDB_URI_PREFIX =
       "tiledb://" + rest_server_username_ + "/";

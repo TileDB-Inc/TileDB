@@ -20,5 +20,5 @@ jobs:
           token: ${{ secrets.TILEDB_PAT }}
           # Pass TileDB core ref to test against REST.
           inputs: '{ "tiledb_ref": "${{ github.sha }}"}'
-          display-workflow-run-url-interval: 5s
-          wait-for-completion-interval: 5s
+          display-workflow-run-url-interval: 30s
+          wait-for-completion-interval: 30s
