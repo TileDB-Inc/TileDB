@@ -15,10 +15,10 @@ jobs:
           # Trigger workflow on TileDB-REST-CI at this ref.
           # TODO: Change to main TileDB-REST-CI branch.
           ref: "smr/sc-23785/rest-ci"
-          workflow: Full CI
+          workflow: full-ci.yml
           # TODO: We could use a PAT or set repository deploy keys with public / private key pair.
           token: ${{ secrets.TILEDB_PAT }}
           # Pass TileDB core ref to test against REST.
-          inputs: '{ "tiledb_ref": "${{ github.sha }}"}'
+          inputs: '{ "tiledb_ref": "${{ github.head_ref || github.ref_name }}"}'
           display-workflow-run-url-interval: 30s
           wait-for-completion-interval: 30s
