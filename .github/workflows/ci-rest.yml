@@ -17,10 +17,9 @@ jobs:
         with:
           repo: TileDB-Inc/TileDB-REST-CI
           # Trigger workflow on TileDB-REST-CI at this ref.
-          # TODO: Change to main TileDB-REST-CI branch.
-          ref: "smr/sc-23785/rest-ci"
+          ref: "main"
           workflow: full-ci.yml
-          token: ${{ secrets.TILEDB_PAT }}
+          token: ${{ secrets.TILEDB_REST_CI_PAT }}
           # Pass TileDB core ref to test against REST.
           # github.head_ref will only be set for PRs, so fallback to github.ref_name if triggered via push event.
           inputs: '{ "tiledb_ref": "${{ github.head_ref || github.ref_name }}"}'
