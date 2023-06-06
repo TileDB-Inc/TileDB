@@ -143,12 +143,13 @@ add_custom_command(OUTPUT magic.mgc
 
 add_custom_target(magic_mgc ALL DEPENDS magic.mgc)
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/magic.mgc DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/libmagic)
+set(PORT_NAME unofficial-libmagic)
+set(TARGETS_EXPORT_NAME ${PORT_NAME}-targets)
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/magic.mgc DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/${PORT_NAME})
 
 install(FILES ${LIBMAGIC_SOURCE_DIR}/magic.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-set(PORT_NAME unofficial-libmagic)
-set(TARGETS_EXPORT_NAME ${PORT_NAME}-targets)
 install(TARGETS ${targets}
         EXPORT ${TARGETS_EXPORT_NAME}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -162,11 +163,11 @@ install(EXPORT ${TARGETS_EXPORT_NAME}
         NAMESPACE unofficial::libmagic::
         )
 configure_package_config_file(
-  unofficial-libmagic-config.cmake.in
-  unofficial-libmagic-config.cmake
+  ${PORT_NAME}-config.cmake.in
+  ${PORT_NAME}-config.cmake
   INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PORT_NAME})
 write_basic_package_version_file(
-  unofficial-libmagic-config-version.cmake
+  ${PORT_NAME}-config-version.cmake
   VERSION ${CMAKE_PROJECT_VERSION}
   COMPATIBILITY SameMajorVersion)
 install(FILES

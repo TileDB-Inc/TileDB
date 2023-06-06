@@ -36,10 +36,7 @@ include(TileDBCommon)
 
 if(TILEDB_VCPKG)
   find_package(unofficial-libmagic CONFIG REQUIRED)
-  find_file(libmagic_DICTIONARY magic.mgc
-    PATHS ${TILEDB_EP_INSTALL_PREFIX}
-    PATH_SUFFIXES bin share
-    ${NO_DEFAULT_PATH})
+  set(libmagic_DICTIONARY ${unofficial-libmagic_DICTIONARY})
   add_library(libmagic ALIAS unofficial::libmagic::libmagic)
   return()
 endif()
