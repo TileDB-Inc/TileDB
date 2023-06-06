@@ -17,8 +17,7 @@ jobs:
         with:
           repo: TileDB-Inc/TileDB-REST-CI
           # Trigger workflow on TileDB-REST-CI at this ref.
-          # TODO: Change to main TileDB-REST-CI branch.
-          ref: "smr/sc-23785/rest-ci"
+          ref: "main"
           workflow: full-ci.yml
           token: ${{ secrets.TILEDB_PAT }}
           # Pass TileDB core ref to test against REST.
