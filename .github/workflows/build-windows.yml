@@ -118,7 +118,7 @@ jobs:
           submodules: true
           fetch-depth: 0
 
-      - name: Prevent vpckg from building debug variants
+      - name: Prevent vcpkg from building debug variants
         shell: python
         run: |
           import os
