@@ -70,6 +70,7 @@ struct RemoteGlobalOrderWriteFx {
   }
 
   ~RemoteGlobalOrderWriteFx() {
+    Array::delete_array(ctx_, array_uri_);
     REQUIRE(test::vfs_test_close(fs_vec_, ctx_c_, vfs_c_).ok());
   }
 

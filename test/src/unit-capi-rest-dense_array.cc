@@ -679,9 +679,6 @@ void DenseArrayRESTFx::check_sorted_reads(const std::string& path) {
     REQUIRE(err == nullptr);
     rc = tiledb_array_set_config(ctx_, array, cfg);
     REQUIRE(rc == TILEDB_OK);
-    tiledb_config_free(&cfg);
-    tiledb_error_free(&err);
-    CHECK(rc == TILEDB_OK);
   }
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
@@ -1757,12 +1754,6 @@ TEST_CASE_METHOD(
   // Unordered writes are only possible for sparse arrays.
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_ERR);
-
-  // Set some subarray AFTER setting the layout to UNORDERED
-  //  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
-  //  CHECK(rc == TILEDB_OK);
-  //  rc = tiledb_query_set_subarray(ctx_, query, subarray);
-  //  CHECK(rc == TILEDB_ERR);
 
   // Close array
   CHECK(tiledb_array_close(ctx_, array) == TILEDB_OK);
