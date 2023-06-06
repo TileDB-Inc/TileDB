@@ -11,11 +11,6 @@ option(FILE_TESTS "Enable file tests" OFF)
 # Get library directory for multiarch linux distros
 include(GNUInstallDirs)
 
-function(cat IN_FILE OUT_FILE)
-  file(READ ${IN_FILE} CONTENTS)
-  file(APPEND ${OUT_FILE} "${CONTENTS}")
-endfunction()
-
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
 set(targets)
 find_package(PCRE2 CONFIG REQUIRED COMPONENTS 8BIT)
@@ -115,23 +110,19 @@ if(MSVC)
 endif()
 
 # Following is the compilation of the magic file
-set(MAGIC_FRAGMENT_DIR magic/Magdir)
-file(GLOB MAGIC_FRAGMENTS ${MAGIC_FRAGMENT_DIR}/*)
+file(GLOB MAGIC_FRAGMENTS magic/Magdir/*)
 
-# Prepare a temporary file to "cat" to:
-file(WRITE magic.in "")
+# Prepare a temporary file to combine the magic fragments:
+set(MAGIC_FRAGMENTS_FILE ${CMAKE_CURRENT_BINARY_DIR}/magic)
+file(WRITE ${MAGIC_FRAGMENTS_FILE} "")
 
 # Call the "cat" function for each input file
 foreach(MAGIC_FRAGMENT ${MAGIC_FRAGMENTS})
-#  message(STATUS "magic frag - ${MAGIC_FRAGMENT}")
-  cat(${MAGIC_FRAGMENT} magic.in)
+  file(APPEND ${MAGIC_FRAGMENTS_FILE} "############## ${MAGIC_FRAGMENT} ##############\n")
+  file(READ ${MAGIC_FRAGMENT} MAGIC_FRAGMENT_CONTENTS)
+  file(APPEND ${MAGIC_FRAGMENTS_FILE} "${MAGIC_FRAGMENT_CONTENTS}\n")
+  unset(MAGIC_FRAGMENT_CONTENTS)
 endforeach()
-
-# Include module with function 'configure_package_config_file'
-include(CMakePackageConfigHelpers)
-
-# Copy the temporary file to the final location
-configure_file(magic.in magic COPYONLY)
 
 add_custom_command(OUTPUT magic.mgc
   COMMAND file -C -m magic
@@ -139,6 +130,9 @@ add_custom_command(OUTPUT magic.mgc
 )
 
 add_custom_target(magic_mgc ALL DEPENDS magic.mgc)
+
+# Include module with function 'configure_package_config_file'
+include(CMakePackageConfigHelpers)
 
 set(PORT_NAME unofficial-libmagic)
 set(TARGETS_EXPORT_NAME ${PORT_NAME}-targets)
