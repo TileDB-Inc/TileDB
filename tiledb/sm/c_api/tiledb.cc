@@ -1293,7 +1293,7 @@ int32_t tiledb_array_schema_evolution_drop_attribute(
   return TILEDB_OK;
 }
 
-TILEDB_EXPORT int32_t tiledb_array_schema_evolution_set_timestamp_range(
+int32_t tiledb_array_schema_evolution_set_timestamp_range(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_evolution_t* array_schema_evolution,
     uint64_t lo,
@@ -5205,7 +5205,7 @@ int32_t tiledb_fragment_info_dump(
 /*          EXPERIMENTAL APIs        */
 /* ********************************* */
 
-TILEDB_EXPORT int32_t tiledb_query_get_status_details(
+int32_t tiledb_query_get_status_details(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     tiledb_query_status_details_t* status) {
@@ -5222,7 +5222,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_status_details(
   return TILEDB_OK;
 }
 
-TILEDB_EXPORT int32_t tiledb_consolidation_plan_create_with_mbr(
+int32_t tiledb_consolidation_plan_create_with_mbr(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     uint64_t fragment_size,
