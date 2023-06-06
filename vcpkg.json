@@ -13,7 +13,11 @@
         "spdlog",
         "zlib",
         "zstd",
-        "libxml2"
+        {
+          "name": "libxml2",
+          "features": ["lzma", "zlib"],
+          "default-features": false
+        }
     ],
     "features": {
         "abseil": {

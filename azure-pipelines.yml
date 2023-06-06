@@ -30,7 +30,7 @@ stages:
       BACKWARDS_COMPATIBILITY_ARRAYS: OFF
     jobs:
     - job:
-      timeoutInMinutes: 90
+      timeoutInMinutes: 120
       strategy:
         matrix:
           macOS_azure:
