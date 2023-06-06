@@ -18,8 +18,6 @@ vcpkg_check_features(
     OUT_FEATURE_OPTIONS FEATURE_OPTIONS
     FEATURES
         jit   PCRE2_SUPPORT_JIT
-        bzip2 PCRE2_SUPPORT_LIBBZ2
-        zlib  PCRE2_SUPPORT_LIBZ
 )
 
 vcpkg_cmake_configure(
@@ -34,11 +32,11 @@ vcpkg_cmake_configure(
         -DPCRE2_SUPPORT_UNICODE=ON
         -DPCRE2_BUILD_TESTS=OFF
         -DPCRE2_BUILD_PCRE2GREP=OFF
+        -DCMAKE_DISABLE_FIND_PACKAGE_BZip2=ON
+        -DCMAKE_DISABLE_FIND_PACKAGE_ZLIB=ON
         -DCMAKE_DISABLE_FIND_PACKAGE_Readline=ON
         -DCMAKE_DISABLE_FIND_PACKAGE_Editline=ON
         -DINSTALL_MSVC_PDB=${INSTALL_PDB}
-        -DCMAKE_REQUIRE_FIND_PACKAGE_BZip2=ON
-        -DCMAKE_REQUIRE_FIND_PACKAGE_ZLIB=ON
     )
 
 vcpkg_cmake_install()
