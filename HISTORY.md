@@ -4,6 +4,7 @@
 
 * Fix dense reader error when query conditions reference var sized fields. [#4108](https://github.com/TileDB-Inc/TileDB/pull/4108)
 * Sparse readers: fixing null count on incomplete queries. [#4037](https://github.com/TileDB-Inc/TileDB/pull/4037)
+* Sparse unordered w/ dups: Fix incomplete queries w/ overlapping ranges. [#4027](https://github.com/TileDB-Inc/TileDB/pull/4027)
 
 # TileDB v2.15.3 Release Notes
 
