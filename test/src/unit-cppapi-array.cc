@@ -1909,16 +1909,12 @@ TEST_CASE(
 
   // Manually add empty folders to the array
   std::vector<std::string> uris = {
-      array_name + "__meta",
-      array_name + "__fragment_meta",
-      array_name + "__fragments",
-      array_name + "__commits",
-      array_name + "__labels"};
+      array_name + "__fragments", array_name + "__commits"};
   for (auto u : uris) {
     vfs.touch(u);
     CHECK(vfs.file_size(u) == 0);
   }
-  REQUIRE(vfs.ls(array_name).size() == 6);
+  REQUIRE(vfs.ls(array_name).size() == 3);
 
   // Ensure the array can be opened and write to it
   std::vector<int> a_w = {
@@ -1929,6 +1925,22 @@ TEST_CASE(
   query_w.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", a_w);
   REQUIRE(query_w.submit() == Query::Status::COMPLETE);
   array.close();
+
+  // Try to read from the array and remove appropriate files
+  // Note: This is deleting the parent folders with the commits & fragments
+  REQUIRE_THROWS_WITH(
+      array.open(TILEDB_READ),
+      Catch::Matchers::ContainsSubstring(
+          "Cannot list given uri; Remove file") &&
+          Catch::Matchers::ContainsSubstring(array_name + "__commits"));
+  vfs.remove_file(array_name + "__commits");
+
+  REQUIRE_THROWS_WITH(
+      array.open(TILEDB_READ),
+      Catch::Matchers::ContainsSubstring(
+          "Cannot list given uri; Remove file") &&
+          Catch::Matchers::ContainsSubstring(array_name + "__fragments"));
+  vfs.remove_file(array_name + "__fragments");
 
   // Read from the array
   array.open(TILEDB_READ);

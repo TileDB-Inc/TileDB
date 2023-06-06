@@ -604,6 +604,10 @@ std::vector<URI> ArrayDirectory::ls(const URI& uri) const {
     auto iter = dirs.find(entry_uri.last_path_part());
     if (iter == dirs.end() || entry.file_size() > 0) {
       uris.emplace_back(entry_uri);
+    } else {
+      throw ArrayDirectoryException(
+          "Cannot list given uri; Remove file '" + entry_uri.to_string() +
+          "' which is masking a directory by the same name.");
     }
   }
 
