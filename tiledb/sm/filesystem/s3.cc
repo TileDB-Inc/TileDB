@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,15 @@
  * @section DESCRIPTION
  *
  * This file implements the S3 class.
+ *
+ * ============================================================================
+ * Notes on implementation limitations:
+ *
+ * When using MinIO object storage, files may mask Array directories
+ * if they are of the same name. As such, the ArrayDirectory may filter out
+ * non-empty directories. Users should be aware of this limitation and attempt
+ * to manually maintain their working directory to avoid test failures.
+ * ============================================================================
  */
 
 #ifdef HAVE_S3

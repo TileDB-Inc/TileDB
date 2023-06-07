@@ -636,7 +636,7 @@ class ArrayDirectory {
   Status load();
 
   /** Returns a set of the known TileDB array directory names. */
-  static const std::set<const std::string>& dir_names();
+  static const std::set<std::string>& dir_names();
 
   /**
    * Lists the given URI and returns filtered results.
@@ -649,9 +649,9 @@ class ArrayDirectory {
   /**
    * List the root directory uris for v1 to v11.
    *
-   * @return Status, vector of URIs.
+   * @return vector of URIs.
    */
-  tuple<Status, optional<std::vector<URI>>> list_root_dir_uris();
+  std::vector<URI> list_root_dir_uris();
 
   /**
    * Loads the root directory uris for v1 to v11.
@@ -664,9 +664,9 @@ class ArrayDirectory {
   /**
    * List the commits directory uris for v12 or higher.
    *
-   * @return Status, vector of commit URIs.
+   * @return vector of commit URIs.
    */
-  tuple<Status, optional<std::vector<URI>>> list_commits_dir_uris();
+  std::vector<URI> list_commits_dir_uris();
 
   /**
    * Loads the commit directory uris for v12 or higher.
@@ -709,7 +709,7 @@ class ArrayDirectory {
   void load_array_meta_uris();
 
   /** Loads the array schema URIs. */
-  Status load_array_schema_uris();
+  void load_array_schema_uris();
 
   /**
    * Computes the fragment URIs from the input array directory URIs, for

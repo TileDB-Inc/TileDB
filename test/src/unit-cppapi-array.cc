@@ -1752,12 +1752,14 @@ TEST_CASE(
   std::string stats;
   Stats::dump(&stats);
 
-  // Expect ls on:
+  // Expect read_ops on:
   // cpp_unit_array/
   // cpp_unit_array/__commits
   // cpp_unit_array/__schema
+  // cpp_unit_array/__meta
+  // cpp_unit_array/__fragment_meta
   CHECK(
-      stats.find("\"Context.StorageManager.VFS.ls_num\": 3") !=
+      stats.find("\"Context.StorageManager.VFS.read_ops_num\": 5") !=
       std::string::npos);
 
   // Expect file_size on the fragment.
@@ -1807,12 +1809,14 @@ TEST_CASE(
   std::string stats;
   Stats::dump(&stats);
 
-  // Expect ls on:
+  // Expect read_ops on:
   // cpp_unit_array/
   // cpp_unit_array/__commits
   // cpp_unit_array/__schema
+  // cpp_unit_array/__meta
+  // cpp_unit_array/__fragment_meta
   CHECK(
-      stats.find("\"Context.StorageManager.VFS.ls_num\": 3") !=
+      stats.find("\"Context.StorageManager.VFS.read_ops_num\": 5") !=
       std::string::npos);
 
   // Expect file_size on the fragment.
@@ -1907,15 +1911,6 @@ TEST_CASE(
   Array::create(array_name, schema);
   REQUIRE(vfs.ls(array_name).size() == 1);
 
-  // Manually add empty folders to the array
-  std::vector<std::string> uris = {
-      array_name + "__fragments", array_name + "__commits"};
-  for (auto u : uris) {
-    vfs.touch(u);
-    CHECK(vfs.file_size(u) == 0);
-  }
-  REQUIRE(vfs.ls(array_name).size() == 3);
-
   // Ensure the array can be opened and write to it
   std::vector<int> a_w = {
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
@@ -1925,22 +1920,6 @@ TEST_CASE(
   query_w.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", a_w);
   REQUIRE(query_w.submit() == Query::Status::COMPLETE);
   array.close();
-
-  // Try to read from the array and remove appropriate files
-  // Note: This is deleting the parent folders with the commits & fragments
-  REQUIRE_THROWS_WITH(
-      array.open(TILEDB_READ),
-      Catch::Matchers::ContainsSubstring(
-          "Cannot list given uri; Remove file") &&
-          Catch::Matchers::ContainsSubstring(array_name + "__commits"));
-  vfs.remove_file(array_name + "__commits");
-
-  REQUIRE_THROWS_WITH(
-      array.open(TILEDB_READ),
-      Catch::Matchers::ContainsSubstring(
-          "Cannot list given uri; Remove file") &&
-          Catch::Matchers::ContainsSubstring(array_name + "__fragments"));
-  vfs.remove_file(array_name + "__fragments");
 
   // Read from the array
   array.open(TILEDB_READ);
@@ -1957,17 +1936,26 @@ TEST_CASE(
   array.close();
 
   // Validate write / read
-  /*for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 16; i++) {
     CHECK(a_r[i] == a_w[i]);
-  }*/
-  // Print read results
-  // Note: this is printing the default fill_value
-  for (auto d : a_r)
-    std::cout << d << " ";
-  std::cout << "\n";
+  }
+
+  // Add a file to the array with the same name as an existing folder
+  std::string commits_uri = array_name + "__commits";
+  vfs.touch(commits_uri);
+  CHECK(vfs.file_size(commits_uri) == 0);
+
+  // Try to read from the array with empty files
+  // Note: MinIO will delete the actual commits if commits_uri is deleted,
+  // per the s3 implementation limitation, making the array invalid
+  try {
+    array.open(TILEDB_READ);
+  } catch (std::exception& e) {
+    REQUIRE_THAT(
+        e.what(), Catch::Matchers::ContainsSubstring("Cannot list given uri"));
+  }
 
   // Clean up
-  array.delete_array(ctx, array_name);
   if (vfs.is_bucket(array_bucket)) {
     vfs.remove_bucket(array_bucket);
   }
