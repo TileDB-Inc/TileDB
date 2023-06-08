@@ -102,7 +102,9 @@ class FilterPipeline {
 
   /** Checks that all filters in a pipeline have compatible types */
   static void check_filter_types(
-      const FilterPipeline& pipeline, const Datatype first_input_type);
+      const FilterPipeline& pipeline,
+      const Datatype first_input_type,
+      bool is_var = false);
 
   /**
    * Populates the filter pipeline from the data in the input binary buffer.

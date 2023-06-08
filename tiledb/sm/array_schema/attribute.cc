@@ -329,25 +329,7 @@ void Attribute::set_nullable(const bool nullable) {
 }
 
 void Attribute::set_filter_pipeline(const FilterPipeline& pipeline) {
-  // TODO: move this in to FilterPipeline::check_filter_types
-  if ((type_ == Datatype::STRING_ASCII || type_ == Datatype::STRING_UTF8) &&
-      var_size() && pipeline.size() > 1) {
-    if (pipeline.has_filter(FilterType::FILTER_RLE) &&
-        pipeline.get_filter(0)->type() != FilterType::FILTER_RLE) {
-      throw AttributeStatusException(
-          "RLE filter must be the first filter to apply when used on a "
-          "variable length string attribute");
-    }
-    if (pipeline.has_filter(FilterType::FILTER_DICTIONARY) &&
-        pipeline.get_filter(0)->type() != FilterType::FILTER_DICTIONARY) {
-      throw AttributeStatusException(
-          "Dictionary filter must be the first filter to apply when used on a "
-          "variable length string attribute");
-    }
-  }
-
-  FilterPipeline::check_filter_types(pipeline, type_);
-
+  FilterPipeline::check_filter_types(pipeline, type_, var_size());
   filters_ = pipeline;
 }
 

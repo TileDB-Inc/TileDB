@@ -106,8 +106,6 @@ class Filter {
     return filter_;
   }
 
-  // @cond
-  // doxygen ignore pending https://github.com/sphinx-doc/sphinx/issues/7944
   /**
    * Sets an option on the filter. Options are filter dependent; this function
    * throws an error if the given option is not valid for the given filter.
@@ -137,7 +135,6 @@ class Filter {
         ctx.ptr().get(), filter_.get(), option, &value));
     return *this;
   }
-  // @endcond
 
   /**
    * Sets an option on the filter using underlying type of FilterOption enums.
@@ -146,7 +143,7 @@ class Filter {
    *
    * @code{.cpp}
    * tiledb::Filter f(ctx, TILEDB_FILTER_TYPED_VIEW);
-   * f.set_option(TILEDB_COMPRESSION_LEVEL, Datatype::UINT64);
+   * f.set_option(TILEDB_TYPED_VIEW_OUTPUT_DATATYPE, Datatype::UINT64);
    * @endcode
    *
    * @tparam T Type of value of option to set.
@@ -368,13 +365,9 @@ class Filter {
         break;
       case TILEDB_WEBP_INPUT_FORMAT:
       case TILEDB_WEBP_LOSSLESS:
-        if (!std::is_same<uint8_t, T>::value)
-          throw std::invalid_argument("Option value must be uint8_t.");
-        break;
       case TILEDB_TYPED_VIEW_OUTPUT_DATATYPE:
         if (!std::is_same<uint8_t, T>::value)
-          throw std::invalid_argument(
-              "Option value must be tiledb_datatype_t.");
+          throw std::invalid_argument("Option value must be uint8_t.");
         break;
       default:
         throw std::invalid_argument("Invalid option type");

@@ -58,7 +58,7 @@ TypedViewFilter::TypedViewFilter(std::optional<Datatype> output_datatype)
 }
 
 TypedViewFilter* TypedViewFilter::clone_impl() const {
-  return new TypedViewFilter(output_datatype_);
+  return tdb_new(TypedViewFilter, output_datatype_);
 }
 
 void TypedViewFilter::dump(FILE* out) const {
@@ -79,8 +79,8 @@ Datatype TypedViewFilter::output_datatype() const {
 Status TypedViewFilter::set_option_impl(
     FilterOption option, const void* value) {
   if (value == nullptr) {
-    throw Status_FilterError(
-        "Float scaling filter error; invalid option value");
+    throw StatusException(
+        Status_FilterError("Float scaling filter error; invalid option value"));
   }
 
   switch (option) {
@@ -90,7 +90,8 @@ Status TypedViewFilter::set_option_impl(
       output_datatype_ = datatype;
     } break;
     default:
-      throw Status_FilterError("Typed view filter error; unknown option");
+      throw StatusException(
+          Status_FilterError("Typed view filter error; unknown option"));
   }
 
   return Status::Ok();
@@ -104,7 +105,8 @@ Status TypedViewFilter::get_option_impl(
       *(Datatype*)value = output_datatype_.value();
     } break;
     default:
-      throw Status_FilterError("Typed view filter error; unknown option");
+      throw StatusException(
+          Status_FilterError("Typed view filter error; unknown option"));
   }
   return Status::Ok();
 }
@@ -128,9 +130,7 @@ Status TypedViewFilter::run_reverse(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output,
-    const Config& config) const {
-  (void)config;
-
+    const Config&) const {
   RETURN_NOT_OK(output->append_view(input));
   RETURN_NOT_OK(output_metadata->append_view(input_metadata));
   return Status::Ok();

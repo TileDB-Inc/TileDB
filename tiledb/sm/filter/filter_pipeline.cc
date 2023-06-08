@@ -50,6 +50,12 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+class FilterPipelineStatusException : public StatusException {
+ public:
+  explicit FilterPipelineStatusException(const std::string& msg)
+      : StatusException("FilterPipeline", msg) {
+  }
+};
 
 FilterPipeline::FilterPipeline()
     : max_chunk_size_(constants::max_tile_chunk_size) {
@@ -107,21 +113,35 @@ void ensure_compatible(const Filter& first, const Filter& second) {
 */
 
 void FilterPipeline::check_filter_types(
-    const FilterPipeline& pipeline, const Datatype first_input_type) {
-  (void)pipeline;
-
+    const FilterPipeline& pipeline,
+    const Datatype first_input_type,
+    bool is_var) {
   // ** Legacy checks for compatibility **
-  /*
   for (unsigned i = 0; i < pipeline.size(); ++i) {
-    if (datatype_is_real(type_) &&
+    if (datatype_is_real(first_input_type) &&
         pipeline.get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
-      throw AttributeStatusException(
+      throw FilterPipelineStatusException(
           "Cannot set DOUBLE DELTA filter to an attribute with a real "
           "datatype");
   }
-  */
 
-  // TODO: move checks from attribute, dim, schema to here.
+  // TODO: move checks from schema to here.
+  if ((first_input_type == Datatype::STRING_ASCII ||
+       first_input_type == Datatype::STRING_UTF8) &&
+      is_var && pipeline.size() > 1) {
+    if (pipeline.has_filter(FilterType::FILTER_RLE) &&
+        pipeline.get_filter(0)->type() != FilterType::FILTER_RLE) {
+      throw FilterPipelineStatusException(
+          "RLE filter must be the first filter to apply when used on a "
+          "variable length string attribute");
+    }
+    if (pipeline.has_filter(FilterType::FILTER_DICTIONARY) &&
+        pipeline.get_filter(0)->type() != FilterType::FILTER_DICTIONARY) {
+      throw FilterPipelineStatusException(
+          "Dictionary filter must be the first filter to apply when used on a "
+          "variable length string attribute");
+    }
+  }
 
   // ** Modern checks using Filter output type **
   for (unsigned i = 0; i < pipeline.size(); ++i) {
