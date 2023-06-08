@@ -55,7 +55,7 @@ static constexpr bool serialization = false;
 class support {};
 
 void to_json(json& j, const support&) {
-  j = {{"serialization", serialization ? "on" : "off"}};
+  j = {{"serialization", {{"enabled", serialization}}}};
 }
 
 }  // namespace tiledb::as_built::parameters::support

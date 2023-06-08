@@ -68,9 +68,9 @@ class storage_backends {};
 
 void to_json(json& j, const storage_backends&) {
   j = {
-      {"azure", azure ? "on" : "off"},
-      {"gcs", gcs ? "on" : "off"},
-      {"s3", s3 ? "on" : "off"}};
+      {"azure", {{"enabled", azure}}},
+      {"gcs", {{"enabled", gcs}}},
+      {"s3", {{"enabled", s3}}}};
 }
 
 }  // namespace tiledb::as_built::parameters::storage_backends

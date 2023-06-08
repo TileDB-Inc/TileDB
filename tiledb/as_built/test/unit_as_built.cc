@@ -35,82 +35,101 @@
 #include <tdb_catch.h>
 #include <iostream>
 
-namespace built = tiledb::as_built;
-const std::string dump_str_ = built::dump();
-const json dump_ = json::parse(dump_str_);
+namespace as_built = tiledb::as_built;
 
-TEST_CASE("as_built: Ensure dump is valid", "[as_built][dump]") {
-  CHECK_NOTHROW(built::dump());
+const std::string dump_str() noexcept {
+  try {
+    return as_built::dump();
+  } catch (...) {
+    return "";
+  }
 }
+static const std::string dump_str_{dump_str()};
 
-TEST_CASE("as_built: Ensure dump has json output", "[as_built][dump][json]") {
-  CHECK_NOTHROW((void)json::parse(dump_str_));
+std::optional<json> dump_json(std::string dump_str) noexcept {
+  try {
+    return json::parse(dump_str);
+  } catch (...) {
+    return std::nullopt;
+  }
 }
+static const std::optional<json> dump_{dump_json(dump_str_)};
 
-TEST_CASE("as_built: Print dump", "[as_built][dump][.print_json]") {
-  std::cerr << dump_str_ << std::endl;
+TEST_CASE("as_built: Ensure dump() does not throw", "[as_built][dump]") {
+  std::string x;
+  CHECK_NOTHROW(x = as_built::dump());
+  CHECK(x.compare(dump_str_) == 0);
 }
 
 TEST_CASE("as_built: Ensure dump is non-empty", "[as_built][dump][non-empty]") {
   REQUIRE(!dump_str_.empty());
 }
 
+TEST_CASE("as_built: Print dump", "[as_built][dump][.print_json]") {
+  std::cerr << dump_str_ << std::endl;
+}
+
+TEST_CASE("as_built: Ensure dump has json output", "[as_built][dump][json]") {
+  CHECK_NOTHROW((void)json::parse(dump_str_));
+  CHECK(dump_ != std::nullopt);
+}
+
 TEST_CASE("as_built: Validate top-level key", "[as_built][top-level]") {
-  auto x{dump_["as_built"]};
+  auto x{dump_.value()["as_built"]};
   CHECK(x.type() == nlohmann::detail::value_t::object);
   CHECK(!x.empty());
 }
 
 TEST_CASE("as_built: Validate parameters key", "[as_built][parameters]") {
-  auto x{dump_["as_built"]["parameters"]};
+  auto x{dump_.value()["as_built"]["parameters"]};
   CHECK(x.type() == nlohmann::detail::value_t::object);
   CHECK(!x.empty());
 }
 
 TEST_CASE(
     "as_built: Validate storage_backends key", "[as_built][storage_backends]") {
-  auto x{dump_["as_built"]["parameters"]["storage_backends"]};
+  auto x{dump_.value()["as_built"]["parameters"]["storage_backends"]};
   CHECK(x.type() == nlohmann::detail::value_t::object);
   CHECK(!x.empty());
 }
 
 TEST_CASE(
     "as_built: storage_backends attributes", "[as_built][storage_backends]") {
-  auto x{dump_["as_built"]["parameters"]["storage_backends"]};
+  auto x{dump_.value()["as_built"]["parameters"]["storage_backends"]};
   CHECK(!x.empty());
 
 #ifdef TILEDB_AZURE
-  CHECK(x["azure"] == "on");
+  CHECK(x["azure"]["enabled"] == true);
 #else
-  CHECK(x["azure"] == "off");
+  CHECK(x["azure"]["enabled"] == false);
 #endif  // TILEDB_AZURE
 
 #ifdef TILEDB_GCS
-  CHECK(x["gcs"] == "on");
+  CHECK(x["gcs"]["enabled"] == true);
 #else
-  CHECK(x["gcs"] == "off");
+  CHECK(x["gcs"]["enabled"] == false);
 #endif  // TILEDB_GCS
 
 #ifdef TILEDB_S3
-  CHECK(x["s3"] == "on");
+  CHECK(x["s3"]["enabled"] == true);
 #else
-  CHECK(x["s3"] == "off");
+  CHECK(x["s3"]["enabled"] == false);
 #endif  // TILEDB_S3
 }
 
 TEST_CASE("as_built: Validate support key", "[as_built][support]") {
-  auto x{dump_["as_built"]["parameters"]["support"]};
+  auto x{dump_.value()["as_built"]["parameters"]["support"]};
   CHECK(x.type() == nlohmann::detail::value_t::object);
   CHECK(!x.empty());
 }
 
 TEST_CASE("as_built: support attributes", "[as_built][support]") {
-  auto x{dump_["as_built"]["parameters"]["support"]};
+  auto x{dump_.value()["as_built"]["parameters"]["support"]};
   CHECK(!x.empty());
 
 #ifdef TILEDB_SERIALIZATION
-  CHECK(x["serialization"] == "on");
+  CHECK(x["serialization"]["enabled"] == true);
 #else
-  CHECK(x["serialization"] == "off");
+  CHECK(x["serialization"]["enabled"] == false);
 #endif  // TILEDB_SERIALIZATION
 }
