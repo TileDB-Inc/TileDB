@@ -341,7 +341,7 @@ void Group::delete_group(const URI& uri, bool recursive) {
     if (rest_client == nullptr)
       throw GroupStatusException(
           "[delete_group] Remote group with no REST client.");
-    rest_client->delete_group_from_rest(uri);
+    rest_client->delete_group_from_rest(uri, recursive);
   } else {
     storage_manager_->delete_group(uri.c_str());
   }

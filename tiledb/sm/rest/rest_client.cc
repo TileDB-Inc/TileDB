@@ -326,7 +326,6 @@ Status RestClient::post_array_from_rest(
 }
 
 void RestClient::delete_array_from_rest(const URI& uri) {
-  // #TODO Implement API endpoint on TileDBCloud.
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
@@ -1321,8 +1320,7 @@ Status RestClient::patch_group_to_rest(const URI& uri, Group* group) {
       stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
 }
 
-void RestClient::delete_group_from_rest(const URI& uri) {
-  // #TODO Implement API endpoint on TileDBCloud.
+void RestClient::delete_group_from_rest(const URI& uri, bool recursive) {
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string group_ns, group_uri;
@@ -1330,8 +1328,10 @@ void RestClient::delete_group_from_rest(const URI& uri) {
   const std::string cache_key = group_ns + ":" + group_uri;
   throw_if_not_ok(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
+  const std::string recursive_str = recursive ? "true" : "false";
   const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns +
-                          "/" + curlc.url_escape(group_uri);
+                          "/" + curlc.url_escape(group_uri) + "?delete=true" +
+                          "&recursive=" + recursive_str;
 
   Buffer returned_data;
   throw_if_not_ok(curlc.delete_data(
@@ -1491,7 +1491,7 @@ Status RestClient::patch_group_to_rest(const URI&, Group*) {
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
-void RestClient::delete_group_from_rest(const URI&) {
+void RestClient::delete_group_from_rest(const URI&, bool) {
   throw StatusException(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
