@@ -205,12 +205,29 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   else if (
       sas_token.empty() &&
       utils::parse::starts_with(blob_endpoint, "https://")) {
-    client_ =
-        tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
-            ::Azure::Storage::Blobs::BlobServiceClient,
-            blob_endpoint,
-            make_shared<::Azure::Identity::DefaultAzureCredential>(HERE()),
-            options));
+    try {
+      auto credential =
+          make_shared<::Azure::Identity::DefaultAzureCredential>(HERE());
+      // If a token is not available we wouldn't know it until we make a request
+      // and it would be too late. Try getting a token, and if it fails fall
+      // back to anonymous authentication.
+      std::ignore = credential->GetToken({}, {});
+      client_ =
+          tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
+              ::Azure::Storage::Blobs::BlobServiceClient,
+              blob_endpoint,
+              credential,
+              options));
+    } catch (...) {
+      LOG_INFO(
+          "Failed to get Azure AD token, falling back to anonymous "
+          "authentication");
+      client_ =
+          tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
+              ::Azure::Storage::Blobs::BlobServiceClient,
+              blob_endpoint,
+              options));
+    }
   } else {
     client_ =
         tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
