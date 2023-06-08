@@ -34,9 +34,9 @@
 #include <iostream>
 
 #include <test/support/tdb_catch.h>
-#include "../../../common/common.h"
-#include "../../enums/filter_option.h"
-#include "../typed_view_filter.h"
+#include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/enums/filter_option.h"
+#include "tiledb/sm/filter/typed_view_filter.h"
 
 using namespace tiledb::sm;
 
@@ -54,7 +54,10 @@ TEST_CASE("TypedViewFilter: test basic functionality", "[filter][typed-view]") {
   // filter set option method
   TypedViewFilter filter3;
   Datatype t = Datatype::UINT32;
-  throw_if_not_ok(
-      filter3.set_option(FilterOption::TYPED_VIEW_OUTPUT_DATATYPE, &t));
+  CHECK(filter3.set_option(FilterOption::TYPED_VIEW_OUTPUT_DATATYPE, &t).ok());
   CHECK(filter3.output_datatype() == Datatype::UINT32);
+  Datatype lookup_t = Datatype::ANY;
+  CHECK(filter3.get_option(FilterOption::TYPED_VIEW_OUTPUT_DATATYPE, &lookup_t)
+            .ok());
+  CHECK(lookup_t == t);
 }

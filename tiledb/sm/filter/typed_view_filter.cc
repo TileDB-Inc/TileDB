@@ -65,7 +65,10 @@ void TypedViewFilter::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
 
-  fprintf(out, "TypedView, OUTPUT_DATATYPE=%s", datatype_str(output_datatype_.value()).c_str());
+  fprintf(
+      out,
+      "TypedView, OUTPUT_DATATYPE=%s",
+      datatype_str(output_datatype_.value_or(Datatype::ANY)).c_str());
 }
 
 Datatype TypedViewFilter::output_datatype() const {
@@ -131,6 +134,11 @@ Status TypedViewFilter::run_reverse(
   RETURN_NOT_OK(output->append_view(input));
   RETURN_NOT_OK(output_metadata->append_view(input_metadata));
   return Status::Ok();
+}
+
+void TypedViewFilter::serialize_impl(tiledb::sm::Serializer& serializer) const {
+  serializer.write(
+      static_cast<uint8_t>(output_datatype_.value_or(Datatype::ANY)));
 }
 
 }  // namespace sm

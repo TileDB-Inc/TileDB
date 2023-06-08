@@ -93,6 +93,13 @@ class TypedViewFilter : public Filter {
       FilterBuffer* output,
       const Config& config) const override;
 
+  /**
+   * Serializes filter metadata.
+   *
+   * @param serializer Serializer with buffer to store metadata.
+   */
+  void serialize_impl(Serializer& serializer) const override;
+
  private:
   /** Returns a new clone of this filter. */
   TypedViewFilter* clone_impl() const override;

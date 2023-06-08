@@ -140,6 +140,32 @@ class Filter {
   // @endcond
 
   /**
+   * Sets an option on the filter using underlying type of FilterOption enums.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * tiledb::Filter f(ctx, TILEDB_FILTER_TYPED_VIEW);
+   * f.set_option(TILEDB_COMPRESSION_LEVEL, Datatype::UINT64);
+   * @endcode
+   *
+   * @tparam T Type of value of option to set.
+   * @param option Enumerated option to set.
+   * @param value Value of option to set.
+   * @return Reference to this Filter
+   *
+   * @throws TileDBError if the option cannot be set on the filter.
+   * @throws std::invalid_argument if the option value is the wrong type.
+   */
+  template <
+      typename T,
+      typename std::enable_if<std::is_arithmetic<
+          std::underlying_type_t<T>>::value>::type* = nullptr>
+  Filter& set_option(tiledb_filter_option_t option, T value) {
+    return set_option(option, static_cast<std::underlying_type_t<T>>(value));
+  }
+
+  /**
    * Sets an option on the filter. Options are filter dependent; this function
    * throws an error if the given option is not valid for the given filter.
    *
@@ -346,8 +372,9 @@ class Filter {
           throw std::invalid_argument("Option value must be uint8_t.");
         break;
       case TILEDB_TYPED_VIEW_OUTPUT_DATATYPE:
-        if (!std::is_same<tiledb_datatype_t, T>::value)
-          throw std::invalid_argument("Option value must be tiledb_datatype_t.");
+        if (!std::is_same<uint8_t, T>::value)
+          throw std::invalid_argument(
+              "Option value must be tiledb_datatype_t.");
         break;
       default:
         throw std::invalid_argument("Invalid option type");

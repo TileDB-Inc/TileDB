@@ -33,6 +33,8 @@
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/enums/filter_option.h"
 
 static void check_filters(
     const tiledb::FilterList& answer, const tiledb::FilterList& check) {
@@ -846,6 +848,7 @@ TEST_CASE("C++ API: Filter lists on array", "[cppapi][filter][typed-view]") {
   FilterList a1_filters(ctx);
   a1_filters.set_max_chunk_size(10000);
   Filter f1{ctx, TILEDB_FILTER_TYPED_VIEW};
+  f1.set_option(TILEDB_TYPED_VIEW_OUTPUT_DATATYPE, sm::Datatype::INT64);
   a1_filters.add_filter(f1);
 
   auto a1 = Attribute::create<int>(ctx, "a1");
@@ -866,9 +869,15 @@ TEST_CASE("C++ API: Filter lists on array", "[cppapi][filter][typed-view]") {
   std::vector<double> a1_data = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   std::vector<int> coords = {0, 10, 20, 30, 31, 32, 33, 34, 40, 50};
   Array array(ctx, array_name, TILEDB_WRITE);
+
+  sm::Datatype t = sm::Datatype::TIME_MS;
+  array.schema().attribute(0).filter_list().filter(0).get_option(
+      TILEDB_TYPED_VIEW_OUTPUT_DATATYPE, &t);
+  CHECK(t == sm::Datatype::INT64);
+
   Query query(ctx, array);
   query.set_data_buffer("a1", a1_data)
-      .set_coordinates(coords)
+      .set_data_buffer("d1", coords)
       .set_layout(TILEDB_UNORDERED);
   REQUIRE(query.submit() == Query::Status::COMPLETE);
   array.close();
@@ -900,18 +909,17 @@ TEST_CASE("C++ API: Filter lists on array", "[cppapi][filter][typed-view]") {
     REQUIRE(a2_read_off[0] == 0);
     REQUIRE(a2_read_off[1] == 3);
     REQUIRE(a2_read_data.substr(0, 7) == "abcdefg");
-
-    // Check reading filter lists.
-    array.open(TILEDB_READ);
-    auto schema_r = array.schema();
-    check_filters(a1_filters, schema_r.coords_filter_list());
-    check_filters(offsets_filters, schema_r.offsets_filter_list());
-    check_filters(a1_filters, schema_r.attribute("a1").filter_list());
-    check_filters(a2_filters, schema_r.attribute("a2").filter_list());
-    array.close();
-
-    // Clean up
-    if (vfs.is_dir(array_name))
-      vfs.remove_dir(array_name);
   */
+
+  // Check reading filter lists.
+  array.open(TILEDB_READ);
+  auto schema_r = array.schema();
+  check_filters(a1_filters, schema_r.attribute("a1").filter_list());
+  //  check_filters(offsets_filters, schema_r.offsets_filter_list());
+  //  check_filters(a2_filters, schema_r.attribute("a2").filter_list());
+  array.close();
+
+  // Clean up
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
 }
