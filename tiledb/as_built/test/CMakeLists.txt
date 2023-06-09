@@ -23,17 +23,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-find_package(Catch_EP REQUIRED)
+include(unit_test)
 
-add_executable(unit_as_built EXCLUDE_FROM_ALL)
-target_sources(unit_as_built PUBLIC main.cc unit_as_built.cc)
-target_include_directories(
-  unit_as_built PUBLIC ${TILEDB_SOURCE_ROOT}/test/support)
-target_link_libraries(unit_as_built PUBLIC as_built)
-target_link_libraries(unit_as_built PUBLIC Catch2::Catch2WithMain)
-
-add_test(
-  NAME "unit_as_built"
-  COMMAND $<TARGET_FILE:unit_as_built>
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
+commence(unit_test as_built)
+  this_target_link_libraries(as_built)
+  target_include_directories(
+    unit_as_built PUBLIC ${TILEDB_SOURCE_ROOT}/test/support)
+  this_target_sources(main.cc unit_as_built.cc)
+conclude(unit_test)
