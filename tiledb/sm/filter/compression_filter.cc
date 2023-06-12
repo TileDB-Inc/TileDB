@@ -54,21 +54,31 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+class CompressionFilterStatusException : public StatusException {
+ public:
+  explicit CompressionFilterStatusException(const std::string& msg)
+      : StatusException("CompressionFilter", msg) {
+  }
+};
 
 CompressionFilter::CompressionFilter(
-    FilterType compressor, const uint32_t version)
+    FilterType compressor, const format_version_t version)
     : Filter(compressor)
     , compressor_(filter_to_compressor(compressor))
     , level_(0)
     , version_(version)
     , zstd_compress_ctx_pool_(nullptr)
     , zstd_decompress_ctx_pool_(nullptr) {
-  // TODO this implementation should probably only allow filters which don't
-  // take a level.
+  if (compressor_ == Compressor::BZIP2 || compressor_ == Compressor::GZIP ||
+      compressor_ == Compressor::LZ4 || compressor_ == Compressor::ZSTD) {
+    throw CompressionFilterStatusException(
+        "Cannot construct compressor " + compressor_str(compressor_) +
+        " with no compression level.");
+  }
 }
 
 CompressionFilter::CompressionFilter(
-    FilterType compressor, int level, const uint32_t version)
+    FilterType compressor, int level, const format_version_t version)
     : Filter(compressor)
     , compressor_(filter_to_compressor(compressor))
     , level_(level)
@@ -487,7 +497,7 @@ Status CompressionFilter::compress_var_string_coords(
     FilterBuffer& output,
     FilterBuffer& output_metadata) const {
   if (input.num_buffers() != 1) {
-    throw std::logic_error(
+    throw CompressionFilterStatusException(
         "Var-sized string input has to be in single "
         "buffer format to be compressed with RLE or Dictionary encoding");
   }
@@ -574,7 +584,7 @@ Status CompressionFilter::decompress_var_string_coords(
     Tile* offsets_tile,
     FilterBuffer& output) const {
   if (input.num_buffers() != 1) {
-    throw std::logic_error(
+    throw CompressionFilterStatusException(
         "Var-sized string input has to be in single "
         "buffer format to be decompressed with RLE or Dictionary encoding");
   }

@@ -483,7 +483,8 @@ TEST_CASE("Filter: Test input type checks", "[filter][input-type]") {
   REQUIRE_THROWS_WITH(
       f.ensure_accepts_datatype(float_type),
       Catch::Matchers::ContainsSubstring(
-          "Cannot use delta filter on floating point input."));
+          "Filter " + filter_type_str(filtertype) +
+          " does not accept input type " + datatype_str(float_type)));
 }
 
 TEST_CASE("Filter: Test output types", "[filter][input-type]") {

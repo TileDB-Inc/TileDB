@@ -80,11 +80,19 @@ TEST_CASE("C API: Test enum values", "[capi][enums]") {
   REQUIRE(TILEDB_FILTER_XOR == 16);
   REQUIRE(TILEDB_FILTER_DEPRECATED == 17);
   REQUIRE(TILEDB_FILTER_WEBP == 18);
+  REQUIRE(TILEDB_FILTER_TYPED_VIEW == 20);
 
   /** Filter option */
   REQUIRE(TILEDB_COMPRESSION_LEVEL == 0);
   REQUIRE(TILEDB_BIT_WIDTH_MAX_WINDOW == 1);
   REQUIRE(TILEDB_POSITIVE_DELTA_MAX_WINDOW == 2);
+  REQUIRE(TILEDB_SCALE_FLOAT_BYTEWIDTH == 3);
+  REQUIRE(TILEDB_SCALE_FLOAT_FACTOR == 4);
+  REQUIRE(TILEDB_SCALE_FLOAT_OFFSET == 5);
+  REQUIRE(TILEDB_WEBP_QUALITY == 6);
+  REQUIRE(TILEDB_WEBP_INPUT_FORMAT == 7);
+  REQUIRE(TILEDB_WEBP_LOSSLESS == 8);
+  REQUIRE(TILEDB_TYPED_VIEW_OUTPUT_DATATYPE == 9);
 
   /** Encryption type */
   REQUIRE(TILEDB_NO_ENCRYPTION == 0);
@@ -113,13 +121,13 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
   tiledb_array_type_t array_type;
   REQUIRE(
       (tiledb_array_type_to_str(TILEDB_DENSE, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "dense"));
+       std::string(c_str) == constants::dense_str));
   REQUIRE(
       (tiledb_array_type_from_str("dense", &array_type) == TILEDB_OK &&
        array_type == TILEDB_DENSE));
   REQUIRE(
       (tiledb_array_type_to_str(TILEDB_SPARSE, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "sparse"));
+       std::string(c_str) == constants::sparse_str));
   REQUIRE(
       (tiledb_array_type_from_str("sparse", &array_type) == TILEDB_OK &&
        array_type == TILEDB_SPARSE));
@@ -127,25 +135,25 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
   tiledb_layout_t layout;
   REQUIRE(
       (tiledb_layout_to_str(TILEDB_ROW_MAJOR, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "row-major"));
+       std::string(c_str) == constants::row_major_str));
   REQUIRE(
       (tiledb_layout_from_str("row-major", &layout) == TILEDB_OK &&
        layout == TILEDB_ROW_MAJOR));
   REQUIRE(
       (tiledb_layout_to_str(TILEDB_COL_MAJOR, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "col-major"));
+       std::string(c_str) == constants::col_major_str));
   REQUIRE(
       (tiledb_layout_from_str("col-major", &layout) == TILEDB_OK &&
        layout == TILEDB_COL_MAJOR));
   REQUIRE(
       (tiledb_layout_to_str(TILEDB_GLOBAL_ORDER, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "global-order"));
+       std::string(c_str) == constants::global_order_str));
   REQUIRE(
       (tiledb_layout_from_str("global-order", &layout) == TILEDB_OK &&
        layout == TILEDB_GLOBAL_ORDER));
   REQUIRE(
       (tiledb_layout_to_str(TILEDB_UNORDERED, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "unordered"));
+       std::string(c_str) == constants::unordered_str));
   REQUIRE(
       (tiledb_layout_from_str("unordered", &layout) == TILEDB_OK &&
        layout == TILEDB_UNORDERED));
@@ -153,51 +161,51 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
   tiledb_filter_type_t filter_type;
   REQUIRE(
       (tiledb_filter_type_to_str(TILEDB_FILTER_NONE, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "NONE"));
+       std::string(c_str) == constants::filter_none_str));
   REQUIRE(
       (tiledb_filter_type_from_str("NONE", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_NONE));
   REQUIRE(
       (tiledb_filter_type_to_str(TILEDB_FILTER_GZIP, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "GZIP"));
+       std::string(c_str) == constants::gzip_str));
   REQUIRE(
       (tiledb_filter_type_from_str("GZIP", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_GZIP));
   REQUIRE(
       (tiledb_filter_type_to_str(TILEDB_FILTER_ZSTD, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "ZSTD"));
+       std::string(c_str) == constants::zstd_str));
   REQUIRE(
       (tiledb_filter_type_from_str("ZSTD", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_ZSTD));
   REQUIRE(
       (tiledb_filter_type_to_str(TILEDB_FILTER_LZ4, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "LZ4"));
+       std::string(c_str) == constants::lz4_str));
   REQUIRE(
       (tiledb_filter_type_from_str("LZ4", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_LZ4));
   REQUIRE(
       (tiledb_filter_type_to_str(TILEDB_FILTER_RLE, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "RLE"));
+       std::string(c_str) == constants::rle_str));
   REQUIRE(
       (tiledb_filter_type_from_str("RLE", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_RLE));
   REQUIRE(
       (tiledb_filter_type_to_str(TILEDB_FILTER_BZIP2, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "BZIP2"));
+       std::string(c_str) == constants::bzip2_str));
   REQUIRE(
       (tiledb_filter_type_from_str("BZIP2", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_BZIP2));
   REQUIRE(
       (tiledb_filter_type_to_str(TILEDB_FILTER_DOUBLE_DELTA, &c_str) ==
            TILEDB_OK &&
-       std::string(c_str) == "DOUBLE_DELTA"));
+       std::string(c_str) == constants::double_delta_str));
   REQUIRE(
       (tiledb_filter_type_from_str("DOUBLE_DELTA", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_DOUBLE_DELTA));
   REQUIRE(
       (tiledb_filter_type_to_str(TILEDB_FILTER_BIT_WIDTH_REDUCTION, &c_str) ==
            TILEDB_OK &&
-       std::string(c_str) == "BIT_WIDTH_REDUCTION"));
+       std::string(c_str) == constants::filter_bit_width_reduction_str));
   REQUIRE(
       (tiledb_filter_type_from_str("BIT_WIDTH_REDUCTION", &filter_type) ==
            TILEDB_OK &&
@@ -205,59 +213,88 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
   REQUIRE(
       (tiledb_filter_type_to_str(TILEDB_FILTER_BITSHUFFLE, &c_str) ==
            TILEDB_OK &&
-       std::string(c_str) == "BITSHUFFLE"));
+       std::string(c_str) == constants::filter_bitshuffle_str));
   REQUIRE(
       (tiledb_filter_type_from_str("BITSHUFFLE", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_BITSHUFFLE));
   REQUIRE(
       (tiledb_filter_type_to_str(TILEDB_FILTER_BYTESHUFFLE, &c_str) ==
            TILEDB_OK &&
-       std::string(c_str) == "BYTESHUFFLE"));
+       std::string(c_str) == constants::filter_byteshuffle_str));
   REQUIRE(
       (tiledb_filter_type_from_str("BYTESHUFFLE", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_BYTESHUFFLE));
   REQUIRE(
       (tiledb_filter_type_to_str(TILEDB_FILTER_POSITIVE_DELTA, &c_str) ==
            TILEDB_OK &&
-       std::string(c_str) == "POSITIVE_DELTA"));
+       std::string(c_str) == constants::filter_positive_delta_str));
   REQUIRE(
       (tiledb_filter_type_from_str("POSITIVE_DELTA", &filter_type) ==
            TILEDB_OK &&
        filter_type == TILEDB_FILTER_POSITIVE_DELTA));
   REQUIRE(
+      (tiledb_filter_type_to_str(TILEDB_FILTER_CHECKSUM_MD5, &c_str) ==
+           TILEDB_OK &&
+       std::string(c_str) == constants::filter_checksum_md5_str));
+  REQUIRE(
       (tiledb_filter_type_from_str("CHECKSUM_MD5", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_CHECKSUM_MD5));
+  REQUIRE(
+      (tiledb_filter_type_to_str(TILEDB_FILTER_CHECKSUM_SHA256, &c_str) ==
+           TILEDB_OK &&
+       std::string(c_str) == constants::filter_checksum_sha256_str));
   REQUIRE(
       (tiledb_filter_type_from_str("CHECKSUM_SHA256", &filter_type) ==
            TILEDB_OK &&
        filter_type == TILEDB_FILTER_CHECKSUM_SHA256));
   REQUIRE(
+      (tiledb_filter_type_to_str(TILEDB_FILTER_DICTIONARY, &c_str) ==
+           TILEDB_OK &&
+       std::string(c_str) == constants::filter_dictionary_str));
+  REQUIRE(
       (tiledb_filter_type_from_str("DICTIONARY_ENCODING", &filter_type) ==
            TILEDB_OK &&
        filter_type == TILEDB_FILTER_DICTIONARY));
   REQUIRE(
+      (tiledb_filter_type_to_str(TILEDB_FILTER_SCALE_FLOAT, &c_str) ==
+           TILEDB_OK &&
+       std::string(c_str) == constants::filter_scale_float_str));
+  REQUIRE(
       (tiledb_filter_type_from_str("SCALE_FLOAT", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_SCALE_FLOAT));
+  REQUIRE(
+      (tiledb_filter_type_to_str(TILEDB_FILTER_XOR, &c_str) == TILEDB_OK &&
+       std::string(c_str) == constants::filter_xor_str));
   REQUIRE(
       (tiledb_filter_type_from_str("XOR", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_XOR));
   REQUIRE(
+      (tiledb_filter_type_to_str(TILEDB_FILTER_WEBP, &c_str) == TILEDB_OK &&
+       std::string(c_str) == constants::filter_webp_str));
+  REQUIRE(
       (tiledb_filter_type_from_str("WEBP", &filter_type) == TILEDB_OK &&
        filter_type == TILEDB_FILTER_WEBP));
+  REQUIRE(
+      (tiledb_filter_type_to_str(TILEDB_FILTER_TYPED_VIEW, &c_str) ==
+           TILEDB_OK &&
+       std::string(c_str) == constants::filter_typed_view_str));
+  REQUIRE(
+      (tiledb_filter_type_from_str("TYPED_VIEW", &filter_type) == TILEDB_OK &&
+       filter_type == TILEDB_FILTER_TYPED_VIEW));
 
   tiledb_filter_option_t filter_option;
   REQUIRE(
       (tiledb_filter_option_to_str(TILEDB_COMPRESSION_LEVEL, &c_str) ==
            TILEDB_OK &&
-       std::string(c_str) == "COMPRESSION_LEVEL"));
+       std::string(c_str) == constants::filter_option_compression_level_str));
   REQUIRE(
       (tiledb_filter_option_from_str("COMPRESSION_LEVEL", &filter_option) ==
            TILEDB_OK &&
        filter_option == TILEDB_COMPRESSION_LEVEL));
-  REQUIRE(
-      (tiledb_filter_option_to_str(TILEDB_BIT_WIDTH_MAX_WINDOW, &c_str) ==
-           TILEDB_OK &&
-       std::string(c_str) == "BIT_WIDTH_MAX_WINDOW"));
+  REQUIRE((
+      tiledb_filter_option_to_str(TILEDB_BIT_WIDTH_MAX_WINDOW, &c_str) ==
+          TILEDB_OK &&
+      std::string(c_str) == constants::filter_option_bit_width_max_window_str));
   REQUIRE(
       (tiledb_filter_option_from_str("BIT_WIDTH_MAX_WINDOW", &filter_option) ==
            TILEDB_OK &&
@@ -265,48 +302,80 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
   REQUIRE(
       (tiledb_filter_option_to_str(TILEDB_POSITIVE_DELTA_MAX_WINDOW, &c_str) ==
            TILEDB_OK &&
-       std::string(c_str) == "POSITIVE_DELTA_MAX_WINDOW"));
+       std::string(c_str) ==
+           constants::filter_option_positive_delta_max_window_str));
   REQUIRE(
       (tiledb_filter_option_from_str(
            "POSITIVE_DELTA_MAX_WINDOW", &filter_option) == TILEDB_OK &&
        filter_option == TILEDB_POSITIVE_DELTA_MAX_WINDOW));
   REQUIRE(
+      (tiledb_filter_option_to_str(TILEDB_SCALE_FLOAT_BYTEWIDTH, &c_str) ==
+           TILEDB_OK &&
+       std::string(c_str) == constants::filter_option_scale_float_bytewidth));
+  REQUIRE(
       (tiledb_filter_option_from_str("SCALE_FLOAT_BYTEWIDTH", &filter_option) ==
            TILEDB_OK &&
        filter_option == TILEDB_SCALE_FLOAT_BYTEWIDTH));
+  REQUIRE(
+      (tiledb_filter_option_to_str(TILEDB_SCALE_FLOAT_FACTOR, &c_str) ==
+           TILEDB_OK &&
+       std::string(c_str) == constants::filter_option_scale_float_factor));
   REQUIRE(
       (tiledb_filter_option_from_str("SCALE_FLOAT_FACTOR", &filter_option) ==
            TILEDB_OK &&
        filter_option == TILEDB_SCALE_FLOAT_FACTOR));
   REQUIRE(
+      (tiledb_filter_option_to_str(TILEDB_SCALE_FLOAT_OFFSET, &c_str) ==
+           TILEDB_OK &&
+       std::string(c_str) == constants::filter_option_scale_float_offset));
+  REQUIRE(
       (tiledb_filter_option_from_str("SCALE_FLOAT_OFFSET", &filter_option) ==
            TILEDB_OK &&
        filter_option == TILEDB_SCALE_FLOAT_OFFSET));
+  REQUIRE(
+      (tiledb_filter_option_to_str(TILEDB_WEBP_QUALITY, &c_str) == TILEDB_OK &&
+       std::string(c_str) == constants::filter_option_webp_quality));
   REQUIRE(
       (tiledb_filter_option_from_str("WEBP_QUALITY", &filter_option) ==
            TILEDB_OK &&
        filter_option == TILEDB_WEBP_QUALITY));
   REQUIRE(
+      (tiledb_filter_option_to_str(TILEDB_WEBP_INPUT_FORMAT, &c_str) ==
+           TILEDB_OK &&
+       std::string(c_str) == constants::filter_option_webp_input_format));
+  REQUIRE(
       (tiledb_filter_option_from_str("WEBP_INPUT_FORMAT", &filter_option) ==
            TILEDB_OK &&
        filter_option == TILEDB_WEBP_INPUT_FORMAT));
   REQUIRE(
+      (tiledb_filter_option_to_str(TILEDB_WEBP_LOSSLESS, &c_str) == TILEDB_OK &&
+       std::string(c_str) == constants::filter_option_webp_lossless));
+  REQUIRE(
       (tiledb_filter_option_from_str("WEBP_LOSSLESS", &filter_option) ==
            TILEDB_OK &&
        filter_option == TILEDB_WEBP_LOSSLESS));
+  REQUIRE(
+      (tiledb_filter_option_to_str(TILEDB_TYPED_VIEW_OUTPUT_DATATYPE, &c_str) ==
+           TILEDB_OK &&
+       std::string(c_str) ==
+           constants::filter_option_typed_view_output_datatype));
+  REQUIRE(
+      (tiledb_filter_option_from_str(
+           "TYPED_VIEW_OUTPUT_DATATYPE", &filter_option) == TILEDB_OK &&
+       filter_option == TILEDB_TYPED_VIEW_OUTPUT_DATATYPE));
 
   tiledb_encryption_type_t encryption_type;
   REQUIRE(
       (tiledb_encryption_type_to_str(TILEDB_NO_ENCRYPTION, &c_str) ==
            TILEDB_OK &&
-       std::string(c_str) == "NO_ENCRYPTION"));
+       std::string(c_str) == constants::no_encryption_str));
   REQUIRE(
       (tiledb_encryption_type_from_str("NO_ENCRYPTION", &encryption_type) ==
            TILEDB_OK &&
        encryption_type == TILEDB_NO_ENCRYPTION));
   REQUIRE(
       (tiledb_encryption_type_to_str(TILEDB_AES_256_GCM, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "AES_256_GCM"));
+       std::string(c_str) == constants::aes_256_gcm_str));
   REQUIRE(
       (tiledb_encryption_type_from_str("AES_256_GCM", &encryption_type) ==
            TILEDB_OK &&
@@ -315,38 +384,38 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
   tiledb_query_status_t query_status;
   REQUIRE(
       (tiledb_query_status_to_str(TILEDB_FAILED, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "FAILED"));
+       std::string(c_str) == constants::query_status_failed_str));
   REQUIRE(
       (tiledb_query_status_from_str("FAILED", &query_status) == TILEDB_OK &&
        query_status == TILEDB_FAILED));
   REQUIRE(
       (tiledb_query_status_to_str(TILEDB_COMPLETED, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "COMPLETED"));
+       std::string(c_str) == constants::query_status_completed_str));
   REQUIRE(
       (tiledb_query_status_from_str("COMPLETED", &query_status) == TILEDB_OK &&
        query_status == TILEDB_COMPLETED));
   REQUIRE(
       (tiledb_query_status_to_str(TILEDB_INPROGRESS, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "INPROGRESS"));
+       std::string(c_str) == constants::query_status_inprogress_str));
   REQUIRE(
       (tiledb_query_status_from_str("INPROGRESS", &query_status) == TILEDB_OK &&
        query_status == TILEDB_INPROGRESS));
   REQUIRE(
       (tiledb_query_status_to_str(TILEDB_INCOMPLETE, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "INCOMPLETE"));
+       std::string(c_str) == constants::query_status_incomplete_str));
   REQUIRE(
       (tiledb_query_status_from_str("INCOMPLETE", &query_status) == TILEDB_OK &&
        query_status == TILEDB_INCOMPLETE));
   REQUIRE(
       (tiledb_query_status_to_str(TILEDB_UNINITIALIZED, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "UNINITIALIZED"));
+       std::string(c_str) == constants::query_status_uninitialized_str));
   REQUIRE(
       (tiledb_query_status_from_str("UNINITIALIZED", &query_status) ==
            TILEDB_OK &&
        query_status == TILEDB_UNINITIALIZED));
   REQUIRE(
       (tiledb_query_status_to_str(TILEDB_INITIALIZED, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "INITIALIZED"));
+       std::string(c_str) == constants::query_status_initialized_str));
   REQUIRE((
       tiledb_query_status_from_str("INITIALIZED", &query_status) == TILEDB_OK &&
       query_status == TILEDB_INITIALIZED));
@@ -354,13 +423,13 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
   tiledb_walk_order_t walk_order;
   REQUIRE(
       (tiledb_walk_order_to_str(TILEDB_PREORDER, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "PREORDER"));
+       std::string(c_str) == constants::walkorder_preorder_str));
   REQUIRE(
       (tiledb_walk_order_from_str("PREORDER", &walk_order) == TILEDB_OK &&
        walk_order == TILEDB_PREORDER));
   REQUIRE(
       (tiledb_walk_order_to_str(TILEDB_POSTORDER, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "POSTORDER"));
+       std::string(c_str) == constants::walkorder_postorder_str));
   REQUIRE(
       (tiledb_walk_order_from_str("POSTORDER", &walk_order) == TILEDB_OK &&
        walk_order == TILEDB_POSTORDER));
@@ -368,19 +437,19 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
   tiledb_vfs_mode_t vfs_mode;
   REQUIRE(
       (tiledb_vfs_mode_to_str(TILEDB_VFS_READ, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "VFS_READ"));
+       std::string(c_str) == constants::vfsmode_read_str));
   REQUIRE(
       (tiledb_vfs_mode_from_str("VFS_READ", &vfs_mode) == TILEDB_OK &&
        vfs_mode == TILEDB_VFS_READ));
   REQUIRE(
       (tiledb_vfs_mode_to_str(TILEDB_VFS_WRITE, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "VFS_WRITE"));
+       std::string(c_str) == constants::vfsmode_write_str));
   REQUIRE(
       (tiledb_vfs_mode_from_str("VFS_WRITE", &vfs_mode) == TILEDB_OK &&
        vfs_mode == TILEDB_VFS_WRITE));
   REQUIRE(
       (tiledb_vfs_mode_to_str(TILEDB_VFS_APPEND, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "VFS_APPEND"));
+       std::string(c_str) == constants::vfsmode_append_str));
   REQUIRE(
       (tiledb_vfs_mode_from_str("VFS_APPEND", &vfs_mode) == TILEDB_OK &&
        vfs_mode == TILEDB_VFS_APPEND));
@@ -389,14 +458,14 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
   tiledb_serialization_type_t serialization_type;
   REQUIRE(
       (tiledb_serialization_type_to_str(TILEDB_JSON, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "JSON"));
+       std::string(c_str) == constants::serialization_type_json_str));
   REQUIRE(
       (tiledb_serialization_type_from_str("JSON", &serialization_type) ==
            TILEDB_OK &&
        serialization_type == TILEDB_JSON));
   REQUIRE(
       (tiledb_serialization_type_to_str(TILEDB_CAPNP, &c_str) == TILEDB_OK &&
-       std::string(c_str) == "CAPNP"));
+       std::string(c_str) == constants::serialization_type_capnp_str));
   REQUIRE(
       (tiledb_serialization_type_from_str("CAPNP", &serialization_type) ==
            TILEDB_OK &&

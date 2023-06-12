@@ -848,10 +848,10 @@ TEST_CASE("C++ API: Filter lists on array", "[cppapi][filter][typed-view]") {
   FilterList a1_filters(ctx);
   a1_filters.set_max_chunk_size(10000);
   Filter f1{ctx, TILEDB_FILTER_TYPED_VIEW};
-  f1.set_option(TILEDB_TYPED_VIEW_OUTPUT_DATATYPE, sm::Datatype::INT64);
+  f1.set_option(TILEDB_TYPED_VIEW_OUTPUT_DATATYPE, sm::Datatype::INT8);
   a1_filters.add_filter(f1);
 
-  auto a1 = Attribute::create<int>(ctx, "a1");
+  auto a1 = Attribute::create<uint64_t>(ctx, "a1");
   a1.set_filter_list(a1_filters);
 
   Domain domain(ctx);
@@ -866,14 +866,14 @@ TEST_CASE("C++ API: Filter lists on array", "[cppapi][filter][typed-view]") {
   Array::create(array_name, schema);
 
   // Write to array
-  std::vector<double> a1_data = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  std::vector<uint64_t> a1_data = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   std::vector<int> coords = {0, 10, 20, 30, 31, 32, 33, 34, 40, 50};
   Array array(ctx, array_name, TILEDB_WRITE);
 
   sm::Datatype t = sm::Datatype::TIME_MS;
   array.schema().attribute(0).filter_list().filter(0).get_option(
       TILEDB_TYPED_VIEW_OUTPUT_DATATYPE, &t);
-  CHECK(t == sm::Datatype::INT64);
+  CHECK(t == sm::Datatype::INT8);
 
   Query query(ctx, array);
   query.set_data_buffer("a1", a1_data)
@@ -882,34 +882,23 @@ TEST_CASE("C++ API: Filter lists on array", "[cppapi][filter][typed-view]") {
   REQUIRE(query.submit() == Query::Status::COMPLETE);
   array.close();
 
-  /*
-    // Sanity check reading
-    array.open(TILEDB_READ);
-    std::vector<int> subarray = {0, 10, 0, 10};
-    std::vector<int> a1_read(2);
-    std::vector<uint64_t> a2_read_off(2);
-    std::string a2_read_data;
-    a2_read_data.resize(7);
-    Query query_r(ctx, array);
-    query_r.set_subarray(subarray)
-        .set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer("a1", a1_read)
-        .set_data_buffer("a2", a2_read_data)
-        .set_offsets_buffer("a2", a2_read_off);
-    REQUIRE(query_r.submit() == Query::Status::COMPLETE);
-    array.close();
-    auto ret = query_r.result_buffer_elements();
-    REQUIRE(ret.size() == 2);
-    REQUIRE(ret["a1"].first == 0);
-    REQUIRE(ret["a1"].second == 2);
-    REQUIRE(ret["a2"].first == 2);
-    REQUIRE(ret["a2"].second == 7);
-    REQUIRE(a1_read[0] == 1);
-    REQUIRE(a1_read[1] == 2);
-    REQUIRE(a2_read_off[0] == 0);
-    REQUIRE(a2_read_off[1] == 3);
-    REQUIRE(a2_read_data.substr(0, 7) == "abcdefg");
-  */
+  // Sanity check reading
+  array.open(TILEDB_READ);
+  std::vector<int> subarray = {0, 10};
+  // If this read buffer contains < 18 elements the read is INCOMPLETE.
+  std::vector<int8_t> a1_read(18);
+  Query query_r(ctx, array);
+  query_r.set_subarray(subarray)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a1", a1_read);
+  REQUIRE(query_r.submit() == Query::Status::COMPLETE);
+  array.close();
+  auto ret = query_r.result_buffer_elements();
+  CHECK(ret.size() == 1);
+  CHECK(ret["a1"].first == 0);
+  CHECK(ret["a1"].second == 2);
+  CHECK(a1_read[0] == 1);
+  CHECK(a1_read[1] == 2);
 
   // Check reading filter lists.
   array.open(TILEDB_READ);

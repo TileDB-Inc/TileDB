@@ -84,7 +84,7 @@ class CompressionFilter : public Filter {
    * @param compressor Compressor to use
    * @param version Format version
    */
-  CompressionFilter(
+  explicit CompressionFilter(
       FilterType compressor,
       const format_version_t version = constants::format_version);
 

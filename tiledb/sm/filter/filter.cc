@@ -42,6 +42,12 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+class FilterStatusException : public StatusException {
+ public:
+  explicit FilterStatusException(const std::string& msg)
+      : StatusException("Filter", msg) {
+  }
+};
 
 Filter::Filter(FilterType type) {
   type_ = type;
@@ -73,7 +79,7 @@ void Filter::ensure_accepts_datatype(Datatype datatype) const {
     return;
 
   if (!this->accepts_datatype(datatype)) {
-    throw Status_FilterError(
+    throw FilterStatusException(
         "Filter " + filter_type_str(this->type()) +
         " does not accept input type " + datatype_str(datatype));
   };
