@@ -211,7 +211,10 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
       // If a token is not available we wouldn't know it until we make a request
       // and it would be too late. Try getting a token, and if it fails fall
       // back to anonymous authentication.
-      std::ignore = credential->GetToken({}, {});
+      ::Azure::Core::Credentials::TokenRequestContext tokenContext;
+      // https://github.com/Azure/azure-sdk-for-cpp/blob/azure-storage-blobs_12.7.0/sdk/storage/azure-storage-blobs/src/blob_service_client.cpp#L84
+      tokenContext.Scopes.emplace_back("https://storage.azure.com/.default");
+      std::ignore = credential->GetToken(tokenContext, {});
       client_ =
           tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
               ::Azure::Storage::Blobs::BlobServiceClient,
