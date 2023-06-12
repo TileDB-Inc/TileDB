@@ -201,13 +201,19 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   }
   // Otherwise, if we did not specify an SAS token
   // and we are connecting to an HTTPS endpoint,
-  // use DefaultAzureCredential to authenticate using Azure AD.
+  // use ChainedTokenCredential to authenticate using Azure AD.
   else if (
       sas_token.empty() &&
       utils::parse::starts_with(blob_endpoint, "https://")) {
     try {
-      auto credential =
-          make_shared<::Azure::Identity::DefaultAzureCredential>(HERE());
+      auto credential = make_shared<::Azure::Identity::ChainedTokenCredential>(
+          HERE(),
+          std::vector<
+              std::shared_ptr<::Azure::Core::Credentials::TokenCredential>>{
+              make_shared<::Azure::Identity::EnvironmentCredential>(HERE()),
+              make_shared<::Azure::Identity::AzureCliCredential>(HERE()),
+              make_shared<::Azure::Identity::ManagedIdentityCredential>(
+                  HERE())});
       // If a token is not available we wouldn't know it until we make a request
       // and it would be too late. Try getting a token, and if it fails fall
       // back to anonymous authentication.
