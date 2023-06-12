@@ -221,23 +221,15 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
               blob_endpoint,
               credential,
               options));
+      return Status::Ok();
     } catch (...) {
       LOG_INFO(
           "Failed to get Azure AD token, falling back to anonymous "
           "authentication");
-      client_ =
-          tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
-              ::Azure::Storage::Blobs::BlobServiceClient,
-              blob_endpoint,
-              options));
     }
-  } else {
-    client_ =
-        tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
-            ::Azure::Storage::Blobs::BlobServiceClient,
-            blob_endpoint,
-            options));
   }
+  client_ = tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
+      ::Azure::Storage::Blobs::BlobServiceClient, blob_endpoint, options));
 
   return Status::Ok();
 }
