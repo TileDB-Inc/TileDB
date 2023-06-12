@@ -198,6 +198,7 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
             make_shared<::Azure::Storage::StorageSharedKeyCredential>(
                 HERE(), account_name, account_key),
             options));
+    return Status::Ok();
   }
   // Otherwise, if we did not specify an SAS token
   // and we are connecting to an HTTPS endpoint,
