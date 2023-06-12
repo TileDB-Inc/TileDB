@@ -46,6 +46,43 @@ static void check_filters(
   }
 }
 
+template <typename T>
+static void check_attribute_data(
+    const std::vector<T>& unfiltered_expected,
+    const tiledb::sm::Datatype& filtered_type) {
+  using namespace tiledb;
+  std::string attribute_uri = "cpp_unit_array/__fragments/";
+  Context ctx;
+  VFS vfs(ctx);
+  // Get last written fragment for first attribute.
+  auto uri = vfs.ls(attribute_uri).back() + "/a0.tdb";
+  VFS::filebuf buf(vfs);
+  buf.open(uri, std::ios::in);
+  std::istream is(&buf);
+  REQUIRE(is.good());
+
+  uint64_t num_chunks;
+  is.read((char*)&num_chunks, sizeof(uint64_t));
+
+  uint32_t unfilitered_chunk_len;
+  is.read((char*)&unfilitered_chunk_len, sizeof(uint32_t));
+  uint32_t filitered_chunk_len;
+  is.read((char*)&filitered_chunk_len, sizeof(uint32_t));
+  uint32_t chunk_metadata_len;
+  is.read((char*)&chunk_metadata_len, sizeof(uint32_t));
+  std::vector<int8_t> metadata(chunk_metadata_len / sizeof(int8_t));
+  is.read((char*)metadata.data(), chunk_metadata_len);
+
+  std::vector<int8_t> filtered_data(
+      filitered_chunk_len / datatype_size(filtered_type));
+  is.read((char*)filtered_data.data(), filitered_chunk_len);
+
+  for (size_t i = 0; i < filtered_data.size(); i++) {
+    // TODO: Use requested datatypes.
+    CHECK(static_cast<int8_t>(unfiltered_expected[i]) == filtered_data[i]);
+  }
+}
+
 TEST_CASE("C++ API: Filter options", "[cppapi][filter]") {
   using namespace tiledb;
   Context ctx;
@@ -835,9 +872,14 @@ TEST_CASE(
     vfs.remove_dir(array_name);
 }
 
-TEST_CASE("C++ API: Filter lists on array", "[cppapi][filter][typed-view]") {
+TEST_CASE(
+    "C++ API: Filter lists on array typed-view",
+    "[cppapi][filter][typed-view]") {
   using namespace tiledb;
-  Context ctx;
+  Config config;
+  config["sm.compute_concurrency_level"] = "1";
+  config["sm.io_concurrency_level"] = "1";
+  Context ctx(config);
   VFS vfs(ctx);
   std::string array_name = "cpp_unit_array";
 
@@ -848,7 +890,10 @@ TEST_CASE("C++ API: Filter lists on array", "[cppapi][filter][typed-view]") {
   FilterList a1_filters(ctx);
   a1_filters.set_max_chunk_size(10000);
   Filter f1{ctx, TILEDB_FILTER_TYPED_VIEW};
-  f1.set_option(TILEDB_TYPED_VIEW_OUTPUT_DATATYPE, sm::Datatype::INT8);
+  auto filtered_type = sm::Datatype::INT8;
+  f1.set_option(TILEDB_TYPED_VIEW_FILTERED_DATATYPE, filtered_type);
+  auto unfiltered_type = sm::Datatype::UINT64;
+  f1.set_option(TILEDB_TYPED_VIEW_UNFILTERED_DATATYPE, unfiltered_type);
   a1_filters.add_filter(f1);
 
   auto a1 = Attribute::create<uint64_t>(ctx, "a1");
@@ -870,10 +915,14 @@ TEST_CASE("C++ API: Filter lists on array", "[cppapi][filter][typed-view]") {
   std::vector<int> coords = {0, 10, 20, 30, 31, 32, 33, 34, 40, 50};
   Array array(ctx, array_name, TILEDB_WRITE);
 
+  // Validate filter options serialized to schema correctly during creation.
   sm::Datatype t = sm::Datatype::TIME_MS;
   array.schema().attribute(0).filter_list().filter(0).get_option(
-      TILEDB_TYPED_VIEW_OUTPUT_DATATYPE, &t);
-  CHECK(t == sm::Datatype::INT8);
+      TILEDB_TYPED_VIEW_FILTERED_DATATYPE, &t);
+  CHECK(t == filtered_type);
+  array.schema().attribute(0).filter_list().filter(0).get_option(
+      TILEDB_TYPED_VIEW_UNFILTERED_DATATYPE, &t);
+  CHECK(t == unfiltered_type);
 
   Query query(ctx, array);
   query.set_data_buffer("a1", a1_data)
@@ -882,11 +931,13 @@ TEST_CASE("C++ API: Filter lists on array", "[cppapi][filter][typed-view]") {
   REQUIRE(query.submit() == Query::Status::COMPLETE);
   array.close();
 
+  // Validate attribute data written to disk.
+  check_attribute_data(a1_data, filtered_type);
+
   // Sanity check reading
   array.open(TILEDB_READ);
   std::vector<int> subarray = {0, 10};
-  // If this read buffer contains < 18 elements the read is INCOMPLETE.
-  std::vector<int8_t> a1_read(18);
+  std::vector<uint64_t> a1_read(3);
   Query query_r(ctx, array);
   query_r.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)

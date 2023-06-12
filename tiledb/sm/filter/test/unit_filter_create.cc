@@ -472,22 +472,34 @@ TEST_CASE(
   // |      1      |       4     |
   // | filter_type | meta_length |
   buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filterType);
-  // TYPED_VIEW filter only serializes OUTPUT_DATATYPE option.
-  buffer_offset<uint32_t, 1>(p) = sizeof(uint8_t);
+  // TYPED_VIEW filter serializes FILTERED_DATATYPE and UNFILTERED_DATATYPE
+  // options.
+  buffer_offset<uint32_t, 1>(p) = sizeof(uint8_t) + sizeof(uint8_t);
 
-  Datatype datatype0 = Datatype::INT8;
-  buffer_offset<uint8_t, 5>(p) = static_cast<uint8_t>(datatype0);
+  Datatype filtered_datatype0 = Datatype::INT8;
+  buffer_offset<uint8_t, 5>(p) = static_cast<uint8_t>(filtered_datatype0);
+  Datatype unfiltered_datatype0 = Datatype::UINT64;
+  buffer_offset<uint8_t, 6>(p) = static_cast<uint8_t>(unfiltered_datatype0);
 
   Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
   auto filter{
       FilterCreate::deserialize(deserializer, constants::format_version)};
 
   CHECK(filter->type() == filterType);
-  Datatype datatype1;
+  Datatype filtered_datatype1;
   REQUIRE(
-      filter->get_option(FilterOption::TYPED_VIEW_OUTPUT_DATATYPE, &datatype1)
+      filter
+          ->get_option(
+              FilterOption::TYPED_VIEW_FILTERED_DATATYPE, &filtered_datatype1)
           .ok());
-  CHECK(datatype0 == datatype1);
+  CHECK(filtered_datatype0 == filtered_datatype1);
+  Datatype unfiltered_datatype1;
+  REQUIRE(filter
+              ->get_option(
+                  FilterOption::TYPED_VIEW_UNFILTERED_DATATYPE,
+                  &unfiltered_datatype1)
+              .ok());
+  CHECK(unfiltered_datatype0 == unfiltered_datatype1);
 }
 
 TEST_CASE("Filter: Test input type checks", "[filter][input-type]") {

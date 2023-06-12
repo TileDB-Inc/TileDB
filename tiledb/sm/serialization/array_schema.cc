@@ -148,11 +148,14 @@ Status filter_to_capnp(
       break;
     }
     case FilterType::FILTER_TYPED_VIEW: {
-      int32_t type;
-      RETURN_NOT_OK(
-          filter->get_option(FilterOption::TYPED_VIEW_OUTPUT_DATATYPE, &type));
       auto data = filter_builder->initData();
-      data.setInt32(type);
+      uint8_t type;
+      RETURN_NOT_OK(filter->get_option(
+          FilterOption::TYPED_VIEW_FILTERED_DATATYPE, &type));
+      data.setUint8(type);
+      RETURN_NOT_OK(filter->get_option(
+          FilterOption::TYPED_VIEW_UNFILTERED_DATATYPE, &type));
+      data.setUint8(type);
       break;
     }
     case FilterType::FILTER_NONE:
@@ -271,12 +274,14 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
     }
     case FilterType::FILTER_TYPED_VIEW: {
       auto data = filter_reader.getData();
-      Datatype output_type((Datatype)data.getInt32());
-      ensure_datatype_is_valid(output_type);
+      Datatype filtered_type((Datatype)data.getUint8());
+      ensure_datatype_is_valid(filtered_type);
+      Datatype unfiltered_type((Datatype)data.getUint8());
+      ensure_datatype_is_valid(unfiltered_type);
       return {
           Status::Ok(),
           tiledb::common::make_shared<TypedViewFilter>(
-              HERE(), std::make_optional(output_type))};
+              HERE(), filtered_type, unfiltered_type)};
     }
     case FilterType::FILTER_WEBP: {
       if constexpr (webp_filter_exists) {

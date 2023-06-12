@@ -182,9 +182,12 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
       }
     }
     case FilterType::FILTER_TYPED_VIEW: {
-      auto output_datatype = deserializer.read<uint8_t>();
+      auto filtered_datatype = deserializer.read<uint8_t>();
+      auto unfiltered_datatype = deserializer.read<uint8_t>();
       return make_shared<TypedViewFilter>(
-          HERE(), static_cast<Datatype>(output_datatype));
+          HERE(),
+          static_cast<Datatype>(filtered_datatype),
+          static_cast<Datatype>(unfiltered_datatype));
     }
     default:
       throw StatusException(

@@ -341,34 +341,48 @@ class Filter {
    */
   template <typename T>
   void option_value_typecheck(tiledb_filter_option_t option) {
+    std::string type_name = tiledb::impl::type_to_tiledb<T>().name;
     switch (option) {
       case TILEDB_COMPRESSION_LEVEL:
         if (!std::is_same<int32_t, T>::value)
-          throw std::invalid_argument("Option value must be int32_t.");
+          throw std::invalid_argument(
+              "Cannot set option with type " + type_name +
+              "; Option value must be int32_t.");
         break;
       case TILEDB_BIT_WIDTH_MAX_WINDOW:
       case TILEDB_POSITIVE_DELTA_MAX_WINDOW:
         if (!std::is_same<uint32_t, T>::value)
-          throw std::invalid_argument("Option value must be uint32_t.");
+          throw std::invalid_argument(
+              "Cannot set option with type " + type_name +
+              "; Option value must be uint32_t.");
         break;
       case TILEDB_SCALE_FLOAT_BYTEWIDTH:
         if (!std::is_same<uint64_t, T>::value)
-          throw std::invalid_argument("Option value must be uint64_t.");
+          throw std::invalid_argument(
+              "Cannot set option with type " + type_name +
+              "; Option value must be uint64_t.");
         break;
       case TILEDB_SCALE_FLOAT_FACTOR:
       case TILEDB_SCALE_FLOAT_OFFSET:
         if (!std::is_same<double, T>::value)
-          throw std::invalid_argument("Option value must be double.");
+          throw std::invalid_argument(
+              "Cannot set option with type " + type_name +
+              "; Option value must be double.");
         break;
       case TILEDB_WEBP_QUALITY:
         if (!std::is_same<float, T>::value)
-          throw std::invalid_argument("Option value must be float.");
+          throw std::invalid_argument(
+              "Cannot set option with type " + type_name +
+              "; Option value must be float.");
         break;
       case TILEDB_WEBP_INPUT_FORMAT:
       case TILEDB_WEBP_LOSSLESS:
-      case TILEDB_TYPED_VIEW_OUTPUT_DATATYPE:
+      case TILEDB_TYPED_VIEW_FILTERED_DATATYPE:
+      case TILEDB_TYPED_VIEW_UNFILTERED_DATATYPE:
         if (!std::is_same<uint8_t, T>::value)
-          throw std::invalid_argument("Option value must be uint8_t.");
+          throw std::invalid_argument(
+              "Cannot set option with type " + type_name +
+              "; Option value must be uint8_t.");
         break;
       default: {
         const char* option_str;

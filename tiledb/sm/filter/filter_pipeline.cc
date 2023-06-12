@@ -100,7 +100,8 @@ void FilterPipeline::clear() {
   filters_.clear();
 }
 
-void FilterPipeline::ensure_compatible(const Filter& first, const Filter& second) {
+void FilterPipeline::ensure_compatible(
+    const Filter& first, const Filter& second) {
   auto first_output_type = first.output_datatype();
   if (!second.accepts_input_datatype(first_output_type)) {
     throw FilterPipelineStatusException(

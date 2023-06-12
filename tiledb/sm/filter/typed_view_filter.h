@@ -40,6 +40,7 @@
 #define TILEDB_TYPEDVIEW_FILTER_H
 
 #include "tiledb/common/status.h"
+#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/filter/filter.h"
 
 using namespace tiledb::common;
@@ -56,7 +57,9 @@ class TypedViewFilter : public Filter {
   /**
    * Constructor.
    */
-  TypedViewFilter(std::optional<Datatype> output_datatype = std::nullopt);
+  TypedViewFilter(
+      const Datatype& filtered_datatype = tiledb::sm::Datatype::ANY,
+      const Datatype& unfiltered_datatype = tiledb::sm::Datatype::ANY);
 
   /** Dumps the filter details in ASCII format in the selected output. */
   void dump(FILE* out) const override;
@@ -105,7 +108,7 @@ class TypedViewFilter : public Filter {
   TypedViewFilter* clone_impl() const override;
 
   /** The output data type. */
-  std::optional<Datatype> output_datatype_;
+  Datatype filtered_datatype_, unfiltered_datatype_;
 };
 
 }  // namespace sm

@@ -92,7 +92,8 @@ TEST_CASE("C API: Test enum values", "[capi][enums]") {
   REQUIRE(TILEDB_WEBP_QUALITY == 6);
   REQUIRE(TILEDB_WEBP_INPUT_FORMAT == 7);
   REQUIRE(TILEDB_WEBP_LOSSLESS == 8);
-  REQUIRE(TILEDB_TYPED_VIEW_OUTPUT_DATATYPE == 9);
+  REQUIRE(TILEDB_TYPED_VIEW_FILTERED_DATATYPE == 9);
+  REQUIRE(TILEDB_TYPED_VIEW_UNFILTERED_DATATYPE == 10);
 
   /** Encryption type */
   REQUIRE(TILEDB_NO_ENCRYPTION == 0);
@@ -355,14 +356,23 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
            TILEDB_OK &&
        filter_option == TILEDB_WEBP_LOSSLESS));
   REQUIRE(
-      (tiledb_filter_option_to_str(TILEDB_TYPED_VIEW_OUTPUT_DATATYPE, &c_str) ==
-           TILEDB_OK &&
+      (tiledb_filter_option_to_str(
+           TILEDB_TYPED_VIEW_FILTERED_DATATYPE, &c_str) == TILEDB_OK &&
        std::string(c_str) ==
-           constants::filter_option_typed_view_output_datatype));
+           constants::filter_option_typed_view_filtered_datatype));
   REQUIRE(
       (tiledb_filter_option_from_str(
-           "TYPED_VIEW_OUTPUT_DATATYPE", &filter_option) == TILEDB_OK &&
-       filter_option == TILEDB_TYPED_VIEW_OUTPUT_DATATYPE));
+           "TYPED_VIEW_FILTERED_DATATYPE", &filter_option) == TILEDB_OK &&
+       filter_option == TILEDB_TYPED_VIEW_FILTERED_DATATYPE));
+  REQUIRE(
+      (tiledb_filter_option_to_str(
+           TILEDB_TYPED_VIEW_UNFILTERED_DATATYPE, &c_str) == TILEDB_OK &&
+       std::string(c_str) ==
+           constants::filter_option_typed_view_unfiltered_datatype));
+  REQUIRE(
+      (tiledb_filter_option_from_str(
+           "TYPED_VIEW_UNFILTERED_DATATYPE", &filter_option) == TILEDB_OK &&
+       filter_option == TILEDB_TYPED_VIEW_UNFILTERED_DATATYPE));
 
   tiledb_encryption_type_t encryption_type;
   REQUIRE(

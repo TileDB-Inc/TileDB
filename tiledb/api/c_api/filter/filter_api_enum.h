@@ -88,8 +88,10 @@ TILEDB_FILTER_TYPE_ENUM(FILTER_NONE) = 0,
     TILEDB_FILTER_OPTION_ENUM(WEBP_INPUT_FORMAT) = 7,
     /** Enable lossless WebP compression Type: uint8_t */
     TILEDB_FILTER_OPTION_ENUM(WEBP_LOSSLESS) = 8,
-    /** Set output type for typed view filter. Type: datatype_t */
-    TILEDB_FILTER_OPTION_ENUM(TYPED_VIEW_OUTPUT_DATATYPE) = 9,
+    /** Set filtered type for typed view filter. Type: datatype_t */
+    TILEDB_FILTER_OPTION_ENUM(TYPED_VIEW_FILTERED_DATATYPE) = 9,
+    /** Set unfiltered type for typed view filter. Type: datatype_t */
+    TILEDB_FILTER_OPTION_ENUM(TYPED_VIEW_UNFILTERED_DATATYPE) = 10,
 #endif
 
 #ifdef TILEDB_FILTER_WEBP_FORMAT

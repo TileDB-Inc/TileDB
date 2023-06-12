@@ -441,10 +441,15 @@ const std::string filter_option_webp_input_format = "WEBP_INPUT_FORMAT";
 const std::string filter_option_webp_lossless = "WEBP_LOSSLESS";
 
 /**
- * The string representation for FilterOption type typed_view_output_datatype.
+ * The string representation for FilterOption typed_view_filtered_datatype.
  */
-const std::string filter_option_typed_view_output_datatype =
-    "TYPED_VIEW_OUTPUT_DATATYPE";
+const std::string filter_option_typed_view_filtered_datatype =
+    "TYPED_VIEW_FILTERED_DATATYPE";
+/**
+ * The string representation for FilterOption typed_view_unfiltered_datatype.
+ */
+const std::string filter_option_typed_view_unfiltered_datatype =
+    "TYPED_VIEW_UNFILTERED_DATATYPE";
 
 /** The string representation for type int32. */
 const std::string int32_str = "INT32";
