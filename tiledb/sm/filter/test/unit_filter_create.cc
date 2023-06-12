@@ -461,6 +461,35 @@ TEST_CASE("Filter: Test WEBP filter deserialization", "[filter][webp]") {
   }
 }
 
+TEST_CASE(
+    "Filter: Test TYPED_VIEW filter deserialization", "[filter][typed-view]") {
+  Buffer buffer;
+  FilterType filterType = FilterType::FILTER_TYPED_VIEW;
+  char serialized_buffer[17];
+  char* p = &serialized_buffer[0];
+  // Metadata layout has total size 5.
+  // |          metadata         |
+  // |      1      |       4     |
+  // | filter_type | meta_length |
+  buffer_offset<uint8_t, 0>(p) = static_cast<uint8_t>(filterType);
+  // TYPED_VIEW filter only serializes OUTPUT_DATATYPE option.
+  buffer_offset<uint32_t, 1>(p) = sizeof(uint8_t);
+
+  Datatype datatype0 = Datatype::INT8;
+  buffer_offset<uint8_t, 5>(p) = static_cast<uint8_t>(datatype0);
+
+  Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
+  auto filter{
+      FilterCreate::deserialize(deserializer, constants::format_version)};
+
+  CHECK(filter->type() == filterType);
+  Datatype datatype1;
+  REQUIRE(
+      filter->get_option(FilterOption::TYPED_VIEW_OUTPUT_DATATYPE, &datatype1)
+          .ok());
+  CHECK(datatype0 == datatype1);
+}
+
 TEST_CASE("Filter: Test input type checks", "[filter][input-type]") {
   auto filtertype =
       GENERATE(/*FilterType::FILTER_DELTA,TODO*/

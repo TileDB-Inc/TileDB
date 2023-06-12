@@ -101,7 +101,7 @@ Compressor CompressionFilter::compressor() const {
   return compressor_;
 }
 
-bool CompressionFilter::accepts_datatype(Datatype input_type) const {
+bool CompressionFilter::accepts_input_datatype(Datatype input_type) const {
   auto this_filter_type = compressor_to_filter(compressor_);
 
   if (this_filter_type == FilterType::FILTER_DOUBLE_DELTA ||

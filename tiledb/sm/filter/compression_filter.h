@@ -122,7 +122,7 @@ class CompressionFilter : public Filter {
   void dump(FILE* out) const override;
 
   /** Return whether the compression filter accepts given Datatype */
-  bool accepts_datatype(Datatype type) const override;
+  bool accepts_input_datatype(Datatype type) const override;
 
   /**
    * Compress the given input into the given output.

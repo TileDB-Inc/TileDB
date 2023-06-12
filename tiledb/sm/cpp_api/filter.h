@@ -374,7 +374,7 @@ class Filter {
         const char* option_str;
         tiledb_filter_option_to_str(option, &option_str);
         throw std::invalid_argument(
-            "Invalid type 'TODO' for option '" + std::string(option_str) + "'");
+            "Invalid option '" + std::string(option_str) + "'");
       }
     }
   }

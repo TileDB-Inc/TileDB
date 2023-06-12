@@ -126,7 +126,7 @@ class FilterPipeline {
    * Dumps the filter pipeline details in ASCII format in the selected
    * output.
    */
-  void ensure_compatible(const Filter& first, const Filter& second) const;
+  static void ensure_compatible(const Filter& first, const Filter& second);
 
   /**
    * Returns pointer to the first instance of a filter in the pipeline with the

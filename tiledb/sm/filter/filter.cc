@@ -59,7 +59,7 @@ Filter* Filter::clone() const {
   return clone;
 }
 
-bool Filter::accepts_datatype(Datatype) const {
+bool Filter::accepts_input_datatype(Datatype) const {
   return true;
 };
 
@@ -78,7 +78,7 @@ void Filter::ensure_accepts_datatype(Datatype datatype) const {
   if (this->type() == FilterType::FILTER_NONE)
     return;
 
-  if (!this->accepts_datatype(datatype)) {
+  if (!this->accepts_input_datatype(datatype)) {
     throw FilterStatusException(
         "Filter " + filter_type_str(this->type()) +
         " does not accept input type " + datatype_str(datatype));

@@ -99,7 +99,7 @@ class Filter {
    * @brief Checks if the filter is applicable to the input datatype.
    *
    */
-  virtual bool accepts_datatype(Datatype type) const;
+  virtual bool accepts_input_datatype(Datatype type) const;
 
   /**
    * Gets an option from this filter.

@@ -100,17 +100,15 @@ void FilterPipeline::clear() {
   filters_.clear();
 }
 
-/*
-void ensure_compatible(const Filter& first, const Filter& second) {
-  auto first_output_type = first.output_type();
-  if (!second.accepts_input_type(first_output_type)) {
-    throw std::runtime_error(
-        "Filter " + std::to_string(first.type()) + " produces " +
-        std::to_string(first_output_type) + " but second filter " +
-        std::to_string(second.type()) + " does not accept this type.");
+void FilterPipeline::ensure_compatible(const Filter& first, const Filter& second) {
+  auto first_output_type = first.output_datatype();
+  if (!second.accepts_input_datatype(first_output_type)) {
+    throw FilterPipelineStatusException(
+        "Filter " + filter_type_str(first.type()) + " produces " +
+        datatype_str(first_output_type) + " but second filter " +
+        filter_type_str(second.type()) + " does not accept this type.");
   }
-};
-*/
+}
 
 void FilterPipeline::check_filter_types(
     const FilterPipeline& pipeline,
@@ -144,14 +142,8 @@ void FilterPipeline::check_filter_types(
   }
 
   // ** Modern checks using Filter output type **
-  for (unsigned i = 0; i < pipeline.size(); ++i) {
-    auto filter = pipeline.get_filter(i);
-    if (i == 0) {
-      filter->ensure_accepts_datatype(first_input_type);
-    } else {
-      filter->ensure_accepts_datatype(
-          pipeline.get_filter(i - 1)->output_datatype());
-    }
+  for (unsigned i = 1; i < pipeline.size(); ++i) {
+    ensure_compatible(*pipeline.get_filter(i - 1), *pipeline.get_filter(1));
   }
 }
 
