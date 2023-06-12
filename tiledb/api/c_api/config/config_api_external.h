@@ -505,6 +505,12 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *     Aws::S3::Model::ObjectCannedACL.) "aws_exec_read" "owner_read"
  *    "bucket_owner_full_control"
  *    **Default**: "NOT_SET"
+ * - `vfs.s3.allow_bucket_redirect` <br>
+ *    Allow TileDB to autodetect the bucket region on request failure
+ *    and retry the request. <br>
+ *    Enabling this option might result in significant cost increases
+ *    if requests end up happening cross-region. <br>
+ *    **Default**: false
  * - `vfs.hdfs.name_node_uri"` <br>
  *    Name node for HDFS. <br>
  *    **Default**: ""

@@ -214,6 +214,7 @@ const std::string Config::VFS_S3_VERIFY_SSL = "true";
 const std::string Config::VFS_S3_NO_SIGN_REQUEST = "false";
 const std::string Config::VFS_S3_BUCKET_CANNED_ACL = "NOT_SET";
 const std::string Config::VFS_S3_OBJECT_CANNED_ACL = "NOT_SET";
+const std::string Config::VFS_S3_ALLOW_BUCKET_REDIRECT = "false";
 const std::string Config::VFS_HDFS_KERB_TICKET_CACHE_PATH = "";
 const std::string Config::VFS_HDFS_NAME_NODE_URI = "";
 const std::string Config::VFS_HDFS_USERNAME = "";
@@ -440,6 +441,8 @@ const std::map<std::string, std::string> default_config_values = {
         "vfs.s3.bucket_canned_acl", Config::VFS_S3_BUCKET_CANNED_ACL),
     std::make_pair(
         "vfs.s3.object_canned_acl", Config::VFS_S3_OBJECT_CANNED_ACL),
+    std::make_pair(
+        "vfs.s3.allow_bucket_redirect", Config::VFS_S3_ALLOW_BUCKET_REDIRECT),
     std::make_pair("vfs.hdfs.name_node_uri", Config::VFS_HDFS_NAME_NODE_URI),
     std::make_pair("vfs.hdfs.username", Config::VFS_HDFS_USERNAME),
     std::make_pair(
@@ -789,6 +792,8 @@ Status Config::sanity_check(
       msg << "value " << param << " invalid canned acl for " << param;
       return Status_Error(msg.str());
     }
+  } else if (param == "vfs.s3.allow_bucket_redirect") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   }
 
   return Status::Ok();

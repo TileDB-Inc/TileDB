@@ -545,6 +545,11 @@ class Config {
   static const std::string VFS_S3_OBJECT_CANNED_ACL;
 
   /**
+   * Allow TileDB to autodetect the bucket region on request failure
+   * and retry the request. */
+  static const std::string VFS_S3_ALLOW_BUCKET_REDIRECT;
+
+  /**
    * Specifies the size in bytes of the internal buffers used in the filestore
    * API. The size should be bigger than the minimum tile size filestore
    * currently supports, that is currently 1024bytes. */
