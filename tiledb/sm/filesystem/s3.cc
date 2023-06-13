@@ -774,6 +774,55 @@ Status S3::is_object(
   return Status::Ok();
 }
 
+template <typename R, typename E>
+Aws::Utils::Outcome<R, E> S3::retry_if_bad_region(
+    const Aws::Utils::Outcome<R, E>& outcome,
+    const Aws::S3::S3Reques& request,
+    const Aws::String& bucket) {
+  auto response_code = outcome.GetError().GetResponseCode();
+
+  // SDK gives us BAD_REQUEST if the configured region is a required one
+  // and MOVED_PERMANENTLY if it's a not required one
+  if (response_code != Aws::Http::HttpResponseCode::MOVED_PERMANENTLY &&
+      response_code != Aws::Http::HttpResponseCode::BAD_REQUEST) {
+    return outcome;  // NOOP
+  }
+
+  // For MOVED_PERMANENTLY error SDK exposes the bucket region, try to get
+  // that for free
+  std::string detected_region = "";
+  if (response_code == Aws::Http::HttpResponseCode::MOVED_PERMANENTLY) {
+    const auto& headers = outcome.GetError().GetResponseHeaders();
+    const auto& iter = headers.find("x-amz-bucket-region");
+    if (iter != headers.end()) {
+      detected_region = iter->second;
+    }
+  }
+
+  // Try to get bucket region from aws
+  if (detected_region.empty()) {
+    Aws::S3::Model::GetBucketLocationRequest get_location_request;
+    get_location_request.SetBucket(bucket);
+    auto get_location_outcome =
+        client_->GetBucketLocation(get_location_request);
+    if (!get_location_outcome.IsSuccess()) {
+      // just return initial outcome?
+      // improve error message?
+      return outcome;
+    }
+    detected_region = Aws::S3::Model::BucketLocationConstraintMapper::
+        GetNameForBucketLocationConstraint(
+            get_location_outcome.GetResult().GetLocationConstraint());
+  }
+
+  if (detected_region.empty()) {
+    throw std::logic_error(
+        "[TileDB::S3] The bucket region detected via S3 request is empty");
+  }
+
+  // Re-create client and retry request
+}
+
 Status S3::is_dir(const URI& uri, bool* exists) const {
   RETURN_NOT_OK(init_client());
 
