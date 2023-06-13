@@ -96,20 +96,6 @@ steps:
   displayName: "Build"
   continueOnError: true
 
-- task: ArchiveFiles@2
-  inputs:
-    rootFolderOrFile: '$(Agent.BuildDirectory)\s\'
-    includeRootFolder: false
-    archiveType: 'zip' # Options: zip, 7z, tar, wim
-    archiveFile: $(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-build-dir.zip
-    replaceExistingArchive: true
-    verbose: true # Optional
-
-- task: PublishBuildArtifacts@1
-  inputs:
-    pathToPublish: '$(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-build-dir.zip'
-    artifactName: 'build-dirs'
-
 # Archive files
 # Compress files into .7z, .tar.gz, or .zip
 - task: ArchiveFiles@2
@@ -127,3 +113,20 @@ steps:
       pathToPublish: '$(Build.ArtifactStagingDirectory)\tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-$(Build.SourceBranchName)-$(commitHash).zip'
       artifactName: 'built-libs'
   condition: succeeded()
+
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(Agent.BuildDirectory)\s\'
+    includeRootFolder: false
+    archiveType: 'zip' # Options: zip, 7z, tar, wim
+    archiveFile: $(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-build-dir.zip
+    replaceExistingArchive: true
+    verbose: true # Optional
+  continueOnError: true
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathToPublish: '$(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-build-dir.zip'
+    artifactName: 'build-dirs'
+  condition: succeeded()
+  continueOnError: true
