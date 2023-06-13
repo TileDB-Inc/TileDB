@@ -46,40 +46,46 @@ static void check_filters(
   }
 }
 
-template <typename T>
+// T = filtered type; W = unfiltered type
+template <typename T, typename W>
 static void check_attribute_data(
-    const std::vector<T>& unfiltered_expected,
-    const tiledb::sm::Datatype& filtered_type) {
+    const std::vector<W>& unfiltered_expected,
+    tiledb::sm::Datatype filtered_type) {
   using namespace tiledb;
   std::string attribute_uri = "cpp_unit_array/__fragments/";
   Context ctx;
   VFS vfs(ctx);
   // Get last written fragment for first attribute.
-  auto uri = vfs.ls(attribute_uri).back() + "/a0.tdb";
+  attribute_uri = vfs.ls(attribute_uri).back() + "/a0.tdb";
   VFS::filebuf buf(vfs);
-  buf.open(uri, std::ios::in);
+  buf.open(attribute_uri, std::ios::in);
   std::istream is(&buf);
   REQUIRE(is.good());
-
   uint64_t num_chunks;
   is.read((char*)&num_chunks, sizeof(uint64_t));
 
   uint32_t unfilitered_chunk_len;
   is.read((char*)&unfilitered_chunk_len, sizeof(uint32_t));
+  // Check expected unfiltered data size for given datatype.
+  CHECK(unfilitered_chunk_len == unfiltered_expected.size() * sizeof(W));
   uint32_t filitered_chunk_len;
   is.read((char*)&filitered_chunk_len, sizeof(uint32_t));
+  // Check expected filtered data size for given datatype.
+  CHECK(
+      filitered_chunk_len ==
+      unfiltered_expected.size() * datatype_size(filtered_type));
+
   uint32_t chunk_metadata_len;
   is.read((char*)&chunk_metadata_len, sizeof(uint32_t));
   std::vector<int8_t> metadata(chunk_metadata_len / sizeof(int8_t));
   is.read((char*)metadata.data(), chunk_metadata_len);
 
-  std::vector<int8_t> filtered_data(
+  // Check filtered data wrote to disk.
+  std::vector<T> filtered_data(
       filitered_chunk_len / datatype_size(filtered_type));
   is.read((char*)filtered_data.data(), filitered_chunk_len);
-
-  for (size_t i = 0; i < filtered_data.size(); i++) {
-    // TODO: Use requested datatypes.
-    CHECK(static_cast<int8_t>(unfiltered_expected[i]) == filtered_data[i]);
+  for (size_t i = 0; i < unfiltered_expected.size(); i++) {
+    CHECK(static_cast<T>(unfiltered_expected[i]) == filtered_data[i]);
   }
 }
 
@@ -872,17 +878,34 @@ TEST_CASE(
     vfs.remove_dir(array_name);
 }
 
-TEST_CASE(
+typedef std::tuple<int8_t, int16_t, uint32_t, float> Types;
+TEMPLATE_LIST_TEST_CASE(
     "C++ API: Filter lists on array typed-view",
-    "[cppapi][filter][typed-view]") {
+    "[cppapi][filter][typed-view]",
+    Types) {
   using namespace tiledb;
   Config config;
-  config["sm.compute_concurrency_level"] = "1";
-  config["sm.io_concurrency_level"] = "1";
+  auto array_t = TILEDB_SPARSE;
+  auto layout = TILEDB_UNORDERED;
+  std::array<int, 2> d1_domain = {{0, 100}};
+  bool dups = false;
+  std::string reader = GENERATE("legacy", "refactored");
+  SECTION("Sparse") {
+    array_t = TILEDB_SPARSE;
+    layout = TILEDB_UNORDERED;
+    d1_domain = {{0, 100}};
+    dups = GENERATE(true, false);
+    config["sm.query.sparse_unordered_with_dups.reader"] = reader;
+  }
+  SECTION("Dense") {
+    array_t = TILEDB_DENSE;
+    layout = TILEDB_ROW_MAJOR;
+    d1_domain = {{0, 9}};
+    config["sm.query.dense.reader"] = reader;
+  }
   Context ctx(config);
   VFS vfs(ctx);
   std::string array_name = "cpp_unit_array";
-
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 
@@ -890,7 +913,8 @@ TEST_CASE(
   FilterList a1_filters(ctx);
   a1_filters.set_max_chunk_size(10000);
   Filter f1{ctx, TILEDB_FILTER_TYPED_VIEW};
-  auto filtered_type = sm::Datatype::INT8;
+  tiledb::sm::Datatype filtered_type{
+      tiledb::impl::type_to_tiledb<TestType>().tiledb_type};
   f1.set_option(TILEDB_TYPED_VIEW_FILTERED_DATATYPE, filtered_type);
   auto unfiltered_type = sm::Datatype::UINT64;
   f1.set_option(TILEDB_TYPED_VIEW_UNFILTERED_DATATYPE, unfiltered_type);
@@ -900,12 +924,13 @@ TEST_CASE(
   a1.set_filter_list(a1_filters);
 
   Domain domain(ctx);
-  auto d1 = Dimension::create<int>(ctx, "d1", {{0, 100}}, 10);
+  auto d1 = Dimension::create<int>(ctx, "d1", d1_domain, 10);
   domain.add_dimensions(d1);
 
-  ArraySchema schema(ctx, TILEDB_SPARSE);
+  ArraySchema schema(ctx, array_t);
   schema.set_domain(domain);
   schema.add_attributes(a1);
+  schema.set_allows_dups(dups);
 
   // Create array
   Array::create(array_name, schema);
@@ -925,29 +950,30 @@ TEST_CASE(
   CHECK(t == unfiltered_type);
 
   Query query(ctx, array);
-  query.set_data_buffer("a1", a1_data)
-      .set_data_buffer("d1", coords)
-      .set_layout(TILEDB_UNORDERED);
+  query.set_data_buffer("a1", a1_data).set_layout(layout);
+  if (array_t != TILEDB_DENSE) {
+    query.set_data_buffer("d1", coords);
+  }
+
   REQUIRE(query.submit() == Query::Status::COMPLETE);
   array.close();
 
   // Validate attribute data written to disk.
-  check_attribute_data(a1_data, filtered_type);
+  check_attribute_data<TestType>(a1_data, filtered_type);
 
   // Sanity check reading
   array.open(TILEDB_READ);
   std::vector<int> subarray = {0, 10};
-  std::vector<uint64_t> a1_read(3);
+  std::vector<uint64_t> a1_read(array_t == TILEDB_DENSE ? 10 : 3);
   Query query_r(ctx, array);
-  query_r.set_subarray(subarray)
-      .set_layout(TILEDB_ROW_MAJOR)
-      .set_data_buffer("a1", a1_read);
+  query_r.set_subarray(subarray).set_layout(layout).set_data_buffer(
+      "a1", a1_read);
   REQUIRE(query_r.submit() == Query::Status::COMPLETE);
   array.close();
   auto ret = query_r.result_buffer_elements();
   CHECK(ret.size() == 1);
   CHECK(ret["a1"].first == 0);
-  CHECK(ret["a1"].second == 2);
+  CHECK(ret["a1"].second == (array_t == TILEDB_DENSE ? 10 : 2));
   CHECK(a1_read[0] == 1);
   CHECK(a1_read[1] == 2);
 

@@ -58,8 +58,8 @@ class TypedViewFilter : public Filter {
    * Constructor.
    */
   TypedViewFilter(
-      const Datatype& filtered_datatype = tiledb::sm::Datatype::ANY,
-      const Datatype& unfiltered_datatype = tiledb::sm::Datatype::ANY);
+      Datatype filtered_datatype = tiledb::sm::Datatype::ANY,
+      Datatype unfiltered_datatype = tiledb::sm::Datatype::ANY);
 
   /** Dumps the filter details in ASCII format in the selected output. */
   void dump(FILE* out) const override;
@@ -85,6 +85,31 @@ class TypedViewFilter : public Filter {
       FilterBuffer* output) const override;
 
   /**
+   * Run forward.
+   */
+  template <typename T>
+  Status run_forward(
+      const WriterTile& tile,
+      WriterTile* const offsets_tile,
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const;
+
+  /**
+   * Run forward. TODO: Doxygen
+   * T = Filtered type; W = Unfiltered type
+   */
+  template <typename T, typename W>
+  Status run_forward(
+      const WriterTile& tile,
+      WriterTile* const offsets_tile,
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output) const;
+
+  /**
    * Run reverse.
    */
   Status run_reverse(
@@ -95,6 +120,33 @@ class TypedViewFilter : public Filter {
       FilterBuffer* output_metadata,
       FilterBuffer* output,
       const Config& config) const override;
+
+  /**
+   * Run reverse.
+   */
+  template <typename T>
+  Status run_reverse(
+      const Tile& tile,
+      Tile* const offsets_tile,
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output,
+      const Config& config) const;
+
+  /**
+   * Run reverse. TODO: Doxygen
+   * T = Filtered type; W = Unfiltered type
+   */
+  template <typename T, typename W>
+  Status run_reverse(
+      const Tile& tile,
+      Tile* const offsets_tile,
+      FilterBuffer* input_metadata,
+      FilterBuffer* input,
+      FilterBuffer* output_metadata,
+      FilterBuffer* output,
+      const Config& config) const;
 
   /**
    * Serializes filter metadata.
