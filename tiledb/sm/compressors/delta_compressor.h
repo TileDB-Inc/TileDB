@@ -79,11 +79,11 @@ class Delta {
    * @param type The type of the input values.
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write to the compressed data.
-   * @return Status
    *
-   * @note The function will fail with an error if: TODO   */
+   * @note The function will fail with an error if: TODO
+   */
 
-  static Status compress(
+  static void compress(
       Datatype type, ConstBuffer* input_buffer, Buffer* output_buffer);
 
   /**
@@ -92,9 +92,8 @@ class Delta {
    * @param type The type of the original decompressed values.
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write the decompressed data to.
-   * @return Status
    */
-  static Status decompress(
+  static void decompress(
       Datatype type,
       ConstBuffer* input_buffer,
       PreallocatedBuffer* output_buffer);
@@ -106,18 +105,17 @@ class Delta {
 
   /** Templated version of *compress* on the type of buffer values. */
   template <class T>
-  static Status compress(ConstBuffer* input_buffer, Buffer* output_buffer);
+  static void compress(ConstBuffer* input_buffer, Buffer* output_buffer);
 
   /**
    * Decompression function.
    *
-   * @tparam The datatype of the values.
+   * @tparam T The datatype of the values.
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write the decompressed data to.
-   * @return Status
    */
   template <class T>
-  static Status decompress(
+  static void decompress(
       ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
 };
 }  // namespace sm
