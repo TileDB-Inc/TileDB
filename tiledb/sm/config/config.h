@@ -547,6 +547,9 @@ class Config {
   /** S3 default object canned ACL */
   static const std::string VFS_S3_OBJECT_CANNED_ACL;
 
+  /** S3 server side encryption method */
+  static const std::string VFS_S3_FORCE_SHARED_CFG_ONLY;
+
   /**
    * Specifies the size in bytes of the internal buffers used in the filestore
    * API. The size should be bigger than the minimum tile size filestore

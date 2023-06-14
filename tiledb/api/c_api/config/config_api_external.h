@@ -515,6 +515,12 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *     Aws::S3::Model::ObjectCannedACL.) "aws_exec_read" "owner_read"
  *    "bucket_owner_full_control"
  *    **Default**: "NOT_SET"
+ * - `vfs.s3.force_shared_cfg_only` <br>
+ *    Force S3 SDK to only load options from the .aws/config file.
+ *    This option makes SDK ignore options found in environment variables and
+ *    EC2 metadata. Setting options such as aws_access_key_id in TileDB config
+ *    that can be found in .aws/config will result in an error. <br>
+ *    **Default**: false
  * - `vfs.hdfs.name_node_uri"` <br>
  *    Name node for HDFS. <br>
  *    **Default**: ""
