@@ -51,20 +51,19 @@ TEST_CASE("Test delta compression of a vector", "[compression][delta]") {
       uncompressed.size() * sizeof(decltype(uncompressed)::value_type));
   tiledb::sm::Buffer compressed_buff{};
 
-  auto st = tiledb::sm::Delta::compress(
-      Datatype::INT64, &uncompressed_buff, &compressed_buff);
-
-  CHECK(st.ok());
+  REQUIRE_NOTHROW(tiledb::sm::Delta::compress(
+      Datatype::INT64, &uncompressed_buff, &compressed_buff));
 
   std::vector<int64_t> compressed(expected.size());
   compressed.assign(
       reinterpret_cast<int64_t*>((char*)compressed_buff.data() + 8),
       reinterpret_cast<int64_t*>(compressed_buff.data()) +
-          (compressed_buff.size() / sizeof(decltype(compressed)::value_type) - 1));
+          (compressed_buff.size() / sizeof(decltype(compressed)::value_type) -
+           1));
   CHECK(compressed == expected);
 }
 
-TEST_CASE("Test delta compression of a vector", "[decompression][delta]") {
+TEST_CASE("Test delta decompression of a vector", "[decompression][delta]") {
   // NOTE: first two values are [bitsize, num_values]
   std::vector<int64_t> compressed_data{0, 1, 0, 14, -12, -3, 2, 5, -6};
   std::vector<std::byte> compressed_raw(
@@ -72,29 +71,23 @@ TEST_CASE("Test delta compression of a vector", "[decompression][delta]") {
       compressed_data.size() * sizeof(decltype(compressed_data)::value_type));
 
   ((uint64_t*)(compressed_raw.data()))[0] = compressed_data.size();
+  size_t uncompressed_bytes =
+      compressed_data.size() * sizeof(decltype(compressed_data)::value_type);
 
   std::memcpy(
       (std::byte*)compressed_raw.data() + 8,
       compressed_data.data(),
-      compressed_data.size() * sizeof(decltype(compressed_data)::value_type));
+      uncompressed_bytes);
 
   tiledb::sm::ConstBuffer compressed_buff(
       compressed_raw.data(), compressed_raw.size());
 
-  size_t uncompressed_bytes =
-      compressed_data.size() * sizeof(decltype(compressed_data)::value_type);
-
-  auto uncompressed_rawbuf = tdb_new(Buffer);
-  auto st = uncompressed_rawbuf->realloc(uncompressed_bytes);
-  REQUIRE(st.ok());
-
+  Buffer uncompressed_rawbuf(uncompressed_bytes);
   tiledb::sm::PreallocatedBuffer uncompressed_buff{
-      uncompressed_rawbuf, uncompressed_bytes};
+      &uncompressed_rawbuf, uncompressed_bytes};
 
-  st = tiledb::sm::Delta::decompress(
-      Datatype::INT64, &compressed_buff, &uncompressed_buff);
-
-  REQUIRE(st.ok());
+  REQUIRE_NOTHROW(tiledb::sm::Delta::decompress(
+      Datatype::INT64, &compressed_buff, &uncompressed_buff));
 
   std::vector<int64_t> uncompressed(compressed_data.size());
   uncompressed.assign(
@@ -105,6 +98,4 @@ TEST_CASE("Test delta compression of a vector", "[decompression][delta]") {
 
   std::vector<int64_t> expected{0, 1, 1, 15, 3, 0, 2, 7, 1};
   CHECK(uncompressed == expected);
-
-  tdb_delete(uncompressed_rawbuf);
 }
