@@ -97,8 +97,6 @@ uint64_t count_cells(AggregateBuffer& input_data) {
   return ret;
 }
 
-std::mutex mut;
-
 void CountAggregator::aggregate_data(AggregateBuffer& input_data) {
   if (input_data.has_bitmap()) {
     if (input_data.is_count_bitmap()) {

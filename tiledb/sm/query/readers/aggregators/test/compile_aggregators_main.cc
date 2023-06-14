@@ -28,18 +28,21 @@
 
 #include "../count_aggregator.h"
 #include "../sum_aggregator.h"
+#include "tiledb/sm/array_schema/array_schema.h"
 
 int main() {
-  (void)sizeof(tiledb::sm::CountAggregator);
-  (void)sizeof(tiledb::sm::SumAggregator<uint8_t>);
-  (void)sizeof(tiledb::sm::SumAggregator<uint16_t>);
-  (void)sizeof(tiledb::sm::SumAggregator<uint32_t>);
-  (void)sizeof(tiledb::sm::SumAggregator<uint64_t>);
-  (void)sizeof(tiledb::sm::SumAggregator<int8_t>);
-  (void)sizeof(tiledb::sm::SumAggregator<int16_t>);
-  (void)sizeof(tiledb::sm::SumAggregator<int32_t>);
-  (void)sizeof(tiledb::sm::SumAggregator<int64_t>);
-  (void)sizeof(tiledb::sm::SumAggregator<float>);
-  (void)sizeof(tiledb::sm::SumAggregator<double>);
+  tiledb::sm::CountAggregator("");
+
+  tiledb::sm::ArraySchema schema;
+  tiledb::sm::SumAggregator<uint8_t>("Sum", schema);
+  tiledb::sm::SumAggregator<uint16_t>("Sum", schema);
+  tiledb::sm::SumAggregator<uint32_t>("Sum", schema);
+  tiledb::sm::SumAggregator<uint64_t>("Sum", schema);
+  tiledb::sm::SumAggregator<int8_t>("Sum", schema);
+  tiledb::sm::SumAggregator<int16_t>("Sum", schema);
+  tiledb::sm::SumAggregator<int32_t>("Sum", schema);
+  tiledb::sm::SumAggregator<int64_t>("Sum", schema);
+  tiledb::sm::SumAggregator<float>("Sum", schema);
+  tiledb::sm::SumAggregator<double>("Sum", schema);
   return 0;
 }
