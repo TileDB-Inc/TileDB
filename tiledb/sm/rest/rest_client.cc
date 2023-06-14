@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -1330,8 +1330,8 @@ void RestClient::delete_group_from_rest(const URI& uri, bool recursive) {
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   const std::string recursive_str = recursive ? "true" : "false";
   const std::string url = redirect_uri(cache_key) + "/v2/groups/" + group_ns +
-                          "/" + curlc.url_escape(group_uri) + "?delete=true" +
-                          "&recursive=" + recursive_str;
+                          "/" + curlc.url_escape(group_uri) +
+                          "/delete?recursive=" + recursive_str;
 
   Buffer returned_data;
   throw_if_not_ok(curlc.delete_data(
