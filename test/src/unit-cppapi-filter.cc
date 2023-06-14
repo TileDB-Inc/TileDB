@@ -989,3 +989,78 @@ TEMPLATE_LIST_TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
+
+TEST_CASE(
+    "C++ API: Typed-view filter pipeline", "[cppapi][filter][typed-view]") {
+  using namespace tiledb;
+  Config config;
+  config["sm.io_concurrency_level"] = "1";
+  config["sm.compute_concurrency_level"] = "1";
+  Context ctx(config);
+  VFS vfs(ctx);
+  std::string array_name = "cpp_unit_array";
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create schema with filter lists
+  FilterList a1_filters(ctx);
+  a1_filters.set_max_chunk_size(10000);
+  Filter f1{ctx, TILEDB_FILTER_TYPED_VIEW};
+  sm::Datatype filtered_type = sm::Datatype::UINT64;
+  f1.set_option(TILEDB_TYPED_VIEW_FILTERED_DATATYPE, filtered_type);
+  sm::Datatype unfiltered_type = sm::Datatype::FLOAT32;
+  f1.set_option(TILEDB_TYPED_VIEW_UNFILTERED_DATATYPE, unfiltered_type);
+  Filter f2{ctx, TILEDB_FILTER_DELTA};
+  a1_filters.add_filter(f1).add_filter(f2);
+
+  auto a1 = Attribute::create<float>(ctx, "a1");
+  a1.set_filter_list(a1_filters);
+  Domain domain(ctx);
+  auto d1 = Dimension::create<int>(ctx, "d1", {{0, 100}}, 10);
+  domain.add_dimensions(d1);
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain);
+  schema.add_attributes(a1);
+
+  // Create array
+  Array::create(array_name, schema);
+
+  // Write to array
+  std::vector<float> a1_data = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  std::vector<int> coords = {0, 10, 20, 30, 31, 32, 33, 34, 40, 50};
+  Array array(ctx, array_name, TILEDB_WRITE);
+
+  Query query(ctx, array);
+  query.set_data_buffer("a1", a1_data)
+      .set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("d1", coords);
+  REQUIRE(query.submit() == Query::Status::COMPLETE);
+  array.close();
+
+  // Sanity check reading
+  array.open(TILEDB_READ);
+  std::vector<int> subarray = {0, 10};
+  std::vector<uint64_t> a1_read(3);
+  Query query_r(ctx, array);
+  query_r.set_subarray(subarray)
+      .set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("a1", a1_read);
+  REQUIRE(query_r.submit() == Query::Status::COMPLETE);
+  array.close();
+  auto ret = query_r.result_buffer_elements();
+  CHECK(ret.size() == 1);
+  CHECK(ret["a1"].first == 0);
+  CHECK(ret["a1"].second == 2);
+  CHECK(a1_read[0] == 1);
+  CHECK(a1_read[1] == 2);
+
+  // Check reading filter lists.
+  array.open(TILEDB_READ);
+  auto schema_r = array.schema();
+  check_filters(a1_filters, schema_r.attribute("a1").filter_list());
+  array.close();
+
+  // Clean up
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}

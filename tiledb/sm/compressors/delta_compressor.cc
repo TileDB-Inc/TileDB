@@ -110,10 +110,10 @@ Status Delta::compress(
       return Delta::compress<uint8_t>(input_buffer, output_buffer);
     case Datatype::FLOAT32:
     case Datatype::FLOAT64:
-      return Delta::compress<int32_t>(input_buffer, output_buffer);
-      // return LOG_STATUS(Status_CompressionError(
-      //     "Cannot compress tile with Delta; Float "
-      //     "datatypes are not supported"));
+      //      return Delta::compress<int32_t>(input_buffer, output_buffer);
+      return LOG_STATUS(
+          Status_CompressionError("Cannot compress tile with Delta; Float "
+                                  "datatypes are not supported"));
   }
 
   assert(false);

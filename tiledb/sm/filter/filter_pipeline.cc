@@ -116,13 +116,13 @@ void FilterPipeline::check_filter_types(
     const Datatype first_input_type,
     bool is_var) {
   // ** Legacy checks for compatibility **
-  for (unsigned i = 0; i < pipeline.size(); ++i) {
-    if (datatype_is_real(first_input_type) &&
-        pipeline.get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
-      throw FilterPipelineStatusException(
-          "Cannot set DOUBLE DELTA filter to an attribute with a real "
-          "datatype");
-  }
+  //  for (unsigned i = 0; i < pipeline.size(); ++i) {
+  //    if (datatype_is_real(first_input_type) &&
+  //        pipeline.get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
+  //      throw FilterPipelineStatusException(
+  //          "Cannot set DOUBLE DELTA filter to an attribute with a real "
+  //          "datatype");
+  //  }
 
   // TODO: move checks from schema to here.
   if ((first_input_type == Datatype::STRING_ASCII ||
