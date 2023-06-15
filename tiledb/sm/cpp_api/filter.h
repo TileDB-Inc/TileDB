@@ -127,9 +127,7 @@ class Filter {
    * @throws TileDBError if the option cannot be set on the filter.
    * @throws std::invalid_argument if the option value is the wrong type.
    */
-  template <
-      typename T,
-      typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+  template <typename T>
   Filter& set_option(tiledb_filter_option_t option, T value) {
     auto& ctx = ctx_.get();
     option_value_typecheck<T>(option);
@@ -192,9 +190,7 @@ class Filter {
    * @throws TileDBError if the option cannot be retrieved from the filter.
    * @throws std::invalid_argument if the option value is the wrong type.
    */
-  template <
-      typename T,
-      typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+  template <typename T>
   void get_option(tiledb_filter_option_t option, T* value) {
     auto& ctx = ctx_.get();
     option_value_typecheck<T>(option);
@@ -342,6 +338,11 @@ class Filter {
       case TILEDB_WEBP_LOSSLESS:
         if (!std::is_same<uint8_t, T>::value)
           throw std::invalid_argument("Option value must be uint8_t.");
+        break;
+      case TILEDB_COMPRESSION_REINTERPRET_DATATYPE:
+        if (!std::is_same<tiledb_datatype_t, T>::value)
+          throw std::invalid_argument(
+              "Option value muse be a tiledb_datatype_t.");
         break;
       default:
         throw std::invalid_argument("Invalid option type");

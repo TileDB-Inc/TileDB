@@ -5,8 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2023 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +32,6 @@
 
 #include <test/support/tdb_catch.h>
 #include "tiledb/sm/cpp_api/tiledb"
-#include "tiledb/sm/enums/datatype.h"
 
 #include <iostream>
 
@@ -133,9 +131,9 @@ TEST_CASE(
   FilterList a1_filters(ctx);
   a1_filters.set_max_chunk_size(10000);
   Filter f1{ctx, TILEDB_FILTER_DELTA};
-  auto reinterpret_type = sm::Datatype::INT32;
-  REQUIRE_NOTHROW(f1.set_option(
-      TILEDB_COMPRESSION_REINTERPRET_DATATYPE, &reinterpret_type));
+  tiledb_datatype_t reinterpret_type = TILEDB_INT32;
+  REQUIRE_NOTHROW(f1.set_option<tiledb_datatype_t>(
+      TILEDB_COMPRESSION_REINTERPRET_DATATYPE, reinterpret_type));
   a1_filters.add_filter(f1);
 
   auto a1 = Attribute::create<float>(ctx, "a1");
@@ -154,6 +152,17 @@ TEST_CASE(
   std::vector<float> a1_data = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   std::vector<int> coords = {0, 10, 20, 30, 31, 32, 33, 34, 40, 50};
   Array array(ctx, array_name, TILEDB_WRITE);
+
+  // Check filter in schema.
+  auto loaded_schema = array.schema();
+  auto loaded_filters = loaded_schema.attribute("a1").filter_list();
+  CHECK(loaded_filters.nfilters() == 1);
+  auto loaded_delta_filter = loaded_filters.filter(0);
+  CHECK(loaded_delta_filter.filter_type() == TILEDB_FILTER_DELTA);
+  tiledb_datatype_t output_reinterpret_type{};
+  loaded_delta_filter.get_option<tiledb_datatype_t>(
+      TILEDB_COMPRESSION_REINTERPRET_DATATYPE, &output_reinterpret_type);
+  CHECK(output_reinterpret_type == TILEDB_INT32);
 
   Query query(ctx, array);
   query.set_data_buffer("a1", a1_data)
