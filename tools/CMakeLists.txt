@@ -45,7 +45,7 @@ set(TILEDB_TOOLS tiledb)
 foreach(TOOL ${TILEDB_TOOLS})
   target_link_libraries(${TOOL} PRIVATE
     TILEDB_CORE_OBJECTS_ILIB
-    Clipp::Clipp
+    clipp::clipp
   )
   target_include_directories(${TOOL} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/..

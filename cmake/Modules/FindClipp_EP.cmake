@@ -88,9 +88,9 @@ if (NOT CLIPP_FOUND)
 endif()
 
 # Create the imported target for Clipp
-if (CLIPP_FOUND AND NOT TARGET Clipp::Clipp)
-  add_library(Clipp::Clipp INTERFACE IMPORTED)
-  set_target_properties(Clipp::Clipp PROPERTIES
+if (CLIPP_FOUND AND NOT TARGET clipp::clipp)
+  add_library(clipp::clipp INTERFACE IMPORTED)
+  set_target_properties(clipp::clipp PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${CLIPP_INCLUDE_DIR}"
   )
 endif()
