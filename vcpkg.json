@@ -5,7 +5,6 @@
     "dependencies": [
         "bzip2",
         "liblzma",
-        "libmagic",
         "lz4",
         {
             "name": "openssl",
@@ -13,7 +12,12 @@
         },
         "spdlog",
         "zlib",
-        "zstd"
+        "zstd",
+        {
+          "name": "libxml2",
+          "features": ["lzma", "zlib"],
+          "default-features": false
+        }
     ],
     "features": {
         "abseil": {
@@ -48,6 +52,7 @@
         "serialization": {
             "description": "Enable TileDB Cloud Support",
             "dependencies": [
+                "curl",
                 {
                     "name": "capnproto",
                     "version>=": "0.8.0"

@@ -107,7 +107,7 @@ steps:
     fi
 
     # Set up arguments for bootstrap.sh
-    bootstrap_args="--enable=verbose";
+    bootstrap_args="--enable=verbose --enable-vcpkg";
 
     # Enable TILEDB_STATIC by default
     [ "$TILEDB_STATIC" ] || TILEDB_STATIC=ON

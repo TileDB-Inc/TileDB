@@ -24,15 +24,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-# Finds the Curl library, installing with an ExternalProject as necessary.
-# This module defines:
-#   - CURL_INCLUDE_DIR, directory containing headers
-#   - CURL_LIBRARIES, the Curl library path
-#   - CURL_FOUND, whether Curl has been found
-#   - The Curl::Curl imported target
 
-# Include some common helper functions.
-include(TileDBCommon)
+if (TARGET CURL OR NOT (TILEDB_SERIALIZATION OR TILEDB_GCS OR TILEDB_S3 OR TILEDB_AZURE))
+  return()
+endif()
+
+if (TILEDB_VCPKG)
+  find_package(CURL REQUIRED ${TILEDB_DEPS_NO_DEFAULT_PATH})
+  install_target_libs(CURL::libcurl)
+  return()
+endif()
+
+# === Superbuild
 
 # Search the path set during the superbuild for the EP.
 set(CURL_PATHS ${TILEDB_EP_INSTALL_PREFIX})

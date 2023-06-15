@@ -207,6 +207,21 @@ int32_t tiledb_serialization_type_from_str(
 }
 
 /* ********************************* */
+/*             LOGGING               */
+/* ********************************* */
+
+capi_return_t tiledb_log_warn(tiledb_ctx_t* ctx, const char* message) {
+  if (message == nullptr) {
+    return TILEDB_ERR;
+  }
+
+  auto logger = ctx->storage_manager()->logger();
+  logger->warn(message);
+
+  return TILEDB_OK;
+}
+
+/* ********************************* */
 /*            ATTRIBUTE              */
 /* ********************************* */
 
@@ -1278,7 +1293,7 @@ int32_t tiledb_array_schema_evolution_drop_attribute(
   return TILEDB_OK;
 }
 
-TILEDB_EXPORT int32_t tiledb_array_schema_evolution_set_timestamp_range(
+int32_t tiledb_array_schema_evolution_set_timestamp_range(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_evolution_t* array_schema_evolution,
     uint64_t lo,
@@ -5190,7 +5205,7 @@ int32_t tiledb_fragment_info_dump(
 /*          EXPERIMENTAL APIs        */
 /* ********************************* */
 
-TILEDB_EXPORT int32_t tiledb_query_get_status_details(
+int32_t tiledb_query_get_status_details(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     tiledb_query_status_details_t* status) {
@@ -5207,7 +5222,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_status_details(
   return TILEDB_OK;
 }
 
-TILEDB_EXPORT int32_t tiledb_consolidation_plan_create_with_mbr(
+int32_t tiledb_consolidation_plan_create_with_mbr(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     uint64_t fragment_size,
@@ -5477,6 +5492,14 @@ void tiledb_version(int32_t* major, int32_t* minor, int32_t* rev) noexcept {
   *major = tiledb::sm::constants::library_version[0];
   *minor = tiledb::sm::constants::library_version[1];
   *rev = tiledb::sm::constants::library_version[2];
+}
+
+/* ********************************* */
+/*             LOGGING               */
+/* ********************************* */
+
+capi_return_t tiledb_log_warn(tiledb_ctx_t* ctx, const char* message) {
+  return api_entry<tiledb::api::tiledb_log_warn>(ctx, message);
 }
 
 /* ********************************* */

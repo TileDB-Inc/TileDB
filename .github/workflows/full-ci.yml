@@ -35,6 +35,7 @@ jobs:
       ci_backend: AZURE
       matrix_image: ubuntu-20.04
       bootstrap_args: '--enable-azure --enable-release-symbols'
+
   ci2:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
@@ -42,6 +43,7 @@ jobs:
       matrix_image: ubuntu-20.04
       timeout: 120
       bootstrap_args: '--enable-gcs --enable-release-symbols'
+
   ci3:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
@@ -65,6 +67,7 @@ jobs:
       matrix_image: macos-11
       timeout: 120
       bootstrap_args: '--enable=s3,serialization,tools --enable-release-symbols'
+
   ci6:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
@@ -80,8 +83,17 @@ jobs:
       matrix_image: ubuntu-22.04
       bootstrap_args: '--enable=experimental-features,serialization --enable-release-symbols'
 
+  ci8:
+    uses: ./.github/workflows/ci-linux_mac.yml
+    with:
+      ci_backend: S3
+      matrix_image: ubuntu-22.04
+      timeout: 120
+      bootstrap_args: '--enable-s3 --enable-release-symbols'
+
   ci_msvc:
     uses: ./.github/workflows/build-windows.yml
+
   ci_mingw_r:
     uses: ./.github/workflows/build-rtools40.yml
 
@@ -96,7 +108,20 @@ jobs:
 
   # dummy job for branch protection check
   full_ci_passed:
-    needs: [ci1, ci2, ci2, ci3, ci4, ci5, ci6, ci7, ci_msvc, backward_compatibility, standalone]
+    needs: [
+        ci1,
+        ci2,
+        ci2,
+        ci3,
+        ci4,
+        ci5,
+        ci6,
+        ci7,
+        ci8,
+        ci_msvc,
+        backward_compatibility,
+        standalone
+      ]
     runs-on: ubuntu-22.04
     steps:
       - name: ''

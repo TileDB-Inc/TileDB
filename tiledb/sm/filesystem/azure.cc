@@ -37,6 +37,7 @@
 #endif
 
 #include <future>
+#include <sstream>
 
 #include <azure/core/diagnostics/logger.hpp>
 #include <azure/storage/blobs.hpp>

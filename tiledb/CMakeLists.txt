@@ -380,6 +380,7 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
 # Use BUILD_INTERFACE generator to work around
 #   https://gitlab.kitware.com/cmake/cmake/-/issues/20736
 target_link_libraries(TILEDB_CORE_OBJECTS PRIVATE $<BUILD_INTERFACE:common>)
+
 target_link_libraries(TILEDB_CORE_OBJECTS INTERFACE object_store_definitions)
 
 ############################################################
@@ -472,12 +473,8 @@ if (TILEDB_SERIALIZATION)
   add_definitions(-DTILEDB_SERIALIZATION)
   message(STATUS "The TileDB library is compiled with query serialization enabled.")
 
-  if(MSVC)
-    if (TILEDB_CURL_EP_BUILT)
-      target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -DCURL_STATICLIB=1)
-    else()
-      target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE                   )
-    endif()
+  if(MSVC AND TILEDB_CURL_EP_BUILT)
+    target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -DCURL_STATICLIB=1)
   endif()
 endif()
 
@@ -490,7 +487,7 @@ endif()
 # so we can use the targets created by the calls to find_package().
 add_library(TILEDB_CORE_OBJECTS_ILIB INTERFACE)
 
-# Object Store Configuration
+# object store definitions
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE object_store_definitions)
 
 # blosc link dependencies
@@ -499,36 +496,64 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${TileDB_blosc_LINK_OPT
 # Find OpenSSL first in case it's needed for S3 or Azure
 if (NOT WIN32)
   find_package(OpenSSL_EP REQUIRED)
+  if (TILEDB_VCPKG)
+    install_target_libs(OpenSSL::SSL)
+    install_target_libs(OpenSSL::Crypto)
+  endif()
 endif()
 
 # S3 dependencies
 if (TILEDB_S3)
   message(STATUS "The TileDB library is compiled with S3 support.")
-  find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-      AWSSDK::aws-cpp-sdk-s3
-      AWSSDK::aws-cpp-sdk-core
-      AWSSDK::aws-c-event-stream
-      AWSSDK::aws-checksums
-      AWSSDK::aws-c-common
-      AWSSDK::aws-cpp-sdk-identity-management
-      AWSSDK::aws-cpp-sdk-sts)
+
+  if (TILEDB_VCPKG)
+    find_package(AWSSDK_EP REQUIRED)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+      INTERFACE
+        ${AWSSDK_LINK_LIBRARIES}
+        ${AWSSDK_EXTRA_LIBS}
+        )
+
+  else()
+    find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+      INTERFACE
+        AWSSDK::aws-cpp-sdk-s3
+        AWSSDK::aws-cpp-sdk-core
+        AWSSDK::aws-c-event-stream
+        AWSSDK::aws-checksums
+        AWSSDK::aws-c-common
+        AWSSDK::aws-cpp-sdk-identity-management
+        AWSSDK::aws-cpp-sdk-sts)
+  endif()
 endif()
 
 # Azure dependencies
 if (TILEDB_AZURE)
   message(STATUS "The TileDB library is compiled with Azure support.")
   find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
+  if (NOT TARGET LibLZMA)
+	  find_package(LibLZMA REQUIRED)
+  endif()
+  if (NOT TARGET LibXml2::LibXml2)
+      find_package(libxml2 CONFIG REQUIRED)
+      install_target_libs(LibXml2::LibXml2)
+  endif()
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
       Azure::azure-storage-blobs
+      Azure::azure-storage-common
+      Azure::azure-core
+      LibXml2::LibXml2
+      LibLZMA::LibLZMA
   )
+  install_all_target_libs("Azure::azure-storage-blobs;Azure::azure-storage-common;Azure::azure-core")
 endif()
 
 if (TILEDB_GCS)
   find_package(google_cloud_cpp_storage CONFIG REQUIRED)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE CURL::libcurl google-cloud-cpp::storage google-cloud-cpp::experimental-storage-grpc)
+  install_all_target_libs(google-cloud-cpp::storage)
 endif()
 
 # Libcurl
@@ -586,11 +611,24 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     Bzip2::Bzip2
     LZ4::LZ4
-    spdlog::spdlog
     ZLIB::ZLIB
     Zstd::Zstd
     libmagic
 )
+if (TILEDB_VCPKG)
+  # vcpkg uses SPDLOG_FMT_EXTERNAL=1
+
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+    INTERFACE
+      fmt::fmt
+      spdlog::spdlog
+  )
+else()
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+    INTERFACE
+      spdlog::spdlog
+  )
+endif()
 
 if(TILEDB_CRC32)
   find_package(crc32c_EP REQUIRED)
@@ -612,16 +650,6 @@ if(TILEDB_WEBP)
     WebP::webp
   )
   add_definitions(-DTILEDB_WEBP)
-endif()
-
-if(TILEDB_ABSEIL)
-  find_package(absl_EP REQUIRED)
-
-  include(${CMAKE_SOURCE_DIR}/test/external/src/absl_library_targets.cmake)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-    ${TILEDB_ABSL_LIBRARY_TARGETS}
-  )
 endif()
 
 if (NOT WIN32)
@@ -660,7 +688,7 @@ endif()
 if(APPLE)
   if(TILEDB_S3)
     # this is a transitive dependency for statically linking S3 SDK
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE "-framework CoreFoundation")
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE "-framework CoreFoundation -framework SystemConfiguration -framework Security")
   endif()
 endif()
 
@@ -881,26 +909,37 @@ if (TILEDB_STATIC)
   append_dep_lib(OpenSSL::SSL)
   append_dep_lib(OpenSSL::Crypto)
   append_dep_lib(CURL::libcurl)
-  append_dep_lib(AWSSDK::aws-cpp-sdk-s3)
-  append_dep_lib(AWSSDK::aws-cpp-sdk-core)
-  append_dep_lib(AWSSDK::aws-c-event-stream)
-  append_dep_lib(AWSSDK::aws-checksums)
-  append_dep_lib(AWSSDK::aws-c-common)
-  append_dep_lib(AWSSDK::aws-cpp-sdk-sts)
-  append_dep_lib(AWSSDK::aws-cpp-sdk-identity-management)
-  append_dep_lib(AzureSDK::AzureSDK)
-  append_dep_lib(GCSSDK::storage_client)
-  append_dep_lib(GCSSDK::google_cloud_cpp_common)
-  append_dep_lib(GCSSDK::crc32c)
+
+  if(TILEDB_S3 AND TILEDB_VCPKG)
+    foreach(tgt ${AWSSDK_LINK_LIBRARIES} ${AWSSDK_EXTRA_LIBS})
+      append_dep_lib(${tgt})
+    endforeach()
+  elseif(TILEDB_S3)
+    append_dep_lib(AWSSDK::aws-cpp-sdk-s3)
+    append_dep_lib(AWSSDK::aws-cpp-sdk-core)
+    append_dep_lib(AWSSDK::aws-c-event-stream)
+    append_dep_lib(AWSSDK::aws-checksums)
+    append_dep_lib(AWSSDK::aws-c-common)
+    append_dep_lib(AWSSDK::aws-cpp-sdk-sts)
+    append_dep_lib(AWSSDK::aws-cpp-sdk-identity-management)
+  endif()
+
+  append_dep_lib(fmt::fmt)
   append_dep_lib(spdlog::spdlog)
+
+  append_dep_lib(Azure::azure-storage-blobs)
+  append_dep_lib(Azure::azure-storage-common)
+  append_dep_lib(Azure::azure-core)
+  append_dep_lib(LibXml2::LibXml2)
+  append_dep_lib(LibLZMA::LibLZMA)
+
+  append_dep_lib(google-cloud-cpp::storage)
+  append_dep_lib(google-cloud-cpp::experimental-storage-grpc)
+
   append_dep_lib(libmagic)
   append_dep_lib(Crc32c::crc32c)
   append_dep_lib(WebP::webp)
-  if(TILEDB_ABSEIL)
-    foreach(tgt ${TILEDB_ABSL_LIBRARIES})
-      append_dep_lib(${tgt})
-    endforeach()
-  endif()
+
 endif()
 
 ############################################################

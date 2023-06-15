@@ -11,6 +11,8 @@ vcpkg_from_github(
     REF 57a4ca5af5a7f55b768a9d9d6655250bffb1257f # v0.8.0
     SHA512 6550356a40a13d41fbeef3887027de1134c4bc37e4d79435e67da1f65665f3856f7cd663be392135cf4a08fffcfd4e171614026c20bfc5727adfd624b2d33e35
     HEAD_REF master
+    PATCHES
+        fix-windows-sanity-h.patch
 )
 
 vcpkg_configure_cmake(

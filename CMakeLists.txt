@@ -559,10 +559,6 @@ if (TILEDB_TESTS)
     add_dependencies(tests unit_link_webp)
   endif()
 
-  if (TILEDB_ABSEIL)
-    add_dependencies(tests unit_link_absl)
-  endif()
-
   if (ENABLE_MAGIC_TEST)
     add_dependencies(tests unit_mgc_dict)
   endif()

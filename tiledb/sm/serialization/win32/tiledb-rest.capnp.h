@@ -29,6 +29,7 @@ CAPNP_DECLARE_SCHEMA(a2a652536db09fa0);
 CAPNP_DECLARE_SCHEMA(de030f447664754c);
 CAPNP_DECLARE_SCHEMA(fa787661cd3563a4);
 CAPNP_DECLARE_SCHEMA(fda1cb9663a55b70);
+CAPNP_DECLARE_SCHEMA(fd5825d8c6e74d78);
 CAPNP_DECLARE_SCHEMA(e7175047415b3f97);
 CAPNP_DECLARE_SCHEMA(9ceaf832b3ab897f);
 CAPNP_DECLARE_SCHEMA(bc4583f733eac4f5);
@@ -370,6 +371,23 @@ struct FloatScaleConfig {
   };
 };
 
+struct WebpConfig {
+  WebpConfig() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(fd5825d8c6e74d78, 2, 0)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
 struct Filter {
   Filter() = delete;
 
@@ -379,7 +397,7 @@ struct Filter {
   struct Data;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(e7175047415b3f97, 2, 3)
+    CAPNP_DECLARE_STRUCT_HEADER(e7175047415b3f97, 2, 4)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -410,7 +428,7 @@ struct Filter::Data {
   };
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(9ceaf832b3ab897f, 2, 3)
+    CAPNP_DECLARE_STRUCT_HEADER(9ceaf832b3ab897f, 2, 4)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -3931,6 +3949,118 @@ class FloatScaleConfig::Pipeline {
 };
 #endif  // !CAPNP_LITE
 
+class WebpConfig::Reader {
+ public:
+  typedef WebpConfig Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline float getQuality() const;
+
+  inline ::uint8_t getFormat() const;
+
+  inline bool getLossless() const;
+
+  inline ::uint16_t getExtentX() const;
+
+  inline ::uint16_t getExtentY() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class WebpConfig::Builder {
+ public:
+  typedef WebpConfig Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline float getQuality();
+  inline void setQuality(float value);
+
+  inline ::uint8_t getFormat();
+  inline void setFormat(::uint8_t value);
+
+  inline bool getLossless();
+  inline void setLossless(bool value);
+
+  inline ::uint16_t getExtentX();
+  inline void setExtentX(::uint16_t value);
+
+  inline ::uint16_t getExtentY();
+  inline void setExtentY(::uint16_t value);
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class WebpConfig::Pipeline {
+ public:
+  typedef WebpConfig Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
 class Filter::Reader {
  public:
   typedef Filter Reads;
@@ -3958,6 +4088,10 @@ class Filter::Reader {
   inline bool hasFloatScaleConfig() const;
   inline ::tiledb::sm::serialization::capnp::FloatScaleConfig::Reader
   getFloatScaleConfig() const;
+
+  inline bool hasWebpConfig() const;
+  inline ::tiledb::sm::serialization::capnp::WebpConfig::Reader getWebpConfig()
+      const;
 
  private:
   ::capnp::_::StructReader _reader;
@@ -4021,6 +4155,18 @@ class Filter::Builder {
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::FloatScaleConfig>
   disownFloatScaleConfig();
 
+  inline bool hasWebpConfig();
+  inline ::tiledb::sm::serialization::capnp::WebpConfig::Builder
+  getWebpConfig();
+  inline void setWebpConfig(
+      ::tiledb::sm::serialization::capnp::WebpConfig::Reader value);
+  inline ::tiledb::sm::serialization::capnp::WebpConfig::Builder
+  initWebpConfig();
+  inline void adoptWebpConfig(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::WebpConfig>&& value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::WebpConfig>
+  disownWebpConfig();
+
  private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -4045,6 +4191,8 @@ class Filter::Pipeline {
   inline typename Data::Pipeline getData();
   inline ::tiledb::sm::serialization::capnp::FloatScaleConfig::Pipeline
   getFloatScaleConfig();
+  inline ::tiledb::sm::serialization::capnp::WebpConfig::Pipeline
+  getWebpConfig();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -16992,6 +17140,74 @@ inline void FloatScaleConfig::Builder::setByteWidth(::uint64_t value) {
       ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
 }
 
+inline float WebpConfig::Reader::getQuality() const {
+  return _reader.getDataField<float>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline float WebpConfig::Builder::getQuality() {
+  return _builder.getDataField<float>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void WebpConfig::Builder::setQuality(float value) {
+  _builder.setDataField<float>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint8_t WebpConfig::Reader::getFormat() const {
+  return _reader.getDataField<::uint8_t>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint8_t WebpConfig::Builder::getFormat() {
+  return _builder.getDataField<::uint8_t>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS);
+}
+inline void WebpConfig::Builder::setFormat(::uint8_t value) {
+  _builder.setDataField<::uint8_t>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool WebpConfig::Reader::getLossless() const {
+  return _reader.getDataField<bool>(::capnp::bounded<40>() * ::capnp::ELEMENTS);
+}
+
+inline bool WebpConfig::Builder::getLossless() {
+  return _builder.getDataField<bool>(
+      ::capnp::bounded<40>() * ::capnp::ELEMENTS);
+}
+inline void WebpConfig::Builder::setLossless(bool value) {
+  _builder.setDataField<bool>(
+      ::capnp::bounded<40>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint16_t WebpConfig::Reader::getExtentX() const {
+  return _reader.getDataField<::uint16_t>(
+      ::capnp::bounded<3>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint16_t WebpConfig::Builder::getExtentX() {
+  return _builder.getDataField<::uint16_t>(
+      ::capnp::bounded<3>() * ::capnp::ELEMENTS);
+}
+inline void WebpConfig::Builder::setExtentX(::uint16_t value) {
+  _builder.setDataField<::uint16_t>(
+      ::capnp::bounded<3>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint16_t WebpConfig::Reader::getExtentY() const {
+  return _reader.getDataField<::uint16_t>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint16_t WebpConfig::Builder::getExtentY() {
+  return _builder.getDataField<::uint16_t>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS);
+}
+inline void WebpConfig::Builder::setExtentY(::uint16_t value) {
+  _builder.setDataField<::uint16_t>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS, value);
+}
+
 inline bool Filter::Reader::hasType() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
@@ -17106,6 +17322,59 @@ Filter::Builder::disownFloatScaleConfig() {
       ::tiledb::sm::serialization::capnp::FloatScaleConfig>::
       disown(
           _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+
+inline bool Filter::Reader::hasWebpConfig() const {
+  return !_reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Filter::Builder::hasWebpConfig() {
+  return !_builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::WebpConfig::Reader
+Filter::Reader::getWebpConfig() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::WebpConfig>::get(
+          _reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::WebpConfig::Builder
+Filter::Builder::getWebpConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::WebpConfig>::get(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::WebpConfig::Pipeline
+Filter::Pipeline::getWebpConfig() {
+  return ::tiledb::sm::serialization::capnp::WebpConfig::Pipeline(
+      _typeless.getPointerField(3));
+}
+#endif  // !CAPNP_LITE
+inline void Filter::Builder::setWebpConfig(
+    ::tiledb::sm::serialization::capnp::WebpConfig::Reader value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::WebpConfig>::
+      set(_builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+          value);
+}
+inline ::tiledb::sm::serialization::capnp::WebpConfig::Builder
+Filter::Builder::initWebpConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::WebpConfig>::init(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline void Filter::Builder::adoptWebpConfig(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::WebpConfig>&& value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::WebpConfig>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::WebpConfig>
+Filter::Builder::disownWebpConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::WebpConfig>::disown(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
 }
 
 inline ::tiledb::sm::serialization::capnp::Filter::Data::Which
@@ -19647,14 +19916,17 @@ Subarray::Builder::disownAttributeRanges() {
 }
 
 inline bool Subarray::Reader::getCoalesceRanges() const {
-  return _reader.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
+  return _reader.getDataField<bool>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, true);
 }
 
 inline bool Subarray::Builder::getCoalesceRanges() {
-  return _builder.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
+  return _builder.getDataField<bool>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, true);
 }
 inline void Subarray::Builder::setCoalesceRanges(bool value) {
-  _builder.setDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+  _builder.setDataField<bool>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value, true);
 }
 
 inline bool SubarrayPartitioner::Reader::hasSubarray() const {
