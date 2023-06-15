@@ -437,6 +437,13 @@ const std::string filter_option_webp_input_format = "WEBP_INPUT_FORMAT";
 /** The string representation for FilterOption type webp_lossless. */
 const std::string filter_option_webp_lossless = "WEBP_LOSSLESS";
 
+/**
+ * The string representation for FilterOption type
+ * compression_reinterpret_datatype.
+ */
+const std::string filter_option_compression_reinterpret_datatype =
+    "COMPRESSION_REINTERPRET_DATATYPE";
+
 /** The string representation for type int32. */
 const std::string int32_str = "INT32";
 
