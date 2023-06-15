@@ -50,23 +50,20 @@ S3ThreadPoolExecutor::S3ThreadPoolExecutor(ThreadPool* const thread_pool)
 }
 
 S3ThreadPoolExecutor::~S3ThreadPoolExecutor() {
-  throw_if_not_ok(Stop());
   assert(state_ == State::STOPPED);
   assert(outstanding_tasks_ == 0);
 }
 
-Status S3ThreadPoolExecutor::Stop() {
+void S3ThreadPoolExecutor::Stop() {
   std::unique_lock<std::mutex> lock_guard(lock_);
 
   if (state_ != State::RUNNING)
-    return Status::Ok();
+    return;
 
   state_ = State::STOPPING;
   while (outstanding_tasks_ != 0)
     cv_.wait(lock_guard);
   state_ = State::STOPPED;
-
-  return Status::Ok();
 }
 
 bool S3ThreadPoolExecutor::SubmitToThread(std::function<void()>&& fn) {
