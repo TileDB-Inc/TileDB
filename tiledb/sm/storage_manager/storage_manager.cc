@@ -184,10 +184,19 @@ StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
   auto&& [array_schema_latest, array_schemas_all] =
       array_dir.load_array_schemas(enc_key);
 
-  auto filtered_fragment_uris =
-      array_dir.filtered_fragment_uris(array_schema_latest->dense());
+  optional<const ArrayDirectory::FilteredFragmentUris> filtered_fragment_uris;
+
+  {
+    auto timer_se = stats()->start_timer(
+        "sm_load_array_schemas_and_fragment_metadata_get_filtered_fragment_"
+        "uris");
+    filtered_fragment_uris.emplace(
+        array_dir.filtered_fragment_uris(array_schema_latest->dense()));
+  }
+
   const auto& meta_uris = array_dir.fragment_meta_uris();
-  const auto& fragments_to_load = filtered_fragment_uris.fragment_uris();
+  const auto& fragments_to_load =
+      filtered_fragment_uris.value().fragment_uris();
 
   // Get the consolidated fragment metadatas
   std::vector<shared_ptr<Tile>> fragment_metadata_tiles(meta_uris.size());

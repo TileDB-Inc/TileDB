@@ -72,6 +72,7 @@ class ArrayDirectory {
    */
   friend class WhiteboxArrayDirectory;
 
+ public:
   /**
    * Class to return the URIs that need to be processed after the schema have
    * been created.
@@ -200,7 +201,6 @@ class ArrayDirectory {
     }
   };
 
- public:
   /**
    * Class to return a location of a delete or update tile, which is file
    * URI/offset.
