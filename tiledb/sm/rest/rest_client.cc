@@ -707,8 +707,8 @@ size_t RestClient::query_post_call_back(
     const uint64_t query_size =
         utils::endianness::decode_le<uint64_t>(scratch->cur_data());
 
-    double perc_done = 100.0 * double(scratch->size()) / double(query_size);
-    std::cerr << "Query Size: " << query_size << " Read: " << scratch->size() << " = " << perc_done << std::endl;
+    //double perc_done = 100.0 * double(scratch->size()) / double(query_size);
+    //std::cerr << "Query Size: " << query_size << " Read: " << scratch->size() << " = " << perc_done << std::endl;
 
     // We must have the full serialized query before attempting to
     // deserialize it.
