@@ -1856,6 +1856,9 @@ bool Query::only_dim_label_query() const {
 }
 
 Status Query::submit() {
+
+  std::cerr << to_string() << std::endl;
+
   // Do not resubmit completed reads.
   if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
     return Status::Ok();
