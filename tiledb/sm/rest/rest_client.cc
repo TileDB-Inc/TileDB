@@ -763,6 +763,8 @@ size_t RestClient::query_post_call_back(
 
     scratch->advance_offset(query_size);
     bytes_processed += (query_size + 8);
+
+    std::cerr << "A: Size: " << scratch->size() << " Offset: " << scratch->offset() << " Length: " << (scratch->size() - scratch->offset()) << std::endl;
   }
 
   // If there are unprocessed bytes left in the scratch space, copy them
@@ -771,10 +773,10 @@ size_t RestClient::query_post_call_back(
   // have already processed.
   const uint64_t length = scratch->size() - scratch->offset();
 
-  std::cerr << "Size: " << scratch->size() << " Offset: " << scratch->offset() << " Length: " << length << std::endl;
+  std::cerr << "B: Size: " << scratch->size() << " Offset: " << scratch->offset() << " Length: " << length << std::endl;
 
   if (scratch->offset() != 0 && length != 0) {
-    std::cerr << "Size: " << scratch->size() << " Offset: " << scratch->offset() << " Length: " << length << std::endl;
+    std::cerr << "C: Size: " << scratch->size() << " Offset: " << scratch->offset() << " Length: " << length << std::endl;
 
     const uint64_t offset = scratch->offset();
     scratch->reset_offset();
