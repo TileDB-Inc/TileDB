@@ -2348,6 +2348,7 @@ Status query_deserialize(
     CopyState* copy_state,
     Query* query,
     ThreadPool* compute_tp) {
+  std::cerr << "Deserializing query from: " << serialized_buffer.data() << " with size " << serialized_buffer.size() << std::endl;
   // Create an original, serialized copy of the 'query' that we will revert
   // to if we are unable to deserialize 'serialized_buffer'.
   BufferList original_bufferlist;

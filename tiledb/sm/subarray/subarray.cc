@@ -444,12 +444,16 @@ Status Subarray::add_range(
     return LOG_STATUS(Status_SubarrayError(
         "Cannot add range; Setting range stride is currently unsupported"));
 
+  std::cerr << "Dim Idx: " << dim_idx << " Type: "
+    << datatype_str(this->array_->array_schema_latest().domain().dimension_ptr(dim_idx)->type())
+    << std::endl;
+
   if (this->array_->array_schema_latest()
           .domain()
           .dimension_ptr(dim_idx)
           ->var_size())
     return LOG_STATUS(
-        Status_SubarrayError("Cannot add range; Range must be fixed-sized"));
+        Status_SubarrayError("452: Cannot add range; Range must be fixed-sized"));
 
   // Prepare a temp range
   std::vector<uint8_t> range;
@@ -487,7 +491,7 @@ Status Subarray::add_point_ranges(
           .dimension_ptr(dim_idx)
           ->var_size()) {
     return LOG_STATUS(
-        Status_SubarrayError("Cannot add range; Range must be fixed-sized"));
+        Status_SubarrayError("490: Cannot add range; Range must be fixed-sized"));
   }
 
   // Prepare a temp range
@@ -541,7 +545,7 @@ Status Subarray::add_ranges_list(
           .dimension_ptr(dim_idx)
           ->var_size()) {
     return LOG_STATUS(
-        Status_SubarrayError("Cannot add range; Range must be fixed-sized"));
+        Status_SubarrayError("544: Cannot add range; Range must be fixed-sized"));
   }
 
   // Prepare a temp range
