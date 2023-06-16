@@ -157,8 +157,8 @@ class QueryBuffer {
 
   std::string to_string() {
     std::stringstream ss;
-    ss << "BS: " << *buffer_size_
-      << " BVS: " << *buffer_var_size_
+    ss << "BS: " << (buffer_size_ ? *buffer_size_ : 0x0)
+      << " BVS: " << (buffer_var_size_ ? *buffer_var_size_ : 0x0)
       << " OBS: " << original_buffer_size_
       << " OBVS: " << original_buffer_var_size_
       << " OVVS: " << original_validity_vector_size_;
