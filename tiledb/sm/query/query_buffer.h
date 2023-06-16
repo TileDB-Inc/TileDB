@@ -155,6 +155,16 @@ class QueryBuffer {
   /*          PUBLIC ATTRIBUTES        */
   /* ********************************* */
 
+  std::string to_string() {
+    std::stringstream ss;
+    ss << "BS: " << *buffer_size_
+      << " BVS: " << *buffer_var_size_
+      << " OBS: " << original_buffer_size_
+      << " OBVS: " << original_buffer_var_size_
+      << " OVVS: " << original_validity_vector_size_;
+    return ss.str();
+  }
+
   /**
    * The attribute/dimension buffer. In case the attribute/dimension is
    * var-sized, this is the offsets buffer.

@@ -112,6 +112,8 @@ class Range {
   /** Move-assign operator. */
   Range& operator=(Range&&) = default;
 
+  std::string to_string() const;
+
   /** Sets a fixed-sized range serialized in `r`. */
   void set_range(const void* r, uint64_t r_size) {
     range_.resize(r_size);

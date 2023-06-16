@@ -79,8 +79,26 @@ class Query {
    * internally as a part of deserialization (as opposed to user-set buffers).
    */
   struct SerializationState {
+    std::string to_string() {
+      std::stringstream ss;
+      ss << "SerializationState():" << std::endl;
+      for (auto& [key, as] : attribute_states) {
+        ss << "  '" << key << "' " << as.to_string() << std::endl;
+      }
+      return ss.str();
+    }
     /** Serialization state for a single attribute. */
     struct AttrState {
+      std::string to_string() {
+        std::stringstream ss;
+        ss << "Fix Len Data: " << fixed_len_data.size() << " "
+          << "Var Len Data: " << var_len_data.size() << " "
+          << "Val Len Data: " << validity_len_data.size() << " "
+          << "Fix Len Size: " << fixed_len_size << " "
+          << "Var Len Size: " << var_len_size << " "
+          << "Val Len Size: " << validity_len_size;
+        return ss.str();
+      }
       /**
        * Buffer holding (or wrapping) fixed-length data, either attribute or
        * offset data.
@@ -159,6 +177,8 @@ class Query {
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
+
+  std::string to_string();
 
   /**
    * Gets the estimated result size (in bytes) for the input fixed-sized

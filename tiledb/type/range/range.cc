@@ -34,6 +34,19 @@ using namespace tiledb::common;
 
 namespace tiledb::type {
 
+std::string Range::to_string() const {
+  std::stringstream ss;
+  ss << "Start: ";
+  for(size_t i = 0; i < range_start_size_; i++) {
+    ss << (int) range_[i] << " ";
+  }
+  ss << "End: ";
+  for(size_t i = range_start_size_; i < range_.size(); i++) {
+    ss << (int) range_[i] << " ";
+  }
+  return ss.str();
+}
+
 std::string range_str(const Range& range, const tiledb::sm::Datatype type) {
   if (range.empty())
     return sm::constants::null_str;

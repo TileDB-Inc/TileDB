@@ -105,6 +105,22 @@ SubarrayTileOverlap& SubarrayTileOverlap::operator=(SubarrayTileOverlap&& rhs) {
   return *this;
 }
 
+std::string SubarrayTileOverlap::to_string() {
+  std::stringstream ss;
+  ss << "SubarrayTileOverlap():" << std::endl;
+  ss << "  Range Idx Start: " << range_idx_start_ << std::endl;
+  ss << "  Range Idx End: " << range_idx_end_ << std::endl;
+  ss << "  Range Idx Start Offset: " << range_idx_start_offset_ << std::endl;
+  ss << "  Range Idx End Offset: " << range_idx_end_offset_ << std::endl;
+  ss << "  Tile Overlap Index: " << std::endl;
+  for(auto& sub_vec : *tile_overlap_idx_) {
+    for (auto& sub_sub_vec : sub_vec) {
+      ss << "    " << sub_sub_vec.to_string() << std::endl;
+    }
+  }
+  return ss.str();
+}
+
 uint64_t SubarrayTileOverlap::range_idx_start() const {
   return range_idx_start_ + range_idx_start_offset_;
 }

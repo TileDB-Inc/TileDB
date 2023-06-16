@@ -166,6 +166,61 @@ Subarray& Subarray::operator=(Subarray&& subarray) noexcept {
 /*               API              */
 /* ****************************** */
 
+std::string Subarray::to_string() {
+  std::stringstream ss;
+  ss << "Subarray():" << std::endl;
+  ss << "  Est Result Size:" << std::endl;
+  for (auto& [key, rs] : est_result_size_) {
+    ss << "    '" << key << "' = "  << rs.size_fixed_ << ", " << rs.size_var_ << ", " << rs.size_validity_ << std::endl;
+  }
+  ss << "  Max Mem Size:" << std::endl;
+  for (auto& [key, ms] : max_mem_size_) {
+    ss << "    '" << key << "' = " << ms.size_fixed_ << ", " << ms.size_var_ << ", " << ms.size_validity_ << std::endl;
+  }
+  ss << "  Layout: " << layout_str(layout_) << std::endl;
+  ss << "  Cell Order: " << layout_str(cell_order_) << std::endl;
+  ss << "  Range Subset Size: " << range_subset_.size() << std::endl;
+  for (auto& rss : range_subset_) {
+    ss << "    Ranges: " << rss.num_ranges() << std::endl;
+    for (size_t i = 0; i < rss.num_ranges(); i++) {
+      ss << "      " << rss[i].to_string() << std::endl;
+    }
+  }
+  ss << "  Label Range Subset Size: " << label_range_subset_.size() << std::endl;
+  ss << "  Attribute Range Subset Size: " << attr_range_subset_.size() << std::endl;
+  ss << "  Is default? " << is_default_.size() << std::endl;
+  for (size_t i = 0; i < is_default_.size(); i++) {
+    ss << "    " << (is_default_[i] ? "true" : "false") << std::endl;
+  }
+  ss << "  Range Offsets Size: " << range_offsets_.size() << std::endl;
+  ss << "  Est Result Size Computed: " << (est_result_size_computed_ ? "true" : "false") << std::endl;
+  ss << "  Subarray Relevant Fragments:" << std::endl;
+  ss << "    " << relevant_fragments_.to_string() << std::endl;
+  ss << "  Subarray Tile Overlap:" << std::endl;
+  ss << "    " << tile_overlap_.to_string() << std::endl;
+  ss << "  Coalesce Ranges: " << (coalesce_ranges_ ? "true" : "false") << std::endl;
+  ss << "  Tile Coords:" << std::endl;
+  for (auto& tc_vec : tile_coords_) {
+    for (auto& tc_vec_elem : tc_vec) {
+      ss << (int) tc_vec_elem << " ";
+    }
+    ss << std::endl;
+  }
+  for (auto& [tc_vec, size] : tile_coords_map_) {
+    for (auto& tc_vec_elem : tc_vec) {
+      ss << (int) tc_vec_elem << " ";
+    }
+    ss << "= " << size << std::endl;
+  }
+  ss << std::endl;
+  ss << "Config: " << std::endl;
+  ss << config_.to_string() << std::endl;
+  ss << "Error on Range OOB? " << (err_on_range_oob_ ? "true" : "false") << std::endl;
+  ss << "Ranges Sorted? " << (ranges_sorted_ ? "true" : "false") << std::endl;
+
+  return ss.str();
+}
+
 void Subarray::add_index_ranges_from_label(
     const uint32_t dim_idx,
     const bool is_point_ranges,

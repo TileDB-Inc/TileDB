@@ -581,11 +581,15 @@ class Config {
   /*                API                */
   /* ********************************* */
 
+  std::string to_string();
+
   /** Loads the config parameters from a configuration (local) file. */
   Status load_from_file(const std::string& filename);
 
   /** Saves the config parameters to a configuration (local) file. */
   Status save_to_file(const std::string& filename);
+
+  Status save_to_stream(std::ostream& os);
 
   /** Sets a config parameter. */
   Status set(const std::string& param, const std::string& value);

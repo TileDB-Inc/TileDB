@@ -176,6 +176,18 @@ class RelevantFragments {
   /*                API                */
   /* ********************************* */
 
+  std::string to_string() {
+    std::stringstream ss;
+    ss << "RelevantFragments()" << std::endl;
+    ss << "  Non-computed Fragment Num: " << non_computed_fragment_num_ << std::endl;
+    ss << "  Relevant Fragments Computed? " << (relevant_fragments_computed_ ? "true" : "false") << std::endl;
+    ss << "  Computed Relevant Fragments: " << computed_relevant_fragments_.size() << std::endl;
+    for (auto& i : computed_relevant_fragments_) {
+      ss << "    " << i << std::endl;
+    }
+    return ss.str();
+  }
+
   /** Returns the start iterator for the relevant fragments. */
   Iterator begin() const {
     return Iterator(*this, 0);

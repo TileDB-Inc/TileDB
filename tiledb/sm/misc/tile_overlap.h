@@ -34,6 +34,7 @@
 #define TILEDB_TILE_OVERLAP_H
 
 #include <cinttypes>
+#include <sstream>
 #include <vector>
 
 using namespace tiledb::common;
@@ -46,6 +47,19 @@ namespace sm {
  * fragment with a single range within a subarray.
  */
 struct TileOverlap {
+  std::string to_string() {
+    std::stringstream ss;
+    ss << "TileOverlap():" << std::endl;
+    ss << "  Tiles: " << tiles_.size() << std::endl;
+    for (auto& [i, d] : tiles_) {
+      ss << "    " << i << " : " << d << std::endl;
+    }
+    ss << "  Tile Ranges: " << tile_ranges_.size() << std::endl;
+    for (auto& [i1, i2] : tile_ranges_) {
+      ss << "    " << i1 << " : " << i2 << std::endl;
+    }
+    return ss.str();
+  }
   /**
    * A vector of pairs ``(overlapping tile id, ratio).``
    * The ``ratio`` is defined as the ratio of the volume of the overlap over

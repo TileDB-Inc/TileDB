@@ -585,6 +585,10 @@ Status index_read_state_from_capnp(
     auto tile_idx = rcs.getTileIdx();
     auto cell_idx = rcs.getCellIdx();
 
+    if (tile_idx != 0 && cell_idx != 0) {
+      std::cerr << "read_state->frag_idx_: " << read_state->frag_idx_.size() << " : " << tile_idx << " : " << cell_idx << std::endl;
+    }
+
     read_state->frag_idx_.emplace_back(tile_idx, cell_idx);
   }
 
@@ -1643,6 +1647,17 @@ Status query_from_capnp(
             existing_validity_buffer_size == 0 ?
                 0 :
                 existing_validity_buffer_size - curr_validity_size;
+
+        std::cerr <<
+          "Buffer: " << name
+          << " Var Size: " << var_size
+          << " Data Size Left: " << data_size_left
+          << " Varlen Size: " << varlen_size
+          << " Fixedlen Size: " << fixedlen_size
+          << " Offset Size: " << offset_size_left
+          << " Validity Size: " << validity_size_left
+          << " ValidityLen Size: " << validitylen_size
+          << std::endl;
 
         const bool has_mem_for_data =
             (var_size && data_size_left >= varlen_size) ||

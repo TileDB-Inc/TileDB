@@ -494,6 +494,12 @@ Config::~Config() = default;
 /*                API             */
 /* ****************************** */
 
+std::string Config::to_string() {
+  std::stringstream ss;
+  throw_if_not_ok(save_to_stream(ss));
+  return ss.str();
+}
+
 Status Config::load_from_file(const std::string& filename) {
   // Do nothing if filename is empty
   if (filename.empty())
@@ -557,11 +563,15 @@ Status Config::save_to_file(const std::string& filename) {
     msg << "Failed to open config file '" << filename << "' for writing";
     return LOG_STATUS(Status_ConfigError(msg.str()));
   }
+  return save_to_stream(ofs);
+}
+
+Status Config::save_to_stream(std::ostream& os) {
   for (auto& pv : param_values_) {
     if (unserialized_params_.count(pv.first) != 0)
       continue;
     if (!pv.second.empty())
-      ofs << pv.first << " " << pv.second << "\n";
+      os << pv.first << " " << pv.second << "\n";
   }
   return Status::Ok();
 }

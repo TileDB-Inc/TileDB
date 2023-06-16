@@ -529,6 +529,9 @@ Status RestClient::submit_query_to_rest(const URI& uri, Query* query) {
 
 Status RestClient::post_query_submit(
     const URI& uri, Query* query, serialization::CopyState* copy_state) {
+
+  std::cerr << "Starting REST query" << std::endl;
+
   // Get array
   const Array* array = query->array();
   if (array == nullptr) {
@@ -635,6 +638,7 @@ size_t RestClient::query_post_call_back(
     shared_ptr<Buffer> scratch,
     Query* query,
     serialization::CopyState* copy_state) {
+
   // All return statements in this function must pass through this wrapper.
   // This is responsible for two things:
   // 1. The 'bytes_processed' may be negative in error scenarios. The negative
@@ -652,6 +656,7 @@ size_t RestClient::query_post_call_back(
   auto return_wrapper = [content_nbytes, skip_retries](long bytes_processed) {
     bytes_processed = std::max(bytes_processed, 0L);
     if (static_cast<size_t>(bytes_processed) != content_nbytes) {
+      std::cerr << "Processed: " << bytes_processed << " of " << content_nbytes << std::endl;
       *skip_retries = true;
     }
     return bytes_processed;
@@ -701,6 +706,9 @@ size_t RestClient::query_post_call_back(
     // callback to prevent decoding the same prefix multiple times.
     const uint64_t query_size =
         utils::endianness::decode_le<uint64_t>(scratch->cur_data());
+
+    double perc_done = 100.0 * double(scratch->size()) / double(query_size);
+    std::cerr << "Query Size: " << query_size << " Read: " << scratch->size() << " = " << perc_done << std::endl;
 
     // We must have the full serialized query before attempting to
     // deserialize it.

@@ -165,6 +165,57 @@ Query::~Query() {
 /*               API              */
 /* ****************************** */
 
+std::string Query::to_string() {
+  std::stringstream ss;
+
+  ss << "Query()" << std::endl;
+  ss << "  Array URI: " << array_->array_uri().to_string() << std::endl;
+  ss << "  Array Schema URI: " << array_schema_->uri().to_string() << std::endl;
+  ss << "  Config:" << std::endl << config_.to_string() << std::endl;
+  ss << "  QueryType: " << query_type_str(type_) << std::endl;
+  ss << "  Layout: " << layout_str(layout_) << std::endl;
+  ss << "  Subarray: " << subarray_.to_string() << std::endl;
+  ss << "  Query Status: " << query_status_str(status_) << std::endl;
+  ss << "  Query Buffers: " << buffers_.size() << std::endl;
+  for (auto& [key, buf] : buffers_) {
+    ss << "    '" << key << "' : " << buf.to_string() << std::endl;
+  }
+  ss << "  Label Buffers: " << label_buffers_.size() << std::endl;
+  for (auto& [key, buf] : label_buffers_) {
+    ss << "    '" << key << "' : " << buf.to_string() << std::endl;
+  }
+  ss << "  Dimension Label Queries: " << dim_label_queries_.get() << std::endl;
+  ss << "  Coords Info: " << std::endl;
+  ss << "    Has Coords? " << (coords_info_.has_coords_ ? "true" : "false") << std::endl;
+  ss << "    Coords Buffer: " << coords_info_.coords_buffer_ << std::endl;
+  ss << "    Coords Buffer Size: " << coords_info_.coords_buffer_size_ << std::endl;
+  ss << "    Coords Num: " << coords_info_.coords_num_ << std::endl;
+  ss << "  QueryCondition: " << condition_.ast().get() << std::endl;
+  ss << "  Fragment Metadata Size: " << fragment_metadata_.size() << std::endl;
+  ss << "  Serialization State: " << std::endl;
+  ss << "    " << serialization_state_.to_string() << std::endl;
+  ss << "  Has Coords Buffer: " << (has_coords_buffer_ ? "true" : "false") << std::endl;
+  ss << "  Has Zipped Coords Buffer: " << (has_zipped_coords_buffer_ ? "true" : "false") << std::endl;
+  ss << "  Coord Buffer Is Set: " << (coord_buffer_is_set_ ? "true" : "false") << std::endl;
+  ss << "  Coord Data Buffer Is Set: " << (coord_data_buffer_is_set_ ? "true" : "false") << std::endl;
+  ss << "  Coord Offsets Buffer Is Set: " << (coord_offsets_buffer_is_set_ ? "true" : "false") << std::endl;
+  ss << "  Data Buffer Name: " << data_buffer_name_ << std::endl;
+  ss << "  Offsets Buffer Name: " << offsets_buffer_name_ << std::endl;
+  ss << "  Disable Checks Consolidation: " << (disable_checks_consolidation_ ? "true" : "false") << std::endl;
+  ss << "  Consolidation with Timestamps: " << (consolidation_with_timestamps_ ? "true" : "false") << std::endl;
+  ss << "  Rest Scratch Buffer Size: " << rest_scratch_->size() << std::endl;
+  ss << "  Force Legacy Reader: " << (force_legacy_reader_ ? "true" : "false") << std::endl;
+  ss << "  Fragment Name: " << (fragment_name_.has_value() ? fragment_name_.value() : "empty optional fragment name") << std::endl;
+  ss << "  Remote Query: " << (remote_query_ ? "true" : "false") << std::endl;
+  ss << "  Is Dimension Label Ordered Read: " << (is_dimension_label_ordered_read_ ? "true" : "false") << std::endl;
+  ss << "  Dimension Label Increasing: " << (dimension_label_increasing_ ? "true" : "false") << std::endl;
+  ss << "  Fragment Size: " << fragment_size_ << std::endl;
+  ss << "  Allow Separate Attribute Writes: " << (allow_separate_attribute_writes_ ? "true" : "false") << std::endl;
+
+  return ss.str();
+}
+
+
 Status Query::get_est_result_size(const char* name, uint64_t* size) {
   if (type_ != QueryType::READ) {
     return logger_->status(Status_QueryError(
@@ -1809,6 +1860,8 @@ Status Query::submit() {
   if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
     return Status::Ok();
   }
+
+  std::cerr << "Submitting QUERY" << std::endl;
 
   // Make sure fragment size is only set for global order.
   if (fragment_size_ != std::numeric_limits<uint64_t>::max() &&

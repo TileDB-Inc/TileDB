@@ -100,6 +100,8 @@ class SubarrayTileOverlap final {
   /*                API                */
   /* ********************************* */
 
+  std::string to_string();
+
   /**
    * Returns a const-pointer to the internal `TileOverlap` instance. The
    * caller is responsible for ensuring that a `TileOverlap` instance has

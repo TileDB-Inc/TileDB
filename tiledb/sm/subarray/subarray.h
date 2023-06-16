@@ -239,6 +239,8 @@ class Subarray {
   /*                 API               */
   /* ********************************* */
 
+  std::string to_string();
+
   /** Sets config for query-level parameters only. */
   Status set_config(const Config& config);
 
