@@ -707,6 +707,8 @@ size_t RestClient::query_post_call_back(
     const uint64_t query_size =
         utils::endianness::decode_le<uint64_t>(scratch->cur_data());
 
+    std::cerr << "Processing query with size: " << query_size << std::endl;
+
     //double perc_done = 100.0 * double(scratch->size()) / double(query_size);
     //std::cerr << "Query Size: " << query_size << " Read: " << scratch->size() << " = " << perc_done << std::endl;
 
@@ -767,6 +769,9 @@ size_t RestClient::query_post_call_back(
   // consumption by overwriting the serialized query objects that we
   // have already processed.
   const uint64_t length = scratch->size() - scratch->offset();
+
+  std::cerr << "Size: " << scratch->size() << " Offset: " << scratch->offset() << " Length: " << length << std::endl;
+
   if (scratch->offset() != 0 && length != 0) {
     const uint64_t offset = scratch->offset();
     scratch->reset_offset();
@@ -781,9 +786,11 @@ size_t RestClient::query_post_call_back(
     // there will be an overlap in the memory of the source and
     // destination.
     if (length <= offset) {
+      std::cerr << "Moving " << length << " bytes in scratch" << std::endl;
       scratch->reset_size();
       st = scratch->write(scratch->data(offset), length);
     } else {
+      std::cerr << "Copying " << length << " bytes in scratch" << std::endl;
       Buffer aux;
       st = aux.write(scratch->data(offset), length);
       if (st.ok()) {
