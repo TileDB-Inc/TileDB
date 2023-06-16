@@ -1409,7 +1409,7 @@ Status query_to_capnp(
       // submission by adjusting user buffer sizes, tile-aligning the write.
       // Once this write completes the cache is updated with the previously held
       // tile-overflow bytes, and the following submission is prepended with
-      // with this data. See the QueryRemoteBufferStorage class for more info.
+      // this data. See the QueryRemoteBufferStorage class for more info.
       const auto& buff_cache =
           query_buffer_storage->get_query_buffer_cache(name);
       cached_fixed_size = buff_cache.buffer_.size();

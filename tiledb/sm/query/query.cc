@@ -455,13 +455,13 @@ Status Query::finalize() {
     return Status::Ok();
   }
 
-  if (array_->is_remote()) {
+  if (array_->is_remote() && type_ == QueryType::WRITE) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
       return logger_->status(Status_QueryError(
           "Error in query finalize; remote array with no rest client."));
 
-    if (type_ == QueryType::WRITE && layout_ == Layout::GLOBAL_ORDER) {
+    if (layout_ == Layout::GLOBAL_ORDER) {
       return logger_->status(Status_QueryError(
           "Error in query finalize; remote global order writes are only "
           "allowed to call submit_and_finalize to submit the last tile"));
@@ -907,7 +907,7 @@ void Query::set_processed_conditions(
 }
 
 void Query::set_config(const Config& config) {
-  if (status_ != QueryStatus::UNINITIALIZED) {
+  if (!remote_query_ && status_ != QueryStatus::UNINITIALIZED) {
     throw QueryStatusException(
         "[set_config] Cannot set config after initialization.");
   }
