@@ -112,10 +112,12 @@ std::string SubarrayTileOverlap::to_string() {
   ss << "  Range Idx End: " << range_idx_end_ << std::endl;
   ss << "  Range Idx Start Offset: " << range_idx_start_offset_ << std::endl;
   ss << "  Range Idx End Offset: " << range_idx_end_offset_ << std::endl;
-  ss << "  Tile Overlap Index: " << std::endl;
-  for(auto& sub_vec : *tile_overlap_idx_) {
-    for (auto& sub_sub_vec : sub_vec) {
-      ss << "    " << sub_sub_vec.to_string() << std::endl;
+  ss << "  Tile Overlap Index: " << tile_overlap_idx_.get() << std::endl;
+  if (tile_overlap_idx_) {
+    for(auto& sub_vec : *tile_overlap_idx_) {
+      for (auto& sub_sub_vec : sub_vec) {
+        ss << "    " << sub_sub_vec.to_string() << std::endl;
+      }
     }
   }
   return ss.str();
