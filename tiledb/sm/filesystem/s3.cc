@@ -478,10 +478,7 @@ Status S3::disconnect() {
   }
 
   if (s3_tp_executor_) {
-    const Status st = s3_tp_executor_->Stop();
-    if (!st.ok()) {
-      ret_st = st;
-    }
+    s3_tp_executor_->Stop();
   }
 
   state_ = State::DISCONNECTED;
@@ -1546,11 +1543,14 @@ Status S3::init_client() const {
                 nullptr);
         break;
       }
-      default:
-        return Status_S3Error(
+      default: {
+        s3_tp_executor_->Stop();
+
+        throw S3StatusException{
             "Ambiguous authentication credentials; both permanent and "
             "temporary "
-            "authentication credentials are configured");
+            "authentication credentials are configured"};
+      }
     }
   }
 
