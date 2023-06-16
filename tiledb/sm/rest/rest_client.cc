@@ -717,6 +717,7 @@ size_t RestClient::query_post_call_back(
     }
 
     std::cerr << "Processing query with size: " << query_size << std::endl;
+    std::cerr << "Remaining bytes after query: " << scratch->size() - query_size << std::endl;
 
     // At this point of execution, we know that we the next serialized
     // query is entirely in 'scratch'. For convenience, we will advance
