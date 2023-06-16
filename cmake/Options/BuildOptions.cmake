@@ -11,7 +11,7 @@ option(TILEDB_FORCE_ALL_DEPS "If true, force superbuild to download and build al
 option(TILEDB_REMOVE_DEPRECATIONS "If true, do not build deprecated APIs." OFF)
 option(TILEDB_VERBOSE "Prints TileDB errors with verbosity" OFF)
 option(TILEDB_S3 "Enables S3/minio support using aws-cpp-sdk" OFF)
-option(TILEDB_AZURE "Enables Azure Storage support using azure-storage-cpp" OFF)
+option(TILEDB_AZURE "Enables Azure Storage support using azure-storage-blobs-cpp" OFF)
 option(TILEDB_GCS "Enables GCS Storage support using google-cloud-cpp" OFF)
 option(TILEDB_HDFS "Enables HDFS support using the official Hadoop JNI bindings" OFF)
 option(TILEDB_WERROR "Enables the -Werror flag during compilation." ON)
