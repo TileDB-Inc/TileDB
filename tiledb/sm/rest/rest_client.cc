@@ -707,8 +707,6 @@ size_t RestClient::query_post_call_back(
     const uint64_t query_size =
         utils::endianness::decode_le<uint64_t>(scratch->cur_data());
 
-    std::cerr << "Processing query with size: " << query_size << std::endl;
-
     //double perc_done = 100.0 * double(scratch->size()) / double(query_size);
     //std::cerr << "Query Size: " << query_size << " Read: " << scratch->size() << " = " << perc_done << std::endl;
 
@@ -717,6 +715,8 @@ size_t RestClient::query_post_call_back(
     if (scratch->offset() + 8 + query_size > scratch->size()) {
       break;
     }
+
+    std::cerr << "Processing query with size: " << query_size << std::endl;
 
     // At this point of execution, we know that we the next serialized
     // query is entirely in 'scratch'. For convenience, we will advance
@@ -770,9 +770,9 @@ size_t RestClient::query_post_call_back(
   // have already processed.
   const uint64_t length = scratch->size() - scratch->offset();
 
-  std::cerr << "Size: " << scratch->size() << " Offset: " << scratch->offset() << " Length: " << length << std::endl;
-
   if (scratch->offset() != 0 && length != 0) {
+    std::cerr << "Size: " << scratch->size() << " Offset: " << scratch->offset() << " Length: " << length << std::endl;
+
     const uint64_t offset = scratch->offset();
     scratch->reset_offset();
 
