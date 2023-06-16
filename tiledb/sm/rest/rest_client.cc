@@ -770,6 +770,8 @@ size_t RestClient::query_post_call_back(
   // have already processed.
   const uint64_t length = scratch->size() - scratch->offset();
 
+  std::cerr << "Size: " << scratch->size() << " Offset: " << scratch->offset() << " Length: " << length << std::endl;
+
   if (scratch->offset() != 0 && length != 0) {
     std::cerr << "Size: " << scratch->size() << " Offset: " << scratch->offset() << " Length: " << length << std::endl;
 
