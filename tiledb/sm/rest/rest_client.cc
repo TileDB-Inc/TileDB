@@ -764,51 +764,28 @@ size_t RestClient::query_post_call_back(
 
     scratch->advance_offset(query_size);
     bytes_processed += (query_size + 8);
-
-    std::cerr << "A: Size: " << scratch->size() << " Offset: " << scratch->offset() << " Length: " << (scratch->size() - scratch->offset()) << std::endl;
   }
 
-  // If there are unprocessed bytes left in the scratch space, copy them
-  // to the beginning of 'scratch'. The intent is to reduce memory
-  // consumption by overwriting the serialized query objects that we
-  // have already processed.
   const uint64_t length = scratch->size() - scratch->offset();
 
-  std::cerr << "B: Size: " << scratch->size() << " Offset: " << scratch->offset() << " Length: " << length << std::endl;
+  if (scratch->offset() != 0) {
+    // If there are unprocessed bytes left in the scratch space, copy them
+    // to the beginning of 'scratch'. The intent is to reduce memory
+    // consumption by overwriting the serialized query objects that we
+    // have already processed.
+    Buffer aux;
 
-  if (scratch->offset() != 0 && length != 0) {
-    std::cerr << "C: Size: " << scratch->size() << " Offset: " << scratch->offset() << " Length: " << length << std::endl;
+    if (length > 0) {
+      throw_if_not_ok(aux.write(scratch->data(scratch->offset()), length));
+    }
 
-    const uint64_t offset = scratch->offset();
+    scratch->reset_size();
     scratch->reset_offset();
 
-    // When the length of the remaining bytes is less than offset,
-    // we can safely read the remaining bytes from 'scratch' and
-    // write them to the beginning of 'scratch' because there will
-    // not be an overlap in accessed memory between the source
-    // and destination. Otherwise, we must use an auxilary buffer
-    // to temporarily store the remaining bytes because the behavior
-    // of the 'memcpy' used 'Buffer::write' will be undefined because
-    // there will be an overlap in the memory of the source and
-    // destination.
-    if (length <= offset) {
-      std::cerr << "Moving " << length << " bytes in scratch" << std::endl;
-      scratch->reset_size();
-      st = scratch->write(scratch->data(offset), length);
-    } else {
-      std::cerr << "Copying " << length << " bytes in scratch" << std::endl;
-      Buffer aux;
-      st = aux.write(scratch->data(offset), length);
-      if (st.ok()) {
-        scratch->reset_size();
-        st = scratch->write(aux.data(), aux.size());
-      }
+    if (length > 0) {
+      throw_if_not_ok(scratch->write(aux.data(), aux.size()));
     }
 
-    assert(st.ok());
-    if (!st.ok()) {
-      LOG_STATUS_NO_RETURN_VALUE(st);
-    }
     assert(scratch->size() == length);
   }
 
