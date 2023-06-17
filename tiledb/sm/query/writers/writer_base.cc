@@ -924,9 +924,8 @@ Status WriterBase::filter_tile(
       &filters, array_->get_encryption_key()));
 
   // Check if chunk or tile level filtering/unfiltering is appropriate
-  // bool use_chunking = filters.use_tile_chunking(
-  //    array_schema_.var_size(name), array_schema_.version(), tile->type());
-  bool use_chunking = false;
+  bool use_chunking = filters.use_tile_chunking(
+      array_schema_.var_size(name), array_schema_.version(), tile->type());
 
   assert(!tile->filtered());
   RETURN_NOT_OK(filters.run_forward(
