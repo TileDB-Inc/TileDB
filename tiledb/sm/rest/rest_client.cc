@@ -716,6 +716,7 @@ size_t RestClient::query_post_call_back(
       break;
     }
 
+    std::cerr << "Total bytes in scratch: " << scratch->size() << std::endl;
     std::cerr << "Processing query with size: " << query_size << std::endl;
     std::cerr << "Remaining bytes after query: " << scratch->size() - query_size << std::endl;
 
