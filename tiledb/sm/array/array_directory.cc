@@ -42,6 +42,8 @@
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
+#include <numeric>
+
 using namespace tiledb::common;
 
 namespace tiledb {
@@ -715,7 +717,9 @@ tuple<
     optional<std::unordered_set<std::string>>>
 ArrayDirectory::load_consolidated_commit_uris(
     const std::vector<URI>& commits_dir_uris) {
-  // Load the commit URIs to ignore
+  auto timer_se = stats_->start_timer("load_consolidated_commit_uris");
+  // Load the commit URIs to ignore. This is done in serial for now as it can be
+  // optimized by vacuuming.
   std::unordered_set<std::string> ignore_set;
   for (auto& uri : commits_dir_uris) {
     if (stdx::string::ends_with(
@@ -736,7 +740,8 @@ ArrayDirectory::load_consolidated_commit_uris(
     }
   }
 
-  // Load all commit URIs
+  // Load all commit URIs. This is done in serial for now as it can be optimized
+  // by vacuuming.
   std::unordered_set<std::string> uris_set;
   std::vector<std::pair<URI, std::string>> meta_files;
   for (uint64_t i = 0; i < commits_dir_uris.size(); i++) {
@@ -1012,30 +1017,58 @@ tuple<Status, optional<std::vector<URI>>, optional<std::vector<URI>>>
 ArrayDirectory::compute_uris_to_vacuum(
     const bool full_overlap_only, const std::vector<URI>& uris) const {
   // Get vacuum URIs
+  std::vector<uint8_t> vac_file_bitmap(uris.size());
+  std::vector<uint8_t> overlapping_vac_file_bitmap(uris.size());
+  std::vector<uint8_t> non_vac_uri_bitmap(uris.size());
+  throw_if_not_ok(parallel_for(
+      &resources_.get().compute_tp(), 0, uris.size(), [&](size_t i) {
+        auto& uri = uris[i];
+
+        // Get the start and end timestamp for this fragment
+        std::pair<uint64_t, uint64_t> fragment_timestamp_range;
+        RETURN_NOT_OK(
+            utils::parse::get_timestamp_range(uri, &fragment_timestamp_range));
+        if (is_vacuum_file(uri)) {
+          vac_file_bitmap[i] = 1;
+          if (timestamps_overlap(
+                  fragment_timestamp_range,
+                  !full_overlap_only &&
+                      consolidation_with_timestamps_supported(uri))) {
+            overlapping_vac_file_bitmap[i] = 1;
+          }
+        } else {
+          if (!timestamps_overlap(
+                  fragment_timestamp_range,
+                  !full_overlap_only &&
+                      consolidation_with_timestamps_supported(uri))) {
+            non_vac_uri_bitmap[i] = 1;
+          }
+        }
+
+        return Status::Ok();
+      }));
+
+  auto num_vac_files =
+      std::accumulate(vac_file_bitmap.begin(), vac_file_bitmap.end(), 0);
   std::vector<URI> vac_files;
   std::unordered_set<std::string> non_vac_uris_set;
   std::unordered_map<std::string, size_t> uris_map;
-  for (size_t i = 0; i < uris.size(); ++i) {
-    // Get the start and end timestamp for this fragment
-    std::pair<uint64_t, uint64_t> fragment_timestamp_range;
-    RETURN_NOT_OK_TUPLE(
-        utils::parse::get_timestamp_range(uris[i], &fragment_timestamp_range),
-        nullopt,
-        nullopt);
-    if (is_vacuum_file(uris[i])) {
-      if (timestamps_overlap(
-              fragment_timestamp_range,
-              !full_overlap_only &&
-                  consolidation_with_timestamps_supported(uris[i]))) {
+
+  if (num_vac_files > 0) {
+    vac_files.reserve(num_vac_files);
+    auto num_non_vac_uris = std::accumulate(
+        non_vac_uri_bitmap.begin(), non_vac_uri_bitmap.end(), 0);
+    non_vac_uris_set.reserve(num_non_vac_uris);
+    for (uint64_t i = 0; i < uris.size(); i++) {
+      if (overlapping_vac_file_bitmap[i] != 0) {
         vac_files.emplace_back(uris[i]);
       }
-    } else {
-      if (!timestamps_overlap(
-              fragment_timestamp_range,
-              !full_overlap_only &&
-                  consolidation_with_timestamps_supported(uris[i]))) {
+
+      if (non_vac_uri_bitmap[i] != 0) {
         non_vac_uris_set.emplace(uris[i].to_string());
-      } else {
+      }
+
+      if (vac_file_bitmap[i] == 0 && non_vac_uri_bitmap[i] == 0) {
         uris_map[uris[i].to_string()] = i;
       }
     }
@@ -1099,36 +1132,54 @@ ArrayDirectory::compute_filtered_uris(
   std::vector<TimestampedURI> filtered_uris;
 
   // Do nothing if there are not enough URIs
-  if (uris.empty())
+  if (uris.empty()) {
     return {Status::Ok(), filtered_uris};
+  }
 
   // Get the URIs that must be ignored
   std::unordered_set<std::string> to_ignore_set;
-  for (const auto& uri : to_ignore)
-    to_ignore_set.emplace(uri.c_str());
+  auto base_uri_size = uri_.to_string().size();
+  for (const auto& uri : to_ignore) {
+    to_ignore_set.emplace(uri.to_string().substr(base_uri_size).c_str());
+  }
 
   // Filter based on vacuumed URIs and timestamp
-  for (auto& uri : uris) {
-    // Ignore vacuumed URIs
-    if (to_ignore_set.count(uri.c_str()) != 0)
-      continue;
+  std::vector<uint8_t> overlaps_bitmap(uris.size());
+  std::vector<std::pair<uint64_t, uint64_t>> fragment_timestamp_ranges(
+      uris.size());
+  throw_if_not_ok(parallel_for(
+      &resources_.get().compute_tp(), 0, uris.size(), [&](size_t i) {
+        auto& uri = uris[i];
+        std::string short_uri = uri.to_string().substr(base_uri_size);
+        if (to_ignore_set.count(short_uri.c_str()) != 0) {
+          return Status::Ok();
+        }
 
-    // Also ignore any vac uris
-    if (is_vacuum_file(uri))
-      continue;
+        // Also ignore any vac uris
+        if (is_vacuum_file(uri)) {
+          return Status::Ok();
+        }
 
-    // Get the start and end timestamp for this fragment
-    std::pair<uint64_t, uint64_t> fragment_timestamp_range;
-    RETURN_NOT_OK_TUPLE(
-        utils::parse::get_timestamp_range(uri, &fragment_timestamp_range),
-        nullopt);
-    if (timestamps_overlap(
-            fragment_timestamp_range,
-            !full_overlap_only &&
-                consolidation_with_timestamps_supported(uri))) {
-      filtered_uris.emplace_back(uri, fragment_timestamp_range);
+        // Get the start and end timestamp for this fragment
+        RETURN_NOT_OK(utils::parse::get_timestamp_range(
+            uri, &fragment_timestamp_ranges[i]));
+        if (timestamps_overlap(
+                fragment_timestamp_ranges[i],
+                !full_overlap_only &&
+                    consolidation_with_timestamps_supported(uri))) {
+          overlaps_bitmap[i] = 1;
+        }
+        return Status::Ok();
+      }));
+
+  auto count =
+      std::accumulate(overlaps_bitmap.begin(), overlaps_bitmap.end(), 0);
+  filtered_uris.reserve(count);
+  for (uint64_t i = 0; i < uris.size(); i++) {
+    if (overlaps_bitmap[i]) {
+      filtered_uris.emplace_back(uris[i], fragment_timestamp_ranges[i]);
     }
-  }
+  };
 
   // Sort the names based on the timestamps
   std::sort(filtered_uris.begin(), filtered_uris.end());
