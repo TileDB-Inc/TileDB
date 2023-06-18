@@ -754,40 +754,28 @@ size_t RestClient::query_post_call_back(
     bytes_processed += (query_size + 8);
   }
 
-  // If there are unprocessed bytes left in the scratch space, copy them
-  // to the beginning of 'scratch'. The intent is to reduce memory
-  // consumption by overwriting the serialized query objects that we
-  // have already processed.
+  // Remove any processed queries from our scratch buffer. We track length
+  // here because from the point of view of libcurl we have processed any
+  // remaining bytes in our scratch buffer even though we won't get to
+  // deserializing them on the next invocation of this callback.
   const uint64_t length = scratch->size() - scratch->offset();
-  if (scratch->offset() != 0 && length != 0) {
-    const uint64_t offset = scratch->offset();
+
+  if (scratch->offset() != 0) {
+    // Save any unprocessed query data in scratch by copying it to an
+    // auxillary buffer before we truncate scratch. Then copy any unprocessed
+    // bytes back into scratch.
+    Buffer aux;
+    if (length > 0) {
+      throw_if_not_ok(aux.write(scratch->data(scratch->offset()), length));
+    }
+
+    scratch->reset_size();
     scratch->reset_offset();
 
-    // When the length of the remaining bytes is less than offset,
-    // we can safely read the remaining bytes from 'scratch' and
-    // write them to the beginning of 'scratch' because there will
-    // not be an overlap in accessed memory between the source
-    // and destination. Otherwise, we must use an auxilary buffer
-    // to temporarily store the remaining bytes because the behavior
-    // of the 'memcpy' used 'Buffer::write' will be undefined because
-    // there will be an overlap in the memory of the source and
-    // destination.
-    if (length <= offset) {
-      scratch->reset_size();
-      st = scratch->write(scratch->data(offset), length);
-    } else {
-      Buffer aux;
-      st = aux.write(scratch->data(offset), length);
-      if (st.ok()) {
-        scratch->reset_size();
-        st = scratch->write(aux.data(), aux.size());
-      }
+    if (length > 0) {
+      throw_if_not_ok(scratch->write(aux.data(), aux.size()));
     }
 
-    assert(st.ok());
-    if (!st.ok()) {
-      LOG_STATUS_NO_RETURN_VALUE(st);
-    }
     assert(scratch->size() == length);
   }
 
