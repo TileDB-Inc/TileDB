@@ -42,6 +42,10 @@ commence(object_library vfs)
     )
     if (TILEDB_S3)
         target_compile_definitions(vfs INTERFACE -DHAVE_S3)
+        target_include_directories(vfs
+                PRIVATE
+                "${CMAKE_CURRENT_SOURCE_DIR}/../../../external/include"
+        )
         add_subdirectory(s3)
         list(APPEND VFS_SOURCES
             s3.cc

@@ -33,6 +33,10 @@ include(object_library)
 commence(object_library s3_providers)
     if (TILEDB_S3)
         target_compile_definitions(s3_providers INTERFACE -DHAVE_S3)
+        target_include_directories(s3_providers
+                PRIVATE
+                "${CMAKE_CURRENT_SOURCE_DIR}/../../../../external/include"
+                )
         list(APPEND S3_PROVIDERS_SOURCES
             STSProfileWithWebIdentityCredentialsProvider.cc
         )
