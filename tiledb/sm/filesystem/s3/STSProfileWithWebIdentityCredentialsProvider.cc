@@ -371,7 +371,8 @@ void STSProfileWithWebIdentityCredentialsProvider::Reload() {
     // get the role arn from the profile at the top of the stack (which hasn't
     // been popped out yet)
     const auto arn = sourceProfiles.back()->second.GetRoleArn();
-    const auto& assumedCreds = GetCredentialsFromSTS(stsCreds, arn);
+    const auto externID = sourceProfiles.back()->second.GetValue("external_id");
+    const auto& assumedCreds = GetCredentialsFromSTS(stsCreds, arn, externID);
     sourceProfiles.back()->second.SetCredentials(assumedCreds);
   }
 
@@ -386,13 +387,20 @@ void STSProfileWithWebIdentityCredentialsProvider::Reload() {
 
 AWSCredentials
 STSProfileWithWebIdentityCredentialsProvider::GetCredentialsFromSTSInternal(
-    const Aws::String& roleArn, Aws::STS::STSClient* client) {
+    const Aws::String& roleArn,
+    const Aws::String& externalID,
+    Aws::STS::STSClient* client) {
   using namespace Aws::STS::Model;
   AssumeRoleRequest assumeRoleRequest;
   assumeRoleRequest.WithRoleArn(roleArn)
       .WithRoleSessionName(Aws::Utils::UUID::RandomUUID())
       .WithDurationSeconds(
           static_cast<int>(std::chrono::seconds(m_duration).count()));
+
+  if (!externalID.empty()) {
+    assumeRoleRequest.WithExternalId(externalID);
+  }
+
   auto outcome = client->AssumeRole(assumeRoleRequest);
   if (outcome.IsSuccess()) {
     const auto& modelCredentials = outcome.GetResult().GetCredentials();
@@ -409,15 +417,17 @@ STSProfileWithWebIdentityCredentialsProvider::GetCredentialsFromSTSInternal(
 
 AWSCredentials
 STSProfileWithWebIdentityCredentialsProvider::GetCredentialsFromSTS(
-    const AWSCredentials& credentials, const Aws::String& roleArn) {
+    const AWSCredentials& credentials,
+    const Aws::String& roleArn,
+    const Aws::String& externalID) {
   using namespace Aws::STS::Model;
   if (m_stsClientFactory) {
     return GetCredentialsFromSTSInternal(
-        roleArn, m_stsClientFactory(credentials));
+        roleArn, externalID, m_stsClientFactory(credentials));
   }
 
   Aws::STS::STSClient stsClient{credentials};
-  return GetCredentialsFromSTSInternal(roleArn, &stsClient);
+  return GetCredentialsFromSTSInternal(roleArn, externalID, &stsClient);
 }
 
 AWSCredentials

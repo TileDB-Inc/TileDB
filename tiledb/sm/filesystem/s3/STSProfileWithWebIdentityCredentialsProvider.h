@@ -106,7 +106,9 @@ class AWS_IDENTITY_MANAGEMENT_API STSProfileWithWebIdentityCredentialsProvider
    * credentials on error.
    */
   AWSCredentials GetCredentialsFromSTS(
-      const AWSCredentials& credentials, const Aws::String& roleARN);
+      const AWSCredentials& credentials,
+      const Aws::String& roleARN,
+      const Aws::String& externalID);
 
   /**
    *  Assumes a role given a ARN and a web token
@@ -117,7 +119,9 @@ class AWS_IDENTITY_MANAGEMENT_API STSProfileWithWebIdentityCredentialsProvider
 
  private:
   AWSCredentials GetCredentialsFromSTSInternal(
-      const Aws::String& roleArn, Aws::STS::STSClient* client);
+      const Aws::String& roleArn,
+      const Aws::String& externalID,
+      Aws::STS::STSClient* client);
 
   Aws::String m_profileName;
   AWSCredentials m_credentials;
