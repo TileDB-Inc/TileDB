@@ -71,6 +71,7 @@
 #endif
 
 #include "tiledb/sm/filesystem/s3.h"
+#include "tiledb/sm/filesystem/s3/STSProfileWithWebIdentityCredentialsProvider.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 
 using tiledb::common::filesystem::directory_entry;
@@ -1562,7 +1563,7 @@ Status S3::init_client() const {
       }
       case 8: {
         credentials_provider_ =
-            make_shared<Aws::Auth::ProfileConfigFileAWSCredentialsProvider>(
+            make_shared<Aws::Auth::STSProfileWithWebIdentityCredentialsProvider>(
                 HERE());
         break;
       }
