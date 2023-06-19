@@ -433,6 +433,10 @@ STSProfileWithWebIdentityCredentialsProvider::GetCredentialsFromWebIdentity(
     tmpRegion = Aws::Region::US_EAST_1;
   }
 
+  if (m_sessionName.empty()) {
+    m_sessionName = Aws::Utils::UUID::RandomUUID();
+  }
+
   Aws::IFStream tokenFile(m_tokenFile.c_str());
   Aws::String m_token;
   if (tokenFile) {
