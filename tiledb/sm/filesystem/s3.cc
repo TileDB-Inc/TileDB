@@ -1355,8 +1355,13 @@ Status S3::init_client() const {
 
   std::lock_guard<std::mutex> lck(client_init_mtx_);
 
-  auto force_shared_cfg_only = config_.get<bool>(
-      "vfs.s3.force_shared_cfg_only", Config::MustFindMarker());
+  auto s3_config_source = config_.get<std::string>(
+      "vfs.s3.config_source", Config::MustFindMarker());
+  if (s3_config_source != "auto" && s3_config_source != "config_files") {
+    throw S3StatusException(
+        "Unknown 'vfs.s3.config_source' config value " + s3_config_source +
+        "; supported values are 'auto' and 'config_files'");
+  }
 
   auto aws_no_sign_request =
       config_.get<bool>("vfs.s3.no_sign_request", Config::MustFindMarker());
@@ -1506,7 +1511,8 @@ Status S3::init_client() const {
   } else {  // Check other authentication methods
     switch ((!aws_access_key_id.empty() ? 1 : 0) +
             (!aws_secret_access_key.empty() ? 2 : 0) +
-            (!aws_role_arn.empty() ? 4 : 0) + (force_shared_cfg_only ? 8 : 0)) {
+            (!aws_role_arn.empty() ? 4 : 0) +
+            (s3_config_source == "config_files" ? 8 : 0)) {
       case 0:
         break;
       case 1:
@@ -1565,7 +1571,7 @@ Status S3::init_client() const {
 
         throw S3StatusException{
             "Ambiguous authentification options; Setting "
-            "vfs.s3.force_shared_cfg_only is mutually exclusive with providing "
+            "vfs.s3.config_source is mutually exclusive with providing "
             "either permanent or temporary credentials"};
       }
     }
