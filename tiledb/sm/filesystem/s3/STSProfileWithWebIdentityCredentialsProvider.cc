@@ -351,12 +351,21 @@ void STSProfileWithWebIdentityCredentialsProvider::Reload() {
   while (sourceProfiles.size() > 1) {
     const auto profile = sourceProfiles.back()->second;
     sourceProfiles.pop_back();
+
+    // Check current profile in stack for type
+    ProfileState state = CheckProfile(profile, false);
+
     AWSCredentials stsCreds;
-    if (profile.GetCredentialProcess().empty()) {
-      assert(!profile.GetCredentials().IsEmpty());
-      stsCreds = profile.GetCredentials();
+
+    if (state == ProfileState::RoleARNWebIdentity) {
+      stsCreds = GetCredentialsFromWebIdentity(profile);
     } else {
-      stsCreds = GetCredentialsFromProcess(profile.GetCredentialProcess());
+      if (profile.GetCredentialProcess().empty()) {
+        assert(!profile.GetCredentials().IsEmpty());
+        stsCreds = profile.GetCredentials();
+      } else {
+        stsCreds = GetCredentialsFromProcess(profile.GetCredentialProcess());
+      }
     }
 
     // get the role arn from the profile at the top of the stack (which hasn't
@@ -413,8 +422,8 @@ STSProfileWithWebIdentityCredentialsProvider::GetCredentialsFromSTS(
 
 AWSCredentials
 STSProfileWithWebIdentityCredentialsProvider::GetCredentialsFromWebIdentity(
-    const Config::Profile profile) {
-  Aws::String m_roleArn = profile.GetRoleArn();
+    const Config::Profile& profile) {
+  const Aws::String& m_roleArn = profile.GetRoleArn();
   Aws::String m_tokenFile = profile.GetValue("web_identity_token_file");
   Aws::String m_sessionName = profile.GetValue("role_session_name");
 

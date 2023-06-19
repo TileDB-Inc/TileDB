@@ -113,7 +113,7 @@ class AWS_IDENTITY_MANAGEMENT_API STSProfileWithWebIdentityCredentialsProvider
    * @param profile
    * @return
    */
-  AWSCredentials GetCredentialsFromWebIdentity(const Config::Profile profile);
+  AWSCredentials GetCredentialsFromWebIdentity(const Config::Profile& profile);
 
  private:
   AWSCredentials GetCredentialsFromSTSInternal(

@@ -1562,9 +1562,8 @@ Status S3::init_client() const {
             "authentication credentials are configured"};
       }
       case 8: {
-        credentials_provider_ =
-            make_shared<Aws::Auth::STSProfileWithWebIdentityCredentialsProvider>(
-                HERE());
+        credentials_provider_ = make_shared<
+            Aws::Auth::STSProfileWithWebIdentityCredentialsProvider>(HERE());
         break;
       }
       default: {
