@@ -1,5 +1,5 @@
 #
-# tiledb/sm/vfs/CMakeLists.txt
+# tiledb/sm/vfs/s3/CMakeLists.txt
 #
 # The MIT License
 #
@@ -28,57 +28,33 @@ include(common NO_POLICY_SCOPE)
 include(object_library)
 
 #
-# `vfs` object library
+# `s3_providers` object library
 #
-commence(object_library vfs)
-    list(APPEND VFS_SOURCES
-        mem_filesystem.cc
-        path_win.cc
-        posix.cc
-        uri.cc
-        vfs.cc
-        vfs_file_handle.cc
-        win.cc
-    )
+commence(object_library s3_providers)
     if (TILEDB_S3)
-        target_compile_definitions(vfs INTERFACE -DHAVE_S3)
-        add_subdirectory(s3)
-        list(APPEND VFS_SOURCES
-            s3.cc
-            s3_thread_pool_executor.cc
+        target_compile_definitions(s3_providers INTERFACE -DHAVE_S3)
+        list(APPEND S3_PROVIDERS_SOURCES
+            STSProfileWithWebIdentityCredentialsProvider.cc
         )
-    endif()
-    this_target_sources(${VFS_SOURCES})
-    this_target_object_libraries(
-        baseline
-        buffer
-        cancelable_tasks
-        cert_file
-        config
-        math
-        stats
-        stringx
-        thread_pool
-        s3_providers
-    )
-    if(WIN32)
-        if(MSVC)
-            find_library(SHLWAPI_LIBRARY shlwapi)
-            message(STATUS "Found Win32 lib shlwapi: ${SHLWAPI_LIBRARY}")
-            this_target_link_libraries(${SHLWAPI_LIBRARY})
-        else()
-            message(STATUS "Linking to Win32 lib shlwapi")
-            this_target_link_libraries(-lshlwapi)
-        endif()
-    endif()
-    # Add S3 dependencies
-    if (TILEDB_S3)
+        this_target_sources(${S3_PROVIDERS_SOURCES})
+        this_target_object_libraries(
+            baseline
+            buffer
+            cancelable_tasks
+            cert_file
+            config
+            math
+            stats
+            stringx
+            thread_pool
+        )
+        # Add S3 dependencies
         if (TILEDB_VCPKG)
             find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
-            target_link_libraries(vfs INTERFACE ${AWSSDK_LINK_LIBRARIES})
+            target_link_libraries(s3_providers INTERFACE ${AWSSDK_LINK_LIBRARIES})
         else()
             find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
-            target_link_libraries(vfs INTERFACE
+            target_link_libraries(s3_providers INTERFACE
                 AWSSDK::aws-cpp-sdk-s3
                 AWSSDK::aws-cpp-sdk-core
                 AWSSDK::aws-c-event-stream
@@ -90,5 +66,3 @@ commence(object_library vfs)
         endif()
     endif()
 conclude(object_library)
-
-add_test_subdirectory()
