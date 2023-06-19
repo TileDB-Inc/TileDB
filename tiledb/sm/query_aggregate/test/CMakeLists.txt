@@ -1,9 +1,9 @@
 #
-# tiledb/sm/CMakeLists.txt
+# tiledb/sm/query_aggregate/test/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,32 +22,16 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-#
 
-include(common-root)
+include(unit_test)
 
-add_subdirectory(array)
-add_subdirectory(array_schema)
-add_subdirectory(buffer)
-add_subdirectory(compressors)
-add_subdirectory(config)
-add_subdirectory(consolidator)
-add_subdirectory(crypto)
-add_subdirectory(filesystem)
-add_subdirectory(filter)
-add_subdirectory(group)
-add_subdirectory(metadata)
-add_subdirectory(misc)
-add_subdirectory(query)
-add_subdirectory(query_aggregate)
-add_subdirectory(query_plan)
-add_subdirectory(rtree)
-add_subdirectory(stats)
-add_subdirectory(storage_manager)
-add_subdirectory(subarray)
-add_subdirectory(tile)
-
-
-if (TILEDB_SERIALIZATION)
-  add_subdirectory(serialization)
-endif()
+commence(unit_test query_aggregate)
+    this_target_sources(main.cc unit_query_aggregate.cc)
+    this_target_object_libraries(query_aggregate)
+    if (NOT MSVC)
+        target_compile_options(unit_query_aggregate PRIVATE -Wno-deprecated-declarations)
+    endif()
+    target_include_directories(unit_query_aggregate PRIVATE
+        "$<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>")
+    this_target_link_libraries(tiledb_test_support_lib)
+conclude(unit_test)
