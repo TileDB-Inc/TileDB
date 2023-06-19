@@ -1,0 +1,149 @@
+/**
+ * @file tiledb/api/c_api/query_aggregate/query_aggregate_api_internal.h
+ *
+ * @section LICENSE
+ *
+ * The MIT License
+ *
+ * @copyright Copyright (c) 2023 TileDB, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * TODO
+ */
+
+#ifndef TILEDB_CAPI_QUERY_AGGREGATE_INTERNAL_H
+#define TILEDB_CAPI_QUERY_AGGREGATE_INTERNAL_H
+
+#include "tiledb/api/c_api_support/handle/handle.h"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/sm/query/query.h"
+#include "tiledb/sm/query/readers/aggregators/count_aggregator.h"
+#include "tiledb/sm/query/readers/aggregators/sum_aggregator.h"
+
+/** Defines the query condition ops. */
+enum class QueryChannelOperator : uint8_t {
+#define TILEDB_QUERY_CHANNEL_OPERATOR_ENUM(id) id
+#include "tiledb/sm/c_api/tiledb_enum.h"
+#undef TILEDB_QUERY_CHANNEL_OPERATOR_ENUM
+};
+
+/**
+ * TODO
+ */
+struct tiledb_channel_operation_handle_t
+    : public tiledb::api::CAPIHandle<tiledb_channel_operation_handle_t> {
+  /**
+   * Type name
+   */
+  static constexpr std::string_view object_type_name{
+      "tiledb_channel_operation_t"};
+
+ private:
+  shared_ptr<tiledb::sm::IAggregator> aggregator_;
+
+ public:
+  /**
+   * Default constructor doesn't make sense
+   */
+  tiledb_channel_operation_handle_t() = delete;
+
+  /**
+   * Ordinary constructor.
+   * @param s An aggregator object
+   */
+  explicit tiledb_channel_operation_handle_t(
+      shared_ptr<tiledb::sm::IAggregator> ag)
+      : aggregator_{ag} {
+  }
+
+  [[nodiscard]] inline shared_ptr<tiledb::sm::IAggregator> aggregator() {
+    return aggregator_;
+  }
+};
+
+/**
+ * TODO
+ */
+struct tiledb_query_channel_handle_t
+    : public tiledb::api::CAPIHandle<tiledb_query_channel_handle_t> {
+  /**
+   * Type name
+   */
+  static constexpr std::string_view object_type_name{"tiledb_query_channel_t"};
+
+ private:
+  tiledb::sm::Query* query_;
+
+ public:
+  /**
+   * Default constructor doesn't make sense
+   */
+  tiledb_query_channel_handle_t() = delete;
+
+  /**
+   * Ordinary constructor.
+   * @param query The query object that owns the channel
+   */
+  tiledb_query_channel_handle_t(tiledb_query_t* query)
+      : query_(query->query_) {
+  }
+
+  inline void add_aggregate(
+      const char* output_field, tiledb_channel_operation_handle_t* operation) {
+    // Add the aggregator the the default channel as this is the only channel
+    // type we currently support
+    query_->add_aggregator_to_default_channel(
+        output_field, operation->aggregator());
+  }
+};
+
+struct tiledb_channel_operator_handle_t
+    : public tiledb::api::CAPIHandle<tiledb_channel_operator_handle_t> {
+  /**
+   * Type name
+   */
+  static constexpr std::string_view object_type_name{
+      "tiledb_channel_operator_handle_t"};
+
+ private:
+  QueryChannelOperator value_;
+
+ public:
+  /**
+   * Default constructor doesn't make sense
+   */
+  tiledb_channel_operator_handle_t() = delete;
+
+  /**
+   * Ordinary constructor.
+   * @param s An enum specifying the type of operator
+   */
+  explicit tiledb_channel_operator_handle_t(QueryChannelOperator op)
+      : value_{op} {
+  }
+
+  [[nodiscard]] inline QueryChannelOperator value() const {
+    return value_;
+  }
+};
+
+#endif  // TILEDB_CAPI_QUERY_AGGREGATE_INTERNAL_H

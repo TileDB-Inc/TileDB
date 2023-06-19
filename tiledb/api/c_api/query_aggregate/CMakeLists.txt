@@ -1,9 +1,9 @@
 #
-# tiledb/sm/CMakeLists.txt
+# tiledb/api/c_api/query_aggregate/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,31 +23,26 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
+include(common NO_POLICY_SCOPE)
 
-include(common-root)
+list(APPEND SOURCES
+  query_aggregate_api.cc
+  )
+gather_sources(${SOURCES})
 
-add_subdirectory(array)
-add_subdirectory(array_schema)
-add_subdirectory(buffer)
-add_subdirectory(compressors)
-add_subdirectory(config)
-add_subdirectory(consolidator)
-add_subdirectory(crypto)
-add_subdirectory(filesystem)
-add_subdirectory(filter)
-add_subdirectory(group)
-add_subdirectory(metadata)
-add_subdirectory(misc)
-add_subdirectory(query)
-add_subdirectory(query_aggregate)
-add_subdirectory(query_plan)
-add_subdirectory(rtree)
-add_subdirectory(stats)
-add_subdirectory(storage_manager)
-add_subdirectory(subarray)
-add_subdirectory(tile)
+#
+# Object library for other units to depend upon
+#
+add_library(capi_query_aggregate OBJECT ${SOURCES})
+target_link_libraries(capi_query_aggregate PUBLIC export)
+target_link_libraries(capi_query_aggregate PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+target_link_libraries(capi_query_aggregate PUBLIC query_aggregate $<TARGET_OBJECTS:query_aggregate>)
 
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_capi_query_aggregate EXCLUDE_FROM_ALL)
+target_link_libraries(compile_capi_query_aggregate PRIVATE capi_query_aggregate)
+target_sources(compile_capi_query_aggregate PRIVATE test/compile_capi_query_aggregate_main.cc)
 
-if (TILEDB_SERIALIZATION)
-  add_subdirectory(serialization)
-endif()
+add_test_subdirectory()
