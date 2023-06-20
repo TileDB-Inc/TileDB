@@ -127,7 +127,7 @@ class Filter {
    */
   template <
       typename T,
-      typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+      typename std::enable_if<!std::is_pointer<T>::value, int>::type = 0>
   Filter& set_option(tiledb_filter_option_t option, T value) {
     auto& ctx = ctx_.get();
     option_value_typecheck<T>(option);
@@ -172,6 +172,34 @@ class Filter {
    *
    * @code{.cpp}
    * tiledb::Filter f(ctx, TILEDB_FILTER_ZSTD);
+   * int32_t level = f.get_option(TILEDB_COMPRESSION_LEVEL);
+   * // level == -1 (the default compression level)
+   * @endcode
+   *
+   * @tparam T Type of option value to get.
+   * @param option Enumerated option to get.
+   * @returns value Buffer that option value will be written to.
+   *
+   * @throws TileDBError if the option cannot be retrieved from the filter.
+   * @throws std::invalid_argument if the option value is the wrong type.
+   */
+  template <typename T>
+  T get_option(tiledb_filter_option_t option) {
+    auto& ctx = ctx_.get();
+    option_value_typecheck<T>(option);
+    T value;
+    ctx.handle_error(tiledb_filter_get_option(
+        ctx.ptr().get(), filter_.get(), option, &value));
+    return value;
+  }
+
+  /**
+   * Gets an option value from the filter.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * tiledb::Filter f(ctx, TILEDB_FILTER_ZSTD);
    * int32_t level;
    * f.get_option(TILEDB_COMPRESSION_LEVEL, &level);
    * // level == -1 (the default compression level)
@@ -187,9 +215,7 @@ class Filter {
    * @throws TileDBError if the option cannot be retrieved from the filter.
    * @throws std::invalid_argument if the option value is the wrong type.
    */
-  template <
-      typename T,
-      typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+  template <typename T>
   void get_option(tiledb_filter_option_t option, T* value) {
     auto& ctx = ctx_.get();
     option_value_typecheck<T>(option);
@@ -345,11 +371,18 @@ class Filter {
         break;
       case TILEDB_WEBP_INPUT_FORMAT:
       case TILEDB_WEBP_LOSSLESS:
-      case TILEDB_COMPRESSION_REINTERPRET_DATATYPE:
         if (!std::is_same<uint8_t, T>::value)
           throw std::invalid_argument(
               "Cannot set option with type '" + type_name +
               "Option value must be uint8_t.");
+        break;
+
+      case TILEDB_COMPRESSION_REINTERPRET_DATATYPE:
+        if (!std::is_same<uint8_t, T>::value &&
+            !std::is_same<tiledb_datatype_t, T>::value)
+          throw std::invalid_argument(
+              "Cannot set option with type '" + type_name +
+              "Option value must be tiledb_datatype_t or uint8_t.");
         break;
       default: {
         const char* option_str;
