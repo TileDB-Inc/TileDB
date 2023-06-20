@@ -247,13 +247,14 @@ class Group {
   }
 
   /**
-   * Deletes written data from an open group. The group must
+   * Deletes all written data from an open group. The group must
    * be opened in MODIFY_EXCLUSIVE mode, otherwise the function will error out.
    *
    * @param uri The address of the group item to be deleted.
    * @param recursive True if all data inside the group is to be deleted.
    *
    * @note if recursive == false, data added to the group will be left as-is.
+   * @post This is destructive; the group may not be reopened after delete.
    */
   void delete_group(const std::string& uri, bool recursive = false) {
     auto& ctx = ctx_.get();

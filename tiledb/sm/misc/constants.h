@@ -36,6 +36,7 @@
 #include <array>
 #include <cinttypes>
 #include <string>
+#include <vector>
 
 #include "tiledb/common/common.h"
 
@@ -81,6 +82,9 @@ extern const std::string array_commits_dir_name;
 
 /** The array dimension labels directory name. */
 extern const std::string array_dimension_labels_dir_name;
+
+/** The array directory names. */
+extern const std::vector<std::string> array_dir_names;
 
 /** The default tile capacity. */
 extern const uint64_t capacity;
@@ -249,6 +253,9 @@ extern const std::string group_detail_dir_name;
 
 /** The group metadata directory name. */
 extern const std::string group_metadata_dir_name;
+
+/** The group directory names. */
+extern const std::vector<std::string> group_dir_names;
 
 /** The maximum number of bytes written in a single I/O. */
 extern const uint64_t max_write_bytes;
