@@ -307,7 +307,7 @@ if ($SourceDirectory -eq $BinaryDirectory) {
 }
 
 # Check cmake binary
-if ((Get-Command "cmake.exe" -ErrorAction SilentlyContinue) -eq $null) {
+if ($null -eq (Get-Command "cmake.exe" -ErrorAction SilentlyContinue)) {
     Throw "Unable to find cmake.exe in your PATH."
 }
 if ($CMakeGenerator -eq $null) {
