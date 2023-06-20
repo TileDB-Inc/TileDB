@@ -336,6 +336,7 @@ Status Reader::load_initial_data() {
 Status Reader::apply_query_condition(
     std::vector<ResultCellSlab>& result_cell_slabs,
     std::vector<ResultTile*>& result_tiles,
+    UnfilteredDataMap& unfiltered_data,
     Subarray& subarray,
     uint64_t stride) {
   if ((!condition_.has_value() && delete_and_update_conditions_.empty()) ||
@@ -353,8 +354,13 @@ Status Reader::apply_query_condition(
 
   // Each element in `names` has been flagged with `ProcessTileFlag::READ`.
   // This will read the tiles, but will not copy them into the user buffers.
-  RETURN_NOT_OK(
-      process_tiles(names, result_tiles, result_cell_slabs, subarray, stride));
+  RETURN_NOT_OK(process_tiles(
+      names,
+      result_tiles,
+      unfiltered_data,
+      result_cell_slabs,
+      subarray,
+      stride));
 
   // The `UINT64_MAX` is a sentinel value to indicate that we do not
   // use a stride in the cell index calculation. To simplify our logic,
@@ -826,6 +832,7 @@ Status Reader::copy_coordinates(
 Status Reader::copy_attribute_values(
     const uint64_t stride,
     std::vector<ResultTile*>& result_tiles,
+    UnfilteredDataMap& unfiltered_data,
     std::vector<ResultCellSlab>& result_cell_slabs,
     Subarray& subarray) {
   auto timer_se = stats_->start_timer("copy_attr_values");
@@ -861,7 +868,12 @@ Status Reader::copy_attribute_values(
 
   if (!names.empty()) {
     RETURN_NOT_OK(process_tiles(
-        names, result_tiles, result_cell_slabs, subarray, stride));
+        names,
+        result_tiles,
+        unfiltered_data,
+        result_cell_slabs,
+        subarray,
+        stride));
   }
 
   return Status::Ok();
@@ -1380,6 +1392,7 @@ Status Reader::copy_partitioned_var_cells(
 Status Reader::process_tiles(
     const std::unordered_map<std::string, ProcessTileFlags>& names,
     std::vector<ResultTile*>& result_tiles,
+    UnfilteredDataMap& unfiltered_data,
     std::vector<ResultCellSlab>& result_cell_slabs,
     Subarray& subarray,
     const uint64_t stride) {
@@ -1468,8 +1481,8 @@ Status Reader::process_tiles(
     for (const auto& inner_name : inner_names) {
       const ProcessTileFlags flags = names.at(inner_name);
 
-      RETURN_CANCEL_OR_ERROR(
-          read_and_unfilter_attribute_tiles({inner_name}, result_tiles));
+      RETURN_CANCEL_OR_ERROR(read_and_unfilter_attribute_tiles(
+          {inner_name}, result_tiles, unfiltered_data));
 
       if (flags & ProcessTileFlag::COPY) {
         if (!array_schema_.var_size(inner_name)) {
@@ -1605,6 +1618,7 @@ Status Reader::compute_result_cell_slabs_global(
 
 Status Reader::compute_result_coords(
     std::vector<ResultTile>& result_tiles,
+    UnfilteredDataMap& unfiltered_data,
     std::vector<ResultCoords>& result_coords) {
   auto timer_se = stats_->start_timer("compute_result_coords");
 
@@ -1656,20 +1670,20 @@ Status Reader::compute_result_coords(
   // Read and unfilter zipped coordinate tiles. Note that
   // this will ignore fragments with a version >= 5.
   RETURN_CANCEL_OR_ERROR(read_and_unfilter_coordinate_tiles(
-      zipped_coords_names, tmp_result_tiles));
+      zipped_coords_names, tmp_result_tiles, unfiltered_data));
 
   // Read and unfilter unzipped coordinate tiles. Note that
   // this will ignore fragments with a version < 5.
-  RETURN_CANCEL_OR_ERROR(
-      read_and_unfilter_coordinate_tiles(dim_names, tmp_result_tiles));
+  RETURN_CANCEL_OR_ERROR(read_and_unfilter_coordinate_tiles(
+      dim_names, tmp_result_tiles, unfiltered_data));
 
   // Read and unfilter timestamps, if required.
   if (use_timestamps_) {
     std::vector<std::string> timestamps = {constants::timestamps};
     RETURN_CANCEL_OR_ERROR(load_tile_offsets(
         read_state_.partitioner_.subarray().relevant_fragments(), timestamps));
-    RETURN_CANCEL_OR_ERROR(
-        read_and_unfilter_attribute_tiles(timestamps, tmp_result_tiles));
+    RETURN_CANCEL_OR_ERROR(read_and_unfilter_attribute_tiles(
+        timestamps, tmp_result_tiles, unfiltered_data));
   }
 
   // Read and unfilter delete timestamps.
@@ -1678,8 +1692,8 @@ Status Reader::compute_result_coords(
     RETURN_CANCEL_OR_ERROR(load_tile_offsets(
         read_state_.partitioner_.subarray().relevant_fragments(),
         delete_timestamps));
-    RETURN_CANCEL_OR_ERROR(
-        read_and_unfilter_attribute_tiles(delete_timestamps, tmp_result_tiles));
+    RETURN_CANCEL_OR_ERROR(read_and_unfilter_attribute_tiles(
+        delete_timestamps, tmp_result_tiles, unfiltered_data));
   }
 
   // Compute the read coordinates for all fragments for each subarray range.
@@ -1775,12 +1789,15 @@ Status Reader::dense_read() {
   // Sanity checks
   assert(std::is_integral<T>::value);
 
+  UnfilteredDataMap unfiltered_data;
+
   // Compute result coordinates from the sparse fragments
   // `sparse_result_tiles` will hold all the relevant result tiles of
   // sparse fragments
   std::vector<ResultCoords> result_coords;
   std::vector<ResultTile> sparse_result_tiles;
-  RETURN_NOT_OK(compute_result_coords(sparse_result_tiles, result_coords));
+  RETURN_NOT_OK(compute_result_coords(
+      sparse_result_tiles, unfiltered_data, result_coords));
 
   // Compute result cell slabs.
   // `result_space_tiles` will hold all the relevant result tiles of
@@ -1804,6 +1821,7 @@ Status Reader::dense_read() {
   RETURN_NOT_OK(apply_query_condition(
       result_cell_slabs,
       result_tiles,
+      unfiltered_data,
       read_state_.partitioner_.subarray(),
       stride));
 
@@ -1817,6 +1835,7 @@ Status Reader::dense_read() {
   RETURN_NOT_OK(copy_attribute_values(
       stride,
       result_tiles,
+      unfiltered_data,
       result_cell_slabs,
       read_state_.partitioner_.subarray()));
 
@@ -2037,7 +2056,10 @@ Status Reader::sparse_read() {
   std::vector<ResultCoords> result_coords;
   std::vector<ResultTile> sparse_result_tiles;
 
-  RETURN_NOT_OK(compute_result_coords(sparse_result_tiles, result_coords));
+  UnfilteredDataMap unfiltered_data;
+
+  RETURN_NOT_OK(compute_result_coords(
+      sparse_result_tiles, unfiltered_data, result_coords));
   std::vector<ResultTile*> result_tiles;
   for (auto& srt : sparse_result_tiles) {
     result_tiles.push_back(&srt);
@@ -2051,7 +2073,10 @@ Status Reader::sparse_read() {
   result_coords.clear();
 
   throw_if_not_ok(apply_query_condition(
-      result_cell_slabs, result_tiles, read_state_.partitioner_.subarray()));
+      result_cell_slabs,
+      result_tiles,
+      unfiltered_data,
+      read_state_.partitioner_.subarray()));
   get_result_tile_stats(result_tiles);
   get_result_cell_stats(result_cell_slabs);
 
@@ -2059,6 +2084,7 @@ Status Reader::sparse_read() {
   RETURN_NOT_OK(copy_attribute_values(
       UINT64_MAX,
       result_tiles,
+      unfiltered_data,
       result_cell_slabs,
       read_state_.partitioner_.subarray()));
 

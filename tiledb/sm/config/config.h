@@ -231,6 +231,9 @@ class Config {
    */
   static const std::string SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_ARRAY_DATA;
 
+  /** Target unfiltered data block size. */
+  static const std::string SM_MEM_UNFILTERED_DATA_BLOCK_SIZE;
+
   /** Whether or not the signal handlers are installed. */
   static const std::string SM_ENABLE_SIGNAL_HANDLERS;
 

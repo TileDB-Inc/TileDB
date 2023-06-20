@@ -109,7 +109,7 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
 template <class BitmapType>
 bool SparseGlobalOrderReader<BitmapType>::incomplete() const {
   return !read_state_.done_adding_result_tiles_ ||
-         memory_used_for_coords_total_ != 0;
+         tmp_read_state_.unfiltered_data().memory_usage() != 0;
 }
 
 template <class BitmapType>
@@ -179,7 +179,8 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
 
     if (created_tiles.size() > 0) {
       // Read and unfilter coords.
-      throw_if_not_ok(read_and_unfilter_coords(created_tiles));
+      throw_if_not_ok(read_and_unfilter_coords(
+          created_tiles, tmp_read_state_.unfiltered_data()));
 
       // Compute the tile bitmaps.
       compute_tile_bitmaps<BitmapType>(created_tiles);
@@ -364,6 +365,7 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles(
   // For easy reference.
   auto fragment_num = fragment_metadata_.size();
   auto dim_num = array_schema_.dim_num();
+  auto dups = array_schema_.allows_dups();
 
   // Get the number of fragments to process and compute per fragment memory.
   uint64_t num_fragments_to_process =
@@ -378,11 +380,31 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles(
     rt_list_num_tiles[i] = result_tiles[i].size();
   }
 
-  // Create result tiles.
-  if (subarray_.is_set()) {
-    // Load as many tiles as the memory budget allows.
-    throw_if_not_ok(parallel_for(
-        storage_manager_->compute_tp(), 0, fragment_num, [&](uint64_t f) {
+  // Load as many tiles as the memory budget allows.
+  throw_if_not_ok(parallel_for(
+      storage_manager_->compute_tp(), 0, fragment_num, [&](uint64_t f) {
+        // Only add tiles for empty fragments or fragments consolidated with
+        // timestamps that have only one tile left in non dups arrays.
+        bool needs_more_tiles =
+            result_tiles[f].empty() ||
+            (!dups && fragment_metadata_[f]->has_timestamps() &&
+             result_tiles[f].size() == 1);
+        if (!needs_more_tiles) {
+          return Status::Ok();
+        }
+
+        // Here we only load more tiles for empty fragments or fragments with
+        // one tile left. Compute the memory consumption for the fragment if
+        // there is tiles left.
+        memory_used_for_coords_[f] = 0;
+        if (!result_tiles[f].empty()) {
+          for (auto& rt : result_tiles[f]) {
+            memory_used_for_coords_[f] +=
+                get_coord_tiles_size(dim_num, f, rt.tile_idx());
+          }
+        }
+
+        if (subarray_.is_set()) {
           uint64_t t = 0;
           auto& tile_ranges = tmp_read_state_.tile_ranges(f);
           while (!tile_ranges.empty()) {
@@ -403,12 +425,13 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles(
                     f,
                     t);
 
-                if (result_tiles[f].empty()) {
+                if (result_tiles[f].empty() ||
+                    (result_tiles[f].size() == 1 &&
+                     fragment_metadata_[f]->has_timestamps())) {
                   auto tiles_size = get_coord_tiles_size(dim_num, f, t);
                   throw SparseGlobalOrderReaderStatusException(
-                      "Cannot load a single tile for fragment, increase "
-                      "memory "
-                      "budget, tile size : " +
+                      "Cannot load enough tiles for fragment, increase "
+                      "memory budget, tile size : " +
                       std::to_string(tiles_size) + ", per fragment memory " +
                       std::to_string(per_fragment_memory_) + ", total budget " +
                       std::to_string(memory_budget_.total_budget()) +
@@ -423,15 +446,7 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles(
 
             tmp_read_state_.remove_tile_range(f);
           }
-
-          tmp_read_state_.set_all_tiles_loaded(f);
-
-          return Status::Ok();
-        }));
-  } else {
-    // Load as many tiles as the memory budget allows.
-    throw_if_not_ok(parallel_for(
-        storage_manager_->compute_tp(), 0, fragment_num, [&](uint64_t f) {
+        } else {
           uint64_t t = 0;
           auto tile_num = fragment_metadata_[f]->tile_num();
 
@@ -457,26 +472,32 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles(
                   f,
                   t);
 
-              if (result_tiles[f].empty()) {
+              if (result_tiles[f].empty() ||
+                  (result_tiles[f].size() == 1 &&
+                   fragment_metadata_[f]->has_timestamps())) {
                 auto tiles_size = get_coord_tiles_size(dim_num, f, t);
-                return logger_->status(Status_SparseGlobalOrderReaderError(
-                    "Cannot load a single tile for fragment, increase memory "
-                    "budget, tile size : " +
+                throw SparseGlobalOrderReaderStatusException(
+                    "Cannot load enough tiles for fragment, increase "
+                    "memory budget, tile size : " +
                     std::to_string(tiles_size) + ", per fragment memory " +
                     std::to_string(per_fragment_memory_) + ", total budget " +
                     std::to_string(memory_budget_.total_budget()) +
                     ", num fragments to process " +
-                    std::to_string(num_fragments_to_process)));
+                    std::to_string(num_fragments_to_process));
               }
               return Status::Ok();
             }
           }
+        }
 
-          tmp_read_state_.set_all_tiles_loaded(f);
+        tmp_read_state_.set_all_tiles_loaded(f);
 
-          return Status::Ok();
-        }));
-  }
+        return Status::Ok();
+      }));
+
+  // Recompute the total memory used for coordinates.
+  memory_used_for_coords_total_ = std::accumulate(
+      memory_used_for_coords_.begin(), memory_used_for_coords_.end(), 0);
 
   bool done_adding_result_tiles = tmp_read_state_.done_adding_result_tiles();
   uint64_t num_rt = 0;
@@ -516,7 +537,7 @@ void SparseGlobalOrderReader<BitmapType>::clean_tile_list(
         while (it != result_tiles[f].end()) {
           if (it->result_num() == 0) {
             tmp_read_state_.add_ignored_tile(*it);
-            remove_result_tile(f, it++, result_tiles);
+            result_tiles[f].erase(it++);
           } else {
             it++;
           }
@@ -645,7 +666,7 @@ void SparseGlobalOrderReader<BitmapType>::dedup_fragments_with_timestamps(
                     // Only one cell in the bitmap, delete next tile.
                     // Stay on this tile as we will compare to the new next.
                     tmp_read_state_.add_ignored_tile(*next_tile);
-                    remove_result_tile(f, next_tile, result_tiles);
+                    result_tiles[f].erase(next_tile);
                   } else {
                     // Remove the cell in the bitmap and move to the next tile.
                     next_tile->clear_cell(first);
@@ -658,7 +679,7 @@ void SparseGlobalOrderReader<BitmapType>::dedup_fragments_with_timestamps(
                     auto to_delete = it;
                     it++;
                     tmp_read_state_.add_ignored_tile(*to_delete);
-                    remove_result_tile(f, to_delete, result_tiles);
+                    result_tiles[f].erase(to_delete);
                   } else {
                     // Remove the cell in the bitmap and move to the next tile.
                     it->clear_cell(last);
@@ -922,16 +943,13 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
   // TODO Parallelize.
 
   // For easy reference.
-  const bool return_all_dups =
-      array_schema_.allows_dups() || consolidation_with_timestamps_;
+  const bool dups = array_schema_.allows_dups();
+  const bool return_all_dups = dups || consolidation_with_timestamps_;
 
   // A tile min heap, contains one GlobalOrderResultCoords per fragment.
   std::vector<GlobalOrderResultCoords<BitmapType>> container;
   container.reserve(result_tiles.size());
-  CompType cmp(
-      array_schema_.domain(),
-      !array_schema_.allows_dups(),
-      &fragment_metadata_);
+  CompType cmp(array_schema_.domain(), !dups, &fragment_metadata_);
   TileMinHeap<CompType> tile_queue(cmp, std::move(container));
 
   // If any fragments needs to load more tiles.
@@ -1086,8 +1104,8 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
 
         // Make sure we don't process the last in memory cell of a consolidated
         // with timestamps fragment if there are more tiles for that fragment.
-        if (last_in_memory_cell_of_consolidated_fragment(
-                frag_idx, to_process, result_tiles)) {
+        if (!dups && last_in_memory_cell_of_consolidated_fragment(
+                         frag_idx, to_process, result_tiles)) {
           length--;
           to_process.pos_--;
         }
@@ -1143,7 +1161,7 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
   // status.
   for (auto& it : to_delete) {
     if (!it->used()) {
-      remove_result_tile(it->frag_idx(), it, result_tiles);
+      result_tiles[it->frag_idx()].erase(it);
     }
   }
 
@@ -1877,8 +1895,9 @@ void SparseGlobalOrderReader<BitmapType>::process_slabs(
   uint64_t buffer_idx = 0;
   while (buffer_idx < names.size()) {
     // Read and unfilter as many attributes as can fit in the budget.
+    UnfilteredDataMap unfiltered_data;
     auto index_to_copy = read_and_unfilter_attributes(
-        names, mem_usage_per_attr, &buffer_idx, result_tiles);
+        names, mem_usage_per_attr, &buffer_idx, result_tiles, unfiltered_data);
 
     for (const auto& idx : index_to_copy) {
       // For easy reference.
@@ -2000,30 +2019,11 @@ void SparseGlobalOrderReader<BitmapType>::process_slabs(
 }
 
 template <class BitmapType>
-void SparseGlobalOrderReader<BitmapType>::remove_result_tile(
-    const unsigned frag_idx,
-    TileListIt rt,
-    std::vector<ResultTilesList>& result_tiles) {
-  // Remove coord tile size from memory budget.
-  auto tile_idx = rt->tile_idx();
-  auto tiles_size =
-      get_coord_tiles_size(array_schema_.dim_num(), frag_idx, tile_idx);
-
-  // Adjust per fragment memory usage.
-  memory_used_for_coords_[frag_idx] -= tiles_size;
-
-  // Adjust total memory usage.
-  memory_used_for_coords_total_ -= tiles_size;
-
-  // Delete the tile.
-  result_tiles[frag_idx].erase(rt);
-}
-
-template <class BitmapType>
 void SparseGlobalOrderReader<BitmapType>::end_iteration(
     std::vector<ResultTilesList>& result_tiles) {
   // For easy reference.
-  auto fragment_num = fragment_metadata_.size();
+  const size_t fragment_num = fragment_metadata_.size();
+  const bool dups = array_schema_.allows_dups();
 
   // Clear fully processed tiles in each fragments.
   throw_if_not_ok(parallel_for(
@@ -2031,14 +2031,27 @@ void SparseGlobalOrderReader<BitmapType>::end_iteration(
         while (!result_tiles[f].empty() &&
                result_tiles[f].front().tile_idx() <
                    read_state_.frag_idx_[f].tile_idx_) {
-          remove_result_tile(f, result_tiles[f].begin(), result_tiles);
+          result_tiles[f].pop_front();
+        }
+
+        // We keep the last tile alive for arrays with no dups and fragments
+        // with timestamps if not all tiles are loaded.
+        const bool keep_last_tile = !dups &&
+                                    fragment_metadata_[f]->has_timestamps() &&
+                                    !tmp_read_state_.all_tiles_loaded(f);
+
+        // Clean fragment unfiltered data once it is fully processed.
+        bool needs_more_tiles = result_tiles[f].empty() ||
+                                (keep_last_tile && result_tiles[f].size() == 1);
+        if (needs_more_tiles) {
+          tmp_read_state_.unfiltered_data().clear_fragment_data(
+              f, keep_last_tile);
         }
 
         return Status::Ok();
       }));
 
   if (!incomplete()) {
-    assert(memory_used_for_coords_total_ == 0);
     assert(tmp_read_state_.memory_used_tile_ranges() == 0);
   }
 

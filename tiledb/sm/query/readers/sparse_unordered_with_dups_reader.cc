@@ -211,7 +211,8 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
       }
 
       // Read and unfilter coords.
-      throw_if_not_ok(read_and_unfilter_coords(result_tiles_ptr));
+      throw_if_not_ok(read_and_unfilter_coords(
+          result_tiles_ptr, tmp_read_state_.unfiltered_data()));
 
       // Compute the tile bitmaps.
       compute_tile_bitmaps<BitmapType>(result_tiles_ptr);
@@ -283,8 +284,8 @@ void SparseUnorderedWithDupsReader<BitmapType>::load_tile_offsets_data() {
   auto& relevant_fragments = subarray_.relevant_fragments();
 
   if (!partial_tile_offsets_loading_) {
-    // When partial loading is not allowed, we load everything in memory on the
-    // first pass.
+    // When partial loading is not allowed, we load everything in memory on
+    // the first pass.
     if (initial_load) {
       // Load all tile offsets in memory. Make sure we have enough space for
       // tile offsets data.
@@ -341,8 +342,8 @@ void SparseUnorderedWithDupsReader<BitmapType>::load_tile_offsets_data() {
       // Make sure plan to load tile offsets for at least one fragment.
       if (tile_offsets_min_frag_idx_ == tile_offsets_max_frag_idx_) {
         throw SparseUnorderedWithDupsReaderStatusException(
-            "Cannot load tile offsets for only one fragment. Offsets size for "
-            "the fragment (" +
+            "Cannot load tile offsets for only one fragment. Offsets size "
+            "for the fragment (" +
             std::to_string(
                 per_frag_tile_offsets_usage_[tile_offsets_max_frag_idx_]) +
             ") is larger than available memory (" +
@@ -444,7 +445,9 @@ SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
   // For easy reference.
   const auto dim_num = array_schema_.dim_num();
 
-  // Create result tiles.
+  // Create result tiles, reset memory used here as we know at this point the
+  // list is empty.
+  memory_used_for_coords_total_ = 0;
   if (subarray_.is_set()) {
     // Load as many tiles as the memory budget allows.
     bool budget_exceeded = false;
@@ -545,9 +548,8 @@ void SparseUnorderedWithDupsReader<BitmapType>::clean_tile_list(
   // Clear result tiles that are not necessary anymore, part 2.
   auto it = result_tiles.begin();
   while (it != result_tiles.end()) {
-    auto f = it->frag_idx();
     if (it->result_num() == 0) {
-      remove_result_tile(f, result_tiles, it++);
+      result_tiles.erase(it++);
     } else {
       it++;
     }
@@ -1684,8 +1686,9 @@ bool SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
   uint64_t buffer_idx = 0;
   while (buffer_idx < names.size()) {
     // Read and unfilter as many attributes as can fit in the budget.
+    UnfilteredDataMap unfiltered_data;
     auto index_to_copy = read_and_unfilter_attributes(
-        names, mem_usage_per_attr, &buffer_idx, result_tiles);
+        names, mem_usage_per_attr, &buffer_idx, result_tiles, unfiltered_data);
 
     // Copy one attribute at a time for buffers in memory.
     for (const auto& idx : index_to_copy) {
@@ -1838,38 +1841,22 @@ bool SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
 }
 
 template <class BitmapType>
-void SparseUnorderedWithDupsReader<BitmapType>::remove_result_tile(
-    const unsigned frag_idx,
-    ResultTilesList& result_tiles,
-    typename ResultTilesList::iterator rt) {
-  // Remove coord tile size from memory budget.
-  const auto tile_idx = rt->tile_idx();
-  auto tiles_size =
-      get_coord_tiles_size(array_schema_.dim_num(), frag_idx, tile_idx);
-
-  memory_used_for_coords_total_ -= tiles_size;
-
-  // Delete the tile.
-  result_tiles.erase(rt);
-}
-
-template <class BitmapType>
 void SparseUnorderedWithDupsReader<BitmapType>::end_iteration(
     ResultTilesList& result_tiles) {
   // Clear result tiles that are not necessary anymore.
   while (!result_tiles.empty() &&
          result_tiles.front().tile_idx() <
              read_state_.frag_idx_[result_tiles.front().frag_idx()].tile_idx_) {
-    const auto f = result_tiles.front().frag_idx();
-
-    remove_result_tile(f, result_tiles, result_tiles.begin());
+    result_tiles.pop_front();
   }
 
   result_tiles_leftover_ = std::move(result_tiles);
+  if (result_tiles_leftover_.size() == 0) {
+    tmp_read_state_.unfiltered_data().clear();
+  }
 
   // Validate memory usage.
   if (!incomplete()) {
-    assert(memory_used_for_coords_total_ == 0);
     assert(tmp_read_state_.memory_used_tile_ranges() == 0);
   }
 

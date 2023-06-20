@@ -466,18 +466,6 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       std::vector<std::string>& names, std::vector<ResultTile*>& result_tiles);
 
   /**
-   * Remove a result tile from memory.
-   *
-   * @param frag_idx Fragment index.
-   * @param result_tiles List of result tiles.
-   * @param rt Iterator to the result tile to remove.
-   */
-  void remove_result_tile(
-      const unsigned frag_idx,
-      ResultTilesList& result_tiles,
-      typename ResultTilesList::iterator rt);
-
-  /**
    * Clean up processed data after copying and get ready for the next
    * iteration.
    *

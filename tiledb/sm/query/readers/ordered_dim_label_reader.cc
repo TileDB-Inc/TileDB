@@ -290,9 +290,11 @@ void OrderedDimLabelReader::label_read() {
     }
     std::sort(result_tiles.begin(), result_tiles.end(), result_tile_cmp);
 
+    UnfilteredDataMap unfiltered_data;
+
     // Read/unfilter tiles.
-    throw_if_not_ok(
-        read_and_unfilter_attribute_tiles({label_name_}, result_tiles));
+    throw_if_not_ok(read_and_unfilter_attribute_tiles(
+        {label_name_}, result_tiles, unfiltered_data));
 
     // Compute/copy results.
     throw_if_not_ok(parallel_for(

@@ -253,6 +253,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
    * @param result_cell_slabs The unfiltered cell slabs.
    * @param result_tiles The result tiles that must contain values for
    *   attributes within `condition_`.
+   * @param unfiltered_data Map containing the unfiltered data per field.
    * @param subarray Specifies the current subarray.
    * @param stride The stride between cells, defaulting to UINT64_MAX
    *   for contiguous cells.
@@ -261,6 +262,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
   Status apply_query_condition(
       std::vector<ResultCellSlab>& result_cell_slabs,
       std::vector<ResultTile*>& result_tiles,
+      UnfilteredDataMap& unfiltered_data,
       Subarray& subarray,
       uint64_t stride = UINT64_MAX);
 
@@ -407,6 +409,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
   Status copy_attribute_values(
       uint64_t stride,
       std::vector<ResultTile*>& result_tiles,
+      UnfilteredDataMap& unfiltered_data,
       std::vector<ResultCellSlab>& result_cell_slabs,
       Subarray& subarray);
 
@@ -561,6 +564,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
    * @param names The dimension/attribute names to process.
    * @param result_tiles The retrieved tiles will be stored inside the
    *   `ResultTile` instances in this vector.
+   * @param unfiltered_data Map containing the unfiltered data per field.
    * @param result_cell_slabs The cell slabs to process.
    * @param subarray Specifies the current subarray.
    * @param stride The stride between cells, UINT64_MAX for contiguous.
@@ -569,6 +573,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
   Status process_tiles(
       const std::unordered_map<std::string, ProcessTileFlags>& names,
       std::vector<ResultTile*>& result_tiles,
+      UnfilteredDataMap& unfiltered_data,
       std::vector<ResultCellSlab>& result_cell_slabs,
       Subarray& subarray,
       uint64_t stride);
@@ -577,10 +582,12 @@ class Reader : public ReaderBase, public IQueryStrategy {
    * Computes the result coordinates from the sparse fragments.
    *
    * @param result_tiles This will store the unique result tiles.
+   * @param unfiltered_data Map containing the unfiltered data per field.
    * @param result_coords This will store the result coordinates.
    */
   Status compute_result_coords(
       std::vector<ResultTile>& result_tiles,
+      UnfilteredDataMap& unfiltered_data,
       std::vector<ResultCoords>& result_coords);
 
   /**

@@ -1569,7 +1569,18 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
       nullable ? std::optional(cells * constants::cell_validity_size) :
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  std::vector<uint8_t> fixed_buffer(tile_sizes.tile_size());
+  std::vector<uint8_t> var_buffer(
+      tile_sizes.has_var_tile() ? tile_sizes.tile_var_size() : 0);
+  std::vector<uint8_t> validity_buffer(
+      tile_sizes.has_validity_tile() ? tile_sizes.tile_validity_size() : 0);
+  ResultTile::TileData tile_data{
+      nullptr,
+      nullptr,
+      nullptr,
+      fixed_buffer.data(),
+      var_buffer.data(),
+      validity_buffer.data()};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -1615,7 +1626,18 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
       nullable ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  std::vector<uint8_t> fixed_buffer(tile_sizes.tile_size());
+  std::vector<uint8_t> var_buffer(
+      tile_sizes.has_var_tile() ? tile_sizes.tile_var_size() : 0);
+  std::vector<uint8_t> validity_buffer(
+      tile_sizes.has_validity_tile() ? tile_sizes.tile_validity_size() : 0);
+  ResultTile::TileData tile_data{
+      nullptr,
+      nullptr,
+      nullptr,
+      fixed_buffer.data(),
+      var_buffer.data(),
+      validity_buffer.data()};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -1718,7 +1740,18 @@ TEST_CASE(
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  std::vector<uint8_t> fixed_buffer(tile_sizes.tile_size());
+  std::vector<uint8_t> var_buffer(
+      tile_sizes.has_var_tile() ? tile_sizes.tile_var_size() : 0);
+  std::vector<uint8_t> validity_buffer(
+      tile_sizes.has_validity_tile() ? tile_sizes.tile_validity_size() : 0);
+  ResultTile::TileData tile_data{
+      nullptr,
+      nullptr,
+      nullptr,
+      fixed_buffer.data(),
+      var_buffer.data(),
+      validity_buffer.data()};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -2263,7 +2296,18 @@ void test_apply_dense<char*>(
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  std::vector<uint8_t> fixed_buffer(tile_sizes.tile_size());
+  std::vector<uint8_t> var_buffer(
+      tile_sizes.has_var_tile() ? tile_sizes.tile_var_size() : 0);
+  std::vector<uint8_t> validity_buffer(
+      tile_sizes.has_validity_tile() ? tile_sizes.tile_validity_size() : 0);
+  ResultTile::TileData tile_data{
+      nullptr,
+      nullptr,
+      nullptr,
+      fixed_buffer.data(),
+      var_buffer.data(),
+      validity_buffer.data()};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -2311,7 +2355,18 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
       nullable ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  std::vector<uint8_t> fixed_buffer(tile_sizes.tile_size());
+  std::vector<uint8_t> var_buffer(
+      tile_sizes.has_var_tile() ? tile_sizes.tile_var_size() : 0);
+  std::vector<uint8_t> validity_buffer(
+      tile_sizes.has_validity_tile() ? tile_sizes.tile_validity_size() : 0);
+  ResultTile::TileData tile_data{
+      nullptr,
+      nullptr,
+      nullptr,
+      fixed_buffer.data(),
+      var_buffer.data(),
+      validity_buffer.data()};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -2414,7 +2469,18 @@ TEST_CASE(
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  std::vector<uint8_t> fixed_buffer(tile_sizes.tile_size());
+  std::vector<uint8_t> var_buffer(
+      tile_sizes.has_var_tile() ? tile_sizes.tile_var_size() : 0);
+  std::vector<uint8_t> validity_buffer(
+      tile_sizes.has_validity_tile() ? tile_sizes.tile_validity_size() : 0);
+  ResultTile::TileData tile_data{
+      nullptr,
+      nullptr,
+      nullptr,
+      fixed_buffer.data(),
+      var_buffer.data(),
+      validity_buffer.data()};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -2932,7 +2998,18 @@ void test_apply_sparse<char*>(
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  std::vector<uint8_t> fixed_buffer(tile_sizes.tile_size());
+  std::vector<uint8_t> var_buffer(
+      tile_sizes.has_var_tile() ? tile_sizes.tile_var_size() : 0);
+  std::vector<uint8_t> validity_buffer(
+      tile_sizes.has_validity_tile() ? tile_sizes.tile_validity_size() : 0);
+  ResultTile::TileData tile_data{
+      nullptr,
+      nullptr,
+      nullptr,
+      fixed_buffer.data(),
+      var_buffer.data(),
+      validity_buffer.data()};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -2980,7 +3057,18 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
       nullable ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  std::vector<uint8_t> fixed_buffer(tile_sizes.tile_size());
+  std::vector<uint8_t> var_buffer(
+      tile_sizes.has_var_tile() ? tile_sizes.tile_var_size() : 0);
+  std::vector<uint8_t> validity_buffer(
+      tile_sizes.has_validity_tile() ? tile_sizes.tile_validity_size() : 0);
+  ResultTile::TileData tile_data{
+      nullptr,
+      nullptr,
+      nullptr,
+      fixed_buffer.data(),
+      var_buffer.data(),
+      validity_buffer.data()};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -3738,7 +3826,18 @@ TEST_CASE(
       std::nullopt,
       std::nullopt);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  std::vector<uint8_t> fixed_buffer(tile_sizes.tile_size());
+  std::vector<uint8_t> var_buffer(
+      tile_sizes.has_var_tile() ? tile_sizes.tile_var_size() : 0);
+  std::vector<uint8_t> validity_buffer(
+      tile_sizes.has_validity_tile() ? tile_sizes.tile_validity_size() : 0);
+  ResultTile::TileData tile_data{
+      nullptr,
+      nullptr,
+      nullptr,
+      fixed_buffer.data(),
+      var_buffer.data(),
+      validity_buffer.data()};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -4015,7 +4114,18 @@ TEST_CASE(
       std::nullopt,
       std::nullopt);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  std::vector<uint8_t> fixed_buffer(tile_sizes.tile_size());
+  std::vector<uint8_t> var_buffer(
+      tile_sizes.has_var_tile() ? tile_sizes.tile_var_size() : 0);
+  std::vector<uint8_t> validity_buffer(
+      tile_sizes.has_validity_tile() ? tile_sizes.tile_validity_size() : 0);
+  ResultTile::TileData tile_data{
+      nullptr,
+      nullptr,
+      nullptr,
+      fixed_buffer.data(),
+      var_buffer.data(),
+      validity_buffer.data()};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -4417,7 +4527,18 @@ TEST_CASE(
       std::nullopt,
       std::nullopt);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  std::vector<uint8_t> fixed_buffer(tile_sizes.tile_size());
+  std::vector<uint8_t> var_buffer(
+      tile_sizes.has_var_tile() ? tile_sizes.tile_var_size() : 0);
+  std::vector<uint8_t> validity_buffer(
+      tile_sizes.has_validity_tile() ? tile_sizes.tile_validity_size() : 0);
+  ResultTile::TileData tile_data{
+      nullptr,
+      nullptr,
+      nullptr,
+      fixed_buffer.data(),
+      var_buffer.data(),
+      validity_buffer.data()};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -4671,7 +4792,18 @@ TEST_CASE(
       cells * constants::cell_validity_size,
       0);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  std::vector<uint8_t> fixed_buffer(tile_sizes.tile_size());
+  std::vector<uint8_t> var_buffer(
+      tile_sizes.has_var_tile() ? tile_sizes.tile_var_size() : 0);
+  std::vector<uint8_t> validity_buffer(
+      tile_sizes.has_validity_tile() ? tile_sizes.tile_validity_size() : 0);
+  ResultTile::TileData tile_data{
+      nullptr,
+      nullptr,
+      nullptr,
+      fixed_buffer.data(),
+      var_buffer.data(),
+      validity_buffer.data()};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,
@@ -4762,7 +4894,18 @@ TEST_CASE(
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
   ResultTile result_tile(0, 0, *array_schema);
-  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  std::vector<uint8_t> fixed_buffer(tile_sizes.tile_size());
+  std::vector<uint8_t> var_buffer(
+      tile_sizes.has_var_tile() ? tile_sizes.tile_var_size() : 0);
+  std::vector<uint8_t> validity_buffer(
+      tile_sizes.has_validity_tile() ? tile_sizes.tile_validity_size() : 0);
+  ResultTile::TileData tile_data{
+      nullptr,
+      nullptr,
+      nullptr,
+      fixed_buffer.data(),
+      var_buffer.data(),
+      validity_buffer.data()};
   result_tile.init_attr_tile(
       constants::format_version,
       *array_schema,

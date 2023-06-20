@@ -43,6 +43,7 @@
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 #include "tiledb/sm/query/readers/result_space_tile.h"
+#include "tiledb/sm/query/readers/unfiltered_data.h"
 #include "tiledb/sm/query/writers/domain_buffer.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
@@ -54,6 +55,7 @@ class Array;
 class ArraySchema;
 class FilteredData;
 class Subarray;
+class UnfilteredDataMap;
 
 /** Processes read queries. */
 class ReaderBase : public StrategyBase {
@@ -239,6 +241,9 @@ class ReaderBase : public StrategyBase {
   /** The minimum number of bytes in a batched read operation. */
   uint64_t min_batch_size_;
 
+  /** Target unfiltered data block size. */
+  uint64_t unfiltered_data_block_size_;
+
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
@@ -393,11 +398,13 @@ class ReaderBase : public StrategyBase {
    * @param names The attribute names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
+   * @param unfiltered_data Map containing the unfiltered data per field.
    * @return Status.
    */
   Status read_and_unfilter_attribute_tiles(
       const std::vector<std::string>& names,
-      const std::vector<ResultTile*>& result_tiles) const;
+      const std::vector<ResultTile*>& result_tiles,
+      UnfilteredDataMap& unfiltered_data) const;
 
   /**
    * Read and unfilter coordinate tiles.
@@ -405,11 +412,13 @@ class ReaderBase : public StrategyBase {
    * @param names The coordinate/dimension names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
+   * @param unfiltered_data Map containing the unfiltered data per field.
    * @return Status.
    */
   Status read_and_unfilter_coordinate_tiles(
       const std::vector<std::string>& names,
-      const std::vector<ResultTile*>& result_tiles) const;
+      const std::vector<ResultTile*>& result_tiles,
+      UnfilteredDataMap& unfiltered_data) const;
 
   /**
    * Concurrently executes across each name in `names` and each result tile
@@ -421,11 +430,13 @@ class ReaderBase : public StrategyBase {
    * @param names The attribute names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
+   * @param unfiltered_data Map containing the unfiltered data per field.
    * @return Filtered data blocks.
    */
   std::vector<FilteredData> read_attribute_tiles(
       const std::vector<std::string>& names,
-      const std::vector<ResultTile*>& result_tiles) const;
+      const std::vector<ResultTile*>& result_tiles,
+      UnfilteredDataMap& unfiltered_data) const;
 
   /**
    * Concurrently executes across each name in `names` and each result tile
@@ -437,11 +448,13 @@ class ReaderBase : public StrategyBase {
    * @param names The coordinate/dimension names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
+   * @param unfiltered_data Map containing the unfiltered data per field.
    * @return Filtered data blocks.
    */
   std::vector<FilteredData> read_coordinate_tiles(
       const std::vector<std::string>& names,
-      const std::vector<ResultTile*>& result_tiles) const;
+      const std::vector<ResultTile*>& result_tiles,
+      UnfilteredDataMap& unfiltered_data) const;
 
   /**
    * Retrieves the tiles on a list of attribute or dimension and stores it
@@ -453,11 +466,13 @@ class ReaderBase : public StrategyBase {
    * @param names The attribute/dimension names.
    * @param result_tiles The retrieved tiles will be stored inside the
    *     `ResultTile` instances in this vector.
+   * @param unfiltered_data Map containing the unfiltered data per field.
    * @return Filtered data blocks.
    */
   std::vector<FilteredData> read_tiles(
       const std::vector<std::string>& names,
-      const std::vector<ResultTile*>& result_tiles) const;
+      const std::vector<ResultTile*>& result_tiles,
+      UnfilteredDataMap& unfiltered_data) const;
 
   /**
    * Filters the tiles on a particular attribute/dimension from all input

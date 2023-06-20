@@ -864,7 +864,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   std::string error_str(msg);
-  CHECK(error_str.find("Cannot load a single tile") != std::string::npos);
+  CHECK(error_str.find("Cannot load enough tiles") != std::string::npos);
 }
 
 TEST_CASE_METHOD(

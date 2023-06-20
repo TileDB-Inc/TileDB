@@ -207,10 +207,16 @@ class ResultTile {
     TileData(
         void* fixed_filtered_data,
         void* var_filtered_data,
-        void* validity_filtered_data)
+        void* validity_filtered_data,
+        void* fixed_unfiltered_data,
+        void* var_unfiltered_data,
+        void* validity_unfiltered_data)
         : fixed_filtered_data_(fixed_filtered_data)
         , var_filtered_data_(var_filtered_data)
-        , validity_filtered_data_(validity_filtered_data) {
+        , validity_filtered_data_(validity_filtered_data)
+        , fixed_unfiltered_data_(fixed_unfiltered_data)
+        , var_unfiltered_data_(var_unfiltered_data)
+        , validity_unfiltered_data_(validity_unfiltered_data) {
     }
 
     /* ********************************* */
@@ -232,6 +238,21 @@ class ResultTile {
       return validity_filtered_data_;
     }
 
+    /** @return The fixed unfiltered data pointer. */
+    inline void* fixed_unfiltered_data() const {
+      return fixed_unfiltered_data_;
+    }
+
+    /** @return The var unfiltered data pointer. */
+    inline void* var_unfiltered_data() const {
+      return var_unfiltered_data_;
+    }
+
+    /** @return The validity unfiltered data pointer. */
+    inline void* validity_unfiltered_data() const {
+      return validity_unfiltered_data_;
+    }
+
    private:
     /* ********************************* */
     /*        PRIVATE ATTRIBUTES         */
@@ -245,6 +266,15 @@ class ResultTile {
 
     /** Stores the validity filtered data pointer. */
     void* validity_filtered_data_;
+
+    /** Stores the fixed unfiltered data pointer. */
+    void* fixed_unfiltered_data_;
+
+    /** Stores the var unfiltered data pointer. */
+    void* var_unfiltered_data_;
+
+    /** Stores the validity unfiltered data pointer. */
+    void* validity_unfiltered_data_;
   };
 
   /**
@@ -273,6 +303,7 @@ class ResultTile {
                       constants::cell_var_offset_type,
                       constants::cell_var_offset_size,
                       0,
+                      tile_data.fixed_unfiltered_data(),
                       tile_sizes.tile_size(),
                       tile_data.fixed_filtered_data(),
                       tile_sizes.tile_persisted_size()) :
@@ -281,6 +312,7 @@ class ResultTile {
                       array_schema.type(name),
                       array_schema.cell_size(name),
                       (name == constants::coords) ? array_schema.dim_num() : 0,
+                      tile_data.fixed_unfiltered_data(),
                       tile_sizes.tile_size(),
                       tile_data.fixed_filtered_data(),
                       tile_sizes.tile_persisted_size())) {
@@ -291,6 +323,7 @@ class ResultTile {
             type,
             datatype_size(type),
             0,
+            tile_data.var_unfiltered_data(),
             tile_sizes.tile_var_size(),
             tile_data.var_filtered_data(),
             tile_sizes.tile_var_persisted_size());
@@ -302,6 +335,7 @@ class ResultTile {
             constants::cell_validity_type,
             constants::cell_validity_size,
             0,
+            tile_data.validity_unfiltered_data(),
             tile_sizes.tile_validity_size(),
             tile_data.validity_filtered_data(),
             tile_sizes.tile_validity_persisted_size());
