@@ -123,7 +123,6 @@ class RestClient {
   /**
    * Deletes all written data from array at the given URI from the REST server.
    *
-   * #TODO Implement API endpoint on TileDBCloud.
    * @param uri Array URI to delete
    */
   void delete_array_from_rest(const URI& uri);
@@ -290,10 +289,10 @@ class RestClient {
   /**
    * Deletes all written data from group at the given URI from the REST server.
    *
-   * #TODO Implement API endpoint on TileDBCloud.
    * @param uri Group URI to delete
+   * @param recursive True if all data inside the group is to be deleted
    */
-  void delete_group_from_rest(const URI& uri);
+  void delete_group_from_rest(const URI& uri, bool recursive);
 
   /**
    * Post group create to the REST server.
