@@ -52,26 +52,6 @@ commence(object_library vfs)
             s3.cc
             s3_thread_pool_executor.cc
         )
-        if(WIN32)
-            if(MSVC)
-                find_library(BCRYPT_LIBRARY bcrypt)
-                message(STATUS "Found Win32 lib bcrypt: ${BCRYPT_LIBRARY}")
-                this_target_link_libraries(${BCRYPT_LIBRARY})
-            else()
-                message(STATUS "Linking to Win32 lib bcrypt")
-                this_target_link_libraries(-lbcrypt)
-            endif()
-        else()
-            find_package(OpenSSL_EP REQUIRED)
-            this_target_link_libraries(INTERFACE OpenSSL::Crypto OpenSSL::SSL)
-        endif()
-        if (NOT WIN32)
-            find_package(Curl_EP REQUIRED)
-            target_link_libraries(s3_providers
-                    INTERFACE
-                    CURL::libcurl
-                    )
-        endif()
     endif()
     this_target_sources(${VFS_SOURCES})
     this_target_object_libraries(
@@ -98,24 +78,6 @@ commence(object_library vfs)
         else()
             message(STATUS "Linking to Win32 lib shlwapi")
             this_target_link_libraries(-lshlwapi)
-        endif()
-    endif()
-    # Add S3 dependencies
-    if (TILEDB_S3)
-        if (TILEDB_VCPKG)
-            find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
-            target_link_libraries(vfs INTERFACE ${AWSSDK_LINK_LIBRARIES})
-        else()
-            find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
-            target_link_libraries(vfs INTERFACE
-                AWSSDK::aws-cpp-sdk-s3
-                AWSSDK::aws-cpp-sdk-core
-                AWSSDK::aws-c-event-stream
-                AWSSDK::aws-checksums
-                AWSSDK::aws-c-common
-                AWSSDK::aws-cpp-sdk-identity-management
-                AWSSDK::aws-cpp-sdk-sts
-            )
         endif()
     endif()
 conclude(object_library)

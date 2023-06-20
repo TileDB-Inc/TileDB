@@ -32,7 +32,7 @@ include(object_library)
 #
 commence(object_library s3_providers)
     if (TILEDB_S3)
-        target_compile_definitions(s3_providers INTERFACE -DHAVE_S3)
+        this_target_compile_definitions(INTERFACE -DHAVE_S3)
         target_include_directories(s3_providers
                 PRIVATE
                 "${CMAKE_CURRENT_SOURCE_DIR}/../../../../external/include"
@@ -55,10 +55,10 @@ commence(object_library s3_providers)
         # Add S3 dependencies
         if (TILEDB_VCPKG)
             find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
-            target_link_libraries(s3_providers INTERFACE ${AWSSDK_LINK_LIBRARIES})
+            this_target_link_libraries(INTERFACE ${AWSSDK_LINK_LIBRARIES})
         else()
             find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
-            target_link_libraries(s3_providers INTERFACE
+            this_target_link_libraries(INTERFACE
                 AWSSDK::aws-cpp-sdk-s3
                 AWSSDK::aws-cpp-sdk-core
                 AWSSDK::aws-c-event-stream
@@ -80,10 +80,10 @@ commence(object_library s3_providers)
         else()
             find_package(OpenSSL_EP REQUIRED)
             this_target_link_libraries(INTERFACE OpenSSL::Crypto OpenSSL::SSL)
-        endif()
-        if (NOT WIN32)
+
+            # Add curl
             find_package(Curl_EP REQUIRED)
-            target_link_libraries(s3_providers
+            this_target_link_libraries(
                     INTERFACE
                     CURL::libcurl
             )
