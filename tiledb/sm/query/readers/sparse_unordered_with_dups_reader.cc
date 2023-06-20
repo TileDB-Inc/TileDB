@@ -73,6 +73,7 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
     Array* array,
     Config& config,
     std::unordered_map<std::string, QueryBuffer>& buffers,
+    std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
     Subarray& subarray,
     Layout layout,
     std::optional<QueryCondition>& condition,
@@ -86,6 +87,7 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
           array,
           config,
           buffers,
+          aggregate_buffers,
           subarray,
           layout,
           condition,
@@ -1453,10 +1455,6 @@ SparseUnorderedWithDupsReader<BitmapType>::resize_fixed_results_to_copy(
   auto max_num_cells = std::numeric_limits<uint64_t>::max();
   for (const auto& it : buffers_) {
     const auto& name = it.first;
-    if (!array_schema_.is_field(name)) {
-      continue;
-    }
-
     const auto size = it.second.original_buffer_size_;
     if (array_schema_.var_size(name)) {
       // we only check the var-size buffer here because we enforce
@@ -1508,10 +1506,6 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
       storage_manager_->compute_tp(), 0, names.size(), [&](uint64_t i) {
         // For easy reference.
         const auto& name = names[i];
-        if (name == constants::all_attributes) {
-          return Status::Ok();
-        }
-
         const auto var_sized = array_schema_.var_size(name);
         auto mem_usage = &total_mem_usage_per_attr[i];
         const bool is_timestamps = name == constants::timestamps ||
@@ -1520,7 +1514,8 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
         // For dimensions, when we have a subarray, tiles are already all
         // loaded in memory.
         if ((include_coords_ && array_schema_.is_dim(name)) ||
-            qc_loaded_attr_names_set_.count(name) != 0 || is_timestamps) {
+            qc_loaded_attr_names_set_.count(name) != 0 || is_timestamps ||
+            name == constants::all_attributes) {
           return Status::Ok();
         }
 
@@ -2032,6 +2027,7 @@ template SparseUnorderedWithDupsReader<uint8_t>::SparseUnorderedWithDupsReader(
     Array*,
     Config&,
     std::unordered_map<std::string, QueryBuffer>&,
+    std::unordered_map<std::string, QueryBuffer>&,
     Subarray&,
     Layout,
     std::optional<QueryCondition>&,
@@ -2043,6 +2039,7 @@ template SparseUnorderedWithDupsReader<uint64_t>::SparseUnorderedWithDupsReader(
     StorageManager*,
     Array*,
     Config&,
+    std::unordered_map<std::string, QueryBuffer>&,
     std::unordered_map<std::string, QueryBuffer>&,
     Subarray&,
     Layout,

@@ -71,6 +71,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     Array* array,
     Config& config,
     std::unordered_map<std::string, QueryBuffer>& buffers,
+    std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
     Subarray& subarray,
     Layout layout,
     std::optional<QueryCondition>& condition,
@@ -84,6 +85,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
           array,
           config,
           buffers,
+          aggregate_buffers,
           subarray,
           layout,
           condition,
@@ -99,13 +101,13 @@ SparseIndexReaderBase::SparseIndexReaderBase(
   // Sanity checks
   if (storage_manager_ == nullptr) {
     throw SparseIndexReaderBaseStatusException(
-        "Cannot initialize sparse global order reader; Storage manager not "
-        "set");
+        "Cannot initialize reader; Storage manager not set");
   }
 
-  if (!skip_checks_serialization && buffers_.empty()) {
+  if (!skip_checks_serialization && buffers_.empty() &&
+      aggregate_buffers_.empty()) {
     throw SparseIndexReaderBaseStatusException(
-        "Cannot initialize sparse global order reader; Buffers not set");
+        "Cannot initialize reader; Buffers not set");
   }
 
   // Check subarray
@@ -277,7 +279,7 @@ uint64_t SparseIndexReaderBase::cells_copied(
     const std::vector<std::string>& names) {
   for (auto it = names.rbegin(); it != names.rend(); ++it) {
     auto& name = *it;
-    if (array_schema_.is_field(name) && buffers_.count(name) != 0) {
+    if (buffers_.count(name) != 0) {
       auto buffer_size = *buffers_[name].buffer_size_;
       if (array_schema_.var_size(name)) {
         if (buffer_size == 0) {
@@ -414,12 +416,9 @@ Status SparseIndexReaderBase::load_initial_data() {
 
   // Compute tile offsets to load and var size to load for attributes.
   for (auto& name : field_names_to_process()) {
-    if (!array_schema_.is_field(name)) {
-      continue;
-    }
-
     if (array_schema_.is_dim(name) ||
-        qc_loaded_attr_names_set_.count(name) != 0) {
+        qc_loaded_attr_names_set_.count(name) != 0 ||
+        name == constants::all_attributes) {
       continue;
     }
 
@@ -874,33 +873,29 @@ std::vector<std::string> SparseIndexReaderBase::field_names_to_process() {
   // overflow.
   for (auto& buffer : buffers_) {
     auto& name = buffer.first;
-    if (!array_schema_.is_field(name) || !array_schema_.var_size(name)) {
+    if (!array_schema_.var_size(name)) {
       continue;
     }
 
-    // Skip aggregates buffers.
-    if (array_schema_.is_field(name)) {
-      // See if any of the aggregates for this field would need a recompute.
-      bool any_need_recompute = false;
-      if (aggregates_.count(name) != 0) {
-        for (auto& aggregate : aggregates_[name]) {
-          any_need_recompute |= aggregate->need_recompute_on_overflow();
-        }
+    // See if any of the aggregates for this field would need a recompute.
+    bool any_need_recompute = false;
+    if (aggregates_.count(name) != 0) {
+      for (auto& aggregate : aggregates_[name]) {
+        any_need_recompute |= aggregate->need_recompute_on_overflow();
       }
+    }
 
-      // Only add fields that don't need recompute.
-      if (!any_need_recompute) {
-        ret.emplace_back(name);
-        added_names.emplace(name);
-      }
+    // Only add fields that don't need recompute.
+    if (!any_need_recompute) {
+      ret.emplace_back(name);
+      added_names.emplace(name);
     }
   }
 
   // Second add the rest of the var fields.
   for (auto& buffer : buffers_) {
     auto& name = buffer.first;
-    if (array_schema_.is_field(name) && array_schema_.var_size(name) &&
-        added_names.count(name) == 0) {
+    if (array_schema_.var_size(name) && added_names.count(name) == 0) {
       ret.emplace_back(name);
       added_names.emplace(name);
     }
@@ -909,7 +904,7 @@ std::vector<std::string> SparseIndexReaderBase::field_names_to_process() {
   // Now for the fixed fields.
   for (auto& buffer : buffers_) {
     auto& name = buffer.first;
-    if (array_schema_.is_field(name) && !array_schema_.var_size(name)) {
+    if (!array_schema_.var_size(name)) {
       ret.emplace_back(name);
       added_names.emplace(name);
     }
@@ -931,10 +926,6 @@ void SparseIndexReaderBase::resize_output_buffers(uint64_t cells_copied) {
   // Resize buffers if the result cell slabs was truncated.
   for (auto& it : buffers_) {
     const auto& name = it.first;
-    if (!array_schema_.is_field(name)) {
-      continue;
-    }
-
     const auto size = *it.second.buffer_size_;
     uint64_t num_cells = 0;
 

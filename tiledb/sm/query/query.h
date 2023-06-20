@@ -771,11 +771,16 @@ class Query {
    * Maps attribute/dimension names to their buffers.
    * `TILEDB_COORDS` may be used for the special zipped coordinates
    * buffer.
-   * */
+   */
   std::unordered_map<std::string, QueryBuffer> buffers_;
 
   /** Maps label names to their buffers. */
   std::unordered_map<std::string, QueryBuffer> label_buffers_;
+
+  /**
+   * Maps aggregate names to their buffers.
+   */
+  std::unordered_map<std::string, QueryBuffer> aggregate_buffers_;
 
   /** Dimension label queries that are part of the main query. */
   tdb_unique_ptr<ArrayDimensionLabelQueries> dim_label_queries_;

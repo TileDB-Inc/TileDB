@@ -117,6 +117,7 @@ class ReaderBase : public StrategyBase {
       Array* array,
       Config& config,
       std::unordered_map<std::string, QueryBuffer>& buffers,
+      std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
       Subarray& subarray,
       Layout layout,
       std::optional<QueryCondition>& condition,
@@ -245,6 +246,11 @@ class ReaderBase : public StrategyBase {
   /** Default channel aggregates, stored by field name. */
   std::unordered_map<std::string, std::vector<shared_ptr<IAggregator>>>
       aggregates_;
+
+  /**
+   * Maps aggregate names to their buffers.
+   * */
+  std::unordered_map<std::string, QueryBuffer>& aggregate_buffers_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */

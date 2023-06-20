@@ -980,16 +980,29 @@ Status Query::set_data_buffer(
     return Status::Ok();
   }
 
+  // If this is an aggregate buffer, set it and return.
+  if (is_aggregate(name)) {
+    const bool is_var = default_channel_aggregates_[name]->var_sized();
+    if (!is_var) {
+      // Fixed size data buffer
+      aggregate_buffers_[name].set_data_buffer(buffer, buffer_size);
+    } else {
+      // Var sized data buffer
+      aggregate_buffers_[name].set_data_var_buffer(buffer, buffer_size);
+    }
+
+    return Status::Ok();
+  }
+
   // For easy reference
   const bool is_dim = array_schema_->is_dim(name);
   const bool is_attr = array_schema_->is_attr(name);
-  const bool is_aggr = is_aggregate(name);
 
   // Check that attribute/dimension exists
-  if (!ArraySchema::is_special_attribute(name) && !is_dim && !is_attr &&
-      !is_aggr) {
+  if (!ArraySchema::is_special_attribute(name) && !is_dim && !is_attr) {
     return logger_->status(Status_QueryError(
-        std::string("Cannot set buffer; Invalid field '") + name + "'"));
+        std::string("Cannot set buffer; Invalid attribute/dimension/label '") +
+        name + "'"));
   }
 
   if (array_schema_->dense() &&
@@ -1024,9 +1037,8 @@ Status Query::set_data_buffer(
       return set_coords_buffer(buffer, buffer_size);
   }
 
-  const bool is_var = is_aggr ? default_channel_aggregates_[name]->var_sized() :
-                                array_schema_->var_size(name);
-  if (!is_aggr && is_dim && !is_var &&
+  const bool is_var = array_schema_->var_size(name);
+  if (is_dim && !is_var &&
       (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE)) {
     // Check number of coordinates
     uint64_t coords_num = *buffer_size / array_schema_->cell_size(name);
@@ -1053,12 +1065,13 @@ Status Query::set_data_buffer(
   has_coords_buffer_ |= is_dim;
 
   // Set attribute/dimension buffer on the appropriate buffer
-  if (!is_var)
+  if (!is_var) {
     // Fixed size data buffer
     buffers_[name].set_data_buffer(buffer, buffer_size);
-  else
+  } else {
     // Var sized data buffer
     buffers_[name].set_data_var_buffer(buffer, buffer_size);
+  }
 
   return Status::Ok();
 }
@@ -1195,24 +1208,29 @@ Status Query::set_validity_buffer(
         "Cannot set buffer; " + name + " validity buffer size is null"));
   }
 
-  // Must be an attribute or aggregate
-  const bool is_aggr = is_aggregate(name);
-  if (!array_schema_->is_attr(name) && !is_aggr) {
+  // If this is an aggregate buffer, set it and return.
+  if (is_aggregate(name)) {
+    if (!array_schema_->is_nullable(
+            default_channel_aggregates_[name]->field_name())) {
+      return logger_->status(Status_QueryError(
+          std::string("Cannot set buffer; Input attribute '") + name +
+          "' is not nullable"));
+    }
+
+    aggregate_buffers_[name].set_validity_buffer(std::move(validity_vector));
+
+    return Status::Ok();
+  }
+
+  // Must be an attribute
+  if (!array_schema_->is_attr(name)) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer; Buffer name '") + name +
         "' is not an attribute"));
   }
 
   // Must be nullable
-  bool is_nullable;
-  if (is_aggr) {
-    is_nullable = array_schema_->is_nullable(
-        default_channel_aggregates_[name]->field_name());
-  } else {
-    is_nullable = array_schema_->is_nullable(name);
-  }
-
-  if (!is_nullable) {
+  if (!array_schema_->is_nullable(name)) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer; Input attribute '") + name +
         "' is not nullable"));
@@ -1749,6 +1767,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           array_,
           config_,
           buffers_,
+          aggregate_buffers_,
           subarray_,
           layout_,
           condition_,
@@ -1770,6 +1789,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
             array_,
             config_,
             buffers_,
+            aggregate_buffers_,
             subarray_,
             layout_,
             condition_,
@@ -1784,6 +1804,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
             array_,
             config_,
             buffers_,
+            aggregate_buffers_,
             subarray_,
             layout_,
             condition_,
@@ -1808,6 +1829,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
             array_,
             config_,
             buffers_,
+            aggregate_buffers_,
             subarray_,
             layout_,
             condition_,
@@ -1823,6 +1845,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
             array_,
             config_,
             buffers_,
+            aggregate_buffers_,
             subarray_,
             layout_,
             condition_,
@@ -1839,6 +1862,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           array_,
           config_,
           buffers_,
+          aggregate_buffers_,
           subarray_,
           layout_,
           condition_,
@@ -1854,6 +1878,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           array_,
           config_,
           buffers_,
+          aggregate_buffers_,
           subarray_,
           layout_,
           condition_,
@@ -2085,7 +2110,7 @@ void Query::reset_coords_markers() {
 void Query::finalize_aggregates() {
   for (auto& default_channel_aggregate : default_channel_aggregates_) {
     default_channel_aggregate.second->copy_to_user_buffer(
-        default_channel_aggregate.first, buffers_);
+        default_channel_aggregate.first, aggregate_buffers_);
   }
 }
 

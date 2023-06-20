@@ -151,7 +151,8 @@ class ArraySchema {
   static inline bool is_special_attribute(const std::string& name) {
     return name == constants::coords || name == constants::timestamps ||
            name == constants::delete_timestamps ||
-           name == constants::delete_condition_index;
+           name == constants::delete_condition_index ||
+           name == constants::all_attributes;
   }
 
   /**

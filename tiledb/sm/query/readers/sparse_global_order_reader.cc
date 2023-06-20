@@ -75,6 +75,7 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
     Array* array,
     Config& config,
     std::unordered_map<std::string, QueryBuffer>& buffers,
+    std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
     Subarray& subarray,
     Layout layout,
     std::optional<QueryCondition>& condition,
@@ -89,6 +90,7 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
           array,
           config,
           buffers,
+          aggregate_buffers,
           subarray,
           layout,
           condition,
@@ -681,10 +683,6 @@ uint64_t SparseGlobalOrderReader<BitmapType>::max_num_cells_to_copy() {
   uint64_t num_cells = std::numeric_limits<uint64_t>::max();
   for (const auto& it : buffers_) {
     const auto& name = it.first;
-    if (!array_schema_.is_field(name)) {
-      continue;
-    }
-
     const auto size = it.second.original_buffer_size_ - *it.second.buffer_size_;
     if (array_schema_.var_size(name)) {
       auto temp_num_cells = size / constants::cell_var_offset_size;
@@ -1658,10 +1656,6 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
       storage_manager_->compute_tp(), 0, names.size(), [&](uint64_t i) {
         // For easy reference.
         const auto& name = names[i];
-        if (!array_schema_.is_field(name)) {
-          return Status::Ok();
-        }
-
         const auto var_sized = array_schema_.var_size(name);
         uint64_t* mem_usage = &total_mem_usage_per_attr[i];
         const bool is_timestamps = name == constants::timestamps ||
@@ -1675,7 +1669,8 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
         // For dimensions or query condition fields, tiles are already all
         // loaded in memory.
         if (array_schema_.is_dim(name) ||
-            qc_loaded_attr_names_set_.count(name) != 0 || is_timestamps) {
+            qc_loaded_attr_names_set_.count(name) != 0 || is_timestamps ||
+            name == constants::all_attributes) {
           return Status::Ok();
         }
 
@@ -2172,6 +2167,7 @@ template SparseGlobalOrderReader<uint8_t>::SparseGlobalOrderReader(
     Array*,
     Config&,
     std::unordered_map<std::string, QueryBuffer>&,
+    std::unordered_map<std::string, QueryBuffer>&,
     Subarray&,
     Layout,
     std::optional<QueryCondition>&,
@@ -2184,6 +2180,7 @@ template SparseGlobalOrderReader<uint64_t>::SparseGlobalOrderReader(
     StorageManager*,
     Array*,
     Config&,
+    std::unordered_map<std::string, QueryBuffer>&,
     std::unordered_map<std::string, QueryBuffer>&,
     Subarray&,
     Layout,
