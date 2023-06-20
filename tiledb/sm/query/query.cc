@@ -1829,7 +1829,8 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           subarray_,
           layout_,
           condition_,
-          skip_checks_serialization));
+          skip_checks_serialization,
+          remote_query_));
     } else {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           Reader,
@@ -1842,7 +1843,8 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           subarray_,
           layout_,
           condition_,
-          skip_checks_serialization));
+          skip_checks_serialization,
+          remote_query_));
     }
   } else if (type_ == QueryType::DELETE || type_ == QueryType::UPDATE) {
     strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(

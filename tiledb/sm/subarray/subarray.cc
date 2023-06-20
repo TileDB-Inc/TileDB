@@ -863,6 +863,12 @@ bool Subarray::coincides_with_tiles() const {
   return true;
 }
 
+void Subarray::check_oob() {
+  for (auto& subset : range_subset_) {
+    subset.check_oob();
+  }
+}
+
 template <class T>
 Subarray Subarray::crop_to_tile(const T* tile_coords, Layout layout) const {
   // TBD: is it ok that Subarray log id will increase as if it's a new subarray?

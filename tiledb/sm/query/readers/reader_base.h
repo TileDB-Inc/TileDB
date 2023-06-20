@@ -289,8 +289,13 @@ class ReaderBase : public StrategyBase {
   /** Zeroes out the user buffer sizes, indicating an empty result. */
   void zero_out_buffer_sizes();
 
-  /** Correctness checks for `subarray_`. */
-  void check_subarray() const;
+  /**
+   * Correctness checks for `subarray_`.
+   *
+   * @param check_ranges_oob If true, checks subarray ranges are within domain
+   * bounds for the array. If false, only basic checks are performed.
+   */
+  void check_subarray(bool check_ranges_oob = false) const;
 
   /** Correctness checks validity buffer sizes in `buffers_`. */
   void check_validity_buffer_sizes() const;
