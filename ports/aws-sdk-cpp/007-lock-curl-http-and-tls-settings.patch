@@ -1,0 +1,24 @@
+diff --git a/aws-cpp-sdk-core/CMakeLists.txt b/aws-cpp-sdk-core/CMakeLists.txt
+index 3cb60a9171..860b184633 100644
+--- a/aws-cpp-sdk-core/CMakeLists.txt
++++ b/aws-cpp-sdk-core/CMakeLists.txt
+@@ -93,17 +93,8 @@ if(ENABLE_CURL_CLIENT)
+     file(GLOB HTTP_CURL_CLIENT_HEADERS "include/aws/core/http/curl/*.h")
+     file(GLOB HTTP_CURL_CLIENT_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/source/http/curl/*.cpp")
+     set(CMAKE_REQUIRED_LIBRARIES ${CURL_LIBRARIES} ZLIB::ZLIB)
+-    check_c_source_runs("
+-    #include <curl/curl.h>
+-    int main() {
+-    CURL* handle = curl_easy_init();
+-    return curl_easy_setopt(handle, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0); }" CURL_HAS_H2)
+-    check_c_source_runs("
+-    #include <curl/curl.h>
+-    int main() {
+-    CURL* handle = curl_easy_init();
+-    return curl_easy_setopt(handle, CURLOPT_PROXY_SSLCERT, \"client.pem\"); }" CURL_HAS_TLS_PROXY)
+-    unset(CMAKE_REQUIRED_LIBRARIES)
++    set(CURL_HAS_H2 OFF)
++    set(CURL_HAS_TLS_PROXY ON)
+ elseif(ENABLE_WINDOWS_CLIENT)
+     # NOTE: HTTP/2 is not supported when using IXML_HTTP_REQUEST_2
+     if(USE_IXML_HTTP_REQUEST_2)

@@ -358,6 +358,9 @@ extern const std::string bzip2_str;
 /** String describing DOUBLE_DELTA. */
 extern const std::string double_delta_str;
 
+/** String describing DELTA. */
+extern const std::string delta_str;
+
 /** String describing FILTER_NONE. */
 extern const std::string filter_none_str;
 
@@ -418,6 +421,12 @@ extern const std::string filter_option_webp_input_format;
 
 /** The string representation for FilterOption type webp_lossless. */
 extern const std::string filter_option_webp_lossless;
+
+/**
+ * The string representation for FilterOption type
+ * compression_reinterpret_datatype.
+ */
+extern const std::string filter_option_compression_reinterpret_datatype;
 
 /** The string representation for type int32. */
 extern const std::string int32_str;

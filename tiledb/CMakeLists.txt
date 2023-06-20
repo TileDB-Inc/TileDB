@@ -155,6 +155,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_filestore.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/bzip_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/dd_compressor.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/delta_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/dict_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/gzip_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/lz4_compressor.cc
@@ -380,6 +381,7 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
 # Use BUILD_INTERFACE generator to work around
 #   https://gitlab.kitware.com/cmake/cmake/-/issues/20736
 target_link_libraries(TILEDB_CORE_OBJECTS PRIVATE $<BUILD_INTERFACE:common>)
+
 target_link_libraries(TILEDB_CORE_OBJECTS INTERFACE object_store_definitions)
 
 ############################################################
@@ -472,12 +474,8 @@ if (TILEDB_SERIALIZATION)
   add_definitions(-DTILEDB_SERIALIZATION)
   message(STATUS "The TileDB library is compiled with query serialization enabled.")
 
-  if(MSVC)
-    if (TILEDB_CURL_EP_BUILT)
-      target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -DCURL_STATICLIB=1)
-    else()
-      target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE                   )
-    endif()
+  if(MSVC AND TILEDB_CURL_EP_BUILT)
+    target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -DCURL_STATICLIB=1)
   endif()
 endif()
 
@@ -489,6 +487,9 @@ endif()
 # on TILEDB_CORE_OBJECTS. This workaround uses an interface library
 # so we can use the targets created by the calls to find_package().
 add_library(TILEDB_CORE_OBJECTS_ILIB INTERFACE)
+
+# object store definitions
+target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE object_store_definitions)
 
 # blosc link dependencies
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${TileDB_blosc_LINK_OPTIONS})
@@ -507,8 +508,13 @@ if (TILEDB_S3)
   message(STATUS "The TileDB library is compiled with S3 support.")
 
   if (TILEDB_VCPKG)
-    find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${AWSSDK_LINK_LIBRARIES})
+    find_package(AWSSDK_EP REQUIRED)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+      INTERFACE
+        ${AWSSDK_LINK_LIBRARIES}
+        ${AWSSDK_EXTRA_LIBS}
+        )
+
   else()
     find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
@@ -527,11 +533,22 @@ endif()
 if (TILEDB_AZURE)
   message(STATUS "The TileDB library is compiled with Azure support.")
   find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
+  if (NOT TARGET LibLZMA)
+	  find_package(LibLZMA REQUIRED)
+  endif()
+  if (NOT TARGET LibXml2::LibXml2)
+      find_package(libxml2 CONFIG REQUIRED)
+      install_target_libs(LibXml2::LibXml2)
+  endif()
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
       Azure::azure-storage-blobs
+      Azure::azure-storage-common
+      Azure::azure-core
+      LibXml2::LibXml2
+      LibLZMA::LibLZMA
   )
-  install_target_libs(Azure::azure-storage-blobs)
+  install_all_target_libs("Azure::azure-storage-blobs;Azure::azure-storage-common;Azure::azure-core")
 endif()
 
 # GCS dependencies
@@ -917,7 +934,7 @@ if (TILEDB_STATIC)
   append_dep_lib(CURL::libcurl)
 
   if(TILEDB_S3 AND TILEDB_VCPKG)
-    foreach(tgt ${AWSSDK_LINK_LIBRARIES})
+    foreach(tgt ${AWSSDK_LINK_LIBRARIES} ${AWSSDK_EXTRA_LIBS})
       append_dep_lib(${tgt})
     endforeach()
   elseif(TILEDB_S3)
@@ -932,9 +949,16 @@ if (TILEDB_STATIC)
 
   append_dep_lib(fmt::fmt)
   append_dep_lib(spdlog::spdlog)
+
   append_dep_lib(Azure::azure-storage-blobs)
+  append_dep_lib(Azure::azure-storage-common)
+  append_dep_lib(Azure::azure-core)
+  append_dep_lib(LibXml2::LibXml2)
+  append_dep_lib(LibLZMA::LibLZMA)
+
   append_dep_lib(google-cloud-cpp::storage)
   append_dep_lib(google-cloud-cpp::experimental-storage-grpc)
+
   append_dep_lib(libmagic)
   append_dep_lib(Crc32c::crc32c)
   append_dep_lib(WebP::webp)
@@ -1114,6 +1138,7 @@ if (TILEDB_STATIC)
   list(APPEND TILEDB_INSTALL_TARGETS
     tiledb_static
     TILEDB_CORE_OBJECTS_ILIB
+    object_store_definitions
   )
 endif()
 

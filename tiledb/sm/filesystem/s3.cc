@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,15 @@
  * @section DESCRIPTION
  *
  * This file implements the S3 class.
+ *
+ * ============================================================================
+ * Notes on implementation limitations:
+ *
+ * When using MinIO object storage, files may mask Array directories
+ * if they are of the same name. As such, the ArrayDirectory may filter out
+ * non-empty directories. Users should be aware of this limitation and attempt
+ * to manually maintain their working directory to avoid test failures.
+ * ============================================================================
  */
 
 #ifdef HAVE_S3
@@ -469,10 +478,7 @@ Status S3::disconnect() {
   }
 
   if (s3_tp_executor_) {
-    const Status st = s3_tp_executor_->Stop();
-    if (!st.ok()) {
-      ret_st = st;
-    }
+    s3_tp_executor_->Stop();
   }
 
   state_ = State::DISCONNECTED;
@@ -1537,11 +1543,14 @@ Status S3::init_client() const {
                 nullptr);
         break;
       }
-      default:
-        return Status_S3Error(
+      default: {
+        s3_tp_executor_->Stop();
+
+        throw S3StatusException{
             "Ambiguous authentication credentials; both permanent and "
             "temporary "
-            "authentication credentials are configured");
+            "authentication credentials are configured"};
+      }
     }
   }
 

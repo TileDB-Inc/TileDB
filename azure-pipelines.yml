@@ -30,7 +30,7 @@ stages:
       BACKWARDS_COMPATIBILITY_ARRAYS: OFF
     jobs:
     - job:
-      timeoutInMinutes: 90
+      timeoutInMinutes: 120
       strategy:
         matrix:
           macOS_azure:
@@ -102,6 +102,7 @@ stages:
        steps:
        - template: scripts/azure-linux_mac-release.yml
      - job: linux_manylinux
+       timeoutInMinutes: 90
        pool: { vmImage: 'ubuntu-20.04' }
        container: ${{ variables.MANYLINUX_IMAGE }}
        strategy:

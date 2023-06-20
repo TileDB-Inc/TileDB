@@ -155,7 +155,7 @@ class RangeSetAndSupersetImpl {
   virtual ~RangeSetAndSupersetImpl() = default;
 
   /**
-   * Adds a range to the range manager without performing any checkes. If a
+   * Adds a range to the range manager without performing any checks. If a
    * default strategy is set, then first update the range strategy.
    *
    * @param ranges The current ranges in the subarray (remove after
