@@ -244,8 +244,8 @@ class Query {
   Status cancel();
 
   /**
-   * Finalizes the query, flushing all internal state. Applicable only to global
-   * layout writes. It has no effect for any other query type.
+   * Finalizes the query, flushing all internal state.
+   * Applicable to write queries only.
    */
   Status finalize();
 

@@ -1752,14 +1752,14 @@ TEST_CASE(
   std::string stats;
   Stats::dump(&stats);
 
-  // Expect ls on:
+  // Expect read_ops on:
   // cpp_unit_array/
   // cpp_unit_array/__commits
   // cpp_unit_array/__schema
   // cpp_unit_array/__meta
   // cpp_unit_array/__fragment_meta
   CHECK(
-      stats.find("\"Context.StorageManager.VFS.ls_num\": 5") !=
+      stats.find("\"Context.StorageManager.VFS.read_ops_num\": 5") !=
       std::string::npos);
 
   // Expect file_size on the fragment.
@@ -1809,14 +1809,14 @@ TEST_CASE(
   std::string stats;
   Stats::dump(&stats);
 
-  // Expect ls on:
+  // Expect read_ops on:
   // cpp_unit_array/
   // cpp_unit_array/__commits
   // cpp_unit_array/__schema
   // cpp_unit_array/__meta
   // cpp_unit_array/__fragment_meta
   CHECK(
-      stats.find("\"Context.StorageManager.VFS.ls_num\": 5") !=
+      stats.find("\"Context.StorageManager.VFS.read_ops_num\": 5") !=
       std::string::npos);
 
   // Expect file_size on the fragment.
@@ -1874,6 +1874,92 @@ TEST_CASE("C++ API: Array write and read from MemFS", "[cppapi][memfs]") {
   REQUIRE_THROWS_WITH(
       vfs.remove_dir(array_name),
       Catch::Matchers::ContainsSubstring("File not found, remove failed"));
+}
+
+TEST_CASE(
+    "C++ API: Array on s3 with empty subfolders",
+    "[cppapi][s3][empty_subfolders]") {
+  const std::string array_bucket = "s3://" + random_name("tiledb") + "/";
+  const std::string array_name = array_bucket + "cpp_unit_array/";
+
+  tiledb::Config cfg;
+  cfg["vfs.s3.endpoint_override"] = "localhost:9999";
+  cfg["vfs.s3.scheme"] = "https";
+  cfg["vfs.s3.use_virtual_addressing"] = "false";
+  cfg["vfs.s3.verify_ssl"] = "false";
+
+  Context ctx(cfg);
+  if (!ctx.is_supported_fs(TILEDB_S3))
+    return;
+
+  // Create bucket on s3
+  VFS vfs(ctx);
+  if (vfs.is_bucket(array_bucket)) {
+    vfs.remove_bucket(array_bucket);
+  }
+  vfs.create_bucket(array_bucket);
+  REQUIRE(vfs.is_bucket(array_bucket));
+
+  // Create array with only a __schema folder
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 4))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 4}}, 4));
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  Attribute attr = Attribute::create<int>(ctx, "a");
+  schema.add_attribute(attr);
+  Array::create(array_name, schema);
+  REQUIRE(vfs.ls(array_name).size() == 1);
+
+  // Ensure the array can be opened and write to it
+  std::vector<int> a_w = {
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+  Array array(ctx, array_name, TILEDB_WRITE);
+  REQUIRE(array.is_open());
+  Query query_w(ctx, array, TILEDB_WRITE);
+  query_w.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", a_w);
+  REQUIRE(query_w.submit() == Query::Status::COMPLETE);
+  array.close();
+
+  // Read from the array
+  array.open(TILEDB_READ);
+  REQUIRE(array.is_open());
+  REQUIRE(array.metadata_num() == 0);
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, 1, 4).add_range(1, 1, 4);
+  std::vector<int> a_r(16);
+  Query query_r(ctx, array, TILEDB_READ);
+  query_r.set_subarray(subarray)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a", a_r);
+  REQUIRE(query_r.submit() == Query::Status::COMPLETE);
+  array.close();
+
+  // Validate write / read
+  for (int i = 0; i < 16; i++) {
+    CHECK(a_r[i] == a_w[i]);
+  }
+
+  // Add a file to the array with the same name as an existing folder
+  std::string commits_uri = array_name + "__commits";
+  vfs.touch(commits_uri);
+  CHECK(vfs.file_size(commits_uri) == 0);
+
+  // Try to read from the array with empty files
+  // Note: MinIO will delete the actual commits if commits_uri is deleted,
+  // per the s3 implementation limitation, making the array invalid
+  try {
+    array.open(TILEDB_READ);
+  } catch (std::exception& e) {
+    REQUIRE_THAT(
+        e.what(), Catch::Matchers::ContainsSubstring("Cannot list given uri"));
+  }
+
+  // Clean up
+  if (vfs.is_bucket(array_bucket)) {
+    vfs.remove_bucket(array_bucket);
+  }
+  REQUIRE(!vfs.is_bucket(array_bucket));
 }
 
 TEST_CASE(

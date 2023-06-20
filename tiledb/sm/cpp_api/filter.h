@@ -106,8 +106,6 @@ class Filter {
     return filter_;
   }
 
-  // @cond
-  // doxygen ignore pending https://github.com/sphinx-doc/sphinx/issues/7944
   /**
    * Sets an option on the filter. Options are filter dependent; this function
    * throws an error if the given option is not valid for the given filter.
@@ -137,7 +135,6 @@ class Filter {
         ctx.ptr().get(), filter_.get(), option, &value));
     return *this;
   }
-  // @endcond
 
   /**
    * Sets an option on the filter. Options are filter dependent; this function
@@ -168,8 +165,6 @@ class Filter {
     return *this;
   }
 
-  // @cond
-  // doxygen ignore pending https://github.com/sphinx-doc/sphinx/issues/7944
   /**
    * Gets an option value from the filter.
    *
@@ -201,7 +196,6 @@ class Filter {
     ctx.handle_error(tiledb_filter_get_option(
         ctx.ptr().get(), filter_.get(), option, value));
   }
-  // @endcond
 
   /**
    * Gets an option value from the filter.
@@ -285,6 +279,8 @@ class Filter {
         return "DEPRECATED";
       case TILEDB_FILTER_WEBP:
         return "WEBP";
+      case TILEDB_FILTER_DELTA:
+        return "DELTA";
     }
     return "";
   }
@@ -313,36 +309,54 @@ class Filter {
    */
   template <typename T>
   void option_value_typecheck(tiledb_filter_option_t option) {
+    std::string type_name = tiledb::impl::type_to_tiledb<T>().name;
     switch (option) {
       case TILEDB_COMPRESSION_LEVEL:
         if (!std::is_same<int32_t, T>::value)
-          throw std::invalid_argument("Option value must be int32_t.");
+          throw std::invalid_argument(
+              "Cannot set option with type '" + type_name +
+              "'; Option value must be int32_t.");
         break;
       case TILEDB_BIT_WIDTH_MAX_WINDOW:
       case TILEDB_POSITIVE_DELTA_MAX_WINDOW:
         if (!std::is_same<uint32_t, T>::value)
-          throw std::invalid_argument("Option value must be uint32_t.");
+          throw std::invalid_argument(
+              "Cannot set option with type '" + type_name +
+              "Option value must be uint32_t.");
         break;
       case TILEDB_SCALE_FLOAT_BYTEWIDTH:
         if (!std::is_same<uint64_t, T>::value)
-          throw std::invalid_argument("Option value must be uint64_t.");
+          throw std::invalid_argument(
+              "Cannot set option with type '" + type_name +
+              "Option value must be uint64_t.");
         break;
       case TILEDB_SCALE_FLOAT_FACTOR:
       case TILEDB_SCALE_FLOAT_OFFSET:
         if (!std::is_same<double, T>::value)
-          throw std::invalid_argument("Option value must be double.");
+          throw std::invalid_argument(
+              "Cannot set option with type '" + type_name +
+              "Option value must be double.");
         break;
       case TILEDB_WEBP_QUALITY:
         if (!std::is_same<float, T>::value)
-          throw std::invalid_argument("Option value must be float.");
+          throw std::invalid_argument(
+              "Cannot set option with type '" + type_name +
+              "Option value must be float.");
         break;
       case TILEDB_WEBP_INPUT_FORMAT:
       case TILEDB_WEBP_LOSSLESS:
+      case TILEDB_COMPRESSION_REINTERPRET_DATATYPE:
         if (!std::is_same<uint8_t, T>::value)
-          throw std::invalid_argument("Option value must be uint8_t.");
+          throw std::invalid_argument(
+              "Cannot set option with type '" + type_name +
+              "Option value must be uint8_t.");
         break;
-      default:
-        throw std::invalid_argument("Invalid option type");
+      default: {
+        const char* option_str;
+        tiledb_filter_option_to_str(option, &option_str);
+        throw std::invalid_argument(
+            "Invalid option '" + std::string(option_str) + "'");
+      }
     }
   }
 };
