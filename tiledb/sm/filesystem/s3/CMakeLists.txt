@@ -31,7 +31,7 @@ include(object_library)
 # `s3_providers` object library
 #
 commence(object_library s3_providers)
-    if (TILEDB_S3)
+if (TILEDB_S3)
         this_target_compile_definitions(INTERFACE -DHAVE_S3)
         target_include_directories(s3_providers
                 PRIVATE

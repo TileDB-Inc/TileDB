@@ -42,12 +42,12 @@ commence(object_library vfs)
         ../curl/curl_init.cc
     )
     if (TILEDB_S3)
-        target_compile_definitions(vfs INTERFACE -DHAVE_S3)
+	    #target_compile_definitions(vfs INTERFACE -DHAVE_S3)
         target_include_directories(vfs
                 PRIVATE
                 "${CMAKE_CURRENT_SOURCE_DIR}/../../../external/include"
         )
-        add_subdirectory(s3)
+	#add_subdirectory(s3)
         list(APPEND VFS_SOURCES
             s3.cc
             s3_thread_pool_executor.cc
@@ -65,7 +65,8 @@ commence(object_library vfs)
         stringx
         thread_pool
     )
-    if(TILEDB_S3)
+    #if(TILEDB_S3)
+    if(FALSE)
         this_target_object_libraries(
                 s3_providers
         )
