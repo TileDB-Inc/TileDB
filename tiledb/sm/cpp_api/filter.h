@@ -188,7 +188,7 @@ class Filter {
   T get_option(tiledb_filter_option_t option) {
     auto& ctx = ctx_.get();
     option_value_typecheck<T>(option);
-    T value;
+    T value{};
     ctx.handle_error(tiledb_filter_get_option(
         ctx.ptr().get(), filter_.get(), option, &value));
     return value;
@@ -210,13 +210,12 @@ class Filter {
    * @param option Enumerated option to get.
    * @param value Buffer that option value will be written to.
    *
-   * @note The buffer pointed to by `value` must be large enough to hold the
-   *    option value.
-   *
    * @throws TileDBError if the option cannot be retrieved from the filter.
    * @throws std::invalid_argument if the option value is the wrong type.
    */
-  template <typename T>
+  template <
+      typename T,
+      typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
   void get_option(tiledb_filter_option_t option, T* value) {
     auto& ctx = ctx_.get();
     option_value_typecheck<T>(option);
@@ -246,7 +245,7 @@ class Filter {
    *
    * @throws TileDBError if the option cannot be retrieved from the filter.
    *
-   * @note get_option<T>(option, T* value) is preferred as it is safer.
+   * @note T value = get_option<T>(option) is preferred as it is safer.
    */
   void get_option(tiledb_filter_option_t option, void* value) {
     auto& ctx = ctx_.get();
