@@ -365,12 +365,14 @@ TEMPLATE_LIST_TEST_CASE(
     REQUIRE_NOTHROW(
         filter.get_option<float>(TILEDB_WEBP_QUALITY, &quality_found));
     REQUIRE(100.0f == quality_found);
+    REQUIRE(quality_found == filter.get_option<float>(TILEDB_WEBP_QUALITY));
 
     float quality_expected = 1.0f;
     REQUIRE_NOTHROW(filter.set_option(TILEDB_WEBP_QUALITY, quality_expected));
     REQUIRE_NOTHROW(
         filter.get_option<float>(TILEDB_WEBP_QUALITY, &quality_found));
     REQUIRE(quality_expected == quality_found);
+    REQUIRE(quality_found == filter.get_option<float>(TILEDB_WEBP_QUALITY));
 
     // Set invalid options for TILEDB_WEBP_QUALITY.
     REQUIRE_THROWS(filter.set_option(TILEDB_WEBP_QUALITY, -1.0f));
@@ -381,11 +383,14 @@ TEMPLATE_LIST_TEST_CASE(
     REQUIRE_NOTHROW(
         filter.get_option<float>(TILEDB_WEBP_QUALITY, &quality_found));
     REQUIRE(100.0f == quality_found);
+    REQUIRE(quality_found == filter.get_option<float>(TILEDB_WEBP_QUALITY));
 
     // Check WEBP_INPUT_FORMAT option.
     uint8_t format_found;
     REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_INPUT_FORMAT, &format_found));
     REQUIRE(TILEDB_WEBP_NONE == format_found);
+    REQUIRE(
+        format_found == filter.get_option<uint8_t>(TILEDB_WEBP_INPUT_FORMAT));
 
     // Set invalid option for WEBP_INPUT_FORMAT.
     REQUIRE_THROWS(filter.set_option(TILEDB_WEBP_INPUT_FORMAT, (uint8_t)255));
@@ -394,18 +399,21 @@ TEMPLATE_LIST_TEST_CASE(
         filter.set_option(TILEDB_WEBP_INPUT_FORMAT, &format_expected));
     REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_INPUT_FORMAT, &format_found));
     REQUIRE(format_expected == format_found);
+    REQUIRE(
+        format_found == filter.get_option<uint8_t>(TILEDB_WEBP_INPUT_FORMAT));
 
     // Check WEBP_LOSSLESS option.
     uint8_t lossless_found;
     REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_LOSSLESS, &lossless_found));
     REQUIRE(0 == lossless_found);
+    REQUIRE(lossless_found == filter.get_option<uint8_t>(TILEDB_WEBP_LOSSLESS));
 
     REQUIRE_THROWS(filter.set_option(TILEDB_WEBP_LOSSLESS, (uint8_t)2));
 
-    REQUIRE_NOTHROW(
-        filter.set_option(TILEDB_WEBP_LOSSLESS, &lossless_expected));
+    REQUIRE_NOTHROW(filter.set_option(TILEDB_WEBP_LOSSLESS, lossless_expected));
     REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_LOSSLESS, &lossless_found));
     REQUIRE(lossless_expected == lossless_found);
+    REQUIRE(lossless_found == filter.get_option<uint8_t>(TILEDB_WEBP_LOSSLESS));
 
     // Test against images of different sizes.
     Domain domain = create_domain<TestType>(ctx, format_expected);
