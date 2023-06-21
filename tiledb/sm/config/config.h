@@ -548,6 +548,16 @@ class Config {
   static const std::string VFS_S3_OBJECT_CANNED_ACL;
 
   /**
+   * Force S3 SDK to only load config options from a set source.
+   * The supported options are
+   * - `auto` (TileDB config options are considered first,
+   *    then SDK-defined precedence: env vars, config files, ec2 metadata),
+   * - `config_files` (forces SDK to only consider options found in aws
+   *    config files).
+   */
+  static const std::string VFS_S3_CONFIG_SOURCE;
+
+  /**
    * Specifies the size in bytes of the internal buffers used in the filestore
    * API. The size should be bigger than the minimum tile size filestore
    * currently supports, that is currently 1024bytes. */

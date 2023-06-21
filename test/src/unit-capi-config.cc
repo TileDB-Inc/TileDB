@@ -313,6 +313,7 @@ void check_save_to_file() {
   ss << "vfs.read_ahead_cache_size 10485760\n";
   ss << "vfs.read_ahead_size 102400\n";
   ss << "vfs.s3.bucket_canned_acl NOT_SET\n";
+  ss << "vfs.s3.config_source auto\n";
   ss << "vfs.s3.connect_max_tries 5\n";
   ss << "vfs.s3.connect_scale_factor 25\n";
   ss << "vfs.s3.connect_timeout_ms 10800\n";
@@ -722,6 +723,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.hdfs.name_node_uri"] = "";
   all_param_values["vfs.s3.bucket_canned_acl"] = "NOT_SET";
   all_param_values["vfs.s3.object_canned_acl"] = "NOT_SET";
+  all_param_values["vfs.s3.config_source"] = "auto";
 
   std::map<std::string, std::string> vfs_param_values;
   vfs_param_values["max_batch_size"] = "104857600";
@@ -785,6 +787,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["s3.no_sign_request"] = "false";
   vfs_param_values["s3.bucket_canned_acl"] = "NOT_SET";
   vfs_param_values["s3.object_canned_acl"] = "NOT_SET";
+  vfs_param_values["s3.config_source"] = "auto";
   vfs_param_values["hdfs.username"] = "stavros";
   vfs_param_values["hdfs.kerb_ticket_cache_path"] = "";
   vfs_param_values["hdfs.name_node_uri"] = "";
@@ -846,6 +849,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   s3_param_values["no_sign_request"] = "false";
   s3_param_values["bucket_canned_acl"] = "NOT_SET";
   s3_param_values["object_canned_acl"] = "NOT_SET";
+  s3_param_values["config_source"] = "auto";
 
   // Create an iterator and iterate over all parameters
   tiledb_config_iter_t* config_iter = nullptr;
