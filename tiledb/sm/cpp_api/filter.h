@@ -34,6 +34,7 @@
 #define TILEDB_CPP_API_FILTER_H
 
 #include "tiledb.h"
+#include "tiledb/sm/enums/filter_option.h"
 
 #include <iostream>
 #include <string>
@@ -348,41 +349,49 @@ class Filter {
         if (!std::is_same<uint32_t, T>::value)
           throw std::invalid_argument(
               "Cannot set option with type '" + type_name +
-              "Option value must be uint32_t.");
+              "'; Option value must be uint32_t.");
         break;
       case TILEDB_SCALE_FLOAT_BYTEWIDTH:
         if (!std::is_same<uint64_t, T>::value)
           throw std::invalid_argument(
               "Cannot set option with type '" + type_name +
-              "Option value must be uint64_t.");
+              "'; Option value must be uint64_t.");
         break;
       case TILEDB_SCALE_FLOAT_FACTOR:
       case TILEDB_SCALE_FLOAT_OFFSET:
         if (!std::is_same<double, T>::value)
           throw std::invalid_argument(
               "Cannot set option with type '" + type_name +
-              "Option value must be double.");
+              "'; Option value must be double.");
         break;
       case TILEDB_WEBP_QUALITY:
         if (!std::is_same<float, T>::value)
           throw std::invalid_argument(
               "Cannot set option with type '" + type_name +
-              "Option value must be float.");
+              "'; Option value must be float.");
         break;
       case TILEDB_WEBP_INPUT_FORMAT:
+        if (!std::is_same_v<uint8_t, T> &&
+            !std::is_same_v<tiledb_filter_webp_format_t, T> &&
+            !std::is_same_v<tiledb::sm::WebpInputFormat, T>)
+          throw std::invalid_argument(
+              "Cannot set option with type '" + type_name +
+              "'; Option value must be tiledb_filter_webp_format_t or "
+              "uint8_t.");
+        break;
       case TILEDB_WEBP_LOSSLESS:
         if (!std::is_same<uint8_t, T>::value)
           throw std::invalid_argument(
               "Cannot set option with type '" + type_name +
-              "Option value must be uint8_t.");
+              "'; Option value must be uint8_t.");
         break;
-
       case TILEDB_COMPRESSION_REINTERPRET_DATATYPE:
         if (!std::is_same<uint8_t, T>::value &&
-            !std::is_same<tiledb_datatype_t, T>::value)
+            !std::is_same<tiledb_datatype_t, T>::value &&
+            !std::is_same_v<tiledb::sm::Datatype, T>)
           throw std::invalid_argument(
               "Cannot set option with type '" + type_name +
-              "Option value must be tiledb_datatype_t or uint8_t.");
+              "'; Option value must be tiledb_datatype_t or uint8_t.");
         break;
       default: {
         const char* option_str;

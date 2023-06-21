@@ -35,6 +35,7 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/compressors/bzip_compressor.h"
 #include "tiledb/sm/compressors/dd_compressor.h"
 #include "tiledb/sm/compressors/delta_compressor.h"
@@ -202,7 +203,7 @@ Status CompressionFilter::get_option_impl(
       *(int*)value = level_;
       break;
     case FilterOption::COMPRESSION_REINTERPRET_DATATYPE:
-      *(Datatype*)value = reinterpret_datatype_;
+      *(tiledb_datatype_t*)value = (tiledb_datatype_t)reinterpret_datatype_;
       break;
     default:
       return LOG_STATUS(

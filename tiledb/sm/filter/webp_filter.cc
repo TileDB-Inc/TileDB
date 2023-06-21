@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/filter/webp_filter.h"
 #include "tiledb/common/scoped_executor.h"
+#include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/tile/tile.h"
 
 namespace tiledb::sm {
@@ -333,7 +334,8 @@ Status WebpFilter::get_option_impl(FilterOption option, void* value) const {
       *(float*)value = quality_;
       break;
     case FilterOption::WEBP_INPUT_FORMAT:
-      *(WebpInputFormat*)value = format_;
+      *(tiledb_filter_webp_format_t*)value =
+          (tiledb_filter_webp_format_t)format_;
       break;
     case FilterOption::WEBP_LOSSLESS:
       *(uint8_t*)value = lossless_;

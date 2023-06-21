@@ -391,6 +391,14 @@ TEMPLATE_LIST_TEST_CASE(
     REQUIRE(TILEDB_WEBP_NONE == format_found);
     REQUIRE(
         format_found == filter.get_option<uint8_t>(TILEDB_WEBP_INPUT_FORMAT));
+    REQUIRE(
+        (tiledb_filter_webp_format_t)format_found ==
+        filter.get_option<tiledb_filter_webp_format_t>(
+            TILEDB_WEBP_INPUT_FORMAT));
+    REQUIRE(
+        (tiledb::sm::WebpInputFormat)format_found ==
+        filter.get_option<tiledb::sm::WebpInputFormat>(
+            TILEDB_WEBP_INPUT_FORMAT));
 
     // Set invalid option for WEBP_INPUT_FORMAT.
     REQUIRE_THROWS(filter.set_option(TILEDB_WEBP_INPUT_FORMAT, (uint8_t)255));
@@ -531,6 +539,16 @@ TEST_CASE("C API: WEBP Filter", "[capi][filter][webp]") {
         ctx, filter, TILEDB_WEBP_INPUT_FORMAT, &found_fmt);
     REQUIRE(status == TILEDB_OK);
     REQUIRE(TILEDB_WEBP_NONE == found_fmt);
+
+    tiledb_filter_webp_format_t set_fmt;
+    REQUIRE(
+        tiledb_filter_set_option(
+            ctx, filter, TILEDB_WEBP_INPUT_FORMAT, &set_fmt) == TILEDB_OK);
+    tiledb_filter_webp_format_t get_fmt;
+    REQUIRE(
+        tiledb_filter_get_option(
+            ctx, filter, TILEDB_WEBP_INPUT_FORMAT, &get_fmt) == TILEDB_OK);
+    REQUIRE(set_fmt == get_fmt);
 
     status = tiledb_filter_set_option(
         ctx, filter, TILEDB_WEBP_INPUT_FORMAT, &expected_fmt);
