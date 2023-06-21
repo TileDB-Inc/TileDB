@@ -29,6 +29,8 @@
  *
  * This file implements the S3 Credentials Provider to support STS and Web
  * Identity.
+ * 
+ * Based on https://github.com/aws/aws-sdk-cpp/blob/main/src/aws-cpp-sdk-identity-management/source/auth/STSProfileCredentialsProvider.cpp 
  */
 
 #ifdef HAVE_S3
