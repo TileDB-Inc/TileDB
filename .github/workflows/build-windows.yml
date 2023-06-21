@@ -21,11 +21,10 @@ jobs:
       matrix:
         os: [windows-2019, windows-2022]
         #considering https://stackoverflow.com/questions/65035256/how-to-access-matrix-variables-in-github-actions
-        environ: [azure, s3, serialization]
+        environ: [azure, s3, gcs, serialization]
         include:
           - environ: 'azure'
             TILEDB_AZURE: ON
-            TILEDB_USE_CUSTOM_NODEJS: OFF
             TILEDB_ARROW_TESTS: ON
             TILEDB_SERIALIZATION: OFF
             TILEDB_S3: OFF
@@ -35,6 +34,13 @@ jobs:
             TILEDB_ARROW_TESTS: ON
             TILEDB_SERIALIZATION: OFF
             TILEDB_AZURE: OFF
+            TILEDB_WEBP: OFF
+          - environ: 'gcs'
+            TILEDB_GCS: ON
+            TILEDB_ARROW_TESTS: ON
+            TILEDB_SERIALIZATION: OFF
+            TILEDB_AZURE: OFF
+            TILEDB_S3: OFF
             TILEDB_WEBP: OFF
           - environ: 'serialization'
             TILEDB_S3: OFF
@@ -50,6 +56,7 @@ jobs:
       TILEDB_GA_IMAGE_NAME: ${{ matrix.os }}
       TILEDB_S3: ${{ matrix.TILEDB_S3 }}
       TILEDB_AZURE: ${{ matrix.TILEDB_AZURE }} #azure }}
+      TILEDB_GCS: ${{ matrix.TILEDB_GCS }} #gcs }}
       TILEDB_SERIALIZATION: ${{ matrix.TILEDB_SERIALIZATION }} #serialization }}
       TILEDB_ARROW_TESTS: ${{ matrix.TILEDB_ARROW_TESTS }}
       TILEDB_WEBP: ${{ matrix.TILEDB_WEBP }}
@@ -166,8 +173,7 @@ jobs:
             $bootstrapOptions = $bootstrapOptions + " -_EnableCrc32"
           }
           if ($env:TILEDB_GCS -eq "ON") {
-            $bootstrapOptions = "-EnableGCS " + $bootstrapOptions
-            #NOTE: GCS simulator not yet actually in place.
+            $bootstrapOptions = "-EnableGcs " + $bootstrapOptions
           }
           if ($env:TILEDB_SERIALIZATION -eq "ON") {
             $bootstrapOptions = "-EnableSerialization " + $bootstrapOptions
@@ -285,6 +291,10 @@ jobs:
             }
             Write-Host "look for 'node.exe' in following list:"
             tasklist | findstr /i node.exe
+          }
+
+          if ($env:TILEDB_GCS -eq "ON") {
+            & "$env:BUILD_SOURCESDIRECTORY\scripts\install-run-gcs-emu.ps1"
           }
 
           # Actually run tests
