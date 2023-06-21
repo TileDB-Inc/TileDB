@@ -395,10 +395,6 @@ TEMPLATE_LIST_TEST_CASE(
         (tiledb_filter_webp_format_t)format_found ==
         filter.get_option<tiledb_filter_webp_format_t>(
             TILEDB_WEBP_INPUT_FORMAT));
-    REQUIRE(
-        (tiledb::sm::WebpInputFormat)format_found ==
-        filter.get_option<tiledb::sm::WebpInputFormat>(
-            TILEDB_WEBP_INPUT_FORMAT));
 
     // Set invalid option for WEBP_INPUT_FORMAT.
     REQUIRE_THROWS(filter.set_option(TILEDB_WEBP_INPUT_FORMAT, (uint8_t)255));

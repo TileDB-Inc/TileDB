@@ -168,10 +168,6 @@ TEST_CASE(
       output_reinterpret_type ==
       loaded_delta_filter.get_option<tiledb_datatype_t>(
           TILEDB_COMPRESSION_REINTERPRET_DATATYPE));
-  CHECK(
-      (tiledb::sm::Datatype)output_reinterpret_type ==
-      loaded_delta_filter.get_option<tiledb::sm::Datatype>(
-          TILEDB_COMPRESSION_REINTERPRET_DATATYPE));
 
   Query query(ctx, array);
   query.set_data_buffer("a1", a1_data)

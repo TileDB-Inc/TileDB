@@ -34,7 +34,6 @@
 #define TILEDB_CPP_API_FILTER_H
 
 #include "tiledb.h"
-#include "tiledb/sm/enums/filter_option.h"
 
 #include <iostream>
 #include <string>
@@ -371,8 +370,7 @@ class Filter {
         break;
       case TILEDB_WEBP_INPUT_FORMAT:
         if (!std::is_same_v<uint8_t, T> &&
-            !std::is_same_v<tiledb_filter_webp_format_t, T> &&
-            !std::is_same_v<tiledb::sm::WebpInputFormat, T>)
+            !std::is_same_v<tiledb_filter_webp_format_t, T>)
           throw std::invalid_argument(
               "Cannot set option with type '" + type_name +
               "'; Option value must be tiledb_filter_webp_format_t or "
@@ -386,8 +384,7 @@ class Filter {
         break;
       case TILEDB_COMPRESSION_REINTERPRET_DATATYPE:
         if (!std::is_same<uint8_t, T>::value &&
-            !std::is_same<tiledb_datatype_t, T>::value &&
-            !std::is_same_v<tiledb::sm::Datatype, T>)
+            !std::is_same<tiledb_datatype_t, T>::value)
           throw std::invalid_argument(
               "Cannot set option with type '" + type_name +
               "'; Option value must be tiledb_datatype_t or uint8_t.");
