@@ -14,6 +14,10 @@ jobs:
       - name: Workflow dispatch to TileDB-REST-CI
         id: trigger-step
         uses: aurelien-baudet/workflow-dispatch@v2
+        env:
+          TILEDB_REST_CI_PAT: ${{ secrets.TILEDB_REST_CI_PAT }}
+        # Skip if no PAT is set (e.g. for PRs from forks).
+        if: env.TILEDB_REST_CI_PAT != null
         with:
           repo: TileDB-Inc/TileDB-REST-CI
           # Trigger workflow on TileDB-REST-CI at this ref.
