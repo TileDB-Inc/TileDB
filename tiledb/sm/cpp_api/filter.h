@@ -127,7 +127,7 @@ class Filter {
    */
   template <
       typename T,
-      typename std::enable_if<!std::is_pointer_v<T>, int>::type = 0>
+      typename std::enable_if_t<!std::is_pointer_v<T>, int> = 0>
   Filter& set_option(tiledb_filter_option_t option, T value) {
     auto& ctx = ctx_.get();
     option_value_typecheck<T>(option);
