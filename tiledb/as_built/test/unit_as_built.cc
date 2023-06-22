@@ -70,8 +70,11 @@ TEST_CASE("as_built: Print dump", "[as_built][dump][.print_json]") {
 }
 
 TEST_CASE("as_built: Ensure dump has json output", "[as_built][dump][json]") {
-  CHECK_NOTHROW((void)json::parse(dump_str_));
+  json x;
+  CHECK_NOTHROW(x = json::parse(dump_str_));
+  CHECK(!x.is_null());
   CHECK(dump_ != std::nullopt);
+  CHECK(x == dump_);
 }
 
 TEST_CASE("as_built: Validate top-level key", "[as_built][top-level]") {
