@@ -214,7 +214,7 @@ class Filter {
    */
   template <
       typename T,
-      typename std::enable_if<std::is_arithmetic<T>::value>::type* = nullptr>
+      typename std::enable_if<std::is_arithmetic_v<T>>::type* = nullptr>
   void get_option(tiledb_filter_option_t option, T* value) {
     auto& ctx = ctx_.get();
     option_value_typecheck<T>(option);
