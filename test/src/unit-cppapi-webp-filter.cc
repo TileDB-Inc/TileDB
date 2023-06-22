@@ -361,7 +361,8 @@ TEMPLATE_LIST_TEST_CASE(
         filter.to_str(filter.filter_type()) == sm::constants::filter_webp_str);
 
     // Check WEBP_QUALITY option.
-    float quality_found;
+    float quality_found = 0;
+
     REQUIRE_NOTHROW(
         filter.get_option<float>(TILEDB_WEBP_QUALITY, &quality_found));
     REQUIRE(100.0f == quality_found);
@@ -386,7 +387,7 @@ TEMPLATE_LIST_TEST_CASE(
     REQUIRE(quality_found == filter.get_option<float>(TILEDB_WEBP_QUALITY));
 
     // Check WEBP_INPUT_FORMAT option.
-    uint8_t format_found;
+    uint8_t format_found = 0;
     REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_INPUT_FORMAT, &format_found));
     REQUIRE(TILEDB_WEBP_NONE == format_found);
     REQUIRE(
@@ -407,14 +408,15 @@ TEMPLATE_LIST_TEST_CASE(
         format_found == filter.get_option<uint8_t>(TILEDB_WEBP_INPUT_FORMAT));
 
     // Check WEBP_LOSSLESS option.
-    uint8_t lossless_found;
+    uint8_t lossless_found = 0;
     REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_LOSSLESS, &lossless_found));
     REQUIRE(0 == lossless_found);
     REQUIRE(lossless_found == filter.get_option<uint8_t>(TILEDB_WEBP_LOSSLESS));
 
     REQUIRE_THROWS(filter.set_option(TILEDB_WEBP_LOSSLESS, (uint8_t)2));
 
-    REQUIRE_NOTHROW(filter.set_option(TILEDB_WEBP_LOSSLESS, lossless_expected));
+    REQUIRE_NOTHROW(
+        filter.set_option<uint8_t>(TILEDB_WEBP_LOSSLESS, lossless_expected));
     REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_LOSSLESS, &lossless_found));
     REQUIRE(lossless_expected == lossless_found);
     REQUIRE(lossless_found == filter.get_option<uint8_t>(TILEDB_WEBP_LOSSLESS));
