@@ -127,7 +127,7 @@ class Filter {
    */
   template <
       typename T,
-      typename std::enable_if<!std::is_pointer<T>::value, int>::type = 0>
+      typename std::enable_if<!std::is_pointer_v<T>, int>::type = 0>
   Filter& set_option(tiledb_filter_option_t option, T value) {
     auto& ctx = ctx_.get();
     option_value_typecheck<T>(option);
@@ -337,33 +337,33 @@ class Filter {
     std::string type_name = tiledb::impl::type_to_tiledb<T>().name;
     switch (option) {
       case TILEDB_COMPRESSION_LEVEL:
-        if constexpr (!std::is_same<int32_t, T>::value)
+        if constexpr (!std::is_same_v<int32_t, T>)
           throw std::invalid_argument(
               "Cannot set option with type '" + type_name +
               "'; Option value must be int32_t.");
         break;
       case TILEDB_BIT_WIDTH_MAX_WINDOW:
       case TILEDB_POSITIVE_DELTA_MAX_WINDOW:
-        if constexpr (!std::is_same<uint32_t, T>::value)
+        if constexpr (!std::is_same_v<uint32_t, T>)
           throw std::invalid_argument(
               "Cannot set option with type '" + type_name +
               "'; Option value must be uint32_t.");
         break;
       case TILEDB_SCALE_FLOAT_BYTEWIDTH:
-        if constexpr (!std::is_same<uint64_t, T>::value)
+        if constexpr (!std::is_same_v<uint64_t, T>)
           throw std::invalid_argument(
               "Cannot set option with type '" + type_name +
               "'; Option value must be uint64_t.");
         break;
       case TILEDB_SCALE_FLOAT_FACTOR:
       case TILEDB_SCALE_FLOAT_OFFSET:
-        if constexpr (!std::is_same<double, T>::value)
+        if constexpr (!std::is_same_v<double, T>)
           throw std::invalid_argument(
               "Cannot set option with type '" + type_name +
               "'; Option value must be double.");
         break;
       case TILEDB_WEBP_QUALITY:
-        if constexpr (!std::is_same<float, T>::value)
+        if constexpr (!std::is_same_v<float, T>)
           throw std::invalid_argument(
               "Cannot set option with type '" + type_name +
               "'; Option value must be float.");
@@ -378,15 +378,15 @@ class Filter {
               "uint8_t.");
         break;
       case TILEDB_WEBP_LOSSLESS:
-        if constexpr (!std::is_same<uint8_t, T>::value)
+        if constexpr (!std::is_same_v<uint8_t, T>)
           throw std::invalid_argument(
               "Cannot set option with type '" + type_name +
               "'; Option value must be uint8_t.");
         break;
       case TILEDB_COMPRESSION_REINTERPRET_DATATYPE:
         if constexpr (
-            !std::is_same<uint8_t, T>::value &&
-            !std::is_same<tiledb_datatype_t, T>::value)
+            !std::is_same_v<uint8_t, T> &&
+            !std::is_same_v<tiledb_datatype_t, T>)
           throw std::invalid_argument(
               "Cannot set option with type '" + type_name +
               "'; Option value must be tiledb_datatype_t or uint8_t.");
