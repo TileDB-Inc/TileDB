@@ -540,7 +540,7 @@ TEST_CASE("C API: WEBP Filter", "[capi][filter][webp]") {
     REQUIRE(
         tiledb_filter_set_option(
             ctx, filter, TILEDB_WEBP_INPUT_FORMAT, &set_fmt) == TILEDB_OK);
-    tiledb_filter_webp_format_t get_fmt;
+    tiledb_filter_webp_format_t get_fmt{};
     REQUIRE(
         tiledb_filter_get_option(
             ctx, filter, TILEDB_WEBP_INPUT_FORMAT, &get_fmt) == TILEDB_OK);
