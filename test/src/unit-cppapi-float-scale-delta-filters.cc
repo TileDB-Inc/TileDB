@@ -64,6 +64,9 @@ struct FloatScaleDeltaFilterTestStruct {
     f1.set_option(TILEDB_SCALE_FLOAT_FACTOR, &scale);
     f1.set_option(TILEDB_SCALE_FLOAT_OFFSET, &offset);
 
+    tiledb_datatype_t t = TILEDB_INT32;
+    f2.set_option(TILEDB_COMPRESSION_REINTERPRET_DATATYPE, (void*)&t);
+
     FilterList filters(ctx);
     filters.add_filter(f1);
     filters.add_filter(f2);
