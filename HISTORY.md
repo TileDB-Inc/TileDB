@@ -1,3 +1,53 @@
+# TileDB v2.15.4 Release Notes
+
+## Defects removed
+
+* Fix dense reader error when query conditions reference var sized fields. [#4108](https://github.com/TileDB-Inc/TileDB/pull/4108)
+* Sparse readers: fixing null count on incomplete queries. [#4037](https://github.com/TileDB-Inc/TileDB/pull/4037)
+* Sparse unordered w/ dups: Fix incomplete queries w/ overlapping ranges. [#4027](https://github.com/TileDB-Inc/TileDB/pull/4027)
+
+# TileDB v2.15.3 Release Notes
+
+## Improvements
+
+* Enable support for estimating result size on nullable, remote arrays [#4079](https://github.com/TileDB-Inc/TileDB/pull/4079)
+
+## Defects removed
+
+* Adds serialization for webp filter options [#4085](https://github.com/TileDB-Inc/TileDB/pull/4085)
+* Serialize coalesce ranges for Subarray [#4043](https://github.com/TileDB-Inc/TileDB/pull/4043)
+
+# TileDB v2.15.2 Release Notes
+
+## Defects removed
+
+* Allow empty AWS credentials for anonymous access. [#4064](https://github.com/TileDB-Inc/TileDB/pull/4064)
+* Fix Query Conditions for Boolean Attributes. [#4046](https://github.com/TileDB-Inc/TileDB/pull/4046)
+
+## Build
+
+* Set Curl CA path on Darwin [#4059](https://github.com/TileDB-Inc/TileDB/pull/4059)
+* Fix invalid CMake syntax due to empty variable [#4026](https://github.com/TileDB-Inc/TileDB/pull/4026)
+
+# TileDB v2.15.1 Release Notes
+
+## New features
+
+* Introduce "vfs.s3.no_sign_request" to allow unsigned s3 API calls, useful for anonymous s3 bucket access. [#3953](https://github.com/TileDB-Inc/TileDB/pull/3953)
+
+## Defects removed
+* Fix support for empty strings for Dictionary and RLE encodings [#3938](https://github.com/TileDB-Inc/TileDB/pull/3938)
+* Sparse global order reader: fix read progress update for duplicates. [#3937](https://github.com/TileDB-Inc/TileDB/pull/3937)
+* Sparse unordered w/ dups: fix error on double var size overflow. [#3963](https://github.com/TileDB-Inc/TileDB/pull/3963)
+* Dense reader: fix copies for schema evolution. [#3970](https://github.com/TileDB-Inc/TileDB/pull/3970)
+* Sparse unordered w/ dups: overflow fix shouldn't include empty tile. [#3985](https://github.com/TileDB-Inc/TileDB/pull/3985)
+
+## API changes
+
+### C++ API
+
+* Add a `Group` constructor that accepts a Config in the C++ API. [#4011](https://github.com/TileDB-Inc/TileDB/pull/4011)
+
 # TileDB v2.15.0 Release Notes
 
 ## Disk Format
