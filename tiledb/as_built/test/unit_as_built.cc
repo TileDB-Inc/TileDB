@@ -53,7 +53,7 @@ std::optional<json> dump_json(std::string dump_str) noexcept {
     return std::nullopt;
   }
 }
-static const std::optional<json> dump_{dump_json(dump_str_)};
+static const std::optional<json> dump_{dump_json(dump_str())};
 
 TEST_CASE("as_built: Ensure dump() does not throw", "[as_built][dump]") {
   std::string x;
