@@ -107,6 +107,15 @@ class ArrayDimensionLabelQueries {
   }
 
   /**
+   * Returns a label range query by dimension index.
+   * Throws if there is no label range query on dim_idx.
+   *
+   * @param dim_idx Dimension index for label range query.
+   * @returns Pointer to DimensionLabelQuery on dim_idx
+   */
+  DimensionLabelQuery* get_range_query(dimension_size_type dim_idx) const;
+
+  /**
    * Returns ``true`` if there is a range query on the requested dimension.
    *
    * @param dim_idx Index to check for a range query on.
@@ -114,7 +123,7 @@ class ArrayDimensionLabelQueries {
    *     ``false`` otherwise.
    */
   inline bool has_range_query(dimension_size_type dim_idx) const {
-    return range_queries_[dim_idx] != nullptr;
+    return label_range_queries_by_dim_idx_[dim_idx] != nullptr;
   }
 
   /** Process all data queries. */

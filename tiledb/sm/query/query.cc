@@ -223,6 +223,14 @@ Status Query::get_est_result_size(
         rest_client->get_query_est_result_sizes(array_->array_uri(), this));
   }
 
+  if (array_schema_->is_dim_label(name) &&
+      dim_label_queries_->has_range_query(
+          array_schema_->dimension_label(name).dimension_index())) {
+    auto label_range_query = dim_label_queries_->get_range_query(
+        array_schema_->dimension_label(name).dimension_index());
+    return label_range_query->get_est_result_size("label", size_off, size_val);
+  }
+
   return subarray_.get_est_result_size(
       name, size_off, size_val, &config_, storage_manager_->compute_tp());
 }
