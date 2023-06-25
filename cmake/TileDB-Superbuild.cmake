@@ -60,6 +60,7 @@ set(INHERITED_CMAKE_ARGS
   -DTILEDB_EXPERIMENTAL_FEATURES=${TILEDB_EXPERIMENTAL_FEATURES}
   -DTILEDB_TESTS_AWS_S3_CONFIG=${TILEDB_TESTS_AWS_S3_CONFIG}
   -DTILEDB_TESTS_ENABLE_REST=${TILEDB_TESTS_ENABLE_REST}
+  -DTILEDB_VCPKG_POLICY_EMPTY_PACKAGE=${TILEDB_VCPKG_POLICY_EMPTY_PACKAGE}
 )
 
 if (TILEDB_TESTS)
@@ -126,6 +127,13 @@ if (TILEDB_S3 AND NOT TILEDB_VCPKG)
   # Note on Win32: AWS SDK uses builtin WinHTTP instead of libcurl,
   # and builtin BCrypt instead of OpenSSL.
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAWSSDK_EP.cmake)
+endif()
+
+if (TILEDB_AZURE AND NOT TILEDB_VCPKG)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCasablanca_EP.cmake)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAzureCore_EP.cmake)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAzureStorageCommon_EP.cmake)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAzureSDK_EP.cmake)
 endif()
 
 if (TILEDB_GCS AND NOT TILEDB_VCPKG)
