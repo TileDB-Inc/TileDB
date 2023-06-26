@@ -420,7 +420,9 @@ class Query {
              schema_.attribute(attr_name).cell_val_num() == TILEDB_VAR_NUM) ||
             (schema_.domain().has_dimension(attr_name) &&
              schema_.domain().dimension(attr_name).cell_val_num() ==
-                 TILEDB_VAR_NUM)));
+                 TILEDB_VAR_NUM) ||
+            (schema_.has_label(attr_name) &&
+             schema_.label(attr_name).label_cell_val_num() == TILEDB_VAR_NUM)));
       auto element_size = element_sizes_.find(attr_name)->second;
       elements[attr_name] = var ?
                                 std::pair<uint64_t, uint64_t>(
@@ -497,7 +499,9 @@ class Query {
            schema_.attribute(attr_name).cell_val_num() == TILEDB_VAR_NUM) ||
           (schema_.domain().has_dimension(attr_name) &&
            schema_.domain().dimension(attr_name).cell_val_num() ==
-               TILEDB_VAR_NUM);
+               TILEDB_VAR_NUM) ||
+          (schema_.has_label(attr_name) &&
+           schema_.label(attr_name).label_cell_val_num() == TILEDB_VAR_NUM);
       auto element_size = element_sizes_.find(attr_name)->second;
       elements[attr_name] = var ?
                                 std::tuple<uint64_t, uint64_t, uint64_t>(
