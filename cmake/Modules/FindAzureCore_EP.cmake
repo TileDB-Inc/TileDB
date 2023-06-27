@@ -1,5 +1,5 @@
 #
-# FindCasablanca_EP.cmake
+# FindAzureCore_EP.cmake
 #
 #
 # The MIT License
@@ -24,8 +24,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-# This module finds the Azure RESTC++ SDK, installing it with an ExternalProject if
-# necessary. It then defines the imported by target AzureSDK::AzureSDK.
+# This module finds the Azure core SDK, installing it with an ExternalProject if
+# necessary. It then defines the imported by target Azure::azure-core.
 
 # Include some common helper functions.
 include(TileDBCommon)

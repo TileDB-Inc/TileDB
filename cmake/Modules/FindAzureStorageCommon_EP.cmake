@@ -1,5 +1,5 @@
 #
-# FindCasablanca_EP.cmake
+# FindAzureStorageCommon_EP.cmake
 #
 #
 # The MIT License
@@ -24,7 +24,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-# This module finds the Azure RESTC++ SDK, installing it with an ExternalProject if
+# This module finds the Azure Storage Common SDK, installing it with an ExternalProject if
 # necessary. It then defines the imported by target Azure_Storage_Common::Azure_Storage_Common.
 
 # Include some common helper functions.

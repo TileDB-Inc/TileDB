@@ -130,6 +130,7 @@ if (TILEDB_S3 AND NOT TILEDB_VCPKG)
 endif()
 
 if (TILEDB_AZURE AND NOT TILEDB_VCPKG)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindWebSocketpp_EP.cmake)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCasablanca_EP.cmake)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAzureCore_EP.cmake)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAzureStorageCommon_EP.cmake)

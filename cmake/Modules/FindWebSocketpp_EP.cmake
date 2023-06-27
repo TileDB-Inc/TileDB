@@ -1,5 +1,5 @@
 #
-# FindCasablanca_EP.cmake
+# FindWebSocketpp_EP.cmake
 #
 #
 # The MIT License
@@ -25,7 +25,7 @@
 # THE SOFTWARE.
 #
 # This module finds the Azure RESTC++ SDK, installing it with an ExternalProject if
-# necessary. It then defines the imported by target AzureSDK::AzureSDK.
+# necessary. It then defines the imported by target Azure_Storage_Common::Azure_Storage_Common.
 
 # Include some common helper functions.
 include(TileDBCommon)
@@ -43,32 +43,28 @@ endif()
 set(TILEDB_EP_AZURE_INSTALL_PREFIX "${TILEDB_EP_INSTALL_PREFIX}/azurecpplite")
 
 # First check for a static version in the EP prefix.
-find_package(cpprestsdk
+find_package(websocketpp
         PATHS "${TILEDB_EP_AZURE_INSTALL_PREFIX}"
         ${TILEDB_DEPS_NO_DEFAULT_PATH}
 )
 
-if (NOT cpprestsdk_FOUND)
+if (NOT websocketpp_FOUND)
   if (TILEDB_SUPERBUILD)
-      message(STATUS "Could NOT find Casablanca")
-      message(STATUS "Adding Casablanca as an external project")
+      message(STATUS "Could NOT find websocketpp")
+      message(STATUS "Adding websocketpp as an external project")
 
     set(DEPENDS)
     if (TARGET ep_openssl)
       list(APPEND DEPENDS ep_openssl)
     endif()
-    if (TARGET ep_websocketpp)
-      list(APPEND DEPENDS ep_websocketpp)
-    endif()
 
-    ExternalProject_Add(ep_casablanca
+    ExternalProject_Add(ep_websocketpp
       PREFIX "externals"
-      URL "https://github.com/Microsoft/cpprestsdk/archive/2.10.18.zip"
-      URL_HASH SHA1=bd4b7ab9cf52ee92a2a5b47fdff34117551164ed
-      DOWNLOAD_NAME cpprestsdk-2.10.18.zip
+      URL "https://github.com/zaphoyd/websocketpp/archive/0.8.2.zip"
+      URL_HASH SHA1=55c878d6e6a0416e2d6b6eb108ff6cc83d34cc2e
+      DOWNLOAD_NAME websocketpp-0.8.2.zip
       CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-        -DBUILD_SHARED_LIBS=OFF
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_AZURE_INSTALL_PREFIX}
@@ -81,27 +77,28 @@ if (NOT cpprestsdk_FOUND)
       DEPENDS ${DEPENDS}
     )
 
-    list(APPEND TILEDB_EXTERNAL_PROJECTS ep_casablanca)
+    list(APPEND TILEDB_EXTERNAL_PROJECTS ep_websocketpp)
     list(APPEND FORWARD_EP_CMAKE_ARGS
-      -DTILEDB_CASABLANCA_EP_BUILT=TRUE
+      -DTILEDB_WEBSOCKETPP_EP_BUILT=TRUE
     )
   else ()
-    message(FATAL_ERROR "Could not find CASABLANCA (required).")
+    message(FATAL_ERROR "Could not find ep_websocketpp (required).")
   endif ()
 endif ()
 
-if (cpprestsdk_FOUND AND NOT TARGET cpprestsdk::cpprest)
-  add_library(cpprestsdk::cpprest UNKNOWN IMPORTED)
-  set_target_properties(cpprestsdk::cpprest PROPERTIES
-    IMPORTED_LOCATION "${cpprestsdk_LIBRARIES}"
-    INTERFACE_INCLUDE_DIRECTORIES "${cpprestsdk_INCLUDE_DIR}"
-  )
+
+if (websocketpp_FOUND AND NOT TARGET websocketpp::websocketpp)
+  add_library(websocketpp::websocketpp UNKNOWN IMPORTED)
+  set_target_properties(websocketpp::websocketpp PROPERTIES
+          IMPORTED_LOCATION "${websocketpp_LIBRARIES}"
+          INTERFACE_INCLUDE_DIRECTORIES "${websocketpp_INCLUDE_DIR}"
+          )
 endif()
 
 # If we built a static EP, install it if required.
-if(TARGET cpprestsdk::cpprest)
-  get_target_property(target_type cpprestsdk::cpprest TYPE)
+if(TARGET websocketpp::websocketpp)
+  get_target_property(target_type websocketpp::websocketpp TYPE)
   if (target_type STREQUAL STATIC_LIBRARY AND TILEDB_INSTALL_STATIC_DEPS)
-    install_target_libs(cpprestsdk::cpprest)
+    install_target_libs(websocketpp::websocketpp)
   endif()
 endif()
