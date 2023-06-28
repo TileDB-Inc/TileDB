@@ -646,34 +646,6 @@ class ArraySchema : public Schema {
     return has_attr == 1;
   }
 
-  /**
-   * Checks if the schema has a dimension label of the given name.
-   *
-   * @param name Name of dimension label to check for.
-   * @return True if the schema has a dimension label of the given name.
-   */
-  bool has_label(const std::string& name) const {
-    auto& ctx = ctx_.get();
-    int32_t has_label;
-    ctx.handle_error(tiledb_array_schema_has_dimension_label(
-        ctx.ptr().get(), schema_.get(), name.c_str(), &has_label));
-    return has_label == 1;
-  }
-
-  /**
-   * Get a copy of a DimensionLabel in the schema by name.
-   *
-   * @param name Name of dimension label.
-   * @return DimensionLabel
-   */
-  DimensionLabel label(const std::string& name) const {
-    auto& ctx = ctx_.get();
-    tiledb_dimension_label_t* label;
-    ctx.handle_error(tiledb_array_schema_get_dimension_label_from_name(
-        ctx.ptr().get(), schema_.get(), name.c_str(), &label));
-    return DimensionLabel(ctx, label);
-  }
-
   /* ********************************* */
   /*         STATIC FUNCTIONS          */
   /* ********************************* */

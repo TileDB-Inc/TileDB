@@ -197,7 +197,7 @@ Status Query::get_est_result_size(const char* name, uint64_t* size) {
 }
 
 Status Query::get_est_result_size(
-    const char* name, uint64_t* size_off, uint64_t* size_val) {
+    const char* name, uint64_t* size_off, uint64_t* size_val, bool label_data) {
   if (type_ != QueryType::READ) {
     return logger_->status(Status_QueryError(
         "Cannot get estimated result size; Operation currently "
@@ -223,12 +223,25 @@ Status Query::get_est_result_size(
         rest_client->get_query_est_result_sizes(array_->array_uri(), this));
   }
 
-  if (array_schema_->is_dim_label(name) &&
-      dim_label_queries_->has_range_query(
-          array_schema_->dimension_label(name).dimension_index())) {
-    auto label_range_query = dim_label_queries_->get_range_query(
-        array_schema_->dimension_label(name).dimension_index());
-    return label_range_query->get_est_result_size("label", size_off, size_val);
+  if (array_schema_->is_dim_label(name)) {
+    auto dim_idx = array_schema_->dimension_label(name).dimension_index();
+    if (label_data && dim_label_queries_->has_data_query(dim_idx)) {
+      // Dimension label estimate result data query size.
+      for (const auto& query : dim_label_queries_->get_data_query(dim_idx)) {
+        uint64_t off, val;
+        throw_if_not_ok(
+            query->get_est_result_size("label", &off, &val, label_data));
+        *size_off += off;
+        *size_val += val;
+      }
+      return Status::Ok();
+    } else if (!label_data && dim_label_queries_->has_range_query(dim_idx)) {
+      // Dimension label estimate result label query size.
+      auto label_range_query = dim_label_queries_->get_range_query(
+          array_schema_->dimension_label(name).dimension_index());
+      return label_range_query->get_est_result_size(
+          "label", size_off, size_val);
+    }
   }
 
   return subarray_.get_est_result_size(

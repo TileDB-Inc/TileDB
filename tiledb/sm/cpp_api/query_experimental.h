@@ -236,6 +236,152 @@ class QueryExperimental {
     // Set the data buffer.
     return query.set_data_buffer(name, &data[0], data.size(), sizeof(char));
   }
+
+  /**
+   * Returns the number of elements in the result buffers from a read query.
+   * This is a map from the attribute name to a pair of values.
+   *
+   * The first is number of elements (offsets) for var size attributes, and the
+   * second is number of elements in the data buffer. For fixed sized attributes
+   * (and coordinates), the first is always 0.
+   *
+   * For variable sized attributes: the first value is the
+   * number of cells read, i.e. the number of offsets read for the attribute.
+   * The second value is the total number of elements in the data buffer. For
+   * example, a read query on a variable-length `float` attribute that reads
+   * three cells would return 3 for the first number in the pair. If the total
+   * amount of `floats` read across the three cells was 10, then the second
+   * number in the pair would be 10.
+   *
+   * For fixed-length attributes, the first value is always 0. The second value
+   * is the total number of elements in the data buffer. For example, a read
+   * query on a single `float` attribute that reads three cells would return 3
+   * for the second value. A read query on a `float` attribute with cell_val_num
+   * 2 that reads three cells would return 3 * 2 = 6 for the second value.
+   *
+   * If the query has not been submitted, an empty map is returned.
+   */
+  static std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
+  result_buffer_elements(const Query& query) {
+    // Query hasn't been submitted
+    if (query.buff_sizes_.empty()) {
+      return {};
+    }
+    auto elements = query.result_buffer_elements();
+    for (const auto& b_it : query.buff_sizes_) {
+      auto attr_name = b_it.first;
+      auto size_tuple = b_it.second;
+      // Only update result elements for dimension labels.
+      if (!ArraySchemaExperimental::has_dimension_label(
+              query.ctx_, query.schema_, attr_name)) {
+        continue;
+      }
+      auto var_label = ArraySchemaExperimental::dimension_label(
+                           query.ctx_, query.schema_, attr_name)
+                           .label_cell_val_num() == TILEDB_VAR_NUM;
+      auto element_size = query.element_sizes_.find(attr_name)->second;
+      elements[attr_name] = var_label ?
+                                std::pair<uint64_t, uint64_t>(
+                                    std::get<0>(size_tuple) / sizeof(uint64_t),
+                                    std::get<1>(size_tuple) / element_size) :
+                                std::pair<uint64_t, uint64_t>(
+                                    0, std::get<1>(size_tuple) / element_size);
+    }
+    return elements;
+  }
+
+  /**
+   * Returns the number of elements in the result buffers from a read query.
+   * This is a map from the attribute name to a tuple of values.
+   *
+   * The first is number of elements (offsets) for var size attributes, and the
+   * second is number of elements in the data buffer. For fixed sized attributes
+   * (and coordinates), the first is always 0. The third element is the size of
+   * the validity bytemap buffer.
+   *
+   * For variable sized attributes: the first value is the
+   * number of cells read, i.e. the number of offsets read for the attribute.
+   * The second value is the total number of elements in the data buffer. For
+   * example, a read query on a variable-length `float` attribute that reads
+   * three cells would return 3 for the first number in the pair. If the total
+   * amount of `floats` read across the three cells was 10, then the second
+   * number in the pair would be 10.
+   *
+   * For fixed-length attributes, the first value is always 0. The second value
+   * is the total number of elements in the data buffer. For example, a read
+   * query on a single `float` attribute that reads three cells would return 3
+   * for the second value. A read query on a `float` attribute with cell_val_num
+   * 2 that reads three cells would return 3 * 2 = 6 for the second value.
+   *
+   * If the query has not been submitted, an empty map is returned.
+   */
+  static std::
+      unordered_map<std::string, std::tuple<uint64_t, uint64_t, uint64_t>>
+      result_buffer_elements_nullable(const Query& query) {
+    // Query hasn't been submitted
+    if (query.buff_sizes_.empty()) {
+      return {};
+    }
+    auto elements = query.result_buffer_elements_nullable();
+    for (const auto& b_it : query.buff_sizes_) {
+      auto attr_name = b_it.first;
+      auto size_tuple = b_it.second;
+      // Only update result elements for dimension labels.
+      if (!ArraySchemaExperimental::has_dimension_label(
+              query.ctx_, query.schema_, attr_name)) {
+        continue;
+      }
+      auto var_label = ArraySchemaExperimental::dimension_label(
+                           query.ctx_, query.schema_, attr_name)
+                           .label_cell_val_num() == TILEDB_VAR_NUM;
+      auto element_size = query.element_sizes_.find(attr_name)->second;
+      elements[attr_name] = var_label ?
+                                std::tuple<uint64_t, uint64_t, uint64_t>(
+                                    std::get<0>(size_tuple) / sizeof(uint64_t),
+                                    std::get<1>(size_tuple) / element_size,
+                                    std::get<2>(size_tuple) / sizeof(uint8_t)) :
+                                std::tuple<uint64_t, uint64_t, uint64_t>(
+                                    0,
+                                    std::get<1>(size_tuple) / element_size,
+                                    std::get<2>(size_tuple) / sizeof(uint8_t));
+    }
+    return elements;
+  }
+
+  /**
+   * Retrieves the estimated result size for a variable-size attribute.
+   * This is an estimate and may not be sufficient to read all results for
+   * the requested ranges, for sparse arrays or any array with
+   * var-length attributes.
+   * Query status must be checked and resubmitted if not complete.
+   *
+   * This experimental variant supports estimation on dimension label data
+   * queries. If using non-experimental C++ API we retrieve the label query
+   * estimate by default.
+   *
+   * @param attr_name The attribute name.
+   * @param label_data True to estimate data queries for a dimension label.
+   *    False to estimate label queries. Defaults to false if unset.
+   *
+   * @return An array with first element containing the estimated size of
+   *    the result offsets in bytes, and second element containing the
+   *    estimated size of the result values in bytes.
+   */
+  static std::array<uint64_t, 2> est_result_size_var_label(
+      const Query& query,
+      const std::string& attr_name,
+      bool label_data = false) {
+    auto& ctx = query.ctx_.get();
+    uint64_t size_off = 0, size_val = 0;
+    ctx.handle_error(tiledb_query_get_est_result_size_var_label(
+        ctx.ptr().get(),
+        query.query_.get(),
+        attr_name.c_str(),
+        &size_off,
+        &size_val,
+        label_data));
+    return {size_off, size_val};
+  }
 };
 }  // namespace tiledb
 

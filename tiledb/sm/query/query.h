@@ -171,7 +171,10 @@ class Query {
    * attribute/dimension.
    */
   Status get_est_result_size(
-      const char* name, uint64_t* size_off, uint64_t* size_val);
+      const char* name,
+      uint64_t* size_off,
+      uint64_t* size_val,
+      bool label_data = false);
 
   /**
    * Gets the estimated result size (in bytes) for the input fixed-sized,
