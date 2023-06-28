@@ -349,6 +349,37 @@ class QueryExperimental {
   }
 
   /**
+   * Retrieves the estimated result size for a fixed-size attribute.
+   * This is an estimate and may not be sufficient to read all results for the
+   * requested range, for sparse arrays or array with
+   * var-length attributes.
+   * Query status must be checked and resubmitted if not complete.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * uint64_t est_size = query.est_result_size("attr1");
+   * @endcode
+   *
+   * @param attr_name The attribute name.
+   * @return The estimated size in bytes.
+   */
+  static uint64_t est_result_size_label(
+      const Query& query,
+      const std::string& attr_name,
+      bool label_data = false) {
+    auto& ctx = query.ctx_.get();
+    uint64_t size = 0;
+    ctx.handle_error(tiledb_query_get_est_result_size_label(
+        ctx.ptr().get(),
+        query.query_.get(),
+        attr_name.c_str(),
+        &size,
+        label_data));
+    return size;
+  }
+
+  /**
    * Retrieves the estimated result size for a variable-size attribute.
    * This is an estimate and may not be sufficient to read all results for
    * the requested ranges, for sparse arrays or any array with
@@ -381,6 +412,78 @@ class QueryExperimental {
         &size_val,
         label_data));
     return {size_off, size_val};
+  }
+
+  /**
+   * Retrieves the estimated result size for a fixed-size, nullable attribute.
+   * This is an estimate and may not be sufficient to read all results for
+   * the requested ranges, for sparse arrays or any array with
+   * var-length attributes.
+   * Query status must be checked and resubmitted if not complete.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * std::array<uint64_t, 2> est_size =
+   *    query.est_result_size_nullable("attr1");
+   * @endcode
+   *
+   * @param attr_name The attribute name.
+   * @return An array with first element containing the estimated size of
+   *    the result values in bytes, and second element containing the
+   *    estimated size of the result validity values in bytes.
+   */
+  static std::array<uint64_t, 2> est_result_size_nullable_label(
+      const Query& query,
+      const std::string& attr_name,
+      bool label_data = false) {
+    auto& ctx = query.ctx_.get();
+    uint64_t size_val = 0;
+    uint64_t size_validity = 0;
+    ctx.handle_error(tiledb_query_get_est_result_size_nullable_label(
+        ctx.ptr().get(),
+        query.query_.get(),
+        attr_name.c_str(),
+        &size_val,
+        &size_validity,
+        label_data));
+    return {size_val, size_validity};
+  }
+
+  /**
+   * Retrieves the estimated result size for a variable-size, nullable
+   * attribute.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * std::array<uint64_t, 3> est_size =
+   *     query.est_result_size_var_nullable("attr1");
+   * @endcode
+   *
+   * @param attr_name The attribute name.
+   * @return An array with first element containing the estimated size of
+   *    the offset values in bytes, second element containing the
+   *    estimated size of the result values in bytes, and the third element
+   *    containing the estimated size of the validity values in bytes.
+   */
+  static std::array<uint64_t, 3> est_result_size_var_nullable_label(
+      const Query& query,
+      const std::string& attr_name,
+      bool label_data = false) {
+    auto& ctx = query.ctx_.get();
+    uint64_t size_off = 0;
+    uint64_t size_val = 0;
+    uint64_t size_validity = 0;
+    ctx.handle_error(tiledb_query_get_est_result_size_var_nullable_label(
+        ctx.ptr().get(),
+        query.query_.get(),
+        attr_name.c_str(),
+        &size_off,
+        &size_val,
+        &size_validity,
+        label_data));
+    return {size_off, size_val, size_validity};
   }
 };
 }  // namespace tiledb

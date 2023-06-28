@@ -164,7 +164,8 @@ class Query {
    * Gets the estimated result size (in bytes) for the input fixed-sized
    * attribute/dimension.
    */
-  Status get_est_result_size(const char* name, uint64_t* size);
+  Status get_est_result_size(
+      const char* name, uint64_t* size, bool label_data = false);
 
   /**
    * Gets the estimated result size (in bytes) for the input var-sized
@@ -181,7 +182,10 @@ class Query {
    * nullable attribute.
    */
   Status get_est_result_size_nullable(
-      const char* name, uint64_t* size_val, uint64_t* size_validity);
+      const char* name,
+      uint64_t* size_val,
+      uint64_t* size_validity,
+      bool label_data = false);
 
   /**
    * Gets the estimated result size (in bytes) for the input var-sized,
@@ -191,7 +195,8 @@ class Query {
       const char* name,
       uint64_t* size_off,
       uint64_t* size_val,
-      uint64_t* size_validity);
+      uint64_t* size_validity,
+      bool label_data = false);
 
   /** Retrieves the number of written fragments. */
   Status get_written_fragment_num(uint32_t* num) const;

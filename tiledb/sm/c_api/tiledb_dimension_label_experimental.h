@@ -414,13 +414,37 @@ TILEDB_EXPORT capi_return_t tiledb_subarray_has_label_ranges(
     const uint32_t dim_idx,
     int32_t* has_label_range) TILEDB_NOEXCEPT;
 
+TILEDB_EXPORT capi_return_t tiledb_query_get_est_result_size_label(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* name,
+    uint64_t* size,
+    uint8_t label_data) TILEDB_NOEXCEPT;
+
 TILEDB_EXPORT capi_return_t tiledb_query_get_est_result_size_var_label(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     const char* name,
     uint64_t* size_off,
     uint64_t* size_val,
-    uint8_t label_data = 0) TILEDB_NOEXCEPT;
+    uint8_t label_data) TILEDB_NOEXCEPT;
+
+TILEDB_EXPORT capi_return_t tiledb_query_get_est_result_size_nullable_label(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* name,
+    uint64_t* size_val,
+    uint64_t* size_validity,
+    uint8_t label_data) TILEDB_NOEXCEPT;
+
+TILEDB_EXPORT capi_return_t tiledb_query_get_est_result_size_var_nullable_label(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* name,
+    uint64_t* size_off,
+    uint64_t* size_val,
+    uint64_t* size_validity,
+    uint8_t label_data) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }

@@ -186,6 +186,15 @@ capi_return_t tiledb_subarray_has_label_ranges(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_query_get_est_result_size_label(
+    const tiledb_query_t* query,
+    const char* name,
+    uint64_t* size,
+    uint8_t label_data) {
+  throw_if_not_ok(query->query_->get_est_result_size(name, size, label_data));
+  return TILEDB_OK;
+}
+
 capi_return_t tiledb_query_get_est_result_size_var_label(
     const tiledb_query_t* query,
     const char* name,
@@ -194,6 +203,29 @@ capi_return_t tiledb_query_get_est_result_size_var_label(
     uint8_t label_data) {
   throw_if_not_ok(
       query->query_->get_est_result_size(name, size_off, size_val, label_data));
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_query_get_est_result_size_nullable_label(
+    const tiledb_query_t* query,
+    const char* name,
+    uint64_t* size_val,
+    uint64_t* size_validity,
+    uint8_t label_data) {
+  throw_if_not_ok(query->query_->get_est_result_size_nullable(
+      name, size_val, size_validity, label_data));
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_query_get_est_result_size_var_nullable_label(
+    const tiledb_query_t* query,
+    const char* name,
+    uint64_t* size_off,
+    uint64_t* size_val,
+    uint64_t* size_validity,
+    uint8_t label_data) {
+  throw_if_not_ok(query->query_->get_est_result_size_nullable(
+      name, size_off, size_val, size_validity, label_data));
   return TILEDB_OK;
 }
 
@@ -338,6 +370,16 @@ capi_return_t tiledb_subarray_has_label_ranges(
       ctx, subarray, dim_idx, has_label_ranges);
 }
 
+capi_return_t tiledb_query_get_est_result_size_label(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* name,
+    uint64_t* size,
+    uint8_t label_data) noexcept {
+  return api_entry_context<detail::tiledb_query_get_est_result_size_label>(
+      ctx, query, name, size, label_data);
+}
+
 capi_return_t tiledb_query_get_est_result_size_var_label(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
@@ -347,4 +389,29 @@ capi_return_t tiledb_query_get_est_result_size_var_label(
     uint8_t label_data) noexcept {
   return api_entry_context<detail::tiledb_query_get_est_result_size_var_label>(
       ctx, query, name, size_off, size_val, label_data);
+}
+
+capi_return_t tiledb_query_get_est_result_size_nullable_label(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* name,
+    uint64_t* size_val,
+    uint64_t* size_validity,
+    uint8_t label_data) noexcept {
+  return api_entry_context<
+      detail::tiledb_query_get_est_result_size_nullable_label>(
+      ctx, query, name, size_val, size_validity, label_data);
+}
+
+capi_return_t tiledb_query_get_est_result_size_var_nullable_label(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* name,
+    uint64_t* size_off,
+    uint64_t* size_val,
+    uint64_t* size_validity,
+    uint8_t label_data) noexcept {
+  return api_entry_context<
+      detail::tiledb_query_get_est_result_size_var_nullable_label>(
+      ctx, query, name, size_off, size_val, size_validity, label_data);
 }
