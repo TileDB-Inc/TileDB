@@ -24,8 +24,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-# This module finds the Azure RESTC++ SDK, installing it with an ExternalProject if
-# necessary. It then defines the imported by target AzureSDK::AzureSDK.
+# This module finds the Azure REST C++ SDK, installing it with an ExternalProject if
+# necessary. It then defines the imported by target cpprest::cpprest.
 
 # Include some common helper functions.
 include(TileDBCommon)

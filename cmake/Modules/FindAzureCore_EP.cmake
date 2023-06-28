@@ -97,6 +97,9 @@ if (NOT AZURECORE_FOUND)
     if (TARGET ep_openssl)
       list(APPEND DEPENDS ep_openssl)
     endif()
+    if(TARGET ep_uamqp)
+      list(APPEND DEPENDS ep_uamqp)
+    endif()
 
     ExternalProject_Add(ep_azure_core
       PREFIX "externals"
@@ -111,6 +114,9 @@ if (NOT AZURECORE_FOUND)
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_AZURE_INSTALL_PREFIX}
         -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
         -DDWARNINGS_AS_ERRORS=OFF
+        -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+        -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
       LOG_DOWNLOAD TRUE
       LOG_CONFIGURE TRUE
       LOG_BUILD TRUE

@@ -24,8 +24,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-# This module finds the Azure RESTC++ SDK, installing it with an ExternalProject if
-# necessary. It then defines the imported by target Azure_Storage_Common::Azure_Storage_Common.
+# This module finds the Webscoket C++ library, installing it with an ExternalProject if
+# necessary. It then defines the imported by target websocketpp::websocketpp.
 
 # Include some common helper functions.
 include(TileDBCommon)
@@ -69,6 +69,9 @@ if (NOT websocketpp_FOUND)
         -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_AZURE_INSTALL_PREFIX}
         -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
+        -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+        -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
       LOG_DOWNLOAD TRUE
       LOG_CONFIGURE TRUE
       LOG_BUILD TRUE
