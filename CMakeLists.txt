@@ -192,47 +192,35 @@ if (MSVC)
   add_compile_options(/wd4996)
   # Disable GDI (which we don't need, and causes some macro
   # re-definition issues if wingdi.h is included)
-  add_compile_options(/DNOGDI)
+  add_compile_definitions("NOGDI")
   # Add /MPn flag from CMake invocation (if defined).
   add_compile_options(${MSVC_MP_FLAG})
   # Build-specific flags
-  if (CMAKE_BUILD_TYPE MATCHES "Debug")
-    add_compile_options(/DDEBUG /Od /Zi /bigobj)
-  elseif (CMAKE_BUILD_TYPE MATCHES "Release")
-    add_compile_options(/DNDEBUG /Ox)
-  elseif (CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
-    add_compile_options(/DNDEBUG /Ox /Zi)
-  endif()
+  add_compile_definitions("$<IF:$<CONFIG:Debug>,DEBUG,NDEBUG>")
+  add_compile_options(
+    "$<$<CONFIG:Debug>:/Od;/Zi;/bigobj>"
+    "$<$<CONFIG:Release,RelWithDebInfo>:/Ox>"
+    "$<$<CONFIG:RelWithDebInfo>:/Zi>")
 else()
   add_compile_options(-Wall -Wextra)
   if (TILEDB_WERROR)
     add_compile_options(-Werror)
   endif()
   # Build-specific flags
-  if (CMAKE_BUILD_TYPE MATCHES "Debug")
-    add_compile_options(-DDEBUG -O0 -g3 -ggdb3 -gdwarf-3)
-    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-      add_compile_options(-fstandalone-debug)
-    endif()
-  elseif (CMAKE_BUILD_TYPE MATCHES "Release")
-    add_compile_options(-O3)
-  elseif (CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
-    add_compile_options(-DNDEBUG -O3 -g3 -ggdb3 -gdwarf-3)
-  elseif (CMAKE_BUILD_TYPE MATCHES "Coverage")
-    add_compile_options(-DDEBUG -g3 -gdwarf-3 --coverage)
-  endif()
+  add_compile_definitions("$<IF:$<CONFIG:Debug,Coverage>,DEBUG,NDEBUG>")
+  add_compile_options(
+    "$<$<CONFIG:Debug>:-O0;-g3;-ggdb3;-gdwarf-3>"
+    "$<$<CONFIG:Coverage>:-g3;-gdwarf-3;--coverage>"
+    "$<$<CONFIG:Release,RelWithDebInfo>:-O3>"
+    "$<$<CONFIG:RelWithDebInfo>:-g3;-ggdb3;-gdwarf-3>")
+  add_compile_options("$<$<CONFIG:Debug>:-DDBUG;>")
+  add_compile_options("$<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:Clang>>:-fstandalone-debug>")
 
   # Use -Wno-literal-suffix on Linux with C++ sources.
-  if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-literal-suffix>)
-  endif()
+  add_compile_options("$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:Clang>>:-Wno-literal-suffix>")
 
   # Disable newer Apple Clang warnings about unqualified calls to std::move
-  if (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
-    if (${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "14.0.3")
-      add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-unqualified-std-cast-call>)
-    endif()
-  endif()
+  add_compile_options("$<$<AND:$<CXX_COMPILER_ID:AppleClang>,$<VERSION_GREATER_EQUAL:$<CXX_COMPILER_VERSION>,14.0.3>,$<COMPILE_LANGUAGE:CXX>>:-Wno-unqualified-std-cast-call>")
 
 endif()
 
