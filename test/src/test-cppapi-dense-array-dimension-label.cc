@@ -350,9 +350,9 @@ class DenseArrayExample {
     subarray.add_range(0, index_start, index_end);
 
     // Create vectors for output data.
-    std::string attr_data("x", expected_attr_data.size());
+    std::string attr_data(expected_attr_data.size(), 'x');
     std::vector<uint64_t> attr_offsets(4);
-    std::string label_data("x", expected_label_data.size());
+    std::string label_data(expected_label_data.size(), 'x');
     std::vector<uint64_t> label_offsets(4);
 
     // Create the query.
