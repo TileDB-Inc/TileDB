@@ -36,7 +36,6 @@
 #define TILEDB_CPP_API_ARRAY_SCHEMA_H
 
 #include "attribute.h"
-#include "dimension_label_experimental.h"
 #include "domain.h"
 #include "object.h"
 #include "schema_base.h"
