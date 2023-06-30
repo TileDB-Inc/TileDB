@@ -8,10 +8,10 @@ if(TILEDB_ASSERTIONS)
   endif()
   # On non-Debug builds cmake automatically defines NDEBUG, so we
   # explicitly undefine it:
+  add_compile_options($<$<AND:$<NOT:$<CONFIG:Debug>>,$<OR:$<COMPILE_LANGUAGE:C>,$<COMPILE_LANGUAGE:CXX>>>:-UNDEBUG>)
   if( NOT CMAKE_BUILD_TYPE STREQUAL "Debug" )
     # NOTE: use `add_compile_options` rather than `add_definitions` since
     # `add_definitions` does not support generator expressions.
-    add_compile_options($<$<OR:$<COMPILE_LANGUAGE:C>,$<COMPILE_LANGUAGE:CXX>>:-UNDEBUG>)
     if (MSVC)
       # Also remove /D NDEBUG to avoid MSVC warnings about conflicting defines.
       foreach (flags_var_to_scrub
@@ -24,6 +24,6 @@ if(TILEDB_ASSERTIONS)
         string (REGEX REPLACE "(^| )[/-]D *NDEBUG($| )" " "
           "${flags_var_to_scrub}" "${${flags_var_to_scrub}}")
       endforeach()
-     endif()
+    endif()
   endif()
 endif()
