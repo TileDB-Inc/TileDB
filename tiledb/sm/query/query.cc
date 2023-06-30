@@ -1289,11 +1289,6 @@ Status Query::set_condition(const QueryCondition& condition) {
         "Cannot set query condition; Operation not applicable "
         "to write queries"));
   }
-  if (status_ != tiledb::sm::QueryStatus::UNINITIALIZED) {
-    return logger_->status(Status_QueryError(
-        "Cannot set query condition; Setting a query condition on an already"
-        "initialized query is not supported."));
-  }
 
   if (condition.empty()) {
     throw std::invalid_argument("Query conditions must not be empty");

@@ -230,26 +230,26 @@ TEST_CASE_METHOD(
   CHECK(tiledb_query_get_plan(ctx, query, &string_handle) == TILEDB_OK);
 
   // API lifecycle checks
-  // It's not possible to set subarrays, layout, query condition or new buffers
+  // It's not possible to set subarrays, layout or new buffers
   // once the query plan got generated.
   CHECK(tiledb_query_set_subarray(ctx, query, &dom) == TILEDB_ERR);
   CHECK(tiledb_query_set_layout(ctx, query, TILEDB_COL_MAJOR) == TILEDB_ERR);
+  CHECK(
+      tiledb_query_set_data_buffer(ctx, query, "a2", d.data(), &size) ==
+      TILEDB_ERR);
+
+  // But it's possible to set existing buffers and query conditions to
+  // accomodate existing query INCOMPLETEs functionality
+  CHECK(
+      tiledb_query_set_data_buffer(ctx, query, "a1", d.data(), &size) ==
+      TILEDB_OK);
   tiledb_query_condition_t* qc;
   CHECK(tiledb_query_condition_alloc(ctx, &qc) == TILEDB_OK);
   int32_t val = 10000;
   CHECK(
       tiledb_query_condition_init(
           ctx, qc, "a1", &val, sizeof(int32_t), TILEDB_LT) == TILEDB_OK);
-  CHECK(tiledb_query_set_condition(ctx, query, qc) == TILEDB_ERR);
-  CHECK(
-      tiledb_query_set_data_buffer(ctx, query, "a2", d.data(), &size) ==
-      TILEDB_ERR);
-
-  // But it's possible to set existing buffers to accomodate existing
-  // query INCOMPLETEs functionality
-  CHECK(
-      tiledb_query_set_data_buffer(ctx, query, "a1", d.data(), &size) ==
-      TILEDB_OK);
+  CHECK(tiledb_query_set_condition(ctx, query, qc) == TILEDB_OK);
 
   REQUIRE(tiledb_string_free(&string_handle) == TILEDB_OK);
   REQUIRE(tiledb_array_close(ctx, array) == TILEDB_OK);
