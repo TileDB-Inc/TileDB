@@ -135,7 +135,6 @@ if (TILEDB_AZURE AND NOT TILEDB_VCPKG)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCasablanca_EP.cmake)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAzureCore_EP.cmake)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAzureStorageCommon_EP.cmake)
-  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAzureSDK_EP.cmake)
 endif()
 
 if (TILEDB_GCS AND NOT TILEDB_VCPKG)

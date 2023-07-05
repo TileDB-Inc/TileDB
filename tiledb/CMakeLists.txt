@@ -535,42 +535,33 @@ if (TILEDB_AZURE)
   message(STATUS "The TileDB library is compiled with Azure support.")
 
   if (TILEDB_VCPKG)
-    find_package(AzureSDK_EP REQUIRED)
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-            INTERFACE
-            ${AzureSDK_LINK_LIBRARIES}
-            ${AzureSDK_EXTRA_LIBS}
-            )
-
-  else()
-    find_package(AzureSDK_EP REQUIRED)
-    find_package(AzureCore_EP REQUIRED)
-    find_package(AzureStorageCommon_EP REQUIRED)
+    message(STATUS "The TileDB library is compiled with Azure support.")
+    find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
+    if (NOT TARGET LibLZMA)
+      find_package(LibLZMA REQUIRED)
+    endif()
+    if (NOT TARGET LibXml2::LibXml2)
+      find_package(libxml2 CONFIG REQUIRED)
+      install_target_libs(LibXml2::LibXml2)
+    endif()
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
             INTERFACE
             Azure::azure-storage-blobs
             Azure::azure-storage-common
+            Azure::azure-core
+            LibXml2::LibXml2
+            LibLZMA::LibLZMA
+            )
+    install_all_target_libs("Azure::azure-storage-blobs;Azure::azure-storage-common;Azure::azure-core")
+  else()
+    find_package(AzureCore_EP REQUIRED)
+    find_package(AzureStorageCommon_EP REQUIRED)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+            INTERFACE
+            Azure::azure-storage-common
             Azure::azure-storage-common-blobs
             Azure::azure-core)
   endif()
-
-#  find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
-#  if (NOT TARGET LibLZMA)
-#	  find_package(LibLZMA REQUIRED)
-#  endif()
-#  if (NOT TARGET LibXml2::LibXml2)
-#      find_package(libxml2 CONFIG REQUIRED)
-#      install_target_libs(LibXml2::LibXml2)
-#  endif()
-#  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-#    INTERFACE
-#      Azure::azure-storage-blobs
-#      Azure::azure-storage-common
-#      Azure::azure-core
-#      LibXml2::LibXml2
-#      LibLZMA::LibLZMA
-#  )
-#  install_all_target_libs("Azure::azure-storage-blobs;Azure::azure-storage-common;Azure::azure-core")
 endif()
 
 # GCS dependencies
@@ -972,7 +963,6 @@ if (TILEDB_STATIC)
   append_dep_lib(fmt::fmt)
   append_dep_lib(spdlog::spdlog)
 
-  append_dep_lib(Azure::azure-storage-blobs)
   append_dep_lib(Azure::azure-storage-common)
   if(TILEDB_AZURE AND NOT TILEDB_VCPKG)
     append_dep_lib(Azure::azure-storage-common-blobs)
