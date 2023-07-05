@@ -49,7 +49,7 @@ if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_CATCH_EP_BUILT)
   )
 endif()
 
-find_package(Catch2 3.1
+find_package(Catch2 3.3
   HINTS
     ${CATCH_PATHS}
     ${TILEDB_DEPS_NO_DEFAULT_PATH}
@@ -73,8 +73,8 @@ if (NOT Catch2_FOUND AND TILEDB_SUPERBUILD)
     PREFIX "externals"
     # Set download name to avoid collisions with only the version number in the filename
     DOWNLOAD_NAME ep_catch.zip
-    URL "https://github.com/catchorg/Catch2/archive/v3.1.0.zip"
-    URL_HASH SHA1=b23753594a743feabd4e30f83b31ebb31081092a
+    URL "https://github.com/catchorg/Catch2/archive/v3.3.2.zip"
+    URL_HASH SHA1=ab23bef93b3c5ddf696d8855f34a3e882e71c64b
     CMAKE_ARGS
       -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
       -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
