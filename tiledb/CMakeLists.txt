@@ -615,12 +615,10 @@ if (SANITIZER)
 endif()
 
 # Coverage linker flags
-if (CMAKE_BUILD_TYPE MATCHES "Coverage")
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-      --coverage
-  )
-endif()
+target_link_options(TILEDB_CORE_OBJECTS_ILIB
+  INTERFACE
+  "$<$<CONFIG:Coverage>:--coverage>"
+)
 
 # Required dependencies. These come last as any prior dependencies relying on
 # these must be listed first for Linux. E.g. AWSSDK and Curl depend on Zlib,
