@@ -99,6 +99,12 @@ if (NOT AZURECORE_FOUND)
     endif()
     if(TARGET ep_uamqp)
       list(APPEND DEPENDS ep_uamqp)
+      endif()
+    # Define windows dependencies
+    if (WIN32)
+      if(TARGET ep_wil)
+        list(APPEND DEPENDS ep_wil)
+      endif()
     endif()
 
     if (WIN32)
