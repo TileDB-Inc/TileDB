@@ -33,7 +33,7 @@ Enable symbols with Release build.
 Deprecated, use --config RelWithDebInfo when building with cmake instead.
 
 .PARAMETER EnableCoverage
-Enable build with code coverage support.
+Unsupported.
 
 .PARAMETER EnableVerbose
 Enable verbose status messages.
@@ -169,7 +169,7 @@ if ($EnableReleaseSymbols.IsPresent) {
 }
 
 if ($EnableCoverage.IsPresent) {
-    $BuildType = "Coverage"
+    Write-Warning "-EnableCoverage is not supported."
 }
 
 # Set TileDB verbosity
