@@ -22,6 +22,7 @@ Optionally specify the CMake generator string, e.g. "Visual Studio 15
 
 .PARAMETER EnableDebug
 Enable Debug build.
+Deprecated, use --config Debug when building with cmake instead.
 
 .PARAMETER EnableAssert
 Enable Assertions in compiled code (always on for debug build;
@@ -29,6 +30,7 @@ default off in release).
 
 .PARAMETER EnableReleaseSymbols
 Enable symbols with Release build.
+Deprecated, use --config RelWithDebInfo when building with cmake instead.
 
 .PARAMETER EnableCoverage
 Enable build with code coverage support.
@@ -159,13 +161,11 @@ if ($EnableAssert.IsPresent) {
   $AssertionMode = "ON"
 }
 
-# Set TileDB build type
-$BuildType = "Release"
 if ($EnableDebug.IsPresent) {
-    $BuildType = "Debug"
+    Write-Warning "-EnableDebug is deprecated. Use --config Debug when building with cmake instead."
 }
 if ($EnableReleaseSymbols.IsPresent) {
-    $BuildType = "RelWithDebInfo"
+    Write-Warning "-EnableReleaseSymbols is deprecated. Use --config RelWithDebInfo when building with cmake instead."
 }
 
 if ($EnableCoverage.IsPresent) {
@@ -304,9 +304,10 @@ if ($CMakeGenerator -eq $null) {
 
 # Run CMake.
 # We use Invoke-Expression so we can echo the command to the user.
-$CommandString = "cmake -A X64 -DTILEDB_VCPKG=$UseVcpkg -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_ASSERTIONS=$AssertionMode -DTILEDB_VERBOSE=$Verbosity -DTILEDB_AZURE=$UseAzure -DTILEDB_S3=$UseS3 -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_STATS=$Stats -DTILEDB_STATIC=$TileDBStatic -DTILEDB_FORCE_ALL_DEPS=$TileDBBuildDeps -DTILEDB_REMOVE_DEPRECATIONS=$RemoveDeprecations -DTILEDB_TOOLS=$TileDBTools -DTILEDB_EXPERIMENTAL_FEATURES=$TileDBExperimentalFeatures -DTILEDB_WEBP=$BuildWebP -DTILEDB_CRC32=$BuildCrc32 -DTILEDB_ARROW_TESTS=$ArrowTests -DTILEDB_TESTS_ENABLE_REST=$RestTests -DTILEDB_TESTS_AWS_S3_CONFIG=$ConfigureS3 $GeneratorFlag ""$SourceDirectory"""
+$CommandString = "cmake -A X64 -DTILEDB_VCPKG=$UseVcpkg -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_ASSERTIONS=$AssertionMode -DTILEDB_VERBOSE=$Verbosity -DTILEDB_AZURE=$UseAzure -DTILEDB_S3=$UseS3 -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_STATS=$Stats -DTILEDB_STATIC=$TileDBStatic -DTILEDB_FORCE_ALL_DEPS=$TileDBBuildDeps -DTILEDB_REMOVE_DEPRECATIONS=$RemoveDeprecations -DTILEDB_TOOLS=$TileDBTools -DTILEDB_EXPERIMENTAL_FEATURES=$TileDBExperimentalFeatures -DTILEDB_WEBP=$BuildWebP -DTILEDB_CRC32=$BuildCrc32 -DTILEDB_ARROW_TESTS=$ArrowTests -DTILEDB_TESTS_ENABLE_REST=$RestTests -DTILEDB_TESTS_AWS_S3_CONFIG=$ConfigureS3 $GeneratorFlag ""$SourceDirectory"""
 Write-Host $CommandString
 Write-Host
 Invoke-Expression "$CommandString"
 
-Write-Host "Bootstrap success. Run 'cmake --build . --config $BuildType' to build and 'cmake --build . --target check --config $BuildType' to test."
+Write-Host "Bootstrap success. Run 'cmake --build . --config <config>' to build and 'cmake --build . --target check --config <config>' to test."
+Write-Host "<config> can be Debug, Release, or RelWithDebInfo."

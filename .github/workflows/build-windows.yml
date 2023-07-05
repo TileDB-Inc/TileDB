@@ -191,7 +191,6 @@ jobs:
           }
           $CMakeBuildType = $env:TILEDB_CMAKE_BUILD_TYPE
           if ($env:TILEDB_DEBUG -eq "ON") {
-            $bootstrapOptions = $bootstrapOptions + " -EnableDebug"
             $CMakeBuildType = "Debug"
             # Change in environment for next steps!
             write-host "TILEDB_CMAKE_BUILD_TYPE=$CMakeBuildType" *>> $env:GITHUB_ENV
@@ -200,10 +199,10 @@ jobs:
             $bootstrapOptions = $bootstrapOptions + " -EnableReleaseSymbols"
           }
           # if ($env:TILEDB_CI_ASAN -eq "ON") {
-          #  $bootstrapOptions = $bootstrapOptions + " -EnableSanitizer address -EnableDebug"
+          #  $bootstrapOptions = $bootstrapOptions + " -EnableSanitizer address"
           # }
           # if ($env:TILEDB_CI_TSAN -eq "ON") {
-          #  $bootstrapOptions = $bootstrapOptions + " -EnableSanitizer thread -EnableDebug"
+          #  $bootstrapOptions = $bootstrapOptions + " -EnableSanitizer thread"
           # }
           # static already added above as initial default
           # if ($env:TILEDB_FORCE_BUILD_DEPS" -eq "ON") {
