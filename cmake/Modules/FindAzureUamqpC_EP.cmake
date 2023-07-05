@@ -53,7 +53,13 @@ if (NOT uamqp_FOUND)
     message(STATUS "Could NOT find uamqp")
     message(STATUS "Adding uamqp as an external project")
 
-    set(CFLAGS_DEF "-Wno-error=array-parameter")
+    if (WIN32)
+      set(CFLAGS_DEF "${CMAKE_C_FLAGS}")
+      set(CXXFLAGS_DEF "${CMAKE_CXX_FLAGS}")
+    else()
+      set(CFLAGS_DEF "${CMAKE_C_FLAGS} -Wno-error=array-parameter")
+      set(CXXFLAGS_DEF "${CMAKE_CXX_FLAGS} -Wno-error=array-parameter")
+    endif()
 
     ExternalProject_Add(ep_uamqp
       PREFIX "externals"
@@ -69,7 +75,7 @@ if (NOT uamqp_FOUND)
         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
         -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
         "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
-        "-DCMAKE_CXX_FLAGS=${CFLAGS_DEF}"
+        "-DCMAKE_CXX_FLAGS=${CXXFLAGS_DEF}"
       LOG_DOWNLOAD TRUE
       LOG_CONFIGURE TRUE
       LOG_BUILD TRUE
