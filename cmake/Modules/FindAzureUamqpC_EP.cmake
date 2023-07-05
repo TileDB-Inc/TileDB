@@ -58,7 +58,7 @@ if (NOT uamqp_FOUND)
     ExternalProject_Add(ep_uamqp
       PREFIX "externals"
       GIT_REPOSITORY "https://github.com/Azure/azure-uamqp-c.git"
-      GIT_TAG LTS_07_2020_Ref02
+      GIT_TAG e76dd6be7ab4cda356dcad082cf8c8c18a454d51
       CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
