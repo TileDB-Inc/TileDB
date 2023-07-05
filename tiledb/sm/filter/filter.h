@@ -51,6 +51,7 @@ class WriterTile;
 
 enum class FilterOption : uint8_t;
 enum class FilterType : uint8_t;
+enum class Datatype : uint8_t;
 
 /**
  * A Filter processes or modifies a byte region, modifying it in place, or
@@ -84,6 +85,30 @@ class Filter {
    * @return Status
    */
   Status get_option(FilterOption option, void* value) const;
+
+  /**
+   * @brief Returns the filter output type
+   *
+   */
+  virtual Datatype output_datatype() const;
+
+  /**
+   * @brief Throws if given filter's output *cannot* be handled by this filter.
+   *
+   */
+  virtual void ensure_compatible_output(const Filter& filter) const;
+
+  /**
+   * @brief Throws if given data type *cannot* be handled by this filter.
+   *
+   */
+  virtual void ensure_accepts_datatype(Datatype datatype) const;
+
+  /**
+   * @brief Checks if the filter is applicable to the input datatype.
+   *
+   */
+  virtual bool accepts_input_datatype(Datatype type) const;
 
   /**
    * Runs this filter in the "forward" direction (i.e. during write queries).

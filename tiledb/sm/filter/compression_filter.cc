@@ -87,6 +87,24 @@ Compressor CompressionFilter::compressor() const {
   return compressor_;
 }
 
+bool CompressionFilter::accepts_input_datatype(Datatype input_type) const {
+  auto this_filter_type = compressor_to_filter(compressor_);
+  if (this_filter_type == FilterType::FILTER_DOUBLE_DELTA ||
+      this_filter_type == FilterType::FILTER_DELTA) {
+    // Delta filters do not accept floating point types.
+
+    // TILEDB_POSITIVE_DELTA is not returned by compressor_to_filter.
+    // TODO: Check positive delta filter is validated correctly here.
+    if (datatype_is_real(
+            this_filter_type == FilterType::FILTER_DELTA ?
+                reinterpret_datatype_ :
+                input_type))
+      return false;
+  }
+
+  return true;
+}
+
 int CompressionFilter::compression_level() const {
   return level_;
 }

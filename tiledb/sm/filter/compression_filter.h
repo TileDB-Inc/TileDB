@@ -110,6 +110,9 @@ class CompressionFilter : public Filter {
   /** Return the compressor used by this filter instance. */
   Compressor compressor() const;
 
+  /** Return whether the compression filter accepts given Datatype */
+  bool accepts_input_datatype(Datatype type) const override;
+
   /** Return the compression level used by this filter instance. */
   int compression_level() const;
 

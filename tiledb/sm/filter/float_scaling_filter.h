@@ -137,6 +137,9 @@ class FloatScalingFilter : public Filter {
   /** The byte width of the compressed representation. */
   uint64_t byte_width_;
 
+  /** Return the output datatype of this filter. */
+  Datatype output_datatype() const override;
+
   /** Returns a new clone of this filter. */
   FloatScalingFilter* clone_impl() const override;
 

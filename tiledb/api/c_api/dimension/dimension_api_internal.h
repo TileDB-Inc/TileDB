@@ -90,7 +90,7 @@ struct tiledb_dimension_handle_t
   }
 
   inline void set_filter_pipeline(const tiledb::sm::FilterPipeline& x) {
-    throw_if_not_ok(dimension_->set_filter_pipeline(x));
+    dimension_->set_filter_pipeline(x);
   }
 
   inline void set_cell_val_num(unsigned int x) {

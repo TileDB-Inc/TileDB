@@ -318,6 +318,22 @@ Status FloatScalingFilter::get_option_impl(
   return Status::Ok();
 }
 
+Datatype FloatScalingFilter::output_datatype() const {
+  if (byte_width_ == sizeof(int8_t)) {
+    return Datatype::INT8;
+  } else if (byte_width_ == sizeof(int16_t)) {
+    return Datatype::INT16;
+  } else if (byte_width_ == sizeof(int32_t)) {
+    return Datatype::INT32;
+  } else if (byte_width_ == sizeof(int64_t)) {
+    return Datatype::INT64;
+  } else {
+    throw std::logic_error(
+        "FloatScalingFilter::output_datatype: byte_width_ does not reflect "
+        "the size of an integer type.");
+  }
+}
+
 /** Returns a new clone of this filter. */
 FloatScalingFilter* FloatScalingFilter::clone_impl() const {
   return tdb_new(FloatScalingFilter, byte_width_, scale_, offset_);

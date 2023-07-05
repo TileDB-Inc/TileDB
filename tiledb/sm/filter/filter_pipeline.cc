@@ -50,6 +50,12 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+class FilterPipelineStatusException : public StatusException {
+ public:
+  explicit FilterPipelineStatusException(const std::string& msg)
+      : StatusException("FilterPipeline", msg) {
+  }
+};
 
 FilterPipeline::FilterPipeline()
     : max_chunk_size_(constants::max_tile_chunk_size) {
@@ -92,6 +98,39 @@ void FilterPipeline::add_filter(const Filter& filter) {
 
 void FilterPipeline::clear() {
   filters_.clear();
+}
+
+void FilterPipeline::check_filter_types(
+    const FilterPipeline& pipeline,
+    const Datatype first_input_type,
+    bool is_var) {
+  if ((first_input_type == Datatype::STRING_ASCII ||
+       first_input_type == Datatype::STRING_UTF8) &&
+      is_var && pipeline.size() > 1) {
+    if (pipeline.has_filter(FilterType::FILTER_RLE) &&
+        pipeline.get_filter(0)->type() != FilterType::FILTER_RLE) {
+      throw FilterPipelineStatusException(
+          "RLE filter must be the first filter to apply when used on a "
+          "variable length string attribute");
+    }
+    if (pipeline.has_filter(FilterType::FILTER_DICTIONARY) &&
+        pipeline.get_filter(0)->type() != FilterType::FILTER_DICTIONARY) {
+      throw FilterPipelineStatusException(
+          "Dictionary filter must be the first filter to apply when used on a "
+          "variable length string attribute");
+    }
+  }
+
+  // ** Modern checks using Filter output type **
+  auto first = pipeline.get_filter(0);
+  if (!first->accepts_input_datatype(first_input_type)) {
+    throw FilterPipelineStatusException(
+        "Filter " + filter_type_str(first->type()) + " does not accept " +
+        datatype_str(first_input_type) + " as an input datatype.");
+  }
+  for (unsigned i = 1; i < pipeline.size(); ++i) {
+    ensure_compatible(*pipeline.get_filter(i - 1), *pipeline.get_filter(i));
+  }
 }
 
 tuple<Status, optional<std::vector<uint64_t>>>
@@ -519,6 +558,17 @@ void FilterPipeline::dump(FILE* out) const {
   for (const auto& filter : filters_) {
     fprintf(out, "\n  > ");
     filter->dump(out);
+  }
+}
+
+void FilterPipeline::ensure_compatible(
+    const Filter& first, const Filter& second) {
+  auto first_output_type = first.output_datatype();
+  if (!second.accepts_input_datatype(first_output_type)) {
+    throw FilterPipelineStatusException(
+        "Filter " + filter_type_str(first.type()) + " produces " +
+        datatype_str(first_output_type) + " but second filter " +
+        filter_type_str(second.type()) + " does not accept this type.");
   }
 }
 
