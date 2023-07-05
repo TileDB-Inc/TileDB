@@ -48,11 +48,14 @@ steps:
     if ($env:TILEDB_TOOLS -eq "ON") {
       $bootstrapOptions = $bootstrapOptions + " -EnableTools"
     }
+    if ($env:TILEDB_DEBUG -eq "ON") {
+      $bootstrapOptions = $bootstrapOptions + " -EnableDebug"
+    }
     # if ($env:TILEDB_CI_ASAN -eq "ON") {
-    #  $bootstrapOptions = $bootstrapOptions + " -EnableSanitizer address"
+    #  $bootstrapOptions = $bootstrapOptions + " -EnableSanitizer address -EnableDebug"
     # }
     # if ($env:TILEDB_CI_TSAN -eq "ON") {
-    #  $bootstrapOptions = $bootstrapOptions + " -EnableSanitizer thread"
+    #  $bootstrapOptions = $bootstrapOptions + " -EnableSanitizer thread -EnableDebug"
     # }
     # static already added above as initial default
     # if ($env:TILEDB_FORCE_BUILD_DEPS" -eq "ON") {
