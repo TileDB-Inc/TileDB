@@ -1,0 +1,12 @@
+diff --git a/sdk/core/azure-core-amqp/CMakeLists.txt b/sdk/core/azure-core-amqp/CMakeLists.txt
+index fc04f1e2..1f12f071 100644
+--- a/sdk/core/azure-core-amqp/CMakeLists.txt
++++ b/sdk/core/azure-core-amqp/CMakeLists.txt
+@@ -30,6 +30,7 @@ if(NOT AZ_ALL_LIBRARIES)
+   endif()
+ endif()
+
++find_package(azure_c_shared_utility REQUIRED CONFIG)
+ find_package(uamqp CONFIG REQUIRED)
+ find_package(umock_c)
+ find_package(azure_macro_utils_c CONFIG REQUIRED)
