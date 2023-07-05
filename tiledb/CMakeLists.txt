@@ -556,11 +556,16 @@ if (TILEDB_AZURE)
   else()
     find_package(AzureCore_EP REQUIRED)
     find_package(AzureStorageCommon_EP REQUIRED)
+    if (NOT TARGET LibXml2::LibXml2)
+      find_package(libxml2 CONFIG REQUIRED)
+      install_target_libs(LibXml2::LibXml2)
+    endif()
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
             INTERFACE
             Azure::azure-storage-common
             Azure::azure-storage-common-blobs
-            Azure::azure-core)
+            Azure::azure-core
+            LibXml2::LibXml2)
   endif()
 endif()
 
