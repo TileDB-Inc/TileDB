@@ -2042,7 +2042,7 @@ int32_t tiledb_query_add_update_value(
     tiledb_query_t* query,
     const char* field_name,
     const void* update_value,
-    uint64_t update_value_size) noexcept {
+    uint64_t update_value_size) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, query) == TILEDB_ERR) {
@@ -5274,7 +5274,7 @@ void tiledb_consolidation_plan_free(
 int32_t tiledb_consolidation_plan_get_num_nodes(
     tiledb_ctx_t* ctx,
     tiledb_consolidation_plan_t* consolidation_plan,
-    uint64_t* num_nodes) noexcept {
+    uint64_t* num_nodes) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
     return TILEDB_ERR;
@@ -5288,7 +5288,7 @@ int32_t tiledb_consolidation_plan_get_num_fragments(
     tiledb_ctx_t* ctx,
     tiledb_consolidation_plan_t* consolidation_plan,
     uint64_t node_index,
-    uint64_t* num_fragments) noexcept {
+    uint64_t* num_fragments) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
     return TILEDB_ERR;
@@ -5312,7 +5312,7 @@ int32_t tiledb_consolidation_plan_get_fragment_uri(
     tiledb_consolidation_plan_t* consolidation_plan,
     uint64_t node_index,
     uint64_t fragment_index,
-    const char** uri) noexcept {
+    const char** uri) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
     return TILEDB_ERR;
