@@ -26,7 +26,7 @@ list(JOIN CMAKE_PREFIX_PATH "|" CMAKE_PREFIX_PATH_STR)
 set(INHERITED_CMAKE_ARGS
   -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
   -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH_STR}
-  -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+  -DCMAKE_BUILD_TYPE=$<CONFIG>
   -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
   -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
   -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
@@ -162,26 +162,26 @@ ExternalProject_Add(tiledb
 
 # make install-tiledb
 add_custom_target(install-tiledb
-  COMMAND ${CMAKE_COMMAND} --build . --target install --config ${CMAKE_BUILD_TYPE}
+  COMMAND ${CMAKE_COMMAND} --build . --target install --config $<CONFIG>
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
 )
 
 # make examples
 add_custom_target(examples
-  COMMAND ${CMAKE_COMMAND} --build . --target examples --config ${CMAKE_BUILD_TYPE}
+  COMMAND ${CMAKE_COMMAND} --build . --target examples --config $<CONFIG>
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
 )
 
 # make experimental/examples/
 add_custom_target(experimental-examples
-  COMMAND ${CMAKE_COMMAND} --build . --target experimental_examples --config ${CMAKE_BUILD_TYPE}
+  COMMAND ${CMAKE_COMMAND} --build . --target experimental_examples --config $<CONFIG>
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
 )
 
 # make check
 if (TILEDB_TESTS)
   add_custom_target(check
-    COMMAND ${CMAKE_COMMAND} --build . --target check --config ${CMAKE_BUILD_TYPE}
+    COMMAND ${CMAKE_COMMAND} --build . --target check --config $<CONFIG>
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
   )
 endif()

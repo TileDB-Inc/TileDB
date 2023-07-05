@@ -135,7 +135,7 @@ if (NOT AWSSDK_FOUND)
     # For aws sdk and gcc we must always build in release mode
     # See https://github.com/TileDB-Inc/TileDB/issues/1351 and
     # https://github.com/awslabs/aws-checksums/issues/8
-    set(AWS_CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE})
+    set(AWS_CMAKE_BUILD_TYPE $<CONFIG>)
     if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         set(AWS_CMAKE_BUILD_TYPE "Release")
     endif()
