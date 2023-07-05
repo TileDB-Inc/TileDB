@@ -158,7 +158,6 @@ if (AZURE_STORAGE_COMMON_FOUND AND NOT TARGET Azure::azure-storage-common)
           IMPORTED_LOCATION "${AZURE_STORAGE_BLOBS_LIBRARIES}"
           INTERFACE_INCLUDE_DIRECTORIES "${AZURE_STORAGE_COMMON_INCLUDE_DIR}"
           )
-#  target_link_libraries(Azure::azure-storage-common Azure::azure-storage-common-blobs)
 endif()
 
 # If we built a static EP, install it if required.
