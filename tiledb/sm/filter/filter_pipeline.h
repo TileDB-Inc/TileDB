@@ -355,7 +355,7 @@ class FilterPipeline {
    * @return Status
    */
   Status filter_chunks_forward(
-      const WriterTile& tile,
+      WriterTile& tile,
       WriterTile* const offsets_tile,
       uint32_t chunk_size,
       std::vector<uint64_t>& chunk_offsets,

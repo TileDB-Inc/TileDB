@@ -3366,7 +3366,6 @@ void testing_float_scaling_filter() {
   const uint64_t nelts = 100;
   const uint64_t tile_size = nelts * sizeof(FloatingType);
   const uint64_t cell_size = sizeof(FloatingType);
-  ;
 
   Datatype t = Datatype::FLOAT32;
   switch (sizeof(FloatingType)) {
@@ -3428,6 +3427,9 @@ void testing_float_scaling_filter() {
   CHECK(tile.filtered_buffer().size() != 0);
 
   auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+  // Tile datatype will be updated to the final filtered type after run_forward.
+  // Set the tile datatype to the schema type for context in run_reverse.
+  unfiltered_tile.set_datatype(t);
   run_reverse(config, tp, unfiltered_tile, pipeline);
   for (uint64_t i = 0; i < nelts; i++) {
     FloatingType elt = 0.0f;

@@ -122,11 +122,12 @@ void FilterPipeline::check_filter_types(
   }
 
   // ** Modern checks using Filter output type **
-  auto first = pipeline.get_filter(0);
-  if (!first->accepts_input_datatype(first_input_type)) {
+  auto first_filter = pipeline.get_filter(0);
+  if (first_filter && !first_filter->accepts_input_datatype(first_input_type)) {
     throw FilterPipelineStatusException(
-        "Filter " + filter_type_str(first->type()) + " does not accept " +
-        datatype_str(first_input_type) + " as an input datatype.");
+        "Filter " + filter_type_str(first_filter->type()) +
+        " does not accept " + datatype_str(first_input_type) +
+        " as an input datatype.");
   }
   for (unsigned i = 1; i < pipeline.size(); ++i) {
     ensure_compatible(*pipeline.get_filter(i - 1), *pipeline.get_filter(i));
@@ -192,7 +193,7 @@ FilterPipeline::get_var_chunk_sizes(
 }
 
 Status FilterPipeline::filter_chunks_forward(
-    const WriterTile& tile,
+    WriterTile& tile,
     WriterTile* const offsets_tile,
     uint32_t chunk_size,
     std::vector<uint64_t>& chunk_offsets,
@@ -260,6 +261,8 @@ Status FilterPipeline::filter_chunks_forward(
           &output_metadata,
           &output_data));
 
+      // Update WriterTile to use filter output datatype on next filter.
+      tile.set_datatype(f->output_datatype());
       input_data.set_read_only(false);
       throw_if_not_ok(input_data.swap(output_data));
       input_metadata.set_read_only(false);
@@ -442,6 +445,9 @@ Status FilterPipeline::run_reverse(
     const uint64_t max_chunk_index,
     uint64_t concurrency_level,
     const Config& config) const {
+  // Store initial tile schema type to restore final unfiltered chunk.
+  Datatype tile_type = tile->type();
+
   // Run each chunk through the entire pipeline.
   for (size_t i = min_chunk_index; i < max_chunk_index; i++) {
     auto& chunk = chunk_data.filtered_chunks_[i];
@@ -486,6 +492,11 @@ Status FilterPipeline::run_reverse(
             output_chunk_buffer, chunk.unfiltered_data_size_));
         reader_stats->add_counter(
             "read_unfiltered_byte_num", chunk.unfiltered_data_size_);
+        // Restore tile datatype to it's initial schema value.
+        tile->set_datatype(tile_type);
+      } else {
+        // Update Tile type if the previous filter modified the datatype.
+        tile->set_datatype(filters_[filter_idx - 1]->output_datatype());
       }
 
       f->init_decompression_resource_pool(concurrency_level);

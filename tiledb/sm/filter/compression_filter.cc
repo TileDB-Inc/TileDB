@@ -371,7 +371,10 @@ Status CompressionFilter::compress_part(
       RETURN_NOT_OK(BZip::compress(level_, &input_buffer, output));
       break;
     case Compressor::DOUBLE_DELTA:
-      RETURN_NOT_OK(DoubleDelta::compress(type, &input_buffer, output));
+      RETURN_NOT_OK(DoubleDelta::compress(
+          reinterpret_datatype_ == Datatype::ANY ? type : reinterpret_datatype_,
+          &input_buffer,
+          output));
       break;
     case Compressor::DICTIONARY_ENCODING:
       return LOG_STATUS(
