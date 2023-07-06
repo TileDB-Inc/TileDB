@@ -1589,9 +1589,14 @@ Status query_from_capnp(
   }
 
   // Make sure we have the right query strategy in place.
+  // Setting the QueryState to INITIALIZED must be decoupled from Strategy
+  // creation to ensure the query is fully deserialized before considered
+  // initialized.
   bool force_legacy_reader =
       query_type == QueryType::READ && query_reader.hasReader();
-  RETURN_NOT_OK(query->reset_strategy_with_layout(layout, force_legacy_reader));
+  bool decouple_initialization = true;
+  RETURN_NOT_OK(query->reset_strategy_with_layout(
+      layout, force_legacy_reader, decouple_initialization));
 
   // Deserialize Config
   if (query_reader.hasConfig()) {

@@ -381,9 +381,14 @@ class Query {
    * @param layout New layout
    * @param force_legacy_reader Force use of the legacy reader if the client
    *    requested it.
+   * @param decouple_initialization If true, the query will be initialized
+   *    outside of strategy creation. Used by deserialization.
    * @return Status
    */
-  Status reset_strategy_with_layout(Layout layout, bool force_legacy_reader);
+  Status reset_strategy_with_layout(
+      Layout layout,
+      bool force_legacy_reader,
+      bool decouple_initialization = false);
 
   /**
    * Disables checking the global order and coordinate duplicates. Applicable
@@ -876,8 +881,11 @@ class Query {
    * Create the strategy.
    *
    * @param skip_checks_serialization Skip checks during serialization.
+   * @param decouple_initialization Skip initialization during serialization.
    */
-  Status create_strategy(bool skip_checks_serialization = false);
+  Status create_strategy(
+      bool skip_checks_serialization = false,
+      bool decouple_initialization = false);
 
   Status check_set_fixed_buffer(const std::string& name);
 
