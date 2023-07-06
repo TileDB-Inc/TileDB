@@ -241,6 +241,11 @@ class QueryExperimental {
    * Returns the number of elements in the result buffers from a read query.
    * This is a map from the attribute name to a pair of values.
    *
+   * For fixed size dimension labels the non-experimental API will return the
+   * same results. This experimental variant uses ArraySchemaExperimental to
+   * check if the dim label is variable size and includes offset elements if
+   * needed.
+   *
    * The first is number of elements (offsets) for var size attributes, and the
    * second is number of elements in the data buffer. For fixed sized attributes
    * (and coordinates), the first is always 0.
@@ -262,7 +267,7 @@ class QueryExperimental {
    * If the query has not been submitted, an empty map is returned.
    */
   static std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
-  result_buffer_elements(const Query& query) {
+  result_buffer_elements_labels(const Query& query) {
     // Query hasn't been submitted
     if (query.buff_sizes_.empty()) {
       return {};
@@ -294,6 +299,11 @@ class QueryExperimental {
    * Returns the number of elements in the result buffers from a read query.
    * This is a map from the attribute name to a tuple of values.
    *
+   * For fixed size dimension labels the non-experimental API will return the
+   * same results. This experimental variant uses ArraySchemaExperimental to
+   * check if the dim label is variable size and includes offset elements if
+   * needed.
+   *
    * The first is number of elements (offsets) for var size attributes, and the
    * second is number of elements in the data buffer. For fixed sized attributes
    * (and coordinates), the first is always 0. The third element is the size of
@@ -317,7 +327,7 @@ class QueryExperimental {
    */
   static std::
       unordered_map<std::string, std::tuple<uint64_t, uint64_t, uint64_t>>
-      result_buffer_elements_nullable(const Query& query) {
+      result_buffer_elements_nullable_labels(const Query& query) {
     // Query hasn't been submitted
     if (query.buff_sizes_.empty()) {
       return {};
