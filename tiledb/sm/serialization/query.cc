@@ -1589,14 +1589,17 @@ Status query_from_capnp(
   }
 
   // Make sure we have the right query strategy in place.
-  // Setting the QueryState to INITIALIZED must be decoupled from Strategy
-  // creation to ensure the query is fully deserialized before considered
-  // initialized.
   bool force_legacy_reader =
       query_type == QueryType::READ && query_reader.hasReader();
-  bool decouple_initialization = true;
-  RETURN_NOT_OK(query->reset_strategy_with_layout(
-      layout, force_legacy_reader, decouple_initialization));
+  RETURN_NOT_OK(query->reset_strategy_with_layout(layout, force_legacy_reader));
+
+  // Reset QueryStatus to UNINITIALIZED
+  // Note: this is a pre-C.41 hack. At present, Strategy creation is the point
+  // of construction through the regular API. However, the Query cannot be
+  // considered fully initialized until everything has been deserialized. We
+  // must "reset" the status here to bypass future checks on a
+  // fully-initialized Query until the final QueryStatus is deserialized.
+  query->set_status(QueryStatus::UNINITIALIZED);
 
   // Deserialize Config
   if (query_reader.hasConfig()) {

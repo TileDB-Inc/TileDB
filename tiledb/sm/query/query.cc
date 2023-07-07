@@ -840,7 +840,7 @@ IQueryStrategy* Query::strategy(bool skip_checks_serialization) {
 }
 
 Status Query::reset_strategy_with_layout(
-    Layout layout, bool force_legacy_reader, bool decouple_initialization) {
+    Layout layout, bool force_legacy_reader) {
   force_legacy_reader_ = force_legacy_reader;
   if (strategy_ != nullptr) {
     dynamic_cast<StrategyBase*>(strategy_.get())->stats()->reset();
@@ -848,7 +848,7 @@ Status Query::reset_strategy_with_layout(
   }
   layout_ = layout;
   subarray_.set_layout(layout);
-  RETURN_NOT_OK(create_strategy(true, decouple_initialization));
+  RETURN_NOT_OK(create_strategy(true));
 
   return Status::Ok();
 }
@@ -1289,7 +1289,6 @@ Status Query::set_condition(const QueryCondition& condition) {
         "Cannot set query condition; Operation not applicable "
         "to write queries"));
   }
-
   if (status_ != tiledb::sm::QueryStatus::UNINITIALIZED) {
     return logger_->status(Status_QueryError(
         "Cannot set query condition; Setting a query condition on an already"
@@ -1648,8 +1647,7 @@ void Query::set_dimension_label_ordered_read(bool increasing_order) {
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
-Status Query::create_strategy(
-    bool skip_checks_serialization, bool decouple_initialization) {
+Status Query::create_strategy(bool skip_checks_serialization) {
   if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
     if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
       if (!array_schema_->dense()) {
@@ -1863,11 +1861,6 @@ Status Query::create_strategy(
   // Transition the query into INITIALIZED state
   if (!skip_checks_serialization) {
     set_status(QueryStatus::INITIALIZED);
-  }
-
-  // Reset the QueryStatus to be handled by deserialization
-  if (decouple_initialization) {
-    set_status(QueryStatus::UNINITIALIZED);
   }
 
   return Status::Ok();
