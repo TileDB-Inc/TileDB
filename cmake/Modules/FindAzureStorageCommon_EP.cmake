@@ -72,6 +72,11 @@ elseif(NOT TILEDB_FORCE_ALL_DEPS)
           PATH_SUFFIXES lib64 lib bin
           ${TILEDB_DEPS_NO_DEFAULT_PATH}
           )
+  find_path(AZURE_STORAGE_COMMON_INCLUDE_DIR
+          NAMES azure/storage/common/storage_common.hpp
+          PATH_SUFFIXES include
+          ${TILEDB_DEPS_NO_DEFAULT_PATH}
+          )
 endif()
 
 include(FindPackageHandleStandardArgs)
