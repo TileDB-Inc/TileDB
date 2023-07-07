@@ -39,14 +39,11 @@ endif()
 # Start superbuild/unmanaged/legacy version
 ###############################################################################
 
-# This is the install subdirectory for azure headers and libs, to avoid pollution
-set(TILEDB_EP_AZURE_INSTALL_PREFIX "${TILEDB_EP_INSTALL_PREFIX}/azurecpplite")
-
 find_library(AZURE_STORAGE_COMMON_LIBRARIES
         NAMES
         libazure-storage-common${CMAKE_STATIC_LIBRARY_SUFFIX}
         azure-storage-common${CMAKE_STATIC_LIBRARY_SUFFIX}
-        PATHS "${TILEDB_EP_AZURE_INSTALL_PREFIX}"
+        PATHS "${TILEDB_EP_INSTALL_PREFIX}"
         PATH_SUFFIXES lib lib64
         NO_DEFAULT_PATH
         )
@@ -54,7 +51,7 @@ find_library(AZURE_STORAGE_BLOBS_LIBRARIES
         NAMES
         libazure-storage-blobs${CMAKE_STATIC_LIBRARY_SUFFIX}
         azure-storage-blobs${CMAKE_STATIC_LIBRARY_SUFFIX}
-        PATHS "${TILEDB_EP_AZURE_INSTALL_PREFIX}"
+        PATHS "${TILEDB_EP_INSTALL_PREFIX}"
         PATH_SUFFIXES lib lib64
         NO_DEFAULT_PATH
         )
@@ -69,7 +66,7 @@ if (AZURE_STORAGE_COMMON_LIBRARIES)
   set(AZURE_STORAGE_COMMON_STATIC_EP_FOUND TRUE)
   find_path(AZURE_STORAGE_COMMON_INCLUDE_DIR
           NAMES azure/storage/blobs.hpp
-          PATHS "${TILEDB_EP_AZURE_INSTALL_PREFIX}"
+          PATHS "${TILEDB_EP_INSTALL_PREFIX}"
           PATH_SUFFIXES include
           NO_DEFAULT_PATH
           )
@@ -123,7 +120,7 @@ if (NOT AZURE_STORAGE_COMMON_FOUND)
         -DBUILD_SHARED_LIBS=OFF
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
-        -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_AZURE_INSTALL_PREFIX}
+        -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
         -DWARNINGS_AS_ERRORS=OFF
         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}

@@ -39,15 +39,12 @@ endif()
 # Start superbuild/unmanaged/legacy version
 ###############################################################################
 
-# This is the install subdirectory for azure headers and libs, to avoid pollution
-set(TILEDB_EP_AZURE_INSTALL_PREFIX "${TILEDB_EP_INSTALL_PREFIX}/azurecpplite")
-
 # First check for a static version in the EP prefix.
 find_library(AZURECORE_LIBRARIES
         NAMES
         libazure-core${CMAKE_STATIC_LIBRARY_SUFFIX}
         azure-core${CMAKE_STATIC_LIBRARY_SUFFIX}
-        PATHS "${TILEDB_EP_AZURE_INSTALL_PREFIX}"
+        PATHS "${TILEDB_EP_INSTALL_PREFIX}"
         PATH_SUFFIXES lib lib64
         NO_DEFAULT_PATH
         )
@@ -62,7 +59,7 @@ if (AZURECORE_LIBRARIES)
   set(AZURECORE_STATIC_EP_FOUND TRUE)
   find_path(AZURECORE_INCLUDE_DIR
           NAMES azure/core.hpp
-          PATHS "${TILEDB_EP_AZURE_INSTALL_PREFIX}"
+          PATHS "${TILEDB_EP_INSTALL_PREFIX}"
           PATH_SUFFIXES include
           NO_DEFAULT_PATH
           )
@@ -118,7 +115,7 @@ if (NOT AZURECORE_FOUND)
         -DBUILD_SHARED_LIBS=OFF
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
-        -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_AZURE_INSTALL_PREFIX}
+        -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
         -DWARNINGS_AS_ERRORS=OFF
         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}

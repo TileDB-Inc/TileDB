@@ -39,12 +39,9 @@ endif()
 # Start superbuild/unmanaged/legacy version
 ###############################################################################
 
-# This is the install subdirectory for azure headers and libs, to avoid pollution
-set(TILEDB_EP_AZURE_INSTALL_PREFIX "${TILEDB_EP_INSTALL_PREFIX}/azurecpplite")
-
 # First check for a static version in the EP prefix.
 find_package(wil
-        PATHS "${TILEDB_EP_AZURE_INSTALL_PREFIX}"
+        PATHS "${TILEDB_EP_INSTALL_PREFIX}"
         ${TILEDB_DEPS_NO_DEFAULT_PATH}
 )
 
@@ -61,8 +58,8 @@ if (NOT wil_FOUND)
       CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-        -DCMAKE_PREFIX_PATH=${TILEDB_EP_AZURE_INSTALL_PREFIX}
-        -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_AZURE_INSTALL_PREFIX}
+        -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
+        -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
