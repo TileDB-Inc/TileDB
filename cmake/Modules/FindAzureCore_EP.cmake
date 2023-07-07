@@ -97,9 +97,9 @@ if (NOT AZURECORE_FOUND)
     if (TARGET ep_openssl)
       list(APPEND DEPENDS ep_openssl)
     endif()
-    if(TARGET ep_uamqp)
-      list(APPEND DEPENDS ep_uamqp)
-      endif()
+    if (TARGET ep_curl)
+      list(APPEND DEPENDS ep_curl)
+    endif()
     # Define windows dependencies
     if (WIN32)
       if(TARGET ep_wil)
@@ -107,19 +107,12 @@ if (NOT AZURECORE_FOUND)
       endif()
     endif()
 
-    if (WIN32)
-      find_package(Git REQUIRED)
-      set(CONDITIONAL_PATCH cd ${CMAKE_SOURCE_DIR} && ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_azure_core < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azure_core/aziotsharedutil.patch)
-    else()
-      set(CONDITIONAL_PATCH patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_azure_core/aziotsharedutil.patch)
-    endif()
     ExternalProject_Add(ep_azure_core
       PREFIX "externals"
       URL "https://github.com/Azure/azure-sdk-for-cpp/archive/azure-core_1.10.0.zip"
       URL_HASH SHA1=95fd8d56b439145228570c16ade5c0a73bbf6904
       DOWNLOAD_NAME azure-core_1.10.0.zip
-      PATCH_COMMAND
-        ${CONDITIONAL_PATCH}
+      SOURCE_SUBDIR sdk/core/azure-core
       CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DBUILD_SHARED_LIBS=OFF
