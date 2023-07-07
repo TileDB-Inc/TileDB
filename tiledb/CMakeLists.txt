@@ -562,7 +562,7 @@ if (TILEDB_AZURE)
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
             INTERFACE
             Azure::azure-storage-common
-            Azure::azure-storage-common-blobs
+            Azure::azure-storage-blobs
             Azure::azure-core
             LibXml2::LibXml2)
   endif()
@@ -969,7 +969,7 @@ if (TILEDB_STATIC)
 
   append_dep_lib(Azure::azure-storage-common)
   if(TILEDB_AZURE AND NOT TILEDB_VCPKG)
-    append_dep_lib(Azure::azure-storage-common-blobs)
+    append_dep_lib(Azure::azure-storage-blobs)
   endif()
   append_dep_lib(Azure::azure-core)
   append_dep_lib(LibXml2::LibXml2)
