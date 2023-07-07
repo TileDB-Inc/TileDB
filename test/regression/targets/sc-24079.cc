@@ -11,10 +11,7 @@ TEST_CASE(
     "C++ API: DoubleDelta filter typecheck should account for output type of "
     "FloatScaleFilter",
     "[cppapi][filter][float-scaling]") {
-  tiledb::Config config;
-  config["sm.compute_concurrency_level"] = "1";
-  config["sm.io_concurrency_level"] = "1";
-  tiledb::Context ctx(config);
+  tiledb::Context ctx;
   tiledb::VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
