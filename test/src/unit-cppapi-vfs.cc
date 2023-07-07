@@ -30,6 +30,7 @@
  * Tests the C++ API for the VFS functionality.
  */
 
+#include <test/support/src/helpers.h>
 #include <test/support/tdb_catch.h>
 #include "tiledb/sm/cpp_api/tiledb"
 
@@ -231,6 +232,24 @@ TEST_CASE(
   vfs.remove_dir(path);
 
 #endif
+}
+
+TEST_CASE(
+    "C++ API: Test VFS is_bucket", "[cppapi][cppapi-vfs][vfs-is-bucket]") {
+  tiledb::Config config;
+#ifndef TILEDB_TESTS_AWS_S3_CONFIG
+  REQUIRE_NOTHROW(config.set("vfs.s3.endpoint_override", "localhost:9999"));
+  REQUIRE_NOTHROW(config.set("vfs.s3.scheme", "https"));
+  REQUIRE_NOTHROW(config.set("vfs.s3.use_virtual_addressing", "false"));
+  REQUIRE_NOTHROW(config.set("vfs.s3.verify_ssl", "false"));
+#endif
+  tiledb::Context ctx(config);
+  tiledb::VFS vfs(ctx);
+  std::string bucket_name = "s3://" + tiledb::test::random_name("tiledb") + "/";
+  vfs.create_bucket(bucket_name);
+  CHECK(vfs.is_empty_bucket(bucket_name) == true);
+  vfs.touch(bucket_name + "/test.txt");
+  CHECK(vfs.is_empty_bucket(bucket_name) == false);
 }
 
 TEST_CASE(
