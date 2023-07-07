@@ -242,9 +242,9 @@ class QueryExperimental {
    * from a read query. This is a map from the dimension label name to a pair of
    * values.
    *
-   * The first is number of elements (offsets) for var size labels second is
-   * number of elements in the data buffer. For fixed sized labels, the first is
-   * always 0.
+   * The first is number of elements (offsets) for var size labels, and the
+   * second is number of elements in the data buffer. For fixed sized labels,
+   * the first is always 0.
    *
    * For variable sized labels the first value is the number of cells read, i.e.
    * the number of offsets read for the dimension label. The second value is the
