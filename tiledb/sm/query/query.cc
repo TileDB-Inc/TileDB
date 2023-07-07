@@ -857,6 +857,7 @@ Status Query::reset_strategy_with_layout(
     dynamic_cast<StrategyBase*>(strategy_.get())->stats()->reset();
     strategy_ = nullptr;
   }
+  set_status(QueryStatus::UNINITIALIZED);
   layout_ = layout;
   subarray_.set_layout(layout);
   RETURN_NOT_OK(create_strategy(true));
