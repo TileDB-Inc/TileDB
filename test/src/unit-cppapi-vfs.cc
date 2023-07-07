@@ -235,24 +235,6 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "C++ API: Test VFS is_bucket", "[cppapi][cppapi-vfs][vfs-is-bucket]") {
-  tiledb::Config config;
-#ifndef TILEDB_TESTS_AWS_S3_CONFIG
-  REQUIRE_NOTHROW(config.set("vfs.s3.endpoint_override", "localhost:9999"));
-  REQUIRE_NOTHROW(config.set("vfs.s3.scheme", "https"));
-  REQUIRE_NOTHROW(config.set("vfs.s3.use_virtual_addressing", "false"));
-  REQUIRE_NOTHROW(config.set("vfs.s3.verify_ssl", "false"));
-#endif
-  tiledb::Context ctx(config);
-  tiledb::VFS vfs(ctx);
-  std::string bucket_name = "s3://" + tiledb::test::random_name("tiledb") + "/";
-  vfs.create_bucket(bucket_name);
-  CHECK(vfs.is_empty_bucket(bucket_name) == true);
-  vfs.touch(bucket_name + "/test.txt");
-  CHECK(vfs.is_empty_bucket(bucket_name) == false);
-}
-
-TEST_CASE(
     "C++ API: Test VFS copy directory",
     "[cppapi][cppapi-vfs][cppapi-vfs-copy-dir]") {
   using namespace tiledb;
@@ -479,4 +461,43 @@ TEST_CASE(
   vfs.remove_dir(path);
 
 #endif
+}
+
+TEST_CASE(
+    "C++ API: Test VFS is_empty_bucket",
+    "[cppapi][cppapi-vfs][vfs-is-empty-bucket]") {
+  tiledb::Config config;
+#ifndef TILEDB_TESTS_AWS_S3_CONFIG
+  REQUIRE_NOTHROW(config.set("vfs.s3.endpoint_override", "localhost:9999"));
+  REQUIRE_NOTHROW(config.set("vfs.s3.scheme", "https"));
+  REQUIRE_NOTHROW(config.set("vfs.s3.use_virtual_addressing", "false"));
+  REQUIRE_NOTHROW(config.set("vfs.s3.verify_ssl", "false"));
+#endif
+  tiledb::Context ctx(config);
+  int s3 = 0;
+  REQUIRE(
+      tiledb_ctx_is_supported_fs(ctx.ptr().get(), TILEDB_S3, &s3) == TILEDB_OK);
+  if (s3) {
+    tiledb::VFS vfs(ctx);
+    std::string bucket_name =
+        "s3://" + tiledb::test::random_name("tiledb") + "/";
+    if (vfs.is_bucket(bucket_name)) {
+      REQUIRE_NOTHROW(vfs.remove_bucket(bucket_name));
+    }
+    REQUIRE(vfs.is_bucket(bucket_name) == false);
+
+    REQUIRE_NOTHROW(vfs.create_bucket(bucket_name));
+    CHECK(vfs.is_bucket(bucket_name) == true);
+    CHECK(vfs.is_empty_bucket(bucket_name) == true);
+
+    REQUIRE_NOTHROW(vfs.touch(bucket_name + "/test.txt"));
+    CHECK(vfs.is_empty_bucket(bucket_name) == false);
+
+    REQUIRE_NOTHROW(vfs.remove_file(bucket_name + "/test.txt"));
+    CHECK(vfs.is_empty_bucket(bucket_name) == true);
+
+    if (vfs.is_bucket(bucket_name)) {
+      REQUIRE_NOTHROW(vfs.remove_bucket(bucket_name));
+    }
+  }
 }
