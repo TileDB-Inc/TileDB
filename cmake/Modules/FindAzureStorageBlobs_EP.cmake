@@ -1,5 +1,5 @@
 #
-# FindAzureStorageCommon_EP.cmake
+# FindAzureStorageBlobs_EP.cmake
 #
 #
 # The MIT License
@@ -24,8 +24,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-# This module finds the Azure Storage Common SDK, installing it with an ExternalProject if
-# necessary. It then defines the imported by target Azure_Storage_Common::Azure_Storage_Common.
+# This module finds the Azure Storage Blobs SDK, installing it with an ExternalProject if
+# necessary. It then defines the imported by target Azure_Storage_Blobs::Azure_Storage_Blobs.
 
 # Include some common helper functions.
 include(TileDBCommon)
@@ -39,10 +39,10 @@ endif()
 # Start superbuild/unmanaged/legacy version
 ###############################################################################
 
-find_library(AZURE_STORAGE_COMMON_LIBRARIES
+find_library(AZURE_STORAGE_BLOBS_LIBRARIES
         NAMES
-        libazure-storage-common${CMAKE_STATIC_LIBRARY_SUFFIX}
-        azure-storage-common${CMAKE_STATIC_LIBRARY_SUFFIX}
+        libazure-storage-blobs${CMAKE_STATIC_LIBRARY_SUFFIX}
+        azure-storage-blobs${CMAKE_STATIC_LIBRARY_SUFFIX}
         PATHS "${TILEDB_EP_INSTALL_PREFIX}"
         PATH_SUFFIXES lib lib64
         NO_DEFAULT_PATH
@@ -54,48 +54,50 @@ find_library(AZURE_STORAGE_COMMON_LIBRARIES
 #appropriately include/package the .dll, since the code is (incorrectly) assuming .lib is indicative of a
 #static library being used.
 
-if (AZURE_STORAGE_COMMON_LIBRARIES)
-  set(AZURE_STORAGE_COMMON_STATIC_EP_FOUND TRUE)
-  find_path(AZURE_STORAGE_COMMON_INCLUDE_DIR
-          NAMES azure/storage/common/storage_common.hpp
+if (AZURE_STORAGE_BLOBS_LIBRARIES)
+  set(AZURE_STORAGE_BLOBS_STATIC_EP_FOUND TRUE)
+  find_path(AZURE_STORAGE_BLOBS_INCLUDE_DIR
+          NAMES azure/storage/blobs.hpp
           PATHS "${TILEDB_EP_INSTALL_PREFIX}"
           PATH_SUFFIXES include
           NO_DEFAULT_PATH
           )
 elseif(NOT TILEDB_FORCE_ALL_DEPS)
-  set(AZURE_STORAGE_COMMON_STATIC_EP_FOUND FALSE)
+  set(AZURE_STORAGE_BLOBS_STATIC_EP_FOUND FALSE)
   # Static EP not found, search in system paths.
-  find_library(AZURE_STORAGE_COMMON_LIBRARIES
+  find_library(AZURE_STORAGE_BLOBS_LIBRARIES
           NAMES
-          libazure-storage-common #*nix name
-          azure-storage-common #windows name
+          libazure-storage-blobs #*nix name
+          azure-storage-blobs #windows name
           PATH_SUFFIXES lib64 lib bin
+          ${TILEDB_DEPS_NO_DEFAULT_PATH}
+          )
+  find_path(AZURE_STORAGE_BLOBS_INCLUDE_DIR
+          NAMES azure/storage/blobs.hpp
+          PATH_SUFFIXES include
           ${TILEDB_DEPS_NO_DEFAULT_PATH}
           )
 endif()
 
 include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(Azure_Storage_Common
-        REQUIRED_VARS AZURE_STORAGE_COMMON_LIBRARIES AZURE_STORAGE_COMMON_INCLUDE_DIR
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(Azure_Storage_Blobs
+        REQUIRED_VARS AZURE_STORAGE_BLOBS_LIBRARIES AZURE_STORAGE_BLOBS_INCLUDE_DIR
         )
 
 
-if (NOT AZURE_STORAGE_COMMON_FOUND)
+if (NOT AZURE_STORAGE_BLOBS_FOUND)
   if (TILEDB_SUPERBUILD)
-      message(STATUS "Could NOT find azure-storage-common")
-      message(STATUS "Adding azure-storage-common as an external project")
+      message(STATUS "Could NOT find azure-storage-blobs")
+      message(STATUS "Adding azure-storage-blobs as an external project")
 
-    set(DEPENDS ep_azure_core)
-    if (TARGET ep_openssl)
-      list(APPEND DEPENDS ep_openssl)
-    endif()
+    set(DEPENDS ep_azure_storage_common)
 
-    ExternalProject_Add(ep_azure_storage_common
+    ExternalProject_Add(ep_azure_storage_blobs
       PREFIX "externals"
-      URL "https://github.com/Azure/azure-sdk-for-cpp/archive/azure-storage-common_12.3.2.zip"
-      URL_HASH SHA1=09fc97b3f4c4f8e8976704dfc1ecefd14b2ed1bc
-      DOWNLOAD_NAME azure-storage-common_12.3.2.zip
-      SOURCE_SUBDIR sdk/storage/azure-storage-common
+      URL "https://github.com/Azure/azure-sdk-for-cpp/archive/azure-storage-blobs_12.6.0.zip"
+      URL_HASH SHA1=4d033a68b74f486284542528e558509c8624f21d
+      DOWNLOAD_NAME azure-storage-blobs_12.6.0.zip
+      SOURCE_SUBDIR sdk/storage/azure-storage-blobs
       CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
         -DBUILD_SHARED_LIBS=OFF
@@ -116,24 +118,24 @@ if (NOT AZURE_STORAGE_COMMON_FOUND)
       DEPENDS ${DEPENDS}
     )
 
-    list(APPEND TILEDB_EXTERNAL_PROJECTS ep_azure_storage_common)
+    list(APPEND TILEDB_EXTERNAL_PROJECTS ep_azure_storage_blobs)
     list(APPEND FORWARD_EP_CMAKE_ARGS
-      -DTILEDB_AZURE_STORAGE_COMMON_EP_BUILT=TRUE
+      -DTILEDB_AZURE_STORAGE_BLOBS_EP_BUILT=TRUE
     )
   else ()
-    message(FATAL_ERROR "Could not find ep_azure_storage_common (required).")
+    message(FATAL_ERROR "Could not find ep_azure_storage_blobs (required).")
   endif ()
 endif ()
 
-if (AZURE_STORAGE_COMMON_FOUND AND NOT TARGET Azure::azure-storage-common)
-  add_library(Azure::azure-storage-common UNKNOWN IMPORTED)
-  set_target_properties(Azure::azure-storage-common PROPERTIES
-          IMPORTED_LOCATION "${AZURE_STORAGE_COMMON_LIBRARIES}"
-          INTERFACE_INCLUDE_DIRECTORIES "${AZURE_STORAGE_COMMON_INCLUDE_DIR}"
+if (AZURE_STORAGE_BLOBS_FOUND AND NOT TARGET Azure::azure-storage-blobs)
+  add_library(Azure::azure-storage-blobs UNKNOWN IMPORTED)
+  set_target_properties(Azure::azure-storage-blobs PROPERTIES
+          IMPORTED_LOCATION "${AZURE_STORAGE_BLOBS_LIBRARIES}"
+          INTERFACE_INCLUDE_DIRECTORIES "${AZURE_STORAGE_BLOBS_INCLUDE_DIR}"
           )
 endif()
 
 # If we built a static EP, install it if required.
-if (AZURE_STORAGE_COMMON_STATIC_EP_FOUND AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(Azure::azure-storage-common)
+if (AZURE_STORAGE_BLOBS_STATIC_EP_FOUND AND TILEDB_INSTALL_STATIC_DEPS)
+  install_target_libs(Azure::azure-storage-blobs)
 endif()
