@@ -30,9 +30,7 @@
  * Tests the `SumAggregator` class.
  */
 
-#include "test/support/src/type_conversion.h"
 #include "tiledb/common/common.h"
-#include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/sum_aggregator.h"
@@ -43,79 +41,41 @@
 using namespace tiledb::sm;
 
 TEST_CASE("Sum aggregator: constructor", "[sum-aggregator][constructor]") {
-  ArraySchema schema;
-  shared_ptr<const Attribute> a1 = make_shared<Attribute>(
-      HERE(),
-      "a1",
-      Datatype::UINT8,
-      constants::var_num,
-      DataOrder::UNORDERED_DATA);
-  CHECK(schema.add_attribute(a1).ok());
-  shared_ptr<const Attribute> a2 = make_shared<Attribute>(
-      HERE(), "a2", Datatype::UINT8, 2, DataOrder::UNORDERED_DATA);
-  CHECK(schema.add_attribute(a2).ok());
-
-  SECTION("Invalid field") {
-    CHECK_THROWS_WITH(
-        SumAggregator<uint8_t>("a3", schema),
-        "SumAggregator: Field doesn't exists.");
-  }
-
   SECTION("Var size") {
     CHECK_THROWS_WITH(
-        SumAggregator<uint8_t>("a1", schema),
+        SumAggregator<uint8_t>("a1", true, false, 1),
         "SumAggregator: Sum aggregates must not be requested for var sized "
         "attributes.");
   }
 
   SECTION("Invalid cell val num") {
     CHECK_THROWS_WITH(
-        SumAggregator<uint8_t>("a2", schema),
+        SumAggregator<uint8_t>("a1", false, false, 2),
         "SumAggregator: Sum aggregates must not be requested for attributes "
         "with more than one value.");
   }
 }
 
 TEST_CASE("Sum aggregator: var sized", "[sum-aggregator][var-sized]") {
-  ArraySchema schema;
-  shared_ptr<const Attribute> a1 =
-      make_shared<Attribute>(HERE(), "a1", Datatype::UINT8);
-  CHECK(schema.add_attribute(a1).ok());
-  SumAggregator<uint8_t> aggregator("a1", schema);
+  SumAggregator<uint8_t> aggregator("a1", false, false, 1);
   CHECK(aggregator.var_sized() == false);
 }
 
 TEST_CASE(
     "Sum aggregator: need recompute", "[sum-aggregator][need-recompute]") {
-  ArraySchema schema;
-  shared_ptr<const Attribute> a1 =
-      make_shared<Attribute>(HERE(), "a1", Datatype::UINT8);
-  CHECK(schema.add_attribute(a1).ok());
-  SumAggregator<uint8_t> aggregator("a1", schema);
+  SumAggregator<uint8_t> aggregator("a1", false, false, 1);
   CHECK(aggregator.need_recompute_on_overflow() == true);
 }
 
 TEST_CASE("Sum aggregator: field name", "[sum-aggregator][field-name]") {
-  ArraySchema schema;
-  shared_ptr<const Attribute> a1 =
-      make_shared<Attribute>(HERE(), "a1", Datatype::UINT8);
-  CHECK(schema.add_attribute(a1).ok());
-  SumAggregator<uint8_t> aggregator("a1", schema);
+  SumAggregator<uint8_t> aggregator("a1", false, false, 1);
   CHECK(aggregator.field_name() == "a1");
 }
 
 TEST_CASE(
     "Sum aggregator: Validate buffer", "[sum-aggregator][validate-buffer]") {
-  ArraySchema schema;
-  shared_ptr<const Attribute> a1 =
-      make_shared<Attribute>(HERE(), "a1", Datatype::UINT8);
-  CHECK(schema.add_attribute(a1).ok());
-  SumAggregator<uint8_t> aggregator("a1", schema);
-
-  shared_ptr<const Attribute> a2 =
-      make_shared<Attribute>(HERE(), "a2", Datatype::UINT8, true);
-  CHECK(schema.add_attribute(a2).ok());
-  SumAggregator<uint8_t> aggregator2("a2", schema);
+  SumAggregator<uint8_t> aggregator("a1", false, false, 1);
+  SumAggregator<uint8_t> aggregator2("a2", false, true, 1);
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -229,21 +189,8 @@ TEMPLATE_LIST_TEST_CASE(
     "[sum-aggregator][basic-aggregation]",
     FixedTypesUnderTest) {
   typedef TestType T;
-  auto tiledb_type = Datatype::CHAR;
-  if constexpr (!std::is_same<T, unsigned char>::value) {
-    auto type = tiledb::test::type_to_tiledb<T>();
-    tiledb_type = static_cast<Datatype>(type.tiledb_type);
-  }
-
-  ArraySchema schema;
-  shared_ptr<const Attribute> a1 =
-      make_shared<Attribute>(HERE(), "a1", tiledb_type);
-  CHECK(schema.add_attribute(a1).ok());
-  SumAggregator<T> aggregator("a1", schema);
-  shared_ptr<const Attribute> a2 =
-      make_shared<Attribute>(HERE(), "a2", tiledb_type, true);
-  CHECK(schema.add_attribute(a2).ok());
-  SumAggregator<T> aggregator2("a2", schema);
+  SumAggregator<T> aggregator("a1", false, false, 1);
+  SumAggregator<T> aggregator2("a2", false, true, 1);
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -386,11 +333,7 @@ TEMPLATE_LIST_TEST_CASE(
 
 TEST_CASE(
     "Sum aggregator: signed overflow", "[sum-aggregator][signed-overflow]") {
-  ArraySchema schema;
-  shared_ptr<const Attribute> a1 =
-      make_shared<Attribute>(HERE(), "a1", Datatype::INT64);
-  CHECK(schema.add_attribute(a1).ok());
-  SumAggregator<int64_t> aggregator("a1", schema);
+  SumAggregator<int64_t> aggregator("a1", false, false, 1);
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -476,11 +419,7 @@ TEST_CASE(
 TEST_CASE(
     "Sum aggregator: unsigned overflow",
     "[sum-aggregator][unsigned-overflow]") {
-  ArraySchema schema;
-  shared_ptr<const Attribute> a1 =
-      make_shared<Attribute>(HERE(), "a1", Datatype::UINT64);
-  CHECK(schema.add_attribute(a1).ok());
-  SumAggregator<uint64_t> aggregator("a1", schema);
+  SumAggregator<uint64_t> aggregator("a1", false, false, 1);
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -516,11 +455,7 @@ TEST_CASE(
 
 TEST_CASE(
     "Sum aggregator: double overflow", "[sum-aggregator][double-overflow]") {
-  ArraySchema schema;
-  shared_ptr<const Attribute> a1 =
-      make_shared<Attribute>(HERE(), "a1", Datatype::FLOAT64);
-  CHECK(schema.add_attribute(a1).ok());
-  SumAggregator<double> aggregator("a1", schema);
+  SumAggregator<double> aggregator("a1", false, false, 1);
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 

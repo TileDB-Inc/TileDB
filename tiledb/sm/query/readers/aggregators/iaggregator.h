@@ -41,7 +41,6 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class ArraySchema;
 class QueryBuffer;
 class AggregateBuffer;
 class IAggregator;

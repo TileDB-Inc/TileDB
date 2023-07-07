@@ -701,8 +701,8 @@ class Query {
     fragment_size_ = fragment_size;
   }
 
-  /** Returns true if the field is an aggregate. */
-  bool is_aggregate(std::string field_name) const;
+  /** Returns true if the output field is an aggregate. */
+  bool is_aggregate(std::string output_field_name) const;
 
   /**
    * Adds an aggregator to the default channel.

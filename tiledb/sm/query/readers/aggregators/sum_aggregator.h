@@ -86,10 +86,16 @@ class SumAggregator : public IAggregator {
   /**
    * Constructor.
    *
-   * @param field_name Name of the field that this aggregate will process.
-   * @param array_schema Array schema.
+   * @param field_name Filed name that is aggregated.
+   * @param var_sized Is this a var sized attribute?
+   * @param is_nullable Is this a nullable attribute?
+   * @param cell_val_num Number of values per cell.
    */
-  SumAggregator(const std::string field_name, const ArraySchema& schema);
+  SumAggregator(
+      const std::string field_name,
+      const bool var_sized,
+      const bool is_nullable,
+      const unsigned cell_val_num);
 
   DISABLE_COPY_AND_COPY_ASSIGN(SumAggregator);
   DISABLE_MOVE_AND_MOVE_ASSIGN(SumAggregator);

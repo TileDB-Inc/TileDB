@@ -1676,8 +1676,8 @@ void Query::set_dimension_label_ordered_read(bool increasing_order) {
   dimension_label_increasing_ = increasing_order;
 }
 
-bool Query::is_aggregate(std::string field_name) const {
-  return default_channel_aggregates_.count(field_name) != 0;
+bool Query::is_aggregate(std::string output_field_name) const {
+  return default_channel_aggregates_.count(output_field_name) != 0;
 }
 
 /* ****************************** */
@@ -1996,11 +1996,6 @@ Status Query::check_buffers_correctness() {
 
   // Iterate through each attribute
   for (auto& attr : buffer_names()) {
-    // Skip aggregate buffers.
-    if (default_channel_aggregates_.count(attr) != 0) {
-      continue;
-    }
-
     if (array_schema_->var_size(attr)) {
       // Check for data buffer under buffer_var and offsets buffer under
       // buffer

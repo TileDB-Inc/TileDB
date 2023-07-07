@@ -333,8 +333,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   // Add a count aggregator to the query.
   query.ptr()->query_->add_aggregator_to_default_channel(
       "Sum",
-      std::make_shared<tiledb::sm::SumAggregator<T>>(
-          "a1", array.ptr()->array_->array_schema_latest()));
+      std::make_shared<tiledb::sm::SumAggregator<T>>("a1", false, nullable, 1));
 
   if (set_ranges) {
     // Slice only rows 2, 3

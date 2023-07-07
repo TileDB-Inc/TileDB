@@ -93,22 +93,21 @@ void safe_sum<double>(double value, double& sum) {
 
 template <typename T>
 SumAggregator<T>::SumAggregator(
-    const std::string field_name, const ArraySchema& schema)
-    : is_nullable_(schema.is_nullable(field_name))
+    const std::string field_name,
+    const bool var_sized,
+    const bool is_nullable,
+    const unsigned cell_val_num)
+    : is_nullable_(is_nullable)
     , field_name_(field_name)
     , sum_(0)
     , validity_value_(0)
     , sum_overflowed_(false) {
-  if (!schema.is_field(field_name)) {
-    throw SumAggregatorStatusException("Field doesn't exists.");
-  }
-
-  if (schema.var_size(field_name)) {
+  if (var_sized) {
     throw SumAggregatorStatusException(
         "Sum aggregates must not be requested for var sized attributes.");
   }
 
-  if (schema.cell_val_num(field_name) != 1) {
+  if (cell_val_num != 1) {
     throw SumAggregatorStatusException(
         "Sum aggregates must not be requested for attributes with more than "
         "one value.");
@@ -287,25 +286,25 @@ tuple<SUM_T, uint8_t> SumAggregator<T>::sum(AggregateBuffer& input_data) {
 
 // Explicit template instantiations
 template SumAggregator<int8_t>::SumAggregator(
-    const std::string, const ArraySchema&);
+    const std::string, const bool, const bool, const unsigned);
 template SumAggregator<int16_t>::SumAggregator(
-    const std::string, const ArraySchema&);
+    const std::string, const bool, const bool, const unsigned);
 template SumAggregator<int32_t>::SumAggregator(
-    const std::string, const ArraySchema&);
+    const std::string, const bool, const bool, const unsigned);
 template SumAggregator<int64_t>::SumAggregator(
-    const std::string, const ArraySchema&);
+    const std::string, const bool, const bool, const unsigned);
 template SumAggregator<uint8_t>::SumAggregator(
-    const std::string, const ArraySchema&);
+    const std::string, const bool, const bool, const unsigned);
 template SumAggregator<uint16_t>::SumAggregator(
-    const std::string, const ArraySchema&);
+    const std::string, const bool, const bool, const unsigned);
 template SumAggregator<uint32_t>::SumAggregator(
-    const std::string, const ArraySchema&);
+    const std::string, const bool, const bool, const unsigned);
 template SumAggregator<uint64_t>::SumAggregator(
-    const std::string, const ArraySchema&);
+    const std::string, const bool, const bool, const unsigned);
 template SumAggregator<float>::SumAggregator(
-    const std::string, const ArraySchema&);
+    const std::string, const bool, const bool, const unsigned);
 template SumAggregator<double>::SumAggregator(
-    const std::string, const ArraySchema&);
+    const std::string, const bool, const bool, const unsigned);
 
 }  // namespace sm
 }  // namespace tiledb
