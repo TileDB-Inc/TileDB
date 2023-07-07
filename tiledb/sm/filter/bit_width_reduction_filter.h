@@ -42,8 +42,8 @@ namespace tiledb {
 namespace sm {
 
 /**
- * A filter that compresses an array of unsigned integers by reducing the number
- * of bits per element if possible.
+ * A filter that compresses an array of integers by reducing the number of bits
+ * per element if possible.
  *
  * When compressing, the filter determines the min and max values of the input
  * elements within a window of size N. If the range of values can be represented

@@ -43,12 +43,11 @@ namespace sm {
 
 /**
  * A filter that computes a checksum of the input data into the output data
- buffer with
- * user specified algorithm.
+ * buffer with user specified algorithm.
  *
  * If the input comes in multiple FilterBuffer parts, each part is checksummed
  * independently in the forward direction. Input metadata is checksummed as
- well.
+ * well.
  *
  * The forward output metadata has the format:
  *   uint32_t - number of metadata checksums

@@ -122,14 +122,12 @@ void FilterPipeline::check_filter_types(
   }
 
   // ** Modern checks using Filter output type **
-  auto first_filter = pipeline.get_filter(0);
-  if (first_filter && !first_filter->accepts_input_datatype(first_input_type)) {
-    throw FilterPipelineStatusException(
-        "Filter " + filter_type_str(first_filter->type()) +
-        " does not accept " + datatype_str(first_input_type) +
-        " as an input datatype.");
-  }
-  for (unsigned i = 1; i < pipeline.size(); ++i) {
+  for (unsigned i = 0; i < pipeline.size(); ++i) {
+    // If the pipeline has filters, check first filter accepts first input type.
+    if (i == 0) {
+      pipeline.get_filter(i)->ensure_accepts_datatype(first_input_type);
+      continue;
+    }
     ensure_compatible(*pipeline.get_filter(i - 1), *pipeline.get_filter(i));
   }
 }

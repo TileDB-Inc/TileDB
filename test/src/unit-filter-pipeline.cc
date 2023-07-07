@@ -3465,7 +3465,6 @@ void testing_xor_filter(Datatype t) {
   const uint64_t nelts = 100;
   const uint64_t tile_size = nelts * sizeof(T);
   const uint64_t cell_size = sizeof(T);
-  ;
 
   WriterTile tile(constants::format_version, t, cell_size, tile_size);
 
@@ -3526,4 +3525,139 @@ TEST_CASE("Filter: Test XOR", "[filter][xor]") {
   testing_xor_filter<int64_t>(Datatype::DATETIME_PS);
   testing_xor_filter<int64_t>(Datatype::DATETIME_FS);
   testing_xor_filter<int64_t>(Datatype::DATETIME_AS);
+}
+
+TEST_CASE("Filter: Pipeline filtered output types", "[filter][pipeline]") {
+  FilterPipeline pipeline;
+  // Float scale converting tile data from float->int32
+  pipeline.add_filter(FloatScalingFilter(sizeof(int32_t), 1.0f, 0.0f));
+  SECTION("- Delta filter reinterprets int32->uint32") {
+    // Test with / without these filters to test tile types.
+    pipeline.add_filter(
+        CompressionFilter(tiledb::sm::Compressor::DELTA, 0, Datatype::UINT32));
+    pipeline.add_filter(BitWidthReductionFilter());
+  }
+
+  // Initial type of tile is float.
+  std::vector<float> data = {1.0, 2.1, 3.2, 4.3, 5.4, 6.5, 7.6, 8.7, 9.8, 10.9};
+  WriterTile tile(
+      constants::format_version,
+      Datatype::FLOAT32,
+      sizeof(float),
+      sizeof(float) * data.size());
+  for (size_t i = 0; i < data.size(); i++) {
+    CHECK(tile.write(&data[i], i * sizeof(float), sizeof(float)).ok());
+  }
+
+  ThreadPool tp(4);
+  CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
+  CHECK(tile.size() == 0);
+  CHECK(tile.filtered_buffer().size() != 0);
+  if (pipeline.has_filter(tiledb::sm::FilterType::FILTER_DELTA)) {
+    // FloatScale->Delta->BitWidthReduction final filtered datatype is uint32_t.
+    CHECK(tile.type() == Datatype::UINT32);
+  } else {
+    // FloatScale filtered datatype is int32_t.
+    CHECK(tile.type() == Datatype::INT32);
+  }
+
+  auto unfiltered_tile = create_tile_for_unfiltering(data.size(), tile);
+  unfiltered_tile.set_datatype(Datatype::FLOAT32);
+  run_reverse(tiledb::sm::Config(), tp, unfiltered_tile, pipeline);
+  std::vector<float> results{
+      1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 7.0f, 8.0f, 9.0f, 10.0f, 11.0f};
+  for (size_t i = 0; i < data.size(); i++) {
+    float val = 0;
+    CHECK(unfiltered_tile.read(&val, i * sizeof(float), sizeof(float)).ok());
+    CHECK(val == results[i]);
+  }
+}
+
+TEST_CASE(
+    "C++ API: Pipeline with filtered type conversions",
+    "[cppapi][filter][pipeline]") {
+  tiledb::Context ctx;
+  tiledb::VFS vfs(ctx);
+  std::string array_name = "cpp_test_array";
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  tiledb::Domain domain(ctx);
+  float domain_lo = static_cast<float>(std::numeric_limits<int64_t>::min());
+  float domain_hi = static_cast<float>(std::numeric_limits<int64_t>::max() - 1);
+
+  // Create and initialize dimension.
+  auto d1 = tiledb::Dimension::create<float>(
+      ctx, "d1", {{domain_lo, domain_hi}}, 2048);
+
+  tiledb::Filter float_scale(ctx, TILEDB_FILTER_SCALE_FLOAT);
+  double scale = 1.0f;
+  double offset = 0.0f;
+  uint64_t byte_width = sizeof(int32_t);
+
+  // Float scale converting tile data from float->int32
+  float_scale.set_option(TILEDB_SCALE_FLOAT_BYTEWIDTH, &byte_width);
+  float_scale.set_option(TILEDB_SCALE_FLOAT_FACTOR, &scale);
+  float_scale.set_option(TILEDB_SCALE_FLOAT_OFFSET, &offset);
+
+  // Delta filter reinterprets int32->uint32
+  tiledb::Filter delta(ctx, TILEDB_FILTER_DELTA);
+  delta.set_option(TILEDB_COMPRESSION_REINTERPRET_DATATYPE, TILEDB_UINT32);
+
+  tiledb::FilterList filters(ctx);
+  filters.add_filter(float_scale);
+  filters.add_filter(delta);
+
+  // Apply filters to both attribute and dimension.
+  d1.set_filter_list(filters);
+  domain.add_dimension(d1);
+
+  auto a1 = tiledb::Attribute::create<float>(ctx, "a1");
+  a1.set_filter_list(filters);
+
+  tiledb::ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain);
+  schema.add_attribute(a1);
+  schema.set_cell_order(TILEDB_ROW_MAJOR);
+  schema.set_tile_order(TILEDB_ROW_MAJOR);
+  CHECK_NOTHROW(tiledb::Array::create(array_name, schema));
+  std::vector<float> d1_data = {
+      1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0};
+  std::vector<float> a1_data = {
+      1.0, 2.1, 3.2, 4.3, 5.4, 6.5, 7.6, 8.7, 9.8, 10.9};
+
+  // Write to array.
+  {
+    tiledb::Array array(ctx, array_name, TILEDB_WRITE);
+    tiledb::Query query(ctx, array);
+    query.set_data_buffer("d1", d1_data);
+    query.set_data_buffer("a1", a1_data);
+    query.submit();
+    CHECK(tiledb::Query::Status::COMPLETE == query.query_status());
+  }
+
+  // Read from array.
+  {
+    std::vector<float> d1_read(10);
+    std::vector<float> a1_read(10);
+    tiledb::Array array(ctx, array_name, TILEDB_READ);
+    tiledb::Query query(ctx, array);
+    query.set_subarray({domain_lo, domain_hi});
+    query.set_data_buffer("a1", a1_read);
+    query.set_data_buffer("d1", d1_read);
+    query.submit();
+    CHECK(tiledb::Query::Status::COMPLETE == query.query_status());
+    // Some loss of precision from rounding in FloatScale.
+    CHECK(
+        std::vector<float>{
+            1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 7.0f, 8.0f, 9.0f, 10.0f, 11.0f} ==
+        a1_read);
+    CHECK(d1_data == d1_read);
+  }
+
+  // Cleanup.
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
 }

@@ -78,7 +78,7 @@ Status PositiveDeltaFilter::run_forward(
 
   /* Note: Arithmetic operations cannot be performed on std::byte.
     We will use uint8_t for the Datatype::BLOB case as it is the same size as
-    std::byte and can have arithmetic perfomed on it. */
+    std::byte and can have arithmetic performed on it. */
   switch (tile_type) {
     case Datatype::INT8:
       return run_forward<int8_t>(

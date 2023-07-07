@@ -54,6 +54,12 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+class CompressionFilterStatusException : public StatusException {
+ public:
+  explicit CompressionFilterStatusException(const std::string& msg)
+      : StatusException("CompressionFilter", msg) {
+  }
+};
 
 CompressionFilter::CompressionFilter(
     FilterType compressor,
@@ -517,7 +523,7 @@ Status CompressionFilter::compress_var_string_coords(
     FilterBuffer& output,
     FilterBuffer& output_metadata) const {
   if (input.num_buffers() != 1) {
-    throw std::logic_error(
+    throw CompressionFilterStatusException(
         "Var-sized string input has to be in single "
         "buffer format to be compressed with RLE or Dictionary encoding");
   }
@@ -604,7 +610,7 @@ Status CompressionFilter::decompress_var_string_coords(
     Tile* offsets_tile,
     FilterBuffer& output) const {
   if (input.num_buffers() != 1) {
-    throw std::logic_error(
+    throw CompressionFilterStatusException(
         "Var-sized string input has to be in single "
         "buffer format to be decompressed with RLE or Dictionary encoding");
   }
@@ -710,6 +716,26 @@ void CompressionFilter::init_decompression_resource_pool(uint64_t size) {
     zstd_decompress_ctx_pool_ =
         make_shared<BlockingResourcePool<ZStd::ZSTD_Decompress_Context>>(
             HERE(), size);
+  }
+}
+
+Datatype CompressionFilter::output_datatype() const {
+  switch (compressor_) {
+    case Compressor::NO_COMPRESSION:
+    case Compressor::GZIP:
+    case Compressor::ZSTD:
+    case Compressor::LZ4:
+    case Compressor::RLE:
+    case Compressor::BZIP2:
+    case Compressor::DICTIONARY_ENCODING:
+      return Datatype::ANY;
+    case Compressor::DOUBLE_DELTA:
+    case Compressor::DELTA:
+      // If reinterpret_datatype_ is ANY the tile type is left unchanged.
+      return reinterpret_datatype_;
+    default:
+      throw CompressionFilterStatusException(
+          "No output datatype defined for " + compressor_str(compressor_));
   }
 }
 
