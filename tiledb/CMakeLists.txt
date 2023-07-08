@@ -566,6 +566,10 @@ if (TILEDB_AZURE)
             Azure::azure-storage-blobs
             Azure::azure-core
             LibXml2::LibXml2)
+    if(MSVC)
+      # WebServices needed by Azure storage on windows
+      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE WebServices)
+    endif()
   endif()
 endif()
 
