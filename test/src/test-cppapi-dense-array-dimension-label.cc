@@ -313,7 +313,8 @@ class DenseArrayExample {
     query.submit();
     CHECK(query.query_status() == tiledb::Query::Status::COMPLETE);
     // Check result buffer elements.
-    auto results = tiledb::QueryExperimental::result_buffer_elements(query);
+    auto results =
+        tiledb::QueryExperimental::result_buffer_elements_labels(query);
     CHECK(std::get<0>(results["a"]) == 0);  // Fixed size attribute.
     CHECK(std::get<1>(results["a"]) == attr_data.size());
     CHECK(std::get<0>(results["x"]) == 0);  // Fixed size label.
@@ -373,7 +374,8 @@ class DenseArrayExample {
 
     // Check result buffer elements.
     auto results =
-        tiledb::QueryExperimental::result_buffer_elements_nullable(query);
+        tiledb::QueryExperimental::result_buffer_elements_nullable_labels(
+            query);
     CHECK(std::get<0>(results["a"]) == attr_offsets.size());
     CHECK(std::get<1>(results["a"]) == attr_data.size());
     CHECK(std::get<2>(results["a"]) == 0);  // No validity buffer.
