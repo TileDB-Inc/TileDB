@@ -238,31 +238,33 @@ class QueryExperimental {
   }
 
   /**
-   * Returns the number of elements in the result buffers from a read query.
-   * This is a map from the attribute name to a pair of values.
+   * Returns the number of elements for dimension labels in the result buffers
+   * from a read query. This is a map from the dimension label name to a pair of
+   * values.
    *
-   * The first is number of elements (offsets) for var size attributes, and the
-   * second is number of elements in the data buffer. For fixed sized attributes
-   * (and coordinates), the first is always 0.
+   * The first is number of elements (offsets) for var size labels, and the
+   * second is number of elements in the data buffer. For fixed sized labels,
+   * the first is always 0.
    *
-   * For variable sized attributes: the first value is the
-   * number of cells read, i.e. the number of offsets read for the attribute.
-   * The second value is the total number of elements in the data buffer. For
-   * example, a read query on a variable-length `float` attribute that reads
-   * three cells would return 3 for the first number in the pair. If the total
-   * amount of `floats` read across the three cells was 10, then the second
-   * number in the pair would be 10.
+   * For variable sized labels the first value is the number of cells read, i.e.
+   * the number of offsets read for the dimension label. The second value is the
+   * total number of elements in the data buffer. For example, a read query on a
+   * variable-length `float` dimension label that reads three cells would return
+   * 3 for the first number in the pair. If the total amount of `floats` read
+   * across the three cells was 10, then the second number in the pair would be
+   * 10.
    *
-   * For fixed-length attributes, the first value is always 0. The second value
-   * is the total number of elements in the data buffer. For example, a read
-   * query on a single `float` attribute that reads three cells would return 3
-   * for the second value. A read query on a `float` attribute with cell_val_num
-   * 2 that reads three cells would return 3 * 2 = 6 for the second value.
+   * For fixed-length labels, the first value is always 0. The second value is
+   * the total number of elements in the data buffer. For example, a read query
+   * on a single `float` dimension label that reads three cells would return 3
+   * for the second value. A read query on a `float` dimension label with
+   * cell_val_num 2 that reads three cells would return 3 * 2 = 6 for the second
+   * value.
    *
    * If the query has not been submitted, an empty map is returned.
    */
   static std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>
-  result_buffer_elements(const Query& query) {
+  result_buffer_elements_labels(const Query& query) {
     // Query hasn't been submitted
     if (query.buff_sizes_.empty()) {
       return {};
@@ -292,32 +294,33 @@ class QueryExperimental {
 
   /**
    * Returns the number of elements in the result buffers from a read query.
-   * This is a map from the attribute name to a tuple of values.
+   * This is a map from the dimension label name to a tuple of values.
    *
-   * The first is number of elements (offsets) for var size attributes, and the
-   * second is number of elements in the data buffer. For fixed sized attributes
-   * (and coordinates), the first is always 0. The third element is the size of
-   * the validity bytemap buffer.
+   * The first is number of elements (offsets) for var size labels, and the
+   * second is number of elements in the data buffer. For fixed sized labels,
+   * the first is always 0. The third element is the size of the validity
+   * bytemap buffer.
    *
-   * For variable sized attributes: the first value is the
-   * number of cells read, i.e. the number of offsets read for the attribute.
-   * The second value is the total number of elements in the data buffer. For
-   * example, a read query on a variable-length `float` attribute that reads
-   * three cells would return 3 for the first number in the pair. If the total
-   * amount of `floats` read across the three cells was 10, then the second
-   * number in the pair would be 10.
-   *
-   * For fixed-length attributes, the first value is always 0. The second value
+   * For variable sized labels: the first value is the number of cells read,
+   * i.e. the number of offsets read for the dimension label. The second value
    * is the total number of elements in the data buffer. For example, a read
-   * query on a single `float` attribute that reads three cells would return 3
-   * for the second value. A read query on a `float` attribute with cell_val_num
-   * 2 that reads three cells would return 3 * 2 = 6 for the second value.
+   * query on a variable-length `float` dimension label that reads three cells
+   * would return 3 for the first number in the pair. If the total amount of
+   * `floats` read across the three cells was 10, then the second number in the
+   * pair would be 10.
+   *
+   * For fixed-length labels, the first value is always 0. The second value is
+   * the total number of elements in the data buffer. For example, a read query
+   * on a single `float` dimension label that reads three cells would return 3
+   * for the second value. A read query on a `float` dimension label with
+   * cell_val_num 2 that reads three cells would return 3 * 2 = 6 for the second
+   * value.
    *
    * If the query has not been submitted, an empty map is returned.
    */
   static std::
       unordered_map<std::string, std::tuple<uint64_t, uint64_t, uint64_t>>
-      result_buffer_elements_nullable(const Query& query) {
+      result_buffer_elements_nullable_labels(const Query& query) {
     // Query hasn't been submitted
     if (query.buff_sizes_.empty()) {
       return {};
