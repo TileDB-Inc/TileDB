@@ -533,23 +533,44 @@ endif()
 # Azure dependencies
 if (TILEDB_AZURE)
   message(STATUS "The TileDB library is compiled with Azure support.")
-  find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
-  if (NOT TARGET LibLZMA)
-	  find_package(LibLZMA REQUIRED)
-  endif()
-  if (NOT TARGET LibXml2::LibXml2)
+
+  if (TILEDB_VCPKG)
+    find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
+    if (NOT TARGET LibLZMA)
+      find_package(LibLZMA REQUIRED)
+    endif()
+    if (NOT TARGET LibXml2::LibXml2)
       find_package(libxml2 CONFIG REQUIRED)
       install_target_libs(LibXml2::LibXml2)
+    endif()
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+            INTERFACE
+            Azure::azure-storage-blobs
+            Azure::azure-storage-common
+            Azure::azure-core
+            LibXml2::LibXml2
+            LibLZMA::LibLZMA
+            )
+    install_all_target_libs("Azure::azure-storage-blobs;Azure::azure-storage-common;Azure::azure-core")
+  else()
+    find_package(AzureCore_EP REQUIRED)
+    find_package(AzureStorageCommon_EP REQUIRED)
+    find_package(AzureStorageBlobs_EP REQUIRED)
+    if (NOT TARGET LibXml2::LibXml2)
+      find_package(libxml2 REQUIRED)
+      install_target_libs(LibXml2::LibXml2)
+    endif()
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+            INTERFACE
+            Azure::azure-storage-common
+            Azure::azure-storage-blobs
+            Azure::azure-core
+            LibXml2::LibXml2)
+    if(WIN32)
+      # WebServices needed by Azure storage on windows
+      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE WebServices)
+    endif()
   endif()
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-      Azure::azure-storage-blobs
-      Azure::azure-storage-common
-      Azure::azure-core
-      LibXml2::LibXml2
-      LibLZMA::LibLZMA
-  )
-  install_all_target_libs("Azure::azure-storage-blobs;Azure::azure-storage-common;Azure::azure-core")
 endif()
 
 # GCS dependencies
@@ -581,7 +602,7 @@ if (TILEDB_GCS)
 endif()
 
 # Libcurl
-if (TILEDB_S3 OR TILEDB_GCS OR TILEDB_SERIALIZATION)
+if (TILEDB_S3 OR TILEDB_GCS OR TILEDB_AZURE OR TILEDB_SERIALIZATION)
   if (NOT WIN32)
     find_package(Curl_EP REQUIRED)
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
@@ -951,8 +972,10 @@ if (TILEDB_STATIC)
   append_dep_lib(fmt::fmt)
   append_dep_lib(spdlog::spdlog)
 
-  append_dep_lib(Azure::azure-storage-blobs)
   append_dep_lib(Azure::azure-storage-common)
+  if(TILEDB_AZURE AND NOT TILEDB_VCPKG)
+    append_dep_lib(Azure::azure-storage-blobs)
+  endif()
   append_dep_lib(Azure::azure-core)
   append_dep_lib(LibXml2::LibXml2)
   append_dep_lib(LibLZMA::LibLZMA)
