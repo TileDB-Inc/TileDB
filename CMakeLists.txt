@@ -217,10 +217,16 @@ else()
     "$<$<CONFIG:Coverage>:-g3;-gdwarf-3;--coverage>"
     "$<$<CONFIG:Release,RelWithDebInfo>:-O3>"
     "$<$<CONFIG:RelWithDebInfo>:-g3;-ggdb3;-gdwarf-3>")
-  add_compile_options("$<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:Clang>>:-fstandalone-debug>")
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    add_compile_options("$<$<CONFIG:Debug>:-fstandalone-debug>")
+  endif()
 
   # Disable newer Apple Clang warnings about unqualified calls to std::move
-  add_compile_options("$<$<AND:$<CXX_COMPILER_ID:AppleClang>,$<VERSION_GREATER_EQUAL:$<CXX_COMPILER_VERSION>,14.0.3>,$<COMPILE_LANGUAGE:CXX>>:-Wno-unqualified-std-cast-call>")
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+    if (${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "14.0.3")
+      add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-unqualified-std-cast-call>)
+    endif()
+  endif()
 
 endif()
 
