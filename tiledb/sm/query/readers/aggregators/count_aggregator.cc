@@ -78,7 +78,7 @@ void CountAggregator::validate_output_buffer(
         "Count aggregates fixed size buffer should be for one element only.");
   }
 
-  bool exists_validity = result_buffer.validity_vector_.buffer() != nullptr;
+  bool exists_validity = result_buffer.validity_vector_.buffer();
   if (exists_validity) {
     throw CountAggregatorStatusException(
         "Count aggregates must not have a validity buffer.");
@@ -98,6 +98,8 @@ uint64_t count_cells(AggregateBuffer& input_data) {
 }
 
 void CountAggregator::aggregate_data(AggregateBuffer& input_data) {
+  // Run different loops for bitmap versus no bitmap. The bitmap tells us which
+  // cells was already filtered out by ranges or query conditions.
   if (input_data.has_bitmap()) {
     if (input_data.is_count_bitmap()) {
       count_ += count_cells<uint64_t>(input_data);

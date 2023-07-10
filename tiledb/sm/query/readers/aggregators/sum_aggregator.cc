@@ -138,7 +138,7 @@ void SumAggregator<T>::validate_output_buffer(
         "Sum aggregates fixed size buffer should be for one element only.");
   }
 
-  bool exists_validity = result_buffer.validity_vector_.buffer() != nullptr;
+  bool exists_validity = result_buffer.validity_vector_.buffer();
   if (is_nullable_) {
     if (!exists_validity) {
       throw SumAggregatorStatusException(
@@ -186,6 +186,7 @@ void SumAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
     if (overflow) {
       sum_overflowed_ = true;
       sum_ = std::get<0>(res);
+      return;
     } else {
       // This sum might overflow as well.
       try {
@@ -231,7 +232,8 @@ tuple<SUM_T, uint8_t> SumAggregator<T>::sum(AggregateBuffer& input_data) {
   auto values = input_data.fixed_data_as<T>();
 
   // Run different loops for bitmap versus no bitmap and nullable versus non
-  // nullable.
+  // nullable. The bitmap tells us which cells was already filtered out by
+  // ranges or query conditions.
   if (input_data.has_bitmap()) {
     auto bitmap_values = input_data.bitmap_data_as<BITMAP_T>();
 

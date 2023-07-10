@@ -460,7 +460,7 @@ Status Query::finalize() {
 
   RETURN_NOT_OK(strategy_->finalize());
 
-  finalize_aggregates();
+  copy_aggregates_data_to_user_buffer();
   status_ = QueryStatus::COMPLETED;
   return Status::Ok();
 }
@@ -826,7 +826,7 @@ Status Query::process() {
       callback_(callback_data_);
     }
 
-    finalize_aggregates();
+    copy_aggregates_data_to_user_buffer();
     status_ = QueryStatus::COMPLETED;
   } else {
     // Either the main query or the dimension lable query are incomplete.
@@ -2102,7 +2102,7 @@ void Query::reset_coords_markers() {
   }
 }
 
-void Query::finalize_aggregates() {
+void Query::copy_aggregates_data_to_user_buffer() {
   for (auto& default_channel_aggregate : default_channel_aggregates_) {
     default_channel_aggregate.second->copy_to_user_buffer(
         default_channel_aggregate.first, aggregate_buffers_);

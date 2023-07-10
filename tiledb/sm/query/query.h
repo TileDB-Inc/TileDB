@@ -940,7 +940,7 @@ class Query {
   void reset_coords_markers();
 
   /** Copies the data from the aggregates to the user buffers. */
-  void finalize_aggregates();
+  void copy_aggregates_data_to_user_buffer();
 };
 
 }  // namespace sm

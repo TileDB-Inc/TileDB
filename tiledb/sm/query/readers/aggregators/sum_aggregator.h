@@ -74,6 +74,7 @@ class QueryBuffer;
  */
 template <typename SUM_T>
 void safe_sum(SUM_T value, SUM_T& sum);
+
 template <typename T>
 class SumAggregator : public IAggregator {
  public:
