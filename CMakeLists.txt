@@ -198,9 +198,13 @@ if (MSVC)
   # Build-specific flags
   add_compile_definitions("$<IF:$<CONFIG:Debug>,DEBUG,NDEBUG>")
   add_compile_options(
-    "$<$<CONFIG:Debug>:/Od;/Zi;/bigobj>"
+    # /Od: Disable optimizations
+    # /bigobj: Increase number of sections in .obj file
+    "$<$<CONFIG:Debug>:/Od;/bigobj>"
+    # /Ox: Enable most speed optimizations
     "$<$<CONFIG:Release,RelWithDebInfo>:/Ox>"
-    "$<$<CONFIG:RelWithDebInfo>:/Zi>")
+    # /Zi: Generate debug info in a separate .pdb file
+    "$<$<CONFIG:Debug,RelWithDebInfo>:/Zi>")
 else()
   add_compile_options(-Wall -Wextra)
   if (TILEDB_WERROR)
@@ -215,9 +219,6 @@ else()
     "$<$<CONFIG:RelWithDebInfo>:-g3;-ggdb3;-gdwarf-3>")
   add_compile_options("$<$<CONFIG:Debug>:-DDBUG;>")
   add_compile_options("$<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:Clang>>:-fstandalone-debug>")
-
-  # Use -Wno-literal-suffix on Linux with C++ sources.
-  add_compile_options("$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:Clang>>:-Wno-literal-suffix>")
 
   # Disable newer Apple Clang warnings about unqualified calls to std::move
   add_compile_options("$<$<AND:$<CXX_COMPILER_ID:AppleClang>,$<VERSION_GREATER_EQUAL:$<CXX_COMPILER_VERSION>,14.0.3>,$<COMPILE_LANGUAGE:CXX>>:-Wno-unqualified-std-cast-call>")
