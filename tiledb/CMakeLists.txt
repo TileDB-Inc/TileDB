@@ -615,10 +615,15 @@ if (SANITIZER)
 endif()
 
 # Coverage linker flags
+# TODO: Use $<CONFIG:Coverage> after we remove the superbuild.
 if (CMAKE_BUILD_TYPE MATCHES "Coverage")
+  if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    message(FATAL_ERROR "Coverage is only supported with Clang or gcc.")
+  endif()
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
-      --coverage
+      # Supported in both Clang (synonym of --coverage) and gcc.
+      -ftest-coverage
   )
 endif()
 
