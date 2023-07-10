@@ -80,6 +80,7 @@ TEST_CASE("C API: Test enum values", "[capi][enums]") {
   REQUIRE(TILEDB_FILTER_XOR == 16);
   REQUIRE(TILEDB_FILTER_DEPRECATED == 17);
   REQUIRE(TILEDB_FILTER_WEBP == 18);
+  REQUIRE(TILEDB_FILTER_DELTA == 19);
 
   /** Filter option */
   REQUIRE(TILEDB_COMPRESSION_LEVEL == 0);
@@ -294,6 +295,15 @@ TEST_CASE("C API: Test enum string conversion", "[capi][enums]") {
       (tiledb_filter_option_from_str("WEBP_LOSSLESS", &filter_option) ==
            TILEDB_OK &&
        filter_option == TILEDB_WEBP_LOSSLESS));
+  REQUIRE(
+      (tiledb_filter_option_to_str(
+           TILEDB_COMPRESSION_REINTERPRET_DATATYPE, &c_str) == TILEDB_OK &&
+       std::string(c_str) ==
+           constants::filter_option_compression_reinterpret_datatype));
+  REQUIRE(
+      (tiledb_filter_option_from_str(
+           "COMPRESSION_REINTERPRET_DATATYPE", &filter_option) == TILEDB_OK &&
+       filter_option == TILEDB_COMPRESSION_REINTERPRET_DATATYPE));
 
   tiledb_encryption_type_t encryption_type;
   REQUIRE(

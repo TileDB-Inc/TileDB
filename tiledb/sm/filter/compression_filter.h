@@ -35,6 +35,7 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/compressors/zstd_compressor.h"
+#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/resource_pool.h"
@@ -83,11 +84,13 @@ class CompressionFilter : public Filter {
    *
    * @param compressor Compressor to use
    * @param level Compression level to use
+   * @param reinterpret_type Type to reinterpret data prior to compression.
    * @param version Format version
    */
   CompressionFilter(
-      Compressor compressor,
+      FilterType compressor,
       int level,
+      Datatype reinterpret_type = Datatype::ANY,
       const format_version_t version = constants::format_version);
 
   /**
@@ -95,11 +98,13 @@ class CompressionFilter : public Filter {
    *
    * @param compressor Compressor to use
    * @param level Compression level to use
+   * @param reinterpret_type Type to reinterpret data prior to compression.
    * @param version Format version
    */
   CompressionFilter(
-      FilterType compressor,
+      Compressor compressor,
       int level,
+      Datatype reinterpret_type = Datatype::ANY,
       const format_version_t version = constants::format_version);
 
   /** Return the compressor used by this filter instance. */
@@ -167,6 +172,9 @@ class CompressionFilter : public Filter {
    */
   shared_ptr<BlockingResourcePool<ZStd::ZSTD_Decompress_Context>>
       zstd_decompress_ctx_pool_;
+
+  /** Datatype to reinterpret prior to compression. */
+  Datatype reinterpret_datatype_;
 
   /** Returns a new clone of this filter. */
   CompressionFilter* clone_impl() const override;

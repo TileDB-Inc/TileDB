@@ -639,6 +639,12 @@ class Subarray {
   bool coincides_with_tiles() const;
 
   /**
+   * Checks if the Subarray is OOB for the domain.
+   * Throws if any range if found to be OOB.
+   */
+  void check_oob();
+
+  /**
    * Computes the range offsets which are important for getting
    * an ND range index from a flat serialized index.
    */

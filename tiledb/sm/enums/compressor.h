@@ -63,6 +63,8 @@ enum class Compressor : uint8_t {
   DOUBLE_DELTA = 6,
   /** Dictionary compressor */
   DICTIONARY_ENCODING = 7,
+  /** Delta compressor */
+  DELTA = 8
 };
 
 /** Returns the string representation of the input compressor. */
@@ -80,6 +82,8 @@ inline const std::string& compressor_str(Compressor type) {
       return constants::rle_str;
     case Compressor::BZIP2:
       return constants::bzip2_str;
+    case Compressor::DELTA:
+      return constants::delta_str;
     case Compressor::DOUBLE_DELTA:
       return constants::double_delta_str;
     case Compressor::DICTIONARY_ENCODING:
@@ -104,6 +108,8 @@ inline Status compressor_enum(
     *compressor = Compressor::RLE;
   else if (compressor_type_str == constants::bzip2_str)
     *compressor = Compressor::BZIP2;
+  else if (compressor_type_str == constants::delta_str)
+    *compressor = Compressor::DELTA;
   else if (compressor_type_str == constants::double_delta_str)
     *compressor = Compressor::DOUBLE_DELTA;
   else if (compressor_type_str == constants::filter_dictionary_str)
@@ -116,7 +122,7 @@ inline Status compressor_enum(
 
 /** Throws error if the input Compressor enum is not between 0 and 7. */
 inline void ensure_compressor_is_valid(uint8_t compressor) {
-  if (compressor > 7) {
+  if (compressor > 8) {
     throw std::runtime_error(
         "Invalid Compressor (" + std::to_string(compressor) + ")");
   }

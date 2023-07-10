@@ -165,6 +165,7 @@ const std::string Config::VFS_READ_AHEAD_SIZE = "102400";          // 100KiB
 const std::string Config::VFS_READ_AHEAD_CACHE_SIZE = "10485760";  // 10MiB;
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_NAME = "";
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_KEY = "";
+const std::string Config::VFS_AZURE_STORAGE_SAS_TOKEN = "";
 const std::string Config::VFS_AZURE_BLOB_ENDPOINT = "";
 const std::string Config::VFS_AZURE_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
@@ -214,6 +215,7 @@ const std::string Config::VFS_S3_VERIFY_SSL = "true";
 const std::string Config::VFS_S3_NO_SIGN_REQUEST = "false";
 const std::string Config::VFS_S3_BUCKET_CANNED_ACL = "NOT_SET";
 const std::string Config::VFS_S3_OBJECT_CANNED_ACL = "NOT_SET";
+const std::string Config::VFS_S3_CONFIG_SOURCE = "auto";
 const std::string Config::VFS_HDFS_KERB_TICKET_CACHE_PATH = "";
 const std::string Config::VFS_HDFS_NAME_NODE_URI = "";
 const std::string Config::VFS_HDFS_USERNAME = "";
@@ -370,6 +372,8 @@ const std::map<std::string, std::string> default_config_values = {
         Config::VFS_AZURE_STORAGE_ACCOUNT_NAME),
     std::make_pair(
         "vfs.azure.storage_account_key", Config::VFS_AZURE_STORAGE_ACCOUNT_KEY),
+    std::make_pair(
+        "vfs.azure.storage_sas_token", Config::VFS_AZURE_STORAGE_SAS_TOKEN),
     std::make_pair("vfs.azure.blob_endpoint", Config::VFS_AZURE_BLOB_ENDPOINT),
     std::make_pair(
         "vfs.azure.max_parallel_ops", Config::VFS_AZURE_MAX_PARALLEL_OPS),
@@ -440,6 +444,7 @@ const std::map<std::string, std::string> default_config_values = {
         "vfs.s3.bucket_canned_acl", Config::VFS_S3_BUCKET_CANNED_ACL),
     std::make_pair(
         "vfs.s3.object_canned_acl", Config::VFS_S3_OBJECT_CANNED_ACL),
+    std::make_pair("vfs.s3.config_source", Config::VFS_S3_CONFIG_SOURCE),
     std::make_pair("vfs.hdfs.name_node_uri", Config::VFS_HDFS_NAME_NODE_URI),
     std::make_pair("vfs.hdfs.username", Config::VFS_HDFS_USERNAME),
     std::make_pair(
@@ -457,6 +462,7 @@ const char Config::COMMENT_START = '#';
 const std::set<std::string> Config::unserialized_params_ = {
     "vfs.azure.storage_account_name",
     "vfs.azure.storage_account_key",
+    "vfs.azure.storage_sas_token",
     "vfs.s3.proxy_username",
     "vfs.s3.proxy_password",
     "vfs.s3.aws_access_key_id",

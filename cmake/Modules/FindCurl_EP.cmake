@@ -30,7 +30,7 @@ if (TARGET CURL OR NOT (TILEDB_SERIALIZATION OR TILEDB_GCS OR TILEDB_S3 OR TILED
 endif()
 
 if (TILEDB_VCPKG)
-  find_package(CURL REQUIRED ${TILEDB_DEPS_NO_DEFAULT_PATH})
+  find_package(CURL REQUIRED)
   install_target_libs(CURL::libcurl)
   return()
 endif()

@@ -39,8 +39,13 @@ commence(object_library vfs)
         vfs.cc
         vfs_file_handle.cc
         win.cc
+        ../curl/curl_init.cc
     )
     if (TILEDB_S3)
+        target_include_directories(vfs
+                PRIVATE
+                "${CMAKE_CURRENT_SOURCE_DIR}/../../../external/include"
+        )
         list(APPEND VFS_SOURCES
             s3.cc
             s3_thread_pool_executor.cc
@@ -66,24 +71,6 @@ commence(object_library vfs)
         else()
             message(STATUS "Linking to Win32 lib shlwapi")
             this_target_link_libraries(-lshlwapi)
-        endif()
-    endif()
-    # Add S3 dependencies
-    if (TILEDB_S3)
-        if (TILEDB_VCPKG)
-            find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
-            target_link_libraries(vfs INTERFACE ${AWSSDK_LINK_LIBRARIES})
-        else()
-            find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
-            target_link_libraries(vfs INTERFACE
-                AWSSDK::aws-cpp-sdk-s3
-                AWSSDK::aws-cpp-sdk-core
-                AWSSDK::aws-c-event-stream
-                AWSSDK::aws-checksums
-                AWSSDK::aws-c-common
-                AWSSDK::aws-cpp-sdk-identity-management
-                AWSSDK::aws-cpp-sdk-sts
-            )
         endif()
     endif()
 conclude(object_library)

@@ -506,6 +506,9 @@ add_subdirectory(experimental/experimental_examples)
 
 # Build tools
 if (TILEDB_TOOLS)
+  if (TILEDB_AZURE AND NOT TILEDB_VCPKG)
+    message(FATAL_ERROR "Building tools with Azure enabled requires enabling TILEDB_VCPKG")
+  endif()
   add_subdirectory(tools)
 endif()
 
