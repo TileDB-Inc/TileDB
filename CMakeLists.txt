@@ -217,7 +217,6 @@ else()
     "$<$<CONFIG:Coverage>:-g3;-gdwarf-3;--coverage>"
     "$<$<CONFIG:Release,RelWithDebInfo>:-O3>"
     "$<$<CONFIG:RelWithDebInfo>:-g3;-ggdb3;-gdwarf-3>")
-  add_compile_options("$<$<CONFIG:Debug>:-DDBUG;>")
   add_compile_options("$<$<AND:$<CONFIG:Debug>,$<CXX_COMPILER_ID:Clang>>:-fstandalone-debug>")
 
   # Disable newer Apple Clang warnings about unqualified calls to std::move

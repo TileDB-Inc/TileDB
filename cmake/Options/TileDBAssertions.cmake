@@ -3,8 +3,8 @@
 
 if(TILEDB_ASSERTIONS)
   # MSVC doesn't like _DEBUG on release builds. See LLVM PR 4379.
-  if( NOT MSVC )
-    add_definitions( -D_DEBUG )
+  if(NOT MSVC)
+    add_compile_definitions(_DEBUG)
   endif()
   # On non-Debug builds cmake automatically defines NDEBUG, so we
   # explicitly undefine it:
