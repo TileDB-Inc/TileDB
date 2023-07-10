@@ -131,7 +131,7 @@ class ArrayDimensionLabelQueries {
    * Throws if there is no label data query on dim_idx.
    *
    * @param dim_idx Dimension index for label data query.
-   * @returns Vector of  DimensionLabelQuery on dim_idx
+   * @returns Vector of DimensionLabelQuery on dim_idx
    */
   std::vector<DimensionLabelQuery*> get_data_query(
       dimension_size_type dim_idx) const;
