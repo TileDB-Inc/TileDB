@@ -69,7 +69,7 @@ Status RLE::compress(
     if (std::memcmp(input_cur, input_prev, value_size) == 0 &&
         cur_run_len < max_run_len) {  // Expand the run
       ++cur_run_len;
-    } else {  // Save the run
+    } else {                          // Save the run
       // Copy to output buffer
       RETURN_NOT_OK(output_buffer->write(input_prev, value_size));
       byte = (unsigned char)(cur_run_len >> 8);

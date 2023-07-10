@@ -168,6 +168,8 @@ macro(TileDB_Environment_unit_test_end)
     # Catch2 is always a dependency of our unit tests
     find_package(Catch_EP REQUIRED)
     target_link_libraries(${TileDB_Environment_unit_test_end_Unit_Test} PUBLIC Catch2::Catch2WithMain)
+    target_include_directories(${TileDB_Environment_unit_test_end_Unit_Test} PUBLIC ${CMAKE_SOURCE_DIR})
+    target_include_directories(${TileDB_Environment_unit_test_end_Unit_Test} PUBLIC "${CMAKE_SOURCE_DIR}/test/support/" "${CMAKE_SOURCE_DIR}/test_support/")
     foreach(Object_Library IN LISTS TileDB_Environment_unit_test_end_OL_Dependencies)
         target_link_libraries(${TileDB_Environment_unit_test_end_Unit_Test} PUBLIC ${Object_Library})
     endforeach()

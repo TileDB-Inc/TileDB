@@ -2774,7 +2774,7 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
     offset += sizeof(uint32_t);  // First chunk orig size
     offset += sizeof(uint32_t);  // First chunk filtered size
     auto filter_metadata_size = tile.filtered_buffer().value_at_as<uint32_t>(
-        offset);  // First chunk metadata size
+        offset);                 // First chunk metadata size
     offset += sizeof(uint32_t);
 
     auto max_win_size =

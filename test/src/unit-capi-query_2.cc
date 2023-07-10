@@ -1093,8 +1093,8 @@ TEST_CASE_METHOD(
       CHECK(
           size_off == (uint64_t)((2.0 / 3 + 2.0 / 6) * (2 * sizeof(uint64_t))));
       CHECK(
-          size_val ==
-          (uint64_t)((2.0 / 3) * (3 * sizeof(int)) + (2.0 / 6) * (6 * sizeof(int))));
+          size_val == (uint64_t)((2.0 / 3) * (3 * sizeof(int)) +
+                                 (2.0 / 6) * (6 * sizeof(int))));
     }
 
     SECTION("-- Partial overlap, 2 ranges") {
@@ -1223,8 +1223,8 @@ TEST_CASE_METHOD(
       CHECK(
           size_off == (uint64_t)((2.0 / 3 + 2.0 / 6) * (2 * sizeof(uint64_t))));
       CHECK(
-          size_val ==
-          (uint64_t)((2.0 / 3) * (3 * sizeof(int)) + (2.0 / 6) * (6 * sizeof(int))));
+          size_val == (uint64_t)((2.0 / 3) * (3 * sizeof(int)) +
+                                 (2.0 / 6) * (6 * sizeof(int))));
     }
 
     SECTION("-- Partial overlap, 2 ranges") {

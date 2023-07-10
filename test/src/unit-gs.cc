@@ -180,9 +180,9 @@ TEST_CASE_METHOD(GSFx, "Test GS filesystem, file management", "[gs]") {
   REQUIRE(gcs_.is_dir(URI(file4), &is_dir).ok());
   REQUIRE(!is_dir);  // Not a dir
   REQUIRE(gcs_.is_dir(URI(dir), &is_dir).ok());
-  REQUIRE(is_dir);  // This is viewed as a dir
+  REQUIRE(is_dir);   // This is viewed as a dir
   REQUIRE(gcs_.is_dir(URI(TEST_DIR + "dir"), &is_dir).ok());
-  REQUIRE(is_dir);  // This is viewed as a dir
+  REQUIRE(is_dir);   // This is viewed as a dir
 
   // Move file
   REQUIRE(gcs_.move_object(URI(file5), URI(file6)).ok());

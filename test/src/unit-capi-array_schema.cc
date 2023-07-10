@@ -610,7 +610,7 @@ void ArraySchemaFx::create_array(const std::string& path) {
       ctx_, DIM2_NAME, TILEDB_INT64, &DIM_DOMAIN[2], &TILE_EXTENTS[1], &d2);
   REQUIRE(rc == TILEDB_OK);
   int dim_domain_int[] = {0, 10};
-  tiledb_dimension_t* d3;  // This will be an invalid dimension
+  tiledb_dimension_t* d3;       // This will be an invalid dimension
   int tile_extent = 10000;
   rc = tiledb_dimension_alloc(  // This will not even be created
       ctx_,

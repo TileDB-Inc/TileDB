@@ -169,6 +169,7 @@ macro(TileDB_Environment_object_library_end)
     # ----------------------------------
     # Sources and object library dependencies, compile definitions
     target_sources(${TileDB_Environment_object_library_end_Library} PRIVATE ${TileDB_Environment_object_library_end_Sources})
+    target_include_directories(${TileDB_Environment_object_library_end_Library} PUBLIC ${CMAKE_SOURCE_DIR})
     foreach(Object_Library IN LISTS TileDB_Environment_object_library_end_OL_Dependencies)
         target_link_libraries(${TileDB_Environment_object_library_end_Library} PUBLIC ${Object_Library} $<TARGET_OBJECTS:${Object_Library}>)
     endforeach()

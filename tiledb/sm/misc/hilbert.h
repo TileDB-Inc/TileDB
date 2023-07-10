@@ -270,7 +270,7 @@ class Hilbert {
       for (i = 1; i < n; i++)
         if (X[i] & Q)  // invert
           X[0] ^= P;
-        else {  // exchange
+        else {         // exchange
           t = (X[0] ^ X[i]) & P;
           X[0] ^= t;
           X[i] ^= t;
@@ -334,7 +334,7 @@ class Hilbert {
       for (i = n - 1; i; i--)
         if (X[i] & Q)  // invert
           X[0] ^= P;
-        else {  // exchange
+        else {         // exchange
           t = (X[0] ^ X[i]) & P;
           X[0] ^= t;
           X[i] ^= t;

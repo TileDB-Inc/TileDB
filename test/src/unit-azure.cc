@@ -209,9 +209,9 @@ TEST_CASE_METHOD(AzureFx, "Test Azure filesystem, file management", "[azure]") {
   REQUIRE(azure_.is_dir(URI(file4), &is_dir).ok());
   REQUIRE(!is_dir);  // Not a dir
   REQUIRE(azure_.is_dir(URI(dir), &is_dir).ok());
-  REQUIRE(is_dir);  // This is viewed as a dir
+  REQUIRE(is_dir);   // This is viewed as a dir
   REQUIRE(azure_.is_dir(URI(TEST_DIR + "dir"), &is_dir).ok());
-  REQUIRE(is_dir);  // This is viewed as a dir
+  REQUIRE(is_dir);   // This is viewed as a dir
 
   // ls_with_sizes
   std::string s = "abcdef";

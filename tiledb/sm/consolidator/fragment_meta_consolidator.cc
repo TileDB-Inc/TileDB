@@ -106,15 +106,15 @@ Status FragmentMetaConsolidator::consolidate(
   RETURN_NOT_OK(utils::parse::get_fragment_version(meta_name, &meta_version));
 
   // Calculate offset of first fragment footer
-  uint64_t offset = sizeof(uint32_t);  // Fragment num
+  uint64_t offset = sizeof(uint32_t);                       // Fragment num
   for (auto m : meta) {
-    offset += sizeof(uint64_t);  // Name size
+    offset += sizeof(uint64_t);                             // Name size
     if (meta_version >= 9) {
       offset += m->fragment_uri().last_path_part().size();  // Name
     } else {
-      offset += m->fragment_uri().to_string().size();  // Name
+      offset += m->fragment_uri().to_string().size();       // Name
     }
-    offset += sizeof(uint64_t);  // Offset
+    offset += sizeof(uint64_t);                             // Offset
   }
 
   // Serialize all fragment metadata footers in parallel
