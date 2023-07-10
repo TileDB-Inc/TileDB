@@ -145,6 +145,13 @@ class WebpFilter : public Filter {
   void dump(FILE* out) const override;
 
   /**
+   * @brief Checks if the filter is applicable to the input datatype.
+   *
+   * @param type Input datatype to check filter compatibility.
+   */
+  bool accepts_input_datatype(Datatype datatype) const override;
+
+  /**
    * Runs the filter forward, taking raw colorspace values as input and writing.
    * encoded WebP data to the TileDB Array.
    *

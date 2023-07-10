@@ -107,6 +107,7 @@ class Filter {
   /**
    * @brief Checks if the filter is applicable to the input datatype.
    *
+   * @param type Input datatype to check filter compatibility.
    */
   virtual bool accepts_input_datatype(Datatype type) const;
 

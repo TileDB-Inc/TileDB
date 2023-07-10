@@ -94,6 +94,13 @@ class BitWidthReductionFilter : public Filter {
   /** Dumps the filter details in ASCII format in the selected output. */
   void dump(FILE* out) const override;
 
+  /**
+   * @brief Checks if the filter is applicable to the input datatype.
+   *
+   * @param type Input datatype to check filter compatibility.
+   */
+  bool accepts_input_datatype(Datatype datatype) const override;
+
   /** Return the max window size used by the filter. */
   uint32_t max_window_size() const;
 

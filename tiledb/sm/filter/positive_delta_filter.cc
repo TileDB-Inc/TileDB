@@ -60,6 +60,10 @@ void PositiveDeltaFilter::dump(FILE* out) const {
   fprintf(out, "PositiveDelta: POSITIVE_DELTA_MAX_WINDOW=%u", max_window_size_);
 }
 
+bool PositiveDeltaFilter::accepts_input_datatype(Datatype datatype) const {
+  return !datatype_is_real(datatype);
+}
+
 Status PositiveDeltaFilter::run_forward(
     const WriterTile& tile,
     WriterTile* const offsets_tile,

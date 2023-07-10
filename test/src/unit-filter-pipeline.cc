@@ -3615,18 +3615,18 @@ TEST_CASE(
   filters.add_filter(bit_width_reduction);
 
   // Apply filters to both attribute and dimension.
-  d1.set_filter_list(filters);
+  REQUIRE_NOTHROW(d1.set_filter_list(filters));
   domain.add_dimension(d1);
 
   auto a1 = tiledb::Attribute::create<float>(ctx, "a1");
-  a1.set_filter_list(filters);
+  REQUIRE_NOTHROW(a1.set_filter_list(filters));
 
   tiledb::ArraySchema schema(ctx, TILEDB_SPARSE);
   schema.set_domain(domain);
   schema.add_attribute(a1);
   schema.set_cell_order(TILEDB_ROW_MAJOR);
   schema.set_tile_order(TILEDB_ROW_MAJOR);
-  CHECK_NOTHROW(tiledb::Array::create(array_name, schema));
+  REQUIRE_NOTHROW(tiledb::Array::create(array_name, schema));
   std::vector<float> d1_data = {
       1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f};
   std::vector<float> a1_data = {
@@ -3664,5 +3664,77 @@ TEST_CASE(
   // Cleanup.
   if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
+  }
+}
+
+TEST_CASE(
+    "C++ API: Filter pipeline validation",
+    "[cppapi][filter][pipeline][validation]") {
+  tiledb::Context ctx;
+
+  tiledb::Domain domain(ctx);
+  float domain_lo = static_cast<float>(std::numeric_limits<int64_t>::min());
+  float domain_hi = static_cast<float>(std::numeric_limits<int64_t>::max() - 1);
+  auto d1 = tiledb::Dimension::create<float>(
+      ctx, "d1", {{domain_lo, domain_hi}}, 2048);
+  auto a1 = tiledb::Attribute::create<float>(ctx, "a1");
+
+  // FloatScale used for testing different float->integral pipelines.
+  tiledb::Filter float_scale(ctx, TILEDB_FILTER_SCALE_FLOAT);
+  double scale = 1.0f;
+  double offset = 0.0f;
+  uint64_t byte_width = sizeof(int32_t);
+  // Float scale converting tile data from float->int32
+  float_scale.set_option(TILEDB_SCALE_FLOAT_BYTEWIDTH, &byte_width);
+  float_scale.set_option(TILEDB_SCALE_FLOAT_FACTOR, &scale);
+  float_scale.set_option(TILEDB_SCALE_FLOAT_OFFSET, &offset);
+
+  tiledb::FilterList filters(ctx);
+  SECTION("- Delta filters do not accept real datatypes") {
+    auto test_filter = GENERATE(
+        TILEDB_FILTER_POSITIVE_DELTA,
+        TILEDB_FILTER_DOUBLE_DELTA,
+        TILEDB_FILTER_DELTA);
+    tiledb::Filter delta_filter(ctx, test_filter);
+    filters.add_filter(delta_filter);
+    // Delta compressors don't accept floats. Should fail without FloatScale.
+    CHECK_THROWS(d1.set_filter_list(filters));
+    CHECK_THROWS(a1.set_filter_list(filters));
+
+    // Test using FloatScale to convert to integral is accepted.
+    tiledb::FilterList filters2(ctx);
+    filters2.add_filter(float_scale);
+    filters2.add_filter(delta_filter);
+    CHECK_NOTHROW(d1.set_filter_list(filters2));
+    CHECK_NOTHROW(a1.set_filter_list(filters2));
+  }
+
+  SECTION("- Webp filter supports only uint8 attributes") {
+    tiledb::Filter webp(ctx, TILEDB_FILTER_WEBP);
+    filters.add_filter(webp);
+    CHECK_THROWS(d1.set_filter_list(filters));
+    CHECK_THROWS(a1.set_filter_list(filters));
+  }
+
+  SECTION("- Bit width reduction filter supports integral input") {
+    tiledb::Filter bit_width_reduction(ctx, TILEDB_FILTER_BIT_WIDTH_REDUCTION);
+    filters.add_filter(bit_width_reduction);
+    CHECK_THROWS(d1.set_filter_list(filters));
+    CHECK_THROWS(a1.set_filter_list(filters));
+
+    // Test using FloatScale to convert to integral is accepted.
+    tiledb::FilterList filters2(ctx);
+    filters2.add_filter(float_scale);
+    filters2.add_filter(bit_width_reduction);
+    CHECK_NOTHROW(d1.set_filter_list(filters2));
+    CHECK_NOTHROW(a1.set_filter_list(filters2));
+  }
+
+  SECTION("- XOR filter interprets datatype as integral") {
+    // Datatype byte size must match size of int8, int16, int32, or int64
+    tiledb::Filter xor_filter(ctx, TILEDB_FILTER_XOR);
+    filters.add_filter(xor_filter);
+    CHECK_NOTHROW(d1.set_filter_list(filters));
+    CHECK_NOTHROW(a1.set_filter_list(filters));
   }
 }

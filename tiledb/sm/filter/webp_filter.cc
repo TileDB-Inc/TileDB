@@ -40,6 +40,10 @@ void WebpFilter::dump(FILE* out) const {
     out = stdout;
   fprintf(out, "WebpFilter");
 }
+
+bool WebpFilter::accepts_input_datatype(Datatype datatype) const {
+  return datatype == Datatype::UINT8;
+}
 }  // namespace tiledb::sm
 
 #ifndef TILEDB_WEBP

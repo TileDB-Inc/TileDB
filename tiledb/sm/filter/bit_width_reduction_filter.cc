@@ -97,6 +97,46 @@ void BitWidthReductionFilter::dump(FILE* out) const {
   fprintf(out, "BitWidthReduction: BIT_WIDTH_MAX_WINDOW=%u", max_window_size_);
 }
 
+bool BitWidthReductionFilter::accepts_input_datatype(Datatype datatype) const {
+  switch (datatype) {
+    case Datatype::INT8:
+    case Datatype::BLOB:
+    case Datatype::BOOL:
+    case Datatype::UINT8:
+    case Datatype::INT16:
+    case Datatype::UINT16:
+    case Datatype::INT32:
+    case Datatype::UINT32:
+    case Datatype::INT64:
+    case Datatype::UINT64:
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
+      return true;
+    default:
+      return false;
+  }
+}
+
 Status BitWidthReductionFilter::run_forward(
     const WriterTile& tile,
     WriterTile* const offsets_tile,

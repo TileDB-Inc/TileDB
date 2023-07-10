@@ -98,14 +98,11 @@ bool CompressionFilter::accepts_input_datatype(Datatype input_type) const {
   if (this_filter_type == FilterType::FILTER_DOUBLE_DELTA ||
       this_filter_type == FilterType::FILTER_DELTA) {
     // Delta filters do not accept floating point types.
-
-    // TILEDB_POSITIVE_DELTA is not returned by compressor_to_filter.
-    // TODO: Check positive delta filter is validated correctly here.
     if (datatype_is_real(
-            this_filter_type == FilterType::FILTER_DELTA ?
-                reinterpret_datatype_ :
-                input_type))
+            reinterpret_datatype_ != Datatype::ANY ? reinterpret_datatype_ :
+                                                     input_type)) {
       return false;
+    }
   }
 
   return true;

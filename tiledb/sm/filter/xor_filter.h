@@ -68,6 +68,13 @@ class XORFilter : public Filter {
   void dump(FILE* out) const override;
 
   /**
+   * @brief Checks if the filter is applicable to the input datatype.
+   *
+   * @param type Input datatype to check filter compatibility.
+   */
+  bool accepts_input_datatype(Datatype datatype) const override;
+
+  /**
    * Run forward. Takes input data parts, and per part it stores the first
    * element in the part, and then the differences of each consecutive pair
    * of elements.

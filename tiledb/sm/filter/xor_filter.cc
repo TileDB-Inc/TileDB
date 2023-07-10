@@ -48,6 +48,19 @@ void XORFilter::dump(FILE* out) const {
   fprintf(out, "XORFilter");
 }
 
+// TODO: define output datatype for XOR filter.
+bool XORFilter::accepts_input_datatype(Datatype datatype) const {
+  switch (datatype_size(datatype)) {
+    case sizeof(int8_t):
+    case sizeof(int16_t):
+    case sizeof(int32_t):
+    case sizeof(int64_t):
+      return true;
+    default:
+      return false;
+  }
+}
+
 Status XORFilter::run_forward(
     const WriterTile& tile,
     WriterTile* const,

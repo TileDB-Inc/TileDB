@@ -89,6 +89,13 @@ class PositiveDeltaFilter : public Filter {
   void dump(FILE* out) const override;
 
   /**
+   * @brief Checks if the filter is applicable to the input datatype.
+   *
+   * @param type Input datatype to check filter compatibility.
+   */
+  bool accepts_input_datatype(Datatype datatype) const override;
+
+  /**
    * Perform positive-delta encoding of the given input into the given output.
    */
   Status run_forward(
