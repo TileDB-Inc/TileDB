@@ -55,7 +55,11 @@ namespace Auth {
  * controlled via environment variables. For more information see
  * https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
  */
-class AWS_IDENTITY_MANAGEMENT_API STSProfileWithWebIdentityCredentialsProvider
+class /* AWS_IDENTITY_MANAGEMENT_API */
+    STSProfileWithWebIdentityCredentialsProvider
+    // AWS_IDENTITY_MANAGEMENT_API adds a __declspec(dllimport) on Windows
+    // which causes a link error because it tried to find the implementation
+    // of the class externally, but it is defined by ourselves.
     : public STSProfileCredentialsProvider {
  public:
   /**
