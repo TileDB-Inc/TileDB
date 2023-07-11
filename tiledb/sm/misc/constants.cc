@@ -352,6 +352,12 @@ const std::string query_condition_op_eq_str = "EQ";
 /** TILEDB_NE Query Condition Op String **/
 const std::string query_condition_op_ne_str = "NE";
 
+/** TILEDB_IN Query Condition Op String **/
+const std::string query_condition_op_in_str = "IN";
+
+/** TILEDB_NIN Query Condition Op String **/
+const std::string query_condition_op_not_in_str = "NOT_IN";
+
 /** TILEDB_AND Query Condition Combination Op String **/
 const std::string query_condition_combination_op_and_str = "AND";
 

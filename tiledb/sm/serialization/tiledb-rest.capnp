@@ -588,7 +588,7 @@ struct ASTNode {
   # The name of the field this clause applies to
 
   value @2 :Data;
-  # The comparison value
+  # The comparison value or set membership data
 
   op @3 :Text;
   # The comparison operation
@@ -602,6 +602,9 @@ struct ASTNode {
 
   useEnumeration @6 :Bool;
   # Whether or not to use the associated attribute's Enumeration
+
+  offsets @7 :Data;
+  # The offsets for set membership data
 }
 
 struct Condition {

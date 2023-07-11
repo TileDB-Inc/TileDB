@@ -57,6 +57,17 @@ namespace sm {
 QueryCondition::QueryCondition() {
 }
 
+QueryCondition::QueryCondition(
+    const std::string& field_name,
+    const void* data,
+    uint64_t data_size,
+    const void* offsets,
+    uint64_t offsets_size,
+    QueryConditionOp op) {
+  tree_ = tdb_unique_ptr<ASTNode>(tdb_new(
+      ASTNodeVal, field_name, data, data_size, offsets, offsets_size, op));
+}
+
 QueryCondition::QueryCondition(const std::string& condition_marker)
     : condition_marker_(condition_marker)
     , condition_index_(0) {
@@ -544,6 +555,40 @@ struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::NE> {
   }
 };
 
+/** Partial template specialization for `QueryConditionOp::IN`. */
+template <typename T>
+struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::IN> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t) {
+    if (lhs == nullptr) {
+      return false;
+    }
+
+    std::string_view sv(static_cast<const char*>(lhs), lhs_size);
+    auto members =
+        static_cast<const std::unordered_set<std::string_view>*>(rhs);
+
+    return members->find(sv) != members->end();
+  }
+};
+
+/** Partial template specialization for `QueryConditionOp::NOT_IN`. */
+template <typename T>
+struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::NOT_IN> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t) {
+    if (lhs == nullptr) {
+      return false;
+    }
+
+    std::string_view sv(static_cast<const char*>(lhs), lhs_size);
+    auto members =
+        static_cast<const std::unordered_set<std::string_view>*>(rhs);
+
+    return members->find(sv) == members->end();
+  }
+};
+
 template <typename T, QueryConditionOp Op, typename CombinationOp>
 void QueryCondition::apply_ast_node(
     const tdb_unique_ptr<ASTNode>& node,
@@ -556,9 +601,8 @@ void QueryCondition::apply_ast_node(
     CombinationOp combination_op,
     std::vector<uint8_t>& result_cell_bitmap) const {
   const std::string& field_name = node->get_field_name();
-  const void* condition_value_content =
-      node->get_condition_value_view().content();
-  const size_t condition_value_size = node->get_condition_value_view().size();
+  const void* condition_value_content = node->get_value_ptr();
+  const size_t condition_value_size = node->get_value_size();
   uint64_t starting_index = 0;
   for (const auto& rcs : result_cell_slabs) {
     ResultTile* const result_tile = rcs.tile_;
@@ -777,6 +821,30 @@ void QueryCondition::apply_ast_node(
       break;
     case QueryConditionOp::NE:
       apply_ast_node<T, QueryConditionOp::NE, CombinationOp>(
+          node,
+          fragment_metadata,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          combination_op,
+          result_cell_bitmap);
+      break;
+    case QueryConditionOp::IN:
+      apply_ast_node<T, QueryConditionOp::IN, CombinationOp>(
+          node,
+          fragment_metadata,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          combination_op,
+          result_cell_bitmap);
+      break;
+    case QueryConditionOp::NOT_IN:
+      apply_ast_node<T, QueryConditionOp::NOT_IN, CombinationOp>(
           node,
           fragment_metadata,
           stride,
@@ -1281,9 +1349,8 @@ void QueryCondition::apply_ast_node_dense(
     const void* cell_slab_coords,
     span<uint8_t> result_buffer) const {
   const std::string& field_name = node->get_field_name();
-  const void* condition_value_content =
-      node->get_condition_value_view().content();
-  const size_t condition_value_size = node->get_condition_value_view().size();
+  const void* condition_value_content = node->get_value_ptr();
+  const size_t condition_value_size = node->get_value_size();
 
   // Get the nullable buffer.
   const auto tile_tuple = result_tile->tile_tuple(field_name);
@@ -1472,6 +1539,34 @@ void QueryCondition::apply_ast_node_dense(
           cell_slab_coords,
           result_buffer);
       break;
+    case QueryConditionOp::IN:
+      apply_ast_node_dense<T, QueryConditionOp::IN, CombinationOp>(
+          node,
+          array_schema,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          combination_op,
+          cell_slab_coords,
+          result_buffer);
+      break;
+    case QueryConditionOp::NOT_IN:
+      apply_ast_node_dense<T, QueryConditionOp::NOT_IN, CombinationOp>(
+          node,
+          array_schema,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          combination_op,
+          cell_slab_coords,
+          result_buffer);
+      break;
     default:
       throw std::runtime_error(
           "Cannot perform query comparison; Unknown query condition "
@@ -1507,7 +1602,7 @@ void QueryCondition::apply_ast_node_dense(
   }
 
   // Process the validity buffer now.
-  if (nullable && node->get_condition_value_view().content() == nullptr) {
+  if (nullable && node->get_value_ptr() == nullptr) {
     const auto tile_tuple = result_tile->tile_tuple(name);
     const auto& tile_validity = tile_tuple->validity_tile();
     const auto buffer_validity =
@@ -2173,6 +2268,30 @@ struct QueryCondition::BinaryCmp<T, QueryConditionOp::NE> {
   }
 };
 
+/** Partial template specialization for `QueryConditionOp::IN`. */
+template <typename T>
+struct QueryCondition::BinaryCmp<T, QueryConditionOp::IN> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t) {
+    std::string_view sv(static_cast<const char*>(lhs), lhs_size);
+    auto members =
+        static_cast<const std::unordered_set<std::string_view>*>(rhs);
+    return members->find(sv) != members->end();
+  }
+};
+
+/** Partial template specialization for `QueryConditionOp::NOT_IN`. */
+template <typename T>
+struct QueryCondition::BinaryCmp<T, QueryConditionOp::NOT_IN> {
+  static inline bool cmp(
+      const void* lhs, uint64_t lhs_size, const void* rhs, uint64_t) {
+    std::string_view sv(static_cast<const char*>(lhs), lhs_size);
+    auto members =
+        static_cast<const std::unordered_set<std::string_view>*>(rhs);
+    return members->find(sv) == members->end();
+  }
+};
+
 template <typename T>
 struct QCMax {
   const T& operator()(const T& a, const T& b) const {
@@ -2193,9 +2312,8 @@ void QueryCondition::apply_ast_node_sparse(
     CombinationOp combination_op,
     std::vector<BitmapType>& result_bitmap) const {
   const auto tile_tuple = result_tile.tile_tuple(node->get_field_name());
-  const void* condition_value_content =
-      node->get_condition_value_view().content();
-  const size_t condition_value_size = node->get_condition_value_view().size();
+  const void* condition_value_content = node->get_value_ptr();
+  const size_t condition_value_size = node->get_value_size();
   uint8_t* buffer_validity = nullptr;
 
   // Check if the combination op = OR and the attribute is nullable.
@@ -2334,6 +2452,22 @@ void QueryCondition::apply_ast_node_sparse(
           CombinationOp,
           nullable>(node, result_tile, var_size, combination_op, result_bitmap);
       break;
+    case QueryConditionOp::IN:
+      apply_ast_node_sparse<
+          T,
+          QueryConditionOp::IN,
+          BitmapType,
+          CombinationOp,
+          nullable>(node, result_tile, var_size, combination_op, result_bitmap);
+      break;
+    case QueryConditionOp::NOT_IN:
+      apply_ast_node_sparse<
+          T,
+          QueryConditionOp::NOT_IN,
+          BitmapType,
+          CombinationOp,
+          nullable>(node, result_tile, var_size, combination_op, result_bitmap);
+      break;
     default:
       throw std::runtime_error(
           "Cannot perform query comparison; Unknown query condition "
@@ -2382,7 +2516,7 @@ void QueryCondition::apply_ast_node_sparse(
     const auto buffer_validity = static_cast<uint8_t*>(tile_validity.data());
     const auto cell_num = result_tile.cell_num();
 
-    if (node->get_condition_value_view().content() == nullptr) {
+    if (node->get_value_ptr() == nullptr) {
       // Null values can only be specified for equality operators.
       if (node->get_op() == QueryConditionOp::NE) {
         for (uint64_t c = 0; c < cell_num; c++) {

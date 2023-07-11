@@ -2052,6 +2052,48 @@ int32_t tiledb_query_condition_alloc(
   return TILEDB_OK;
 }
 
+TILEDB_EXPORT capi_return_t tiledb_query_condition_alloc_set_membership(
+    const char* field_name,
+    const void* data,
+    uint64_t data_size,
+    const void* offsets,
+    uint64_t offsets_size,
+    tiledb_query_condition_op_t op,
+    tiledb_query_condition_t** cond) {
+  // Validate input arguments. The data, data_size, offsets, and offsets_size,
+  // and op arguments are validated in the QueryCondition constructor so
+  // there's no need to validate them here.
+  if (field_name == nullptr) {
+    throw api::CAPIStatusException(
+        "QueryCondition field name must not be nullptr");
+  }
+  ensure_output_pointer_is_valid(cond);
+
+  // Create query condition struct
+  *cond = new tiledb_query_condition_t;
+  if (*cond == nullptr) {
+    throw api::CAPIStatusException(
+        "Failed to create TileDB query condition "
+        "object; Memory allocation error");
+  }
+
+  // Create QueryCondition object
+  (*cond)->query_condition_ = new tiledb::sm::QueryCondition(
+      field_name,
+      data,
+      data_size,
+      offsets,
+      offsets_size,
+      static_cast<tiledb::sm::QueryConditionOp>(op));
+  if ((*cond)->query_condition_ == nullptr) {
+    delete *cond;
+    throw api::CAPIStatusException(
+        "Failed to allocate TileDB query condition object");
+  }
+
+  return TILEDB_OK;
+}
+
 void tiledb_query_condition_free(tiledb_query_condition_t** cond) {
   if (cond != nullptr && *cond != nullptr) {
     delete (*cond)->query_condition_;
@@ -6108,6 +6150,20 @@ int32_t tiledb_subarray_get_range_var_from_name(
 int32_t tiledb_query_condition_alloc(
     tiledb_ctx_t* const ctx, tiledb_query_condition_t** const cond) noexcept {
   return api_entry<tiledb::api::tiledb_query_condition_alloc>(ctx, cond);
+}
+
+capi_return_t tiledb_query_condition_alloc_set_membership(
+    tiledb_ctx_t* ctx,
+    const char* field_name,
+    const void* data,
+    uint64_t data_size,
+    const void* offsets,
+    uint64_t offsets_size,
+    tiledb_query_condition_op_t op,
+    tiledb_query_condition_t** cond) noexcept {
+  return api_entry_context<
+      tiledb::api::tiledb_query_condition_alloc_set_membership>(
+      ctx, field_name, data, data_size, offsets, offsets_size, op, cond);
 }
 
 void tiledb_query_condition_free(tiledb_query_condition_t** cond) noexcept {

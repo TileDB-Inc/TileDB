@@ -195,9 +195,8 @@ void Enumeration::serialize(Serializer& serializer) const {
   }
 }
 
-uint64_t Enumeration::index_of(UntypedDatumView value) const {
-  std::string_view value_view(
-      static_cast<const char*>(value.content()), value.size());
+uint64_t Enumeration::index_of(const void* data, uint64_t size) const {
+  std::string_view value_view(static_cast<const char*>(data), size);
 
   auto iter = value_map_.find(value_view);
   if (iter == value_map_.end()) {

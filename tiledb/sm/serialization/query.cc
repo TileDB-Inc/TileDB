@@ -766,16 +766,28 @@ static Status condition_ast_to_capnp(
     ensure_qc_field_name_is_valid(field_name);
     ast_builder->setFieldName(field_name);
 
-    // Copy the condition value into a capnp vector of bytes.
-    const UntypedDatumView& value = node->get_condition_value_view();
-    auto capnpValue = kj::Vector<uint8_t>();
-    capnpValue.addAll(kj::ArrayPtr<uint8_t>(
-        const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(value.content())),
-        value.size()));
+    // Copy the condition data into a capnp vector of bytes.
+    auto& data = node->get_data();
+    auto capnpData = kj::Vector<uint8_t>();
+    capnpData.addAll(
+        kj::ArrayPtr<uint8_t>(const_cast<uint8_t*>(data.data()), data.size()));
 
     // Validate and store the condition value vector of bytes.
-    ensure_qc_capnp_condition_value_is_valid(capnpValue);
-    ast_builder->setValue(capnpValue.asPtr());
+    ensure_qc_capnp_condition_value_is_valid(capnpData);
+    ast_builder->setValue(capnpData.asPtr());
+
+    if (node->get_op() == QueryConditionOp::IN ||
+        node->get_op() == QueryConditionOp::NOT_IN) {
+      // Copy the condition offsets into a capnp vector of bytes
+      auto& offsets = node->get_offsets();
+      auto capnpOffsets = kj::Vector<uint8_t>();
+      capnpOffsets.addAll(kj::ArrayPtr<uint8_t>(
+          const_cast<uint8_t*>(offsets.data()), offsets.size()));
+
+      // Validate and store the condition value offsets
+      ensure_qc_capnp_condition_value_is_valid(capnpOffsets);
+      ast_builder->setOffsets(capnpOffsets.asPtr());
+    }
 
     // Validate and store the query condition op.
     const std::string op_str = query_condition_op_str(node->get_op());
@@ -817,15 +829,14 @@ static void clause_to_capnp(
   clause_builder->setFieldName(field_name);
 
   // Copy the condition value into a capnp vector of bytes.
-  const UntypedDatumView& value = node->get_condition_value_view();
-  auto capnpValue = kj::Vector<uint8_t>();
-  capnpValue.addAll(kj::ArrayPtr<uint8_t>(
-      const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(value.content())),
-      value.size()));
+  auto& data = node->get_data();
+  auto capnpData = kj::Vector<uint8_t>();
+  capnpData.addAll(
+      kj::ArrayPtr<uint8_t>(const_cast<uint8_t*>(data.data()), data.size()));
 
   // Validate and store the condition value vector of bytes.
-  ensure_qc_capnp_condition_value_is_valid(capnpValue);
-  clause_builder->setValue(capnpValue.asPtr());
+  ensure_qc_capnp_condition_value_is_valid(capnpData);
+  clause_builder->setValue(capnpData.asPtr());
 
   // Validate and store the query condition op.
   const std::string op_str = query_condition_op_str(node->get_op());
@@ -997,6 +1008,16 @@ tdb_unique_ptr<ASTNode> condition_ast_from_capnp(
     size_t size = condition_value.size();
     ensure_qc_condition_value_is_valid(data, size);
 
+    // Getting and validating the condition offsets.
+    const void* offsets = nullptr;
+    size_t offsets_size = 0;
+    if (ast_reader.hasOffsets()) {
+      auto condition_offsets = ast_reader.getOffsets();
+      offsets = static_cast<const void*>(condition_offsets.asBytes().begin());
+      offsets_size = condition_offsets.size();
+      ensure_qc_condition_value_is_valid(offsets, offsets_size);
+    }
+
     // Getting and validating the query condition operator.
     QueryConditionOp op = QueryConditionOp::LT;
     Status s = query_condition_op_enum(ast_reader.getOp(), &op);
@@ -1007,6 +1028,18 @@ tdb_unique_ptr<ASTNode> condition_ast_from_capnp(
     ensure_qc_op_is_valid(op);
 
     auto use_enumeration = ast_reader.getUseEnumeration();
+
+    if (op == QueryConditionOp::IN || op == QueryConditionOp::NOT_IN) {
+      return tdb_unique_ptr<ASTNode>(tdb_new(
+          ASTNodeVal,
+          field_name,
+          size == 0 ? nullptr : data,
+          size,
+          offsets,
+          offsets_size,
+          op,
+          use_enumeration));
+    }
 
     return tdb_unique_ptr<ASTNode>(
         tdb_new(ASTNodeVal, field_name, data, size, op, use_enumeration));

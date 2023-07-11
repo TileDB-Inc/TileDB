@@ -95,6 +95,10 @@
     TILEDB_QUERY_CONDITION_OP_ENUM(EQ) = 4,
     /** Not-equal operator */
     TILEDB_QUERY_CONDITION_OP_ENUM(NE) = 5,
+    /** IN set membership operator. */
+    TILEDB_QUERY_CONDITION_OP_ENUM(IN) = 6,
+    /** NOT IN set membership operator. */
+    TILEDB_QUERY_CONDITION_OP_ENUM(NOT_IN) = 7,
 #endif
 
 #ifdef TILEDB_QUERY_CONDITION_COMBINATION_OP_ENUM
