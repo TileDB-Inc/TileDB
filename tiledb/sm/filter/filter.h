@@ -36,6 +36,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
 using namespace tiledb::common;
@@ -51,7 +52,6 @@ class WriterTile;
 
 enum class FilterOption : uint8_t;
 enum class FilterType : uint8_t;
-enum class Datatype : uint8_t;
 
 /**
  * A Filter processes or modifies a byte region, modifying it in place, or
@@ -89,8 +89,11 @@ class Filter {
   /**
    * @brief Returns the filter output type
    *
+   * @param input_type Expected type used for input. Used for filters which
+   * change output type based on input data. e.g. XORFilter output type is
+   * based on byte width of input type.
    */
-  virtual Datatype output_datatype() const;
+  virtual Datatype output_datatype(Datatype input_type = Datatype::ANY) const;
 
   /**
    * @brief Throws if given filter's output *cannot* be handled by this filter.

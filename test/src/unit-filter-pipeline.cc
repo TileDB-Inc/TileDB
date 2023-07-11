@@ -3428,6 +3428,7 @@ void testing_float_scaling_filter() {
   CHECK(tile.filtered_buffer().size() != 0);
 
   auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+  unfiltered_tile.set_datatype(t);
   run_reverse(config, tp, unfiltered_tile, pipeline);
   for (uint64_t i = 0; i < nelts; i++) {
     FloatingType elt = 0.0f;
@@ -3527,6 +3528,11 @@ TEST_CASE("Filter: Test XOR", "[filter][xor]") {
 
 TEST_CASE("Filter: Pipeline filtered output types", "[filter][pipeline]") {
   FilterPipeline pipeline;
+  SECTION("- DoubleDelta filter reinterprets float->int32") {
+    pipeline.add_filter(CompressionFilter(
+        tiledb::sm::Compressor::DOUBLE_DELTA, 0, Datatype::INT32));
+    pipeline.add_filter(BitWidthReductionFilter());
+  }
   SECTION("- Delta filter reinterprets float->int32") {
     pipeline.add_filter(
         CompressionFilter(tiledb::sm::Compressor::DELTA, 0, Datatype::INT32));
@@ -3541,7 +3547,22 @@ TEST_CASE("Filter: Pipeline filtered output types", "[filter][pipeline]") {
     pipeline.add_filter(ByteshuffleFilter());
     pipeline.add_filter(BitWidthReductionFilter());
   }
-
+  size_t byte_width = 0;
+  SECTION("- XOR filter expected output types") {
+    byte_width = GENERATE(
+        sizeof(int8_t), sizeof(int16_t), sizeof(int32_t), sizeof(int64_t));
+    pipeline.add_filter(FloatScalingFilter(byte_width, 1.0f, 0.0f));
+    pipeline.add_filter(XORFilter());
+  }
+  SECTION("- XOR filter expected output types large pipeline") {
+    byte_width = GENERATE(
+        sizeof(int8_t), sizeof(int16_t), sizeof(int32_t), sizeof(int64_t));
+    pipeline.add_filter(FloatScalingFilter(byte_width, 1.0f, 0.0f));
+    pipeline.add_filter(PositiveDeltaFilter());
+    pipeline.add_filter(BitshuffleFilter());
+    pipeline.add_filter(ByteshuffleFilter());
+    pipeline.add_filter(XORFilter());
+  }
   // Initial type of tile is float.
   std::vector<float> data = {
       1.0f, 2.1f, 3.2f, 4.3f, 5.4f, 6.5f, 7.6f, 8.7f, 9.8f, 10.9f};
@@ -3559,9 +3580,12 @@ TEST_CASE("Filter: Pipeline filtered output types", "[filter][pipeline]") {
       pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
   CHECK(tile.size() == 0);
   CHECK(tile.filtered_buffer().size() != 0);
-  // TODO: Remove before merge.
-  std::cout << datatype_str(tile.type()) << std::endl;
-  //  CHECK(tile.type() == Datatype::FLOAT32);
+  if (pipeline.has_filter(tiledb::sm::FilterType::FILTER_XOR)) {
+    // Test the final tile type is expected for XORFilter byte_width.
+    CHECK(datatype_size(tile.type()) == byte_width);
+  } else {
+    CHECK(tile.type() == Datatype::INT32);
+  }
 
   auto unfiltered_tile = create_tile_for_unfiltering(data.size(), tile);
   unfiltered_tile.set_datatype(Datatype::FLOAT32);

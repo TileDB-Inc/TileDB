@@ -79,8 +79,8 @@ class Delta {
    * @param output_buffer Output buffer to write to the compressed data.
    *
    * @note The function will fail with an error if:
-   *    Unsupported datatype is used.
-   *    Failure to write / read from allocated buffers. TODO: Finish
+   *    Float or otherwise unsupported datatype is used.
+   *    Failure to write / read from allocated buffers.
    */
 
   static void compress(

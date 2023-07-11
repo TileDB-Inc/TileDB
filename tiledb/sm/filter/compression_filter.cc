@@ -462,7 +462,10 @@ Status CompressionFilter::decompress_part(
           &output_buffer);
       break;
     case Compressor::DOUBLE_DELTA:
-      st = DoubleDelta::decompress(type, &input_buffer, &output_buffer);
+      st = DoubleDelta::decompress(
+          reinterpret_datatype_ == Datatype::ANY ? type : reinterpret_datatype_,
+          &input_buffer,
+          &output_buffer);
       break;
     case Compressor::DICTIONARY_ENCODING:
       return LOG_STATUS(
@@ -713,6 +716,16 @@ void CompressionFilter::init_decompression_resource_pool(uint64_t size) {
     zstd_decompress_ctx_pool_ =
         make_shared<BlockingResourcePool<ZStd::ZSTD_Decompress_Context>>(
             HERE(), size);
+  }
+}
+
+Datatype CompressionFilter::output_datatype(Datatype) const {
+  switch (compressor_) {
+    case Compressor::DOUBLE_DELTA:
+    case Compressor::DELTA:
+      return reinterpret_datatype_;
+    default:
+      return Datatype::ANY;
   }
 }
 

@@ -137,8 +137,14 @@ class FloatScalingFilter : public Filter {
   /** The byte width of the compressed representation. */
   uint64_t byte_width_;
 
-  /** Return the output datatype of this filter. */
-  Datatype output_datatype() const override;
+  /**
+   * @brief Returns the filter output type
+   *
+   * @param input_type Expected type used for input. Used for filters which
+   * change output type based on input data. e.g. XORFilter output type is
+   * based on byte width of input type.
+   */
+  Datatype output_datatype(Datatype input_type = Datatype::ANY) const override;
 
   /** Returns a new clone of this filter. */
   FloatScalingFilter* clone_impl() const override;

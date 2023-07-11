@@ -75,6 +75,16 @@ class XORFilter : public Filter {
   bool accepts_input_datatype(Datatype datatype) const override;
 
   /**
+   * @brief Returns the filter output type
+   *
+   * @param input_type Expected type used for input. Used for filters which
+   * change output type based on input data. e.g. XORFilter output type is
+   * based on byte width of input type.
+   */
+  virtual Datatype output_datatype(
+      Datatype input_type = Datatype::ANY) const override;
+
+  /**
    * Run forward. Takes input data parts, and per part it stores the first
    * element in the part, and then the differences of each consecutive pair
    * of elements.

@@ -69,7 +69,7 @@ void Filter::ensure_compatible_output(const Filter& filter) const {
   this->ensure_accepts_datatype(filter.output_datatype());
 }
 
-Datatype Filter::output_datatype() const {
+Datatype Filter::output_datatype(Datatype) const {
   return Datatype::ANY;
 }
 

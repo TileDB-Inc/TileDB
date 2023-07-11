@@ -48,7 +48,6 @@ void XORFilter::dump(FILE* out) const {
   fprintf(out, "XORFilter");
 }
 
-// TODO: define output datatype for XOR filter.
 bool XORFilter::accepts_input_datatype(Datatype datatype) const {
   switch (datatype_size(datatype)) {
     case sizeof(int8_t):
@@ -58,6 +57,23 @@ bool XORFilter::accepts_input_datatype(Datatype datatype) const {
       return true;
     default:
       return false;
+  }
+}
+
+Datatype XORFilter::output_datatype(tiledb::sm::Datatype input_type) const {
+  switch (datatype_size(input_type)) {
+    case sizeof(int8_t):
+      return Datatype::INT8;
+    case sizeof(int16_t):
+      return Datatype::INT16;
+    case sizeof(int32_t):
+      return Datatype::INT32;
+    case sizeof(int64_t):
+      return Datatype::INT64;
+    default:
+      throw StatusException(Status_FilterError(
+          "XORFilter::output_datatype: datatype size cannot be converted to "
+          "integer type."));
   }
 }
 

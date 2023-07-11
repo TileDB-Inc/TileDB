@@ -261,6 +261,15 @@ class CompressionFilter : public Filter {
    * @return Number of bytes required to store the input number
    */
   static uint8_t compute_bytesize(uint64_t param_length);
+
+  /**
+   * @brief Returns the filter output type
+   *
+   * @param input_type Expected type used for input. Used for filters which
+   * change output type based on input data. e.g. XORFilter output type is
+   * based on byte width of input type.
+   */
+  Datatype output_datatype(Datatype input_type = Datatype::ANY) const override;
 };
 
 }  // namespace sm

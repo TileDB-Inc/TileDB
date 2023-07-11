@@ -318,7 +318,7 @@ Status FloatScalingFilter::get_option_impl(
   return Status::Ok();
 }
 
-Datatype FloatScalingFilter::output_datatype() const {
+Datatype FloatScalingFilter::output_datatype(Datatype) const {
   if (byte_width_ == sizeof(int8_t)) {
     return Datatype::INT8;
   } else if (byte_width_ == sizeof(int16_t)) {

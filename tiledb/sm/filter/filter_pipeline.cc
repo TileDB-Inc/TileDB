@@ -197,7 +197,6 @@ Status FilterPipeline::filter_chunks_forward(
     std::vector<uint64_t>& chunk_offsets,
     FilteredBuffer& output,
     ThreadPool* const compute_tp) const {
-  Datatype tile_type = tile.type();
   bool var_sizes = chunk_offsets.size() > 0;
   uint64_t last_buffer_size = chunk_size;
   uint64_t nchunks = 1;
@@ -240,7 +239,6 @@ Status FilterPipeline::filter_chunks_forward(
     // Apply the filters sequentially.
     for (auto it = filters_.begin(), ite = filters_.end(); it != ite; ++it) {
       auto& f = *it;
-      bool last_filter = it == filters_.end() - 1;
 
       // Clear and reset I/O buffers
       input_data.reset_offset();
@@ -261,13 +259,8 @@ Status FilterPipeline::filter_chunks_forward(
           &output_metadata,
           &output_data));
 
-      if (last_filter) {
-        // Set WriterTile to initial schema type.
-        tile.set_datatype(tile_type);
-      } else {
-        // Update WriterTile to use filter output datatype on next filter.
-        tile.set_datatype(f->output_datatype());
-      }
+      // Final tile type will be the output type of last filter in pipeline.
+      tile.set_datatype(f->output_datatype(tile.type()));
       input_data.set_read_only(false);
       throw_if_not_ok(input_data.swap(output_data));
       input_metadata.set_read_only(false);
@@ -505,7 +498,7 @@ Status FilterPipeline::run_reverse(
         // There could be N filters with ANY output type ahead of last
         // conversion.
         for (int64_t j = filter_idx - 1; j >= 0; j--) {
-          auto type = filters_[j]->output_datatype();
+          auto type = filters_[j]->output_datatype(tile->type());
           if (type != Datatype::ANY && type != tile->type()) {
             // Update Tile type if a previous filter modified the datatype.
             tile->set_datatype(type);
