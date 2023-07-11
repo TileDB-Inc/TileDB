@@ -33,6 +33,11 @@
  * This is based on STSProfileCredentialsProvider.h
  */
 
+/**
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0.
+ */
+
 #ifndef TILEDB_S3_STS_PROFILE_WITH_WEB_IDENTITY_CREDENTIALS_PROVIDER_H
 #define TILEDB_S3_STS_PROFILE_WITH_WEB_IDENTITY_CREDENTIALS_PROVIDER_H
 
