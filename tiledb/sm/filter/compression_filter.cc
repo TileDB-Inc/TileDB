@@ -718,21 +718,12 @@ void CompressionFilter::init_decompression_resource_pool(uint64_t size) {
 
 Datatype CompressionFilter::output_datatype() const {
   switch (compressor_) {
-    case Compressor::NO_COMPRESSION:
-    case Compressor::GZIP:
-    case Compressor::ZSTD:
-    case Compressor::LZ4:
-    case Compressor::RLE:
-    case Compressor::BZIP2:
-    case Compressor::DICTIONARY_ENCODING:
-      return Datatype::ANY;
     case Compressor::DOUBLE_DELTA:
+      return Datatype::UINT64;
     case Compressor::DELTA:
-      // If reinterpret_datatype_ is ANY the tile type is left unchanged.
-      return reinterpret_datatype_;
+      return Datatype::INT64;
     default:
-      throw CompressionFilterStatusException(
-          "No output datatype defined for " + compressor_str(compressor_));
+      return Datatype::ANY;
   }
 }
 

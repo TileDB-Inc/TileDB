@@ -55,9 +55,9 @@ TEST_CASE(
   schema.set_tile_order(TILEDB_ROW_MAJOR);
   CHECK_NOTHROW(tiledb::Array::create(array_name, schema));
   std::vector<float> d1_data = {
-      1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0};
+      1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f};
   std::vector<float> a1_data = {
-      1.0, 2.1, 3.2, 4.3, 5.4, 6.5, 7.6, 8.7, 9.8, 10.9};
+      1.0f, 2.1f, 3.2f, 4.3f, 5.4f, 6.5f, 7.6f, 8.7f, 9.8f, 10.9f};
 
   // Write to array.
   {

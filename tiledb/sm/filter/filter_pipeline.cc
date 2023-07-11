@@ -197,6 +197,7 @@ Status FilterPipeline::filter_chunks_forward(
     std::vector<uint64_t>& chunk_offsets,
     FilteredBuffer& output,
     ThreadPool* const compute_tp) const {
+  Datatype tile_type = tile.type();
   bool var_sizes = chunk_offsets.size() > 0;
   uint64_t last_buffer_size = chunk_size;
   uint64_t nchunks = 1;
@@ -239,6 +240,7 @@ Status FilterPipeline::filter_chunks_forward(
     // Apply the filters sequentially.
     for (auto it = filters_.begin(), ite = filters_.end(); it != ite; ++it) {
       auto& f = *it;
+      bool last_filter = it == filters_.end() - 1;
 
       // Clear and reset I/O buffers
       input_data.reset_offset();
@@ -260,7 +262,11 @@ Status FilterPipeline::filter_chunks_forward(
           &output_data));
 
       // Update WriterTile to use filter output datatype on next filter.
-      tile.set_datatype(f->output_datatype());
+      if (!last_filter) {
+        tile.set_datatype(f->output_datatype());
+      } else {
+        tile.set_datatype(tile_type);
+      }
       input_data.set_read_only(false);
       throw_if_not_ok(input_data.swap(output_data));
       input_metadata.set_read_only(false);

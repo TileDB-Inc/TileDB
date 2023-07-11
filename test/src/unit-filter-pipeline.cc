@@ -3554,13 +3554,7 @@ TEST_CASE("Filter: Pipeline filtered output types", "[filter][pipeline]") {
   CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
   CHECK(tile.size() == 0);
   CHECK(tile.filtered_buffer().size() != 0);
-  if (pipeline.has_filter(tiledb::sm::FilterType::FILTER_DELTA)) {
-    // FloatScale->Delta->BitWidthReduction final filtered datatype is uint32_t.
-    CHECK(tile.type() == Datatype::UINT32);
-  } else {
-    // FloatScale filtered datatype is int32_t.
-    CHECK(tile.type() == Datatype::INT32);
-  }
+  CHECK(tile.type() == Datatype::FLOAT32);
 
   auto unfiltered_tile = create_tile_for_unfiltering(data.size(), tile);
   unfiltered_tile.set_datatype(Datatype::FLOAT32);
@@ -3734,6 +3728,16 @@ TEST_CASE(
     // Datatype byte size must match size of int8, int16, int32, or int64
     tiledb::Filter xor_filter(ctx, TILEDB_FILTER_XOR);
     filters.add_filter(xor_filter);
+    CHECK_NOTHROW(d1.set_filter_list(filters));
+    CHECK_NOTHROW(a1.set_filter_list(filters));
+  }
+
+  SECTION("- Multiple compressors") {
+    tiledb::Filter bzip(ctx, TILEDB_FILTER_BZIP2);
+    tiledb::Filter bit_width_reduction(ctx, TILEDB_FILTER_BIT_WIDTH_REDUCTION);
+    filters.add_filter(bzip);
+    filters.add_filter(bit_width_reduction);
+
     CHECK_NOTHROW(d1.set_filter_list(filters));
     CHECK_NOTHROW(a1.set_filter_list(filters));
   }

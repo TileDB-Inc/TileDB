@@ -131,6 +131,7 @@ bool BitWidthReductionFilter::accepts_input_datatype(Datatype datatype) const {
     case Datatype::TIME_PS:
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
+    case Datatype::ANY:
       return true;
     default:
       return false;
