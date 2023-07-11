@@ -261,9 +261,6 @@ class CompressionFilter : public Filter {
    * @return Number of bytes required to store the input number
    */
   static uint8_t compute_bytesize(uint64_t param_length);
-
-  /** Return the output datatype of this filter. */
-  Datatype output_datatype() const override;
 };
 
 }  // namespace sm

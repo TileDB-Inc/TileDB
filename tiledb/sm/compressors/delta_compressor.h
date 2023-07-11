@@ -74,13 +74,13 @@ class Delta {
    *    any abs(dd_i).
    *  - *n* (uint64_t) is the number of values in the input buffer.
    *
-   * TODO fill this in as needed
-   *
    * @param type The type of the input values.
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write to the compressed data.
    *
-   * @note The function will fail with an error if: TODO
+   * @note The function will fail with an error if:
+   *    Unsupported datatype is used.
+   *    Failure to write / read from allocated buffers. TODO: Finish
    */
 
   static void compress(

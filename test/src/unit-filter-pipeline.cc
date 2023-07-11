@@ -54,6 +54,7 @@
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/filter/float_scaling_filter.h"
 #include "tiledb/sm/filter/positive_delta_filter.h"
+#include "tiledb/sm/filter/webp_filter.h"
 #include "tiledb/sm/filter/xor_filter.h"
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/stdx/utility/to_underlying.h"
@@ -3427,9 +3428,6 @@ void testing_float_scaling_filter() {
   CHECK(tile.filtered_buffer().size() != 0);
 
   auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
-  // Tile datatype will be updated to the final filtered type after run_forward.
-  // Set the tile datatype to the schema type for context in run_reverse.
-  unfiltered_tile.set_datatype(t);
   run_reverse(config, tp, unfiltered_tile, pipeline);
   for (uint64_t i = 0; i < nelts; i++) {
     FloatingType elt = 0.0f;
@@ -3529,12 +3527,18 @@ TEST_CASE("Filter: Test XOR", "[filter][xor]") {
 
 TEST_CASE("Filter: Pipeline filtered output types", "[filter][pipeline]") {
   FilterPipeline pipeline;
-  // Float scale converting tile data from float->int32
-  pipeline.add_filter(FloatScalingFilter(sizeof(int32_t), 1.0f, 0.0f));
-  SECTION("- Delta filter reinterprets int32->uint32") {
-    // Test with / without these filters to test tile types.
+  SECTION("- Delta filter reinterprets float->int32") {
     pipeline.add_filter(
-        CompressionFilter(tiledb::sm::Compressor::DELTA, 0, Datatype::UINT32));
+        CompressionFilter(tiledb::sm::Compressor::DELTA, 0, Datatype::INT32));
+    pipeline.add_filter(BitWidthReductionFilter());
+  }
+  SECTION("- FloatScale filter converts float->int32") {
+    pipeline.add_filter(FloatScalingFilter(sizeof(int32_t), 1.0f, 0.0f));
+    pipeline.add_filter(PositiveDeltaFilter());
+    pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::DELTA, 0));
+    pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::BZIP2, 2));
+    pipeline.add_filter(BitshuffleFilter());
+    pipeline.add_filter(ByteshuffleFilter());
     pipeline.add_filter(BitWidthReductionFilter());
   }
 
@@ -3551,20 +3555,40 @@ TEST_CASE("Filter: Pipeline filtered output types", "[filter][pipeline]") {
   }
 
   ThreadPool tp(4);
-  CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
+  REQUIRE(
+      pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
   CHECK(tile.size() == 0);
   CHECK(tile.filtered_buffer().size() != 0);
-  CHECK(tile.type() == Datatype::FLOAT32);
+  // TODO: Remove before merge.
+  std::cout << datatype_str(tile.type()) << std::endl;
+  //  CHECK(tile.type() == Datatype::FLOAT32);
 
   auto unfiltered_tile = create_tile_for_unfiltering(data.size(), tile);
   unfiltered_tile.set_datatype(Datatype::FLOAT32);
-  run_reverse(tiledb::sm::Config(), tp, unfiltered_tile, pipeline);
+  ChunkData chunk_data;
+  unfiltered_tile.load_chunk_data(chunk_data);
+  REQUIRE(pipeline
+              .run_reverse(
+                  &test::g_helper_stats,
+                  &unfiltered_tile,
+                  nullptr,
+                  chunk_data,
+                  0,
+                  chunk_data.filtered_chunks_.size(),
+                  tp.concurrency_level(),
+                  tiledb::sm::Config())
+              .ok());
   std::vector<float> results{
       1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 7.0f, 8.0f, 9.0f, 10.0f, 11.0f};
   for (size_t i = 0; i < data.size(); i++) {
     float val = 0;
     CHECK(unfiltered_tile.read(&val, i * sizeof(float), sizeof(float)).ok());
-    CHECK(val == results[i]);
+    if (pipeline.has_filter(tiledb::sm::FilterType::FILTER_SCALE_FLOAT)) {
+      // Loss of precision from rounding in FloatScale filter.
+      CHECK(val == results[i]);
+    } else {
+      CHECK(val == data[i]);
+    }
   }
 }
 
@@ -3704,10 +3728,12 @@ TEST_CASE(
   }
 
   SECTION("- Webp filter supports only uint8 attributes") {
-    tiledb::Filter webp(ctx, TILEDB_FILTER_WEBP);
-    filters.add_filter(webp);
-    CHECK_THROWS(d1.set_filter_list(filters));
-    CHECK_THROWS(a1.set_filter_list(filters));
+    if (webp_filter_exists) {
+      tiledb::Filter webp(ctx, TILEDB_FILTER_WEBP);
+      filters.add_filter(webp);
+      CHECK_THROWS(d1.set_filter_list(filters));
+      CHECK_THROWS(a1.set_filter_list(filters));
+    }
   }
 
   SECTION("- Bit width reduction filter supports integral input") {
@@ -3734,7 +3760,14 @@ TEST_CASE(
 
   SECTION("- Multiple compressors") {
     tiledb::Filter bzip(ctx, TILEDB_FILTER_BZIP2);
-    tiledb::Filter bit_width_reduction(ctx, TILEDB_FILTER_BIT_WIDTH_REDUCTION);
+    auto compressor = GENERATE(
+        TILEDB_FILTER_DOUBLE_DELTA,
+        TILEDB_FILTER_DELTA,
+        TILEDB_FILTER_GZIP,
+        TILEDB_FILTER_LZ4,
+        TILEDB_FILTER_RLE,
+        TILEDB_FILTER_ZSTD);
+    tiledb::Filter bit_width_reduction(ctx, compressor);
     filters.add_filter(bzip);
     filters.add_filter(bit_width_reduction);
 

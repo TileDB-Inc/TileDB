@@ -261,11 +261,12 @@ Status FilterPipeline::filter_chunks_forward(
           &output_metadata,
           &output_data));
 
-      // Update WriterTile to use filter output datatype on next filter.
-      if (!last_filter) {
-        tile.set_datatype(f->output_datatype());
-      } else {
+      if (last_filter) {
+        // Set WriterTile to initial schema type.
         tile.set_datatype(tile_type);
+      } else {
+        // Update WriterTile to use filter output datatype on next filter.
+        tile.set_datatype(f->output_datatype());
       }
       input_data.set_read_only(false);
       throw_if_not_ok(input_data.swap(output_data));
@@ -489,6 +490,8 @@ Status FilterPipeline::run_reverse(
 
       // Final filter: output directly into the shared output buffer.
       bool last_filter = filter_idx == 0;
+      // Assume there are type conversions in the pipeline.
+      bool conversions = true;
       if (last_filter) {
         void* output_chunk_buffer =
             static_cast<char*>(tile->data()) + chunk_data.chunk_offsets_[i];
@@ -498,9 +501,21 @@ Status FilterPipeline::run_reverse(
             "read_unfiltered_byte_num", chunk.unfiltered_data_size_);
         // Restore tile datatype to it's initial schema value.
         tile->set_datatype(tile_type);
-      } else {
-        // Update Tile type if the previous filter modified the datatype.
-        tile->set_datatype(filters_[filter_idx - 1]->output_datatype());
+      } else if (conversions) {
+        // There could be N filters with ANY output type ahead of last
+        // conversion.
+        for (int64_t j = filter_idx - 1; j >= 0; j--) {
+          auto type = filters_[j]->output_datatype();
+          if (type != Datatype::ANY && type != tile->type()) {
+            // Update Tile type if a previous filter modified the datatype.
+            tile->set_datatype(type);
+            break;
+          }
+          // If no further conversions, prevent checking again next filter.
+          if (j == 0) {
+            conversions = false;
+          }
+        }
       }
 
       f->init_decompression_resource_pool(concurrency_level);

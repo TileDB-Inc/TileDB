@@ -716,16 +716,5 @@ void CompressionFilter::init_decompression_resource_pool(uint64_t size) {
   }
 }
 
-Datatype CompressionFilter::output_datatype() const {
-  switch (compressor_) {
-    case Compressor::DOUBLE_DELTA:
-      return Datatype::UINT64;
-    case Compressor::DELTA:
-      return Datatype::INT64;
-    default:
-      return Datatype::ANY;
-  }
-}
-
 }  // namespace sm
 }  // namespace tiledb
