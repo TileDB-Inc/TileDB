@@ -1,5 +1,5 @@
 /**
- * @file tiledb/api/c_api/dimension/test/unit_capi_dimension.cc
+ * @file tiledb/api/c_api/dimension/test/unit_capi_domain.cc
  *
  * @section LICENSE
  *
