@@ -59,9 +59,9 @@ endif()
 # use with Visual C++, which doesn't have it. The following checks if pthreads is
 # already enable, and adds the substitute Windows pthread library for Visual C++.
 # Variables used for checking are set by CMake FindThreads module.
-if (CMAKE_USE_PTHREADS_INIT)
+if (CMAKE_USE_PTHREADS_INIT AND NOT MSVC)
   message(DEBUG "Using system-provided pthread")
-elseif(CMAKE_USE_WIN32_THREADS_INIT)
+elseif(CMAKE_USE_WIN32_THREADS_INIT OR MSVC)
   message(DEBUG "Using blosc-provided pthread substitute for Win32")
   list(APPEND SOURCES
     ${SOURCE_DIR}/src/win32/pthread.c
@@ -74,7 +74,7 @@ endif()
 # -w is common to gcc and MSVC
 set(TILEDB_BLOSC_COMPILE_OPTIONS "-w")
 # If we found pthreads, activate it by defining PTHREAD_AVAILABLE.
-if (CMAKE_USE_PTHREADS_INIT)
+if (CMAKE_USE_PTHREADS_INIT AND NOT MSVC)
   string(APPEND TILEDB_BLOSC_COMPILE_OPTIONS ";-DPTHREAD_AVAILABLE")
 endif()
 
