@@ -30,7 +30,7 @@
 #include "../sum_aggregator.h"
 
 int main() {
-  tiledb::sm::CountAggregator("");
+  tiledb::sm::CountAggregator();
 
   tiledb::sm::SumAggregator<uint8_t>("Sum", false, false, 1);
   tiledb::sm::SumAggregator<uint16_t>("Sum", false, false, 1);
