@@ -209,9 +209,7 @@ TEST_CASE_METHOD(
 
   // Add a count aggregator to the query.
   query.ptr()->query_->add_aggregator_to_default_channel(
-      "Count",
-      std::make_shared<tiledb::sm::CountAggregator>(
-          tiledb::sm::constants::all_attributes));
+      "Count", std::make_shared<tiledb::sm::CountAggregator>());
 
   if (set_ranges) {
     // Slice only rows 2, 3

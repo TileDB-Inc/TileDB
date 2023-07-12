@@ -1515,7 +1515,7 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
         // loaded in memory.
         if ((include_coords_ && array_schema_.is_dim(name)) ||
             qc_loaded_attr_names_set_.count(name) != 0 || is_timestamps ||
-            name == constants::all_attributes) {
+            name == constants::count_of_rows) {
           return Status::Ok();
         }
 
@@ -1912,7 +1912,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::process_aggregates(
   bool var_sized = false;
   bool nullable = false;
 
-  if (name != constants::all_attributes) {
+  if (name != constants::count_of_rows) {
     var_sized = array_schema_.var_size(name);
     nullable = array_schema_.is_nullable(name);
   }

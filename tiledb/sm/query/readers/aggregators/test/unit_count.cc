@@ -41,33 +41,26 @@
 
 using namespace tiledb::sm;
 
-TEST_CASE("Count aggregator: constructor", "[count-aggregator][constructor]") {
-  CHECK_THROWS_WITH(
-      CountAggregator("random"),
-      "CountAggregator: Count aggregates must be requested for all attributes "
-      "only.");
-}
-
 TEST_CASE("Count aggregator: var sized", "[count-aggregator][var-sized]") {
-  CountAggregator aggregator(constants::all_attributes);
+  CountAggregator aggregator;
   CHECK(aggregator.var_sized() == false);
 }
 
 TEST_CASE(
     "Count aggregator: need recompute", "[count-aggregator][need-recompute]") {
-  CountAggregator aggregator(constants::all_attributes);
+  CountAggregator aggregator;
   CHECK(aggregator.need_recompute_on_overflow() == true);
 }
 
 TEST_CASE("Count aggregator: field name", "[count-aggregator][field-name]") {
-  CountAggregator aggregator(constants::all_attributes);
-  CHECK(aggregator.field_name() == constants::all_attributes);
+  CountAggregator aggregator;
+  CHECK(aggregator.field_name() == constants::count_of_rows);
 }
 
 TEST_CASE(
     "Count aggregator: Validate buffer",
     "[count-aggregator][validate-buffer]") {
-  CountAggregator aggregator(constants::all_attributes);
+  CountAggregator aggregator;
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -130,7 +123,7 @@ TEST_CASE(
 TEST_CASE(
     "Count aggregator: Basic aggregation",
     "[count-aggregator][basic-aggregation]") {
-  CountAggregator aggregator(constants::all_attributes);
+  CountAggregator aggregator;
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 

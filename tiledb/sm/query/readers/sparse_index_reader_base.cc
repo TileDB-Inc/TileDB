@@ -418,7 +418,7 @@ Status SparseIndexReaderBase::load_initial_data() {
   for (auto& name : field_names_to_process()) {
     if (array_schema_.is_dim(name) ||
         qc_loaded_attr_names_set_.count(name) != 0 ||
-        name == constants::all_attributes) {
+        name == constants::count_of_rows) {
       continue;
     }
 

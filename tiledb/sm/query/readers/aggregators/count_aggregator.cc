@@ -47,12 +47,8 @@ class CountAggregatorStatusException : public StatusException {
   }
 };
 
-CountAggregator::CountAggregator(const std::string field_name)
+CountAggregator::CountAggregator()
     : count_(0) {
-  if (field_name != constants::all_attributes) {
-    throw CountAggregatorStatusException(
-        "Count aggregates must be requested for all attributes only.");
-  }
 }
 
 void CountAggregator::validate_output_buffer(

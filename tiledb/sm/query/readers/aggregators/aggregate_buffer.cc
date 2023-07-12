@@ -48,7 +48,7 @@ AggregateBuffer::AggregateBuffer(
     : min_cell_(min_cell)
     , max_cell_(max_cell)
     , fixed_data_(
-          name == constants::all_attributes ?
+          name == constants::count_of_rows ?
               nullptr :
               rt.tile_tuple(name)->fixed_tile().data())
     , var_data_(
@@ -76,7 +76,7 @@ AggregateBuffer::AggregateBuffer(
     : min_cell_(min_cell)
     , max_cell_(max_cell)
     , fixed_data_(
-          name == constants::all_attributes ?
+          name == constants::count_of_rows ?
               nullptr :
               rt.tile_tuple(name)->fixed_tile().data())
     , var_data_(

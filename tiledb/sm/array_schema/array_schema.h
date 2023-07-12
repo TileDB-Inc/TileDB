@@ -152,7 +152,7 @@ class ArraySchema {
     return name == constants::coords || name == constants::timestamps ||
            name == constants::delete_timestamps ||
            name == constants::delete_condition_index ||
-           name == constants::all_attributes;
+           name == constants::count_of_rows;
   }
 
   /**

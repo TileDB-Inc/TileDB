@@ -50,14 +50,8 @@ class CountAggregator : public IAggregator {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  CountAggregator() = delete;
-
-  /**
-   * Constructor.
-   *
-   * @param field_name Name of the field that this aggregate will process.
-   */
-  CountAggregator(const std::string field_name);
+  /** Constructor. */
+  CountAggregator();
 
   DISABLE_COPY_AND_COPY_ASSIGN(CountAggregator);
   DISABLE_MOVE_AND_MOVE_ASSIGN(CountAggregator);
@@ -68,7 +62,7 @@ class CountAggregator : public IAggregator {
 
   /** Returns the field name for the aggregator. */
   std::string field_name() override {
-    return constants::all_attributes;
+    return constants::count_of_rows;
   }
 
   /** Returns if the aggregation is var sized or not. */
