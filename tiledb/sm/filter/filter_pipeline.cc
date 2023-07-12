@@ -104,6 +104,10 @@ void FilterPipeline::check_filter_types(
     const FilterPipeline& pipeline,
     const Datatype first_input_type,
     bool is_var) {
+  if (pipeline.filters_.empty()) {
+    return;
+  }
+
   if ((first_input_type == Datatype::STRING_ASCII ||
        first_input_type == Datatype::STRING_UTF8) &&
       is_var && pipeline.size() > 1) {
@@ -122,12 +126,8 @@ void FilterPipeline::check_filter_types(
   }
 
   // ** Modern checks using Filter output type **
-  for (unsigned i = 0; i < pipeline.size(); ++i) {
-    // If the pipeline has filters, check first filter accepts first input type.
-    if (i == 0) {
-      pipeline.get_filter(i)->ensure_accepts_datatype(first_input_type);
-      continue;
-    }
+  pipeline.get_filter(0)->ensure_accepts_datatype(first_input_type);
+  for (unsigned i = 1; i < pipeline.size(); ++i) {
     ensure_compatible(*pipeline.get_filter(i - 1), *pipeline.get_filter(i));
   }
 }
@@ -260,7 +260,10 @@ Status FilterPipeline::filter_chunks_forward(
           &output_data));
 
       // Final tile type will be the output type of last filter in pipeline.
-      tile.set_datatype(f->output_datatype(tile.type()));
+      auto filtered_type = f->output_datatype(tile.type());
+      if (filtered_type != Datatype::ANY && filtered_type != tile.type())  {
+        tile.set_datatype(filtered_type);
+      }
       input_data.set_read_only(false);
       throw_if_not_ok(input_data.swap(output_data));
       input_metadata.set_read_only(false);

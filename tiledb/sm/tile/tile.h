@@ -79,12 +79,12 @@ class TileBase {
 
   /**
    * Set the tile data type. Used in filter pipeline for filters that modify
-   * tile type. If the filter output datatype is ANY, the datatype is unchanged.
+   * tile type.
    *
    * @param datatype The updated Datatype of the tile.
    */
   inline void set_datatype(Datatype datatype) {
-    type_ = datatype == Datatype::ANY ? type_ : datatype;
+    type_ = datatype;
   }
 
   /** Returns the tile data type. */

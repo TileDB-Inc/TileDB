@@ -78,15 +78,6 @@ class Filter {
   virtual void dump(FILE* out) const = 0;
 
   /**
-   * Gets an option from this filter.
-   *
-   * @param option Option whose value to get
-   * @param value Buffer to store the value.
-   * @return Status
-   */
-  Status get_option(FilterOption option, void* value) const;
-
-  /**
    * @brief Returns the filter output type
    *
    * @param input_type Expected type used for input. Used for filters which
@@ -96,16 +87,11 @@ class Filter {
   virtual Datatype output_datatype(Datatype input_type = Datatype::ANY) const;
 
   /**
-   * @brief Throws if given filter's output *cannot* be handled by this filter.
-   *
-   */
-  virtual void ensure_compatible_output(const Filter& filter) const;
-
-  /**
    * @brief Throws if given data type *cannot* be handled by this filter.
    *
+   * @param datatype Input datatype to check filter compatibility.
    */
-  virtual void ensure_accepts_datatype(Datatype datatype) const;
+  void ensure_accepts_datatype(Datatype datatype) const;
 
   /**
    * @brief Checks if the filter is applicable to the input datatype.
@@ -113,6 +99,15 @@ class Filter {
    * @param type Input datatype to check filter compatibility.
    */
   virtual bool accepts_input_datatype(Datatype type) const;
+
+  /**
+   * Gets an option from this filter.
+   *
+   * @param option Option whose value to get
+   * @param value Buffer to store the value.
+   * @return Status
+   */
+  Status get_option(FilterOption option, void* value) const;
 
   /**
    * Runs this filter in the "forward" direction (i.e. during write queries).

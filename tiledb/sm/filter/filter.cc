@@ -58,17 +58,6 @@ Filter* Filter::clone() const {
   return clone;
 }
 
-bool Filter::accepts_input_datatype(Datatype) const {
-  return true;
-};
-
-void Filter::ensure_compatible_output(const Filter& filter) const {
-  if (filter.type() == FilterType::FILTER_NONE)
-    return;
-
-  this->ensure_accepts_datatype(filter.output_datatype());
-}
-
 Datatype Filter::output_datatype(Datatype) const {
   return Datatype::ANY;
 }
@@ -83,6 +72,10 @@ void Filter::ensure_accepts_datatype(Datatype datatype) const {
         " does not accept input type " + datatype_str(datatype));
   };
 }
+
+bool Filter::accepts_input_datatype(Datatype) const {
+  return true;
+};
 
 Status Filter::get_option(FilterOption option, void* value) const {
   if (value == nullptr)

@@ -2486,14 +2486,6 @@ TEST_CASE_METHOD(
         TILEDB_ROW_MAJOR,
         TILEDB_COL_MAJOR);
   }
-
-  SECTION("- delta compression, row/col-major") {
-    // TODO: refactor for each supported FS.
-    std::string temp_dir = fs_vec_[0]->temp_dir();
-    array_name = temp_dir + ARRAY;
-    check_sorted_reads(
-        array_name, TILEDB_FILTER_DELTA, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
-  }
 }
 
 TEST_CASE_METHOD(
