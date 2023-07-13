@@ -52,7 +52,10 @@
         "serialization": {
             "description": "Enable TileDB Cloud Support",
             "dependencies": [
-                "curl",
+                {
+                    "name": "curl",
+                    "features": [ "zstd" ]
+                },
                 {
                     "name": "capnproto",
                     "version>=": "0.8.0"
