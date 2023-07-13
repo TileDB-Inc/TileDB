@@ -34,6 +34,11 @@
  * https://github.com/aws/aws-sdk-cpp/blob/main/src/aws-cpp-sdk-identity-management/source/auth/STSProfileCredentialsProvider.cpp
  */
 
+/**
+ * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0.
+ */
+
 #ifdef HAVE_S3
 
 #include "STSProfileWithWebIdentityCredentialsProvider.h"

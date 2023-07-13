@@ -536,11 +536,11 @@ if (TILEDB_AZURE)
 
   if (TILEDB_VCPKG)
     find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
-    if (NOT TARGET LibLZMA)
+    if (NOT TARGET LibLZMA::LibLZMA)
       find_package(LibLZMA REQUIRED)
     endif()
     if (NOT TARGET LibXml2::LibXml2)
-      find_package(libxml2 CONFIG REQUIRED)
+      find_package(LibXml2 REQUIRED)
       install_target_libs(LibXml2::LibXml2)
     endif()
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB

@@ -57,11 +57,11 @@ if(TILEDB_VCPKG)
   endif()
 
   install_all_target_libs("${AWSSDK_LINK_LIBRARIES}")
-  find_package(libxml2 CONFIG REQUIRED)
+  find_package(LibXml2 REQUIRED)
   install_target_libs(LibXml2::LibXml2)
 
   if (NOT TARGET LibLZMA::LibLZMA)
-      find_package(liblzma REQUIRED)
+      find_package(LibLZMA REQUIRED)
       install_target_libs(LibLZMA::LibLZMA)
   endif()
 
