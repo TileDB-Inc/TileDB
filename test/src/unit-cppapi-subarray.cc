@@ -449,6 +449,98 @@ TEST_CASE("C++ API: Test subarray (dense)", "[cppapi][dense][subarray]") {
   }
 }
 
+#ifdef TILEDB_SERIALIZATION
+TEST_CASE(
+    "C++ API: Test serialized OOB subarray error (dense)",
+    "[cppapi][dense][subarray][oob][serialization]") {
+  bool query_v2 = GENERATE(true, false);
+
+  std::string array_name = "cpp_unit_array";
+  tiledb::Config cfg;
+  cfg.set("config.logging_level", "3");
+  cfg["sm.query.dense.reader"] = GENERATE("legacy", "refactored");
+  tiledb::Context ctx(cfg);
+
+  VFS vfs(ctx);
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  // Create
+  tiledb::Domain domain(ctx);
+  domain.add_dimension(tiledb::Dimension::create<int>(ctx, "rows", {{0, 3}}, 4))
+      .add_dimension(tiledb::Dimension::create<int>(ctx, "cols", {{0, 3}}, 4));
+  tiledb::ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(tiledb::Attribute::create<int>(ctx, "a"));
+  tiledb::Array::create(array_name, schema);
+
+  // Write
+  std::vector<int> data_w = {1, 2, 3, 4};
+  tiledb::Array array_w(ctx, array_name, TILEDB_WRITE);
+  tiledb::Query query_w(ctx, array_w);
+  query_w.set_subarray(Subarray(ctx, array_w).set_subarray({0, 1, 0, 1}))
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a", data_w);
+  query_w.submit();
+  query_w.finalize();
+  array_w.close();
+
+  Array array_r(ctx, array_name, TILEDB_READ);
+  Subarray subarray(ctx, array_r);
+
+  auto expected = TILEDB_ERR;
+  SECTION("- Upper bound OOB") {
+    int range[] = {0, 100};
+    auto r = Range(&range[0], &range[1], sizeof(int));
+    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(0, r).ok());
+  }
+
+  SECTION("- Lower bound OOB") {
+    int range[] = {-1, 2};
+    auto r = Range(&range[0], &range[1], sizeof(int));
+    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(0, r).ok());
+  }
+
+  SECTION("- Second range OOB") {
+    int range[] = {1, 4};
+    auto r = Range(&range[0], &range[1], sizeof(int));
+    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(0, r).ok());
+    int range2[] = {10, 20};
+    auto r2 = Range(&range2[0], &range2[1], sizeof(int));
+    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(1, r2).ok());
+  }
+
+  SECTION("- Valid ranges") {
+    int range[] = {0, 1};
+    auto r = Range(&range[0], &range[1], sizeof(int));
+    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(0, r).ok());
+    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(1, r).ok());
+    expected = TILEDB_OK;
+  }
+
+  Query query(ctx, array_r);
+  query.set_subarray(subarray);
+  query.set_config(cfg);
+
+  std::vector<int> a(4);
+  query.set_data_buffer("a", a);
+  tiledb::test::ServerQueryBuffers buffers;
+  CHECK(
+      submit_query_wrapper(
+          ctx, array_name, &query, buffers, true, query_v2, false) == expected);
+
+  if (expected == TILEDB_OK) {
+    CHECK(query.query_status() == tiledb::Query::Status::COMPLETE);
+    CHECK(a == std::vector<int>{1, 2, 3, 4});
+  }
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+}
+#endif
+
 TEST_CASE(
     "C++ API: Test subarray (incomplete) - Subarray-query",
     "[cppapi][sparse][subarray][incomplete]") {

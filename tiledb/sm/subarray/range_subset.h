@@ -318,7 +318,7 @@ class TypedRangeSetAndFullsetImpl<std::string, CoalesceAdds>
  * defined TileDB datatype.
  *
  * If constructed with the ``implicitly_initialize`` flag set to ``true``, the
- * superset will be added to the Ranges in the set until any additional ranages
+ * superset will be added to the Ranges in the set until any additional ranges
  * are added.
  *
  * Current state of the RangeSetAndSuperset:
@@ -420,6 +420,12 @@ class RangeSetAndSuperset {
   inline bool is_empty() const {
     return ranges_.empty();
   };
+
+  /**
+   * Checks if Subarray ranges are all valid. Throws is any range is found to be
+   * invalid.
+   */
+  void check_oob();
 
   /**
    * Returns ``true`` if the range subset was set after instantiation and

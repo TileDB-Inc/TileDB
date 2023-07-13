@@ -84,7 +84,7 @@ TEST_CASE("Test delta decompression of a vector", "[decompression][delta]") {
 
   Buffer uncompressed_rawbuf(uncompressed_bytes);
   tiledb::sm::PreallocatedBuffer uncompressed_buff{
-      &uncompressed_rawbuf, uncompressed_bytes};
+      uncompressed_rawbuf.data(), uncompressed_bytes};
 
   REQUIRE_NOTHROW(tiledb::sm::Delta::decompress(
       Datatype::INT64, &compressed_buff, &uncompressed_buff));

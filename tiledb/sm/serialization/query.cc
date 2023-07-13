@@ -1332,12 +1332,6 @@ Status writer_from_capnp(
   } else if (query.layout() == Layout::UNORDERED) {
     auto unordered_writer = dynamic_cast<UnorderedWriter*>(writer);
 
-    // Fragment metadata is not allocated when deserializing into a new Query
-    // object.
-    if (unordered_writer->frag_meta() == nullptr) {
-      RETURN_NOT_OK(unordered_writer->alloc_frag_meta());
-    }
-
     RETURN_NOT_OK(unordered_write_state_from_capnp(
         query,
         writer_reader.getUnorderedWriterState(),
@@ -1598,6 +1592,14 @@ Status query_from_capnp(
   bool force_legacy_reader =
       query_type == QueryType::READ && query_reader.hasReader();
   RETURN_NOT_OK(query->reset_strategy_with_layout(layout, force_legacy_reader));
+
+  // Reset QueryStatus to UNINITIALIZED
+  // Note: this is a pre-C.41 hack. At present, Strategy creation is the point
+  // of construction through the regular API. However, the Query cannot be
+  // considered fully initialized until everything has been deserialized. We
+  // must "reset" the status here to bypass future checks on a
+  // fully-initialized Query until the final QueryStatus is deserialized.
+  query->set_status(QueryStatus::UNINITIALIZED);
 
   // Deserialize Config
   if (query_reader.hasConfig()) {
@@ -2971,6 +2973,11 @@ Status unordered_write_state_from_capnp(
   }
 
   if (state_reader.hasFragMeta()) {
+    // Fragment metadata is not allocated when deserializing into a new Query
+    // object.
+    if (unordered_writer->frag_meta() == nullptr) {
+      RETURN_NOT_OK(unordered_writer->alloc_frag_meta());
+    }
     auto frag_meta = unordered_writer->frag_meta();
     auto frag_meta_reader = state_reader.getFragMeta();
     RETURN_NOT_OK(fragment_metadata_from_capnp(

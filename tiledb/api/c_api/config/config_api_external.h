@@ -515,6 +515,17 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *     Aws::S3::Model::ObjectCannedACL.) "aws_exec_read" "owner_read"
  *    "bucket_owner_full_control"
  *    **Default**: "NOT_SET"
+ * - `vfs.s3.config_source` <br>
+ *    Force S3 SDK to only load config options from a set source.
+ *    The supported options are
+ *    `auto` (TileDB config options are considered first,
+ *    then SDK-defined precedence: env vars, config files, ec2 metadata),
+ *    `config_files` (forces SDK to only consider options found in aws
+ *    config files),
+ *    `sts_profile_with_web_identity` (force SDK to consider assume roles/sts
+ * from config files with support for web tokens, commonly used by EKS/ECS).
+ *    **Default**: auto
+ *    <br>
  * - `vfs.hdfs.name_node_uri"` <br>
  *    Name node for HDFS. <br>
  *    **Default**: ""

@@ -109,7 +109,6 @@ Query::Query(
     , is_dimension_label_ordered_read_(false)
     , dimension_label_increasing_(true)
     , fragment_size_(std::numeric_limits<uint64_t>::max())
-    , allow_separate_attribute_writes_(false)
     , query_remote_buffer_storage_(std::nullopt) {
   assert(array->is_open());
 
@@ -133,16 +132,6 @@ Query::Query(
   subarray_.set_config(config_);
 
   rest_scratch_ = make_shared<Buffer>(HERE());
-
-  bool found = false;
-  throw_if_not_ok(config_.get<bool>(
-      "sm.allow_separate_attribute_writes",
-      &allow_separate_attribute_writes_,
-      &found));
-  if (!found) {
-    throw QueryStatusException(
-        "Cannot find sm.allow_separate_attribute_writes in settings");
-  }
 }
 
 Query::~Query() {
@@ -1016,7 +1005,7 @@ Status Query::set_data_buffer(
   // Error if setting a new attribute/dimension after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists &&
-      !allow_separate_attribute_writes_ && !serialization_allow_new_attr) {
+      !allow_separate_attribute_writes() && !serialization_allow_new_attr) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
@@ -1138,7 +1127,7 @@ Status Query::set_offsets_buffer(
   // Error if setting a new attribute/dimension after initialization
   bool exists = buffers_.find(name) != buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists &&
-      !allow_separate_attribute_writes_ && !serialization_allow_new_attr) {
+      !allow_separate_attribute_writes() && !serialization_allow_new_attr) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute/dimension '") + name +
         "' after initialization"));
@@ -1829,7 +1818,8 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           subarray_,
           layout_,
           condition_,
-          skip_checks_serialization));
+          skip_checks_serialization,
+          remote_query_));
     } else {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           Reader,
@@ -1842,7 +1832,8 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           subarray_,
           layout_,
           condition_,
-          skip_checks_serialization));
+          skip_checks_serialization,
+          remote_query_));
     }
   } else if (type_ == QueryType::DELETE || type_ == QueryType::UPDATE) {
     strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
@@ -1914,7 +1905,7 @@ Status Query::check_buffer_names() {
 
     // All attributes/dimensions must be provided unless this query is only for
     // dimension labels.
-    if (!only_dim_label_query() && !allow_separate_attribute_writes_) {
+    if (!only_dim_label_query() && !allow_separate_attribute_writes()) {
       auto expected_num = array_schema_->attribute_num();
       expected_num += static_cast<decltype(expected_num)>(
           buffers_.count(constants::timestamps));
@@ -1934,7 +1925,7 @@ Status Query::check_buffer_names() {
     }
 
     // All dimension buffers should be set for separate attribute writes.
-    if (allow_separate_attribute_writes_) {
+    if (allow_separate_attribute_writes()) {
       for (unsigned d = 0; d < array_schema_->dim_num(); d++) {
         auto dim = array_schema_->dimension_ptr(d);
         if (buffers_.count(dim->name()) == 0) {

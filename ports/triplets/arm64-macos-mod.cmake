@@ -4,12 +4,3 @@ set(VCPKG_LIBRARY_LINKAGE static)
 
 set(VCPKG_CMAKE_SYSTEM_NAME Darwin)
 set(VCPKG_OSX_ARCHITECTURES arm64)
-
-if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
-  set(VCPKG_BUILD_TYPE "release")
-elseif("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-  set(VCPKG_BUILD_TYPE "debug")
-else()
-  message(STATUS "vcpkg does not support '${CMAKE_BUILD_TYPE}' or unset; using 'release'")
-  set(VCPKG_BUILD_TYPE "release")
-endif()
