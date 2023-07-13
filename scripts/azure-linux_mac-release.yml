@@ -110,6 +110,9 @@ steps:
     if [[ "$TILEDB_WEBP" == "OFF" ]]; then
       cmake_args="${cmake_args} -DTILEDB_WEBP=OFF";
     fi;
+    if [[ ! -z "$CMAKE_OSX_ARCHITECTURES" ]]; then
+      cmake_args="${cmake_args} -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}";
+    fi;
 
     mkdir -p $BUILD_REPOSITORY_LOCALPATH/build
     cd $BUILD_REPOSITORY_LOCALPATH/build
