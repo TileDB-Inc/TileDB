@@ -200,6 +200,12 @@
       "dependencies": [
         "wolfssl"
       ]
+    },
+    "zstd": {
+      "description": "ZStandard support (zstd)",
+      "dependencies": [
+        "zstd"
+      ]
     }
   }
 }
