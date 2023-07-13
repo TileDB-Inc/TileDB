@@ -261,7 +261,7 @@ Status FilterPipeline::filter_chunks_forward(
 
       // Final tile type will be the output type of last filter in pipeline.
       auto filtered_type = f->output_datatype(tile.type());
-      if (filtered_type != Datatype::ANY && filtered_type != tile.type())  {
+      if (filtered_type != Datatype::ANY && filtered_type != tile.type()) {
         tile.set_datatype(filtered_type);
       }
       input_data.set_read_only(false);
