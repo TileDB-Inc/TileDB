@@ -127,8 +127,11 @@ void FilterPipeline::check_filter_types(
 
   // ** Modern checks using Filter output type **
   pipeline.get_filter(0)->ensure_accepts_datatype(first_input_type);
+  auto input_type = pipeline.get_filter(0)->output_datatype(first_input_type);
   for (unsigned i = 1; i < pipeline.size(); ++i) {
-    ensure_compatible(*pipeline.get_filter(i - 1), *pipeline.get_filter(i));
+    ensure_compatible(
+        *pipeline.get_filter(i - 1), *pipeline.get_filter(i), input_type);
+    input_type = pipeline.get_filter(i)->output_datatype(input_type);
   }
 }
 
@@ -259,11 +262,6 @@ Status FilterPipeline::filter_chunks_forward(
           &output_metadata,
           &output_data));
 
-      // Final tile type will be the output type of last filter in pipeline.
-      auto filtered_type = f->output_datatype(tile.type());
-      if (filtered_type != Datatype::ANY && filtered_type != tile.type()) {
-        tile.set_datatype(filtered_type);
-      }
       input_data.set_read_only(false);
       throw_if_not_ok(input_data.swap(output_data));
       input_metadata.set_read_only(false);
@@ -446,9 +444,6 @@ Status FilterPipeline::run_reverse(
     const uint64_t max_chunk_index,
     uint64_t concurrency_level,
     const Config& config) const {
-  // Store initial tile schema type to restore final unfiltered chunk.
-  Datatype tile_type = tile->type();
-
   // Run each chunk through the entire pipeline.
   for (size_t i = min_chunk_index; i < max_chunk_index; i++) {
     auto& chunk = chunk_data.filtered_chunks_[i];
@@ -486,8 +481,6 @@ Status FilterPipeline::run_reverse(
 
       // Final filter: output directly into the shared output buffer.
       bool last_filter = filter_idx == 0;
-      // Assume there are type conversions in the pipeline.
-      bool conversions = true;
       if (last_filter) {
         void* output_chunk_buffer =
             static_cast<char*>(tile->data()) + chunk_data.chunk_offsets_[i];
@@ -495,23 +488,6 @@ Status FilterPipeline::run_reverse(
             output_chunk_buffer, chunk.unfiltered_data_size_));
         reader_stats->add_counter(
             "read_unfiltered_byte_num", chunk.unfiltered_data_size_);
-        // Restore tile datatype to it's initial schema value.
-        tile->set_datatype(tile_type);
-      } else if (conversions) {
-        // There could be N filters with ANY output type ahead of last
-        // conversion.
-        for (int64_t j = filter_idx - 1; j >= 0; j--) {
-          auto type = filters_[j]->output_datatype(tile->type());
-          if (type != Datatype::ANY && type != tile->type()) {
-            // Update Tile type if a previous filter modified the datatype.
-            tile->set_datatype(type);
-            break;
-          }
-          // If no further conversions, prevent checking again next filter.
-          if (j == 0) {
-            conversions = false;
-          }
-        }
       }
 
       f->init_decompression_resource_pool(concurrency_level);
@@ -588,8 +564,8 @@ void FilterPipeline::dump(FILE* out) const {
 }
 
 void FilterPipeline::ensure_compatible(
-    const Filter& first, const Filter& second) {
-  auto first_output_type = first.output_datatype();
+    const Filter& first, const Filter& second, Datatype first_input_type) {
+  auto first_output_type = first.output_datatype(first_input_type);
   if (!second.accepts_input_datatype(first_output_type)) {
     throw FilterPipelineStatusException(
         "Filter " + filter_type_str(first.type()) + " produces " +

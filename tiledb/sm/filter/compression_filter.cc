@@ -719,13 +719,14 @@ void CompressionFilter::init_decompression_resource_pool(uint64_t size) {
   }
 }
 
-Datatype CompressionFilter::output_datatype(Datatype) const {
+Datatype CompressionFilter::output_datatype(Datatype datatype) const {
   switch (compressor_) {
     case Compressor::DOUBLE_DELTA:
     case Compressor::DELTA:
-      return reinterpret_datatype_;
+      return reinterpret_datatype_ == Datatype::ANY ? datatype :
+                                                      reinterpret_datatype_;
     default:
-      return Datatype::ANY;
+      return datatype;
   }
 }
 

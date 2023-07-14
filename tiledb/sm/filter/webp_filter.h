@@ -145,7 +145,7 @@ class WebpFilter : public Filter {
   void dump(FILE* out) const override;
 
   /**
-   * @brief Checks if the filter is applicable to the input datatype.
+   * Checks if the filter is applicable to the input datatype.
    *
    * @param type Input datatype to check filter compatibility.
    */

@@ -127,7 +127,8 @@ class FilterPipeline {
    * Checks fail if the first filter outputs a type not accepted by the second
    * filter as input.
    */
-  static void ensure_compatible(const Filter& first, const Filter& second);
+  static void ensure_compatible(
+      const Filter& first, const Filter& second, Datatype first_input_type);
 
   /**
    * Returns pointer to the first instance of a filter in the pipeline with the

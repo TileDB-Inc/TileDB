@@ -74,7 +74,8 @@ Status PositiveDeltaFilter::run_forward(
   auto tile_type = tile.type();
 
   // If encoding can't work, just return the input unmodified.
-  if (!datatype_is_integer(tile_type)) {
+  if (!datatype_is_integer(tile_type) && !datatype_is_time(tile_type) &&
+      !datatype_is_datetime(tile_type)) {
     RETURN_NOT_OK(output->append_view(input));
     RETURN_NOT_OK(output_metadata->append_view(input_metadata));
     return Status::Ok();
@@ -254,7 +255,8 @@ Status PositiveDeltaFilter::run_reverse(
   auto tile_type = tile.type();
 
   // If encoding wasn't applied, just return the input unmodified.
-  if (!datatype_is_integer(tile_type)) {
+  if (!datatype_is_integer(tile_type) && !datatype_is_time(tile_type) &&
+      !datatype_is_datetime(tile_type)) {
     RETURN_NOT_OK(output->append_view(input));
     RETURN_NOT_OK(output_metadata->append_view(input_metadata));
     return Status::Ok();

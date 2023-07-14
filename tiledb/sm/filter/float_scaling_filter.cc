@@ -107,27 +107,22 @@ Status FloatScalingFilter::run_forward(
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
   switch (byte_width_) {
-    case sizeof(int8_t): {
+    case sizeof(int8_t):
       return run_forward<T, int8_t>(
           input_metadata, input, output_metadata, output);
-    } break;
-    case sizeof(int16_t): {
+    case sizeof(int16_t):
       return run_forward<T, int16_t>(
           input_metadata, input, output_metadata, output);
-    } break;
-    case sizeof(int32_t): {
+    case sizeof(int32_t):
       return run_forward<T, int32_t>(
           input_metadata, input, output_metadata, output);
-    } break;
-    case sizeof(int64_t): {
+    case sizeof(int64_t):
       return run_forward<T, int64_t>(
           input_metadata, input, output_metadata, output);
-    } break;
-    default: {
+    default:
       throw std::logic_error(
           "FloatScalingFilter::run_forward: byte_width_ does not reflect the "
           "size of an integer type.");
-    }
   }
 }
 
@@ -141,18 +136,15 @@ Status FloatScalingFilter::run_forward(
   auto tile_type = tile.type();
   auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
   switch (tile_type_size) {
-    case sizeof(float): {
+    case sizeof(float):
       return run_forward<float>(input_metadata, input, output_metadata, output);
-    } break;
-    case sizeof(double): {
+    case sizeof(double):
       return run_forward<double>(
           input_metadata, input, output_metadata, output);
-    } break;
-    default: {
+    default:
       throw std::logic_error(
           "FloatScalingFilter::run_forward: tile_type_size does not reflect "
           "the size of a floating point type.");
-    }
   }
 }
 

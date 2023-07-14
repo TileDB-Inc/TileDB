@@ -269,7 +269,7 @@ class CompressionFilter : public Filter {
    * change output type based on input data. e.g. XORFilter output type is
    * based on byte width of input type.
    */
-  Datatype output_datatype(Datatype input_type = Datatype::ANY) const override;
+  Datatype output_datatype(Datatype input_type) const override;
 };
 
 }  // namespace sm

@@ -3528,16 +3528,19 @@ TEST_CASE("Filter: Test XOR", "[filter][xor]") {
 
 TEST_CASE("Filter: Pipeline filtered output types", "[filter][pipeline]") {
   FilterPipeline pipeline;
+
   SECTION("- DoubleDelta filter reinterprets float->int32") {
     pipeline.add_filter(CompressionFilter(
         tiledb::sm::Compressor::DOUBLE_DELTA, 0, Datatype::INT32));
     pipeline.add_filter(BitWidthReductionFilter());
   }
+
   SECTION("- Delta filter reinterprets float->int32") {
     pipeline.add_filter(
         CompressionFilter(tiledb::sm::Compressor::DELTA, 0, Datatype::INT32));
     pipeline.add_filter(BitWidthReductionFilter());
   }
+
   SECTION("- FloatScale filter converts float->int32") {
     pipeline.add_filter(FloatScalingFilter(sizeof(int32_t), 1.0f, 0.0f));
     pipeline.add_filter(PositiveDeltaFilter());
@@ -3547,6 +3550,7 @@ TEST_CASE("Filter: Pipeline filtered output types", "[filter][pipeline]") {
     pipeline.add_filter(ByteshuffleFilter());
     pipeline.add_filter(BitWidthReductionFilter());
   }
+
   size_t byte_width = 0;
   SECTION("- XOR filter expected output types") {
     byte_width = GENERATE(
@@ -3554,6 +3558,7 @@ TEST_CASE("Filter: Pipeline filtered output types", "[filter][pipeline]") {
     pipeline.add_filter(FloatScalingFilter(byte_width, 1.0f, 0.0f));
     pipeline.add_filter(XORFilter());
   }
+
   SECTION("- XOR filter expected output types large pipeline") {
     byte_width = GENERATE(
         sizeof(int8_t), sizeof(int16_t), sizeof(int32_t), sizeof(int64_t));
@@ -3563,6 +3568,7 @@ TEST_CASE("Filter: Pipeline filtered output types", "[filter][pipeline]") {
     pipeline.add_filter(ByteshuffleFilter());
     pipeline.add_filter(XORFilter());
   }
+
   // Initial type of tile is float.
   std::vector<float> data = {
       1.0f, 2.1f, 3.2f, 4.3f, 5.4f, 6.5f, 7.6f, 8.7f, 9.8f, 10.9f};
@@ -3646,7 +3652,6 @@ TEST_CASE(
 
   // Delta filter reinterprets int32->uint32
   tiledb::Filter delta(ctx, TILEDB_FILTER_DELTA);
-  delta.set_option(TILEDB_COMPRESSION_REINTERPRET_DATATYPE, TILEDB_UINT32);
 
   // Pass uint32 data to BitWidthReduction filter
   tiledb::Filter bit_width_reduction(ctx, TILEDB_FILTER_BIT_WIDTH_REDUCTION);
@@ -3785,15 +3790,41 @@ TEST_CASE(
   SECTION("- Multiple compressors") {
     tiledb::Filter bzip(ctx, TILEDB_FILTER_BZIP2);
     auto compressor = GENERATE(
+        TILEDB_FILTER_GZIP,
+        TILEDB_FILTER_LZ4,
+        TILEDB_FILTER_RLE,
+        TILEDB_FILTER_ZSTD);
+    tiledb::Filter compressor_filter(ctx, compressor);
+    filters.add_filter(bzip);
+    filters.add_filter(compressor_filter);
+
+    CHECK_NOTHROW(d1.set_filter_list(filters));
+    CHECK_NOTHROW(a1.set_filter_list(filters));
+
+    // Should throw without FloatScale to convert float->int32.
+    auto delta_compressor = GENERATE(
+        TILEDB_FILTER_POSITIVE_DELTA,
+        TILEDB_FILTER_DOUBLE_DELTA,
+        TILEDB_FILTER_DELTA);
+    tiledb::Filter delta_filter(ctx, delta_compressor);
+    filters.add_filter(delta_filter);
+    CHECK_THROWS(d1.set_filter_list(filters));
+    CHECK_THROWS(a1.set_filter_list(filters));
+  }
+
+  SECTION("- Multiple compressors following type conversion") {
+    auto compressor = GENERATE(
         TILEDB_FILTER_DOUBLE_DELTA,
         TILEDB_FILTER_DELTA,
         TILEDB_FILTER_GZIP,
         TILEDB_FILTER_LZ4,
         TILEDB_FILTER_RLE,
         TILEDB_FILTER_ZSTD);
-    tiledb::Filter bit_width_reduction(ctx, compressor);
+    tiledb::Filter compressor_filter(ctx, compressor);
+    tiledb::Filter bzip(ctx, TILEDB_FILTER_BZIP2);
+    filters.add_filter(float_scale);
     filters.add_filter(bzip);
-    filters.add_filter(bit_width_reduction);
+    filters.add_filter(compressor_filter);
 
     CHECK_NOTHROW(d1.set_filter_list(filters));
     CHECK_NOTHROW(a1.set_filter_list(filters));
