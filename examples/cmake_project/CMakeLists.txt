@@ -53,7 +53,8 @@ add_executable(ExampleExe "src/main.cc")
 target_link_libraries(ExampleExe TileDB::tiledb_shared)
 
 # Link a second executable with the TileDB static library, if it is available.
-if (TARGET TileDB::tiledb_static)
+# TODO: re-enable this on Windows
+if (NOT WIN32 AND TILEDB_STATIC)
   add_executable(ExampleExe_static "src/main.cc")
   target_link_libraries(ExampleExe_static TileDB::tiledb_static)
 endif()

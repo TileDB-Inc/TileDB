@@ -34,7 +34,7 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
-if(TILEDB_VCPKG)
+if(FALSE) #NOT WINDOWS AND TILEDB_VCPKG AND NOT TILEDB_VCPKG_DISABLE_MAGIC)
   find_path(libmagic_INCLUDE_DIR NAMES magic.h)
   find_library(libmagic_LIBRARIES magic)
   find_file(libmagic_DICTIONARY magic.mgc
@@ -136,6 +136,7 @@ if(NOT TILEDB_LIBMAGIC_EP_BUILT)
         -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
         "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
         -Dlibmagic_STATIC_LIB=ON
+        -DBUILD_MAGIC_MACOS_UNIVERSAL=$ENV{BUILD_MAGIC_MACOS_UNIVERSAL}
       LOG_DOWNLOAD TRUE
       LOG_CONFIGURE TRUE
       LOG_BUILD TRUE

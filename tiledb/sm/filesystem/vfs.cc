@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -450,6 +450,18 @@ Status VFS::remove_dir(const URI& uri) const {
     return LOG_STATUS(
         Status_VFSError("Unsupported URI scheme: " + uri.to_string()));
   }
+}
+
+void VFS::remove_dirs(
+    ThreadPool* compute_tp, const std::vector<URI>& uris) const {
+  throw_if_not_ok(parallel_for(compute_tp, 0, uris.size(), [&](size_t i) {
+    bool is_dir;
+    RETURN_NOT_OK(this->is_dir(uris[i], &is_dir));
+    if (is_dir) {
+      RETURN_NOT_OK(remove_dir(uris[i]));
+    }
+    return Status::Ok();
+  }));
 }
 
 Status VFS::remove_file(const URI& uri) const {

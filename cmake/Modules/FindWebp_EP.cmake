@@ -30,6 +30,7 @@ include(TileDBCommon)
 if (TILEDB_VCPKG)
   find_package(Threads REQUIRED)
   find_package(WebP REQUIRED)
+  install_target_libs(WebP::webp)
   return()
 endif()
 

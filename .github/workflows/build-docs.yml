@@ -39,7 +39,7 @@ jobs:
         shell: bash
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
 
       - name: Install Doxygen (linux only)
         run: |

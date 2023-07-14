@@ -40,7 +40,7 @@ env:
   TILEDB_CI_OS: runner.os
   CXX: ${{ inputs.matrix_compiler_cxx }}
   CC: ${{ inputs.matrix_compiler_cc }}
-  bootstrap_args: "--enable-ccache ${{ inputs.bootstrap_args }}"
+  bootstrap_args: "--enable-vcpkg --enable-ccache ${{ inputs.bootstrap_args }}"
   VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
   SCCACHE_GHA_ENABLED: "true"
 

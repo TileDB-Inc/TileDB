@@ -33,6 +33,13 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
+if (TILEDB_VCPKG)
+  find_package(OpenSSL REQUIRED)
+  target_link_libraries(OpenSSL::SSL)
+  install_all_target_libs(OpenSSL::SSL)
+  return()
+endif()
+
 # Search the path set during the superbuild for the EP.
 set(OPENSSL_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 

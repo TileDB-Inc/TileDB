@@ -500,13 +500,23 @@ class Config {
    *    URIs. <br>
    *    **Default**: `1`
    * - `vfs.azure.storage_account_name` <br>
-   *    Set the Azure Storage Account name. <br>
+   *    Set the name of the Azure Storage account to use. <br>
    *    **Default**: ""
    * - `vfs.azure.storage_account_key` <br>
-   *    Set the Azure Storage Account key. <br>
+   *    Set the Shared Key to authenticate to Azure Storage. <br>
+   *    **Default**: ""
+   * - `vfs.azure.storage_sas_token` <br>
+   *    Set the Azure Storage SAS (shared access signature) token to use.
+   *    If this option is set along with `vfs.azure.blob_endpoint`, the
+   *    latter must not include a SAS token. <br>
    *    **Default**: ""
    * - `vfs.azure.blob_endpoint` <br>
    *    Set the default Azure Storage Blob endpoint. <br>
+   *    If not specified, it will take a value of
+   *    `https://<account-name>.blob.core.windows.net`, where `<account-name>`
+   *    is the value of the `vfs.azure.storage_account_name` option. This means
+   *    that at least one of these two options must be set (or both if shared
+   *    key authentication is used). <br>
    *    **Default**: ""
    * - `vfs.azure.block_list_block_size` <br>
    *    The block size (in bytes) used in Azure blob block list writes.
@@ -682,6 +692,17 @@ class Config {
    *     Aws::S3::Model::ObjectCannedACL.) "aws_exec_read" "owner_read"
    *    "bucket_owner_full_control"
    *    **Default**: "NOT_SET"
+   * - `vfs.s3.config_source` <br>
+   *    Force S3 SDK to only load config options from a set source.
+   *    The supported options are
+   *    `auto` (TileDB config options are considered first,
+   *    then SDK-defined precedence: env vars, config files, ec2 metadata),
+   *    `config_files` (forces SDK to only consider options found in aws
+   *    config files),
+   *    `sts_profile_with_web_identity` (force SDK to consider assume roles/sts
+   * from config files with support for web tokens, commonly used by EKS/ECS).
+   *    **Default**: auto
+   *    <br>
    * - `vfs.hdfs.name_node_uri"` <br>
    *    Name node for HDFS. <br>
    *    **Default**: ""

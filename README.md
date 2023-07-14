@@ -79,6 +79,7 @@ TileDB is also integrated with several popular databases and data science tools:
 * [Dask](https://docs.tiledb.com/main/integrations-and-extensions/distributed-computing/dask)
 * [MariaDB](https://docs.tiledb.com/main/integrations-and-extensions/sql/mariadb)
 * [PrestoDB](https://docs.tiledb.com/main/integrations-and-extensions/sql/prestodb)
+* [Trino](https://docs.tiledb.com/main/integrations-and-extensions/distributed-computing/prestodb-1)
 * [Geospatial](https://docs.tiledb.com/main/integrations-and-extensions/geospatial) (GDAL, PDAL, Rasterio)
 * [Genomics](https://docs.tiledb.com/main/integrations-and-extensions/population-genomics) (gVCF)
 

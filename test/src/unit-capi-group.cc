@@ -509,6 +509,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   int metadata_val = 1;
+  set_group_timestamp(group, 1);
   rc = tiledb_group_open(ctx_, group, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_group_put_metadata(
@@ -523,6 +524,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   metadata_val = 2;
+  set_group_timestamp(group, 2);
   rc = tiledb_group_open(ctx_, group, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_group_put_metadata(

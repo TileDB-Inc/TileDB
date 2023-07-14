@@ -28,11 +28,21 @@
 set -e pipefail
 # Display log files if the build failed
 echo "Dumping log files for failed build"
-echo "----------------------------------"
 for f in $(find $GITHUB_WORKSPACE/{build,external} -name *.log);
-  do echo "------"
-      echo $f
-      echo "======"
-      cat $f
+  do
+    echo "::group::$f"
+    cat $f
+    echo "::endgroup::"
   done;
 
+# Display log files if the build failed
+# echo "Dumping CMake files for failed build"
+# for f in $(find $GITHUB_WORKSPACE/build/externals -type f -name *.cmake);
+#   do
+#     echo "::group::$f"
+#     cat $f
+#     echo "::endgroup::"
+#   done;
+
+# List files in externsl on error
+find $GITHUB_WORKSPACE/build/externals | sort

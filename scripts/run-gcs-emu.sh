@@ -29,23 +29,23 @@
 # This script should be sourced from tiledb/build folder
 set -xe
 
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-
 export_gcs_env(){
   export CLOUD_STORAGE_EMULATOR_ENDPOINT=http://localhost:9000 # For JSON and XML API
 }
 
 run_gcs(){
-  gunicorn --bind "localhost:9000" --worker-class sync --threads 10 --access-logfile - --chdir /tmp/google-cloud-cpp-1.23.0/google/cloud/storage/emulator "emulator:run()" &
+  pushd .
+  source /tmp/storage-testbench-venv/bin/activate
+  cd /tmp/storage-testbench
+  python3 testbench_run.py localhost 9000 10 &
   export GCS_PID=$!
   [[ "$?" -eq "0" ]] || die "could not run gcs server"
+  popd
 }
 
 run() {
   export_gcs_env
 
-  mkdir -p /tmp/gcs-data
-  cp -f -r $DIR/../test/inputs/test_certs /tmp/gcs-data
   run_gcs
 }
 

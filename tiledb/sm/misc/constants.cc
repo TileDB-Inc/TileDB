@@ -93,6 +93,15 @@ const std::string fragment_metadata_filename = "__fragment_metadata.tdb";
 /** The array dimension labels directory name. */
 const std::string array_dimension_labels_dir_name = "__labels";
 
+/** The array directory names. */
+const std::vector<std::string> array_dir_names = {
+    array_schema_dir_name,
+    array_metadata_dir_name,
+    array_fragment_meta_dir_name,
+    array_fragments_dir_name,
+    array_commits_dir_name,
+    array_dimension_labels_dir_name};
+
 /** The default tile capacity. */
 const uint64_t capacity = 10000;
 
@@ -261,6 +270,10 @@ const std::string group_detail_dir_name = "__group";
 /** The group metadata directory name. */
 const std::string group_metadata_dir_name = "__meta";
 
+/** The group directory names. */
+const std::vector<std::string> group_dir_names = {
+    group_detail_dir_name, group_metadata_dir_name};
+
 /** The maximum number of bytes written in a single I/O. */
 const uint64_t max_write_bytes = std::numeric_limits<int>::max();
 
@@ -371,6 +384,9 @@ const std::string bzip2_str = "BZIP2";
 /** String describing DOUBLE_DELTA. */
 const std::string double_delta_str = "DOUBLE_DELTA";
 
+/** String describing DELTA. */
+const std::string delta_str = "DELTA";
+
 /** String describing FILTER_NONE. */
 const std::string filter_none_str = "NONE";
 
@@ -433,6 +449,13 @@ const std::string filter_option_webp_input_format = "WEBP_INPUT_FORMAT";
 
 /** The string representation for FilterOption type webp_lossless. */
 const std::string filter_option_webp_lossless = "WEBP_LOSSLESS";
+
+/**
+ * The string representation for FilterOption type
+ * compression_reinterpret_datatype.
+ */
+const std::string filter_option_compression_reinterpret_datatype =
+    "COMPRESSION_REINTERPRET_DATATYPE";
 
 /** The string representation for type int32. */
 const std::string int32_str = "INT32";
