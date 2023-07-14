@@ -545,8 +545,8 @@ if (TILEDB_AZURE)
     endif()
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
             INTERFACE
-            Azure::azure-storage-blobs
             Azure::azure-storage-common
+            Azure::azure-storage-blobs
             Azure::azure-core
             LibXml2::LibXml2
             LibLZMA::LibLZMA
@@ -562,8 +562,8 @@ if (TILEDB_AZURE)
     endif()
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
             INTERFACE
-            Azure::azure-storage-common
             Azure::azure-storage-blobs
+            Azure::azure-storage-common
             Azure::azure-core
             LibXml2::LibXml2)
     if(WIN32)
