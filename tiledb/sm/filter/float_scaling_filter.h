@@ -138,6 +138,13 @@ class FloatScalingFilter : public Filter {
   uint64_t byte_width_;
 
   /**
+   * Checks if the filter is applicable to the input datatype.
+   *
+   * @param type Input datatype to check filter compatibility.
+   */
+  bool accepts_input_datatype(Datatype datatype) const override;
+
+  /**
    * @brief Returns the filter output type
    *
    * @param input_type Expected type used for input. Used for filters which

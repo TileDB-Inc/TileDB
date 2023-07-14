@@ -3428,7 +3428,6 @@ void testing_float_scaling_filter() {
   CHECK(tile.filtered_buffer().size() != 0);
 
   auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
-  unfiltered_tile.set_datatype(t);
   run_reverse(config, tp, unfiltered_tile, pipeline);
   for (uint64_t i = 0; i < nelts; i++) {
     FloatingType elt = 0.0f;
@@ -3594,7 +3593,6 @@ TEST_CASE("Filter: Pipeline filtered output types", "[filter][pipeline]") {
   }
 
   auto unfiltered_tile = create_tile_for_unfiltering(data.size(), tile);
-  unfiltered_tile.set_datatype(Datatype::FLOAT32);
   ChunkData chunk_data;
   unfiltered_tile.load_chunk_data(chunk_data);
   REQUIRE(pipeline

@@ -310,6 +310,11 @@ Status FloatScalingFilter::get_option_impl(
   return Status::Ok();
 }
 
+bool FloatScalingFilter::accepts_input_datatype(Datatype datatype) const {
+  size_t size = datatype_size(datatype);
+  return size == sizeof(float) || size == sizeof(double);
+}
+
 Datatype FloatScalingFilter::output_datatype(Datatype) const {
   if (byte_width_ == sizeof(int8_t)) {
     return Datatype::INT8;

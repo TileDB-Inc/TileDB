@@ -116,7 +116,9 @@ Status BitWidthReductionFilter::run_forward(
   auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
 
   // If bit width compression can't work, just return the input unmodified.
-  if (!datatype_is_integer(tile_type) || tile_type_size == 1) {
+  if ((!datatype_is_integer(tile_type) && !datatype_is_time(tile_type) &&
+       !datatype_is_datetime(tile_type)) ||
+      tile_type_size == 1) {
     RETURN_NOT_OK(output->append_view(input));
     RETURN_NOT_OK(output_metadata->append_view(input_metadata));
     return Status::Ok();
@@ -300,7 +302,9 @@ Status BitWidthReductionFilter::run_reverse(
   auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
 
   // If bit width compression wasn't applied, just return the input unmodified.
-  if (!datatype_is_integer(tile_type) || tile_type_size == 1) {
+  if ((!datatype_is_integer(tile_type) && !datatype_is_time(tile_type) &&
+       !datatype_is_datetime(tile_type)) ||
+      tile_type_size == 1) {
     RETURN_NOT_OK(output->append_view(input));
     RETURN_NOT_OK(output_metadata->append_view(input_metadata));
     return Status::Ok();

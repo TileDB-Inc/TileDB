@@ -194,7 +194,7 @@ FilterPipeline::get_var_chunk_sizes(
 }
 
 Status FilterPipeline::filter_chunks_forward(
-    WriterTile& tile,
+    const WriterTile& tile,
     WriterTile* const offsets_tile,
     uint32_t chunk_size,
     std::vector<uint64_t>& chunk_offsets,
