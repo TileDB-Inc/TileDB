@@ -66,6 +66,86 @@ class FilterPipeline;
 enum class Compressor : uint8_t;
 enum class Datatype : uint8_t;
 
+template <class Fn, class... Args>
+inline void execute_callback_with_type(Datatype type, Fn&& f, Args&&... args) {
+  switch (type) {
+    case Datatype::INT32: {
+      f(int32_t{}, std::forward<Args>(args)...);
+      break;
+    }
+    case Datatype::INT64: {
+      f(int64_t{}, std::forward<Args>(args)...);
+      break;
+    }
+    case Datatype::INT8: {
+      f(int8_t{}, std::forward<Args>(args)...);
+      break;
+    }
+    case Datatype::UINT8: {
+      f(uint8_t{}, std::forward<Args>(args)...);
+      break;
+    }
+    case Datatype::INT16: {
+      f(int16_t{}, std::forward<Args>(args)...);
+      break;
+    }
+    case Datatype::UINT16: {
+      f(uint64_t{}, std::forward<Args>(args)...);
+      break;
+    }
+    case Datatype::UINT32: {
+      f(uint32_t{}, std::forward<Args>(args)...);
+      break;
+    }
+    case Datatype::UINT64: {
+      f(uint64_t{}, std::forward<Args>(args)...);
+      break;
+    }
+    case Datatype::FLOAT32: {
+      f(float{}, std::forward<Args>(args)...);
+      break;
+    }
+    case Datatype::FLOAT64: {
+      f(double{}, std::forward<Args>(args)...);
+      break;
+    }
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS: {
+      f(int64_t{}, std::forward<Args>(args)...);
+      break;
+    }
+    case Datatype::STRING_ASCII: {
+      f(char{}, std::forward<Args>(args)...);
+      break;
+    }
+    default: {
+      throw std::logic_error(
+          "Datatype::" + datatype_str(type) + " is not a valid Datatype");
+      break;
+    }
+  }
+}
+
 /** Manipulates a TileDB dimension.
  *
  * Note: as laid out in the Storage Format,

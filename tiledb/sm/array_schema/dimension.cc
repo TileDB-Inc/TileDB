@@ -1797,315 +1797,32 @@ std::string Dimension::tile_extent_str() const {
 }
 
 void Dimension::set_crop_range_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      crop_range_func_ = crop_range<int32_t>;
-      break;
-    case Datatype::INT64:
-      crop_range_func_ = crop_range<int64_t>;
-      break;
-    case Datatype::INT8:
-      crop_range_func_ = crop_range<int8_t>;
-      break;
-    case Datatype::UINT8:
-      crop_range_func_ = crop_range<uint8_t>;
-      break;
-    case Datatype::INT16:
-      crop_range_func_ = crop_range<int16_t>;
-      break;
-    case Datatype::UINT16:
-      crop_range_func_ = crop_range<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      crop_range_func_ = crop_range<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      crop_range_func_ = crop_range<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      crop_range_func_ = crop_range<float>;
-      break;
-    case Datatype::FLOAT64:
-      crop_range_func_ = crop_range<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      crop_range_func_ = crop_range<int64_t>;
-      break;
-    default:
-      crop_range_func_ = nullptr;
-      break;
-  }
+  auto g = [&](auto T) { crop_range_func_ = expand_range_v<decltype(T)>; };
+  execute_callback_with_type(type_, g);
 }
 
 void Dimension::set_domain_range_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      domain_range_func_ = domain_range<int32_t>;
-      break;
-    case Datatype::INT64:
-      domain_range_func_ = domain_range<int64_t>;
-      break;
-    case Datatype::INT8:
-      domain_range_func_ = domain_range<int8_t>;
-      break;
-    case Datatype::UINT8:
-      domain_range_func_ = domain_range<uint8_t>;
-      break;
-    case Datatype::INT16:
-      domain_range_func_ = domain_range<int16_t>;
-      break;
-    case Datatype::UINT16:
-      domain_range_func_ = domain_range<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      domain_range_func_ = domain_range<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      domain_range_func_ = domain_range<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      domain_range_func_ = domain_range<float>;
-      break;
-    case Datatype::FLOAT64:
-      domain_range_func_ = domain_range<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      domain_range_func_ = domain_range<int64_t>;
-      break;
-    default:
-      domain_range_func_ = nullptr;
-      break;
-  }
+  auto g = [&](auto T) { domain_range_func_ = domain_range<decltype(T)>; };
+  execute_callback_with_type(type_, g);
 }
 
 void Dimension::set_ceil_to_tile_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      ceil_to_tile_func_ = ceil_to_tile<int32_t>;
-      break;
-    case Datatype::INT64:
-      ceil_to_tile_func_ = ceil_to_tile<int64_t>;
-      break;
-    case Datatype::INT8:
-      ceil_to_tile_func_ = ceil_to_tile<int8_t>;
-      break;
-    case Datatype::UINT8:
-      ceil_to_tile_func_ = ceil_to_tile<uint8_t>;
-      break;
-    case Datatype::INT16:
-      ceil_to_tile_func_ = ceil_to_tile<int16_t>;
-      break;
-    case Datatype::UINT16:
-      ceil_to_tile_func_ = ceil_to_tile<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      ceil_to_tile_func_ = ceil_to_tile<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      ceil_to_tile_func_ = ceil_to_tile<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      ceil_to_tile_func_ = ceil_to_tile<float>;
-      break;
-    case Datatype::FLOAT64:
-      ceil_to_tile_func_ = ceil_to_tile<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      ceil_to_tile_func_ = ceil_to_tile<int64_t>;
-      break;
-    default:
-      ceil_to_tile_func_ = nullptr;
-      break;
-  }
+  auto g = [&](auto T) { ceil_to_tile_func_ = ceil_to_tile<decltype(T)>; };
+  execute_callback_with_type(type_, g);
 }
 
 void Dimension::set_coincides_with_tiles_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      coincides_with_tiles_func_ = coincides_with_tiles<int32_t>;
-      break;
-    case Datatype::INT64:
-      coincides_with_tiles_func_ = coincides_with_tiles<int64_t>;
-      break;
-    case Datatype::INT8:
-      coincides_with_tiles_func_ = coincides_with_tiles<int8_t>;
-      break;
-    case Datatype::UINT8:
-      coincides_with_tiles_func_ = coincides_with_tiles<uint8_t>;
-      break;
-    case Datatype::INT16:
-      coincides_with_tiles_func_ = coincides_with_tiles<int16_t>;
-      break;
-    case Datatype::UINT16:
-      coincides_with_tiles_func_ = coincides_with_tiles<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      coincides_with_tiles_func_ = coincides_with_tiles<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      coincides_with_tiles_func_ = coincides_with_tiles<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      coincides_with_tiles_func_ = coincides_with_tiles<float>;
-      break;
-    case Datatype::FLOAT64:
-      coincides_with_tiles_func_ = coincides_with_tiles<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      coincides_with_tiles_func_ = coincides_with_tiles<int64_t>;
-      break;
-    default:
-      coincides_with_tiles_func_ = nullptr;
-      break;
-  }
+  auto g = [&](auto T) {
+    coincides_with_tiles_func_ = coincides_with_tiles<decltype(T)>;
+  };
+  execute_callback_with_type(type_, g);
 }
 
 void Dimension::set_compute_mbr_func() {
   if (!var_size()) {  // Fixed-sized
     compute_mbr_var_func_ = nullptr;
-    switch (type_) {
-      case Datatype::INT32:
-        compute_mbr_func_ = compute_mbr<int32_t>;
-        break;
-      case Datatype::INT64:
-        compute_mbr_func_ = compute_mbr<int64_t>;
-        break;
-      case Datatype::INT8:
-        compute_mbr_func_ = compute_mbr<int8_t>;
-        break;
-      case Datatype::UINT8:
-        compute_mbr_func_ = compute_mbr<uint8_t>;
-        break;
-      case Datatype::INT16:
-        compute_mbr_func_ = compute_mbr<int16_t>;
-        break;
-      case Datatype::UINT16:
-        compute_mbr_func_ = compute_mbr<uint16_t>;
-        break;
-      case Datatype::UINT32:
-        compute_mbr_func_ = compute_mbr<uint32_t>;
-        break;
-      case Datatype::UINT64:
-        compute_mbr_func_ = compute_mbr<uint64_t>;
-        break;
-      case Datatype::FLOAT32:
-        compute_mbr_func_ = compute_mbr<float>;
-        break;
-      case Datatype::FLOAT64:
-        compute_mbr_func_ = compute_mbr<double>;
-        break;
-      case Datatype::DATETIME_YEAR:
-      case Datatype::DATETIME_MONTH:
-      case Datatype::DATETIME_WEEK:
-      case Datatype::DATETIME_DAY:
-      case Datatype::DATETIME_HR:
-      case Datatype::DATETIME_MIN:
-      case Datatype::DATETIME_SEC:
-      case Datatype::DATETIME_MS:
-      case Datatype::DATETIME_US:
-      case Datatype::DATETIME_NS:
-      case Datatype::DATETIME_PS:
-      case Datatype::DATETIME_FS:
-      case Datatype::DATETIME_AS:
-      case Datatype::TIME_HR:
-      case Datatype::TIME_MIN:
-      case Datatype::TIME_SEC:
-      case Datatype::TIME_MS:
-      case Datatype::TIME_US:
-      case Datatype::TIME_NS:
-      case Datatype::TIME_PS:
-      case Datatype::TIME_FS:
-      case Datatype::TIME_AS:
-        compute_mbr_func_ = compute_mbr<int64_t>;
-        break;
-      default:
-        compute_mbr_func_ = nullptr;
-        break;
-    }
+    auto g = [&](auto T) { compute_mbr_func_ = compute_mbr<decltype(T)>; };
+    execute_callback_with_type(type_, g);
   } else {  // Var-sized
     assert(type_ == Datatype::STRING_ASCII);
     compute_mbr_func_ = nullptr;
@@ -2114,972 +1831,112 @@ void Dimension::set_compute_mbr_func() {
 }
 
 void Dimension::set_expand_range_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      expand_range_func_ = expand_range<int32_t>;
-      break;
-    case Datatype::INT64:
-      expand_range_func_ = expand_range<int64_t>;
-      break;
-    case Datatype::INT8:
-      expand_range_func_ = expand_range<int8_t>;
-      break;
-    case Datatype::UINT8:
-      expand_range_func_ = expand_range<uint8_t>;
-      break;
-    case Datatype::INT16:
-      expand_range_func_ = expand_range<int16_t>;
-      break;
-    case Datatype::UINT16:
-      expand_range_func_ = expand_range<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      expand_range_func_ = expand_range<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      expand_range_func_ = expand_range<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      expand_range_func_ = expand_range<float>;
-      break;
-    case Datatype::FLOAT64:
-      expand_range_func_ = expand_range<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      expand_range_func_ = expand_range<int64_t>;
-      break;
-    default:
-      expand_range_func_ = nullptr;
-      break;
-  }
+  auto g = [&](auto T) { expand_range_func_ = expand_range<decltype(T)>; };
+  execute_callback_with_type(type_, g);
 }
 
 void Dimension::set_expand_range_v_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      expand_range_v_func_ = expand_range_v<int32_t>;
-      break;
-    case Datatype::INT64:
-      expand_range_v_func_ = expand_range_v<int64_t>;
-      break;
-    case Datatype::INT8:
-      expand_range_v_func_ = expand_range_v<int8_t>;
-      break;
-    case Datatype::UINT8:
-      expand_range_v_func_ = expand_range_v<uint8_t>;
-      break;
-    case Datatype::INT16:
-      expand_range_v_func_ = expand_range_v<int16_t>;
-      break;
-    case Datatype::UINT16:
-      expand_range_v_func_ = expand_range_v<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      expand_range_v_func_ = expand_range_v<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      expand_range_v_func_ = expand_range_v<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      expand_range_v_func_ = expand_range_v<float>;
-      break;
-    case Datatype::FLOAT64:
-      expand_range_v_func_ = expand_range_v<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      expand_range_v_func_ = expand_range_v<int64_t>;
-      break;
-    default:
-      expand_range_v_func_ = nullptr;
-      break;
-  }
+  auto g = [&](auto T) { expand_range_v_func_ = expand_range_v<decltype(T)>; };
+  execute_callback_with_type(type_, g);
 }
 
 void Dimension::set_expand_to_tile_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      expand_to_tile_func_ = expand_to_tile<int32_t>;
-      break;
-    case Datatype::INT64:
-      expand_to_tile_func_ = expand_to_tile<int64_t>;
-      break;
-    case Datatype::INT8:
-      expand_to_tile_func_ = expand_to_tile<int8_t>;
-      break;
-    case Datatype::UINT8:
-      expand_to_tile_func_ = expand_to_tile<uint8_t>;
-      break;
-    case Datatype::INT16:
-      expand_to_tile_func_ = expand_to_tile<int16_t>;
-      break;
-    case Datatype::UINT16:
-      expand_to_tile_func_ = expand_to_tile<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      expand_to_tile_func_ = expand_to_tile<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      expand_to_tile_func_ = expand_to_tile<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      expand_to_tile_func_ = expand_to_tile<float>;
-      break;
-    case Datatype::FLOAT64:
-      expand_to_tile_func_ = expand_to_tile<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      expand_to_tile_func_ = expand_to_tile<int64_t>;
-      break;
-    default:
-      expand_to_tile_func_ = nullptr;
-      break;
-  }
+  auto g = [&](auto T) { expand_to_tile_func_ = expand_to_tile<decltype(T)>; };
+  execute_callback_with_type(type_, g);
 }
 
 void Dimension::set_oob_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      oob_func_ = oob<int32_t>;
-      break;
-    case Datatype::INT64:
-      oob_func_ = oob<int64_t>;
-      break;
-    case Datatype::INT8:
-      oob_func_ = oob<int8_t>;
-      break;
-    case Datatype::UINT8:
-      oob_func_ = oob<uint8_t>;
-      break;
-    case Datatype::INT16:
-      oob_func_ = oob<int16_t>;
-      break;
-    case Datatype::UINT16:
-      oob_func_ = oob<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      oob_func_ = oob<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      oob_func_ = oob<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      oob_func_ = oob<float>;
-      break;
-    case Datatype::FLOAT64:
-      oob_func_ = oob<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      oob_func_ = oob<int64_t>;
-      break;
-    default:
-      oob_func_ = nullptr;
-      break;
-  }
+  auto g = [&](auto T) { oob_func_ = oob<decltype(T)>; };
+  execute_callback_with_type(type_, g);
 }
 
 void Dimension::set_covered_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      covered_func_ = covered<int32_t>;
-      break;
-    case Datatype::INT64:
-      covered_func_ = covered<int64_t>;
-      break;
-    case Datatype::INT8:
-      covered_func_ = covered<int8_t>;
-      break;
-    case Datatype::UINT8:
-      covered_func_ = covered<uint8_t>;
-      break;
-    case Datatype::INT16:
-      covered_func_ = covered<int16_t>;
-      break;
-    case Datatype::UINT16:
-      covered_func_ = covered<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      covered_func_ = covered<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      covered_func_ = covered<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      covered_func_ = covered<float>;
-      break;
-    case Datatype::FLOAT64:
-      covered_func_ = covered<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      covered_func_ = covered<int64_t>;
-      break;
-    case Datatype::STRING_ASCII:
+  auto g = [&](auto T) {
+    if constexpr (std::is_same_v<decltype(T), char>) {
       assert(var_size());
-      covered_func_ = covered<char>;
-      break;
-    default:
-      covered_func_ = nullptr;
-      break;
-  }
+    }
+    covered_func_ = covered<decltype(T)>;
+  };
+  execute_callback_with_type(type_, g);
 }
 
 void Dimension::set_overlap_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      overlap_func_ = overlap<int32_t>;
-      break;
-    case Datatype::INT64:
-      overlap_func_ = overlap<int64_t>;
-      break;
-    case Datatype::INT8:
-      overlap_func_ = overlap<int8_t>;
-      break;
-    case Datatype::UINT8:
-      overlap_func_ = overlap<uint8_t>;
-      break;
-    case Datatype::INT16:
-      overlap_func_ = overlap<int16_t>;
-      break;
-    case Datatype::UINT16:
-      overlap_func_ = overlap<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      overlap_func_ = overlap<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      overlap_func_ = overlap<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      overlap_func_ = overlap<float>;
-      break;
-    case Datatype::FLOAT64:
-      overlap_func_ = overlap<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      overlap_func_ = overlap<int64_t>;
-      break;
-    case Datatype::STRING_ASCII:
+  auto g = [&](auto T) {
+    if constexpr (std::is_same_v<decltype(T), char>) {
       assert(var_size());
-      overlap_func_ = overlap<char>;
-      break;
-    default:
-      overlap_func_ = nullptr;
-      break;
-  }
+    }
+    overlap_func_ = overlap<decltype(T)>;
+  };
+  execute_callback_with_type(type_, g);
 }
 
 void Dimension::set_overlap_ratio_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      overlap_ratio_func_ = overlap_ratio<int32_t>;
-      break;
-    case Datatype::INT64:
-      overlap_ratio_func_ = overlap_ratio<int64_t>;
-      break;
-    case Datatype::INT8:
-      overlap_ratio_func_ = overlap_ratio<int8_t>;
-      break;
-    case Datatype::UINT8:
-      overlap_ratio_func_ = overlap_ratio<uint8_t>;
-      break;
-    case Datatype::INT16:
-      overlap_ratio_func_ = overlap_ratio<int16_t>;
-      break;
-    case Datatype::UINT16:
-      overlap_ratio_func_ = overlap_ratio<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      overlap_ratio_func_ = overlap_ratio<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      overlap_ratio_func_ = overlap_ratio<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      overlap_ratio_func_ = overlap_ratio<float>;
-      break;
-    case Datatype::FLOAT64:
-      overlap_ratio_func_ = overlap_ratio<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      overlap_ratio_func_ = overlap_ratio<int64_t>;
-      break;
-    case Datatype::STRING_ASCII:
+  auto g = [&](auto T) {
+    if constexpr (std::is_same_v<decltype(T), char>) {
       assert(var_size());
-      overlap_ratio_func_ = overlap_ratio<char>;
-      break;
-    default:
-      overlap_ratio_func_ = nullptr;
-      break;
-  }
+    }
+    overlap_ratio_func_ = overlap_ratio<decltype(T)>;
+  };
+  execute_callback_with_type(type_, g);
 }
 
 void Dimension::set_relevant_ranges_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      relevant_ranges_func_ = relevant_ranges<int32_t>;
-      break;
-    case Datatype::INT64:
-      relevant_ranges_func_ = relevant_ranges<int64_t>;
-      break;
-    case Datatype::INT8:
-      relevant_ranges_func_ = relevant_ranges<int8_t>;
-      break;
-    case Datatype::UINT8:
-      relevant_ranges_func_ = relevant_ranges<uint8_t>;
-      break;
-    case Datatype::INT16:
-      relevant_ranges_func_ = relevant_ranges<int16_t>;
-      break;
-    case Datatype::UINT16:
-      relevant_ranges_func_ = relevant_ranges<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      relevant_ranges_func_ = relevant_ranges<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      relevant_ranges_func_ = relevant_ranges<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      relevant_ranges_func_ = relevant_ranges<float>;
-      break;
-    case Datatype::FLOAT64:
-      relevant_ranges_func_ = relevant_ranges<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      relevant_ranges_func_ = relevant_ranges<int64_t>;
-      break;
-    case Datatype::STRING_ASCII:
+  auto g = [&](auto T) {
+    if constexpr (std::is_same_v<decltype(T), char>) {
       assert(var_size());
-      relevant_ranges_func_ = relevant_ranges<char>;
-      break;
-    default:
-      relevant_ranges_func_ = nullptr;
-      break;
-  }
+    }
+    relevant_ranges_func_ = relevant_ranges<decltype(T)>;
+  };
+  execute_callback_with_type(type_, g);
 }
 
 void Dimension::set_covered_vec_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      covered_vec_func_ = covered_vec<int32_t>;
-      break;
-    case Datatype::INT64:
-      covered_vec_func_ = covered_vec<int64_t>;
-      break;
-    case Datatype::INT8:
-      covered_vec_func_ = covered_vec<int8_t>;
-      break;
-    case Datatype::UINT8:
-      covered_vec_func_ = covered_vec<uint8_t>;
-      break;
-    case Datatype::INT16:
-      covered_vec_func_ = covered_vec<int16_t>;
-      break;
-    case Datatype::UINT16:
-      covered_vec_func_ = covered_vec<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      covered_vec_func_ = covered_vec<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      covered_vec_func_ = covered_vec<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      covered_vec_func_ = covered_vec<float>;
-      break;
-    case Datatype::FLOAT64:
-      covered_vec_func_ = covered_vec<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      covered_vec_func_ = covered_vec<int64_t>;
-      break;
-    case Datatype::STRING_ASCII:
+  auto g = [&](auto T) {
+    if constexpr (std::is_same_v<decltype(T), char>) {
       assert(var_size());
-      covered_vec_func_ = covered_vec<char>;
-      break;
-    default:
-      covered_vec_func_ = nullptr;
-      break;
-  }
+    }
+    covered_vec_func_ = covered_vec<decltype(T)>;
+  };
+  execute_callback_with_type(type_, g);
 }
 
 void Dimension::set_split_range_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      split_range_func_ = split_range<int32_t>;
-      break;
-    case Datatype::INT64:
-      split_range_func_ = split_range<int64_t>;
-      break;
-    case Datatype::INT8:
-      split_range_func_ = split_range<int8_t>;
-      break;
-    case Datatype::UINT8:
-      split_range_func_ = split_range<uint8_t>;
-      break;
-    case Datatype::INT16:
-      split_range_func_ = split_range<int16_t>;
-      break;
-    case Datatype::UINT16:
-      split_range_func_ = split_range<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      split_range_func_ = split_range<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      split_range_func_ = split_range<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      split_range_func_ = split_range<float>;
-      break;
-    case Datatype::FLOAT64:
-      split_range_func_ = split_range<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      split_range_func_ = split_range<int64_t>;
-      break;
-    case Datatype::STRING_ASCII:
-      split_range_func_ = split_range<char>;
-      break;
-    default:
-      split_range_func_ = nullptr;
-      break;
-  }
+  auto g = [&](auto T) { split_range_func_ = split_range<decltype(T)>; };
+  execute_callback_with_type(type_, g);
 }
 
 void Dimension::set_splitting_value_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      splitting_value_func_ = splitting_value<int32_t>;
-      break;
-    case Datatype::INT64:
-      splitting_value_func_ = splitting_value<int64_t>;
-      break;
-    case Datatype::INT8:
-      splitting_value_func_ = splitting_value<int8_t>;
-      break;
-    case Datatype::UINT8:
-      splitting_value_func_ = splitting_value<uint8_t>;
-      break;
-    case Datatype::INT16:
-      splitting_value_func_ = splitting_value<int16_t>;
-      break;
-    case Datatype::UINT16:
-      splitting_value_func_ = splitting_value<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      splitting_value_func_ = splitting_value<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      splitting_value_func_ = splitting_value<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      splitting_value_func_ = splitting_value<float>;
-      break;
-    case Datatype::FLOAT64:
-      splitting_value_func_ = splitting_value<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      splitting_value_func_ = splitting_value<int64_t>;
-      break;
-    case Datatype::STRING_ASCII:
+  auto g = [&](auto T) {
+    if constexpr (std::is_same_v<decltype(T), char>) {
       assert(var_size());
-      splitting_value_func_ = splitting_value<char>;
-      break;
-    default:
-      splitting_value_func_ = nullptr;
-      break;
-  }
+    }
+    splitting_value_func_ = splitting_value<decltype(T)>;
+  };
+  execute_callback_with_type(type_, g);
 }
 
 void Dimension::set_tile_num_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      tile_num_func_ = tile_num<int32_t>;
-      break;
-    case Datatype::INT64:
-      tile_num_func_ = tile_num<int64_t>;
-      break;
-    case Datatype::INT8:
-      tile_num_func_ = tile_num<int8_t>;
-      break;
-    case Datatype::UINT8:
-      tile_num_func_ = tile_num<uint8_t>;
-      break;
-    case Datatype::INT16:
-      tile_num_func_ = tile_num<int16_t>;
-      break;
-    case Datatype::UINT16:
-      tile_num_func_ = tile_num<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      tile_num_func_ = tile_num<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      tile_num_func_ = tile_num<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      tile_num_func_ = tile_num<float>;
-      break;
-    case Datatype::FLOAT64:
-      tile_num_func_ = tile_num<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      tile_num_func_ = tile_num<int64_t>;
-      break;
-    case Datatype::STRING_ASCII:
-      tile_num_func_ = tile_num<char>;
-      break;
-    default:
-      tile_num_func_ = nullptr;
-      break;
-  }
+  auto g = [&](auto T) { tile_num_func_ = tile_num<decltype(T)>; };
+  execute_callback_with_type(type_, g);
 }
 
 void Dimension::set_map_to_uint64_2_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      map_to_uint64_2_func_ = map_to_uint64_2<int32_t>;
-      break;
-    case Datatype::INT64:
-      map_to_uint64_2_func_ = map_to_uint64_2<int64_t>;
-      break;
-    case Datatype::INT8:
-      map_to_uint64_2_func_ = map_to_uint64_2<int8_t>;
-      break;
-    case Datatype::UINT8:
-      map_to_uint64_2_func_ = map_to_uint64_2<uint8_t>;
-      break;
-    case Datatype::INT16:
-      map_to_uint64_2_func_ = map_to_uint64_2<int16_t>;
-      break;
-    case Datatype::UINT16:
-      map_to_uint64_2_func_ = map_to_uint64_2<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      map_to_uint64_2_func_ = map_to_uint64_2<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      map_to_uint64_2_func_ = map_to_uint64_2<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      map_to_uint64_2_func_ = map_to_uint64_2<float>;
-      break;
-    case Datatype::FLOAT64:
-      map_to_uint64_2_func_ = map_to_uint64_2<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      map_to_uint64_2_func_ = map_to_uint64_2<int64_t>;
-      break;
-    case Datatype::STRING_ASCII:
-      map_to_uint64_2_func_ = map_to_uint64_2<char>;
-      break;
-    default:
-      map_to_uint64_2_func_ = nullptr;
-      break;
-  }
+  auto g = [&](auto T) {
+    map_to_uint64_2_func_ = map_to_uint64_2<decltype(T)>;
+  };
+  execute_callback_with_type(type_, g);
 }
 
 void Dimension::set_map_from_uint64_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      map_from_uint64_func_ = map_from_uint64<int32_t>;
-      break;
-    case Datatype::INT64:
-      map_from_uint64_func_ = map_from_uint64<int64_t>;
-      break;
-    case Datatype::INT8:
-      map_from_uint64_func_ = map_from_uint64<int8_t>;
-      break;
-    case Datatype::UINT8:
-      map_from_uint64_func_ = map_from_uint64<uint8_t>;
-      break;
-    case Datatype::INT16:
-      map_from_uint64_func_ = map_from_uint64<int16_t>;
-      break;
-    case Datatype::UINT16:
-      map_from_uint64_func_ = map_from_uint64<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      map_from_uint64_func_ = map_from_uint64<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      map_from_uint64_func_ = map_from_uint64<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      map_from_uint64_func_ = map_from_uint64<float>;
-      break;
-    case Datatype::FLOAT64:
-      map_from_uint64_func_ = map_from_uint64<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      map_from_uint64_func_ = map_from_uint64<int64_t>;
-      break;
-    case Datatype::STRING_ASCII:
-      map_from_uint64_func_ = map_from_uint64<char>;
-      break;
-    default:
-      map_from_uint64_func_ = nullptr;
-      break;
-  }
+  auto g = [&](auto T) {
+    map_from_uint64_func_ = map_from_uint64<decltype(T)>;
+  };
+  execute_callback_with_type(type_, g);
 }
 
 void Dimension::set_smaller_than_func() {
-  switch (type_) {
-    case Datatype::INT32:
-      smaller_than_func_ = smaller_than<int32_t>;
-      break;
-    case Datatype::INT64:
-      smaller_than_func_ = smaller_than<int64_t>;
-      break;
-    case Datatype::INT8:
-      smaller_than_func_ = smaller_than<int8_t>;
-      break;
-    case Datatype::UINT8:
-      smaller_than_func_ = smaller_than<uint8_t>;
-      break;
-    case Datatype::INT16:
-      smaller_than_func_ = smaller_than<int16_t>;
-      break;
-    case Datatype::UINT16:
-      smaller_than_func_ = smaller_than<uint16_t>;
-      break;
-    case Datatype::UINT32:
-      smaller_than_func_ = smaller_than<uint32_t>;
-      break;
-    case Datatype::UINT64:
-      smaller_than_func_ = smaller_than<uint64_t>;
-      break;
-    case Datatype::FLOAT32:
-      smaller_than_func_ = smaller_than<float>;
-      break;
-    case Datatype::FLOAT64:
-      smaller_than_func_ = smaller_than<double>;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      smaller_than_func_ = smaller_than<int64_t>;
-      break;
-    case Datatype::STRING_ASCII:
-      smaller_than_func_ = smaller_than<char>;
-      break;
-    default:
-      smaller_than_func_ = nullptr;
-      break;
-  }
+  auto g = [&](auto T) { smaller_than_func_ = smaller_than<decltype(T)>; };
+  execute_callback_with_type(type_, g);
 }
 
 }  // namespace sm
