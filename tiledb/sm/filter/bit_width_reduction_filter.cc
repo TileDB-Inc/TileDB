@@ -112,13 +112,13 @@ Status BitWidthReductionFilter::run_forward(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  auto tile_type = tile.type();
-  auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
+  auto data_type_size = static_cast<uint8_t>(datatype_size(pipeline_type_));
 
   // If bit width compression can't work, just return the input unmodified.
-  if ((!datatype_is_integer(tile_type) && !datatype_is_time(tile_type) &&
-       !datatype_is_datetime(tile_type)) ||
-      tile_type_size == 1) {
+  if ((!datatype_is_integer(pipeline_type_) &&
+       !datatype_is_time(pipeline_type_) &&
+       !datatype_is_datetime(pipeline_type_)) ||
+      data_type_size == 1) {
     RETURN_NOT_OK(output->append_view(input));
     RETURN_NOT_OK(output_metadata->append_view(input_metadata));
     return Status::Ok();
@@ -126,8 +126,8 @@ Status BitWidthReductionFilter::run_forward(
 
   /* Note: Arithmetic operations cannot be performed on std::byte.
     We will use uint8_t for the Datatype::BLOB case as it is the same size as
-    std::byte and can have arithmetic perfomed on it. */
-  switch (tile_type) {
+    std::byte and can have arithmetic performed on it. */
+  switch (pipeline_type_) {
     case Datatype::INT8:
       return run_forward<int8_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
@@ -297,14 +297,13 @@ Status BitWidthReductionFilter::run_reverse(
     FilterBuffer* output,
     const Config& config) const {
   (void)config;
-
-  auto tile_type = tile.type();
-  auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
+  auto data_type_size = static_cast<uint8_t>(datatype_size(pipeline_type_));
 
   // If bit width compression wasn't applied, just return the input unmodified.
-  if ((!datatype_is_integer(tile_type) && !datatype_is_time(tile_type) &&
-       !datatype_is_datetime(tile_type)) ||
-      tile_type_size == 1) {
+  if ((!datatype_is_integer(pipeline_type_) &&
+       !datatype_is_time(pipeline_type_) &&
+       !datatype_is_datetime(pipeline_type_)) ||
+      data_type_size == 1) {
     RETURN_NOT_OK(output->append_view(input));
     RETURN_NOT_OK(output_metadata->append_view(input_metadata));
     return Status::Ok();
@@ -313,7 +312,7 @@ Status BitWidthReductionFilter::run_reverse(
   /* Note: Arithmetic operations cannot be performed on std::byte.
     We will use uint8_t for the Datatype::BLOB case as it is the same size as
     std::byte and can have arithmetic perfomed on it. */
-  switch (tile_type) {
+  switch (pipeline_type_) {
     case Datatype::INT8:
       return run_reverse<int8_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
@@ -372,14 +371,13 @@ Status BitWidthReductionFilter::run_reverse(
 
 template <typename T>
 Status BitWidthReductionFilter::run_reverse(
-    const Tile& tile,
+    const Tile&,
     Tile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  auto tile_type = tile.type();
-  auto tile_type_size = datatype_size(tile_type);
+  auto data_type_size = datatype_size(pipeline_type_);
 
   uint32_t num_windows, orig_length;
   RETURN_NOT_OK(input_metadata->read(&orig_length, sizeof(uint32_t)));
@@ -394,7 +392,7 @@ Status BitWidthReductionFilter::run_reverse(
     T window_value_offset;
     uint8_t orig_bits = sizeof(T) * 8, compressed_bits;
     // Read window header
-    RETURN_NOT_OK(input_metadata->read(&window_value_offset, tile_type_size));
+    RETURN_NOT_OK(input_metadata->read(&window_value_offset, data_type_size));
     RETURN_NOT_OK(input_metadata->read(&compressed_bits, sizeof(uint8_t)));
     RETURN_NOT_OK(input_metadata->read(&window_nbytes, sizeof(uint32_t)));
 
@@ -410,7 +408,7 @@ Status BitWidthReductionFilter::run_reverse(
         RETURN_NOT_OK(
             read_compressed_value(input, compressed_bits, &input_value));
         input_value += window_value_offset;
-        RETURN_NOT_OK(output->write(&input_value, tile_type_size));
+        RETURN_NOT_OK(output->write(&input_value, data_type_size));
       }
     }
   }

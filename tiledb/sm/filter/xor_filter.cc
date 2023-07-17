@@ -78,18 +78,16 @@ Datatype XORFilter::output_datatype(tiledb::sm::Datatype input_type) const {
 }
 
 Status XORFilter::run_forward(
-    const WriterTile& tile,
+    const WriterTile&,
     WriterTile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  auto tile_type = tile.type();
-
   // Since run_forward interprets the filter's data as integers, we case on
   // the size of the type and pass in the corresponding integer type into
   // a templated function.
-  switch (datatype_size(tile_type)) {
+  switch (datatype_size(pipeline_type_)) {
     case sizeof(int8_t): {
       return run_forward<int8_t>(
           input_metadata, input, output_metadata, output);
@@ -177,7 +175,7 @@ Status XORFilter::xor_part(const ConstBuffer* part, Buffer* output) const {
 }
 
 Status XORFilter::run_reverse(
-    const Tile& tile,
+    const Tile&,
     Tile*,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
@@ -189,8 +187,7 @@ Status XORFilter::run_reverse(
   // Since run_reverse interprets the filter's data as integers, we case on
   // the size of the type and pass in the corresponding integer type into
   // a templated function.
-  auto tile_type = tile.type();
-  switch (datatype_size(tile_type)) {
+  switch (datatype_size(pipeline_type_)) {
     case sizeof(int8_t): {
       return run_reverse<int8_t>(
           input_metadata, input, output_metadata, output);

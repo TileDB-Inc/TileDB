@@ -2222,6 +2222,7 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
     INFO("Random pipeline seed: " << pipeline_seed);
 
     auto num_filters = (unsigned)rng_num_filters(gen);
+    auto t = Datatype::UINT64;
     for (unsigned j = 0; j < num_filters; j++) {
       if (j == 0 && rng_bool(gen) == 1) {
         auto idx = (unsigned)rng_constructors_first(gen);
@@ -2234,6 +2235,8 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
         pipeline.add_filter(*filter);
         delete filter;
       }
+      pipeline.get_filter(j)->set_pipeline_type(t);
+      t = pipeline.get_filter(j)->output_datatype(t);
     }
 
     // End result should always be the same as the input.
@@ -2314,6 +2317,8 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
   FilterPipeline pipeline;
   ThreadPool tp(4);
   pipeline.add_filter(BitWidthReductionFilter());
+  pipeline.get_filter<BitWidthReductionFilter>()->set_pipeline_type(
+      Datatype::UINT64);
 
   SECTION("- Single stage") {
     auto tile = make_increasing_tile(nelts);
@@ -2525,6 +2530,8 @@ TEST_CASE(
   FilterPipeline pipeline;
   ThreadPool tp(4);
   pipeline.add_filter(BitWidthReductionFilter());
+  pipeline.get_filter<BitWidthReductionFilter>()->set_pipeline_type(
+      Datatype::UINT64);
 
   SECTION("- Single stage") {
     auto tile = make_increasing_tile(nelts);
@@ -2759,6 +2766,8 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
   FilterPipeline pipeline;
   ThreadPool tp(4);
   pipeline.add_filter(PositiveDeltaFilter());
+  pipeline.get_filter<PositiveDeltaFilter>()->set_pipeline_type(
+      Datatype::UINT64);
 
   SECTION("- Single stage") {
     auto tile = make_increasing_tile(nelts);
@@ -2878,6 +2887,8 @@ TEST_CASE(
   FilterPipeline pipeline;
   ThreadPool tp(4);
   pipeline.add_filter(PositiveDeltaFilter());
+  pipeline.get_filter<PositiveDeltaFilter>()->set_pipeline_type(
+      Datatype::UINT64);
 
   SECTION("- Single stage") {
     auto tile = make_increasing_tile(nelts);
@@ -3411,6 +3422,7 @@ void testing_float_scaling_filter() {
   FilterPipeline pipeline;
   ThreadPool tp(4);
   pipeline.add_filter(FloatScalingFilter());
+  pipeline.get_filter<FloatScalingFilter>()->set_pipeline_type(t);
   CHECK(pipeline.get_filter<FloatScalingFilter>()
             ->set_option(FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width)
             .ok());
@@ -3568,6 +3580,13 @@ TEST_CASE("Filter: Pipeline filtered output types", "[filter][pipeline]") {
     pipeline.add_filter(XORFilter());
   }
 
+  Datatype pipeline_datatype = Datatype::FLOAT32;
+  for (size_t i = 0; i < pipeline.size(); i++) {
+    auto filter = pipeline.get_filter(i);
+    filter->set_pipeline_type(pipeline_datatype);
+    pipeline_datatype = filter->output_datatype(pipeline_datatype);
+  }
+
   // Initial type of tile is float.
   std::vector<float> data = {
       1.0f, 2.1f, 3.2f, 4.3f, 5.4f, 6.5f, 7.6f, 8.7f, 9.8f, 10.9f};
@@ -3585,12 +3604,6 @@ TEST_CASE("Filter: Pipeline filtered output types", "[filter][pipeline]") {
       pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
   CHECK(tile.size() == 0);
   CHECK(tile.filtered_buffer().size() != 0);
-  if (pipeline.has_filter(tiledb::sm::FilterType::FILTER_XOR)) {
-    // Test the final tile type is expected for XORFilter byte_width.
-    CHECK(datatype_size(tile.type()) == byte_width);
-  } else {
-    CHECK(tile.type() == Datatype::INT32);
-  }
 
   auto unfiltered_tile = create_tile_for_unfiltering(data.size(), tile);
   ChunkData chunk_data;
@@ -3735,6 +3748,14 @@ TEST_CASE(
   float_scale.set_option(TILEDB_SCALE_FLOAT_OFFSET, &offset);
 
   tiledb::FilterList filters(ctx);
+  SECTION("- FloatScale filter accepts float or double byte width input") {
+    auto d2 = tiledb::Dimension::create<int8_t>(ctx, "d2", {{1, 100}}, 10);
+    auto a2 = tiledb::Attribute::create<int32_t>(ctx, "a2");
+    filters.add_filter(float_scale);
+    CHECK_THROWS(d2.set_filter_list(filters));
+    CHECK_NOTHROW(a2.set_filter_list(filters));
+  }
+
   SECTION("- Delta filters do not accept real datatypes") {
     auto test_filter = GENERATE(
         TILEDB_FILTER_POSITIVE_DELTA,

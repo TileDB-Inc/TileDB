@@ -55,6 +55,7 @@ Filter::Filter(FilterType type) {
 Filter* Filter::clone() const {
   // Call subclass-specific clone function
   auto clone = clone_impl();
+  clone->pipeline_type_ = pipeline_type_;
   return clone;
 }
 

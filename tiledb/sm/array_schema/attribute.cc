@@ -171,7 +171,8 @@ Attribute Attribute::deserialize(
   auto cell_val_num = deserializer.read<uint32_t>();
 
   // Load filter pipeline
-  auto filterpipeline{FilterPipeline::deserialize(deserializer, version)};
+  auto filterpipeline{
+      FilterPipeline::deserialize(deserializer, version, datatype)};
 
   // Load fill value
   uint64_t fill_value_size = 0;

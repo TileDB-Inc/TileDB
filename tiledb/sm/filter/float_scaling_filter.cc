@@ -127,14 +127,13 @@ Status FloatScalingFilter::run_forward(
 }
 
 Status FloatScalingFilter::run_forward(
-    const WriterTile& tile,
+    const WriterTile&,
     WriterTile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  auto tile_type = tile.type();
-  auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
+  auto tile_type_size = static_cast<uint8_t>(datatype_size(pipeline_type_));
   switch (tile_type_size) {
     case sizeof(float):
       return run_forward<float>(input_metadata, input, output_metadata, output);
@@ -219,7 +218,7 @@ Status FloatScalingFilter::run_reverse(
 }
 
 Status FloatScalingFilter::run_reverse(
-    const Tile& tile,
+    const Tile&,
     Tile*,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
@@ -227,8 +226,7 @@ Status FloatScalingFilter::run_reverse(
     FilterBuffer* output,
     const Config& config) const {
   (void)config;
-  auto tile_type = tile.type();
-  auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
+  auto tile_type_size = static_cast<uint8_t>(datatype_size(pipeline_type_));
   switch (tile_type_size) {
     case sizeof(float): {
       return run_reverse<float>(input_metadata, input, output_metadata, output);

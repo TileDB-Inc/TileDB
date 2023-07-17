@@ -171,7 +171,8 @@ shared_ptr<Dimension> Dimension::deserialize(
     cell_val_num = deserializer.read<uint32_t>();
 
     // Load filter pipeline
-    filter_pipeline = FilterPipeline::deserialize(deserializer, version);
+    filter_pipeline =
+        FilterPipeline::deserialize(deserializer, version, datatype);
   } else {
     datatype = type;
     cell_val_num = (datatype_is_string(datatype)) ? constants::var_num : 1;

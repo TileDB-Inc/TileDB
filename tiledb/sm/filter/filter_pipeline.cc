@@ -540,13 +540,15 @@ void FilterPipeline::serialize(Serializer& serializer) const {
 }
 
 FilterPipeline FilterPipeline::deserialize(
-    Deserializer& deserializer, const uint32_t version) {
+    Deserializer& deserializer, const uint32_t version, Datatype datatype) {
   auto max_chunk_size = deserializer.read<uint32_t>();
   auto num_filters = deserializer.read<uint32_t>();
   std::vector<shared_ptr<Filter>> filters;
 
   for (uint32_t i = 0; i < num_filters; i++) {
     auto filter{FilterCreate::deserialize(deserializer, version)};
+    filter->set_pipeline_type(datatype);
+    datatype = filter->output_datatype(datatype);
     filters.push_back(std::move(filter));
   }
 

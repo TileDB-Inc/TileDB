@@ -251,8 +251,8 @@ Status CompressionFilter::run_forward(
     return LOG_STATUS(
         Status_FilterError("Input is too large to be compressed."));
 
-  if ((tile.type() == Datatype::STRING_ASCII ||
-       tile.type() == Datatype::STRING_UTF8) &&
+  if ((pipeline_type_ == Datatype::STRING_ASCII ||
+       pipeline_type_ == Datatype::STRING_UTF8) &&
       offsets_tile) {
     if (compressor_ == Compressor::RLE ||
         compressor_ == Compressor::DICTIONARY_ENCODING)
@@ -325,8 +325,8 @@ Status CompressionFilter::run_reverse(
   Buffer* metadata_buffer = output_metadata->buffer_ptr(0);
   assert(metadata_buffer != nullptr);
 
-  if ((tile.type() == Datatype::STRING_ASCII ||
-       tile.type() == Datatype::STRING_UTF8) &&
+  if ((pipeline_type_ == Datatype::STRING_ASCII ||
+       pipeline_type_ == Datatype::STRING_UTF8) &&
       version_ >= 12 && offsets_tile) {
     if (compressor_ == Compressor::RLE ||
         compressor_ == Compressor::DICTIONARY_ENCODING)
@@ -352,7 +352,6 @@ Status CompressionFilter::compress_part(
   ConstBuffer input_buffer(part->data(), part->size());
 
   auto cell_size = tile.cell_size();
-  auto type = tile.type();
 
   // Invoke the proper compressor
   uint32_t orig_size = (uint32_t)output->size();
@@ -375,7 +374,8 @@ Status CompressionFilter::compress_part(
       break;
     case Compressor::DOUBLE_DELTA:
       RETURN_NOT_OK(DoubleDelta::compress(
-          reinterpret_datatype_ == Datatype::ANY ? type : reinterpret_datatype_,
+          reinterpret_datatype_ == Datatype::ANY ? pipeline_type_ :
+                                                   reinterpret_datatype_,
           &input_buffer,
           output));
       break;
@@ -386,7 +386,8 @@ Status CompressionFilter::compress_part(
     case Compressor::DELTA:
       // Use schema type if REINTERPRET_TYPE option is not set.
       Delta::compress(
-          reinterpret_datatype_ == Datatype::ANY ? type : reinterpret_datatype_,
+          reinterpret_datatype_ == Datatype::ANY ? pipeline_type_ :
+                                                   reinterpret_datatype_,
           &input_buffer,
           output);
       break;
@@ -413,7 +414,6 @@ Status CompressionFilter::decompress_part(
     Buffer* output,
     FilterBuffer* input_metadata) const {
   auto cell_size = tile.cell_size();
-  auto type = tile.type();
 
   // Read the part metadata
   uint32_t compressed_size, uncompressed_size;
@@ -457,13 +457,15 @@ Status CompressionFilter::decompress_part(
       break;
     case Compressor::DELTA:
       Delta::decompress(
-          reinterpret_datatype_ == Datatype::ANY ? type : reinterpret_datatype_,
+          reinterpret_datatype_ == Datatype::ANY ? pipeline_type_ :
+                                                   reinterpret_datatype_,
           &input_buffer,
           &output_buffer);
       break;
     case Compressor::DOUBLE_DELTA:
       st = DoubleDelta::decompress(
-          reinterpret_datatype_ == Datatype::ANY ? type : reinterpret_datatype_,
+          reinterpret_datatype_ == Datatype::ANY ? pipeline_type_ :
+                                                   reinterpret_datatype_,
           &input_buffer,
           &output_buffer);
       break;

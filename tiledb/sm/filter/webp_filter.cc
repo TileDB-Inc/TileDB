@@ -217,14 +217,14 @@ Status WebpFilter::run_forward(
 }
 
 Status WebpFilter::run_reverse(
-    const Tile& tile,
+    const Tile&,
     Tile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output,
     const Config&) const {
-  if (tile.type() != Datatype::UINT8) {
+  if (pipeline_type_ != Datatype::UINT8) {
     throw StatusException(Status_FilterError("Unsupported input type"));
   }
   return run_reverse(input_metadata, input, output_metadata, output);

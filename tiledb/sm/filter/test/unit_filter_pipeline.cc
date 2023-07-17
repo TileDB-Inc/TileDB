@@ -103,8 +103,8 @@ TEST_CASE(
   filters_buffer_offset<int32_t, 34>(p) = compressor_level3;
 
   Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
-  auto filters{
-      FilterPipeline::deserialize(deserializer, constants::format_version)};
+  auto filters{FilterPipeline::deserialize(
+      deserializer, constants::format_version, Datatype::INT32)};
 
   CHECK(filters.max_chunk_size() == max_chunk_size);
   CHECK(filters.size() == num_filters);

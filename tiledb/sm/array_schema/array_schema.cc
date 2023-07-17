@@ -1017,11 +1017,14 @@ ArraySchema ArraySchema::deserialize(
 
   // Load filters
   // Note: Security validation delegated to invoked API
-  auto coords_filters{FilterPipeline::deserialize(deserializer, version)};
-  auto cell_var_filters{FilterPipeline::deserialize(deserializer, version)};
+  auto coords_filters{
+      FilterPipeline::deserialize(deserializer, version, Datatype::ANY)};
+  auto cell_var_filters{
+      FilterPipeline::deserialize(deserializer, version, Datatype::UINT64)};
   FilterPipeline cell_validity_filters;
   if (version >= 7) {
-    cell_validity_filters = FilterPipeline::deserialize(deserializer, version);
+    cell_validity_filters =
+        FilterPipeline::deserialize(deserializer, version, Datatype::UINT8);
   }
 
   // Load domain

@@ -114,7 +114,7 @@ class FilterPipeline {
    * @return FilterPipeline
    */
   static FilterPipeline deserialize(
-      Deserializer& deserializer, const uint32_t version);
+      Deserializer& deserializer, const uint32_t version, Datatype datatype);
 
   /**
    * Dumps the filter pipeline details in ASCII format in the selected

@@ -94,9 +94,8 @@ Status ByteshuffleFilter::run_forward(
 }
 
 Status ByteshuffleFilter::shuffle_part(
-    const WriterTile& tile, const ConstBuffer* part, Buffer* output) const {
-  auto tile_type = tile.type();
-  auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
+    const WriterTile&, const ConstBuffer* part, Buffer* output) const {
+  auto tile_type_size = static_cast<uint8_t>(datatype_size(pipeline_type_));
 
   blosc::shuffle(
       tile_type_size,
@@ -149,9 +148,8 @@ Status ByteshuffleFilter::run_reverse(
 }
 
 Status ByteshuffleFilter::unshuffle_part(
-    const Tile& tile, const ConstBuffer* part, Buffer* output) const {
-  auto tile_type = tile.type();
-  auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
+    const Tile&, const ConstBuffer* part, Buffer* output) const {
+  auto tile_type_size = static_cast<uint8_t>(datatype_size(pipeline_type_));
 
   blosc::unshuffle(
       tile_type_size,
