@@ -1605,16 +1605,6 @@ class Subarray {
    * @param dim_idx dimension index.
    * @return true if the ranges are non overlapping, false otherwise.
    */
-  template <typename T>
-  tuple<Status, optional<bool>> non_overlapping_ranges_for_dim(
-      const uint64_t dim_idx);
-
-  /**
-   * Determine if ranges for a dimension are non overlapping.
-   *
-   * @param dim_idx dimension index.
-   * @return true if the ranges are non overlapping, false otherwise.
-   */
   tuple<Status, optional<bool>> non_overlapping_ranges_for_dim(
       const uint64_t dim_idx);
 

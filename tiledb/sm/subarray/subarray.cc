@@ -3104,7 +3104,6 @@ stats::Stats* Subarray::stats() const {
   return stats_;
 }
 
-template <typename T>
 tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(
     const uint64_t dim_idx) {
   const auto& ranges = range_subset_[dim_idx].ranges();
@@ -3112,80 +3111,12 @@ tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(
 
   if (ranges.size() > 1) {
     for (uint64_t r = 0; r < ranges.size() - 1; r++) {
-      if (dim->overlap<T>(ranges[r], ranges[r + 1]))
+      if (dim->overlap(ranges[r], ranges[r + 1]))
         return {Status::Ok(), false};
     }
   }
 
   return {Status::Ok(), true};
-}
-
-tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(
-    const uint64_t dim_idx) {
-  const Datatype& datatype{
-      array_->array_schema_latest().dimension_ptr(dim_idx)->type()};
-  switch (datatype) {
-    case Datatype::INT8:
-      return non_overlapping_ranges_for_dim<int8_t>(dim_idx);
-    case Datatype::UINT8:
-      return non_overlapping_ranges_for_dim<uint8_t>(dim_idx);
-    case Datatype::INT16:
-      return non_overlapping_ranges_for_dim<int16_t>(dim_idx);
-    case Datatype::UINT16:
-      return non_overlapping_ranges_for_dim<uint16_t>(dim_idx);
-    case Datatype::INT32:
-      return non_overlapping_ranges_for_dim<int32_t>(dim_idx);
-    case Datatype::UINT32:
-      return non_overlapping_ranges_for_dim<uint32_t>(dim_idx);
-    case Datatype::INT64:
-      return non_overlapping_ranges_for_dim<int64_t>(dim_idx);
-    case Datatype::UINT64:
-      return non_overlapping_ranges_for_dim<uint64_t>(dim_idx);
-    case Datatype::FLOAT32:
-      return non_overlapping_ranges_for_dim<float>(dim_idx);
-    case Datatype::FLOAT64:
-      return non_overlapping_ranges_for_dim<double>(dim_idx);
-    case Datatype::STRING_ASCII:
-      return non_overlapping_ranges_for_dim<char>(dim_idx);
-    case Datatype::CHAR:
-    case Datatype::BLOB:
-    case Datatype::BOOL:
-    case Datatype::STRING_UTF8:
-    case Datatype::STRING_UTF16:
-    case Datatype::STRING_UTF32:
-    case Datatype::STRING_UCS2:
-    case Datatype::STRING_UCS4:
-    case Datatype::ANY:
-      return {
-          LOG_STATUS(Status_SubarrayError(
-              "Invalid datatype " + datatype_str(datatype) + " for sorting")),
-          false};
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      return non_overlapping_ranges_for_dim<int64_t>(dim_idx);
-  }
-  return {Status::Ok(), false};
-  ;
 }
 
 template <class T>
