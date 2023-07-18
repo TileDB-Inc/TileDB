@@ -64,9 +64,10 @@ class CompressionFilterStatusException : public StatusException {
 CompressionFilter::CompressionFilter(
     FilterType compressor,
     int level,
+    Datatype filter_data_type,
     Datatype reinterpret_type,
     const format_version_t version)
-    : Filter(compressor)
+    : Filter(compressor, filter_data_type)
     , compressor_(filter_to_compressor(compressor))
     , level_(level)
     , version_(version)
@@ -78,9 +79,10 @@ CompressionFilter::CompressionFilter(
 CompressionFilter::CompressionFilter(
     Compressor compressor,
     int level,
+    Datatype filter_data_type,
     Datatype reinterpret_type,
     const format_version_t version)
-    : Filter(compressor_to_filter(compressor))
+    : Filter(compressor_to_filter(compressor), filter_data_type)
     , compressor_(compressor)
     , level_(level)
     , version_(version)
@@ -117,7 +119,8 @@ void CompressionFilter::dump(FILE* out) const {
     out = stdout;
 
   std::string compressor_str = tiledb::sm::compressor_str(compressor_);
-  if (compressor_ == Compressor::DELTA) {
+  if (compressor_ == Compressor::DELTA ||
+      compressor_ == Compressor::DOUBLE_DELTA) {
     fprintf(
         out,
         "%s: COMPRESSION_LEVEL=%i, REINTERPRET_DATATYPE=%s",
@@ -131,7 +134,12 @@ void CompressionFilter::dump(FILE* out) const {
 
 CompressionFilter* CompressionFilter::clone_impl() const {
   return tdb_new(
-      CompressionFilter, compressor_, level_, reinterpret_datatype_, version_);
+      CompressionFilter,
+      compressor_,
+      level_,
+      filter_data_type_,
+      reinterpret_datatype_,
+      version_);
 }
 
 void CompressionFilter::set_compressor(Compressor compressor) {
@@ -251,8 +259,8 @@ Status CompressionFilter::run_forward(
     return LOG_STATUS(
         Status_FilterError("Input is too large to be compressed."));
 
-  if ((pipeline_type_ == Datatype::STRING_ASCII ||
-       pipeline_type_ == Datatype::STRING_UTF8) &&
+  if ((filter_data_type_ == Datatype::STRING_ASCII ||
+       filter_data_type_ == Datatype::STRING_UTF8) &&
       offsets_tile) {
     if (compressor_ == Compressor::RLE ||
         compressor_ == Compressor::DICTIONARY_ENCODING)
@@ -325,8 +333,8 @@ Status CompressionFilter::run_reverse(
   Buffer* metadata_buffer = output_metadata->buffer_ptr(0);
   assert(metadata_buffer != nullptr);
 
-  if ((pipeline_type_ == Datatype::STRING_ASCII ||
-       pipeline_type_ == Datatype::STRING_UTF8) &&
+  if ((filter_data_type_ == Datatype::STRING_ASCII ||
+       filter_data_type_ == Datatype::STRING_UTF8) &&
       version_ >= 12 && offsets_tile) {
     if (compressor_ == Compressor::RLE ||
         compressor_ == Compressor::DICTIONARY_ENCODING)
@@ -374,7 +382,7 @@ Status CompressionFilter::compress_part(
       break;
     case Compressor::DOUBLE_DELTA:
       RETURN_NOT_OK(DoubleDelta::compress(
-          reinterpret_datatype_ == Datatype::ANY ? pipeline_type_ :
+          reinterpret_datatype_ == Datatype::ANY ? filter_data_type_ :
                                                    reinterpret_datatype_,
           &input_buffer,
           output));
@@ -386,7 +394,7 @@ Status CompressionFilter::compress_part(
     case Compressor::DELTA:
       // Use schema type if REINTERPRET_TYPE option is not set.
       Delta::compress(
-          reinterpret_datatype_ == Datatype::ANY ? pipeline_type_ :
+          reinterpret_datatype_ == Datatype::ANY ? filter_data_type_ :
                                                    reinterpret_datatype_,
           &input_buffer,
           output);
@@ -457,14 +465,14 @@ Status CompressionFilter::decompress_part(
       break;
     case Compressor::DELTA:
       Delta::decompress(
-          reinterpret_datatype_ == Datatype::ANY ? pipeline_type_ :
+          reinterpret_datatype_ == Datatype::ANY ? filter_data_type_ :
                                                    reinterpret_datatype_,
           &input_buffer,
           &output_buffer);
       break;
     case Compressor::DOUBLE_DELTA:
       st = DoubleDelta::decompress(
-          reinterpret_datatype_ == Datatype::ANY ? pipeline_type_ :
+          reinterpret_datatype_ == Datatype::ANY ? filter_data_type_ :
                                                    reinterpret_datatype_,
           &input_buffer,
           &output_buffer);
@@ -698,7 +706,8 @@ void CompressionFilter::serialize_impl(Serializer& serializer) const {
   auto compressor_char = static_cast<uint8_t>(compressor_);
   serializer.write<uint8_t>(compressor_char);
   serializer.write<int32_t>(level_);
-  if (compressor_ == Compressor::DELTA) {
+  if (compressor_ == Compressor::DELTA ||
+      compressor_ == Compressor::DOUBLE_DELTA) {
     serializer.write<uint8_t>(static_cast<uint8_t>(reinterpret_datatype_));
   }
 }

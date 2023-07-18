@@ -74,7 +74,7 @@ class ChecksumMD5Filter : public Filter {
   /**
    * Constructor.
    */
-  ChecksumMD5Filter();
+  ChecksumMD5Filter(Datatype filter_data_type);
 
   /** Dumps the filter details in ASCII format in the selected output. */
   void dump(FILE* out) const override;

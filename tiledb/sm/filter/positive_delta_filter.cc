@@ -44,13 +44,14 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-PositiveDeltaFilter::PositiveDeltaFilter()
-    : Filter(FilterType::FILTER_POSITIVE_DELTA) {
+PositiveDeltaFilter::PositiveDeltaFilter(Datatype filter_data_type)
+    : Filter(FilterType::FILTER_POSITIVE_DELTA, filter_data_type) {
   max_window_size_ = 1024;
 }
 
-PositiveDeltaFilter::PositiveDeltaFilter(uint32_t max_window_size)
-    : Filter(FilterType::FILTER_POSITIVE_DELTA)
+PositiveDeltaFilter::PositiveDeltaFilter(
+    uint32_t max_window_size, Datatype filter_data_type)
+    : Filter(FilterType::FILTER_POSITIVE_DELTA, filter_data_type)
     , max_window_size_(max_window_size) {
 }
 
@@ -72,9 +73,9 @@ Status PositiveDeltaFilter::run_forward(
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
   // If encoding can't work, just return the input unmodified.
-  if (!datatype_is_integer(pipeline_type_) &&
-      !datatype_is_time(pipeline_type_) &&
-      !datatype_is_datetime(pipeline_type_)) {
+  if (!datatype_is_integer(filter_data_type_) &&
+      !datatype_is_time(filter_data_type_) &&
+      !datatype_is_datetime(filter_data_type_)) {
     RETURN_NOT_OK(output->append_view(input));
     RETURN_NOT_OK(output_metadata->append_view(input_metadata));
     return Status::Ok();
@@ -83,7 +84,7 @@ Status PositiveDeltaFilter::run_forward(
   /* Note: Arithmetic operations cannot be performed on std::byte.
     We will use uint8_t for the Datatype::BLOB case as it is the same size as
     std::byte and can have arithmetic performed on it. */
-  switch (pipeline_type_) {
+  switch (filter_data_type_) {
     case Datatype::INT8:
       return run_forward<int8_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
@@ -251,9 +252,9 @@ Status PositiveDeltaFilter::run_reverse(
     const Config& config) const {
   (void)config;
   // If encoding wasn't applied, just return the input unmodified.
-  if (!datatype_is_integer(pipeline_type_) &&
-      !datatype_is_time(pipeline_type_) &&
-      !datatype_is_datetime(pipeline_type_)) {
+  if (!datatype_is_integer(filter_data_type_) &&
+      !datatype_is_time(filter_data_type_) &&
+      !datatype_is_datetime(filter_data_type_)) {
     RETURN_NOT_OK(output->append_view(input));
     RETURN_NOT_OK(output_metadata->append_view(input_metadata));
     return Status::Ok();
@@ -262,7 +263,7 @@ Status PositiveDeltaFilter::run_reverse(
   /* Note: Arithmetic operations cannot be performed on std::byte.
     We will use uint8_t for the Datatype::BLOB case as it is the same size as
     std::byte and can have arithmetic perfomed on it. */
-  switch (pipeline_type_) {
+  switch (filter_data_type_) {
     case Datatype::INT8:
       return run_reverse<int8_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
@@ -327,7 +328,7 @@ Status PositiveDeltaFilter::run_reverse(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  auto tile_type_size = datatype_size(pipeline_type_);
+  auto tile_type_size = datatype_size(filter_data_type_);
 
   uint32_t num_windows;
   RETURN_NOT_OK(input_metadata->read(&num_windows, sizeof(uint32_t)));
@@ -408,7 +409,7 @@ void PositiveDeltaFilter::set_max_window_size(uint32_t max_window_size) {
 }
 
 PositiveDeltaFilter* PositiveDeltaFilter::clone_impl() const {
-  auto clone = new PositiveDeltaFilter;
+  auto clone = new PositiveDeltaFilter(filter_data_type_);
   clone->max_window_size_ = max_window_size_;
   return clone;
 }

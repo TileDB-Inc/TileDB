@@ -60,8 +60,8 @@ class XORFilter : public Filter {
   /**
    * Default constructor.
    */
-  XORFilter()
-      : Filter(FilterType::FILTER_XOR) {
+  XORFilter(Datatype filter_data_type)
+      : Filter(FilterType::FILTER_XOR, filter_data_type) {
   }
 
   /** Dumps the filter details in ASCII format in the selected output. */

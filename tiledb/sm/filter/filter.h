@@ -63,7 +63,7 @@ enum class Datatype : uint8_t;
 class Filter {
  public:
   /** Constructor. */
-  explicit Filter(FilterType type);
+  explicit Filter(FilterType type, Datatype filter_data_type);
 
   /** Destructor. */
   virtual ~Filter() = default;
@@ -199,23 +199,12 @@ class Filter {
   /** Returns the filter type. */
   FilterType type() const;
 
-  /**
-   * Set the datatype the filter will operate on when ran within it's pipeline.
-   * Used during FilterPipeline deserialization to communicate type conversions
-   * between filters in the pipeline.
-   *
-   * @param datatype The datatype to operate on within the pipeline.
-   */
-  inline void set_pipeline_type(Datatype datatype) {
-    pipeline_type_ = datatype;
-  }
-
  protected:
   /** The filter type. */
   FilterType type_;
 
   /** The datatype this filter will operate on within the pipeline. */
-  Datatype pipeline_type_;
+  Datatype filter_data_type_;
 
   /**
    * Clone function must implemented by each specific Filter subclass. This is

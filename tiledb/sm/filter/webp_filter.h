@@ -110,8 +110,9 @@ class WebpFilter : public Filter {
    * Default setting for webp quality factor is 100.0 for lossy compression.
    * Caller must set colorspace format filter option.
    */
-  WebpFilter()
-      : WebpFilter(100.0f, WebpInputFormat::WEBP_NONE, false, 0, 0) {
+  WebpFilter(Datatype filter_data_type)
+      : WebpFilter(
+            100.0f, WebpInputFormat::WEBP_NONE, false, 0, 0, filter_data_type) {
   }
 
   /**
@@ -126,8 +127,9 @@ class WebpFilter : public Filter {
       WebpInputFormat inputFormat,
       bool lossless,
       uint16_t y_extent,
-      uint16_t x_extent)
-      : Filter(FilterType::FILTER_WEBP)
+      uint16_t x_extent,
+      Datatype filter_data_type)
+      : Filter(FilterType::FILTER_WEBP, filter_data_type)
       , quality_(quality)
       , format_(inputFormat)
       , lossless_(lossless)

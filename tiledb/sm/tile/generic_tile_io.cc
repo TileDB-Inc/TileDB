@@ -260,7 +260,8 @@ Status GenericTileIO::init_generic_tile_header(
 
   header->filters.add_filter(CompressionFilter(
       constants::generic_tile_compressor,
-      constants::generic_tile_compression_level));
+      constants::generic_tile_compression_level,
+      tile->type()));
 
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
       &header->filters, encryption_key));

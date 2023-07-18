@@ -87,7 +87,7 @@ Status XORFilter::run_forward(
   // Since run_forward interprets the filter's data as integers, we case on
   // the size of the type and pass in the corresponding integer type into
   // a templated function.
-  switch (datatype_size(pipeline_type_)) {
+  switch (datatype_size(filter_data_type_)) {
     case sizeof(int8_t): {
       return run_forward<int8_t>(
           input_metadata, input, output_metadata, output);
@@ -187,7 +187,7 @@ Status XORFilter::run_reverse(
   // Since run_reverse interprets the filter's data as integers, we case on
   // the size of the type and pass in the corresponding integer type into
   // a templated function.
-  switch (datatype_size(pipeline_type_)) {
+  switch (datatype_size(filter_data_type_)) {
     case sizeof(int8_t): {
       return run_reverse<int8_t>(
           input_metadata, input, output_metadata, output);
@@ -283,7 +283,7 @@ Status XORFilter::unxor_part(const ConstBuffer* part, Buffer* output) const {
 
 /** Returns a new clone of this filter. */
 XORFilter* XORFilter::clone_impl() const {
-  return tdb_new(XORFilter);
+  return tdb_new(XORFilter, filter_data_type_);
 }
 
 }  // namespace sm

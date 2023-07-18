@@ -48,14 +48,15 @@ class FilterStatusException : public StatusException {
   }
 };
 
-Filter::Filter(FilterType type) {
+Filter::Filter(FilterType type, Datatype filter_data_type) {
   type_ = type;
+  filter_data_type_ = filter_data_type;
 }
 
 Filter* Filter::clone() const {
   // Call subclass-specific clone function
   auto clone = clone_impl();
-  clone->pipeline_type_ = pipeline_type_;
+  clone->filter_data_type_ = filter_data_type_;
   return clone;
 }
 

@@ -81,14 +81,15 @@ class EncryptionAES256GCMFilter : public Filter {
   /**
    * Constructor.
    */
-  EncryptionAES256GCMFilter();
+  EncryptionAES256GCMFilter(Datatype filter_data_type);
 
   /**
    * Constructor with explicit key.
    *
    * @param key Key to use for the filter.
    */
-  explicit EncryptionAES256GCMFilter(const EncryptionKey& key);
+  explicit EncryptionAES256GCMFilter(
+      const EncryptionKey& key, Datatype filter_data_type);
 
   /** Dumps the filter details in ASCII format in the selected output. */
   void dump(FILE* out) const override;

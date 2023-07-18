@@ -81,13 +81,14 @@ static inline uint8_t bits_required(T value) {
   return bits_required(value, std::is_signed<T>());
 }
 
-BitWidthReductionFilter::BitWidthReductionFilter()
-    : Filter(FilterType::FILTER_BIT_WIDTH_REDUCTION) {
+BitWidthReductionFilter::BitWidthReductionFilter(Datatype filter_data_type)
+    : Filter(FilterType::FILTER_BIT_WIDTH_REDUCTION, filter_data_type) {
   max_window_size_ = 256;
 }
 
-BitWidthReductionFilter::BitWidthReductionFilter(uint32_t max_window_size)
-    : Filter(FilterType::FILTER_BIT_WIDTH_REDUCTION)
+BitWidthReductionFilter::BitWidthReductionFilter(
+    uint32_t max_window_size, Datatype filter_data_type)
+    : Filter(FilterType::FILTER_BIT_WIDTH_REDUCTION, filter_data_type)
     , max_window_size_(max_window_size) {
 }
 
@@ -112,12 +113,12 @@ Status BitWidthReductionFilter::run_forward(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  auto data_type_size = static_cast<uint8_t>(datatype_size(pipeline_type_));
+  auto data_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
 
   // If bit width compression can't work, just return the input unmodified.
-  if ((!datatype_is_integer(pipeline_type_) &&
-       !datatype_is_time(pipeline_type_) &&
-       !datatype_is_datetime(pipeline_type_)) ||
+  if ((!datatype_is_integer(filter_data_type_) &&
+       !datatype_is_time(filter_data_type_) &&
+       !datatype_is_datetime(filter_data_type_)) ||
       data_type_size == 1) {
     RETURN_NOT_OK(output->append_view(input));
     RETURN_NOT_OK(output_metadata->append_view(input_metadata));
@@ -127,7 +128,7 @@ Status BitWidthReductionFilter::run_forward(
   /* Note: Arithmetic operations cannot be performed on std::byte.
     We will use uint8_t for the Datatype::BLOB case as it is the same size as
     std::byte and can have arithmetic performed on it. */
-  switch (pipeline_type_) {
+  switch (filter_data_type_) {
     case Datatype::INT8:
       return run_forward<int8_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
@@ -297,12 +298,12 @@ Status BitWidthReductionFilter::run_reverse(
     FilterBuffer* output,
     const Config& config) const {
   (void)config;
-  auto data_type_size = static_cast<uint8_t>(datatype_size(pipeline_type_));
+  auto data_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
 
   // If bit width compression wasn't applied, just return the input unmodified.
-  if ((!datatype_is_integer(pipeline_type_) &&
-       !datatype_is_time(pipeline_type_) &&
-       !datatype_is_datetime(pipeline_type_)) ||
+  if ((!datatype_is_integer(filter_data_type_) &&
+       !datatype_is_time(filter_data_type_) &&
+       !datatype_is_datetime(filter_data_type_)) ||
       data_type_size == 1) {
     RETURN_NOT_OK(output->append_view(input));
     RETURN_NOT_OK(output_metadata->append_view(input_metadata));
@@ -312,7 +313,7 @@ Status BitWidthReductionFilter::run_reverse(
   /* Note: Arithmetic operations cannot be performed on std::byte.
     We will use uint8_t for the Datatype::BLOB case as it is the same size as
     std::byte and can have arithmetic perfomed on it. */
-  switch (pipeline_type_) {
+  switch (filter_data_type_) {
     case Datatype::INT8:
       return run_reverse<int8_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
@@ -377,7 +378,7 @@ Status BitWidthReductionFilter::run_reverse(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  auto data_type_size = datatype_size(pipeline_type_);
+  auto data_type_size = datatype_size(filter_data_type_);
 
   uint32_t num_windows, orig_length;
   RETURN_NOT_OK(input_metadata->read(&orig_length, sizeof(uint32_t)));
@@ -577,7 +578,7 @@ void BitWidthReductionFilter::set_max_window_size(uint32_t max_window_size) {
 }
 
 BitWidthReductionFilter* BitWidthReductionFilter::clone_impl() const {
-  auto clone = new BitWidthReductionFilter;
+  auto clone = new BitWidthReductionFilter(filter_data_type_);
   clone->max_window_size_ = max_window_size_;
   return clone;
 }

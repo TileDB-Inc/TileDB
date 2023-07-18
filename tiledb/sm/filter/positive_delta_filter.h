@@ -74,13 +74,13 @@ namespace sm {
 class PositiveDeltaFilter : public Filter {
  public:
   /** Constructor. */
-  PositiveDeltaFilter();
+  PositiveDeltaFilter(Datatype filter_data_type);
 
   /** Constructor.
    *
    * @param max_window_size
    */
-  PositiveDeltaFilter(uint32_t max_window_size);
+  PositiveDeltaFilter(uint32_t max_window_size, Datatype filter_data_type);
 
   /** Return the max window size used by the filter. */
   uint32_t max_window_size() const;

@@ -83,13 +83,13 @@ namespace sm {
 class BitWidthReductionFilter : public Filter {
  public:
   /** Constructor. */
-  BitWidthReductionFilter();
+  BitWidthReductionFilter(Datatype filter_data_type);
 
   /** Constructor.
    *
    * @param max_window_size
    */
-  BitWidthReductionFilter(uint32_t max_window_size);
+  BitWidthReductionFilter(uint32_t max_window_size, Datatype filter_data_type);
 
   /** Dumps the filter details in ASCII format in the selected output. */
   void dump(FILE* out) const override;

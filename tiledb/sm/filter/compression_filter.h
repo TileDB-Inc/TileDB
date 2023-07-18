@@ -90,6 +90,7 @@ class CompressionFilter : public Filter {
   CompressionFilter(
       FilterType compressor,
       int level,
+      Datatype filter_data_type,
       Datatype reinterpret_type = Datatype::ANY,
       const format_version_t version = constants::format_version);
 
@@ -104,6 +105,7 @@ class CompressionFilter : public Filter {
   CompressionFilter(
       Compressor compressor,
       int level,
+      Datatype filter_data_type,
       Datatype reinterpret_type = Datatype::ANY,
       const format_version_t version = constants::format_version);
 

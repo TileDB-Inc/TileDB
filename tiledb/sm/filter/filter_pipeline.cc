@@ -531,7 +531,7 @@ void FilterPipeline::serialize(Serializer& serializer) const {
     // as a no-op filter instead.
     auto as_compression = dynamic_cast<CompressionFilter*>(f.get());
     if (as_compression != nullptr && f->type() == FilterType::FILTER_NONE) {
-      auto noop = tdb_unique_ptr<NoopFilter>(new NoopFilter);
+      auto noop = tdb_unique_ptr<NoopFilter>(new NoopFilter(Datatype::ANY));
       noop->serialize(serializer);
     } else {
       f->serialize(serializer);
@@ -546,8 +546,7 @@ FilterPipeline FilterPipeline::deserialize(
   std::vector<shared_ptr<Filter>> filters;
 
   for (uint32_t i = 0; i < num_filters; i++) {
-    auto filter{FilterCreate::deserialize(deserializer, version)};
-    filter->set_pipeline_type(datatype);
+    auto filter{FilterCreate::deserialize(deserializer, version, datatype)};
     datatype = filter->output_datatype(datatype);
     filters.push_back(std::move(filter));
   }
@@ -607,7 +606,8 @@ Status FilterPipeline::append_encryption_filter(
     case EncryptionType::NO_ENCRYPTION:
       return Status::Ok();
     case EncryptionType::AES_256_GCM:
-      pipeline->add_filter(EncryptionAES256GCMFilter(encryption_key));
+      pipeline->add_filter(
+          EncryptionAES256GCMFilter(encryption_key, Datatype::ANY));
       return Status::Ok();
     default:
       return LOG_STATUS(Status_FilterError(

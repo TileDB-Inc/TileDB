@@ -144,8 +144,8 @@ void run_reverse(
 class Add1InPlace : public tiledb::sm::Filter {
  public:
   // Just use a dummy filter type
-  Add1InPlace()
-      : Filter(FilterType::FILTER_NONE) {
+  Add1InPlace(Datatype filter_data_type)
+      : Filter(FilterType::FILTER_NONE, filter_data_type) {
   }
 
   void dump(FILE* out) const override {
@@ -204,7 +204,7 @@ class Add1InPlace : public tiledb::sm::Filter {
   }
 
   Add1InPlace* clone_impl() const override {
-    return new Add1InPlace();
+    return new Add1InPlace(filter_data_type_);
   }
 };
 
@@ -215,8 +215,8 @@ class Add1InPlace : public tiledb::sm::Filter {
 class Add1OutOfPlace : public tiledb::sm::Filter {
  public:
   // Just use a dummy filter type
-  Add1OutOfPlace()
-      : Filter(FilterType::FILTER_NONE) {
+  Add1OutOfPlace(Datatype filter_data_type)
+      : Filter(FilterType::FILTER_NONE, filter_data_type) {
   }
 
   void dump(FILE* out) const override {
@@ -296,7 +296,7 @@ class Add1OutOfPlace : public tiledb::sm::Filter {
   }
 
   Add1OutOfPlace* clone_impl() const override {
-    return new Add1OutOfPlace();
+    return new Add1OutOfPlace(filter_data_type_);
   }
 };
 
@@ -307,8 +307,8 @@ class Add1OutOfPlace : public tiledb::sm::Filter {
 class AddNInPlace : public tiledb::sm::Filter {
  public:
   // Just use a dummy filter type
-  AddNInPlace()
-      : Filter(FilterType::FILTER_NONE) {
+  AddNInPlace(Datatype filter_data_type)
+      : Filter(FilterType::FILTER_NONE, filter_data_type) {
     increment_ = 1;
   }
 
@@ -375,7 +375,7 @@ class AddNInPlace : public tiledb::sm::Filter {
   }
 
   AddNInPlace* clone_impl() const override {
-    auto clone = new AddNInPlace();
+    auto clone = new AddNInPlace(filter_data_type_);
     clone->increment_ = increment_;
     return clone;
   }
@@ -391,8 +391,8 @@ class AddNInPlace : public tiledb::sm::Filter {
 class PseudoChecksumFilter : public tiledb::sm::Filter {
  public:
   // Just use a dummy filter type
-  PseudoChecksumFilter()
-      : Filter(FilterType::FILTER_NONE) {
+  PseudoChecksumFilter(Datatype filter_data_type)
+      : Filter(FilterType::FILTER_NONE, filter_data_type) {
   }
 
   void dump(FILE* out) const override {
@@ -470,7 +470,7 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
   }
 
   PseudoChecksumFilter* clone_impl() const override {
-    return new PseudoChecksumFilter();
+    return new PseudoChecksumFilter(filter_data_type_);
   }
 };
 
@@ -482,8 +482,8 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
 class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
  public:
   // Just use a dummy filter type
-  Add1IncludingMetadataFilter()
-      : Filter(FilterType::FILTER_NONE) {
+  Add1IncludingMetadataFilter(Datatype filter_data_type)
+      : Filter(FilterType::FILTER_NONE, filter_data_type) {
   }
 
   void dump(FILE* out) const override {
@@ -601,7 +601,7 @@ class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
   }
 
   Add1IncludingMetadataFilter* clone_impl() const override {
-    return new Add1IncludingMetadataFilter;
+    return new Add1IncludingMetadataFilter(filter_data_type_);
   }
 };
 
@@ -757,7 +757,7 @@ TEST_CASE(
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  pipeline.add_filter(Add1InPlace());
+  pipeline.add_filter(Add1InPlace(Datatype::UINT64));
 
   SECTION("- Single stage") {
     CHECK(
@@ -805,8 +805,8 @@ TEST_CASE(
 
   SECTION("- Multi-stage") {
     // Add a few more +1 filters and re-run.
-    pipeline.add_filter(Add1InPlace());
-    pipeline.add_filter(Add1InPlace());
+    pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+    pipeline.add_filter(Add1InPlace(Datatype::UINT64));
     CHECK(
         pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
 
@@ -892,7 +892,7 @@ TEST_CASE(
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  pipeline.add_filter(Add1InPlace());
+  pipeline.add_filter(Add1InPlace(Datatype::UINT64));
 
   SECTION("- Single stage") {
     WriterTile::set_max_tile_chunk_size(80);
@@ -946,8 +946,8 @@ TEST_CASE(
   SECTION("- Multi-stage") {
     // Add a few more +1 filters and re-run.
     WriterTile::set_max_tile_chunk_size(80);
-    pipeline.add_filter(Add1InPlace());
-    pipeline.add_filter(Add1InPlace());
+    pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+    pipeline.add_filter(Add1InPlace(Datatype::UINT64));
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
               .ok());
 
@@ -1009,7 +1009,7 @@ TEST_CASE(
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  pipeline.add_filter(Add1OutOfPlace());
+  pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
 
   SECTION("- Single stage") {
     CHECK(
@@ -1057,8 +1057,8 @@ TEST_CASE(
 
   SECTION("- Multi-stage") {
     // Add a few more +1 filters and re-run.
-    pipeline.add_filter(Add1OutOfPlace());
-    pipeline.add_filter(Add1OutOfPlace());
+    pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
+    pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
     CHECK(
         pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
 
@@ -1144,7 +1144,7 @@ TEST_CASE(
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  pipeline.add_filter(Add1OutOfPlace());
+  pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
 
   SECTION("- Single stage") {
     WriterTile::set_max_tile_chunk_size(80);
@@ -1198,8 +1198,8 @@ TEST_CASE(
   SECTION("- Multi-stage") {
     // Add a few more +1 filters and re-run.
     WriterTile::set_max_tile_chunk_size(80);
-    pipeline.add_filter(Add1OutOfPlace());
-    pipeline.add_filter(Add1OutOfPlace());
+    pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
+    pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
               .ok());
 
@@ -1261,10 +1261,10 @@ TEST_CASE(
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  pipeline.add_filter(Add1InPlace());
-  pipeline.add_filter(Add1OutOfPlace());
-  pipeline.add_filter(Add1InPlace());
-  pipeline.add_filter(Add1OutOfPlace());
+  pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+  pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
+  pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+  pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
   CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
 
   CHECK(tile.size() == 0);
@@ -1348,10 +1348,10 @@ TEST_CASE(
   FilterPipeline pipeline;
   ThreadPool tp(4);
   WriterTile::set_max_tile_chunk_size(80);
-  pipeline.add_filter(Add1InPlace());
-  pipeline.add_filter(Add1OutOfPlace());
-  pipeline.add_filter(Add1InPlace());
-  pipeline.add_filter(Add1OutOfPlace());
+  pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+  pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
+  pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+  pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
   CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
             .ok());
 
@@ -1425,9 +1425,10 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
   ThreadPool tp(4);
 
   SECTION("- Simple") {
-    pipeline.add_filter(Add1InPlace());
-    pipeline.add_filter(Add1OutOfPlace());
-    pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::LZ4, 5));
+    pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+    pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
+    pipeline.add_filter(
+        CompressionFilter(tiledb::sm::Compressor::LZ4, 5, Datatype::UINT64));
 
     CHECK(
         pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
@@ -1448,8 +1449,9 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
   }
 
   SECTION("- With checksum stage") {
-    pipeline.add_filter(PseudoChecksumFilter());
-    pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::LZ4, 5));
+    pipeline.add_filter(PseudoChecksumFilter(Datatype::UINT64));
+    pipeline.add_filter(
+        CompressionFilter(tiledb::sm::Compressor::LZ4, 5, Datatype::UINT64));
 
     CHECK(
         pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
@@ -1470,10 +1472,11 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
   }
 
   SECTION("- With multiple stages") {
-    pipeline.add_filter(Add1InPlace());
-    pipeline.add_filter(PseudoChecksumFilter());
-    pipeline.add_filter(Add1OutOfPlace());
-    pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::LZ4, 5));
+    pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+    pipeline.add_filter(PseudoChecksumFilter(Datatype::UINT64));
+    pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
+    pipeline.add_filter(
+        CompressionFilter(tiledb::sm::Compressor::LZ4, 5, Datatype::UINT64));
 
     CHECK(
         pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
@@ -1550,9 +1553,10 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
 
   SECTION("- Simple") {
     WriterTile::set_max_tile_chunk_size(80);
-    pipeline.add_filter(Add1InPlace());
-    pipeline.add_filter(Add1OutOfPlace());
-    pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::LZ4, 5));
+    pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+    pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
+    pipeline.add_filter(
+        CompressionFilter(tiledb::sm::Compressor::LZ4, 5, Datatype::UINT64));
 
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
               .ok());
@@ -1576,8 +1580,9 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
 
   SECTION("- With checksum stage") {
     WriterTile::set_max_tile_chunk_size(80);
-    pipeline.add_filter(PseudoChecksumFilter());
-    pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::LZ4, 5));
+    pipeline.add_filter(PseudoChecksumFilter(Datatype::UINT64));
+    pipeline.add_filter(
+        CompressionFilter(tiledb::sm::Compressor::LZ4, 5, Datatype::UINT64));
 
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
               .ok());
@@ -1601,10 +1606,11 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
 
   SECTION("- With multiple stages") {
     WriterTile::set_max_tile_chunk_size(80);
-    pipeline.add_filter(Add1InPlace());
-    pipeline.add_filter(PseudoChecksumFilter());
-    pipeline.add_filter(Add1OutOfPlace());
-    pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::LZ4, 5));
+    pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+    pipeline.add_filter(PseudoChecksumFilter(Datatype::UINT64));
+    pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
+    pipeline.add_filter(
+        CompressionFilter(tiledb::sm::Compressor::LZ4, 5, Datatype::UINT64));
 
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
               .ok());
@@ -1639,7 +1645,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  pipeline.add_filter(PseudoChecksumFilter());
+  pipeline.add_filter(PseudoChecksumFilter(Datatype::UINT64));
 
   SECTION("- Single stage") {
     CHECK(
@@ -1693,9 +1699,9 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
   }
 
   SECTION("- Multi-stage") {
-    pipeline.add_filter(Add1OutOfPlace());
-    pipeline.add_filter(Add1InPlace());
-    pipeline.add_filter(PseudoChecksumFilter());
+    pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
+    pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+    pipeline.add_filter(PseudoChecksumFilter(Datatype::UINT64));
     CHECK(
         pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
 
@@ -1801,7 +1807,7 @@ TEST_CASE(
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  pipeline.add_filter(PseudoChecksumFilter());
+  pipeline.add_filter(PseudoChecksumFilter(Datatype::UINT64));
 
   SECTION("- Single stage") {
     WriterTile::set_max_tile_chunk_size(80);
@@ -1861,9 +1867,9 @@ TEST_CASE(
 
   SECTION("- Multi-stage") {
     WriterTile::set_max_tile_chunk_size(80);
-    pipeline.add_filter(Add1OutOfPlace());
-    pipeline.add_filter(Add1InPlace());
-    pipeline.add_filter(PseudoChecksumFilter());
+    pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
+    pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+    pipeline.add_filter(PseudoChecksumFilter(Datatype::UINT64));
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
               .ok());
 
@@ -1937,9 +1943,9 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter][modify]") {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  pipeline.add_filter(Add1InPlace());
-  pipeline.add_filter(AddNInPlace());
-  pipeline.add_filter(Add1InPlace());
+  pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+  pipeline.add_filter(AddNInPlace(Datatype::UINT64));
+  pipeline.add_filter(Add1InPlace(Datatype::UINT64));
 
   // Get non-existent filter instance
   auto* cksum = pipeline.get_filter<PseudoChecksumFilter>();
@@ -2029,9 +2035,9 @@ TEST_CASE("Filter: Test pipeline modify filter var", "[filter][modify][var]") {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  pipeline.add_filter(Add1InPlace());
-  pipeline.add_filter(AddNInPlace());
-  pipeline.add_filter(Add1InPlace());
+  pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+  pipeline.add_filter(AddNInPlace(Datatype::UINT64));
+  pipeline.add_filter(Add1InPlace(Datatype::UINT64));
 
   // Get non-existent filter instance
   auto* cksum = pipeline.get_filter<PseudoChecksumFilter>();
@@ -2103,10 +2109,10 @@ TEST_CASE("Filter: Test pipeline copy", "[filter][copy]") {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  pipeline.add_filter(Add1InPlace());
-  pipeline.add_filter(AddNInPlace());
-  pipeline.add_filter(Add1InPlace());
-  pipeline.add_filter(PseudoChecksumFilter());
+  pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+  pipeline.add_filter(AddNInPlace(Datatype::UINT64));
+  pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+  pipeline.add_filter(PseudoChecksumFilter(Datatype::UINT64));
 
   // Modify +N filter
   auto* add_n = pipeline.get_filter<AddNInPlace>();
@@ -2185,25 +2191,28 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
   // List of potential filters to use. All of these filters can occur anywhere
   // in the pipeline.
   std::vector<std::function<tiledb::sm::Filter*(void)>> constructors = {
-      []() { return new Add1InPlace(); },
-      []() { return new Add1OutOfPlace(); },
-      []() { return new Add1IncludingMetadataFilter(); },
-      []() { return new BitWidthReductionFilter(); },
-      []() { return new BitshuffleFilter(); },
-      []() { return new ByteshuffleFilter(); },
-      []() { return new CompressionFilter(tiledb::sm::Compressor::BZIP2, -1); },
-      []() { return new PseudoChecksumFilter(); },
-      []() { return new ChecksumMD5Filter(); },
-      []() { return new ChecksumSHA256Filter(); },
+      []() { return new Add1InPlace(Datatype::UINT64); },
+      []() { return new Add1OutOfPlace(Datatype::UINT64); },
+      []() { return new Add1IncludingMetadataFilter(Datatype::UINT64); },
+      []() { return new BitWidthReductionFilter(Datatype::UINT64); },
+      []() { return new BitshuffleFilter(Datatype::UINT64); },
+      []() { return new ByteshuffleFilter(Datatype::UINT64); },
+      []() {
+        return new CompressionFilter(
+            tiledb::sm::Compressor::BZIP2, -1, Datatype::UINT64);
+      },
+      []() { return new PseudoChecksumFilter(Datatype::UINT64); },
+      []() { return new ChecksumMD5Filter(Datatype::UINT64); },
+      []() { return new ChecksumSHA256Filter(Datatype::UINT64); },
       [&encryption_key]() {
-        return new EncryptionAES256GCMFilter(encryption_key);
+        return new EncryptionAES256GCMFilter(encryption_key, Datatype::UINT64);
       },
   };
 
   // List of potential filters that must occur at the beginning of the pipeline.
   std::vector<std::function<tiledb::sm::Filter*(void)>> constructors_first = {
       // Pos-delta would (correctly) return error after e.g. compression.
-      []() { return new PositiveDeltaFilter(); }};
+      []() { return new PositiveDeltaFilter(Datatype::UINT64); }};
 
   ThreadPool tp(4);
   for (int i = 0; i < 100; i++) {
@@ -2222,7 +2231,6 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
     INFO("Random pipeline seed: " << pipeline_seed);
 
     auto num_filters = (unsigned)rng_num_filters(gen);
-    auto t = Datatype::UINT64;
     for (unsigned j = 0; j < num_filters; j++) {
       if (j == 0 && rng_bool(gen) == 1) {
         auto idx = (unsigned)rng_constructors_first(gen);
@@ -2235,8 +2243,6 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
         pipeline.add_filter(*filter);
         delete filter;
       }
-      pipeline.get_filter(j)->set_pipeline_type(t);
-      t = pipeline.get_filter(j)->output_datatype(t);
     }
 
     // End result should always be the same as the input.
@@ -2269,7 +2275,7 @@ TEST_CASE(
   // MD5
   FilterPipeline md5_pipeline;
   ThreadPool tp(4);
-  ChecksumMD5Filter md5_filter;
+  ChecksumMD5Filter md5_filter(Datatype::UINT64);
   md5_pipeline.add_filter(md5_filter);
   CHECK(md5_pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp)
             .ok());
@@ -2290,7 +2296,7 @@ TEST_CASE(
   auto tile2 = make_increasing_tile(nelts);
 
   FilterPipeline sha_256_pipeline;
-  ChecksumMD5Filter sha_256_filter;
+  ChecksumMD5Filter sha_256_filter(Datatype::UINT64);
   sha_256_pipeline.add_filter(sha_256_filter);
   CHECK(
       sha_256_pipeline.run_forward(&test::g_helper_stats, &tile2, nullptr, &tp)
@@ -2316,9 +2322,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  pipeline.add_filter(BitWidthReductionFilter());
-  pipeline.get_filter<BitWidthReductionFilter>()->set_pipeline_type(
-      Datatype::UINT64);
+  pipeline.add_filter(BitWidthReductionFilter(Datatype::UINT64));
 
   SECTION("- Single stage") {
     auto tile = make_increasing_tile(nelts);
@@ -2529,9 +2533,7 @@ TEST_CASE(
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  pipeline.add_filter(BitWidthReductionFilter());
-  pipeline.get_filter<BitWidthReductionFilter>()->set_pipeline_type(
-      Datatype::UINT64);
+  pipeline.add_filter(BitWidthReductionFilter(Datatype::UINT64));
 
   SECTION("- Single stage") {
     auto tile = make_increasing_tile(nelts);
@@ -2765,9 +2767,7 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  pipeline.add_filter(PositiveDeltaFilter());
-  pipeline.get_filter<PositiveDeltaFilter>()->set_pipeline_type(
-      Datatype::UINT64);
+  pipeline.add_filter(PositiveDeltaFilter(Datatype::UINT64));
 
   SECTION("- Single stage") {
     auto tile = make_increasing_tile(nelts);
@@ -2886,9 +2886,7 @@ TEST_CASE(
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  pipeline.add_filter(PositiveDeltaFilter());
-  pipeline.get_filter<PositiveDeltaFilter>()->set_pipeline_type(
-      Datatype::UINT64);
+  pipeline.add_filter(PositiveDeltaFilter(Datatype::UINT64));
 
   SECTION("- Single stage") {
     auto tile = make_increasing_tile(nelts);
@@ -3014,7 +3012,7 @@ TEST_CASE("Filter: Test bitshuffle", "[filter][bitshuffle]") {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  pipeline.add_filter(BitshuffleFilter());
+  pipeline.add_filter(BitshuffleFilter(Datatype::UINT64));
 
   SECTION("- Single stage") {
     CHECK(
@@ -3102,7 +3100,7 @@ TEST_CASE("Filter: Test bitshuffle var", "[filter][bitshuffle][var]") {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  pipeline.add_filter(BitshuffleFilter());
+  pipeline.add_filter(BitshuffleFilter(Datatype::UINT64));
 
   SECTION("- Single stage") {
     WriterTile::set_max_tile_chunk_size(80);
@@ -3165,7 +3163,7 @@ TEST_CASE("Filter: Test byteshuffle", "[filter][byteshuffle]") {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  pipeline.add_filter(ByteshuffleFilter());
+  pipeline.add_filter(ByteshuffleFilter(Datatype::UINT64));
 
   SECTION("- Single stage") {
     CHECK(
@@ -3253,7 +3251,7 @@ TEST_CASE("Filter: Test byteshuffle var", "[filter][byteshuffle][var]") {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  pipeline.add_filter(ByteshuffleFilter());
+  pipeline.add_filter(ByteshuffleFilter(Datatype::UINT64));
 
   SECTION("- Single stage") {
     WriterTile::set_max_tile_chunk_size(80);
@@ -3317,7 +3315,7 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
   SECTION("- AES-256-GCM") {
     FilterPipeline pipeline;
     ThreadPool tp(4);
-    pipeline.add_filter(EncryptionAES256GCMFilter());
+    pipeline.add_filter(EncryptionAES256GCMFilter(Datatype::UINT64));
 
     // No key set
     CHECK(
@@ -3421,8 +3419,7 @@ void testing_float_scaling_filter() {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  pipeline.add_filter(FloatScalingFilter());
-  pipeline.get_filter<FloatScalingFilter>()->set_pipeline_type(t);
+  pipeline.add_filter(FloatScalingFilter(t));
   CHECK(pipeline.get_filter<FloatScalingFilter>()
             ->set_option(FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width)
             .ok());
@@ -3493,7 +3490,7 @@ void testing_xor_filter(Datatype t) {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  pipeline.add_filter(XORFilter());
+  pipeline.add_filter(XORFilter(t));
 
   CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
 
@@ -3542,49 +3539,56 @@ TEST_CASE("Filter: Pipeline filtered output types", "[filter][pipeline]") {
 
   SECTION("- DoubleDelta filter reinterprets float->int32") {
     pipeline.add_filter(CompressionFilter(
-        tiledb::sm::Compressor::DOUBLE_DELTA, 0, Datatype::INT32));
-    pipeline.add_filter(BitWidthReductionFilter());
+        tiledb::sm::Compressor::DOUBLE_DELTA,
+        0,
+        Datatype::FLOAT32,
+        Datatype::INT32));
+    pipeline.add_filter(BitWidthReductionFilter(Datatype::INT32));
   }
 
   SECTION("- Delta filter reinterprets float->int32") {
-    pipeline.add_filter(
-        CompressionFilter(tiledb::sm::Compressor::DELTA, 0, Datatype::INT32));
-    pipeline.add_filter(BitWidthReductionFilter());
+    pipeline.add_filter(CompressionFilter(
+        tiledb::sm::Compressor::DELTA, 0, Datatype::FLOAT32, Datatype::INT32));
+    pipeline.add_filter(BitWidthReductionFilter(Datatype::INT32));
   }
 
   SECTION("- FloatScale filter converts float->int32") {
-    pipeline.add_filter(FloatScalingFilter(sizeof(int32_t), 1.0f, 0.0f));
-    pipeline.add_filter(PositiveDeltaFilter());
-    pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::DELTA, 0));
-    pipeline.add_filter(CompressionFilter(tiledb::sm::Compressor::BZIP2, 2));
-    pipeline.add_filter(BitshuffleFilter());
-    pipeline.add_filter(ByteshuffleFilter());
-    pipeline.add_filter(BitWidthReductionFilter());
+    pipeline.add_filter(
+        FloatScalingFilter(sizeof(int32_t), 1.0f, 0.0f, Datatype::FLOAT32));
+    pipeline.add_filter(PositiveDeltaFilter(Datatype::INT32));
+    pipeline.add_filter(
+        CompressionFilter(tiledb::sm::Compressor::DELTA, 0, Datatype::INT32));
+    pipeline.add_filter(
+        CompressionFilter(tiledb::sm::Compressor::BZIP2, 2, Datatype::INT32));
+    pipeline.add_filter(BitshuffleFilter(Datatype::INT32));
+    pipeline.add_filter(ByteshuffleFilter(Datatype::INT32));
+    pipeline.add_filter(BitWidthReductionFilter(Datatype::INT32));
   }
 
   size_t byte_width = 0;
   SECTION("- XOR filter expected output types") {
     byte_width = GENERATE(
         sizeof(int8_t), sizeof(int16_t), sizeof(int32_t), sizeof(int64_t));
-    pipeline.add_filter(FloatScalingFilter(byte_width, 1.0f, 0.0f));
-    pipeline.add_filter(XORFilter());
+    pipeline.add_filter(
+        FloatScalingFilter(byte_width, 1.0f, 0.0f, Datatype::FLOAT32));
+    auto byte_width_t =
+        pipeline.get_filter<FloatScalingFilter>()->output_datatype(
+            Datatype::FLOAT32);
+    pipeline.add_filter(XORFilter(byte_width_t));
   }
 
   SECTION("- XOR filter expected output types large pipeline") {
     byte_width = GENERATE(
         sizeof(int8_t), sizeof(int16_t), sizeof(int32_t), sizeof(int64_t));
-    pipeline.add_filter(FloatScalingFilter(byte_width, 1.0f, 0.0f));
-    pipeline.add_filter(PositiveDeltaFilter());
-    pipeline.add_filter(BitshuffleFilter());
-    pipeline.add_filter(ByteshuffleFilter());
-    pipeline.add_filter(XORFilter());
-  }
-
-  Datatype pipeline_datatype = Datatype::FLOAT32;
-  for (size_t i = 0; i < pipeline.size(); i++) {
-    auto filter = pipeline.get_filter(i);
-    filter->set_pipeline_type(pipeline_datatype);
-    pipeline_datatype = filter->output_datatype(pipeline_datatype);
+    pipeline.add_filter(
+        FloatScalingFilter(byte_width, 1.0f, 0.0f, Datatype::FLOAT32));
+    auto byte_width_t =
+        pipeline.get_filter<FloatScalingFilter>()->output_datatype(
+            Datatype::FLOAT32);
+    pipeline.add_filter(PositiveDeltaFilter(byte_width_t));
+    pipeline.add_filter(BitshuffleFilter(byte_width_t));
+    pipeline.add_filter(ByteshuffleFilter(byte_width_t));
+    pipeline.add_filter(XORFilter(byte_width_t));
   }
 
   // Initial type of tile is float.

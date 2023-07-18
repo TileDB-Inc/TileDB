@@ -95,13 +95,17 @@ ArraySchema::ArraySchema(ArrayType array_type)
 
   // Set up default filter pipelines for coords, offsets, and validity values.
   coords_filters_.add_filter(CompressionFilter(
-      constants::coords_compression, constants::coords_compression_level));
+      constants::coords_compression,
+      constants::coords_compression_level,
+      Datatype::ANY));
   cell_var_offsets_filters_.add_filter(CompressionFilter(
       constants::cell_var_offsets_compression,
-      constants::cell_var_offsets_compression_level));
+      constants::cell_var_offsets_compression_level,
+      Datatype::UINT64));
   cell_validity_filters_.add_filter(CompressionFilter(
       constants::cell_validity_compression,
-      constants::cell_validity_compression_level));
+      constants::cell_validity_compression_level,
+      Datatype::UINT8));
 
   // Generate URI and name for ArraySchema
   throw_if_not_ok(generate_uri());

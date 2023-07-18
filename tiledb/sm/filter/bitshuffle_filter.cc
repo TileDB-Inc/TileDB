@@ -43,12 +43,12 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-BitshuffleFilter::BitshuffleFilter()
-    : Filter(FilterType::FILTER_BITSHUFFLE) {
+BitshuffleFilter::BitshuffleFilter(Datatype filter_data_type)
+    : Filter(FilterType::FILTER_BITSHUFFLE, filter_data_type) {
 }
 
 BitshuffleFilter* BitshuffleFilter::clone_impl() const {
-  return new BitshuffleFilter;
+  return new BitshuffleFilter(filter_data_type_);
 }
 
 void BitshuffleFilter::dump(FILE* out) const {
@@ -65,7 +65,7 @@ Status BitshuffleFilter::run_forward(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  auto tile_type_size = static_cast<uint8_t>(datatype_size(pipeline_type_));
+  auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
 
   // Output size does not change with this filter.
   RETURN_NOT_OK(output->prepend_buffer(input->size()));
@@ -126,7 +126,7 @@ Status BitshuffleFilter::compute_parts(
 
 Status BitshuffleFilter::shuffle_part(
     const WriterTile&, const ConstBuffer* part, Buffer* output) const {
-  auto tile_type_size = static_cast<uint8_t>(datatype_size(pipeline_type_));
+  auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
   auto part_nelts = part->size() / tile_type_size;
   auto bytes_processed = bshuf_bitshuffle(
       part->data(), output->cur_data(), part_nelts, tile_type_size, 0);
@@ -170,7 +170,7 @@ Status BitshuffleFilter::run_reverse(
     FilterBuffer* output,
     const Config& config) const {
   (void)config;
-  auto tile_type_size = static_cast<uint8_t>(datatype_size(pipeline_type_));
+  auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
 
   // Get number of parts
   uint32_t num_parts;
@@ -210,7 +210,7 @@ Status BitshuffleFilter::run_reverse(
 
 Status BitshuffleFilter::unshuffle_part(
     const Tile&, const ConstBuffer* part, Buffer* output) const {
-  auto tile_type_size = static_cast<uint8_t>(datatype_size(pipeline_type_));
+  auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
   auto part_nelts = part->size() / tile_type_size;
   auto bytes_processed = bshuf_bitunshuffle(
       part->data(), output->cur_data(), part_nelts, tile_type_size, 0);

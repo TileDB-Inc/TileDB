@@ -133,7 +133,7 @@ Status FloatScalingFilter::run_forward(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  auto tile_type_size = static_cast<uint8_t>(datatype_size(pipeline_type_));
+  auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
   switch (tile_type_size) {
     case sizeof(float):
       return run_forward<float>(input_metadata, input, output_metadata, output);
@@ -226,7 +226,7 @@ Status FloatScalingFilter::run_reverse(
     FilterBuffer* output,
     const Config& config) const {
   (void)config;
-  auto tile_type_size = static_cast<uint8_t>(datatype_size(pipeline_type_));
+  auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
   switch (tile_type_size) {
     case sizeof(float): {
       return run_reverse<float>(input_metadata, input, output_metadata, output);
@@ -331,7 +331,8 @@ Datatype FloatScalingFilter::output_datatype(Datatype) const {
 
 /** Returns a new clone of this filter. */
 FloatScalingFilter* FloatScalingFilter::clone_impl() const {
-  return tdb_new(FloatScalingFilter, byte_width_, scale_, offset_);
+  return tdb_new(
+      FloatScalingFilter, byte_width_, scale_, offset_, filter_data_type_);
 }
 
 }  // namespace sm

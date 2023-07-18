@@ -224,7 +224,7 @@ Status WebpFilter::run_reverse(
     FilterBuffer* output_metadata,
     FilterBuffer* output,
     const Config&) const {
-  if (pipeline_type_ != Datatype::UINT8) {
+  if (filter_data_type_ != Datatype::UINT8) {
     throw StatusException(Status_FilterError("Unsupported input type"));
   }
   return run_reverse(input_metadata, input, output_metadata, output);
@@ -356,7 +356,8 @@ Status WebpFilter::get_option_impl(FilterOption option, void* value) const {
       format_,
       lossless_,
       extents_.first,
-      extents_.second);
+      extents_.second,
+      filter_data_type_);
 }
 
 void WebpFilter::serialize_impl(Serializer& serializer) const {
