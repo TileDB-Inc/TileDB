@@ -119,7 +119,7 @@ steps:
 
     # Configure and build TileDB
     echo "Running cmake with '${cmake_args}'"
-    cmake .. -DTILEDB_VCPKG_DISABLE_MAGIC=TRUE ${cmake_args}
+    cmake .. ${cmake_args}
 
     make -j4
     make -C tiledb install
