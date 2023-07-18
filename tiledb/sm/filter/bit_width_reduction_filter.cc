@@ -578,7 +578,7 @@ void BitWidthReductionFilter::set_max_window_size(uint32_t max_window_size) {
 }
 
 BitWidthReductionFilter* BitWidthReductionFilter::clone_impl() const {
-  auto clone = new BitWidthReductionFilter(filter_data_type_);
+  auto clone = tdb_new(BitWidthReductionFilter, filter_data_type_);
   clone->max_window_size_ = max_window_size_;
   return clone;
 }

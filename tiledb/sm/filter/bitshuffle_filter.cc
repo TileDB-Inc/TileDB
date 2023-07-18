@@ -48,7 +48,7 @@ BitshuffleFilter::BitshuffleFilter(Datatype filter_data_type)
 }
 
 BitshuffleFilter* BitshuffleFilter::clone_impl() const {
-  return new BitshuffleFilter(filter_data_type_);
+  return tdb_new(BitshuffleFilter, filter_data_type_);
 }
 
 void BitshuffleFilter::dump(FILE* out) const {

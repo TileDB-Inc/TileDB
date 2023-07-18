@@ -45,7 +45,7 @@ NoopFilter::NoopFilter(Datatype filter_data_type)
 }
 
 NoopFilter* NoopFilter::clone_impl() const {
-  return new NoopFilter(filter_data_type_);
+  return tdb_new(NoopFilter, filter_data_type_);
 }
 
 void NoopFilter::dump(FILE* out) const {

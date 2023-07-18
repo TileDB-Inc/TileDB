@@ -57,7 +57,7 @@ EncryptionAES256GCMFilter::EncryptionAES256GCMFilter(
 }
 
 EncryptionAES256GCMFilter* EncryptionAES256GCMFilter::clone_impl() const {
-  auto clone = new EncryptionAES256GCMFilter(filter_data_type_);
+  auto clone = tdb_new(EncryptionAES256GCMFilter, filter_data_type_);
   // Copy key bytes buffer.
   clone->key_bytes_ = key_bytes_;
   return clone;

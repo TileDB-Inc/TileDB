@@ -48,7 +48,7 @@ ByteshuffleFilter::ByteshuffleFilter(Datatype filter_data_type)
 }
 
 ByteshuffleFilter* ByteshuffleFilter::clone_impl() const {
-  return new ByteshuffleFilter(filter_data_type_);
+  return tdb_new(ByteshuffleFilter, filter_data_type_);
 }
 
 void ByteshuffleFilter::dump(FILE* out) const {

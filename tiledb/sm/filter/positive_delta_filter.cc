@@ -409,7 +409,7 @@ void PositiveDeltaFilter::set_max_window_size(uint32_t max_window_size) {
 }
 
 PositiveDeltaFilter* PositiveDeltaFilter::clone_impl() const {
-  auto clone = new PositiveDeltaFilter(filter_data_type_);
+  auto clone = tdb_new(PositiveDeltaFilter, filter_data_type_);
   clone->max_window_size_ = max_window_size_;
   return clone;
 }
