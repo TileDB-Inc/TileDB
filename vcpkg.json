@@ -82,10 +82,7 @@
         "tools": {
             "description": "Build tiledb command line tool",
             "dependencies": [
-                {
-                    "name": "clipp",
-                    "version>=": "1.2.3"
-                }
+                "clipp"
             ]
         },
         "webp": {
