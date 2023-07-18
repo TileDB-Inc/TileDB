@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,15 @@
  * @section DESCRIPTION
  *
  * This file implements the S3 class.
+ *
+ * ============================================================================
+ * Notes on implementation limitations:
+ *
+ * When using MinIO object storage, files may mask Array directories
+ * if they are of the same name. As such, the ArrayDirectory may filter out
+ * non-empty directories. Users should be aware of this limitation and attempt
+ * to manually maintain their working directory to avoid test failures.
+ * ============================================================================
  */
 
 #ifdef HAVE_S3
@@ -62,6 +71,7 @@
 #endif
 
 #include "tiledb/sm/filesystem/s3.h"
+#include "tiledb/sm/filesystem/s3/STSProfileWithWebIdentityCredentialsProvider.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 
 using tiledb::common::filesystem::directory_entry;
@@ -469,10 +479,7 @@ Status S3::disconnect() {
   }
 
   if (s3_tp_executor_) {
-    const Status st = s3_tp_executor_->Stop();
-    if (!st.ok()) {
-      ret_st = st;
-    }
+    s3_tp_executor_->Stop();
   }
 
   state_ = State::DISCONNECTED;
@@ -1349,6 +1356,16 @@ Status S3::init_client() const {
 
   std::lock_guard<std::mutex> lck(client_init_mtx_);
 
+  auto s3_config_source = config_.get<std::string>(
+      "vfs.s3.config_source", Config::MustFindMarker());
+  if (s3_config_source != "auto" && s3_config_source != "config_files" &&
+      s3_config_source != "sts_profile_with_web_identity") {
+    throw S3StatusException(
+        "Unknown 'vfs.s3.config_source' config value " + s3_config_source +
+        "; supported values are 'auto', 'config_files' and "
+        "'sts_profile_with_web_identity'");
+  }
+
   auto aws_no_sign_request =
       config_.get<bool>("vfs.s3.no_sign_request", Config::MustFindMarker());
 
@@ -1497,7 +1514,9 @@ Status S3::init_client() const {
   } else {  // Check other authentication methods
     switch ((!aws_access_key_id.empty() ? 1 : 0) +
             (!aws_secret_access_key.empty() ? 2 : 0) +
-            (!aws_role_arn.empty() ? 4 : 0)) {
+            (!aws_role_arn.empty() ? 4 : 0) +
+            (s3_config_source == "config_files" ? 8 : 0) +
+            (s3_config_source == "sts_profile_with_web_identity" ? 16 : 0)) {
       case 0:
         break;
       case 1:
@@ -1537,11 +1556,33 @@ Status S3::init_client() const {
                 nullptr);
         break;
       }
-      default:
-        return Status_S3Error(
+      case 7: {
+        s3_tp_executor_->Stop();
+
+        throw S3StatusException{
             "Ambiguous authentication credentials; both permanent and "
             "temporary "
-            "authentication credentials are configured");
+            "authentication credentials are configured"};
+      }
+      case 8: {
+        credentials_provider_ =
+            make_shared<Aws::Auth::ProfileConfigFileAWSCredentialsProvider>(
+                HERE());
+        break;
+      }
+      case 16: {
+        credentials_provider_ = make_shared<
+            Aws::Auth::STSProfileWithWebIdentityCredentialsProvider>(HERE());
+        break;
+      }
+      default: {
+        s3_tp_executor_->Stop();
+
+        throw S3StatusException{
+            "Ambiguous authentification options; Setting "
+            "vfs.s3.config_source is mutually exclusive with providing "
+            "either permanent or temporary credentials"};
+      }
     }
   }
 

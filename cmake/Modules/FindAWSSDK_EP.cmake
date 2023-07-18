@@ -39,7 +39,35 @@ if(TILEDB_VCPKG)
   #       it lists bare "pthread;curl" which leads to linkage of system versions. For static linkage, we
   #       handle those elsewhere at the moment.
   find_package(AWSSDK REQUIRED QUIET COMPONENTS ${AWS_SERVICES})
+
+  if (TILEDB_STATIC)
+
+    # not included for unknown reasons
+    list(APPEND AWSSDK_THIRD_PARTY_LIBS aws-c-io aws-c-cal)
+
+    set(AWSSDK_EXTRA_LIBS)
+    foreach(TARGET IN LISTS AWSSDK_THIRD_PARTY_LIBS)
+        message(STATUS "Try finding ${TARGET}")
+        find_package(${TARGET} REQUIRED NO_DEFAULT_PATH)
+        message(STATUS "Found ${TARGET}")
+        list(APPEND AWSSDK_EXTRA_LIBS "AWS::${TARGET}")
+    endforeach()
+    #message(FATAL_ERROR "f '${AWSSDK_EXTRA_LIBS}'")
+    install_all_target_libs("${AWSSDK_EXTRA_LIBS}")
+  endif()
+
   install_all_target_libs("${AWSSDK_LINK_LIBRARIES}")
+  find_package(LibXml2 REQUIRED)
+  install_target_libs(LibXml2::LibXml2)
+
+  if (NOT TARGET LibLZMA::LibLZMA)
+      find_package(LibLZMA REQUIRED)
+      install_target_libs(LibLZMA::LibLZMA)
+  endif()
+
+  #find_package(Iconv REQUIRED)
+  #install_target_libs(Iconv::Iconv)
+
   return()
 endif()
 
@@ -107,7 +135,7 @@ if (NOT AWSSDK_FOUND)
     # For aws sdk and gcc we must always build in release mode
     # See https://github.com/TileDB-Inc/TileDB/issues/1351 and
     # https://github.com/awslabs/aws-checksums/issues/8
-    set(AWS_CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE})
+    set(AWS_CMAKE_BUILD_TYPE $<CONFIG>)
     if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         set(AWS_CMAKE_BUILD_TYPE "Release")
     endif()

@@ -36,4 +36,4 @@ index f70a6c88f6..053ff938d4 100644
 +                    AWS_LOGSTREAM_ERROR(EVENT_STREAM_DECODER_CLASS_TAG, "Header received, but handler is null.");
                      return;
                  }
-
+ 

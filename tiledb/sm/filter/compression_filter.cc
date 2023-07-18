@@ -37,6 +37,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/compressors/bzip_compressor.h"
 #include "tiledb/sm/compressors/dd_compressor.h"
+#include "tiledb/sm/compressors/delta_compressor.h"
 #include "tiledb/sm/compressors/dict_compressor.h"
 #include "tiledb/sm/compressors/gzip_compressor.h"
 #include "tiledb/sm/compressors/lz4_compressor.h"
@@ -55,23 +56,31 @@ namespace tiledb {
 namespace sm {
 
 CompressionFilter::CompressionFilter(
-    FilterType compressor, int level, const uint32_t version)
+    FilterType compressor,
+    int level,
+    Datatype reinterpret_type,
+    const format_version_t version)
     : Filter(compressor)
     , compressor_(filter_to_compressor(compressor))
     , level_(level)
     , version_(version)
     , zstd_compress_ctx_pool_(nullptr)
-    , zstd_decompress_ctx_pool_(nullptr) {
+    , zstd_decompress_ctx_pool_(nullptr)
+    , reinterpret_datatype_(reinterpret_type) {
 }
 
 CompressionFilter::CompressionFilter(
-    Compressor compressor, int level, const uint32_t version)
+    Compressor compressor,
+    int level,
+    Datatype reinterpret_type,
+    const format_version_t version)
     : Filter(compressor_to_filter(compressor))
     , compressor_(compressor)
     , level_(level)
     , version_(version)
     , zstd_compress_ctx_pool_(nullptr)
-    , zstd_decompress_ctx_pool_(nullptr) {
+    , zstd_decompress_ctx_pool_(nullptr)
+    , reinterpret_datatype_(reinterpret_type) {
 }
 
 Compressor CompressionFilter::compressor() const {
@@ -86,41 +95,22 @@ void CompressionFilter::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
 
-  std::string compressor_str;
-  switch (compressor_) {
-    case Compressor::NO_COMPRESSION:
-      compressor_str = "NO_COMPRESSION";
-      break;
-    case Compressor::GZIP:
-      compressor_str = "GZIP";
-      break;
-    case Compressor::ZSTD:
-      compressor_str = "ZSTD";
-      break;
-    case Compressor::LZ4:
-      compressor_str = "LZ4";
-      break;
-    case Compressor::RLE:
-      compressor_str = "RLE";
-      break;
-    case Compressor::BZIP2:
-      compressor_str = "BZIP2";
-      break;
-    case Compressor::DOUBLE_DELTA:
-      compressor_str = "DOUBLE_DELTA";
-      break;
-    case Compressor::DICTIONARY_ENCODING:
-      compressor_str = "DICTIONARY_ENCODING";
-      break;
-    default:
-      compressor_str = "NO_COMPRESSION";
+  std::string compressor_str = tiledb::sm::compressor_str(compressor_);
+  if (compressor_ == Compressor::DELTA) {
+    fprintf(
+        out,
+        "%s: COMPRESSION_LEVEL=%i, REINTERPRET_DATATYPE=%s",
+        compressor_str.c_str(),
+        level_,
+        datatype_str(reinterpret_datatype_).c_str());
+  } else {
+    fprintf(out, "%s: COMPRESSION_LEVEL=%i", compressor_str.c_str(), level_);
   }
-
-  fprintf(out, "%s: COMPRESSION_LEVEL=%i", compressor_str.c_str(), level_);
 }
 
 CompressionFilter* CompressionFilter::clone_impl() const {
-  return tdb_new(CompressionFilter, compressor_, level_, version_);
+  return tdb_new(
+      CompressionFilter, compressor_, level_, reinterpret_datatype_, version_);
 }
 
 void CompressionFilter::set_compressor(Compressor compressor) {
@@ -150,6 +140,8 @@ FilterType CompressionFilter::compressor_to_filter(Compressor compressor) {
       return FilterType::FILTER_DOUBLE_DELTA;
     case Compressor::DICTIONARY_ENCODING:
       return FilterType::FILTER_DICTIONARY;
+    case Compressor::DELTA:
+      return FilterType::FILTER_DELTA;
     default:
       assert(false);
       return FilterType::FILTER_NONE;
@@ -174,6 +166,8 @@ Compressor CompressionFilter::filter_to_compressor(FilterType type) {
       return Compressor::DOUBLE_DELTA;
     case FilterType::FILTER_DICTIONARY:
       return Compressor::DICTIONARY_ENCODING;
+    case FilterType::FILTER_DELTA:
+      return Compressor::DELTA;
     default:
       assert(false);
       return Compressor::NO_COMPRESSION;
@@ -189,11 +183,16 @@ Status CompressionFilter::set_option_impl(
   switch (option) {
     case FilterOption::COMPRESSION_LEVEL:
       level_ = *(int*)value;
-      return Status::Ok();
+      break;
+    case FilterOption::COMPRESSION_REINTERPRET_DATATYPE:
+      reinterpret_datatype_ = *(Datatype*)value;
+      break;
     default:
       return LOG_STATUS(
           Status_FilterError("Compression filter error; unknown option"));
   }
+
+  return Status::Ok();
 }
 
 Status CompressionFilter::get_option_impl(
@@ -201,11 +200,16 @@ Status CompressionFilter::get_option_impl(
   switch (option) {
     case FilterOption::COMPRESSION_LEVEL:
       *(int*)value = level_;
-      return Status::Ok();
+      break;
+    case FilterOption::COMPRESSION_REINTERPRET_DATATYPE:
+      *(Datatype*)value = reinterpret_datatype_;
+      break;
     default:
       return LOG_STATUS(
           Status_FilterError("Compression filter error; unknown option"));
   }
+
+  return Status::Ok();
 }
 
 Status CompressionFilter::run_forward(
@@ -235,7 +239,8 @@ Status CompressionFilter::run_forward(
           *input, offsets_tile, *output, *output_metadata);
   }
 
-  std::vector<ConstBuffer> data_parts = input->buffers(),
+  std::vector<ConstBuffer> data_parts =
+                               input->buffers_as(reinterpret_datatype_),
                            metadata_parts = input_metadata->buffers();
   // Allocate output metadata
   auto total_num_parts = data_parts.size() + metadata_parts.size();
@@ -354,6 +359,12 @@ Status CompressionFilter::compress_part(
       return LOG_STATUS(
           Status_FilterError("CompressionFilter error; Dictionary encoding "
                              "only applies to variable length strings"));
+    case Compressor::DELTA:
+      // Use schema type if REINTERPRET_TYPE option is not set.
+      Delta::compress(
+          reinterpret_datatype_ == Datatype::ANY ? type : reinterpret_datatype_,
+          &input_buffer,
+          output);
       break;
     default:
       assert(0);
@@ -419,6 +430,12 @@ Status CompressionFilter::decompress_part(
       break;
     case Compressor::BZIP2:
       st = BZip::decompress(&input_buffer, &output_buffer);
+      break;
+    case Compressor::DELTA:
+      Delta::decompress(
+          reinterpret_datatype_ == Datatype::ANY ? type : reinterpret_datatype_,
+          &input_buffer,
+          &output_buffer);
       break;
     case Compressor::DOUBLE_DELTA:
       st = DoubleDelta::decompress(type, &input_buffer, &output_buffer);
@@ -652,6 +669,9 @@ void CompressionFilter::serialize_impl(Serializer& serializer) const {
   auto compressor_char = static_cast<uint8_t>(compressor_);
   serializer.write<uint8_t>(compressor_char);
   serializer.write<int32_t>(level_);
+  if (compressor_ == Compressor::DELTA) {
+    serializer.write<uint8_t>(static_cast<uint8_t>(reinterpret_datatype_));
+  }
 }
 
 void CompressionFilter::init_compression_resource_pool(uint64_t size) {
