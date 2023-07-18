@@ -416,10 +416,10 @@ class VFS {
   /** Check if an object store bucket is empty **/
   bool is_empty_bucket(const std::string& bucket) const {
     auto& ctx = ctx_.get();
-    int empty;
+    int is_empty;
     ctx.handle_error(tiledb_vfs_is_empty_bucket(
-        ctx.ptr().get(), vfs_.get(), bucket.c_str(), &empty));
-    return empty == 0;
+        ctx.ptr().get(), vfs_.get(), bucket.c_str(), &is_empty));
+    return is_empty;
   }
 
   /** Creates a directory with the input URI. */

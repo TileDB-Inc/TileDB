@@ -377,6 +377,25 @@ int32_t CSparseGlobalOrderFx::read(
         ctx_, query_condition, "a", &val, sizeof(int32_t), TILEDB_LT);
     CHECK(rc == TILEDB_OK);
 
+    // Negated query condition should produce the same results.
+    SECTION("- Test TILEDB_NOT") {
+      tiledb_query_condition_t* qc;
+      rc = tiledb_query_condition_alloc(ctx_, &qc);
+      CHECK(rc == TILEDB_OK);
+      rc = tiledb_query_condition_init(
+          ctx_, qc, "a", &val, sizeof(int32_t), TILEDB_GE);
+      CHECK(rc == TILEDB_OK);
+
+      tiledb_query_condition_free(&query_condition);
+      query_condition = nullptr;
+      rc = tiledb_query_condition_alloc(ctx_, &query_condition);
+      CHECK(rc == TILEDB_OK);
+      rc = tiledb_query_condition_negate(ctx_, qc, &query_condition);
+      CHECK(rc == TILEDB_OK);
+
+      tiledb_query_condition_free(&qc);
+    }
+
     rc = tiledb_query_set_condition(ctx_, query, query_condition);
     CHECK(rc == TILEDB_OK);
 

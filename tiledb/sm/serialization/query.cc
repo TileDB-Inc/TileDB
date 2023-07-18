@@ -186,6 +186,7 @@ Status subarray_to_capnp(
     const Subarray* subarray,
     capnp::Subarray::Builder* builder) {
   builder->setLayout(layout_str(subarray->layout()));
+  builder->setCoalesceRanges(subarray->coalesce_ranges());
 
   // Add ranges
   const uint32_t dim_num = subarray->dim_num();
@@ -262,6 +263,7 @@ Status subarray_to_capnp(
 
 Status subarray_from_capnp(
     const capnp::Subarray::Reader& reader, Subarray* subarray) {
+  RETURN_NOT_OK(subarray->set_coalesce_ranges(reader.getCoalesceRanges()));
   auto ranges_reader = reader.getRanges();
   uint32_t dim_num = ranges_reader.size();
   for (uint32_t i = 0; i < dim_num; i++) {
@@ -453,7 +455,7 @@ Status subarray_partitioner_from_capnp(
   RETURN_NOT_OK(layout_enum(subarray_reader.getLayout(), &layout));
 
   // Subarray, which is used to initialize the partitioner.
-  Subarray subarray(array, layout, query_stats, dummy_logger, false);
+  Subarray subarray(array, layout, query_stats, dummy_logger, true);
   RETURN_NOT_OK(subarray_from_capnp(reader.getSubarray(), &subarray));
   *partitioner = SubarrayPartitioner(
       &config,
@@ -512,7 +514,7 @@ Status subarray_partitioner_from_capnp(
     partition_info->split_multi_range_ =
         partition_info_reader.getSplitMultiRange();
     partition_info->partition_ =
-        Subarray(array, layout, query_stats, dummy_logger, false);
+        Subarray(array, layout, query_stats, dummy_logger, true);
     RETURN_NOT_OK(subarray_from_capnp(
         partition_info_reader.getSubarray(), &partition_info->partition_));
 
@@ -536,7 +538,7 @@ Status subarray_partitioner_from_capnp(
   for (unsigned i = 0; i < num_sr; i++) {
     auto subarray_reader_ = sr_reader[i];
     state->single_range_.emplace_back(
-        array, layout, query_stats, dummy_logger, false);
+        array, layout, query_stats, dummy_logger, true);
     Subarray& subarray_ = state->single_range_.back();
     RETURN_NOT_OK(subarray_from_capnp(subarray_reader_, &subarray_));
   }
@@ -545,7 +547,7 @@ Status subarray_partitioner_from_capnp(
   for (unsigned i = 0; i < num_m; i++) {
     auto subarray_reader_ = m_reader[i];
     state->multi_range_.emplace_back(
-        array, layout, query_stats, dummy_logger, false);
+        array, layout, query_stats, dummy_logger, true);
     Subarray& subarray_ = state->multi_range_.back();
     RETURN_NOT_OK(subarray_from_capnp(subarray_reader_, &subarray_));
   }
@@ -1081,7 +1083,7 @@ Status reader_from_capnp(
   RETURN_NOT_OK(layout_enum(reader_reader.getLayout(), &layout));
 
   // Subarray
-  Subarray subarray(array, layout, query->stats(), dummy_logger, false);
+  Subarray subarray(array, layout, query->stats(), dummy_logger, true);
   auto subarray_reader = reader_reader.getSubarray();
   RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
   RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
@@ -1123,7 +1125,7 @@ Status index_reader_from_capnp(
   RETURN_NOT_OK(layout_enum(reader_reader.getLayout(), &layout));
 
   // Subarray
-  Subarray subarray(array, layout, query->stats(), dummy_logger, false);
+  Subarray subarray(array, layout, query->stats(), dummy_logger, true);
   auto subarray_reader = reader_reader.getSubarray();
   RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
   RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
@@ -1166,7 +1168,7 @@ Status dense_reader_from_capnp(
   RETURN_NOT_OK(layout_enum(reader_reader.getLayout(), &layout));
 
   // Subarray
-  Subarray subarray(array, layout, query->stats(), dummy_logger, false);
+  Subarray subarray(array, layout, query->stats(), dummy_logger, true);
   auto subarray_reader = reader_reader.getSubarray();
   RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
   RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
@@ -1330,12 +1332,6 @@ Status writer_from_capnp(
   } else if (query.layout() == Layout::UNORDERED) {
     auto unordered_writer = dynamic_cast<UnorderedWriter*>(writer);
 
-    // Fragment metadata is not allocated when deserializing into a new Query
-    // object.
-    if (unordered_writer->frag_meta() == nullptr) {
-      RETURN_NOT_OK(unordered_writer->alloc_frag_meta());
-    }
-
     RETURN_NOT_OK(unordered_write_state_from_capnp(
         query,
         writer_reader.getUnorderedWriterState(),
@@ -1407,7 +1403,7 @@ Status query_to_capnp(
       // submission by adjusting user buffer sizes, tile-aligning the write.
       // Once this write completes the cache is updated with the previously held
       // tile-overflow bytes, and the following submission is prepended with
-      // with this data. See the QueryRemoteBufferStorage class for more info.
+      // this data. See the QueryRemoteBufferStorage class for more info.
       const auto& buff_cache =
           query_buffer_storage->get_query_buffer_cache(name);
       cached_fixed_size = buff_cache.buffer_.size();
@@ -1596,6 +1592,14 @@ Status query_from_capnp(
   bool force_legacy_reader =
       query_type == QueryType::READ && query_reader.hasReader();
   RETURN_NOT_OK(query->reset_strategy_with_layout(layout, force_legacy_reader));
+
+  // Reset QueryStatus to UNINITIALIZED
+  // Note: this is a pre-C.41 hack. At present, Strategy creation is the point
+  // of construction through the regular API. However, the Query cannot be
+  // considered fully initialized until everything has been deserialized. We
+  // must "reset" the status here to bypass future checks on a
+  // fully-initialized Query until the final QueryStatus is deserialized.
+  query->set_status(QueryStatus::UNINITIALIZED);
 
   // Deserialize Config
   if (query_reader.hasConfig()) {
@@ -2114,7 +2118,7 @@ Status query_from_capnp(
 
       // Subarray
       if (writer_reader.hasSubarrayRanges()) {
-        Subarray subarray(array, layout, query->stats(), dummy_logger, false);
+        Subarray subarray(array, layout, query->stats(), dummy_logger, true);
         auto subarray_reader = writer_reader.getSubarrayRanges();
         RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
         RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
@@ -2969,6 +2973,11 @@ Status unordered_write_state_from_capnp(
   }
 
   if (state_reader.hasFragMeta()) {
+    // Fragment metadata is not allocated when deserializing into a new Query
+    // object.
+    if (unordered_writer->frag_meta() == nullptr) {
+      RETURN_NOT_OK(unordered_writer->alloc_frag_meta());
+    }
     auto frag_meta = unordered_writer->frag_meta();
     auto frag_meta_reader = state_reader.getFragMeta();
     RETURN_NOT_OK(fragment_metadata_from_capnp(

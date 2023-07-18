@@ -150,7 +150,6 @@ struct DenseArrayFx {
       const tiledb_layout_t layout,
       std::vector<TestRange>& ranges,
       std::vector<uint64_t>& a1);
-  void set_small_memory_budget();
   static std::string random_name(const std::string& prefix);
 
   /**
@@ -3095,34 +3094,6 @@ void DenseArrayFx::check_non_empty_domain(const std::string& path) {
   tiledb_array_free(&array);
 };
 
-void DenseArrayFx::set_small_memory_budget() {
-  if (ctx_ != nullptr)
-    tiledb_ctx_free(&ctx_);
-
-  if (vfs_ != nullptr)
-    tiledb_vfs_free(&vfs_);
-
-  tiledb_config_t* config;
-  tiledb_error_t* error = nullptr;
-  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  REQUIRE(
-      tiledb_config_set(config, "sm.memory_budget", "10", &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  REQUIRE(
-      tiledb_config_set(
-          config, "sm.skip_unary_partitioning_budget_check", "true", &error) ==
-      TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
-  tiledb_config_free(&config);
-}
-
 std::string DenseArrayFx::random_name(const std::string& prefix) {
   std::stringstream ss;
   ss << prefix << "-" << std::this_thread::get_id() << "-"
@@ -4320,10 +4291,25 @@ TEST_CASE_METHOD(
   write_dense_array(array_name);
 
   // Forcing splitting to unary ranges.
-  set_small_memory_budget();
+  tiledb_config_t* config;
+  tiledb_error_t* error;
+  CHECK(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  CHECK(error == nullptr);
+  REQUIRE(
+      tiledb_config_set(config, "sm.memory_budget", "10", &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  REQUIRE(
+      tiledb_config_set(
+          config, "sm.skip_unary_partitioning_budget_check", "true", &error) ==
+      TILEDB_OK);
+  REQUIRE(error == nullptr);
 
   tiledb_array_t* array;
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  CHECK(rc == TILEDB_OK);
+
+  rc = tiledb_array_set_config(ctx_, array, config);
   CHECK(rc == TILEDB_OK);
 
   rc = array_open_wrapper(
@@ -4332,6 +4318,9 @@ TEST_CASE_METHOD(
 
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+
+  rc = tiledb_query_set_config(ctx_, query, config);
   CHECK(rc == TILEDB_OK);
 
   int a1[1];
@@ -4373,6 +4362,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_query_free(&query);
   tiledb_array_free(&array);
+  tiledb_config_free(&config);
 
   remove_temp_dir(temp_dir);
 }

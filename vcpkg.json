@@ -13,7 +13,12 @@
         },
         "spdlog",
         "zlib",
-        "zstd"
+        "zstd",
+        {
+          "name": "libxml2",
+          "features": ["lzma", "zlib"],
+          "default-features": false
+        }
     ],
     "features": {
         "abseil": {
@@ -26,16 +31,16 @@
             ]
         },
         "azure": {
-            "description": "Support Azure Storage",
+            "description": "Support Azure Blob Storage",
             "dependencies": [
                 {
-                    "name": "azure-storage-cpplite",
-                    "version>=": "0.3.0"
+                    "name": "azure-storage-blobs-cpp",
+                    "version>=": "12.6.1"
                 }
             ]
         },
         "gcs": {
-            "description": "Support google cloud storage",
+            "description": "Support Google Cloud Storage",
             "dependencies": [
                 {
                     "name": "google-cloud-cpp",
@@ -46,13 +51,17 @@
             ]
         },
         "serialization": {
-          "description": "Enable TileDB Cloud Support",
-          "dependencies": [
-              {
-                  "name": "capnproto",
-                  "version>=": "0.8.0"
-              }
-          ]
+            "description": "Enable TileDB Cloud Support",
+            "dependencies": [
+                {
+                    "name": "curl",
+                    "features": [ "zstd" ]
+                },
+                {
+                    "name": "capnproto",
+                    "version>=": "0.8.0"
+                }
+            ]
         },
         "s3": {
             "description": "Support AWS S3 Storage",
@@ -74,10 +83,7 @@
         "tools": {
             "description": "Build tiledb command line tool",
             "dependencies": [
-                {
-                    "name": "clipp",
-                    "version>=": "1.2.3"
-                }
+                "clipp"
             ]
         },
         "webp": {
@@ -88,7 +94,6 @@
                     "version>=": "1.2.3"
                 }
             ]
-
         }
     }
 }
