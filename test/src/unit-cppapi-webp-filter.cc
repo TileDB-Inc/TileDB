@@ -341,7 +341,9 @@ using DimensionTypes = std::tuple<
     int32_t,
     int64_t>;
 TEMPLATE_LIST_TEST_CASE(
-    "C++ API: WEBP Filter", "[cppapi][filter][webp]", DimensionTypes) {
+    "C++ API: WEBP Filter",
+    "[cppapi][filter][webp][longtest]",
+    DimensionTypes) {
   if constexpr (webp_filter_exists) {
     Context ctx;
     VFS vfs(ctx);
@@ -359,16 +361,19 @@ TEMPLATE_LIST_TEST_CASE(
         filter.to_str(filter.filter_type()) == sm::constants::filter_webp_str);
 
     // Check WEBP_QUALITY option.
-    float quality_found;
+    float quality_found = 0;
+
     REQUIRE_NOTHROW(
         filter.get_option<float>(TILEDB_WEBP_QUALITY, &quality_found));
     REQUIRE(100.0f == quality_found);
+    REQUIRE(quality_found == filter.get_option<float>(TILEDB_WEBP_QUALITY));
 
     float quality_expected = 1.0f;
     REQUIRE_NOTHROW(filter.set_option(TILEDB_WEBP_QUALITY, quality_expected));
     REQUIRE_NOTHROW(
         filter.get_option<float>(TILEDB_WEBP_QUALITY, &quality_found));
     REQUIRE(quality_expected == quality_found);
+    REQUIRE(quality_found == filter.get_option<float>(TILEDB_WEBP_QUALITY));
 
     // Set invalid options for TILEDB_WEBP_QUALITY.
     REQUIRE_THROWS(filter.set_option(TILEDB_WEBP_QUALITY, -1.0f));
@@ -379,11 +384,18 @@ TEMPLATE_LIST_TEST_CASE(
     REQUIRE_NOTHROW(
         filter.get_option<float>(TILEDB_WEBP_QUALITY, &quality_found));
     REQUIRE(100.0f == quality_found);
+    REQUIRE(quality_found == filter.get_option<float>(TILEDB_WEBP_QUALITY));
 
     // Check WEBP_INPUT_FORMAT option.
-    uint8_t format_found;
+    uint8_t format_found = 0;
     REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_INPUT_FORMAT, &format_found));
     REQUIRE(TILEDB_WEBP_NONE == format_found);
+    REQUIRE(
+        format_found == filter.get_option<uint8_t>(TILEDB_WEBP_INPUT_FORMAT));
+    REQUIRE(
+        (tiledb_filter_webp_format_t)format_found ==
+        filter.get_option<tiledb_filter_webp_format_t>(
+            TILEDB_WEBP_INPUT_FORMAT));
 
     // Set invalid option for WEBP_INPUT_FORMAT.
     REQUIRE_THROWS(filter.set_option(TILEDB_WEBP_INPUT_FORMAT, (uint8_t)255));
@@ -392,18 +404,22 @@ TEMPLATE_LIST_TEST_CASE(
         filter.set_option(TILEDB_WEBP_INPUT_FORMAT, &format_expected));
     REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_INPUT_FORMAT, &format_found));
     REQUIRE(format_expected == format_found);
+    REQUIRE(
+        format_found == filter.get_option<uint8_t>(TILEDB_WEBP_INPUT_FORMAT));
 
     // Check WEBP_LOSSLESS option.
-    uint8_t lossless_found;
+    uint8_t lossless_found = 0;
     REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_LOSSLESS, &lossless_found));
     REQUIRE(0 == lossless_found);
+    REQUIRE(lossless_found == filter.get_option<uint8_t>(TILEDB_WEBP_LOSSLESS));
 
     REQUIRE_THROWS(filter.set_option(TILEDB_WEBP_LOSSLESS, (uint8_t)2));
 
     REQUIRE_NOTHROW(
-        filter.set_option(TILEDB_WEBP_LOSSLESS, &lossless_expected));
+        filter.set_option<uint8_t>(TILEDB_WEBP_LOSSLESS, lossless_expected));
     REQUIRE_NOTHROW(filter.get_option(TILEDB_WEBP_LOSSLESS, &lossless_found));
     REQUIRE(lossless_expected == lossless_found);
+    REQUIRE(lossless_found == filter.get_option<uint8_t>(TILEDB_WEBP_LOSSLESS));
 
     // Test against images of different sizes.
     Domain domain = create_domain<TestType>(ctx, format_expected);
@@ -440,7 +456,7 @@ TEMPLATE_LIST_TEST_CASE(
         1, height, 1, (TestType)(width * pixel_depth)};
     Query read(ctx, array);
     read.set_layout(TILEDB_ROW_MAJOR)
-        .set_subarray(subarray)
+        .set_subarray(Subarray(ctx, array).set_subarray(subarray))
         .set_data_buffer("rgb", read_rgb);
     read.submit();
     array.close();
@@ -521,6 +537,16 @@ TEST_CASE("C API: WEBP Filter", "[capi][filter][webp]") {
         ctx, filter, TILEDB_WEBP_INPUT_FORMAT, &found_fmt);
     REQUIRE(status == TILEDB_OK);
     REQUIRE(TILEDB_WEBP_NONE == found_fmt);
+
+    tiledb_filter_webp_format_t set_fmt{};
+    REQUIRE(
+        tiledb_filter_set_option(
+            ctx, filter, TILEDB_WEBP_INPUT_FORMAT, &set_fmt) == TILEDB_OK);
+    tiledb_filter_webp_format_t get_fmt{};
+    REQUIRE(
+        tiledb_filter_get_option(
+            ctx, filter, TILEDB_WEBP_INPUT_FORMAT, &get_fmt) == TILEDB_OK);
+    REQUIRE(set_fmt == get_fmt);
 
     status = tiledb_filter_set_option(
         ctx, filter, TILEDB_WEBP_INPUT_FORMAT, &expected_fmt);

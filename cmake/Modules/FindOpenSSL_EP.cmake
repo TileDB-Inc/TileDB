@@ -33,6 +33,13 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
+if (TILEDB_VCPKG)
+  find_package(OpenSSL REQUIRED)
+  target_link_libraries(OpenSSL::SSL)
+  install_all_target_libs(OpenSSL::SSL)
+  return()
+endif()
+
 # Search the path set during the superbuild for the EP.
 set(OPENSSL_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
@@ -105,8 +112,6 @@ if (NOT OPENSSL_FOUND AND TILEDB_SUPERBUILD)
     URL_HASH SHA1=627938302f681dfac186a9225b65368516b4f484
     CONFIGURE_COMMAND ${OPENSSL_CONFIG_CMD}
     BUILD_IN_SOURCE TRUE
-    BUILD_COMMAND $(MAKE)
-    INSTALL_COMMAND $(MAKE) install
     UPDATE_COMMAND ""
     LOG_DOWNLOAD TRUE
     LOG_CONFIGURE TRUE

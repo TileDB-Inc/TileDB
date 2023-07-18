@@ -210,11 +210,6 @@ class Config {
   /** Ratio of the sparse global order reader budget used for coords. */
   static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS;
 
-  /**
-   * Ratio of the sparse global order reader budget used for query condition.
-   */
-  static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION;
-
   /** Ratio of the sparse global order reader budget used for tile ranges. */
   static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES;
 
@@ -223,13 +218,6 @@ class Config {
 
   /** Ratio of the sparse unordered with dups reader budget used for coords. */
   static const std::string SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_COORDS;
-
-  /**
-   * Ratio of the sparse unordered with dups reader budget used for query
-   * condition.
-   */
-  static const std::string
-      SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_QUERY_CONDITION;
 
   /**
    * Ratio of the sparse unordered with dups reader budget used for tile
@@ -415,9 +403,6 @@ class Config {
   /** Azure blob endpoint. */
   static const std::string VFS_AZURE_BLOB_ENDPOINT;
 
-  /** Azure use https. */
-  static const std::string VFS_AZURE_USE_HTTPS;
-
   /** Azure max parallel ops. */
   static const std::string VFS_AZURE_MAX_PARALLEL_OPS;
 
@@ -426,6 +411,15 @@ class Config {
 
   /** Azure use block list upload. */
   static const std::string VFS_AZURE_USE_BLOCK_LIST_UPLOAD;
+
+  /** Azure max retries. */
+  static const std::string VFS_AZURE_MAX_RETRIES;
+
+  /** Azure min retry delay. */
+  static const std::string VFS_AZURE_RETRY_DELAY_MS;
+
+  /** Azure max retry delay. */
+  static const std::string VFS_AZURE_MAX_RETRY_DELAY_MS;
 
   /** GCS project id. */
   static const std::string VFS_GCS_PROJECT_ID;
@@ -552,6 +546,18 @@ class Config {
 
   /** S3 default object canned ACL */
   static const std::string VFS_S3_OBJECT_CANNED_ACL;
+
+  /**
+   * Force S3 SDK to only load config options from a set source.
+   * The supported options are
+   * - `auto` (TileDB config options are considered first,
+   *    then SDK-defined precedence: env vars, config files, ec2 metadata),
+   * - `config_files` (forces SDK to only consider options found in aws
+   *    config files),
+   *    `sts_profile_with_web_identity` (force SDK to consider assume roles/sts
+   * from config files with support for web tokens, commonly used by EKS/ECS).
+   */
+  static const std::string VFS_S3_CONFIG_SOURCE;
 
   /**
    * Specifies the size in bytes of the internal buffers used in the filestore

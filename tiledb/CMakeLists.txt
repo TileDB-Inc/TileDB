@@ -52,10 +52,12 @@ find_package(Threads REQUIRED)
 ############################################################
 
 add_subdirectory(api)
+add_subdirectory(as_built)
 add_subdirectory(common)
 add_subdirectory(platform)
 add_subdirectory(type)
 add_subdirectory(sm)
+add_subdirectory(stdx)
 add_subdirectory(storage_format)
 
 ############################################################
@@ -154,6 +156,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_filestore.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/bzip_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/dd_compressor.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/delta_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/dict_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/gzip_compressor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/lz4_compressor.cc
@@ -183,6 +186,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/posix.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3_thread_pool_executor.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3/STSProfileWithWebIdentityCredentialsProvider.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/uri.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs_file_handle.cc
@@ -256,6 +260,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/ordered_writer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/unordered_writer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/writer_base.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query_plan/query_plan.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rtree/rtree.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array.cc
@@ -378,6 +383,7 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
 # Use BUILD_INTERFACE generator to work around
 #   https://gitlab.kitware.com/cmake/cmake/-/issues/20736
 target_link_libraries(TILEDB_CORE_OBJECTS PRIVATE $<BUILD_INTERFACE:common>)
+
 target_link_libraries(TILEDB_CORE_OBJECTS INTERFACE object_store_definitions)
 
 ############################################################
@@ -470,12 +476,8 @@ if (TILEDB_SERIALIZATION)
   add_definitions(-DTILEDB_SERIALIZATION)
   message(STATUS "The TileDB library is compiled with query serialization enabled.")
 
-  if(MSVC)
-    if (TILEDB_CURL_EP_BUILT)
-      target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -DCURL_STATICLIB=1)
-    else()
-      target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE                   )
-    endif()
+  if(MSVC AND TILEDB_CURL_EP_BUILT)
+    target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -DCURL_STATICLIB=1)
   endif()
 endif()
 
@@ -488,7 +490,7 @@ endif()
 # so we can use the targets created by the calls to find_package().
 add_library(TILEDB_CORE_OBJECTS_ILIB INTERFACE)
 
-# Object Store Configuration
+# object store definitions
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE object_store_definitions)
 
 # blosc link dependencies
@@ -497,46 +499,87 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${TileDB_blosc_LINK_OPT
 # Find OpenSSL first in case it's needed for S3 or Azure
 if (NOT WIN32)
   find_package(OpenSSL_EP REQUIRED)
+  if (TILEDB_VCPKG)
+    install_target_libs(OpenSSL::SSL)
+    install_target_libs(OpenSSL::Crypto)
+  endif()
 endif()
 
 # S3 dependencies
 if (TILEDB_S3)
   message(STATUS "The TileDB library is compiled with S3 support.")
-  find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-      AWSSDK::aws-cpp-sdk-s3
-      AWSSDK::aws-cpp-sdk-core
-      AWSSDK::aws-c-event-stream
-      AWSSDK::aws-checksums
-      AWSSDK::aws-c-common
-      AWSSDK::aws-cpp-sdk-identity-management
-      AWSSDK::aws-cpp-sdk-sts)
+
+  if (TILEDB_VCPKG)
+    find_package(AWSSDK_EP REQUIRED)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+      INTERFACE
+        ${AWSSDK_LINK_LIBRARIES}
+        ${AWSSDK_EXTRA_LIBS}
+        )
+
+  else()
+    find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+      INTERFACE
+        AWSSDK::aws-cpp-sdk-s3
+        AWSSDK::aws-cpp-sdk-core
+        AWSSDK::aws-c-event-stream
+        AWSSDK::aws-checksums
+        AWSSDK::aws-c-common
+        AWSSDK::aws-cpp-sdk-identity-management
+        AWSSDK::aws-cpp-sdk-sts)
+  endif()
 endif()
 
 # Azure dependencies
 if (TILEDB_AZURE)
   message(STATUS "The TileDB library is compiled with Azure support.")
-  find_package(AzureSDK_EP REQUIRED COMPONENTS azure)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-      AzureSDK::AzureSDK
-  )
 
-  if(MSVC)
-    if (TILEDB_CURL_EP_BUILT)
-      target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -DCURL_STATICLIB=1 -Dazure_storage_lite_EXPORTS)
-    else()
-      target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE                    -Dazure_storage_lite_EXPORTS)
+  if (TILEDB_VCPKG)
+    find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
+    if (NOT TARGET LibLZMA::LibLZMA)
+      find_package(LibLZMA REQUIRED)
+    endif()
+    if (NOT TARGET LibXml2::LibXml2)
+      find_package(LibXml2 REQUIRED)
+      install_target_libs(LibXml2::LibXml2)
+    endif()
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+            INTERFACE
+            Azure::azure-storage-common
+            Azure::azure-storage-blobs
+            Azure::azure-core
+            LibXml2::LibXml2
+            LibLZMA::LibLZMA
+            )
+    install_all_target_libs("Azure::azure-storage-blobs;Azure::azure-storage-common;Azure::azure-core")
+  else()
+    find_package(AzureCore_EP REQUIRED)
+    find_package(AzureStorageCommon_EP REQUIRED)
+    find_package(AzureStorageBlobs_EP REQUIRED)
+    if (NOT TARGET LibXml2::LibXml2)
+      find_package(libxml2 REQUIRED)
+      install_target_libs(LibXml2::LibXml2)
+    endif()
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+            INTERFACE
+            Azure::azure-storage-blobs
+            Azure::azure-storage-common
+            Azure::azure-core
+            LibXml2::LibXml2)
+    if(WIN32)
+      # WebServices needed by Azure storage on windows
+      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE WebServices)
     endif()
   endif()
 endif()
 
 # GCS dependencies
 if (TILEDB_GCS)
-  if (NOT TILEDB_GCS_CLASSIC)
+  if (TILEDB_VCPKG)
     find_package(google_cloud_cpp_storage CONFIG REQUIRED)
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE CURL::libcurl google-cloud-cpp::storage google-cloud-cpp::experimental-storage-grpc)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE google-cloud-cpp::storage)
+    install_all_target_libs(google-cloud-cpp::storage)
   else()
     message(STATUS "The TileDB library is compiled with GCS support.")
     find_package(GCSSDK_EP REQUIRED COMPONENTS gcs)
@@ -560,14 +603,14 @@ if (TILEDB_GCS)
 endif()
 
 # Libcurl
-if (TILEDB_S3 OR TILEDB_AZURE OR TILEDB_GCS OR TILEDB_SERIALIZATION)
+if (TILEDB_S3 OR TILEDB_GCS OR TILEDB_AZURE OR TILEDB_SERIALIZATION)
   if (NOT WIN32)
     find_package(Curl_EP REQUIRED)
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
       INTERFACE
         CURL::libcurl
     )
-  elseif (WIN32 AND (TILEDB_AZURE OR TILEDB_SERIALIZATION))
+  elseif (WIN32 AND TILEDB_SERIALIZATION)
     find_package(Curl_EP REQUIRED)
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
       INTERFACE
@@ -594,8 +637,12 @@ if (SANITIZER)
 endif()
 
 # Coverage linker flags
+# TODO: Use $<CONFIG:Coverage> after we remove the superbuild.
 if (CMAKE_BUILD_TYPE MATCHES "Coverage")
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+  if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    message(FATAL_ERROR "Compiling with code coverage is only supported with Clang.")
+  endif()
+  target_link_options(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
       --coverage
   )
@@ -614,11 +661,24 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     Bzip2::Bzip2
     LZ4::LZ4
-    spdlog::spdlog
     ZLIB::ZLIB
     Zstd::Zstd
     libmagic
 )
+if (TILEDB_VCPKG)
+  # vcpkg uses SPDLOG_FMT_EXTERNAL=1
+
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+    INTERFACE
+      fmt::fmt
+      spdlog::spdlog
+  )
+else()
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+    INTERFACE
+      spdlog::spdlog
+  )
+endif()
 
 if(TILEDB_CRC32)
   find_package(crc32c_EP REQUIRED)
@@ -642,16 +702,6 @@ if(TILEDB_WEBP)
   add_definitions(-DTILEDB_WEBP)
 endif()
 
-if(TILEDB_ABSEIL)
-  find_package(absl_EP REQUIRED)
-
-  include(${CMAKE_SOURCE_DIR}/test/external/src/absl_library_targets.cmake)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-    ${TILEDB_ABSL_LIBRARY_TARGETS}
-  )
-endif()
-
 if (NOT WIN32)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
@@ -663,7 +713,7 @@ endif()
 # Win32 specific libraries
 if (WIN32)
   set(WIN32_LIBS shlwapi rpcrt4 bcrypt)
-  if(TILEDB_AZURE OR TILEDB_SERIALIZATION)
+  if(TILEDB_SERIALIZATION)
     #ws2_32.lib, crypt32.lib needed to satisfy curl dependencies
     set(WIN32_LIBS ${WIN32_LIBS} ws2_32 crypt32)
   endif()
@@ -688,7 +738,7 @@ endif()
 if(APPLE)
   if(TILEDB_S3)
     # this is a transitive dependency for statically linking S3 SDK
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE "-framework CoreFoundation")
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE "-framework CoreFoundation -framework SystemConfiguration -framework Security")
   endif()
 endif()
 
@@ -724,7 +774,7 @@ target_include_directories(TILEDB_CORE_OBJECTS
 #   - https://github.com/TileDB-Inc/TileDB/pull/1253
 # NOTE: just like the static dependencies in TileDBConfig create above
 #       (via TILEDB_DEP_STRING), this linkage embeds absolute paths.
-if ((TILEDB_S3 OR TILEDB_AZURE OR TILEDB_GCS OR TILEDB_SERIALIZATION) AND NOT WIN32)
+if ((TILEDB_S3 OR TILEDB_GCS OR TILEDB_SERIALIZATION) AND NOT WIN32)
   if (TILEDB_CURL_EP_BUILT)
     set(CURL_CONFIG_BINARY "${TILEDB_EP_BASE}/install/bin/curl-config")
 
@@ -909,26 +959,39 @@ if (TILEDB_STATIC)
   append_dep_lib(OpenSSL::SSL)
   append_dep_lib(OpenSSL::Crypto)
   append_dep_lib(CURL::libcurl)
-  append_dep_lib(AWSSDK::aws-cpp-sdk-s3)
-  append_dep_lib(AWSSDK::aws-cpp-sdk-core)
-  append_dep_lib(AWSSDK::aws-c-event-stream)
-  append_dep_lib(AWSSDK::aws-checksums)
-  append_dep_lib(AWSSDK::aws-c-common)
-  append_dep_lib(AWSSDK::aws-cpp-sdk-sts)
-  append_dep_lib(AWSSDK::aws-cpp-sdk-identity-management)
-  append_dep_lib(AzureSDK::AzureSDK)
-  append_dep_lib(GCSSDK::storage_client)
-  append_dep_lib(GCSSDK::google_cloud_cpp_common)
-  append_dep_lib(GCSSDK::crc32c)
+
+  if(TILEDB_S3 AND TILEDB_VCPKG)
+    foreach(tgt ${AWSSDK_LINK_LIBRARIES} ${AWSSDK_EXTRA_LIBS})
+      append_dep_lib(${tgt})
+    endforeach()
+  elseif(TILEDB_S3)
+    append_dep_lib(AWSSDK::aws-cpp-sdk-s3)
+    append_dep_lib(AWSSDK::aws-cpp-sdk-core)
+    append_dep_lib(AWSSDK::aws-c-event-stream)
+    append_dep_lib(AWSSDK::aws-checksums)
+    append_dep_lib(AWSSDK::aws-c-common)
+    append_dep_lib(AWSSDK::aws-cpp-sdk-sts)
+    append_dep_lib(AWSSDK::aws-cpp-sdk-identity-management)
+  endif()
+
+  append_dep_lib(fmt::fmt)
   append_dep_lib(spdlog::spdlog)
+
+  append_dep_lib(Azure::azure-storage-common)
+  if(TILEDB_AZURE AND NOT TILEDB_VCPKG)
+    append_dep_lib(Azure::azure-storage-blobs)
+  endif()
+  append_dep_lib(Azure::azure-core)
+  append_dep_lib(LibXml2::LibXml2)
+  append_dep_lib(LibLZMA::LibLZMA)
+
+  append_dep_lib(google-cloud-cpp::storage)
+  append_dep_lib(google-cloud-cpp::experimental-storage-grpc)
+
   append_dep_lib(libmagic)
   append_dep_lib(Crc32c::crc32c)
   append_dep_lib(WebP::webp)
-  if(TILEDB_ABSEIL)
-    foreach(tgt ${TILEDB_ABSL_LIBRARIES})
-      append_dep_lib(${tgt})
-    endforeach()
-  endif()
+
 endif()
 
 ############################################################

@@ -48,7 +48,7 @@ class IQueryStrategy {
   virtual ~IQueryStrategy() = default;
 
   /** Initialize the memory budget variables. */
-  virtual void initialize_memory_budget() = 0;
+  virtual void refresh_config() = 0;
 
   /** Performs a query using its set members. */
   virtual Status dowork() = 0;
@@ -64,6 +64,9 @@ class IQueryStrategy {
 
   /** Resets the object */
   virtual void reset() = 0;
+
+  /** Returns the name of the strategy */
+  virtual std::string name() = 0;
 };
 
 }  // namespace sm

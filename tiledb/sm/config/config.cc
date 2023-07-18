@@ -113,17 +113,13 @@ const std::string Config::SM_QUERY_SPARSE_GLOBAL_ORDER_READER = "refactored";
 const std::string Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER =
     "refactored";
 const std::string Config::SM_MEM_MALLOC_TRIM = "true";
-const std::string Config::SM_UPPER_MEMORY_LIMIT = "2147483648";  // 2GB
+const std::string Config::SM_UPPER_MEMORY_LIMIT = "1073741824";  // 1GB
 const std::string Config::SM_MEM_TOTAL_BUDGET = "10737418240";   // 10GB
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS = "0.5";
-const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION =
-    "0.25";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES = "0.1";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA = "0.1";
 const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_COORDS =
     "0.5";
-const std::string
-    Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_QUERY_CONDITION = "0.25";
 const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_TILE_RANGES =
     "0.1";
 const std::string Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_ARRAY_DATA =
@@ -171,11 +167,13 @@ const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_NAME = "";
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_KEY = "";
 const std::string Config::VFS_AZURE_STORAGE_SAS_TOKEN = "";
 const std::string Config::VFS_AZURE_BLOB_ENDPOINT = "";
-const std::string Config::VFS_AZURE_USE_HTTPS = "true";
 const std::string Config::VFS_AZURE_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
 const std::string Config::VFS_AZURE_BLOCK_LIST_BLOCK_SIZE = "5242880";
 const std::string Config::VFS_AZURE_USE_BLOCK_LIST_UPLOAD = "true";
+const std::string Config::VFS_AZURE_MAX_RETRIES = "5";
+const std::string Config::VFS_AZURE_RETRY_DELAY_MS = "800";
+const std::string Config::VFS_AZURE_MAX_RETRY_DELAY_MS = "60000";
 const std::string Config::VFS_GCS_PROJECT_ID = "";
 const std::string Config::VFS_GCS_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
@@ -217,6 +215,7 @@ const std::string Config::VFS_S3_VERIFY_SSL = "true";
 const std::string Config::VFS_S3_NO_SIGN_REQUEST = "false";
 const std::string Config::VFS_S3_BUCKET_CANNED_ACL = "NOT_SET";
 const std::string Config::VFS_S3_OBJECT_CANNED_ACL = "NOT_SET";
+const std::string Config::VFS_S3_CONFIG_SOURCE = "auto";
 const std::string Config::VFS_HDFS_KERB_TICKET_CACHE_PATH = "";
 const std::string Config::VFS_HDFS_NAME_NODE_URI = "";
 const std::string Config::VFS_HDFS_USERNAME = "";
@@ -289,9 +288,6 @@ const std::map<std::string, std::string> default_config_values = {
         "sm.mem.reader.sparse_global_order.ratio_coords",
         Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS),
     std::make_pair(
-        "sm.mem.reader.sparse_global_order.ratio_query_condition",
-        Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_QUERY_CONDITION),
-    std::make_pair(
         "sm.mem.reader.sparse_global_order.ratio_tile_ranges",
         Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES),
     std::make_pair(
@@ -300,9 +296,6 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "sm.mem.reader.sparse_unordered_with_dups.ratio_coords",
         Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_COORDS),
-    std::make_pair(
-        "sm.mem.reader.sparse_unordered_with_dups.ratio_query_condition",
-        Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_QUERY_CONDITION),
     std::make_pair(
         "sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges",
         Config::SM_MEM_SPARSE_UNORDERED_WITH_DUPS_RATIO_TILE_RANGES),
@@ -382,7 +375,6 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "vfs.azure.storage_sas_token", Config::VFS_AZURE_STORAGE_SAS_TOKEN),
     std::make_pair("vfs.azure.blob_endpoint", Config::VFS_AZURE_BLOB_ENDPOINT),
-    std::make_pair("vfs.azure.use_https", Config::VFS_AZURE_USE_HTTPS),
     std::make_pair(
         "vfs.azure.max_parallel_ops", Config::VFS_AZURE_MAX_PARALLEL_OPS),
     std::make_pair(
@@ -391,6 +383,11 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "vfs.azure.use_block_list_upload",
         Config::VFS_AZURE_USE_BLOCK_LIST_UPLOAD),
+    std::make_pair("vfs.azure.max_retries", Config::VFS_AZURE_MAX_RETRIES),
+    std::make_pair(
+        "vfs.azure.retry_delay_ms", Config::VFS_AZURE_RETRY_DELAY_MS),
+    std::make_pair(
+        "vfs.azure.max_retry_delay_ms", Config::VFS_AZURE_MAX_RETRY_DELAY_MS),
     std::make_pair("vfs.gcs.project_id", Config::VFS_GCS_PROJECT_ID),
     std::make_pair(
         "vfs.gcs.max_parallel_ops", Config::VFS_GCS_MAX_PARALLEL_OPS),
@@ -447,6 +444,7 @@ const std::map<std::string, std::string> default_config_values = {
         "vfs.s3.bucket_canned_acl", Config::VFS_S3_BUCKET_CANNED_ACL),
     std::make_pair(
         "vfs.s3.object_canned_acl", Config::VFS_S3_OBJECT_CANNED_ACL),
+    std::make_pair("vfs.s3.config_source", Config::VFS_S3_CONFIG_SOURCE),
     std::make_pair("vfs.hdfs.name_node_uri", Config::VFS_HDFS_NAME_NODE_URI),
     std::make_pair("vfs.hdfs.username", Config::VFS_HDFS_USERNAME),
     std::make_pair(

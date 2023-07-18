@@ -28,7 +28,7 @@ The metadata folder can contain:
 
 ## Metadata File
 
-The metadata file has the following on-disk format:
+The metadata file consists of a single [generic tile](./generic_tile.md), containing multiple entries with the following data:
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |

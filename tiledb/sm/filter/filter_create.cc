@@ -61,6 +61,7 @@ tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
     case tiledb::sm::FilterType::FILTER_LZ4:
     case tiledb::sm::FilterType::FILTER_RLE:
     case tiledb::sm::FilterType::FILTER_BZIP2:
+    case tiledb::sm::FilterType::FILTER_DELTA:
     case tiledb::sm::FilterType::FILTER_DOUBLE_DELTA:
     case tiledb::sm::FilterType::FILTER_DICTIONARY:
       return tdb_new(tiledb::sm::CompressionFilter, type, -1);
@@ -118,13 +119,19 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
     case FilterType::FILTER_LZ4:
     case FilterType::FILTER_RLE:
     case FilterType::FILTER_BZIP2:
+    case FilterType::FILTER_DELTA:
     case FilterType::FILTER_DOUBLE_DELTA:
     case FilterType::FILTER_DICTIONARY: {
       uint8_t compressor_char = deserializer.read<uint8_t>();
       int compression_level = deserializer.read<int32_t>();
+      Datatype reinterpret_type = Datatype::ANY;
+      if (filtertype == FilterType::FILTER_DELTA) {
+        uint8_t reinterpret = deserializer.read<uint8_t>();
+        reinterpret_type = static_cast<Datatype>(reinterpret);
+      }
       Compressor compressor = static_cast<Compressor>(compressor_char);
       return make_shared<CompressionFilter>(
-          HERE(), compressor, compression_level, version);
+          HERE(), compressor, compression_level, reinterpret_type, version);
     }
     case FilterType::FILTER_BIT_WIDTH_REDUCTION: {
       uint32_t max_window_size = deserializer.read<uint32_t>();

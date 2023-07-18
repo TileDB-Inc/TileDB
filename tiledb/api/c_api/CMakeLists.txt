@@ -106,3 +106,6 @@ add_subdirectory(string)
 # `vfs`: depends on `context`
 add_subdirectory(vfs)
 
+# `query_plan`: no dependencies yet
+add_subdirectory(query_plan)
+

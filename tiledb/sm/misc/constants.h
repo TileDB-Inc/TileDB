@@ -36,6 +36,7 @@
 #include <array>
 #include <cinttypes>
 #include <string>
+#include <vector>
 
 #include "tiledb/common/common.h"
 
@@ -81,6 +82,9 @@ extern const std::string array_commits_dir_name;
 
 /** The array dimension labels directory name. */
 extern const std::string array_dimension_labels_dir_name;
+
+/** The array directory names. */
+extern const std::vector<std::string> array_dir_names;
 
 /** The default tile capacity. */
 extern const uint64_t capacity;
@@ -250,6 +254,9 @@ extern const std::string group_detail_dir_name;
 /** The group metadata directory name. */
 extern const std::string group_metadata_dir_name;
 
+/** The group directory names. */
+extern const std::vector<std::string> group_dir_names;
+
 /** The maximum number of bytes written in a single I/O. */
 extern const uint64_t max_write_bytes;
 
@@ -291,6 +298,9 @@ extern const std::string query_status_inprogress_str;
 
 /** TILEDB_INCOMPLETE Query String **/
 extern const std::string query_status_incomplete_str;
+
+/** TILEDB_INITIALIZED Query String **/
+extern const std::string query_status_initialized_str;
 
 /** TILEDB_UNINITIALIZED Query String **/
 extern const std::string query_status_uninitialized_str;
@@ -355,6 +365,9 @@ extern const std::string bzip2_str;
 /** String describing DOUBLE_DELTA. */
 extern const std::string double_delta_str;
 
+/** String describing DELTA. */
+extern const std::string delta_str;
+
 /** String describing FILTER_NONE. */
 extern const std::string filter_none_str;
 
@@ -415,6 +428,12 @@ extern const std::string filter_option_webp_input_format;
 
 /** The string representation for FilterOption type webp_lossless. */
 extern const std::string filter_option_webp_lossless;
+
+/**
+ * The string representation for FilterOption type
+ * compression_reinterpret_datatype.
+ */
+extern const std::string filter_option_compression_reinterpret_datatype;
 
 /** The string representation for type int32. */
 extern const std::string int32_str;
@@ -649,16 +668,6 @@ extern const unsigned int s3_max_attempts;
 
 /** Milliseconds of wait time between S3 attempts. */
 extern const unsigned int s3_attempt_sleep_ms;
-
-/** Maximum number of attempts to wait for an Azure response. */
-extern const unsigned int azure_max_attempts;
-
-/**
- * Milliseconds of wait time between Azure attempts. Currently,
- * the Azure SDK only supports retries with a second-granularity.
- * This number will be floored to the nearest second.
- */
-extern const unsigned int azure_attempt_sleep_ms;
 
 /** Maximum number of attempts to wait for an GCS response. */
 extern const unsigned int gcs_max_attempts;

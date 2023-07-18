@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -184,11 +184,11 @@ void Subarray::add_label_range(
   if (label_range_subset_[dim_idx].has_value()) {
     // A label range has already been set on this dimension. Do the following:
     //  * Check this label is the same label that rangers were already set.
-    if (dim_label_ref.name() != label_range_subset_[dim_idx].value().name) {
-      throw StatusException(Status_SubarrayError(
-          "Cannot add label range; Dimension is already to set to use "
+    if (dim_label_ref.name() != label_range_subset_[dim_idx].value().name_) {
+      throw SubarrayStatusException(
+          "[add_label_range] Dimension is already to set to use "
           "dimension label '" +
-          label_range_subset_[dim_idx].value().name));
+          label_range_subset_[dim_idx].value().name_ + "'");
     }
   } else {
     // A label range has not yet been set on this dimension. Do the following:
@@ -199,9 +199,9 @@ void Subarray::add_label_range(
     //    value of the entire domain).
     if (range_subset_[dim_label_ref.dimension_index()]
             .is_explicitly_initialized()) {
-      throw StatusException(Status_SubarrayError(
-          "Cannot add label range; Dimension '" + std::to_string(dim_idx) +
-          "' already has ranges set to it."));
+      throw SubarrayStatusException(
+          "[add_label_range] Dimension '" + std::to_string(dim_idx) +
+          "' already has ranges set to it.");
     }
     label_range_subset_[dim_idx] =
         LabelRangeSubset(dim_label_ref, coalesce_ranges_);
@@ -215,12 +215,12 @@ void Subarray::add_label_range(
 
   // Restrict the range to the dimension domain and add.
   auto&& [error_status, oob_warning] =
-      label_range_subset_[dim_idx].value().ranges.add_range(
+      label_range_subset_[dim_idx].value().ranges_.add_range(
           range, read_range_oob_error);
   if (!error_status.ok()) {
-    throw StatusException(Status_SubarrayError(
-        "Cannot add label range for dimension label '" + dim_label_ref.name() +
-        "'; " + error_status.message()));
+    throw SubarrayStatusException(
+        "[add_label_range] Cannot add label range for dimension label '" +
+        dim_label_ref.name() + "'; " + error_status.message());
   }
   if (oob_warning.has_value()) {
     LOG_WARN(
@@ -236,21 +236,19 @@ void Subarray::add_label_range(
     const void* stride) {
   // Check input range data is valid data.
   if (start == nullptr || end == nullptr) {
-    throw StatusException(
-        Status_SubarrayError("Cannot add label range; Invalid range"));
+    throw SubarrayStatusException("[add_label_range] Invalid range");
   }
   if (stride != nullptr) {
-    throw StatusException(
-        Status_SubarrayError("Cannot add label range; Setting range stride is "
-                             "currently unsupported"));
+    throw SubarrayStatusException(
+        "[add_label_range] Setting range stride is currently unsupported");
   }
   // Get dimension label range and check the label is in fact fixed-sized.
   const auto& dim_label_ref =
       array_->array_schema_latest().dimension_label(label_name);
   if (dim_label_ref.label_cell_val_num() == constants::var_num) {
-    throw StatusException(
-        Status_SubarrayError("Cannot add label range; Cannot add a fixed-sized "
-                             "range to a variable sized dimension label"));
+    throw SubarrayStatusException(
+        "[add_label_range] Cannot add a fixed-sized range to a variable sized "
+        "dimension label");
   }
   // Add the label range to this subarray.
   return this->add_label_range(
@@ -268,17 +266,16 @@ void Subarray::add_label_range_var(
   // Check the input range data is valid.
   if ((start == nullptr && start_size != 0) ||
       (end == nullptr && end_size != 0)) {
-    throw StatusException(
-        Status_SubarrayError("Cannot add range; Invalid range"));
+    throw SubarrayStatusException("[add_label_range_var] Invalid range");
   }
   // Get the dimension label range and check the label is in fact
   // variable-sized.
   const auto& dim_label_ref =
       array_->array_schema_latest().dimension_label(label_name);
   if (dim_label_ref.label_cell_val_num() != constants::var_num) {
-    throw StatusException(Status_SubarrayError(
-        "Cannot add label range; Cannot add a variable-sized range to a "
-        "fixed-sized dimension label"));
+    throw SubarrayStatusException(
+        "[add_label_range_var] Cannot add a variable-sized range to a "
+        "fixed-sized dimension label");
   }
   // Add the label range to this subarray.
   return this->add_label_range(
@@ -310,8 +307,9 @@ Status Subarray::add_range(
   if (oob_warning.has_value())
     LOG_WARN(oob_warning.value() + " on dimension '" + dim_name + "'");
 
-  // Update is default.
+  // Update is default and stats counter.
   is_default_[dim_idx] = range_subset_[dim_idx].is_implicitly_initialized();
+  stats_->add_counter("add_range_dim_" + std::to_string(dim_idx), 1);
   return Status::Ok();
 }
 
@@ -585,10 +583,9 @@ const std::vector<Range>& Subarray::get_attribute_ranges(
 
 const std::string& Subarray::get_label_name(const uint32_t dim_index) const {
   if (!has_label_ranges(dim_index)) {
-    throw SubarrayStatusException(
-        "Cannot get label name. No label ranges set.");
+    throw SubarrayStatusException("[get_label_name] No label ranges set");
   }
-  return label_range_subset_[dim_index]->name;
+  return label_range_subset_[dim_index]->name_;
 }
 
 void Subarray::get_label_range(
@@ -601,12 +598,12 @@ void Subarray::get_label_range(
                      .dimension_label(label_name)
                      .dimension_index();
   if (!label_range_subset_[dim_idx].has_value() ||
-      label_range_subset_[dim_idx].value().name != label_name) {
-    throw StatusException(Status_SubarrayError(
-        "Cannot get label range; No ranges set on dimension label '" +
-        label_name + "'"));
+      label_range_subset_[dim_idx].value().name_ != label_name) {
+    throw SubarrayStatusException(
+        "[get_label_range] No ranges set on dimension label '" + label_name +
+        "'");
   }
-  const auto& range = label_range_subset_[dim_idx].value().ranges[range_idx];
+  const auto& range = label_range_subset_[dim_idx].value().ranges_[range_idx];
   *start = range.start_fixed();
   *end = range.end_fixed();
   *stride = nullptr;
@@ -618,8 +615,8 @@ void Subarray::get_label_range_num(
                      .dimension_label(label_name)
                      .dimension_index();
   *range_num = (label_range_subset_[dim_idx].has_value() &&
-                label_range_subset_[dim_idx].value().name == label_name) ?
-                   label_range_subset_[dim_idx].value().ranges.num_ranges() :
+                label_range_subset_[dim_idx].value().name_ == label_name) ?
+                   label_range_subset_[dim_idx].value().ranges_.num_ranges() :
                    0;
 }
 
@@ -632,12 +629,12 @@ void Subarray::get_label_range_var(
                      .dimension_label(label_name)
                      .dimension_index();
   if (!label_range_subset_[dim_idx].has_value() ||
-      label_range_subset_[dim_idx].value().name != label_name) {
-    throw StatusException(Status_SubarrayError(
-        "Cannot get label range; No ranges set on dimension label '" +
-        label_name + "'"));
+      label_range_subset_[dim_idx].value().name_ != label_name) {
+    throw SubarrayStatusException(
+        "[get_label_range_var] No ranges set on dimension label '" +
+        label_name + "'");
   }
-  const auto& range = label_range_subset_[dim_idx].value().ranges[range_idx];
+  const auto& range = label_range_subset_[dim_idx].value().ranges_[range_idx];
   std::memcpy(start, range.start_str().data(), range.start_size());
   std::memcpy(end, range.end_str().data(), range.end_size());
 }
@@ -651,12 +648,12 @@ void Subarray::get_label_range_var_size(
                      .dimension_label(label_name)
                      .dimension_index();
   if (!label_range_subset_[dim_idx].has_value() ||
-      label_range_subset_[dim_idx].value().name != label_name) {
-    throw StatusException(Status_SubarrayError(
-        "Cannot get label range size; No ranges set on dimension label '" +
-        label_name + "'"));
+      label_range_subset_[dim_idx].value().name_ != label_name) {
+    throw SubarrayStatusException(
+        "[get_label_range_var_size] No ranges set on dimension label '" +
+        label_name + "'");
   }
-  const auto& range = label_range_subset_[dim_idx].value().ranges[range_idx];
+  const auto& range = label_range_subset_[dim_idx].value().ranges_[range_idx];
   *start_size = range.start_size();
   *end_size = range.end_size();
 }
@@ -866,6 +863,12 @@ bool Subarray::coincides_with_tiles() const {
   return true;
 }
 
+void Subarray::check_oob() {
+  for (auto& subset : range_subset_) {
+    subset.check_oob();
+  }
+}
+
 template <class T>
 Subarray Subarray::crop_to_tile(const T* tile_coords, Layout layout) const {
   // TBD: is it ok that Subarray log id will increase as if it's a new subarray?
@@ -897,14 +900,6 @@ bool Subarray::empty() const {
 
 bool Subarray::empty(uint32_t dim_idx) const {
   return range_subset_[dim_idx].is_empty();
-}
-
-QueryType Subarray::get_query_type() const {
-  if (array_ == nullptr)
-    throw StatusException(Status_SubarrayError(
-        "Cannot get query type from array; Invalid array"));
-
-  return array_->get_query_type();
 }
 
 Status Subarray::get_range(
@@ -1025,13 +1020,22 @@ bool Subarray::has_label_ranges() const {
       label_range_subset_.cbegin(),
       label_range_subset_.cend(),
       [](const auto& range_subset) {
-        return range_subset.has_value() && !range_subset->ranges.is_empty();
+        return range_subset.has_value() && !range_subset->ranges_.is_empty();
       });
 }
 
 bool Subarray::has_label_ranges(const uint32_t dim_index) const {
   return label_range_subset_[dim_index].has_value() &&
-         !label_range_subset_[dim_index]->ranges.is_empty();
+         !label_range_subset_[dim_index]->ranges_.is_empty();
+}
+
+int Subarray::label_ranges_num() const {
+  return std::count_if(
+      std::begin(label_range_subset_),
+      std::end(label_range_subset_),
+      [](const auto& range_subset) {
+        return range_subset.has_value() && !range_subset->ranges_.is_empty();
+      });
 }
 
 bool Subarray::is_default(uint32_t dim_index) const {
@@ -1091,8 +1095,8 @@ void Subarray::set_layout(Layout layout) {
   layout_ = layout;
 }
 
-Status Subarray::set_config(const Config& config) {
-  config_ = config;
+void Subarray::set_config(const Config& config) {
+  config_.inherit(config);
 
   QueryType array_query_type{array_->get_query_type()};
 
@@ -1101,13 +1105,11 @@ Status Subarray::set_config(const Config& config) {
     std::string read_range_oob_str = config.get("sm.read_range_oob", &found);
     assert(found);
     if (read_range_oob_str != "error" && read_range_oob_str != "warn")
-      return LOG_STATUS(Status_SubarrayError(
-          "Invalid value " + read_range_oob_str +
-          " for sm.read_range_obb. Acceptable values are 'error' or 'warn'."));
+      throw SubarrayStatusException(
+          "[set_config] Invalid value " + read_range_oob_str +
+          " for sm.read_range_obb. Acceptable values are 'error' or 'warn'.");
     err_on_range_oob_ = read_range_oob_str == "error";
   }
-
-  return Status::Ok();
 };
 
 const Config* Subarray::config() const {
@@ -1200,52 +1202,6 @@ Status Subarray::get_est_result_size_internal(
     *size = cell_size;
 
   return Status::Ok();
-}
-
-Status Subarray::get_est_result_size(
-    const char* name, uint64_t* size, StorageManager* storage_manager) {
-  // Note: various items below expect array open, get_query_type() providing
-  // that audit.
-  QueryType array_query_type{array_->get_query_type()};
-  if (array_query_type != QueryType::READ) {
-    return LOG_STATUS(Status_SubarrayError(
-        "Cannot get estimated result size; unsupported query type"));
-  }
-
-  if (name == nullptr) {
-    return LOG_STATUS(Status_SubarrayError(
-        "Cannot get estimated result size; Name cannot be null"));
-  }
-
-  if (name == constants::coords &&
-      !array_->array_schema_latest().domain().all_dims_same_type()) {
-    return LOG_STATUS(Status_SubarrayError(
-        "Cannot get estimated result size; Not applicable to zipped "
-        "coordinates in arrays with heterogeneous domain"));
-  }
-
-  if (name == constants::coords &&
-      !array_->array_schema_latest().domain().all_dims_fixed()) {
-    return LOG_STATUS(Status_SubarrayError(
-        "Cannot get estimated result size; Not applicable to zipped "
-        "coordinates in arrays with domains with variable-sized dimensions"));
-  }
-
-  if (array_->array_schema_latest().is_nullable(name)) {
-    return LOG_STATUS(Status_SubarrayError(
-        std::string(
-            "Cannot get estimated result size; Input attribute/dimension '") +
-        name + "' is nullable"));
-  }
-
-  if (array_->is_remote()) {
-    return LOG_STATUS(Status_SubarrayError(
-        std::string("Error in query estimate result size; remote/REST "
-                    "array functionality not implemented.")));
-  }
-
-  return get_est_result_size_internal(
-      name, size, &config_, storage_manager->compute_tp());
 }
 
 Status Subarray::get_est_result_size(
@@ -1780,14 +1736,14 @@ NDRange Subarray::ndrange(const std::vector<uint64_t>& range_coords) const {
 void Subarray::set_attribute_ranges(
     const std::string& attr_name, const std::vector<Range>& ranges) {
   if (!array_->array_schema_latest().is_attr(attr_name)) {
-    throw StatusException(Status_SubarrayError(
-        "Cannot add ranges; No attribute named " + attr_name + "'."));
+    throw SubarrayStatusException(
+        "[set_attribute_ranges] No attribute named " + attr_name + "'.");
   }
   auto search = attr_range_subset_.find(attr_name);
   if (search != attr_range_subset_.end()) {
-    throw StatusException(Status_SubarrayError(
-        "Cannot add ranges; Ranges are already set for attribute '" +
-        attr_name + "'."));
+    throw SubarrayStatusException(
+        "[set_attribute_ranges] Ranges are already set for attribute '" +
+        attr_name + "'.");
   }
   attr_range_subset_[attr_name] = ranges;
 }
@@ -1798,10 +1754,10 @@ const std::vector<Range>& Subarray::ranges_for_label(
                      .dimension_label(label_name)
                      .dimension_index();
   if (!label_range_subset_[dim_idx].has_value() ||
-      label_range_subset_[dim_idx].value().name != label_name) {
-    throw StatusException(Status_SubarrayError(
-        "Cannot get label ranges; No ranges set on dimension label '" +
-        label_name + "'"));
+      label_range_subset_[dim_idx].value().name_ != label_name) {
+    throw SubarrayStatusException(
+        "[ranges_for_label] No ranges set on dimension label '" + label_name +
+        "'");
   }
   return label_range_subset_[dim_idx]->get_ranges();
 }
@@ -1818,6 +1774,20 @@ Status Subarray::set_ranges_for_dim(
     throw_if_not_ok(range_subset_[dim_idx].add_range_unrestricted(range));
   is_default_[dim_idx] = range_subset_[dim_idx].is_implicitly_initialized();
   return Status::Ok();
+}
+
+void Subarray::set_label_ranges_for_dim(
+    const uint32_t dim_idx,
+    const std::string& name,
+    const std::vector<Range>& ranges) {
+  auto dim{array_->array_schema_latest().dimension_ptr(dim_idx)};
+  label_range_subset_[dim_idx] =
+      LabelRangeSubset(name, dim->type(), coalesce_ranges_);
+  for (const auto& range : ranges) {
+    throw_if_not_ok(
+        label_range_subset_[dim_idx].value().ranges_.add_range_unrestricted(
+            range));
+  }
 }
 
 Status Subarray::split(
@@ -2146,6 +2116,10 @@ void Subarray::add_default_ranges() {
         dim->type(), dim->domain(), true, coalesce_ranges_));
   }
   is_default_.resize(dim_num, true);
+  add_default_label_ranges(dim_num);
+}
+
+void Subarray::add_default_label_ranges(dimension_size_type dim_num) {
   label_range_subset_.clear();
   label_range_subset_.resize(dim_num, nullopt);
 }
@@ -2658,18 +2632,15 @@ Status Subarray::precompute_tile_overlap(
 Status Subarray::precompute_all_ranges_tile_overlap(
     ThreadPool* const compute_tp,
     std::vector<FragIdx>& frag_tile_idx,
-    std::vector<std::vector<std::pair<uint64_t, uint64_t>>>*
-        result_tile_ranges) {
+    ITileRange* tile_ranges) {
   auto timer_se = stats_->start_timer("read_compute_simple_tile_overlap");
 
   // For easy reference.
   const auto meta = array_->fragment_metadata();
-  const auto fragment_num = meta.size();
   const auto dim_num = array_->array_schema_latest().dim_num();
 
   // Get the results ready.
-  result_tile_ranges->clear();
-  result_tile_ranges->resize(fragment_num);
+  tile_ranges->clear_tile_ranges();
 
   compute_range_offsets();
 
@@ -2749,7 +2720,7 @@ Status Subarray::precompute_all_ranges_tile_overlap(
 
           if (!comb) {
             if (length != 0) {
-              result_tile_ranges->at(f).emplace_back(end + 1 - length, end);
+              tile_ranges->add_tile_range(f, end + 1 - length, end);
               length = 0;
             }
 
@@ -2760,12 +2731,15 @@ Status Subarray::precompute_all_ranges_tile_overlap(
         }
 
         // Push the last result tile range.
-        if (length != 0)
-          result_tile_ranges->at(f).emplace_back(end + 1 - length, end);
+        if (length != 0) {
+          tile_ranges->add_tile_range(f, end + 1 - length, end);
+        }
 
         return Status::Ok();
       });
   RETURN_NOT_OK(status);
+
+  tile_ranges->done_adding_tile_ranges();
 
   return Status::Ok();
 }
@@ -3344,9 +3318,15 @@ template void Subarray::crop_to_tile<double>(
 
 Subarray::LabelRangeSubset::LabelRangeSubset(
     const DimensionLabel& ref, bool coalesce_ranges)
-    : name{ref.name()}
-    , ranges{RangeSetAndSuperset(
+    : name_{ref.name()}
+    , ranges_{RangeSetAndSuperset(
           ref.label_type(), Range(), false, coalesce_ranges)} {
+}
+
+Subarray::LabelRangeSubset::LabelRangeSubset(
+    const std::string& name, Datatype type, bool coalesce_ranges)
+    : name_{name}
+    , ranges_{RangeSetAndSuperset(type, Range(), false, coalesce_ranges)} {
 }
 
 }  // namespace sm

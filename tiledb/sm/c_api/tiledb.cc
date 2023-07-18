@@ -207,6 +207,21 @@ int32_t tiledb_serialization_type_from_str(
 }
 
 /* ********************************* */
+/*             LOGGING               */
+/* ********************************* */
+
+capi_return_t tiledb_log_warn(tiledb_ctx_t* ctx, const char* message) {
+  if (message == nullptr) {
+    return TILEDB_ERR;
+  }
+
+  auto logger = ctx->storage_manager()->logger();
+  logger->warn(message);
+
+  return TILEDB_OK;
+}
+
+/* ********************************* */
 /*            ATTRIBUTE              */
 /* ********************************* */
 
@@ -1278,7 +1293,7 @@ int32_t tiledb_array_schema_evolution_drop_attribute(
   return TILEDB_OK;
 }
 
-TILEDB_EXPORT int32_t tiledb_array_schema_evolution_set_timestamp_range(
+int32_t tiledb_array_schema_evolution_set_timestamp_range(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_evolution_t* array_schema_evolution,
     uint64_t lo,
@@ -1394,7 +1409,7 @@ int32_t tiledb_query_set_config(
   if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
   api::ensure_config_is_valid(config);
-  throw_if_not_ok(query->query_->set_config(config->config()));
+  query->query_->set_config(config->config());
   return TILEDB_OK;
 }
 
@@ -2027,7 +2042,7 @@ int32_t tiledb_query_add_update_value(
     tiledb_query_t* query,
     const char* field_name,
     const void* update_value,
-    uint64_t update_value_size) noexcept {
+    uint64_t update_value_size) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, query) == TILEDB_ERR) {
@@ -2086,7 +2101,7 @@ int32_t tiledb_subarray_set_config(
   if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
   api::ensure_config_is_valid(config);
-  throw_if_not_ok(subarray->subarray_->set_config(config->config()));
+  subarray->subarray_->set_config(config->config());
   return TILEDB_OK;
 }
 
@@ -5190,7 +5205,7 @@ int32_t tiledb_fragment_info_dump(
 /*          EXPERIMENTAL APIs        */
 /* ********************************* */
 
-TILEDB_EXPORT int32_t tiledb_query_get_status_details(
+int32_t tiledb_query_get_status_details(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     tiledb_query_status_details_t* status) {
@@ -5207,7 +5222,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_status_details(
   return TILEDB_OK;
 }
 
-TILEDB_EXPORT int32_t tiledb_consolidation_plan_create_with_mbr(
+int32_t tiledb_consolidation_plan_create_with_mbr(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     uint64_t fragment_size,
@@ -5259,7 +5274,7 @@ void tiledb_consolidation_plan_free(
 int32_t tiledb_consolidation_plan_get_num_nodes(
     tiledb_ctx_t* ctx,
     tiledb_consolidation_plan_t* consolidation_plan,
-    uint64_t* num_nodes) noexcept {
+    uint64_t* num_nodes) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
     return TILEDB_ERR;
@@ -5273,7 +5288,7 @@ int32_t tiledb_consolidation_plan_get_num_fragments(
     tiledb_ctx_t* ctx,
     tiledb_consolidation_plan_t* consolidation_plan,
     uint64_t node_index,
-    uint64_t* num_fragments) noexcept {
+    uint64_t* num_fragments) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
     return TILEDB_ERR;
@@ -5297,7 +5312,7 @@ int32_t tiledb_consolidation_plan_get_fragment_uri(
     tiledb_consolidation_plan_t* consolidation_plan,
     uint64_t node_index,
     uint64_t fragment_index,
-    const char** uri) noexcept {
+    const char** uri) {
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
     return TILEDB_ERR;
@@ -5477,6 +5492,14 @@ void tiledb_version(int32_t* major, int32_t* minor, int32_t* rev) noexcept {
   *major = tiledb::sm::constants::library_version[0];
   *minor = tiledb::sm::constants::library_version[1];
   *rev = tiledb::sm::constants::library_version[2];
+}
+
+/* ********************************* */
+/*             LOGGING               */
+/* ********************************* */
+
+capi_return_t tiledb_log_warn(tiledb_ctx_t* ctx, const char* message) {
+  return api_entry<tiledb::api::tiledb_log_warn>(ctx, message);
 }
 
 /* ********************************* */

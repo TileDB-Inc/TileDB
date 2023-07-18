@@ -28,11 +28,6 @@
 
 find_package(Catch_EP REQUIRED)
 
-# These options not exposed in bootstrap script.
-option(TILEDB_TESTS_AWS_S3_CONFIG "Use an S3 config appropriate for AWS in tests" OFF)
-option(TILEDB_TESTS_ENABLE_REST "Enables REST tests (requires running REST server)" OFF)
-
-
 # Arrow integration test config and dependencies
 # Override from environment if not set in cache
 if (NOT DEFINED $CACHE{TILEDB_ARROW_TESTS})
@@ -168,6 +163,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-vfs.cc
   src/unit-CellSlabIter.cc
   src/unit-compression-dd.cc
+  src/unit-compression-delta.cc
   src/unit-compression-rle.cc
   src/unit-crypto.cc
   src/unit-ctx.cc
@@ -322,6 +318,10 @@ if (TILEDB_TESTS_AWS_S3_CONFIG)
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_AWS_S3_CONFIG)
 endif()
 
+if (TILEDB_TESTS_ENABLE_REST)
+  target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_ENABLE_REST)
+endif()
+
 if (TILEDB_SERIALIZATION)
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_SERIALIZATION)
 endif()
@@ -362,9 +362,17 @@ endif()
 
 add_test(
   NAME "tiledb_unit"
-  COMMAND $<TARGET_FILE:tiledb_unit> --durations=yes
+  COMMAND tiledb_unit --durations=yes
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+if (DEFINED ENV{TILEDB_NIGHTLY_BUILD})
+  add_test(
+    NAME "tiledb_unit_nightly"
+    COMMAND tiledb_unit --durations=yes --allow-running-no-tests [nightly_only]
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  )
+endif()
 
 if(TILEDB_HDFS)
   # need to force flat namespace for the signal chaining to work on macOS

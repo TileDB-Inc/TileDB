@@ -4,10 +4,12 @@ trigger:
     - dev
     - release-*
     - refs/tags/*
+    - build-
 pr:
   branches:
     include:
     - '*'  # must quote since "*" is a YAML reserved character; we want a string
+  paths:
     exclude:
     - '.github/workflows/quarto-render.yml'
     - '_quarto.yml'
@@ -17,7 +19,9 @@ pr:
 
 variables:
   - name: MANYLINUX_IMAGE
-    value: quay.io/pypa/manylinux2014_x86_64:2022-11-06-7be974c
+    #value: quay.io/pypa/manylinux2014_x86_64:2022-11-06-7be974c
+    # modified from above tag to add linux-headers
+    value: ghcr.io/ihnorton/tiledb-manylinux2014_x86_64:2023-04-02
 
 stages:
   - stage: CI
@@ -26,7 +30,7 @@ stages:
       BACKWARDS_COMPATIBILITY_ARRAYS: OFF
     jobs:
     - job:
-      timeoutInMinutes: 90
+      timeoutInMinutes: 120
       strategy:
         matrix:
           macOS_azure:
@@ -91,12 +95,14 @@ stages:
              TILEDB_GCS: OFF
              TILEDB_WERROR: OFF
              CMAKE_OSX_ARCHITECTURES: "arm64"
+             BUILD_MAGIC_MACOS_UNIVERSAL: "ON"
              MACOSX_DEPLOYMENT_TARGET: 11
        pool:
          vmImage: $(imageName)
        steps:
        - template: scripts/azure-linux_mac-release.yml
      - job: linux_manylinux
+       timeoutInMinutes: 90
        pool: { vmImage: 'ubuntu-20.04' }
        container: ${{ variables.MANYLINUX_IMAGE }}
        strategy:

@@ -60,6 +60,7 @@ struct CDenseFx {
   const char* ARRAY_NAME = "test_dense_reader";
   std::string total_budget_;
   std::string tile_upper_memory_limit_;
+  bool qc_negated = false;
 
   void create_default_array_1d();
   void evolve_default_array_1d();
@@ -459,12 +460,30 @@ void CDenseFx::read(
     tiledb_query_condition_t* qc;
     rc = tiledb_query_condition_alloc(ctx_, &qc);
     CHECK(rc == TILEDB_OK);
-    int32_t val = 10000;
-    rc = tiledb_query_condition_init(
-        ctx_, qc, "a", &val, sizeof(int32_t), TILEDB_LT);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_set_condition(ctx_, query, qc);
-    CHECK(rc == TILEDB_OK);
+    SECTION("- Test TILEDB_LT") {
+      int32_t val = 10000;
+      rc = tiledb_query_condition_init(
+          ctx_, qc, "a", &val, sizeof(int32_t), TILEDB_LT);
+      CHECK(rc == TILEDB_OK);
+      rc = tiledb_query_set_condition(ctx_, query, qc);
+      CHECK(rc == TILEDB_OK);
+    }
+
+    SECTION("- Test TILEDB_NOT") {
+      int32_t val = 10;
+      rc = tiledb_query_condition_init(
+          ctx_, qc, "a", &val, sizeof(int32_t), TILEDB_GT);
+      CHECK(rc == TILEDB_OK);
+      tiledb_query_condition_t* qc_not;
+      rc = tiledb_query_condition_alloc(ctx_, &qc_not);
+      rc = tiledb_query_condition_negate(ctx_, qc, &qc_not);
+      rc = tiledb_query_set_condition(ctx_, query, qc_not);
+      CHECK(rc == TILEDB_OK);
+      tiledb_query_condition_free(&qc_not);
+
+      qc_negated = true;
+    }
+
     tiledb_query_condition_free(&qc);
   }
 
@@ -851,7 +870,11 @@ TEST_CASE_METHOD(
   read(subarray, data_r, &data_r_size, use_qc);
 
   CHECK(data_r_size == data_size);
-  CHECK(!std::memcmp(data.data(), data_r, data_size));
+  if (qc_negated) {
+    CHECK(!std::memcmp(data.data(), data_r, data_size / 2));
+  } else {
+    CHECK(!std::memcmp(data.data(), data_r, data_size));
+  }
 }
 
 TEST_CASE_METHOD(
@@ -911,8 +934,8 @@ TEST_CASE_METHOD(
       subarray, data.data(), &data_size, offsets.data(), &offsets_size);
 
   // Each tiles are 91 and 100 bytes respectively, this will only allow to
-  // load one.
-  tile_upper_memory_limit_ = "105";
+  // load one as the budget is split across two potential reads.
+  tile_upper_memory_limit_ = "210";
   update_config();
 
   // Try to read.
@@ -953,9 +976,9 @@ TEST_CASE_METHOD(
       subarray, data.data(), &data_size, offsets.data(), &offsets_size);
 
   // Each tiles are 91 and 100 bytes respectively, this will only allow to
-  // load one.
+  // load one as the budget is split across two potential reads.
   total_budget_ = "460";
-  tile_upper_memory_limit_ = "105";
+  tile_upper_memory_limit_ = "210";
   update_config();
 
   std::string error_expected =
@@ -1001,7 +1024,7 @@ TEST_CASE_METHOD(
       subarray, data.data(), &data_size, offsets.data(), &offsets_size);
 
   // Each tile is 40 bytes, this will only allow to load one.
-  tile_upper_memory_limit_ = "50";
+  tile_upper_memory_limit_ = "100";
   update_config();
 
   // Try to read.
@@ -1053,9 +1076,10 @@ TEST_CASE_METHOD(
       &a2_offsets_size);
 
   // Each var tiles are 91 and 100 bytes respectively, this will only allow to
-  // load one. Fixed tiles are both 40 so they both fit in the budget.
+  // load one as the budget is split across two potential reads. Fixed tiles are
+  // both 40 so they both fit in the budget.
   total_budget_ = "660";
-  tile_upper_memory_limit_ = "105";
+  tile_upper_memory_limit_ = "210";
   update_config();
 
   // Try to read.
@@ -1169,9 +1193,10 @@ TEST_CASE_METHOD(
       &a2_offsets_size);
 
   // Each var tiles are 91 and 100 bytes respectively, this will only allow to
-  // load one. Fixed tiles are both 40 so they both fit in the budget.
+  // load one as the budget is split across two potential reads. Fixed tiles are
+  // both 40 so they both fit in the budget.
   total_budget_ = "640";
-  tile_upper_memory_limit_ = "105";
+  tile_upper_memory_limit_ = "210";
   update_config();
 
   // Try to read.
@@ -1271,9 +1296,9 @@ TEST_CASE_METHOD(
       a2_offsets.data(),
       &a2_offsets_size);
 
-  // First var tiles is 91 and subequent are 100 bytes, this will only allow
-  // to load two tiles the first loop and one on the subsequents.
-  tile_upper_memory_limit_ = "192";
+  // First var tiles is 91 and subequent are 100 bytes, this will only allow to
+  // load two tiles the first loop and one on the subsequents.
+  tile_upper_memory_limit_ = "384";
   update_config();
 
   // Try to read.

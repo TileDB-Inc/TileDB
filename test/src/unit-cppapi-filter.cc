@@ -53,16 +53,25 @@ TEST_CASE("C++ API: Filter options", "[cppapi][filter]") {
   int32_t get_level;
   f.get_option(TILEDB_COMPRESSION_LEVEL, &get_level);
   REQUIRE(get_level == -1);
+  REQUIRE(get_level == f.get_option<int32_t>(TILEDB_COMPRESSION_LEVEL));
 
+  // Check void* setter
   int32_t set_level = 5;
   f.set_option(TILEDB_COMPRESSION_LEVEL, &set_level);
   f.get_option(TILEDB_COMPRESSION_LEVEL, &get_level);
   REQUIRE(get_level == 5);
+  REQUIRE(get_level == f.get_option<int32_t>(TILEDB_COMPRESSION_LEVEL));
+
+  // Check void* getter
+  int32_t get_level_void;
+  f.get_option(TILEDB_COMPRESSION_LEVEL, static_cast<void*>(&get_level_void));
+  REQUIRE(get_level_void == 5);
 
   // Check templated version
   f.set_option(TILEDB_COMPRESSION_LEVEL, 4);
   f.get_option(TILEDB_COMPRESSION_LEVEL, &get_level);
   REQUIRE(get_level == 4);
+  REQUIRE(get_level == f.get_option<int32_t>(TILEDB_COMPRESSION_LEVEL));
 
   // Check templated version with wrong type throws exception
   uint32_t wrong_type_u = 1;
@@ -72,6 +81,8 @@ TEST_CASE("C++ API: Filter options", "[cppapi][filter]") {
   REQUIRE_THROWS_AS(
       f.get_option(TILEDB_COMPRESSION_LEVEL, &wrong_type_u),
       std::invalid_argument);
+  REQUIRE_THROWS_AS(
+      f.get_option<uint32_t>(TILEDB_COMPRESSION_LEVEL), std::invalid_argument);
 
   // Check that you can bypass type safety (don't do this).
   f.get_option(TILEDB_COMPRESSION_LEVEL, (void*)&wrong_type_u);
@@ -83,6 +94,8 @@ TEST_CASE("C++ API: Filter options", "[cppapi][filter]") {
       f.set_option(TILEDB_BIT_WIDTH_MAX_WINDOW, &window), TileDBError);
   REQUIRE_THROWS_AS(
       f.get_option(TILEDB_BIT_WIDTH_MAX_WINDOW, &window), TileDBError);
+  REQUIRE_THROWS_AS(
+      f.get_option<uint32_t>(TILEDB_BIT_WIDTH_MAX_WINDOW), TileDBError);
 
   Filter f2(ctx, TILEDB_FILTER_BIT_WIDTH_REDUCTION);
   int32_t wrong_type_i = 1;
@@ -102,7 +115,7 @@ TEST_CASE("C++ API: Filter lists", "[cppapi][filter]") {
       f2(ctx, TILEDB_FILTER_BZIP2);
 
   const int32_t set_level = 5;
-  f2.set_option(TILEDB_COMPRESSION_LEVEL, &set_level);
+  f2.set_option(TILEDB_COMPRESSION_LEVEL, set_level);
 
   FilterList list(ctx);
   REQUIRE(list.nfilters() == 0);
@@ -122,6 +135,7 @@ TEST_CASE("C++ API: Filter lists", "[cppapi][filter]") {
   int32_t get_level;
   f2_get.get_option(TILEDB_COMPRESSION_LEVEL, &get_level);
   REQUIRE(get_level == set_level);
+  REQUIRE(get_level == f2_get.get_option<int32_t>(TILEDB_COMPRESSION_LEVEL));
 
   list.add_filter({ctx, TILEDB_FILTER_BYTESHUFFLE});
   REQUIRE(list.nfilters() == 3);
@@ -454,7 +468,7 @@ void write_dense_array_string_attr(
   query.set_data_buffer("a1", data);
   query.set_offsets_buffer("a1", data_offsets);
   query.set_layout(layout);
-  query.set_subarray<int64_t>({0, 1, 0, 2});
+  query.set_subarray(Subarray(ctx, array).set_subarray<int64_t>({0, 1, 0, 2}));
 
   test::ServerQueryBuffers server_buffers_;
   auto rc = test::submit_query_wrapper(
@@ -484,7 +498,7 @@ void read_and_check_dense_array_string_attr(
   attr_val.resize(expected_data.size());
   std::vector<uint64_t> attr_off(expected_offsets.size());
 
-  query.set_subarray<int64_t>({0, 1, 0, 2});
+  query.set_subarray(Subarray(ctx, array).set_subarray<int64_t>({0, 1, 0, 2}));
   query.set_data_buffer("a1", (char*)attr_val.data(), attr_val.size());
   query.set_offsets_buffer("a1", attr_off);
 

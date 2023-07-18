@@ -424,6 +424,7 @@ class Config {
    *    soft limit that we might go over if a single tile doesn't fit into
    *    memory, we will allow to load that tile if it still fits within
    *    `sm.mem.total_budget`. <br>
+   *    **Default**: 1GB
    * - `sm.mem.total_budget` <br>
    *    Memory budget for readers and writers. <br>
    *    **Default**: 10GB
@@ -431,10 +432,6 @@ class Config {
    *    Ratio of the budget allocated for coordinates in the sparse global
    *    order reader. <br>
    *    **Default**: 0.5
-   * - `sm.mem.reader.sparse_global_order.ratio_query_condition` <br>
-   *    Ratio of the budget allocated for the query condition in the sparse
-   *    global order reader. <br>
-   *    **Default**: 0.25
    * - `sm.mem.reader.sparse_global_order.ratio_tile_ranges` <br>
    *    Ratio of the budget allocated for tile ranges in the sparse global
    *    order reader. <br>
@@ -447,10 +444,6 @@ class Config {
    *    Ratio of the budget allocated for coordinates in the sparse unordered
    *    with duplicates reader. <br>
    *    **Default**: 0.5
-   * - `sm.mem.reader.sparse_unordered_with_dups.ratio_query_condition` <br>
-   *    Ratio of the budget allocated for the query condition in the sparse
-   *    unordered with duplicates reader. <br>
-   *    **Default**: 0.25
    * - `sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges` <br>
    *    Ratio of the budget allocated for tile ranges in the sparse unordered
    *    with duplicates reader. <br>
@@ -507,18 +500,23 @@ class Config {
    *    URIs. <br>
    *    **Default**: `1`
    * - `vfs.azure.storage_account_name` <br>
-   *    Set the Azure Storage Account name. <br>
+   *    Set the name of the Azure Storage account to use. <br>
    *    **Default**: ""
    * - `vfs.azure.storage_account_key` <br>
-   *    Set the Azure Storage Account key. <br>
+   *    Set the Shared Key to authenticate to Azure Storage. <br>
    *    **Default**: ""
    * - `vfs.azure.storage_sas_token` <br>
-   *    Set the Azure Storage SAS (shared access signature) token. <br>
+   *    Set the Azure Storage SAS (shared access signature) token to use.
+   *    If this option is set along with `vfs.azure.blob_endpoint`, the
+   *    latter must not include a SAS token. <br>
    *    **Default**: ""
    * - `vfs.azure.blob_endpoint` <br>
-   *    Overrides the default Azure Storage Blob endpoint. If empty, the
-   *    endpoint will be constructed from the storage account name. This
-   *    should not include an http:// or https:// prefix. <br>
+   *    Set the default Azure Storage Blob endpoint. <br>
+   *    If not specified, it will take a value of
+   *    `https://<account-name>.blob.core.windows.net`, where `<account-name>`
+   *    is the value of the `vfs.azure.storage_account_name` option. This means
+   *    that at least one of these two options must be set (or both if shared
+   *    key authentication is used). <br>
    *    **Default**: ""
    * - `vfs.azure.block_list_block_size` <br>
    *    The block size (in bytes) used in Azure blob block list writes.
@@ -532,9 +530,17 @@ class Config {
    * - `vfs.azure.use_block_list_upload` <br>
    *    Determines if the Azure backend can use chunked block uploads. <br>
    *    **Default**: "true"
-   * - `vfs.azure.use_https` <br>
-   *    Determines if the blob endpoint should use HTTP or HTTPS.
-   *    **Default**: "true"
+   * - `vfs.azure.max_retries` <br>
+   *    The maximum number of times to retry an Azure network request. <br>
+   *    **Default**: 5
+   * -  `vfs.azure.retry_delay_ms` <br>
+   *    The minimum permissible delay between Azure netwwork request retry
+   *    attempts, in milliseconds.
+   *    **Default**: 800
+   * -  `vfs.azure.max_retry_delay_ms` <br>
+   *    The maximum permissible delay between Azure netwwork request retry
+   *    attempts, in milliseconds.
+   *    **Default**: 60000
    * - `vfs.gcs.project_id` <br>
    *    Set the GCS project id. <br>
    *    **Default**: ""
@@ -686,6 +692,17 @@ class Config {
    *     Aws::S3::Model::ObjectCannedACL.) "aws_exec_read" "owner_read"
    *    "bucket_owner_full_control"
    *    **Default**: "NOT_SET"
+   * - `vfs.s3.config_source` <br>
+   *    Force S3 SDK to only load config options from a set source.
+   *    The supported options are
+   *    `auto` (TileDB config options are considered first,
+   *    then SDK-defined precedence: env vars, config files, ec2 metadata),
+   *    `config_files` (forces SDK to only consider options found in aws
+   *    config files),
+   *    `sts_profile_with_web_identity` (force SDK to consider assume roles/sts
+   * from config files with support for web tokens, commonly used by EKS/ECS).
+   *    **Default**: auto
+   *    <br>
    * - `vfs.hdfs.name_node_uri"` <br>
    *    Name node for HDFS. <br>
    *    **Default**: ""

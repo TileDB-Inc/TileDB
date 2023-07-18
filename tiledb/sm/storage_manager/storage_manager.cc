@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -184,8 +184,8 @@ StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
   auto&& [array_schema_latest, array_schemas_all] =
       array_dir.load_array_schemas(enc_key);
 
-  auto filtered_fragment_uris =
-      array_dir.filtered_fragment_uris(array_schema_latest->dense());
+  const auto filtered_fragment_uris =
+      load_filtered_fragment_uris(array_schema_latest->dense(), array_dir);
   const auto& meta_uris = array_dir.fragment_meta_uris();
   const auto& fragments_to_load = filtered_fragment_uris.fragment_uris();
 
@@ -448,6 +448,15 @@ void StorageManagerCanonical::delete_array(const char* array_name) {
   vfs()->remove_files(compute_tp(), array_dir.array_meta_uris());
   vfs()->remove_files(compute_tp(), array_dir.fragment_meta_uris());
   vfs()->remove_files(compute_tp(), array_dir.array_schema_uris());
+
+  // Delete all tiledb child directories
+  // Note: using vfs()->ls() here could delete user data
+  std::vector<URI> dirs;
+  auto parent_dir = array_dir.uri().c_str();
+  for (auto array_dir_name : constants::array_dir_names) {
+    dirs.emplace_back(URI(parent_dir + array_dir_name));
+  }
+  vfs()->remove_dirs(compute_tp(), dirs);
 }
 
 void StorageManagerCanonical::delete_fragments(
@@ -512,6 +521,15 @@ void StorageManagerCanonical::delete_group(const char* group_name) {
   vfs()->remove_files(compute_tp(), group_dir.group_meta_uris_to_vacuum());
   vfs()->remove_files(compute_tp(), group_dir.group_meta_vac_uris_to_vacuum());
   vfs()->remove_files(compute_tp(), group_dir.group_file_uris());
+
+  // Delete all tiledb child directories
+  // Note: using vfs()->ls() here could delete user data
+  std::vector<URI> dirs;
+  auto parent_dir = group_dir.uri().c_str();
+  for (auto group_dir_name : constants::group_dir_names) {
+    dirs.emplace_back(URI(parent_dir + group_dir_name));
+  }
+  vfs()->remove_dirs(compute_tp(), dirs);
 }
 
 void StorageManagerCanonical::array_vacuum(
@@ -2001,6 +2019,14 @@ StorageManagerCanonical::load_consolidated_fragment_meta(
   }
 
   return {Status::Ok(), std::move(tile), ret};
+}
+
+const ArrayDirectory::FilteredFragmentUris
+StorageManagerCanonical::load_filtered_fragment_uris(
+    const bool dense, const ArrayDirectory& array_dir) {
+  auto timer_se = stats()->start_timer("sm_load_filtered_fragment_uris");
+
+  return array_dir.filtered_fragment_uris(dense);
 }
 
 Status StorageManagerCanonical::set_default_tags() {

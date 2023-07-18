@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -224,6 +224,12 @@ class Query {
   std::vector<std::string> buffer_names() const;
 
   /**
+   * Returns the names of the buffers set by the user for the query not already
+   * written by a previous partial attribute write.
+   */
+  std::vector<std::string> unwritten_buffer_names() const;
+
+  /**
    * Gets the query buffer for the input attribute/dimension.
    * An empty string means the special default attribute.
    */
@@ -238,8 +244,8 @@ class Query {
   Status cancel();
 
   /**
-   * Finalizes the query, flushing all internal state. Applicable only to global
-   * layout writes. It has no effect for any other query type.
+   * Finalizes the query, flushing all internal state.
+   * Applicable to write queries only.
    */
   Status finalize();
 
@@ -402,12 +408,27 @@ class Query {
    *
    * This function overrides the config for Query-level parameters only.
    * Semantically, the initial query config is copied from the context
-   * config upon initialization. Note that The context config is immutable
+   * config upon construction. Note that The context config is immutable
    * at the C API level because tiledb_ctx_get_config always returns a copy.
    *
    * Config parameters set here will *only* be applied within the Query.
+   *
+   * @pre The function must be called before Query::init().
    */
-  Status set_config(const Config& config);
+  void set_config(const Config& config);
+
+  /**
+   * Sets the config for the Query
+   *
+   * @param config
+   *
+   * @note This is a potentially unsafe operation. Queries should be
+   * unsubmitted and unfinalized when the config is set. Until C.41 compilance,
+   * this is necessary for serialization.
+   */
+  inline void unsafe_set_config(const Config& config) {
+    config_.inherit(config);
+  }
 
   /**
    * Sets the (zipped) coordinates buffer (set with TILEDB_COORDS as the
@@ -429,13 +450,16 @@ class Query {
    *     it will contain the size of the useful (read) data in `buffer`.
    * @param check_null_buffers If true (default), null buffers are not
    * allowed.
+   * @param serialization_allow_new_attr If true, setting new attributes
+   * is allowed in INITIALIZED state
    * @return Status
    */
   Status set_data_buffer(
       const std::string& name,
       void* const buffer,
       uint64_t* const buffer_size,
-      const bool check_null_buffers = true);
+      const bool check_null_buffers = true,
+      const bool serialization_allow_new_attr = false);
 
   /**
    * Wrapper to set the internal buffer for a dimension or attribute from a
@@ -465,13 +489,16 @@ class Query {
    *     `buffer_off`.
    * @param check_null_buffers If true (default), null buffers are not
    * allowed.
+   * @param serialization_allow_new_attr If true, setting new attributes
+   * is allowed in INITIALIZED state
    * @return Status
    */
   Status set_offsets_buffer(
       const std::string& name,
       uint64_t* const buffer_offsets,
       uint64_t* const buffer_offsets_size,
-      const bool check_null_buffers = true);
+      const bool check_null_buffers = true,
+      const bool serialization_allow_new_attr = false);
 
   /**
    * Sets the validity buffer for nullable attribute/dimension.
@@ -487,13 +514,16 @@ class Query {
    * data in `buffer_validity_bytemap`.
    * @param check_null_buffers If true (default), null buffers are not
    * allowed.
+   * @param serialization_allow_new_attr If true, setting new attributes
+   * is allowed in INITIALIZED state
    * @return Status
    */
   Status set_validity_buffer(
       const std::string& name,
       uint8_t* const buffer_validity_bytemap,
       uint64_t* const buffer_validity_bytemap_size,
-      const bool check_null_buffers = true);
+      const bool check_null_buffers = true,
+      const bool serialization_allow_new_attr = false);
 
   /**
    * Get the config of the query.
@@ -638,8 +668,17 @@ class Query {
   /** Returns true if this is a dense query */
   bool is_dense() const;
 
+  /** Returns true if the config is set to allow separate attribute writes. */
+  inline bool allow_separate_attribute_writes() const {
+    return config_.get<bool>(
+        "sm.allow_separate_attribute_writes", Config::must_find);
+  }
+
   /** Returns a reference to the internal WrittenFragmentInfo list */
   std::vector<WrittenFragmentInfo>& get_written_fragment_info();
+
+  /** Returns a reference to the internal written buffer set */
+  std::unordered_set<std::string>& get_written_buffers();
 
   /** Called from serialization to mark the query as remote */
   void set_remote_query();
@@ -822,9 +861,6 @@ class Query {
    * Note: This is only used for global order writes.
    */
   uint64_t fragment_size_;
-
-  /** Allow separate attribute writes. */
-  bool allow_separate_attribute_writes_;
 
   /** Already written buffers. */
   std::unordered_set<std::string> written_buffers_;

@@ -37,6 +37,7 @@ jobs:
       issues: write
     env:
       MACOSX_DEPLOYMENT_TARGET: 10.15
+      TILEDB_NIGHTLY_BUILD: 1
 
     steps:
       - name: Print env

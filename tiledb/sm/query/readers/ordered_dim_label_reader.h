@@ -288,13 +288,16 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
   QueryStatusDetailsReason status_incomplete_reason() const;
 
   /** Initialize the memory budget variables. */
-  void initialize_memory_budget();
+  void refresh_config();
 
   /** Performs a read query using its set members. */
   Status dowork();
 
   /** Resets the reader object. */
   void reset();
+
+  /** Returns the name of the strategy */
+  std::string name();
 
  private:
   /* ********************************* */

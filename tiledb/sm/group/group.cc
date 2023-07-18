@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -51,10 +51,10 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class DeleteGroupStatusException : public StatusException {
+class GroupStatusException : public StatusException {
  public:
-  explicit DeleteGroupStatusException(const std::string& message)
-      : StatusException("DeleteGroup", message) {
+  explicit GroupStatusException(const std::string& message)
+      : StatusException("Group", message) {
   }
 };
 
@@ -256,12 +256,18 @@ Status Group::close() {
     } else if (
         query_type_ == QueryType::WRITE ||
         query_type_ == QueryType::MODIFY_EXCLUSIVE) {
-      // If changes haven't been applied, apply them
-      if (!changes_applied_) {
-        RETURN_NOT_OK(group_details_->apply_pending_changes());
-        changes_applied_ = group_details_->changes_applied();
+      try {
+        // If changes haven't been applied, apply them
+        if (!changes_applied_) {
+          RETURN_NOT_OK(group_details_->apply_pending_changes());
+          changes_applied_ = group_details_->changes_applied();
+        }
+        RETURN_NOT_OK(storage_manager_->group_close_for_writes(this));
+      } catch (StatusException& exc) {
+        std::string msg = exc.what();
+        msg += " : Was storage for the group moved or deleted before closing?";
+        throw GroupStatusException(msg);
       }
-      RETURN_NOT_OK(storage_manager_->group_close_for_writes(this));
     }
   }
 
@@ -301,40 +307,41 @@ Status Group::get_query_type(QueryType* query_type) const {
 void Group::delete_group(const URI& uri, bool recursive) {
   // Check that group is open
   if (!is_open_) {
-    throw DeleteGroupStatusException("Group is not open");
+    throw GroupStatusException("[delete_group] Group is not open");
   }
 
   // Check that query type is MODIFY_EXCLUSIVE
   if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    throw DeleteGroupStatusException("Query type must be MODIFY_EXCLUSIVE");
-  }
-
-  // Delete group members within the group when deleting recursively
-  if (recursive) {
-    for (auto member_entry : members()) {
-      const auto& member = member_entry.second;
-      URI member_uri = member->uri();
-      if (member->relative()) {
-        member_uri = group_uri_.join_path(member->uri().to_string());
-      }
-
-      if (member->type() == ObjectType::ARRAY) {
-        storage_manager_->delete_array(member_uri.to_string().c_str());
-      } else if (member->type() == ObjectType::GROUP) {
-        Group group_rec(member_uri, storage_manager_);
-        throw_if_not_ok(group_rec.open(QueryType::MODIFY_EXCLUSIVE));
-        group_rec.delete_group(member_uri, true);
-      }
-    }
+    throw GroupStatusException(
+        "[delete_group] Query type must be MODIFY_EXCLUSIVE");
   }
 
   // Delete group data
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
-      throw DeleteGroupStatusException("Remote group with no REST client.");
-    rest_client->delete_group_from_rest(uri);
+      throw GroupStatusException(
+          "[delete_group] Remote group with no REST client.");
+    rest_client->delete_group_from_rest(uri, recursive);
   } else {
+    // Delete group members within the group when deleting recursively
+    if (recursive) {
+      for (auto member_entry : members()) {
+        const auto& member = member_entry.second;
+        URI member_uri = member->uri();
+        if (member->relative()) {
+          member_uri = group_uri_.join_path(member->uri().to_string());
+        }
+
+        if (member->type() == ObjectType::ARRAY) {
+          storage_manager_->delete_array(member_uri.to_string().c_str());
+        } else if (member->type() == ObjectType::GROUP) {
+          Group group_rec(member_uri, storage_manager_);
+          throw_if_not_ok(group_rec.open(QueryType::MODIFY_EXCLUSIVE));
+          group_rec.delete_group(member_uri, true);
+        }
+      }
+    }
     storage_manager_->delete_group(uri.c_str());
   }
 
@@ -527,9 +534,11 @@ const Config& Group::config() const {
   return config_;
 }
 
-Status Group::set_config(Config config) {
-  config_ = config;
-  return Status::Ok();
+void Group::set_config(Config config) {
+  if (is_open()) {
+    throw GroupStatusException("[set_config] Cannot set config; Group is open");
+  }
+  config_.inherit(config);
 }
 
 Status Group::clear() {

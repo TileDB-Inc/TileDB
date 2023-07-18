@@ -129,7 +129,8 @@ void write_array_1d_partial(
     CHECK_NOTHROW(query.set_data_buffer("a3", a3));
     CHECK_NOTHROW(query.set_validity_buffer("a3", a3_validity));
   }
-  CHECK_NOTHROW(query.set_subarray<int32_t>({3, 4}));
+  CHECK_NOTHROW(
+      query.set_subarray(Subarray(ctx, array).set_subarray<int32_t>({3, 4})));
   CHECK_NOTHROW(query.set_layout(TILEDB_ROW_MAJOR));
   REQUIRE(query.submit() == Query::Status::COMPLETE);
   array.close();
@@ -169,7 +170,8 @@ void read_array_1d_partial(
     CHECK_NOTHROW(query.set_data_buffer("a3", a3));
     CHECK_NOTHROW(query.set_validity_buffer("a3", a3_validity));
   }
-  CHECK_NOTHROW(query.set_subarray<int32_t>({1, 10}));
+  CHECK_NOTHROW(
+      query.set_subarray(Subarray(ctx, array).set_subarray<int32_t>({1, 10})));
 
   REQUIRE(query.submit() == Query::Status::COMPLETE);
 
@@ -275,7 +277,8 @@ void read_array_1d_empty(
   CHECK_NOTHROW(query.set_data_buffer("a2", a2_val));
   CHECK_NOTHROW(query.set_offsets_buffer("a2", a2_off));
   CHECK_NOTHROW(query.set_data_buffer("a3", a3));
-  CHECK_NOTHROW(query.set_subarray<int32_t>({1, 10}));
+  CHECK_NOTHROW(
+      query.set_subarray(Subarray(ctx, array).set_subarray<int32_t>({1, 10})));
 
   REQUIRE(query.submit() == Query::Status::COMPLETE);
 

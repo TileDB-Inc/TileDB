@@ -280,6 +280,19 @@ struct FloatScaleConfig {
   byteWidth @2 :UInt64;
 }
 
+struct WebpConfig {
+  quality @0 :Float32;
+  # WebP lossless quality; Valid range from 0.0f-1.0f
+  format @1 :UInt8;
+  # WebP colorspace format.
+  lossless @2 :Bool;
+  # True if compression is lossless, false if lossy.
+  extentX @3: UInt16;
+  # Tile extent along X axis.
+  extentY @4: UInt16;
+  # Tile extent along Y axis.
+}
+
 struct Filter {
   type @0 :Text;
   # filter type
@@ -301,6 +314,8 @@ struct Filter {
   # filter data
 
   floatScaleConfig @13 :FloatScaleConfig;
+
+  webpConfig @14 :WebpConfig;
 }
 
 struct FilterPipeline {
@@ -357,6 +372,20 @@ struct Stats {
   # counters
 }
 
+struct UnorderedWriterState {
+  isCoordsPass @0 :Bool;
+  # Coordinate pass boolean for partial attribute write
+
+  cellPos @1 : List(UInt64);
+  # Cell positions for partial attribute writes
+
+  coordDups @2 : List(UInt64);
+  # Coordinate duplicates for partial attribute writes
+
+  fragMeta @3 : FragmentMetadata;
+  # Fragment metadata for partial attribute writes
+}
+
 struct Writer {
   # Write struct
   checkCoordDups @0 :Bool;
@@ -376,6 +405,9 @@ struct Writer {
 
   globalWriteStateV1 @6 :GlobalWriteState;
   # All the state necessary for global writes to work in TileDB Cloud
+
+  unorderedWriterState @7 :UnorderedWriterState;
+  # Unordered writer state
 }
 
 struct SubarrayRanges {
@@ -397,6 +429,19 @@ struct SubarrayRanges {
   # The list of start sizes per range
 }
 
+struct LabelSubarrayRanges {
+  # A set of label 1D ranges for a subarray
+
+  dimensionId @0 :UInt32;
+  # Index of the dimension the label is attached to
+
+  name @1 :Text;
+  # Name of the dimension label
+
+  ranges @2 :SubarrayRanges;
+  # A set of 1D ranges for a subarray
+}
+
 struct Subarray {
   # A Subarray
 
@@ -411,6 +456,15 @@ struct Subarray {
 
   relevantFragments @3 :List(UInt32);
   # Relevant fragments
+
+  labelRanges @4 :List(LabelSubarrayRanges);
+  # List of 1D ranges for dimensions that have labels
+
+  attributeRanges @5 :Map(Text, SubarrayRanges);
+  # List of 1D ranges for each attribute
+
+  coalesceRanges @6 :Bool = true;
+  # True if Subarray should coalesce overlapping ranges.
 }
 
 struct SubarrayPartitioner {
@@ -661,6 +715,9 @@ struct Query {
     writtenFragmentInfo @18 :List(WrittenFragmentInfo);
     # Needed in global order writes when WrittenFragmentInfo gets updated
     # during finalize, but doesn't end up back on the client Query object
+
+    writtenBuffers @19 : List(Text);
+    # written buffers for partial attribute writes
 }
 
 struct NonEmptyDomain {

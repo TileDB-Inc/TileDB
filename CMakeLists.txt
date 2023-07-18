@@ -138,6 +138,13 @@ set(TILEDB_EXPERIMENTAL_BASE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/experimental")
 # Perform superbuild config and exit.
 if (TILEDB_SUPERBUILD)
   project(TileDB-Superbuild)
+
+  # Override default install prefix if not set
+  if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    message(STATUS "Setting CMAKE_INSTALL_PREFIX to: '${PROJECT_BINARY_DIR}/dist'")
+    set(CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/dist" CACHE PATH "..." FORCE)
+  endif()
+
   message(STATUS "Starting TileDB superbuild.")
   include("cmake/TileDB-Superbuild.cmake")
   message(STATUS "Install prefix is ${CMAKE_INSTALL_PREFIX}")
@@ -149,18 +156,19 @@ endif()
 
 project(TileDB)
 message(STATUS "Starting TileDB regular build.")
+message(STATUS "  CMake version: ${CMAKE_VERSION}")
 # Paths to locate the installed external projects.
 set(TILEDB_EP_SOURCE_DIR "${TILEDB_EP_BASE}/src")
 set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")
 
-# Override default install prefix if not set
-if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX "${CMAKE_PROJECT_BINARY_DIR}/dist" CACHE PATH "..." FORCE)
-endif()
-
 ############################################################
 # Compile options/definitions for all targets
 ############################################################
+
+# NOTE: Config-specific options must use the $<CONFIG> generator expression
+#       and not check the value of CMAKE_BUILD_TYPE. The reason is that
+#       the latter is not set when using multi-config generators like
+#       Visual Studio or Xcode.
 
 # Set compiler flags
 if (MSVC)
@@ -189,40 +197,42 @@ if (MSVC)
   add_compile_options(/wd4996)
   # Disable GDI (which we don't need, and causes some macro
   # re-definition issues if wingdi.h is included)
-  add_compile_options(/DNOGDI)
+  add_compile_definitions("NOGDI")
   # Add /MPn flag from CMake invocation (if defined).
   add_compile_options(${MSVC_MP_FLAG})
   # Build-specific flags
-  if (CMAKE_BUILD_TYPE MATCHES "Debug")
-    add_compile_options(/DDEBUG /Od /Zi /bigobj)
-  elseif (CMAKE_BUILD_TYPE MATCHES "Release")
-    add_compile_options(/DNDEBUG /Ox)
-  elseif (CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
-    add_compile_options(/DNDEBUG /Ox /Zi)
-  endif()
+  add_compile_definitions("$<IF:$<CONFIG:Debug>,DEBUG,NDEBUG>")
+  add_compile_options(
+    # /Od: Disable optimizations
+    # /bigobj: Increase number of sections in .obj file
+    "$<$<CONFIG:Debug>:/Od;/bigobj>"
+    # /Ox: Enable most speed optimizations
+    "$<$<CONFIG:Release,RelWithDebInfo>:/Ox>"
+    # /Zi: Generate debug info in a separate .pdb file
+    "$<$<CONFIG:Debug,RelWithDebInfo>:/Zi>")
 else()
   add_compile_options(-Wall -Wextra)
   if (TILEDB_WERROR)
     add_compile_options(-Werror)
   endif()
   # Build-specific flags
-  if (CMAKE_BUILD_TYPE MATCHES "Debug")
-    add_compile_options(-DDEBUG -O0 -g3 -ggdb3 -gdwarf-3)
-    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-      add_compile_options(-fstandalone-debug)
-    endif()
-  elseif (CMAKE_BUILD_TYPE MATCHES "Release")
-    add_compile_options(-O3)
-  elseif (CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
-    add_compile_options(-DNDEBUG -O3 -g3 -ggdb3 -gdwarf-3)
-  elseif (CMAKE_BUILD_TYPE MATCHES "Coverage")
-    add_compile_options(-DDEBUG -g3 -gdwarf-3 --coverage)
+  add_compile_definitions("$<IF:$<CONFIG:Debug,Coverage>,DEBUG,NDEBUG>")
+  add_compile_options(
+    "$<$<CONFIG:Debug>:-O0;-g3;-ggdb3;-gdwarf-3>"
+    "$<$<CONFIG:Coverage>:-g3;-gdwarf-3;--coverage>"
+    "$<$<CONFIG:Release,RelWithDebInfo>:-O3>"
+    "$<$<CONFIG:RelWithDebInfo>:-g3;-ggdb3;-gdwarf-3>")
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    add_compile_options("$<$<CONFIG:Debug>:-fstandalone-debug>")
   endif()
 
-  # Use -Wno-literal-suffix on Linux with C++ sources.
-  if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-literal-suffix>)
+  # Disable newer Apple Clang warnings about unqualified calls to std::move
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+    if (${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "14.0.3")
+      add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-unqualified-std-cast-call>)
+    endif()
   endif()
+
 endif()
 
 # Definitions for all targets
@@ -342,6 +352,7 @@ list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/object/object_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query/query_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query/query_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query_plan/query_plan_api_external_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/string/string_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/vfs/vfs_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/vfs/vfs_api_external.h"
@@ -494,6 +505,9 @@ add_subdirectory(experimental/experimental_examples)
 
 # Build tools
 if (TILEDB_TOOLS)
+  if (TILEDB_AZURE AND NOT TILEDB_VCPKG)
+    message(FATAL_ERROR "Building tools with Azure enabled requires enabling TILEDB_VCPKG")
+  endif()
   add_subdirectory(tools)
 endif()
 
@@ -545,10 +559,6 @@ if (TILEDB_TESTS)
 
   if (TILEDB_WEBP)
     add_dependencies(tests unit_link_webp)
-  endif()
-
-  if (TILEDB_ABSEIL)
-    add_dependencies(tests unit_link_absl)
   endif()
 
   if (ENABLE_MAGIC_TEST)

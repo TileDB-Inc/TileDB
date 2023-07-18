@@ -66,7 +66,7 @@ class S3ThreadPoolExecutor : public Aws::Utils::Threading::Executor {
    *
    * @return Status
    */
-  Status Stop();
+  void Stop();
 
  protected:
   /** Derived from base class. */

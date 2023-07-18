@@ -116,7 +116,7 @@ Status DeletesAndUpdates::finalize() {
   return Status::Ok();
 }
 
-void DeletesAndUpdates::initialize_memory_budget() {
+void DeletesAndUpdates::refresh_config() {
 }
 
 Status DeletesAndUpdates::dowork() {
@@ -186,6 +186,10 @@ Status DeletesAndUpdates::dowork() {
 }
 
 void DeletesAndUpdates::reset() {
+}
+
+std::string DeletesAndUpdates::name() {
+  return "DeletesAndUpdates";
 }
 
 }  // namespace sm

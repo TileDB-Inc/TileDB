@@ -177,6 +177,10 @@ void GlobalOrderWriter::reset() {
   }
 }
 
+std::string GlobalOrderWriter::name() {
+  return "GlobalOrderWriter";
+}
+
 Status GlobalOrderWriter::alloc_global_write_state() {
   // Create global array state object
   if (global_write_state_ != nullptr)
