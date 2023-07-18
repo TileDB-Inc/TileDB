@@ -31,22 +31,11 @@ die() {
 }
 
 install_gcs(){
-    curl -L  https://github.com/googleapis/google-cloud-cpp/archive/v1.23.0.tar.gz > /tmp/google-cloud-cpp.tar.gz
-    tar -xf /tmp/google-cloud-cpp.tar.gz -C /tmp
-    #on pip3 install, github error, "The unauthenticated git protocol on port 9418 is no longer supported."
-    #checked later versions, latest at check was v1.35.0, but found starting
-    #at v1.32.0 directory structure had changed and there is no longer an 'emulator' directory.
-    #v1.31.1 is last version that had same structure, and its requirements.txt still using now bad git+git:,
-    #so, staying with our current version and patching to different protocol,
-    #since there's currently only one instance in v1.23.0 emulator/requirements.txt,
-    #patch git+git:// ==> git+https://
-    #sed -i fails on GA CI macos...
-    sed 's/git+git:/git+https:/' /tmp/google-cloud-cpp-1.23.0/google/cloud/storage/emulator/requirements.txt > /tmp/tdbpatchedrequirements.txt
-    echo 'itsdangerous==2.0.1' >> /tmp/tdbpatchedrequirements.txt
-    echo 'jinja2<3.1 # pinned due to incompatibility with gcs emulator 1.23' >> /tmp/tdbpatchedrequirements.txt
-    echo 'werkzeug<2.1 # pinned due to incompatibility with gcs emulator 1.23' >> /tmp/tdbpatchedrequirements.txt
-    cp -f /tmp/tdbpatchedrequirements.txt /tmp/google-cloud-cpp-1.23.0/google/cloud/storage/emulator/requirements.txt
-    pip3 install -r /tmp/google-cloud-cpp-1.23.0/google/cloud/storage/emulator/requirements.txt
+    git clone --branch v0.36.0 --depth 1 https://github.com/googleapis/storage-testbench.git /tmp/storage-testbench
+    # Create a virtual environment and keep it active
+    python3 -m venv /tmp/storage-testbench-venv
+    source /tmp/storage-testbench-venv/bin/activate
+    pip3 install -e /tmp/storage-testbench
 }
 
 install_apt_pkgs() {

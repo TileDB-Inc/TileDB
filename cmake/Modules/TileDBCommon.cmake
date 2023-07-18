@@ -97,5 +97,19 @@ function(install_target_libs LIB_TARGET)
   endif()
 endfunction()
 
+#
+# Adds imported libraries from the given list of targets to the TileDB installation
+# manifest.
+#
+function (install_all_target_libs TARGET_LIST)
+  foreach(TGT ${TARGET_LIST})
+    if (TARGET ${TGT})
+      install_target_libs(${TGT})
+    else()
+      message(WARNING "Requested install for non-existant target '${TGT}'")
+    endif()
+  endforeach()
+endfunction()
+
 # Suppress warnings from find_package_handle_standard_args usage w/ *_EP targets
 set(FPHSA_NAME_MISMATCHED TRUE)

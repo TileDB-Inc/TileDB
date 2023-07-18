@@ -190,6 +190,21 @@ TEST_CASE(
 }
 
 TEST_CASE(
+    "FilterPipeline: Test if tile chunking should be used with "
+    "max_chunk_size=0",
+    "[filter-pipeline]") {
+  auto filter = Compressor::DELTA;
+
+  // pipeline that contains an RLE or Dictionary compressor
+  FilterPipeline fp;
+  fp.add_filter(CompressionFilter(filter, 1));
+  fp.set_max_chunk_size(0);
+
+  CHECK_FALSE(fp.use_tile_chunking(true, 0, Datatype::INT32));
+  CHECK_FALSE(fp.use_tile_chunking(false, 0, Datatype::INT32));
+}
+
+TEST_CASE(
     "FilterPipeline: Test if offset filtering should be skipped",
     "[filter-pipeline]") {
   // Parametrize test to be check for both RLE and Dictionary compression

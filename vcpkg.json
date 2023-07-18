@@ -13,7 +13,12 @@
         },
         "spdlog",
         "zlib",
-        "zstd"
+        "zstd",
+        {
+          "name": "libxml2",
+          "features": ["lzma", "zlib"],
+          "default-features": false
+        }
     ],
     "features": {
         "abseil": {
@@ -49,6 +54,10 @@
             "description": "Enable TileDB Cloud Support",
             "dependencies": [
                 {
+                    "name": "curl",
+                    "features": [ "zstd" ]
+                },
+                {
                     "name": "capnproto",
                     "version>=": "0.8.0"
                 }
@@ -74,10 +83,7 @@
         "tools": {
             "description": "Build tiledb command line tool",
             "dependencies": [
-                {
-                    "name": "clipp",
-                    "version>=": "1.2.3"
-                }
+                "clipp"
             ]
         },
         "webp": {

@@ -307,8 +307,9 @@ Status Subarray::add_range(
   if (oob_warning.has_value())
     LOG_WARN(oob_warning.value() + " on dimension '" + dim_name + "'");
 
-  // Update is default.
+  // Update is default and stats counter.
   is_default_[dim_idx] = range_subset_[dim_idx].is_implicitly_initialized();
+  stats_->add_counter("add_range_dim_" + std::to_string(dim_idx), 1);
   return Status::Ok();
 }
 
@@ -860,6 +861,12 @@ bool Subarray::coincides_with_tiles() const {
   }
 
   return true;
+}
+
+void Subarray::check_oob() {
+  for (auto& subset : range_subset_) {
+    subset.check_oob();
+  }
 }
 
 template <class T>
@@ -2625,18 +2632,15 @@ Status Subarray::precompute_tile_overlap(
 Status Subarray::precompute_all_ranges_tile_overlap(
     ThreadPool* const compute_tp,
     std::vector<FragIdx>& frag_tile_idx,
-    std::vector<std::vector<std::pair<uint64_t, uint64_t>>>*
-        result_tile_ranges) {
+    ITileRange* tile_ranges) {
   auto timer_se = stats_->start_timer("read_compute_simple_tile_overlap");
 
   // For easy reference.
   const auto meta = array_->fragment_metadata();
-  const auto fragment_num = meta.size();
   const auto dim_num = array_->array_schema_latest().dim_num();
 
   // Get the results ready.
-  result_tile_ranges->clear();
-  result_tile_ranges->resize(fragment_num);
+  tile_ranges->clear_tile_ranges();
 
   compute_range_offsets();
 
@@ -2716,7 +2720,7 @@ Status Subarray::precompute_all_ranges_tile_overlap(
 
           if (!comb) {
             if (length != 0) {
-              result_tile_ranges->at(f).emplace_back(end + 1 - length, end);
+              tile_ranges->add_tile_range(f, end + 1 - length, end);
               length = 0;
             }
 
@@ -2727,12 +2731,15 @@ Status Subarray::precompute_all_ranges_tile_overlap(
         }
 
         // Push the last result tile range.
-        if (length != 0)
-          result_tile_ranges->at(f).emplace_back(end + 1 - length, end);
+        if (length != 0) {
+          tile_ranges->add_tile_range(f, end + 1 - length, end);
+        }
 
         return Status::Ok();
       });
   RETURN_NOT_OK(status);
+
+  tile_ranges->done_adding_tile_ranges();
 
   return Status::Ok();
 }

@@ -80,6 +80,12 @@ Status vfs_test_close(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs);
 
+void vfs_test_remove_temp_dir(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const std::string& path);
+
+void vfs_test_create_temp_dir(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const std::string& path);
+
 /**
  * This class defines and manipulates
  * a list of supported filesystems.

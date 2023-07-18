@@ -37,6 +37,9 @@ function(build_TileDB_example_cppapi TARGET)
     # to libzstd or libcurl to work.
     target_link_libraries(${TARGET}_cpp PUBLIC pthread dl)
   endif()
+  if (TILEDB_TESTS_ENABLE_REST)
+    target_compile_definitions(${TARGET}_cpp PRIVATE -DTILEDB_TESTS_ENABLE_REST)
+  endif()
   add_dependencies(examples_cpp ${TARGET}_cpp)
 endfunction()
 
