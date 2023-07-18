@@ -477,7 +477,7 @@ uint64_t FragmentMetadata::cell_num() const {
   assert(tile_num != 0);
   if (dense_) {  // Dense fragment
     return tile_num * array_schema_->domain().cell_num_per_tile();
-  } else {  // Sparse fragment
+  } else {       // Sparse fragment
     return (tile_num - 1) * array_schema_->capacity() + last_tile_cell_num();
   }
 }
@@ -3973,7 +3973,7 @@ void FragmentMetadata::write_non_empty_domain(Serializer& serializer) const {
       const auto& r = non_empty_domain_[d];
       if (!dim->var_size()) {  // Fixed-sized
         serializer.write(r.data(), r.size());
-      } else {  // Var-sized
+      } else {                 // Var-sized
         auto r_size = r.size();
         auto r_start_size = r.start_size();
         serializer.write<uint64_t>(r_size);

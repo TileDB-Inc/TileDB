@@ -1143,7 +1143,7 @@ uint64_t Dimension::map_to_uint64_2<char>(
   // "cat\0\0\0\0\0" inside the 8-byte uint64 value `ret`.
   uint64_t ret = 0;
   for (uint64_t i = 0; i < 8; ++i) {
-    ret <<= 8;  // Shift by one byte
+    ret <<= 8;                    // Shift by one byte
     if (i < v_str_size)
       ret |= (uint64_t)v_str[i];  // Add next character (if exists)
   }
@@ -1197,7 +1197,7 @@ ByteVecValue Dimension::map_from_uint64<char>(
     const Dimension* dim, uint64_t value, int bits, uint64_t max_bucket_val) {
   assert(dim != nullptr);
   (void)dim;
-  (void)max_bucket_val;  // Not needed here
+  (void)max_bucket_val;                        // Not needed here
 
   std::vector<uint8_t> ret(sizeof(uint64_t));  // 8 bytes
 

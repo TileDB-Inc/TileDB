@@ -69,12 +69,12 @@ struct CPPArrayFx {
     auto d2 = Dimension::create<int>(ctx, "d2", {{0, 100}}, d2_tile);
     domain.add_dimensions(d1, d2);
 
-    auto a1 = Attribute::create<int>(ctx, "a1");          // (int, 1)
-    auto a2 = Attribute::create<std::string>(ctx, "a2");  // (char, VAR_NUM)
+    auto a1 = Attribute::create<int>(ctx, "a1");              // (int, 1)
+    auto a2 = Attribute::create<std::string>(ctx, "a2");      // (char, VAR_NUM)
     auto a3 =
         Attribute::create<std::array<double, 2>>(ctx, "a3");  // (double, 2)
     auto a4 =
-        Attribute::create<std::vector<Point>>(ctx, "a4");  // (char, VAR_NUM)
+        Attribute::create<std::vector<Point>>(ctx, "a4");     // (char, VAR_NUM)
     auto a5 = Attribute::create<Point>(ctx, "a5");  // (char, sizeof(Point))
     FilterList filters(ctx);
     filters.add_filter({ctx, TILEDB_FILTER_LZ4});

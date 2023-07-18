@@ -182,7 +182,7 @@ void Stats::add_counter(const std::string& stat, uint64_t count) {
   auto it = counters_.find(new_stat);
   if (it == counters_.end()) {  // Counter not found
     counters_[new_stat] = count;
-  } else {  // Counter found
+  } else {                      // Counter found
     it->second += count;
   }
 }
@@ -204,7 +204,7 @@ void Stats::report_duration(
   auto it2 = timers_.find(new_stat + ".sum");
   if (it2 == timers_.end()) {  // Timer not found
     timers_[new_stat + ".sum"] = duration.count();
-  } else {  // Timer found
+  } else {                     // Timer found
     it2->second += duration.count();
   }
 
@@ -212,7 +212,7 @@ void Stats::report_duration(
   auto it3 = timers_.find(new_stat + ".max");
   if (it3 == timers_.end()) {  // Timer not found
     timers_[new_stat + ".max"] = duration.count();
-  } else {  // Timer found
+  } else {                     // Timer found
     if (duration.count() > it3->second)
       it3->second = duration.count();
   }
@@ -221,7 +221,7 @@ void Stats::report_duration(
   auto it4 = counters_.find(new_stat + ".timer_count");
   if (it4 == counters_.end()) {  // Timer not found
     counters_[new_stat + ".timer_count"] = 1;
-  } else {  // Timer found
+  } else {                       // Timer found
     it4->second += 1;
   }
 }

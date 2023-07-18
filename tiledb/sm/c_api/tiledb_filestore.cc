@@ -614,7 +614,7 @@ uint64_t compute_tile_extent_based_on_file_size(uint64_t file_size) {
   } else if (file_size > 1024ULL * 1024ULL) {           // 1MB
     return 1024ULL * 256ULL;                            // 256KB
   } else {
-    return 1024ULL;  // 1KB
+    return 1024ULL;                                     // 1KB
   }
 }
 

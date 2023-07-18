@@ -181,9 +181,9 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file management", "[s3]") {
   CHECK(s3_.is_dir(URI(file4), &is_dir).ok());
   CHECK(!is_dir);  // Not a dir
   CHECK(s3_.is_dir(URI(dir), &is_dir).ok());
-  CHECK(is_dir);  // This is viewed as a dir
+  CHECK(is_dir);   // This is viewed as a dir
   CHECK(s3_.is_dir(URI(TEST_DIR + "dir"), &is_dir).ok());
-  CHECK(is_dir);  // This is viewed as a dir
+  CHECK(is_dir);   // This is viewed as a dir
 
   // ls_with_sizes
   std::string s = "abcdef";
@@ -479,9 +479,9 @@ TEST_CASE_METHOD(S3Fx, "Test S3 use Bucket/Object CannedACL", "[s3]") {
     CHECK(s3_.is_dir(URI(file4), &is_dir).ok());
     CHECK(!is_dir);  // Not a dir
     CHECK(s3_.is_dir(URI(dir), &is_dir).ok());
-    CHECK(is_dir);  // This is viewed as a dir
+    CHECK(is_dir);   // This is viewed as a dir
     CHECK(s3_.is_dir(URI(TEST_DIR + "dir"), &is_dir).ok());
-    CHECK(is_dir);  // This is viewed as a dir
+    CHECK(is_dir);   // This is viewed as a dir
 
     // Move file
     CHECK(s3_.move_object(URI(file5), URI(file6)).ok());
