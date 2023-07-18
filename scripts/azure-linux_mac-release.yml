@@ -12,21 +12,25 @@ steps:
     echo "uname -s: " $(uname -s)
     echo "uname -v: " $(uname -v)
     printenv
+    echo "vcpkg is: " $(which vcpkg || true)
   displayName: 'Print env'
 
 - bash: |
     # This stage is needed until https://github.com/actions/runner-images/pull/7125 or similar is merged
     # MacOS image 20230214.1 removed implicit installation of pkg-config
     set -e pipefail
-    brew install pkg-config
+    brew install pkg-config autoconf automake
   condition: eq(variables['Agent.OS'], 'Darwin')
-  displayName: 'Install brew package for pkg-config (OSX only)'
+  displayName: 'Install brew packages for macOS build'
 
-- bash: |
-    set -e pipefail
-    brew uninstall --ignore-dependencies libidn2 brotli rtmpdump
-  condition: eq(variables['Agent.OS'], 'Darwin')
-  displayName: 'Uninstall brew packages for curl (OSX only)'
+# Tried using mamba for manylinux missing packages - switched to custom image instead.
+#- bash: |
+#    curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
+#    bin/micromamba create -p $HOME/m -y
+#    bin/micromamba -p $HOME/m install -y -c conda-forge zip tar unzip
+#    echo '##vso[task.prependpath]$(HOME)/m/bin'
+#  condition: eq(variables['Agent.OS'], 'Linux')
+#  displayName: 'Install vcpkg dependencies (Linux only)'
 
 - bash: |
     set -e pipefail
@@ -36,7 +40,8 @@ steps:
   displayName: 'Remove sdks for testing (OSX only)'
 
 - bash: |
-    # Azure sets "SYSTEM=build" for unknown reasonas, which breaks the OpenSSL configure script
+    export PATH=$HOME/m/bin:$PATH
+    # Azure sets "SYSTEM=build" for unknown reasons, which breaks the OpenSSL configure script
     #   - openssl configure uses ENV{SYSTEM} if available:
     #     https://github.com/openssl/openssl/blob/6d745d740d37d680ff696486218b650512bbbbc6/config#L56
     #   - error description:
@@ -52,7 +57,7 @@ steps:
 
     # Set up arguments for bootstrap.sh
     BUILD_BINARIESDIRECTORY=${BUILD_BINARIESDIRECTORY:-$BUILD_REPOSITORY_LOCALPATH/build/dist}
-    cmake_args="-DCMAKE_INSTALL_PREFIX=${BUILD_BINARIESDIRECTORY} -DTILEDB_TESTS=OFF -DTILEDB_INSTALL_LIBDIR=lib";
+    cmake_args="-DTILEDB_VCPKG=ON -DCMAKE_INSTALL_PREFIX=${BUILD_BINARIESDIRECTORY} -DTILEDB_TESTS=OFF -DTILEDB_INSTALL_LIBDIR=lib";
     mkdir -p ${BUILD_BINARIESDIRECTORY}
 
     # Enable TILEDB_STATIC by default
@@ -105,6 +110,9 @@ steps:
     if [[ "$TILEDB_WEBP" == "OFF" ]]; then
       cmake_args="${cmake_args} -DTILEDB_WEBP=OFF";
     fi;
+    if [[ ! -z "$CMAKE_OSX_ARCHITECTURES" ]]; then
+      cmake_args="${cmake_args} -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}";
+    fi;
 
     mkdir -p $BUILD_REPOSITORY_LOCALPATH/build
     cd $BUILD_REPOSITORY_LOCALPATH/build
@@ -116,6 +124,11 @@ steps:
     make -j4
     make -C tiledb install
   displayName: 'Build libtiledb'
+  continueOnError: true
+
+- bash: |
+    cat $BUILD_REPOSITORY_LOCALPATH/build/vcpkg-bootstrap.log || true
+  displayName: 'Dump vcpkg logs'
   continueOnError: true
 
 - task: ArchiveFiles@2

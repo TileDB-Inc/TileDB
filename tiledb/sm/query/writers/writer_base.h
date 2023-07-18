@@ -116,7 +116,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   bool get_dedup_coords() const;
 
   /** Initialize the memory budget variables. */
-  void initialize_memory_budget();
+  void refresh_config();
 
   /** Sets current setting of check_coord_dups_ */
   void set_check_coord_dups(bool b);

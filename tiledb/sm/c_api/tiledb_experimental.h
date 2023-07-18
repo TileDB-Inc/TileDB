@@ -53,12 +53,32 @@
 extern "C" {
 #endif
 
-/** A TileDB array schema. */
-typedef struct tiledb_array_schema_evolution_t tiledb_array_schema_evolution_t;
+/* ********************************* */
+/*             LOGGING               */
+/* ********************************* */
+
+/**
+ * Log a message at WARN level using TileDB's internal logging mechanism
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_log_warn(ctx, "This is a log message.");
+ * @endcode
+ *
+ * @param ctx The TileDB Context.
+ * @param message The message to log
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t
+tiledb_log_warn(tiledb_ctx_t* ctx, const char* message);
 
 /* ********************************* */
 /*      ARRAY SCHEMA EVOLUTION       */
 /* ********************************* */
+
+/** A TileDB array schema. */
+typedef struct tiledb_array_schema_evolution_t tiledb_array_schema_evolution_t;
 
 /**
  * Creates a TileDB schema evolution object.

@@ -280,6 +280,19 @@ struct FloatScaleConfig {
   byteWidth @2 :UInt64;
 }
 
+struct WebpConfig {
+  quality @0 :Float32;
+  # WebP lossless quality; Valid range from 0.0f-1.0f
+  format @1 :UInt8;
+  # WebP colorspace format.
+  lossless @2 :Bool;
+  # True if compression is lossless, false if lossy.
+  extentX @3: UInt16;
+  # Tile extent along X axis.
+  extentY @4: UInt16;
+  # Tile extent along Y axis.
+}
+
 struct Filter {
   type @0 :Text;
   # filter type
@@ -301,6 +314,8 @@ struct Filter {
   # filter data
 
   floatScaleConfig @13 :FloatScaleConfig;
+
+  webpConfig @14 :WebpConfig;
 }
 
 struct FilterPipeline {
@@ -414,6 +429,19 @@ struct SubarrayRanges {
   # The list of start sizes per range
 }
 
+struct LabelSubarrayRanges {
+  # A set of label 1D ranges for a subarray
+
+  dimensionId @0 :UInt32;
+  # Index of the dimension the label is attached to
+
+  name @1 :Text;
+  # Name of the dimension label
+
+  ranges @2 :SubarrayRanges;
+  # A set of 1D ranges for a subarray
+}
+
 struct Subarray {
   # A Subarray
 
@@ -428,6 +456,15 @@ struct Subarray {
 
   relevantFragments @3 :List(UInt32);
   # Relevant fragments
+
+  labelRanges @4 :List(LabelSubarrayRanges);
+  # List of 1D ranges for dimensions that have labels
+
+  attributeRanges @5 :Map(Text, SubarrayRanges);
+  # List of 1D ranges for each attribute
+
+  coalesceRanges @6 :Bool = true;
+  # True if Subarray should coalesce overlapping ranges.
 }
 
 struct SubarrayPartitioner {

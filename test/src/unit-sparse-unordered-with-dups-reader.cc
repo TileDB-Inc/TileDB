@@ -73,10 +73,14 @@ struct CSparseUnorderedWithDupsFx {
   void write_1d_fragment_string(
       int* coords,
       uint64_t* coords_size,
-      uint64_t* offsets,
-      uint64_t* offsets_size,
-      char* data,
-      uint64_t* data_size);
+      uint64_t* a1_offsets,
+      uint64_t* a1_offsets_size,
+      char* a1_data,
+      uint64_t* a1_data_size,
+      int64_t* a2_data,
+      uint64_t* a2_data_size,
+      uint8_t* a2_validity,
+      uint64_t* a2_validity_size);
   int32_t read(
       bool set_subarray,
       bool set_qc,
@@ -89,12 +93,16 @@ struct CSparseUnorderedWithDupsFx {
   int32_t read_strings(
       int* coords,
       uint64_t* coords_size,
-      char* data,
-      uint64_t* data_size,
-      uint64_t* data_offsets,
-      uint64_t* data_offsets_size,
+      char* a1_data,
+      uint64_t* a1_data_size,
+      uint64_t* a1_offsets,
+      uint64_t* a1_offsets_size,
+      int64_t* a2_data,
+      uint64_t* a2_data_size,
+      uint8_t* a2_validity,
+      uint64_t* a2_validity_size,
       uint64_t num_subarrays = 0,
-      tiledb_query_t** query = nullptr,
+      tiledb_query_t** query_ret = nullptr,
       tiledb_array_t** array_ret = nullptr);
   void reset_config();
   void update_config();
@@ -227,14 +235,17 @@ void CSparseUnorderedWithDupsFx::create_default_array_1d_string(
       {TILEDB_INT32},
       {domain},
       {&tile_extent},
-      {"a"},
-      {TILEDB_STRING_ASCII},
-      {TILEDB_VAR_NUM},
-      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
+      {"a1", "a2"},
+      {TILEDB_STRING_ASCII, TILEDB_INT64},
+      {TILEDB_VAR_NUM, 1},
+      {tiledb::test::Compressor(TILEDB_FILTER_NONE, -1),
+       tiledb::test::Compressor(TILEDB_FILTER_NONE, -1)},
       TILEDB_ROW_MAJOR,
       TILEDB_ROW_MAJOR,
       capacity,
-      true);  // allows dups.
+      true,
+      false,
+      optional<std::vector<bool>>({false, true}));  // allows dups.
 }
 
 void CSparseUnorderedWithDupsFx::write_1d_fragment(
@@ -281,10 +292,15 @@ void CSparseUnorderedWithDupsFx::write_1d_fragment_empty_strings(
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
-  char data[1];
-  uint64_t data_size = 0;
-  std::vector<uint64_t> data_offsets(num_cells, 0);
-  uint64_t data_offsets_size = num_cells * sizeof(uint64_t);
+  char a1_data[1];
+  uint64_t a1_data_size = 0;
+  std::vector<uint64_t> a1_offsets(num_cells, 0);
+  uint64_t a1_offsets_size = num_cells * sizeof(uint64_t);
+
+  std::vector<int64_t> a2_data(num_cells, 0);
+  uint64_t a2_data_size = num_cells * sizeof(int64_t);
+  std::vector<uint8_t> a2_validity(num_cells, 0);
+  uint64_t a2_validity_size = num_cells;
 
   // Create the query.
   tiledb_query_t* query;
@@ -292,10 +308,16 @@ void CSparseUnorderedWithDupsFx::write_1d_fragment_empty_strings(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "a", data, &data_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a1", a1_data, &a1_data_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_offsets_buffer(
-      ctx_, query, "a", data_offsets.data(), &data_offsets_size);
+      ctx_, query, "a1", a1_offsets.data(), &a1_offsets_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "a2", a2_data.data(), &a2_data_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_validity_buffer(
+      ctx_, query, "a2", a2_validity.data(), &a2_validity_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords, coords_size);
   REQUIRE(rc == TILEDB_OK);
@@ -316,10 +338,14 @@ void CSparseUnorderedWithDupsFx::write_1d_fragment_empty_strings(
 void CSparseUnorderedWithDupsFx::write_1d_fragment_string(
     int* coords,
     uint64_t* coords_size,
-    uint64_t* offsets,
-    uint64_t* offsets_size,
-    char* data,
-    uint64_t* data_size) {
+    uint64_t* a1_offsets,
+    uint64_t* a1_offsets_size,
+    char* a1_data,
+    uint64_t* a1_data_size,
+    int64_t* a2_data,
+    uint64_t* a2_data_size,
+    uint8_t* a2_validity,
+    uint64_t* a2_validity_size) {
   // Open array for writing.
   tiledb_array_t* array;
   auto rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
@@ -333,9 +359,15 @@ void CSparseUnorderedWithDupsFx::write_1d_fragment_string(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "a", data, data_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a1", a1_data, a1_data_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_offsets_buffer(ctx_, query, "a", offsets, offsets_size);
+  rc = tiledb_query_set_offsets_buffer(
+      ctx_, query, "a1", a1_offsets, a1_offsets_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a2", a2_data, a2_data_size);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_validity_buffer(
+      ctx_, query, "a2", a2_validity, a2_validity_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords, coords_size);
   REQUIRE(rc == TILEDB_OK);
@@ -390,6 +422,25 @@ int32_t CSparseUnorderedWithDupsFx::read(
         ctx_, query_condition, "a", &val, sizeof(int32_t), TILEDB_LT);
     CHECK(rc == TILEDB_OK);
 
+    // Negated query condition should produce the same results.
+    SECTION("- Test TILEDB_NOT") {
+      tiledb_query_condition_t* qc;
+      rc = tiledb_query_condition_alloc(ctx_, &qc);
+      CHECK(rc == TILEDB_OK);
+      rc = tiledb_query_condition_init(
+          ctx_, qc, "a", &val, sizeof(int32_t), TILEDB_GE);
+      CHECK(rc == TILEDB_OK);
+
+      tiledb_query_condition_free(&query_condition);
+      query_condition = nullptr;
+      rc = tiledb_query_condition_alloc(ctx_, &query_condition);
+      CHECK(rc == TILEDB_OK);
+      rc = tiledb_query_condition_negate(ctx_, qc, &query_condition);
+      CHECK(rc == TILEDB_OK);
+
+      tiledb_query_condition_free(&qc);
+    }
+
     rc = tiledb_query_set_condition(ctx_, query, query_condition);
     CHECK(rc == TILEDB_OK);
 
@@ -423,10 +474,14 @@ int32_t CSparseUnorderedWithDupsFx::read(
 int32_t CSparseUnorderedWithDupsFx::read_strings(
     int* coords,
     uint64_t* coords_size,
-    char* data,
-    uint64_t* data_size,
-    uint64_t* data_offsets,
-    uint64_t* data_offsets_size,
+    char* a1_data,
+    uint64_t* a1_data_size,
+    uint64_t* a1_offsets,
+    uint64_t* a1_offsets_size,
+    int64_t* a2_data,
+    uint64_t* a2_data_size,
+    uint8_t* a2_validity,
+    uint64_t* a2_validity_size,
     uint64_t num_subarrays,
     tiledb_query_t** query_ret,
     tiledb_array_t** array_ret) {
@@ -461,10 +516,15 @@ int32_t CSparseUnorderedWithDupsFx::read_strings(
 
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx_, query, "a", data, data_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a1", a1_data, a1_data_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_offsets_buffer(
-      ctx_, query, "a", data_offsets, data_offsets_size);
+      ctx_, query, "a1", a1_offsets, a1_offsets_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a2", a2_data, a2_data_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_validity_buffer(
+      ctx_, query, "a2", a2_validity, a2_validity_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(ctx_, query, "d", coords, coords_size);
   CHECK(rc == TILEDB_OK);
@@ -900,7 +960,7 @@ TEST_CASE_METHOD(
   auto counters = stats->counters();
   REQUIRE(counters != nullptr);
   auto loop_num =
-      counters->find("Context.StorageManager.Query.Reader.loop_num");
+      counters->find("Context.StorageManager.Query.Reader.internal_loop_num");
   CHECK(2 == loop_num->second);
 
   // Clean up.
@@ -982,7 +1042,7 @@ TEST_CASE_METHOD(
   auto counters = stats->counters();
   REQUIRE(counters != nullptr);
   auto loop_num =
-      counters->find("Context.StorageManager.Query.Reader.loop_num");
+      counters->find("Context.StorageManager.Query.Reader.internal_loop_num");
   CHECK(uint64_t(num_frags * 3) == loop_num->second);
 
   // Check query status.
@@ -1530,18 +1590,26 @@ TEST_CASE_METHOD(
 
   // Try to read.
   int coords_r[5];
-  char data_r[5];
-  uint64_t data_offsets_r[5];
+  char a1_data_r[5];
+  uint64_t a1_offsets_r[5];
+  int64_t a2_data_r[5];
+  uint8_t a2_validity_r[5];
   uint64_t coords_r_size = sizeof(coords_r);
-  uint64_t data_r_size = sizeof(data_r);
-  uint64_t data_offsets_r_size = sizeof(data_offsets_r);
+  uint64_t a1_data_r_size = sizeof(a1_data_r);
+  uint64_t a1_offsets_r_size = sizeof(a1_offsets_r);
+  uint64_t a2_data_r_size = sizeof(a2_data_r);
+  uint64_t a2_validity_r_size = sizeof(a2_validity_r);
   auto rc = read_strings(
       coords_r,
       &coords_r_size,
-      data_r,
-      &data_r_size,
-      data_offsets_r,
-      &data_offsets_r_size);
+      a1_data_r,
+      &a1_data_r_size,
+      a1_offsets_r,
+      &a1_offsets_r_size,
+      a2_data_r,
+      &a2_data_r_size,
+      a2_validity_r,
+      &a2_validity_r_size);
   CHECK(rc == TILEDB_OK);
 }
 
@@ -1728,49 +1796,67 @@ TEST_CASE_METHOD(
   // Write a fragment.
   std::vector<int32_t> coords = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
   uint64_t coords_size = coords.size() * sizeof(int32_t);
-  std::vector<uint64_t> offsets = {
+  std::vector<uint64_t> a1_offsets = {
       0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
-  uint64_t offsets_size = offsets.size() * sizeof(uint64_t);
-  std::string data = "123456789abcde";
-  uint64_t data_size = data.size();
+  uint64_t a1_offsets_size = a1_offsets.size() * sizeof(uint64_t);
+  std::string a1_data = "123456789abcde";
+  uint64_t a1_data_size = a1_data.size();
+  std::vector<int64_t> a2_data = {
+      10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23};
+  uint64_t a2_data_size = a2_data.size() * sizeof(uint64_t);
+  std::vector<uint8_t> a2_validity = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+  uint64_t a2_validity_size = a2_validity.size();
   write_1d_fragment_string(
       coords.data(),
       &coords_size,
-      offsets.data(),
-      &offsets_size,
-      data.data(),
-      &data_size);
+      a1_offsets.data(),
+      &a1_offsets_size,
+      a1_data.data(),
+      &a1_data_size,
+      a2_data.data(),
+      &a2_data_size,
+      a2_validity.data(),
+      &a2_validity_size);
 
   tiledb_array_t* array = nullptr;
   tiledb_query_t* query = nullptr;
 
-  // Try to read with every possible buffer sizes. When varying buffer, the
-  // minimum should fit the number of dups at a minimum. For fixed size data,
-  // that will use the size of int and for var size data 1 as we have one char
-  // per cell. Max will be num dups times the size of either the full coordinate
-  // data or the var size data depending.
-  uint64_t num_dups = 2;
+  // Try to read with every possible buffer sizes. When varying
+  // buffer, the minimum should fit the number of dups at a minimum.
+  // For fixed size data, that will use the size of int and for var
+  // size data 1 as we have one char per cell. Max will be num dups
+  // times the size of either the full coordinate data or the var size
+  // data depending.
+  uint64_t num_dups = GENERATE(1, 2);
   uint64_t min_buffer_size =
       vary_fixed_buffer ? num_dups * sizeof(int) : num_dups;
   uint64_t max_buffer_size =
-      vary_fixed_buffer ? coords_size * num_dups : data_size * num_dups;
+      vary_fixed_buffer ? coords_size * num_dups : a1_data_size * num_dups;
   for (uint64_t buffer_size = min_buffer_size; buffer_size <= max_buffer_size;
        buffer_size++) {
-    // Only make the coordinate buffer change, the rest of the buffers are big
-    // enough for everything.
+    // Only make the coordinate buffer change, the rest of the buffers
+    // are big enough for everything.
     std::vector<int> coords_r(vary_fixed_buffer ? buffer_size : 1000, 0);
-    std::string data_r(vary_fixed_buffer ? 1000 : buffer_size, 0);
-    std::vector<uint64_t> data_offsets_r(1000, 0);
+    std::string a1_data_r(vary_fixed_buffer ? 1000 : buffer_size, 0);
+    std::vector<uint64_t> a1_offsets_r(1000, 0);
+    std::vector<int64_t> a2_data_r(1000);
+    std::vector<uint8_t> a2_validity_r(1000);
     uint64_t coords_r_size = coords_r.size() * sizeof(int32_t);
-    uint64_t data_r_size = data_r.size();
-    uint64_t data_offsets_r_size = data_offsets_r.size() * sizeof(uint64_t);
+    uint64_t a1_data_r_size = a1_data_r.size();
+    uint64_t a1_offsets_r_size = a1_offsets_r.size() * sizeof(uint64_t);
+    uint64_t a2_data_r_size = a2_data_r.size() * sizeof(int64_t);
+    uint64_t a2_validity_r_size = a2_validity_r.size();
     auto rc = read_strings(
         coords_r.data(),
         &coords_r_size,
-        data_r.data(),
-        &data_r_size,
-        data_offsets_r.data(),
-        &data_offsets_r_size,
+        a1_data_r.data(),
+        &a1_data_r_size,
+        a1_offsets_r.data(),
+        &a1_offsets_r_size,
+        a2_data_r.data(),
+        &a2_data_r_size,
+        a2_validity_r.data(),
+        &a2_validity_r_size,
         num_dups,
         &query,
         &array);
@@ -1784,7 +1870,11 @@ TEST_CASE_METHOD(
     tiledb_query_get_status(ctx_, query, &status);
     for (uint64_t iter = 0; iter < 100; iter++) {
       // Aggregate results.
-      for (uint64_t i = 0; i < coords_r_size / sizeof(int); i++) {
+      uint64_t num_read = coords_r_size / sizeof(int);
+      CHECK(a1_offsets_r_size == num_read * sizeof(uint64_t));
+      CHECK(a2_data_r_size == num_read * sizeof(int64_t));
+      CHECK(a2_validity_r_size == num_read);
+      for (uint64_t i = 0; i < num_read; i++) {
         counts[coords_r[i]]++;
       }
 
@@ -1817,8 +1907,10 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CSparseUnorderedWithDupsFx,
-    "Sparse unordered with dups reader: Increasing dups with overlapping range",
-    "[sparse-unordered-with-dups][dup-data-test][overlapping-ranges]") {
+    "Sparse unordered with dups reader: Increasing dups with "
+    "overlapping range",
+    "[sparse-unordered-with-dups][dup-data-test][overlapping-"
+    "ranges]") {
   // Create default array.
   reset_config();
   int32_t extent = GENERATE(2, 7, 5, 10, 11);
@@ -1827,21 +1919,31 @@ TEST_CASE_METHOD(
   std::vector<int32_t> coords = {1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
                                  11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
   uint64_t coords_size = coords.size() * sizeof(int32_t);
-  std::vector<uint64_t> offsets = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
-                                   10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
-  uint64_t offsets_size = offsets.size() * sizeof(uint64_t);
-  std::string data = "123456789abcdefghijk";
-  uint64_t data_size = data.size();
+  std::vector<uint64_t> a1_offsets = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
+                                      10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
+  uint64_t a1_offsets_size = a1_offsets.size() * sizeof(uint64_t);
+  std::string a1_data = "123456789abcdefghijk";
+  uint64_t a1_data_size = a1_data.size();
+  std::vector<int64_t> a2_data = {10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+                                  20, 21, 22, 23, 24, 25, 26, 27, 28, 29};
+  uint64_t a2_data_size = a2_data.size() * sizeof(uint64_t);
+  std::vector<uint8_t> a2_validity = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                                      1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+  uint64_t a2_validity_size = a2_validity.size();
   // Write dups for all cells up to capacity
   uint64_t total_cells = 0;
   for (int32_t i = 0; i < extent * 2; i++) {
     write_1d_fragment_string(
         coords.data(),
         &coords_size,
-        offsets.data(),
-        &offsets_size,
-        data.data(),
-        &data_size);
+        a1_offsets.data(),
+        &a1_offsets_size,
+        a1_data.data(),
+        &a1_data_size,
+        a2_data.data(),
+        &a2_data_size,
+        a2_validity.data(),
+        &a2_validity_size);
     total_cells += coords_size / sizeof(int32_t);
   }
   tiledb_array_t* array;
@@ -1887,10 +1989,10 @@ TEST_CASE_METHOD(
         ctx_, query, "d", coords_r.data(), &coords_r_size);
     CHECK(st == TILEDB_OK);
     st = tiledb_query_set_offsets_buffer(
-        ctx_, query, "a", offsets_r.data(), &offsets_r_size);
+        ctx_, query, "a1", offsets_r.data(), &offsets_r_size);
     CHECK(st == TILEDB_OK);
     st = tiledb_query_set_data_buffer(
-        ctx_, query, "a", data_r.data(), &data_r_size);
+        ctx_, query, "a1", data_r.data(), &data_r_size);
     CHECK(st == TILEDB_OK);
     st = tiledb_query_submit(ctx_, query);
     CHECK(st == TILEDB_OK);

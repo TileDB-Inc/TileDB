@@ -113,7 +113,8 @@ Reader::Reader(
     Subarray& subarray,
     Layout layout,
     std::optional<QueryCondition>& condition,
-    bool skip_checks_serialization)
+    bool skip_checks_serialization,
+    bool remote_query)
     : ReaderBase(
           stats,
           logger->clone("Reader", ++logger_id_),
@@ -141,7 +142,7 @@ Reader::Reader(
   }
 
   // Check subarray
-  check_subarray();
+  check_subarray(remote_query && array->array_schema_latest().dense());
 
   // Initialize the read state
   init_read_state();
@@ -169,7 +170,7 @@ QueryStatusDetailsReason Reader::status_incomplete_reason() const {
                         QueryStatusDetailsReason::REASON_NONE;
 }
 
-void Reader::initialize_memory_budget() {
+void Reader::refresh_config() {
 }
 
 const Reader::ReadState* Reader::read_state() const {

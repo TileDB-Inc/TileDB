@@ -816,8 +816,7 @@ class ResultTileWithBitmap : public ResultTile {
       unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata& frag_md)
       : ResultTile(frag_idx, tile_idx, *frag_md.array_schema().get())
       , cell_num_(frag_md.cell_num(tile_idx))
-      , result_num_(cell_num_)
-      , coords_loaded_(false) {
+      , result_num_(cell_num_) {
   }
 
   /** Move constructor. */
@@ -841,22 +840,6 @@ class ResultTileWithBitmap : public ResultTile {
   /* ********************************* */
   /*          PUBLIC METHODS           */
   /* ********************************* */
-
-  /**
-   * Returns true if the coordinates were loaded for this result tile.
-   *
-   * @return 'true' if the coords are loaded.
-   */
-  inline bool coords_loaded() {
-    return coords_loaded_;
-  }
-
-  /**
-   * Specifies coords are loaded for this result tile.
-   */
-  inline void set_coords_loaded() {
-    coords_loaded_ = true;
-  }
 
   /**
    * Returns the number of results in the bitmap.
@@ -965,7 +948,6 @@ class ResultTileWithBitmap : public ResultTile {
     std::swap(bitmap_, tile.bitmap_);
     std::swap(cell_num_, tile.cell_num_);
     std::swap(result_num_, tile.result_num_);
-    std::swap(coords_loaded_, tile.coords_loaded_);
   }
 
  protected:
@@ -980,9 +962,6 @@ class ResultTileWithBitmap : public ResultTile {
 
   /** Number of cells in this bitmap. */
   uint64_t result_num_;
-
-  /** Were the coordinates loaded for this tile. */
-  bool coords_loaded_;
 };
 
 /** Global order result tile. */

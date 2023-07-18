@@ -460,7 +460,8 @@ void create_array(
     tiledb_layout_t cell_order,
     uint64_t capacity,
     bool allows_dups,
-    bool serialize_array_schema) {
+    bool serialize_array_schema,
+    const optional<std::vector<bool>>& nullable) {
   // For easy reference
   auto dim_num = dim_names.size();
   auto attr_num = attr_names.size();
@@ -520,6 +521,12 @@ void create_array(
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_attribute_set_cell_val_num(ctx, a, cell_val_num[i]);
     REQUIRE(rc == TILEDB_OK);
+
+    if (nullable != nullopt) {
+      rc = tiledb_attribute_set_nullable(ctx, a, nullable.value()[i]);
+      REQUIRE(rc == TILEDB_OK);
+    }
+
     rc = tiledb_array_schema_add_attribute(ctx, array_schema, a);
     REQUIRE(rc == TILEDB_OK);
     tiledb_attribute_free(&a);
@@ -817,11 +824,8 @@ void create_ctx_and_vfs(
         tiledb_config_set(
             config,
             "vfs.azure.blob_endpoint",
-            "127.0.0.1:10000/devstoreaccount1",
+            "http://127.0.0.1:10000/devstoreaccount1",
             &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.azure.use_https", "false", &error) ==
-        TILEDB_OK);
   }
   REQUIRE(tiledb_ctx_alloc(config, ctx) == TILEDB_OK);
   REQUIRE(error == nullptr);

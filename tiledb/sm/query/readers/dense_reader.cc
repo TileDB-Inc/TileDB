@@ -77,7 +77,8 @@ DenseReader::DenseReader(
     Subarray& subarray,
     Layout layout,
     std::optional<QueryCondition>& condition,
-    bool skip_checks_serialization)
+    bool skip_checks_serialization,
+    bool remote_query)
     : ReaderBase(
           stats,
           logger->clone("DenseReader", ++logger_id_),
@@ -108,10 +109,10 @@ DenseReader::DenseReader(
   }
 
   // Check subarray.
-  check_subarray();
+  check_subarray(remote_query);
 
   // Initialize memory budget.
-  initialize_memory_budget();
+  refresh_config();
 
   // Initialize the read state.
   init_read_state();
@@ -133,7 +134,7 @@ QueryStatusDetailsReason DenseReader::status_incomplete_reason() const {
                         QueryStatusDetailsReason::REASON_NONE;
 }
 
-void DenseReader::initialize_memory_budget() {
+void DenseReader::refresh_config() {
   // Get config values.
   bool found = false;
   throw_if_not_ok(
@@ -365,7 +366,6 @@ Status DenseReader::dense_read() {
 
   // Compute attribute names to load and copy.
   std::vector<std::string> names;
-  std::vector<std::string> fixed_names;
   std::vector<std::string> var_names;
   std::unordered_set<std::string> condition_names;
   if (condition_.has_value()) {
@@ -386,11 +386,11 @@ Status DenseReader::dense_read() {
     if (condition_names.count(name) == 0) {
       names.emplace_back(name);
     }
+  }
 
+  for (auto& name : names) {
     if (array_schema_.var_size(name)) {
       var_names.emplace_back(name);
-    } else {
-      fixed_names.emplace_back(name);
     }
   }
 

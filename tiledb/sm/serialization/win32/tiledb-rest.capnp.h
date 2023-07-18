@@ -29,6 +29,7 @@ CAPNP_DECLARE_SCHEMA(a2a652536db09fa0);
 CAPNP_DECLARE_SCHEMA(de030f447664754c);
 CAPNP_DECLARE_SCHEMA(fa787661cd3563a4);
 CAPNP_DECLARE_SCHEMA(fda1cb9663a55b70);
+CAPNP_DECLARE_SCHEMA(fd5825d8c6e74d78);
 CAPNP_DECLARE_SCHEMA(e7175047415b3f97);
 CAPNP_DECLARE_SCHEMA(9ceaf832b3ab897f);
 CAPNP_DECLARE_SCHEMA(bc4583f733eac4f5);
@@ -46,6 +47,7 @@ CAPNP_DECLARE_SCHEMA(c7e036a11506a1a4);
 CAPNP_DECLARE_SCHEMA(8bf6c1d37e748294);
 CAPNP_DECLARE_SCHEMA(8ba60147a0e6735e);
 CAPNP_DECLARE_SCHEMA(86cfc12d74ed4aa0);
+CAPNP_DECLARE_SCHEMA(f7aa276767b422e7);
 CAPNP_DECLARE_SCHEMA(dba20dec138adac9);
 CAPNP_DECLARE_SCHEMA(ff14003c70494585);
 CAPNP_DECLARE_SCHEMA(f86b7bf97823250f);
@@ -369,6 +371,23 @@ struct FloatScaleConfig {
   };
 };
 
+struct WebpConfig {
+  WebpConfig() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(fd5825d8c6e74d78, 2, 0)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
 struct Filter {
   Filter() = delete;
 
@@ -378,7 +397,7 @@ struct Filter {
   struct Data;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(e7175047415b3f97, 2, 3)
+    CAPNP_DECLARE_STRUCT_HEADER(e7175047415b3f97, 2, 4)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -409,7 +428,7 @@ struct Filter::Data {
   };
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(9ceaf832b3ab897f, 2, 3)
+    CAPNP_DECLARE_STRUCT_HEADER(9ceaf832b3ab897f, 2, 4)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -689,6 +708,23 @@ struct SubarrayRanges {
   };
 };
 
+struct LabelSubarrayRanges {
+  LabelSubarrayRanges() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(f7aa276767b422e7, 1, 2)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
 struct Subarray {
   Subarray() = delete;
 
@@ -697,7 +733,7 @@ struct Subarray {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(dba20dec138adac9, 0, 4)
+    CAPNP_DECLARE_STRUCT_HEADER(dba20dec138adac9, 1, 6)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -3913,6 +3949,118 @@ class FloatScaleConfig::Pipeline {
 };
 #endif  // !CAPNP_LITE
 
+class WebpConfig::Reader {
+ public:
+  typedef WebpConfig Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline float getQuality() const;
+
+  inline ::uint8_t getFormat() const;
+
+  inline bool getLossless() const;
+
+  inline ::uint16_t getExtentX() const;
+
+  inline ::uint16_t getExtentY() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class WebpConfig::Builder {
+ public:
+  typedef WebpConfig Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline float getQuality();
+  inline void setQuality(float value);
+
+  inline ::uint8_t getFormat();
+  inline void setFormat(::uint8_t value);
+
+  inline bool getLossless();
+  inline void setLossless(bool value);
+
+  inline ::uint16_t getExtentX();
+  inline void setExtentX(::uint16_t value);
+
+  inline ::uint16_t getExtentY();
+  inline void setExtentY(::uint16_t value);
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class WebpConfig::Pipeline {
+ public:
+  typedef WebpConfig Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
 class Filter::Reader {
  public:
   typedef Filter Reads;
@@ -3940,6 +4088,10 @@ class Filter::Reader {
   inline bool hasFloatScaleConfig() const;
   inline ::tiledb::sm::serialization::capnp::FloatScaleConfig::Reader
   getFloatScaleConfig() const;
+
+  inline bool hasWebpConfig() const;
+  inline ::tiledb::sm::serialization::capnp::WebpConfig::Reader getWebpConfig()
+      const;
 
  private:
   ::capnp::_::StructReader _reader;
@@ -4003,6 +4155,18 @@ class Filter::Builder {
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::FloatScaleConfig>
   disownFloatScaleConfig();
 
+  inline bool hasWebpConfig();
+  inline ::tiledb::sm::serialization::capnp::WebpConfig::Builder
+  getWebpConfig();
+  inline void setWebpConfig(
+      ::tiledb::sm::serialization::capnp::WebpConfig::Reader value);
+  inline ::tiledb::sm::serialization::capnp::WebpConfig::Builder
+  initWebpConfig();
+  inline void adoptWebpConfig(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::WebpConfig>&& value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::WebpConfig>
+  disownWebpConfig();
+
  private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -4027,6 +4191,8 @@ class Filter::Pipeline {
   inline typename Data::Pipeline getData();
   inline ::tiledb::sm::serialization::capnp::FloatScaleConfig::Pipeline
   getFloatScaleConfig();
+  inline ::tiledb::sm::serialization::capnp::WebpConfig::Pipeline
+  getWebpConfig();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -6061,6 +6227,128 @@ class SubarrayRanges::Pipeline {
 };
 #endif  // !CAPNP_LITE
 
+class LabelSubarrayRanges::Reader {
+ public:
+  typedef LabelSubarrayRanges Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline ::uint32_t getDimensionId() const;
+
+  inline bool hasName() const;
+  inline ::capnp::Text::Reader getName() const;
+
+  inline bool hasRanges() const;
+  inline ::tiledb::sm::serialization::capnp::SubarrayRanges::Reader getRanges()
+      const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class LabelSubarrayRanges::Builder {
+ public:
+  typedef LabelSubarrayRanges Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline ::uint32_t getDimensionId();
+  inline void setDimensionId(::uint32_t value);
+
+  inline bool hasName();
+  inline ::capnp::Text::Builder getName();
+  inline void setName(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initName(unsigned int size);
+  inline void adoptName(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownName();
+
+  inline bool hasRanges();
+  inline ::tiledb::sm::serialization::capnp::SubarrayRanges::Builder
+  getRanges();
+  inline void setRanges(
+      ::tiledb::sm::serialization::capnp::SubarrayRanges::Reader value);
+  inline ::tiledb::sm::serialization::capnp::SubarrayRanges::Builder
+  initRanges();
+  inline void adoptRanges(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::SubarrayRanges>&&
+          value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::SubarrayRanges>
+  disownRanges();
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class LabelSubarrayRanges::Pipeline {
+ public:
+  typedef LabelSubarrayRanges Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+  inline ::tiledb::sm::serialization::capnp::SubarrayRanges::Pipeline
+  getRanges();
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
 class Subarray::Reader {
  public:
   typedef Subarray Reads;
@@ -6095,6 +6383,20 @@ class Subarray::Reader {
   inline bool hasRelevantFragments() const;
   inline ::capnp::List<::uint32_t, ::capnp::Kind::PRIMITIVE>::Reader
   getRelevantFragments() const;
+
+  inline bool hasLabelRanges() const;
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::LabelSubarrayRanges,
+      ::capnp::Kind::STRUCT>::Reader
+  getLabelRanges() const;
+
+  inline bool hasAttributeRanges() const;
+  inline ::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::SubarrayRanges>::Reader
+  getAttributeRanges() const;
+
+  inline bool getCoalesceRanges() const;
 
  private:
   ::capnp::_::StructReader _reader;
@@ -6186,6 +6488,53 @@ class Subarray::Builder {
   inline ::capnp::Orphan<::capnp::List<::uint32_t, ::capnp::Kind::PRIMITIVE>>
   disownRelevantFragments();
 
+  inline bool hasLabelRanges();
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::LabelSubarrayRanges,
+      ::capnp::Kind::STRUCT>::Builder
+  getLabelRanges();
+  inline void setLabelRanges(
+      ::capnp::List<
+          ::tiledb::sm::serialization::capnp::LabelSubarrayRanges,
+          ::capnp::Kind::STRUCT>::Reader value);
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::LabelSubarrayRanges,
+      ::capnp::Kind::STRUCT>::Builder
+  initLabelRanges(unsigned int size);
+  inline void adoptLabelRanges(
+      ::capnp::Orphan<::capnp::List<
+          ::tiledb::sm::serialization::capnp::LabelSubarrayRanges,
+          ::capnp::Kind::STRUCT>>&& value);
+  inline ::capnp::Orphan<::capnp::List<
+      ::tiledb::sm::serialization::capnp::LabelSubarrayRanges,
+      ::capnp::Kind::STRUCT>>
+  disownLabelRanges();
+
+  inline bool hasAttributeRanges();
+  inline ::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::SubarrayRanges>::Builder
+  getAttributeRanges();
+  inline void setAttributeRanges(
+      ::tiledb::sm::serialization::capnp::Map<
+          ::capnp::Text,
+          ::tiledb::sm::serialization::capnp::SubarrayRanges>::Reader value);
+  inline ::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::SubarrayRanges>::Builder
+  initAttributeRanges();
+  inline void adoptAttributeRanges(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::Map<
+          ::capnp::Text,
+          ::tiledb::sm::serialization::capnp::SubarrayRanges>>&& value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::SubarrayRanges>>
+  disownAttributeRanges();
+
+  inline bool getCoalesceRanges();
+  inline void setCoalesceRanges(bool value);
+
  private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -6208,6 +6557,10 @@ class Subarray::Pipeline {
   }
 
   inline ::tiledb::sm::serialization::capnp::Stats::Pipeline getStats();
+  inline ::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::SubarrayRanges>::Pipeline
+  getAttributeRanges();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -16787,6 +17140,74 @@ inline void FloatScaleConfig::Builder::setByteWidth(::uint64_t value) {
       ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
 }
 
+inline float WebpConfig::Reader::getQuality() const {
+  return _reader.getDataField<float>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline float WebpConfig::Builder::getQuality() {
+  return _builder.getDataField<float>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void WebpConfig::Builder::setQuality(float value) {
+  _builder.setDataField<float>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint8_t WebpConfig::Reader::getFormat() const {
+  return _reader.getDataField<::uint8_t>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint8_t WebpConfig::Builder::getFormat() {
+  return _builder.getDataField<::uint8_t>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS);
+}
+inline void WebpConfig::Builder::setFormat(::uint8_t value) {
+  _builder.setDataField<::uint8_t>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool WebpConfig::Reader::getLossless() const {
+  return _reader.getDataField<bool>(::capnp::bounded<40>() * ::capnp::ELEMENTS);
+}
+
+inline bool WebpConfig::Builder::getLossless() {
+  return _builder.getDataField<bool>(
+      ::capnp::bounded<40>() * ::capnp::ELEMENTS);
+}
+inline void WebpConfig::Builder::setLossless(bool value) {
+  _builder.setDataField<bool>(
+      ::capnp::bounded<40>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint16_t WebpConfig::Reader::getExtentX() const {
+  return _reader.getDataField<::uint16_t>(
+      ::capnp::bounded<3>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint16_t WebpConfig::Builder::getExtentX() {
+  return _builder.getDataField<::uint16_t>(
+      ::capnp::bounded<3>() * ::capnp::ELEMENTS);
+}
+inline void WebpConfig::Builder::setExtentX(::uint16_t value) {
+  _builder.setDataField<::uint16_t>(
+      ::capnp::bounded<3>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint16_t WebpConfig::Reader::getExtentY() const {
+  return _reader.getDataField<::uint16_t>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint16_t WebpConfig::Builder::getExtentY() {
+  return _builder.getDataField<::uint16_t>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS);
+}
+inline void WebpConfig::Builder::setExtentY(::uint16_t value) {
+  _builder.setDataField<::uint16_t>(
+      ::capnp::bounded<4>() * ::capnp::ELEMENTS, value);
+}
+
 inline bool Filter::Reader::hasType() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
@@ -16901,6 +17322,59 @@ Filter::Builder::disownFloatScaleConfig() {
       ::tiledb::sm::serialization::capnp::FloatScaleConfig>::
       disown(
           _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+
+inline bool Filter::Reader::hasWebpConfig() const {
+  return !_reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Filter::Builder::hasWebpConfig() {
+  return !_builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::WebpConfig::Reader
+Filter::Reader::getWebpConfig() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::WebpConfig>::get(
+          _reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::WebpConfig::Builder
+Filter::Builder::getWebpConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::WebpConfig>::get(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::WebpConfig::Pipeline
+Filter::Pipeline::getWebpConfig() {
+  return ::tiledb::sm::serialization::capnp::WebpConfig::Pipeline(
+      _typeless.getPointerField(3));
+}
+#endif  // !CAPNP_LITE
+inline void Filter::Builder::setWebpConfig(
+    ::tiledb::sm::serialization::capnp::WebpConfig::Reader value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::WebpConfig>::
+      set(_builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+          value);
+}
+inline ::tiledb::sm::serialization::capnp::WebpConfig::Builder
+Filter::Builder::initWebpConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::WebpConfig>::init(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline void Filter::Builder::adoptWebpConfig(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::WebpConfig>&& value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::WebpConfig>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::WebpConfig>
+Filter::Builder::disownWebpConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::WebpConfig>::disown(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
 }
 
 inline ::tiledb::sm::serialization::capnp::Filter::Data::Which
@@ -18963,6 +19437,115 @@ SubarrayRanges::Builder::disownBufferStartSizes() {
           _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
 }
 
+inline ::uint32_t LabelSubarrayRanges::Reader::getDimensionId() const {
+  return _reader.getDataField<::uint32_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint32_t LabelSubarrayRanges::Builder::getDimensionId() {
+  return _builder.getDataField<::uint32_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void LabelSubarrayRanges::Builder::setDimensionId(::uint32_t value) {
+  _builder.setDataField<::uint32_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool LabelSubarrayRanges::Reader::hasName() const {
+  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool LabelSubarrayRanges::Builder::hasName() {
+  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader LabelSubarrayRanges::Reader::getName() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder LabelSubarrayRanges::Builder::getName() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void LabelSubarrayRanges::Builder::setName(::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder LabelSubarrayRanges::Builder::initName(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      size);
+}
+inline void LabelSubarrayRanges::Builder::adoptName(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text>
+LabelSubarrayRanges::Builder::disownName() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool LabelSubarrayRanges::Reader::hasRanges() const {
+  return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool LabelSubarrayRanges::Builder::hasRanges() {
+  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::SubarrayRanges::Reader
+LabelSubarrayRanges::Reader::getRanges() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::SubarrayRanges>::get(
+          _reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::SubarrayRanges::Builder
+LabelSubarrayRanges::Builder::getRanges() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::SubarrayRanges>::get(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::SubarrayRanges::Pipeline
+LabelSubarrayRanges::Pipeline::getRanges() {
+  return ::tiledb::sm::serialization::capnp::SubarrayRanges::Pipeline(
+      _typeless.getPointerField(1));
+}
+#endif  // !CAPNP_LITE
+inline void LabelSubarrayRanges::Builder::setRanges(
+    ::tiledb::sm::serialization::capnp::SubarrayRanges::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::SubarrayRanges>::set(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          value);
+}
+inline ::tiledb::sm::serialization::capnp::SubarrayRanges::Builder
+LabelSubarrayRanges::Builder::initRanges() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::SubarrayRanges>::init(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void LabelSubarrayRanges::Builder::adoptRanges(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::SubarrayRanges>&&
+        value) {
+  ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::SubarrayRanges>::adopt(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::SubarrayRanges>
+LabelSubarrayRanges::Builder::disownRanges() {
+  return ::capnp::_::PointerHelpers<
+      ::tiledb::sm::serialization::capnp::SubarrayRanges>::
+      disown(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+
 inline bool Subarray::Reader::hasLayout() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
@@ -19179,6 +19762,171 @@ Subarray::Builder::disownRelevantFragments() {
       ::capnp::List<::uint32_t, ::capnp::Kind::PRIMITIVE>>::
       disown(
           _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+
+inline bool Subarray::Reader::hasLabelRanges() const {
+  return !_reader.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Subarray::Builder::hasLabelRanges() {
+  return !_builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<
+    ::tiledb::sm::serialization::capnp::LabelSubarrayRanges,
+    ::capnp::Kind::STRUCT>::Reader
+Subarray::Reader::getLabelRanges() const {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::LabelSubarrayRanges,
+      ::capnp::Kind::STRUCT>>::get(_reader
+                                       .getPointerField(
+                                           ::capnp::bounded<4>() *
+                                           ::capnp::POINTERS));
+}
+inline ::capnp::List<
+    ::tiledb::sm::serialization::capnp::LabelSubarrayRanges,
+    ::capnp::Kind::STRUCT>::Builder
+Subarray::Builder::getLabelRanges() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::LabelSubarrayRanges,
+      ::capnp::Kind::STRUCT>>::get(_builder
+                                       .getPointerField(
+                                           ::capnp::bounded<4>() *
+                                           ::capnp::POINTERS));
+}
+inline void Subarray::Builder::setLabelRanges(
+    ::capnp::List<
+        ::tiledb::sm::serialization::capnp::LabelSubarrayRanges,
+        ::capnp::Kind::STRUCT>::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::LabelSubarrayRanges,
+      ::capnp::Kind::STRUCT>>::
+      set(_builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<
+    ::tiledb::sm::serialization::capnp::LabelSubarrayRanges,
+    ::capnp::Kind::STRUCT>::Builder
+Subarray::Builder::initLabelRanges(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::LabelSubarrayRanges,
+      ::capnp::Kind::STRUCT>>::
+      init(
+          _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+          size);
+}
+inline void Subarray::Builder::adoptLabelRanges(
+    ::capnp::Orphan<::capnp::List<
+        ::tiledb::sm::serialization::capnp::LabelSubarrayRanges,
+        ::capnp::Kind::STRUCT>>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::LabelSubarrayRanges,
+      ::capnp::Kind::STRUCT>>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<
+    ::tiledb::sm::serialization::capnp::LabelSubarrayRanges,
+    ::capnp::Kind::STRUCT>>
+Subarray::Builder::disownLabelRanges() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::LabelSubarrayRanges,
+      ::capnp::Kind::STRUCT>>::disown(_builder
+                                          .getPointerField(
+                                              ::capnp::bounded<4>() *
+                                              ::capnp::POINTERS));
+}
+
+inline bool Subarray::Reader::hasAttributeRanges() const {
+  return !_reader.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Subarray::Builder::hasAttributeRanges() {
+  return !_builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::Map<
+    ::capnp::Text,
+    ::tiledb::sm::serialization::capnp::SubarrayRanges>::Reader
+Subarray::Reader::getAttributeRanges() const {
+  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::SubarrayRanges>>::
+      get(_reader.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::Map<
+    ::capnp::Text,
+    ::tiledb::sm::serialization::capnp::SubarrayRanges>::Builder
+Subarray::Builder::getAttributeRanges() {
+  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::SubarrayRanges>>::
+      get(_builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::Map<
+    ::capnp::Text,
+    ::tiledb::sm::serialization::capnp::SubarrayRanges>::Pipeline
+Subarray::Pipeline::getAttributeRanges() {
+  return ::tiledb::sm::serialization::capnp::
+      Map<::capnp::Text, ::tiledb::sm::serialization::capnp::SubarrayRanges>::
+          Pipeline(_typeless.getPointerField(5));
+}
+#endif  // !CAPNP_LITE
+inline void Subarray::Builder::setAttributeRanges(
+    ::tiledb::sm::serialization::capnp::Map<
+        ::capnp::Text,
+        ::tiledb::sm::serialization::capnp::SubarrayRanges>::Reader value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::SubarrayRanges>>::
+      set(_builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS),
+          value);
+}
+inline ::tiledb::sm::serialization::capnp::Map<
+    ::capnp::Text,
+    ::tiledb::sm::serialization::capnp::SubarrayRanges>::Builder
+Subarray::Builder::initAttributeRanges() {
+  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::SubarrayRanges>>::
+      init(_builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
+}
+inline void Subarray::Builder::adoptAttributeRanges(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::Map<
+        ::capnp::Text,
+        ::tiledb::sm::serialization::capnp::SubarrayRanges>>&& value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::SubarrayRanges>>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Map<
+    ::capnp::Text,
+    ::tiledb::sm::serialization::capnp::SubarrayRanges>>
+Subarray::Builder::disownAttributeRanges() {
+  return ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Map<
+      ::capnp::Text,
+      ::tiledb::sm::serialization::capnp::SubarrayRanges>>::
+      disown(
+          _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
+}
+
+inline bool Subarray::Reader::getCoalesceRanges() const {
+  return _reader.getDataField<bool>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, true);
+}
+
+inline bool Subarray::Builder::getCoalesceRanges() {
+  return _builder.getDataField<bool>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, true);
+}
+inline void Subarray::Builder::setCoalesceRanges(bool value) {
+  _builder.setDataField<bool>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value, true);
 }
 
 inline bool SubarrayPartitioner::Reader::hasSubarray() const {

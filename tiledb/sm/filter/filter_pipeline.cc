@@ -579,7 +579,10 @@ bool FilterPipeline::skip_offsets_filtering(
 
 bool FilterPipeline::use_tile_chunking(
     const bool is_var, const uint32_t version, const Datatype type) const {
-  if (is_var &&
+  if (max_chunk_size_ == 0) {
+    return false;
+  } else if (
+      is_var &&
       (type == Datatype::STRING_ASCII || type == Datatype::STRING_UTF8)) {
     if (version >= 12 && has_filter(FilterType::FILTER_RLE)) {
       return false;
