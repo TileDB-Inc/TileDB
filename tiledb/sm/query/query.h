@@ -244,8 +244,8 @@ class Query {
   Status cancel();
 
   /**
-   * Finalizes the query, flushing all internal state. Applicable only to global
-   * layout writes. It has no effect for any other query type.
+   * Finalizes the query, flushing all internal state.
+   * Applicable to write queries only.
    */
   Status finalize();
 
@@ -668,6 +668,12 @@ class Query {
   /** Returns true if this is a dense query */
   bool is_dense() const;
 
+  /** Returns true if the config is set to allow separate attribute writes. */
+  inline bool allow_separate_attribute_writes() const {
+    return config_.get<bool>(
+        "sm.allow_separate_attribute_writes", Config::must_find);
+  }
+
   /** Returns a reference to the internal WrittenFragmentInfo list */
   std::vector<WrittenFragmentInfo>& get_written_fragment_info();
 
@@ -855,9 +861,6 @@ class Query {
    * Note: This is only used for global order writes.
    */
   uint64_t fragment_size_;
-
-  /** Allow separate attribute writes. */
-  bool allow_separate_attribute_writes_;
 
   /** Already written buffers. */
   std::unordered_set<std::string> written_buffers_;

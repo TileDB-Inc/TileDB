@@ -34,37 +34,10 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
-if(FALSE) #NOT WINDOWS AND TILEDB_VCPKG AND NOT TILEDB_VCPKG_DISABLE_MAGIC)
-  find_path(libmagic_INCLUDE_DIR NAMES magic.h)
-  find_library(libmagic_LIBRARIES magic)
-  find_file(libmagic_DICTIONARY magic.mgc
-    PATH_SUFFIXES share/libmagic/misc
-  )
-
-  include(FindPackageHandleStandardArgs)
-  FIND_PACKAGE_HANDLE_STANDARD_ARGS(libmagic
-    REQUIRED_VARS
-      libmagic_INCLUDE_DIR
-      libmagic_LIBRARIES
-      libmagic_DICTIONARY
-  )
-
-  if(NOT libmagic_FOUND)
-    message(FATAL "Error finding libmagic")
-  endif()
-
-  add_library(libmagic UNKNOWN IMPORTED)
-  set_target_properties(libmagic PROPERTIES
-    IMPORTED_LOCATION "${libmagic_LIBRARIES}"
-    INTERFACE_INCLUDE_DIRECTORIES "${libmagic_INCLUDE_DIR}"
-  )
-
-  # Some GitHub builders were finding a system installed liblzma when
-  # building the libmagic port. Rather than fight the issue we just force
-  # liblzma support everywhere.
-  find_package(liblzma CONFIG REQUIRED)
-  target_link_libraries(libmagic INTERFACE liblzma::liblzma)
-
+if(TILEDB_VCPKG)
+  find_package(unofficial-libmagic CONFIG REQUIRED)
+  set(libmagic_DICTIONARY ${unofficial-libmagic_DICTIONARY})
+  add_library(libmagic ALIAS unofficial::libmagic::libmagic)
   return()
 endif()
 
@@ -130,7 +103,7 @@ if(NOT TILEDB_LIBMAGIC_EP_BUILT)
       CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
-        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_BUILD_TYPE=$<CONFIG>
         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
         -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}

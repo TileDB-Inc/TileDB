@@ -26,7 +26,7 @@ list(JOIN CMAKE_PREFIX_PATH "|" CMAKE_PREFIX_PATH_STR)
 set(INHERITED_CMAKE_ARGS
   -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
   -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH_STR}
-  -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+  -DCMAKE_BUILD_TYPE=$<CONFIG>
   -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
   -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
   -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
@@ -34,7 +34,6 @@ set(INHERITED_CMAKE_ARGS
   -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
   -DCOMPILER_SUPPORTS_AVX2=${COMPILER_SUPPORTS_AVX2}
   -DTILEDB_VCPKG=${TILEDB_VCPKG}
-  -DTILEDB_VCPKG_DISABLE_MAGIC=${TILEDB_VCPKG_DISABLE_MAGIC}
   -DTILEDB_VERBOSE=${TILEDB_VERBOSE}
   -DTILEDB_ASSERTIONS=${TILEDB_ASSERTIONS}
   -DTILEDB_S3=${TILEDB_S3}
@@ -58,7 +57,16 @@ set(INHERITED_CMAKE_ARGS
   -DTILEDB_INSTALL_LIBDIR=${TILEDB_INSTALL_LIBDIR}
   -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
   -DTILEDB_EXPERIMENTAL_FEATURES=${TILEDB_EXPERIMENTAL_FEATURES}
+  -DTILEDB_TESTS_AWS_S3_CONFIG=${TILEDB_TESTS_AWS_S3_CONFIG}
+  -DTILEDB_TESTS_ENABLE_REST=${TILEDB_TESTS_ENABLE_REST}
+  -DTILEDB_VCPKG_POLICY_EMPTY_PACKAGE=${TILEDB_VCPKG_POLICY_EMPTY_PACKAGE}
 )
+
+if (libxml2_DIR)
+  list(APPEND INHERITED_CMAKE_ARGS
+    -Dlibxml2_DIR=${libxml2_DIR}
+  )
+endif()
 
 if (TILEDB_TESTS)
   list(APPEND INHERITED_CMAKE_ARGS
@@ -115,18 +123,27 @@ if (NOT WIN32)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindOpenSSL_EP.cmake)
 endif()
 
-if (TILEDB_GCS OR TILEDB_SERIALIZATION)
+if (TILEDB_AZURE OR TILEDB_GCS OR TILEDB_SERIALIZATION)
   # Need libcurl either with GCS or serialization support.
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCurl_EP.cmake)
 endif()
 
-if (TILEDB_S3)
+if (TILEDB_S3 AND NOT TILEDB_VCPKG)
   # Note on Win32: AWS SDK uses builtin WinHTTP instead of libcurl,
   # and builtin BCrypt instead of OpenSSL.
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAWSSDK_EP.cmake)
 endif()
 
-if (TILEDB_GCS)
+if (TILEDB_AZURE AND NOT TILEDB_VCPKG)
+  if (WIN32)
+    include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindWIL_EP.cmake)
+  endif()
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAzureCore_EP.cmake)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAzureStorageCommon_EP.cmake)
+  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAzureStorageBlobs_EP.cmake)
+endif()
+
+if (TILEDB_GCS AND NOT TILEDB_VCPKG)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindGCSSDK_EP.cmake)
 endif()
 
@@ -160,26 +177,26 @@ ExternalProject_Add(tiledb
 
 # make install-tiledb
 add_custom_target(install-tiledb
-  COMMAND ${CMAKE_COMMAND} --build . --target install --config ${CMAKE_BUILD_TYPE}
+  COMMAND ${CMAKE_COMMAND} --build . --target install --config $<CONFIG>
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
 )
 
 # make examples
 add_custom_target(examples
-  COMMAND ${CMAKE_COMMAND} --build . --target examples --config ${CMAKE_BUILD_TYPE}
+  COMMAND ${CMAKE_COMMAND} --build . --target examples --config $<CONFIG>
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
 )
 
 # make experimental/examples/
 add_custom_target(experimental-examples
-  COMMAND ${CMAKE_COMMAND} --build . --target experimental_examples --config ${CMAKE_BUILD_TYPE}
+  COMMAND ${CMAKE_COMMAND} --build . --target experimental_examples --config $<CONFIG>
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
 )
 
 # make check
 if (TILEDB_TESTS)
   add_custom_target(check
-    COMMAND ${CMAKE_COMMAND} --build . --target check --config ${CMAKE_BUILD_TYPE}
+    COMMAND ${CMAKE_COMMAND} --build . --target check --config $<CONFIG>
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
   )
 endif()
