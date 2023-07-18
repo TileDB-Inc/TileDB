@@ -22,6 +22,8 @@ Optionally specify the CMake generator string, e.g. "Visual Studio 15
 
 .PARAMETER EnableDebug
 Enable Debug build.
+When using multi-config CMake generators this option is ignored and
+you can just pass "--config Debug" when building with CMake.
 
 .PARAMETER EnableAssert
 Enable Assertions in compiled code (always on for debug build;
@@ -29,6 +31,8 @@ default off in release).
 
 .PARAMETER EnableReleaseSymbols
 Enable symbols with Release build.
+When using multi-config CMake generators this option is ignored and
+you can just pass "--config RelWithDebInfo" when building with CMake.
 
 .PARAMETER EnableCoverage
 Enable build with code coverage support.
