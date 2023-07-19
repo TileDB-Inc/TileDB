@@ -80,6 +80,8 @@ class EncryptionAES256GCMFilter : public Filter {
  public:
   /**
    * Constructor.
+   *
+   * @param filter_data_type Datatype the filter will operate on.
    */
   EncryptionAES256GCMFilter(Datatype filter_data_type);
 
@@ -87,6 +89,7 @@ class EncryptionAES256GCMFilter : public Filter {
    * Constructor with explicit key.
    *
    * @param key Key to use for the filter.
+   * @param filter_data_type Datatype the filter will operate on.
    */
   explicit EncryptionAES256GCMFilter(
       const EncryptionKey& key, Datatype filter_data_type);

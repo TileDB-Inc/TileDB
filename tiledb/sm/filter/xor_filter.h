@@ -58,7 +58,9 @@ namespace sm {
 class XORFilter : public Filter {
  public:
   /**
-   * Default constructor.
+   * Constructor.
+   *
+   * @param filter_data_type Datatype the filter will operate on.
    */
   XORFilter(Datatype filter_data_type)
       : Filter(FilterType::FILTER_XOR, filter_data_type) {
@@ -75,7 +77,7 @@ class XORFilter : public Filter {
   bool accepts_input_datatype(Datatype datatype) const override;
 
   /**
-   * @brief Returns the filter output type
+   * Returns the filter output type
    *
    * @param input_type Expected type used for input. Used for filters which
    * change output type based on input data. e.g. XORFilter output type is

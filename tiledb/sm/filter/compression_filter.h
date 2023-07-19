@@ -84,6 +84,7 @@ class CompressionFilter : public Filter {
    *
    * @param compressor Compressor to use
    * @param level Compression level to use
+   * @param filter_data_type Datatype the compressor will operate on.
    * @param reinterpret_type Type to reinterpret data prior to compression.
    * @param version Format version
    */
@@ -99,6 +100,7 @@ class CompressionFilter : public Filter {
    *
    * @param compressor Compressor to use
    * @param level Compression level to use
+   * @param filter_data_type Datatype the compressor will operate on.
    * @param reinterpret_type Type to reinterpret data prior to compression.
    * @param version Format version
    */
@@ -251,8 +253,10 @@ class CompressionFilter : public Filter {
   /** Initializes the decompression resource pool */
   void init_decompression_resource_pool(uint64_t size) override;
 
-  /** Creates a vector of views of the input strings and returns the max string
-   * size */
+  /**
+   * Creates a vector of views of the input strings and returns the max string
+   * size
+   */
   static tuple<std::vector<std::string_view>, uint64_t> create_input_view(
       const FilterBuffer& input, WriterTile* const offsets_tile);
 
@@ -265,7 +269,7 @@ class CompressionFilter : public Filter {
   static uint8_t compute_bytesize(uint64_t param_length);
 
   /**
-   * @brief Returns the filter output type
+   * Returns the filter output type
    *
    * @param input_type Expected type used for input. Used for filters which
    * change output type based on input data. e.g. XORFilter output type is

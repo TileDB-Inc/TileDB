@@ -107,8 +107,11 @@ class WebpFilter : public Filter {
   /* ********************************* */
 
   /**
+   * Constructor.
    * Default setting for webp quality factor is 100.0 for lossy compression.
    * Caller must set colorspace format filter option.
+   *
+   * @param filter_data_type Datatype the filter will operate on.
    */
   WebpFilter(Datatype filter_data_type)
       : WebpFilter(
@@ -116,11 +119,14 @@ class WebpFilter : public Filter {
   }
 
   /**
+   * Constructor.
+   *
    * @param quality Quality factor to use for WebP lossy compression.
    * @param inputFormat Colorspace format to use for WebP compression.
    * @param lossless Enable lossless compression.
    * @param y_extent Extent at dimension index 0.
    * @param x_extent Extent at dimension index 1.
+   * @param filter_data_type Datatype the filter will operate on.
    */
   WebpFilter(
       float quality,

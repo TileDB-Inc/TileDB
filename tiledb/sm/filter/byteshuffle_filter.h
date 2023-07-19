@@ -68,6 +68,8 @@ class ByteshuffleFilter : public Filter {
  public:
   /**
    * Constructor.
+   *
+   * @param filter_data_type Datatype the filter will operate on.
    */
   ByteshuffleFilter(Datatype filter_data_type);
 

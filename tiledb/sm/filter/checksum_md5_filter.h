@@ -73,6 +73,8 @@ class ChecksumMD5Filter : public Filter {
  public:
   /**
    * Constructor.
+   *
+   * @param filter_data_type Datatype the filter will operate on.
    */
   ChecksumMD5Filter(Datatype filter_data_type);
 

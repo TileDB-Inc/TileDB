@@ -62,7 +62,11 @@ enum class Datatype : uint8_t;
  */
 class Filter {
  public:
-  /** Constructor. */
+  /**
+   * Constructor.
+   *
+   * @param filter_data_type Datatype the filter will operate on.
+   */
   explicit Filter(FilterType type, Datatype filter_data_type);
 
   /** Destructor. */
@@ -78,7 +82,7 @@ class Filter {
   virtual void dump(FILE* out) const = 0;
 
   /**
-   * @brief Returns the filter output type
+   * Returns the filter output type
    *
    * @param input_type Expected type used for input. Used for filters which
    * change output type based on input data. e.g. XORFilter output type is
@@ -87,14 +91,14 @@ class Filter {
   virtual Datatype output_datatype(Datatype input_type) const;
 
   /**
-   * @brief Throws if given data type *cannot* be handled by this filter.
+   * Throws if given data type *cannot* be handled by this filter.
    *
    * @param datatype Input datatype to check filter compatibility.
    */
   void ensure_accepts_datatype(Datatype datatype) const;
 
   /**
-   * @brief Checks if the filter is applicable to the input datatype.
+   * Checks if the filter is applicable to the input datatype.
    *
    * @param type Input datatype to check filter compatibility.
    */

@@ -82,12 +82,18 @@ namespace sm {
  */
 class BitWidthReductionFilter : public Filter {
  public:
-  /** Constructor. */
+  /**
+   * Constructor.
+   *
+   * @param filter_data_type Datatype the filter will operate on.
+   */
   BitWidthReductionFilter(Datatype filter_data_type);
 
-  /** Constructor.
+  /**
+   * Constructor.
    *
-   * @param max_window_size
+   * @param max_window_size Window size in bytes to apply bit width reduction.
+   * @param filter_data_type Datatype the filter will operate on.
    */
   BitWidthReductionFilter(uint32_t max_window_size, Datatype filter_data_type);
 
@@ -97,7 +103,7 @@ class BitWidthReductionFilter : public Filter {
   /**
    * Checks if the filter is applicable to the input datatype.
    *
-   * @param type Input datatype to check filter compatibility.
+   * @param datatype Input datatype to check filter compatibility.
    */
   bool accepts_input_datatype(Datatype datatype) const override;
 

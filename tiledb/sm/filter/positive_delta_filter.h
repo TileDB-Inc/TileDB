@@ -73,12 +73,18 @@ namespace sm {
  */
 class PositiveDeltaFilter : public Filter {
  public:
-  /** Constructor. */
+  /**
+   * Constructor.
+   *
+   * @param filter_data_type Datatype the filter will operate on.
+   */
   PositiveDeltaFilter(Datatype filter_data_type);
 
-  /** Constructor.
+  /**
+   * Constructor.
    *
-   * @param max_window_size
+   * @param max_window_size Window size in bytes to apply positive delta filter.
+   * @param filter_data_type Datatype the filter will operate on.
    */
   PositiveDeltaFilter(uint32_t max_window_size, Datatype filter_data_type);
 

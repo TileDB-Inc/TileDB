@@ -66,6 +66,8 @@ class FloatScalingFilter : public Filter {
   /**
    * Default constructor. Default settings for Float Scaling Filter are
    * scale = 1.0f, offset = 0.0f, and byte_width = 8.
+   *
+   * @param filter_data_type Datatype the filter will operate on.
    */
   FloatScalingFilter(Datatype filter_data_type)
       : Filter(FilterType::FILTER_SCALE_FLOAT, filter_data_type)
@@ -80,6 +82,7 @@ class FloatScalingFilter : public Filter {
    * @param byte_width The byte width of the compressed representation.
    * @param scale The scale factor.
    * @param offset The offset factor.
+   * @param filter_data_type Datatype the filter will operate on.
    */
   FloatScalingFilter(
       uint64_t byte_width,
@@ -139,7 +142,7 @@ class FloatScalingFilter : public Filter {
   bool accepts_input_datatype(Datatype datatype) const override;
 
   /**
-   * @brief Returns the filter output type
+   * Returns the filter output type
    *
    * @param input_type Expected type used for input. Used for filters which
    * change output type based on input data. e.g. XORFilter output type is
