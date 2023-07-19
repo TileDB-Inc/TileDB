@@ -26,10 +26,9 @@
  * THE SOFTWARE.
  */
 
-#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/filter/webp_filter.h"
 
 int main() {
-  tiledb::sm::WebpFilter(tiledb::sm::Datatype::UINT8);
+  (void)sizeof(tiledb::sm::WebpFilter);
   return 0;
 }

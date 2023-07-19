@@ -116,10 +116,7 @@ Status BitWidthReductionFilter::run_forward(
   auto data_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
 
   // If bit width compression can't work, just return the input unmodified.
-  if ((!datatype_is_integer(filter_data_type_) &&
-       !datatype_is_time(filter_data_type_) &&
-       !datatype_is_datetime(filter_data_type_)) ||
-      data_type_size == 1) {
+  if (!datatype_is_integer(filter_data_type_) || data_type_size == 1) {
     RETURN_NOT_OK(output->append_view(input));
     RETURN_NOT_OK(output_metadata->append_view(input_metadata));
     return Status::Ok();
@@ -301,10 +298,7 @@ Status BitWidthReductionFilter::run_reverse(
   auto data_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
 
   // If bit width compression wasn't applied, just return the input unmodified.
-  if ((!datatype_is_integer(filter_data_type_) &&
-       !datatype_is_time(filter_data_type_) &&
-       !datatype_is_datetime(filter_data_type_)) ||
-      data_type_size == 1) {
+  if (!datatype_is_integer(filter_data_type_) || data_type_size == 1) {
     RETURN_NOT_OK(output->append_view(input));
     RETURN_NOT_OK(output_metadata->append_view(input_metadata));
     return Status::Ok();
