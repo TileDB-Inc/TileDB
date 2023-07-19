@@ -1591,10 +1591,10 @@ Status DenseReader::copy_offset_tiles(
       for (uint64_t c = 0; c < iter.cell_slab_length(); c++) {
         if (!(qc_result[c + cell_offset] & 0x1)) {
           memset(dest_ptr + c * sizeof(OffType), 0xFF, sizeof(OffType));
-        }
 
-        if (nullable) {
-          std::memset(dest_validity_ptr + c, fill_value_nullable, 1);
+          if (nullable) {
+            std::memset(dest_validity_ptr + c, fill_value_nullable, 1);
+          }
         }
       }
     }
