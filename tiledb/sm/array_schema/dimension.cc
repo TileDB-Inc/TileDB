@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -51,6 +51,13 @@ tiledb::common::blank<tiledb::sm::Dimension>::blank()
 
 namespace tiledb {
 namespace sm {
+
+class DimensionException : public StatusException {
+ public:
+  explicit DimensionException(const std::string& message)
+      : StatusException("Dimension", message) {
+  }
+};
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -1591,16 +1598,18 @@ Status Dimension::check_tile_extent() const {
     case Datatype::TIME_AS:
       return check_tile_extent<int64_t>();
     default:
-      return LOG_STATUS(Status_DimensionError(
-          "Tile extent check failed; Invalid dimension domain type"));
+      throw DimensionException(
+          "Tile extent check failed on dimension '" + name() +
+          "'; Invalid dimension domain type");
   }
 }
 
 template <class T>
 Status Dimension::check_tile_extent() const {
   if (domain_.empty())
-    return LOG_STATUS(
-        Status_DimensionError("Tile extent check failed; Domain not set"));
+    throw DimensionException(
+        "Tile extent check failed on dimension '" + name() +
+        "'; Domain not set");
 
   if (!tile_extent_)
     return Status::Ok();
@@ -1613,25 +1622,31 @@ Status Dimension::check_tile_extent() const {
   if (!is_int) {
     // Check if tile extent is negative or 0
     if (*tile_extent <= 0)
-      return LOG_STATUS(Status_DimensionError(
-          "Tile extent check failed; Tile extent must be greater than 0"));
+      throw DimensionException(
+          "Tile extent check failed on dimension '" + name() +
+          "'; Tile extent must be greater than 0");
 
     if (*tile_extent > (domain[1] - domain[0] + 1))
-      return LOG_STATUS(
-          Status_DimensionError("Tile extent check failed; Tile extent "
-                                "exceeds dimension domain range"));
+      throw DimensionException(
+          "Tile extent check failed on dimension '" + name() +
+          "'; Tile extent " + std::to_string(*tile_extent) +
+          " exceeds range on dimension domain [" + std::to_string(domain[0]) +
+          ", " + std::to_string(domain[1]) + "]");
   } else {
     // Check if tile extent is 0
     if (*tile_extent == 0)
-      return LOG_STATUS(Status_DimensionError(
-          "Tile extent check failed; Tile extent must not be 0"));
+      throw DimensionException(
+          "Tile extent check failed on dimension '" + name() +
+          "'; Tile extent must not be 0");
 
     // Check if tile extent exceeds domain
     uint64_t range = (uint64_t)domain[1] - (uint64_t)domain[0] + 1;
     if (uint64_t(*tile_extent) > range)
-      return LOG_STATUS(
-          Status_DimensionError("Tile extent check failed; Tile extent "
-                                "exceeds dimension domain range"));
+      throw DimensionException(
+          "Tile extent check failed on dimension '" + name() +
+          "'; Tile extent " + std::to_string(*tile_extent) +
+          " exceeds range on dimension domain [" + std::to_string(domain[0]) +
+          ", " + std::to_string(domain[1]) + "]");
 
     // In the worst case one tile extent will be added to the upper domain
     // for the dense case, so check if the expanded domain will exceed type
