@@ -42,12 +42,13 @@ The filter options are configuration parameters for the filters that do not chan
 
 ### Main Compressor Options
 
-For the compression filters \(any of the filter types `TILEDB_FILTER_{GZIP,ZSTD,LZ4,RLE,BZIP2,DOUBLE_DELTA,DICTIONARY}`\) the filter options have internal format:
+For the compression filters \(any of the filter types `TILEDB_FILTER_{GZIP,ZSTD,LZ4,RLE,BZIP2,DOUBLE_DELTA,DELTA,DICTIONARY}`\) the filter options have internal format:
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
 | Compressor type | `uint8_t` | Type of compression \(e.g. `TILEDB_BZIP2`\) |
 | Compression level | `int32_t` | Compression level used \(ignored by some compressors\). |
+| Reinterpret datatype | `uint8_t` | Type to reinterpret data prior to compression. Used for DOUBLE_DELTA and DELTA only. |
 
 ### Bit-width Reduction Options
 
