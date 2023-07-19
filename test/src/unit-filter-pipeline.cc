@@ -3513,7 +3513,8 @@ TEST_CASE("Filter: Test XOR", "[filter][xor]") {
   testing_xor_filter<int32_t>(Datatype::INT32);
   testing_xor_filter<uint32_t>(Datatype::UINT32);
   testing_xor_filter<int64_t>(Datatype::INT64);
-  testing_xor_filter<uint64_t>(Datatype::UINT64);
+  testing_xor_filter<uint64_t, std::uniform_int_distribution<uint64_t>>(
+      Datatype::UINT64);
   testing_xor_filter<float, FloatDistribution>(Datatype::FLOAT32);
   testing_xor_filter<double, FloatDistribution>(Datatype::FLOAT64);
   testing_xor_filter<char>(Datatype::CHAR);

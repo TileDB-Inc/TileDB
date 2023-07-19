@@ -54,10 +54,13 @@ class CellCmpBase {
   const Domain& domain_;
 
   /** The number of dimensions. */
-  unsigned dim_num_;
+  const unsigned dim_num_;
 
   /** Use timestamps or not during comparison. */
-  bool use_timestamps_;
+  const bool use_timestamps_;
+
+  /** Enforce strict ordering for the comparator if used in a queue. */
+  const bool strict_ordering_;
 
   /** Pointer to access fragment metadata. */
   const std::vector<shared_ptr<FragmentMetadata>>* frag_md_;
@@ -66,10 +69,12 @@ class CellCmpBase {
   explicit CellCmpBase(
       const Domain& domain,
       const bool use_timestamps = false,
+      const bool strict_ordering = false,
       const std::vector<shared_ptr<FragmentMetadata>>* frag_md = nullptr)
       : domain_(domain)
       , dim_num_(domain.dim_num())
       , use_timestamps_(use_timestamps)
+      , strict_ordering_(strict_ordering)
       , frag_md_(frag_md) {
   }
 
@@ -90,10 +95,6 @@ class CellCmpBase {
     } else {
       return (*frag_md_)[f]->timestamp_range().first;
     }
-  }
-
-  inline void use_timestamps(bool enable) {
-    use_timestamps_ = enable;
   }
 };
 
@@ -167,8 +168,9 @@ class HilbertCmp : public CellCmpBase {
   HilbertCmp(
       const Domain& domain,
       const bool use_timestamps = false,
+      const bool strict_ordering = false,
       const std::vector<shared_ptr<FragmentMetadata>>* frag_md = nullptr)
-      : CellCmpBase(domain, use_timestamps, frag_md) {
+      : CellCmpBase(domain, use_timestamps, strict_ordering, frag_md) {
   }
 
   /**
@@ -184,25 +186,38 @@ class HilbertCmp : public CellCmpBase {
       const GlobalOrderResultCoords<BitmapType>& b) const {
     auto hilbert_a = a.tile_->hilbert_value(a.pos_);
     auto hilbert_b = b.tile_->hilbert_value(b.pos_);
-    if (hilbert_a < hilbert_b)
+    if (hilbert_a < hilbert_b) {
       return true;
-    else if (hilbert_a > hilbert_b)
+    } else if (hilbert_a > hilbert_b) {
       return false;
+    }
     // else the hilbert values are equal
 
     // Compare cell order on row-major to break the tie
     for (unsigned d = 0; d < dim_num_; ++d) {
       auto res = cell_order_cmp_RC(d, a, b);
-      if (res == -1)
+      if (res == -1) {
         return true;
-      if (res == 1)
+      }
+
+      if (res == 1) {
         return false;
+      }
       // else same tile on dimension d --> continue
     }
 
-    // Compare timestamps
-    if (use_timestamps_ && get_timestamp(a) > get_timestamp(b)) {
-      return true;
+    if (use_timestamps_) {
+      return get_timestamp(a) > get_timestamp(b);
+    } else if (strict_ordering_) {
+      if (a.tile_->frag_idx() == b.tile_->frag_idx()) {
+        if (a.tile_->tile_idx() == b.tile_->tile_idx()) {
+          return a.pos_ > b.pos_;
+        }
+
+        return a.tile_->tile_idx() > b.tile_->tile_idx();
+      }
+
+      return a.tile_->frag_idx() > b.tile_->frag_idx();
     }
 
     return false;
@@ -220,13 +235,16 @@ class HilbertCmpReverse {
    *
    * @param domain The array domain.
    * @param use_timestamps Use timestamps or not for this comparator.
+   * @param strict_ordering Enforce strict ordering for the comparator if used
+   * in a queue.
    * @param frag_md Pointer to the fragment metadata.
    */
   HilbertCmpReverse(
       const Domain& domain,
       const bool use_timestamps = false,
+      const bool strict_ordering = false,
       const std::vector<shared_ptr<FragmentMetadata>>* frag_md = nullptr)
-      : cmp_(domain, use_timestamps, frag_md) {
+      : cmp_(domain, use_timestamps, strict_ordering, frag_md) {
   }
 
   /**
@@ -239,10 +257,6 @@ class HilbertCmpReverse {
   template <class RCType>
   bool operator()(const RCType& a, const RCType& b) const {
     return !cmp_.operator()(a, b);
-  }
-
-  inline void use_timestamps(bool enable) {
-    cmp_.use_timestamps(enable);
   }
 
  private:
@@ -312,13 +326,17 @@ class GlobalCmp : public CellCmpBase {
    * Constructor.
    *
    * @param domain The array domain.
+   * @param use_timestamps Use timestamps or not for this comparator.
+   * @param strict_ordering Enforce strict ordering for the comparator if used
+   * in a queue.
    * @param frag_md Pointer to the fragment metadata.
    */
   explicit GlobalCmp(
       const Domain& domain,
       const bool use_timestamps = false,
+      const bool strict_ordering = false,
       const std::vector<shared_ptr<FragmentMetadata>>* frag_md = nullptr)
-      : CellCmpBase(domain, use_timestamps, frag_md) {
+      : CellCmpBase(domain, use_timestamps, strict_ordering, frag_md) {
     tile_order_ = domain.tile_order();
     cell_order_ = domain.cell_order();
   }
@@ -388,8 +406,18 @@ class GlobalCmp : public CellCmpBase {
     }
 
     // Compare timestamps
-    if (use_timestamps_ && get_timestamp(a) > get_timestamp(b)) {
-      return true;
+    if (use_timestamps_) {
+      return get_timestamp(a) > get_timestamp(b);
+    } else if (strict_ordering_) {
+      if (a.tile_->frag_idx() == b.tile_->frag_idx()) {
+        if (a.tile_->tile_idx() == b.tile_->tile_idx()) {
+          return a.pos_ > b.pos_;
+        }
+
+        return a.tile_->tile_idx() > b.tile_->tile_idx();
+      }
+
+      return a.tile_->frag_idx() > b.tile_->frag_idx();
     }
 
     return false;
@@ -413,13 +441,16 @@ class GlobalCmpReverse {
    *
    * @param domain The array domain.
    * @param use_timestamps Use timestamps or not for this comparator.
+   * @param strict_ordering Enforce strict ordering for the comparator if used
+   * in a queue.
    * @param frag_md Pointer to the fragment metadata.
    */
   explicit GlobalCmpReverse(
       const Domain& domain,
       const bool use_timestamps = false,
+      const bool strict_ordering = false,
       const std::vector<shared_ptr<FragmentMetadata>>* frag_md = nullptr)
-      : cmp_(domain, use_timestamps, frag_md) {
+      : cmp_(domain, use_timestamps, strict_ordering, frag_md) {
   }
 
   /**
@@ -432,10 +463,6 @@ class GlobalCmpReverse {
   template <class RCType>
   bool operator()(const RCType& a, const RCType& b) const {
     return !cmp_.operator()(a, b);
-  }
-
-  inline void use_timestamps(bool enable) {
-    cmp_.use_timestamps(enable);
   }
 
  private:

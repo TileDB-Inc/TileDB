@@ -737,7 +737,6 @@ bool SparseGlobalOrderReader<BitmapType>::add_all_dups_to_queue(
       auto next_tile = result_tiles_it[frag_idx];
       next_tile++;
       if (next_tile != result_tiles[frag_idx].end()) {
-        tile_queue.emplace(rc.tile_, rc.pos_, false);
         GlobalOrderResultCoords rc2(&*next_tile, 0);
 
         // All tiles should at least have one cell available.
@@ -747,6 +746,8 @@ bool SparseGlobalOrderReader<BitmapType>::add_all_dups_to_queue(
 
         // Next tile starts with the same coords, switch to it.
         if (rc.same_coords(rc2)) {
+          tile_queue.emplace(rc.tile_, rc.pos_, false);
+
           // Remove the current tile if not used.
           if (!rc.tile_->used()) {
             tmp_read_state_.add_ignored_tile(*result_tiles_it[frag_idx]);
@@ -915,7 +916,7 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
 
   std::vector<ResultCellSlab> result_cell_slabs;
   CompType cmp_max_slab_length(
-      array_schema_.domain(), false, &fragment_metadata_);
+      array_schema_.domain(), false, false, &fragment_metadata_);
 
   // TODO Parallelize.
 
@@ -929,6 +930,7 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
   CompType cmp(
       array_schema_.domain(),
       !array_schema_.allows_dups(),
+      true,
       &fragment_metadata_);
   TileMinHeap<CompType> tile_queue(cmp, std::move(container));
 
