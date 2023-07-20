@@ -74,9 +74,11 @@ DenseReader::DenseReader(
     Array* array,
     Config& config,
     std::unordered_map<std::string, QueryBuffer>& buffers,
+    std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
     Subarray& subarray,
     Layout layout,
     std::optional<QueryCondition>& condition,
+    DefaultChannelAggregates& default_channel_aggregates,
     bool skip_checks_serialization,
     bool remote_query)
     : ReaderBase(
@@ -86,9 +88,11 @@ DenseReader::DenseReader(
           array,
           config,
           buffers,
+          aggregate_buffers,
           subarray,
           layout,
-          condition)
+          condition,
+          default_channel_aggregates)
     , array_memory_tracker_(array->memory_tracker()) {
   elements_mode_ = false;
 
@@ -96,6 +100,11 @@ DenseReader::DenseReader(
   if (storage_manager_ == nullptr) {
     throw DenseReaderStatusException(
         "Cannot initialize dense reader; Storage manager not set");
+  }
+
+  if (!default_channel_aggregates.empty()) {
+    throw DenseReaderStatusException(
+        "Cannot initialize reader; Reader cannot process aggregates");
   }
 
   if (!skip_checks_serialization && buffers_.empty()) {

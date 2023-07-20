@@ -135,7 +135,7 @@ struct Sum<T, double> {
     constexpr static T max = std::numeric_limits<T>::lowest(); \
   };
 
-/** Convert tiledb_datatype_t to a type. **/
+/** Convert basic type to a sum type. **/
 template <typename T>
 struct metadata_generator_type_data;
 

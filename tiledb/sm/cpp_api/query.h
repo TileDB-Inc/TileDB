@@ -1755,12 +1755,6 @@ class Query {
    **/
   Query& set_validity_buffer(
       const std::string& name, std::vector<uint8_t>& validity_bytemap) {
-    // Checks
-    auto is_attr = schema_.has_attribute(name);
-    if (!is_attr)
-      throw TileDBError(
-          std::string("Cannot set buffer; Attribute '") + name +
-          "' does not exist");
     return set_validity_buffer(
         name, validity_bytemap.data(), validity_bytemap.size());
   }

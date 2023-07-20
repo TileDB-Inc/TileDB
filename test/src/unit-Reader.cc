@@ -155,12 +155,14 @@ TEST_CASE_METHOD(
   std::unordered_map<std::string, tiledb::sm::QueryBuffer> buffers;
   buffers.emplace(
       "a", tiledb::sm::QueryBuffer(nullptr, nullptr, &tmp_size, &tmp_size));
+  std::unordered_map<std::string, tiledb::sm::QueryBuffer> aggregate_buffers;
   std::optional<QueryCondition> condition;
   ThreadPool tp_cpu(4), tp_io(4);
   Array array(URI(array_name_), context.storage_manager());
   CHECK(array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0)
             .ok());
   Subarray subarray(&array, &g_helper_stats, g_helper_logger());
+  DefaultChannelAggregates default_channel_aggregates;
   Reader reader(
       &g_helper_stats,
       g_helper_logger(),
@@ -168,9 +170,11 @@ TEST_CASE_METHOD(
       &array,
       config,
       buffers,
+      aggregate_buffers,
       subarray,
       Layout::ROW_MAJOR,
-      condition);
+      condition,
+      default_channel_aggregates);
   unsigned dim_num = 2;
   auto size = 2 * sizeof(int32_t);
   int32_t domain_vec[] = {1, 10, 1, 15};

@@ -137,6 +137,9 @@ extern const std::string delete_timestamps;
 /** Special name reserved for the delete condition index attribute. */
 extern const std::string delete_condition_index;
 
+/** Special name reserved for count or rows. */
+extern const std::string count_of_rows;
+
 /** The size of a timestamp cell. */
 extern const uint64_t timestamp_size;
 
