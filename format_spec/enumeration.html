@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Format Specification</title>
+<title>Enumerations</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -30,8 +30,6 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../format_spec/array_file_hierarchy.html" rel="next">
-<link href="../index.html" rel="prev">
 <link href="../images/favicon.ico" rel="icon">
 <script src="../site_libs/quarto-html/quarto.js"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -107,7 +105,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-      <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../format_spec/FORMAT_SPEC.html">Format Specification</a></li></ol></nav>
+      <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item">Enumerations</li></ol></nav>
       <a class="flex-grow-1" role="button" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
       </a>
     </div>
@@ -127,7 +125,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="../format_spec/FORMAT_SPEC.html" class="sidebar-item-text sidebar-link active">
+            <a href="../format_spec/FORMAT_SPEC.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Format Specification</span></a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" aria-expanded="true" aria-label="Toggle section">
             <i class="bi bi-chevron-right ms-2"></i>
@@ -250,7 +248,7 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#table-of-contents" id="toc-table-of-contents" class="nav-link active" data-scroll-target="#table-of-contents">Table of Contents</a></li>
+  <li><a href="#main-structure" id="toc-main-structure" class="nav-link active" data-scroll-target="#main-structure">Main Structure</a></li>
   </ul>
 </nav>
     </div>
@@ -259,7 +257,7 @@ ul.task-list li input[type="checkbox"] {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Format Specification</h1>
+<h1 class="title">Enumerations</h1>
 </div>
 
 
@@ -274,38 +272,66 @@ ul.task-list li input[type="checkbox"] {
 
 </header>
 
-<p><strong>Notes:</strong></p>
-<ul>
-<li><p>The current TileDB format version number is <strong>20</strong> (<code>uint32_t</code>).</p></li>
-<li><p>Data written by TileDB and referenced in this document is <strong>little-endian</strong> with the following exceptions:</p>
-<ul>
-<li><a href="../format_spec/filters/dictionary_encoding.html">Dictionary filter</a></li>
-<li>RLE filter</li>
-</ul></li>
-</ul>
-<section id="table-of-contents" class="level2">
-<h2 class="anchored" data-anchor-id="table-of-contents">Table of Contents</h2>
-<ul>
-<li><strong>Array</strong>
-<ul>
-<li><a href="../format_spec/array_file_hierarchy.html">File hierarchy</a></li>
-<li><a href="../format_spec/array_schema.html">Array Schema</a></li>
-<li><a href="../format_spec/fragment.html">Fragment</a></li>
-<li><a href="../format_spec/metadata.html">Array Metadata</a></li>
-<li><a href="../format_spec/tile.html">Tile</a></li>
-<li><a href="../format_spec/generic_tile.html">Generic Tile</a></li>
-</ul></li>
-<li><strong>Group</strong>
-<ul>
-<li><a href="../format_spec/group_file_hierarchy.html">File hierarchy</a></li>
-</ul></li>
-<li><strong>Other</strong>
-<ul>
-<li><a href="../format_spec/consolidated_fragment_metadata_file.html">Consolidated Fragment Metadata File</a></li>
-<li><a href="../format_spec/filter_pipeline.html">Filter Pipeline</a></li>
-<li><a href="../format_spec/vacuum_file.html">Vacuum Pipeline</a></li>
-</ul></li>
-</ul>
+<section id="main-structure" class="level2">
+<h2 class="anchored" data-anchor-id="main-structure">Main Structure</h2>
+<p>``<code>my_array                                    # array folder    |  ...    |_ schema                      # ArraySchema directory named</code>__schema<code>|_ enumerations          # Enumeration directory named</code>__enumerations<code>|_ enumeration     # enumeration data with names</code>__uuid_v`</p>
+<p>Enumeration data is stored in a subdirectory of the [array schema][./array_schema.md] directory. Enumerations are stored using [Generic Tiles][./generic_tile.md].</p>
+<table class="table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"><strong>Field</strong></th>
+<th style="text-align: left;"><strong>Type</strong></th>
+<th style="text-align: left;"><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Version number</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">Enumerations version number</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Datatype</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">The datatype of the enumeration values</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Cell Val Num</td>
+<td style="text-align: left;"><code>uint32_t</code></td>
+<td style="text-align: left;">The cell val num of the enumeration values</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Ordered</td>
+<td style="text-align: left;"><code>bool</code></td>
+<td style="text-align: left;">Whether the enumeration values should be considered ordered</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Data Size</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The number of bytes used to store the values</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Data</td>
+<td style="text-align: left;"><code>uint8_t</code> * Data Size</td>
+<td style="text-align: left;">The data for the enumeration values</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Offsets Size</td>
+<td style="text-align: left;"><code>uint64_t</code></td>
+<td style="text-align: left;">The number of bytes used to store offsets if cell_var_num is TILEDB_VAR_NUM</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Offsets</td>
+<td style="text-align: left;"><code>uint8_t</code> * Offsets Size</td>
+<td style="text-align: left;">The offsets data for the enumeration if cell_var_num is TILEDB_VAR_NUM</td>
+</tr>
+</tbody>
+</table>
 
 
 </section>
@@ -544,18 +570,6 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
   }
 });
 </script>
-<nav class="page-navigation">
-  <div class="nav-page nav-page-previous">
-      <a href="../index.html" class="pagination-link">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Public code docs</span>
-      </a>          
-  </div>
-  <div class="nav-page nav-page-next">
-      <a href="../format_spec/array_file_hierarchy.html" class="pagination-link">
-        <span class="nav-page-text">Array File Hierarchy</span> <i class="bi bi-arrow-right-short"></i>
-      </a>
-  </div>
-</nav>
 </div> <!-- /content -->
 
 
