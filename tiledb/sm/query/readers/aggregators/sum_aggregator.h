@@ -181,10 +181,10 @@ class SumAggregator : public IAggregator {
    * @tparam BITMAP_T Bitmap type.
    * @param input_data Input data for the sum.
    *
-   * @return {Computed sum for the cells, validity value}.
+   * @return {Computed sum for the cells, optional validity value}.
    */
   template <typename SUM_T, typename BITMAP_T>
-  tuple<SUM_T, uint8_t> sum(AggregateBuffer& input_data);
+  tuple<SUM_T, optional<uint8_t>> sum(AggregateBuffer& input_data);
 };
 
 }  // namespace sm

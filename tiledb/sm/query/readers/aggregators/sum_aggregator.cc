@@ -161,7 +161,7 @@ void SumAggregator<T>::validate_output_buffer(
 
 template <typename T>
 void SumAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
-  tuple<typename sum_type_data<T>::sum_type, uint8_t> res{0, 0};
+  tuple<typename sum_type_data<T>::sum_type, optional<uint8_t>> res{0, nullopt};
 
   bool overflow = false;
   try {
@@ -175,6 +175,9 @@ void SumAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
   }
 
   {
+    // This might be called on multiple threads, the final result stored in sum_
+    // should be computed in a thread safe manner. The mutex also protects
+    // sum_overflowed_ which indicates when the sum has overflowed.
     std::unique_lock lock(sum_mtx_);
 
     // A previous operation already overflowed the sum, return.
@@ -197,7 +200,7 @@ void SumAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
     }
   }
 
-  if (is_nullable_ && std::get<1>(res) == 1) {
+  if (is_nullable_ && std::get<1>(res).value() == 1) {
     validity_value_ = 1;
   }
 }
@@ -226,9 +229,10 @@ void SumAggregator<T>::copy_to_user_buffer(
 
 template <typename T>
 template <typename SUM_T, typename BITMAP_T>
-tuple<SUM_T, uint8_t> SumAggregator<T>::sum(AggregateBuffer& input_data) {
+tuple<SUM_T, optional<uint8_t>> SumAggregator<T>::sum(
+    AggregateBuffer& input_data) {
   SUM_T sum{0};
-  uint8_t validity{0};
+  optional<uint8_t> validity{nullopt};
   auto values = input_data.fixed_data_as<T>();
 
   // Run different loops for bitmap versus no bitmap and nullable versus non
@@ -238,6 +242,7 @@ tuple<SUM_T, uint8_t> SumAggregator<T>::sum(AggregateBuffer& input_data) {
     auto bitmap_values = input_data.bitmap_data_as<BITMAP_T>();
 
     if (is_nullable_) {
+      validity = 0;
       auto validity_values = input_data.validity_data();
 
       // Process for nullable sums with bitmap.
@@ -263,6 +268,7 @@ tuple<SUM_T, uint8_t> SumAggregator<T>::sum(AggregateBuffer& input_data) {
     }
   } else {
     if (is_nullable_) {
+      validity = 0;
       auto validity_values = input_data.validity_data();
 
       // Process for nullable sums with no bitmap.
