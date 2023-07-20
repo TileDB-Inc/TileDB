@@ -40,6 +40,7 @@
 #include "tiledb/api/c_api/buffer_list/buffer_list_api_internal.h"
 #include "tiledb/api/c_api/config/config_api_internal.h"
 #include "tiledb/api/c_api/dimension/dimension_api_internal.h"
+#include "tiledb/api/c_api/domain/domain_api_internal.h"
 #include "tiledb/api/c_api/error/error_api_internal.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_internal.h"
 #include "tiledb/api/c_api/string/string_api_internal.h"
@@ -420,165 +421,6 @@ int32_t tiledb_attribute_get_fill_value_nullable(
   return TILEDB_OK;
 }
 
-/* ********************************* */
-/*              DOMAIN               */
-/* ********************************* */
-
-int32_t tiledb_domain_alloc(tiledb_ctx_t* ctx, tiledb_domain_t** domain) {
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Create a domain struct
-  *domain = new (std::nothrow) tiledb_domain_t;
-  if (*domain == nullptr) {
-    auto st = Status_Error("Failed to allocate TileDB domain object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Create a new Domain object
-  (*domain)->domain_ = new (std::nothrow) tiledb::sm::Domain();
-  if ((*domain)->domain_ == nullptr) {
-    delete *domain;
-    *domain = nullptr;
-    auto st = Status_Error("Failed to allocate TileDB domain object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-  return TILEDB_OK;
-}
-
-void tiledb_domain_free(tiledb_domain_t** domain) {
-  if (domain != nullptr && *domain != nullptr) {
-    delete (*domain)->domain_;
-    delete *domain;
-    *domain = nullptr;
-  }
-}
-
-int32_t tiledb_domain_get_type(
-    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, tiledb_datatype_t* type) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, domain) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  if (domain->domain_->dim_num() == 0) {
-    auto st = Status_Error("Cannot get domain type; Domain has no dimensions");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  if (!domain->domain_->all_dims_same_type()) {
-    auto st = Status_Error(
-        "Cannot get domain type; Not applicable to heterogeneous dimensions");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  *type =
-      static_cast<tiledb_datatype_t>(domain->domain_->dimension_ptr(0)->type());
-  return TILEDB_OK;
-}
-
-int32_t tiledb_domain_get_ndim(
-    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, uint32_t* ndim) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, domain) == TILEDB_ERR)
-    return TILEDB_ERR;
-  *ndim = domain->domain_->dim_num();
-  return TILEDB_OK;
-}
-
-int32_t tiledb_domain_add_dimension(
-    tiledb_ctx_t* ctx, tiledb_domain_t* domain, tiledb_dimension_t* dim) {
-  if (sanity_check(ctx, domain) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-  throw_if_not_ok(domain->domain_->add_dimension(dim->copy_dimension()));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_domain_get_dimension_from_index(
-    tiledb_ctx_t* ctx,
-    const tiledb_domain_t* domain,
-    uint32_t index,
-    tiledb_dimension_t** dim) {
-  if (sanity_check(ctx, domain) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-  ensure_output_pointer_is_valid(dim);
-  auto ndim = domain->domain_->dim_num();
-  if (ndim == 0 && index == 0) {
-    *dim = nullptr;
-    return TILEDB_OK;
-  }
-  // The index must be in the interval [0,ndim)
-  if (ndim <= index) {
-    throw CAPIStatusException(
-        "Dimension index " + std::to_string(index) +
-        "is out of bounds; valid indices are 0 to " + std::to_string(ndim - 1));
-  }
-  auto dimension{domain->domain_->dimension_shared_ptr(index)};
-  // `dimension_ptr` never returns `nullptr`
-  *dim = tiledb_dimension_handle_t::make_handle(dimension);
-  return TILEDB_OK;
-}
-
-int32_t tiledb_domain_get_dimension_from_name(
-    tiledb_ctx_t* ctx,
-    const tiledb_domain_t* domain,
-    const char* name_arg,
-    tiledb_dimension_t** dim) {
-  if (sanity_check(ctx, domain) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-  ensure_output_pointer_is_valid(dim);
-  auto ndim = domain->domain_->dim_num();
-  if (ndim == 0) {
-    *dim = nullptr;
-    return TILEDB_OK;
-  }
-  std::string name{name_arg};
-  auto dimension = domain->domain_->dimension_shared_ptr(name);
-  if (!dimension) {
-    throw CAPIStatusException("Dimension '" + name + "' does not exist");
-  }
-  *dim = tiledb_dimension_handle_t::make_handle(dimension);
-  return TILEDB_OK;
-}
-
-int32_t tiledb_domain_has_dimension(
-    tiledb_ctx_t* ctx,
-    const tiledb_domain_t* domain,
-    const char* name,
-    int32_t* has_dim) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, domain) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-
-  bool b;
-  throw_if_not_ok(domain->domain_->has_dimension(name, &b));
-
-  *has_dim = b ? 1 : 0;
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_domain_dump(
-    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, FILE* out) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, domain) == TILEDB_ERR)
-    return TILEDB_ERR;
-  domain->domain_->dump(out);
-  return TILEDB_OK;
-}
-
 /* ****************************** */
 /*           ARRAY SCHEMA         */
 /* ****************************** */
@@ -671,8 +513,8 @@ int32_t tiledb_array_schema_set_domain(
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
-  throw_if_not_ok(array_schema->array_schema_->set_domain(
-      make_shared<tiledb::sm::Domain>(HERE(), domain->domain_)));
+  throw_if_not_ok(
+      array_schema->array_schema_->set_domain(domain->copy_domain()));
   return TILEDB_OK;
 }
 
@@ -1039,30 +881,12 @@ int32_t tiledb_array_schema_get_domain(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     tiledb_domain_t** domain) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR) {
     return TILEDB_ERR;
-
-  // Create a domain struct
-  *domain = new (std::nothrow) tiledb_domain_t;
-  if (*domain == nullptr) {
-    auto st = Status_Error("Failed to allocate TileDB domain object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
   }
-
-  // Create a new Domain object
-  (*domain)->domain_ = new (std::nothrow)
-      tiledb::sm::Domain(&array_schema->array_schema_->domain());
-  if ((*domain)->domain_ == nullptr) {
-    delete *domain;
-    *domain = nullptr;
-    auto st = Status_Error("Failed to allocate TileDB domain object in object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
+  ensure_output_pointer_is_valid(domain);
+  *domain = tiledb_domain_handle_t::make_handle(
+      array_schema->array_schema_->shared_domain());
   return TILEDB_OK;
 }
 
@@ -5611,70 +5435,6 @@ int32_t tiledb_attribute_get_fill_value_nullable(
     uint8_t* valid) noexcept {
   return api_entry<tiledb::api::tiledb_attribute_get_fill_value_nullable>(
       ctx, attr, value, size, valid);
-}
-
-/* ********************************* */
-/*              DOMAIN               */
-/* ********************************* */
-
-int32_t tiledb_domain_alloc(
-    tiledb_ctx_t* ctx, tiledb_domain_t** domain) noexcept {
-  return api_entry<tiledb::api::tiledb_domain_alloc>(ctx, domain);
-}
-
-void tiledb_domain_free(tiledb_domain_t** domain) noexcept {
-  return api_entry_void<tiledb::api::tiledb_domain_free>(domain);
-}
-
-int32_t tiledb_domain_get_type(
-    tiledb_ctx_t* ctx,
-    const tiledb_domain_t* domain,
-    tiledb_datatype_t* type) noexcept {
-  return api_entry<tiledb::api::tiledb_domain_get_type>(ctx, domain, type);
-}
-
-int32_t tiledb_domain_get_ndim(
-    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, uint32_t* ndim) noexcept {
-  return api_entry<tiledb::api::tiledb_domain_get_ndim>(ctx, domain, ndim);
-}
-
-int32_t tiledb_domain_add_dimension(
-    tiledb_ctx_t* ctx,
-    tiledb_domain_t* domain,
-    tiledb_dimension_t* dim) noexcept {
-  return api_entry<tiledb::api::tiledb_domain_add_dimension>(ctx, domain, dim);
-}
-
-int32_t tiledb_domain_dump(
-    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, FILE* out) noexcept {
-  return api_entry<tiledb::api::tiledb_domain_dump>(ctx, domain, out);
-}
-
-int32_t tiledb_domain_get_dimension_from_index(
-    tiledb_ctx_t* ctx,
-    const tiledb_domain_t* domain,
-    uint32_t index,
-    tiledb_dimension_t** dim) noexcept {
-  return api_entry<tiledb::api::tiledb_domain_get_dimension_from_index>(
-      ctx, domain, index, dim);
-}
-
-int32_t tiledb_domain_get_dimension_from_name(
-    tiledb_ctx_t* ctx,
-    const tiledb_domain_t* domain,
-    const char* name,
-    tiledb_dimension_t** dim) noexcept {
-  return api_entry<tiledb::api::tiledb_domain_get_dimension_from_name>(
-      ctx, domain, name, dim);
-}
-
-int32_t tiledb_domain_has_dimension(
-    tiledb_ctx_t* ctx,
-    const tiledb_domain_t* domain,
-    const char* name,
-    int32_t* has_dim) noexcept {
-  return api_entry<tiledb::api::tiledb_domain_has_dimension>(
-      ctx, domain, name, has_dim);
 }
 
 /* ****************************** */

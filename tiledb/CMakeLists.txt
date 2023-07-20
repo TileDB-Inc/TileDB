@@ -246,6 +246,9 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query_condition.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query_remote_buffer_storage.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/aggregate_buffer.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/count_aggregator.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/sum_aggregator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/dense_reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/ordered_dim_label_reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/reader_base.cc
@@ -723,14 +726,7 @@ if (WIN32)
   endif()
 
   foreach (LIB ${WIN32_LIBS})
-    if(MSVC)
-      find_library(LIB_${LIB} ${LIB})
-      message(STATUS "Found Win32 lib ${LIB}: ${LIB_${LIB}}")
-      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${LIB_${LIB}})
-    else()
-      message(STATUS "Linking to Win32 lib ${LIB}")
-      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE -l${LIB})
-    endif()
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${LIB})
   endforeach()
 endif()
 

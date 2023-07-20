@@ -88,6 +88,9 @@ add_subdirectory(filter_list)
 # `dimension`: depends on `filter_list`
 add_subdirectory(dimension)
 
+# `domain`: depends on `dimension`
+add_subdirectory(domain)
+
 # `group`: depends on `config`, `context`
 add_subdirectory(group)
 

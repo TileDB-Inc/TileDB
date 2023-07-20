@@ -116,6 +116,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/test-capi-query-error-handling.cc
   src/test-capi-sparse-array-dimension-label.cc
   src/test-capi-subarray-labels.cc
+  src/test-cppapi-aggregates.cc
   src/test-cppapi-consolidation-plan.cc
   src/unit-average-cell-size.cc
   src/unit-azure.cc

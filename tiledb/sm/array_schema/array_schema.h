@@ -151,7 +151,8 @@ class ArraySchema {
   static inline bool is_special_attribute(const std::string& name) {
     return name == constants::coords || name == constants::timestamps ||
            name == constants::delete_timestamps ||
-           name == constants::delete_condition_index;
+           name == constants::delete_condition_index ||
+           name == constants::count_of_rows;
   }
 
   /**
@@ -376,6 +377,13 @@ class ArraySchema {
   inline const Domain& domain() const {
     return *const_cast<const Domain*>(domain_.get());
   }
+
+  /**
+   * Return a copy of the shared_pointer to the domain.
+   */
+  inline shared_ptr<Domain> shared_domain() const {
+    return domain_;
+  };
 
   /**
    * Initializes the ArraySchema object. It also performs a check to see if

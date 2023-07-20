@@ -92,27 +92,6 @@ Domain::Domain(
   set_tile_cell_order_cmp_funcs();
 }
 
-Domain::Domain(const Domain* domain) {
-  cell_num_per_tile_ = domain->cell_num_per_tile_;
-  cell_order_ = domain->cell_order_;
-  dim_num_ = domain->dim_num_;
-  cell_order_cmp_func_ = domain->cell_order_cmp_func_;
-  cell_order_cmp_func_2_ = domain->cell_order_cmp_func_2_;
-  tile_order_cmp_func_ = domain->tile_order_cmp_func_;
-
-  const auto n_dimensions{domain->dimensions_.size()};
-  dimensions_.reserve(n_dimensions);
-  for (const auto& dim : domain->dimensions_) {
-    dimensions_.emplace_back(dim);
-  }
-  dimension_ptrs_.reserve(n_dimensions);
-  for (const auto dim_ptr : domain->dimension_ptrs_) {
-    dimension_ptrs_.emplace_back(dim_ptr);
-  }
-
-  tile_order_ = domain->tile_order_;
-}
-
 Domain::Domain(Domain&& rhs)
     : cell_num_per_tile_(rhs.cell_num_per_tile_)
     , cell_order_(rhs.cell_order_)
@@ -367,11 +346,10 @@ NDRange Domain::domain() const {
 }
 
 const Dimension* Domain::dimension_ptr(const std::string& name) const {
-  return dimension_shared_ptr(name).get();
+  return shared_dimension(name).get();
 }
 
-shared_ptr<Dimension> Domain::dimension_shared_ptr(
-    const std::string& name) const {
+shared_ptr<Dimension> Domain::shared_dimension(const std::string& name) const {
   for (dimension_size_type i = 0; i < dim_num_; i++) {
     const auto dim = dimension_ptrs_[i];
     if (dim->name() == name) {
