@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -94,11 +94,11 @@ struct AddStrategy<
 /**
  * Sort algorithm for ranges.
  *
- * Default behavior: sorting is not enable.
+ * Default behavior: sorting is not enabled.
  */
 template <typename T, typename Enable = T>
 struct SortStrategy {
-  static Status sort(ThreadPool* const, std::vector<Range>&);
+  static void sort(ThreadPool* const, std::vector<Range>&);
 };
 
 /**
@@ -110,7 +110,7 @@ template <typename T>
 struct SortStrategy<
     T,
     typename std::enable_if<std::is_arithmetic<T>::value, T>::type> {
-  static Status sort(ThreadPool* const compute_tp, std::vector<Range>& ranges) {
+  static void sort(ThreadPool* const compute_tp, std::vector<Range>& ranges) {
     parallel_sort(
         compute_tp,
         ranges.begin(),
@@ -121,7 +121,6 @@ struct SortStrategy<
           return a_data[0] < b_data[0] ||
                  (a_data[0] == b_data[0] && a_data[1] < b_data[1]);
         });
-    return Status::Ok();
   };
 };
 
@@ -132,7 +131,7 @@ struct SortStrategy<
  */
 template <>
 struct SortStrategy<std::string, std::string> {
-  static Status sort(ThreadPool* const compute_tp, std::vector<Range>& ranges) {
+  static void sort(ThreadPool* const compute_tp, std::vector<Range>& ranges) {
     parallel_sort(
         compute_tp,
         ranges.begin(),
@@ -141,7 +140,74 @@ struct SortStrategy<std::string, std::string> {
           return a.start_str() < b.start_str() ||
                  (a.start_str() == b.start_str() && a.end_str() < b.end_str());
         });
-    return Status::Ok();
+  };
+};
+
+/** Default merge behavior: merging is not enabled. */
+template <typename T, typename Enable = T>
+struct MergeStrategy {
+  static void merge(std::vector<Range>&);
+};
+
+/** Merge algorithm for numeric-type ranges. */
+template <typename T>
+struct MergeStrategy<
+    T,
+    typename std::enable_if<std::is_arithmetic<T>::value, T>::type> {
+  static void merge(std::vector<Range>& ranges) {
+    auto head = ranges.begin();
+    size_t merged_cells = 0;
+
+    // Merge
+    for (auto tail = head + 1; tail != ranges.end(); tail++) {
+      const bool can_coalesce = *static_cast<const T*>(head->end_fixed()) !=
+                                    std::numeric_limits<T>::max() &&
+                                *static_cast<const T*>(head->end_fixed()) + 1 ==
+                                    *static_cast<const T*>(tail->start_fixed());
+      const bool can_merge = *static_cast<const T*>(head->start_fixed()) <=
+                                 *static_cast<const T*>(tail->start_fixed()) &&
+                             *static_cast<const T*>(tail->start_fixed()) <=
+                                 *static_cast<const T*>(head->end_fixed());
+
+      if (can_coalesce || can_merge) {
+        head->set_end_fixed(tail->end_fixed());
+        merged_cells++;
+      } else {
+        head++;
+        std::swap(*head, *tail);
+      }
+    }
+
+    // Resize
+    ranges.resize(ranges.size() - merged_cells);
+  };
+};
+
+/** Merge algorithm for string-ASCII-type ranges. */
+template <>
+struct MergeStrategy<std::string, std::string> {
+  static void merge(std::vector<Range>& ranges) {
+    auto head = ranges.begin();
+    size_t merged_cells = 0;
+
+    // Merge
+    for (auto tail = head + 1; tail != ranges.end(); tail++) {
+      const bool can_coalesce =
+          *head->end_str().data() + 1 == *tail->start_str().data();
+      const bool can_merge = head->start_str() <= tail->start_str() &&
+                             tail->start_str() <= head->end_str();
+
+      if (can_coalesce || can_merge) {
+        head->set_end_str(tail->end_str().data());
+        merged_cells++;
+      } else {
+        head++;
+        std::swap(*head, *tail);
+      }
+    }
+
+    // Resize
+    ranges.resize(ranges.size() - merged_cells);
   };
 };
 
@@ -196,8 +262,15 @@ class RangeSetAndSupersetImpl {
    *
    * @param compute_tp The compute thread pool.
    */
-  virtual Status sort_ranges(
+  virtual void sort_ranges(
       ThreadPool* const compute_tp, std::vector<Range>& ranges) const = 0;
+
+  /**
+   * Merges sorted ranges in the range manager.
+   *
+   * @param ranges The sorted ranges to be merged.
+   */
+  virtual void merge_ranges(std::vector<Range>& ranges) const = 0;
 };
 
 template <typename T, bool CoalesceAdds>
@@ -235,9 +308,13 @@ class TypedRangeSetAndSupersetImpl : public RangeSetAndSupersetImpl {
     return nullopt;
   }
 
-  Status sort_ranges(
+  void sort_ranges(
       ThreadPool* const compute_tp, std::vector<Range>& ranges) const override {
-    return SortStrategy<T>::sort(compute_tp, ranges);
+    SortStrategy<T>::sort(compute_tp, ranges);
+  }
+
+  void merge_ranges(std::vector<Range>& ranges) const override {
+    MergeStrategy<T>::merge(ranges);
   }
 
  private:
@@ -269,9 +346,13 @@ class TypedRangeSetAndFullsetImpl : public RangeSetAndSupersetImpl {
     return nullopt;
   }
 
-  Status sort_ranges(
+  void sort_ranges(
       ThreadPool* const compute_tp, std::vector<Range>& ranges) const override {
-    return SortStrategy<T>::sort(compute_tp, ranges);
+    SortStrategy<T>::sort(compute_tp, ranges);
+  }
+
+  void merge_ranges(std::vector<Range>& ranges) const override {
+    MergeStrategy<T>::merge(ranges);
   }
 };
 
@@ -304,9 +385,13 @@ class TypedRangeSetAndFullsetImpl<std::string, CoalesceAdds>
     return nullopt;
   }
 
-  Status sort_ranges(
+  void sort_ranges(
       ThreadPool* const compute_tp, std::vector<Range>& ranges) const override {
-    return SortStrategy<std::string>::sort(compute_tp, ranges);
+    SortStrategy<std::string>::sort(compute_tp, ranges);
+  }
+
+  void merge_ranges(std::vector<Range>& ranges) const override {
+    MergeStrategy<std::string>::merge(ranges);
   }
 };
 
@@ -453,8 +538,9 @@ class RangeSetAndSuperset {
    * Sorts the stored ranges.
    *
    * @param compute_tp The compute thread pool.
+   * @param merge If true, the ranges will be merged after sorting.
    */
-  Status sort_ranges(ThreadPool* const compute_tp);
+  void sort_and_merge_ranges(ThreadPool* const compute_tp, bool merge = false);
 
  private:
   /** Pointer to typed implementation details. */

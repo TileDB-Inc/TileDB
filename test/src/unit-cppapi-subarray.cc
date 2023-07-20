@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -1314,6 +1314,78 @@ TEST_CASE(
   CHECK((coalesce ? 1 : 3) == subarray.range_num(0));
   CHECK(2 == subarray.range_num(1));
 
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+}
+
+TEST_CASE(
+    "C++ API: Subarray merge unsorted overlapping ranges on sparse reads",
+    "[cppapi][subarray][merge_overlapping_ranges]") {
+  const std::string array_name = "cpp_unit_array";
+  tiledb::Config cfg;
+  cfg.set("sm.merge_overlapping_ranges_experimental", "true");
+  tiledb::Context ctx(cfg);
+  tiledb::VFS vfs(ctx);
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  // Create a sparse array and open for reads
+  auto array_type = TILEDB_SPARSE;
+  Domain domain(ctx);
+  domain.add_dimensions(Dimension::create<int>(ctx, "d", {0, 9}));
+  ArraySchema schema(ctx, array_type);
+  schema.set_domain(domain).add_attribute(Attribute::create<int>(ctx, "a"));
+  Array::create(array_name, schema);
+  Array array(ctx, array_name, TILEDB_READ);
+
+  Subarray subarray(ctx, array);
+  SubarrayRanges<int> expected_ranges;
+
+  SECTION("- Adjacent ranges") {
+    expected_ranges = {{0, 9}};
+    subarray.add_range(0, 0, 1);
+    subarray.add_range(0, 4, 5);
+    subarray.add_range(0, 8, 9);
+    subarray.add_range(0, 2, 3);
+    subarray.add_range(0, 6, 7);
+    CHECK(subarray.range_num(0) == 5);
+  }
+
+  SECTION("- Overlapping ranges") {
+    expected_ranges = {{0, 9}};
+    subarray.add_range(0, 0, 2);
+    subarray.add_range(0, 7, 9);
+    subarray.add_range(0, 3, 6);
+    subarray.add_range(0, 5, 8);
+    subarray.add_range(0, 1, 4);
+    CHECK(subarray.range_num(0) == 5);
+  }
+
+  SECTION("- Partially overlapping ranges") {
+    expected_ranges = {{0, 3, 6, 9}};
+    subarray.add_range(0, 0, 2);
+    subarray.add_range(0, 6, 8);
+    subarray.add_range(0, 1, 3);
+    subarray.add_range(0, 7, 9);
+    CHECK(subarray.range_num(0) == 4);
+  }
+
+  // Submit a read query
+  std::vector<int> data(10);
+  tiledb::Query query(ctx, array);
+  query.set_subarray(subarray)
+      .set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("a", data);
+  query.submit();
+
+  // Validate subarray ranges against expected values
+  auto subarray_ptr = *(query.ptr()->query_->subarray());
+  check_subarray(subarray_ptr, expected_ranges);
+
+  // Clean up
+  array.close();
   if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
   }

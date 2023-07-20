@@ -1266,7 +1266,7 @@ class Subarray {
   }
 
   /** Sort ranges per dimension. */
-  Status sort_ranges(ThreadPool* const compute_tp);
+  void sort_ranges(ThreadPool* const compute_tp);
 
   /** Returns if all ranges for this subarray are non overlapping. */
   tuple<Status, optional<bool>> non_overlapping_ranges(

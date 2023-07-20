@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -123,6 +123,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    Checks if the coordinates obey the global array order. Applicable only
  *    to sparse writes in global order.
  *    **Default**: true
+ * - `sm.merge_overlapping_ranges_experimental` <br>
+ *    If `true`, merge overlapping Subarray ranges. Else, use the default
+ *    coalescing behavior. Experimental for testing purposes, do not use.<br>
+ *    **Default**: false
  * - `sm.enable_signal_handlers` <br>
  *    Determines whether or not TileDB will install signal handlers. <br>
  *    **Default**: true

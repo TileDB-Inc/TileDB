@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -131,8 +131,18 @@ RangeSetAndSuperset::RangeSetAndSuperset(
     ranges_.emplace_back(superset);
 }
 
-Status RangeSetAndSuperset::sort_ranges(ThreadPool* const compute_tp) {
-  return impl_->sort_ranges(compute_tp, ranges_);
+void RangeSetAndSuperset::sort_and_merge_ranges(
+    ThreadPool* const compute_tp, bool merge) {
+  // Return if there's not at least 2 ranges
+  if (ranges_.size() < 2) {
+    return;
+  }
+
+  impl_->sort_ranges(compute_tp, ranges_);
+
+  if (merge) {
+    impl_->merge_ranges(ranges_);
+  }
 }
 
 tuple<Status, optional<std::string>> RangeSetAndSuperset::add_range(

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -167,6 +167,9 @@ class Config {
    * are indeed provided in global order.
    */
   static const std::string SM_CHECK_GLOBAL_ORDER;
+
+  /** If `true`, merge overlapping Subarray ranges. */
+  static const std::string SM_MERGE_OVERLAPPING_RANGES_EXPERIMENTAL;
 
   /** If `true`, bypass partitioning on estimated result sizes. */
   static const std::string SM_SKIP_EST_SIZE_PARTITIONING;

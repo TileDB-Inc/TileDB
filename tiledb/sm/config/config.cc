@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -103,6 +103,7 @@ const std::string Config::SM_CHECK_COORD_DUPS = "true";
 const std::string Config::SM_CHECK_COORD_OOB = "true";
 const std::string Config::SM_READ_RANGE_OOB = "warn";
 const std::string Config::SM_CHECK_GLOBAL_ORDER = "true";
+const std::string Config::SM_MERGE_OVERLAPPING_RANGES_EXPERIMENTAL = "false";
 const std::string Config::SM_SKIP_EST_SIZE_PARTITIONING = "false";
 const std::string Config::SM_SKIP_UNARY_PARTITIONING_BUDGET_CHECK = "false";
 const std::string Config::SM_MEMORY_BUDGET = "5368709120";       // 5GB
@@ -264,6 +265,9 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair("sm.check_coord_oob", Config::SM_CHECK_COORD_OOB),
     std::make_pair("sm.read_range_oob", Config::SM_READ_RANGE_OOB),
     std::make_pair("sm.check_global_order", Config::SM_CHECK_GLOBAL_ORDER),
+    std::make_pair(
+        "sm.merge_overlapping_ranges_experimental",
+        Config::SM_MERGE_OVERLAPPING_RANGES_EXPERIMENTAL),
     std::make_pair(
         "sm.skip_est_size_partitioning", Config::SM_SKIP_EST_SIZE_PARTITIONING),
     std::make_pair(
@@ -695,6 +699,8 @@ Status Config::sanity_check(
   } else if (param == "sm.check_coord_oob") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.check_global_order") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
+  } else if (param == "sm.merge_overlapping_ranges_experimental") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.memory_budget") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
