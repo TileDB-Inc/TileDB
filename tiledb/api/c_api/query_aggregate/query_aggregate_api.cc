@@ -108,8 +108,7 @@ capi_return_t tiledb_channel_operation_field_create(
   shared_ptr<tiledb::sm::IAggregator> aggregator;
   switch (op->value()) {
     case QueryChannelOperator::COUNT:
-      aggregator = std::make_shared<tiledb::sm::CountAggregator>(
-          tiledb::sm::constants::all_attributes);
+      aggregator = std::make_shared<tiledb::sm::CountAggregator>();
       break;
     case QueryChannelOperator::SUM: {
       auto& schema = query->query_->array_schema();
