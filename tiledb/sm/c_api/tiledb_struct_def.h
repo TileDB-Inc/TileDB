@@ -71,10 +71,6 @@ struct tiledb_array_schema_evolution_t {
   tiledb::sm::ArraySchemaEvolution* array_schema_evolution_ = nullptr;
 };
 
-struct tiledb_domain_t {
-  tiledb::sm::Domain* domain_ = nullptr;
-};
-
 struct tiledb_query_t {
   tiledb::sm::Query* query_ = nullptr;
 };
