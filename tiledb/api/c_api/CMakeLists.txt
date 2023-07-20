@@ -94,9 +94,6 @@ add_subdirectory(dimension)
 # `domain`: depends on `dimension`
 add_subdirectory(domain)
 
-# `fragments_list`: no dependencies
-add_subdirectory(fragments_list)
-
 # `attribute`: depends on `filter_list`, `datatype`
 add_subdirectory(attribute)
 

@@ -555,8 +555,8 @@ void Array::delete_fragments(
   if (remote_) {
     auto rest_client = resources_.rest_client();
     if (rest_client == nullptr) {
-      throw ArrayStatusException(
-          "[Array::delete_fragments] Remote array with no REST client.");
+      throw ArrayException(
+          "[delete_fragments] Remote array with no REST client.");
     }
     rest_client->delete_fragments_from_rest(
         uri, timestamp_start, timestamp_end);
@@ -575,8 +575,8 @@ void Array::delete_fragments_list(
   if (remote_) {
     auto rest_client = resources_.rest_client();
     if (rest_client == nullptr) {
-      throw ArrayStatusException(
-          "[Array::delete_fragments_list] Remote array with no REST client.");
+      throw ArrayException(
+          "[delete_fragments_list] Remote array with no REST client.");
     }
     rest_client->delete_fragments_list_from_rest(uri, fragment_uris);
   } else {
