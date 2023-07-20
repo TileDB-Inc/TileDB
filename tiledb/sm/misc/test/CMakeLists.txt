@@ -30,5 +30,12 @@ commence(unit_test misc)
     this_target_link_libraries(tiledb_test_support_lib)
     # change to `this_target_include_directories` when available
     target_include_directories(unit_misc PRIVATE "${CMAKE_SOURCE_DIR}")
-    this_target_sources(main.cc unit_bytevecvalue.cc unit_hilbert.cc unit_math.cc unit_uuid.cc)
+    this_target_sources(
+        main.cc
+        unit_bytevecvalue.cc
+        unit_hilbert.cc
+        unit_integral_type_casts.cc
+        unit_math.cc
+        unit_uuid.cc
+    )
 conclude(unit_test)

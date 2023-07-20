@@ -776,6 +776,9 @@ static Status condition_ast_to_capnp(
     const std::string op_str = query_condition_op_str(node->get_op());
     ensure_qc_op_string_is_valid(op_str);
     ast_builder->setOp(op_str);
+
+    // Store whether this expression should skip the enumeration lookup.
+    ast_builder->setUseEnumeration(node->use_enumeration());
   } else {
     // Store the boolean expression tag.
     ast_builder->setIsExpression(true);
@@ -823,6 +826,8 @@ static void clause_to_capnp(
   const std::string op_str = query_condition_op_str(node->get_op());
   ensure_qc_op_string_is_valid(op_str);
   clause_builder->setOp(op_str);
+
+  clause_builder->setUseEnumeration(node->use_enumeration());
 }
 
 Status condition_to_capnp(
@@ -996,8 +1001,10 @@ tdb_unique_ptr<ASTNode> condition_ast_from_capnp(
     }
     ensure_qc_op_is_valid(op);
 
+    auto use_enumeration = ast_reader.getUseEnumeration();
+
     return tdb_unique_ptr<ASTNode>(
-        tdb_new(ASTNodeVal, field_name, data, size, op));
+        tdb_new(ASTNodeVal, field_name, data, size, op, use_enumeration));
   }
 
   // Getting and validating the query condition combination operator.
@@ -1049,8 +1056,10 @@ Status condition_from_capnp(
       }
       ensure_qc_op_is_valid(op);
 
+      bool use_enumeration = clause.getUseEnumeration();
+
       ast_nodes.push_back(tdb_unique_ptr<ASTNode>(
-          tdb_new(ASTNodeVal, field_name, data, size, op)));
+          tdb_new(ASTNodeVal, field_name, data, size, op, use_enumeration)));
     }
 
     // Constructing the tree from the list of AST nodes.

@@ -113,6 +113,15 @@ class QueryCondition {
       const QueryConditionOp& op);
 
   /**
+   * Translate any query conditions against enumerated attributes to the
+   * underlying attribute type.
+   *
+   * @param array_schema The current array schema with all required enumerations
+   * loaded.
+   */
+  void rewrite_enumeration_conditions(const ArraySchema& array_schema);
+
+  /**
    * Verifies that the current state contains supported comparison
    * operations. Currently, we support the following:
    *   - Fixed-size, single-value, non-nullable attributes.
@@ -159,6 +168,12 @@ class QueryCondition {
    * representing the query condition.
    */
   std::unordered_set<std::string>& field_names() const;
+
+  /**
+   * Returns a set of all unique field names that reference an enumerated
+   * attribute condition in the AST representing the query condition.
+   */
+  std::unordered_set<std::string>& enumeration_field_names() const;
 
   /**
    * Returns the timestamp for this condition.
@@ -245,6 +260,17 @@ class QueryCondition {
    */
   uint64_t condition_index() const;
 
+  /**
+   * By default, a query condition is applied against the enumerated values
+   * of an attribute. Setting use_enumeration to false prevents the translation
+   * and applies this query condition directly against the underlying integral
+   * attribute data.
+   *
+   * @param use_enumeration A bool indicating whether to use the enumeration
+   *        values.
+   */
+  void set_use_enumeration(bool use_enumeration);
+
  private:
   /* ********************************* */
   /*         PRIVATE DATATYPES         */
@@ -293,6 +319,9 @@ class QueryCondition {
 
   /** Caches all field names in the value nodes of the AST.  */
   mutable std::unordered_set<std::string> field_names_;
+
+  /** Caches all field names that references enumerations in the AST. */
+  mutable std::unordered_set<std::string> enumeration_field_names_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

@@ -43,6 +43,7 @@
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/uuid.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 
 using namespace tiledb::common;
 
@@ -55,6 +56,7 @@ class ConstBuffer;
 class Dimension;
 class DimensionLabel;
 class Domain;
+class Enumeration;
 
 enum class ArrayType : uint8_t;
 enum class Compressor : uint8_t;
@@ -108,6 +110,8 @@ class ArraySchema {
    * @param tile_order The tile order.
    * @param capacity The tile capacity for the case of sparse fragments.
    * @param attributes The array attributes.
+   * @param dimension_labels The array dimension labels.
+   * @param enumeration_path_map The array enumeration path map
    * @param cell_var_offsets_filters
    *    The filter pipeline run on offset tiles for var-length attributes.
    * @param cell_validity_filters
@@ -127,6 +131,47 @@ class ArraySchema {
       uint64_t capacity,
       std::vector<shared_ptr<const Attribute>> attributes,
       std::vector<shared_ptr<const DimensionLabel>> dimension_labels,
+      std::unordered_map<std::string, std::string> enumeration_path_map,
+      FilterPipeline cell_var_offsets_filters,
+      FilterPipeline cell_validity_filters,
+      FilterPipeline coords_filters);
+
+  /** Constructor.
+   * @param uri The URI of the array schema file.
+   * @param version The format version of this array schema.
+   * @param timestamp_range The timestamp the array schema was written.
+   * @param name The file name of the schema in timestamp_timestamp_uuid format.
+   * @param array_type The array type.
+   * @param allows_dups True if the (sparse) array allows coordinate duplicates.
+   * @param domain The array domain.
+   * @param cell_order The cell order.
+   * @param tile_order The tile order.
+   * @param capacity The tile capacity for the case of sparse fragments.
+   * @param attributes The array attributes.
+   * @param dimension_labels The array dimension labels.
+   * @param enumerations The array enumerations
+   * @param enumeration_path_map The array enumeration path map
+   * @param cell_var_offsets_filters
+   *    The filter pipeline run on offset tiles for var-length attributes.
+   * @param cell_validity_filters
+   *    The filter pipeline run on validity tiles for nullable attributes.
+   * @param coords_filters The filter pipeline run on coordinate tiles.
+   **/
+  ArraySchema(
+      URI uri,
+      uint32_t version,
+      std::pair<uint64_t, uint64_t> timestamp_range,
+      std::string name,
+      ArrayType array_type,
+      bool allows_dups,
+      shared_ptr<Domain> domain,
+      Layout cell_order,
+      Layout tile_order,
+      uint64_t capacity,
+      std::vector<shared_ptr<const Attribute>> attributes,
+      std::vector<shared_ptr<const DimensionLabel>> dimension_labels,
+      std::vector<shared_ptr<const Enumeration>> enumerations,
+      std::unordered_map<std::string, std::string> enumeration_path_map,
       FilterPipeline cell_var_offsets_filters,
       FilterPipeline cell_validity_filters,
       FilterPipeline coords_filters);
@@ -365,6 +410,78 @@ class ArraySchema {
   Status drop_attribute(const std::string& attr_name);
 
   /**
+   * Add an Enumeration to this ArraySchema.
+   *
+   * @param enmr The enumeration to add.
+   */
+  void add_enumeration(shared_ptr<const Enumeration> enmr);
+
+  /**
+   * Check if an enumeration exists with the given name.
+   *
+   * @param enmr_name The name to check
+   * @return bool Whether the enumeration exists.
+   */
+  bool has_enumeration(const std::string& enmr_name) const;
+
+  /**
+   * Store a known enumeration on this ArraySchema after the schema
+   * was loaded. This allows for only incuring the cost of loading an
+   * enumeration when it is needed. An exception is thrown if the
+   * Enumeration is unknown to this ArraySchema.
+   *
+   * @param enmr The Enumeration to store.
+   */
+  void store_enumeration(shared_ptr<const Enumeration> enmr);
+
+  /**
+   * Get a vector of Enumeration names.
+   *
+   * @return A vector of enumeration names.
+   */
+  std::vector<std::string> get_enumeration_names() const;
+
+  /**
+   * Get a vector of loaded Enumeration names.
+   *
+   * @return A vector of loaded enumeration names.
+   */
+  std::vector<std::string> get_loaded_enumeration_names() const;
+
+  /**
+   * Check if a given enumeration has already been loaded.
+   *
+   * @param enumeration_name The name of the enumeration to check
+   * @return bool Whether the enumeration has been loaded or not.
+   */
+  bool is_enumeration_loaded(const std::string& enumeration_name) const;
+
+  /**
+   * Get an Enumeration by name. Throws if the attribute is unknown.
+   *
+   * @param enmr_name The name of the Enumeration.
+   * @return shared_ptr<Enumeration>
+   */
+  shared_ptr<const Enumeration> get_enumeration(
+      const std::string& enmr_name) const;
+
+  /**
+   * Get an Enumeration's object name. Throws if the attribute is unknown.
+   *
+   * @param enmr_name The name of the Enumeration.
+   * @return The path name of the enumeration on disk
+   */
+  const std::string& get_enumeration_path_name(
+      const std::string& enmr_name) const;
+
+  /**
+   * Drop an enumeration
+   *
+   * @param enumeration_name The enumeration to drop.
+   */
+  void drop_enumeration(const std::string& enmr_name);
+
+  /**
    * It assigns values to the members of the object from the input buffer.
    *
    * @param deserializer The deserializer to deserialize from.
@@ -554,6 +671,13 @@ class ArraySchema {
   /** A map from the dimension label names to the label schemas. */
   std::unordered_map<std::string, const DimensionLabel*> dimension_label_map_;
 
+  /** A map of Enumeration names to Enumeration pointers. */
+  std::unordered_map<std::string, shared_ptr<const Enumeration>>
+      enumeration_map_;
+
+  /** A map of Enumeration names to Enumeration URIs */
+  std::unordered_map<std::string, std::string> enumeration_path_map_;
+
   /** The filter pipeline run on offset tiles for var-length attributes. */
   FilterPipeline cell_var_offsets_filters_;
 
@@ -598,6 +722,9 @@ class ArraySchema {
   Status check_string_compressor(const FilterPipeline& coords_filters) const;
 
   void check_webp_filter() const;
+
+  // Check whether attributes referencing enumerations are valid.
+  void check_enumerations() const;
 
   /** Clears all members. Use with caution! */
   void clear();

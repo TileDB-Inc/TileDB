@@ -581,6 +581,48 @@ void Array::delete_fragments_list(
   }
 }
 
+shared_ptr<const Enumeration> Array::get_enumeration(
+    const std::string& enumeration_name) {
+  if (remote_) {
+    throw ArrayException("Unable to load all enumerations; Array is remote.");
+  }
+
+  if (!is_open_) {
+    throw ArrayException("Cannot get enumeration; Array is not open");
+  }
+
+  if (array_schema_latest_->is_enumeration_loaded(enumeration_name)) {
+    return array_schema_latest_->get_enumeration(enumeration_name);
+  }
+
+  return array_dir_.load_enumeration(
+      array_schema_latest_, enumeration_name, get_encryption_key());
+}
+
+void Array::load_all_enumerations(bool latest_only) {
+  if (remote_) {
+    throw ArrayException("Unable to load all enumerations; Array is remote.");
+  }
+
+  if (!is_open_) {
+    throw ArrayException("Cannot load all enumerations; Array is not open");
+  }
+
+  std::vector<shared_ptr<ArraySchema>> schemas;
+  if (latest_only) {
+    schemas.emplace_back(array_schema_latest_);
+  } else {
+    schemas.reserve(array_schemas_all_.size());
+    for (auto& iter : array_schemas_all_) {
+      schemas.emplace_back(iter.second);
+    }
+  }
+
+  for (auto& schema : schemas) {
+    array_dir_.load_all_enumerations(schema, get_encryption_key());
+  }
+}
+
 bool Array::is_empty() const {
   return fragment_metadata_.empty();
 }

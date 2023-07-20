@@ -33,11 +33,15 @@
 #ifndef TILEDB_EXPERIMENTAL_CPP_H
 #define TILEDB_EXPERIMENTAL_CPP_H
 
+#include "array_experimental.h"
 #include "array_schema_evolution.h"
 #include "array_schema_experimental.h"
+#include "attribute_experimental.h"
 #include "dimension_label_experimental.h"
+#include "enumeration_experimental.h"
 #include "consolidation_plan_experimental.h"
 #include "group_experimental.h"
+#include "query_condition_experimental.h"
 #include "query_experimental.h"
 #include "subarray_experimental.h"
 

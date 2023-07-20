@@ -38,6 +38,7 @@
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/misc/parse_argument.h"
+#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/type/range/range.h"
 
 #include <cassert>
@@ -115,7 +116,8 @@ Attribute::Attribute(
     const FilterPipeline& filter_pipeline,
     const ByteVecValue& fill_value,
     uint8_t fill_value_validity,
-    DataOrder order)
+    DataOrder order,
+    std::optional<std::string> enumeration_name)
     : cell_val_num_(cell_val_num)
     , nullable_(nullable)
     , filters_(filter_pipeline)
@@ -123,7 +125,8 @@ Attribute::Attribute(
     , type_(type)
     , fill_value_(fill_value)
     , fill_value_validity_(fill_value_validity)
-    , order_(order) {
+    , order_(order)
+    , enumeration_name_(enumeration_name) {
 }
 
 Attribute::Attribute(const Attribute* attr) {
@@ -136,6 +139,7 @@ Attribute::Attribute(const Attribute* attr) {
   fill_value_ = attr->fill_value_;
   fill_value_validity_ = attr->fill_value_validity_;
   order_ = attr->order_;
+  enumeration_name_ = attr->enumeration_name_;
 }
 
 Attribute::~Attribute() = default;
@@ -204,6 +208,17 @@ Attribute Attribute::deserialize(
     order = data_order_from_int(deserializer.read<uint8_t>());
   }
 
+  std::optional<std::string> enmr_name;
+  if (version >= 19) {
+    auto enmr_name_length = deserializer.read<uint32_t>();
+    if (enmr_name_length > 0) {
+      std::string enmr_name_value;
+      enmr_name_value.resize(enmr_name_length);
+      deserializer.read(enmr_name_value.data(), enmr_name_length);
+      enmr_name = enmr_name_value;
+    }
+  }
+
   return Attribute(
       name,
       datatype,
@@ -212,7 +227,8 @@ Attribute Attribute::deserialize(
       filterpipeline,
       fill_value,
       fill_value_validity,
-      order);
+      order,
+      enmr_name);
 }
 
 void Attribute::dump(FILE* out) const {
@@ -298,6 +314,18 @@ void Attribute::serialize(
   // Write order
   if (version >= 17) {
     serializer.write<uint8_t>(static_cast<uint8_t>(order_));
+  }
+
+  // Write enumeration URI
+  if (version >= constants::enumerations_min_format_version) {
+    if (enumeration_name_.has_value()) {
+      auto enmr_name_size =
+          static_cast<uint32_t>(enumeration_name_.value().size());
+      serializer.write<uint32_t>(enmr_name_size);
+      serializer.write(enumeration_name_.value().data(), enmr_name_size);
+    } else {
+      serializer.write<uint32_t>(0);
+    }
   }
 }
 
@@ -478,6 +506,18 @@ bool Attribute::nullable() const {
 
 DataOrder Attribute::order() const {
   return order_;
+}
+
+void Attribute::set_enumeration_name(std::optional<std::string> enmr_name) {
+  if (enmr_name.has_value() && enmr_name.value().empty()) {
+    throw AttributeStatusException(
+        "Invalid enumeration name, name must not be empty.");
+  }
+  enumeration_name_ = enmr_name;
+}
+
+std::optional<std::string> Attribute::get_enumeration_name() const {
+  return enumeration_name_;
 }
 
 /* ********************************* */
