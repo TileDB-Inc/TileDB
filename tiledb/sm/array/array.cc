@@ -351,8 +351,7 @@ Status Array::open(
           query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
         timestamp_end_opened_at_ = 0;
       } else {
-        throw ArrayException(
-            "Cannot open array; Unsupported query type.");
+        throw ArrayException("Cannot open array; Unsupported query type.");
       }
     }
 
