@@ -1698,7 +1698,7 @@ TEST_CASE_METHOD(
   uint32_t version_r = 0;
   rc = tiledb_array_schema_get_version(ctx_, array_schema, &version_r);
   CHECK(rc == TILEDB_OK);
-  CHECK(version_r == tiledb::sm::constants::format_version);
+  CHECK(version_r == tiledb::sm::constants::format_version.to_disk());
 
   // Clean up
   tiledb_array_schema_free(&array_schema);

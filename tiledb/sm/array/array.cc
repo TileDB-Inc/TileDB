@@ -68,8 +68,6 @@ class ArrayException : public StatusException {
   }
 };
 
-void ensure_supported_schema_version_for_read(format_version_t version);
-
 ConsistencyController& controller() {
   static ConsistencyController controller;
   return controller;
@@ -402,8 +400,7 @@ Status Array::open(
             timestamp_end_opened_at_,
             ArrayDirectoryMode::SCHEMA_ONLY);
       }
-      auto&& [st, array_schema_latest, array_schemas] = open_for_writes();
-      throw_if_not_ok(st);
+      auto&& [array_schema_latest, array_schemas] = open_for_writes();
 
       // Set schemas
       array_schema_latest_ = array_schema_latest.value();
@@ -422,8 +419,8 @@ Status Array::open(
             timestamp_end_opened_at_,
             ArrayDirectoryMode::READ);
       }
-      auto&& [st, array_schema_latest, array_schemas] = open_for_writes();
-      throw_if_not_ok(st);
+
+      auto&& [array_schema_latest, array_schemas] = open_for_writes();
 
       // Set schemas
       array_schema_latest_ = array_schema_latest.value();
@@ -431,21 +428,23 @@ Status Array::open(
 
       auto version = array_schema_latest_->version();
       if (query_type == QueryType::DELETE &&
-          version < constants::deletes_min_version) {
+          version.before_feature(Feature::DELETES)) {
+        auto f_vsn = format_version_t::from_alias(Feature::DELETES);
         std::stringstream err;
-        err << "Cannot open array for deletes; Array format version (";
-        err << version;
-        err << ") is smaller than the minimum supported version (";
-        err << constants::deletes_min_version << ").";
+        err << "Cannot open array for deletes; Array format version ";
+        err << version.to_error_string();
+        err << " is smaller than the minimum supported version ";
+        err << f_vsn.to_error_string() << ".";
         return LOG_STATUS(Status_ArrayError(err.str()));
       } else if (
           query_type == QueryType::UPDATE &&
-          version < constants::updates_min_version) {
+          version.before_feature(Feature::UPDATES)) {
+        auto f_vsn = format_version_t::from_alias(Feature::UPDATES);
         std::stringstream err;
-        err << "Cannot open array for updates; Array format version (";
-        err << version;
-        err << ") is smaller than the minimum supported version (";
-        err << constants::updates_min_version << ").";
+        err << "Cannot open array for updates; Array format version ";
+        err << version.to_error_string();
+        err << " is smaller than the minimum supported version ";
+        err << f_vsn.to_error_string() << ".";
         return LOG_STATUS(Status_ArrayError(err.str()));
       }
 
@@ -1281,8 +1280,7 @@ Array::open_for_reads() {
 
   throw_if_not_ok(st);
 
-  auto version = array_schema_latest.value()->version();
-  ensure_supported_schema_version_for_read(version);
+  array_schema_latest.value()->version().check_read_compatibility();
 
   return {array_schema_latest, array_schemas_all, fragment_metadata};
 }
@@ -1298,63 +1296,36 @@ Array::open_for_reads_without_fragments() {
   auto&& [array_schema_latest, array_schemas_all] =
       array_dir_.load_array_schemas(*encryption_key());
 
-  auto version = array_schema_latest->version();
-  ensure_supported_schema_version_for_read(version);
+  array_schema_latest->version().check_read_compatibility();
 
   return {array_schema_latest, array_schemas_all};
 }
 
 tuple<
-    Status,
     optional<shared_ptr<ArraySchema>>,
     optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
 Array::open_for_writes() {
   auto timer_se =
       resources_.stats().start_timer("array_open_write_load_schemas");
+
   // Checks
-  if (!resources_.vfs().supports_uri_scheme(array_uri_))
-    return {
-        resources_.logger()->status(Status_StorageManagerError(
-            "Cannot open array; URI scheme unsupported.")),
-        nullopt,
-        nullopt};
+  if (!resources_.vfs().supports_uri_scheme(array_uri_)) {
+    throw ArrayException("Cannot open array; URI scheme unsupported.");
+  }
 
   // Load array schemas
   auto&& [array_schema_latest, array_schemas_all] =
       array_dir_.load_array_schemas(*encryption_key_);
 
-  // If building experimentally, this library should not be able to
-  // write to newer-versioned or older-versioned arrays
-  // Else, this library should not be able to write to newer-versioned arrays
-  // (but it is ok to write to older arrays)
-  auto version = array_schema_latest->version();
-  if constexpr (is_experimental_build) {
-    if (version != constants::format_version) {
-      std::stringstream err;
-      err << "Cannot open array for writes; Array format version (";
-      err << version;
-      err << ") is not the library format version (";
-      err << constants::format_version << ")";
-      return {
-          resources_.logger()->status(Status_StorageManagerError(err.str())),
-          nullopt,
-          nullopt};
-    }
-  } else {
-    if (version > constants::format_version) {
-      std::stringstream err;
-      err << "Cannot open array for writes; Array format version (";
-      err << version;
-      err << ") is newer than library format version (";
-      err << constants::format_version << ")";
-      return {
-          resources_.logger()->status(Status_StorageManagerError(err.str())),
-          nullopt,
-          nullopt};
-    }
+  try {
+    array_schema_latest->version().check_write_compatibility();
+  } catch (std::exception& exc) {
+    std::string msg =
+        std::string("Unable to open array for writes; ") + exc.what();
+    throw ArrayException(msg);
   }
 
-  return {Status::Ok(), array_schema_latest, array_schemas_all};
+  return {array_schema_latest, array_schemas_all};
 }
 
 void Array::clear_last_max_buffer_sizes() {
@@ -1632,18 +1603,6 @@ void Array::ensure_array_is_valid_for_delete(const URI& uri) {
     throw ArrayException(
         "[ensure_array_is_valid_for_delete] "
         "May not perform simultaneous open or close operations.");
-  }
-}
-
-void ensure_supported_schema_version_for_read(format_version_t version) {
-  // We do not allow reading from arrays written by newer version of TileDB
-  if (version > constants::format_version) {
-    std::stringstream err;
-    err << "Cannot open array for reads; Array format version (";
-    err << version;
-    err << ") is newer than library format version (";
-    err << constants::format_version << ")";
-    throw Status_StorageManagerError(err.str());
   }
 }
 

@@ -120,7 +120,7 @@ class ArraySchema {
    **/
   ArraySchema(
       URI uri,
-      uint32_t version,
+      format_version_t version,
       std::pair<uint64_t, uint64_t> timestamp_range,
       std::string name,
       ArrayType array_type,
@@ -159,7 +159,7 @@ class ArraySchema {
    **/
   ArraySchema(
       URI uri,
-      uint32_t version,
+      format_version_t version,
       std::pair<uint64_t, uint64_t> timestamp_range,
       std::string name,
       ArrayType array_type,

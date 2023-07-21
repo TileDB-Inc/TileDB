@@ -187,7 +187,7 @@ tuple<Status, optional<std::string>> GroupDirectory::compute_new_fragment_name(
   // Create new URI
   std::stringstream ss;
   ss << "/__" << t_first.first << "_" << t_last.second << "_" << uuid << "_"
-     << format_version;
+     << format_version.to_string();
 
   return {Status::Ok(), ss.str()};
 }

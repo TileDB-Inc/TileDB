@@ -40,7 +40,7 @@ using namespace tiledb::sm;
 
 TEST_CASE("Tile: Test basic IO", "[Tile][basic_io]") {
   // Initialize the test Tile.
-  const format_version_t format_version = 0;
+  const tiledb::format_version_t format_version{0};
   const Datatype data_type = Datatype::UINT32;
   const uint64_t tile_size = 1024 * 1024;
   const uint64_t cell_size = sizeof(uint32_t);
@@ -114,7 +114,7 @@ TEST_CASE("Tile: Test basic IO", "[Tile][basic_io]") {
 
 TEST_CASE("Tile: Test move constructor", "[Tile][move_constructor]") {
   // Instantiate and initialize the first test Tile.
-  const format_version_t format_version = 0;
+  const tiledb::format_version_t format_version{0};
   const Datatype data_type = Datatype::UINT32;
   const uint64_t tile_size = 1024 * 1024;
   const uint64_t cell_size = sizeof(uint32_t);
@@ -140,7 +140,7 @@ TEST_CASE("Tile: Test move constructor", "[Tile][move_constructor]") {
   CHECK(tile2.cell_num() == buffer_len);
   CHECK(tile2.zipped_coords_dim_num() == dim_num);
   CHECK(tile2.filtered() == false);
-  CHECK(tile2.format_version() == format_version);
+  CHECK(tile2.format_version().to_disk() == format_version.to_disk());
   CHECK(tile2.size() == tile_size);
   CHECK(tile2.stores_coords() == true);
   CHECK(tile2.type() == Datatype::UINT32);
@@ -155,7 +155,7 @@ TEST_CASE("Tile: Test move constructor", "[Tile][move_constructor]") {
 
 TEST_CASE("Tile: Test move-assignment", "[Tile][move_assignment]") {
   // Instantiate and initialize the first test Tile.
-  const format_version_t format_version = 0;
+  const tiledb::format_version_t format_version{0};
   const Datatype data_type = Datatype::UINT32;
   const uint64_t tile_size = 1024 * 1024;
   const uint64_t cell_size = sizeof(uint32_t);
@@ -181,7 +181,7 @@ TEST_CASE("Tile: Test move-assignment", "[Tile][move_assignment]") {
   CHECK(tile2.cell_num() == buffer_len);
   CHECK(tile2.zipped_coords_dim_num() == dim_num);
   CHECK(tile2.filtered() == false);
-  CHECK(tile2.format_version() == format_version);
+  CHECK(tile2.format_version().to_disk() == format_version.to_disk());
   CHECK(tile2.size() == tile_size);
   CHECK(tile2.stores_coords() == true);
   CHECK(tile2.type() == Datatype::UINT32);

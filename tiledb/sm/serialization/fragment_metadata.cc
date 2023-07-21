@@ -167,7 +167,8 @@ Status fragment_metadata_from_capnp(
 
   FragmentMetadata::LoadedMetadata loaded_metadata;
   // There is a difference in the metadata loaded for versions >= 2
-  auto loaded = frag_meta->version() <= 2 ? true : false;
+  auto loaded = frag_meta->version().before_feature(
+      Feature::PARALELLIZE_FRAGMENT_METADATA_LOADING);
   if (frag_meta_reader.hasTileOffsets()) {
     for (const auto& t : frag_meta_reader.getTileOffsets()) {
       auto& last = frag_meta->tile_offsets().emplace_back();
@@ -621,7 +622,7 @@ Status fragment_metadata_to_capnp(
     }
   }
 
-  frag_meta_builder->setVersion(frag_meta.format_version());
+  frag_meta_builder->setVersion(frag_meta.format_version().to_disk());
 
   auto trange_builder = frag_meta_builder->initTimestampRange(2);
   trange_builder.set(0, frag_meta.timestamp_range().first);

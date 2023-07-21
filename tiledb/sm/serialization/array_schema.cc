@@ -838,7 +838,7 @@ Status array_schema_to_capnp(
 
   array_schema_builder->setName(array_schema.name());
   auto v = kj::heapArray<int32_t>(1);
-  v[0] = array_schema.version();
+  v[0] = array_schema.version().to_disk();
   array_schema_builder->setVersion(v);
   array_schema_builder->setArrayType(array_type_str(array_schema.array_type()));
   array_schema_builder->setTileOrder(layout_str(array_schema.tile_order()));

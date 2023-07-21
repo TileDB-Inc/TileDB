@@ -145,10 +145,10 @@ Status DeletesAndUpdates::dowork() {
   // consolidated without timestamps.
   auto& frag_uris = array_->array_directory().unfiltered_fragment_uris();
   for (auto& uri : frag_uris) {
-    uint32_t version;
     auto name = uri.remove_trailing_slash().last_path_part();
-    RETURN_NOT_OK(utils::parse::get_fragment_version(name, &version));
-    if (version < constants::consolidation_with_timestamps_min_version) {
+    auto version = utils::parse::get_fragment_version(name);
+    if (!version.is_valid() ||
+        version.before_feature(Feature::CONSOLIDATION_WITH_TIMESTAMPS)) {
       std::pair<uint64_t, uint64_t> fragment_timestamp_range;
       RETURN_NOT_OK(
           utils::parse::get_timestamp_range(uri, &fragment_timestamp_range));

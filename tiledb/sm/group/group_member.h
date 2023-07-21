@@ -66,7 +66,7 @@ class GroupMember {
       const URI& uri,
       const ObjectType& type,
       const bool& relative,
-      uint32_t version,
+      format_version_t version,
       const std::optional<std::string>& name,
       const bool& deleted);
 
@@ -127,7 +127,7 @@ class GroupMember {
   bool relative_;
 
   /* Format version. */
-  const uint32_t version_;
+  const format_version_t version_;
 
   /** Is group member deleted from group. */
   bool deleted_;

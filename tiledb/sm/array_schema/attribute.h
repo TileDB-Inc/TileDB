@@ -157,7 +157,8 @@ class Attribute {
    * @param version The format spec version.
    * @return Attribute
    */
-  static Attribute deserialize(Deserializer& deserializer, uint32_t version);
+  static Attribute deserialize(
+      Deserializer& deserializer, format_version_t version);
 
   /** Dumps the attribute contents in ASCII form in the selected output. */
   void dump(FILE* out) const;
@@ -174,7 +175,7 @@ class Attribute {
    * @param serializer The object the attribute is serialized into.
    * @param version The format spec version.
    */
-  void serialize(Serializer& serializer, uint32_t version) const;
+  void serialize(Serializer& serializer, format_version_t version) const;
 
   /**
    * Sets the attribute number of values per cell. Note that if the attribute

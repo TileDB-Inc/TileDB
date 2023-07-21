@@ -34,8 +34,7 @@
 #define TILEDB_GENERATE_URI_H
 
 #include "tiledb/common/common.h"
-
-using namespace tiledb::common;
+#include "tiledb/storage_format/versioning/versioning.h"
 
 namespace tiledb::storage_format {
 
@@ -56,7 +55,7 @@ namespace tiledb::storage_format {
  * @return The new URI.
  */
 std::string generate_uri(
-    uint64_t timestamp_start, uint64_t timestamp_end, uint32_t version);
+    uint64_t timestamp_start, uint64_t timestamp_end, format_version_t version);
 
 /**
  * Generates a new fragment name.

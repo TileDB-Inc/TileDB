@@ -96,8 +96,8 @@ Status FragmentConsolidator::consolidate(
       QueryType::WRITE, encryption_type, encryption_key, key_length));
 
   // Disable consolidation with timestamps on older arrays.
-  if (array_for_reads->array_schema_latest().write_version() <
-      constants::consolidation_with_timestamps_min_version) {
+  auto write_version = array_for_reads->array_schema_latest().write_version();
+  if (write_version.before_feature(Feature::CONSOLIDATION_WITH_TIMESTAMPS)) {
     config_.with_timestamps_ = false;
   }
 
@@ -205,8 +205,8 @@ Status FragmentConsolidator::consolidate_fragments(
       QueryType::WRITE, encryption_type, encryption_key, key_length));
 
   // Disable consolidation with timestamps on older arrays.
-  if (array_for_reads->array_schema_latest().write_version() <
-      constants::consolidation_with_timestamps_min_version) {
+  auto write_version = array_for_reads->array_schema_latest().write_version();
+  if (write_version.before_feature(Feature::CONSOLIDATION_WITH_TIMESTAMPS)) {
     config_.with_timestamps_ = false;
   }
 
@@ -383,8 +383,9 @@ Status FragmentConsolidator::consolidate_internal(
   // If there are any delete conditions coming after the first fragment or if
   // there are any fragments with delete meta, the new fragment will include
   // delete meta.
+  auto write_version = array_schema.write_version();
   if (!config_.purge_deleted_cells_ &&
-      array_schema.write_version() >= constants::deletes_min_version) {
+      write_version.has_feature(Feature::DELETES)) {
     // Get the first fragment first timestamp.
     std::pair<uint64_t, uint64_t> timestamps;
     RETURN_NOT_OK(
@@ -963,7 +964,7 @@ Status FragmentConsolidator::write_vacuum_file(
 
   // Write vac files relative to the array URI. This was fixed for reads in
   // version 19 so only do this for arrays starting with version 19.
-  if (write_version >= 19) {
+  if (write_version.has_feature(Feature::VAC_FILES_USE_RELATIVE_URIS)) {
     base_uri_size = array_uri.to_string().size();
   }
 

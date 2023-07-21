@@ -189,13 +189,15 @@ bool ReaderBase::skip_field(
   const auto& schema{fragment->array_schema()};
 
   // Applicable for zipped coordinates only to versions < 5
-  if (name == constants::coords && format_version >= 5) {
+  if (name == constants::coords &&
+      format_version.has_feature(Feature::NO_MORE_ZIPPED_COORDS)) {
     return true;
   }
 
   // Applicable to separate coordinates only to versions >= 5
   const auto is_dim{schema->is_dim(name)};
-  if (is_dim && format_version < 5) {
+  if (is_dim &&
+      format_version.before_feature(Feature::SPLIT_COORDINATE_FILES)) {
     return true;
   }
 
@@ -743,7 +745,8 @@ Status ReaderBase::zip_tile_coordinates(
     bool using_compression =
         array_schema_.filters(name).get_filter<CompressionFilter>() != nullptr;
     auto version = tile->format_version();
-    if (version > 1 || using_compression) {
+    if (version.has_feature(Feature::ALWAYS_SPLIT_COORDINATE_TILES) ||
+        using_compression) {
       RETURN_NOT_OK(tile->zip_coordinates());
     }
   }

@@ -48,10 +48,9 @@ Status get_timestamp_range(
   name = (pos == std::string::npos) ? name : name.substr(0, pos);
 
   // Get fragment version
-  uint32_t version = 0;
-  RETURN_NOT_OK(get_fragment_name_version(name, &version));
-
-  if (version == 1) {  // This is equivalent to format version <=2
+  auto version = get_fragment_name_version(name);
+  if (version == FragmentNameVersion::ONE) {
+    // This is equivalent to format_version_t <=2
     assert(name.find_last_of('_') != std::string::npos);
     auto t_str = name.substr(name.find_last_of('_') + 1);
     sscanf(
@@ -78,7 +77,7 @@ Status get_timestamp_range(
   return Status::Ok();
 }
 
-Status get_fragment_name_version(const std::string& name, uint32_t* version) {
+fragment_name_version_t get_fragment_name_version(const std::string& name) {
   // First check if it is version 3 or greater, which has 5 '_'
   // characters in the name.
   size_t n = std::count(name.begin(), name.end(), '_');
@@ -87,38 +86,39 @@ Status get_fragment_name_version(const std::string& name, uint32_t* version) {
     // version is greater than or equal to 10, we have a footer version of 5.
     // version is greater than or equal to 7, we have a footer version of 4.
     // Otherwise, it is version 3.
-    const uint32_t frag_version =
-        std::stoul(name.substr(name.find_last_of('_') + 1));
-    if (frag_version >= 10)
-      *version = 5;
-    else if (frag_version >= 7)
-      *version = 4;
-    else
-      *version = 3;
-    return Status::Ok();
+    const uint32_t vsn = std::stoul(name.substr(name.find_last_of('_') + 1));
+    if (vsn >= 10) {
+      return fragment_name_version_t{5};
+    } else if (vsn >= 7) {
+      return fragment_name_version_t{4};
+    } else {
+      return fragment_name_version_t{3};
+    }
   }
 
   // Check if it is in version 1 or 2
   // Version 2 has the 32-byte long UUID at the end
   auto t_str = name.substr(name.find_last_of('_') + 1);
-  *version = (t_str.size() == 32) ? 2 : 1;
-
-  return Status::Ok();
+  if (t_str.size() == 32) {
+    return fragment_name_version_t{2};
+  } else {
+    return fragment_name_version_t{1};
+  }
 }
 
-Status get_fragment_version(const std::string& name, uint32_t* version) {
-  uint32_t name_version;
-  RETURN_NOT_OK(get_fragment_name_version(name, &name_version));
+format_version_t get_fragment_version(const std::string& name) {
+  auto name_vsn = get_fragment_name_version(name);
 
-  if (name_version <= 2) {
-    *version = UINT32_MAX;
-  } else {  // name version >= 3
-    auto v_str = name.substr(name.find_last_of('_') + 1);
-    std::stringstream ss(v_str);
-    ss >> *version;
+  if (name_vsn < FragmentNameVersion::THREE) {
+    return format_version_t::invalid_version();
   }
 
-  return Status::Ok();
+  // name version >= 3
+  uint32_t v_int;
+  auto v_str = name.substr(name.find_last_of('_') + 1);
+  std::stringstream ss(v_str);
+  ss >> v_int;
+  return format_version_t{v_int};
 }
 
 bool is_element_of(const URI uri, const URI intersecting_uri) {

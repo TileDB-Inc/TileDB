@@ -35,6 +35,7 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/storage_format/versioning/versioning.h"
 
 namespace tiledb::sm::utils::parse {
 
@@ -55,14 +56,14 @@ Status get_timestamp_range(
  *  - Version 3 corresponds to version 5 or higher
  *      * __t1_t2_uuid_version
  */
-Status get_fragment_name_version(const std::string& name, uint32_t* version);
+fragment_name_version_t get_fragment_name_version(const std::string& name);
 
 /**
  * Retrieves the fragment version. This will work only for
  * name versions > 2, otherwise the function sets `version`
  * to UINT32_MAX.
  */
-Status get_fragment_version(const std::string& name, uint32_t* version);
+format_version_t get_fragment_version(const std::string& name);
 
 /**
  * Returns true if the given URIs have the same "prefix" and could

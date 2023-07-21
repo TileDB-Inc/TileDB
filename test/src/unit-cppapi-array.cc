@@ -1978,9 +1978,9 @@ TEST_CASE(
   // Try writing to an older-versioned array
   REQUIRE_THROWS_WITH(
       Array(ctx, old_array_name, TILEDB_WRITE),
-      Catch::Matchers::ContainsSubstring("Array format version") &&
+      Catch::Matchers::ContainsSubstring("Unable to open array for writes") &&
           Catch::Matchers::ContainsSubstring(
-              "is not the library format version"));
+              "unable to write to an array with version"));
 
   // Read from an older-versioned array
   Array array(ctx, old_array_name, TILEDB_READ);
@@ -2035,7 +2035,9 @@ TEST_CASE(
   // old version fragment
   CHECK(fragment_info.version(0) == 1);
   // new version fragment
-  CHECK(fragment_info.version(1) == tiledb::sm::constants::format_version);
+  CHECK(
+      fragment_info.version(1) ==
+      tiledb::sm::constants::format_version.to_disk());
 
   // Read from upgraded version
   Array array_read(ctx, old_array_name, TILEDB_READ);
@@ -2067,16 +2069,18 @@ TEST_CASE(
   // Try writing to a newer-versioned (UINT32_MAX) array
   REQUIRE_THROWS_WITH(
       Array(ctx, new_array_name, TILEDB_WRITE),
-      Catch::Matchers::ContainsSubstring("Array format version") &&
+      Catch::Matchers::ContainsSubstring(
+          "Failed to deserialize array schema") &&
           Catch::Matchers::ContainsSubstring(
-              "is newer than the library format version"));
+              "unable to read from an array with version"));
 
   // Try reading from a newer-versioned (UINT32_MAX) array
   REQUIRE_THROWS_WITH(
       Array(ctx, new_array_name, TILEDB_READ),
-      Catch::Matchers::ContainsSubstring("Array format version") &&
+      Catch::Matchers::ContainsSubstring(
+          "Failed to deserialize array schema") &&
           Catch::Matchers::ContainsSubstring(
-              "is newer than the library format version"));
+              "is unable to read from an array with version"));
 
   // Clean up
   VFS vfs(ctx);

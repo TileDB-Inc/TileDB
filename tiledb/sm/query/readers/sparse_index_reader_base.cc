@@ -191,7 +191,8 @@ std::vector<uint64_t> SparseIndexReaderBase::tile_offset_sizes() {
 
         // For fragments with version smaller than 5 we have zipped coords.
         // Otherwise we load each dimensions independently.
-        if (fragment->version() < 5) {
+        if (fragment->version().before_feature(
+                Feature::NO_MORE_ZIPPED_COORDS)) {
           num = 1;
         } else {
           for (unsigned d = 0; d < dim_num; ++d) {

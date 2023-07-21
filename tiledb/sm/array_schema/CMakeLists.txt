@@ -63,7 +63,7 @@ conclude(object_library)
 #
 commence(object_library enumeration)
     this_target_sources(enumeration.cc)
-    this_target_object_libraries(buffer constants uuid)
+    this_target_object_libraries(buffer constants uuid serializers)
 conclude(object_library)
 
 #
@@ -72,7 +72,7 @@ conclude(object_library)
 commence(object_library array_schema)
     this_target_sources(array_schema.cc dimension_label.cc)
     this_target_object_libraries(
-        attribute domain enumeration time uri_format uuid vfs)
+        attribute domain enumeration time uri_format uuid vfs serializers)
 conclude(object_library)
 
 # This is linked outside the object_library scope because ContextResources

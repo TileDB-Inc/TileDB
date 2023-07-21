@@ -77,7 +77,8 @@ class FragmentMetadataStatusException : public StatusException {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-FragmentMetadata::FragmentMetadata() {
+FragmentMetadata::FragmentMetadata()
+    : version_(0) {
 }
 
 FragmentMetadata::FragmentMetadata(
@@ -114,47 +115,50 @@ FragmentMetadata::FragmentMetadata(
 FragmentMetadata::~FragmentMetadata() = default;
 
 // Copy initialization
-FragmentMetadata::FragmentMetadata(const FragmentMetadata& other) {
-  storage_manager_ = other.storage_manager_;
-  array_schema_ = other.array_schema_;
-  dense_ = other.dense_;
-  fragment_uri_ = other.fragment_uri_;
-  timestamp_range_ = other.timestamp_range_;
-  has_consolidated_footer_ = other.has_consolidated_footer_;
-  rtree_ = other.rtree_;
-  meta_file_size_ = other.meta_file_size_;
-  version_ = other.version_;
-  tile_index_base_ = other.tile_index_base_;
-  has_timestamps_ = other.has_timestamps_;
-  has_delete_meta_ = other.has_delete_meta_;
-  sparse_tile_num_ = other.sparse_tile_num_;
-  footer_size_ = other.footer_size_;
-  footer_offset_ = other.footer_offset_;
-  idx_map_ = other.idx_map_;
-  array_schema_name_ = other.array_schema_name_;
-  array_uri_ = other.array_uri_;
+// PJD TODO: This copy constructor doesn't copy a whole bunch of member
+// variables which seems wrong.
+FragmentMetadata::FragmentMetadata(const FragmentMetadata& other)
+    : storage_manager_(other.storage_manager_)
+    , array_schema_(other.array_schema_)
+    , array_schema_name_(other.array_schema_name_)
+    , idx_map_(other.idx_map_)
+    , dense_(other.dense_)
+    , footer_size_(other.footer_size_)
+    , footer_offset_(other.footer_offset_)
+    , fragment_uri_(other.fragment_uri_)
+    , has_consolidated_footer_(other.has_consolidated_footer_)
+    , has_timestamps_(other.has_timestamps_)
+    , has_delete_meta_(other.has_delete_meta_)
+    , sparse_tile_num_(other.sparse_tile_num_)
+    , meta_file_size_(other.meta_file_size_)
+    , rtree_(other.rtree_)
+    , tile_index_base_(other.tile_index_base_)
+    , version_(other.version_)
+    , timestamp_range_(other.timestamp_range_)
+    , array_uri_(other.array_uri_) {
 }
 
+// PJD TODO: This assignment operator is missing a whole bunch of members like
+// the copy constructor above. Are these even used?
 FragmentMetadata& FragmentMetadata::operator=(const FragmentMetadata& other) {
   storage_manager_ = other.storage_manager_;
   array_schema_ = other.array_schema_;
+  array_schema_name_ = other.array_schema_name_;
+  idx_map_ = other.idx_map_;
   dense_ = other.dense_;
+  footer_size_ = other.footer_size_;
+  footer_offset_ = other.footer_offset_;
   fragment_uri_ = other.fragment_uri_;
-  timestamp_range_ = other.timestamp_range_;
   has_consolidated_footer_ = other.has_consolidated_footer_;
-  rtree_ = other.rtree_;
-  meta_file_size_ = other.meta_file_size_;
-  version_ = other.version_;
-  tile_index_base_ = other.tile_index_base_;
   has_timestamps_ = other.has_timestamps_;
   has_delete_meta_ = other.has_delete_meta_;
   sparse_tile_num_ = other.sparse_tile_num_;
-  footer_size_ = other.footer_size_;
-  footer_offset_ = other.footer_offset_;
-  idx_map_ = other.idx_map_;
-  array_schema_name_ = other.array_schema_name_;
+  meta_file_size_ = other.meta_file_size_;
+  rtree_ = other.rtree_;
+  tile_index_base_ = other.tile_index_base_;
+  version_ = other.version_;
+  timestamp_range_ = other.timestamp_range_;
   array_uri_ = other.array_uri_;
-
   return *this;
 }
 
@@ -697,14 +701,18 @@ Status FragmentMetadata::get_tile_overlap(
     const NDRange& range,
     std::vector<bool>& is_default,
     TileOverlap* tile_overlap) {
-  assert(version_ <= 2 || loaded_metadata_.rtree_);
+  assert(
+      version_.before_feature(Feature::NEW_SPARSE_AND_DENSE_READERS) ||
+      loaded_metadata_.rtree_);
   *tile_overlap = rtree_.get_tile_overlap(range, is_default);
   return Status::Ok();
 }
 
 void FragmentMetadata::compute_tile_bitmap(
     const Range& range, unsigned d, std::vector<uint8_t>* tile_bitmap) {
-  assert(version_ <= 2 || loaded_metadata_.rtree_);
+  assert(
+      version_.before_feature(Feature::NEW_SPARSE_AND_DENSE_READERS) ||
+      loaded_metadata_.rtree_);
   rtree_.compute_tile_bitmap(range, d, tile_bitmap);
 }
 
@@ -799,9 +807,8 @@ Status FragmentMetadata::load(
   }
 
   // Get fragment name version
-  uint32_t f_version;
   auto name = fragment_uri_.remove_trailing_slash().last_path_part();
-  RETURN_NOT_OK(utils::parse::get_fragment_name_version(name, &f_version));
+  auto version = utils::parse::get_fragment_name_version(name);
 
   // Note: The fragment name version is different from the fragment format
   // version.
@@ -811,8 +818,9 @@ Status FragmentMetadata::load(
   //    * __t1_t2_uuid
   //  - Version 3 corresponds to version 5 or higher
   //    * __t1_t2_uuid_version
-  if (f_version == 1)
+  if (version == FragmentNameVersion::ONE) {
     return load_v1_v2(encryption_key, array_schemas);
+  }
   return load_v3_or_higher(
       encryption_key, fragment_metadata_tile, offset, array_schemas);
 }
@@ -821,20 +829,20 @@ void FragmentMetadata::store(const EncryptionKey& encryption_key) {
   auto timer_se =
       storage_manager_->stats()->start_timer("write_store_frag_meta");
 
-  if (version_ < 7) {
+  if (version_.before_feature(Feature::BACKWARDS_COMPATIBLE_WRITES)) {
     auto fragment_metadata_uri =
         fragment_uri_.join_path(constants::fragment_metadata_filename);
     throw std::logic_error(
         "FragmentMetadata::store(), unexpected version_ " +
-        std::to_string(version_) + " storing " +
-        fragment_metadata_uri.to_string());
+        version_.to_string() + " storing " + fragment_metadata_uri.to_string());
   }
   try {
-    if (version_ <= 10) {
+    if (version_.before_feature(Feature::FRAGMENT_LEVEL_STATS_METADATA)) {
       throw_if_not_ok(store_v7_v10(encryption_key));
-    } else if (version_ == 11) {
+    } else if (version_.is(Feature::FRAGMENT_LEVEL_STATS_METADATA)) {
       throw_if_not_ok(store_v11(encryption_key));
-    } else if (version_ <= 14) {
+    } else if (version_.before_feature(
+                   Feature::FRAGMENT_METADATA_HAS_DELETES)) {
       throw_if_not_ok(store_v12_v14(encryption_key));
     } else {
       throw_if_not_ok(store_v15_or_higher(encryption_key));
@@ -1222,10 +1230,11 @@ uint64_t FragmentMetadata::tile_num() const {
 
 tuple<Status, optional<std::string>> FragmentMetadata::encode_name(
     const std::string& name) const {
-  if (version_ <= 7)
+  if (version_.before_feature(Feature::PERCENT_ENCODED_FILE_NAMES)) {
     return {Status::Ok(), name};
+  }
 
-  if (version_ == 8) {
+  if (version_.is(Feature::PERCENT_ENCODED_FILE_NAMES)) {
     static const std::unordered_map<char, std::string> percent_encoding{
         // RFC 3986
         {'!', "%21"},
@@ -1265,7 +1274,7 @@ tuple<Status, optional<std::string>> FragmentMetadata::encode_name(
     return {Status::Ok(), percent_encoded_name.str()};
   }
 
-  assert(version_ > 8);
+  assert(version_.has_feature(Feature::INDEXED_FILE_NAMES));
   const auto iter = idx_map_.find(name);
   if (iter == idx_map_.end())
     return {
@@ -1472,11 +1481,16 @@ Status FragmentMetadata::load_tile_null_count_values(
 
 Status FragmentMetadata::load_fragment_min_max_sum_null_count(
     const EncryptionKey& encryption_key) {
-  if (loaded_metadata_.fragment_min_max_sum_null_count_)
+  if (loaded_metadata_.fragment_min_max_sum_null_count_) {
     return Status::Ok();
+  }
 
-  if (version_ <= 11)
+  // PJD TODO: Previously, this check was `<= 11` and this PR is changing
+  // the logic to `< 11`. As I read store_v11, it is a mirror of this
+  // load function which I believe means that the old `<= 11` was a bug.
+  if (version_.before_feature(Feature::FRAGMENT_LEVEL_STATS_METADATA)) {
     return Status::Ok();
+  }
 
   std::lock_guard<std::mutex> lock(mtx_);
 
@@ -1502,7 +1516,8 @@ Status FragmentMetadata::load_processed_conditions(
     return Status::Ok();
   }
 
-  if (version_ <= 15) {
+  if (version_.before_feature(
+          Feature::FRAGMENT_METADATA_HAS_PROCESSED_CONDITIONS)) {
     return Status::Ok();
   }
 
@@ -1964,7 +1979,7 @@ bool FragmentMetadata::operator<(const FragmentMetadata& metadata) const {
 
 Status FragmentMetadata::write_footer(Serializer& serializer) const {
   write_version(serializer);
-  if (version_ >= 10) {
+  if (version_.has_feature(Feature::ARRAY_SCHEMA_EVOLUTION)) {
     write_array_schema_name(serializer);
   }
   write_dense(serializer);
@@ -1972,11 +1987,11 @@ Status FragmentMetadata::write_footer(Serializer& serializer) const {
   write_sparse_tile_num(serializer);
   write_last_tile_cell_num(serializer);
 
-  if (version_ >= 14) {
+  if (version_.has_feature(Feature::FRAGMENT_METADATA_HAS_TIMESTAMPS)) {
     write_has_timestamps(serializer);
   }
 
-  if (version_ >= 15) {
+  if (version_.has_feature(Feature::FRAGMENT_METADATA_HAS_DELETES)) {
     write_has_delete_meta(serializer);
   }
 
@@ -1988,8 +2003,9 @@ Status FragmentMetadata::write_footer(Serializer& serializer) const {
 }
 
 Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
-  if (version_ <= 2)
+  if (version_.before_feature(Feature::NEW_SPARSE_AND_DENSE_READERS)) {
     return Status::Ok();
+  }
 
   std::lock_guard<std::mutex> lock(mtx_);
 
@@ -2090,8 +2106,9 @@ void FragmentMetadata::free_tile_offsets() {
 
 Status FragmentMetadata::load_tile_var_sizes(
     const EncryptionKey& encryption_key, const std::string& name) {
-  if (version_ <= 2)
+  if (version_.before_feature(Feature::NEW_SPARSE_AND_DENSE_READERS)) {
     return Status::Ok();
+  }
 
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
@@ -2103,19 +2120,23 @@ Status FragmentMetadata::load_tile_var_sizes(
 /*        PRIVATE METHODS         */
 /* ****************************** */
 
-Status FragmentMetadata::get_footer_size(
-    uint32_t version, uint64_t* size) const {
-  if (version < 3) {
-    *size = footer_size_v3_v4();
-  } else if (version < 4) {
-    *size = footer_size_v5_v6();
-  } else if (version < 11) {
-    *size = footer_size_v7_v10();
+uint64_t FragmentMetadata::get_footer_size(format_version_t version) const {
+  // PJD TODO: There is a bug here. I'm maintaining the exact logic
+  // which I think is actually incorrect. This function is only called with
+  // a version < 5 (due to gating in get_footer_offset_and_size) which means
+  // that footer_size_v7_v10 and footer_size_v11_or_higher are both dead code.
+  //
+  // Regardless, I'm adding silly feature name aliases for the moment just to
+  // not alter the logic.
+  if (version.before_feature(Feature::THREE)) {
+    return footer_size_v3_v4();
+  } else if (version.before_feature(Feature::FOUR)) {
+    return footer_size_v5_v6();
+  } else if (version.before_feature(Feature::ELEVEN)) {
+    return footer_size_v7_v10();
   } else {
-    *size = footer_size_v11_or_higher();
+    return footer_size_v11_or_higher();
   }
-
-  return Status::Ok();
 }
 
 uint64_t FragmentMetadata::footer_size() const {
@@ -2124,11 +2145,20 @@ uint64_t FragmentMetadata::footer_size() const {
 
 Status FragmentMetadata::get_footer_offset_and_size(
     uint64_t* offset, uint64_t* size) const {
-  uint32_t f_version;
   auto name = fragment_uri_.remove_trailing_slash().last_path_part();
-  RETURN_NOT_OK(utils::parse::get_fragment_name_version(name, &f_version));
-  if (array_schema_->domain().all_dims_fixed() && f_version < 5) {
-    RETURN_NOT_OK(get_footer_size(f_version, size));
+  auto version = utils::parse::get_fragment_version(name);
+  auto all_fixed = array_schema_->domain().all_dims_fixed();
+  if (all_fixed && (!version.is_valid() ||
+                    version.before_feature(Feature::SPLIT_COORDINATE_FILES))) {
+    *size = footer_size_v3_v4();
+    *offset = meta_file_size_ - *size;
+  } else if (
+      all_fixed && version.before_feature(Feature::NULLABLE_ATTRIBUTES)) {
+    *size = footer_size_v5_v6();
+    *offset = meta_file_size_ - *size;
+  } else if (
+      all_fixed && version.before_feature(Feature::ARRAY_SCHEMA_EVOLUTION)) {
+    *size = footer_size_v7_v10();
     *offset = meta_file_size_ - *size;
   } else {
     URI fragment_metadata_uri = fragment_uri_.join_path(
@@ -2444,7 +2474,7 @@ Status FragmentMetadata::expand_non_empty_domain(const NDRange& mbr) {
 
 Status FragmentMetadata::load_tile_offsets(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ <= 2) {
+  if (version_.before_feature(Feature::NEW_SPARSE_AND_DENSE_READERS)) {
     return Status::Ok();
   }
 
@@ -2474,8 +2504,9 @@ Status FragmentMetadata::load_tile_offsets(
 
 Status FragmentMetadata::load_tile_var_offsets(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ <= 2)
+  if (version_.before_feature(Feature::NEW_SPARSE_AND_DENSE_READERS)) {
     return Status::Ok();
+  }
 
   // If the tile var offset is already loaded, exit early to avoid the lock
   if (loaded_metadata_.tile_var_offsets_[idx])
@@ -2504,8 +2535,9 @@ Status FragmentMetadata::load_tile_var_offsets(
 
 Status FragmentMetadata::load_tile_var_sizes(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ <= 2)
+  if (version_.before_feature(Feature::NEW_SPARSE_AND_DENSE_READERS)) {
     return Status::Ok();
+  }
 
   std::lock_guard<std::mutex> lock(mtx_);
 
@@ -2530,8 +2562,9 @@ Status FragmentMetadata::load_tile_var_sizes(
 
 Status FragmentMetadata::load_tile_validity_offsets(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ <= 6)
+  if (version_.before_feature(Feature::NULLABLE_ATTRIBUTES)) {
     return Status::Ok();
+  }
 
   std::lock_guard<std::mutex> lock(mtx_);
 
@@ -2556,8 +2589,9 @@ Status FragmentMetadata::load_tile_validity_offsets(
 
 Status FragmentMetadata::load_tile_min_values(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ <= 10)
+  if (version_.before_feature(Feature::FRAGMENT_LEVEL_STATS_METADATA)) {
     return Status::Ok();
+  }
 
   std::lock_guard<std::mutex> lock(mtx_);
 
@@ -2581,8 +2615,9 @@ Status FragmentMetadata::load_tile_min_values(
 
 Status FragmentMetadata::load_tile_max_values(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ <= 10)
+  if (version_.before_feature(Feature::FRAGMENT_LEVEL_STATS_METADATA)) {
     return Status::Ok();
+  }
 
   std::lock_guard<std::mutex> lock(mtx_);
 
@@ -2606,8 +2641,9 @@ Status FragmentMetadata::load_tile_max_values(
 
 Status FragmentMetadata::load_tile_sum_values(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ <= 10)
+  if (version_.before_feature(Feature::FRAGMENT_LEVEL_STATS_METADATA)) {
     return Status::Ok();
+  }
 
   std::lock_guard<std::mutex> lock(mtx_);
 
@@ -2631,8 +2667,9 @@ Status FragmentMetadata::load_tile_sum_values(
 
 Status FragmentMetadata::load_tile_null_count_values(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ <= 10)
+  if (version_.before_feature(Feature::FRAGMENT_LEVEL_STATS_METADATA)) {
     return Status::Ok();
+  }
 
   std::lock_guard<std::mutex> lock(mtx_);
 
@@ -2676,10 +2713,11 @@ void FragmentMetadata::load_bounding_coords(Deserializer& deserializer) {
 }
 
 void FragmentMetadata::load_file_sizes(Deserializer& deserializer) {
-  if (version_ < 5)
+  if (version_.before_feature(Feature::SPLIT_COORDINATE_FILES)) {
     load_file_sizes_v1_v4(deserializer);
-  else
+  } else {
     load_file_sizes_v5_or_higher(deserializer);
+  }
 }
 
 // ===== FORMAT =====
@@ -2704,10 +2742,11 @@ void FragmentMetadata::load_file_sizes_v5_or_higher(
 }
 
 void FragmentMetadata::load_file_var_sizes(Deserializer& deserializer) {
-  if (version_ < 5)
+  if (version_.before_feature(Feature::SPLIT_COORDINATE_FILES)) {
     load_file_var_sizes_v1_v4(deserializer);
-  else
+  } else {
     load_file_var_sizes_v5_or_higher(deserializer);
+  }
 }
 
 // ===== FORMAT =====
@@ -2732,8 +2771,9 @@ void FragmentMetadata::load_file_var_sizes_v5_or_higher(
 }
 
 void FragmentMetadata::load_file_validity_sizes(Deserializer& deserializer) {
-  if (version_ <= 6)
+  if (version_.before_feature(Feature::NULLABLE_ATTRIBUTES)) {
     return;
+  }
 
   auto num = num_dims_and_attrs();
   file_validity_sizes_.resize(num);
@@ -2803,9 +2843,9 @@ void FragmentMetadata::load_mbrs(Deserializer& deserializer) {
 }
 
 void FragmentMetadata::load_non_empty_domain(Deserializer& deserializer) {
-  if (version_ <= 2) {
+  if (version_.before_feature(Feature::VAR_SIZED_DIMENSIONS)) {
     load_non_empty_domain_v1_v2(deserializer);
-  } else if (version_ == 3 || version_ == 4) {
+  } else if (version_.before_feature(Feature::HETEROGENOUS_DIMENSION_TYPES)) {
     load_non_empty_domain_v3_v4(deserializer);
   } else {
     load_non_empty_domain_v5_or_higher(deserializer);
@@ -3409,15 +3449,20 @@ void FragmentMetadata::load_sparse_tile_num(Deserializer& deserializer) {
 }
 
 void FragmentMetadata::load_generic_tile_offsets(Deserializer& deserializer) {
-  if (version_ == 3 || version_ == 4) {
+  if (version_.before_feature(Feature::VAR_SIZED_DIMENSIONS)) {
+    throw std::invalid_argument(
+        "Invalid version for generic tile offsets: " +
+        version_.to_error_string());
+  } else if (version_.before_feature(Feature::HETEROGENOUS_DIMENSION_TYPES)) {
     load_generic_tile_offsets_v3_v4(deserializer);
-  } else if (version_ >= 5 && version_ < 7) {
+  } else if (version_.before_feature(Feature::NULLABLE_ATTRIBUTES)) {
     load_generic_tile_offsets_v5_v6(deserializer);
-  } else if (version_ >= 7 && version_ < 11) {
+  } else if (version_.before_feature(Feature::FRAGMENT_LEVEL_STATS_METADATA)) {
     load_generic_tile_offsets_v7_v10(deserializer);
-  } else if (version_ == 11) {
+  } else if (version_.is(Feature::FRAGMENT_LEVEL_STATS_METADATA)) {
     load_generic_tile_offsets_v11(deserializer);
-  } else if (version_ >= 12 && version_ < 16) {
+  } else if (version_.before_feature(
+                 Feature::FRAGMENT_METADATA_HAS_PROCESSED_CONDITIONS)) {
     load_generic_tile_offsets_v12_v15(deserializer);
   } else {
     load_generic_tile_offsets_v16_or_higher(deserializer);
@@ -3717,7 +3762,7 @@ Status FragmentMetadata::load_footer(
 
   load_version(deserializer);
 
-  if (version_ >= 10) {
+  if (version_.has_feature(Feature::ARRAY_SCHEMA_EVOLUTION)) {
     load_array_schema_name(deserializer);
     auto schema = array_schemas.find(array_schema_name_);
     if (schema != array_schemas.end()) {
@@ -3747,11 +3792,11 @@ Status FragmentMetadata::load_footer(
   load_sparse_tile_num(deserializer);
   load_last_tile_cell_num(deserializer);
 
-  if (version_ >= 14) {
+  if (version_.has_feature(Feature::FRAGMENT_METADATA_HAS_TIMESTAMPS)) {
     load_has_timestamps(deserializer);
   }
 
-  if (version_ >= 15) {
+  if (version_.has_feature(Feature::FRAGMENT_METADATA_HAS_DELETES)) {
     load_has_delete_meta(deserializer);
   }
 
@@ -3761,7 +3806,9 @@ Status FragmentMetadata::load_footer(
 
   unsigned num = array_schema_->attribute_num() + 1 + has_timestamps_ +
                  has_delete_meta_ * 2;
-  num += (version_ >= 5) ? array_schema_->dim_num() : 0;
+  num += (version_.has_feature(Feature::HETEROGENOUS_DIMENSION_TYPES)) ?
+             array_schema_->dim_num() :
+             0;
 
   tile_offsets_.resize(num);
   tile_offsets_mtx_.resize(num);
@@ -3826,8 +3873,9 @@ void FragmentMetadata::write_file_var_sizes(Serializer& serializer) const {
 // ...
 // file_validity_sizes#{attribute_num+dim_num} (uint64_t)
 void FragmentMetadata::write_file_validity_sizes(Serializer& serializer) const {
-  if (version_ <= 6)
+  if (version_.before_feature(Feature::NULLABLE_ATTRIBUTES)) {
     return;
+  }
 
   auto num = num_dims_and_attrs();
   serializer.write(&file_validity_sizes_[0], num * sizeof(uint64_t));
@@ -3861,38 +3909,32 @@ void FragmentMetadata::write_generic_tile_offsets(
   serializer.write(&gt_offsets_.tile_var_sizes_[0], num * sizeof(uint64_t));
 
   // Write tile validity offsets
-  if (version_ >= 7) {
+  if (version_.has_feature(Feature::NULLABLE_ATTRIBUTES)) {
     serializer.write(
         &gt_offsets_.tile_validity_offsets_[0], num * sizeof(uint64_t));
   }
 
-  // Write tile min offsets
-  if (version_ >= 11) {
+  if (version_.has_feature(Feature::FRAGMENT_LEVEL_STATS_METADATA)) {
+    // Write tile min offsets
     serializer.write(&gt_offsets_.tile_min_offsets_[0], num * sizeof(uint64_t));
-  }
 
-  // Write tile max offsets
-  if (version_ >= 11) {
+    // Write tile max offsets
     serializer.write(&gt_offsets_.tile_max_offsets_[0], num * sizeof(uint64_t));
-  }
 
-  // Write tile sum offsets
-  if (version_ >= 11) {
+    // Write tile sum offsets
     serializer.write(&gt_offsets_.tile_sum_offsets_[0], num * sizeof(uint64_t));
-  }
 
-  // Write tile null count offsets
-  if (version_ >= 11) {
+    // Write tile null count offsets
     serializer.write(
         &gt_offsets_.tile_null_count_offsets_[0], num * sizeof(uint64_t));
-  }
 
-  if (version_ >= 11) {
+    // Write fragment min/max/sum/null count offsets
     serializer.write<uint64_t>(
         gt_offsets_.fragment_min_max_sum_null_count_offset_);
   }
 
-  if (version_ >= 16) {
+  if (version_.has_feature(
+          Feature::FRAGMENT_METADATA_HAS_PROCESSED_CONDITIONS)) {
     serializer.write<uint64_t>(gt_offsets_.processed_conditions_offsets_);
   }
 }
@@ -4053,9 +4095,11 @@ Status FragmentMetadata::write_footer_to_file(WriterTile& tile) const {
       fragment_metadata_uri, tile.data(), tile.size()));
 
   // Write the size in the end if there is at least one var-sized dimension
-  if (!array_schema_->domain().all_dims_fixed() || version_ >= 10)
+  if (!array_schema_->domain().all_dims_fixed() ||
+      version_.has_feature(Feature::ARRAY_SCHEMA_EVOLUTION)) {
     return storage_manager_->vfs()->write(
         fragment_metadata_uri, &size, sizeof(uint64_t));
+  }
   return Status::Ok();
 }
 
@@ -4670,7 +4714,7 @@ void FragmentMetadata::min_max_var(const std::string& name) {
 }
 
 void FragmentMetadata::write_version(Serializer& serializer) const {
-  serializer.write<uint32_t>(version_);
+  serializer.write<format_version_t>(version_);
 }
 
 void FragmentMetadata::write_dense(Serializer& serializer) const {

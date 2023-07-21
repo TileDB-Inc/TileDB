@@ -449,16 +449,17 @@ class ArrayDirectory {
   delete_and_update_tiles_location() const;
 
   /** Returns the fragment absolute path given an array URI and a version */
-  static URI generate_fragment_dir_uri(uint32_t write_version, URI array_uri);
+  static URI generate_fragment_dir_uri(
+      format_version_t write_version, URI array_uri);
 
   /** Returns the URI to store fragments. */
-  URI get_fragments_dir(uint32_t write_version) const;
+  URI get_fragments_dir(format_version_t write_version) const;
 
   /** Returns the URI to store fragment metadata. */
-  URI get_fragment_metadata_dir(uint32_t write_version) const;
+  URI get_fragment_metadata_dir(format_version_t write_version) const;
 
   /** Returns the URI to store commit files. */
-  URI get_commits_dir(uint32_t write_version) const;
+  URI get_commits_dir(format_version_t write_version) const;
 
   /** Returns the URI for either an ok file or wrt file. */
   URI get_commit_uri(const URI& fragment_uri) const;

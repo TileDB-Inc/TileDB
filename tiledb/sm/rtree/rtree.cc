@@ -319,8 +319,10 @@ Status RTree::set_leaf_num(uint64_t num) {
 }
 
 void RTree::deserialize(
-    Deserializer& deserializer, const Domain* domain, uint32_t version) {
-  if (version < 5) {
+    Deserializer& deserializer,
+    const Domain* domain,
+    format_version_t version) {
+  if (version.before_feature(Feature::SIZE_CALCULATED_SERIALIZATION)) {
     deserialize_v1_v4(deserializer, domain);
     return;
   }

@@ -531,7 +531,7 @@ int32_t tiledb_array_schema_get_version(
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
-  *version = (uint32_t)array_schema->array_schema_->version();
+  *version = array_schema->array_schema_->version().to_disk();
   return TILEDB_OK;
 }
 
@@ -5045,7 +5045,9 @@ int32_t tiledb_fragment_info_get_version(
       sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(fragment_info->fragment_info_->get_version(fid, version));
+  format_version_t vsn = format_version_t::invalid_version();
+  throw_if_not_ok(fragment_info->fragment_info_->get_version(fid, &vsn));
+  *version = vsn.to_disk();
 
   return TILEDB_OK;
 }

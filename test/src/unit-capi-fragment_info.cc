@@ -564,7 +564,7 @@ TEST_CASE(
   uint32_t version;
   rc = tiledb_fragment_info_get_version(ctx, fragment_info, 0, &version);
   CHECK(rc == TILEDB_OK);
-  CHECK(version == tiledb::sm::constants::format_version);
+  CHECK(version == tiledb::sm::constants::format_version.to_disk());
 
   // Clean up
   tiledb_fragment_info_free(&fragment_info);
@@ -1521,7 +1521,7 @@ TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
   CHECK(tiledb_vfs_remove_file(ctx, vfs, "frag3_schema.txt") == TILEDB_OK);
 
   // Check dump
-  const auto ver = std::to_string(tiledb::sm::constants::format_version);
+  const auto ver = tiledb::sm::constants::format_version.to_string();
   std::string dump_str =
       std::string("- Fragment num: 3\n") +
       "- Unconsolidated metadata num: 3\n" + "- To vacuum num: 0\n" +
@@ -1685,7 +1685,7 @@ TEST_CASE(
   CHECK(rc == TILEDB_OK);
 
   // Check dump
-  const auto ver = std::to_string(tiledb::sm::constants::format_version);
+  const auto ver = tiledb::sm::constants::format_version.to_string();
   std::string dump_str =
       std::string("- Fragment num: 1\n") +
       "- Unconsolidated metadata num: 1\n" + "- To vacuum num: 3\n" +
@@ -1795,7 +1795,7 @@ TEST_CASE(
   }
 
   // Check dump
-  const auto ver = std::to_string(tiledb::sm::constants::format_version);
+  const auto ver = tiledb::sm::constants::format_version.to_string();
   std::string dump_str =
       std::string("- Fragment num: 1\n") +
       "- Unconsolidated metadata num: 1\n" + "- To vacuum num: 0\n" +

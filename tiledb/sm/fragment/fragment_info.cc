@@ -743,7 +743,8 @@ Status FragmentInfo::get_mbr_var(
   return get_mbr_var(fid, mid, did, start, end);
 }
 
-Status FragmentInfo::get_version(uint32_t fid, uint32_t* version) const {
+Status FragmentInfo::get_version(
+    uint32_t fid, format_version_t* version) const {
   ensure_loaded();
   if (version == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
@@ -767,8 +768,8 @@ shared_ptr<ArraySchema> FragmentInfo::get_array_schema(uint32_t fid) {
     throw_if_not_ok(st);
   }
   URI schema_uri;
-  uint32_t version = single_fragment_info_vec_[fid].format_version();
-  if (version >= 10) {
+  auto version = single_fragment_info_vec_[fid].format_version();
+  if (version.has_feature(Feature::ARRAY_SCHEMA_EVOLUTION)) {
     schema_uri =
         array_uri_.join_path(constants::array_schema_dir_name)
             .join_path(single_fragment_info_vec_[fid].array_schema_name());
@@ -792,8 +793,8 @@ Status FragmentInfo::get_array_schema_name(
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get array schema name; Invalid fragment index"));
 
-  uint32_t version = single_fragment_info_vec_[fid].format_version();
-  if (version >= 10) {
+  auto version = single_fragment_info_vec_[fid].format_version();
+  if (version.has_feature(Feature::ARRAY_SCHEMA_EVOLUTION)) {
     *schema_name = single_fragment_info_vec_[fid].array_schema_name().c_str();
   } else {
     *schema_name = constants::array_schema_filename.c_str();
@@ -1041,14 +1042,13 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   RETURN_NOT_OK_TUPLE(
       utils::parse::get_timestamp_range(new_fragment_uri, &timestamp_range),
       nullopt);
-  uint32_t version;
   auto name = new_fragment_uri.remove_trailing_slash().last_path_part();
-  RETURN_NOT_OK_TUPLE(
-      utils::parse::get_fragment_name_version(name, &version), nullopt);
+  auto version = utils::parse::get_fragment_name_version(name);
 
   // Check if fragment is sparse
   bool sparse = false;
-  if (version == 1) {  // This corresponds to format version <=2
+  if (version == FragmentNameVersion::ONE) {
+    // This corresponds to format version <=2
     URI coords_uri =
         new_fragment_uri.join_path(constants::coords + constants::file_suffix);
     RETURN_NOT_OK_TUPLE(vfs->is_file(coords_uri, &sparse), nullopt);

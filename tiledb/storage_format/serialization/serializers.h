@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
+#include "tiledb/storage_format/versioning/versioning.h"
 
 namespace tiledb::sm {
 
@@ -229,6 +230,12 @@ class Deserializer {
   /* Size left to be read. */
   storage_size_t size_;
 };
+
+template <>
+void Serializer::write(const format_version_t& vsn);
+
+template <>
+format_version_t Deserializer::read();
 
 }  // namespace tiledb::sm
 

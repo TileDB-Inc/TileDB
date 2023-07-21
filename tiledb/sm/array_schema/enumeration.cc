@@ -73,8 +73,7 @@ Enumeration::Enumeration(
   if (path_name_.empty()) {
     std::string tmp_uuid;
     throw_if_not_ok(uuid::generate_uuid(&tmp_uuid, false));
-    path_name_ =
-        "__" + tmp_uuid + "_" + std::to_string(constants::enumerations_version);
+    path_name_ = "__" + tmp_uuid + "_" + constants::format_version.to_string();
   }
 
   if (name.find("/") != std::string::npos) {
@@ -127,12 +126,13 @@ Enumeration::Enumeration(
 
 shared_ptr<const Enumeration> Enumeration::deserialize(
     Deserializer& deserializer) {
-  auto disk_version = deserializer.read<uint32_t>();
-  if (disk_version > constants::enumerations_version) {
+  auto lib_vsn = format_version_t::from_alias(EnumerationVersion::CURRENT);
+  auto disk_vsn = deserializer.read<format_version_t>();
+  if (disk_vsn.is_newer_than(lib_vsn)) {
     throw EnumerationException(
-        "Invalid Enumeration version '" + std::to_string(disk_version) +
-        "' is newer than supported enumeration version '" +
-        std::to_string(constants::enumerations_version) + "'");
+        "Invalid Enumeration version " + disk_vsn.to_error_string() +
+        " is newer than supported enumeration version " +
+        lib_vsn.to_error_string());
   }
 
   auto name_size = deserializer.read<uint32_t>();
@@ -170,7 +170,8 @@ shared_ptr<const Enumeration> Enumeration::deserialize(
 }
 
 void Enumeration::serialize(Serializer& serializer) const {
-  serializer.write<uint32_t>(constants::enumerations_version);
+  auto enmr_vsn = format_version_t::from_alias(EnumerationVersion::CURRENT);
+  serializer.write<format_version_t>(enmr_vsn);
 
   auto name_size = static_cast<uint32_t>(name_.size());
   serializer.write<uint32_t>(name_size);

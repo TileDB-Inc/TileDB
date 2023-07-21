@@ -1,11 +1,11 @@
 /**
- * @file generate_uri.cc
+ * @file serializers.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,36 +24,24 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file contains class implementations for serialization/deserialization.
  */
 
-#include "tiledb/storage_format/uri/generate_uri.h"
-#include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/misc/uuid.h"
+#include "tiledb/storage_format/serialization/serializers.h"
 
-#include <sstream>
+namespace tiledb::sm {
 
-using namespace tiledb::common;
-
-namespace tiledb::storage_format {
-
-std::string generate_uri(
-    uint64_t timestamp_start,
-    uint64_t timestamp_end,
-    format_version_t version) {
-  std::string uuid;
-  throw_if_not_ok(sm::uuid::generate_uuid(&uuid, false));
-  std::stringstream ss;
-  ss << "/__" << timestamp_start << "_" << timestamp_end << "_" << uuid << "_"
-     << version.to_string();
-
-  return ss.str();
+template <>
+void Serializer::write(const format_version_t& v) {
+  write<uint32_t>(v.to_disk());
 }
 
-std::string generate_fragment_name(
-    uint64_t timestamp, format_version_t format_version) {
-  timestamp =
-      (timestamp != 0) ? timestamp : sm::utils::time::timestamp_now_ms();
-  return generate_uri(timestamp, timestamp, format_version);
+template <>
+format_version_t Deserializer::read() {
+  return format_version_t{read<uint32_t>()};
 }
 
-}  // namespace tiledb::storage_format
+}  // namespace tiledb::sm

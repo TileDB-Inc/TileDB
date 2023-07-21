@@ -1315,7 +1315,9 @@ TEST_CASE(
   // old version fragment
   CHECK(fragment_info.version(0) == 1);
   // new version fragment
-  CHECK(fragment_info.version(1) == tiledb::sm::constants::format_version);
+  CHECK(
+      fragment_info.version(1) ==
+      tiledb::sm::constants::format_version.to_disk());
 
   // Read again
   Array array_read2(ctx, array_name, TILEDB_READ);

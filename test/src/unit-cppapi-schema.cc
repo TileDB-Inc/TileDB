@@ -118,7 +118,7 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
     CHECK(schema.attribute("a3").cell_val_num() == 2);
     CHECK(schema.attribute("a4").cell_val_num() == TILEDB_VAR_NUM);
     CHECK(schema.attribute("a4").type() == TILEDB_UINT32);
-    CHECK(schema.version() == tiledb::sm::constants::format_version);
+    CHECK(schema.version() == tiledb::sm::constants::format_version.to_disk());
 
     auto dims = schema.domain().dimensions();
     REQUIRE(dims.size() == 2);
@@ -180,7 +180,7 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
     CHECK(schema.attribute("a4").cell_val_num() == TILEDB_VAR_NUM);
     CHECK(schema.attribute("a4").type() == TILEDB_UINT32);
     CHECK(schema.allows_dups() == true);
-    CHECK(schema.version() == tiledb::sm::constants::format_version);
+    CHECK(schema.version() == tiledb::sm::constants::format_version.to_disk());
 
     auto dims = schema.domain().dimensions();
     REQUIRE(dims.size() == 2);

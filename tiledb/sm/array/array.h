@@ -734,7 +734,6 @@ class Array {
    *        ArraySchemaMap Map of all array schemas found keyed by name
    */
   tuple<
-      Status,
       optional<shared_ptr<ArraySchema>>,
       optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
   open_for_writes();

@@ -161,7 +161,7 @@ class Dimension {
    * @return Dimension
    */
   static shared_ptr<Dimension> deserialize(
-      Deserializer& deserializer, uint32_t version, Datatype type);
+      Deserializer& deserializer, format_version_t version, Datatype type);
 
   /** Returns the domain. */
   const Range& domain() const;
@@ -703,7 +703,7 @@ class Dimension {
    * @param version The array schema version
    * @return Status
    */
-  void serialize(Serializer& serializer, uint32_t version) const;
+  void serialize(Serializer& serializer, format_version_t version) const;
 
   /** Sets the domain. */
   Status set_domain(const void* domain);

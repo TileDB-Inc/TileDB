@@ -151,7 +151,7 @@ Status Dimension::set_cell_val_num(unsigned int cell_val_num) {
 }
 
 shared_ptr<Dimension> Dimension::deserialize(
-    Deserializer& deserializer, uint32_t version, Datatype type) {
+    Deserializer& deserializer, format_version_t version, Datatype type) {
   Status st;
   // Load dimension name
   auto dimension_name_size = deserializer.read<uint32_t>();
@@ -162,7 +162,7 @@ shared_ptr<Dimension> Dimension::deserialize(
   uint32_t cell_val_num;
   FilterPipeline filter_pipeline;
   // Applicable only to version >= 5
-  if (version >= 5) {
+  if (version.has_feature(Feature::EXTENDED_DIMENSION_SERIALIZATION)) {
     // Load type
     auto type = deserializer.read<uint8_t>();
     datatype = (Datatype)type;
@@ -179,7 +179,7 @@ shared_ptr<Dimension> Dimension::deserialize(
 
   // Load domain
   uint64_t domain_size = 0;
-  if (version >= 5) {
+  if (version.has_feature(Feature::EXTENDED_DIMENSION_SERIALIZATION)) {
     domain_size = deserializer.read<uint64_t>();
   } else {
     domain_size = 2 * datatype_size(datatype);
@@ -1271,7 +1271,8 @@ bool Dimension::smaller_than<char>(
 // domain (void* - domain_size)
 // null_tile_extent (uint8_t)
 // tile_extent (void* - type_size)
-void Dimension::serialize(Serializer& serializer, uint32_t version) const {
+void Dimension::serialize(
+    Serializer& serializer, format_version_t version) const {
   // Sanity check
   auto is_str = datatype_is_string(type_);
   assert(is_str || !domain_.empty());
@@ -1282,7 +1283,7 @@ void Dimension::serialize(Serializer& serializer, uint32_t version) const {
   serializer.write(name_.data(), dimension_name_size);
 
   // Applicable only to version >= 5
-  if (version >= 5) {
+  if (version.has_feature(Feature::EXTENDED_DIMENSION_SERIALIZATION)) {
     // Write type
     auto type = (uint8_t)type_;
     serializer.write<uint8_t>(type);

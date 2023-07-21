@@ -363,7 +363,7 @@ TEST_CASE(
 
     // Get version
     auto version = fragment_info.version(0);
-    CHECK(version == tiledb::sm::constants::format_version);
+    CHECK(version == tiledb::sm::constants::format_version.to_disk());
   }
 
   // Clean up
@@ -1092,7 +1092,7 @@ TEST_CASE(
     CHECK(frag1_schema_str == frag3_schema_str);
 
     // Check dump
-    const auto ver = std::to_string(tiledb::sm::constants::format_version);
+    const auto ver = tiledb::sm::constants::format_version.to_string();
     std::string dump_str =
         std::string("- Fragment num: 3\n") +
         "- Unconsolidated metadata num: 3\n" + "- To vacuum num: 0\n" +

@@ -37,6 +37,7 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/storage_format/versioning/versioning.h"
 
 #include <unordered_map>
 

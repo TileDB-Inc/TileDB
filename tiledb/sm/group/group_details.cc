@@ -51,7 +51,7 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-GroupDetails::GroupDetails(const URI& group_uri, uint32_t version)
+GroupDetails::GroupDetails(const URI& group_uri, format_version_t version)
     : group_uri_(group_uri)
     , version_(version)
     , changes_applied_(false) {

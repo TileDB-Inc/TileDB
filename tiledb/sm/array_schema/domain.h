@@ -186,7 +186,7 @@ class Domain {
    */
   static shared_ptr<Domain> deserialize(
       Deserializer& deserializer,
-      uint32_t version,
+      format_version_t version,
       Layout cell_order,
       Layout tile_order);
 
@@ -423,7 +423,7 @@ class Domain {
    * @param version The array schema version.
    * @return Status
    */
-  void serialize(Serializer& serializer, uint32_t version) const;
+  void serialize(Serializer& serializer, format_version_t version) const;
 
   /**
    * For every dimension that has a null tile extent, it sets

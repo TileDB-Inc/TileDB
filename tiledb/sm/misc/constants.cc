@@ -669,37 +669,8 @@ const std::string vfsmode_append_str = "VFS_APPEND";
 const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
-/** The TileDB serialization base format version number. */
-const format_version_t base_format_version = 20;
-
-/**
- * The TileDB serialization format version number.
- *
- * Conditionally set the high bit on the base_format_version to
- * easily identify that the build is experimental.
- **/
-const format_version_t format_version =
-    is_experimental_build ?
-        0b10000000000000000000000000000000 | base_format_version :
-        base_format_version;
-
-/** The lowest version supported for back compat writes. */
-const format_version_t back_compat_writes_min_format_version = 7;
-
-/** The lowest version supported for consolidation with timestamps. */
-const format_version_t consolidation_with_timestamps_min_version = 15;
-
-/** The lowest version supported for deletes. */
-const format_version_t deletes_min_version = 16;
-
-/** The lowest version supported for updates. */
-const format_version_t updates_min_version = 16;
-
-/** The lowest version supported format version for enumerations. */
-const format_version_t enumerations_min_format_version = 20;
-
-/** The current enumerations version. */
-const format_version_t enumerations_version = 0;
+/** The TileDB serialization format version number. */
+const format_version_t format_version = format_version_t::current_version();
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 const uint64_t max_tile_chunk_size = 64 * 1024;

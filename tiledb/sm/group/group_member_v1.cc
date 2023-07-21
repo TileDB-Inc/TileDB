@@ -52,7 +52,7 @@ GroupMemberV1::GroupMemberV1(
 // uri_size (uint64_t)
 // uri (string)
 void GroupMemberV1::serialize(Serializer& serializer) {
-  serializer.write<uint32_t>(GroupMemberV1::format_version_);
+  serializer.write<format_version_t>(GroupMemberV1::format_version_);
 
   // Write type
   uint8_t type = static_cast<uint8_t>(type_);

@@ -160,7 +160,7 @@ unsigned int Attribute::cell_val_num() const {
 }
 
 Attribute Attribute::deserialize(
-    Deserializer& deserializer, const uint32_t version) {
+    Deserializer& deserializer, const format_version_t version) {
   // Load attribute name
   auto attribute_name_size = deserializer.read<uint32_t>();
   std::string name(
@@ -180,7 +180,7 @@ Attribute Attribute::deserialize(
   // Load fill value
   uint64_t fill_value_size = 0;
   ByteVecValue fill_value;
-  if (version >= 6) {
+  if (version.has_feature(Feature::ATTRIBUTE_FILL_VALUES)) {
     fill_value_size = deserializer.read<uint64_t>();
     assert(fill_value_size > 0);
     fill_value.resize(fill_value_size);
@@ -192,24 +192,24 @@ Attribute Attribute::deserialize(
 
   // Load nullable flag
   bool nullable = false;
-  if (version >= 7) {
+  if (version.has_feature(Feature::NULLABLE_ATTRIBUTES)) {
     nullable = deserializer.read<bool>();
   }
 
   // Load validity fill value
   uint8_t fill_value_validity = 0;
-  if (version >= 7) {
+  if (version.has_feature(Feature::NULLABLE_ATTRIBUTES)) {
     fill_value_validity = deserializer.read<uint8_t>();
   }
 
   // Load order
   DataOrder order{DataOrder::UNORDERED_DATA};
-  if (version >= 17) {
+  if (version.has_feature(Feature::DATA_ORDER)) {
     order = data_order_from_int(deserializer.read<uint8_t>());
   }
 
   std::optional<std::string> enmr_name;
-  if (version >= constants::enumerations_min_format_version) {
+  if (version.has_feature(Feature::ENUMERATIONS)) {
     auto enmr_name_length = deserializer.read<uint32_t>();
     if (enmr_name_length > 0) {
       std::string enmr_name_value;
@@ -278,7 +278,7 @@ const std::string& Attribute::name() const {
 // fill_value_validity (uint8_t)
 // order (uint8_t)
 void Attribute::serialize(
-    Serializer& serializer, const uint32_t version) const {
+    Serializer& serializer, const format_version_t version) const {
   // Write attribute name
   auto attribute_name_size = static_cast<uint32_t>(name_.size());
   serializer.write<uint32_t>(attribute_name_size);
@@ -294,7 +294,7 @@ void Attribute::serialize(
   filters_.serialize(serializer);
 
   // Write fill value
-  if (version >= 6) {
+  if (version.has_feature(Feature::ATTRIBUTE_FILL_VALUES)) {
     auto fill_value_size = static_cast<uint64_t>(fill_value_.size());
     assert(fill_value_size != 0);
     serializer.write<uint64_t>(fill_value_size);
@@ -302,22 +302,22 @@ void Attribute::serialize(
   }
 
   // Write nullable
-  if (version >= 7) {
+  if (version.has_feature(Feature::NULLABLE_ATTRIBUTES)) {
     serializer.write<uint8_t>(nullable_);
   }
 
   // Write validity fill value
-  if (version >= 7) {
+  if (version.has_feature(Feature::NULLABLE_ATTRIBUTES)) {
     serializer.write<uint8_t>(fill_value_validity_);
   }
 
   // Write order
-  if (version >= 17) {
+  if (version.has_feature(Feature::DATA_ORDER)) {
     serializer.write<uint8_t>(static_cast<uint8_t>(order_));
   }
 
   // Write enumeration URI
-  if (version >= constants::enumerations_min_format_version) {
+  if (version.has_feature(Feature::ENUMERATIONS)) {
     if (enumeration_name_.has_value()) {
       auto enmr_name_size =
           static_cast<uint32_t>(enumeration_name_.value().size());

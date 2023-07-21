@@ -47,11 +47,6 @@
  */
 using storage_size_t = uint64_t;
 
-/**
- * Type for anything format version related.
- */
-using format_version_t = uint32_t;
-
 /*
  * Value manipulation
  */

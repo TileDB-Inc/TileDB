@@ -77,8 +77,9 @@ Status FragmentMetaConsolidator::consolidate(
   const auto& tmp_meta = array.fragment_metadata();
   std::vector<shared_ptr<FragmentMetadata>> meta;
   for (auto m : tmp_meta) {
-    if (m->format_version() > 2)
+    if (m->format_version().has_feature(Feature::FRAGMENT_FOOTERS)) {
       meta.emplace_back(m);
+    }
   }
   auto fragment_num = (unsigned)meta.size();
 
@@ -102,14 +103,15 @@ Status FragmentMetaConsolidator::consolidate(
   auto meta_name = uri.remove_trailing_slash().last_path_part();
   auto pos = meta_name.find_last_of('.');
   meta_name = (pos == std::string::npos) ? meta_name : meta_name.substr(0, pos);
-  uint32_t meta_version = 0;
-  RETURN_NOT_OK(utils::parse::get_fragment_version(meta_name, &meta_version));
+  auto meta_version = utils::parse::get_fragment_version(meta_name);
 
   // Calculate offset of first fragment footer
   uint64_t offset = sizeof(uint32_t);  // Fragment num
   for (auto m : meta) {
     offset += sizeof(uint64_t);  // Name size
-    if (meta_version >= 9) {
+    if (meta_version.is_valid() &&
+        meta_version.has_feature(
+            Feature::FRAGMENT_METADATA_CONSOLIDATE_RELATIVE_URIS)) {
       offset += m->fragment_uri().last_path_part().size();  // Name
     } else {
       offset += m->fragment_uri().to_string().size();  // Name
@@ -141,7 +143,9 @@ Status FragmentMetaConsolidator::consolidate(
     for (auto m : meta) {
       // Write name size and name
       std::string name;
-      if (meta_version >= 9) {
+      if (meta_version.is_valid() &&
+          meta_version.has_feature(
+              Feature::FRAGMENT_METADATA_CONSOLIDATE_RELATIVE_URIS)) {
         name = m->fragment_uri().last_path_part();
       } else {
         name = m->fragment_uri().to_string();

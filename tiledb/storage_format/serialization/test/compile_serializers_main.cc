@@ -1,11 +1,11 @@
 /**
- * @file generate_uri.cc
+ * @file compile_serializers_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,34 +26,9 @@
  * THE SOFTWARE.
  */
 
-#include "tiledb/storage_format/uri/generate_uri.h"
-#include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/misc/uuid.h"
+#include "../serializers.h"
 
-#include <sstream>
-
-using namespace tiledb::common;
-
-namespace tiledb::storage_format {
-
-std::string generate_uri(
-    uint64_t timestamp_start,
-    uint64_t timestamp_end,
-    format_version_t version) {
-  std::string uuid;
-  throw_if_not_ok(sm::uuid::generate_uuid(&uuid, false));
-  std::stringstream ss;
-  ss << "/__" << timestamp_start << "_" << timestamp_end << "_" << uuid << "_"
-     << version.to_string();
-
-  return ss.str();
+int main() {
+  tiledb::sm::Deserializer d((const void*)"some data", 9);
+  d.read<tiledb::format_version_t>();
 }
-
-std::string generate_fragment_name(
-    uint64_t timestamp, format_version_t format_version) {
-  timestamp =
-      (timestamp != 0) ? timestamp : sm::utils::time::timestamp_now_ms();
-  return generate_uri(timestamp, timestamp, format_version);
-}
-
-}  // namespace tiledb::storage_format

@@ -527,28 +527,29 @@ ArrayDirectory::delete_and_update_tiles_location() const {
 }
 
 URI ArrayDirectory::generate_fragment_dir_uri(
-    uint32_t write_version, URI array_uri) {
-  if (write_version < 12) {
+    format_version_t write_version, URI array_uri) {
+  if (write_version.before_feature(Feature::NEW_ARRAY_DIRECTORY_STRUCTURE)) {
     return array_uri;
   }
 
   return array_uri.join_path(constants::array_fragments_dir_name);
 }
 
-URI ArrayDirectory::get_fragments_dir(uint32_t write_version) const {
+URI ArrayDirectory::get_fragments_dir(format_version_t write_version) const {
   return generate_fragment_dir_uri(write_version, uri_);
 }
 
-URI ArrayDirectory::get_fragment_metadata_dir(uint32_t write_version) const {
-  if (write_version < 12) {
+URI ArrayDirectory::get_fragment_metadata_dir(
+    format_version_t write_version) const {
+  if (write_version.before_feature(Feature::NEW_ARRAY_DIRECTORY_STRUCTURE)) {
     return uri_;
   }
 
   return uri_.join_path(constants::array_fragment_meta_dir_name);
 }
 
-URI ArrayDirectory::get_commits_dir(uint32_t write_version) const {
-  if (write_version < 12) {
+URI ArrayDirectory::get_commits_dir(format_version_t write_version) const {
+  if (write_version.before_feature(Feature::NEW_ARRAY_DIRECTORY_STRUCTURE)) {
     return uri_;
   }
 
@@ -557,10 +558,11 @@ URI ArrayDirectory::get_commits_dir(uint32_t write_version) const {
 
 URI ArrayDirectory::get_commit_uri(const URI& fragment_uri) const {
   auto name = fragment_uri.remove_trailing_slash().last_path_part();
-  uint32_t version;
-  throw_if_not_ok(utils::parse::get_fragment_version(name, &version));
+  auto version = utils::parse::get_fragment_version(name);
 
-  if (version == UINT32_MAX || version < 12) {
+  // PJD TODO: Feature name for 12
+  if (!version.is_valid() ||
+      version.before_feature(Feature::NEW_ARRAY_DIRECTORY_STRUCTURE)) {
     return URI(fragment_uri.to_string() + constants::ok_file_suffix);
   }
 
@@ -571,10 +573,10 @@ URI ArrayDirectory::get_commit_uri(const URI& fragment_uri) const {
 
 URI ArrayDirectory::get_vacuum_uri(const URI& fragment_uri) const {
   auto name = fragment_uri.remove_trailing_slash().last_path_part();
-  uint32_t version;
-  throw_if_not_ok(utils::parse::get_fragment_version(name, &version));
+  auto version = utils::parse::get_fragment_version(name);
 
-  if (version == UINT32_MAX || version < 12) {
+  if (!version.is_valid() ||
+      version.before_feature(Feature::NEW_ARRAY_DIRECTORY_STRUCTURE)) {
     return URI(fragment_uri.to_string() + constants::vacuum_file_suffix);
   }
 
@@ -599,7 +601,7 @@ std::string ArrayDirectory::compute_new_fragment_name(
   // Create new URI
   std::stringstream ss;
   ss << "/__" << t_first.first << "_" << t_last.second << "_" << uuid << "_"
-     << format_version;
+     << format_version.to_string();
 
   return ss.str();
 }
@@ -1301,9 +1303,9 @@ Status ArrayDirectory::is_fragment(
 
   // If the format version is >= 5, then the above suffices to check if
   // the URI is indeed a fragment
-  uint32_t version;
-  RETURN_NOT_OK(utils::parse::get_fragment_version(name, &version));
-  if (version != UINT32_MAX && version >= 5) {
+  auto version = utils::parse::get_fragment_version(name);
+  if (version.is_valid() &&
+      version.has_feature(Feature::EXPLICIT_FRAGMENT_URIS)) {
     *is_fragment = false;
     return Status::Ok();
   }
@@ -1319,16 +1321,14 @@ Status ArrayDirectory::is_fragment(
 bool ArrayDirectory::consolidation_with_timestamps_supported(
     const URI& uri) const {
   // Get the fragment version from the uri
-  uint32_t version;
   auto name = uri.remove_trailing_slash().last_path_part();
-  throw_if_not_ok(utils::parse::get_fragment_version(name, &version));
+  auto version = utils::parse::get_fragment_version(name);
 
   // get_fragment_version returns UINT32_MAX for versions <= 2 so we should
   // explicitly exclude this case when checking if consolidation with timestamps
   // is supported on a fragment
-  return mode_ == ArrayDirectoryMode::READ &&
-         version >= constants::consolidation_with_timestamps_min_version &&
-         version != UINT32_MAX;
+  return mode_ == ArrayDirectoryMode::READ && version.is_valid() &&
+         version.has_feature(Feature::CONSOLIDATION_WITH_TIMESTAMPS);
 }
 }  // namespace sm
 }  // namespace tiledb

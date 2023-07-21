@@ -61,7 +61,7 @@ class FilterCreate {
   static shared_ptr<Filter> deserialize(
       Deserializer& deserializer,
       const EncryptionKey& encryption_key,
-      const uint32_t version);
+      const format_version_t version);
 
   /**
    * Deserializes a new Filter instance from the data in the given buffer.
@@ -71,7 +71,7 @@ class FilterCreate {
    * @return Filter
    */
   static shared_ptr<Filter> deserialize(
-      Deserializer& deserializer, const uint32_t version);
+      Deserializer& deserializer, const format_version_t version);
 };
 
 }  // namespace tiledb::sm

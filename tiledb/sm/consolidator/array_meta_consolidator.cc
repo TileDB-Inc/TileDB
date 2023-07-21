@@ -138,7 +138,8 @@ Status ArrayMetaConsolidator::consolidate(
   // Write vac files relative to the array URI. This was fixed for reads in
   // version 19 so only do this for arrays starting with version 19.
   if (array_for_reads.array_schema_latest_ptr() == nullptr ||
-      array_for_reads.array_schema_latest().write_version() >= 19) {
+      array_for_reads.array_schema_latest().write_version().has_feature(
+          Feature::VAC_FILES_USE_RELATIVE_URIS)) {
     base_uri_size = array_for_reads.array_uri().to_string().size();
   }
 

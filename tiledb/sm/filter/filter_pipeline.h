@@ -108,7 +108,7 @@ class FilterPipeline {
    * @return FilterPipeline
    */
   static FilterPipeline deserialize(
-      Deserializer& deserializer, const uint32_t version);
+      Deserializer& deserializer, const format_version_t version);
 
   /**
    * Dumps the filter pipeline details in ASCII format in the selected
@@ -297,7 +297,9 @@ class FilterPipeline {
    * @return True if chunking needs to be used, false if not
    */
   bool use_tile_chunking(
-      const bool is_var, const uint32_t version, const Datatype type) const;
+      const bool is_var,
+      const format_version_t version,
+      const Datatype type) const;
 
  private:
   /** A pair of FilterBuffers. */

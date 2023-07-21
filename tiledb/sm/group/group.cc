@@ -739,8 +739,8 @@ tuple<Status, optional<std::string>> Group::generate_name() const {
       (timestamp_end_ != 0) ? timestamp_end_ : utils::time::timestamp_now_ms();
   std::stringstream ss;
   ss << "__" << timestamp << "_" << timestamp << "_" << uuid;
-  if (version > 1) {
-    ss << "_" << version;
+  if (version.has_feature(GroupVersion::VERSIONED_NAMES)) {
+    ss << "_" << version.to_string();
   }
 
   return {Status::Ok(), ss.str()};

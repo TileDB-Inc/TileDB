@@ -310,13 +310,13 @@ void Domain::crop_ndrange(NDRange* ndrange) const {
 
 shared_ptr<Domain> Domain::deserialize(
     Deserializer& deserializer,
-    uint32_t version,
+    format_version_t version,
     Layout cell_order,
     Layout tile_order) {
   Status st;
   // Load type
   Datatype type = Datatype::INT32;
-  if (version < 5) {
+  if (version.before_feature(Feature::EXTENDED_DIMENSION_SERIALIZATION)) {
     auto type_c = deserializer.read<uint8_t>();
     type = static_cast<Datatype>(type_c);
   }
@@ -569,7 +569,7 @@ bool Domain::null_tile_extents() const {
 // dimension #1
 // dimension #2
 // ...
-void Domain::serialize(Serializer& serializer, uint32_t version) const {
+void Domain::serialize(Serializer& serializer, format_version_t version) const {
   // Write dimensions
   serializer.write<uint32_t>(dim_num_);
   for (const auto& dim : dimensions_) {

@@ -42,7 +42,7 @@ GroupMember::GroupMember(
     const URI& uri,
     const ObjectType& type,
     const bool& relative,
-    uint32_t version,
+    format_version_t version,
     const std::optional<std::string>& name,
     const bool& deleted)
     : uri_(uri)

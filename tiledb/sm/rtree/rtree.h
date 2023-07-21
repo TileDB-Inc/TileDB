@@ -174,7 +174,9 @@ class RTree {
    * It also sets the input domain, as that is not serialized.
    */
   void deserialize(
-      Deserializer& deserializer, const Domain* domain, uint32_t version);
+      Deserializer& deserializer,
+      const Domain* domain,
+      format_version_t version);
 
  private:
   /* ********************************* */

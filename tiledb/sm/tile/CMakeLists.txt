@@ -46,6 +46,7 @@ commence(object_library generic_tile_io)
       constants
       tiledb_crypto
       filter_pipeline
+      serializers
       tile
       vfs
   )

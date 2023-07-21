@@ -201,7 +201,7 @@ DimensionLabel::DimensionLabel(
 //| Label cell_val_num         | `uint32_t` |
 //| Is external                | `bool`     |
 shared_ptr<DimensionLabel> DimensionLabel::deserialize(
-    Deserializer& deserializer, uint32_t) {
+    Deserializer& deserializer, format_version_t) {
   try {
     // Read dimension ID
     dimension_size_type dim_id = deserializer.read<uint32_t>();
@@ -291,7 +291,7 @@ const shared_ptr<ArraySchema> DimensionLabel::schema() const {
 //| Label datatype             | `uint8_t`  |
 //| Label cell_val_num         | `uint32_t` |
 //| Is external                | `bool`     |
-void DimensionLabel::serialize(Serializer& serializer, uint32_t) const {
+void DimensionLabel::serialize(Serializer& serializer, format_version_t) const {
   // Read dimension ID
   serializer.write<uint32_t>(dim_id_);
 

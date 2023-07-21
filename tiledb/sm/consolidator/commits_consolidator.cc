@@ -75,7 +75,7 @@ Status CommitsConsolidator::consolidate(
   // Ensure write version is at least 12.
   auto write_version = array_for_writes.array_schema_latest().write_version();
   RETURN_NOT_OK(array_for_writes.close());
-  if (write_version < 12) {
+  if (write_version.before_feature(Feature::COMMITS_CONSOLIDATION)) {
     return logger_->status(Status_ConsolidatorError(
         "Array version should be at least 12 to consolidate commits."));
   }

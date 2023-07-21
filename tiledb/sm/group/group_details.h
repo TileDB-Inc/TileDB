@@ -51,7 +51,7 @@ namespace sm {
 
 class GroupDetails {
  public:
-  GroupDetails(const URI& group_uri, uint32_t version);
+  GroupDetails(const URI& group_uri, format_version_t version);
 
   /** Destructor. */
   virtual ~GroupDetails() = default;
@@ -227,7 +227,7 @@ class GroupDetails {
   mutable std::mutex mtx_;
 
   /* Format version. */
-  const uint32_t version_;
+  const format_version_t version_;
 
   /* Were changes applied and is a write is required */
   bool changes_applied_;

@@ -84,7 +84,8 @@ ArraySchema::ArraySchema()
 }
 
 ArraySchema::ArraySchema(ArrayType array_type)
-    : array_type_(array_type) {
+    : version_(constants::format_version)
+    , array_type_(array_type) {
   allows_dups_ = false;
   array_uri_ = URI();
   uri_ = URI();
@@ -93,7 +94,6 @@ ArraySchema::ArraySchema(ArrayType array_type)
   cell_order_ = Layout::ROW_MAJOR;
   domain_ = nullptr;
   tile_order_ = Layout::ROW_MAJOR;
-  version_ = constants::format_version;
   auto timestamp = utils::time::timestamp_now_ms();
   timestamp_range_ = std::make_pair(timestamp, timestamp);
 
@@ -113,7 +113,7 @@ ArraySchema::ArraySchema(ArrayType array_type)
 
 ArraySchema::ArraySchema(
     URI uri,
-    uint32_t version,
+    format_version_t version,
     std::pair<uint64_t, uint64_t> timestamp_range,
     std::string name,
     ArrayType array_type,
@@ -150,7 +150,7 @@ ArraySchema::ArraySchema(
 
 ArraySchema::ArraySchema(
     URI uri,
-    uint32_t version,
+    format_version_t version,
     std::pair<uint64_t, uint64_t> timestamp_range,
     std::string name,
     ArrayType array_type,
@@ -230,7 +230,8 @@ ArraySchema::ArraySchema(
   check_attribute_dimension_label_names();
 }
 
-ArraySchema::ArraySchema(const ArraySchema& array_schema) {
+ArraySchema::ArraySchema(const ArraySchema& array_schema)
+    : version_(array_schema.version_) {
   allows_dups_ = array_schema.allows_dups_;
   array_uri_ = array_schema.array_uri_;
   uri_ = array_schema.uri_;
@@ -244,7 +245,6 @@ ArraySchema::ArraySchema(const ArraySchema& array_schema) {
   cell_validity_filters_ = array_schema.cell_validity_filters_;
   coords_filters_ = array_schema.coords_filters_;
   tile_order_ = array_schema.tile_order_;
-  version_ = array_schema.version_;
 
   throw_if_not_ok(set_domain(array_schema.domain_));
 
@@ -1227,30 +1227,19 @@ ArraySchema ArraySchema::deserialize(
   Status st;
   // Load version
   // #TODO Add security validation
-  auto version = deserializer.read<uint32_t>();
-  if (version > constants::format_version) {
-    if constexpr (!is_experimental_build) {
-      auto base_version =
-          (version & (1 << 31)) ? (version | (0 << 31)) : version;
-      if (base_version > constants::format_version) {
-        throw ArraySchemaException(
-            "Failed to deserialize; Array format version (" +
-            std::to_string(base_version) +
-            ") is newer than the library format version (" +
-            std::to_string(constants::format_version) + ")");
-      }
-    }
-    throw ArraySchemaException(
-        "Failed to deserialize; Array format version (" +
-        std::to_string(version) +
-        ") is newer than the library format version (" +
-        std::to_string(constants::format_version) + ")");
+  auto version = deserializer.read<format_version_t>();
+  try {
+    version.check_read_compatibility();
+  } catch (std::exception& exc) {
+    std::string msg =
+        std::string("Failed to deserialize array schema; ") + exc.what();
+    throw ArraySchemaException(msg);
   }
 
   // Load allows_dups
   // Note: No security validation is possible.
   bool allows_dups = false;
-  if (version >= 5) {
+  if (version.has_feature(Feature::ALLOW_DUPS)) {
     allows_dups = deserializer.read<bool>();
   }
 
@@ -1286,7 +1275,7 @@ ArraySchema ArraySchema::deserialize(
   auto coords_filters{FilterPipeline::deserialize(deserializer, version)};
   auto cell_var_filters{FilterPipeline::deserialize(deserializer, version)};
   FilterPipeline cell_validity_filters;
-  if (version >= 7) {
+  if (version.has_feature(Feature::CELL_VALIDITY_FILTERS)) {
     cell_validity_filters = FilterPipeline::deserialize(deserializer, version);
   }
 
@@ -1308,7 +1297,7 @@ ArraySchema ArraySchema::deserialize(
 
   // Load dimension labels
   std::vector<shared_ptr<const DimensionLabel>> dimension_labels;
-  if (version >= 18) {
+  if (version.has_feature(Feature::DIMENSION_LABELS)) {
     uint32_t label_num = deserializer.read<uint32_t>();
     for (uint32_t i{0}; i < label_num; ++i) {
       dimension_labels.emplace_back(
@@ -1318,7 +1307,7 @@ ArraySchema ArraySchema::deserialize(
 
   // Load enumeration name to path map
   std::unordered_map<std::string, std::string> enumeration_path_map;
-  if (version >= constants::enumerations_min_format_version) {
+  if (version.has_feature(Feature::ENUMERATIONS)) {
     uint32_t enmr_num = deserializer.read<uint32_t>();
     for (uint32_t i = 0; i < enmr_num; i++) {
       auto enmr_name_size = deserializer.read<uint32_t>();
@@ -1540,9 +1529,10 @@ void ArraySchema::set_version(format_version_t version) {
 }
 
 format_version_t ArraySchema::write_version() const {
-  return version_ < constants::back_compat_writes_min_format_version ?
-             constants::format_version :
-             version_;
+  if (version_.before_feature(Feature::BACKWARDS_COMPATIBLE_WRITES)) {
+    return constants::format_version;
+  }
+  return version_;
 }
 
 format_version_t ArraySchema::version() const {

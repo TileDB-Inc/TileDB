@@ -130,7 +130,7 @@ class DimensionLabel {
    * @return DimensionLabel
    */
   static shared_ptr<DimensionLabel> deserialize(
-      Deserializer& deserializer, uint32_t version);
+      Deserializer& deserializer, format_version_t version);
 
   /** Index of the dimension the label is attached to. */
   inline dimension_size_type dimension_index() const {
@@ -197,7 +197,7 @@ class DimensionLabel {
    * @param serializer The object the dimension is serialized into.
    * @param version The array schema version.
    */
-  void serialize(Serializer& serializer, uint32_t version) const;
+  void serialize(Serializer& serializer, format_version_t version) const;
 
   /** Returns the URI of the dimension label. */
   inline const URI& uri() const {

@@ -53,10 +53,10 @@ namespace sm {
 class SingleFragmentInfo {
  public:
   /** Constructor. */
-  SingleFragmentInfo() {
+  SingleFragmentInfo()
+      : version_{0} {
     uri_ = URI("");
     name_ = "";
-    version_ = 0;
     cell_num_ = 0;
     sparse_ = false;
     timestamp_range_ = {0, 0};
@@ -132,7 +132,7 @@ class SingleFragmentInfo {
     ss << "  > Cell num: " << cell_num_ << "\n";
     ss << "  > Timestamp range: [" << timestamp_range_.first << ", "
        << timestamp_range_.second << "]\n";
-    ss << "  > Format version: " << version_ << "\n";
+    ss << "  > Format version: " << version_.to_string() << "\n";
     ss << "  > Has consolidated metadata: "
        << (has_consolidated_footer_ ? "yes" : "no") << "\n";
 

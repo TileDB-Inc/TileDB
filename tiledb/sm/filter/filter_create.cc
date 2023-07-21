@@ -100,7 +100,7 @@ tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
 shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
     Deserializer& deserializer,
     const EncryptionKey& encryption_key,
-    const uint32_t version) {
+    const format_version_t version) {
   Status st;
   uint8_t type = deserializer.read<uint8_t>();
   FilterType filtertype = static_cast<FilterType>(type);
@@ -188,7 +188,7 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
   }
 }
 shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
-    Deserializer& deserializer, const uint32_t version) {
+    Deserializer& deserializer, const format_version_t version) {
   EncryptionKey encryption_key;
   return tiledb::sm::FilterCreate::deserialize(
       deserializer, encryption_key, version);

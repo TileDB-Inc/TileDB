@@ -84,7 +84,7 @@ shared_ptr<GroupDetails> GroupDetailsV2::deserialize(
   for (auto& deserializer : deserializers) {
     // Read and assert version
     format_version_t details_version = deserializer->read<format_version_t>();
-    assert(details_version == 2);
+    assert(details_version.is(GroupVersion::CURRENT));
     // Avoid unused warning when in release mode and the assert doesn't exist.
     (void)details_version;
 

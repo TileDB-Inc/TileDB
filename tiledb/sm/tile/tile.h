@@ -83,7 +83,7 @@ class TileBase {
   }
 
   /** Gets the format version number of the data in this Tile. */
-  inline uint32_t format_version() const {
+  inline format_version_t format_version() const {
     return format_version_;
   }
 

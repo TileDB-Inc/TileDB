@@ -65,7 +65,7 @@ class GenericTileIO {
     static const uint64_t BASE_SIZE =
         3 * sizeof(uint64_t) + 2 * sizeof(char) + 2 * sizeof(uint32_t);
     /** Format version number of the tile. */
-    uint32_t version_number;
+    format_version_t version_number;
     /** Persisted (e.g. compressed) size of the tile. */
     uint64_t persisted_size;
     /** Uncompressed size of the tile. */

@@ -805,7 +805,7 @@ Status StorageManagerCanonical::array_upgrade_version(
 
   auto&& array_schema = array_dir.load_array_schema_latest(encryption_key_cfg);
 
-  if (array_schema->version() < constants::format_version) {
+  if (array_schema->version().is_older_than(constants::format_version)) {
     auto st = array_schema->generate_uri();
     RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
     array_schema->set_version(constants::format_version);
@@ -1969,14 +1969,14 @@ StorageManagerCanonical::load_fragment_metadata(
         sf.uri_.join_path(constants::coords + constants::file_suffix);
 
     auto name = sf.uri_.remove_trailing_slash().last_path_part();
-    uint32_t f_version;
-    RETURN_NOT_OK(utils::parse::get_fragment_name_version(name, &f_version));
+    auto f_version = utils::parse::get_fragment_name_version(name);
 
     // Note that the fragment metadata version is >= the array schema
     // version. Therefore, the check below is defensive and will always
     // ensure backwards compatibility.
     shared_ptr<FragmentMetadata> metadata;
-    if (f_version == 1) {  // This is equivalent to format version <=2
+    if (f_version == FragmentNameVersion::ONE) {
+      // This is equivalent to format version <=2
       bool sparse;
       RETURN_NOT_OK(vfs()->is_file(coords_uri, &sparse));
       metadata = make_shared<FragmentMetadata>(
@@ -1987,7 +1987,8 @@ StorageManagerCanonical::load_fragment_metadata(
           sf.uri_,
           sf.timestamp_range_,
           !sparse);
-    } else {  // Format version > 2
+    } else {
+      // Format version > 2
       metadata = make_shared<FragmentMetadata>(
           HERE(),
           this,
@@ -2003,7 +2004,8 @@ StorageManagerCanonical::load_fragment_metadata(
     uint64_t offset = 0;
 
     auto it = offsets.end();
-    if (metadata->format_version() >= 9) {
+    if (metadata->format_version().has_feature(
+            Feature::FRAGMENT_METADATA_CONSOLIDATE_RELATIVE_URIS)) {
       it = offsets.find(name);
     } else {
       it = offsets.find(sf.uri_.to_string());

@@ -24,4 +24,15 @@
 # THE SOFTWARE.
 
 include(common NO_POLICY_SCOPE)
+
+include(object_library)
+
+#
+# `serializers` object library
+#
+commence(object_library serializers)
+    this_target_sources(serializers.cc)
+    this_target_object_libraries(baseline)
+conclude(object_library)
+
 add_test_subdirectory()

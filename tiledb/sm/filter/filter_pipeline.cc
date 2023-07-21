@@ -499,7 +499,7 @@ void FilterPipeline::serialize(Serializer& serializer) const {
 }
 
 FilterPipeline FilterPipeline::deserialize(
-    Deserializer& deserializer, const uint32_t version) {
+    Deserializer& deserializer, const format_version_t version) {
   auto max_chunk_size = deserializer.read<uint32_t>();
   auto num_filters = deserializer.read<uint32_t>();
   std::vector<shared_ptr<Filter>> filters;
@@ -562,14 +562,18 @@ Status FilterPipeline::append_encryption_filter(
 }
 
 bool FilterPipeline::skip_offsets_filtering(
-    const Datatype type, const uint32_t version) const {
-  if (((version >= 12 && type == Datatype::STRING_ASCII) ||
-       (version >= 17 && type == Datatype::STRING_UTF8)) &&
+    const Datatype type, const format_version_t version) const {
+  if (((version.has_feature(Feature::RLE_FILTER) &&
+        type == Datatype::STRING_ASCII) ||
+       (version.has_feature(Feature::UTF8_STRING_COMPRESSORS) &&
+        type == Datatype::STRING_UTF8)) &&
       has_filter(FilterType::FILTER_RLE)) {
     return true;
   } else if (
-      ((version >= 13 && type == Datatype::STRING_ASCII) ||
-       (version >= 17 && type == Datatype::STRING_UTF8)) &&
+      ((version.has_feature(Feature::DICTIONARY_FILTER) &&
+        type == Datatype::STRING_ASCII) ||
+       (version.has_feature(Feature::UTF8_STRING_COMPRESSORS) &&
+        type == Datatype::STRING_UTF8)) &&
       has_filter(FilterType::FILTER_DICTIONARY)) {
     return true;
   }
@@ -578,15 +582,20 @@ bool FilterPipeline::skip_offsets_filtering(
 }
 
 bool FilterPipeline::use_tile_chunking(
-    const bool is_var, const uint32_t version, const Datatype type) const {
+    const bool is_var,
+    const format_version_t version,
+    const Datatype type) const {
   if (max_chunk_size_ == 0) {
     return false;
   } else if (
       is_var &&
       (type == Datatype::STRING_ASCII || type == Datatype::STRING_UTF8)) {
-    if (version >= 12 && has_filter(FilterType::FILTER_RLE)) {
+    if (version.has_feature(Feature::RLE_FILTER) &&
+        has_filter(FilterType::FILTER_RLE)) {
       return false;
-    } else if (version >= 13 && has_filter(FilterType::FILTER_DICTIONARY)) {
+    } else if (
+        version.has_feature(Feature::DICTIONARY_FILTER) &&
+        has_filter(FilterType::FILTER_DICTIONARY)) {
       return false;
     }
   }

@@ -226,7 +226,7 @@ class FragmentInfo {
       uint32_t fid, uint32_t mid, const char* dim_name, void* start, void* end);
 
   /** Retrieves the version of the fragment with the given index. */
-  Status get_version(uint32_t fid, uint32_t* version) const;
+  Status get_version(uint32_t fid, format_version_t* version) const;
 
   /** Retrieves the array schema of the fragment with the given index. */
   shared_ptr<ArraySchema> get_array_schema(uint32_t fid);

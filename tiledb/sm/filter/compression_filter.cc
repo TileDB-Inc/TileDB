@@ -306,7 +306,7 @@ Status CompressionFilter::run_reverse(
 
   if ((tile.type() == Datatype::STRING_ASCII ||
        tile.type() == Datatype::STRING_UTF8) &&
-      version_ >= 12 && offsets_tile) {
+      version_.has_feature(Feature::STRING_COMPRESSORS) && offsets_tile) {
     if (compressor_ == Compressor::RLE ||
         compressor_ == Compressor::DICTIONARY_ENCODING)
       return decompress_var_string_coords(

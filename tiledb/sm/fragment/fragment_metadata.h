@@ -731,7 +731,7 @@ class FragmentMetadata {
    * Retrieves the size of the fragment metadata footer
    * (which contains the generic tile offsets) along with its size.
    */
-  Status get_footer_size(uint32_t version, uint64_t* size) const;
+  uint64_t get_footer_size(format_version_t version) const;
 
   uint64_t footer_size() const;
 
@@ -1153,7 +1153,7 @@ class FragmentMetadata {
   }
 
   /** version accessor */
-  uint32_t& version() {
+  format_version_t& version() {
     return version_;
   }
 
@@ -1379,7 +1379,7 @@ class FragmentMetadata {
   std::vector<uint64_t> fragment_null_counts_;
 
   /** The format version of this metadata. */
-  uint32_t version_;
+  format_version_t version_;
 
   /** The timestamp range of the fragment. */
   std::pair<uint64_t, uint64_t> timestamp_range_;
