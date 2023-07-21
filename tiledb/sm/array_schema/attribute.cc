@@ -209,7 +209,7 @@ Attribute Attribute::deserialize(
   }
 
   std::optional<std::string> enmr_name;
-  if (version >= 19) {
+  if (version >= constants::enumerations_min_format_version) {
     auto enmr_name_length = deserializer.read<uint32_t>();
     if (enmr_name_length > 0) {
       std::string enmr_name_value;
