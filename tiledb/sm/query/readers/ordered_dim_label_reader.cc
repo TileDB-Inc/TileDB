@@ -111,8 +111,7 @@ OrderedDimLabelReader::OrderedDimLabelReader(
         "Cannot initialize reader; Reader cannot process aggregates");
   }
 
-  // TODO: Test with !skip_checks_serialization; Remove if fails.
-  if (!skip_checks_serialization && buffers_.empty()) {
+  if (buffers_.empty()) {
     throw OrderedDimLabelReaderStatusException(
         "Cannot initialize ordered dim label reader; Buffers not set");
   }
