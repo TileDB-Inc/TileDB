@@ -122,7 +122,8 @@ Status stats_from_capnp(
     auto counters = stats->counters();
     auto counters_reader = stats_reader.getCounters();
     for (const auto entry : counters_reader.getEntries()) {
-      (*counters)[std::string(entry.getKey().cStr())] = entry.getValue();
+      auto key = std::string_view{entry.getKey().cStr(), entry.getKey().size()};
+      (*counters)[std::string{key}] = entry.getValue();
     }
   }
 
@@ -130,7 +131,8 @@ Status stats_from_capnp(
     auto timers = stats->timers();
     auto timers_reader = stats_reader.getTimers();
     for (const auto entry : timers_reader.getEntries()) {
-      (*timers)[std::string(entry.getKey().cStr())] = entry.getValue();
+      auto key = std::string_view{entry.getKey().cStr(), entry.getKey().size()};
+      (*timers)[std::string{key}] = entry.getValue();
     }
   }
 
@@ -311,8 +313,10 @@ Status subarray_from_capnp(
     if (attr_ranges_reader.hasEntries()) {
       for (auto attr_ranges_entry : attr_ranges_reader.getEntries()) {
         auto range_reader = attr_ranges_entry.getValue();
-        attr_ranges[attr_ranges_entry.getKey()] =
-            range_buffers_from_capnp(range_reader);
+        auto key = std::string_view{
+            attr_ranges_entry.getKey().cStr(),
+            attr_ranges_entry.getKey().size()};
+        attr_ranges[std::string{key}] = range_buffers_from_capnp(range_reader);
       }
     }
 
@@ -2569,7 +2573,7 @@ Status query_est_result_size_reader_from_capnp(
 
   std::unordered_map<std::string, Subarray::ResultSize> est_result_sizes_map;
   for (auto it : est_result_sizes.getEntries()) {
-    std::string name = it.getKey();
+    auto name = std::string_view{it.getKey().cStr(), it.getKey().size()};
     auto result_size = it.getValue();
     est_result_sizes_map.emplace(
         name,
@@ -2581,7 +2585,7 @@ Status query_est_result_size_reader_from_capnp(
 
   std::unordered_map<std::string, Subarray::MemorySize> max_memory_sizes_map;
   for (auto it : max_memory_sizes.getEntries()) {
-    std::string name = it.getKey();
+    auto name = std::string_view{it.getKey().cStr(), it.getKey().size()};
     auto memory_size = it.getValue();
     max_memory_sizes_map.emplace(
         name,
@@ -2820,7 +2824,8 @@ Status global_write_state_from_capnp(
     auto& cells_written = write_state->cells_written_;
     auto cell_written_reader = state_reader.getCellsWritten();
     for (const auto& entry : cell_written_reader.getEntries()) {
-      cells_written[std::string(entry.getKey().cStr())] = entry.getValue();
+      auto key = std::string_view{entry.getKey().cStr(), entry.getKey().size()};
+      cells_written[std::string{key}] = entry.getValue();
     }
   }
 
@@ -2870,7 +2875,9 @@ Status global_write_state_from_capnp(
       for (auto entry : multipart_reader.getEntries()) {
         VFS::MultiPartUploadState deserialized_state;
         auto state = entry.getValue();
-        std::string buffer_uri(entry.getKey().cStr());
+        auto buffer_uri =
+            std::string_view{entry.getKey().cStr(), entry.getKey().size()};
+
         if (state.hasUploadId()) {
           deserialized_state.upload_id = state.getUploadId();
         }
@@ -2903,7 +2910,7 @@ Status global_write_state_from_capnp(
         }
 
         RETURN_NOT_OK(global_writer->set_multipart_upload_state(
-            buffer_uri,
+            std::string{buffer_uri},
             deserialized_state,
             context == SerializationContext::CLIENT));
       }
