@@ -247,6 +247,22 @@ class Group {
   }
 
   /**
+   * Deletes all written data from a group.
+   *
+   * @param ctx TileDB context.
+   * @param uri The address of the group item to be deleted.
+   * @param recursive True if all data inside the group is to be deleted.
+   *
+   * @note if recursive == false, data added to the group will be left as-is.
+   * @post This is destructive; the group may not be reopened after delete.
+   */
+  static void delete_group(
+      const Context& ctx, const std::string& uri, bool recursive = false) {
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    ctx.handle_error(tiledb_group_delete(c_ctx, uri.c_str(), recursive));
+  }
+
+  /**
    * Deletes all written data from an open group. The group must
    * be opened in MODIFY_EXCLUSIVE mode, otherwise the function will error out.
    *

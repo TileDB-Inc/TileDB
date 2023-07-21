@@ -207,6 +207,27 @@ TILEDB_EXPORT capi_return_t tiledb_group_put_metadata(
     const void* value) TILEDB_NOEXCEPT;
 
 /**
+ * Deletes written data from a group.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_group_delete(ctx, "s3://tiledb_bucket/my_group", 0);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param uri The address of the group item to be deleted.
+ * @param recursive True if all data inside the group is to be deleted.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note if recursive == false, data added to the group will be left as-is.
+ */
+TILEDB_EXPORT int32_t tiledb_group_delete(
+    tiledb_ctx_t* ctx,
+    const char* uri,
+    const uint8_t recursive) TILEDB_NOEXCEPT;
+
+/**
  * Deletes written data from an open group. The group must
  * be opened in MODIFY_EXCLSUIVE mode, otherwise the function will error out.
  *

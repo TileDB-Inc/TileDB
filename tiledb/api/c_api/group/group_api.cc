@@ -162,6 +162,18 @@ capi_return_t tiledb_group_put_metadata(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_group_delete(
+    tiledb_ctx_t* ctx, const char* uri, const uint8_t recursive) {
+  ensure_group_uri_argument_is_valid(uri);
+
+  tiledb::sm::URI tdb_uri(uri);
+  tiledb::sm::Group group{tdb_uri, ctx->storage_manager()};
+  throw_if_not_ok(group.open(tiledb::sm::QueryType::MODIFY_EXCLUSIVE));
+  group.delete_group(tdb_uri, recursive);
+
+  return TILEDB_OK;
+}
+
 capi_return_t tiledb_group_delete_group(
     tiledb_group_t* group, const char* uri, const uint8_t recursive) {
   ensure_group_is_valid(group);
@@ -608,6 +620,12 @@ capi_return_t tiledb_group_put_metadata(
     const void* value) noexcept {
   return api_entry_context<tiledb::api::tiledb_group_put_metadata>(
       ctx, group, key, value_type, value_num, value);
+}
+
+capi_return_t tiledb_group_delete(
+    tiledb_ctx_t* ctx, const char* uri, const uint8_t recursive) noexcept {
+  return api_entry_with_context<tiledb::api::tiledb_group_delete>(
+      ctx, uri, recursive);
 }
 
 capi_return_t tiledb_group_delete_group(
