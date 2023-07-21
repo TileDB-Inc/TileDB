@@ -198,7 +198,11 @@ struct MergeStrategy<std::string, std::string> {
                              tail->start_str() <= head->end_str();
 
       if (can_coalesce || can_merge) {
-        head->set_end_str(tail->end_str().data());
+        head->set_range_var(
+            head->start_str().data(),
+            head->start_size(),
+            tail->end_str().data(),
+            tail->end_str().size());
         merged_cells++;
       } else {
         head++;

@@ -222,13 +222,6 @@ class Range {
         reinterpret_cast<const char*>(range_.data()) + range_start_size_, size);
   }
 
-  /** Copies 'end' into this range's end bytes for string ranges. */
-  void set_end_str(const std::string& end) {
-    range_.resize(range_start_size_ + end.size());
-    auto c = (char*)(range_.data());
-    std::memcpy(c + range_start_size_, end.data(), end.size());
-  }
-
   /**
    * Returns the size of the start of the range.
    * Non-zero only for var-sized ranges.
