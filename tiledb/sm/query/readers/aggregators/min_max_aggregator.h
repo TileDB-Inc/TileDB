@@ -1,5 +1,5 @@
 /**
- * @file   sum_aggregator.h
+ * @file   min_max_aggregator.h
  *
  * @section LICENSE
  *
@@ -27,79 +27,67 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class SumAggregator.
+ * This file defines class MinMaxAggregator.
  */
 
-#ifndef TILEDB_SUM_AGGREGATOR_H
-#define TILEDB_SUM_AGGREGATOR_H
+#ifndef TILEDB_MIN_MAX_AGGREGATOR_H
+#define TILEDB_MIN_MAX_AGGREGATOR_H
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/query/readers/aggregators/iaggregator.h"
+
+#include <functional>
 
 using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
 
-#define SUM_TYPE_DATA(T, SUM_T) \
-  template <>                   \
-  struct sum_type_data<T> {     \
-    using type = T;             \
-    typedef SUM_T sum_type;     \
-  };
-
-/** Convert basic type to a sum type. **/
-template <typename T>
-struct sum_type_data;
-
-SUM_TYPE_DATA(int8_t, int64_t);
-SUM_TYPE_DATA(uint8_t, uint64_t);
-SUM_TYPE_DATA(int16_t, int64_t);
-SUM_TYPE_DATA(uint16_t, uint64_t);
-SUM_TYPE_DATA(int32_t, int64_t);
-SUM_TYPE_DATA(uint32_t, uint64_t);
-SUM_TYPE_DATA(int64_t, int64_t);
-SUM_TYPE_DATA(uint64_t, uint64_t);
-SUM_TYPE_DATA(float, double);
-SUM_TYPE_DATA(double, double);
-
 class QueryBuffer;
 
-/**
- * Sum function that prevent wrap arounds on overflow.
- *
- * @param value Value to add to the sum.
- * @param sum Computed sum.
- */
-template <typename SUM_T>
-void safe_sum(SUM_T value, SUM_T& sum);
+/** Convert type to a value type. **/
+template <typename T>
+struct min_max_type_data {
+  using type = T;
+  typedef T value_type;
+};
+
+template <>
+struct min_max_type_data<std::string> {
+  using type = std::string;
+  typedef std::string_view value_type;
+};
 
 template <typename T>
-class SumAggregator : public IAggregator {
+class MinMaxAggregator : public IAggregator {
+  using VALUE_T = typename min_max_type_data<T>::value_type;
+
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  SumAggregator() = delete;
+  MinMaxAggregator() = delete;
 
   /**
    * Constructor.
    *
+   * @param min Is the aggregator for a min?
    * @param field_name Field name that is aggregated.
    * @param var_sized Is this a var sized attribute?
    * @param is_nullable Is this a nullable attribute?
    * @param cell_val_num Number of values per cell.
    */
-  SumAggregator(
+  MinMaxAggregator(
+      const bool min,
       const std::string field_name,
       const bool var_sized,
       const bool is_nullable,
       const unsigned cell_val_num);
 
-  DISABLE_COPY_AND_COPY_ASSIGN(SumAggregator);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(SumAggregator);
+  DISABLE_COPY_AND_COPY_ASSIGN(MinMaxAggregator);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(MinMaxAggregator);
 
   /* ********************************* */
   /*                API                */
@@ -112,12 +100,12 @@ class SumAggregator : public IAggregator {
 
   /** Returns if the aggregation is var sized or not. */
   bool var_sized() override {
-    return false;
+    return var_sized_;
   };
 
   /** Returns if the aggregate needs to be recomputed on overflow. */
   bool need_recompute_on_overflow() override {
-    return true;
+    return false;
   }
 
   /**
@@ -152,42 +140,121 @@ class SumAggregator : public IAggregator {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** Is the sum nullable? */
+  /** Is the min/max nullable? */
   const bool is_nullable_;
+
+  /** Is the min/max var sized? */
+  const bool var_sized_;
+
+  /** Cell val num. */
+  const unsigned cell_val_num_;
 
   /** Field name. */
   const std::string field_name_;
 
-  /** Mutex protecting `sum_` and `sum_overflowed_`. */
-  std::mutex sum_mtx_;
+  /** Mutex protecting `value_`. */
+  std::mutex value_mtx_;
 
-  /** Computed sum. */
-  typename sum_type_data<T>::sum_type sum_;
+  /** Computed min/max. */
+  optional<T> value_;
 
   /** Computed validity value. */
   optional<uint8_t> validity_value_;
 
-  /** Has the sum overflowed. */
-  bool sum_overflowed_;
+  /** Operation function to determine value. */
+  std::function<bool(VALUE_T, VALUE_T)> op_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
   /**
-   * Add the sum of cells for the input data.
+   * Get the value at a certain cell index for the input buffers.
    *
-   * @tparam SUM_T Sum type.
-   * @tparam BITMAP_T Bitmap type.
-   * @param input_data Input data for the sum.
+   * @tparam VALUE_T Value type.
+   * @param fixed_data Fixed data buffer.
+   * @param var_data Var data buffer.
+   * @param cell_idx Cell index.
    *
-   * @return {Computed sum for the cells, optional validity value}.
+   * @return Value.
    */
-  template <typename SUM_T, typename BITMAP_T>
-  tuple<SUM_T, optional<uint8_t>> sum(AggregateBuffer& input_data);
+  template <typename VALUE_T>
+  VALUE_T value_at(
+      const void* fixed_data, const char* var_data, const uint64_t cell_idx);
+
+  /**
+   * Get the last value for the input buffers.
+   *
+   * @tparam VALUE_T Value type.
+   * @param fixed_data Fixed data buffer.
+   * @param var_data Var data buffer.
+   * @param input_data Aggregate buffer.
+   *
+   * @return Value.
+   */
+  template <typename VALUE_T>
+  VALUE_T last_var_value(
+      const void* fixed_data,
+      const char* var_data,
+      const AggregateBuffer& input_data);
+
+  /**
+   * Potentially update the min/max value with the value at cell index 'c'.
+   *
+   * @param value Value to possibly update.
+   * @param fixed_data Fixed data.
+   * @param var_data Var data.
+   * @param c Cell index.
+   */
+  inline void update_min_max(
+      optional<typename min_max_type_data<T>::value_type>& value,
+      const void* fixed_data,
+      const char* var_data,
+      const uint64_t c) {
+    auto cmp = value_at<typename min_max_type_data<T>::value_type>(
+        fixed_data, var_data, c);
+    if (!value.has_value()) {
+      value = cmp;
+    } else if (op_(cmp, value.value())) {
+      value = cmp;
+    }
+  }
+
+  /**
+   * Potentially update the min/max value with the last var value.
+   *
+   * @param value Value to possibly update.
+   * @param fixed_data Fixed data.
+   * @param var_data Var data.
+   * @param c Cell index.
+   */
+  inline void update_last_var_min_max(
+      optional<typename min_max_type_data<T>::value_type>& value,
+      const void* fixed_data,
+      const char* var_data,
+      const AggregateBuffer& input_data) {
+    auto cmp = last_var_value<typename min_max_type_data<T>::value_type>(
+        fixed_data, var_data, input_data);
+    if (!value.has_value()) {
+      value = cmp;
+    } else if (op_(cmp, value.value())) {
+      value = cmp;
+    }
+  }
+
+  /**
+   * Get the min/max value of cells for the input data.
+   *
+   * @tparam BITMAP_T Bitmap type.
+   * @param input_data Input data for the min/max.
+   *
+   * @return {Computed min/max for the cells}.
+   */
+  template <typename BITMAP_T>
+  optional<T> min_max(AggregateBuffer& input_data);
 };
 
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_SUM_AGGREGATOR_H
+#endif  // TILEDB_MIN_MAX_AGGREGATOR_H

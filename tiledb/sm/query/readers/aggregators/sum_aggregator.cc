@@ -100,7 +100,7 @@ SumAggregator<T>::SumAggregator(
     : is_nullable_(is_nullable)
     , field_name_(field_name)
     , sum_(0)
-    , validity_value_(0)
+    , validity_value_(is_nullable ? std::make_optional(0) : nullopt)
     , sum_overflowed_(false) {
   if (var_sized) {
     throw SumAggregatorStatusException(
@@ -219,7 +219,7 @@ void SumAggregator<T>::copy_to_user_buffer(
 
   if (is_nullable_) {
     *static_cast<uint8_t*>(result_buffer.validity_vector_.buffer()) =
-        validity_value_;
+        validity_value_.value();
 
     if (result_buffer.validity_vector_.buffer_size()) {
       *result_buffer.validity_vector_.buffer_size() = 1;

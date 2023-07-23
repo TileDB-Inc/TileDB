@@ -2082,6 +2082,8 @@ void SparseGlobalOrderReader<BitmapType>::process_aggregates(
         auto& rcs = result_cell_slabs[i];
         auto rt = static_cast<GlobalOrderResultTile<BitmapType>*>(
             result_cell_slabs[i].tile_);
+        uint64_t cell_num =
+            fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
 
         // Compute parallelization parameters.
         auto&& [min_pos, max_pos, dest_cell_offset, skip_aggregate] =
@@ -2097,7 +2099,7 @@ void SparseGlobalOrderReader<BitmapType>::process_aggregates(
 
         // Compute aggregate.
         AggregateBuffer aggregate_buffer{
-            name, var_sized, nullable, min_pos, max_pos, *rt};
+            name, var_sized, nullable, min_pos, max_pos, cell_num, *rt};
         for (auto& aggregate : aggregates) {
           aggregate->aggregate_data(aggregate_buffer);
         }

@@ -27,10 +27,23 @@
  */
 
 #include "../count_aggregator.h"
+#include "../min_max_aggregator.h"
 #include "../sum_aggregator.h"
 
 int main() {
   tiledb::sm::CountAggregator();
+
+  tiledb::sm::MinMaxAggregator<uint8_t>(false, "Sum", false, false, 1);
+  tiledb::sm::MinMaxAggregator<uint16_t>(false, "Sum", false, false, 1);
+  tiledb::sm::MinMaxAggregator<uint32_t>(false, "Sum", false, false, 1);
+  tiledb::sm::MinMaxAggregator<uint64_t>(false, "Sum", false, false, 1);
+  tiledb::sm::MinMaxAggregator<int8_t>(false, "Sum", false, false, 1);
+  tiledb::sm::MinMaxAggregator<int16_t>(false, "Sum", false, false, 1);
+  tiledb::sm::MinMaxAggregator<int32_t>(false, "Sum", false, false, 1);
+  tiledb::sm::MinMaxAggregator<int64_t>(false, "Sum", false, false, 1);
+  tiledb::sm::MinMaxAggregator<float>(false, "Sum", false, false, 1);
+  tiledb::sm::MinMaxAggregator<double>(false, "Sum", false, false, 1);
+  tiledb::sm::MinMaxAggregator<std::string>(false, "Sum", false, false, 1);
 
   tiledb::sm::SumAggregator<uint8_t>("Sum", false, false, 1);
   tiledb::sm::SumAggregator<uint16_t>("Sum", false, false, 1);
@@ -42,5 +55,6 @@ int main() {
   tiledb::sm::SumAggregator<int64_t>("Sum", false, false, 1);
   tiledb::sm::SumAggregator<float>("Sum", false, false, 1);
   tiledb::sm::SumAggregator<double>("Sum", false, false, 1);
+
   return 0;
 }
