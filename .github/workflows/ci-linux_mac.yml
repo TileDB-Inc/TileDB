@@ -33,6 +33,11 @@ on:
         description: 'Job timeout (minutes)'
         required: false
         type: number
+      asan:
+        default: false
+        description: 'Enable Address Sanitizer'
+        required: false
+        type: boolean
 
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
@@ -40,7 +45,7 @@ env:
   TILEDB_CI_OS: runner.os
   CXX: ${{ inputs.matrix_compiler_cxx }}
   CC: ${{ inputs.matrix_compiler_cc }}
-  bootstrap_args: "--enable-vcpkg --enable-ccache ${{ inputs.bootstrap_args }}"
+  bootstrap_args: "--enable-vcpkg --enable-ccache ${{ inputs.bootstrap_args }} ${{ inputs.asan && '--enable-sanitizer=address' || '' }}"
   VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
   SCCACHE_GHA_ENABLED: "true"
 
@@ -140,6 +145,9 @@ jobs:
       - name: 'Test libtiledb'
         id: test
         shell: bash
+        env:
+          ASAN_OPTIONS: ${{ inputs.asan && 'detect_leaks=0' || '' }}
+          LD_PRELOAD: ${{ inputs.asan && '/usr/lib/x86_64-linux-gnu/libasan.so.5' || '' }}
         run: |
           set -e pipefail
 
