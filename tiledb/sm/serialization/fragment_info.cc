@@ -296,7 +296,10 @@ Status fragment_info_from_capnp(
         auto schema{
             array_schema_from_capnp(array_schema_build.getValue(), array_uri)};
         schema.set_array_uri(array_uri);
-        fragment_info->array_schemas_all()[array_schema_build.getKey()] =
+        auto key = std::string_view{
+            array_schema_build.getKey().cStr(),
+            array_schema_build.getKey().size()};
+        fragment_info->array_schemas_all()[std::string{key}] =
             make_shared<ArraySchema>(HERE(), schema);
       }
     }

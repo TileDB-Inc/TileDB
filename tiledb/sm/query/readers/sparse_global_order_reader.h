@@ -75,9 +75,11 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       Array* array,
       Config& config,
       std::unordered_map<std::string, QueryBuffer>& buffers,
+      std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
       Subarray& subarray,
       Layout layout,
       std::optional<QueryCondition>& condition,
+      DefaultChannelAggregates& default_channel_aggregates,
       bool consolidation_with_timestamps,
       bool skip_checks_serialization = false);
 
@@ -501,7 +503,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @param cell_offsets Cell offset per result tile.
    * @param query_buffer Query buffer to operate on.
    *
-   * @return user_buffers_full, new_var_buffer_size.
+   * @return caused_overflow, new_var_buffer_size.
    */
   template <class OffType>
   tuple<bool, uint64_t> compute_var_size_offsets(
@@ -523,6 +525,41 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       std::vector<std::string>& names,
       std::vector<ResultCellSlab>& result_cell_slabs,
       bool& user_buffers_full);
+
+  /**
+   * Copy tiles.
+   *
+   * @param num_range_threads Total number of range threads.
+   * @param name Field to copy.
+   * @param is_dim Is the field a dimension.
+   * @param cell_offsets Cell offset per result tile.
+   * @param result_cell_slabs The result cell slabs to process.
+   * @param last_field_to_overflow Last field that caused an overflow.
+   *
+   * @return user_buffers_full.
+   */
+  template <class OffType>
+  bool copy_tiles(
+      const uint64_t num_range_threads,
+      const std::string name,
+      const bool is_dim,
+      std::vector<uint64_t>& cell_offsets,
+      std::vector<ResultCellSlab>& result_cell_slabs,
+      std::optional<std::string>& last_field_to_overflow);
+
+  /**
+   * Process aggregates.
+   *
+   * @param num_range_threads Total number of range threads.
+   * @param name Field to aggregate.
+   * @param cell_offsets Cell offset per result tile.
+   * @param result_cell_slabs The result cell slabs to process.
+   */
+  void process_aggregates(
+      const uint64_t num_range_threads,
+      const std::string name,
+      std::vector<uint64_t>& cell_offsets,
+      std::vector<ResultCellSlab>& result_cell_slabs);
 
   /**
    * Remove a result tile from memory

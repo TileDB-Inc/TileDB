@@ -123,6 +123,15 @@ Status QueryCondition::init(
   return Status::Ok();
 }
 
+void QueryCondition::rewrite_enumeration_conditions(
+    const ArraySchema& array_schema) {
+  if (!tree_) {
+    return;
+  }
+
+  tree_->rewrite_enumeration_conditions(array_schema);
+}
+
 Status QueryCondition::check(const ArraySchema& array_schema) const {
   if (!tree_) {
     return Status::Ok();
@@ -144,6 +153,7 @@ Status QueryCondition::combine(
   }
 
   combined_cond->field_names_.clear();
+  combined_cond->enumeration_field_names_.clear();
   combined_cond->tree_ = this->tree_->combine(rhs.tree_, combination_op);
   return Status::Ok();
 }
@@ -158,6 +168,7 @@ Status QueryCondition::negate(
   }
 
   combined_cond->field_names_.clear();
+  combined_cond->enumeration_field_names_.clear();
   combined_cond->tree_ = this->tree_->get_negated_tree();
   return Status::Ok();
 }
@@ -174,6 +185,15 @@ std::unordered_set<std::string>& QueryCondition::field_names() const {
   return field_names_;
 }
 
+std::unordered_set<std::string>& QueryCondition::enumeration_field_names()
+    const {
+  if (enumeration_field_names_.empty() && tree_ != nullptr) {
+    tree_->get_enumeration_field_names(enumeration_field_names_);
+  }
+
+  return enumeration_field_names_;
+}
+
 uint64_t QueryCondition::condition_timestamp() const {
   if (condition_marker_.empty()) {
     return 0;
@@ -186,6 +206,10 @@ uint64_t QueryCondition::condition_timestamp() const {
   }
 
   return timestamps.first;
+}
+
+void QueryCondition::set_use_enumeration(bool use_enumeration) {
+  tree_->set_use_enumeration(use_enumeration);
 }
 
 /** Full template specialization for `char*` and `QueryConditionOp::LT`. */

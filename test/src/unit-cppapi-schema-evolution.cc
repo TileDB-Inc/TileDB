@@ -31,8 +31,15 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/array_schema_evolution.h"
+#include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
+#include "tiledb/sm/enums/array_type.h"
+#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/constants.h"
 
 #include <limits>
@@ -775,4 +782,32 @@ TEST_CASE(
   if (vfs.is_dir(array_uri)) {
     vfs.remove_dir(array_uri);
   }
+}
+
+TEST_CASE(
+    "SchemaEvolution Error Handling Tests",
+    "[cppapi][schema][evolution][errors]") {
+  auto ase = make_shared<tiledb::sm::ArraySchemaEvolution>(HERE());
+  REQUIRE_THROWS(ase->evolve_schema(nullptr));
+  REQUIRE_THROWS(ase->add_attribute(nullptr));
+
+  auto attr = make_shared<tiledb::sm::Attribute>(
+      HERE(), "attr", tiledb::sm::Datatype::STRING_ASCII);
+  ase->add_attribute(attr.get());
+  REQUIRE_THROWS(ase->add_attribute(attr.get()));
+
+  ase->set_timestamp_range(std::make_pair(1, 1));
+
+  auto schema = make_shared<tiledb::sm::ArraySchema>(
+      HERE(), tiledb::sm::ArrayType::SPARSE);
+  auto dim = make_shared<tiledb::sm::Dimension>(
+      HERE(), "dim1", tiledb::sm::Datatype::INT32);
+  int range[2] = {0, 1000};
+  throw_if_not_ok(dim->set_domain(range));
+
+  auto dom = make_shared<tiledb::sm::Domain>(HERE());
+  throw_if_not_ok(dom->add_dimension(dim));
+  throw_if_not_ok(schema->set_domain(dom));
+
+  CHECK_NOTHROW(ase->evolve_schema(schema));
 }

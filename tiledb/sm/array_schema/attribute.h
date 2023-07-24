@@ -51,6 +51,7 @@ namespace sm {
 
 class Buffer;
 class ConstBuffer;
+class Enumeration;
 
 enum class Compressor : uint8_t;
 enum class Datatype : uint8_t;
@@ -110,7 +111,8 @@ class Attribute {
       const FilterPipeline& filter_pipeline,
       const ByteVecValue& fill_value,
       uint8_t fill_value_validity,
-      DataOrder order = DataOrder::UNORDERED_DATA);
+      DataOrder order = DataOrder::UNORDERED_DATA,
+      std::optional<std::string> enumeration_name = nullopt);
 
   /**
    * Constructor. It clones the input attribute.
@@ -242,6 +244,12 @@ class Attribute {
   static ByteVecValue default_fill_value(
       Datatype datatype, uint32_t cell_val_num);
 
+  /** Set an enumeration for this attribute. */
+  void set_enumeration_name(std::optional<std::string> enmr_name);
+
+  /** Get the enumeration for this attribute. */
+  std::optional<std::string> get_enumeration_name() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -271,8 +279,11 @@ class Attribute {
   /** The required order of the data stored in the attribute. */
   DataOrder order_;
 
+  /** The name of the Enumeration to use for this attribute. */
+  std::optional<std::string> enumeration_name_;
+
   /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
+  /*          PRIVATE METHODS          */
   /* ********************************* */
 
   /** Sets the default fill value. */

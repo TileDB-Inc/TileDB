@@ -227,7 +227,10 @@ else()
     "$<$<CONFIG:Release,RelWithDebInfo>:-O3>"
     "$<$<CONFIG:RelWithDebInfo>:-g3;-ggdb3;-gdwarf-3>")
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    add_compile_options("$<$<CONFIG:Debug>:-fstandalone-debug>")
+    add_compile_options(
+      "$<$<CONFIG:Debug>:-fstandalone-debug>"
+      "$<$<CONFIG:Coverage>:-fprofile-instr-generate;-fcoverage-mapping>")
+    add_link_options("$<$<CONFIG:Coverage>:--coverage;-fprofile-instr-generate;-fcoverage-mapping>")
   endif()
 
   # Disable newer Apple Clang warnings about unqualified calls to std::move
@@ -344,6 +347,8 @@ list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/datatype/datatype_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/dimension/dimension_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/dimension_label/dimension_label_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/domain/domain_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/enumeration/enumeration_api_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/error/error_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filesystem/filesystem_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filesystem/filesystem_api_external.h"
@@ -490,6 +495,12 @@ add_custom_target(all_link_complete)
 define_accumulator(object_library_compile_targets)
 
 define_accumulator(unit_test_targets)
+#
+# This is the legacy position of this target declaration; it should appear in
+# test section below. It cannot right now because certain tests are declaring
+# dependencies on it directly. It should be initialized only through
+# accumulators that gather the names of unit test targets.
+#
 add_custom_target(all_unit_tests)
 
 # -------------------------------------------------------
@@ -498,6 +509,15 @@ add_custom_target(all_unit_tests)
 
 # Build the TileDB library experimental features
 add_subdirectory(experimental)
+if (TILEDB_TESTS)
+  # Isolate the experimental unit tests into their own target
+  add_custom_target(experimental_unit_tests)
+  retrieve_from(Unit_Tests ACCUMULATOR unit_test_targets)
+  if (${Unit_Tests})
+    add_dependencies(experimental_unit_tests ${Unit_Tests})
+  endif()
+  reset_accumulator(ACCUMULATOR unit_test_targets)
+endif()
 
 # Build the TileDB library
 add_subdirectory(tiledb)
@@ -527,7 +547,10 @@ if (TILEDB_TESTS)
   # the `all_unit_tests` phantom target.
   #
   retrieve_from(Unit_Tests ACCUMULATOR unit_test_targets)
-  add_dependencies(all_unit_tests ${Unit_Tests})
+  add_custom_target(ordinary_unit_tests)
+  add_dependencies(ordinary_unit_tests ${Unit_Tests})
+  add_dependencies(all_unit_tests ordinary_unit_tests)
+  add_dependencies(all_unit_tests experimental_unit_tests)
 
   # ----------------------------------
   # Target `tests` build and runs all test executables

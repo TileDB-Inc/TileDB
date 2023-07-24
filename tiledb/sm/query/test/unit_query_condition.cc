@@ -1556,7 +1556,7 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
   REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), &domain)).ok());
+  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
 
   // Initialize the result tile.
   ResultTile result_tile(0, 0, *array_schema);
@@ -1604,7 +1604,7 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
   REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), &domain)).ok());
+  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
 
   // Initialize the result tile.
   ResultTile::TileSizes tile_sizes(
@@ -1704,7 +1704,7 @@ TEST_CASE(
   REQUIRE(dim->set_domain(range).ok());
   REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
 
   // Initialize the result tile.
@@ -2249,7 +2249,7 @@ void test_apply_dense<char*>(
   REQUIRE(dim->set_domain(range).ok());
   REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
 
   // Initialize the result tile.
@@ -2299,7 +2299,7 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
   REQUIRE(dim->set_domain(range).ok());
   REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
 
   // Initialize the result tile.
@@ -2400,7 +2400,7 @@ TEST_CASE(
   REQUIRE(dim->set_domain(range).ok());
   REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
 
   // Initialize the result tile.
@@ -2918,7 +2918,7 @@ void test_apply_sparse<char*>(
   REQUIRE(dim->set_domain(range).ok());
   REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
 
   // Initialize the result tile.
@@ -2968,7 +2968,7 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
   REQUIRE(dim->set_domain(range).ok());
   REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
 
   // Initialize the result tile.
@@ -3061,9 +3061,12 @@ struct TestParams {
     }
 
     // Calculate expected_slabs_
-    int start = -1;
-    int length = -1;
-    for (size_t i = 0; i < expected_bitmap_.size(); i++) {
+    using signed_size_t = std::make_signed_t<size_t>;
+    signed_size_t start{-1};
+    signed_size_t length{-1};
+    for (signed_size_t i = 0;
+         i < static_cast<signed_size_t>(expected_bitmap_.size());
+         i++) {
       if (expected_bitmap_[i] && start < 0) {
         start = i;
         length = 1;
@@ -3726,7 +3729,7 @@ TEST_CASE(
   REQUIRE(dim->set_domain(range).ok());
   REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
 
   // Initialize the result tile.
@@ -4003,7 +4006,7 @@ TEST_CASE(
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
   REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), &domain)).ok());
+  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
 
   // Initialize the result tile.
   std::string data = "alicebobcraigdaveerinfrankgraceheidiivanjudy";
@@ -4347,7 +4350,7 @@ TEST_CASE(
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
   REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), &domain)).ok());
+  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
 
   // For pasting into a Python shell:
   //
@@ -4659,7 +4662,7 @@ TEST_CASE(
   REQUIRE(dim->set_domain(range).ok());
   REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
 
   // Initialize the result tile.
@@ -4749,7 +4752,7 @@ TEST_CASE(
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
   REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), &domain)).ok());
+  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
 
   // Initialize the result tile.
   ResultTile::TileSizes tile_sizes(
