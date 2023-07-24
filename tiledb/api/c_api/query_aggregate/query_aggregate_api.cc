@@ -38,9 +38,11 @@
 #include "tiledb/sm/query_aggregate/query_aggregate.h"
 
 const tiledb_channel_operator_handle_t* tiledb_channel_operator_count =
-    tiledb_channel_operator_handle_t::make_handle(QueryChannelOperator::COUNT);
+    tiledb_channel_operator_handle_t::make_handle(
+        QueryChannelOperator::COUNT, "COUNT");
 const tiledb_channel_operator_handle_t* tiledb_channel_operator_sum =
-    tiledb_channel_operator_handle_t::make_handle(QueryChannelOperator::SUM);
+    tiledb_channel_operator_handle_t::make_handle(
+        QueryChannelOperator::SUM, "SUM");
 
 namespace tiledb::api {
 
@@ -58,11 +60,13 @@ inline void ensure_query_arg_is_valid(tiledb_query_t* query) {
 /**
  * Returns if the argument is a valid char pointer
  *
- * @param input_field TODO
+ * @param input_field A char pointer
  */
-inline void ensure_input_field_is_valid(const char* input_field) {
+inline void ensure_input_field_is_valid(
+    const char* input_field, const std::string& op) {
   if (!input_field) {
-    throw CAPIStatusException("argument `input_field` may not be nullptr");
+    throw CAPIStatusException(
+        "argument `input_field` may not be nullptr for operator " + op);
   }
 }
 
@@ -84,7 +88,7 @@ capi_return_t tiledb_query_get_default_channel(
   ensure_query_arg_is_valid(query);
   ensure_output_pointer_is_valid(channel);
 
-  // TODO: we don't have an internal representation of a channel,
+  // We don't have an internal representation of a channel,
   // the default channel is currently just a hashmap, so only pass the query
   // to the channel constructor to be carried until next the api call.
   *channel = tiledb_query_channel_handle_t::make_handle(query);
@@ -100,17 +104,18 @@ capi_return_t tiledb_channel_operation_field_create(
     tiledb_channel_operation_t** operation) {
   (void)ctx;
   ensure_query_arg_is_valid(query);
-  ensure_input_field_is_valid(input_field_name);
   ensure_channel_operator_is_valid(op);
   ensure_output_pointer_is_valid(operation);
 
-  std::string field_name(input_field_name);
   shared_ptr<tiledb::sm::IAggregator> aggregator;
   switch (op->value()) {
     case QueryChannelOperator::COUNT:
       aggregator = std::make_shared<tiledb::sm::CountAggregator>();
       break;
     case QueryChannelOperator::SUM: {
+      ensure_input_field_is_valid(input_field_name, op->name());
+      std::string field_name(input_field_name);
+
       auto& schema = query->query_->array_schema();
       auto g = [&](auto T) {
         if constexpr (!std::is_same_v<decltype(T), char>) {

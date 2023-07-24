@@ -27,7 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * TODO
+ * This file declares the internal query aggregates mechanics of the C API for
+ * TileDB.
  */
 
 #ifndef TILEDB_CAPI_QUERY_AGGREGATE_INTERNAL_H
@@ -46,9 +47,6 @@ enum class QueryChannelOperator : uint8_t {
 #undef TILEDB_QUERY_CHANNEL_OPERATOR_ENUM
 };
 
-/**
- * TODO
- */
 struct tiledb_channel_operation_handle_t
     : public tiledb::api::CAPIHandle<tiledb_channel_operation_handle_t> {
   /**
@@ -80,9 +78,6 @@ struct tiledb_channel_operation_handle_t
   }
 };
 
-/**
- * TODO
- */
 struct tiledb_query_channel_handle_t
     : public tiledb::api::CAPIHandle<tiledb_query_channel_handle_t> {
   /**
@@ -126,6 +121,7 @@ struct tiledb_channel_operator_handle_t
 
  private:
   QueryChannelOperator value_;
+  std::string name_;
 
  public:
   /**
@@ -135,14 +131,21 @@ struct tiledb_channel_operator_handle_t
 
   /**
    * Ordinary constructor.
-   * @param s An enum specifying the type of operator
+   * @param op An enum specifying the type of operator
+   * @param name A string representation of the operator
    */
-  explicit tiledb_channel_operator_handle_t(QueryChannelOperator op)
-      : value_{op} {
+  explicit tiledb_channel_operator_handle_t(
+      QueryChannelOperator op, const std::string& name)
+      : value_{op}
+      , name_{name} {
   }
 
   [[nodiscard]] inline QueryChannelOperator value() const {
     return value_;
+  }
+
+  [[nodiscard]] inline std::string name() const {
+    return name_;
   }
 };
 

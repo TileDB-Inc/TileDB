@@ -43,34 +43,49 @@
 extern "C" {
 #endif
 
-/**
- * TODO
- */
 typedef struct tiledb_query_channel_handle_t tiledb_query_channel_t;
 
-/**
- * TODO
- */
 typedef struct tiledb_channel_operation_handle_t tiledb_channel_operation_t;
 
 typedef struct tiledb_channel_operator_handle_t tiledb_channel_operator_t;
 
+/**
+ * Constant handle for COUNT channel operator
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_channel_operation_field_create(ctx, query, tiledb_aggregate_count,
+ * "A", &count_op);
+ * @endcode
+ */
 TILEDB_EXPORT extern const tiledb_channel_operator_t*
     tiledb_channel_operator_count;
 
+/**
+ * Constant handle for SUM channel operator
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_channel_operation_field_create(ctx, query, tiledb_aggregate_sum, "A",
+ * sum_A);
+ * @endcode
+ */
 TILEDB_EXPORT extern const tiledb_channel_operator_t*
     tiledb_channel_operator_sum;
 
 /**
- * TODO
+ * Gets the default channel of the query. The default channel consists of all
+ * the rows the query would return as if executed standalone.
  * **Example:**
  *
  * @code{.c}
- * TODO
+ * tiledb_query_channel_t* default_channel;
+ * tiledb_query_get_default_channel(ctx, query, &default_channel);
  * @endcode
  *
  * @param ctx The TileDB context
- * @param query TODO
+ * @param query A TileDB query
+ * @param channel The channel handle to be allocated
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_query_get_default_channel(
@@ -79,15 +94,19 @@ TILEDB_EXPORT int32_t tiledb_query_get_default_channel(
     tiledb_query_channel_t** channel) TILEDB_NOEXCEPT;
 
 /**
- * TODO
+ * Create a channel operation given an input field and an operator.
  * **Example:**
  *
  * @code{.c}
- * TODO
+ * tiledb_channel_operation_field_create(ctx, query, tiledb_aggregate_sum, "A",
+ * sum_A);
  * @endcode
  *
  * @param ctx The TileDB context
- * @param query TODO
+ * @param query A TileDB query
+ * @param op The operator to be applied on an attribute
+ * @param input_field_name The attribute on which the operator will be applied
+ * @param operation The operation handle to be allocated
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_channel_operation_field_create(
@@ -98,15 +117,20 @@ TILEDB_EXPORT int32_t tiledb_channel_operation_field_create(
     tiledb_channel_operation_t** operation) TILEDB_NOEXCEPT;
 
 /**
- * TODO
+ * Add an aggregate operation on a query channel.
+ * The result computed by the aggregate operation will be available
+ * via the `output_field_name` buffer.
  * **Example:**
  *
  * @code{.c}
- * TODO
+ * tiledb_channel_add_aggregate(ctx, default_channel, "sumA", sum_A);
  * @endcode
  *
  * @param ctx The TileDB context
- * @param query TODO
+ * @param query A TileDB query
+ * @param channel The query channel on which to apply the operation
+ * @param output_field_name The attribute to be created that holds the result
+ * @param operation The operation to be applied
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_channel_add_aggregate(
