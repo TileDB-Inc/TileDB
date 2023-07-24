@@ -1760,6 +1760,10 @@ bool Query::is_aggregate(std::string output_field_name) const {
   return default_channel_aggregates_.count(output_field_name) != 0;
 }
 
+bool Query::has_aggregates() const {
+  return !default_channel_aggregates_.empty();
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
@@ -2183,6 +2187,11 @@ void Query::reset_coords_markers() {
 }
 
 void Query::copy_aggregates_data_to_user_buffer() {
+  if (array_->is_remote() && has_aggregates()) {
+    throw QueryStatusException(
+        "Cannot submit query; Query aggregates are not supported in REST yet");
+  }
+
   for (auto& default_channel_aggregate : default_channel_aggregates_) {
     default_channel_aggregate.second->copy_to_user_buffer(
         default_channel_aggregate.first, aggregate_buffers_);
