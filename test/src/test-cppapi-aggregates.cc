@@ -80,6 +80,18 @@ struct CppAggregatesFx {
       optional<std::vector<uint8_t>> a1_validity = nullopt,
       bool encrypt = false);
   std::vector<uint8_t> make_data_buff(std::vector<int> values);
+  void create_sparse_array_and_write_fragments(
+      const bool allow_dups, const bool nullable);
+  void validate_sparse_data(
+      Query& query,
+      const bool set_ranges,
+      const bool allow_dups,
+      const bool nullable,
+      const uint64_t expected_count,
+      std::vector<uint64_t>& dim1,
+      std::vector<uint64_t>& dim2,
+      std::vector<uint8_t>& a1,
+      std::vector<uint8_t>& a1_validity);
   void remove_sparse_array();
   void remove_array(const std::string& array_name);
   bool is_array(const std::string& array_name);
@@ -275,6 +287,90 @@ std::vector<uint8_t> CppAggregatesFx<std::string>::make_data_buff(
 }
 
 template <class T>
+void CppAggregatesFx<T>::create_sparse_array_and_write_fragments(
+    const bool allow_dups, const bool nullable) {
+  create_sparse_array(allow_dups, nullable);
+
+  // Write fragments, only cell 3,3 is duplicated.
+  optional<std::vector<uint8_t>> validity_values = nullopt;
+  if (nullable) {
+    validity_values = {1, 0, 1, 0};
+  }
+  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1, validity_values);
+  write_sparse({4, 5, 6, 7}, {2, 2, 3, 3}, {2, 4, 2, 3}, 3, validity_values);
+  write_sparse({8, 9, 10, 11}, {2, 1, 3, 4}, {1, 3, 1, 1}, 4, validity_values);
+  write_sparse(
+      {12, 13, 14, 15}, {4, 3, 3, 4}, {2, 3, 4, 4}, 6, validity_values);
+}
+
+template <class T>
+void CppAggregatesFx<T>::validate_sparse_data(
+    Query& query,
+    const bool set_ranges,
+    const bool allow_dups,
+    const bool nullable,
+    const uint64_t expected_count,
+    std::vector<uint64_t>& dim1,
+    std::vector<uint64_t>& dim2,
+    std::vector<uint8_t>& a1,
+    std::vector<uint8_t>& a1_validity) {
+  std::vector<uint64_t> expected_dim1;
+  std::vector<uint64_t> expected_dim2;
+  std::vector<uint8_t> expected_a1;
+  std::vector<uint8_t> expected_a1_validity;
+  if (set_ranges) {
+    if (allow_dups) {
+      expected_dim1 = {3, 3, 3, 4, 4, 3, 3, 4};
+      expected_dim2 = {2, 3, 1, 1, 2, 3, 4, 4};
+      expected_a1 = make_data_buff({6, 7, 10, 11, 12, 13, 14, 15});
+      expected_a1_validity = {1, 0, 1, 0, 1, 0, 1, 0};
+    } else {
+      expected_dim1 = {3, 3, 4, 4, 3, 3, 4};
+      expected_dim2 = {1, 2, 1, 2, 3, 4, 4};
+      expected_a1 = make_data_buff({10, 6, 11, 12, 13, 14, 15});
+      expected_a1_validity = {1, 1, 0, 1, 0, 1, 0};
+    }
+  } else {
+    if (allow_dups) {
+      expected_dim1 = {1, 1, 1, 2, 2, 2, 3, 3, 2, 1, 3, 4, 4, 3, 3, 4};
+      expected_dim2 = {1, 2, 4, 3, 2, 4, 2, 3, 1, 3, 1, 1, 2, 3, 4, 4};
+      expected_a1 = make_data_buff(
+          {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
+      expected_a1_validity = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
+    } else {
+      expected_dim1 = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 4};
+      expected_dim2 = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 4, 4};
+      expected_a1 =
+          make_data_buff({0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 12, 13, 14, 15});
+      expected_a1_validity = {1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0};
+    }
+  }
+
+  uint64_t cell_val_num = std::is_same<T, std::string>::value ?
+                              CppAggregatesFx<T>::STRING_CELL_VAL_NUM :
+                              1;
+
+  auto result_el = query.result_buffer_elements_nullable();
+  CHECK(std::get<1>(result_el["d1"]) == expected_count);
+  CHECK(std::get<1>(result_el["d2"]) == expected_count);
+  CHECK(std::get<1>(result_el["a1"]) == expected_count * cell_val_num);
+  if (nullable) {
+    CHECK(std::get<2>(result_el["a1"]) == expected_count);
+  }
+  dim1.resize(expected_dim1.size());
+  dim2.resize(expected_dim2.size());
+  a1.resize(expected_a1.size());
+  CHECK(dim1 == expected_dim1);
+  CHECK(dim2 == expected_dim2);
+  CHECK(a1 == expected_a1);
+
+  if (nullable) {
+    a1_validity.resize(expected_a1_validity.size());
+    CHECK(a1_validity == expected_a1_validity);
+  }
+}
+
+template <class T>
 void CppAggregatesFx<T>::remove_array(const std::string& array_name) {
   if (!is_array(array_name))
     return;
@@ -300,13 +396,7 @@ TEST_CASE_METHOD(
   bool allow_dups = GENERATE(true, false);
   bool set_ranges = GENERATE(true, false);
 
-  create_sparse_array(allow_dups);
-
-  // Write fragments, only cell 3,3 is duplicated.
-  write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
-  write_sparse({4, 5, 6, 7}, {2, 2, 3, 3}, {2, 4, 2, 3}, 3);
-  write_sparse({8, 9, 10, 11}, {2, 1, 3, 4}, {1, 3, 1, 1}, 4);
-  write_sparse({12, 13, 14, 15}, {4, 3, 3, 4}, {2, 3, 4, 4}, 6);
+  create_sparse_array_and_write_fragments(allow_dups, false);
 
   Array array{ctx_, SPARSE_ARRAY_NAME, TILEDB_READ};
   Query query(ctx_, array, TILEDB_READ);
@@ -323,17 +413,19 @@ TEST_CASE_METHOD(
   }
 
   // Set the data buffer for the aggregator.
+  uint64_t cell_size = sizeof(int);
   std::vector<uint64_t> count(1);
   std::vector<uint64_t> dim1(100);
   std::vector<uint64_t> dim2(100);
-  std::vector<int> a1(100);
+  std::vector<uint8_t> a1(100 * cell_size);
   query.set_layout(TILEDB_UNORDERED);
   query.set_data_buffer("Count", count);
 
   if (request_data) {
     query.set_data_buffer("d1", dim1);
     query.set_data_buffer("d2", dim2);
-    query.set_data_buffer("a1", a1);
+    query.set_data_buffer(
+        "a1", static_cast<void*>(a1.data()), a1.size() / cell_size);
   }
 
   // Submit the query.
@@ -342,45 +434,26 @@ TEST_CASE_METHOD(
   // Check the results.
   auto result_el = query.result_buffer_elements_nullable();
   uint64_t expected_count;
-  std::vector<uint64_t> expected_dim1;
-  std::vector<uint64_t> expected_dim2;
-  std::vector<int> expected_a1;
   if (set_ranges) {
-    if (allow_dups) {
-      expected_dim1 = {3, 3, 3, 4, 4, 3, 3, 4};
-      expected_dim2 = {2, 3, 1, 1, 2, 3, 4, 4};
-      expected_a1 = {6, 7, 10, 11, 12, 13, 14, 15};
-    } else {
-      expected_dim1 = {3, 3, 4, 4, 3, 3, 4};
-      expected_dim2 = {1, 2, 1, 2, 3, 4, 4};
-      expected_a1 = {10, 6, 11, 12, 13, 14, 15};
-    }
     expected_count = allow_dups ? 8 : 7;
   } else {
-    if (allow_dups) {
-      expected_dim1 = {1, 1, 1, 2, 2, 2, 3, 3, 2, 1, 3, 4, 4, 3, 3, 4};
-      expected_dim2 = {1, 2, 4, 3, 2, 4, 2, 3, 1, 3, 1, 1, 2, 3, 4, 4};
-      expected_a1 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
-    } else {
-      expected_dim1 = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 4};
-      expected_dim2 = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 4, 4};
-      expected_a1 = {0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 12, 13, 14, 15};
-    }
     expected_count = allow_dups ? 16 : 15;
   }
   CHECK(std::get<1>(result_el["Count"]) == 1);
   CHECK(count[0] == expected_count);
 
   if (request_data) {
-    CHECK(std::get<1>(result_el["d1"]) == expected_count);
-    CHECK(std::get<1>(result_el["d2"]) == expected_count);
-    CHECK(std::get<1>(result_el["a1"]) == expected_count);
-    dim1.resize(expected_dim1.size());
-    dim2.resize(expected_dim2.size());
-    a1.resize(expected_a1.size());
-    CHECK(dim1 == expected_dim1);
-    CHECK(dim2 == expected_dim2);
-    CHECK(a1 == expected_a1);
+    auto validity = std::vector<uint8_t>();
+    validate_sparse_data(
+        query,
+        set_ranges,
+        allow_dups,
+        false,
+        expected_count,
+        dim1,
+        dim2,
+        a1,
+        validity);
   }
 
   // Close array.
@@ -410,21 +483,8 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   bool set_ranges = GENERATE(true, false);
   bool nullable = GENERATE(true, false);
 
-  CppAggregatesFx<T>::create_sparse_array(allow_dups, nullable);
-
-  // Write fragments, only cell 3,3 is duplicated.
-  optional<std::vector<uint8_t>> validity_values = nullopt;
-  if (nullable) {
-    validity_values = {1, 0, 1, 0};
-  }
-  CppAggregatesFx<T>::write_sparse(
-      {0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1, validity_values);
-  CppAggregatesFx<T>::write_sparse(
-      {4, 5, 6, 7}, {2, 2, 3, 3}, {2, 4, 2, 3}, 3, validity_values);
-  CppAggregatesFx<T>::write_sparse(
-      {8, 9, 10, 11}, {2, 1, 3, 4}, {1, 3, 1, 1}, 4, validity_values);
-  CppAggregatesFx<T>::write_sparse(
-      {12, 13, 14, 15}, {4, 3, 3, 4}, {2, 3, 4, 4}, 6, validity_values);
+  CppAggregatesFx<T>::create_sparse_array_and_write_fragments(
+      allow_dups, nullable);
 
   Array array{
       CppAggregatesFx<T>::ctx_,
@@ -445,11 +505,12 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   }
 
   // Set the data buffer for the aggregator.
+  uint64_t cell_size = sizeof(T);
   std::vector<typename tiledb::sm::sum_type_data<T>::sum_type> sum(1);
   std::vector<uint8_t> sum_validity(1);
   std::vector<uint64_t> dim1(100);
   std::vector<uint64_t> dim2(100);
-  std::vector<T> a1(100);
+  std::vector<uint8_t> a1(100 * cell_size);
   std::vector<uint8_t> a1_validity(100);
   query.set_layout(TILEDB_UNORDERED);
   query.set_data_buffer("Sum", sum);
@@ -468,7 +529,8 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   if (request_data) {
     query.set_data_buffer("d1", dim1);
     query.set_data_buffer("d2", dim2);
-    query.set_data_buffer("a1", a1);
+    query.set_data_buffer(
+        "a1", static_cast<void*>(a1.data()), a1.size() / cell_size);
 
     if (nullable) {
       query.set_validity_buffer("a1", a1_validity);
@@ -496,60 +558,25 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 
   auto result_el = query.result_buffer_elements_nullable();
   uint64_t expected_count;
-  std::vector<uint64_t> expected_dim1;
-  std::vector<uint64_t> expected_dim2;
-  std::vector<T> expected_a1;
-  std::vector<uint8_t> expected_a1_validity;
   if (set_ranges) {
-    if (allow_dups) {
-      expected_dim1 = {3, 3, 3, 4, 4, 3, 3, 4};
-      expected_dim2 = {2, 3, 1, 1, 2, 3, 4, 4};
-      expected_a1 = {6, 7, 10, 11, 12, 13, 14, 15};
-      expected_a1_validity = {1, 0, 1, 0, 1, 0, 1, 0};
-    } else {
-      expected_dim1 = {3, 3, 4, 4, 3, 3, 4};
-      expected_dim2 = {1, 2, 1, 2, 3, 4, 4};
-      expected_a1 = {10, 6, 11, 12, 13, 14, 15};
-      expected_a1_validity = {1, 1, 0, 1, 0, 1, 0};
-    }
     expected_count = allow_dups ? 8 : 7;
   } else {
-    if (allow_dups) {
-      expected_dim1 = {1, 1, 1, 2, 2, 2, 3, 3, 2, 1, 3, 4, 4, 3, 3, 4};
-      expected_dim2 = {1, 2, 4, 3, 2, 4, 2, 3, 1, 3, 1, 1, 2, 3, 4, 4};
-      expected_a1 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
-      expected_a1_validity = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
-    } else {
-      expected_dim1 = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 4};
-      expected_dim2 = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 4, 4};
-      expected_a1 = {0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 12, 13, 14, 15};
-      expected_a1_validity = {1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0};
-    }
     expected_count = allow_dups ? 16 : 15;
   }
   CHECK(std::get<1>(result_el["Sum"]) == 1);
   CHECK(sum[0] == expected_sum);
 
   if (request_data) {
-    CHECK(std::get<1>(result_el["d1"]) == expected_count);
-    CHECK(std::get<1>(result_el["d2"]) == expected_count);
-    CHECK(std::get<1>(result_el["a1"]) == expected_count);
-
-    if (nullable) {
-      CHECK(std::get<2>(result_el["a1"]) == expected_count);
-    }
-
-    dim1.resize(expected_dim1.size());
-    dim2.resize(expected_dim2.size());
-    a1.resize(expected_a1.size());
-    CHECK(dim1 == expected_dim1);
-    CHECK(dim2 == expected_dim2);
-    CHECK(a1 == expected_a1);
-
-    if (nullable) {
-      a1_validity.resize(expected_a1_validity.size());
-      CHECK(a1_validity == expected_a1_validity);
-    }
+    CppAggregatesFx<T>::validate_sparse_data(
+        query,
+        set_ranges,
+        allow_dups,
+        nullable,
+        expected_count,
+        dim1,
+        dim2,
+        a1,
+        a1_validity);
   }
 
   // Close array.
@@ -581,21 +608,8 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   bool nullable = GENERATE(false);
   bool min = GENERATE(true, false);
 
-  CppAggregatesFx<T>::create_sparse_array(allow_dups, nullable);
-
-  // Write fragments, only cell 3,3 is duplicated.
-  optional<std::vector<uint8_t>> validity_values = nullopt;
-  if (nullable) {
-    validity_values = {1, 0, 1, 0};
-  }
-  CppAggregatesFx<T>::write_sparse(
-      {0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1, validity_values);
-  CppAggregatesFx<T>::write_sparse(
-      {4, 5, 6, 7}, {2, 2, 3, 3}, {2, 4, 2, 3}, 3, validity_values);
-  CppAggregatesFx<T>::write_sparse(
-      {8, 9, 10, 11}, {2, 1, 3, 4}, {1, 3, 1, 1}, 4, validity_values);
-  CppAggregatesFx<T>::write_sparse(
-      {12, 13, 14, 15}, {4, 3, 3, 4}, {2, 3, 4, 4}, 6, validity_values);
+  CppAggregatesFx<T>::create_sparse_array_and_write_fragments(
+      allow_dups, nullable);
 
   Array array{
       CppAggregatesFx<T>::ctx_,
@@ -632,8 +646,8 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   query.set_layout(TILEDB_UNORDERED);
 
   // TODO: Change to real CPPAPI. Use set_data_buffer and set_validity_buffer
-  // from the internal query directly because the CPPAPI doesn't know what is an
-  // aggregate and what the size of an aggregate should be.
+  // from the internal query directly because the CPPAPI doesn't know what is
+  // an aggregate and what the size of an aggregate should be.
   uint64_t returned_min_max_size = cell_size;
   uint64_t returned_validity_size = 1;
   CHECK(query.ptr()
@@ -685,34 +699,8 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   std::vector<uint8_t> expected_a1;
   std::vector<uint8_t> expected_a1_validity;
   if (set_ranges) {
-    if (allow_dups) {
-      expected_dim1 = {3, 3, 3, 4, 4, 3, 3, 4};
-      expected_dim2 = {2, 3, 1, 1, 2, 3, 4, 4};
-      expected_a1 =
-          CppAggregatesFx<T>::make_data_buff({6, 7, 10, 11, 12, 13, 14, 15});
-      expected_a1_validity = {1, 0, 1, 0, 1, 0, 1, 0};
-    } else {
-      expected_dim1 = {3, 3, 4, 4, 3, 3, 4};
-      expected_dim2 = {1, 2, 1, 2, 3, 4, 4};
-      expected_a1 =
-          CppAggregatesFx<T>::make_data_buff({10, 6, 11, 12, 13, 14, 15});
-      expected_a1_validity = {1, 1, 0, 1, 0, 1, 0};
-    }
     expected_count = allow_dups ? 8 : 7;
   } else {
-    if (allow_dups) {
-      expected_dim1 = {1, 1, 1, 2, 2, 2, 3, 3, 2, 1, 3, 4, 4, 3, 3, 4};
-      expected_dim2 = {1, 2, 4, 3, 2, 4, 2, 3, 1, 3, 1, 1, 2, 3, 4, 4};
-      expected_a1 = CppAggregatesFx<T>::make_data_buff(
-          {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
-      expected_a1_validity = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
-    } else {
-      expected_dim1 = {1, 1, 2, 2, 1, 1, 2, 2, 3, 3, 4, 4, 3, 3, 4};
-      expected_dim2 = {1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 4, 4};
-      expected_a1 = CppAggregatesFx<T>::make_data_buff(
-          {0, 1, 8, 4, 9, 2, 3, 5, 10, 6, 11, 12, 13, 14, 15});
-      expected_a1_validity = {1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0};
-    }
     expected_count = allow_dups ? 16 : 15;
   }
 
@@ -722,25 +710,16 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   CHECK(min_max == expected_min_max);
 
   if (request_data) {
-    CHECK(std::get<1>(result_el["d1"]) == expected_count);
-    CHECK(std::get<1>(result_el["d2"]) == expected_count);
-    CHECK(std::get<1>(result_el["a1"]) == expected_count * cell_val_num);
-
-    if (nullable) {
-      CHECK(std::get<2>(result_el["a1"]) == expected_count);
-    }
-
-    dim1.resize(expected_dim1.size());
-    dim2.resize(expected_dim2.size());
-    a1.resize(expected_a1.size());
-    CHECK(dim1 == expected_dim1);
-    CHECK(dim2 == expected_dim2);
-    CHECK(a1 == expected_a1);
-
-    if (nullable) {
-      a1_validity.resize(expected_a1_validity.size());
-      CHECK(a1_validity == expected_a1_validity);
-    }
+    CppAggregatesFx<T>::validate_sparse_data(
+        query,
+        set_ranges,
+        allow_dups,
+        nullable,
+        expected_count,
+        dim1,
+        dim2,
+        a1,
+        a1_validity);
   }
 
   // Close array.
@@ -803,8 +782,8 @@ TEST_CASE_METHOD(
   query.set_layout(TILEDB_UNORDERED);
 
   // TODO: Change to real CPPAPI. Use set_data_buffer and set_validity_buffer
-  // from the internal query directly because the CPPAPI doesn't know what is an
-  // aggregate and what the size of an aggregate should be.
+  // from the internal query directly because the CPPAPI doesn't know what is
+  // an aggregate and what the size of an aggregate should be.
   uint64_t returned_min_max_data_size = 10;
   uint64_t returned_min_max_offsets_size = 8;
   uint64_t returned_validity_size = 1;
