@@ -1800,7 +1800,7 @@ std::string Dimension::tile_extent_str() const {
 }
 
 void Dimension::set_crop_range_func() {
-  auto g = [&](auto T) { crop_range_func_ = expand_range_v<decltype(T)>; };
+  auto g = [&](auto T) { crop_range_func_ = crop_range<decltype(T)>; };
   execute_callback_with_type(type_, g);
 }
 
