@@ -34,6 +34,7 @@
 #include "test/support/src/helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -1414,7 +1415,7 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
   CHECK(domain->add_dimension(dim).ok());
   tiledb::sm::ArraySchema schema;
   tiledb::sm::Attribute attr("attr", Datatype::UINT64);
-  CHECK(schema.add_attribute(make_shared<tiledb::sm::Attribute>(HERE(), &attr))
+  CHECK(schema.add_attribute(make_shared<tiledb::sm::Attribute>(HERE(), attr))
             .ok());
   CHECK(schema.set_domain(domain).ok());
   CHECK(schema.init().ok());
@@ -1537,7 +1538,7 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
   CHECK(domain->add_dimension(dim).ok());
   tiledb::sm::ArraySchema schema;
   tiledb::sm::Attribute attr("attr", Datatype::UINT64);
-  CHECK(schema.add_attribute(make_shared<tiledb::sm::Attribute>(HERE(), &attr))
+  CHECK(schema.add_attribute(make_shared<tiledb::sm::Attribute>(HERE(), attr))
             .ok());
   CHECK(schema.set_domain(domain).ok());
   CHECK(schema.init().ok());

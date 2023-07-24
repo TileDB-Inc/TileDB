@@ -82,7 +82,7 @@ TEMPLATE_LIST_TEST_CASE(
   schema.set_capacity(num_cells);
   Attribute a("a", tiledb_type);
   a.set_cell_val_num(cell_val_num);
-  CHECK(schema.add_attribute(make_shared<Attribute>(HERE(), &a)).ok());
+  CHECK(schema.add_attribute(make_shared<Attribute>(HERE(), a)).ok());
 
   // Generate random, sorted strings for the string ascii type.
   std::vector<std::string> string_ascii;
@@ -259,7 +259,7 @@ TEMPLATE_LIST_TEST_CASE(
   ArraySchema schema;
   schema.set_capacity(4);
   Attribute a("a", (Datatype)type.tiledb_type);
-  CHECK(schema.add_attribute(make_shared<Attribute>(HERE(), &a)).ok());
+  CHECK(schema.add_attribute(make_shared<Attribute>(HERE(), a)).ok());
 
   // Initialize a new tile.
   auto tiledb_type = static_cast<Datatype>(type.tiledb_type);
@@ -335,7 +335,7 @@ TEST_CASE(
   schema.set_capacity(num_cells);
   Attribute a("a", Datatype::STRING_ASCII);
   a.set_cell_val_num(constants::var_num);
-  CHECK(schema.add_attribute(make_shared<Attribute>(HERE(), &a)).ok());
+  CHECK(schema.add_attribute(make_shared<Attribute>(HERE(), a)).ok());
 
   // Generate random, sorted strings for the string ascii type.
   std::vector<std::string> strings;
@@ -435,7 +435,7 @@ TEST_CASE(
   schema.set_capacity(2);
   Attribute a("a", Datatype::CHAR);
   a.set_cell_val_num(constants::var_num);
-  CHECK(schema.add_attribute(make_shared<Attribute>(HERE(), &a)).ok());
+  CHECK(schema.add_attribute(make_shared<Attribute>(HERE(), a)).ok());
 
   // Store '123' and '12'
   // Initialize offsets tile.

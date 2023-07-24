@@ -162,8 +162,8 @@ shared_ptr<ArraySchema> make_schema(
       attr.set_cell_val_num(constants::var_num);
     }
     attr.set_nullable(attr_nullable[a]);
-    REQUIRE(array_schema->add_attribute(make_shared<Attribute>(HERE(), &attr))
-                .ok());
+    REQUIRE(
+        array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   }
 
   return array_schema;
