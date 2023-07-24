@@ -75,6 +75,24 @@ TILEDB_EXPORT capi_return_t
 tiledb_log_warn(tiledb_ctx_t* ctx, const char* message);
 
 /* ********************************* */
+/*              AS BUILT             */
+/* ********************************* */
+
+/**
+ * Dumps the already-built TileDB build configuration to a string.
+ *
+ * **Example**
+ * @code{.c}
+ * tiledb_string_t* out;
+ * tiledb_as_built_dump(&out);
+ * tiledb_string_free(&out);
+ * @endcode
+ *
+ * @param out The output.
+ */
+TILEDB_EXPORT void tiledb_as_built_dump(tiledb_string_t** out) TILEDB_NOEXCEPT;
+
+/* ********************************* */
 /*      ARRAY SCHEMA EVOLUTION       */
 /* ********************************* */
 

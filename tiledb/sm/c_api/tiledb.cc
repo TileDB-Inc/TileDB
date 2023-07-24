@@ -46,6 +46,7 @@
 #include "tiledb/api/c_api/filter_list/filter_list_api_internal.h"
 #include "tiledb/api/c_api/string/string_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
+#include "tiledb/as_built/as_built.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/dynamic_memory/dynamic_memory.h"
 #include "tiledb/common/heap_profiler.h"
@@ -221,6 +222,17 @@ capi_return_t tiledb_log_warn(tiledb_ctx_t* ctx, const char* message) {
   logger->warn(message);
 
   return TILEDB_OK;
+}
+
+/* ********************************* */
+/*              AS BUILT             */
+/* ********************************* */
+void tiledb_as_built_dump(tiledb_string_t** out) {
+  if (out == nullptr) {
+    throw std::invalid_argument("Output string cannot be null.");
+  }
+
+  *out = tiledb_string_handle_t::make_handle(as_built::dump());
 }
 
 /* ********************************* */
@@ -5456,6 +5468,13 @@ void tiledb_version(int32_t* major, int32_t* minor, int32_t* rev) noexcept {
 
 capi_return_t tiledb_log_warn(tiledb_ctx_t* ctx, const char* message) {
   return api_entry<tiledb::api::tiledb_log_warn>(ctx, message);
+}
+
+/* ********************************* */
+/*              AS BUILT             */
+/* ********************************* */
+void tiledb_as_built_dump(tiledb_string_t** out) noexcept {
+  return api_entry_void<tiledb::api::tiledb_as_built_dump>(out);
 }
 
 /* ********************************* */
