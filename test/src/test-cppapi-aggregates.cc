@@ -605,7 +605,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   bool request_data = GENERATE(true, false);
   bool allow_dups = GENERATE(true, false);
   bool set_ranges = GENERATE(true, false);
-  bool nullable = GENERATE(false);
+  bool nullable = GENERATE(true, false);
   bool min = GENERATE(true, false);
 
   CppAggregatesFx<T>::create_sparse_array_and_write_fragments(
