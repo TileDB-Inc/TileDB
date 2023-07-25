@@ -188,6 +188,15 @@ ArraySchema::ArraySchema(
     dim_map_[dim->name()] = dim;
   }
 
+  for (auto& [enmr_name, enmr_uri] : enumeration_path_map_) {
+    (void)enmr_uri;
+    enumeration_map_[enmr_name] = nullptr;
+  }
+
+  for (const auto& enmr : enumerations) {
+    enumeration_map_[enmr->name()] = enmr;
+  }
+
   // Create attribute map
   auto n{static_cast<unsigned int>(attributes_.size())};
   for (unsigned int i = 0; i < n; ++i) {
@@ -198,15 +207,6 @@ ArraySchema::ArraySchema(
   // Create dimension label map
   for (const auto& label : dimension_labels_) {
     dimension_label_map_[label->name()] = label.get();
-  }
-
-  for (auto& [enmr_name, enmr_uri] : enumeration_path_map_) {
-    (void)enmr_uri;
-    enumeration_map_[enmr_name] = nullptr;
-  }
-
-  for (const auto& enmr : enumerations) {
-    enumeration_map_[enmr->name()] = enmr;
   }
 
   // Check array schema is valid.
@@ -254,10 +254,10 @@ ArraySchema::ArraySchema(const ArraySchema& array_schema)
     , mtx_{} {
   throw_if_not_ok(set_domain(array_schema.domain_));
 
-  for (auto attr : array_schema.attributes_)
-    throw_if_not_ok(add_attribute(attr, false));
   enumeration_map_ = array_schema.enumeration_map_;
   enumeration_path_map_ = array_schema.enumeration_path_map_;
+  for (auto attr : array_schema.attributes_)
+    throw_if_not_ok(add_attribute(attr, false));
 
   for (const auto& label : array_schema.dimension_labels_) {
     dimension_labels_.emplace_back(label);
