@@ -545,39 +545,46 @@ if (TILEDB_AZURE)
 
   if (TILEDB_VCPKG)
     find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
-    if (NOT TARGET LibLZMA::LibLZMA)
-      find_package(LibLZMA REQUIRED)
-    endif()
-    if (NOT TARGET LibXml2::LibXml2)
-      find_package(LibXml2 REQUIRED)
-      install_target_libs(LibXml2::LibXml2)
+    if (NOT WIN32)
+      if (NOT TARGET LibLZMA::LibLZMA)
+        find_package(LibLZMA REQUIRED)
+      endif()
+      if (NOT TARGET LibXml2::LibXml2)
+        find_package(LibXml2 REQUIRED)
+        install_target_libs(LibXml2::LibXml2)
+      endif()
+      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+              INTERFACE
+              LibXml2::LibXml2
+              LibLZMA::LibLZMA)
     endif()
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
             INTERFACE
             Azure::azure-storage-common
             Azure::azure-storage-blobs
             Azure::azure-core
-            LibXml2::LibXml2
-            LibLZMA::LibLZMA
             )
     install_all_target_libs("Azure::azure-storage-blobs;Azure::azure-storage-common;Azure::azure-core")
   else()
     find_package(AzureCore_EP REQUIRED)
     find_package(AzureStorageCommon_EP REQUIRED)
     find_package(AzureStorageBlobs_EP REQUIRED)
-    if (NOT TARGET LibXml2::LibXml2)
-      find_package(libxml2 REQUIRED)
-      install_target_libs(LibXml2::LibXml2)
+    if (NOT WIN32)
+      if (NOT TARGET LibXml2::LibXml2)
+        find_package(libxml2 REQUIRED)
+        install_target_libs(LibXml2::LibXml2)
+      endif()
     endif()
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
             INTERFACE
             Azure::azure-storage-blobs
             Azure::azure-storage-common
-            Azure::azure-core
-            LibXml2::LibXml2)
+            Azure::azure-core)
     if(WIN32)
-      # WebServices needed by Azure storage on windows
-      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE WebServices)
+      # WebServices and crypt32 needed by Azure storage on windows
+      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE WebServices crypt32)
+    else()
+      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE LibXml2::LibXml2)
     endif()
   endif()
 endif()
