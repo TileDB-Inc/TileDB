@@ -44,12 +44,17 @@ commence(object_library generic_tile_io)
       baseline
       buffer
       constants
-      context_resources
       tiledb_crypto
       filter_pipeline
       tile
       vfs
   )
 conclude(object_library)
+
+# This is linked outside the object_library scope because ContextResources
+# is recompiled as part of the capi_context_stub. Including context_resources
+# here like this prevents many headaches revolving around duplicate symbols
+# when linking executables.
+target_link_libraries(compile_generic_tile_io PRIVATE context_resources)
 
 add_test_subdirectory()

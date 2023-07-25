@@ -91,11 +91,19 @@ class ASTNode {
    * @brief Gets the set of field names from all the value nodes in the ASTNode.
    *
    * @param field_name_set The set variable the function populates.
-   * @return std::unordered_set<std::string>& Set of the field names in the
-   * node.
    */
   virtual void get_field_names(
       std::unordered_set<std::string>& field_name_set) const = 0;
+
+  /**
+   * @brief Gets the set of field names from all the value nodes that reference
+   * an enumerated field.
+   *
+   * @param field_name_set The set variable the function populates.
+   */
+  virtual void get_enumeration_field_names(
+      std::unordered_set<std::string>& field_name_set) const = 0;
+
   /**
    * @brief Returns true if the AST is previously supported by previous versions
    * of TileDB. This means that the AST should only have AND combination ops,
@@ -105,6 +113,15 @@ class ASTNode {
    * TileDB.
    */
   virtual bool is_backwards_compatible() const = 0;
+
+  /**
+   * @brief Update an node value condition values that refer to enumerated
+   * attributes.
+   *
+   * @param array_schema The array schema with all relevant enumerations loaded.
+   */
+  virtual void rewrite_enumeration_conditions(
+      const ArraySchema& array_schema) = 0;
 
   /**
    * @brief Checks whether the node is valid based on the array schema of the
@@ -177,6 +194,26 @@ class ASTNode {
   virtual const QueryConditionCombinationOp& get_combination_op() const = 0;
 
   /**
+   * @brief Return whether this node's condition should be applied against
+   * the attributes enumerated values or the underlying index data if
+   * applicable for a given attribute.
+   *
+   * @return bool If true, apply this condition against the enumerated values.
+   */
+  virtual bool use_enumeration() const = 0;
+
+  /**
+   * @brief By default, a query condition is applied against an enumeration's
+   * values. This can be disabled to apply a given condition against the
+   * underlying integer data stored for the attribute by passing `false` to
+   * this method.
+   *
+   * @param use_enumeration A bool indicating whether this condition should be
+   *        applied against the enumerations values or not.
+   */
+  virtual void set_use_enumeration(bool use_enumeration) = 0;
+
+  /**
    * @brief Default virtual destructor.
    */
   virtual ~ASTNode() {
@@ -196,12 +233,15 @@ class ASTNodeVal : public ASTNode {
    * @param condition_value_size The byte size of condition_value.
    * @param op The relational operation between the value of the field
    *     and `condition_value`.
+   * @param use_enumeration Whether or not to use an associated
+   *     enumeration at query time.
    */
   ASTNodeVal(
       const std::string& field_name,
       const void* const condition_value,
       const uint64_t condition_value_size,
-      const QueryConditionOp op)
+      const QueryConditionOp op,
+      bool use_enumeration = true)
       : field_name_(field_name)
       , condition_value_data_(condition_value_size)
       , condition_value_view_(
@@ -209,7 +249,8 @@ class ASTNodeVal : public ASTNode {
                  (void*)"" :
                  condition_value_data_.data()),
             condition_value_data_.size())
-      , op_(op) {
+      , op_(op)
+      , use_enumeration_(use_enumeration) {
     if (condition_value_view_.size() != 0) {
       memcpy(
           condition_value_data_.data(), condition_value, condition_value_size);
@@ -228,7 +269,8 @@ class ASTNodeVal : public ASTNode {
                  (void*)"" :
                  condition_value_data_.data()),
             condition_value_data_.size())
-      , op_(rhs.op_) {
+      , op_(rhs.op_)
+      , use_enumeration_(rhs.use_enumeration_) {
   }
 
   /**
@@ -243,7 +285,8 @@ class ASTNodeVal : public ASTNode {
                  (void*)"" :
                  condition_value_data_.data()),
             condition_value_data_.size())
-      , op_(negate_query_condition_op(rhs.op_)) {
+      , op_(negate_query_condition_op(rhs.op_))
+      , use_enumeration_(rhs.use_enumeration_) {
   }
 
   /**
@@ -284,10 +327,17 @@ class ASTNodeVal : public ASTNode {
    * @brief Gets the set of field names from all the value nodes in the ASTNode.
    *
    * @param field_name_set The set variable the function populates.
-   * @return std::unordered_set<std::string>& Set of the field names in the
-   * node.
    */
   void get_field_names(
+      std::unordered_set<std::string>& field_name_set) const override;
+
+  /**
+   * @brief Gets the set of field names from all the value nodes that reference
+   * an enumerated field.
+   *
+   * @param field_name_set The set variable the function populates.
+   */
+  void get_enumeration_field_names(
       std::unordered_set<std::string>& field_name_set) const override;
 
   /**
@@ -299,6 +349,17 @@ class ASTNodeVal : public ASTNode {
    * TileDB.
    */
   bool is_backwards_compatible() const override;
+
+  /**
+   * Update any node value condition values that refer to enumerated attributes.
+   * For any value condition on an attribute that has an Enumeration, the
+   * user specified value is passed to the attribute's enumeration `index_of`
+   * method to replace the user provided value with the Enumeration's value
+   * index.
+   *
+   * @param array_schema The array schema with all relevant enumerations loaded.
+   */
+  void rewrite_enumeration_conditions(const ArraySchema& array_schema) override;
 
   /**
    * @brief Checks whether the node is valid based on the array schema of the
@@ -370,6 +431,26 @@ class ASTNodeVal : public ASTNode {
    */
   const QueryConditionCombinationOp& get_combination_op() const override;
 
+  /**
+   * @brief Return whether this node's condition should be applied against
+   * the attributes enumerated values or the underlying index data if
+   * applicable for a given attribute.
+   *
+   * @return bool If true, apply this condition against the enumerated values.
+   */
+  bool use_enumeration() const override;
+
+  /**
+   * @brief By default, a query condition is applied against an enumeration's
+   * values. This can be disabled to apply a given condition against the
+   * underlying integer data stored for the attribute by passing `false` to
+   * this method.
+   *
+   * @param use_enumeration A bool indicating whether this condition should be
+   *        applied against the enumerations values or not.
+   */
+  void set_use_enumeration(bool use_enumeration) override;
+
  private:
   /** The attribute name. */
   std::string field_name_;
@@ -382,6 +463,9 @@ class ASTNodeVal : public ASTNode {
 
   /** The comparison operator. */
   QueryConditionOp op_;
+
+  /** Whether this condiiton applies to enumerated values if applicable */
+  bool use_enumeration_;
 };
 
 /**
@@ -461,10 +545,17 @@ class ASTNodeExpr : public ASTNode {
    * @brief Gets the set of field names from all the value nodes in the ASTNode.
    *
    * @param field_name_set The set variable the function populates.
-   * @return std::unordered_set<std::string>& Set of the field names in the
-   * node.
    */
   void get_field_names(
+      std::unordered_set<std::string>& field_name_set) const override;
+
+  /**
+   * @brief Gets the set of field names from all the value nodes that reference
+   * an enumerated field.
+   *
+   * @param field_name_set The set variable the function populates.
+   */
+  void get_enumeration_field_names(
       std::unordered_set<std::string>& field_name_set) const override;
 
   /**
@@ -476,6 +567,14 @@ class ASTNodeExpr : public ASTNode {
    * TileDB.
    */
   bool is_backwards_compatible() const override;
+
+  /**
+   * @brief Update an node value condition values that refer to enumerated
+   * attributes.
+   *
+   * @param array_schema The array schema with all relevant enumerations loaded.
+   */
+  void rewrite_enumeration_conditions(const ArraySchema& array_schema) override;
 
   /**
    * @brief Checks whether the node is valid based on the array schema of the
@@ -546,6 +645,31 @@ class ASTNodeExpr : public ASTNode {
    * @return const QueryConditionCombinationOp& The combination op.
    */
   const QueryConditionCombinationOp& get_combination_op() const override;
+
+  /**
+   * @brief Return whether this node's condition should be applied against
+   * the attributes enumerated values or the underlying index data if
+   * applicable for a given attribute.
+   *
+   * This method always throws when called on an expression node.
+   *
+   * @return bool If true, apply this condition against the enumerated values.
+   */
+  bool use_enumeration() const override;
+
+  /**
+   * @brief By default, a query condition is applied against an enumeration's
+   * values. This can be disabled to apply a given condition against the
+   * underlying integer data stored for the attribute by passing `false` to
+   * this method.
+   *
+   * When called on an expression node this value is recursively applied
+   * against all value nodes in the AST.
+   *
+   * @param use_enumeration A bool indicating whether this condition should be
+   *        applied against the enumerations values or not.
+   */
+  void set_use_enumeration(bool use_enumeration) override;
 
  private:
   /** The node list **/

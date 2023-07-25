@@ -76,6 +76,9 @@ add_subdirectory(data_order)
 # `dimension_label`: depends on `context`, `datatype`, `data_order`
 add_subdirectory(dimension_label)
 
+# `enumeration`: depends on `buffer`, `constants`, and `context`
+add_subdirectory(enumeration)
+
 # `filesystem`: no dependencies
 add_subdirectory(filesystem)
 
