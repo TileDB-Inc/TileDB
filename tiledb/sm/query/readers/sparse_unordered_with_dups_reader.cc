@@ -390,6 +390,10 @@ bool SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
     const uint64_t last_t,
     const FragmentMetadata& frag_md,
     ResultTilesList& result_tiles) {
+  if (tmp_read_state_.is_ignored_tile(f, t)) {
+    return false;
+  }
+
   // Use either the coordinate portion of the total budget or the tile upper
   // memory limit as the upper memory limit, whichever is smaller.
   const uint64_t upper_memory_limit = std::min<uint64_t>(
@@ -547,6 +551,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::clean_tile_list(
   while (it != result_tiles.end()) {
     auto f = it->frag_idx();
     if (it->result_num() == 0) {
+      tmp_read_state_.add_ignored_tile(*it);
       remove_result_tile(f, result_tiles, it++);
     } else {
       it++;
