@@ -2765,54 +2765,14 @@ TileOverlap Subarray::compute_tile_overlap(
     uint64_t range_idx, unsigned fid) const {
   assert(array_->array_schema_latest().dense());
   auto type{array_->array_schema_latest().dimension_ptr(0)->type()};
-  switch (type) {
-    case Datatype::INT8:
-      return compute_tile_overlap<int8_t>(range_idx, fid);
-    case Datatype::UINT8:
-      return compute_tile_overlap<uint8_t>(range_idx, fid);
-    case Datatype::INT16:
-      return compute_tile_overlap<int16_t>(range_idx, fid);
-    case Datatype::UINT16:
-      return compute_tile_overlap<uint16_t>(range_idx, fid);
-    case Datatype::INT32:
-      return compute_tile_overlap<int32_t>(range_idx, fid);
-    case Datatype::UINT32:
-      return compute_tile_overlap<uint32_t>(range_idx, fid);
-    case Datatype::INT64:
-      return compute_tile_overlap<int64_t>(range_idx, fid);
-    case Datatype::UINT64:
-      return compute_tile_overlap<uint64_t>(range_idx, fid);
-    case Datatype::FLOAT32:
-      return compute_tile_overlap<float>(range_idx, fid);
-    case Datatype::FLOAT64:
-      return compute_tile_overlap<double>(range_idx, fid);
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      return compute_tile_overlap<int64_t>(range_idx, fid);
-    default:
+
+  auto g = [&](auto T) {
+    if constexpr (std::is_same_v<decltype(T), char>) {
       assert(false);
-  }
-  return TileOverlap();
+    }
+    return compute_tile_overlap<decltype(T)>(range_idx, fid);
+  };
+  return execute_callback_with_type(type, g);
 }
 
 template <class T>

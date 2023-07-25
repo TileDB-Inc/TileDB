@@ -67,46 +67,46 @@ enum class Compressor : uint8_t;
 enum class Datatype : uint8_t;
 
 template <class Fn, class... Args>
-inline void execute_callback_with_type(Datatype type, Fn&& f, Args&&... args) {
+inline auto execute_callback_with_type(Datatype type, Fn&& f, Args&&... args) {
   switch (type) {
     case Datatype::INT32: {
-      f(int32_t{}, std::forward<Args>(args)...);
+      return f(int32_t{}, std::forward<Args>(args)...);
       break;
     }
     case Datatype::INT64: {
-      f(int64_t{}, std::forward<Args>(args)...);
+      return f(int64_t{}, std::forward<Args>(args)...);
       break;
     }
     case Datatype::INT8: {
-      f(int8_t{}, std::forward<Args>(args)...);
+      return f(int8_t{}, std::forward<Args>(args)...);
       break;
     }
     case Datatype::UINT8: {
-      f(uint8_t{}, std::forward<Args>(args)...);
+      return f(uint8_t{}, std::forward<Args>(args)...);
       break;
     }
     case Datatype::INT16: {
-      f(int16_t{}, std::forward<Args>(args)...);
+      return f(int16_t{}, std::forward<Args>(args)...);
       break;
     }
     case Datatype::UINT16: {
-      f(uint64_t{}, std::forward<Args>(args)...);
+      return f(uint64_t{}, std::forward<Args>(args)...);
       break;
     }
     case Datatype::UINT32: {
-      f(uint32_t{}, std::forward<Args>(args)...);
+      return f(uint32_t{}, std::forward<Args>(args)...);
       break;
     }
     case Datatype::UINT64: {
-      f(uint64_t{}, std::forward<Args>(args)...);
+      return f(uint64_t{}, std::forward<Args>(args)...);
       break;
     }
     case Datatype::FLOAT32: {
-      f(float{}, std::forward<Args>(args)...);
+      return f(float{}, std::forward<Args>(args)...);
       break;
     }
     case Datatype::FLOAT64: {
-      f(double{}, std::forward<Args>(args)...);
+      return f(double{}, std::forward<Args>(args)...);
       break;
     }
     case Datatype::DATETIME_YEAR:
@@ -131,11 +131,11 @@ inline void execute_callback_with_type(Datatype type, Fn&& f, Args&&... args) {
     case Datatype::TIME_PS:
     case Datatype::TIME_FS:
     case Datatype::TIME_AS: {
-      f(int64_t{}, std::forward<Args>(args)...);
+      return f(int64_t{}, std::forward<Args>(args)...);
       break;
     }
     case Datatype::STRING_ASCII: {
-      f(char{}, std::forward<Args>(args)...);
+      return f(char{}, std::forward<Args>(args)...);
       break;
     }
     default: {
