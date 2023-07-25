@@ -244,8 +244,8 @@ ArraySchema::ArraySchema(const ArraySchema& array_schema)
     , cell_order_{array_schema.cell_order_}
     , tile_order_{array_schema.tile_order_}
     , capacity_{array_schema.capacity_}
-    , attributes_{}           // recreated in loop below with `add_attribute`
-    , attribute_map_{}        // initialized inside `add_attribute`
+    , attributes_{array_schema.attributes_}
+    , attribute_map_{}        // initialized below
     , dimension_labels_{}     // copied in loop below
     , dimension_label_map_{}  // initialized below
     , cell_var_offsets_filters_{array_schema.cell_var_offsets_filters_}
@@ -256,8 +256,12 @@ ArraySchema::ArraySchema(const ArraySchema& array_schema)
 
   enumeration_map_ = array_schema.enumeration_map_;
   enumeration_path_map_ = array_schema.enumeration_path_map_;
-  for (auto attr : array_schema.attributes_)
-    throw_if_not_ok(add_attribute(attr, false));
+
+  auto n{static_cast<unsigned int>(attributes_.size())};
+  for (unsigned int i = 0; i < n; ++i) {
+    auto attr = attributes_[i].get();
+    attribute_map_[attr->name()] = {attr, i};
+  }
 
   for (const auto& label : array_schema.dimension_labels_) {
     dimension_labels_.emplace_back(label);
