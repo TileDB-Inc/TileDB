@@ -35,8 +35,6 @@
 #include "query_aggregate_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 
-#include "tiledb/sm/query_aggregate/query_aggregate.h"
-
 const tiledb_channel_operator_handle_t* tiledb_channel_operator_count =
     tiledb_channel_operator_handle_t::make_handle(
         QueryChannelOperator::COUNT, "COUNT");

@@ -36,7 +36,6 @@ gather_sources(${SOURCES})
 add_library(capi_query_aggregate OBJECT ${SOURCES})
 target_link_libraries(capi_query_aggregate PUBLIC export)
 target_link_libraries(capi_query_aggregate PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(capi_query_aggregate PUBLIC query_aggregate $<TARGET_OBJECTS:query_aggregate>)
 
 #
 # Test-compile of object library ensures link-completeness
