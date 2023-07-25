@@ -381,35 +381,16 @@ void ArraySchema::check_webp_filter() const {
           "WebP filter dimensions 0, 1 should have matching integral types");
     }
 
-    switch (x_dim->type()) {
-      case Datatype::INT8:
-        webp->set_extents<int8_t>(domain_->tile_extents());
-        break;
-      case Datatype::INT16:
-        webp->set_extents<int16_t>(domain_->tile_extents());
-        break;
-      case Datatype::INT32:
-        webp->set_extents<int32_t>(domain_->tile_extents());
-        break;
-      case Datatype::INT64:
-        webp->set_extents<int64_t>(domain_->tile_extents());
-        break;
-      case Datatype::UINT8:
-        webp->set_extents<uint8_t>(domain_->tile_extents());
-        break;
-      case Datatype::UINT16:
-        webp->set_extents<uint16_t>(domain_->tile_extents());
-        break;
-      case Datatype::UINT32:
-        webp->set_extents<uint32_t>(domain_->tile_extents());
-        break;
-      case Datatype::UINT64:
-        webp->set_extents<uint64_t>(domain_->tile_extents());
-        break;
-      default:
+    auto g = [&](auto T) {
+      if constexpr (
+          !std::is_integral_v<decltype(T)> ||
+          std::is_same_v<decltype(T), char>) {
         throw ArraySchemaException(
             "WebP filter requires integral dimensions at index 0, 1");
-    }
+      }
+      webp->set_extents<decltype(T)>(domain_->tile_extents());
+    };
+    execute_callback_with_type(x_dim->type(), g);
   }
 }
 

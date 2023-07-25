@@ -962,63 +962,14 @@ Status RestClient::subarray_to_str(
 
   std::stringstream ss;
   for (unsigned i = 0; i < subarray_nelts; i++) {
-    switch (coords_type) {
-      case Datatype::INT8:
-        ss << ((const int8_t*)subarray)[i];
-        break;
-      case Datatype::UINT8:
-        ss << ((const uint8_t*)subarray)[i];
-        break;
-      case Datatype::INT16:
-        ss << ((const int16_t*)subarray)[i];
-        break;
-      case Datatype::UINT16:
-        ss << ((const uint16_t*)subarray)[i];
-        break;
-      case Datatype::INT32:
-        ss << ((const int32_t*)subarray)[i];
-        break;
-      case Datatype::UINT32:
-        ss << ((const uint32_t*)subarray)[i];
-        break;
-      case Datatype::DATETIME_YEAR:
-      case Datatype::DATETIME_MONTH:
-      case Datatype::DATETIME_WEEK:
-      case Datatype::DATETIME_DAY:
-      case Datatype::DATETIME_HR:
-      case Datatype::DATETIME_MIN:
-      case Datatype::DATETIME_SEC:
-      case Datatype::DATETIME_MS:
-      case Datatype::DATETIME_US:
-      case Datatype::DATETIME_NS:
-      case Datatype::DATETIME_PS:
-      case Datatype::DATETIME_FS:
-      case Datatype::DATETIME_AS:
-      case Datatype::TIME_HR:
-      case Datatype::TIME_MIN:
-      case Datatype::TIME_SEC:
-      case Datatype::TIME_MS:
-      case Datatype::TIME_US:
-      case Datatype::TIME_NS:
-      case Datatype::TIME_PS:
-      case Datatype::TIME_FS:
-      case Datatype::TIME_AS:
-      case Datatype::INT64:
-        ss << ((const int64_t*)subarray)[i];
-        break;
-      case Datatype::UINT64:
-        ss << ((const uint64_t*)subarray)[i];
-        break;
-      case Datatype::FLOAT32:
-        ss << ((const float*)subarray)[i];
-        break;
-      case Datatype::FLOAT64:
-        ss << ((const double*)subarray)[i];
-        break;
-      default:
-        return LOG_STATUS(Status_RestError(
+    auto g = [&](auto T) {
+      if constexpr (std::is_same_v<decltype(T), char>) {
+        throw StatusException(Status_RestError(
             "Error converting subarray to string; unhandled datatype."));
-    }
+      }
+      ss << reinterpret_cast<const decltype(T)*>(subarray)[i];
+    };
+    execute_callback_with_type(coords_type, g);
 
     if (i < subarray_nelts - 1)
       ss << ",";

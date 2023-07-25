@@ -229,52 +229,16 @@ std::string DenseReader::name() {
 template <class OffType>
 Status DenseReader::dense_read() {
   auto type{array_schema_.domain().dimension_ptr(0)->type()};
-  switch (type) {
-    case Datatype::INT8:
-      return dense_read<int8_t, OffType>();
-    case Datatype::UINT8:
-      return dense_read<uint8_t, OffType>();
-    case Datatype::INT16:
-      return dense_read<int16_t, OffType>();
-    case Datatype::UINT16:
-      return dense_read<uint16_t, OffType>();
-    case Datatype::INT32:
-      return dense_read<int, OffType>();
-    case Datatype::UINT32:
-      return dense_read<unsigned, OffType>();
-    case Datatype::INT64:
-      return dense_read<int64_t, OffType>();
-    case Datatype::UINT64:
-      return dense_read<uint64_t, OffType>();
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      return dense_read<int64_t, OffType>();
-    default:
-      return LOG_STATUS(Status_ReaderError(
-          "Cannot read dense array; Unsupported domain type"));
-  }
 
-  return Status::Ok();
+  auto g = [&](auto T) {
+    if constexpr (
+        !std::is_integral_v<decltype(T)> || std::is_same_v<decltype(T), char>) {
+      return logger_->status(Status_ReaderError(
+          "Cannot read dense array; Unsupported domain type"));
+    }
+    return dense_read<decltype(T), OffType>();
+  };
+  return execute_callback_with_type(type, g);
 }
 
 template <class DimType, class OffType>

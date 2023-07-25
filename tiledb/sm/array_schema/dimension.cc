@@ -1379,62 +1379,13 @@ Status Dimension::set_tile_extent(const ByteVecValue& tile_extent) {
 }
 
 Status Dimension::set_null_tile_extent_to_range() {
-  switch (type_) {
-    case Datatype::INT8:
-      return set_null_tile_extent_to_range<int8_t>();
-    case Datatype::UINT8:
-      return set_null_tile_extent_to_range<uint8_t>();
-    case Datatype::INT16:
-      return set_null_tile_extent_to_range<int16_t>();
-    case Datatype::UINT16:
-      return set_null_tile_extent_to_range<uint16_t>();
-    case Datatype::INT32:
-      return set_null_tile_extent_to_range<int32_t>();
-    case Datatype::UINT32:
-      return set_null_tile_extent_to_range<uint32_t>();
-    case Datatype::INT64:
-      return set_null_tile_extent_to_range<int64_t>();
-    case Datatype::UINT64:
-      return set_null_tile_extent_to_range<uint64_t>();
-    case Datatype::FLOAT32:
-      return set_null_tile_extent_to_range<float>();
-    case Datatype::FLOAT64:
-      return set_null_tile_extent_to_range<double>();
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      return set_null_tile_extent_to_range<int64_t>();
-    case Datatype::STRING_ASCII:
+  auto g = [&](auto T) {
+    if constexpr (std::is_same_v<decltype(T), char>) {
       return Status::Ok();  // Do nothing for strings
-    default:
-      return LOG_STATUS(
-          Status_DimensionError("Cannot set null tile extent to domain range; "
-                                "Invalid dimension domain type"));
-  }
-
-  assert(false);
-  return LOG_STATUS(
-      Status_DimensionError("Cannot set null tile extent to domain range; "
-                            "Unsupported dimension type"));
+    }
+    return set_null_tile_extent_to_range<decltype(T)>();
+  };
+  return execute_callback_with_type(type_, g);
 }
 
 template <class T>
@@ -1480,106 +1431,13 @@ Status Dimension::set_null_tile_extent_to_range() {
 /* ********************************* */
 
 Status Dimension::check_domain() const {
-  switch (type_) {
-    case Datatype::INT32:
-      return check_domain<int>();
-    case Datatype::INT64:
-      return check_domain<int64_t>();
-    case Datatype::INT8:
-      return check_domain<int8_t>();
-    case Datatype::UINT8:
-      return check_domain<uint8_t>();
-    case Datatype::INT16:
-      return check_domain<int16_t>();
-    case Datatype::UINT16:
-      return check_domain<uint16_t>();
-    case Datatype::UINT32:
-      return check_domain<uint32_t>();
-    case Datatype::UINT64:
-      return check_domain<uint64_t>();
-    case Datatype::FLOAT32:
-      return check_domain<float>();
-    case Datatype::FLOAT64:
-      return check_domain<double>();
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      return check_domain<int64_t>();
-    default:
-      return LOG_STATUS(Status_DimensionError(
-          "Domain check failed; Invalid dimension domain type"));
-  }
+  auto g = [&](auto T) { return check_domain<decltype(T)>(); };
+  return execute_callback_with_type(type_, g);
 }
 
 Status Dimension::check_tile_extent() const {
-  switch (type_) {
-    case Datatype::INT32:
-      return check_tile_extent<int>();
-    case Datatype::INT64:
-      return check_tile_extent<int64_t>();
-    case Datatype::INT8:
-      return check_tile_extent<int8_t>();
-    case Datatype::UINT8:
-      return check_tile_extent<uint8_t>();
-    case Datatype::INT16:
-      return check_tile_extent<int16_t>();
-    case Datatype::UINT16:
-      return check_tile_extent<uint16_t>();
-    case Datatype::UINT32:
-      return check_tile_extent<uint32_t>();
-    case Datatype::UINT64:
-      return check_tile_extent<uint64_t>();
-    case Datatype::FLOAT32:
-      return check_tile_extent<float>();
-    case Datatype::FLOAT64:
-      return check_tile_extent<double>();
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      return check_tile_extent<int64_t>();
-    default:
-      throw DimensionException(
-          "Tile extent check failed on dimension '" + name() +
-          "'; Invalid dimension domain type");
-  }
+  auto g = [&](auto T) { return check_tile_extent<decltype(T)>(); };
+  return execute_callback_with_type(type_, g);
 }
 
 template <class T>
@@ -1700,100 +1558,21 @@ void Dimension::ensure_datatype_is_supported(Datatype type) const {
 std::string Dimension::tile_extent_str() const {
   std::stringstream ss;
 
-  if (!tile_extent_)
+  if (!tile_extent_) {
     return constants::null_str;
-
-  const float* tile_extent_float32;
-  const double* tile_extent_float64;
-  const uint8_t* tile_extent_uint8;
-  const uint16_t* tile_extent_uint16;
-  const uint32_t* tile_extent_uint32;
-  const uint64_t* tile_extent_uint64;
-
-  switch (type_) {
-    case Datatype::INT32:
-      tile_extent_uint32 = (const uint32_t*)tile_extent_.data();
-      ss << *tile_extent_uint32;
-      return ss.str();
-    case Datatype::INT64:
-      tile_extent_uint64 = (const uint64_t*)tile_extent_.data();
-      ss << *tile_extent_uint64;
-      return ss.str();
-    case Datatype::FLOAT32:
-      tile_extent_float32 = (const float*)tile_extent_.data();
-      ss << *tile_extent_float32;
-      return ss.str();
-    case Datatype::FLOAT64:
-      tile_extent_float64 = (const double*)tile_extent_.data();
-      ss << *tile_extent_float64;
-      return ss.str();
-    case Datatype::INT8:
-      tile_extent_uint8 = (const uint8_t*)tile_extent_.data();
-      ss << int(*tile_extent_uint8);
-      return ss.str();
-    case Datatype::UINT8:
-      tile_extent_uint8 = (const uint8_t*)tile_extent_.data();
-      ss << int(*tile_extent_uint8);
-      return ss.str();
-    case Datatype::INT16:
-      tile_extent_uint16 = (const uint16_t*)tile_extent_.data();
-      ss << *tile_extent_uint16;
-      return ss.str();
-    case Datatype::UINT16:
-      tile_extent_uint16 = (const uint16_t*)tile_extent_.data();
-      ss << *tile_extent_uint16;
-      return ss.str();
-    case Datatype::UINT32:
-      tile_extent_uint32 = (const uint32_t*)tile_extent_.data();
-      ss << *tile_extent_uint32;
-      return ss.str();
-    case Datatype::UINT64:
-      tile_extent_uint64 = (const uint64_t*)tile_extent_.data();
-      ss << *tile_extent_uint64;
-      return ss.str();
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      tile_extent_uint64 = (const uint64_t*)tile_extent_.data();
-      ss << *tile_extent_uint64;
-      return ss.str();
-
-    case Datatype::BLOB:
-    case Datatype::CHAR:
-    case Datatype::BOOL:
-    case Datatype::STRING_ASCII:
-    case Datatype::STRING_UTF8:
-    case Datatype::STRING_UTF16:
-    case Datatype::STRING_UTF32:
-    case Datatype::STRING_UCS2:
-    case Datatype::STRING_UCS4:
-    case Datatype::ANY:
-      // Not supported domain type
-      assert(false);
-      return "";
   }
 
-  assert(false);
-  return "";
+  auto g = [&](auto T) {
+    if constexpr (std::is_same_v<decltype(T), char>) {
+      // Not supported domain type
+      assert(false);
+      return std::string("");
+    }
+    auto val = reinterpret_cast<const decltype(T)*>(tile_extent_.data());
+    ss << *val;
+    return ss.str();
+  };
+  return execute_callback_with_type(type_, g);
 }
 
 void Dimension::set_crop_range_func() {
