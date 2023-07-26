@@ -47,10 +47,7 @@ if(NOT TILEDB_WEBP_EP_BUILT)
     ExternalProject_Add(ep_webp
       PREFIX "externals"
       GIT_REPOSITORY "https://chromium.googlesource.com/webm/libwebp"
-      #GIT_TAG "release-1.?.?" # after 'static' addition in some release
-      # from branch 'main' history as the 'static' support added apr 12 2022
-      # at implementation time is not yet in release branch/tag.
-      GIT_TAG "a19a25bb03757d5bb14f8d9755ab39f06d0ae5ef"
+      GIT_TAG "v1.3.1"
       GIT_SUBMODULES_RECURSE TRUE
       UPDATE_COMMAND ""
       CMAKE_ARGS
