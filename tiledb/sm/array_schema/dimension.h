@@ -90,7 +90,7 @@ inline auto execute_callback_with_type(Datatype type, Fn&& f, Args&&... args) {
       break;
     }
     case Datatype::UINT16: {
-      return f(uint64_t{}, std::forward<Args>(args)...);
+      return f(uint16_t{}, std::forward<Args>(args)...);
       break;
     }
     case Datatype::UINT32: {
