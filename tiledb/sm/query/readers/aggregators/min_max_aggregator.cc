@@ -49,145 +49,84 @@ class MinMaxAggregatorStatusException : public StatusException {
 };
 
 template <typename T>
-MinMaxAggregator<T>::MinMaxAggregator(
-    const bool min,
-    const std::string field_name,
-    const bool var_sized,
-    const bool is_nullable,
-    const unsigned cell_val_num)
-    : is_nullable_(is_nullable)
-    , var_sized_(var_sized)
-    , cell_val_num_(cell_val_num)
-    , field_name_(field_name)
-    , value_(nullopt)
-    , validity_value_(is_nullable ? std::make_optional(0) : nullopt) {
-  if (var_sized && !std::is_same<T, std::string>::value) {
-    throw MinMaxAggregatorStatusException(
-        "Min/max aggregates must not be requested for var sized non-string "
-        "attributes.");
-  }
+template <typename VALUE_T>
+VALUE_T ComparatorAggregatorBase<T>::value_at(
+    const void* fixed_data, const char*, const uint64_t cell_idx) const {
+  return static_cast<const T*>(fixed_data)[cell_idx];
+}
 
-  if (cell_val_num != 1 && !std::is_same<T, std::string>::value) {
-    throw MinMaxAggregatorStatusException(
-        "Min/max aggregates must not be requested for attributes with more "
-        "than one value.");
-  }
+template <>
+template <>
+std::string_view ComparatorAggregatorBase<std::string>::value_at(
+    const void* fixed_data,
+    const char* var_data,
+    const uint64_t cell_idx) const {
+  if (field_info_.var_sized_) {
+    auto offsets = static_cast<const uint64_t*>(fixed_data);
+    // Return the var sized string.
+    uint64_t offset = offsets[cell_idx];
+    uint64_t next_offset = offsets[cell_idx + 1];
 
-  if (min) {
-    op_ = std::less<VALUE_T>();
+    return std::string_view(var_data + offset, next_offset - offset);
   } else {
-    op_ = std::greater<VALUE_T>();
+    // Return the fixed size string.
+    return std::string_view(
+        static_cast<const char*>(fixed_data) +
+            field_info_.cell_val_num_ * cell_idx,
+        field_info_.cell_val_num_);
   }
 }
 
 template <typename T>
-void MinMaxAggregator<T>::validate_output_buffer(
+template <typename VALUE_T>
+VALUE_T ComparatorAggregatorBase<T>::last_var_value(
+    const void*, const char*, const AggregateBuffer&) const {
+  return 0;
+}
+
+template <>
+template <>
+std::string_view ComparatorAggregatorBase<std::string>::last_var_value(
+    const void* fixed_data,
+    const char* var_data,
+    const AggregateBuffer& input_data) const {
+  auto offsets = static_cast<const uint64_t*>(fixed_data);
+
+  // Return the var sized string.
+  uint64_t offset = offsets[input_data.max_cell() - 1];
+  uint64_t next_offset = input_data.var_data_size();
+
+  return std::string_view(var_data + offset, next_offset - offset);
+}
+
+template <typename T>
+void ComparatorAggregatorBase<T>::copy_to_user_buffer(
     std::string output_field_name,
-    std::unordered_map<std::string, QueryBuffer>& buffers) {
-  if (buffers.count(output_field_name) == 0) {
-    throw MinMaxAggregatorStatusException("Result buffer doesn't exist.");
-  }
-
+    std::unordered_map<std::string, QueryBuffer>& buffers) const {
   auto& result_buffer = buffers[output_field_name];
-  if (result_buffer.buffer_ == nullptr) {
-    throw MinMaxAggregatorStatusException(
-        "Min/max aggregates must have a fixed size buffer.");
+
+  *static_cast<T*>(result_buffer.buffer_) = value_.value_or(0);
+  if (result_buffer.buffer_size_) {
+    *result_buffer.buffer_size_ = sizeof(T);
   }
 
-  if (var_sized_) {
-    if (result_buffer.buffer_var_ == nullptr) {
-      throw MinMaxAggregatorStatusException(
-          "Var sized min/max aggregates must have a var buffer.");
-    }
+  if (field_info_.is_nullable_) {
+    *static_cast<uint8_t*>(result_buffer.validity_vector_.buffer()) =
+        validity_value_.value();
 
-    if (result_buffer.original_buffer_size_ !=
-        constants::cell_var_offset_size) {
-      throw MinMaxAggregatorStatusException(
-          "Var sized min/max aggregates offset buffer should be for one "
-          "element only.");
-    }
-
-    if (cell_val_num_ != constants::var_num) {
-      throw MinMaxAggregatorStatusException(
-          "Var sized min/max aggregates should have TILEDB_VAR_NUM cell val "
-          "num.");
-    }
-  } else {
-    if (result_buffer.buffer_var_ != nullptr) {
-      throw MinMaxAggregatorStatusException(
-          "Fixed min/max aggregates must not have a var buffer.");
-    }
-
-    // If cell val num is one, this is a normal fixed size attritube. If not, it
-    // is a fixed sized string.
-    if (cell_val_num_ == 1) {
-      if (result_buffer.original_buffer_size_ != sizeof(T)) {
-        throw MinMaxAggregatorStatusException(
-            "Fixed size min/max aggregates fixed buffer should be for one "
-            "element only.");
-      }
-    } else {
-      if (result_buffer.original_buffer_size_ != cell_val_num_) {
-        throw MinMaxAggregatorStatusException(
-            "Fixed size min/max aggregates fixed buffer should be for one "
-            "element only.");
-      }
-    }
-  }
-
-  bool exists_validity = result_buffer.validity_vector_.buffer();
-  if (is_nullable_) {
-    if (!exists_validity) {
-      throw MinMaxAggregatorStatusException(
-          "Min/max aggregates for nullable attributes must have a validity "
-          "buffer.");
-    }
-
-    if (*result_buffer.validity_vector_.buffer_size() != 1) {
-      throw MinMaxAggregatorStatusException(
-          "Min/max aggregates validity vector should be for one element only.");
-    }
-  } else {
-    if (exists_validity) {
-      throw MinMaxAggregatorStatusException(
-          "Min/max aggregates for non nullable attributes must not have a "
-          "validity buffer.");
-    }
-  }
-}
-
-template <typename T>
-void MinMaxAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
-  optional<T> res{nullopt};
-
-  if (input_data.is_count_bitmap()) {
-    res = min_max<uint64_t>(input_data);
-  } else {
-    res = min_max<uint8_t>(input_data);
-  }
-
-  {
-    // This might be called on multiple threads, the final result stored in
-    // value_ should be computed in a thread safe manner.
-    std::unique_lock lock(value_mtx_);
-    if (res.has_value() &&
-        (value_ == std::nullopt || op_(res.value(), value_.value()))) {
-      value_ = res.value();
-    }
-
-    if (is_nullable_ && res.has_value()) {
-      validity_value_ = 1;
+    if (result_buffer.validity_vector_.buffer_size()) {
+      *result_buffer.validity_vector_.buffer_size() = 1;
     }
   }
 }
 
 template <>
-void MinMaxAggregator<std::string>::copy_to_user_buffer(
+void ComparatorAggregatorBase<std::string>::copy_to_user_buffer(
     std::string output_field_name,
-    std::unordered_map<std::string, QueryBuffer>& buffers) {
+    std::unordered_map<std::string, QueryBuffer>& buffers) const {
   auto& result_buffer = buffers[output_field_name];
 
-  if (var_sized_) {
+  if (field_info_.var_sized_) {
     // For var sized string, we need to set the offset value of 0 and the var
     // data buffer.
     *static_cast<uint64_t*>(result_buffer.buffer_) = 0;
@@ -198,7 +137,7 @@ void MinMaxAggregator<std::string>::copy_to_user_buffer(
     if (value_.has_value()) {
       if (result_buffer.original_buffer_var_size_ < value_.value().size()) {
         throw MinMaxAggregatorStatusException(
-            "Min/max buffer not big enough for " + field_name_ +
+            "Min/max buffer not big enough for " + field_info_.name_ +
             ". Required: " + std::to_string(value_.value().size()));
       }
 
@@ -221,7 +160,7 @@ void MinMaxAggregator<std::string>::copy_to_user_buffer(
         value_.has_value() ? value_.value().size() : 0;
   }
 
-  if (is_nullable_) {
+  if (field_info_.is_nullable_) {
     *static_cast<uint8_t*>(result_buffer.validity_vector_.buffer()) =
         validity_value_.value();
 
@@ -231,81 +170,142 @@ void MinMaxAggregator<std::string>::copy_to_user_buffer(
   }
 }
 
-template <typename T>
-void MinMaxAggregator<T>::copy_to_user_buffer(
+template <typename T, typename Op>
+ComparatorAggregator<T, Op>::ComparatorAggregator(const FieldInfo& field_info)
+    : ComparatorAggregatorBase<T>(field_info) {
+  if (field_info.var_sized_ && !std::is_same<T, std::string>::value) {
+    throw MinMaxAggregatorStatusException(
+        "Min/max aggregates must not be requested for var sized non-string "
+        "attributes.");
+  }
+
+  if (field_info.cell_val_num_ != 1 && !std::is_same<T, std::string>::value) {
+    throw MinMaxAggregatorStatusException(
+        "Min/max aggregates must not be requested for attributes with more "
+        "than one value.");
+  }
+}
+
+template <typename T, typename Op>
+void ComparatorAggregator<T, Op>::validate_output_buffer(
     std::string output_field_name,
     std::unordered_map<std::string, QueryBuffer>& buffers) {
-  auto& result_buffer = buffers[output_field_name];
-
-  *static_cast<T*>(result_buffer.buffer_) = value_.value_or(0);
-  if (result_buffer.buffer_size_) {
-    *result_buffer.buffer_size_ = sizeof(T);
+  if (buffers.count(output_field_name) == 0) {
+    throw MinMaxAggregatorStatusException("Result buffer doesn't exist.");
   }
 
-  if (is_nullable_) {
-    *static_cast<uint8_t*>(result_buffer.validity_vector_.buffer()) =
-        validity_value_.value();
+  auto& result_buffer = buffers[output_field_name];
+  if (result_buffer.buffer_ == nullptr) {
+    throw MinMaxAggregatorStatusException(
+        "Min/max aggregates must have a fixed size buffer.");
+  }
 
-    if (result_buffer.validity_vector_.buffer_size()) {
-      *result_buffer.validity_vector_.buffer_size() = 1;
+  if (ComparatorAggregatorBase<T>::field_info_.var_sized_) {
+    if (result_buffer.buffer_var_ == nullptr) {
+      throw MinMaxAggregatorStatusException(
+          "Var sized min/max aggregates must have a var buffer.");
+    }
+
+    if (result_buffer.original_buffer_size_ !=
+        constants::cell_var_offset_size) {
+      throw MinMaxAggregatorStatusException(
+          "Var sized min/max aggregates offset buffer should be for one "
+          "element only.");
+    }
+
+    if (ComparatorAggregatorBase<T>::field_info_.cell_val_num_ !=
+        constants::var_num) {
+      throw MinMaxAggregatorStatusException(
+          "Var sized min/max aggregates should have TILEDB_VAR_NUM cell val "
+          "num.");
+    }
+  } else {
+    if (result_buffer.buffer_var_ != nullptr) {
+      throw MinMaxAggregatorStatusException(
+          "Fixed min/max aggregates must not have a var buffer.");
+    }
+
+    // If cell val num is one, this is a normal fixed size attritube. If not, it
+    // is a fixed sized string.
+    if (ComparatorAggregatorBase<T>::field_info_.cell_val_num_ == 1) {
+      if (result_buffer.original_buffer_size_ != sizeof(T)) {
+        throw MinMaxAggregatorStatusException(
+            "Fixed size min/max aggregates fixed buffer should be for one "
+            "element only.");
+      }
+    } else {
+      if (result_buffer.original_buffer_size_ !=
+          ComparatorAggregatorBase<T>::field_info_.cell_val_num_) {
+        throw MinMaxAggregatorStatusException(
+            "Fixed size min/max aggregates fixed buffer should be for one "
+            "element only.");
+      }
+    }
+  }
+
+  bool exists_validity = result_buffer.validity_vector_.buffer();
+  if (ComparatorAggregatorBase<T>::field_info_.is_nullable_) {
+    if (!exists_validity) {
+      throw MinMaxAggregatorStatusException(
+          "Min/max aggregates for nullable attributes must have a validity "
+          "buffer.");
+    }
+
+    if (*result_buffer.validity_vector_.buffer_size() != 1) {
+      throw MinMaxAggregatorStatusException(
+          "Min/max aggregates validity vector should be for one element only.");
+    }
+  } else {
+    if (exists_validity) {
+      throw MinMaxAggregatorStatusException(
+          "Min/max aggregates for non nullable attributes must not have a "
+          "validity buffer.");
     }
   }
 }
 
-template <typename T>
-template <typename VALUE_T>
-VALUE_T MinMaxAggregator<T>::value_at(
-    const void* fixed_data, const char*, const uint64_t cell_idx) {
-  return static_cast<const T*>(fixed_data)[cell_idx];
-}
+template <typename T, typename Op>
+void ComparatorAggregator<T, Op>::aggregate_data(AggregateBuffer& input_data) {
+  optional<T> res{nullopt};
 
-template <>
-template <>
-std::string_view MinMaxAggregator<std::string>::value_at(
-    const void* fixed_data, const char* var_data, const uint64_t cell_idx) {
-  if (var_sized_) {
-    auto offsets = static_cast<const uint64_t*>(fixed_data);
-    // Return the var sized string.
-    uint64_t offset = offsets[cell_idx];
-    uint64_t next_offset = offsets[cell_idx + 1];
-
-    return std::string_view(var_data + offset, next_offset - offset);
+  if (input_data.is_count_bitmap()) {
+    res = min_max<uint64_t>(input_data);
   } else {
-    // Return the fixed size string.
-    return std::string_view(
-        static_cast<const char*>(fixed_data) + cell_val_num_ * cell_idx,
-        cell_val_num_);
+    res = min_max<uint8_t>(input_data);
+  }
+
+  {
+    // This might be called on multiple threads, the final result stored in
+    // value_ should be computed in a thread safe manner.
+    std::unique_lock lock(value_mtx_);
+    if (res.has_value() &&
+        (ComparatorAggregatorBase<T>::value_ == std::nullopt ||
+         op_(res.value(), ComparatorAggregatorBase<T>::value_.value()))) {
+      ComparatorAggregatorBase<T>::value_ = res.value();
+    }
+
+    if (ComparatorAggregatorBase<T>::field_info_.is_nullable_ &&
+        res.has_value()) {
+      ComparatorAggregatorBase<T>::validity_value_ = 1;
+    }
   }
 }
 
-template <typename T>
-template <typename VALUE_T>
-VALUE_T MinMaxAggregator<T>::last_var_value(
-    const void*, const char*, const AggregateBuffer&) {
-  return 0;
+template <typename T, typename Op>
+void ComparatorAggregator<T, Op>::copy_to_user_buffer(
+    std::string output_field_name,
+    std::unordered_map<std::string, QueryBuffer>& buffers) {
+  ComparatorAggregatorBase<T>::copy_to_user_buffer(output_field_name, buffers);
 }
 
-template <>
-template <>
-std::string_view MinMaxAggregator<std::string>::last_var_value(
-    const void* fixed_data,
-    const char* var_data,
-    const AggregateBuffer& input_data) {
-  auto offsets = static_cast<const uint64_t*>(fixed_data);
-
-  // Return the var sized string.
-  uint64_t offset = offsets[input_data.max_cell() - 1];
-  uint64_t next_offset = input_data.var_data_size();
-
-  return std::string_view(var_data + offset, next_offset - offset);
-}
-
-template <typename T>
+template <typename T, typename Op>
 template <typename BITMAP_T>
-optional<T> MinMaxAggregator<T>::min_max(AggregateBuffer& input_data) {
+optional<T> ComparatorAggregator<T, Op>::min_max(AggregateBuffer& input_data) {
   optional<VALUE_T> value;
   auto fixed_data = input_data.fixed_data_as<void*>();
-  auto var_data = var_sized_ ? input_data.var_data() : nullptr;
+  auto var_data = ComparatorAggregatorBase<T>::field_info_.var_sized_ ?
+                      input_data.var_data() :
+                      nullptr;
 
   // Run different loops for bitmap versus no bitmap and nullable versus non
   // nullable. The bitmap tells us which cells was already filtered out by
@@ -317,7 +317,7 @@ optional<T> MinMaxAggregator<T>::min_max(AggregateBuffer& input_data) {
   if (input_data.has_bitmap()) {
     auto bitmap_values = input_data.bitmap_data_as<BITMAP_T>();
 
-    if (is_nullable_) {
+    if (ComparatorAggregatorBase<T>::field_info_.is_nullable_) {
       auto validity_values = input_data.validity_data();
 
       // Process for nullable min/max with bitmap.
@@ -349,7 +349,7 @@ optional<T> MinMaxAggregator<T>::min_max(AggregateBuffer& input_data) {
       }
     }
   } else {
-    if (is_nullable_) {
+    if (ComparatorAggregatorBase<T>::field_info_.is_nullable_) {
       auto validity_values = input_data.validity_data();
 
       // Process for nullable min/max with no bitmap.
@@ -386,28 +386,28 @@ optional<T> MinMaxAggregator<T>::min_max(AggregateBuffer& input_data) {
 }
 
 // Explicit template instantiations
-template MinMaxAggregator<int8_t>::MinMaxAggregator(
-    const bool, const std::string, const bool, const bool, const unsigned);
-template MinMaxAggregator<int16_t>::MinMaxAggregator(
-    const bool, const std::string, const bool, const bool, const unsigned);
-template MinMaxAggregator<int32_t>::MinMaxAggregator(
-    const bool, const std::string, const bool, const bool, const unsigned);
-template MinMaxAggregator<int64_t>::MinMaxAggregator(
-    const bool, const std::string, const bool, const bool, const unsigned);
-template MinMaxAggregator<uint8_t>::MinMaxAggregator(
-    const bool, const std::string, const bool, const bool, const unsigned);
-template MinMaxAggregator<uint16_t>::MinMaxAggregator(
-    const bool, const std::string, const bool, const bool, const unsigned);
-template MinMaxAggregator<uint32_t>::MinMaxAggregator(
-    const bool, const std::string, const bool, const bool, const unsigned);
-template MinMaxAggregator<uint64_t>::MinMaxAggregator(
-    const bool, const std::string, const bool, const bool, const unsigned);
-template MinMaxAggregator<float>::MinMaxAggregator(
-    const bool, const std::string, const bool, const bool, const unsigned);
-template MinMaxAggregator<double>::MinMaxAggregator(
-    const bool, const std::string, const bool, const bool, const unsigned);
-template MinMaxAggregator<std::string>::MinMaxAggregator(
-    const bool, const std::string, const bool, const bool, const unsigned);
+template MinAggregator<int8_t>::MinAggregator(const FieldInfo);
+template MinAggregator<int16_t>::MinAggregator(const FieldInfo);
+template MinAggregator<int32_t>::MinAggregator(const FieldInfo);
+template MinAggregator<int64_t>::MinAggregator(const FieldInfo);
+template MinAggregator<uint8_t>::MinAggregator(const FieldInfo);
+template MinAggregator<uint16_t>::MinAggregator(const FieldInfo);
+template MinAggregator<uint32_t>::MinAggregator(const FieldInfo);
+template MinAggregator<uint64_t>::MinAggregator(const FieldInfo);
+template MinAggregator<float>::MinAggregator(const FieldInfo);
+template MinAggregator<double>::MinAggregator(const FieldInfo);
+template MinAggregator<std::string>::MinAggregator(const FieldInfo);
+template MaxAggregator<int8_t>::MaxAggregator(const FieldInfo);
+template MaxAggregator<int16_t>::MaxAggregator(const FieldInfo);
+template MaxAggregator<int32_t>::MaxAggregator(const FieldInfo);
+template MaxAggregator<int64_t>::MaxAggregator(const FieldInfo);
+template MaxAggregator<uint8_t>::MaxAggregator(const FieldInfo);
+template MaxAggregator<uint16_t>::MaxAggregator(const FieldInfo);
+template MaxAggregator<uint32_t>::MaxAggregator(const FieldInfo);
+template MaxAggregator<uint64_t>::MaxAggregator(const FieldInfo);
+template MaxAggregator<float>::MaxAggregator(const FieldInfo);
+template MaxAggregator<double>::MaxAggregator(const FieldInfo);
+template MaxAggregator<std::string>::MaxAggregator(const FieldInfo);
 
 }  // namespace sm
 }  // namespace tiledb

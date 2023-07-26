@@ -43,39 +43,39 @@ using namespace tiledb::sm;
 TEST_CASE("Sum aggregator: constructor", "[sum-aggregator][constructor]") {
   SECTION("Var size") {
     CHECK_THROWS_WITH(
-        SumAggregator<uint8_t>("a1", true, false, 1),
+        SumAggregator<uint8_t>(FieldInfo("a1", true, false, 1)),
         "SumAggregator: Sum aggregates must not be requested for var sized "
         "attributes.");
   }
 
   SECTION("Invalid cell val num") {
     CHECK_THROWS_WITH(
-        SumAggregator<uint8_t>("a1", false, false, 2),
+        SumAggregator<uint8_t>(FieldInfo("a1", false, false, 2)),
         "SumAggregator: Sum aggregates must not be requested for attributes "
         "with more than one value.");
   }
 }
 
 TEST_CASE("Sum aggregator: var sized", "[sum-aggregator][var-sized]") {
-  SumAggregator<uint8_t> aggregator("a1", false, false, 1);
+  SumAggregator<uint8_t> aggregator(FieldInfo("a1", false, false, 1));
   CHECK(aggregator.var_sized() == false);
 }
 
 TEST_CASE(
     "Sum aggregator: need recompute", "[sum-aggregator][need-recompute]") {
-  SumAggregator<uint8_t> aggregator("a1", false, false, 1);
+  SumAggregator<uint8_t> aggregator(FieldInfo("a1", false, false, 1));
   CHECK(aggregator.need_recompute_on_overflow() == true);
 }
 
 TEST_CASE("Sum aggregator: field name", "[sum-aggregator][field-name]") {
-  SumAggregator<uint8_t> aggregator("a1", false, false, 1);
+  SumAggregator<uint8_t> aggregator(FieldInfo("a1", false, false, 1));
   CHECK(aggregator.field_name() == "a1");
 }
 
 TEST_CASE(
     "Sum aggregator: Validate buffer", "[sum-aggregator][validate-buffer]") {
-  SumAggregator<uint8_t> aggregator("a1", false, false, 1);
-  SumAggregator<uint8_t> aggregator_nullable("a2", false, true, 1);
+  SumAggregator<uint8_t> aggregator(FieldInfo("a1", false, false, 1));
+  SumAggregator<uint8_t> aggregator_nullable(FieldInfo("a2", false, true, 1));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -189,8 +189,8 @@ TEMPLATE_LIST_TEST_CASE(
     "[sum-aggregator][basic-aggregation]",
     FixedTypesUnderTest) {
   typedef TestType T;
-  SumAggregator<T> aggregator("a1", false, false, 1);
-  SumAggregator<T> aggregator_nullable("a2", false, true, 1);
+  SumAggregator<T> aggregator(FieldInfo("a1", false, false, 1));
+  SumAggregator<T> aggregator_nullable(FieldInfo("a2", false, true, 1));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -369,7 +369,7 @@ TEMPLATE_LIST_TEST_CASE(
 
 TEST_CASE(
     "Sum aggregator: signed overflow", "[sum-aggregator][signed-overflow]") {
-  SumAggregator<int64_t> aggregator("a1", false, false, 1);
+  SumAggregator<int64_t> aggregator(FieldInfo("a1", false, false, 1));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -455,7 +455,7 @@ TEST_CASE(
 TEST_CASE(
     "Sum aggregator: unsigned overflow",
     "[sum-aggregator][unsigned-overflow]") {
-  SumAggregator<uint64_t> aggregator("a1", false, false, 1);
+  SumAggregator<uint64_t> aggregator(FieldInfo("a1", false, false, 1));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -491,7 +491,7 @@ TEST_CASE(
 
 TEST_CASE(
     "Sum aggregator: double overflow", "[sum-aggregator][double-overflow]") {
-  SumAggregator<double> aggregator("a1", false, false, 1);
+  SumAggregator<double> aggregator(FieldInfo("a1", false, false, 1));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 

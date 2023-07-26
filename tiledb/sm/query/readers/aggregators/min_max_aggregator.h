@@ -35,6 +35,7 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/query/readers/aggregators/field_info.h"
 #include "tiledb/sm/query/readers/aggregators/iaggregator.h"
 
 #include <functional>
@@ -59,48 +60,128 @@ struct min_max_type_data<std::string> {
   typedef std::string_view value_type;
 };
 
+/**
+ * Comparator aggregator base class to handle partial specialization of some
+ * types.
+ */
 template <typename T>
-class MinMaxAggregator : public IAggregator {
-  using VALUE_T = typename min_max_type_data<T>::value_type;
-
- public:
+class ComparatorAggregatorBase {
+ protected:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  MinMaxAggregator() = delete;
+  /**
+   * Constructor.
+   *
+   * @param field_info Field info.
+   */
+  ComparatorAggregatorBase(const FieldInfo& field_info)
+      : field_info_(field_info)
+      , value_(nullopt)
+      , validity_value_(
+            field_info_.is_nullable_ ? std::make_optional(0) : nullopt) {
+  }
+
+  DISABLE_COPY_AND_COPY_ASSIGN(ComparatorAggregatorBase);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(ComparatorAggregatorBase);
+
+  /* ********************************* */
+  /*        PROTECTED METHODS          */
+  /* ********************************* */
+
+  /**
+   * Get the value at a certain cell index for the input buffers.
+   *
+   * @tparam VALUE_T Value type.
+   * @param fixed_data Fixed data buffer.
+   * @param var_data Var data buffer.
+   * @param cell_idx Cell index.
+   *
+   * @return Value.
+   */
+  template <typename VALUE_T>
+  VALUE_T value_at(
+      const void* fixed_data,
+      const char* var_data,
+      const uint64_t cell_idx) const;
+
+  /**
+   * Get the last value for the input buffers.
+   *
+   * @tparam VALUE_T Value type.
+   * @param fixed_data Fixed data buffer.
+   * @param var_data Var data buffer.
+   * @param input_data Aggregate buffer.
+   *
+   * @return Value.
+   */
+  template <typename VALUE_T>
+  VALUE_T last_var_value(
+      const void* fixed_data,
+      const char* var_data,
+      const AggregateBuffer& input_data) const;
+
+  /**
+   * Copy final data to the user buffer.
+   *
+   * @param output_field_name Name for the output buffer.
+   * @param buffers Query buffers.
+   */
+  void copy_to_user_buffer(
+      std::string output_field_name,
+      std::unordered_map<std::string, QueryBuffer>& buffers) const;
+
+ protected:
+  /* ********************************* */
+  /*       PROTECTED ATTRIBUTES        */
+  /* ********************************* */
+
+  /** Field information. */
+  const FieldInfo field_info_;
+
+  /** Computed min/max. */
+  optional<T> value_;
+
+  /** Computed validity value. */
+  optional<uint8_t> validity_value_;
+};
+
+template <typename T, typename Op>
+class ComparatorAggregator : public ComparatorAggregatorBase<T>,
+                             public IAggregator {
+ protected:
+  using VALUE_T = typename min_max_type_data<T>::value_type;
+
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  ComparatorAggregator() = delete;
 
   /**
    * Constructor.
    *
-   * @param min Is the aggregator for a min?
-   * @param field_name Field name that is aggregated.
-   * @param var_sized Is this a var sized attribute?
-   * @param is_nullable Is this a nullable attribute?
-   * @param cell_val_num Number of values per cell.
+   * @param field_info Field info.
    */
-  MinMaxAggregator(
-      const bool min,
-      const std::string field_name,
-      const bool var_sized,
-      const bool is_nullable,
-      const unsigned cell_val_num);
+  ComparatorAggregator(const FieldInfo& field_info);
 
-  DISABLE_COPY_AND_COPY_ASSIGN(MinMaxAggregator);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(MinMaxAggregator);
+  DISABLE_COPY_AND_COPY_ASSIGN(ComparatorAggregator);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(ComparatorAggregator);
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
+ public:
   /** Returns the field name for the aggregator. */
   std::string field_name() override {
-    return field_name_;
+    return ComparatorAggregatorBase<T>::field_info_.name_;
   }
 
   /** Returns if the aggregation is var sized or not. */
   bool var_sized() override {
-    return var_sized_;
+    return ComparatorAggregatorBase<T>::field_info_.var_sized_;
   };
 
   /** Returns if the aggregate needs to be recomputed on overflow. */
@@ -140,63 +221,15 @@ class MinMaxAggregator : public IAggregator {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** Is the min/max nullable? */
-  const bool is_nullable_;
-
-  /** Is the min/max var sized? */
-  const bool var_sized_;
-
-  /** Cell val num. */
-  const unsigned cell_val_num_;
-
-  /** Field name. */
-  const std::string field_name_;
-
   /** Mutex protecting `value_`. */
   std::mutex value_mtx_;
 
-  /** Computed min/max. */
-  optional<T> value_;
-
-  /** Computed validity value. */
-  optional<uint8_t> validity_value_;
-
   /** Operation function to determine value. */
-  std::function<bool(VALUE_T, VALUE_T)> op_;
+  Op op_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
-
-  /**
-   * Get the value at a certain cell index for the input buffers.
-   *
-   * @tparam VALUE_T Value type.
-   * @param fixed_data Fixed data buffer.
-   * @param var_data Var data buffer.
-   * @param cell_idx Cell index.
-   *
-   * @return Value.
-   */
-  template <typename VALUE_T>
-  VALUE_T value_at(
-      const void* fixed_data, const char* var_data, const uint64_t cell_idx);
-
-  /**
-   * Get the last value for the input buffers.
-   *
-   * @tparam VALUE_T Value type.
-   * @param fixed_data Fixed data buffer.
-   * @param var_data Var data buffer.
-   * @param input_data Aggregate buffer.
-   *
-   * @return Value.
-   */
-  template <typename VALUE_T>
-  VALUE_T last_var_value(
-      const void* fixed_data,
-      const char* var_data,
-      const AggregateBuffer& input_data);
 
   /**
    * Potentially update the min/max value with the value at cell index 'c'.
@@ -207,11 +240,11 @@ class MinMaxAggregator : public IAggregator {
    * @param c Cell index.
    */
   inline void update_min_max(
-      optional<typename min_max_type_data<T>::value_type>& value,
+      optional<VALUE_T>& value,
       const void* fixed_data,
       const char* var_data,
       const uint64_t c) {
-    auto cmp = value_at<typename min_max_type_data<T>::value_type>(
+    auto cmp = ComparatorAggregatorBase<T>::template value_at<VALUE_T>(
         fixed_data, var_data, c);
     if (!value.has_value()) {
       value = cmp;
@@ -229,11 +262,11 @@ class MinMaxAggregator : public IAggregator {
    * @param c Cell index.
    */
   inline void update_last_var_min_max(
-      optional<typename min_max_type_data<T>::value_type>& value,
+      optional<VALUE_T>& value,
       const void* fixed_data,
       const char* var_data,
       const AggregateBuffer& input_data) {
-    auto cmp = last_var_value<typename min_max_type_data<T>::value_type>(
+    auto cmp = ComparatorAggregatorBase<T>::template last_var_value<VALUE_T>(
         fixed_data, var_data, input_data);
     if (!value.has_value()) {
       value = cmp;
@@ -252,6 +285,59 @@ class MinMaxAggregator : public IAggregator {
    */
   template <typename BITMAP_T>
   optional<T> min_max(AggregateBuffer& input_data);
+};
+
+template <typename T>
+class MinAggregator
+    : public ComparatorAggregator<
+          T,
+          std::less<typename min_max_type_data<T>::value_type>> {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  MinAggregator() = delete;
+
+  /**
+   * Constructor.
+   *
+   * @param field info Field info.
+   */
+  MinAggregator(const FieldInfo field_info)
+      : ComparatorAggregator<
+            T,
+            std::less<typename min_max_type_data<T>::value_type>>(field_info){};
+
+  DISABLE_COPY_AND_COPY_ASSIGN(MinAggregator);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(MinAggregator);
+};
+
+template <typename T>
+class MaxAggregator
+    : public ComparatorAggregator<
+          T,
+          std::greater<typename min_max_type_data<T>::value_type>> {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  MaxAggregator() = delete;
+
+  /**
+   * Constructor.
+   *
+   * @param field info Field info.
+   */
+  MaxAggregator(const FieldInfo field_info)
+      : ComparatorAggregator<
+            T,
+            std::greater<typename min_max_type_data<T>::value_type>>(
+            field_info){};
+
+  DISABLE_COPY_AND_COPY_ASSIGN(MaxAggregator);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(MaxAggregator);
 };
 
 }  // namespace sm

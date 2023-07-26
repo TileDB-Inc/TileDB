@@ -44,52 +44,52 @@ TEST_CASE(
     "Min max aggregator: constructor", "[min-max-aggregator][constructor]") {
   SECTION("Var size, not string") {
     CHECK_THROWS_WITH(
-        MinMaxAggregator<uint8_t>(false, "a1", true, false, 1),
+        MinAggregator<uint8_t>(FieldInfo("a1", true, false, 1)),
         "MinMaxAggregator: Min/max aggregates must not be requested for var "
         "sized non-string attributes.");
   }
 
   SECTION("Invalid cell val num") {
     CHECK_THROWS_WITH(
-        MinMaxAggregator<uint8_t>(false, "a1", false, false, 2),
+        MinAggregator<uint8_t>(FieldInfo("a1", false, false, 2)),
         "MinMaxAggregator: Min/max aggregates must not be requested for "
         "attributes with more than one value.");
   }
 }
 
 TEST_CASE("Min max aggregator: var sized", "[min-max-aggregator][var-sized]") {
-  MinMaxAggregator<uint8_t> aggregator(false, "a1", false, false, 1);
+  MinAggregator<uint8_t> aggregator(FieldInfo("a1", false, false, 1));
   CHECK(aggregator.var_sized() == false);
 
-  MinMaxAggregator<std::string> aggregator_nullable(
-      false, "a1", true, false, 1);
+  MinAggregator<std::string> aggregator_nullable(
+      FieldInfo("a1", true, false, 1));
   CHECK(aggregator_nullable.var_sized() == true);
 }
 
 TEST_CASE(
     "Min max aggregator: need recompute",
     "[min-max-aggregator][need-recompute]") {
-  MinMaxAggregator<uint8_t> aggregator(false, "a1", false, false, 1);
+  MinAggregator<uint8_t> aggregator(FieldInfo("a1", false, false, 1));
   CHECK(aggregator.need_recompute_on_overflow() == false);
 }
 
 TEST_CASE(
     "Min max aggregator: field name", "[min-max-aggregator][field-name]") {
-  MinMaxAggregator<uint8_t> aggregator(false, "a1", false, false, 1);
+  MinAggregator<uint8_t> aggregator(FieldInfo("a1", false, false, 1));
   CHECK(aggregator.field_name() == "a1");
 }
 
 TEST_CASE(
     "Min max aggregator: Validate buffer",
     "[min-max-aggregator][validate-buffer]") {
-  MinMaxAggregator<uint8_t> aggregator(false, "a1", false, false, 1);
-  MinMaxAggregator<uint8_t> aggregator_nullable(false, "a2", false, true, 1);
-  MinMaxAggregator<std::string> aggregator_var(
-      false, "a1", true, false, constants::var_num);
-  MinMaxAggregator<std::string> aggregator_var_wrong_cvn(
-      false, "a1", true, false, 11);
-  MinMaxAggregator<std::string> aggregator_fixed_string(
-      false, "a1", false, false, 5);
+  MinAggregator<uint8_t> aggregator(FieldInfo("a1", false, false, 1));
+  MinAggregator<uint8_t> aggregator_nullable(FieldInfo("a2", false, true, 1));
+  MinAggregator<std::string> aggregator_var(
+      FieldInfo("a1", true, false, constants::var_num));
+  MinAggregator<std::string> aggregator_var_wrong_cvn(
+      FieldInfo("a1", true, false, 11));
+  MinAggregator<std::string> aggregator_fixed_string(
+      FieldInfo("a1", false, false, 5));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -286,7 +286,6 @@ void check_value(
       (min ? char('0' + min_val) : char('0' + max_val)));
 }
 
-/** Convert type to a fixed data type. **/
 template <typename T>
 struct fixed_data_type {
   using type = T;
@@ -300,26 +299,38 @@ struct fixed_data_type<std::string> {
 };
 
 typedef tuple<
-    uint8_t,
-    uint16_t,
-    uint32_t,
-    uint64_t,
-    int8_t,
-    int16_t,
-    int32_t,
-    int64_t,
-    float,
-    double,
-    std::string>
+    std::pair<uint8_t, MinAggregator<uint8_t>>,
+    std::pair<uint16_t, MinAggregator<uint16_t>>,
+    std::pair<uint32_t, MinAggregator<uint32_t>>,
+    std::pair<uint64_t, MinAggregator<uint64_t>>,
+    std::pair<int8_t, MinAggregator<int8_t>>,
+    std::pair<int16_t, MinAggregator<int16_t>>,
+    std::pair<int32_t, MinAggregator<int32_t>>,
+    std::pair<int64_t, MinAggregator<int64_t>>,
+    std::pair<float, MinAggregator<float>>,
+    std::pair<double, MinAggregator<double>>,
+    std::pair<std::string, MinAggregator<std::string>>,
+    std::pair<uint8_t, MaxAggregator<uint8_t>>,
+    std::pair<uint16_t, MaxAggregator<uint16_t>>,
+    std::pair<uint32_t, MaxAggregator<uint32_t>>,
+    std::pair<uint64_t, MaxAggregator<uint64_t>>,
+    std::pair<int8_t, MaxAggregator<int8_t>>,
+    std::pair<int16_t, MaxAggregator<int16_t>>,
+    std::pair<int32_t, MaxAggregator<int32_t>>,
+    std::pair<int64_t, MaxAggregator<int64_t>>,
+    std::pair<float, MaxAggregator<float>>,
+    std::pair<double, MaxAggregator<double>>,
+    std::pair<std::string, MaxAggregator<std::string>>>
     FixedTypesUnderTest;
 TEMPLATE_LIST_TEST_CASE(
     "Min max aggregator: Basic aggregation",
     "[min-max-aggregator][basic-aggregation]",
     FixedTypesUnderTest) {
-  bool min = GENERATE(true, false);
-  typedef TestType T;
-  MinMaxAggregator<T> aggregator(min, "a1", false, false, 1);
-  MinMaxAggregator<T> aggregator_nullable(min, "a2", false, true, 1);
+  typedef decltype(TestType::first) T;
+  typedef decltype(TestType::second) AGG;
+  bool min = std::is_same<AGG, MinAggregator<T>>::value;
+  AGG aggregator(FieldInfo("a1", false, false, 1));
+  AGG aggregator_nullable(FieldInfo("a2", false, true, 1));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -523,14 +534,16 @@ void check_value_var(
   CHECK(offset == 0);
 }
 
-TEST_CASE(
+typedef tuple<MinAggregator<std::string>, MinAggregator<std::string>>
+    AggUnderTest;
+TEMPLATE_LIST_TEST_CASE(
     "Min max aggregator: Basic string aggregation",
-    "[min-max-aggregator][basic-string-aggregation]") {
-  bool min = GENERATE(true, false);
-  MinMaxAggregator<std::string> aggregator(
-      min, "a1", true, false, constants::var_num);
-  MinMaxAggregator<std::string> aggregator_nullable(
-      min, "a2", true, true, constants::var_num);
+    "[min-max-aggregator][basic-string-aggregation]",
+    AggUnderTest) {
+  typedef TestType AGG;
+  bool min = std::is_same<AGG, MinAggregator<std::string>>::value;
+  AGG aggregator(FieldInfo("a1", true, false, constants::var_num));
+  AGG aggregator_nullable(FieldInfo("a2", true, true, constants::var_num));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 

@@ -92,22 +92,18 @@ void safe_sum<double>(double value, double& sum) {
 }
 
 template <typename T>
-SumAggregator<T>::SumAggregator(
-    const std::string field_name,
-    const bool var_sized,
-    const bool is_nullable,
-    const unsigned cell_val_num)
-    : is_nullable_(is_nullable)
-    , field_name_(field_name)
+SumAggregator<T>::SumAggregator(const FieldInfo field_info)
+    : field_info_(field_info)
     , sum_(0)
-    , validity_value_(is_nullable ? std::make_optional(0) : nullopt)
+    , validity_value_(
+          field_info_.is_nullable_ ? std::make_optional(0) : nullopt)
     , sum_overflowed_(false) {
-  if (var_sized) {
+  if (field_info_.var_sized_) {
     throw SumAggregatorStatusException(
         "Sum aggregates must not be requested for var sized attributes.");
   }
 
-  if (cell_val_num != 1) {
+  if (field_info_.cell_val_num_ != 1) {
     throw SumAggregatorStatusException(
         "Sum aggregates must not be requested for attributes with more than "
         "one value.");
@@ -139,7 +135,7 @@ void SumAggregator<T>::validate_output_buffer(
   }
 
   bool exists_validity = result_buffer.validity_vector_.buffer();
-  if (is_nullable_) {
+  if (field_info_.is_nullable_) {
     if (!exists_validity) {
       throw SumAggregatorStatusException(
           "Sum aggregates for nullable attributes must have a validity "
@@ -200,7 +196,7 @@ void SumAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
     }
   }
 
-  if (is_nullable_ && std::get<1>(res).value() == 1) {
+  if (field_info_.is_nullable_ && std::get<1>(res).value() == 1) {
     validity_value_ = 1;
   }
 }
@@ -217,7 +213,7 @@ void SumAggregator<T>::copy_to_user_buffer(
     *result_buffer.buffer_size_ = sizeof(typename sum_type_data<T>::sum_type);
   }
 
-  if (is_nullable_) {
+  if (field_info_.is_nullable_) {
     *static_cast<uint8_t*>(result_buffer.validity_vector_.buffer()) =
         validity_value_.value();
 
@@ -241,7 +237,7 @@ tuple<SUM_T, optional<uint8_t>> SumAggregator<T>::sum(
   if (input_data.has_bitmap()) {
     auto bitmap_values = input_data.bitmap_data_as<BITMAP_T>();
 
-    if (is_nullable_) {
+    if (field_info_.is_nullable_) {
       validity = 0;
       auto validity_values = input_data.validity_data();
 
@@ -267,7 +263,7 @@ tuple<SUM_T, optional<uint8_t>> SumAggregator<T>::sum(
       }
     }
   } else {
-    if (is_nullable_) {
+    if (field_info_.is_nullable_) {
       validity = 0;
       auto validity_values = input_data.validity_data();
 
@@ -293,26 +289,16 @@ tuple<SUM_T, optional<uint8_t>> SumAggregator<T>::sum(
 }
 
 // Explicit template instantiations
-template SumAggregator<int8_t>::SumAggregator(
-    const std::string, const bool, const bool, const unsigned);
-template SumAggregator<int16_t>::SumAggregator(
-    const std::string, const bool, const bool, const unsigned);
-template SumAggregator<int32_t>::SumAggregator(
-    const std::string, const bool, const bool, const unsigned);
-template SumAggregator<int64_t>::SumAggregator(
-    const std::string, const bool, const bool, const unsigned);
-template SumAggregator<uint8_t>::SumAggregator(
-    const std::string, const bool, const bool, const unsigned);
-template SumAggregator<uint16_t>::SumAggregator(
-    const std::string, const bool, const bool, const unsigned);
-template SumAggregator<uint32_t>::SumAggregator(
-    const std::string, const bool, const bool, const unsigned);
-template SumAggregator<uint64_t>::SumAggregator(
-    const std::string, const bool, const bool, const unsigned);
-template SumAggregator<float>::SumAggregator(
-    const std::string, const bool, const bool, const unsigned);
-template SumAggregator<double>::SumAggregator(
-    const std::string, const bool, const bool, const unsigned);
+template SumAggregator<int8_t>::SumAggregator(const FieldInfo);
+template SumAggregator<int16_t>::SumAggregator(const FieldInfo);
+template SumAggregator<int32_t>::SumAggregator(const FieldInfo);
+template SumAggregator<int64_t>::SumAggregator(const FieldInfo);
+template SumAggregator<uint8_t>::SumAggregator(const FieldInfo);
+template SumAggregator<uint16_t>::SumAggregator(const FieldInfo);
+template SumAggregator<uint32_t>::SumAggregator(const FieldInfo);
+template SumAggregator<uint64_t>::SumAggregator(const FieldInfo);
+template SumAggregator<float>::SumAggregator(const FieldInfo);
+template SumAggregator<double>::SumAggregator(const FieldInfo);
 
 }  // namespace sm
 }  // namespace tiledb

@@ -495,7 +495,8 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   // TODO: Change to real CPPAPI. Add a count aggregator to the query.
   query.ptr()->query_->add_aggregator_to_default_channel(
       "Sum",
-      std::make_shared<tiledb::sm::SumAggregator<T>>("a1", false, nullable, 1));
+      std::make_shared<tiledb::sm::SumAggregator<T>>(
+          tiledb::sm::FieldInfo("a1", false, nullable, 1)));
 
   if (set_ranges) {
     // Slice only rows 2, 3
@@ -584,59 +585,65 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 }
 
 typedef tuple<
-    uint8_t,
-    uint16_t,
-    uint32_t,
-    uint64_t,
-    int8_t,
-    int16_t,
-    int32_t,
-    int64_t,
-    float,
-    double,
-    std::string>
+    std::pair<uint8_t, tiledb::sm::MinAggregator<uint8_t>>,
+    std::pair<uint16_t, tiledb::sm::MinAggregator<uint16_t>>,
+    std::pair<uint32_t, tiledb::sm::MinAggregator<uint32_t>>,
+    std::pair<uint64_t, tiledb::sm::MinAggregator<uint64_t>>,
+    std::pair<int8_t, tiledb::sm::MinAggregator<int8_t>>,
+    std::pair<int16_t, tiledb::sm::MinAggregator<int16_t>>,
+    std::pair<int32_t, tiledb::sm::MinAggregator<int32_t>>,
+    std::pair<int64_t, tiledb::sm::MinAggregator<int64_t>>,
+    std::pair<float, tiledb::sm::MinAggregator<float>>,
+    std::pair<double, tiledb::sm::MinAggregator<double>>,
+    std::pair<std::string, tiledb::sm::MinAggregator<std::string>>,
+    std::pair<uint8_t, tiledb::sm::MaxAggregator<uint8_t>>,
+    std::pair<uint16_t, tiledb::sm::MaxAggregator<uint16_t>>,
+    std::pair<uint32_t, tiledb::sm::MaxAggregator<uint32_t>>,
+    std::pair<uint64_t, tiledb::sm::MaxAggregator<uint64_t>>,
+    std::pair<int8_t, tiledb::sm::MaxAggregator<int8_t>>,
+    std::pair<int16_t, tiledb::sm::MaxAggregator<int16_t>>,
+    std::pair<int32_t, tiledb::sm::MaxAggregator<int32_t>>,
+    std::pair<int64_t, tiledb::sm::MaxAggregator<int64_t>>,
+    std::pair<float, tiledb::sm::MaxAggregator<float>>,
+    std::pair<double, tiledb::sm::MaxAggregator<double>>,
+    std::pair<std::string, tiledb::sm::MaxAggregator<std::string>>>
     MinMaxFixedTypesUnderTest;
-TEMPLATE_LIST_TEST_CASE_METHOD(
-    CppAggregatesFx,
+TEMPLATE_LIST_TEST_CASE(
     "C++ API: Aggregates basic min/max",
     "[cppapi][aggregates][basic][min-max]",
     MinMaxFixedTypesUnderTest) {
-  typedef TestType T;
+  typedef decltype(TestType::first) T;
+  typedef decltype(TestType::second) AGG;
+  CppAggregatesFx<T> fx;
   bool request_data = GENERATE(true, false);
   bool allow_dups = GENERATE(true, false);
   bool set_ranges = GENERATE(true, false);
   bool nullable = GENERATE(true, false);
-  bool min = GENERATE(true, false);
+  bool min = std::is_same<AGG, tiledb::sm::MinAggregator<T>>::value;
 
-  CppAggregatesFx<T>::create_sparse_array_and_write_fragments(
-      allow_dups, nullable);
+  fx.create_sparse_array_and_write_fragments(allow_dups, nullable);
 
-  Array array{
-      CppAggregatesFx<T>::ctx_,
-      CppAggregatesFx<T>::SPARSE_ARRAY_NAME,
-      TILEDB_READ};
-  Query query(CppAggregatesFx<T>::ctx_, array, TILEDB_READ);
+  Array array{fx.ctx_, fx.SPARSE_ARRAY_NAME, TILEDB_READ};
+  Query query(fx.ctx_, array, TILEDB_READ);
 
   // TODO: Change to real CPPAPI. Add a count aggregator to the query.
-  uint64_t cell_val_num = std::is_same<T, std::string>::value ?
-                              CppAggregatesFx<T>::STRING_CELL_VAL_NUM :
-                              1;
+  uint64_t cell_val_num =
+      std::is_same<T, std::string>::value ? fx.STRING_CELL_VAL_NUM : 1;
   query.ptr()->query_->add_aggregator_to_default_channel(
       "MinMax",
-      std::make_shared<tiledb::sm::MinMaxAggregator<T>>(
-          min, "a1", false, nullable, cell_val_num));
+      std::make_shared<AGG>(
+          tiledb::sm::FieldInfo("a1", false, nullable, cell_val_num)));
 
   if (set_ranges) {
     // Slice only rows 2, 3
-    Subarray subarray(CppAggregatesFx<T>::ctx_, array);
+    Subarray subarray(fx.ctx_, array);
     subarray.add_range<uint64_t>(0, 3, 4);
     query.set_subarray(subarray);
   }
 
   // Set the data buffer for the aggregator.
-  uint64_t cell_size = std::is_same<T, std::string>::value ?
-                           CppAggregatesFx<T>::STRING_CELL_VAL_NUM :
-                           sizeof(T);
+  uint64_t cell_size =
+      std::is_same<T, std::string>::value ? fx.STRING_CELL_VAL_NUM : sizeof(T);
   std::vector<uint8_t> min_max(cell_size);
   std::vector<uint8_t> min_max_validity(1);
   std::vector<uint64_t> dim1(100);
@@ -680,15 +687,15 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   std::vector<uint8_t> expected_min_max;
   if (nullable) {
     if (set_ranges) {
-      expected_min_max = CppAggregatesFx<T>::make_data_buff({min ? 6 : 14});
+      expected_min_max = fx.make_data_buff({min ? 6 : 14});
     } else {
-      expected_min_max = CppAggregatesFx<T>::make_data_buff({min ? 0 : 14});
+      expected_min_max = fx.make_data_buff({min ? 0 : 14});
     }
   } else {
     if (set_ranges) {
-      expected_min_max = CppAggregatesFx<T>::make_data_buff({min ? 6 : 15});
+      expected_min_max = fx.make_data_buff({min ? 6 : 15});
     } else {
-      expected_min_max = CppAggregatesFx<T>::make_data_buff({min ? 0 : 15});
+      expected_min_max = fx.make_data_buff({min ? 0 : 15});
     }
   }
 
@@ -710,7 +717,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   CHECK(min_max == expected_min_max);
 
   if (request_data) {
-    CppAggregatesFx<T>::validate_sparse_data(
+    fx.validate_sparse_data(
         query,
         set_ranges,
         allow_dups,
@@ -726,44 +733,50 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   array.close();
 }
 
-TEST_CASE_METHOD(
-    CppAggregatesFx<std::string>,
+typedef tuple<
+    tiledb::sm::MinAggregator<std::string>,
+    tiledb::sm::MaxAggregator<std::string>>
+    AggUnderTest;
+TEMPLATE_LIST_TEST_CASE(
     "C++ API: Aggregates basic min/max var",
-    "[cppapi][aggregates][basic][min-max][var]") {
+    "[cppapi][aggregates][basic][min-max][var]",
+    AggUnderTest) {
+  CppAggregatesFx<std::string> fx;
+  typedef TestType AGG;
+  bool min = std::is_same<AGG, tiledb::sm::MinAggregator<std::string>>::value;
   bool request_data = GENERATE(true, false);
   bool allow_dups = GENERATE(true, false);
   bool set_ranges = GENERATE(true, false);
   bool nullable = GENERATE(true, false);
-  bool min = GENERATE(true, false);
 
-  create_sparse_array(allow_dups, nullable, true);
+  fx.create_sparse_array(allow_dups, nullable, true);
 
   // Write fragments, only cell 3,3 is duplicated.
   optional<std::vector<uint8_t>> validity_values = nullopt;
   if (nullable) {
     validity_values = {1, 0, 1, 0};
   }
-  write_sparse(
+  fx.write_sparse(
       {"0", "1", "2", "3"}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1, validity_values);
-  write_sparse(
+  fx.write_sparse(
       {"4", "5", "6", "7"}, {2, 2, 3, 3}, {2, 4, 2, 3}, 3, validity_values);
-  write_sparse(
+  fx.write_sparse(
       {"8", "99", "10", "11"}, {2, 1, 3, 4}, {1, 3, 1, 1}, 4, validity_values);
-  write_sparse(
+  fx.write_sparse(
       {"12", "13", "14", "15"}, {4, 3, 3, 4}, {2, 3, 4, 4}, 6, validity_values);
 
-  Array array{ctx_, SPARSE_ARRAY_NAME, TILEDB_READ};
-  Query query(ctx_, array, TILEDB_READ);
+  Array array{fx.ctx_, fx.SPARSE_ARRAY_NAME, TILEDB_READ};
+  Query query(fx.ctx_, array, TILEDB_READ);
 
   // TODO: Change to real CPPAPI. Add a count aggregator to the query.
   query.ptr()->query_->add_aggregator_to_default_channel(
       "MinMax",
-      std::make_shared<tiledb::sm::MinMaxAggregator<std::string>>(
-          min, "a1", true, nullable, TILEDB_VAR_NUM));
+      std::make_shared<AGG>(
+          tiledb::sm::FieldInfo("a1", true, nullable, TILEDB_VAR_NUM)));
 
   if (set_ranges) {
     // Slice only rows 2, 3
-    Subarray subarray(ctx_, array);
+    Subarray subarray(fx.ctx_, array);
     subarray.add_range<uint64_t>(0, 3, 4);
     query.set_subarray(subarray);
   }
