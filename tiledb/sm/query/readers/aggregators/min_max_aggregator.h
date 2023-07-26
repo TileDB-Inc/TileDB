@@ -71,6 +71,9 @@ class ComparatorAggregatorBase {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
+  ComparatorAggregatorBase() = delete;
+  ComparatorAggregatorBase(const FieldInfo&& field_info) = delete;
+
   /**
    * Constructor.
    *
@@ -158,6 +161,7 @@ class ComparatorAggregator : public ComparatorAggregatorBase<T>,
   /* ********************************* */
 
   ComparatorAggregator() = delete;
+  ComparatorAggregator(const FieldInfo&& field_info) = delete;
 
   /**
    * Constructor.
