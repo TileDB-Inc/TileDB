@@ -123,16 +123,6 @@ inline int32_t sanity_check(
   return TILEDB_OK;
 }
 
-inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_domain_t* domain) {
-  if (domain == nullptr || domain->domain_ == nullptr) {
-    auto st = Status_Error("Invalid TileDB domain object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-  return TILEDB_OK;
-}
-
 inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_query_t* query) {
   if (query == nullptr || query->query_ == nullptr) {
     auto st = Status_Error("Invalid TileDB query object");

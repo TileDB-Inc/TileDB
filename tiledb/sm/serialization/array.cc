@@ -92,7 +92,8 @@ Status metadata_from_capnp(
 
   for (size_t i = 0; i < num_entries; i++) {
     auto entry_reader = entries_reader[i];
-    std::string key = entry_reader.getKey();
+    auto key = std::string{std::string_view{
+        entry_reader.getKey().cStr(), entry_reader.getKey().size()}};
     Datatype type = Datatype::UINT8;
     RETURN_NOT_OK(datatype_enum(entry_reader.getType(), &type));
     uint32_t value_num = entry_reader.getValueNum();

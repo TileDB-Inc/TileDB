@@ -35,6 +35,7 @@
 
 #include "array_schema.h"
 #include "dimension_label_experimental.h"
+#include "enumeration_experimental.h"
 #include "filter_list.h"
 #include "tiledb_experimental.h"
 
@@ -43,6 +44,22 @@
 namespace tiledb {
 class ArraySchemaExperimental {
  public:
+  /**
+   * Load an ArraySchema from the given URI with all of its enumerations.
+   *
+   * @param ctx The TileDB context.
+   * @param uri The URI to load from.
+   * @return ArraySchema The loaded array schema.
+   */
+  static ArraySchema load_with_enumerations(
+      const Context& ctx, const std::string& uri) {
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    tiledb_array_schema_t* schema;
+    ctx.handle_error(tiledb_array_schema_load_with_enumerations(
+        c_ctx, uri.c_str(), &schema));
+    return ArraySchema(ctx, schema);
+  }
+
   /**
    * Adds a DimensionLabel to the array.
    *
@@ -153,6 +170,21 @@ class ArraySchemaExperimental {
     ctx.handle_error(tiledb_array_schema_get_dimension_label_from_name(
         ctx.ptr().get(), array_schema.ptr().get(), name.c_str(), &dim_label));
     return DimensionLabel(ctx, dim_label);
+  }
+
+  /**
+   * Add an enumeration to the array schema.
+   *
+   * @param ctx TileDB context.
+   * @param array_schema Target array schema.
+   * @param enmr The enumeration to add.
+   */
+  static void add_enumeration(
+      const Context& ctx,
+      const ArraySchema& array_schema,
+      const Enumeration& enmr) {
+    ctx.handle_error(tiledb_array_schema_add_enumeration(
+        ctx.ptr().get(), array_schema.ptr().get(), enmr.ptr().get()));
   }
 };
 

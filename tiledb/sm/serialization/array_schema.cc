@@ -42,6 +42,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/data_order.h"
@@ -72,9 +73,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
-namespace serialization {
+namespace tiledb::sm::serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
@@ -352,6 +351,11 @@ void attribute_to_capnp(
   const auto& filters = attribute->filters();
   auto filter_pipeline_builder = attribute_builder->initFilterPipeline();
   throw_if_not_ok(filter_pipeline_to_capnp(&filters, &filter_pipeline_builder));
+
+  auto enmr_name = attribute->get_enumeration_name();
+  if (enmr_name.has_value()) {
+    attribute_builder->setEnumerationName(enmr_name.value());
+  }
 }
 
 shared_ptr<Attribute> attribute_from_capnp(
@@ -399,6 +403,11 @@ shared_ptr<Attribute> attribute_from_capnp(
         datatype, attribute_reader.getCellValNum());
   }
 
+  std::optional<std::string> enmr_name;
+  if (attribute_reader.hasEnumerationName()) {
+    enmr_name = attribute_reader.getEnumerationName();
+  }
+
   return tiledb::common::make_shared<Attribute>(
       HERE(),
       attribute_reader.getName(),
@@ -408,7 +417,8 @@ shared_ptr<Attribute> attribute_from_capnp(
       *(filters.get()),
       fill_value_vec,
       fill_value_validity,
-      data_order);
+      data_order,
+      enmr_name);
 }
 
 Status dimension_to_capnp(
@@ -763,6 +773,61 @@ shared_ptr<DimensionLabel> dimension_label_from_capnp(
       is_relative);
 }
 
+void enumeration_to_capnp(
+    shared_ptr<const Enumeration> enumeration,
+    capnp::Enumeration::Builder& enmr_builder) {
+  enmr_builder.setName(enumeration->name());
+  enmr_builder.setType(datatype_str(enumeration->type()));
+  enmr_builder.setCellValNum(enumeration->cell_val_num());
+  enmr_builder.setOrdered(enumeration->ordered());
+
+  auto dspan = enumeration->data();
+  enmr_builder.setData(::kj::arrayPtr(dspan.data(), dspan.size()));
+
+  if (enumeration->var_size()) {
+    auto ospan = enumeration->offsets();
+    enmr_builder.setOffsets(::kj::arrayPtr(ospan.data(), ospan.size()));
+  }
+}
+
+shared_ptr<const Enumeration> enumeration_from_capnp(
+    const capnp::Enumeration::Reader& reader) {
+  auto name = reader.getName();
+  auto path_name = reader.getPathName();
+  Datatype datatype = Datatype::ANY;
+  throw_if_not_ok(datatype_enum(reader.getType(), &datatype));
+
+  if (!reader.hasData()) {
+    throw SerializationStatusException(
+        "[Deserialization::enumeration_from_capnp] Deserialization of "
+        "Enumeration is missing its data buffer.");
+  }
+
+  auto data_reader = reader.getData().asBytes();
+  auto data = data_reader.begin();
+  auto data_size = data_reader.size();
+
+  const void* offsets = nullptr;
+  uint64_t offsets_size = 0;
+
+  if (reader.hasOffsets()) {
+    auto offsets_reader = reader.getOffsets().asBytes();
+    offsets = offsets_reader.begin();
+    offsets_size = offsets_reader.size();
+  }
+
+  return Enumeration::create(
+      name,
+      path_name,
+      datatype,
+      reader.getCellValNum(),
+      reader.getOrdered(),
+      data,
+      data_size,
+      offsets,
+      offsets_size);
+}
+
 Status array_schema_to_capnp(
     const ArraySchema& array_schema,
     capnp::ArraySchema::Builder* array_schema_builder,
@@ -809,9 +874,9 @@ Status array_schema_to_capnp(
 
   // Attributes
   const unsigned num_attrs = array_schema.attribute_num();
-  auto attributes_buidler = array_schema_builder->initAttributes(num_attrs);
+  auto attribute_builders = array_schema_builder->initAttributes(num_attrs);
   for (size_t i = 0; i < num_attrs; i++) {
-    auto attribute_builder = attributes_buidler[i];
+    auto attribute_builder = attribute_builders[i];
     attribute_to_capnp(array_schema.attribute(i), &attribute_builder);
   }
 
@@ -831,6 +896,27 @@ Status array_schema_to_capnp(
       dimension_label_to_capnp(
           array_schema.dimension_label(i), &dim_label_builder, client_side);
     }
+  }
+
+  // Loaded enumerations
+  auto loaded_enmr_names = array_schema.get_loaded_enumeration_names();
+  const unsigned num_loaded_enmrs = loaded_enmr_names.size();
+  auto enmr_builders = array_schema_builder->initEnumerations(num_loaded_enmrs);
+  for (size_t i = 0; i < num_loaded_enmrs; i++) {
+    auto enmr = array_schema.get_enumeration(loaded_enmr_names[i]);
+    auto builder = enmr_builders[i];
+    enumeration_to_capnp(enmr, builder);
+  }
+
+  // Enumeration path map
+  auto enmr_names = array_schema.get_enumeration_names();
+  const unsigned num_enmr_names = enmr_names.size();
+  auto enmr_path_map_builders =
+      array_schema_builder->initEnumerationPathMap(num_enmr_names);
+  for (size_t i = 0; i < num_enmr_names; i++) {
+    auto enmr_path_name = array_schema.get_enumeration_path_name(enmr_names[i]);
+    enmr_path_map_builders[i].setKey(enmr_names[i]);
+    enmr_path_map_builders[i].setValue(enmr_path_name);
   }
 
   return Status::Ok();
@@ -999,6 +1085,39 @@ ArraySchema array_schema_from_capnp(
     }
   }
 
+  // Loaded enumerations
+  std::vector<shared_ptr<const Enumeration>> enumerations;
+  if (schema_reader.hasEnumerations()) {
+    auto enmr_readers = schema_reader.getEnumerations();
+    enumerations.reserve(enmr_readers.size());
+    try {
+      for (auto&& enmr_reader : enmr_readers) {
+        enumerations.emplace_back(enumeration_from_capnp(enmr_reader));
+      }
+    } catch (const std::exception& e) {
+      std::throw_with_nested(std::runtime_error(
+          "[Deserialization::array_schema_from_capnp] Cannot deserialize "
+          "enumerations"));
+    }
+  }
+
+  // Enumeration path map
+  std::unordered_map<std::string, std::string> enmr_path_map;
+  if (schema_reader.hasEnumerationPathMap()) {
+    auto enmr_path_map_readers = schema_reader.getEnumerationPathMap();
+    try {
+      for (auto&& kv_reader : enmr_path_map_readers) {
+        auto enmr_name = kv_reader.getKey();
+        auto enmr_path_name = kv_reader.getValue();
+        enmr_path_map[enmr_name] = enmr_path_name;
+      }
+    } catch (const std::exception& e) {
+      std::throw_with_nested(std::runtime_error(
+          "[Deserialization::array_schema_from_capnp] Cannot deserialize "
+          "enumeration path map"));
+    }
+  }
+
   // Set the range if we have two values
   // #TODO Add security validation
   std::pair<uint64_t, uint64_t> timestamp_range;
@@ -1022,12 +1141,14 @@ ArraySchema array_schema_from_capnp(
       name,
       array_type,
       allows_dups,
-      make_shared<Domain>(HERE(), domain.get()),
+      domain,
       cell_order,
       tile_order,
       capacity,
       attributes,
       dimension_labels,
+      enumerations,
+      enmr_path_map,
       cell_var_offsets_filters,
       cell_validity_filters,
       coords_filters);
@@ -1740,6 +1861,4 @@ Status max_buffer_sizes_deserialize(
 
 #endif  // TILEDB_SERIALIZATION
 
-}  // namespace serialization
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::serialization

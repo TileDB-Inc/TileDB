@@ -40,6 +40,8 @@
 #include "tiledb/api/c_api/buffer_list/buffer_list_api_internal.h"
 #include "tiledb/api/c_api/config/config_api_internal.h"
 #include "tiledb/api/c_api/dimension/dimension_api_internal.h"
+#include "tiledb/api/c_api/domain/domain_api_internal.h"
+#include "tiledb/api/c_api/enumeration/enumeration_api_internal.h"
 #include "tiledb/api/c_api/error/error_api_internal.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_internal.h"
 #include "tiledb/api/c_api/string/string_api_internal.h"
@@ -299,6 +301,34 @@ int32_t tiledb_attribute_set_cell_val_num(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_attribute_set_enumeration_name(
+    tiledb_ctx_t* ctx, tiledb_attribute_t* attr, const char* enumeration_name) {
+  if (sanity_check(ctx, attr) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+  attr->attr_->set_enumeration_name(enumeration_name);
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_attribute_get_enumeration_name(
+    tiledb_ctx_t* ctx, tiledb_attribute_t* attr, tiledb_string_t** name) {
+  if (sanity_check(ctx, attr) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  ensure_output_pointer_is_valid(name);
+
+  auto enmr_name = attr->attr_->get_enumeration_name();
+  if (!enmr_name.has_value()) {
+    *name = nullptr;
+    return TILEDB_OK;
+  }
+
+  *name = tiledb_string_handle_t::make_handle(enmr_name.value());
+
+  return TILEDB_OK;
+}
+
 int32_t tiledb_attribute_get_name(
     tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, const char** name) {
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
@@ -420,165 +450,6 @@ int32_t tiledb_attribute_get_fill_value_nullable(
   return TILEDB_OK;
 }
 
-/* ********************************* */
-/*              DOMAIN               */
-/* ********************************* */
-
-int32_t tiledb_domain_alloc(tiledb_ctx_t* ctx, tiledb_domain_t** domain) {
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Create a domain struct
-  *domain = new (std::nothrow) tiledb_domain_t;
-  if (*domain == nullptr) {
-    auto st = Status_Error("Failed to allocate TileDB domain object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  // Create a new Domain object
-  (*domain)->domain_ = new (std::nothrow) tiledb::sm::Domain();
-  if ((*domain)->domain_ == nullptr) {
-    delete *domain;
-    *domain = nullptr;
-    auto st = Status_Error("Failed to allocate TileDB domain object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-  return TILEDB_OK;
-}
-
-void tiledb_domain_free(tiledb_domain_t** domain) {
-  if (domain != nullptr && *domain != nullptr) {
-    delete (*domain)->domain_;
-    delete *domain;
-    *domain = nullptr;
-  }
-}
-
-int32_t tiledb_domain_get_type(
-    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, tiledb_datatype_t* type) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, domain) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  if (domain->domain_->dim_num() == 0) {
-    auto st = Status_Error("Cannot get domain type; Domain has no dimensions");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
-
-  if (!domain->domain_->all_dims_same_type()) {
-    auto st = Status_Error(
-        "Cannot get domain type; Not applicable to heterogeneous dimensions");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
-  *type =
-      static_cast<tiledb_datatype_t>(domain->domain_->dimension_ptr(0)->type());
-  return TILEDB_OK;
-}
-
-int32_t tiledb_domain_get_ndim(
-    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, uint32_t* ndim) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, domain) == TILEDB_ERR)
-    return TILEDB_ERR;
-  *ndim = domain->domain_->dim_num();
-  return TILEDB_OK;
-}
-
-int32_t tiledb_domain_add_dimension(
-    tiledb_ctx_t* ctx, tiledb_domain_t* domain, tiledb_dimension_t* dim) {
-  if (sanity_check(ctx, domain) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-  throw_if_not_ok(domain->domain_->add_dimension(dim->copy_dimension()));
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_domain_get_dimension_from_index(
-    tiledb_ctx_t* ctx,
-    const tiledb_domain_t* domain,
-    uint32_t index,
-    tiledb_dimension_t** dim) {
-  if (sanity_check(ctx, domain) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-  ensure_output_pointer_is_valid(dim);
-  auto ndim = domain->domain_->dim_num();
-  if (ndim == 0 && index == 0) {
-    *dim = nullptr;
-    return TILEDB_OK;
-  }
-  // The index must be in the interval [0,ndim)
-  if (ndim <= index) {
-    throw CAPIStatusException(
-        "Dimension index " + std::to_string(index) +
-        "is out of bounds; valid indices are 0 to " + std::to_string(ndim - 1));
-  }
-  auto dimension{domain->domain_->dimension_shared_ptr(index)};
-  // `dimension_ptr` never returns `nullptr`
-  *dim = tiledb_dimension_handle_t::make_handle(dimension);
-  return TILEDB_OK;
-}
-
-int32_t tiledb_domain_get_dimension_from_name(
-    tiledb_ctx_t* ctx,
-    const tiledb_domain_t* domain,
-    const char* name_arg,
-    tiledb_dimension_t** dim) {
-  if (sanity_check(ctx, domain) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-  ensure_output_pointer_is_valid(dim);
-  auto ndim = domain->domain_->dim_num();
-  if (ndim == 0) {
-    *dim = nullptr;
-    return TILEDB_OK;
-  }
-  std::string name{name_arg};
-  auto dimension = domain->domain_->dimension_shared_ptr(name);
-  if (!dimension) {
-    throw CAPIStatusException("Dimension '" + name + "' does not exist");
-  }
-  *dim = tiledb_dimension_handle_t::make_handle(dimension);
-  return TILEDB_OK;
-}
-
-int32_t tiledb_domain_has_dimension(
-    tiledb_ctx_t* ctx,
-    const tiledb_domain_t* domain,
-    const char* name,
-    int32_t* has_dim) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, domain) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-
-  bool b;
-  throw_if_not_ok(domain->domain_->has_dimension(name, &b));
-
-  *has_dim = b ? 1 : 0;
-
-  return TILEDB_OK;
-}
-
-int32_t tiledb_domain_dump(
-    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, FILE* out) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, domain) == TILEDB_ERR)
-    return TILEDB_ERR;
-  domain->domain_->dump(out);
-  return TILEDB_OK;
-}
-
 /* ****************************** */
 /*           ARRAY SCHEMA         */
 /* ****************************** */
@@ -671,8 +542,8 @@ int32_t tiledb_array_schema_set_domain(
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
-  throw_if_not_ok(array_schema->array_schema_->set_domain(
-      make_shared<tiledb::sm::Domain>(HERE(), domain->domain_)));
+  throw_if_not_ok(
+      array_schema->array_schema_->set_domain(domain->copy_domain()));
   return TILEDB_OK;
 }
 
@@ -721,6 +592,21 @@ int32_t tiledb_array_schema_timestamp_range(
   auto timestamp_range = array_schema->array_schema_->timestamp_range();
   *lo = std::get<0>(timestamp_range);
   *hi = std::get<1>(timestamp_range);
+
+  return TILEDB_OK;
+}
+
+TILEDB_EXPORT int32_t tiledb_array_schema_add_enumeration(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_enumeration_t* enumeration) {
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  api::ensure_enumeration_is_valid(enumeration);
+
+  array_schema->array_schema_->add_enumeration(enumeration->copy());
 
   return TILEDB_OK;
 }
@@ -786,9 +672,10 @@ int32_t tiledb_array_schema_check(
   return TILEDB_OK;
 }
 
-int32_t tiledb_array_schema_load(
+int32_t tiledb_array_schema_load_impl(
     tiledb_ctx_t* ctx,
     const char* array_uri,
+    int with_enumerations,
     tiledb_array_schema_t** array_schema) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -822,12 +709,23 @@ int32_t tiledb_array_schema_load(
       return TILEDB_ERR;
     }
 
+    // With enumerations not supported for remote arrays currently.
+    if (with_enumerations) {
+      delete *array_schema;
+      *array_schema = nullptr;
+      auto st = Status_Error(
+          "Failed to load array schema;"
+          "remote load with enumerations is not yet supported.");
+      LOG_STATUS_NO_RETURN_VALUE(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+
     auto&& [st, array_schema_rest] =
         rest_client->get_array_schema_from_rest(uri);
     if (!st.ok()) {
       LOG_STATUS_NO_RETURN_VALUE(st);
       save_error(ctx, st);
-      delete *array_schema;
       return TILEDB_ERR;
     }
     (*array_schema)->array_schema_ = array_schema_rest.value();
@@ -853,13 +751,21 @@ int32_t tiledb_array_schema_load(
       auto st = Status_ArrayDirectoryError(le.what());
       LOG_STATUS_NO_RETURN_VALUE(st);
       save_error(ctx, st);
-      delete *array_schema;
       return TILEDB_ERR;
     }
 
     // Load latest array schema
-    auto&& array_schema_latest = array_dir.load_array_schema_latest(key);
-    (*array_schema)->array_schema_ = array_schema_latest;
+    try {
+      auto&& array_schema_latest = array_dir.load_array_schema_latest(key);
+      if (with_enumerations) {
+        array_dir.load_all_enumerations(array_schema_latest, key);
+      }
+      (*array_schema)->array_schema_ = array_schema_latest;
+    } catch (...) {
+      delete *array_schema;
+      *array_schema = nullptr;
+      throw;
+    }
   }
   return TILEDB_OK;
 }
@@ -1039,30 +945,12 @@ int32_t tiledb_array_schema_get_domain(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     tiledb_domain_t** domain) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR) {
     return TILEDB_ERR;
-
-  // Create a domain struct
-  *domain = new (std::nothrow) tiledb_domain_t;
-  if (*domain == nullptr) {
-    auto st = Status_Error("Failed to allocate TileDB domain object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
   }
-
-  // Create a new Domain object
-  (*domain)->domain_ = new (std::nothrow)
-      tiledb::sm::Domain(&array_schema->array_schema_->domain());
-  if ((*domain)->domain_ == nullptr) {
-    delete *domain;
-    *domain = nullptr;
-    auto st = Status_Error("Failed to allocate TileDB domain object in object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_OOM;
-  }
+  ensure_output_pointer_is_valid(domain);
+  *domain = tiledb_domain_handle_t::make_handle(
+      array_schema->array_schema_->shared_domain());
   return TILEDB_OK;
 }
 
@@ -1270,12 +1158,8 @@ int32_t tiledb_array_schema_evolution_add_attribute(
       sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(
-      array_schema_evolution->array_schema_evolution_->add_attribute(
-          attr->attr_));
-  return TILEDB_OK;
+  array_schema_evolution->array_schema_evolution_->add_attribute(attr->attr_);
 
-  // Success
   return TILEDB_OK;
 }
 
@@ -1287,9 +1171,41 @@ int32_t tiledb_array_schema_evolution_drop_attribute(
       sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(
-      array_schema_evolution->array_schema_evolution_->drop_attribute(
-          attribute_name));
+  array_schema_evolution->array_schema_evolution_->drop_attribute(
+      attribute_name);
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_array_schema_evolution_add_enumeration(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    tiledb_enumeration_t* enumeration) {
+  if (sanity_check(ctx, array_schema_evolution) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  api::ensure_enumeration_is_valid(enumeration);
+
+  auto enmr = enumeration->copy();
+  array_schema_evolution->array_schema_evolution_->add_enumeration(enmr);
+
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_array_schema_evolution_drop_enumeration(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    const char* enmr_name) {
+  if (sanity_check(ctx, array_schema_evolution) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  if (enmr_name == nullptr) {
+    return TILEDB_ERR;
+  }
+
+  array_schema_evolution->array_schema_evolution_->drop_enumeration(enmr_name);
+
   return TILEDB_OK;
 }
 
@@ -1302,12 +1218,8 @@ int32_t tiledb_array_schema_evolution_set_timestamp_range(
       sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(
-      array_schema_evolution->array_schema_evolution_->set_timestamp_range(
-          {lo, hi}));
-  return TILEDB_OK;
-
-  // Success
+  array_schema_evolution->array_schema_evolution_->set_timestamp_range(
+      {lo, hi});
   return TILEDB_OK;
 }
 
@@ -2506,6 +2418,19 @@ int32_t tiledb_query_condition_negate(
       ctx, cond, nullptr, TILEDB_NOT, negated_cond);
 }
 
+capi_return_t tiledb_query_condition_set_use_enumeration(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_condition_t* cond,
+    int use_enumeration) {
+  if (sanity_check(ctx, cond) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  cond->query_condition_->set_use_enumeration(
+      use_enumeration != 0 ? true : false);
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*              ARRAY             */
 /* ****************************** */
@@ -3408,6 +3333,37 @@ int32_t tiledb_array_evolve(
       uri, array_schema_evolution->array_schema_evolution_, key));
 
   // Success
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_array_get_enumeration(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_t* array,
+    const char* attr_name,
+    tiledb_enumeration_t** enumeration) {
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  if (attr_name == nullptr) {
+    throw api::CAPIStatusException("'attr_name' must not be null");
+  }
+
+  api::ensure_output_pointer_is_valid(enumeration);
+  auto ptr = array->array_->get_enumeration(attr_name);
+  *enumeration = tiledb_enumeration_handle_t::make_handle(ptr);
+
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_array_load_all_enumerations(
+    tiledb_ctx_t* ctx, const tiledb_array_t* array, int latest_only) {
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  array->array_->load_all_enumerations(latest_only ? true : false);
+
   return TILEDB_OK;
 }
 
@@ -5540,6 +5496,22 @@ int32_t tiledb_attribute_set_cell_val_num(
       ctx, attr, cell_val_num);
 }
 
+capi_return_t tiledb_attribute_set_enumeration_name(
+    tiledb_ctx_t* ctx,
+    tiledb_attribute_t* attr,
+    const char* enumeration_name) noexcept {
+  return api_entry<tiledb::api::tiledb_attribute_set_enumeration_name>(
+      ctx, attr, enumeration_name);
+}
+
+capi_return_t tiledb_attribute_get_enumeration_name(
+    tiledb_ctx_t* ctx,
+    tiledb_attribute_t* attr,
+    tiledb_string_t** name) noexcept {
+  return api_entry<tiledb::api::tiledb_attribute_get_enumeration_name>(
+      ctx, attr, name);
+}
+
 int32_t tiledb_attribute_get_name(
     tiledb_ctx_t* ctx,
     const tiledb_attribute_t* attr,
@@ -5625,70 +5597,6 @@ int32_t tiledb_attribute_get_fill_value_nullable(
     uint8_t* valid) noexcept {
   return api_entry<tiledb::api::tiledb_attribute_get_fill_value_nullable>(
       ctx, attr, value, size, valid);
-}
-
-/* ********************************* */
-/*              DOMAIN               */
-/* ********************************* */
-
-int32_t tiledb_domain_alloc(
-    tiledb_ctx_t* ctx, tiledb_domain_t** domain) noexcept {
-  return api_entry<tiledb::api::tiledb_domain_alloc>(ctx, domain);
-}
-
-void tiledb_domain_free(tiledb_domain_t** domain) noexcept {
-  return api_entry_void<tiledb::api::tiledb_domain_free>(domain);
-}
-
-int32_t tiledb_domain_get_type(
-    tiledb_ctx_t* ctx,
-    const tiledb_domain_t* domain,
-    tiledb_datatype_t* type) noexcept {
-  return api_entry<tiledb::api::tiledb_domain_get_type>(ctx, domain, type);
-}
-
-int32_t tiledb_domain_get_ndim(
-    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, uint32_t* ndim) noexcept {
-  return api_entry<tiledb::api::tiledb_domain_get_ndim>(ctx, domain, ndim);
-}
-
-int32_t tiledb_domain_add_dimension(
-    tiledb_ctx_t* ctx,
-    tiledb_domain_t* domain,
-    tiledb_dimension_t* dim) noexcept {
-  return api_entry<tiledb::api::tiledb_domain_add_dimension>(ctx, domain, dim);
-}
-
-int32_t tiledb_domain_dump(
-    tiledb_ctx_t* ctx, const tiledb_domain_t* domain, FILE* out) noexcept {
-  return api_entry<tiledb::api::tiledb_domain_dump>(ctx, domain, out);
-}
-
-int32_t tiledb_domain_get_dimension_from_index(
-    tiledb_ctx_t* ctx,
-    const tiledb_domain_t* domain,
-    uint32_t index,
-    tiledb_dimension_t** dim) noexcept {
-  return api_entry<tiledb::api::tiledb_domain_get_dimension_from_index>(
-      ctx, domain, index, dim);
-}
-
-int32_t tiledb_domain_get_dimension_from_name(
-    tiledb_ctx_t* ctx,
-    const tiledb_domain_t* domain,
-    const char* name,
-    tiledb_dimension_t** dim) noexcept {
-  return api_entry<tiledb::api::tiledb_domain_get_dimension_from_name>(
-      ctx, domain, name, dim);
-}
-
-int32_t tiledb_domain_has_dimension(
-    tiledb_ctx_t* ctx,
-    const tiledb_domain_t* domain,
-    const char* name,
-    int32_t* has_dim) noexcept {
-  return api_entry<tiledb::api::tiledb_domain_has_dimension>(
-      ctx, domain, name, has_dim);
 }
 
 /* ****************************** */
@@ -5780,6 +5688,14 @@ int32_t tiledb_array_schema_timestamp_range(
       ctx, array_schema, lo, hi);
 }
 
+int32_t tiledb_array_schema_add_enumeration(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_enumeration_t* enumeration) noexcept {
+  return api_entry<tiledb::api::tiledb_array_schema_add_enumeration>(
+      ctx, array_schema, enumeration);
+}
+
 int32_t tiledb_array_schema_set_coords_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
@@ -5813,8 +5729,16 @@ int32_t tiledb_array_schema_load(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     tiledb_array_schema_t** array_schema) noexcept {
-  return api_entry<tiledb::api::tiledb_array_schema_load>(
-      ctx, array_uri, array_schema);
+  return api_entry<tiledb::api::tiledb_array_schema_load_impl>(
+      ctx, array_uri, 0, array_schema);
+}
+
+int32_t tiledb_array_schema_load_with_enumerations(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    tiledb_array_schema_t** array_schema) noexcept {
+  return api_entry<tiledb::api::tiledb_array_schema_load_impl>(
+      ctx, array_uri, 1, array_schema);
 }
 
 int32_t tiledb_array_schema_load_with_key(
@@ -5971,6 +5895,22 @@ int32_t tiledb_array_schema_evolution_drop_attribute(
     const char* attribute_name) noexcept {
   return api_entry<tiledb::api::tiledb_array_schema_evolution_drop_attribute>(
       ctx, array_schema_evolution, attribute_name);
+}
+
+int32_t tiledb_array_schema_evolution_add_enumeration(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    tiledb_enumeration_t* enmr) noexcept {
+  return api_entry<tiledb::api::tiledb_array_schema_evolution_add_enumeration>(
+      ctx, array_schema_evolution, enmr);
+}
+
+capi_return_t tiledb_array_schema_evolution_drop_enumeration(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    const char* enumeration_name) noexcept {
+  return api_entry<tiledb::api::tiledb_array_schema_evolution_drop_enumeration>(
+      ctx, array_schema_evolution, enumeration_name);
 }
 
 TILEDB_EXPORT int32_t tiledb_array_schema_evolution_set_timestamp_range(
@@ -6608,6 +6548,14 @@ int32_t tiledb_query_condition_negate(
       ctx, cond, negated_cond);
 }
 
+capi_return_t tiledb_query_condition_set_use_enumeration(
+    tiledb_ctx_t* const ctx,
+    const tiledb_query_condition_t* const cond,
+    int use_enumeration) noexcept {
+  return api_entry<tiledb::api::tiledb_query_condition_set_use_enumeration>(
+      ctx, cond, use_enumeration);
+}
+
 /* ****************************** */
 /*         UPDATE CONDITION       */
 /* ****************************** */
@@ -6954,6 +6902,21 @@ int32_t tiledb_array_evolve(
     tiledb_array_schema_evolution_t* array_schema_evolution) noexcept {
   return api_entry<tiledb::api::tiledb_array_evolve>(
       ctx, array_uri, array_schema_evolution);
+}
+
+capi_return_t tiledb_array_get_enumeration(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_t* array,
+    const char* attr_name,
+    tiledb_enumeration_t** enumeration) noexcept {
+  return api_entry<tiledb::api::tiledb_array_get_enumeration>(
+      ctx, array, attr_name, enumeration);
+}
+
+capi_return_t tiledb_array_load_all_enumerations(
+    tiledb_ctx_t* ctx, const tiledb_array_t* array, int latest_only) noexcept {
+  return api_entry<tiledb::api::tiledb_array_load_all_enumerations>(
+      ctx, array, latest_only);
 }
 
 int32_t tiledb_array_upgrade_version(

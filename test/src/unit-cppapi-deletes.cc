@@ -111,6 +111,7 @@ struct DeletesFx {
   bool is_array(const std::string& array_name);
   void validate_array_dir_after_delete(const std::string& path);
   void validate_group_dir_after_delete(const std::string& path);
+  std::vector<std::string> list_schemas(const std::string& array_name);
 };
 
 DeletesFx::DeletesFx()
@@ -505,6 +506,29 @@ void DeletesFx::validate_group_dir_after_delete(const std::string& path) {
   REQUIRE(!vfs_.is_file(path + tiledb::sm::constants::group_filename));
   REQUIRE(!vfs_.is_dir(path + tiledb::sm::constants::group_detail_dir_name));
   REQUIRE(!vfs_.is_dir(path + tiledb::sm::constants::group_metadata_dir_name));
+}
+
+std::vector<std::string> DeletesFx::list_schemas(
+    const std::string& array_name) {
+  auto& enum_dir = tiledb::sm::constants::array_enumerations_dir_name;
+  auto schemas =
+      vfs_.ls(array_name + tiledb::sm::constants::array_schema_dir_name);
+
+  auto it = schemas.begin();
+  while (it != schemas.end()) {
+    if ((*it).size() < enum_dir.size()) {
+      continue;
+    }
+    if ((*it).substr((*it).size() - enum_dir.size()) == enum_dir) {
+      break;
+    }
+    ++it;
+  }
+  if (it != schemas.end()) {
+    schemas.erase(it);
+  }
+
+  return schemas;
 }
 
 TEST_CASE_METHOD(
@@ -1968,8 +1992,7 @@ TEST_CASE_METHOD(
   // Check write
   CHECK(tiledb::test::num_commits(SPARSE_ARRAY_NAME) == 4);
   CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 4);
-  auto schemas =
-      vfs_.ls(array_name + tiledb::sm::constants::array_schema_dir_name);
+  auto schemas = list_schemas(array_name);
   CHECK(schemas.size() == 1);
   auto meta =
       vfs_.ls(array_name + tiledb::sm::constants::array_metadata_dir_name);
@@ -2040,8 +2063,7 @@ TEST_CASE_METHOD(
   vfs_.touch(extraneous_file_path);
 
   // Check write
-  auto schemas =
-      vfs_.ls(array_name + tiledb::sm::constants::array_schema_dir_name);
+  auto schemas = list_schemas(array_name);
   CHECK(schemas.size() == 1);
   auto uris = vfs_.ls(array_name);
   bool ok_exists = false;
@@ -2259,11 +2281,9 @@ TEST_CASE_METHOD(
   auto group_meta_dir =
       vfs_.ls(GROUP_NAME + tiledb::sm::constants::group_metadata_dir_name);
   CHECK(group_meta_dir.size() == 1);
-  auto array_schema =
-      vfs_.ls(array_path + tiledb::sm::constants::array_schema_dir_name);
+  auto array_schema = list_schemas(array_path);
   CHECK(array_schema.size() == 1);
-  auto array2_schema =
-      vfs_.ls(array2_path + tiledb::sm::constants::array_schema_dir_name);
+  auto array2_schema = list_schemas(array2_path);
   CHECK(array2_schema.size() == 1);
 
   // Recursively delete group in modify exclusive mode

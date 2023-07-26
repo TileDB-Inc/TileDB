@@ -61,9 +61,9 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class ArrayStatusException : public StatusException {
+class ArrayException : public StatusException {
  public:
-  explicit ArrayStatusException(const std::string& message)
+  explicit ArrayException(const std::string& message)
       : StatusException("Array", message) {
   }
 };
@@ -537,8 +537,7 @@ void Array::delete_array(const URI& uri) {
   if (remote_) {
     auto rest_client = resources_.rest_client();
     if (rest_client == nullptr) {
-      throw ArrayStatusException(
-          "[delete_array] Remote array with no REST client.");
+      throw ArrayException("[delete_array] Remote array with no REST client.");
     }
     rest_client->delete_array_from_rest(uri);
   } else {
@@ -557,7 +556,7 @@ void Array::delete_fragments(
   // Delete fragments
   // #TODO Add rest support for delete_fragments
   if (remote_) {
-    throw ArrayStatusException(
+    throw ArrayException(
         "[delete_fragments] Remote arrays currently unsupported.");
   } else {
     storage_manager_->delete_fragments(
@@ -573,12 +572,54 @@ void Array::delete_fragments_list(
   // Delete fragments
   // #TODO Add rest support for delete_fragments_list
   if (remote_) {
-    throw ArrayStatusException(
+    throw ArrayException(
         "[delete_fragments_list] Remote arrays currently unsupported.");
   } else {
     auto array_dir = ArrayDirectory(
         resources_, uri, 0, std::numeric_limits<uint64_t>::max());
     array_dir.delete_fragments_list(fragment_uris);
+  }
+}
+
+shared_ptr<const Enumeration> Array::get_enumeration(
+    const std::string& enumeration_name) {
+  if (remote_) {
+    throw ArrayException("Unable to load all enumerations; Array is remote.");
+  }
+
+  if (!is_open_) {
+    throw ArrayException("Cannot get enumeration; Array is not open");
+  }
+
+  if (array_schema_latest_->is_enumeration_loaded(enumeration_name)) {
+    return array_schema_latest_->get_enumeration(enumeration_name);
+  }
+
+  return array_dir_.load_enumeration(
+      array_schema_latest_, enumeration_name, get_encryption_key());
+}
+
+void Array::load_all_enumerations(bool latest_only) {
+  if (remote_) {
+    throw ArrayException("Unable to load all enumerations; Array is remote.");
+  }
+
+  if (!is_open_) {
+    throw ArrayException("Cannot load all enumerations; Array is not open");
+  }
+
+  std::vector<shared_ptr<ArraySchema>> schemas;
+  if (latest_only) {
+    schemas.emplace_back(array_schema_latest_);
+  } else {
+    schemas.reserve(array_schemas_all_.size());
+    for (auto& iter : array_schemas_all_) {
+      schemas.emplace_back(iter.second);
+    }
+  }
+
+  for (auto& schema : schemas) {
+    array_dir_.load_all_enumerations(schema, get_encryption_key());
   }
 }
 
@@ -854,8 +895,7 @@ uint64_t Array::timestamp_end_opened_at() const {
 
 void Array::set_config(Config config) {
   if (is_open()) {
-    throw ArrayStatusException(
-        "[set_config] Cannot set a config on an open array");
+    throw ArrayException("[set_config] Cannot set a config on an open array");
   }
   config_.inherit(config);
 }
@@ -1577,20 +1617,19 @@ void Array::set_array_closed() {
 void Array::ensure_array_is_valid_for_delete(const URI& uri) {
   // Check that query type is MODIFY_EXCLUSIVE
   if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    throw ArrayStatusException(
+    throw ArrayException(
         "[ensure_array_is_valid_for_delete] "
         "Query type must be MODIFY_EXCLUSIVE to perform a delete.");
   }
 
   // Check that array is open
   if (!is_open() && !controller().is_open(uri)) {
-    throw ArrayStatusException(
-        "[ensure_array_is_valid_for_delete] Array is closed");
+    throw ArrayException("[ensure_array_is_valid_for_delete] Array is closed");
   }
 
   // Check that array is not in the process of opening or closing
   if (is_opening_or_closing_) {
-    throw ArrayStatusException(
+    throw ArrayException(
         "[ensure_array_is_valid_for_delete] "
         "May not perform simultaneous open or close operations.");
   }

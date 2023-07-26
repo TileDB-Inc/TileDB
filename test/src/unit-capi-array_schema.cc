@@ -959,7 +959,10 @@ int ArraySchemaFx::get_schema_file_struct(const char* path, void* data) {
   int rc = tiledb_vfs_is_dir(ctx, vfs, path, &is_dir);
   CHECK(rc == TILEDB_OK);
 
-  data_struct->path = path;
+  if (!is_dir) {
+    data_struct->path = path;
+  }
+
   return 1;
 }
 

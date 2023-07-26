@@ -33,6 +33,7 @@
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
+#include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parallel_functions.h"
@@ -185,6 +186,46 @@ ArrayDirectory::load_all_array_schemas(
   }
 
   return array_schemas;
+}
+
+shared_ptr<const Enumeration> ArrayDirectory::load_enumeration(
+    shared_ptr<ArraySchema> schema,
+    const std::string& enumeration_name,
+    const EncryptionKey& encryption_key) const {
+  auto timer_se = resources_.get().stats().start_timer("sm_load_enumeration");
+
+  auto path_name = schema->get_enumeration_path_name(enumeration_name);
+
+  auto enmr_uri = uri_.join_path(constants::array_schema_dir_name)
+                      .join_path(constants::array_enumerations_dir_name)
+                      .join_path(path_name);
+
+  auto&& tile = GenericTileIO::load(resources_, enmr_uri, 0, encryption_key);
+  resources_.get().stats().add_counter("read_enumeration_size", tile.size());
+
+  Deserializer deserializer(tile.data(), tile.size());
+  auto enum_ptr = Enumeration::deserialize(deserializer);
+
+  schema->store_enumeration(enum_ptr);
+
+  return enum_ptr;
+}
+
+void ArrayDirectory::load_all_enumerations(
+    shared_ptr<ArraySchema> schema, const EncryptionKey& encryption_key) const {
+  std::vector<std::string> enmr_names;
+  for (auto& enmr_name : schema->get_enumeration_names()) {
+    if (schema->is_enumeration_loaded(enmr_name)) {
+      continue;
+    }
+    enmr_names.push_back(enmr_name);
+  }
+
+  auto& tp = resources_.get().compute_tp();
+  throw_if_not_ok(parallel_for(&tp, 0, enmr_names.size(), [&](size_t i) {
+    load_enumeration(schema, enmr_names[i], encryption_key);
+    return Status::Ok();
+  }));
 }
 
 const URI& ArrayDirectory::uri() const {
@@ -1205,10 +1246,12 @@ Status ArrayDirectory::compute_array_schema_uris(
   if (!array_schema_dir_uris.empty()) {
     array_schema_uris_.reserve(
         array_schema_uris_.size() + array_schema_dir_uris.size());
-    std::copy(
-        array_schema_dir_uris.begin(),
-        array_schema_dir_uris.end(),
-        std::back_inserter(array_schema_uris_));
+    for (auto& uri : array_schema_dir_uris) {
+      if (uri.last_path_part() == constants::array_enumerations_dir_name) {
+        continue;
+      }
+      array_schema_uris_.push_back(uri);
+    }
   }
 
   return Status::Ok();

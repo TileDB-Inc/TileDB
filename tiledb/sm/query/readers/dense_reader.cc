@@ -74,9 +74,11 @@ DenseReader::DenseReader(
     Array* array,
     Config& config,
     std::unordered_map<std::string, QueryBuffer>& buffers,
+    std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
     Subarray& subarray,
     Layout layout,
     std::optional<QueryCondition>& condition,
+    DefaultChannelAggregates& default_channel_aggregates,
     bool skip_checks_serialization,
     bool remote_query)
     : ReaderBase(
@@ -86,9 +88,11 @@ DenseReader::DenseReader(
           array,
           config,
           buffers,
+          aggregate_buffers,
           subarray,
           layout,
-          condition)
+          condition,
+          default_channel_aggregates)
     , array_memory_tracker_(array->memory_tracker()) {
   elements_mode_ = false;
 
@@ -96,6 +100,11 @@ DenseReader::DenseReader(
   if (storage_manager_ == nullptr) {
     throw DenseReaderStatusException(
         "Cannot initialize dense reader; Storage manager not set");
+  }
+
+  if (!default_channel_aggregates.empty()) {
+    throw DenseReaderStatusException(
+        "Cannot initialize reader; Reader cannot process aggregates");
   }
 
   if (!skip_checks_serialization && buffers_.empty()) {
@@ -1591,10 +1600,10 @@ Status DenseReader::copy_offset_tiles(
       for (uint64_t c = 0; c < iter.cell_slab_length(); c++) {
         if (!(qc_result[c + cell_offset] & 0x1)) {
           memset(dest_ptr + c * sizeof(OffType), 0xFF, sizeof(OffType));
-        }
 
-        if (nullable) {
-          std::memset(dest_validity_ptr + c, fill_value_nullable, 1);
+          if (nullable) {
+            std::memset(dest_validity_ptr + c, fill_value_nullable, 1);
+          }
         }
       }
     }

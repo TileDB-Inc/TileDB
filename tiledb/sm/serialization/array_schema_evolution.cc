@@ -42,6 +42,7 @@
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -102,6 +103,32 @@ Status array_schema_evolution_to_capnp(
     attribute_to_capnp(attr_to_add, &attribute_builder);
   }
 
+  auto enmr_names_to_add = array_schema_evolution->enumeration_names_to_add();
+  auto num_enmrs = enmr_names_to_add.size();
+
+  if (num_enmrs > 0) {
+    auto enmrs_to_add_builder =
+        array_schema_evolution_builder->initEnumerationsToAdd(num_enmrs);
+    for (size_t i = 0; i < num_enmrs; i++) {
+      auto enmr =
+          array_schema_evolution->enumeration_to_add(enmr_names_to_add[i]);
+      auto builder = enmrs_to_add_builder[i];
+      enumeration_to_capnp(enmr, builder);
+    }
+  }
+
+  // Enumerations to drop
+  std::vector<std::string> enmr_names_to_drop =
+      array_schema_evolution->enumeration_names_to_drop();
+
+  auto enumerations_to_drop_builder =
+      array_schema_evolution_builder->initEnumerationsToDrop(
+          enmr_names_to_drop.size());
+
+  for (size_t i = 0; i < enmr_names_to_drop.size(); i++) {
+    enumerations_to_drop_builder.set(i, enmr_names_to_drop[i]);
+  }
+
   auto timestamp_builder =
       array_schema_evolution_builder->initTimestampRange(2);
   const auto& timestamp_range = array_schema_evolution->timestamp_range();
@@ -111,34 +138,55 @@ Status array_schema_evolution_to_capnp(
   return Status::Ok();
 }
 
-Status array_schema_evolution_from_capnp(
-    const capnp::ArraySchemaEvolution::Reader& evolution_reader,
-    tdb_unique_ptr<ArraySchemaEvolution>* array_schema_evolution) {
-  array_schema_evolution->reset(tdb_new(ArraySchemaEvolution));
-  // Set attributes to drop
+tdb_unique_ptr<ArraySchemaEvolution> array_schema_evolution_from_capnp(
+    const capnp::ArraySchemaEvolution::Reader& evolution_reader) {
+  // Create attributes to add
+  std::unordered_map<std::string, shared_ptr<Attribute>> attrs_to_add;
+  auto attrs_to_add_reader = evolution_reader.getAttributesToAdd();
+  for (auto attr_reader : attrs_to_add_reader) {
+    auto attr = attribute_from_capnp(attr_reader);
+    attrs_to_add[attr->name()] = attr;
+  }
+
+  // Create attributes to drop
+  std::unordered_set<std::string> attrs_to_drop;
   auto attributes_to_drop_reader = evolution_reader.getAttributesToDrop();
   for (auto attr_reader : attributes_to_drop_reader) {
     std::string attr_name = std::string(attr_reader.cStr());
-    RETURN_NOT_OK((*array_schema_evolution)->drop_attribute(attr_name));
+    attrs_to_drop.insert(attr_name);
   }
 
-  // Set attributes to add
-  auto attributes_to_add_reader = evolution_reader.getAttributesToAdd();
-  for (auto attr_reader : attributes_to_add_reader) {
-    auto attr = attribute_from_capnp(attr_reader);
-    RETURN_NOT_OK((*array_schema_evolution)->add_attribute(attr.get()));
+  // Create enumerations to add
+  std::unordered_map<std::string, shared_ptr<const Enumeration>> enmrs_to_add;
+  auto enmrs_to_add_reader = evolution_reader.getEnumerationsToAdd();
+  for (auto enmr_reader : enmrs_to_add_reader) {
+    auto enmr = enumeration_from_capnp(enmr_reader);
+    enmrs_to_add[enmr->name()] = enmr;
   }
 
+  // Create enumerations to drop
+  std::unordered_set<std::string> enmrs_to_drop;
+  auto enmrs_to_drop_reader = evolution_reader.getEnumerationsToDrop();
+  for (auto enmr_reader : enmrs_to_drop_reader) {
+    std::string enmr_name = std::string(enmr_reader.cStr());
+    enmrs_to_drop.insert(enmr_name);
+  }
+
+  std::pair<uint64_t, uint64_t> ts_range;
   // Set the range if we have two values
   if (evolution_reader.hasTimestampRange() &&
       evolution_reader.getTimestampRange().size() >= 2) {
     const auto& timestamp_range = evolution_reader.getTimestampRange();
-    throw_if_not_ok((*array_schema_evolution)
-                        ->set_timestamp_range(std::make_pair(
-                            timestamp_range[0], timestamp_range[1])));
+    ts_range = std::make_pair(timestamp_range[0], timestamp_range[1]);
   }
 
-  return Status::Ok();
+  return tdb_unique_ptr<ArraySchemaEvolution>(tdb_new(
+      ArraySchemaEvolution,
+      attrs_to_add,
+      attrs_to_drop,
+      enmrs_to_add,
+      enmrs_to_drop,
+      ts_range));
 }
 
 Status array_schema_evolution_serialize(
@@ -216,8 +264,8 @@ Status array_schema_evolution_deserialize(
             array_schema_evolution_builder);
         capnp::ArraySchemaEvolution::Reader array_schema_evolution_reader =
             array_schema_evolution_builder.asReader();
-        RETURN_NOT_OK(array_schema_evolution_from_capnp(
-            array_schema_evolution_reader, &decoded_array_schema_evolution));
+        decoded_array_schema_evolution =
+            array_schema_evolution_from_capnp(array_schema_evolution_reader);
         break;
       }
       case SerializationType::CAPNP: {
@@ -228,8 +276,8 @@ Status array_schema_evolution_deserialize(
             serialized_buffer.size() / sizeof(::capnp::word)));
         capnp::ArraySchemaEvolution::Reader array_schema_evolution_reader =
             reader.getRoot<capnp::ArraySchemaEvolution>();
-        RETURN_NOT_OK(array_schema_evolution_from_capnp(
-            array_schema_evolution_reader, &decoded_array_schema_evolution));
+        decoded_array_schema_evolution =
+            array_schema_evolution_from_capnp(array_schema_evolution_reader);
         break;
       }
       default: {

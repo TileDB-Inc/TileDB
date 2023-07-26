@@ -27,6 +27,7 @@
 include(common NO_POLICY_SCOPE)
 add_subdirectory(ast)
 add_subdirectory(deletes_and_updates)
+add_subdirectory(readers)
 
 #
 # Note that this `query` directory does not define any object libraries at
