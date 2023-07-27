@@ -728,9 +728,10 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
       Status_VFSError("Unsupported URI scheme: " + uri.to_string()));
 }
 
-Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
+Status VFS::ls(
+    const URI& parent, std::vector<URI>* uris, bool recursive) const {
   stats_->add_counter("ls_num", 1);
-  auto&& [st, entries] = ls_with_sizes(parent);
+  auto&& [st, entries] = ls_with_sizes(parent, recursive);
   RETURN_NOT_OK(st);
 
   for (auto& fs : *entries) {
@@ -741,7 +742,7 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
 }
 
 tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
-    const URI& parent) const {
+    const URI& parent, bool recursive) const {
   // Noop if `parent` is not a directory, do not error out.
   // For S3, GCS and Azure, `ls` on a non-directory will just
   // return an empty `uris` vector.
@@ -752,6 +753,13 @@ tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
     if (!flag) {
       return {Status::Ok(), std::vector<directory_entry>()};
     }
+  }
+
+  if (recursive && !parent.is_s3()) {
+    auto st = LOG_STATUS(Status_VFSError(
+        "Recursive ls over " + parent.backend_name() +
+        " storage backend is not yet supported."));
+    return {st, std::nullopt};
   }
 
   optional<std::vector<directory_entry>> entries;
@@ -767,7 +775,11 @@ tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
   } else if (parent.is_s3()) {
 #ifdef HAVE_S3
     Status st;
-    std::tie(st, entries) = s3_.ls_with_sizes(parent, "");
+    if (recursive) {
+      std::tie(st, entries) = s3_.ls_recursive(parent);
+    } else {
+      std::tie(st, entries) = s3_.ls_with_sizes(parent);
+    }
 #else
     auto st =
         LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));

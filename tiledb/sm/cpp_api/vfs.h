@@ -482,6 +482,16 @@ class VFS {
     return ret;
   }
 
+  std::pair<std::string, std::vector<uint64_t>> ls_recursive(
+      const std::string& uri) const {
+    std::string data;
+    std::vector<uint64_t> offsets;
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_vfs_ls_recursive(
+        ctx.ptr().get(), vfs_.get(), uri.c_str(), &data, &offsets));
+    return {data, offsets};
+  }
+
   /** Retrieves the size of a file with the input URI. */
   uint64_t file_size(const std::string& uri) const {
     uint64_t ret;

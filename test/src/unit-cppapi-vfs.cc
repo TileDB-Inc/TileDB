@@ -501,3 +501,19 @@ TEST_CASE(
     }
   }
 }
+
+TEST_CASE("C++ API: VFS recursive ls", "[debug-smr]") {
+  using namespace tiledb;
+  Context ctx;
+  VFS vfs(ctx);
+  auto result = vfs.ls_recursive(
+      "s3://1000genomes-dragen-v3.7.6/data/individuals/hg38-graph-based");
+  auto data = result.first;
+  auto offsets = result.second;
+
+  for (size_t i = 1; i < offsets.size(); i++) {
+    std::string path(data, offsets[i - 1], offsets[i] - offsets[i - 1]);
+    std::cout << path << std::endl;
+  }
+  std::cout << "Total results: " << offsets.size() << std::endl;
+}

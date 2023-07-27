@@ -142,6 +142,11 @@ struct tiledb_vfs_handle_t
     return vfs_.ls(parent, uris);
   }
 
+  Status ls_recursive(
+      const tiledb::sm::URI& parent, std::vector<tiledb::sm::URI>* uris) const {
+    return vfs_.ls_recursive(parent, uris);
+  }
+
   Status touch(const tiledb::sm::URI& uri) const {
     return vfs_.touch(uri);
   }

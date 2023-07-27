@@ -412,6 +412,11 @@ class S3 {
       const std::string& delimiter = "/",
       int max_paths = -1) const;
 
+  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
+  ls_recursive(const URI& prefix, int max_paths = -1) const {
+    return ls_with_sizes(prefix, "", max_paths);
+  }
+
   /**
    * Renames an object.
    *

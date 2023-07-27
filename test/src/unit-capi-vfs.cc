@@ -964,3 +964,31 @@ TEST_CASE_METHOD(VFSFx, "C API: Test VFS parallel I/O", "[capi][vfs]") {
     check_vfs(MEMFS_TEMP_DIR);
   }
 }
+
+TEST_CASE_METHOD(VFSFx, "C API: VFS recursive ls", "[c-debug-smr]") {
+  tiledb_config_t* cfg;
+  tiledb_error_t* err;
+  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+
+  tiledb_ctx_t* ctx;
+  REQUIRE(tiledb_ctx_alloc(cfg, &ctx) == TILEDB_OK);
+
+  tiledb_vfs_t* vfs;
+  REQUIRE(tiledb_vfs_alloc(ctx, cfg, &vfs) == TILEDB_OK);
+
+  std::string data;
+  std::vector<uint64_t> data_off;
+
+  REQUIRE(
+      tiledb_vfs_ls_recursive(
+          ctx,
+          vfs,
+          "s3://1000genomes-dragen-v3.7.6/data/individuals/hg38-graph-based",
+          &data,
+          &data_off) == TILEDB_OK);
+  for (size_t i = 1; i < data_off.size(); i++) {
+    std::string path(data, data_off[i - 1], data_off[i] - data_off[i - 1]);
+    std::cout << path << std::endl;
+  }
+  std::cout << "Total results: " << data_off.size() << std::endl;
+}

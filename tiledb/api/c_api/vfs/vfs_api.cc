@@ -292,6 +292,27 @@ capi_return_t tiledb_vfs_ls(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_vfs_ls_recursive(
+    tiledb_vfs_t* vfs, const char* path, void* data, void* data_offsets) {
+  ensure_output_pointer_is_valid(data);
+  ensure_output_pointer_is_valid(data_offsets);
+  std::vector<tiledb::sm::URI> children;
+  throw_if_not_ok(vfs->ls_recursive(tiledb::sm::URI(path), &children));
+
+  auto data_paths = static_cast<std::string*>(data);
+  auto data_off = static_cast<std::vector<uint64_t>*>(data_offsets);
+  uint64_t last_offset = 0;
+  data_off->push_back(last_offset);
+  for (const auto& uri : children) {
+    auto uri_str = uri.to_string();
+    data_paths->append(uri_str);
+    last_offset += uri_str.size();
+    data_off->push_back(last_offset);
+  }
+
+  return TILEDB_OK;
+}
+
 void tiledb_vfs_fh_free(tiledb_vfs_fh_t** fh) {
   ensure_output_pointer_is_valid(fh);
   ensure_vfs_fh_is_valid(*fh);
@@ -510,6 +531,16 @@ capi_return_t tiledb_vfs_ls(
     void* data) noexcept {
   return api_entry_context<tiledb::api::tiledb_vfs_ls>(
       ctx, vfs, path, callback, data);
+}
+
+capi_return_t tiledb_vfs_ls_recursive(
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    const char* path,
+    void* data,
+    void* data_offsets) noexcept {
+  return api_entry_context<tiledb::api::tiledb_vfs_ls_recursive>(
+      ctx, vfs, path, data, data_offsets);
 }
 
 void tiledb_vfs_fh_free(tiledb_vfs_fh_t** fh) noexcept {
