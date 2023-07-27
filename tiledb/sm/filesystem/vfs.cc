@@ -774,7 +774,7 @@ tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
   } else if (parent.is_s3()) {
 #ifdef HAVE_S3
     Status st;
-    std::tie(st, entries) = s3_.ls_with_sizes(parent);
+    std::tie(st, entries) = s3_.ls_with_sizes(parent, "");
 #else
     auto st =
         LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));

@@ -50,6 +50,7 @@
 #include <aws/core/utils/memory/stl/AWSString.h>
 #include <aws/s3/model/AbortMultipartUploadRequest.h>
 #include <aws/s3/model/CreateMultipartUploadRequest.h>
+#include <aws/s3/model/ListObjectsV2Request.h>
 #include <boost/interprocess/streams/bufferstream.hpp>
 #include <fstream>
 #include <iostream>
@@ -823,22 +824,24 @@ tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
   Aws::Http::URI aws_uri = prefix_str.c_str();
   auto aws_prefix = remove_front_slash(aws_uri.GetPath().c_str());
   std::string aws_auth = aws_uri.GetAuthority().c_str();
-  Aws::S3::Model::ListObjectsRequest list_objects_request;
+  Aws::S3::Model::ListObjectsV2Request list_objects_request;
   list_objects_request.SetBucket(aws_uri.GetAuthority());
   list_objects_request.SetPrefix(aws_prefix.c_str());
   list_objects_request.SetDelimiter(delimiter.c_str());
-  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET) {
     list_objects_request.SetRequestPayer(request_payer_);
+  }
 
   std::vector<directory_entry> entries;
 
   bool is_done = false;
   while (!is_done) {
     // Not requesting more items than needed
-    if (max_paths != -1)
+    if (max_paths != -1) {
       list_objects_request.SetMaxKeys(
           max_paths - static_cast<int>(entries.size()));
-    auto list_objects_outcome = client_->ListObjects(list_objects_request);
+    }
+    auto list_objects_outcome = client_->ListObjectsV2(list_objects_request);
 
     if (!list_objects_outcome.IsSuccess()) {
       auto st = LOG_STATUS(Status_S3Error(
@@ -870,19 +873,15 @@ tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
         !list_objects_outcome.GetResult().GetIsTruncated() ||
         (max_paths != -1 && entries.size() >= static_cast<size_t>(max_paths));
     if (!is_done) {
-      // The documentation states that "GetNextMarker" will be non-empty only
-      // when the delimiter in the request is non-empty. When the delimiter is
-      // non-empty, we must used the last returned key as the next marker.
-      assert(
-          !delimiter.empty() ||
-          !list_objects_outcome.GetResult().GetContents().empty());
       Aws::String next_marker =
-          !delimiter.empty() ?
-              list_objects_outcome.GetResult().GetNextMarker() :
-              list_objects_outcome.GetResult().GetContents().back().GetKey();
-      assert(!next_marker.empty());
-
-      list_objects_request.SetMarker(std::move(next_marker));
+          list_objects_outcome.GetResult().GetNextContinuationToken();
+      if (next_marker.empty()) {
+        auto st =
+            LOG_STATUS(Status_S3Error("Failed to retrieve next continuation "
+                                      "token for ListObjectsV2 request."));
+        return {st, nullopt};
+      }
+      list_objects_request.SetContinuationToken(std::move(next_marker));
     }
   }
 
