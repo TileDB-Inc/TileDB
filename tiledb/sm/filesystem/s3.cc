@@ -51,6 +51,7 @@
 #include <aws/core/utils/memory/stl/AWSStringStream.h>
 #include <aws/s3/model/AbortMultipartUploadRequest.h>
 #include <aws/s3/model/CreateMultipartUploadRequest.h>
+#include <aws/s3/model/ListObjectsV2Request.h>
 #include <boost/interprocess/streams/bufferstream.hpp>
 #include <fstream>
 #include <iostream>
