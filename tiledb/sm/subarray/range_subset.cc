@@ -133,8 +133,7 @@ RangeSetAndSuperset::RangeSetAndSuperset(
 
 void RangeSetAndSuperset::sort_and_merge_ranges(
     ThreadPool* const compute_tp, bool merge) {
-  // Return if there's not at least 2 ranges
-  if (ranges_.size() < 2) {
+  if (ranges_.empty()) {
     return;
   }
 

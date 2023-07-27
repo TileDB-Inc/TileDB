@@ -76,10 +76,8 @@ struct AddStrategy<
     // last range on `ranges`, they are contiguous and will be coalesced.
     Range& last_range = ranges.back();
     const bool contiguous_after =
-        *static_cast<const T*>(last_range.end_fixed()) !=
-            std::numeric_limits<T>::max() &&
-        *static_cast<const T*>(last_range.end_fixed()) + 1 ==
-            *static_cast<const T*>(new_range.start_fixed());
+        *last_range.end_as<T>() != std::numeric_limits<T>::max() &&
+        *last_range.end_as<T>() + 1 == *new_range.start_as<T>();
 
     // Coalesce `range` with `last_range` if they are contiguous.
     if (contiguous_after) {
@@ -146,7 +144,7 @@ struct SortStrategy<std::string, std::string> {
 /** Default merge behavior: merging is not enabled. */
 template <typename T, typename Enable = T>
 struct MergeStrategy {
-  static void merge(std::vector<Range>&);
+  static void merge_sorted_ranges(std::vector<Range>&);
 };
 
 /** Merge algorithm for numeric-type ranges. */
@@ -154,22 +152,21 @@ template <typename T>
 struct MergeStrategy<
     T,
     typename std::enable_if<std::is_arithmetic<T>::value, T>::type> {
-  static void merge(std::vector<Range>& ranges) {
+  static void merge_sorted_ranges(std::vector<Range>& ranges) {
     auto head = ranges.begin();
     size_t merged_cells = 0;
 
     // Merge
     for (auto tail = head + 1; tail != ranges.end(); tail++) {
-      const bool can_coalesce = *static_cast<const T*>(head->end_fixed()) !=
-                                    std::numeric_limits<T>::max() &&
-                                *static_cast<const T*>(head->end_fixed()) + 1 ==
-                                    *static_cast<const T*>(tail->start_fixed());
-      const bool can_merge = *static_cast<const T*>(head->start_fixed()) <=
-                                 *static_cast<const T*>(tail->start_fixed()) &&
-                             *static_cast<const T*>(tail->start_fixed()) <=
-                                 *static_cast<const T*>(head->end_fixed());
+      // Float ranges cannot coalesce and should only merge if overlapping
+      auto head_end_coalesce_integrals = std::is_integral<T>::value ?
+                                             *head->end_as<T>() + 1 :
+                                             *head->end_as<T>();
+      const bool can_merge =
+          *head->end_as<T>() != std::numeric_limits<T>::max() &&
+          *tail->start_as<T>() <= head_end_coalesce_integrals;
 
-      if (can_coalesce || can_merge) {
+      if (can_merge) {
         head->set_end_fixed(tail->end_fixed());
         merged_cells++;
       } else {
@@ -186,18 +183,22 @@ struct MergeStrategy<
 /** Merge algorithm for string-ASCII-type ranges. */
 template <>
 struct MergeStrategy<std::string, std::string> {
-  static void merge(std::vector<Range>& ranges) {
+  static void merge_sorted_ranges(std::vector<Range>& ranges) {
     auto head = ranges.begin();
     size_t merged_cells = 0;
 
     // Merge
     for (auto tail = head + 1; tail != ranges.end(); tail++) {
-      const bool can_coalesce =
-          *head->end_str().data() + 1 == *tail->start_str().data();
-      const bool can_merge = head->start_str() <= tail->start_str() &&
-                             tail->start_str() <= head->end_str();
+      // Only coalesce if the entire range is chars - no strings shall coalesce
+      const bool char_ranges = head->start_size() == 1 &&
+                               head->end_size() == 1 &&
+                               tail->start_size() == 1 && tail->end_size() == 1;
+      auto head_end_coalesce_chars =
+          char_ranges ? *head->end_str().data() + 1 : *head->end_str().data();
+      const bool can_merge =
+          *tail->start_str().data() <= head_end_coalesce_chars;
 
-      if (can_coalesce || can_merge) {
+      if (can_merge) {
         head->set_range_var(
             head->start_str().data(),
             head->start_size(),
@@ -318,7 +319,7 @@ class TypedRangeSetAndSupersetImpl : public RangeSetAndSupersetImpl {
   }
 
   void merge_ranges(std::vector<Range>& ranges) const override {
-    MergeStrategy<T>::merge(ranges);
+    MergeStrategy<T>::merge_sorted_ranges(ranges);
   }
 
  private:
@@ -356,7 +357,7 @@ class TypedRangeSetAndFullsetImpl : public RangeSetAndSupersetImpl {
   }
 
   void merge_ranges(std::vector<Range>& ranges) const override {
-    MergeStrategy<T>::merge(ranges);
+    MergeStrategy<T>::merge_sorted_ranges(ranges);
   }
 };
 
@@ -395,7 +396,7 @@ class TypedRangeSetAndFullsetImpl<std::string, CoalesceAdds>
   }
 
   void merge_ranges(std::vector<Range>& ranges) const override {
-    MergeStrategy<std::string>::merge(ranges);
+    MergeStrategy<std::string>::merge_sorted_ranges(ranges);
   }
 };
 

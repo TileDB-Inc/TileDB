@@ -1265,8 +1265,8 @@ class Subarray {
     return ranges_sorted_;
   }
 
-  /** Sort ranges per dimension. */
-  void sort_ranges(ThreadPool* const compute_tp);
+  /** Sort and merge ranges per dimension. */
+  void sort_and_merge_ranges(ThreadPool* const compute_tp);
 
   /** Returns if all ranges for this subarray are non overlapping. */
   tuple<Status, optional<bool>> non_overlapping_ranges(
@@ -1574,28 +1574,6 @@ class Subarray {
    */
   Status load_relevant_fragment_tile_var_sizes(
       const std::vector<std::string>& names, ThreadPool* compute_tp) const;
-
-  /**
-   * Sort ranges for a particular dimension
-   *
-   * @tparam T dimension type
-   * @param compute_tp threadpool for parallel_sort
-   * @param dim_idx dimension index to sort
-   * @return Status
-   */
-  template <typename T>
-  Status sort_ranges_for_dim(
-      ThreadPool* const compute_tp, const uint64_t& dim_idx);
-
-  /**
-   * Sort ranges for a particular dimension
-   *
-   * @param compute_tp threadpool for parallel_sort
-   * @param dim_idx dimension index to sort
-   * @return Status
-   */
-  Status sort_ranges_for_dim(
-      ThreadPool* const compute_tp, const uint64_t& dim_idx);
 
   /**
    * Determine if ranges for a dimension are non overlapping.

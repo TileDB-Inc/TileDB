@@ -345,6 +345,17 @@ TEMPLATE_TEST_CASE_SIG(
   Range range{bounds, 2 * sizeof(T)};
   RangeSetAndSuperset range_subset{D, range, false, true};
 
+  SECTION("Empty ranges") {
+    CHECK(range_subset.num_ranges() == 0);
+
+    // Try to sort and merge ranges.
+    ThreadPool pool{2};
+    range_subset.sort_and_merge_ranges(&pool, merge);
+
+    // Check range results.
+    CHECK(range_subset.num_ranges() == 0);
+  }
+
   SECTION("Adjacent, sorted ranges") {
     // Add ranges.
     T data1[2] = {0, 1};
@@ -361,21 +372,16 @@ TEMPLATE_TEST_CASE_SIG(
     }
 
     // Integer-type ranges will coalesce and needn't be merged.
-    // Float-type ranges cannot coalesce and should be sorted and merged.
+    // Float-type ranges cannot coalesce and will only be sorted.
     if (D == Datatype::FLOAT32 || D == Datatype::FLOAT64) {
       CHECK(range_subset.num_ranges() == 4);
       ThreadPool pool{2};
       range_subset.sort_and_merge_ranges(&pool, merge);
-      if (merge) {
-        CHECK(range_subset.num_ranges() == 1);
-        check_subset_range_values(range_subset, 0, data1[0], data4[1]);
-      } else {
-        CHECK(range_subset.num_ranges() == 4);
-        check_subset_range_values(range_subset, 0, data1[0], data1[1]);
-        check_subset_range_values(range_subset, 1, data2[0], data2[1]);
-        check_subset_range_values(range_subset, 2, data3[0], data3[1]);
-        check_subset_range_values(range_subset, 3, data4[0], data4[1]);
-      }
+      CHECK(range_subset.num_ranges() == 4);
+      check_subset_range_values(range_subset, 0, data1[0], data1[1]);
+      check_subset_range_values(range_subset, 1, data2[0], data2[1]);
+      check_subset_range_values(range_subset, 2, data3[0], data3[1]);
+      check_subset_range_values(range_subset, 3, data4[0], data4[1]);
     } else {
       CHECK(range_subset.num_ranges() == 1);
       check_subset_range_values(range_subset, 0, data1[0], data4[1]);
@@ -403,15 +409,23 @@ TEMPLATE_TEST_CASE_SIG(
     range_subset.sort_and_merge_ranges(&pool, merge);
 
     // Check range results.
-    if (merge) {
-      CHECK(range_subset.num_ranges() == 1);
-      check_subset_range_values(range_subset, 0, data1[0], data4[1]);
-    } else {
+    if (D == Datatype::FLOAT32 || D == Datatype::FLOAT64) {
       CHECK(range_subset.num_ranges() == 4);
       check_subset_range_values(range_subset, 0, data1[0], data1[1]);
       check_subset_range_values(range_subset, 1, data3[0], data3[1]);
       check_subset_range_values(range_subset, 2, data2[0], data2[1]);
       check_subset_range_values(range_subset, 3, data4[0], data4[1]);
+    } else {
+      if (merge) {
+        CHECK(range_subset.num_ranges() == 1);
+        check_subset_range_values(range_subset, 0, data1[0], data4[1]);
+      } else {
+        CHECK(range_subset.num_ranges() == 4);
+        check_subset_range_values(range_subset, 0, data1[0], data1[1]);
+        check_subset_range_values(range_subset, 1, data3[0], data3[1]);
+        check_subset_range_values(range_subset, 2, data2[0], data2[1]);
+        check_subset_range_values(range_subset, 3, data4[0], data4[1]);
+      }
     }
   }
 
@@ -484,9 +498,9 @@ TEMPLATE_TEST_CASE_SIG(
   SECTION("Partially overlapping") {
     // Add ranges.
     T data1[2] = {0, 2};
-    T data2[2] = {1, 3};
+    T data2[2] = {1, 4};
     T data3[2] = {7, 9};
-    T data4[2] = {4, 5};
+    T data4[2] = {3, 5};
     std::vector<Range> ranges = {
         Range(data1, 2 * sizeof(T)),
         Range(data2, 2 * sizeof(T)),
@@ -523,23 +537,40 @@ TEST_CASE(
   Range range{};
   RangeSetAndSuperset range_subset{Datatype::STRING_ASCII, range, false, false};
 
+  SECTION("Empty ranges") {
+    CHECK(range_subset.num_ranges() == 0);
+
+    // Try to sort and merge ranges.
+    ThreadPool pool{2};
+    range_subset.sort_and_merge_ranges(&pool, merge);
+
+    // Check range results.
+    CHECK(range_subset.num_ranges() == 0);
+  }
+
   SECTION("Adjacent, sorted ranges") {
-    std::vector<Range> ranges = {Range("a", "b"), Range("c", "d")};
+    // Note: only char ranges will coalesce, string ranges will not
+    std::vector<Range> ranges = {
+        Range("a", "b"), Range("c", "d"), Range("ef", "g"), Range("h", "ij")};
     for (auto range : ranges) {
       range_subset.add_range(range);
     }
-    CHECK(range_subset.num_ranges() == 2);
+    CHECK(range_subset.num_ranges() == 4);
     ThreadPool pool{2};
     range_subset.sort_and_merge_ranges(&pool, merge);
 
     // Check range results
     if (merge) {
-      CHECK(range_subset.num_ranges() == 1);
+      CHECK(range_subset.num_ranges() == 3);
       check_subset_range_strings(range_subset, 0, "a", "d");
+      check_subset_range_strings(range_subset, 1, "ef", "g");
+      check_subset_range_strings(range_subset, 2, "h", "ij");
     } else {
-      CHECK(range_subset.num_ranges() == 2);
+      CHECK(range_subset.num_ranges() == 4);
       check_subset_range_strings(range_subset, 0, "a", "b");
       check_subset_range_strings(range_subset, 1, "c", "d");
+      check_subset_range_strings(range_subset, 2, "ef", "g");
+      check_subset_range_strings(range_subset, 3, "h", "ij");
     }
   }
 
