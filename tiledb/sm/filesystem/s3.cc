@@ -50,7 +50,6 @@
 #include <aws/core/utils/memory/stl/AWSString.h>
 #include <aws/s3/model/AbortMultipartUploadRequest.h>
 #include <aws/s3/model/CreateMultipartUploadRequest.h>
-#include <aws/s3/model/ListObjectsV2Request.h>
 #include <boost/interprocess/streams/bufferstream.hpp>
 #include <fstream>
 #include <iostream>
@@ -710,18 +709,20 @@ Status S3::is_empty_bucket(const URI& bucket, bool* is_empty) const {
 
   bool exists;
   RETURN_NOT_OK(is_bucket(bucket, &exists));
-  if (!exists)
+  if (!exists) {
     return LOG_STATUS(Status_S3Error(
         "Cannot check if bucket is empty; Bucket does not exist"));
+  }
 
   Aws::Http::URI aws_uri = bucket.c_str();
-  Aws::S3::Model::ListObjectsRequest list_objects_request;
+  Aws::S3::Model::ListObjectsV2Request list_objects_request;
   list_objects_request.SetBucket(aws_uri.GetAuthority());
   list_objects_request.SetPrefix("");
   list_objects_request.SetDelimiter("/");
-  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET) {
     list_objects_request.SetRequestPayer(request_payer_);
-  auto list_objects_outcome = client_->ListObjects(list_objects_request);
+  }
+  auto list_objects_outcome = client_->ListObjectsV2(list_objects_request);
 
   if (!list_objects_outcome.IsSuccess()) {
     return LOG_STATUS(Status_S3Error(
