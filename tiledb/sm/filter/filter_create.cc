@@ -126,7 +126,7 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
       uint8_t compressor_char = deserializer.read<uint8_t>();
       int compression_level = deserializer.read<int32_t>();
       Datatype reinterpret_type = Datatype::ANY;
-      if (version >= 21 && (filtertype == FilterType::FILTER_DELTA ||
+      if (version >= 20 && (filtertype == FilterType::FILTER_DELTA ||
                             filtertype == FilterType::FILTER_DOUBLE_DELTA)) {
         uint8_t reinterpret = deserializer.read<uint8_t>();
         reinterpret_type = static_cast<Datatype>(reinterpret);
