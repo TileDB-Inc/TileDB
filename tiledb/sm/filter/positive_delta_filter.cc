@@ -73,7 +73,8 @@ Status PositiveDeltaFilter::run_forward(
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
   // If encoding can't work, just return the input unmodified.
-  if (!datatype_is_integer(filter_data_type_) && filter_data_type_ != Datatype::BLOB) {
+  if (!datatype_is_integer(filter_data_type_) &&
+      filter_data_type_ != Datatype::BLOB) {
     RETURN_NOT_OK(output->append_view(input));
     RETURN_NOT_OK(output_metadata->append_view(input_metadata));
     return Status::Ok();
@@ -250,7 +251,8 @@ Status PositiveDeltaFilter::run_reverse(
     const Config& config) const {
   (void)config;
   // If encoding wasn't applied, just return the input unmodified.
-  if (!datatype_is_integer(filter_data_type_) && filter_data_type_ != Datatype::BLOB) {
+  if (!datatype_is_integer(filter_data_type_) &&
+      filter_data_type_ != Datatype::BLOB) {
     RETURN_NOT_OK(output->append_view(input));
     RETURN_NOT_OK(output_metadata->append_view(input_metadata));
     return Status::Ok();
