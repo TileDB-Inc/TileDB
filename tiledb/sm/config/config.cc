@@ -154,6 +154,9 @@ const std::string Config::SM_GROUP_TIMESTAMP_START = "0";
 const std::string Config::SM_GROUP_TIMESTAMP_END = std::to_string(UINT64_MAX);
 const std::string Config::SM_FRAGMENT_INFO_PRELOAD_MBRS = "false";
 const std::string Config::SM_PARTIAL_TILE_OFFSETS_LOADING = "false";
+const std::string Config::SSL_CA_FILE = "";
+const std::string Config::SSL_CA_PATH = "";
+const std::string Config::SSL_VERIFY = "true";
 const std::string Config::VFS_MIN_PARALLEL_SIZE = "10485760";
 const std::string Config::VFS_MAX_BATCH_SIZE = "104857600";
 const std::string Config::VFS_MIN_BATCH_GAP = "512000";
@@ -174,6 +177,7 @@ const std::string Config::VFS_AZURE_USE_BLOCK_LIST_UPLOAD = "true";
 const std::string Config::VFS_AZURE_MAX_RETRIES = "5";
 const std::string Config::VFS_AZURE_RETRY_DELAY_MS = "800";
 const std::string Config::VFS_AZURE_MAX_RETRY_DELAY_MS = "60000";
+const std::string Config::VFS_GCS_ENDPOINT = "";
 const std::string Config::VFS_GCS_PROJECT_ID = "";
 const std::string Config::VFS_GCS_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
@@ -352,6 +356,9 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "sm.partial_tile_offsets_loading",
         Config::SM_PARTIAL_TILE_OFFSETS_LOADING),
+    std::make_pair("ssl.ca_file", Config::SSL_CA_FILE),
+    std::make_pair("ssl.ca_path", Config::SSL_CA_PATH),
+    std::make_pair("ssl.verify", Config::SSL_VERIFY),
     std::make_pair("vfs.min_parallel_size", Config::VFS_MIN_PARALLEL_SIZE),
     std::make_pair("vfs.max_batch_size", Config::VFS_MAX_BATCH_SIZE),
     std::make_pair("vfs.min_batch_gap", Config::VFS_MIN_BATCH_GAP),
@@ -388,6 +395,7 @@ const std::map<std::string, std::string> default_config_values = {
         "vfs.azure.retry_delay_ms", Config::VFS_AZURE_RETRY_DELAY_MS),
     std::make_pair(
         "vfs.azure.max_retry_delay_ms", Config::VFS_AZURE_MAX_RETRY_DELAY_MS),
+    std::make_pair("vfs.gcs.endpoint", Config::VFS_GCS_ENDPOINT),
     std::make_pair("vfs.gcs.project_id", Config::VFS_GCS_PROJECT_ID),
     std::make_pair(
         "vfs.gcs.max_parallel_ops", Config::VFS_GCS_MAX_PARALLEL_OPS),
@@ -731,6 +739,8 @@ Status Config::sanity_check(
       return LOG_STATUS(
           Status_ConfigError("Invalid offsets format parameter value"));
   } else if (param == "sm.fragment_info.preload_mbrs") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
+  } else if (param == "ssl.verify") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.min_parallel_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));

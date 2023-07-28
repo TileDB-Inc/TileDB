@@ -194,6 +194,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-s3.cc
   src/unit-sparse-global-order-reader.cc
   src/unit-sparse-unordered-with-dups-reader.cc
+  src/unit-ssl-config.cc
   src/unit-Subarray.cc
   src/unit-SubarrayPartitioner-dense.cc
   src/unit-SubarrayPartitioner-error.cc
