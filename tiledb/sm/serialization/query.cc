@@ -1375,8 +1375,12 @@ Status query_to_capnp(
   }
 
   // Serialize attribute buffer metadata
-  const auto buffer_names =
+  std::vector<std::string> buffer_names =
       client_side ? query.unwritten_buffer_names() : query.buffer_names();
+  const auto dim_label_names = query.dimension_label_buffer_names();
+  buffer_names.insert(
+      buffer_names.end(), dim_label_names.begin(), dim_label_names.end());
+
   uint64_t total_fixed_len_bytes = 0;
   uint64_t total_var_len_bytes = 0;
   uint64_t total_validity_len_bytes = 0;

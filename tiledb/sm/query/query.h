@@ -224,6 +224,9 @@ class Query {
   /** Returns the names of the buffers set by the user for the query. */
   std::vector<std::string> buffer_names() const;
 
+  /** Returns the names of dimension label buffers for the query. */
+  std::vector<std::string> dimension_label_buffer_names() const;
+
   /**
    * Returns the names of the buffers set by the user for the query not already
    * written by a previous partial attribute write.

@@ -403,10 +403,15 @@ std::vector<std::string> Query::buffer_names() const {
     ret.push_back(constants::coords);
   }
 
-  if (uses_dimension_labels()) {
-    for (const auto& buffer : label_buffers_) {
-      ret.push_back(buffer.first);
-    }
+  return ret;
+}
+
+std::vector<std::string> Query::dimension_label_buffer_names() const {
+  std::vector<std::string> ret(label_buffers_.size());
+
+  size_t i = 0;
+  for (const auto & buffer : label_buffers_) {
+    ret[i++] = buffer.first;
   }
 
   return ret;
