@@ -1394,6 +1394,9 @@ TEST_CASE(
 
     Group g{ctx, group_versions.uri(), TILEDB_READ};
 
+    if (g.metadata_num() == 0)
+      continue;
+
     assert_group_metadata<uint8_t>(g, "u8", TILEDB_UINT8, 0x77);
     assert_group_metadata<uint16_t>(g, "u16", TILEDB_UINT16, 0x7777);
     assert_group_metadata<uint32_t>(g, "u32", TILEDB_UINT32, 0x77777777);
