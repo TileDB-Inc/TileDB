@@ -410,7 +410,7 @@ std::vector<std::string> Query::dimension_label_buffer_names() const {
   std::vector<std::string> ret(label_buffers_.size());
 
   size_t i = 0;
-  for (const auto & buffer : label_buffers_) {
+  for (const auto& buffer : label_buffers_) {
     ret[i++] = buffer.first;
   }
 
@@ -535,7 +535,8 @@ Status Query::get_offsets_buffer(
       array_schema_->dimension_ptr(name) == nullptr &&
       !array_schema_->is_dim_label(name)) {
     return logger_->status(Status_QueryError(
-        std::string("Cannot get buffer; Invalid attribute/dimension name '") +
+        std::string(
+            "Cannot get buffer; Invalid attribute/dimension/label name '") +
         name + "'"));
   }
   if (!array_schema_->var_size(name)) {
@@ -581,7 +582,8 @@ Status Query::get_data_buffer(
         array_schema_->dimension_ptr(name) == nullptr &&
         !array_schema_->is_dim_label(name))
       return logger_->status(Status_QueryError(
-          std::string("Cannot get buffer; Invalid attribute/dimension name '") +
+          std::string(
+              "Cannot get buffer; Invalid attribute/dimension/label name '") +
           name + "'"));
   }
 
@@ -733,8 +735,7 @@ void Query::init() {
     }
 
     // Create the query strategy if querying main array and the Subarray does
-    // not need to be updated. For remote queries, ensure the query strategy is
-    // initialized server side for serialization back to the client.
+    // not need to be updated.
     if (!only_dim_label_query() && !subarray_.has_label_ranges()) {
       throw_if_not_ok(create_strategy());
     }

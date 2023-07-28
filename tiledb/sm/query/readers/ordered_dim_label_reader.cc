@@ -79,7 +79,7 @@ OrderedDimLabelReader::OrderedDimLabelReader(
     std::optional<QueryCondition>& condition,
     DefaultChannelAggregates& default_channel_aggregates,
     bool increasing_labels,
-    bool)
+    bool skip_checks_serialization)
     : ReaderBase(
           stats,
           logger->clone("OrderedDimLabelReader", ++logger_id_),
@@ -111,12 +111,12 @@ OrderedDimLabelReader::OrderedDimLabelReader(
         "Cannot initialize reader; Reader cannot process aggregates");
   }
 
-  if (buffers_.empty()) {
+  if (!skip_checks_serialization && buffers_.empty()) {
     throw OrderedDimLabelReaderStatusException(
         "Cannot initialize ordered dim label reader; Buffers not set");
   }
 
-  if (buffers_.size() != 1) {
+  if (!skip_checks_serialization && buffers_.size() != 1) {
     throw OrderedDimLabelReaderStatusException(
         "Cannot initialize ordered dim label reader with " +
         std::to_string(buffers_.size()) + " buffers; Only one buffer allowed");
