@@ -11,6 +11,8 @@ if (NOT TILEDB_SUPERBUILD)
     return()
 endif()
 
+include(tiledb-vcpkg-on-github-actions)
+
 if(DEFINED ENV{VCPKG_ROOT})
     set(CMAKE_TOOLCHAIN_FILE
         "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"

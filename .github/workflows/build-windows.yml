@@ -52,6 +52,7 @@ jobs:
       TILEDB_WEBP: ${{ matrix.TILEDB_WEBP }}
       TILEDB_CMAKE_BUILD_TYPE: 'Release'
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+      VCPKG_DOWNLOADS: ${{ github.workspace }}\vcpkg-downloads
     steps:
       - name: 'tiledb env prep'
         run: |
@@ -212,6 +213,8 @@ jobs:
             Write-Host "Bootstrap failed."
             exit $LastExitCode
           }
+
+          dir $env:VCPKG_DOWNLOADS
 
           cmake --build $env:BUILD_BUILDDIRECTORY --config $CMakeBuildType -j $env:NUMBER_OF_PROCESSORS 2>&1
 

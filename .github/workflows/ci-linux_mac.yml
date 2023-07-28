@@ -42,6 +42,7 @@ env:
   CC: ${{ inputs.matrix_compiler_cc }}
   bootstrap_args: "--enable-vcpkg --enable-ccache ${{ inputs.bootstrap_args }}"
   VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+  VCPKG_DOWNLOADS: ${{ github.workspace }}/vcpkg-downloads
   SCCACHE_GHA_ENABLED: "true"
 
 jobs:
@@ -68,6 +69,9 @@ jobs:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Create VCPKG_DOWNLOADS directory
+        run: mkdir "${{ github.workspace }}/vcpkg-downloads"
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
@@ -125,6 +129,7 @@ jobs:
           # cache vcpkg deps across runs if the libtiledb build fails.
 
           source $GITHUB_WORKSPACE/scripts/ci/bootstrap_libtiledb.sh
+          ls $GITHUB_WORKSPACE/vcpkg-downloads
 
       - name: 'Build libtiledb'
         id: build
