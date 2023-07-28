@@ -78,7 +78,7 @@
 #include <thread>
 #include <type_traits>
 #include <vector>
-#include "experimental/tiledb/common/dag/execution/jthread/jthread.hpp"
+
 #include "experimental/tiledb/common/dag/execution/task.h"
 #include "experimental/tiledb/common/dag/execution/task_state_machine.h"
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"
