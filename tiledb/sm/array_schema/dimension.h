@@ -715,7 +715,7 @@ class Dimension {
   Status set_domain_unsafe(const void* domain);
 
   /** Sets the filter pipeline for this dimension. */
-  Status set_filter_pipeline(const FilterPipeline& pipeline);
+  void set_filter_pipeline(const FilterPipeline& pipeline);
 
   /** Sets the tile extent. */
   Status set_tile_extent(const void* tile_extent);

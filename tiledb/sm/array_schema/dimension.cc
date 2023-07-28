@@ -171,7 +171,8 @@ shared_ptr<Dimension> Dimension::deserialize(
     cell_val_num = deserializer.read<uint32_t>();
 
     // Load filter pipeline
-    filter_pipeline = FilterPipeline::deserialize(deserializer, version);
+    filter_pipeline =
+        FilterPipeline::deserialize(deserializer, version, datatype);
   } else {
     datatype = type;
     cell_val_num = (datatype_is_string(datatype)) ? constants::var_num : 1;
@@ -1336,32 +1337,9 @@ Status Dimension::set_domain_unsafe(const void* domain) {
   return Status::Ok();
 }
 
-Status Dimension::set_filter_pipeline(const FilterPipeline& pipeline) {
-  for (unsigned i = 0; i < pipeline.size(); ++i) {
-    if (datatype_is_real(type_) &&
-        pipeline.get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
-      return LOG_STATUS(
-          Status_DimensionError("Cannot set DOUBLE DELTA filter to a "
-                                "dimension with a real datatype"));
-  }
-
-  if (type_ == Datatype::STRING_ASCII && var_size() && pipeline.size() > 1) {
-    if (pipeline.has_filter(FilterType::FILTER_RLE) &&
-        pipeline.get_filter(0)->type() != FilterType::FILTER_RLE) {
-      return LOG_STATUS(Status_ArraySchemaError(
-          "RLE filter must be the first filter to apply when used on a "
-          "variable length string dimension"));
-    }
-    if (pipeline.has_filter(FilterType::FILTER_DICTIONARY) &&
-        pipeline.get_filter(0)->type() != FilterType::FILTER_DICTIONARY) {
-      return LOG_STATUS(Status_ArraySchemaError(
-          "Dictionary filter must be the first filter to apply when used on a "
-          "variable length string dimension"));
-    }
-  }
-
+void Dimension::set_filter_pipeline(const FilterPipeline& pipeline) {
+  FilterPipeline::check_filter_types(pipeline, type_, var_size());
   filters_ = pipeline;
-  return Status::Ok();
 }
 
 Status Dimension::set_tile_extent(const void* tile_extent) {

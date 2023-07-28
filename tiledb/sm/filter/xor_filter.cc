@@ -48,19 +48,46 @@ void XORFilter::dump(FILE* out) const {
   fprintf(out, "XORFilter");
 }
 
+bool XORFilter::accepts_input_datatype(Datatype datatype) const {
+  switch (datatype_size(datatype)) {
+    case sizeof(int8_t):
+    case sizeof(int16_t):
+    case sizeof(int32_t):
+    case sizeof(int64_t):
+      return true;
+    default:
+      return false;
+  }
+}
+
+Datatype XORFilter::output_datatype(tiledb::sm::Datatype input_type) const {
+  switch (datatype_size(input_type)) {
+    case sizeof(int8_t):
+      return Datatype::INT8;
+    case sizeof(int16_t):
+      return Datatype::INT16;
+    case sizeof(int32_t):
+      return Datatype::INT32;
+    case sizeof(int64_t):
+      return Datatype::INT64;
+    default:
+      throw StatusException(Status_FilterError(
+          "XORFilter::output_datatype: datatype size cannot be converted to "
+          "integer type."));
+  }
+}
+
 Status XORFilter::run_forward(
-    const WriterTile& tile,
+    const WriterTile&,
     WriterTile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  auto tile_type = tile.type();
-
   // Since run_forward interprets the filter's data as integers, we case on
   // the size of the type and pass in the corresponding integer type into
   // a templated function.
-  switch (datatype_size(tile_type)) {
+  switch (datatype_size(filter_data_type_)) {
     case sizeof(int8_t): {
       return run_forward<int8_t>(
           input_metadata, input, output_metadata, output);
@@ -148,7 +175,7 @@ Status XORFilter::xor_part(const ConstBuffer* part, Buffer* output) const {
 }
 
 Status XORFilter::run_reverse(
-    const Tile& tile,
+    const Tile&,
     Tile*,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
@@ -160,8 +187,7 @@ Status XORFilter::run_reverse(
   // Since run_reverse interprets the filter's data as integers, we case on
   // the size of the type and pass in the corresponding integer type into
   // a templated function.
-  auto tile_type = tile.type();
-  switch (datatype_size(tile_type)) {
+  switch (datatype_size(filter_data_type_)) {
     case sizeof(int8_t): {
       return run_reverse<int8_t>(
           input_metadata, input, output_metadata, output);
@@ -257,7 +283,7 @@ Status XORFilter::unxor_part(const ConstBuffer* part, Buffer* output) const {
 
 /** Returns a new clone of this filter. */
 XORFilter* XORFilter::clone_impl() const {
-  return tdb_new(XORFilter);
+  return tdb_new(XORFilter, filter_data_type_);
 }
 
 }  // namespace sm

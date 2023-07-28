@@ -175,7 +175,8 @@ Attribute Attribute::deserialize(
   auto cell_val_num = deserializer.read<uint32_t>();
 
   // Load filter pipeline
-  auto filterpipeline{FilterPipeline::deserialize(deserializer, version)};
+  auto filterpipeline{
+      FilterPipeline::deserialize(deserializer, version, datatype)};
 
   // Load fill value
   uint64_t fill_value_size = 0;
@@ -357,30 +358,7 @@ void Attribute::set_nullable(const bool nullable) {
 }
 
 void Attribute::set_filter_pipeline(const FilterPipeline& pipeline) {
-  for (unsigned i = 0; i < pipeline.size(); ++i) {
-    if (datatype_is_real(type_) &&
-        pipeline.get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
-      throw AttributeStatusException(
-          "Cannot set DOUBLE DELTA filter to an attribute with a real "
-          "datatype");
-  }
-
-  if ((type_ == Datatype::STRING_ASCII || type_ == Datatype::STRING_UTF8) &&
-      var_size() && pipeline.size() > 1) {
-    if (pipeline.has_filter(FilterType::FILTER_RLE) &&
-        pipeline.get_filter(0)->type() != FilterType::FILTER_RLE) {
-      throw AttributeStatusException(
-          "RLE filter must be the first filter to apply when used on a "
-          "variable length string attribute");
-    }
-    if (pipeline.has_filter(FilterType::FILTER_DICTIONARY) &&
-        pipeline.get_filter(0)->type() != FilterType::FILTER_DICTIONARY) {
-      throw AttributeStatusException(
-          "Dictionary filter must be the first filter to apply when used on a "
-          "variable length string attribute");
-    }
-  }
-
+  FilterPipeline::check_filter_types(pipeline, type_, var_size());
   filters_ = pipeline;
 }
 
