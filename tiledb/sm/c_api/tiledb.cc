@@ -227,12 +227,10 @@ capi_return_t tiledb_log_warn(tiledb_ctx_t* ctx, const char* message) {
 /* ********************************* */
 /*              AS BUILT             */
 /* ********************************* */
-void tiledb_as_built_dump(tiledb_string_t** out) {
-  if (out == nullptr) {
-    throw std::invalid_argument("Output string cannot be null.");
-  }
-
+capi_return_t tiledb_as_built_dump(tiledb_string_t** out) {
+  ensure_output_pointer_is_valid(out);
   *out = tiledb_string_handle_t::make_handle(as_built::dump());
+  return TILEDB_OK;
 }
 
 /* ********************************* */
@@ -5473,8 +5471,8 @@ capi_return_t tiledb_log_warn(tiledb_ctx_t* ctx, const char* message) {
 /* ********************************* */
 /*              AS BUILT             */
 /* ********************************* */
-void tiledb_as_built_dump(tiledb_string_t** out) noexcept {
-  return api_entry_void<tiledb::api::tiledb_as_built_dump>(out);
+capi_return_t tiledb_as_built_dump(tiledb_string_t** out) noexcept {
+  return api_entry_plain<tiledb::api::tiledb_as_built_dump>(out);
 }
 
 /* ********************************* */

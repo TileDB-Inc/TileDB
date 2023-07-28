@@ -39,9 +39,15 @@
 namespace tiledb {
 class AsBuilt {
  public:
+  /**
+   * Dump the TileDB build configuration to a string.
+   *
+   * @return the TileDB build configuration in JSON format.
+   */
   static std::string dump() {
     tiledb_string_t* out;
     tiledb_as_built_dump(&out);
+    tiledb_string_free(&out);
     const char* data{};
     size_t length{};
     tiledb_string_view(out, &data, &length);
