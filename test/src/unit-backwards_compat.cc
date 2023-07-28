@@ -228,6 +228,9 @@ TEST_CASE(
       bool encrypted = false;
       Array* array;
 
+      if (object.type() != Object::Type::Array)
+        continue;
+
       // Check for if array is encrypted based on name for now
       if (object.uri().find("_encryption_AES_256_GCM") != std::string::npos) {
         encrypted = true;
@@ -749,6 +752,9 @@ TEST_CASE(
     for (const auto& object : obj_iter) {
       bool encrypted = false;
       Array* array;
+
+      if (object.type() != Object::Type::Array)
+        continue;
 
       // Check for if array is encrypted based on name for now
       if (object.uri().find("_encryption_AES_256_GCM") != std::string::npos) {
