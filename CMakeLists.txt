@@ -233,8 +233,8 @@ else()
     add_link_options("$<$<CONFIG:Coverage>:--coverage;-fprofile-instr-generate;-fcoverage-mapping>")
   endif()
 
-  # Disable newer Apple Clang warnings about unqualified calls to std::move
-  if (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+  # Disable newer Clang warnings about unqualified calls to std::move
+  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     if (${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "14.0.3")
       add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-unqualified-std-cast-call>)
     endif()
