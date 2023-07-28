@@ -93,6 +93,9 @@ const std::string fragment_metadata_filename = "__fragment_metadata.tdb";
 /** The array dimension labels directory name. */
 const std::string array_dimension_labels_dir_name = "__labels";
 
+/** The array enumerations directory name. */
+const std::string array_enumerations_dir_name = "__enumerations";
+
 /** The array directory names. */
 const std::vector<std::string> array_dir_names = {
     array_schema_dir_name,
@@ -100,7 +103,8 @@ const std::vector<std::string> array_dir_names = {
     array_fragment_meta_dir_name,
     array_fragments_dir_name,
     array_commits_dir_name,
-    array_dimension_labels_dir_name};
+    array_dimension_labels_dir_name,
+    array_enumerations_dir_name};
 
 /** The default tile capacity. */
 const uint64_t capacity = 10000;
@@ -143,6 +147,9 @@ const std::string delete_timestamps = "__delete_timestamps";
 
 /** Special name reserved for the delete condition index attribute. */
 const std::string delete_condition_index = "__delete_condition_index";
+
+/** Special name reserved for count of rows. */
+const std::string count_of_rows = "__count_of_rows";
 
 /** The size of a timestamp cell. */
 const uint64_t timestamp_size = sizeof(uint64_t);
@@ -221,6 +228,9 @@ const uint32_t empty_ucs4 = 0;
 
 /** The special value for an empty ANY. */
 const uint8_t empty_any = 0;
+
+/** The return value for missing entries in an Enumeration */
+const uint64_t enumeration_missing_value = std::numeric_limits<uint64_t>::max();
 
 /** The file suffix used in TileDB. */
 const std::string file_suffix = ".tdb";
@@ -684,6 +694,12 @@ const format_version_t deletes_min_version = 16;
 
 /** The lowest version supported for updates. */
 const format_version_t updates_min_version = 16;
+
+/** The lowest version supported format version for enumerations. */
+const format_version_t enumerations_min_format_version = 20;
+
+/** The current enumerations version. */
+const format_version_t enumerations_version = 0;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 const uint64_t max_tile_chunk_size = 64 * 1024;

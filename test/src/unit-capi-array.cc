@@ -44,10 +44,6 @@
 #include "test/support/src/serialization_wrappers.h"
 #include "test/support/src/vfs_helpers.h"
 #ifdef _WIN32
-#if !defined(NOMINMAX)
-#define NOMINMAX
-#endif
-#include <Windows.h>
 #include "tiledb/sm/filesystem/win.h"
 #else
 #include "tiledb/sm/filesystem/posix.h"
@@ -70,6 +66,16 @@
 #include <iostream>
 #include <sstream>
 #include <thread>
+
+#ifdef _WIN32
+#if !defined(NOMINMAX)
+#define NOMINMAX
+#endif
+#if !defined(WIN32_LEAN_AND_MEAN)
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <Windows.h>
+#endif
 
 using namespace tiledb::test;
 using namespace tiledb::common;

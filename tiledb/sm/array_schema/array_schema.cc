@@ -39,6 +39,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/compressor.h"
@@ -49,7 +50,10 @@
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/webp_filter.h"
 #include "tiledb/sm/misc/hilbert.h"
+#include "tiledb/sm/misc/integral_type_casts.h"
 #include "tiledb/sm/misc/tdb_time.h"
+#include "tiledb/sm/tile/generic_tile_io.h"
+#include "tiledb/storage_format/uri/generate_uri.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <algorithm>
@@ -124,6 +128,45 @@ ArraySchema::ArraySchema(
     uint64_t capacity,
     std::vector<shared_ptr<const Attribute>> attributes,
     std::vector<shared_ptr<const DimensionLabel>> dim_label_refs,
+    std::unordered_map<std::string, std::string> enumeration_path_map,
+    FilterPipeline cell_var_offsets_filters,
+    FilterPipeline cell_validity_filters,
+    FilterPipeline coords_filters)
+    : ArraySchema(
+          uri,
+          version,
+          timestamp_range,
+          name,
+          array_type,
+          allows_dups,
+          domain,
+          cell_order,
+          tile_order,
+          capacity,
+          attributes,
+          dim_label_refs,
+          {},
+          enumeration_path_map,
+          cell_var_offsets_filters,
+          cell_validity_filters,
+          coords_filters) {
+}
+
+ArraySchema::ArraySchema(
+    URI uri,
+    uint32_t version,
+    std::pair<uint64_t, uint64_t> timestamp_range,
+    std::string name,
+    ArrayType array_type,
+    bool allows_dups,
+    shared_ptr<Domain> domain,
+    Layout cell_order,
+    Layout tile_order,
+    uint64_t capacity,
+    std::vector<shared_ptr<const Attribute>> attributes,
+    std::vector<shared_ptr<const DimensionLabel>> dim_label_refs,
+    std::vector<shared_ptr<const Enumeration>> enumerations,
+    std::unordered_map<std::string, std::string> enumeration_path_map,
     FilterPipeline cell_var_offsets_filters,
     FilterPipeline cell_validity_filters,
     FilterPipeline coords_filters)
@@ -139,6 +182,7 @@ ArraySchema::ArraySchema(
     , capacity_(capacity)
     , attributes_(attributes)
     , dimension_labels_(dim_label_refs)
+    , enumeration_path_map_(enumeration_path_map)
     , cell_var_offsets_filters_(cell_var_offsets_filters)
     , cell_validity_filters_(cell_validity_filters)
     , coords_filters_(coords_filters) {
@@ -162,6 +206,15 @@ ArraySchema::ArraySchema(
   // Create dimension label map
   for (const auto& label : dimension_labels_) {
     dimension_label_map_[label->name()] = label.get();
+  }
+
+  for (auto& [enmr_name, enmr_uri] : enumeration_path_map_) {
+    (void)enmr_uri;
+    enumeration_map_[enmr_name] = nullptr;
+  }
+
+  for (const auto& enmr : enumerations) {
+    enumeration_map_[enmr->name()] = enmr;
   }
 
   // Check array schema is valid.
@@ -199,9 +252,13 @@ ArraySchema::ArraySchema(const ArraySchema& array_schema) {
 
   throw_if_not_ok(set_domain(array_schema.domain_));
 
-  attribute_map_.clear();
-  for (auto attr : array_schema.attributes_)
-    throw_if_not_ok(add_attribute(attr, false));
+  enumeration_map_ = array_schema.enumeration_map_;
+  enumeration_path_map_ = array_schema.enumeration_path_map_;
+
+  for (auto attr : array_schema.attributes_) {
+    attributes_.emplace_back(attr);
+    attribute_map_[attr->name()] = attr.get();
+  }
 
   // Create dimension label map
   for (const auto& label : array_schema.dimension_labels_) {
@@ -650,6 +707,11 @@ void ArraySchema::dump(FILE* out) const {
     attr->dump(out);
   }
 
+  for (auto& enmr_iter : enumeration_map_) {
+    fprintf(out, "\n");
+    enmr_iter.second->dump(out);
+  }
+
   for (auto& label : dimension_labels_) {
     fprintf(out, "\n");
     label->dump(out);
@@ -772,6 +834,21 @@ void ArraySchema::serialize(Serializer& serializer) const {
   for (auto& label : dimension_labels_) {
     label->serialize(serializer, version);
   }
+
+  // Write Enumeration path map
+  auto enmr_num =
+      utils::safe_integral_cast<size_t, uint32_t>(enumeration_map_.size());
+
+  serializer.write<uint32_t>(enmr_num);
+  for (auto& [enmr_name, enmr_uri] : enumeration_path_map_) {
+    auto enmr_name_size = static_cast<uint32_t>(enmr_name.size());
+    serializer.write<uint32_t>(enmr_name_size);
+    serializer.write(enmr_name.data(), enmr_name_size);
+
+    auto enmr_uri_size = static_cast<uint32_t>(enmr_uri.size());
+    serializer.write<uint32_t>(enmr_uri_size);
+    serializer.write(enmr_uri.data(), enmr_uri_size);
+  }
 }
 
 Layout ArraySchema::tile_order() const {
@@ -846,6 +923,51 @@ Status ArraySchema::add_attribute(
     std::string msg = "Cannot add attribute; Attribute names starting with '";
     msg += std::string(constants::special_name_prefix) + "' are reserved";
     return LOG_STATUS(Status_ArraySchemaError(msg));
+  }
+
+  auto enmr_name = attr->get_enumeration_name();
+  if (enmr_name.has_value()) {
+    // The referenced enumeration must exist when the attribut is added
+    auto iter = enumeration_map_.find(enmr_name.value());
+    if (iter == enumeration_map_.end()) {
+      std::string msg =
+          "Cannot add attribute; Attribute refers to an "
+          "unknown enumeration named '" +
+          enmr_name.value() + "'.";
+      return LOG_STATUS(Status_ArraySchemaError(msg));
+    }
+
+    // This attribute must have an integral datatype to support Enumerations
+    if (!datatype_is_integer(attr->type())) {
+      std::string msg = "Unable to use enumeration with attribute '" +
+                        attr->name() +
+                        "', attribute must have an integral data type, not " +
+                        datatype_str(attr->type());
+      return LOG_STATUS(Status_ArraySchemaError(msg));
+    }
+
+    // The attribute must have a cell_val_num of 1
+    if (attr->cell_val_num() != 1) {
+      std::string msg =
+          "Attributes with enumerations must have a cell_val_num of 1.";
+      return LOG_STATUS(Status_ArraySchemaError(msg));
+    }
+
+    auto enmr = get_enumeration(enmr_name.value());
+    if (enmr == nullptr) {
+      throw ArraySchemaException(
+          "Cannot add attribute referencing enumeration '" + enmr_name.value() +
+          "' as the enumeration has not been loaded.");
+    }
+
+    // The +1 here is because of 0 being a valid index into the enumeration.
+    if (datatype_max_integral_value(attr->type()) <= enmr->elem_count()) {
+      throw ArraySchemaException(
+          "Unable to use enumeration '" + enmr_name.value() +
+          "' for attribute '" + attr->name() +
+          "' because the attribute's type is not large enough to represent "
+          "all enumeration values.");
+    }
   }
 
   // Create new attribute and potentially set a default name
@@ -959,6 +1081,150 @@ Status ArraySchema::drop_attribute(const std::string& attr_name) {
   return Status::Ok();
 }
 
+void ArraySchema::add_enumeration(shared_ptr<const Enumeration> enmr) {
+  if (enmr == nullptr) {
+    throw ArraySchemaException(
+        "Error adding enumeration. Enumeration "
+        "must not be nullptr.");
+  }
+
+  if (enumeration_map_.find(enmr->name()) != enumeration_map_.end()) {
+    throw ArraySchemaException(
+        "Error adding enumeration. Enumeration with name '" + enmr->name() +
+        "' already exists in this ArraySchema.");
+  }
+
+  enumeration_map_[enmr->name()] = enmr;
+  enumeration_path_map_[enmr->name()] = enmr->path_name();
+}
+
+void ArraySchema::store_enumeration(shared_ptr<const Enumeration> enmr) {
+  if (enmr == nullptr) {
+    throw ArraySchemaException(
+        "Error storing enumeration. Enumeration must not be nullptr.");
+  }
+
+  auto name_iter = enumeration_map_.find(enmr->name());
+  if (name_iter == enumeration_map_.end()) {
+    throw ArraySchemaException(
+        "Error storing enumeration. Unknown enumeration name '" + enmr->name() +
+        "'.");
+  }
+
+  if (name_iter->second != nullptr) {
+    throw ArraySchemaException(
+        "Error storing enumeration. Enumeration named '" + enmr->name() +
+        "' has already been stored.");
+  }
+
+  auto path_iter = enumeration_path_map_.find(enmr->name());
+  if (path_iter == enumeration_path_map_.end()) {
+    throw ArraySchemaException(
+        "Error storing enumeration. Missing path name map entry.");
+  }
+
+  if (path_iter->second != enmr->path_name()) {
+    throw ArraySchemaException(
+        "Error storing enumeration. Path name mismatch for enumeration "
+        "named '" +
+        enmr->name() + "'.");
+  }
+
+  name_iter->second = enmr;
+}
+
+bool ArraySchema::has_enumeration(const std::string& enmr_name) const {
+  return enumeration_map_.find(enmr_name) != enumeration_map_.end();
+}
+
+std::vector<std::string> ArraySchema::get_enumeration_names() const {
+  std::vector<std::string> enmr_names;
+  for (auto& entry : enumeration_path_map_) {
+    enmr_names.emplace_back(entry.first);
+  }
+  return enmr_names;
+}
+
+std::vector<std::string> ArraySchema::get_loaded_enumeration_names() const {
+  std::vector<std::string> enmr_names;
+  for (auto& entry : enumeration_map_) {
+    if (entry.second != nullptr) {
+      enmr_names.emplace_back(entry.first);
+    }
+  }
+  return enmr_names;
+}
+
+bool ArraySchema::is_enumeration_loaded(
+    const std::string& enumeration_name) const {
+  auto iter = enumeration_map_.find(enumeration_name);
+
+  if (iter == enumeration_map_.end()) {
+    throw ArraySchemaException(
+        "Unable to check if unknown enumeration is loaded. No enumeration "
+        "named '" +
+        enumeration_name + "'.");
+  }
+
+  return iter->second != nullptr;
+}
+
+shared_ptr<const Enumeration> ArraySchema::get_enumeration(
+    const std::string& enmr_name) const {
+  auto iter = enumeration_map_.find(enmr_name);
+  if (iter == enumeration_map_.end()) {
+    throw ArraySchemaException(
+        "Unable to get enumeration. Unknown enumeration named '" + enmr_name +
+        "'.");
+  }
+
+  return iter->second;
+}
+
+const std::string& ArraySchema::get_enumeration_path_name(
+    const std::string& enmr_name) const {
+  auto iter = enumeration_path_map_.find(enmr_name);
+  if (iter == enumeration_path_map_.end()) {
+    throw ArraySchemaException(
+        "Unable to get enumeration path name. Unknown enumeration named '" +
+        enmr_name + "'.");
+  }
+
+  return iter->second;
+}
+
+void ArraySchema::drop_enumeration(const std::string& enmr_name) {
+  std::lock_guard<std::mutex> lock(mtx_);
+
+  if (enmr_name.empty()) {
+    throw ArraySchemaException(
+        "Error dropping enumeration, empty names are invalid.");
+  }
+
+  auto it = enumeration_map_.find(enmr_name);
+  if (it == enumeration_map_.end()) {
+    throw ArraySchemaException(
+        "Error dropping enumeration, no enumeration named '" + enmr_name +
+        "'.");
+  }
+
+  for (auto attr : attributes_) {
+    auto attr_enmr_name = attr->get_enumeration_name();
+    if (!attr_enmr_name.has_value()) {
+      continue;
+    }
+    if (attr_enmr_name.value() == enmr_name) {
+      throw ArraySchemaException(
+          "Unable to drop enumeration '" + enmr_name + "' as it is used by " +
+          " attribute '" + attr->name() + "'.");
+    }
+  }
+
+  // Drop from both the path and name maps.
+  enumeration_path_map_.erase(it->first);
+  enumeration_map_.erase(it);
+}
+
 // #TODO Add security validation on incoming URI
 ArraySchema ArraySchema::deserialize(
     Deserializer& deserializer, const URI& uri) {
@@ -1057,6 +1323,23 @@ ArraySchema ArraySchema::deserialize(
     }
   }
 
+  // Load enumeration name to path map
+  std::unordered_map<std::string, std::string> enumeration_path_map;
+  if (version >= constants::enumerations_min_format_version) {
+    uint32_t enmr_num = deserializer.read<uint32_t>();
+    for (uint32_t i = 0; i < enmr_num; i++) {
+      auto enmr_name_size = deserializer.read<uint32_t>();
+      std::string enmr_name(
+          deserializer.get_ptr<char>(enmr_name_size), enmr_name_size);
+
+      auto enmr_path_size = deserializer.read<uint32_t>();
+      std::string enmr_path_name(
+          deserializer.get_ptr<char>(enmr_path_size), enmr_path_size);
+
+      enumeration_path_map[enmr_name] = enmr_path_name;
+    }
+  }
+
   // Validate
   if (cell_order == Layout::HILBERT &&
       domain->dim_num() > Hilbert::HC_MAX_DIM) {
@@ -1099,6 +1382,7 @@ ArraySchema ArraySchema::deserialize(
       capacity,
       attributes,
       dimension_labels,
+      enumeration_path_map,
       cell_var_filters,
       cell_validity_filters,
       coords_filters);
@@ -1298,6 +1582,7 @@ const std::string& ArraySchema::name() const {
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
+
 void ArraySchema::check_attribute_dimension_label_names() const {
   std::set<std::string> names;
   // Check attribute and dimension names are unique.

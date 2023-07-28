@@ -258,6 +258,31 @@ class Array {
   }
 
   /**
+   * Get the enumeration for the given name.
+   *
+   * This function retrieves the enumeration for the given name. If the
+   * corresponding enumeration has not been loaded from storage it is
+   * loaded before this function returns.
+   *
+   * @param enumeration_name The name of the enumeration.
+   * @return shared_ptr<const Enumeration> or nullptr on failure.
+   */
+  shared_ptr<const Enumeration> get_enumeration(
+      const std::string& enumeration_name);
+
+  /**
+   * Load all enumerations for the array.
+   *
+   * Ensure that all enumerations have been loaded. If latest_only is true
+   * (the default) then only enumerations for the latest schema are loaded.
+   * When latest_only is false, all schemas have their enumerations loaded.
+   *
+   * @param latest_only Whether to load enumerations for just the latest
+   * schema or all schemas.
+   */
+  void load_all_enumerations(bool latest_only = true);
+
+  /**
    * Returns `true` if the array is empty at the time it is opened.
    * The funciton returns `false` if the array is not open.
    */

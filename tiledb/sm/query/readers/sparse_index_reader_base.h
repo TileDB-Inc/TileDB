@@ -497,9 +497,11 @@ class SparseIndexReaderBase : public ReaderBase {
       Array* array,
       Config& config,
       std::unordered_map<std::string, QueryBuffer>& buffers,
+      std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
       Subarray& subarray,
       Layout layout,
       std::optional<QueryCondition>& condition,
+      DefaultChannelAggregates& default_channel_aggregates,
       bool skip_checks_serialization,
       bool include_coords);
 
@@ -523,13 +525,6 @@ class SparseIndexReaderBase : public ReaderBase {
    * @return pointer to the read state.
    */
   ReadState* read_state();
-
-  /**
-   * Resize the output buffers to the correct size after copying.
-   *
-   * @param cells_copied Number of cells copied.
-   */
-  void resize_output_buffers(uint64_t cells_copied);
 
  protected:
   /* ********************************* */
@@ -686,13 +681,37 @@ class SparseIndexReaderBase : public ReaderBase {
    * @param buffer_idx Stores/return the current buffer index in process.
    * @param result_tiles Result tiles to process.
    *
-   * @return index_to_copy.
+   * @return names_to_copy.
    */
-  std::vector<uint64_t> read_and_unfilter_attributes(
+  std::vector<std::string> read_and_unfilter_attributes(
       const std::vector<std::string>& names,
       const std::vector<uint64_t>& mem_usage_per_attr,
       uint64_t* buffer_idx,
       std::vector<ResultTile*>& result_tiles);
+
+  /**
+   * Get the field names to process.
+   *
+   * The fields are ordered in a manner that will reduce recomputations due to
+   * var sized overflows. The order is:
+   *  - Var fields with no aggregates that need recompute in case of overflow.
+   *  - Var fields with aggregates that need recompute in case of overflow.
+   *  - Fixed fields.
+   *  - Any aggregate fields with no buffers to copy.
+   *
+   * This order limits to the maximum the chances we need to recompute an
+   * aggregate.
+   *
+   * @return Field names to process.
+   */
+  std::vector<std::string> field_names_to_process();
+
+  /**
+   * Resize the output buffers to the correct size after copying.
+   *
+   * @param cells_copied Number of cells copied.
+   */
+  void resize_output_buffers(uint64_t cells_copied);
 
   /**
    * Adds an extra offset in the end of the offsets buffer indicating the

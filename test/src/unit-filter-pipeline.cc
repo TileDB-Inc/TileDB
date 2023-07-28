@@ -1411,14 +1411,13 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
   uint32_t dim_dom[] = {1, 10};
   auto dim{make_shared<tiledb::sm::Dimension>(HERE(), "", Datatype::INT32)};
   CHECK(dim->set_domain(dim_dom).ok());
-  tiledb::sm::Domain domain;
-  CHECK(domain.add_dimension(dim).ok());
+  auto domain{make_shared<tiledb::sm::Domain>(HERE())};
+  CHECK(domain->add_dimension(dim).ok());
   tiledb::sm::ArraySchema schema;
   tiledb::sm::Attribute attr("attr", Datatype::UINT64);
   CHECK(schema.add_attribute(make_shared<tiledb::sm::Attribute>(HERE(), &attr))
             .ok());
-  CHECK(
-      schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain)).ok());
+  CHECK(schema.set_domain(domain).ok());
   CHECK(schema.init().ok());
 
   FilterPipeline pipeline;
@@ -1538,14 +1537,13 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
   uint32_t dim_dom[] = {1, 10};
   auto dim{make_shared<tiledb::sm::Dimension>(HERE(), "", Datatype::INT32)};
   CHECK(dim->set_domain(dim_dom).ok());
-  tiledb::sm::Domain domain;
-  CHECK(domain.add_dimension(dim).ok());
+  auto domain{make_shared<tiledb::sm::Domain>(HERE())};
+  CHECK(domain->add_dimension(dim).ok());
   tiledb::sm::ArraySchema schema;
   tiledb::sm::Attribute attr("attr", Datatype::UINT64);
   CHECK(schema.add_attribute(make_shared<tiledb::sm::Attribute>(HERE(), &attr))
             .ok());
-  CHECK(
-      schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain)).ok());
+  CHECK(schema.set_domain(domain).ok());
   CHECK(schema.init().ok());
 
   FilterPipeline pipeline;

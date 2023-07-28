@@ -111,6 +111,10 @@ class Deleter {
     tiledb_domain_free(&p);
   }
 
+  void operator()(tiledb_enumeration_t* p) const {
+    tiledb_enumeration_free(&p);
+  }
+
   void operator()(tiledb_vfs_t* p) const {
     tiledb_vfs_free(&p);
   }

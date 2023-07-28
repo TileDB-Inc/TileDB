@@ -122,6 +122,12 @@ struct ArraySchema {
 
     dimensionLabels @14 :List(DimensionLabel);
     # Dimension labels of the array
+
+    enumerations @15: List(Enumeration);
+    # Enumerations of the array
+
+    enumerationPathMap @16: List(KV);
+    # Enumeration name to path map
 }
 
 struct DimensionLabel {
@@ -167,6 +173,12 @@ struct ArraySchemaEvolution {
 
     timestampRange @2 :List(UInt64);
     # Timestamp range of array schema
+
+    enumerationsToAdd @3 :List(Enumeration);
+    # Enumerations to be added
+
+    enumerationsToDrop @4 :List(Text);
+    # Enumeration names to be dropped
 }
 
 struct Attribute {
@@ -194,6 +206,33 @@ struct Attribute {
 
     order @7 :Text;
     # The prescribed order of the data stored in the attribute
+
+    enumerationName @8 :Text;
+    # Name of the enumeration for this attribute, if it has one
+}
+
+struct Enumeration {
+# Enumeration of values for use by Attributes
+    name @0 :Text;
+    # Enumeration name
+
+    pathName @1 :Text;
+    # Enumeration path name
+
+    type @2 :Text;
+    # Type of the Enumeration values
+
+    cellValNum @3 :UInt32;
+    # Enumeration number of values per cell
+
+    ordered @4 :Bool;
+    # Whether the enumeration is considered orderable
+
+    data @5 :Data;
+    # The contents of the enumeration values
+
+    offsets @6 :Data;
+    # The contents of the enumeration offsets buffer
 }
 
 struct AttributeBufferHeader {
@@ -534,6 +573,9 @@ struct ConditionClause {
 
   op @2 :Text;
   # The comparison operation
+
+  useEnumeration @3 :Bool;
+  # Whether or not to use the associated attribute's Enumeration
 }
 
 struct ASTNode {
@@ -557,6 +599,9 @@ struct ASTNode {
 
   combinationOp @5 :Text;
   # The combination logical operator
+
+  useEnumeration @6 :Bool;
+  # Whether or not to use the associated attribute's Enumeration
 }
 
 struct Condition {
