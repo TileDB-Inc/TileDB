@@ -210,28 +210,28 @@ TEST_CASE(
     "Backwards compatibility: Test reading arrays written with previous "
     "version of tiledb",
     "[backwards-compat][coords]") {
+  std::string encryption_key = "unittestunittestunittestunittest";
+
   Context ctx;
+  tiledb::Config cfg;
+  cfg["sm.encryption_type"] = "AES_256_GCM";
+  cfg["sm.encryption_key"] = encryption_key.c_str();
+  Context ctx_encrypt(cfg);
   std::string compat_folder(arrays_dir + "/read_compatibility_test");
   if (Object::object(ctx, compat_folder).type() != Object::Type::Group)
     return;
-
-  std::string encryption_key = "unittestunittestunittestunittest";
 
   tiledb::ObjectIter versions_iter(ctx, compat_folder);
   for (const auto& group_versions : versions_iter) {
     tiledb::ObjectIter obj_iter(ctx, group_versions.uri());
     for (const auto& object : obj_iter) {
-      tiledb::Config cfg;
-      cfg["sm.encryption_type"] = "AES_256_GCM";
-      cfg["sm.encryption_key"] = encryption_key.c_str();
-      Context ctx_cfg(cfg);
       bool encrypted = false;
       Array* array;
 
       // Check for if array is encrypted based on name for now
       if (object.uri().find("_encryption_AES_256_GCM") != std::string::npos) {
         encrypted = true;
-        array = new Array(ctx_cfg, object.uri(), TILEDB_READ);
+        array = new Array(ctx_encrypt, object.uri(), TILEDB_READ);
       } else {
         array = new Array(ctx, object.uri(), TILEDB_READ);
       }
@@ -256,7 +256,7 @@ TEST_CASE(
         continue;
       }
 
-      auto query = new Query(encrypted ? ctx_cfg : ctx, *array);
+      auto query = new Query(encrypted ? ctx_encrypt : ctx, *array);
 
       std::unordered_map<std::string, tuple<uint64_t*, void*, uint8_t*>>
           buffers;
@@ -732,32 +732,33 @@ TEST_CASE(
     "Backwards compatibility: Test reading arrays written with previous "
     "version of tiledb using split buffers",
     "[backwards-compat][split-buffers]") {
+  std::string encryption_key = "unittestunittestunittestunittest";
+
   Context ctx;
+  tiledb::Config cfg;
+  cfg["sm.encryption_type"] = "AES_256_GCM";
+  cfg["sm.encryption_key"] = encryption_key.c_str();
+  Context ctx_encrypt(cfg);
   std::string compat_folder(arrays_dir + "/read_compatibility_test");
   if (Object::object(ctx, compat_folder).type() != Object::Type::Group)
     return;
-  std::string encryption_key = "unittestunittestunittestunittest";
 
   tiledb::ObjectIter versions_iter(ctx, compat_folder);
   for (const auto& group_versions : versions_iter) {
     tiledb::ObjectIter obj_iter(ctx, group_versions.uri());
     for (const auto& object : obj_iter) {
-      tiledb::Config cfg;
-      cfg["sm.encryption_type"] = "AES_256_GCM";
-      cfg["sm.encryption_key"] = encryption_key.c_str();
-      Context ctx_cfg(cfg);
       bool encrypted = false;
       Array* array;
 
       // Check for if array is encrypted based on name for now
       if (object.uri().find("_encryption_AES_256_GCM") != std::string::npos) {
         encrypted = true;
-        array = new Array(ctx_cfg, object.uri(), TILEDB_READ);
+        array = new Array(ctx_encrypt, object.uri(), TILEDB_READ);
       } else {
         array = new Array(ctx, object.uri(), TILEDB_READ);
       }
 
-      auto query = new Query(encrypted ? ctx_cfg : ctx, *array);
+      auto query = new Query(encrypted ? ctx_encrypt : ctx, *array);
 
       std::unordered_map<std::string, tuple<uint64_t*, void*, uint8_t*>>
           buffers;
