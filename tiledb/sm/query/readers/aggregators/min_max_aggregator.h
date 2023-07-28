@@ -263,7 +263,7 @@ class ComparatorAggregator : public ComparatorAggregatorBase<T>,
    * @param value Value to possibly update.
    * @param fixed_data Fixed data.
    * @param var_data Var data.
-   * @param c Cell index.
+   * @param input_data Aggregate buffer.
    */
   inline void update_last_var_min_max(
       optional<VALUE_T>& value,
