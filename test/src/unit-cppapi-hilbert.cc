@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -268,7 +268,11 @@ TEST_CASE(
     refactored_query_v2 = GENERATE(true, false);
   }
 #endif
-  Context ctx;
+
+  // Disable merge overlapping sparse ranges
+  Config cfg;
+  cfg["sm.merge_overlapping_ranges_experimental"] = "false";
+  Context ctx(cfg);
   VFS vfs(ctx);
   std::string array_name = "hilbert_array";
 

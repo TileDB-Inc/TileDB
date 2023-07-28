@@ -278,7 +278,7 @@ void check_save_to_file() {
   ss << "sm.mem.total_budget 10737418240\n";
   ss << "sm.memory_budget 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
-  ss << "sm.merge_overlapping_ranges_experimental false\n";
+  ss << "sm.merge_overlapping_ranges_experimental true\n";
   ss << "sm.partial_tile_offsets_loading false\n";
   ss << "sm.query.dense.qc_coords_mode false\n";
   ss << "sm.query.dense.reader refactored\n";
@@ -608,7 +608,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.check_coord_dups"] = "true";
   all_param_values["sm.check_coord_oob"] = "true";
   all_param_values["sm.check_global_order"] = "true";
-  all_param_values["sm.merge_overlapping_ranges_experimental"] = "false";
+  all_param_values["sm.merge_overlapping_ranges_experimental"] = "true";
   all_param_values["sm.skip_est_size_partitioning"] = "false";
   all_param_values["sm.skip_unary_partitioning_budget_check"] = "false";
   all_param_values["sm.memory_budget"] = "5368709120";

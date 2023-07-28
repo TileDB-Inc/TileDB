@@ -1000,7 +1000,9 @@ TEST_CASE(
     "C++ API: Test subarray (incomplete overlapping) - Subarray-query",
     "[cppapi][sparse][subarray][incomplete]") {
   const std::string array_name = "cpp_unit_array";
-  tiledb::Context ctx;
+  tiledb::Config cfg;
+  cfg.set("sm.merge_overlapping_ranges_experimental", "false");
+  tiledb::Context ctx(cfg);
   tiledb::VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -1112,7 +1114,9 @@ TEST_CASE(
     "C++ API: Test subarray (incomplete overlapping) - Subarray-cppapi",
     "[cppapi][sparse][subarray][incomplete]") {
   const std::string array_name = "cpp_unit_array";
-  tiledb::Context ctx;
+  tiledb::Config cfg;
+  cfg.set("sm.merge_overlapping_ranges_experimental", "false");
+  tiledb::Context ctx(cfg);
   tiledb::VFS vfs(ctx);
 
   if (vfs.is_dir(array_name)) {
@@ -1323,9 +1327,7 @@ TEST_CASE(
     "C++ API: Subarray merge unsorted overlapping ranges on sparse reads",
     "[cppapi][subarray][merge_overlapping_ranges]") {
   const std::string array_name = "cpp_unit_array";
-  tiledb::Config cfg;
-  cfg.set("sm.merge_overlapping_ranges_experimental", "true");
-  tiledb::Context ctx(cfg);
+  tiledb::Context ctx;
   tiledb::VFS vfs(ctx);
   if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);

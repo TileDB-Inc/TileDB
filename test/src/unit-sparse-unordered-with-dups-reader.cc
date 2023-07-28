@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -194,6 +194,14 @@ void CSparseUnorderedWithDupsFx::update_config() {
           config,
           "sm.partial_tile_offsets_loading",
           partial_tile_offsets_loading_.c_str(),
+          &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  REQUIRE(
+      tiledb_config_set(
+          config,
+          "sm.merge_overlapping_ranges_experimental",
+          "false",
           &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
 

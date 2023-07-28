@@ -301,7 +301,7 @@ class Config {
    *    **Experimental** <br>
    *    If `true`, merge overlapping Subarray ranges. Else, use the default
    *    coalescing behavior. Experimental for testing purposes, do not use.<br>
-   *    **Default**: false
+   *    **Default**: true
    * - `sm.enable_signal_handlers` <br>
    *    Whether or not TileDB will install signal handlers. <br>
    *    **Default**: true

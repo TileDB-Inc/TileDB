@@ -1,11 +1,11 @@
 /**
- * @file   unit-cppapi-schema.cc
+ * @file   unit-cppapi-schema-evolution.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB Inc.
+ * @copyright Copyright (c) 2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * Tests the C++ API for schema related functions.
+ * Tests the C++ API for schema evolution.
  */
 
 #include <test/support/tdb_catch.h>
@@ -110,7 +110,9 @@ TEST_CASE(
     "C++ API: SchemaEvolution, add attributes and read",
     "[cppapi][schema][evolution][add]") {
   using namespace tiledb;
-  Context ctx;
+  Config cfg;
+  cfg["sm.merge_overlapping_ranges_experimental"] = "false";
+  Context ctx(cfg);
   VFS vfs(ctx);
   auto layout = GENERATE(
       TILEDB_ROW_MAJOR,

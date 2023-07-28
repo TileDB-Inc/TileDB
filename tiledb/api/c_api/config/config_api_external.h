@@ -126,7 +126,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `sm.merge_overlapping_ranges_experimental` <br>
  *    If `true`, merge overlapping Subarray ranges. Else, use the default
  *    coalescing behavior. Experimental for testing purposes, do not use.<br>
- *    **Default**: false
+ *    **Default**: true
  * - `sm.enable_signal_handlers` <br>
  *    Determines whether or not TileDB will install signal handlers. <br>
  *    **Default**: true
