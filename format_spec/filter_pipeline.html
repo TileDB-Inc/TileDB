@@ -365,7 +365,7 @@ ul.task-list li input[type="checkbox"] {
 <p>The filter options are configuration parameters for the filters that do not change once the array schema has been created.</p>
 <section id="main-compressor-options" class="level3">
 <h3 class="anchored" data-anchor-id="main-compressor-options">Main Compressor Options</h3>
-<p>For the compression filters (any of the filter types <code>TILEDB_FILTER_{GZIP,ZSTD,LZ4,RLE,BZIP2,DOUBLE_DELTA,DICTIONARY}</code>) the filter options have internal format:</p>
+<p>For the compression filters (any of the filter types <code>TILEDB_FILTER_{GZIP,ZSTD,LZ4,RLE,BZIP2,DOUBLE_DELTA,DELTA,DICTIONARY}</code>) the filter options have internal format:</p>
 <table class="table">
 <colgroup>
 <col style="width: 33%">
@@ -389,6 +389,11 @@ ul.task-list li input[type="checkbox"] {
 <td style="text-align: left;">Compression level</td>
 <td style="text-align: left;"><code>int32_t</code></td>
 <td style="text-align: left;">Compression level used (ignored by some compressors).</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Reinterpret datatype</td>
+<td style="text-align: left;"><code>uint8_t</code></td>
+<td style="text-align: left;">Type to reinterpret data prior to compression. Used for DOUBLE_DELTA and DELTA only.</td>
 </tr>
 </tbody>
 </table>
