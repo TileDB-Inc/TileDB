@@ -69,10 +69,11 @@ Status filter_to_capnp(
  * Deserialize a filter from a cap'n proto object
  *
  * @param filter_reader Cap'n proto object
+ * @param datatype Datatype the filter operates on within it's pipeline.
  * @return Status
  */
 tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
-    const capnp::Filter::Reader& filter_reader);
+    const capnp::Filter::Reader& filter_reader, Datatype datatype);
 
 /**
  * Serialize an array schema to cap'n proto object
@@ -118,6 +119,25 @@ void dimension_label_to_capnp(
  */
 shared_ptr<DimensionLabel> dimension_label_from_capnp(
     const capnp::DimensionLabel::Reader& reader);
+
+/**
+ * Serialize an Enumeration do cap'n proto object
+ *
+ * @param enumeration Enumeration to serialize.
+ * @param enmr_builder Cap'n proto class.
+ */
+void enumeration_to_capnp(
+    shared_ptr<const Enumeration> enumeration,
+    capnp::Enumeration::Builder& enmr_builder);
+
+/**
+ * Deserialize a dimension label from a cap'n proto object
+ *
+ * @param reader Cap'n proto reader object
+ * @return A new Enumeration
+ */
+shared_ptr<const Enumeration> enumeration_from_capnp(
+    const capnp::Enumeration::Reader& reader);
 
 #endif  // TILEDB_SERIALIZATION
 

@@ -39,7 +39,7 @@ list(APPEND SOURCES
 #
 commence(object_library query_ast)
     this_target_sources(${SOURCES})
-    this_target_object_libraries(array_schema baseline)
+    this_target_object_libraries(array_schema generic_tile_io baseline)
 conclude(object_library)
 
 add_test_subdirectory()

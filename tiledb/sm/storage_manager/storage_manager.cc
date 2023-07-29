@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -46,6 +46,7 @@
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
+#include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/consolidator/fragment_consolidator.h"
 #include "tiledb/sm/enums/array_type.h"
@@ -184,8 +185,8 @@ StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
   auto&& [array_schema_latest, array_schemas_all] =
       array_dir.load_array_schemas(enc_key);
 
-  auto filtered_fragment_uris =
-      array_dir.filtered_fragment_uris(array_schema_latest->dense());
+  const auto filtered_fragment_uris =
+      load_filtered_fragment_uris(array_schema_latest->dense(), array_dir);
   const auto& meta_uris = array_dir.fragment_meta_uris();
   const auto& fragments_to_load = filtered_fragment_uris.fragment_uris();
 
@@ -448,6 +449,15 @@ void StorageManagerCanonical::delete_array(const char* array_name) {
   vfs()->remove_files(compute_tp(), array_dir.array_meta_uris());
   vfs()->remove_files(compute_tp(), array_dir.fragment_meta_uris());
   vfs()->remove_files(compute_tp(), array_dir.array_schema_uris());
+
+  // Delete all tiledb child directories
+  // Note: using vfs()->ls() here could delete user data
+  std::vector<URI> dirs;
+  auto parent_dir = array_dir.uri().c_str();
+  for (auto array_dir_name : constants::array_dir_names) {
+    dirs.emplace_back(URI(parent_dir + array_dir_name));
+  }
+  vfs()->remove_dirs(compute_tp(), dirs);
 }
 
 void StorageManagerCanonical::delete_fragments(
@@ -512,6 +522,15 @@ void StorageManagerCanonical::delete_group(const char* group_name) {
   vfs()->remove_files(compute_tp(), group_dir.group_meta_uris_to_vacuum());
   vfs()->remove_files(compute_tp(), group_dir.group_meta_vac_uris_to_vacuum());
   vfs()->remove_files(compute_tp(), group_dir.group_file_uris());
+
+  // Delete all tiledb child directories
+  // Note: using vfs()->ls() here could delete user data
+  std::vector<URI> dirs;
+  auto parent_dir = group_dir.uri().c_str();
+  for (auto group_dir_name : constants::group_dir_names) {
+    dirs.emplace_back(URI(parent_dir + group_dir_name));
+  }
+  vfs()->remove_dirs(compute_tp(), dirs);
 }
 
 void StorageManagerCanonical::array_vacuum(
@@ -611,6 +630,11 @@ Status StorageManagerCanonical::array_create(
   URI array_schema_dir_uri =
       array_uri.join_path(constants::array_schema_dir_name);
   RETURN_NOT_OK(vfs()->create_dir(array_schema_dir_uri));
+
+  // Create the enumerations directory inside the array schema directory
+  URI array_enumerations_uri =
+      array_schema_dir_uri.join_path(constants::array_enumerations_dir_name);
+  RETURN_NOT_OK(vfs()->create_dir(array_enumerations_uri));
 
   // Create commit directory
   URI array_commit_uri = array_uri.join_path(constants::array_commits_dir_name);
@@ -718,11 +742,9 @@ Status StorageManager::array_evolve_schema(
   auto&& array_schema = array_dir.load_array_schema_latest(encryption_key);
 
   // Evolve schema
-  auto&& [st1, array_schema_evolved] =
-      schema_evolution->evolve_schema(array_schema);
-  RETURN_NOT_OK(st1);
+  auto array_schema_evolved = schema_evolution->evolve_schema(array_schema);
 
-  Status st = store_array_schema(array_schema_evolved.value(), encryption_key);
+  Status st = store_array_schema(array_schema_evolved, encryption_key);
   if (!st.ok()) {
     logger_->status_no_return_value(st);
     return logger_->status(Status_StorageManagerError(
@@ -1674,10 +1696,45 @@ Status StorageManagerCanonical::store_array_schema(
   URI array_schema_dir_uri =
       array_schema->array_uri().join_path(constants::array_schema_dir_name);
   RETURN_NOT_OK(vfs()->is_dir(array_schema_dir_uri, &schema_dir_exists));
+
   if (!schema_dir_exists)
     RETURN_NOT_OK(vfs()->create_dir(array_schema_dir_uri));
 
   RETURN_NOT_OK(store_data_to_generic_tile(tile, schema_uri, encryption_key));
+
+  // Create the `__enumerations` directory under `__schema` if it doesn't
+  // exist. This might happen if someone tries to add an enumeration to an
+  // array created before version 19.
+  bool enumerations_dir_exists = false;
+  URI array_enumerations_dir_uri =
+      array_schema_dir_uri.join_path(constants::array_enumerations_dir_name);
+  RETURN_NOT_OK(
+      vfs()->is_dir(array_enumerations_dir_uri, &enumerations_dir_exists));
+
+  if (!enumerations_dir_exists) {
+    RETURN_NOT_OK(vfs()->create_dir(array_enumerations_dir_uri));
+  }
+
+  // Serialize all enumerations into the `__enumerations` directory
+  for (auto& enmr_name : array_schema->get_loaded_enumeration_names()) {
+    auto enmr = array_schema->get_enumeration(enmr_name);
+    if (enmr == nullptr) {
+      return logger_->status(Status_StorageManagerError(
+          "Error serializing enumeration; Loaded enumeration is null"));
+    }
+
+    SizeComputationSerializer enumeration_size_serializer;
+    enmr->serialize(enumeration_size_serializer);
+
+    WriterTile tile{
+        WriterTile::from_generic(enumeration_size_serializer.size())};
+    Serializer serializer(tile.data(), tile.size());
+    enmr->serialize(serializer);
+
+    auto abs_enmr_uri = array_enumerations_dir_uri.join_path(enmr->path_name());
+    RETURN_NOT_OK(
+        store_data_to_generic_tile(tile, abs_enmr_uri, encryption_key));
+  }
 
   return Status::Ok();
 }
@@ -2001,6 +2058,14 @@ StorageManagerCanonical::load_consolidated_fragment_meta(
   }
 
   return {Status::Ok(), std::move(tile), ret};
+}
+
+const ArrayDirectory::FilteredFragmentUris
+StorageManagerCanonical::load_filtered_fragment_uris(
+    const bool dense, const ArrayDirectory& array_dir) {
+  auto timer_se = stats()->start_timer("sm_load_filtered_fragment_uris");
+
+  return array_dir.filtered_fragment_uris(dense);
 }
 
 Status StorageManagerCanonical::set_default_tags() {

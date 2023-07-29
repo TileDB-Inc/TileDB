@@ -12,6 +12,9 @@ vcpkg_from_github(
         003-fix-AWSSDKCONFIG.patch
         004-fix-check-c-source-runs.patch
         005-fix-cjson-sprintf.patch
+        006-pjd-fix-compiler-warnings.patch
+        007-lock-curl-http-and-tls-settings.patch
+        008-disable-werror.patch
 )
 
 string(COMPARE EQUAL "${VCPKG_CRT_LINKAGE}" "dynamic" FORCE_SHARED_CRT)

@@ -94,6 +94,8 @@ inline const std::string& filter_type_str(FilterType filter_type) {
       return constants::filter_xor_str;
     case FilterType::FILTER_WEBP:
       return constants::filter_webp_str;
+    case FilterType::FILTER_DELTA:
+      return constants::delta_str;
     default:
       return constants::empty_str;
   }
@@ -136,6 +138,8 @@ inline Status filter_type_enum(
     *filter_type = FilterType::FILTER_XOR;
   else if (filter_type_str == constants::filter_webp_str)
     *filter_type = FilterType::FILTER_WEBP;
+  else if (filter_type_str == constants::delta_str)
+    *filter_type = FilterType::FILTER_DELTA;
   else {
     return Status_Error("Invalid FilterType " + filter_type_str);
   }

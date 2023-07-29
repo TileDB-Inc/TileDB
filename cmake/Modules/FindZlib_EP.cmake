@@ -33,6 +33,13 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
+if (TILEDB_VCPKG)
+  find_package(ZLIB REQUIRED)
+  install_target_libs(ZLIB::ZLIB)
+  return()
+endif()
+
+
 # Search the path set during the superbuild for the EP.
 set(ZLIB_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 

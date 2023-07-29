@@ -11,7 +11,7 @@ env:
   TILEDB_SERIALIZATION: OFF
   TILEDB_STATIC: OFF
   TILEDB_TOOLS: ON
-  TILEDB_BASE_BOOTSTRAP_OPTIONS: '-EnableVerbose -EnableStaticTileDB -EnableBuildDeps'
+  TILEDB_BASE_BOOTSTRAP_OPTIONS: '-EnableVcpkg -EnableVerbose -EnableStaticTileDB'
 
 jobs:
   build:
@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-2019]
+        os: [windows-2019, windows-2022]
         #considering https://stackoverflow.com/questions/65035256/how-to-access-matrix-variables-in-github-actions
         environ: [azure, s3, serialization]
         include:
@@ -41,6 +41,7 @@ jobs:
             TILEDB_AZURE: OFF
             TILEDB_ARROW_TESTS: OFF
             TILEDB_SERIALIZATION: ON
+            TILEDB_WEBP: ON
     env:
       TILEDB_HOME: ${{ github.workspace }}
       TILEDB_GA_IMAGE_NAME: ${{ matrix.os }}
@@ -49,7 +50,8 @@ jobs:
       TILEDB_SERIALIZATION: ${{ matrix.TILEDB_SERIALIZATION }} #serialization }}
       TILEDB_ARROW_TESTS: ${{ matrix.TILEDB_ARROW_TESTS }}
       TILEDB_WEBP: ${{ matrix.TILEDB_WEBP }}
-      TILEDB_CMAKE_BUILD_TYPE: 'RelWithDebInfo'
+      TILEDB_CMAKE_BUILD_TYPE: 'Release'
+      VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
     steps:
       - name: 'tiledb env prep'
         run: |
@@ -65,6 +67,14 @@ jobs:
 
           write-host "BUILD_BUILDDIRECTORY=$env:BUILD_BUILDDIRECTORY" *>> $env:GITHUB_ENV
           write-host "BUILD_SOURCESDIRECTORY=$env:BUILD_SOURCESDIRECTORY" *>> $env:GITHUB_ENV
+
+      # Configure required environment variables for vcpkg to use
+      # GitHub's Action Cache
+      - uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
       - name: 'Print env'
         shell: cmd
@@ -99,30 +109,43 @@ jobs:
           if [[ "$TILEDB_ARROW_TESTS" == "ON" ]]; then
             pip install pyarrow pybind11 numpy
           fi
+
       - name: Prepare git
         run: git config --global core.autocrlf false
+
       - uses: actions/checkout@v3
         with:
           submodules: true
           fetch-depth: 0
+
+      - name: Prevent vcpkg from building debug variants
+        shell: python
+        run: |
+          import os
+
+          workspace = os.environ["GITHUB_WORKSPACE"]
+          triplets = os.path.join(workspace, "external", "vcpkg", "triplets")
+
+          for path, dnames, fnames in os.walk(triplets):
+            for fname in fnames:
+              fname = os.path.join(path, fname)
+              print(fname)
+              with open(fname, "rb") as handle:
+                contents = handle.read()
+              # If a file is already patched we skip patching it again because
+              # this affects the hashes calculated by vcpkg for caching
+              if b"VCPKG_BUILD_TYPE release" in contents:
+                continue
+              contents += b"\nset(VCPKG_BUILD_TYPE release)\n"
+              with open(fname, "wb") as handle:
+                handle.write(contents)
+
       - name: core tiledb windows build
         run: |
           $ErrorView = "NormalView"
 
           #directory $env:BUILD_BUILDDIRECTORY was created in step 'tiledb env prep'
           cd $env:BUILD_BUILDDIRECTORY
-
-          $VSCategory = "Enterprise" # alternate 'Community'
-          if ($env:TILEDB_GA_IMAGE_NAME -eq "windows-2019") {
-            if (!(Test-Path "C:\Program Files (x86)\Microsoft Visual Studio\2019\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin")) {
-              Write-Host "ERROR***: Missing C:\Program Files (x86)\Microsoft Visual Studio\2019\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
-              exit $LastExitCode
-            }
-            $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
-          } else {
-            Write-Host "Unknown image name: '$($env:TILEDB_GA_IMAGE_NAME)'"
-            exit $LastExitCode
-          }
 
           # allow double-checking path
           cmd /c "echo $PATH"
@@ -288,7 +311,7 @@ jobs:
             }
           }
           # Build the examples
-          cmake --build $env:BUILD_BUILDDIRECTORY --target examples --config $CMakeBuildType -- /verbosity:minimal
+          cmake --build $env:BUILD_BUILDDIRECTORY --target examples --config $CMakeBuildType -v
 
           if ($LastExitCode -ne 0) {
             Write-Host "Examples failed to build."
@@ -371,9 +394,9 @@ jobs:
           cd build
 
           # Build zip artifact
-          cmake -A X64 -DCMAKE_PREFIX_PATH="$env:BUILD_BUILDDIRECTORY\dist" ..
+          cmake -A X64 -DCMAKE_PREFIX_PATH="$env:BUILD_BUILDDIRECTORY\dist;$env:BUILD_BUILD_DIRECTORY\vcpkg_installed\x64-windows-mod" ..
 
-          cmake --build . --config $CMakeBuildType -- /verbosity:minimal
+          cmake --build . --config $CMakeBuildType -v
 
           #.\$CMakeBuildType\ExampleExe.exe
           $cmd = ".\$CMakeBuildType\ExampleExe.exe"
@@ -381,9 +404,9 @@ jobs:
           Invoke-Expression $cmd
 
           #.\$CMakeBuildType\ExampleExe_static.exe
-          $cmd = ".\$CMakeBuildType\ExampleExe_static.exe"
-          Write-Host "cmd: '$cmd'"
-          Invoke-Expression $cmd
+          #$cmd = ".\$CMakeBuildType\ExampleExe_static.exe"
+          #Write-Host "cmd: '$cmd'"
+          #Invoke-Expression $cmd
 
           # Packaging test
           cd $env:BUILD_SOURCESDIRECTORY\test\packaging
@@ -426,3 +449,13 @@ jobs:
             echo TILEDB_CI_SUCCESS != 1, exiting.
             exit 1;
           fi
+
+      - name: "Print log files (failed build only)"
+        shell: bash
+        run: |
+          source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
+          echo "# ------------------------------------"
+          find $BUILD_BUILDDIRECTORY/dist
+          echo "# --------vcpkg----------------------------"
+          find $BUILD_BUILDDIRECTORY/vcpkg_installed
+        if: ${{ failure() }} # only run this job if the build step failed

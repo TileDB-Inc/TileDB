@@ -72,6 +72,7 @@ class ArrayDirectory {
    */
   friend class WhiteboxArrayDirectory;
 
+ public:
   /**
    * Class to return the URIs that need to be processed after the schema have
    * been created.
@@ -200,7 +201,6 @@ class ArrayDirectory {
     }
   };
 
- public:
   /**
    * Class to return a location of a delete or update tile, which is file
    * URI/offset.
@@ -384,6 +384,29 @@ class ArrayDirectory {
    */
   std::unordered_map<std::string, shared_ptr<ArraySchema>>
   load_all_array_schemas(const EncryptionKey& encryption_key) const;
+
+  /**
+   * Load an enumeration from schema with the given name.
+   *
+   * @param schema The ArraySchema that references the enumeration name.
+   * @param enumeration_name The name of the enumeration to load.
+   * @param encryption_key The encryption key to use.
+   * @return shared_ptr<Enumeration> The loaded enumeration.
+   */
+  shared_ptr<const Enumeration> load_enumeration(
+      shared_ptr<ArraySchema> schema,
+      const std::string& enumeration_name,
+      const EncryptionKey& encryption_key) const;
+
+  /**
+   * Load all enumerations for the given schema.
+   *
+   * @param schema The ArraySchema to load Enumerations for
+   * @param encryption_key The encryption key to use.
+   */
+  void load_all_enumerations(
+      shared_ptr<ArraySchema> schema,
+      const EncryptionKey& encryption_key) const;
 
   /** Returns the array URI. */
   const URI& uri() const;
@@ -635,12 +658,23 @@ class ArrayDirectory {
   /** Loads the URIs from the various array subdirectories. */
   Status load();
 
+  /** Returns a set of the known TileDB array directory names. */
+  static const std::set<std::string>& dir_names();
+
+  /**
+   * Lists the given URI and returns filtered results.
+   *
+   * @param uri The URI to list
+   * @return vector of URIs
+   */
+  std::vector<URI> ls(const URI& uri) const;
+
   /**
    * List the root directory uris for v1 to v11.
    *
-   * @return Status, vector of URIs.
+   * @return vector of URIs.
    */
-  tuple<Status, optional<std::vector<URI>>> list_root_dir_uris();
+  std::vector<URI> list_root_dir_uris();
 
   /**
    * Loads the root directory uris for v1 to v11.
@@ -653,9 +687,9 @@ class ArrayDirectory {
   /**
    * List the commits directory uris for v12 or higher.
    *
-   * @return Status, vector of commit URIs.
+   * @return vector of commit URIs.
    */
-  tuple<Status, optional<std::vector<URI>>> list_commits_dir_uris();
+  std::vector<URI> list_commits_dir_uris();
 
   /**
    * Loads the commit directory uris for v12 or higher.
@@ -669,10 +703,9 @@ class ArrayDirectory {
   /**
    * Loads the fragment metadata directory uris for v12 or higher.
    *
-   * @return Status, fragment metadata URIs.
+   * @return fragment metadata URIs.
    */
-  tuple<Status, optional<std::vector<URI>>>
-  list_fragment_metadata_dir_uris_v12_or_higher();
+  std::vector<URI> list_fragment_metadata_dir_uris_v12_or_higher();
 
   /**
    * Loads the commits URIs to consolidate.
@@ -696,10 +729,10 @@ class ArrayDirectory {
   load_consolidated_commit_uris(const std::vector<URI>& commits_dir_uris);
 
   /** Loads the array metadata URIs. */
-  Status load_array_meta_uris();
+  void load_array_meta_uris();
 
   /** Loads the array schema URIs. */
-  Status load_array_schema_uris();
+  void load_array_schema_uris();
 
   /**
    * Computes the fragment URIs from the input array directory URIs, for

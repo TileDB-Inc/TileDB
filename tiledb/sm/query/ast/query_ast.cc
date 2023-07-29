@@ -31,6 +31,8 @@
  */
 
 #include "query_ast.h"
+#include "tiledb/sm/array_schema/enumeration.h"
+#include "tiledb/sm/misc/integral_type_casts.h"
 
 using namespace tiledb::common;
 
@@ -60,8 +62,63 @@ void ASTNodeVal::get_field_names(
   field_name_set.insert(field_name_);
 }
 
+void ASTNodeVal::get_enumeration_field_names(
+    std::unordered_set<std::string>& field_name_set) const {
+  if (use_enumeration_) {
+    field_name_set.insert(field_name_);
+  }
+}
+
 bool ASTNodeVal::is_backwards_compatible() const {
   return true;
+}
+
+void ASTNodeVal::rewrite_enumeration_conditions(
+    const ArraySchema& array_schema) {
+  // This is called by the Query class before applying a query condition. This
+  // works by looking up each related enumeration and translating the
+  // condition's value to reflect the underlying index value. I.e., if the
+  // query condition was created with `my_attr = "foo"`, and `my_attr` is an
+  // attribute with an enumeration, this will replace the condition's value
+  // with the index value returned by `Enumeration::index_of()`.
+
+  if (!use_enumeration_) {
+    return;
+  }
+
+  if (!array_schema.is_attr(field_name_)) {
+    return;
+  }
+
+  auto attr = array_schema.attribute(field_name_);
+  auto enmr_name = attr->get_enumeration_name();
+  if (!enmr_name.has_value()) {
+    return;
+  }
+
+  auto enumeration = array_schema.get_enumeration(enmr_name.value());
+  if (!enumeration) {
+    throw std::logic_error(
+        "Missing requried enumeration for field '" + field_name_ + "'");
+  }
+
+  if (!enumeration->ordered() &&
+      (op_ != QueryConditionOp::EQ && op_ != QueryConditionOp::NE)) {
+    throw std::logic_error(
+        "Cannot apply an inequality operator against an unordered Enumeration");
+  }
+
+  auto idx = enumeration->index_of(condition_value_view_);
+  auto val_size = datatype_size(attr->type());
+
+  condition_value_data_ = ByteVecValue(val_size);
+  utils::safe_integral_cast_to_datatype(
+      idx, attr->type(), condition_value_data_);
+
+  condition_value_view_ =
+      UntypedDatumView(condition_value_data_.data(), val_size);
+
+  use_enumeration_ = false;
 }
 
 Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
@@ -186,6 +243,14 @@ const QueryConditionCombinationOp& ASTNodeVal::get_combination_op() const {
       "value node.");
 }
 
+bool ASTNodeVal::use_enumeration() const {
+  return use_enumeration_;
+}
+
+void ASTNodeVal::set_use_enumeration(bool use_enumeration) {
+  use_enumeration_ = use_enumeration;
+}
+
 bool ASTNodeExpr::is_expr() const {
   return true;
 }
@@ -205,6 +270,13 @@ void ASTNodeExpr::get_field_names(
   }
 }
 
+void ASTNodeExpr::get_enumeration_field_names(
+    std::unordered_set<std::string>& field_name_set) const {
+  for (const auto& child : nodes_) {
+    child->get_enumeration_field_names(field_name_set);
+  }
+}
+
 bool ASTNodeExpr::is_backwards_compatible() const {
   if (combination_op_ != QueryConditionCombinationOp::AND) {
     return false;
@@ -215,6 +287,13 @@ bool ASTNodeExpr::is_backwards_compatible() const {
     }
   }
   return true;
+}
+
+void ASTNodeExpr::rewrite_enumeration_conditions(
+    const ArraySchema& array_schema) {
+  for (auto& child : nodes_) {
+    child->rewrite_enumeration_conditions(array_schema);
+  }
 }
 
 Status ASTNodeExpr::check_node_validity(const ArraySchema& array_schema) const {
@@ -275,8 +354,21 @@ const QueryConditionOp& ASTNodeExpr::get_op() const {
 const std::vector<tdb_unique_ptr<ASTNode>>& ASTNodeExpr::get_children() const {
   return nodes_;
 }
+
 const QueryConditionCombinationOp& ASTNodeExpr::get_combination_op() const {
   return combination_op_;
+}
+
+bool ASTNodeExpr::use_enumeration() const {
+  throw std::runtime_error(
+      "ASTNodeExpr::use_enumeration: Cannot get enumeration status from "
+      "an AST expression node.");
+}
+
+void ASTNodeExpr::set_use_enumeration(bool use_enumeration) {
+  for (auto& child : nodes_) {
+    child->set_use_enumeration(use_enumeration);
+  }
 }
 
 }  // namespace sm

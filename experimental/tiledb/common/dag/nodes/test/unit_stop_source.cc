@@ -30,11 +30,13 @@
  * Tests the use of stop tokens with ProducerNode
  */
 
-#include "unit_stop_source.h"
 #include <atomic>
 #include <future>
+#include <stop_token>
+
+#include "unit_stop_source.h"
+
 #include "experimental/tiledb/common/dag/edge/edge.h"
-#include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
 #include "experimental/tiledb/common/dag/nodes/generators.h"
 #include "experimental/tiledb/common/dag/nodes/nodes.h"
 #include "experimental/tiledb/common/dag/nodes/terminals.h"

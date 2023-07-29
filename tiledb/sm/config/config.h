@@ -33,12 +33,12 @@
 #ifndef TILEDB_CONFIG_H
 #define TILEDB_CONFIG_H
 
-#include "tiledb/common/status.h"
-
 #include <map>
 #include <set>
 #include <string>
 #include <vector>
+
+#include "tiledb/common/status.h"
 
 /*
  * C++14 introduced the attribute [[deprecated]], but no conditional syntax
@@ -362,6 +362,15 @@ class Config {
   /** If `true` the readers might partially load/unload tile offsets. */
   static const std::string SM_PARTIAL_TILE_OFFSETS_LOADING;
 
+  /** Certificate file path. */
+  static const std::string SSL_CA_FILE;
+
+  /** Certificate directory path. */
+  static const std::string SSL_CA_PATH;
+
+  /** Whether to verify SSL connections. */
+  static const std::string SSL_VERIFY;
+
   /** The default minimum number of bytes in a parallel VFS operation. */
   static const std::string VFS_MIN_PARALLEL_SIZE;
 
@@ -397,6 +406,9 @@ class Config {
   /** Azure storage account key. */
   static const std::string VFS_AZURE_STORAGE_ACCOUNT_KEY;
 
+  /** Azure storage account SAS (shared access signature) token. */
+  static const std::string VFS_AZURE_STORAGE_SAS_TOKEN;
+
   /** Azure blob endpoint. */
   static const std::string VFS_AZURE_BLOB_ENDPOINT;
 
@@ -417,6 +429,9 @@ class Config {
 
   /** Azure max retry delay. */
   static const std::string VFS_AZURE_MAX_RETRY_DELAY_MS;
+
+  /** GCS Endpoint. */
+  static const std::string VFS_GCS_ENDPOINT;
 
   /** GCS project id. */
   static const std::string VFS_GCS_PROJECT_ID;
@@ -543,6 +558,18 @@ class Config {
 
   /** S3 default object canned ACL */
   static const std::string VFS_S3_OBJECT_CANNED_ACL;
+
+  /**
+   * Force S3 SDK to only load config options from a set source.
+   * The supported options are
+   * - `auto` (TileDB config options are considered first,
+   *    then SDK-defined precedence: env vars, config files, ec2 metadata),
+   * - `config_files` (forces SDK to only consider options found in aws
+   *    config files),
+   *    `sts_profile_with_web_identity` (force SDK to consider assume roles/sts
+   * from config files with support for web tokens, commonly used by EKS/ECS).
+   */
+  static const std::string VFS_S3_CONFIG_SOURCE;
 
   /**
    * Specifies the size in bytes of the internal buffers used in the filestore

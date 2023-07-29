@@ -25,7 +25,11 @@
 # THE SOFTWARE.
 #
 
-find_package(Clipp_EP REQUIRED)
+if(TILEDB_VCPKG)
+  find_package(Clipp CONFIG REQUIRED)
+else()
+  find_package(Clipp_EP REQUIRED)
+endif()
 
 add_executable(tiledb EXCLUDE_FROM_ALL
   src/commands/help_command.cc
@@ -41,7 +45,7 @@ set(TILEDB_TOOLS tiledb)
 foreach(TOOL ${TILEDB_TOOLS})
   target_link_libraries(${TOOL} PRIVATE
     TILEDB_CORE_OBJECTS_ILIB
-    Clipp::Clipp
+    clipp::clipp
   )
   target_include_directories(${TOOL} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/..

@@ -110,10 +110,13 @@ Reader::Reader(
     Array* array,
     Config& config,
     std::unordered_map<std::string, QueryBuffer>& buffers,
+    std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
     Subarray& subarray,
     Layout layout,
     std::optional<QueryCondition>& condition,
-    bool skip_checks_serialization)
+    DefaultChannelAggregates& default_channel_aggregates,
+    bool skip_checks_serialization,
+    bool remote_query)
     : ReaderBase(
           stats,
           logger->clone("Reader", ++logger_id_),
@@ -121,13 +124,20 @@ Reader::Reader(
           array,
           config,
           buffers,
+          aggregate_buffers,
           subarray,
           layout,
-          condition) {
+          condition,
+          default_channel_aggregates) {
   // Sanity checks
   if (storage_manager_ == nullptr) {
     throw ReaderStatusException(
         "Cannot initialize reader; Storage manager not set");
+  }
+
+  if (!default_channel_aggregates.empty()) {
+    throw ReaderStatusException(
+        "Cannot initialize reader; Reader cannot process aggregates");
   }
 
   if (!skip_checks_serialization && buffers_.empty()) {
@@ -141,7 +151,7 @@ Reader::Reader(
   }
 
   // Check subarray
-  check_subarray();
+  check_subarray(remote_query && array->array_schema_latest().dense());
 
   // Initialize the read state
   init_read_state();

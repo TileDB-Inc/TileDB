@@ -50,6 +50,7 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/query_remote_buffer_storage.h"
+#include "tiledb/sm/query/readers/aggregators/iaggregator.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
@@ -244,8 +245,8 @@ class Query {
   Status cancel();
 
   /**
-   * Finalizes the query, flushing all internal state. Applicable only to global
-   * layout writes. It has no effect for any other query type.
+   * Finalizes the query, flushing all internal state.
+   * Applicable to write queries only.
    */
   Status finalize();
 
@@ -668,6 +669,12 @@ class Query {
   /** Returns true if this is a dense query */
   bool is_dense() const;
 
+  /** Returns true if the config is set to allow separate attribute writes. */
+  inline bool allow_separate_attribute_writes() const {
+    return config_.get<bool>(
+        "sm.allow_separate_attribute_writes", Config::must_find);
+  }
+
   /** Returns a reference to the internal WrittenFragmentInfo list */
   std::vector<WrittenFragmentInfo>& get_written_fragment_info();
 
@@ -692,6 +699,20 @@ class Query {
    */
   void set_fragment_size(uint64_t fragment_size) {
     fragment_size_ = fragment_size;
+  }
+
+  /** Returns true if the output field is an aggregate. */
+  bool is_aggregate(std::string output_field_name) const;
+
+  /**
+   * Adds an aggregator to the default channel.
+   *
+   * @param output_field_name Output field name for the aggregate.
+   * @param aggregator Aggregator to add.
+   */
+  void add_aggregator_to_default_channel(
+      std::string output_field_name, shared_ptr<IAggregator> aggregator) {
+    default_channel_aggregates_.emplace(output_field_name, aggregator);
   }
 
  private:
@@ -750,11 +771,16 @@ class Query {
    * Maps attribute/dimension names to their buffers.
    * `TILEDB_COORDS` may be used for the special zipped coordinates
    * buffer.
-   * */
+   */
   std::unordered_map<std::string, QueryBuffer> buffers_;
 
   /** Maps label names to their buffers. */
   std::unordered_map<std::string, QueryBuffer> label_buffers_;
+
+  /**
+   * Maps aggregate names to their buffers.
+   */
+  std::unordered_map<std::string, QueryBuffer> aggregate_buffers_;
 
   /** Dimension label queries that are part of the main query. */
   tdb_unique_ptr<ArrayDimensionLabelQueries> dim_label_queries_;
@@ -856,14 +882,15 @@ class Query {
    */
   uint64_t fragment_size_;
 
-  /** Allow separate attribute writes. */
-  bool allow_separate_attribute_writes_;
-
   /** Already written buffers. */
   std::unordered_set<std::string> written_buffers_;
 
   /** Cache for tile aligned remote global order writes. */
   std::optional<QueryRemoteBufferStorage> query_remote_buffer_storage_;
+
+  /** Aggregates for the default channel, by output field name. */
+  std::unordered_map<std::string, shared_ptr<IAggregator>>
+      default_channel_aggregates_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -911,6 +938,9 @@ class Query {
    * This will allow for the user to properly set the next write batch.
    */
   void reset_coords_markers();
+
+  /** Copies the data from the aggregates to the user buffers. */
+  void copy_aggregates_data_to_user_buffer();
 };
 
 }  // namespace sm

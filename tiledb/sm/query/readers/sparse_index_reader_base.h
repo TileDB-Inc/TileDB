@@ -50,6 +50,9 @@ class ArraySchema;
 class MemoryTracker;
 class Subarray;
 
+/**
+ * Simple class that stores the progress for a fragment as a tile/cell index.
+ */
 class FragIdx {
  public:
   /* ********************************* */
@@ -200,11 +203,12 @@ class MemoryBudget {
 
   /** Target upper memory limit for tiles. */
   uint64_t tile_upper_memory_limit_;
-
-  /** Mutex protecting memory budget variables. */
-  std::mutex used_memory_mtx_;
 };
 
+/**
+ * Simple class that stores the fragment/tile index of a tile that will be
+ * ignored by further iterations as we deteremined it has no results.
+ */
 class IgnoredTile {
  public:
   /* ********************************* */
@@ -274,20 +278,210 @@ struct ignored_tile_hash {
   }
 };
 
-/** Processes read queries. */
+/**
+ * Processes sparse read queries by keeping progress in fragments as indexes.
+ */
 class SparseIndexReaderBase : public ReaderBase {
  public:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
   /* ********************************* */
 
-  /** The state for a read sparse global order query. */
+  /**
+   * The state for an index query. This read state cannot be reconstructed as it
+   * contains progress for data that was copied to the user buffers and returned
+   * to the user. The progress is saved, per fragment, as a tile and cell index.
+   *
+   * TBD: done_adding_result_tiles_ might be moved from here. We have to see if
+   * it is really required to determine if a query is incomplete from the client
+   * side of a cloud request.
+   */
   struct ReadState {
     /** The tile index inside of each fragments. */
     std::vector<FragIdx> frag_idx_;
 
     /** Is the reader done with the query. */
     bool done_adding_result_tiles_;
+  };
+
+  /**
+   * Temporary read state that can be recomputed using just the read state. This
+   * contains information about the tile ranges that still need to be processed
+   * if a subarray is set (with memory used) and for which fragments we loaded
+   * all tiles into memory. It also contains which tiles contains no results so
+   * they should be ignored by further iterations. It should be used in
+   * conjunction with the loaded tiles in the respective readers. Eventually,
+   * those will also move to this class but that requires the removal of
+   * every memory allocated things from result tiles into separate objects so
+   * that the list of result tiles is only a fragment/tile index and the objects
+   * are not different anymore.
+   */
+  class TransientReadState : public ITileRange {
+   public:
+    /* ********************************* */
+    /*     CONSTRUCTORS & DESTRUCTORS    */
+    /* ********************************* */
+
+    TransientReadState() = delete;
+
+    TransientReadState(uint64_t num_frags)
+        : tile_ranges_(num_frags)
+        , memory_used_tile_ranges_(0)
+        , all_tiles_loaded_(num_frags, false) {
+    }
+
+    DISABLE_COPY_AND_COPY_ASSIGN(TransientReadState);
+    DISABLE_MOVE_AND_MOVE_ASSIGN(TransientReadState);
+
+    /* ********************************* */
+    /*          PUBLIC METHODS           */
+    /* ********************************* */
+
+    /**
+     * Return the tile ranges vector for a particular fragment.
+     *
+     * @param f Fragment index.
+     * @return Tile ranges.
+     */
+    std::vector<std::pair<uint64_t, uint64_t>>& tile_ranges(const unsigned f) {
+      return tile_ranges_[f];
+    }
+
+    /**
+     * Return if all tiles are loaded for a fragment.
+     *
+     * @param f Fragment index.
+     * @return All tiles loaded.
+     */
+    bool all_tiles_loaded(const unsigned f) const {
+      return all_tiles_loaded_[f];
+    }
+
+    /**
+     * Set the all tiles loaded for a fragment.
+     *
+     * @param f Fragment index.
+     */
+    void set_all_tiles_loaded(const unsigned f) {
+      all_tiles_loaded_[f] = true;
+    }
+
+    /** @return Number of fragments left to process. */
+    unsigned num_fragments_to_process() const {
+      unsigned num = 0;
+      for (auto all_loaded : all_tiles_loaded_) {
+        num += !all_loaded;
+      }
+
+      return num;
+    }
+
+    /** @return Are we done adding all result tiles to the list. */
+    bool done_adding_result_tiles() const {
+      bool ret = true;
+      for (auto& b : all_tiles_loaded_) {
+        ret &= b != 0;
+      }
+
+      return ret;
+    }
+
+    /**
+     * Remove the last tile range for a fragment.
+     *
+     * @param f Fragment index.
+     */
+    void remove_tile_range(unsigned f) {
+      tile_ranges_[f].pop_back();
+      memory_used_tile_ranges_ -= sizeof(std::pair<uint64_t, uint64_t>);
+    }
+
+    /** @ereturn Memory usage for the tile ranges. */
+    uint64_t memory_used_tile_ranges() const {
+      return memory_used_tile_ranges_;
+    }
+
+    /** Clears all tile ranges data. */
+    void clear_tile_ranges() override {
+      for (auto& tr : tile_ranges_) {
+        tr.clear();
+      }
+      memory_used_tile_ranges_ = 0;
+    }
+
+    /**
+     * Add a tile range for a fragment.
+     *
+     * @param f Fragment index.
+     * @param min Min tile index for the range.
+     * @param max Max tile index for the range.
+     */
+    void add_tile_range(unsigned f, uint64_t min, uint64_t max) override {
+      tile_ranges_[f].emplace_back(min, max);
+    }
+
+    /** Signals we are done adding tile ranges. */
+    void done_adding_tile_ranges() override {
+      // Compute the size of the tile ranges structure and mark empty fragments
+      // as fully loaded.
+      for (uint64_t i = 0; i < tile_ranges_.size(); i++) {
+        memory_used_tile_ranges_ +=
+            tile_ranges_[i].size() * sizeof(std::pair<uint64_t, uint64_t>);
+        if (tile_ranges_[i].size() == 0) {
+          all_tiles_loaded_[i] = true;
+        }
+      }
+    }
+
+    /**
+     * Add a tile that should be ignored by later iterations because it contains
+     * no results.
+     *
+     * @param rt Result tile.
+     */
+    void add_ignored_tile(ResultTile& rt) {
+      std::unique_lock<std::mutex> lck(ignored_tiles_mutex_);
+      ignored_tiles_.emplace(rt.frag_idx(), rt.tile_idx());
+    }
+
+    /**
+     * Returns true if the tile should be ignored.
+     *
+     * @param f Fragment index.
+     * @param t Tile index.
+     * @return If the tile should be ignored or not.
+     */
+    bool is_ignored_tile(unsigned f, uint64_t t) {
+      return ignored_tiles_.count(IgnoredTile(f, t)) != 0;
+    }
+
+    /** @return number of ignored tiles. */
+    bool num_ignored_tiles() {
+      return ignored_tiles_.size();
+    }
+
+   private:
+    /* ********************************* */
+    /*        PRIVATE ATTRIBUTES         */
+    /* ********************************* */
+
+    /**
+     * Reverse sorted vector, per fragments, of tiles ranges in the subarray, if
+     * set.
+     */
+    std::vector<std::vector<std::pair<uint64_t, uint64_t>>> tile_ranges_;
+
+    /** Memory used for tile ranges. */
+    std::atomic<uint64_t> memory_used_tile_ranges_;
+
+    /** Have we loaded all tiles for this fragment. */
+    std::vector<uint8_t> all_tiles_loaded_;
+
+    /** List of tiles to ignore. */
+    std::unordered_set<IgnoredTile, ignored_tile_hash> ignored_tiles_;
+
+    /** Mutex protecting ignored_tiles_. */
+    std::mutex ignored_tiles_mutex_;
   };
 
   /* ********************************* */
@@ -303,9 +497,11 @@ class SparseIndexReaderBase : public ReaderBase {
       Array* array,
       Config& config,
       std::unordered_map<std::string, QueryBuffer>& buffers,
+      std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
       Subarray& subarray,
       Layout layout,
       std::optional<QueryCondition>& condition,
+      DefaultChannelAggregates& default_channel_aggregates,
       bool skip_checks_serialization,
       bool include_coords);
 
@@ -330,15 +526,6 @@ class SparseIndexReaderBase : public ReaderBase {
    */
   ReadState* read_state();
 
-  /**
-   * Resize the output buffers to the correct size after copying.
-   *
-   * @param cells_copied Number of cells copied.
-   *
-   * @return Status.
-   */
-  Status resize_output_buffers(uint64_t cells_copied);
-
  protected:
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
@@ -347,11 +534,11 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Read state. */
   ReadState read_state_;
 
+  /** Transient read state. */
+  TransientReadState tmp_read_state_;
+
   /** Memory budget. */
   MemoryBudget memory_budget_;
-
-  /** Have we loaded all tiles for this fragment. */
-  std::vector<uint8_t> all_tiles_loaded_;
 
   /** Include coordinates when loading tiles. */
   bool include_coords_;
@@ -362,23 +549,11 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Are dimensions var sized. */
   std::vector<bool> is_dim_var_size_;
 
-  /**
-   * Reverse sorted vector, per fragments, of tiles ranges in the subarray, if
-   * set.
-   */
-  std::vector<std::vector<std::pair<uint64_t, uint64_t>>> result_tile_ranges_;
-
-  /** Mutex protecting memory budget variables. */
-  std::mutex used_memory_mtx_;
-
   /** Memory tracker object for the array. */
   MemoryTracker* array_memory_tracker_;
 
   /** Memory used for coordinates tiles. */
-  uint64_t memory_used_for_coords_total_;
-
-  /** Memory used for result tile ranges. */
-  uint64_t memory_used_result_tile_ranges_;
+  std::atomic<uint64_t> memory_used_for_coords_total_;
 
   /** Are we in elements mode. */
   bool elements_mode_;
@@ -386,16 +561,10 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Names of dim/attr loaded for query condition. */
   std::vector<std::string> qc_loaded_attr_names_;
 
-  /* Are the users buffers full. */
-  bool buffers_full_;
-
-  /** List of tiles to ignore. */
-  std::unordered_set<IgnoredTile, ignored_tile_hash> ignored_tiles_;
-
   /** Are we doing deletes consolidation (without purge option). */
   bool deletes_consolidation_no_purge_;
 
-  /** Do we allo partial tile offset loading for this query? */
+  /** Do we allow partial tile offset loading for this query? */
   bool partial_tile_offsets_loading_;
 
   /** Var dimensions/attributes for which to load tile var sizes. */
@@ -490,21 +659,17 @@ class SparseIndexReaderBase : public ReaderBase {
    * Compute tile bitmaps.
    *
    * @param result_tiles Result tiles to process.
-   *
-   * @return Status.
-   * */
+   */
   template <class BitmapType>
-  Status compute_tile_bitmaps(std::vector<ResultTile*>& result_tiles);
+  void compute_tile_bitmaps(std::vector<ResultTile*>& result_tiles);
 
   /**
    * Apply query condition.
    *
    * @param result_tiles Result tiles to process.
-   *
-   * @return Status.
    */
   template <class ResultTileType, class BitmapType>
-  Status apply_query_condition(std::vector<ResultTile*>& result_tiles);
+  void apply_query_condition(std::vector<ResultTile*>& result_tiles);
 
   /**
    * Read and unfilter as many attributes as can fit in the memory budget and
@@ -516,28 +681,43 @@ class SparseIndexReaderBase : public ReaderBase {
    * @param buffer_idx Stores/return the current buffer index in process.
    * @param result_tiles Result tiles to process.
    *
-   * @return Status, index_to_copy.
+   * @return names_to_copy.
    */
-  tuple<Status, optional<std::vector<uint64_t>>> read_and_unfilter_attributes(
+  std::vector<std::string> read_and_unfilter_attributes(
       const std::vector<std::string>& names,
       const std::vector<uint64_t>& mem_usage_per_attr,
       uint64_t* buffer_idx,
       std::vector<ResultTile*>& result_tiles);
 
   /**
-   * Adds an extra offset in the end of the offsets buffer indicating the
-   * returned data size if an attribute is var-sized.
+   * Get the field names to process.
    *
-   * @return Status.
+   * The fields are ordered in a manner that will reduce recomputations due to
+   * var sized overflows. The order is:
+   *  - Var fields with no aggregates that need recompute in case of overflow.
+   *  - Var fields with aggregates that need recompute in case of overflow.
+   *  - Fixed fields.
+   *  - Any aggregate fields with no buffers to copy.
+   *
+   * This order limits to the maximum the chances we need to recompute an
+   * aggregate.
+   *
+   * @return Field names to process.
    */
-  Status add_extra_offset();
+  std::vector<std::string> field_names_to_process();
 
   /**
-   * Remove a result tile range for a specific fragment.
+   * Resize the output buffers to the correct size after copying.
    *
-   * @param f Fragment index.
+   * @param cells_copied Number of cells copied.
    */
-  void remove_result_tile_range(uint64_t f);
+  void resize_output_buffers(uint64_t cells_copied);
+
+  /**
+   * Adds an extra offset in the end of the offsets buffer indicating the
+   * returned data size if an attribute is var-sized.
+   */
+  void add_extra_offset();
 };
 
 }  // namespace sm

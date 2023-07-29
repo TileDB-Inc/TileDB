@@ -122,7 +122,8 @@ Status stats_from_capnp(
     auto counters = stats->counters();
     auto counters_reader = stats_reader.getCounters();
     for (const auto entry : counters_reader.getEntries()) {
-      (*counters)[std::string(entry.getKey().cStr())] = entry.getValue();
+      auto key = std::string_view{entry.getKey().cStr(), entry.getKey().size()};
+      (*counters)[std::string{key}] = entry.getValue();
     }
   }
 
@@ -130,7 +131,8 @@ Status stats_from_capnp(
     auto timers = stats->timers();
     auto timers_reader = stats_reader.getTimers();
     for (const auto entry : timers_reader.getEntries()) {
-      (*timers)[std::string(entry.getKey().cStr())] = entry.getValue();
+      auto key = std::string_view{entry.getKey().cStr(), entry.getKey().size()};
+      (*timers)[std::string{key}] = entry.getValue();
     }
   }
 
@@ -186,6 +188,7 @@ Status subarray_to_capnp(
     const Subarray* subarray,
     capnp::Subarray::Builder* builder) {
   builder->setLayout(layout_str(subarray->layout()));
+  builder->setCoalesceRanges(subarray->coalesce_ranges());
 
   // Add ranges
   const uint32_t dim_num = subarray->dim_num();
@@ -262,6 +265,7 @@ Status subarray_to_capnp(
 
 Status subarray_from_capnp(
     const capnp::Subarray::Reader& reader, Subarray* subarray) {
+  RETURN_NOT_OK(subarray->set_coalesce_ranges(reader.getCoalesceRanges()));
   auto ranges_reader = reader.getRanges();
   uint32_t dim_num = ranges_reader.size();
   for (uint32_t i = 0; i < dim_num; i++) {
@@ -309,8 +313,10 @@ Status subarray_from_capnp(
     if (attr_ranges_reader.hasEntries()) {
       for (auto attr_ranges_entry : attr_ranges_reader.getEntries()) {
         auto range_reader = attr_ranges_entry.getValue();
-        attr_ranges[attr_ranges_entry.getKey()] =
-            range_buffers_from_capnp(range_reader);
+        auto key = std::string_view{
+            attr_ranges_entry.getKey().cStr(),
+            attr_ranges_entry.getKey().size()};
+        attr_ranges[std::string{key}] = range_buffers_from_capnp(range_reader);
       }
     }
 
@@ -453,7 +459,7 @@ Status subarray_partitioner_from_capnp(
   RETURN_NOT_OK(layout_enum(subarray_reader.getLayout(), &layout));
 
   // Subarray, which is used to initialize the partitioner.
-  Subarray subarray(array, layout, query_stats, dummy_logger, false);
+  Subarray subarray(array, layout, query_stats, dummy_logger, true);
   RETURN_NOT_OK(subarray_from_capnp(reader.getSubarray(), &subarray));
   *partitioner = SubarrayPartitioner(
       &config,
@@ -512,7 +518,7 @@ Status subarray_partitioner_from_capnp(
     partition_info->split_multi_range_ =
         partition_info_reader.getSplitMultiRange();
     partition_info->partition_ =
-        Subarray(array, layout, query_stats, dummy_logger, false);
+        Subarray(array, layout, query_stats, dummy_logger, true);
     RETURN_NOT_OK(subarray_from_capnp(
         partition_info_reader.getSubarray(), &partition_info->partition_));
 
@@ -536,7 +542,7 @@ Status subarray_partitioner_from_capnp(
   for (unsigned i = 0; i < num_sr; i++) {
     auto subarray_reader_ = sr_reader[i];
     state->single_range_.emplace_back(
-        array, layout, query_stats, dummy_logger, false);
+        array, layout, query_stats, dummy_logger, true);
     Subarray& subarray_ = state->single_range_.back();
     RETURN_NOT_OK(subarray_from_capnp(subarray_reader_, &subarray_));
   }
@@ -545,7 +551,7 @@ Status subarray_partitioner_from_capnp(
   for (unsigned i = 0; i < num_m; i++) {
     auto subarray_reader_ = m_reader[i];
     state->multi_range_.emplace_back(
-        array, layout, query_stats, dummy_logger, false);
+        array, layout, query_stats, dummy_logger, true);
     Subarray& subarray_ = state->multi_range_.back();
     RETURN_NOT_OK(subarray_from_capnp(subarray_reader_, &subarray_));
   }
@@ -774,6 +780,9 @@ static Status condition_ast_to_capnp(
     const std::string op_str = query_condition_op_str(node->get_op());
     ensure_qc_op_string_is_valid(op_str);
     ast_builder->setOp(op_str);
+
+    // Store whether this expression should skip the enumeration lookup.
+    ast_builder->setUseEnumeration(node->use_enumeration());
   } else {
     // Store the boolean expression tag.
     ast_builder->setIsExpression(true);
@@ -821,6 +830,8 @@ static void clause_to_capnp(
   const std::string op_str = query_condition_op_str(node->get_op());
   ensure_qc_op_string_is_valid(op_str);
   clause_builder->setOp(op_str);
+
+  clause_builder->setUseEnumeration(node->use_enumeration());
 }
 
 Status condition_to_capnp(
@@ -994,8 +1005,10 @@ tdb_unique_ptr<ASTNode> condition_ast_from_capnp(
     }
     ensure_qc_op_is_valid(op);
 
+    auto use_enumeration = ast_reader.getUseEnumeration();
+
     return tdb_unique_ptr<ASTNode>(
-        tdb_new(ASTNodeVal, field_name, data, size, op));
+        tdb_new(ASTNodeVal, field_name, data, size, op, use_enumeration));
   }
 
   // Getting and validating the query condition combination operator.
@@ -1047,8 +1060,10 @@ Status condition_from_capnp(
       }
       ensure_qc_op_is_valid(op);
 
+      bool use_enumeration = clause.getUseEnumeration();
+
       ast_nodes.push_back(tdb_unique_ptr<ASTNode>(
-          tdb_new(ASTNodeVal, field_name, data, size, op)));
+          tdb_new(ASTNodeVal, field_name, data, size, op, use_enumeration)));
     }
 
     // Constructing the tree from the list of AST nodes.
@@ -1081,7 +1096,7 @@ Status reader_from_capnp(
   RETURN_NOT_OK(layout_enum(reader_reader.getLayout(), &layout));
 
   // Subarray
-  Subarray subarray(array, layout, query->stats(), dummy_logger, false);
+  Subarray subarray(array, layout, query->stats(), dummy_logger, true);
   auto subarray_reader = reader_reader.getSubarray();
   RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
   RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
@@ -1123,7 +1138,7 @@ Status index_reader_from_capnp(
   RETURN_NOT_OK(layout_enum(reader_reader.getLayout(), &layout));
 
   // Subarray
-  Subarray subarray(array, layout, query->stats(), dummy_logger, false);
+  Subarray subarray(array, layout, query->stats(), dummy_logger, true);
   auto subarray_reader = reader_reader.getSubarray();
   RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
   RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
@@ -1166,7 +1181,7 @@ Status dense_reader_from_capnp(
   RETURN_NOT_OK(layout_enum(reader_reader.getLayout(), &layout));
 
   // Subarray
-  Subarray subarray(array, layout, query->stats(), dummy_logger, false);
+  Subarray subarray(array, layout, query->stats(), dummy_logger, true);
   auto subarray_reader = reader_reader.getSubarray();
   RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
   RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
@@ -1330,12 +1345,6 @@ Status writer_from_capnp(
   } else if (query.layout() == Layout::UNORDERED) {
     auto unordered_writer = dynamic_cast<UnorderedWriter*>(writer);
 
-    // Fragment metadata is not allocated when deserializing into a new Query
-    // object.
-    if (unordered_writer->frag_meta() == nullptr) {
-      RETURN_NOT_OK(unordered_writer->alloc_frag_meta());
-    }
-
     RETURN_NOT_OK(unordered_write_state_from_capnp(
         query,
         writer_reader.getUnorderedWriterState(),
@@ -1407,7 +1416,7 @@ Status query_to_capnp(
       // submission by adjusting user buffer sizes, tile-aligning the write.
       // Once this write completes the cache is updated with the previously held
       // tile-overflow bytes, and the following submission is prepended with
-      // with this data. See the QueryRemoteBufferStorage class for more info.
+      // this data. See the QueryRemoteBufferStorage class for more info.
       const auto& buff_cache =
           query_buffer_storage->get_query_buffer_cache(name);
       cached_fixed_size = buff_cache.buffer_.size();
@@ -1596,6 +1605,14 @@ Status query_from_capnp(
   bool force_legacy_reader =
       query_type == QueryType::READ && query_reader.hasReader();
   RETURN_NOT_OK(query->reset_strategy_with_layout(layout, force_legacy_reader));
+
+  // Reset QueryStatus to UNINITIALIZED
+  // Note: this is a pre-C.41 hack. At present, Strategy creation is the point
+  // of construction through the regular API. However, the Query cannot be
+  // considered fully initialized until everything has been deserialized. We
+  // must "reset" the status here to bypass future checks on a
+  // fully-initialized Query until the final QueryStatus is deserialized.
+  query->set_status(QueryStatus::UNINITIALIZED);
 
   // Deserialize Config
   if (query_reader.hasConfig()) {
@@ -2114,7 +2131,7 @@ Status query_from_capnp(
 
       // Subarray
       if (writer_reader.hasSubarrayRanges()) {
-        Subarray subarray(array, layout, query->stats(), dummy_logger, false);
+        Subarray subarray(array, layout, query->stats(), dummy_logger, true);
         auto subarray_reader = writer_reader.getSubarrayRanges();
         RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
         RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
@@ -2565,7 +2582,7 @@ Status query_est_result_size_reader_from_capnp(
 
   std::unordered_map<std::string, Subarray::ResultSize> est_result_sizes_map;
   for (auto it : est_result_sizes.getEntries()) {
-    std::string name = it.getKey();
+    auto name = std::string_view{it.getKey().cStr(), it.getKey().size()};
     auto result_size = it.getValue();
     est_result_sizes_map.emplace(
         name,
@@ -2577,7 +2594,7 @@ Status query_est_result_size_reader_from_capnp(
 
   std::unordered_map<std::string, Subarray::MemorySize> max_memory_sizes_map;
   for (auto it : max_memory_sizes.getEntries()) {
-    std::string name = it.getKey();
+    auto name = std::string_view{it.getKey().cStr(), it.getKey().size()};
     auto memory_size = it.getValue();
     max_memory_sizes_map.emplace(
         name,
@@ -2816,7 +2833,8 @@ Status global_write_state_from_capnp(
     auto& cells_written = write_state->cells_written_;
     auto cell_written_reader = state_reader.getCellsWritten();
     for (const auto& entry : cell_written_reader.getEntries()) {
-      cells_written[std::string(entry.getKey().cStr())] = entry.getValue();
+      auto key = std::string_view{entry.getKey().cStr(), entry.getKey().size()};
+      cells_written[std::string{key}] = entry.getValue();
     }
   }
 
@@ -2866,7 +2884,9 @@ Status global_write_state_from_capnp(
       for (auto entry : multipart_reader.getEntries()) {
         VFS::MultiPartUploadState deserialized_state;
         auto state = entry.getValue();
-        std::string buffer_uri(entry.getKey().cStr());
+        auto buffer_uri =
+            std::string_view{entry.getKey().cStr(), entry.getKey().size()};
+
         if (state.hasUploadId()) {
           deserialized_state.upload_id = state.getUploadId();
         }
@@ -2899,7 +2919,7 @@ Status global_write_state_from_capnp(
         }
 
         RETURN_NOT_OK(global_writer->set_multipart_upload_state(
-            buffer_uri,
+            std::string{buffer_uri},
             deserialized_state,
             context == SerializationContext::CLIENT));
       }
@@ -2969,6 +2989,11 @@ Status unordered_write_state_from_capnp(
   }
 
   if (state_reader.hasFragMeta()) {
+    // Fragment metadata is not allocated when deserializing into a new Query
+    // object.
+    if (unordered_writer->frag_meta() == nullptr) {
+      RETURN_NOT_OK(unordered_writer->alloc_frag_meta());
+    }
     auto frag_meta = unordered_writer->frag_meta();
     auto frag_meta_reader = state_reader.getFragMeta();
     RETURN_NOT_OK(fragment_metadata_from_capnp(

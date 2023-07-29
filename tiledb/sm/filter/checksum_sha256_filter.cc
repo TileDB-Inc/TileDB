@@ -45,12 +45,12 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-ChecksumSHA256Filter::ChecksumSHA256Filter()
-    : Filter(FilterType::FILTER_CHECKSUM_SHA256) {
+ChecksumSHA256Filter::ChecksumSHA256Filter(Datatype filter_data_type)
+    : Filter(FilterType::FILTER_CHECKSUM_SHA256, filter_data_type) {
 }
 
 ChecksumSHA256Filter* ChecksumSHA256Filter::clone_impl() const {
-  return tdb_new(ChecksumSHA256Filter);
+  return tdb_new(ChecksumSHA256Filter, filter_data_type_);
 }
 
 void ChecksumSHA256Filter::dump(FILE* out) const {

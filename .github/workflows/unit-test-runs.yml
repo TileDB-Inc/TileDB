@@ -46,6 +46,7 @@ jobs:
           pushd $GITHUB_WORKSPACE/build
 
           cmake .. \
+            -DTILEDB_VCPKG=ON \
             -DTILEDB_AZURE=${TILEDB_AZURE}\
             -DTILEDB_GCS=${TILEDB_GCS} \
             -DTILEDB_S3=${TILEDB_S3} \

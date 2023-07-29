@@ -32,41 +32,38 @@
 include(TileDBCommon)
 
 if(TILEDB_VCPKG)
-  find_package(AWSSDK QUIET CONFIG COMPONENTS core s3 REQUIRED)
-  set(AWS_SERVICES s3)
-  AWSSDK_DETERMINE_LIBS_TO_LINK(AWS_SERVICES AWS_LINKED_LIBS)
-  list(APPEND AWS_LINKED_LIBS aws-c-cal
-                              aws-c-io
-                              aws-cpp-sdk-identity-management
-                              aws-cpp-sdk-sts)
+  set(AWS_SERVICES identity-management sts s3)
 
-  foreach (LIB ${AWS_LINKED_LIBS})
-    if (NOT ${LIB} MATCHES "aws-*")
-      continue()
-    endif()
+  # Provides:  ${AWSSDK_LINK_LIBRARIES} ${AWSSDK_PLATFORM_DEPS}
+  # TODO: We may need to conditionally use ${AWSSDK_PLATFORM_DEPS} here for dynamically linked deps, but
+  #       it lists bare "pthread;curl" which leads to linkage of system versions. For static linkage, we
+  #       handle those elsewhere at the moment.
+  find_package(AWSSDK REQUIRED QUIET COMPONENTS ${AWS_SERVICES})
 
-    find_library("AWS_FOUND_${LIB}"
-      NAMES ${LIB}
-      PATHS ${AWSSDK_LIB_DIR}
-      NO_DEFAULT_PATH
-    )
-    message(STATUS "Found AWS lib: ${LIB} (${AWS_FOUND_${LIB}})")
-    if (NOT TARGET AWSSDK::${LIB})
-      add_library(AWSSDK::${LIB} UNKNOWN IMPORTED)
-      set_target_properties(AWSSDK::${LIB} PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES "${AWSSDK_INCLUDE_DIR}"
-        IMPORTED_LOCATION "${AWS_FOUND_${LIB}}"
-      )
-    endif()
-  endforeach ()
+  if (TILEDB_STATIC)
 
-  # Add missing link directives here rather than adding
-  # conditional logic in tiledb/CMakeLists.txt
-  target_link_libraries(AWSSDK::aws-cpp-sdk-s3 INTERFACE AWSSDK::aws-c-cal)
-  target_link_libraries(AWSSDK::aws-cpp-sdk-s3 INTERFACE AWSSDK::aws-c-io)
+    # not included for unknown reasons
+    list(APPEND AWSSDK_THIRD_PARTY_LIBS aws-c-io aws-c-cal)
 
+    set(AWSSDK_EXTRA_LIBS)
+    foreach(TARGET IN LISTS AWSSDK_THIRD_PARTY_LIBS)
+        message(STATUS "Try finding ${TARGET}")
+        find_package(${TARGET} REQUIRED NO_DEFAULT_PATH)
+        message(STATUS "Found ${TARGET}")
+        list(APPEND AWSSDK_EXTRA_LIBS "AWS::${TARGET}")
+    endforeach()
+    #message(FATAL_ERROR "f '${AWSSDK_EXTRA_LIBS}'")
+    install_all_target_libs("${AWSSDK_EXTRA_LIBS}")
+  endif()
+
+  install_all_target_libs("${AWSSDK_LINK_LIBRARIES}")
   return()
 endif()
+
+
+###############################################################################
+# Start superbuild/unmanaged/legacy version
+###############################################################################
 
 ##-----------------------------------
 # early WIN32 audit of path length for aws sdk build where
@@ -127,7 +124,7 @@ if (NOT AWSSDK_FOUND)
     # For aws sdk and gcc we must always build in release mode
     # See https://github.com/TileDB-Inc/TileDB/issues/1351 and
     # https://github.com/awslabs/aws-checksums/issues/8
-    set(AWS_CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE})
+    set(AWS_CMAKE_BUILD_TYPE $<CONFIG>)
     if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         set(AWS_CMAKE_BUILD_TYPE "Release")
     endif()

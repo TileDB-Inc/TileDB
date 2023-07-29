@@ -32,7 +32,14 @@ include(object_library)
 #
 commence(object_library attribute)
     this_target_sources(attribute.cc)
-    this_target_object_libraries(baseline buffer constants filter_pipeline range stringx)
+    this_target_object_libraries(
+        baseline
+        buffer
+        constants
+        filter_pipeline
+        range
+        stringx
+        uuid)
 conclude(object_library)
 
 #
@@ -52,12 +59,26 @@ commence(object_library domain)
 conclude(object_library)
 
 #
+# `enumeration` object library
+#
+commence(object_library enumeration)
+    this_target_sources(enumeration.cc)
+    this_target_object_libraries(buffer constants uuid)
+conclude(object_library)
+
+#
 # `array_schema` object library
 #
 commence(object_library array_schema)
     this_target_sources(array_schema.cc dimension_label.cc)
     this_target_object_libraries(
-        attribute domain time uri_format uuid vfs)
+        attribute domain enumeration time uri_format uuid vfs)
 conclude(object_library)
+
+# This is linked outside the object_library scope because ContextResources
+# is recompiled as part of the capi_context_stub. Including context_resources
+# here like this prevents many headaches revolving around duplicate symbols
+# when linking executables.
+target_link_libraries(compile_array_schema PRIVATE context_resources generic_tile_io)
 
 add_test_subdirectory()

@@ -28,11 +28,6 @@
 
 find_package(Catch_EP REQUIRED)
 
-# These options not exposed in bootstrap script.
-option(TILEDB_TESTS_AWS_S3_CONFIG "Use an S3 config appropriate for AWS in tests" OFF)
-option(TILEDB_TESTS_ENABLE_REST "Enables REST tests (requires running REST server)" OFF)
-
-
 # Arrow integration test config and dependencies
 # Override from environment if not set in cache
 if (NOT DEFINED $CACHE{TILEDB_ARROW_TESTS})
@@ -121,6 +116,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/test-capi-query-error-handling.cc
   src/test-capi-sparse-array-dimension-label.cc
   src/test-capi-subarray-labels.cc
+  src/test-cppapi-aggregates.cc
   src/test-cppapi-consolidation-plan.cc
   src/unit-average-cell-size.cc
   src/unit-azure.cc
@@ -139,6 +135,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-dense_neg.cc
   src/unit-capi-dense_vector.cc
   src/unit-capi-enum_values.cc
+  src/unit-capi-enumerations.cc
   src/unit-capi-error.cc
   src/unit-capi-filestore.cc
   src/unit-capi-fill_values.cc
@@ -168,6 +165,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-vfs.cc
   src/unit-CellSlabIter.cc
   src/unit-compression-dd.cc
+  src/unit-compression-delta.cc
   src/unit-compression-rle.cc
   src/unit-crypto.cc
   src/unit-ctx.cc
@@ -176,6 +174,8 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-dimension.cc
   src/unit-duplicates.cc
   src/unit-empty-var-length.cc
+  src/unit-enumerations.cc
+  src/unit-enum-helpers.cc
   src/unit-filter-buffer.cc
   src/unit-filter-pipeline.cc
   src/unit-global-order.cc
@@ -194,6 +194,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-s3.cc
   src/unit-sparse-global-order-reader.cc
   src/unit-sparse-unordered-with-dups-reader.cc
+  src/unit-ssl-config.cc
   src/unit-Subarray.cc
   src/unit-SubarrayPartitioner-dense.cc
   src/unit-SubarrayPartitioner-error.cc
@@ -217,6 +218,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-deletes.cc
     src/unit-cppapi-dense-qc-coords-mode.cc
     src/unit-cppapi-time.cc
+    src/unit-cppapi-enumerations.cc
     src/unit-cppapi-fill_values.cc
     src/unit-cppapi-filter.cc
     src/unit-cppapi-float-scaling-filter.cc
@@ -320,6 +322,10 @@ endif()
 if (TILEDB_TESTS_AWS_S3_CONFIG)
   message(STATUS "Tests built with AWS S3 config")
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_AWS_S3_CONFIG)
+endif()
+
+if (TILEDB_TESTS_ENABLE_REST)
+  target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_ENABLE_REST)
 endif()
 
 if (TILEDB_SERIALIZATION)
