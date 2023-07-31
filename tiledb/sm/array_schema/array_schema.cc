@@ -244,20 +244,17 @@ ArraySchema::ArraySchema(const ArraySchema& array_schema)
     , cell_order_{array_schema.cell_order_}
     , tile_order_{array_schema.tile_order_}
     , capacity_{array_schema.capacity_}
-    , attributes_{}           // recreated in loop below with `add_attribute`
-    , attribute_map_{}        // initialized inside `add_attribute`
+    , attributes_{array_schema.attributes_}
+    , attribute_map_{array_schema.attribute_map_}
     , dimension_labels_{}     // copied in loop below
     , dimension_label_map_{}  // initialized below
+    , enumeration_map_{array_schema.enumeration_map_}
+    , enumeration_path_map_{array_schema.enumeration_path_map_}
     , cell_var_offsets_filters_{array_schema.cell_var_offsets_filters_}
     , cell_validity_filters_{array_schema.cell_validity_filters_}
     , coords_filters_{array_schema.coords_filters_}
     , mtx_{} {
   throw_if_not_ok(set_domain(array_schema.domain_));
-
-  enumeration_map_ = array_schema.enumeration_map_;
-  enumeration_path_map_ = array_schema.enumeration_path_map_;
-  for (auto attr : array_schema.attributes_)
-    throw_if_not_ok(add_attribute(attr, false));
 
   for (const auto& label : array_schema.dimension_labels_) {
     dimension_labels_.emplace_back(label);

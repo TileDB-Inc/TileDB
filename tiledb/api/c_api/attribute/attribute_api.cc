@@ -170,6 +170,7 @@ int32_t tiledb_attribute_get_fill_value_nullable(
     const void** value,
     uint64_t* size,
     uint8_t* valid) {
+  ensure_attribute_is_valid(attr);
   api::ensure_output_pointer_is_valid(value);
   api::ensure_output_pointer_is_valid(size);
   api::ensure_output_pointer_is_valid(valid);
