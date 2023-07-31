@@ -35,6 +35,7 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/query/readers/aggregators/field_info.h"
 #include "tiledb/sm/query/readers/aggregators/iaggregator.h"
 
 using namespace tiledb::common;
@@ -87,16 +88,9 @@ class SumAggregator : public IAggregator {
   /**
    * Constructor.
    *
-   * @param field_name Filed name that is aggregated.
-   * @param var_sized Is this a var sized attribute?
-   * @param is_nullable Is this a nullable attribute?
-   * @param cell_val_num Number of values per cell.
+   * @param field_info Field info.
    */
-  SumAggregator(
-      const std::string field_name,
-      const bool var_sized,
-      const bool is_nullable,
-      const unsigned cell_val_num);
+  SumAggregator(FieldInfo field_info);
 
   DISABLE_COPY_AND_COPY_ASSIGN(SumAggregator);
   DISABLE_MOVE_AND_MOVE_ASSIGN(SumAggregator);
@@ -107,7 +101,7 @@ class SumAggregator : public IAggregator {
 
   /** Returns the field name for the aggregator. */
   std::string field_name() override {
-    return field_name_;
+    return field_info_.name_;
   }
 
   /** Returns if the aggregation is var sized or not. */
@@ -152,11 +146,8 @@ class SumAggregator : public IAggregator {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** Is the sum nullable? */
-  const bool is_nullable_;
-
-  /** Field name. */
-  const std::string field_name_;
+  /** Field information. */
+  const FieldInfo field_info_;
 
   /** Mutex protecting `sum_` and `sum_overflowed_`. */
   std::mutex sum_mtx_;
@@ -165,7 +156,7 @@ class SumAggregator : public IAggregator {
   typename sum_type_data<T>::sum_type sum_;
 
   /** Computed validity value. */
-  uint8_t validity_value_;
+  optional<uint8_t> validity_value_;
 
   /** Has the sum overflowed. */
   bool sum_overflowed_;
