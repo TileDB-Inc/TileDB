@@ -103,6 +103,12 @@ jobs:
         run: ./scripts/ci/posix/prelim.sh
         shell: bash
 
+      - name: Install manylinux prerequisites
+        if: inputs.manylinux
+        run: |
+          set -e pipefail
+          yum install -y redhat-lsb-core
+
       # Need this for virtualenv and arrow tests if enabled
       - name: 'Install Python'
         uses: actions/setup-python@v4
