@@ -41,8 +41,15 @@ env:
   CXX: ${{ inputs.matrix_compiler_cxx }}
   CC: ${{ inputs.matrix_compiler_cc }}
   bootstrap_args: "--enable-vcpkg --enable-ccache ${{ inputs.bootstrap_args }}"
-  VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
-  SCCACHE_GHA_ENABLED: "true"
+  AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+  AWS_DEFAULT_REGION: auto
+  AWS_DEFAULT_OUTPUT: json
+  SCCACHE_BUCKET: tiledb-ci-cache
+  SCCACHE_ENDPOINT: https://54e5b7cfac043473fcee4f122a4c02a8.r2.cloudflarestorage.com
+  SCCACHE_REGION: auto
+  SCCACHE_S3_KEY_PREFIX: tiledb-core/sccache/
+  VCPKG_BINARY_SOURCES: 'clear;x-aws,s3://tiledb-ci-cache/tiledb-core/vcpkg/,readwrite'
 
 jobs:
   build:
@@ -60,14 +67,6 @@ jobs:
         with:
             submodules: true
             fetch-depth: 0
-
-      # Configure required environment variables for vcpkg to use
-      # GitHub's Action Cache
-      - uses: actions/github-script@v6
-        with:
-          script: |
-            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
