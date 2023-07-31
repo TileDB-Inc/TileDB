@@ -33,7 +33,6 @@
 #ifndef TILEDB_CPP_API_AS_BUILT_EXPERIMENTAL_H
 #define TILEDB_CPP_API_AS_BUILT_EXPERIMENTAL_H
 
-#include "tiledb/as_built/as_built.h"
 #include "tiledb_experimental.h"
 
 namespace tiledb {
@@ -47,11 +46,12 @@ class AsBuilt {
   static std::string dump() {
     tiledb_string_t* out;
     tiledb_as_built_dump(&out);
+    const char* out_ptr;
+    size_t out_length;
+    tiledb_string_view(out, &out_ptr, &out_length);
+    std::string out_str(out_ptr, out_length);
     tiledb_string_free(&out);
-    const char* data{};
-    size_t length{};
-    tiledb_string_view(out, &data, &length);
-    return std::string(data, length);
+    return out_str;
   }
 };
 }  // namespace tiledb
