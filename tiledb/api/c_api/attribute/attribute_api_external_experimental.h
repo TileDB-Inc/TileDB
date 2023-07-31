@@ -40,8 +40,12 @@
 extern "C" {
 #endif
 
+// Matches guard in ordinary header
+#ifndef TILEDB_ATTRIBUTE_HANDLE_T_DEFINED
+#define TILEDB_ATTRIBUTE_HANDLE_T_DEFINED
 /** A TileDB attribute */
 typedef struct tiledb_attribute_handle_t tiledb_attribute_t;
+#endif
 
 /* ********************************* */
 /*      ATTRIBUTE ENUMERATIONS       */

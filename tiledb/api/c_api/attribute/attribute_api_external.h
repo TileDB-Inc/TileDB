@@ -45,8 +45,15 @@
 extern "C" {
 #endif
 
+/*
+ * Guard allows compilation prior to C11 when both this and the experimental
+ * header are included. This is repetition rather than a separate header.
+ */
+#ifndef TILEDB_ATTRIBUTE_HANDLE_T_DEFINED
+#define TILEDB_ATTRIBUTE_HANDLE_T_DEFINED
 /** A TileDB attribute */
 typedef struct tiledb_attribute_handle_t tiledb_attribute_t;
+#endif
 
 /**
  * Creates a TileDB attribute.
