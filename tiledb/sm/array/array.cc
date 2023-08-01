@@ -865,48 +865,11 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   return Status::Ok();
 }
 
-Status Array::set_timestamp_start(const uint64_t timestamp_start) {
-  timestamp_start_ = timestamp_start;
-  return Status::Ok();
-}
-
-uint64_t Array::timestamp_start() const {
-  return timestamp_start_;
-}
-
-Status Array::set_timestamp_end(const uint64_t timestamp_end) {
-  timestamp_end_ = timestamp_end;
-  return Status::Ok();
-}
-
-Status Array::set_timestamp_end_opened_at(
-    const uint64_t timestamp_end_opened_at) {
-  timestamp_end_opened_at_ = timestamp_end_opened_at;
-  return Status::Ok();
-}
-
-uint64_t Array::timestamp_end() const {
-  return timestamp_end_;
-}
-
-uint64_t Array::timestamp_end_opened_at() const {
-  return timestamp_end_opened_at_;
-}
-
 void Array::set_config(Config config) {
   if (is_open()) {
     throw ArrayException("[set_config] Cannot set a config on an open array");
   }
   config_.inherit(config);
-}
-
-Config Array::config() const {
-  return config_;
-}
-
-Status Array::set_uri_serialized(const std::string& uri) {
-  array_uri_serialized_ = URI(uri);
-  return Status::Ok();
 }
 
 Status Array::delete_metadata(const char* key) {
@@ -1645,10 +1608,6 @@ void ensure_supported_schema_version_for_read(format_version_t version) {
     err << constants::format_version << ")";
     throw Status_StorageManagerError(err.str());
   }
-}
-
-void Array::set_serialized_array_open() {
-  is_open_ = true;
 }
 
 }  // namespace sm

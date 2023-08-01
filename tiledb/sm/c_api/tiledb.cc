@@ -2222,7 +2222,7 @@ int32_t tiledb_array_set_open_timestamp_start(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(array->array_->set_timestamp_start(timestamp_start));
+  array->array_->set_timestamp_start(timestamp_start);
 
   return TILEDB_OK;
 }
@@ -2232,7 +2232,7 @@ int32_t tiledb_array_set_open_timestamp_end(
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(array->array_->set_timestamp_end(timestamp_end));
+  array->array_->set_timestamp_end(timestamp_end);
 
   return TILEDB_OK;
 }
