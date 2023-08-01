@@ -184,7 +184,7 @@ class ArraySchema {
   explicit ArraySchema(const ArraySchema& array_schema);
 
   /** Destructor. */
-  ~ArraySchema();
+  ~ArraySchema() = default;
 
   /* ********************************* */
   /*               API                 */
@@ -219,10 +219,21 @@ class ArraySchema {
   const Attribute* attribute(attribute_size_type id) const;
 
   /**
+   * Returns a shared pointer to the selected attribute.
+   */
+  shared_ptr<const Attribute> shared_attribute(attribute_size_type id) const;
+
+  /**
    * Returns a constant pointer to the selected attribute (nullptr if it
    * does not exist).
    */
   const Attribute* attribute(const std::string& name) const;
+
+  /**
+   * Returns a shared pointer to the selected attribute if found. Returns an
+   * empty pointer otherwise.
+   */
+  shared_ptr<const Attribute> shared_attribute(const std::string& name) const;
 
   /** Returns the number of attributes. */
   attribute_size_type attribute_num() const;
@@ -254,15 +265,6 @@ class ArraySchema {
    * @return Status
    */
   Status check() const;
-
-  /**
-   * Throws an error if there is an attribute in the input that does not
-   * exist in the schema.
-   *
-   * @param attributes The attributes to be checked.
-   * @return Status
-   */
-  Status check_attributes(const std::vector<std::string>& attributes) const;
 
   /**
    * Throws an error if the provided schema does not match the definition given
@@ -657,13 +659,33 @@ class ArraySchema {
    */
   uint64_t capacity_;
 
-  /** It maps each attribute name to the corresponding attribute object.
-   * Lifespan is maintained by the shared_ptr in attributes_. */
-  std::unordered_map<std::string, const Attribute*> attribute_map_;
-
-  /** The array attributes.
-   * Maintains lifespan for elements in both attributes_ and attribute_map_. */
+  /**
+   * Container of `shared_ptr<Attribute>` maintains lifespan for all attributes
+   * within this array schema. Other member variables reference objects within
+   * this container.
+   */
   std::vector<shared_ptr<const Attribute>> attributes_;
+
+  /**
+   * Type for the range of the map that is member `attribute_map_`. See the
+   * invariants of that variable for the meaning of the members of this
+   * `struct`.
+   */
+  struct attribute_reference {
+    const Attribute* pointer;
+    unsigned int index;
+  };
+
+  /**
+   * Map from an attribute name to its corresponding Attribute object. Lifespan
+   * is maintained by the shared_ptr in `attributes_`.
+   *
+   * Invariant: For each entry `{p,i}` in `attribute_map_`,
+   *   `attributes_[i].get() == p`
+   * Invariant: The number of entries in `attribute_map_` is the same as the
+   *   number of entries in `attributes_`
+   */
+  std::unordered_map<std::string, attribute_reference> attribute_map_;
 
   /** The array dimension labels. */
   std::vector<shared_ptr<const DimensionLabel>> dimension_labels_;

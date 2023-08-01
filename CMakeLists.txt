@@ -337,6 +337,8 @@ endif()
 
 list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/api_external_common.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/attribute/attribute_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/attribute/attribute_api_external_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/buffer/buffer_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/buffer_list/buffer_list_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/config/config_api_external.h"
