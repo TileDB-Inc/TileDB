@@ -208,7 +208,7 @@ TEST_CASE_METHOD(
   CHECK(
       tiledb_channel_operation_field_create(
           ctx, query, tiledb_channel_operator_count, nullptr, &count_op) ==
-      TILEDB_ERR);
+      TILEDB_OK);
 
   // nullptr channel
   CHECK(
