@@ -168,7 +168,10 @@ class Config {
    */
   static const std::string SM_CHECK_GLOBAL_ORDER;
 
-  /** If `true`, merge overlapping Subarray ranges. */
+  /**
+   * If `true`, merge overlapping Subarray ranges. Else, overlapping ranges
+   * will not be merged and multiplicities will be returned.
+   */
   static const std::string SM_MERGE_OVERLAPPING_RANGES_EXPERIMENTAL;
 
   /** If `true`, bypass partitioning on estimated result sizes. */

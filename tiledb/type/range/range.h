@@ -177,7 +177,9 @@ class Range {
   inline const T* typed_data() const {
     assert(!var_size_);
     assert(range_.empty() || (range_.size() == 2 * sizeof(T)));
-    return range_.empty() ? nullptr : (T*)range_.data();
+    return range_.empty() ?
+               nullptr :
+               static_cast<const T*>(static_cast<const void*>(range_.data()));
   }
 
   /** Returns a pointer to the start of the range. */
@@ -261,21 +263,22 @@ class Range {
     std::memcpy(&range_[fixed_size], end, fixed_size);
   }
 
-  /** Returns a pointer to the start of the range. */
+  /** Returns the start range as the requested type. */
   template <typename T>
-  inline const T* start_as() const {
+  inline T start_as() const {
     assert(!var_size_);
     assert(!range_.empty());
-    return (T*)(range_.data());
+    return *static_cast<const T*>(static_cast<const void*>(range_.data()));
   }
 
-  /** Returns a pointer to the end of the range. */
+  /** Returns the end range as the requested type. */
   template <typename T>
-  inline const T* end_as() const {
+  inline T end_as() const {
     assert(!var_size_);
     assert(!range_.empty());
     auto end_pos = range_.size() / 2;
-    return (T*)&range_[end_pos];
+    return *static_cast<const T*>(
+        static_cast<const void*>(range_.data() + end_pos));
   }
 
   /** Returns true if the range is empty. */

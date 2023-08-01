@@ -197,14 +197,6 @@ void CSparseUnorderedWithDupsFx::update_config() {
           &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
 
-  REQUIRE(
-      tiledb_config_set(
-          config,
-          "sm.merge_overlapping_ranges_experimental",
-          "false",
-          &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-
   REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
   REQUIRE(error == nullptr);
   REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
@@ -1829,6 +1821,29 @@ TEST_CASE_METHOD(
   tiledb_array_t* array = nullptr;
   tiledb_query_t* query = nullptr;
 
+  // Disable merge overlapping sparse ranges.
+  // Support for returning multiplicities for overlapping ranges will be
+  // deprecated in a few releases. Turning off this setting allows to still
+  // test that the feature functions properly until we do so. Once support is
+  // fully removed for overlapping ranges, this section can be deleted.
+  tiledb_config_t* config;
+  tiledb_error_t* error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  REQUIRE(
+      tiledb_config_set(
+          config,
+          "sm.merge_overlapping_ranges_experimental",
+          "false",
+          &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
+  tiledb_config_free(&config);
+
   // Try to read with every possible buffer sizes. When varying
   // buffer, the minimum should fit the number of dups at a minimum.
   // For fixed size data, that will use the size of int and for var
@@ -1954,6 +1969,30 @@ TEST_CASE_METHOD(
         &a2_validity_size);
     total_cells += coords_size / sizeof(int32_t);
   }
+
+  // Disable merge overlapping sparse ranges.
+  // Support for returning multiplicities for overlapping ranges will be
+  // deprecated in a few releases. Turning off this setting allows to still
+  // test that the feature functions properly until we do so. Once support is
+  // fully removed for overlapping ranges, this section can be deleted.
+  tiledb_config_t* config;
+  tiledb_error_t* error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  REQUIRE(
+      tiledb_config_set(
+          config,
+          "sm.merge_overlapping_ranges_experimental",
+          "false",
+          &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
+  tiledb_config_free(&config);
+
   tiledb_array_t* array;
   auto st = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
   CHECK(st == TILEDB_OK);

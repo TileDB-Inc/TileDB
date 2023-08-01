@@ -1395,7 +1395,11 @@ TEST_CASE_METHOD(
   // Enable duplicates.
   create_sparse_array(true);
 
-  // Disable merge overlapping sparse ranges
+  // Disable merge overlapping sparse ranges.
+  // Support for returning multiplicities for overlapping ranges will be
+  // deprecated in a few releases. Turning off this setting allows to still
+  // test that the feature functions properly until we do so. Once support is
+  // fully removed for overlapping ranges, this test case can be deleted.
   tiledb::Config cfg;
   cfg.set("sm.merge_overlapping_ranges_experimental", "false");
   ctx_ = Context(cfg);

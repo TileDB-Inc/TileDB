@@ -3284,7 +3284,11 @@ TEST_CASE_METHOD(
   create_sparse_array(array_name);
   write_sparse_array(array_name);
 
-  // Disable merge overlapping sparse ranges
+  // Disable merge overlapping sparse ranges.
+  // Support for returning multiplicities for overlapping ranges will be
+  // deprecated in a few releases. Turning off this setting allows to still
+  // test that the feature functions properly until we do so. Once support is
+  // fully removed for overlapping ranges, this section can be deleted.
   tiledb_error_t* error = nullptr;
   tiledb_config_t* config = nullptr;
   REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);

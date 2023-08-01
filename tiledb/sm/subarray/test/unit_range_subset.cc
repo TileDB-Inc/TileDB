@@ -549,7 +549,7 @@ TEST_CASE(
   }
 
   SECTION("Adjacent, sorted ranges") {
-    // Note: only char ranges will coalesce, string ranges will not
+    // Note: string ranges do not coalesce
     std::vector<Range> ranges = {
         Range("a", "b"), Range("c", "d"), Range("ef", "g"), Range("h", "ij")};
     for (auto range : ranges) {
@@ -560,18 +560,11 @@ TEST_CASE(
     range_subset.sort_and_merge_ranges(&pool, merge);
 
     // Check range results
-    if (merge) {
-      CHECK(range_subset.num_ranges() == 3);
-      check_subset_range_strings(range_subset, 0, "a", "d");
-      check_subset_range_strings(range_subset, 1, "ef", "g");
-      check_subset_range_strings(range_subset, 2, "h", "ij");
-    } else {
-      CHECK(range_subset.num_ranges() == 4);
-      check_subset_range_strings(range_subset, 0, "a", "b");
-      check_subset_range_strings(range_subset, 1, "c", "d");
-      check_subset_range_strings(range_subset, 2, "ef", "g");
-      check_subset_range_strings(range_subset, 3, "h", "ij");
-    }
+    CHECK(range_subset.num_ranges() == 4);
+    check_subset_range_strings(range_subset, 0, "a", "b");
+    check_subset_range_strings(range_subset, 1, "c", "d");
+    check_subset_range_strings(range_subset, 2, "ef", "g");
+    check_subset_range_strings(range_subset, 3, "h", "ij");
   }
 
   SECTION("Adjacent, unsorted ranges") {
@@ -584,14 +577,9 @@ TEST_CASE(
     range_subset.sort_and_merge_ranges(&pool, merge);
 
     // Check range results
-    if (merge) {
-      CHECK(range_subset.num_ranges() == 1);
-      check_subset_range_strings(range_subset, 0, "a", "d");
-    } else {
-      CHECK(range_subset.num_ranges() == 2);
-      check_subset_range_strings(range_subset, 0, "a", "b");
-      check_subset_range_strings(range_subset, 1, "c", "d");
-    }
+    CHECK(range_subset.num_ranges() == 2);
+    check_subset_range_strings(range_subset, 0, "a", "b");
+    check_subset_range_strings(range_subset, 1, "c", "d");
   }
 
   SECTION("Overlapping, sorted ranges") {
@@ -646,9 +634,10 @@ TEST_CASE(
 
     // Check range results
     if (merge) {
-      CHECK(range_subset.num_ranges() == 2);
-      check_subset_range_strings(range_subset, 0, "a", "f");
-      check_subset_range_strings(range_subset, 1, "h", "j");
+      CHECK(range_subset.num_ranges() == 3);
+      check_subset_range_strings(range_subset, 0, "a", "d");
+      check_subset_range_strings(range_subset, 1, "e", "f");
+      check_subset_range_strings(range_subset, 2, "h", "j");
     } else {
       CHECK(range_subset.num_ranges() == 4);
       check_subset_range_strings(range_subset, 0, "a", "c");

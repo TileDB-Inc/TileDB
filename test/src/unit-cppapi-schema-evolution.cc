@@ -110,9 +110,7 @@ TEST_CASE(
     "C++ API: SchemaEvolution, add attributes and read",
     "[cppapi][schema][evolution][add]") {
   using namespace tiledb;
-  Config cfg;
-  cfg["sm.merge_overlapping_ranges_experimental"] = "false";
-  Context ctx(cfg);
+  Context ctx;
   VFS vfs(ctx);
   auto layout = GENERATE(
       TILEDB_ROW_MAJOR,
@@ -411,8 +409,17 @@ TEST_CASE(
   }
 
   // Read using overlapping multi-range query
+  // Disable merge overlapping sparse ranges.
+  // Support for returning multiplicities for overlapping ranges will be
+  // deprecated in a few releases. Turning off this setting allows to still
+  // test that the feature functions properly until we do so. Once support is
+  // fully removed for overlapping ranges, this read can be removed from the
+  // test case.
+  Config cfg;
+  cfg["sm.merge_overlapping_ranges_experimental"] = "false";
   // + Global order does not support multi-range subarrays
   if (layout != TILEDB_GLOBAL_ORDER) {
+    ctx = Context(cfg);
     Array array(ctx, array_uri, TILEDB_READ);
 
     std::vector<int> a_data(8);

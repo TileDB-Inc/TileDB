@@ -1000,6 +1000,12 @@ TEST_CASE(
     "C++ API: Test subarray (incomplete overlapping) - Subarray-query",
     "[cppapi][sparse][subarray][incomplete]") {
   const std::string array_name = "cpp_unit_array";
+  // Disable merge overlapping sparse ranges.
+  // Support for returning multiplicities for overlapping ranges will be
+  // deprecated in a few releases. Turning off this setting allows to still
+  // test that the feature functions properly until we do so. Once support is
+  // fully removed for overlapping ranges, this test will need to be modified
+  // so that col_range0 and col_range1 are not overlapping.
   tiledb::Config cfg;
   cfg.set("sm.merge_overlapping_ranges_experimental", "false");
   tiledb::Context ctx(cfg);
@@ -1114,6 +1120,12 @@ TEST_CASE(
     "C++ API: Test subarray (incomplete overlapping) - Subarray-cppapi",
     "[cppapi][sparse][subarray][incomplete]") {
   const std::string array_name = "cpp_unit_array";
+  // Disable merge overlapping sparse ranges.
+  // Support for returning multiplicities for overlapping ranges will be
+  // deprecated in a few releases. Turning off this setting allows to still
+  // test that the feature functions properly until we do so. Once support is
+  // fully removed for overlapping ranges, this test will need to be modified
+  // so that col_range0 and col_range1 are not overlapping.
   tiledb::Config cfg;
   cfg.set("sm.merge_overlapping_ranges_experimental", "false");
   tiledb::Context ctx(cfg);
