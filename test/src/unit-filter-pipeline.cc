@@ -1419,7 +1419,6 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
   CHECK(schema.add_attribute(make_shared<tiledb::sm::Attribute>(HERE(), attr))
             .ok());
   CHECK(schema.set_domain(domain).ok());
-  CHECK(schema.init().ok());
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
@@ -1545,7 +1544,6 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
   CHECK(schema.add_attribute(make_shared<tiledb::sm::Attribute>(HERE(), attr))
             .ok());
   CHECK(schema.set_domain(domain).ok());
-  CHECK(schema.init().ok());
 
   FilterPipeline pipeline;
   ThreadPool tp(4);

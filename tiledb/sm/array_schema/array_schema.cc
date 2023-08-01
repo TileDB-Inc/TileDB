@@ -64,8 +64,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** Class for locally generated status exceptions. */
 class ArraySchemaException : public StatusException {
@@ -202,8 +201,8 @@ ArraySchema::ArraySchema(
   }
 
   // Create attribute map
-  auto n{static_cast<unsigned int>(attributes_.size())};
-  for (unsigned int i = 0; i < n; ++i) {
+  auto n{attribute_num()};
+  for (decltype(n) i = 0; i < n; ++i) {
     auto attr = attributes_[i].get();
     attribute_map_[attr->name()] = {attr, i};
   }
@@ -309,10 +308,6 @@ shared_ptr<const Attribute> ArraySchema::shared_attribute(
     return {};
   }
   return attributes_[it->second.index];
-}
-
-ArraySchema::attribute_size_type ArraySchema::attribute_num() const {
-  return static_cast<attribute_size_type>(attributes_.size());
 }
 
 const std::vector<shared_ptr<const Attribute>>& ArraySchema::attributes()
@@ -455,43 +450,42 @@ void ArraySchema::check_webp_filter() const {
   }
 }
 
-Status ArraySchema::check() const {
+void ArraySchema::check() const {
   if (domain_ == nullptr)
-    return LOG_STATUS(
-        Status_ArraySchemaError("Array schema check failed; Domain not set"));
+    throw ArraySchemaException{"Array schema check failed; Domain not set"};
 
   auto dim_num = this->dim_num();
   if (dim_num == 0)
-    return LOG_STATUS(Status_ArraySchemaError(
-        "Array schema check failed; No dimensions provided"));
+    throw ArraySchemaException{
+        "Array schema check failed; No dimensions provided"};
 
   if (cell_order_ == Layout::HILBERT && dim_num > Hilbert::HC_MAX_DIM) {
-    return LOG_STATUS(Status_ArraySchemaError(
+    throw ArraySchemaException{
         "Array schema check failed; Maximum dimensions supported by Hilbert "
-        "order exceeded"));
+        "order exceeded"};
   }
 
   if (array_type_ == ArrayType::DENSE) {
     auto type{domain_->dimension_ptr(0)->type()};
     if (datatype_is_real(type)) {
-      return LOG_STATUS(
-          Status_ArraySchemaError("Array schema check failed; Dense arrays "
-                                  "cannot have floating point domains"));
+      throw ArraySchemaException{
+          "Array schema check failed; Dense arrays "
+          "cannot have floating point domains"};
     }
     if (attributes_.size() == 0) {
-      return LOG_STATUS(Status_ArraySchemaError(
-          "Array schema check failed; No attributes provided"));
+      throw ArraySchemaException{
+          "Array schema check failed; No attributes provided"};
     }
   }
 
   if (array_type_ == ArrayType::SPARSE && capacity_ == 0) {
-    throw ArraySchemaException(
+    throw ArraySchemaException{
         "Array schema check failed; Sparse arrays "
-        "cannot have their capacity equal to zero.");
+        "cannot have their capacity equal to zero."};
   }
 
-  RETURN_NOT_OK(check_double_delta_compressor(coords_filters()));
-  RETURN_NOT_OK(check_string_compressor(coords_filters()));
+  throw_if_not_ok(check_double_delta_compressor(coords_filters()));
+  throw_if_not_ok(check_string_compressor(coords_filters()));
   check_attribute_dimension_label_names();
   check_webp_filter();
 
@@ -499,9 +493,9 @@ Status ArraySchema::check() const {
   // dimension.
   if (array_type_ == ArrayType::SPARSE || this->dim_num() != 1) {
     if (has_ordered_attributes()) {
-      throw ArraySchemaException(
+      throw ArraySchemaException{
           "Array schema check failed; Ordered attributes are only supported on "
-          "dense arrays with 1 dimension.");
+          "dense arrays with 1 dimension."};
     }
   }
 
@@ -513,17 +507,14 @@ Status ArraySchema::check() const {
   for (auto label : dimension_labels_) {
     if (!label->is_external()) {
       if (!label->has_schema()) {
-        return LOG_STATUS(Status_ArraySchemaError(
+        throw ArraySchemaException{
             "Array schema check failed; Missing dimension label schema for "
             "dimension label '" +
-            label->name() + "'."));
+            label->name() + "'."};
       }
       check_dimension_label_schema(label->name(), *label->schema());
     }
   }
-
-  // Success
-  return Status::Ok();
 }
 
 void ArraySchema::check_dimension_label_schema(
@@ -1387,17 +1378,6 @@ ArraySchema ArraySchema::deserialize(
       coords_filters);
 }
 
-Status ArraySchema::init() {
-  // Perform check of all members
-  RETURN_NOT_OK(check());
-
-  // Initialize domain
-  RETURN_NOT_OK(domain_->init(cell_order_, tile_order_));
-
-  // Success
-  return Status::Ok();
-}
-
 Status ArraySchema::set_allows_dups(bool allows_dups) {
   if (allows_dups && array_type_ == ArrayType::DENSE)
     return LOG_STATUS(Status_ArraySchemaError(
@@ -1719,5 +1699,4 @@ Status ArraySchema::generate_uri(
   return Status::Ok();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

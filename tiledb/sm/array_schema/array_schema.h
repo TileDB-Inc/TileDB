@@ -236,7 +236,9 @@ class ArraySchema {
   shared_ptr<const Attribute> shared_attribute(const std::string& name) const;
 
   /** Returns the number of attributes. */
-  attribute_size_type attribute_num() const;
+  inline attribute_size_type attribute_num() const {
+    return static_cast<attribute_size_type>(attributes_.size());
+  }
 
   /** Returns the attributes. */
   const std::vector<shared_ptr<const Attribute>>& attributes() const;
@@ -262,9 +264,9 @@ class ArraySchema {
   /**
    * Checks the correctness of the array schema.
    *
-   * @return Status
+   * Throws if validation fails
    */
-  Status check() const;
+  void check() const;
 
   /**
    * Throws an error if the provided schema does not match the definition given
@@ -505,14 +507,6 @@ class ArraySchema {
   };
 
   /**
-   * Initializes the ArraySchema object. It also performs a check to see if
-   * all the member attributes have been properly set.
-   *
-   * @return Status
-   */
-  Status init();
-
-  /**
    * Sets whether the array allows coordinate duplicates.
    * It errors out if set to `1` for dense arrays.
    */
@@ -673,7 +667,7 @@ class ArraySchema {
    */
   struct attribute_reference {
     const Attribute* pointer;
-    unsigned int index;
+    attribute_size_type index;
   };
 
   /**
