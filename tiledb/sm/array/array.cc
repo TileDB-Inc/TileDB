@@ -210,8 +210,6 @@ Status Array::open_without_fragments(
             resources_, array_uri_, 0, UINT64_MAX, ArrayDirectoryMode::READ);
       }
       auto&& [array_schema, array_schemas] = open_for_reads_without_fragments();
-      if (!st.ok())
-        throw StatusException(st);
 
       array_schema_latest_ = array_schema.value();
       array_schemas_all_ = array_schemas.value();
