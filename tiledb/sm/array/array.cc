@@ -51,6 +51,7 @@
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/tile/generic_tile_io.h"
 
 #include <cassert>
 #include <cmath>
@@ -1491,6 +1492,38 @@ Status Array::compute_max_buffer_sizes(
   return Status::Ok();
 }
 
+void Array::load_local_metadata() {
+  assert(array_dir_.loaded());
+  auto timer_se = resources_.stats().start_timer("sm_load_array_metadata");
+
+  // Determine which array metadata to load
+  const auto& array_metadata_to_load = array_dir_.array_meta_uris();
+
+  auto metadata_num = array_metadata_to_load.size();
+  std::vector<shared_ptr<Tile>> metadata_tiles(metadata_num);
+  throw_if_not_ok(
+      parallel_for(&resources_.compute_tp(), 0, metadata_num, [&](size_t m) {
+        const auto& uri = array_metadata_to_load[m].uri_;
+
+        auto&& tile = GenericTileIO::load(resources_, uri, 0, *encryption_key_);
+        metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(tile));
+
+        return Status::Ok();
+      }));
+
+  // Compute array metadata size for the statistics
+  uint64_t meta_size = 0;
+  for (const auto& t : metadata_tiles) {
+    meta_size += t->size();
+  }
+  resources_.stats().add_counter("read_array_meta_size", meta_size);
+
+  metadata_ = Metadata::deserialize(metadata_tiles);
+
+  // Sets the loaded metadata URIs
+  metadata_.set_loaded_metadata_uris(array_metadata_to_load);
+}
+
 Status Array::load_metadata() {
   if (remote_) {
     auto rest_client = resources_.rest_client();
@@ -1501,9 +1534,7 @@ Status Array::load_metadata() {
     RETURN_NOT_OK(rest_client->get_array_metadata_from_rest(
         array_uri_, timestamp_start_, timestamp_end_opened_at_, this));
   } else {
-    assert(array_dir_.loaded());
-    storage_manager_->load_array_metadata(
-        array_dir_, *encryption_key_, &metadata_);
+    load_local_metadata();
   }
   metadata_loaded_ = true;
   return Status::Ok();

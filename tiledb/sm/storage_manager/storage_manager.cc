@@ -1344,44 +1344,6 @@ Status StorageManagerCanonical::is_group(const URI& uri, bool* is_group) const {
   return Status::Ok();
 }
 
-void StorageManagerCanonical::load_array_metadata(
-    const ArrayDirectory& array_dir,
-    const EncryptionKey& encryption_key,
-    Metadata* metadata) {
-  auto timer_se = stats()->start_timer("sm_load_array_metadata");
-
-  // Special case
-  if (metadata == nullptr) {
-    return;
-  }
-
-  // Determine which array metadata to load
-  const auto& array_metadata_to_load = array_dir.array_meta_uris();
-
-  auto metadata_num = array_metadata_to_load.size();
-  std::vector<shared_ptr<Tile>> metadata_tiles(metadata_num);
-  throw_if_not_ok(parallel_for(compute_tp(), 0, metadata_num, [&](size_t m) {
-    const auto& uri = array_metadata_to_load[m].uri_;
-
-    auto&& tile = GenericTileIO::load(resources_, uri, 0, encryption_key);
-    metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(tile));
-
-    return Status::Ok();
-  }));
-
-  // Compute array metadata size for the statistics
-  uint64_t meta_size = 0;
-  for (const auto& t : metadata_tiles) {
-    meta_size += t->size();
-  }
-  stats()->add_counter("read_array_meta_size", meta_size);
-
-  *metadata = Metadata::deserialize(metadata_tiles);
-
-  // Sets the loaded metadata URIs
-  metadata->set_loaded_metadata_uris(array_metadata_to_load);
-}
-
 tuple<
     Status,
     optional<std::vector<QueryCondition>>,

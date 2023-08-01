@@ -768,6 +768,11 @@ class Array {
           max_buffer_sizes_) const;
 
   /**
+   * Load non-remote array metadata.
+   */
+  void load_local_metadata();
+
+  /**
    * Load array metadata, handles remote arrays vs non-remote arrays
    * @return  Status
    */
