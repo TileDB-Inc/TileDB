@@ -501,7 +501,8 @@ Status Query::submit_and_finalize() {
           Status_QueryError("Error in query submit_and_finalize; remote array "
                             "with no rest client."));
 
-    if (status_ == QueryStatus::UNINITIALIZED) {
+    if (status_ == QueryStatus::UNINITIALIZED && !only_dim_label_query() &&
+        !subarray_.has_label_ranges()) {
       RETURN_NOT_OK(create_strategy());
     }
     return rest_client->submit_and_finalize_query_to_rest(
@@ -1167,7 +1168,9 @@ Status Query::set_offsets_buffer(
     }
 
     // Check the query was not already initialized.
-    if (status_ != QueryStatus::UNINITIALIZED) {
+    const bool exists = buffers_.find(name) != buffers_.end() ||
+                        label_buffers_.find(name) != label_buffers_.end();
+    if (status_ != QueryStatus::UNINITIALIZED && !exists) {
       throw QueryStatusException(
           "[set_offsets_buffer] Cannot set buffer for new dimension label '" +
           name + "' after initialization");
@@ -1198,7 +1201,8 @@ Status Query::set_offsets_buffer(
   }
 
   // Error if setting a new attribute/dimension after initialization
-  bool exists = buffers_.find(name) != buffers_.end();
+  bool exists = buffers_.find(name) != buffers_.end() ||
+                label_buffers_.find(name) != label_buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists &&
       !allow_separate_attribute_writes() && !serialization_allow_new_attr) {
     return logger_->status(Status_QueryError(
@@ -1548,7 +1552,8 @@ Status Query::submit() {
       return logger_->status(Status_QueryError(
           "Error in query submission; remote array with no rest client."));
 
-    if (status_ == QueryStatus::UNINITIALIZED) {
+    if (status_ == QueryStatus::UNINITIALIZED && !only_dim_label_query() &&
+        !subarray_.has_label_ranges()) {
       RETURN_NOT_OK(create_strategy());
 
       // Allocate remote buffer storage for global order writes if necessary.
