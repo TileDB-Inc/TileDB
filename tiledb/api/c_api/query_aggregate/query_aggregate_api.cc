@@ -59,12 +59,24 @@ inline void ensure_query_arg_is_valid(tiledb_query_t* query) {
  * Returns if the argument is a valid char pointer
  *
  * @param input_field A char pointer
+ * @param op An aggregation operator name
  */
 inline void ensure_input_field_is_valid(
     const char* input_field, const std::string& op) {
   if (!input_field) {
     throw CAPIStatusException(
         "argument `input_field` may not be nullptr for operator " + op);
+  }
+}
+
+/**
+ * Returns if the argument is a valid char pointer
+ *
+ * @param output_field A char pointer
+ */
+inline void ensure_output_field_is_valid(const char* output_field) {
+  if (!output_field) {
+    throw CAPIStatusException("argument `output_field` may not be nullptr");
   }
 }
 
@@ -76,6 +88,26 @@ inline void ensure_input_field_is_valid(
 inline void ensure_channel_operator_is_valid(
     const tiledb_channel_operator_handle_t* op) {
   ensure_handle_is_valid(op);
+}
+
+/**
+ * Returns if the argument is a valid channel operation
+ *
+ * @param operation A channel operation handle
+ */
+inline void ensure_operation_is_valid(
+    const tiledb_channel_operation_handle_t* operation) {
+  ensure_handle_is_valid(operation);
+}
+
+/**
+ * Returns if the argument is a valid query channel
+ *
+ * @param channel A query channel handle
+ */
+inline void ensure_query_channel_is_valid(
+    const tiledb_query_channel_handle_t* channel) {
+  ensure_handle_is_valid(channel);
 }
 
 capi_return_t tiledb_query_get_default_channel(
@@ -144,6 +176,9 @@ capi_return_t tiledb_channel_add_aggregate(
     const char* output_field_name,
     tiledb_channel_operation_t* operation) {
   (void)ctx;
+  ensure_query_channel_is_valid(channel);
+  ensure_output_field_is_valid(output_field_name);
+  ensure_operation_is_valid(operation);
   channel->add_aggregate(output_field_name, operation);
 
   return TILEDB_OK;

@@ -151,6 +151,88 @@ void QueryAggregateFx::create_sparse_array(const std::string& array_name) {
 
 TEST_CASE_METHOD(
     QueryAggregateFx,
+    "C API: argument validation",
+    "[capi][query_aggregate][args]") {
+  std::string array_name = temp_dir_ + "queryaggregate_array";
+  create_sparse_array(array_name);
+  write_sparse_array(array_name);
+
+  tiledb_array_t* array;
+  REQUIRE(tiledb_array_alloc(ctx, array_name.c_str(), &array) == TILEDB_OK);
+  REQUIRE(tiledb_array_open(ctx, array, TILEDB_READ) == TILEDB_OK);
+
+  tiledb_query_t* query;
+  REQUIRE(tiledb_query_alloc(ctx, array, TILEDB_READ, &query) == TILEDB_OK);
+
+  REQUIRE(tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED) == TILEDB_OK);
+
+  int64_t dom[] = {1, 9, 1, 2};
+  REQUIRE(tiledb_query_set_subarray(ctx, query, &dom) == TILEDB_OK);
+
+  // nullptr context
+  tiledb_query_channel_t* default_channel;
+  tiledb_channel_operation_t* count_op;
+  CHECK(
+      tiledb_query_get_default_channel(nullptr, query, &default_channel) ==
+      TILEDB_INVALID_CONTEXT);
+  CHECK(
+      tiledb_channel_operation_field_create(
+          nullptr, query, tiledb_channel_operator_count, "a", &count_op) ==
+      TILEDB_INVALID_CONTEXT);
+  CHECK(
+      tiledb_channel_add_aggregate(
+          nullptr, default_channel, "Count", count_op) ==
+      TILEDB_INVALID_CONTEXT);
+
+  // nullptr query
+  CHECK(
+      tiledb_query_get_default_channel(ctx, nullptr, &default_channel) ==
+      TILEDB_ERR);
+  CHECK(
+      tiledb_channel_operation_field_create(
+          ctx, nullptr, tiledb_channel_operator_count, "a", &count_op) ==
+      TILEDB_ERR);
+
+  // nullptr operator
+  CHECK(
+      tiledb_channel_operation_field_create(
+          ctx, query, nullptr, "a", &count_op) == TILEDB_ERR);
+
+  // nullptr input field
+  CHECK(
+      tiledb_channel_operation_field_create(
+          ctx, query, tiledb_channel_operator_sum, nullptr, &count_op) ==
+      TILEDB_ERR);
+
+  // nullptr input field allowed for count
+  CHECK(
+      tiledb_channel_operation_field_create(
+          ctx, query, tiledb_channel_operator_count, nullptr, &count_op) ==
+      TILEDB_ERR);
+
+  // nullptr channel
+  CHECK(
+      tiledb_channel_add_aggregate(ctx, nullptr, "Count", count_op) ==
+      TILEDB_ERR);
+
+  // nullptr output field
+  CHECK(
+      tiledb_channel_add_aggregate(ctx, default_channel, nullptr, count_op) ==
+      TILEDB_ERR);
+
+  // nullptr operation
+  CHECK(
+      tiledb_channel_add_aggregate(ctx, default_channel, "Count", nullptr) ==
+      TILEDB_ERR);
+
+  // Clean up
+  CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
+  tiledb_array_free(&array);
+  tiledb_query_free(&query);
+}
+
+TEST_CASE_METHOD(
+    QueryAggregateFx,
     "C API: tiledb_query_get_default_channel argument validation",
     "[capi][query_aggregate][count]") {
   std::string array_name = temp_dir_ + "queryaggregate_array";
