@@ -501,8 +501,7 @@ Status Query::submit_and_finalize() {
           Status_QueryError("Error in query submit_and_finalize; remote array "
                             "with no rest client."));
 
-    if (status_ == QueryStatus::UNINITIALIZED && !only_dim_label_query() &&
-        !subarray_.has_label_ranges()) {
+    if (status_ == QueryStatus::UNINITIALIZED) {
       RETURN_NOT_OK(create_strategy());
     }
     return rest_client->submit_and_finalize_query_to_rest(
@@ -1027,6 +1026,14 @@ Status Query::set_data_buffer(
       throw QueryStatusException("[set_data_buffer] Unsupported query type.");
     }
 
+    const bool exists = label_buffers_.find(name) != label_buffers_.end();
+    if (status_ != QueryStatus::UNINITIALIZED && !exists &&
+        !allow_separate_attribute_writes() && !serialization_allow_new_attr) {
+      throw QueryStatusException(
+          "[set_data_buffer] Cannot set buffer for new dimension label '" +
+          name + "' after initialization");
+    }
+
     // Set dimension label buffer on the appropriate buffer depending if the
     // label is fixed or variable length.
     array_schema_->dimension_label(name).is_var() ?
@@ -1168,9 +1175,9 @@ Status Query::set_offsets_buffer(
     }
 
     // Check the query was not already initialized.
-    const bool exists = buffers_.find(name) != buffers_.end() ||
-                        label_buffers_.find(name) != label_buffers_.end();
-    if (status_ != QueryStatus::UNINITIALIZED && !exists) {
+    const bool exists = label_buffers_.find(name) != label_buffers_.end();
+    if (status_ != QueryStatus::UNINITIALIZED && !exists &&
+        !allow_separate_attribute_writes() && !serialization_allow_new_attr) {
       throw QueryStatusException(
           "[set_offsets_buffer] Cannot set buffer for new dimension label '" +
           name + "' after initialization");
@@ -1201,8 +1208,7 @@ Status Query::set_offsets_buffer(
   }
 
   // Error if setting a new attribute/dimension after initialization
-  bool exists = buffers_.find(name) != buffers_.end() ||
-                label_buffers_.find(name) != label_buffers_.end();
+  const bool exists = buffers_.find(name) != buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists &&
       !allow_separate_attribute_writes() && !serialization_allow_new_attr) {
     return logger_->status(Status_QueryError(
@@ -1297,7 +1303,7 @@ Status Query::set_validity_buffer(
   // Error if setting a new attribute after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists &&
-      !serialization_allow_new_attr) {
+      !allow_separate_attribute_writes() && !serialization_allow_new_attr) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute '") + name +
         "' after initialization"));
