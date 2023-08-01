@@ -150,10 +150,11 @@ capi_return_t tiledb_channel_operation_field_create(
       auto g = [&](auto T) {
         if constexpr (!std::is_same_v<decltype(T), char>) {
           aggregator = std::make_shared<tiledb::sm::SumAggregator<decltype(T)>>(
-              field_name,
-              schema.var_size(field_name),
-              schema.is_nullable(field_name),
-              schema.cell_val_num(field_name));
+              tiledb::sm::FieldInfo(
+                  field_name,
+                  schema.var_size(field_name),
+                  schema.is_nullable(field_name),
+                  schema.cell_val_num(field_name)));
         }
       };
       execute_callback_with_type(schema.type(field_name), g);
