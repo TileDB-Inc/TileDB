@@ -148,8 +148,7 @@ Status Array::open_without_fragments(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  auto timer =
-      storage_manager_->stats()->start_timer("array_open_without_fragments");
+  auto timer = resources_.stats().start_timer("array_open_without_fragments");
   Status st;
   // Checks
   if (is_open()) {
@@ -205,7 +204,7 @@ Status Array::open_without_fragments(
       }
     } else {
       {
-        auto timer_se = storage_manager_->stats()->start_timer(
+        auto timer_se = resources_.stats().start_timer(
             "array_open_without_fragments_load_directory");
         array_dir_ = ArrayDirectory(
             resources_, array_uri_, 0, UINT64_MAX, ArrayDirectoryMode::READ);
@@ -258,7 +257,7 @@ Status Array::open(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  auto timer = storage_manager_->stats()->start_timer(
+  auto timer = resources_.stats().start_timer(
       "array_open_" + query_type_str(query_type));
   Status st;
   // Checks
@@ -378,8 +377,8 @@ Status Array::open(
       }
     } else if (query_type == QueryType::READ) {
       {
-        auto timer_se = storage_manager_->stats()->start_timer(
-            "array_open_read_load_directory");
+        auto timer_se =
+            resources_.stats().start_timer("array_open_read_load_directory");
         array_dir_ = ArrayDirectory(
             resources_, array_uri_, timestamp_start_, timestamp_end_opened_at_);
       }
@@ -394,8 +393,8 @@ Status Array::open(
         query_type == QueryType::WRITE ||
         query_type == QueryType::MODIFY_EXCLUSIVE) {
       {
-        auto timer_se = storage_manager_->stats()->start_timer(
-            "array_open_write_load_directory");
+        auto timer_se =
+            resources_.stats().start_timer("array_open_write_load_directory");
         array_dir_ = ArrayDirectory(
             resources_,
             array_uri_,
@@ -414,7 +413,7 @@ Status Array::open(
     } else if (
         query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
       {
-        auto timer_se = storage_manager_->stats()->start_timer(
+        auto timer_se = resources_.stats().start_timer(
             "array_open_delete_or_update_load_directory");
         array_dir_ = ArrayDirectory(
             resources_,
@@ -798,7 +797,7 @@ Status Array::reopen() {
 }
 
 Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
-  auto timer = storage_manager_->stats()->start_timer("array_reopen");
+  auto timer = resources_.stats().start_timer("array_reopen");
   if (!is_open_) {
     return LOG_STATUS(
         Status_ArrayError("Cannot reopen array; Array is not open"));
@@ -842,8 +841,7 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
 
   try {
     {
-      auto timer_se =
-          storage_manager_->stats()->start_timer("array_reopen_directory");
+      auto timer_se = resources_.stats().start_timer("array_reopen_directory");
       array_dir_ = ArrayDirectory(
           resources_,
           array_uri_,
