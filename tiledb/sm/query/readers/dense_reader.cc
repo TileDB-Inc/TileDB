@@ -244,7 +244,10 @@ Status DenseReader::dense_read() {
 template <class DimType, class OffType>
 Status DenseReader::dense_read() {
   // Sanity checks.
-  assert(std::is_integral<DimType>::value);
+  if constexpr (!std::is_integral_v<DimType> || std::is_same_v<DimType, char>) {
+    throw StatusException(
+        Status_ReaderError("Cannot read dense array; Unsupported domain type"));
+  }
 
   // For easy reference.
   const auto dim_num = array_schema_.dim_num();
