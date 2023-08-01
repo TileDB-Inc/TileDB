@@ -816,7 +816,7 @@ Status Query::process() {
       }
       // This changes the query into INITIALIZED, but it's ok as the status
       // is updated correctly below
-      throw_if_not_ok(create_strategy(true));
+      throw_if_not_ok(create_strategy());
     }
   }
 
@@ -1549,8 +1549,7 @@ Status Query::submit() {
           "Error in query submission; remote array with no rest client."));
 
     if (status_ == QueryStatus::UNINITIALIZED) {
-      // Create query strategy, skip checks for serialization.
-      RETURN_NOT_OK(create_strategy(true));
+      RETURN_NOT_OK(create_strategy());
 
       // Allocate remote buffer storage for global order writes if necessary.
       // If we cache an entire write a query may be uninitialized for N submits.
