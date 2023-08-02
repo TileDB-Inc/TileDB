@@ -1720,6 +1720,10 @@ std::string_view FragmentMetadata::get_tile_min_as<std::string_view>(
             static_cast<sv_size_cast>(
                 tile_min_var_buffer_[idx].size() - min_offset) :
             static_cast<sv_size_cast>(offsets[tile_idx + 1] - min_offset);
+    if (size == 0) {
+      return {};
+    }
+
     char* min = &tile_min_var_buffer_[idx][min_offset];
     return {min, size};
   } else {
@@ -1796,6 +1800,10 @@ std::string_view FragmentMetadata::get_tile_max_as<std::string_view>(
             static_cast<sv_size_cast>(
                 tile_max_var_buffer_[idx].size() - max_offset) :
             static_cast<sv_size_cast>(offsets[tile_idx + 1] - max_offset);
+    if (size == 0) {
+      return {};
+    }
+
     char* max = &tile_max_var_buffer_[idx][max_offset];
     return {max, size};
   } else {

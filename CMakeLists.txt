@@ -92,8 +92,8 @@ if(APPLE)
   set(CMAKE_FIND_FRAMEWORK NEVER)
 endif()
 
-# Set C++17 as default required standard for all C++ targets.
-set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ Standard")
+# Set C++20 as default required standard for all C++ targets.
+set(CMAKE_CXX_STANDARD 20 CACHE STRING "C++ Standard")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(CMAKE_SYSTEM_NAME MATCHES "CYGWIN")
   # Use GNU extensions under Cygwin
@@ -337,6 +337,8 @@ endif()
 
 list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/api_external_common.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/attribute/attribute_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/attribute/attribute_api_external_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/buffer/buffer_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/buffer_list/buffer_list_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/config/config_api_external.h"

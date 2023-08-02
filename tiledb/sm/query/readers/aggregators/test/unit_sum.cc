@@ -43,39 +43,39 @@ using namespace tiledb::sm;
 TEST_CASE("Sum aggregator: constructor", "[sum-aggregator][constructor]") {
   SECTION("Var size") {
     CHECK_THROWS_WITH(
-        SumAggregator<uint8_t>("a1", true, false, 1),
+        SumAggregator<uint8_t>(FieldInfo("a1", true, false, 1)),
         "SumAggregator: Sum aggregates must not be requested for var sized "
         "attributes.");
   }
 
   SECTION("Invalid cell val num") {
     CHECK_THROWS_WITH(
-        SumAggregator<uint8_t>("a1", false, false, 2),
+        SumAggregator<uint8_t>(FieldInfo("a1", false, false, 2)),
         "SumAggregator: Sum aggregates must not be requested for attributes "
         "with more than one value.");
   }
 }
 
 TEST_CASE("Sum aggregator: var sized", "[sum-aggregator][var-sized]") {
-  SumAggregator<uint8_t> aggregator("a1", false, false, 1);
+  SumAggregator<uint8_t> aggregator(FieldInfo("a1", false, false, 1));
   CHECK(aggregator.var_sized() == false);
 }
 
 TEST_CASE(
     "Sum aggregator: need recompute", "[sum-aggregator][need-recompute]") {
-  SumAggregator<uint8_t> aggregator("a1", false, false, 1);
+  SumAggregator<uint8_t> aggregator(FieldInfo("a1", false, false, 1));
   CHECK(aggregator.need_recompute_on_overflow() == true);
 }
 
 TEST_CASE("Sum aggregator: field name", "[sum-aggregator][field-name]") {
-  SumAggregator<uint8_t> aggregator("a1", false, false, 1);
+  SumAggregator<uint8_t> aggregator(FieldInfo("a1", false, false, 1));
   CHECK(aggregator.field_name() == "a1");
 }
 
 TEST_CASE(
     "Sum aggregator: Validate buffer", "[sum-aggregator][validate-buffer]") {
-  SumAggregator<uint8_t> aggregator("a1", false, false, 1);
-  SumAggregator<uint8_t> aggregator2("a2", false, true, 1);
+  SumAggregator<uint8_t> aggregator(FieldInfo("a1", false, false, 1));
+  SumAggregator<uint8_t> aggregator_nullable(FieldInfo("a2", false, true, 1));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -133,7 +133,7 @@ TEST_CASE(
     buffers["Sum"].original_buffer_size_ = 8;
 
     CHECK_THROWS_WITH(
-        aggregator2.validate_output_buffer("Sum", buffers),
+        aggregator_nullable.validate_output_buffer("Sum", buffers),
         "SumAggregator: Sum aggregates for nullable attributes must have a "
         "validity buffer.");
   }
@@ -147,7 +147,7 @@ TEST_CASE(
     uint64_t validity_size = 2;
     buffers["Sum"].validity_vector_ = ValidityVector(&validity, &validity_size);
     CHECK_THROWS_WITH(
-        aggregator2.validate_output_buffer("Sum", buffers),
+        aggregator_nullable.validate_output_buffer("Sum", buffers),
         "SumAggregator: Sum aggregates validity vector should "
         "be for one element only.");
   }
@@ -168,7 +168,7 @@ TEST_CASE(
     uint64_t validity_size = 1;
     buffers["Sum"].validity_vector_ = ValidityVector(&validity, &validity_size);
 
-    aggregator2.validate_output_buffer("Sum", buffers);
+    aggregator_nullable.validate_output_buffer("Sum", buffers);
   }
 }
 
@@ -189,8 +189,8 @@ TEMPLATE_LIST_TEST_CASE(
     "[sum-aggregator][basic-aggregation]",
     FixedTypesUnderTest) {
   typedef TestType T;
-  SumAggregator<T> aggregator("a1", false, false, 1);
-  SumAggregator<T> aggregator2("a2", false, true, 1);
+  SumAggregator<T> aggregator(FieldInfo("a1", false, false, 1));
+  SumAggregator<T> aggregator_nullable(FieldInfo("a2", false, true, 1));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -211,7 +211,7 @@ TEMPLATE_LIST_TEST_CASE(
   SECTION("No bitmap") {
     // Regular attribute.
     AggregateBuffer input_data = WhiteboxAggregateBuffer::make_aggregate_buffer(
-        2, 10, fixed_data.data(), nullopt, nullopt, false, nullopt);
+        2, 10, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt);
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("Sum", buffers);
     CHECK(sum == 27);
@@ -221,13 +221,15 @@ TEMPLATE_LIST_TEST_CASE(
         WhiteboxAggregateBuffer::make_aggregate_buffer(
             2,
             10,
+            10,
             fixed_data.data(),
             nullopt,
+            0,
             validity_data.data(),
             false,
             nullopt);
-    aggregator2.aggregate_data(input_data2);
-    aggregator2.copy_to_user_buffer("Sum2", buffers);
+    aggregator_nullable.aggregate_data(input_data2);
+    aggregator_nullable.copy_to_user_buffer("Sum2", buffers);
     CHECK(sum2 == 14);
     CHECK(validity == 1);
   }
@@ -236,14 +238,30 @@ TEMPLATE_LIST_TEST_CASE(
     // Regular attribute.
     std::vector<uint8_t> bitmap = {1, 1, 0, 0, 0, 1, 1, 0, 1, 0};
     AggregateBuffer input_data = WhiteboxAggregateBuffer::make_aggregate_buffer(
-        2, 10, fixed_data.data(), nullopt, nullopt, false, bitmap.data());
+        2,
+        10,
+        10,
+        fixed_data.data(),
+        nullopt,
+        0,
+        nullopt,
+        false,
+        bitmap.data());
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("Sum", buffers);
     CHECK(sum == 11);
 
     AggregateBuffer input_data2 =
         WhiteboxAggregateBuffer::make_aggregate_buffer(
-            0, 2, fixed_data.data(), nullopt, nullopt, false, bitmap.data());
+            0,
+            2,
+            10,
+            fixed_data.data(),
+            nullopt,
+            0,
+            nullopt,
+            false,
+            bitmap.data());
     aggregator.aggregate_data(input_data2);
     aggregator.copy_to_user_buffer("Sum", buffers);
     CHECK(sum == 14);
@@ -253,13 +271,15 @@ TEMPLATE_LIST_TEST_CASE(
         WhiteboxAggregateBuffer::make_aggregate_buffer(
             0,
             2,
+            10,
             fixed_data.data(),
             nullopt,
+            0,
             validity_data.data(),
             false,
             nullopt);
-    aggregator2.aggregate_data(input_data3);
-    aggregator2.copy_to_user_buffer("Sum2", buffers);
+    aggregator_nullable.aggregate_data(input_data3);
+    aggregator_nullable.copy_to_user_buffer("Sum2", buffers);
     CHECK(sum2 == 0);
     CHECK(validity == 0);
 
@@ -267,13 +287,15 @@ TEMPLATE_LIST_TEST_CASE(
         WhiteboxAggregateBuffer::make_aggregate_buffer(
             2,
             10,
+            10,
             fixed_data.data(),
             nullopt,
+            0,
             validity_data.data(),
             false,
             bitmap.data());
-    aggregator2.aggregate_data(input_data4);
-    aggregator2.copy_to_user_buffer("Sum2", buffers);
+    aggregator_nullable.aggregate_data(input_data4);
+    aggregator_nullable.copy_to_user_buffer("Sum2", buffers);
     CHECK(sum2 == 6);
     CHECK(validity == 1);
   }
@@ -282,7 +304,15 @@ TEMPLATE_LIST_TEST_CASE(
     // Regular attribute.
     std::vector<uint64_t> bitmap_count = {1, 2, 4, 0, 0, 1, 2, 0, 1, 2};
     AggregateBuffer input_data = WhiteboxAggregateBuffer::make_aggregate_buffer(
-        2, 10, fixed_data.data(), nullopt, nullopt, true, bitmap_count.data());
+        2,
+        10,
+        10,
+        fixed_data.data(),
+        nullopt,
+        0,
+        nullopt,
+        true,
+        bitmap_count.data());
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("Sum", buffers);
     CHECK(sum == 29);
@@ -291,8 +321,10 @@ TEMPLATE_LIST_TEST_CASE(
         WhiteboxAggregateBuffer::make_aggregate_buffer(
             0,
             2,
+            10,
             fixed_data.data(),
             nullopt,
+            0,
             nullopt,
             true,
             bitmap_count.data());
@@ -305,13 +337,15 @@ TEMPLATE_LIST_TEST_CASE(
         WhiteboxAggregateBuffer::make_aggregate_buffer(
             2,
             10,
+            10,
             fixed_data.data(),
             nullopt,
+            0,
             validity_data.data(),
             true,
             bitmap_count.data());
-    aggregator2.aggregate_data(input_data3);
-    aggregator2.copy_to_user_buffer("Sum2", buffers);
+    aggregator_nullable.aggregate_data(input_data3);
+    aggregator_nullable.copy_to_user_buffer("Sum2", buffers);
     CHECK(sum2 == 22);
     CHECK(validity == 1);
 
@@ -319,13 +353,15 @@ TEMPLATE_LIST_TEST_CASE(
         WhiteboxAggregateBuffer::make_aggregate_buffer(
             0,
             2,
+            10,
             fixed_data.data(),
             nullopt,
+            0,
             validity_data.data(),
             true,
             bitmap_count.data());
-    aggregator2.aggregate_data(input_data4);
-    aggregator2.copy_to_user_buffer("Sum2", buffers);
+    aggregator_nullable.aggregate_data(input_data4);
+    aggregator_nullable.copy_to_user_buffer("Sum2", buffers);
     CHECK(sum2 == 22);
     CHECK(validity == 1);
   }
@@ -333,7 +369,7 @@ TEMPLATE_LIST_TEST_CASE(
 
 TEST_CASE(
     "Sum aggregator: signed overflow", "[sum-aggregator][signed-overflow]") {
-  SumAggregator<int64_t> aggregator("a1", false, false, 1);
+  SumAggregator<int64_t> aggregator(FieldInfo("a1", false, false, 1));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -349,16 +385,16 @@ TEST_CASE(
 
   AggregateBuffer input_data_plus_one =
       WhiteboxAggregateBuffer::make_aggregate_buffer(
-          0, 1, fixed_data.data(), nullopt, nullopt, false, nullopt);
+          0, 1, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt);
 
   AggregateBuffer input_data_minus_one =
       WhiteboxAggregateBuffer::make_aggregate_buffer(
-          2, 3, fixed_data.data(), nullopt, nullopt, false, nullopt);
+          2, 3, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt);
 
   SECTION("Overflow") {
     // First sum doesn't overflow.
     AggregateBuffer input_data = WhiteboxAggregateBuffer::make_aggregate_buffer(
-        0, 2, fixed_data.data(), nullopt, nullopt, false, nullopt);
+        0, 2, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt);
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("Sum", buffers);
     CHECK(sum == std::numeric_limits<int64_t>::max() - 1);
@@ -388,7 +424,7 @@ TEST_CASE(
   SECTION("Underflow") {
     // First sum doesn't underflow.
     AggregateBuffer input_data = WhiteboxAggregateBuffer::make_aggregate_buffer(
-        2, 4, fixed_data.data(), nullopt, nullopt, false, nullopt);
+        2, 4, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt);
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("Sum", buffers);
     CHECK(sum == std::numeric_limits<int64_t>::min() + 1);
@@ -419,7 +455,7 @@ TEST_CASE(
 TEST_CASE(
     "Sum aggregator: unsigned overflow",
     "[sum-aggregator][unsigned-overflow]") {
-  SumAggregator<uint64_t> aggregator("a1", false, false, 1);
+  SumAggregator<uint64_t> aggregator(FieldInfo("a1", false, false, 1));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -432,11 +468,11 @@ TEST_CASE(
 
   AggregateBuffer input_data_plus_one =
       WhiteboxAggregateBuffer::make_aggregate_buffer(
-          0, 1, fixed_data.data(), nullopt, nullopt, false, nullopt);
+          0, 1, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt);
 
   // First sum doesn't overflow.
   AggregateBuffer input_data = WhiteboxAggregateBuffer::make_aggregate_buffer(
-      0, 2, fixed_data.data(), nullopt, nullopt, false, nullopt);
+      0, 2, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt);
   aggregator.aggregate_data(input_data);
   aggregator.copy_to_user_buffer("Sum", buffers);
   CHECK(sum == std::numeric_limits<uint64_t>::max() - 1);
@@ -455,7 +491,7 @@ TEST_CASE(
 
 TEST_CASE(
     "Sum aggregator: double overflow", "[sum-aggregator][double-overflow]") {
-  SumAggregator<double> aggregator("a1", false, false, 1);
+  SumAggregator<double> aggregator(FieldInfo("a1", false, false, 1));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -469,11 +505,11 @@ TEST_CASE(
 
   AggregateBuffer input_data_max =
       WhiteboxAggregateBuffer::make_aggregate_buffer(
-          0, 1, fixed_data.data(), nullopt, nullopt, false, nullopt);
+          0, 1, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt);
 
   AggregateBuffer input_data_lowest =
       WhiteboxAggregateBuffer::make_aggregate_buffer(
-          1, 2, fixed_data.data(), nullopt, nullopt, false, nullopt);
+          1, 2, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt);
 
   SECTION("Overflow") {
     // First sum doesn't overflow.

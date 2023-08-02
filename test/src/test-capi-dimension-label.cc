@@ -92,13 +92,27 @@ TEST_CASE_METHOD(
 
   // Check array schema and number of dimension labels.
   require_tiledb_ok(tiledb_array_schema_check(ctx, array_schema));
-  auto dim_label_num = array_schema->array_schema_->dim_label_num();
+  uint64_t dim_label_num = 0;
+  require_tiledb_ok(tiledb_array_schema_get_dimension_label_num(
+      ctx, array_schema, &dim_label_num));
   REQUIRE(dim_label_num == 1);
 
+  tiledb_dimension_label_t* dim_label{nullptr};
+  SECTION("get dimension label from index -") {
+    require_tiledb_ok(tiledb_array_schema_get_dimension_label_from_index(
+        ctx, array_schema, 0, &dim_label));
+  }
+  SECTION("get dimension label from name -") {
+    require_tiledb_ok(tiledb_array_schema_get_dimension_label_from_name(
+        ctx, array_schema, "label", &dim_label));
+  }
+
+  const char* dim_label_name;
+  require_tiledb_ok(
+      tiledb_dimension_label_get_name(ctx, dim_label, &dim_label_name));
+  REQUIRE(!strcmp(dim_label_name, "label"));
+
   // Check the dimension label properties.
-  tiledb_dimension_label_t* dim_label;
-  require_tiledb_ok(tiledb_array_schema_get_dimension_label_from_name(
-      ctx, array_schema, "label", &dim_label));
   uint32_t label_cell_val_num;
   check_tiledb_ok(tiledb_dimension_label_get_label_cell_val_num(
       ctx, dim_label, &label_cell_val_num));
@@ -130,9 +144,9 @@ TEST_CASE_METHOD(
       tiledb_array_schema_load(ctx, array_name.c_str(), &loaded_array_schema));
 
   // Check the array schema has the expected dimension label.
-  auto loaded_dim_label_num =
-      loaded_array_schema->array_schema_->dim_label_num();
-  CHECK(loaded_dim_label_num == 1);
+  require_tiledb_ok(tiledb_array_schema_get_dimension_label_num(
+      ctx, loaded_array_schema, &dim_label_num));
+  CHECK(dim_label_num == 1);
   int32_t has_label;
   check_tiledb_ok(tiledb_array_schema_has_dimension_label(
       ctx, loaded_array_schema, "label", &has_label));
@@ -234,7 +248,9 @@ TEST_CASE_METHOD(
 
   // Check array schema and number of dimension labels.
   require_tiledb_ok(tiledb_array_schema_check(ctx, array_schema));
-  auto dim_label_num = array_schema->array_schema_->dim_label_num();
+  uint64_t dim_label_num = 0;
+  require_tiledb_ok(tiledb_array_schema_get_dimension_label_num(
+      ctx, array_schema, &dim_label_num));
   REQUIRE(dim_label_num == 1);
 
   // Create array

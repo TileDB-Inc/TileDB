@@ -31,14 +31,14 @@
  * functions, declared in logger_public.h.
  */
 
-#include "tiledb/common/logger.h"
-
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/fmt/ostr.h>
 #include <spdlog/sinks/stdout_sinks.h>
 #ifndef _WIN32
 #include <spdlog/sinks/stdout_color_sinks.h>
 #endif
+
+#include "tiledb/common/logger.h"
 
 namespace tiledb::common {
 
@@ -283,16 +283,20 @@ std::string Logger::add_tag(const std::string& tag, uint64_t id) {
 /*              GLOBAL               */
 /* ********************************* */
 
+std::string global_logger_name(const Logger::Format format) {
+  std::string name{
+      std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(
+                         std::chrono::system_clock::now().time_since_epoch())
+                         .count()) +
+      "-Global"};
+  if (format != Logger::Format::JSON) {
+    return name;
+  }
+  return {"\"" + name + "\":\"1\""};
+}
+
 Logger& global_logger(Logger::Format format) {
-  static auto ts_micro =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(
-          std::chrono::system_clock::now().time_since_epoch())
-          .count();
-  static std::string name =
-      (format == Logger::Format::JSON) ?
-          "\"" + std::to_string(ts_micro) + "-Global\":\"1\"" :
-          std::to_string(ts_micro) + "-Global";
-  static Logger l(name, Logger::Level::ERR, format, true);
+  static Logger l(global_logger_name(format), Logger::Level::ERR, format, true);
   return l;
 }
 

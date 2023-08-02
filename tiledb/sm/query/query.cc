@@ -1167,7 +1167,7 @@ Status Query::set_offsets_buffer(
           "[set_offsets_buffer] Unsupported query type.");
     }
 
-    // Check the dimension labe is in fact variable length.
+    // Check the dimension label is in fact variable length.
     if (!array_schema_->dimension_label(name).is_var()) {
       throw QueryStatusException(
           "[set_offsets_buffer] Input dimension label '" + name +
@@ -1186,6 +1186,21 @@ Status Query::set_offsets_buffer(
     // Set dimension label offsets buffers.
     label_buffers_[name].set_offsets_buffer(
         buffer_offsets, buffer_offsets_size);
+    return Status::Ok();
+  }
+
+  // If this is an aggregate buffer, set it and return.
+  if (is_aggregate(name)) {
+    if (!array_schema_->var_size(
+            default_channel_aggregates_[name]->field_name())) {
+      return logger_->status(Status_QueryError(
+          std::string("Cannot set buffer; Input attribute '") + name +
+          "' is not var sized"));
+    }
+
+    aggregate_buffers_[name].set_offsets_buffer(
+        buffer_offsets, buffer_offsets_size);
+
     return Status::Ok();
   }
 

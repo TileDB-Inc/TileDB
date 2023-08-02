@@ -787,7 +787,8 @@ struct CPPVarTileMetadataFx {
       // Copy the string.
       a_offsets[i] = offset;
       auto idx = values[i];
-      memcpy(&a_var[offset], strings_[idx].c_str(), strings_[idx].size());
+      memcpy(
+          a_var.data() + offset, strings_[idx].c_str(), strings_[idx].size());
       offset += strings_[idx].size();
 
       // Set the coordinate value.

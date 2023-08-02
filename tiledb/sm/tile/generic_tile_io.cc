@@ -164,7 +164,9 @@ GenericTileIO::GenericTileHeader GenericTileIO::read_generic_tile_header(
   Deserializer filter_pipeline_deserializer(
       filter_pipeline_buf.data(), filter_pipeline_buf.size());
   auto filterpipeline{FilterPipeline::deserialize(
-      filter_pipeline_deserializer, header.version_number)};
+      filter_pipeline_deserializer,
+      header.version_number,
+      static_cast<Datatype>(header.datatype))};
   header.filters = std::move(filterpipeline);
 
   return header;
@@ -258,7 +260,8 @@ Status GenericTileIO::init_generic_tile_header(
 
   header->filters.add_filter(CompressionFilter(
       constants::generic_tile_compressor,
-      constants::generic_tile_compression_level));
+      constants::generic_tile_compression_level,
+      tile->type()));
 
   RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
       &header->filters, encryption_key));

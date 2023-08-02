@@ -59,10 +59,6 @@ struct tiledb_subarray_t {
   bool is_allocated_ = false;
 };
 
-struct tiledb_attribute_t {
-  tiledb::sm::Attribute* attr_ = nullptr;
-};
-
 struct tiledb_array_schema_t {
   shared_ptr<tiledb::sm::ArraySchema> array_schema_;
 };

@@ -81,13 +81,14 @@ static inline uint8_t bits_required(T value) {
   return bits_required(value, std::is_signed<T>());
 }
 
-BitWidthReductionFilter::BitWidthReductionFilter()
-    : Filter(FilterType::FILTER_BIT_WIDTH_REDUCTION) {
+BitWidthReductionFilter::BitWidthReductionFilter(Datatype filter_data_type)
+    : Filter(FilterType::FILTER_BIT_WIDTH_REDUCTION, filter_data_type) {
   max_window_size_ = 256;
 }
 
-BitWidthReductionFilter::BitWidthReductionFilter(uint32_t max_window_size)
-    : Filter(FilterType::FILTER_BIT_WIDTH_REDUCTION)
+BitWidthReductionFilter::BitWidthReductionFilter(
+    uint32_t max_window_size, Datatype filter_data_type)
+    : Filter(FilterType::FILTER_BIT_WIDTH_REDUCTION, filter_data_type)
     , max_window_size_(max_window_size) {
 }
 
@@ -97,6 +98,14 @@ void BitWidthReductionFilter::dump(FILE* out) const {
   fprintf(out, "BitWidthReduction: BIT_WIDTH_MAX_WINDOW=%u", max_window_size_);
 }
 
+bool BitWidthReductionFilter::accepts_input_datatype(Datatype datatype) const {
+  if (datatype_is_integer(datatype) || datatype_is_datetime(datatype) ||
+      datatype_is_time(datatype) || datatype_is_string(datatype)) {
+    return true;
+  }
+  return false;
+}
+
 Status BitWidthReductionFilter::run_forward(
     const WriterTile& tile,
     WriterTile* const offsets_tile,
@@ -104,12 +113,12 @@ Status BitWidthReductionFilter::run_forward(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  auto tile_type = tile.type();
-  auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
+  auto data_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
 
   // If bit width compression can't work, just return the input unmodified.
-  if ((!datatype_is_integer(tile_type) && tile_type != Datatype::BLOB) ||
-      tile_type_size == 1) {
+  if ((!datatype_is_integer(filter_data_type_) &&
+       filter_data_type_ != Datatype::BLOB) ||
+      data_type_size == 1) {
     RETURN_NOT_OK(output->append_view(input));
     RETURN_NOT_OK(output_metadata->append_view(input_metadata));
     return Status::Ok();
@@ -117,8 +126,8 @@ Status BitWidthReductionFilter::run_forward(
 
   /* Note: Arithmetic operations cannot be performed on std::byte.
     We will use uint8_t for the Datatype::BLOB case as it is the same size as
-    std::byte and can have arithmetic perfomed on it. */
-  switch (tile_type) {
+    std::byte and can have arithmetic performed on it. */
+  switch (filter_data_type_) {
     case Datatype::INT8:
       return run_forward<int8_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
@@ -288,13 +297,12 @@ Status BitWidthReductionFilter::run_reverse(
     FilterBuffer* output,
     const Config& config) const {
   (void)config;
-
-  auto tile_type = tile.type();
-  auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
+  auto data_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
 
   // If bit width compression wasn't applied, just return the input unmodified.
-  if ((!datatype_is_integer(tile_type) && tile_type != Datatype::BLOB) ||
-      tile_type_size == 1) {
+  if ((!datatype_is_integer(filter_data_type_) &&
+       filter_data_type_ != Datatype::BLOB) ||
+      data_type_size == 1) {
     RETURN_NOT_OK(output->append_view(input));
     RETURN_NOT_OK(output_metadata->append_view(input_metadata));
     return Status::Ok();
@@ -303,7 +311,7 @@ Status BitWidthReductionFilter::run_reverse(
   /* Note: Arithmetic operations cannot be performed on std::byte.
     We will use uint8_t for the Datatype::BLOB case as it is the same size as
     std::byte and can have arithmetic perfomed on it. */
-  switch (tile_type) {
+  switch (filter_data_type_) {
     case Datatype::INT8:
       return run_reverse<int8_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
@@ -362,14 +370,13 @@ Status BitWidthReductionFilter::run_reverse(
 
 template <typename T>
 Status BitWidthReductionFilter::run_reverse(
-    const Tile& tile,
+    const Tile&,
     Tile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  auto tile_type = tile.type();
-  auto tile_type_size = datatype_size(tile_type);
+  auto data_type_size = datatype_size(filter_data_type_);
 
   uint32_t num_windows, orig_length;
   RETURN_NOT_OK(input_metadata->read(&orig_length, sizeof(uint32_t)));
@@ -384,7 +391,7 @@ Status BitWidthReductionFilter::run_reverse(
     T window_value_offset;
     uint8_t orig_bits = sizeof(T) * 8, compressed_bits;
     // Read window header
-    RETURN_NOT_OK(input_metadata->read(&window_value_offset, tile_type_size));
+    RETURN_NOT_OK(input_metadata->read(&window_value_offset, data_type_size));
     RETURN_NOT_OK(input_metadata->read(&compressed_bits, sizeof(uint8_t)));
     RETURN_NOT_OK(input_metadata->read(&window_nbytes, sizeof(uint32_t)));
 
@@ -400,7 +407,7 @@ Status BitWidthReductionFilter::run_reverse(
         RETURN_NOT_OK(
             read_compressed_value(input, compressed_bits, &input_value));
         input_value += window_value_offset;
-        RETURN_NOT_OK(output->write(&input_value, tile_type_size));
+        RETURN_NOT_OK(output->write(&input_value, data_type_size));
       }
     }
   }
@@ -569,7 +576,7 @@ void BitWidthReductionFilter::set_max_window_size(uint32_t max_window_size) {
 }
 
 BitWidthReductionFilter* BitWidthReductionFilter::clone_impl() const {
-  auto clone = new BitWidthReductionFilter;
+  auto clone = tdb_new(BitWidthReductionFilter, filter_data_type_);
   clone->max_window_size_ = max_window_size_;
   return clone;
 }

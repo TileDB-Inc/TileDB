@@ -1,11 +1,11 @@
 /**
- * @file stop_token.cc
+ * @file tiledb/api/c_api/attribute/test/compile_capi_attribute_stub_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,8 +24,26 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
  */
 
-#include "jthread/stop_token.hpp"
+#include <exception>
+#include "../attribute_api_internal.h"
+
+/*
+ * We're using an argument to a function and a call to a member function to
+ * ensure linkage.
+ */
+void validate_nullable(tiledb_attribute_handle_t* attr) {
+  if (!attr) {
+    throw std::runtime_error("nope");
+  }
+  auto n{attr->nullable()};
+  if (n != 0 && n != 1) {
+    throw std::runtime_error("attribute has nullable value neither 0 nor 1");
+  }
+}
+
+int main() {
+  validate_nullable(nullptr);
+  return 0;
+}

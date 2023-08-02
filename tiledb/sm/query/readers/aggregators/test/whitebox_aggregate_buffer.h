@@ -39,16 +39,20 @@ class WhiteboxAggregateBuffer {
   static AggregateBuffer make_aggregate_buffer(
       const uint64_t min_cell,
       const uint64_t max_cell,
+      const uint64_t cell_num,
       const void* fixed_data,
       const optional<char*> var_data,
+      const uint64_t var_data_size,
       const optional<uint8_t*> validity_data,
       const bool count_bitmap,
       const optional<void*> bitmap_data) {
     return AggregateBuffer(
         min_cell,
         max_cell,
+        cell_num,
         fixed_data,
         var_data,
+        var_data_size,
         validity_data,
         count_bitmap,
         bitmap_data);

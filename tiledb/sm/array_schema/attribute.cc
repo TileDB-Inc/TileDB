@@ -63,10 +63,6 @@ class AttributeStatusException : public StatusException {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Attribute::Attribute()
-    : Attribute("", Datatype::CHAR, false) {
-}
-
 Attribute::Attribute(
     const std::string& name, const Datatype type, const bool nullable)
     : cell_val_num_(type == Datatype::ANY ? constants::var_num : 1)
@@ -129,35 +125,9 @@ Attribute::Attribute(
     , enumeration_name_(enumeration_name) {
 }
 
-Attribute::Attribute(const Attribute* attr) {
-  assert(attr != nullptr);
-  name_ = attr->name();
-  type_ = attr->type();
-  cell_val_num_ = attr->cell_val_num();
-  nullable_ = attr->nullable();
-  filters_ = attr->filters_;
-  fill_value_ = attr->fill_value_;
-  fill_value_validity_ = attr->fill_value_validity_;
-  order_ = attr->order_;
-  enumeration_name_ = attr->enumeration_name_;
-}
-
-Attribute::~Attribute() = default;
-
 /* ********************************* */
 /*                API                */
 /* ********************************* */
-
-uint64_t Attribute::cell_size() const {
-  if (var_size())
-    return constants::var_size;
-
-  return cell_val_num_ * datatype_size(type_);
-}
-
-unsigned int Attribute::cell_val_num() const {
-  return cell_val_num_;
-}
 
 Attribute Attribute::deserialize(
     Deserializer& deserializer, const uint32_t version) {
@@ -175,7 +145,8 @@ Attribute Attribute::deserialize(
   auto cell_val_num = deserializer.read<uint32_t>();
 
   // Load filter pipeline
-  auto filterpipeline{FilterPipeline::deserialize(deserializer, version)};
+  auto filterpipeline{
+      FilterPipeline::deserialize(deserializer, version, datatype)};
 
   // Load fill value
   uint64_t fill_value_size = 0;
@@ -262,10 +233,6 @@ const FilterPipeline& Attribute::filters() const {
   return filters_;
 }
 
-const std::string& Attribute::name() const {
-  return name_;
-}
-
 // ===== FORMAT =====
 // attribute_name_size (uint32_t)
 // attribute_name (string)
@@ -303,6 +270,10 @@ void Attribute::serialize(
 
   // Write nullable
   if (version >= 7) {
+    /*
+     * Data coherence across platforms relies on the C++ integral conversion
+     * rule that mandates `false` be converted to 0 and `true` to 1.
+     */
     serializer.write<uint8_t>(nullable_);
   }
 
@@ -357,35 +328,8 @@ void Attribute::set_nullable(const bool nullable) {
 }
 
 void Attribute::set_filter_pipeline(const FilterPipeline& pipeline) {
-  for (unsigned i = 0; i < pipeline.size(); ++i) {
-    if (datatype_is_real(type_) &&
-        pipeline.get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
-      throw AttributeStatusException(
-          "Cannot set DOUBLE DELTA filter to an attribute with a real "
-          "datatype");
-  }
-
-  if ((type_ == Datatype::STRING_ASCII || type_ == Datatype::STRING_UTF8) &&
-      var_size() && pipeline.size() > 1) {
-    if (pipeline.has_filter(FilterType::FILTER_RLE) &&
-        pipeline.get_filter(0)->type() != FilterType::FILTER_RLE) {
-      throw AttributeStatusException(
-          "RLE filter must be the first filter to apply when used on a "
-          "variable length string attribute");
-    }
-    if (pipeline.has_filter(FilterType::FILTER_DICTIONARY) &&
-        pipeline.get_filter(0)->type() != FilterType::FILTER_DICTIONARY) {
-      throw AttributeStatusException(
-          "Dictionary filter must be the first filter to apply when used on a "
-          "variable length string attribute");
-    }
-  }
-
+  FilterPipeline::check_filter_types(pipeline, type_, var_size());
   filters_ = pipeline;
-}
-
-void Attribute::set_name(const std::string& name) {
-  name_ = name;
 }
 
 void Attribute::set_fill_value(const void* value, uint64_t size) {
@@ -482,30 +426,6 @@ void Attribute::get_fill_value(
   *value = fill_value_.data();
   *size = (uint64_t)fill_value_.size();
   *valid = fill_value_validity_;
-}
-
-const ByteVecValue& Attribute::fill_value() const {
-  return fill_value_;
-}
-
-uint8_t Attribute::fill_value_validity() const {
-  return fill_value_validity_;
-}
-
-Datatype Attribute::type() const {
-  return type_;
-}
-
-bool Attribute::var_size() const {
-  return cell_val_num_ == constants::var_num;
-}
-
-bool Attribute::nullable() const {
-  return nullable_;
-}
-
-DataOrder Attribute::order() const {
-  return order_;
 }
 
 void Attribute::set_enumeration_name(std::optional<std::string> enmr_name) {
