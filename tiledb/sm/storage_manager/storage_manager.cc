@@ -272,6 +272,10 @@ Status StorageManagerCanonical::array_consolidate(
         "Cannot consolidate array; Array does not exist"));
   }
 
+  if (array_uri.is_tiledb()) {
+    return rest_client()->post_consolidation_to_rest(array_uri, config);
+  }
+
   // Get encryption key from config
   std::string encryption_key_from_cfg;
   if (!encryption_key) {
@@ -535,6 +539,12 @@ void StorageManagerCanonical::delete_group(const char* group_name) {
 
 void StorageManagerCanonical::array_vacuum(
     const char* array_name, const Config& config) {
+  URI array_uri(array_name);
+  if (array_uri.is_tiledb()) {
+    throw_if_not_ok(rest_client()->post_vacuum_to_rest(array_uri, config));
+    return;
+  }
+
   auto mode = Consolidator::mode_from_config(config, true);
   auto consolidator = Consolidator::create(mode, config, this);
   consolidator->vacuum(array_name);
@@ -559,6 +569,10 @@ Status StorageManagerCanonical::array_metadata_consolidate(
   if (obj_type != ObjectType::ARRAY) {
     return logger_->status(Status_StorageManagerError(
         "Cannot consolidate array metadata; Array does not exist"));
+  }
+
+  if (array_uri.is_tiledb()) {
+    return rest_client()->post_consolidation_to_rest(array_uri, config);
   }
 
   // Get encryption key from config

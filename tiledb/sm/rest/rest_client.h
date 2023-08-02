@@ -303,6 +303,24 @@ class RestClient {
    */
   Status post_group_create_to_rest(const URI& uri, Group* group);
 
+  /**
+   * Post array consolidation request to the REST server.
+   *
+   * @param uri Array URI
+   * @param config config
+   * @return
+   */
+  Status post_consolidation_to_rest(const URI& uri, const Config& config);
+
+  /**
+   * Post array vacuum request to the REST server.
+   *
+   * @param uri Array URI
+   * @param config config
+   * @return
+   */
+  Status post_vacuum_to_rest(const URI& uri, const Config& config);
+
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
