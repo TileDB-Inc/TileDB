@@ -177,10 +177,11 @@ Status OrderedWriter::ordered_write() {
   auto g = [&](auto T) {
     if constexpr (
         !std::is_integral_v<decltype(T)> || std::is_same_v<decltype(T), char>) {
-      throw StatusException(Status_WriterError(
-          "Cannot write in ordered layout; Unsupported domain type"));
+      return Status_WriterError(
+          "Cannot write in ordered layout; Unsupported domain type");
+    } else {
+      return ordered_write<decltype(T)>();
     }
-    return ordered_write<decltype(T)>();
   };
   return execute_callback_with_type(type, g);
 }

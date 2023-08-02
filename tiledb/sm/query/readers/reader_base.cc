@@ -1211,15 +1211,14 @@ void ReaderBase::validate_attribute_order(
           array_non_empty_domain,
           non_empty_domains,
           frag_first_array_tile_idx);
-      return;
+    } else {
+      validate_attribute_order<IndexType, decltype(T)>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
     }
-
-    validate_attribute_order<IndexType, decltype(T)>(
-        attribute_name,
-        increasing_data,
-        array_non_empty_domain,
-        non_empty_domains,
-        frag_first_array_tile_idx);
   };
   execute_callback_with_type(attribute_type, g);
 }

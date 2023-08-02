@@ -2770,8 +2770,9 @@ TileOverlap Subarray::compute_tile_overlap(
     if constexpr (std::is_same_v<decltype(T), char>) {
       assert(false);
       return TileOverlap();
+    } else {
+      return compute_tile_overlap<decltype(T)>(range_idx, fid);
     }
-    return compute_tile_overlap<decltype(T)>(range_idx, fid);
   };
   return execute_callback_with_type(type, g);
 }
