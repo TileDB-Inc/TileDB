@@ -793,8 +793,8 @@ TEST_CASE(
 
   auto attr = make_shared<tiledb::sm::Attribute>(
       HERE(), "attr", tiledb::sm::Datatype::STRING_ASCII);
-  ase->add_attribute(attr.get());
-  REQUIRE_THROWS(ase->add_attribute(attr.get()));
+  ase->add_attribute(attr);
+  REQUIRE_THROWS(ase->add_attribute(attr));
 
   ase->set_timestamp_range(std::make_pair(1, 1));
 

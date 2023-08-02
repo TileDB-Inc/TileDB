@@ -44,8 +44,10 @@ AggregateBuffer::AggregateBuffer(
     const bool nullable,
     const uint64_t min_cell,
     const uint64_t max_cell,
+    const uint64_t cell_num,
     ResultTile& rt)
-    : min_cell_(min_cell)
+    : includes_last_var_cell_(var_sized && max_cell == cell_num)
+    , min_cell_(min_cell)
     , max_cell_(max_cell)
     , fixed_data_(
           name == constants::count_of_rows ?
@@ -55,6 +57,8 @@ AggregateBuffer::AggregateBuffer(
           var_sized ? std::make_optional(
                           rt.tile_tuple(name)->var_tile().data_as<char>()) :
                       nullopt)
+    , var_data_size_(
+          includes_last_var_cell_ ? rt.tile_tuple(name)->var_tile().size() : 0)
     , validity_data_(
           nullable ?
               std::make_optional(
@@ -71,9 +75,11 @@ AggregateBuffer::AggregateBuffer(
     const bool count_bitmap,
     const uint64_t min_cell,
     const uint64_t max_cell,
+    const uint64_t cell_num,
     ResultTile& rt,
     void* bitmap_data)
-    : min_cell_(min_cell)
+    : includes_last_var_cell_(var_sized && max_cell == cell_num)
+    , min_cell_(min_cell)
     , max_cell_(max_cell)
     , fixed_data_(
           name == constants::count_of_rows ?
@@ -83,6 +89,8 @@ AggregateBuffer::AggregateBuffer(
           var_sized ? std::make_optional(
                           rt.tile_tuple(name)->var_tile().data_as<char>()) :
                       nullopt)
+    , var_data_size_(
+          includes_last_var_cell_ ? rt.tile_tuple(name)->var_tile().size() : 0)
     , validity_data_(
           nullable ?
               std::make_optional(

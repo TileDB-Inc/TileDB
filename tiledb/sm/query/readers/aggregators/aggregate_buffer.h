@@ -66,6 +66,7 @@ class AggregateBuffer {
    * @param nullable Is the field nullable?
    * @param min_cell Min cell position to aggregate.
    * @param max_cell Max cell position to aggregate.
+   * @param cell_num Cell num for the tile.
    * @param rt Result tile containing the data.
    */
   AggregateBuffer(
@@ -74,6 +75,7 @@ class AggregateBuffer {
       const bool nullable,
       const uint64_t min_cell,
       const uint64_t max_cell,
+      const uint64_t cell_num,
       ResultTile& rt);
 
   /**
@@ -85,6 +87,7 @@ class AggregateBuffer {
    * @param count_bitmap Is the bitmap a count bitmap?
    * @param min_cell Min cell position to aggregate.
    * @param max_cell Max cell position to aggregate.
+   * @param cell_num Cell num for the tile.
    * @param rt Result tile containing the data.
    * @param bitmap_data Bitmap data.
    */
@@ -95,6 +98,7 @@ class AggregateBuffer {
       const bool count_bitmap,
       const uint64_t min_cell,
       const uint64_t max_cell,
+      const uint64_t cell_num,
       ResultTile& rt,
       void* bitmap_data);
 
@@ -147,6 +151,19 @@ class AggregateBuffer {
     return max_cell_;
   }
 
+  /** Returns if this buffer includes the last cell of a tile. */
+  bool includes_last_var_cell() const {
+    return includes_last_var_cell_;
+  }
+
+  /**
+   * Returns the var data size. Will only be non 0 if the buffers include the
+   * last cell of a var data input.
+   */
+  uint64_t var_data_size() const {
+    return var_data_size_;
+  }
+
  private:
   /* ********************************* */
   /*       PRIVATE CONSTRUCTORS        */
@@ -157,6 +174,7 @@ class AggregateBuffer {
    *
    * @param min_cell Min cell position to aggregate.
    * @param max_cell Max cell position to aggregate.
+   * @param cell_num Cell num for the tile.
    * @param fixed_data Fixed data buffer.
    * @param var_data Var data buffer.
    * @param validity_data Validity data buffer.
@@ -170,15 +188,19 @@ class AggregateBuffer {
   AggregateBuffer(
       const uint64_t min_cell,
       const uint64_t max_cell,
+      const uint64_t cell_num,
       const void* fixed_data,
       const optional<char*> var_data,
+      const uint64_t var_data_size,
       const optional<uint8_t*> validity_data,
       const bool count_bitmap,
       const optional<void*> bitmap_data)
-      : min_cell_(min_cell)
+      : includes_last_var_cell_(var_data.has_value() && max_cell == cell_num)
+      , min_cell_(min_cell)
       , max_cell_(max_cell)
       , fixed_data_(fixed_data)
       , var_data_(var_data)
+      , var_data_size_(var_data_size)
       , validity_data_(validity_data)
       , count_bitmap_(count_bitmap)
       , bitmap_data_(bitmap_data) {
@@ -187,6 +209,9 @@ class AggregateBuffer {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** Does this buffer include the last var cell of the tile. */
+  const bool includes_last_var_cell_;
 
   /** Min cell to aggregate. */
   const uint64_t min_cell_;
@@ -199,6 +224,9 @@ class AggregateBuffer {
 
   /** Pointer to the var data. */
   const optional<char*> var_data_;
+
+  /** Var data size. */
+  uint64_t var_data_size_;
 
   /** Pointer to the validity data. */
   const optional<uint8_t*> validity_data_;

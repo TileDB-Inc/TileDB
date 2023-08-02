@@ -58,14 +58,32 @@ namespace sm {
 class XORFilter : public Filter {
  public:
   /**
-   * Default constructor.
+   * Constructor.
+   *
+   * @param filter_data_type Datatype the filter will operate on.
    */
-  XORFilter()
-      : Filter(FilterType::FILTER_XOR) {
+  XORFilter(Datatype filter_data_type)
+      : Filter(FilterType::FILTER_XOR, filter_data_type) {
   }
 
   /** Dumps the filter details in ASCII format in the selected output. */
   void dump(FILE* out) const override;
+
+  /**
+   * Checks if the filter is applicable to the input datatype.
+   *
+   * @param type Input datatype to check filter compatibility.
+   */
+  bool accepts_input_datatype(Datatype datatype) const override;
+
+  /**
+   * Returns the filter output type
+   *
+   * @param input_type Expected type used for input. Used for filters which
+   * change output type based on input data. e.g. XORFilter output type is
+   * based on byte width of input type.
+   */
+  Datatype output_datatype(Datatype input_type) const override;
 
   /**
    * Run forward. Takes input data parts, and per part it stores the first

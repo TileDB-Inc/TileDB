@@ -30,6 +30,8 @@
  * This file contains unit tests for the array schema
  */
 
+#include <capnp/message.h>
+
 #include <test/support/tdb_catch.h>
 
 #include "tiledb/sm/array_schema/attribute.h"
@@ -37,8 +39,6 @@
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/filter.h"
 #include "tiledb/sm/serialization/capnp_utils.h"
-
-#include <capnp/message.h>
 
 using namespace tiledb::common;
 using namespace tiledb::sm;
@@ -121,8 +121,8 @@ TEST_CASE("Serialize and deserialize attribute", "[attribute][serialization]") {
   SECTION("Non-default filters pipeline") {
     attr = make_shared<Attribute>(HERE(), "attr1", Datatype::UINT64);
     FilterPipeline filters;
-    filters.add_filter(CompressionFilter(Compressor::ZSTD, 2));
-    filters.add_filter(BitWidthReductionFilter());
+    filters.add_filter(CompressionFilter(Compressor::ZSTD, 2, attr->type()));
+    filters.add_filter(BitWidthReductionFilter(attr->type()));
     attr->set_filter_pipeline(filters);
   }
   SECTION("Multiple cell values") {

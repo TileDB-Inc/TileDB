@@ -1941,9 +1941,10 @@ void SparseUnorderedWithDupsReader<BitmapType>::process_aggregates(
           return Status::Ok();
         }
 
-        uint64_t min_pos_tile = 0;
-        uint64_t max_pos_tile =
+        uint64_t cell_num =
             fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
+        uint64_t min_pos_tile = 0;
+        uint64_t max_pos_tile = cell_num;
         // Adjust max cell if this is the last tile.
         if (i == result_tiles.size() - 1) {
           uint64_t to_copy = cell_offsets[i + 1] - cell_offsets[i];
@@ -1971,6 +1972,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::process_aggregates(
             count_bitmap,
             src_min_pos,
             src_max_pos,
+            cell_num,
             *rt,
             rt->bitmap().data()};
         for (auto& aggregate : aggregates) {
