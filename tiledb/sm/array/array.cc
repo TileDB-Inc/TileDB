@@ -1490,7 +1490,8 @@ Status Array::compute_max_buffer_sizes(
 
 void Array::do_load_metadata() {
   if (!array_dir_.loaded()) {
-    throw ArrayException("Cannot load metadata; array directory is not loaded.");
+    throw ArrayException(
+        "Cannot load metadata; array directory is not loaded.");
   }
   auto timer_se = resources_.stats().start_timer("sm_load_array_metadata");
 
