@@ -437,12 +437,9 @@ int32_t tiledb_array_schema_set_validity_filter_list(
 
 int32_t tiledb_array_schema_check(
     tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
-
-  throw_if_not_ok(array_schema->array_schema_->check());
-
+  array_schema->array_schema_->check();
   return TILEDB_OK;
 }
 

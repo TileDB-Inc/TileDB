@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -403,15 +403,6 @@ class Domain {
    * @return Status
    */
   Status get_dimension_index(const std::string& name, unsigned* dim_idx) const;
-
-  /**
-   * Initializes the domain.
-   *
-   * @param cell_order The cell order of the array the domain belongs to.
-   * @param tile_order The cell order of the array the domain belongs to.
-   * @return Status
-   */
-  Status init(Layout cell_order, Layout tile_order);
 
   /** Returns true if at least one dimension has null tile extent. */
   bool null_tile_extents() const;

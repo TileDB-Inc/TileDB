@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -531,28 +531,6 @@ Status Domain::get_dimension_index(
 
   return Status_DomainError(
       "Cannot get dimension index; Invalid dimension name");
-}
-
-Status Domain::init(Layout cell_order, Layout tile_order) {
-  // Set cell and tile order
-  cell_order_ = cell_order;
-  tile_order_ = tile_order;
-
-  // Compute number of cells per tile
-  compute_cell_num_per_tile();
-
-  // Compute the tile/cell order cmp functions
-  set_tile_cell_order_cmp_funcs();
-
-  // Set tile_extent to empty if cell order is HILBERT
-  if (cell_order_ == Layout::HILBERT) {
-    ByteVecValue be;
-    for (auto& d : dimensions_) {
-      RETURN_NOT_OK(d->set_tile_extent(be));
-    }
-  }
-
-  return Status::Ok();
 }
 
 bool Domain::null_tile_extents() const {

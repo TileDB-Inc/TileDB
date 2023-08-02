@@ -621,7 +621,7 @@ Status StorageManagerCanonical::array_create(
   std::lock_guard<std::mutex> lock{object_create_mtx_};
   array_schema->set_array_uri(array_uri);
   RETURN_NOT_OK(array_schema->generate_uri());
-  RETURN_NOT_OK(array_schema->check());
+  array_schema->check();
 
   // Create array directory
   RETURN_NOT_OK(vfs()->create_dir(array_uri));

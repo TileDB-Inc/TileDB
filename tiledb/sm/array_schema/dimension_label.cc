@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -182,7 +182,7 @@ DimensionLabel::DimensionLabel(
   throw_if_not_ok(schema_->add_attribute(label_attr));
 
   // Check the array schema is valid.
-  throw_if_not_ok(schema_->check());
+  schema_->check();
 }
 
 // FORMAT:
