@@ -1736,10 +1736,11 @@ Status Reader::dense_read() {
   auto g = [&](auto T) {
     if constexpr (
         !std::is_integral_v<decltype(T)> || std::is_same_v<decltype(T), char>) {
-      throw StatusException(Status_ReaderError(
-          "Cannot read dense array; Unsupported domain type"));
+      return Status_ReaderError(
+          "Cannot read dense array; Unsupported domain type");
+    } else {
+      return dense_read<decltype(T)>();
     }
-    return dense_read<decltype(T)>();
   };
   return execute_callback_with_type(type, g);
 }

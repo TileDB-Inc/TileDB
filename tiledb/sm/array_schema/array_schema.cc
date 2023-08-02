@@ -387,8 +387,9 @@ void ArraySchema::check_webp_filter() const {
           std::is_same_v<decltype(T), char>) {
         throw ArraySchemaException(
             "WebP filter requires integral dimensions at index 0, 1");
+      } else {
+        webp->set_extents<decltype(T)>(domain_->tile_extents());
       }
-      webp->set_extents<decltype(T)>(domain_->tile_extents());
     };
     execute_callback_with_type(x_dim->type(), g);
   }

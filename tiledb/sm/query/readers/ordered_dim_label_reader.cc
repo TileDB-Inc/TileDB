@@ -216,10 +216,11 @@ void OrderedDimLabelReader::label_read() {
         !std::is_integral_v<decltype(T)> || std::is_same_v<decltype(T), char>) {
       throw OrderedDimLabelReaderStatusException(
           "Cannot read ordered label array; Unsupported domain type");
+    } else {
+      label_read<decltype(T)>();
     }
-    return label_read<decltype(T)>();
   };
-  return execute_callback_with_type(type, g);
+  execute_callback_with_type(type, g);
 }
 
 template <typename IndexType>
@@ -742,9 +743,9 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
   auto g = [&](auto T) {
     if constexpr (std::is_same_v<decltype(T), char>) {
       compute_and_copy_range_indexes<IndexType, std::string_view>(dest, r);
-      return;
+    } else {
+      compute_and_copy_range_indexes<IndexType, decltype(T)>(dest, r);
     }
-    compute_and_copy_range_indexes<IndexType, decltype(T)>(dest, r);
   };
   execute_callback_with_type(label_type_, g);
 }
