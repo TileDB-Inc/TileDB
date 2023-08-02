@@ -1028,7 +1028,7 @@ Status Query::set_data_buffer(
 
     const bool exists = label_buffers_.find(name) != label_buffers_.end();
     if (status_ != QueryStatus::UNINITIALIZED && !exists &&
-        !allow_separate_attribute_writes() && !serialization_allow_new_attr) {
+        !serialization_allow_new_attr) {
       throw QueryStatusException(
           "[set_data_buffer] Cannot set buffer for new dimension label '" +
           name + "' after initialization");
@@ -1177,7 +1177,7 @@ Status Query::set_offsets_buffer(
     // Check the query was not already initialized.
     const bool exists = label_buffers_.find(name) != label_buffers_.end();
     if (status_ != QueryStatus::UNINITIALIZED && !exists &&
-        !allow_separate_attribute_writes() && !serialization_allow_new_attr) {
+        !serialization_allow_new_attr) {
       throw QueryStatusException(
           "[set_offsets_buffer] Cannot set buffer for new dimension label '" +
           name + "' after initialization");
