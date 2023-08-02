@@ -623,7 +623,8 @@ TEST_CASE(
       ctx,
       tiledb_query_submit(ctx, query),
       "Query: Cannot init query; Using query conditions and dimension labels "
-      "together is not supported.");
+      "together is not supported.",
+      true);
   tiledb_query_free(&query);
   tiledb_array_free(&array);
 }

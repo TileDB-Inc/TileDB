@@ -266,45 +266,50 @@ TEST_CASE_METHOD(
   tiledb_dimension_label_t* loaded_dim_label{nullptr};
   require_tiledb_ok(tiledb_array_schema_get_dimension_label_from_name(
       ctx, loaded_array_schema, "label", &loaded_dim_label));
-  const char* dim_label_uri;
-  require_tiledb_ok(
-      tiledb_dimension_label_get_uri(ctx, loaded_dim_label, &dim_label_uri));
-  const char* label_attr_name;
-  require_tiledb_ok(tiledb_dimension_label_get_label_attr_name(
-      ctx, loaded_dim_label, &label_attr_name));
-  tiledb_array_schema_t* loaded_dim_label_array_schema{nullptr};
-  require_tiledb_ok(tiledb_array_schema_load(
-      ctx, dim_label_uri, &loaded_dim_label_array_schema));
-
-  // Check the filter on the label attribute.
-  tiledb_attribute_t* label_attr;
-  require_tiledb_ok(tiledb_array_schema_get_attribute_from_name(
-      ctx, loaded_dim_label_array_schema, label_attr_name, &label_attr));
-  tiledb_filter_list_t* loaded_filter_list;
-  require_tiledb_ok(
-      tiledb_attribute_get_filter_list(ctx, label_attr, &loaded_filter_list));
-  uint32_t nfilters;
-  require_tiledb_ok(
-      tiledb_filter_list_get_nfilters(ctx, loaded_filter_list, &nfilters));
-  CHECK(nfilters == 1);
-  tiledb_filter_t* loaded_filter;
-  require_tiledb_ok(tiledb_filter_list_get_filter_from_index(
-      ctx, loaded_filter_list, 0, &loaded_filter));
-  REQUIRE(loaded_filter != nullptr);
-  tiledb_filter_type_t loaded_filter_type{};
-  require_tiledb_ok(
-      tiledb_filter_get_type(ctx, loaded_filter, &loaded_filter_type));
-  CHECK(loaded_filter_type == TILEDB_FILTER_BZIP2);
-  int32_t loaded_level{};
-  require_tiledb_ok(tiledb_filter_get_option(
-      ctx, loaded_filter, TILEDB_COMPRESSION_LEVEL, &loaded_level));
-  CHECK(loaded_level == level);
-  tiledb_attribute_free(&label_attr);
-  tiledb_filter_free(&loaded_filter);
-  tiledb_filter_list_free(&loaded_filter_list);
+  if (array_name.find("tiledb://") == std::string::npos) {
+    const char* dim_label_uri;
+    require_tiledb_ok(
+        tiledb_dimension_label_get_uri(ctx, loaded_dim_label, &dim_label_uri));
+    const char* label_attr_name;
+    require_tiledb_ok(tiledb_dimension_label_get_label_attr_name(
+        ctx, loaded_dim_label, &label_attr_name));
+    tiledb_array_schema_t* loaded_dim_label_array_schema{nullptr};
+    // We can't open a dimension label by URI via REST.
+    // The underlying 'Array' that is the dim label is not a registered asset.
+    if (array_name.find("tiledb://") == std::string::npos) {
+      require_tiledb_ok(tiledb_array_schema_load(
+          ctx, dim_label_uri, &loaded_dim_label_array_schema));
+    }
+    // Check the filter on the label attribute.
+    tiledb_attribute_t* label_attr;
+    require_tiledb_ok(tiledb_array_schema_get_attribute_from_name(
+        ctx, loaded_dim_label_array_schema, label_attr_name, &label_attr));
+    tiledb_filter_list_t* loaded_filter_list;
+    require_tiledb_ok(
+        tiledb_attribute_get_filter_list(ctx, label_attr, &loaded_filter_list));
+    uint32_t nfilters;
+    require_tiledb_ok(
+        tiledb_filter_list_get_nfilters(ctx, loaded_filter_list, &nfilters));
+    CHECK(nfilters == 1);
+    tiledb_filter_t* loaded_filter;
+    require_tiledb_ok(tiledb_filter_list_get_filter_from_index(
+        ctx, loaded_filter_list, 0, &loaded_filter));
+    REQUIRE(loaded_filter != nullptr);
+    tiledb_filter_type_t loaded_filter_type{};
+    require_tiledb_ok(
+        tiledb_filter_get_type(ctx, loaded_filter, &loaded_filter_type));
+    CHECK(loaded_filter_type == TILEDB_FILTER_BZIP2);
+    int32_t loaded_level{};
+    require_tiledb_ok(tiledb_filter_get_option(
+        ctx, loaded_filter, TILEDB_COMPRESSION_LEVEL, &loaded_level));
+    CHECK(loaded_level == level);
+    tiledb_attribute_free(&label_attr);
+    tiledb_filter_free(&loaded_filter);
+    tiledb_filter_list_free(&loaded_filter_list);
+    tiledb_array_schema_free(&loaded_dim_label_array_schema);
+  }
 
   // Free remaining resources.
-  tiledb_array_schema_free(&loaded_dim_label_array_schema);
   tiledb_dimension_label_free(&loaded_dim_label);
   tiledb_array_schema_free(&loaded_array_schema);
 }
@@ -370,22 +375,24 @@ TEST_CASE_METHOD(
   tiledb_dimension_label_t* loaded_dim_label{nullptr};
   require_tiledb_ok(tiledb_array_schema_get_dimension_label_from_name(
       ctx, loaded_array_schema, "label", &loaded_dim_label));
-  const char* dim_label_uri;
-  require_tiledb_ok(
-      tiledb_dimension_label_get_uri(ctx, loaded_dim_label, &dim_label_uri));
 
-  // Open the dimension label array schema and check the tile extent.
-  tiledb_array_schema_t* loaded_dim_label_array_schema{nullptr};
-  require_tiledb_ok(tiledb_array_schema_load(
-      ctx, dim_label_uri, &loaded_dim_label_array_schema));
-  uint64_t loaded_tile_extent{
-      loaded_dim_label_array_schema->array_schema_->dimension_ptr(0)
-          ->tile_extent()
-          .rvalue_as<uint64_t>()};
-  REQUIRE(tile_extent == loaded_tile_extent);
+  if (array_name.find("tiledb://") == std::string::npos) {
+    const char* dim_label_uri;
+    require_tiledb_ok(
+        tiledb_dimension_label_get_uri(ctx, loaded_dim_label, &dim_label_uri));
+    // Open the dimension label array schema and check the tile extent.
+    tiledb_array_schema_t* loaded_dim_label_array_schema{nullptr};
+    require_tiledb_ok(tiledb_array_schema_load(
+        ctx, dim_label_uri, &loaded_dim_label_array_schema));
+    uint64_t loaded_tile_extent{
+        loaded_dim_label_array_schema->array_schema_->dimension_ptr(0)
+            ->tile_extent()
+            .rvalue_as<uint64_t>()};
+    REQUIRE(tile_extent == loaded_tile_extent);
+    tiledb_array_schema_free(&loaded_dim_label_array_schema);
+  }
 
   // Free remaining resources
-  tiledb_array_schema_free(&loaded_dim_label_array_schema);
   tiledb_dimension_label_free(&loaded_dim_label);
   tiledb_array_schema_free(&loaded_array_schema);
 }

@@ -2550,13 +2550,6 @@ int32_t tiledb_array_create(
       return TILEDB_ERR;
     }
 
-    // Check no dimension labels (not yet implemented in REST)
-    if (array_schema->array_schema_->dim_label_num() > 0) {
-      throw StatusException(
-          Status_Error("Failed to create array; remote arrays with dimension "
-                       "labels are not currently supported."));
-    }
-
     throw_if_not_ok(rest_client->post_array_schema_to_rest(
         uri, *(array_schema->array_schema_.get())));
   } else {
@@ -2633,13 +2626,6 @@ int32_t tiledb_array_create_with_key(
       return TILEDB_ERR;
     }
 
-    // Check no dimension labels (not yet implemented in REST)
-    if (array_schema->array_schema_->dim_label_num() > 0) {
-      throw StatusException(
-          Status_Error("Failed to create array; remote arrays with dimension "
-                       "labels are not currently supported."));
-    }
-
     throw_if_not_ok(rest_client->post_array_schema_to_rest(
         uri, *(array_schema->array_schema_.get())));
   } else {
@@ -2649,7 +2635,7 @@ int32_t tiledb_array_create_with_key(
         static_cast<tiledb::sm::EncryptionType>(encryption_type),
         encryption_key,
         key_length));
-    {}
+
     // Create the array
     throw_if_not_ok(ctx->storage_manager()->array_create(
         uri, array_schema->array_schema_, key));

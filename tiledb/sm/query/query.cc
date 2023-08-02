@@ -406,6 +406,17 @@ std::vector<std::string> Query::buffer_names() const {
   return ret;
 }
 
+std::vector<std::string> Query::dimension_label_buffer_names() const {
+  std::vector<std::string> ret(label_buffers_.size());
+
+  size_t i = 0;
+  for (const auto& buffer : label_buffers_) {
+    ret[i++] = buffer.first;
+  }
+
+  return ret;
+}
+
 std::vector<std::string> Query::unwritten_buffer_names() const {
   std::vector<std::string> ret;
   for (auto& name : buffer_names()) {
@@ -428,10 +439,18 @@ QueryBuffer Query::buffer(const std::string& name) const {
         nullptr);
   }
 
-  // Attribute or dimension
-  auto buf = buffers_.find(name);
-  if (buf != buffers_.end()) {
-    return buf->second;
+  if (array_schema_->is_dim_label(name)) {
+    // Dimension label buffer
+    auto buf = label_buffers_.find(name);
+    if (buf != label_buffers_.end()) {
+      return buf->second;
+    }
+  } else {
+    // Attribute or dimension
+    auto buf = buffers_.find(name);
+    if (buf != buffers_.end()) {
+      return buf->second;
+    }
   }
 
   // Named buffer does not exist
@@ -513,9 +532,11 @@ Status Query::get_offsets_buffer(
         Status_QueryError("Cannot get buffer; Coordinates are not var-sized"));
   }
   if (array_schema_->attribute(name) == nullptr &&
-      array_schema_->dimension_ptr(name) == nullptr) {
+      array_schema_->dimension_ptr(name) == nullptr &&
+      !array_schema_->is_dim_label(name)) {
     return logger_->status(Status_QueryError(
-        std::string("Cannot get buffer; Invalid attribute/dimension name '") +
+        std::string(
+            "Cannot get buffer; Invalid attribute/dimension/label name '") +
         name + "'"));
   }
   if (!array_schema_->var_size(name)) {
@@ -558,9 +579,11 @@ Status Query::get_data_buffer(
   // Check attribute
   if (!ArraySchema::is_special_attribute(name)) {
     if (array_schema_->attribute(name) == nullptr &&
-        array_schema_->dimension_ptr(name) == nullptr)
+        array_schema_->dimension_ptr(name) == nullptr &&
+        !array_schema_->is_dim_label(name))
       return logger_->status(Status_QueryError(
-          std::string("Cannot get buffer; Invalid attribute/dimension name '") +
+          std::string(
+              "Cannot get buffer; Invalid attribute/dimension/label name '") +
           name + "'"));
   }
 
@@ -793,7 +816,7 @@ Status Query::process() {
       }
       // This changes the query into INITIALIZED, but it's ok as the status
       // is updated correctly below
-      throw_if_not_ok(create_strategy(true));
+      throw_if_not_ok(create_strategy());
     }
   }
 
@@ -1003,6 +1026,14 @@ Status Query::set_data_buffer(
       throw QueryStatusException("[set_data_buffer] Unsupported query type.");
     }
 
+    const bool exists = label_buffers_.find(name) != label_buffers_.end();
+    if (status_ != QueryStatus::UNINITIALIZED && !exists &&
+        !serialization_allow_new_attr) {
+      throw QueryStatusException(
+          "[set_data_buffer] Cannot set buffer for new dimension label '" +
+          name + "' after initialization");
+    }
+
     // Set dimension label buffer on the appropriate buffer depending if the
     // label is fixed or variable length.
     array_schema_->dimension_label(name).is_var() ?
@@ -1144,7 +1175,9 @@ Status Query::set_offsets_buffer(
     }
 
     // Check the query was not already initialized.
-    if (status_ != QueryStatus::UNINITIALIZED) {
+    const bool exists = label_buffers_.find(name) != label_buffers_.end();
+    if (status_ != QueryStatus::UNINITIALIZED && !exists &&
+        !serialization_allow_new_attr) {
       throw QueryStatusException(
           "[set_offsets_buffer] Cannot set buffer for new dimension label '" +
           name + "' after initialization");
@@ -1190,7 +1223,7 @@ Status Query::set_offsets_buffer(
   }
 
   // Error if setting a new attribute/dimension after initialization
-  bool exists = buffers_.find(name) != buffers_.end();
+  const bool exists = buffers_.find(name) != buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists &&
       !allow_separate_attribute_writes() && !serialization_allow_new_attr) {
     return logger_->status(Status_QueryError(
@@ -1285,7 +1318,7 @@ Status Query::set_validity_buffer(
   // Error if setting a new attribute after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists &&
-      !serialization_allow_new_attr) {
+      !allow_separate_attribute_writes() && !serialization_allow_new_attr) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute '") + name +
         "' after initialization"));
@@ -1540,7 +1573,8 @@ Status Query::submit() {
       return logger_->status(Status_QueryError(
           "Error in query submission; remote array with no rest client."));
 
-    if (status_ == QueryStatus::UNINITIALIZED) {
+    if (status_ == QueryStatus::UNINITIALIZED && !only_dim_label_query() &&
+        !subarray_.has_label_ranges()) {
       RETURN_NOT_OK(create_strategy());
 
       // Allocate remote buffer storage for global order writes if necessary.

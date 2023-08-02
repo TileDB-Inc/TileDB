@@ -285,12 +285,12 @@ Status Array::open(
                .get<bool>(
                    "sm.allow_updates_experimental", &allow_updates, &found)
                .ok()) {
-        throw Status_ArrayError("Cannot get setting");
+        throw ArrayException("Cannot get setting");
       }
       assert(found);
 
       if (!allow_updates) {
-        throw Status_ArrayError(
+        throw ArrayException(
             "Cannot open array; Update query type is only experimental, do "
             "not use.");
       }
@@ -332,7 +332,7 @@ Status Array::open(
     }
 
     if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION) {
-      throw Status_ArrayError(
+      throw ArrayException(
           "Cannot open array; encrypted remote arrays are not supported.");
     }
 
@@ -351,14 +351,14 @@ Status Array::open(
           query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
         timestamp_end_opened_at_ = 0;
       } else {
-        throw Status_ArrayError("Cannot open array; Unsupported query type.");
+        throw ArrayException("Cannot open array; Unsupported query type.");
       }
     }
 
     if (remote_) {
       auto rest_client = resources_.rest_client();
       if (rest_client == nullptr) {
-        throw Status_ArrayError(
+        throw ArrayException(
             "Cannot open array; remote array with no REST client.");
       }
       if (!use_refactored_array_open()) {
@@ -451,7 +451,7 @@ Status Array::open(
 
       metadata_.reset(timestamp_end_opened_at_);
     } else {
-      throw Status_ArrayError("Cannot open array; Unsupported query type.");
+      throw ArrayException("Cannot open array; Unsupported query type.");
     }
   } catch (std::exception& e) {
     set_array_closed();

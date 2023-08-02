@@ -634,6 +634,9 @@ struct QueryReader {
 
   stats @4 :Stats;
   # Stats object
+
+  dimLabelIncreasing @5 :Bool;
+  # True if dim label query is using increasing order, false if decreasing order.
 }
 
 struct Delete {
@@ -763,6 +766,9 @@ struct Query {
 
     writtenBuffers @19 : List(Text);
     # written buffers for partial attribute writes
+
+    orderedDimLabelReader @20 :QueryReader;
+    # orderedDimLabelReader contains data needed for dense dimension label reads.
 }
 
 struct NonEmptyDomain {

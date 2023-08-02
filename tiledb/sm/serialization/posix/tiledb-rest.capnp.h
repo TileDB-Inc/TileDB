@@ -891,7 +891,7 @@ struct QueryReader {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(e19754f813ccf79c, 0, 5)
+    CAPNP_DECLARE_STRUCT_HEADER(e19754f813ccf79c, 1, 5)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -993,7 +993,7 @@ struct Query {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(96ba49d0f8b23ccc, 4, 15)
+    CAPNP_DECLARE_STRUCT_HEADER(96ba49d0f8b23ccc, 4, 16)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -7947,6 +7947,8 @@ class QueryReader::Reader {
   inline bool hasStats() const;
   inline ::tiledb::sm::serialization::capnp::Stats::Reader getStats() const;
 
+  inline bool getDimLabelIncreasing() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -8031,6 +8033,9 @@ class QueryReader::Builder {
       ::capnp::Orphan<::tiledb::sm::serialization::capnp::Stats>&& value);
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Stats>
   disownStats();
+
+  inline bool getDimLabelIncreasing();
+  inline void setDimLabelIncreasing(bool value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -8777,6 +8782,10 @@ class Query::Reader {
   inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
   getWrittenBuffers() const;
 
+  inline bool hasOrderedDimLabelReader() const;
+  inline ::tiledb::sm::serialization::capnp::QueryReader::Reader
+  getOrderedDimLabelReader() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -9000,6 +9009,18 @@ class Query::Builder {
   inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
   disownWrittenBuffers();
 
+  inline bool hasOrderedDimLabelReader();
+  inline ::tiledb::sm::serialization::capnp::QueryReader::Builder
+  getOrderedDimLabelReader();
+  inline void setOrderedDimLabelReader(
+      ::tiledb::sm::serialization::capnp::QueryReader::Reader value);
+  inline ::tiledb::sm::serialization::capnp::QueryReader::Builder
+  initOrderedDimLabelReader();
+  inline void adoptOrderedDimLabelReader(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::QueryReader>&& value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::QueryReader>
+  disownOrderedDimLabelReader();
+
  private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -9031,6 +9052,8 @@ class Query::Pipeline {
   inline ::tiledb::sm::serialization::capnp::QueryReader::Pipeline
   getDenseReader();
   inline ::tiledb::sm::serialization::capnp::Delete::Pipeline getDelete();
+  inline ::tiledb::sm::serialization::capnp::QueryReader::Pipeline
+  getOrderedDimLabelReader();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -22495,6 +22518,17 @@ QueryReader::Builder::disownStats() {
           _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
 }
 
+inline bool QueryReader::Reader::getDimLabelIncreasing() const {
+  return _reader.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline bool QueryReader::Builder::getDimLabelIncreasing() {
+  return _builder.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void QueryReader::Builder::setDimLabelIncreasing(bool value) {
+  _builder.setDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
 inline bool Delete::Reader::hasCondition() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
@@ -23922,6 +23956,59 @@ Query::Builder::disownWrittenBuffers() {
   return ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
           _builder.getPointerField(::capnp::bounded<14>() * ::capnp::POINTERS));
+}
+
+inline bool Query::Reader::hasOrderedDimLabelReader() const {
+  return !_reader.getPointerField(::capnp::bounded<15>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool Query::Builder::hasOrderedDimLabelReader() {
+  return !_builder.getPointerField(::capnp::bounded<15>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::QueryReader::Reader
+Query::Reader::getOrderedDimLabelReader() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::QueryReader>::get(
+          _reader.getPointerField(::capnp::bounded<15>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::QueryReader::Builder
+Query::Builder::getOrderedDimLabelReader() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::QueryReader>::get(
+          _builder.getPointerField(::capnp::bounded<15>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::QueryReader::Pipeline
+Query::Pipeline::getOrderedDimLabelReader() {
+  return ::tiledb::sm::serialization::capnp::QueryReader::Pipeline(
+      _typeless.getPointerField(15));
+}
+#endif  // !CAPNP_LITE
+inline void Query::Builder::setOrderedDimLabelReader(
+    ::tiledb::sm::serialization::capnp::QueryReader::Reader value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::QueryReader>::
+      set(_builder.getPointerField(::capnp::bounded<15>() * ::capnp::POINTERS),
+          value);
+}
+inline ::tiledb::sm::serialization::capnp::QueryReader::Builder
+Query::Builder::initOrderedDimLabelReader() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::QueryReader>::init(
+          _builder.getPointerField(::capnp::bounded<15>() * ::capnp::POINTERS));
+}
+inline void Query::Builder::adoptOrderedDimLabelReader(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::QueryReader>&& value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::QueryReader>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<15>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::QueryReader>
+Query::Builder::disownOrderedDimLabelReader() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::QueryReader>::disown(
+          _builder.getPointerField(::capnp::bounded<15>() * ::capnp::POINTERS));
 }
 
 inline bool NonEmptyDomain::Reader::hasNonEmptyDomain() const {

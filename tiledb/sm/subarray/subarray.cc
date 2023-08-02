@@ -1128,9 +1128,10 @@ Status Subarray::set_coalesce_ranges(bool coalesce_ranges) {
 }
 
 Status Subarray::to_byte_vec(std::vector<uint8_t>* byte_vec) const {
-  if (range_num() != 1)
+  if (range_num() != 1) {
     return logger_->status(Status_SubarrayError(
         "Cannot export to byte vector; The subarray must be unary"));
+  }
 
   byte_vec->clear();
 
@@ -1661,8 +1662,9 @@ uint64_t Subarray::range_idx(const std::vector<uint64_t>& range_coords) const {
 }
 
 uint64_t Subarray::range_num() const {
-  if (range_subset_.empty())
+  if (range_subset_.empty()) {
     return 0;
+  }
 
   uint64_t ret = 1;
   for (const auto& subset : range_subset_) {

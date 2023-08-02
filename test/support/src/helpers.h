@@ -99,9 +99,13 @@ using SubarrayRanges = std::vector<std::vector<T>>;
  * @param ctx Context to check for the error and error message.
  * @param rc Return code from a TileDB C-API function.
  * @param expected_msg The expected message from the last error.
+ * @param contains If true, error messages are matched with ContainsSubstring
  */
 void check_tiledb_error_with(
-    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg);
+    tiledb_ctx_t* ctx,
+    int rc,
+    const std::string& expected_msg,
+    bool contains = false);
 
 /**
  * Checks the return code for a TileDB C-API function is TILEDB_OK. If not,
@@ -121,9 +125,13 @@ void check_tiledb_ok(tiledb_ctx_t* ctx, int rc);
  * @param ctx Context to check for the error and error message.
  * @param rc Return code from a TileDB C-API function.
  * @param expected_msg The expected message from the last error.
+ * @param contains If true, error messages are matched with ContainsSubstring
  */
 void require_tiledb_error_with(
-    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg);
+    tiledb_ctx_t* ctx,
+    int rc,
+    const std::string& expected_msg,
+    bool contains = false);
 
 /**
  * Requires the return code for a TileDB C-API function is TILEDB_OK. If not,

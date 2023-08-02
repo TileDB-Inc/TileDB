@@ -224,6 +224,9 @@ class Query {
   /** Returns the names of the buffers set by the user for the query. */
   std::vector<std::string> buffer_names() const;
 
+  /** Returns the names of dimension label buffers for the query. */
+  std::vector<std::string> dimension_label_buffer_names() const;
+
   /**
    * Returns the names of the buffers set by the user for the query not already
    * written by a previous partial attribute write.
@@ -691,6 +694,27 @@ class Query {
    * not assume decreasing order.
    */
   void set_dimension_label_ordered_read(bool increasing_order);
+
+  /**
+   * Check if the query is a dimension label ordered read.
+   * If true, this query will use the OrderedDimLabelReader strategy.
+   * Only applicable to dimension label read queries.
+   *
+   * @return True if the query is a dimension label ordered read, else False.
+   */
+  inline bool dimension_label_ordered_read() const {
+    return is_dimension_label_ordered_read_;
+  }
+
+  /**
+   * Check if the dimension label query is increasing or decreasing order.
+   * Only applicable to dimension label read queries.
+   *
+   * @return True if increasing order, false if decreasing order.
+   */
+  inline bool dimension_label_increasing_order() const {
+    return dimension_label_increasing_;
+  }
 
   /**
    * Set the fragment size.
