@@ -1488,8 +1488,10 @@ Status Array::compute_max_buffer_sizes(
   return Status::Ok();
 }
 
-void Array::load_local_metadata() {
-  assert(array_dir_.loaded());
+void Array::do_load_metadata() {
+  if (!array_dir_.loaded()) {
+    throw ArrayException("Cannot load metadata; array directory is not loaded.");
+  }
   auto timer_se = resources_.stats().start_timer("sm_load_array_metadata");
 
   // Determine which array metadata to load
@@ -1530,7 +1532,7 @@ Status Array::load_metadata() {
     RETURN_NOT_OK(rest_client->get_array_metadata_from_rest(
         array_uri_, timestamp_start_, timestamp_end_opened_at_, this));
   } else {
-    load_local_metadata();
+    do_load_metadata();
   }
   metadata_loaded_ = true;
   return Status::Ok();

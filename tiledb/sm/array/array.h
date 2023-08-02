@@ -770,7 +770,7 @@ class Array {
   /**
    * Load non-remote array metadata.
    */
-  void load_local_metadata();
+  void do_load_metadata();
 
   /**
    * Load array metadata, handles remote arrays vs non-remote arrays
