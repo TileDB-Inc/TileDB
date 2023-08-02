@@ -1144,3 +1144,13 @@ struct BufferedChunk {
   size@1 :UInt64;
   # the size in bytes of the intermediate chunk
 }
+
+struct ArrayConsolidationRequest {
+  config @0 :Config;
+  # Config
+}
+
+struct ArrayVacuumRequest {
+  config @0 :Config;
+  # Config
+}

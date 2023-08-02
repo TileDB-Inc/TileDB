@@ -37,10 +37,12 @@
 #include "tiledb/sm/serialization/array_schema_evolution.h"
 #include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/config.h"
+#include "tiledb/sm/serialization/consolidation.h"
 #include "tiledb/sm/serialization/fragment_info.h"
 #include "tiledb/sm/serialization/group.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/serialization/tiledb-rest.h"
+#include "tiledb/sm/serialization/vacuum.h"
 #include "tiledb/sm/rest/curl.h" // must be included last to avoid Windows.h
 #endif
 // clang-format on
@@ -1334,6 +1336,55 @@ Status RestClient::ensure_json_null_delimited_string(Buffer* buffer) {
   return Status::Ok();
 }
 
+Status RestClient::post_consolidation_to_rest(
+    const URI& uri, const Config& config) {
+  Buffer buff;
+  RETURN_NOT_OK(serialization::array_consolidation_request_serialize(
+      config, serialization_type_, &buff));
+  // Wrap in a list
+  BufferList serialized;
+  RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
+
+  // Init curl and form the URL
+  Curl curlc(logger_);
+  std::string array_ns, array_uri;
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
+  const std::string cache_key = array_ns + ":" + array_uri;
+  RETURN_NOT_OK(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
+                          "/" + curlc.url_escape(array_uri) + "/consolidate";
+
+  // Get the data
+  Buffer returned_data;
+  return curlc.post_data(
+      stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
+}
+
+Status RestClient::post_vacuum_to_rest(const URI& uri, const Config& config) {
+  Buffer buff;
+  RETURN_NOT_OK(serialization::array_vacuum_request_serialize(
+      config, serialization_type_, &buff));
+  // Wrap in a list
+  BufferList serialized;
+  RETURN_NOT_OK(serialized.add_buffer(std::move(buff)));
+
+  // Init curl and form the URL
+  Curl curlc(logger_);
+  std::string array_ns, array_uri;
+  RETURN_NOT_OK(uri.get_rest_components(&array_ns, &array_uri));
+  const std::string cache_key = array_ns + ":" + array_uri;
+  RETURN_NOT_OK(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
+                          "/" + curlc.url_escape(array_uri) + "/vacuum";
+
+  // Get the data
+  Buffer returned_data;
+  return curlc.post_data(
+      stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
+}
+
 #else
 
 RestClient::RestClient() {
@@ -1480,6 +1531,16 @@ Status RestClient::patch_group_to_rest(const URI&, Group*) {
 }
 
 void RestClient::delete_group_from_rest(const URI&, bool) {
+  throw StatusException(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
+}
+
+Status RestClient::post_consolidation_to_rest(const URI&, const Config&) {
+  throw StatusException(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
+}
+
+Status RestClient::post_vacuum_to_rest(const URI&, const Config&) {
   throw StatusException(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
