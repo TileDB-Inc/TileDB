@@ -35,13 +35,6 @@
 #include "query_aggregate_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 
-const tiledb_channel_operator_handle_t* tiledb_channel_operator_count =
-    tiledb_channel_operator_handle_t::make_handle(
-        QueryChannelOperator::COUNT, "COUNT");
-const tiledb_channel_operator_handle_t* tiledb_channel_operator_sum =
-    tiledb_channel_operator_handle_t::make_handle(
-        QueryChannelOperator::SUM, "SUM");
-
 namespace tiledb::api {
 
 /**
@@ -110,6 +103,24 @@ inline void ensure_query_channel_is_valid(
   ensure_handle_is_valid(channel);
 }
 
+capi_return_t tiledb_channel_create_operator_sum(
+    tiledb_ctx_t* ctx, tiledb_channel_operator_t** op) {
+  (void)ctx;
+  ensure_output_pointer_is_valid(op);
+  *op = tiledb_channel_operator_handle_t::make_handle(
+      QueryChannelOperator::SUM, "SUM");
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_channel_create_operator_count(
+    tiledb_ctx_t* ctx, tiledb_channel_operator_t** op) {
+  (void)ctx;
+  ensure_output_pointer_is_valid(op);
+  *op = tiledb_channel_operator_handle_t::make_handle(
+      QueryChannelOperator::COUNT, "COUNT");
+  return TILEDB_OK;
+}
+
 capi_return_t tiledb_query_get_default_channel(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
@@ -126,7 +137,7 @@ capi_return_t tiledb_query_get_default_channel(
   return TILEDB_OK;
 }
 
-capi_return_t tiledb_channel_operation_field_create(
+capi_return_t tiledb_channel_create_operation_field(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const tiledb_channel_operator_t* op,
@@ -185,9 +196,46 @@ capi_return_t tiledb_channel_add_aggregate(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_channel_operation_free(
+    tiledb_channel_operation_t** operation) {
+  ensure_output_pointer_is_valid(operation);
+  ensure_operation_is_valid(*operation);
+  tiledb_channel_operation_handle_t::break_handle(*operation);
+
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_query_channel_free(tiledb_query_channel_t** channel) {
+  ensure_output_pointer_is_valid(channel);
+  ensure_query_channel_is_valid(*channel);
+  tiledb_query_channel_handle_t::break_handle(*channel);
+
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_channel_operator_free(tiledb_channel_operator_t** op) {
+  ensure_output_pointer_is_valid(op);
+  ensure_channel_operator_is_valid(*op);
+  tiledb_channel_operator_handle_t::break_handle(*op);
+
+  return TILEDB_OK;
+}
+
 }  // namespace tiledb::api
 
 using tiledb::api::api_entry_with_context;
+
+capi_return_t tiledb_channel_create_operator_sum(
+    tiledb_ctx_t* ctx, tiledb_channel_operator_t** op) noexcept {
+  return api_entry_with_context<
+      tiledb::api::tiledb_channel_create_operator_sum>(ctx, op);
+}
+
+capi_return_t tiledb_channel_create_operator_count(
+    tiledb_ctx_t* ctx, tiledb_channel_operator_t** op) noexcept {
+  return api_entry_with_context<
+      tiledb::api::tiledb_channel_create_operator_count>(ctx, op);
+}
 
 capi_return_t tiledb_query_get_default_channel(
     tiledb_ctx_t* ctx,
@@ -197,14 +245,14 @@ capi_return_t tiledb_query_get_default_channel(
       ctx, query, channel);
 }
 
-capi_return_t tiledb_channel_operation_field_create(
+capi_return_t tiledb_channel_create_operation_field(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const tiledb_channel_operator_t* op,
     const char* input_field_name,
     tiledb_channel_operation_t** operation) noexcept {
   return api_entry_with_context<
-      tiledb::api::tiledb_channel_operation_field_create>(
+      tiledb::api::tiledb_channel_create_operation_field>(
       ctx, query, op, input_field_name, operation);
 }
 
@@ -215,4 +263,22 @@ capi_return_t tiledb_channel_add_aggregate(
     tiledb_channel_operation_t* operation) noexcept {
   return api_entry_with_context<tiledb::api::tiledb_channel_add_aggregate>(
       ctx, channel, output_field_name, operation);
+}
+
+capi_return_t tiledb_channel_operation_free(
+    tiledb_channel_operation_t** operation) noexcept {
+  return tiledb::api::api_entry_plain<
+      tiledb::api::tiledb_channel_operation_free>(operation);
+}
+
+capi_return_t tiledb_query_channel_free(
+    tiledb_query_channel_t** channel) noexcept {
+  return tiledb::api::api_entry_plain<tiledb::api::tiledb_query_channel_free>(
+      channel);
+}
+
+capi_return_t tiledb_channel_operator_free(
+    tiledb_channel_operator_t** op) noexcept {
+  return tiledb::api::api_entry_plain<
+      tiledb::api::tiledb_channel_operator_free>(op);
 }
