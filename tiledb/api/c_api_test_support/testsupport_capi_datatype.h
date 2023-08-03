@@ -1,11 +1,11 @@
 /**
- * @file   work_arounds.cc
+ * @file tiledb/api/c_api_test_support/context/testsupport_capi_datatype.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,28 +27,23 @@
  *
  * @section DESCRIPTION
  *
- * This file contains one-off work arounds for external issues.
+ * This file defines test support classes for the datatype section of the C API.
  */
 
-// This is a work-around for a gcc bug that was fixed in v6.0:
-// https://bugs.launchpad.net/ubuntu/+source/gcc-5/+bug/1568899
-//
-// We've also seen this issue on gcc v7.
-//
-// The C++ AWS SDK v1.7 introduced this bug into our build because it
-// references the hidden gcc symbol '__cpu_model'. To fix this, we
-// redefine it here with public visibility.
-//
-// The struct may not need to strictly match the definition in the gcc
-// library, but we're matching it here to be safe.
-//
-// For reference, the gcc definition can be found here:
-// https://github.com/gcc-mirror/gcc/blob/d353bf189d2bbaf4059f402ee4d2a5ea074c349f/libgcc/config/i386/cpuinfo.c
-#if __GNUC__ > 0
-__attribute__((visibility("default"))) struct __processor_model {
-  unsigned int __cpu_vendor;
-  unsigned int __cpu_type;
-  unsigned int __cpu_subtype;
-  unsigned int __cpu_features[1];
-} __cpu_model;
-#endif
+#ifndef TILEDB_TESTSUPPORT_CAPI_DATATYPE_H
+#define TILEDB_TESTSUPPORT_CAPI_DATATYPE_H
+
+#include "tiledb/api/c_api/datatype/datatype_api_external.h"
+
+namespace tiledb::api::test_support {
+
+/*
+ * TILEDB_INVALID_TYPE is defined as a function rather than a constant to get
+ * around compile-time checking that the enumeration value is valid.
+ */
+tiledb_datatype_t TILEDB_INVALID_TYPE() {
+  return static_cast<tiledb_datatype_t>(-1);
+}
+
+}  // namespace tiledb::api::test_support
+#endif  // TILEDB_TESTSUPPORT_CAPI_DATATYPE_H

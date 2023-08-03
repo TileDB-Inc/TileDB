@@ -34,13 +34,12 @@
 #include <functional>
 #include <iostream>
 #include <stdexcept>
+#include <stop_token>
 #include <type_traits>
 #include <utility>
 #include <variant>
 
 #include <thread>  //  @todo debugging
-
-#include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
 
 #include "experimental/tiledb/common/dag/nodes/detail/simple/simple_base.h"
 

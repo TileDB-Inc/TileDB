@@ -77,7 +77,7 @@ struct CSparseGlobalOrderFx {
   void write_delete_condition(char* value_to_delete, uint64_t value_size);
   int32_t read(
       bool set_subarray,
-      bool set_qc,
+      int qc_idx,
       int* coords,
       uint64_t* coords_size,
       int* data,
@@ -342,7 +342,7 @@ void CSparseGlobalOrderFx::write_delete_condition(
 
 int32_t CSparseGlobalOrderFx::read(
     bool set_subarray,
-    bool set_qc,
+    int qc_idx,
     int* coords,
     uint64_t* coords_size,
     int* data,
@@ -368,27 +368,24 @@ int32_t CSparseGlobalOrderFx::read(
     CHECK(rc == TILEDB_OK);
   }
 
-  if (set_qc) {
+  if (qc_idx != 0) {
     tiledb_query_condition_t* query_condition = nullptr;
     rc = tiledb_query_condition_alloc(ctx_, &query_condition);
     CHECK(rc == TILEDB_OK);
-    int32_t val = 11;
-    rc = tiledb_query_condition_init(
-        ctx_, query_condition, "a", &val, sizeof(int32_t), TILEDB_LT);
-    CHECK(rc == TILEDB_OK);
 
-    // Negated query condition should produce the same results.
-    SECTION("- Test TILEDB_NOT") {
+    if (qc_idx == 1) {
+      int32_t val = 11;
+      rc = tiledb_query_condition_init(
+          ctx_, query_condition, "a", &val, sizeof(int32_t), TILEDB_LT);
+      CHECK(rc == TILEDB_OK);
+    } else if (qc_idx == 2) {
+      // Negated query condition should produce the same results.
+      int32_t val = 11;
       tiledb_query_condition_t* qc;
       rc = tiledb_query_condition_alloc(ctx_, &qc);
       CHECK(rc == TILEDB_OK);
       rc = tiledb_query_condition_init(
           ctx_, qc, "a", &val, sizeof(int32_t), TILEDB_GE);
-      CHECK(rc == TILEDB_OK);
-
-      tiledb_query_condition_free(&query_condition);
-      query_condition = nullptr;
-      rc = tiledb_query_condition_alloc(ctx_, &query_condition);
       CHECK(rc == TILEDB_OK);
       rc = tiledb_query_condition_negate(ctx_, qc, &query_condition);
       CHECK(rc == TILEDB_OK);
@@ -509,7 +506,7 @@ TEST_CASE_METHOD(
   int data_r[5];
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
-  auto rc = read(true, false, coords_r, &coords_r_size, data_r, &data_r_size);
+  auto rc = read(true, 0, coords_r, &coords_r_size, data_r, &data_r_size);
   CHECK(rc == TILEDB_ERR);
 
   // Check we hit the correct error.
@@ -570,7 +567,7 @@ TEST_CASE_METHOD(
   tiledb_query_status_t status;
   rc = read(
       true,
-      false,
+      0,
       coords_r,
       &coords_r_size,
       data_r,
@@ -659,7 +656,7 @@ TEST_CASE_METHOD(
   tiledb_query_status_t status;
   rc = read(
       true,
-      false,
+      0,
       coords_r,
       &coords_r_size,
       data_r,
@@ -724,7 +721,7 @@ TEST_CASE_METHOD(
   int data_r[5];
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
-  auto rc = read(true, false, coords_r, &coords_r_size, data_r, &data_r_size);
+  auto rc = read(true, 0, coords_r, &coords_r_size, data_r, &data_r_size);
   CHECK(rc == TILEDB_ERR);
 
   // Check we hit the correct error.
@@ -796,7 +793,7 @@ TEST_CASE_METHOD(
   uint64_t data_r_size = sizeof(data_r);
   rc = read(
       use_subarray,
-      false,
+      0,
       coords_r,
       &coords_r_size,
       data_r,
@@ -870,7 +867,7 @@ TEST_CASE_METHOD(
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
   auto rc =
-      read(use_subarray, false, coords_r, &coords_r_size, data_r, &data_r_size);
+      read(use_subarray, 0, coords_r, &coords_r_size, data_r, &data_r_size);
   CHECK(rc == TILEDB_ERR);
 
   // Check we hit the correct error.
@@ -896,6 +893,7 @@ TEST_CASE_METHOD(
 
   bool use_subarray = false;
   int tile_idx = 0;
+  int qc_idx = GENERATE(1, 2);
   SECTION("- No subarray") {
     use_subarray = false;
     SECTION("- First tile") {
@@ -960,8 +958,8 @@ TEST_CASE_METHOD(
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
 
-  auto rc =
-      read(use_subarray, true, coords_r, &coords_r_size, data_r, &data_r_size);
+  auto rc = read(
+      use_subarray, qc_idx, coords_r, &coords_r_size, data_r, &data_r_size);
   CHECK(rc == TILEDB_OK);
 
   // Should read two tile (6 values).
@@ -985,6 +983,7 @@ TEST_CASE_METHOD(
   bool use_subarray = GENERATE(true, false);
   bool dups = GENERATE(false, true);
   bool extra_fragment = GENERATE(true, false);
+  int qc_idx = GENERATE(1, 2);
 
   create_default_array_1d(dups);
 
@@ -1009,8 +1008,8 @@ TEST_CASE_METHOD(
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
 
-  auto rc =
-      read(use_subarray, true, coords_r, &coords_r_size, data_r, &data_r_size);
+  auto rc = read(
+      use_subarray, qc_idx, coords_r, &coords_r_size, data_r, &data_r_size);
   CHECK(rc == TILEDB_OK);
 
   if (dups) {
@@ -1037,6 +1036,7 @@ TEST_CASE_METHOD(
   reset_config();
   create_default_array_1d();
 
+  int qc_idx = GENERATE(1, 2);
   bool use_subarray = false;
   SECTION("- No subarray") {
     use_subarray = false;
@@ -1062,8 +1062,8 @@ TEST_CASE_METHOD(
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
 
-  auto rc =
-      read(use_subarray, true, coords_r, &coords_r_size, data_r, &data_r_size);
+  auto rc = read(
+      use_subarray, qc_idx, coords_r, &coords_r_size, data_r, &data_r_size);
   CHECK(rc == TILEDB_OK);
 
   // One value.
@@ -1085,6 +1085,7 @@ TEST_CASE_METHOD(
   create_default_array_1d(true);
 
   bool use_subarray = false;
+  int qc_idx = GENERATE(1, 2);
 
   int coords_1[] = {8, 9, 10, 11, 12, 13};
   int data_1[] = {8, 9, 10, 11, 12, 13};
@@ -1105,8 +1106,8 @@ TEST_CASE_METHOD(
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
 
-  auto rc =
-      read(use_subarray, true, coords_r, &coords_r_size, data_r, &data_r_size);
+  auto rc = read(
+      use_subarray, qc_idx, coords_r, &coords_r_size, data_r, &data_r_size);
   CHECK(rc == TILEDB_OK);
 
   // Should read (6 values).
@@ -1362,7 +1363,7 @@ TEST_CASE_METHOD(
   tiledb_query_status_t status;
   uint32_t rc = read(
       use_subarray,
-      false,
+      0,
       coords_r,
       &coords_r_size,
       data_r,
@@ -1431,14 +1432,7 @@ TEST_CASE_METHOD(
   int rc;
   tiledb_query_status_t status;
   rc = read(
-      true,
-      false,
-      coords_r,
-      &coords_r_size,
-      data_r,
-      &data_r_size,
-      &query,
-      &array);
+      true, 0, coords_r, &coords_r_size, data_r, &data_r_size, &query, &array);
   CHECK(rc == TILEDB_OK);
 
   CHECK(coords_r[0] == 1);

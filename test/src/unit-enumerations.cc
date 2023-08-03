@@ -974,7 +974,7 @@ TEST_CASE_METHOD(
   auto orig_schema = get_array_schema_latest(true);
   auto ase = make_shared<ArraySchemaEvolution>(HERE());
   auto attr3 = make_shared<Attribute>(HERE(), "attr3", Datatype::UINT32);
-  ase->add_attribute(attr3.get());
+  ase->add_attribute(attr3);
   CHECK_NOTHROW(ase->evolve_schema(orig_schema));
 }
 
@@ -992,7 +992,7 @@ TEST_CASE_METHOD(
 
   auto attr3 = make_shared<Attribute>(HERE(), "attr3", Datatype::UINT32);
   attr3->set_enumeration_name(default_enmr_name);
-  ase->add_attribute(attr3.get());
+  ase->add_attribute(attr3);
 
   ase->drop_attribute("attr2");
 
@@ -1013,7 +1013,7 @@ TEST_CASE_METHOD(
 
   auto attr3 = make_shared<Attribute>(HERE(), "attr3", Datatype::UINT32);
   attr3->set_enumeration_name(default_enmr_name);
-  ase->add_attribute(attr3.get());
+  ase->add_attribute(attr3);
 
   CHECK_NOTHROW(ase->drop_attribute("attr3"));
   CHECK_NOTHROW(ase->evolve_schema(orig_schema));
@@ -1162,7 +1162,7 @@ TEST_CASE_METHOD(
   attr3->set_enumeration_name("test_enmr");
 
   auto ase = make_shared<ArraySchemaEvolution>(HERE());
-  ase->add_attribute(attr3.get());
+  ase->add_attribute(attr3);
 
   auto orig_schema = get_array_schema_latest();
   REQUIRE_THROWS(ase->evolve_schema(orig_schema));
@@ -1184,7 +1184,7 @@ TEST_CASE_METHOD(
 
   auto ase = make_shared<ArraySchemaEvolution>(HERE());
   ase->add_enumeration(enmr);
-  ase->add_attribute(attr3.get());
+  ase->add_attribute(attr3);
 
   auto orig_schema = get_array_schema_latest();
   REQUIRE_THROWS(ase->evolve_schema(orig_schema));
@@ -1206,7 +1206,7 @@ TEST_CASE_METHOD(
 
   auto ase = make_shared<ArraySchemaEvolution>(HERE());
   ase->add_enumeration(enmr);
-  ase->add_attribute(attr3.get());
+  ase->add_attribute(attr3);
 
   auto orig_schema = get_array_schema_latest();
   REQUIRE_THROWS(ase->evolve_schema(orig_schema));
@@ -1465,7 +1465,7 @@ TEST_CASE_METHOD(
   attr->set_enumeration_name("enmr2");
 
   ArraySchemaEvolution ase1;
-  ase1.add_attribute(attr.get());
+  ase1.add_attribute(attr);
   ase1.add_enumeration(enmr1);
   ase1.add_enumeration(enmr2);
   ase1.drop_attribute("some_attr");

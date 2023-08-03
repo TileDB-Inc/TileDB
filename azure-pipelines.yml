@@ -29,27 +29,6 @@ stages:
     variables:
       BACKWARDS_COMPATIBILITY_ARRAYS: OFF
     jobs:
-    - job:
-      timeoutInMinutes: 120
-      strategy:
-        matrix:
-          macOS_azure:
-            imageName: 'macos-11'
-            TILEDB_AZURE: ON
-            TILEDB_SERIALIZATION: ON
-            CXX: clang++
-            ARTIFACT_OS: macOS_azure
-          linux_asan:
-            imageName: 'ubuntu-20.04'
-            TILEDB_CI_ASAN: ON
-            TILEDB_SERIALIZATION: ON
-            CXX: g++
-            CC: gcc
-      pool:
-        vmImage: $(imageName)
-      steps:
-      - template: scripts/azure-linux_mac.yml
-
     - job: linux_manylinux
       pool: { vmImage: $(imageName) }
       container: ${{ variables.MANYLINUX_IMAGE }}

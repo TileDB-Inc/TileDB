@@ -64,8 +64,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** Class for locally generated status exceptions. */
 class ArraySchemaException : public StatusException {
@@ -99,13 +98,17 @@ ArraySchema::ArraySchema(ArrayType array_type)
 
   // Set up default filter pipelines for coords, offsets, and validity values.
   coords_filters_.add_filter(CompressionFilter(
-      constants::coords_compression, constants::coords_compression_level));
+      constants::coords_compression,
+      constants::coords_compression_level,
+      Datatype::ANY));
   cell_var_offsets_filters_.add_filter(CompressionFilter(
       constants::cell_var_offsets_compression,
-      constants::cell_var_offsets_compression_level));
+      constants::cell_var_offsets_compression_level,
+      Datatype::UINT64));
   cell_validity_filters_.add_filter(CompressionFilter(
       constants::cell_validity_compression,
-      constants::cell_validity_compression_level));
+      constants::cell_validity_compression_level,
+      Datatype::UINT8));
 
   // Generate URI and name for ArraySchema
   throw_if_not_ok(generate_uri());
@@ -182,26 +185,10 @@ ArraySchema::ArraySchema(
     , cell_var_offsets_filters_(cell_var_offsets_filters)
     , cell_validity_filters_(cell_validity_filters)
     , coords_filters_(coords_filters) {
-  Status st;
-
   // Create dimension map
-  dim_map_.clear();
   for (dimension_size_type d = 0; d < domain_->dim_num(); ++d) {
     auto dim{domain_->dimension_ptr(d)};
     dim_map_[dim->name()] = dim;
-  }
-
-  // Create attribute map
-  if (!attributes_.empty()) {
-    for (auto attr_iter : attributes_) {
-      auto attr = attr_iter.get();
-      attribute_map_[attr->name()] = attr;
-    }
-  }
-
-  // Create dimension label map
-  for (const auto& label : dimension_labels_) {
-    dimension_label_map_[label->name()] = label.get();
   }
 
   for (auto& [enmr_name, enmr_uri] : enumeration_path_map_) {
@@ -213,8 +200,20 @@ ArraySchema::ArraySchema(
     enumeration_map_[enmr->name()] = enmr;
   }
 
+  // Create attribute map
+  auto n{attribute_num()};
+  for (decltype(n) i = 0; i < n; ++i) {
+    auto attr = attributes_[i].get();
+    attribute_map_[attr->name()] = {attr, i};
+  }
+
+  // Create dimension label map
+  for (const auto& label : dimension_labels_) {
+    dimension_label_map_[label->name()] = label.get();
+  }
+
   // Check array schema is valid.
-  st = check_double_delta_compressor(coords_filters_);
+  Status st = check_double_delta_compressor(coords_filters_);
   if (!st.ok()) {
     throw ArraySchemaException(
         "Array schema check failed; Double delta compression used in zipped "
@@ -230,43 +229,40 @@ ArraySchema::ArraySchema(
   check_attribute_dimension_label_names();
 }
 
-ArraySchema::ArraySchema(const ArraySchema& array_schema) {
-  allows_dups_ = array_schema.allows_dups_;
-  array_uri_ = array_schema.array_uri_;
-  uri_ = array_schema.uri_;
-  array_type_ = array_schema.array_type_;
-  domain_ = nullptr;
-  timestamp_range_ = array_schema.timestamp_range_;
-
-  capacity_ = array_schema.capacity_;
-  cell_order_ = array_schema.cell_order_;
-  cell_var_offsets_filters_ = array_schema.cell_var_offsets_filters_;
-  cell_validity_filters_ = array_schema.cell_validity_filters_;
-  coords_filters_ = array_schema.coords_filters_;
-  tile_order_ = array_schema.tile_order_;
-  version_ = array_schema.version_;
-
+/*
+ * Copy constructor manually initializes its map members, so we don't use the
+ * default copy constructor. At some point this may no longer hold and we can
+ * eliminate this code in favor of the default.
+ */
+ArraySchema::ArraySchema(const ArraySchema& array_schema)
+    : uri_{array_schema.uri_}
+    , array_uri_{array_schema.array_uri_}
+    , version_{array_schema.version_}
+    , timestamp_range_{array_schema.timestamp_range_}
+    , name_{array_schema.name_}
+    , array_type_{array_schema.array_type_}
+    , allows_dups_{array_schema.allows_dups_}
+    , domain_{}   // copied below by `set_domain`
+    , dim_map_{}  // initialized in `set_domain`
+    , cell_order_{array_schema.cell_order_}
+    , tile_order_{array_schema.tile_order_}
+    , capacity_{array_schema.capacity_}
+    , attributes_{array_schema.attributes_}
+    , attribute_map_{array_schema.attribute_map_}
+    , dimension_labels_{}     // copied in loop below
+    , dimension_label_map_{}  // initialized below
+    , enumeration_map_{array_schema.enumeration_map_}
+    , enumeration_path_map_{array_schema.enumeration_path_map_}
+    , cell_var_offsets_filters_{array_schema.cell_var_offsets_filters_}
+    , cell_validity_filters_{array_schema.cell_validity_filters_}
+    , coords_filters_{array_schema.coords_filters_}
+    , mtx_{} {
   throw_if_not_ok(set_domain(array_schema.domain_));
 
-  enumeration_map_ = array_schema.enumeration_map_;
-  enumeration_path_map_ = array_schema.enumeration_path_map_;
-
-  for (auto attr : array_schema.attributes_) {
-    attributes_.emplace_back(attr);
-    attribute_map_[attr->name()] = attr.get();
-  }
-
-  // Create dimension label map
   for (const auto& label : array_schema.dimension_labels_) {
     dimension_labels_.emplace_back(label);
     dimension_label_map_[label->name()] = label.get();
   }
-
-  name_ = array_schema.name_;
-}
-
-ArraySchema::~ArraySchema() {
-  clear();
 }
 
 /* ****************************** */
@@ -286,18 +282,32 @@ const URI& ArraySchema::array_uri() const {
 }
 
 const Attribute* ArraySchema::attribute(attribute_size_type id) const {
-  if (id < attributes_.size())
+  if (id < attributes_.size()) {
     return attributes_[id].get();
+  }
   return nullptr;
+}
+
+shared_ptr<const Attribute> ArraySchema::shared_attribute(
+    attribute_size_type id) const {
+  if (id < attributes_.size()) {
+    return attributes_[id];
+  }
+  return {};
 }
 
 const Attribute* ArraySchema::attribute(const std::string& name) const {
   auto it = attribute_map_.find(name);
-  return it == attribute_map_.end() ? nullptr : it->second;
+  return it == attribute_map_.end() ? nullptr : it->second.pointer;
 }
 
-ArraySchema::attribute_size_type ArraySchema::attribute_num() const {
-  return static_cast<attribute_size_type>(attributes_.size());
+shared_ptr<const Attribute> ArraySchema::shared_attribute(
+    const std::string& name) const {
+  auto it = attribute_map_.find(name);
+  if (it == attribute_map_.end()) {
+    return {};
+  }
+  return attributes_[it->second.index];
 }
 
 const std::vector<shared_ptr<const Attribute>>& ArraySchema::attributes()
@@ -331,9 +341,8 @@ uint64_t ArraySchema::cell_size(const std::string& name) const {
   }
 
   // Attribute
-  auto attr_it = attribute_map_.find(name);
-  if (attr_it != attribute_map_.end()) {
-    auto attr = attr_it->second;
+  auto attr = attribute(name);
+  if (attr) {
     auto cell_val_num = attr->cell_val_num();
     return (cell_val_num == constants::var_num) ?
                constants::var_size :
@@ -357,9 +366,9 @@ unsigned int ArraySchema::cell_val_num(const std::string& name) const {
   }
 
   // Attribute
-  auto attr_it = attribute_map_.find(name);
-  if (attr_it != attribute_map_.end()) {
-    return attr_it->second->cell_val_num();
+  auto attr{attribute(name)};
+  if (attr) {
+    return attr->cell_val_num();
   }
 
   // Dimension
@@ -441,43 +450,42 @@ void ArraySchema::check_webp_filter() const {
   }
 }
 
-Status ArraySchema::check() const {
+void ArraySchema::check() const {
   if (domain_ == nullptr)
-    return LOG_STATUS(
-        Status_ArraySchemaError("Array schema check failed; Domain not set"));
+    throw ArraySchemaException{"Array schema check failed; Domain not set"};
 
   auto dim_num = this->dim_num();
   if (dim_num == 0)
-    return LOG_STATUS(Status_ArraySchemaError(
-        "Array schema check failed; No dimensions provided"));
+    throw ArraySchemaException{
+        "Array schema check failed; No dimensions provided"};
 
   if (cell_order_ == Layout::HILBERT && dim_num > Hilbert::HC_MAX_DIM) {
-    return LOG_STATUS(Status_ArraySchemaError(
+    throw ArraySchemaException{
         "Array schema check failed; Maximum dimensions supported by Hilbert "
-        "order exceeded"));
+        "order exceeded"};
   }
 
   if (array_type_ == ArrayType::DENSE) {
     auto type{domain_->dimension_ptr(0)->type()};
     if (datatype_is_real(type)) {
-      return LOG_STATUS(
-          Status_ArraySchemaError("Array schema check failed; Dense arrays "
-                                  "cannot have floating point domains"));
+      throw ArraySchemaException{
+          "Array schema check failed; Dense arrays "
+          "cannot have floating point domains"};
     }
     if (attributes_.size() == 0) {
-      return LOG_STATUS(Status_ArraySchemaError(
-          "Array schema check failed; No attributes provided"));
+      throw ArraySchemaException{
+          "Array schema check failed; No attributes provided"};
     }
   }
 
   if (array_type_ == ArrayType::SPARSE && capacity_ == 0) {
-    throw ArraySchemaException(
+    throw ArraySchemaException{
         "Array schema check failed; Sparse arrays "
-        "cannot have their capacity equal to zero.");
+        "cannot have their capacity equal to zero."};
   }
 
-  RETURN_NOT_OK(check_double_delta_compressor(coords_filters()));
-  RETURN_NOT_OK(check_string_compressor(coords_filters()));
+  throw_if_not_ok(check_double_delta_compressor(coords_filters()));
+  throw_if_not_ok(check_string_compressor(coords_filters()));
   check_attribute_dimension_label_names();
   check_webp_filter();
 
@@ -485,9 +493,9 @@ Status ArraySchema::check() const {
   // dimension.
   if (array_type_ == ArrayType::SPARSE || this->dim_num() != 1) {
     if (has_ordered_attributes()) {
-      throw ArraySchemaException(
+      throw ArraySchemaException{
           "Array schema check failed; Ordered attributes are only supported on "
-          "dense arrays with 1 dimension.");
+          "dense arrays with 1 dimension."};
     }
   }
 
@@ -499,30 +507,14 @@ Status ArraySchema::check() const {
   for (auto label : dimension_labels_) {
     if (!label->is_external()) {
       if (!label->has_schema()) {
-        return LOG_STATUS(Status_ArraySchemaError(
+        throw ArraySchemaException{
             "Array schema check failed; Missing dimension label schema for "
             "dimension label '" +
-            label->name() + "'."));
+            label->name() + "'."};
       }
       check_dimension_label_schema(label->name(), *label->schema());
     }
   }
-
-  // Success
-  return Status::Ok();
-}
-
-Status ArraySchema::check_attributes(
-    const std::vector<std::string>& attributes) const {
-  for (const auto& attr : attributes) {
-    if (attr == constants::coords)
-      continue;
-    if (attribute_map_.find(attr) == attribute_map_.end())
-      return LOG_STATUS(Status_ArraySchemaError(
-          "Attribute check failed; cannot find attribute"));
-  }
-
-  return Status::Ok();
 }
 
 void ArraySchema::check_dimension_label_schema(
@@ -599,9 +591,9 @@ const FilterPipeline& ArraySchema::filters(const std::string& name) const {
   }
 
   // Attribute
-  auto attr_it = attribute_map_.find(name);
-  if (attr_it != attribute_map_.end()) {
-    return attr_it->second->filters();
+  auto attr{attribute(name)};
+  if (attr) {
+    return attr->filters();
   }
 
   // Dimension (if filters not set, return default coordinate filters)
@@ -866,9 +858,9 @@ Datatype ArraySchema::type(const std::string& name) const {
   }
 
   // Attribute
-  auto attr_it = attribute_map_.find(name);
-  if (attr_it != attribute_map_.end()) {
-    return attr_it->second->type();
+  auto attr{attribute(name)};
+  if (attr) {
+    return attr->type();
   }
 
   // Dimension
@@ -884,9 +876,9 @@ bool ArraySchema::var_size(const std::string& name) const {
   }
 
   // Attribute
-  auto attr_it = attribute_map_.find(name);
-  if (attr_it != attribute_map_.end()) {
-    return attr_it->second->var_size();
+  auto attr{attribute(name)};
+  if (attr) {
+    return attr->var_size();
   }
 
   // Dimension
@@ -967,8 +959,9 @@ Status ArraySchema::add_attribute(
   }
 
   // Create new attribute and potentially set a default name
+  auto k{static_cast<unsigned int>(attributes_.size())};
   attributes_.emplace_back(attr);
-  attribute_map_[attr->name()] = attr.get();
+  attribute_map_[attr->name()] = {attr.get(), k};
 
   return Status::Ok();
 }
@@ -1057,7 +1050,7 @@ Status ArraySchema::drop_attribute(const std::string& attr_name) {
         Status_ArraySchemaError("Cannot remove an empty name attribute"));
   }
 
-  if (attribute_map_.find(attr_name) == attribute_map_.end()) {
+  if (!attribute(attr_name)) {
     // Not exists.
     return LOG_STATUS(
         Status_ArraySchemaError("Cannot remove a non-exist attribute"));
@@ -1283,11 +1276,14 @@ ArraySchema ArraySchema::deserialize(
 
   // Load filters
   // Note: Security validation delegated to invoked API
-  auto coords_filters{FilterPipeline::deserialize(deserializer, version)};
-  auto cell_var_filters{FilterPipeline::deserialize(deserializer, version)};
+  auto coords_filters{
+      FilterPipeline::deserialize(deserializer, version, Datatype::ANY)};
+  auto cell_var_filters{
+      FilterPipeline::deserialize(deserializer, version, Datatype::UINT64)};
   FilterPipeline cell_validity_filters;
   if (version >= 7) {
-    cell_validity_filters = FilterPipeline::deserialize(deserializer, version);
+    cell_validity_filters =
+        FilterPipeline::deserialize(deserializer, version, Datatype::UINT8);
   }
 
   // Load domain
@@ -1361,7 +1357,8 @@ ArraySchema ArraySchema::deserialize(
   // Set schema name
   std::string name = uri.last_path_part();
 
-  // Success
+  // TODO: This is the only use of an extraneous constructor that only omits a
+  // single argument. Use the full one instead.
   return ArraySchema(
       uri,
       version,
@@ -1379,17 +1376,6 @@ ArraySchema ArraySchema::deserialize(
       cell_var_filters,
       cell_validity_filters,
       coords_filters);
-}
-
-Status ArraySchema::init() {
-  // Perform check of all members
-  RETURN_NOT_OK(check());
-
-  // Initialize domain
-  RETURN_NOT_OK(domain_->init(cell_order_, tile_order_));
-
-  // Success
-  return Status::Ok();
 }
 
 Status ArraySchema::set_allows_dups(bool allows_dups) {
@@ -1713,5 +1699,4 @@ Status ArraySchema::generate_uri(
   return Status::Ok();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
