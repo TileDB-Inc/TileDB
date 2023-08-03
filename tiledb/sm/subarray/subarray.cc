@@ -1128,9 +1128,10 @@ Status Subarray::set_coalesce_ranges(bool coalesce_ranges) {
 }
 
 Status Subarray::to_byte_vec(std::vector<uint8_t>* byte_vec) const {
-  if (range_num() != 1)
+  if (range_num() != 1) {
     return logger_->status(Status_SubarrayError(
         "Cannot export to byte vector; The subarray must be unary"));
+  }
 
   byte_vec->clear();
 
@@ -1313,12 +1314,6 @@ Status Subarray::get_est_result_size_nullable(
         Status_SubarrayError("Cannot get estimated result size; "
                              "Attribute must be nullable"));
 
-  if (array_->is_remote() && !this->est_result_size_computed()) {
-    return LOG_STATUS(Status_SubarrayError(
-        "Error in query estimate result size; unimplemented "
-        "for nullable attributes in remote arrays."));
-  }
-
   // Compute tile overlap for each fragment
   RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
   *size = static_cast<uint64_t>(std::ceil(est_result_size_[name].size_fixed_));
@@ -1375,12 +1370,6 @@ Status Subarray::get_est_result_size_nullable(
     return logger_->status(
         Status_SubarrayError("Cannot get estimated result size; "
                              "Attribute must be nullable"));
-
-  if (array_->is_remote() && !this->est_result_size_computed()) {
-    return LOG_STATUS(Status_SubarrayError(
-        "Error in query estimate result size; unimplemented "
-        "for nullable attributes in remote arrays."));
-  }
 
   // Compute tile overlap for each fragment
   RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
@@ -1673,8 +1662,9 @@ uint64_t Subarray::range_idx(const std::vector<uint64_t>& range_coords) const {
 }
 
 uint64_t Subarray::range_num() const {
-  if (range_subset_.empty())
+  if (range_subset_.empty()) {
     return 0;
+  }
 
   uint64_t ret = 1;
   for (const auto& subset : range_subset_) {

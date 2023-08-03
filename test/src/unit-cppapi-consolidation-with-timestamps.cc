@@ -987,9 +987,11 @@ TEST_CASE_METHOD(
     std::vector<int> c_a = {0, 1, 8, 2, 9, 10, 11};
     std::vector<uint64_t> c_dim1 = {1, 1, 2, 1, 2, 3, 3};
     std::vector<uint64_t> c_dim2 = {1, 2, 2, 4, 3, 2, 3};
-    CHECK(!memcmp(c_a.data(), a.data(), sizeof(c_a)));
-    CHECK(!memcmp(c_dim1.data(), dim1.data(), sizeof(c_dim1)));
-    CHECK(!memcmp(c_dim2.data(), dim2.data(), sizeof(c_dim2)));
+    CHECK(!memcmp(c_a.data(), a.data(), c_a.size() * sizeof(int)));
+    CHECK(
+        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+    CHECK(
+        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
     if (timestamps_ptr != nullptr) {
       std::vector<uint64_t> exp_ts = {1, 1, 3, 1, 3, 3, 3};
       CHECK(!memcmp(

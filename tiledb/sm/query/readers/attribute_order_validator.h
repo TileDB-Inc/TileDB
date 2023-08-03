@@ -234,7 +234,7 @@ class AttributeOrderValidator {
     // If the search/validation failed, then there is a discontinuity in this
     // array.
     throw AttributeOrderValidatorStatusException(
-        "Discontiuity found in array domain");
+        "Discontinuity found in array domain");
   }
 
   /**

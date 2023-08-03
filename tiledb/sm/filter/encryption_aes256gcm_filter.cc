@@ -44,20 +44,20 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-EncryptionAES256GCMFilter::EncryptionAES256GCMFilter()
-    : Filter(FilterType::INTERNAL_FILTER_AES_256_GCM) {
+EncryptionAES256GCMFilter::EncryptionAES256GCMFilter(Datatype filter_data_type)
+    : Filter(FilterType::INTERNAL_FILTER_AES_256_GCM, filter_data_type) {
   set_key(nullptr);
 }
 
 EncryptionAES256GCMFilter::EncryptionAES256GCMFilter(
-    const EncryptionKey& encryption_key)
-    : Filter(FilterType::INTERNAL_FILTER_AES_256_GCM) {
+    const EncryptionKey& encryption_key, Datatype filter_data_type)
+    : Filter(FilterType::INTERNAL_FILTER_AES_256_GCM, filter_data_type) {
   auto buff = encryption_key.key();
   set_key(buff.data());
 }
 
 EncryptionAES256GCMFilter* EncryptionAES256GCMFilter::clone_impl() const {
-  auto clone = new EncryptionAES256GCMFilter;
+  auto clone = tdb_new(EncryptionAES256GCMFilter, filter_data_type_);
   // Copy key bytes buffer.
   clone->key_bytes_ = key_bytes_;
   return clone;

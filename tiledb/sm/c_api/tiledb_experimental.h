@@ -41,6 +41,7 @@
 /*
  * API sections
  */
+#include "tiledb/api/c_api/attribute/attribute_api_external_experimental.h"
 #include "tiledb/api/c_api/enumeration/enumeration_api_experimental.h"
 #include "tiledb/api/c_api/group/group_api_external_experimental.h"
 #include "tiledb/api/c_api/query_plan/query_plan_api_external_experimental.h"
@@ -337,50 +338,6 @@ TILEDB_EXPORT int32_t tiledb_array_schema_load_with_enumerations(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
-
-/* ********************************* */
-/*      ATTRIBUTE ENUMERATIONS       */
-/* ********************************* */
-
-/**
- * Set the enumeration name on an attribute.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_attribute_set_enumeration_name(ctx, attr, "enumeration_name");
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param attr The target attribute.
- * @param enumeration_name The name of the enumeration to use for the attribute.
- * @return `TILEDB_OK` for success, and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT capi_return_t tiledb_attribute_set_enumeration_name(
-    tiledb_ctx_t* ctx,
-    tiledb_attribute_t* attr,
-    const char* enumeration_name) TILEDB_NOEXCEPT;
-
-/**
- * Get the attribute's enumeration name if it has one.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_string_t* name;
- * tiledb_attribute_get_enumeration_name(ctx, attr, &name);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param attr The target attribute.
- * @param name The name of the attribute, nullptr if the attribute does not
- *        have an associated enumeration.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT capi_return_t tiledb_attribute_get_enumeration_name(
-    tiledb_ctx_t* ctx,
-    tiledb_attribute_t* attr,
-    tiledb_string_t** name) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*               ARRAY               */

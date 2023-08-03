@@ -43,9 +43,13 @@
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/platform/cert_file.h"
 #include "tiledb/sm/filesystem/azure.h"
+#include "tiledb/sm/filesystem/ssl_config.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
+
+static std::shared_ptr<::Azure::Core::Http::HttpTransport> create_transport(
+    tiledb::sm::SSLConfig& ssl_cfg);
 
 using namespace tiledb::common;
 using tiledb::common::filesystem::directory_entry;
@@ -172,6 +176,9 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   options.Retry.MaxRetries = max_retries;
   options.Retry.RetryDelay = retry_delay_;
   options.Retry.MaxRetryDelay = max_retry_delay;
+
+  SSLConfig ssl_cfg = SSLConfig(config);
+  options.Transport.Transport = create_transport(ssl_cfg);
 
   // Construct the Azure SDK blob service client.
   // We pass a shared key if it was specified.
@@ -1107,5 +1114,51 @@ std::string Azure::BlockListUploadState::next_block_id() {
 
 }  // namespace sm
 }  // namespace tiledb
+
+#if defined(_WIN32)
+#include <azure/core/http/win_http_transport.hpp>
+std::shared_ptr<::Azure::Core::Http::HttpTransport> create_transport(
+    tiledb::sm::SSLConfig& ssl_cfg) {
+  ::Azure::Core::Http::WinHttpTransportOptions transport_opts;
+
+  if (!ssl_cfg.ca_file().empty()) {
+    LOG_WARN("Azure ignores the `ssl.ca_file` configuration key on Windows.");
+  }
+
+  if (!ssl_cfg.ca_path().empty()) {
+    LOG_WARN("Azure ignores the `ssl.ca_path` configuration key on Windows.");
+  }
+
+  if (ssl_cfg.verify() == false) {
+    transport_opts.IgnoreUnknownCertificateAuthority = true;
+  }
+
+  return make_shared<::Azure::Core::Http::WinHttpTransport>(
+      HERE(), transport_opts);
+}
+#else
+#include <azure/core/http/curl_transport.hpp>
+std::shared_ptr<::Azure::Core::Http::HttpTransport> create_transport(
+    tiledb::sm::SSLConfig& ssl_cfg) {
+  ::Azure::Core::Http::CurlTransportOptions transport_opts;
+
+  if (!ssl_cfg.ca_file().empty()) {
+    transport_opts.CAInfo = ssl_cfg.ca_file();
+  }
+
+  if (!ssl_cfg.ca_path().empty()) {
+    LOG_WARN(
+        "Azure ignores the `ssl.ca_path` configuration key, "
+        "use `ssl.ca_file` instead");
+  }
+
+  if (ssl_cfg.verify() == false) {
+    transport_opts.SslVerifyPeer = false;
+  }
+
+  return make_shared<::Azure::Core::Http::CurlTransport>(
+      HERE(), transport_opts);
+}
+#endif
 
 #endif

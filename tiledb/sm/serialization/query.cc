@@ -64,6 +64,7 @@
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_remote_buffer_storage.h"
 #include "tiledb/sm/query/readers/dense_reader.h"
+#include "tiledb/sm/query/readers/ordered_dim_label_reader.h"
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
 #include "tiledb/sm/query/readers/sparse_unordered_with_dups_reader.h"
 #include "tiledb/sm/query/writers/global_order_writer.h"
@@ -1266,20 +1267,11 @@ Status writer_to_capnp(
 
   const auto& array_schema = query.array_schema();
 
-  if (array_schema.dense()) {
-    std::vector<uint8_t> subarray_flat;
-    RETURN_NOT_OK(query.subarray()->to_byte_vec(&subarray_flat));
-    auto subarray_builder = writer_builder->initSubarray();
-    RETURN_NOT_OK(utils::serialize_subarray(
-        subarray_builder, array_schema, &subarray_flat[0]));
-  }
-
   // Subarray
-  const auto subarray_ranges = query.subarray();
-  if (!subarray_ranges->empty()) {
+  const auto subarray = query.subarray();
+  if (!subarray->empty() || subarray->has_label_ranges()) {
     auto subarray_builder = writer_builder->initSubarrayRanges();
-    RETURN_NOT_OK(
-        subarray_to_capnp(array_schema, subarray_ranges, &subarray_builder));
+    RETURN_NOT_OK(subarray_to_capnp(array_schema, subarray, &subarray_builder));
   }
 
   // If stats object exists set its cap'n proto object
@@ -1364,12 +1356,6 @@ Status query_to_capnp(
   auto type = query.type();
   auto array = query.array();
 
-  if (query.uses_dimension_labels()) {
-    return LOG_STATUS(Status_SerializationError(
-        "Cannot serialize; serialization is not yet supported for queries "
-        "using dimension labels."));
-  }
-
   if (array == nullptr) {
     return LOG_STATUS(
         Status_SerializationError("Cannot serialize; array is null."));
@@ -1389,26 +1375,33 @@ Status query_to_capnp(
   }
 
   // Serialize attribute buffer metadata
-  const auto buffer_names =
+  std::vector<std::string> buffer_names =
       client_side ? query.unwritten_buffer_names() : query.buffer_names();
-  auto attr_buffers_builder =
-      query_builder->initAttributeBufferHeaders(buffer_names.size());
+  const auto dim_label_names = query.dimension_label_buffer_names();
+  buffer_names.insert(
+      buffer_names.end(), dim_label_names.begin(), dim_label_names.end());
+
   uint64_t total_fixed_len_bytes = 0;
   uint64_t total_var_len_bytes = 0;
   uint64_t total_validity_len_bytes = 0;
   auto& query_buffer_storage = query.get_remote_buffer_cache();
 
+  // Builder for query attribute / dimension buffers.
+  // This builder also serializes dimension label buffers for the query.
+  auto attr_buffers_builder =
+      query_builder->initAttributeBufferHeaders(buffer_names.size());
   for (uint64_t i = 0; i < buffer_names.size(); i++) {
-    auto attr_buffer_builder = attr_buffers_builder[i];
     const auto& name = buffer_names[i];
     const auto& buff = query.buffer(name);
+    auto buffer_builder = attr_buffers_builder[i];
 
     // Adjust buffer sizes if cache exists for remote global order writes.
     uint64_t cached_fixed_size = 0;
     uint64_t cached_var_size = 0;
     uint64_t cached_validity_size = 0;
     // The cache will only exist if the query is a remote global order write.
-    if (query_buffer_storage.has_value()) {
+    // Dimension labels do not support global order writes.
+    if (!schema.is_dim_label(name) && query_buffer_storage.has_value()) {
       // Remote global order writes must be tile-aligned.
       // The cache sizes here reflect the bytes prepended to this query.
       // If all writes were tile-aligned these will be zero.
@@ -1424,34 +1417,34 @@ Status query_to_capnp(
       cached_validity_size = buff_cache.buffer_validity_.size();
     }
 
-    attr_buffer_builder.setName(name);
+    buffer_builder.setName(name);
     if (buff.buffer_var_ != nullptr && buff.buffer_var_size_ != nullptr) {
       // Variable-sized buffer
       // Include cached bytes for remote global order writes prepend data.
       uint64_t var_buff_size = *buff.buffer_var_size_ + cached_var_size;
       total_var_len_bytes += var_buff_size;
-      attr_buffer_builder.setVarLenBufferSizeInBytes(var_buff_size);
+      buffer_builder.setVarLenBufferSizeInBytes(var_buff_size);
 
       uint64_t offset_buff_size = *buff.buffer_size_ + cached_fixed_size;
       total_fixed_len_bytes += offset_buff_size;
-      attr_buffer_builder.setFixedLenBufferSizeInBytes(offset_buff_size);
+      buffer_builder.setFixedLenBufferSizeInBytes(offset_buff_size);
 
       // Set original user requested sizes
-      attr_buffer_builder.setOriginalVarLenBufferSizeInBytes(
+      buffer_builder.setOriginalVarLenBufferSizeInBytes(
           buff.original_buffer_var_size_);
-      attr_buffer_builder.setOriginalFixedLenBufferSizeInBytes(
+      buffer_builder.setOriginalFixedLenBufferSizeInBytes(
           buff.original_buffer_size_);
     } else if (buff.buffer_ != nullptr && buff.buffer_size_ != nullptr) {
       // Fixed-length buffer
       // Include cached bytes for remote global order writes prepend data.
       uint64_t buff_size = *buff.buffer_size_ + cached_fixed_size;
       total_fixed_len_bytes += buff_size;
-      attr_buffer_builder.setFixedLenBufferSizeInBytes(buff_size);
+      buffer_builder.setFixedLenBufferSizeInBytes(buff_size);
 
-      attr_buffer_builder.setVarLenBufferSizeInBytes(0);
+      buffer_builder.setVarLenBufferSizeInBytes(0);
       // Set original user requested sizes
-      attr_buffer_builder.setOriginalVarLenBufferSizeInBytes(0);
-      attr_buffer_builder.setOriginalFixedLenBufferSizeInBytes(
+      buffer_builder.setOriginalVarLenBufferSizeInBytes(0);
+      buffer_builder.setOriginalFixedLenBufferSizeInBytes(
           buff.original_buffer_size_);
     } else {
       throw StatusException(Status_SerializationError(
@@ -1463,10 +1456,10 @@ Status query_to_capnp(
       uint64_t buff_size =
           *buff.validity_vector_.buffer_size() + cached_validity_size;
       total_validity_len_bytes += buff_size;
-      attr_buffer_builder.setValidityLenBufferSizeInBytes(buff_size);
+      buffer_builder.setValidityLenBufferSizeInBytes(buff_size);
 
       // Set original user requested sizes
-      attr_buffer_builder.setOriginalValidityLenBufferSizeInBytes(
+      buffer_builder.setOriginalValidityLenBufferSizeInBytes(
           buff.original_validity_vector_size_);
     }
   }
@@ -1493,6 +1486,10 @@ Status query_to_capnp(
       auto builder = query_builder->initReaderIndex();
       auto reader = dynamic_cast<SparseIndexReaderBase*>(query.strategy(true));
       RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
+    } else if (query.dimension_label_ordered_read()) {
+      auto builder = query_builder->initOrderedDimLabelReader();
+      auto reader = dynamic_cast<OrderedDimLabelReader*>(query.strategy(true));
+      ordered_dim_label_reader_to_capnp(query, *reader, &builder);
     } else if (query.use_refactored_dense_reader(schema, all_dense)) {
       auto builder = query_builder->initDenseReader();
       auto reader = dynamic_cast<DenseReader*>(query.strategy(true));
@@ -1663,7 +1660,8 @@ Status query_from_capnp(
       // We use the query_buffer directly in order to get the original buffer
       // sizes. This avoid a problem where an incomplete query will change the
       // users buffer size to the smaller results and we end up not being able
-      // to correctly calculate if the new results can fit into the users buffer
+      // to correctly calculate if the new results can fit into the users
+      // buffer
       if (var_size) {
         if (!nullable) {
           existing_offset_buffer = static_cast<uint64_t*>(query_buffer.buffer_);
@@ -1758,8 +1756,9 @@ Status query_from_capnp(
       // For reads, copy the response data into user buffers. For writes,
       // nothing to do.
       if (type == QueryType::READ) {
-        // For read queries on the client side, we require buffers have been set
-        // by the user, and that they are large enough for all serialized data.
+        // For read queries on the client side, we require buffers have been
+        // set by the user, and that they are large enough for all serialized
+        // data.
         const uint64_t curr_data_size =
             attr_copy_state == nullptr ? 0 : attr_copy_state->data_size;
         const uint64_t data_size_left = existing_buffer_size - curr_data_size;
@@ -1800,9 +1799,10 @@ Status query_from_capnp(
           uint64_t fixedlen_size_to_copy = fixedlen_size;
 
           // If the last query included an extra offset we will skip the first
-          // offset in this query The first offset is the 0 position which ends
-          // up the same as the extra offset in the last query 0th is converted
-          // below to curr_data_size which is also the n+1 offset in arrow mode
+          // offset in this query The first offset is the 0 position which
+          // ends up the same as the extra offset in the last query 0th is
+          // converted below to curr_data_size which is also the n+1 offset in
+          // arrow mode
           if (attr_copy_state != nullptr &&
               attr_copy_state->last_query_added_extra_offset) {
             attribute_buffer_start += sizeof(uint64_t);
@@ -1858,10 +1858,10 @@ Status query_from_capnp(
             // result size).
             // Subsequent incomplete submits will use the original buffer
             // sizes members from the query in the beginning of the loop
-            // to calculate if user buffers have enough space to hold the data,
-            // here we only care that after data received from the wire is
-            // copied within the user buffers, the buffer sizes are accurate so
-            // user can introspect.
+            // to calculate if user buffers have enough space to hold the
+            // data, here we only care that after data received from the wire
+            // is copied within the user buffers, the buffer sizes are
+            // accurate so user can introspect.
             *query_buffer.buffer_size_ =
                 curr_offset_size + fixedlen_size_to_copy;
             *query_buffer.buffer_var_size_ = curr_data_size + varlen_size;
@@ -1903,10 +1903,10 @@ Status query_from_capnp(
             // result size).
             // Subsequent incomplete submits will use the original buffer
             // sizes members from the query in the beginning of the loop
-            // to calculate if user buffers have enough space to hold the data,
-            // here we only care that after data received from the wire is
-            // copied within the user buffers, the buffer sizes are accurate so
-            // user can introspect.
+            // to calculate if user buffers have enough space to hold the
+            // data, here we only care that after data received from the wire
+            // is copied within the user buffers, the buffer sizes are
+            // accurate so user can introspect.
             *query_buffer.buffer_size_ = curr_data_size + fixedlen_size;
             if (nullable) {
               *query_buffer.validity_vector_.buffer_size() =
@@ -1933,17 +1933,18 @@ Status query_from_capnp(
       RETURN_NOT_OK(query->get_attr_serialization_state(name, &attr_state));
       if (type == QueryType::READ) {
         // On reads, just set null pointers with accurate size so that the
-        // server can introspect and allocate properly sized buffers separately.
+        // server can introspect and allocate properly sized buffers
+        // separately.
         Buffer offsets_buff(nullptr, fixedlen_size);
         Buffer varlen_buff(nullptr, varlen_size);
         Buffer validitylen_buff(nullptr, validitylen_size);
         // For the server on reads we want to set the original user requested
-        // buffer sizes This handles the case of incomplete queries where on the
-        // second `submit()` call the client's buffer size will be the first
-        // submit's result size not the original user set buffer size. To work
-        // around this we revert the server to always use the full original user
-        // requested buffer sizes.
-        // We check for > 0 for fallback for clients older than 2.2.5
+        // buffer sizes This handles the case of incomplete queries where on
+        // the second `submit()` call the client's buffer size will be the
+        // first submit's result size not the original user set buffer size.
+        // To work around this we revert the server to always use the full
+        // original user requested buffer sizes. We check for > 0 for fallback
+        // for clients older than 2.2.5
         if (buffer_header.getOriginalFixedLenBufferSizeInBytes() > 0) {
           attr_state->fixed_len_size =
               buffer_header.getOriginalFixedLenBufferSizeInBytes();
@@ -1988,7 +1989,8 @@ Status query_from_capnp(
           }
         }
       } else if (query_type == QueryType::WRITE) {
-        // On writes, just set buffer pointers wrapping the data in the message.
+        // On writes, just set buffer pointers wrapping the data in the
+        // message.
         if (var_size) {
           auto* offsets = reinterpret_cast<uint64_t*>(attribute_buffer_start);
           auto* varlen_data = attribute_buffer_start + fixedlen_size;
@@ -2077,6 +2079,13 @@ Status query_from_capnp(
           reader_reader,
           query,
           dynamic_cast<SparseIndexReaderBase*>(query->strategy())));
+    } else if (query_reader.hasOrderedDimLabelReader()) {
+      auto reader_reader = query_reader.getOrderedDimLabelReader();
+      ordered_dim_label_reader_from_capnp(
+          reader_reader,
+          query,
+          dynamic_cast<OrderedDimLabelReader*>(query->strategy()),
+          compute_tp);
     } else if (query_reader.hasDenseReader()) {
       auto reader_reader = query_reader.getDenseReader();
       RETURN_NOT_OK(dense_reader_from_capnp(
@@ -3001,6 +3010,65 @@ Status unordered_write_state_from_capnp(
   }
 
   return Status::Ok();
+}
+
+void ordered_dim_label_reader_to_capnp(
+    const Query& query,
+    const OrderedDimLabelReader& reader,
+    capnp::QueryReader::Builder* reader_builder) {
+  const auto& array_schema = query.array_schema();
+
+  // Subarray layout
+  const auto& layout = layout_str(query.layout());
+  reader_builder->setLayout(layout);
+
+  // Subarray
+  auto subarray_builder = reader_builder->initSubarray();
+  throw_if_not_ok(
+      subarray_to_capnp(array_schema, query.subarray(), &subarray_builder));
+
+  reader_builder->setDimLabelIncreasing(
+      query.dimension_label_increasing_order());
+
+  // If stats object exists set its cap'n proto object
+  stats::Stats* stats = reader.stats();
+  if (stats != nullptr) {
+    auto stats_builder = reader_builder->initStats();
+    throw_if_not_ok(stats_to_capnp(*stats, &stats_builder));
+  }
+}
+
+void ordered_dim_label_reader_from_capnp(
+    const capnp::QueryReader::Reader& reader_reader,
+    Query* query,
+    OrderedDimLabelReader* reader,
+    ThreadPool* compute_tp) {
+  auto array = query->array();
+
+  // Layout
+  Layout layout = Layout::ROW_MAJOR;
+  throw_if_not_ok(layout_enum(reader_reader.getLayout(), &layout));
+
+  // Subarray
+  Subarray subarray(array, layout, query->stats(), dummy_logger, false);
+  auto subarray_reader = reader_reader.getSubarray();
+  throw_if_not_ok(subarray_from_capnp(subarray_reader, &subarray));
+  throw_if_not_ok(query->set_subarray_unsafe(subarray));
+
+  // OrderedDimLabelReader requires an initialized subarray for construction.
+  query->set_dimension_label_ordered_read(
+      reader_reader.getDimLabelIncreasing());
+  throw_if_not_ok(query->reset_strategy_with_layout(layout, false));
+  reader = dynamic_cast<OrderedDimLabelReader*>(query->strategy(true));
+
+  // If cap'n proto object has stats set it on c++ object
+  if (reader_reader.hasStats()) {
+    stats::Stats* stats = reader->stats();
+    // We should always have a stats here
+    if (stats != nullptr) {
+      throw_if_not_ok(stats_from_capnp(reader_reader.getStats(), stats));
+    }
+  }
 }
 
 #else

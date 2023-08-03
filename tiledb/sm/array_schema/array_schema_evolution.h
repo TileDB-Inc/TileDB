@@ -101,7 +101,7 @@ class ArraySchemaEvolution {
    *
    * @param attr The attribute to be added
    */
-  void add_attribute(const Attribute* attr);
+  void add_attribute(shared_ptr<const Attribute> attr);
 
   /** Returns the names of attributes to add. */
   std::vector<std::string> attribute_names_to_add() const;

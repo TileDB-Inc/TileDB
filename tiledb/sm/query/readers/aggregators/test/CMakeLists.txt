@@ -27,6 +27,6 @@
 include(unit_test)
 
 commence(unit_test aggregators)
-    this_target_sources(main.cc unit_count.cc unit_sum.cc)
+    this_target_sources(main.cc unit_count.cc unit_min_max.cc unit_sum.cc)
     this_target_object_libraries(aggregators)
 conclude(unit_test)

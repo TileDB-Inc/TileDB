@@ -35,6 +35,7 @@
 #include "tiledb/sm/serialization/capnp_utils.h"
 #endif
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"

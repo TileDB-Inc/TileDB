@@ -145,13 +145,12 @@ shared_ptr<ArraySchema> ArraySchemaEvolution::evolve_schema(
   return schema;
 }
 
-void ArraySchemaEvolution::add_attribute(const Attribute* attr) {
+void ArraySchemaEvolution::add_attribute(shared_ptr<const Attribute> attr) {
   std::lock_guard<std::mutex> lock(mtx_);
-  // Sanity check
-  if (attr == nullptr)
+  if (!attr) {
     throw ArraySchemaEvolutionException(
         "Cannot add attribute; Input attribute is null");
-
+  }
   if (attributes_to_add_map_.find(attr->name()) !=
       attributes_to_add_map_.end()) {
     throw ArraySchemaEvolutionException(
@@ -159,8 +158,15 @@ void ArraySchemaEvolution::add_attribute(const Attribute* attr) {
   }
 
   // Create new attribute and potentially set a default name
+  /*
+   * At present, the container for attributes within the schema evolution object
+   * is based on `unique_ptr`. The argument is `shared_ptr`, since that's how C
+   * API handles and `class Array` store them. It might be better to change the
+   * container type, but until then, we copy the attribute into a new
+   * allocation.
+   */
   attributes_to_add_map_[attr->name()] =
-      tdb_unique_ptr<Attribute>(tdb_new(Attribute, attr));
+      tdb_unique_ptr<Attribute>(tdb_new(Attribute, *attr));
   if (attributes_to_drop_.find(attr->name()) != attributes_to_drop_.end()) {
     attributes_to_drop_.erase(attr->name());
   }

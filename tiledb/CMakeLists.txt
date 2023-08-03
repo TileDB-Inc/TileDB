@@ -192,6 +192,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3_thread_pool_executor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3/STSProfileWithWebIdentityCredentialsProvider.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/ssl_config.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/uri.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs_file_handle.cc
@@ -237,7 +238,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/utils.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/uuid.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/win_constants.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/work_arounds.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/ast/query_ast.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/deletes_and_updates/deletes_and_updates.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/deletes_and_updates/serialization.cc
@@ -253,6 +253,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query_remote_buffer_storage.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/aggregate_buffer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/count_aggregator.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/min_max_aggregator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/sum_aggregator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/dense_reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/ordered_dim_label_reader.cc
@@ -280,6 +281,8 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragment_metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/group.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/consolidation.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/vacuum.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/global_stats.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/stats.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context.cc
@@ -328,6 +331,8 @@ if (TILEDB_SERIALIZATION)
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragment_metadata.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/group.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/consolidation.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/vacuum.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++
       PROPERTIES
         COMPILE_FLAGS "-Wno-unused-parameter"
@@ -345,6 +350,8 @@ if (TILEDB_SERIALIZATION)
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragment_metadata.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/group.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/consolidation.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/vacuum.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++
       PROPERTIES
         #   C4267: 'argument': conversion from 'size_t' to '<various-lesser-types>', possible loss of data
@@ -545,39 +552,46 @@ if (TILEDB_AZURE)
 
   if (TILEDB_VCPKG)
     find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
-    if (NOT TARGET LibLZMA::LibLZMA)
-      find_package(LibLZMA REQUIRED)
-    endif()
-    if (NOT TARGET LibXml2::LibXml2)
-      find_package(LibXml2 REQUIRED)
-      install_target_libs(LibXml2::LibXml2)
+    if (NOT WIN32)
+      if (NOT TARGET LibLZMA::LibLZMA)
+        find_package(LibLZMA REQUIRED)
+      endif()
+      if (NOT TARGET LibXml2::LibXml2)
+        find_package(LibXml2 REQUIRED)
+        install_target_libs(LibXml2::LibXml2)
+      endif()
+      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+              INTERFACE
+              LibXml2::LibXml2
+              LibLZMA::LibLZMA)
     endif()
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
             INTERFACE
             Azure::azure-storage-common
             Azure::azure-storage-blobs
             Azure::azure-core
-            LibXml2::LibXml2
-            LibLZMA::LibLZMA
             )
     install_all_target_libs("Azure::azure-storage-blobs;Azure::azure-storage-common;Azure::azure-core")
   else()
     find_package(AzureCore_EP REQUIRED)
     find_package(AzureStorageCommon_EP REQUIRED)
     find_package(AzureStorageBlobs_EP REQUIRED)
-    if (NOT TARGET LibXml2::LibXml2)
-      find_package(libxml2 REQUIRED)
-      install_target_libs(LibXml2::LibXml2)
+    if (NOT WIN32)
+      if (NOT TARGET LibXml2::LibXml2)
+        find_package(libxml2 REQUIRED)
+        install_target_libs(LibXml2::LibXml2)
+      endif()
     endif()
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
             INTERFACE
             Azure::azure-storage-blobs
             Azure::azure-storage-common
-            Azure::azure-core
-            LibXml2::LibXml2)
+            Azure::azure-core)
     if(WIN32)
-      # WebServices needed by Azure storage on windows
-      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE WebServices)
+      # WebServices and crypt32 needed by Azure storage on windows
+      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE WebServices crypt32)
+    else()
+      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE LibXml2::LibXml2)
     endif()
   endif()
 endif()
@@ -986,10 +1000,8 @@ if (TILEDB_STATIC)
   append_dep_lib(fmt::fmt)
   append_dep_lib(spdlog::spdlog)
 
+  append_dep_lib(Azure::azure-storage-blobs)
   append_dep_lib(Azure::azure-storage-common)
-  if(TILEDB_AZURE AND NOT TILEDB_VCPKG)
-    append_dep_lib(Azure::azure-storage-blobs)
-  endif()
   append_dep_lib(Azure::azure-core)
   append_dep_lib(LibXml2::LibXml2)
   append_dep_lib(LibLZMA::LibLZMA)

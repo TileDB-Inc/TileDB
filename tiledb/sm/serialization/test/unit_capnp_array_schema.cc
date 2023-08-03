@@ -30,6 +30,8 @@
  * This file contains unit tests for the array schema
  */
 
+#include <capnp/message.h>
+
 #include <test/support/tdb_catch.h>
 
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -42,8 +44,6 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/serialization/array_schema.h"
-
-#include <capnp/message.h>
 
 using namespace tiledb::common;
 using namespace tiledb::sm;
@@ -113,8 +113,7 @@ TEST_CASE(
     st = schema->add_attribute(
         make_shared<Attribute>(HERE(), "label", Datatype::FLOAT64));
     REQUIRE(st.ok());
-    st = schema->check();
-    REQUIRE(st.ok());
+    schema->check();
 
     // Create dimension label.
     dim_label = make_shared<DimensionLabel>(
