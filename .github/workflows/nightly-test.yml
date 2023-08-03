@@ -31,6 +31,9 @@ jobs:
             cxxflags: "/std:c++20"
           - os: windows-2019
             cxxflags: "/std:c++20"
+          - os: windows-latest
+            config: "Debug"
+            cxxflags: "/std:c++20"
       fail-fast: false
 
     permissions:
@@ -52,22 +55,22 @@ jobs:
           CXXFLAGS: ${{ matrix.cxxflags }}
           SANITIZER_ARG: ${{ matrix.asan == 'true' && 'address' || 'OFF' }}
         run: |
-          cmake -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=Release -DSANITIZER=$SANITIZER_ARG
+          cmake -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=${{ matrix.config || 'Release' }} -DSANITIZER=$SANITIZER_ARG
 
       - name: Configure TileDB CMake
         if: contains(matrix.os, 'windows')
         env:
           CXXFLAGS: ${{ matrix.cxxflags }}
         run: |
-          cmake -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=Release
+          cmake -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=${{ matrix.config || 'Release' }}
 
       - name: Build TileDB
         run: |
-          cmake --build build -j2 --config Release
+          cmake --build build -j2 --config ${{ matrix.config || 'Release' }}
 
       - name: Test TileDB
         run: |
-          cmake --build build --target check --config Release
+          cmake --build build --target check --config ${{ matrix.config || 'Release' }}
 
   create_issue_on_fail:
     runs-on: ubuntu-latest
