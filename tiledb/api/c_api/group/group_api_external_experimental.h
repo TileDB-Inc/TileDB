@@ -239,7 +239,7 @@ TILEDB_EXPORT int32_t tiledb_group_delete(
  *
  * @note if recursive == false, data added to the group will be left as-is.
  */
-TILEDB_EXPORT int32_t tiledb_group_delete_group(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_group_delete_group(
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     const char* uri,

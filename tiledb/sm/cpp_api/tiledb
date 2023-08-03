@@ -44,6 +44,9 @@
 #ifndef TILEDB_DEPRECATED_EXPORT
 #define TILEDB_DEPRECATED_EXPORT
 #endif
+#define TILEDB_CPP_API_DEPRECATED(msg)
+#else
+#define TILEDB_CPP_API_DEPRECATED(msg) [[deprecated(msg)]]
 #endif
 
 #include "array.h"
