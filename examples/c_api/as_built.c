@@ -35,7 +35,7 @@
 #include <tiledb/tiledb.h>
 #include <tiledb/tiledb_experimental.h>
 
-int main () {
+int main() {
   tiledb_string_t* out;
   tiledb_as_built_dump(&out);
 
