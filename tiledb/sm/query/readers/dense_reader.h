@@ -190,6 +190,16 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   void init_read_state();
 
   /**
+   * Returns the field name to process.
+   *
+   * @param condition_names Set of query condition names.
+   * @return {names, var names}.
+   */
+  tuple<std::vector<std::string>, std::vector<std::string>>
+  field_names_to_process(
+      const std::unordered_set<std::string>& condition_names);
+
+  /**
    * Compute the result tiles to process on an iteration to respect the memory
    * budget.
    */
@@ -242,6 +252,21 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const DynamicArray<Subarray>& tile_subarrays,
       const std::vector<uint64_t>& tile_offsets,
       uint64_t& var_buffer_size,
+      const std::vector<RangeInfo<DimType>>& range_info,
+      std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
+      const std::vector<uint8_t>& qc_result,
+      const uint64_t num_range_threads);
+
+  /** Process aggregates for a given field. */
+  template <class DimType, class OffType>
+  Status process_aggregates(
+      const std::string& name,
+      const std::vector<DimType>& tile_extents,
+      const Subarray& subarray,
+      const uint64_t t_start,
+      const uint64_t t_end,
+      const DynamicArray<Subarray>& tile_subarrays,
+      const std::vector<uint64_t>& tile_offsets,
       const std::vector<RangeInfo<DimType>>& range_info,
       std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
       const std::vector<uint8_t>& qc_result,
@@ -302,6 +327,20 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const std::vector<RangeInfo<DimType>>& range_info,
       bool last_tile,
       uint64_t var_buffer_sizes,
+      const uint64_t range_thread_idx,
+      const uint64_t num_range_threads);
+
+  /** Aggregate tiles. */
+  template <class DimType>
+  Status aggregate_tiles(
+      const std::string& name,
+      const std::vector<DimType>& tile_extents,
+      ResultSpaceTile<DimType>& result_space_tile,
+      const Subarray& subarray,
+      const Subarray& tile_subarray,
+      const uint64_t global_cell_offset,
+      const std::vector<RangeInfo<DimType>>& range_info,
+      std::vector<uint8_t>& aggregate_bitmap,
       const uint64_t range_thread_idx,
       const uint64_t num_range_threads);
 

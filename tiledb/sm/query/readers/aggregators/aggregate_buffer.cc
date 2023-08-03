@@ -101,5 +101,35 @@ AggregateBuffer::AggregateBuffer(
           bitmap_data != nullptr ? std::make_optional(bitmap_data) : nullopt) {
 }
 
+AggregateBuffer::AggregateBuffer(
+    const bool var_sized,
+    const bool nullable,
+    const bool count_bitmap,
+    const uint64_t cell_size,
+    const uint64_t min_cell,
+    const uint64_t max_cell,
+    const uint64_t cell_num,
+    ResultTile::TileTuple& tile_tuple,
+    void* bitmap_data)
+    : includes_last_var_cell_(var_sized && max_cell == cell_num)
+    , min_cell_(0)
+    , max_cell_(max_cell - min_cell)
+    , fixed_data_(
+          tile_tuple.fixed_tile().data_as<char>() + min_cell * cell_size)
+    , var_data_(
+          var_sized ?
+              std::make_optional(tile_tuple.var_tile().data_as<char>()) :
+              nullopt)
+    , var_data_size_(includes_last_var_cell_ ? tile_tuple.var_tile().size() : 0)
+    , validity_data_(
+          nullable ?
+              std::make_optional(
+                  tile_tuple.validity_tile().data_as<uint8_t>() + min_cell) :
+              nullopt)
+    , count_bitmap_(count_bitmap)
+    , bitmap_data_(
+          bitmap_data != nullptr ? std::make_optional(bitmap_data) : nullopt) {
+}
+
 }  // namespace sm
 }  // namespace tiledb

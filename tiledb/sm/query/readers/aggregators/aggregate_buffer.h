@@ -35,13 +35,12 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/query/readers/result_tile.h"
 
 using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
-
-class ResultTile;
 
 class AggregateBuffer {
  public:
@@ -100,6 +99,31 @@ class AggregateBuffer {
       const uint64_t max_cell,
       const uint64_t cell_num,
       ResultTile& rt,
+      void* bitmap_data);
+
+  /**
+   * Constructor with bitmap for dense.
+   *
+   * @param name Name of the field for the buffer.
+   * @param var_sized Is the field var sized?
+   * @param nullable Is the field nullable?
+   * @param count_bitmap Is the bitmap a count bitmap?
+   * @param cell_size Fixed cell size.
+   * @param min_cell Min cell position to aggregate.
+   * @param max_cell Max cell position to aggregate.
+   * @param cell_num Cell num for the tile.
+   * @param tile_tuple Tile tuple containing the data.
+   * @param bitmap_data Bitmap data.
+   */
+  AggregateBuffer(
+      const bool var_sized,
+      const bool nullable,
+      const bool count_bitmap,
+      const uint64_t cell_size,
+      const uint64_t min_cell,
+      const uint64_t max_cell,
+      const uint64_t cell_num,
+      ResultTile::TileTuple& tile_tuple,
       void* bitmap_data);
 
   DISABLE_COPY_AND_COPY_ASSIGN(AggregateBuffer);
