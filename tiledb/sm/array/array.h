@@ -341,22 +341,35 @@ class Array {
   Status reopen(uint64_t timestamp_start, uint64_t timestamp_end);
 
   /** Returns the start timestamp. */
-  uint64_t timestamp_start() const;
+  inline uint64_t timestamp_start() const {
+    return timestamp_start_;
+  }
 
   /** Returns the end timestamp. */
-  uint64_t timestamp_end() const;
+  inline uint64_t timestamp_end() const {
+    return timestamp_end_;
+  }
 
   /** Returns the timestamp at which the array was opened. */
-  uint64_t timestamp_end_opened_at() const;
+  inline uint64_t timestamp_end_opened_at() const {
+    return timestamp_end_opened_at_;
+  }
 
   /** Directly set the timestamp start value. */
-  Status set_timestamp_start(uint64_t timestamp_start);
+  inline void set_timestamp_start(uint64_t timestamp_start) {
+    timestamp_start_ = timestamp_start;
+  }
 
   /** Directly set the timestamp end value. */
-  Status set_timestamp_end(uint64_t timestamp_end);
+  inline void set_timestamp_end(uint64_t timestamp_end) {
+    timestamp_end_ = timestamp_end;
+  }
 
   /** Directly set the timestamp end opened at value. */
-  Status set_timestamp_end_opened_at(const uint64_t timestamp_end_opened_at);
+  inline void set_timestamp_end_opened_at(
+      const uint64_t timestamp_end_opened_at) {
+    timestamp_end_opened_at_ = timestamp_end_opened_at;
+  }
 
   /** Directly set the array config.
    *
@@ -378,11 +391,15 @@ class Array {
   }
 
   /** Retrieves a reference to the array config. */
-  Config config() const;
+  inline Config config() const {
+    return config_;
+  }
 
   /** Directly set the array URI for serialized compatibility with pre
    * TileDB 2.5 clients */
-  Status set_uri_serialized(const std::string& uri);
+  void set_uri_serialized(const std::string& uri) {
+    array_uri_serialized_ = tiledb::sm::URI(uri);
+  }
 
   /** Sets the array URI. */
   void set_array_uri(const URI& array_uri) {
@@ -540,7 +557,9 @@ class Array {
   /**
    * Sets the array state as open, used in serialization
    */
-  void set_serialized_array_open();
+  inline void set_serialized_array_open() {
+    is_open_ = true;
+  }
 
   /** Set the query type to open the array for. */
   inline void set_query_type(QueryType query_type) {
