@@ -180,6 +180,11 @@ jobs:
 
           source $GITHUB_WORKSPACE/scripts/ci/posix/build-services-stop.sh
 
+          # Skip examples and benchmarks if ASAN is enabled
+          if [[ "${{ inputs.asan }}" == "true" ]]; then
+            exit 0
+          fi
+
           ###################################################
           # Build and run Examples
           make -C $GITHUB_WORKSPACE/build -j3 examples
