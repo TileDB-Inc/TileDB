@@ -62,7 +62,11 @@ void PositiveDeltaFilter::dump(FILE* out) const {
 }
 
 bool PositiveDeltaFilter::accepts_input_datatype(Datatype datatype) const {
-  return !datatype_is_real(datatype);
+  if (datatype_is_integer(datatype) || datatype_is_datetime(datatype) ||
+      datatype_is_time(datatype) || datatype == Datatype::BLOB) {
+    return true;
+  }
+  return false;
 }
 
 Status PositiveDeltaFilter::run_forward(
@@ -73,8 +77,7 @@ Status PositiveDeltaFilter::run_forward(
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
   // If encoding can't work, just return the input unmodified.
-  if (!datatype_is_integer(filter_data_type_) &&
-      filter_data_type_ != Datatype::BLOB) {
+  if (!accepts_input_datatype(filter_data_type_)) {
     RETURN_NOT_OK(output->append_view(input));
     RETURN_NOT_OK(output_metadata->append_view(input_metadata));
     return Status::Ok();
@@ -251,8 +254,7 @@ Status PositiveDeltaFilter::run_reverse(
     const Config& config) const {
   (void)config;
   // If encoding wasn't applied, just return the input unmodified.
-  if (!datatype_is_integer(filter_data_type_) &&
-      filter_data_type_ != Datatype::BLOB) {
+  if (!accepts_input_datatype(filter_data_type_)) {
     RETURN_NOT_OK(output->append_view(input));
     RETURN_NOT_OK(output_metadata->append_view(input_metadata));
     return Status::Ok();
