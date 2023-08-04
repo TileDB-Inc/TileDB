@@ -32,7 +32,6 @@
 
 #include <atomic>
 #include <future>
-#include <stop_token>
 
 #include "unit_stop_source.h"
 

@@ -79,6 +79,9 @@
 #include <type_traits>
 #include <vector>
 
+#include <tiledb/stdx/stop_token>
+#include <tiledb/stdx/thread>
+
 #include "experimental/tiledb/common/dag/execution/task.h"
 #include "experimental/tiledb/common/dag/execution/task_state_machine.h"
 #include "experimental/tiledb/common/dag/state_machine/fsm.h"

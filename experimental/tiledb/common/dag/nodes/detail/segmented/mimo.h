@@ -46,7 +46,6 @@
 #define TILEDB_DAG_NODES_DETAIL_SEGMENTED_MIMO_H
 
 #include <functional>
-#include <stop_token>
 #include <tuple>
 #include <type_traits>
 #include <utility>
