@@ -1,11 +1,11 @@
 /**
- * @file   tiledb_experimental
+ * @file   as_built_experimental.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,23 +27,33 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the experimental C++ API for TileDB.
+ * This file declares the experimental C++ API for the as_built namespace.
  */
 
-#ifndef TILEDB_EXPERIMENTAL_CPP_H
-#define TILEDB_EXPERIMENTAL_CPP_H
+#ifndef TILEDB_CPP_API_AS_BUILT_EXPERIMENTAL_H
+#define TILEDB_CPP_API_AS_BUILT_EXPERIMENTAL_H
 
-#include "array_experimental.h"
-#include "array_schema_evolution.h"
-#include "array_schema_experimental.h"
-#include "as_built_experimental.h"
-#include "attribute_experimental.h"
-#include "dimension_label_experimental.h"
-#include "enumeration_experimental.h"
-#include "consolidation_plan_experimental.h"
-#include "group_experimental.h"
-#include "query_condition_experimental.h"
-#include "query_experimental.h"
-#include "subarray_experimental.h"
+#include "tiledb_experimental.h"
 
-#endif  // TILEDB_EXPERIMENTAL_CPP_H
+namespace tiledb {
+class AsBuilt {
+ public:
+  /**
+   * Dump the TileDB build configuration to a string.
+   *
+   * @return the TileDB build configuration in JSON format.
+   */
+  static std::string dump() {
+    tiledb_string_t* out;
+    tiledb_as_built_dump(&out);
+    const char* out_ptr;
+    size_t out_length;
+    tiledb_string_view(out, &out_ptr, &out_length);
+    std::string out_str(out_ptr, out_length);
+    tiledb_string_free(&out);
+    return out_str;
+  }
+};
+}  // namespace tiledb
+
+#endif  // TILEDB_CPP_API_AS_BUILT_EXPERIMENTAL_H

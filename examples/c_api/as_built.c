@@ -1,11 +1,11 @@
 /**
- * @file   tiledb_experimental
+ * @file   as_built.c
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,23 +27,24 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the experimental C++ API for TileDB.
+ * This program shows how to dump the TileDB build configuration to a string.
  */
 
-#ifndef TILEDB_EXPERIMENTAL_CPP_H
-#define TILEDB_EXPERIMENTAL_CPP_H
+#include <stdio.h>
+#include <stdlib.h>
+#include <tiledb/tiledb.h>
+#include <tiledb/tiledb_experimental.h>
 
-#include "array_experimental.h"
-#include "array_schema_evolution.h"
-#include "array_schema_experimental.h"
-#include "as_built_experimental.h"
-#include "attribute_experimental.h"
-#include "dimension_label_experimental.h"
-#include "enumeration_experimental.h"
-#include "consolidation_plan_experimental.h"
-#include "group_experimental.h"
-#include "query_condition_experimental.h"
-#include "query_experimental.h"
-#include "subarray_experimental.h"
+int main() {
+  tiledb_string_t* out;
+  tiledb_as_built_dump(&out);
 
-#endif  // TILEDB_EXPERIMENTAL_CPP_H
+  const char* out_ptr;
+  size_t out_length;
+  tiledb_string_view(out, &out_ptr, &out_length);
+
+  printf("%s", out_ptr);
+
+  tiledb_string_free(&out);
+  return 0;
+}
