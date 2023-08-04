@@ -76,11 +76,9 @@ Status PositiveDeltaFilter::run_forward(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  // If encoding can't work, just return the input unmodified.
-  const bool backwards_compat =
-      tile.format_version() < 20 && (!datatype_is_integer(filter_data_type_) &&
-                                     filter_data_type_ != Datatype::BLOB);
-  if (!accepts_input_datatype(filter_data_type_) || backwards_compat) {
+  // For backwards compatibility, skip filtering non-integral types.
+  if (tile.format_version() < 20 && (!datatype_is_integer(filter_data_type_) &&
+                                     filter_data_type_ != Datatype::BLOB)) {
     RETURN_NOT_OK(output->append_view(input));
     RETURN_NOT_OK(output_metadata->append_view(input_metadata));
     return Status::Ok();
@@ -141,8 +139,10 @@ Status PositiveDeltaFilter::run_forward(
       return run_forward<int64_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
     default:
-      return LOG_STATUS(
-          Status_FilterError("Cannot filter; Unsupported input type"));
+      // If encoding can't work, just return the input unmodified.
+      RETURN_NOT_OK(output->append_view(input));
+      RETURN_NOT_OK(output_metadata->append_view(input_metadata));
+      return Status::Ok();
   }
 }
 
@@ -254,13 +254,10 @@ Status PositiveDeltaFilter::run_reverse(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output,
-    const Config& config) const {
-  (void)config;
-  // If encoding wasn't applied, just return the input unmodified.
-  const bool backwards_compat =
-      tile.format_version() < 20 && (!datatype_is_integer(filter_data_type_) &&
-                                     filter_data_type_ != Datatype::BLOB);
-  if (!accepts_input_datatype(filter_data_type_) || backwards_compat) {
+    const Config&) const {
+  // For backwards compatibility, skip filtering non-integral types.
+  if (tile.format_version() < 20 && (!datatype_is_integer(filter_data_type_) &&
+                                     filter_data_type_ != Datatype::BLOB)) {
     RETURN_NOT_OK(output->append_view(input));
     RETURN_NOT_OK(output_metadata->append_view(input_metadata));
     return Status::Ok();
@@ -321,8 +318,10 @@ Status PositiveDeltaFilter::run_reverse(
       return run_reverse<int64_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
     default:
-      return LOG_STATUS(
-          Status_FilterError("Cannot filter; Unsupported input type"));
+      // If encoding wasn't applied, just return the input unmodified.
+      RETURN_NOT_OK(output->append_view(input));
+      RETURN_NOT_OK(output_metadata->append_view(input_metadata));
+      return Status::Ok();
   }
 }
 
