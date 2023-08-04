@@ -1679,3 +1679,52 @@ TEST_CASE_METHOD(
   remove_temp_dir(temp_dir);
 }
 #endif
+
+TEST_CASE_METHOD(GroupFx, "C API: delete group", "[capi][group][delete]") {
+  // Create group
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+  const tiledb::sm::URI group_uri(temp_dir + "group1");
+  const tiledb::sm::URI nested_group_uri{group_uri.join_path("nested_group")};
+  REQUIRE(tiledb_group_create(ctx_, group_uri.c_str()) == TILEDB_OK);
+  tiledb_object_t object_type = TILEDB_INVALID;
+  REQUIRE(
+      tiledb_object_type(ctx_, group_uri.c_str(), &object_type) == TILEDB_OK);
+  CHECK(object_type == TILEDB_GROUP);
+  bool recursive = GENERATE(true, false);
+  if (recursive) {
+    // Create nested group
+    REQUIRE(tiledb_group_create(ctx_, nested_group_uri.c_str()) == TILEDB_OK);
+    tiledb_object_t object_type = TILEDB_INVALID;
+    // Check the group was created
+    REQUIRE(
+        tiledb_object_type(ctx_, nested_group_uri.c_str(), &object_type) ==
+        TILEDB_OK);
+    CHECK(object_type == TILEDB_GROUP);
+
+    // Add the nested group to the parent group
+    tiledb_group_t* g = nullptr;
+    REQUIRE(tiledb_group_alloc(ctx_, group_uri.c_str(), &g) == TILEDB_OK);
+    REQUIRE(tiledb_group_open(ctx_, g, TILEDB_WRITE) == TILEDB_OK);
+    REQUIRE(
+        tiledb_group_add_member(
+            ctx_, g, nested_group_uri.c_str(), false, "nested_group") ==
+        TILEDB_OK);
+    REQUIRE(tiledb_group_close(ctx_, g) == TILEDB_OK);
+    tiledb_group_free(&g);
+  }
+
+  // Delete group
+  REQUIRE(tiledb_group_delete(ctx_, group_uri.c_str(), recursive) == TILEDB_OK);
+  REQUIRE(
+      tiledb_object_type(ctx_, group_uri.c_str(), &object_type) == TILEDB_OK);
+  CHECK(object_type == TILEDB_INVALID);
+  if (recursive) {
+    // Check the nested group was deleted
+    REQUIRE(
+        tiledb_object_type(ctx_, nested_group_uri.c_str(), &object_type) ==
+        TILEDB_OK);
+    CHECK(object_type == TILEDB_INVALID);
+  }
+}
