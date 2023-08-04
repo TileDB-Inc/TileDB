@@ -76,14 +76,6 @@ Status PositiveDeltaFilter::run_forward(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  // For backwards compatibility, skip filtering non-integral types.
-  if (tile.format_version() < 20 && (!datatype_is_integer(filter_data_type_) &&
-                                     filter_data_type_ != Datatype::BLOB)) {
-    RETURN_NOT_OK(output->append_view(input));
-    RETURN_NOT_OK(output_metadata->append_view(input_metadata));
-    return Status::Ok();
-  }
-
   /* Note: Arithmetic operations cannot be performed on std::byte.
     We will use uint8_t for the Datatype::BLOB case as it is the same size as
     std::byte and can have arithmetic performed on it. */
@@ -136,6 +128,12 @@ Status PositiveDeltaFilter::run_forward(
     case Datatype::TIME_PS:
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
+      if (tile.format_version() < 20) {
+        // Return data as-is for backwards compatibility.
+        RETURN_NOT_OK(output->append_view(input));
+        RETURN_NOT_OK(output_metadata->append_view(input_metadata));
+        return Status::Ok();
+      }
       return run_forward<int64_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
     default:
@@ -255,14 +253,6 @@ Status PositiveDeltaFilter::run_reverse(
     FilterBuffer* output_metadata,
     FilterBuffer* output,
     const Config&) const {
-  // For backwards compatibility, skip filtering non-integral types.
-  if (tile.format_version() < 20 && (!datatype_is_integer(filter_data_type_) &&
-                                     filter_data_type_ != Datatype::BLOB)) {
-    RETURN_NOT_OK(output->append_view(input));
-    RETURN_NOT_OK(output_metadata->append_view(input_metadata));
-    return Status::Ok();
-  }
-
   /* Note: Arithmetic operations cannot be performed on std::byte.
     We will use uint8_t for the Datatype::BLOB case as it is the same size as
     std::byte and can have arithmetic perfomed on it. */
@@ -315,6 +305,12 @@ Status PositiveDeltaFilter::run_reverse(
     case Datatype::TIME_PS:
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
+      if (tile.format_version() < 20) {
+        // Return data as-is for backwards compatibility.
+        RETURN_NOT_OK(output->append_view(input));
+        RETURN_NOT_OK(output_metadata->append_view(input_metadata));
+        return Status::Ok();
+      }
       return run_reverse<int64_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
     default:

@@ -113,13 +113,6 @@ Status BitWidthReductionFilter::run_forward(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  // For backwards compatibility, skip filtering non-integral types.
-  if (tile.format_version() < 20 && !datatype_is_integer(filter_data_type_)) {
-    RETURN_NOT_OK(output->append_view(input));
-    RETURN_NOT_OK(output_metadata->append_view(input_metadata));
-    return Status::Ok();
-  }
-
   switch (filter_data_type_) {
     case Datatype::INT16:
       return run_forward<int16_t>(
@@ -161,6 +154,12 @@ Status BitWidthReductionFilter::run_forward(
     case Datatype::TIME_PS:
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
+      if (tile.format_version() < 20) {
+        // Return data as-is for backwards compatibility
+        RETURN_NOT_OK(output->append_view(input));
+        RETURN_NOT_OK(output_metadata->append_view(input_metadata));
+        return Status::Ok();
+      }
       return run_forward<int64_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
     case Datatype::INT8:
@@ -287,13 +286,6 @@ Status BitWidthReductionFilter::run_reverse(
     FilterBuffer* output_metadata,
     FilterBuffer* output,
     const Config&) const {
-  // For backwards compatibility, skip filtering non-integral types.
-  if (tile.format_version() < 20 && !datatype_is_integer(filter_data_type_)) {
-    RETURN_NOT_OK(output->append_view(input));
-    RETURN_NOT_OK(output_metadata->append_view(input_metadata));
-    return Status::Ok();
-  }
-
   switch (filter_data_type_) {
     case Datatype::INT16:
       return run_reverse<int16_t>(
@@ -335,6 +327,12 @@ Status BitWidthReductionFilter::run_reverse(
     case Datatype::TIME_PS:
     case Datatype::TIME_FS:
     case Datatype::TIME_AS:
+      if (tile.format_version() < 20) {
+        // Return data as-is for backwards compatibility.
+        RETURN_NOT_OK(output->append_view(input));
+        RETURN_NOT_OK(output_metadata->append_view(input_metadata));
+        return Status::Ok();
+      }
       return run_reverse<int64_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
     case Datatype::INT8:
