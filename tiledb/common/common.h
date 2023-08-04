@@ -56,6 +56,12 @@ using tiledb::common::allocator;
 using tiledb::common::make_shared;
 
 /*
+ * Heap memory
+ */
+#include "heap_memory.h"
+using tiledb::common::make_unique;
+
+/*
  * Exception
  *
  * The exception header also put `class Status` in scope.

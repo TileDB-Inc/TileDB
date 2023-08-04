@@ -136,6 +136,16 @@ struct TileDBUniquePtrDeleter {
 template <class T>
 using tiledb_unique_ptr = std::unique_ptr<T, TileDBUniquePtrDeleter<T>>;
 
+template <class T, class... Args>
+tiledb_unique_ptr<T> make_unique(const std::string& label, Args&&... args) {
+  return {tiledb_new<T>(label, std::forward<Args>(args)...), {}};
+}
+
+template <class T, int n, class... Args>
+tiledb_unique_ptr<T> make_unique(const char (&label)[n], Args&&... args) {
+  return {tiledb_new<T>(label, std::forward<Args>(args)...), {}};
+}
+
 }  // namespace common
 }  // namespace tiledb
 
