@@ -272,9 +272,8 @@ class Group {
    * @note if recursive == false, data added to the group will be left as-is.
    * @post This is destructive; the group may not be reopened after delete.
    */
-  TILEDB_CPP_API_DEPRECATED(
-      "Use the static Group::delete_group method instead.")
-  void delete_group(const std::string& uri, bool recursive = false) {
+  TILEDB_DEPRECATED void delete_group(
+      const std::string& uri, bool recursive = false) {
     auto& ctx = ctx_.get();
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
     ctx.handle_error(
