@@ -13,27 +13,13 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            cxxflags: "-std=c++17"
           - os: macos-latest
-            cxxflags: "-std=c++17"
           - os: macos-latest # ASAN build
-            cxxflags: "-std=c++17"
-            asan: "true"
+            asan: true
           - os: windows-latest
-            cxxflags: "/std:c++17"
           - os: windows-2019
-            cxxflags: "/std:c++17"
-          - os: ubuntu-latest
-            cxxflags: "-std=c++2a"
-          - os: macos-latest
-            cxxflags: "-std=c++2a"
-          - os: windows-latest
-            cxxflags: "/std:c++20"
-          - os: windows-2019
-            cxxflags: "/std:c++20"
           - os: windows-latest
             config: "Debug"
-            cxxflags: "/std:c++20"
       fail-fast: false
 
     permissions:
@@ -52,15 +38,12 @@ jobs:
       - name: Configure TileDB CMake
         if: ${{ ! contains(matrix.os, 'windows') }}
         env:
-          CXXFLAGS: ${{ matrix.cxxflags }}
-          SANITIZER_ARG: ${{ matrix.asan == 'true' && 'address' || 'OFF' }}
+          SANITIZER_ARG: ${{ matrix.asan && 'address' || 'OFF' }}
         run: |
           cmake -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=${{ matrix.config || 'Release' }} -DSANITIZER=$SANITIZER_ARG
 
       - name: Configure TileDB CMake
         if: contains(matrix.os, 'windows')
-        env:
-          CXXFLAGS: ${{ matrix.cxxflags }}
         run: |
           cmake -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=${{ matrix.config || 'Release' }}
 
