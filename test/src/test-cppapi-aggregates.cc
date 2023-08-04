@@ -45,7 +45,7 @@ using namespace tiledb::test;
 template <class T>
 struct CppAggregatesFx {
   // Constants.
-  const char* ARRAY_NAME = "test_aggregates_sparse_array";
+  const char* ARRAY_NAME = "test_aggregates_array";
   unsigned STRING_CELL_VAL_NUM = 2;
 
   // TileDB context.
@@ -538,7 +538,8 @@ void CppAggregatesFx<T>::create_array_and_write_fragments() {
     optional<std::vector<uint8_t>> validity_two_full = nullopt;
     if (nullable_) {
       validity_full = {1, 0, 1, 0, 1, 0, 1, 0, 1};
-      validity_single = {1};
+      validity_single =
+          std::make_optional<std::vector<uint8_t>>(std::vector<uint8_t>({1}));
       validity_two_full = {
           1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
     }
@@ -607,7 +608,8 @@ void CppAggregatesFx<T>::create_var_array_and_write_fragments() {
     optional<std::vector<uint8_t>> validity_two_full = nullopt;
     if (nullable_) {
       validity_full = {1, 0, 1, 0, 1, 0, 1, 0, 1};
-      validity_single = {1};
+      validity_single =
+          std::make_optional<std::vector<uint8_t>>(std::vector<uint8_t>({1}));
       validity_two_full = {
           1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
     }
