@@ -1,11 +1,11 @@
 /**
- * @file   unit-cppapi-schema.cc
+ * @file   unit-cppapi-schema-evolution.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB Inc.
+ * @copyright Copyright (c) 2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * Tests the C++ API for schema related functions.
+ * Tests the C++ API for schema evolution.
  */
 
 #include <test/support/tdb_catch.h>
@@ -409,8 +409,17 @@ TEST_CASE(
   }
 
   // Read using overlapping multi-range query
+  // Disable merge overlapping sparse ranges.
+  // Support for returning multiplicities for overlapping ranges will be
+  // deprecated in a few releases. Turning off this setting allows to still
+  // test that the feature functions properly until we do so. Once support is
+  // fully removed for overlapping ranges, this read can be removed from the
+  // test case.
+  Config cfg;
+  cfg["sm.merge_overlapping_ranges_experimental"] = "false";
   // + Global order does not support multi-range subarrays
   if (layout != TILEDB_GLOBAL_ORDER) {
+    ctx = Context(cfg);
     Array array(ctx, array_uri, TILEDB_READ);
 
     std::vector<int> a_data(8);

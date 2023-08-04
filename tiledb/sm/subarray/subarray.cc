@@ -2048,29 +2048,30 @@ Status Subarray::set_est_result_size(
   return Status::Ok();
 }
 
-Status Subarray::sort_ranges(ThreadPool* const compute_tp) {
+void Subarray::sort_and_merge_ranges(ThreadPool* const compute_tp) {
   std::scoped_lock<std::mutex> lock(ranges_sort_mtx_);
   if (ranges_sorted_)
-    return Status::Ok();
+    return;
 
-  auto timer = stats_->start_timer("sort_ranges");
-  auto st = parallel_for(
+  auto merge = config_.get<bool>(
+      "sm.merge_overlapping_ranges_experimental", Config::MustFindMarker());
+
+  // Sort and conditionally merge ranges
+  auto timer = stats_->start_timer("sort_and_merge_ranges");
+  throw_if_not_ok(parallel_for(
       compute_tp,
       0,
       array_->array_schema_latest().dim_num(),
       [&](uint64_t dim_idx) {
-        return range_subset_[dim_idx].sort_ranges(compute_tp);
-      });
-
-  RETURN_NOT_OK(st);
+        range_subset_[dim_idx].sort_and_merge_ranges(compute_tp, merge);
+        return Status::Ok();
+      }));
   ranges_sorted_ = true;
-
-  return Status::Ok();
 }
 
 tuple<Status, optional<bool>> Subarray::non_overlapping_ranges(
     ThreadPool* const compute_tp) {
-  RETURN_NOT_OK_TUPLE(sort_ranges(compute_tp), nullopt);
+  sort_and_merge_ranges(compute_tp);
 
   std::atomic<bool> non_overlapping_ranges = true;
   auto st = parallel_for(
