@@ -129,6 +129,10 @@ void tiledb_delete_array(T* const p) {
 /** TileDB variant of `std::unique_ptr`. */
 template <class T>
 struct TileDBUniquePtrDeleter {
+  TileDBUniquePtrDeleter() = default;
+  template <class U>
+  TileDBUniquePtrDeleter(const TileDBUniquePtrDeleter<U>&) noexcept {
+  }
   void operator()(T* const p) {
     tiledb_delete<T>(p);
   }
