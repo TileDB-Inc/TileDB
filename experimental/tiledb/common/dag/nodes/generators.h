@@ -33,7 +33,6 @@
 #ifndef TILEDB_DAG_GENERATOR_H
 #define TILEDB_DAG_GENERATOR_H
 
-#include <stop_token>
 #include "experimental/tiledb/common/dag/ports/ports.h"
 
 namespace tiledb::common {

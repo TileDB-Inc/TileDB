@@ -50,7 +50,6 @@
 #define TILEDB_DAG_NODES_GENERAL_NODES_H
 
 #include <functional>
-#include <stop_token>
 #include <type_traits>
 
 #include "experimental/tiledb/common/dag/ports/ports.h"

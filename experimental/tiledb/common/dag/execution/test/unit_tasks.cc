@@ -35,8 +35,8 @@
 #include <atomic>
 #include <iostream>
 #include <map>
-#include <stop_token>
 #include <type_traits>
+
 #include "unit_tasks.h"
 
 #include "../throw_catch.h"

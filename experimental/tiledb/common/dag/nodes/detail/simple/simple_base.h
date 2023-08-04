@@ -35,7 +35,6 @@
 #define TILEDB_DAG_NODE_DETAIL_SIMPLE_SIMPLE_BASE_H
 
 #include <functional>
-#include <stop_token>
 #include <type_traits>
 #include <variant>
 
