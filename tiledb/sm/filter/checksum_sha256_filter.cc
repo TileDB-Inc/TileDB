@@ -197,8 +197,7 @@ Status ChecksumSHA256Filter::run_reverse(
 Status ChecksumSHA256Filter::checksum_part(
     ConstBuffer* part, FilterBuffer* output_metadata) const {
   // Allocate an initial output buffer.
-  tdb_unique_ptr<Buffer> computed_hash =
-      tdb_unique_ptr<Buffer>(tdb_new(Buffer));
+  tdb_unique_ptr<Buffer> computed_hash = make_unique<Buffer>(HERE());
   throw_if_not_ok(computed_hash->realloc(Crypto::SHA256_DIGEST_BYTES));
   RETURN_NOT_OK(Crypto::sha256(part, computed_hash.get()));
 
@@ -213,10 +212,9 @@ Status ChecksumSHA256Filter::checksum_part(
 
 Status ChecksumSHA256Filter::compare_checksum_part(
     FilterBuffer* part, uint64_t bytes_to_compare, void* checksum) const {
-  tdb_unique_ptr<Buffer> byte_buffer_to_compare =
-      tdb_unique_ptr<Buffer>(tdb_new(Buffer));
-  tdb_unique_ptr<ConstBuffer> buffer_to_compare = tdb_unique_ptr<ConstBuffer>(
-      tdb_new(ConstBuffer, byte_buffer_to_compare.get()));
+  tdb_unique_ptr<Buffer> byte_buffer_to_compare = make_unique<Buffer>(HERE());
+  tdb_unique_ptr<ConstBuffer> buffer_to_compare =
+      make_unique<ConstBuffer>(HERE(), byte_buffer_to_compare.get());
 
   // First we try to get a view on the bytes we need without copying
   // This might fail if the bytes we need to compare are contained in multiple
@@ -227,8 +225,8 @@ Status ChecksumSHA256Filter::compare_checksum_part(
     throw_if_not_ok(byte_buffer_to_compare->realloc(bytes_to_compare));
     RETURN_NOT_OK(part->read(byte_buffer_to_compare->data(), bytes_to_compare));
     // Set the buffer back
-    buffer_to_compare = tdb_unique_ptr<ConstBuffer>(
-        tdb_new(ConstBuffer, byte_buffer_to_compare.get()));
+    buffer_to_compare =
+        make_unique<ConstBuffer>(HERE(), byte_buffer_to_compare.get());
   } else {
     // Move offset location if we used a view so next checksum will read
     // subsequent bytes
@@ -236,8 +234,7 @@ Status ChecksumSHA256Filter::compare_checksum_part(
   }
 
   // Buffer to store the newly computed hash value for comparison
-  tdb_unique_ptr<Buffer> computed_hash =
-      tdb_unique_ptr<Buffer>(tdb_new(Buffer));
+  tdb_unique_ptr<Buffer> computed_hash = make_unique<Buffer>(HERE());
   throw_if_not_ok(computed_hash->realloc(Crypto::SHA256_DIGEST_BYTES));
 
   RETURN_NOT_OK(Crypto::sha256(

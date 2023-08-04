@@ -531,8 +531,7 @@ void FilterPipeline::serialize(Serializer& serializer) const {
     // as a no-op filter instead.
     auto as_compression = dynamic_cast<CompressionFilter*>(f.get());
     if (as_compression != nullptr && f->type() == FilterType::FILTER_NONE) {
-      auto noop =
-          tdb_unique_ptr<NoopFilter>(tdb_new(NoopFilter, Datatype::ANY));
+      auto noop = make_unique<NoopFilter>(HERE(), Datatype::ANY);
       noop->serialize(serializer);
     } else {
       f->serialize(serializer);

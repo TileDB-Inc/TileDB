@@ -121,9 +121,8 @@ class WhiteboxConsistencyController : public ConsistencyController {
       throw std::runtime_error(
           "[WhiteboxConsistencyController] Could not create array.");
     }
-    tdb_unique_ptr<Array> array(new Array{uri, sm, *this});
 
-    return array;
+    return make_unique<Array>(HERE(), uri, sm, *this);
   }
 
   tdb_unique_ptr<Array> open_array(const URI uri, StorageManager* sm) {

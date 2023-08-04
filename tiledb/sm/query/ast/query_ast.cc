@@ -50,11 +50,11 @@ bool ASTNodeVal::is_expr() const {
 }
 
 tdb_unique_ptr<ASTNode> ASTNodeVal::clone() const {
-  return tdb_unique_ptr<ASTNode>(tdb_new(ASTNodeVal, *this));
+  return make_unique<ASTNodeVal>(HERE(), *this);
 }
 
 tdb_unique_ptr<ASTNode> ASTNodeVal::get_negated_tree() const {
-  return tdb_unique_ptr<ASTNode>(tdb_new(ASTNodeVal, *this, ASTNegation));
+  return make_unique<ASTNodeVal>(HERE(), *this, ASTNegation);
 }
 
 void ASTNodeVal::get_field_names(
@@ -216,8 +216,7 @@ tdb_unique_ptr<ASTNode> ASTNodeVal::combine(
       ast_nodes.push_back(rhs->clone());
     }
   }
-  return tdb_unique_ptr<ASTNode>(
-      tdb_new(ASTNodeExpr, std::move(ast_nodes), combination_op));
+  return make_unique<ASTNodeExpr>(HERE(), std::move(ast_nodes), combination_op);
 }
 
 const std::string& ASTNodeVal::get_field_name() const {
@@ -256,11 +255,11 @@ bool ASTNodeExpr::is_expr() const {
 }
 
 tdb_unique_ptr<ASTNode> ASTNodeExpr::clone() const {
-  return tdb_unique_ptr<ASTNode>(tdb_new(ASTNodeExpr, *this));
+  return make_unique<ASTNodeExpr>(HERE(), *this);
 }
 
 tdb_unique_ptr<ASTNode> ASTNodeExpr::get_negated_tree() const {
-  return tdb_unique_ptr<ASTNode>(tdb_new(ASTNodeExpr, *this, ASTNegation));
+  return make_unique<ASTNodeExpr>(HERE(), *this, ASTNegation);
 }
 
 void ASTNodeExpr::get_field_names(
@@ -330,8 +329,7 @@ tdb_unique_ptr<ASTNode> ASTNodeExpr::combine(
     ast_nodes.push_back(rhs->clone());
   }
 
-  return tdb_unique_ptr<ASTNode>(
-      tdb_new(ASTNodeExpr, std::move(ast_nodes), combination_op));
+  return make_unique<ASTNodeExpr>(HERE(), std::move(ast_nodes), combination_op);
 }
 
 const std::string& ASTNodeExpr::get_field_name() const {

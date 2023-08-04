@@ -181,13 +181,13 @@ tdb_unique_ptr<ArraySchemaEvolution> array_schema_evolution_from_capnp(
     ts_range = std::make_pair(timestamp_range[0], timestamp_range[1]);
   }
 
-  return tdb_unique_ptr<ArraySchemaEvolution>(tdb_new(
-      ArraySchemaEvolution,
+  return make_unique<ArraySchemaEvolution>(
+      HERE(),
       attrs_to_add,
       attrs_to_drop,
       enmrs_to_add,
       enmrs_to_drop,
-      ts_range));
+      ts_range);
 }
 
 Status array_schema_evolution_serialize(

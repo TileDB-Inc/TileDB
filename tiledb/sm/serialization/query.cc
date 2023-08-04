@@ -1008,8 +1008,8 @@ tdb_unique_ptr<ASTNode> condition_ast_from_capnp(
 
     auto use_enumeration = ast_reader.getUseEnumeration();
 
-    return tdb_unique_ptr<ASTNode>(
-        tdb_new(ASTNodeVal, field_name, data, size, op, use_enumeration));
+    return make_unique<ASTNodeVal>(
+        HERE(), field_name, data, size, op, use_enumeration);
   }
 
   // Getting and validating the query condition combination operator.
@@ -1030,8 +1030,7 @@ tdb_unique_ptr<ASTNode> condition_ast_from_capnp(
   for (const auto child : ast_reader.getChildren()) {
     ast_nodes.push_back(condition_ast_from_capnp(child));
   }
-  return tdb_unique_ptr<ASTNode>(
-      tdb_new(ASTNodeExpr, std::move(ast_nodes), combination_op));
+  return make_unique<ASTNodeExpr>(HERE(), std::move(ast_nodes), combination_op);
 }
 
 Status condition_from_capnp(
@@ -1063,8 +1062,8 @@ Status condition_from_capnp(
 
       bool use_enumeration = clause.getUseEnumeration();
 
-      ast_nodes.push_back(tdb_unique_ptr<ASTNode>(
-          tdb_new(ASTNodeVal, field_name, data, size, op, use_enumeration)));
+      ast_nodes.push_back(make_unique<ASTNodeVal>(
+          HERE(), field_name, data, size, op, use_enumeration));
     }
 
     // Constructing the tree from the list of AST nodes.
@@ -1072,8 +1071,8 @@ Status condition_from_capnp(
     if (ast_nodes.size() == 1) {
       condition->set_ast(std::move(ast_nodes[0]));
     } else {
-      auto tree_ptr = tdb_unique_ptr<ASTNode>(tdb_new(
-          ASTNodeExpr, std::move(ast_nodes), QueryConditionCombinationOp::AND));
+      auto tree_ptr = make_unique<ASTNodeExpr>(
+          HERE(), std::move(ast_nodes), QueryConditionCombinationOp::AND);
       condition->set_ast(std::move(tree_ptr));
     }
   } else if (condition_reader.hasTree()) {
@@ -2501,8 +2500,7 @@ Status query_deserialize(
   // Similarly, we must create a copy of 'copy_state'.
   tdb_unique_ptr<CopyState> original_copy_state = nullptr;
   if (copy_state) {
-    original_copy_state =
-        tdb_unique_ptr<CopyState>(tdb_new(CopyState, *copy_state));
+    original_copy_state = make_unique<CopyState>(HERE(), *copy_state);
   }
 
   // Deserialize 'serialized_buffer'.

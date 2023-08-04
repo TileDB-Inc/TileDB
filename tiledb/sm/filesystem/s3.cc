@@ -1458,8 +1458,7 @@ Status S3::init_client() const {
   // check for client configuration on create, which can be slow if aws is not
   // configured on a users systems due to ec2 metadata check
 
-  client_config_ = tdb_unique_ptr<Aws::Client::ClientConfiguration>(
-      tdb_new(Aws::Client::ClientConfiguration));
+  client_config_ = make_unique<Aws::Client::ClientConfiguration>(HERE());
 
   s3_tp_executor_ = make_shared<S3ThreadPoolExecutor>(HERE(), vfs_thread_pool_);
 

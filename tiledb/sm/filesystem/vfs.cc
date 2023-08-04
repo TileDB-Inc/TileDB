@@ -72,12 +72,12 @@ VFS::VFS(
   assert(io_tp);
 
   // Construct the read-ahead cache.
-  read_ahead_cache_ = tdb_unique_ptr<ReadAheadCache>(
-      tdb_new(ReadAheadCache, vfs_params_.read_ahead_cache_size_));
+  read_ahead_cache_ =
+      make_unique<ReadAheadCache>(HERE(), vfs_params_.read_ahead_cache_size_);
 
 #ifdef HAVE_HDFS
   supported_fs_.insert(Filesystem::HDFS);
-  hdfs_ = tdb_unique_ptr<hdfs::HDFS>(tdb_new(hdfs::HDFS));
+  hdfs_ = make_unique<hdfs::HDFS>(HERE());
   st = hdfs_->init(config_);
   if (!st.ok()) {
     throw std::runtime_error("[VFS::VFS] Failed to initialize HDFS backend.");

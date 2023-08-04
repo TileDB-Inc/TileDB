@@ -120,8 +120,8 @@ tdb_unique_ptr<ASTNode> deserialize_condition_impl(Deserializer& deserializer) {
     auto value_size = deserializer.read<storage_size_t>();
     auto value_data = deserializer.get_ptr<void>(value_size);
 
-    return tdb_unique_ptr<ASTNode>(
-        tdb_new(ASTNodeVal, field_name, value_data, value_size, op));
+    return make_unique<ASTNodeVal>(
+        HERE(), field_name, value_data, value_size, op);
   } else if (node_type == NodeType::EXPRESSION) {
     // Deserialize combination op.
     auto combination_op = deserializer.read<QueryConditionCombinationOp>();
@@ -135,8 +135,8 @@ tdb_unique_ptr<ASTNode> deserialize_condition_impl(Deserializer& deserializer) {
       ast_nodes.push_back(deserialize_condition_impl(deserializer));
     }
 
-    return tdb_unique_ptr<ASTNode>(
-        tdb_new(ASTNodeExpr, std::move(ast_nodes), combination_op));
+    return make_unique<ASTNodeExpr>(
+        HERE(), std::move(ast_nodes), combination_op);
   } else {
     throw std::logic_error("Cannot deserialize, unknown node type.");
   }

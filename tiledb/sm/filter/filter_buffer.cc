@@ -52,8 +52,7 @@ FilterBuffer::BufferOrView::BufferOrView(
     const shared_ptr<Buffer>& buffer, uint64_t offset, uint64_t nbytes) {
   is_view_ = true;
   underlying_buffer_ = buffer;
-  view_ = tdb_unique_ptr<Buffer>(
-      tdb_new(Buffer, (char*)buffer->data() + offset, nbytes));
+  view_ = make_unique<Buffer>(HERE(), (char*)buffer->data() + offset, nbytes);
 }
 
 FilterBuffer::BufferOrView::BufferOrView(BufferOrView&& other) {
@@ -79,8 +78,8 @@ FilterBuffer::BufferOrView FilterBuffer::BufferOrView::get_view(
   if (is_view_) {
     BufferOrView new_view(underlying_buffer_);
     new_view.is_view_ = true;
-    new_view.view_ = tdb_unique_ptr<Buffer>(
-        tdb_new(Buffer, (char*)view_->data() + offset, nbytes));
+    new_view.view_ =
+        make_unique<Buffer>(HERE(), (char*)view_->data() + offset, nbytes);
     return new_view;
   } else {
     return BufferOrView(underlying_buffer_, offset, nbytes);

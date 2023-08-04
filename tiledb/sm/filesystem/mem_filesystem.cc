@@ -341,7 +341,7 @@ class MemFilesystem::Directory : public MemFilesystem::FSNode {
 };
 
 MemFilesystem::MemFilesystem()
-    : root_(tdb_unique_ptr<FSNode>(tdb_new(Directory))) {
+    : root_(make_unique<Directory>(HERE())) {
   assert(root_);
 }
 
@@ -569,7 +569,7 @@ Status MemFilesystem::create_dir_internal(
     assert(cur_lock.mutex() == &cur->mutex_);
 
     if (!cur->has_child(token)) {
-      cur->children_[token] = tdb_unique_ptr<FSNode>(tdb_new(Directory));
+      cur->children_[token] = make_unique<Directory>(HERE());
     } else if (!cur->is_dir()) {
       return LOG_STATUS(Status_MemFSError(std::string(
           "Cannot create directory, a file with that name exists already: " +
@@ -623,7 +623,7 @@ Status MemFilesystem::touch_internal(
   }
 
   const std::string& filename = tokens[tokens.size() - 1];
-  cur->children_[filename] = tdb_unique_ptr<FSNode>(tdb_new(File));
+  cur->children_[filename] = make_unique<File>(HERE());
 
   // Save the output argument, `node`, if requested.
   if (node != nullptr) {

@@ -51,8 +51,8 @@ tdb_unique_ptr<ASTNode> test_value_node(
     const std::string& expected_result,
     bool negate = false) {
   // Test validity of construction of value node.
-  auto node_val = tdb_unique_ptr<ASTNode>(
-      tdb_new(ASTNodeVal, field_name, val, sizeof(T), op));
+  auto node_val =
+      make_unique<ASTNodeVal>(HERE(), field_name, val, sizeof(T), op);
 
   if (!negate) {
     CHECK(ast_node_to_str(node_val) == expected_result);
@@ -80,8 +80,8 @@ tdb_unique_ptr<ASTNode> test_string_value_node(
     throw std::runtime_error("test_string_value_node: val cannot be null.");
   }
   // Test validity of construction of value node.
-  auto node_val = tdb_unique_ptr<ASTNode>(
-      tdb_new(ASTNodeVal, field_name, val, strlen(val), op));
+  auto node_val =
+      make_unique<ASTNodeVal>(HERE(), field_name, val, strlen(val), op);
   if (!negate) {
     CHECK(ast_node_to_str(node_val) == expected_result);
   }

@@ -165,8 +165,7 @@ void ArraySchemaEvolution::add_attribute(shared_ptr<const Attribute> attr) {
    * container type, but until then, we copy the attribute into a new
    * allocation.
    */
-  attributes_to_add_map_[attr->name()] =
-      tdb_unique_ptr<Attribute>(tdb_new(Attribute, *attr));
+  attributes_to_add_map_[attr->name()] = make_unique<Attribute>(HERE(), *attr);
   if (attributes_to_drop_.find(attr->name()) != attributes_to_drop_.end()) {
     attributes_to_drop_.erase(attr->name());
   }

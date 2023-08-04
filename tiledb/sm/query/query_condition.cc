@@ -117,8 +117,8 @@ Status QueryCondition::init(
   }
 
   // AST Construction.
-  tree_ = tdb_unique_ptr<ASTNode>(tdb_new(
-      ASTNodeVal, field_name, condition_value, condition_value_size, op));
+  tree_ = make_unique<ASTNodeVal>(
+      HERE(), field_name, condition_value, condition_value_size, op);
 
   return Status::Ok();
 }
