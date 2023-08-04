@@ -1,3 +1,13 @@
+# TileDB v2.16.2 Release Notes
+
+## Improvements
+
+* Add support for serialization of vacuum and consolidation requests (#3902) [#4229](https://github.com/TileDB-Inc/TileDB/pull/4229)
+
+## Build changes
+
+* Export Azure::azure-storage-blobs on install when vcpkg is enabled. [#4232](https://github.com/TileDB-Inc/TileDB/pull/4232)
+
 # TileDB v2.16.1 Release Notes
 
 ## Defects removed
