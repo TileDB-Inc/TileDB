@@ -51,6 +51,7 @@
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/tile/generic_tile_io.h"
 
 #include <cassert>
 #include <cmath>
@@ -147,8 +148,7 @@ Status Array::open_without_fragments(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  auto timer =
-      storage_manager_->stats()->start_timer("array_open_without_fragments");
+  auto timer = resources_.stats().start_timer("array_open_without_fragments");
   Status st;
   // Checks
   if (is_open()) {
@@ -204,14 +204,12 @@ Status Array::open_without_fragments(
       }
     } else {
       {
-        auto timer_se = storage_manager_->stats()->start_timer(
+        auto timer_se = resources_.stats().start_timer(
             "array_open_without_fragments_load_directory");
         array_dir_ = ArrayDirectory(
             resources_, array_uri_, 0, UINT64_MAX, ArrayDirectoryMode::READ);
       }
       auto&& [array_schema, array_schemas] = open_for_reads_without_fragments();
-      if (!st.ok())
-        throw StatusException(st);
 
       array_schema_latest_ = array_schema.value();
       array_schemas_all_ = array_schemas.value();
@@ -257,7 +255,7 @@ Status Array::open(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  auto timer = storage_manager_->stats()->start_timer(
+  auto timer = resources_.stats().start_timer(
       "array_open_" + query_type_str(query_type));
   Status st;
   // Checks
@@ -377,8 +375,8 @@ Status Array::open(
       }
     } else if (query_type == QueryType::READ) {
       {
-        auto timer_se = storage_manager_->stats()->start_timer(
-            "array_open_read_load_directory");
+        auto timer_se =
+            resources_.stats().start_timer("array_open_read_load_directory");
         array_dir_ = ArrayDirectory(
             resources_, array_uri_, timestamp_start_, timestamp_end_opened_at_);
       }
@@ -393,8 +391,8 @@ Status Array::open(
         query_type == QueryType::WRITE ||
         query_type == QueryType::MODIFY_EXCLUSIVE) {
       {
-        auto timer_se = storage_manager_->stats()->start_timer(
-            "array_open_write_load_directory");
+        auto timer_se =
+            resources_.stats().start_timer("array_open_write_load_directory");
         array_dir_ = ArrayDirectory(
             resources_,
             array_uri_,
@@ -413,7 +411,7 @@ Status Array::open(
     } else if (
         query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
       {
-        auto timer_se = storage_manager_->stats()->start_timer(
+        auto timer_se = resources_.stats().start_timer(
             "array_open_delete_or_update_load_directory");
         array_dir_ = ArrayDirectory(
             resources_,
@@ -797,7 +795,7 @@ Status Array::reopen() {
 }
 
 Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
-  auto timer = storage_manager_->stats()->start_timer("array_reopen");
+  auto timer = resources_.stats().start_timer("array_reopen");
   if (!is_open_) {
     return LOG_STATUS(
         Status_ArrayError("Cannot reopen array; Array is not open"));
@@ -841,8 +839,7 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
 
   try {
     {
-      auto timer_se =
-          storage_manager_->stats()->start_timer("array_reopen_directory");
+      auto timer_se = resources_.stats().start_timer("array_reopen_directory");
       array_dir_ = ArrayDirectory(
           resources_,
           array_uri_,
@@ -1454,6 +1451,41 @@ Status Array::compute_max_buffer_sizes(
   return Status::Ok();
 }
 
+void Array::do_load_metadata() {
+  if (!array_dir_.loaded()) {
+    throw ArrayException(
+        "Cannot load metadata; array directory is not loaded.");
+  }
+  auto timer_se = resources_.stats().start_timer("sm_load_array_metadata");
+
+  // Determine which array metadata to load
+  const auto& array_metadata_to_load = array_dir_.array_meta_uris();
+
+  auto metadata_num = array_metadata_to_load.size();
+  std::vector<shared_ptr<Tile>> metadata_tiles(metadata_num);
+  throw_if_not_ok(
+      parallel_for(&resources_.compute_tp(), 0, metadata_num, [&](size_t m) {
+        const auto& uri = array_metadata_to_load[m].uri_;
+
+        auto&& tile = GenericTileIO::load(resources_, uri, 0, *encryption_key_);
+        metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(tile));
+
+        return Status::Ok();
+      }));
+
+  // Compute array metadata size for the statistics
+  uint64_t meta_size = 0;
+  for (const auto& t : metadata_tiles) {
+    meta_size += t->size();
+  }
+  resources_.stats().add_counter("read_array_meta_size", meta_size);
+
+  metadata_ = Metadata::deserialize(metadata_tiles);
+
+  // Sets the loaded metadata URIs
+  metadata_.set_loaded_metadata_uris(array_metadata_to_load);
+}
+
 Status Array::load_metadata() {
   if (remote_) {
     auto rest_client = resources_.rest_client();
@@ -1464,9 +1496,7 @@ Status Array::load_metadata() {
     RETURN_NOT_OK(rest_client->get_array_metadata_from_rest(
         array_uri_, timestamp_start_, timestamp_end_opened_at_, this));
   } else {
-    assert(array_dir_.loaded());
-    storage_manager_->load_array_metadata(
-        array_dir_, *encryption_key_, &metadata_);
+    do_load_metadata();
   }
   metadata_loaded_ = true;
   return Status::Ok();
