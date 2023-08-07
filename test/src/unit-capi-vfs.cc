@@ -972,9 +972,11 @@ TEST_CASE_METHOD(VFSFx, "C API: VFS recursive ls", "[c-debug-smr]") {
   tiledb_ctx_t* ctx;
   REQUIRE(tiledb_ctx_alloc(cfg, &ctx) == TILEDB_OK);
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
-  REQUIRE_NOTHROW(tiledb_config_set(cfg, "vfs.s3.endpoint_override", "localhost:9999", &err));
+  REQUIRE_NOTHROW(tiledb_config_set(
+      cfg, "vfs.s3.endpoint_override", "localhost:9999", &err));
   REQUIRE_NOTHROW(tiledb_config_set(cfg, "vfs.s3.scheme", "https", &err));
-  REQUIRE_NOTHROW(tiledb_config_set(cfg, "vfs.s3.use_virtual_addressing", "false", &err));
+  REQUIRE_NOTHROW(
+      tiledb_config_set(cfg, "vfs.s3.use_virtual_addressing", "false", &err));
   REQUIRE_NOTHROW(tiledb_config_set(cfg, "vfs.s3.verify_ssl", "false", &err));
 #endif
   tiledb_vfs_t* vfs;
@@ -1001,12 +1003,8 @@ TEST_CASE_METHOD(VFSFx, "C API: VFS recursive ls", "[c-debug-smr]") {
   std::vector<uint64_t> data_off;
   REQUIRE(
       tiledb_vfs_ls_recursive(
-          ctx,
-          vfs,
-          bucket_name.c_str(),
-          &data,
-          &data_off,
-          max_paths) == TILEDB_OK);
+          ctx, vfs, bucket_name.c_str(), &data, &data_off, max_paths) ==
+      TILEDB_OK);
   for (size_t i = 1; i < data_off.size(); i++) {
     std::string path(data, data_off[i - 1], data_off[i] - data_off[i - 1]);
     std::cout << path << std::endl;

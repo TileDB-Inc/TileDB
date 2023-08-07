@@ -377,8 +377,7 @@ class VFS : private VFSBase, S3_within_VFS {
    * @param uris The URIs that are contained in the parent.
    * @return Status
    */
-  Status ls(
-      const URI& parent, std::vector<URI>* uris) const;
+  Status ls(const URI& parent, std::vector<URI>* uris) const;
 
   /**
    * Recursively lists objects and object information that start with `prefix`.

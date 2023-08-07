@@ -728,8 +728,7 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
       Status_VFSError("Unsupported URI scheme: " + uri.to_string()));
 }
 
-Status VFS::ls(
-    const URI& parent, std::vector<URI>* uris) const {
+Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   stats_->add_counter("ls_num", 1);
   auto&& [st, entries] = ls_with_sizes(parent);
   RETURN_NOT_OK(st);
