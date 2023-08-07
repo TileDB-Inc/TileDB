@@ -744,19 +744,21 @@ Status FragmentMetadata::init(const NDRange& non_empty_domain) {
   // Set last tile cell number
   last_tile_cell_num_ = 0;
 
+  run_once_flags_.resize(num);
+
   // Initialize tile offsets
   tile_offsets_.resize(num);
-  tile_offsets_mtx_.resize(num);
   file_sizes_.resize(num);
-  for (unsigned int i = 0; i < num; ++i)
+  for (unsigned int i = 0; i < num; ++i) {
     file_sizes_[i] = 0;
+  }
 
   // Initialize variable tile offsets
   tile_var_offsets_.resize(num);
-  tile_var_offsets_mtx_.resize(num);
   file_var_sizes_.resize(num);
-  for (unsigned int i = 0; i < num; ++i)
+  for (unsigned int i = 0; i < num; ++i) {
     file_var_sizes_[i] = 0;
+  }
 
   // Initialize variable tile sizes
   tile_var_sizes_.resize(num);
@@ -764,8 +766,9 @@ Status FragmentMetadata::init(const NDRange& non_empty_domain) {
   // Initialize validity tile offsets
   tile_validity_offsets_.resize(num);
   file_validity_sizes_.resize(num);
-  for (unsigned int i = 0; i < num; ++i)
+  for (unsigned int i = 0; i < num; ++i) {
     file_validity_sizes_[i] = 0;
+  }
 
   // Initialize tile min/max/sum/null count
   tile_min_buffer_.resize(num);
@@ -1478,20 +1481,20 @@ Status FragmentMetadata::load_fragment_min_max_sum_null_count(
   if (version_ <= 11)
     return Status::Ok();
 
-  std::lock_guard<std::mutex> lock(mtx_);
+  std::call_once(run_once_flags_.fragment_min_max_sum_null_count_, [&]() {
+    auto&& [st, tile_opt] = read_generic_tile_from_file(
+        encryption_key, gt_offsets_.fragment_min_max_sum_null_count_offset_);
+    throw_if_not_ok(st);
+    auto& tile = *tile_opt;
 
-  auto&& [st, tile_opt] = read_generic_tile_from_file(
-      encryption_key, gt_offsets_.fragment_min_max_sum_null_count_offset_);
-  RETURN_NOT_OK(st);
-  auto& tile = *tile_opt;
+    storage_manager_->stats()->add_counter(
+        "read_fragment_min_max_sum_null_count_size", tile.size());
 
-  storage_manager_->stats()->add_counter(
-      "read_fragment_min_max_sum_null_count_size", tile.size());
+    Deserializer deserializer(tile.data(), tile.size());
+    load_fragment_min_max_sum_null_count(deserializer);
 
-  Deserializer deserializer(tile.data(), tile.size());
-  load_fragment_min_max_sum_null_count(deserializer);
-
-  loaded_metadata_.fragment_min_max_sum_null_count_ = true;
+    loaded_metadata_.fragment_min_max_sum_null_count_ = true;
+  });
 
   return Status::Ok();
 }
@@ -1506,20 +1509,20 @@ Status FragmentMetadata::load_processed_conditions(
     return Status::Ok();
   }
 
-  std::lock_guard<std::mutex> lock(mtx_);
+  std::call_once(run_once_flags_.processed_conditions_, [&]() {
+    auto&& [st, tile_opt] = read_generic_tile_from_file(
+        encryption_key, gt_offsets_.processed_conditions_offsets_);
+    throw_if_not_ok(st);
+    auto& tile = *tile_opt;
 
-  auto&& [st, tile_opt] = read_generic_tile_from_file(
-      encryption_key, gt_offsets_.processed_conditions_offsets_);
-  RETURN_NOT_OK(st);
-  auto& tile = *tile_opt;
+    storage_manager_->stats()->add_counter(
+        "read_processed_conditions_size", tile.size());
 
-  storage_manager_->stats()->add_counter(
-      "read_processed_conditions_size", tile.size());
+    Deserializer deserializer(tile.data(), tile.size());
+    load_processed_conditions(deserializer);
 
-  Deserializer deserializer(tile.data(), tile.size());
-  load_processed_conditions(deserializer);
-
-  loaded_metadata_.processed_conditions_ = true;
+    loaded_metadata_.processed_conditions_ = true;
+  });
 
   return Status::Ok();
 }
@@ -1996,37 +1999,39 @@ Status FragmentMetadata::write_footer(Serializer& serializer) const {
 }
 
 Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
-  if (version_ <= 2)
+  if (version_ <= 2) {
     return Status::Ok();
-
-  std::lock_guard<std::mutex> lock(mtx_);
-
-  if (loaded_metadata_.rtree_)
-    return Status::Ok();
-
-  auto&& [st, tile_opt] =
-      read_generic_tile_from_file(encryption_key, gt_offsets_.rtree_);
-  RETURN_NOT_OK(st);
-  auto& tile = *tile_opt;
-
-  storage_manager_->stats()->add_counter("read_rtree_size", tile.size());
-
-  // Use the serialized buffer size to approximate memory usage of the rtree.
-  if (memory_tracker_ != nullptr &&
-      !memory_tracker_->take_memory(
-          tile.size(), MemoryTracker::MemoryType::RTREE)) {
-    return LOG_STATUS(Status_FragmentMetadataError(
-        "Cannot load R-tree; Insufficient memory budget; Needed " +
-        std::to_string(tile.size()) + " but only had " +
-        std::to_string(memory_tracker_->get_memory_available()) +
-        " from budget " +
-        std::to_string(memory_tracker_->get_memory_budget())));
   }
 
-  Deserializer deserializer(tile.data(), tile.size());
-  rtree_.deserialize(deserializer, &array_schema_->domain(), version_);
+  if (loaded_metadata_.rtree_) {
+    return Status::Ok();
+  }
 
-  loaded_metadata_.rtree_ = true;
+  std::call_once(run_once_flags_.rtree_, [&]() {
+    auto&& [st, tile_opt] =
+        read_generic_tile_from_file(encryption_key, gt_offsets_.rtree_);
+    throw_if_not_ok(st);
+    auto& tile = *tile_opt;
+
+    storage_manager_->stats()->add_counter("read_rtree_size", tile.size());
+
+    // Use the serialized buffer size to approximate memory usage of the rtree.
+    if (memory_tracker_ != nullptr &&
+        !memory_tracker_->take_memory(
+            tile.size(), MemoryTracker::MemoryType::RTREE)) {
+      throw FragmentMetadataStatusException(
+          "Cannot load R-tree; Insufficient memory budget; Needed " +
+          std::to_string(tile.size()) + " but only had " +
+          std::to_string(memory_tracker_->get_memory_available()) +
+          " from budget " +
+          std::to_string(memory_tracker_->get_memory_budget()));
+    }
+
+    Deserializer deserializer(tile.data(), tile.size());
+    rtree_.deserialize(deserializer, &array_schema_->domain(), version_);
+
+    loaded_metadata_.rtree_ = true;
+  });
 
   return Status::Ok();
 }
@@ -2041,65 +2046,61 @@ void FragmentMetadata::free_rtree() {
 
 void FragmentMetadata::free_tile_offsets() {
   for (uint64_t i = 0; i < tile_offsets_.size(); i++) {
-    std::lock_guard<std::mutex> lock(tile_offsets_mtx_[i]);
+    loaded_metadata_.tile_offsets_[i] = false;
     if (memory_tracker_ != nullptr) {
       memory_tracker_->release_memory(
           tile_offsets_[i].size() * sizeof(uint64_t),
           MemoryTracker::MemoryType::TILE_OFFSETS);
     }
     tile_offsets_[i].clear();
-    loaded_metadata_.tile_offsets_[i] = false;
   }
 
   for (uint64_t i = 0; i < tile_var_offsets_.size(); i++) {
-    std::lock_guard<std::mutex> lock(tile_var_offsets_mtx_[i]);
+    loaded_metadata_.tile_var_offsets_[i] = false;
     if (memory_tracker_ != nullptr) {
       memory_tracker_->release_memory(
           tile_var_offsets_[i].size() * sizeof(uint64_t),
           MemoryTracker::MemoryType::TILE_OFFSETS);
     }
     tile_var_offsets_[i].clear();
-    loaded_metadata_.tile_var_offsets_[i] = false;
   }
 
   for (uint64_t i = 0; i < tile_offsets_.size(); i++) {
-    std::lock_guard<std::mutex> lock(tile_offsets_mtx_[i]);
     if (memory_tracker_ != nullptr) {
       memory_tracker_->release_memory(
           tile_offsets_[i].size() * sizeof(uint64_t),
           MemoryTracker::MemoryType::TILE_OFFSETS);
     }
-    tile_offsets_[i].clear();
     loaded_metadata_.tile_offsets_[i] = false;
+    tile_offsets_[i].clear();
   }
 
   for (uint64_t i = 0; i < tile_validity_offsets_.size(); i++) {
-    std::lock_guard<std::mutex> lock(mtx_);
     if (memory_tracker_ != nullptr) {
       memory_tracker_->release_memory(
           tile_validity_offsets_[i].size() * sizeof(uint64_t),
           MemoryTracker::MemoryType::TILE_OFFSETS);
     }
-    tile_validity_offsets_[i].clear();
     loaded_metadata_.tile_validity_offsets_[i] = false;
+    tile_validity_offsets_[i].clear();
   }
 
   for (uint64_t i = 0; i < tile_var_sizes_.size(); i++) {
-    std::lock_guard<std::mutex> lock(mtx_);
+    loaded_metadata_.tile_var_sizes_[i] = false;
     if (memory_tracker_ != nullptr) {
       memory_tracker_->release_memory(
           tile_var_sizes_[i].size() * sizeof(uint64_t),
           MemoryTracker::MemoryType::TILE_OFFSETS);
     }
     tile_var_sizes_[i].clear();
-    loaded_metadata_.tile_var_sizes_[i] = false;
   }
 }
 
 Status FragmentMetadata::load_tile_var_sizes(
     const EncryptionKey& encryption_key, const std::string& name) {
-  if (version_ <= 2)
+  if (version_ <= 2) {
     return Status::Ok();
+  }
 
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
@@ -2436,7 +2437,7 @@ void FragmentMetadata::get_subarray_tile_domain(
 }
 
 Status FragmentMetadata::expand_non_empty_domain(const NDRange& mbr) {
-  std::lock_guard<std::mutex> lock(mtx_);
+  std::lock_guard<std::mutex> lock(non_empty_domain_mtx_);
 
   // Case the non-empty domain is not initialized yet
   if (non_empty_domain_.empty()) {
@@ -2457,208 +2458,218 @@ Status FragmentMetadata::load_tile_offsets(
   }
 
   // If the tile offset is already loaded, exit early to avoid the lock
-  if (loaded_metadata_.tile_offsets_[idx])
+  if (loaded_metadata_.tile_offsets_[idx]) {
     return Status::Ok();
+  }
 
-  std::lock_guard<std::mutex> lock(tile_offsets_mtx_[idx]);
+  std::call_once(run_once_flags_.tile_offsets_[idx], [&]() {
+    auto&& [st, tile_opt] = read_generic_tile_from_file(
+        encryption_key, gt_offsets_.tile_offsets_[idx]);
+    throw_if_not_ok(st);
+    auto& tile = *tile_opt;
 
-  if (loaded_metadata_.tile_offsets_[idx])
-    return Status::Ok();
+    storage_manager_->stats()->add_counter(
+        "read_tile_offsets_size", tile.size());
 
-  auto&& [st, tile_opt] = read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_offsets_[idx]);
-  RETURN_NOT_OK(st);
-  auto& tile = *tile_opt;
+    Deserializer deserializer(tile.data(), tile.size());
+    load_tile_offsets(idx, deserializer);
 
-  storage_manager_->stats()->add_counter("read_tile_offsets_size", tile.size());
-
-  Deserializer deserializer(tile.data(), tile.size());
-  load_tile_offsets(idx, deserializer);
-
-  loaded_metadata_.tile_offsets_[idx] = true;
+    loaded_metadata_.tile_offsets_[idx] = true;
+  });
 
   return Status::Ok();
 }
 
 Status FragmentMetadata::load_tile_var_offsets(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ <= 2)
+  if (version_ <= 2) {
     return Status::Ok();
+  }
 
   // If the tile var offset is already loaded, exit early to avoid the lock
-  if (loaded_metadata_.tile_var_offsets_[idx])
+  if (loaded_metadata_.tile_var_offsets_[idx]) {
     return Status::Ok();
+  }
 
-  std::lock_guard<std::mutex> lock(tile_var_offsets_mtx_[idx]);
+  std::call_once(run_once_flags_.tile_var_offsets_[idx], [&]() {
+    auto&& [st, tile_opt] = read_generic_tile_from_file(
+        encryption_key, gt_offsets_.tile_var_offsets_[idx]);
+    throw_if_not_ok(st);
+    auto& tile = *tile_opt;
 
-  if (loaded_metadata_.tile_var_offsets_[idx])
-    return Status::Ok();
+    storage_manager_->stats()->add_counter(
+        "read_tile_var_offsets_size", tile.size());
 
-  auto&& [st, tile_opt] = read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_var_offsets_[idx]);
-  RETURN_NOT_OK(st);
-  auto& tile = *tile_opt;
+    Deserializer deserializer(tile.data(), tile.size());
+    load_tile_var_offsets(idx, deserializer);
 
-  storage_manager_->stats()->add_counter(
-      "read_tile_var_offsets_size", tile.size());
-
-  Deserializer deserializer(tile.data(), tile.size());
-  load_tile_var_offsets(idx, deserializer);
-
-  loaded_metadata_.tile_var_offsets_[idx] = true;
+    loaded_metadata_.tile_var_offsets_[idx] = true;
+  });
 
   return Status::Ok();
 }
 
 Status FragmentMetadata::load_tile_var_sizes(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ <= 2)
+  if (version_ <= 2) {
     return Status::Ok();
+  }
 
-  std::lock_guard<std::mutex> lock(mtx_);
-
-  if (loaded_metadata_.tile_var_sizes_[idx])
+  if (loaded_metadata_.tile_var_sizes_[idx]) {
     return Status::Ok();
+  }
 
-  auto&& [st, tile_opt] = read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_var_sizes_[idx]);
-  RETURN_NOT_OK(st);
-  auto& tile = *tile_opt;
+  std::call_once(run_once_flags_.tile_var_sizes_[idx], [&]() {
+    auto&& [st, tile_opt] = read_generic_tile_from_file(
+        encryption_key, gt_offsets_.tile_var_sizes_[idx]);
+    throw_if_not_ok(st);
+    auto& tile = *tile_opt;
 
-  storage_manager_->stats()->add_counter(
-      "read_tile_var_sizes_size", tile.size());
+    storage_manager_->stats()->add_counter(
+        "read_tile_var_sizes_size", tile.size());
 
-  Deserializer deserializer(tile.data(), tile.size());
-  load_tile_var_sizes(idx, deserializer);
+    Deserializer deserializer(tile.data(), tile.size());
+    load_tile_var_sizes(idx, deserializer);
 
-  loaded_metadata_.tile_var_sizes_[idx] = true;
+    loaded_metadata_.tile_var_sizes_[idx] = true;
+  });
 
   return Status::Ok();
 }
 
 Status FragmentMetadata::load_tile_validity_offsets(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ <= 6)
+  if (version_ <= 6) {
     return Status::Ok();
+  }
 
-  std::lock_guard<std::mutex> lock(mtx_);
-
-  if (loaded_metadata_.tile_validity_offsets_[idx])
+  if (loaded_metadata_.tile_validity_offsets_[idx]) {
     return Status::Ok();
+  }
 
-  auto&& [st, tile_opt] = read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_validity_offsets_[idx]);
-  RETURN_NOT_OK(st);
-  auto& tile = *tile_opt;
+  std::call_once(run_once_flags_.tile_validity_offsets_[idx], [&]() {
+    auto&& [st, tile_opt] = read_generic_tile_from_file(
+        encryption_key, gt_offsets_.tile_validity_offsets_[idx]);
+    throw_if_not_ok(st);
+    auto& tile = *tile_opt;
 
-  storage_manager_->stats()->add_counter(
-      "read_tile_validity_offsets_size", tile.size());
+    storage_manager_->stats()->add_counter(
+        "read_tile_validity_offsets_size", tile.size());
 
-  ConstBuffer cbuff(tile.data(), tile.size());
-  RETURN_NOT_OK(load_tile_validity_offsets(idx, &cbuff));
+    ConstBuffer cbuff(tile.data(), tile.size());
+    throw_if_not_ok(load_tile_validity_offsets(idx, &cbuff));
 
-  loaded_metadata_.tile_validity_offsets_[idx] = true;
+    loaded_metadata_.tile_validity_offsets_[idx] = true;
+  });
 
   return Status::Ok();
 }
 
 Status FragmentMetadata::load_tile_min_values(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ <= 10)
+  if (version_ <= 10) {
     return Status::Ok();
+  }
 
-  std::lock_guard<std::mutex> lock(mtx_);
-
-  if (loaded_metadata_.tile_min_[idx])
+  if (loaded_metadata_.tile_min_[idx]) {
     return Status::Ok();
+  }
 
-  auto&& [st, tile_opt] = read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_min_offsets_[idx]);
-  RETURN_NOT_OK(st);
-  auto& tile = *tile_opt;
+  std::call_once(run_once_flags_.tile_min_values_[idx], [&]() {
+    auto&& [st, tile_opt] = read_generic_tile_from_file(
+        encryption_key, gt_offsets_.tile_min_offsets_[idx]);
+    throw_if_not_ok(st);
+    auto& tile = *tile_opt;
 
-  storage_manager_->stats()->add_counter("read_tile_min_size", tile.size());
+    storage_manager_->stats()->add_counter("read_tile_min_size", tile.size());
 
-  Deserializer deserializer(tile.data(), tile.size());
-  load_tile_min_values(idx, deserializer);
+    Deserializer deserializer(tile.data(), tile.size());
+    load_tile_min_values(idx, deserializer);
 
-  loaded_metadata_.tile_min_[idx] = true;
+    loaded_metadata_.tile_min_[idx] = true;
+  });
 
   return Status::Ok();
 }
 
 Status FragmentMetadata::load_tile_max_values(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ <= 10)
+  if (version_ <= 10) {
     return Status::Ok();
+  }
 
-  std::lock_guard<std::mutex> lock(mtx_);
-
-  if (loaded_metadata_.tile_max_[idx])
+  if (loaded_metadata_.tile_max_[idx]) {
     return Status::Ok();
+  }
 
-  auto&& [st, tile_opt] = read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_max_offsets_[idx]);
-  RETURN_NOT_OK(st);
-  auto& tile = *tile_opt;
+  std::call_once(run_once_flags_.tile_max_values_[idx], [&]() {
+    auto&& [st, tile_opt] = read_generic_tile_from_file(
+        encryption_key, gt_offsets_.tile_max_offsets_[idx]);
+    throw_if_not_ok(st);
+    auto& tile = *tile_opt;
 
-  storage_manager_->stats()->add_counter("read_tile_max_size", tile.size());
+    storage_manager_->stats()->add_counter("read_tile_max_size", tile.size());
 
-  Deserializer deserializer(tile.data(), tile.size());
-  load_tile_max_values(idx, deserializer);
+    Deserializer deserializer(tile.data(), tile.size());
+    load_tile_max_values(idx, deserializer);
 
-  loaded_metadata_.tile_max_[idx] = true;
+    loaded_metadata_.tile_max_[idx] = true;
+  });
 
   return Status::Ok();
 }
 
 Status FragmentMetadata::load_tile_sum_values(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ <= 10)
+  if (version_ <= 10) {
     return Status::Ok();
+  }
 
-  std::lock_guard<std::mutex> lock(mtx_);
-
-  if (loaded_metadata_.tile_sum_[idx])
+  if (loaded_metadata_.tile_sum_[idx]) {
     return Status::Ok();
+  }
 
-  auto&& [st, tile_opt] = read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_sum_offsets_[idx]);
-  RETURN_NOT_OK(st);
-  auto& tile = *tile_opt;
+  std::call_once(run_once_flags_.tile_sum_values_[idx], [&]() {
+    auto&& [st, tile_opt] = read_generic_tile_from_file(
+        encryption_key, gt_offsets_.tile_sum_offsets_[idx]);
+    throw_if_not_ok(st);
+    auto& tile = *tile_opt;
 
-  storage_manager_->stats()->add_counter("read_tile_sum_size", tile.size());
+    storage_manager_->stats()->add_counter("read_tile_sum_size", tile.size());
 
-  Deserializer deserializer(tile.data(), tile.size());
-  load_tile_sum_values(idx, deserializer);
+    Deserializer deserializer(tile.data(), tile.size());
+    load_tile_sum_values(idx, deserializer);
 
-  loaded_metadata_.tile_sum_[idx] = true;
+    loaded_metadata_.tile_sum_[idx] = true;
+  });
 
   return Status::Ok();
 }
 
 Status FragmentMetadata::load_tile_null_count_values(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ <= 10)
+  if (version_ <= 10) {
     return Status::Ok();
+  }
 
-  std::lock_guard<std::mutex> lock(mtx_);
-
-  if (loaded_metadata_.tile_null_count_[idx])
+  if (loaded_metadata_.tile_null_count_[idx]) {
     return Status::Ok();
+  }
 
-  auto&& [st, tile_opt] = read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_null_count_offsets_[idx]);
-  RETURN_NOT_OK(st);
-  auto& tile = *tile_opt;
+  std::call_once(run_once_flags_.tile_null_count_values_[idx], [&]() {
+    auto&& [st, tile_opt] = read_generic_tile_from_file(
+        encryption_key, gt_offsets_.tile_null_count_offsets_[idx]);
+    throw_if_not_ok(st);
+    auto& tile = *tile_opt;
 
-  storage_manager_->stats()->add_counter(
-      "read_tile_null_count_size", tile.size());
+    storage_manager_->stats()->add_counter(
+        "read_tile_null_count_size", tile.size());
 
-  Deserializer deserializer(tile.data(), tile.size());
-  load_tile_null_count_values(idx, deserializer);
+    Deserializer deserializer(tile.data(), tile.size());
+    load_tile_null_count_values(idx, deserializer);
 
-  loaded_metadata_.tile_null_count_[idx] = true;
+    loaded_metadata_.tile_null_count_[idx] = true;
+  });
 
   return Status::Ok();
 }
@@ -2930,7 +2941,7 @@ void FragmentMetadata::load_tile_offsets(Deserializer& deserializer) {
 
   // Allocate tile offsets
   tile_offsets_.resize(attribute_num + 1);
-  tile_offsets_mtx_.resize(attribute_num + 1);
+  run_once_flags_.resize(attribute_num + 1);
 
   // For all attributes, get the tile offsets
   for (unsigned int i = 0; i < attribute_num + 1; ++i) {
@@ -3003,7 +3014,7 @@ void FragmentMetadata::load_tile_var_offsets(Deserializer& deserializer) {
 
   // Allocate tile offsets
   tile_var_offsets_.resize(attribute_num);
-  tile_var_offsets_mtx_.resize(attribute_num);
+  run_once_flags_.resize(attribute_num);
 
   // For all attributes, get the variable tile offsets
   for (unsigned int i = 0; i < attribute_num; ++i) {
@@ -3076,6 +3087,7 @@ void FragmentMetadata::load_tile_var_sizes(Deserializer& deserializer) {
 
   // Allocate tile sizes
   tile_var_sizes_.resize(attribute_num);
+  run_once_flags_.resize(attribute_num);
 
   // For all attributes, get the variable tile sizes
   for (unsigned int i = 0; i < attribute_num; ++i) {
@@ -3696,117 +3708,116 @@ Status FragmentMetadata::load_v3_or_higher(
 }
 
 Status FragmentMetadata::load_footer(
-    const EncryptionKey& encryption_key,
+    const EncryptionKey&,
     Tile* fragment_metadata_tile,
     uint64_t offset,
     std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas) {
-  (void)encryption_key;  // Not used for now, perhaps in the future
-  std::lock_guard<std::mutex> lock(mtx_);
-
-  if (loaded_metadata_.footer_)
+  if (loaded_metadata_.footer_) {
     return Status::Ok();
-
-  std::shared_ptr<Tile> tile;
-  if (fragment_metadata_tile == nullptr) {
-    has_consolidated_footer_ = false;
-    RETURN_NOT_OK(read_file_footer(tile, &footer_offset_, &footer_size_));
-
-    fragment_metadata_tile = tile.get();
-    offset = 0;
-  } else {
-    footer_size_ = 0;  // adjusted at end of routine based on buffer consumed
-    footer_offset_ = offset;
-    has_consolidated_footer_ = true;
   }
-  Deserializer deserializer(
-      fragment_metadata_tile->data_as<uint8_t>() + offset,
-      fragment_metadata_tile->size() - offset);
-  auto starting_deserializer_size = deserializer.size();
 
-  load_version(deserializer);
+  std::call_once(run_once_flags_.footer_, [&]() {
+    std::shared_ptr<Tile> tile;
+    if (fragment_metadata_tile == nullptr) {
+      has_consolidated_footer_ = false;
+      throw_if_not_ok(read_file_footer(tile, &footer_offset_, &footer_size_));
 
-  if (version_ >= 10) {
-    load_array_schema_name(deserializer);
-    auto schema = array_schemas.find(array_schema_name_);
-    if (schema != array_schemas.end()) {
-      set_array_schema(schema->second);
+      fragment_metadata_tile = tile.get();
+      offset = 0;
     } else {
-      throw FragmentMetadataStatusException(
-          "Could not find schema " + array_schema_name_ +
-          " in map of schemas loaded.\n" +
-          "Consider reloading the array to check for new array schemas.");
+      footer_size_ = 0;  // adjusted at end of routine based on buffer consumed
+      footer_offset_ = offset;
+      has_consolidated_footer_ = true;
     }
-  } else {
-    // Pre-v10 format fragments we need to set the schema and schema name to
-    // the "old" schema. This way "old" fragments are still loaded fine
-    array_schema_name_ = tiledb::sm::constants::array_schema_filename;
-    auto schema = array_schemas.find(array_schema_name_);
-    if (schema != array_schemas.end()) {
-      set_array_schema(schema->second);
+    Deserializer deserializer(
+        fragment_metadata_tile->data_as<uint8_t>() + offset,
+        fragment_metadata_tile->size() - offset);
+    auto starting_deserializer_size = deserializer.size();
+
+    load_version(deserializer);
+
+    if (version_ >= 10) {
+      load_array_schema_name(deserializer);
+      auto schema = array_schemas.find(array_schema_name_);
+      if (schema != array_schemas.end()) {
+        set_array_schema(schema->second);
+      } else {
+        throw FragmentMetadataStatusException(
+            "Could not find schema " + array_schema_name_ +
+            " in map of schemas loaded.\n" +
+            "Consider reloading the array to check for new array schemas.");
+      }
     } else {
-      throw FragmentMetadataStatusException(
-          "Could not find schema " + array_schema_name_ +
-          " in map of schemas loaded.\n" +
-          "Consider reloading the array to check for new array schemas.");
+      // Pre-v10 format fragments we need to set the schema and schema name to
+      // the "old" schema. This way "old" fragments are still loaded fine
+      array_schema_name_ = tiledb::sm::constants::array_schema_filename;
+      auto schema = array_schemas.find(array_schema_name_);
+      if (schema != array_schemas.end()) {
+        set_array_schema(schema->second);
+      } else {
+        throw FragmentMetadataStatusException(
+            "Could not find schema " + array_schema_name_ +
+            " in map of schemas loaded.\n" +
+            "Consider reloading the array to check for new array schemas.");
+      }
     }
-  }
-  load_dense(deserializer);
-  load_non_empty_domain(deserializer);
-  load_sparse_tile_num(deserializer);
-  load_last_tile_cell_num(deserializer);
+    load_dense(deserializer);
+    load_non_empty_domain(deserializer);
+    load_sparse_tile_num(deserializer);
+    load_last_tile_cell_num(deserializer);
 
-  if (version_ >= 14) {
-    load_has_timestamps(deserializer);
-  }
+    if (version_ >= 14) {
+      load_has_timestamps(deserializer);
+    }
 
-  if (version_ >= 15) {
-    load_has_delete_meta(deserializer);
-  }
+    if (version_ >= 15) {
+      load_has_delete_meta(deserializer);
+    }
 
-  load_file_sizes(deserializer);
-  load_file_var_sizes(deserializer);
-  load_file_validity_sizes(deserializer);
+    load_file_sizes(deserializer);
+    load_file_var_sizes(deserializer);
+    load_file_validity_sizes(deserializer);
 
-  unsigned num = array_schema_->attribute_num() + 1 + has_timestamps_ +
-                 has_delete_meta_ * 2;
-  num += (version_ >= 5) ? array_schema_->dim_num() : 0;
+    unsigned num = array_schema_->attribute_num() + 1 + has_timestamps_ +
+                   has_delete_meta_ * 2;
+    num += (version_ >= 5) ? array_schema_->dim_num() : 0;
 
-  tile_offsets_.resize(num);
-  tile_offsets_mtx_.resize(num);
-  tile_var_offsets_.resize(num);
-  tile_var_offsets_mtx_.resize(num);
-  tile_var_sizes_.resize(num);
-  tile_validity_offsets_.resize(num);
-  tile_min_buffer_.resize(num);
-  tile_min_var_buffer_.resize(num);
-  tile_max_buffer_.resize(num);
-  tile_max_var_buffer_.resize(num);
-  tile_sums_.resize(num);
-  tile_null_counts_.resize(num);
+    run_once_flags_.resize(num);
+    tile_offsets_.resize(num);
+    tile_var_offsets_.resize(num);
+    tile_var_sizes_.resize(num);
+    tile_validity_offsets_.resize(num);
+    tile_min_buffer_.resize(num);
+    tile_min_var_buffer_.resize(num);
+    tile_max_buffer_.resize(num);
+    tile_max_var_buffer_.resize(num);
+    tile_sums_.resize(num);
+    tile_null_counts_.resize(num);
 
-  fragment_mins_.resize(num);
-  fragment_maxs_.resize(num);
-  fragment_sums_.resize(num);
-  fragment_null_counts_.resize(num);
+    fragment_mins_.resize(num);
+    fragment_maxs_.resize(num);
+    fragment_sums_.resize(num);
+    fragment_null_counts_.resize(num);
 
-  loaded_metadata_.tile_offsets_.resize(num, false);
-  loaded_metadata_.tile_var_offsets_.resize(num, false);
-  loaded_metadata_.tile_var_sizes_.resize(num, false);
-  loaded_metadata_.tile_validity_offsets_.resize(num, false);
-  loaded_metadata_.tile_min_.resize(num, false);
-  loaded_metadata_.tile_max_.resize(num, false);
-  loaded_metadata_.tile_sum_.resize(num, false);
-  loaded_metadata_.tile_null_count_.resize(num, false);
+    loaded_metadata_.tile_offsets_.resize(num, false);
+    loaded_metadata_.tile_var_offsets_.resize(num, false);
+    loaded_metadata_.tile_var_sizes_.resize(num, false);
+    loaded_metadata_.tile_validity_offsets_.resize(num, false);
+    loaded_metadata_.tile_min_.resize(num, false);
+    loaded_metadata_.tile_max_.resize(num, false);
+    loaded_metadata_.tile_sum_.resize(num, false);
+    loaded_metadata_.tile_null_count_.resize(num, false);
 
-  load_generic_tile_offsets(deserializer);
+    load_generic_tile_offsets(deserializer);
 
-  loaded_metadata_.footer_ = true;
+    // If the footer_size is not set lets calculate from how much of the
+    // buffer we read
+    if (footer_size_ == 0) {
+      footer_size_ = starting_deserializer_size - deserializer.size();
+    }
 
-  // If the footer_size is not set lets calculate from how much of the
-  // buffer we read
-  if (footer_size_ == 0) {
-    footer_size_ = starting_deserializer_size - deserializer.size();
-  }
+    loaded_metadata_.footer_ = true;
+  });
 
   return Status::Ok();
 }

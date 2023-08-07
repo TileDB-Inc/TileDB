@@ -176,7 +176,7 @@ Status fragment_metadata_from_capnp(
         last.emplace_back(v);
       }
     }
-    frag_meta->tile_offsets_mtx().resize(
+    frag_meta->run_once_flags().resize(
         frag_meta_reader.getTileOffsets().size());
     loaded_metadata.tile_offsets_.resize(
         frag_meta_reader.getTileOffsets().size(), loaded);
@@ -189,8 +189,8 @@ Status fragment_metadata_from_capnp(
         last.emplace_back(v);
       }
     }
-    frag_meta->tile_var_offsets_mtx().resize(
-        frag_meta_reader.getTileVarOffsets().size());
+    frag_meta->run_once_flags().resize(
+        frag_meta_reader.getTileOffsets().size());
     loaded_metadata.tile_var_offsets_.resize(
         frag_meta_reader.getTileVarOffsets().size(), loaded);
   }

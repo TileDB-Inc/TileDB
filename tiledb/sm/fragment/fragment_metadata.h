@@ -109,20 +109,105 @@ class FragmentMetadata {
   /*          TYPE DEFINITIONS         */
   /* ********************************* */
 
+  class LoadedMetadataAtomic : public std::atomic<bool> {
+   public:
+    LoadedMetadataAtomic()
+        : loaded_(false) {
+    }
+
+    LoadedMetadataAtomic(bool value)
+        : loaded_(value) {
+    }
+
+    // Copy initialization
+    LoadedMetadataAtomic(const LoadedMetadataAtomic& other) {
+      loaded_.store(other.loaded_.load());
+    }
+
+    LoadedMetadataAtomic& operator=(const LoadedMetadataAtomic& other) {
+      loaded_.store(other.loaded_.load());
+
+      return *this;
+    }
+
+    LoadedMetadataAtomic& operator=(const bool value) {
+      loaded_ = value;
+      return *this;
+    }
+
+    operator bool() const {
+      return loaded_;
+    }
+
+   private:
+    std::atomic<bool> loaded_;
+  };
+
   /** Keeps track of which metadata is loaded. */
   struct LoadedMetadata {
-    bool footer_ = false;
-    bool rtree_ = false;
-    std::vector<bool> tile_offsets_;
-    std::vector<bool> tile_var_offsets_;
-    std::vector<bool> tile_var_sizes_;
-    std::vector<bool> tile_validity_offsets_;
-    std::vector<bool> tile_min_;
-    std::vector<bool> tile_max_;
-    std::vector<bool> tile_sum_;
-    std::vector<bool> tile_null_count_;
-    bool fragment_min_max_sum_null_count_ = false;
-    bool processed_conditions_ = false;
+    LoadedMetadataAtomic footer_;
+    LoadedMetadataAtomic rtree_;
+    std::vector<LoadedMetadataAtomic> tile_offsets_;
+    std::vector<LoadedMetadataAtomic> tile_var_offsets_;
+    std::vector<LoadedMetadataAtomic> tile_var_sizes_;
+    std::vector<LoadedMetadataAtomic> tile_validity_offsets_;
+    std::vector<LoadedMetadataAtomic> tile_min_;
+    std::vector<LoadedMetadataAtomic> tile_max_;
+    std::vector<LoadedMetadataAtomic> tile_sum_;
+    std::vector<LoadedMetadataAtomic> tile_null_count_;
+    LoadedMetadataAtomic fragment_min_max_sum_null_count_;
+    LoadedMetadataAtomic processed_conditions_;
+  };
+
+  struct RunOnceFlags {
+    void resize(unsigned num) {
+      if (tile_offsets_.size() < num) {
+        tile_offsets_.resize(num);
+        tile_var_offsets_.resize(num);
+        tile_var_sizes_.resize(num);
+        tile_validity_offsets_.resize(num);
+        tile_min_values_.resize(num);
+        tile_max_values_.resize(num);
+        tile_sum_values_.resize(num);
+        tile_null_count_values_.resize(num);
+      }
+    }
+
+    /** Run once flag for processed conditions loading. */
+    std::once_flag processed_conditions_;
+
+    /** Run once flag for fragment min/max/sum/null count loading. */
+    std::once_flag fragment_min_max_sum_null_count_;
+
+    /** Run once flag for rtree loading. */
+    std::once_flag rtree_;
+
+    /** Run once flags for tile offset loading. */
+    std::deque<std::once_flag> tile_offsets_;
+
+    /** Run once flags for tile var offset loading. */
+    std::deque<std::once_flag> tile_var_offsets_;
+
+    /** Run once flags for tile var size loading. */
+    std::deque<std::once_flag> tile_var_sizes_;
+
+    /** Run once flags for tile var validity offsets loading. */
+    std::deque<std::once_flag> tile_validity_offsets_;
+
+    /** Run once flags for tile min values loading. */
+    std::deque<std::once_flag> tile_min_values_;
+
+    /** Run once flags for tile max values loading. */
+    std::deque<std::once_flag> tile_max_values_;
+
+    /** Run once flags for tile sum values loading. */
+    std::deque<std::once_flag> tile_sum_values_;
+
+    /** Run once flags for tile null count values loading. */
+    std::deque<std::once_flag> tile_null_count_values_;
+
+    /** Run once flag for footer loading. */
+    std::once_flag footer_;
   };
 
   /**
@@ -1072,24 +1157,19 @@ class FragmentMetadata {
     return tile_index_base_;
   }
 
+  /** tile_offsets_mtx accessor */
+  RunOnceFlags& run_once_flags() {
+    return run_once_flags_;
+  }
+
   /** tile_offsets accessor */
   std::vector<std::vector<uint64_t>>& tile_offsets() {
     return tile_offsets_;
   }
 
-  /** tile_offsets_mtx accessor */
-  std::deque<std::mutex>& tile_offsets_mtx() {
-    return tile_offsets_mtx_;
-  }
-
   /** tile_var_offsets accessor */
   std::vector<std::vector<uint64_t>>& tile_var_offsets() {
     return tile_var_offsets_;
-  }
-
-  /** tile_var_offsets_mtx accessor */
-  std::deque<std::mutex>& tile_var_offsets_mtx() {
-    return tile_var_offsets_mtx_;
   }
 
   /** tile_var_sizes  accessor */
@@ -1281,14 +1361,11 @@ class FragmentMetadata {
   /** The size of the fragment metadata file. */
   uint64_t meta_file_size_;
 
-  /** Local mutex for thread-safety. */
-  std::mutex mtx_;
+  /** Run once flags. */
+  RunOnceFlags run_once_flags_;
 
-  /** Mutex per tile offset loading. */
-  std::deque<std::mutex> tile_offsets_mtx_;
-
-  /** Mutex per tile var offset loading. */
-  std::deque<std::mutex> tile_var_offsets_mtx_;
+  /** Mutex protecting 'non_empty_domain_'. */
+  std::mutex non_empty_domain_mtx_;
 
   /** The non-empty domain of the fragment. */
   NDRange non_empty_domain_;

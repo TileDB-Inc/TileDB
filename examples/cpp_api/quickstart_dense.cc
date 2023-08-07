@@ -1,114 +1,122 @@
-/**
- * @file   quickstart_dense.cc
- *
- * @section LICENSE
- *
- * The MIT License
- *
- * @copyright Copyright (c) 2018-2023 TileDB, Inc.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- * When run, this program will create a simple 2D dense array on memfs,
- * write some data to it, and read a slice of the data back.
- *
- * Note: MemFS lives on a single VFS instance on a global Context object
- */
-
+#include <chrono>
+#include <ctime>
 #include <iostream>
+#include <thread>
 #include <tiledb/tiledb>
+#include <vector>
 
 using namespace tiledb;
 
-// Name of array.
-std::string array_name_("mem://quickstart_dense_array");
+#define SIZE 1024
+#define MAX_VAL 100000
+#define NUM_THREADS 10
 
-// Example-global Context object.
+std::string array_name_("quickstart_dense_array");
+
 Context ctx_;
 
 void create_array() {
-  // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
   Domain domain(ctx_);
-  domain.add_dimension(Dimension::create<int>(ctx_, "rows", {{1, 4}}, 4))
-      .add_dimension(Dimension::create<int>(ctx_, "cols", {{1, 4}}, 4));
+  domain.add_dimension(Dimension::create<int>(ctx_, "rows", {{1, SIZE}}, 4))
+      .add_dimension(Dimension::create<int>(ctx_, "cols", {{1, SIZE}}, 4));
 
-  // The array will be dense.
   ArraySchema schema(ctx_, TILEDB_DENSE);
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
 
-  // Add a single attribute "a" so each (i,j) cell can store an integer.
-  schema.add_attribute(Attribute::create<int>(ctx_, "a"));
+  schema.add_attribute(Attribute::create<int>(ctx_, "r"));
+  schema.add_attribute(Attribute::create<int>(ctx_, "g"));
+  schema.add_attribute(Attribute::create<int>(ctx_, "b"));
 
-  // Create the (empty) array on disk.
   Array::create(array_name_, schema);
 }
 
-void write_array() {
-  // Prepare some data for the array
-  std::vector<int> data = {
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+void write_image() {
+  std::vector<int> r;
+  r.reserve(SIZE * SIZE);
+  std::vector<int> g;
+  g.reserve(SIZE * SIZE);
+  std::vector<int> b;
+  b.reserve(SIZE * SIZE);
+  for (int i = 0; i < SIZE; i++) {
+    for (int j = 0; j < SIZE; j++) {
+      r.emplace_back(rand() % MAX_VAL);
+      g.emplace_back(rand() % MAX_VAL);
+      b.emplace_back(rand() % MAX_VAL);
+    }
+  }
 
-  // Open the array for writing and create the query.
   Array array(ctx_, array_name_, TILEDB_WRITE);
   Query query(ctx_, array, TILEDB_WRITE);
-  query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
+  query.set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("r", r)
+      .set_data_buffer("g", g)
+      .set_data_buffer("b", b);
 
-  // Perform the write and close the array.
   query.submit();
   array.close();
 }
 
-void read_array() {
-  // Prepare the array for reading
-  Array array(ctx_, array_name_, TILEDB_READ);
+int iter = 0;
 
-  // Slice only rows 1, 2 and cols 2, 3, 4
-  Subarray subarray(ctx_, array);
-  subarray.add_range(0, 1, 2).add_range(1, 2, 4);
+std::vector<int> read_r(SIZE* SIZE* NUM_THREADS);
+std::vector<int> read_g(SIZE* SIZE* NUM_THREADS);
+std::vector<int> read_b(SIZE* SIZE* NUM_THREADS);
 
-  // Prepare the vector that will hold the result (of size 6 elements)
-  std::vector<int> data(6);
+Array* read_array;
 
-  // Prepare the query
-  Query query(ctx_, array, TILEDB_READ);
+void read_image(int thread_id) {
+  std::this_thread::sleep_for(std::chrono::microseconds(rand() % 1000));
+
+  Subarray subarray(ctx_, *read_array);
+  subarray.add_range(0, 1, 100).add_range(1, 1, 100);
+
+  Query query(ctx_, *read_array, TILEDB_READ);
   query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
-      .set_data_buffer("a", data);
+      .set_data_buffer(
+          "r", read_r.data() + SIZE * SIZE * thread_id, SIZE * SIZE)
+      .set_data_buffer(
+          "g", read_g.data() + SIZE * SIZE * thread_id, SIZE * SIZE)
+      .set_data_buffer(
+          "b", read_b.data() + SIZE * SIZE * thread_id, SIZE * SIZE);
 
-  // Submit the query and close the array.
   query.submit();
-  array.close();
 
-  // Print out the results.
-  for (auto d : data)
-    std::cout << d << " ";
-  std::cout << "\n";
+  if (thread_id == 0) {
+    auto end = std::chrono::system_clock::now();
+    std::time_t end_time = std::chrono::system_clock::to_time_t(end);
+    std::cout << "Query done it: " << iter++ << " at: " << std::ctime(&end_time)
+              << std::endl;
+  }
+}
+
+void read_thread(int thread_id) {
+  while (true) {
+    read_image(thread_id);
+  }
 }
 
 int main() {
   if (Object::object(ctx_, array_name_).type() != Object::Type::Array) {
     create_array();
-    write_array();
+    for (int i = 0; i < 10; i++) {
+      write_image();
+    }
   }
 
-  read_array();
+  Array array(ctx_, array_name_, TILEDB_READ);
+  read_array = &array;
+
+  std::vector<std::thread> threads;
+  for (int i = 0; i < NUM_THREADS; i++) {
+    threads.emplace_back(read_thread, i);
+  }
+
+  for (auto& t : threads) {
+    t.join();
+  }
+
+  array.close();
+
   return 0;
 }
