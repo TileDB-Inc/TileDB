@@ -2169,6 +2169,21 @@ Status query_from_capnp(
     for (auto written_buffer : written_buffer_list) {
       written_buffers.emplace(written_buffer.cStr());
     }
+  } else if (
+      query_type == QueryType::WRITE &&
+      query_status == QueryStatus::COMPLETED &&
+      context == SerializationContext::SERVER && layout == Layout::UNORDERED) {
+    // Handle pre 2.16 clients...
+    // For pre-2.16 clients, unordered writes always had to write all attributes
+    // + dimensions at once so we just list all fields here.
+    auto& written_buffers = query->get_written_buffers();
+    written_buffers.clear();
+    for (const auto& it : schema.attributes()) {
+      written_buffers.emplace(it->name());
+    }
+    for (const auto& it : schema.dim_names()) {
+      written_buffers.emplace(it);
+    }
   }
 
   return Status::Ok();
