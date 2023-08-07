@@ -51,14 +51,25 @@ std::string bbv_to_hex_str(const tiledb::sm::ByteVecValue& b);
 /**
  * Returns the string representation of a Query AST node.
  */
-std::string ast_node_to_str(const tdb_unique_ptr<tiledb::sm::ASTNode>& node);
+std::string ast_node_to_str(const tiledb::sm::ASTNode* node);
+
+template <class T>
+inline std::string ast_node_to_str(const tdb_unique_ptr<T>& node) {
+  return ast_node_to_str(static_cast<tiledb::sm::ASTNode*>(node.get()));
+}
 
 /**
  * Returns whether two ASTs are syntactically equal.
  */
-bool ast_equal(
-    const tdb_unique_ptr<tiledb::sm::ASTNode>& lhs,
-    const tdb_unique_ptr<tiledb::sm::ASTNode>& rhs);
+bool ast_equal(const tiledb::sm::ASTNode* lhs, const tiledb::sm::ASTNode* rhs);
+
+template <class T1, class T2>
+inline bool ast_equal(
+    const tdb_unique_ptr<T1>& lhs, const tdb_unique_ptr<T2>& rhs) {
+  return ast_equal(
+      static_cast<tiledb::sm::ASTNode*>(lhs.get()),
+      static_cast<tiledb::sm::ASTNode*>(rhs.get()));
+}
 
 }  // namespace tiledb::test
 #endif  //  TILEDB_AST_HELPERS_H

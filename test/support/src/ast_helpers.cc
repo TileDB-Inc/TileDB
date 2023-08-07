@@ -67,7 +67,7 @@ std::string bbv_to_hex_str(const tiledb::sm::ByteVecValue& b) {
   return ss.str();
 }
 
-std::string ast_node_to_str(const tdb_unique_ptr<tiledb::sm::ASTNode>& node) {
+std::string ast_node_to_str(const tiledb::sm::ASTNode* node) {
   if (node == nullptr)
     return "";
   std::string result_str;
@@ -86,7 +86,7 @@ std::string ast_node_to_str(const tdb_unique_ptr<tiledb::sm::ASTNode>& node) {
     result_str = "(";
     const auto& nodes = node->get_children();
     for (size_t i = 0; i < nodes.size(); i++) {
-      result_str += ast_node_to_str(nodes[i]);
+      result_str += ast_node_to_str(nodes[i].get());
       if (i != nodes.size() - 1) {
         result_str += " ";
         result_str +=
@@ -99,9 +99,7 @@ std::string ast_node_to_str(const tdb_unique_ptr<tiledb::sm::ASTNode>& node) {
   }
 }
 
-bool ast_equal(
-    const tdb_unique_ptr<sm::ASTNode>& lhs,
-    const tdb_unique_ptr<sm::ASTNode>& rhs) {
+bool ast_equal(const sm::ASTNode* lhs, const sm::ASTNode* rhs) {
   if (!lhs->is_expr() && !rhs->is_expr()) {
     if (lhs->get_field_name() != rhs->get_field_name())
       return false;
@@ -131,7 +129,7 @@ bool ast_equal(
       return false;
 
     for (size_t i = 0; i < lhs_children.size(); ++i) {
-      if (!ast_equal(lhs_children[i], rhs_children[i]))
+      if (!ast_equal(lhs_children[i].get(), rhs_children[i].get()))
         return false;
     }
     return true;
