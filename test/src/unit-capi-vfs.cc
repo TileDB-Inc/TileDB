@@ -985,7 +985,10 @@ TEST_CASE_METHOD(VFSFx, "C API: VFS recursive ls", "[c-debug-smr]") {
   std::string bucket_name = "s3://" + tiledb::test::random_name("tiledb") + "/";
   tiledb_vfs_create_bucket(ctx, vfs, bucket_name.c_str());
   tiledb_vfs_create_dir(ctx, vfs, std::string(bucket_name + "/root").c_str());
+  // d1 and d2 contain 10 and 100 files respectively.
   std::vector<size_t> max_files = {10, 100, 0};
+  // Create d1, d2, d3 directories.
+  // d3 will not be returned, as it is an empty prefix with no objects.
   for (size_t i = 1; i <= 3; i++) {
     tiledb_vfs_create_dir(
         ctx,
@@ -1007,7 +1010,12 @@ TEST_CASE_METHOD(VFSFx, "C API: VFS recursive ls", "[c-debug-smr]") {
       TILEDB_OK);
   for (size_t i = 1; i < data_off.size(); i++) {
     std::string path(data, data_off[i - 1], data_off[i] - data_off[i - 1]);
-    std::cout << path << std::endl;
+    if (i <= 10) {
+      CHECK_THAT(path, Catch::Matchers::ContainsSubstring("d1"));
+    } else {
+      CHECK_THAT(path, Catch::Matchers::ContainsSubstring("d2"));
+    }
   }
+  max_paths = max_paths == -1 ? 110 : max_paths;
   CHECK(static_cast<int64_t>(data_off.size() - 1) == max_paths);
 }

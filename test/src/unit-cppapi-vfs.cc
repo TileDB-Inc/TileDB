@@ -516,10 +516,13 @@ TEST_CASE("C++ API: VFS recursive ls", "[debug-smr]") {
   std::string bucket_name = "s3://" + tiledb::test::random_name("tiledb") + "/";
   vfs.create_bucket(bucket_name);
   vfs.create_dir(bucket_name + "/root");
+  // d1 and d2 contain 10 and 100 files respectively.
   std::vector<size_t> max_files = {10, 100, 0};
+  // Create d1, d2, d3 directories.
+  // d3 will not be returned, as it is an empty prefix with no objects.
   for (size_t i = 1; i <= 3; i++) {
     vfs.create_dir(bucket_name + "/root/d" + std::to_string(i));
-    for (size_t j = 0; j <= max_files[i - 1]; j++) {
+    for (size_t j = 1; j <= max_files[i - 1]; j++) {
       vfs.touch(
           bucket_name + "/root/d" + std::to_string(i) + "/test" +
           std::to_string(j) + ".txt");
@@ -533,7 +536,13 @@ TEST_CASE("C++ API: VFS recursive ls", "[debug-smr]") {
 
   for (size_t i = 1; i < offsets.size(); i++) {
     std::string path(data, offsets[i - 1], offsets[i] - offsets[i - 1]);
-    std::cout << path << std::endl;
+    if (i <= 10) {
+      CHECK_THAT(path, Catch::Matchers::ContainsSubstring("d1"));
+    } else {
+      CHECK_THAT(path, Catch::Matchers::ContainsSubstring("d2"));
+    }
   }
+  // If max_paths is -1 all 110 results should be returned.
+  max_paths = max_paths == -1 ? 110 : max_paths;
   CHECK(static_cast<int64_t>(offsets.size() - 1) == max_paths);
 }
