@@ -504,10 +504,30 @@ TEST_CASE(
 
 TEST_CASE("C++ API: VFS recursive ls", "[debug-smr]") {
   using namespace tiledb;
-  Context ctx;
+  Config config;
+#ifndef TILEDB_TESTS_AWS_S3_CONFIG
+  REQUIRE_NOTHROW(config.set("vfs.s3.endpoint_override", "localhost:9999"));
+  REQUIRE_NOTHROW(config.set("vfs.s3.scheme", "https"));
+  REQUIRE_NOTHROW(config.set("vfs.s3.use_virtual_addressing", "false"));
+  REQUIRE_NOTHROW(config.set("vfs.s3.verify_ssl", "false"));
+#endif
+  Context ctx(config);
   VFS vfs(ctx);
-  auto result = vfs.ls_recursive(
-      "s3://1000genomes-dragen-v3.7.6/data/individuals/hg38-graph-based");
+  std::string bucket_name = "s3://" + tiledb::test::random_name("tiledb") + "/";
+  vfs.create_bucket(bucket_name);
+  vfs.create_dir(bucket_name + "/root");
+  std::vector<size_t> max_files = {10, 100, 0};
+  for (size_t i = 1; i <= 3; i++) {
+    vfs.create_dir(bucket_name + "/root/d" + std::to_string(i));
+    for (size_t j = 0; j <= max_files[i - 1]; j++) {
+      vfs.touch(
+          bucket_name + "/root/d" + std::to_string(i) + "/test" +
+          std::to_string(j) + ".txt");
+    }
+  }
+
+  int64_t max_paths = GENERATE(10, 50, -1);
+  auto result = vfs.ls_recursive(bucket_name, max_paths);
   auto data = result.first;
   auto offsets = result.second;
 
@@ -515,5 +535,5 @@ TEST_CASE("C++ API: VFS recursive ls", "[debug-smr]") {
     std::string path(data, offsets[i - 1], offsets[i] - offsets[i - 1]);
     std::cout << path << std::endl;
   }
-  std::cout << "Total results: " << offsets.size() << std::endl;
+  CHECK(static_cast<int64_t>(offsets.size() - 1) == max_paths);
 }

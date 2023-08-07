@@ -612,7 +612,8 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_ls_recursive(
     tiledb_vfs_t* vfs,
     const char* path,
     void* data,
-    void* data_off) TILEDB_NOEXCEPT;
+    void* data_off,
+    int64_t max_count) TILEDB_NOEXCEPT;
 
 /**
  * Frees a file handle.

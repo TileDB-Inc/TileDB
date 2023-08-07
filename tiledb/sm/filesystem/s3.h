@@ -412,8 +412,16 @@ class S3 {
       const std::string& delimiter = "/",
       int max_paths = -1) const;
 
+  /**
+   * Recursively lists objects and object information that start with `prefix`.
+   *
+   * @param prefix The parent path to list sub-paths.
+   * @param delimiter The uri is truncated to the first delimiter
+   * @param max_paths The maximum number of paths to be retrieved
+   * @return A list of directory_entry objects
+   */
   tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-  ls_recursive(const URI& prefix, int max_paths = -1) const {
+  ls_recursive(const URI& prefix, int64_t max_paths = -1) const {
     return ls_with_sizes(prefix, "", max_paths);
   }
 

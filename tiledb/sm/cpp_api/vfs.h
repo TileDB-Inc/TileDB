@@ -483,12 +483,12 @@ class VFS {
   }
 
   std::pair<std::string, std::vector<uint64_t>> ls_recursive(
-      const std::string& uri) const {
+      const std::string& uri, int64_t max_paths = -1) const {
     std::string data;
     std::vector<uint64_t> offsets;
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_vfs_ls_recursive(
-        ctx.ptr().get(), vfs_.get(), uri.c_str(), &data, &offsets));
+        ctx.ptr().get(), vfs_.get(), uri.c_str(), &data, &offsets, max_paths));
     return {data, offsets};
   }
 

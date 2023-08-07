@@ -729,9 +729,9 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
 }
 
 Status VFS::ls(
-    const URI& parent, std::vector<URI>* uris, bool recursive) const {
+    const URI& parent, std::vector<URI>* uris) const {
   stats_->add_counter("ls_num", 1);
-  auto&& [st, entries] = ls_with_sizes(parent, recursive);
+  auto&& [st, entries] = ls_with_sizes(parent);
   RETURN_NOT_OK(st);
 
   for (auto& fs : *entries) {
@@ -741,8 +741,50 @@ Status VFS::ls(
   return Status::Ok();
 }
 
+Status VFS::ls_recursive(
+    const URI& parent, std::vector<URI>* uris, int64_t max_paths) const {
+  optional<std::vector<directory_entry>> entries;
+  if (parent.is_file()) {
+#ifdef _WIN32
+    Status st;
+    std::tie(st, entries) = win_.ls_with_sizes(parent);
+#else
+    Status st;
+    std::tie(st, entries) = posix_.ls_with_sizes(parent);
+#endif
+    RETURN_NOT_OK(st);
+  } else if (parent.is_s3()) {
+#ifdef HAVE_S3
+    Status st;
+    std::tie(st, entries) = s3_.ls_recursive(parent, max_paths);
+#else
+    auto st =
+        LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+#endif
+    RETURN_NOT_OK(st);
+  } else {
+    auto st = LOG_STATUS(Status_VFSError(
+        "Recursive ls over " + parent.backend_name() +
+        " storage backend is not supported."));
+    return st;
+  }
+  parallel_sort(
+      compute_tp_,
+      entries->begin(),
+      entries->end(),
+      [](const directory_entry& l, const directory_entry& r) {
+        return l.path().native() < r.path().native();
+      });
+
+  for (auto& fs : *entries) {
+    uris->emplace_back(fs.path().native());
+  }
+
+  return Status::Ok();
+}
+
 tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
-    const URI& parent, bool recursive) const {
+    const URI& parent) const {
   // Noop if `parent` is not a directory, do not error out.
   // For S3, GCS and Azure, `ls` on a non-directory will just
   // return an empty `uris` vector.
@@ -753,13 +795,6 @@ tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
     if (!flag) {
       return {Status::Ok(), std::vector<directory_entry>()};
     }
-  }
-
-  if (recursive && !parent.is_s3()) {
-    auto st = LOG_STATUS(Status_VFSError(
-        "Recursive ls over " + parent.backend_name() +
-        " storage backend is not yet supported."));
-    return {st, std::nullopt};
   }
 
   optional<std::vector<directory_entry>> entries;
@@ -775,11 +810,7 @@ tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
   } else if (parent.is_s3()) {
 #ifdef HAVE_S3
     Status st;
-    if (recursive) {
-      std::tie(st, entries) = s3_.ls_recursive(parent);
-    } else {
-      std::tie(st, entries) = s3_.ls_with_sizes(parent);
-    }
+    std::tie(st, entries) = s3_.ls_with_sizes(parent);
 #else
     auto st =
         LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));

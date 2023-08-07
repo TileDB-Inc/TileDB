@@ -375,11 +375,21 @@ class VFS : private VFSBase, S3_within_VFS {
    *
    * @param parent The target directory to list.
    * @param uris The URIs that are contained in the parent.
-   * @param recursive True if directory list should be performed recursively.
    * @return Status
    */
   Status ls(
-      const URI& parent, std::vector<URI>* uris, bool recursive = false) const;
+      const URI& parent, std::vector<URI>* uris) const;
+
+  /**
+   * Recursively lists objects and object information that start with `prefix`.
+   *
+   * @param prefix The parent path to list sub-paths.
+   * @param uris The URIs that are contained in the parent.
+   * @param max_paths The maximum number of paths to be retrieved
+   * @return Status
+   */
+  Status ls_recursive(
+      const URI& parent, std::vector<URI>* uris, int64_t max_count) const;
 
   /**
    * Retrieves all the entries contained in the parent.
@@ -388,7 +398,7 @@ class VFS : private VFSBase, S3_within_VFS {
    * @return All entries that are contained in the parent
    */
   tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-  ls_with_sizes(const URI& parent, bool recursive = false) const;
+  ls_with_sizes(const URI& parent) const;
 
   /**
    * Renames a file.

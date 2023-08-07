@@ -967,28 +967,49 @@ TEST_CASE_METHOD(VFSFx, "C API: Test VFS parallel I/O", "[capi][vfs]") {
 
 TEST_CASE_METHOD(VFSFx, "C API: VFS recursive ls", "[c-debug-smr]") {
   tiledb_config_t* cfg;
-  tiledb_error_t* err;
+  tiledb_error_t* err = nullptr;
   REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
-
   tiledb_ctx_t* ctx;
   REQUIRE(tiledb_ctx_alloc(cfg, &ctx) == TILEDB_OK);
-
+#ifndef TILEDB_TESTS_AWS_S3_CONFIG
+  REQUIRE_NOTHROW(tiledb_config_set(cfg, "vfs.s3.endpoint_override", "localhost:9999", &err));
+  REQUIRE_NOTHROW(tiledb_config_set(cfg, "vfs.s3.scheme", "https", &err));
+  REQUIRE_NOTHROW(tiledb_config_set(cfg, "vfs.s3.use_virtual_addressing", "false", &err));
+  REQUIRE_NOTHROW(tiledb_config_set(cfg, "vfs.s3.verify_ssl", "false", &err));
+#endif
   tiledb_vfs_t* vfs;
   REQUIRE(tiledb_vfs_alloc(ctx, cfg, &vfs) == TILEDB_OK);
 
+  std::string bucket_name = "s3://" + tiledb::test::random_name("tiledb") + "/";
+  tiledb_vfs_create_bucket(ctx, vfs, bucket_name.c_str());
+  tiledb_vfs_create_dir(ctx, vfs, std::string(bucket_name + "/root").c_str());
+  std::vector<size_t> max_files = {10, 100, 0};
+  for (size_t i = 1; i <= 3; i++) {
+    tiledb_vfs_create_dir(
+        ctx,
+        vfs,
+        std::string(bucket_name + "/root/d" + std::to_string(i)).c_str());
+    for (size_t j = 1; j <= max_files[i - 1]; j++) {
+      auto file_path = bucket_name + "/root/d" + std::to_string(i) + "/test" +
+                       std::to_string(j) + ".txt";
+      tiledb_vfs_touch(ctx, vfs, file_path.c_str());
+    }
+  }
+
+  int64_t max_paths = GENERATE(10, 50, -1);
   std::string data;
   std::vector<uint64_t> data_off;
-
   REQUIRE(
       tiledb_vfs_ls_recursive(
           ctx,
           vfs,
-          "s3://1000genomes-dragen-v3.7.6/data/individuals/hg38-graph-based",
+          bucket_name.c_str(),
           &data,
-          &data_off) == TILEDB_OK);
+          &data_off,
+          max_paths) == TILEDB_OK);
   for (size_t i = 1; i < data_off.size(); i++) {
     std::string path(data, data_off[i - 1], data_off[i] - data_off[i - 1]);
     std::cout << path << std::endl;
   }
-  std::cout << "Total results: " << data_off.size() << std::endl;
+  CHECK(static_cast<int64_t>(data_off.size() - 1) == max_paths);
 }
