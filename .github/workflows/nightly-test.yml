@@ -19,6 +19,9 @@ jobs:
           - os: macos-latest # ASAN build
             cxxflags: "-std=c++17"
             asan: "true"
+          - os: macos-latest # Experimental build
+            cxxflags: "-std=c++17"
+            experimental: ON
           - os: windows-latest
             cxxflags: "/std:c++17"
           - os: windows-2019
@@ -54,8 +57,9 @@ jobs:
         env:
           CXXFLAGS: ${{ matrix.cxxflags }}
           SANITIZER_ARG: ${{ matrix.asan == 'true' && 'address' || 'OFF' }}
+          EXPERIMENTAL: ${{ matrix.experimental || 'OFF' }}
         run: |
-          cmake -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=${{ matrix.config || 'Release' }} -DSANITIZER=$SANITIZER_ARG
+          cmake -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DTILEDB_EXPERIMENTAL_FEATURES=$EXPERIMENTAL -DCMAKE_BUILD_TYPE=${{ matrix.config || 'Release' }} -DSANITIZER=$SANITIZER_ARG
 
       - name: Configure TileDB CMake
         if: contains(matrix.os, 'windows')
