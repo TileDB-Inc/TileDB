@@ -2193,7 +2193,8 @@ Status query_from_capnp(
     }
   } else if (
       query_type == QueryType::WRITE &&
-      query_status == QueryStatus::COMPLETED) {
+      query_status == QueryStatus::COMPLETED &&
+      context == SerializationContext::SERVER) {
     // Handle pre 2.16 clients...
     // For pre-2.16 clients writes always had to write all attributes +
     // dimensions at once so we just list all fields here.
