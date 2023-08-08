@@ -31,6 +31,7 @@
  */
 
 #include <test/support/src/helpers.h>
+#include <test/support/src/vfs_helpers.h>
 #include <test/support/tdb_catch.h>
 #include "tiledb/sm/cpp_api/tiledb"
 
@@ -502,47 +503,75 @@ TEST_CASE(
   }
 }
 
-TEST_CASE("C++ API: VFS recursive ls", "[debug-smr]") {
+TEST_CASE("C++ API: VFS recursive ls", "[cppapi][vfs][ls-recursive]") {
   using namespace tiledb;
   Config config;
-#ifndef TILEDB_TESTS_AWS_S3_CONFIG
-  REQUIRE_NOTHROW(config.set("vfs.s3.endpoint_override", "localhost:9999"));
-  REQUIRE_NOTHROW(config.set("vfs.s3.scheme", "https"));
-  REQUIRE_NOTHROW(config.set("vfs.s3.use_virtual_addressing", "false"));
-  REQUIRE_NOTHROW(config.set("vfs.s3.verify_ssl", "false"));
-#endif
-  Context ctx(config);
-  VFS vfs(ctx);
-  std::string bucket_name = "s3://" + tiledb::test::random_name("tiledb") + "/";
-  vfs.create_bucket(bucket_name);
-  vfs.create_dir(bucket_name + "/root");
-  // d1 and d2 contain 10 and 100 files respectively.
-  std::vector<size_t> max_files = {10, 100, 0};
-  // Create d1, d2, d3 directories.
-  // d3 will not be returned, as it is an empty prefix with no objects.
-  for (size_t i = 1; i <= 3; i++) {
-    vfs.create_dir(bucket_name + "/root/d" + std::to_string(i));
-    for (size_t j = 1; j <= max_files[i - 1]; j++) {
-      vfs.touch(
-          bucket_name + "/root/d" + std::to_string(i) + "/test" +
-          std::to_string(j) + ".txt");
-    }
-  }
-
+  tiledb_ctx_t* ctx_c;
+  tiledb_vfs_t* vfs_c;
+  auto fs_vec = test::vfs_test_get_fs_vec();
+  REQUIRE(test::vfs_test_init(fs_vec, &ctx_c, &vfs_c).ok());
+  // Sets max paths returned by recursive ls. -1 retrieves all results.
   int64_t max_paths = GENERATE(10, 50, -1);
-  auto result = vfs.ls_recursive(bucket_name, max_paths);
-  auto data = result.first;
-  auto offsets = result.second;
 
-  for (size_t i = 1; i < offsets.size(); i++) {
-    std::string path(data, offsets[i - 1], offsets[i] - offsets[i - 1]);
-    if (i <= 10) {
-      CHECK_THAT(path, Catch::Matchers::ContainsSubstring("d1"));
-    } else {
-      CHECK_THAT(path, Catch::Matchers::ContainsSubstring("d2"));
+  Context ctx(ctx_c, false);
+  VFS vfs(ctx);
+  for (const auto& fs : fs_vec) {
+    sm::URI uri(fs->temp_dir());
+    auto uri_str = uri.to_string();
+    vfs.create_dir(uri_str);
+    std::vector<std::string> expected_paths;
+    // LocalFS returns root directories.
+    if (uri.is_file()) {
+      expected_paths = {
+          uri_str + "d1",
+          uri_str + "d2",
+          uri_str + "d3",
+      };
     }
+
+    // d1 and d2 contain 10 and 100 files respectively.
+    std::vector<size_t> max_files = {10, 100, 0};
+    // Create d1, d2, d3 directories.
+    // d3 will not be returned by S3, as it is an empty prefix with no objects.
+    for (size_t i = 1; i <= 3; i++) {
+      vfs.create_dir(uri_str + "d" + std::to_string(i));
+      for (size_t j = 1; j <= max_files[i - 1]; j++) {
+        auto file = uri_str + "d" + std::to_string(i) + "/test" +
+                    std::to_string(j) + ".txt";
+        vfs.touch(file);
+        expected_paths.push_back(file);
+      }
+    }
+    // Sort and trim expected vector to match VFS::ls sorted output.
+    std::sort(expected_paths.begin() + 3, expected_paths.end());
+    if (max_paths != -1) {
+      expected_paths.resize(max_paths);
+    }
+
+    // Ensure exception is thrown for backends without recursive ls support.
+    if (!uri.is_s3() && !uri.is_file()) {
+      REQUIRE_THROWS_WITH(
+          vfs.ls_recursive(uri_str, max_paths),
+          "[TileDB::VFS] Error: Recursive ls over " + uri.backend_name() +
+              " storage backend is not supported.");
+      // Test next SupportedFS.
+      continue;
+    }
+
+    auto result = vfs.ls_recursive(uri_str, max_paths);
+    auto data = result.first;
+    auto offsets = result.second;
+    for (size_t i = 1; i < offsets.size(); i++) {
+      std::string path(data, offsets[i - 1], offsets[i] - offsets[i - 1]);
+      CHECK_THAT(
+          expected_paths,
+          Catch::Matchers::VectorContains(sm::URI(path).to_string()));
+    }
+
+    // If max_paths is -1 all results should be returned.
+    // S3 won't return prefixes without objects. +3 for posix d1/, d2/, and d3/.
+    int64_t all_expected = uri.is_s3() ? 110 : 113;
+    max_paths = max_paths == -1 ? all_expected : max_paths;
+    CHECK(static_cast<int64_t>(offsets.size() - 1) == max_paths);
   }
-  // If max_paths is -1 all 110 results should be returned.
-  max_paths = max_paths == -1 ? 110 : max_paths;
-  CHECK(static_cast<int64_t>(offsets.size() - 1) == max_paths);
 }

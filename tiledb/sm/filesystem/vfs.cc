@@ -749,7 +749,7 @@ Status VFS::ls_recursive(
     std::tie(st, entries) = win_.ls_with_sizes(parent);
 #else
     Status st;
-    std::tie(st, entries) = posix_.ls_with_sizes(parent);
+    std::tie(st, entries) = posix_.ls_recursive(parent, max_paths);
 #endif
     RETURN_NOT_OK(st);
   } else if (parent.is_s3()) {
@@ -767,13 +767,17 @@ Status VFS::ls_recursive(
         " storage backend is not supported."));
     return st;
   }
-  parallel_sort(
-      compute_tp_,
-      entries->begin(),
-      entries->end(),
-      [](const directory_entry& l, const directory_entry& r) {
-        return l.path().native() < r.path().native();
-      });
+
+  // LocalFS results were sorted in-place during traversal.
+  if (!parent.is_file()) {
+    parallel_sort(
+        compute_tp_,
+        entries->begin(),
+        entries->end(),
+        [](const directory_entry& l, const directory_entry& r) {
+          return l.path().native() < r.path().native();
+        });
+  }
 
   for (auto& fs : *entries) {
     uris->emplace_back(fs.path().native());

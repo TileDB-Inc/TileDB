@@ -30,6 +30,7 @@
  * Tests the C API VFS object.
  */
 
+#include <test/support/src/vfs_helpers.h>
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
@@ -965,57 +966,75 @@ TEST_CASE_METHOD(VFSFx, "C API: Test VFS parallel I/O", "[capi][vfs]") {
   }
 }
 
-TEST_CASE_METHOD(VFSFx, "C API: VFS recursive ls", "[c-debug-smr]") {
-  tiledb_config_t* cfg;
-  tiledb_error_t* err = nullptr;
-  REQUIRE(tiledb_config_alloc(&cfg, &err) == TILEDB_OK);
+TEST_CASE("C API: VFS recursive ls", "[capi][vfs][ls-recursive]") {
+  using namespace tiledb;
   tiledb_ctx_t* ctx;
-  REQUIRE(tiledb_ctx_alloc(cfg, &ctx) == TILEDB_OK);
-#ifndef TILEDB_TESTS_AWS_S3_CONFIG
-  REQUIRE_NOTHROW(tiledb_config_set(
-      cfg, "vfs.s3.endpoint_override", "localhost:9999", &err));
-  REQUIRE_NOTHROW(tiledb_config_set(cfg, "vfs.s3.scheme", "https", &err));
-  REQUIRE_NOTHROW(
-      tiledb_config_set(cfg, "vfs.s3.use_virtual_addressing", "false", &err));
-  REQUIRE_NOTHROW(tiledb_config_set(cfg, "vfs.s3.verify_ssl", "false", &err));
-#endif
   tiledb_vfs_t* vfs;
-  REQUIRE(tiledb_vfs_alloc(ctx, cfg, &vfs) == TILEDB_OK);
-
-  std::string bucket_name = "s3://" + tiledb::test::random_name("tiledb") + "/";
-  tiledb_vfs_create_bucket(ctx, vfs, bucket_name.c_str());
-  tiledb_vfs_create_dir(ctx, vfs, std::string(bucket_name + "/root").c_str());
-  // d1 and d2 contain 10 and 100 files respectively.
-  std::vector<size_t> max_files = {10, 100, 0};
-  // Create d1, d2, d3 directories.
-  // d3 will not be returned, as it is an empty prefix with no objects.
-  for (size_t i = 1; i <= 3; i++) {
-    tiledb_vfs_create_dir(
-        ctx,
-        vfs,
-        std::string(bucket_name + "/root/d" + std::to_string(i)).c_str());
-    for (size_t j = 1; j <= max_files[i - 1]; j++) {
-      auto file_path = bucket_name + "/root/d" + std::to_string(i) + "/test" +
-                       std::to_string(j) + ".txt";
-      tiledb_vfs_touch(ctx, vfs, file_path.c_str());
-    }
-  }
-
+  auto fs_vec = vfs_test_get_fs_vec();
+  REQUIRE(vfs_test_init(fs_vec, &ctx, &vfs).ok());
   int64_t max_paths = GENERATE(10, 50, -1);
-  std::string data;
-  std::vector<uint64_t> data_off;
-  REQUIRE(
-      tiledb_vfs_ls_recursive(
-          ctx, vfs, bucket_name.c_str(), &data, &data_off, max_paths) ==
-      TILEDB_OK);
-  for (size_t i = 1; i < data_off.size(); i++) {
-    std::string path(data, data_off[i - 1], data_off[i] - data_off[i - 1]);
-    if (i <= 10) {
-      CHECK_THAT(path, Catch::Matchers::ContainsSubstring("d1"));
-    } else {
-      CHECK_THAT(path, Catch::Matchers::ContainsSubstring("d2"));
+
+  for (const auto& fs : fs_vec) {
+    sm::URI uri(fs->temp_dir());
+    std::string uri_str = uri.to_string();
+    tiledb_vfs_create_dir(ctx, vfs, uri_str.c_str());
+    std::vector<std::string> expected_paths;
+    // LocalFS returns root directories.
+    if (uri.is_file()) {
+      expected_paths = {
+          uri_str + "d1",
+          uri_str + "d2",
+          uri_str + "d3",
+      };
     }
+
+    // d1 and d2 contain 10 and 100 files respectively.
+    std::vector<size_t> max_files = {10, 100, 0};
+    // Create d1, d2, d3 directories.
+    // d3 will not be returned, as it is an empty prefix with no objects.
+    for (size_t i = 1; i <= 3; i++) {
+      tiledb_vfs_create_dir(
+          ctx, vfs, std::string(uri_str + "d" + std::to_string(i)).c_str());
+      for (size_t j = 1; j <= max_files[i - 1]; j++) {
+        auto file = uri_str + "d" + std::to_string(i) + "/test" +
+                    std::to_string(j) + ".txt";
+        tiledb_vfs_touch(ctx, vfs, file.c_str());
+        expected_paths.push_back(file);
+      }
+    }
+    // Sort and trim expected vector to match VFS::ls sorted output.
+    std::sort(expected_paths.begin() + 3, expected_paths.end());
+    if (max_paths != -1) {
+      expected_paths.resize(max_paths);
+    }
+    std::string data;
+    std::vector<uint64_t> data_off;
+
+    // Ensure exception is thrown for backends without recursive ls support.
+    if (!uri.is_s3() && !uri.is_file()) {
+      REQUIRE(
+          tiledb_vfs_ls_recursive(
+              ctx, vfs, uri_str.c_str(), &data, &data_off, max_paths) ==
+          TILEDB_ERR);
+      // Test next SupportedFS.
+      continue;
+    }
+
+    REQUIRE(
+        tiledb_vfs_ls_recursive(
+            ctx, vfs, uri_str.c_str(), &data, &data_off, max_paths) ==
+        TILEDB_OK);
+    for (size_t i = 1; i < data_off.size(); i++) {
+      std::string path(data, data_off[i - 1], data_off[i] - data_off[i - 1]);
+      CHECK_THAT(
+          expected_paths,
+          Catch::Matchers::VectorContains(sm::URI(path).to_string()));
+    }
+
+    // If max_paths is -1 all results should be returned.
+    // S3 won't return prefixes without objects. +3 for posix d1/, d2/, and d3/.
+    int64_t all_expected = uri.is_s3() ? 110 : 113;
+    max_paths = max_paths == -1 ? all_expected : max_paths;
+    CHECK(static_cast<int64_t>(data_off.size() - 1) == max_paths);
   }
-  max_paths = max_paths == -1 ? 110 : max_paths;
-  CHECK(static_cast<int64_t>(data_off.size() - 1) == max_paths);
 }

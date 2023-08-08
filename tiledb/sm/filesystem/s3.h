@@ -404,7 +404,7 @@ class S3 {
    * @param prefix The parent path to list sub-paths.
    * @param delimiter The uri is truncated to the first delimiter
    * @param max_paths The maximum number of paths to be retrieved
-   * @return A list of directory_entry objects
+   * @return Status tuple where second is a list of directory_entry objects
    */
   tuple<Status, optional<std::vector<filesystem::directory_entry>>>
   ls_with_sizes(
@@ -418,10 +418,11 @@ class S3 {
    * @param prefix The parent path to list sub-paths.
    * @param delimiter The uri is truncated to the first delimiter
    * @param max_paths The maximum number of paths to be retrieved
-   * @return A list of directory_entry objects
+   * @return Status tuple where second is a list of directory_entry objects
    */
   tuple<Status, optional<std::vector<filesystem::directory_entry>>>
   ls_recursive(const URI& prefix, int64_t max_paths = -1) const {
+    // For S3, passing an empty delimiter will return recursive results.
     return ls_with_sizes(prefix, "", max_paths);
   }
 
