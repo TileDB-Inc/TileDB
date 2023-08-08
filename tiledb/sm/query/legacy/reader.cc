@@ -1007,8 +1007,8 @@ Status Reader::copy_partitioned_fixed_cells(
     // for this tile.
     const bool split_buffer_for_zipped_coords =
         is_dim && cs.tile_->stores_zipped_coords();
-    const bool field_not_present =
-        (is_dim || is_attr) && cs.tile_->tile_tuple(*name) == nullptr;
+    const bool field_not_present = (is_dim || is_attr) && cs.tile_ != nullptr &&
+                                   cs.tile_->tile_tuple(*name) == nullptr;
     if ((cs.tile_ == nullptr || field_not_present) &&
         !split_buffer_for_zipped_coords) {  // Empty range or attributed added
                                             // in schema evolution
