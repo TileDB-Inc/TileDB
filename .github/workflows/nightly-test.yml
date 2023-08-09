@@ -19,9 +19,6 @@ jobs:
           - os: macos-latest # ASAN build
             cxxflags: "-std=c++17"
             asan: "true"
-          - os: macos-latest
-            cxxflags: "-std=c++17"
-            experimental: ON
           - os: windows-latest
             cxxflags: "/std:c++17"
           - os: windows-2019
