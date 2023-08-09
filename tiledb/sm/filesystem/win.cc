@@ -40,6 +40,7 @@
 #include "tiledb/common/scoped_executor.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
 #include "uri.h"
@@ -396,6 +397,38 @@ err:
       get_last_error_msg(gle, offender.c_str()));
   auto st = LOG_STATUS(Status_IOError(errmsg));
   return {st, nullopt};
+}
+
+tuple<Status, optional<std::vector<directory_entry>>> Win::ls_recursive(
+    const URI& uri, int64_t max_paths) const {
+  std::vector<directory_entry> entries;
+  std::queue<URI> q;
+  q.push(uri);
+
+  while (!q.empty()) {
+    auto&& [st, results] = ls_with_sizes(q.front());
+    RETURN_NOT_OK_TUPLE(st, nullopt);
+    parallel_sort(
+        vfs_thread_pool_,
+        results->begin(),
+        results->end(),
+        [](const directory_entry& l, const directory_entry& r) {
+          return l.path().native() < r.path().native();
+        });
+    for (const auto& result : *results) {
+      if (result.is_directory()) {
+        q.emplace(result.path().native());
+      }
+
+      entries.push_back(result);
+      if (static_cast<int64_t>(entries.size()) == max_paths) {
+        return {Status::Ok(), entries};
+      }
+    }
+    q.pop();
+  }
+
+  return {Status::Ok(), entries};
 }
 
 Status Win::move_path(

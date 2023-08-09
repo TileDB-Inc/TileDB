@@ -746,7 +746,7 @@ Status VFS::ls_recursive(
   if (parent.is_file()) {
 #ifdef _WIN32
     Status st;
-    std::tie(st, entries) = win_.ls_with_sizes(parent);
+    std::tie(st, entries) = win_.ls_recursive(parent, max_paths);
 #else
     Status st;
     std::tie(st, entries) = posix_.ls_recursive(parent, max_paths);

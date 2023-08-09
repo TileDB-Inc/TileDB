@@ -144,7 +144,6 @@ class Win {
   bool is_file(const std::string& path) const;
 
   /**
-   *
    * Lists files one level deep under a given path.
    *
    * @param path  The parent path to list sub-paths.
@@ -154,7 +153,6 @@ class Win {
   Status ls(const std::string& path, std::vector<std::string>* paths) const;
 
   /**
-   *
    * Lists files and file information under a given path.
    *
    * @param path The parent path to list sub-paths.
@@ -162,6 +160,16 @@ class Win {
    */
   tuple<Status, optional<std::vector<filesystem::directory_entry>>>
   ls_with_sizes(const URI& path) const;
+
+  /**
+   * Recursively lists objects and object information that start with `prefix`.
+   *
+   * @param prefix The parent path to list sub-paths.
+   * @param max_paths The maximum number of paths to be retrieved
+   * @return Status tuple where second is a list of directory_entry objects
+   */
+  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
+  ls_recursive(const URI& path, int64_t max_paths) const;
 
   /**
    * Move a given filesystem path.

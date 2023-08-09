@@ -270,39 +270,6 @@ Status Posix::ls(
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-Posix::ls_recursive(const URI& path, int64_t max_paths) const {
-  std::vector<directory_entry> entries;
-  std::queue<URI> q;
-  q.push(path);
-
-  while (!q.empty()) {
-    auto&& [st, results] = ls_with_sizes(q.front());
-    RETURN_NOT_OK_TUPLE(st, nullopt);
-    // Sort the results to avoid strange collections when pruned by max_paths.
-    parallel_sort(
-        vfs_thread_pool_,
-        results->begin(),
-        results->end(),
-        [](const directory_entry& l, const directory_entry& r) {
-          return l.path().native() < r.path().native();
-        });
-    for (const auto& result : *results) {
-      if (result.is_directory()) {
-        q.emplace(result.path().native());
-      }
-
-      entries.push_back(result);
-      if (static_cast<int64_t>(entries.size()) == max_paths) {
-        return {Status::Ok(), entries};
-      }
-    }
-    q.pop();
-  }
-
-  return {Status::Ok(), entries};
-}
-
 tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
     const URI& uri) const {
   std::string path = uri.to_path();
@@ -337,6 +304,39 @@ tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
         std::string("Cannot close parent directory; ") + strerror(errno)));
     return {st, nullopt};
   }
+  return {Status::Ok(), entries};
+}
+
+tuple<Status, optional<std::vector<filesystem::directory_entry>>>
+Posix::ls_recursive(const URI& path, int64_t max_paths) const {
+  std::vector<directory_entry> entries;
+  std::queue<URI> q;
+  q.push(path);
+
+  while (!q.empty()) {
+    auto&& [st, results] = ls_with_sizes(q.front());
+    RETURN_NOT_OK_TUPLE(st, nullopt);
+    // Sort the results to avoid strange collections when pruned by max_paths.
+    parallel_sort(
+        vfs_thread_pool_,
+        results->begin(),
+        results->end(),
+        [](const directory_entry& l, const directory_entry& r) {
+          return l.path().native() < r.path().native();
+        });
+    for (const auto& result : *results) {
+      if (result.is_directory()) {
+        q.emplace(result.path().native());
+      }
+
+      entries.push_back(result);
+      if (static_cast<int64_t>(entries.size()) == max_paths) {
+        return {Status::Ok(), entries};
+      }
+    }
+    q.pop();
+  }
+
   return {Status::Ok(), entries};
 }
 

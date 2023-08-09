@@ -398,7 +398,6 @@ class S3 {
       int max_paths = -1) const;
 
   /**
-   *
    * Lists objects and object information that start with `prefix`.
    *
    * @param prefix The parent path to list sub-paths.
@@ -416,7 +415,6 @@ class S3 {
    * Recursively lists objects and object information that start with `prefix`.
    *
    * @param prefix The parent path to list sub-paths.
-   * @param delimiter The uri is truncated to the first delimiter
    * @param max_paths The maximum number of paths to be retrieved
    * @return Status tuple where second is a list of directory_entry objects
    */
