@@ -32,6 +32,7 @@
 
 #include <algorithm>
 #include <mutex>
+#include <queue>
 #include <sstream>
 #include <unordered_set>
 
@@ -39,6 +40,7 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/filesystem/mem_filesystem.h"
+#include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
 #include "uri.h"
 
@@ -340,9 +342,10 @@ class MemFilesystem::Directory : public MemFilesystem::FSNode {
   }
 };
 
-MemFilesystem::MemFilesystem()
+MemFilesystem::MemFilesystem(ThreadPool* vfs_thread_pool)
     : root_(tdb_unique_ptr<FSNode>(tdb_new(Directory))) {
   assert(root_);
+  vfs_thread_pool_ = vfs_thread_pool;
 }
 
 MemFilesystem::~MemFilesystem() {
@@ -429,6 +432,39 @@ MemFilesystem::ls_with_sizes(const URI& path) const {
   auto&& [st, entries] = cur->ls(dir);
   if (!st.ok()) {
     return {st, nullopt};
+  }
+
+  return {Status::Ok(), entries};
+}
+
+tuple<Status, optional<std::vector<filesystem::directory_entry>>>
+MemFilesystem::ls_recursive(const URI& path, int64_t max_paths) const {
+  std::vector<directory_entry> entries;
+  std::queue<URI> q;
+  q.push(path);
+
+  while (!q.empty()) {
+    auto&& [st, results] = ls_with_sizes(q.front());
+    RETURN_NOT_OK_TUPLE(st, nullopt);
+    // Sort the results to avoid strange collections when pruned by max_paths.
+    parallel_sort(
+        vfs_thread_pool_,
+        results->begin(),
+        results->end(),
+        [](const directory_entry& l, const directory_entry& r) {
+          return l.path().native() < r.path().native();
+        });
+    for (const auto& result : *results) {
+      if (result.is_directory()) {
+        q.emplace(result.path().native());
+      }
+
+      entries.push_back(result);
+      if (static_cast<int64_t>(entries.size()) == max_paths) {
+        return {Status::Ok(), entries};
+      }
+    }
+    q.pop();
   }
 
   return {Status::Ok(), entries};

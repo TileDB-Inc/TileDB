@@ -39,6 +39,7 @@
 
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
+#include "tiledb/common/thread_pool.h"
 
 using namespace tiledb::common;
 
@@ -65,7 +66,7 @@ class MemFilesystem {
   /* ********************************* */
 
   /** Constructor. */
-  MemFilesystem();
+  explicit MemFilesystem(ThreadPool* vfs_thread_pool);
 
   /** Copy constructor. */
   DISABLE_COPY(MemFilesystem);
@@ -124,7 +125,6 @@ class MemFilesystem {
   bool is_file(const std::string& path) const;
 
   /**
-   *
    * Lists directory contents in alphabetical order
    *
    * @param path  The parent path to list sub-paths
@@ -135,7 +135,6 @@ class MemFilesystem {
   Status ls(const std::string& path, std::vector<std::string>* paths) const;
 
   /**
-   *
    * Lists files and files information under path
    *
    * @param path  The parent path to list sub-paths
@@ -143,6 +142,16 @@ class MemFilesystem {
    */
   tuple<Status, optional<std::vector<filesystem::directory_entry>>>
   ls_with_sizes(const URI& path) const;
+
+  /**
+   * Recursively lists objects and object information that start with `prefix`.
+   *
+   * @param prefix The parent path to list sub-paths.
+   * @param max_paths The maximum number of paths to be retrieved
+   * @return Status tuple where second is a list of directory_entry objects
+   */
+  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
+  ls_recursive(const URI& path, int64_t max_paths) const;
 
   /**
    * Move a given filesystem path.
@@ -216,6 +225,9 @@ class MemFilesystem {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** Thread pool from parent VFS instance. */
+  ThreadPool* vfs_thread_pool_;
 
   /* The node that represents the root of the directory tree. */
   tdb_unique_ptr<FSNode> root_;

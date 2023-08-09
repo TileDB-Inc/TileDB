@@ -520,8 +520,8 @@ TEST_CASE("C++ API: VFS recursive ls", "[cppapi][vfs][ls-recursive]") {
     auto uri_str = uri.to_string();
     vfs.create_dir(uri_str);
     std::vector<std::string> expected_paths;
-    // LocalFS returns root directories.
-    if (uri.is_file()) {
+    // LocalFS, MemFS returns root directories.
+    if (uri.is_file() || uri.is_memfs()) {
       expected_paths = {
           uri_str + "d1",
           uri_str + "d2",
@@ -549,7 +549,7 @@ TEST_CASE("C++ API: VFS recursive ls", "[cppapi][vfs][ls-recursive]") {
     }
 
     // Ensure exception is thrown for backends without recursive ls support.
-    if (!uri.is_s3() && !uri.is_file()) {
+    if (!uri.is_s3() && !uri.is_file() && !uri.is_memfs()) {
       REQUIRE_THROWS_WITH(
           vfs.ls_recursive(uri_str, max_paths),
           "[TileDB::VFS] Error: Recursive ls over " + uri.backend_name() +

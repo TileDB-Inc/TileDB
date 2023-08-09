@@ -761,6 +761,11 @@ Status VFS::ls_recursive(
         LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
 #endif
     RETURN_NOT_OK(st);
+  } else if (parent.is_memfs()) {
+    Status st;
+    std::tie(st, entries) =
+        memfs_.ls_recursive(URI("mem://" + parent.to_path()), max_paths);
+    RETURN_NOT_OK(st);
   } else {
     auto st = LOG_STATUS(Status_VFSError(
         "Recursive ls over " + parent.backend_name() +
