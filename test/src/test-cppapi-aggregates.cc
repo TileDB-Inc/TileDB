@@ -34,6 +34,7 @@
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/query/readers/aggregators/count_aggregator.h"
+#include "tiledb/sm/query/readers/aggregators/mean_aggregator.h"
 #include "tiledb/sm/query/readers/aggregators/min_max_aggregator.h"
 #include "tiledb/sm/query/readers/aggregators/null_count_aggregator.h"
 #include "tiledb/sm/query/readers/aggregators/sum_aggregator.h"
@@ -1355,6 +1356,147 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
           // TODO: use 'std::get<1>(result_el["Sum"]) == 1' once we use the
           // set_data_buffer api.
           CHECK(sum[0] == expected_sum);
+
+          if (request_data) {
+            CppAggregatesFx<T>::validate_data(
+                query, dim1, dim2, a1, a1_validity);
+          }
+        }
+      }
+    }
+  }
+
+  // Close array.
+  array.close();
+}
+
+typedef tuple<
+    uint8_t,
+    uint16_t,
+    uint32_t,
+    uint64_t,
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t,
+    float,
+    double>
+    MeanFixedTypesUnderTest;
+TEMPLATE_LIST_TEST_CASE_METHOD(
+    CppAggregatesFx,
+    "C++ API: Aggregates basic mean",
+    "[cppapi][aggregates][basic][mean]",
+    MeanFixedTypesUnderTest) {
+  typedef TestType T;
+  CppAggregatesFx<T>::generate_test_params();
+  CppAggregatesFx<T>::create_array_and_write_fragments();
+
+  Array array{
+      CppAggregatesFx<T>::ctx_, CppAggregatesFx<T>::ARRAY_NAME, TILEDB_READ};
+
+  for (bool set_ranges : {true, false}) {
+    CppAggregatesFx<T>::set_ranges_ = set_ranges;
+    for (bool request_data : {true, false}) {
+      CppAggregatesFx<T>::request_data_ = request_data;
+      for (bool set_qc : CppAggregatesFx<T>::set_qc_values_) {
+        CppAggregatesFx<T>::set_qc_ = set_qc;
+        for (tiledb_layout_t layout : CppAggregatesFx<T>::layout_values_) {
+          CppAggregatesFx<T>::layout_ = layout;
+          Query query(CppAggregatesFx<T>::ctx_, array, TILEDB_READ);
+
+          // TODO: Change to real CPPAPI. Add a count aggregator to the query.
+          query.ptr()->query_->add_aggregator_to_default_channel(
+              "Mean",
+              std::make_shared<tiledb::sm::MeanAggregator<T>>(
+                  tiledb::sm::FieldInfo(
+                      "a1", false, CppAggregatesFx<T>::nullable_, 1)));
+
+          CppAggregatesFx<T>::set_ranges_and_condition_if_needed(
+              array, query, false);
+
+          // Set the data buffer for the aggregator.
+          uint64_t cell_size = sizeof(T);
+          std::vector<double> mean(1);
+          std::vector<uint8_t> mean_validity(1);
+          std::vector<uint64_t> dim1(100);
+          std::vector<uint64_t> dim2(100);
+          std::vector<uint8_t> a1(100 * cell_size);
+          std::vector<uint8_t> a1_validity(100);
+          query.set_layout(layout);
+
+          // TODO: Change to real CPPAPI. Use set_data_buffer from the internal
+          // query directly because the CPPAPI doesn't know what is an aggregate
+          // and what the size of an aggregate should be.
+          uint64_t returned_mean_size = 8;
+          CHECK(query.ptr()
+                    ->query_
+                    ->set_data_buffer("Mean", &mean[0], &returned_mean_size)
+                    .ok());
+          uint64_t returned_validity_size = 1;
+          if (CppAggregatesFx<T>::nullable_) {
+            // TODO: Change to real CPPAPI. Use set_validity_buffer from the
+            // internal query directly because the CPPAPI doesn't know what is
+            // an aggregate and what the size of an aggregate should be.
+            CHECK(query.ptr()
+                      ->query_
+                      ->set_validity_buffer(
+                          "Mean", mean_validity.data(), &returned_validity_size)
+                      .ok());
+          }
+
+          if (request_data) {
+            query.set_data_buffer("d1", dim1);
+            query.set_data_buffer("d2", dim2);
+            query.set_data_buffer(
+                "a1", static_cast<void*>(a1.data()), a1.size() / cell_size);
+
+            if (CppAggregatesFx<T>::nullable_) {
+              query.set_validity_buffer("a1", a1_validity);
+            }
+          }
+
+          // Submit the query.
+          query.submit();
+
+          // Check the results.
+          double expected_mean;
+          if (CppAggregatesFx<T>::dense_) {
+            if (CppAggregatesFx<T>::nullable_) {
+              if (set_ranges) {
+                expected_mean = set_qc ? (197.0 / 11.0) : (201.0 / 12.0);
+              } else {
+                expected_mean = set_qc ? (315.0 / 18.0) : (319.0 / 19.0);
+              }
+            } else {
+              if (set_ranges) {
+                expected_mean = set_qc ? (398.0 / 23.0) : (402.0 / 24.0);
+              } else {
+                expected_mean = set_qc ? (591.0 / 34.0) : (630.0 / 36.0);
+              }
+            }
+          } else {
+            if (CppAggregatesFx<T>::nullable_) {
+              if (set_ranges) {
+                expected_mean = (42.0 / 4.0);
+              } else {
+                expected_mean = (56.0 / 8.0);
+              }
+            } else {
+              if (set_ranges) {
+                expected_mean = CppAggregatesFx<T>::allow_dups_ ? (88.0 / 8.0) :
+                                                                  (81.0 / 7.0);
+              } else {
+                expected_mean = CppAggregatesFx<T>::allow_dups_ ?
+                                    (120.0 / 16.0) :
+                                    (113.0 / 15.0);
+              }
+            }
+          }
+
+          // TODO: use 'std::get<1>(result_el["Mean"]) == 1' once we use
+          // the set_data_buffer api.
+          CHECK(returned_mean_size == 8);
+          CHECK(mean[0] == expected_mean);
 
           if (request_data) {
             CppAggregatesFx<T>::validate_data(

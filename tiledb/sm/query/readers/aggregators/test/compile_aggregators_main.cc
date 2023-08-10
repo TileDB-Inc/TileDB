@@ -28,12 +28,34 @@
 
 #include "../count_aggregator.h"
 #include "../field_info.h"
+#include "../mean_aggregator.h"
 #include "../min_max_aggregator.h"
 #include "../null_count_aggregator.h"
 #include "../sum_aggregator.h"
 
 int main() {
   tiledb::sm::CountAggregator();
+
+  tiledb::sm::MeanAggregator<uint8_t>(
+      tiledb::sm::FieldInfo("Mean", false, false, 1));
+  tiledb::sm::MeanAggregator<uint16_t>(
+      tiledb::sm::FieldInfo("Mean", false, false, 1));
+  tiledb::sm::MeanAggregator<uint32_t>(
+      tiledb::sm::FieldInfo("Mean", false, false, 1));
+  tiledb::sm::MeanAggregator<uint64_t>(
+      tiledb::sm::FieldInfo("Mean", false, false, 1));
+  tiledb::sm::MeanAggregator<int8_t>(
+      tiledb::sm::FieldInfo("Mean", false, false, 1));
+  tiledb::sm::MeanAggregator<int16_t>(
+      tiledb::sm::FieldInfo("Mean", false, false, 1));
+  tiledb::sm::MeanAggregator<int32_t>(
+      tiledb::sm::FieldInfo("Mean", false, false, 1));
+  tiledb::sm::MeanAggregator<int64_t>(
+      tiledb::sm::FieldInfo("Mean", false, false, 1));
+  tiledb::sm::MeanAggregator<float>(
+      tiledb::sm::FieldInfo("Mean", false, false, 1));
+  tiledb::sm::MeanAggregator<double>(
+      tiledb::sm::FieldInfo("Mean", false, false, 1));
 
   tiledb::sm::MinAggregator<uint8_t>(
       tiledb::sm::FieldInfo("MinMax", false, false, 1));
