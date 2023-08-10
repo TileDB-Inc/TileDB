@@ -150,8 +150,8 @@ class MemFilesystem {
    * @param max_paths The maximum number of paths to be retrieved
    * @return Status tuple where second is a list of directory_entry objects
    */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-  ls_recursive(const URI& path, int64_t max_paths) const;
+  std::vector<filesystem::directory_entry> ls_recursive(
+      const URI& path, int64_t max_paths) const;
 
   /**
    * Move a given filesystem path.

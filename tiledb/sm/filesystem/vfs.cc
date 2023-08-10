@@ -740,41 +740,31 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   return Status::Ok();
 }
 
-Status VFS::ls_recursive(
+void VFS::ls_recursive(
     const URI& parent, std::vector<URI>* uris, int64_t max_paths) const {
   optional<std::vector<directory_entry>> entries;
   if (parent.is_file()) {
 #ifdef _WIN32
-    Status st;
-    std::tie(st, entries) = win_.ls_recursive(parent, max_paths);
+    entries = win_.ls_recursive(parent, max_paths);
 #else
-    Status st;
-    std::tie(st, entries) = posix_.ls_recursive(parent, max_paths);
+    entries = posix_.ls_recursive(parent, max_paths);
 #endif
-    RETURN_NOT_OK(st);
   } else if (parent.is_s3()) {
 #ifdef HAVE_S3
-    Status st;
-    std::tie(st, entries) = s3_.ls_recursive(parent, max_paths);
+    entries = s3_.ls_recursive(parent, max_paths);
 #else
-    auto st =
-        LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+    throw VFSStatusException("TileDB was built without S3 support");
 #endif
-    RETURN_NOT_OK(st);
   } else if (parent.is_memfs()) {
-    Status st;
-    std::tie(st, entries) =
-        memfs_.ls_recursive(URI("mem://" + parent.to_path()), max_paths);
-    RETURN_NOT_OK(st);
+    entries = memfs_.ls_recursive(URI("mem://" + parent.to_path()), max_paths);
   } else {
-    auto st = LOG_STATUS(Status_VFSError(
+    throw VFSStatusException(
         "Recursive ls over " + parent.backend_name() +
-        " storage backend is not supported."));
-    return st;
+        " storage backend is not supported.");
   }
 
-  // LocalFS results were sorted in-place during traversal.
-  if (!parent.is_file()) {
+  // LocalFS, MemFS results were sorted in-place during traversal.
+  if (!parent.is_file() && !parent.is_memfs()) {
     parallel_sort(
         compute_tp_,
         entries->begin(),
@@ -787,8 +777,6 @@ Status VFS::ls_recursive(
   for (auto& fs : *entries) {
     uris->emplace_back(fs.path().native());
   }
-
-  return Status::Ok();
 }
 
 tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(

@@ -51,7 +51,6 @@
 #include <aws/core/utils/memory/stl/AWSStringStream.h>
 #include <aws/s3/model/AbortMultipartUploadRequest.h>
 #include <aws/s3/model/CreateMultipartUploadRequest.h>
-#include <aws/s3/model/ListObjectsV2Request.h>
 #include <boost/interprocess/streams/bufferstream.hpp>
 #include <fstream>
 #include <iostream>
@@ -777,7 +776,7 @@ Status S3::ls(
 }
 
 tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
-    const URI& prefix, const std::string& delimiter, int max_paths) const {
+    const URI& prefix, const std::string& delimiter, int64_t max_paths) const {
   RETURN_NOT_OK_TUPLE(init_client(), nullopt);
 
   const auto prefix_dir = prefix.add_trailing_slash();
@@ -854,6 +853,14 @@ tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
   }
 
   return {Status::Ok(), entries};
+}
+
+std::vector<filesystem::directory_entry> S3::ls_recursive(
+    const URI& prefix, int64_t max_paths) const {
+  // For S3, passing an empty delimiter will return recursive results.
+  auto&& [st, entries] = ls_with_sizes(prefix, "", max_paths);
+  throw_if_not_ok(st);
+  return *entries;
 }
 
 Status S3::move_object(const URI& old_uri, const URI& new_uri) {

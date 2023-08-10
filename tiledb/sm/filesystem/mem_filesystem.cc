@@ -437,15 +437,15 @@ MemFilesystem::ls_with_sizes(const URI& path) const {
   return {Status::Ok(), entries};
 }
 
-tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-MemFilesystem::ls_recursive(const URI& path, int64_t max_paths) const {
+std::vector<filesystem::directory_entry> MemFilesystem::ls_recursive(
+    const URI& path, int64_t max_paths) const {
   std::vector<directory_entry> entries;
   std::queue<URI> q;
   q.push(path);
 
   while (!q.empty()) {
     auto&& [st, results] = ls_with_sizes(q.front());
-    RETURN_NOT_OK_TUPLE(st, nullopt);
+    throw_if_not_ok(st);
     // Sort the results to avoid strange collections when pruned by max_paths.
     parallel_sort(
         vfs_thread_pool_,
@@ -461,13 +461,13 @@ MemFilesystem::ls_recursive(const URI& path, int64_t max_paths) const {
 
       entries.push_back(result);
       if (static_cast<int64_t>(entries.size()) == max_paths) {
-        return {Status::Ok(), entries};
+        return entries;
       }
     }
     q.pop();
   }
 
-  return {Status::Ok(), entries};
+  return entries;
 }
 
 Status MemFilesystem::move(

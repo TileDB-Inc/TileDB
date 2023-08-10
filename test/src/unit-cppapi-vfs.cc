@@ -528,6 +528,7 @@ TEST_CASE("C++ API: VFS recursive ls", "[cppapi][vfs][ls-recursive]") {
           uri_str + "d3",
       };
     }
+    int top_level_dirs = expected_paths.size();
 
     // d1 and d2 contain 10 and 100 files respectively.
     std::vector<size_t> max_files = {10, 100, 0};
@@ -543,7 +544,7 @@ TEST_CASE("C++ API: VFS recursive ls", "[cppapi][vfs][ls-recursive]") {
       }
     }
     // Sort and trim expected vector to match VFS::ls sorted output.
-    std::sort(expected_paths.begin() + 3, expected_paths.end());
+    std::sort(expected_paths.begin() + top_level_dirs, expected_paths.end());
     if (max_paths != -1) {
       expected_paths.resize(max_paths);
     }
@@ -552,7 +553,7 @@ TEST_CASE("C++ API: VFS recursive ls", "[cppapi][vfs][ls-recursive]") {
     if (!uri.is_s3() && !uri.is_file() && !uri.is_memfs()) {
       REQUIRE_THROWS_WITH(
           vfs.ls_recursive(uri_str, max_paths),
-          "[TileDB::VFS] Error: Recursive ls over " + uri.backend_name() +
+          "VFS: Recursive ls over " + uri.backend_name() +
               " storage backend is not supported.");
       // Test next SupportedFS.
       continue;
@@ -573,5 +574,7 @@ TEST_CASE("C++ API: VFS recursive ls", "[cppapi][vfs][ls-recursive]") {
     int64_t all_expected = uri.is_s3() ? 110 : 113;
     max_paths = max_paths == -1 ? all_expected : max_paths;
     CHECK(static_cast<int64_t>(offsets.size() - 1) == max_paths);
+
+    vfs.remove_dir(uri_str);
   }
 }

@@ -82,6 +82,14 @@ class Tile;
 enum class Filesystem : uint8_t;
 enum class VFSMode : uint8_t;
 
+/** Class for VFS status exceptions. */
+class VFSStatusException : public StatusException {
+ public:
+  explicit VFSStatusException(const std::string& msg)
+      : StatusException("VFS", msg) {
+  }
+};
+
 /** The VFS configuration parameters. */
 struct VFSParameters {
   VFSParameters() = delete;
@@ -384,11 +392,10 @@ class VFS : private VFSBase, S3_within_VFS {
    *
    * @param prefix The parent path to list sub-paths.
    * @param uris The URIs that are contained in the parent.
-   * @param max_paths The maximum number of paths to be retrieved
-   * @return Status
+   * @param max_paths The maximum number of paths to be retrieved.
    */
-  Status ls_recursive(
-      const URI& parent, std::vector<URI>* uris, int64_t max_count) const;
+  void ls_recursive(
+      const URI& parent, std::vector<URI>* uris, int64_t max_paths) const;
 
   /**
    * Retrieves all the entries contained in the parent.

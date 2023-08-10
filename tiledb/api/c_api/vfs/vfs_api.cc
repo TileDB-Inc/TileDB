@@ -295,26 +295,25 @@ capi_return_t tiledb_vfs_ls(
 capi_return_t tiledb_vfs_ls_recursive(
     tiledb_vfs_t* vfs,
     const char* path,
+    int32_t (*callback)(const char*, void*, void*),
     void* data,
     void* data_offsets,
     int64_t max_paths) {
   ensure_output_pointer_is_valid(data);
   ensure_output_pointer_is_valid(data_offsets);
   std::vector<tiledb::sm::URI> children;
-  throw_if_not_ok(
-      vfs->ls_recursive(tiledb::sm::URI(path), &children, max_paths));
+  vfs->ls_recursive(tiledb::sm::URI(path), &children, max_paths);
 
-  auto data_paths = static_cast<std::string*>(data);
-  auto data_off = static_cast<std::vector<uint64_t>*>(data_offsets);
-  uint64_t last_offset = 0;
-  data_off->push_back(last_offset);
-  for (const auto& uri : children) {
-    auto uri_str = uri.to_string();
-    data_paths->append(uri_str);
-    last_offset += uri_str.size();
-    data_off->push_back(last_offset);
+  // Apply first callback with empty path to set first offset of 0.
+  int rc = callback("", data, data_offsets);
+  while (rc == 1 && !children.empty()) {
+    rc = callback(children.back().c_str(), data, data_offsets);
+    children.pop_back();
   }
 
+  if (rc == -1) {
+    return TILEDB_ERR;
+  }
   return TILEDB_OK;
 }
 
@@ -542,11 +541,12 @@ capi_return_t tiledb_vfs_ls_recursive(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* path,
+    int32_t (*callback)(const char*, void*, void*),
     void* data,
     void* data_offsets,
     int64_t max_paths) noexcept {
   return api_entry_context<tiledb::api::tiledb_vfs_ls_recursive>(
-      ctx, vfs, path, data, data_offsets, max_paths);
+      ctx, vfs, path, callback, data, data_offsets, max_paths);
 }
 
 void tiledb_vfs_fh_free(tiledb_vfs_fh_t** fh) noexcept {

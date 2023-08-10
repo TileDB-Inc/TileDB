@@ -831,6 +831,14 @@ int ls_getter(const char* path, void* data) {
   return 1;
 }
 
+int ls_recursive_getter(const char* path, void* data, void* offsets) {
+  auto buff = static_cast<std::string*>(data);
+  buff->append(path);
+  auto offsets_vec = static_cast<std::vector<uint64_t>*>(offsets);
+  offsets_vec->push_back(buff->size());
+  return 1;
+}
+
 void VFSFx::check_ls(const std::string& path) {
   std::string dir = path + "ls_dir";
   std::string file = dir + "/file";
@@ -980,13 +988,14 @@ TEST_CASE("C API: VFS recursive ls", "[capi][vfs][ls-recursive]") {
     tiledb_vfs_create_dir(ctx, vfs, uri_str.c_str());
     std::vector<std::string> expected_paths;
     // LocalFS returns root directories.
-    if (uri.is_file()) {
+    if (uri.is_file() || uri.is_memfs()) {
       expected_paths = {
           uri_str + "d1",
           uri_str + "d2",
           uri_str + "d3",
       };
     }
+    int top_level_dirs = expected_paths.size();
 
     // d1 and d2 contain 10 and 100 files respectively.
     std::vector<size_t> max_files = {10, 100, 0};
@@ -1003,7 +1012,7 @@ TEST_CASE("C API: VFS recursive ls", "[capi][vfs][ls-recursive]") {
       }
     }
     // Sort and trim expected vector to match VFS::ls sorted output.
-    std::sort(expected_paths.begin() + 3, expected_paths.end());
+    std::sort(expected_paths.begin() + top_level_dirs, expected_paths.end());
     if (max_paths != -1) {
       expected_paths.resize(max_paths);
     }
@@ -1011,21 +1020,32 @@ TEST_CASE("C API: VFS recursive ls", "[capi][vfs][ls-recursive]") {
     std::vector<uint64_t> data_off;
 
     // Ensure exception is thrown for backends without recursive ls support.
-    if (!uri.is_s3() && !uri.is_file()) {
+    if (!uri.is_s3() && !uri.is_file() && !uri.is_memfs()) {
       REQUIRE(
           tiledb_vfs_ls_recursive(
-              ctx, vfs, uri_str.c_str(), &data, &data_off, max_paths) ==
-          TILEDB_ERR);
+              ctx,
+              vfs,
+              uri_str.c_str(),
+              ls_recursive_getter,
+              &data,
+              &data_off,
+              max_paths) == TILEDB_ERR);
       // Test next SupportedFS.
       continue;
     }
 
     REQUIRE(
         tiledb_vfs_ls_recursive(
-            ctx, vfs, uri_str.c_str(), &data, &data_off, max_paths) ==
-        TILEDB_OK);
+            ctx,
+            vfs,
+            uri_str.c_str(),
+            ls_recursive_getter,
+            &data,
+            &data_off,
+            max_paths) == TILEDB_OK);
     for (size_t i = 1; i < data_off.size(); i++) {
       std::string path(data, data_off[i - 1], data_off[i] - data_off[i - 1]);
+      printf("%s\n", path.c_str());
       CHECK_THAT(
           expected_paths,
           Catch::Matchers::VectorContains(sm::URI(path).to_string()));
@@ -1036,5 +1056,7 @@ TEST_CASE("C API: VFS recursive ls", "[capi][vfs][ls-recursive]") {
     int64_t all_expected = uri.is_s3() ? 110 : 113;
     max_paths = max_paths == -1 ? all_expected : max_paths;
     CHECK(static_cast<int64_t>(data_off.size() - 1) == max_paths);
+
+    tiledb_vfs_remove_dir(ctx, vfs, uri_str.c_str());
   }
 }

@@ -399,7 +399,7 @@ err:
   return {st, nullopt};
 }
 
-tuple<Status, optional<std::vector<directory_entry>>> Win::ls_recursive(
+std::vector<directory_entry> Win::ls_recursive(
     const URI& uri, int64_t max_paths) const {
   std::vector<directory_entry> entries;
   std::queue<URI> q;
@@ -407,7 +407,7 @@ tuple<Status, optional<std::vector<directory_entry>>> Win::ls_recursive(
 
   while (!q.empty()) {
     auto&& [st, results] = ls_with_sizes(q.front());
-    RETURN_NOT_OK_TUPLE(st, nullopt);
+    throw_if_not_ok(st);
     parallel_sort(
         vfs_thread_pool_,
         results->begin(),
@@ -422,13 +422,13 @@ tuple<Status, optional<std::vector<directory_entry>>> Win::ls_recursive(
 
       entries.push_back(result);
       if (static_cast<int64_t>(entries.size()) == max_paths) {
-        return {Status::Ok(), entries};
+        return entries;
       }
     }
     q.pop();
   }
 
-  return {Status::Ok(), entries};
+  return entries;
 }
 
 Status Win::move_path(

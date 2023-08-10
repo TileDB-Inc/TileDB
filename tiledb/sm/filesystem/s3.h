@@ -401,28 +401,25 @@ class S3 {
    * Lists objects and object information that start with `prefix`.
    *
    * @param prefix The parent path to list sub-paths.
-   * @param delimiter The uri is truncated to the first delimiter
-   * @param max_paths The maximum number of paths to be retrieved
-   * @return Status tuple where second is a list of directory_entry objects
+   * @param delimiter The uri is truncated to the first delimiter.
+   * @param max_paths The maximum number of paths to be retrieved.
+   * @return Status tuple where second is a list of directory_entry objects.
    */
   tuple<Status, optional<std::vector<filesystem::directory_entry>>>
   ls_with_sizes(
       const URI& prefix,
       const std::string& delimiter = "/",
-      int max_paths = -1) const;
+      int64_t max_paths = -1) const;
 
   /**
    * Recursively lists objects and object information that start with `prefix`.
    *
    * @param prefix The parent path to list sub-paths.
-   * @param max_paths The maximum number of paths to be retrieved
-   * @return Status tuple where second is a list of directory_entry objects
+   * @param max_paths The maximum number of paths to be retrieved.
+   * @return Vector of directory_entry objects.
    */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-  ls_recursive(const URI& prefix, int64_t max_paths = -1) const {
-    // For S3, passing an empty delimiter will return recursive results.
-    return ls_with_sizes(prefix, "", max_paths);
-  }
+  std::vector<filesystem::directory_entry> ls_recursive(
+      const URI& prefix, int64_t max_paths = -1) const;
 
   /**
    * Renames an object.

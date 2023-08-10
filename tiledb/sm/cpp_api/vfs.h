@@ -482,13 +482,32 @@ class VFS {
     return ret;
   }
 
+  /**
+   * Recursively lists objects at the input URI.
+   * Results are not batch based and are returned in a single pass.
+   * Offsets are in Arrow format [r1, r2, ..., rN] where r1 is the beginning
+   * of the first result and r2 is the beginning of the second. The final offset
+   * rN marks the end of the last result. The length of result N can be
+   * retrieved with rN - rN-1.
+   *
+   * @param uri The base URI to list results recursively.
+   * @param max_paths The maximum number of paths to return.
+   * @return Pair where first is a string data buffer, and second is a vector of
+   * offsets.
+   */
   std::pair<std::string, std::vector<uint64_t>> ls_recursive(
       const std::string& uri, int64_t max_paths = -1) const {
     std::string data;
     std::vector<uint64_t> offsets;
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_vfs_ls_recursive(
-        ctx.ptr().get(), vfs_.get(), uri.c_str(), &data, &offsets, max_paths));
+        ctx.ptr().get(),
+        vfs_.get(),
+        uri.c_str(),
+        ls_recursive_getter,
+        &data,
+        &offsets,
+        max_paths));
     return {data, offsets};
   }
 
@@ -567,6 +586,23 @@ class VFS {
   static int ls_getter(const char* path, void* data) {
     auto vec = static_cast<std::vector<std::string>*>(data);
     vec->emplace_back(path);
+    return 1;
+  }
+
+  /**
+   * Callback function to be used when invoking the C TileDB function
+   * for recursive ls.
+   *
+   * @param path The path of a visited TileDB object
+   * @param data Cast to a string buffer used to store all paths.
+   * @param offsets Cast to a vector of uint64_t used to store all path offsets.
+   * @return If `1` then the walk should continue to the next object.
+   */
+  static int ls_recursive_getter(const char* path, void* data, void* offsets) {
+    auto buff = static_cast<std::string*>(data);
+    buff->append(path);
+    auto offsets_vec = static_cast<std::vector<uint64_t>*>(offsets);
+    offsets_vec->push_back(buff->size());
     return 1;
   }
 
