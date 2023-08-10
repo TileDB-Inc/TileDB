@@ -174,40 +174,40 @@ class FragmentMetadata {
     }
 
     /** Run once flag for processed conditions loading. */
-    std::once_flag processed_conditions_;
+    CallOnce processed_conditions_;
 
     /** Run once flag for fragment min/max/sum/null count loading. */
-    std::once_flag fragment_min_max_sum_null_count_;
+    CallOnce fragment_min_max_sum_null_count_;
 
     /** Run once flag for rtree loading. */
-    std::once_flag rtree_;
+    CallOnce rtree_;
 
     /** Run once flags for tile offset loading. */
-    std::deque<std::once_flag> tile_offsets_;
+    std::deque<CallOnce> tile_offsets_;
 
     /** Run once flags for tile var offset loading. */
-    std::deque<std::once_flag> tile_var_offsets_;
+    std::deque<CallOnce> tile_var_offsets_;
 
     /** Run once flags for tile var size loading. */
-    std::deque<std::once_flag> tile_var_sizes_;
+    std::deque<CallOnce> tile_var_sizes_;
 
     /** Run once flags for tile var validity offsets loading. */
-    std::deque<std::once_flag> tile_validity_offsets_;
+    std::deque<CallOnce> tile_validity_offsets_;
 
     /** Run once flags for tile min values loading. */
-    std::deque<std::once_flag> tile_min_values_;
+    std::deque<CallOnce> tile_min_values_;
 
     /** Run once flags for tile max values loading. */
-    std::deque<std::once_flag> tile_max_values_;
+    std::deque<CallOnce> tile_max_values_;
 
     /** Run once flags for tile sum values loading. */
-    std::deque<std::once_flag> tile_sum_values_;
+    std::deque<CallOnce> tile_sum_values_;
 
     /** Run once flags for tile null count values loading. */
-    std::deque<std::once_flag> tile_null_count_values_;
+    std::deque<CallOnce> tile_null_count_values_;
 
     /** Run once flag for footer loading. */
-    std::once_flag footer_;
+    CallOnce footer_;
   };
 
   /**

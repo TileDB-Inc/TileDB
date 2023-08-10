@@ -44,6 +44,67 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+template <typename IterT, typename CmpT>
+Status tdb_quick_sort(ThreadPool* tp, const uint64_t height, const uint64_t depth, IterT begin, IterT end, CmpT cmp) {
+  const size_t elements = std::distance(begin, end);
+
+  // Stop the recursion if this subrange does not contain
+  // any elements to sort.
+  if (elements <= 1) {
+    return Status::Ok();
+  }
+
+  // If there are only two elements remaining, directly sort them.
+  if (elements <= 2) {
+    std::sort(begin, end, cmp);
+    return Status::Ok();
+  }
+
+  // If we have reached the target height of the call stack tree,
+  // we will defer sorting to std::sort() to finish sorting the
+  // subrange. This is an optimization because all concurrency
+  // levels in the threadpool should be utilized if the work was
+  // evenly distributed among them.
+  if (depth + 1 == height) {
+    std::sort(begin, end, cmp);
+    return Status::Ok();
+  }
+
+  // Step #1: Pick a pivot value in the range.
+  auto pivot_iter = begin + (elements / 2);
+  const auto pivot_value = *pivot_iter;
+  if ((end - 1) != pivot_iter)
+    std::iter_swap((end - 1), pivot_iter);
+
+  // Step #2: Partition the subrange.
+  auto middle = begin;
+  for (auto iter = begin; iter != end - 1; ++iter) {
+    if (cmp(*iter, pivot_value)) {
+      std::iter_swap(middle, iter);
+      ++middle;
+    }
+  }
+  std::iter_swap(middle, (end - 1));
+
+  // Step #3: Recursively sort the left and right partitions.
+  std::vector<ThreadPool::Task> tasks;
+  if (begin != middle) {
+    ThreadPool::Task left_task = tp->execute([=]() {
+      return tdb_quick_sort(tp, height, depth + 1, begin, middle, cmp);
+    });
+    tasks.emplace_back(std::move(left_task));
+  }
+  if (middle != end) {
+    ThreadPool::Task right_task = tp->execute([=]() {
+      return tdb_quick_sort(tp, height, depth + 1, middle + 1, end, cmp);
+    });
+    tasks.emplace_back(std::move(right_task));
+  }
+
+  // Wait for the sorted partitions.
+  return tp->wait_all(tasks);
+}
+
 /**
  * Sort the given iterator range, possibly in parallel.
  *
@@ -90,71 +151,8 @@ void parallel_sort(
     ++height;
   }
 
-  // Define a work routine that encapsulates steps #1 - #3 in the
-  // algorithm.
-  std::function<Status(uint64_t, IterT, IterT)> quick_sort;
-  quick_sort = [&](const uint64_t depth, IterT begin, IterT end) -> Status {
-    const size_t elements = std::distance(begin, end);
-
-    // Stop the recursion if this subrange does not contain
-    // any elements to sort.
-    if (elements <= 1) {
-      return Status::Ok();
-    }
-
-    // If there are only two elements remaining, directly sort them.
-    if (elements <= 2) {
-      std::sort(begin, end, cmp);
-      return Status::Ok();
-    }
-
-    // If we have reached the target height of the call stack tree,
-    // we will defer sorting to std::sort() to finish sorting the
-    // subrange. This is an optimization because all concurrency
-    // levels in the threadpool should be utilized if the work was
-    // evenly distributed among them.
-    if (depth + 1 == height) {
-      std::sort(begin, end, cmp);
-      return Status::Ok();
-    }
-
-    // Step #1: Pick a pivot value in the range.
-    auto pivot_iter = begin + (elements / 2);
-    const auto pivot_value = *pivot_iter;
-    if ((end - 1) != pivot_iter)
-      std::iter_swap((end - 1), pivot_iter);
-
-    // Step #2: Partition the subrange.
-    auto middle = begin;
-    for (auto iter = begin; iter != end - 1; ++iter) {
-      if (cmp(*iter, pivot_value)) {
-        std::iter_swap(middle, iter);
-        ++middle;
-      }
-    }
-    std::iter_swap(middle, (end - 1));
-
-    // Step #3: Recursively sort the left and right partitions.
-    std::vector<ThreadPool::Task> tasks;
-    if (begin != middle) {
-      std::function<Status()> quick_sort_left =
-          std::bind(quick_sort, depth + 1, begin, middle);
-      ThreadPool::Task left_task = tp->execute(std::move(quick_sort_left));
-      tasks.emplace_back(std::move(left_task));
-    }
-    if (middle != end) {
-      std::function<Status()> quick_sort_right =
-          std::bind(quick_sort, depth + 1, middle + 1, end);
-      ThreadPool::Task right_task = tp->execute(std::move(quick_sort_right));
-      tasks.emplace_back(std::move(right_task));
-    }
-
-    // Wait for the sorted partitions.
-    return tp->wait_all(tasks);
-  };
-
   // Start the quicksort from the entire range.
-  throw_if_not_ok(quick_sort(0, begin, end));
+  throw_if_not_ok(tdb_quick_sort(tp, height, 0, begin, end, cmp));
 }
 
 /**
@@ -194,54 +192,6 @@ Status parallel_for(
   optional<std::exception_ptr> failed_exception{nullopt};
   optional<Status> failed_status{nullopt};
 
-  /*
-   * Executes subrange [subrange_start, subrange_end) that exists within the
-   * range [begin, end).
-   *
-   * If all the functions `F` return OK, then so does this function. If a
-   * function fails but is not the first do so in this `parallel_for`
-   * invocation, then this function returns OK. If a first function to fail
-   * returns not OK, then this function returns that value. If a first function
-   * to fail throws, then this function throws that value.
-   */
-  std::function<Status(uint64_t, uint64_t)> execute_subrange =
-      [&failed, &failed_exception, &failed_status, &failed_mutex, &F](
-          const uint64_t subrange_start,
-          const uint64_t subrange_end) -> Status {
-    for (uint64_t i = subrange_start; i < subrange_end; ++i) {
-      Status st;
-      try {
-        st = F(i);
-        if (st.ok()) {
-          continue;
-        }
-        std::lock_guard<std::mutex> lock(failed_mutex);
-        if (!failed) {
-          failed_status = st;
-          failed = true;
-          return st;
-        }
-      } catch (...) {
-        std::lock_guard<std::mutex> lock(failed_mutex);
-        if (!failed) {
-          auto ce{std::current_exception()};
-          failed_exception = ce;
-          failed = true;
-          std::rethrow_exception(ce);
-        }
-      }
-      /*
-       * If we reach this line, then either the status was not OK or `F` threw.
-       * Now you'd think that we'd do something other than continue the loop in
-       * this case, like `break` and end the function. Nope. That's not the
-       * legacy behavior of this function. Nor is checking failure status in the
-       * loop that kicks off this function. Regardless, we are leaving the
-       * behavior exactly the same for now.
-       */
-    }
-    return Status{};
-  };
-
   // Calculate the length of the subrange that each thread will
   // be responsible for.
   const uint64_t concurrency_level = tp->concurrency_level();
@@ -262,9 +212,40 @@ Status parallel_for(
 
     const uint64_t subrange_start = begin + fn_iter;
     const uint64_t subrange_end = begin + fn_iter + task_subrange_len;
-    std::function<Status()> bound_fn =
-        std::bind(execute_subrange, subrange_start, subrange_end);
-    tasks.emplace_back(tp->execute(std::move(bound_fn)));
+    tasks.emplace_back(tp->execute([&, subrange_start, subrange_end]() -> Status {
+      for (uint64_t i = subrange_start; i < subrange_end; ++i) {
+        Status st;
+        try {
+          st = F(i);
+          if (st.ok()) {
+            continue;
+          }
+          std::lock_guard<std::mutex> lock(failed_mutex);
+          if (!failed) {
+            failed_status = st;
+            failed = true;
+            return st;
+          }
+        } catch (...) {
+          std::lock_guard<std::mutex> lock(failed_mutex);
+          if (!failed) {
+            auto ce{std::current_exception()};
+            failed_exception = ce;
+            failed = true;
+            std::rethrow_exception(ce);
+          }
+        }
+        /*
+         * If we reach this line, then either the status was not OK or `F` threw.
+         * Now you'd think that we'd do something other than continue the loop in
+         * this case, like `break` and end the function. Nope. That's not the
+         * legacy behavior of this function. Nor is checking failure status in the
+         * loop that kicks off this function. Regardless, we are leaving the
+         * behavior exactly the same for now.
+         */
+      }
+      return Status{};
+    }));
 
     fn_iter += task_subrange_len;
   }
@@ -327,28 +308,6 @@ Status parallel_for_2d(
   const uint64_t subrange_len_j = range_len_j / concurrency_level;
   const uint64_t subrange_len_j_carry = range_len_j % concurrency_level;
 
-  // Executes subarray [begin_i, end_i) x [start_j, end_j) within the
-  // array [i0, i1) x [j0, j1).
-  std::function<Status(uint64_t, uint64_t, uint64_t, uint64_t)>
-      execute_subrange_ij = [&failed, &return_st, &return_st_mutex, &F](
-                                const uint64_t begin_i,
-                                const uint64_t end_i,
-                                const uint64_t start_j,
-                                const uint64_t end_j) -> Status {
-    for (uint64_t i = begin_i; i < end_i; ++i) {
-      for (uint64_t j = start_j; j < end_j; ++j) {
-        const Status st = F(i, j);
-        if (!st.ok() && !failed) {
-          failed = true;
-          std::lock_guard<std::mutex> lock(return_st_mutex);
-          return_st = st;
-        }
-      }
-    }
-
-    return Status::Ok();
-  };
-
   // Calculate the subranges for each dimension, i and j.
   std::vector<std::pair<uint64_t, uint64_t>> subranges_i;
   std::vector<std::pair<uint64_t, uint64_t>> subranges_j;
@@ -384,13 +343,20 @@ Status parallel_for_2d(
   tasks.reserve(concurrency_level * concurrency_level);
   for (const auto& subrange_i : subranges_i) {
     for (const auto& subrange_j : subranges_j) {
-      std::function<Status()> bound_fn = std::bind(
-          execute_subrange_ij,
-          subrange_i.first,
-          subrange_i.second,
-          subrange_j.first,
-          subrange_j.second);
-      tasks.emplace_back(tp->execute(std::move(bound_fn)));
+      tasks.emplace_back(tp->execute([&, subrange_i, subrange_j]() -> Status {
+        for (uint64_t i = subrange_i.first; i < subrange_i.second; ++i) {
+          for (uint64_t j = subrange_j.first; j < subrange_j.second; ++j) {
+            const Status st = F(i, j);
+            if (!st.ok() && !failed) {
+              failed = true;
+              std::lock_guard<std::mutex> lock(return_st_mutex);
+              return_st = st;
+            }
+          }
+        }
+
+        return Status::Ok();
+      }));
     }
   }
 

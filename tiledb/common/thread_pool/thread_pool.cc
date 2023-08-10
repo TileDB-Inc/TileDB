@@ -40,6 +40,9 @@
 
 namespace tiledb::common {
 
+
+thread_local uint64_t ThreadPool::DepthToken::depth_ = 0;
+
 // Constructor.  May throw an exception on error.  No logging is done as the
 // logger may not yet be initialized.
 ThreadPool::ThreadPool(size_t n)
@@ -101,7 +104,8 @@ ThreadPool::ThreadPool(size_t n)
 
 void ThreadPool::worker() {
   while (true) {
-    auto val = task_queue_.pop();
+    auto dt = DepthToken();
+    auto val = task_queue_.pop(dt.get());
     if (val) {
       (*(*val))();
     } else {
@@ -188,9 +192,11 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
 
       // In the meantime, try to do something useful to make progress (and avoid
       // deadlock)
-      if (auto val = task_queue_.try_pop()) {
+      auto dt = DepthToken();
+      if (auto val = task_queue_.try_pop(dt.get())) {
         (*(*val))();
       } else {
+
         // If nothing useful to do, yield so we don't burn cycles
         // going through the task list over and over (thereby slowing down other
         // threads).
@@ -237,13 +243,18 @@ Status ThreadPool::wait(Task& task) {
     } else {
       // In the meantime, try to do something useful to make progress (and avoid
       // deadlock)
-      if (auto val = task_queue_.try_pop()) {
+      auto dt = DepthToken();
+      if (auto val = task_queue_.try_pop(dt.get())) {
         (*(*val))();
       } else {
         std::this_thread::yield();
       }
     }
   }
+}
+
+CallOnce::CallOnce()
+    : state_(CallOnce::State::UNCALLED) {
 }
 
 }  // namespace tiledb::common

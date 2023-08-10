@@ -387,10 +387,11 @@ Status ArrayDirectory::load() {
   // commits consolidation/vacuuming.
   if (mode_ != ArrayDirectoryMode::COMMITS) {
     // Load (in parallel) the array schema URIs
-    tasks.emplace_back(resources_.get().compute_tp().execute([&]() {
+    auto runnable = [&]() {
       load_array_schema_uris();
       return Status::Ok();
-    }));
+    };
+    tasks.emplace_back(resources_.get().compute_tp().execute(runnable));
   }
 
   // Wait for all tasks to complete
