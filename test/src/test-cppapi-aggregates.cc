@@ -60,6 +60,8 @@ struct CppAggregatesFx {
   bool set_ranges_;
   bool set_qc_;
   tiledb_layout_t layout_;
+  std::vector<bool> set_qc_values_;
+  std::vector<tiledb_layout_t> layout_values_;
 
   std::string key_ = "0123456789abcdeF0123456789abcdeF";
   const tiledb_encryption_type_t enc_type_ = TILEDB_AES_256_GCM;
@@ -69,7 +71,7 @@ struct CppAggregatesFx {
   ~CppAggregatesFx();
 
   // Functions.
-  bool generate_test_params();
+  void generate_test_params();
   void create_dense_array(bool var = false, bool encrypt = false);
   void create_sparse_array(bool var = false, bool encrypt = false);
   void write_sparse(
@@ -144,32 +146,22 @@ CppAggregatesFx<T>::~CppAggregatesFx() {
 }
 
 template <class T>
-bool CppAggregatesFx<T>::generate_test_params() {
-  dense_ = GENERATE(true, false);
-  request_data_ = GENERATE(true, false);
-  nullable_ = GENERATE(true, false);
-  allow_dups_ = GENERATE(true, false);
-  set_ranges_ = GENERATE(true, false);
-  set_qc_ = GENERATE(true, false);
-  layout_ = GENERATE(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR, TILEDB_GLOBAL_ORDER);
-
-  if (dense_ && allow_dups_) {
-    return false;
+void CppAggregatesFx<T>::generate_test_params() {
+  SECTION("dense") {
+    dense_ = true;
+    nullable_ = GENERATE(true, false);
+    allow_dups_ = false;
+    set_qc_values_ = {true, false};
+    layout_values_ = {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR, TILEDB_GLOBAL_ORDER};
   }
 
-  if (!dense_ and set_qc_) {
-    return false;
+  SECTION("sparse") {
+    dense_ = false;
+    nullable_ = GENERATE(true, false);
+    allow_dups_ = GENERATE(true, false);
+    set_qc_values_ = {false};
+    layout_values_ = {TILEDB_UNORDERED};
   }
-
-  if (!dense_ && layout_ != TILEDB_GLOBAL_ORDER) {
-    return false;
-  }
-
-  if (!dense_) {
-    layout_ = TILEDB_UNORDERED;
-  }
-
-  return true;
 }
 
 template <class T>
@@ -1130,69 +1122,78 @@ TEST_CASE_METHOD(
     CppAggregatesFx<int32_t>,
     "C++ API: Aggregates basic count",
     "[cppapi][aggregates][basic][count]") {
-  if (!generate_test_params()) {
-    return;
-  }
-
+  generate_test_params();
   create_array_and_write_fragments();
 
   Array array{ctx_, ARRAY_NAME, TILEDB_READ};
-  Query query(ctx_, array, TILEDB_READ);
 
-  // TODO: Change to real CPPAPI. Add a count aggregator to the query.
-  query.ptr()->query_->add_aggregator_to_default_channel(
-      "Count", std::make_shared<tiledb::sm::CountAggregator>());
+  for (bool set_ranges : {true, false}) {
+    set_ranges_ = set_ranges;
+    for (bool request_data : {true, false}) {
+      request_data_ = request_data;
+      for (bool set_qc : set_qc_values_) {
+        set_qc_ = set_qc;
+        for (tiledb_layout_t layout : layout_values_) {
+          layout_ = layout;
+          Query query(ctx_, array, TILEDB_READ);
 
-  set_ranges_and_condition_if_needed(array, query, false);
+          // TODO: Change to real CPPAPI. Add a count aggregator to the query.
+          query.ptr()->query_->add_aggregator_to_default_channel(
+              "Count", std::make_shared<tiledb::sm::CountAggregator>());
 
-  // Set the data buffer for the aggregator.
-  uint64_t cell_size = sizeof(int);
-  std::vector<uint64_t> count(1);
-  std::vector<uint64_t> dim1(100);
-  std::vector<uint64_t> dim2(100);
-  std::vector<uint8_t> a1(100 * cell_size);
-  std::vector<uint8_t> a1_validity(100);
-  query.set_layout(layout_);
-  uint64_t count_data_size = sizeof(uint64_t);
-  // TODO: Change to real CPPAPI.
-  CHECK(query.ptr()
-            ->query_->set_data_buffer("Count", count.data(), &count_data_size)
-            .ok());
+          set_ranges_and_condition_if_needed(array, query, false);
 
-  if (request_data_) {
-    query.set_data_buffer("d1", dim1);
-    query.set_data_buffer("d2", dim2);
-    query.set_data_buffer(
-        "a1", static_cast<void*>(a1.data()), a1.size() / cell_size);
+          // Set the data buffer for the aggregator.
+          uint64_t cell_size = sizeof(int);
+          std::vector<uint64_t> count(1);
+          std::vector<uint64_t> dim1(100);
+          std::vector<uint64_t> dim2(100);
+          std::vector<uint8_t> a1(100 * cell_size);
+          std::vector<uint8_t> a1_validity(100);
+          query.set_layout(layout);
+          uint64_t count_data_size = sizeof(uint64_t);
+          // TODO: Change to real CPPAPI.
+          CHECK(query.ptr()
+                    ->query_
+                    ->set_data_buffer("Count", count.data(), &count_data_size)
+                    .ok());
 
-    if (nullable_) {
-      query.set_validity_buffer("a1", a1_validity);
+          if (request_data) {
+            query.set_data_buffer("d1", dim1);
+            query.set_data_buffer("d2", dim2);
+            query.set_data_buffer(
+                "a1", static_cast<void*>(a1.data()), a1.size() / cell_size);
+
+            if (nullable_) {
+              query.set_validity_buffer("a1", a1_validity);
+            }
+          }
+
+          // Submit the query.
+          query.submit();
+
+          // Check the results.
+          uint64_t expected_count;
+          if (dense_) {
+            expected_count = set_ranges ? 24 : 36;
+          } else {
+            if (set_ranges) {
+              expected_count = allow_dups_ ? 8 : 7;
+            } else {
+              expected_count = allow_dups_ ? 16 : 15;
+            }
+          }
+
+          // TODO: use 'std::get<1>(result_el["Count"]) == 1' once we use the
+          // set_data_buffer api.
+          CHECK(count[0] == expected_count);
+
+          if (request_data) {
+            validate_data(query, dim1, dim2, a1, a1_validity);
+          }
+        }
+      }
     }
-  }
-
-  // Submit the query.
-  query.submit();
-
-  // Check the results.
-  auto result_el = query.result_buffer_elements_nullable();
-  uint64_t expected_count;
-  if (dense_) {
-    expected_count = set_ranges_ ? 24 : 36;
-  } else {
-    if (set_ranges_) {
-      expected_count = allow_dups_ ? 8 : 7;
-    } else {
-      expected_count = allow_dups_ ? 16 : 15;
-    }
-  }
-
-  // TODO: use 'std::get<1>(result_el["Count"]) == 1' once we use the
-  // set_data_buffer api.
-  // CHECK(std::get<1>(result_el["Count"]) == 1);
-  CHECK(count[0] == expected_count);
-
-  if (request_data_) {
-    validate_data(query, dim1, dim2, a1, a1_validity);
   }
 
   // Close array.
@@ -1217,104 +1218,116 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
     "[cppapi][aggregates][basic][sum]",
     SumFixedTypesUnderTest) {
   typedef TestType T;
-  if (!CppAggregatesFx<T>::generate_test_params()) {
-    return;
-  }
-
+  CppAggregatesFx<T>::generate_test_params();
   CppAggregatesFx<T>::create_array_and_write_fragments();
 
   Array array{
       CppAggregatesFx<T>::ctx_, CppAggregatesFx<T>::ARRAY_NAME, TILEDB_READ};
-  Query query(CppAggregatesFx<T>::ctx_, array, TILEDB_READ);
 
-  // TODO: Change to real CPPAPI. Add a count aggregator to the query.
-  query.ptr()->query_->add_aggregator_to_default_channel(
-      "Sum",
-      std::make_shared<tiledb::sm::SumAggregator<T>>(tiledb::sm::FieldInfo(
-          "a1", false, CppAggregatesFx<T>::nullable_, 1)));
+  for (bool set_ranges : {true, false}) {
+    CppAggregatesFx<T>::set_ranges_ = set_ranges;
+    for (bool request_data : {true, false}) {
+      CppAggregatesFx<T>::request_data_ = request_data;
+      for (bool set_qc : CppAggregatesFx<T>::set_qc_values_) {
+        CppAggregatesFx<T>::set_qc_ = set_qc;
+        for (tiledb_layout_t layout : CppAggregatesFx<T>::layout_values_) {
+          CppAggregatesFx<T>::layout_ = layout;
+          Query query(CppAggregatesFx<T>::ctx_, array, TILEDB_READ);
 
-  CppAggregatesFx<T>::set_ranges_and_condition_if_needed(array, query, false);
+          // TODO: Change to real CPPAPI. Add a count aggregator to the query.
+          query.ptr()->query_->add_aggregator_to_default_channel(
+              "Sum",
+              std::make_shared<tiledb::sm::SumAggregator<T>>(
+                  tiledb::sm::FieldInfo(
+                      "a1", false, CppAggregatesFx<T>::nullable_, 1)));
 
-  // Set the data buffer for the aggregator.
-  uint64_t cell_size = sizeof(T);
-  std::vector<typename tiledb::sm::sum_type_data<T>::sum_type> sum(1);
-  std::vector<uint8_t> sum_validity(1);
-  std::vector<uint64_t> dim1(100);
-  std::vector<uint64_t> dim2(100);
-  std::vector<uint8_t> a1(100 * cell_size);
-  std::vector<uint8_t> a1_validity(100);
-  query.set_layout(CppAggregatesFx<T>::layout_);
-  uint64_t sum_data_size =
-      sizeof(typename tiledb::sm::sum_type_data<T>::sum_type);
-  // TODO: Change to real CPPAPI.
-  CHECK(query.ptr()
-            ->query_->set_data_buffer("Sum", sum.data(), &sum_data_size)
-            .ok());
-  uint64_t returned_validity_size = 1;
-  if (CppAggregatesFx<T>::nullable_) {
-    // TODO: Change to real CPPAPI. Use set_validity_buffer from the internal
-    // query directly because the CPPAPI doesn't know what is an aggregate and
-    // what the size of an aggregate should be.
-    CHECK(query.ptr()
-              ->query_
-              ->set_validity_buffer(
-                  "Sum", sum_validity.data(), &returned_validity_size)
-              .ok());
-  }
+          CppAggregatesFx<T>::set_ranges_and_condition_if_needed(
+              array, query, false);
 
-  if (CppAggregatesFx<T>::request_data_) {
-    query.set_data_buffer("d1", dim1);
-    query.set_data_buffer("d2", dim2);
-    query.set_data_buffer(
-        "a1", static_cast<void*>(a1.data()), a1.size() / cell_size);
+          // Set the data buffer for the aggregator.
+          uint64_t cell_size = sizeof(T);
+          std::vector<typename tiledb::sm::sum_type_data<T>::sum_type> sum(1);
+          std::vector<uint8_t> sum_validity(1);
+          std::vector<uint64_t> dim1(100);
+          std::vector<uint64_t> dim2(100);
+          std::vector<uint8_t> a1(100 * cell_size);
+          std::vector<uint8_t> a1_validity(100);
+          query.set_layout(layout);
+          uint64_t sum_data_size =
+              sizeof(typename tiledb::sm::sum_type_data<T>::sum_type);
+          // TODO: Change to real CPPAPI.
+          CHECK(query.ptr()
+                    ->query_->set_data_buffer("Sum", sum.data(), &sum_data_size)
+                    .ok());
+          uint64_t returned_validity_size = 1;
+          if (CppAggregatesFx<T>::nullable_) {
+            // TODO: Change to real CPPAPI. Use set_validity_buffer from the
+            // internal query directly because the CPPAPI doesn't know what is
+            // an aggregate and what the size of an aggregate should be.
+            CHECK(query.ptr()
+                      ->query_
+                      ->set_validity_buffer(
+                          "Sum", sum_validity.data(), &returned_validity_size)
+                      .ok());
+          }
 
-    if (CppAggregatesFx<T>::nullable_) {
-      query.set_validity_buffer("a1", a1_validity);
+          if (request_data) {
+            query.set_data_buffer("d1", dim1);
+            query.set_data_buffer("d2", dim2);
+            query.set_data_buffer(
+                "a1", static_cast<void*>(a1.data()), a1.size() / cell_size);
+
+            if (CppAggregatesFx<T>::nullable_) {
+              query.set_validity_buffer("a1", a1_validity);
+            }
+          }
+
+          // Submit the query.
+          query.submit();
+
+          // Check the results.
+          typename tiledb::sm::sum_type_data<T>::sum_type expected_sum;
+          if (CppAggregatesFx<T>::dense_) {
+            if (CppAggregatesFx<T>::nullable_) {
+              if (set_ranges) {
+                expected_sum = set_qc ? 197 : 201;
+              } else {
+                expected_sum = set_qc ? 315 : 319;
+              }
+            } else {
+              if (set_ranges) {
+                expected_sum = set_qc ? 398 : 402;
+              } else {
+                expected_sum = set_qc ? 591 : 630;
+              }
+            }
+          } else {
+            if (CppAggregatesFx<T>::nullable_) {
+              if (set_ranges) {
+                expected_sum = 42;
+              } else {
+                expected_sum = 56;
+              }
+            } else {
+              if (set_ranges) {
+                expected_sum = CppAggregatesFx<T>::allow_dups_ ? 88 : 81;
+              } else {
+                expected_sum = CppAggregatesFx<T>::allow_dups_ ? 120 : 113;
+              }
+            }
+          }
+
+          // TODO: use 'std::get<1>(result_el["Sum"]) == 1' once we use the
+          // set_data_buffer api.
+          CHECK(sum[0] == expected_sum);
+
+          if (request_data) {
+            CppAggregatesFx<T>::validate_data(
+                query, dim1, dim2, a1, a1_validity);
+          }
+        }
+      }
     }
-  }
-
-  // Submit the query.
-  query.submit();
-
-  // Check the results.
-  typename tiledb::sm::sum_type_data<T>::sum_type expected_sum;
-  if (CppAggregatesFx<T>::dense_) {
-    if (CppAggregatesFx<T>::nullable_) {
-      if (CppAggregatesFx<T>::set_ranges_) {
-        expected_sum = CppAggregatesFx<T>::set_qc_ ? 197 : 201;
-      } else {
-        expected_sum = CppAggregatesFx<T>::set_qc_ ? 315 : 319;
-      }
-    } else {
-      if (CppAggregatesFx<T>::set_ranges_) {
-        expected_sum = CppAggregatesFx<T>::set_qc_ ? 398 : 402;
-      } else {
-        expected_sum = CppAggregatesFx<T>::set_qc_ ? 591 : 630;
-      }
-    }
-  } else {
-    if (CppAggregatesFx<T>::nullable_) {
-      if (CppAggregatesFx<T>::set_ranges_) {
-        expected_sum = 42;
-      } else {
-        expected_sum = 56;
-      }
-    } else {
-      if (CppAggregatesFx<T>::set_ranges_) {
-        expected_sum = CppAggregatesFx<T>::allow_dups_ ? 88 : 81;
-      } else {
-        expected_sum = CppAggregatesFx<T>::allow_dups_ ? 120 : 113;
-      }
-    }
-  }
-
-  // TODO: use 'std::get<1>(result_el["Sum"]) == 1' once we use the
-  // set_data_buffer api.
-  // CHECK(std::get<1>(result_el["Sum"]) == 1);
-  CHECK(sum[0] == expected_sum);
-
-  if (CppAggregatesFx<T>::request_data_) {
-    CppAggregatesFx<T>::validate_data(query, dim1, dim2, a1, a1_validity);
   }
 
   // Close array.
@@ -1353,107 +1366,123 @@ TEMPLATE_LIST_TEST_CASE(
   typedef decltype(TestType::second) AGG;
   CppAggregatesFx<T> fx;
   bool min = std::is_same<AGG, tiledb::sm::MinAggregator<T>>::value;
-  if (!fx.generate_test_params()) {
-    return;
-  }
-
+  fx.generate_test_params();
   fx.create_array_and_write_fragments();
 
   Array array{fx.ctx_, fx.ARRAY_NAME, TILEDB_READ};
-  Query query(fx.ctx_, array, TILEDB_READ);
 
-  // TODO: Change to real CPPAPI. Add a count aggregator to the query.
-  uint64_t cell_val_num =
-      std::is_same<T, std::string>::value ? fx.STRING_CELL_VAL_NUM : 1;
-  query.ptr()->query_->add_aggregator_to_default_channel(
-      "MinMax",
-      std::make_shared<AGG>(
-          tiledb::sm::FieldInfo("a1", false, fx.nullable_, cell_val_num)));
+  for (bool set_ranges : {true, false}) {
+    fx.set_ranges_ = set_ranges;
+    for (bool request_data : {true, false}) {
+      fx.request_data_ = request_data;
+      for (bool set_qc : fx.set_qc_values_) {
+        fx.set_qc_ = set_qc;
+        for (tiledb_layout_t layout : fx.layout_values_) {
+          fx.layout_ = layout;
+          Query query(fx.ctx_, array, TILEDB_READ);
 
-  fx.set_ranges_and_condition_if_needed(array, query, false);
+          // TODO: Change to real CPPAPI. Add a count aggregator to the query.
+          uint64_t cell_val_num =
+              std::is_same<T, std::string>::value ? fx.STRING_CELL_VAL_NUM : 1;
+          query.ptr()->query_->add_aggregator_to_default_channel(
+              "MinMax",
+              std::make_shared<AGG>(tiledb::sm::FieldInfo(
+                  "a1", false, fx.nullable_, cell_val_num)));
 
-  // Set the data buffer for the aggregator.
-  uint64_t cell_size =
-      std::is_same<T, std::string>::value ? fx.STRING_CELL_VAL_NUM : sizeof(T);
-  std::vector<uint8_t> min_max(cell_size);
-  std::vector<uint8_t> min_max_validity(1);
-  std::vector<uint64_t> dim1(100);
-  std::vector<uint64_t> dim2(100);
-  std::vector<uint8_t> a1(100 * cell_size);
-  std::vector<uint8_t> a1_validity(100);
-  query.set_layout(fx.layout_);
+          fx.set_ranges_and_condition_if_needed(array, query, false);
 
-  // TODO: Change to real CPPAPI. Use set_data_buffer and set_validity_buffer
-  // from the internal query directly because the CPPAPI doesn't know what is
-  // an aggregate and what the size of an aggregate should be.
-  uint64_t returned_min_max_size = cell_size;
-  uint64_t returned_validity_size = 1;
-  CHECK(query.ptr()
-            ->query_
-            ->set_data_buffer("MinMax", min_max.data(), &returned_min_max_size)
-            .ok());
-  if (fx.nullable_) {
-    CHECK(query.ptr()
-              ->query_
-              ->set_validity_buffer(
-                  "MinMax", min_max_validity.data(), &returned_validity_size)
-              .ok());
-  }
+          // Set the data buffer for the aggregator.
+          uint64_t cell_size = std::is_same<T, std::string>::value ?
+                                   fx.STRING_CELL_VAL_NUM :
+                                   sizeof(T);
+          std::vector<uint8_t> min_max(cell_size);
+          std::vector<uint8_t> min_max_validity(1);
+          std::vector<uint64_t> dim1(100);
+          std::vector<uint64_t> dim2(100);
+          std::vector<uint8_t> a1(100 * cell_size);
+          std::vector<uint8_t> a1_validity(100);
+          query.set_layout(layout);
 
-  if (fx.request_data_) {
-    query.set_data_buffer("d1", dim1);
-    query.set_data_buffer("d2", dim2);
-    query.set_data_buffer(
-        "a1", static_cast<void*>(a1.data()), a1.size() / cell_size);
+          // TODO: Change to real CPPAPI. Use set_data_buffer and
+          // set_validity_buffer from the internal query directly because the
+          // CPPAPI doesn't know what is an aggregate and what the size of an
+          // aggregate should be.
+          uint64_t returned_min_max_size = cell_size;
+          uint64_t returned_validity_size = 1;
+          CHECK(query.ptr()
+                    ->query_
+                    ->set_data_buffer(
+                        "MinMax", min_max.data(), &returned_min_max_size)
+                    .ok());
+          if (fx.nullable_) {
+            CHECK(query.ptr()
+                      ->query_
+                      ->set_validity_buffer(
+                          "MinMax",
+                          min_max_validity.data(),
+                          &returned_validity_size)
+                      .ok());
+          }
 
-    if (fx.nullable_) {
-      query.set_validity_buffer("a1", a1_validity);
+          if (request_data) {
+            query.set_data_buffer("d1", dim1);
+            query.set_data_buffer("d2", dim2);
+            query.set_data_buffer(
+                "a1", static_cast<void*>(a1.data()), a1.size() / cell_size);
+
+            if (fx.nullable_) {
+              query.set_validity_buffer("a1", a1_validity);
+            }
+          }
+
+          // Submit the query.
+          query.submit();
+
+          // Check the results.
+          std::vector<uint8_t> expected_min_max;
+          if (fx.dense_) {
+            if (fx.nullable_) {
+              if (set_ranges) {
+                expected_min_max =
+                    fx.make_data_buff({min ? (set_qc ? 6 : 4) : 28});
+              } else {
+                expected_min_max = fx.make_data_buff({min ? 0 : 34});
+              }
+            } else {
+              if (set_ranges) {
+                expected_min_max = fx.make_data_buff({min ? 3 : 29});
+              } else {
+                expected_min_max =
+                    fx.make_data_buff({min ? 0 : (set_qc ? 34 : 35)});
+              }
+            }
+          } else {
+            if (fx.nullable_) {
+              if (set_ranges) {
+                expected_min_max = fx.make_data_buff({min ? 6 : 14});
+              } else {
+                expected_min_max = fx.make_data_buff({min ? 0 : 14});
+              }
+            } else {
+              if (set_ranges) {
+                expected_min_max = fx.make_data_buff({min ? 6 : 15});
+              } else {
+                expected_min_max = fx.make_data_buff({min ? 0 : 15});
+              }
+            }
+          }
+
+          // TODO: use 'std::get<1>(result_el["MinMax"]) == 1' once we use the
+          // set_data_buffer api.
+          CHECK(returned_min_max_size == cell_size);
+          CHECK(min_max == expected_min_max);
+
+          if (request_data) {
+            fx.validate_data(query, dim1, dim2, a1, a1_validity);
+          }
+        }
+      }
     }
-  }
-
-  // Submit the query.
-  query.submit();
-
-  // Check the results.
-  std::vector<uint8_t> expected_min_max;
-  if (fx.dense_) {
-    if (fx.nullable_) {
-      if (fx.set_ranges_) {
-        expected_min_max = fx.make_data_buff({min ? (fx.set_qc_ ? 6 : 4) : 28});
-      } else {
-        expected_min_max = fx.make_data_buff({min ? 0 : 34});
-      }
-    } else {
-      if (fx.set_ranges_) {
-        expected_min_max = fx.make_data_buff({min ? 3 : 29});
-      } else {
-        expected_min_max =
-            fx.make_data_buff({min ? 0 : (fx.set_qc_ ? 34 : 35)});
-      }
-    }
-  } else {
-    if (fx.nullable_) {
-      if (fx.set_ranges_) {
-        expected_min_max = fx.make_data_buff({min ? 6 : 14});
-      } else {
-        expected_min_max = fx.make_data_buff({min ? 0 : 14});
-      }
-    } else {
-      if (fx.set_ranges_) {
-        expected_min_max = fx.make_data_buff({min ? 6 : 15});
-      } else {
-        expected_min_max = fx.make_data_buff({min ? 0 : 15});
-      }
-    }
-  }
-
-  // TODO: use 'std::get<1>(result_el["MinMax"]) == 1' once we use the
-  // set_data_buffer api.
-  CHECK(returned_min_max_size == cell_size);
-  CHECK(min_max == expected_min_max);
-
-  if (fx.request_data_) {
-    fx.validate_data(query, dim1, dim2, a1, a1_validity);
   }
 
   // Close array.
@@ -1471,117 +1500,135 @@ TEMPLATE_LIST_TEST_CASE(
   CppAggregatesFx<std::string> fx;
   typedef TestType AGG;
   bool min = std::is_same<AGG, tiledb::sm::MinAggregator<std::string>>::value;
-  if (!fx.generate_test_params()) {
-    return;
-  }
-
+  fx.generate_test_params();
   fx.create_var_array_and_write_fragments();
 
   Array array{fx.ctx_, fx.ARRAY_NAME, TILEDB_READ};
-  Query query(fx.ctx_, array, TILEDB_READ);
 
-  // TODO: Change to real CPPAPI. Add a count aggregator to the query.
-  query.ptr()->query_->add_aggregator_to_default_channel(
-      "MinMax",
-      std::make_shared<AGG>(
-          tiledb::sm::FieldInfo("a1", true, fx.nullable_, TILEDB_VAR_NUM)));
+  for (bool set_ranges : {true, false}) {
+    fx.set_ranges_ = set_ranges;
+    for (bool request_data : {true, false}) {
+      fx.request_data_ = request_data;
+      for (bool set_qc : fx.set_qc_values_) {
+        fx.set_qc_ = set_qc;
+        for (tiledb_layout_t layout : fx.layout_values_) {
+          fx.layout_ = layout;
+          Query query(fx.ctx_, array, TILEDB_READ);
 
-  fx.set_ranges_and_condition_if_needed(array, query, true);
+          // TODO: Change to real CPPAPI. Add a count aggregator to the query.
+          query.ptr()->query_->add_aggregator_to_default_channel(
+              "MinMax",
+              std::make_shared<AGG>(tiledb::sm::FieldInfo(
+                  "a1", true, fx.nullable_, TILEDB_VAR_NUM)));
 
-  // Set the data buffer for the aggregator.
-  std::vector<uint64_t> min_max_offset(1);
-  std::string min_max_data;
-  min_max_data.resize(10);
-  std::vector<uint8_t> min_max_validity(1);
-  std::vector<uint64_t> dim1(100);
-  std::vector<uint64_t> dim2(100);
-  std::vector<uint64_t> a1_offsets(100);
-  std::string a1_data;
-  a1_data.resize(100);
-  std::vector<uint8_t> a1_validity(100);
-  query.set_layout(fx.layout_);
+          fx.set_ranges_and_condition_if_needed(array, query, true);
 
-  // TODO: Change to real CPPAPI. Use set_data_buffer and set_validity_buffer
-  // from the internal query directly because the CPPAPI doesn't know what is
-  // an aggregate and what the size of an aggregate should be.
-  uint64_t returned_min_max_data_size = 10;
-  uint64_t returned_min_max_offsets_size = 8;
-  uint64_t returned_validity_size = 1;
-  CHECK(query.ptr()
-            ->query_
-            ->set_data_buffer(
-                "MinMax", min_max_data.data(), &returned_min_max_data_size)
-            .ok());
-  CHECK(query.ptr()
-            ->query_
-            ->set_offsets_buffer(
-                "MinMax", min_max_offset.data(), &returned_min_max_offsets_size)
-            .ok());
-  if (fx.nullable_) {
-    CHECK(query.ptr()
-              ->query_
-              ->set_validity_buffer(
-                  "MinMax", min_max_validity.data(), &returned_validity_size)
-              .ok());
-  }
+          // Set the data buffer for the aggregator.
+          std::vector<uint64_t> min_max_offset(1);
+          std::string min_max_data;
+          min_max_data.resize(10);
+          std::vector<uint8_t> min_max_validity(1);
+          std::vector<uint64_t> dim1(100);
+          std::vector<uint64_t> dim2(100);
+          std::vector<uint64_t> a1_offsets(100);
+          std::string a1_data;
+          a1_data.resize(100);
+          std::vector<uint8_t> a1_validity(100);
+          query.set_layout(layout);
 
-  if (fx.request_data_) {
-    query.set_data_buffer("d1", dim1);
-    query.set_data_buffer("d2", dim2);
-    query.set_data_buffer("a1", a1_data);
-    query.set_offsets_buffer("a1", a1_offsets);
+          // TODO: Change to real CPPAPI. Use set_data_buffer and
+          // set_validity_buffer from the internal query directly because the
+          // CPPAPI doesn't know what is an aggregate and what the size of an
+          // aggregate should be.
+          uint64_t returned_min_max_data_size = 10;
+          uint64_t returned_min_max_offsets_size = 8;
+          uint64_t returned_validity_size = 1;
+          CHECK(query.ptr()
+                    ->query_
+                    ->set_data_buffer(
+                        "MinMax",
+                        min_max_data.data(),
+                        &returned_min_max_data_size)
+                    .ok());
+          CHECK(query.ptr()
+                    ->query_
+                    ->set_offsets_buffer(
+                        "MinMax",
+                        min_max_offset.data(),
+                        &returned_min_max_offsets_size)
+                    .ok());
+          if (fx.nullable_) {
+            CHECK(query.ptr()
+                      ->query_
+                      ->set_validity_buffer(
+                          "MinMax",
+                          min_max_validity.data(),
+                          &returned_validity_size)
+                      .ok());
+          }
 
-    if (fx.nullable_) {
-      query.set_validity_buffer("a1", a1_validity);
+          if (request_data) {
+            query.set_data_buffer("d1", dim1);
+            query.set_data_buffer("d2", dim2);
+            query.set_data_buffer("a1", a1_data);
+            query.set_offsets_buffer("a1", a1_offsets);
+
+            if (fx.nullable_) {
+              query.set_validity_buffer("a1", a1_validity);
+            }
+          }
+
+          // Submit the query.
+          query.submit();
+
+          // Check the results.
+          std::string expected_min_max;
+          if (fx.dense_) {
+            if (fx.nullable_) {
+              if (set_ranges) {
+                expected_min_max = min ? "13" : set_qc ? "6" : "8";
+              } else {
+                expected_min_max = min ? "0" : set_qc ? "6" : "999";
+              }
+            } else {
+              if (set_ranges) {
+                expected_min_max = min ? "12" : set_qc ? "7" : "8";
+              } else {
+                expected_min_max = min ? "0" : set_qc ? "7" : "999";
+              }
+            }
+          } else {
+            if (fx.nullable_) {
+              if (set_ranges) {
+                expected_min_max = min ? "10" : "6";
+              } else {
+                expected_min_max = min ? "0" : "8";
+              }
+            } else {
+              if (set_ranges) {
+                expected_min_max = min ? "10" : (fx.allow_dups_ ? "7" : "6");
+              } else {
+                expected_min_max = min ? "0" : "99";
+              }
+            }
+          }
+
+          // TODO: use 'std::get<1>(result_el["MinMax"]) == 1' once we use the
+          // set_data_buffer api.
+          CHECK(returned_min_max_offsets_size == 8);
+          CHECK(returned_min_max_data_size == expected_min_max.size());
+
+          min_max_data.resize(expected_min_max.size());
+          CHECK(min_max_data == expected_min_max);
+          CHECK(min_max_offset[0] == 0);
+
+          if (request_data) {
+            fx.validate_data_var(
+                query, dim1, dim2, a1_data, a1_offsets, a1_validity);
+          }
+        }
+      }
     }
-  }
-
-  // Submit the query.
-  query.submit();
-
-  // Check the results.
-  std::string expected_min_max;
-  if (fx.dense_) {
-    if (fx.nullable_) {
-      if (fx.set_ranges_) {
-        expected_min_max = min ? "13" : fx.set_qc_ ? "6" : "8";
-      } else {
-        expected_min_max = min ? "0" : fx.set_qc_ ? "6" : "999";
-      }
-    } else {
-      if (fx.set_ranges_) {
-        expected_min_max = min ? "12" : fx.set_qc_ ? "7" : "8";
-      } else {
-        expected_min_max = min ? "0" : fx.set_qc_ ? "7" : "999";
-      }
-    }
-  } else {
-    if (fx.nullable_) {
-      if (fx.set_ranges_) {
-        expected_min_max = min ? "10" : "6";
-      } else {
-        expected_min_max = min ? "0" : "8";
-      }
-    } else {
-      if (fx.set_ranges_) {
-        expected_min_max = min ? "10" : (fx.allow_dups_ ? "7" : "6");
-      } else {
-        expected_min_max = min ? "0" : "99";
-      }
-    }
-  }
-
-  // TODO: use 'std::get<1>(result_el["MinMax"]) == 1' once we use the
-  // set_data_buffer api.
-  CHECK(returned_min_max_offsets_size == 8);
-  CHECK(returned_min_max_data_size == expected_min_max.size());
-
-  min_max_data.resize(expected_min_max.size());
-  CHECK(min_max_data == expected_min_max);
-  CHECK(min_max_offset[0] == 0);
-
-  if (fx.request_data_) {
-    fx.validate_data_var(query, dim1, dim2, a1_data, a1_offsets, a1_validity);
   }
 
   // Close array.
