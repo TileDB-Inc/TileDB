@@ -145,10 +145,12 @@ if (NOT AWSSDK_FOUND)
     if (WIN32)
       find_package(Git REQUIRED)
       set(CONDITIONAL_PATCH cd ${CMAKE_SOURCE_DIR} && ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsccommon.patch &&
-                                                      ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsconfig_cmake_3.22.patch)
+                                                      ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsconfig_cmake_3.22.patch &&
+                                                      ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/disable-werror.patch)
     else()
       set(CONDITIONAL_PATCH patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsccommon.patch &&
-                            patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsconfig_cmake_3.22.patch)
+                            patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsconfig_cmake_3.22.patch &&
+                            patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/disable-werror.patch)
     endif()
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR NOT WIN32)
       set(CONDITIONAL_CXX_FLAGS "-DCMAKE_CXX_FLAGS=-Wno-nonnull -Wno-error=deprecated-declarations")
