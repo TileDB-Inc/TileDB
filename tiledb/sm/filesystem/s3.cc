@@ -855,14 +855,6 @@ tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
   return {Status::Ok(), entries};
 }
 
-std::vector<filesystem::directory_entry> S3::ls_recursive(
-    const URI& prefix, int64_t max_paths) const {
-  // For S3, passing an empty delimiter will return recursive results.
-  auto&& [st, entries] = ls_with_sizes(prefix, "", max_paths);
-  throw_if_not_ok(st);
-  return *entries;
-}
-
 Status S3::move_object(const URI& old_uri, const URI& new_uri) {
   RETURN_NOT_OK(init_client());
 

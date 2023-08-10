@@ -170,16 +170,6 @@ class Posix {
   ls_with_sizes(const URI& uri) const;
 
   /**
-   * Recursively lists objects and object information that start with `prefix`.
-   *
-   * @param prefix The parent path to list sub-paths.
-   * @param max_paths The maximum number of paths to be retrieved.
-   * @return Vector of directory_entry objects.
-   */
-  std::vector<filesystem::directory_entry> ls_recursive(
-      const URI& path, int64_t max_paths) const;
-
-  /**
    * Move a given filesystem path.
    *
    * @param old_path The old path.

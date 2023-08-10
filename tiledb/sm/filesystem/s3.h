@@ -412,16 +412,6 @@ class S3 {
       int64_t max_paths = -1) const;
 
   /**
-   * Recursively lists objects and object information that start with `prefix`.
-   *
-   * @param prefix The parent path to list sub-paths.
-   * @param max_paths The maximum number of paths to be retrieved.
-   * @return Vector of directory_entry objects.
-   */
-  std::vector<filesystem::directory_entry> ls_recursive(
-      const URI& prefix, int64_t max_paths = -1) const;
-
-  /**
    * Renames an object.
    *
    * @param old_uri The URI of the old path.

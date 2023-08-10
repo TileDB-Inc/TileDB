@@ -742,28 +742,59 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
 
 void VFS::ls_recursive(
     const URI& parent, std::vector<URI>* uris, int64_t max_paths) const {
+  Status st;
   optional<std::vector<directory_entry>> entries;
-  if (parent.is_file()) {
+
+  if (parent.is_file() || parent.is_memfs()) {
+    std::queue<URI> q;
+    q.push(parent);
+    bool done = false;
+    while (!q.empty() && !done) {
+      if (parent.is_memfs()) {
+        std::tie(st, entries) = memfs_.ls_with_sizes(q.front());
+      } else if (parent.is_file()) {
 #ifdef _WIN32
-    entries = win_.ls_recursive(parent, max_paths);
+        std::tie(st, entries) = win_.ls_with_sizes(q.front());
 #else
-    entries = posix_.ls_recursive(parent, max_paths);
+        std::tie(st, entries) = posix_.ls_with_sizes(q.front());
 #endif
+      }
+      throw_if_not_ok(st);
+      // Sort the entries to avoid strange collections when pruned by max_paths.
+      parallel_sort(
+          io_tp_,
+          entries->begin(),
+          entries->end(),
+          [](const directory_entry& l, const directory_entry& r) {
+            return l.path().native() < r.path().native();
+          });
+      for (const auto& result : *entries) {
+        if (result.is_directory()) {
+          q.emplace(result.path().native());
+        }
+
+        uris->emplace_back(result.path().native());
+        if (static_cast<int64_t>(uris->size()) == max_paths) {
+          done = true;
+          break;
+        }
+      }
+      q.pop();
+    }
   } else if (parent.is_s3()) {
 #ifdef HAVE_S3
-    entries = s3_.ls_recursive(parent, max_paths);
+    std::tie(st, entries) = s3_.ls_with_sizes(parent, "", max_paths);
+    throw_if_not_ok(st);
 #else
     throw VFSStatusException("TileDB was built without S3 support");
 #endif
-  } else if (parent.is_memfs()) {
-    entries = memfs_.ls_recursive(URI("mem://" + parent.to_path()), max_paths);
   } else {
     throw VFSStatusException(
         "Recursive ls over " + parent.backend_name() +
         " storage backend is not supported.");
   }
 
-  // LocalFS, MemFS results were sorted in-place during traversal.
+  // LocalFS, MemFS results were sorted during traversal.
   if (!parent.is_file() && !parent.is_memfs()) {
     parallel_sort(
         compute_tp_,
@@ -772,10 +803,9 @@ void VFS::ls_recursive(
         [](const directory_entry& l, const directory_entry& r) {
           return l.path().native() < r.path().native();
         });
-  }
-
-  for (auto& fs : *entries) {
-    uris->emplace_back(fs.path().native());
+    for (auto& fs : *entries) {
+      uris->emplace_back(fs.path().native());
+    }
   }
 }
 
