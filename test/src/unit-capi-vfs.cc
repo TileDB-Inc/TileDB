@@ -995,7 +995,7 @@ TEST_CASE("C API: VFS recursive ls", "[capi][vfs][ls-recursive]") {
           uri_str + "d3",
       };
     }
-    int top_level_dirs = expected_paths.size();
+    int top_level_dirs = static_cast<int>(expected_paths.size());
 
     // d1 and d2 contain 10 and 100 files respectively.
     std::vector<size_t> max_files = {10, 100, 0};
