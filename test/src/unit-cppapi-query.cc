@@ -348,10 +348,9 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test query set_data_buffer typecheck",
     "[cppapi][query][set_data_buffer]") {
-  const std::string array_name = "bool_buffer_array";
+  const std::string array_name = "buffer_typecheck_array";
   Context ctx;
   VFS vfs(ctx);
-
   if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);
   }
