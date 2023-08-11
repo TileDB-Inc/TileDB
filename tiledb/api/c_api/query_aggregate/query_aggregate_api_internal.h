@@ -40,11 +40,9 @@
 #include "tiledb/sm/query/readers/aggregators/count_aggregator.h"
 #include "tiledb/sm/query/readers/aggregators/sum_aggregator.h"
 
-/** Defines the query condition ops. */
-enum class QueryChannelOperator : uint8_t {
-#define TILEDB_QUERY_CHANNEL_OPERATOR_ENUM(id) id
-#include "tiledb/sm/c_api/tiledb_enum.h"
-#undef TILEDB_QUERY_CHANNEL_OPERATOR_ENUM
+enum QueryChannelOperator {
+  TILEDB_QUERY_CHANNEL_OPERATOR_COUNT = 0,
+  TILEDB_QUERY_CHANNEL_OPERATOR_SUM
 };
 
 struct tiledb_channel_operation_handle_t
