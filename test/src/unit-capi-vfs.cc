@@ -1045,7 +1045,6 @@ TEST_CASE("C API: VFS recursive ls", "[capi][vfs][ls-recursive]") {
             max_paths) == TILEDB_OK);
     for (size_t i = 1; i < data_off.size(); i++) {
       std::string path(data, data_off[i - 1], data_off[i] - data_off[i - 1]);
-      printf("%s\n", path.c_str());
       CHECK_THAT(
           expected_paths,
           Catch::Matchers::VectorContains(sm::URI(path).to_string()));

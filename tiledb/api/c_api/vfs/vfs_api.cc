@@ -301,8 +301,7 @@ capi_return_t tiledb_vfs_ls_recursive(
     int64_t max_paths) {
   ensure_output_pointer_is_valid(data);
   ensure_output_pointer_is_valid(data_offsets);
-  std::vector<tiledb::sm::URI> children;
-  vfs->ls_recursive(tiledb::sm::URI(path), &children, max_paths);
+  auto children = vfs->ls_recursive(tiledb::sm::URI(path), max_paths);
 
   // Apply first callback with empty path to set first offset of 0.
   int rc = callback("", data, data_offsets);

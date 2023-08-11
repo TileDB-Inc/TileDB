@@ -740,10 +740,10 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   return Status::Ok();
 }
 
-void VFS::ls_recursive(
-    const URI& parent, std::vector<URI>* uris, int64_t max_paths) const {
+std::vector<URI> VFS::ls_recursive(const URI& parent, int64_t max_paths) const {
   Status st;
   optional<std::vector<directory_entry>> entries;
+  std::vector<URI> results;
 
   if (parent.is_file() || parent.is_memfs()) {
     std::queue<URI> q;
@@ -773,8 +773,8 @@ void VFS::ls_recursive(
           q.emplace(result.path().native());
         }
 
-        uris->emplace_back(result.path().native());
-        if (static_cast<int64_t>(uris->size()) == max_paths) {
+        results.emplace_back(result.path().native());
+        if (static_cast<int64_t>(results.size()) == max_paths) {
           done = true;
           break;
         }
@@ -804,9 +804,11 @@ void VFS::ls_recursive(
           return l.path().native() < r.path().native();
         });
     for (auto& fs : *entries) {
-      uris->emplace_back(fs.path().native());
+      results.emplace_back(fs.path().native());
     }
   }
+
+  return results;
 }
 
 tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
