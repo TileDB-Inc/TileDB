@@ -45,7 +45,6 @@ TEST_CASE(
     "var/fixed size",
     "[nonemptydomain][serialization]") {
   auto dim = make_shared<Dimension>(HERE(), "index", Datatype::UINT32);
-  ;
   uint32_t domain1[2]{1, 64};
   auto st = dim->set_domain(&domain1[0]);
   REQUIRE(st.ok());
