@@ -125,10 +125,3 @@
     /** application/pdf*/
     TILEDB_MIME_TYPE_ENUM(MIME_PDF) = 2,
 #endif
-
-#ifdef TILEDB_QUERY_CHANNEL_OPERATOR_ENUM
-    /**'COUNT' operator */
-    TILEDB_QUERY_CHANNEL_OPERATOR_ENUM(COUNT) = 0,
-    /** 'SUM' operator */
-    TILEDB_QUERY_CHANNEL_OPERATOR_ENUM(SUM) = 1,
-#endif

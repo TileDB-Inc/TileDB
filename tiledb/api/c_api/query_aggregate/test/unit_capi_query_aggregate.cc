@@ -209,9 +209,9 @@ TEST_CASE_METHOD(
   CHECK(
       tiledb_channel_create_operation_field(
           ctx, query, nullptr, "a", &count_op) == TILEDB_ERR);
-  CHECK(tiledb_channel_operator_free(nullptr) == TILEDB_ERR);
+  CHECK(tiledb_channel_operator_free(ctx, nullptr) == TILEDB_ERR);
   tiledb_channel_operator_t* nulloperator = NULL;
-  CHECK(tiledb_channel_operator_free(&nulloperator) == TILEDB_ERR);
+  CHECK(tiledb_channel_operator_free(ctx, &nulloperator) == TILEDB_ERR);
 
   // nullptr input field
   CHECK(
@@ -227,9 +227,9 @@ TEST_CASE_METHOD(
   CHECK(
       tiledb_channel_add_aggregate(ctx, nullptr, "Count", count_op) ==
       TILEDB_ERR);
-  CHECK(tiledb_query_channel_free(nullptr) == TILEDB_ERR);
+  CHECK(tiledb_query_channel_free(ctx, nullptr) == TILEDB_ERR);
   tiledb_query_channel_t* nullchannel = NULL;
-  CHECK(tiledb_query_channel_free(&nullchannel) == TILEDB_ERR);
+  CHECK(tiledb_query_channel_free(ctx, &nullchannel) == TILEDB_ERR);
 
   // nullptr output field
   CHECK(
@@ -240,13 +240,13 @@ TEST_CASE_METHOD(
   CHECK(
       tiledb_channel_add_aggregate(ctx, default_channel, "Count", nullptr) ==
       TILEDB_ERR);
-  CHECK(tiledb_channel_operation_free(nullptr) == TILEDB_ERR);
+  CHECK(tiledb_channel_operation_free(ctx, nullptr) == TILEDB_ERR);
   tiledb_channel_operation_t* nullop = NULL;
-  CHECK(tiledb_channel_operation_free(&nullop) == TILEDB_ERR);
+  CHECK(tiledb_channel_operation_free(ctx, &nullop) == TILEDB_ERR);
 
   // Clean up
-  CHECK(tiledb_channel_operator_free(&sum_operator) == TILEDB_OK);
-  CHECK(tiledb_channel_operator_free(&count_operator) == TILEDB_OK);
+  CHECK(tiledb_channel_operator_free(ctx, &sum_operator) == TILEDB_OK);
+  CHECK(tiledb_channel_operator_free(ctx, &count_operator) == TILEDB_OK);
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
@@ -299,9 +299,9 @@ TEST_CASE_METHOD(
   CHECK(count == 9);
 
   // Clean up
-  CHECK(tiledb_channel_operation_free(&count_op) == TILEDB_OK);
-  CHECK(tiledb_channel_operator_free(&count_operator) == TILEDB_OK);
-  CHECK(tiledb_query_channel_free(&default_channel) == TILEDB_OK);
+  CHECK(tiledb_channel_operation_free(ctx, &count_op) == TILEDB_OK);
+  CHECK(tiledb_channel_operator_free(ctx, &count_operator) == TILEDB_OK);
+  CHECK(tiledb_query_channel_free(ctx, &default_channel) == TILEDB_OK);
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
@@ -352,9 +352,9 @@ TEST_CASE_METHOD(
   CHECK(sum == 55);
 
   // Clean up
-  CHECK(tiledb_channel_operation_free(&sum_op) == TILEDB_OK);
-  CHECK(tiledb_channel_operator_free(&operator_sum) == TILEDB_OK);
-  CHECK(tiledb_query_channel_free(&default_channel) == TILEDB_OK);
+  CHECK(tiledb_channel_operation_free(ctx, &sum_op) == TILEDB_OK);
+  CHECK(tiledb_channel_operator_free(ctx, &operator_sum) == TILEDB_OK);
+  CHECK(tiledb_query_channel_free(ctx, &default_channel) == TILEDB_OK);
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
