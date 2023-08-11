@@ -316,9 +316,6 @@ void Group::delete_group(const URI& uri, bool recursive) {
         "[delete_group] Query type must be MODIFY_EXCLUSIVE");
   }
 
-  // Clear metadata and other pending changes to avoid patching a deleted group.
-  metadata_.clear();
-  throw_if_not_ok(group_details_->clear());
   // Delete group data
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
@@ -347,6 +344,9 @@ void Group::delete_group(const URI& uri, bool recursive) {
     }
     storage_manager_->delete_group(uri.c_str());
   }
+  // Clear metadata and other pending changes to avoid patching a deleted group.
+  metadata_.clear();
+  throw_if_not_ok(group_details_->clear());
 
   // Close the deleted group
   throw_if_not_ok(this->close());
