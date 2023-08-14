@@ -81,13 +81,13 @@ void print_timestamp(int64_t timestamp) {
  * * Array Summary:
  *  * Array Type: Dense
  *  * Dimensions:
- *    - x: (type=INT32, domain=[0, 5])
+ *    - x_index: (type=INT32, domain=[0, 5])
  *    - sample: (type=INT32, domain=[0,3])
  *
  *  * Attributes:
  *    - a: (type=INT16)
  *
- *  * Labels on dimension 'x':
+ *  * Labels on dimension 'x_index':
  *    - x (order=INCREASING, type=FLOAT64)
  *    - y (order=INCREASING, type=FLOAT64)
  *
@@ -156,9 +156,9 @@ void write_array_and_labels(const Context& ctx, const char* array_uri) {
   Query query(ctx, array);
   query.set_layout(TILEDB_ROW_MAJOR);
   query.set_data_buffer("a", a);
-  query.set_data_buffer("x", x);
-  query.set_data_buffer("y", y);
-  query.set_data_buffer("timestamp", timestamp);
+  QueryExperimental::set_data_buffer(query, "x", x);
+  QueryExperimental::set_data_buffer(query, "y", y);
+  QueryExperimental::set_data_buffer(query, "timestamp", timestamp);
 
   // Submit query and check the query finished.
   auto status = query.submit();
@@ -199,9 +199,9 @@ void read_array_and_labels(const Context& ctx, const char* array_uri) {
   query.set_layout(TILEDB_ROW_MAJOR);
   query.set_subarray(subarray);
   query.set_data_buffer("a", a);
-  query.set_data_buffer("x", x);
-  query.set_data_buffer("y", y);
-  query.set_data_buffer("timestamp", timestamp);
+  QueryExperimental::set_data_buffer(query, "x", x);
+  QueryExperimental::set_data_buffer(query, "y", y);
+  QueryExperimental::set_data_buffer(query, "timestamp", timestamp);
   // Submit the query and check if it finished.
   auto status = query.submit();
   if (status != Query::Status::COMPLETE) {
@@ -249,7 +249,7 @@ void read_timestamp_data(const Context& ctx, const char* array_uri) {
   Query query(ctx, array);
   query.set_subarray(subarray);
   query.set_layout(TILEDB_ROW_MAJOR);
-  query.set_data_buffer("timestamp", timestamp);
+  QueryExperimental::set_data_buffer(query, "timestamp", timestamp);
   auto status = query.submit();
   // Check the query finished.
   if (status != Query::Status::COMPLETE) {
@@ -296,8 +296,8 @@ void read_array_by_label(const Context& ctx, const char* array_uri) {
   Query query(ctx, array);
   query.set_layout(TILEDB_ROW_MAJOR);
   query.set_subarray(subarray);
-  query.set_data_buffer("y", y);
-  query.set_data_buffer("timestamp", timestamp);
+  QueryExperimental::set_data_buffer(query, "y", y);
+  QueryExperimental::set_data_buffer(query, "timestamp", timestamp);
   query.set_data_buffer("a", a);
 
   // Submit the query.
