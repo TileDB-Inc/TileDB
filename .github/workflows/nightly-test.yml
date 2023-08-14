@@ -40,7 +40,7 @@ jobs:
       - name: Configure TileDB CMake
         if: ${{ ! contains(matrix.os, 'windows') }}
         env:
-          SANITIZER_ARG: ${{ matrix.asan == 'true' && 'address' || 'OFF' }}
+          SANITIZER_ARG: ${{ matrix.asan && 'address' || 'OFF' }}
           EXPERIMENTAL: ${{ matrix.experimental || 'OFF' }}
         run: |
           cmake -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DTILEDB_EXPERIMENTAL_FEATURES=$EXPERIMENTAL -DCMAKE_BUILD_TYPE=${{ matrix.config || 'Release' }} -DSANITIZER=$SANITIZER_ARG
