@@ -383,7 +383,7 @@ TEST_CASE(
   }
 
   std::vector<uint32_t> d1_data = {0, 1, 2, 3};
-  std::vector<float> a1_data = {0.0, 1.1, 2.2, 3.3};
+  std::vector<float> a1_data = {0.0f, 1.1f, 2.2f, 3.3f};
   SECTION("- Test setting buffers with valid datatype") {
     CHECK_NOTHROW(query.set_data_buffer("d1", d1_data));
     CHECK_NOTHROW(query.set_data_buffer("a1", a1_data));
