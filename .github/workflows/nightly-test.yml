@@ -16,6 +16,8 @@ jobs:
           - os: macos-latest
           - os: macos-latest # ASAN build
             asan: true
+          - os: macos-latest
+            experimental: ON
           - os: windows-latest
           - os: windows-2019
           - os: windows-latest
@@ -39,8 +41,9 @@ jobs:
         if: ${{ ! contains(matrix.os, 'windows') }}
         env:
           SANITIZER_ARG: ${{ matrix.asan && 'address' || 'OFF' }}
+          EXPERIMENTAL: ${{ matrix.experimental || 'OFF' }}
         run: |
-          cmake -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DCMAKE_BUILD_TYPE=${{ matrix.config || 'Release' }} -DSANITIZER=$SANITIZER_ARG
+          cmake -B build -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DTILEDB_EXPERIMENTAL_FEATURES=$EXPERIMENTAL -DCMAKE_BUILD_TYPE=${{ matrix.config || 'Release' }} -DSANITIZER=$SANITIZER_ARG
 
       - name: Configure TileDB CMake
         if: contains(matrix.os, 'windows')
