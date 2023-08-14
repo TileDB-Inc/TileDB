@@ -2,14 +2,14 @@
 
 ## Improvements
 
-* Legacy reader: reading non written region causes segfault. [#4253](https://github.com/TileDB-Inc/TileDB/pull/4253)
 * Make generic tile decompression single threaded. [#4256](https://github.com/TileDB-Inc/TileDB/pull/4256)
 
 ## Defects removed
 
+* Legacy reader: reading non written region causes segfault. [#4253](https://github.com/TileDB-Inc/TileDB/pull/4253)
 * Unordered writes: fix deserialization for older clients. [#4246](https://github.com/TileDB-Inc/TileDB/pull/4246)
 * Clear pending changes during group delete [#4267](https://github.com/TileDB-Inc/TileDB/pull/4267)
-* fix serialization of var-size property for nonempty domains [#4264](https://github.com/TileDB-Inc/TileDB/pull/4264)
+* Fix serialization of var-size property for nonempty domains. [#4264](https://github.com/TileDB-Inc/TileDB/pull/4264)
 
 ## Build system changes
 
