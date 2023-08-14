@@ -86,6 +86,9 @@ endfunction()
 # manifest.
 #
 function(install_target_libs LIB_TARGET)
+  if (NOT TILEDB_INSTALL_STATIC_DEPS)
+    return()
+  endif()
   get_imported_location(TARGET_LIBRARIES ${LIB_TARGET})
   if (TARGET_LIBRARIES MATCHES "NOTFOUND")
     message(FATAL_ERROR "Could not determine library location for ${LIB_TARGET}")

@@ -389,7 +389,7 @@ endif()
 
 # Add custom target 'check'
 add_custom_target(
-  check COMMAND ${CMAKE_CTEST_COMMAND} -V -C ${CMAKE_BUILD_TYPE}
+  check COMMAND ${CMAKE_CTEST_COMMAND} -V -C $<CONFIG>
   DEPENDS tiledb_unit
 )
 

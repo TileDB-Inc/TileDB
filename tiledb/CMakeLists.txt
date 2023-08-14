@@ -579,21 +579,16 @@ if (TILEDB_AZURE)
     find_package(AzureStorageBlobs_EP REQUIRED)
     if (NOT WIN32)
       if (NOT TARGET LibXml2::LibXml2)
-        find_package(libxml2 REQUIRED)
+        find_package(LibXml2 REQUIRED)
         install_target_libs(LibXml2::LibXml2)
       endif()
+      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE LibXml2::LibXml2)
     endif()
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
             INTERFACE
             Azure::azure-storage-blobs
             Azure::azure-storage-common
             Azure::azure-core)
-    if(WIN32)
-      # WebServices and crypt32 needed by Azure storage on windows
-      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE WebServices crypt32)
-    else()
-      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE LibXml2::LibXml2)
-    endif()
   endif()
 endif()
 
@@ -735,19 +730,22 @@ endif()
 
 # Win32 specific libraries
 if (WIN32)
-  set(WIN32_LIBS shlwapi rpcrt4 bcrypt)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE shlwapi rpcrt4 bcrypt)
   if(TILEDB_SERIALIZATION)
     #ws2_32.lib, crypt32.lib needed to satisfy curl dependencies
-    set(WIN32_LIBS ${WIN32_LIBS} ws2_32 crypt32)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ws2_32 crypt32)
   endif()
 
   if (TILEDB_S3)
-    list(APPEND WIN32_LIBS "${AWS_EXTRA_LIBS}")
+    # the AWSSDK does not include links to some transitive dependencies
+    # ref: github<dot>com/aws<slash>aws-sdk-cpp/issues/1074#issuecomment-466252911
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE userenv ws2_32 wininet winhttp bcrypt version secur32)
   endif()
 
-  foreach (LIB ${WIN32_LIBS})
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${LIB})
-  endforeach()
+  if (TILEDB_AZURE)
+    # WebServices and crypt32 needed by Azure storage on windows
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE WebServices crypt32)
+  endif()
 endif()
 
 # macOS specific libraries

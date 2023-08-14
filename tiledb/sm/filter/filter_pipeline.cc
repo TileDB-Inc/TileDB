@@ -410,28 +410,14 @@ Status FilterPipeline::run_forward(
   return Status::Ok();
 }
 
-void FilterPipeline::run_reverse(
-    stats::Stats* stats,
-    Tile& tile,
-    ThreadPool& compute_tp,
-    const Config& config) const {
+void FilterPipeline::run_reverse_generic_tile(
+    stats::Stats* stats, Tile& tile, const Config& config) const {
   ChunkData chunk_data;
   tile.load_chunk_data(chunk_data);
-  throw_if_not_ok(parallel_for(
-      &compute_tp,
-      0,
-      chunk_data.filtered_chunks_.size(),
-      [&](const unsigned c) {
-        return run_reverse(
-            stats,
-            &tile,
-            nullptr,
-            chunk_data,
-            c,
-            c + 1,
-            compute_tp.concurrency_level(),
-            config);
-      }));
+  for (unsigned c = 0; c < chunk_data.filtered_chunks_.size(); c++) {
+    throw_if_not_ok(
+        run_reverse(stats, &tile, nullptr, chunk_data, c, c + 1, 1, config));
+  }
   tile.clear_filtered_buffer();
 }
 
