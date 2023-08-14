@@ -1548,7 +1548,7 @@ class Query {
     // Checks
     auto is_attr = schema_.has_attribute(name);
     auto is_dim = schema_.domain().has_dimension(name);
-    if (name != "__coords" && !is_attr && !is_dim) {
+    if (name != "__coords" && name != "__timestamps" && !is_attr && !is_dim) {
       throw TileDBError(
           std::string("Cannot set buffer; Attribute/Dimension '") + name +
           "' does not exist");

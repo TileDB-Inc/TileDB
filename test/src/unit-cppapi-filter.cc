@@ -816,7 +816,7 @@ TEST_CASE(
   array_w.close();
 
   // Read all data and check no error and data correct
-  std::vector<std::byte> d0_read_buf(1 << 20);
+  std::vector<char> d0_read_buf(1 << 20);
   std::vector<uint64_t> d0_offsets_read_buf(1 << 20);
   std::vector<int32_t> a0_read_buf(1 << 20);
 
