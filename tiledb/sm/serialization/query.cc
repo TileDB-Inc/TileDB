@@ -2981,6 +2981,7 @@ Status unordered_write_state_to_capnp(
   auto frag_meta = unordered_writer.frag_meta();
   if (frag_meta != nullptr) {
     auto frag_meta_builder = state_builder->initFragMeta();
+    fragment_meta_sizes_offsets_to_capnp(*frag_meta, &frag_meta_builder);
     RETURN_NOT_OK(fragment_metadata_to_capnp(*frag_meta, &frag_meta_builder));
   }
 
