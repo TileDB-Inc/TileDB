@@ -520,15 +520,6 @@ TEST_CASE("C++ API: VFS recursive ls", "[cppapi][vfs][ls-recursive]") {
     auto uri_str = uri.to_string();
     vfs.create_dir(uri_str);
     std::vector<std::string> expected_paths;
-    // LocalFS, MemFS returns root directories.
-    if (uri.is_file() || uri.is_memfs()) {
-      expected_paths = {
-          uri_str + "d1",
-          uri_str + "d2",
-          uri_str + "d3",
-      };
-    }
-    int top_level_dirs = static_cast<int>(expected_paths.size());
 
     // d1 and d2 contain 10 and 100 files respectively.
     std::vector<size_t> max_files = {10, 100, 0};
@@ -544,7 +535,7 @@ TEST_CASE("C++ API: VFS recursive ls", "[cppapi][vfs][ls-recursive]") {
       }
     }
     // Sort and trim expected vector to match VFS::ls sorted output.
-    std::sort(expected_paths.begin() + top_level_dirs, expected_paths.end());
+    std::sort(expected_paths.begin(), expected_paths.end());
     if (max_paths != -1) {
       expected_paths.resize(max_paths);
     }
@@ -559,21 +550,16 @@ TEST_CASE("C++ API: VFS recursive ls", "[cppapi][vfs][ls-recursive]") {
       continue;
     }
 
-    auto result = vfs.ls_recursive(uri_str, max_paths);
-    auto data = result.first;
-    auto offsets = result.second;
-    for (size_t i = 1; i < offsets.size(); i++) {
-      std::string path(data, offsets[i - 1], offsets[i] - offsets[i - 1]);
+    auto results = vfs.ls_recursive(uri_str, max_paths);
+    for (const auto& path : results) {
       CHECK_THAT(
           expected_paths,
           Catch::Matchers::VectorContains(sm::URI(path).to_string()));
     }
 
     // If max_paths is -1 all results should be returned.
-    // S3 won't return prefixes without objects. +3 for posix d1/, d2/, and d3/.
-    int64_t all_expected = uri.is_s3() ? 110 : 113;
-    max_paths = max_paths == -1 ? all_expected : max_paths;
-    CHECK(static_cast<int64_t>(offsets.size() - 1) == max_paths);
+    max_paths = max_paths == -1 ? 110 : max_paths;
+    CHECK(static_cast<int64_t>(results.size()) == max_paths);
 
     vfs.remove_dir(uri_str);
   }

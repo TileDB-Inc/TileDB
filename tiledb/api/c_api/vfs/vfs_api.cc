@@ -270,10 +270,14 @@ capi_return_t tiledb_vfs_ls(
     int32_t (*callback)(const char*, void*),
     void* data) {
   // Sanity checks
-  if (callback == nullptr) {
+  ensure_vfs_is_valid(vfs);
+  if (path == nullptr) {
+    throw CAPIStatusException("Invalid TileDB object: VFS passed a null path.");
+  } else if (callback == nullptr) {
     throw CAPIStatusException(
-        std::string("Invalid TileDB object: ") + "callback function");
+        "Invalid TileDB object: Callback function is null.");
   }
+  ensure_output_pointer_is_valid(data);
 
   // Get children
   std::vector<tiledb::sm::URI> children;
@@ -295,19 +299,25 @@ capi_return_t tiledb_vfs_ls(
 capi_return_t tiledb_vfs_ls_recursive(
     tiledb_vfs_t* vfs,
     const char* path,
-    int32_t (*callback)(const char*, void*, void*),
+    int32_t (*callback)(const char*, size_t, void*),
     void* data,
-    void* data_offsets,
     int64_t max_paths) {
+  ensure_vfs_is_valid(vfs);
+  if (path == nullptr) {
+    throw CAPIStatusException("Invalid TileDB object: VFS passed a null path.");
+  } else if (callback == nullptr) {
+    throw CAPIStatusException(
+        "Invalid TileDB object: Callback function is null.");
+  }
   ensure_output_pointer_is_valid(data);
-  ensure_output_pointer_is_valid(data_offsets);
   auto children = vfs->ls_recursive(tiledb::sm::URI(path), max_paths);
 
-  // Apply first callback with empty path to set first offset of 0.
-  int rc = callback("", data, data_offsets);
-  while (rc == 1 && !children.empty()) {
-    rc = callback(children.back().c_str(), data, data_offsets);
-    children.pop_back();
+  int rc = 1;
+  for (const auto& uri : children) {
+    rc = callback(uri.c_str(), uri.to_string().size(), data);
+    if (rc != 1) {
+      break;
+    }
   }
 
   if (rc == -1) {
@@ -540,12 +550,11 @@ capi_return_t tiledb_vfs_ls_recursive(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* path,
-    int32_t (*callback)(const char*, void*, void*),
+    int32_t (*callback)(const char*, size_t, void*),
     void* data,
-    void* data_offsets,
     int64_t max_paths) noexcept {
   return api_entry_context<tiledb::api::tiledb_vfs_ls_recursive>(
-      ctx, vfs, path, callback, data, data_offsets, max_paths);
+      ctx, vfs, path, callback, data, max_paths);
 }
 
 void tiledb_vfs_fh_free(tiledb_vfs_fh_t** fh) noexcept {

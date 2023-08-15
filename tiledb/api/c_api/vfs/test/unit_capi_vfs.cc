@@ -261,16 +261,54 @@ TEST_CASE("C API: tiledb_vfs_ls argument validation", "[capi][vfs]") {
    */
   ordinary_vfs x;
   int32_t data;
+  auto cb = [](const char*, void*) { return 0; };
   SECTION("null context") {
-    auto rc{tiledb_vfs_ls(nullptr, x.vfs, TEST_URI, nullptr, &data)};
+    auto rc{tiledb_vfs_ls(nullptr, x.vfs, TEST_URI, cb, &data)};
     CHECK(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
   }
   SECTION("null vfs") {
-    auto rc{tiledb_vfs_ls(x.ctx, nullptr, TEST_URI, nullptr, &data)};
+    auto rc{tiledb_vfs_ls(x.ctx, nullptr, TEST_URI, cb, &data)};
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null uri") {
-    auto rc{tiledb_vfs_ls(x.ctx, x.vfs, nullptr, nullptr, &data)};
+    auto rc{tiledb_vfs_ls(x.ctx, x.vfs, nullptr, cb, &data)};
+    CHECK(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null callback") {
+    auto rc{tiledb_vfs_ls(x.ctx, x.vfs, TEST_URI, nullptr, &data)};
+    CHECK(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null data ptr") {
+    auto rc{tiledb_vfs_ls(x.ctx, x.vfs, TEST_URI, cb, nullptr)};
+    CHECK(tiledb_status(rc) == TILEDB_ERR);
+  }
+}
+
+TEST_CASE("C API: tiledb_vfs_ls_recursive argument validation", "[capi][vfs]") {
+  /*
+   * No "success" sections here; too much overhead to set up.
+   */
+  ordinary_vfs x;
+  int32_t data;
+  auto cb = [](const char*, size_t, void*) { return 0; };
+  SECTION("null context") {
+    auto rc{tiledb_vfs_ls_recursive(nullptr, x.vfs, TEST_URI, cb, &data, 1)};
+    CHECK(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
+  }
+  SECTION("null vfs") {
+    auto rc{tiledb_vfs_ls_recursive(x.ctx, nullptr, TEST_URI, cb, &data, 1)};
+    CHECK(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null uri") {
+    auto rc{tiledb_vfs_ls_recursive(x.ctx, x.vfs, nullptr, cb, &data, 1)};
+    CHECK(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null callback") {
+    auto rc{tiledb_vfs_ls_recursive(x.ctx, x.vfs, TEST_URI, nullptr, &data, 1)};
+    CHECK(tiledb_status(rc) == TILEDB_ERR);
+  }
+  SECTION("null data ptr") {
+    auto rc{tiledb_vfs_ls_recursive(x.ctx, x.vfs, TEST_URI, cb, nullptr, 1)};
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
 }

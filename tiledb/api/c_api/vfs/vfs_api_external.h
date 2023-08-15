@@ -590,7 +590,7 @@ tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) TILEDB_NOEXCEPT;
  * @param[in] ctx The TileDB context.
  * @param[in] vfs The virtual filesystem object.
  * @param[in] path The path in which the traversal will occur.
- * @param[in,out] callback
+ * @param[in] callback
  * The callback function to be applied on every visited object.
  *     The callback should return `0` if the iteration must stop, and `1`
  *     if the iteration must continue. It takes as input the currently visited
@@ -610,44 +610,54 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_ls(
 /**
  * Visits the children of `path` recursively, listing all nested objects in
  * a single pass. Offsets are in Arrow format [r1, r2, ..., rN] where r1 is the
- * beginning of the first result and r2 is the beginning of the second. The
+ * beginning of the first result (0) and r2 is the beginning of the second. The
  * final offset rN marks the end of the last result. The length of result N can
- * be retrieved with rN - rN-1.*
+ * be retrieved with rN - rN-1.
+ *
  * **Example:**
  *
  * @code{.c}
- * std::string data;
- * std::vector<uint64_t> offsets;
+ * size_t paths_max = 500, offsets_max = 10;
+ * char paths_data[paths_max];
+ * uint64_t offsets[offsets_max];
+ * LsRecursiveData ls_data(paths_data, paths_max, offsets, offsets_max);
+ *
  * // Retrieve at most 100 results from 'my_dir'.
- * tiledb_vfs_ls_recursive(ctx, vfs, "my_dir", callback, &data, &offsets, 100);
- * for (size_t i = 1; i < offsets.size(); i++) {
- *   std::string path(data, offsets[i - 1], offsets[i] - offsets[i - 1]);
- *   printf("%s\n", path.c_str());
+ * tiledb_vfs_ls_recursive(ctx, vfs, "my_dir", callback, &ls_data, 100);
+ * uint64_t* offsets = ls_data.path_offsets_;
+ * for (size_t i = 1; i < ls_data.offsets_pos_; i++) {
+ *   size_t length = offsets[i] - offsets[i - 1];
+ *   char path[length + 1];  // +1 for '\0'
+ *   std::strncpy(path, ls_data.paths_data_ + offsets[i - 1], length);
+ *   path[length] = '\0';
+ *   printf("%s\n", path);
  * }
  * @endcode
  *
  * @param[in] ctx The TileDB context.
  * @param[in] vfs The virtual filesystem object.
  * @param[in] path The path in which the traversal will occur.
- * @param[in,out] callback
+ * @param[in] callback
  * The callback function to be applied on every visited object.
  *     The callback should return `0` if the iteration must stop, and `1`
  *     if the iteration must continue. It takes as input the currently visited
- *     path, and user provided buffers for paths and their offsets. The callback
- *     returns `-1` upon error. Note that `path` in the callback will be an
- *     **absolute** path.
+ *     path, the length of the currentlv visited path, and user provided
+ *     buffer for paths and their offsets in the form of a struct pointer. The
+ *     callback returns `-1` upon error. Note that `path` in the callback will
+ *     be an **absolute** path.
  * @param[out] data Data buffer results wrote into by recursive ls.
  * @param[out] data_off Offset data retrieved from recursive ls.
+ * @param[in] max_paths The maximum number of paths to retrieve.
+ *     -1 returns all results.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_vfs_ls_recursive(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* path,
-    int32_t (*callback)(const char*, void*, void*),
+    int32_t (*callback)(const char*, size_t, void*),
     void* data,
-    void* data_off,
-    int64_t max_count) TILEDB_NOEXCEPT;
+    int64_t max_paths) TILEDB_NOEXCEPT;
 
 /**
  * Frees a file handle.

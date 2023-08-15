@@ -762,7 +762,7 @@ std::vector<URI> VFS::ls_recursive(const URI& parent, int64_t max_paths) const {
       throw_if_not_ok(st);
       // Sort the entries to avoid strange collections when pruned by max_paths.
       parallel_sort(
-          io_tp_,
+          compute_tp_,
           entries->begin(),
           entries->end(),
           [](const directory_entry& l, const directory_entry& r) {
@@ -771,9 +771,10 @@ std::vector<URI> VFS::ls_recursive(const URI& parent, int64_t max_paths) const {
       for (const auto& result : *entries) {
         if (result.is_directory()) {
           q.emplace(result.path().native());
+        } else {
+          results.emplace_back(result.path().native());
         }
 
-        results.emplace_back(result.path().native());
         if (static_cast<int64_t>(results.size()) == max_paths) {
           done = true;
           break;
@@ -794,17 +795,12 @@ std::vector<URI> VFS::ls_recursive(const URI& parent, int64_t max_paths) const {
         " storage backend is not supported.");
   }
 
-  // LocalFS, MemFS results were sorted during traversal.
+  // LocalFS, MemFS results were collected during traversal.
   if (!parent.is_file() && !parent.is_memfs()) {
-    parallel_sort(
-        compute_tp_,
-        entries->begin(),
-        entries->end(),
-        [](const directory_entry& l, const directory_entry& r) {
-          return l.path().native() < r.path().native();
-        });
     for (auto& fs : *entries) {
-      results.emplace_back(fs.path().native());
+      if (!fs.is_directory()) {
+        results.emplace_back(fs.path().native());
+      }
     }
   }
 

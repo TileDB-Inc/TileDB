@@ -393,9 +393,11 @@ class VFS : private VFSBase, S3_within_VFS {
    * @param prefix The parent path to list sub-paths.
    * @param uris The URIs that are contained in the parent.
    * @param max_paths The maximum number of paths to be retrieved.
+   *        -1 to retrieve all results.
    * @return Vector of URIs from recursive ls on 'parent'.
    */
-  std::vector<URI> ls_recursive(const URI& parent, int64_t max_paths) const;
+  std::vector<URI> ls_recursive(
+      const URI& parent, int64_t max_paths = -1) const;
 
   /**
    * Retrieves all the entries contained in the parent.

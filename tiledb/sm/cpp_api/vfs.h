@@ -492,23 +492,27 @@ class VFS {
    *
    * @param uri The base URI to list results recursively.
    * @param max_paths The maximum number of paths to return.
-   * @return Pair where first is a string data buffer, and second is a vector of
-   * offsets.
+   * @return Vector of strings for each path collected.
    */
-  std::pair<std::string, std::vector<uint64_t>> ls_recursive(
+  std::vector<std::string> ls_recursive(
       const std::string& uri, int64_t max_paths = -1) const {
-    std::string data;
-    std::vector<uint64_t> offsets;
+    LsRecursiveData ls_data;
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_vfs_ls_recursive(
         ctx.ptr().get(),
         vfs_.get(),
         uri.c_str(),
-        ls_recursive_getter,
-        &data,
-        &offsets,
+        ls_recursive_cb,
+        &ls_data,
         max_paths));
-    return {data, offsets};
+    std::vector<std::string> results;
+    for (size_t i = 1; i < ls_data.path_offsets_.size(); i++) {
+      results.emplace_back(
+          ls_data.path_data_,
+          ls_data.path_offsets_[i - 1],
+          ls_data.path_offsets_[i] - ls_data.path_offsets_[i - 1]);
+    }
+    return results;
   }
 
   /** Retrieves the size of a file with the input URI. */
@@ -591,18 +595,27 @@ class VFS {
 
   /**
    * Callback function to be used when invoking the C TileDB function
-   * for recursive ls.
+   * for recursive ls. The callback will cast 'data' to LsRecursiveData struct.
+   * The struct stores a single string buffer which all paths are appended to,
+   * and a vector of uint64 offset positions for the start and end of each path.
+   *
+   * Offsets are in Arrow format [r1, r2, ..., rN] where r1 is the beginning of
+   * the first result (0) and r2 is the beginning of the second. The final
+   * offset rN marks the end of the last result. The length of result N can be
+   * retrieved with rN - rN-1.
    *
    * @param path The path of a visited TileDB object
-   * @param data Cast to a string buffer used to store all paths.
-   * @param offsets Cast to a vector of uint64_t used to store all path offsets.
+   * @param data Cast to LsRecursiveData struct to store paths and offsets.
    * @return If `1` then the walk should continue to the next object.
    */
-  static int ls_recursive_getter(const char* path, void* data, void* offsets) {
-    auto buff = static_cast<std::string*>(data);
-    buff->append(path);
-    auto offsets_vec = static_cast<std::vector<uint64_t>*>(offsets);
-    offsets_vec->push_back(buff->size());
+  static int ls_recursive_cb(const char* path, size_t path_length, void* data) {
+    auto ls_data = static_cast<LsRecursiveData*>(data);
+    ls_data->path_data_.append(path, path_length);
+    // Offsets should start at 0.
+    if (ls_data->path_offsets_.empty()) {
+      ls_data->path_offsets_.push_back(0);
+    }
+    ls_data->path_offsets_.push_back(ls_data->path_data_.size());
     return 1;
   }
 
@@ -637,6 +650,17 @@ class VFS {
 
     vfs_ = std::shared_ptr<tiledb_vfs_t>(vfs, deleter_);
   }
+
+  /**
+   * Struct to store recursive ls results data.
+   * 'path_data_' Stores all paths collected in a single string buffer.
+   * 'path_offsets_' Stores offsets for results within 'path_data_'.
+   * Offsets begin at 0 and end at the total length of 'path_data_'
+   */
+  struct LsRecursiveData {
+    std::string path_data_;
+    std::vector<uint64_t> path_offsets_;
+  };
 };
 
 namespace impl {
