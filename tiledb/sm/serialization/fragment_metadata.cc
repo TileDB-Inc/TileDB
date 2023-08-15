@@ -448,7 +448,7 @@ void generic_tile_offsets_to_capnp(
       gt_offsets.processed_conditions_offsets_);
 }
 
-Status fragment_metadata_to_capnp(
+void fragment_meta_sizes_offsets_to_capnp(
     const FragmentMetadata& frag_meta,
     capnp::FragmentMetadata::Builder* frag_meta_builder) {
   auto& file_sizes = frag_meta.file_sizes();
@@ -473,16 +473,6 @@ Status fragment_metadata_to_capnp(
       builder.set(i, file_validity_sizes[i]);
     }
   }
-
-  const auto& relative_fragment_uri =
-      serialize_array_uri_to_relative(frag_meta.fragment_uri());
-  frag_meta_builder->setFragmentUri(relative_fragment_uri);
-  frag_meta_builder->setHasTimestamps(frag_meta.has_timestamps());
-  frag_meta_builder->setHasDeleteMeta(frag_meta.has_delete_meta());
-  frag_meta_builder->setHasConsolidatedFooter(
-      frag_meta.has_consolidated_footer());
-  frag_meta_builder->setSparseTileNum(frag_meta.sparse_tile_num());
-  frag_meta_builder->setTileIndexBase(frag_meta.tile_index_base());
 
   auto& tile_offsets = frag_meta.tile_offsets();
   if (!tile_offsets.empty()) {
@@ -526,6 +516,21 @@ Status fragment_metadata_to_capnp(
       }
     }
   }
+}
+
+Status fragment_metadata_to_capnp(
+    const FragmentMetadata& frag_meta,
+    capnp::FragmentMetadata::Builder* frag_meta_builder) {
+  const auto& relative_fragment_uri =
+      serialize_array_uri_to_relative(frag_meta.fragment_uri());
+  frag_meta_builder->setFragmentUri(relative_fragment_uri);
+  frag_meta_builder->setHasTimestamps(frag_meta.has_timestamps());
+  frag_meta_builder->setHasDeleteMeta(frag_meta.has_delete_meta());
+  frag_meta_builder->setHasConsolidatedFooter(
+      frag_meta.has_consolidated_footer());
+  frag_meta_builder->setSparseTileNum(frag_meta.sparse_tile_num());
+  frag_meta_builder->setTileIndexBase(frag_meta.tile_index_base());
+
   auto& tile_min_buffer = frag_meta.tile_min_buffer();
   if (!tile_min_buffer.empty()) {
     auto builder = frag_meta_builder->initTileMinBuffer(tile_min_buffer.size());
