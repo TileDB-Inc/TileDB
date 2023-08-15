@@ -1548,16 +1548,17 @@ class Query {
     // Checks
     auto is_attr = schema_.has_attribute(name);
     auto is_dim = schema_.domain().has_dimension(name);
-    if (name != "__coords" && !is_attr && !is_dim)
+    if (name != "__coords" && name != "__timestamps" && !is_attr && !is_dim) {
       throw TileDBError(
           std::string("Cannot set buffer; Attribute/Dimension '") + name +
           "' does not exist");
-    else if (is_attr)
+    } else if (is_attr) {
       impl::type_check<T>(schema_.attribute(name).type());
-    else if (is_dim)
+    } else if (is_dim) {
       impl::type_check<T>(schema_.domain().dimension(name).type());
-    else if (name == "__coords")
+    } else if (name == "__coords") {
       impl::type_check<T>(schema_.domain().type());
+    }
 
     return set_data_buffer(name, buff, nelements, sizeof(T));
   }
@@ -1580,7 +1581,7 @@ class Query {
    **/
   template <typename T>
   Query& set_data_buffer(const std::string& name, std::vector<T>& buf) {
-    return set_data_buffer(name, buf.data(), buf.size(), sizeof(T));
+    return set_data_buffer(name, buf.data(), buf.size());
   }
 
   /**

@@ -344,3 +344,54 @@ TEST_CASE(
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
 }
+
+TEST_CASE(
+    "C++ API: Test query set_data_buffer typecheck",
+    "[cppapi][query][set_data_buffer]") {
+  const std::string array_name = "buffer_typecheck_array";
+  Context ctx;
+  VFS vfs(ctx);
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  // Create the array
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<uint32_t>(ctx, "d1", {{0, 3}}, 4));
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(Attribute::create<float>(ctx, "a1"));
+  Array::create(array_name, schema);
+  Array array(ctx, array_name, TILEDB_WRITE);
+  Query query(ctx, array);
+
+  SECTION("- Test setting buffers with invalid datatype") {
+    std::vector<uint16_t> d1_data = {0, 1, 2, 3};
+    std::vector<uint64_t> a1_data = {0, 1, 2, 3};
+    CHECK_THROWS_WITH(
+        query.set_data_buffer("d1", d1_data),
+        Catch::Matchers::ContainsSubstring("does not match expected type"));
+    CHECK_THROWS_WITH(
+        query.set_data_buffer("a1", a1_data),
+        Catch::Matchers::ContainsSubstring("does not match expected type"));
+    CHECK_THROWS_WITH(
+        query.set_data_buffer("d1", d1_data.data(), d1_data.size()),
+        Catch::Matchers::ContainsSubstring("does not match expected type"));
+    CHECK_THROWS_WITH(
+        query.set_data_buffer("a1", a1_data.data(), a1_data.size()),
+        Catch::Matchers::ContainsSubstring("does not match expected type"));
+  }
+
+  std::vector<uint32_t> d1_data = {0, 1, 2, 3};
+  std::vector<float> a1_data = {0.0f, 1.1f, 2.2f, 3.3f};
+  SECTION("- Test setting buffers with valid datatype") {
+    CHECK_NOTHROW(query.set_data_buffer("d1", d1_data));
+    CHECK_NOTHROW(query.set_data_buffer("a1", a1_data));
+    CHECK_NOTHROW(query.submit());
+  }
+
+  array.close();
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+}

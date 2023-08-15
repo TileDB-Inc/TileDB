@@ -419,7 +419,11 @@ TEST_CASE_METHOD(
   std::vector<uint64_t> dim2(100);
   std::vector<uint8_t> a1(100 * cell_size);
   query.set_layout(TILEDB_UNORDERED);
-  query.set_data_buffer("Count", count);
+  uint64_t count_data_size = sizeof(uint64_t);
+  // TODO: Change to real CPPAPI.
+  CHECK(query.ptr()
+            ->query_->set_data_buffer("Count", count.data(), &count_data_size)
+            .ok());
 
   if (request_data) {
     query.set_data_buffer("d1", dim1);
@@ -439,7 +443,10 @@ TEST_CASE_METHOD(
   } else {
     expected_count = allow_dups ? 16 : 15;
   }
-  CHECK(std::get<1>(result_el["Count"]) == 1);
+
+  // TODO: use 'std::get<1>(result_el["Count"]) == 1' once we use the
+  // set_data_buffer api.
+  // CHECK(std::get<1>(result_el["Count"]) == 1);
   CHECK(count[0] == expected_count);
 
   if (request_data) {
@@ -514,7 +521,12 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   std::vector<uint8_t> a1(100 * cell_size);
   std::vector<uint8_t> a1_validity(100);
   query.set_layout(TILEDB_UNORDERED);
-  query.set_data_buffer("Sum", sum);
+  uint64_t sum_data_size =
+      sizeof(typename tiledb::sm::sum_type_data<T>::sum_type);
+  // TODO: Change to real CPPAPI.
+  CHECK(query.ptr()
+            ->query_->set_data_buffer("Sum", sum.data(), &sum_data_size)
+            .ok());
   uint64_t returned_validity_size = 1;
   if (nullable) {
     // TODO: Change to real CPPAPI. Use set_validity_buffer from the internal
@@ -564,7 +576,10 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   } else {
     expected_count = allow_dups ? 16 : 15;
   }
-  CHECK(std::get<1>(result_el["Sum"]) == 1);
+
+  // TODO: use 'std::get<1>(result_el["Sum"]) == 1' once we use the
+  // set_data_buffer api.
+  // CHECK(std::get<1>(result_el["Sum"]) == 1);
   CHECK(sum[0] == expected_sum);
 
   if (request_data) {
