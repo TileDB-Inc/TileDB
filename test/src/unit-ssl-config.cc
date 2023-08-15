@@ -177,21 +177,17 @@ Config s3_base_config() {
   return cfg;
 }
 
-TEST_CASE("S3 - Connection Error", "[ssl_config][s3][yarps]") {
+TEST_CASE("S3 - Connection Error", "[ssl_config][s3][check-error]") {
   // Show that SSL connections without configuration are broken
   // so that the other tests show that setting the config values
   // actually works rather than me not realizing I accidentally
   // set an http endpoint instead of https.
   auto cfg = s3_base_config();
   REQUIRE(cfg.set("vfs.s3.logging_level", "trace").ok());
-  std::cerr << "S3 - Connection Error: " << std::this_thread::get_id()
-            << std::endl;
   check_failure(Filesystem::S3, cfg);
 }
 
 TEST_CASE("S3 - Verify False - vfs.s3.verify_ssl", "[ssl_config][s3]") {
-  std::cerr << "S3 - Verify False - vfs.s3.verify_ssl: "
-            << std::this_thread::get_id() << std::endl;
   auto cfg = s3_base_config();
   REQUIRE(cfg.set("vfs.s3.verify_ssl", "false").ok());
   check_success(Filesystem::S3, cfg);
@@ -248,7 +244,6 @@ std::string get_test_ca_file() {
 }
 
 void check_failure(Filesystem fs, Config& cfg) {
-  std::cerr << "CHECK FAILURE: " << std::this_thread::get_id() << std::endl;
   Context ctx(cfg);
   auto& vfs = ctx.resources().vfs();
 
@@ -286,7 +281,6 @@ void check_failure(Filesystem fs, Config& cfg) {
 }
 
 void check_success(Filesystem fs, Config& cfg) {
-  std::cerr << "CHECK SUCCESS: " << std::this_thread::get_id() << std::endl;
   Context ctx(cfg);
   auto& vfs = ctx.resources().vfs();
 
