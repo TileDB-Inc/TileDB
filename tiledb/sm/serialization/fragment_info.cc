@@ -307,10 +307,10 @@ Status fragment_info_from_capnp(
 
   // Get single_fragment_info from capnp
   if (fragment_info_reader.hasFragmentInfo()) {
+    auto fragment_info_list_reader = fragment_info_reader.getFragmentInfo();
     fragment_info->single_fragment_info_vec().reserve(
-        fragment_info_reader.getFragmentInfo().size());
-    for (auto single_frag_info_reader :
-         fragment_info_reader.getFragmentInfo()) {
+        fragment_info_list_reader.size());
+    for (auto single_frag_info_reader : fragment_info_list_reader) {
       auto&& [st, single_frag_info] = single_fragment_info_from_capnp(
           single_frag_info_reader, fragment_info->array_schemas_all());
       RETURN_NOT_OK(st);
