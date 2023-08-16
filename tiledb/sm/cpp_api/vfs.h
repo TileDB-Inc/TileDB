@@ -491,7 +491,8 @@ class VFS {
    * retrieved with rN - rN-1.
    *
    * @param uri The base URI to list results recursively.
-   * @param max_paths The maximum number of paths to return.
+   * @param max_paths The maximum number of paths to return, or -1 to return all
+   * paths.
    * @return Vector of strings for each path collected.
    */
   std::vector<std::string> ls_recursive(

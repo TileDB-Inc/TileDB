@@ -967,51 +967,80 @@ TEST_CASE_METHOD(VFSFx, "C API: Test VFS parallel I/O", "[capi][vfs]") {
 }
 
 struct LsRecursiveData {
-  LsRecursiveData(
-      char* data, size_t data_max, uint64_t* offsets, size_t offsets_max)
-      : path_pos_(0)
-      , path_max_(data_max)
-      , offset_pos_(0)
-      , offset_max_(offsets_max) {
-    path_data_ = data;
-    path_offsets_ = offsets;
-  }
-
-  // Buffer resulting path data is appended to.
-  char* path_data_;
-  // Buffer used to store offsets for results in data buffer.
-  uint64_t* path_offsets_;
-  // Current buffer position, max buffer size for paths and offsets.
-  size_t path_pos_, path_max_, offset_pos_, offset_max_;
+  std::string path_data_;
+  std::vector<uint64_t> path_offsets_;
 };
 
 int ls_recursive_cb(const char* path, size_t path_length, void* data) {
   auto ls_data = static_cast<LsRecursiveData*>(data);
-  // Stop gathering results if either buffer overflows.
-  if (path_length + ls_data->path_pos_ >= ls_data->path_max_ ||
-      ls_data->offset_pos_ + 1 >= ls_data->offset_max_) {
-    return 0;
-  }
-
-  std::memcpy(ls_data->path_data_ + ls_data->path_pos_, path, path_length);
-  ls_data->path_pos_ += path_length;
+  ls_data->path_data_.append(path, path_length);
   // Offsets should start at 0.
-  if (ls_data->offset_pos_ == 0) {
-    ls_data->path_offsets_[ls_data->offset_pos_++] = 0;
+  if (ls_data->path_offsets_.empty()) {
+    ls_data->path_offsets_.push_back(0);
   }
-  ls_data->path_offsets_[ls_data->offset_pos_++] = ls_data->path_pos_;
+  ls_data->path_offsets_.push_back(ls_data->path_data_.size());
   return 1;
 }
 
-TEST_CASE("C API: VFS recursive ls", "[capi][vfs][ls-recursive]") {
+TEST_CASE(
+    "C API: VFS recursive ls list all results", "[capi][vfs][ls-recursive]") {
   using namespace tiledb;
   tiledb_ctx_t* ctx;
   tiledb_vfs_t* vfs;
   auto fs_vec = vfs_test_get_fs_vec();
   REQUIRE(vfs_test_init(fs_vec, &ctx, &vfs).ok());
-  // Sets max paths returned by recursive ls. -1 retrieves all results, or up to
-  // the maximum allocated buffer sizes.
-  int64_t max_paths = GENERATE(10, 50, -1);
+
+  for (const auto& fs : fs_vec) {
+    sm::URI uri(fs->temp_dir());
+    std::string uri_str = uri.to_string();
+    tiledb_vfs_create_dir(ctx, vfs, uri_str.c_str());
+    std::vector<std::string> expected_paths;
+
+    // d1 and d2 contain 10 and 100 files respectively.
+    std::vector<size_t> max_files = {10, 100, 0};
+    // Create d1, d2, d3 directories.
+    // d3 will not be returned, as it is an empty prefix with no objects.
+    for (size_t i = 1; i <= 3; i++) {
+      tiledb_vfs_create_dir(
+          ctx, vfs, std::string(uri_str + "d" + std::to_string(i)).c_str());
+      for (size_t j = 1; j <= max_files[i - 1]; j++) {
+        auto file = uri_str + "d" + std::to_string(i) + "/test" +
+                    std::to_string(j) + ".txt";
+        tiledb_vfs_touch(ctx, vfs, file.c_str());
+        expected_paths.push_back(file);
+      }
+    }
+    // Sort expected vector to match VFS::ls sorted output.
+    std::sort(expected_paths.begin(), expected_paths.end());
+    LsRecursiveData ls_data;
+
+    REQUIRE(
+        tiledb_vfs_ls_recursive(
+            ctx, vfs, uri_str.c_str(), ls_recursive_cb, &ls_data, -1) ==
+        TILEDB_OK);
+    auto data_off = ls_data.path_offsets_;
+    for (size_t i = 1; i < ls_data.path_offsets_.size(); i++) {
+      std::string path(
+          ls_data.path_data_, data_off[i - 1], data_off[i] - data_off[i - 1]);
+      CHECK_THAT(expected_paths, Catch::Matchers::VectorContains(path));
+    }
+
+    CHECK(static_cast<int64_t>(ls_data.path_offsets_.size() - 1) == 110);
+
+    tiledb_vfs_remove_dir(ctx, vfs, uri_str.c_str());
+  }
+}
+
+TEST_CASE(
+    "C API: VFS recursive ls max_paths limits results",
+    "[capi][vfs][ls-recursive]") {
+  using namespace tiledb;
+  tiledb_ctx_t* ctx;
+  tiledb_vfs_t* vfs;
+  auto fs_vec = vfs_test_get_fs_vec();
+  REQUIRE(vfs_test_init(fs_vec, &ctx, &vfs).ok());
+  // Sets max paths returned by recursive ls.
+  int64_t max_paths = GENERATE(10, 50);
 
   for (const auto& fs : fs_vec) {
     sm::URI uri(fs->temp_dir());
@@ -1035,47 +1064,21 @@ TEST_CASE("C API: VFS recursive ls", "[capi][vfs][ls-recursive]") {
     }
     // Sort and trim expected vector to match VFS::ls sorted output.
     std::sort(expected_paths.begin(), expected_paths.end());
-    if (max_paths != -1) {
-      expected_paths.resize(max_paths);
-    }
-
-    size_t paths_max = 1000;
-    char paths[paths_max];
-    size_t offsets_max = 10;
-    uint64_t offsets[offsets_max];
-    LsRecursiveData ls_data(paths, paths_max, offsets, offsets_max);
-
-    // Ensure exception is thrown for backends without recursive ls support.
-    if (!uri.is_s3() && !uri.is_file() && !uri.is_memfs()) {
-      REQUIRE(
-          tiledb_vfs_ls_recursive(
-              ctx,
-              vfs,
-              uri_str.c_str(),
-              ls_recursive_cb,
-              &ls_data,
-              max_paths) == TILEDB_ERR);
-      // Test next SupportedFS.
-      continue;
-    }
+    expected_paths.resize(max_paths);
+    LsRecursiveData ls_data;
 
     REQUIRE(
         tiledb_vfs_ls_recursive(
             ctx, vfs, uri_str.c_str(), ls_recursive_cb, &ls_data, max_paths) ==
         TILEDB_OK);
-    uint64_t* data_off = ls_data.path_offsets_;
-    for (size_t i = 1; i < ls_data.offset_pos_; i++) {
-      size_t length = data_off[i] - data_off[i - 1];
-      char path[length + 1];  // +1 for '\0'
-      std::strncpy(path, ls_data.path_data_ + data_off[i - 1], length);
-      path[length] = '\0';
-      printf("%s\n", path);
-      CHECK_THAT(
-          expected_paths,
-          Catch::Matchers::VectorContains(sm::URI(path).to_string()));
+    auto data_off = ls_data.path_offsets_;
+    for (size_t i = 1; i < ls_data.path_offsets_.size(); i++) {
+      std::string path(
+          ls_data.path_data_, data_off[i - 1], data_off[i] - data_off[i - 1]);
+      CHECK_THAT(expected_paths, Catch::Matchers::VectorContains(path));
     }
 
-    CHECK(ls_data.offset_pos_ == offsets_max - 1);
+    CHECK(static_cast<int64_t>(ls_data.path_offsets_.size() - 1) == max_paths);
 
     tiledb_vfs_remove_dir(ctx, vfs, uri_str.c_str());
   }

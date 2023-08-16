@@ -503,15 +503,15 @@ TEST_CASE(
   }
 }
 
-TEST_CASE("C++ API: VFS recursive ls", "[cppapi][vfs][ls-recursive]") {
+TEST_CASE(
+    "C++ API: VFS recursive ls list all results",
+    "[cppapi][vfs][ls-recursive]") {
   using namespace tiledb;
   Config config;
   tiledb_ctx_t* ctx_c;
   tiledb_vfs_t* vfs_c;
   auto fs_vec = test::vfs_test_get_fs_vec();
   REQUIRE(test::vfs_test_init(fs_vec, &ctx_c, &vfs_c).ok());
-  // Sets max paths returned by recursive ls. -1 retrieves all results.
-  int64_t max_paths = GENERATE(10, 50, -1);
 
   Context ctx(ctx_c, false);
   VFS vfs(ctx);
@@ -524,7 +524,52 @@ TEST_CASE("C++ API: VFS recursive ls", "[cppapi][vfs][ls-recursive]") {
     // d1 and d2 contain 10 and 100 files respectively.
     std::vector<size_t> max_files = {10, 100, 0};
     // Create d1, d2, d3 directories.
-    // d3 will not be returned by S3, as it is an empty prefix with no objects.
+    // d3 will not be returned, as it is an empty prefix with no objects.
+    for (size_t i = 1; i <= 3; i++) {
+      vfs.create_dir(uri_str + "d" + std::to_string(i));
+      for (size_t j = 1; j <= max_files[i - 1]; j++) {
+        auto file = uri_str + "d" + std::to_string(i) + "/test" +
+                    std::to_string(j) + ".txt";
+        vfs.touch(file);
+        expected_paths.push_back(file);
+      }
+    }
+    // Sort expected vector to match VFS::ls sorted output.
+    std::sort(expected_paths.begin(), expected_paths.end());
+
+    auto results = vfs.ls_recursive(uri_str);
+    for (const auto& path : results) {
+      CHECK_THAT(expected_paths, Catch::Matchers::VectorContains(path));
+    }
+    CHECK(static_cast<int64_t>(results.size()) == 110);
+    vfs.remove_dir(uri_str);
+  }
+}
+
+TEST_CASE(
+    "C++ API: VFS recursive ls max_paths limits results",
+    "[cppapi][vfs][ls-recursive]") {
+  using namespace tiledb;
+  Config config;
+  tiledb_ctx_t* ctx_c;
+  tiledb_vfs_t* vfs_c;
+  auto fs_vec = test::vfs_test_get_fs_vec();
+  REQUIRE(test::vfs_test_init(fs_vec, &ctx_c, &vfs_c).ok());
+  // Sets max paths returned by recursive ls.
+  int64_t max_paths = GENERATE(10, 50, 0);
+
+  Context ctx(ctx_c, false);
+  VFS vfs(ctx);
+  for (const auto& fs : fs_vec) {
+    sm::URI uri(fs->temp_dir());
+    auto uri_str = uri.to_string();
+    vfs.create_dir(uri_str);
+    std::vector<std::string> expected_paths;
+
+    // d1 and d2 contain 10 and 100 files respectively.
+    std::vector<size_t> max_files = {10, 100, 0};
+    // Create d1, d2, d3 directories.
+    // d3 will not be returned, as it is an empty prefix with no objects.
     for (size_t i = 1; i <= 3; i++) {
       vfs.create_dir(uri_str + "d" + std::to_string(i));
       for (size_t j = 1; j <= max_files[i - 1]; j++) {
@@ -536,31 +581,34 @@ TEST_CASE("C++ API: VFS recursive ls", "[cppapi][vfs][ls-recursive]") {
     }
     // Sort and trim expected vector to match VFS::ls sorted output.
     std::sort(expected_paths.begin(), expected_paths.end());
-    if (max_paths != -1) {
-      expected_paths.resize(max_paths);
-    }
-
-    // Ensure exception is thrown for backends without recursive ls support.
-    if (!uri.is_s3() && !uri.is_file() && !uri.is_memfs()) {
-      REQUIRE_THROWS_WITH(
-          vfs.ls_recursive(uri_str, max_paths),
-          "VFS: Recursive ls over " + uri.backend_name() +
-              " storage backend is not supported.");
-      // Test next SupportedFS.
-      continue;
-    }
+    expected_paths.resize(max_paths);
 
     auto results = vfs.ls_recursive(uri_str, max_paths);
     for (const auto& path : results) {
-      CHECK_THAT(
-          expected_paths,
-          Catch::Matchers::VectorContains(sm::URI(path).to_string()));
+      CHECK_THAT(expected_paths, Catch::Matchers::VectorContains(path));
     }
-
-    // If max_paths is -1 all results should be returned.
-    max_paths = max_paths == -1 ? 110 : max_paths;
     CHECK(static_cast<int64_t>(results.size()) == max_paths);
-
     vfs.remove_dir(uri_str);
+  }
+}
+
+TEST_CASE(
+    "C++ API: VFS recursive ls unsupported backends",
+    "[cppapi][vfs][ls-recursive]") {
+  tiledb::Context ctx;
+  tiledb::VFS vfs(ctx);
+  // Recursive ls is currently unsupported over Azure, GCS, and HDFS backends.
+  tiledb::sm::URI uri{GENERATE("azure://path/", "gcs://path/", "hdfs://path/")};
+  DYNAMIC_SECTION(
+      "Test recursive ls usupported backend over " << uri.backend_name()) {
+    tiledb_filesystem_t fs;
+    tiledb_filesystem_from_str(uri.backend_name().c_str(), &fs);
+    if (!ctx.is_supported_fs(fs)) {
+      return;
+    }
+    REQUIRE_THROWS_WITH(
+        vfs.ls_recursive(uri.to_string()),
+        "VFS: Recursive ls over " + uri.backend_name() +
+            " storage backend is not supported.");
   }
 }
