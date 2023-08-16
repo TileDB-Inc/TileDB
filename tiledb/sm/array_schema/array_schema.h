@@ -98,7 +98,7 @@ class ArraySchema {
   /** Constructor. */
   ArraySchema(ArrayType array_type);
 
-   /** Constructor.
+  /** Constructor.
    * @param uri The URI of the array schema file.
    * @param version The format version of this array schema.
    * @param timestamp_range The timestamp the array schema was written.
