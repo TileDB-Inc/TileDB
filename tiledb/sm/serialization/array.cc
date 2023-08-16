@@ -286,11 +286,36 @@ Status array_from_capnp(
   }
 
   if (array_reader.hasFragmentMetadataAll()) {
+    auto&& [st, array_schema_latest, array_schemas_all, fragment_metadata] =
+        storage_manager->load_array_schemas_and_fragment_metadata(
+            array->array_directory(),
+            array->memory_tracker(),
+            *array->encryption_key());
+    std::unordered_map<std::string, std::shared_ptr<FragmentMetadata>>
+        fragmeta_map;
+    if (!client_side) {
+      if (fragment_metadata.has_value()) {
+        for (auto f : *fragment_metadata) {
+          fragmeta_map[f->fragment_uri().to_string()] = f;
+        }
+      }
+    }
+
     array->fragment_metadata().clear();
     array->fragment_metadata().reserve(
         array_reader.getFragmentMetadataAll().size());
     for (auto frag_meta_reader : array_reader.getFragmentMetadataAll()) {
       auto meta = make_shared<FragmentMetadata>(HERE());
+      if (!client_side && frag_meta_reader.hasFragmentUri()) {
+        // Reconstruct the fragment uri out of the received fragment name
+        auto uri = deserialize_array_uri_to_absolute(
+            frag_meta_reader.getFragmentUri().cStr(),
+            array->array_schema_latest_ptr()->array_uri());
+        auto it = fragmeta_map.find(uri.to_string());
+        if (it != fragmeta_map.end()) {
+          meta = it->second;
+        }
+      }
       RETURN_NOT_OK(fragment_metadata_from_capnp(
           array->array_schema_latest_ptr(),
           frag_meta_reader,
@@ -300,6 +325,7 @@ Status array_from_capnp(
       if (client_side) {
         meta->set_rtree_loaded();
       }
+
       array->fragment_metadata().emplace_back(meta);
     }
   }
