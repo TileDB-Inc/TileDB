@@ -105,6 +105,7 @@ stages:
        steps:
        - template: scripts/azure-linux_mac-release.yml
      - job: Windows
+       timeoutInMinutes: 90
        strategy:
          matrix:
            VS2019:
