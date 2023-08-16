@@ -127,43 +127,6 @@ ArraySchema::ArraySchema(
     uint64_t capacity,
     std::vector<shared_ptr<const Attribute>> attributes,
     std::vector<shared_ptr<const DimensionLabel>> dim_label_refs,
-    std::unordered_map<std::string, std::string> enumeration_path_map,
-    FilterPipeline cell_var_offsets_filters,
-    FilterPipeline cell_validity_filters,
-    FilterPipeline coords_filters)
-    : ArraySchema(
-          uri,
-          version,
-          timestamp_range,
-          name,
-          array_type,
-          allows_dups,
-          domain,
-          cell_order,
-          tile_order,
-          capacity,
-          attributes,
-          dim_label_refs,
-          {},
-          enumeration_path_map,
-          cell_var_offsets_filters,
-          cell_validity_filters,
-          coords_filters) {
-}
-
-ArraySchema::ArraySchema(
-    URI uri,
-    uint32_t version,
-    std::pair<uint64_t, uint64_t> timestamp_range,
-    std::string name,
-    ArrayType array_type,
-    bool allows_dups,
-    shared_ptr<Domain> domain,
-    Layout cell_order,
-    Layout tile_order,
-    uint64_t capacity,
-    std::vector<shared_ptr<const Attribute>> attributes,
-    std::vector<shared_ptr<const DimensionLabel>> dim_label_refs,
     std::vector<shared_ptr<const Enumeration>> enumerations,
     std::unordered_map<std::string, std::string> enumeration_path_map,
     FilterPipeline cell_var_offsets_filters,
@@ -1357,8 +1320,6 @@ ArraySchema ArraySchema::deserialize(
   // Set schema name
   std::string name = uri.last_path_part();
 
-  // TODO: This is the only use of an extraneous constructor that only omits a
-  // single argument. Use the full one instead.
   return ArraySchema(
       uri,
       version,
@@ -1372,6 +1333,7 @@ ArraySchema ArraySchema::deserialize(
       capacity,
       attributes,
       dimension_labels,
+      {},
       enumeration_path_map,
       cell_var_filters,
       cell_validity_filters,

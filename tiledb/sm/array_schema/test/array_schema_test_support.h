@@ -309,7 +309,8 @@ class TestArraySchema {
             10000,  // capacity
             make_attributes(attributes),
             {},  // dimension labels
-            {},  // enumeration path map
+            {},  // the first enumeration thing
+            {},  // the second enumeration thing
             FilterPipeline(),
             FilterPipeline(),
             FilterPipeline()) {

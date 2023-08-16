@@ -98,45 +98,7 @@ class ArraySchema {
   /** Constructor. */
   ArraySchema(ArrayType array_type);
 
-  /** Constructor.
-   * @param uri The URI of the array schema file.
-   * @param version The format version of this array schema.
-   * @param timestamp_range The timestamp the array schema was written.
-   * @param name The file name of the schema in timestamp_timestamp_uuid format.
-   * @param array_type The array type.
-   * @param allows_dups True if the (sparse) array allows coordinate duplicates.
-   * @param domain The array domain.
-   * @param cell_order The cell order.
-   * @param tile_order The tile order.
-   * @param capacity The tile capacity for the case of sparse fragments.
-   * @param attributes The array attributes.
-   * @param dimension_labels The array dimension labels.
-   * @param enumeration_path_map The array enumeration path map
-   * @param cell_var_offsets_filters
-   *    The filter pipeline run on offset tiles for var-length attributes.
-   * @param cell_validity_filters
-   *    The filter pipeline run on validity tiles for nullable attributes.
-   * @param coords_filters The filter pipeline run on coordinate tiles.
-   **/
-  ArraySchema(
-      URI uri,
-      uint32_t version,
-      std::pair<uint64_t, uint64_t> timestamp_range,
-      std::string name,
-      ArrayType array_type,
-      bool allows_dups,
-      shared_ptr<Domain> domain,
-      Layout cell_order,
-      Layout tile_order,
-      uint64_t capacity,
-      std::vector<shared_ptr<const Attribute>> attributes,
-      std::vector<shared_ptr<const DimensionLabel>> dimension_labels,
-      std::unordered_map<std::string, std::string> enumeration_path_map,
-      FilterPipeline cell_var_offsets_filters,
-      FilterPipeline cell_validity_filters,
-      FilterPipeline coords_filters);
-
-  /** Constructor.
+   /** Constructor.
    * @param uri The URI of the array schema file.
    * @param version The format version of this array schema.
    * @param timestamp_range The timestamp the array schema was written.
