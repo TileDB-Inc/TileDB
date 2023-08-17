@@ -571,13 +571,16 @@ if (TILEDB_AZURE)
         find_package(LibXml2 REQUIRED)
         install_target_libs(LibXml2::LibXml2)
       endif()
-      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE LibXml2::LibXml2)
     endif()
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
             INTERFACE
             Azure::azure-storage-blobs
             Azure::azure-storage-common
             Azure::azure-core)
+    # Link xml after Azure to allow symbol resolution on all platforms
+    if (NOT WIN32)
+      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE LibXml2::LibXml2)
+    endif()
   endif()
 endif()
 
