@@ -2239,9 +2239,14 @@ Status array_from_query_deserialize(
           return LOG_STATUS(Status_SerializationError(
               "Could not deserialize query; buffer is not 8-byte aligned."));
 
-        // Set traversal limit to 10GI (TODO: make this a config option)
+        // Set traversal limit from config
+        uint64_t limit = storage_manager->config()
+                             .get<uint64_t>("rest.capnp_traversal_limit")
+                             .value();
         ::capnp::ReaderOptions readerOptions;
-        readerOptions.traversalLimitInWords = uint64_t(1024) * 1024 * 1024 * 10;
+        // capnp uses the limit in words of 8 bytes
+        readerOptions.traversalLimitInWords = limit * 1024 * 1024 / 8;
+
         ::capnp::FlatArrayMessageReader reader(
             kj::arrayPtr(
                 reinterpret_cast<const ::capnp::word*>(
@@ -2459,9 +2464,13 @@ Status do_query_deserialize(
           return LOG_STATUS(Status_SerializationError(
               "Could not deserialize query; buffer is not 8-byte aligned."));
 
-        // Set traversal limit to 10GI (TODO: make this a config option)
+        // Set traversal limit from config
+        uint64_t limit =
+            query->config().get<uint64_t>("rest.capnp_traversal_limit").value();
         ::capnp::ReaderOptions readerOptions;
-        readerOptions.traversalLimitInWords = uint64_t(1024) * 1024 * 1024 * 10;
+        // capnp uses the limit in words of 8 bytes
+        readerOptions.traversalLimitInWords = limit * 1024 * 1024 / 8;
+
         ::capnp::FlatArrayMessageReader reader(
             kj::arrayPtr(
                 reinterpret_cast<const ::capnp::word*>(

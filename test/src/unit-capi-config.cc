@@ -226,6 +226,7 @@ void check_save_to_file() {
   ss << "config.logging_level 0\n";
 #endif
   ss << "filestore.buffer_size 104857600\n";
+  ss << "rest.capnp_traversal_limit 128\n";
   ss << "rest.curl.buffer_size 524288\n";
   ss << "rest.curl.verbose false\n";
   ss << "rest.http_compressor any\n";

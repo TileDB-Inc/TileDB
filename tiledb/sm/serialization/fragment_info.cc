@@ -473,11 +473,21 @@ Status fragment_info_deserialize(
         break;
       }
       case SerializationType::CAPNP: {
+        // Set traversal limit from config
+        uint64_t limit = fragment_info->config()
+                             .get<uint64_t>("rest.capnp_traversal_limit")
+                             .value();
+        ::capnp::ReaderOptions readerOptions;
+        // capnp uses the limit in words of 8 bytes
+        readerOptions.traversalLimitInWords = limit * 1024 * 1024 / 8;
+
         const auto mBytes =
             reinterpret_cast<const kj::byte*>(serialized_buffer.data());
-        ::capnp::FlatArrayMessageReader msg_reader(kj::arrayPtr(
-            reinterpret_cast<const ::capnp::word*>(mBytes),
-            serialized_buffer.size() / sizeof(::capnp::word)));
+        ::capnp::FlatArrayMessageReader msg_reader(
+            kj::arrayPtr(
+                reinterpret_cast<const ::capnp::word*>(mBytes),
+                serialized_buffer.size() / sizeof(::capnp::word)),
+            readerOptions);
         auto reader = msg_reader.getRoot<capnp::FragmentInfo>();
 
         // Deserialize

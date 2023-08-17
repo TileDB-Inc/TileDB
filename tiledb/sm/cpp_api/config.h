@@ -792,6 +792,9 @@ class Config {
    * - `rest.curl.buffer_size` <br>
    *    Set curl buffer size for REST requests <br>
    *    **Default**: 524288 (512KB)
+   * - `rest.capnp_traversal_limit` <br>
+   *    CAPNP traversal limit used in the deserialization of messages(MB) <br>
+   *    **Default**: 512 (512MB)
    * - `filestore.buffer_size` <br>
    *    Specifies the size in bytes of the internal buffers used in the
    *    filestore API. The size should be bigger than the minimum tile size
