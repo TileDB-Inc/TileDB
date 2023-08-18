@@ -97,6 +97,8 @@ CAPNP_DECLARE_SCHEMA(a736c51d292ca752);
 CAPNP_DECLARE_SCHEMA(cd8abc9dabc4b03f);
 CAPNP_DECLARE_SCHEMA(f5a35661031194d2);
 CAPNP_DECLARE_SCHEMA(e68edfc0939e63df);
+CAPNP_DECLARE_SCHEMA(891a70a671f15cf6);
+CAPNP_DECLARE_SCHEMA(805c080c10c1e959);
 
 }  // namespace schemas
 }  // namespace capnp
@@ -1564,6 +1566,40 @@ struct ArrayVacuumRequest {
 
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(e68edfc0939e63df, 0, 1)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
+struct LoadEnumerationsRequest {
+  LoadEnumerationsRequest() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(891a70a671f15cf6, 0, 2)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
+struct LoadEnumerationsResponse {
+  LoadEnumerationsResponse() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(805c080c10c1e959, 0, 1)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -14044,6 +14080,241 @@ class ArrayVacuumRequest::Pipeline {
   }
 
   inline ::tiledb::sm::serialization::capnp::Config::Pipeline getConfig();
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class LoadEnumerationsRequest::Reader {
+ public:
+  typedef LoadEnumerationsRequest Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasConfig() const;
+  inline ::tiledb::sm::serialization::capnp::Config::Reader getConfig() const;
+
+  inline bool hasEnumerations() const;
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+  getEnumerations() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class LoadEnumerationsRequest::Builder {
+ public:
+  typedef LoadEnumerationsRequest Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasConfig();
+  inline ::tiledb::sm::serialization::capnp::Config::Builder getConfig();
+  inline void setConfig(
+      ::tiledb::sm::serialization::capnp::Config::Reader value);
+  inline ::tiledb::sm::serialization::capnp::Config::Builder initConfig();
+  inline void adoptConfig(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>&& value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>
+  disownConfig();
+
+  inline bool hasEnumerations();
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  getEnumerations();
+  inline void setEnumerations(
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value);
+  inline void setEnumerations(
+      ::kj::ArrayPtr<const ::capnp::Text::Reader> value);
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  initEnumerations(unsigned int size);
+  inline void adoptEnumerations(
+      ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+          value);
+  inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+  disownEnumerations();
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class LoadEnumerationsRequest::Pipeline {
+ public:
+  typedef LoadEnumerationsRequest Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+  inline ::tiledb::sm::serialization::capnp::Config::Pipeline getConfig();
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class LoadEnumerationsResponse::Reader {
+ public:
+  typedef LoadEnumerationsResponse Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasEnumerations() const;
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::Enumeration,
+      ::capnp::Kind::STRUCT>::Reader
+  getEnumerations() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class LoadEnumerationsResponse::Builder {
+ public:
+  typedef LoadEnumerationsResponse Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasEnumerations();
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::Enumeration,
+      ::capnp::Kind::STRUCT>::Builder
+  getEnumerations();
+  inline void setEnumerations(::capnp::List<
+                              ::tiledb::sm::serialization::capnp::Enumeration,
+                              ::capnp::Kind::STRUCT>::Reader value);
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::Enumeration,
+      ::capnp::Kind::STRUCT>::Builder
+  initEnumerations(unsigned int size);
+  inline void adoptEnumerations(
+      ::capnp::Orphan<::capnp::List<
+          ::tiledb::sm::serialization::capnp::Enumeration,
+          ::capnp::Kind::STRUCT>>&& value);
+  inline ::capnp::Orphan<::capnp::List<
+      ::tiledb::sm::serialization::capnp::Enumeration,
+      ::capnp::Kind::STRUCT>>
+  disownEnumerations();
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class LoadEnumerationsResponse::Pipeline {
+ public:
+  typedef LoadEnumerationsResponse Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -30294,6 +30565,188 @@ ArrayVacuumRequest::Builder::disownConfig() {
   return ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::Config>::disown(
           _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool LoadEnumerationsRequest::Reader::hasConfig() const {
+  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool LoadEnumerationsRequest::Builder::hasConfig() {
+  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::Config::Reader
+LoadEnumerationsRequest::Reader::getConfig() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::get(
+          _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::Config::Builder
+LoadEnumerationsRequest::Builder::getConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::get(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::Config::Pipeline
+LoadEnumerationsRequest::Pipeline::getConfig() {
+  return ::tiledb::sm::serialization::capnp::Config::Pipeline(
+      _typeless.getPointerField(0));
+}
+#endif  // !CAPNP_LITE
+inline void LoadEnumerationsRequest::Builder::setConfig(
+    ::tiledb::sm::serialization::capnp::Config::Reader value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Config>::set(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      value);
+}
+inline ::tiledb::sm::serialization::capnp::Config::Builder
+LoadEnumerationsRequest::Builder::initConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::init(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void LoadEnumerationsRequest::Builder::adoptConfig(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>&& value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Config>::adopt(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>
+LoadEnumerationsRequest::Builder::disownConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::disown(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool LoadEnumerationsRequest::Reader::hasEnumerations() const {
+  return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool LoadEnumerationsRequest::Builder::hasEnumerations() {
+  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+LoadEnumerationsRequest::Reader::getEnumerations() const {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+LoadEnumerationsRequest::Builder::getEnumerations() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void LoadEnumerationsRequest::Builder::setEnumerations(
+    ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          value);
+}
+inline void LoadEnumerationsRequest::Builder::setEnumerations(
+    ::kj::ArrayPtr<const ::capnp::Text::Reader> value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+LoadEnumerationsRequest::Builder::initEnumerations(unsigned int size) {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::init(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          size);
+}
+inline void LoadEnumerationsRequest::Builder::adoptEnumerations(
+    ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+        value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::adopt(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+LoadEnumerationsRequest::Builder::disownEnumerations() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+
+inline bool LoadEnumerationsResponse::Reader::hasEnumerations() const {
+  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool LoadEnumerationsResponse::Builder::hasEnumerations() {
+  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<
+    ::tiledb::sm::serialization::capnp::Enumeration,
+    ::capnp::Kind::STRUCT>::Reader
+LoadEnumerationsResponse::Reader::getEnumerations() const {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::Enumeration,
+      ::capnp::Kind::STRUCT>>::get(_reader
+                                       .getPointerField(
+                                           ::capnp::bounded<0>() *
+                                           ::capnp::POINTERS));
+}
+inline ::capnp::List<
+    ::tiledb::sm::serialization::capnp::Enumeration,
+    ::capnp::Kind::STRUCT>::Builder
+LoadEnumerationsResponse::Builder::getEnumerations() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::Enumeration,
+      ::capnp::Kind::STRUCT>>::get(_builder
+                                       .getPointerField(
+                                           ::capnp::bounded<0>() *
+                                           ::capnp::POINTERS));
+}
+inline void LoadEnumerationsResponse::Builder::setEnumerations(
+    ::capnp::List<
+        ::tiledb::sm::serialization::capnp::Enumeration,
+        ::capnp::Kind::STRUCT>::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::Enumeration,
+      ::capnp::Kind::STRUCT>>::
+      set(_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<
+    ::tiledb::sm::serialization::capnp::Enumeration,
+    ::capnp::Kind::STRUCT>::Builder
+LoadEnumerationsResponse::Builder::initEnumerations(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::Enumeration,
+      ::capnp::Kind::STRUCT>>::
+      init(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          size);
+}
+inline void LoadEnumerationsResponse::Builder::adoptEnumerations(
+    ::capnp::Orphan<::capnp::List<
+        ::tiledb::sm::serialization::capnp::Enumeration,
+        ::capnp::Kind::STRUCT>>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::Enumeration,
+      ::capnp::Kind::STRUCT>>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<
+    ::tiledb::sm::serialization::capnp::Enumeration,
+    ::capnp::Kind::STRUCT>>
+LoadEnumerationsResponse::Builder::disownEnumerations() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::Enumeration,
+      ::capnp::Kind::STRUCT>>::disown(_builder
+                                          .getPointerField(
+                                              ::capnp::bounded<0>() *
+                                              ::capnp::POINTERS));
 }
 
 }  // namespace capnp

@@ -194,6 +194,22 @@ class RestClient {
       Array* array);
 
   /**
+   * Get the requested enumerations from the REST server via POST request.
+   *
+   * @param uri Array URI.
+   * @param timestamp_start Inclusive starting timestamp at which to open array.
+   * @param timestamp_end Inclusive ending timestamp at which to open array.
+   * @param array Array to fetch metadata for.
+   * @param enumeration_names The names of the enumerations to get.
+   */
+  std::vector<shared_ptr<const Enumeration>> post_enumerations_from_rest(
+      const URI& uri,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
+      Array* array,
+      const std::vector<std::string>& enumeration_names);
+
+  /**
    * Post a data query to rest server
    *
    * @param uri of array being queried

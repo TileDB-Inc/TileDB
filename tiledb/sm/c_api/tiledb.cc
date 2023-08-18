@@ -77,6 +77,7 @@
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/array_schema_evolution.h"
 #include "tiledb/sm/serialization/config.h"
+#include "tiledb/sm/serialization/enumeration.h"
 #include "tiledb/sm/serialization/fragment_info.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -4292,6 +4293,33 @@ int32_t tiledb_deserialize_fragment_info(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_handle_load_enumerations_request(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_serialization_type_t serialization_type,
+    const tiledb_buffer_t* request,
+    tiledb_buffer_t* response) {
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
+    throw std::invalid_argument("Array paramter must be valid.");
+  }
+
+  api::ensure_buffer_is_valid(request);
+  api::ensure_buffer_is_valid(response);
+
+  auto enumeration_names =
+      tiledb::sm::serialization::deserialize_load_enumerations_request(
+          static_cast<tiledb::sm::SerializationType>(serialization_type),
+          request->buffer());
+  auto enumerations = array->array_->get_enumerations(enumeration_names);
+
+  tiledb::sm::serialization::serialize_load_enumerations_response(
+      enumerations,
+      static_cast<tiledb::sm::SerializationType>(serialization_type),
+      response->buffer());
+
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*            C++ API             */
 /* ****************************** */
@@ -6931,6 +6959,16 @@ int32_t tiledb_deserialize_fragment_info(
     tiledb_fragment_info_t* fragment_info) noexcept {
   return api_entry<tiledb::api::tiledb_deserialize_fragment_info>(
       ctx, buffer, serialize_type, array_uri, client_side, fragment_info);
+}
+
+capi_return_t tiledb_handle_load_enumerations_request(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_serialization_type_t serialization_type,
+    const tiledb_buffer_t* request,
+    tiledb_buffer_t* response) noexcept {
+  return api_entry<tiledb::api::tiledb_handle_load_enumerations_request>(
+      ctx, array, serialization_type, request, response);
 }
 
 /* ****************************** */

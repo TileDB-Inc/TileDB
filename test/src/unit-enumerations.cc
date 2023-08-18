@@ -598,7 +598,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     EnumerationFx,
     "Array - Get Enumeration Repeated",
-    "[enumeration][array][get-enumeration]") {
+    "[enumeration][array][get-enumeration][repeated]") {
   create_array();
   auto array = get_array(QueryType::READ);
   auto enmr1 = array->get_enumeration("test_enmr");
@@ -608,20 +608,11 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     EnumerationFx,
-    "Array - Get Enumeration Error - REMOTE NOT YET SUPPORTED",
-    "[enumeration][array][error][get-remote]") {
-  std::string uri_str = "tiledb://namespace/array_name";
-  auto array = make_shared<Array>(HERE(), URI(uri_str), ctx_.storage_manager());
-  auto matcher = Catch::Matchers::ContainsSubstring("Array is remote");
-  REQUIRE_THROWS_WITH(array->get_enumeration("something_here"), matcher);
-}
-
-TEST_CASE_METHOD(
-    EnumerationFx,
     "Array - Get Enumeration Error - Not Open",
     "[enumeration][array][error][not-open]") {
   auto array = make_shared<Array>(HERE(), uri_, ctx_.storage_manager());
-  REQUIRE_THROWS(array->get_enumeration("foo"));
+  auto matcher = Catch::Matchers::ContainsSubstring("Array is not open");
+  REQUIRE_THROWS(array->get_enumeration("foo"), matcher);
 }
 
 TEST_CASE_METHOD(
@@ -664,19 +655,10 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     EnumerationFx,
-    "Array - Load All Enumerations Error - REMOTE NOT YET SUPPORTED",
-    "[enumeration][array][error][get-remote]") {
-  std::string uri_str = "tiledb://namespace/array_name";
-  auto array = make_shared<Array>(HERE(), URI(uri_str), ctx_.storage_manager());
-  auto matcher = Catch::Matchers::ContainsSubstring("Array is remote");
-  REQUIRE_THROWS_WITH(array->load_all_enumerations(), matcher);
-}
-
-TEST_CASE_METHOD(
-    EnumerationFx,
     "Array - Load All Enumerations Error - Not Open",
     "[enumeration][array][error][not-open]") {
   auto array = make_shared<Array>(HERE(), uri_, ctx_.storage_manager());
+  auto matcher = Catch::Matchers::ContainsSubstring("Array is not open");
   REQUIRE_THROWS(array->load_all_enumerations());
 }
 
@@ -687,7 +669,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     EnumerationFx,
     "ArrayDirectory - Load Enumerations From Paths",
-    "[enumeration][array-directory][load-enumeration]") {
+    "[enumeration][array-directory][load-enumerations-from-paths]") {
   create_array();
 
   auto schema = get_array_schema_latest();

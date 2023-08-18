@@ -271,14 +271,14 @@ class Array {
       const std::string& enumeration_name);
 
   /**
-   * Get the enumerations for the given names.
+   * Get the enumerations with the given names.
    *
-   * This function retrieves the enumerations for the given names. If any of the
+   * This function retrieves the enumerations with the given names. If the
    * corresponding enumerations have not been loaded from storage they are
    * loaded before this function returns.
    *
-   * @param enumeration_names The name of the enumeration.
-   * @return std::vector<shared_ptr<const Enumeration>> The enumerations.
+   * @param enumeration_names The names of the enumerations.
+   * @return std::vector<shared_ptr<const Enumeration>> The loaded enumerations.
    */
   std::vector<shared_ptr<const Enumeration>> get_enumerations(
       const std::vector<std::string>& enumeration_names);

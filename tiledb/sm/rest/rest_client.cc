@@ -38,6 +38,7 @@
 #include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/config.h"
 #include "tiledb/sm/serialization/consolidation.h"
+#include "tiledb/sm/serialization/enumeration.h"
 #include "tiledb/sm/serialization/fragment_info.h"
 #include "tiledb/sm/serialization/group.h"
 #include "tiledb/sm/serialization/query.h"
@@ -509,6 +510,58 @@ Status RestClient::post_array_metadata_to_rest(
   Buffer returned_data;
   return curlc.post_data(
       stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
+}
+
+std::vector<shared_ptr<const Enumeration>>
+RestClient::post_enumerations_from_rest(
+    const URI& uri,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end,
+    Array* array,
+    const std::vector<std::string>& enumeration_names) {
+  if (array == nullptr) {
+    throw Status_RestError(
+        "Error getting enumerations from REST; array is null.");
+  }
+
+  Buffer buf;
+  serialization::serialize_load_enumerations_request(
+      array->config(), enumeration_names, serialization_type_, buf);
+
+  // Wrap in a list
+  BufferList serialized;
+  throw_if_not_ok(serialized.add_buffer(std::move(buf)));
+
+  // Init curl and form the URL
+  Curl curlc(logger_);
+  std::string array_ns, array_uri;
+  throw_if_not_ok(uri.get_rest_components(&array_ns, &array_uri));
+  const std::string cache_key = array_ns + ":" + array_uri;
+  throw_if_not_ok(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
+                          "/" + curlc.url_escape(array_uri) + "/enumerations?" +
+                          "start_timestamp=" + std::to_string(timestamp_start) +
+                          "&end_timestamp=" + std::to_string(timestamp_end);
+
+  // Get the data
+  Buffer returned_data;
+  throw_if_not_ok(curlc.post_data(
+      stats_,
+      url,
+      serialization_type_,
+      &serialized,
+      &returned_data,
+      cache_key));
+  if (returned_data.data() == nullptr || returned_data.size() == 0) {
+    throw Status_RestError(
+        "Error getting enumerations from REST; server returned no data.");
+  }
+
+  // Ensure data has a null delimiter for cap'n proto if using JSON
+  throw_if_not_ok(ensure_json_null_delimited_string(&returned_data));
+  return serialization::deserialize_load_enumerations_response(
+      serialization_type_, returned_data);
 }
 
 Status RestClient::submit_query_to_rest(const URI& uri, Query* query) {
@@ -1456,6 +1509,12 @@ Status RestClient::post_array_metadata_to_rest(
     const URI&, uint64_t, uint64_t, Array*) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));
+}
+
+std::vector<shared_ptr<const Enumeration>>
+RestClient::post_enumerations_from_rest(
+    const URI&, uint64_t, uint64_t, Array*, const std::vector<std::string>&) {
+  throw Status_RestError("Cannot use rest client; serialization not enabled.");
 }
 
 Status RestClient::submit_query_to_rest(const URI&, Query*) {
