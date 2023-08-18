@@ -174,12 +174,20 @@ Status fragment_metadata_from_capnp(
 
   FragmentMetadata::LoadedMetadata loaded_metadata;
 
+  // num_dims_and_attrs() requires a set array schema, so it's important
+  // schema is set above on the fragment metadata object.
   uint64_t num_dims_and_attrs = frag_meta->num_dims_and_attrs();
+
+  // This field may not be present here in some usecases such as refactored
+  // query, but readers on the server side require this vector to have the first
+  // dimension properly allocated when loading its data on demand.
   frag_meta->tile_offsets_mtx().resize(num_dims_and_attrs);
   loaded_metadata.tile_offsets_.resize(num_dims_and_attrs, false);
   frag_meta->tile_offsets().resize(num_dims_and_attrs);
+
   // There is a difference in the metadata loaded for versions >= 2
   auto loaded = frag_meta->version() <= 2 ? true : false;
+
   if (frag_meta_reader.hasTileOffsets()) {
     auto tileoffsets_reader = frag_meta_reader.getTileOffsets();
     uint64_t i = 0;
@@ -193,6 +201,9 @@ Status fragment_metadata_from_capnp(
     }
   }
 
+  // This field may not be present here in some usecases such as refactored
+  // query, but readers on the server side require this vector to have the first
+  // dimension properly allocated when loading its data on demand.
   frag_meta->tile_var_offsets_mtx().resize(num_dims_and_attrs);
   loaded_metadata.tile_var_offsets_.resize(num_dims_and_attrs, false);
   frag_meta->tile_var_offsets().resize(num_dims_and_attrs);
@@ -209,6 +220,9 @@ Status fragment_metadata_from_capnp(
     }
   }
 
+  // This field may not be present here in some usecases such as refactored
+  // query, but readers on the server side require this vector to have the first
+  // dimension properly allocated when loading its data on demand.
   loaded_metadata.tile_var_sizes_.resize(num_dims_and_attrs, false);
   frag_meta->tile_var_sizes().resize(num_dims_and_attrs);
   if (frag_meta_reader.hasTileVarSizes()) {
@@ -224,6 +238,9 @@ Status fragment_metadata_from_capnp(
     }
   }
 
+  // This field may not be present here in some usecases such as refactored
+  // query, but readers on the server side require this vector to have the first
+  // dimension properly allocated when loading its data on demand.
   loaded_metadata.tile_validity_offsets_.resize(num_dims_and_attrs, false);
   frag_meta->tile_validity_offsets().resize(num_dims_and_attrs);
   if (frag_meta_reader.hasTileValidityOffsets()) {
