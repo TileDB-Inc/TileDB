@@ -165,56 +165,78 @@ Status fragment_metadata_from_capnp(
   frag_meta->tile_index_base() = frag_meta_reader.getTileIndexBase();
   frag_meta->version() = frag_meta_reader.getVersion();
 
+  // Set the array schema and most importantly retrigger the build
+  // of the internal idx_map. Also set array_schema_name which is used
+  // in some places in the global writer
+  frag_meta->set_array_schema(array_schema);
+  frag_meta->set_schema_name(array_schema->name());
+  frag_meta->set_dense(array_schema->dense());
+
   FragmentMetadata::LoadedMetadata loaded_metadata;
+
+  uint64_t num_dims_and_attrs = frag_meta->num_dims_and_attrs();
+  frag_meta->tile_offsets_mtx().resize(num_dims_and_attrs);
+  loaded_metadata.tile_offsets_.resize(num_dims_and_attrs, false);
+  frag_meta->tile_offsets().resize(num_dims_and_attrs);
   // There is a difference in the metadata loaded for versions >= 2
   auto loaded = frag_meta->version() <= 2 ? true : false;
   if (frag_meta_reader.hasTileOffsets()) {
     auto tileoffsets_reader = frag_meta_reader.getTileOffsets();
+    uint64_t i = 0;
     for (const auto& t : tileoffsets_reader) {
-      auto& last = frag_meta->tile_offsets().emplace_back();
+      auto& last = frag_meta->tile_offsets()[i];
       last.reserve(t.size());
       for (const auto& v : t) {
         last.emplace_back(v);
       }
+      loaded_metadata.tile_offsets_[i++] = loaded;
     }
-    frag_meta->tile_offsets_mtx().resize(tileoffsets_reader.size());
-    loaded_metadata.tile_offsets_.resize(tileoffsets_reader.size(), loaded);
   }
+
+  frag_meta->tile_var_offsets_mtx().resize(num_dims_and_attrs);
+  loaded_metadata.tile_var_offsets_.resize(num_dims_and_attrs, false);
+  frag_meta->tile_var_offsets().resize(num_dims_and_attrs);
   if (frag_meta_reader.hasTileVarOffsets()) {
     auto tilevaroffsets_reader = frag_meta_reader.getTileVarOffsets();
+    uint64_t i = 0;
     for (const auto& t : tilevaroffsets_reader) {
-      auto& last = frag_meta->tile_var_offsets().emplace_back();
+      auto& last = frag_meta->tile_var_offsets()[i];
       last.reserve(t.size());
       for (const auto& v : t) {
         last.emplace_back(v);
       }
+      loaded_metadata.tile_var_offsets_[i++] = loaded;
     }
-    frag_meta->tile_var_offsets_mtx().resize(tilevaroffsets_reader.size());
-    loaded_metadata.tile_var_offsets_.resize(
-        tilevaroffsets_reader.size(), loaded);
   }
+
+  loaded_metadata.tile_var_sizes_.resize(num_dims_and_attrs, false);
+  frag_meta->tile_var_sizes().resize(num_dims_and_attrs);
   if (frag_meta_reader.hasTileVarSizes()) {
     auto tilevarsizes_reader = frag_meta_reader.getTileVarSizes();
+    uint64_t i = 0;
     for (const auto& t : tilevarsizes_reader) {
-      auto& last = frag_meta->tile_var_sizes().emplace_back();
+      auto& last = frag_meta->tile_var_sizes()[i];
       last.reserve(t.size());
       for (const auto& v : t) {
         last.emplace_back(v);
       }
+      loaded_metadata.tile_var_sizes_[i++] = loaded;
     }
-    loaded_metadata.tile_var_sizes_.resize(tilevarsizes_reader.size(), loaded);
   }
+
+  loaded_metadata.tile_validity_offsets_.resize(num_dims_and_attrs, false);
+  frag_meta->tile_validity_offsets().resize(num_dims_and_attrs);
   if (frag_meta_reader.hasTileValidityOffsets()) {
     auto tilevalidityoffsets_reader = frag_meta_reader.getTileValidityOffsets();
+    uint64_t i = 0;
     for (const auto& t : tilevalidityoffsets_reader) {
-      auto& last = frag_meta->tile_validity_offsets().emplace_back();
+      auto& last = frag_meta->tile_validity_offsets()[i];
       last.reserve(t.size());
       for (const auto& v : t) {
         last.emplace_back(v);
       }
+      loaded_metadata.tile_validity_offsets_[i++] = false;
     }
-    loaded_metadata.tile_validity_offsets_.resize(
-        tilevalidityoffsets_reader.size(), false);
   }
   if (frag_meta_reader.hasTileMinBuffer()) {
     auto tileminbuffer_reader = frag_meta_reader.getTileMinBuffer();
@@ -341,13 +363,6 @@ Status fragment_metadata_from_capnp(
         deserializer, &domain, constants::format_version);
   }
 
-  // Set the array schema and most importantly retrigger the build
-  // of the internal idx_map. Also set array_schema_name which is used
-  // in some places in the global writer
-  frag_meta->set_array_schema(array_schema);
-  frag_meta->set_schema_name(array_schema->name());
-  frag_meta->set_dense(array_schema->dense());
-
   // It's important to do this here as init_domain depends on some fields
   // above to be properly initialized
   if (frag_meta_reader.hasNonEmptyDomain()) {
@@ -451,29 +466,6 @@ void generic_tile_offsets_to_capnp(
 void fragment_meta_sizes_offsets_to_capnp(
     const FragmentMetadata& frag_meta,
     capnp::FragmentMetadata::Builder* frag_meta_builder) {
-  auto& file_sizes = frag_meta.file_sizes();
-  if (!file_sizes.empty()) {
-    auto builder = frag_meta_builder->initFileSizes(file_sizes.size());
-    for (uint64_t i = 0; i < file_sizes.size(); ++i) {
-      builder.set(i, file_sizes[i]);
-    }
-  }
-  auto& file_var_sizes = frag_meta.file_var_sizes();
-  if (!file_var_sizes.empty()) {
-    auto builder = frag_meta_builder->initFileVarSizes(file_var_sizes.size());
-    for (uint64_t i = 0; i < file_var_sizes.size(); ++i) {
-      builder.set(i, file_var_sizes[i]);
-    }
-  }
-  auto& file_validity_sizes = frag_meta.file_validity_sizes();
-  if (!file_validity_sizes.empty()) {
-    auto builder =
-        frag_meta_builder->initFileValiditySizes(file_validity_sizes.size());
-    for (uint64_t i = 0; i < file_validity_sizes.size(); ++i) {
-      builder.set(i, file_validity_sizes[i]);
-    }
-  }
-
   auto& tile_offsets = frag_meta.tile_offsets();
   if (!tile_offsets.empty()) {
     auto builder = frag_meta_builder->initTileOffsets(tile_offsets.size());
@@ -530,6 +522,29 @@ Status fragment_metadata_to_capnp(
       frag_meta.has_consolidated_footer());
   frag_meta_builder->setSparseTileNum(frag_meta.sparse_tile_num());
   frag_meta_builder->setTileIndexBase(frag_meta.tile_index_base());
+
+  auto& file_sizes = frag_meta.file_sizes();
+  if (!file_sizes.empty()) {
+    auto builder = frag_meta_builder->initFileSizes(file_sizes.size());
+    for (uint64_t i = 0; i < file_sizes.size(); ++i) {
+      builder.set(i, file_sizes[i]);
+    }
+  }
+  auto& file_var_sizes = frag_meta.file_var_sizes();
+  if (!file_var_sizes.empty()) {
+    auto builder = frag_meta_builder->initFileVarSizes(file_var_sizes.size());
+    for (uint64_t i = 0; i < file_var_sizes.size(); ++i) {
+      builder.set(i, file_var_sizes[i]);
+    }
+  }
+  auto& file_validity_sizes = frag_meta.file_validity_sizes();
+  if (!file_validity_sizes.empty()) {
+    auto builder =
+        frag_meta_builder->initFileValiditySizes(file_validity_sizes.size());
+    for (uint64_t i = 0; i < file_validity_sizes.size(); ++i) {
+      builder.set(i, file_validity_sizes[i]);
+    }
+  }
 
   auto& tile_min_buffer = frag_meta.tile_min_buffer();
   if (!tile_min_buffer.empty()) {
