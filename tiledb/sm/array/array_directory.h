@@ -386,7 +386,7 @@ class ArrayDirectory {
   load_all_array_schemas(const EncryptionKey& encryption_key) const;
 
   /**
-   * Load all enumerations for the given schema.
+   * Load the enumerations from the provided list of paths.
    *
    * @param enumeration_paths The list of enumeration paths to load.
    * @param encryption_key The encryption key to use.
@@ -818,9 +818,8 @@ class ArrayDirectory {
   bool consolidation_with_timestamps_supported(const URI& uri) const;
 
   /**
-   * Load an enumeration from schema with the given name.
+   * Load an enumeration from the given path.
    *
-   * @param schema The ArraySchema that references the enumeration name.
    * @param enumeration_path The enumeration path to load.
    * @param encryption_key The encryption key to use.
    * @return shared_ptr<Enumeration> The loaded enumeration.

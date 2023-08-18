@@ -89,7 +89,7 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema_evolution.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema_experimental.h
-    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/as_built_experimental.h 
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/as_built_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/attribute.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/attribute_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/config.h
@@ -278,6 +278,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema_evolution.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/enumeration.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragment_info.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragment_metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/group.cc
@@ -328,6 +329,7 @@ if (TILEDB_SERIALIZATION)
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema_evolution.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/enumeration.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragment_info.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragment_metadata.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/group.cc
@@ -347,6 +349,7 @@ if (TILEDB_SERIALIZATION)
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema_evolution.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/enumeration.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragment_info.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragment_metadata.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/group.cc

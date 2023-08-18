@@ -1208,3 +1208,16 @@ struct ArrayVacuumRequest {
   config @0 :Config;
   # Config
 }
+
+struct LoadEnumerationsRequest {
+  config @0 :Config;
+  # Config
+
+  enumerations @1 :List(Text);
+  # Enumeration names to load
+}
+
+struct LoadEnumerationsResponse {
+  enumerations @0 :List(Enumeration);
+  # The loaded enumerations
+}

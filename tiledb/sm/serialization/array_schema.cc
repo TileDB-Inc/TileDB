@@ -66,6 +66,7 @@
 #include "tiledb/sm/filter/xor_filter.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/serialization/array_schema.h"
+#include "tiledb/sm/serialization/enumeration.h"
 
 #include <cstring>
 #include <set>
@@ -810,61 +811,6 @@ shared_ptr<DimensionLabel> dimension_label_from_capnp(
       schema,
       dim_label_reader.getExternal(),
       is_relative);
-}
-
-void enumeration_to_capnp(
-    shared_ptr<const Enumeration> enumeration,
-    capnp::Enumeration::Builder& enmr_builder) {
-  enmr_builder.setName(enumeration->name());
-  enmr_builder.setType(datatype_str(enumeration->type()));
-  enmr_builder.setCellValNum(enumeration->cell_val_num());
-  enmr_builder.setOrdered(enumeration->ordered());
-
-  auto dspan = enumeration->data();
-  enmr_builder.setData(::kj::arrayPtr(dspan.data(), dspan.size()));
-
-  if (enumeration->var_size()) {
-    auto ospan = enumeration->offsets();
-    enmr_builder.setOffsets(::kj::arrayPtr(ospan.data(), ospan.size()));
-  }
-}
-
-shared_ptr<const Enumeration> enumeration_from_capnp(
-    const capnp::Enumeration::Reader& reader) {
-  auto name = reader.getName();
-  auto path_name = reader.getPathName();
-  Datatype datatype = Datatype::ANY;
-  throw_if_not_ok(datatype_enum(reader.getType(), &datatype));
-
-  if (!reader.hasData()) {
-    throw SerializationStatusException(
-        "[Deserialization::enumeration_from_capnp] Deserialization of "
-        "Enumeration is missing its data buffer.");
-  }
-
-  auto data_reader = reader.getData().asBytes();
-  auto data = data_reader.begin();
-  auto data_size = data_reader.size();
-
-  const void* offsets = nullptr;
-  uint64_t offsets_size = 0;
-
-  if (reader.hasOffsets()) {
-    auto offsets_reader = reader.getOffsets().asBytes();
-    offsets = offsets_reader.begin();
-    offsets_size = offsets_reader.size();
-  }
-
-  return Enumeration::create(
-      name,
-      path_name,
-      datatype,
-      reader.getCellValNum(),
-      reader.getOrdered(),
-      data,
-      data_size,
-      offsets,
-      offsets_size);
 }
 
 Status array_schema_to_capnp(

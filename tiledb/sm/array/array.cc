@@ -586,10 +586,6 @@ shared_ptr<const Enumeration> Array::get_enumeration(
 
 std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
     const std::vector<std::string>& enumeration_names) {
-  if (remote_) {
-    throw ArrayException("Unable to load enumerations; Array is remote.");
-  }
-
   if (!is_open_) {
     throw ArrayException("Unable to load enumerations; Array is not open.");
   }
@@ -600,19 +596,36 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
     deduped.insert(enmr_name);
   }
 
-  // Create a vector of paths to be loaded.
-  std::vector<std::string> paths_to_load;
-  for (auto& enmr_name : deduped) {
-    if (array_schema_latest_->is_enumeration_loaded(enmr_name)) {
-      continue;
-    }
-    auto path = array_schema_latest_->get_enumeration_path_name(enmr_name);
-    paths_to_load.push_back(path);
-  }
+  std::vector<shared_ptr<const Enumeration>> loaded;
 
-  // Load the enumerations from storage
-  auto loaded = array_dir_.load_enumerations_from_paths(
-      paths_to_load, get_encryption_key());
+  if (remote_) {
+    auto rest_client = resources_.rest_client();
+    if (rest_client == nullptr) {
+      throw ArrayException(
+          "Error loading enumerations; "
+          "Remote array with no REST client.");
+    }
+    loaded = rest_client->post_enumerations_from_rest(
+        array_uri_,
+        timestamp_start_,
+        timestamp_end_opened_at_,
+        this,
+        enumeration_names);
+  } else {
+    // Create a vector of paths to be loaded.
+    std::vector<std::string> paths_to_load;
+    for (auto& enmr_name : deduped) {
+      if (array_schema_latest_->is_enumeration_loaded(enmr_name)) {
+        continue;
+      }
+      auto path = array_schema_latest_->get_enumeration_path_name(enmr_name);
+      paths_to_load.push_back(path);
+    }
+
+    // Load the enumerations from storage
+    loaded = array_dir_.load_enumerations_from_paths(
+        paths_to_load, get_encryption_key());
+  }
 
   // Store the loaded enumerations in the schema
   for (auto& enmr : loaded) {
@@ -628,10 +641,6 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
 }
 
 void Array::load_all_enumerations() {
-  if (remote_) {
-    throw ArrayException("Unable to load enumerations; Array is remote.");
-  }
-
   if (!is_open_) {
     throw ArrayException("Unable to load all enumerations; Array is not open.");
   }
