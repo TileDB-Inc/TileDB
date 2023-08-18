@@ -291,11 +291,6 @@ Status array_from_capnp(
   }
 
   if (array_reader.hasFragmentMetadataAll()) {
-    auto&& [st, array_schema_latest, array_schemas_all, fragment_metadata] =
-        storage_manager->load_array_schemas_and_fragment_metadata(
-            array->array_directory(),
-            array->memory_tracker(),
-            *array->encryption_key());
     array->fragment_metadata().clear();
     array->fragment_metadata().reserve(
         array_reader.getFragmentMetadataAll().size());
@@ -310,7 +305,6 @@ Status array_from_capnp(
       if (client_side) {
         meta->set_rtree_loaded();
       }
-
       array->fragment_metadata().emplace_back(meta);
     }
   }
