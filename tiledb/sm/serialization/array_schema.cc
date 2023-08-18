@@ -102,14 +102,21 @@ Status filter_to_capnp(
     case FilterType::FILTER_LZ4:
     case FilterType::FILTER_RLE:
     case FilterType::FILTER_BZIP2:
-    case FilterType::FILTER_DELTA:
-    case FilterType::FILTER_DOUBLE_DELTA:
     case FilterType::FILTER_DICTIONARY: {
       int32_t level;
       RETURN_NOT_OK(
           filter->get_option(FilterOption::COMPRESSION_LEVEL, &level));
       auto data = filter_builder->initData();
       data.setInt32(level);
+      break;
+    }
+    case FilterType::FILTER_DELTA:
+    case FilterType::FILTER_DOUBLE_DELTA: {
+      auto data = filter_builder->getData();
+      Datatype reinterpret_type = Datatype::ANY;
+      RETURN_NOT_OK(filter->get_option(
+          FilterOption::COMPRESSION_REINTERPRET_DATATYPE, &reinterpret_type));
+      data.setUint8(static_cast<uint8_t>(reinterpret_type));
       break;
     }
     case FilterType::FILTER_SCALE_FLOAT: {
@@ -208,8 +215,6 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
     case FilterType::FILTER_LZ4:
     case FilterType::FILTER_RLE:
     case FilterType::FILTER_BZIP2:
-    case FilterType::FILTER_DOUBLE_DELTA:
-    case FilterType::FILTER_DELTA:
     case FilterType::FILTER_DICTIONARY: {
       auto data = filter_reader.getData();
       int32_t level = data.getInt32();
@@ -217,6 +222,16 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
           Status::Ok(),
           tiledb::common::make_shared<CompressionFilter>(
               HERE(), type, level, datatype)};
+    }
+    case FilterType::FILTER_DOUBLE_DELTA:
+    case FilterType::FILTER_DELTA: {
+      auto data = filter_reader.getData();
+      Datatype reinterpret_datatype = Datatype::ANY;
+      reinterpret_datatype = static_cast<Datatype>(data.getUint8());
+      return {
+          Status::Ok(),
+          tiledb::common::make_shared<CompressionFilter>(
+              HERE(), type, -1, datatype, reinterpret_datatype)};
     }
     case FilterType::FILTER_SCALE_FLOAT: {
       if (filter_reader.hasFloatScaleConfig()) {
