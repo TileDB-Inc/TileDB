@@ -479,7 +479,7 @@ Status fragment_info_deserialize(
                              .value();
         ::capnp::ReaderOptions readerOptions;
         // capnp uses the limit in words of 8 bytes
-        readerOptions.traversalLimitInWords = limit * 1024 * 1024 / 8;
+        readerOptions.traversalLimitInWords = limit / 8;
 
         const auto mBytes =
             reinterpret_cast<const kj::byte*>(serialized_buffer.data());
