@@ -553,15 +553,15 @@ Status DenseReader::dense_read() {
 
     // Process count aggregates.
     if (aggregates_.count(constants::count_of_rows) != 0) {
-      ResultTile rt;
-      auto buff = AggregateBuffer(
-          constants::count_of_rows,
+      auto buff{make_aggregate_buffer(
           false,
           false,
+          0,
           subarray_start_cell,
           subarray_end_cell,
           0,
-          rt);
+          nullptr,
+          nullopt)};
       for (auto& aggregate : aggregates_[constants::count_of_rows]) {
         // Compute aggregate.
         aggregate->aggregate_data(buff);
@@ -791,7 +791,9 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
   while (!done && t_end < tile_coords.size()) {
     const DimType* tc = (DimType*)&tile_coords[t_end][0];
     auto it = result_space_tiles.find(tc);
-    assert(it != result_space_tiles.end());
+    if (it == result_space_tiles.end()) {
+      throw DenseReaderStatusException("Tile coordinates not found");
+    }
 
     // Compute the required memory to load the query condition tiles for the
     // current result space tile.
@@ -944,7 +946,10 @@ Status DenseReader::apply_query_condition(
                 // Find out result space tile and tile subarray.
                 const DimType* tc = (DimType*)&tile_coords[t][0];
                 auto it = result_space_tiles.find(tc);
-                assert(it != result_space_tiles.end());
+                if (it == result_space_tiles.end()) {
+                  throw DenseReaderStatusException(
+                      "Tile coordinates not found");
+                }
 
                 // Iterate over all coordinates, retrieved in cell slab.
                 const auto& frag_domains = it->second.frag_domains();
@@ -1115,7 +1120,9 @@ Status DenseReader::copy_attribute(
             // Find out result space tile and tile subarray.
             const DimType* tc = (DimType*)&tile_coords[t][0];
             auto it = result_space_tiles.find(tc);
-            assert(it != result_space_tiles.end());
+            if (it == result_space_tiles.end()) {
+              throw DenseReaderStatusException("Tile coordinates not found");
+            }
 
             // Copy the tile offsets.
             return copy_offset_tiles<DimType, OffType>(
@@ -1176,7 +1183,9 @@ Status DenseReader::copy_attribute(
             // Find out result space tile and tile subarray.
             const DimType* tc = (DimType*)&tile_coords[t][0];
             auto it = result_space_tiles.find(tc);
-            assert(it != result_space_tiles.end());
+            if (it == result_space_tiles.end()) {
+              throw DenseReaderStatusException("Tile coordinates not found");
+            }
 
             return copy_var_tiles<DimType, OffType>(
                 name,
@@ -1219,7 +1228,9 @@ Status DenseReader::copy_attribute(
             // Find out result space tile and tile subarray.
             const DimType* tc = (DimType*)&tile_coords[t][0];
             auto it = result_space_tiles.find(tc);
-            assert(it != result_space_tiles.end());
+            if (it == result_space_tiles.end()) {
+              throw DenseReaderStatusException("Tile coordinates not found");
+            }
 
             // Copy the tile fixed values.
             RETURN_NOT_OK(copy_fixed_tiles(
@@ -1248,6 +1259,46 @@ Status DenseReader::copy_attribute(
   }
 
   return Status::Ok();
+}
+
+AggregateBuffer DenseReader::make_aggregate_buffer(
+    const bool var_sized,
+    const bool nullable,
+    const uint64_t cell_size,
+    const uint64_t min_cell,
+    const uint64_t max_cell,
+    const uint64_t cell_num,
+    ResultTile::TileTuple* tile_tuple,
+    optional<void*> bitmap_data) {
+  void* fixed_data = nullptr;
+  optional<char*> var_data = nullopt;
+  optional<uint8_t*> validity_data = nullopt;
+  uint64_t var_data_size = 0;
+  if (tile_tuple != nullptr) {
+    fixed_data =
+        tile_tuple->fixed_tile().data_as<char>() + min_cell * cell_size;
+    var_data = var_sized ?
+                   std::make_optional(tile_tuple->var_tile().data_as<char>()) :
+                   nullopt;
+    var_data_size =
+        var_sized && max_cell == cell_num ? tile_tuple->var_tile().size() : 0;
+    validity_data =
+        nullable ?
+            std::make_optional(
+                tile_tuple->validity_tile().data_as<uint8_t>() + min_cell) :
+            nullopt;
+  }
+
+  return AggregateBuffer(
+      0,
+      max_cell - min_cell,
+      cell_num - min_cell,
+      fixed_data,
+      var_data,
+      var_data_size,
+      validity_data,
+      false,
+      bitmap_data);
 }
 
 template <class DimType, class OffType>
@@ -1287,7 +1338,9 @@ Status DenseReader::process_aggregates(
         // Find out result space tile and tile subarray.
         const DimType* tc = (DimType*)&tile_coords[t][0];
         auto it = result_space_tiles.find(tc);
-        assert(it != result_space_tiles.end());
+        if (it == result_space_tiles.end()) {
+          throw DenseReaderStatusException("Tile coordinates not found");
+        }
 
         // Copy the tile fixed values.
         RETURN_NOT_OK(aggregate_tiles(
@@ -1877,20 +1930,19 @@ Status DenseReader::aggregate_tiles(
         end = e;
       }
       if (overlaps) {
-        // If the subarray and tile are in the same order, aggregate the whole
-        // slab.
+        // If the subarray and tile are in the same order, aggregate the
+        // whole slab.
         if (stride == 1) {
           // Compute aggregate.
-          AggregateBuffer aggregate_buffer{
+          AggregateBuffer aggregate_buffer{make_aggregate_buffer(
               var_size,
               nullable,
-              false,
               cell_size,
               iter.pos_in_tile() + start,
               iter.pos_in_tile() + end + 1,
               cell_num_per_tile,
-              *tile_tuples[fd],
-              &aggregate_bitmap[cell_offset + start]};
+              tile_tuples[fd],
+              &aggregate_bitmap[cell_offset + start])};
           for (auto& aggregate : aggregates) {
             aggregate->aggregate_data(aggregate_buffer);
           }
@@ -1899,24 +1951,24 @@ Status DenseReader::aggregate_tiles(
           for (uint64_t i = 0; i < end - start + 1; ++i) {
             // Compute aggregate.
             auto start_cell = iter.pos_in_tile() + (start + i) * stride;
-            AggregateBuffer aggregate_buffer{
+            AggregateBuffer aggregate_buffer{make_aggregate_buffer(
                 var_size,
                 nullable,
-                false,
                 cell_size,
                 start_cell,
                 start_cell + 1,
                 cell_num_per_tile,
-                *tile_tuples[fd],
-                &aggregate_bitmap[cell_offset + start + i]};
+                tile_tuples[fd],
+                &aggregate_bitmap[cell_offset + start + i])};
             for (auto& aggregate : aggregates) {
               aggregate->aggregate_data(aggregate_buffer);
             }
           }
         }
 
-        // If there are more fragment domains, zero out the bitmap so we don't
-        // aggregate cells already aggregated in more recent fragments.
+        // If there are more fragment domains, zero out the bitmap so we
+        // don't aggregate cells already aggregated in more recent
+        // fragments.
         if (fd != frag_domains.size() - 1) {
           for (uint64_t c = start; c <= end; c++) {
             aggregate_bitmap[cell_offset + c] = 0;

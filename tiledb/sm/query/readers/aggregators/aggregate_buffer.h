@@ -35,7 +35,6 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/enums/layout.h"
-#include "tiledb/sm/query/readers/result_tile.h"
 
 using namespace tiledb::common;
 
@@ -45,86 +44,45 @@ namespace sm {
 class AggregateBuffer {
  public:
   /* ********************************* */
-  /*       FRIENDS DECLARATIONS        */
-  /* ********************************* */
-
-  /**
-   * Friends with its whitebox testing class.
-   */
-  friend class WhiteboxAggregateBuffer;
-
-  /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /**
    * Constructor.
    *
-   * @param name Name of the field for the buffer.
-   * @param var_sized Is the field var sized?
-   * @param nullable Is the field nullable?
    * @param min_cell Min cell position to aggregate.
    * @param max_cell Max cell position to aggregate.
    * @param cell_num Cell num for the tile.
-   * @param rt Result tile containing the data.
-   */
-  AggregateBuffer(
-      const std::string name,
-      const bool var_sized,
-      const bool nullable,
-      const uint64_t min_cell,
-      const uint64_t max_cell,
-      const uint64_t cell_num,
-      ResultTile& rt);
-
-  /**
-   * Constructor with bitmap.
-   *
-   * @param name Name of the field for the buffer.
-   * @param var_sized Is the field var sized?
-   * @param nullable Is the field nullable?
+   * @param fixed_data Fixed data buffer.
+   * @param var_data Var data buffer.
+   * @param validity_data Validity data buffer.
    * @param count_bitmap Is the bitmap a count bitmap?
-   * @param min_cell Min cell position to aggregate.
-   * @param max_cell Max cell position to aggregate.
-   * @param cell_num Cell num for the tile.
+   * @param name Name of the field for the buffer.
+   * @param var_sized Is the field var sized?
+   * @param nullable Is the field nullable?
    * @param rt Result tile containing the data.
    * @param bitmap_data Bitmap data.
    */
   AggregateBuffer(
-      const std::string name,
-      const bool var_sized,
-      const bool nullable,
-      const bool count_bitmap,
       const uint64_t min_cell,
       const uint64_t max_cell,
       const uint64_t cell_num,
-      ResultTile& rt,
-      void* bitmap_data);
-
-  /**
-   * Constructor with bitmap for dense.
-   *
-   * @param name Name of the field for the buffer.
-   * @param var_sized Is the field var sized?
-   * @param nullable Is the field nullable?
-   * @param count_bitmap Is the bitmap a count bitmap?
-   * @param cell_size Fixed cell size.
-   * @param min_cell Min cell position to aggregate.
-   * @param max_cell Max cell position to aggregate.
-   * @param cell_num Cell num for the tile.
-   * @param tile_tuple Tile tuple containing the data.
-   * @param bitmap_data Bitmap data.
-   */
-  AggregateBuffer(
-      const bool var_sized,
-      const bool nullable,
+      const void* fixed_data,
+      const optional<char*> var_data,
+      const uint64_t var_data_size,
+      const optional<uint8_t*> validity_data,
       const bool count_bitmap,
-      const uint64_t cell_size,
-      const uint64_t min_cell,
-      const uint64_t max_cell,
-      const uint64_t cell_num,
-      ResultTile::TileTuple& tile_tuple,
-      void* bitmap_data);
+      const optional<void*> bitmap_data)
+      : includes_last_var_cell_(var_data.has_value() && max_cell == cell_num)
+      , min_cell_(min_cell)
+      , max_cell_(max_cell)
+      , fixed_data_(fixed_data)
+      , var_data_(var_data)
+      , var_data_size_(var_data_size)
+      , validity_data_(validity_data)
+      , count_bitmap_(count_bitmap)
+      , bitmap_data_(bitmap_data) {
+  }
 
   DISABLE_COPY_AND_COPY_ASSIGN(AggregateBuffer);
   DISABLE_MOVE_AND_MOVE_ASSIGN(AggregateBuffer);
@@ -189,47 +147,6 @@ class AggregateBuffer {
   }
 
  private:
-  /* ********************************* */
-  /*       PRIVATE CONSTRUCTORS        */
-  /* ********************************* */
-
-  /**
-   * Private constructor used for testing.
-   *
-   * @param min_cell Min cell position to aggregate.
-   * @param max_cell Max cell position to aggregate.
-   * @param cell_num Cell num for the tile.
-   * @param fixed_data Fixed data buffer.
-   * @param var_data Var data buffer.
-   * @param validity_data Validity data buffer.
-   * @param count_bitmap Is the bitmap a count bitmap?
-   * @param name Name of the field for the buffer.
-   * @param var_sized Is the field var sized?
-   * @param nullable Is the field nullable?
-   * @param rt Result tile containing the data.
-   * @param bitmap_data Bitmap data.
-   */
-  AggregateBuffer(
-      const uint64_t min_cell,
-      const uint64_t max_cell,
-      const uint64_t cell_num,
-      const void* fixed_data,
-      const optional<char*> var_data,
-      const uint64_t var_data_size,
-      const optional<uint8_t*> validity_data,
-      const bool count_bitmap,
-      const optional<void*> bitmap_data)
-      : includes_last_var_cell_(var_data.has_value() && max_cell == cell_num)
-      , min_cell_(min_cell)
-      , max_cell_(max_cell)
-      , fixed_data_(fixed_data)
-      , var_data_(var_data)
-      , var_data_size_(var_data_size)
-      , validity_data_(validity_data)
-      , count_bitmap_(count_bitmap)
-      , bitmap_data_(bitmap_data) {
-  }
-
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */

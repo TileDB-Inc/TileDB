@@ -257,6 +257,17 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const std::vector<uint8_t>& qc_result,
       const uint64_t num_range_threads);
 
+  /** Make an aggregate buffer. */
+  AggregateBuffer make_aggregate_buffer(
+      const bool var_sized,
+      const bool nullable,
+      const uint64_t cell_size,
+      const uint64_t min_cell,
+      const uint64_t max_cell,
+      const uint64_t cell_num,
+      ResultTile::TileTuple* tile_tuple,
+      optional<void*> bitmap_data);
+
   /** Process aggregates for a given field. */
   template <class DimType, class OffType>
   Status process_aggregates(
