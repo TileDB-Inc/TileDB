@@ -32,7 +32,6 @@
 
 #include "tiledb/sm/query/readers/aggregators/min_max_aggregator.h"
 
-#include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
 
