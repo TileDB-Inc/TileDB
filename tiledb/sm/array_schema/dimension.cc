@@ -35,6 +35,7 @@
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/filter_type.h"
+#include "tiledb/type/apply_with_type.h"
 #include "tiledb/type/range/range.h"
 
 #include <bitset>
@@ -1388,7 +1389,7 @@ Status Dimension::set_null_tile_extent_to_range() {
     }
     return set_null_tile_extent_to_range<decltype(T)>();
   };
-  return execute_callback_with_type(type_, g);
+  return apply_with_type(g, type_);
 }
 
 template <class T>
@@ -1435,12 +1436,12 @@ Status Dimension::set_null_tile_extent_to_range() {
 
 Status Dimension::check_domain() const {
   auto g = [&](auto T) { return check_domain<decltype(T)>(); };
-  return execute_callback_with_type(type_, g);
+  return apply_with_type(g, type_);
 }
 
 Status Dimension::check_tile_extent() const {
   auto g = [&](auto T) { return check_tile_extent<decltype(T)>(); };
-  return execute_callback_with_type(type_, g);
+  return apply_with_type(g, type_);
 }
 
 template <class T>
@@ -1575,36 +1576,36 @@ std::string Dimension::tile_extent_str() const {
     ss << *val;
     return ss.str();
   };
-  return execute_callback_with_type(type_, g);
+  return apply_with_type(g, type_);
 }
 
 void Dimension::set_crop_range_func() {
   auto g = [&](auto T) { crop_range_func_ = crop_range<decltype(T)>; };
-  execute_callback_with_type(type_, g);
+  apply_with_type(g, type_);
 }
 
 void Dimension::set_domain_range_func() {
   auto g = [&](auto T) { domain_range_func_ = domain_range<decltype(T)>; };
-  execute_callback_with_type(type_, g);
+  apply_with_type(g, type_);
 }
 
 void Dimension::set_ceil_to_tile_func() {
   auto g = [&](auto T) { ceil_to_tile_func_ = ceil_to_tile<decltype(T)>; };
-  execute_callback_with_type(type_, g);
+  apply_with_type(g, type_);
 }
 
 void Dimension::set_coincides_with_tiles_func() {
   auto g = [&](auto T) {
     coincides_with_tiles_func_ = coincides_with_tiles<decltype(T)>;
   };
-  execute_callback_with_type(type_, g);
+  apply_with_type(g, type_);
 }
 
 void Dimension::set_compute_mbr_func() {
   if (!var_size()) {  // Fixed-sized
     compute_mbr_var_func_ = nullptr;
     auto g = [&](auto T) { compute_mbr_func_ = compute_mbr<decltype(T)>; };
-    execute_callback_with_type(type_, g);
+    apply_with_type(g, type_);
   } else {  // Var-sized
     assert(type_ == Datatype::STRING_ASCII);
     compute_mbr_func_ = nullptr;
@@ -1614,22 +1615,22 @@ void Dimension::set_compute_mbr_func() {
 
 void Dimension::set_expand_range_func() {
   auto g = [&](auto T) { expand_range_func_ = expand_range<decltype(T)>; };
-  execute_callback_with_type(type_, g);
+  apply_with_type(g, type_);
 }
 
 void Dimension::set_expand_range_v_func() {
   auto g = [&](auto T) { expand_range_v_func_ = expand_range_v<decltype(T)>; };
-  execute_callback_with_type(type_, g);
+  apply_with_type(g, type_);
 }
 
 void Dimension::set_expand_to_tile_func() {
   auto g = [&](auto T) { expand_to_tile_func_ = expand_to_tile<decltype(T)>; };
-  execute_callback_with_type(type_, g);
+  apply_with_type(g, type_);
 }
 
 void Dimension::set_oob_func() {
   auto g = [&](auto T) { oob_func_ = oob<decltype(T)>; };
-  execute_callback_with_type(type_, g);
+  apply_with_type(g, type_);
 }
 
 void Dimension::set_covered_func() {
@@ -1639,7 +1640,7 @@ void Dimension::set_covered_func() {
     }
     covered_func_ = covered<decltype(T)>;
   };
-  execute_callback_with_type(type_, g);
+  apply_with_type(g, type_);
 }
 
 void Dimension::set_overlap_func() {
@@ -1649,7 +1650,7 @@ void Dimension::set_overlap_func() {
     }
     overlap_func_ = overlap<decltype(T)>;
   };
-  execute_callback_with_type(type_, g);
+  apply_with_type(g, type_);
 }
 
 void Dimension::set_overlap_ratio_func() {
@@ -1659,7 +1660,7 @@ void Dimension::set_overlap_ratio_func() {
     }
     overlap_ratio_func_ = overlap_ratio<decltype(T)>;
   };
-  execute_callback_with_type(type_, g);
+  apply_with_type(g, type_);
 }
 
 void Dimension::set_relevant_ranges_func() {
@@ -1669,7 +1670,7 @@ void Dimension::set_relevant_ranges_func() {
     }
     relevant_ranges_func_ = relevant_ranges<decltype(T)>;
   };
-  execute_callback_with_type(type_, g);
+  apply_with_type(g, type_);
 }
 
 void Dimension::set_covered_vec_func() {
@@ -1679,12 +1680,12 @@ void Dimension::set_covered_vec_func() {
     }
     covered_vec_func_ = covered_vec<decltype(T)>;
   };
-  execute_callback_with_type(type_, g);
+  apply_with_type(g, type_);
 }
 
 void Dimension::set_split_range_func() {
   auto g = [&](auto T) { split_range_func_ = split_range<decltype(T)>; };
-  execute_callback_with_type(type_, g);
+  apply_with_type(g, type_);
 }
 
 void Dimension::set_splitting_value_func() {
@@ -1694,31 +1695,31 @@ void Dimension::set_splitting_value_func() {
     }
     splitting_value_func_ = splitting_value<decltype(T)>;
   };
-  execute_callback_with_type(type_, g);
+  apply_with_type(g, type_);
 }
 
 void Dimension::set_tile_num_func() {
   auto g = [&](auto T) { tile_num_func_ = tile_num<decltype(T)>; };
-  execute_callback_with_type(type_, g);
+  apply_with_type(g, type_);
 }
 
 void Dimension::set_map_to_uint64_2_func() {
   auto g = [&](auto T) {
     map_to_uint64_2_func_ = map_to_uint64_2<decltype(T)>;
   };
-  execute_callback_with_type(type_, g);
+  apply_with_type(g, type_);
 }
 
 void Dimension::set_map_from_uint64_func() {
   auto g = [&](auto T) {
     map_from_uint64_func_ = map_from_uint64<decltype(T)>;
   };
-  execute_callback_with_type(type_, g);
+  apply_with_type(g, type_);
 }
 
 void Dimension::set_smaller_than_func() {
   auto g = [&](auto T) { smaller_than_func_ = smaller_than<decltype(T)>; };
-  execute_callback_with_type(type_, g);
+  apply_with_type(g, type_);
 }
 
 }  // namespace sm

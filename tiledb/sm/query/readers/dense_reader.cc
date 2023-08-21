@@ -46,6 +46,7 @@
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/subarray.h"
+#include "tiledb/type/apply_with_type.h"
 
 #include <numeric>
 
@@ -239,7 +240,7 @@ Status DenseReader::dense_read() {
       return dense_read<decltype(T), OffType>();
     }
   };
-  return execute_callback_with_type(type, g);
+  return apply_with_type(g, type);
 }
 
 template <class DimType, class OffType>

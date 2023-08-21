@@ -55,6 +55,7 @@
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
+#include "tiledb/type/apply_with_type.h"
 
 #include <algorithm>
 #include <cassert>
@@ -391,7 +392,7 @@ void ArraySchema::check_webp_filter() const {
         webp->set_extents<decltype(T)>(domain_->tile_extents());
       }
     };
-    execute_callback_with_type(x_dim->type(), g);
+    apply_with_type(g, x_dim->type());
   }
 }
 

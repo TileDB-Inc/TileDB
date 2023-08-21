@@ -59,6 +59,7 @@
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/subarray/relevant_fragment_generator.h"
 #include "tiledb/sm/subarray/subarray.h"
+#include "tiledb/type/apply_with_type.h"
 #include "tiledb/type/range/range.h"
 
 using namespace tiledb::common;
@@ -2774,7 +2775,7 @@ TileOverlap Subarray::compute_tile_overlap(
       return compute_tile_overlap<decltype(T)>(range_idx, fid);
     }
   };
-  return execute_callback_with_type(type, g);
+  return apply_with_type(g, type);
 }
 
 template <class T>

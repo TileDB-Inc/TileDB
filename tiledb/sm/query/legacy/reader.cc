@@ -51,6 +51,7 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/cell_slab.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
+#include "tiledb/type/apply_with_type.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
@@ -1728,7 +1729,7 @@ Status Reader::dense_read() {
       return dense_read<decltype(T)>();
     }
   };
-  return execute_callback_with_type(type, g);
+  return apply_with_type(g, type);
 }
 
 template <class T>

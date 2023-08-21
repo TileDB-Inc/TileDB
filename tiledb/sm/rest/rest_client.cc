@@ -67,6 +67,7 @@
 #include "tiledb/sm/query/query_remote_buffer_storage.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/serialization/array_schema.h"
+#include "tiledb/type/apply_with_type.h"
 
 using namespace tiledb::common;
 
@@ -976,7 +977,7 @@ Status RestClient::subarray_to_str(
       }
       ss << reinterpret_cast<const decltype(T)*>(subarray)[i];
     };
-    execute_callback_with_type(coords_type, g);
+    apply_with_type(g, coords_type);
 
     if (i < subarray_nelts - 1)
       ss << ",";

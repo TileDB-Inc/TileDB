@@ -38,6 +38,7 @@
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/type/apply_with_type.h"
 #include "tiledb/type/range/range.h"
 
 #include <cassert>
@@ -289,7 +290,7 @@ Status CellSlabIter<T>::sanity_check() const {
     }
     error = !std::is_same_v<T, decltype(Arg)>;
   };
-  execute_callback_with_type(type, g);
+  apply_with_type(g, type);
 
   if (error) {
     return LOG_STATUS(Status_CellSlabIterError(
