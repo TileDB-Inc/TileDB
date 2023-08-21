@@ -200,7 +200,7 @@ TEST_CASE_METHOD(
     CPPEnumerationFx,
     "C API: Array load_all_enumerations - Check nullptr",
     "[enumeration][array-load-all-enumerations]") {
-  auto rc = tiledb_array_load_all_enumerations(ctx_.ptr().get(), nullptr, 0);
+  auto rc = tiledb_array_load_all_enumerations(ctx_.ptr().get(), nullptr);
   REQUIRE(rc != TILEDB_OK);
 }
 

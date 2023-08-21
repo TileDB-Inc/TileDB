@@ -100,7 +100,7 @@ struct EnumerationFx {
   void create_array();
   shared_ptr<Array> get_array(QueryType type);
   shared_ptr<ArrayDirectory> get_array_directory();
-  shared_ptr<ArraySchema> get_array_schema_latest(bool load_enmrs = false);
+  shared_ptr<ArraySchema> get_array_schema_latest();
 
   // Serialization helpers
   ArraySchema ser_des_array_schema(
@@ -612,7 +612,8 @@ TEST_CASE_METHOD(
     "[enumeration][array][error][get-remote]") {
   std::string uri_str = "tiledb://namespace/array_name";
   auto array = make_shared<Array>(HERE(), URI(uri_str), ctx_.storage_manager());
-  REQUIRE_THROWS(array->get_enumeration("something_here"));
+  auto matcher = Catch::Matchers::ContainsSubstring("Array is remote");
+  REQUIRE_THROWS_WITH(array->get_enumeration("something_here"), matcher);
 }
 
 TEST_CASE_METHOD(
@@ -663,23 +664,12 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     EnumerationFx,
-    "Array - Load All Enumerations",
-    "[enumeration][array][load-all-enumerations]") {
-  create_array();
-  auto array = get_array(QueryType::READ);
-  auto schema = array->array_schema_latest_ptr();
-  REQUIRE(schema->is_enumeration_loaded("test_enmr") == false);
-  CHECK_NOTHROW(array->load_all_enumerations(false));
-  REQUIRE(schema->is_enumeration_loaded("test_enmr") == true);
-}
-
-TEST_CASE_METHOD(
-    EnumerationFx,
     "Array - Load All Enumerations Error - REMOTE NOT YET SUPPORTED",
     "[enumeration][array][error][get-remote]") {
   std::string uri_str = "tiledb://namespace/array_name";
   auto array = make_shared<Array>(HERE(), URI(uri_str), ctx_.storage_manager());
-  REQUIRE_THROWS(array->load_all_enumerations());
+  auto matcher = Catch::Matchers::ContainsSubstring("Array is remote");
+  REQUIRE_THROWS_WITH(array->load_all_enumerations(), matcher);
 }
 
 TEST_CASE_METHOD(
@@ -696,7 +686,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     EnumerationFx,
-    "ArrayDirectory - Load Enumeration",
+    "ArrayDirectory - Load Enumerations From Paths",
     "[enumeration][array-directory][load-enumeration]") {
   create_array();
 
@@ -705,7 +695,12 @@ TEST_CASE_METHOD(
   auto enmr_name = schema->attribute("attr1")->get_enumeration_name();
   REQUIRE(enmr_name.has_value());
 
-  auto enmr = ad->load_enumeration(schema, enmr_name.value(), enc_key_);
+  auto enmr_path = schema->get_enumeration_path_name(enmr_name.value());
+
+  auto loaded = ad->load_enumerations_from_paths({enmr_path}, enc_key_);
+  REQUIRE(loaded.size() == 1);
+
+  auto enmr = loaded[0];
   std::vector<std::string> values = {"ant", "bat", "cat", "dog", "emu"};
   check_enumeration(
       enmr,
@@ -727,7 +722,8 @@ TEST_CASE_METHOD(
 
   // Check that this function throws an exception when attempting to load
   // an unknown enumeration
-  REQUIRE_THROWS(ad->load_enumeration(schema, "not_an_enumeration", enc_key_));
+  REQUIRE_THROWS(
+      ad->load_enumerations_from_paths({"not_an_enumeration"}, enc_key_));
 }
 
 /* ********************************* */
@@ -969,7 +965,10 @@ TEST_CASE_METHOD(
     "ArraySchemaEvolution - Simple No Enumeration",
     "[enumeration][array-schema-evolution][simple]") {
   create_array();
-  auto orig_schema = get_array_schema_latest(true);
+  auto array = get_array(QueryType::READ);
+  array->load_all_enumerations();
+
+  auto orig_schema = array->array_schema_latest_ptr();
   auto ase = make_shared<ArraySchemaEvolution>(HERE());
   auto attr3 = make_shared<Attribute>(HERE(), "attr3", Datatype::UINT32);
   ase->add_attribute(attr3);
@@ -1869,14 +1868,9 @@ shared_ptr<ArrayDirectory> EnumerationFx::get_array_directory() {
       HERE(), ctx_.resources(), uri_, 0, UINT64_MAX, ArrayDirectoryMode::READ);
 }
 
-shared_ptr<ArraySchema> EnumerationFx::get_array_schema_latest(
-    bool load_enmrs) {
+shared_ptr<ArraySchema> EnumerationFx::get_array_schema_latest() {
   auto array_dir = get_array_directory();
-  auto schema = array_dir->load_array_schema_latest(enc_key_);
-  if (load_enmrs) {
-    array_dir->load_all_enumerations(schema, enc_key_);
-  }
-  return schema;
+  return array_dir->load_array_schema_latest(enc_key_);
 }
 
 #ifdef TILEDB_SERIALIZATION

@@ -188,44 +188,17 @@ ArrayDirectory::load_all_array_schemas(
   return array_schemas;
 }
 
-shared_ptr<const Enumeration> ArrayDirectory::load_enumeration(
-    shared_ptr<ArraySchema> schema,
-    const std::string& enumeration_name,
+std::vector<shared_ptr<const Enumeration>>
+ArrayDirectory::load_enumerations_from_paths(
+    const std::vector<std::string>& enumeration_paths,
     const EncryptionKey& encryption_key) const {
-  auto timer_se = resources_.get().stats().start_timer("sm_load_enumeration");
-
-  auto path_name = schema->get_enumeration_path_name(enumeration_name);
-
-  auto enmr_uri = uri_.join_path(constants::array_schema_dir_name)
-                      .join_path(constants::array_enumerations_dir_name)
-                      .join_path(path_name);
-
-  auto&& tile = GenericTileIO::load(resources_, enmr_uri, 0, encryption_key);
-  resources_.get().stats().add_counter("read_enumeration_size", tile.size());
-
-  Deserializer deserializer(tile.data(), tile.size());
-  auto enum_ptr = Enumeration::deserialize(deserializer);
-
-  schema->store_enumeration(enum_ptr);
-
-  return enum_ptr;
-}
-
-void ArrayDirectory::load_all_enumerations(
-    shared_ptr<ArraySchema> schema, const EncryptionKey& encryption_key) const {
-  std::vector<std::string> enmr_names;
-  for (auto& enmr_name : schema->get_enumeration_names()) {
-    if (schema->is_enumeration_loaded(enmr_name)) {
-      continue;
-    }
-    enmr_names.push_back(enmr_name);
-  }
-
-  auto& tp = resources_.get().compute_tp();
-  throw_if_not_ok(parallel_for(&tp, 0, enmr_names.size(), [&](size_t i) {
-    load_enumeration(schema, enmr_names[i], encryption_key);
+  std::vector<shared_ptr<const Enumeration>> ret(enumeration_paths.size());
+  auto& tp = resources_.get().io_tp();
+  throw_if_not_ok(parallel_for(&tp, 0, enumeration_paths.size(), [&](size_t i) {
+    ret[i] = load_enumeration(enumeration_paths[i], encryption_key);
     return Status::Ok();
   }));
+  return ret;
 }
 
 const URI& ArrayDirectory::uri() const {
@@ -1329,6 +1302,22 @@ bool ArrayDirectory::consolidation_with_timestamps_supported(
   return mode_ == ArrayDirectoryMode::READ &&
          version >= constants::consolidation_with_timestamps_min_version &&
          version != UINT32_MAX;
+}
+
+shared_ptr<const Enumeration> ArrayDirectory::load_enumeration(
+    const std::string& enumeration_path,
+    const EncryptionKey& encryption_key) const {
+  auto timer_se = resources_.get().stats().start_timer("sm_load_enumeration");
+
+  auto enmr_uri = uri_.join_path(constants::array_schema_dir_name)
+                      .join_path(constants::array_enumerations_dir_name)
+                      .join_path(enumeration_path);
+
+  auto&& tile = GenericTileIO::load(resources_, enmr_uri, 0, encryption_key);
+  resources_.get().stats().add_counter("read_enumeration_size", tile.size());
+
+  Deserializer deserializer(tile.data(), tile.size());
+  return Enumeration::deserialize(deserializer);
 }
 }  // namespace sm
 }  // namespace tiledb

@@ -423,7 +423,7 @@ class ArraySchema {
   bool is_enumeration_loaded(const std::string& enumeration_name) const;
 
   /**
-   * Get an Enumeration by name. Throws if the attribute is unknown.
+   * Get an Enumeration by name. Throws if the enumeration is unknown.
    *
    * @param enmr_name The name of the Enumeration.
    * @return shared_ptr<Enumeration>
@@ -432,7 +432,7 @@ class ArraySchema {
       const std::string& enmr_name) const;
 
   /**
-   * Get an Enumeration's object name. Throws if the attribute is unknown.
+   * Get an Enumeration's object name. Throws if the enumeration is unknown.
    *
    * @param enmr_name The name of the Enumeration.
    * @return The path name of the enumeration on disk

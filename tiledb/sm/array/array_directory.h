@@ -386,26 +386,14 @@ class ArrayDirectory {
   load_all_array_schemas(const EncryptionKey& encryption_key) const;
 
   /**
-   * Load an enumeration from schema with the given name.
-   *
-   * @param schema The ArraySchema that references the enumeration name.
-   * @param enumeration_name The name of the enumeration to load.
-   * @param encryption_key The encryption key to use.
-   * @return shared_ptr<Enumeration> The loaded enumeration.
-   */
-  shared_ptr<const Enumeration> load_enumeration(
-      shared_ptr<ArraySchema> schema,
-      const std::string& enumeration_name,
-      const EncryptionKey& encryption_key) const;
-
-  /**
    * Load all enumerations for the given schema.
    *
-   * @param schema The ArraySchema to load Enumerations for
+   * @param enumeration_paths The list of enumeration paths to load.
    * @param encryption_key The encryption key to use.
+   * @return The loaded enumerations.
    */
-  void load_all_enumerations(
-      shared_ptr<ArraySchema> schema,
+  std::vector<shared_ptr<const Enumeration>> load_enumerations_from_paths(
+      const std::vector<std::string>& enumeration_paths,
       const EncryptionKey& encryption_key) const;
 
   /** Returns the array URI. */
@@ -828,6 +816,18 @@ class ArrayDirectory {
    * @return True if supported, false otherwise
    */
   bool consolidation_with_timestamps_supported(const URI& uri) const;
+
+  /**
+   * Load an enumeration from schema with the given name.
+   *
+   * @param schema The ArraySchema that references the enumeration name.
+   * @param enumeration_path The enumeration path to load.
+   * @param encryption_key The encryption key to use.
+   * @return shared_ptr<Enumeration> The loaded enumeration.
+   */
+  shared_ptr<const Enumeration> load_enumeration(
+      const std::string& enumeration_path,
+      const EncryptionKey& encryption_key) const;
 };
 
 }  // namespace sm

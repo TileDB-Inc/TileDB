@@ -418,9 +418,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_get_enumeration(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_array_load_all_enumerations(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_t* array,
-    int latest_only) TILEDB_NOEXCEPT;
+    tiledb_ctx_t* ctx, const tiledb_array_t* array) TILEDB_NOEXCEPT;
 
 /**
  * Upgrades an array to the latest format version.
