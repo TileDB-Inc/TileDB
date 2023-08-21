@@ -289,7 +289,7 @@ class DenseArrayExample {
       uint64_t index_end,
       const std::vector<double>& expected_label_data,
       const std::vector<double>& expected_attr_data) {
-    // Open array for writing.
+    // Open array for reading.
     tiledb::Array array = open_array(TILEDB_READ);
 
     // Create the subarray.
@@ -344,7 +344,7 @@ class DenseArrayExample {
       std::vector<uint64_t> expected_label_offsets,
       const std::string& expected_attr_data,
       std::vector<uint64_t> expected_attr_offsets) {
-    // Open array for writing.
+    // Open array for reading.
     tiledb::Array array = open_array(TILEDB_READ);
 
     // Create the subarray.
@@ -574,11 +574,13 @@ TEST_CASE(
   // Set label ranges on the subarray to be used for updating dimension ranges.
   tiledb::Array array = array_fixture.open_array(TILEDB_READ);
   tiledb::Subarray subarray{array_fixture.ctx(), array};
+  double label_start = -1.0, label_end = 1.0;
   tiledb::SubarrayExperimental::add_label_range(
-      array_fixture.ctx(), subarray, "x", -1.0, 1.0);
+      array_fixture.ctx(), subarray, "x", label_start, label_end);
 
   tiledb::Subarray expected_subarray(array_fixture.ctx(), array);
-  expected_subarray.add_range(0, 0UL, 3UL);
+  uint64_t start = 0, end = 3;
+  expected_subarray.add_range(0, start, end);
 
   // Create the query using only subarray label ranges and no buffers set.
   tiledb::Query query{array_fixture.ctx(), array};
