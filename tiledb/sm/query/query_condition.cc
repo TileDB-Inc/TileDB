@@ -1310,7 +1310,7 @@ void QueryCondition::apply_ast_node_dense(
       // Check the next cell here, which breaks vectorization but as this
       // is string data requiring a strcmp which cannot be vectorized, this is
       // ok.
-      const uint64_t offset_idx = start + src_cell + c * stride;
+      const uint64_t offset_idx = src_cell + (start + c) * stride;
       const uint64_t buffer_offset = buffer_offsets[offset_idx];
       const uint64_t next_cell_offset = (offset_idx + 1 < buffer_offsets_el) ?
                                             buffer_offsets[offset_idx + 1] :
@@ -1327,7 +1327,7 @@ void QueryCondition::apply_ast_node_dense(
       // Set the value.
       bool buffer_validity_val = buffer_validity == nullptr ?
                                      true :
-                                     buffer_validity[start + c * stride] != 0;
+                                     buffer_validity[(start + c) * stride] != 0;
       result_buffer[c] =
           combination_op(result_buffer[c], (uint8_t)cmp && buffer_validity_val);
     }
@@ -1347,7 +1347,7 @@ void QueryCondition::apply_ast_node_dense(
       const auto& tile = tile_tuple->fixed_tile();
       const char* buffer = static_cast<char*>(tile.data());
       const uint64_t cell_size = tile.cell_size();
-      uint64_t buffer_offset = (start + src_cell) * cell_size;
+      uint64_t buffer_offset = ((start * stride) + src_cell) * cell_size;
       const uint64_t buffer_offset_inc = stride * cell_size;
 
       // Iterate through each cell in this slab.
@@ -1364,9 +1364,10 @@ void QueryCondition::apply_ast_node_dense(
             condition_value_size);
 
         // Set the value.
-        bool buffer_validity_val = buffer_validity == nullptr ?
-                                       true :
-                                       buffer_validity[start + c * stride] != 0;
+        bool buffer_validity_val =
+            buffer_validity == nullptr ?
+                true :
+                buffer_validity[(start + c) * stride] != 0;
         result_buffer[c] = combination_op(
             result_buffer[c], (uint8_t)cmp && buffer_validity_val);
       }

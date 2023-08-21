@@ -34,7 +34,6 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/min_max_aggregator.h"
-#include "tiledb/sm/query/readers/aggregators/test/whitebox_aggregate_buffer.h"
 
 #include <test/support/tdb_catch.h>
 
@@ -352,24 +351,23 @@ TEMPLATE_LIST_TEST_CASE(
 
   SECTION("No bitmap") {
     // Regular attribute.
-    AggregateBuffer input_data = WhiteboxAggregateBuffer::make_aggregate_buffer(
-        2, 10, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt);
+    AggregateBuffer input_data{
+        2, 10, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("MinMax", buffers);
     check_value(T(), min_max, min, 1, 5);
 
     // Nullable attribute.
-    AggregateBuffer input_data2 =
-        WhiteboxAggregateBuffer::make_aggregate_buffer(
-            2,
-            10,
-            10,
-            fixed_data.data(),
-            nullopt,
-            0,
-            validity_data.data(),
-            false,
-            nullopt);
+    AggregateBuffer input_data2{
+        2,
+        10,
+        10,
+        fixed_data.data(),
+        nullopt,
+        0,
+        validity_data.data(),
+        false,
+        nullopt};
     aggregator_nullable.aggregate_data(input_data2);
     aggregator_nullable.copy_to_user_buffer("MinMax2", buffers);
     check_value(T(), min_max2, min, 2, 5);
@@ -379,7 +377,7 @@ TEMPLATE_LIST_TEST_CASE(
   SECTION("Regular bitmap") {
     // Regular attribute.
     std::vector<uint8_t> bitmap = {1, 1, 0, 0, 0, 1, 1, 0, 1, 0};
-    AggregateBuffer input_data = WhiteboxAggregateBuffer::make_aggregate_buffer(
+    AggregateBuffer input_data{
         2,
         10,
         10,
@@ -388,38 +386,28 @@ TEMPLATE_LIST_TEST_CASE(
         0,
         nullopt,
         false,
-        bitmap.data());
+        bitmap.data()};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("MinMax", buffers);
     check_value(T(), min_max, min, 2, 5);
 
-    AggregateBuffer input_data2 =
-        WhiteboxAggregateBuffer::make_aggregate_buffer(
-            0,
-            2,
-            10,
-            fixed_data.data(),
-            nullopt,
-            0,
-            nullopt,
-            false,
-            bitmap.data());
+    AggregateBuffer input_data2{
+        0, 2, 10, fixed_data.data(), nullopt, 0, nullopt, false, bitmap.data()};
     aggregator.aggregate_data(input_data2);
     aggregator.copy_to_user_buffer("MinMax", buffers);
     check_value(T(), min_max, min, 1, 5);
 
     // Nullable attribute.
-    AggregateBuffer input_data3 =
-        WhiteboxAggregateBuffer::make_aggregate_buffer(
-            0,
-            2,
-            10,
-            fixed_data.data(),
-            nullopt,
-            0,
-            validity_data.data(),
-            false,
-            nullopt);
+    AggregateBuffer input_data3{
+        0,
+        2,
+        10,
+        fixed_data.data(),
+        nullopt,
+        0,
+        validity_data.data(),
+        false,
+        nullopt};
     aggregator_nullable.aggregate_data(input_data3);
     aggregator_nullable.copy_to_user_buffer("MinMax2", buffers);
 
@@ -432,17 +420,16 @@ TEMPLATE_LIST_TEST_CASE(
     check_value(T(), min_max2, min, 0, 0);
     CHECK(validity == 0);
 
-    AggregateBuffer input_data4 =
-        WhiteboxAggregateBuffer::make_aggregate_buffer(
-            2,
-            10,
-            10,
-            fixed_data.data(),
-            nullopt,
-            0,
-            validity_data.data(),
-            false,
-            bitmap.data());
+    AggregateBuffer input_data4{
+        2,
+        10,
+        10,
+        fixed_data.data(),
+        nullopt,
+        0,
+        validity_data.data(),
+        false,
+        bitmap.data()};
     aggregator_nullable.aggregate_data(input_data4);
     aggregator_nullable.copy_to_user_buffer("MinMax2", buffers);
     check_value(T(), min_max2, min, 2, 4);
@@ -452,7 +439,7 @@ TEMPLATE_LIST_TEST_CASE(
   SECTION("Count bitmap") {
     // Regular attribute.
     std::vector<uint64_t> bitmap_count = {1, 2, 4, 0, 0, 1, 2, 0, 1, 2};
-    AggregateBuffer input_data = WhiteboxAggregateBuffer::make_aggregate_buffer(
+    AggregateBuffer input_data{
         2,
         10,
         10,
@@ -461,54 +448,51 @@ TEMPLATE_LIST_TEST_CASE(
         0,
         nullopt,
         true,
-        bitmap_count.data());
+        bitmap_count.data()};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("MinMax", buffers);
     check_value(T(), min_max, min, 1, 5);
 
-    AggregateBuffer input_data2 =
-        WhiteboxAggregateBuffer::make_aggregate_buffer(
-            0,
-            2,
-            10,
-            fixed_data.data(),
-            nullopt,
-            0,
-            nullopt,
-            true,
-            bitmap_count.data());
+    AggregateBuffer input_data2{
+        0,
+        2,
+        10,
+        fixed_data.data(),
+        nullopt,
+        0,
+        nullopt,
+        true,
+        bitmap_count.data()};
     aggregator.aggregate_data(input_data2);
     aggregator.copy_to_user_buffer("MinMax", buffers);
     check_value(T(), min_max, min, 1, 5);
 
     // Nullable attribute.
-    AggregateBuffer input_data3 =
-        WhiteboxAggregateBuffer::make_aggregate_buffer(
-            2,
-            10,
-            10,
-            fixed_data.data(),
-            nullopt,
-            0,
-            validity_data.data(),
-            true,
-            bitmap_count.data());
+    AggregateBuffer input_data3{
+        2,
+        10,
+        10,
+        fixed_data.data(),
+        nullopt,
+        0,
+        validity_data.data(),
+        true,
+        bitmap_count.data()};
     aggregator_nullable.aggregate_data(input_data3);
     aggregator_nullable.copy_to_user_buffer("MinMax2", buffers);
     check_value(T(), min_max2, min, 2, 4);
     CHECK(validity == 1);
 
-    AggregateBuffer input_data4 =
-        WhiteboxAggregateBuffer::make_aggregate_buffer(
-            0,
-            2,
-            10,
-            fixed_data.data(),
-            nullopt,
-            0,
-            validity_data.data(),
-            true,
-            bitmap_count.data());
+    AggregateBuffer input_data4{
+        0,
+        2,
+        10,
+        fixed_data.data(),
+        nullopt,
+        0,
+        validity_data.data(),
+        true,
+        bitmap_count.data()};
     aggregator_nullable.aggregate_data(input_data4);
     aggregator_nullable.copy_to_user_buffer("MinMax2", buffers);
     check_value(T(), min_max2, min, 2, 4);
@@ -575,7 +559,7 @@ TEMPLATE_LIST_TEST_CASE(
 
   SECTION("No bitmap") {
     // Regular attribute.
-    AggregateBuffer input_data = WhiteboxAggregateBuffer::make_aggregate_buffer(
+    AggregateBuffer input_data{
         2,
         10,
         10,
@@ -584,23 +568,22 @@ TEMPLATE_LIST_TEST_CASE(
         var_data.size(),
         nullopt,
         false,
-        nullopt);
+        nullopt};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("MinMax", buffers);
     check_value_var(offset, min_max_size, min_max, min, "1", "5555");
 
     // Nullable attribute.
-    AggregateBuffer input_data2 =
-        WhiteboxAggregateBuffer::make_aggregate_buffer(
-            2,
-            10,
-            10,
-            offsets.data(),
-            var_data.data(),
-            var_data.size(),
-            validity_data.data(),
-            false,
-            nullopt);
+    AggregateBuffer input_data2{
+        2,
+        10,
+        10,
+        offsets.data(),
+        var_data.data(),
+        var_data.size(),
+        validity_data.data(),
+        false,
+        nullopt};
     aggregator_nullable.aggregate_data(input_data2);
     aggregator_nullable.copy_to_user_buffer("MinMax2", buffers);
     check_value_var(offset2, min_max_size2, min_max2, min, "2222", "555");
@@ -610,7 +593,7 @@ TEMPLATE_LIST_TEST_CASE(
   SECTION("Regular bitmap") {
     // Regular attribute.
     std::vector<uint8_t> bitmap = {1, 1, 0, 0, 0, 1, 1, 0, 1, 0};
-    AggregateBuffer input_data = WhiteboxAggregateBuffer::make_aggregate_buffer(
+    AggregateBuffer input_data{
         2,
         10,
         10,
@@ -619,54 +602,51 @@ TEMPLATE_LIST_TEST_CASE(
         var_data.size(),
         nullopt,
         false,
-        bitmap.data());
+        bitmap.data()};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("MinMax", buffers);
     check_value_var(offset, min_max_size, min_max, min, "2222", "5555");
 
-    AggregateBuffer input_data2 =
-        WhiteboxAggregateBuffer::make_aggregate_buffer(
-            0,
-            2,
-            10,
-            offsets.data(),
-            var_data.data(),
-            var_data.size(),
-            nullopt,
-            false,
-            bitmap.data());
+    AggregateBuffer input_data2{
+        0,
+        2,
+        10,
+        offsets.data(),
+        var_data.data(),
+        var_data.size(),
+        nullopt,
+        false,
+        bitmap.data()};
     aggregator.aggregate_data(input_data2);
     aggregator.copy_to_user_buffer("MinMax", buffers);
     check_value_var(offset, min_max_size, min_max, min, "11", "5555");
 
     // Nullable attribute.
-    AggregateBuffer input_data3 =
-        WhiteboxAggregateBuffer::make_aggregate_buffer(
-            0,
-            2,
-            10,
-            offsets.data(),
-            var_data.data(),
-            var_data.size(),
-            validity_data.data(),
-            false,
-            nullopt);
+    AggregateBuffer input_data3{
+        0,
+        2,
+        10,
+        offsets.data(),
+        var_data.data(),
+        var_data.size(),
+        validity_data.data(),
+        false,
+        nullopt};
     aggregator_nullable.aggregate_data(input_data3);
     aggregator_nullable.copy_to_user_buffer("MinMax2", buffers);
     check_value_var(offset2, min_max_size2, min_max2, min, "", "");
     CHECK(validity == 0);
 
-    AggregateBuffer input_data4 =
-        WhiteboxAggregateBuffer::make_aggregate_buffer(
-            2,
-            10,
-            10,
-            offsets.data(),
-            var_data.data(),
-            var_data.size(),
-            validity_data.data(),
-            false,
-            bitmap.data());
+    AggregateBuffer input_data4{
+        2,
+        10,
+        10,
+        offsets.data(),
+        var_data.data(),
+        var_data.size(),
+        validity_data.data(),
+        false,
+        bitmap.data()};
     aggregator_nullable.aggregate_data(input_data4);
     aggregator_nullable.copy_to_user_buffer("MinMax2", buffers);
     check_value_var(offset2, min_max_size2, min_max2, min, "2222", "4");
@@ -676,7 +656,7 @@ TEMPLATE_LIST_TEST_CASE(
   SECTION("Count bitmap") {
     // Regular attribute.
     std::vector<uint64_t> bitmap_count = {1, 2, 4, 0, 0, 1, 2, 0, 1, 2};
-    AggregateBuffer input_data = WhiteboxAggregateBuffer::make_aggregate_buffer(
+    AggregateBuffer input_data{
         2,
         10,
         10,
@@ -685,54 +665,51 @@ TEMPLATE_LIST_TEST_CASE(
         var_data.size(),
         nullopt,
         true,
-        bitmap_count.data());
+        bitmap_count.data()};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("MinMax", buffers);
     check_value_var(offset, min_max_size, min_max, min, "1", "5555");
 
-    AggregateBuffer input_data2 =
-        WhiteboxAggregateBuffer::make_aggregate_buffer(
-            0,
-            2,
-            10,
-            offsets.data(),
-            var_data.data(),
-            var_data.size(),
-            nullopt,
-            true,
-            bitmap_count.data());
+    AggregateBuffer input_data2{
+        0,
+        2,
+        10,
+        offsets.data(),
+        var_data.data(),
+        var_data.size(),
+        nullopt,
+        true,
+        bitmap_count.data()};
     aggregator.aggregate_data(input_data2);
     aggregator.copy_to_user_buffer("MinMax", buffers);
     check_value_var(offset, min_max_size, min_max, min, "1", "5555");
 
     // Nullable attribute.
-    AggregateBuffer input_data3 =
-        WhiteboxAggregateBuffer::make_aggregate_buffer(
-            2,
-            10,
-            10,
-            offsets.data(),
-            var_data.data(),
-            var_data.size(),
-            validity_data.data(),
-            true,
-            bitmap_count.data());
+    AggregateBuffer input_data3{
+        2,
+        10,
+        10,
+        offsets.data(),
+        var_data.data(),
+        var_data.size(),
+        validity_data.data(),
+        true,
+        bitmap_count.data()};
     aggregator_nullable.aggregate_data(input_data3);
     aggregator_nullable.copy_to_user_buffer("MinMax2", buffers);
     check_value_var(offset2, min_max_size2, min_max2, min, "2222", "4");
     CHECK(validity == 1);
 
-    AggregateBuffer input_data4 =
-        WhiteboxAggregateBuffer::make_aggregate_buffer(
-            0,
-            2,
-            10,
-            offsets.data(),
-            var_data.data(),
-            var_data.size(),
-            validity_data.data(),
-            true,
-            bitmap_count.data());
+    AggregateBuffer input_data4{
+        0,
+        2,
+        10,
+        offsets.data(),
+        var_data.data(),
+        var_data.size(),
+        validity_data.data(),
+        true,
+        bitmap_count.data()};
     aggregator_nullable.aggregate_data(input_data4);
     aggregator_nullable.copy_to_user_buffer("MinMax2", buffers);
     check_value_var(offset2, min_max_size2, min_max2, min, "2222", "4");

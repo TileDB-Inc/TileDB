@@ -2057,6 +2057,35 @@ bool SparseGlobalOrderReader<BitmapType>::copy_tiles(
 }
 
 template <class BitmapType>
+AggregateBuffer SparseGlobalOrderReader<BitmapType>::make_aggregate_buffer(
+    const std::string name,
+    const bool var_sized,
+    const bool nullable,
+    const uint64_t min_cell,
+    const uint64_t max_cell,
+    const uint64_t cell_num,
+    ResultTile& rt) {
+  return AggregateBuffer(
+      min_cell,
+      max_cell,
+      cell_num,
+      name == constants::count_of_rows ?
+          nullptr :
+          rt.tile_tuple(name)->fixed_tile().data(),
+      var_sized ?
+          std::make_optional(rt.tile_tuple(name)->var_tile().data_as<char>()) :
+          nullopt,
+      var_sized && max_cell == cell_num ?
+          rt.tile_tuple(name)->var_tile().size() :
+          0,
+      nullable ? std::make_optional(
+                     rt.tile_tuple(name)->validity_tile().data_as<uint8_t>()) :
+                 nullopt,
+      false,
+      nullopt);
+}
+
+template <class BitmapType>
 void SparseGlobalOrderReader<BitmapType>::process_aggregates(
     const uint64_t num_range_threads,
     const std::string name,
@@ -2100,8 +2129,8 @@ void SparseGlobalOrderReader<BitmapType>::process_aggregates(
         }
 
         // Compute aggregate.
-        AggregateBuffer aggregate_buffer{
-            name, var_sized, nullable, min_pos, max_pos, cell_num, *rt};
+        AggregateBuffer aggregate_buffer{make_aggregate_buffer(
+            name, var_sized, nullable, min_pos, max_pos, cell_num, *rt)};
         for (auto& aggregate : aggregates) {
           aggregate->aggregate_data(aggregate_buffer);
         }
