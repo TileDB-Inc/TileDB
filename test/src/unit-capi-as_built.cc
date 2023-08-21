@@ -1,11 +1,12 @@
 /**
- * @file unit_as_built.cc
+ * @file   unit-capi-as_built.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB Inc
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,22 +28,28 @@
  *
  * @section DESCRIPTION
  *
- * Tests the tiledb::as_built namespace.
+ * Tests the as_built C API.
+ * Note: this is a duplication of unit_as_built.cc but validates the namespace
+ * within the C API compilation unit.
  */
 
-#include "tiledb/as_built/as_built.h"
+#include <test/support/tdb_catch.h>
+#include "external/include/nlohmann/json.hpp"
+#include "tiledb/sm/c_api/tiledb_experimental.h"
 
-#include <tdb_catch.h>
 #include <iostream>
 
-namespace as_built = tiledb::as_built;
+using json = nlohmann::json;
 
-const std::string dump_str() noexcept {
-  try {
-    return as_built::dump();
-  } catch (...) {
-    return "";
-  }
+static std::string dump_str() {
+  tiledb_string_t* out;
+  tiledb_as_built_dump(&out);
+  const char* out_ptr;
+  size_t out_length;
+  tiledb_string_view(out, &out_ptr, &out_length);
+  std::string out_str(out_ptr, out_length);
+  tiledb_string_free(&out);
+  return out_str;
 }
 static const std::string dump_str_{dump_str()};
 
@@ -55,21 +62,20 @@ std::optional<json> dump_json(std::string dump_str) noexcept {
 }
 static const std::optional<json> dump_{dump_json(dump_str())};
 
-TEST_CASE("as_built: Ensure dump() does not throw", "[as_built][dump]") {
-  std::string x;
-  CHECK_NOTHROW(x = as_built::dump());
-  CHECK(x.compare(dump_str_) == 0);
-}
-
-TEST_CASE("as_built: Ensure dump is non-empty", "[as_built][dump][non-empty]") {
+TEST_CASE(
+    "C API: as_built: Ensure dump is non-empty",
+    "[capi][as_built][dump][non-empty]") {
   REQUIRE(!dump_str_.empty());
 }
 
-TEST_CASE("as_built: Print dump", "[as_built][dump][.print_json]") {
+TEST_CASE(
+    "C API: as_built: Print dump", "[capi][as_built][dump][.print_json]") {
   std::cerr << dump_str_ << std::endl;
 }
 
-TEST_CASE("as_built: Ensure dump has json output", "[as_built][dump][json]") {
+TEST_CASE(
+    "C API: as_built: Ensure dump has json output",
+    "[capi][as_built][dump][json]") {
   json x;
   CHECK_NOTHROW(x = json::parse(dump_str_));
   CHECK(!x.is_null());
@@ -82,27 +88,32 @@ TEST_CASE("as_built: Ensure dump has json output", "[as_built][dump][json]") {
  * and NOT with "auto x{...}" as a workaround for a compiler-variant issue
  * with the JSON parser.
  **/
-TEST_CASE("as_built: Validate top-level key", "[as_built][top-level]") {
+TEST_CASE(
+    "C API: as_built: Validate top-level key", "[capi][as_built][top-level]") {
   auto x(dump_.value()["as_built"]);
   CHECK(x.type() == nlohmann::detail::value_t::object);
   CHECK(!x.empty());
 }
 
-TEST_CASE("as_built: Validate parameters key", "[as_built][parameters]") {
+TEST_CASE(
+    "C API: as_built: Validate parameters key",
+    "[capi][as_built][parameters]") {
   auto x(dump_.value()["as_built"]["parameters"]);
   CHECK(x.type() == nlohmann::detail::value_t::object);
   CHECK(!x.empty());
 }
 
 TEST_CASE(
-    "as_built: Validate storage_backends key", "[as_built][storage_backends]") {
+    "C API: as_built: Validate storage_backends key",
+    "[capi][as_built][storage_backends]") {
   auto x(dump_.value()["as_built"]["parameters"]["storage_backends"]);
   CHECK(x.type() == nlohmann::detail::value_t::object);
   CHECK(!x.empty());
 }
 
 TEST_CASE(
-    "as_built: storage_backends attributes", "[as_built][storage_backends]") {
+    "C API: as_built: storage_backends attributes",
+    "[capi][as_built][storage_backends]") {
   auto x(dump_.value()["as_built"]["parameters"]["storage_backends"]);
   CHECK(!x.empty());
 
@@ -125,13 +136,14 @@ TEST_CASE(
 #endif  // HAVE_S3
 }
 
-TEST_CASE("as_built: Validate support key", "[as_built][support]") {
+TEST_CASE(
+    "C API: as_built: Validate support key", "[capi][as_built][support]") {
   auto x(dump_.value()["as_built"]["parameters"]["support"]);
   CHECK(x.type() == nlohmann::detail::value_t::object);
   CHECK(!x.empty());
 }
 
-TEST_CASE("as_built: support attributes", "[as_built][support]") {
+TEST_CASE("C API: as_built: support attributes", "[capi][as_built][support]") {
   auto x(dump_.value()["as_built"]["parameters"]["support"]);
   CHECK(!x.empty());
 
