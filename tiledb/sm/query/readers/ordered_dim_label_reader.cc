@@ -45,6 +45,7 @@
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/subarray.h"
+#include "tiledb/type/apply_with_type.h"
 
 #include <numeric>
 
@@ -220,7 +221,7 @@ void OrderedDimLabelReader::label_read() {
       label_read<decltype(T)>();
     }
   };
-  execute_callback_with_type(type, g);
+  apply_with_type(g, type);
 }
 
 template <typename IndexType>
@@ -465,7 +466,7 @@ OrderedDimLabelReader::get_array_tile_indexes_for_range(
     }
     return get_array_tile_indexes_for_range<decltype(T)>(f, r);
   };
-  return execute_callback_with_type(label_type_, g);
+  return apply_with_type(g, label_type_);
 }
 
 uint64_t OrderedDimLabelReader::label_tile_size(unsigned f, uint64_t t) const {
@@ -747,7 +748,7 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
       compute_and_copy_range_indexes<IndexType, decltype(T)>(dest, r);
     }
   };
-  execute_callback_with_type(label_type_, g);
+  apply_with_type(g, label_type_);
 }
 
 }  // namespace sm

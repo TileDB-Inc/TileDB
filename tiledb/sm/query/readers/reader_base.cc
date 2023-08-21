@@ -53,6 +53,7 @@
 #include "tiledb/sm/query/strategy_base.h"
 #include "tiledb/sm/query/writers/domain_buffer.h"
 #include "tiledb/sm/subarray/subarray.h"
+#include "tiledb/type/apply_with_type.h"
 
 namespace tiledb {
 namespace sm {
@@ -1218,7 +1219,7 @@ void ReaderBase::validate_attribute_order(
           frag_first_array_tile_idx);
     }
   };
-  execute_callback_with_type(attribute_type, g);
+  apply_with_type(g, attribute_type);
 }
 
 // Explicit template instantiations

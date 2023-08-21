@@ -35,6 +35,7 @@
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
+#include "tiledb/type/apply_with_type.h"
 #include "tiledb/type/range/range.h"
 
 #include <cassert>
@@ -1280,7 +1281,7 @@ void ResultTile::set_compute_results_func() {
       compute_results_count_sparse_uint64_t_func_[d] =
           compute_results_count_sparse<uint64_t, decltype(T)>;
     };
-    execute_callback_with_type(dim->type(), g);
+    apply_with_type(g, dim->type());
   }
 }
 

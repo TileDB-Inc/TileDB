@@ -35,6 +35,7 @@
 #include "query_aggregate_api_internal.h"
 #include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
+#include "tiledb/type/apply_with_type.h"
 
 namespace tiledb::api {
 
@@ -151,7 +152,7 @@ capi_return_t tiledb_channel_create_operation_field(
                   schema.cell_val_num(field_name)));
         }
       };
-      execute_callback_with_type(schema.type(field_name), g);
+      apply_with_type(g, schema.type(field_name));
       break;
     }
     default:
