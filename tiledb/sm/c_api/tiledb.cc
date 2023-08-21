@@ -3108,12 +3108,12 @@ capi_return_t tiledb_array_get_enumeration(
 }
 
 capi_return_t tiledb_array_load_all_enumerations(
-    tiledb_ctx_t* ctx, const tiledb_array_t* array, int latest_only) {
+    tiledb_ctx_t* ctx, const tiledb_array_t* array) {
   if (sanity_check(ctx, array) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
 
-  array->array_->load_all_enumerations(latest_only ? true : false);
+  array->array_->load_all_enumerations();
 
   return TILEDB_OK;
 }
@@ -6537,9 +6537,8 @@ capi_return_t tiledb_array_get_enumeration(
 }
 
 capi_return_t tiledb_array_load_all_enumerations(
-    tiledb_ctx_t* ctx, const tiledb_array_t* array, int latest_only) noexcept {
-  return api_entry<tiledb::api::tiledb_array_load_all_enumerations>(
-      ctx, array, latest_only);
+    tiledb_ctx_t* ctx, const tiledb_array_t* array) noexcept {
+  return api_entry<tiledb::api::tiledb_array_load_all_enumerations>(ctx, array);
 }
 
 int32_t tiledb_array_upgrade_version(

@@ -581,44 +581,62 @@ void Array::delete_fragments_list(
 
 shared_ptr<const Enumeration> Array::get_enumeration(
     const std::string& enumeration_name) {
-  if (remote_) {
-    throw ArrayException("Unable to load all enumerations; Array is remote.");
-  }
-
-  if (!is_open_) {
-    throw ArrayException("Cannot get enumeration; Array is not open");
-  }
-
-  if (array_schema_latest_->is_enumeration_loaded(enumeration_name)) {
-    return array_schema_latest_->get_enumeration(enumeration_name);
-  }
-
-  return array_dir_.load_enumeration(
-      array_schema_latest_, enumeration_name, get_encryption_key());
+  return get_enumerations({enumeration_name})[0];
 }
 
-void Array::load_all_enumerations(bool latest_only) {
+std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
+    const std::vector<std::string>& enumeration_names) {
   if (remote_) {
-    throw ArrayException("Unable to load all enumerations; Array is remote.");
+    throw ArrayException("Unable to load enumerations; Array is remote.");
   }
 
   if (!is_open_) {
-    throw ArrayException("Cannot load all enumerations; Array is not open");
+    throw ArrayException("Unable to load enumerations; Array is not open.");
   }
 
-  std::vector<shared_ptr<ArraySchema>> schemas;
-  if (latest_only) {
-    schemas.emplace_back(array_schema_latest_);
-  } else {
-    schemas.reserve(array_schemas_all_.size());
-    for (auto& iter : array_schemas_all_) {
-      schemas.emplace_back(iter.second);
+  // Dedupe the requested list of enumeration names
+  std::unordered_set<std::string> deduped;
+  for (auto& enmr_name : enumeration_names) {
+    deduped.insert(enmr_name);
+  }
+
+  // Create a vector of paths to be loaded.
+  std::vector<std::string> paths_to_load;
+  for (auto& enmr_name : deduped) {
+    if (array_schema_latest_->is_enumeration_loaded(enmr_name)) {
+      continue;
     }
+    auto path = array_schema_latest_->get_enumeration_path_name(enmr_name);
+    paths_to_load.push_back(path);
   }
 
-  for (auto& schema : schemas) {
-    array_dir_.load_all_enumerations(schema, get_encryption_key());
+  // Load the enumerations from storage
+  auto loaded = array_dir_.load_enumerations_from_paths(
+      paths_to_load, get_encryption_key());
+
+  // Store the loaded enumerations in the schema
+  for (auto& enmr : loaded) {
+    array_schema_latest_->store_enumeration(enmr);
   }
+
+  // Return the requested list of enumerations
+  std::vector<shared_ptr<const Enumeration>> ret(enumeration_names.size());
+  for (size_t i = 0; i < enumeration_names.size(); i++) {
+    ret[i] = array_schema_latest_->get_enumeration(enumeration_names[i]);
+  }
+  return ret;
+}
+
+void Array::load_all_enumerations() {
+  if (remote_) {
+    throw ArrayException("Unable to load enumerations; Array is remote.");
+  }
+
+  if (!is_open_) {
+    throw ArrayException("Unable to load all enumerations; Array is not open.");
+  }
+  // Load all enumerations, discarding the returned list of loaded enumerations.
+  get_enumerations(array_schema_latest_->get_enumeration_names());
 }
 
 bool Array::is_empty() const {
