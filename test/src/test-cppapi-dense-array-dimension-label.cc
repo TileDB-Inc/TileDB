@@ -34,6 +34,7 @@
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 
@@ -110,7 +111,7 @@ class DenseArrayExample {
       std::vector<double> input_label_data,
       bool error_on_write = false) {
     // Open array for writing.
-    tiledb::Array array{ctx_, array_name_, TILEDB_WRITE};
+    tiledb::Array array = open_array(TILEDB_WRITE);
 
     // Create the subarray.
     tiledb::Subarray subarray{ctx_, array};
@@ -155,7 +156,7 @@ class DenseArrayExample {
       std::vector<uint64_t> input_label_offsets,
       bool error_on_write = false) {
     // Open array for writing.
-    tiledb::Array array{ctx_, array_name_, TILEDB_WRITE};
+    tiledb::Array array = open_array(TILEDB_WRITE);
 
     // Create the subarray.
     tiledb::Subarray subarray{ctx_, array};
@@ -200,7 +201,7 @@ class DenseArrayExample {
       std::vector<double> input_label_data,
       bool error_on_write = false) {
     // Open array for writing.
-    tiledb::Array array{ctx_, array_name_, TILEDB_WRITE};
+    tiledb::Array array = open_array(TILEDB_WRITE);
 
     // Create the subarray.
     tiledb::Subarray subarray{ctx_, array};
@@ -246,7 +247,7 @@ class DenseArrayExample {
       std::vector<uint64_t> input_label_offsets,
       bool error_on_write = false) {
     // Open array for writing.
-    tiledb::Array array{ctx_, array_name_, TILEDB_WRITE};
+    tiledb::Array array = open_array(TILEDB_WRITE);
 
     // Create the subarray.
     tiledb::Subarray subarray{ctx_, array};
@@ -289,7 +290,7 @@ class DenseArrayExample {
       const std::vector<double>& expected_label_data,
       const std::vector<double>& expected_attr_data) {
     // Open array for writing.
-    tiledb::Array array{ctx_, array_name_, TILEDB_READ};
+    tiledb::Array array = open_array(TILEDB_READ);
 
     // Create the subarray.
     tiledb::Subarray subarray{ctx_, array};
@@ -344,7 +345,7 @@ class DenseArrayExample {
       const std::string& expected_attr_data,
       std::vector<uint64_t> expected_attr_offsets) {
     // Open array for writing.
-    tiledb::Array array{ctx_, array_name_, TILEDB_READ};
+    tiledb::Array array = open_array(TILEDB_READ);
 
     // Create the subarray.
     tiledb::Subarray subarray{ctx_, array};
@@ -392,8 +393,8 @@ class DenseArrayExample {
     }
   }
 
-  tiledb::Array open_array() {
-    return tiledb::Array(ctx_, array_name_, TILEDB_WRITE);
+  tiledb::Array open_array(tiledb_query_type_t query_type) {
+    return tiledb::Array(ctx_, array_name_, query_type);
   }
 
  protected:
@@ -487,7 +488,7 @@ TEST_CASE(
   std::vector<double> attr_data{0.5, 1.0, 1.5, 2.0};
 
   // Open array for writing.
-  auto array = array_fixture.open_array();
+  auto array = array_fixture.open_array(TILEDB_WRITE);
 
   // Create the subarray.
   tiledb::Subarray subarray{ctx, array};
@@ -561,4 +562,33 @@ TEST_CASE(
 
   array_fixture.read_and_check_values_var(
       0, 3, label_data, label_offsets, attr_data, attr_offsets);
+}
+
+TEST_CASE(
+    "CPP-API: Check query subarray can be updated with only label ranges set",
+    "[cppapi][query][DimensionLabel]") {
+  // Create and write the array.
+  DenseArrayExample<TILEDB_INCREASING_DATA> array_fixture{};
+  array_fixture.write_by_index(0, 3, {}, {-1.0, 0.0, 0.5, 1.0});
+
+  // Set label ranges on the subarray to be used for updating dimension ranges.
+  tiledb::Array array = array_fixture.open_array(TILEDB_READ);
+  tiledb::Subarray subarray{array_fixture.ctx(), array};
+  tiledb::SubarrayExperimental::add_label_range(
+      array_fixture.ctx(), subarray, "x", -1.0, 1.0);
+
+  tiledb::Subarray expected_subarray(array_fixture.ctx(), array);
+  expected_subarray.add_range(0, 0UL, 3UL);
+
+  // Create the query using only subarray label ranges and no buffers set.
+  tiledb::Query query{array_fixture.ctx(), array};
+  query.set_layout(TILEDB_ROW_MAJOR).set_subarray(subarray);
+
+  // Check the query subarray was updated with expected dimension ranges.
+  CHECK(query.ptr()->query_->subarray()->range_num() == 0);
+  query.submit();
+  CHECK(query.ptr()->query_->subarray()->range_num() == 1);
+  CHECK(
+      query.ptr()->query_->subarray()->ranges_for_dim(0) ==
+      expected_subarray.ptr()->subarray_->ranges_for_dim(0));
 }
