@@ -107,8 +107,7 @@ DenseReader::DenseReader(
         "Cannot initialize reader; Reader cannot process aggregates");
   }
 
-  if (!skip_checks_serialization && !subarray_.has_label_ranges() &&
-      buffers_.empty()) {
+  if (!skip_checks_serialization && buffers_.empty()) {
     throw DenseReaderStatusException(
         "Cannot initialize dense reader; Buffers not set");
   }
