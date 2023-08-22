@@ -176,13 +176,11 @@ Status OrderedWriter::ordered_write() {
   auto type{array_schema_.domain().dimension_ptr(0)->type()};
 
   auto g = [&](auto T) {
-    if constexpr (
-        !std::is_integral_v<decltype(T)> || std::is_same_v<decltype(T), char>) {
-      return Status_WriterError(
-          "Cannot write in ordered layout; Unsupported domain type");
-    } else {
+    if constexpr (tiledb::type::TileDBIntegral<decltype(T)>) {
       return ordered_write<decltype(T)>();
     }
+    return Status_WriterError(
+        "Cannot write in ordered layout; Unsupported domain type");
   };
   return apply_with_type(g, type);
 }

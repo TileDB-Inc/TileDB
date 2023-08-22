@@ -383,13 +383,11 @@ void ArraySchema::check_webp_filter() const {
     }
 
     auto g = [&](auto T) {
-      if constexpr (
-          !std::is_integral_v<decltype(T)> ||
-          std::is_same_v<decltype(T), char>) {
+      if constexpr (tiledb::type::TileDBIntegral<decltype(T)>) {
+        webp->set_extents<decltype(T)>(domain_->tile_extents());
+      } else {
         throw ArraySchemaException(
             "WebP filter requires integral dimensions at index 0, 1");
-      } else {
-        webp->set_extents<decltype(T)>(domain_->tile_extents());
       }
     };
     apply_with_type(g, x_dim->type());

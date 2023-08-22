@@ -213,12 +213,11 @@ void OrderedDimLabelReader::label_read() {
   auto type{index_dim_->type()};
 
   auto g = [&](auto T) {
-    if constexpr (
-        !std::is_integral_v<decltype(T)> || std::is_same_v<decltype(T), char>) {
+    if constexpr (tiledb::type::TileDBIntegral<decltype(T)>) {
+      label_read<decltype(T)>();
+    } else {
       throw OrderedDimLabelReaderStatusException(
           "Cannot read ordered label array; Unsupported domain type");
-    } else {
-      label_read<decltype(T)>();
     }
   };
   apply_with_type(g, type);
@@ -463,8 +462,9 @@ OrderedDimLabelReader::get_array_tile_indexes_for_range(
   auto g = [&](auto T) {
     if constexpr (std::is_same_v<decltype(T), char>) {
       return get_array_tile_indexes_for_range<std::string_view>(f, r);
+    } else if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      return get_array_tile_indexes_for_range<decltype(T)>(f, r);
     }
-    return get_array_tile_indexes_for_range<decltype(T)>(f, r);
   };
   return apply_with_type(g, label_type_);
 }
@@ -744,7 +744,7 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
   auto g = [&](auto T) {
     if constexpr (std::is_same_v<decltype(T), char>) {
       compute_and_copy_range_indexes<IndexType, std::string_view>(dest, r);
-    } else {
+    } else if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
       compute_and_copy_range_indexes<IndexType, decltype(T)>(dest, r);
     }
   };

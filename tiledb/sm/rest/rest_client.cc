@@ -964,11 +964,12 @@ Status RestClient::subarray_to_str(
   std::stringstream ss;
   for (unsigned i = 0; i < subarray_nelts; i++) {
     auto g = [&](auto T) {
-      if constexpr (std::is_same_v<decltype(T), char>) {
+      if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
+        ss << reinterpret_cast<const decltype(T)*>(subarray)[i];
+      } else {
         throw StatusException(Status_RestError(
             "Error converting subarray to string; unhandled datatype."));
       }
-      ss << reinterpret_cast<const decltype(T)*>(subarray)[i];
     };
     apply_with_type(g, coords_type);
 

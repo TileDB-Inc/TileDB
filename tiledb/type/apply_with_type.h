@@ -33,11 +33,21 @@
 #ifndef TILEDB_APPLY_WITH_TYPE_H
 #define TILEDB_APPLY_WITH_TYPE_H
 
+#include <concepts>
 #include "tiledb/sm/enums/datatype.h"
 
 using tiledb::sm::Datatype;
 
 namespace tiledb::type {
+
+template <class T>
+concept TileDBFundamental = std::integral<T> || std::floating_point<T>;
+
+template <class T>
+concept TileDBIntegral = std::integral<T> && !std::is_same_v<T, char>;
+
+template <class T>
+concept TileDBNumeric = TileDBIntegral<T> || std::floating_point<T>;
 
 /**
  * Execute a callback instantiated based on the tiledb Datatype

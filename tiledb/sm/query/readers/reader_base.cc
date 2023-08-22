@@ -1210,13 +1210,15 @@ void ReaderBase::validate_attribute_order(
           array_non_empty_domain,
           non_empty_domains,
           frag_first_array_tile_idx);
-    } else {
+    } else if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
       validate_attribute_order<IndexType, decltype(T)>(
           attribute_name,
           increasing_data,
           array_non_empty_domain,
           non_empty_domains,
           frag_first_array_tile_idx);
+    } else {
+      throw ReaderBaseStatusException("Invalid attribute type");
     }
   };
   apply_with_type(g, attribute_type);

@@ -232,13 +232,11 @@ Status DenseReader::dense_read() {
   auto type{array_schema_.domain().dimension_ptr(0)->type()};
 
   auto g = [&](auto T) {
-    if constexpr (
-        !std::is_integral_v<decltype(T)> || std::is_same_v<decltype(T), char>) {
-      return Status_ReaderError(
-          "Cannot read dense array; Unsupported domain type");
-    } else {
+    if constexpr (tiledb::type::TileDBIntegral<decltype(T)>) {
       return dense_read<decltype(T), OffType>();
     }
+    return Status_ReaderError(
+        "Cannot read dense array; Unsupported domain type");
   };
   return apply_with_type(g, type);
 }

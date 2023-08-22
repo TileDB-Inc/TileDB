@@ -283,12 +283,11 @@ Status CellSlabIter<T>::sanity_check() const {
   auto type = array_schema.domain().dimension_ptr(0)->type();
 
   auto g = [&](auto Arg) {
-    if constexpr (
-        !std::is_integral_v<decltype(Arg)> ||
-        std::is_same_v<decltype(Arg), char>) {
-      assert(false);
+    if constexpr (tiledb::type::TileDBIntegral<decltype(Arg)>) {
+      error = !std::is_same_v<T, decltype(Arg)>;
+    } else {
+      throw std::logic_error("Unsupported datatype");
     }
-    error = !std::is_same_v<T, decltype(Arg)>;
   };
   apply_with_type(g, type);
 
