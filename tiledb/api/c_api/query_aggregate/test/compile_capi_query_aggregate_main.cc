@@ -31,5 +31,14 @@
 
 int main() {
   tiledb_query_get_default_channel(nullptr, nullptr, nullptr);
+  tiledb_create_aggregate_on_field(nullptr, nullptr, nullptr, nullptr, nullptr);
+  tiledb_channel_apply_aggregate(nullptr, nullptr, nullptr, nullptr);
+  (void)tiledb_channel_operator_sum;
+  (void)tiledb_aggregate_count;
+  tiledb_channel_operator_sum_get(nullptr, nullptr);
+  tiledb_aggregate_count_get(nullptr, nullptr);
+  tiledb_aggregate_free(nullptr, nullptr);
+  tiledb_query_channel_free(nullptr, nullptr);
+
   return 0;
 }
