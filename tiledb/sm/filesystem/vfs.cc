@@ -745,7 +745,7 @@ std::vector<URI> VFS::ls_recursive(const URI& parent, int64_t max_paths) const {
   optional<std::vector<directory_entry>> entries;
   std::vector<URI> results;
   // Ensure max_paths is valid for ls_with_sizes.
-  max_paths = std::max(max_paths, -1L);
+  max_paths = std::max(max_paths, static_cast<int64_t>(-1));
 
   if (parent.is_file() || parent.is_memfs()) {
     std::queue<URI> q;

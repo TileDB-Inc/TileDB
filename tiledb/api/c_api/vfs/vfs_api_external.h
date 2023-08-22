@@ -641,7 +641,7 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_ls(
  * The callback function to be applied on every visited object.
  *     The callback should return `0` if the iteration must stop, and `1`
  *     if the iteration must continue. It takes as input the currently visited
- *     path, the length of the currentlv visited path, and user provided
+ *     path, the length of the currently visited path, and user provided
  *     buffer for paths and their offsets in the form of a struct pointer. The
  *     callback returns `-1` upon error. Note that `path` in the callback will
  *     be an **absolute** path.

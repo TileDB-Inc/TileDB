@@ -983,30 +983,50 @@ int ls_recursive_cb(const char* path, size_t path_length, void* data) {
 }
 
 TEST_CASE(
-    "C API: VFS recursive ls list all results", "[capi][vfs][ls-recursive]") {
+    "C API: VFS ls_recursive list all results", "[capi][vfs][ls-recursive]") {
   using namespace tiledb;
-  tiledb_ctx_t* ctx;
-  tiledb_vfs_t* vfs;
-  auto fs_vec = vfs_test_get_fs_vec();
-  REQUIRE(vfs_test_init(fs_vec, &ctx, &vfs).ok());
-
-  for (const auto& fs : fs_vec) {
-    sm::URI uri(fs->temp_dir());
+  Config config;
+#ifndef TILEDB_TESTS_AWS_S3_CONFIG
+  REQUIRE_NOTHROW(config.set("vfs.s3.endpoint_override", "localhost:9999"));
+  REQUIRE_NOTHROW(config.set("vfs.s3.scheme", "https"));
+  REQUIRE_NOTHROW(config.set("vfs.s3.use_virtual_addressing", "false"));
+  REQUIRE_NOTHROW(config.set("vfs.s3.verify_ssl", "false"));
+#endif
+  Context ctx(config);
+  VFS vfs(ctx);
+  auto ctx_c = ctx.ptr().get();
+  auto vfs_c = vfs.ptr().get();
+  std::string fs_prefix =
+      GENERATE("file://" + sm::Posix::current_dir(), "mem://", "s3://");
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<uint64_t> dist(0);
+  sm::URI uri(fs_prefix + "tiledb-" + std::to_string(dist(gen)));
+  DYNAMIC_SECTION("ls_recursive with " << uri.backend_name() << " backend") {
     std::string uri_str = uri.to_string();
-    tiledb_vfs_create_dir(ctx, vfs, uri_str.c_str());
-    std::vector<std::string> expected_paths;
+    if (uri.is_s3()) {
+      if (!ctx.is_supported_fs(TILEDB_S3)) {
+        return;
+      }
+      tiledb_vfs_create_bucket(ctx_c, vfs_c, uri_str.c_str());
+    } else {
+      tiledb_vfs_create_dir(ctx_c, vfs_c, uri_str.c_str());
+    }
 
-    // d1 and d2 contain 10 and 100 files respectively.
+    std::vector<std::string> expected_paths;
+    // d1, d2, and d3 contain 10, 100 and 0 files respectively.
     std::vector<size_t> max_files = {10, 100, 0};
     // Create d1, d2, d3 directories.
     // d3 will not be returned, as it is an empty prefix with no objects.
     for (size_t i = 1; i <= 3; i++) {
       tiledb_vfs_create_dir(
-          ctx, vfs, std::string(uri_str + "d" + std::to_string(i)).c_str());
+          ctx_c,
+          vfs_c,
+          std::string(uri_str + "/d" + std::to_string(i)).c_str());
       for (size_t j = 1; j <= max_files[i - 1]; j++) {
-        auto file = uri_str + "d" + std::to_string(i) + "/test" +
+        auto file = uri_str + "/d" + std::to_string(i) + "/test" +
                     std::to_string(j) + ".txt";
-        tiledb_vfs_touch(ctx, vfs, file.c_str());
+        tiledb_vfs_touch(ctx_c, vfs_c, file.c_str());
         expected_paths.push_back(file);
       }
     }
@@ -1014,9 +1034,9 @@ TEST_CASE(
     std::sort(expected_paths.begin(), expected_paths.end());
     LsRecursiveData ls_data;
 
-    REQUIRE(
+    CHECK(
         tiledb_vfs_ls_recursive(
-            ctx, vfs, uri_str.c_str(), ls_recursive_cb, &ls_data, -1) ==
+            ctx_c, vfs_c, uri_str.c_str(), ls_recursive_cb, &ls_data, -1) ==
         TILEDB_OK);
     auto data_off = ls_data.path_offsets_;
     for (size_t i = 1; i < ls_data.path_offsets_.size(); i++) {
@@ -1027,38 +1047,61 @@ TEST_CASE(
 
     CHECK(static_cast<int64_t>(ls_data.path_offsets_.size() - 1) == 110);
 
-    tiledb_vfs_remove_dir(ctx, vfs, uri_str.c_str());
+    tiledb_vfs_remove_dir(ctx_c, vfs_c, uri_str.c_str());
   }
 }
 
 TEST_CASE(
-    "C API: VFS recursive ls max_paths limits results",
+    "C API: VFS ls_recursive max_paths limits results",
     "[capi][vfs][ls-recursive]") {
   using namespace tiledb;
-  tiledb_ctx_t* ctx;
-  tiledb_vfs_t* vfs;
-  auto fs_vec = vfs_test_get_fs_vec();
-  REQUIRE(vfs_test_init(fs_vec, &ctx, &vfs).ok());
+  Config config;
+#ifndef TILEDB_TESTS_AWS_S3_CONFIG
+  REQUIRE_NOTHROW(config.set("vfs.s3.endpoint_override", "localhost:9999"));
+  REQUIRE_NOTHROW(config.set("vfs.s3.scheme", "https"));
+  REQUIRE_NOTHROW(config.set("vfs.s3.use_virtual_addressing", "false"));
+  REQUIRE_NOTHROW(config.set("vfs.s3.verify_ssl", "false"));
+#endif
+  Context ctx(config);
+  VFS vfs(ctx);
+  auto ctx_c = ctx.ptr().get();
+  auto vfs_c = vfs.ptr().get();
   // Sets max paths returned by recursive ls.
-  int64_t max_paths = GENERATE(10, 50);
+  int64_t max_paths = GENERATE(10, 50, 0);
 
-  for (const auto& fs : fs_vec) {
-    sm::URI uri(fs->temp_dir());
+  std::string fs_prefix =
+      GENERATE("file://" + sm::Posix::current_dir(), "mem://", "s3://");
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<uint64_t> dist(0);
+  sm::URI uri(fs_prefix + "tiledb-" + std::to_string(dist(gen)));
+  DYNAMIC_SECTION(
+      "ls_recursive over " << uri.backend_name() << " backend with "
+                           << max_paths << " max_paths") {
     std::string uri_str = uri.to_string();
-    tiledb_vfs_create_dir(ctx, vfs, uri_str.c_str());
-    std::vector<std::string> expected_paths;
+    if (uri.is_s3()) {
+      if (!ctx.is_supported_fs(TILEDB_S3)) {
+        return;
+      }
+      tiledb_vfs_create_bucket(ctx_c, vfs_c, uri_str.c_str());
+    } else {
+      tiledb_vfs_create_dir(ctx_c, vfs_c, uri_str.c_str());
+    }
 
-    // d1 and d2 contain 10 and 100 files respectively.
+    std::vector<std::string> expected_paths;
+    // d1, d2, and d3 contain 10, 100 and 0 files respectively.
     std::vector<size_t> max_files = {10, 100, 0};
     // Create d1, d2, d3 directories.
     // d3 will not be returned, as it is an empty prefix with no objects.
     for (size_t i = 1; i <= 3; i++) {
       tiledb_vfs_create_dir(
-          ctx, vfs, std::string(uri_str + "d" + std::to_string(i)).c_str());
+          ctx_c,
+          vfs_c,
+          std::string(uri_str + "/d" + std::to_string(i)).c_str());
       for (size_t j = 1; j <= max_files[i - 1]; j++) {
-        auto file = uri_str + "d" + std::to_string(i) + "/test" +
+        auto file = uri_str + "/d" + std::to_string(i) + "/test" +
                     std::to_string(j) + ".txt";
-        tiledb_vfs_touch(ctx, vfs, file.c_str());
+        tiledb_vfs_touch(ctx_c, vfs_c, file.c_str());
         expected_paths.push_back(file);
       }
     }
@@ -1067,10 +1110,14 @@ TEST_CASE(
     expected_paths.resize(max_paths);
     LsRecursiveData ls_data;
 
-    REQUIRE(
+    CHECK(
         tiledb_vfs_ls_recursive(
-            ctx, vfs, uri_str.c_str(), ls_recursive_cb, &ls_data, max_paths) ==
-        TILEDB_OK);
+            ctx_c,
+            vfs_c,
+            uri_str.c_str(),
+            ls_recursive_cb,
+            &ls_data,
+            max_paths) == TILEDB_OK);
     auto data_off = ls_data.path_offsets_;
     for (size_t i = 1; i < ls_data.path_offsets_.size(); i++) {
       std::string path(
@@ -1078,8 +1125,13 @@ TEST_CASE(
       CHECK_THAT(expected_paths, Catch::Matchers::VectorContains(path));
     }
 
-    CHECK(static_cast<int64_t>(ls_data.path_offsets_.size() - 1) == max_paths);
+    if (max_paths == 0) {
+      CHECK(static_cast<int64_t>(ls_data.path_offsets_.size()) == max_paths);
+    } else {
+      CHECK(
+          static_cast<int64_t>(ls_data.path_offsets_.size() - 1) == max_paths);
+    }
 
-    tiledb_vfs_remove_dir(ctx, vfs, uri_str.c_str());
+    tiledb_vfs_remove_dir(ctx_c, vfs_c, uri_str.c_str());
   }
 }

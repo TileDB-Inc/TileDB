@@ -504,31 +504,44 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "C++ API: VFS recursive ls list all results",
+    "C++ API: VFS ls_recursive list all results",
     "[cppapi][vfs][ls-recursive]") {
   using namespace tiledb;
   Config config;
-  tiledb_ctx_t* ctx_c;
-  tiledb_vfs_t* vfs_c;
-  auto fs_vec = test::vfs_test_get_fs_vec();
-  REQUIRE(test::vfs_test_init(fs_vec, &ctx_c, &vfs_c).ok());
-
-  Context ctx(ctx_c, false);
+#ifndef TILEDB_TESTS_AWS_S3_CONFIG
+  REQUIRE_NOTHROW(config.set("vfs.s3.endpoint_override", "localhost:9999"));
+  REQUIRE_NOTHROW(config.set("vfs.s3.scheme", "https"));
+  REQUIRE_NOTHROW(config.set("vfs.s3.use_virtual_addressing", "false"));
+  REQUIRE_NOTHROW(config.set("vfs.s3.verify_ssl", "false"));
+#endif
+  Context ctx(config);
   VFS vfs(ctx);
-  for (const auto& fs : fs_vec) {
-    sm::URI uri(fs->temp_dir());
+  std::string fs_prefix =
+      GENERATE("file://" + sm::Posix::current_dir(), "mem://", "s3://");
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<uint64_t> dist(0);
+  sm::URI uri(fs_prefix + "tiledb-" + std::to_string(dist(gen)));
+  DYNAMIC_SECTION("ls_recursive with " << uri.backend_name() << " backend") {
     auto uri_str = uri.to_string();
-    vfs.create_dir(uri_str);
-    std::vector<std::string> expected_paths;
+    if (uri.backend_name() == "s3") {
+      if (!ctx.is_supported_fs(TILEDB_S3)) {
+        return;
+      }
+      vfs.create_bucket(uri_str);
+    } else {
+      vfs.create_dir(uri_str);
+    }
 
-    // d1 and d2 contain 10 and 100 files respectively.
+    std::vector<std::string> expected_paths;
+    // d1, d2, and d3 contain 10, 100 and 0 files respectively.
     std::vector<size_t> max_files = {10, 100, 0};
     // Create d1, d2, d3 directories.
     // d3 will not be returned, as it is an empty prefix with no objects.
     for (size_t i = 1; i <= 3; i++) {
-      vfs.create_dir(uri_str + "d" + std::to_string(i));
+      vfs.create_dir(uri_str + "/d" + std::to_string(i));
       for (size_t j = 1; j <= max_files[i - 1]; j++) {
-        auto file = uri_str + "d" + std::to_string(i) + "/test" +
+        auto file = uri_str + "/d" + std::to_string(i) + "/test" +
                     std::to_string(j) + ".txt";
         vfs.touch(file);
         expected_paths.push_back(file);
@@ -547,33 +560,49 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "C++ API: VFS recursive ls max_paths limits results",
+    "C++ API: VFS ls_recursive max_paths limits results",
     "[cppapi][vfs][ls-recursive]") {
   using namespace tiledb;
   Config config;
-  tiledb_ctx_t* ctx_c;
-  tiledb_vfs_t* vfs_c;
-  auto fs_vec = test::vfs_test_get_fs_vec();
-  REQUIRE(test::vfs_test_init(fs_vec, &ctx_c, &vfs_c).ok());
+#ifndef TILEDB_TESTS_AWS_S3_CONFIG
+  REQUIRE_NOTHROW(config.set("vfs.s3.endpoint_override", "localhost:9999"));
+  REQUIRE_NOTHROW(config.set("vfs.s3.scheme", "https"));
+  REQUIRE_NOTHROW(config.set("vfs.s3.use_virtual_addressing", "false"));
+  REQUIRE_NOTHROW(config.set("vfs.s3.verify_ssl", "false"));
+#endif
+  Context ctx(config);
+  VFS vfs(ctx);
+  std::string fs_prefix =
+      GENERATE("file://" + sm::Posix::current_dir(), "mem://", "s3://");
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<uint64_t> dist(0);
+  sm::URI uri(fs_prefix + "tiledb-" + std::to_string(dist(gen)));
+
   // Sets max paths returned by recursive ls.
   int64_t max_paths = GENERATE(10, 50, 0);
-
-  Context ctx(ctx_c, false);
-  VFS vfs(ctx);
-  for (const auto& fs : fs_vec) {
-    sm::URI uri(fs->temp_dir());
+  DYNAMIC_SECTION(
+      "ls_recursive over " << uri.backend_name() << " with " << max_paths
+                           << " max_paths") {
     auto uri_str = uri.to_string();
-    vfs.create_dir(uri_str);
+    if (uri.backend_name() == "s3") {
+      if (!ctx.is_supported_fs(TILEDB_S3)) {
+        return;
+      }
+      vfs.create_bucket(uri_str);
+    } else {
+      vfs.create_dir(uri_str);
+    }
     std::vector<std::string> expected_paths;
 
-    // d1 and d2 contain 10 and 100 files respectively.
+    // d1, d2, and d3 contain 10, 100 and 0 files respectively.
     std::vector<size_t> max_files = {10, 100, 0};
     // Create d1, d2, d3 directories.
     // d3 will not be returned, as it is an empty prefix with no objects.
     for (size_t i = 1; i <= 3; i++) {
-      vfs.create_dir(uri_str + "d" + std::to_string(i));
+      vfs.create_dir(uri_str + "/d" + std::to_string(i));
       for (size_t j = 1; j <= max_files[i - 1]; j++) {
-        auto file = uri_str + "d" + std::to_string(i) + "/test" +
+        auto file = uri_str + "/d" + std::to_string(i) + "/test" +
                     std::to_string(j) + ".txt";
         vfs.touch(file);
         expected_paths.push_back(file);
@@ -589,26 +618,5 @@ TEST_CASE(
     }
     CHECK(static_cast<int64_t>(results.size()) == max_paths);
     vfs.remove_dir(uri_str);
-  }
-}
-
-TEST_CASE(
-    "C++ API: VFS recursive ls unsupported backends",
-    "[cppapi][vfs][ls-recursive]") {
-  tiledb::Context ctx;
-  tiledb::VFS vfs(ctx);
-  // Recursive ls is currently unsupported over Azure, GCS, and HDFS backends.
-  tiledb::sm::URI uri{GENERATE("azure://path/", "gcs://path/", "hdfs://path/")};
-  DYNAMIC_SECTION(
-      "Test recursive ls usupported backend over " << uri.backend_name()) {
-    tiledb_filesystem_t fs;
-    tiledb_filesystem_from_str(uri.backend_name().c_str(), &fs);
-    if (!ctx.is_supported_fs(fs)) {
-      return;
-    }
-    REQUIRE_THROWS_WITH(
-        vfs.ls_recursive(uri.to_string()),
-        "VFS: Recursive ls over " + uri.backend_name() +
-            " storage backend is not supported.");
   }
 }
