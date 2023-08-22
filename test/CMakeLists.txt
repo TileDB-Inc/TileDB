@@ -123,6 +123,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-backwards_compat.cc
   src/unit-bufferlist.cc
   src/unit-capi-any.cc
+  src/unit-capi-as_built.cc
   src/unit-capi-array.cc
   src/unit-capi-array_schema.cc
   src/unit-capi-async.cc
@@ -304,6 +305,9 @@ target_link_libraries(tiledb_unit
 )
 
 target_link_libraries(tiledb_unit PRIVATE $<BUILD_INTERFACE:common>)
+target_include_directories(tiledb_unit PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
+)
 
 # need to properly link the signal chaining library for catch to work with the jni hdfs interface
 # see: https://docs.oracle.com/javase/9/vm/signal-chaining.htm
@@ -314,9 +318,6 @@ if (TILEDB_HDFS)
       LibJVM::libjvm
       LibJVM::libjsig
   )
-  target_include_directories(tiledb_unit PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
-    )
 endif()
 
 if (TILEDB_TESTS_AWS_S3_CONFIG)

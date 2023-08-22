@@ -30,20 +30,4 @@ include(common NO_POLICY_SCOPE)
 
 add_library(as_built INTERFACE)
 
-if (TILEDB_AZURE)
-  target_compile_definitions(as_built INTERFACE TILEDB_AZURE)
-endif()
-
-if (TILEDB_GCS)
-  target_compile_definitions(as_built INTERFACE TILEDB_GCS)
-endif()
-
-if (TILEDB_S3)
-  target_compile_definitions(as_built INTERFACE TILEDB_S3)
-endif()
-
-if (TILEDB_SERIALIZATION)
-  target_compile_definitions(as_built INTERFACE TILEDB_SERIALIZATION)
-endif()
-
 add_test_subdirectory()
