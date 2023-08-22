@@ -728,9 +728,6 @@ class Query {
   /** Returns true if the output field is an aggregate. */
   bool is_aggregate(std::string output_field_name) const;
 
-  /** Returns true if the query has any aggregate operations set up. */
-  bool has_aggregates() const;
-
   /**
    * Adds an aggregator to the default channel.
    *

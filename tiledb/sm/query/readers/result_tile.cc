@@ -1235,13 +1235,14 @@ void ResultTile::set_compute_results_func() {
         compute_results_count_sparse_uint64_t_func_[d] =
             compute_results_count_sparse_string<uint64_t>;
         return;
+      } else if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+        compute_results_dense_func_[d] = compute_results_dense<decltype(T)>;
+        compute_results_sparse_func_[d] = compute_results_sparse<decltype(T)>;
+        compute_results_count_sparse_uint8_t_func_[d] =
+            compute_results_count_sparse<uint8_t, decltype(T)>;
+        compute_results_count_sparse_uint64_t_func_[d] =
+            compute_results_count_sparse<uint64_t, decltype(T)>;
       }
-      compute_results_dense_func_[d] = compute_results_dense<decltype(T)>;
-      compute_results_sparse_func_[d] = compute_results_sparse<decltype(T)>;
-      compute_results_count_sparse_uint8_t_func_[d] =
-          compute_results_count_sparse<uint8_t, decltype(T)>;
-      compute_results_count_sparse_uint64_t_func_[d] =
-          compute_results_count_sparse<uint64_t, decltype(T)>;
     };
     apply_with_type(g, dim->type());
   }

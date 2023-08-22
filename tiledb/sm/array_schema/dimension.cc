@@ -1384,10 +1384,14 @@ Status Dimension::set_tile_extent(const ByteVecValue& tile_extent) {
 
 Status Dimension::set_null_tile_extent_to_range() {
   auto g = [&](auto T) {
-    if constexpr (std::is_same_v<decltype(T), char>) {
-      return Status::Ok();  // Do nothing for strings
+    if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
+      return set_null_tile_extent_to_range<decltype(T)>();
+    } else if constexpr (std::is_same_v<decltype(T), char>) {
+      return Status::Ok();
     }
-    return set_null_tile_extent_to_range<decltype(T)>();
+    return LOG_STATUS(
+        Status_DimensionError("Cannot set null tile extent to domain range; "
+                              "Invalid dimension domain type"));
   };
   return apply_with_type(g, type_);
 }
@@ -1435,12 +1439,25 @@ Status Dimension::set_null_tile_extent_to_range() {
 /* ********************************* */
 
 Status Dimension::check_domain() const {
-  auto g = [&](auto T) { return check_domain<decltype(T)>(); };
+  auto g = [&](auto T) {
+    if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
+      return check_domain<decltype(T)>();
+    }
+    return LOG_STATUS(Status_DimensionError(
+        "Domain check failed; Invalid dimension domain type"));
+  };
   return apply_with_type(g, type_);
 }
 
 Status Dimension::check_tile_extent() const {
-  auto g = [&](auto T) { return check_tile_extent<decltype(T)>(); };
+  auto g = [&](auto T) {
+    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      return check_tile_extent<decltype(T)>();
+    }
+    return LOG_STATUS(Status_DimensionError(
+        "Tile extent check failed on dimension '" + name() +
+        "'; Invalid dimension domain type"));
+  };
   return apply_with_type(g, type_);
 }
 
@@ -1567,36 +1584,50 @@ std::string Dimension::tile_extent_str() const {
   }
 
   auto g = [&](auto T) {
-    if constexpr (std::is_same_v<decltype(T), char>) {
-      // Not supported domain type
-      assert(false);
-      return std::string("");
+    if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
+      auto val = reinterpret_cast<const decltype(T)*>(tile_extent_.data());
+      ss << *val;
+      return ss.str();
     }
-    auto val = reinterpret_cast<const decltype(T)*>(tile_extent_.data());
-    ss << *val;
-    return ss.str();
+    throw std::logic_error(
+        "Datatype::" + datatype_str(type_) + " not supported");
+    return std::string("");  // for return type deduction purposes
   };
   return apply_with_type(g, type_);
 }
 
 void Dimension::set_crop_range_func() {
-  auto g = [&](auto T) { crop_range_func_ = crop_range<decltype(T)>; };
+  auto g = [&](auto T) {
+    if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
+      crop_range_func_ = crop_range<decltype(T)>;
+    }
+  };
   apply_with_type(g, type_);
 }
 
 void Dimension::set_domain_range_func() {
-  auto g = [&](auto T) { domain_range_func_ = domain_range<decltype(T)>; };
+  auto g = [&](auto T) {
+    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      domain_range_func_ = domain_range<decltype(T)>;
+    }
+  };
   apply_with_type(g, type_);
 }
 
 void Dimension::set_ceil_to_tile_func() {
-  auto g = [&](auto T) { ceil_to_tile_func_ = ceil_to_tile<decltype(T)>; };
+  auto g = [&](auto T) {
+    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      ceil_to_tile_func_ = ceil_to_tile<decltype(T)>;
+    }
+  };
   apply_with_type(g, type_);
 }
 
 void Dimension::set_coincides_with_tiles_func() {
   auto g = [&](auto T) {
-    coincides_with_tiles_func_ = coincides_with_tiles<decltype(T)>;
+    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      coincides_with_tiles_func_ = coincides_with_tiles<decltype(T)>;
+    }
   };
   apply_with_type(g, type_);
 }
@@ -1604,7 +1635,11 @@ void Dimension::set_coincides_with_tiles_func() {
 void Dimension::set_compute_mbr_func() {
   if (!var_size()) {  // Fixed-sized
     compute_mbr_var_func_ = nullptr;
-    auto g = [&](auto T) { compute_mbr_func_ = compute_mbr<decltype(T)>; };
+    auto g = [&](auto T) {
+      if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
+        compute_mbr_func_ = compute_mbr<decltype(T)>;
+      }
+    };
     apply_with_type(g, type_);
   } else {  // Var-sized
     assert(type_ == Datatype::STRING_ASCII);
@@ -1614,22 +1649,38 @@ void Dimension::set_compute_mbr_func() {
 }
 
 void Dimension::set_expand_range_func() {
-  auto g = [&](auto T) { expand_range_func_ = expand_range<decltype(T)>; };
+  auto g = [&](auto T) {
+    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      expand_range_func_ = expand_range<decltype(T)>;
+    }
+  };
   apply_with_type(g, type_);
 }
 
 void Dimension::set_expand_range_v_func() {
-  auto g = [&](auto T) { expand_range_v_func_ = expand_range_v<decltype(T)>; };
+  auto g = [&](auto T) {
+    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      expand_range_v_func_ = expand_range_v<decltype(T)>;
+    }
+  };
   apply_with_type(g, type_);
 }
 
 void Dimension::set_expand_to_tile_func() {
-  auto g = [&](auto T) { expand_to_tile_func_ = expand_to_tile<decltype(T)>; };
+  auto g = [&](auto T) {
+    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      expand_to_tile_func_ = expand_to_tile<decltype(T)>;
+    }
+  };
   apply_with_type(g, type_);
 }
 
 void Dimension::set_oob_func() {
-  auto g = [&](auto T) { oob_func_ = oob<decltype(T)>; };
+  auto g = [&](auto T) {
+    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      oob_func_ = oob<decltype(T)>;
+    }
+  };
   apply_with_type(g, type_);
 }
 
@@ -1638,7 +1689,9 @@ void Dimension::set_covered_func() {
     if constexpr (std::is_same_v<decltype(T), char>) {
       assert(var_size());
     }
-    covered_func_ = covered<decltype(T)>;
+    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      covered_func_ = covered<decltype(T)>;
+    }
   };
   apply_with_type(g, type_);
 }
@@ -1648,7 +1701,9 @@ void Dimension::set_overlap_func() {
     if constexpr (std::is_same_v<decltype(T), char>) {
       assert(var_size());
     }
-    overlap_func_ = overlap<decltype(T)>;
+    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      overlap_func_ = overlap<decltype(T)>;
+    }
   };
   apply_with_type(g, type_);
 }
@@ -1658,7 +1713,9 @@ void Dimension::set_overlap_ratio_func() {
     if constexpr (std::is_same_v<decltype(T), char>) {
       assert(var_size());
     }
-    overlap_ratio_func_ = overlap_ratio<decltype(T)>;
+    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      overlap_ratio_func_ = overlap_ratio<decltype(T)>;
+    }
   };
   apply_with_type(g, type_);
 }
@@ -1668,7 +1725,9 @@ void Dimension::set_relevant_ranges_func() {
     if constexpr (std::is_same_v<decltype(T), char>) {
       assert(var_size());
     }
-    relevant_ranges_func_ = relevant_ranges<decltype(T)>;
+    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      relevant_ranges_func_ = relevant_ranges<decltype(T)>;
+    }
   };
   apply_with_type(g, type_);
 }
@@ -1678,13 +1737,19 @@ void Dimension::set_covered_vec_func() {
     if constexpr (std::is_same_v<decltype(T), char>) {
       assert(var_size());
     }
-    covered_vec_func_ = covered_vec<decltype(T)>;
+    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      covered_vec_func_ = covered_vec<decltype(T)>;
+    }
   };
   apply_with_type(g, type_);
 }
 
 void Dimension::set_split_range_func() {
-  auto g = [&](auto T) { split_range_func_ = split_range<decltype(T)>; };
+  auto g = [&](auto T) {
+    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      split_range_func_ = split_range<decltype(T)>;
+    }
+  };
   apply_with_type(g, type_);
 }
 
@@ -1693,32 +1758,46 @@ void Dimension::set_splitting_value_func() {
     if constexpr (std::is_same_v<decltype(T), char>) {
       assert(var_size());
     }
-    splitting_value_func_ = splitting_value<decltype(T)>;
+    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      splitting_value_func_ = splitting_value<decltype(T)>;
+    }
   };
   apply_with_type(g, type_);
 }
 
 void Dimension::set_tile_num_func() {
-  auto g = [&](auto T) { tile_num_func_ = tile_num<decltype(T)>; };
+  auto g = [&](auto T) {
+    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      tile_num_func_ = tile_num<decltype(T)>;
+    }
+  };
   apply_with_type(g, type_);
 }
 
 void Dimension::set_map_to_uint64_2_func() {
   auto g = [&](auto T) {
-    map_to_uint64_2_func_ = map_to_uint64_2<decltype(T)>;
+    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      map_to_uint64_2_func_ = map_to_uint64_2<decltype(T)>;
+    }
   };
   apply_with_type(g, type_);
 }
 
 void Dimension::set_map_from_uint64_func() {
   auto g = [&](auto T) {
-    map_from_uint64_func_ = map_from_uint64<decltype(T)>;
+    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      map_from_uint64_func_ = map_from_uint64<decltype(T)>;
+    }
   };
   apply_with_type(g, type_);
 }
 
 void Dimension::set_smaller_than_func() {
-  auto g = [&](auto T) { smaller_than_func_ = smaller_than<decltype(T)>; };
+  auto g = [&](auto T) {
+    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      smaller_than_func_ = smaller_than<decltype(T)>;
+    }
+  };
   apply_with_type(g, type_);
 }
 
