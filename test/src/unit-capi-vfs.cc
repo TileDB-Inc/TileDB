@@ -996,8 +996,13 @@ TEST_CASE(
   VFS vfs(ctx);
   auto ctx_c = ctx.ptr().get();
   auto vfs_c = vfs.ptr().get();
+#ifdef _WIN32
+  std::string fs_prefix =
+      GENERATE("file://" + sm::Win::current_dir(), "mem://", "s3://");
+#else
   std::string fs_prefix =
       GENERATE("file://" + sm::Posix::current_dir(), "mem://", "s3://");
+#endif
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_int_distribution<uint64_t> dist(0);
@@ -1069,8 +1074,13 @@ TEST_CASE(
   // Sets max paths returned by recursive ls.
   int64_t max_paths = GENERATE(10, 50, 0);
 
+#ifdef _WIN32
+  std::string fs_prefix =
+      GENERATE("file://" + sm::Win::current_dir(), "mem://", "s3://");
+#else
   std::string fs_prefix =
       GENERATE("file://" + sm::Posix::current_dir(), "mem://", "s3://");
+#endif
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_int_distribution<uint64_t> dist(0);

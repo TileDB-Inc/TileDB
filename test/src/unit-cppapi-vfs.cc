@@ -516,8 +516,13 @@ TEST_CASE(
 #endif
   Context ctx(config);
   VFS vfs(ctx);
+#ifdef _WIN32
+  std::string fs_prefix =
+      GENERATE("file://" + sm::Win::current_dir(), "mem://", "s3://");
+#else
   std::string fs_prefix =
       GENERATE("file://" + sm::Posix::current_dir(), "mem://", "s3://");
+#endif
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_int_distribution<uint64_t> dist(0);
@@ -572,8 +577,13 @@ TEST_CASE(
 #endif
   Context ctx(config);
   VFS vfs(ctx);
+#ifdef _WIN32
+  std::string fs_prefix =
+      GENERATE("file://" + sm::Win::current_dir(), "mem://", "s3://");
+#else
   std::string fs_prefix =
       GENERATE("file://" + sm::Posix::current_dir(), "mem://", "s3://");
+#endif
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_int_distribution<uint64_t> dist(0);
