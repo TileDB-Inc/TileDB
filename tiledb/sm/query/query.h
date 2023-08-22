@@ -946,7 +946,7 @@ class Query {
    * The query will only query dimension labels if all the following are true:
    * 1. At most one dimension buffer is set.
    * 2. No attribute buffers are set.
-   * 3. At least one label buffer is set.
+   * 3. At least one label buffer or subarray label range is set.
    */
   bool only_dim_label_query() const;
 
