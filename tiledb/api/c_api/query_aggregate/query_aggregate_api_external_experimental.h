@@ -49,41 +49,45 @@ typedef struct tiledb_channel_operation_handle_t tiledb_channel_operation_t;
 
 typedef struct tiledb_channel_operator_handle_t tiledb_channel_operator_t;
 
-/**
- * Create a SUM channel operator.
- * **Example:**
- *
- * @code{.c}
- * tiledb_channel_operator_t *op_sum;
- * tiledb_channel_create_operator_sum(ctx, &op_sum);
- * tiledb_channel_operation_t* sum_A;
- * tiledb_channel_create_operation_field(ctx, query, op_sum, "A", &sum_A);
- * @endcode
- *
- * @param ctx The TileDB context
- * @param operator The operator handle to be allocated
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_channel_create_operator_sum(
-    tiledb_ctx_t* ctx, tiledb_channel_operator_t** op) TILEDB_NOEXCEPT;
+TILEDB_EXPORT extern const tiledb_channel_operator_t*
+    tiledb_channel_operator_sum;
+
+TILEDB_EXPORT extern const tiledb_channel_operation_t* tiledb_aggregate_count;
 
 /**
- * Create a COUNT channel operator.
+ * Helper function to access the constant SUM channel operator handle
  * **Example:**
  *
  * @code{.c}
- * tiledb_channel_operator_t *op_count;
- * tiledb_channel_create_operator_count(ctx, &op_count);
- * tiledb_channel_operation_t* count_A;
- * tiledb_channel_create_operation_field(ctx, query, op_count, "A", &count_A);
+ * tiledb_channel_operator_t *operator_sum;
+ * tiledb_channel_operator_sum_get(ctx, &operator_sum);
+ * tiledb_channel_operation_t* sum_A;
+ * tiledb_create_aggregate_on_field(ctx, query, operator_sum, "A", sum_A);
  * @endcode
  *
  * @param ctx The TileDB context
- * @param operator The operator handle to be allocated
+ * @param operator The operator handle to be retrieved
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_channel_create_operator_count(
-    tiledb_ctx_t* ctx, tiledb_channel_operator_t** op) TILEDB_NOEXCEPT;
+TILEDB_EXPORT int32_t tiledb_channel_operator_sum_get(
+    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) TILEDB_NOEXCEPT;
+
+/**
+ * Helper function to acces the constant COUNT aggregate operation handle
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_channel_operation_t* count_aggregate;
+ * tiledb_aggregate_count_get(ctx, &count_aggregate);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param operation The operation handle to be retrieved
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_aggregate_count_get(
+    tiledb_ctx_t* ctx,
+    const tiledb_channel_operation_t** operation) TILEDB_NOEXCEPT;
 
 /**
  * Gets the default channel of the query. The default channel consists of all
@@ -111,7 +115,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_default_channel(
  *
  * @code{.c}
  * tiledb_channel_operation_t* sum_A;
- * tiledb_channel_create_operation_field(ctx, query, operator, "A",
+ * tiledb_create_aggregate_on_field(ctx, query, tiledb_aggregate_sum, "A",
  * &sum_A);
  * @endcode
  *
@@ -122,7 +126,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_default_channel(
  * @param operation The operation handle to be allocated
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_channel_create_operation_field(
+TILEDB_EXPORT int32_t tiledb_create_aggregate_on_field(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const tiledb_channel_operator_t* op,
@@ -136,7 +140,7 @@ TILEDB_EXPORT int32_t tiledb_channel_create_operation_field(
  * **Example:**
  *
  * @code{.c}
- * tiledb_channel_add_aggregate(ctx, default_channel, "sumA", sum_A);
+ * tiledb_channel_apply_aggregate(ctx, default_channel, "sumA", sum_A);
  * @endcode
  *
  * @param ctx The TileDB context
@@ -146,11 +150,11 @@ TILEDB_EXPORT int32_t tiledb_channel_create_operation_field(
  * @param operation The operation to be applied
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_channel_add_aggregate(
+TILEDB_EXPORT int32_t tiledb_channel_apply_aggregate(
     tiledb_ctx_t* ctx,
     tiledb_query_channel_t* channel,
     const char* output_field_name,
-    tiledb_channel_operation_t* operation) TILEDB_NOEXCEPT;
+    const tiledb_channel_operation_t* operation) TILEDB_NOEXCEPT;
 
 /**
  * Frees the resources associated with a TileDB channel operation object.
@@ -158,15 +162,14 @@ TILEDB_EXPORT int32_t tiledb_channel_add_aggregate(
  * **Example:**
  *
  * @code{.c}
- * tiledb_channel_operation *op;
- * tiledb_channel_create_operation_field(..., &op);
- * tiledb_channel_operation_free(ctx, &op);
+ * tiledb_channel_operation *(..., &op);
+ * tiledb_aggregate_free(ctx, &op);
  * @endcode
  *
  * @param ctx A TileDB context
  * @param op A TileDB channel operation handle
  */
-TILEDB_EXPORT capi_return_t tiledb_channel_operation_free(
+TILEDB_EXPORT capi_return_t tiledb_aggregate_free(
     tiledb_ctx_t* ctx, tiledb_channel_operation_t** op) TILEDB_NOEXCEPT;
 
 /**
@@ -185,23 +188,6 @@ TILEDB_EXPORT capi_return_t tiledb_channel_operation_free(
  */
 TILEDB_EXPORT capi_return_t tiledb_query_channel_free(
     tiledb_ctx_t* ctx, tiledb_query_channel_t** channel) TILEDB_NOEXCEPT;
-
-/**
- * Frees the resources associated with a TileDB channel operator object.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_channel_operator_t *op_sum;
- * tiledb_channel_create_operator_sum(ctx, query, &op_sum);
- * tiledb_channel_operator_free(&op_sum);
- * @endcode
- *
- * @param ctx A TileDB context
- * @param op A TileDB channel operator handle
- */
-TILEDB_EXPORT capi_return_t tiledb_channel_operator_free(
-    tiledb_ctx_t* ctx, tiledb_channel_operator_t** op) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }

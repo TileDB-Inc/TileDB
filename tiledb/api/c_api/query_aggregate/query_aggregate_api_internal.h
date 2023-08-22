@@ -71,7 +71,7 @@ struct tiledb_channel_operation_handle_t
       : aggregator_{ag} {
   }
 
-  [[nodiscard]] inline shared_ptr<tiledb::sm::IAggregator> aggregator() {
+  [[nodiscard]] inline shared_ptr<tiledb::sm::IAggregator> aggregator() const {
     return aggregator_;
   }
 };
@@ -101,7 +101,8 @@ struct tiledb_query_channel_handle_t
   }
 
   inline void add_aggregate(
-      const char* output_field, tiledb_channel_operation_handle_t* operation) {
+      const char* output_field,
+      const tiledb_channel_operation_handle_t* operation) {
     // Add the aggregator the the default channel as this is the only channel
     // type we currently support
     query_->add_aggregator_to_default_channel(
