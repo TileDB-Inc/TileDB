@@ -350,7 +350,7 @@ TEST_CASE(
   values.reserve(num_cells);
   uint64_t var_size = 0;
   for (uint64_t i = 0; i < num_cells; i++) {
-    values.emplace_back(rand() % num_strings);
+    values.emplace_back(static_cast<int>(rand() % num_strings));
     var_size += strings[values.back()].size();
   }
 
