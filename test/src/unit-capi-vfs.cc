@@ -968,10 +968,11 @@ TEST_CASE_METHOD(VFSFx, "C API: Test VFS parallel I/O", "[capi][vfs]") {
 
 struct LsRecursiveData {
   std::string path_data_;
-  std::vector<uint64_t> path_offsets_;
+  std::vector<uint64_t> path_offsets_, file_sizes_;
 };
 
-int ls_recursive_cb(const char* path, size_t path_length, void* data) {
+int ls_recursive_cb(
+    const char* path, size_t path_length, uint64_t file_size, void* data) {
   auto ls_data = static_cast<LsRecursiveData*>(data);
   ls_data->path_data_.append(path, path_length);
   // Offsets should start at 0.
@@ -979,6 +980,7 @@ int ls_recursive_cb(const char* path, size_t path_length, void* data) {
     ls_data->path_offsets_.push_back(0);
   }
   ls_data->path_offsets_.push_back(ls_data->path_data_.size());
+  ls_data->file_sizes_.push_back(file_size);
   return 1;
 }
 
@@ -1018,7 +1020,7 @@ TEST_CASE(
       tiledb_vfs_create_dir(ctx_c, vfs_c, uri_str.c_str());
     }
 
-    std::vector<std::string> expected_paths;
+    std::vector<std::pair<std::string, uint64_t>> expected_results;
     // d1, d2, and d3 contain 10, 100 and 0 files respectively.
     std::vector<size_t> max_files = {10, 100, 0};
     // Create d1, d2, d3 directories.
@@ -1032,11 +1034,28 @@ TEST_CASE(
         auto file = uri_str + "/d" + std::to_string(i) + "/test" +
                     std::to_string(j) + ".txt";
         tiledb_vfs_touch(ctx_c, vfs_c, file.c_str());
-        expected_paths.push_back(file);
+
+        // Write some data to test file sizes are correct.
+        tiledb_vfs_fh_t* fh;
+        CHECK(
+            tiledb_vfs_open(
+                ctx.ptr().get(),
+                vfs.ptr().get(),
+                file.c_str(),
+                TILEDB_VFS_WRITE,
+                &fh) == TILEDB_OK);
+        std::string data("a", j);
+        CHECK(
+            tiledb_vfs_write(ctx.ptr().get(), fh, data.data(), data.size()) ==
+            TILEDB_OK);
+        tiledb_vfs_close(ctx.ptr().get(), fh);
+        tiledb_vfs_fh_free(&fh);
+
+        expected_results.emplace_back(file, j);
       }
     }
     // Sort expected vector to match VFS::ls sorted output.
-    std::sort(expected_paths.begin(), expected_paths.end());
+    std::sort(expected_results.begin(), expected_results.end());
     LsRecursiveData ls_data;
 
     CHECK(
@@ -1047,9 +1066,10 @@ TEST_CASE(
     for (size_t i = 1; i < ls_data.path_offsets_.size(); i++) {
       std::string path(
           ls_data.path_data_, data_off[i - 1], data_off[i] - data_off[i - 1]);
-      CHECK_THAT(expected_paths, Catch::Matchers::VectorContains(path));
+      CHECK(
+          expected_results[i - 1] ==
+          std::make_pair(path, ls_data.file_sizes_[i - 1]));
     }
-
     CHECK(static_cast<int64_t>(ls_data.path_offsets_.size() - 1) == 110);
 
     tiledb_vfs_remove_dir(ctx_c, vfs_c, uri_str.c_str());
@@ -1098,7 +1118,7 @@ TEST_CASE(
       tiledb_vfs_create_dir(ctx_c, vfs_c, uri_str.c_str());
     }
 
-    std::vector<std::string> expected_paths;
+    std::vector<std::pair<std::string, uint64_t>> expected_results;
     // d1, d2, and d3 contain 10, 100 and 0 files respectively.
     std::vector<size_t> max_files = {10, 100, 0};
     // Create d1, d2, d3 directories.
@@ -1112,12 +1132,29 @@ TEST_CASE(
         auto file = uri_str + "/d" + std::to_string(i) + "/test" +
                     std::to_string(j) + ".txt";
         tiledb_vfs_touch(ctx_c, vfs_c, file.c_str());
-        expected_paths.push_back(file);
+
+        // Write some data to test file sizes are correct.
+        tiledb_vfs_fh_t* fh;
+        CHECK(
+            tiledb_vfs_open(
+                ctx.ptr().get(),
+                vfs.ptr().get(),
+                file.c_str(),
+                TILEDB_VFS_WRITE,
+                &fh) == TILEDB_OK);
+        std::string data("a", j);
+        CHECK(
+            tiledb_vfs_write(ctx.ptr().get(), fh, data.data(), data.size()) ==
+            TILEDB_OK);
+        tiledb_vfs_close(ctx.ptr().get(), fh);
+        tiledb_vfs_fh_free(&fh);
+
+        expected_results.emplace_back(file, j);
       }
     }
     // Sort and trim expected vector to match VFS::ls sorted output.
-    std::sort(expected_paths.begin(), expected_paths.end());
-    expected_paths.resize(max_paths);
+    std::sort(expected_results.begin(), expected_results.end());
+    expected_results.resize(max_paths);
     LsRecursiveData ls_data;
 
     CHECK(
@@ -1132,9 +1169,10 @@ TEST_CASE(
     for (size_t i = 1; i < ls_data.path_offsets_.size(); i++) {
       std::string path(
           ls_data.path_data_, data_off[i - 1], data_off[i] - data_off[i - 1]);
-      CHECK_THAT(expected_paths, Catch::Matchers::VectorContains(path));
+      CHECK(
+          expected_results[i - 1] ==
+          std::make_pair(path, ls_data.file_sizes_[i - 1]));
     }
-
     if (max_paths == 0) {
       CHECK(static_cast<int64_t>(ls_data.path_offsets_.size()) == max_paths);
     } else {

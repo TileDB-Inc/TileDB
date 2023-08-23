@@ -740,10 +740,11 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   return Status::Ok();
 }
 
-std::vector<URI> VFS::ls_recursive(const URI& parent, int64_t max_paths) const {
+std::vector<directory_entry> VFS::ls_recursive(
+    const URI& parent, int64_t max_paths) const {
   Status st;
   optional<std::vector<directory_entry>> entries;
-  std::vector<URI> results;
+  std::vector<directory_entry> results;
   // Ensure max_paths is valid for ls_with_sizes.
   max_paths = std::max(max_paths, static_cast<int64_t>(-1));
 
@@ -774,7 +775,7 @@ std::vector<URI> VFS::ls_recursive(const URI& parent, int64_t max_paths) const {
         if (result.is_directory()) {
           q.emplace(result.path().native());
         } else {
-          results.emplace_back(result.path().native());
+          results.emplace_back(result);
         }
 
         if (static_cast<int64_t>(results.size()) == max_paths) {
@@ -799,9 +800,9 @@ std::vector<URI> VFS::ls_recursive(const URI& parent, int64_t max_paths) const {
 
   // LocalFS, MemFS results were collected during traversal.
   if (!parent.is_file() && !parent.is_memfs()) {
-    for (auto& fs : *entries) {
-      if (!fs.is_directory()) {
-        results.emplace_back(fs.path().native());
+    for (auto& result : *entries) {
+      if (!result.is_directory()) {
+        results.emplace_back(result);
       }
     }
   }

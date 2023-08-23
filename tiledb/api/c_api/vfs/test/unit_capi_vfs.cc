@@ -290,7 +290,7 @@ TEST_CASE("C API: tiledb_vfs_ls_recursive argument validation", "[capi][vfs]") {
    */
   ordinary_vfs x;
   int32_t data;
-  auto cb = [](const char*, size_t, void*) { return 0; };
+  auto cb = [](const char*, size_t, uint64_t, void*) { return 0; };
   SECTION("null context") {
     auto rc{tiledb_vfs_ls_recursive(nullptr, x.vfs, TEST_URI, cb, &data, 1)};
     CHECK(tiledb_status(rc) == TILEDB_INVALID_CONTEXT);
@@ -318,7 +318,7 @@ TEST_CASE(
     "[capi][vfs][ls-recursive]") {
   ordinary_vfs vfs;
   int ls_data;
-  auto cb = [](const char*, size_t, void*) { return 0; };
+  auto cb = [](const char*, size_t, uint64_t, void*) { return 0; };
   // Recursive ls is currently unsupported over Azure, GCS, and HDFS backends.
   tiledb::sm::URI uri{GENERATE("azure://path/", "gcs://path/", "hdfs://path/")};
   DYNAMIC_SECTION(

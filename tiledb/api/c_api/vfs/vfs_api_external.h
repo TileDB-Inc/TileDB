@@ -655,7 +655,7 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_ls_recursive(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* path,
-    int32_t (*callback)(const char*, size_t, void*),
+    int32_t (*callback)(const char*, size_t, uint64_t, void*),
     void* data,
     int64_t max_paths) TILEDB_NOEXCEPT;
 

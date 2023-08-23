@@ -396,7 +396,7 @@ class VFS : private VFSBase, S3_within_VFS {
    *        -1 to retrieve all results.
    * @return Vector of URIs from recursive ls on 'parent'.
    */
-  std::vector<URI> ls_recursive(
+  std::vector<filesystem::directory_entry> ls_recursive(
       const URI& parent, int64_t max_paths = -1) const;
 
   /**

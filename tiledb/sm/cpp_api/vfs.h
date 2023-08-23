@@ -495,7 +495,7 @@ class VFS {
    * paths.
    * @return Vector of strings for each path collected.
    */
-  std::vector<std::string> ls_recursive(
+  std::vector<std::pair<std::string, uint64_t>> ls_recursive(
       const std::string& uri, int64_t max_paths = -1) const {
     LsRecursiveData ls_data;
     auto& ctx = ctx_.get();
@@ -506,12 +506,14 @@ class VFS {
         ls_recursive_cb,
         &ls_data,
         max_paths));
-    std::vector<std::string> results;
+    std::vector<std::pair<std::string, uint64_t>> results;
     for (size_t i = 1; i < ls_data.path_offsets_.size(); i++) {
       results.emplace_back(
-          ls_data.path_data_,
-          ls_data.path_offsets_[i - 1],
-          ls_data.path_offsets_[i] - ls_data.path_offsets_[i - 1]);
+          std::string(
+              ls_data.path_data_,
+              ls_data.path_offsets_[i - 1],
+              ls_data.path_offsets_[i] - ls_data.path_offsets_[i - 1]),
+          ls_data.file_sizes_[i - 1]);
     }
     return results;
   }
@@ -609,7 +611,8 @@ class VFS {
    * @param data Cast to LsRecursiveData struct to store paths and offsets.
    * @return If `1` then the walk should continue to the next object.
    */
-  static int ls_recursive_cb(const char* path, size_t path_length, void* data) {
+  static int ls_recursive_cb(
+      const char* path, size_t path_length, uint64_t file_size, void* data) {
     auto ls_data = static_cast<LsRecursiveData*>(data);
     ls_data->path_data_.append(path, path_length);
     // Offsets should start at 0.
@@ -617,6 +620,7 @@ class VFS {
       ls_data->path_offsets_.push_back(0);
     }
     ls_data->path_offsets_.push_back(ls_data->path_data_.size());
+    ls_data->file_sizes_.push_back(file_size);
     return 1;
   }
 
@@ -660,7 +664,7 @@ class VFS {
    */
   struct LsRecursiveData {
     std::string path_data_;
-    std::vector<uint64_t> path_offsets_;
+    std::vector<uint64_t> path_offsets_, file_sizes_;
   };
 };
 

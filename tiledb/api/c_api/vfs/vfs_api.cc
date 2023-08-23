@@ -299,7 +299,7 @@ capi_return_t tiledb_vfs_ls(
 capi_return_t tiledb_vfs_ls_recursive(
     tiledb_vfs_t* vfs,
     const char* path,
-    int32_t (*callback)(const char*, size_t, void*),
+    int32_t (*callback)(const char*, size_t, uint64_t, void*),
     void* data,
     int64_t max_paths) {
   ensure_vfs_is_valid(vfs);
@@ -313,8 +313,9 @@ capi_return_t tiledb_vfs_ls_recursive(
   auto children = vfs->ls_recursive(tiledb::sm::URI(path), max_paths);
 
   int rc = 1;
-  for (const auto& uri : children) {
-    rc = callback(uri.c_str(), uri.to_string().size(), data);
+  for (const auto& entry : children) {
+    sm::URI uri{entry.path().native()};
+    rc = callback(uri.c_str(), uri.to_string().size(), entry.file_size(), data);
     if (rc != 1) {
       break;
     }
@@ -550,7 +551,7 @@ capi_return_t tiledb_vfs_ls_recursive(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* path,
-    int32_t (*callback)(const char*, size_t, void*),
+    int32_t (*callback)(const char*, size_t, uint64_t, void*),
     void* data,
     int64_t max_paths) noexcept {
   return api_entry_context<tiledb::api::tiledb_vfs_ls_recursive>(

@@ -538,7 +538,7 @@ TEST_CASE(
       vfs.create_dir(uri_str);
     }
 
-    std::vector<std::string> expected_paths;
+    std::vector<std::pair<std::string, uint64_t>> expected_results;
     // d1, d2, and d3 contain 10, 100 and 0 files respectively.
     std::vector<size_t> max_files = {10, 100, 0};
     // Create d1, d2, d3 directories.
@@ -549,15 +549,32 @@ TEST_CASE(
         auto file = uri_str + "/d" + std::to_string(i) + "/test" +
                     std::to_string(j) + ".txt";
         vfs.touch(file);
-        expected_paths.push_back(file);
+
+        // Write some data to test file sizes are correct.
+        tiledb_vfs_fh_t* fh;
+        CHECK(
+            tiledb_vfs_open(
+                ctx.ptr().get(),
+                vfs.ptr().get(),
+                file.c_str(),
+                TILEDB_VFS_WRITE,
+                &fh) == TILEDB_OK);
+        std::string data("a", j);
+        CHECK(
+            tiledb_vfs_write(ctx.ptr().get(), fh, data.data(), data.size()) ==
+            TILEDB_OK);
+        tiledb_vfs_close(ctx.ptr().get(), fh);
+        tiledb_vfs_fh_free(&fh);
+
+        expected_results.emplace_back(file, j);
       }
     }
     // Sort expected vector to match VFS::ls sorted output.
-    std::sort(expected_paths.begin(), expected_paths.end());
+    std::sort(expected_results.begin(), expected_results.end());
 
     auto results = vfs.ls_recursive(uri_str);
-    for (const auto& path : results) {
-      CHECK_THAT(expected_paths, Catch::Matchers::VectorContains(path));
+    for (size_t i = 0; i < results.size(); i++) {
+      CHECK(expected_results[i] == results[i]);
     }
     CHECK(static_cast<int64_t>(results.size()) == 110);
     vfs.remove_dir(uri_str);
@@ -603,8 +620,8 @@ TEST_CASE(
     } else {
       vfs.create_dir(uri_str);
     }
-    std::vector<std::string> expected_paths;
 
+    std::vector<std::pair<std::string, uint64_t>> expected_results;
     // d1, d2, and d3 contain 10, 100 and 0 files respectively.
     std::vector<size_t> max_files = {10, 100, 0};
     // Create d1, d2, d3 directories.
@@ -615,16 +632,33 @@ TEST_CASE(
         auto file = uri_str + "/d" + std::to_string(i) + "/test" +
                     std::to_string(j) + ".txt";
         vfs.touch(file);
-        expected_paths.push_back(file);
+
+        // Write some data to test file sizes are correct.
+        tiledb_vfs_fh_t* fh;
+        CHECK(
+            tiledb_vfs_open(
+                ctx.ptr().get(),
+                vfs.ptr().get(),
+                file.c_str(),
+                TILEDB_VFS_WRITE,
+                &fh) == TILEDB_OK);
+        std::string data("a", j);
+        CHECK(
+            tiledb_vfs_write(ctx.ptr().get(), fh, data.data(), data.size()) ==
+            TILEDB_OK);
+        tiledb_vfs_close(ctx.ptr().get(), fh);
+        tiledb_vfs_fh_free(&fh);
+
+        expected_results.emplace_back(file, j);
       }
     }
     // Sort and trim expected vector to match VFS::ls sorted output.
-    std::sort(expected_paths.begin(), expected_paths.end());
-    expected_paths.resize(max_paths);
+    std::sort(expected_results.begin(), expected_results.end());
+    expected_results.resize(max_paths);
 
     auto results = vfs.ls_recursive(uri_str, max_paths);
-    for (const auto& path : results) {
-      CHECK_THAT(expected_paths, Catch::Matchers::VectorContains(path));
+    for (size_t i = 0; i < results.size(); i++) {
+      CHECK(expected_results[i] == results[i]);
     }
     CHECK(static_cast<int64_t>(results.size()) == max_paths);
     vfs.remove_dir(uri_str);

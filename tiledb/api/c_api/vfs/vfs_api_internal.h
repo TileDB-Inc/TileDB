@@ -142,7 +142,7 @@ struct tiledb_vfs_handle_t
     return vfs_.ls(parent, uris);
   }
 
-  std::vector<tiledb::sm::URI> ls_recursive(
+  std::vector<filesystem::directory_entry> ls_recursive(
       const tiledb::sm::URI& parent, int64_t max_paths = -1) const {
     return vfs_.ls_recursive(parent, max_paths);
   }
