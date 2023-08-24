@@ -33,7 +33,6 @@
 #ifndef TILEDB_APPLY_WITH_TYPE_H
 #define TILEDB_APPLY_WITH_TYPE_H
 
-#include <concepts>
 #include "tiledb/sm/enums/datatype.h"
 
 using tiledb::sm::Datatype;
