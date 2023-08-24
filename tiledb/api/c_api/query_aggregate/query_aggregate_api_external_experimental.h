@@ -49,9 +49,17 @@ typedef struct tiledb_channel_operation_handle_t tiledb_channel_operation_t;
 
 typedef struct tiledb_channel_operator_handle_t tiledb_channel_operator_t;
 
+// Constant aggregate operator handles
 TILEDB_EXPORT extern const tiledb_channel_operator_t*
     tiledb_channel_operator_sum;
 
+TILEDB_EXPORT extern const tiledb_channel_operator_t*
+    tiledb_channel_operator_min;
+
+TILEDB_EXPORT extern const tiledb_channel_operator_t*
+    tiledb_channel_operator_max;
+
+// Constant aggregate operation handles
 TILEDB_EXPORT extern const tiledb_channel_operation_t* tiledb_aggregate_count;
 
 /**
@@ -70,6 +78,42 @@ TILEDB_EXPORT extern const tiledb_channel_operation_t* tiledb_aggregate_count;
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_channel_operator_sum_get(
+    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) TILEDB_NOEXCEPT;
+
+/**
+ * Helper function to access the constant MIN channel operator handle
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_channel_operator_t *operator_min;
+ * tiledb_channel_operator_min_get(ctx, &operator_min);
+ * tiledb_channel_operation_t* min_A;
+ * tiledb_create_aggregate_on_field(ctx, query, operator_min, "A", min_A);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param operator The operator handle to be retrieved
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_channel_operator_min_get(
+    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) TILEDB_NOEXCEPT;
+
+/**
+ * Helper function to access the constant MAx channel operator handle
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_channel_operator_t *operator_max;
+ * tiledb_channel_operator_max_get(ctx, &operator_max);
+ * tiledb_channel_operation_t* max_A;
+ * tiledb_create_aggregate_on_field(ctx, query, operator_max, "A", max_A);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param operator The operator handle to be retrieved
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_channel_operator_max_get(
     tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) TILEDB_NOEXCEPT;
 
 /**

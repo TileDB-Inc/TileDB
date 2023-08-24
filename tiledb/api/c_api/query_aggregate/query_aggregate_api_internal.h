@@ -38,11 +38,14 @@
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/readers/aggregators/count_aggregator.h"
+#include "tiledb/sm/query/readers/aggregators/min_max_aggregator.h"
 #include "tiledb/sm/query/readers/aggregators/sum_aggregator.h"
 
 enum QueryChannelOperator {
   TILEDB_QUERY_CHANNEL_OPERATOR_COUNT = 0,
-  TILEDB_QUERY_CHANNEL_OPERATOR_SUM
+  TILEDB_QUERY_CHANNEL_OPERATOR_SUM,
+  TILEDB_QUERY_CHANNEL_OPERATOR_MIN,
+  TILEDB_QUERY_CHANNEL_OPERATOR_MAX
 };
 
 struct tiledb_channel_operation_handle_t
@@ -103,6 +106,11 @@ struct tiledb_query_channel_handle_t
   inline void add_aggregate(
       const char* output_field,
       const tiledb_channel_operation_handle_t* operation) {
+    if (query_->is_aggregate(output_field)) {
+      throw std::logic_error(
+          "An aggregate operation for output field: " +
+          std::string(output_field) + " already exists.");
+    }
     // Add the aggregator the the default channel as this is the only channel
     // type we currently support
     query_->add_aggregator_to_default_channel(
