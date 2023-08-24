@@ -1044,11 +1044,11 @@ TEST_CASE(
                 file.c_str(),
                 TILEDB_VFS_WRITE,
                 &fh) == TILEDB_OK);
-        std::string data("a", j);
+        std::string data(j, 'a');
         CHECK(
             tiledb_vfs_write(ctx.ptr().get(), fh, data.data(), data.size()) ==
             TILEDB_OK);
-        tiledb_vfs_close(ctx.ptr().get(), fh);
+        CHECK(tiledb_vfs_close(ctx.ptr().get(), fh) == TILEDB_OK);
         tiledb_vfs_fh_free(&fh);
 
         expected_results.emplace_back(file, j);
@@ -1142,11 +1142,11 @@ TEST_CASE(
                 file.c_str(),
                 TILEDB_VFS_WRITE,
                 &fh) == TILEDB_OK);
-        std::string data("a", j);
+        std::string data(j, 'a');
         CHECK(
             tiledb_vfs_write(ctx.ptr().get(), fh, data.data(), data.size()) ==
             TILEDB_OK);
-        tiledb_vfs_close(ctx.ptr().get(), fh);
+        CHECK(tiledb_vfs_close(ctx.ptr().get(), fh) == TILEDB_OK);
         tiledb_vfs_fh_free(&fh);
 
         expected_results.emplace_back(file, j);
