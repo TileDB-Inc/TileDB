@@ -178,18 +178,20 @@ capi_return_t tiledb_create_aggregate_on_field(
   std::string field_name(input_field_name);
   auto& schema = query->query_->array_schema();
 
+  auto fi = tiledb::sm::FieldInfo(
+      field_name,
+      schema.var_size(field_name),
+      schema.is_nullable(field_name),
+      schema.cell_val_num(field_name));
+
   shared_ptr<tiledb::sm::IAggregator> aggregator;
   switch (op->value()) {
     case TILEDB_QUERY_CHANNEL_OPERATOR_SUM: {
       auto g = [&](auto T) {
         if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
           check_aggregate_numeric_field(op, field_name, schema);
-          aggregator = std::make_shared<tiledb::sm::SumAggregator<decltype(T)>>(
-              tiledb::sm::FieldInfo(
-                  field_name,
-                  schema.var_size(field_name),
-                  schema.is_nullable(field_name),
-                  schema.cell_val_num(field_name)));
+          aggregator =
+              std::make_shared<tiledb::sm::SumAggregator<decltype(T)>>(fi);
         } else {
           throw std::logic_error(
               "Sum aggregates can only be requested on numeric types");
@@ -204,11 +206,6 @@ capi_return_t tiledb_create_aggregate_on_field(
           if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
             check_aggregate_numeric_field(op, field_name, schema);
           }
-          auto fi = tiledb::sm::FieldInfo(
-              field_name,
-              schema.var_size(field_name),
-              schema.is_nullable(field_name),
-              schema.cell_val_num(field_name));
 
           // This is a min/max on strings, should be refactored out once we
           // change (STRING_ASCII,CHAR) mapping in apply_with_type
@@ -234,11 +231,6 @@ capi_return_t tiledb_create_aggregate_on_field(
           if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
             check_aggregate_numeric_field(op, field_name, schema);
           }
-          auto fi = tiledb::sm::FieldInfo(
-              field_name,
-              schema.var_size(field_name),
-              schema.is_nullable(field_name),
-              schema.cell_val_num(field_name));
 
           // This is a min/max on strings, should be refactored out once we
           // change (STRING_ASCII,CHAR) mapping in apply_with_type
