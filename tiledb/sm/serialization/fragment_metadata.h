@@ -74,8 +74,9 @@ Status fragment_metadata_from_capnp(
  * tileVarSizes, tileValidityOffsets)
  *
  * This function was split from fragment_metadata_to_capnp so that these
- * potentially very large items are sent over the wire only for usecases
- * such as global order writes where their existence is a strict requirement.
+ * potentially very large items are sent over the wire only for use cases
+ * such as global order writes, partial attribute writes
+ * where their existence is a strict requirement.
  * Please only call this function if your use case meets the criteria above.
  *
  * @param frag_meta fragment metadata to serialize

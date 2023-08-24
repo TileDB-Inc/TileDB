@@ -2244,8 +2244,8 @@ Status array_from_query_deserialize(
                              .get<uint64_t>("rest.capnp_traversal_limit")
                              .value();
         ::capnp::ReaderOptions readerOptions;
-        // capnp uses the limit in words of 8 bytes
-        readerOptions.traversalLimitInWords = limit / 8;
+        // capnp uses the limit in words
+        readerOptions.traversalLimitInWords = limit / sizeof(::capnp::word);
 
         ::capnp::FlatArrayMessageReader reader(
             kj::arrayPtr(
@@ -2468,8 +2468,8 @@ Status do_query_deserialize(
         uint64_t limit =
             query->config().get<uint64_t>("rest.capnp_traversal_limit").value();
         ::capnp::ReaderOptions readerOptions;
-        // capnp uses the limit in words of 8 bytes
-        readerOptions.traversalLimitInWords = limit / 8;
+        // capnp uses the limit in words
+        readerOptions.traversalLimitInWords = limit / sizeof(::capnp::word);
 
         ::capnp::FlatArrayMessageReader reader(
             kj::arrayPtr(
