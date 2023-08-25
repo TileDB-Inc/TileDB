@@ -393,6 +393,7 @@ endif()
 add_custom_target(check
   COMMAND ${CMAKE_CTEST_COMMAND} -V -C $<CONFIG>
   DEPENDS tests
+  USES_TERMINAL
 )
 
 # CI tests
