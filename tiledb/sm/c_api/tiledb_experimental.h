@@ -558,6 +558,44 @@ TILEDB_EXPORT int32_t tiledb_query_get_relevant_fragment_num(
 /* ********************************* */
 
 /**
+ * Initializes a TileDB query condition set membership object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_query_condition_t* cond
+ * tiledb_query_condition_alloc_set_membership(
+ *   ctx,
+ *   "some_name",
+ *   data,
+ *   data_size,
+ *   offsets,
+ *   offsets_size,
+ *   TILEDB_QUERY_CONDITION_OP_IN,
+ *   &cond);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param field_name The field name.
+ * @param data A pointer to the set member data.
+ * @param data_size The length of the data buffer.
+ * @param offsets A pointer to the array of offsets of members.
+ * @param offsets_size The length of the offsets array in bytes.
+ * @param op The set membership operator to use.
+ * @param cond The allocated query condition object.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_query_condition_alloc_set_membership(
+    tiledb_ctx_t* ctx,
+    const char* field_name,
+    const void* data,
+    uint64_t data_size,
+    const void* offsets,
+    uint64_t offests_size,
+    tiledb_query_condition_op_t op,
+    tiledb_query_condition_t** cond) TILEDB_NOEXCEPT;
+
+/**
  * Disable the use of enumerations on the given QueryCondition
  *
  * **Example:**

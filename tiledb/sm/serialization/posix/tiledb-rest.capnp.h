@@ -857,7 +857,7 @@ struct ASTNode {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(afc739d5c01e6496, 1, 5)
+    CAPNP_DECLARE_STRUCT_HEADER(afc739d5c01e6496, 1, 6)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -7640,6 +7640,9 @@ class ASTNode::Reader {
 
   inline bool getUseEnumeration() const;
 
+  inline bool hasOffsets() const;
+  inline ::capnp::Data::Reader getOffsets() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -7732,6 +7735,13 @@ class ASTNode::Builder {
 
   inline bool getUseEnumeration();
   inline void setUseEnumeration(bool value);
+
+  inline bool hasOffsets();
+  inline ::capnp::Data::Builder getOffsets();
+  inline void setOffsets(::capnp::Data::Reader value);
+  inline ::capnp::Data::Builder initOffsets(unsigned int size);
+  inline void adoptOffsets(::capnp::Orphan<::capnp::Data>&& value);
+  inline ::capnp::Orphan<::capnp::Data> disownOffsets();
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -22087,6 +22097,43 @@ inline bool ASTNode::Builder::getUseEnumeration() {
 }
 inline void ASTNode::Builder::setUseEnumeration(bool value) {
   _builder.setDataField<bool>(::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool ASTNode::Reader::hasOffsets() const {
+  return !_reader.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ASTNode::Builder::hasOffsets() {
+  return !_builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Data::Reader ASTNode::Reader::getOffsets() const {
+  return ::capnp::_::PointerHelpers<::capnp::Data>::get(
+      _reader.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
+}
+inline ::capnp::Data::Builder ASTNode::Builder::getOffsets() {
+  return ::capnp::_::PointerHelpers<::capnp::Data>::get(
+      _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
+}
+inline void ASTNode::Builder::setOffsets(::capnp::Data::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Data>::set(
+      _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Data::Builder ASTNode::Builder::initOffsets(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Data>::init(
+      _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS),
+      size);
+}
+inline void ASTNode::Builder::adoptOffsets(
+    ::capnp::Orphan<::capnp::Data>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Data>::adopt(
+      _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Data> ASTNode::Builder::disownOffsets() {
+  return ::capnp::_::PointerHelpers<::capnp::Data>::disown(
+      _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS));
 }
 
 inline bool Condition::Reader::hasClauses() const {

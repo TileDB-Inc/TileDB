@@ -29,10 +29,22 @@
  *
  * This file defines some vfs-specific test suite helper functions.
  */
-#include "test/support/src/vfs_helpers.h"
+
+// The order of header includes is important here. serialization_wrappers.h
+// must be included before tdb_catch.h or anything that includes tdb_catch.h.
+// This is due to catch2 including Windows.h which defines things that break
+// compiling TileDB.
+//
+// The blank line between serialization_wrappers.h and the other three headers
+// is also important because clang-format will treat these as separate blocks
+// of includes. If they were one block, then clang-format would insist they
+// were sorted which means that serialization_wrappers.h would be included
+// after tdb_catch.h.
+#include "test/support/src/serialization_wrappers.h"
+
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
-#include "test/support/src/serialization_wrappers.h"
+#include "test/support/src/vfs_helpers.h"
 
 namespace tiledb {
 namespace test {

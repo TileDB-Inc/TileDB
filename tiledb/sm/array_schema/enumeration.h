@@ -294,11 +294,12 @@ class Enumeration {
   /**
    * Return the index of a value in the enumeration
    *
-   * @param data An UntypedDatumView of the value to look up.
+   * @param data A pointer to the data buffer
+   * @param size The size of of data buffer
    * @return uint64_t The index of the value represented by data or
    *         constants::missing_enumeration_value if not found.
    */
-  uint64_t index_of(UntypedDatumView data) const;
+  uint64_t index_of(const void* data, uint64_t size) const;
 
   /**
    * Dump a textual representation of the Enumeration to the FILE

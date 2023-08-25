@@ -521,8 +521,7 @@ TEST_CASE_METHOD(
 
   for (uint64_t i = 0; i < values.size(); i++) {
     int tmp = values[i];
-    UntypedDatumView udv(&tmp, sizeof(int));
-    REQUIRE(enmr->index_of(udv) == i);
+    REQUIRE(enmr->index_of(&tmp, sizeof(int)) == i);
   }
 }
 
@@ -534,8 +533,9 @@ TEST_CASE_METHOD(
   auto enmr = create_enumeration(values);
 
   int zero = 0;
-  UntypedDatumView udv_zero(&zero, sizeof(int));
-  REQUIRE(enmr->index_of(udv_zero) == constants::enumeration_missing_value);
+  REQUIRE(
+      enmr->index_of(&zero, sizeof(int)) ==
+      constants::enumeration_missing_value);
 }
 
 TEST_CASE_METHOD(
@@ -546,8 +546,7 @@ TEST_CASE_METHOD(
   auto enmr = create_enumeration(values);
 
   for (uint64_t i = 0; i < values.size(); i++) {
-    UntypedDatumView udv(values[i].data(), values[i].size());
-    REQUIRE(enmr->index_of(udv) == i);
+    REQUIRE(enmr->index_of(values[i].data(), values[i].size()) == i);
   }
 }
 
@@ -558,8 +557,7 @@ TEST_CASE_METHOD(
   std::vector<std::string> values = {"foo", "bar", "baz", "bang", "ohai"};
   auto enmr = create_enumeration(values);
 
-  UntypedDatumView udv_empty("", 0);
-  REQUIRE(enmr->index_of(udv_empty) == constants::enumeration_missing_value);
+  REQUIRE(enmr->index_of("", 0) == constants::enumeration_missing_value);
 }
 
 /* ********************************* */
@@ -1250,11 +1248,10 @@ TEST_CASE_METHOD(
   REQUIRE(tree2->is_expr() == tree1->is_expr());
   REQUIRE(tree2->get_field_name() == tree1->get_field_name());
 
-  auto udv1 = tree1->get_condition_value_view();
-  auto udv2 = tree2->get_condition_value_view();
-  REQUIRE(udv2.size() != udv1.size());
-  REQUIRE(udv2.content() != udv1.content());
-  REQUIRE(udv2.value_as<int>() == 2);
+  auto data1 = tree1->get_data();
+  auto data2 = tree2->get_data();
+  REQUIRE(data2.size() != data1.size());
+  REQUIRE(data2.rvalue_as<int>() == 2);
 }
 
 TEST_CASE_METHOD(
@@ -1284,11 +1281,11 @@ TEST_CASE_METHOD(
   REQUIRE(tree2->is_expr() == tree1->is_expr());
   REQUIRE(tree2->get_field_name() == tree1->get_field_name());
 
-  auto udv1 = tree1->get_condition_value_view();
-  auto udv2 = tree1->get_condition_value_view();
-  REQUIRE(udv2.size() == udv1.size());
-  REQUIRE(udv2.content() == udv1.content());
-  REQUIRE(udv2.value_as<int>() == 2);
+  auto data1 = tree1->get_data();
+  auto data2 = tree1->get_data();
+  REQUIRE(data2.size() == data1.size());
+  REQUIRE(memcmp(data2.data(), data1.data(), data1.size()) == 0);
+  REQUIRE(data2.rvalue_as<int>() == 2);
 }
 
 TEST_CASE_METHOD(

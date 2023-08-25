@@ -51,8 +51,9 @@ void serialize_condition_impl(
     const auto field_name = node->get_field_name();
     const uint32_t field_name_length =
         static_cast<uint32_t>(field_name.length());
-    const auto& value = node->get_condition_value_view();
-    const storage_size_t value_length = value.size();
+    const auto& data = node->get_data();
+    const auto& offsets = node->get_offsets();
+
     // Serialize op.
     serializer.write<uint8_t>(static_cast<uint8_t>(op));
 
@@ -60,9 +61,15 @@ void serialize_condition_impl(
     serializer.write<uint32_t>(field_name_length);
     serializer.write(field_name.data(), field_name_length);
 
-    // Serialize value.
-    serializer.write<uint64_t>(value_length);
-    serializer.write(value.content(), value.size());
+    // Serialize data.
+    serializer.write<uint64_t>(data.size());
+    serializer.write(data.data(), data.size());
+
+    // Serialize offsets for sets
+    if (op == QueryConditionOp::IN || op == QueryConditionOp::NOT_IN) {
+      serializer.write<uint64_t>(offsets.size());
+      serializer.write(offsets.data(), offsets.size());
+    }
   } else {
     // Get values.
     const auto& nodes = node->get_children();
@@ -117,11 +124,20 @@ tdb_unique_ptr<ASTNode> deserialize_condition_impl(Deserializer& deserializer) {
     std::string field_name(field_name_data, field_name_size);
 
     // Deserialize value.
-    auto value_size = deserializer.read<storage_size_t>();
-    auto value_data = deserializer.get_ptr<void>(value_size);
+    auto data_size = deserializer.read<storage_size_t>();
+    auto data = deserializer.get_ptr<void>(data_size);
 
-    return tdb_unique_ptr<ASTNode>(
-        tdb_new(ASTNodeVal, field_name, value_data, value_size, op));
+    if (op != QueryConditionOp::IN && op != QueryConditionOp::NOT_IN) {
+      return tdb_unique_ptr<ASTNode>(
+          tdb_new(ASTNodeVal, field_name, data, data_size, op));
+    }
+
+    // For sets we have to deserialize the offsets
+    auto offsets_size = deserializer.read<storage_size_t>();
+    auto offsets = deserializer.get_ptr<void>(offsets_size);
+
+    return tdb_unique_ptr<ASTNode>(tdb_new(
+        ASTNodeVal, field_name, data, data_size, offsets, offsets_size, op));
   } else if (node_type == NodeType::EXPRESSION) {
     // Deserialize combination op.
     auto combination_op = deserializer.read<QueryConditionCombinationOp>();

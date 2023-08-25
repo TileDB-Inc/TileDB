@@ -332,6 +332,12 @@ extern const std::string query_condition_op_eq_str;
 /** TILEDB_NE Query Condition Op String **/
 extern const std::string query_condition_op_ne_str;
 
+/** TILEDB_IN Query Condition Op String **/
+extern const std::string query_condition_op_in_str;
+
+/** TILEDB_NOT_IN Query Condition Op String **/
+extern const std::string query_condition_op_not_in_str;
+
 /** TILEDB_AND Query Condition Combination Op String **/
 extern const std::string query_condition_combination_op_and_str;
 
