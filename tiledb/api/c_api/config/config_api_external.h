@@ -613,6 +613,9 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `rest.curl.buffer_size` <br>
  *    Set curl buffer size for REST requests <br>
  *    **Default**: 524288 (512KB)
+ * - `rest.capnp_traversal_limit` <br>
+ *    CAPNP traversal limit used in the deserialization of messages(bytes) <br>
+ *    **Default**: 536870912 (512MB)
  * - `filestore.buffer_size` <br>
  *    Specifies the size in bytes of the internal buffers used in the filestore
  *    API. The size should be bigger than the minimum tile size filestore

@@ -96,6 +96,9 @@ class Config {
   /** The default buffer size for curl reads used by REST. */
   static const std::string REST_CURL_BUFFER_SIZE;
 
+  /** CAPNP traversal limit used in the deserialization of messages(MB). */
+  static const std::string REST_CAPNP_TRAVERSAL_LIMIT;
+
   /** The default for Curl's verbose mode used by REST. */
   static const std::string REST_CURL_VERBOSE;
 
