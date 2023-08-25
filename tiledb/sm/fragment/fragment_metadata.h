@@ -1202,6 +1202,26 @@ class FragmentMetadata {
     loaded_metadata_ = loaded_metadata;
   }
 
+  /**
+   * Resize tile offsets related vectors.
+   */
+  void resize_tile_offsets_vectors(uint64_t size);
+
+  /**
+   * Resize tile var offsets related vectors.
+   */
+  void resize_tile_var_offsets_vectors(uint64_t size);
+
+  /**
+   * Resize tile var sizes related vectors.
+   */
+  void resize_tile_var_sizes_vectors(uint64_t size);
+
+  /**
+   * Resize tile validity offsets related vectors.
+   */
+  void resize_tile_validity_offsets_vectors(uint64_t size);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

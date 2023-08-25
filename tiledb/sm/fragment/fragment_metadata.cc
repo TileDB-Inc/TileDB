@@ -4705,6 +4705,23 @@ Status FragmentMetadata::store_footer(const EncryptionKey& encryption_key) {
   return Status::Ok();
 }
 
+void FragmentMetadata::resize_tile_offsets_vectors(uint64_t size) {
+  tile_offsets_mtx().resize(size);
+  tile_offsets().resize(size);
+}
+
+void FragmentMetadata::resize_tile_var_offsets_vectors(uint64_t size) {
+  tile_var_offsets_mtx().resize(size);
+  tile_var_offsets().resize(size);
+}
+
+void FragmentMetadata::resize_tile_var_sizes_vectors(uint64_t size) {
+  tile_var_sizes().resize(size);
+}
+void FragmentMetadata::resize_tile_validity_offsets_vectors(uint64_t size) {
+  tile_validity_offsets().resize(size);
+}
+
 void FragmentMetadata::clean_up() {
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);

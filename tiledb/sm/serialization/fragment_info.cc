@@ -304,10 +304,10 @@ Status fragment_info_from_capnp(
 
   // Get single_fragment_info from capnp
   if (fragment_info_reader.hasFragmentInfo()) {
+    auto fragment_info_list_reader = fragment_info_reader.getFragmentInfo();
     fragment_info->single_fragment_info_vec().reserve(
-        fragment_info_reader.getFragmentInfo().size());
-    for (auto single_frag_info_reader :
-         fragment_info_reader.getFragmentInfo()) {
+        fragment_info_list_reader.size());
+    for (auto single_frag_info_reader : fragment_info_list_reader) {
       auto&& [st, single_frag_info] = single_fragment_info_from_capnp(
           single_frag_info_reader, fragment_info->array_schemas_all());
       RETURN_NOT_OK(st);
@@ -470,11 +470,21 @@ Status fragment_info_deserialize(
         break;
       }
       case SerializationType::CAPNP: {
+        // Set traversal limit from config
+        uint64_t limit = fragment_info->config()
+                             .get<uint64_t>("rest.capnp_traversal_limit")
+                             .value();
+        ::capnp::ReaderOptions readerOptions;
+        // capnp uses the limit in words of 8 bytes
+        readerOptions.traversalLimitInWords = limit / 8;
+
         const auto mBytes =
             reinterpret_cast<const kj::byte*>(serialized_buffer.data());
-        ::capnp::FlatArrayMessageReader msg_reader(kj::arrayPtr(
-            reinterpret_cast<const ::capnp::word*>(mBytes),
-            serialized_buffer.size() / sizeof(::capnp::word)));
+        ::capnp::FlatArrayMessageReader msg_reader(
+            kj::arrayPtr(
+                reinterpret_cast<const ::capnp::word*>(mBytes),
+                serialized_buffer.size() / sizeof(::capnp::word)),
+            readerOptions);
         auto reader = msg_reader.getRoot<capnp::FragmentInfo>();
 
         // Deserialize

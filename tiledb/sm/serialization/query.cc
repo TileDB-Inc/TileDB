@@ -2217,9 +2217,14 @@ Status array_from_query_deserialize(
           return LOG_STATUS(Status_SerializationError(
               "Could not deserialize query; buffer is not 8-byte aligned."));
 
-        // Set traversal limit to 10GI (TODO: make this a config option)
+        // Set traversal limit from config
+        uint64_t limit = storage_manager->config()
+                             .get<uint64_t>("rest.capnp_traversal_limit")
+                             .value();
         ::capnp::ReaderOptions readerOptions;
-        readerOptions.traversalLimitInWords = uint64_t(1024) * 1024 * 1024 * 10;
+        // capnp uses the limit in words
+        readerOptions.traversalLimitInWords = limit / sizeof(::capnp::word);
+
         ::capnp::FlatArrayMessageReader reader(
             kj::arrayPtr(
                 reinterpret_cast<const ::capnp::word*>(
@@ -2437,9 +2442,13 @@ Status do_query_deserialize(
           return LOG_STATUS(Status_SerializationError(
               "Could not deserialize query; buffer is not 8-byte aligned."));
 
-        // Set traversal limit to 10GI (TODO: make this a config option)
+        // Set traversal limit from config
+        uint64_t limit =
+            query->config().get<uint64_t>("rest.capnp_traversal_limit").value();
         ::capnp::ReaderOptions readerOptions;
-        readerOptions.traversalLimitInWords = uint64_t(1024) * 1024 * 1024 * 10;
+        // capnp uses the limit in words
+        readerOptions.traversalLimitInWords = limit / sizeof(::capnp::word);
+
         ::capnp::FlatArrayMessageReader reader(
             kj::arrayPtr(
                 reinterpret_cast<const ::capnp::word*>(
@@ -2738,6 +2747,7 @@ Status global_write_state_to_capnp(
   if (write_state.frag_meta_) {
     auto frag_meta = write_state.frag_meta_;
     auto frag_meta_builder = state_builder->initFragMeta();
+    fragment_meta_sizes_offsets_to_capnp(*frag_meta, &frag_meta_builder);
     RETURN_NOT_OK(fragment_metadata_to_capnp(*frag_meta, &frag_meta_builder));
   }
 
@@ -2955,6 +2965,7 @@ Status unordered_write_state_to_capnp(
   auto frag_meta = unordered_writer.frag_meta();
   if (frag_meta != nullptr) {
     auto frag_meta_builder = state_builder->initFragMeta();
+    fragment_meta_sizes_offsets_to_capnp(*frag_meta, &frag_meta_builder);
     RETURN_NOT_OK(fragment_metadata_to_capnp(*frag_meta, &frag_meta_builder));
   }
 
