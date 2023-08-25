@@ -212,10 +212,10 @@ capi_return_t tiledb_create_aggregate_on_field(
           if constexpr (std::is_same_v<char, decltype(T)>) {
             aggregator =
                 std::make_shared<tiledb::sm::MinAggregator<std::string>>(fi);
-            return;
+          } else {
+            aggregator =
+                std::make_shared<tiledb::sm::MinAggregator<decltype(T)>>(fi);
           }
-          aggregator =
-              std::make_shared<tiledb::sm::MinAggregator<decltype(T)>>(fi);
         } else {
           throw std::logic_error(
               "MIN aggregates can only be requested on numeric and string "
@@ -237,10 +237,10 @@ capi_return_t tiledb_create_aggregate_on_field(
           if constexpr (std::is_same_v<char, decltype(T)>) {
             aggregator =
                 std::make_shared<tiledb::sm::MaxAggregator<std::string>>(fi);
-            return;
+          } else {
+            aggregator =
+                std::make_shared<tiledb::sm::MaxAggregator<decltype(T)>>(fi);
           }
-          aggregator =
-              std::make_shared<tiledb::sm::MaxAggregator<decltype(T)>>(fi);
         } else {
           throw std::logic_error(
               "MAX aggregates can only be requested on numeric and string "
