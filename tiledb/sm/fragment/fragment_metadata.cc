@@ -4715,26 +4715,18 @@ Status FragmentMetadata::store_footer(const EncryptionKey& encryption_key) {
 
 void FragmentMetadata::resize_tile_offsets_vectors(uint64_t size) {
   tile_offsets_mtx().resize(size);
-  loaded_metadata_.tile_offsets_.clear();
-  loaded_metadata_.tile_offsets_.resize(size, false);
   tile_offsets().resize(size);
 }
 
 void FragmentMetadata::resize_tile_var_offsets_vectors(uint64_t size) {
   tile_var_offsets_mtx().resize(size);
-  loaded_metadata_.tile_var_offsets_.clear();
-  loaded_metadata_.tile_var_offsets_.resize(size, false);
   tile_var_offsets().resize(size);
 }
 
 void FragmentMetadata::resize_tile_var_sizes_vectors(uint64_t size) {
-  loaded_metadata_.tile_var_sizes_.clear();
-  loaded_metadata_.tile_var_sizes_.resize(size, false);
   tile_var_sizes().resize(size);
 }
 void FragmentMetadata::resize_tile_validity_offsets_vectors(uint64_t size) {
-  loaded_metadata_.tile_validity_offsets_.clear();
-  loaded_metadata_.tile_validity_offsets_.resize(size, false);
   tile_validity_offsets().resize(size);
 }
 

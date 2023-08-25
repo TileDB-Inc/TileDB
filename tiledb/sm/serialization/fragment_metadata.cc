@@ -183,6 +183,7 @@ Status fragment_metadata_from_capnp(
   // have the first dimension properly allocated when loading their data on
   // demand.
   frag_meta->resize_tile_offsets_vectors(num_dims_and_attrs);
+  loaded_metadata.tile_offsets_.resize(num_dims_and_attrs, false);
 
   // There is a difference in the metadata loaded for versions >= 2
   auto loaded = frag_meta->version() <= 2 ? true : false;
@@ -205,6 +206,7 @@ Status fragment_metadata_from_capnp(
   // have the first dimension properly allocated when loading its data on
   // demand.
   frag_meta->resize_tile_var_offsets_vectors(num_dims_and_attrs);
+  loaded_metadata.tile_var_offsets_.resize(num_dims_and_attrs, false);
   if (frag_meta_reader.hasTileVarOffsets()) {
     auto tilevaroffsets_reader = frag_meta_reader.getTileVarOffsets();
     uint64_t i = 0;
@@ -223,6 +225,7 @@ Status fragment_metadata_from_capnp(
   // have the first dimension properly allocated when loading its data on
   // demand.
   frag_meta->resize_tile_var_sizes_vectors(num_dims_and_attrs);
+  loaded_metadata.tile_var_sizes_.resize(num_dims_and_attrs, false);
   if (frag_meta_reader.hasTileVarSizes()) {
     auto tilevarsizes_reader = frag_meta_reader.getTileVarSizes();
     uint64_t i = 0;
@@ -240,6 +243,7 @@ Status fragment_metadata_from_capnp(
   // query, but readers on the server side require this vector to have the first
   // dimension properly allocated when loading its data on demand.
   frag_meta->resize_tile_validity_offsets_vectors(num_dims_and_attrs);
+  loaded_metadata.tile_validity_offsets_.resize(num_dims_and_attrs, false);
   if (frag_meta_reader.hasTileValidityOffsets()) {
     auto tilevalidityoffsets_reader = frag_meta_reader.getTileValidityOffsets();
     uint64_t i = 0;
