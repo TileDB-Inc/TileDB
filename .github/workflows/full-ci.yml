@@ -27,7 +27,7 @@ concurrency:
   group: ${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
-## NOTE: the job names below must be unique!
+## NOTE: the job ids below must be unique!
 jobs:
   ci1:
     uses: ./.github/workflows/ci-linux_mac.yml

@@ -24,6 +24,8 @@ jobs:
             config: "Debug"
       fail-fast: false
 
+    name: ${{ matrix.os }} - Sanitizer: ${{ matrix.sanitizer }} | Experimental: ${{ matrix.experimental }} | ${{ matrix.debug }}
+
     permissions:
       issues: write
     env:
