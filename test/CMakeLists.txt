@@ -390,9 +390,9 @@ if(TILEDB_HDFS)
 endif()
 
 # Add custom target 'check'
-add_custom_target(
-  check COMMAND ${CMAKE_CTEST_COMMAND} -V -C $<CONFIG>
-  DEPENDS tiledb_unit
+add_custom_target(check
+  COMMAND ${CMAKE_CTEST_COMMAND} -V -C $<CONFIG>
+  DEPENDS tests
 )
 
 # CI tests
