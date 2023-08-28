@@ -58,7 +58,6 @@ class FragmentsList {
   }
 
   /** Constructor. */
-  // #TODO Check for dups
   FragmentsList(const std::vector<URI>& fragments)
       : fragments_(fragments) {
   }

@@ -103,48 +103,6 @@ Status array_open_from_capnp(
     const capnp::ArrayMetadata::Reader& array_open_reader, Array* array);
 
 /**
- * Convert Array FragmentsTimestamps to Cap'n Proto message
- *
- * @param start_timestamp the start timestamp to serialize
- * @param end_timestamp the end timestamp to serialize
- * @param array_fragments_builder cap'n proto class
- */
-void fragments_timestamps_to_capnp(
-    uint64_t start_timestamp,
-    uint64_t end_timestamp,
-    capnp::ArrayFragmentsTimestamps::Builder* array_fragments_builder);
-
-/**
- * Convert Cap'n Proto message to Array FragmentsTimestamps
- *
- * @param array_fragments_reader cap'n proto class
- * @return a tuple of start_timestamp, end_timestamp
- */
-std::tuple<uint64_t, uint64_t> fragments_timestamps_from_capnp(
-    const capnp::ArrayFragmentsTimestamps::Reader& array_fragments_reader);
-
-/**
- * Convert Array FragmentsList to Cap'n Proto message
- *
- * @param fragments fragments to serialize
- * @param array_fragments_builder cap'n proto class
- */
-void fragments_list_to_capnp(
-    const std::vector<URI>& fragments,
-    capnp::ArrayFragmentsList::Builder* array_fragments_builder);
-
-/**
- * Convert Cap'n Proto message to Array FragmentsList
- *
- * @param array_fragments_reader cap'n proto class
- * @param array_uri uri of the array that the fragments belong to
- * @return vector of deserialized fragments
- */
-std::vector<URI> fragments_list_from_capnp(
-    const capnp::ArrayFragmentsList::Reader& array_fragments_reader,
-    const URI& array_uri);
-
-/**
  * Convert Cap'n Proto message to Array Metadata
  *
  * @param array_metadata_reader cap'n proto class
@@ -202,25 +160,6 @@ Status array_open_serialize(
  */
 Status array_open_deserialize(
     Array* array,
-    SerializationType serialize_type,
-    const Buffer& serialized_buffer);
-
-void fragments_timestamps_serialize(
-    uint64_t start_timestamp,
-    uint64_t end_timestamp,
-    SerializationType serialize_type,
-    Buffer* serialized_buffer);
-
-std::tuple<uint64_t, uint64_t> fragments_timestamps_deserialize(
-    SerializationType serialize_type, const Buffer& serialized_buffer);
-
-void fragments_list_serialize(
-    const std::vector<URI>& fragments,
-    SerializationType serialize_type,
-    Buffer* serialized_buffer);
-
-std::vector<URI> fragments_list_deserialize(
-    const URI& array_uri,
     SerializationType serialize_type,
     const Buffer& serialized_buffer);
 

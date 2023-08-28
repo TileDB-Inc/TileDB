@@ -10236,6 +10236,7 @@ constexpr uint16_t ArrayFragmentsTimestamps::_capnpPrivate::pointerCount;
 constexpr ::capnp::Kind ArrayFragmentsTimestamps::_capnpPrivate::kind;
 constexpr ::capnp::_::RawSchema const* ArrayFragmentsTimestamps::_capnpPrivate::schema;
 #endif  // !CAPNP_LITE
+
 // ArrayConsolidationRequest
 constexpr uint16_t ArrayConsolidationRequest::_capnpPrivate::dataWordSize;
 constexpr uint16_t ArrayConsolidationRequest::_capnpPrivate::pointerCount;
@@ -10243,7 +10244,6 @@ constexpr uint16_t ArrayConsolidationRequest::_capnpPrivate::pointerCount;
 constexpr ::capnp::Kind ArrayConsolidationRequest::_capnpPrivate::kind;
 constexpr ::capnp::_::RawSchema const* ArrayConsolidationRequest::_capnpPrivate::schema;
 #endif  // !CAPNP_LITE
-
 
 // ArrayVacuumRequest
 constexpr uint16_t ArrayVacuumRequest::_capnpPrivate::dataWordSize;

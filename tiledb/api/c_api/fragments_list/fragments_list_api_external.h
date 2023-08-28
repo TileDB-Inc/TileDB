@@ -75,7 +75,7 @@ TILEDB_EXPORT capi_return_t tiledb_fragments_list_get_fragment_uri(
 
 /**
  * Returns the index of the fragment with the given uri in the given TileDB
- * fragments list object. Throws if the fragment is not in the list.
+ * fragments list object. Returns TILEDB_ERR if the fragment is not in the list.
  *
  * **Example**
  * @code{.c}

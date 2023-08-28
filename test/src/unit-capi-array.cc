@@ -55,6 +55,7 @@
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/serialization/array.h"
+#include "tiledb/sm/serialization/fragments.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <chrono>

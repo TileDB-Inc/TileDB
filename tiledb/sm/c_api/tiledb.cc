@@ -80,6 +80,7 @@
 #include "tiledb/sm/serialization/config.h"
 #include "tiledb/sm/serialization/enumeration.h"
 #include "tiledb/sm/serialization/fragment_info.h"
+#include "tiledb/sm/serialization/fragments.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/context.h"

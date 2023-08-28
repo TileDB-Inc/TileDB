@@ -40,6 +40,7 @@
 #include "tiledb/sm/serialization/consolidation.h"
 #include "tiledb/sm/serialization/enumeration.h"
 #include "tiledb/sm/serialization/fragment_info.h"
+#include "tiledb/sm/serialization/fragments.h"
 #include "tiledb/sm/serialization/group.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/serialization/tiledb-rest.h"
