@@ -60,16 +60,14 @@ class FragmentsSerializationException : public StatusException {
 void fragments_timestamps_to_capnp(
     uint64_t start_timestamp,
     uint64_t end_timestamp,
-    capnp::ArrayFragmentsTimestamps::Builder* array_fragments_builder) {
-  array_fragments_builder->setStartTimestamp(start_timestamp);
-  array_fragments_builder->setEndTimestamp(end_timestamp);
+    capnp::ArrayDeleteFragmentsTimestampsRequest::Builder* builder) {
+  builder->setStartTimestamp(start_timestamp);
+  builder->setEndTimestamp(end_timestamp);
 }
 
 std::tuple<uint64_t, uint64_t> fragments_timestamps_from_capnp(
-    const capnp::ArrayFragmentsTimestamps::Reader& array_fragments_reader) {
-  return {
-      array_fragments_reader.getStartTimestamp(),
-      array_fragments_reader.getEndTimestamp()};
+    const capnp::ArrayDeleteFragmentsTimestampsRequest::Reader& reader) {
+  return {reader.getStartTimestamp(), reader.getEndTimestamp()};
 }
 
 void fragments_timestamps_serialize(
@@ -80,7 +78,8 @@ void fragments_timestamps_serialize(
   try {
     // Serialize
     ::capnp::MallocMessageBuilder message;
-    auto builder = message.initRoot<capnp::ArrayFragmentsTimestamps>();
+    auto builder =
+        message.initRoot<capnp::ArrayDeleteFragmentsTimestampsRequest>();
     fragments_timestamps_to_capnp(start_timestamp, end_timestamp, &builder);
 
     // Copy to buffer
@@ -132,7 +131,8 @@ std::tuple<uint64_t, uint64_t> fragments_timestamps_deserialize(
         ::capnp::JsonCodec json;
         ::capnp::MallocMessageBuilder message_builder;
         auto builder =
-            message_builder.initRoot<capnp::ArrayFragmentsTimestamps>();
+            message_builder
+                .initRoot<capnp::ArrayDeleteFragmentsTimestampsRequest>();
         json.decode(
             kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
             builder);
@@ -146,7 +146,8 @@ std::tuple<uint64_t, uint64_t> fragments_timestamps_deserialize(
         ::capnp::FlatArrayMessageReader msg_reader(kj::arrayPtr(
             reinterpret_cast<const ::capnp::word*>(mBytes),
             serialized_buffer.size() / sizeof(::capnp::word)));
-        auto reader = msg_reader.getRoot<capnp::ArrayFragmentsTimestamps>();
+        auto reader =
+            msg_reader.getRoot<capnp::ArrayDeleteFragmentsTimestampsRequest>();
         // Deserialize
         return fragments_timestamps_from_capnp(reader);
       }
@@ -169,9 +170,8 @@ std::tuple<uint64_t, uint64_t> fragments_timestamps_deserialize(
 
 void fragments_list_to_capnp(
     const std::vector<URI>& fragments,
-    capnp::ArrayFragmentsList::Builder* array_fragments_list_builder) {
-  auto entries_builder =
-      array_fragments_list_builder->initEntries(fragments.size());
+    capnp::ArrayDeleteFragmentsListRequest::Builder* builder) {
+  auto entries_builder = builder->initEntries(fragments.size());
   for (size_t i = 0; i < fragments.size(); i++) {
     const auto& relative_uri = serialize_array_uri_to_relative(fragments[i]);
     entries_builder.set(i, relative_uri);
@@ -179,12 +179,12 @@ void fragments_list_to_capnp(
 }
 
 std::vector<URI> fragments_list_from_capnp(
-    const capnp::ArrayFragmentsList::Reader& array_fragments_list_reader,
+    const capnp::ArrayDeleteFragmentsListRequest::Reader& reader,
     const URI& array_uri) {
-  if (array_fragments_list_reader.hasEntries()) {
+  if (reader.hasEntries()) {
     std::vector<URI> fragments;
-    fragments.reserve(array_fragments_list_reader.getEntries().size());
-    auto get_entries_reader = array_fragments_list_reader.getEntries();
+    fragments.reserve(reader.getEntries().size());
+    auto get_entries_reader = reader.getEntries();
     for (auto entry : get_entries_reader) {
       fragments.emplace_back(
           deserialize_array_uri_to_absolute(entry.cStr(), array_uri));
@@ -208,7 +208,7 @@ void fragments_list_serialize(
   try {
     // Serialize
     ::capnp::MallocMessageBuilder message;
-    auto builder = message.initRoot<capnp::ArrayFragmentsList>();
+    auto builder = message.initRoot<capnp::ArrayDeleteFragmentsListRequest>();
     fragments_list_to_capnp(fragments, &builder);
 
     // Copy to buffer
@@ -265,7 +265,8 @@ std::vector<URI> fragments_list_deserialize(
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
         ::capnp::MallocMessageBuilder message_builder;
-        auto builder = message_builder.initRoot<capnp::ArrayFragmentsList>();
+        auto builder =
+            message_builder.initRoot<capnp::ArrayDeleteFragmentsListRequest>();
         json.decode(
             kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
             builder);
@@ -279,7 +280,8 @@ std::vector<URI> fragments_list_deserialize(
         ::capnp::FlatArrayMessageReader msg_reader(kj::arrayPtr(
             reinterpret_cast<const ::capnp::word*>(mBytes),
             serialized_buffer.size() / sizeof(::capnp::word)));
-        auto reader = msg_reader.getRoot<capnp::ArrayFragmentsList>();
+        auto reader =
+            msg_reader.getRoot<capnp::ArrayDeleteFragmentsListRequest>();
         // Deserialize
         return fragments_list_from_capnp(reader, array_uri);
       }

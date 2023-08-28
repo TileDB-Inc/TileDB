@@ -1543,8 +1543,8 @@ struct BufferedChunk {
   };
 };
 
-struct ArrayFragmentsList {
-  ArrayFragmentsList() = delete;
+struct ArrayDeleteFragmentsListRequest {
+  ArrayDeleteFragmentsListRequest() = delete;
 
   class Reader;
   class Builder;
@@ -1560,8 +1560,8 @@ struct ArrayFragmentsList {
   };
 };
 
-struct ArrayFragmentsTimestamps {
-  ArrayFragmentsTimestamps() = delete;
+struct ArrayDeleteFragmentsTimestampsRequest {
+  ArrayDeleteFragmentsTimestampsRequest() = delete;
 
   class Reader;
   class Builder;
@@ -13922,9 +13922,9 @@ class BufferedChunk::Pipeline {
 };
 #endif  // !CAPNP_LITE
 
-class ArrayFragmentsList::Reader {
+class ArrayDeleteFragmentsListRequest::Reader {
  public:
-  typedef ArrayFragmentsList Reads;
+  typedef ArrayDeleteFragmentsListRequest Reads;
 
   Reader() = default;
   inline explicit Reader(::capnp::_::StructReader base)
@@ -13957,9 +13957,9 @@ class ArrayFragmentsList::Reader {
   friend class ::capnp::Orphanage;
 };
 
-class ArrayFragmentsList::Builder {
+class ArrayDeleteFragmentsListRequest::Builder {
  public:
-  typedef ArrayFragmentsList Builds;
+  typedef ArrayDeleteFragmentsListRequest Builds;
 
   Builder() = delete;  // Deleted to discourage incorrect usage.
                        // You can explicitly initialize to nullptr instead.
@@ -14008,9 +14008,9 @@ class ArrayFragmentsList::Builder {
 };
 
 #if !CAPNP_LITE
-class ArrayFragmentsList::Pipeline {
+class ArrayDeleteFragmentsListRequest::Pipeline {
  public:
-  typedef ArrayFragmentsList Pipelines;
+  typedef ArrayDeleteFragmentsListRequest Pipelines;
 
   inline Pipeline(decltype(nullptr))
       : _typeless(nullptr) {
@@ -14027,9 +14027,9 @@ class ArrayFragmentsList::Pipeline {
 };
 #endif  // !CAPNP_LITE
 
-class ArrayFragmentsTimestamps::Reader {
+class ArrayDeleteFragmentsTimestampsRequest::Reader {
  public:
-  typedef ArrayFragmentsTimestamps Reads;
+  typedef ArrayDeleteFragmentsTimestampsRequest Reads;
 
   Reader() = default;
   inline explicit Reader(::capnp::_::StructReader base)
@@ -14062,9 +14062,9 @@ class ArrayFragmentsTimestamps::Reader {
   friend class ::capnp::Orphanage;
 };
 
-class ArrayFragmentsTimestamps::Builder {
+class ArrayDeleteFragmentsTimestampsRequest::Builder {
  public:
-  typedef ArrayFragmentsTimestamps Builds;
+  typedef ArrayDeleteFragmentsTimestampsRequest Builds;
 
   Builder() = delete;  // Deleted to discourage incorrect usage.
                        // You can explicitly initialize to nullptr instead.
@@ -14105,9 +14105,9 @@ class ArrayFragmentsTimestamps::Builder {
 };
 
 #if !CAPNP_LITE
-class ArrayFragmentsTimestamps::Pipeline {
+class ArrayDeleteFragmentsTimestampsRequest::Pipeline {
  public:
-  typedef ArrayFragmentsTimestamps Pipelines;
+  typedef ArrayDeleteFragmentsTimestampsRequest Pipelines;
 
   inline Pipeline(decltype(nullptr))
       : _typeless(nullptr) {
@@ -30702,34 +30702,34 @@ inline void BufferedChunk::Builder::setSize(::uint64_t value) {
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
-inline bool ArrayFragmentsList::Reader::hasEntries() const {
+inline bool ArrayDeleteFragmentsListRequest::Reader::hasEntries() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
 }
-inline bool ArrayFragmentsList::Builder::hasEntries() {
+inline bool ArrayDeleteFragmentsListRequest::Builder::hasEntries() {
   return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
 }
 inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
-ArrayFragmentsList::Reader::getEntries() const {
+ArrayDeleteFragmentsListRequest::Reader::getEntries() const {
   return ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
           _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
-ArrayFragmentsList::Builder::getEntries() {
+ArrayDeleteFragmentsListRequest::Builder::getEntries() {
   return ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
           _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline void ArrayFragmentsList::Builder::setEntries(
+inline void ArrayDeleteFragmentsListRequest::Builder::setEntries(
     ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value) {
   ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
           _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
           value);
 }
-inline void ArrayFragmentsList::Builder::setEntries(
+inline void ArrayDeleteFragmentsListRequest::Builder::setEntries(
     ::kj::ArrayPtr<const ::capnp::Text::Reader> value) {
   ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
@@ -30737,13 +30737,13 @@ inline void ArrayFragmentsList::Builder::setEntries(
           value);
 }
 inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
-ArrayFragmentsList::Builder::initEntries(unsigned int size) {
+ArrayDeleteFragmentsListRequest::Builder::initEntries(unsigned int size) {
   return ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::init(
           _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
           size);
 }
-inline void ArrayFragmentsList::Builder::adoptEntries(
+inline void ArrayDeleteFragmentsListRequest::Builder::adoptEntries(
     ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
         value) {
   ::capnp::_::
@@ -30752,37 +30752,41 @@ inline void ArrayFragmentsList::Builder::adoptEntries(
           kj::mv(value));
 }
 inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
-ArrayFragmentsList::Builder::disownEntries() {
+ArrayDeleteFragmentsListRequest::Builder::disownEntries() {
   return ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
           _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
-inline ::uint64_t ArrayFragmentsTimestamps::Reader::getStartTimestamp() const {
+inline ::uint64_t
+ArrayDeleteFragmentsTimestampsRequest::Reader::getStartTimestamp() const {
   return _reader.getDataField<::uint64_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint64_t ArrayFragmentsTimestamps::Builder::getStartTimestamp() {
+inline ::uint64_t
+ArrayDeleteFragmentsTimestampsRequest::Builder::getStartTimestamp() {
   return _builder.getDataField<::uint64_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
-inline void ArrayFragmentsTimestamps::Builder::setStartTimestamp(
+inline void ArrayDeleteFragmentsTimestampsRequest::Builder::setStartTimestamp(
     ::uint64_t value) {
   _builder.setDataField<::uint64_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
-inline ::uint64_t ArrayFragmentsTimestamps::Reader::getEndTimestamp() const {
+inline ::uint64_t
+ArrayDeleteFragmentsTimestampsRequest::Reader::getEndTimestamp() const {
   return _reader.getDataField<::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
 
-inline ::uint64_t ArrayFragmentsTimestamps::Builder::getEndTimestamp() {
+inline ::uint64_t
+ArrayDeleteFragmentsTimestampsRequest::Builder::getEndTimestamp() {
   return _builder.getDataField<::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS);
 }
-inline void ArrayFragmentsTimestamps::Builder::setEndTimestamp(
+inline void ArrayDeleteFragmentsTimestampsRequest::Builder::setEndTimestamp(
     ::uint64_t value) {
   _builder.setDataField<::uint64_t>(
       ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);

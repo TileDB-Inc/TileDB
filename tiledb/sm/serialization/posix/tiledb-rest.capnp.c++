@@ -10221,20 +10221,20 @@ constexpr ::capnp::Kind BufferedChunk::_capnpPrivate::kind;
 constexpr ::capnp::_::RawSchema const* BufferedChunk::_capnpPrivate::schema;
 #endif  // !CAPNP_LITE
 
-// ArrayFragmentsList
-constexpr uint16_t ArrayFragmentsList::_capnpPrivate::dataWordSize;
-constexpr uint16_t ArrayFragmentsList::_capnpPrivate::pointerCount;
+// ArrayDeleteFragmentsListRequest
+constexpr uint16_t ArrayDeleteFragmentsListRequest::_capnpPrivate::dataWordSize;
+constexpr uint16_t ArrayDeleteFragmentsListRequest::_capnpPrivate::pointerCount;
 #if !CAPNP_LITE
-constexpr ::capnp::Kind ArrayFragmentsList::_capnpPrivate::kind;
-constexpr ::capnp::_::RawSchema const* ArrayFragmentsList::_capnpPrivate::schema;
+constexpr ::capnp::Kind ArrayDeleteFragmentsListRequest::_capnpPrivate::kind;
+constexpr ::capnp::_::RawSchema const* ArrayDeleteFragmentsListRequest::_capnpPrivate::schema;
 #endif  // !CAPNP_LITE
 
-// ArrayFragmentsTimestamps
-constexpr uint16_t ArrayFragmentsTimestamps::_capnpPrivate::dataWordSize;
-constexpr uint16_t ArrayFragmentsTimestamps::_capnpPrivate::pointerCount;
+// ArrayDeleteFragmentsTimestampsRequest
+constexpr uint16_t ArrayDeleteFragmentsTimestampsRequest::_capnpPrivate::dataWordSize;
+constexpr uint16_t ArrayDeleteFragmentsTimestampsRequest::_capnpPrivate::pointerCount;
 #if !CAPNP_LITE
-constexpr ::capnp::Kind ArrayFragmentsTimestamps::_capnpPrivate::kind;
-constexpr ::capnp::_::RawSchema const* ArrayFragmentsTimestamps::_capnpPrivate::schema;
+constexpr ::capnp::Kind ArrayDeleteFragmentsTimestampsRequest::_capnpPrivate::kind;
+constexpr ::capnp::_::RawSchema const* ArrayDeleteFragmentsTimestampsRequest::_capnpPrivate::schema;
 #endif  // !CAPNP_LITE
 
 // ArrayConsolidationRequest

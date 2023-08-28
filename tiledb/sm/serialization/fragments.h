@@ -50,45 +50,45 @@ namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
 /**
- * Convert Array FragmentsTimestamps to Cap'n Proto message
+ * Convert ArrayDeleteFragmentsTimestampsRequest to Cap'n Proto message
  *
  * @param start_timestamp the start timestamp to serialize
  * @param end_timestamp the end timestamp to serialize
- * @param array_fragments_builder cap'n proto class
+ * @param builder cap'n proto class
  */
 void fragments_timestamps_to_capnp(
     uint64_t start_timestamp,
     uint64_t end_timestamp,
-    capnp::ArrayFragmentsTimestamps::Builder* array_fragments_builder);
+    capnp::ArrayDeleteFragmentsTimestampsRequest::Builder* builder);
 
 /**
- * Convert Cap'n Proto message to Array FragmentsTimestamps
+ * Convert Cap'n Proto message to ArrayDeleteFragmentsTimestampsRequest
  *
- * @param array_fragments_reader cap'n proto class
+ * @param reader cap'n proto class
  * @return a tuple of start_timestamp, end_timestamp
  */
 std::tuple<uint64_t, uint64_t> fragments_timestamps_from_capnp(
-    const capnp::ArrayFragmentsTimestamps::Reader& array_fragments_reader);
+    const capnp::ArrayDeleteFragmentsTimestampsRequest::Reader& reader);
 
 /**
- * Convert Array FragmentsList to Cap'n Proto message
+ * Convert ArrayDeleteFragmentsListRequest to Cap'n Proto message
  *
  * @param fragments fragments to serialize
- * @param array_fragments_builder cap'n proto class
+ * @param builder cap'n proto class
  */
 void fragments_list_to_capnp(
     const std::vector<URI>& fragments,
-    capnp::ArrayFragmentsList::Builder* array_fragments_builder);
+    capnp::ArrayDeleteFragmentsListRequest::Builder* builder);
 
 /**
- * Convert Cap'n Proto message to Array FragmentsList
+ * Convert Cap'n Proto message to ArrayDeleteFragmentsListRequest
  *
- * @param array_fragments_reader cap'n proto class
+ * @param reader cap'n proto class
  * @param array_uri uri of the array that the fragments belong to
  * @return vector of deserialized fragments
  */
 std::vector<URI> fragments_list_from_capnp(
-    const capnp::ArrayFragmentsList::Reader& array_fragments_reader,
+    const capnp::ArrayDeleteFragmentsListRequest::Reader& reader,
     const URI& array_uri);
 #endif
 

@@ -1199,11 +1199,11 @@ struct BufferedChunk {
   # the size in bytes of the intermediate chunk
 }
 
-struct ArrayFragmentsList {
+struct ArrayDeleteFragmentsListRequest {
   entries @0 :List(Text);
 }
 
-struct ArrayFragmentsTimestamps {
+struct ArrayDeleteFragmentsTimestampsRequest {
   startTimestamp @0 :UInt64;
   endTimestamp @1 :UInt64;
 }
