@@ -400,11 +400,11 @@ TEST_CASE("Mean aggregator: overflow", "[mean-aggregator][overflow]") {
     // Now cause an underflow.
     aggregator.aggregate_data(input_data_lowest);
     aggregator.copy_to_user_buffer("Mean", buffers);
-    CHECK(mean == std::numeric_limits<double>::lowest());
+    CHECK(mean == std::numeric_limits<double>::max());
 
     // Once we underflow, the value doesn't change.
     aggregator.aggregate_data(input_data_max);
     aggregator.copy_to_user_buffer("Mean", buffers);
-    CHECK(mean == std::numeric_limits<double>::lowest());
+    CHECK(mean == std::numeric_limits<double>::max());
   }
 }

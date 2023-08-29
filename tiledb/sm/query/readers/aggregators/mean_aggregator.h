@@ -33,12 +33,10 @@
 #ifndef TILEDB_MEAN_AGGREGATOR_H
 #define TILEDB_MEAN_AGGREGATOR_H
 
-#include "tiledb/common/status.h"
-#include "tiledb/sm/enums/layout.h"
+#include "tiledb/common/common.h"
+#include "tiledb/sm/query/readers/aggregators/aggregate_sum.h"
 #include "tiledb/sm/query/readers/aggregators/field_info.h"
 #include "tiledb/sm/query/readers/aggregators/iaggregator.h"
-
-using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
@@ -118,35 +116,20 @@ class MeanAggregator : public IAggregator {
   /** Field information. */
   const FieldInfo field_info_;
 
-  /** Mutex protecting `sum_`, `sum_overflowed_` and count_. */
-  std::mutex mean_mtx_;
+  /** AggregateSum to do summation of AggregateBuffer data. */
+  AggregateSum<T> summator_;
 
   /** Computed sum. */
-  double sum_;
+  std::atomic<typename sum_type_data<T>::sum_type> sum_;
 
   /** Count of values. */
-  uint64_t count_;
+  std::atomic<uint64_t> count_;
 
   /** Computed validity value. */
   optional<uint8_t> validity_value_;
 
   /** Has the sum overflowed. */
-  bool sum_overflowed_;
-
-  /* ********************************* */
-  /*           PRIVATE METHODS         */
-  /* ********************************* */
-
-  /**
-   * Add the sum/count of cells for the input data.
-   *
-   * @tparam BITMAP_T Bitmap type.
-   * @param input_data Input data for the mean.
-   *
-   * @return {Computed sum, count of cells, optional validity value}.
-   */
-  template <typename BITMAP_T>
-  tuple<double, uint64_t, optional<uint8_t>> mean(AggregateBuffer& input_data);
+  std::atomic<bool> sum_overflowed_;
 };
 
 }  // namespace sm

@@ -385,12 +385,12 @@ TEST_CASE(
     aggregator.aggregate_data(input_data_minus_one);
     aggregator.aggregate_data(input_data_minus_one);
     aggregator.copy_to_user_buffer("Sum", buffers);
-    CHECK(sum == std::numeric_limits<int64_t>::min());
+    CHECK(sum == std::numeric_limits<int64_t>::max());
 
     // Once we underflow, the value doesn't change.
     aggregator.aggregate_data(input_data_plus_one);
     aggregator.copy_to_user_buffer("Sum", buffers);
-    CHECK(sum == std::numeric_limits<int64_t>::min());
+    CHECK(sum == std::numeric_limits<int64_t>::max());
   }
 }
 
@@ -476,11 +476,11 @@ TEST_CASE(
     // Now cause an underflow.
     aggregator.aggregate_data(input_data_lowest);
     aggregator.copy_to_user_buffer("Sum", buffers);
-    CHECK(sum == std::numeric_limits<double>::lowest());
+    CHECK(sum == std::numeric_limits<double>::max());
 
     // Once we underflow, the value doesn't change.
     aggregator.aggregate_data(input_data_max);
     aggregator.copy_to_user_buffer("Sum", buffers);
-    CHECK(sum == std::numeric_limits<double>::lowest());
+    CHECK(sum == std::numeric_limits<double>::max());
   }
 }

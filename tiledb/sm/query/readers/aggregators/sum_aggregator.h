@@ -33,44 +33,14 @@
 #ifndef TILEDB_SUM_AGGREGATOR_H
 #define TILEDB_SUM_AGGREGATOR_H
 
+#include "tiledb/sm/query/readers/aggregators/aggregate_sum.h"
 #include "tiledb/sm/query/readers/aggregators/field_info.h"
 #include "tiledb/sm/query/readers/aggregators/iaggregator.h"
 
 namespace tiledb {
 namespace sm {
 
-#define SUM_TYPE_DATA(T, SUM_T) \
-  template <>                   \
-  struct sum_type_data<T> {     \
-    using type = T;             \
-    typedef SUM_T sum_type;     \
-  };
-
-/** Convert basic type to a sum type. **/
-template <typename T>
-struct sum_type_data;
-
-SUM_TYPE_DATA(int8_t, int64_t);
-SUM_TYPE_DATA(uint8_t, uint64_t);
-SUM_TYPE_DATA(int16_t, int64_t);
-SUM_TYPE_DATA(uint16_t, uint64_t);
-SUM_TYPE_DATA(int32_t, int64_t);
-SUM_TYPE_DATA(uint32_t, uint64_t);
-SUM_TYPE_DATA(int64_t, int64_t);
-SUM_TYPE_DATA(uint64_t, uint64_t);
-SUM_TYPE_DATA(float, double);
-SUM_TYPE_DATA(double, double);
-
 class QueryBuffer;
-
-/**
- * Sum function that prevent wrap arounds on overflow.
- *
- * @param value Value to add to the sum.
- * @param sum Computed sum.
- */
-template <typename SUM_T>
-void safe_sum(SUM_T value, SUM_T& sum);
 
 template <typename T>
 class SumAggregator : public IAggregator {
@@ -145,33 +115,17 @@ class SumAggregator : public IAggregator {
   /** Field information. */
   const FieldInfo field_info_;
 
-  /** Mutex protecting `sum_` and `sum_overflowed_`. */
-  std::mutex sum_mtx_;
+  /** AggregateSum to do summation of AggregateBuffer data. */
+  AggregateSum<T> summator_;
 
   /** Computed sum. */
-  typename sum_type_data<T>::sum_type sum_;
+  std::atomic<typename sum_type_data<T>::sum_type> sum_;
 
   /** Computed validity value. */
   optional<uint8_t> validity_value_;
 
   /** Has the sum overflowed. */
-  bool sum_overflowed_;
-
-  /* ********************************* */
-  /*           PRIVATE METHODS         */
-  /* ********************************* */
-
-  /**
-   * Add the sum of cells for the input data.
-   *
-   * @tparam SUM_T Sum type.
-   * @tparam BITMAP_T Bitmap type.
-   * @param input_data Input data for the sum.
-   *
-   * @return {Computed sum for the cells, optional validity value}.
-   */
-  template <typename SUM_T, typename BITMAP_T>
-  tuple<SUM_T, optional<uint8_t>> sum(AggregateBuffer& input_data);
+  std::atomic<bool> sum_overflowed_;
 };
 
 }  // namespace sm

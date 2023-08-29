@@ -34,9 +34,6 @@
 
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
-#include "tiledb/sm/query/readers/aggregators/sum_aggregator.h"
-
-using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
@@ -51,6 +48,7 @@ class MeanAggregatorStatusException : public StatusException {
 template <typename T>
 MeanAggregator<T>::MeanAggregator(const FieldInfo field_info)
     : field_info_(field_info)
+    , summator_(field_info)
     , sum_(0)
     , count_(0)
     , validity_value_(
@@ -116,49 +114,32 @@ void MeanAggregator<T>::validate_output_buffer(
 
 template <typename T>
 void MeanAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
-  tuple<double, uint64_t, optional<uint8_t>> res{0, 0, nullopt};
+  // Return if a previous aggregation has overflowed.
+  if (sum_overflowed_) {
+    return;
+  }
 
-  bool overflow = false;
   try {
+    tuple<typename sum_type_data<T>::sum_type, uint64_t, optional<uint8_t>> res{
+        0, 0, nullopt};
+
     if (input_data.is_count_bitmap()) {
-      res = mean<uint64_t>(input_data);
+      res =
+          summator_.template sum<typename sum_type_data<T>::sum_type, uint64_t>(
+              input_data);
     } else {
-      res = mean<uint8_t>(input_data);
-    }
-  } catch (std::overflow_error&) {
-    overflow = true;
-  }
-
-  {
-    // This might be called on multiple threads, the final result stored in sum_
-    // should be computed in a thread safe manner. The mutex also protects
-    // sum_overflowed_ which indicates when the sum has overflowed.
-    std::unique_lock lock(mean_mtx_);
-
-    // A previous operation already overflowed the sum, return.
-    if (sum_overflowed_) {
-      return;
+      res =
+          summator_.template sum<typename sum_type_data<T>::sum_type, uint8_t>(
+              input_data);
     }
 
-    // If we have an overflow, signal it, else it's business as usual.
-    if (overflow) {
-      sum_overflowed_ = true;
-      sum_ = std::get<0>(res);
-      count_ = std::numeric_limits<uint64_t>::max();
-      return;
-    } else {
-      // This sum might overflow as well.
-      try {
-        safe_sum(std::get<0>(res), sum_);
-        safe_sum(std::get<1>(res), count_);
-      } catch (std::overflow_error&) {
-        sum_overflowed_ = true;
-      }
+    safe_sum(std::get<0>(res), sum_);
+    count_ += std::get<1>(res);
+    if (field_info_.is_nullable_ && std::get<2>(res).value() == 1) {
+      validity_value_ = 1;
     }
-  }
-
-  if (field_info_.is_nullable_ && std::get<2>(res).value() == 1) {
-    validity_value_ = 1;
+  } catch (std::overflow_error& e) {
+    sum_overflowed_ = true;
   }
 }
 
@@ -167,90 +148,30 @@ void MeanAggregator<T>::copy_to_user_buffer(
     std::string output_field_name,
     std::unordered_map<std::string, QueryBuffer>& buffers) {
   auto& result_buffer = buffers[output_field_name];
-  *static_cast<double*>(result_buffer.buffer_) = sum_ / count_;
+  auto s = static_cast<double*>(result_buffer.buffer_);
+
+  if (sum_overflowed_) {
+    *s = std::numeric_limits<double>::max();
+  } else {
+    *s = static_cast<double>(sum_) / count_;
+  }
 
   if (result_buffer.buffer_size_) {
     *result_buffer.buffer_size_ = sizeof(double);
   }
 
   if (field_info_.is_nullable_) {
-    *static_cast<uint8_t*>(result_buffer.validity_vector_.buffer()) =
-        validity_value_.value();
+    auto v = static_cast<uint8_t*>(result_buffer.validity_vector_.buffer());
+    if (sum_overflowed_) {
+      *v = 0;
+    } else {
+      *v = validity_value_.value();
+    }
 
     if (result_buffer.validity_vector_.buffer_size()) {
       *result_buffer.validity_vector_.buffer_size() = 1;
     }
   }
-}
-
-template <typename T>
-template <typename BITMAP_T>
-tuple<double, uint64_t, optional<uint8_t>> MeanAggregator<T>::mean(
-    AggregateBuffer& input_data) {
-  double sum{0};
-  uint64_t count{0};
-  optional<uint8_t> validity{nullopt};
-  auto values = input_data.fixed_data_as<T>();
-
-  // Run different loops for bitmap versus no bitmap and nullable versus non
-  // nullable. The bitmap tells us which cells was already filtered out by
-  // ranges or query conditions.
-  if (input_data.has_bitmap()) {
-    auto bitmap_values = input_data.bitmap_data_as<BITMAP_T>();
-
-    if (field_info_.is_nullable_) {
-      validity = 0;
-      auto validity_values = input_data.validity_data();
-
-      // Process for nullable sums with bitmap.
-      for (uint64_t c = input_data.min_cell(); c < input_data.max_cell(); c++) {
-        if (validity_values[c] != 0 && bitmap_values[c] != 0) {
-          validity = 1;
-
-          auto value = static_cast<double>(values[c]);
-          for (BITMAP_T i = 0; i < bitmap_values[c]; i++) {
-            count++;
-            safe_sum(value, sum);
-          }
-        }
-      }
-    } else {
-      // Process for non nullable sums with bitmap.
-      for (uint64_t c = input_data.min_cell(); c < input_data.max_cell(); c++) {
-        auto value = static_cast<double>(values[c]);
-
-        for (BITMAP_T i = 0; i < bitmap_values[c]; i++) {
-          count++;
-          safe_sum(value, sum);
-        }
-      }
-    }
-  } else {
-    if (field_info_.is_nullable_) {
-      validity = 0;
-      auto validity_values = input_data.validity_data();
-
-      // Process for nullable sums with no bitmap.
-      for (uint64_t c = input_data.min_cell(); c < input_data.max_cell(); c++) {
-        if (validity_values[c] != 0) {
-          validity = 1;
-
-          auto value = static_cast<double>(values[c]);
-          count++;
-          safe_sum(value, sum);
-        }
-      }
-    } else {
-      // Process for non nullable sums with no bitmap.
-      for (uint64_t c = input_data.min_cell(); c < input_data.max_cell(); c++) {
-        auto value = static_cast<double>(values[c]);
-        count++;
-        safe_sum(value, sum);
-      }
-    }
-  }
-
-  return {sum, count, validity};
 }
 
 // Explicit template instantiations
