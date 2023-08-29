@@ -33,14 +33,10 @@
 #ifndef TILEDB_MIN_MAX_AGGREGATOR_H
 #define TILEDB_MIN_MAX_AGGREGATOR_H
 
-#include "tiledb/common/status.h"
-#include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/query/readers/aggregators/field_info.h"
 #include "tiledb/sm/query/readers/aggregators/iaggregator.h"
 
 #include <functional>
-
-using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {

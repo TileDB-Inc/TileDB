@@ -33,10 +33,8 @@
 #ifndef TILEDB_IAGGREGATOR_H
 #define TILEDB_IAGGREGATOR_H
 
-#include "tiledb/common/status.h"
-#include "tiledb/sm/enums/layout.h"
-
-using namespace tiledb::common;
+#include "tiledb/common/common.h"
+#include "tiledb/sm/misc/constants.h"
 
 namespace tiledb {
 namespace sm {

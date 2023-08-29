@@ -33,10 +33,7 @@
 #ifndef TILEDB_FIELD_INFO_H
 #define TILEDB_FIELD_INFO_H
 
-#include "tiledb/common/status.h"
-#include "tiledb/sm/enums/layout.h"
-
-using namespace tiledb::common;
+#include "tiledb/common/common.h"
 
 namespace tiledb {
 namespace sm {

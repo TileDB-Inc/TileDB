@@ -1,5 +1,5 @@
 /**
- * @file   sum_aggregator.h
+ * @file   null_count_aggregator.h
  *
  * @section LICENSE
  *
@@ -27,11 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class SumAggregator.
+ * This file defines class NullCountAggregator.
  */
 
-#ifndef TILEDB_SUM_AGGREGATOR_H
-#define TILEDB_SUM_AGGREGATOR_H
+#ifndef TILEDB_NULL_COUNT_AGGREGATOR_H
+#define TILEDB_NULL_COUNT_AGGREGATOR_H
 
 #include "tiledb/sm/query/readers/aggregators/field_info.h"
 #include "tiledb/sm/query/readers/aggregators/iaggregator.h"
@@ -39,57 +39,25 @@
 namespace tiledb {
 namespace sm {
 
-#define SUM_TYPE_DATA(T, SUM_T) \
-  template <>                   \
-  struct sum_type_data<T> {     \
-    using type = T;             \
-    typedef SUM_T sum_type;     \
-  };
-
-/** Convert basic type to a sum type. **/
-template <typename T>
-struct sum_type_data;
-
-SUM_TYPE_DATA(int8_t, int64_t);
-SUM_TYPE_DATA(uint8_t, uint64_t);
-SUM_TYPE_DATA(int16_t, int64_t);
-SUM_TYPE_DATA(uint16_t, uint64_t);
-SUM_TYPE_DATA(int32_t, int64_t);
-SUM_TYPE_DATA(uint32_t, uint64_t);
-SUM_TYPE_DATA(int64_t, int64_t);
-SUM_TYPE_DATA(uint64_t, uint64_t);
-SUM_TYPE_DATA(float, double);
-SUM_TYPE_DATA(double, double);
-
 class QueryBuffer;
 
-/**
- * Sum function that prevent wrap arounds on overflow.
- *
- * @param value Value to add to the sum.
- * @param sum Computed sum.
- */
-template <typename SUM_T>
-void safe_sum(SUM_T value, SUM_T& sum);
-
-template <typename T>
-class SumAggregator : public IAggregator {
+class NullCountAggregator : public IAggregator {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  SumAggregator() = delete;
+  NullCountAggregator() = delete;
 
   /**
    * Constructor.
    *
    * @param field_info Field info.
    */
-  SumAggregator(FieldInfo field_info);
+  NullCountAggregator(FieldInfo field_info);
 
-  DISABLE_COPY_AND_COPY_ASSIGN(SumAggregator);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(SumAggregator);
+  DISABLE_COPY_AND_COPY_ASSIGN(NullCountAggregator);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(NullCountAggregator);
 
   /* ********************************* */
   /*                API                */
@@ -145,36 +113,26 @@ class SumAggregator : public IAggregator {
   /** Field information. */
   const FieldInfo field_info_;
 
-  /** Mutex protecting `sum_` and `sum_overflowed_`. */
-  std::mutex sum_mtx_;
-
-  /** Computed sum. */
-  typename sum_type_data<T>::sum_type sum_;
-
-  /** Computed validity value. */
-  optional<uint8_t> validity_value_;
-
-  /** Has the sum overflowed. */
-  bool sum_overflowed_;
+  /** Computed null count. */
+  std::atomic<uint64_t> null_count_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
   /**
-   * Add the sum of cells for the input data.
+   * Add the null count of cells for the input data.
    *
-   * @tparam SUM_T Sum type.
    * @tparam BITMAP_T Bitmap type.
-   * @param input_data Input data for the sum.
+   * @param input_data Input data for the null count.
    *
-   * @return {Computed sum for the cells, optional validity value}.
+   * @return {Computed null count for the cells}.
    */
-  template <typename SUM_T, typename BITMAP_T>
-  tuple<SUM_T, optional<uint8_t>> sum(AggregateBuffer& input_data);
+  template <typename BITMAP_T>
+  uint64_t null_count(AggregateBuffer& input_data);
 };
 
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_SUM_AGGREGATOR_H
+#endif  // TILEDB_NULL_COUNT_AGGREGATOR_H

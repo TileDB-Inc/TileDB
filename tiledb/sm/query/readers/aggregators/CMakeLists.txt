@@ -31,8 +31,8 @@ include(object_library)
 # `aggregators` object library
 #
 commence(object_library aggregators)
-    this_target_sources(count_aggregator.cc min_max_aggregator.cc sum_aggregator.cc)
-    this_target_object_libraries(baseline array_schema result_tile)
+    this_target_sources(count_aggregator.cc min_max_aggregator.cc null_count_aggregator.cc sum_aggregator.cc)
+    this_target_object_libraries(baseline array_schema)
 conclude(object_library)
 
 add_test_subdirectory()

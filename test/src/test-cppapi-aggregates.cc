@@ -35,6 +35,7 @@
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/query/readers/aggregators/count_aggregator.h"
 #include "tiledb/sm/query/readers/aggregators/min_max_aggregator.h"
+#include "tiledb/sm/query/readers/aggregators/null_count_aggregator.h"
 #include "tiledb/sm/query/readers/aggregators/sum_aggregator.h"
 
 #include <test/support/tdb_catch.h>
@@ -1624,6 +1625,234 @@ TEMPLATE_LIST_TEST_CASE(
 
           if (request_data) {
             fx.validate_data_var(
+                query, dim1, dim2, a1_data, a1_offsets, a1_validity);
+          }
+        }
+      }
+    }
+  }
+
+  // Close array.
+  array.close();
+}
+
+typedef tuple<
+    uint8_t,
+    uint16_t,
+    uint32_t,
+    uint64_t,
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t,
+    float,
+    double,
+    std::string>
+    NullCountFixedTypesUnderTest;
+TEMPLATE_LIST_TEST_CASE_METHOD(
+    CppAggregatesFx,
+    "C++ API: Aggregates basic null count",
+    "[cppapi][aggregates][basic][null-count][fixed]",
+    NullCountFixedTypesUnderTest) {
+  typedef TestType T;
+  CppAggregatesFx<T>::generate_test_params();
+  if (!CppAggregatesFx<T>::nullable_) {
+    return;
+  }
+
+  CppAggregatesFx<T>::create_array_and_write_fragments();
+
+  Array array{
+      CppAggregatesFx<T>::ctx_, CppAggregatesFx<T>::ARRAY_NAME, TILEDB_READ};
+
+  for (bool set_ranges : {true, false}) {
+    CppAggregatesFx<T>::set_ranges_ = set_ranges;
+    for (bool request_data : {true, false}) {
+      CppAggregatesFx<T>::request_data_ = request_data;
+      for (bool set_qc : CppAggregatesFx<T>::set_qc_values_) {
+        CppAggregatesFx<T>::set_qc_ = set_qc;
+        for (tiledb_layout_t layout : CppAggregatesFx<T>::layout_values_) {
+          CppAggregatesFx<T>::layout_ = layout;
+          Query query(CppAggregatesFx<T>::ctx_, array, TILEDB_READ);
+
+          // TODO: Change to real CPPAPI. Add a count aggregator to the query.
+          uint64_t cell_val_num = std::is_same<T, std::string>::value ?
+                                      CppAggregatesFx<T>::STRING_CELL_VAL_NUM :
+                                      1;
+          query.ptr()->query_->add_aggregator_to_default_channel(
+              "NullCount",
+              std::make_shared<tiledb::sm::NullCountAggregator>(
+                  tiledb::sm::FieldInfo(
+                      "a1",
+                      false,
+                      CppAggregatesFx<T>::nullable_,
+                      cell_val_num)));
+
+          CppAggregatesFx<T>::set_ranges_and_condition_if_needed(
+              array, query, false);
+
+          // Set the data buffer for the aggregator.
+          uint64_t cell_size = std::is_same<T, std::string>::value ?
+                                   CppAggregatesFx<T>::STRING_CELL_VAL_NUM :
+                                   sizeof(T);
+          uint64_t null_count = 0;
+          std::vector<uint64_t> dim1(100);
+          std::vector<uint64_t> dim2(100);
+          std::vector<uint8_t> a1(100 * cell_size);
+          std::vector<uint8_t> a1_validity(100);
+          query.set_layout(layout);
+
+          // TODO: Change to real CPPAPI. Use set_data_buffer from the internal
+          // query directly because the CPPAPI doesn't know what is an aggregate
+          // and what the size of an aggregate should be.
+          uint64_t returned_null_count_size = 8;
+          CHECK(query.ptr()
+                    ->query_
+                    ->set_data_buffer(
+                        "NullCount", &null_count, &returned_null_count_size)
+                    .ok());
+
+          if (request_data) {
+            query.set_data_buffer("d1", dim1);
+            query.set_data_buffer("d2", dim2);
+            query.set_data_buffer(
+                "a1", static_cast<void*>(a1.data()), a1.size() / cell_size);
+            query.set_validity_buffer("a1", a1_validity);
+          }
+
+          // Submit the query.
+          query.submit();
+
+          // Check the results.
+          uint64_t expected_null_count;
+          if (CppAggregatesFx<T>::dense_) {
+            if (set_qc) {
+              expected_null_count = 0;
+            } else {
+              if (set_ranges) {
+                expected_null_count = 12;
+              } else {
+                expected_null_count = 17;
+              }
+            }
+          } else {
+            if (set_ranges) {
+              expected_null_count = CppAggregatesFx<T>::allow_dups_ ? 4 : 3;
+            } else {
+              expected_null_count = CppAggregatesFx<T>::allow_dups_ ? 8 : 7;
+            }
+          }
+
+          // TODO: use 'std::get<1>(result_el["NullCount"]) == 1' once we use
+          // the set_data_buffer api.
+          CHECK(returned_null_count_size == 8);
+          CHECK(null_count == expected_null_count);
+
+          if (request_data) {
+            CppAggregatesFx<T>::validate_data(
+                query, dim1, dim2, a1, a1_validity);
+          }
+        }
+      }
+    }
+  }
+
+  // Close array.
+  array.close();
+}
+
+TEST_CASE_METHOD(
+    CppAggregatesFx<std::string>,
+    "C++ API: Aggregates basic null count var",
+    "[cppapi][aggregates][basic][null-count][var]") {
+  CppAggregatesFx<std::string> fx;
+  generate_test_params();
+  if (!nullable_) {
+    return;
+  }
+
+  create_var_array_and_write_fragments();
+
+  Array array{ctx_, ARRAY_NAME, TILEDB_READ};
+
+  for (bool set_ranges : {true, false}) {
+    set_ranges_ = set_ranges;
+    for (bool request_data : {true, false}) {
+      request_data_ = request_data;
+      for (bool set_qc : set_qc_values_) {
+        set_qc_ = set_qc;
+        for (tiledb_layout_t layout : layout_values_) {
+          layout_ = layout;
+          Query query(ctx_, array, TILEDB_READ);
+
+          // TODO: Change to real CPPAPI. Add a count aggregator to the query.
+          query.ptr()->query_->add_aggregator_to_default_channel(
+              "NullCount",
+              std::make_shared<tiledb::sm::NullCountAggregator>(
+                  tiledb::sm::FieldInfo(
+                      "a1", true, nullable_, TILEDB_VAR_NUM)));
+
+          set_ranges_and_condition_if_needed(array, query, true);
+
+          // Set the data buffer for the aggregator.
+          uint64_t null_count = 0;
+          std::vector<uint64_t> dim1(100);
+          std::vector<uint64_t> dim2(100);
+          std::vector<uint64_t> a1_offsets(100);
+          std::string a1_data;
+          a1_data.resize(100);
+          std::vector<uint8_t> a1_validity(100);
+          query.set_layout(layout);
+
+          // TODO: Change to real CPPAPI. Use set_data_buffer and
+          // set_validity_buffer from the internal query directly because the
+          // CPPAPI doesn't know what is an aggregate and what the size of an
+          // aggregate should be.
+          uint64_t returned_null_count_size = 8;
+          CHECK(query.ptr()
+                    ->query_
+                    ->set_data_buffer(
+                        "NullCount", &null_count, &returned_null_count_size)
+                    .ok());
+
+          if (request_data) {
+            query.set_data_buffer("d1", dim1);
+            query.set_data_buffer("d2", dim2);
+            query.set_data_buffer("a1", a1_data);
+            query.set_offsets_buffer("a1", a1_offsets);
+            query.set_validity_buffer("a1", a1_validity);
+          }
+
+          // Submit the query.
+          query.submit();
+
+          // Check the results.
+          uint64_t expected_null_count;
+          if (dense_) {
+            if (set_qc) {
+              expected_null_count = 0;
+            } else {
+              if (set_ranges) {
+                expected_null_count = 12;
+              } else {
+                expected_null_count = 17;
+              }
+            }
+          } else {
+            if (set_ranges) {
+              expected_null_count = allow_dups_ ? 4 : 3;
+            } else {
+              expected_null_count = allow_dups_ ? 8 : 7;
+            }
+          }
+
+          // TODO: use 'std::get<1>(result_el["NullCount"]) == 1' once we use
+          // the set_data_buffer api.
+          CHECK(returned_null_count_size == 8);
+          CHECK(null_count == expected_null_count);
+
+          if (request_data) {
+            validate_data_var(
                 query, dim1, dim2, a1_data, a1_offsets, a1_validity);
           }
         }
