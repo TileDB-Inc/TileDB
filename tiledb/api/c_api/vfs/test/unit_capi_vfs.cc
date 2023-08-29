@@ -591,11 +591,13 @@ TEST_CASE("C API: tiledb_vfs_read argument validation", "[capi][vfs]") {
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("invalid offset") {
-    auto rc{tiledb_vfs_read(x.ctx, x.vfs_fh, -1, buffer, 0)};
+    auto rc{
+        tiledb_vfs_read(x.ctx, x.vfs_fh, static_cast<uint64_t>(-1), buffer, 0)};
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("invalid number of bytes") {
-    auto rc{tiledb_vfs_read(x.ctx, x.vfs_fh, 0, buffer, -1)};
+    auto rc{
+        tiledb_vfs_read(x.ctx, x.vfs_fh, 0, buffer, static_cast<uint64_t>(-1))};
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
 }
