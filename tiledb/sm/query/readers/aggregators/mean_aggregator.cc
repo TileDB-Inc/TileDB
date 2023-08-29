@@ -114,6 +114,10 @@ void MeanAggregator<T>::validate_output_buffer(
 
 template <typename T>
 void MeanAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
+  // NOTE: While this could be shared with the sum implementation, it isn't
+  // because it will be improved soon... Means should always be able to be
+  // computed with no overflows.
+
   // Return if a previous aggregation has overflowed.
   if (sum_overflowed_) {
     return;
