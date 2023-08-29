@@ -35,8 +35,6 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
 
-using namespace tiledb::common;
-
 namespace tiledb {
 namespace sm {
 

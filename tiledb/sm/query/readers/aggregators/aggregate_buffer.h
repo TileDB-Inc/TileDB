@@ -33,10 +33,7 @@
 #ifndef TILEDB_AGGREGATE_BUFFER_H
 #define TILEDB_AGGREGATE_BUFFER_H
 
-#include "tiledb/common/status.h"
-#include "tiledb/sm/enums/layout.h"
-
-using namespace tiledb::common;
+#include "tiledb/common/common.h"
 
 namespace tiledb {
 namespace sm {
