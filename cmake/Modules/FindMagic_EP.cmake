@@ -97,7 +97,7 @@ if(NOT TILEDB_LIBMAGIC_EP_BUILT)
     ExternalProject_Add(ep_magic
       PREFIX "externals"
       GIT_REPOSITORY "https://github.com/TileDB-Inc/file-windows.git"
-      GIT_TAG "5.38.2.tiledb"
+      GIT_TAG "teo/files-binarydir"
       GIT_SUBMODULES_RECURSE TRUE
       UPDATE_COMMAND ""
       CMAKE_ARGS
