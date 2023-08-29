@@ -4003,7 +4003,7 @@ capi_return_t tiledb_deserialize_fragments_timestamps(
     tiledb_serialization_type_t serialize_type,
     const tiledb_buffer_t* buffer,
     uint64_t* timestamp_start,
-    uint64_t* timestamp_end) noexcept {
+    uint64_t* timestamp_end) {
   api::ensure_buffer_is_valid(buffer);
   api::ensure_output_pointer_is_valid(timestamp_start);
   api::ensure_output_pointer_is_valid(timestamp_end);
@@ -4020,7 +4020,7 @@ capi_return_t tiledb_deserialize_fragments_list(
     const char* array_uri,
     tiledb_serialization_type_t serialize_type,
     const tiledb_buffer_t* buffer,
-    tiledb_fragments_list_t** fragments) noexcept {
+    tiledb_fragments_list_t** fragments) {
   api::ensure_buffer_is_valid(buffer);
   api::ensure_output_pointer_is_valid(fragments);
 
