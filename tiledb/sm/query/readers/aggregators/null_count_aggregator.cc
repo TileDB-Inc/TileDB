@@ -47,8 +47,7 @@ class NullCountAggregatorStatusException : public StatusException {
   }
 };
 
-template <typename T>
-NullCountAggregator<T>::NullCountAggregator(const FieldInfo field_info)
+NullCountAggregator::NullCountAggregator(const FieldInfo field_info)
     : field_info_(field_info)
     , null_count_(0) {
   if (!field_info_.is_nullable_) {
@@ -57,8 +56,7 @@ NullCountAggregator<T>::NullCountAggregator(const FieldInfo field_info)
   }
 }
 
-template <typename T>
-void NullCountAggregator<T>::validate_output_buffer(
+void NullCountAggregator::validate_output_buffer(
     std::string output_field_name,
     std::unordered_map<std::string, QueryBuffer>& buffers) {
   if (buffers.count(output_field_name) == 0) {
@@ -89,8 +87,7 @@ void NullCountAggregator<T>::validate_output_buffer(
   }
 }
 
-template <typename T>
-void NullCountAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
+void NullCountAggregator::aggregate_data(AggregateBuffer& input_data) {
   if (input_data.is_count_bitmap()) {
     null_count_ += null_count<uint64_t>(input_data);
   } else {
@@ -98,8 +95,7 @@ void NullCountAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
   }
 }
 
-template <typename T>
-void NullCountAggregator<T>::copy_to_user_buffer(
+void NullCountAggregator::copy_to_user_buffer(
     std::string output_field_name,
     std::unordered_map<std::string, QueryBuffer>& buffers) {
   auto& result_buffer = buffers[output_field_name];
@@ -110,9 +106,8 @@ void NullCountAggregator<T>::copy_to_user_buffer(
   }
 }
 
-template <typename T>
 template <typename BITMAP_T>
-uint64_t NullCountAggregator<T>::null_count(AggregateBuffer& input_data) {
+uint64_t NullCountAggregator::null_count(AggregateBuffer& input_data) {
   uint64_t null_count{0};
 
   // Run different loops for bitmap versus no bitmap. The bitmap tells us which
@@ -140,19 +135,6 @@ uint64_t NullCountAggregator<T>::null_count(AggregateBuffer& input_data) {
 
   return null_count;
 }
-
-// Explicit template instantiations
-template NullCountAggregator<int8_t>::NullCountAggregator(const FieldInfo);
-template NullCountAggregator<int16_t>::NullCountAggregator(const FieldInfo);
-template NullCountAggregator<int32_t>::NullCountAggregator(const FieldInfo);
-template NullCountAggregator<int64_t>::NullCountAggregator(const FieldInfo);
-template NullCountAggregator<uint8_t>::NullCountAggregator(const FieldInfo);
-template NullCountAggregator<uint16_t>::NullCountAggregator(const FieldInfo);
-template NullCountAggregator<uint32_t>::NullCountAggregator(const FieldInfo);
-template NullCountAggregator<uint64_t>::NullCountAggregator(const FieldInfo);
-template NullCountAggregator<float>::NullCountAggregator(const FieldInfo);
-template NullCountAggregator<double>::NullCountAggregator(const FieldInfo);
-template NullCountAggregator<std::string>::NullCountAggregator(const FieldInfo);
 
 }  // namespace sm
 }  // namespace tiledb

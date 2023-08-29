@@ -44,7 +44,7 @@ TEST_CASE(
     "[null-count-aggregator][constructor]") {
   SECTION("Non nullable") {
     CHECK_THROWS_WITH(
-        NullCountAggregator<uint8_t>(FieldInfo("a1", false, false, 1)),
+        NullCountAggregator(FieldInfo("a1", false, false, 1)),
         "NullCountAggregator: NullCount aggregates must only be requested for "
         "nullable attributes.");
   }
@@ -53,27 +53,27 @@ TEST_CASE(
 TEST_CASE(
     "NullCount aggregator: var sized", "[null-count-aggregator][var-sized]") {
   bool var_sized = GENERATE(true, false);
-  NullCountAggregator<uint8_t> aggregator(FieldInfo("a1", var_sized, true, 1));
+  NullCountAggregator aggregator(FieldInfo("a1", var_sized, true, 1));
   CHECK(aggregator.var_sized() == false);
 }
 
 TEST_CASE(
     "NullCount aggregator: need recompute",
     "[null-count-aggregator][need-recompute]") {
-  NullCountAggregator<uint8_t> aggregator(FieldInfo("a1", false, true, 1));
+  NullCountAggregator aggregator(FieldInfo("a1", false, true, 1));
   CHECK(aggregator.need_recompute_on_overflow() == true);
 }
 
 TEST_CASE(
     "NullCount aggregator: field name", "[null-count-aggregator][field-name]") {
-  NullCountAggregator<uint8_t> aggregator(FieldInfo("a1", false, true, 1));
+  NullCountAggregator aggregator(FieldInfo("a1", false, true, 1));
   CHECK(aggregator.field_name() == "a1");
 }
 
 TEST_CASE(
     "NullCount aggregator: Validate buffer",
     "[null-count-aggregator][validate-buffer]") {
-  NullCountAggregator<uint8_t> aggregator(FieldInfo("a1", false, true, 1));
+  NullCountAggregator aggregator(FieldInfo("a1", false, true, 1));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -176,7 +176,7 @@ TEMPLATE_LIST_TEST_CASE(
     "[null-count-aggregator][basic-aggregation]",
     FixedTypesUnderTest) {
   typedef TestType T;
-  NullCountAggregator<T> aggregator(FieldInfo("a1", false, true, 1));
+  NullCountAggregator aggregator(FieldInfo("a1", false, true, 1));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -270,7 +270,7 @@ TEMPLATE_LIST_TEST_CASE(
 TEST_CASE(
     "NullCount aggregator: Basic string aggregation",
     "[null-count-aggregator][basic-string-aggregation]") {
-  NullCountAggregator<std::string> aggregator(
+  NullCountAggregator aggregator(
       FieldInfo("a1", true, true, constants::var_num));
 
   std::unordered_map<std::string, QueryBuffer> buffers;

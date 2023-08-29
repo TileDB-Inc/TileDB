@@ -80,27 +80,7 @@ int main() {
   tiledb::sm::MaxAggregator<std::string>(
       tiledb::sm::FieldInfo("MinMax", false, false, 1));
 
-  tiledb::sm::NullCountAggregator<uint8_t>(
-      tiledb::sm::FieldInfo("NullCount", false, false, 1));
-  tiledb::sm::NullCountAggregator<uint16_t>(
-      tiledb::sm::FieldInfo("NullCount", false, false, 1));
-  tiledb::sm::NullCountAggregator<uint32_t>(
-      tiledb::sm::FieldInfo("NullCount", false, false, 1));
-  tiledb::sm::NullCountAggregator<uint64_t>(
-      tiledb::sm::FieldInfo("NullCount", false, false, 1));
-  tiledb::sm::NullCountAggregator<int8_t>(
-      tiledb::sm::FieldInfo("NullCount", false, false, 1));
-  tiledb::sm::NullCountAggregator<int16_t>(
-      tiledb::sm::FieldInfo("NullCount", false, false, 1));
-  tiledb::sm::NullCountAggregator<int32_t>(
-      tiledb::sm::FieldInfo("NullCount", false, false, 1));
-  tiledb::sm::NullCountAggregator<int64_t>(
-      tiledb::sm::FieldInfo("NullCount", false, false, 1));
-  tiledb::sm::NullCountAggregator<float>(
-      tiledb::sm::FieldInfo("NullCount", false, false, 1));
-  tiledb::sm::NullCountAggregator<double>(
-      tiledb::sm::FieldInfo("NullCount", false, false, 1));
-  tiledb::sm::NullCountAggregator<std::string>(
+  tiledb::sm::NullCountAggregator(
       tiledb::sm::FieldInfo("NullCount", false, false, 1));
 
   tiledb::sm::SumAggregator<uint8_t>(

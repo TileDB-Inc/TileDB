@@ -45,7 +45,6 @@ namespace sm {
 
 class QueryBuffer;
 
-template <typename T>
 class NullCountAggregator : public IAggregator {
  public:
   /* ********************************* */

@@ -1681,7 +1681,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
                                       1;
           query.ptr()->query_->add_aggregator_to_default_channel(
               "NullCount",
-              std::make_shared<tiledb::sm::NullCountAggregator<T>>(
+              std::make_shared<tiledb::sm::NullCountAggregator>(
                   tiledb::sm::FieldInfo(
                       "a1",
                       false,
@@ -1788,7 +1788,7 @@ TEST_CASE_METHOD(
           // TODO: Change to real CPPAPI. Add a count aggregator to the query.
           query.ptr()->query_->add_aggregator_to_default_channel(
               "NullCount",
-              std::make_shared<tiledb::sm::NullCountAggregator<std::string>>(
+              std::make_shared<tiledb::sm::NullCountAggregator>(
                   tiledb::sm::FieldInfo(
                       "a1", true, nullable_, TILEDB_VAR_NUM)));
 
