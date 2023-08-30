@@ -247,7 +247,13 @@ TEMPLATE_LIST_TEST_CASE(
 
     // Nullable attribute.
     AggregateBuffer input_data3{
-        0, 2, fixed_data.data(), nullopt, validity_data.data(), false, nullopt};
+        0,
+        2,
+        fixed_data.data(),
+        nullopt,
+        validity_data.data(),
+        false,
+        bitmap.data()};
     aggregator_nullable.aggregate_data(input_data3);
     aggregator_nullable.copy_to_user_buffer("Sum2", buffers);
     CHECK(sum2 == 0);

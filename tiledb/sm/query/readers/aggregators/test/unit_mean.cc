@@ -214,7 +214,7 @@ TEMPLATE_LIST_TEST_CASE(
   SECTION("No bitmap") {
     // Regular attribute.
     AggregateBuffer input_data{
-        2, 10, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt};
+        2, 10, fixed_data.data(), nullopt, nullopt, false, nullopt};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("Mean", buffers);
     CHECK(mean == (27.0 / 8.0));
@@ -223,10 +223,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data2{
         2,
         10,
-        10,
         fixed_data.data(),
         nullopt,
-        0,
         validity_data.data(),
         false,
         nullopt};
@@ -242,10 +240,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data{
         2,
         10,
-        10,
         fixed_data.data(),
         nullopt,
-        0,
         nullopt,
         false,
         bitmap.data()};
@@ -254,7 +250,7 @@ TEMPLATE_LIST_TEST_CASE(
     CHECK(mean == (11.0 / 3.0));
 
     AggregateBuffer input_data2{
-        0, 2, 10, fixed_data.data(), nullopt, 0, nullopt, false, bitmap.data()};
+        0, 2, fixed_data.data(), nullopt, nullopt, false, bitmap.data()};
     aggregator.aggregate_data(input_data2);
     aggregator.copy_to_user_buffer("Mean", buffers);
     CHECK(mean == (14.0 / 5.0));
@@ -263,10 +259,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data3{
         0,
         2,
-        10,
         fixed_data.data(),
         nullopt,
-        0,
         validity_data.data(),
         false,
         nullopt};
@@ -278,10 +272,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data4{
         2,
         10,
-        10,
         fixed_data.data(),
         nullopt,
-        0,
         validity_data.data(),
         false,
         bitmap.data()};
@@ -297,10 +289,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data{
         2,
         10,
-        10,
         fixed_data.data(),
         nullopt,
-        0,
         nullopt,
         true,
         bitmap_count.data()};
@@ -311,10 +301,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data2{
         0,
         2,
-        10,
         fixed_data.data(),
         nullopt,
-        0,
         nullopt,
         true,
         bitmap_count.data()};
@@ -326,10 +314,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data3{
         2,
         10,
-        10,
         fixed_data.data(),
         nullopt,
-        0,
         validity_data.data(),
         true,
         bitmap_count.data()};
@@ -341,10 +327,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data4{
         0,
         2,
-        10,
         fixed_data.data(),
         nullopt,
-        0,
         validity_data.data(),
         true,
         bitmap_count.data()};
@@ -369,10 +353,10 @@ TEST_CASE("Mean aggregator: overflow", "[mean-aggregator][overflow]") {
       std::numeric_limits<double>::lowest()};
 
   AggregateBuffer input_data_max{
-      0, 1, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt};
+      0, 1, fixed_data.data(), nullopt, nullopt, false, nullopt};
 
   AggregateBuffer input_data_lowest{
-      1, 2, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt};
+      1, 2, fixed_data.data(), nullopt, nullopt, false, nullopt};
 
   SECTION("Overflow") {
     // First mean doesn't overflow.
