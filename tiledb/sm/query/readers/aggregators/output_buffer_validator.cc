@@ -44,23 +44,29 @@ class OutputBufferValidatorStatusException : public StatusException {
   }
 };
 
-void OutputBufferValidator::validate_output_buffer_arithmetic(
-    QueryBuffer& buffer) {
+void OutputBufferValidator::validate_has_fixed_buffer(QueryBuffer& buffer) {
   if (buffer.buffer_ == nullptr) {
     throw OutputBufferValidatorStatusException(
         "Aggregate must have a fixed size buffer.");
   }
+}
 
+void OutputBufferValidator::validate_no_var_buffer(QueryBuffer& buffer) {
   if (buffer.buffer_var_ != nullptr) {
     throw OutputBufferValidatorStatusException(
         "Aggregate must not have a var buffer.");
   }
+}
 
-  if (buffer.original_buffer_size_ != 8) {
+void OutputBufferValidator::validate_one_element(
+    QueryBuffer& buffer, uint64_t element_size) {
+  if (buffer.original_buffer_size_ != element_size) {
     throw OutputBufferValidatorStatusException(
         "Aggregate fixed size buffer should be for one element only.");
   }
+}
 
+void OutputBufferValidator::validate_validity(QueryBuffer& buffer) {
   bool exists_validity = buffer.validity_vector_.buffer();
   if (field_info_.is_nullable_) {
     if (!exists_validity) {
@@ -82,21 +88,18 @@ void OutputBufferValidator::validate_output_buffer_arithmetic(
   }
 }
 
+void OutputBufferValidator::validate_output_buffer_arithmetic(
+    QueryBuffer& buffer) {
+  validate_has_fixed_buffer(buffer);
+  validate_no_var_buffer(buffer);
+  validate_one_element(buffer, 8);
+  validate_validity(buffer);
+}
+
 void OutputBufferValidator::validate_output_buffer_count(QueryBuffer& buffer) {
-  if (buffer.buffer_ == nullptr) {
-    throw OutputBufferValidatorStatusException(
-        "Count aggregates must have a fixed size buffer.");
-  }
-
-  if (buffer.buffer_var_ != nullptr) {
-    throw OutputBufferValidatorStatusException(
-        "Count aggregates must not have a var buffer.");
-  }
-
-  if (buffer.original_buffer_size_ != 8) {
-    throw OutputBufferValidatorStatusException(
-        "Count aggregates fixed size buffer should be for one element only.");
-  }
+  validate_has_fixed_buffer(buffer);
+  validate_no_var_buffer(buffer);
+  validate_one_element(buffer, 8);
 
   bool exists_validity = buffer.validity_vector_.buffer();
   if (exists_validity) {
@@ -107,10 +110,7 @@ void OutputBufferValidator::validate_output_buffer_count(QueryBuffer& buffer) {
 
 template <class T>
 void OutputBufferValidator::validate_output_buffer_var(QueryBuffer& buffer) {
-  if (buffer.buffer_ == nullptr) {
-    throw OutputBufferValidatorStatusException(
-        "Aggregates must have a fixed size buffer.");
-  }
+  validate_has_fixed_buffer(buffer);
 
   if (field_info_.var_sized_) {
     if (buffer.buffer_var_ == nullptr) {
@@ -118,56 +118,25 @@ void OutputBufferValidator::validate_output_buffer_var(QueryBuffer& buffer) {
           "Var sized aggregates must have a var buffer.");
     }
 
-    if (buffer.original_buffer_size_ != constants::cell_var_offset_size) {
-      throw OutputBufferValidatorStatusException(
-          "Var sized aggregates offset buffer should be for one element only.");
-    }
+    validate_one_element(buffer, constants::cell_var_offset_size);
 
     if (field_info_.cell_val_num_ != constants::var_num) {
       throw OutputBufferValidatorStatusException(
           "Var sized aggregates should have TILEDB_VAR_NUM cell val num.");
     }
   } else {
-    if (buffer.buffer_var_ != nullptr) {
-      throw OutputBufferValidatorStatusException(
-          "Fixed aggregates must not have a var buffer.");
-    }
+    validate_no_var_buffer(buffer);
 
     // If cell val num is one, this is a normal fixed size attritube. If not, it
     // is a fixed sized string.
     if (field_info_.cell_val_num_ == 1) {
-      if (buffer.original_buffer_size_ != sizeof(T)) {
-        throw OutputBufferValidatorStatusException(
-            "Fixed size aggregates fixed buffer should be for one element "
-            "only.");
-      }
+      validate_one_element(buffer, sizeof(T));
     } else {
-      if (buffer.original_buffer_size_ != field_info_.cell_val_num_) {
-        throw OutputBufferValidatorStatusException(
-            "Fixed size aggregates fixed buffer should be for one element "
-            "only.");
-      }
+      validate_one_element(buffer, field_info_.cell_val_num_);
     }
   }
 
-  bool exists_validity = buffer.validity_vector_.buffer();
-  if (field_info_.is_nullable_) {
-    if (!exists_validity) {
-      throw OutputBufferValidatorStatusException(
-          "Aggregates for nullable attributes must have a validity buffer.");
-    }
-
-    if (*buffer.validity_vector_.buffer_size() != 1) {
-      throw OutputBufferValidatorStatusException(
-          "Aggregates validity vector should be for one element only.");
-    }
-  } else {
-    if (exists_validity) {
-      throw OutputBufferValidatorStatusException(
-          "Aggregates for non nullable attributes must not have a validity "
-          "buffer.");
-    }
-  }
+  validate_validity(buffer);
 }
 
 // Explicit template instantiations

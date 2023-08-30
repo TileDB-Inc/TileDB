@@ -102,7 +102,7 @@ TEST_CASE(
     buffers["Max"].buffer_ = nullptr;
     CHECK_THROWS_WITH(
         aggregator.validate_output_buffer("Max", buffers),
-        "OutputBufferValidator: Aggregates must have a fixed size buffer.");
+        "OutputBufferValidator: Aggregate must have a fixed size buffer.");
   }
 
   SECTION("Var, wrong size") {
@@ -113,8 +113,8 @@ TEST_CASE(
     buffers["Max"].original_buffer_var_size_ = 8;
     CHECK_THROWS_WITH(
         aggregator_var.validate_output_buffer("Max", buffers),
-        "OutputBufferValidator: Var sized aggregates offset buffer should be "
-        "for one element only.");
+        "OutputBufferValidator: Aggregate fixed size buffer should be for one "
+        "element only.");
   }
 
   SECTION("Var, no var buffer") {
@@ -149,8 +149,8 @@ TEST_CASE(
     buffers["Max"].original_buffer_size_ = 8;
     CHECK_THROWS_WITH(
         aggregator.validate_output_buffer("Max", buffers),
-        "OutputBufferValidator: Fixed size aggregates fixed buffer should be "
-        "for one element only.");
+        "OutputBufferValidator: Aggregate fixed size buffer should be for one "
+        "element only.");
   }
 
   SECTION("Fixed, var buffer") {
@@ -161,7 +161,7 @@ TEST_CASE(
     buffers["Max"].original_buffer_var_size_ = 1;
     CHECK_THROWS_WITH(
         aggregator.validate_output_buffer("Max", buffers),
-        "OutputBufferValidator: Fixed aggregates must not have a var buffer.");
+        "OutputBufferValidator: Aggregate must not have a var buffer.");
   }
 
   SECTION("Fixed string, wrong size") {
@@ -170,8 +170,8 @@ TEST_CASE(
     buffers["Max"].original_buffer_size_ = 4;
     CHECK_THROWS_WITH(
         aggregator_fixed_string.validate_output_buffer("Max", buffers),
-        "OutputBufferValidator: Fixed size aggregates fixed buffer should be "
-        "for one element only.");
+        "OutputBufferValidator: Aggregate fixed size buffer should be for one "
+        "element only.");
   }
 
   SECTION("With validity") {
@@ -184,8 +184,8 @@ TEST_CASE(
     buffers["Max"].validity_vector_ = ValidityVector(&validity, &validity_size);
     CHECK_THROWS_WITH(
         aggregator.validate_output_buffer("Max", buffers),
-        "OutputBufferValidator: Aggregates for non nullable attributes must "
-        "not have a validity buffer.");
+        "OutputBufferValidator: Aggregate for non nullable attributes must not "
+        "have a validity buffer.");
   }
 
   SECTION("With no validity") {
@@ -195,7 +195,7 @@ TEST_CASE(
 
     CHECK_THROWS_WITH(
         aggregator_nullable.validate_output_buffer("Max", buffers),
-        "OutputBufferValidator: Aggregates for nullable attributes must have a "
+        "OutputBufferValidator: Aggregate for nullable attributes must have a "
         "validity buffer.");
   }
 
@@ -209,8 +209,8 @@ TEST_CASE(
     buffers["Max"].validity_vector_ = ValidityVector(&validity, &validity_size);
     CHECK_THROWS_WITH(
         aggregator_nullable.validate_output_buffer("Max", buffers),
-        "OutputBufferValidator: Aggregates validity vector should be "
-        "for one element only.");
+        "OutputBufferValidator: Aggregate validity vector should be for one "
+        "element only.");
   }
 
   SECTION("Success") {

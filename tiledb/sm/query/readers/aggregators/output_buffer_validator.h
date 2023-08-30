@@ -56,6 +56,35 @@ class OutputBufferValidator {
   /* ********************************* */
 
   /**
+   * Validate the output buffer has a fixed buffer.
+   *
+   * @param buffer Output buffer.
+   */
+  void validate_has_fixed_buffer(QueryBuffer& buffer);
+
+  /**
+   * Validate the output buffer has no var buffer.
+   *
+   * @param buffer Output buffer.
+   */
+  void validate_no_var_buffer(QueryBuffer& buffer);
+
+  /**
+   * Validate the output buffer has one element.
+   *
+   * @param buffer Output buffer.
+   * @param element_size Element size.
+   */
+  void validate_one_element(QueryBuffer& buffer, uint64_t element_size);
+
+  /**
+   * Validate the output buffer has the correct validity buffer.
+   *
+   * @param buffer Output buffer.
+   */
+  void validate_validity(QueryBuffer& buffer);
+
+  /**
    * Validate the output buffer can receive an arithmetic operation result.
    *
    * @param buffer Output buffer.

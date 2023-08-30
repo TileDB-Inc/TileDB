@@ -72,8 +72,7 @@ TEST_CASE(
     buffers["Count"].buffer_ = nullptr;
     CHECK_THROWS_WITH(
         aggregator.validate_output_buffer("Count", buffers),
-        "OutputBufferValidator: Count aggregates must have a fixed size "
-        "buffer.");
+        "OutputBufferValidator: Aggregate must have a fixed size buffer.");
   }
 
   SECTION("Wrong size") {
@@ -82,8 +81,8 @@ TEST_CASE(
     buffers["Count"].original_buffer_size_ = 1;
     CHECK_THROWS_WITH(
         aggregator.validate_output_buffer("Count", buffers),
-        "OutputBufferValidator: Count aggregates fixed size buffer should be "
-        "for one element only.");
+        "OutputBufferValidator: Aggregate fixed size buffer should be for one "
+        "element only.");
   }
 
   SECTION("With var buffer") {
@@ -94,7 +93,7 @@ TEST_CASE(
 
     CHECK_THROWS_WITH(
         aggregator.validate_output_buffer("Count", buffers),
-        "OutputBufferValidator: Count aggregates must not have a var buffer.");
+        "OutputBufferValidator: Aggregate must not have a var buffer.");
   }
 
   SECTION("With validity") {
