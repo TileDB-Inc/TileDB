@@ -89,16 +89,18 @@ void SumAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
         0, 0, nullopt};
 
     if (input_data.is_count_bitmap()) {
-      res =
-          summator_.template sum<typename sum_type_data<T>::sum_type, uint64_t>(
-              input_data);
+      res = summator_.template aggregate<
+          typename sum_type_data<T>::sum_type,
+          uint64_t,
+          SafeSum>(input_data);
     } else {
-      res =
-          summator_.template sum<typename sum_type_data<T>::sum_type, uint8_t>(
-              input_data);
+      res = summator_.template aggregate<
+          typename sum_type_data<T>::sum_type,
+          uint8_t,
+          SafeSum>(input_data);
     }
 
-    safe_sum(std::get<0>(res), sum_);
+    SafeSum::safe_sum(std::get<0>(res), sum_);
     if (field_info_.is_nullable_ && std::get<2>(res).value() == 1) {
       validity_value_ = 1;
     }

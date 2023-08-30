@@ -1,5 +1,5 @@
 /**
- * @file aggregate_sum.cc
+ * @file   sum_type.h
  *
  * @section LICENSE
  *
@@ -27,51 +27,38 @@
  *
  * @section DESCRIPTION
  *
- * This file implements class AggregateSum.
+ * This file defines sum types in relation to basic types.
  */
 
-#include "tiledb/sm/query/readers/aggregators/aggregate_sum.h"
+#ifndef TILEDB_SUM_TYPE_H
+#define TILEDB_SUM_TYPE_H
 
 namespace tiledb {
 namespace sm {
 
-/** Specialization of safe_sum for int64_t sums. */
-template <>
-void safe_sum<int64_t>(int64_t value, int64_t& sum) {
-  if (sum > 0 && value > 0 &&
-      (sum > (std::numeric_limits<int64_t>::max() - value))) {
-    throw std::overflow_error("overflow on sum");
-  }
+#define SUM_TYPE_DATA(T, SUM_T) \
+  template <>                   \
+  struct sum_type_data<T> {     \
+    using type = T;             \
+    typedef SUM_T sum_type;     \
+  };
 
-  if (sum < 0 && value < 0 &&
-      (sum < (std::numeric_limits<int64_t>::min() - value))) {
-    throw std::overflow_error("overflow on sum");
-  }
+/** Convert basic type to a sum type. **/
+template <typename T>
+struct sum_type_data;
 
-  sum += value;
-}
-
-/** Specialization of safe_sum for uint64_t sums. */
-template <>
-void safe_sum<uint64_t>(uint64_t value, uint64_t& sum) {
-  if (sum > (std::numeric_limits<uint64_t>::max() - value)) {
-    throw std::overflow_error("overflow on sum");
-  }
-
-  sum += value;
-}
-
-/** Specialization of safe_sum for double sums. */
-template <>
-void safe_sum<double>(double value, double& sum) {
-  if ((sum < 0.0) == (value < 0.0) &&
-      (std::abs(sum) >
-       (std::numeric_limits<double>::max() - std::abs(value)))) {
-    throw std::overflow_error("overflow on sum");
-  }
-
-  sum += value;
-}
+SUM_TYPE_DATA(int8_t, int64_t);
+SUM_TYPE_DATA(uint8_t, uint64_t);
+SUM_TYPE_DATA(int16_t, int64_t);
+SUM_TYPE_DATA(uint16_t, uint64_t);
+SUM_TYPE_DATA(int32_t, int64_t);
+SUM_TYPE_DATA(uint32_t, uint64_t);
+SUM_TYPE_DATA(int64_t, int64_t);
+SUM_TYPE_DATA(uint64_t, uint64_t);
+SUM_TYPE_DATA(float, double);
+SUM_TYPE_DATA(double, double);
 
 }  // namespace sm
 }  // namespace tiledb
+
+#endif  // TILEDB_SUM_TYPE_H

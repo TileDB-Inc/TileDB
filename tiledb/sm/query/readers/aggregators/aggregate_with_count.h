@@ -1,5 +1,5 @@
 /**
- * @file   aggregate_sum.h
+ * @file   aggregate_with_count.h
  *
  * @section LICENSE
  *
@@ -27,73 +27,27 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class AggregateSum.
+ * This file defines class AggregateWithCount.
  */
 
-#ifndef TILEDB_AGGREGATE_SUM_H
-#define TILEDB_AGGREGATE_SUM_H
+#ifndef TILEDB_AGGREGATE_WITH_COUNT_H
+#define TILEDB_AGGREGATE_WITH_COUNT_H
 
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/field_info.h"
+#include "tiledb/sm/query/readers/aggregators/safe_sum.h"
 
 namespace tiledb {
 namespace sm {
 
-#define SUM_TYPE_DATA(T, SUM_T) \
-  template <>                   \
-  struct sum_type_data<T> {     \
-    using type = T;             \
-    typedef SUM_T sum_type;     \
-  };
-
-/** Convert basic type to a sum type. **/
 template <typename T>
-struct sum_type_data;
-
-SUM_TYPE_DATA(int8_t, int64_t);
-SUM_TYPE_DATA(uint8_t, uint64_t);
-SUM_TYPE_DATA(int16_t, int64_t);
-SUM_TYPE_DATA(uint16_t, uint64_t);
-SUM_TYPE_DATA(int32_t, int64_t);
-SUM_TYPE_DATA(uint32_t, uint64_t);
-SUM_TYPE_DATA(int64_t, int64_t);
-SUM_TYPE_DATA(uint64_t, uint64_t);
-SUM_TYPE_DATA(float, double);
-SUM_TYPE_DATA(double, double);
-
-/**
- * Sum function that prevent wrap arounds on overflow.
- *
- * @param value Value to add to the sum.
- * @param sum Computed sum.
- */
-template <typename SUM_T>
-void safe_sum(SUM_T value, SUM_T& sum);
-
-/**
- * Sum function for atomics that prevent wrap arounds on overflow.
- *
- * @param value Value to add to the sum.
- * @param sum Computed sum.
- */
-template <typename SUM_T>
-void safe_sum(SUM_T value, std::atomic<SUM_T>& sum) {
-  SUM_T cur_sum = sum;
-  SUM_T new_sum;
-  do {
-    new_sum = cur_sum;
-    safe_sum(value, new_sum);
-  } while (!std::atomic_compare_exchange_weak(&sum, &cur_sum, new_sum));
-}
-
-template <typename T>
-class AggregateSum {
+class AggregateWithCount {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  AggregateSum(const FieldInfo field_info)
+  AggregateWithCount(const FieldInfo field_info)
       : field_info_(field_info) {
   }
 
@@ -110,8 +64,9 @@ class AggregateSum {
    *
    * @return {Sum for the cells, number of cells, optional validity value}.
    */
-  template <typename SUM_T, typename BITMAP_T>
-  tuple<SUM_T, uint64_t, optional<uint8_t>> sum(AggregateBuffer& input_data) {
+  template <typename SUM_T, typename BITMAP_T, class AggPolicy>
+  tuple<SUM_T, uint64_t, optional<uint8_t>> aggregate(
+      AggregateBuffer& input_data) {
     SUM_T sum{0};
     uint64_t count{0};
     optional<uint8_t> validity{nullopt};
@@ -136,7 +91,7 @@ class AggregateSum {
             auto value = static_cast<SUM_T>(values[c]);
             for (BITMAP_T i = 0; i < bitmap_values[c]; i++) {
               count++;
-              safe_sum(value, sum);
+              AggPolicy::op(value, sum);
             }
           }
         }
@@ -148,7 +103,7 @@ class AggregateSum {
 
           for (BITMAP_T i = 0; i < bitmap_values[c]; i++) {
             count++;
-            safe_sum(value, sum);
+            AggPolicy::op(value, sum);
           }
         }
       }
@@ -165,7 +120,7 @@ class AggregateSum {
 
             auto value = static_cast<SUM_T>(values[c]);
             count++;
-            safe_sum(value, sum);
+            AggPolicy::op(value, sum);
           }
         }
       } else {
@@ -174,7 +129,7 @@ class AggregateSum {
              c++) {
           auto value = static_cast<SUM_T>(values[c]);
           count++;
-          safe_sum(value, sum);
+          AggPolicy::op(value, sum);
         }
       }
     }
@@ -194,4 +149,4 @@ class AggregateSum {
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_AGGREGATE_SUM_H
+#endif  // TILEDB_AGGREGATE_WITH_COUNT_H

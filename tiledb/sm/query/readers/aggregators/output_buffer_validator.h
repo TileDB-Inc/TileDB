@@ -30,8 +30,8 @@
  * This file defines class OutputBufferValidator.
  */
 
-#ifndef TILEDB_AGGREGATE_BUFFER_VALIDATOR_H
-#define TILEDB_AGGREGATE_BUFFER_VALIDATOR_H
+#ifndef TILEDB_OUTPUT_BUFFER_VALIDATOR_H
+#define TILEDB_OUTPUT_BUFFER_VALIDATOR_H
 
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/field_info.h"
@@ -119,4 +119,4 @@ class OutputBufferValidator {
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_AGGREGATE_BUFFER_VALIDATOR_H
+#endif  // TILEDB_OUTPUT_BUFFER_VALIDATOR_H

@@ -34,9 +34,10 @@
 #define TILEDB_MEAN_AGGREGATOR_H
 
 #include "tiledb/common/common.h"
-#include "tiledb/sm/query/readers/aggregators/aggregate_sum.h"
+#include "tiledb/sm/query/readers/aggregators/aggregate_with_count.h"
 #include "tiledb/sm/query/readers/aggregators/field_info.h"
 #include "tiledb/sm/query/readers/aggregators/iaggregator.h"
+#include "tiledb/sm/query/readers/aggregators/sum_type.h"
 
 namespace tiledb {
 namespace sm {
@@ -116,8 +117,8 @@ class MeanAggregator : public OutputBufferValidator, public IAggregator {
   /** Field information. */
   const FieldInfo field_info_;
 
-  /** AggregateSum to do summation of AggregateBuffer data. */
-  AggregateSum<T> summator_;
+  /** AggregateWithCount to do summation of AggregateBuffer data. */
+  AggregateWithCount<T> summator_;
 
   /** Computed sum. */
   std::atomic<typename sum_type_data<T>::sum_type> sum_;
