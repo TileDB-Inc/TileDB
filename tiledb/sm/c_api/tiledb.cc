@@ -453,10 +453,9 @@ int32_t tiledb_array_schema_check(
   return TILEDB_OK;
 }
 
-int32_t tiledb_array_schema_load_impl(
+int32_t tiledb_array_schema_load(
     tiledb_ctx_t* ctx,
     const char* array_uri,
-    int with_enumerations,
     tiledb_array_schema_t** array_schema) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -490,23 +489,12 @@ int32_t tiledb_array_schema_load_impl(
       return TILEDB_ERR;
     }
 
-    // With enumerations not supported for remote arrays currently.
-    if (with_enumerations) {
-      delete *array_schema;
-      *array_schema = nullptr;
-      auto st = Status_Error(
-          "Failed to load array schema;"
-          "remote load with enumerations is not yet supported.");
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-
     auto&& [st, array_schema_rest] =
         rest_client->get_array_schema_from_rest(uri);
     if (!st.ok()) {
       LOG_STATUS_NO_RETURN_VALUE(st);
       save_error(ctx, st);
+      delete *array_schema;
       return TILEDB_ERR;
     }
     (*array_schema)->array_schema_ = array_schema_rest.value();
@@ -532,21 +520,13 @@ int32_t tiledb_array_schema_load_impl(
       auto st = Status_ArrayDirectoryError(le.what());
       LOG_STATUS_NO_RETURN_VALUE(st);
       save_error(ctx, st);
+      delete *array_schema;
       return TILEDB_ERR;
     }
 
     // Load latest array schema
-    try {
-      auto&& array_schema_latest = array_dir.load_array_schema_latest(key);
-      if (with_enumerations) {
-        array_dir.load_all_enumerations(array_schema_latest, key);
-      }
-      (*array_schema)->array_schema_ = array_schema_latest;
-    } catch (...) {
-      delete *array_schema;
-      *array_schema = nullptr;
-      throw;
-    }
+    auto&& array_schema_latest = array_dir.load_array_schema_latest(key);
+    (*array_schema)->array_schema_ = array_schema_latest;
   }
   return TILEDB_OK;
 }
@@ -5366,16 +5346,8 @@ int32_t tiledb_array_schema_load(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     tiledb_array_schema_t** array_schema) noexcept {
-  return api_entry<tiledb::api::tiledb_array_schema_load_impl>(
-      ctx, array_uri, 0, array_schema);
-}
-
-int32_t tiledb_array_schema_load_with_enumerations(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_array_schema_t** array_schema) noexcept {
-  return api_entry<tiledb::api::tiledb_array_schema_load_impl>(
-      ctx, array_uri, 1, array_schema);
+  return api_entry<tiledb::api::tiledb_array_schema_load>(
+      ctx, array_uri, array_schema);
 }
 
 int32_t tiledb_array_schema_load_with_key(
