@@ -54,14 +54,16 @@ struct QCSetsCell {
       const std::string& attr3,
       uint8_t attr3_validity,
       const std::string& attr4,
-      const std::string& attr5)
+      const std::string& attr5,
+      int attr6)
       : d(dim)
       , a1(attr1)
       , a2(attr2)
       , a3(attr3)
       , a3v(attr3_validity)
       , a4(attr4)
-      , a5(attr5) {
+      , a5(attr5)
+      , a6(attr6) {
   }
 
   int d;
@@ -71,6 +73,7 @@ struct QCSetsCell {
   uint8_t a3v;
   std::string a4;
   std::string a5;
+  int a6;
 };
 
 using QCSetsCellSelector = std::function<bool(QCSetsCell& cell)>;
@@ -93,7 +96,8 @@ struct CPPQueryConditionFx {
       std::vector<std::string>& attr2_expect,
       std::vector<std::string>& attr3_expect,
       std::vector<std::string>& attr4_expect,
-      std::vector<std::string>& attr5_expect);
+      std::vector<std::string>& attr5_expect,
+      std::vector<int>& attr6_expect);
 
   QueryCondition serialize_deserialize_qc(QueryCondition& qc);
 
@@ -131,6 +135,7 @@ struct CPPQueryConditionFx {
   std::vector<uint8_t> attr3_validity_;
   std::vector<std::string> attr4_values_;
   std::vector<std::string> attr5_values_;
+  std::vector<int> attr6_values_;
 };
 
 #ifdef TILEDB_SERIALIZATION
@@ -147,7 +152,8 @@ TEST_CASE_METHOD(
   create_array(type, serialize);
 
   std::vector<float> values = {2.0f, 4.0f};
-  auto qc = QueryConditionExperimental::create(ctx_, "attr1", values);
+  auto qc =
+      QueryConditionExperimental::create(ctx_, "attr1", values, TILEDB_IN);
 
   check_read(
       qc, [](const QCSetsCell& c) { return (c.a1 == 2.0f || c.a1 == 4.0f); });
@@ -197,9 +203,24 @@ TEST_CASE_METHOD(
   create_array(type, serialize);
 
   std::vector<int> values = {1, 5};
-  auto qc = QueryConditionExperimental::create(ctx_, "dim", values);
+  auto qc = QueryConditionExperimental::create(ctx_, "dim", values, TILEDB_IN);
 
   check_read(qc, [](const QCSetsCell& c) { return (c.d == 1 || c.d == 5); });
+}
+
+TEST_CASE_METHOD(
+    CPPQueryConditionFx,
+    "IN - Enumeration",
+    "[query-condition][set][basic][enumeration]") {
+  auto type = GENERATE(
+      TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
+  auto serialize = SERIALIZE_TESTS();
+  create_array(type, serialize);
+
+  std::vector<std::string> values = {"wilma", "betty"};
+  auto qc = QueryConditionExperimental::create(ctx_, "attr6", values);
+
+  check_read(qc, [](const QCSetsCell& c) { return (c.a6 == 1 || c.a6 == 3); });
 }
 
 TEST_CASE_METHOD(
@@ -233,6 +254,22 @@ TEST_CASE_METHOD(
       QueryConditionExperimental::create(ctx_, "attr2", values, TILEDB_NOT_IN);
 
   check_read(qc, [](const QCSetsCell& c) { return !(c.a2 == "wilma"); });
+}
+
+TEST_CASE_METHOD(
+    CPPQueryConditionFx,
+    "NOT_IN - Enumeration",
+    "[query-condition][set][basic][enumeration]") {
+  auto type = GENERATE(
+      TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
+  auto serialize = SERIALIZE_TESTS();
+  create_array(type, serialize);
+
+  std::vector<std::string> values = {"wilma", "betty"};
+  auto qc =
+      QueryConditionExperimental::create(ctx_, "attr6", values, TILEDB_NOT_IN);
+
+  check_read(qc, [](const QCSetsCell& c) { return (c.a6 != 1 && c.a6 != 3); });
 }
 
 TEST_CASE_METHOD(
@@ -591,6 +628,14 @@ void CPPQueryConditionFx::create_array(TestArrayType type, bool serialize) {
   }
   schema.add_attribute(attr5);
 
+  std::vector<std::string> enmr_values = {"fred", "wilma", "barney", "betty"};
+  auto enmr = Enumeration::create(ctx_, "attr6_enmr", enmr_values);
+  ArraySchemaExperimental::add_enumeration(ctx_, schema, enmr);
+
+  auto attr6 = Attribute::create<int>(ctx_, "attr6");
+  AttributeExperimental::set_enumeration_name(ctx_, attr6, "attr6_enmr");
+  schema.add_attribute(attr6);
+
   if (type_ != TestArrayType::DENSE) {
     schema.set_capacity(1024);
   }
@@ -621,7 +666,8 @@ void CPPQueryConditionFx::create_array(TestArrayType type, bool serialize) {
       .set_validity_buffer("attr3", attr3_validity_)
       .set_data_buffer("attr4", attr4_data)
       .set_offsets_buffer("attr4", attr4_offsets)
-      .set_data_buffer("attr5", attr5_data);
+      .set_data_buffer("attr5", attr5_data)
+      .set_data_buffer("attr6", attr6_values_);
 
   CHECK_NOTHROW(query.submit());
   query.finalize();
@@ -660,6 +706,7 @@ void CPPQueryConditionFx::check_read(
   std::vector<char> attr4_read(num_elements_ * 10);
   std::vector<uint64_t> attr4_read_offsets(num_elements_);
   std::vector<char> attr5_read(num_elements_ * 4);
+  std::vector<int> attr6_read(num_elements_);
 
   if (serialize_) {
     qc = serialize_deserialize_qc(qc);
@@ -679,7 +726,8 @@ void CPPQueryConditionFx::check_read(
       .set_validity_buffer("attr3", attr3_read_validity)
       .set_data_buffer("attr4", attr4_read)
       .set_offsets_buffer("attr4", attr4_read_offsets)
-      .set_data_buffer("attr5", attr5_read);
+      .set_data_buffer("attr5", attr5_read)
+      .set_data_buffer("attr6", attr6_read);
 
   REQUIRE(query.submit() == Query::Status::COMPLETE);
 
@@ -691,6 +739,7 @@ void CPPQueryConditionFx::check_read(
   attr3_read_validity.resize(table["attr3"].first);
   attr4_read_offsets.resize(table["attr4"].first);
   attr5_read.resize(table["attr5"].second);
+  attr6_read.resize(table["attr6"].second);
 
   auto attr2_strings =
       to_vector(table["attr2"].second, attr2_read, attr2_read_offsets);
@@ -709,6 +758,7 @@ void CPPQueryConditionFx::check_read(
   std::vector<std::string> attr3_expected;
   std::vector<std::string> attr4_expected;
   std::vector<std::string> attr5_expected;
+  std::vector<int> attr6_expected;
 
   select_data(
       func,
@@ -717,7 +767,8 @@ void CPPQueryConditionFx::check_read(
       attr2_expected,
       attr3_expected,
       attr4_expected,
-      attr5_expected);
+      attr5_expected,
+      attr6_expected);
 
   REQUIRE(dim_read.size() == dim_expected.size());
   for (size_t i = 0; i < dim_expected.size(); i++) {
@@ -753,6 +804,11 @@ void CPPQueryConditionFx::check_read(
   for (size_t i = 0; i < attr5_expected.size(); i++) {
     REQUIRE(attr5_strings[i] == attr5_expected[i]);
   }
+
+  REQUIRE(attr6_read.size() == attr6_expected.size());
+  for (size_t i = 0; i < attr6_expected.size(); i++) {
+    REQUIRE(attr6_read[i] == attr6_expected[i]);
+  }
 }
 
 void CPPQueryConditionFx::rm_array() {
@@ -770,12 +826,15 @@ void CPPQueryConditionFx::generate_data() {
   attr3_values_.clear();
   attr3_validity_.clear();
   attr4_values_.clear();
+  attr5_values_.clear();
+  attr6_values_.clear();
 
   std::vector<float> floats = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
   std::vector<std::string> flintstones = {"fred", "wilma", "barney", "betty"};
   std::vector<std::string> colors = {"red", "green", "blue", "teal", "umber"};
   std::vector<std::string> maybe_empty = {"", "not empty"};
   std::vector<std::string> four_chars = {"back", "hack", "pack", "sack"};
+  std::vector<int> flintstone_indexes = {0, 1, 2, 3};
 
   for (int i = 0; i < num_elements_; i++) {
     dim_values_.push_back(i + 1);
@@ -790,6 +849,7 @@ void CPPQueryConditionFx::generate_data() {
     }
     attr4_values_.push_back(choose_value(maybe_empty));
     attr5_values_.push_back(choose_value(four_chars));
+    attr6_values_.push_back(choose_value(flintstone_indexes));
   }
 }
 
@@ -800,7 +860,8 @@ void CPPQueryConditionFx::select_data(
     std::vector<std::string>& attr2_expect,
     std::vector<std::string>& attr3_expect,
     std::vector<std::string>& attr4_expect,
-    std::vector<std::string>& attr5_expect) {
+    std::vector<std::string>& attr5_expect,
+    std::vector<int>& attr6_expect) {
   for (int i = 0; i < num_elements_; i++) {
     int d = dim_values_[i];
     float a1 = attr1_values_[i];
@@ -809,12 +870,13 @@ void CPPQueryConditionFx::select_data(
     uint8_t a3v = attr3_validity_[i];
     std::string& a4 = attr4_values_[i];
     std::string& a5 = attr5_values_[i];
+    int a6 = attr6_values_[i];
 
     if (a3v == 0) {
       a3 = "<NULL>";
     }
 
-    QCSetsCell cell(d, a1, a2, a3, a3v, a4, a5);
+    QCSetsCell cell(d, a1, a2, a3, a3v, a4, a5, a6);
     if (func(cell)) {
       dim_expect.push_back(d);
       attr1_expect.push_back(a1);
@@ -822,6 +884,7 @@ void CPPQueryConditionFx::select_data(
       attr3_expect.push_back(a3);
       attr4_expect.push_back(a4);
       attr5_expect.push_back(a5);
+      attr6_expect.push_back(a6);
     } else if (type_ == TestArrayType::DENSE) {
       dim_expect.push_back(d);
       attr1_expect.push_back(NAN);
@@ -829,6 +892,7 @@ void CPPQueryConditionFx::select_data(
       attr3_expect.push_back("<NULL>");
       attr4_expect.push_back("z");
       attr5_expect.push_back("xkcd");
+      attr6_expect.push_back(std::numeric_limits<int>::min());
     }
   }
 }
