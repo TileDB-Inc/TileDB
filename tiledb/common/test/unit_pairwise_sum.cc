@@ -53,18 +53,18 @@ TEMPLATE_LIST_TEST_CASE(
   typedef TestType T;
 
   auto eps = std::numeric_limits<T>::epsilon();
-  constexpr size_t n = 1000;
+  constexpr size_t n = 10000;
   std::array<T, n> a;
-  std::fill(a.begin(), a.end(), 1 + eps);
-  REQUIRE(tiledb::common::pairwise_sum<T, 128>(std::span(a)) != n);
+  std::fill(a.begin(), a.end(), static_cast<T>(1.0) / n);
+  REQUIRE(tiledb::common::pairwise_sum<T, 128>(std::span(a)) != 1);
 
   T sum = tiledb::common::pairwise_sum<T, 128>(std::span(a));
 
   if constexpr (std::is_same_v<T, float>) {
     float err = std::log2f(n) * eps;
-    CHECK(fabsf(n - sum) <= err);
+    CHECK(fabsf(1 - sum) <= err);
   } else {
     double err = std::log2l(n) * eps;
-    CHECK(fabsl(n - sum) <= err);
+    CHECK(fabsl(1 - sum) <= err);
   }
 }
