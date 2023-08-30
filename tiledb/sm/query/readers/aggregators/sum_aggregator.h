@@ -43,7 +43,7 @@ namespace sm {
 class QueryBuffer;
 
 template <typename T>
-class SumAggregator : public IAggregator {
+class SumAggregator : public OutputBufferValidator, public IAggregator {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

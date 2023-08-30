@@ -1,5 +1,5 @@
 /**
- * @file   iaggregator.h
+ * @file   output_buffer_validator.h
  *
  * @section LICENSE
  *
@@ -27,76 +27,67 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class IAggregator.
+ * This file defines class OutputBufferValidator.
  */
 
-#ifndef TILEDB_IAGGREGATOR_H
-#define TILEDB_IAGGREGATOR_H
+#ifndef TILEDB_AGGREGATE_BUFFER_VALIDATOR_H
+#define TILEDB_AGGREGATE_BUFFER_VALIDATOR_H
 
-#include "tiledb/common/common.h"
-#include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/query/readers/aggregators/output_buffer_validator.h"
+#include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
+#include "tiledb/sm/query/readers/aggregators/field_info.h"
 
 namespace tiledb {
 namespace sm {
 
 class QueryBuffer;
-class AggregateBuffer;
-class IAggregator;
 
-typedef std::unordered_map<std::string, shared_ptr<IAggregator>>
-    DefaultChannelAggregates;
-
-class IAggregator {
- public:
+class OutputBufferValidator {
+ protected:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  virtual ~IAggregator() = default;
+  OutputBufferValidator(const FieldInfo field_info)
+      : field_info_(field_info) {
+  }
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
-  /** Returns the field name for the aggregator. */
-  virtual std::string field_name() = 0;
-
-  /** Returns if the aggregate needs to be recomputed on overflow. */
-  virtual bool need_recompute_on_overflow() = 0;
-
-  /** Returns if the aggregation is var sized or not. */
-  virtual bool var_sized() = 0;
+  /**
+   * Validate the output buffer can receive an arithmetic operation result.
+   *
+   * @param buffer Output buffer.
+   */
+  void validate_output_buffer_arithmetic(QueryBuffer& buffer);
 
   /**
-   * Validate the result buffer.
+   * Validate the output buffer can receive a count operation result.
    *
-   * @param output_field_name Name for the output buffer.
-   * @param buffers Query buffers.
+   * @param buffer Output buffer.
    */
-  virtual void validate_output_buffer(
-      std::string output_field_name,
-      std::unordered_map<std::string, QueryBuffer>& buffers) = 0;
+  void validate_output_buffer_count(QueryBuffer& buffer);
 
   /**
-   * Aggregate data using the aggregator.
+   * Validate the output buffer can receive a result that can be var sized.
    *
-   * @param input_data Input data for aggregation.
+   * @tparam T fixed data type.
+   * @param buffer Output buffer.
    */
-  virtual void aggregate_data(AggregateBuffer& input_data) = 0;
+  template <class T>
+  void validate_output_buffer_var(QueryBuffer& buffer);
 
-  /**
-   * Copy final data to the user buffer.
-   *
-   * @param output_field_name Name for the output buffer.
-   * @param buffers Query buffers.
-   */
-  virtual void copy_to_user_buffer(
-      std::string output_field_name,
-      std::unordered_map<std::string, QueryBuffer>& buffers) = 0;
+ private:
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
+  /** Field information. */
+  const FieldInfo field_info_;
 };
 
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_IAGGREGATOR_H
+#endif  // TILEDB_AGGREGATE_BUFFER_VALIDATOR_H

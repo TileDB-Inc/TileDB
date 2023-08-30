@@ -47,7 +47,8 @@ class SumAggregatorStatusException : public StatusException {
 
 template <typename T>
 SumAggregator<T>::SumAggregator(const FieldInfo field_info)
-    : field_info_(field_info)
+    : OutputBufferValidator(field_info)
+    , field_info_(field_info)
     , summator_(field_info)
     , sum_(0)
     , validity_value_(
@@ -73,41 +74,7 @@ void SumAggregator<T>::validate_output_buffer(
     throw SumAggregatorStatusException("Result buffer doesn't exist.");
   }
 
-  auto& result_buffer = buffers[output_field_name];
-  if (result_buffer.buffer_ == nullptr) {
-    throw SumAggregatorStatusException(
-        "Sum aggregates must have a fixed size buffer.");
-  }
-
-  if (result_buffer.buffer_var_ != nullptr) {
-    throw SumAggregatorStatusException(
-        "Sum aggregates must not have a var buffer.");
-  }
-
-  if (result_buffer.original_buffer_size_ != 8) {
-    throw SumAggregatorStatusException(
-        "Sum aggregates fixed size buffer should be for one element only.");
-  }
-
-  bool exists_validity = result_buffer.validity_vector_.buffer();
-  if (field_info_.is_nullable_) {
-    if (!exists_validity) {
-      throw SumAggregatorStatusException(
-          "Sum aggregates for nullable attributes must have a validity "
-          "buffer.");
-    }
-
-    if (*result_buffer.validity_vector_.buffer_size() != 1) {
-      throw SumAggregatorStatusException(
-          "Sum aggregates validity vector should be for one element only.");
-    }
-  } else {
-    if (exists_validity) {
-      throw SumAggregatorStatusException(
-          "Sum aggregates for non nullable attributes must not have a validity "
-          "buffer.");
-    }
-  }
+  validate_output_buffer_arithmetic(buffers[output_field_name]);
 }
 
 template <typename T>

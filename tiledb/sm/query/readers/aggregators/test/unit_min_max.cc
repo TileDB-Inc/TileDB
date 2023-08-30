@@ -102,7 +102,7 @@ TEST_CASE(
     buffers["Max"].buffer_ = nullptr;
     CHECK_THROWS_WITH(
         aggregator.validate_output_buffer("Max", buffers),
-        "MinMaxAggregator: Min/max aggregates must have a fixed size buffer.");
+        "OutputBufferValidator: Aggregates must have a fixed size buffer.");
   }
 
   SECTION("Var, wrong size") {
@@ -113,8 +113,8 @@ TEST_CASE(
     buffers["Max"].original_buffer_var_size_ = 8;
     CHECK_THROWS_WITH(
         aggregator_var.validate_output_buffer("Max", buffers),
-        "MinMaxAggregator: Var sized min/max aggregates offset buffer should "
-        "be for one element only.");
+        "OutputBufferValidator: Var sized aggregates offset buffer should be "
+        "for one element only.");
   }
 
   SECTION("Var, no var buffer") {
@@ -124,8 +124,7 @@ TEST_CASE(
 
     CHECK_THROWS_WITH(
         aggregator_var.validate_output_buffer("Max", buffers),
-        "MinMaxAggregator: Var sized min/max aggregates must have a var "
-        "buffer.");
+        "OutputBufferValidator: Var sized aggregates must have a var buffer.");
   }
 
   SECTION("Var, wrong cell val num") {
@@ -139,7 +138,7 @@ TEST_CASE(
 
     CHECK_THROWS_WITH(
         aggregator_var_wrong_cvn.validate_output_buffer("Max", buffers),
-        "MinMaxAggregator: Var sized min/max aggregates should have "
+        "OutputBufferValidator: Var sized aggregates should have "
         "TILEDB_VAR_NUM cell val num.");
     ;
   }
@@ -150,8 +149,8 @@ TEST_CASE(
     buffers["Max"].original_buffer_size_ = 8;
     CHECK_THROWS_WITH(
         aggregator.validate_output_buffer("Max", buffers),
-        "MinMaxAggregator: Fixed size min/max aggregates fixed buffer should "
-        "be for one element only.");
+        "OutputBufferValidator: Fixed size aggregates fixed buffer should be "
+        "for one element only.");
   }
 
   SECTION("Fixed, var buffer") {
@@ -162,8 +161,7 @@ TEST_CASE(
     buffers["Max"].original_buffer_var_size_ = 1;
     CHECK_THROWS_WITH(
         aggregator.validate_output_buffer("Max", buffers),
-        "MinMaxAggregator: Fixed min/max aggregates must not have a var "
-        "buffer.");
+        "OutputBufferValidator: Fixed aggregates must not have a var buffer.");
   }
 
   SECTION("Fixed string, wrong size") {
@@ -172,8 +170,8 @@ TEST_CASE(
     buffers["Max"].original_buffer_size_ = 4;
     CHECK_THROWS_WITH(
         aggregator_fixed_string.validate_output_buffer("Max", buffers),
-        "MinMaxAggregator: Fixed size min/max aggregates fixed buffer should "
-        "be for one element only.");
+        "OutputBufferValidator: Fixed size aggregates fixed buffer should be "
+        "for one element only.");
   }
 
   SECTION("With validity") {
@@ -186,7 +184,7 @@ TEST_CASE(
     buffers["Max"].validity_vector_ = ValidityVector(&validity, &validity_size);
     CHECK_THROWS_WITH(
         aggregator.validate_output_buffer("Max", buffers),
-        "MinMaxAggregator: Min/max aggregates for non nullable attributes must "
+        "OutputBufferValidator: Aggregates for non nullable attributes must "
         "not have a validity buffer.");
   }
 
@@ -197,8 +195,8 @@ TEST_CASE(
 
     CHECK_THROWS_WITH(
         aggregator_nullable.validate_output_buffer("Max", buffers),
-        "MinMaxAggregator: Min/max aggregates for nullable attributes must "
-        "have a validity buffer.");
+        "OutputBufferValidator: Aggregates for nullable attributes must have a "
+        "validity buffer.");
   }
 
   SECTION("Wrong validity size") {
@@ -211,8 +209,8 @@ TEST_CASE(
     buffers["Max"].validity_vector_ = ValidityVector(&validity, &validity_size);
     CHECK_THROWS_WITH(
         aggregator_nullable.validate_output_buffer("Max", buffers),
-        "MinMaxAggregator: Min/max aggregates validity vector should be for "
-        "one element only.");
+        "OutputBufferValidator: Aggregates validity vector should be "
+        "for one element only.");
   }
 
   SECTION("Success") {

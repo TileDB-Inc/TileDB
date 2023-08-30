@@ -88,7 +88,7 @@ TEST_CASE(
     buffers["Sum"].buffer_ = nullptr;
     CHECK_THROWS_WITH(
         aggregator.validate_output_buffer("Sum", buffers),
-        "SumAggregator: Sum aggregates must have a fixed size buffer.");
+        "OutputBufferValidator: Aggregate must have a fixed size buffer.");
   }
 
   SECTION("Wrong size") {
@@ -97,7 +97,7 @@ TEST_CASE(
     buffers["Sum"].original_buffer_size_ = 1;
     CHECK_THROWS_WITH(
         aggregator.validate_output_buffer("Sum", buffers),
-        "SumAggregator: Sum aggregates fixed size buffer should be for one "
+        "OutputBufferValidator: Aggregate fixed size buffer should be for one "
         "element only.");
   }
 
@@ -109,7 +109,7 @@ TEST_CASE(
 
     CHECK_THROWS_WITH(
         aggregator.validate_output_buffer("Sum", buffers),
-        "SumAggregator: Sum aggregates must not have a var buffer.");
+        "OutputBufferValidator: Aggregate must not have a var buffer.");
   }
 
   SECTION("With validity") {
@@ -122,7 +122,7 @@ TEST_CASE(
     buffers["Sum"].validity_vector_ = ValidityVector(&validity, &validity_size);
     CHECK_THROWS_WITH(
         aggregator.validate_output_buffer("Sum", buffers),
-        "SumAggregator: Sum aggregates for non nullable attributes must not "
+        "OutputBufferValidator: Aggregate for non nullable attributes must not "
         "have a validity buffer.");
   }
 
@@ -133,7 +133,7 @@ TEST_CASE(
 
     CHECK_THROWS_WITH(
         aggregator_nullable.validate_output_buffer("Sum", buffers),
-        "SumAggregator: Sum aggregates for nullable attributes must have a "
+        "OutputBufferValidator: Aggregate for nullable attributes must have a "
         "validity buffer.");
   }
 
@@ -147,8 +147,8 @@ TEST_CASE(
     buffers["Sum"].validity_vector_ = ValidityVector(&validity, &validity_size);
     CHECK_THROWS_WITH(
         aggregator_nullable.validate_output_buffer("Sum", buffers),
-        "SumAggregator: Sum aggregates validity vector should "
-        "be for one element only.");
+        "OutputBufferValidator: Aggregate validity vector should be for one "
+        "element only.");
   }
 
   SECTION("Success") {

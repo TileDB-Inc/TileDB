@@ -40,7 +40,7 @@ namespace sm {
 
 class QueryBuffer;
 
-class CountAggregator : public IAggregator {
+class CountAggregator : public OutputBufferValidator, public IAggregator {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

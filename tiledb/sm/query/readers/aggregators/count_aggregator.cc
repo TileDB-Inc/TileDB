@@ -46,7 +46,8 @@ class CountAggregatorStatusException : public StatusException {
 };
 
 CountAggregator::CountAggregator()
-    : count_(0) {
+    : OutputBufferValidator(FieldInfo("", false, false, 1))
+    , count_(0) {
 }
 
 void CountAggregator::validate_output_buffer(
@@ -56,27 +57,7 @@ void CountAggregator::validate_output_buffer(
     throw CountAggregatorStatusException("Result buffer doesn't exist.");
   }
 
-  auto& result_buffer = buffers[output_field_name];
-  if (result_buffer.buffer_ == nullptr) {
-    throw CountAggregatorStatusException(
-        "Count aggregates must have a fixed size buffer.");
-  }
-
-  if (result_buffer.buffer_var_ != nullptr) {
-    throw CountAggregatorStatusException(
-        "Count aggregates must not have a var buffer.");
-  }
-
-  if (result_buffer.original_buffer_size_ != 8) {
-    throw CountAggregatorStatusException(
-        "Count aggregates fixed size buffer should be for one element only.");
-  }
-
-  bool exists_validity = result_buffer.validity_vector_.buffer();
-  if (exists_validity) {
-    throw CountAggregatorStatusException(
-        "Count aggregates must not have a validity buffer.");
-  }
+  validate_output_buffer_count(buffers[output_field_name]);
 }
 
 template <class BitmapType>

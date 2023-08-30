@@ -41,7 +41,7 @@ namespace sm {
 
 class QueryBuffer;
 
-class NullCountAggregator : public IAggregator {
+class NullCountAggregator : public OutputBufferValidator, public IAggregator {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

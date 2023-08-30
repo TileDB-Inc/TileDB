@@ -132,6 +132,7 @@ class ComparatorAggregatorBase {
 
 template <typename T, typename Op>
 class ComparatorAggregator : public ComparatorAggregatorBase<T>,
+                             public OutputBufferValidator,
                              public IAggregator {
  protected:
   using VALUE_T = typename min_max_type_data<T>::value_type;
