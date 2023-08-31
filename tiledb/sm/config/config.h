@@ -371,6 +371,12 @@ class Config {
   /** If `true` the readers might partially load/unload tile offsets. */
   static const std::string SM_PARTIAL_TILE_OFFSETS_LOADING;
 
+  /** The maximum size of a single enumeration. */
+  static const std::string SM_ENUMERATIONS_MAX_SIZE;
+
+  /** The maximum total size for all enumerations in a schema. */
+  static const std::string SM_ENUMERATIONS_MAX_TOTAL_SIZE;
+
   /** Certificate file path. */
   static const std::string SSL_CA_FILE;
 

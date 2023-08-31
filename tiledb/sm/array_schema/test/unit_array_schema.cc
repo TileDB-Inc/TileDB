@@ -91,7 +91,7 @@ TEST_CASE("Repeated names in schema columns", "[array_schema]") {
   auto schema{test_schema.second.schema()};
 
   DYNAMIC_SECTION("Base schema is valid - " + name) {
-    REQUIRE_NOTHROW(schema.check());
+    REQUIRE_NOTHROW(schema.check_without_config());
   }
 
   DYNAMIC_SECTION("Dimension names must be unique - " + name) {
@@ -108,7 +108,7 @@ TEST_CASE("Repeated names in schema columns", "[array_schema]") {
      * If this changes the following check will fail.
      */
     CHECK(st.ok());
-    REQUIRE_THROWS(schema.check());
+    REQUIRE_THROWS(schema.check_without_config());
   }
 
   DYNAMIC_SECTION("Attribute names must be unique - " + name) {
@@ -120,7 +120,7 @@ TEST_CASE("Repeated names in schema columns", "[array_schema]") {
      * If this changes the following check will fail.
      */
     CHECK(st.ok());
-    REQUIRE_THROWS(schema.check());
+    REQUIRE_THROWS(schema.check_without_config());
   }
 
   DYNAMIC_SECTION("Label names must be unique - " + name) {
@@ -139,7 +139,7 @@ TEST_CASE("Repeated names in schema columns", "[array_schema]") {
      * If this changes the following check will fail.
      */
     CHECK(st.ok());
-    REQUIRE_THROWS(schema.check());
+    REQUIRE_THROWS(schema.check_without_config());
   }
 
   DYNAMIC_SECTION("Label name may not be a dimension name - " + name) {
@@ -150,7 +150,7 @@ TEST_CASE("Repeated names in schema columns", "[array_schema]") {
   DYNAMIC_SECTION("Label name may not be a dimension name 2 - " + name) {
     schema.add_dimension_label(
         0, "x", DataOrder::INCREASING_DATA, Datatype::FLOAT64, false);
-    REQUIRE_THROWS(schema.check());
+    REQUIRE_THROWS(schema.check_without_config());
   }
 
   DYNAMIC_SECTION("Label name may really not be a dimension name - " + name) {
@@ -158,7 +158,7 @@ TEST_CASE("Repeated names in schema columns", "[array_schema]") {
         0, "x", DataOrder::INCREASING_DATA, Datatype::FLOAT64, false);
     schema.add_dimension_label(
         0, "x", DataOrder::INCREASING_DATA, Datatype::FLOAT64, false);
-    REQUIRE_THROWS(schema.check());
+    REQUIRE_THROWS(schema.check_without_config());
   }
 
   DYNAMIC_SECTION("Label name may not be an attribute name - " + name) {
@@ -171,7 +171,7 @@ TEST_CASE("Repeated names in schema columns", "[array_schema]") {
     // final 'false' argument suppresses verification of unique names
     schema.add_dimension_label(
         0, "a", DataOrder::INCREASING_DATA, Datatype::FLOAT64, false);
-    REQUIRE_THROWS(schema.check());
+    REQUIRE_THROWS(schema.check_without_config());
   }
 }
 

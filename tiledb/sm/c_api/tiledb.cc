@@ -449,7 +449,7 @@ int32_t tiledb_array_schema_check(
     tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema) {
   if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
-  array_schema->array_schema_->check();
+  array_schema->array_schema_->check(ctx->resources().config());
   return TILEDB_OK;
 }
 
