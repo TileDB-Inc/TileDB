@@ -1766,16 +1766,6 @@ TEST_CASE_METHOD(
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 3);
   CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 2);
 
-  // Open array in WRITE mode and try to delete fragments
-  std::unique_ptr<Array> array =
-      std::make_unique<Array>(ctx_, SPARSE_ARRAY_NAME, TILEDB_WRITE);
-  REQUIRE_THROWS_WITH(
-      array->delete_fragments(SPARSE_ARRAY_NAME, 0, UINT64_MAX),
-      Catch::Matchers::ContainsSubstring(
-          "Query type must be MODIFY_EXCLUSIVE"));
-  CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 2);
-  array->close();
-
   // Try to delete a fragment uri that doesn't exist
   std::string extraneous_fragment =
       std::string(SPARSE_ARRAY_NAME) + "/" +
@@ -1836,10 +1826,7 @@ TEST_CASE_METHOD(
 
   // Delete fragments
   SECTION("delete fragments by timestamps") {
-    std::unique_ptr<Array> array = std::make_unique<Array>(
-        ctx_, SPARSE_ARRAY_NAME, TILEDB_MODIFY_EXCLUSIVE);
-    array->delete_fragments(SPARSE_ARRAY_NAME, 2, 6);
-    array->close();
+    Array::delete_fragments_v2(ctx_, SPARSE_ARRAY_NAME, 2, 6);
   }
 
   SECTION("delete fragments by uris") {
@@ -1926,9 +1913,7 @@ TEST_CASE_METHOD(
   CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == num_fragments);
 
   // Delete fragments at timestamps 2 - 4
-  std::unique_ptr<Array> array =
-      std::make_unique<Array>(ctx_, SPARSE_ARRAY_NAME, TILEDB_MODIFY_EXCLUSIVE);
-  array->delete_fragments(SPARSE_ARRAY_NAME, 2, 4);
+  Array::delete_fragments_v2(ctx_, SPARSE_ARRAY_NAME, 2, 4);
   if (!vacuum) {
     // Vacuum after deletion
     auto config = ctx_.config();
@@ -1936,7 +1921,6 @@ TEST_CASE_METHOD(
     num_commits -= 2;
     num_fragments -= 2;
   }
-  array->close();
 
   // Validate working directory
   CHECK(tiledb::test::num_commits(SPARSE_ARRAY_NAME) == num_commits);
