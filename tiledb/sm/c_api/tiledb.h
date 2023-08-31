@@ -3003,14 +3003,14 @@ TILEDB_EXPORT int32_t tiledb_array_delete_fragments_v2(
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param uri The URI of the fragments' parent Array.
+ * @param uri_str The URI of the fragments' parent Array.
  * @param fragment_uris The URIs of the fragments to be deleted.
  * @param num_fragments The number of fragments to be deleted.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_delete_fragments_list(
     tiledb_ctx_t* ctx,
-    const char* array_uri,
+    const char* uri_str,
     const char* fragment_uris[],
     const size_t num_fragments) TILEDB_NOEXCEPT;
 
