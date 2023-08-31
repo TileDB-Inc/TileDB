@@ -53,6 +53,7 @@
 
 #ifdef TILEDB_SERIALIZATION
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/array_schema_evolution.h"
 #include "tiledb/sm/serialization/query.h"
@@ -113,6 +114,13 @@ struct EnumerationFx {
 
   void ser_des_query(
       Query* q_in, Query* q_out, bool client_side, SerializationType stype);
+
+  void ser_des_array(
+      Context& ctx,
+      Array* in,
+      Array* out,
+      bool client_side,
+      SerializationType stype);
 
   template <typename T>
   bool vec_cmp(std::vector<T> v1, std::vector<T> v2);
@@ -1586,6 +1594,44 @@ TEST_CASE_METHOD(
   REQUIRE(node2->use_enumeration() == true);
 }
 
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Cap'N Proto - Basic Array v2 Serialization",
+    "[enumeration][capnp][serialization][v2][array]") {
+  auto client_side = GENERATE(true, false);
+  auto ser_type = GENERATE(SerializationType::CAPNP, SerializationType::JSON);
+  auto do_load = GENERATE(std::string("true"), std::string("false"));
+
+  create_array();
+
+  Config cfg;
+  throw_if_not_ok(cfg.set("rest.use_refactored_array_open", "true"));
+  throw_if_not_ok(cfg.set("rest.load_enumerations_on_array_open", do_load));
+  Context ctx(cfg);
+
+  auto a1 = make_shared<Array>(HERE(), uri_, ctx.storage_manager());
+  throw_if_not_ok(
+      a1->open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
+  REQUIRE(a1->serialize_enumerations() == (do_load == "true"));
+  REQUIRE(
+      a1->array_schema_latest_ptr()->get_loaded_enumeration_names().size() ==
+      0);
+
+  auto a2 = make_shared<Array>(HERE(), uri_, ctx.storage_manager());
+
+  ser_des_array(ctx, a1.get(), a2.get(), client_side, ser_type);
+
+  auto schema = a2->array_schema_latest_ptr();
+  auto names = schema->get_enumeration_names();
+  auto loaded = schema->get_loaded_enumeration_names();
+
+  if (do_load == "true") {
+    REQUIRE(vec_cmp(loaded, names));
+  } else {
+    REQUIRE(loaded.size() == 0);
+  }
+}
+
 #endif  // ifdef TILEDB_SERIALIZATIONs
 
 /* ********************************* */
@@ -1875,9 +1921,9 @@ shared_ptr<ArraySchema> EnumerationFx::create_schema() {
   throw_if_not_ok(schema->set_domain(dom));
 
   std::vector<std::string> values = {"ant", "bat", "cat", "dog", "emu"};
-  auto enmr =
+  auto enmr1 =
       create_enumeration(values, false, Datatype::STRING_ASCII, "test_enmr");
-  schema->add_enumeration(enmr);
+  schema->add_enumeration(enmr1);
 
   auto attr1 = make_shared<Attribute>(HERE(), "attr1", Datatype::INT32);
   attr1->set_enumeration_name("test_enmr");
@@ -1885,6 +1931,15 @@ shared_ptr<ArraySchema> EnumerationFx::create_schema() {
 
   auto attr2 = make_shared<Attribute>(HERE(), "attr2", Datatype::STRING_ASCII);
   throw_if_not_ok(schema->add_attribute(attr2));
+
+  std::vector<std::string> names = {"fred", "wilma", "barney", "betty"};
+  auto enmr2 =
+      create_enumeration(names, false, Datatype::STRING_UTF8, "flintstones");
+  schema->add_enumeration(enmr2);
+
+  auto attr3 = make_shared<Attribute>(HERE(), "attr3", Datatype::UINT8);
+  attr3->set_enumeration_name("flintstones");
+  throw_if_not_ok(schema->add_attribute(attr3));
 
   return schema;
 }
@@ -1954,6 +2009,18 @@ void EnumerationFx::ser_des_query(
       &(ctx_.resources().compute_tp())));
 }
 
+void EnumerationFx::ser_des_array(
+    Context& ctx,
+    Array* in,
+    Array* out,
+    bool client_side,
+    SerializationType stype) {
+  Buffer buf;
+  throw_if_not_ok(serialization::array_serialize(in, stype, &buf, client_side));
+  throw_if_not_ok(
+      serialization::array_deserialize(out, stype, buf, ctx.storage_manager()));
+}
+
 #else  // No TILEDB_SERIALIZATION
 
 ArraySchema EnumerationFx::ser_des_array_schema(
@@ -1967,6 +2034,11 @@ shared_ptr<ArraySchemaEvolution> EnumerationFx::ser_des_array_schema_evolution(
 }
 
 void EnumerationFx::ser_des_query(Query*, Query*, bool, SerializationType) {
+  throw std::logic_error("Serialization not enabled.");
+}
+
+void EnumerationFx::ser_des_array(
+    Context&, Array*, Array*, bool, SerializationType) {
   throw std::logic_error("Serialization not enabled.");
 }
 

@@ -1130,6 +1130,16 @@ bool Array::serialize_non_empty_domain() const {
   return serialize_ned_array_open;
 }
 
+bool Array::serialize_enumerations() const {
+  auto serialize = config_.get<bool>("rest.load_enumerations_on_array_open");
+  if (!serialize.has_value()) {
+    throw std::runtime_error(
+        "Cannot get rest.load_enumerations_on_array_open configuration option "
+        "from config");
+  }
+  return serialize.value();
+}
+
 bool Array::serialize_metadata() const {
   auto found = false;
   auto serialize_metadata_array_open = false;
