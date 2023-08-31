@@ -230,6 +230,7 @@ void check_save_to_file() {
   ss << "rest.curl.buffer_size 524288\n";
   ss << "rest.curl.verbose false\n";
   ss << "rest.http_compressor any\n";
+  ss << "rest.load_enumerations_on_array_open true\n";
   ss << "rest.load_metadata_on_array_open true\n";
   ss << "rest.load_non_empty_domain_on_array_open true\n";
   ss << "rest.retry_count 25\n";
@@ -569,6 +570,10 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
   rc = tiledb_config_set(
+      config, "rest.load_enumerations_on_array_open", "false", &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  rc = tiledb_config_set(
       config, "rest.use_refactored_array_open", "true", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
@@ -602,6 +607,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["rest.curl.verbose"] = "false";
   all_param_values["rest.load_metadata_on_array_open"] = "false";
   all_param_values["rest.load_non_empty_domain_on_array_open"] = "false";
+  all_param_values["rest.load_enumerations_on_array_open"] = "false";
   all_param_values["rest.use_refactored_array_open"] = "true";
   all_param_values["rest.use_refactored_array_open_and_query_submit"] = "true";
   all_param_values["sm.allow_separate_attribute_writes"] = "false";
