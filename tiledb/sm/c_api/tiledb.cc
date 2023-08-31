@@ -4083,17 +4083,18 @@ int32_t tiledb_serialize_array_max_buffer_sizes(
 capi_return_t tiledb_deserialize_fragments_timestamps(
     tiledb_serialization_type_t serialize_type,
     const tiledb_buffer_t* buffer,
+    const char** uri,
     uint64_t* timestamp_start,
     uint64_t* timestamp_end) {
   api::ensure_buffer_is_valid(buffer);
+  api::ensure_output_pointer_is_valid(uri);
   api::ensure_output_pointer_is_valid(timestamp_start);
   api::ensure_output_pointer_is_valid(timestamp_end);
 
   // Deserialize
-  tie(*timestamp_start, *timestamp_end) =
+  tie(*uri, *timestamp_start, *timestamp_end) =
       tiledb::sm::serialization::fragments_timestamps_deserialize(
           (tiledb::sm::SerializationType)serialize_type, buffer->buffer());
-
   return TILEDB_OK;
 }
 
@@ -6995,11 +6996,12 @@ capi_return_t tiledb_deserialize_fragments_timestamps(
     tiledb_ctx_t* ctx,
     tiledb_serialization_type_t serialize_type,
     const tiledb_buffer_t* buffer,
+    const char** uri,
     uint64_t* timestamp_start,
     uint64_t* timestamp_end) noexcept {
   return api_entry_context<
       tiledb::api::tiledb_deserialize_fragments_timestamps>(
-      ctx, serialize_type, buffer, timestamp_start, timestamp_end);
+      ctx, serialize_type, buffer, uri, timestamp_start, timestamp_end);
 }
 
 capi_return_t tiledb_deserialize_fragments_list(

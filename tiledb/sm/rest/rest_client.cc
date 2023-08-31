@@ -350,7 +350,11 @@ void RestClient::delete_fragments_from_rest(
     const URI& uri, uint64_t timestamp_start, uint64_t timestamp_end) {
   Buffer buff;
   serialization::fragments_timestamps_serialize(
-      timestamp_start, timestamp_end, serialization_type_, &buff);
+      uri.to_string(),
+      timestamp_start,
+      timestamp_end,
+      serialization_type_,
+      &buff);
   // Wrap in a list
   BufferList serialized;
   throw_if_not_ok(serialized.add_buffer(std::move(buff)));

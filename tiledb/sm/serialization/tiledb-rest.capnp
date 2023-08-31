@@ -1204,8 +1204,9 @@ struct ArrayDeleteFragmentsListRequest {
 }
 
 struct ArrayDeleteFragmentsTimestampsRequest {
-  startTimestamp @0 :UInt64;
-  endTimestamp @1 :UInt64;
+  uri @0 :Text;
+  startTimestamp @1 :UInt64;
+  endTimestamp @2 :UInt64;
 }
 
 struct ArrayConsolidationRequest {

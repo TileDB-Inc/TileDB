@@ -52,11 +52,13 @@ namespace serialization {
 /**
  * Convert ArrayDeleteFragmentsTimestampsRequest to Cap'n Proto message
  *
+ * @param uri the URI of the fragments' parent array
  * @param start_timestamp the start timestamp to serialize
  * @param end_timestamp the end timestamp to serialize
  * @param builder cap'n proto class
  */
 void fragments_timestamps_to_capnp(
+    std::string uri,
     uint64_t start_timestamp,
     uint64_t end_timestamp,
     capnp::ArrayDeleteFragmentsTimestampsRequest::Builder* builder);
@@ -65,9 +67,9 @@ void fragments_timestamps_to_capnp(
  * Convert Cap'n Proto message to ArrayDeleteFragmentsTimestampsRequest
  *
  * @param reader cap'n proto class
- * @return a tuple of start_timestamp, end_timestamp
+ * @return a tuple of uri, start_timestamp, end_timestamp
  */
-std::tuple<uint64_t, uint64_t> fragments_timestamps_from_capnp(
+std::tuple<const char*, uint64_t, uint64_t> fragments_timestamps_from_capnp(
     const capnp::ArrayDeleteFragmentsTimestampsRequest::Reader& reader);
 
 /**
@@ -93,12 +95,13 @@ std::vector<URI> fragments_list_from_capnp(
 #endif
 
 void fragments_timestamps_serialize(
+    std::string uri,
     uint64_t start_timestamp,
     uint64_t end_timestamp,
     SerializationType serialize_type,
     Buffer* serialized_buffer);
 
-std::tuple<uint64_t, uint64_t> fragments_timestamps_deserialize(
+std::tuple<const char*, uint64_t, uint64_t> fragments_timestamps_deserialize(
     SerializationType serialize_type, const Buffer& serialized_buffer);
 
 void fragments_list_serialize(

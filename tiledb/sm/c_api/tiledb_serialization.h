@@ -437,6 +437,7 @@ TILEDB_EXPORT int32_t tiledb_serialize_array_max_buffer_sizes(
  * @param ctx The TileDB context.
  * @param serialization_type Type of serialization to use
  * @param buffer Buffer containing serialized fragment timestamps.
+ * @param uri The URI of the fragments' parent Array.
  * @param timestamp_start The start timestamp to deserialize into.
  * @param timestamp_end The end timestamp to deserialize into.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
@@ -445,6 +446,7 @@ TILEDB_EXPORT capi_return_t tiledb_deserialize_fragments_timestamps(
     tiledb_ctx_t* ctx,
     tiledb_serialization_type_t serialization_type,
     const tiledb_buffer_t* buffer,
+    const char** uri,
     uint64_t* timestamp_start,
     uint64_t* timestamp_end) TILEDB_NOEXCEPT;
 

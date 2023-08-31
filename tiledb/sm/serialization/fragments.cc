@@ -58,19 +58,25 @@ class FragmentsSerializationException : public StatusException {
 
 #ifdef TILEDB_SERIALIZATION
 void fragments_timestamps_to_capnp(
+    std::string uri,
     uint64_t start_timestamp,
     uint64_t end_timestamp,
     capnp::ArrayDeleteFragmentsTimestampsRequest::Builder* builder) {
+  builder->setUri(uri);
   builder->setStartTimestamp(start_timestamp);
   builder->setEndTimestamp(end_timestamp);
 }
 
-std::tuple<uint64_t, uint64_t> fragments_timestamps_from_capnp(
+std::tuple<const char*, uint64_t, uint64_t> fragments_timestamps_from_capnp(
     const capnp::ArrayDeleteFragmentsTimestampsRequest::Reader& reader) {
-  return {reader.getStartTimestamp(), reader.getEndTimestamp()};
+  return {
+      reader.getUri().cStr(),
+      reader.getStartTimestamp(),
+      reader.getEndTimestamp()};
 }
 
 void fragments_timestamps_serialize(
+    std::string uri,
     uint64_t start_timestamp,
     uint64_t end_timestamp,
     SerializationType serialize_type,
@@ -80,7 +86,8 @@ void fragments_timestamps_serialize(
     ::capnp::MallocMessageBuilder message;
     auto builder =
         message.initRoot<capnp::ArrayDeleteFragmentsTimestampsRequest>();
-    fragments_timestamps_to_capnp(start_timestamp, end_timestamp, &builder);
+    fragments_timestamps_to_capnp(
+        uri, start_timestamp, end_timestamp, &builder);
 
     // Copy to buffer
     serialized_buffer->reset_size();
@@ -123,7 +130,7 @@ void fragments_timestamps_serialize(
   }
 }
 
-std::tuple<uint64_t, uint64_t> fragments_timestamps_deserialize(
+std::tuple<const char*, uint64_t, uint64_t> fragments_timestamps_deserialize(
     SerializationType serialize_type, const Buffer& serialized_buffer) {
   try {
     switch (serialize_type) {
@@ -302,12 +309,12 @@ std::vector<URI> fragments_list_deserialize(
 
 #else
 void fragments_timestamps_serialize(
-    uint64_t, uint64_t, SerializationType, Buffer*) {
+    std::string, uint64_t, uint64_t, SerializationType, Buffer*) {
   throw FragmentsSerializationException(
       "Cannot serialize; serialization not enabled.");
 }
 
-std::tuple<uint64_t, uint64_t> fragments_timestamps_deserialize(
+std::tuple<const char*, uint64_t, uint64_t> fragments_timestamps_deserialize(
     SerializationType, const Buffer&) {
   throw FragmentsSerializationException(
       "Cannot deserialize; serialization not enabled.");

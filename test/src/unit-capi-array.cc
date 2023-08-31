@@ -2691,19 +2691,23 @@ TEST_CASE_METHOD(
   rc = tiledb_buffer_alloc(ctx_, &buff);
   REQUIRE(rc == TILEDB_OK);
   tiledb::sm::serialization::fragments_timestamps_serialize(
+      array_name,
       start_timestamp,
       end_timestamp,
       tiledb::sm::SerializationType::CAPNP,
       &buff->buffer());
+  const char* deserialized_uri = nullptr;
   uint64_t deserialized_start_timestamp = 0;
   uint64_t deserialized_end_timestamp = 0;
   rc = tiledb_deserialize_fragments_timestamps(
       ctx_,
       (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
       buff,
+      &deserialized_uri,
       &deserialized_start_timestamp,
       &deserialized_end_timestamp);
   REQUIRE(rc == TILEDB_OK);
+  CHECK(std::string(deserialized_uri) == array_name);
   CHECK(deserialized_start_timestamp == start_timestamp);
   CHECK(deserialized_end_timestamp == end_timestamp);
 
