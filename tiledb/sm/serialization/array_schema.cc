@@ -940,22 +940,28 @@ Status array_schema_to_capnp(
   // Loaded enumerations
   auto loaded_enmr_names = array_schema.get_loaded_enumeration_names();
   const unsigned num_loaded_enmrs = loaded_enmr_names.size();
-  auto enmr_builders = array_schema_builder->initEnumerations(num_loaded_enmrs);
-  for (size_t i = 0; i < num_loaded_enmrs; i++) {
-    auto enmr = array_schema.get_enumeration(loaded_enmr_names[i]);
-    auto builder = enmr_builders[i];
-    enumeration_to_capnp(enmr, builder);
+  if (num_loaded_enmrs > 0) {
+    auto enmr_builders =
+        array_schema_builder->initEnumerations(num_loaded_enmrs);
+    for (size_t i = 0; i < num_loaded_enmrs; i++) {
+      auto enmr = array_schema.get_enumeration(loaded_enmr_names[i]);
+      auto builder = enmr_builders[i];
+      enumeration_to_capnp(enmr, builder);
+    }
   }
 
   // Enumeration path map
   auto enmr_names = array_schema.get_enumeration_names();
   const unsigned num_enmr_names = enmr_names.size();
-  auto enmr_path_map_builders =
-      array_schema_builder->initEnumerationPathMap(num_enmr_names);
-  for (size_t i = 0; i < num_enmr_names; i++) {
-    auto enmr_path_name = array_schema.get_enumeration_path_name(enmr_names[i]);
-    enmr_path_map_builders[i].setKey(enmr_names[i]);
-    enmr_path_map_builders[i].setValue(enmr_path_name);
+  if (num_enmr_names > 0) {
+    auto enmr_path_map_builders =
+        array_schema_builder->initEnumerationPathMap(num_enmr_names);
+    for (size_t i = 0; i < num_enmr_names; i++) {
+      auto enmr_path_name =
+          array_schema.get_enumeration_path_name(enmr_names[i]);
+      enmr_path_map_builders[i].setKey(enmr_names[i]);
+      enmr_path_map_builders[i].setValue(enmr_path_name);
+    }
   }
 
   return Status::Ok();
