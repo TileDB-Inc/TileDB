@@ -137,25 +137,6 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPEnumerationFx,
-    "CPP: Load Schema from URI",
-    "[enumeration][add-attribute]") {
-  create_array();
-  auto schema = ArraySchemaExperimental::load_with_enumerations(ctx_, uri_);
-  auto enmr_names =
-      schema.ptr().get()->array_schema_->get_loaded_enumeration_names();
-  REQUIRE(enmr_names.size() > 0);
-}
-
-TEST_CASE_METHOD(
-    CPPEnumerationFx,
-    "CPP: Load Schema from URI - REMOTE NOT SUPPORTED YET",
-    "[enumeration][add-attribute][fixme]") {
-  std::string uri = "tiledb://namespace/array_name";
-  REQUIRE_THROWS(ArraySchemaExperimental::load_with_enumerations(ctx_, uri));
-}
-
-TEST_CASE_METHOD(
-    CPPEnumerationFx,
     "CPP: Schema Dump With Enumeration",
     "[enumeration][array-schema][dump]") {
   ArraySchema schema(ctx_, TILEDB_DENSE);

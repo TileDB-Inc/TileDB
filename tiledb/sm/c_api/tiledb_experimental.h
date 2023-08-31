@@ -317,28 +317,6 @@ TILEDB_EXPORT int32_t tiledb_array_schema_add_enumeration(
     tiledb_array_schema_t* array_schema,
     tiledb_enumeration_t* enumeration) TILEDB_NOEXCEPT;
 
-/**
- * Retrieves the schema of an array from the disk with all enumerations loaded,
- * creating an array schema struct.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_schema_t* array_schema;
- * tiledb_array_schema_load(ctx, "s3://tiledb_bucket/my_array", &array_schema);
- * // Make sure to free the array schema in the end
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_uri The array whose schema will be retrieved.
- * @param array_schema The array schema to be retrieved, or `NULL` upon error.
- * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_schema_load_with_enumerations(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
-
 /* ********************************* */
 /*               ARRAY               */
 /* ********************************* */

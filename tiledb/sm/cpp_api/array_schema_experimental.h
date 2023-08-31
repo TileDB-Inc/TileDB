@@ -45,22 +45,6 @@ namespace tiledb {
 class ArraySchemaExperimental {
  public:
   /**
-   * Load an ArraySchema from the given URI with all of its enumerations.
-   *
-   * @param ctx The TileDB context.
-   * @param uri The URI to load from.
-   * @return ArraySchema The loaded array schema.
-   */
-  static ArraySchema load_with_enumerations(
-      const Context& ctx, const std::string& uri) {
-    tiledb_ctx_t* c_ctx = ctx.ptr().get();
-    tiledb_array_schema_t* schema;
-    ctx.handle_error(tiledb_array_schema_load_with_enumerations(
-        c_ctx, uri.c_str(), &schema));
-    return ArraySchema(ctx, schema);
-  }
-
-  /**
    * Adds a DimensionLabel to the array.
    *
    * @param ctx TileDB context.
