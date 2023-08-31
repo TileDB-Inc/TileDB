@@ -537,6 +537,11 @@ class Array {
   bool serialize_non_empty_domain() const;
 
   /**
+   * Checks the config to se if enumerations should be serialized on array open.
+   */
+  bool serialize_enumerations() const;
+
+  /**
    * Checks the config to see if metadata should be serialized on array open.
    */
   bool serialize_metadata() const;
