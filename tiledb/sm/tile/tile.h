@@ -270,6 +270,31 @@ class Tile : public TileBase {
   /**
    * Reads the chunk data of a tile buffer and populates a chunk data structure.
    *
+   * @param chunk_data Tile chunk info, buffers and offsets.
+   * @return Original size.
+   */
+  uint64_t load_chunk_data(ChunkData& chunk_data);
+
+  /**
+   * Reads the chunk data of a tile offsets buffer and populates a chunk data
+   * structure.
+   *
+   * @param chunk_data Tile chunk info, buffers and offsets.
+   * @return Original size.
+   */
+  uint64_t load_offsets_chunk_data(ChunkData& chunk_data);
+
+  /** Swaps the contents (all field values) of this tile with the given tile. */
+  void swap(Tile& tile);
+
+ private:
+  /* ********************************* */
+  /*         PRIVATE FUNCTIONS         */
+  /* ********************************* */
+
+  /**
+   * Reads the chunk data of a tile buffer and populates a chunk data structure.
+   *
    * This expects as input a Tile in the following byte format:
    *
    *   number_of_chunks (uint64_t)
@@ -291,15 +316,12 @@ class Tile : public TileBase {
    *   chunkN_data (uint8_t[])
    *
    * @param chunk_data Tile chunk info, buffers and offsets.
-   * @param is_offsets Does the tile contains offsets?
+   * @param expected_original_size Expected size for the tile.
    * @return Original size.
    */
-  uint64_t load_chunk_data(ChunkData& chunk_data, bool is_offsets = false);
+  uint64_t load_chunk_data(
+      ChunkData& chunk_data, uint64_t expected_original_size);
 
-  /** Swaps the contents (all field values) of this tile with the given tile. */
-  void swap(Tile& tile);
-
- private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */

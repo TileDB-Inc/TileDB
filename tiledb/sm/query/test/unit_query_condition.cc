@@ -2675,9 +2675,6 @@ void test_apply_cells_sparse<char*>(
   auto expected_iter = expected_cell_idx_vec.begin();
   for (uint64_t cell_idx = 0; cell_idx < cells; ++cell_idx) {
     if (result_bitmap[cell_idx]) {
-      if (*expected_iter != cell_idx) {
-        std::cout << "hello";
-      }
       REQUIRE(*expected_iter == cell_idx);
       ++expected_iter;
     }

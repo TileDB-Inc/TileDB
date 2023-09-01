@@ -718,7 +718,11 @@ ReaderBase::load_tile_chunk_data(
   const FilterPipeline& filters = array_schema_.filters(name);
   if (!var_size ||
       !filters.skip_offsets_filtering(t_var->type(), array_schema_.version())) {
-    unfiltered_tile_size = t->load_chunk_data(tile_chunk_data, var_size);
+    if (var_size) {
+      unfiltered_tile_size = t->load_offsets_chunk_data(tile_chunk_data);
+    } else {
+      unfiltered_tile_size = t->load_chunk_data(tile_chunk_data);
+    }
   }
 
   if (var_size) {

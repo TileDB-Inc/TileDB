@@ -249,38 +249,17 @@ Status Tile::zip_coordinates() {
   return Status::Ok();
 }
 
-uint64_t Tile::load_chunk_data(ChunkData& unfiltered_tile, bool is_offsets) {
-  assert(filtered());
+uint64_t Tile::load_chunk_data(ChunkData& chunk_data) {
+  return load_chunk_data(chunk_data, size());
+}
 
-  Deserializer deserializer(filtered_data(), filtered_size());
-
-  // Make a pass over the tile to get the chunk information.
-  uint64_t num_chunks = deserializer.read<uint64_t>();
-
-  auto& filtered_chunks = unfiltered_tile.filtered_chunks_;
-  auto& chunk_offsets = unfiltered_tile.chunk_offsets_;
-  filtered_chunks.resize(num_chunks);
-  chunk_offsets.resize(num_chunks);
-  uint64_t total_orig_size = 0;
-  for (uint64_t i = 0; i < num_chunks; i++) {
-    auto& chunk = filtered_chunks[i];
-    chunk.unfiltered_data_size_ = deserializer.read<uint32_t>();
-    chunk.filtered_data_size_ = deserializer.read<uint32_t>();
-    chunk.filtered_metadata_size_ = deserializer.read<uint32_t>();
-    chunk.filtered_metadata_ = const_cast<void*>(
-        deserializer.get_ptr<void>(chunk.filtered_metadata_size_));
-    chunk.filtered_data_ = const_cast<void*>(
-        deserializer.get_ptr<void>(chunk.filtered_data_size_));
-
-    chunk_offsets[i] = total_orig_size;
-    total_orig_size += chunk.unfiltered_data_size_;
+uint64_t Tile::load_offsets_chunk_data(ChunkData& chunk_data) {
+  auto s = size();
+  if (s < 8) {
+    throw std::runtime_error("Offsets tile should at least be 8 bytes.");
   }
 
-  if (total_orig_size + (is_offsets ? sizeof(uint64_t) : 0) != size()) {
-    throw TileStatusException("Incorrect unfiltered tile size allocated.");
-  }
-
-  return total_orig_size;
+  return load_chunk_data(chunk_data, s - 8);
 }
 
 void Tile::swap(Tile& tile) {
@@ -318,6 +297,45 @@ Status WriterTile::write_var(
 void WriterTile::swap(WriterTile& tile) {
   TileBase::swap(tile);
   std::swap(filtered_buffer_, tile.filtered_buffer_);
+}
+
+/* ********************************* */
+/*         PRIVATE FUNCTIONS         */
+/* ********************************* */
+
+uint64_t Tile::load_chunk_data(
+    ChunkData& unfiltered_tile, uint64_t expected_original_size) {
+  assert(filtered());
+
+  Deserializer deserializer(filtered_data(), filtered_size());
+
+  // Make a pass over the tile to get the chunk information.
+  uint64_t num_chunks = deserializer.read<uint64_t>();
+
+  auto& filtered_chunks = unfiltered_tile.filtered_chunks_;
+  auto& chunk_offsets = unfiltered_tile.chunk_offsets_;
+  filtered_chunks.resize(num_chunks);
+  chunk_offsets.resize(num_chunks);
+  uint64_t total_orig_size = 0;
+  for (uint64_t i = 0; i < num_chunks; i++) {
+    auto& chunk = filtered_chunks[i];
+    chunk.unfiltered_data_size_ = deserializer.read<uint32_t>();
+    chunk.filtered_data_size_ = deserializer.read<uint32_t>();
+    chunk.filtered_metadata_size_ = deserializer.read<uint32_t>();
+    chunk.filtered_metadata_ = const_cast<void*>(
+        deserializer.get_ptr<void>(chunk.filtered_metadata_size_));
+    chunk.filtered_data_ = const_cast<void*>(
+        deserializer.get_ptr<void>(chunk.filtered_data_size_));
+
+    chunk_offsets[i] = total_orig_size;
+    total_orig_size += chunk.unfiltered_data_size_;
+  }
+
+  if (total_orig_size != expected_original_size) {
+    throw TileStatusException("Incorrect unfiltered tile size allocated.");
+  }
+
+  return total_orig_size;
 }
 
 }  // namespace sm
