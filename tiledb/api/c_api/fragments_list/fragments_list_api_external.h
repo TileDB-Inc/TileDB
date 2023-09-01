@@ -51,7 +51,7 @@ typedef struct tiledb_fragments_list_handle_t tiledb_fragments_list_t;
  * **Example**
  * @code{.c}
  * tiledb_fragments_list_t* f = NULL;
- * // tiledb_deserialize_fragments_list(..., &f);
+ * // tiledb_deserialize_array_delete_fragments_list_request(..., &f);
  * uint32_t index = 0;
  * const char* uri;
  * size_t uri_length;
@@ -80,7 +80,7 @@ TILEDB_EXPORT capi_return_t tiledb_fragments_list_get_fragment_uri(
  * **Example**
  * @code{.c}
  * tiledb_fragments_list_t* f = NULL;
- * // tiledb_deserialize_fragments_list(..., &f);
+ * // tiledb_deserialize_array_delete_fragments_list_request(..., &f);
  * unsigned index;
  * const char* uri = "array/__fragments/1";
  * tiledb_fragments_list_get_fragment_index(f, uri, &index);
@@ -104,7 +104,7 @@ TILEDB_EXPORT capi_return_t tiledb_fragments_list_get_fragment_index(
  *
  * @code{.c}
  * tiledb_fragments_list_t* s = NULL;
- * // tiledb_deserialize_fragments_list(..., &f);
+ * // tiledb_deserialize_array_delete_fragments_list_request(..., &f);
  * tiledb_fragments_list_free(&f);
  * @endcode
  *

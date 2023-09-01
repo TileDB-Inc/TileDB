@@ -1200,7 +1200,8 @@ struct BufferedChunk {
 }
 
 struct ArrayDeleteFragmentsListRequest {
-  entries @0 :List(Text);
+  uri @0 :Text;
+  entries @1 :List(Text);
 }
 
 struct ArrayDeleteFragmentsTimestampsRequest {

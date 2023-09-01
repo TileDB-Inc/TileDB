@@ -384,7 +384,7 @@ void RestClient::delete_fragments_list_from_rest(
     const URI& uri, const std::vector<URI>& fragment_uris) {
   Buffer buff;
   serialization::fragments_list_serialize(
-      fragment_uris, serialization_type_, &buff);
+      uri.to_string(), fragment_uris, serialization_type_, &buff);
   // Wrap in a list
   BufferList serialized;
   throw_if_not_ok(serialized.add_buffer(std::move(buff)));

@@ -1550,7 +1550,7 @@ struct ArrayDeleteFragmentsListRequest {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(cfea684b4bcd0721, 0, 1)
+    CAPNP_DECLARE_STRUCT_HEADER(cfea684b4bcd0721, 0, 2)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -13940,6 +13940,9 @@ class ArrayDeleteFragmentsListRequest::Reader {
   }
 #endif  // !CAPNP_LITE
 
+  inline bool hasUri() const;
+  inline ::capnp::Text::Reader getUri() const;
+
   inline bool hasEntries() const;
   inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader getEntries()
       const;
@@ -13982,6 +13985,13 @@ class ArrayDeleteFragmentsListRequest::Builder {
     return asReader().toString();
   }
 #endif  // !CAPNP_LITE
+
+  inline bool hasUri();
+  inline ::capnp::Text::Builder getUri();
+  inline void setUri(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initUri(unsigned int size);
+  inline void adoptUri(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownUri();
 
   inline bool hasEntries();
   inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
@@ -30711,45 +30721,87 @@ inline void BufferedChunk::Builder::setSize(::uint64_t value) {
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
-inline bool ArrayDeleteFragmentsListRequest::Reader::hasEntries() const {
+inline bool ArrayDeleteFragmentsListRequest::Reader::hasUri() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
 }
-inline bool ArrayDeleteFragmentsListRequest::Builder::hasEntries() {
+inline bool ArrayDeleteFragmentsListRequest::Builder::hasUri() {
   return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader ArrayDeleteFragmentsListRequest::Reader::getUri()
+    const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder
+ArrayDeleteFragmentsListRequest::Builder::getUri() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void ArrayDeleteFragmentsListRequest::Builder::setUri(
+    ::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder ArrayDeleteFragmentsListRequest::Builder::initUri(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      size);
+}
+inline void ArrayDeleteFragmentsListRequest::Builder::adoptUri(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text>
+ArrayDeleteFragmentsListRequest::Builder::disownUri() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool ArrayDeleteFragmentsListRequest::Reader::hasEntries() const {
+  return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArrayDeleteFragmentsListRequest::Builder::hasEntries() {
+  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
               .isNull();
 }
 inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
 ArrayDeleteFragmentsListRequest::Reader::getEntries() const {
   return ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
-          _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+          _reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
 ArrayDeleteFragmentsListRequest::Builder::getEntries() {
   return ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
-          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 inline void ArrayDeleteFragmentsListRequest::Builder::setEntries(
     ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value) {
   ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
-          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
           value);
 }
 inline void ArrayDeleteFragmentsListRequest::Builder::setEntries(
     ::kj::ArrayPtr<const ::capnp::Text::Reader> value) {
   ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
-          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
           value);
 }
 inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
 ArrayDeleteFragmentsListRequest::Builder::initEntries(unsigned int size) {
   return ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::init(
-          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
           size);
 }
 inline void ArrayDeleteFragmentsListRequest::Builder::adoptEntries(
@@ -30757,14 +30809,14 @@ inline void ArrayDeleteFragmentsListRequest::Builder::adoptEntries(
         value) {
   ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::adopt(
-          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
           kj::mv(value));
 }
 inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
 ArrayDeleteFragmentsListRequest::Builder::disownEntries() {
   return ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
-          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 
 inline bool ArrayDeleteFragmentsTimestampsRequest::Reader::hasUri() const {

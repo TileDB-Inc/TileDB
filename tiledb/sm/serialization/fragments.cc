@@ -176,8 +176,10 @@ std::tuple<const char*, uint64_t, uint64_t> fragments_timestamps_deserialize(
 }
 
 void fragments_list_to_capnp(
+    std::string uri,
     const std::vector<URI>& fragments,
     capnp::ArrayDeleteFragmentsListRequest::Builder* builder) {
+  builder->setUri(uri);
   auto entries_builder = builder->initEntries(fragments.size());
   for (size_t i = 0; i < fragments.size(); i++) {
     const auto& relative_uri = serialize_array_uri_to_relative(fragments[i]);
@@ -185,18 +187,18 @@ void fragments_list_to_capnp(
   }
 }
 
-std::vector<URI> fragments_list_from_capnp(
-    const capnp::ArrayDeleteFragmentsListRequest::Reader& reader,
-    const URI& array_uri) {
+std::tuple<const char*, std::vector<URI>> fragments_list_from_capnp(
+    const capnp::ArrayDeleteFragmentsListRequest::Reader& reader) {
+  auto uri = reader.getUri().cStr();
   if (reader.hasEntries()) {
     std::vector<URI> fragments;
     fragments.reserve(reader.getEntries().size());
     auto get_entries_reader = reader.getEntries();
     for (auto entry : get_entries_reader) {
       fragments.emplace_back(
-          deserialize_array_uri_to_absolute(entry.cStr(), array_uri));
+          deserialize_array_uri_to_absolute(entry.cStr(), URI(uri)));
     }
-    return fragments;
+    return {uri, fragments};
   } else {
     throw FragmentsSerializationException(
         "[fragments_list_from_capnp] There are no fragments to deserialize");
@@ -204,6 +206,7 @@ std::vector<URI> fragments_list_from_capnp(
 }
 
 void fragments_list_serialize(
+    std::string uri,
     const std::vector<URI>& fragments,
     SerializationType serialize_type,
     Buffer* serialized_buffer) {
@@ -216,7 +219,7 @@ void fragments_list_serialize(
     // Serialize
     ::capnp::MallocMessageBuilder message;
     auto builder = message.initRoot<capnp::ArrayDeleteFragmentsListRequest>();
-    fragments_list_to_capnp(fragments, &builder);
+    fragments_list_to_capnp(uri, fragments, &builder);
 
     // Copy to buffer
     serialized_buffer->reset_size();
@@ -258,15 +261,8 @@ void fragments_list_serialize(
   }
 }
 
-std::vector<URI> fragments_list_deserialize(
-    const URI& array_uri,
-    SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
-  if (array_uri.is_invalid()) {
-    throw FragmentsSerializationException(
-        "[fragments_list_deserialize] Invalid Array URI");
-  }
-
+std::tuple<const char*, std::vector<URI>> fragments_list_deserialize(
+    SerializationType serialize_type, const Buffer& serialized_buffer) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -279,7 +275,7 @@ std::vector<URI> fragments_list_deserialize(
             builder);
         auto reader = builder.asReader();
         // Deserialize
-        return fragments_list_from_capnp(reader, array_uri);
+        return fragments_list_from_capnp(reader);
       }
       case SerializationType::CAPNP: {
         const auto mBytes =
@@ -290,7 +286,7 @@ std::vector<URI> fragments_list_deserialize(
         auto reader =
             msg_reader.getRoot<capnp::ArrayDeleteFragmentsListRequest>();
         // Deserialize
-        return fragments_list_from_capnp(reader, array_uri);
+        return fragments_list_from_capnp(reader);
       }
       default: {
         throw FragmentsSerializationException(
@@ -321,13 +317,12 @@ std::tuple<const char*, uint64_t, uint64_t> fragments_timestamps_deserialize(
 }
 
 void fragments_list_serialize(
-    const std::vector<URI>&, SerializationType, Buffer*) {
+    std::string, const std::vector<URI>&, SerializationType, Buffer*) {
   throw FragmentsSerializationException(
       "Cannot serialize; serialization not enabled.");
 }
 
-std::vector<URI> fragments_list_deserialize(
-    const URI&, SerializationType, const Buffer&) {
+std::vector<URI> fragments_list_deserialize(SerializationType, const Buffer&) {
   throw FragmentsSerializationException(
       "Cannot deserialize; serialization not enabled.");
 }

@@ -442,7 +442,8 @@ TILEDB_EXPORT int32_t tiledb_serialize_array_max_buffer_sizes(
  * @param timestamp_end The end timestamp to deserialize into.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT capi_return_t tiledb_deserialize_fragments_timestamps(
+TILEDB_EXPORT
+capi_return_t tiledb_deserialize_array_delete_fragments_timestamps_request(
     tiledb_ctx_t* ctx,
     tiledb_serialization_type_t serialization_type,
     const tiledb_buffer_t* buffer,
@@ -454,17 +455,18 @@ TILEDB_EXPORT capi_return_t tiledb_deserialize_fragments_timestamps(
  * Deserializes the fragments list from the given buffer.
  *
  * @param ctx The TileDB context.
- * @param array_uri The URI of the fragments' parent Array.
  * @param serialization_type Type of serialization to use
  * @param buffer Buffer containing serialized fragments list.
+ * @param array_uri The URI of the fragments' parent Array.
  * @param fragments The fragments list to deserialize into.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT capi_return_t tiledb_deserialize_fragments_list(
+TILEDB_EXPORT
+capi_return_t tiledb_deserialize_array_delete_fragments_list_request(
     tiledb_ctx_t* ctx,
-    const char* array_uri,
     tiledb_serialization_type_t serialization_type,
     const tiledb_buffer_t* buffer,
+    const char** uri,
     tiledb_fragments_list_t** fragments) TILEDB_NOEXCEPT;
 
 /**

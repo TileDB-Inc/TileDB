@@ -2699,7 +2699,7 @@ TEST_CASE_METHOD(
   const char* deserialized_uri = nullptr;
   uint64_t deserialized_start_timestamp = 0;
   uint64_t deserialized_end_timestamp = 0;
-  rc = tiledb_deserialize_fragments_timestamps(
+  rc = tiledb_deserialize_array_delete_fragments_timestamps_request(
       ctx_,
       (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
       buff,
@@ -2732,15 +2732,20 @@ TEST_CASE_METHOD(
 
   // Serialize fragments list and deserialize using C API
   tiledb::sm::serialization::fragments_list_serialize(
-      fragments, tiledb::sm::SerializationType::CAPNP, &buff->buffer());
+      array_name,
+      fragments,
+      tiledb::sm::SerializationType::CAPNP,
+      &buff->buffer());
+  const char* deserialized_array_uri = nullptr;
   tiledb_fragments_list_t* deserialized_fragments;
-  rc = tiledb_deserialize_fragments_list(
+  rc = tiledb_deserialize_array_delete_fragments_list_request(
       ctx_,
-      array_name.c_str(),
       (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
       buff,
+      &deserialized_array_uri,
       &deserialized_fragments);
   REQUIRE(rc == TILEDB_OK);
+  CHECK(std::string(deserialized_array_uri) == array_name);
 
   // Compare original fragments to deserialized_fragments
   const char* deserialized_uri1;
