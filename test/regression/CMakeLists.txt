@@ -46,12 +46,17 @@ if (TILEDB_CPP_API)
   list(APPEND SOURCES targets/sc-24079.cc)
   list(APPEND SOURCES targets/sc-25116.cc)
   list(APPEND SOURCES targets/sc-29682.cc)
+  list(APPEND SOURCES targets/sc-33480.cc)
 endif()
 
 add_executable(tiledb_regression
   EXCLUDE_FROM_ALL
   regression.cc
   ${SOURCES}
+)
+
+target_compile_definitions(tiledb_regression PRIVATE
+  -DTILEDB_TEST_INPUTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/inputs"
 )
 
 if (NOT MSVC)
