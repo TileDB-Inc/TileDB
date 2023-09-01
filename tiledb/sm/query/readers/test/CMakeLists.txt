@@ -1,5 +1,5 @@
 #
-# tiledb/sm/query/readers/CMakeLists.txt
+# tiledb/sm/query/readers/test/CMakeLists.txt
 #
 # The MIT License
 #
@@ -24,9 +24,8 @@
 # THE SOFTWARE.
 #
 
-include(common NO_POLICY_SCOPE)
-include(object_library)
+include(unit_test)
 
-add_subdirectory(aggregators)
-
-add_test_subdirectory()
+commence(unit_test readers)
+    this_target_sources(main.cc unit_reader_base.cc)
+conclude(unit_test)

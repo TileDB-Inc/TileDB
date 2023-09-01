@@ -1,5 +1,5 @@
 /**
- * @file compile_result_tile_main.cc
+ * @file tiledb/sm/query/readers/test/main.cc
  *
  * @section LICENSE
  *
@@ -24,11 +24,11 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file defines a test `main()`
  */
 
-#include "../result_tile.h"
-
-int main() {
-  (void)sizeof(tiledb::sm::ResultTile);
-  return 0;
-}
+#define CATCH_CONFIG_MAIN
+#include <test/support/tdb_catch.h>
