@@ -1008,6 +1008,10 @@ tuple<uint64_t, uint64_t> ReaderBase::compute_chunk_min_max(
     const uint64_t num_chunks,
     const uint64_t num_range_threads,
     const uint64_t thread_idx) const {
+  if (num_chunks == 0) {
+    return {0, 0};
+  }
+
   auto t_part_num = std::min(num_chunks, num_range_threads);
   auto t_min = (thread_idx * num_chunks + t_part_num - 1) / t_part_num;
   auto t_max = std::min(

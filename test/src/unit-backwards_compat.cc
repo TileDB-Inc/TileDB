@@ -1364,3 +1364,42 @@ TEST_CASE(
   vfs.remove_dir(get_commit_dir(array_read2.uri()));
   vfs.remove_dir(schema_folder);
 }
+
+TEST_CASE(
+    "Backwards compatibility: 0 var chunks",
+    "[backwards-compat][zero-var-chunks]") {
+  // This array has a var file for the "d" dimension with 0 chunks. This was
+  // only possible if a fragment had all empty values for a variable string in
+  // versions earlier than v10.
+  std::string array_name(arrays_dir + "/zero_var_chunks_v10");
+  Context ctx;
+
+  // Prepare the array for reading.
+  Array array(ctx, array_name, TILEDB_READ);
+
+  // Prepare the query.
+  Query query(ctx, array, TILEDB_READ);
+
+  // Prepare the vector that will hold the result.
+  std::vector<char> d(10);
+  std::vector<uint64_t> d_offsets(10);
+  std::vector<int32_t> a(10);
+  query.set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("d", d)
+      .set_offsets_buffer("d", d_offsets)
+      .set_data_buffer("a", a);
+
+  // Submit the query and close the array.
+  query.submit();
+  array.close();
+
+  // Validate the results. This array has one cell at coordinate '' with
+  // value 1.
+  auto res = query.result_buffer_elements();
+  CHECK(res["d"].first == 1);
+  CHECK(res["d"].second == 0);
+  CHECK(res["a"].first == 0);
+  CHECK(res["a"].second == 1);
+  CHECK(d_offsets[0] == 0);
+  CHECK(a[0] == 1);
+}
