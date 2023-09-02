@@ -413,7 +413,12 @@ void ArraySchema::check_webp_filter() const {
   }
 }
 
-void ArraySchema::check() const {
+void ArraySchema::check(const Config& cfg) const {
+  check_without_config();
+  check_enumerations(cfg);
+}
+
+void ArraySchema::check_without_config() const {
   if (domain_ == nullptr)
     throw ArraySchemaException{"Array schema check failed; Domain not set"};
 
@@ -545,6 +550,40 @@ void ArraySchema::check_dimension_label_schema(
         std::to_string(label_attr->cell_val_num()) +
         ", but the expected cell value number was " +
         std::to_string(dim_label_ref->label_cell_val_num()) + ".");
+  }
+}
+
+void ArraySchema::check_enumerations(const Config& cfg) const {
+  auto max_size = cfg.get<uint64_t>("sm.enumerations_max_size");
+  if (!max_size.has_value()) {
+    throw std::runtime_error(
+        "Missing required config parameter 'sm.enumerations_max_size'.");
+  }
+
+  auto max_total_size = cfg.get<uint64_t>("sm.enumerations_max_total_size");
+  if (!max_total_size.has_value()) {
+    throw std::runtime_error(
+        "Missing required config parameter 'sm.enumerations_max_total_size'.");
+  }
+
+  uint64_t total_size = 0;
+  for (const auto& pair : enumeration_map_) {
+    uint64_t size = pair.second->data().size() + pair.second->offsets().size();
+    if (size > max_size.value()) {
+      throw ArraySchemaException(
+          "Invalid enumeration '" + pair.second->name() +
+          "' has a size "
+          "exceeding " +
+          std::to_string(max_size.value()) + " bytes.");
+    }
+    total_size += size;
+  }
+
+  if (total_size > max_total_size.value()) {
+    throw ArraySchemaException(
+        "Total enumeration size for the entire schema "
+        "exceeds " +
+        std::to_string(max_total_size.value()) + " bytes.");
   }
 }
 

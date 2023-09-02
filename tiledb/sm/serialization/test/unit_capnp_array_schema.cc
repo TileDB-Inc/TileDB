@@ -113,7 +113,7 @@ TEST_CASE(
     st = schema->add_attribute(
         make_shared<Attribute>(HERE(), "label", Datatype::FLOAT64));
     REQUIRE(st.ok());
-    schema->check();
+    schema->check_without_config();
 
     // Create dimension label.
     dim_label = make_shared<DimensionLabel>(

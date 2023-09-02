@@ -895,13 +895,68 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     EnumerationFx,
+    "ArraySchema - Large Single Enumeration",
+    "[enumeration][array-scehma][size-check]") {
+  auto schema = create_schema();
+  REQUIRE_NOTHROW(schema->check(cfg_));
+
+  std::vector<uint8_t> data(1024 * 1024 * 10 + 1);
+  std::vector<uint64_t> offsets = {0};
+  auto enmr = Enumeration::create(
+      "enmr_name",
+      Datatype::STRING_ASCII,
+      constants::var_num,
+      false,
+      data.data(),
+      data.size(),
+      offsets.data(),
+      offsets.size() * constants::cell_var_offset_size);
+
+  schema->add_enumeration(enmr);
+
+  // One single enumeration larger than 10MiB
+  auto matcher = Catch::Matchers::ContainsSubstring("has a size exceeding");
+  REQUIRE_THROWS_WITH(schema->check(cfg_), matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "ArraySchema - Many Large Enumerations",
+    "[enumeration][array-scehma][size-check]") {
+  auto schema = create_schema();
+  REQUIRE_NOTHROW(schema->check(cfg_));
+
+  std::vector<uint8_t> data(1024 * 1024 * 5 + 1);
+  std::vector<uint64_t> offsets = {0};
+
+  // Create more than 50MiB of enumeration data
+  for (size_t i = 0; i < 10; i++) {
+    auto enmr = Enumeration::create(
+        "enmr_name_" + std::to_string(i),
+        Datatype::STRING_ASCII,
+        constants::var_num,
+        false,
+        data.data(),
+        data.size(),
+        offsets.data(),
+        offsets.size() * constants::cell_var_offset_size);
+    schema->add_enumeration(enmr);
+  }
+
+  // 10 enumerations each over 5MiB for more than 50MiB total.
+  auto matcher = Catch::Matchers::ContainsSubstring("Total enumeration size");
+  REQUIRE_THROWS_WITH(schema->check(cfg_), matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
     "ArraySchema - Schema Copy Constructor",
     "[enumeration][array-schema][copy-ctor]") {
   auto schema = create_schema();
 
   // Check that the schema is valid and that we can copy it using the
   // copy constructor.
-  CHECK_NOTHROW(schema->check());
+  CHECK_NOTHROW(schema->check(cfg_));
   CHECK_NOTHROW(make_shared<ArraySchema>(HERE(), *(schema.get())));
 }
 

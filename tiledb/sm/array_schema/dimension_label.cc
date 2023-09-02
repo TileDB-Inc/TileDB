@@ -182,7 +182,7 @@ DimensionLabel::DimensionLabel(
   throw_if_not_ok(schema_->add_attribute(label_attr));
 
   // Check the array schema is valid.
-  schema_->check();
+  schema_->check_without_config();
 }
 
 // FORMAT:

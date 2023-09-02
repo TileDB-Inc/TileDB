@@ -228,7 +228,12 @@ class ArraySchema {
    *
    * Throws if validation fails
    */
-  void check() const;
+  void check(const Config& cfg) const;
+
+  /**
+   * Checks the correctness of the array schema without config access.
+   */
+  void check_without_config() const;
 
   /**
    * Throws an error if the provided schema does not match the definition given
@@ -701,8 +706,8 @@ class ArraySchema {
 
   void check_webp_filter() const;
 
-  // Check whether attributes referencing enumerations are valid.
-  void check_enumerations() const;
+  // Check enumeration sizes are below the configured maximums.
+  void check_enumerations(const Config& cfg) const;
 
   /** Clears all members. Use with caution! */
   void clear();

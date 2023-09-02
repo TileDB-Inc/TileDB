@@ -262,6 +262,8 @@ void check_save_to_file() {
   ss << "sm.dedup_coords false\n";
   ss << "sm.enable_signal_handlers true\n";
   ss << "sm.encryption_type NO_ENCRYPTION\n";
+  ss << "sm.enumerations_max_size 10485760\n";
+  ss << "sm.enumerations_max_total_size 52428800\n";
   ss << "sm.fragment_info.preload_mbrs false\n";
   ss << "sm.group.timestamp_end 18446744073709551615\n";
   ss << "sm.group.timestamp_start 0\n";
@@ -608,6 +610,8 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.encryption_type"] = "NO_ENCRYPTION";
   all_param_values["sm.dedup_coords"] = "false";
   all_param_values["sm.partial_tile_offsets_loading"] = "false";
+  all_param_values["sm.enumerations_max_size"] = "10485760";
+  all_param_values["sm.enumerations_max_total_size"] = "52428800";
   all_param_values["sm.check_coord_dups"] = "true";
   all_param_values["sm.check_coord_oob"] = "true";
   all_param_values["sm.check_global_order"] = "true";
