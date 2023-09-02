@@ -5,6 +5,9 @@
 using namespace tiledb;
 
 TEST_CASE("0 var chunks", "[unfiltering][bug][sc33480]") {
+  // NOTE: This regression test will not fail on a Mac M1 because on that
+  // platform, a division by 0 will not generate a segfault but return 0.
+
   // The following code created the zero_var_chunks_v10 array for this test.
   // #include <tiledb/tiledb>
   // using namespace tiledb;
