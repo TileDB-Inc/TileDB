@@ -178,20 +178,57 @@ void ASTNodeVal::rewrite_enumeration_conditions(
   auto enumeration = array_schema.get_enumeration(enmr_name.value());
   if (!enumeration) {
     throw std::logic_error(
-        "Missing requried enumeration for field '" + field_name_ + "'");
+        "Missing required enumeration for field '" + field_name_ + "'");
   }
 
-  if (!enumeration->ordered() &&
-      (op_ != QueryConditionOp::EQ && op_ != QueryConditionOp::NE)) {
-    throw std::logic_error(
-        "Cannot apply an inequality operator against an unordered Enumeration");
+  if (!enumeration->ordered()) {
+    switch (op_) {
+      case QueryConditionOp::LT:
+      case QueryConditionOp::LE:
+      case QueryConditionOp::GT:
+      case QueryConditionOp::GE:
+        throw std::logic_error(
+            "Cannot apply an inequality operator against an unordered "
+            "Enumeration");
+      default:
+        break;
+    }
   }
 
-  auto idx = enumeration->index_of(get_value_ptr(), get_value_size());
   auto val_size = datatype_size(attr->type());
 
-  data_ = ByteVecValue(val_size);
-  utils::safe_integral_cast_to_datatype(idx, attr->type(), data_);
+  if (op_ != QueryConditionOp::IN && op_ != QueryConditionOp::NOT_IN) {
+    auto idx = enumeration->index_of(get_value_ptr(), get_value_size());
+
+    data_ = ByteVecValue(val_size);
+    utils::safe_integral_cast_to_datatype(idx, attr->type(), data_);
+  } else {
+    // Buffers and writers for the new data/offsets memory
+    std::vector<uint8_t> data_buffer(val_size * members_.size());
+    std::vector<uint8_t> offsets_buffer(
+        constants::cell_var_offset_size * members_.size());
+    Serializer data_writer(data_buffer.data(), data_buffer.size());
+    Serializer offsets_writer(offsets_buffer.data(), offsets_buffer.size());
+
+    ByteVecValue curr_data(val_size);
+    uint64_t curr_offset = 0;
+
+    for (auto& member : members_) {
+      auto idx = enumeration->index_of(member.data(), member.size());
+      utils::safe_integral_cast_to_datatype(idx, attr->type(), curr_data);
+      data_writer.write(curr_data.data(), curr_data.size());
+      offsets_writer.write(curr_offset);
+      curr_offset += val_size;
+    }
+
+    data_ = ByteVecValue(data_buffer.size());
+    std::memcpy(data_.data(), data_buffer.data(), data_buffer.size());
+
+    offsets_ = ByteVecValue(offsets_buffer.size());
+    std::memcpy(offsets_.data(), offsets_buffer.data(), offsets_buffer.size());
+
+    generate_members();
+  }
 
   use_enumeration_ = false;
 }
@@ -207,6 +244,12 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
   const auto type = array_schema.type(field_name_);
   const auto cell_size = array_schema.cell_size(field_name_);
   const auto cell_val_num = array_schema.cell_val_num(field_name_);
+
+  bool has_enumeration = false;
+  if (array_schema.is_attr(field_name_)) {
+    auto attr = array_schema.attribute(field_name_);
+    has_enumeration = attr->get_enumeration_name().has_value();
+  }
 
   // Ensure that null value can only be used with equality operators.
   if (is_null_) {
@@ -250,9 +293,10 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
         std::to_string(cell_size) + " != " + std::to_string(data_.size()));
   }
 
-  // Ensure that for a set membership test has members that all match the
-  // correct cell size for fixed length attribute values.
-  if (cell_size != constants::var_size &&
+  // When applying a set membership test against a fixed size field that
+  // does not have an enumeration, ensure that all set members have the
+  // correct size.
+  if (cell_size != constants::var_size && !has_enumeration &&
       (op_ == QueryConditionOp::IN || op_ == QueryConditionOp::NOT_IN)) {
     for (auto& member : members_) {
       if (member.size() != cell_size) {

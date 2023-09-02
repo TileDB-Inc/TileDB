@@ -61,7 +61,7 @@ class QueryConditionExperimental {
       const Context& ctx,
       const std::string& field_name,
       const std::vector<T>& values,
-      tiledb_query_condition_op_t op = TILEDB_IN) {
+      tiledb_query_condition_op_t op) {
     std::vector<uint64_t> offsets;
     offsets.push_back(0);
     for (size_t i = 1; i < values.size(); i++) {
