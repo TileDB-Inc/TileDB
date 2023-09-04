@@ -56,7 +56,7 @@ add_executable(tiledb_regression
 )
 
 target_compile_definitions(tiledb_regression PRIVATE
-  -DTILEDB_TEST_INPUTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/inputs"
+  -DTILEDB_TEST_INPUTS_DIR="${CMAKE_SOURCE_DIR}/test/inputs/"
 )
 
 if (NOT MSVC)
