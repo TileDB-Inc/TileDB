@@ -76,36 +76,36 @@ struct CppAggregatesFx {
   void create_dense_array(bool var = false, bool encrypt = false);
   void create_sparse_array(bool var = false, bool encrypt = false);
   void write_sparse(
-      std::vector<int> a1,
+      std::vector<int> a,
       std::vector<uint64_t> dim1,
       std::vector<uint64_t> dim2,
       uint64_t timestamp,
-      optional<std::vector<uint8_t>> a1_validity = nullopt,
+      optional<std::vector<uint8_t>> a_validity = nullopt,
       bool encrypt = false);
   void write_sparse(
-      std::vector<std::string> a1,
+      std::vector<std::string> a,
       std::vector<uint64_t> dim1,
       std::vector<uint64_t> dim2,
       uint64_t timestamp,
-      optional<std::vector<uint8_t>> a1_validity = nullopt,
+      optional<std::vector<uint8_t>> a_validity = nullopt,
       bool encrypt = false);
   void write_dense(
-      std::vector<int> a1,
+      std::vector<int> a,
       uint64_t dim1_min,
       uint64_t dim1_max,
       uint64_t dim2_min,
       uint64_t dim2_max,
       uint64_t timestamp,
-      optional<std::vector<uint8_t>> a1_validity = nullopt,
+      optional<std::vector<uint8_t>> a_validity = nullopt,
       bool encrypt = false);
   void write_dense_string(
-      std::vector<std::string> a1,
+      std::vector<std::string> a,
       uint64_t dim1_min,
       uint64_t dim1_max,
       uint64_t dim2_min,
       uint64_t dim2_max,
       uint64_t timestamp,
-      optional<std::vector<uint8_t>> a1_validity = nullopt,
+      optional<std::vector<uint8_t>> a_validity = nullopt,
       bool encrypt = false);
   std::vector<uint8_t> make_data_buff(
       std::vector<int> values,
@@ -126,7 +126,8 @@ struct CppAggregatesFx {
       std::vector<uint64_t>& dim2,
       std::string& a1_data,
       std::vector<uint64_t>& a1_offsets,
-      std::vector<uint8_t>& a1_validity);
+      std::vector<uint8_t>& a1_validity,
+      const bool validate_count = true);
   void remove_array();
   void remove_array(const std::string& array_name);
   bool is_array(const std::string& array_name);
@@ -184,10 +185,18 @@ void CppAggregatesFx<T>::create_dense_array(bool var, bool encrypt) {
         var ? TILEDB_VAR_NUM : CppAggregatesFx<T>::STRING_CELL_VAL_NUM);
   }
 
+  auto a2 = Attribute::create<T>(ctx_, "a2");
+  a2.set_nullable(nullable_);
+  if (std::is_same<T, std::string>::value) {
+    a2.set_cell_val_num(
+        var ? TILEDB_VAR_NUM : CppAggregatesFx<T>::STRING_CELL_VAL_NUM);
+  }
+
   // Create array schema.
   ArraySchema schema(ctx_, TILEDB_DENSE);
   schema.set_domain(domain);
   schema.add_attributes(a1);
+  schema.add_attributes(a2);
 
   // Set up filters.
   Filter filter(ctx_, TILEDB_FILTER_NONE);
@@ -221,11 +230,19 @@ void CppAggregatesFx<T>::create_sparse_array(bool var, bool encrypt) {
         var ? TILEDB_VAR_NUM : CppAggregatesFx<T>::STRING_CELL_VAL_NUM);
   }
 
+  auto a2 = Attribute::create<T>(ctx_, "a2");
+  a2.set_nullable(nullable_);
+  if (std::is_same<T, std::string>::value) {
+    a2.set_cell_val_num(
+        var ? TILEDB_VAR_NUM : CppAggregatesFx<T>::STRING_CELL_VAL_NUM);
+  }
+
   // Create array schema.
   ArraySchema schema(ctx_, TILEDB_SPARSE);
   schema.set_domain(domain);
   schema.set_capacity(20);
   schema.add_attributes(a1);
+  schema.add_attributes(a2);
 
   if (allow_dups_) {
     schema.set_allows_dups(true);
@@ -246,11 +263,11 @@ void CppAggregatesFx<T>::create_sparse_array(bool var, bool encrypt) {
 
 template <class T>
 void CppAggregatesFx<T>::write_sparse(
-    std::vector<int> a1,
+    std::vector<int> a,
     std::vector<uint64_t> dim1,
     std::vector<uint64_t> dim2,
     uint64_t timestamp,
-    optional<std::vector<uint8_t>> a1_validity,
+    optional<std::vector<uint8_t>> a_validity,
     bool encrypt) {
   // Open array.
   std::unique_ptr<Array> array;
@@ -269,7 +286,7 @@ void CppAggregatesFx<T>::write_sparse(
         TemporalPolicy(TimestampStartEnd, 0, timestamp));
   }
 
-  std::vector<uint8_t> a1_buff = make_data_buff(a1);
+  std::vector<uint8_t> a_buff = make_data_buff(a);
   uint64_t cell_val_num = std::is_same<T, std::string>::value ?
                               CppAggregatesFx<T>::STRING_CELL_VAL_NUM :
                               1;
@@ -278,11 +295,14 @@ void CppAggregatesFx<T>::write_sparse(
   Query query(ctx_, *array, TILEDB_WRITE);
   query.set_layout(TILEDB_GLOBAL_ORDER);
   query.set_data_buffer(
-      "a1", static_cast<void*>(a1_buff.data()), a1.size() * cell_val_num);
+      "a1", static_cast<void*>(a_buff.data()), a.size() * cell_val_num);
+  query.set_data_buffer(
+      "a2", static_cast<void*>(a_buff.data()), a.size() * cell_val_num);
   query.set_data_buffer("d1", dim1);
   query.set_data_buffer("d2", dim2);
-  if (a1_validity.has_value()) {
-    query.set_validity_buffer("a1", a1_validity.value());
+  if (a_validity.has_value()) {
+    query.set_validity_buffer("a1", a_validity.value());
+    query.set_validity_buffer("a2", a_validity.value());
   }
 
   // Submit/finalize the query.
@@ -295,11 +315,11 @@ void CppAggregatesFx<T>::write_sparse(
 
 template <class T>
 void CppAggregatesFx<T>::write_sparse(
-    std::vector<std::string> a1,
+    std::vector<std::string> a,
     std::vector<uint64_t> dim1,
     std::vector<uint64_t> dim2,
     uint64_t timestamp,
-    optional<std::vector<uint8_t>> a1_validity,
+    optional<std::vector<uint8_t>> a_validity,
     bool encrypt) {
   // Open array.
   std::unique_ptr<Array> array;
@@ -318,24 +338,27 @@ void CppAggregatesFx<T>::write_sparse(
         TemporalPolicy(TimestampStartEnd, 0, timestamp));
   }
 
-  std::string a1_data;
-  std::vector<uint64_t> a1_offsets;
+  std::string a_data;
+  std::vector<uint64_t> a_offsets;
   uint64_t offset = 0;
-  for (auto& v : a1) {
-    a1_data += v;
-    a1_offsets.emplace_back(offset);
+  for (auto& v : a) {
+    a_data += v;
+    a_offsets.emplace_back(offset);
     offset += v.length();
   }
 
   // Create query.
   Query query(ctx_, *array, TILEDB_WRITE);
   query.set_layout(TILEDB_GLOBAL_ORDER);
-  query.set_offsets_buffer("a1", a1_offsets);
-  query.set_data_buffer("a1", a1_data);
+  query.set_offsets_buffer("a1", a_offsets);
+  query.set_data_buffer("a1", a_data);
+  query.set_offsets_buffer("a2", a_offsets);
+  query.set_data_buffer("a2", a_data);
   query.set_data_buffer("d1", dim1);
   query.set_data_buffer("d2", dim2);
-  if (a1_validity.has_value()) {
-    query.set_validity_buffer("a1", a1_validity.value());
+  if (a_validity.has_value()) {
+    query.set_validity_buffer("a1", a_validity.value());
+    query.set_validity_buffer("a2", a_validity.value());
   }
 
   // Submit/finalize the query.
@@ -348,13 +371,13 @@ void CppAggregatesFx<T>::write_sparse(
 
 template <class T>
 void CppAggregatesFx<T>::write_dense(
-    std::vector<int> a1,
+    std::vector<int> a,
     uint64_t dim1_min,
     uint64_t dim1_max,
     uint64_t dim2_min,
     uint64_t dim2_max,
     uint64_t timestamp,
-    optional<std::vector<uint8_t>> a1_validity,
+    optional<std::vector<uint8_t>> a_validity,
     bool encrypt) {
   // Open array.
   std::unique_ptr<Array> array;
@@ -373,7 +396,7 @@ void CppAggregatesFx<T>::write_dense(
         TemporalPolicy(TimestampStartEnd, 0, timestamp));
   }
 
-  std::vector<uint8_t> a1_buff = make_data_buff(a1);
+  std::vector<uint8_t> a_buff = make_data_buff(a);
   uint64_t cell_val_num = std::is_same<T, std::string>::value ?
                               CppAggregatesFx<T>::STRING_CELL_VAL_NUM :
                               1;
@@ -387,9 +410,12 @@ void CppAggregatesFx<T>::write_dense(
   query.set_layout(TILEDB_ROW_MAJOR);
   query.set_subarray(subarray);
   query.set_data_buffer(
-      "a1", static_cast<void*>(a1_buff.data()), a1.size() * cell_val_num);
-  if (a1_validity.has_value()) {
-    query.set_validity_buffer("a1", a1_validity.value());
+      "a1", static_cast<void*>(a_buff.data()), a.size() * cell_val_num);
+  query.set_data_buffer(
+      "a2", static_cast<void*>(a_buff.data()), a.size() * cell_val_num);
+  if (a_validity.has_value()) {
+    query.set_validity_buffer("a1", a_validity.value());
+    query.set_validity_buffer("a2", a_validity.value());
   }
 
   // Submit/finalize the query.
@@ -402,13 +428,13 @@ void CppAggregatesFx<T>::write_dense(
 
 template <class T>
 void CppAggregatesFx<T>::write_dense_string(
-    std::vector<std::string> a1,
+    std::vector<std::string> a,
     uint64_t dim1_min,
     uint64_t dim1_max,
     uint64_t dim2_min,
     uint64_t dim2_max,
     uint64_t timestamp,
-    optional<std::vector<uint8_t>> a1_validity,
+    optional<std::vector<uint8_t>> a_validity,
     bool encrypt) {
   // Open array.
   std::unique_ptr<Array> array;
@@ -427,12 +453,12 @@ void CppAggregatesFx<T>::write_dense_string(
         TemporalPolicy(TimestampStartEnd, 0, timestamp));
   }
 
-  std::string a1_data;
-  std::vector<uint64_t> a1_offsets;
+  std::string a_data;
+  std::vector<uint64_t> a_offsets;
   uint64_t offset = 0;
-  for (auto& v : a1) {
-    a1_data += v;
-    a1_offsets.emplace_back(offset);
+  for (auto& v : a) {
+    a_data += v;
+    a_offsets.emplace_back(offset);
     offset += v.length();
   }
 
@@ -444,10 +470,15 @@ void CppAggregatesFx<T>::write_dense_string(
   Query query(ctx_, *array, TILEDB_WRITE);
   query.set_layout(TILEDB_ROW_MAJOR);
   query.set_subarray(subarray);
-  query.set_offsets_buffer("a1", a1_offsets);
-  query.set_data_buffer("a1", a1_data);
-  if (a1_validity.has_value()) {
-    query.set_validity_buffer("a1", a1_validity.value());
+  query.set_offsets_buffer("a1", a_offsets);
+  query.set_data_buffer("a1", a_data);
+  if (a_validity.has_value()) {
+    query.set_validity_buffer("a1", a_validity.value());
+  }
+  query.set_offsets_buffer("a2", a_offsets);
+  query.set_data_buffer("a2", a_data);
+  if (a_validity.has_value()) {
+    query.set_validity_buffer("a2", a_validity.value());
   }
 
   // Submit/finalize the query.
@@ -888,7 +919,8 @@ void CppAggregatesFx<T>::validate_data_var(
     std::vector<uint64_t>& dim2,
     std::string& a1_data,
     std::vector<uint64_t>& a1_offsets,
-    std::vector<uint8_t>& a1_validity) {
+    std::vector<uint8_t>& a1_validity,
+    const bool validate_count) {
   auto result_el = query.result_buffer_elements_nullable();
   uint64_t expected_count = 0;
   std::vector<uint64_t> expected_dim1;
@@ -1042,18 +1074,13 @@ void CppAggregatesFx<T>::validate_data_var(
   // Generate a vector from the read data to compare against our expectation.
   uint64_t expected_a1_size = 0;
   std::vector<std::string> a1_data_vec;
-  for (uint64_t c = 0; c < expected_count - 1; c++) {
+  for (uint64_t c = 0; c < expected_count; c++) {
     auto size = a1_offsets[c + 1] - a1_offsets[c];
     expected_a1_size += size;
 
     auto v = a1_data.substr(a1_offsets[c], size);
     a1_data_vec.emplace_back(v);
   }
-
-  auto size = std::get<1>(result_el["a1"]) - a1_offsets[expected_count - 1];
-  expected_a1_size += size;
-  a1_data_vec.emplace_back(
-      a1_data.substr(a1_offsets[expected_count - 1], size));
 
   // Generate an expected vector taking into consideration the query condition.
   std::vector<std::string> expected_a1_with_qc;
@@ -1080,15 +1107,6 @@ void CppAggregatesFx<T>::validate_data_var(
     }
   }
 
-  CHECK(std::get<1>(result_el["d1"]) == expected_count);
-  CHECK(std::get<1>(result_el["d2"]) == expected_count);
-  CHECK(std::get<1>(result_el["a1"]) == expected_a1_size);
-  CHECK(std::get<0>(result_el["a1"]) == expected_count);
-
-  if (nullable_) {
-    CHECK(std::get<2>(result_el["a1"]) == expected_count);
-  }
-
   dim1.resize(expected_dim1.size());
   dim2.resize(expected_dim2.size());
   CHECK(dim1 == expected_dim1);
@@ -1098,6 +1116,17 @@ void CppAggregatesFx<T>::validate_data_var(
   if (nullable_) {
     a1_validity.resize(expected_a1_validity.size());
     CHECK(a1_validity == expected_a1_validity);
+  }
+
+  if (validate_count) {
+    auto result_el = query.result_buffer_elements_nullable();
+    CHECK(std::get<1>(result_el["d1"]) == expected_count);
+    CHECK(std::get<1>(result_el["d2"]) == expected_count);
+    CHECK(std::get<1>(result_el["a1"]) == expected_a1_size);
+    CHECK(std::get<0>(result_el["a1"]) == expected_count);
+    if (nullable_) {
+      CHECK(std::get<2>(result_el["a1"]) == expected_count);
+    }
   }
 }
 
@@ -1624,6 +1653,9 @@ TEMPLATE_LIST_TEST_CASE(
           CHECK(min_max_offset[0] == 0);
 
           if (request_data) {
+            auto result_el = query.result_buffer_elements_nullable();
+            a1_offsets[std::get<0>(result_el["a1"])] =
+                std::get<1>(result_el["a1"]);
             fx.validate_data_var(
                 query, dim1, dim2, a1_data, a1_offsets, a1_validity);
           }
@@ -1765,7 +1797,6 @@ TEST_CASE_METHOD(
     CppAggregatesFx<std::string>,
     "C++ API: Aggregates basic null count var",
     "[cppapi][aggregates][basic][null-count][var]") {
-  CppAggregatesFx<std::string> fx;
   generate_test_params();
   if (!nullable_) {
     return;
@@ -1852,10 +1883,268 @@ TEST_CASE_METHOD(
           CHECK(null_count == expected_null_count);
 
           if (request_data) {
+            auto result_el = query.result_buffer_elements_nullable();
+            a1_offsets[std::get<0>(result_el["a1"])] =
+                std::get<1>(result_el["a1"]);
             validate_data_var(
                 query, dim1, dim2, a1_data, a1_offsets, a1_validity);
           }
         }
+      }
+    }
+  }
+
+  // Close array.
+  array.close();
+}
+
+TEST_CASE_METHOD(
+    CppAggregatesFx<std::string>,
+    "C++ API: Aggregates var overflow",
+    "[cppapi][aggregates][basic][var][overflow]") {
+  generate_test_params();
+  if (!nullable_) {
+    return;
+  }
+
+  create_var_array_and_write_fragments();
+
+  Array array{ctx_, ARRAY_NAME, TILEDB_READ};
+
+  for (bool set_ranges : {true, false}) {
+    set_ranges_ = set_ranges;
+
+    // We should always request the data to make sure the test does create an
+    // overflow on the var buffer.
+    request_data_ = true;
+    for (bool set_qc : set_qc_values_) {
+      set_qc_ = set_qc;
+      for (tiledb_layout_t layout : layout_values_) {
+        layout_ = layout;
+        Query query(ctx_, array, TILEDB_READ);
+
+        // TODO: Change to real CPPAPI. Add a count aggregator to the query.
+        query.ptr()->query_->add_aggregator_to_default_channel(
+            "NullCount",
+            std::make_shared<tiledb::sm::NullCountAggregator>(
+                tiledb::sm::FieldInfo("a1", true, nullable_, TILEDB_VAR_NUM)));
+
+        // Add another aggregator on the second attribute. We will make the
+        // first attribute get a var size overflow, which should not impact the
+        // results of the second attribute.
+        query.ptr()->query_->add_aggregator_to_default_channel(
+            "NullCount2",
+            std::make_shared<tiledb::sm::NullCountAggregator>(
+                tiledb::sm::FieldInfo("a2", true, nullable_, TILEDB_VAR_NUM)));
+
+        set_ranges_and_condition_if_needed(array, query, true);
+
+        // Set the data buffer for the aggregator.
+        uint64_t null_count = 0;
+        uint64_t null_count2 = 0;
+        std::vector<uint64_t> dim1(100);
+        std::vector<uint64_t> dim2(100);
+        std::vector<uint64_t> a1_offsets(100);
+        std::string a1_data;
+        a1_data.resize(100);
+        std::vector<uint8_t> a1_validity(100);
+        query.set_layout(layout);
+
+        // TODO: Change to real CPPAPI. Use set_data_buffer and
+        // set_validity_buffer from the internal query directly because the
+        // CPPAPI doesn't know what is an aggregate and what the size of an
+        // aggregate should be.
+        uint64_t returned_null_count_size = 8;
+        CHECK(query.ptr()
+                  ->query_
+                  ->set_data_buffer(
+                      "NullCount", &null_count, &returned_null_count_size)
+                  .ok());
+
+        uint64_t returned_null_count_size2 = 8;
+        CHECK(query.ptr()
+                  ->query_
+                  ->set_data_buffer(
+                      "NullCount2", &null_count2, &returned_null_count_size2)
+                  .ok());
+
+        // Here we run a few iterations until the query completes and update the
+        // buffers as we go.
+        uint64_t var_buffer_size = dense_ ? 20 : 3;
+        uint64_t curr_var_buffer_size = 0;
+        uint64_t curr_elem = 0;
+        uint64_t iter = 0;
+        for (iter = 0; iter < 10; iter++) {
+          query.set_data_buffer("d1", dim1.data() + curr_elem, 100 - curr_elem);
+          query.set_data_buffer("d2", dim2.data() + curr_elem, 100 - curr_elem);
+          query.set_data_buffer(
+              "a1", a1_data.data() + curr_var_buffer_size, var_buffer_size);
+          query.set_offsets_buffer(
+              "a1", a1_offsets.data() + curr_elem, 100 - curr_elem);
+
+          if (nullable_) {
+            query.set_validity_buffer(
+                "a1", a1_validity.data() + curr_elem, 100 - curr_elem);
+          }
+
+          // Submit the query.
+          query.submit();
+
+          // Adjust offsets.
+          auto result_el = query.result_buffer_elements_nullable();
+          for (uint64_t i = curr_elem;
+               i < curr_elem + std::get<0>(result_el["a1"]);
+               i++) {
+            a1_offsets[i] += curr_var_buffer_size;
+          }
+
+          // Adjust current element count;
+          curr_elem += std::get<0>(result_el["a1"]);
+          curr_var_buffer_size += std::get<1>(result_el["a1"]);
+
+          // Stop on query completion.
+          if (query.query_status() == Query::Status::COMPLETE) {
+            a1_offsets[curr_elem] = curr_var_buffer_size;
+            break;
+          }
+        }
+
+        // Make sure we did get an overflow of the var buffer that caused more
+        // than one submit.
+        CHECK(iter > 1);
+
+        // Check the results.
+        uint64_t expected_null_count;
+        if (dense_) {
+          if (set_qc) {
+            expected_null_count = 0;
+          } else {
+            if (set_ranges) {
+              expected_null_count = 12;
+            } else {
+              expected_null_count = 17;
+            }
+          }
+        } else {
+          if (set_ranges) {
+            expected_null_count = allow_dups_ ? 4 : 3;
+          } else {
+            expected_null_count = allow_dups_ ? 8 : 7;
+          }
+        }
+
+        // TODO: use 'std::get<1>(result_el["NullCount"]) == 1' once we use
+        // the set_data_buffer api.
+        CHECK(returned_null_count_size == 8);
+        CHECK(null_count == expected_null_count);
+
+        CHECK(returned_null_count_size2 == 8);
+        CHECK(null_count2 == expected_null_count);
+
+        validate_data_var(
+            query, dim1, dim2, a1_data, a1_offsets, a1_validity, false);
+      }
+    }
+  }
+
+  // Close array.
+  array.close();
+}
+
+TEST_CASE_METHOD(
+    CppAggregatesFx<std::string>,
+    "C++ API: Aggregates var overflow, exception",
+    "[cppapi][aggregates][basic][var][overflow-exception]") {
+  generate_test_params();
+  if (!nullable_ || dense_) {
+    return;
+  }
+
+  create_var_array_and_write_fragments();
+
+  Array array{ctx_, ARRAY_NAME, TILEDB_READ};
+
+  for (bool set_ranges : {true, false}) {
+    set_ranges_ = set_ranges;
+
+    // We should always request the data to make sure the test does create an
+    // overflow on the var buffer.
+    request_data_ = true;
+    for (bool set_qc : set_qc_values_) {
+      set_qc_ = set_qc;
+      for (tiledb_layout_t layout : layout_values_) {
+        layout_ = layout;
+        Query query(ctx_, array, TILEDB_READ);
+
+        // TODO: Change to real CPPAPI. Add a count aggregator to the query on
+        // the second attribute.
+        query.ptr()->query_->add_aggregator_to_default_channel(
+            "NullCount2",
+            std::make_shared<tiledb::sm::NullCountAggregator>(
+                tiledb::sm::FieldInfo("a2", true, nullable_, TILEDB_VAR_NUM)));
+
+        // Add the count that will overflow in second, this will cause an
+        // exception because the result of the second attribute will be
+        // aggregated before the overflow and we don't have the recompute logic
+        // yet.
+        query.ptr()->query_->add_aggregator_to_default_channel(
+            "NullCount",
+            std::make_shared<tiledb::sm::NullCountAggregator>(
+                tiledb::sm::FieldInfo("a1", true, nullable_, TILEDB_VAR_NUM)));
+
+        set_ranges_and_condition_if_needed(array, query, true);
+
+        // Set the data buffer for the aggregator.
+        uint64_t null_count = 0;
+        uint64_t null_count2 = 0;
+        std::vector<uint64_t> dim1(100);
+        std::vector<uint64_t> dim2(100);
+        std::vector<uint64_t> a1_offsets(100);
+        std::string a1_data;
+        a1_data.resize(100);
+        std::vector<uint8_t> a1_validity(100);
+        std::vector<uint64_t> a2_offsets(100);
+        std::string a2_data;
+        a2_data.resize(100);
+        std::vector<uint8_t> a2_validity(100);
+        query.set_layout(layout);
+
+        // TODO: Change to real CPPAPI. Use set_data_buffer and
+        // set_validity_buffer from the internal query directly because the
+        // CPPAPI doesn't know what is an aggregate and what the size of an
+        // aggregate should be.
+        uint64_t returned_null_count_size = 8;
+        CHECK(query.ptr()
+                  ->query_
+                  ->set_data_buffer(
+                      "NullCount", &null_count, &returned_null_count_size)
+                  .ok());
+
+        uint64_t returned_null_count_size2 = 8;
+        CHECK(query.ptr()
+                  ->query_
+                  ->set_data_buffer(
+                      "NullCount2", &null_count2, &returned_null_count_size2)
+                  .ok());
+
+        query.set_data_buffer("d1", dim1.data(), 100);
+        query.set_data_buffer("d2", dim2.data(), 100);
+        query.set_data_buffer("a1", a1_data.data(), 10);
+        query.set_offsets_buffer("a1", a1_offsets.data(), 100);
+        query.set_data_buffer("a2", a2_data.data(), 100);
+        query.set_offsets_buffer("a2", a2_offsets.data(), 100);
+
+        if (nullable_) {
+          query.set_validity_buffer("a1", a1_validity.data(), 100);
+          query.set_validity_buffer("a2", a2_validity.data(), 100);
+        }
+
+        // Submit the query.
+        CHECK_THROWS_WITH(
+            query.submit(),
+            Catch::Matchers::EndsWith(
+                "Overflow happened after aggregate was computed, aggregate "
+                "recompute pass is not yet implemented"));
       }
     }
   }
