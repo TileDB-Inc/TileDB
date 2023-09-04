@@ -1004,19 +1004,6 @@ Status ReaderBase::unfilter_tile(
   return Status::Ok();
 }
 
-tuple<uint64_t, uint64_t> ReaderBase::compute_chunk_min_max(
-    const uint64_t num_chunks,
-    const uint64_t num_range_threads,
-    const uint64_t thread_idx) const {
-  auto t_part_num = std::min(num_chunks, num_range_threads);
-  auto t_min = (thread_idx * num_chunks + t_part_num - 1) / t_part_num;
-  auto t_max = std::min(
-      ((thread_idx + 1) * num_chunks + t_part_num - 1) / t_part_num,
-      num_chunks);
-
-  return {t_min, t_max};
-}
-
 uint64_t ReaderBase::offsets_bytesize() const {
   return offsets_bitsize_ == 32 ? sizeof(uint32_t) :
                                   constants::cell_var_offset_size;
