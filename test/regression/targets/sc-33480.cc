@@ -42,7 +42,7 @@ TEST_CASE("0 var chunks", "[unfiltering][bug][sc33480]") {
   // only possible if a fragment had all empty values for a variable string in
   // versions earlier than v10.
   std::string array_name(
-      std::string(TILEDB_TEST_INPUTS_DIR) + "/zero_var_chunks_v10");
+      std::string(TILEDB_TEST_INPUTS_DIR) + "/arrays/zero_var_chunks_v10");
   Context ctx;
 
   // Prepare the array for reading.
