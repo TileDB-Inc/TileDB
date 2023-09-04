@@ -869,10 +869,18 @@ std::vector<std::string> SparseIndexReaderBase::field_names_to_process() {
   std::vector<std::string> ret;
   std::unordered_set<std::string> added_names;
 
+  // Guarantee the same ordering of buffers over different platform to guarantee
+  // that tests have consistent behaviors.
+  std::vector<std::string> names;
+  names.reserve(buffers_.size());
+  for (auto& buffer : buffers_) {
+    names.emplace_back(buffer.first);
+  }
+  std::sort(names.begin(), names.end());
+
   // First add var fields with no aggregates that need recompute in case of
   // overflow.
-  for (auto& buffer : buffers_) {
-    auto& name = buffer.first;
+  for (auto& name : names) {
     if (!array_schema_.var_size(name)) {
       continue;
     }
@@ -893,8 +901,7 @@ std::vector<std::string> SparseIndexReaderBase::field_names_to_process() {
   }
 
   // Second add the rest of the var fields.
-  for (auto& buffer : buffers_) {
-    auto& name = buffer.first;
+  for (auto& name : names) {
     if (array_schema_.var_size(name) && added_names.count(name) == 0) {
       ret.emplace_back(name);
       added_names.emplace(name);
@@ -902,8 +909,7 @@ std::vector<std::string> SparseIndexReaderBase::field_names_to_process() {
   }
 
   // Now for the fixed fields.
-  for (auto& buffer : buffers_) {
-    auto& name = buffer.first;
+  for (auto& name : names) {
     if (!array_schema_.var_size(name)) {
       ret.emplace_back(name);
       added_names.emplace(name);

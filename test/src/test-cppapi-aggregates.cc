@@ -1901,7 +1901,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CppAggregatesFx<std::string>,
     "C++ API: Aggregates var overflow",
-    "[cppapi][aggregates][basic][var][overflow]") {
+    "[cppapi][aggregates][var][overflow]") {
   generate_test_params();
   if (!nullable_) {
     return;
@@ -1931,7 +1931,8 @@ TEST_CASE_METHOD(
 
         // Add another aggregator on the second attribute. We will make the
         // first attribute get a var size overflow, which should not impact the
-        // results of the second attribute.
+        // results of the second attribute as we don't request data for the
+        // second attribute.
         query.ptr()->query_->add_aggregator_to_default_channel(
             "NullCount2",
             std::make_shared<tiledb::sm::NullCountAggregator>(
@@ -2054,7 +2055,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CppAggregatesFx<std::string>,
     "C++ API: Aggregates var overflow, exception",
-    "[cppapi][aggregates][basic][var][overflow-exception]") {
+    "[cppapi][aggregates][var][overflow-exception]") {
   generate_test_params();
   if (!nullable_ || dense_) {
     return;
@@ -2076,21 +2077,19 @@ TEST_CASE_METHOD(
         layout_ = layout;
         Query query(ctx_, array, TILEDB_READ);
 
-        // TODO: Change to real CPPAPI. Add a count aggregator to the query on
-        // the second attribute.
-        query.ptr()->query_->add_aggregator_to_default_channel(
-            "NullCount2",
-            std::make_shared<tiledb::sm::NullCountAggregator>(
-                tiledb::sm::FieldInfo("a2", true, nullable_, TILEDB_VAR_NUM)));
-
-        // Add the count that will overflow in second, this will cause an
-        // exception because the result of the second attribute will be
-        // aggregated before the overflow and we don't have the recompute logic
-        // yet.
+        // TODO: Change to real CPPAPI. Add a count aggregator to the query.
         query.ptr()->query_->add_aggregator_to_default_channel(
             "NullCount",
             std::make_shared<tiledb::sm::NullCountAggregator>(
                 tiledb::sm::FieldInfo("a1", true, nullable_, TILEDB_VAR_NUM)));
+
+        // Add another aggregator on the second attribute. We will make this
+        // attribute get a var size overflow, which should impact the result of
+        // the first one hence throw an exception.
+        query.ptr()->query_->add_aggregator_to_default_channel(
+            "NullCount2",
+            std::make_shared<tiledb::sm::NullCountAggregator>(
+                tiledb::sm::FieldInfo("a2", true, nullable_, TILEDB_VAR_NUM)));
 
         set_ranges_and_condition_if_needed(array, query, true);
 
@@ -2129,9 +2128,9 @@ TEST_CASE_METHOD(
 
         query.set_data_buffer("d1", dim1.data(), 100);
         query.set_data_buffer("d2", dim2.data(), 100);
-        query.set_data_buffer("a1", a1_data.data(), 10);
+        query.set_data_buffer("a1", a1_data.data(), 100);
         query.set_offsets_buffer("a1", a1_offsets.data(), 100);
-        query.set_data_buffer("a2", a2_data.data(), 100);
+        query.set_data_buffer("a2", a2_data.data(), 10);
         query.set_offsets_buffer("a2", a2_offsets.data(), 100);
 
         if (nullable_) {
