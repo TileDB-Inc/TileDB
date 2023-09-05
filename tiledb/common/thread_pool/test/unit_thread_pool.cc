@@ -194,7 +194,9 @@ TEMPLATE_LIST_TEST_CASE(
   for (int i = 0; i < 100; i++) {
     auto task = pool.execute([&result]() {
       result++;
-      return TestType{};
+      if constexpr (std::is_same_v<TestType, Status>) {
+        return Status::Ok();
+      }
     });
 
     REQUIRE(task.valid());
@@ -214,7 +216,9 @@ TEMPLATE_LIST_TEST_CASE(
   for (int i = 0; i < 100; i++) {
     results.push_back(pool.execute([&result]() {
       result++;
-      return TestType{};
+      if constexpr (std::is_same_v<TestType, Status>) {
+        return Status::Ok();
+      }
     }));
   }
   wait_all(pool, use_wait, results);
@@ -341,12 +345,16 @@ TEMPLATE_LIST_TEST_CASE(
     auto b = pool.execute([&result]() {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
       ++result;
-      return TestType{};
+      if constexpr (std::is_same_v<TestType, Status>) {
+        return Status::Ok();
+      }
     });
     REQUIRE(b.valid());
     tasks.emplace_back(std::move(b));
     wait_all(pool, use_wait, tasks);
-    return TestType{};
+    if constexpr (std::is_same_v<TestType, Status>) {
+      return Status::Ok();
+    }
   });
   REQUIRE(a.valid());
   tasks.emplace_back(std::move(a));
@@ -384,14 +392,18 @@ TEMPLATE_LIST_TEST_CASE(
         auto inner_task = pool.execute([&]() {
           std::this_thread::sleep_for(std::chrono::milliseconds(random_ms()));
           ++result;
-          return TestType{};
+          if constexpr (std::is_same_v<TestType, Status>) {
+            return Status::Ok();
+          }
         });
 
         inner_tasks.emplace_back(std::move(inner_task));
       }
 
       wait_all(pool, use_wait, inner_tasks);
-      return TestType{};
+      if constexpr (std::is_same_v<TestType, Status>) {
+        return Status::Ok();
+      }
     });
 
     REQUIRE(task.valid());
@@ -414,11 +426,15 @@ TEMPLATE_LIST_TEST_CASE(
           if (--result == 0) {
             cv.notify_all();
           }
-          return TestType{};
+          if constexpr (std::is_same_v<TestType, Status>) {
+            return Status::Ok();
+          }
         });
       }
 
-      return TestType{};
+      if constexpr (std::is_same_v<TestType, Status>) {
+        return Status::Ok();
+      }
     });
 
     REQUIRE(task.valid());
@@ -477,21 +493,27 @@ TEMPLATE_LIST_TEST_CASE(
                 std::this_thread::sleep_for(
                     std::chrono::milliseconds(random_ms()));
                 ++result;
-                return TestType{};
+                if constexpr (std::is_same_v<TestType, Status>) {
+                  return Status::Ok();
+                }
               });
 
               tasks_c.emplace_back(std::move(task_c));
             }
 
             wait_all(pool_a, use_wait, tasks_c);
-            return TestType{};
+            if constexpr (std::is_same_v<TestType, Status>) {
+              return Status::Ok();
+            }
           });
 
           tasks_b.emplace_back(std::move(task_b));
         }
 
         wait_all(pool_b, use_wait, tasks_b);
-        return TestType{};
+        if constexpr (std::is_same_v<TestType, Status>) {
+          return Status::Ok();
+        }
       });
 
       REQUIRE(task_a.valid());
@@ -519,21 +541,27 @@ TEMPLATE_LIST_TEST_CASE(
                   std::unique_lock<std::mutex> ul(cv_mutex);
                   cv.notify_all();
                 }
-                return TestType{};
+                if constexpr (std::is_same_v<TestType, Status>) {
+                  return Status::Ok();
+                }
               });
 
               tasks_c.emplace_back(std::move(task_c));
             }
 
             wait_all(pool_a, use_wait, tasks_c);
-            return TestType{};
+            if constexpr (std::is_same_v<TestType, Status>) {
+              return Status::Ok();
+            }
           });
 
           tasks_b.emplace_back(std::move(task_b));
         }
 
         wait_all(pool_b, use_wait, tasks_b);
-        return TestType{};
+        if constexpr (std::is_same_v<TestType, Status>) {
+          return Status::Ok();
+        }
       });
 
       REQUIRE(task_a.valid());
@@ -692,6 +720,10 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
 TEMPLATE_LIST_TEST_CASE(
     "ThreadPool: Deferred futures", "[threadpool][deferred]", VoidTaskTypes) {
   ThreadPool tp{1};
-  auto future{std::async(std::launch::deferred, []() { return TestType{}; })};
+  auto future{std::async(std::launch::deferred, []() {
+    if constexpr (std::is_same_v<TestType, Status>) {
+      return Status::Ok();
+    }
+  })};
   CHECK(wait_one(tp, future));
 }
