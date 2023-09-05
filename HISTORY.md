@@ -2,7 +2,7 @@
 
 ## Disk Format
 
-* Storage format version is now 20, with changes to support enumerated types ([#4051](https://github.com/TileDB-Inc/TileDB/pull/4051)).
+* Storage format version is now 20, bringing changes to support enumerated types. ([#4051](https://github.com/TileDB-Inc/TileDB/pull/4051)).
 
 ## Configuration Changes
 
@@ -11,10 +11,10 @@
 ## New features
 
 * Enumerated data types (aka: "categoricals" in Pandas, "factors" in R). [#4051](https://github.com/TileDB-Inc/TileDB/pull/4051)
-* Support optimized creation of set membership (`IN`, `NOT_IN`) QueryConditions. [#4164](https://github.com/TileDB-Inc/TileDB/pull/4164). Replaces create+combine pattern for specifying the target set.
-* Add `tiledb::as_built` namespace to reflect build-time configuration. [#4112](https://github.com/TileDB-Inc/TileDB/pull/4112)
+* Support optimized creation of set membership (`IN`, `NOT_IN`) QueryConditions, replacing create+combine pattern for specifying the target set. [#4164](https://github.com/TileDB-Inc/TileDB/pull/4164)
+* Add C and C++ APIs to reflect as-built (build-time) configuration options as a JSON string. [#4112](https://github.com/TileDB-Inc/TileDB/pull/4112), [#4199](https://github.com/TileDB-Inc/TileDB/pull/4199)
 * Filter pipeline support for datatype conversions based on filtered output datatype. [#4165](https://github.com/TileDB-Inc/TileDB/pull/4165)
-* Add TileDB-REST support for vacuum and consolidation requests. (#3902) [#4229](https://github.com/TileDB-Inc/TileDB/pull/4229)
+* Add TileDB-REST support for vacuum and consolidation requests. [#4229](https://github.com/TileDB-Inc/TileDB/pull/4229)
 * TileDB-REST support for dimension labels. [#4084](https://github.com/TileDB-Inc/TileDB/pull/4084)
 
 ## Improvements
@@ -56,14 +56,14 @@
 * Add C API attribute handle. [#3982](https://github.com/TileDB-Inc/TileDB/pull/3982)
 * Add `result_buffer_elements_nullable` for variable size dimension labels. [#4142](https://github.com/TileDB-Inc/TileDB/pull/4142)
 * Add new C APIs for dimension label REST support. [#4072](https://github.com/TileDB-Inc/TileDB/pull/4072)
-* Add C API for the as_built namespace. [#4199](https://github.com/TileDB-Inc/TileDB/pull/4199)
+* Add `tiledb_as_built_dump`, to reflect the build-time configuration options as a JSON string. [#4199](https://github.com/TileDB-Inc/TileDB/pull/4199)
 * Add `tiledb_query_condition_alloc_set_membership` for optimized set membership QC creation. [#4164](https://github.com/TileDB-Inc/TileDB/pull/4164)
 * Add C API handle for domain. [#4053](https://github.com/TileDB-Inc/TileDB/pull/4053)
 
 ### C++ API
 
 * Throw if incorrect type is passed to `set_data_type`. [#4272](https://github.com/TileDB-Inc/TileDB/pull/4272)
-* Add C++ API for the as_built namespace. [#4199](https://github.com/TileDB-Inc/TileDB/pull/4199)
+* Add `tiledb::AsBuilt::dump` class method, to reflect the build-time configuration options as a JSON string. [#4199](https://github.com/TileDB-Inc/TileDB/pull/4199)
 * Add `QueryCondition::create` vectorized signature for set membership QC creation. [#4164](https://github.com/TileDB-Inc/TileDB/pull/4164)
 
 ## Build System Changes
