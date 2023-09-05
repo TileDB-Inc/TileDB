@@ -4081,22 +4081,71 @@ int32_t tiledb_serialize_array_max_buffer_sizes(
 }
 
 capi_return_t tiledb_deserialize_array_delete_fragments_timestamps_request(
+    tiledb_ctx_t* ctx,
     tiledb_serialization_type_t serialize_type,
-    const tiledb_buffer_t* buffer,
-    const char** uri,
-    uint64_t* timestamp_start,
-    uint64_t* timestamp_end) {
+    const tiledb_buffer_t* buffer) {
   api::ensure_buffer_is_valid(buffer);
-  api::ensure_output_pointer_is_valid(uri);
-  api::ensure_output_pointer_is_valid(timestamp_start);
-  api::ensure_output_pointer_is_valid(timestamp_end);
 
-  // Deserialize
-  tie(*uri, *timestamp_start, *timestamp_end) =
+  // Deserialize buffer
+  auto [uri_str, timestamp_start, timestamp_end] =
       tiledb::sm::serialization::fragments_timestamps_deserialize(
           (tiledb::sm::SerializationType)serialize_type, buffer->buffer());
 
-  // directly call delete_fragments here
+  auto uri = tiledb::sm::URI(uri_str);
+  if (uri.is_invalid()) {
+    throw api::CAPIStatusException(
+        "Failed to delete fragments; Invalid input uri");
+  }
+
+  // Delete fragments
+  if (uri.is_tiledb()) {
+    // Check REST client
+    auto rest_client = ctx->storage_manager()->rest_client();
+    if (rest_client == nullptr) {
+      auto st = Status_Error(
+          "Failed to delete fragments; remote array with no REST client.");
+      LOG_STATUS_NO_RETURN_VALUE(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+
+    rest_client->delete_fragments_from_rest(
+        uri, timestamp_start, timestamp_end);
+  } else {
+    // Allocate an array object
+    tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
+    try {
+      array->array_ =
+          make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
+    } catch (std::bad_alloc&) {
+      auto st = Status_Error(
+          "Failed to create TileDB array object; Memory allocation error");
+      delete array;
+      array = nullptr;
+      LOG_STATUS_NO_RETURN_VALUE(st);
+      save_error(ctx, st);
+      return TILEDB_OOM;
+    }
+
+    // Open the array for exclusive modification
+    throw_if_not_ok(array->array_->open(
+        static_cast<tiledb::sm::QueryType>(TILEDB_MODIFY_EXCLUSIVE),
+        static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
+        nullptr,
+        0));
+
+    try {
+      array->array_->delete_fragments(uri, timestamp_start, timestamp_end);
+    } catch (std::exception& e) {
+      auto st = Status_ArrayError(e.what());
+      LOG_STATUS_NO_RETURN_VALUE(st);
+      save_error(ctx, st);
+      return TILEDB_ERR;
+    }
+
+    // Close the array
+    throw_if_not_ok(array->array_->close());
+  }
 
   return TILEDB_OK;
 }
@@ -4113,11 +4162,11 @@ capi_return_t tiledb_deserialize_array_delete_fragments_list_request(
   auto [uri, uris] = tiledb::sm::serialization::fragments_list_deserialize(
       (tiledb::sm::SerializationType)serialize_type, buffer->buffer());
   *array_uri = std::move(uri);
-  std::cerr << "uri: " << *array_uri << std::endl;
+  // std::cerr << "uri: " << *array_uri << std::endl;
 
   *fragments = tiledb_fragments_list_handle_t::make_handle(uris);
 
-  // remove handle and directly call delete_fragments_list here
+  // #TODO remove handle and directly call delete_fragments_list here
 
   return TILEDB_OK;
 }
@@ -6999,14 +7048,11 @@ int32_t tiledb_serialize_array_max_buffer_sizes(
 capi_return_t tiledb_deserialize_array_delete_fragments_timestamps_request(
     tiledb_ctx_t* ctx,
     tiledb_serialization_type_t serialize_type,
-    const tiledb_buffer_t* buffer,
-    const char** uri,
-    uint64_t* timestamp_start,
-    uint64_t* timestamp_end) noexcept {
-  return api_entry_context<
+    const tiledb_buffer_t* buffer) noexcept {
+  return api_entry<
       tiledb::api::
           tiledb_deserialize_array_delete_fragments_timestamps_request>(
-      ctx, serialize_type, buffer, uri, timestamp_start, timestamp_end);
+      ctx, serialize_type, buffer);
 }
 
 capi_return_t tiledb_deserialize_array_delete_fragments_list_request(

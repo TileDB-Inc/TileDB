@@ -134,6 +134,8 @@ class RestClient {
    * @param uri Array URI to delete fragments from
    * @param timestamp_start The start timestamp at which to delete fragments
    * @param timestamp_end The end timestamp at which to delete fragments
+   *
+   * #TODO Implement API endpoint on TileDBCloud.
    */
   void delete_fragments_from_rest(
       const URI& uri, uint64_t timestamp_start, uint64_t timestamp_end);
@@ -144,6 +146,8 @@ class RestClient {
    *
    * @param uri Array URI to delete fragments from
    * @param fragment_uris The uris of the fragments to be deleted
+   *
+   * #TODO Implement API endpoint on TileDBCloud.
    */
   void delete_fragments_list_from_rest(
       const URI& uri, const std::vector<URI>& fragment_uris);

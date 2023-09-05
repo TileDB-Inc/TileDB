@@ -2696,20 +2696,15 @@ TEST_CASE_METHOD(
       end_timestamp,
       tiledb::sm::SerializationType::CAPNP,
       &buff->buffer());
-  const char* deserialized_uri = nullptr;
-  uint64_t deserialized_start_timestamp = 0;
-  uint64_t deserialized_end_timestamp = 0;
   rc = tiledb_deserialize_array_delete_fragments_timestamps_request(
       ctx_,
       (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
-      buff,
-      &deserialized_uri,
-      &deserialized_start_timestamp,
-      &deserialized_end_timestamp);
+      buff);
   REQUIRE(rc == TILEDB_OK);
-  CHECK(std::string(deserialized_uri) == array_name);
-  CHECK(deserialized_start_timestamp == start_timestamp);
-  CHECK(deserialized_end_timestamp == end_timestamp);
+  // #TODO Update test once cloud-side endpoint is added
+  // CHECK(tiledb::test::num_fragments(array_name) == 0);
+  CHECK(tiledb::test::num_commits(array_name) == 2);
+  CHECK(tiledb::test::num_fragments(array_name) == 2);
 
   // Get the fragment info object
   tiledb_fragment_info_t* fragment_info = nullptr;
