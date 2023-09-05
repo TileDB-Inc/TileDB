@@ -2,202 +2,202 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/CODE_OF_CONDUCT.html</loc>
-    <lastmod>2023-09-05T11:39:10.540Z</lastmod>
+    <lastmod>2023-09-05T20:13:04.002Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/external/blosc/README-VERSIONS.html</loc>
-    <lastmod>2023-09-05T11:39:09.652Z</lastmod>
+    <lastmod>2023-09-05T20:13:03.198Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/tiledb/sm/query/DELETES_AND_UPDATES.html</loc>
-    <lastmod>2023-09-05T11:39:08.956Z</lastmod>
+    <lastmod>2023-09-05T20:13:02.562Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/tiledb/api/c_api_test_support/storage_manager_stub/DIRECTORY.html</loc>
-    <lastmod>2023-09-05T11:39:08.268Z</lastmod>
+    <lastmod>2023-09-05T20:13:01.958Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/tiledb/api/DIRECTORY.html</loc>
-    <lastmod>2023-09-05T11:39:07.596Z</lastmod>
+    <lastmod>2023-09-05T20:13:01.358Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/tiledb/api/c_api_support/DIRECTORY.html</loc>
-    <lastmod>2023-09-05T11:39:06.828Z</lastmod>
+    <lastmod>2023-09-05T20:13:00.678Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/format_spec/array_file_hierarchy.html</loc>
-    <lastmod>2023-09-05T11:39:06.140Z</lastmod>
+    <lastmod>2023-09-05T20:13:00.058Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/format_spec/ignore_file.html</loc>
-    <lastmod>2023-09-05T11:39:05.384Z</lastmod>
+    <lastmod>2023-09-05T20:12:59.382Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/format_spec/group_file_hierarchy.html</loc>
-    <lastmod>2023-09-05T11:39:04.580Z</lastmod>
+    <lastmod>2023-09-05T20:12:58.654Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/format_spec/FORMAT_SPEC.html</loc>
-    <lastmod>2023-09-05T11:39:03.004Z</lastmod>
+    <lastmod>2023-09-05T20:12:57.230Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/format_spec/filter_pipeline.html</loc>
-    <lastmod>2023-09-05T11:39:02.292Z</lastmod>
+    <lastmod>2023-09-05T20:12:56.578Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/format_spec/consolidated_commits_file.html</loc>
-    <lastmod>2023-09-05T11:39:01.360Z</lastmod>
+    <lastmod>2023-09-05T20:12:55.710Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/format_spec/enumeration.html</loc>
-    <lastmod>2023-09-05T11:38:59.404Z</lastmod>
+    <lastmod>2023-09-05T20:12:53.974Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/format_spec/consolidated_fragment_metadata_file.html</loc>
-    <lastmod>2023-09-05T11:38:58.664Z</lastmod>
+    <lastmod>2023-09-05T20:12:53.318Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/format_spec/filters/dictionary_encoding.html</loc>
-    <lastmod>2023-09-05T11:38:57.880Z</lastmod>
+    <lastmod>2023-09-05T20:12:52.610Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/format_spec/filters/float_scale.html</loc>
-    <lastmod>2023-09-05T11:38:57.208Z</lastmod>
+    <lastmod>2023-09-05T20:12:52.006Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/format_spec/array_schema.html</loc>
-    <lastmod>2023-09-05T11:38:56.488Z</lastmod>
+    <lastmod>2023-09-05T20:12:51.362Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/experimental/tiledb/common/dag/nodes/doc/api.html</loc>
-    <lastmod>2023-09-05T11:38:55.416Z</lastmod>
+    <lastmod>2023-09-05T20:12:50.390Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/experimental/tiledb/common/dag/state_machine/doc/fsm2.html</loc>
-    <lastmod>2023-09-05T11:38:54.204Z</lastmod>
+    <lastmod>2023-09-05T20:12:49.334Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/experimental/tiledb/common/dag/doc/glossary.html</loc>
-    <lastmod>2023-09-05T11:38:52.460Z</lastmod>
+    <lastmod>2023-09-05T20:12:47.786Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/doc/dev/style/CMake.html</loc>
-    <lastmod>2023-09-05T11:38:51.644Z</lastmod>
+    <lastmod>2023-09-05T20:12:47.074Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/doc/dev/style/ErrorHandling.html</loc>
-    <lastmod>2023-09-05T11:38:50.940Z</lastmod>
+    <lastmod>2023-09-05T20:12:46.450Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/doc/dev/style/index.html</loc>
-    <lastmod>2023-09-05T11:38:49.976Z</lastmod>
+    <lastmod>2023-09-05T20:12:45.574Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/doc/policy/api_changes.html</loc>
-    <lastmod>2023-09-05T11:38:49.304Z</lastmod>
+    <lastmod>2023-09-05T20:12:44.978Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/HISTORY.html</loc>
-    <lastmod>2023-09-05T11:38:48.500Z</lastmod>
+    <lastmod>2023-09-05T20:12:44.270Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/ports/openssl/license.html</loc>
-    <lastmod>2023-09-05T11:38:38.680Z</lastmod>
+    <lastmod>2023-09-05T20:12:35.522Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/scripts/ci/posix/DIRECTORY.html</loc>
-    <lastmod>2023-09-05T11:38:48.860Z</lastmod>
+    <lastmod>2023-09-05T20:12:44.574Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/doc/dev/style/Memory.html</loc>
-    <lastmod>2023-09-05T11:38:49.640Z</lastmod>
+    <lastmod>2023-09-05T20:12:45.274Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/doc/dev/style/Functions.html</loc>
-    <lastmod>2023-09-05T11:38:50.476Z</lastmod>
+    <lastmod>2023-09-05T20:12:46.022Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/doc/dev/style/Variables.html</loc>
-    <lastmod>2023-09-05T11:38:51.292Z</lastmod>
+    <lastmod>2023-09-05T20:12:46.762Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/doc/dev/style/Serialization.html</loc>
-    <lastmod>2023-09-05T11:38:52.040Z</lastmod>
+    <lastmod>2023-09-05T20:12:47.406Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/experimental/tiledb/common/dag/doc/miscellaneous.html</loc>
-    <lastmod>2023-09-05T11:38:52.768Z</lastmod>
+    <lastmod>2023-09-05T20:12:48.062Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/experimental/tiledb/common/dag/state_machine/doc/stop2.html</loc>
-    <lastmod>2023-09-05T11:38:54.628Z</lastmod>
+    <lastmod>2023-09-05T20:12:49.686Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/index.html</loc>
-    <lastmod>2023-09-05T11:38:55.724Z</lastmod>
+    <lastmod>2023-09-05T20:12:50.662Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/format_spec/filters/webp.html</loc>
-    <lastmod>2023-09-05T11:38:56.860Z</lastmod>
+    <lastmod>2023-09-05T20:12:51.694Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/format_spec/filters/xor.html</loc>
-    <lastmod>2023-09-05T11:38:57.520Z</lastmod>
+    <lastmod>2023-09-05T20:12:52.286Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/format_spec/group.html</loc>
-    <lastmod>2023-09-05T11:38:58.272Z</lastmod>
+    <lastmod>2023-09-05T20:12:52.966Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/format_spec/generic_tile.html</loc>
-    <lastmod>2023-09-05T11:38:59.040Z</lastmod>
+    <lastmod>2023-09-05T20:12:53.650Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/format_spec/fragment.html</loc>
-    <lastmod>2023-09-05T11:39:00.884Z</lastmod>
+    <lastmod>2023-09-05T20:12:55.314Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/format_spec/update_commit_file.html</loc>
-    <lastmod>2023-09-05T11:39:01.796Z</lastmod>
+    <lastmod>2023-09-05T20:12:56.110Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/format_spec/vacuum_file.html</loc>
-    <lastmod>2023-09-05T11:39:02.652Z</lastmod>
+    <lastmod>2023-09-05T20:12:56.910Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/format_spec/tile.html</loc>
-    <lastmod>2023-09-05T11:39:04.256Z</lastmod>
+    <lastmod>2023-09-05T20:12:58.362Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/format_spec/delete_commit_file.html</loc>
-    <lastmod>2023-09-05T11:39:05.004Z</lastmod>
+    <lastmod>2023-09-05T20:12:59.042Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/format_spec/metadata.html</loc>
-    <lastmod>2023-09-05T11:39:05.756Z</lastmod>
+    <lastmod>2023-09-05T20:12:59.714Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/tiledb/api/c_api/DIRECTORY.html</loc>
-    <lastmod>2023-09-05T11:39:06.524Z</lastmod>
+    <lastmod>2023-09-05T20:13:00.398Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/tiledb/api/C_API_STRUCTURE.html</loc>
-    <lastmod>2023-09-05T11:39:07.256Z</lastmod>
+    <lastmod>2023-09-05T20:13:01.058Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/tiledb/api/c_api_test_support/DIRECTORY.html</loc>
-    <lastmod>2023-09-05T11:39:07.936Z</lastmod>
+    <lastmod>2023-09-05T20:13:01.666Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/tiledb/storage_format/DIRECTORY.html</loc>
-    <lastmod>2023-09-05T11:39:08.640Z</lastmod>
+    <lastmod>2023-09-05T20:13:02.286Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/tiledb/common/exception/DIRECTORY.html</loc>
-    <lastmod>2023-09-05T11:39:09.344Z</lastmod>
+    <lastmod>2023-09-05T20:13:02.914Z</lastmod>
   </url>
   <url>
     <loc>https://github.com/TileDB-Inc/TileDB/CONTRIBUTING.html</loc>
-    <lastmod>2023-09-05T11:39:10.168Z</lastmod>
+    <lastmod>2023-09-05T20:13:03.658Z</lastmod>
   </url>
 </urlset>
