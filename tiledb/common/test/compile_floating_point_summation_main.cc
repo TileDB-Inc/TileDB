@@ -1,5 +1,5 @@
 /**
- * @file compile_pairwise_sum_main.cc
+ * @file compile_floating_point_summation_main.cc
  *
  * @section LICENSE
  *
@@ -26,9 +26,11 @@
  * THE SOFTWARE.
  */
 
-#include "../pairwise_sum.h"
+#include "../floating_point_summation.h"
 
 int main() {
-  (void)tiledb::common::pairwise_sum({});
+  (void)tiledb::common::floating_point_summation::PairwiseBaseSize;
+  (void)tiledb::common::floating_point_summation::PairwiseSum<float>()({});
+  (void)tiledb::common::floating_point_summation::NaiveSum<float>()({});
   return 0;
 }

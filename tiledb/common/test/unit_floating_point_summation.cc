@@ -1,6 +1,6 @@
 /**
  * @file
- * /Users/robertbindar/TileDB/TileDB/tiledb/common/test/unit_pairwise_sum.cc
+ * /Users/robertbindar/TileDB/TileDB/tiledb/common/test/unit_floating_point_summation.cc
  *
  * @section LICENSE
  *
@@ -28,22 +28,48 @@
  *
  * @section DESCRIPTION
  *
- * This file tests the floats pairwise summation function
+ * This file tests the floating point summation functors
  */
 
 #include <test/support/tdb_catch.h>
-#include "../pairwise_sum.h"
+#include <catch2/catch_approx.hpp>
+#include "../floating_point_summation.h"
+
+using namespace tiledb::common::floating_point_summation;
+
+// Generate a vector of random floating point numbers
+// one=true generates a vector filled with 1/Size so that
+// sum over all elements equals 1
+template <class T, size_t Size = 1>
+std::vector<T> generate_data(bool one) {
+  std::vector<T> a(Size);
+  std::default_random_engine gen;
+  std::uniform_real_distribution<T> dist(-1 * Size, Size);
+  if (one) {
+    std::fill(a.begin(), a.end(), static_cast<T>(1.0) / Size);
+  } else {
+    for (size_t i = 0; i < a.size(); ++i) {
+      a[i] = dist(gen);
+    }
+  }
+  return a;
+}
 
 typedef std::tuple<float, double> ElementType;
 TEMPLATE_LIST_TEST_CASE(
     "Pairwise summation for floats", "[pairwise_sum][basic]", ElementType) {
   typedef TestType T;
-  std::array<T, 5> a{1.1, 2.2, 3.3, 4.4, 5.5};
 
-  CHECK(tiledb::common::pairwise_sum<T, 5>(std::span(a)) == 16.5);
-  CHECK(tiledb::common::pairwise_sum<T, 1>(std::span(a)) == 16.5);
+  auto a = generate_data<T, PairwiseBaseSize - 1>(false);
+  CHECK(
+      PairwiseSum<T>()(std::span(a)) ==
+      Catch::Approx(NaiveSum<T>()(std::span(a))));
+
+  a = generate_data<T, PairwiseBaseSize * 2>(false);
+  CHECK(
+      PairwiseSum<T>()(std::span(a)) ==
+      Catch::Approx(NaiveSum<T>()(std::span(a))));
 }
-#include <iostream>
 
 typedef std::tuple<float, double> ElementType;
 TEMPLATE_LIST_TEST_CASE(
@@ -54,11 +80,11 @@ TEMPLATE_LIST_TEST_CASE(
 
   auto eps = std::numeric_limits<T>::epsilon();
   constexpr size_t n = 10000;
-  std::array<T, n> a;
-  std::fill(a.begin(), a.end(), static_cast<T>(1.0) / n);
-  REQUIRE(tiledb::common::pairwise_sum<T, 128>(std::span(a)) != 1);
+  auto a = generate_data<T, n>(true);
 
-  T sum = tiledb::common::pairwise_sum<T, 128>(std::span(a));
+  REQUIRE(PairwiseSum<T>()(std::span(a)) != 1);
+
+  T sum = PairwiseSum<T>()(std::span(a));
 
   if constexpr (std::is_same_v<T, float>) {
     float err = std::log2f(n) * eps;
@@ -67,4 +93,23 @@ TEMPLATE_LIST_TEST_CASE(
     double err = std::log2l(n) * eps;
     CHECK(fabsl(1 - sum) <= err);
   }
+}
+
+typedef std::tuple<float, double> ElementType;
+TEMPLATE_LIST_TEST_CASE(
+    "Floating point summation benchmark",
+    "[float_summation][benchmark]",
+    ElementType) {
+  typedef TestType T;
+
+  constexpr size_t n = 8 * 1024 * 1024;
+  auto a = generate_data<T, n>(false);
+
+  BENCHMARK("naive_sum") {
+    return NaiveSum<T>()(a);
+  };
+
+  BENCHMARK("pairwise_sum") {
+    return PairwiseSum<T>()(std::span(a));
+  };
 }
