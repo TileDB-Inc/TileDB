@@ -451,17 +451,13 @@ capi_return_t tiledb_deserialize_array_delete_fragments_timestamps_request(
  * @param ctx The TileDB context.
  * @param serialization_type Type of serialization to use
  * @param buffer Buffer containing serialized fragments list.
- * @param array_uri The URI of the fragments' parent Array.
- * @param fragments The fragments list to deserialize into.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT
 capi_return_t tiledb_deserialize_array_delete_fragments_list_request(
     tiledb_ctx_t* ctx,
     tiledb_serialization_type_t serialization_type,
-    const tiledb_buffer_t* buffer,
-    const char** uri,
-    tiledb_fragments_list_t** fragments) TILEDB_NOEXCEPT;
+    const tiledb_buffer_t* buffer) TILEDB_NOEXCEPT;
 
 /**
  * Serializes the array metadata into the given buffer.

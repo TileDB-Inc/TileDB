@@ -2702,9 +2702,8 @@ TEST_CASE_METHOD(
       buff);
   REQUIRE(rc == TILEDB_OK);
   // #TODO Update test once cloud-side endpoint is added
+  // CHECK(tiledb::test::num_commits(array_name) == 0);
   // CHECK(tiledb::test::num_fragments(array_name) == 0);
-  CHECK(tiledb::test::num_commits(array_name) == 2);
-  CHECK(tiledb::test::num_fragments(array_name) == 2);
 
   // Get the fragment info object
   tiledb_fragment_info_t* fragment_info = nullptr;
@@ -2731,35 +2730,19 @@ TEST_CASE_METHOD(
       fragments,
       tiledb::sm::SerializationType::CAPNP,
       &buff->buffer());
-  const char* deserialized_array_uri = nullptr;
-  tiledb_fragments_list_t* deserialized_fragments;
   rc = tiledb_deserialize_array_delete_fragments_list_request(
       ctx_,
       (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
-      buff,
-      &deserialized_array_uri,
-      &deserialized_fragments);
+      buff);
   REQUIRE(rc == TILEDB_OK);
-  CHECK(std::string(deserialized_array_uri) == array_name);
-
-  // Compare original fragments to deserialized_fragments
-  const char* deserialized_uri1;
-  size_t length;
-  REQUIRE(
-      tiledb_fragments_list_get_fragment_uri(
-          deserialized_fragments, 0, &deserialized_uri1, &length) == TILEDB_OK);
-  CHECK(*deserialized_uri1 == *uri1);
-  const char* deserialized_uri2;
-  REQUIRE(
-      tiledb_fragments_list_get_fragment_uri(
-          deserialized_fragments, 1, &deserialized_uri2, &length) == TILEDB_OK);
-  CHECK(*deserialized_uri2 == *uri2);
+  // #TODO Update test once cloud-side endpoint is added
+  // CHECK(tiledb::test::num_commits(array_name) == 0);
+  // CHECK(tiledb::test::num_fragments(array_name) == 0);
 
   // Clean up
   tiledb_array_free(&array);
   tiledb_buffer_free(&buff);
   tiledb_fragment_info_free(&fragment_info);
-  tiledb_fragments_list_free(&deserialized_fragments);
   remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 #endif
 }

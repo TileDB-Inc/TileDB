@@ -322,7 +322,8 @@ void fragments_list_serialize(
       "Cannot serialize; serialization not enabled.");
 }
 
-std::vector<URI> fragments_list_deserialize(SerializationType, const Buffer&) {
+std::tuple<const char*, std::vector<URI>> fragments_list_deserialize(
+    SerializationType, const Buffer&) {
   throw FragmentsSerializationException(
       "Cannot deserialize; serialization not enabled.");
 }
