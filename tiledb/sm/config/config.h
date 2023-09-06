@@ -130,6 +130,9 @@ class Config {
   /** The default format for logging. */
   static const std::string CONFIG_LOGGING_DEFAULT_FORMAT;
 
+  /** Allow aggregates API or not. */
+  static const std::string SM_ALLOW_AGGREGATES_EXPERIMENTAL;
+
   /** Allow separate attribute writes or not. */
   static const std::string SM_ALLOW_SEPARATE_ATTRIBUTE_WRITES;
 

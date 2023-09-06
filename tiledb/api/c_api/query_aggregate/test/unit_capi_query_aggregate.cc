@@ -32,11 +32,19 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/vfs_helpers.h"
+#include "tiledb/api/c_api/config/config_api_internal.h"
 #include "tiledb/api/c_api/query_aggregate/query_aggregate_api_external_experimental.h"
 
 using namespace tiledb::test;
 
 struct QueryAggregateFx : TemporaryDirectoryFixture {
+  QueryAggregateFx() {
+    tiledb_config_t* config;
+    tiledb_ctx_get_config(ctx, &config);
+    CHECK(
+        config->config().set("allow_aggregates_experimental", "true").ok() ==
+        true);
+  }
   void create_sparse_array(const std::string& path);
   void write_sparse_array(const std::string& path);
 };
