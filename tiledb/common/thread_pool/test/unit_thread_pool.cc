@@ -177,14 +177,14 @@ uint64_t wait_all_num_status(
   return num_ok;
 }
 
-TEST_CASE("ThreadPool: Test empty", "[threadpool]") {
+TEST_CASE("ThreadPool: Test empty", "[threadpool][empty]") {
   for (int i = 0; i < 10; i++) {
     ThreadPool pool{4};
   }
 }
 
 TEMPLATE_LIST_TEST_CASE(
-    "ThreadPool: Test single thread", "[threadpool]", VoidTaskTypes) {
+    "ThreadPool: Test single thread", "[threadpool][single-thread]", VoidTaskTypes) {
   bool use_wait = GENERATE(true, false);
   std::atomic<int> result = 0;  // needs to be atomic b/c scavenging thread can
                                 // run in addition to thread pool
@@ -208,7 +208,7 @@ TEMPLATE_LIST_TEST_CASE(
 }
 
 TEMPLATE_LIST_TEST_CASE(
-    "ThreadPool: Test multiple threads", "[threadpool]", VoidTaskTypes) {
+    "ThreadPool: Test multiple threads", "[threadpool][multi-thread]", VoidTaskTypes) {
   bool use_wait = GENERATE(true, false);
   std::atomic<int> result(0);
   std::vector<std::future<TestType>> results;
@@ -225,7 +225,7 @@ TEMPLATE_LIST_TEST_CASE(
   REQUIRE(result == 100);
 }
 
-TEST_CASE("ThreadPool: Test wait status", "[threadpool]") {
+TEST_CASE("ThreadPool: Test wait status", "[threadpool][wait][status]") {
   bool use_wait = GENERATE(true, false);
   std::atomic<int> result(0);
   std::vector<ThreadPool::Task> results;
@@ -247,7 +247,7 @@ struct AtomicHolder {
   std::atomic<int> val_;
 };
 
-TEST_CASE("ThreadPool: Test no wait", "[threadpool]") {
+TEST_CASE("ThreadPool: Test no wait", "[threadpool][no-wait]") {
   {
     ThreadPool pool{4};
     auto ptr = tdb::make_shared<AtomicHolder>(HERE(), 0);
@@ -332,7 +332,7 @@ TEST_CASE(
 
 TEMPLATE_LIST_TEST_CASE(
     "ThreadPool: Test recursion, simplest case",
-    "[threadpool]",
+    "[threadpool][recursion][simple]",
     VoidTaskTypes) {
   bool use_wait = GENERATE(true, false);
   ThreadPool pool{1};
