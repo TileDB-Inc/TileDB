@@ -48,6 +48,51 @@ enum QueryChannelOperator {
   TILEDB_QUERY_CHANNEL_OPERATOR_MAX
 };
 
+void check_aggregate_numeric_field(
+    const tiledb_channel_operator_t* op, const tiledb::sm::FieldInfo& fi);
+
+class Operation {
+ protected:
+  shared_ptr<tiledb::sm::IAggregator> aggregator_;
+
+ public:
+  [[nodiscard]] shared_ptr<tiledb::sm::IAggregator> aggregator() const {
+    return aggregator_;
+  }
+};
+
+class MinOperation : public Operation {
+ public:
+  MinOperation() = delete;
+  explicit MinOperation(
+      const tiledb::sm::FieldInfo& fi,
+      const tiledb_channel_operator_handle_t* op);
+};
+
+class MaxOperation : public Operation {
+ public:
+  MaxOperation() = delete;
+  explicit MaxOperation(
+      const tiledb::sm::FieldInfo& fi,
+      const tiledb_channel_operator_handle_t* op);
+};
+
+class SumOperation : public Operation {
+ public:
+  SumOperation() = delete;
+  explicit SumOperation(
+      const tiledb::sm::FieldInfo& fi,
+      const tiledb_channel_operator_handle_t* op);
+};
+
+class CountOperation : public Operation {
+ public:
+  // For nullary operations, default constructor makes sense
+  CountOperation() {
+    aggregator_ = std::make_shared<tiledb::sm::CountAggregator>();
+  }
+};
+
 struct tiledb_channel_operation_handle_t
     : public tiledb::api::CAPIHandle<tiledb_channel_operation_handle_t> {
   /**
@@ -57,7 +102,7 @@ struct tiledb_channel_operation_handle_t
       "tiledb_channel_operation_t"};
 
  private:
-  shared_ptr<tiledb::sm::IAggregator> aggregator_;
+  std::shared_ptr<Operation> operation_;
 
  public:
   /**
@@ -67,15 +112,15 @@ struct tiledb_channel_operation_handle_t
 
   /**
    * Ordinary constructor.
-   * @param s An aggregator object
+   * @param operation An internal operation object
    */
   explicit tiledb_channel_operation_handle_t(
-      shared_ptr<tiledb::sm::IAggregator> ag)
-      : aggregator_{ag} {
+      const shared_ptr<Operation>& operation)
+      : operation_{operation} {
   }
 
   [[nodiscard]] inline shared_ptr<tiledb::sm::IAggregator> aggregator() const {
-    return aggregator_;
+    return operation_->aggregator();
   }
 };
 
@@ -154,6 +199,44 @@ struct tiledb_channel_operator_handle_t
   [[nodiscard]] inline std::string name() const {
     return name_;
   }
+
+  [[nodiscard]] std::shared_ptr<Operation> make_operation(
+      const tiledb::sm::FieldInfo& fi) const;
 };
+
+shared_ptr<Operation> tiledb_channel_operator_handle_t::make_operation(
+    const tiledb::sm::FieldInfo& fi) const {
+  switch (this->value()) {
+    case TILEDB_QUERY_CHANNEL_OPERATOR_SUM: {
+      return std::make_shared<SumOperation>(fi, this);
+    }
+    case TILEDB_QUERY_CHANNEL_OPERATOR_MIN: {
+      return std::make_shared<MinOperation>(fi, this);
+    }
+    case TILEDB_QUERY_CHANNEL_OPERATOR_MAX: {
+      return std::make_shared<MaxOperation>(fi, this);
+    }
+    default:
+      throw std::logic_error(
+          "operator has unsupported value: " +
+          std::to_string(static_cast<uint8_t>(this->value())));
+      break;
+  }
+}
+
+void check_aggregate_numeric_field(
+    const tiledb_channel_operator_t* op, const tiledb::sm::FieldInfo& fi) {
+  if (fi.var_sized_) {
+    throw std::logic_error(
+        op->name() +
+        " aggregates must not be requested for var sized attributes.");
+  }
+  if (fi.cell_val_num_ != 1) {
+    throw std::logic_error(
+        op->name() +
+        " aggregates must not be requested for attributes with more than "
+        "one value.");
+  }
+}
 
 #endif  // TILEDB_CAPI_QUERY_AGGREGATE_INTERNAL_H
