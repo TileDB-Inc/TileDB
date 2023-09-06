@@ -60,14 +60,14 @@ class OutputBufferValidator {
    *
    * @param buffer Output buffer.
    */
-  void validate_has_fixed_buffer(QueryBuffer& buffer);
+  void ensure_has_fixed_buffer(QueryBuffer& buffer);
 
   /**
    * Validate the output buffer has no var buffer.
    *
    * @param buffer Output buffer.
    */
-  void validate_no_var_buffer(QueryBuffer& buffer);
+  void ensure_no_var_buffer(QueryBuffer& buffer);
 
   /**
    * Validate the output buffer has one element.
@@ -75,28 +75,28 @@ class OutputBufferValidator {
    * @param buffer Output buffer.
    * @param element_size Element size.
    */
-  void validate_one_element(QueryBuffer& buffer, uint64_t element_size);
+  void ensure_one_element(QueryBuffer& buffer, uint64_t element_size);
 
   /**
    * Validate the output buffer has the correct validity buffer.
    *
    * @param buffer Output buffer.
    */
-  void validate_validity(QueryBuffer& buffer);
+  void ensure_correct_validity_buffer(QueryBuffer& buffer);
 
   /**
    * Validate the output buffer can receive an arithmetic operation result.
    *
    * @param buffer Output buffer.
    */
-  void validate_output_buffer_arithmetic(QueryBuffer& buffer);
+  void ensure_output_buffer_arithmetic(QueryBuffer& buffer);
 
   /**
    * Validate the output buffer can receive a count operation result.
    *
    * @param buffer Output buffer.
    */
-  void validate_output_buffer_count(QueryBuffer& buffer);
+  void ensure_output_buffer_count(QueryBuffer& buffer);
 
   /**
    * Validate the output buffer can receive a result that can be var sized.
@@ -105,7 +105,7 @@ class OutputBufferValidator {
    * @param buffer Output buffer.
    */
   template <class T>
-  void validate_output_buffer_var(QueryBuffer& buffer);
+  void ensure_output_buffer_var(QueryBuffer& buffer);
 
  private:
   /* ********************************* */

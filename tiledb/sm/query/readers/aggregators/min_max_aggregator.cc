@@ -170,7 +170,7 @@ void ComparatorAggregator<T, Op>::validate_output_buffer(
     throw MinMaxAggregatorStatusException("Result buffer doesn't exist.");
   }
 
-  validate_output_buffer_var<T>(buffers[output_field_name]);
+  ensure_output_buffer_var<T>(buffers[output_field_name]);
 }
 
 template <typename T, typename Op>

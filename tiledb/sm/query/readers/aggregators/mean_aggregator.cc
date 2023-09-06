@@ -75,7 +75,7 @@ void MeanAggregator<T>::validate_output_buffer(
     throw MeanAggregatorStatusException("Result buffer doesn't exist.");
   }
 
-  validate_output_buffer_arithmetic(buffers[output_field_name]);
+  ensure_output_buffer_arithmetic(buffers[output_field_name]);
 }
 
 template <typename T>

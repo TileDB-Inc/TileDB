@@ -57,7 +57,7 @@ void CountAggregator::validate_output_buffer(
     throw CountAggregatorStatusException("Result buffer doesn't exist.");
   }
 
-  validate_output_buffer_count(buffers[output_field_name]);
+  ensure_output_buffer_count(buffers[output_field_name]);
 }
 
 template <class BitmapType>

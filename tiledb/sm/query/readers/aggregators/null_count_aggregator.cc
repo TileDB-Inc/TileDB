@@ -62,7 +62,7 @@ void NullCountAggregator::validate_output_buffer(
     throw NullCountAggregatorStatusException("Result buffer doesn't exist.");
   }
 
-  validate_output_buffer_count(buffers[output_field_name]);
+  ensure_output_buffer_count(buffers[output_field_name]);
 }
 
 void NullCountAggregator::aggregate_data(AggregateBuffer& input_data) {
