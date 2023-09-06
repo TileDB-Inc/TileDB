@@ -172,10 +172,7 @@ Status FragmentMetaConsolidator::consolidate(
   EncryptionKey enc_key;
   RETURN_NOT_OK(enc_key.set_key(encryption_type, encryption_key, key_length));
 
-  GenericTileIO tile_io(storage_manager_->resources(), uri);
-  uint64_t nbytes = 0;
-  RETURN_NOT_OK(tile_io.write_generic(&tile, enc_key, &nbytes));
-  (void)nbytes;
+  GenericTileIO::write(storage_manager_->resources(), uri, tile, enc_key);
   RETURN_NOT_OK(storage_manager_->vfs()->close_file(uri));
 
   return Status::Ok();

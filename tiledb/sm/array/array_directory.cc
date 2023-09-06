@@ -97,7 +97,7 @@ shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_from_uri(
   auto timer_se =
       resources.stats().start_timer("sm_load_array_schema_from_uri");
 
-  auto&& tile = GenericTileIO::load(resources, schema_uri, 0, encryption_key);
+  auto&& tile = GenericTileIO::read(resources, schema_uri, encryption_key);
 
   resources.stats().add_counter("read_array_schema_size", tile.size());
 
@@ -1313,7 +1313,7 @@ shared_ptr<const Enumeration> ArrayDirectory::load_enumeration(
                       .join_path(constants::array_enumerations_dir_name)
                       .join_path(enumeration_path);
 
-  auto&& tile = GenericTileIO::load(resources_, enmr_uri, 0, encryption_key);
+  auto&& tile = GenericTileIO::read(resources_, enmr_uri, encryption_key);
   resources_.get().stats().add_counter("read_enumeration_size", tile.size());
 
   Deserializer deserializer(tile.data(), tile.size());

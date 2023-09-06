@@ -42,69 +42,82 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class Tile;
+
+/**
+ * Header information for a generic tile. A generic tile is a tile residing
+ * together with its metadata in one contiguous byte region of a file. This is
+ * as opposed to a regular tile, where the metadata resides separately from
+ * the tile data itself.
+ */
+struct GenericTileHeader {
+  /** Constructor. */
+  GenericTileHeader()
+      : version_number(constants::format_version)
+      , persisted_size(0)
+      , tile_size(0)
+      , datatype((uint8_t)Datatype::ANY)
+      , cell_size(0)
+      , encryption_type((uint8_t)EncryptionType::NO_ENCRYPTION)
+      , filter_pipeline_size(0) {
+  }
+
+  /** Size in bytes of the non-filters part of the serialized header. */
+  static const uint64_t BASE_SIZE =
+      3 * sizeof(uint64_t) + 2 * sizeof(char) + 2 * sizeof(uint32_t);
+
+  /**
+   * The default number of bytes to add when reading the tile header.
+   *
+   * In order to skip a second read operation we can just read a few extra
+   * bytes. GenericTileIO filter pipelines are currently hard coded to be
+   * a gzip compression filter with an optional encryption filter. This means
+   * that we know the maximum serialized pipeline size which is:
+   *
+   * - 1 byte for compression filter type
+   * - 4 bytes for the compression filter serialized size
+   * - 1 byte for the gzip compression type
+   * - 4 bytes for the gzip compression level
+   * - 1 byte for the encryption filter
+   * - 4 bytes for the serialized encryption filter (which is zero)
+   *
+   * Which gives us a total of 15 bytes.
+   */
+  static const uint32_t FILTER_PIPELINE_SIZE = 15;
+
+  /** The number of initial bytes to request when reading a header. */
+  static const uint64_t HEADER_READ_SIZE = BASE_SIZE + FILTER_PIPELINE_SIZE;
+
+  /** Format version number of the tile. */
+  uint32_t version_number;
+
+  /** Persisted (e.g. compressed) size of the tile. */
+  uint64_t persisted_size;
+
+  /** Uncompressed size of the tile. */
+  uint64_t tile_size;
+
+  /** Datatype of the tile. */
+  uint8_t datatype;
+
+  /** Cell size of the tile. */
+  uint64_t cell_size;
+
+  /** The type of the encryption used in filtering. */
+  uint8_t encryption_type;
+
+  /** Number of bytes in the serialized filter pipeline instance. */
+  uint32_t filter_pipeline_size;
+
+  /** Filter pipeline used to filter the tile. */
+  FilterPipeline filters;
+};
 
 /** Handles IO (reading/writing) for tiles. */
 class GenericTileIO {
  public:
-  /* ********************************* */
-  /*       PUBLIC TYPE DEFINITIONS     */
-  /* ********************************* */
-
-  /**
-   * Header information for a generic tile. A generic tile is a tile residing
-   * together with its metadata in one contiguous byte region of a file. This is
-   * as opposed to a regular tile, where the metadata resides separately from
-   * the tile data itself.
-   */
-  struct GenericTileHeader {
-    /** Size in bytes of the non-filters part of the serialized header. */
-    static const uint64_t BASE_SIZE =
-        3 * sizeof(uint64_t) + 2 * sizeof(char) + 2 * sizeof(uint32_t);
-    /** Format version number of the tile. */
-    uint32_t version_number;
-    /** Persisted (e.g. compressed) size of the tile. */
-    uint64_t persisted_size;
-    /** Uncompressed size of the tile. */
-    uint64_t tile_size;
-    /** Datatype of the tile. */
-    uint8_t datatype;
-    /** Cell size of the tile. */
-    uint64_t cell_size;
-    /** The type of the encryption used in filtering. */
-    uint8_t encryption_type;
-    /** Number of bytes in the serialized filter pipeline instance. */
-    uint32_t filter_pipeline_size;
-    /** Filter pipeline used to filter the tile. */
-    FilterPipeline filters;
-
-    /** Constructor. */
-    GenericTileHeader()
-        : version_number(constants::format_version)
-        , persisted_size(0)
-        , tile_size(0)
-        , datatype((uint8_t)Datatype::ANY)
-        , cell_size(0)
-        , encryption_type((uint8_t)EncryptionType::NO_ENCRYPTION)
-        , filter_pipeline_size(0) {
-    }
-  };
-
-  /* ********************************* */
-  /*     CONSTRUCTORS & DESTRUCTORS    */
-  /* ********************************* */
-
-  /**
-   * Constructor.
-   *
-   * @param resources The ContextResources to use
-   * @param uri The name of the file that stores data.
-   */
-  GenericTileIO(ContextResources& resources, const URI& uri);
-
   GenericTileIO() = delete;
   DISABLE_COPY_AND_COPY_ASSIGN(GenericTileIO);
   DISABLE_MOVE_AND_MOVE_ASSIGN(GenericTileIO);
@@ -114,41 +127,6 @@ class GenericTileIO {
   /* ********************************* */
 
   /**
-   * Load data from persistent storage.
-   *
-   * @param resources The ContextResources to use.
-   * @param uri The object URI.
-   * @param offset The offset into the file to read from.
-   * @param encryption_key The encryption key to use.
-   * @return Status, Tile with the data.
-   */
-  static Tile load(
-      ContextResources& resources,
-      const URI& uri,
-      uint64_t offset,
-      const EncryptionKey& encryption_key);
-
-  /**
-   * Reads a generic tile from the file. A generic tile is a tile residing
-   * together with its metadata in one contiguous byte region of a file. This is
-   * as opposed to a regular tile, where the metadata resides separately from
-   * the tile data itself.
-   *
-   * Therefore, this function first reads a small header to retrieve appropriate
-   * information about the tile, and then reads the tile data. Note that it
-   * creates a new Tile object with the header information.
-   *
-   * @param file_offset The offset in the file to read from.
-   * @param encryption_key The encryption key to use.
-   * @param config The storage manager's config.
-   * @return Status, Tile
-   */
-  tuple<Status, optional<Tile>> read_generic(
-      uint64_t file_offset,
-      const EncryptionKey& encryption_key,
-      const Config& config);
-
-  /**
    * Reads the generic tile header from the file.
    *
    * @param resources The ContextResources instance to use for reading.
@@ -156,10 +134,25 @@ class GenericTileIO {
    * @param file_offset The offset where the header read will begin.
    * @param encryption_key If the array is encrypted, the private encryption
    *    key. For unencrypted arrays, pass `nullptr`.
-   * @return Status, Header
+   * @return GenericTileHeader The header read from storage.
    */
-  static GenericTileHeader read_generic_tile_header(
-      ContextResources& resources, const URI& uri, uint64_t file_offset);
+  static GenericTileHeader read_header(
+      ContextResources& resources, const URI& uri, uint64_t offset = 0);
+
+  /**
+   * Read a Tile from persistent storage.
+   *
+   * @param resources The ContextResources to use.
+   * @param uri The object URI.
+   * @param offset The offset into the file to read from.
+   * @param encryption_key The encryption key to use.
+   * @return Tile with the data.
+   */
+  static Tile read(
+      ContextResources& resources,
+      const URI& uri,
+      const EncryptionKey& key,
+      uint64_t offset = 0);
 
   /**
    * Writes a tile generically to the file. This means that a header will be
@@ -168,68 +161,16 @@ class GenericTileIO {
    * other than the file itself.
    *
    * @param tile The tile to be written.
-   * @param encryption_key The encryption key to use.
-   * @param nbytes The total number of bytes written to the file.
-   * @return Status
+   * @param key The encryption key to use.
+   * @return uint64_t The total number of bytes written to the file.
    */
-  Status write_generic(
-      WriterTile* tile, const EncryptionKey& encryption_key, uint64_t* nbytes);
-
-  /**
-   * Serialize a generic tile header.
-   *
-   * @param serializer The serializer.
-   * @param header The header to serialize.
-   */
-  template <class T>
-  void serialize_generic_tile_header(T& serializer, GenericTileHeader& header);
-
-  /**
-   * Writes the generic tile header to the file.
-   *
-   * @param header The header to write
-   * @return Status
-   */
-  Status write_generic_tile_header(GenericTileHeader* header);
-
- private:
-  /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
-  /* ********************************* */
-
-  /** The ContextResources object. */
-  ContextResources& resources_;
-
-  /** The file URI. */
-  URI uri_;
-
-  /**
-   * Configures the header's encryption filter with the given key.
-   *
-   * @param header Header instance to modify.
-   * @param encryption_key The encryption key to use.
-   * @return Status
-   */
-  Status configure_encryption_filter(
-      GenericTileHeader* header, const EncryptionKey& encryption_key) const;
-
-  /**
-   * Initializes a generic tile header struct.
-   *
-   * This does not set the persisted size or filter pipeline size fields.
-   *
-   * @param tile The tile to initialize a header for
-   * @param header The header to initialize
-   * @param encryption_key The encryption key to use.
-   * @return Status
-   */
-  Status init_generic_tile_header(
-      WriterTile* tile,
-      GenericTileHeader* header,
-      const EncryptionKey& encryption_key) const;
+  static uint64_t write(
+      ContextResources& resources,
+      const URI& uri,
+      WriterTile& tile,
+      const EncryptionKey& key);
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_GENERIC_TILE_IO_H

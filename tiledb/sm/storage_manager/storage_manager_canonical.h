@@ -781,17 +781,6 @@ class StorageManagerCanonical {
   Status store_metadata(
       const URI& uri, const EncryptionKey& encryption_key, Metadata* metadata);
 
-  /**
-   * Stores data into persistent storage.
-   *
-   * @param tile Tile to store.
-   * @param uri The object URI.
-   * @param encryption_key The encryption key to use.
-   * @return Status
-   */
-  Status store_data_to_generic_tile(
-      WriterTile& tile, const URI& uri, const EncryptionKey& encryption_key);
-
   [[nodiscard]] inline ContextResources& resources() const {
     return resources_;
   }

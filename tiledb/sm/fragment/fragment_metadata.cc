@@ -1480,10 +1480,8 @@ Status FragmentMetadata::load_fragment_min_max_sum_null_count(
 
   std::lock_guard<std::mutex> lock(mtx_);
 
-  auto&& [st, tile_opt] = read_generic_tile_from_file(
+  auto tile = read_generic_tile_from_file(
       encryption_key, gt_offsets_.fragment_min_max_sum_null_count_offset_);
-  RETURN_NOT_OK(st);
-  auto& tile = *tile_opt;
 
   storage_manager_->stats()->add_counter(
       "read_fragment_min_max_sum_null_count_size", tile.size());
@@ -1508,10 +1506,8 @@ Status FragmentMetadata::load_processed_conditions(
 
   std::lock_guard<std::mutex> lock(mtx_);
 
-  auto&& [st, tile_opt] = read_generic_tile_from_file(
+  auto tile = read_generic_tile_from_file(
       encryption_key, gt_offsets_.processed_conditions_offsets_);
-  RETURN_NOT_OK(st);
-  auto& tile = *tile_opt;
 
   storage_manager_->stats()->add_counter(
       "read_processed_conditions_size", tile.size());
@@ -2004,10 +2000,7 @@ Status FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
   if (loaded_metadata_.rtree_)
     return Status::Ok();
 
-  auto&& [st, tile_opt] =
-      read_generic_tile_from_file(encryption_key, gt_offsets_.rtree_);
-  RETURN_NOT_OK(st);
-  auto& tile = *tile_opt;
+  auto tile = read_generic_tile_from_file(encryption_key, gt_offsets_.rtree_);
 
   storage_manager_->stats()->add_counter("read_rtree_size", tile.size());
 
@@ -2465,10 +2458,8 @@ Status FragmentMetadata::load_tile_offsets(
   if (loaded_metadata_.tile_offsets_[idx])
     return Status::Ok();
 
-  auto&& [st, tile_opt] = read_generic_tile_from_file(
+  auto tile = read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_offsets_[idx]);
-  RETURN_NOT_OK(st);
-  auto& tile = *tile_opt;
 
   storage_manager_->stats()->add_counter("read_tile_offsets_size", tile.size());
 
@@ -2494,10 +2485,8 @@ Status FragmentMetadata::load_tile_var_offsets(
   if (loaded_metadata_.tile_var_offsets_[idx])
     return Status::Ok();
 
-  auto&& [st, tile_opt] = read_generic_tile_from_file(
+  auto tile = read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_var_offsets_[idx]);
-  RETURN_NOT_OK(st);
-  auto& tile = *tile_opt;
 
   storage_manager_->stats()->add_counter(
       "read_tile_var_offsets_size", tile.size());
@@ -2520,10 +2509,8 @@ Status FragmentMetadata::load_tile_var_sizes(
   if (loaded_metadata_.tile_var_sizes_[idx])
     return Status::Ok();
 
-  auto&& [st, tile_opt] = read_generic_tile_from_file(
+  auto tile = read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_var_sizes_[idx]);
-  RETURN_NOT_OK(st);
-  auto& tile = *tile_opt;
 
   storage_manager_->stats()->add_counter(
       "read_tile_var_sizes_size", tile.size());
@@ -2546,10 +2533,8 @@ Status FragmentMetadata::load_tile_validity_offsets(
   if (loaded_metadata_.tile_validity_offsets_[idx])
     return Status::Ok();
 
-  auto&& [st, tile_opt] = read_generic_tile_from_file(
+  auto tile = read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_validity_offsets_[idx]);
-  RETURN_NOT_OK(st);
-  auto& tile = *tile_opt;
 
   storage_manager_->stats()->add_counter(
       "read_tile_validity_offsets_size", tile.size());
@@ -2572,10 +2557,8 @@ Status FragmentMetadata::load_tile_min_values(
   if (loaded_metadata_.tile_min_[idx])
     return Status::Ok();
 
-  auto&& [st, tile_opt] = read_generic_tile_from_file(
+  auto tile = read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_min_offsets_[idx]);
-  RETURN_NOT_OK(st);
-  auto& tile = *tile_opt;
 
   storage_manager_->stats()->add_counter("read_tile_min_size", tile.size());
 
@@ -2597,10 +2580,8 @@ Status FragmentMetadata::load_tile_max_values(
   if (loaded_metadata_.tile_max_[idx])
     return Status::Ok();
 
-  auto&& [st, tile_opt] = read_generic_tile_from_file(
+  auto tile = read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_max_offsets_[idx]);
-  RETURN_NOT_OK(st);
-  auto& tile = *tile_opt;
 
   storage_manager_->stats()->add_counter("read_tile_max_size", tile.size());
 
@@ -2622,10 +2603,8 @@ Status FragmentMetadata::load_tile_sum_values(
   if (loaded_metadata_.tile_sum_[idx])
     return Status::Ok();
 
-  auto&& [st, tile_opt] = read_generic_tile_from_file(
+  auto tile = read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_sum_offsets_[idx]);
-  RETURN_NOT_OK(st);
-  auto& tile = *tile_opt;
 
   storage_manager_->stats()->add_counter("read_tile_sum_size", tile.size());
 
@@ -2647,10 +2626,8 @@ Status FragmentMetadata::load_tile_null_count_values(
   if (loaded_metadata_.tile_null_count_[idx])
     return Status::Ok();
 
-  auto&& [st, tile_opt] = read_generic_tile_from_file(
+  auto tile = read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_null_count_offsets_[idx]);
-  RETURN_NOT_OK(st);
-  auto& tile = *tile_opt;
 
   storage_manager_->stats()->add_counter(
       "read_tile_null_count_size", tile.size());
@@ -3647,12 +3624,8 @@ Status FragmentMetadata::load_v1_v2(
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
   // Read metadata
-  GenericTileIO tile_io(storage_manager_->resources(), fragment_metadata_uri);
-  auto&& [st, tile_opt] =
-      tile_io.read_generic(0, encryption_key, storage_manager_->config());
-  RETURN_NOT_OK(st);
-  auto& tile = *tile_opt;
-
+  auto tile = GenericTileIO::read(
+      storage_manager_->resources(), fragment_metadata_uri, encryption_key);
   storage_manager_->stats()->add_counter("read_frag_meta_size", tile.size());
 
   // Pre-v10 format fragments we need to set the schema and schema name to
@@ -3932,7 +3905,7 @@ void FragmentMetadata::write_last_tile_cell_num(Serializer& serializer) const {
 Status FragmentMetadata::store_rtree(
     const EncryptionKey& encryption_key, uint64_t* nbytes) {
   auto rtree_tile = write_rtree();
-  RETURN_NOT_OK(write_generic_tile_to_file(encryption_key, rtree_tile, nbytes));
+  *nbytes = write_generic_tile_to_file(encryption_key, rtree_tile);
   storage_manager_->stats()->add_counter("write_rtree_size", *nbytes);
 
   return Status::Ok();
@@ -3992,18 +3965,17 @@ void FragmentMetadata::write_non_empty_domain(Serializer& serializer) const {
   }
 }
 
-tuple<Status, optional<Tile>> FragmentMetadata::read_generic_tile_from_file(
+Tile FragmentMetadata::read_generic_tile_from_file(
     const EncryptionKey& encryption_key, uint64_t offset) const {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
 
   // Read metadata
-  GenericTileIO tile_io(storage_manager_->resources(), fragment_metadata_uri);
-  auto&& [st, tile_opt] =
-      tile_io.read_generic(offset, encryption_key, storage_manager_->config());
-  RETURN_NOT_OK_TUPLE(st, nullopt);
-
-  return {Status::Ok(), std::move(*tile_opt)};
+  return GenericTileIO::read(
+      storage_manager_->resources(),
+      fragment_metadata_uri,
+      encryption_key,
+      offset);
 }
 
 Status FragmentMetadata::read_file_footer(
@@ -4039,17 +4011,14 @@ Status FragmentMetadata::read_file_footer(
       *footer_size);
 }
 
-Status FragmentMetadata::write_generic_tile_to_file(
+uint64_t FragmentMetadata::write_generic_tile_to_file(
     const EncryptionKey& encryption_key,
-    WriterTile& tile,
-    uint64_t* nbytes) const {
+    WriterTile& tile) const {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
 
-  GenericTileIO tile_io(storage_manager_->resources(), fragment_metadata_uri);
-  RETURN_NOT_OK(tile_io.write_generic(&tile, encryption_key, nbytes));
-
-  return Status::Ok();
+  return GenericTileIO::write(
+      storage_manager_->resources(), fragment_metadata_uri, tile, encryption_key);
 }
 
 Status FragmentMetadata::write_footer_to_file(WriterTile& tile) const {
@@ -4077,7 +4046,7 @@ void FragmentMetadata::store_tile_offsets(
   Serializer serializer(tile.data(), tile.size());
   write_tile_offsets(idx, serializer);
 
-  throw_if_not_ok(write_generic_tile_to_file(encryption_key, tile, nbytes));
+  *nbytes = write_generic_tile_to_file(encryption_key, tile);
 
   storage_manager_->stats()->add_counter("write_tile_offsets_size", *nbytes);
 }
@@ -4105,7 +4074,7 @@ void FragmentMetadata::store_tile_var_offsets(
   Serializer serializer(tile.data(), tile.size());
   write_tile_var_offsets(idx, serializer);
 
-  throw_if_not_ok(write_generic_tile_to_file(encryption_key, tile, nbytes));
+  *nbytes = write_generic_tile_to_file(encryption_key, tile);
 
   storage_manager_->stats()->add_counter(
       "write_tile_var_offsets_size", *nbytes);
@@ -4135,7 +4104,7 @@ void FragmentMetadata::store_tile_var_sizes(
   Serializer serializer(tile.data(), tile.size());
   write_tile_var_sizes(idx, serializer);
 
-  throw_if_not_ok(write_generic_tile_to_file(encryption_key, tile, nbytes));
+  *nbytes = write_generic_tile_to_file(encryption_key, tile);
 
   storage_manager_->stats()->add_counter("write_tile_var_sizes_size", *nbytes);
 }
@@ -4163,7 +4132,7 @@ void FragmentMetadata::store_tile_validity_offsets(
   Serializer serializer(tile.data(), tile.size());
   write_tile_validity_offsets(idx, serializer);
 
-  throw_if_not_ok(write_generic_tile_to_file(encryption_key, tile, nbytes));
+  *nbytes = write_generic_tile_to_file(encryption_key, tile);
 
   storage_manager_->stats()->add_counter(
       "write_tile_validity_offsets_size", *nbytes);
@@ -4193,7 +4162,7 @@ void FragmentMetadata::store_tile_mins(
   Serializer serializer(tile.data(), tile.size());
   write_tile_mins(idx, serializer);
 
-  throw_if_not_ok(write_generic_tile_to_file(encryption_key, tile, nbytes));
+  *nbytes = write_generic_tile_to_file(encryption_key, tile);
 
   storage_manager_->stats()->add_counter("write_mins_size", *nbytes);
 }
@@ -4230,7 +4199,7 @@ void FragmentMetadata::store_tile_maxs(
   Serializer serializer(tile.data(), tile.size());
   write_tile_maxs(idx, serializer);
 
-  throw_if_not_ok(write_generic_tile_to_file(encryption_key, tile, nbytes));
+  *nbytes = write_generic_tile_to_file(encryption_key, tile);
 
   storage_manager_->stats()->add_counter("write_maxs_size", *nbytes);
 }
@@ -4267,7 +4236,7 @@ void FragmentMetadata::store_tile_sums(
   Serializer serializer(tile.data(), tile.size());
   write_tile_sums(idx, serializer);
 
-  throw_if_not_ok(write_generic_tile_to_file(encryption_key, tile, nbytes));
+  *nbytes = write_generic_tile_to_file(encryption_key, tile);
 
   storage_manager_->stats()->add_counter("write_sums_size", *nbytes);
 }
@@ -4293,7 +4262,7 @@ void FragmentMetadata::store_tile_null_counts(
   Serializer serializer(tile.data(), tile.size());
   write_tile_null_counts(idx, serializer);
 
-  throw_if_not_ok(write_generic_tile_to_file(encryption_key, tile, nbytes));
+  *nbytes = write_generic_tile_to_file(encryption_key, tile);
 
   storage_manager_->stats()->add_counter("write_null_counts_size", *nbytes);
 }
@@ -4347,7 +4316,7 @@ void FragmentMetadata::store_fragment_min_max_sum_null_count(
   Serializer serializer(tile.data(), tile.size());
   serialize_data(serializer);
 
-  throw_if_not_ok(write_generic_tile_to_file(encryption_key, tile, nbytes));
+  *nbytes = write_generic_tile_to_file(encryption_key, tile);
 
   storage_manager_->stats()->add_counter("write_null_counts_size", *nbytes);
 }
@@ -4374,7 +4343,7 @@ void FragmentMetadata::store_processed_conditions(
   Serializer serializer(tile.data(), tile.size());
   serialize_processed_conditions(serializer);
 
-  throw_if_not_ok(write_generic_tile_to_file(encryption_key, tile, nbytes));
+  *nbytes = write_generic_tile_to_file(encryption_key, tile);
 
   storage_manager_->stats()->add_counter(
       "write_processed_conditions_size", *nbytes);

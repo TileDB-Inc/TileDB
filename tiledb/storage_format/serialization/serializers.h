@@ -56,9 +56,6 @@ class Serializer {
       , size_(size) {
   }
 
-  DISABLE_COPY_AND_COPY_ASSIGN(Serializer);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(Serializer);
-
   /**
    * Serialize fixed size data.
    *
@@ -144,9 +141,6 @@ class Deserializer {
       : ptr_(static_cast<const uint8_t*>(data))
       , size_(size) {
   }
-
-  DISABLE_COPY_AND_COPY_ASSIGN(Deserializer);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(Deserializer);
 
   /**
    * Deserialize fixed size data.

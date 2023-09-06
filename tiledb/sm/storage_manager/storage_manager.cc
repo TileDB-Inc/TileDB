@@ -1150,8 +1150,7 @@ Status StorageManagerCanonical::array_get_encryption(
   const URI& schema_uri = array_dir.latest_array_schema_uri();
 
   // Read tile header
-  auto&& header =
-      GenericTileIO::read_generic_tile_header(resources_, schema_uri, 0);
+  auto header = GenericTileIO::read_header(resources_, schema_uri);
   *encryption_type = static_cast<EncryptionType>(header.encryption_type);
 
   return Status::Ok();
@@ -1372,8 +1371,8 @@ StorageManagerCanonical::load_delete_and_update_conditions(const Array& array) {
     auto& uri = locations[i].uri();
 
     // Read the condition from storage.
-    auto&& tile = GenericTileIO::load(
-        resources_, uri, locations[i].offset(), *array.encryption_key());
+    auto tile = GenericTileIO::read(
+        resources_, uri, *array.encryption_key(), locations[i].offset());
 
     if (tiledb::sm::utils::parse::ends_with(
             locations[i].condition_marker(),
@@ -1639,8 +1638,7 @@ Status StorageManagerCanonical::store_group_detail(
   if (!group_detail_dir_exists)
     RETURN_NOT_OK(vfs()->create_dir(group_detail_folder_uri));
 
-  RETURN_NOT_OK(
-      store_data_to_generic_tile(tile, group_detail_uri, encryption_key));
+  GenericTileIO::write(resources(), group_detail_uri, tile, encryption_key);
 
   return Status::Ok();
 }
@@ -1676,7 +1674,7 @@ Status StorageManagerCanonical::store_array_schema(
   if (!schema_dir_exists)
     RETURN_NOT_OK(vfs()->create_dir(array_schema_dir_uri));
 
-  RETURN_NOT_OK(store_data_to_generic_tile(tile, schema_uri, encryption_key));
+  GenericTileIO::write(resources(), schema_uri, tile, encryption_key);
 
   // Create the `__enumerations` directory under `__schema` if it doesn't
   // exist. This might happen if someone tries to add an enumeration to an
@@ -1708,8 +1706,7 @@ Status StorageManagerCanonical::store_array_schema(
     enmr->serialize(serializer);
 
     auto abs_enmr_uri = array_enumerations_dir_uri.join_path(enmr->path_name());
-    RETURN_NOT_OK(
-        store_data_to_generic_tile(tile, abs_enmr_uri, encryption_key));
+    GenericTileIO::write(resources(), abs_enmr_uri, tile, encryption_key);
   }
 
   return Status::Ok();
@@ -1742,22 +1739,9 @@ Status StorageManagerCanonical::store_metadata(
   URI metadata_uri;
   RETURN_NOT_OK(metadata->get_uri(uri, &metadata_uri));
 
-  RETURN_NOT_OK(store_data_to_generic_tile(tile, metadata_uri, encryption_key));
+  GenericTileIO::write(resources(), metadata_uri, tile, encryption_key);
 
   return Status::Ok();
-}
-
-Status StorageManagerCanonical::store_data_to_generic_tile(
-    WriterTile& tile, const URI& uri, const EncryptionKey& encryption_key) {
-  GenericTileIO tile_io(resources_, uri);
-  uint64_t nbytes = 0;
-  Status st = tile_io.write_generic(&tile, encryption_key, &nbytes);
-
-  if (st.ok()) {
-    st = vfs()->close_file(uri);
-  }
-
-  return st;
 }
 
 void StorageManagerCanonical::wait_for_zero_in_progress() {
@@ -1775,7 +1759,7 @@ StorageManagerCanonical::load_group_from_uri(
     const URI& group_uri, const URI& uri, const EncryptionKey& encryption_key) {
   auto timer_se = stats()->start_timer("sm_load_group_from_uri");
 
-  auto&& tile = GenericTileIO::load(resources_, uri, 0, encryption_key);
+  auto tile = GenericTileIO::read(resources_, uri, encryption_key);
 
   stats()->add_counter("read_group_size", tile.size());
 
@@ -1794,7 +1778,7 @@ StorageManagerCanonical::load_group_from_all_uris(
 
   std::vector<shared_ptr<Deserializer>> deserializers;
   for (auto& uri : uris) {
-    auto&& tile = GenericTileIO::load(resources_, uri.uri_, 0, encryption_key);
+    auto tile = GenericTileIO::read(resources_, uri.uri_, encryption_key);
 
     stats()->add_counter("read_group_size", tile.size());
 
@@ -1900,7 +1884,7 @@ void StorageManagerCanonical::load_group_metadata(
   throw_if_not_ok(parallel_for(compute_tp(), 0, metadata_num, [&](size_t m) {
     const auto& uri = group_metadata_to_load[m].uri_;
 
-    auto&& tile = GenericTileIO::load(resources_, uri, 0, encryption_key);
+    auto tile = GenericTileIO::read(resources_, uri, encryption_key);
     metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(tile));
 
     return Status::Ok();
@@ -2013,7 +1997,7 @@ StorageManagerCanonical::load_consolidated_fragment_meta(
   if (uri.to_string().empty())
     return {Status::Ok(), nullopt, nullopt};
 
-  auto&& tile = GenericTileIO::load(resources_, uri, 0, enc_key);
+  auto tile = GenericTileIO::read(resources_, uri, enc_key);
 
   stats()->add_counter("consolidated_frag_meta_size", tile.size());
 

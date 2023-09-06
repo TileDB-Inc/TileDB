@@ -2013,7 +2013,7 @@ class FragmentMetadata {
    * Reads the contents of a generic tile starting at the input offset,
    * and returns a tile.
    */
-  tuple<Status, optional<Tile>> read_generic_tile_from_file(
+  Tile read_generic_tile_from_file(
       const EncryptionKey& encryption_key, uint64_t offset) const;
 
   /**
@@ -2031,13 +2031,11 @@ class FragmentMetadata {
    *
    * @param encryption_key The encryption key.
    * @param tile The tile whose contents the function will write.
-   * @param nbytes The total number of bytes written to the file.
-   * @return Status
+   * @return uint64_t The total number of bytes written to the file.
    */
-  Status write_generic_tile_to_file(
+  uint64_t write_generic_tile_to_file(
       const EncryptionKey& encryption_key,
-      WriterTile& tile,
-      uint64_t* nbytes) const;
+      WriterTile& tile) const;
 
   /**
    * Writes the contents of the input buffer at the end of the fragment

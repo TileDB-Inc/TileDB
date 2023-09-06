@@ -35,6 +35,6 @@ using namespace tiledb::sm;
 int main() {
   Config config{};
   ContextResources resources{config, nullptr, 1, 1, ""};
-  GenericTileIO::read_generic_tile_header(resources, URI(), 0);
+  GenericTileIO::read_header(resources, URI());
   return 0;
 }
