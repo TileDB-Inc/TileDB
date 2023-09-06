@@ -68,7 +68,6 @@
 #include "tiledb/api/c_api/filesystem/filesystem_api_external.h"
 #include "tiledb/api/c_api/filter/filter_api_external.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_external.h"
-#include "tiledb/api/c_api/fragments_list/fragments_list_api_external.h"
 #include "tiledb/api/c_api/group/group_api_external.h"
 #include "tiledb/api/c_api/object/object_api_external.h"
 #include "tiledb/api/c_api/query/query_api_external.h"

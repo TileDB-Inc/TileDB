@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2023 TileDB, Inc.
+# Copyright (c) 2021 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,6 @@ add_subdirectory(consolidator)
 add_subdirectory(crypto)
 add_subdirectory(filesystem)
 add_subdirectory(filter)
-add_subdirectory(fragment)
 add_subdirectory(group)
 add_subdirectory(metadata)
 add_subdirectory(misc)

@@ -112,9 +112,6 @@ add_subdirectory(query)
 # `string`: no dependencies
 add_subdirectory(string)
 
-# `fragments_list`: depends on `string`
-add_subdirectory(fragments_list)
-
 # `vfs`: depends on `context`
 add_subdirectory(vfs)
 
