@@ -1215,13 +1215,13 @@ Status Reader::compute_var_cell_destinations(
     auto cs_length = cs.length_;
 
     // Get tile information, if the range is nonempty.
-    uint64_t* tile_offsets = nullptr;
+    offsets_t* tile_offsets = nullptr;
     if (cs.tile_ != nullptr && cs.tile_->tile_tuple(name) != nullptr) {
       const auto tile_tuple = cs.tile_->tile_tuple(name);
       const auto& tile = tile_tuple->fixed_tile();
 
       // Get the internal buffer to the offset values.
-      tile_offsets = (uint64_t*)tile.data();
+      tile_offsets = tile.data_as<offsets_t>();
     }
 
     // Compute the destinations for each cell in the range.
@@ -1314,7 +1314,7 @@ Status Reader::copy_partitioned_var_cells(
     auto cs_length = cs.length_;
 
     // Get tile information, if the range is nonempty.
-    uint64_t* tile_offsets = nullptr;
+    offsets_t* tile_offsets = nullptr;
     Tile* tile_var = nullptr;
     Tile* tile_validity = nullptr;
     if (cs.tile_ != nullptr && cs.tile_->tile_tuple(*name) != nullptr) {
@@ -1324,7 +1324,7 @@ Status Reader::copy_partitioned_var_cells(
       tile_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
 
       // Get the internal buffer to the offset values.
-      tile_offsets = (uint64_t*)tile->data();
+      tile_offsets = tile->data_as<offsets_t>();
     }
 
     // Copy each cell in the range

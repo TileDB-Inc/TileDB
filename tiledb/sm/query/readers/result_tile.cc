@@ -262,7 +262,7 @@ ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
 const void* ResultTile::unzipped_coord(uint64_t pos, unsigned dim_idx) const {
   const auto& coord_tile = coord_tiles_[dim_idx].second->fixed_tile();
   const uint64_t offset = pos * coord_tile.cell_size();
-  void* const ret = static_cast<char*>(coord_tile.data()) + offset;
+  void* const ret = coord_tile.data_as<char>() + offset;
   return ret;
 }
 
@@ -271,8 +271,7 @@ const void* ResultTile::zipped_coord(uint64_t pos, unsigned dim_idx) const {
   auto coord_size =
       coords_size / coords_tile_->fixed_tile().zipped_coords_dim_num();
   const uint64_t offset = pos * coords_size + dim_idx * coord_size;
-  void* const ret =
-      static_cast<char*>(coords_tile_->fixed_tile().data()) + offset;
+  void* const ret = coords_tile_->fixed_tile().data_as<char>() + offset;
   return ret;
 }
 
@@ -281,19 +280,19 @@ std::string_view ResultTile::coord_string(
   const auto& coord_tile_off = coord_tiles_[dim_idx].second->fixed_tile();
   const auto& coord_tile_val = coord_tiles_[dim_idx].second->var_tile();
 
-  uint64_t offset = 0;
+  offsets_t offset = 0;
   Status st =
       coord_tile_off.read(&offset, pos * sizeof(uint64_t), sizeof(uint64_t));
   assert(st.ok());
 
-  uint64_t next_offset = 0;
+  offsets_t next_offset = 0;
   st = coord_tile_off.read(
       &next_offset, (pos + 1) * sizeof(uint64_t), sizeof(uint64_t));
   assert(st.ok());
 
   auto size = next_offset - offset;
 
-  auto* buffer = static_cast<char*>(coord_tile_val.data()) + offset;
+  auto* buffer = coord_tile_val.data_as<char>() + offset;
   return std::string_view(buffer, size);
 }
 
@@ -346,7 +345,7 @@ template <>
 std::string_view ResultTile::attribute_value<std::string_view>(
     const std::string& label_name, const uint64_t pos) {
   auto tuple = tile_tuple(label_name);
-  auto offsets_data = tuple->fixed_tile().data_as<uint64_t>();
+  auto offsets_data = tuple->fixed_tile().data_as<offsets_t>();
   auto& var_tile = tuple->var_tile();
   auto offset = offsets_data[pos];
 
@@ -507,7 +506,7 @@ void ResultTile::compute_results_dense(
   if (!stores_zipped_coords) {
     const auto& coord_tile = result_tile->coord_tile(dim_idx).fixed_tile();
 
-    auto coords = (const T*)coord_tile.data();
+    auto coords = coord_tile.data_as<const T>();
     T c;
 
     if (dim_idx == dim_num - 1) {
@@ -526,8 +525,7 @@ void ResultTile::compute_results_dense(
               for (unsigned d = 0; d < dim_num; ++d) {
                 const auto& coord_tile =
                     result_tile->coord_tile(dim_idx).fixed_tile();
-                const T* const coords =
-                    static_cast<const T*>(coord_tile.data());
+                const T* const coords = coord_tile.data_as<const T>();
                 auto c_d = coords[pos];
                 auto dom = (const T*)meta->non_empty_domain()[d].data();
                 if (c_d < dom[0] || c_d > dom[1]) {
@@ -553,7 +551,7 @@ void ResultTile::compute_results_dense(
   // Handle zipped coordinates tile
   assert(stores_zipped_coords);
   const auto& coords_tile = result_tile->zipped_coords_tile();
-  auto coords = (const T*)coords_tile.data();
+  auto coords = coords_tile.data_as<const T>();
   T c;
 
   if (dim_idx == dim_num - 1) {
@@ -623,11 +621,11 @@ void ResultTile::compute_results_sparse<char>(
 
   // Get offset buffer
   const auto& coord_tile_off = coord_tile.fixed_tile();
-  auto buff_off = static_cast<const uint64_t*>(coord_tile_off.data());
+  auto buff_off = coord_tile_off.data_as<offsets_t>();
 
   // Get string buffer
   const auto& coord_tile_str = coord_tile.var_tile();
-  auto buff_str = static_cast<const char*>(coord_tile_str.data());
+  auto buff_str = coord_tile_str.data_as<char>();
 
   // For row-major cell orders, the first dimension is sorted.
   // For col-major cell orders, the last dimension is sorted.
@@ -673,10 +671,10 @@ void ResultTile::compute_results_sparse<char>(
       // The coordinate values are determined by their offset and size
       // within `buff_str`. Calculate the offset and size for the
       // first and last coordinates in this partition.
-      const uint64_t first_c_offset = buff_off[first_c_pos];
-      const uint64_t last_c_offset = buff_off[last_c_pos];
-      const uint64_t first_c_size = buff_off[first_c_pos + 1] - first_c_offset;
-      const uint64_t last_c_size = buff_off[last_c_pos + 1] - last_c_offset;
+      const offsets_t first_c_offset = buff_off[first_c_pos];
+      const offsets_t last_c_offset = buff_off[last_c_pos];
+      const offsets_t first_c_size = buff_off[first_c_pos + 1] - first_c_offset;
+      const offsets_t last_c_size = buff_off[last_c_pos + 1] - last_c_offset;
 
       // Fetch the coordinate values for the first and last coordinates
       // in this partition.
@@ -693,7 +691,8 @@ void ResultTile::compute_results_sparse<char>(
         memset(&r_bitmap[first_c_pos], intersects, c_partition_size);
       } else {
         // Compute results
-        uint64_t c_offset = 0, c_size = 0;
+        offsets_t c_offset = 0;
+        uint64_t c_size = 0;
         for (uint64_t pos = first_c_pos; pos <= last_c_pos; ++pos) {
           c_offset = buff_off[pos];
           c_size = buff_off[pos + 1] - c_offset;
@@ -781,7 +780,7 @@ void ResultTile::compute_results_sparse(
   // Handle separate coordinate tiles
   if (!stores_zipped_coords) {
     const auto& coord_tile = result_tile->coord_tile(dim_idx).fixed_tile();
-    const T* const coords = static_cast<const T*>(coord_tile.data());
+    const T* const coords = coord_tile.data_as<const T>();
     for (uint64_t pos = 0; pos < coords_num; ++pos) {
       c = coords[pos];
       r_bitmap[pos] &= (uint8_t)(c >= r0 && c <= r1);
@@ -793,7 +792,7 @@ void ResultTile::compute_results_sparse(
   // Handle zipped coordinates tile
   assert(stores_zipped_coords);
   const auto& coords_tile = result_tile->zipped_coords_tile();
-  const T* const coords = static_cast<const T*>(coords_tile.data());
+  const T* const coords = coords_tile.data_as<const T>();
   for (uint64_t pos = 0; pos < coords_num; ++pos) {
     c = coords[pos * dim_num + dim_idx];
     r_bitmap[pos] &= (uint8_t)(c >= r0 && c <= r1);
@@ -805,7 +804,7 @@ void ResultTile::compute_results_count_sparse_string_range(
     const std::vector<std::pair<std::string_view, std::string_view>>
         cached_ranges,
     const char* buff_str,
-    const uint64_t* buff_off,
+    const offsets_t* buff_off,
     const uint64_t start,
     const uint64_t end,
     std::vector<BitmapType>& result_count) {
@@ -816,7 +815,7 @@ void ResultTile::compute_results_count_sparse_string_range(
     if (result_count[pos] == 0)
       continue;
 
-    uint64_t c_offset = buff_off[pos];
+    offsets_t c_offset = buff_off[pos];
     uint64_t c_size = buff_off[pos + 1] - c_offset;
 
     const std::string_view str(buff_str + c_offset, c_size);
@@ -891,11 +890,11 @@ void ResultTile::compute_results_count_sparse_string(
 
   // Get offset buffer
   const auto& coord_tile_off = coord_tile.fixed_tile();
-  auto buff_off = static_cast<const uint64_t*>(coord_tile_off.data());
+  auto buff_off = coord_tile_off.data_as<offsets_t>();
 
   // Get string buffer
   const auto& coord_tile_str = coord_tile.var_tile();
-  auto buff_str = static_cast<const char*>(coord_tile_str.data());
+  auto buff_str = coord_tile_str.data_as<char>();
 
   // Cache start_str/end_str for all ranges.
   std::vector<std::pair<std::string_view, std::string_view>> cached_ranges;
@@ -949,10 +948,10 @@ void ResultTile::compute_results_count_sparse_string(
       // The coordinate values are determined by their offset and size
       // within `buff_str`. Calculate the offset and size for the
       // first and last coordinates in this partition.
-      const uint64_t first_c_offset = buff_off[first_c_pos];
-      const uint64_t last_c_offset = buff_off[last_c_pos];
-      const uint64_t first_c_size = buff_off[first_c_pos + 1] - first_c_offset;
-      const uint64_t last_c_size = buff_off[last_c_pos + 1] - last_c_offset;
+      const offsets_t first_c_offset = buff_off[first_c_pos];
+      const offsets_t last_c_offset = buff_off[last_c_pos];
+      const offsets_t first_c_size = buff_off[first_c_pos + 1] - first_c_offset;
+      const offsets_t last_c_size = buff_off[last_c_pos + 1] - last_c_offset;
 
       // Fetch the coordinate values for the first and last coordinates
       // in this partition.
@@ -1064,7 +1063,7 @@ void ResultTile::compute_results_count_sparse(
   // Handle separate coordinate tiles.
   if (!stores_zipped_coords) {
     const auto& coord_tile = result_tile->coord_tile(dim_idx).fixed_tile();
-    const T* const coords = static_cast<const T*>(coord_tile.data());
+    const T* const coords = coord_tile.data_as<const T>();
     {
       // Iterate over all cells.
       for (uint64_t pos = min_cell; pos < max_cell; ++pos) {
@@ -1120,7 +1119,7 @@ void ResultTile::compute_results_count_sparse(
   // Handle zipped coordinates tile.
   assert(stores_zipped_coords);
   const auto& coords_tile = result_tile->zipped_coords_tile();
-  const T* const coords = static_cast<const T*>(coords_tile.data());
+  const T* const coords = coords_tile.data_as<const T>();
   {
     for (uint64_t pos = min_cell; pos < max_cell; ++pos) {
       if (result_count[pos]) {

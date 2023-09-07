@@ -52,6 +52,11 @@ using storage_size_t = uint64_t;
  */
 using format_version_t = uint32_t;
 
+/**
+ * Type for anything offsets related.
+ */
+using offsets_t = uint64_t;
+
 /*
  * Value manipulation
  */

@@ -173,7 +173,7 @@ void DenseTilerFx::close_array() {
 template <class T>
 bool DenseTilerFx::check_tile(WriterTile& tile, const std::vector<T>& data) {
   std::vector<T> tile_data(data.size());
-  CHECK(tile.size() == data.size() * sizeof(T));
+  CHECK(tile.size_as<T>() == data.size());
   CHECK(tile.read(&tile_data[0], 0, data.size() * sizeof(T)).ok());
   CHECK(tile_data == data);
   return tile_data == data;

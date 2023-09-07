@@ -1664,9 +1664,8 @@ Status DenseReader::copy_offset_tiles(
         const auto& t_var = tile_tuples[fd]->var_tile();
 
         // Setup variables for the copy.
-        auto src_buff =
-            static_cast<uint64_t*>(tile_tuples[fd]->fixed_tile().data()) +
-            start * stride + src_cell;
+        auto src_buff = tile_tuples[fd]->fixed_tile().data_as<offsets_t>() +
+                        start * stride + src_cell;
         auto div = elements_mode_ ? data_type_size : 1;
         auto dest = (OffType*)dest_ptr + start;
 
@@ -1681,7 +1680,7 @@ Status DenseReader::copy_offset_tiles(
         // Process validity values.
         if (nullable) {
           auto src_buff_validity =
-              static_cast<uint8_t*>(tile_tuples[fd]->validity_tile().data()) +
+              tile_tuples[fd]->validity_tile().data_as<uint8_t>() +
               start * stride + src_cell;
 
           for (i = 0; i < end - start + 1; ++i) {

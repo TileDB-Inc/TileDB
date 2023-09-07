@@ -651,7 +651,7 @@ void QueryCondition::apply_ast_node(
 
       if (nullable) {
         const auto& tile_validity = tile_tuple->validity_tile();
-        buffer_validity = static_cast<uint8_t*>(tile_validity.data());
+        buffer_validity = tile_validity.data_as<uint8_t>();
       }
 
       // Start the pending result cell slab at the start position
@@ -660,11 +660,10 @@ void QueryCondition::apply_ast_node(
 
       if (var_size) {
         const auto& tile = tile_tuple->var_tile();
-        const char* buffer = static_cast<char*>(tile.data());
+        const char* buffer = tile.data_as<char>();
 
         const auto& tile_offsets = tile_tuple->fixed_tile();
-        const uint64_t* buffer_offsets =
-            static_cast<uint64_t*>(tile_offsets.data());
+        const offsets_t* buffer_offsets = tile_offsets.data_as<offsets_t>();
 
         // Iterate through each cell in this slab.
         while (c < length) {
@@ -709,7 +708,7 @@ void QueryCondition::apply_ast_node(
           }
         } else {
           const auto& tile = tile_tuple->fixed_tile();
-          const char* buffer = static_cast<char*>(tile.data());
+          const char* buffer = tile.data_as<char>();
           const uint64_t cell_size = tile.cell_size();
           uint64_t buffer_offset = start * cell_size;
           const uint64_t buffer_offset_inc = stride * cell_size;
@@ -1352,17 +1351,16 @@ void QueryCondition::apply_ast_node_dense(
   uint8_t* buffer_validity = nullptr;
   if (nullable) {
     const auto& tile_validity = tile_tuple->validity_tile();
-    buffer_validity = static_cast<uint8_t*>(tile_validity.data()) + src_cell;
+    buffer_validity = tile_validity.data_as<uint8_t>() + src_cell;
   }
 
   if (var_size) {
     // Get var data buffer and tile offsets buffer.
     const auto& tile = tile_tuple->var_tile();
-    const char* buffer = static_cast<char*>(tile.data());
+    const char* buffer = tile.data_as<char>();
 
     const auto& tile_offsets = tile_tuple->fixed_tile();
-    const uint64_t* buffer_offsets =
-        static_cast<uint64_t*>(tile_offsets.data());
+    const offsets_t* buffer_offsets = tile_offsets.data_as<offsets_t>();
 
     // Iterate through each cell in this slab.
     for (uint64_t c = 0; c < result_buffer.size(); ++c) {
@@ -1370,8 +1368,8 @@ void QueryCondition::apply_ast_node_dense(
       // is string data requiring a strcmp which cannot be vectorized, this is
       // ok.
       const uint64_t offset_idx = src_cell + (start + c) * stride;
-      const uint64_t buffer_offset = buffer_offsets[offset_idx];
-      const uint64_t next_cell_offset = buffer_offsets[offset_idx + 1];
+      const offsets_t buffer_offset = buffer_offsets[offset_idx];
+      const offsets_t next_cell_offset = buffer_offsets[offset_idx + 1];
       const uint64_t cell_size = next_cell_offset - buffer_offset;
 
       // Get the cell value.
@@ -1402,7 +1400,7 @@ void QueryCondition::apply_ast_node_dense(
     } else {
       // Get the fixed size data buffers.
       const auto& tile = tile_tuple->fixed_tile();
-      const char* buffer = static_cast<char*>(tile.data());
+      const char* buffer = tile.data_as<char>();
       const uint64_t cell_size = tile.cell_size();
       uint64_t buffer_offset = ((start * stride) + src_cell) * cell_size;
       const uint64_t buffer_offset_inc = stride * cell_size;
@@ -1596,8 +1594,7 @@ void QueryCondition::apply_ast_node_dense(
   if (nullable && node->get_value_ptr() == nullptr) {
     const auto tile_tuple = result_tile->tile_tuple(name);
     const auto& tile_validity = tile_tuple->validity_tile();
-    const auto buffer_validity =
-        static_cast<uint8_t*>(tile_validity.data()) + src_cell;
+    const auto buffer_validity = tile_validity.data_as<uint8_t>() + src_cell;
 
     // Null values can only be specified for equality operators.
     if (node->get_op() == QueryConditionOp::NE) {
@@ -2311,27 +2308,25 @@ void QueryCondition::apply_ast_node_sparse(
   if constexpr (
       std::is_same_v<CombinationOp, QCMax<BitmapType>> && nullable::value) {
     const auto& tile_validity = tile_tuple->validity_tile();
-    buffer_validity = static_cast<uint8_t*>(tile_validity.data());
+    buffer_validity = tile_validity.data_as<uint8_t>();
   }
 
   if (var_size) {
     // Get var data buffer and tile offsets buffer.
     const auto& tile = tile_tuple->var_tile();
-    const char* buffer = static_cast<char*>(tile.data());
+    const char* buffer = tile.data_as<char>();
 
     const auto& tile_offsets = tile_tuple->fixed_tile();
-    const uint64_t* buffer_offsets =
-        static_cast<uint64_t*>(tile_offsets.data());
-    const uint64_t buffer_offsets_el =
-        tile_offsets.size() / constants::cell_var_offset_size - 1;
+    const offsets_t* buffer_offsets = tile_offsets.data_as<offsets_t>();
+    const uint64_t buffer_offsets_el = tile_offsets.size_as<offsets_t>() - 1;
 
     // Iterate through each cell.
     for (uint64_t c = 0; c < buffer_offsets_el; ++c) {
       // Check the previous cell here, which breaks vectorization but as this
       // is string data requiring a strcmp which cannot be vectorized, this is
       // ok.
-      const uint64_t buffer_offset = buffer_offsets[c];
-      const uint64_t next_cell_offset = buffer_offsets[c + 1];
+      const offsets_t buffer_offset = buffer_offsets[c];
+      const offsets_t next_cell_offset = buffer_offsets[c + 1];
       const uint64_t cell_size = next_cell_offset - buffer_offset;
 
       // Get the cell value.
@@ -2354,7 +2349,7 @@ void QueryCondition::apply_ast_node_sparse(
   } else {
     // Get the fixed size data buffers.
     const auto& tile = tile_tuple->fixed_tile();
-    const char* buffer = static_cast<char*>(tile.data());
+    const char* buffer = tile.data_as<char>();
     const uint64_t cell_size = tile.cell_size();
     const uint64_t buffer_el = tile.size() / cell_size;
 
@@ -2502,7 +2497,7 @@ void QueryCondition::apply_ast_node_sparse(
   if (nullable) {
     const auto tile_tuple = result_tile.tile_tuple(node_field_name);
     const auto& tile_validity = tile_tuple->validity_tile();
-    const auto buffer_validity = static_cast<uint8_t*>(tile_validity.data());
+    const auto buffer_validity = tile_validity.data_as<uint8_t>();
     const auto cell_num = result_tile.cell_num();
 
     if (node->get_value_ptr() == nullptr) {

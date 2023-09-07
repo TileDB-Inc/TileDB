@@ -1218,7 +1218,7 @@ void SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
 
         // If the tile_tuple is null, this is a field added in schema
         // evolution. Use the fill value.
-        const uint64_t* src_buff = nullptr;
+        const offsets_t* src_buff = nullptr;
         const uint8_t* src_var_buff = nullptr;
         bool use_fill_value = false;
         OffType fill_value_size = 0;
@@ -1230,7 +1230,7 @@ void SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
         } else {
           const auto& t = tile_tuple->fixed_tile();
           const auto& t_var = tile_tuple->var_tile();
-          src_buff = t.template data_as<uint64_t>();
+          src_buff = t.template data_as<offsets_t>();
           src_var_buff = t_var.template data_as<uint8_t>();
         }
 

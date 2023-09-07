@@ -234,13 +234,13 @@ TEST_CASE_METHOD(
   Tile* const t_var = &tile_tuple->var_tile();
 
   // Initialize offsets, use 1 character strings.
-  uint64_t* offsets = (uint64_t*)t->data();
+  offsets_t* offsets = t->data_as<offsets_t>();
   for (uint64_t i = 0; i < num_cells + 1; i++) {
     offsets[i] = i;
   }
 
   // Initialize data, use incrementing single string values starting with 'a'.
-  char* var = (char*)t_var->data();
+  char* var = t_var->data_as<char>();
   for (uint64_t i = 0; i < num_cells; i++) {
     var[i] = 'a' + i;
   }
@@ -344,13 +344,13 @@ TEST_CASE_METHOD(
   Tile* const t_var = &tile_tuple->var_tile();
 
   // Initialize offsets, use 1 character strings.
-  uint64_t* offsets = (uint64_t*)t->data();
+  offsets_t* offsets = t->data_as<offsets_t>();
   for (uint64_t i = 0; i < num_cells + 1; i++) {
     offsets[i] = i;
   }
 
   // Initialize data, use incrementing single string values starting with 'a'.
-  char* var = (char*)t_var->data();
+  char* var = t_var->data_as<char>();
   for (uint64_t i = 0; i < num_cells; i++) {
     var[i] = 'a' + i;
   }
