@@ -344,7 +344,7 @@ TEST_CASE_METHOD(
   // Initialize ranges.
   NDRange ranges;
   char temp[2];
-  std::vector<uint64_t> exp_result_count;
+  std::vector<uint64_t> exp_result_count{8};
   SECTION("- First and last cell included multiple times") {
     ranges.resize(5);
     temp[0] = temp[1] = 'a';
