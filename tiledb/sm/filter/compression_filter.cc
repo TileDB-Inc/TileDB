@@ -562,7 +562,8 @@ Status CompressionFilter::compress_var_string_coords(
     max_strlen_bytesize = compute_bytesize(max_string_len);
     // Allocate for worst case dict_size when all strings unique, in format:
     // [num_of_strings|size_str1|str1|...|size_strN|strN]
-    dict_size = max_strlen_bytesize * num_strings + input.size();
+    dict_size =
+        max_strlen_bytesize * static_cast<uint32_t>(num_strings) + input.size();
     // Extra metadata bytes to store the dictionary and string length datasize,
     // id size, and dict size
     metadata_size += 2 * sizeof(uint8_t) + sizeof(uint32_t) + dict_size;
