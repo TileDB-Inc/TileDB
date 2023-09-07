@@ -54,3 +54,15 @@ TEST_CASE("Random: generate multiple", "[random][generate][multiple]") {
   CHECK(num2 != num4);
   CHECK(num3 != num4);
 }
+
+TEST_CASE("Random: set seed, default", "[random][set_seed][default]") {
+  Random::set_seed();
+  CHECK(true);
+}
+
+TEST_CASE("Random: set seed, local seed", "[random][set_seed][local seed]") {
+  auto local_seed = Catch::rngSeed();
+  // Note: When the test is run, "Randomness seeded to: " is the local_seed
+  Random::generate_number(local_seed);
+  CHECK(true);
+}

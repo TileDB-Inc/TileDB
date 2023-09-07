@@ -33,19 +33,50 @@
 #ifndef TILEDB_RANDOM_H
 #define TILEDB_RANDOM_H
 
+#include <mutex>
 #include <random>
 
 namespace tiledb::common {
 
 class Random {
  public:
-  static uint64_t generate_number() {
-    std::random_device rd;
-    std::mt19937_64 generator(rd());
+  /**
+   * @brief Set the seed object on the random number generator.
+   *
+   * @param local_seed An optional local seed to set on the generator.
+   * Note: Catch::rngSeed() will produce the local Catch2 seed.
+   */
+  static void set_seed(uint64_t local_seed = 0) {
+    std::lock_guard<std::mutex> lock(mtx_);
+    if (local_seed == 0) {
+      std::random_device rd;
+      generator_.seed(rd());
+    } else {
+      generator_.seed(local_seed);
+    }
+  }
+
+  /**
+   * @brief Generate a random number.
+   *
+   * @param local_seed An optional local seed to set on the generator.
+   * @return random uint64_t
+   *
+   * Note: Catch::rngSeed() will produce the local Catch2 seed.
+   */
+  static uint64_t generate_number(uint64_t local_seed = 0) {
+    set_seed(local_seed);
     static std::uniform_int_distribution<size_t> distribution(
         std::numeric_limits<size_t>::min(), std::numeric_limits<size_t>::max());
-    return distribution(generator);
+    return distribution(generator_);
   }
+
+ private:
+  /** 64-bit mersenne twister engine. */
+  inline static std::mt19937_64 generator_;
+
+  /** Mutex which protects the atomicity of seed-setting. */
+  inline static std::mutex mtx_;
 };
 
 }  // namespace tiledb::common
