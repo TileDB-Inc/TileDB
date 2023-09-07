@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,6 +33,7 @@
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/filesystem/temporary_directory.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <iostream>
@@ -44,7 +45,7 @@ using namespace tiledb::test;
 
 class NullableArrayFx {
  public:
-  const string& FILE_TEMP_DIR = tiledb::test::get_temp_path();
+  const string& FILE_TEMP_DIR = make_temporary_directory("tiledb_test_");
 
   // Serialization parameters
   bool serialize_ = false;

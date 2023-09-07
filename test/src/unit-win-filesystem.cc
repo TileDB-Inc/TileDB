@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,6 +41,7 @@
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/crypto.h"
 #include "tiledb/sm/filesystem/path_win.h"
+#include "tiledb/sm/filesystem/temporary_directory.h"
 #include "tiledb/sm/filesystem/win.h"
 
 using namespace tiledb::common;
@@ -59,7 +60,7 @@ static bool ends_with(const std::string& value, const std::string& suffix) {
 }
 
 struct WinFx {
-  const std::string& TEMP_DIR = tiledb::test::get_temp_path();
+  const std::string& TEMP_DIR = make_temporary_directory("tiledb_test_");
   Win win_;
   ThreadPool thread_pool_{4};
   Config vfs_config_;

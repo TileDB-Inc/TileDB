@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,7 @@
 #include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/enums/encryption_type.h"
+#include "tiledb/sm/filesystem/temporary_directory.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <iostream>
@@ -49,7 +50,7 @@ static const string array_name = "smoke_test_array";
 
 class SmokeTestFx {
  public:
-  const string& FILE_TEMP_DIR = tiledb::test::get_temp_path();
+  const string& FILE_TEMP_DIR = make_temporary_directory("tiledb_test_");
 
   /**
    * Wraps data to build a dimension with the C-API.
