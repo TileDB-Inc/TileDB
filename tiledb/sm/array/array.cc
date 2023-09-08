@@ -590,10 +590,13 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
     throw ArrayException("Unable to load enumerations; Array is not open.");
   }
 
-  // Dedupe the requested list of enumeration names
-  std::unordered_set<std::string> deduped;
+  // Dedupe requested names and filter out anything already loaded.
+  std::unordered_set<std::string> enmrs_to_load;
   for (auto& enmr_name : enumeration_names) {
-    deduped.insert(enmr_name);
+    if (array_schema_latest_->is_enumeration_loaded(enmr_name)) {
+      continue;
+    }
+    enmrs_to_load.insert(enmr_name);
   }
 
   std::vector<shared_ptr<const Enumeration>> loaded;
@@ -605,19 +608,22 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
           "Error loading enumerations; "
           "Remote array with no REST client.");
     }
+
+    std::vector<std::string> names_to_load;
+    for (auto& enmr_name : enmrs_to_load) {
+      names_to_load.push_back(enmr_name);
+    }
+
     loaded = rest_client->post_enumerations_from_rest(
         array_uri_,
         timestamp_start_,
         timestamp_end_opened_at_,
         this,
-        enumeration_names);
+        names_to_load);
   } else {
     // Create a vector of paths to be loaded.
     std::vector<std::string> paths_to_load;
-    for (auto& enmr_name : deduped) {
-      if (array_schema_latest_->is_enumeration_loaded(enmr_name)) {
-        continue;
-      }
+    for (auto& enmr_name : enmrs_to_load) {
       auto path = array_schema_latest_->get_enumeration_path_name(enmr_name);
       paths_to_load.push_back(path);
     }
