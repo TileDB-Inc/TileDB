@@ -89,7 +89,7 @@ endif()
 add_library(libmagic ${LIBMAGIC_SOURCE_FILES})
 set(targets ${targets} libmagic)
 
-target_link_libraries(libmagic PRIVATE pcre2::pcre2-posix)
+target_link_libraries(libmagic PRIVATE PCRE2::POSIX)
 
 target_include_directories(libmagic
   PUBLIC
@@ -100,7 +100,7 @@ target_include_directories(libmagic
 # 'file' CLI
 add_executable(file ${LIBMAGIC_SOURCE_DIR}/file.c)
 set(targets ${targets} file)
-target_link_libraries(file PRIVATE pcre2::pcre2-posix libmagic)
+target_link_libraries(file PRIVATE PCRE2::POSIX libmagic)
 if (WIN32)
   target_link_libraries(file PRIVATE shlwapi unofficial::getopt-win32::getopt)
 endif()
