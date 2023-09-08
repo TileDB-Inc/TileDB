@@ -1351,6 +1351,29 @@ class Subarray {
     RangeSetAndSuperset ranges_;
   };
 
+  /**
+   * A hash function capable of hashing std::vector<uint8_t> for use by
+   * the tile_coords_map_ unordered_map for caching coords indices.
+   */
+  struct CoordsHasher {
+    /**
+     * Compute a hash value of the provided key.
+     *
+     * @param key The uint8_t vector to hash.
+     * @return std::size_t The hash value.
+     */
+    std::size_t operator()(const std::vector<uint8_t>& key) const {
+      // The awkward cast here is because std::string_view doesn't accept
+      // a uint8_t* in its constructor. Since compilers won't let us cast
+      // directly from unsigned to signed, we have to static cast to void*
+      // first.
+      auto data =
+          static_cast<const char*>(static_cast<const void*>(key.data()));
+      std::string_view str_key(data, key.size());
+      return std::hash<std::string_view>()(str_key);
+    }
+  };
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
@@ -1452,7 +1475,8 @@ class Subarray {
   std::vector<std::vector<uint8_t>> tile_coords_;
 
   /** A map (tile coords) -> (vector element position in `tile_coords_`). */
-  std::map<std::vector<uint8_t>, size_t> tile_coords_map_;
+  std::unordered_map<std::vector<uint8_t>, size_t, CoordsHasher>
+      tile_coords_map_;
 
   /** The config for query-level parameters only. */
   Config config_;

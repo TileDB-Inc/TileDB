@@ -779,9 +779,9 @@ TEST_CASE(
 
   Array::create(array_name, schema);
 
-  std::vector<char> d0_buf;
-  std::vector<uint64_t> d0_offsets_buf;
-  std::vector<int> a0_buf;
+  std::vector<char> d0_buf{10};
+  std::vector<uint64_t> d0_offsets_buf{10};
+  std::vector<int> a0_buf{10};
 
   SECTION("Only empty strings in data buffer") {
     // Write this data buffer to the array:

@@ -493,8 +493,8 @@ TEST_CASE_METHOD(
 #endif
 
   // Vectors for input data.
-  std::vector<double> input_label_data{};
-  std::vector<double> input_attr_data{};
+  std::vector<double> input_label_data{4};
+  std::vector<double> input_attr_data{4};
 
   // Dimension label parameters.
   tiledb_data_order_t label_order{};
