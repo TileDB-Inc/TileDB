@@ -372,6 +372,34 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPEnumerationFx,
+    "CPP: Enumeration Query - Invalid Enumeration Value",
+    "[enumeration][query][basic]") {
+  create_array();
+
+  // Attempt to query with an enumeration value that isn't in the Enumeration
+  QueryCondition qc(ctx_);
+  qc.init("attr1", "alf", 4, TILEDB_EQ);
+
+  // Execute the query condition against the array
+  std::vector<int> dim(5);
+  std::vector<int> attr1(5);
+
+  auto array = Array(ctx_, uri_, TILEDB_READ);
+  Query query(ctx_, array);
+  query.add_range("dim", 1, 5)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("dim", dim)
+      .set_data_buffer("attr1", attr1)
+      .set_condition(qc);
+
+  // Check that the error message is helpful to users.
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Enumeration value not found for field 'attr1'");
+  REQUIRE_THROWS_WITH(query.submit(), matcher);
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
     "CPP: Enumeration Query - Set Use Enumeration",
     "[enumeration][query][set-use-enumeration]") {
   QueryCondition qc(ctx_);
