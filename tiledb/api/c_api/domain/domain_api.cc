@@ -95,7 +95,8 @@ int32_t tiledb_domain_get_dimension_from_index(
   if (ndim <= index) {
     throw CAPIStatusException(
         "Dimension index " + std::to_string(index) +
-        "is out of bounds; valid indices are 0 to " + std::to_string(ndim - 1));
+        " is out of bounds; valid indices are 0 to " +
+        std::to_string(ndim - 1));
   }
   auto dimension{domain->shared_dimension(index)};
   // `shared_dimension` never returns `nullptr`
