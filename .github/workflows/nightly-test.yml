@@ -27,8 +27,6 @@ jobs:
     name: |
       ${{ matrix.os }} - Sanitizer: ${{ matrix.sanitizer || 'none' }} | Experimental: ${{ matrix.experimental || 'OFF' }} | ${{ matrix.config || 'Release' }}
 
-    permissions:
-      issues: write
     env:
       MACOSX_DEPLOYMENT_TARGET: 10.15
       TILEDB_NIGHTLY_BUILD: 1
@@ -62,6 +60,8 @@ jobs:
           cmake --build build --target check --config ${{ matrix.config || 'Release' }}
 
   create_issue_on_fail:
+    permissions:
+      issues: write
     runs-on: ubuntu-latest
     needs: test
     if: failure() || cancelled()
@@ -69,8 +69,8 @@ jobs:
       - name: Checkout TileDB `dev`
         uses: actions/checkout@v3
       - name: Create Issue if Build Fails
-        uses: JasonEtco/create-an-issue@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: TileDB-Inc/github-actions/open-issue@main
         with:
-          filename: .github/workflows/nightly-failure-issue-template.md
+          name: nightly GitHub Actions build
+          label: nightly
+          assignee: ihnorton,teo-tsirpanis,davisp
