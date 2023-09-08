@@ -45,9 +45,9 @@ static const std::string& make_temporary_directory(
     std::string_view prefix = {}) {
   std::lock_guard<std::mutex> lock(mtx_);
   static std::string temp_dir =
-      std::string(std::filesystem::temp_directory_path()) +
-      std::string(prefix) + std::to_string(Random::generate_number()) +
-      std::string("/");
+      (std::filesystem::temp_directory_path() /
+       (prefix.data() + std::to_string(Random::generate_number())) / "")
+          .string();
   return temp_dir;
 }
 
