@@ -747,12 +747,12 @@ if (WIN32)
   if (TILEDB_S3)
     # the AWSSDK does not include links to some transitive dependencies
     # ref: github<dot>com/aws<slash>aws-sdk-cpp/issues/1074#issuecomment-466252911
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE userenv ws2_32 wininet winhttp bcrypt version secur32)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE userenv ws2_32 wininet winhttp bcrypt ncrypt crypt32 version secur32)
   endif()
 
   if (TILEDB_AZURE)
-    # WebServices and crypt32 needed by Azure storage on windows
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE WebServices crypt32)
+    # WebServices, winhttp and crypt32 needed by Azure storage on windows
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE WebServices winhttp crypt32)
   endif()
 endif()
 
