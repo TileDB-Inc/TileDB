@@ -199,6 +199,10 @@ void ASTNodeVal::rewrite_enumeration_conditions(
 
   if (op_ != QueryConditionOp::IN && op_ != QueryConditionOp::NOT_IN) {
     auto idx = enumeration->index_of(get_value_ptr(), get_value_size());
+    if (idx == constants::enumeration_missing_value) {
+      throw std::invalid_argument(
+          "Enumeration value not found for field '" + attr->name() + "'");
+    }
 
     data_ = ByteVecValue(val_size);
     utils::safe_integral_cast_to_datatype(idx, attr->type(), data_);
@@ -215,6 +219,11 @@ void ASTNodeVal::rewrite_enumeration_conditions(
 
     for (auto& member : members_) {
       auto idx = enumeration->index_of(member.data(), member.size());
+      if (idx == constants::enumeration_missing_value) {
+        throw std::invalid_argument(
+            "Enumeration value not found for field '" + attr->name() + "'");
+      }
+
       utils::safe_integral_cast_to_datatype(idx, attr->type(), curr_data);
       data_writer.write(curr_data.data(), curr_data.size());
       offsets_writer.write(curr_offset);
