@@ -1977,21 +1977,12 @@ void SparseUnorderedWithDupsReader<BitmapType>::process_aggregates(
 
         uint64_t cell_num =
             fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
-        uint64_t min_pos_tile = 0;
-        uint64_t max_pos_tile = cell_num;
-        // Adjust max cell if this is the last tile.
-        if (i == result_tiles.size() - 1) {
-          uint64_t to_copy = cell_offsets[i + 1] - cell_offsets[i];
-          max_pos_tile =
-              rt->pos_with_given_result_sum(min_pos_tile, to_copy) + 1;
-        }
-
         auto&& [skip_aggregate, src_min_pos, src_max_pos, dest_cell_offset] =
             compute_parallelization_parameters(
                 range_thread_idx,
                 num_range_threads,
-                min_pos_tile,
-                max_pos_tile,
+                0,
+                cell_num,
                 cell_offsets[i],
                 nullptr);
         if (skip_aggregate) {
