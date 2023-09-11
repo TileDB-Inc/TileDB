@@ -61,7 +61,8 @@ TEST_CASE_METHOD(
   create_array("simple-load");
 
   ArraySchema schema = Array::load_schema(ctx_, uri_);
-  REQUIRE(ArraySchemaExperimenta::get_enumeration(ctx_, schema, "my_enum") == nullptr);
+  auto matcher = Catch::Matchers::ContainsSubstring("Enumeration 'my_enum' is not loaded.");
+  REQUIRE_THROWS_WITH(ArraySchemaExperimental::get_enumeration(ctx_, schema, "my_enum"), matcher);
 }
 
 TEST_CASE_METHOD(
@@ -71,7 +72,7 @@ TEST_CASE_METHOD(
   create_array("simple-load-with-enumerations");
 
   ArraySchema schema = ArrayExperimental::load_schema_with_enumerations(ctx_, uri_);
-  REQUIRE(ArraySchemaExperimental::get_enumeration(ctx_, schema, "my_enum") != nullptr);
+  REQUIRE_NOTHROW(ArraySchemaExperimental::get_enumeration(ctx_, schema, "my_enum"));
 }
 
 Config& setup_config(Config& cfg) {

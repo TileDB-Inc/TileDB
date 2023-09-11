@@ -396,6 +396,32 @@ TILEDB_EXPORT int32_t tiledb_array_schema_add_enumeration(
   return TILEDB_OK;
 }
 
+TILEDB_EXPORT int32_t tiledb_array_schema_get_enumeration(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    const char* enumeration_name,
+    tiledb_enumeration_t** enumeration) {
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  if (enumeration_name == nullptr) {
+    throw std::invalid_argument("enumeration_name must not be nullptr");
+  }
+
+  ensure_output_pointer_is_valid(enumeration);
+
+  auto enmr = array_schema->array_schema_->get_enumeration(enumeration_name);
+
+  if (enmr == nullptr) {
+    *enumeration = nullptr;
+    return TILEDB_OK;
+  }
+
+  *enumeration = tiledb_enumeration_handle_t::make_handle(enmr);
+  return TILEDB_OK;
+}
+
 int32_t tiledb_array_schema_set_coords_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
@@ -5388,6 +5414,15 @@ int32_t tiledb_array_schema_add_enumeration(
     tiledb_enumeration_t* enumeration) noexcept {
   return api_entry<tiledb::api::tiledb_array_schema_add_enumeration>(
       ctx, array_schema, enumeration);
+}
+
+capi_return_t tiledb_array_schema_get_enumeration(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    const char* enumeration_name,
+    tiledb_enumeration_t** enumeration) noexcept {
+  return api_entry<tiledb::api::tiledb_array_schema_get_enumeration>(
+      ctx, array_schema, enumeration_name, enumeration);
 }
 
 int32_t tiledb_array_schema_set_coords_filter_list(

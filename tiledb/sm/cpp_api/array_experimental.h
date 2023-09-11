@@ -82,10 +82,11 @@ class ArrayExperimental {
    * @param uri The array URI.
    * @return The loaded ArraySchema object.
    */
-  static ArraySchema load_schema_with_enumerations(const Context& ctx, const std::string& uri) {
+  static ArraySchema load_schema_with_enumerations(
+      const Context& ctx, const std::string& uri) {
     tiledb_array_schema_t* schema;
-    ctx.handle_error(
-        tiledb_array_schema_load_with_enumerations(ctx.ptr().get(), uri.c_str(), &schema));
+    ctx.handle_error(tiledb_array_schema_load_with_enumerations(
+        ctx.ptr().get(), uri.c_str(), &schema));
     return ArraySchema(ctx, schema);
   }
 };
