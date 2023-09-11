@@ -1221,3 +1221,16 @@ struct LoadEnumerationsResponse {
   enumerations @0 :List(Enumeration);
   # The loaded enumerations
 }
+
+struct LoadArraySchemaRequest {
+  config @0 :Config;
+  # Config
+
+  includeEnumerations @1 :Bool;
+  # When true, include all enumeration data in the returned ArraySchema
+}
+
+struct LoadArraySchemaResponse {
+  schema @0 :ArraySchema;
+  # The loaded ArraySchema
+}

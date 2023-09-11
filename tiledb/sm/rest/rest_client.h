@@ -101,6 +101,21 @@ class RestClient {
       const URI& uri);
 
   /**
+   * Get an array schema from the rest server. This will eventually replace the
+   * get_array_schema_from_rest after TileDB-Cloud-REST merges support for the
+   * POST endpoint.
+   *
+   * @param uri The Array URI to load the schema from.
+   * @return shared_ptr<ArraySchema> The loaded array schema.
+   */
+  shared_ptr<ArraySchema> post_array_schema_from_rest(
+      const Config& config,
+      const URI& uri,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
+      bool include_enumerations = false);
+
+  /**
    * Post the array config and get an array from rest server
    *
    * @param uri of array being loaded
