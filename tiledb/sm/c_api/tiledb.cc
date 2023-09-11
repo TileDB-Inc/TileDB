@@ -457,9 +457,12 @@ int32_t tiledb_array_schema_check(
 int32_t tiledb_array_schema_load(
     tiledb_ctx_t* ctx,
     const char* array_uri,
+    int include_enumerations,
     tiledb_array_schema_t** array_schema) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
+
+  bool incl_enmrs = (include_enumerations != 0);
 
   // Create array schema
   *array_schema = new (std::nothrow) tiledb_array_schema_t;
@@ -490,15 +493,14 @@ int32_t tiledb_array_schema_load(
       return TILEDB_ERR;
     }
 
-    auto&& [st, array_schema_rest] =
-        rest_client->get_array_schema_from_rest(uri);
-    if (!st.ok()) {
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
+    try {
+    auto array_schema_rest =
+        rest_client->post_array_schema_from_rest(ctx->resources().config(), uri, 0, UINT64_MAX, incl_enmrs);
+        (*array_schema)->array_schema_ = array_schema_rest;
+    } catch (...) {
       delete *array_schema;
-      return TILEDB_ERR;
+      throw;
     }
-    (*array_schema)->array_schema_ = array_schema_rest.value();
   } else {
     // Create key
     tiledb::sm::EncryptionKey key;
@@ -526,7 +528,24 @@ int32_t tiledb_array_schema_load(
     }
 
     // Load latest array schema
-    auto&& array_schema_latest = array_dir.load_array_schema_latest(key);
+    auto array_schema_latest = array_dir.load_array_schema_latest(key);
+
+    if (incl_enmrs) {
+      std::vector<std::string> enmr_paths_to_load;
+      auto enmr_names = array_schema_latest->get_enumeration_names();
+      for (auto& name : enmr_names) {
+        if (!array_schema_latest->is_enumeration_loaded(name)) {
+          auto& path = array_schema_latest->get_enumeration_path_name(name);
+          enmr_paths_to_load.emplace_back(path);
+        }
+      }
+
+      auto enmrs_loaded = array_dir.load_enumerations_from_paths(enmr_paths_to_load, key);
+      for (auto& enmr : enmrs_loaded) {
+        array_schema_latest->store_enumeration(enmr);
+      }
+    }
+
     (*array_schema)->array_schema_ = array_schema_latest;
   }
   return TILEDB_OK;
@@ -5405,7 +5424,15 @@ int32_t tiledb_array_schema_load(
     const char* array_uri,
     tiledb_array_schema_t** array_schema) noexcept {
   return api_entry<tiledb::api::tiledb_array_schema_load>(
-      ctx, array_uri, array_schema);
+      ctx, array_uri, 0, array_schema);
+}
+
+int32_t tiledb_array_schema_load_with_enumerations(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    tiledb_array_schema_t** array_schema) noexcept {
+  return api_entry<tiledb::api::tiledb_array_schema_load>(
+      ctx, array_uri, 1, array_schema);
 }
 
 int32_t tiledb_array_schema_load_with_key(
