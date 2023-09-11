@@ -216,6 +216,7 @@ capi_return_t tiledb_vfs_copy_dir(
 }
 
 capi_return_t tiledb_vfs_open(
+    tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* uri,
     tiledb_vfs_mode_t mode,
@@ -234,6 +235,7 @@ capi_return_t tiledb_vfs_open(
   // Open VFS file
   auto st{(*fh)->open()};
   if (!st.ok()) {
+    save_error(ctx, st);
     tiledb_vfs_fh_t::break_handle(*fh);
     return TILEDB_ERR;
   }
@@ -320,6 +322,7 @@ capi_return_t tiledb_vfs_touch(tiledb_vfs_t* vfs, const char* uri) {
 
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_plain;
+using tiledb::api::api_entry_with_context;
 
 capi_return_t tiledb_vfs_mode_to_str(
     tiledb_vfs_mode_t vfs_mode, const char** str) noexcept {
@@ -475,7 +478,7 @@ capi_return_t tiledb_vfs_open(
     const char* uri,
     tiledb_vfs_mode_t mode,
     tiledb_vfs_fh_t** fh) noexcept {
-  return api_entry_context<tiledb::api::tiledb_vfs_open>(
+  return api_entry_with_context<tiledb::api::tiledb_vfs_open>(
       ctx, vfs, uri, mode, fh);
 }
 
