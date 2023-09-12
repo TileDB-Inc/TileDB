@@ -10,6 +10,7 @@ license=("MIT")
 depends=("${MINGW_PACKAGE_PREFIX}-lz4"
          "${MINGW_PACKAGE_PREFIX}-aws-sdk-cpp"
          "${MINGW_PACKAGE_PREFIX}-bzip2"
+         "${MINGW_PACKAGE_PREFIX}-file"
          "${MINGW_PACKAGE_PREFIX}-zlib"
          "${MINGW_PACKAGE_PREFIX}-zstd"
          )
@@ -43,6 +44,7 @@ build() {
     -DCOMPILER_SUPPORTS_AVX2=OFF \
     -DTILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK=ON \
     -DTILEDB_WERROR=OFF \
+    -DVCPKG_OVERLAY_PORTS=../.github/workflows/mingw-w64-tiledb/system-ports \
     -DVCPKG_TARGET_TRIPLET=${vcpkg_triplet} \
     ..
   make
