@@ -26,6 +26,9 @@ build() {
   if [ "$CARCH" == "i686" ]; then
   export CFLAGS="-mfpmath=sse -msse2"
   export CXXFLAGS="-mfpmath=sse -msse2"
+  vcpkg_triplet="x86-mingw-static"
+  else
+  vcpkg_triplet="x64-mingw-static"
   fi
 
 
@@ -40,6 +43,7 @@ build() {
     -DCOMPILER_SUPPORTS_AVX2=OFF \
     -DTILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK=ON \
     -DTILEDB_WERROR=OFF \
+    -DVCPKG_TARGET_TRIPLET=${vcpkg_triplet} \
     ..
   make
   make -C tiledb
