@@ -13,12 +13,7 @@
         },
         "spdlog",
         "zlib",
-        "zstd",
-        {
-          "name": "libxml2",
-          "features": ["lzma", "zlib"],
-          "default-features": false
-        }
+        "zstd"
     ],
     "features": {
         "abseil": {
@@ -36,6 +31,12 @@
                 {
                     "name": "azure-storage-blobs-cpp",
                     "version>=": "12.6.1"
+                },
+                {
+                    "name": "libxml2",
+                    "features": ["lzma", "zlib"],
+                    "default-features": false,
+                    "platform": "!windows"
                 }
             ]
         },
