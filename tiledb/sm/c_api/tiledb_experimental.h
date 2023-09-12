@@ -342,7 +342,12 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_enumeration(
 
 /**
  * Retrieves the schema of an array with all of its enumerations from disk,
- * creating an array schema struct.
+ * creating an array schema struct. Options are read from the provided
+ * tiledb_config_t* instance. If config is nullptr, the config from `ctx` is
+ * used instead.
+ *
+ * Currently supported options to be read from the config:
+ *  - sm.array_schema.load_with_enumerations - boolean
  *
  * **Example:**
  *
@@ -357,8 +362,9 @@ TILEDB_EXPORT int32_t tiledb_array_schema_get_enumeration(
  * @param array_schema The array schema to be retrieved, or `NULL` upon error.
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_array_schema_load_with_enumerations(
+TILEDB_EXPORT int32_t tiledb_array_schema_load_with_options(
     tiledb_ctx_t* ctx,
+    tiledb_ctx_t* config,
     const char* array_uri,
     tiledb_array_schema_t** array_schema) TILEDB_NOEXCEPT;
 
