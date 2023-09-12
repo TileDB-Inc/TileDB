@@ -216,7 +216,6 @@ capi_return_t tiledb_vfs_copy_dir(
 }
 
 capi_return_t tiledb_vfs_open(
-    tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* uri,
     tiledb_vfs_mode_t mode,
@@ -230,15 +229,9 @@ capi_return_t tiledb_vfs_open(
     throw CAPIStatusException(std::string("Invalid TileDB object: ") + "uri");
   }
   auto vfs_mode = static_cast<tiledb::sm::VFSMode>(mode);
-  *fh = tiledb_vfs_fh_t::make_handle(fh_uri, vfs->vfs(), vfs_mode);
 
-  // Open VFS file
-  auto st{(*fh)->open()};
-  if (!st.ok()) {
-    save_error(ctx, st);
-    tiledb_vfs_fh_t::break_handle(*fh);
-    return TILEDB_ERR;
-  }
+  // Throws if opening the uri is unsuccessful
+  *fh = tiledb_vfs_fh_t::make_handle(fh_uri, vfs->vfs(), vfs_mode);
 
   return TILEDB_OK;
 }
@@ -246,7 +239,11 @@ capi_return_t tiledb_vfs_open(
 capi_return_t tiledb_vfs_close(tiledb_vfs_fh_t* fh) {
   ensure_output_pointer_is_valid(fh);
   ensure_vfs_fh_is_valid(fh);
-  throw_if_not_ok(fh->close());
+
+  // There is no way ro re-open a tiledb_vfs_fh_t without recreating
+  // the handle, so there is no point to have a close API anymore,
+  // thus this is a noop, closing is handled by handle destructor,
+  // api should be deprecated in the future.
   return TILEDB_OK;
 }
 
@@ -308,7 +305,9 @@ void tiledb_vfs_fh_free(tiledb_vfs_fh_t** fh) {
 capi_return_t tiledb_vfs_fh_is_closed(tiledb_vfs_fh_t* fh, int32_t* is_closed) {
   ensure_vfs_fh_is_valid(fh);
   ensure_output_pointer_is_valid(is_closed);
-  *is_closed = !fh->is_open();
+  // This should eventually be deprecated as there
+  // is no way to have a file handle which isn't open.
+  *is_closed = false;
   return TILEDB_OK;
 }
 
@@ -322,7 +321,6 @@ capi_return_t tiledb_vfs_touch(tiledb_vfs_t* vfs, const char* uri) {
 
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_plain;
-using tiledb::api::api_entry_with_context;
 
 capi_return_t tiledb_vfs_mode_to_str(
     tiledb_vfs_mode_t vfs_mode, const char** str) noexcept {
@@ -478,7 +476,7 @@ capi_return_t tiledb_vfs_open(
     const char* uri,
     tiledb_vfs_mode_t mode,
     tiledb_vfs_fh_t** fh) noexcept {
-  return api_entry_with_context<tiledb::api::tiledb_vfs_open>(
+  return api_entry_context<tiledb::api::tiledb_vfs_open>(
       ctx, vfs, uri, mode, fh);
 }
 

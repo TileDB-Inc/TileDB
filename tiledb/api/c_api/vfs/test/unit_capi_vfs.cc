@@ -666,8 +666,8 @@ TEST_CASE(
 
   tiledb_error_t* error = nullptr;
 
-  capi_return_t rc =
-      tiledb_vfs_open(x.ctx, x.vfs, TEST_URI, TILEDB_VFS_READ, &vfs_fh);
+  capi_return_t rc = tiledb_vfs_open(
+      x.ctx, x.vfs, "doesnotexistfile", TILEDB_VFS_READ, &vfs_fh);
   REQUIRE(tiledb_status(rc) == TILEDB_ERR);
 
   rc = tiledb_ctx_get_last_error(x.ctx, &error);
