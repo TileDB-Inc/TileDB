@@ -389,6 +389,9 @@ class Config {
   /** Whether to verify SSL connections. */
   static const std::string SSL_VERIFY;
 
+  /** The root of the local filesystem cache. */
+  static const std::string VFS_CACHE_ROOT_DIR;
+
   /** The default minimum number of bytes in a parallel VFS operation. */
   static const std::string VFS_MIN_PARALLEL_SIZE;
 

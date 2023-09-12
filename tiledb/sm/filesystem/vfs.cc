@@ -1156,12 +1156,20 @@ Status VFS::read(
     void* const buffer,
     const uint64_t nbytes,
     bool use_read_ahead) {
-  stats_->add_counter("read_byte_num", nbytes);
+  URI read_uri;
+  auto cache_uri = cache_lookup(uri);
+  if (cache_uri.is_invalid()) {
+    read_uri = uri;
+    stats_->add_counter("read_byte_num", nbytes);
+  } else {
+    read_uri = cache_uri;
+    stats_->add_counter("cache_read_byte_num", nbytes);
+  }
 
   // Get config params
   uint64_t min_parallel_size = vfs_params_.min_parallel_size_;
   uint64_t max_ops = 0;
-  RETURN_NOT_OK(max_parallel_ops(uri, &max_ops));
+  RETURN_NOT_OK(max_parallel_ops(read_uri, &max_ops));
 
   // Ensure that each thread is responsible for at least min_parallel_size
   // bytes, and cap the number of parallel operations at the configured maximum
@@ -1170,7 +1178,7 @@ Status VFS::read(
       std::min(std::max(nbytes / min_parallel_size, uint64_t(1)), max_ops);
 
   if (num_ops == 1) {
-    return read_impl(uri, offset, buffer, nbytes, use_read_ahead);
+    return read_impl(read_uri, offset, buffer, nbytes, use_read_ahead);
   } else {
     // we don't want read-ahead when performing random access reads
     use_read_ahead = false;
@@ -1186,13 +1194,13 @@ Status VFS::read(
       auto task = cancelable_tasks_.execute(
           io_tp_,
           [this,
-           uri,
+           read_uri,
            thread_offset,
            thread_buffer,
            thread_nbytes,
            use_read_ahead]() {
             return read_impl(
-                uri,
+                read_uri,
                 thread_offset,
                 thread_buffer,
                 thread_nbytes,
@@ -1203,7 +1211,7 @@ Status VFS::read(
     Status st = io_tp_->wait_all(results);
     if (!st.ok()) {
       std::stringstream errmsg;
-      errmsg << "VFS parallel read error '" << uri.to_string() << "'; "
+      errmsg << "VFS parallel read error '" << read_uri.to_string() << "'; "
              << st.message();
       return LOG_STATUS(Status_VFSError(errmsg.str()));
     }
@@ -1358,6 +1366,35 @@ Status VFS::read_ahead_impl(
   RETURN_NOT_OK(read_ahead_cache_->insert(uri, offset, std::move(ra_buffer)));
 
   return Status::Ok();
+}
+
+URI VFS::cache_lookup(const URI& uri) {
+  // Cache isn't configured so bail.
+  if (vfs_params_.cache_root_dir_.empty()) {
+    return URI();
+  }
+
+  auto cache_uri = uri.to_disk_cache_uri(vfs_params_.cache_root_dir_);
+
+  // Cached files are indicated by a corresponding file of the same name
+  // with .cached appended. If this file doesn't exist, the cache entry is
+  // not valid even if the file is on disk (perhaps its currently being written
+  // to disk).
+  auto cache_marker = URI(cache_uri.to_string() + ".cached");
+  bool marker_found;
+  throw_if_not_ok(is_file(cache_marker, &marker_found));
+  if (!marker_found) {
+    return URI();
+  }
+
+  // Double check the path exists and someone hasn't mucked with the cache
+  bool cache_found;
+  throw_if_not_ok(is_file(cache_uri, &cache_found));
+  if (!cache_found) {
+    return URI();
+  }
+
+  return cache_uri;
 }
 
 bool VFS::supports_fs(Filesystem fs) const {

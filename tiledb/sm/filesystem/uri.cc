@@ -273,6 +273,58 @@ std::string URI::last_two_path_parts() const {
   return uri_.substr(uri_.rfind('/', uri_.rfind('/') - 1) + 1);
 }
 
+URI URI::to_disk_cache_uri(const std::string& cache_root_dir) const {
+  if (is_tiledb()) {
+    throw std::invalid_argument(
+        "Invalid attempt to use a tiledb:// URI with caching.");
+  }
+
+  if (cache_root_dir.empty()) {
+    return URI();
+  }
+
+  if (is_memfs()) {
+    return URI();
+  }
+
+  // Start with an absolute path to the root directory.
+  URI cache_uri(cache_root_dir, true);
+
+  // The current parse position in uri_
+  std::string::size_type curr_pos = 0;
+
+  // Convert the schema to a path component.
+  auto colon = uri_.find(':');
+  if (colon == std::string::npos) {
+    return URI();
+  }
+
+  cache_uri = cache_uri.join_path(uri_.substr(curr_pos, colon));
+  curr_pos = colon + 1;
+
+  // Copy path components until uri_str is empty.
+  while (curr_pos < std::string::npos) {
+    auto slash = uri_.find("/", curr_pos);
+    // If no slash is found, we're on the last path component.
+    if (slash == std::string::npos) {
+      if (uri_.find("?", curr_pos) != std::string::npos) {
+        // We don't cache URIs with query strings, so fail here.
+        return URI();
+      }
+      cache_uri = cache_uri.join_path(uri_.substr(curr_pos));
+      curr_pos = std::string::npos;
+    } else if (slash == curr_pos) {
+      // Empty path component, skipping
+      curr_pos = slash + 1;
+    } else {
+      cache_uri = cache_uri.join_path(uri_.substr(curr_pos, slash - curr_pos));
+      curr_pos = slash + 1;
+    }
+  }
+
+  return cache_uri;
+}
+
 URI URI::parent_path() const {
   auto pos = this->remove_trailing_slash().to_string().find_last_of('/');
   return URI(uri_.substr(0, pos + 1));

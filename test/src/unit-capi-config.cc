@@ -678,6 +678,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["ssl.ca_path"] = "";
   all_param_values["ssl.verify"] = "true";
 
+  all_param_values["vfs.cache.root_dir"] = "";
   all_param_values["vfs.max_batch_size"] = "104857600";
   all_param_values["vfs.min_batch_gap"] = "512000";
   all_param_values["vfs.min_batch_size"] = "20971520";
@@ -746,6 +747,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.s3.config_source"] = "auto";
 
   std::map<std::string, std::string> vfs_param_values;
+  vfs_param_values["cache.root_dir"] = "";
   vfs_param_values["max_batch_size"] = "104857600";
   vfs_param_values["min_batch_gap"] = "512000";
   vfs_param_values["min_batch_size"] = "20971520";

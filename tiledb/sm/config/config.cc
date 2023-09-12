@@ -162,6 +162,7 @@ const std::string Config::SM_ENUMERATIONS_MAX_TOTAL_SIZE = "52428800";  // 50MiB
 const std::string Config::SSL_CA_FILE = "";
 const std::string Config::SSL_CA_PATH = "";
 const std::string Config::SSL_VERIFY = "true";
+const std::string Config::VFS_CACHE_ROOT_DIR = "";
 const std::string Config::VFS_MIN_PARALLEL_SIZE = "10485760";
 const std::string Config::VFS_MAX_BATCH_SIZE = "104857600";
 const std::string Config::VFS_MIN_BATCH_GAP = "512000";
@@ -377,6 +378,7 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair("ssl.ca_file", Config::SSL_CA_FILE),
     std::make_pair("ssl.ca_path", Config::SSL_CA_PATH),
     std::make_pair("ssl.verify", Config::SSL_VERIFY),
+    std::make_pair("vfs.cache.root_dir", Config::VFS_CACHE_ROOT_DIR),
     std::make_pair("vfs.min_parallel_size", Config::VFS_MIN_PARALLEL_SIZE),
     std::make_pair("vfs.max_batch_size", Config::VFS_MAX_BATCH_SIZE),
     std::make_pair("vfs.min_batch_gap", Config::VFS_MIN_BATCH_GAP),

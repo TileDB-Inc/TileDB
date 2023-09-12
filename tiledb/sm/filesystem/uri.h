@@ -266,6 +266,15 @@ class URI {
   std::string last_two_path_parts() const;
 
   /**
+   * Returns a URI representing a local disk path if possible.
+   *
+   * @param cache_root_dir The root of the cache directory.
+   * @return URI The cache URI or an invalid URI if cache_root_dir is empty or
+   *         if this URI is not cacheable.
+   */
+  URI to_disk_cache_uri(const std::string& cache_root_dir) const;
+
+  /**
    * Returns the URI path for the current platform, stripping the resource. For
    * example, if "file:///my/path/" is the URI, this function will return
    * "/my/path/" on Mac and Linux. If "file:///C:/my/path" is the URI, this

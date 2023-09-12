@@ -87,13 +87,17 @@ struct VFSParameters {
   VFSParameters() = delete;
 
   VFSParameters(const Config& config)
-      : min_parallel_size_(
+      : cache_root_dir_(config.get<std::string>("vfs.cache.root_dir").value())
+      , min_parallel_size_(
             config.get<uint64_t>("vfs.min_parallel_size").value())
       , read_ahead_cache_size_(
             config.get<uint64_t>("vfs.read_ahead_cache_size").value())
       , read_ahead_size_(config.get<uint64_t>("vfs.read_ahead_size").value()){};
 
   ~VFSParameters() = default;
+
+  /** The cache root directory. */
+  std::string cache_root_dir_;
 
   /** The minimum number of bytes in a parallel operation. */
   uint64_t min_parallel_size_;
@@ -769,6 +773,14 @@ class VFS {
       void* const buffer,
       const uint64_t nbytes,
       const bool use_read_ahead);
+
+  /**
+   * Check if the configured cache has a copy of the given URI.
+   *
+   * @param uri The URI to lookup in cache.
+   * @return URI The resolved URI, an invalid (empty string) URI if not found.
+   */
+  URI cache_lookup(const URI& uri);
 
   /**
    * Retrieves the backend-specific max number of parallel operations for VFS
