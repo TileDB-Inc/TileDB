@@ -39,7 +39,7 @@ option(_TILEDB_CMAKE_INIT_GIT_SUBMODULES "Check submodules during build" ON)
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 
 if (NOT TILEDB_VCPKG)
-  message(WARN_DEPRECATED "Disabling TILEDB_VCPKG is deprecated and will be removed in a future version.")
+  message(DEPRECATION "Disabling TILEDB_VCPKG is deprecated and will be removed in a future version.")
 endif()
 
 # enable assertions by default for debug builds

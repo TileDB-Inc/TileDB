@@ -121,7 +121,8 @@ while test $# != 0; do
     case "$1" in
     --prefix=*) dir=`arg "$1"`
                 prefix_dirs="$dir";;
-    --enable-vcpkg) tiledb_vcpkg="ON";;
+    --enable-vcpkg) echo "Argument '--enable-vcpkg' is obsolete and will be removed in a future version. Vcpkg is now enabled by default."
+                    tiledb_vcpkg="ON";;
     --dependency=*) dir=`arg "$1"`
                 dependency_dir="$dir";;
     --force-build-all-deps) tiledb_force_all_deps="ON";;
@@ -166,7 +167,8 @@ done
 IFS=',' read -ra enables <<< "$enable_multiple"
 for en in "${enables[@]}"; do
   case "$en" in
-    vcpkg) tiledb_vcpkg="ON";;
+    vcpkg) echo "Argument '--enable-vcpkg' is obsolete and will be removed in a future version. Vcpkg is now enabled by default."
+           tiledb_vcpkg="ON";;
     assertions) tiledb_assertions="ON";;
     debug) build_type="Debug";;
     release-symbols) build_type="RelWithDebInfo";;
