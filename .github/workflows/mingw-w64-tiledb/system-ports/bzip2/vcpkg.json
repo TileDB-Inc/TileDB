@@ -1,0 +1,9 @@
+{
+  "name": "bzip2",
+  "version-string": "system",
+  "features": {
+    "tool": {
+      "description": "Builds bzip2 executable"
+    }
+  }
+}
