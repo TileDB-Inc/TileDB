@@ -28,7 +28,7 @@ jobs:
           makepkg-mingw --noconfirm --syncdeps
         env:
           TILEDB_HOME: ${{ github.workspace }}
-          MINGW_INSTALLS: ${{ matrix.msystem }}
+          MINGW_ARCH: ${{ matrix.msystem }}
         shell: c:\rtools40\usr\bin\bash.exe --login {0}
       - name: "Upload binaries"
         uses: actions/upload-artifact@v3
