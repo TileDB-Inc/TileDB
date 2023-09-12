@@ -290,7 +290,7 @@ void VFSFx::check_vfs(const std::string& path) {
   rc = tiledb_vfs_is_file(ctx_, vfs_, foo_file.c_str(), &is_file);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(!is_file);
-  tiledb_vfs_fh_t* fh;
+  tiledb_vfs_fh_t* fh = nullptr;
   rc = tiledb_vfs_open(ctx_, vfs_, foo_file.c_str(), TILEDB_VFS_READ, &fh);
   REQUIRE(rc == TILEDB_ERR);
   REQUIRE(fh == nullptr);
