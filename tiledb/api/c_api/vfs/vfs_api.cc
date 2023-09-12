@@ -239,11 +239,7 @@ capi_return_t tiledb_vfs_open(
 capi_return_t tiledb_vfs_close(tiledb_vfs_fh_t* fh) {
   ensure_output_pointer_is_valid(fh);
   ensure_vfs_fh_is_valid(fh);
-
-  // There is no way ro re-open a tiledb_vfs_fh_t without recreating
-  // the handle, so there is no point to have a close API anymore,
-  // thus this is a noop, closing is handled by handle destructor,
-  // api should be deprecated in the future.
+  throw_if_not_ok(fh->close());
   return TILEDB_OK;
 }
 
@@ -305,9 +301,7 @@ void tiledb_vfs_fh_free(tiledb_vfs_fh_t** fh) {
 capi_return_t tiledb_vfs_fh_is_closed(tiledb_vfs_fh_t* fh, int32_t* is_closed) {
   ensure_vfs_fh_is_valid(fh);
   ensure_output_pointer_is_valid(is_closed);
-  // This should eventually be deprecated as there
-  // is no way to have a file handle which isn't open.
-  *is_closed = false;
+  *is_closed = !fh->is_open();
   return TILEDB_OK;
 }
 

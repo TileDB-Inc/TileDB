@@ -167,8 +167,13 @@ struct tiledb_vfs_fh_handle_t
       : vfs_fh_{uri, vfs, mode} {
     throw_if_not_ok(vfs_fh_.open());
   }
-  ~tiledb_vfs_fh_handle_t() {
-    throw_if_not_ok(vfs_fh_.close());
+
+  Status open() {
+    return vfs_fh_.open();
+  }
+
+  Status close() {
+    return vfs_fh_.close();
   }
 
   Status read(uint64_t offset, void* buffer, uint64_t nbytes) {
@@ -181,6 +186,10 @@ struct tiledb_vfs_fh_handle_t
 
   Status sync() {
     return vfs_fh_.sync();
+  }
+
+  bool is_open() const {
+    return vfs_fh_.is_open();
   }
 };
 

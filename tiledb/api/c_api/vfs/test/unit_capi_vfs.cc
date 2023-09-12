@@ -529,10 +529,6 @@ TEST_CASE("C API: tiledb_vfs_open argument validation", "[capi][vfs]") {
     CHECK(tiledb_status(rc) == TILEDB_OK);
     CHECK(vfs_fh != nullptr);
     tiledb_vfs_fh_free(&vfs_fh);
-
-    // An empty file is created by the destruction of the handle during closing
-    // of the file handle, it needs to be removed here
-    tiledb_vfs_remove_file(x.ctx, x.vfs, TEST_URI);
   }
   SECTION("null context") {
     auto rc{
