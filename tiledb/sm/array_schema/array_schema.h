@@ -249,10 +249,14 @@ class ArraySchema {
    * Return the filter pipeline for the given attribute/dimension (can be
    * TILEDB_COORDS).
    */
-  const FilterPipeline& filters(const std::string& name) const;
+  const FilterPipeline filters(const std::string& name) const;
 
-  /** Return the pipeline used for coordinates. */
-  const FilterPipeline& coords_filters() const;
+  /**
+   * Return the pipeline used for coordinates.
+   *
+   * @param on_disk_type On disk type for the data.
+   */
+  const FilterPipeline coords_filters(Datatype on_disk_type) const;
 
   /** True if the array is dense. */
   bool dense() const;

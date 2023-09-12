@@ -452,8 +452,8 @@ void ArraySchema::check_without_config() const {
         "cannot have their capacity equal to zero."};
   }
 
-  throw_if_not_ok(check_double_delta_compressor(coords_filters()));
-  throw_if_not_ok(check_string_compressor(coords_filters()));
+  throw_if_not_ok(check_double_delta_compressor(coords_filters(Datatype::ANY)));
+  throw_if_not_ok(check_string_compressor(coords_filters(Datatype::ANY)));
   check_attribute_dimension_label_names();
   check_webp_filter();
 
@@ -587,9 +587,9 @@ void ArraySchema::check_enumerations(const Config& cfg) const {
   }
 }
 
-const FilterPipeline& ArraySchema::filters(const std::string& name) const {
+const FilterPipeline ArraySchema::filters(const std::string& name) const {
   if (is_special_attribute(name)) {
-    return coords_filters();
+    return coords_filters(domain_->dimension_ptr(0)->type());
   }
 
   // Attribute
@@ -602,11 +602,11 @@ const FilterPipeline& ArraySchema::filters(const std::string& name) const {
   auto dim_it = dim_map_.find(name);
   assert(dim_it != dim_map_.end());
   const auto& ret = dim_it->second->filters();
-  return !ret.empty() ? ret : coords_filters();
+  return !ret.empty() ? ret : coords_filters(dim_it->second->type());
 }
 
-const FilterPipeline& ArraySchema::coords_filters() const {
-  return coords_filters_;
+const FilterPipeline ArraySchema::coords_filters(Datatype on_disk_type) const {
+  return FilterPipeline(coords_filters_, on_disk_type);
 }
 
 bool ArraySchema::dense() const {
@@ -1343,8 +1343,8 @@ ArraySchema ArraySchema::deserialize(
     auto type{domain->dimension_ptr(0)->type()};
     if (datatype_is_real(type)) {
       throw ArraySchemaException(
-          "Array schema check failed; Dense arrays cannot have floating point "
-          "domains");
+          "Array schema check failed; Dense arrays cannot have floating "
+          "point domains");
     }
     if (attributes.size() == 0) {
       throw ArraySchemaException(

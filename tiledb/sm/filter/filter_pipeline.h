@@ -81,6 +81,9 @@ class FilterPipeline {
   /** Copy constructor. */
   FilterPipeline(const FilterPipeline& other);
 
+  /** Copy constructor. */
+  FilterPipeline(const FilterPipeline& other, const Datatype on_disk_type);
+
   /** Move constructor. */
   FilterPipeline(FilterPipeline&& other);
 
@@ -93,9 +96,17 @@ class FilterPipeline {
   /**
    * Adds a copy of the given filter to the end of this pipeline.
    *
-   * @param filter Filter to add
+   * @param filter Filter to add.
    */
   void add_filter(const Filter& filter);
+
+  /**
+   * Adds a copy of the given filter to the end of this pipeline with the given
+   * internal type.
+   *
+   * @param filter Filter to add.
+   */
+  void add_filter(const Filter& filter, const Datatype new_type);
 
   /** Clears the pipeline (removes all filters. */
   void clear();

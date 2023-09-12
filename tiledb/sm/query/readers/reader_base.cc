@@ -717,7 +717,7 @@ ReaderBase::load_tile_chunk_data(
   uint64_t unfiltered_tile_size = 0, unfiltered_tile_var_size = 0,
            unfiltered_tile_validity_size = 0;
 
-  const FilterPipeline& filters = array_schema_.filters(name);
+  const FilterPipeline filters = array_schema_.filters(name);
   if (!var_size ||
       !filters.skip_offsets_filtering(t_var->type(), array_schema_.version())) {
     unfiltered_tile_size = t->load_chunk_data(tile_chunk_data);

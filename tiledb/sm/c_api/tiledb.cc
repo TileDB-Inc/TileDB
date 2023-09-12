@@ -670,8 +670,8 @@ int32_t tiledb_array_schema_get_coords_filter_list(
     return TILEDB_ERR;
   api::ensure_output_pointer_is_valid(filter_list);
   // Copy-construct a separate FilterPipeline object
-  *filter_list = tiledb_filter_list_t::make_handle(
-      sm::FilterPipeline{array_schema->array_schema_->coords_filters()});
+  *filter_list = tiledb_filter_list_t::make_handle(sm::FilterPipeline{
+      array_schema->array_schema_->coords_filters(sm::Datatype::ANY)});
   return TILEDB_OK;
 }
 
