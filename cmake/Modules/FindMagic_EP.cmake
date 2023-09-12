@@ -45,7 +45,7 @@ if(TILEDB_VCPKG)
     find_path(libmagic_INCLUDE_DIR NAMES magic.h)
     find_library(libmagic_LIBRARIES magic)
     find_file(libmagic_DICTIONARY magic.mgc
-      PATH_SUFFIXES share/libmagic/misc
+      PATH_SUFFIXES share/libmagic/misc share/misc
     )
 
     include(FindPackageHandleStandardArgs)
