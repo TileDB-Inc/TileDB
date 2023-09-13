@@ -110,8 +110,6 @@ VFS::VFS(
 
 #ifdef _WIN32
   throw_if_not_ok(win_.init(config_, io_tp_));
-#else
-  throw_if_not_ok(posix_.init(config_, io_tp_));
 #endif
 
   supported_fs_.insert(Filesystem::MEMFS);
@@ -167,7 +165,7 @@ Status VFS::create_dir(const URI& uri) const {
 #ifdef _WIN32
     return win_.create_dir(uri.to_path());
 #else
-    return posix_.create_dir(uri.to_path());
+    return fs_->create_dir(uri);
 #endif
   }
   if (uri.is_hdfs()) {
@@ -245,7 +243,7 @@ Status VFS::touch(const URI& uri) const {
 #ifdef _WIN32
     return win_.touch(uri.to_path());
 #else
-    return posix_.touch(uri.to_path());
+    return fs_->touch(uri);
 #endif
   }
   if (uri.is_hdfs()) {
@@ -417,7 +415,7 @@ Status VFS::remove_dir(const URI& uri) const {
 #ifdef _WIN32
     return win_.remove_dir(uri.to_path());
 #else
-    return posix_.remove_dir(uri.to_path());
+    return fs_->remove_dir(uri);
 #endif
   } else if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
@@ -452,8 +450,8 @@ Status VFS::remove_dir(const URI& uri) const {
   }
 }
 
-void VFS::remove_dirs(
-    ThreadPool* compute_tp, const std::vector<URI>& uris) const {
+void VFS::remove_dirs(ThreadPool* compute_tp, const std::vector<URI>& uris) {
+  create_fs(uris.front());
   throw_if_not_ok(parallel_for(compute_tp, 0, uris.size(), [&](size_t i) {
     bool is_dir;
     RETURN_NOT_OK(this->is_dir(uris[i], &is_dir));
@@ -469,7 +467,7 @@ Status VFS::remove_file(const URI& uri) const {
 #ifdef _WIN32
     return win_.remove_file(uri.to_path());
 #else
-    return posix_.remove_file(uri.to_path());
+    return fs_->remove_file(uri);
 #endif
   }
   if (uri.is_hdfs()) {
@@ -560,7 +558,7 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
 #ifdef _WIN32
     return win_.file_size(uri.to_path(), size);
 #else
-    return posix_.file_size(uri.to_path(), size);
+    return fs_->file_size(uri, size);
 #endif
   }
   if (uri.is_hdfs()) {
@@ -601,11 +599,7 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
 
 Status VFS::is_dir(const URI& uri, bool* is_dir) const {
   if (uri.is_file()) {
-#ifdef _WIN32
-    *is_dir = win_.is_dir(uri.to_path());
-#else
-    *is_dir = posix_.is_dir(uri.to_path());
-#endif
+    *is_dir = fs_->is_dir(uri);
     return Status::Ok();
   }
   if (uri.is_hdfs()) {
@@ -655,7 +649,7 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
 #ifdef _WIN32
     *is_file = win_.is_file(uri.to_path());
 #else
-    *is_file = posix_.is_file(uri.to_path());
+    *is_file = fs_->is_file(uri);
 #endif
     return Status::Ok();
   }
@@ -754,7 +748,7 @@ tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
   // return an empty `uris` vector.
   if (!(parent.is_s3() || parent.is_gcs() || parent.is_azure())) {
     bool flag = false;
-    RETURN_NOT_OK_TUPLE(is_dir(parent, &flag), nullopt);
+    RETURN_NOT_OK_TUPLE(this->is_dir(parent, &flag), nullopt);
 
     if (!flag) {
       return {Status::Ok(), std::vector<directory_entry>()};
@@ -768,7 +762,7 @@ tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
     std::tie(st, entries) = win_.ls_with_sizes(parent);
 #else
     Status st;
-    std::tie(st, entries) = posix_.ls_with_sizes(parent);
+    std::tie(st, entries) = fs_->ls_with_sizes(parent);
 #endif
     RETURN_NOT_OK_TUPLE(st, nullopt);
   } else if (parent.is_s3()) {
@@ -828,7 +822,7 @@ tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
   return {Status::Ok(), entries};
 }
 
-Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
+Status VFS::move_file(const URI& old_uri, const URI& new_uri) const {
   // If new_uri exists, delete it or raise an error based on `force`
   bool is_file;
   RETURN_NOT_OK(this->is_file(new_uri, &is_file));
@@ -841,7 +835,7 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
 #ifdef _WIN32
       return win_.move_path(old_uri.to_path(), new_uri.to_path());
 #else
-      return posix_.move_path(old_uri.to_path(), new_uri.to_path());
+      return fs_->move_file(old_uri, new_uri);
 #endif
     }
     return LOG_STATUS(Status_VFSError(
@@ -914,14 +908,14 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
       new_uri.to_string()));
 }
 
-Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
+Status VFS::move_dir(const URI& old_uri, const URI& new_uri) const {
   // File
   if (old_uri.is_file()) {
     if (new_uri.is_file()) {
 #ifdef _WIN32
       return win_.move_path(old_uri.to_path(), new_uri.to_path());
 #else
-      return posix_.move_path(old_uri.to_path(), new_uri.to_path());
+      return fs_->move_file(old_uri, new_uri);
 #endif
     }
     return LOG_STATUS(Status_VFSError(
@@ -994,7 +988,7 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
       new_uri.to_string()));
 }
 
-Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
+Status VFS::copy_file(const URI& old_uri, const URI& new_uri) const {
   // If new_uri exists, delete it or raise an error based on `force`
   bool is_file;
   RETURN_NOT_OK(this->is_file(new_uri, &is_file));
@@ -1008,7 +1002,7 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
       return LOG_STATUS(Status_IOError(
           std::string("Copying files on Windows is not yet supported.")));
 #else
-      return posix_.copy_file(old_uri.to_path(), new_uri.to_path());
+      return fs_->copy_file(old_uri, new_uri);
 #endif
     }
     return LOG_STATUS(Status_VFSError(
@@ -1075,7 +1069,7 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
       new_uri.to_string()));
 }
 
-Status VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
+Status VFS::copy_dir(const URI& old_uri, const URI& new_uri) const {
   // File
   if (old_uri.is_file()) {
     if (new_uri.is_file()) {
@@ -1083,7 +1077,7 @@ Status VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
       return LOG_STATUS(Status_IOError(
           std::string("Copying directories on Windows is not yet supported.")));
 #else
-      return posix_.copy_dir(old_uri.to_path(), new_uri.to_path());
+      return fs_->copy_dir(old_uri, new_uri);
 #endif
     }
     return LOG_STATUS(Status_VFSError(
@@ -1156,6 +1150,7 @@ Status VFS::read(
     void* const buffer,
     const uint64_t nbytes,
     bool use_read_ahead) {
+  create_fs(uri);
   stats_->add_counter("read_byte_num", nbytes);
 
   // Get config params
@@ -1217,6 +1212,7 @@ Status VFS::read_impl(
     void* const buffer,
     const uint64_t nbytes,
     const bool use_read_ahead) {
+  // fs_ is create in VFS::read
   stats_->add_counter("read_ops_num", 1);
 
   // We only check to use the read-ahead cache for cloud-storage
@@ -1228,7 +1224,7 @@ Status VFS::read_impl(
 #ifdef _WIN32
     return win_.read(uri.to_path(), offset, buffer, nbytes);
 #else
-    return posix_.read(uri.to_path(), offset, buffer, nbytes);
+    return fs_->read(uri, offset, buffer, nbytes, false);
 #endif
   }
   if (uri.is_hdfs()) {
@@ -1379,11 +1375,12 @@ bool VFS::supports_uri_scheme(const URI& uri) const {
 }
 
 Status VFS::sync(const URI& uri) {
+  create_fs(uri);
   if (uri.is_file()) {
 #ifdef _WIN32
     return win_.sync(uri.to_path());
 #else
-    return posix_.sync(uri.to_path());
+    return fs_->sync(uri);
 #endif
   }
   if (uri.is_hdfs()) {
@@ -1475,11 +1472,12 @@ Status VFS::open_file(const URI& uri, VFSMode mode) {
 }
 
 Status VFS::close_file(const URI& uri) {
+  create_fs(uri);
   if (uri.is_file()) {
 #ifdef _WIN32
     return win_.sync(uri.to_path());
 #else
-    return posix_.sync(uri.to_path());
+    return fs_->sync(uri);
 #endif
   }
   if (uri.is_hdfs()) {
@@ -1536,6 +1534,7 @@ Status VFS::write(
     const void* buffer,
     uint64_t buffer_size,
     bool remote_global_order_write) {
+  create_fs(uri);
   stats_->add_counter("write_byte_num", buffer_size);
   stats_->add_counter("write_ops_num", 1);
 
@@ -1545,7 +1544,7 @@ Status VFS::write(
 #ifdef _WIN32
     return win_.write(uri.to_path(), buffer, buffer_size);
 #else
-    return posix_.write(uri.to_path(), buffer, buffer_size);
+    return fs_->write(uri, buffer, buffer_size);
 #endif
   }
   if (uri.is_hdfs()) {

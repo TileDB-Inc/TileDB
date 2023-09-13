@@ -69,80 +69,98 @@ struct tiledb_vfs_handle_t
     return vfs_.config();
   }
 
-  Status create_bucket(const tiledb::sm::URI& uri) const {
+  Status create_bucket(const tiledb::sm::URI& uri) {
+    vfs_.create_fs(uri);
     return vfs_.create_bucket(uri);
   }
 
-  Status remove_bucket(const tiledb::sm::URI& uri) const {
+  Status remove_bucket(const tiledb::sm::URI& uri) {
+    vfs_.create_fs(uri);
     return vfs_.remove_bucket(uri);
   }
 
-  Status empty_bucket(const tiledb::sm::URI& uri) const {
+  Status empty_bucket(const tiledb::sm::URI& uri) {
+    vfs_.create_fs(uri);
     return vfs_.empty_bucket(uri);
   }
 
-  Status is_empty_bucket(const tiledb::sm::URI& uri, bool* is_empty) const {
+  Status is_empty_bucket(const tiledb::sm::URI& uri, bool* is_empty) {
+    vfs_.create_fs(uri);
     return vfs_.is_empty_bucket(uri, is_empty);
   }
 
-  Status is_bucket(const tiledb::sm::URI& uri, bool* is_bucket) const {
+  Status is_bucket(const tiledb::sm::URI& uri, bool* is_bucket) {
+    vfs_.create_fs(uri);
     return vfs_.is_bucket(uri, is_bucket);
   }
 
-  Status create_dir(const tiledb::sm::URI& uri) const {
+  Status create_dir(const tiledb::sm::URI& uri) {
+    vfs_.create_fs(uri);
     return vfs_.create_dir(uri);
   }
 
-  Status is_dir(const tiledb::sm::URI& uri, bool* is_dir) const {
+  Status is_dir(const tiledb::sm::URI& uri, bool* is_dir) {
+    vfs_.create_fs(uri);
     return vfs_.is_dir(uri, is_dir);
   }
 
-  Status remove_dir(const tiledb::sm::URI& uri) const {
+  Status remove_dir(const tiledb::sm::URI& uri) {
+    vfs_.create_fs(uri);
     return vfs_.remove_dir(uri);
   }
 
-  Status is_file(const tiledb::sm::URI& uri, bool* is_file) const {
+  Status is_file(const tiledb::sm::URI& uri, bool* is_file) {
+    vfs_.create_fs(uri);
     return vfs_.is_file(uri, is_file);
   }
 
-  Status remove_file(const tiledb::sm::URI& uri) const {
+  Status remove_file(const tiledb::sm::URI& uri) {
+    vfs_.create_fs(uri);
     return vfs_.remove_file(uri);
   }
 
-  Status dir_size(const tiledb::sm::URI& dir_name, uint64_t* dir_size) const {
+  Status dir_size(const tiledb::sm::URI& dir_name, uint64_t* dir_size) {
+    vfs_.create_fs(dir_name);
     return vfs_.dir_size(dir_name, dir_size);
   }
 
-  Status file_size(const tiledb::sm::URI& uri, uint64_t* size) const {
+  Status file_size(const tiledb::sm::URI& uri, uint64_t* size) {
+    vfs_.create_fs(uri);
     return vfs_.file_size(uri, size);
   }
 
   Status move_file(
       const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) {
+    vfs_.create_fs(old_uri);
     return vfs_.move_file(old_uri, new_uri);
   }
 
   Status move_dir(
       const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) {
+    vfs_.create_fs(old_uri);
     return vfs_.move_dir(old_uri, new_uri);
   }
 
   Status copy_file(
       const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) {
+    vfs_.create_fs(old_uri);
     return vfs_.copy_file(old_uri, new_uri);
   }
 
   Status copy_dir(
       const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) {
+    vfs_.create_fs(old_uri);
     return vfs_.copy_dir(old_uri, new_uri);
   }
 
   Status ls(
-      const tiledb::sm::URI& parent, std::vector<tiledb::sm::URI>* uris) const {
+      const tiledb::sm::URI& parent, std::vector<tiledb::sm::URI>* uris) {
+    vfs_.create_fs(parent);
     return vfs_.ls(parent, uris);
   }
 
-  Status touch(const tiledb::sm::URI& uri) const {
+  Status touch(const tiledb::sm::URI& uri) {
+    vfs_.create_fs(uri);
     return vfs_.touch(uri);
   }
 };

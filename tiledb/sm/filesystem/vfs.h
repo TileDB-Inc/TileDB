@@ -39,10 +39,12 @@
 #include <string>
 #include <vector>
 
+#include "filesystem_base.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
+#include "tiledb/platform/platform.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/cache/lru_cache.h"
 #include "tiledb/sm/config/config.h"
@@ -264,7 +266,7 @@ class VFS {
    * @param compute_tp The compute-bound ThreadPool.
    * @param uris The URIs of the directories.
    */
-  void remove_dirs(ThreadPool* compute_tp, const std::vector<URI>& uris) const;
+  void remove_dirs(ThreadPool* compute_tp, const std::vector<URI>& uris);
 
   /**
    * Deletes a file.
@@ -364,7 +366,7 @@ class VFS {
    * @param new_uri The new URI.
    * @return Status
    */
-  Status move_file(const URI& old_uri, const URI& new_uri);
+  Status move_file(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Renames a directory.
@@ -373,7 +375,7 @@ class VFS {
    * @param new_uri The new URI.
    * @return Status
    */
-  Status move_dir(const URI& old_uri, const URI& new_uri);
+  Status move_dir(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Copies a file.
@@ -382,7 +384,7 @@ class VFS {
    * @param new_uri The new URI.
    * @return Status
    */
-  Status copy_file(const URI& old_uri, const URI& new_uri);
+  Status copy_file(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Copies directory.
@@ -391,7 +393,7 @@ class VFS {
    * @param new_uri The new URI.
    * @return Status
    */
-  Status copy_dir(const URI& old_uri, const URI& new_uri);
+  Status copy_dir(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Reads from a file.
@@ -510,6 +512,21 @@ class VFS {
 
   inline stats::Stats* stats() const {
     return stats_;
+  }
+
+  void create_fs(const URI& uri) {
+    if (uri.is_file()) {
+      if constexpr (tiledb::platform::is_os_windows) {
+        //        fs_ = tdb_unique_ptr<FilesystemBase>(tdb_new(W, config_));
+      } else {
+        if (fs_ != nullptr && fs_->fs_type_ == FilesystemType::POSIX) {
+          return;
+        }
+        fs_ = tdb_unique_ptr<FilesystemBase>(tdb_new(Posix, config_));
+      }
+    } else {
+      throw StatusException(Status_VFSError("Failed to create_fs"));
+    }
   }
 
  private:
@@ -688,13 +705,13 @@ class VFS {
 
 #ifdef _WIN32
   Win win_;
-#else
-  Posix posix_;
 #endif
 
 #ifdef HAVE_HDFS
   tdb_unique_ptr<hdfs::HDFS> hdfs_;
 #endif
+
+  tdb_unique_ptr<FilesystemBase> fs_;
 
   /** The class stats. */
   stats::Stats* stats_;
