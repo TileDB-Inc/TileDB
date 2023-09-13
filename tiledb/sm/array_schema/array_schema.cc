@@ -1282,7 +1282,7 @@ ArraySchema ArraySchema::deserialize(
   // Load filters
   // Note: Security validation delegated to invoked API
   auto coords_filters{
-      FilterPipeline::deserialize(deserializer, version, Datatype::ANY)};
+      FilterPipeline::deserialize(deserializer, version, Datatype::UINT64)};
   auto cell_var_filters{
       FilterPipeline::deserialize(deserializer, version, Datatype::UINT64)};
   FilterPipeline cell_validity_filters;
@@ -1379,7 +1379,9 @@ ArraySchema ArraySchema::deserialize(
       enumeration_path_map,
       cell_var_filters,
       cell_validity_filters,
-      FilterPipeline(coords_filters, domain->dimension_ptr(0)->type()));
+      FilterPipeline(
+          coords_filters,
+          version < 5 ? domain->dimension_ptr(0)->type() : Datatype::UINT64));
 }
 
 Status ArraySchema::set_allows_dups(bool allows_dups) {
