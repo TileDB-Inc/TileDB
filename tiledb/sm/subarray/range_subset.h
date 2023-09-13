@@ -191,15 +191,14 @@ struct MergeStrategy<std::string, std::string> {
 
     // Merge
     for (auto tail = head + 1; tail != ranges.end(); tail++) {
-      const bool can_merge =
-          *tail->start_str().data() <= *head->end_str().data();
+      const bool can_merge = tail->start_str() <= head->end_str();
 
       if (can_merge) {
-        head->set_range_var(
-            head->start_str().data(),
-            head->start_size(),
-            tail->end_str().data(),
-            tail->end_str().size());
+        auto start_str = head->start_str();
+        std::string start{start_str.data(), start_str.size()};
+        auto end_str = tail->end_str();
+        std::string end{end_str.data(), end_str.size()};
+        head->set_range_var(start.data(), start.size(), end.data(), end.size());
         merged_cells++;
       } else {
         head++;
