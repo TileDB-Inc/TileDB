@@ -32,6 +32,8 @@
 
 ## Defects removed
 
+* Save error on the context before returning error code in `tiledb_vfs_open` [#4347](https://github.com/TileDB-Inc/TileDB/pull/4347)
+* Filter pipeline: fix coord filter type. [#4351](https://github.com/TileDB-Inc/TileDB/pull/4351)
 * Dense reader: fix nullable string values when reading with QueryCondition. [#4174](https://github.com/TileDB-Inc/TileDB/pull/4174)
 * Fix segmentation fault in delta compressor test. [#4143](https://github.com/TileDB-Inc/TileDB/pull/4143)
 * Fix VFS `is_empty_bucket` in C++ API. [#4154](https://github.com/TileDB-Inc/TileDB/pull/4154)
@@ -94,6 +96,7 @@
 * Fix azure static library linking order for superbuild [#4171](https://github.com/TileDB-Inc/TileDB/pull/4171)
 * Fix vcpkg dependencies building only in Release mode. [#4159](https://github.com/TileDB-Inc/TileDB/pull/4159)
 * Fix compile error on macos 13.4.1 with c++20 enabled. [#4222](https://github.com/TileDB-Inc/TileDB/pull/4222)
+* Fix compilation with GCC 13 [#4331](https://github.com/TileDB-Inc/TileDB/pull/4331)
 
 ## Test Changes
 
