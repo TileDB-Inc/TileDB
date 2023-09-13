@@ -39,11 +39,19 @@
 #include <string>
 #include <vector>
 
-#include "filesystem_base.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/filesystem/filesystem.h"
+#include "tiledb/sm/filesystem/azure/azure.h"
+#include "tiledb/sm/filesystem/gcs/gcs.h"
+#include "tiledb/sm/filesystem/hdfs/hdfs.h"
+#include "tiledb/sm/filesystem/memfs/memfs.h"
+#include "tiledb/sm/filesystem/posix/posix.h"
+#include "tiledb/sm/filesystem/s3/s3.h"
+#include "tiledb/sm/filesystem/win/win.h"
+#include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/platform/platform.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/cache/lru_cache.h"
@@ -51,37 +59,11 @@
 #include "tiledb/sm/filesystem/mem_filesystem.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/stats/stats.h"
-#include "uri.h"
-
-#ifdef _WIN32
-#include "tiledb/sm/filesystem/win.h"
-#else
-#include "tiledb/sm/filesystem/posix.h"
-#endif
-
-#ifdef HAVE_GCS
-#include "tiledb/sm/filesystem/gcs.h"
-#endif
-
-#ifdef HAVE_S3
-#include "tiledb/sm/filesystem/s3.h"
-#endif
-
-#ifdef HAVE_HDFS
-#include "tiledb/sm/filesystem/hdfs_filesystem.h"
-#endif
-
-#ifdef HAVE_AZURE
-#include "tiledb/sm/filesystem/azure.h"
-#endif
 
 using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-class Tile;
-
-enum class Filesystem : uint8_t;
 enum class VFSMode : uint8_t;
 
 /** The VFS configuration parameters. */

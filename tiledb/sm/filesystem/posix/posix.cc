@@ -32,6 +32,18 @@
 
 #ifndef _WIN32
 
+#include <fstream>
+#include <future>
+#include <iostream>
+#include <queue>
+#include <sstream>
+
+#include <dirent.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include "tiledb/sm/filesystem/posix.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/logger.h"
@@ -42,32 +54,143 @@
 #include "tiledb/sm/misc/utils.h"
 #include "uri.h"
 
-#include <dirent.h>
-#include <fcntl.h>
-#include <limits.h>
-#include <sys/stat.h>
-#include <unistd.h>
+namespace tiledb::sm {
 
-#include <fstream>
-#include <future>
-#include <iostream>
-#include <queue>
-#include <sstream>
-
-using namespace tiledb::common;
-using tiledb::common::filesystem::directory_entry;
-
-namespace tiledb {
-namespace sm {
+class PosixFSException : public FilesystemException {
+ public:
+  explicit FilesystemException(const std::string& message)
+      : StatusException("PosixFilesystem", message) {
+  }
+};
 
 Posix::Posix(const Config& config)
     : FilesystemBase(config) {
   fs_type_ = FilesystemType::POSIX;
 }
 
-bool Posix::both_slashes(char a, char b) {
-  return a == '/' && b == '/';
+bool Posix::is_dir(const URI& uri) const {
+  struct stat st;
+  memset(&st, 0, sizeof(struct stat));
+
+  if(stat(uri.to_path().c_str(), &st) != 0) {
+    return false;
+  }
+
+  return S_ISDIR(st.st_mode);
 }
+
+bool Posix::is_file(const URI& uri) const {
+  struct stat st;
+  memset(&st, 0, sizeof(struct stat));
+
+  if (stat(uri.to_path().c_str()) != 0) {
+    return false;
+  }
+
+  return S_ISREG(st.st_mode);
+}
+
+void Posix::create_dir(const URI& uri) const {
+  // If the directory does not exist, create it
+  if (is_dir(uri)) {
+    throw PosixFSException(
+        "Cannot create directory '" + uri.to_string() +
+        "'; Directory already exists"));
+  }
+
+  uint32_t permissions = get_directory_permissions();
+  if (mkdir(uri.to_string().c_str(), permissions) != 0) {
+    throw PosixFSException(
+        "Cannot create directory '" + uri.to_string() + "'; " +
+        strerror(errno)));
+  }
+}
+
+std::vector<FilesystemEntry> Posix::ls(const URI& uri) const {
+  struct dirent* entry = nullptr;
+  DIR* dir = opendir(path.c_str());
+  if (dir == nullptr) {
+    return {};
+  }
+
+  std::vector<FilesystemEntry> entries;
+
+  while ((entry = readdir(dir)) != nullptr) {
+    std::string curr_path(entry->d_name);
+    if (curr_path == "." || curr_path == "..") {
+      continue;
+    }
+
+    auto curr_uri = uri.join_path(curr_path);
+
+    if (entry->d_type == DT_DIR) {
+      entries.emplace_back(curr_uri, 0, true);
+    } else {
+      entries.emplace_back(curr_uri, file_size(curr_uri), false);
+    }
+  }
+
+  if (closedir(dir) != 0) {
+    throw PosixFSException(std::string("Error closing directory: ") + strerror(errno));
+  }
+
+  return entries;
+}
+
+void Posix::copy_dir(const URI& src_uri, const URI& tgt_uri) {
+  create_dir(tgt_uri);
+  traverse(src_uri, [&src_uri, &tgt_uri](const FilesystemEntry& entry) {
+    auto new_name = entry.uri().to_string().substr(src_uri.to_string().size());
+    auto new_uri = tgt_uri.join_path(new_name);
+
+    if (entry.is_directory()) {
+      create_dir(new_uri);
+    } else {
+      copy_file(new_uri);
+    }
+  });
+}
+
+void Posix::remove_dir(const URI& uri) {
+  // Note that we're traversing bottom up so that we delete files
+  // before attempting to delete the directory that contains them.
+  traverse(uri, [](const FilesystemEntry& entry) {
+    if (remove(entry.to_path()) != 0) {
+      throw PosixFSException("Error removing filesystem entry '" + entry.uri().to_string() + "'; "
+        + strerror(errno));
+    }
+  }, false);
+}
+
+void Posix::touch(const URI& uri) const {
+  uint32_t permissions = get_file_permissions();
+  auto filename = uri.to_path();
+
+  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, permissions);
+  if (fd == -1 || ::close(fd) != 0) {
+    throw PosixFSException("Failed to create file '" + filename + "'; "
+      + strerror(errrno));
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Status Posix::read_all(int fd, void* buffer, uint64_t nbytes, uint64_t offset) {
   auto bytes = reinterpret_cast<char*>(buffer);
@@ -152,40 +275,9 @@ std::string Posix::abs_path_internal(const std::string& path) {
   return ret_dir;
 }
 
-Status Posix::create_dir(const URI& uri) const {
-  // If the directory does not exist, create it
-  auto path = uri.to_path();
-  if (is_dir(uri)) {
-    return LOG_STATUS(Status_IOError(
-        std::string("Cannot create directory '") + path +
-        "'; Directory already exists"));
-  }
 
-  uint32_t permissions = 0;
-  RETURN_NOT_OK(get_posix_directory_permissions(&permissions));
 
-  if (mkdir(path.c_str(), permissions) != 0) {
-    return LOG_STATUS(Status_IOError(
-        std::string("Cannot create directory '") + path + "'; " +
-        strerror(errno)));
-  }
-  return Status::Ok();
-}
 
-Status Posix::touch(const URI& uri) const {
-  uint32_t permissions = 0;
-  RETURN_NOT_OK(get_posix_file_permissions(&permissions));
-  auto filename = uri.to_path();
-
-  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, permissions);
-  if (fd == -1 || ::close(fd) != 0) {
-    return LOG_STATUS(Status_IOError(
-        std::string("Failed to create file '") + filename + "'; " +
-        strerror(errno)));
-  }
-
-  return Status::Ok();
-}
 
 std::string Posix::current_dir() {
   static std::unique_ptr<char, decltype(&free)> cwd_(getcwd(nullptr, 0), free);
@@ -209,7 +301,7 @@ int Posix::unlink_cb(
   return rc;
 }
 
-Status Posix::remove_dir(const URI& uri) const {
+void Posix::remove_dir(const URI& uri) const {
   auto path = uri.to_path();
   int rc = nftw(path.c_str(), unlink_cb, 64, FTW_DEPTH | FTW_PHYS);
   if (rc)
@@ -244,17 +336,8 @@ Status Posix::file_size(const URI& uri, uint64_t* size) const {
   return Status::Ok();
 }
 
-bool Posix::is_dir(const URI& uri) const {
-  struct stat st;
-  memset(&st, 0, sizeof(struct stat));
-  return stat(uri.to_path().c_str(), &st) == 0 && S_ISDIR(st.st_mode);
-}
 
-bool Posix::is_file(const URI& uri) const {
-  struct stat st;
-  memset(&st, 0, sizeof(struct stat));
-  return (stat(uri.to_path().c_str(), &st) == 0) && !S_ISDIR(st.st_mode);
-}
+
 
 Status Posix::ls(
     const std::string& path, std::vector<std::string>* paths) const {
@@ -269,42 +352,7 @@ Status Posix::ls(
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
-    const URI& uri) const {
-  std::string path = uri.to_path();
-  struct dirent* next_path = nullptr;
-  DIR* dir = opendir(path.c_str());
-  if (dir == nullptr) {
-    return {Status::Ok(), nullopt};
-  }
 
-  std::vector<directory_entry> entries;
-
-  while ((next_path = readdir(dir)) != nullptr) {
-    if (!strcmp(next_path->d_name, ".") || !strcmp(next_path->d_name, ".."))
-      continue;
-    std::string abspath = path + "/" + next_path->d_name;
-
-    // Getting the file size here incurs an additional system call
-    // via file_size() and ls() calls will feel this too.
-    // If this penalty becomes noticeable, we should just duplicate
-    // this implementation in ls() and don't get the size
-    if (next_path->d_type == DT_DIR) {
-      entries.emplace_back(abspath, 0, true);
-    } else {
-      uint64_t size;
-      RETURN_NOT_OK_TUPLE(file_size(URI(abspath), &size), nullopt);
-      entries.emplace_back(abspath, size, false);
-    }
-  }
-  // close parent directory
-  if (closedir(dir) != 0) {
-    auto st = LOG_STATUS(Status_IOError(
-        std::string("Cannot close parent directory; ") + strerror(errno)));
-    return {st, nullopt};
-  }
-  return {Status::Ok(), entries};
-}
 
 Status Posix::move_file(const URI& old_path, const URI& new_path) {
   if (rename(old_path.to_path().c_str(), new_path.to_path().c_str()) != 0) {
@@ -321,37 +369,6 @@ Status Posix::copy_file(const URI& old_uri, const URI& new_uri) {
   return Status::Ok();
 }
 
-Status Posix::copy_dir(const URI& old_uri, const URI& new_uri) {
-  auto old_path = old_uri.to_path();
-  auto new_path = new_uri.to_path();
-  RETURN_NOT_OK(create_dir(new_uri));
-  std::vector<std::string> paths;
-  RETURN_NOT_OK(ls(old_path, &paths));
-
-  std::queue<std::string> path_queue;
-  for (auto& path : paths)
-    path_queue.emplace(std::move(path));
-
-  while (!path_queue.empty()) {
-    const std::string file_name_abs = path_queue.front();
-    const std::string file_name = file_name_abs.substr(old_path.length());
-    path_queue.pop();
-
-    if (is_dir(URI(file_name_abs))) {
-      RETURN_NOT_OK(create_dir(URI(new_path + "/" + file_name)));
-      std::vector<std::string> child_paths;
-      RETURN_NOT_OK(ls(file_name_abs, &child_paths));
-      for (auto& path : child_paths)
-        path_queue.emplace(std::move(path));
-    } else {
-      assert(is_file(URI(file_name_abs)));
-      RETURN_NOT_OK(copy_file(
-          URI(old_path + "/" + file_name), URI(new_path + "/" + file_name)));
-    }
-  }
-
-  return Status::Ok();
-}
 
 void Posix::purge_dots_from_path(std::string* path) {
   // Trivial case
@@ -580,7 +597,29 @@ Status Posix::get_posix_directory_permissions(uint32_t* permissions) const {
   return Status::Ok();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+
+
+
+
+
+
+void Posix::traverse(const URI& base, std::function<void(const FilesystemEntry&)> callback, bool top_down) {
+  auto&& entries = ls(base);
+  for (auto& entry : entries) {
+    if (entry.is_directory()) {
+      if (top_down) {
+        callback(entry);
+      }
+      traverse(entry.uri(), callback);
+      if (!top_down) {
+        callback(entry);
+      }
+    } else {
+      callback(entry);
+    }
+  }
+}
+
+}  // namespace tiledb::sm
 
 #endif  // !_WIN32
