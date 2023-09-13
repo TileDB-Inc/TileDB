@@ -135,7 +135,8 @@ TEST_CASE("Dimension: Test deserialize,int32", "[dimension][deserialize]") {
   dim_buffer_offset<int32_t, 36>(p) = tile_extent;
 
   Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
-  auto dim = Dimension::deserialize(deserializer, 10, Datatype::INT32);
+  FilterPipeline fp;
+  auto dim = Dimension::deserialize(deserializer, 10, Datatype::INT32, fp);
 
   // Check name
   CHECK(dim->name() == dimension_name);
@@ -174,7 +175,8 @@ TEST_CASE("Dimension: Test deserialize,string", "[dimension][deserialize]") {
   dim_buffer_offset<uint8_t, 27>(p) = null_tile_extent;
 
   Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
-  auto dim = Dimension::deserialize(deserializer, 10, Datatype::INT32);
+  FilterPipeline fp;
+  auto dim = Dimension::deserialize(deserializer, 10, Datatype::INT32, fp);
   // Check name
   CHECK(dim->name() == dimension_name);
   // Check type

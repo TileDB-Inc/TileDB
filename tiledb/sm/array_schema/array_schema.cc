@@ -602,7 +602,7 @@ const FilterPipeline& ArraySchema::filters(const std::string& name) const {
   auto dim_it = dim_map_.find(name);
   assert(dim_it != dim_map_.end());
   const auto& ret = dim_it->second->filters();
-  return !ret.empty() ? ret : coords_filters();
+  return ret;
 }
 
 const FilterPipeline& ArraySchema::coords_filters() const {
@@ -1279,7 +1279,7 @@ ArraySchema ArraySchema::deserialize(
   // Load filters
   // Note: Security validation delegated to invoked API
   auto coords_filters{
-      FilterPipeline::deserialize(deserializer, version, Datatype::ANY)};
+      FilterPipeline::deserialize(deserializer, version, Datatype::UINT64)};
   auto cell_var_filters{
       FilterPipeline::deserialize(deserializer, version, Datatype::UINT64)};
   FilterPipeline cell_validity_filters;
@@ -1291,8 +1291,8 @@ ArraySchema ArraySchema::deserialize(
   // Load domain
   // Note: Security validation delegated to invoked API
   // #TODO Add security validation
-  auto domain{
-      Domain::deserialize(deserializer, version, cell_order, tile_order)};
+  auto domain{Domain::deserialize(
+      deserializer, version, cell_order, tile_order, coords_filters)};
 
   // Load attributes
   // Note: Security validation delegated to invoked API
@@ -1343,8 +1343,8 @@ ArraySchema ArraySchema::deserialize(
     auto type{domain->dimension_ptr(0)->type()};
     if (datatype_is_real(type)) {
       throw ArraySchemaException(
-          "Array schema check failed; Dense arrays cannot have floating point "
-          "domains");
+          "Array schema check failed; Dense arrays cannot have floating "
+          "point domains");
     }
     if (attributes.size() == 0) {
       throw ArraySchemaException(
@@ -1376,7 +1376,9 @@ ArraySchema ArraySchema::deserialize(
       enumeration_path_map,
       cell_var_filters,
       cell_validity_filters,
-      coords_filters);
+      FilterPipeline(
+          coords_filters,
+          version < 5 ? domain->dimension_ptr(0)->type() : Datatype::UINT64));
 }
 
 Status ArraySchema::set_allows_dups(bool allows_dups) {

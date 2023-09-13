@@ -60,6 +60,13 @@ Filter* Filter::clone() const {
   return clone;
 }
 
+Filter* Filter::clone(const Datatype data_type) const {
+  // Call subclass-specific clone function
+  auto clone = clone_impl();
+  clone->filter_data_type_ = data_type;
+  return clone;
+}
+
 Datatype Filter::output_datatype(Datatype datatype) const {
   return datatype;
 }

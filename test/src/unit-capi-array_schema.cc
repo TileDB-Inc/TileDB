@@ -909,10 +909,11 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
       "  > RLE: COMPRESSION_LEVEL=-1\n\n" + "### Dimension ###\n" +
       "- Name: " + DIM1_NAME + "\n" + "- Type: INT64\n" +
       "- Cell val num: 1\n" + "- Domain: " + DIM1_DOMAIN_STR + "\n" +
-      "- Tile extent: " + DIM1_TILE_EXTENT_STR + "\n" + "- Filters: 0\n\n" +
-      "### Dimension ###\n" + "- Name: " + DIM2_NAME + "\n" +
-      "- Type: INT64\n" + "- Cell val num: 1\n" +
-      "- Domain: " + DIM2_DOMAIN_STR + "\n" +
+      "- Tile extent: " + DIM1_TILE_EXTENT_STR + "\n" + "- Filters: 1\n" +
+      "  > ZSTD: COMPRESSION_LEVEL=-1\n\n"
+      "### Dimension ###\n" +
+      "- Name: " + DIM2_NAME + "\n" + "- Type: INT64\n" +
+      "- Cell val num: 1\n" + "- Domain: " + DIM2_DOMAIN_STR + "\n" +
       "- Tile extent: " + DIM2_TILE_EXTENT_STR + "\n" + "- Filters: 2\n" +
       "  > BZIP2: COMPRESSION_LEVEL=5\n" +
       "  > BitWidthReduction: BIT_WIDTH_MAX_WINDOW=1000\n\n" +

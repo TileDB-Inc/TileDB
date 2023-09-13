@@ -74,6 +74,16 @@ FilterPipeline::FilterPipeline(const FilterPipeline& other) {
   max_chunk_size_ = other.max_chunk_size_;
 }
 
+FilterPipeline::FilterPipeline(
+    const FilterPipeline& other, const Datatype on_disk_type) {
+  auto current_type = on_disk_type;
+  for (auto& filter : other.filters_) {
+    add_filter(*filter, current_type);
+    current_type = filters_.back()->output_datatype(current_type);
+  }
+  max_chunk_size_ = other.max_chunk_size_;
+}
+
 FilterPipeline::FilterPipeline(FilterPipeline&& other) {
   swap(other);
 }
@@ -93,6 +103,11 @@ FilterPipeline& FilterPipeline::operator=(FilterPipeline&& other) {
 
 void FilterPipeline::add_filter(const Filter& filter) {
   shared_ptr<Filter> copy(filter.clone());
+  filters_.push_back(std::move(copy));
+}
+
+void FilterPipeline::add_filter(const Filter& filter, const Datatype new_type) {
+  shared_ptr<Filter> copy(filter.clone(new_type));
   filters_.push_back(std::move(copy));
 }
 
