@@ -108,18 +108,19 @@ inline void ensure_query_channel_is_valid(
   ensure_handle_is_valid(channel);
 }
 
-inline bool ensure_aggregates_enable_via_config(tiledb_ctx_t* ctx) {
-  bool found = false;
-  bool allow_aggregates = false;
-  throw_if_not_ok(ctx->context().resources().config().get<bool>(
-      "sm.allow_aggregates_experimental", &allow_aggregates, &found));
-  assert(found);
-  return allow_aggregates;
+inline void ensure_aggregates_enabled_via_config(tiledb_ctx_t* ctx) {
+  bool enabled = ctx->context().resources().config().get<bool>(
+      "sm.allow_aggregates_experimental", sm::Config::MustFindMarker());
+  if (!enabled) {
+    throw CAPIStatusException(
+        "The aggregates API is disabled. Please set the "
+        "sm.allow_aggregates_experimental config option to enable it");
+  }
 }
 
 capi_return_t tiledb_channel_operator_sum_get(
     tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) {
-  ensure_aggregates_enable_via_config(ctx);
+  ensure_aggregates_enabled_via_config(ctx);
   ensure_output_pointer_is_valid(op);
   *op = tiledb_channel_operator_sum;
   return TILEDB_OK;
@@ -127,7 +128,7 @@ capi_return_t tiledb_channel_operator_sum_get(
 
 capi_return_t tiledb_channel_operator_min_get(
     tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) {
-  ensure_aggregates_enable_via_config(ctx);
+  ensure_aggregates_enabled_via_config(ctx);
   ensure_output_pointer_is_valid(op);
   *op = tiledb_channel_operator_min;
   return TILEDB_OK;
@@ -135,7 +136,7 @@ capi_return_t tiledb_channel_operator_min_get(
 
 capi_return_t tiledb_channel_operator_max_get(
     tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) {
-  ensure_aggregates_enable_via_config(ctx);
+  ensure_aggregates_enabled_via_config(ctx);
   ensure_output_pointer_is_valid(op);
   *op = tiledb_channel_operator_max;
   return TILEDB_OK;
@@ -143,7 +144,7 @@ capi_return_t tiledb_channel_operator_max_get(
 
 capi_return_t tiledb_aggregate_count_get(
     tiledb_ctx_t* ctx, const tiledb_channel_operation_t** operation) {
-  ensure_aggregates_enable_via_config(ctx);
+  ensure_aggregates_enabled_via_config(ctx);
   ensure_output_pointer_is_valid(operation);
   *operation = tiledb_aggregate_count;
   return TILEDB_OK;
@@ -153,7 +154,7 @@ capi_return_t tiledb_query_get_default_channel(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     tiledb_query_channel_t** channel) {
-  ensure_aggregates_enable_via_config(ctx);
+  ensure_aggregates_enabled_via_config(ctx);
   ensure_query_is_valid(query);
   ensure_output_pointer_is_valid(channel);
 
@@ -171,7 +172,7 @@ capi_return_t tiledb_create_aggregate_on_field(
     const tiledb_channel_operator_t* op,
     const char* input_field_name,
     tiledb_channel_operation_t** operation) {
-  ensure_aggregates_enable_via_config(ctx);
+  ensure_aggregates_enabled_via_config(ctx);
   ensure_query_is_valid(query);
   ensure_channel_operator_is_valid(op);
   ensure_output_pointer_is_valid(operation);
@@ -197,7 +198,7 @@ capi_return_t tiledb_channel_apply_aggregate(
     tiledb_query_channel_t* channel,
     const char* output_field_name,
     const tiledb_channel_operation_t* operation) {
-  ensure_aggregates_enable_via_config(ctx);
+  ensure_aggregates_enabled_via_config(ctx);
   ensure_query_channel_is_valid(channel);
   ensure_output_field_is_valid(output_field_name);
   ensure_operation_is_valid(operation);
@@ -208,7 +209,7 @@ capi_return_t tiledb_channel_apply_aggregate(
 
 capi_return_t tiledb_aggregate_free(
     tiledb_ctx_t* ctx, tiledb_channel_operation_t** operation) {
-  ensure_aggregates_enable_via_config(ctx);
+  ensure_aggregates_enabled_via_config(ctx);
   ensure_output_pointer_is_valid(operation);
   ensure_operation_is_valid(*operation);
   tiledb_channel_operation_handle_t::break_handle(*operation);
@@ -218,7 +219,7 @@ capi_return_t tiledb_aggregate_free(
 
 capi_return_t tiledb_query_channel_free(
     tiledb_ctx_t* ctx, tiledb_query_channel_t** channel) {
-  ensure_aggregates_enable_via_config(ctx);
+  ensure_aggregates_enabled_via_config(ctx);
   ensure_output_pointer_is_valid(channel);
   ensure_query_channel_is_valid(*channel);
   tiledb_query_channel_handle_t::break_handle(*channel);
