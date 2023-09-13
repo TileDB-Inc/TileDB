@@ -452,8 +452,8 @@ void ArraySchema::check_without_config() const {
         "cannot have their capacity equal to zero."};
   }
 
-  throw_if_not_ok(check_double_delta_compressor(coords_filters(Datatype::ANY)));
-  throw_if_not_ok(check_string_compressor(coords_filters(Datatype::ANY)));
+  throw_if_not_ok(check_double_delta_compressor(coords_filters()));
+  throw_if_not_ok(check_string_compressor(coords_filters()));
   check_attribute_dimension_label_names();
   check_webp_filter();
 
@@ -587,9 +587,9 @@ void ArraySchema::check_enumerations(const Config& cfg) const {
   }
 }
 
-const FilterPipeline ArraySchema::filters(const std::string& name) const {
+const FilterPipeline& ArraySchema::filters(const std::string& name) const {
   if (is_special_attribute(name)) {
-    return coords_filters(domain_->dimension_ptr(0)->type());
+    return coords_filters();
   }
 
   // Attribute
@@ -602,11 +602,14 @@ const FilterPipeline ArraySchema::filters(const std::string& name) const {
   auto dim_it = dim_map_.find(name);
   assert(dim_it != dim_map_.end());
   const auto& ret = dim_it->second->filters();
-  return !ret.empty() ? ret : coords_filters(dim_it->second->type());
+  if (ret.empty()) {
+    throw ArraySchemaException("Empty coordinates filter pipeline.");
+  }
+  return ret;
 }
 
-const FilterPipeline ArraySchema::coords_filters(Datatype on_disk_type) const {
-  return FilterPipeline(coords_filters_, on_disk_type);
+const FilterPipeline& ArraySchema::coords_filters() const {
+  return coords_filters_;
 }
 
 bool ArraySchema::dense() const {
@@ -1291,8 +1294,8 @@ ArraySchema ArraySchema::deserialize(
   // Load domain
   // Note: Security validation delegated to invoked API
   // #TODO Add security validation
-  auto domain{
-      Domain::deserialize(deserializer, version, cell_order, tile_order)};
+  auto domain{Domain::deserialize(
+      deserializer, version, cell_order, tile_order, coords_filters)};
 
   // Load attributes
   // Note: Security validation delegated to invoked API
@@ -1376,7 +1379,7 @@ ArraySchema ArraySchema::deserialize(
       enumeration_path_map,
       cell_var_filters,
       cell_validity_filters,
-      coords_filters);
+      FilterPipeline(coords_filters, domain->dimension_ptr(0)->type()));
 }
 
 Status ArraySchema::set_allows_dups(bool allows_dups) {

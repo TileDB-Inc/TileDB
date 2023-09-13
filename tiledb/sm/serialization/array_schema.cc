@@ -832,8 +832,7 @@ Status array_schema_to_capnp(
   array_schema_builder->setAllowsDuplicates(array_schema.allows_dups());
 
   // Set coordinate filters
-  const FilterPipeline coords_filters =
-      array_schema.coords_filters(Datatype::ANY);
+  const FilterPipeline& coords_filters = array_schema.coords_filters();
   capnp::FilterPipeline::Builder coords_filters_builder =
       array_schema_builder->initCoordsFilterPipeline();
   RETURN_NOT_OK(

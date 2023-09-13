@@ -57,6 +57,7 @@ class Buffer;
 class ConstBuffer;
 class Dimension;
 class DomainTypedDataView;
+class FilterPipeline;
 enum class Datatype : uint8_t;
 enum class Layout : uint8_t;
 
@@ -182,13 +183,17 @@ class Domain {
    *
    * @param deserializer The deserializer to deserialize from.
    * @param version The array schema version.
+   * @param cell_order Cell order.
+   * @param tile_order Tile order.
+   * @param coords_filters Coords filters to replace empty coords pipelines.
    * @return Status and Domain
    */
   static shared_ptr<Domain> deserialize(
       Deserializer& deserializer,
       uint32_t version,
       Layout cell_order,
-      Layout tile_order);
+      Layout tile_order,
+      FilterPipeline& coords_filters);
 
   /** Returns the cell order. */
   Layout cell_order() const;
