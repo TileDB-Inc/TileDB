@@ -111,7 +111,7 @@ inline void ensure_query_channel_is_valid(
 inline bool ensure_aggregates_enable_via_config(tiledb_ctx_t* ctx) {
   bool found = false;
   bool allow_aggregates = false;
-  throw_if_not_ok(ctx->storage_manager()->config().get<bool>(
+  throw_if_not_ok(ctx->context().resources().config().get<bool>(
       "sm.allow_aggregates_experimental", &allow_aggregates, &found));
   assert(found);
   return allow_aggregates;
