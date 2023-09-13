@@ -11,7 +11,6 @@ depends=("${MINGW_PACKAGE_PREFIX}-lz4"
          "${MINGW_PACKAGE_PREFIX}-aws-sdk-cpp"
          "${MINGW_PACKAGE_PREFIX}-bzip2"
          "${MINGW_PACKAGE_PREFIX}-curl"
-         "${MINGW_PACKAGE_PREFIX}-file"
          "${MINGW_PACKAGE_PREFIX}-zlib"
          "${MINGW_PACKAGE_PREFIX}-zstd"
          )
