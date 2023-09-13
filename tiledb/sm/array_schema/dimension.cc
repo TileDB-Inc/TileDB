@@ -151,7 +151,10 @@ Status Dimension::set_cell_val_num(unsigned int cell_val_num) {
 }
 
 shared_ptr<Dimension> Dimension::deserialize(
-    Deserializer& deserializer, uint32_t version, Datatype type) {
+    Deserializer& deserializer,
+    uint32_t version,
+    Datatype type,
+    FilterPipeline& coords_filters) {
   Status st;
   // Load dimension name
   auto dimension_name_size = deserializer.read<uint32_t>();
@@ -173,6 +176,9 @@ shared_ptr<Dimension> Dimension::deserialize(
     // Load filter pipeline
     filter_pipeline =
         FilterPipeline::deserialize(deserializer, version, datatype);
+    if (filter_pipeline.empty()) {
+      filter_pipeline = FilterPipeline(coords_filters, datatype);
+    }
   } else {
     datatype = type;
     cell_val_num = (datatype_is_string(datatype)) ? constants::var_num : 1;
