@@ -602,9 +602,6 @@ const FilterPipeline& ArraySchema::filters(const std::string& name) const {
   auto dim_it = dim_map_.find(name);
   assert(dim_it != dim_map_.end());
   const auto& ret = dim_it->second->filters();
-  if (ret.empty()) {
-    throw ArraySchemaException("Empty coordinates filter pipeline.");
-  }
   return ret;
 }
 
