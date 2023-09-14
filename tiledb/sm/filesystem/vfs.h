@@ -159,6 +159,13 @@ class VFS {
   void create_dir(const URI& uri);
 
   /**
+   * Get the total size of all files below directory at URI
+   *
+   * @param uri The URI of the directory.
+   */
+  uint64_t dir_size(const URI& uri);
+
+  /**
    * Retrieves all the entries contained in the parent.
    *
    * @param parent The target directory to list.
@@ -342,7 +349,14 @@ class VFS {
   tdb_unique_ptr<ReadAheadCache> read_ahead_cache_;
 
   /** The map of enabled filesystems. */
-  std::unordered_map<std::string, tdb_unique_ptr<Filesystem>> filesystems_;
+  std::unordered_map<std::string, shared_ptr<Filesystem>> filesystems_;
+
+  /* ********************************* */
+  /*          PRIVATE METHODS          */
+  /* ********************************* */
+
+  /** Get the filesystem implementation for a given URI. */
+  shared_ptr<Filesystem> get_filesystem_for_uri(const URI& uri);
 };
 
 }  // namespace tiledb::sm

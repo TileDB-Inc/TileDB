@@ -32,7 +32,6 @@
 
 #ifndef TILEDB_WIN_FILESYSTEM_H
 #define TILEDB_WIN_FILESYSTEM_H
-
 #ifdef _WIN32
 
 #include <sys/types.h>
