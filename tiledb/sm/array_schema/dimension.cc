@@ -151,7 +151,10 @@ Status Dimension::set_cell_val_num(unsigned int cell_val_num) {
 }
 
 shared_ptr<Dimension> Dimension::deserialize(
-    Deserializer& deserializer, uint32_t version, Datatype type) {
+    Deserializer& deserializer,
+    uint32_t version,
+    Datatype type,
+    FilterPipeline& coords_filters) {
   Status st;
   // Load dimension name
   auto dimension_name_size = deserializer.read<uint32_t>();
@@ -173,6 +176,9 @@ shared_ptr<Dimension> Dimension::deserialize(
     // Load filter pipeline
     filter_pipeline =
         FilterPipeline::deserialize(deserializer, version, datatype);
+    if (filter_pipeline.empty()) {
+      filter_pipeline = FilterPipeline(coords_filters, datatype);
+    }
   } else {
     datatype = type;
     cell_val_num = (datatype_is_string(datatype)) ? constants::var_num : 1;
@@ -323,14 +329,11 @@ Range Dimension::compute_mbr_var<char>(
   auto cell_num = tile_off.cell_num();
   assert(cell_num > 0);
 
-  void* tile_buffer_off = tile_off.data();
-  assert(tile_buffer_off != nullptr);
+  offsets_t* d_off = tile_off.data_as<offsets_t>();
+  assert(d_off != nullptr);
 
-  void* tile_buffer_val = tile_val.data();
-  assert(tile_buffer_val != nullptr);
-
-  uint64_t* const d_off = static_cast<uint64_t*>(tile_buffer_off);
-  char* const d_val = static_cast<char*>(tile_buffer_val);
+  char* d_val = tile_val.data_as<char>();
+  assert(d_val != nullptr);
 
   // Initialize MBR with the first tile values
   auto size_0 = (cell_num == 1) ? d_val_size : d_off[1];

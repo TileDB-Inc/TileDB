@@ -352,7 +352,7 @@ TEMPLATE_LIST_TEST_CASE(
   SECTION("No bitmap") {
     // Regular attribute.
     AggregateBuffer input_data{
-        2, 10, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt};
+        2, 10, fixed_data.data(), nullopt, nullopt, false, nullopt};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("MinMax", buffers);
     check_value(T(), min_max, min, 1, 5);
@@ -361,10 +361,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data2{
         2,
         10,
-        10,
         fixed_data.data(),
         nullopt,
-        0,
         validity_data.data(),
         false,
         nullopt};
@@ -378,36 +376,20 @@ TEMPLATE_LIST_TEST_CASE(
     // Regular attribute.
     std::vector<uint8_t> bitmap = {1, 1, 0, 0, 0, 1, 1, 0, 1, 0};
     AggregateBuffer input_data{
-        2,
-        10,
-        10,
-        fixed_data.data(),
-        nullopt,
-        0,
-        nullopt,
-        false,
-        bitmap.data()};
+        2, 10, fixed_data.data(), nullopt, nullopt, false, bitmap.data()};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("MinMax", buffers);
     check_value(T(), min_max, min, 2, 5);
 
     AggregateBuffer input_data2{
-        0, 2, 10, fixed_data.data(), nullopt, 0, nullopt, false, bitmap.data()};
+        0, 2, fixed_data.data(), nullopt, nullopt, false, bitmap.data()};
     aggregator.aggregate_data(input_data2);
     aggregator.copy_to_user_buffer("MinMax", buffers);
     check_value(T(), min_max, min, 1, 5);
 
     // Nullable attribute.
     AggregateBuffer input_data3{
-        0,
-        2,
-        10,
-        fixed_data.data(),
-        nullopt,
-        0,
-        validity_data.data(),
-        false,
-        nullopt};
+        0, 2, fixed_data.data(), nullopt, validity_data.data(), false, nullopt};
     aggregator_nullable.aggregate_data(input_data3);
     aggregator_nullable.copy_to_user_buffer("MinMax2", buffers);
 
@@ -423,10 +405,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data4{
         2,
         10,
-        10,
         fixed_data.data(),
         nullopt,
-        0,
         validity_data.data(),
         false,
         bitmap.data()};
@@ -440,29 +420,13 @@ TEMPLATE_LIST_TEST_CASE(
     // Regular attribute.
     std::vector<uint64_t> bitmap_count = {1, 2, 4, 0, 0, 1, 2, 0, 1, 2};
     AggregateBuffer input_data{
-        2,
-        10,
-        10,
-        fixed_data.data(),
-        nullopt,
-        0,
-        nullopt,
-        true,
-        bitmap_count.data()};
+        2, 10, fixed_data.data(), nullopt, nullopt, true, bitmap_count.data()};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("MinMax", buffers);
     check_value(T(), min_max, min, 1, 5);
 
     AggregateBuffer input_data2{
-        0,
-        2,
-        10,
-        fixed_data.data(),
-        nullopt,
-        0,
-        nullopt,
-        true,
-        bitmap_count.data()};
+        0, 2, fixed_data.data(), nullopt, nullopt, true, bitmap_count.data()};
     aggregator.aggregate_data(input_data2);
     aggregator.copy_to_user_buffer("MinMax", buffers);
     check_value(T(), min_max, min, 1, 5);
@@ -471,10 +435,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data3{
         2,
         10,
-        10,
         fixed_data.data(),
         nullopt,
-        0,
         validity_data.data(),
         true,
         bitmap_count.data()};
@@ -486,10 +448,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data4{
         0,
         2,
-        10,
         fixed_data.data(),
         nullopt,
-        0,
         validity_data.data(),
         true,
         bitmap_count.data()};
@@ -553,22 +513,14 @@ TEMPLATE_LIST_TEST_CASE(
   buffers["MinMax2"].validity_vector_ =
       ValidityVector(&validity, &validity_size);
 
-  std::vector<uint64_t> offsets = {0, 2, 3, 6, 8, 11, 15, 16, 18, 22};
+  std::vector<uint64_t> offsets = {0, 2, 3, 6, 8, 11, 15, 16, 18, 22, 23};
   std::string var_data = "11233344555555543322221";
   std::vector<uint8_t> validity_data = {0, 0, 1, 0, 1, 0, 1, 0, 1, 0};
 
   SECTION("No bitmap") {
     // Regular attribute.
     AggregateBuffer input_data{
-        2,
-        10,
-        10,
-        offsets.data(),
-        var_data.data(),
-        var_data.size(),
-        nullopt,
-        false,
-        nullopt};
+        2, 10, offsets.data(), var_data.data(), nullopt, false, nullopt};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("MinMax", buffers);
     check_value_var(offset, min_max_size, min_max, min, "1", "5555");
@@ -577,10 +529,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data2{
         2,
         10,
-        10,
         offsets.data(),
         var_data.data(),
-        var_data.size(),
         validity_data.data(),
         false,
         nullopt};
@@ -594,29 +544,13 @@ TEMPLATE_LIST_TEST_CASE(
     // Regular attribute.
     std::vector<uint8_t> bitmap = {1, 1, 0, 0, 0, 1, 1, 0, 1, 0};
     AggregateBuffer input_data{
-        2,
-        10,
-        10,
-        offsets.data(),
-        var_data.data(),
-        var_data.size(),
-        nullopt,
-        false,
-        bitmap.data()};
+        2, 10, offsets.data(), var_data.data(), nullopt, false, bitmap.data()};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("MinMax", buffers);
     check_value_var(offset, min_max_size, min_max, min, "2222", "5555");
 
     AggregateBuffer input_data2{
-        0,
-        2,
-        10,
-        offsets.data(),
-        var_data.data(),
-        var_data.size(),
-        nullopt,
-        false,
-        bitmap.data()};
+        0, 2, offsets.data(), var_data.data(), nullopt, false, bitmap.data()};
     aggregator.aggregate_data(input_data2);
     aggregator.copy_to_user_buffer("MinMax", buffers);
     check_value_var(offset, min_max_size, min_max, min, "11", "5555");
@@ -625,10 +559,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data3{
         0,
         2,
-        10,
         offsets.data(),
         var_data.data(),
-        var_data.size(),
         validity_data.data(),
         false,
         nullopt};
@@ -640,10 +572,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data4{
         2,
         10,
-        10,
         offsets.data(),
         var_data.data(),
-        var_data.size(),
         validity_data.data(),
         false,
         bitmap.data()};
@@ -659,10 +589,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data{
         2,
         10,
-        10,
         offsets.data(),
         var_data.data(),
-        var_data.size(),
         nullopt,
         true,
         bitmap_count.data()};
@@ -673,10 +601,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data2{
         0,
         2,
-        10,
         offsets.data(),
         var_data.data(),
-        var_data.size(),
         nullopt,
         true,
         bitmap_count.data()};
@@ -688,10 +614,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data3{
         2,
         10,
-        10,
         offsets.data(),
         var_data.data(),
-        var_data.size(),
         validity_data.data(),
         true,
         bitmap_count.data()};
@@ -703,10 +627,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data4{
         0,
         2,
-        10,
         offsets.data(),
         var_data.data(),
-        var_data.size(),
         validity_data.data(),
         true,
         bitmap_count.data()};

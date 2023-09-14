@@ -1214,17 +1214,14 @@ void SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
         }
 
         // Get source buffers.
-        const auto cell_num =
-            fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
         const auto tile_tuple = rt->tile_tuple(name);
 
         // If the tile_tuple is null, this is a field added in schema
         // evolution. Use the fill value.
-        const uint64_t* src_buff = nullptr;
+        const offsets_t* src_buff = nullptr;
         const uint8_t* src_var_buff = nullptr;
         bool use_fill_value = false;
         OffType fill_value_size = 0;
-        uint64_t t_var_size = 0;
         if (tile_tuple == nullptr) {
           use_fill_value = true;
           fill_value_size = static_cast<OffType>(
@@ -1233,8 +1230,7 @@ void SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
         } else {
           const auto& t = tile_tuple->fixed_tile();
           const auto& t_var = tile_tuple->var_tile();
-          t_var_size = t_var.size();
-          src_buff = t.template data_as<uint64_t>();
+          src_buff = t.template data_as<offsets_t>();
           src_var_buff = t_var.template data_as<uint8_t>();
         }
 
@@ -1244,29 +1240,21 @@ void SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
             query_buffer.validity_vector_.buffer() + dest_cell_offset;
         auto var_data_buffer = &var_data[dest_cell_offset - cell_offsets[0]];
 
-        // Copy full tile. Last cell might be taken out for vectorization.
-        uint64_t end =
-            (max_pos == cell_num && !use_fill_value) ? max_pos - 1 : max_pos;
+        // Copy full tile.
         if (!use_fill_value) {
-          for (uint64_t c = min_pos; c < end; c++) {
+          for (uint64_t c = min_pos; c < max_pos; c++) {
             *buffer = (OffType)(src_buff[c + 1] - src_buff[c]) / offset_div;
             buffer++;
             *var_data_buffer = src_var_buff + src_buff[c];
             var_data_buffer++;
           }
         } else {
-          for (uint64_t c = min_pos; c < end; c++) {
+          for (uint64_t c = min_pos; c < max_pos; c++) {
             *buffer = fill_value_size / offset_div;
             buffer++;
             *var_data_buffer = src_var_buff;
             var_data_buffer++;
           }
-        }
-
-        // Copy last cell.
-        if (max_pos == cell_num && !use_fill_value) {
-          *buffer = (OffType)(t_var_size - src_buff[max_pos - 1]) / offset_div;
-          *var_data_buffer = src_var_buff + src_buff[max_pos - 1];
         }
 
         // Copy nullable values.
@@ -2063,21 +2051,16 @@ AggregateBuffer SparseGlobalOrderReader<BitmapType>::make_aggregate_buffer(
     const bool nullable,
     const uint64_t min_cell,
     const uint64_t max_cell,
-    const uint64_t cell_num,
     ResultTile& rt) {
   return AggregateBuffer(
       min_cell,
       max_cell,
-      cell_num,
       name == constants::count_of_rows ?
           nullptr :
           rt.tile_tuple(name)->fixed_tile().data(),
       var_sized ?
           std::make_optional(rt.tile_tuple(name)->var_tile().data_as<char>()) :
           nullopt,
-      var_sized && max_cell == cell_num ?
-          rt.tile_tuple(name)->var_tile().size() :
-          0,
       nullable ? std::make_optional(
                      rt.tile_tuple(name)->validity_tile().data_as<uint8_t>()) :
                  nullopt,
@@ -2113,8 +2096,6 @@ void SparseGlobalOrderReader<BitmapType>::process_aggregates(
         auto& rcs = result_cell_slabs[i];
         auto rt = static_cast<GlobalOrderResultTile<BitmapType>*>(
             result_cell_slabs[i].tile_);
-        uint64_t cell_num =
-            fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
 
         // Compute parallelization parameters.
         auto&& [min_pos, max_pos, dest_cell_offset, skip_aggregate] =
@@ -2130,7 +2111,7 @@ void SparseGlobalOrderReader<BitmapType>::process_aggregates(
 
         // Compute aggregate.
         AggregateBuffer aggregate_buffer{make_aggregate_buffer(
-            name, var_sized, nullable, min_pos, max_pos, cell_num, *rt)};
+            name, var_sized, nullable, min_pos, max_pos, *rt)};
         for (auto& aggregate : aggregates) {
           aggregate->aggregate_data(aggregate_buffer);
         }

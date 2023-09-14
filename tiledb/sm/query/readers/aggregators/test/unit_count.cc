@@ -31,7 +31,6 @@
  */
 
 #include "tiledb/common/common.h"
-#include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/count_aggregator.h"
@@ -132,7 +131,7 @@ TEST_CASE(
 
   SECTION("No bitmap") {
     AggregateBuffer input_data{
-        2, 10, 10, nullptr, nullopt, 0, nullopt, false, nullopt};
+        2, 10, nullptr, nullopt, nullopt, false, nullopt};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("Count", buffers);
     CHECK(count == 8);
@@ -141,13 +140,13 @@ TEST_CASE(
   SECTION("Regular bitmap") {
     std::vector<uint8_t> bitmap = {1, 1, 0, 0, 0, 1, 1, 0, 1, 0};
     AggregateBuffer input_data{
-        2, 10, 10, nullptr, nullopt, 0, nullopt, false, bitmap.data()};
+        2, 10, nullptr, nullopt, nullopt, false, bitmap.data()};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("Count", buffers);
     CHECK(count == 3);
 
     AggregateBuffer input_data2{
-        0, 2, 10, nullptr, nullopt, 0, nullopt, false, bitmap.data()};
+        0, 2, nullptr, nullopt, nullopt, false, bitmap.data()};
     aggregator.aggregate_data(input_data2);
     aggregator.copy_to_user_buffer("Count", buffers);
     CHECK(count == 5);
@@ -156,13 +155,13 @@ TEST_CASE(
   SECTION("Count bitmap") {
     std::vector<uint64_t> bitmap_count = {1, 2, 4, 0, 0, 1, 2, 0, 1, 2};
     AggregateBuffer input_data{
-        2, 10, 10, nullptr, nullopt, 0, nullopt, true, bitmap_count.data()};
+        2, 10, nullptr, nullopt, nullopt, true, bitmap_count.data()};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("Count", buffers);
     CHECK(count == 10);
 
     AggregateBuffer input_data2{
-        0, 2, 10, nullptr, nullopt, 0, nullopt, true, bitmap_count.data()};
+        0, 2, nullptr, nullopt, nullopt, true, bitmap_count.data()};
     aggregator.aggregate_data(input_data2);
     aggregator.copy_to_user_buffer("Count", buffers);
     CHECK(count == 13);

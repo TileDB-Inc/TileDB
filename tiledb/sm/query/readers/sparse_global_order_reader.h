@@ -555,7 +555,6 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @param nullable Is the field nullable?
    * @param min_cell Min cell to aggregate.
    * @param min_cell Max cell to aggregate.
-   * @param cell_num Number of cells for the tile
    * @param rt Result tile.
    */
   AggregateBuffer make_aggregate_buffer(
@@ -564,7 +563,6 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       const bool nullable,
       const uint64_t min_cell,
       const uint64_t max_cell,
-      const uint64_t cell_num,
       ResultTile& rt);
 
   /**

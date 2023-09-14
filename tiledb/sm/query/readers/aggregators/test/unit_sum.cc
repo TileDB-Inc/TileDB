@@ -210,7 +210,7 @@ TEMPLATE_LIST_TEST_CASE(
   SECTION("No bitmap") {
     // Regular attribute.
     AggregateBuffer input_data{
-        2, 10, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt};
+        2, 10, fixed_data.data(), nullopt, nullopt, false, nullopt};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("Sum", buffers);
     CHECK(sum == 27);
@@ -219,10 +219,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data2{
         2,
         10,
-        10,
         fixed_data.data(),
         nullopt,
-        0,
         validity_data.data(),
         false,
         nullopt};
@@ -236,50 +234,30 @@ TEMPLATE_LIST_TEST_CASE(
     // Regular attribute.
     std::vector<uint8_t> bitmap = {1, 1, 0, 0, 0, 1, 1, 0, 1, 0};
     AggregateBuffer input_data{
-        2,
-        10,
-        10,
-        fixed_data.data(),
-        nullopt,
-        0,
-        nullopt,
-        false,
-        bitmap.data()};
+        2, 10, fixed_data.data(), nullopt, nullopt, false, bitmap.data()};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("Sum", buffers);
     CHECK(sum == 11);
 
     AggregateBuffer input_data2{
-        0, 2, 10, fixed_data.data(), nullopt, 0, nullopt, false, bitmap.data()};
+        0, 2, fixed_data.data(), nullopt, nullopt, false, bitmap.data()};
     aggregator.aggregate_data(input_data2);
     aggregator.copy_to_user_buffer("Sum", buffers);
     CHECK(sum == 14);
 
     // Nullable attribute.
     AggregateBuffer input_data3{
-
-        0,
-        2,
-        10,
-        fixed_data.data(),
-        nullopt,
-        0,
-        validity_data.data(),
-        false,
-        nullopt};
+        0, 2, fixed_data.data(), nullopt, validity_data.data(), false, nullopt};
     aggregator_nullable.aggregate_data(input_data3);
     aggregator_nullable.copy_to_user_buffer("Sum2", buffers);
     CHECK(sum2 == 0);
     CHECK(validity == 0);
 
     AggregateBuffer input_data4{
-
         2,
-        10,
         10,
         fixed_data.data(),
         nullopt,
-        0,
         validity_data.data(),
         false,
         bitmap.data()};
@@ -293,29 +271,13 @@ TEMPLATE_LIST_TEST_CASE(
     // Regular attribute.
     std::vector<uint64_t> bitmap_count = {1, 2, 4, 0, 0, 1, 2, 0, 1, 2};
     AggregateBuffer input_data{
-        2,
-        10,
-        10,
-        fixed_data.data(),
-        nullopt,
-        0,
-        nullopt,
-        true,
-        bitmap_count.data()};
+        2, 10, fixed_data.data(), nullopt, nullopt, true, bitmap_count.data()};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("Sum", buffers);
     CHECK(sum == 29);
 
     AggregateBuffer input_data2{
-        0,
-        2,
-        10,
-        fixed_data.data(),
-        nullopt,
-        0,
-        nullopt,
-        true,
-        bitmap_count.data()};
+        0, 2, fixed_data.data(), nullopt, nullopt, true, bitmap_count.data()};
     aggregator.aggregate_data(input_data2);
     aggregator.copy_to_user_buffer("Sum", buffers);
     CHECK(sum == 34);
@@ -324,10 +286,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data3{
         2,
         10,
-        10,
         fixed_data.data(),
         nullopt,
-        0,
         validity_data.data(),
         true,
         bitmap_count.data()};
@@ -339,10 +299,8 @@ TEMPLATE_LIST_TEST_CASE(
     AggregateBuffer input_data4{
         0,
         2,
-        10,
         fixed_data.data(),
         nullopt,
-        0,
         validity_data.data(),
         true,
         bitmap_count.data()};
@@ -370,15 +328,15 @@ TEST_CASE(
       std::numeric_limits<int64_t>::min() + 2};
 
   AggregateBuffer input_data_plus_one{
-      0, 1, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt};
+      0, 1, fixed_data.data(), nullopt, nullopt, false, nullopt};
 
   AggregateBuffer input_data_minus_one{
-      2, 3, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt};
+      2, 3, fixed_data.data(), nullopt, nullopt, false, nullopt};
 
   SECTION("Overflow") {
     // First sum doesn't overflow.
     AggregateBuffer input_data{
-        0, 2, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt};
+        0, 2, fixed_data.data(), nullopt, nullopt, false, nullopt};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("Sum", buffers);
     CHECK(sum == std::numeric_limits<int64_t>::max() - 1);
@@ -408,7 +366,7 @@ TEST_CASE(
   SECTION("Underflow") {
     // First sum doesn't underflow.
     AggregateBuffer input_data{
-        2, 4, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt};
+        2, 4, fixed_data.data(), nullopt, nullopt, false, nullopt};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("Sum", buffers);
     CHECK(sum == std::numeric_limits<int64_t>::min() + 1);
@@ -451,11 +409,11 @@ TEST_CASE(
       1, std::numeric_limits<uint64_t>::max() - 2};
 
   AggregateBuffer input_data_plus_one{
-      0, 1, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt};
+      0, 1, fixed_data.data(), nullopt, nullopt, false, nullopt};
 
   // First sum doesn't overflow.
   AggregateBuffer input_data{
-      0, 2, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt};
+      0, 2, fixed_data.data(), nullopt, nullopt, false, nullopt};
   aggregator.aggregate_data(input_data);
   aggregator.copy_to_user_buffer("Sum", buffers);
   CHECK(sum == std::numeric_limits<uint64_t>::max() - 1);
@@ -487,10 +445,10 @@ TEST_CASE(
       std::numeric_limits<double>::lowest()};
 
   AggregateBuffer input_data_max{
-      0, 1, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt};
+      0, 1, fixed_data.data(), nullopt, nullopt, false, nullopt};
 
   AggregateBuffer input_data_lowest{
-      1, 2, 10, fixed_data.data(), nullopt, 0, nullopt, false, nullopt};
+      1, 2, fixed_data.data(), nullopt, nullopt, false, nullopt};
 
   SECTION("Overflow") {
     // First sum doesn't overflow.

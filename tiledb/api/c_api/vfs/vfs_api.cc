@@ -229,14 +229,9 @@ capi_return_t tiledb_vfs_open(
     throw CAPIStatusException(std::string("Invalid TileDB object: ") + "uri");
   }
   auto vfs_mode = static_cast<tiledb::sm::VFSMode>(mode);
-  *fh = tiledb_vfs_fh_t::make_handle(fh_uri, vfs->vfs(), vfs_mode);
 
-  // Open VFS file
-  auto st{(*fh)->open()};
-  if (!st.ok()) {
-    tiledb_vfs_fh_t::break_handle(*fh);
-    return TILEDB_ERR;
-  }
+  // Throws if opening the uri is unsuccessful
+  *fh = tiledb_vfs_fh_t::make_handle(fh_uri, vfs->vfs(), vfs_mode);
 
   return TILEDB_OK;
 }

@@ -74,6 +74,16 @@ FilterPipeline::FilterPipeline(const FilterPipeline& other) {
   max_chunk_size_ = other.max_chunk_size_;
 }
 
+FilterPipeline::FilterPipeline(
+    const FilterPipeline& other, const Datatype on_disk_type) {
+  auto current_type = on_disk_type;
+  for (auto& filter : other.filters_) {
+    add_filter(*filter, current_type);
+    current_type = filters_.back()->output_datatype(current_type);
+  }
+  max_chunk_size_ = other.max_chunk_size_;
+}
+
 FilterPipeline::FilterPipeline(FilterPipeline&& other) {
   swap(other);
 }
@@ -93,6 +103,11 @@ FilterPipeline& FilterPipeline::operator=(FilterPipeline&& other) {
 
 void FilterPipeline::add_filter(const Filter& filter) {
   shared_ptr<Filter> copy(filter.clone());
+  filters_.push_back(std::move(copy));
+}
+
+void FilterPipeline::add_filter(const Filter& filter, const Datatype new_type) {
+  shared_ptr<Filter> copy(filter.clone(new_type));
   filters_.push_back(std::move(copy));
 }
 
@@ -142,9 +157,8 @@ FilterPipeline::get_var_chunk_sizes(
     WriterTile* const offsets_tile) const {
   std::vector<uint64_t> chunk_offsets;
   if (offsets_tile != nullptr) {
-    uint64_t num_offsets =
-        offsets_tile->size() / constants::cell_var_offset_size;
-    auto offsets = (uint64_t*)offsets_tile->data();
+    uint64_t num_offsets = offsets_tile->size_as<offsets_t>();
+    auto offsets = offsets_tile->data_as<offsets_t>();
 
     uint64_t current_size = 0;
     uint64_t min_size = chunk_size / 2;
@@ -232,7 +246,7 @@ Status FilterPipeline::filter_chunks_forward(
 
     // First filter's input is the original chunk.
     uint64_t offset = var_sizes ? chunk_offsets[i] : i * chunk_size;
-    void* chunk_buffer = static_cast<char*>(tile.data()) + offset;
+    void* chunk_buffer = tile.data_as<char>() + offset;
     uint32_t chunk_buffer_size =
         i == nchunks - 1 ? last_buffer_size :
         var_sizes        ? chunk_offsets[i + 1] - chunk_offsets[i] :
@@ -446,7 +460,7 @@ Status FilterPipeline::run_reverse(
     // If the pipeline is empty, just copy input to output.
     if (filters_.empty()) {
       void* output_chunk_buffer =
-          static_cast<char*>(tile->data()) + chunk_data.chunk_offsets_[i];
+          tile->data_as<char>() + chunk_data.chunk_offsets_[i];
       RETURN_NOT_OK(input_data.copy_to(output_chunk_buffer));
       continue;
     }
@@ -469,7 +483,7 @@ Status FilterPipeline::run_reverse(
       bool last_filter = filter_idx == 0;
       if (last_filter) {
         void* output_chunk_buffer =
-            static_cast<char*>(tile->data()) + chunk_data.chunk_offsets_[i];
+            tile->data_as<char>() + chunk_data.chunk_offsets_[i];
         RETURN_NOT_OK(output_data.set_fixed_allocation(
             output_chunk_buffer, chunk.unfiltered_data_size_));
         reader_stats->add_counter(

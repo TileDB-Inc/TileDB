@@ -78,6 +78,14 @@ class Filter {
    */
   Filter* clone() const;
 
+  /**
+   * Returns a newly allocated clone of this Filter. The clone does not belong
+   * to any pipeline. Caller is responsible for deletion of the clone.
+   *
+   * @param data_type Data type for the new filter.
+   */
+  Filter* clone(Datatype data_type) const;
+
   /** Dumps the filter details in ASCII format in the selected output. */
   virtual void dump(FILE* out) const = 0;
 

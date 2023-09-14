@@ -646,6 +646,30 @@ TEST_CASE(
       check_subset_range_strings(range_subset, 3, "h", "j");
     }
   }
+
+  SECTION("Same first letter") {
+    std::vector<Range> ranges = {
+        Range("G1", "G1"), Range("G2", "G2"), Range("G59", "G59")};
+    for (auto range : ranges) {
+      range_subset.add_range(range);
+    }
+    CHECK(range_subset.num_ranges() == 3);
+    ThreadPool pool{2};
+    range_subset.sort_and_merge_ranges(&pool, merge);
+
+    // Check range results
+    if (merge) {
+      CHECK(range_subset.num_ranges() == 3);
+      check_subset_range_strings(range_subset, 0, "G1", "G1");
+      check_subset_range_strings(range_subset, 1, "G2", "G2");
+      check_subset_range_strings(range_subset, 2, "G59", "G59");
+    } else {
+      CHECK(range_subset.num_ranges() == 3);
+      check_subset_range_strings(range_subset, 0, "G1", "G1");
+      check_subset_range_strings(range_subset, 1, "G2", "G2");
+      check_subset_range_strings(range_subset, 2, "G59", "G59");
+    }
+  }
 }
 
 TEST_CASE("RangeSetAndSuperset test bad constructor args") {

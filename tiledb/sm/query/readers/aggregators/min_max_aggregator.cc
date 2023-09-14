@@ -75,28 +75,6 @@ std::string_view ComparatorAggregatorBase<std::string>::value_at(
 }
 
 template <typename T>
-template <typename VALUE_T>
-VALUE_T ComparatorAggregatorBase<T>::last_var_value(
-    const void*, const char*, const AggregateBuffer&) const {
-  return 0;
-}
-
-template <>
-template <>
-std::string_view ComparatorAggregatorBase<std::string>::last_var_value(
-    const void* fixed_data,
-    const char* var_data,
-    const AggregateBuffer& input_data) const {
-  auto offsets = static_cast<const uint64_t*>(fixed_data);
-
-  // Return the var sized string.
-  uint64_t offset = offsets[input_data.max_cell() - 1];
-  uint64_t next_offset = input_data.var_data_size();
-
-  return std::string_view(var_data + offset, next_offset - offset);
-}
-
-template <typename T>
 void ComparatorAggregatorBase<T>::copy_to_user_buffer(
     std::string output_field_name,
     std::unordered_map<std::string, QueryBuffer>& buffers) const {
@@ -307,10 +285,6 @@ optional<T> ComparatorAggregator<T, Op>::min_max(AggregateBuffer& input_data) {
   // Run different loops for bitmap versus no bitmap and nullable versus non
   // nullable. The bitmap tells us which cells was already filtered out by
   // ranges or query conditions.
-  const uint64_t max_cell = input_data.includes_last_var_cell() ?
-                                input_data.max_cell() - 1 :
-                                input_data.max_cell();
-
   if (input_data.has_bitmap()) {
     auto bitmap_values = input_data.bitmap_data_as<BITMAP_T>();
 
@@ -318,30 +292,16 @@ optional<T> ComparatorAggregator<T, Op>::min_max(AggregateBuffer& input_data) {
       auto validity_values = input_data.validity_data();
 
       // Process for nullable min/max with bitmap.
-      for (uint64_t c = input_data.min_cell(); c < max_cell; c++) {
+      for (uint64_t c = input_data.min_cell(); c < input_data.max_cell(); c++) {
         if (validity_values[c] != 0 && bitmap_values[c] != 0) {
           update_min_max(value, fixed_data, var_data, c);
         }
       }
-
-      // Process last var cell.
-      if (input_data.includes_last_var_cell()) {
-        if (validity_values[max_cell] != 0 && bitmap_values[max_cell] != 0) {
-          update_last_var_min_max(value, fixed_data, var_data, input_data);
-        }
-      }
     } else {
       // Process for non nullable min/max with bitmap.
-      for (uint64_t c = input_data.min_cell(); c < max_cell; c++) {
+      for (uint64_t c = input_data.min_cell(); c < input_data.max_cell(); c++) {
         if (bitmap_values[c]) {
           update_min_max(value, fixed_data, var_data, c);
-        }
-      }
-
-      // Process last var cell.
-      if (input_data.includes_last_var_cell()) {
-        if (bitmap_values[max_cell] != 0) {
-          update_last_var_min_max(value, fixed_data, var_data, input_data);
         }
       }
     }
@@ -350,27 +310,15 @@ optional<T> ComparatorAggregator<T, Op>::min_max(AggregateBuffer& input_data) {
       auto validity_values = input_data.validity_data();
 
       // Process for nullable min/max with no bitmap.
-      for (uint64_t c = input_data.min_cell(); c < max_cell; c++) {
+      for (uint64_t c = input_data.min_cell(); c < input_data.max_cell(); c++) {
         if (validity_values[c] != 0) {
           update_min_max(value, fixed_data, var_data, c);
         }
       }
-
-      // Process last var cell.
-      if (input_data.includes_last_var_cell()) {
-        if (validity_values[max_cell] != 0) {
-          update_last_var_min_max(value, fixed_data, var_data, input_data);
-        }
-      }
     } else {
       // Process for non nullable min/max with no bitmap.
-      for (uint64_t c = input_data.min_cell(); c < max_cell; c++) {
+      for (uint64_t c = input_data.min_cell(); c < input_data.max_cell(); c++) {
         update_min_max(value, fixed_data, var_data, c);
-      }
-
-      // Process last var cell.
-      if (input_data.includes_last_var_cell()) {
-        update_last_var_min_max(value, fixed_data, var_data, input_data);
       }
     }
   }

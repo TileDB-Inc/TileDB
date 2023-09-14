@@ -658,3 +658,20 @@ TEST_CASE("C API: tiledb_vfs_fh_is_closed argument validation", "[capi][vfs]") {
 TEST_CASE("C API: tiledb_vfs_fh_free argument validation", "[capi][vfs]") {
   REQUIRE_NOTHROW(tiledb_vfs_fh_free(nullptr));
 }
+
+TEST_CASE(
+    "C API: tiledb_vfs_open reports error when open fails", "[capi][vfs]") {
+  ordinary_vfs x;
+  tiledb_vfs_fh_handle_t* vfs_fh;
+
+  tiledb_error_t* error = nullptr;
+
+  capi_return_t rc = tiledb_vfs_open(
+      x.ctx, x.vfs, "doesnotexistfile", TILEDB_VFS_READ, &vfs_fh);
+  REQUIRE(tiledb_status(rc) == TILEDB_ERR);
+
+  rc = tiledb_ctx_get_last_error(x.ctx, &error);
+  REQUIRE(tiledb_status(rc) == TILEDB_OK);
+
+  CHECK(error != nullptr);
+}
