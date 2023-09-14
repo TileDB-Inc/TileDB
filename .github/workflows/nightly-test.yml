@@ -79,4 +79,4 @@ jobs:
         with:
           name: nightly GitHub Actions build
           label: nightly
-          assignee: ihnorton,teo-tsirpanis,davisp
+          assignee: KiterLuc,teo-tsirpanis,davisp
