@@ -97,13 +97,7 @@ TEMPLATE_LIST_TEST_CASE(
     // Regular attribute.
     std::vector<uint8_t> bitmap = {1, 1, 0, 0, 0, 1, 1, 0, 1, 0};
     AggregateBuffer input_data{
-        2,
-        10,
-        fixed_data.data(),
-        nullopt,
-        nullopt,
-        false,
-        bitmap.data()};
+        2, 10, fixed_data.data(), nullopt, nullopt, false, bitmap.data()};
     auto res = aggregator.template aggregate<
         typename sum_type_data<T>::sum_type,
         uint8_t,
@@ -124,13 +118,7 @@ TEMPLATE_LIST_TEST_CASE(
 
     // Nullable attribute.
     AggregateBuffer input_data3{
-        0,
-        2,
-        fixed_data.data(),
-        nullopt,
-        validity_data.data(),
-        false,
-        nullopt};
+        0, 2, fixed_data.data(), nullopt, validity_data.data(), false, nullopt};
     auto res_nullable = aggregator_nullable.template aggregate<
         typename sum_type_data<T>::sum_type,
         uint8_t,
@@ -160,13 +148,7 @@ TEMPLATE_LIST_TEST_CASE(
     // Regular attribute.
     std::vector<uint64_t> bitmap_count = {1, 2, 4, 0, 0, 1, 2, 0, 1, 2};
     AggregateBuffer input_data{
-        2,
-        10,
-        fixed_data.data(),
-        nullopt,
-        nullopt,
-        true,
-        bitmap_count.data()};
+        2, 10, fixed_data.data(), nullopt, nullopt, true, bitmap_count.data()};
     auto res = aggregator.template aggregate<
         typename sum_type_data<T>::sum_type,
         uint64_t,
@@ -176,13 +158,7 @@ TEMPLATE_LIST_TEST_CASE(
     CHECK(std::get<2>(res) == nullopt);
 
     AggregateBuffer input_data2{
-        0,
-        2,
-        fixed_data.data(),
-        nullopt,
-        nullopt,
-        true,
-        bitmap_count.data()};
+        0, 2, fixed_data.data(), nullopt, nullopt, true, bitmap_count.data()};
     auto res2 = aggregator.template aggregate<
         typename sum_type_data<T>::sum_type,
         uint64_t,

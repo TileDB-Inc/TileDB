@@ -58,10 +58,14 @@ class SafeSum {
    */
   template <typename SUM_T>
   static void safe_sum(SUM_T value, std::atomic<SUM_T>& sum) {
-    SUM_T cur_sum = sum;
+    // Start by saving the current sum value from the atomic to operate on in
+    // 'cur_sum'. Then compute the new sum in 'new_sum'.
+    // std::atomic_compare_exchange_weak will only update the value and return
+    // true if the value hasn't changed since we saved it in 'cur_sum'.
+    SUM_T cur_sum;
     SUM_T new_sum;
     do {
-      new_sum = cur_sum;
+      new_sum = cur_sum = sum;
       op(value, new_sum);
     } while (!std::atomic_compare_exchange_weak(&sum, &cur_sum, new_sum));
   }

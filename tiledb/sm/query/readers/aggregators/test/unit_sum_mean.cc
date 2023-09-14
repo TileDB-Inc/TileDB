@@ -255,13 +255,7 @@ void basic_aggregation_test(std::vector<RES> expected_results) {
 
     // Nullable attribute.
     AggregateBuffer input_data3{
-        0,
-        2,
-        fixed_data.data(),
-        nullopt,
-        validity_data.data(),
-        false,
-        nullopt};
+        0, 2, fixed_data.data(), nullopt, validity_data.data(), false, nullopt};
     aggregator_nullable.aggregate_data(input_data3);
     aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
     if (is_nan(expected_results[4])) {
@@ -289,25 +283,13 @@ void basic_aggregation_test(std::vector<RES> expected_results) {
     // Regular attribute.
     std::vector<uint64_t> bitmap_count = {1, 2, 4, 0, 0, 1, 2, 0, 1, 2};
     AggregateBuffer input_data{
-        2,
-        10,
-        fixed_data.data(),
-        nullopt,
-        nullopt,
-        true,
-        bitmap_count.data()};
+        2, 10, fixed_data.data(), nullopt, nullopt, true, bitmap_count.data()};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("Agg", buffers);
     CHECK(res == expected_results[6]);
 
     AggregateBuffer input_data2{
-        0,
-        2,
-        fixed_data.data(),
-        nullopt,
-        nullopt,
-        true,
-        bitmap_count.data()};
+        0, 2, fixed_data.data(), nullopt, nullopt, true, bitmap_count.data()};
     aggregator.aggregate_data(input_data2);
     aggregator.copy_to_user_buffer("Agg", buffers);
     CHECK(res == expected_results[7]);

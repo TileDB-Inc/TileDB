@@ -60,6 +60,7 @@ class AggregateWithCount {
    *
    * @tparam SUM_T Sum type.
    * @tparam BITMAP_T Bitmap type.
+   * @tparam AggPolicy Aggregation policy.
    * @param input_data Input data for the sum.
    *
    * @return {Sum for the cells, number of cells, optional validity value}.
