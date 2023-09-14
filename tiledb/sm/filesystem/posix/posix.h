@@ -30,26 +30,21 @@
  * This file includes declarations of posix filesystem functions.
  */
 
-#ifndef TILEDB_POSIX_FILESYSTEM_H
-#define TILEDB_POSIX_FILESYSTEM_H
-
+#ifndef TILEDB_FILESYSTEM_POSIX_H
+#define TILEDB_FILESYSTEM_POSIX_H
 #ifndef _WIN32
 
-#include <ftw.h>
 #include <sys/types.h>
 
 #include <functional>
 #include <string>
 #include <vector>
 
-#include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/filesystem.h"
 
-using namespace tiledb::common;
 
-namespace tiledb::sm {
+namespace tiledb::sm::filesystem {
 
 class URI;
 
@@ -101,7 +96,6 @@ class Posix : public Filesystem {
    *
    * @param src_uri The old URI.
    * @param tgt_uri The new URI.
-   * @return Status
    */
   virtual void copy_dir(const URI& old_uri, const URI& new_uri) override;
 
@@ -116,7 +110,6 @@ class Posix : public Filesystem {
    * Create an empty file.
    *
    * @param uri The URI of the file.
-   * @return Status
    */
   virtual void touch(const URI& uri) override;
 
@@ -134,7 +127,6 @@ class Posix : public Filesystem {
    * @param uri The URI of the file.
    * @param buffer The buffer to write from.
    * @param buffer_size The buffer size.
-   * @return Status
    */
   virtual Status write(
       const URI& uri,
@@ -167,7 +159,6 @@ class Posix : public Filesystem {
    *
    * @param src_uri The old URI.
    * @param tgt_uri The new URI.
-   * @return Status
    */
   virtual void copy_file(const URI& src_uri, const URI& tgt_uri) override;
 
@@ -176,7 +167,6 @@ class Posix : public Filesystem {
    *
    * @param src_uri The old URI.
    * @param tgt_uri The new URI.
-   * @return Status
    */
   virtual void move_file(const URI& src_uri, const URI& tgt_uri) override;
 
@@ -184,7 +174,6 @@ class Posix : public Filesystem {
    * Delete a file.
    *
    * @param uri The URI of the file to remove.
-   * @return Status
    */
   virtual void remove_file(const URI& uri) const override;
 
@@ -198,18 +187,6 @@ class Posix : public Filesystem {
   void traverse(const URI& base, std::function<void(FilesystemEntry)> callback, bool top_down = true);
 
   /**
-   * Reads all nbytes from the given file descriptor, retrying as necessary.
-   *
-   * @param fd Open file descriptor to read from
-   * @param buffer Buffer to hold read data
-   * @param nbytes Number of bytes to read
-   * @param offset Offset in file to start reading from.
-   * @return Status
-   */
-  static void read_all(
-      int fd, void* buffer, uint64_t nbytes, uint64_t offset);
-
-  /**
    * Write data from the given buffer to the file descriptor, beginning at the
    * given offset. Multiple threads can safely write to the same open file
    * descriptor.
@@ -221,13 +198,19 @@ class Posix : public Filesystem {
    * @return Status
    */
   static void write_at(
-      int fd, const void* buffer, uint64_t nbytes, uint64_t offset);
+      int fd, uint64_t offset, const void* buffer, uint64_t nbytes);
 
-  static int unlink_cb(
-  const char* fpath,
-  const struct stat* sb,
-  int typeflag,
-  struct FTW* ftwbuf);
+  /**
+   * Reads all nbytes from the given file descriptor, retrying as necessary.
+   *
+   * @param fd Open file descriptor to read from
+   * @param buffer Buffer to hold read data
+   * @param nbytes Number of bytes to read
+   * @param offset Offset in file to start reading from.
+   * @return Status
+   */
+  static void read_all(
+      int fd, uint64_t offset, void* buffer, uint64_t nbytes);
 
   /**
    * @return Permissions to use when creating directories.
@@ -241,9 +224,7 @@ class Posix : public Filesystem {
 
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::filesystem
 
 #endif  // !_WIN32
-
-#endif  // TILEDB_POSIX_FILESYSTEM_H
+#endif  // TILEDB_FILESYSTEM_POSIX_H

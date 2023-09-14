@@ -48,6 +48,34 @@ using namespace tiledb::common;
 
 namespace tiledb::sm::path_win {
 
+std::string Win::abs_path(const std::string& path) {
+  if (path.length() == 0) {
+    return current_dir();
+  }
+  std::string full_path(path_win::slashes_to_backslashes(path));
+  // If some problem leads here, note the following
+  // PathIsRelative("/") unexpectedly returns true.
+  // PathIsRelative("c:somedir\somesubdir") unexpectedly returns false
+  if (PathIsRelative(full_path.c_str())) {
+    full_path = current_dir() + "\\" + full_path;
+  } else {
+    full_path = path;
+  }
+  char result[MAX_PATH];
+  std::string str_result;
+  if (PathCanonicalize(result, full_path.c_str()) == FALSE) {
+    auto gle = GetLastError();
+    LOG_STATUS_NO_RETURN_VALUE(Status_IOError(std::string(
+        "Cannot canonicalize path. (" +
+        get_last_error_msg(gle, "PathCanonicalize") + ")")));
+  } else {
+    str_result = result;
+  }
+  return str_result;
+}
+
+
+
 std::string slashes_to_backslashes(std::string pathsegments) {
   std::replace(pathsegments.begin(), pathsegments.end(), '/', '\\');
   return pathsegments;

@@ -31,22 +31,10 @@
  */
 #ifdef _WIN32
 
-#include "win.h"
-#include "path_win.h"
-#include "tiledb/common/common.h"
-#include "tiledb/common/filesystem/directory_entry.h"
-#include "tiledb/common/heap_memory.h"
-#include "tiledb/common/logger.h"
-#include "tiledb/common/scoped_executor.h"
-#include "tiledb/common/stdx_string.h"
-#include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/tdb_math.h"
-#include "tiledb/sm/misc/utils.h"
-#include "uri.h"
-
 #if !defined(NOMINMAX)
 #define NOMINMAX  // suppress definition of min/max macros in Windows headers
 #endif
+
 #include <Shlwapi.h>
 #include <Windows.h>
 #include <strsafe.h>
@@ -58,15 +46,28 @@
 #include <sstream>
 #include <string_view>
 
-using namespace tiledb::common;
-using tiledb::common::filesystem::directory_entry;
+#include "tiledb/sm/filesystem/win/win.h"
+#include "tiledb/sm/filesystem/win/path_win.h"
+#include "tiledb/common/common.h"
+#include "tiledb/common/filesystem/directory_entry.h"
+#include "tiledb/common/heap_memory.h"
+#include "tiledb/common/logger.h"
+#include "tiledb/common/scoped_executor.h"
+#include "tiledb/common/stdx_string.h"
+#include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/misc/tdb_math.h"
+#include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/filesystem/uri.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm::filesystem {
 
+// Anonymous namespace for helper functions.
 namespace {
+
+typedef decltype(GetLastError()) TDBWinErrorType
+
 /** Returns the last Windows error message string. */
-std::string get_last_error_msg_desc(decltype(GetLastError()) gle) {
+std::string get_last_error_msg_desc(TDBWinErrorType gle) {
   LPVOID lpMsgBuf = nullptr;
   if (FormatMessage(
           FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
@@ -88,7 +89,7 @@ std::string get_last_error_msg_desc(decltype(GetLastError()) gle) {
 }
 
 std::string get_last_error_msg(
-    decltype(GetLastError()) gle, const std::string_view func_desc) {
+    TDBWinErrorType gle, const std::string_view func_desc) {
   std::string gle_desc = get_last_error_msg_desc(gle);
 
   auto buf_len = gle_desc.length() + func_desc.size() + 60;
@@ -103,37 +104,40 @@ std::string get_last_error_msg(
       gle_desc.c_str());
   return {display_buf.get()};
 }
+
 std::string get_last_error_msg(const std::string_view func_desc) {
   DWORD gle = GetLastError();
   return get_last_error_msg(gle, func_desc);
 }
+
 }  // namespace
 
-std::string Win::abs_path(const std::string& path) {
-  if (path.length() == 0) {
-    return current_dir();
+class WinFSException : public FilesystemException {
+ public:
+  explicit FilesystemException(const std::string& message)
+      : StatusException("WindowsFilesystem", message) {
   }
-  std::string full_path(path_win::slashes_to_backslashes(path));
-  // If some problem leads here, note the following
-  // PathIsRelative("/") unexpectedly returns true.
-  // PathIsRelative("c:somedir\somesubdir") unexpectedly returns false
-  if (PathIsRelative(full_path.c_str())) {
-    full_path = current_dir() + "\\" + full_path;
-  } else {
-    full_path = path;
-  }
-  char result[MAX_PATH];
-  std::string str_result;
-  if (PathCanonicalize(result, full_path.c_str()) == FALSE) {
-    auto gle = GetLastError();
-    LOG_STATUS_NO_RETURN_VALUE(Status_IOError(std::string(
-        "Cannot canonicalize path. (" +
-        get_last_error_msg(gle, "PathCanonicalize") + ")")));
-  } else {
-    str_result = result;
-  }
-  return str_result;
+};
+
+Win::Win(const Config& config)
+    : FilesystemBase(resources.config())
+    , fs_type_(FilesystemType::WIN)
+    , thread_pool_(resoures.io_tp()) {
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Status Win::create_dir(const std::string& path) const {
   if (is_dir(path)) {

@@ -36,188 +36,151 @@
 #ifdef _WIN32
 
 #include <sys/types.h>
+
 #include <string>
 #include <vector>
 
-#include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/filesystem/filesystem.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-
-namespace common::filesystem {
-class directory_entry;
-}
-
-namespace sm {
+namespace tiledb::sm::filesystem {
 
 class URI;
 
 /** Typedef this here so we don't have to include Windows.h */
 typedef void* HANDLE;
 
-/**
- * This class implements Windows filesystem functions.
- */
-class Win {
+class Win : public Filesystem {
  public:
-  /**
-   * Returns the absolute (string) path of the input in the
-   * form of a Windows path.
-   */
-  static std::string abs_path(const std::string& path);
+  explicit Win(ContextResources& resources);
+
+  ~Win() override = default;
 
   /**
-   * Creates a new directory.
+   * Check if a URI refers to a directory.
    *
-   * @param dir The name of the directory to be created.
-   * @return Status
+   * @param uri The URI to check.
+   * @return bool Whether uri refers to a directory or not.
    */
-  Status create_dir(const std::string& path) const;
+  virtual bool is_dir(const URI& uri) const override;
 
   /**
-   * Creates an empty file.
+   * Check if a URI refers to a file.
    *
-   * @param filename The name of the file to be created.
-   * @return Status
+   * @param uri The URI to check.
+   * @return bool Whether uri refers to a file or not.
    */
-  Status touch(const std::string& filename) const;
+  virtual bool is_file(const URI& uri) const override;
 
   /**
-   * Returns the directory where the program is executed.
+   * Create a directory.
    *
-   * @return The directory path where the program is executed. If the program
-   * cannot retrieve the current working directory, the empty string is
-   * returned.
+   * @param uri The URI of the directory.
    */
-  static std::string current_dir();
+  virtual void create_dir(const URI& uri) override;
 
   /**
-   * Removes a given directory recursively.
+   * Retrieves all the entries contained in the parent.
    *
-   * @param path The path of the directory to be deleted.
-   * @return Status
+   * @param parent The target directory to list.
+   * @return All entries that are contained in the parent
    */
-  Status remove_dir(const std::string& path) const;
+  virtual std::vector<FilesystemEntry>
+  ls(const URI& parent) const override;
 
   /**
-   * Removes a given path.
+   * Copy a directory.
    *
-   * @param path The path of the file / empty directory to be deleted.
-   * @return Status
+   * @param src_uri The old URI.
+   * @param tgt_uri The new URI.
    */
-  Status remove_file(const std::string& path) const;
+  virtual void copy_dir(const URI& old_uri, const URI& new_uri) override;
 
   /**
-   * Returns the size of the input file.
+   * Recursively remove a directory.
    *
-   * @param path The name of the file whose size is to be retrieved.
-   * @param nbytes Pointer to a value
-   * @return Status
+   * @param uri The uri of the directory to be removed.
    */
-  Status file_size(const std::string& path, uint64_t* size) const;
+  virtual void remove_dir(const URI& uri) override;
 
   /**
-   * Initialize this instance with the given parameters.
+   * Create an empty file.
    *
-   * @param config Config from the parent VFS instance.
-   * @param vfs_thread_pool ThreadPool from the parent VFS instance.
-   * @return Status
+   * @param uri The URI of the file.
    */
-  Status init(const Config& config, ThreadPool* vfs_thread_pool);
+  virtual void touch(const URI& uri) override;
 
   /**
-   * Checks if the input is an existing directory.
+   * Retrieves the size of a file.
    *
-   * @param dir The directory to be checked.
-   * @return *True* if *dir* is an existing directory, and *False* otherwise.
+   * @param uri The URI of the file.
+   * @return uint64_t The size of the file in bytes.
    */
-  bool is_dir(const std::string& path) const;
+  virtual uint64_t file_size(const URI& uri) const override;
 
   /**
-   * Checks if the input is an existing file.
+   * Write the contents of a buffer to a file.
    *
-   * @param file The file to be checked.
-   * @return *True* if *file* is an existing file, and *false* otherwise.
+   * @param uri The URI of the file.
+   * @param buffer The buffer to write from.
+   * @param buffer_size The buffer size.
    */
-  bool is_file(const std::string& path) const;
+  virtual Status write(
+      const URI& uri,
+      const void* buffer,
+      uint64_t buffer_size) override;
 
   /**
+   * Read from a file.
    *
-   * Lists files one level deep under a given path.
-   *
-   * @param path  The parent path to list sub-paths.
-   * @param paths Pointer to a vector of strings to store the retrieved paths.
-   * @return Status
+   * @param uri The URI of the file.
+   * @param offset The offset where the read begins.
+   * @param buffer The buffer to read into.
+   * @param nbytes Number of bytes to read.
    */
-  Status ls(const std::string& path, std::vector<std::string>* paths) const;
-
-  /**
-   *
-   * Lists files and file information under a given path.
-   *
-   * @param path The parent path to list sub-paths.
-   * @return A list of directory_entry objects
-   */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-  ls_with_sizes(const URI& path) const;
-
-  /**
-   * Move a given filesystem path.
-   *
-   * @param old_path The old path.
-   * @param new_path The new path.
-   * @return Status
-   */
-  Status move_path(
-      const std::string& old_path, const std::string& new_path) const;
-
-  /**
-   * Reads data from a file into a buffer.
-   *
-   * @param path The name of the file.
-   * @param offset The offset in the file from which the read will start.
-   * @param buffer The buffer into which the data will be written.
-   * @param nbytes The size of the data to be read from the file.
-   * @return Status.
-   */
-  Status read(
-      const std::string& path,
+  virtual void read(
+      const URI& uri,
       uint64_t offset,
       void* buffer,
-      uint64_t nbytes) const;
+      uint64_t nbytes) override;
 
   /**
-   * Syncs a file or directory.
+   * Syncs (flushes) a file.
    *
-   * @param path The name of the file.
-   * @return Status
+   * @param uri The URI of the file.
    */
-  Status sync(const std::string& path) const;
+  virtual void sync(const URI& uri) override;
 
   /**
-   * Writes the input buffer to a file.
+   * Copy a file.
    *
-   * If the file exists than it is created.
-   * If the file does not exist than it is appended to.
-   *
-   * @param path The name of the file.
-   * @param buffer The input buffer.
-   * @param buffer_size The size of the input buffer.
-   * @return Status
+   * @param src_uri The old URI.
+   * @param tgt_uri The new URI.
    */
-  Status write(
-      const std::string& path, const void* buffer, uint64_t buffer_size) const;
+  virtual void copy_file(const URI& src_uri, const URI& tgt_uri) override;
+
+  /**
+   * Rename a file.
+   *
+   * @param src_uri The old URI.
+   * @param tgt_uri The new URI.
+   */
+  virtual void move_file(const URI& src_uri, const URI& tgt_uri) override;
+
+  /**
+   * Delete a file.
+   *
+   * @param uri The URI of the file to remove.
+   */
+  virtual void remove_file(const URI& uri) const override;
 
  private:
-  /** Config parameters from parent VFS instance. */
-  Config config_;
-
   /** Thread pool from parent VFS instance. */
-  ThreadPool* vfs_thread_pool_;
+  ThreadPool* thread_pool_;
 
   /**
    * Recursively removes the directory at the given path.

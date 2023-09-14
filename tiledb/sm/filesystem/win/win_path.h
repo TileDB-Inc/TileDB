@@ -44,6 +44,23 @@
 #include "tiledb/sm/config/config.h"
 #include "uri.h"
 
+  /**
+ * Returns the absolute (string) path of the input in the
+ * form of a Windows path.
+ */
+static std::string abs_path(const std::string& path);
+
+  /**
+ * Returns the directory where the program is executed.
+ *
+ * @return The directory path where the program is executed. If the program
+ * cannot retrieve the current working directory, the empty string is
+ * returned.
+ */
+static std::string current_dir();
+
+
+
 using namespace tiledb::common;
 
 namespace tiledb::sm::path_win {
