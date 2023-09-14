@@ -39,6 +39,7 @@
 #include <Windows.h>
 #include <strsafe.h>
 #include <wininet.h>  // For INTERNET_MAX_URL_LENGTH
+
 #include <algorithm>
 #include <cassert>
 #include <fstream>
@@ -46,25 +47,25 @@
 #include <sstream>
 #include <string_view>
 
-#include "tiledb/sm/filesystem/win/win.h"
-#include "tiledb/sm/filesystem/win/path_win.h"
 #include "tiledb/common/common.h"
-#include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/scoped_executor.h"
 #include "tiledb/common/stdx_string.h"
+#include "tiledb/sm/filesystem/filesystem.h"
+#include "tiledb/sm/filesystem/path.h"
+#include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/sm/filesystem/win/win.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/filesystem/uri.h"
 
 namespace tiledb::sm::filesystem {
 
 // Anonymous namespace for helper functions.
 namespace {
 
-typedef decltype(GetLastError()) TDBWinErrorType
+typedef decltype(GetLastError()) TDBWinErrorType;
 
 /** Returns the last Windows error message string. */
 std::string get_last_error_msg_desc(TDBWinErrorType gle) {
@@ -105,11 +106,6 @@ std::string get_last_error_msg(
   return {display_buf.get()};
 }
 
-std::string get_last_error_msg(const std::string_view func_desc) {
-  auto gle = GetLastError();
-  return get_last_error_msg(gle, func_desc);
-}
-
 }  // namespace
 
 class WinFSException : public FilesystemException {
@@ -118,6 +114,108 @@ class WinFSException : public FilesystemException {
       : StatusException("WindowsFilesystem", message) {
   }
 };
+
+std::string PathUtils::current_dir() {
+  // Calculate the length so we can allocate a buffer correctly.
+  auto length = GetCurrentDirectory(0, nullptr);
+
+  std::string ret(length);
+  if (GetCurentDirectory(length, ret.data()) == 0) {
+    auto gle = GetLastError();
+    throw WinFSException("Failed to getting current directory: "
+      + get_last_error_msg(gle, "GetCurrentDirectory"));
+  }
+
+  return ret;
+}
+
+std::string PathUtils::abs_path(const std::string& path) {
+  if (path.length() == 0) {
+    return current_dir();
+  }
+
+  // Create a copy of path that is modifiable.
+  auto mod = path;
+
+  // Replace Posix slashes with Windows slashes.
+  std::replace(mod.begin(), mod.end(), '/', '\\');
+
+  // If some problem leads here, note the following
+  // PathIsRelative("/") unexpectedly returns true.
+  // PathIsRelative("c:somedir\somesubdir") unexpectedly returns false
+  if (PathIsRelative(mod.c_str())) {
+    mod = current_dir() + "\\" + mod;
+  }
+
+  char result[MAX_PATH];
+  if (PathCanonicalize(result, mod.c_str()) == FALSE) {
+    auto gle = GetLastError();
+    throw WinFSException("Error canonicalizing path '" + path + "'; " +
+      get_last_error_msg(gle, "PathCanonicalize"));
+  }
+
+  return std::string(result);
+}
+
+bool PathUtils::is_win_path(const std::string& p_path) {
+  std::string path(slashes_to_backslashes(p_path));
+  if (path.empty()) {
+    // Special case to match the behavior of posix_filesystem.
+    return true;
+  } else if (PathIsURL(path.c_str())) {
+    return false;
+  } else {
+    bool definitely_windows = PathIsUNC(path.c_str()) ||
+                              PathGetDriveNumber(path.c_str()) != -1 ||
+                              path.find('\\') != std::string::npos;
+    if (definitely_windows) {
+      return true;
+    } else {
+      // Bare relative path e.g. "filename.txt"
+      return path.find('/') == std::string::npos;
+    }
+  }
+}
+
+std::string PathUtils::uri_from_path(const std::string& path) {
+  if (path.length() == 0) {
+    return "";
+  }
+
+  unsigned long uri_length = INTERNET_MAX_URL_LENGTH;
+  char uri[INTERNET_MAX_URL_LENGTH];
+  if (UrlCreateFromPath(path.c_str(), uri, &uri_length, 0) != S_OK) {
+    LOG_STATUS_NO_RETURN_VALUE(Status_IOError(
+        std::string("Failed to convert path '" + path + "' to URI.")));
+  }
+
+  return std::string(uri);
+}
+
+std::string PathUtils::path_from_uri(const std::string& uri) {
+  if (uri.length() == 0) {
+    return "";
+  }
+
+  // Make sure we pass something with a "file://" prefix to PathCreateFromUrl
+  std::string with_scheme;
+  if (stdx::string::starts_with(uri, "file://")) {
+    with_schema = uri;
+  } else if(stdx::string::starts_with(uril, "file:/")) {
+    with_scheme = "file://" + uri.substr(6);
+  } else {
+    with_scheme = "file://" + uri;
+  }
+
+  unsigned long path_length = MAX_PATH;
+  char path[MAX_PATH];
+  if (PathCreateFromUrl(with_scheme.c_str(), path, &path_length, 0) != S_OK) {
+    throw WinFSException(
+      "Failed to convert URI '" + with_scheme + "' to a path.");
+  }
+
+  return std::string(path);
+}
 
 Win::Win(const Config& config)
     : FilesystemBase(resources.config())

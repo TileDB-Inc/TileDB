@@ -44,15 +44,16 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "tiledb/sm/filesystem/posix.h"
-#include "tiledb/common/filesystem/directory_entry.h"
+
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/common/thread_pool.h"
+#include "tiledb/sm/filesystem/posix/posix.h"
+#include "tiledb/sm/filesystem/path.h"
+#include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
-#include "uri.h"
 
 namespace tiledb::sm {
 
@@ -62,6 +63,82 @@ class PosixFSException : public FilesystemException {
       : StatusException("PosixFilesystem", message) {
   }
 };
+
+std::string PathUtils::current_dir() {
+  auto cwd = getcwd(nullptr, 0);
+  tiledb::common::defer([&cwd]() {
+    if (cwd != nullptr) {
+      free(cwd);
+    }
+  });
+
+  if (cwd == nullptr) {
+    throw PosixFSException("Error getting the current working directory.");
+  }
+
+  return std::String(cwd);
+}
+
+std::string PathUtils::abs_path(const std::string& path) {
+  if (path.empty()) {
+    return {};
+  }
+
+  if (path == "file:///") {
+    return path;
+  }
+
+  if (!utils::parse::starts_with(path, "file:///")) {
+    throw PosixFSException("Invalid file URI: " + path);
+  }
+
+  std::string::size_type curr_pos = 8;
+  std::vector<std::string> components;
+  while (curr_pos < path.size()) {
+    auto next_slash = path.find("/", curr_pos);
+    if (next_slash > curr_pos) {
+      components.emplace_back(path.substr(curr_pos, next_slash - curr_pos));
+      curr_pos = next_slash + 1;
+    } else {
+      // Ignore empty path components.
+      curr_pos += 1;
+    }
+  }
+
+  // Handle removal of "." and ".."
+  std::vector<std::string> no_dots;
+  for (auto& comp : components) {
+    if (comp == ".") {
+      continue;
+    } else if (comp == "..") {
+      if (no_dots.empty()) {
+        // Invalid path
+        return {};
+      } else {
+        no_dots.pop_back();
+      }
+    } else {
+      no_dots.push_back(comp);
+    }
+  }
+
+  // Build the final path.
+  std::string resolved = "file://";
+  for (auto& comp : no_dots) {
+    path += "/" + comp;
+  }
+
+  // Ensure the returned has the same postfix slash as 'path'.
+  if (utils::parse::ends_with(path, "/")) {
+    if (!utils::parse::ends_with(resolved, "/")) {
+      resolved += "/";
+    }
+  } else if (utils::parse::ends_with(resolved_path, "/")) {
+    resolved = resolved.substr(0, resolved.length() - 1);
+  }
+
+  return resolved;
+}
 
 Posix::Posix(ContextResources& resources)
     : FilesystemBase(resources.config())

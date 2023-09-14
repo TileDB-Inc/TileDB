@@ -1,5 +1,5 @@
 /**
- * @file   vfs.cc
+ * @file vfs.cc
  *
  * @section LICENSE
  *
@@ -35,17 +35,14 @@
 #include <sstream>
 #include <unordered_map>
 
-#include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/filesystem.h"
 #include "tiledb/sm/enums/vfs_mode.h"
-#include "tiledb/sm/filesystem/hdfs_filesystem.h"
+#include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/tile/tile.h"
 
 namespace tiledb::sm {
 
@@ -55,7 +52,6 @@ namespace tiledb::sm {
 
 VFS::VFS(ContextResources& resources)
     : resources_(resources) {
-    , vfs_params_(VFSParameters(resources.config())) {
 
   read_ahead_cache_ = tdb_unique_ptr<ReadAheadCache>(
       tdb_new(ReadAheadCache, vfs_params_.read_ahead_cache_size_));
@@ -78,6 +74,11 @@ VFS::VFS(ContextResources& resources)
     }
 
     for (auto& scheme : creator.schemes()) {
+      if (scheme.find(":") != std::string::npos) {
+        throw VFSException("Invalid VFS Filesystem configuration. Scheme '" +
+        + scheme + "' should contain a colon.");
+      }
+
       if (filesystems_.find(scheme) != filesystems_.end()) {
         throw VFSException("Invalid VFS Filesystem configuration. Scheme '" +
           + scheme + "' is claimed by multiple filesystem implementations.");
@@ -1392,7 +1393,7 @@ Status VFS::sync(const URI& uri) {
       Status_VFSError("Unsupported URI scheme: " + uri.to_string()));
 }
 
-Status VFS::open_file(const URI& uri, VFSMode mode) {
+void VFS::open_file(const URI& uri, VFSMode mode) {
   bool is_file;
   RETURN_NOT_OK(this->is_file(uri, &is_file));
 
@@ -1404,44 +1405,13 @@ Status VFS::open_file(const URI& uri, VFSMode mode) {
             "'; File does not exist"));
       break;
     case VFSMode::VFS_WRITE:
+    case VFSMode::VFS_APPEND:
       if (is_file)
         RETURN_NOT_OK(remove_file(uri));
       break;
-    case VFSMode::VFS_APPEND:
-      if (uri.is_s3()) {
-#ifdef HAVE_S3
-        return LOG_STATUS(Status_VFSError(
-            std::string("Cannot open file '") + uri.c_str() +
-            "'; S3 does not support append mode"));
-#else
-        return LOG_STATUS(Status_VFSError(
-            "Cannot open file; TileDB was built without S3 support"));
-#endif
-      }
-      if (uri.is_azure()) {
-#ifdef HAVE_AZURE
-        return LOG_STATUS(Status_VFSError(
-            std::string("Cannot open file '") + uri.c_str() +
-            "'; Azure does not support append mode"));
-#else
-        return LOG_STATUS(Status_VFSError(
-            "Cannot open file; TileDB was built without Azure support"));
-#endif
-      }
-      if (uri.is_gcs()) {
-#ifdef HAVE_GCS
-        return LOG_STATUS(Status_VFSError(
-            std::string("Cannot open file '") + uri.c_str() +
-            "'; GCS does not support append mode"));
-#else
-        return LOG_STATUS(Status_VFSError(
-            "Cannot open file; TileDB was built without GCS support"));
-#endif
-      }
-      break;
+    default:
+      stdx::unreachable();
   }
-
-  return Status::Ok();
 }
 
 Status VFS::close_file(const URI& uri) {

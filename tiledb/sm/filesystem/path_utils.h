@@ -1,11 +1,11 @@
 /**
- * @file path.h
+ * @file filesystem/win/path_utils.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,23 +27,33 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the Path base class.
+ * This file defines the PathUtils functions
  */
 
-#ifndef TILEDB_FILESYSTEM_PATH_H
-#define TILEDB_FILESYSTEM_PATH_H
+#ifndef TILEDB_FILESYSTEM_WIN_PATH_H
+#define TILEDB_FILESYSTEM_WIN_PATH_H
 
 namespace tiledb::sm::filesystem {
 
-// I have no idea if I'm going to end up needing this or not.
+#ifdef _WIN32
 
-class Path {
- public:
-  virtual std::string abs_path(const std::string& path);
-  virtual std::string
+class PathUtils {
+  static std::string current_dir();
+  static std::string abs_path(const std::string& path);
+  static bool is_win_path(const std::string& path);
+  static std::string uri_from_path(const std::string& path);
+  static std::string path_from_uri(const std::string& uri);
 };
 
+#else
 
-}  // namespace tiledb::sm
+class PathUtils {
+  static std::string current_dir();
+  static std::string abs_path(const std::string& path);
+};
 
-#endif  // TILEDB_FILESYSTEM_H
+#endif
+
+} // namespace tiledb::sm::filesystem::windows
+
+#endif  // TILEDB_FILESYSTEM_WIN_PATH_H

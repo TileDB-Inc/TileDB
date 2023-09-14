@@ -35,13 +35,11 @@
 
 #include <atomic>
 
-#include "tiledb/common/status.h"
-#include "uri.h"
+#include "tiledb/sm/filesystem/uri.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class VFS;
 
@@ -68,51 +66,51 @@ class VFSFileHandle {
   /*               API                 */
   /* ********************************* */
 
-  /** Closes the file handle. */
-  Status close();
+  /** Returns the URI associated with the file handle. */
+  inline URI uri() const {
+    return uri_;
+  }
 
   /** Returns `true` if the file handle is open. */
   bool is_open() const;
 
   /** Opens the file handle. */
-  Status open();
+  void open();
+
+  /** Closes the file handle. */
+  void close();
+
+  /** Writes to a file.
+   *
+   * @param buffer The buffer to write from.
+   * @param nbytes The number of bytes to write.
+   */
+  void write(const void* buffer, uint64_t nbytes);
 
   /** Reads from a file.
    *
    * @param offset The offset to start the reading from.
    * @param buffer The buffer to read into.
    * @param nbytes The number of bytes to read.
-   * @return Status
    */
-  Status read(uint64_t offset, void* buffer, uint64_t nbytes);
+  void read(uint64_t offset, void* buffer, uint64_t nbytes);
 
   /** Syncs the file handle (applicable to write mode only). */
-  Status sync();
-
-  /** Returns the URI associated with the file handle. */
-  URI uri() const;
-
-  /** Writes to a file.
-   *
-   * @param buffer The buffer to write from.
-   * @param nbytes The number of bytes to write.
-   * @return Status
-   */
-  Status write(const void* buffer, uint64_t nbytes);
+  void sync();
 
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 
+  /** A VFS object handling all VFS I/O. */
+  VFS* vfs_;
+
   /** The URI of the VFS file. */
   URI uri_;
 
   /** True if the VFS file is open. */
   std::atomic<bool> is_open_;
-
-  /** A VFS object handling all VFS I/O. */
-  VFS* vfs_;
 
   /** The mode which the VFS file was opened in. */
   VFSMode mode_;
