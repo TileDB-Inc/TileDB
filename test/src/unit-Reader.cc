@@ -271,15 +271,15 @@ TEST_CASE_METHOD(
   CHECK(result_space_tiles.size() == 6);
 
   // Result tiles for fragment #1
-  ResultTile result_tile_1_0_1(1, 0, *(schema.get()));
-  ResultTile result_tile_1_2_1(1, 2, *(schema.get()));
+  ResultTile result_tile_1_0_1(1, 0, *fragments[0]);
+  ResultTile result_tile_1_2_1(1, 2, *fragments[0]);
 
   // Result tiles for fragment #2
-  ResultTile result_tile_1_0_2(2, 0, *(schema.get()));
+  ResultTile result_tile_1_0_2(2, 0, *fragments[1]);
 
   // Result tiles for fragment #3
-  ResultTile result_tile_2_0_3(3, 0, *(schema.get()));
-  ResultTile result_tile_3_0_3(3, 2, *(schema.get()));
+  ResultTile result_tile_2_0_3(3, 0, *fragments[2]);
+  ResultTile result_tile_3_0_3(3, 2, *fragments[2]);
 
   // Initialize result_space_tiles
   ResultSpaceTile<int32_t> rst_1_0;

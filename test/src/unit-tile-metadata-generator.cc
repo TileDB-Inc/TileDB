@@ -102,10 +102,10 @@ TEMPLATE_LIST_TEST_CASE(
       nullable,
       cell_val_num * sizeof(T),
       tiledb_type);
-  auto tile_buff = (T*)writer_tile.fixed_tile().data();
+  auto tile_buff = writer_tile.fixed_tile().data_as<T>();
   uint8_t* nullable_buff = nullptr;
   if (nullable) {
-    nullable_buff = (uint8_t*)writer_tile.validity_tile().data();
+    nullable_buff = writer_tile.validity_tile().data_as<uint8_t>();
   }
 
   // Compute correct values as the tile is filled with data.
@@ -264,7 +264,7 @@ TEMPLATE_LIST_TEST_CASE(
   // Initialize a new tile.
   auto tiledb_type = static_cast<Datatype>(type.tiledb_type);
   WriterTileTuple writer_tile(schema, 4, false, false, sizeof(T), tiledb_type);
-  auto tile_buff = (T*)writer_tile.fixed_tile().data();
+  auto tile_buff = writer_tile.fixed_tile().data_as<T>();
 
   // Once an overflow happens, the computation should abort, try to add a few
   // min values after the overflow to confirm.
@@ -290,7 +290,7 @@ TEMPLATE_LIST_TEST_CASE(
     // Initialize a new tile.
     WriterTileTuple writer_tile(
         schema, 4, false, false, sizeof(T), tiledb_type);
-    auto tile_buff = (T*)writer_tile.fixed_tile().data();
+    auto tile_buff = writer_tile.fixed_tile().data_as<T>();
 
     // Once an overflow happens, the computation should abort, try to add a few
     // max values after the overflow to confirm.
@@ -357,12 +357,12 @@ TEST_CASE(
   // Initialize tile.
   WriterTileTuple writer_tile(
       schema, num_cells, true, nullable, 1, Datatype::CHAR);
-  auto offsets_tile_buff = (uint64_t*)writer_tile.offset_tile().data();
+  auto offsets_tile_buff = writer_tile.offset_tile().data_as<offsets_t>();
 
   // Initialize a new nullable tile.
   uint8_t* nullable_buff = nullptr;
   if (nullable) {
-    nullable_buff = (uint8_t*)writer_tile.validity_tile().data();
+    nullable_buff = writer_tile.validity_tile().data_as<uint8_t>();
   }
 
   // Compute correct values as the tile is filled with data.
@@ -440,7 +440,7 @@ TEST_CASE(
   // Store '123' and '12'
   // Initialize offsets tile.
   WriterTileTuple writer_tile(schema, 2, true, false, 1, Datatype::CHAR);
-  auto offsets_tile_buff = (uint64_t*)writer_tile.offset_tile().data();
+  auto offsets_tile_buff = writer_tile.offset_tile().data_as<offsets_t>();
   offsets_tile_buff[0] = 0;
   offsets_tile_buff[1] = 3;
 

@@ -139,6 +139,10 @@ Status Domain::add_dimension(shared_ptr<Dimension> dim) {
   dimensions_.emplace_back(dim);
   dimension_ptrs_.emplace_back(p);
   ++dim_num_;
+
+  // Compute number of cells per tile
+  compute_cell_num_per_tile();
+
   return Status::Ok();
 }
 

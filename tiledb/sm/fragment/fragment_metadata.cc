@@ -1636,7 +1636,7 @@ uint64_t FragmentMetadata::tile_size(
     const std::string& name, uint64_t tile_idx) const {
   auto var_size = array_schema_->var_size(name);
   auto cell_num = this->cell_num(tile_idx);
-  return (var_size) ? cell_num * constants::cell_var_offset_size :
+  return (var_size) ? (cell_num + 1) * constants::cell_var_offset_size :
                       cell_num * array_schema_->cell_size(name);
 }
 

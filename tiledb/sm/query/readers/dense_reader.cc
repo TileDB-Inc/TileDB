@@ -559,7 +559,6 @@ Status DenseReader::dense_read() {
           0,
           subarray_start_cell,
           subarray_end_cell,
-          0,
           nullptr,
           nullopt)};
       for (auto& aggregate : aggregates_[constants::count_of_rows]) {
@@ -1267,21 +1266,17 @@ AggregateBuffer DenseReader::make_aggregate_buffer(
     const uint64_t cell_size,
     const uint64_t min_cell,
     const uint64_t max_cell,
-    const uint64_t cell_num,
     ResultTile::TileTuple* tile_tuple,
     optional<void*> bitmap_data) {
   void* fixed_data = nullptr;
   optional<char*> var_data = nullopt;
   optional<uint8_t*> validity_data = nullopt;
-  uint64_t var_data_size = 0;
   if (tile_tuple != nullptr) {
     fixed_data =
         tile_tuple->fixed_tile().data_as<char>() + min_cell * cell_size;
     var_data = var_sized ?
                    std::make_optional(tile_tuple->var_tile().data_as<char>()) :
                    nullopt;
-    var_data_size =
-        var_sized && max_cell == cell_num ? tile_tuple->var_tile().size() : 0;
     validity_data =
         nullable ?
             std::make_optional(
@@ -1292,10 +1287,8 @@ AggregateBuffer DenseReader::make_aggregate_buffer(
   return AggregateBuffer(
       0,
       max_cell - min_cell,
-      cell_num - min_cell,
       fixed_data,
       var_data,
-      var_data_size,
       validity_data,
       false,
       bitmap_data);
@@ -1604,7 +1597,6 @@ Status DenseReader::copy_offset_tiles(
   // For easy reference
   const auto dim_num = array_schema_.dim_num();
   const auto cell_order = array_schema_.cell_order();
-  const auto cell_num_per_tile = array_schema_.domain().cell_num_per_tile();
   auto stride = array_schema_.domain().stride<DimType>(layout_);
   const auto& frag_domains = result_space_tile.frag_domains();
   auto dst_buf = static_cast<uint8_t*>(buffers_[name].buffer_);
@@ -1672,35 +1664,23 @@ Status DenseReader::copy_offset_tiles(
         const auto& t_var = tile_tuples[fd]->var_tile();
 
         // Setup variables for the copy.
-        auto src_buff =
-            static_cast<uint64_t*>(tile_tuples[fd]->fixed_tile().data()) +
-            start * stride + src_cell;
+        auto src_buff = tile_tuples[fd]->fixed_tile().data_as<offsets_t>() +
+                        start * stride + src_cell;
         auto div = elements_mode_ ? data_type_size : 1;
         auto dest = (OffType*)dest_ptr + start;
 
-        // Copy the data cell by cell, last copy was taken out to take
-        // advantage of vectorization.
+        // Copy the data cell by cell.
         uint64_t i = 0;
-        for (; i < end - start; ++i) {
+        for (; i <= end - start; ++i) {
           auto i_src = i * stride;
           dest[i] = (src_buff[i_src + 1] - src_buff[i_src]) / div;
           var_data_buff[i + start] = t_var.data_as<char>() + src_buff[i_src];
         }
 
-        // Copy the last value.
-        if (start + src_cell + (end - start) * stride >=
-            cell_num_per_tile - 1) {
-          dest[i] = (t_var.size() - src_buff[i * stride]) / div;
-        } else {
-          auto i_src = i * stride;
-          dest[i] = (src_buff[i_src + 1] - src_buff[i_src]) / div;
-        }
-        var_data_buff[i + start] = t_var.data_as<char>() + src_buff[i * stride];
-
         // Process validity values.
         if (nullable) {
           auto src_buff_validity =
-              static_cast<uint8_t*>(tile_tuples[fd]->validity_tile().data()) +
+              tile_tuples[fd]->validity_tile().data_as<uint8_t>() +
               start * stride + src_cell;
 
           for (i = 0; i < end - start + 1; ++i) {
@@ -1874,7 +1854,6 @@ Status DenseReader::aggregate_tiles(
   // For easy reference
   const auto dim_num = array_schema_.dim_num();
   const auto cell_order = array_schema_.cell_order();
-  const auto cell_num_per_tile = array_schema_.domain().cell_num_per_tile();
   auto stride = array_schema_.domain().stride<DimType>(layout_);
   const auto& frag_domains = result_space_tile.frag_domains();
   const auto attribute = array_schema_.attribute(name);
@@ -1940,7 +1919,6 @@ Status DenseReader::aggregate_tiles(
               cell_size,
               iter.pos_in_tile() + start,
               iter.pos_in_tile() + end + 1,
-              cell_num_per_tile,
               tile_tuples[fd],
               &aggregate_bitmap[cell_offset + start])};
           for (auto& aggregate : aggregates) {
@@ -1957,7 +1935,6 @@ Status DenseReader::aggregate_tiles(
                 cell_size,
                 start_cell,
                 start_cell + 1,
-                cell_num_per_tile,
                 tile_tuples[fd],
                 &aggregate_bitmap[cell_offset + start + i])};
             for (auto& aggregate : aggregates) {

@@ -264,7 +264,6 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const uint64_t cell_size,
       const uint64_t min_cell,
       const uint64_t max_cell,
-      const uint64_t cell_num,
       ResultTile::TileTuple* tile_tuple,
       optional<void*> bitmap_data);
 

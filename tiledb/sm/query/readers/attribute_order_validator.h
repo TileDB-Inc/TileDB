@@ -252,12 +252,11 @@ class AttributeOrderValidator {
    */
   template <typename IndexType, typename AttributeType>
   void validate_without_loading_tiles(
-      const ArraySchema& schema,
       const Dimension* index_dim,
       bool increasing_data,
       uint64_t f,
       const std::vector<const void*>& non_empty_domains,
-      const std::vector<shared_ptr<FragmentMetadata>> fragment_metadata,
+      const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
       const std::vector<uint64_t>& frag_first_array_tile_idx) {
     // For easy reference.
     auto& val_data = per_fragment_validation_data_[f];
@@ -323,7 +322,7 @@ class AttributeOrderValidator {
         }
       } else {
         // Add the tile to the list of tiles to load.
-        add_tile_to_load(f, true, f2, f2_tile_idx, schema);
+        add_tile_to_load(f, true, f2, f2_tile_idx, fragment_metadata[f2]);
       }
     }
 
@@ -383,7 +382,7 @@ class AttributeOrderValidator {
 
       } else {
         // Add the tile to the list of tiles to load.
-        add_tile_to_load(f, false, f2, f2_tile_idx, schema);
+        add_tile_to_load(f, false, f2, f2_tile_idx, fragment_metadata[f2]);
       }
     }
   }
@@ -555,14 +554,15 @@ class AttributeOrderValidator {
       bool is_lower_bound,
       uint64_t f_to_compare,
       uint64_t t_to_compare,
-      const ArraySchema& schema) {
+      const shared_ptr<FragmentMetadata> fragment_metadata) {
     auto& val_data = per_fragment_validation_data_[f];
     auto it = result_tiles_to_load_[f].find(t_to_compare);
     if (it == result_tiles_to_load_[f].end()) {
       result_tiles_to_load_[f].emplace(
           std::piecewise_construct,
           std::forward_as_tuple(t_to_compare),
-          std::forward_as_tuple(f_to_compare, t_to_compare, schema));
+          std::forward_as_tuple(
+              f_to_compare, t_to_compare, *fragment_metadata.get()));
     }
 
     if (is_lower_bound) {

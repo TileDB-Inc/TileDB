@@ -2003,6 +2003,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
               mem_vec[i].size_validity_ +=
                   tile_size / cell_size * constants::cell_validity_size;
           } else {
+            tile_size -= constants::cell_var_offset_size;
             auto tile_var_size = meta->tile_var_size(names[i], ft.second);
             mem_vec[i].size_fixed_ += tile_size;
             mem_vec[i].size_var_ += tile_var_size;
@@ -2312,6 +2313,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
                   tile_size / attr_datatype_size *
                   constants::cell_validity_size;
           } else {
+            tile_size -= constants::cell_var_offset_size;
             (*result_sizes)[n].size_fixed_ += tile_size;
             auto tile_var_size = meta->tile_var_size(names[n], tid);
             (*result_sizes)[n].size_var_ += tile_var_size;
@@ -2351,6 +2353,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
                 ratio;
 
         } else {
+          tile_size -= constants::cell_var_offset_size;
           (*result_sizes)[n].size_fixed_ += tile_size * ratio;
           auto tile_var_size = meta->tile_var_size(names[n], tid);
           (*result_sizes)[n].size_var_ += tile_var_size * ratio;
