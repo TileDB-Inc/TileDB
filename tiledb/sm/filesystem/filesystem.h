@@ -155,8 +155,8 @@ class FilesystemEntry {
 
 class Filesystem {
  public:
-  Filesystem(const Config& config)
-      : config_(config) {
+  Filesystem(ContextResources& resources)
+      : resources_(resources) {
   }
 
   virtual ~Filesystem() = 0;
@@ -284,6 +284,11 @@ class Filesystem {
    * @return Status
    */
   virtual void remove_file(const URI& uri) = 0;
+
+  /**
+   * Cancel all cancellable tasks.
+   */
+  virtual void cancel_tasks() = 0;
 
  protected:
   Config config_;

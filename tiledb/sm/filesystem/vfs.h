@@ -342,9 +342,6 @@ class VFS {
   /** The ContextResources. */
   ContextResources& resources_;
 
-  /* The VFS configuration parameters. */
-  VFSParameters vfs_params_;
-
   /** The read-ahead cache. */
   tdb_unique_ptr<ReadAheadCache> read_ahead_cache_;
 
