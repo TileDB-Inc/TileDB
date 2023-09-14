@@ -42,15 +42,12 @@ if(TILEDB_VCPKG)
 
   if (TILEDB_STATIC)
 
-    # not included for unknown reasons
-    list(APPEND AWSSDK_THIRD_PARTY_LIBS aws-c-io aws-c-cal)
-
     set(AWSSDK_EXTRA_LIBS)
-    foreach(TARGET IN LISTS AWSSDK_THIRD_PARTY_LIBS)
-        message(STATUS "Try finding ${TARGET}")
-        find_package(${TARGET} REQUIRED NO_DEFAULT_PATH)
-        message(STATUS "Found ${TARGET}")
+    # Since AWS SDK 1.11, AWSSDK_THIRD_PARTY_LIBS was replaced by AWSSDK_COMMON_RUNTIME_LIBS.
+    foreach(TARGET IN LISTS AWSSDK_THIRD_PARTY_LIBS AWSSDK_COMMON_RUNTIME_LIBS)
+      if (TARGET AWS::${TARGET})
         list(APPEND AWSSDK_EXTRA_LIBS "AWS::${TARGET}")
+      endif()
     endforeach()
     #message(FATAL_ERROR "f '${AWSSDK_EXTRA_LIBS}'")
     install_all_target_libs("${AWSSDK_EXTRA_LIBS}")
