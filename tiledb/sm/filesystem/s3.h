@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -103,8 +103,14 @@ class S3 {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
-  S3();
+  /**
+   * Constructor.
+   *
+   * @param parent_stats The parent stats to inherit from.
+   * @param thread_pool The parent VFS thread pool.
+   * @param config Configuration parameters.
+   */
+  S3(stats::Stats* parent_stats, ThreadPool* thread_pool, const Config& config);
 
   /** Destructor. */
   ~S3();
@@ -115,19 +121,6 @@ class S3 {
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
-
-  /**
-   * Initializes and connects an S3 client.
-   *
-   * @param parent_stats The parent stats.
-   * @param config Configuration parameters.
-   * @param thread_pool The parent VFS thread pool.
-   * @return Status
-   */
-  Status init(
-      stats::Stats* parent_stats,
-      const Config& config,
-      ThreadPool* thread_pool);
 
   /**
    * Creates a bucket.

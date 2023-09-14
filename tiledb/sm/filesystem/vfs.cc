@@ -62,7 +62,8 @@ VFS::VFS(
     ThreadPool* const compute_tp,
     ThreadPool* const io_tp,
     const Config& config)
-    : stats_(parent_stats->create_child("VFS"))
+    : VFSBase(parent_stats)
+    , S3_within_VFS(stats_, io_tp, config)
     , config_(config)
     , compute_tp_(compute_tp)
     , io_tp_(io_tp)
@@ -86,10 +87,6 @@ VFS::VFS(
 
 #ifdef HAVE_S3
   supported_fs_.insert(Filesystem::S3);
-  st = s3_.init(stats_, config_, io_tp_);
-  if (!st.ok()) {
-    throw std::runtime_error("[VFS::VFS] Failed to initialize S3 backend.");
-  }
 #endif
 
 #ifdef HAVE_AZURE
