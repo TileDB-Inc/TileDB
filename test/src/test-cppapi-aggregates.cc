@@ -2229,7 +2229,18 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
         // buffers as we go.
         uint64_t curr_elem = 0;
         uint64_t num_elems = CppAggregatesFx<T>::dense_ ? 20 : 4;
-        for (uint64_t iter = 0; iter < 10; iter++) {
+        uint64_t num_iters = 0;
+        if (CppAggregatesFx<T>::dense_) {
+          num_iters = 2;
+        } else {
+          if (CppAggregatesFx<T>::set_ranges_) {
+            num_iters = 2;
+          } else {
+            num_iters = 4;
+          }
+        }
+
+        for (uint64_t iter = 0; iter < num_iters; iter++) {
           query.set_data_buffer("d1", dim1.data() + curr_elem, num_elems);
           query.set_data_buffer("d2", dim2.data() + curr_elem, num_elems);
           query.set_data_buffer(
@@ -2250,12 +2261,12 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
           curr_elem += std::get<1>(result_el["d1"]);
 
           // Stop on query completion.
-          if (query.query_status() == Query::Status::COMPLETE) {
-            break;
+          if (iter < num_iters - 1) {
+            CHECK(query.query_status() == Query::Status::INCOMPLETE);
+          } else {
+            CHECK(query.query_status() == Query::Status::COMPLETE);
           }
         }
-
-        CHECK(query.query_status() == Query::Status::COMPLETE);
 
         // Check the results.
         uint64_t expected_count;
