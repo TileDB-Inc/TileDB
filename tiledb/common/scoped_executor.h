@@ -47,11 +47,10 @@ class ScopedExecutor final {
   /* ********************************* */
 
   /** Default constructor. */
-  ScopedExecutor() = default;
+  ScopedExecutor() = delete;
 
   /**
-   * Value constructor. Executes `fn` when this instance is
-   * destructed.
+   * Executes `fn` when this instance is destructed.
    *
    * @param fn The function to execute on destruction.
    */
@@ -59,10 +58,11 @@ class ScopedExecutor final {
       : fn_(std::move(fn)) {
   }
 
-  /** Move constructor. */
-  ScopedExecutor(ScopedExecutor&& rhs) {
-    fn_.swap(rhs.fn_);
-  }
+  // Default copy/move construction and copying.
+  ScopedExecutor(ScopedExecutor& rhs) = default;
+  ScopedExecutor(ScopedExecutor&& rhs) = default;
+  ScopedExecutor& operator=(ScopedExecutor& rhs) = default;
+  ScopedExecturo& operator=(ScopedExecutor&& rhs) = default;
 
   /** Destructor. Executes `fn_`. */
   ~ScopedExecutor() {
@@ -70,9 +70,6 @@ class ScopedExecutor final {
       fn_();
     }
   }
-
-  DISABLE_COPY_AND_COPY_ASSIGN(ScopedExecutor);
-  DISABLE_MOVE_ASSIGN(ScopedExecutor);
 
  private:
   /* ********************************* */
@@ -82,6 +79,10 @@ class ScopedExecutor final {
   /** The wrapped function to execute on destruction. */
   std::function<void()> fn_;
 };
+
+ScopedExecutor defer(std::function<void()>&& fn) {
+  return ScopedExecutor(std::forward(fn));
+}
 
 }  // namespace common
 }  // namespace tiledb

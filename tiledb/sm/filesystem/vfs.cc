@@ -30,8 +30,12 @@
  * This file implements the VFS class.
  */
 
-#include "vfs.h"
-#include "path_win.h"
+#include <iostream>
+#include <list>
+#include <sstream>
+#include <unordered_map>
+
+#include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/filesystem.h"
@@ -43,76 +47,45 @@
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/tile/tile.h"
 
-#include <iostream>
-#include <list>
-#include <sstream>
-#include <unordered_map>
-
-using namespace tiledb::common;
-using tiledb::common::filesystem::directory_entry;
-
 namespace tiledb::sm {
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-VFS::VFS(
-    stats::Stats* const parent_stats,
-    ThreadPool* const compute_tp,
-    ThreadPool* const io_tp,
-    const Config& config)
-    : stats_(parent_stats->create_child("VFS"))
-    , config_(config)
-    , compute_tp_(compute_tp)
-    , io_tp_(io_tp)
-    , vfs_params_(VFSParameters(config)) {
-  Status st;
-  assert(compute_tp);
-  assert(io_tp);
+VFS::VFS(ContextResources& resources)
+    : resources_(resources) {
+    , vfs_params_(VFSParameters(resources.config())) {
 
-  // Construct the read-ahead cache.
   read_ahead_cache_ = tdb_unique_ptr<ReadAheadCache>(
       tdb_new(ReadAheadCache, vfs_params_.read_ahead_cache_size_));
 
-#ifdef HAVE_HDFS
-  supported_fs_.insert(Filesystem::HDFS);
-  hdfs_ = tdb_unique_ptr<hdfs::HDFS>(tdb_new(hdfs::HDFS));
-  st = hdfs_->init(config_);
-  if (!st.ok()) {
-    throw std::runtime_error("[VFS::VFS] Failed to initialize HDFS backend.");
+  std::vector<FilesystemCreator> creators = {
+    AzureFilesystemCreator(),
+    GCSFilesystemCreator(),
+    HDFSFilesystemCreator(),
+    MEMFilesystemCreator(),
+    PosixFilesystemCreator(),
+    S3FilesystemCreator(),
+    WinFilesystemCreator()
+  };
+
+  for (auto& creator : creators) {
+    auto fs = creator.create(resources);
+    if (!fs) {
+      // This filesystem is not enabled.
+      continue;
+    }
+
+    for (auto& scheme : creator.schemes()) {
+      if (filesystems_.find(scheme) != filesystems_.end()) {
+        throw VFSException("Invalid VFS Filesystem configuration. Scheme '" +
+          + scheme + "' is claimed by multiple filesystem implementations.");
+      }
+
+      filesystems_[scheme] = fs;
+    }
   }
-#endif
-
-#ifdef HAVE_S3
-  supported_fs_.insert(Filesystem::S3);
-  st = s3_.init(stats_, config_, io_tp_);
-  if (!st.ok()) {
-    throw std::runtime_error("[VFS::VFS] Failed to initialize S3 backend.");
-  }
-#endif
-
-#ifdef HAVE_AZURE
-  supported_fs_.insert(Filesystem::AZURE);
-  st = azure_.init(config_, io_tp_);
-  if (!st.ok()) {
-    throw std::runtime_error("[VFS::VFS] Failed to initialize Azure backend.");
-  }
-#endif
-
-#ifdef HAVE_GCS
-  supported_fs_.insert(Filesystem::GCS);
-  st = gcs_.init(config_, io_tp_);
-  if (!st.ok()) {
-    throw std::runtime_error("[VFS::VFS] Failed to initialize GCS backend.");
-  }
-#endif
-
-#ifdef _WIN32
-  throw_if_not_ok(win_.init(config_, io_tp_));
-#endif
-
-  supported_fs_.insert(Filesystem::MEMFS);
 }
 
 /* ********************************* */
@@ -150,7 +123,7 @@ std::string VFS::abs_path(const std::string& path) {
 }
 
 Config VFS::config() const {
-  return config_;
+  return resources.config();
 }
 
 Status VFS::create_dir(const URI& uri) const {

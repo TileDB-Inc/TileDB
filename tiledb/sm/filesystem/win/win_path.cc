@@ -74,6 +74,19 @@ std::string Win::abs_path(const std::string& path) {
   return str_result;
 }
 
+std::string Win::current_dir() {
+  std::string dir;
+  unsigned long length = GetCurrentDirectory(0, nullptr);
+  char* path = (char*)tdb_malloc(length * sizeof(char));
+  if (path == nullptr || GetCurrentDirectory(length, path) == 0) {
+    LOG_STATUS_NO_RETURN_VALUE(Status_IOError(std::string(
+        "Failed to get current directory. " +
+        get_last_error_msg("GetCurrentDirectory"))));
+  }
+  dir = path;
+  tdb_free(path);
+  return dir;
+}
 
 
 std::string slashes_to_backslashes(std::string pathsegments) {

@@ -213,15 +213,38 @@ void Posix::write(const URI& uri, const void* buffer, uint64_t buffer_size) {
 
   // Open or create file.
   int fd = open(path.c_str(), O_WRONLY | O_CREAT, permissions);
+
+  tiledb::common::defer([&]() {
+    // Always close the file handle regardless of how we exit this function.
+    // However, you'll notice that we also close it below because we need to
+    // check if it returns an error on the happy path. This deferred close just
+    // exists in case an exception is thrown before we get there.
+    if (fd != -1) {
+      close(fd);
+    }
+  });
+
   if (fd == -1) {
     throw PosixFSException("Cannot open file '" + path + "'; " + strerror(errno)));
   }
 
-  write_at(fd, file_offset, buffer, buffer_size);
+  const char* data = static_cast<const char*>(buffer);
+  while (nbytes > 0) {
+    ssize_t nwritten = ::pwrite(fd, data, nbytes, offset);
+    if (nwritten == -1) {
+      throw PosixFSException(std::string("Error while writing to file: ") + strerror(errno));
+    }
+
+    data += nwritten;
+    offset += nwritten;
+    nbytes -= nwritten;
+  }
 
   if (close(fd) != 0) {
+    // Mark the file as already closed for the deferred close.
+    fd = -1;
     throw PosixFSException(
-        "Cannot close file '" + path + "'; " + strerror(errno)));
+        "Error closing file '" + uri.to_path() + "'; " + strerror(errno)));
   }
 }
 
@@ -234,6 +257,13 @@ void Posix::read(const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes)
   }
 
   int fd = open(path.c_str(), O_RDONLY);
+
+  tiledb::common::defer([&]() {
+    if (fd != 0) {
+      close(fd);
+    }
+  });
+
   if (fd == -1) {
     throw PosixFSException(
         "Cannot read from file '" + path + "'; ") + strerror(errno)));
@@ -249,11 +279,18 @@ void Posix::read(const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes)
       "Cannot read from file '" + path + "'; nbytes > SSIZE_MAX"));
   }
 
-  read_all(fd, offset, buffer, nbytes);
+  auto data = static_cast<char*>(buffer);
+  while (nbytes > 0) {
+    ssize_t nread = ::pread(fd, data, nbytes, offset);
+    if (nread < 0) {
+      throw PosixFSException("Error while reading from file: ") + strerror(errno));
+    } else if (nread == 0) {
+      break;
+    }
 
-  // Close file
-  if (close(fd) != 0) {
-    throw PosixFSException("Error closing file '" + path + "'; " + strerror(errno)));
+    data += nread;
+    offset += nread;
+    nbytes -= nread;
   }
 }
 
@@ -324,41 +361,6 @@ void Posix::traverse(const URI& base, std::function<void(const FilesystemEntry&)
     } else {
       callback(entry);
     }
-  }
-}
-
-void Posix::write_at(
-    int fd, uint64_t offset, const void* buffer, uint64_t nbytes) {
-  const char* data = static_cast<const char*>(buffer);
-  while (nbytes > 0) {
-    ssize_t nwritten = ::pwrite(fd, data, nbytes, offset);
-    if (nwritten == -1) {
-      throw PosixFSException(std::string("Error while writing to file: ") + strerror(errno));
-    }
-
-    data += nwritten;
-    offset += nwritten;
-    nbytes -= nwritten;
-  }
-}
-
-void Posix::read_all(int fd, uint64_t offset, void* buffer, uint64_t nbytes) {
-  auto data = static_cast<char*>(buffer);
-  while (nbytes > 0) {
-    ssize_t nread = ::pread(fd, data, nbytes, offset);
-    if (nread < 0) {
-      throw PosixFSException(std::string("Error while reading from file: ") + strerror(errno));
-    } else if (nread == 0) {
-      break;
-    }
-
-    data += nread;
-    offset += nread;
-    nbytes -= nread;
-  }
-
-  if (nread != nbytes) {
-    throw PosixFSException("Failed to complete read beyond EOF");
   }
 }
 

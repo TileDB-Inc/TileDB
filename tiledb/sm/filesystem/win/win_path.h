@@ -30,19 +30,16 @@
  * This file includes declarations of Windows filesystem functions.
  */
 
-#ifndef TILEDB_FILESYSTEM_PATH_WIN_H
-#define TILEDB_FILESYSTEM_PATH_WIN_H
+#ifndef TILEDB_FILESYSTEM_WIN_PATHLIB_H
+#define TILEDB_FILESYSTEM_WIN_PATHLIB_H
 #ifdef _WIN32
 
 #include <sys/types.h>
 #include <string>
 #include <vector>
 
-#include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
-#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
-#include "uri.h"
+#include "tiledb/sm/filesystem/uri.h"
 
   /**
  * Returns the absolute (string) path of the input in the

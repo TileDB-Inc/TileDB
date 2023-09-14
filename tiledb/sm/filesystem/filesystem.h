@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,7 @@
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/filesystem.h"
-#include "uri.h"
+#include "tiledb/sm/filesystem/uri.h"
 
 #include <sys/stat.h>
 
@@ -289,6 +289,13 @@ class Filesystem {
   Config config_;
 
   FilesystemType fs_type_;
+};
+
+class FilesystemCreator {
+ public:
+  virtual ~FilesystemCreator() = 0;
+  virtual tdb_unique_ptr create() = 0;
+  virtual std::vector<std::string> schemes() = 0;
 };
 
 }  // namespace tiledb::sm

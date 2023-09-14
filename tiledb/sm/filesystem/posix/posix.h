@@ -43,10 +43,7 @@
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/filesystem.h"
 
-
 namespace tiledb::sm::filesystem {
-
-class URI;
 
 /**
  * This class implements the POSIX filesystem functions.
@@ -128,7 +125,7 @@ class Posix : public Filesystem {
    * @param buffer The buffer to write from.
    * @param buffer_size The buffer size.
    */
-  virtual Status write(
+  virtual void write(
       const URI& uri,
       const void* buffer,
       uint64_t buffer_size) override;
@@ -175,7 +172,7 @@ class Posix : public Filesystem {
    *
    * @param uri The URI of the file to remove.
    */
-  virtual void remove_file(const URI& uri) const override;
+  virtual void remove_file(const URI& uri) override;
 
  private:
   /**
@@ -185,32 +182,6 @@ class Posix : public Filesystem {
    * @param callback A function invoked for every FilesystemEntry
    */
   void traverse(const URI& base, std::function<void(FilesystemEntry)> callback, bool top_down = true);
-
-  /**
-   * Write data from the given buffer to the file descriptor, beginning at the
-   * given offset. Multiple threads can safely write to the same open file
-   * descriptor.
-   *
-   * @param fd Open file descriptor to write to
-   * @param file_offset Offset in the file at which to start writing
-   * @param buffer Buffer of data to write
-   * @param buffer_size Number of bytes to write
-   * @return Status
-   */
-  static void write_at(
-      int fd, uint64_t offset, const void* buffer, uint64_t nbytes);
-
-  /**
-   * Reads all nbytes from the given file descriptor, retrying as necessary.
-   *
-   * @param fd Open file descriptor to read from
-   * @param buffer Buffer to hold read data
-   * @param nbytes Number of bytes to read
-   * @param offset Offset in file to start reading from.
-   * @return Status
-   */
-  static void read_all(
-      int fd, uint64_t offset, void* buffer, uint64_t nbytes);
 
   /**
    * @return Permissions to use when creating directories.

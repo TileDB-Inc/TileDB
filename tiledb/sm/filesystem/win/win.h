@@ -49,8 +49,6 @@ using namespace tiledb::common;
 
 namespace tiledb::sm::filesystem {
 
-class URI;
-
 /** Typedef this here so we don't have to include Windows.h */
 typedef void* HANDLE;
 
@@ -98,7 +96,7 @@ class Win : public Filesystem {
    * @param src_uri The old URI.
    * @param tgt_uri The new URI.
    */
-  virtual void copy_dir(const URI& old_uri, const URI& new_uri) override;
+  virtual void copy_dir(const URI& src_uri, const URI& tgt_uri) override;
 
   /**
    * Recursively remove a directory.
@@ -129,7 +127,7 @@ class Win : public Filesystem {
    * @param buffer The buffer to write from.
    * @param buffer_size The buffer size.
    */
-  virtual Status write(
+  virtual void write(
       const URI& uri,
       const void* buffer,
       uint64_t buffer_size) override;
@@ -176,36 +174,7 @@ class Win : public Filesystem {
    *
    * @param uri The URI of the file to remove.
    */
-  virtual void remove_file(const URI& uri) const override;
-
- private:
-  /** Thread pool from parent VFS instance. */
-  ThreadPool* thread_pool_;
-
-  /**
-   * Recursively removes the directory at the given path.
-   *
-   * @param path Directory to remove.
-   * @return Status
-   */
-  Status recursively_remove_directory(const std::string& path) const;
-
-  /**
-   * Write data from the given buffer to the file handle, beginning at the
-   * given offset. Multiple threads can safely write to the same open file
-   * descriptor.
-   *
-   * @param file_h Open file handle to write to
-   * @param file_offset Offset in the file at which to start writing
-   * @param buffer Buffer of data to write
-   * @param buffer_size Number of bytes to write
-   * @return Status
-   */
-  static Status write_at(
-      HANDLE file_h,
-      uint64_t file_offset,
-      const void* buffer,
-      uint64_t buffer_size);
+  virtual void remove_file(const URI& uri) override;
 };
 
 }  // namespace sm

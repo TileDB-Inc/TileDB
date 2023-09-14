@@ -96,56 +96,13 @@ struct VFSParameters {
 class VFS {
  public:
   /* ********************************* */
-  /*          TYPE DEFINITIONS         */
-  /* ********************************* */
-
-  struct BufferedChunk {
-    std::string uri;
-    uint64_t size;
-
-    BufferedChunk()
-        : uri("")
-        , size(0) {
-    }
-    BufferedChunk(std::string chunk_uri, uint64_t chunk_size)
-        : uri(chunk_uri)
-        , size(chunk_size) {
-    }
-  };
-
-  /**
-   * Multipart upload state definition used in the serialization of remote
-   * global order writes. This state is a generalization of
-   * the multipart upload state types currently defined independently by each
-   * backend implementation.
-   */
-  struct MultiPartUploadState {
-    struct CompletedParts {
-      optional<std::string> e_tag;
-      uint64_t part_number;
-    };
-
-    uint64_t part_number;
-    optional<std::string> upload_id;
-    optional<std::vector<BufferedChunk>> buffered_chunks;
-    std::vector<CompletedParts> completed_parts;
-    Status status;
-  };
-
-  /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /** Constructor.
-   * @param parent_stats The parent stats to inherit from.
-   * @param compute_tp Thread pool for compute-bound tasks.
-   * @param io_tp Thread pool for io-bound tasks.
-   * @param config Configuration parameters.
+   * @param resources The ContextResources to use.
    **/
-  VFS(stats::Stats* parent_stats,
-      ThreadPool* compute_tp,
-      ThreadPool* io_tp,
-      const Config& config);
+  VFS(ContextResources& resources);
 
   /** Destructor. */
   ~VFS() = default;
@@ -158,81 +115,170 @@ class VFS {
   /* ********************************* */
 
   /**
-   * Returns the absolute path of the input string (mainly useful for
-   * posix URI's).
-   *
-   * @param path The input path.
-   * @return The string with the absolute path.
-   */
-  static std::string abs_path(const std::string& path);
-
-  /**
    * Return a config object containing the VFS parameters. All other non-VFS
    * parameters will are set to default values.
    */
   Config config() const;
 
   /**
-   * Creates a directory.
+   * Check if a URI refers to a bucket.
    *
-   * - On S3, this is a noop.
-   * - On all other backends, if the directory exists, the function
-   *   just succeeds without doing anything.
+   * Throws if the URI filesystem doesn't support buckets.
    *
-   * @param uri The URI of the directory.
+   * @param uri The name of the object store bucket.
+   * @return bool Whether the URI represents a bucket.
+   */
+  bool is_bucket(const URI& uri) const;
+
+  /**
+   * Check if a URI refers to a directory.
+   *
+   * @param uri The URI to check.
+   * @return bool Whether uri refers to a directory or not.
+   */
+  bool is_dir(const URI& uri) const;
+
+  /**
+   * Check if a URI refers to a file.
+   *
+   * @param uri The URI to check.
+   * @return bool Whether uri refers to a file or not.
+   */
+  bool is_file(const URI& uri) const;
+
+  /**
+   * Create a bucket.
+   *
+   * Throws if the URI filesystem doesn't support buckets.
+   *
+   * @param uri The URI of the bucket to create.
    * @return Status
    */
-  Status create_dir(const URI& uri) const;
+  void create_bucket(const URI& uri) const;
 
   /**
-   * Creates an empty file.
+   * Recursively delete the contents of a bucket.
    *
-   * @param uri The URI of the file.
-   * @return Status
-   */
-  Status touch(const URI& uri) const;
-
-  /**
-   * Cancels all background or queued tasks.
-   */
-  Status cancel_all_tasks();
-
-  /**
-   * Creates an object store bucket.
-   *
-   * @param uri The name of the bucket to be created.
-   * @return Status
-   */
-  Status create_bucket(const URI& uri) const;
-
-  /**
-   * Returns the size of the files in the input directory.
-   * This function is **recursive**, i.e., it will calculate
-   * the sum of the files in the entire directory tree rooted
-   * at `dir_name`.
-   *
-   * @param dir_name The input directory.
-   * @param dir_size The directory size to be retrieved, as the
-   *     sum of the files one level deep.
-   * @return Status
-   */
-  Status dir_size(const URI& dir_name, uint64_t* dir_size) const;
-
-  /**
-   * Deletes an object store bucket.
-   *
-   * @param uri The name of the bucket to be deleted.
-   * @return Status
-   */
-  Status remove_bucket(const URI& uri) const;
-
-  /**
-   * Deletes the contents of an object store bucket.
+   * Throws if the URI filesystem doesn't support buckets.
    *
    * @param uri The name of the bucket to be emptied.
    * @return Status
    */
-  Status empty_bucket(const URI& uri) const;
+  void empty_bucket(const URI& uri) const;
+
+  /**
+   * Remove a bucket.
+   *
+   * @param uri The URI of the bucket to be deleted.
+   */
+  void remove_bucket(const URI& uri) const;
+
+  /**
+   * Create a directory.
+   *
+   * @param uri The URI of the directory.
+   */
+  void create_dir(const URI& uri);
+
+  /**
+   * Retrieves all the entries contained in the parent.
+   *
+   * @param parent The target directory to list.
+   * @return All entries that are contained in the parent
+   */
+  std::vector<FilesystemEntry> ls(const URI& parent) const;
+
+  /**
+   * Copy a directory.
+   *
+   * @param old_uri The old URI.
+   * @param new_uri The new URI.
+   * @return Status
+   */
+  void copy_dir(const URI& old_uri, const URI& new_uri);
+
+  /**
+   * Recursively remove a directory.
+   *
+   * @param uri The uri of the directory to be removed.
+   */
+  void remove_dir(const URI& uri);
+
+  /**
+   * Create an empty file.
+   *
+   * @param uri The URI of the file.
+   */
+  void touch(const URI& uri);
+
+  /**
+   * Retrieves the size of a file.
+   *
+   * @param uri The URI of the file.
+   * @return uint64_t The size of the file in bytes.
+   */
+  uint64_t file_size(const URI& uri) const;
+
+  /**
+   * Write the contents of a buffer to a file.
+   *
+   * @param uri The URI of the file.
+   * @param buffer The buffer to write from.
+   * @param buffer_size The buffer size.
+   */
+  void write(
+      const URI& uri,
+      const void* buffer,
+      uint64_t buffer_size);
+
+  /**
+   * Read from a file.
+   *
+   * @param uri The URI of the file.
+   * @param offset The offset where the read begins.
+   * @param buffer The buffer to read into.
+   * @param nbytes Number of bytes to read.
+   */
+  void read(
+      const URI& uri,
+      uint64_t offset,
+      void* buffer,
+      uint64_t nbytes);
+
+  /**
+   * Syncs (flushes) a file.
+   *
+   * @param uri The URI of the file.
+   */
+  void sync(const URI& uri);
+
+  /**
+   * Copy a file.
+   *
+   * @param src_uri The old URI.
+   * @param tgt_uri The new URI.
+   */
+  void copy_file(const URI& old_uri, const URI& new_uri);
+
+  /**
+   * Rename a file.
+   *
+   * @param src_uri The old URI.
+   * @param tgt_uri The new URI.
+   */
+  void move_file(const URI& old_uri, const URI& new_uri);
+
+  /**
+   * Delete a file.
+   *
+   * @param uri The URI of the file to remove.
+   */
+  void remove_file(const URI& uri);
+
+  /**
+   * Cancels all background or queued tasks.
+   */
+  void cancel_all_tasks();
 
   /**
    * Removes a given directory (recursive)
@@ -305,15 +351,6 @@ class VFS {
    * @return Status
    */
   Status is_file(const URI& uri, bool* is_file) const;
-
-  /**
-   * Checks if an object store bucket exists.
-   *
-   * @param uri The name of the object store bucket.
-   * @return is_bucket Set to `true` if the bucket exists and `false` otherwise.
-   * @return Status
-   */
-  Status is_bucket(const URI& uri, bool* is_bucket) const;
 
   /**
    * Checks if an object-store bucket is empty.
@@ -494,21 +531,6 @@ class VFS {
 
   inline stats::Stats* stats() const {
     return stats_;
-  }
-
-  void create_fs(const URI& uri) {
-    if (uri.is_file()) {
-      if constexpr (tiledb::platform::is_os_windows) {
-        //        fs_ = tdb_unique_ptr<FilesystemBase>(tdb_new(W, config_));
-      } else {
-        if (fs_ != nullptr && fs_->fs_type_ == FilesystemType::POSIX) {
-          return;
-        }
-        fs_ = tdb_unique_ptr<FilesystemBase>(tdb_new(Posix, config_));
-      }
-    } else {
-      throw StatusException(Status_VFSError("Failed to create_fs"));
-    }
   }
 
  private:
