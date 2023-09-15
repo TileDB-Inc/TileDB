@@ -68,7 +68,7 @@
             "dependencies": [
                 {
                     "name": "aws-sdk-cpp",
-                    "version>=": "1.8.84",
+                    "version>=": "1.11.160",
                     "features": ["s3", "identity-management", "sts"],
                     "default-features": false
                 }

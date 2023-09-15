@@ -1,13 +1,14 @@
 {
-  "name": "aws-c-io",
-  "version": "0.13.32",
-  "description": "Handles all IO and TLS work for application protocols.",
-  "homepage": "https://github.com/awslabs/aws-c-io",
+  "name": "aws-c-auth",
+  "version": "0.7.3",
+  "description": "C99 library implementation of AWS client-side authentication: standard credentials providers and signing.",
+  "homepage": "https://github.com/awslabs/aws-c-auth",
   "license": "Apache-2.0",
   "supports": "!(windows & arm) & !uwp",
   "dependencies": [
     "aws-c-cal",
-    "aws-c-common",
+    "aws-c-http",
+    "aws-c-sdkutils",
     {
       "name": "s2n",
       "platform": "!uwp & !windows"
