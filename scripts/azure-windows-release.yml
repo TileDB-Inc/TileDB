@@ -24,7 +24,7 @@ steps:
       $host.SetShouldExit(3)
     }
 
-    $bootstrapOptions = "-EnableVerbose -EnableStaticTileDB -EnableBuildDeps -EnableVcpkg"
+    $bootstrapOptions = "-EnableVerbose -EnableStaticTileDB -EnableBuildDeps"
     if ($env:TILEDB_S3 -eq "ON") {
       $bootstrapOptions = "-EnableS3 " + $bootstrapOptions
     }

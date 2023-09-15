@@ -5,7 +5,6 @@
   "homepage": "https://github.com/awslabs/aws-c-common",
   "supports": "!(windows & arm) & !uwp",
   "dependencies": [
-    "openssl",
     {
       "name": "vcpkg-cmake",
       "host": true

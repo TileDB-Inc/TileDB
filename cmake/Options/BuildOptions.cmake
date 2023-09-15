@@ -6,7 +6,7 @@
 # in TileDB-Superbuild.cmake.
 
 option(TILEDB_SUPERBUILD "If true, perform a superbuild (builds all missing dependencies)." ON)
-option(TILEDB_VCPKG "If true, use vcpkg to download and build dependencies." OFF)
+option(TILEDB_VCPKG "If true, use vcpkg to download and build dependencies." ON)
 option(TILEDB_FORCE_ALL_DEPS "If true, force superbuild to download and build all dependencies, even those installed on the system." OFF)
 option(TILEDB_REMOVE_DEPRECATIONS "If true, do not build deprecated APIs." OFF)
 option(TILEDB_VERBOSE "Prints TileDB errors with verbosity" OFF)
@@ -37,6 +37,10 @@ option(CMAKE_EXPORT_COMPILE_COMMANDS "cmake compile commands" ON)
 option(_TILEDB_CMAKE_INIT_GIT_SUBMODULES "Check submodules during build" ON)
 
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
+
+if (NOT TILEDB_VCPKG)
+  message(DEPRECATION "Disabling TILEDB_VCPKG is deprecated and will be removed in a future version.")
+endif()
 
 # enable assertions by default for debug builds
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")

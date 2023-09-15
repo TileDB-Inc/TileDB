@@ -28,10 +28,19 @@ jobs:
           makepkg-mingw --noconfirm --syncdeps
         env:
           TILEDB_HOME: ${{ github.workspace }}
-          MINGW_INSTALLS: ${{ matrix.msystem }}
+          MINGW_ARCH: ${{ matrix.msystem }}
         shell: c:\rtools40\usr\bin\bash.exe --login {0}
       - name: "Upload binaries"
         uses: actions/upload-artifact@v3
         with:
           name: mingw-w64-${{ matrix.msystem }}-tiledb
           path: .github/workflows/mingw-w64-tiledb/*.pkg.tar.*
+      - name: "Print log files (failed build only)"
+        shell: bash
+        run: |
+          source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
+          echo "# ------------------------------------"
+          find $BUILD_BUILDDIRECTORY/dist
+          echo "# --------vcpkg----------------------------"
+          find $BUILD_BUILDDIRECTORY/vcpkg_installed
+        if: failure() # only run this job if the build step failed

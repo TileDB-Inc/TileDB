@@ -42,6 +42,7 @@ Enable verbose status messages.
 
 .PARAMETER EnableVcpkg
 Enables building dependencies with vcpkg.
+Deprecated, this is now the default behavior.
 
 .PARAMETER EnableAzure
 Enables building with the Azure storage backend.
@@ -94,6 +95,9 @@ Disable building the TileDB tests.
 .Parameter DisableStats
 Disables internal TileDB statistics.
 
+.PARAMETER DisableVcpkg
+Disables building dependencies with vcpkg.
+
 .PARAMETER BuildProcesses
 Number of parallel compile jobs.
 
@@ -119,6 +123,7 @@ Param(
     [switch]$EnableCoverage,
     [switch]$EnableVerbose,
     [switch]$EnableVcpkg,
+    [switch]$DisableVcpkg,
     [switch]$EnableAzure,
     [switch]$EnableS3,
     [switch]$EnableSerialization,
@@ -183,9 +188,12 @@ if ($EnableVerbose.IsPresent) {
 }
 
 # Set vcpkg flag
-$UseVcpkg = "OFF"
+$UseVcpkg = "ON"
 if ($EnableVcpkg.IsPresent) {
-    $UseVcpkg = "ON"
+    Write-Warning "-EnableVcpkg is deprecated and will be removed in a future version. Vcpkg is now enabled by default. Use -DisableVcpkg to disable it."
+}
+elseif ($DisableVcpkg.IsPresent) {
+    $UseVcpkg = "OFF"
 }
 
 # Set TileDB Azure flag
