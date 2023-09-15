@@ -22,6 +22,7 @@ jobs:
       - name: Building TileDB with Rtools43
         run: |
           cd ${GITHUB_WORKSPACE}/.github/workflows/mingw-w64-tiledb
+          pacman -Sy
           makepkg-mingw --noconfirm --syncdeps
         env:
           TILEDB_HOME: ${{ github.workspace }}
