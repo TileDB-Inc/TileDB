@@ -47,7 +47,6 @@
 #include <type_traits>
 #include <vector>
 
-
 #define IS_TRIVIALLY_COPYABLE(T) std::is_trivially_copyable<T>::value
 
 namespace tiledb {
