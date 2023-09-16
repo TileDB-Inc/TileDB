@@ -1,13 +1,13 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO PCRE2Project/pcre2
-    REF 0ef82f7eb78e9effd662239c6dac70c534a6d60b
-    SHA512 e8274e98d183f174eb882ff69a4e74e9b03207c6511561622d28751bf9e3f020fb944e820fa50940e4941773aa497cf5e38a5b35e375f3cac6daa6d015f7d0e8
+    REF "pcre2-${VERSION}"
+    SHA512 3d0ee66e23809d3da2fe2bf4ed6e20b0fb96c293a91668935f6319e8d02e480eeef33da01e08a7436a18a1a85a116d83186b953520f394c866aad3cea73c7f5c
     HEAD_REF master
     PATCHES
-        cmake-fix.patch
         pcre2-10.35_fix-uwp.patch
         no-static-suffix.patch
+        fix-cmake.patch
 )
 
 string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "static" BUILD_STATIC)
@@ -41,8 +41,17 @@ vcpkg_cmake_configure(
 
 vcpkg_cmake_install()
 vcpkg_copy_pdbs()
+
+file(READ "${CURRENT_PACKAGES_DIR}/include/pcre2.h" PCRE2_H)
+if(BUILD_STATIC)
+    string(REPLACE "defined(PCRE2_STATIC)" "1" PCRE2_H "${PCRE2_H}")
+else()
+    string(REPLACE "defined(PCRE2_STATIC)" "0" PCRE2_H "${PCRE2_H}")
+endif()
+file(WRITE "${CURRENT_PACKAGES_DIR}/include/pcre2.h" "${PCRE2_H}")
+
 vcpkg_fixup_pkgconfig()
-vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/pcre2)
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/${PORT})
 
 file(REMOVE_RECURSE
     "${CURRENT_PACKAGES_DIR}/man"

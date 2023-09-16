@@ -1,7 +1,6 @@
 The package pcre2 is compatible with built-in CMake targets:
 
     # Each component imports a target:
-    # COMPONENTS: 8BIT 16BIT 32BIT POSIX
-    # TARGETS: pcre2::pcre2-8 pcre2::pcre2-16 pcre2::pcre2-32 pcre2::pcre2-posix
-    find_package(pcre2 REQUIRED COMPONENTS 8BIT POSIX)
-    target_link_libraries(main PRIVATE pcre2::pcre2-8 pcre2::pcre2-posix)
+    # TARGETS: pcre2::8BIT pcre2::16BIT pcre2::32BIT pcre2::POSIX
+    find_package(pcre2 CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE pcre2::8BIT pcre2::POSIX)

@@ -454,6 +454,7 @@ if (WIN32 AND TILEDB_STATIC)
     ${TILEDB_CORE_SOURCES}
     ${TILEDB_EXTERNALS_SOURCES}
   )
+  add_dependencies(TILEDB_CORE_OBJECTS_STATIC gen_mgc_unarch)
 
   # Compile all core sources with PIC
   set_property(TARGET TILEDB_CORE_OBJECTS_STATIC PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -722,6 +723,7 @@ if(TILEDB_WEBP)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
     WebP::webp
+    WebP::sharpyuv
   )
   add_definitions(-DTILEDB_WEBP)
 endif()
@@ -745,12 +747,12 @@ if (WIN32)
   if (TILEDB_S3)
     # the AWSSDK does not include links to some transitive dependencies
     # ref: github<dot>com/aws<slash>aws-sdk-cpp/issues/1074#issuecomment-466252911
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE userenv ws2_32 wininet winhttp bcrypt version secur32)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE userenv ws2_32 wininet winhttp bcrypt ncrypt crypt32 version secur32)
   endif()
 
   if (TILEDB_AZURE)
-    # WebServices and crypt32 needed by Azure storage on windows
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE WebServices crypt32)
+    # WebServices, winhttp and crypt32 needed by Azure storage on windows
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE WebServices winhttp crypt32)
   endif()
 endif()
 
@@ -1015,8 +1017,12 @@ if (TILEDB_STATIC)
   append_dep_lib(google-cloud-cpp::experimental-storage-grpc)
 
   append_dep_lib(libmagic)
+  append_dep_lib(unofficial::libmagic::libmagic)
+  append_dep_lib(PCRE2::8BIT)
+  append_dep_lib(PCRE2::POSIX)
   append_dep_lib(Crc32c::crc32c)
   append_dep_lib(WebP::webp)
+  append_dep_lib(WebP::sharpyuv)
 
 endif()
 
