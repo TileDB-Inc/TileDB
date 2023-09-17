@@ -145,6 +145,15 @@ QueryCondition create_qc(
 
 TEST_CASE_METHOD(
     EnumerationFx,
+    "Basic Boolean Enumeration Creation",
+    "[enumeration][basic][boolean]") {
+  std::vector<bool> values = {true, false};
+  auto enmr = create_enumeration(values);
+  check_enumeration(enmr, default_enmr_name, values, Datatype::BOOL, 1, false);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
     "Basic Fixed Size Enumeration Creation",
     "[enumeration][basic][fixed]") {
   std::vector<uint32_t> values = {1, 2, 3, 4, 5};
@@ -156,7 +165,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     EnumerationFx,
     "Basic Variable Size Enumeration Creation",
-    "[enumeration][basic][fixed]") {
+    "[enumeration][basic][var-size]") {
   std::vector<std::string> values = {"foo", "bar", "baz", "bingo", "bango"};
   auto enmr = create_enumeration(values);
   check_enumeration(
@@ -1672,6 +1681,10 @@ struct TypeParams {
     return TypeParams(Datatype::STRING_ASCII, constants::var_num);
   }
 
+  static TypeParams get(const std::vector<bool>&) {
+    return TypeParams(Datatype::BOOL, 1);
+  }
+
   static TypeParams get(const std::vector<int>&) {
     return TypeParams(Datatype::INT32, 1);
   }
@@ -1719,7 +1732,23 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
     tp.type_ = type;
   }
 
-  if constexpr (std::is_pod_v<T>) {
+  if constexpr (std::is_same_v<T, bool>) {
+    // We have to call out bool specifically because of the stdlib
+    // specialization for std::vector<bool>
+    std::vector<uint8_t> raw_values(values.size());
+    for (size_t i = 0; i < values.size(); i++) {
+      raw_values[i] = values[i] ? 1 : 0;
+    }
+    return Enumeration::create(
+        name,
+        tp.type_,
+        tp.cell_val_num_,
+        ordered,
+        raw_values.data(),
+        raw_values.size() * sizeof(uint8_t),
+        nullptr,
+        0);
+  } else if constexpr (std::is_pod_v<T>) {
     return Enumeration::create(
         name,
         tp.type_,
