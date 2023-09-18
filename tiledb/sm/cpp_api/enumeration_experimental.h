@@ -239,17 +239,14 @@ class Enumeration {
       const std::string& name,
       std::vector<T>& values,
       bool ordered = false,
-      tiledb_datatype_t type = static_cast<tiledb_datatype_t>(255)) {
+      std::optional<tiledb_datatype_t> type = std::nullopt) {
     using DataT = impl::TypeHandler<T>;
-
-    if (type == static_cast<tiledb_datatype_t>(255)) {
-      type = DataT::tiledb_type;
-    }
+    tiledb_datatype_t dtype = type.value_or(DataT::tiledb_type);
 
     return create(
         ctx,
         name,
-        type,
+        dtype,
         DataT::tiledb_num,
         ordered,
         values.data(),
@@ -275,14 +272,11 @@ class Enumeration {
       const std::string& name,
       std::vector<std::basic_string<T>>& values,
       bool ordered = false,
-      tiledb_datatype_t type = static_cast<tiledb_datatype_t>(255)) {
+      std::optional<tiledb_datatype_t> type = std::nullopt) {
     using DataT = impl::TypeHandler<T>;
     static_assert(
         DataT::tiledb_num == 1, "Enumeration string values cannot be compound");
-
-    if (type == static_cast<tiledb_datatype_t>(255)) {
-      type = DataT::tiledb_type;
-    }
+    tiledb_datatype_t dtype = type.value_or(DataT::tiledb_type);
 
     uint64_t total_size = 0;
     for (auto v : values) {
@@ -303,7 +297,7 @@ class Enumeration {
     return create(
         ctx,
         name,
-        type,
+        dtype,
         TILEDB_VAR_NUM,
         ordered,
         data.data(),
