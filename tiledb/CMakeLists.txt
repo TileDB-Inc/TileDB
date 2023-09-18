@@ -542,12 +542,21 @@ if (TILEDB_S3)
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
       INTERFACE
         AWSSDK::aws-cpp-sdk-s3
-        AWSSDK::aws-cpp-sdk-core
-        AWSSDK::aws-c-event-stream
-        AWSSDK::aws-checksums
-        AWSSDK::aws-c-common
         AWSSDK::aws-cpp-sdk-identity-management
-        AWSSDK::aws-cpp-sdk-sts)
+        AWSSDK::aws-cpp-sdk-sts
+        AWSSDK::aws-cpp-sdk-core
+        AWSSDK::aws-crt-cpp
+        AWSSDK::aws-c-s3
+        AWSSDK::aws-c-auth
+        AWSSDK::aws-c-mqtt
+        AWSSDK::aws-c-http
+        AWSSDK::aws-c-event-stream
+        AWSSDK::aws-c-io
+        AWSSDK::aws-c-cal
+        AWSSDK::aws-c-sdkutils
+        AWSSDK::aws-c-compression
+        AWSSDK::aws-c-common
+        AWSSDK::aws-checksums)
   endif()
 endif()
 
@@ -996,12 +1005,21 @@ if (TILEDB_STATIC)
     endforeach()
   elseif(TILEDB_S3)
     append_dep_lib(AWSSDK::aws-cpp-sdk-s3)
-    append_dep_lib(AWSSDK::aws-cpp-sdk-core)
-    append_dep_lib(AWSSDK::aws-c-event-stream)
-    append_dep_lib(AWSSDK::aws-checksums)
-    append_dep_lib(AWSSDK::aws-c-common)
-    append_dep_lib(AWSSDK::aws-cpp-sdk-sts)
     append_dep_lib(AWSSDK::aws-cpp-sdk-identity-management)
+    append_dep_lib(AWSSDK::aws-cpp-sdk-sts)
+    append_dep_lib(AWSSDK::aws-cpp-sdk-core)
+    append_dep_lib(AWSSDK::aws-crt-cpp)
+    append_dep_lib(AWSSDK::aws-c-s3)
+    append_dep_lib(AWSSDK::aws-c-auth)
+    append_dep_lib(AWSSDK::aws-c-mqtt)
+    append_dep_lib(AWSSDK::aws-c-http)
+    append_dep_lib(AWSSDK::aws-c-event-stream)
+    append_dep_lib(AWSSDK::aws-c-io)
+    append_dep_lib(AWSSDK::aws-c-cal)
+    append_dep_lib(AWSSDK::aws-c-sdkutils)
+    append_dep_lib(AWSSDK::aws-c-compression)
+    append_dep_lib(AWSSDK::aws-c-common)
+    append_dep_lib(AWSSDK::aws-checksums)
   endif()
 
   append_dep_lib(fmt::fmt)
