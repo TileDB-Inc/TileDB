@@ -147,7 +147,7 @@ jobs:
         shell: bash
         env:
           ASAN_OPTIONS: ${{ inputs.asan && 'detect_leaks=0' || '' }}
-          LD_PRELOAD: ${{ inputs.asan && '/usr/lib/x86_64-linux-gnu/libasan.so.5' || '' }}
+          LD_PRELOAD: ${{ inputs.asan && '/usr/lib/x86_64-linux-gnu/libasan.so.6' || '' }}
         run: |
           set -e pipefail
 
