@@ -49,7 +49,7 @@ enum QueryChannelOperator {
   TILEDB_QUERY_CHANNEL_OPERATOR_MAX
 };
 
-void ensure_aggregate_numeric_field(
+inline void ensure_aggregate_numeric_field(
     const tiledb_channel_operator_t* op, const tiledb::sm::FieldInfo& fi);
 
 class Operation {
@@ -225,7 +225,7 @@ shared_ptr<Operation> tiledb_channel_operator_handle_t::make_operation(
   }
 }
 
-void ensure_aggregate_numeric_field(
+inline void ensure_aggregate_numeric_field(
     const tiledb_channel_operator_t* op, const tiledb::sm::FieldInfo& fi) {
   if (fi.var_sized_) {
     throw tiledb::api::CAPIStatusException(

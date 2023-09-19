@@ -51,6 +51,26 @@ const tiledb_channel_operation_handle_t* tiledb_aggregate_count =
     tiledb_channel_operation_handle_t::make_handle(
         std::make_shared<CountOperation>());
 
+shared_ptr<Operation> tiledb_channel_operator_handle_t::make_operation(
+    const tiledb::sm::FieldInfo& fi) const {
+  switch (this->value()) {
+    case TILEDB_QUERY_CHANNEL_OPERATOR_SUM: {
+      return std::make_shared<SumOperation>(fi, this);
+    }
+    case TILEDB_QUERY_CHANNEL_OPERATOR_MIN: {
+      return std::make_shared<MinOperation>(fi, this);
+    }
+    case TILEDB_QUERY_CHANNEL_OPERATOR_MAX: {
+      return std::make_shared<MaxOperation>(fi, this);
+    }
+    default:
+      throw std::logic_error(
+          "operator has unsupported value: " +
+          std::to_string(static_cast<uint8_t>(this->value())));
+      break;
+  }
+}
+
 namespace tiledb::api {
 
 /**
