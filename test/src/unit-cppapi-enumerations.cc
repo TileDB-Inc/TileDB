@@ -60,6 +60,22 @@ const static std::string dump_name = "enumeration_dump_test.txt";
 
 TEST_CASE_METHOD(
     CPPEnumerationFx,
+    "CPP: Enumeration API - Create Boolean",
+    "[enumeration][create][bool]") {
+  std::vector<bool> values = {true, false};
+  auto enmr = Enumeration::create(ctx_, enmr_name, values);
+  REQUIRE(enmr.ptr() != nullptr);
+  REQUIRE(enmr.name() == enmr_name);
+  REQUIRE(enmr.type() == TILEDB_BOOL);
+  REQUIRE(enmr.cell_val_num() == 1);
+  REQUIRE(enmr.ordered() == false);
+
+  auto data = enmr.as_vector<bool>();
+  REQUIRE(data == values);
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
     "CPP: Enumeration API - Create Fixed Size",
     "[enumeration][create][fixed-size]") {
   std::vector<int> values = {1, 2, 3, 4, 5};

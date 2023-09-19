@@ -243,16 +243,36 @@ class Enumeration {
     using DataT = impl::TypeHandler<T>;
     tiledb_datatype_t dtype = type.value_or(DataT::tiledb_type);
 
-    return create(
-        ctx,
-        name,
-        dtype,
-        DataT::tiledb_num,
-        ordered,
-        values.data(),
-        values.size() * sizeof(T),
-        nullptr,
-        0);
+    if constexpr (!std::is_same_v<T, bool>) {
+      return create(
+          ctx,
+          name,
+          dtype,
+          DataT::tiledb_num,
+          ordered,
+          values.data(),
+          values.size() * sizeof(T),
+          nullptr,
+          0);
+    } else {
+      // This awkward dance for std::vector<bool> is due to the fact that
+      // C++ provides a template specialization that uses a bitmap which does
+      // not provide `data()` member method.
+      std::vector<uint8_t> converted(values.size());
+      for (size_t i = 0; i < values.size(); i++) {
+        converted[i] = values[i] ? 1 : 0;
+      }
+      return create(
+          ctx,
+          name,
+          dtype,
+          DataT::tiledb_num,
+          ordered,
+          converted.data(),
+          converted.size() * sizeof(uint8_t),
+          nullptr,
+          0);
+    }
   }
 
   /**
