@@ -21,11 +21,11 @@ on:
         required: true
         type: string
       matrix_compiler_cc:
-        default: 'gcc'
+        default: 'gcc-10'
         required: false
         type: string
       matrix_compiler_cxx:
-        default: 'g++'
+        default: 'g++-10'
         required: false
         type: string
       timeout:

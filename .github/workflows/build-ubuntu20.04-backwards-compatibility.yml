@@ -3,7 +3,8 @@ on:
   workflow_call:
 
 env:
-  CXX: g++
+  CXX: g++-10
+  CC: gcc-10
 
 jobs:
   build:
