@@ -192,6 +192,13 @@ std::vector<shared_ptr<const Enumeration>>
 ArrayDirectory::load_enumerations_from_paths(
     const std::vector<std::string>& enumeration_paths,
     const EncryptionKey& encryption_key) const {
+  // This should never be called with an empty list of enumeration paths, but
+  // there's no reason to not check an early return case here given that code
+  // changes.
+  if (enumeration_paths.size() == 0) {
+    return {};
+  }
+
   std::vector<shared_ptr<const Enumeration>> ret(enumeration_paths.size());
   auto& tp = resources_.get().io_tp();
   throw_if_not_ok(parallel_for(&tp, 0, enumeration_paths.size(), [&](size_t i) {
