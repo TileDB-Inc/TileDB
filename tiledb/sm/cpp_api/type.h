@@ -73,7 +73,8 @@ using enable_trivial = typename std::enable_if<
  */
 template <typename T>
 struct type_to_tiledb {
-  static_assert(std::is_trivially_copyable_v<T>, "Type must be trivially copyable.");
+  static_assert(
+      std::is_trivially_copyable_v<T>, "Type must be trivially copyable.");
   using type = char;
   static const tiledb_datatype_t tiledb_type = TILEDB_STRING_ASCII;
   static constexpr const char* name = "Trivially Copyable (CHAR)";
