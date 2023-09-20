@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -47,8 +47,6 @@
 #include <type_traits>
 #include <vector>
 
-#define IS_TRIVIALLY_COPYABLE(T) std::is_trivially_copyable<T>::value
-
 namespace tiledb {
 
 namespace impl {
@@ -59,15 +57,15 @@ struct defer_assert : std::false_type {};
 
 /** Used to statically type check for std::array. */
 template <typename T>
-struct is_stl_array : std::false_type {};
+struct is_std_array : std::false_type {};
 template <typename T, std::size_t N>
-struct is_stl_array<std::array<T, N>> : std::true_type {};
+struct is_std_array<std::array<T, N>> : std::true_type {};
 
 /** SFINAE handler for types that make sense to be bitwise copied. **/
 template <typename T>
 using enable_trivial = typename std::enable_if<
-    IS_TRIVIALLY_COPYABLE(T) && !std::is_pointer<T>::value &&
-    !std::is_array<T>::value && !is_stl_array<T>::value>::type;
+    std::is_trivially_copyable_v<T> && !std::is_pointer_v<T> &&
+    !std::is_array_v<T> && !is_std_array<T>::value>::type;
 
 /**
  * Convert a type into a tiledb_datatype_t. The default for all
@@ -75,7 +73,8 @@ using enable_trivial = typename std::enable_if<
  */
 template <typename T>
 struct type_to_tiledb {
-  static_assert(IS_TRIVIALLY_COPYABLE(T), "Type must be trivially copyable.");
+  static_assert(
+      std::is_trivially_copyable_v<T>, "Type must be trivially copyable.");
   using type = char;
   static const tiledb_datatype_t tiledb_type = TILEDB_STRING_ASCII;
   static constexpr const char* name = "Trivially Copyable (CHAR)";
