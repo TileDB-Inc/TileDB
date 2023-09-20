@@ -58,7 +58,7 @@ GroupDetails::GroupDetails(const URI& group_uri, uint32_t version)
 }
 
 Status GroupDetails::clear() {
-  members_.clear();
+  members_by_uri_.clear();
   members_by_name_.clear();
   members_vec_.clear();
   members_to_modify_.clear();
@@ -69,7 +69,7 @@ Status GroupDetails::clear() {
 void GroupDetails::add_member(const shared_ptr<GroupMember> group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
   const std::string& uri = group_member->uri().to_string();
-  members_.emplace(uri, group_member);
+  members_by_uri_.emplace(uri, group_member);
   members_vec_.emplace_back(group_member);
   if (group_member->name().has_value()) {
     members_by_name_.emplace(group_member->name().value(), group_member);
@@ -79,8 +79,8 @@ void GroupDetails::add_member(const shared_ptr<GroupMember> group_member) {
 void GroupDetails::delete_member(const shared_ptr<GroupMember> group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
   const std::string& uri = group_member->uri().to_string();
-  auto it = members_.find(uri);
-  if (it != members_.end()) {
+  auto it = members_by_uri_.find(uri);
+  if (it != members_by_uri_.end()) {
     for (size_t i = 0; i < members_vec_.size(); i++) {
       if (members_vec_[i] == it->second) {
         members_vec_.erase(members_vec_.begin() + i);
@@ -88,7 +88,7 @@ void GroupDetails::delete_member(const shared_ptr<GroupMember> group_member) {
       }
     }
     auto name = it->second->name();
-    members_.erase(it);
+    members_by_uri_.erase(it);
     if (group_member->name().has_value()) {
       members_by_name_.erase(group_member->name().value());
     } else if (name.has_value()) {
@@ -134,9 +134,9 @@ Status GroupDetails::mark_member_for_removal(const URI& uri) {
 Status GroupDetails::mark_member_for_removal(const std::string& uri) {
   std::lock_guard<std::mutex> lck(mtx_);
 
-  auto it = members_.find(uri);
+  auto it = members_by_uri_.find(uri);
   auto it_name = members_by_name_.find(uri);
-  if (it != members_.end()) {
+  if (it != members_by_uri_.end()) {
     auto member_to_delete = make_shared<GroupMemberV2>(
         it->second->uri(),
         it->second->type(),
@@ -158,8 +158,8 @@ Status GroupDetails::mark_member_for_removal(const std::string& uri) {
   } else {
     // try URI to see if we need to convert the local file to file://
     URI uri_uri(uri);
-    it = members_.find(uri_uri.to_string());
-    if (it != members_.end()) {
+    it = members_by_uri_.find(uri_uri.to_string());
+    if (it != members_by_uri_.end()) {
       auto member_to_delete = make_shared<GroupMemberV2>(
           it->second->uri(),
           it->second->type(),
@@ -187,7 +187,7 @@ const std::vector<shared_ptr<GroupMember>>& GroupDetails::members_to_modify()
 const std::unordered_map<std::string, shared_ptr<GroupMember>>&
 GroupDetails::members() const {
   std::lock_guard<std::mutex> lck(mtx_);
-  return members_;
+  return members_by_uri_;
 }
 
 void GroupDetails::serialize(Serializer&) {
@@ -226,7 +226,7 @@ bool GroupDetails::changes_applied() const {
 uint64_t GroupDetails::member_count() const {
   std::lock_guard<std::mutex> lck(mtx_);
 
-  return members_.size();
+  return members_by_uri_.size();
 }
 
 tuple<std::string, ObjectType, optional<std::string>>

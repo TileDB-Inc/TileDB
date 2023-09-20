@@ -49,9 +49,9 @@ GroupDetailsV1::GroupDetailsV1(const URI& group_uri)
 //   ...
 void GroupDetailsV1::serialize(Serializer& serializer) {
   serializer.write<format_version_t>(GroupDetailsV1::format_version_);
-  uint64_t group_member_num = members_.size();
+  uint64_t group_member_num = members_by_uri_.size();
   serializer.write<uint64_t>(group_member_num);
-  for (auto& it : members_) {
+  for (auto& it : members_by_uri_) {
     it.second->serialize(serializer);
   }
 }
@@ -77,7 +77,7 @@ void GroupDetailsV1::apply_pending_changes() {
   for (const auto& member : members_to_modify_) {
     auto& uri = member->uri();
     if (member->deleted()) {
-      members_.erase(uri.to_string());
+      members_by_uri_.erase(uri.to_string());
 
       // Check to remove relative URIs
       auto uri_str = uri.to_string();
@@ -86,10 +86,10 @@ void GroupDetailsV1::apply_pending_changes() {
         // Get the substring relative path
         auto relative_uri = uri_str.substr(
             group_uri_.add_trailing_slash().to_string().size(), uri_str.size());
-        members_.erase(relative_uri);
+        members_by_uri_.erase(relative_uri);
       }
     } else {
-      members_.emplace(member->uri().to_string(), member);
+      members_by_uri_.emplace(member->uri().to_string(), member);
     }
   }
   changes_applied_ = !members_to_modify_.empty();
@@ -97,8 +97,8 @@ void GroupDetailsV1::apply_pending_changes() {
 
   members_vec_.clear();
   members_by_name_.clear();
-  members_vec_.reserve(members_.size());
-  for (auto& it : members_) {
+  members_vec_.reserve(members_by_uri_.size());
+  for (auto& it : members_by_uri_) {
     members_vec_.emplace_back(it.second);
     if (it.second->name().has_value()) {
       members_by_name_.emplace(it.second->name().value(), it.second);

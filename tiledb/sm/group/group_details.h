@@ -196,7 +196,7 @@ class GroupDetails {
   /**
    * Apply any pending member additions or removals
    *
-   * mutates members_ and clears members_to_add_ and members_to_remove_
+   * mutates members_by_uri_ and clears members_to_add_ and members_to_remove_
    */
   virtual void apply_pending_changes() = 0;
 
@@ -209,7 +209,7 @@ class GroupDetails {
   URI group_uri_;
 
   /** The mapping of all members of this group. */
-  std::unordered_map<std::string, shared_ptr<GroupMember>> members_;
+  std::unordered_map<std::string, shared_ptr<GroupMember>> members_by_uri_;
 
   /** Vector for index based lookup. */
   std::vector<shared_ptr<GroupMember>> members_vec_;
