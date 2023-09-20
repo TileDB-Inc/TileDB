@@ -197,10 +197,8 @@ class GroupDetails {
    * Apply any pending member additions or removals
    *
    * mutates members_ and clears members_to_add_ and members_to_remove_
-   *
-   * @return Status
    */
-  virtual Status apply_pending_changes() = 0;
+  virtual void apply_pending_changes() = 0;
 
  protected:
   /* ********************************* */

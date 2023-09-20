@@ -82,10 +82,8 @@ class GroupDetailsV1 : public GroupDetails {
    * Apply any pending member additions or removals
    *
    * mutates members_ and clears members_to_modify_;
-   *
-   * @return Status
    */
-  Status apply_pending_changes() override;
+  void apply_pending_changes() override;
 
  private:
   /* Format version for class. */
