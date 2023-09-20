@@ -784,23 +784,9 @@ Status S3::is_bucket(const URI& uri, bool* const exists) const {
   Aws::S3::Model::HeadBucketRequest head_bucket_request;
   head_bucket_request.SetBucket(aws_uri.GetAuthority());
   auto head_bucket_outcome = client_->HeadBucket(head_bucket_request);
+  *exists = head_bucket_outcome.IsSuccess();
 
-  if (head_bucket_outcome.IsSuccess()) {
-    *exists = true;
-    return Status::Ok();
-  }
-
-  auto err = head_bucket_outcome.GetError();
-
-  if (err.GetErrorType() == Aws::S3::S3Errors::NO_SUCH_BUCKET ||
-      err.GetErrorType() == Aws::S3::S3Errors::RESOURCE_NOT_FOUND) {
-    *exists = false;
-    return Status::Ok();
-  }
-
-  return LOG_STATUS(Status_S3Error(
-      "Failed to check if S3 bucket '" + uri.to_string() +
-      "' exists: " + outcome_error_message(head_bucket_outcome)));
+  return Status::Ok();
 }
 
 Status S3::is_object(const URI& uri, bool* const exists) const {
@@ -828,23 +814,9 @@ Status S3::is_object(
   if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
     head_object_request.SetRequestPayer(request_payer_);
   auto head_object_outcome = client_->HeadObject(head_object_request);
+  *exists = head_object_outcome.IsSuccess();
 
-  if (head_object_outcome.IsSuccess()) {
-    *exists = true;
-    return Status::Ok();
-  }
-
-  auto err = head_object_outcome.GetError();
-
-  if (err.GetErrorType() == Aws::S3::S3Errors::NO_SUCH_KEY ||
-      err.GetErrorType() == Aws::S3::S3Errors::RESOURCE_NOT_FOUND) {
-    *exists = false;
-    return Status::Ok();
-  }
-
-  return LOG_STATUS(Status_S3Error(
-      "Failed to check if S3 object 's3://" + bucket_name + "/" + object_key +
-      "' exists: " + outcome_error_message(head_object_outcome)));
+  return Status::Ok();
 }
 
 Status S3::is_dir(const URI& uri, bool* exists) const {
