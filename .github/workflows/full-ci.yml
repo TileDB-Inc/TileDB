@@ -41,6 +41,8 @@ jobs:
     with:
       ci_backend: GCS
       matrix_image: ubuntu-20.04
+      matrix_compiler_cc: 'gcc-10'
+      matrix_compiler_cxx: 'g++-10'
       timeout: 120
       bootstrap_args: '--enable-gcs --enable-release-symbols'
 
@@ -64,7 +66,7 @@ jobs:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
       ci_backend: S3
-      matrix_image: macos-11
+      matrix_image: macos-12
       timeout: 120
       bootstrap_args: '--enable=s3,serialization,tools --enable-release-symbols'
 
@@ -72,7 +74,7 @@ jobs:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
       ci_backend: GCS
-      matrix_image: macos-11
+      matrix_image: macos-12
       timeout: 120
       bootstrap_args: '--enable-gcs --enable-release-symbols'
 
@@ -96,6 +98,8 @@ jobs:
     with:
       ci_option: ASAN
       matrix_image: ubuntu-20.04
+      matrix_compiler_cc: 'gcc-10'
+      matrix_compiler_cxx: 'g++-10'
       timeout: 120
       bootstrap_args: '--enable-serialization'
       asan: true
@@ -104,7 +108,7 @@ jobs:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
       ci_backend: AZURE
-      matrix_image: macos-11
+      matrix_image: macos-12
       timeout: 120
       bootstrap_args: '--enable-azure'
 
