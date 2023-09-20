@@ -135,7 +135,6 @@ Status GroupDetails::mark_member_for_removal(const std::string& uri) {
   std::lock_guard<std::mutex> lck(mtx_);
 
   auto it = members_by_uri_.find(uri);
-  auto it_name = members_by_name_.find(uri);
   if (it != members_by_uri_.end()) {
     auto member_to_delete = make_shared<GroupMemberV2>(
         it->second->uri(),
@@ -145,7 +144,9 @@ Status GroupDetails::mark_member_for_removal(const std::string& uri) {
         true);
     members_to_modify_.emplace_back(member_to_delete);
     return Status::Ok();
-  } else if (it_name != members_by_name_.end()) {
+  }
+  auto it_name = members_by_name_.find(uri);
+  if (it_name != members_by_name_.end()) {
     // If the user passed the name, convert it to the URI for removal
     auto member_to_delete = make_shared<GroupMemberV2>(
         it_name->second->uri(),
@@ -155,24 +156,23 @@ Status GroupDetails::mark_member_for_removal(const std::string& uri) {
         true);
     members_to_modify_.emplace_back(member_to_delete);
     return Status::Ok();
+  }
+  // try URI to see if we need to convert the local file to file://
+  URI uri_uri(uri);
+  it = members_by_uri_.find(uri_uri.to_string());
+  if (it != members_by_uri_.end()) {
+    auto member_to_delete = make_shared<GroupMemberV2>(
+        it->second->uri(),
+        it->second->type(),
+        it->second->relative(),
+        it->second->name(),
+        true);
+    members_to_modify_.emplace_back(member_to_delete);
+    return Status::Ok();
   } else {
-    // try URI to see if we need to convert the local file to file://
-    URI uri_uri(uri);
-    it = members_by_uri_.find(uri_uri.to_string());
-    if (it != members_by_uri_.end()) {
-      auto member_to_delete = make_shared<GroupMemberV2>(
-          it->second->uri(),
-          it->second->type(),
-          it->second->relative(),
-          it->second->name(),
-          true);
-      members_to_modify_.emplace_back(member_to_delete);
-      return Status::Ok();
-    } else {
-      return Status_GroupError(
-          "Cannot remove group member " + uri +
-          ", member does not exist in group.");
-    }
+    return Status_GroupError(
+        "Cannot remove group member " + uri +
+        ", member does not exist in group.");
   }
 
   return Status::Ok();
