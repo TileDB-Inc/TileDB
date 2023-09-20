@@ -1774,8 +1774,7 @@ TEST_CASE_METHOD(
   REQUIRE_THROWS_WITH(
       Array::delete_fragments_list(
           ctx_, SPARSE_ARRAY_NAME, extraneous_fragments, 1),
-      Catch::Matchers::ContainsSubstring(
-          "is not a fragment of the ArrayDirectory"));
+      Catch::Matchers::ContainsSubstring("Failed to delete fragments_list"));
   CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 2);
 
   remove_sparse_array();

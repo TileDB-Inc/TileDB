@@ -2380,54 +2380,38 @@ capi_return_t tiledb_array_delete_fragments_v2(
         "Failed to delete fragments; Invalid input uri");
   }
 
-  if (uri.is_tiledb()) {
-    // Check REST client
-    auto rest_client = ctx->storage_manager()->rest_client();
-    if (rest_client == nullptr) {
-      auto st = Status_Error(
-          "Failed to delete fragments; remote array with no REST client.");
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-
-    rest_client->delete_fragments_from_rest(
-        uri, timestamp_start, timestamp_end);
-  } else {
-    // Allocate an array object
-    tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
-    try {
-      array->array_ =
-          make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
-    } catch (std::bad_alloc&) {
-      auto st = Status_Error(
-          "Failed to create TileDB array object; Memory allocation error");
-      delete array;
-      array = nullptr;
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
-      return TILEDB_OOM;
-    }
-
-    // Open the array for exclusive modification
-    throw_if_not_ok(array->array_->open(
-        static_cast<tiledb::sm::QueryType>(TILEDB_MODIFY_EXCLUSIVE),
-        static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
-        nullptr,
-        0));
-
-    try {
-      array->array_->delete_fragments(uri, timestamp_start, timestamp_end);
-    } catch (std::exception& e) {
-      auto st = Status_ArrayError(e.what());
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-
-    // Close the array
-    throw_if_not_ok(array->array_->close());
+  // Allocate an array object
+  tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
+  try {
+    array->array_ =
+        make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
+  } catch (...) {
+    delete array;
+    array = nullptr;
+    throw api::CAPIStatusException("Failed to create array");
   }
+
+  // Open the array for exclusive modification
+  throw_if_not_ok(array->array_->open(
+      static_cast<tiledb::sm::QueryType>(TILEDB_MODIFY_EXCLUSIVE),
+      static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
+      nullptr,
+      0));
+
+  // Delete fragments
+  try {
+    array->array_->delete_fragments(uri, timestamp_start, timestamp_end);
+  } catch (...) {
+    throw_if_not_ok(array->array_->close());
+    delete array;
+    array = nullptr;
+    throw api::CAPIStatusException("Failed to delete fragments");
+  }
+
+  // Close and delete the array
+  throw_if_not_ok(array->array_->close());
+  delete array;
+  array = nullptr;
 
   return TILEDB_OK;
 }
@@ -2462,53 +2446,38 @@ capi_return_t tiledb_array_delete_fragments_list(
     uris.emplace_back(tiledb::sm::URI(fragment_uris[i]));
   }
 
-  if (uri.is_tiledb()) {
-    // Check REST client
-    auto rest_client = ctx->storage_manager()->rest_client();
-    if (rest_client == nullptr) {
-      auto st = Status_Error(
-          "Failed to delete fragments; remote array with no REST client.");
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-    rest_client->delete_fragments_list_from_rest(uri, uris);
-  } else {
-    // Allocate an array object
-    tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
-    try {
-      array->array_ =
-          make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
-    } catch (std::bad_alloc&) {
-      auto st = Status_Error(
-          "Failed to create TileDB array object; Memory allocation error");
-      delete array;
-      array = nullptr;
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
-      return TILEDB_OOM;
-    }
-
-    // Open the array for exclusive modification
-    throw_if_not_ok(array->array_->open(
-        static_cast<tiledb::sm::QueryType>(TILEDB_MODIFY_EXCLUSIVE),
-        static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
-        nullptr,
-        0));
-
-    try {
-      array->array_->delete_fragments_list(uri, uris);
-    } catch (std::exception& e) {
-      throw_if_not_ok(array->array_->close());
-      auto st = Status_ArrayError(e.what());
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-
-    // Close the array
-    throw_if_not_ok(array->array_->close());
+  // Allocate an array object
+  tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
+  try {
+    array->array_ =
+        make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
+  } catch (...) {
+    delete array;
+    array = nullptr;
+    throw api::CAPIStatusException("Failed to create array");
   }
+
+  // Open the array for exclusive modification
+  throw_if_not_ok(array->array_->open(
+      static_cast<tiledb::sm::QueryType>(TILEDB_MODIFY_EXCLUSIVE),
+      static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
+      nullptr,
+      0));
+
+  // Delete fragments list
+  try {
+    array->array_->delete_fragments_list(uri, uris);
+  } catch (...) {
+    throw_if_not_ok(array->array_->close());
+    delete array;
+    array = nullptr;
+    throw api::CAPIStatusException("Failed to delete fragments_list");
+  }
+
+  // Close the array
+  throw_if_not_ok(array->array_->close());
+  delete array;
+  array = nullptr;
 
   return TILEDB_OK;
 }
@@ -4096,54 +4065,38 @@ capi_return_t tiledb_deserialize_array_delete_fragments_timestamps_request(
         "Failed to delete fragments; Invalid input uri");
   }
 
-  // Delete fragments
-  if (uri.is_tiledb()) {
-    // Check REST client
-    auto rest_client = ctx->storage_manager()->rest_client();
-    if (rest_client == nullptr) {
-      auto st = Status_Error(
-          "Failed to delete fragments; remote array with no REST client.");
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-    rest_client->delete_fragments_from_rest(
-        uri, timestamp_start, timestamp_end);
-  } else {
-    // Allocate an array object
-    tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
-    try {
-      array->array_ =
-          make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
-    } catch (std::bad_alloc&) {
-      auto st = Status_Error(
-          "Failed to create TileDB array object; Memory allocation error");
-      delete array;
-      array = nullptr;
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
-      return TILEDB_OOM;
-    }
-
-    // Open the array for exclusive modification
-    throw_if_not_ok(array->array_->open(
-        static_cast<tiledb::sm::QueryType>(TILEDB_MODIFY_EXCLUSIVE),
-        static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
-        nullptr,
-        0));
-
-    try {
-      array->array_->delete_fragments(uri, timestamp_start, timestamp_end);
-    } catch (std::exception& e) {
-      auto st = Status_ArrayError(e.what());
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-
-    // Close the array
-    throw_if_not_ok(array->array_->close());
+  // Allocate an array object
+  tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
+  try {
+    array->array_ =
+        make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
+  } catch (...) {
+    delete array;
+    array = nullptr;
+    throw api::CAPIStatusException("Failed to create array");
   }
+
+  // Open the array for exclusive modification
+  throw_if_not_ok(array->array_->open(
+      static_cast<tiledb::sm::QueryType>(TILEDB_MODIFY_EXCLUSIVE),
+      static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
+      nullptr,
+      0));
+
+  // Delete fragments
+  try {
+    array->array_->delete_fragments(uri, timestamp_start, timestamp_end);
+  } catch (...) {
+    throw_if_not_ok(array->array_->close());
+    delete array;
+    array = nullptr;
+    throw api::CAPIStatusException("Failed to delete fragments");
+  }
+
+  // Close and delete the array
+  throw_if_not_ok(array->array_->close());
+  delete array;
+  array = nullptr;
 
   return TILEDB_OK;
 }
@@ -4164,54 +4117,38 @@ capi_return_t tiledb_deserialize_array_delete_fragments_list_request(
         "Failed to delete_fragments_list; Invalid input uri");
   }
 
-  // Delete fragments list
-  if (uri.is_tiledb()) {
-    // Check REST client
-    auto rest_client = ctx->storage_manager()->rest_client();
-    if (rest_client == nullptr) {
-      auto st = Status_Error(
-          "Failed to delete fragments; remote array with no REST client.");
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-    rest_client->delete_fragments_list_from_rest(uri, uris);
-  } else {
-    // Allocate an array object
-    tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
-    try {
-      array->array_ =
-          make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
-    } catch (std::bad_alloc&) {
-      auto st = Status_Error(
-          "Failed to create TileDB array object; Memory allocation error");
-      delete array;
-      array = nullptr;
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
-      return TILEDB_OOM;
-    }
-
-    // Open the array for exclusive modification
-    throw_if_not_ok(array->array_->open(
-        static_cast<tiledb::sm::QueryType>(TILEDB_MODIFY_EXCLUSIVE),
-        static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
-        nullptr,
-        0));
-
-    try {
-      array->array_->delete_fragments_list(uri, uris);
-    } catch (std::exception& e) {
-      throw_if_not_ok(array->array_->close());
-      auto st = Status_ArrayError(e.what());
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-
-    // Close the array
-    throw_if_not_ok(array->array_->close());
+  // Allocate an array object
+  tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
+  try {
+    array->array_ =
+        make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
+  } catch (...) {
+    delete array;
+    array = nullptr;
+    throw api::CAPIStatusException("Failed to create array");
   }
+
+  // Open the array for exclusive modification
+  throw_if_not_ok(array->array_->open(
+      static_cast<tiledb::sm::QueryType>(TILEDB_MODIFY_EXCLUSIVE),
+      static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
+      nullptr,
+      0));
+
+  // Delete fragments list
+  try {
+    array->array_->delete_fragments_list(uri, uris);
+  } catch (...) {
+    throw_if_not_ok(array->array_->close());
+    delete array;
+    array = nullptr;
+    throw api::CAPIStatusException("Failed to delete fragments_list");
+  }
+
+  // Close and delete the array
+  throw_if_not_ok(array->array_->close());
+  delete array;
+  array = nullptr;
 
   return TILEDB_OK;
 }
