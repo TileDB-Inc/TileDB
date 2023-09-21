@@ -58,10 +58,8 @@ class GroupDetails {
 
   /**
    * Clear a group
-   *
-   * @return
    */
-  Status clear();
+  void clear();
 
   /**
    * Add a member to a group, this will be flushed to disk on close

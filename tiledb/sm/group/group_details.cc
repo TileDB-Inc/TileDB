@@ -57,13 +57,11 @@ GroupDetails::GroupDetails(const URI& group_uri, uint32_t version)
     , changes_applied_(false) {
 }
 
-Status GroupDetails::clear() {
+void GroupDetails::clear() {
   members_by_uri_.clear();
   members_by_name_.clear();
   members_vec_.clear();
   members_to_modify_.clear();
-
-  return Status::Ok();
 }
 
 void GroupDetails::add_member(const shared_ptr<GroupMember> group_member) {

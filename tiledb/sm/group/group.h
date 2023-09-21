@@ -89,10 +89,8 @@ class Group {
 
   /**
    * Clear a group
-   *
-   * @return
    */
-  Status clear();
+  void clear();
 
   /**
    * Deletes data from and closes a group opened in MODIFY_EXCLUSIVE mode.

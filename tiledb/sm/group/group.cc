@@ -267,7 +267,8 @@ Status Group::close() {
   metadata_.clear();
   metadata_loaded_ = false;
   is_open_ = false;
-  return clear();
+  clear();
+  return Status::Ok();
 }
 
 bool Group::is_open() const {
@@ -339,7 +340,7 @@ void Group::delete_group(const URI& uri, bool recursive) {
   }
   // Clear metadata and other pending changes to avoid patching a deleted group.
   metadata_.clear();
-  throw_if_not_ok(group_details_->clear());
+  group_details_->clear();
 
   // Close the deleted group
   throw_if_not_ok(this->close());
@@ -537,8 +538,8 @@ void Group::set_config(Config config) {
   config_.inherit(config);
 }
 
-Status Group::clear() {
-  return group_details_->clear();
+void Group::clear() {
+  group_details_->clear();
 }
 
 void Group::add_member(const shared_ptr<GroupMember> group_member) {
