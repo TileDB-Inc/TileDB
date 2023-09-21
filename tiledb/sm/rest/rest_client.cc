@@ -43,7 +43,7 @@
 #include "tiledb/sm/serialization/fragments.h"
 #include "tiledb/sm/serialization/group.h"
 #include "tiledb/sm/serialization/query.h"
-#include "tiledb/sm/serialization/tiledb-rest.h"
+#include "tiledb/sm/serialization/tiledb-rest.capnp.h"
 #include "tiledb/sm/serialization/vacuum.h"
 #include "tiledb/sm/rest/curl.h" // must be included last to avoid Windows.h
 #endif
