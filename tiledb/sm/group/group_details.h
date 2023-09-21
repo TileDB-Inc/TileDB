@@ -212,13 +212,6 @@ class GroupDetails {
   virtual std::vector<std::shared_ptr<GroupMember>> members_to_serialize()
       const = 0;
 
-  /**
-   * Apply any pending member additions or removals
-   *
-   * mutates members_by_uri_ and clears members_to_add_ and members_to_remove_
-   */
-  virtual void apply_pending_changes() = 0;
-
  protected:
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */

@@ -88,41 +88,5 @@ std::vector<std::shared_ptr<GroupMember>> GroupDetailsV1::members_to_serialize()
   return result;
 }
 
-void GroupDetailsV1::apply_pending_changes() {
-  std::lock_guard<std::mutex> lck(mtx_);
-
-  // Remove members first
-  for (const auto& member : members_to_modify_) {
-    auto& uri = member->uri();
-    if (member->deleted()) {
-      members_by_uri_.erase(uri.to_string());
-
-      // Check to remove relative URIs
-      auto uri_str = uri.to_string();
-      if (uri_str.find(group_uri_.add_trailing_slash().to_string()) !=
-          std::string::npos) {
-        // Get the substring relative path
-        auto relative_uri = uri_str.substr(
-            group_uri_.add_trailing_slash().to_string().size(), uri_str.size());
-        members_by_uri_.erase(relative_uri);
-      }
-    } else {
-      members_by_uri_.emplace(member->uri().to_string(), member);
-    }
-  }
-  changes_applied_ = !members_to_modify_.empty();
-  members_to_modify_.clear();
-
-  members_vec_.clear();
-  members_by_name_.clear();
-  members_vec_.reserve(members_by_uri_.size());
-  for (auto& it : members_by_uri_) {
-    members_vec_.emplace_back(it.second);
-    if (it.second->name().has_value()) {
-      members_by_name_.emplace(it.second->name().value(), it.second);
-    }
-  }
-}
-
 }  // namespace sm
 }  // namespace tiledb

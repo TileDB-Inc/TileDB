@@ -84,14 +84,6 @@ class GroupDetailsV2 : public GroupDetails {
   std::vector<std::shared_ptr<GroupMember>> members_to_serialize()
       const override;
 
- protected:
-  /**
-   * Apply any pending member additions or removals
-   *
-   * mutates members_by_uri_ and clears members_to_modify_
-   */
-  void apply_pending_changes() override;
-
  private:
   /* Format version for class. */
   inline static const format_version_t format_version_ = 2;

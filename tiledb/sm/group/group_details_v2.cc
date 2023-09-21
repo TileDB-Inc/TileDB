@@ -111,29 +111,5 @@ std::vector<std::shared_ptr<GroupMember>> GroupDetailsV2::members_to_serialize()
   return members;
 }
 
-void GroupDetailsV2::apply_pending_changes() {
-  std::lock_guard<std::mutex> lck(mtx_);
-
-  members_by_uri_.clear();
-  members_vec_.clear();
-  members_by_name_.clear();
-  members_vec_.reserve(members_to_modify_.size());
-
-  // First add each member to unordered map, overriding if the user adds/removes
-  // it multiple times
-  for (auto& it : members_to_modify_) {
-    members_by_uri_[it->uri().to_string()] = it;
-  }
-
-  for (auto& it : members_by_uri_) {
-    members_vec_.emplace_back(it.second);
-    if (it.second->name().has_value()) {
-      members_by_name_.emplace(it.second->name().value(), it.second);
-    }
-  }
-  changes_applied_ = !members_to_modify_.empty();
-  members_to_modify_.clear();
-}
-
 }  // namespace sm
 }  // namespace tiledb

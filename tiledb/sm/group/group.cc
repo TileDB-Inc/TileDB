@@ -68,8 +68,7 @@ Group::Group(const URI& group_uri, StorageManager* storage_manager)
     , query_type_(QueryType::READ)
     , timestamp_start_(0)
     , timestamp_end_(UINT64_MAX)
-    , encryption_key_(tdb::make_shared<EncryptionKey>(HERE()))
-    , changes_applied_(false) {
+    , encryption_key_(tdb::make_shared<EncryptionKey>(HERE())) {
 }
 
 Status Group::open(
@@ -203,7 +202,6 @@ Status Group::open(
 
   query_type_ = query_type;
   is_open_ = true;
-  changes_applied_ = false;
 
   return Status::Ok();
 }
@@ -257,11 +255,6 @@ Status Group::close() {
         query_type_ == QueryType::WRITE ||
         query_type_ == QueryType::MODIFY_EXCLUSIVE) {
       try {
-        // If changes haven't been applied, apply them
-        if (!changes_applied_) {
-          group_details_->apply_pending_changes();
-          changes_applied_ = group_details_->changes_applied();
-        }
         RETURN_NOT_OK(storage_manager_->group_close_for_writes(this));
       } catch (StatusException& exc) {
         std::string msg = exc.what();

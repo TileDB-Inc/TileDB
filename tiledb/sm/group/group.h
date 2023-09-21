@@ -431,9 +431,6 @@ class Group {
   /** Mutex for thread safety. */
   mutable std::mutex mtx_;
 
-  /* Were changes applied and is a write is required */
-  bool changes_applied_;
-
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
