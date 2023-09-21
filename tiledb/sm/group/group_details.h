@@ -100,6 +100,14 @@ class GroupDetails {
   const std::vector<shared_ptr<GroupMember>>& members_to_modify() const;
 
   /**
+   * Get whether the group has been modified.
+   */
+  bool is_modified() const {
+    std::lock_guard<std::mutex> lck(mtx_);
+    return !members_to_modify_.empty();
+  }
+
+  /**
    * Get the unordered map of members
    * @return members
    */

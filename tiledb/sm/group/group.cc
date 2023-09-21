@@ -635,14 +635,6 @@ tuple<Status, optional<URI>> Group::generate_detail_uri() const {
   return {Status::Ok(), uri};
 }
 
-bool Group::changes_applied() const {
-  return changes_applied_;
-}
-
-void Group::set_changes_applied(const bool changes_applied) {
-  changes_applied_ = changes_applied;
-}
-
 uint64_t Group::member_count() const {
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
