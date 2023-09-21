@@ -274,7 +274,7 @@ S3::S3(
             "TileDB", Aws::Utils::Logging::LogLevel::Trace, "tiledb_s3_"));
   }
 
-  auto sse = s3_params_.sse_str_;
+  auto sse = s3_params_.sse_algorithm_;
   if (!sse.empty()) {
     if (sse == "aes256") {
       sse_ = Aws::S3::Model::ServerSideEncryption::AES256;
@@ -1367,7 +1367,7 @@ Status S3::init_client() const {
           credentials_provider_->GetAWSCredentials();
       if (credentials.IsExpired()) {
         throw S3Exception("AWS credentials are expired.");
-      } else if (!s3_params_.aws_no_sign_request_ && credentials.IsEmpty()) {
+      } else if (!s3_params_.no_sign_request_ && credentials.IsEmpty()) {
         throw S3Exception(
             "AWS credentials were not provided. For public S3 data, consider "
             "setting the vfs.s3.no_sign_request config option.");
@@ -1425,7 +1425,7 @@ Status S3::init_client() const {
   // If the user says not to sign a request, use the
   // AnonymousAWSCredentialsProvider This is equivalent to --no-sign-request on
   // the aws cli
-  if (s3_params_.aws_no_sign_request_) {
+  if (s3_params_.no_sign_request_) {
     credentials_provider_ =
         make_shared<Aws::Auth::AnonymousAWSCredentialsProvider>(HERE());
   } else {  // Check other authentication methods

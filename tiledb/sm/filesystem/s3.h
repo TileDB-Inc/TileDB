@@ -85,169 +85,282 @@ using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb::sm {
 
+/**
+ * The s3-specific configuration parameters.
+ *
+ * @note The member variables' default declarations have not yet been moved
+ * from the Config declaration into this struct.
+ * @note Not all vfs.s3 config parameters are present in this struct.
+ */
 struct S3Parameters {
   S3Parameters() = delete;
 
   S3Parameters(const Config& config)
-      : logging_level_(config.get<std::string>("vfs.s3.logging_level").value())
-      , skip_init_(config.get<bool>("vfs.s3.skip_init").value())
-      , max_parallel_ops_(
-            config.get<uint64_t>("vfs.s3.max_parallel_ops").value())
-      , multipart_part_size_(
-            config.get<uint64_t>("vfs.s3.multipart_part_size").value())
-      , region_(config.get<std::string>("vfs.s3.region").value_or(""))
-      , use_virtual_addressing_(
-            config.get<bool>("vfs.s3.use_virtual_addressing").value())
-      , use_multipart_upload_(
-            config.get<bool>("vfs.s3.use_multipart_upload").value())
-      , requester_pays_(config.get<bool>("vfs.s3.requester_pays").value())
-      , object_acl_str_(
-            config.get<std::string>("vfs.s3.object_canned_acl").value())
-      , sse_str_(config.get<std::string>("vfs.s3.sse").value())
-      , sse_kms_key_id_(
-            sse_str_ == "kms" ?
-                config.get<std::string>("vfs.s3.sse_kms_key_id").value() :
-                "")
-      , config_source_(config.get<std::string>("vfs.s3.config_source").value())
-      , aws_no_sign_request_(config.get<bool>("vfs.s3.no_sign_request").value())
-      , endpoint_override_(
-            config.get<std::string>("vfs.s3.endpoint_override").value())
-      , proxy_host_(config.get<std::string>("vfs.s3.proxy_host").value())
-      , proxy_port_(config.get<uint32_t>("vfs.s3.proxy_port").value())
-      , proxy_username_(
-            config.get<std::string>("vfs.s3.proxy_username").value())
-      , proxy_password_(
-            config.get<std::string>("vfs.s3.proxy_password").value())
-      , proxy_scheme_(config.get<std::string>("vfs.s3.proxy_scheme").value())
-      , scheme_(config.get<std::string>("vfs.s3.scheme").value())
-      , connect_timeout_ms_(
-            config.get<int64_t>("vfs.s3.connect_timeout_ms").value())
-      , request_timeout_ms_(
-            config.get<int64_t>("vfs.s3.request_timeout_ms").value())
-      , aws_access_key_id_(
-            config.get<std::string>("vfs.s3.aws_access_key_id").value())
-      , aws_secret_access_key_(
-            config.get<std::string>("vfs.s3.aws_secret_access_key").value())
-      , aws_session_token_(
-            config.get<std::string>("vfs.s3.aws_session_token").value())
-      , aws_role_arn_(config.get<std::string>("vfs.s3.aws_role_arn").value())
-      , aws_external_id_(
-            config.get<std::string>("vfs.s3.aws_external_id").value())
-      , aws_load_frequency_(
-            config.get<std::string>("vfs.s3.aws_load_frequency").value())
+      : region_(config.get<std::string>("vfs.s3.region").value_or(""))
+      , aws_access_key_id_(config.get<std::string>(
+            "vfs.s3.aws_access_key_id", Config::must_find))
+      , aws_secret_access_key_(config.get<std::string>(
+            "vfs.s3.aws_secret_access_key", Config::must_find))
+      , aws_session_token_(config.get<std::string>(
+            "vfs.s3.aws_session_token", Config::must_find))
+      , aws_role_arn_(
+            config.get<std::string>("vfs.s3.aws_role_arn", Config::must_find))
+      , aws_external_id_(config.get<std::string>(
+            "vfs.s3.aws_external_id", Config::must_find))
+      , aws_load_frequency_(config.get<std::string>(
+            "vfs.s3.aws_load_frequency", Config::must_find))
       , aws_session_name_(
             config.get<std::string>("vfs.s3.aws_session_name").value())
+      , scheme_(config.get<std::string>("vfs.s3.scheme", Config::must_find))
+      , endpoint_override_(config.get<std::string>(
+            "vfs.s3.endpoint_override", Config::must_find))
+      , use_virtual_addressing_(config.get<bool>(
+            "vfs.s3.use_virtual_addressing", Config::must_find))
+      , skip_init_(config.get<bool>("vfs.s3.skip_init", Config::must_find))
+      , use_multipart_upload_(
+            config.get<bool>("vfs.s3.use_multipart_upload", Config::must_find))
+      , max_parallel_ops_(
+            config.get<uint64_t>("vfs.s3.max_parallel_ops", Config::must_find))
+      , multipart_part_size_(config.get<uint64_t>(
+            "vfs.s3.multipart_part_size", Config::must_find))
+      , connect_timeout_ms_(
+            config.get<int64_t>("vfs.s3.connect_timeout_ms", Config::must_find))
       , connect_max_tries_(
-            config.get<int64_t>("vfs.s3.connect_max_tries").value())
-      , connect_scale_factor_(
-            config.get<int64_t>("vfs.s3.connect_scale_factor").value()){};
+            config.get<int64_t>("vfs.s3.connect_max_tries", Config::must_find))
+      , connect_scale_factor_(config.get<int64_t>(
+            "vfs.s3.connect_scale_factor", Config::must_find))
+      , logging_level_(
+            config.get<std::string>("vfs.s3.logging_level", Config::must_find))
+      , request_timeout_ms_(
+            config.get<int64_t>("vfs.s3.request_timeout_ms", Config::must_find))
+      , requester_pays_(
+            config.get<bool>("vfs.s3.requester_pays", Config::must_find))
+      , proxy_host_(
+            config.get<std::string>("vfs.s3.proxy_host", Config::must_find))
+      , proxy_port_(
+            config.get<uint32_t>("vfs.s3.proxy_port", Config::must_find))
+      , proxy_scheme_(
+            config.get<std::string>("vfs.s3.proxy_scheme", Config::must_find))
+      , proxy_username_(
+            config.get<std::string>("vfs.s3.proxy_username", Config::must_find))
+      , proxy_password_(
+            config.get<std::string>("vfs.s3.proxy_password", Config::must_find))
+      , no_sign_request_(
+            config.get<bool>("vfs.s3.no_sign_request", Config::must_find))
+      , sse_algorithm_(config.get<std::string>("vfs.s3.sse", Config::must_find))
+      , sse_kms_key_id_(
+            sse_algorithm_ == "kms" ?
+                config.get<std::string>("vfs.s3.sse_kms_key_id").value() :
+                "")
+      , bucket_acl_str_(config.get<std::string>(
+            "vfs.s3.bucket_canned_acl", Config::must_find))
+      , object_acl_str_(config.get<std::string>(
+            "vfs.s3.object_canned_acl", Config::must_find))
+      , config_source_(config.get<std::string>(
+            "vfs.s3.config_source", Config::must_find)){};
 
   ~S3Parameters() = default;
 
-  /** Process-global AWS SDK logging level. */
-  std::string logging_level_;
-
-  /** Skip Aws::InitAPI for the S3 layer. */
-  bool skip_init_;
-
-  /** The maximum number of parallel operations issued. */
-  uint64_t max_parallel_ops_;
-
-  /** The length of a non-terminal multipart part. */
-  uint64_t multipart_part_size_;
-
-  /** The AWS region. */
+  /**
+   * The AWS region.
+   * Default: us-east-1
+   */
   std::string region_;
 
-  /** Whether or not to use virtual addressing. */
-  bool use_virtual_addressing_;
-
-  /** Whether or not to use multipart upload. */
-  bool use_multipart_upload_;
-
-  /** If true, the requester pays for S3 access charges. */
-  bool requester_pays_;
-
-  /** Names of values found in Aws::S3::Model::ObjectCannedACL enumeration. */
-  std::string object_acl_str_;
-
-  /** Names of values found in Aws::S3::Model::BucketCannedACL enumeration. */
-  std::string bucket_acl_str_;
-
-  /** The server-side encryption algorithm to use. */
-  std::string sse_str_;
-
-  /** The server-side encryption kms key. */
-  std::string sse_kms_key_id_;
-
-  /** Force S3 SDK to only load config options from a set source. */
-  std::string config_source_;
-
-  /** Make unauthenticated requests to s3. */
-  bool aws_no_sign_request_;
-
-  /** The S3 endpoint, if S3 is enabled. */
-  std::string endpoint_override_;
-
-  /** The S3 proxy host. */
-  std::string proxy_host_;
-
-  /** The S3 proxy port. */
-  uint32_t proxy_port_;
-
-  /** The S3 proxy username. */
-  std::string proxy_username_;
-
-  /** The S3 proxy password. */
-  std::string proxy_password_;
-
-  /** The S3 proxy scheme. */
-  std::string proxy_scheme_;
-
-  /** The S3 scheme (`http` or `https`), if S3 is enabled. */
-  std::string scheme_;
-
-  /** The connection timeout in ms. Any `long` value is acceptable. */
-  int64_t connect_timeout_ms_;
-
-  /** The request timeout in ms. Any `long` value is acceptable. */
-  int64_t request_timeout_ms_;
-
-  /** Set the AWS_ACCESS_KEY_ID. */
+  /**
+   * Set the AWS_ACCESS_KEY_ID.
+   * Default: ""
+   */
   std::string aws_access_key_id_;
 
-  /** Set the AWS_SECRET_ACCESS_KEY. */
+  /**
+   * Set the AWS_SECRET_ACCESS_KEY.
+   * Default: ""
+   */
   std::string aws_secret_access_key_;
 
-  /** Set the AWS_SESSION_TOKEN. */
+  /**
+   * Set the AWS_SESSION_TOKEN.
+   * Default: ""
+   */
   std::string aws_session_token_;
 
-  /** Set the AWS_ROLE_ARN. Determines the role that we want to assume. */
+  /**
+   * Set the AWS_ROLE_ARN. Determines the role that we want to assume.
+   * Default: ""
+   */
   std::string aws_role_arn_;
 
   /**
    * Set the AWS_EXTERNAL_ID.
    * Third party access ID to your resources when assuming a role.
+   * Default: ""
    */
   std::string aws_external_id_;
 
-  /** Set the AWS_LOAD_FREQUENCY. Session time limit when assuming a role. */
+  /**
+   * Set the AWS_LOAD_FREQUENCY. Session time limit when assuming a role.
+   * Default: ""
+   */
   std::string aws_load_frequency_;
 
   /**
-   * Set the AWS_SESSION_NAME. (Optional) session name when assuming a role.
+   * Optional.
+   * Set the AWS_SESSION_NAME. Session name when assuming a role.
    * Can be used for tracing and bookkeeping.
+   * Default: ""
    */
   std::string aws_session_name_;
 
-  /** The maximum tries for a connection. Any `long` value is acceptable. */
+  /**
+   * The S3 scheme (`http` or `https`), if S3 is enabled.
+   * Default: https
+   */
+  std::string scheme_;
+
+  /**
+   * The S3 endpoint, if S3 is enabled.
+   * Default: ""
+   */
+  std::string endpoint_override_;
+
+  /**
+   * Whether or not to use virtual addressing.
+   * Default: true
+   */
+  bool use_virtual_addressing_;
+
+  /**
+   * Skip Aws::InitAPI for the S3 layer.
+   * Default: false
+   */
+  bool skip_init_;
+
+  /**
+   * Whether or not to use multipart upload.
+   * Default: true
+   */
+  bool use_multipart_upload_;
+
+  /**
+   * The maximum number of parallel operations issued.
+   * Default: sm.io_concurrency_level
+   */
+  uint64_t max_parallel_ops_;
+
+  /**
+   * The part size (in bytes) used in S3 multipart writes.
+   * Note: s3.multipart_part_size * s3.max_parallel_ops bytes will be buffered
+   * before issuing multipart uploads in parallel.
+   * Default: 5MB
+   */
+  uint64_t multipart_part_size_;
+
+  /**
+   * The connection timeout in ms. Any `long` value is acceptable.
+   * Default: 3000
+   */
+  int64_t connect_timeout_ms_;
+
+  /**
+   * The maximum tries for a connection. Any `long` value is acceptable.
+   * Default: 5
+   */
   int64_t connect_max_tries_;
 
   /**
    * The scale factor for exponential backoff when connecting to S3.
    * Any `long` value is acceptable.
+   * Default: 25
    */
   int64_t connect_scale_factor_;
+
+  /**
+   * Process-global AWS SDK logging level. Log files are written to the process
+   * working directory.
+   * Default: "off"
+   */
+  std::string logging_level_;
+
+  /**
+   * The request timeout in ms. Any `long` value is acceptable.
+   * Default: 3000
+   */
+  int64_t request_timeout_ms_;
+
+  /**
+   * If true, the requester pays for S3 access charges.
+   * Default: false
+   */
+  bool requester_pays_;
+
+  /**
+   * The S3 proxy host.
+   * Default: ""
+   */
+  std::string proxy_host_;
+
+  /**
+   * The S3 proxy port.
+   * Default: 0
+   */
+  uint32_t proxy_port_;
+
+  /**
+   * The S3 proxy scheme.
+   * Default: "http"
+   */
+  std::string proxy_scheme_;
+
+  /**
+   * The S3 proxy username. Note: not serialized by tiledb_config_save_to_file
+   * Default: ""
+   */
+  std::string proxy_username_;
+
+  /**
+   * The S3 proxy password.
+   * Default: ""
+   */
+  std::string proxy_password_;
+
+  /**
+   * Make unauthenticated requests to s3.
+   * Default: false
+   */
+  bool no_sign_request_;
+
+  /**
+   * The server-side encryption algorithm to use.
+   * Supported non-empty values are "aes256" and "kms"
+   * Default: ""
+   */
+  std::string sse_algorithm_;
+
+  /**
+   * The server-side encryption kms key to use if
+   * vfs.s3.sse == "kms" (AWS key management service).
+   * Default: ""
+   */
+  std::string sse_kms_key_id_;
+
+  /**
+   * Names of values found in Aws::S3::Model::BucketCannedACL enumeration.
+   * Default: "NOT_SET"
+   */
+  std::string bucket_acl_str_;
+
+  /**
+   * Names of values found in Aws::S3::Model::ObjectCannedACL enumeration.
+   * Default: "NOT_SET"
+   */
+  std::string object_acl_str_;
+
+  /**
+   * Force S3 SDK to only load config options from a set source.
+   * Default: auto
+   */
+  std::string config_source_;
 };
 
 /**
@@ -917,6 +1030,12 @@ class S3 {
    * Initializes the client, if it has not already been initialized.
    *
    * @return Status
+   *
+   * @note As currently implemented, this function is a direct obstacle of
+   * class C.41 compliance. This function is invoked by each function within
+   * the s3 class, giving the appearance that it could simply be moved into the
+   * constructor. This is NOT the case and would be breaking behavior until the
+   * class further matures to handle sessions.
    */
   Status init_client() const;
 

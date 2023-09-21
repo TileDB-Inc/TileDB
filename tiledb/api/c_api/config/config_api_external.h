@@ -500,6 +500,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    The server-side encryption algorithm to use. Supported non-empty
  *    values are "aes256" and "kms" (AWS key management service). <br>
  *    **Default**: ""
+ * - `vfs.s3.sse_kms_key_id` <br>
+ *    The server-side encryption key to use if
+ *    vfs.s3.sse == "kms" (AWS key management service). <br>
+ *    **Default**: ""
  * - `vfs.s3.bucket_canned_acl` <br>
  *    Names of values found in Aws::S3::Model::BucketCannedACL enumeration.
  *    "NOT_SET"
