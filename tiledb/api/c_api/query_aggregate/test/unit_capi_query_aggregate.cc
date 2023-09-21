@@ -212,10 +212,15 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_query_set_subarray(ctx, query, &dom) == TILEDB_OK);
 
   // nullptr context
-  tiledb_query_channel_t* default_channel;
+  tiledb_query_channel_t* default_channel = nullptr;
   tiledb_channel_operation_t* operation;
   const tiledb_channel_operation_t* const_operation;
   const tiledb_channel_operator_t* ch_operator;
+
+  CHECK(
+      tiledb_query_get_default_channel(ctx, query, &default_channel) ==
+      TILEDB_OK);
+
   CHECK(
       tiledb_channel_operator_sum_get(nullptr, &ch_operator) ==
       TILEDB_INVALID_CONTEXT);
@@ -278,9 +283,6 @@ TEST_CASE_METHOD(
   CHECK(tiledb_aggregate_count_get(ctx, nullptr) == TILEDB_ERR);
 
   // duplicate output field
-  CHECK(
-      tiledb_query_get_default_channel(ctx, query, &default_channel) ==
-      TILEDB_OK);
   CHECK(
       tiledb_channel_apply_aggregate(
           ctx, default_channel, "duplicate", tiledb_aggregate_count) ==
