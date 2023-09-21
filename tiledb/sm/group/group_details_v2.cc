@@ -41,21 +41,6 @@ namespace sm {
 GroupDetailsV2::GroupDetailsV2(const URI& group_uri)
     : GroupDetails(group_uri, GroupDetailsV2::format_version_){};
 
-// ===== FORMAT =====
-// format_version (format_version_t)
-// group_member_num (uint64_t)
-//   group_member #1
-//   group_member #2
-//   ...
-void GroupDetailsV2::serialize(Serializer& serializer) {
-  serializer.write<format_version_t>(GroupDetailsV2::format_version_);
-  uint64_t group_member_num = members_by_uri_.size();
-  serializer.write<uint64_t>(group_member_num);
-  for (auto& it : members_by_uri_) {
-    it.second->serialize(serializer);
-  }
-}
-
 shared_ptr<GroupDetails> GroupDetailsV2::deserialize(
     Deserializer& deserializer, const URI& group_uri) {
   shared_ptr<GroupDetailsV2> group =
@@ -101,6 +86,29 @@ shared_ptr<GroupDetails> GroupDetailsV2::deserialize(
   }
 
   return group;
+}
+
+std::vector<std::shared_ptr<GroupMember>> GroupDetailsV2::members_to_serialize()
+    const {
+  std::lock_guard<std::mutex> lck(mtx_);
+
+  std::vector<std::shared_ptr<GroupMember>> members;
+  std::unordered_set<std::string> found_keys;
+  found_keys.reserve(members_to_modify_.size());
+
+  // Iterate members_to_modify_ in reverse. If a member with the same name or
+  // URI has been modified multiple times, only the last modification will have
+  // effect.
+  for (auto it = members_to_modify_.rbegin(); it != members_to_modify_.rend();
+       ++it) {
+    if (found_keys.find((*it)->name_or_uri()) != found_keys.end()) {
+      continue;
+    }
+    members.push_back(*it);
+    found_keys.insert((*it)->name_or_uri());
+  }
+
+  return members;
 }
 
 void GroupDetailsV2::apply_pending_changes() {

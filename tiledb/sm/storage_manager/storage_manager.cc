@@ -1621,13 +1621,15 @@ Status StorageManagerCanonical::store_group_detail(
     tdb_shared_ptr<GroupDetails> group,
     const EncryptionKey& encryption_key) {
   // Serialize
+  auto members = group->members_to_serialize();
+  auto format_version = group->version();
   SizeComputationSerializer size_computation_serializer;
-  group->serialize(size_computation_serializer);
+  GroupDetails::serialize(format_version, members, size_computation_serializer);
 
   WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
-  group->serialize(serializer);
+  GroupDetails::serialize(format_version, members, serializer);
 
   stats()->add_counter("write_group_size", tile.size());
 

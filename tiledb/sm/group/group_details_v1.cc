@@ -41,21 +41,6 @@ namespace sm {
 GroupDetailsV1::GroupDetailsV1(const URI& group_uri)
     : GroupDetails(group_uri, GroupDetailsV1::format_version_){};
 
-// ===== FORMAT =====
-// format_version (format_version_t)
-// group_member_num (uint64_t)
-//   group_member #1
-//   group_member #2
-//   ...
-void GroupDetailsV1::serialize(Serializer& serializer) {
-  serializer.write<format_version_t>(GroupDetailsV1::format_version_);
-  uint64_t group_member_num = members_by_uri_.size();
-  serializer.write<uint64_t>(group_member_num);
-  for (auto& it : members_by_uri_) {
-    it.second->serialize(serializer);
-  }
-}
-
 shared_ptr<GroupDetails> GroupDetailsV1::deserialize(
     Deserializer& deserializer, const URI& group_uri) {
   shared_ptr<GroupDetailsV1> group =
@@ -68,6 +53,39 @@ shared_ptr<GroupDetails> GroupDetailsV1::deserialize(
   }
 
   return group;
+}
+
+std::vector<std::shared_ptr<GroupMember>> GroupDetailsV1::members_to_serialize()
+    const {
+  std::lock_guard<std::mutex> lck(mtx_);
+  decltype(members_by_uri_) members_by_uri = members_by_uri_;
+
+  // Remove members first
+  for (const auto& member : members_to_modify_) {
+    auto& uri = member->uri();
+    if (member->deleted()) {
+      members_by_uri.erase(uri.to_string());
+
+      // Check to remove relative URIs
+      auto uri_str = uri.to_string();
+      if (uri_str.find(group_uri_.add_trailing_slash().to_string()) !=
+          std::string::npos) {
+        // Get the substring relative path
+        auto relative_uri = uri_str.substr(
+            group_uri_.add_trailing_slash().to_string().size(), uri_str.size());
+        members_by_uri.erase(relative_uri);
+      }
+    } else {
+      members_by_uri.emplace(member->uri().to_string(), member);
+    }
+  }
+
+  std::vector<std::shared_ptr<GroupMember>> result;
+  result.reserve(members_by_uri.size());
+  for (auto& it : members_by_uri) {
+    result.emplace_back(it.second);
+  }
+  return result;
 }
 
 void GroupDetailsV1::apply_pending_changes() {

@@ -132,11 +132,15 @@ class GroupDetails {
   /**
    * Serializes the object members into a binary buffer.
    *
-   * @param buff The buffer to serialize the data into.
-   * @param version The format spec version.
+   * @param format_version The format spec version.
+   * @param members The members to serialize.
+   * @param serializer The buffer to serialize the data into.
    * @return Status
    */
-  virtual void serialize(Serializer& serializer);
+  static void serialize(
+      format_version_t format_version,
+      const std::vector<std::shared_ptr<GroupMember>>& members,
+      Serializer& serializer);
 
   /**
    * Returns a Group object from the data in the input binary buffer.
@@ -200,6 +204,13 @@ class GroupDetails {
    * @return format version
    */
   format_version_t version() const;
+
+  /**
+   * Get the members to write to storage, after accounting for duplicate members
+   * and member removals.
+   */
+  virtual std::vector<std::shared_ptr<GroupMember>> members_to_serialize()
+      const = 0;
 
   /**
    * Apply any pending member additions or removals

@@ -82,6 +82,11 @@ class GroupMember {
   /** Return the Name. */
   const std::optional<std::string> name() const;
 
+  /** Return the name, or the URI if the former does not exist. */
+  const std::string name_or_uri() const {
+    return name_.has_value() ? *name_ : uri_.to_string();
+  }
+
   /** Return if object is relative. */
   bool relative() const;
 

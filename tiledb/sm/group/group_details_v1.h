@@ -60,14 +60,6 @@ class GroupDetailsV1 : public GroupDetails {
   ~GroupDetailsV1() override = default;
 
   /**
-   * Serializes the object members into a binary buffer.
-   *
-   * @param buff The buffer to serialize the data into.
-   * @return Status
-   */
-  void serialize(Serializer& serializer) override;
-
-  /**
    * Returns a Group object from the data in the input binary buffer.
    *
    * @param buff The buffer to deserialize from.
@@ -76,6 +68,9 @@ class GroupDetailsV1 : public GroupDetails {
    */
   static shared_ptr<GroupDetails> deserialize(
       Deserializer& deserializer, const URI& group_uri);
+
+  std::vector<std::shared_ptr<GroupMember>> members_to_serialize()
+      const override;
 
  protected:
   /**
