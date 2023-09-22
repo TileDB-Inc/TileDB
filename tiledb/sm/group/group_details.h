@@ -166,12 +166,6 @@ class GroupDetails {
   const URI& group_uri() const;
 
   /**
-   * Have changes been applied to a group in write mode
-   * @return changes_applied_
-   */
-  bool changes_applied() const;
-
-  /**
    * Get count of members
    *
    * @return member count
@@ -236,9 +230,6 @@ class GroupDetails {
 
   /* Format version. */
   const uint32_t version_;
-
-  /* Were changes applied and is a write is required */
-  bool changes_applied_;
 };
 }  // namespace sm
 }  // namespace tiledb

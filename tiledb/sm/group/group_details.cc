@@ -53,8 +53,7 @@ namespace sm {
 
 GroupDetails::GroupDetails(const URI& group_uri, uint32_t version)
     : group_uri_(group_uri)
-    , version_(version)
-    , changes_applied_(false) {
+    , version_(version) {
 }
 
 void GroupDetails::clear() {
@@ -228,10 +227,6 @@ std::optional<shared_ptr<GroupDetails>> GroupDetails::deserialize(
 
 const URI& GroupDetails::group_uri() const {
   return group_uri_;
-}
-
-bool GroupDetails::changes_applied() const {
-  return changes_applied_;
 }
 
 uint64_t GroupDetails::member_count() const {
