@@ -524,6 +524,13 @@ RestClient::post_enumerations_from_rest(
         "Error getting enumerations from REST; array is null.");
   }
 
+  // This should never be called with an empty list of enumeration names, but
+  // there's no reason to not check an early return case here given that code
+  // changes.
+  if (enumeration_names.size() == 0) {
+    return {};
+  }
+
   Buffer buf;
   serialization::serialize_load_enumerations_request(
       array->config(), enumeration_names, serialization_type_, buf);
