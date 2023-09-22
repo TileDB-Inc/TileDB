@@ -28,14 +28,15 @@
  * @section DESCRIPTION
  *
  * This file implements class SafeSum.
+ *
+ * TODO: Testing for this class is not done (sc-33762).
  */
 
 #include "tiledb/sm/query/readers/aggregators/safe_sum.h"
 
 #include <limits>
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** Specialization of op for int64_t sums. */
 template <>
@@ -75,5 +76,4 @@ void SafeSum::op<double>(double value, double& sum) {
   sum += value;
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

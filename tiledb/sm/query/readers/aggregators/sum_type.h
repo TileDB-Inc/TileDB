@@ -28,13 +28,14 @@
  * @section DESCRIPTION
  *
  * This file defines sum types in relation to basic types.
+ *
+ * TODO: This needs to be improved to remove macros (sc-33764).
  */
 
 #ifndef TILEDB_SUM_TYPE_H
 #define TILEDB_SUM_TYPE_H
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 #define SUM_TYPE_DATA(T, SUM_T) \
   template <>                   \
@@ -58,7 +59,6 @@ SUM_TYPE_DATA(uint64_t, uint64_t);
 SUM_TYPE_DATA(float, double);
 SUM_TYPE_DATA(double, double);
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_SUM_TYPE_H

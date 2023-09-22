@@ -38,8 +38,7 @@
 #include "tiledb/sm/query/readers/aggregators/iaggregator.h"
 #include "tiledb/sm/query/readers/aggregators/sum_type.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class QueryBuffer;
 
@@ -129,7 +128,6 @@ class SumAggregator : public OutputBufferValidator, public IAggregator {
   std::atomic<bool> sum_overflowed_;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_SUM_AGGREGATOR_H

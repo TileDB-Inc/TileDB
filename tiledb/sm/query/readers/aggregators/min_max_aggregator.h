@@ -38,8 +38,7 @@
 
 #include <functional>
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class QueryBuffer;
 
@@ -303,7 +302,6 @@ class MaxAggregator
   DISABLE_MOVE_AND_MOVE_ASSIGN(MaxAggregator);
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_MIN_MAX_AGGREGATOR_H

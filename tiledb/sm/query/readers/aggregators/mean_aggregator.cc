@@ -35,8 +35,7 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class MeanAggregatorStatusException : public StatusException {
  public:
@@ -55,6 +54,8 @@ MeanAggregator<T>::MeanAggregator(const FieldInfo field_info)
     , validity_value_(
           field_info_.is_nullable_ ? std::make_optional(0) : nullopt)
     , sum_overflowed_(false) {
+  // TODO: These argument validation can be merged for mean/sum and possibly
+  // other aggregates. (sc-33763).
   if (field_info_.var_sized_) {
     throw MeanAggregatorStatusException(
         "Mean aggregates must not be requested for var sized attributes.");
@@ -80,9 +81,11 @@ void MeanAggregator<T>::validate_output_buffer(
 
 template <typename T>
 void MeanAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
-  // NOTE: While this could be shared with the sum implementation, it isn't
+  // TODO: While this could be shared with the sum implementation, it isn't
   // because it will be improved soon... Means should always be able to be
-  // computed with no overflows.
+  // computed with no overflows. The simple formula is 2*(a/2 + b/2) + a%2 +
+  // b%2, but we need benchmarks to see what the performance hit would be to run
+  // this more complex formula (sc-32789).
 
   // Return if a previous aggregation has overflowed.
   if (sum_overflowed_) {
@@ -93,6 +96,8 @@ void MeanAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
     tuple<typename sum_type_data<T>::sum_type, uint64_t, optional<uint8_t>> res{
         0, 0, nullopt};
 
+    // TODO: This is duplicated across aggregates but will go away with
+    // sc-33104.
     if (input_data.is_count_bitmap()) {
       res = summator_.template aggregate<
           typename sum_type_data<T>::sum_type,
@@ -158,5 +163,4 @@ template MeanAggregator<uint64_t>::MeanAggregator(const FieldInfo);
 template MeanAggregator<float>::MeanAggregator(const FieldInfo);
 template MeanAggregator<double>::MeanAggregator(const FieldInfo);
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

@@ -36,8 +36,7 @@
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/field_info.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class QueryBuffer;
 
@@ -116,7 +115,6 @@ class OutputBufferValidator {
   const FieldInfo field_info_;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_OUTPUT_BUFFER_VALIDATOR_H

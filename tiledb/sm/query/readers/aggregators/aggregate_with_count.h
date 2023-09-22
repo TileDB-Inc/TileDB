@@ -28,6 +28,8 @@
  * @section DESCRIPTION
  *
  * This file defines class AggregateWithCount.
+ *
+ * TODO: Add more benchmark coverage for this class (sc-33758).
  */
 
 #ifndef TILEDB_AGGREGATE_WITH_COUNT_H
@@ -37,8 +39,7 @@
 #include "tiledb/sm/query/readers/aggregators/field_info.h"
 #include "tiledb/sm/query/readers/aggregators/safe_sum.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 template <typename T>
 class AggregateWithCount {
@@ -147,7 +148,6 @@ class AggregateWithCount {
   const FieldInfo field_info_;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_AGGREGATE_WITH_COUNT_H

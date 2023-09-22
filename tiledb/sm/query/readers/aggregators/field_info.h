@@ -35,8 +35,7 @@
 
 #include "tiledb/common/common.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class FieldInfo {
  public:
@@ -81,7 +80,6 @@ class FieldInfo {
   const unsigned cell_val_num_;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_FIELD_INFO_H

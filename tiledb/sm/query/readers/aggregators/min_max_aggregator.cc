@@ -35,8 +35,7 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class MinMaxAggregatorStatusException : public StatusException {
  public:
@@ -332,5 +331,4 @@ template MaxAggregator<float>::MaxAggregator(const FieldInfo);
 template MaxAggregator<double>::MaxAggregator(const FieldInfo);
 template MaxAggregator<std::string>::MaxAggregator(const FieldInfo);
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

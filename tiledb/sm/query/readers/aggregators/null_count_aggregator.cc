@@ -35,8 +35,7 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class NullCountAggregatorStatusException : public StatusException {
  public:
@@ -114,5 +113,4 @@ uint64_t NullCountAggregator::null_count(AggregateBuffer& input_data) {
   return null_count;
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

@@ -35,8 +35,7 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class SumAggregatorStatusException : public StatusException {
  public:
@@ -54,6 +53,8 @@ SumAggregator<T>::SumAggregator(const FieldInfo field_info)
     , validity_value_(
           field_info_.is_nullable_ ? std::make_optional(0) : nullopt)
     , sum_overflowed_(false) {
+  // TODO: These argument validation can be merged for mean/sum and possibly
+  // other aggregates. (sc-33763).
   if (field_info_.var_sized_) {
     throw SumAggregatorStatusException(
         "Sum aggregates must not be requested for var sized attributes.");
@@ -88,6 +89,8 @@ void SumAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
     tuple<typename sum_type_data<T>::sum_type, uint64_t, optional<uint8_t>> res{
         0, 0, nullopt};
 
+    // TODO: This is duplicated across aggregates but will go away with
+    // sc-33104.
     if (input_data.is_count_bitmap()) {
       res = summator_.template aggregate<
           typename sum_type_data<T>::sum_type,
@@ -152,5 +155,4 @@ template SumAggregator<uint64_t>::SumAggregator(const FieldInfo);
 template SumAggregator<float>::SumAggregator(const FieldInfo);
 template SumAggregator<double>::SumAggregator(const FieldInfo);
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

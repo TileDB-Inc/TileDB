@@ -35,8 +35,7 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class CountAggregatorStatusException : public StatusException {
  public:
@@ -97,5 +96,4 @@ void CountAggregator::copy_to_user_buffer(
   }
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

@@ -36,8 +36,7 @@
 #include "tiledb/sm/query/readers/aggregators/field_info.h"
 #include "tiledb/sm/query/readers/aggregators/iaggregator.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class QueryBuffer;
 
@@ -132,7 +131,6 @@ class NullCountAggregator : public OutputBufferValidator, public IAggregator {
   uint64_t null_count(AggregateBuffer& input_data);
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_NULL_COUNT_AGGREGATOR_H

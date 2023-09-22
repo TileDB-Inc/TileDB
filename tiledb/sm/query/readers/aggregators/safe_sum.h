@@ -36,8 +36,7 @@
 #include <atomic>
 #include <stdexcept>
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class SafeSum {
  public:
@@ -71,7 +70,6 @@ class SafeSum {
   }
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_SAFE_SUM_H

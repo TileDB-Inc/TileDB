@@ -34,8 +34,7 @@
 
 #include "tiledb/sm/query/query_buffer.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class OutputBufferValidatorStatusException : public StatusException {
  public:
@@ -164,5 +163,4 @@ template void OutputBufferValidator::ensure_output_buffer_var<double>(
 template void OutputBufferValidator::ensure_output_buffer_var<std::string>(
     QueryBuffer&);
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
