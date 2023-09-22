@@ -599,43 +599,47 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
     enmrs_to_load.insert(enmr_name);
   }
 
-  std::vector<shared_ptr<const Enumeration>> loaded;
+  // Only attempt to load enumerations if we have at least one Enumeration
+  // to load.
+  if (enmrs_to_load.size() > 0) {
+    std::vector<shared_ptr<const Enumeration>> loaded;
 
-  if (remote_) {
-    auto rest_client = resources_.rest_client();
-    if (rest_client == nullptr) {
-      throw ArrayException(
-          "Error loading enumerations; "
-          "Remote array with no REST client.");
+    if (remote_) {
+      auto rest_client = resources_.rest_client();
+      if (rest_client == nullptr) {
+        throw ArrayException(
+            "Error loading enumerations; "
+            "Remote array with no REST client.");
+      }
+
+      std::vector<std::string> names_to_load;
+      for (auto& enmr_name : enmrs_to_load) {
+        names_to_load.push_back(enmr_name);
+      }
+
+      loaded = rest_client->post_enumerations_from_rest(
+          array_uri_,
+          timestamp_start_,
+          timestamp_end_opened_at_,
+          this,
+          names_to_load);
+    } else {
+      // Create a vector of paths to be loaded.
+      std::vector<std::string> paths_to_load;
+      for (auto& enmr_name : enmrs_to_load) {
+        auto path = array_schema_latest_->get_enumeration_path_name(enmr_name);
+        paths_to_load.push_back(path);
+      }
+
+      // Load the enumerations from storage
+      loaded = array_dir_.load_enumerations_from_paths(
+          paths_to_load, get_encryption_key());
     }
 
-    std::vector<std::string> names_to_load;
-    for (auto& enmr_name : enmrs_to_load) {
-      names_to_load.push_back(enmr_name);
+    // Store the loaded enumerations in the schema
+    for (auto& enmr : loaded) {
+      array_schema_latest_->store_enumeration(enmr);
     }
-
-    loaded = rest_client->post_enumerations_from_rest(
-        array_uri_,
-        timestamp_start_,
-        timestamp_end_opened_at_,
-        this,
-        names_to_load);
-  } else {
-    // Create a vector of paths to be loaded.
-    std::vector<std::string> paths_to_load;
-    for (auto& enmr_name : enmrs_to_load) {
-      auto path = array_schema_latest_->get_enumeration_path_name(enmr_name);
-      paths_to_load.push_back(path);
-    }
-
-    // Load the enumerations from storage
-    loaded = array_dir_.load_enumerations_from_paths(
-        paths_to_load, get_encryption_key());
-  }
-
-  // Store the loaded enumerations in the schema
-  for (auto& enmr : loaded) {
-    array_schema_latest_->store_enumeration(enmr);
   }
 
   // Return the requested list of enumerations
