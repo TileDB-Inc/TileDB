@@ -35,6 +35,9 @@ The current group member format version is `2`.
 | Version | `uint32_t` | Format version number of the group member |
 | Object type | `uint8_t` | Object type of the member |
 | Relative | `uint8_t` | Is the URI relative to the group |
-| URI length | `uint32_t` | Number of characters in URI |
+| URI length | `uint64_t` | Number of characters in URI |
 | URI | `uint8_t[]` | URI character array |
+| Name set | `uint8_t` | Is the name set |
+| Name length | `uint64_t` | Number of characters in name |
+| Name | `uint8_t[]` | Name character array |
 | Deleted | `uint8_t` | Is the member deleted |
