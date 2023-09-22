@@ -1825,7 +1825,7 @@ TEST_CASE_METHOD(
 
   // Delete fragments
   SECTION("delete fragments by timestamps") {
-    Array::delete_fragments_v2(ctx_, SPARSE_ARRAY_NAME, 2, 6);
+    Array::delete_fragments(ctx_, SPARSE_ARRAY_NAME, 2, 6);
   }
 
   SECTION("delete fragments by uris") {
@@ -1912,7 +1912,7 @@ TEST_CASE_METHOD(
   CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == num_fragments);
 
   // Delete fragments at timestamps 2 - 4
-  Array::delete_fragments_v2(ctx_, SPARSE_ARRAY_NAME, 2, 4);
+  Array::delete_fragments(ctx_, SPARSE_ARRAY_NAME, 2, 4);
   if (!vacuum) {
     // Vacuum after deletion
     auto config = ctx_.config();

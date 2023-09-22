@@ -2391,6 +2391,10 @@ capi_return_t tiledb_array_delete_fragments_v2(
     throw api::CAPIStatusException("Failed to create array");
   }
 
+  // Set array open timestamps
+  array->array_->set_timestamp_start(timestamp_start);
+  array->array_->set_timestamp_end(timestamp_end);
+
   // Open the array for exclusive modification
   throw_if_not_ok(array->array_->open(
       static_cast<tiledb::sm::QueryType>(TILEDB_MODIFY_EXCLUSIVE),
@@ -4075,6 +4079,10 @@ capi_return_t tiledb_deserialize_array_delete_fragments_timestamps_request(
     array = nullptr;
     throw api::CAPIStatusException("Failed to create array");
   }
+
+  // Set array open timestamps
+  array->array_->set_timestamp_start(timestamp_start);
+  array->array_->set_timestamp_end(timestamp_end);
 
   // Open the array for exclusive modification
   throw_if_not_ok(array->array_->open(

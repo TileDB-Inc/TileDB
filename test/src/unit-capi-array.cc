@@ -382,7 +382,7 @@ void ArrayFx::create_dense_array(const std::string& path) {
 
 void ArrayFx::write_fragment(tiledb_array_t* array, uint64_t timestamp) {
   // Open the array at the given timestamp
-  int rc = tiledb_array_set_open_timestamp_start(ctx_, array, timestamp);
+  int rc = tiledb_array_set_open_timestamp_end(ctx_, array, timestamp);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
@@ -2686,63 +2686,67 @@ TEST_CASE_METHOD(
   CHECK(tiledb::test::num_commits(array_name) == 2);
   CHECK(tiledb::test::num_fragments(array_name) == 2);
 
-  // Serialize fragment timestamp and deserialize using C API
+  // ALlocate buffer
   tiledb_buffer_t* buff;
   rc = tiledb_buffer_alloc(ctx_, &buff);
   REQUIRE(rc == TILEDB_OK);
-  tiledb::sm::serialization::fragments_timestamps_serialize(
-      array_name,
-      start_timestamp,
-      end_timestamp,
-      tiledb::sm::SerializationType::CAPNP,
-      &buff->buffer());
-  rc = tiledb_deserialize_array_delete_fragments_timestamps_request(
-      ctx_,
-      (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
-      buff);
-  REQUIRE(rc == TILEDB_OK);
-  // #TODO Update test once cloud-side endpoint is added
-  // CHECK(tiledb::test::num_commits(array_name) == 0);
-  // CHECK(tiledb::test::num_fragments(array_name) == 0);
 
-  // Get the fragment info object
-  tiledb_fragment_info_t* fragment_info = nullptr;
-  rc = tiledb_fragment_info_alloc(ctx_, array_name.c_str(), &fragment_info);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_fragment_info_load(ctx_, fragment_info);
-  REQUIRE(rc == TILEDB_OK);
+  SECTION("delete_fragments") {
+    // Serialize fragment timestamps and deserialize delete request
+    tiledb::sm::serialization::fragments_timestamps_serialize(
+        array_name,
+        start_timestamp,
+        end_timestamp,
+        tiledb::sm::SerializationType::CAPNP,
+        &buff->buffer());
+    rc = tiledb_deserialize_array_delete_fragments_timestamps_request(
+        ctx_,
+        (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+        buff);
+    REQUIRE(rc == TILEDB_OK);
+    CHECK(tiledb::test::num_commits(array_name) == 0);
+    CHECK(tiledb::test::num_fragments(array_name) == 0);
+  }
 
-  // Get the fragment URIs
-  const char* uri1;
-  rc = tiledb_fragment_info_get_fragment_uri(ctx_, fragment_info, 0, &uri1);
-  REQUIRE(rc == TILEDB_OK);
-  const char* uri2;
-  rc = tiledb_fragment_info_get_fragment_uri(ctx_, fragment_info, 1, &uri2);
-  REQUIRE(rc == TILEDB_OK);
+  SECTION("delete_fragments_list") {
+    // Get the fragment info object
+    tiledb_fragment_info_t* fragment_info = nullptr;
+    rc = tiledb_fragment_info_alloc(ctx_, array_name.c_str(), &fragment_info);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_fragment_info_load(ctx_, fragment_info);
+    REQUIRE(rc == TILEDB_OK);
 
-  std::vector<URI> fragments;
-  fragments.emplace_back(URI(uri1));
-  fragments.emplace_back(URI(uri2));
+    // Get the fragment URIs
+    const char* uri1;
+    rc = tiledb_fragment_info_get_fragment_uri(ctx_, fragment_info, 0, &uri1);
+    REQUIRE(rc == TILEDB_OK);
+    const char* uri2;
+    rc = tiledb_fragment_info_get_fragment_uri(ctx_, fragment_info, 1, &uri2);
+    REQUIRE(rc == TILEDB_OK);
 
-  // Serialize fragments list and deserialize using C API
-  tiledb::sm::serialization::fragments_list_serialize(
-      array_name,
-      fragments,
-      tiledb::sm::SerializationType::CAPNP,
-      &buff->buffer());
-  rc = tiledb_deserialize_array_delete_fragments_list_request(
-      ctx_,
-      (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
-      buff);
-  REQUIRE(rc == TILEDB_OK);
-  // #TODO Update test once cloud-side endpoint is added
-  // CHECK(tiledb::test::num_commits(array_name) == 0);
-  // CHECK(tiledb::test::num_fragments(array_name) == 0);
+    std::vector<URI> fragments;
+    fragments.emplace_back(URI(uri1));
+    fragments.emplace_back(URI(uri2));
+
+    // Serialize fragments list and deserialize delete request
+    tiledb::sm::serialization::fragments_list_serialize(
+        array_name,
+        fragments,
+        tiledb::sm::SerializationType::CAPNP,
+        &buff->buffer());
+    rc = tiledb_deserialize_array_delete_fragments_list_request(
+        ctx_,
+        (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+        buff);
+    REQUIRE(rc == TILEDB_OK);
+    CHECK(tiledb::test::num_commits(array_name) == 0);
+    CHECK(tiledb::test::num_fragments(array_name) == 0);
+    tiledb_fragment_info_free(&fragment_info);
+  }
 
   // Clean up
   tiledb_array_free(&array);
   tiledb_buffer_free(&buff);
-  tiledb_fragment_info_free(&fragment_info);
   remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 #endif
 }
