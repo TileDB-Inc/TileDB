@@ -1,3 +1,27 @@
+# TileDB v2.17.1 Release Notes
+
+## Improvements
+
+* Avoid empty Enumeration REST requests. [#4369](https://github.com/TileDB-Inc/TileDB/pull/4369)
+
+## Defects removed
+
+* Revert change to S3 is_object, is_bucket checks. [#4371](https://github.com/TileDB-Inc/TileDB/pull/4371)
+
+## API changes
+
+### C++ API
+
+* Add support for `std::vector<bool>` in Enumeration CPP API. [#4362](https://github.com/TileDB-Inc/TileDB/pull/4362)
+* Fix UBSAN error in the Enumeration CPP API. [#4357](https://github.com/TileDB-Inc/TileDB/pull/4357)
+  * This is a change from 2.17.0 in the header-only C++ API.
+* Don't error out if DELETE symbol is defined. [#4365](https://github.com/TileDB-Inc/TileDB/pull/4365)
+
+## Build changes
+
+* Compilation fix for GCC 9.4 of Ubuntu 20.04. [#4355](https://github.com/TileDB-Inc/TileDB/pull/4355)
+* Fix static linking failures and build ExampleExe_static on Windows. [#4336](https://github.com/TileDB-Inc/TileDB/pull/4336)
+
 # TileDB v2.17.0 Release Notes
 
 ## Disk Format
