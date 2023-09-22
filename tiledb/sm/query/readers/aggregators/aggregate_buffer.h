@@ -35,8 +35,7 @@
 
 #include "tiledb/common/common.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class AggregateBuffer {
  public:
@@ -148,7 +147,6 @@ class AggregateBuffer {
   const optional<void*> bitmap_data_;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_AGGREGATE_BUFFER_H

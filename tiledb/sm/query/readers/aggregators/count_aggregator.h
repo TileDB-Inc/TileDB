@@ -35,12 +35,11 @@
 
 #include "tiledb/sm/query/readers/aggregators/iaggregator.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class QueryBuffer;
 
-class CountAggregator : public IAggregator {
+class CountAggregator : public OutputBufferValidator, public IAggregator {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -107,7 +106,6 @@ class CountAggregator : public IAggregator {
   std::atomic<uint64_t> count_;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_COUNT_AGGREGATOR_H

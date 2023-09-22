@@ -1,5 +1,5 @@
 /**
- * @file sum_aggregator.cc
+ * @file mean_aggregator.cc
  *
  * @section LICENSE
  *
@@ -27,59 +27,66 @@
  *
  * @section DESCRIPTION
  *
- * This file implements class SumAggregator.
+ * This file implements class MeanAggregator.
  */
 
-#include "tiledb/sm/query/readers/aggregators/sum_aggregator.h"
+#include "tiledb/sm/query/readers/aggregators/mean_aggregator.h"
 
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
 
 namespace tiledb::sm {
 
-class SumAggregatorStatusException : public StatusException {
+class MeanAggregatorStatusException : public StatusException {
  public:
-  explicit SumAggregatorStatusException(const std::string& message)
-      : StatusException("SumAggregator", message) {
+  explicit MeanAggregatorStatusException(const std::string& message)
+      : StatusException("MeanAggregator", message) {
   }
 };
 
 template <typename T>
-SumAggregator<T>::SumAggregator(const FieldInfo field_info)
+MeanAggregator<T>::MeanAggregator(const FieldInfo field_info)
     : OutputBufferValidator(field_info)
     , field_info_(field_info)
     , summator_(field_info)
     , sum_(0)
+    , count_(0)
     , validity_value_(
           field_info_.is_nullable_ ? std::make_optional(0) : nullopt)
     , sum_overflowed_(false) {
   // TODO: These argument validation can be merged for mean/sum and possibly
   // other aggregates. (sc-33763).
   if (field_info_.var_sized_) {
-    throw SumAggregatorStatusException(
-        "Sum aggregates must not be requested for var sized attributes.");
+    throw MeanAggregatorStatusException(
+        "Mean aggregates must not be requested for var sized attributes.");
   }
 
   if (field_info_.cell_val_num_ != 1) {
-    throw SumAggregatorStatusException(
-        "Sum aggregates must not be requested for attributes with more than "
+    throw MeanAggregatorStatusException(
+        "Mean aggregates must not be requested for attributes with more than "
         "one value.");
   }
 }
 
 template <typename T>
-void SumAggregator<T>::validate_output_buffer(
+void MeanAggregator<T>::validate_output_buffer(
     std::string output_field_name,
     std::unordered_map<std::string, QueryBuffer>& buffers) {
   if (buffers.count(output_field_name) == 0) {
-    throw SumAggregatorStatusException("Result buffer doesn't exist.");
+    throw MeanAggregatorStatusException("Result buffer doesn't exist.");
   }
 
   ensure_output_buffer_arithmetic(buffers[output_field_name]);
 }
 
 template <typename T>
-void SumAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
+void MeanAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
+  // TODO: While this could be shared with the sum implementation, it isn't
+  // because it will be improved soon... Means should always be able to be
+  // computed with no overflows. The simple formula is 2*(a/2 + b/2) + a%2 +
+  // b%2, but we need benchmarks to see what the performance hit would be to run
+  // this more complex formula (sc-32789).
+
   // Return if a previous aggregation has overflowed.
   if (sum_overflowed_) {
     return;
@@ -104,6 +111,7 @@ void SumAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
     }
 
     SafeSum::safe_sum(std::get<0>(res), sum_);
+    count_ += std::get<1>(res);
     if (field_info_.is_nullable_ && std::get<2>(res).value() == 1) {
       validity_value_ = 1;
     }
@@ -113,20 +121,20 @@ void SumAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
 }
 
 template <typename T>
-void SumAggregator<T>::copy_to_user_buffer(
+void MeanAggregator<T>::copy_to_user_buffer(
     std::string output_field_name,
     std::unordered_map<std::string, QueryBuffer>& buffers) {
   auto& result_buffer = buffers[output_field_name];
-  auto s =
-      static_cast<typename sum_type_data<T>::sum_type*>(result_buffer.buffer_);
+  auto s = static_cast<double*>(result_buffer.buffer_);
+
   if (sum_overflowed_) {
-    *s = std::numeric_limits<typename sum_type_data<T>::sum_type>::max();
+    *s = std::numeric_limits<double>::max();
   } else {
-    *s = sum_;
+    *s = static_cast<double>(sum_) / count_;
   }
 
   if (result_buffer.buffer_size_) {
-    *result_buffer.buffer_size_ = sizeof(typename sum_type_data<T>::sum_type);
+    *result_buffer.buffer_size_ = sizeof(double);
   }
 
   if (field_info_.is_nullable_) {
@@ -144,15 +152,15 @@ void SumAggregator<T>::copy_to_user_buffer(
 }
 
 // Explicit template instantiations
-template SumAggregator<int8_t>::SumAggregator(const FieldInfo);
-template SumAggregator<int16_t>::SumAggregator(const FieldInfo);
-template SumAggregator<int32_t>::SumAggregator(const FieldInfo);
-template SumAggregator<int64_t>::SumAggregator(const FieldInfo);
-template SumAggregator<uint8_t>::SumAggregator(const FieldInfo);
-template SumAggregator<uint16_t>::SumAggregator(const FieldInfo);
-template SumAggregator<uint32_t>::SumAggregator(const FieldInfo);
-template SumAggregator<uint64_t>::SumAggregator(const FieldInfo);
-template SumAggregator<float>::SumAggregator(const FieldInfo);
-template SumAggregator<double>::SumAggregator(const FieldInfo);
+template MeanAggregator<int8_t>::MeanAggregator(const FieldInfo);
+template MeanAggregator<int16_t>::MeanAggregator(const FieldInfo);
+template MeanAggregator<int32_t>::MeanAggregator(const FieldInfo);
+template MeanAggregator<int64_t>::MeanAggregator(const FieldInfo);
+template MeanAggregator<uint8_t>::MeanAggregator(const FieldInfo);
+template MeanAggregator<uint16_t>::MeanAggregator(const FieldInfo);
+template MeanAggregator<uint32_t>::MeanAggregator(const FieldInfo);
+template MeanAggregator<uint64_t>::MeanAggregator(const FieldInfo);
+template MeanAggregator<float>::MeanAggregator(const FieldInfo);
+template MeanAggregator<double>::MeanAggregator(const FieldInfo);
 
 }  // namespace tiledb::sm

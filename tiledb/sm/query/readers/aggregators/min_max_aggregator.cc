@@ -35,8 +35,7 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class MinMaxAggregatorStatusException : public StatusException {
  public:
@@ -147,7 +146,8 @@ void ComparatorAggregatorBase<std::string>::copy_to_user_buffer(
 
 template <typename T, typename Op>
 ComparatorAggregator<T, Op>::ComparatorAggregator(const FieldInfo& field_info)
-    : ComparatorAggregatorBase<T>(field_info) {
+    : ComparatorAggregatorBase<T>(field_info)
+    , OutputBufferValidator(field_info) {
   if (field_info.var_sized_ && !std::is_same<T, std::string>::value) {
     throw MinMaxAggregatorStatusException(
         "Min/max aggregates must not be requested for var sized non-string "
@@ -169,74 +169,7 @@ void ComparatorAggregator<T, Op>::validate_output_buffer(
     throw MinMaxAggregatorStatusException("Result buffer doesn't exist.");
   }
 
-  auto& result_buffer = buffers[output_field_name];
-  if (result_buffer.buffer_ == nullptr) {
-    throw MinMaxAggregatorStatusException(
-        "Min/max aggregates must have a fixed size buffer.");
-  }
-
-  if (ComparatorAggregatorBase<T>::field_info_.var_sized_) {
-    if (result_buffer.buffer_var_ == nullptr) {
-      throw MinMaxAggregatorStatusException(
-          "Var sized min/max aggregates must have a var buffer.");
-    }
-
-    if (result_buffer.original_buffer_size_ !=
-        constants::cell_var_offset_size) {
-      throw MinMaxAggregatorStatusException(
-          "Var sized min/max aggregates offset buffer should be for one "
-          "element only.");
-    }
-
-    if (ComparatorAggregatorBase<T>::field_info_.cell_val_num_ !=
-        constants::var_num) {
-      throw MinMaxAggregatorStatusException(
-          "Var sized min/max aggregates should have TILEDB_VAR_NUM cell val "
-          "num.");
-    }
-  } else {
-    if (result_buffer.buffer_var_ != nullptr) {
-      throw MinMaxAggregatorStatusException(
-          "Fixed min/max aggregates must not have a var buffer.");
-    }
-
-    // If cell val num is one, this is a normal fixed size attritube. If not, it
-    // is a fixed sized string.
-    if (ComparatorAggregatorBase<T>::field_info_.cell_val_num_ == 1) {
-      if (result_buffer.original_buffer_size_ != sizeof(T)) {
-        throw MinMaxAggregatorStatusException(
-            "Fixed size min/max aggregates fixed buffer should be for one "
-            "element only.");
-      }
-    } else {
-      if (result_buffer.original_buffer_size_ !=
-          ComparatorAggregatorBase<T>::field_info_.cell_val_num_) {
-        throw MinMaxAggregatorStatusException(
-            "Fixed size min/max aggregates fixed buffer should be for one "
-            "element only.");
-      }
-    }
-  }
-
-  bool exists_validity = result_buffer.validity_vector_.buffer();
-  if (ComparatorAggregatorBase<T>::field_info_.is_nullable_) {
-    if (!exists_validity) {
-      throw MinMaxAggregatorStatusException(
-          "Min/max aggregates for nullable attributes must have a validity "
-          "buffer.");
-    }
-
-    if (*result_buffer.validity_vector_.buffer_size() != 1) {
-      throw MinMaxAggregatorStatusException(
-          "Min/max aggregates validity vector should be for one element only.");
-    }
-  } else {
-    if (exists_validity) {
-      throw MinMaxAggregatorStatusException(
-          "Min/max aggregates for non nullable attributes must not have a "
-          "validity buffer.");
-    }
-  }
+  ensure_output_buffer_var<T>(buffers[output_field_name]);
 }
 
 template <typename T, typename Op>
@@ -398,5 +331,4 @@ template MaxAggregator<float>::MaxAggregator(const FieldInfo);
 template MaxAggregator<double>::MaxAggregator(const FieldInfo);
 template MaxAggregator<std::string>::MaxAggregator(const FieldInfo);
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

@@ -1,5 +1,5 @@
 /**
- * @file   field_info.h
+ * @file safe_sum.cc
  *
  * @section LICENSE
  *
@@ -27,59 +27,53 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class FieldInfo.
+ * This file implements class SafeSum.
+ *
+ * TODO: Testing for this class is not done (sc-33762).
  */
 
-#ifndef TILEDB_FIELD_INFO_H
-#define TILEDB_FIELD_INFO_H
+#include "tiledb/sm/query/readers/aggregators/safe_sum.h"
 
-#include "tiledb/common/common.h"
+#include <limits>
 
 namespace tiledb::sm {
 
-class FieldInfo {
- public:
-  /* ********************************* */
-  /*     CONSTRUCTORS & DESTRUCTORS    */
-  /* ********************************* */
+/** Specialization of op for int64_t sums. */
+template <>
+void SafeSum::op<int64_t>(int64_t value, int64_t& sum) {
+  if (sum > 0 && value > 0 &&
+      (sum > (std::numeric_limits<int64_t>::max() - value))) {
+    throw std::overflow_error("overflow on sum");
+  }
 
-  FieldInfo() = delete;
+  if (sum < 0 && value < 0 &&
+      (sum < (std::numeric_limits<int64_t>::min() - value))) {
+    throw std::overflow_error("overflow on sum");
+  }
 
-  /**
-   * Constructor.
-   *
-   * @param name Name of the field.
-   * @param var_sized Is the field var sized?
-   * @param is_nullable Is the field nullable?
-   * @param cell_val_num Cell val num.
-   */
-  FieldInfo(
-      const std::string name,
-      const bool var_sized,
-      const bool is_nullable,
-      const unsigned cell_val_num)
-      : name_(name)
-      , var_sized_(var_sized)
-      , is_nullable_(is_nullable)
-      , cell_val_num_(cell_val_num){};
+  sum += value;
+}
 
-  /* ********************************* */
-  /*         PUBLIC ATTRIBUTES         */
-  /* ********************************* */
+/** Specialization of op for uint64_t sums. */
+template <>
+void SafeSum::op<uint64_t>(uint64_t value, uint64_t& sum) {
+  if (sum > (std::numeric_limits<uint64_t>::max() - value)) {
+    throw std::overflow_error("overflow on sum");
+  }
 
-  /** Field name. */
-  const std::string name_;
+  sum += value;
+}
 
-  /** Is the field var sized? */
-  const bool var_sized_;
+/** Specialization of op for double sums. */
+template <>
+void SafeSum::op<double>(double value, double& sum) {
+  if ((sum < 0.0) == (value < 0.0) &&
+      (std::abs(sum) >
+       (std::numeric_limits<double>::max() - std::abs(value)))) {
+    throw std::overflow_error("overflow on sum");
+  }
 
-  /** Is the field nullable? */
-  const bool is_nullable_;
-
-  /** Cell val num. */
-  const unsigned cell_val_num_;
-};
+  sum += value;
+}
 
 }  // namespace tiledb::sm
-
-#endif  // TILEDB_FIELD_INFO_H

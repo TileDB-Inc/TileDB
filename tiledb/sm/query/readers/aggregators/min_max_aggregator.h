@@ -38,8 +38,7 @@
 
 #include <functional>
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class QueryBuffer;
 
@@ -132,6 +131,7 @@ class ComparatorAggregatorBase {
 
 template <typename T, typename Op>
 class ComparatorAggregator : public ComparatorAggregatorBase<T>,
+                             public OutputBufferValidator,
                              public IAggregator {
  protected:
   using VALUE_T = typename min_max_type_data<T>::value_type;
@@ -302,7 +302,6 @@ class MaxAggregator
   DISABLE_MOVE_AND_MOVE_ASSIGN(MaxAggregator);
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_MIN_MAX_AGGREGATOR_H

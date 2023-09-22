@@ -35,8 +35,7 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class NullCountAggregatorStatusException : public StatusException {
  public:
@@ -46,7 +45,8 @@ class NullCountAggregatorStatusException : public StatusException {
 };
 
 NullCountAggregator::NullCountAggregator(const FieldInfo field_info)
-    : field_info_(field_info)
+    : OutputBufferValidator(field_info)
+    , field_info_(field_info)
     , null_count_(0) {
   if (!field_info_.is_nullable_) {
     throw NullCountAggregatorStatusException(
@@ -61,28 +61,7 @@ void NullCountAggregator::validate_output_buffer(
     throw NullCountAggregatorStatusException("Result buffer doesn't exist.");
   }
 
-  auto& result_buffer = buffers[output_field_name];
-  if (result_buffer.buffer_ == nullptr) {
-    throw NullCountAggregatorStatusException(
-        "NullCount aggregates must have a fixed size buffer.");
-  }
-
-  if (result_buffer.buffer_var_ != nullptr) {
-    throw NullCountAggregatorStatusException(
-        "NullCount aggregates must not have a var buffer.");
-  }
-
-  if (result_buffer.original_buffer_size_ != 8) {
-    throw NullCountAggregatorStatusException(
-        "NullCount aggregates fixed size buffer should be for one element "
-        "only.");
-  }
-
-  bool exists_validity = result_buffer.validity_vector_.buffer();
-  if (exists_validity) {
-    throw NullCountAggregatorStatusException(
-        "NullCount aggregates must not have a validity buffer.");
-  }
+  ensure_output_buffer_count(buffers[output_field_name]);
 }
 
 void NullCountAggregator::aggregate_data(AggregateBuffer& input_data) {
@@ -134,5 +113,4 @@ uint64_t NullCountAggregator::null_count(AggregateBuffer& input_data) {
   return null_count;
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

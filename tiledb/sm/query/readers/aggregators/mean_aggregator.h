@@ -1,5 +1,5 @@
 /**
- * @file   null_count_aggregator.h
+ * @file   mean_aggregator.h
  *
  * @section LICENSE
  *
@@ -27,36 +27,40 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class NullCountAggregator.
+ * This file defines class MeanAggregator.
  */
 
-#ifndef TILEDB_NULL_COUNT_AGGREGATOR_H
-#define TILEDB_NULL_COUNT_AGGREGATOR_H
+#ifndef TILEDB_MEAN_AGGREGATOR_H
+#define TILEDB_MEAN_AGGREGATOR_H
 
+#include "tiledb/common/common.h"
+#include "tiledb/sm/query/readers/aggregators/aggregate_with_count.h"
 #include "tiledb/sm/query/readers/aggregators/field_info.h"
 #include "tiledb/sm/query/readers/aggregators/iaggregator.h"
+#include "tiledb/sm/query/readers/aggregators/sum_type.h"
 
 namespace tiledb::sm {
 
 class QueryBuffer;
 
-class NullCountAggregator : public OutputBufferValidator, public IAggregator {
+template <typename T>
+class MeanAggregator : public OutputBufferValidator, public IAggregator {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  NullCountAggregator() = delete;
+  MeanAggregator() = delete;
 
   /**
    * Constructor.
    *
    * @param field_info Field info.
    */
-  NullCountAggregator(FieldInfo field_info);
+  MeanAggregator(FieldInfo field_info);
 
-  DISABLE_COPY_AND_COPY_ASSIGN(NullCountAggregator);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(NullCountAggregator);
+  DISABLE_COPY_AND_COPY_ASSIGN(MeanAggregator);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(MeanAggregator);
 
   /* ********************************* */
   /*                API                */
@@ -112,25 +116,22 @@ class NullCountAggregator : public OutputBufferValidator, public IAggregator {
   /** Field information. */
   const FieldInfo field_info_;
 
-  /** Computed null count. */
-  std::atomic<uint64_t> null_count_;
+  /** AggregateWithCount to do summation of AggregateBuffer data. */
+  AggregateWithCount<T> summator_;
 
-  /* ********************************* */
-  /*           PRIVATE METHODS         */
-  /* ********************************* */
+  /** Computed sum. */
+  std::atomic<typename sum_type_data<T>::sum_type> sum_;
 
-  /**
-   * Add the null count of cells for the input data.
-   *
-   * @tparam BITMAP_T Bitmap type.
-   * @param input_data Input data for the null count.
-   *
-   * @return {Computed null count for the cells}.
-   */
-  template <typename BITMAP_T>
-  uint64_t null_count(AggregateBuffer& input_data);
+  /** Count of values. */
+  std::atomic<uint64_t> count_;
+
+  /** Computed validity value. */
+  optional<uint8_t> validity_value_;
+
+  /** Has the sum overflowed. */
+  std::atomic<bool> sum_overflowed_;
 };
 
 }  // namespace tiledb::sm
 
-#endif  // TILEDB_NULL_COUNT_AGGREGATOR_H
+#endif  // TILEDB_MEAN_AGGREGATOR_H

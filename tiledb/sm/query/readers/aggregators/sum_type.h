@@ -1,5 +1,5 @@
 /**
- * @file   field_info.h
+ * @file   sum_type.h
  *
  * @section LICENSE
  *
@@ -27,59 +27,38 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class FieldInfo.
+ * This file defines sum types in relation to basic types.
+ *
+ * TODO: This needs to be improved to remove macros (sc-33764).
  */
 
-#ifndef TILEDB_FIELD_INFO_H
-#define TILEDB_FIELD_INFO_H
-
-#include "tiledb/common/common.h"
+#ifndef TILEDB_SUM_TYPE_H
+#define TILEDB_SUM_TYPE_H
 
 namespace tiledb::sm {
 
-class FieldInfo {
- public:
-  /* ********************************* */
-  /*     CONSTRUCTORS & DESTRUCTORS    */
-  /* ********************************* */
+#define SUM_TYPE_DATA(T, SUM_T) \
+  template <>                   \
+  struct sum_type_data<T> {     \
+    using type = T;             \
+    typedef SUM_T sum_type;     \
+  };
 
-  FieldInfo() = delete;
+/** Convert basic type to a sum type. **/
+template <typename T>
+struct sum_type_data;
 
-  /**
-   * Constructor.
-   *
-   * @param name Name of the field.
-   * @param var_sized Is the field var sized?
-   * @param is_nullable Is the field nullable?
-   * @param cell_val_num Cell val num.
-   */
-  FieldInfo(
-      const std::string name,
-      const bool var_sized,
-      const bool is_nullable,
-      const unsigned cell_val_num)
-      : name_(name)
-      , var_sized_(var_sized)
-      , is_nullable_(is_nullable)
-      , cell_val_num_(cell_val_num){};
-
-  /* ********************************* */
-  /*         PUBLIC ATTRIBUTES         */
-  /* ********************************* */
-
-  /** Field name. */
-  const std::string name_;
-
-  /** Is the field var sized? */
-  const bool var_sized_;
-
-  /** Is the field nullable? */
-  const bool is_nullable_;
-
-  /** Cell val num. */
-  const unsigned cell_val_num_;
-};
+SUM_TYPE_DATA(int8_t, int64_t);
+SUM_TYPE_DATA(uint8_t, uint64_t);
+SUM_TYPE_DATA(int16_t, int64_t);
+SUM_TYPE_DATA(uint16_t, uint64_t);
+SUM_TYPE_DATA(int32_t, int64_t);
+SUM_TYPE_DATA(uint32_t, uint64_t);
+SUM_TYPE_DATA(int64_t, int64_t);
+SUM_TYPE_DATA(uint64_t, uint64_t);
+SUM_TYPE_DATA(float, double);
+SUM_TYPE_DATA(double, double);
 
 }  // namespace tiledb::sm
 
-#endif  // TILEDB_FIELD_INFO_H
+#endif  // TILEDB_SUM_TYPE_H

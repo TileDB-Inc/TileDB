@@ -87,8 +87,7 @@ TEST_CASE(
     buffers["NullCount"].buffer_ = nullptr;
     CHECK_THROWS_WITH(
         aggregator.validate_output_buffer("NullCount", buffers),
-        "NullCountAggregator: NullCount aggregates must have a fixed size "
-        "buffer.");
+        "OutputBufferValidator: Aggregate must have a fixed size buffer.");
   }
 
   SECTION("Wrong size") {
@@ -97,8 +96,8 @@ TEST_CASE(
     buffers["NullCount"].original_buffer_size_ = 1;
     CHECK_THROWS_WITH(
         aggregator.validate_output_buffer("NullCount", buffers),
-        "NullCountAggregator: NullCount aggregates fixed size buffer should be "
-        "for one element only.");
+        "OutputBufferValidator: Aggregate fixed size buffer should be for one "
+        "element only.");
   }
 
   SECTION("With var buffer") {
@@ -109,8 +108,7 @@ TEST_CASE(
 
     CHECK_THROWS_WITH(
         aggregator.validate_output_buffer("NullCount", buffers),
-        "NullCountAggregator: NullCount aggregates must not have a var "
-        "buffer.");
+        "OutputBufferValidator: Aggregate must not have a var buffer.");
   }
 
   SECTION("With validity") {
@@ -124,7 +122,7 @@ TEST_CASE(
         ValidityVector(&validity, &validity_size);
     CHECK_THROWS_WITH(
         aggregator.validate_output_buffer("NullCount", buffers),
-        "NullCountAggregator: NullCount aggregates must not have a validity "
+        "OutputBufferValidator: Count aggregates must not have a validity "
         "buffer.");
   }
 

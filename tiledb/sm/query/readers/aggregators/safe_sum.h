@@ -1,5 +1,5 @@
 /**
- * @file   field_info.h
+ * @file   safe_sum.h
  *
  * @section LICENSE
  *
@@ -27,59 +27,49 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class FieldInfo.
+ * This file defines class SafeSum.
  */
 
-#ifndef TILEDB_FIELD_INFO_H
-#define TILEDB_FIELD_INFO_H
+#ifndef TILEDB_SAFE_SUM_H
+#define TILEDB_SAFE_SUM_H
 
-#include "tiledb/common/common.h"
+#include <atomic>
+#include <stdexcept>
 
 namespace tiledb::sm {
 
-class FieldInfo {
+class SafeSum {
  public:
-  /* ********************************* */
-  /*     CONSTRUCTORS & DESTRUCTORS    */
-  /* ********************************* */
-
-  FieldInfo() = delete;
+  /**
+   * Sum function that prevent wrap arounds on overflow.
+   *
+   * @param value Value to add to the sum.
+   * @param sum Computed sum.
+   */
+  template <typename SUM_T>
+  static void op(SUM_T value, SUM_T& sum);
 
   /**
-   * Constructor.
+   * Sum function for atomics that prevent wrap arounds on overflow.
    *
-   * @param name Name of the field.
-   * @param var_sized Is the field var sized?
-   * @param is_nullable Is the field nullable?
-   * @param cell_val_num Cell val num.
+   * @param value Value to add to the sum.
+   * @param sum Computed sum.
    */
-  FieldInfo(
-      const std::string name,
-      const bool var_sized,
-      const bool is_nullable,
-      const unsigned cell_val_num)
-      : name_(name)
-      , var_sized_(var_sized)
-      , is_nullable_(is_nullable)
-      , cell_val_num_(cell_val_num){};
-
-  /* ********************************* */
-  /*         PUBLIC ATTRIBUTES         */
-  /* ********************************* */
-
-  /** Field name. */
-  const std::string name_;
-
-  /** Is the field var sized? */
-  const bool var_sized_;
-
-  /** Is the field nullable? */
-  const bool is_nullable_;
-
-  /** Cell val num. */
-  const unsigned cell_val_num_;
+  template <typename SUM_T>
+  static void safe_sum(SUM_T value, std::atomic<SUM_T>& sum) {
+    // Start by saving the current sum value from the atomic to operate on in
+    // 'cur_sum'. Then compute the new sum in 'new_sum'.
+    // std::atomic_compare_exchange_weak will only update the value and return
+    // true if the value hasn't changed since we saved it in 'cur_sum'.
+    SUM_T cur_sum;
+    SUM_T new_sum;
+    do {
+      new_sum = cur_sum = sum;
+      op(value, new_sum);
+    } while (!std::atomic_compare_exchange_weak(&sum, &cur_sum, new_sum));
+  }
 };
 
 }  // namespace tiledb::sm
 
-#endif  // TILEDB_FIELD_INFO_H
+#endif  // TILEDB_SAFE_SUM_H
