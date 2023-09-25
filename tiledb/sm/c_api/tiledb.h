@@ -1100,8 +1100,8 @@ TILEDB_EXPORT int32_t tiledb_query_set_subarray_t(
  * The caller owns the `buffer` provided and is responsible for freeing the
  * memory associated with it. For writes, the buffer holds values to be written
  * which can be freed at any time after query completion. For reads, the buffer
- * is allocated by the client and will contain data read by the query after
- * completion. The freeing of this memory is up to the user once they are done
+ * is allocated by the caller and will contain data read by the query after
+ * completion. The freeing of this memory is up to the caller once they are done
  * referencing the read data.
  *
  * **Example:**
@@ -1137,9 +1137,9 @@ TILEDB_EXPORT int32_t tiledb_query_set_data_buffer(
  * The caller owns the `buffer` provided and is responsible for freeing the
  * memory associated with it. For writes, the buffer holds offsets to be written
  * which can be freed at any time after query completion. For reads, the buffer
- * is allocated by the client and will contain offset data read by the query
- * after completion. The freeing of this memory is up to the user once they are
- * done referencing the read data.
+ * is allocated by the caller and will contain offset data read by the query
+ * after completion. The freeing of this memory is up to the caller once they
+ * are done referencing the read data.
  *
  * **Example:**
  *
@@ -1176,9 +1176,9 @@ TILEDB_EXPORT int32_t tiledb_query_set_offsets_buffer(
  * The caller owns the `buffer` provided and is responsible for freeing the
  * memory associated with it. For writes, the buffer holds validity values to be
  * written which can be freed at any time after query completion. For reads, the
- * buffer is allocated by the client and will contain the validity map read by
- * the query after completion. The freeing of this memory is up to the user once
- * they are done referencing the read data.
+ * buffer is allocated by the caller and will contain the validity map read by
+ * the query after completion. The freeing of this memory is up to the caller
+ * once they are done referencing the read data.
  *
  * **Example:**
  *

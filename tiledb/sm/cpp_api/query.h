@@ -1528,8 +1528,8 @@ class Query {
    * The caller owns the buffer provided and is responsible for freeing the
    * memory associated with it. For writes, the buffer holds values to be
    * written which can be freed at any time after query completion. For reads,
-   * the buffer is allocated by the client and will contain data read by the
-   * query after completion. The freeing of this memory is up to the user once
+   * the buffer is allocated by the caller and will contain data read by the
+   * query after completion. The freeing of this memory is up to the caller once
    * they are done referencing the read data.
    *
    * **Example:**
@@ -1597,8 +1597,8 @@ class Query {
    * The caller owns the buffer provided and is responsible for freeing the
    * memory associated with it. For writes, the buffer holds values to be
    * written which can be freed at any time after query completion. For reads,
-   * the buffer is allocated by the client and will contain data read by the
-   * query after completion. The freeing of this memory is up to the user once
+   * the buffer is allocated by the caller and will contain data read by the
+   * query after completion. The freeing of this memory is up to the caller once
    * they are done referencing the read data.
    *
    * @note This unsafe version does not perform type checking; the given buffer
@@ -1660,8 +1660,8 @@ class Query {
    * The caller owns the buffer provided and is responsible for freeing the
    * memory associated with it. For writes, the buffer holds offsets to be
    * written which can be freed at any time after query completion. For reads,
-   * the buffer is allocated by the client and will contain offset data read by
-   * the query after completion. The freeing of this memory is up to the user
+   * the buffer is allocated by the caller and will contain offset data read by
+   * the query after completion. The freeing of this memory is up to the caller
    * once they are done referencing the read data.
    *
    * **Example:**
@@ -1731,9 +1731,9 @@ class Query {
    * The caller owns the buffer provided and is responsible for freeing the
    * memory associated with it. For writes, the buffer holds validity values to
    * be written which can be freed at any time after query completion. For
-   * reads, the buffer is allocated by the client and will contain the validity
+   * reads, the buffer is allocated by the caller and will contain the validity
    * map read by the query after completion. The freeing of this memory is up to
-   * the user once they are done referencing the read data.
+   * the caller once they are done referencing the read data.
    *
    * @tparam T Attribute value type
    * @param attr Attribute name
