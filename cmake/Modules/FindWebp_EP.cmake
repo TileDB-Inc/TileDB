@@ -51,7 +51,7 @@ if(NOT TILEDB_WEBP_EP_BUILT)
     ExternalProject_Add(ep_webp
       PREFIX "externals"
       GIT_REPOSITORY "https://chromium.googlesource.com/webm/libwebp"
-      GIT_TAG "v1.3.1"
+      GIT_TAG "v1.3.2"
       GIT_SUBMODULES_RECURSE TRUE
       UPDATE_COMMAND ""
       CMAKE_ARGS
