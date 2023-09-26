@@ -714,7 +714,7 @@ void WriterBase::set_coords_metadata(
   // Set last tile cell number
   auto dim_0{array_schema_.dimension_ptr(0)};
   const auto& dim_tiles = tiles.find(dim_0->name())->second;
-  auto cell_num = dim_tiles[end_tile_idx - 1].cell_num();
+  auto cell_num = dim_tiles.at(end_tile_idx - 1).cell_num();
   meta->set_last_tile_cell_num(cell_num);
 }
 
