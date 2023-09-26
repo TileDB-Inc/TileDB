@@ -739,6 +739,10 @@ class Query {
     default_channel_aggregates_.emplace(output_field_name, aggregator);
   }
 
+  /** Returns an aggregate based on the output field. */
+  std::optional<shared_ptr<IAggregator>> get_aggregate(
+      std::string output_field_name) const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

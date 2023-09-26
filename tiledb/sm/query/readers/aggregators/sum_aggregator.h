@@ -109,6 +109,11 @@ class SumAggregator : public OutputBufferValidator, public IAggregator {
       std::string output_field_name,
       std::unordered_map<std::string, QueryBuffer>& buffers) override;
 
+  /** Returns the TileDB datatype of the output field for the aggregate. */
+  Datatype output_datatype() override {
+    return sum_type_data<T>::tiledb_datatype;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

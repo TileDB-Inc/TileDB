@@ -42,16 +42,22 @@ tiledb_query_field_handle_t::tiledb_query_field_handle_t(
     , field_name_(field_name) {
   if (query_->array_schema().is_attr(field_name_)) {
     origin_ = static_cast<enum FieldOrigin>(TILEDB_ATTRIBUTE_FIELD);
+    type_ = query_->array_schema().attribute(field_name_)->type();
+    cell_val_num_ =
+        query_->array_schema().attribute(field_name_)->cell_val_num();
   } else if (query_->array_schema().is_dim(field_name_)) {
     origin_ = static_cast<enum FieldOrigin>(TILEDB_DIMENSION_FIELD);
+    type_ = query_->array_schema().dimension_ptr(field_name_)->type();
+    cell_val_num_ =
+        query_->array_schema().dimension_ptr(field_name_)->cell_val_num();
   } else if (query_->is_aggregate(field_name_)) {
     origin_ = static_cast<enum FieldOrigin>(TILEDB_AGGREGATE_FIELD);
+    type_ = query_->get_aggregate(field_name_).value()->output_datatype();
+    cell_val_num_ = 1;
   } else {
     throw tiledb::api::CAPIStatusException("There is no field " + field_name_);
   }
 
-  type_ = query_->array_schema().attribute(field_name_)->type();
-  cell_val_num_ = query_->array_schema().attribute(field_name_)->cell_val_num();
   channel_ = tiledb_query_channel_handle_t::make_handle(query);
 }
 

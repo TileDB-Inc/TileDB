@@ -33,6 +33,7 @@
 #ifndef TILEDB_COUNT_AGGREGATOR_H
 #define TILEDB_COUNT_AGGREGATOR_H
 
+#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_with_count.h"
 #include "tiledb/sm/query/readers/aggregators/iaggregator.h"
 #include "tiledb/sm/query/readers/aggregators/no_op.h"
@@ -45,7 +46,6 @@ class QueryBuffer;
 template <class ValidityPolicy>
 class CountAggregatorBase : public OutputBufferValidator, public IAggregator {
  public:
-  /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
@@ -95,6 +95,11 @@ class CountAggregatorBase : public OutputBufferValidator, public IAggregator {
   void copy_to_user_buffer(
       std::string output_field_name,
       std::unordered_map<std::string, QueryBuffer>& buffers) override;
+
+  /** Returns the TileDB datatype of the output field for the aggregate. */
+  Datatype output_datatype() override {
+    return Datatype::UINT64;
+  }
 
  private:
   /* ********************************* */

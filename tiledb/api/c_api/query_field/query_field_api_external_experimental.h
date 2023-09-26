@@ -89,7 +89,7 @@ TILEDB_EXPORT capi_return_t tiledb_query_get_field(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_query_field_free(
-    ctx, tiledb_ctx_t* ctx, tiledb_query_field_t** field) TILEDB_NOEXCEPT;
+    tiledb_ctx_t* ctx, tiledb_query_field_t** field) TILEDB_NOEXCEPT;
 
 /**
  * Get the TileDB datatype for a query field
