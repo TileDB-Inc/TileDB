@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -51,6 +51,13 @@ tiledb::common::blank<tiledb::sm::Dimension>::blank()
 
 namespace tiledb {
 namespace sm {
+
+class DimensionException : public StatusException {
+ public:
+  explicit DimensionException(const std::string& message)
+      : StatusException("Dimension", message) {
+  }
+};
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -144,7 +151,10 @@ Status Dimension::set_cell_val_num(unsigned int cell_val_num) {
 }
 
 shared_ptr<Dimension> Dimension::deserialize(
-    Deserializer& deserializer, uint32_t version, Datatype type) {
+    Deserializer& deserializer,
+    uint32_t version,
+    Datatype type,
+    FilterPipeline& coords_filters) {
   Status st;
   // Load dimension name
   auto dimension_name_size = deserializer.read<uint32_t>();
@@ -164,7 +174,11 @@ shared_ptr<Dimension> Dimension::deserialize(
     cell_val_num = deserializer.read<uint32_t>();
 
     // Load filter pipeline
-    filter_pipeline = FilterPipeline::deserialize(deserializer, version);
+    filter_pipeline =
+        FilterPipeline::deserialize(deserializer, version, datatype);
+    if (filter_pipeline.empty()) {
+      filter_pipeline = FilterPipeline(coords_filters, datatype);
+    }
   } else {
     datatype = type;
     cell_val_num = (datatype_is_string(datatype)) ? constants::var_num : 1;
@@ -315,14 +329,11 @@ Range Dimension::compute_mbr_var<char>(
   auto cell_num = tile_off.cell_num();
   assert(cell_num > 0);
 
-  void* tile_buffer_off = tile_off.data();
-  assert(tile_buffer_off != nullptr);
+  offsets_t* d_off = tile_off.data_as<offsets_t>();
+  assert(d_off != nullptr);
 
-  void* tile_buffer_val = tile_val.data();
-  assert(tile_buffer_val != nullptr);
-
-  uint64_t* const d_off = static_cast<uint64_t*>(tile_buffer_off);
-  char* const d_val = static_cast<char*>(tile_buffer_val);
+  char* d_val = tile_val.data_as<char>();
+  assert(d_val != nullptr);
 
   // Initialize MBR with the first tile values
   auto size_0 = (cell_num == 1) ? d_val_size : d_off[1];
@@ -1329,32 +1340,9 @@ Status Dimension::set_domain_unsafe(const void* domain) {
   return Status::Ok();
 }
 
-Status Dimension::set_filter_pipeline(const FilterPipeline& pipeline) {
-  for (unsigned i = 0; i < pipeline.size(); ++i) {
-    if (datatype_is_real(type_) &&
-        pipeline.get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
-      return LOG_STATUS(
-          Status_DimensionError("Cannot set DOUBLE DELTA filter to a "
-                                "dimension with a real datatype"));
-  }
-
-  if (type_ == Datatype::STRING_ASCII && var_size() && pipeline.size() > 1) {
-    if (pipeline.has_filter(FilterType::FILTER_RLE) &&
-        pipeline.get_filter(0)->type() != FilterType::FILTER_RLE) {
-      return LOG_STATUS(Status_ArraySchemaError(
-          "RLE filter must be the first filter to apply when used on a "
-          "variable length string dimension"));
-    }
-    if (pipeline.has_filter(FilterType::FILTER_DICTIONARY) &&
-        pipeline.get_filter(0)->type() != FilterType::FILTER_DICTIONARY) {
-      return LOG_STATUS(Status_ArraySchemaError(
-          "Dictionary filter must be the first filter to apply when used on a "
-          "variable length string dimension"));
-    }
-  }
-
+void Dimension::set_filter_pipeline(const FilterPipeline& pipeline) {
+  FilterPipeline::check_filter_types(pipeline, type_, var_size());
   filters_ = pipeline;
-  return Status::Ok();
 }
 
 Status Dimension::set_tile_extent(const void* tile_extent) {
@@ -1591,16 +1579,18 @@ Status Dimension::check_tile_extent() const {
     case Datatype::TIME_AS:
       return check_tile_extent<int64_t>();
     default:
-      return LOG_STATUS(Status_DimensionError(
-          "Tile extent check failed; Invalid dimension domain type"));
+      throw DimensionException(
+          "Tile extent check failed on dimension '" + name() +
+          "'; Invalid dimension domain type");
   }
 }
 
 template <class T>
 Status Dimension::check_tile_extent() const {
   if (domain_.empty())
-    return LOG_STATUS(
-        Status_DimensionError("Tile extent check failed; Domain not set"));
+    throw DimensionException(
+        "Tile extent check failed on dimension '" + name() +
+        "'; Domain not set");
 
   if (!tile_extent_)
     return Status::Ok();
@@ -1613,25 +1603,31 @@ Status Dimension::check_tile_extent() const {
   if (!is_int) {
     // Check if tile extent is negative or 0
     if (*tile_extent <= 0)
-      return LOG_STATUS(Status_DimensionError(
-          "Tile extent check failed; Tile extent must be greater than 0"));
+      throw DimensionException(
+          "Tile extent check failed on dimension '" + name() +
+          "'; Tile extent must be greater than 0");
 
     if (*tile_extent > (domain[1] - domain[0] + 1))
-      return LOG_STATUS(
-          Status_DimensionError("Tile extent check failed; Tile extent "
-                                "exceeds dimension domain range"));
+      throw DimensionException(
+          "Tile extent check failed on dimension '" + name() +
+          "'; Tile extent " + std::to_string(*tile_extent) +
+          " exceeds range on dimension domain [" + std::to_string(domain[0]) +
+          ", " + std::to_string(domain[1]) + "]");
   } else {
     // Check if tile extent is 0
     if (*tile_extent == 0)
-      return LOG_STATUS(Status_DimensionError(
-          "Tile extent check failed; Tile extent must not be 0"));
+      throw DimensionException(
+          "Tile extent check failed on dimension '" + name() +
+          "'; Tile extent must not be 0");
 
     // Check if tile extent exceeds domain
     uint64_t range = (uint64_t)domain[1] - (uint64_t)domain[0] + 1;
     if (uint64_t(*tile_extent) > range)
-      return LOG_STATUS(
-          Status_DimensionError("Tile extent check failed; Tile extent "
-                                "exceeds dimension domain range"));
+      throw DimensionException(
+          "Tile extent check failed on dimension '" + name() +
+          "'; Tile extent " + std::to_string(*tile_extent) +
+          " exceeds range on dimension domain [" + std::to_string(domain[0]) +
+          ", " + std::to_string(domain[1]) + "]");
 
     // In the worst case one tile extent will be added to the upper domain
     // for the dense case, so check if the expanded domain will exceed type

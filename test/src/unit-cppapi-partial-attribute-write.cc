@@ -84,12 +84,12 @@ struct CppPartialAttrWriteFx {
       const bool refactored_query_v2);
   void write_sparse_a2(
       Query& query,
-      std::vector<uint64_t> a2,
+      std::vector<int64_t> a2,
       const bool serialized,
       const bool refactored_query_v2);
   void read_sparse(
       std::vector<int>& a1,
-      std::vector<uint64_t>& a2,
+      std::vector<int64_t>& a2,
       std::vector<uint64_t>& dim1,
       std::vector<uint64_t>& dim2);
 
@@ -223,7 +223,7 @@ void CppPartialAttrWriteFx::write_sparse_a1(
 
 void CppPartialAttrWriteFx::write_sparse_a2(
     Query& query,
-    std::vector<uint64_t> a2,
+    std::vector<int64_t> a2,
     const bool serialized,
     const bool refactored_query_v2) {
   query.set_data_buffer("a2", a2);
@@ -241,7 +241,7 @@ void CppPartialAttrWriteFx::write_sparse_a2(
 
 void CppPartialAttrWriteFx::read_sparse(
     std::vector<int>& a1,
-    std::vector<uint64_t>& a2,
+    std::vector<int64_t>& a2,
     std::vector<uint64_t>& dim1,
     std::vector<uint64_t>& dim2) {
   // Open array.
@@ -339,13 +339,13 @@ TEST_CASE_METHOD(
 
   size_t buffer_size = 8;
   std::vector<int> a1(buffer_size);
-  std::vector<uint64_t> a2(buffer_size);
+  std::vector<int64_t> a2(buffer_size);
   std::vector<uint64_t> dim1(buffer_size);
   std::vector<uint64_t> dim2(buffer_size);
   read_sparse(a1, a2, dim1, dim2);
 
   CHECK(a1 == std::vector<int>({0, 1, 2, 3, 4, 5, 6, 7}));
-  CHECK(a2 == std::vector<uint64_t>({8, 9, 10, 11, 12, 13, 14, 15}));
+  CHECK(a2 == std::vector<int64_t>({8, 9, 10, 11, 12, 13, 14, 15}));
   CHECK(dim1 == std::vector<uint64_t>({1, 1, 1, 2, 3, 4, 3, 3}));
   CHECK(dim2 == std::vector<uint64_t>({1, 2, 4, 3, 1, 2, 3, 4}));
 
@@ -386,13 +386,13 @@ TEST_CASE_METHOD(
 
   size_t buffer_size = 8;
   std::vector<int> a1(buffer_size);
-  std::vector<uint64_t> a2(buffer_size);
+  std::vector<int64_t> a2(buffer_size);
   std::vector<uint64_t> dim1(buffer_size);
   std::vector<uint64_t> dim2(buffer_size);
   read_sparse(a1, a2, dim1, dim2);
 
   CHECK(a1 == std::vector<int>({0, 1, 2, 3, 4, 5, 6, 7}));
-  CHECK(a2 == std::vector<uint64_t>({8, 9, 10, 11, 12, 13, 14, 15}));
+  CHECK(a2 == std::vector<int64_t>({8, 9, 10, 11, 12, 13, 14, 15}));
   CHECK(dim1 == std::vector<uint64_t>({1, 1, 1, 2, 3, 4, 3, 3}));
   CHECK(dim2 == std::vector<uint64_t>({1, 2, 4, 3, 1, 2, 3, 4}));
 
@@ -445,13 +445,13 @@ TEST_CASE_METHOD(
 
   size_t buffer_size = 8;
   std::vector<int> a1(buffer_size);
-  std::vector<uint64_t> a2(buffer_size);
+  std::vector<int64_t> a2(buffer_size);
   std::vector<uint64_t> dim1(buffer_size);
   std::vector<uint64_t> dim2(buffer_size);
   read_sparse(a1, a2, dim1, dim2);
 
   CHECK(a1 == std::vector<int>({0, 1, 2, 3, 4, 5, 6, 7}));
-  CHECK(a2 == std::vector<uint64_t>({8, 9, 10, 11, 12, 13, 14, 15}));
+  CHECK(a2 == std::vector<int64_t>({8, 9, 10, 11, 12, 13, 14, 15}));
   CHECK(dim1 == std::vector<uint64_t>({1, 1, 1, 2, 3, 4, 3, 3}));
   CHECK(dim2 == std::vector<uint64_t>({1, 2, 4, 3, 1, 2, 3, 4}));
 
@@ -492,13 +492,13 @@ TEST_CASE_METHOD(
 
   size_t buffer_size = 8;
   std::vector<int> a1(buffer_size, 0);
-  std::vector<uint64_t> a2(buffer_size, 0);
+  std::vector<int64_t> a2(buffer_size, 0);
   std::vector<uint64_t> dim1(buffer_size, 0);
   std::vector<uint64_t> dim2(buffer_size, 0);
   read_sparse(a1, a2, dim1, dim2);
 
   CHECK(a1 == std::vector<int>({0, 0, 0, 0, 0, 0, 0, 0}));
-  CHECK(a2 == std::vector<uint64_t>({0, 0, 0, 0, 0, 0, 0, 0}));
+  CHECK(a2 == std::vector<int64_t>({0, 0, 0, 0, 0, 0, 0, 0}));
   CHECK(dim1 == std::vector<uint64_t>({0, 0, 0, 0, 0, 0, 0, 0}));
   CHECK(dim2 == std::vector<uint64_t>({0, 0, 0, 0, 0, 0, 0, 0}));
 

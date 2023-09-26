@@ -32,41 +32,34 @@
 include(TileDBCommon)
 
 if(TILEDB_VCPKG)
-  find_package(AWSSDK QUIET CONFIG COMPONENTS core s3 REQUIRED)
-  set(AWS_SERVICES s3)
-  AWSSDK_DETERMINE_LIBS_TO_LINK(AWS_SERVICES AWS_LINKED_LIBS)
-  list(APPEND AWS_LINKED_LIBS aws-c-cal
-                              aws-c-io
-                              aws-cpp-sdk-identity-management
-                              aws-cpp-sdk-sts)
+  set(AWS_SERVICES identity-management sts s3)
 
-  foreach (LIB ${AWS_LINKED_LIBS})
-    if (NOT ${LIB} MATCHES "aws-*")
-      continue()
-    endif()
+  # Provides:  ${AWSSDK_LINK_LIBRARIES} ${AWSSDK_PLATFORM_DEPS}
+  # TODO: We may need to conditionally use ${AWSSDK_PLATFORM_DEPS} here for dynamically linked deps, but
+  #       it lists bare "pthread;curl" which leads to linkage of system versions. For static linkage, we
+  #       handle those elsewhere at the moment.
+  find_package(AWSSDK REQUIRED QUIET COMPONENTS ${AWS_SERVICES})
 
-    find_library("AWS_FOUND_${LIB}"
-      NAMES ${LIB}
-      PATHS ${AWSSDK_LIB_DIR}
-      NO_DEFAULT_PATH
-    )
-    message(STATUS "Found AWS lib: ${LIB} (${AWS_FOUND_${LIB}})")
-    if (NOT TARGET AWSSDK::${LIB})
-      add_library(AWSSDK::${LIB} UNKNOWN IMPORTED)
-      set_target_properties(AWSSDK::${LIB} PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES "${AWSSDK_INCLUDE_DIR}"
-        IMPORTED_LOCATION "${AWS_FOUND_${LIB}}"
-      )
-    endif()
-  endforeach ()
+  if (TILEDB_STATIC)
 
-  # Add missing link directives here rather than adding
-  # conditional logic in tiledb/CMakeLists.txt
-  target_link_libraries(AWSSDK::aws-cpp-sdk-s3 INTERFACE AWSSDK::aws-c-cal)
-  target_link_libraries(AWSSDK::aws-cpp-sdk-s3 INTERFACE AWSSDK::aws-c-io)
+    set(AWSSDK_EXTRA_LIBS)
+    # Since AWS SDK 1.11, AWSSDK_THIRD_PARTY_LIBS was replaced by AWSSDK_COMMON_RUNTIME_LIBS.
+    foreach(TARGET IN LISTS AWSSDK_THIRD_PARTY_LIBS AWSSDK_COMMON_RUNTIME_LIBS)
+      if (TARGET AWS::${TARGET})
+        list(APPEND AWSSDK_EXTRA_LIBS "AWS::${TARGET}")
+      endif()
+    endforeach()
+    install_all_target_libs("${AWSSDK_EXTRA_LIBS}")
+  endif()
 
+  install_all_target_libs("${AWSSDK_LINK_LIBRARIES}")
   return()
 endif()
+
+
+###############################################################################
+# Start superbuild/unmanaged/legacy version
+###############################################################################
 
 ##-----------------------------------
 # early WIN32 audit of path length for aws sdk build where
@@ -113,10 +106,10 @@ if (NOT AWSSDK_FOUND)
     message(STATUS "Adding AWSSDK as an external project")
 
     set(DEPENDS)
-    if (TARGET ep_curl)
+    if (NOT WIN32 AND TARGET ep_curl)
       list(APPEND DEPENDS ep_curl)
     endif()
-    if (TARGET ep_openssl)
+    if (NOT WIN32 AND TARGET ep_openssl)
       list(APPEND DEPENDS ep_openssl)
     endif()
     if (TARGET ep_zlib)
@@ -127,7 +120,7 @@ if (NOT AWSSDK_FOUND)
     # For aws sdk and gcc we must always build in release mode
     # See https://github.com/TileDB-Inc/TileDB/issues/1351 and
     # https://github.com/awslabs/aws-checksums/issues/8
-    set(AWS_CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE})
+    set(AWS_CMAKE_BUILD_TYPE $<CONFIG>)
     if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         set(AWS_CMAKE_BUILD_TYPE "Release")
     endif()
@@ -145,14 +138,6 @@ if (NOT AWSSDK_FOUND)
       set(CMAKE_GENERATOR_PLATFORM "")
     endif()
 
-    if (WIN32)
-      find_package(Git REQUIRED)
-      set(CONDITIONAL_PATCH cd ${CMAKE_SOURCE_DIR} && ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsccommon.patch &&
-                                                      ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsconfig_cmake_3.22.patch)
-    else()
-      set(CONDITIONAL_PATCH patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsccommon.patch &&
-                            patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsconfig_cmake_3.22.patch)
-    endif()
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR NOT WIN32)
       set(CONDITIONAL_CXX_FLAGS "-DCMAKE_CXX_FLAGS=-Wno-nonnull -Wno-error=deprecated-declarations")
     endif()
@@ -161,13 +146,13 @@ if (NOT AWSSDK_FOUND)
       PREFIX "externals"
       # Set download name to avoid collisions with only the version number in the filename
       DOWNLOAD_NAME ep_awssdk.zip
-      URL "https://github.com/aws/aws-sdk-cpp/archive/1.8.84.zip"
-      URL_HASH SHA1=e32a53a01c75ca7fdfe9feed9c5bbcedd98708e3
-      PATCH_COMMAND
-        ${CONDITIONAL_PATCH}
+      # We download with git clone because the repository has submodules
+      GIT_REPOSITORY "https://github.com/aws/aws-sdk-cpp.git"
+      GIT_TAG "1.11.160"
       CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=${AWS_CMAKE_BUILD_TYPE}
         -DENABLE_TESTING=OFF
+        -DAWS_SDK_WARNINGS_ARE_ERRORS=OFF
         -DBUILD_ONLY=s3\\$<SEMICOLON>core\\$<SEMICOLON>identity-management\\$<SEMICOLON>sts
         -DBUILD_SHARED_LIBS=OFF
         -DCMAKE_INSTALL_BINDIR=lib
@@ -239,9 +224,4 @@ if (AWSSDK_FOUND)
 
   endforeach ()
 
-  # the AWSSDK does not include links to some transitive dependencies
-  # ref: github<dot>com/aws<slash>aws-sdk-cpp/issues/1074#issuecomment-466252911
-  if (WIN32)
-    list(APPEND AWS_EXTRA_LIBS userenv ws2_32 wininet winhttp bcrypt version)
-  endif()
 endif ()

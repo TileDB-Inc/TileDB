@@ -71,10 +71,13 @@ class Reader : public ReaderBase, public IQueryStrategy {
       Array* array,
       Config& config,
       std::unordered_map<std::string, QueryBuffer>& buffers,
+      std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
       Subarray& subarray,
       Layout layout,
       std::optional<QueryCondition>& condition,
-      bool skip_checks_serialization = false);
+      DefaultChannelAggregates& default_channel_aggregates,
+      bool skip_checks_serialization = false,
+      bool remote_query = false);
 
   /** Destructor. */
   ~Reader() = default;

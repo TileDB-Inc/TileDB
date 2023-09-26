@@ -256,12 +256,18 @@ Status Group::close() {
     } else if (
         query_type_ == QueryType::WRITE ||
         query_type_ == QueryType::MODIFY_EXCLUSIVE) {
-      // If changes haven't been applied, apply them
-      if (!changes_applied_) {
-        RETURN_NOT_OK(group_details_->apply_pending_changes());
-        changes_applied_ = group_details_->changes_applied();
+      try {
+        // If changes haven't been applied, apply them
+        if (!changes_applied_) {
+          RETURN_NOT_OK(group_details_->apply_pending_changes());
+          changes_applied_ = group_details_->changes_applied();
+        }
+        RETURN_NOT_OK(storage_manager_->group_close_for_writes(this));
+      } catch (StatusException& exc) {
+        std::string msg = exc.what();
+        msg += " : Was storage for the group moved or deleted before closing?";
+        throw GroupStatusException(msg);
       }
-      RETURN_NOT_OK(storage_manager_->group_close_for_writes(this));
     }
   }
 
@@ -310,35 +316,37 @@ void Group::delete_group(const URI& uri, bool recursive) {
         "[delete_group] Query type must be MODIFY_EXCLUSIVE");
   }
 
-  // Delete group members within the group when deleting recursively
-  if (recursive) {
-    for (auto member_entry : members()) {
-      const auto& member = member_entry.second;
-      URI member_uri = member->uri();
-      if (member->relative()) {
-        member_uri = group_uri_.join_path(member->uri().to_string());
-      }
-
-      if (member->type() == ObjectType::ARRAY) {
-        storage_manager_->delete_array(member_uri.to_string().c_str());
-      } else if (member->type() == ObjectType::GROUP) {
-        Group group_rec(member_uri, storage_manager_);
-        throw_if_not_ok(group_rec.open(QueryType::MODIFY_EXCLUSIVE));
-        group_rec.delete_group(member_uri, true);
-      }
-    }
-  }
-
   // Delete group data
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
       throw GroupStatusException(
           "[delete_group] Remote group with no REST client.");
-    rest_client->delete_group_from_rest(uri);
+    rest_client->delete_group_from_rest(uri, recursive);
   } else {
+    // Delete group members within the group when deleting recursively
+    if (recursive) {
+      for (auto member_entry : members()) {
+        const auto& member = member_entry.second;
+        URI member_uri = member->uri();
+        if (member->relative()) {
+          member_uri = group_uri_.join_path(member->uri().to_string());
+        }
+
+        if (member->type() == ObjectType::ARRAY) {
+          storage_manager_->delete_array(member_uri.to_string().c_str());
+        } else if (member->type() == ObjectType::GROUP) {
+          Group group_rec(member_uri, storage_manager_);
+          throw_if_not_ok(group_rec.open(QueryType::MODIFY_EXCLUSIVE));
+          group_rec.delete_group(member_uri, true);
+        }
+      }
+    }
     storage_manager_->delete_group(uri.c_str());
   }
+  // Clear metadata and other pending changes to avoid patching a deleted group.
+  metadata_.clear();
+  throw_if_not_ok(group_details_->clear());
 
   // Close the deleted group
   throw_if_not_ok(this->close());

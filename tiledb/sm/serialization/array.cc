@@ -92,7 +92,8 @@ Status metadata_from_capnp(
 
   for (size_t i = 0; i < num_entries; i++) {
     auto entry_reader = entries_reader[i];
-    std::string key = entry_reader.getKey();
+    auto key = std::string{std::string_view{
+        entry_reader.getKey().cStr(), entry_reader.getKey().size()}};
     Datatype type = Datatype::UINT8;
     RETURN_NOT_OK(datatype_enum(entry_reader.getType(), &type));
     uint32_t value_num = entry_reader.getValueNum();
@@ -133,6 +134,10 @@ Status array_to_capnp(
 
   array_builder->setQueryType(query_type_str(array->get_query_type()));
 
+  if (array->use_refactored_array_open() && array->serialize_enumerations()) {
+    array->load_all_enumerations();
+  }
+
   const auto& array_schema_latest = array->array_schema_latest();
   auto array_schema_latest_builder = array_builder->initArraySchemaLatest();
   RETURN_NOT_OK(array_schema_to_capnp(
@@ -166,6 +171,14 @@ Status array_to_capnp(
                 fragment_metadata_all.size());
         for (size_t i = 0; i < fragment_metadata_all.size(); i++) {
           auto fragment_metadata_builder = fragment_metadata_all_builder[i];
+
+          // Old fragment with zipped coordinates didn't have a format that
+          // allow to dynamically load tile offsets and sizes and since they all
+          // get loaded at array open, we need to serialize them here.
+          if (fragment_metadata_all[i]->version() <= 2) {
+            fragment_meta_sizes_offsets_to_capnp(
+                *fragment_metadata_all[i], &fragment_metadata_builder);
+          }
           RETURN_NOT_OK(fragment_metadata_to_capnp(
               *fragment_metadata_all[i], &fragment_metadata_builder));
         }
@@ -217,10 +230,10 @@ Status array_from_capnp(
   // want to serialized a query object TileDB >= 2.5 no longer needs to receive
   // the array URI
   if (array_reader.hasUri()) {
-    RETURN_NOT_OK(array->set_uri_serialized(array_reader.getUri().cStr()));
+    array->set_uri_serialized(array_reader.getUri().cStr());
   }
-  RETURN_NOT_OK(array->set_timestamp_start(array_reader.getStartTimestamp()));
-  RETURN_NOT_OK(array->set_timestamp_end(array_reader.getEndTimestamp()));
+  array->set_timestamp_start(array_reader.getStartTimestamp());
+  array->set_timestamp_end(array_reader.getEndTimestamp());
 
   if (array_reader.hasQueryType()) {
     auto query_type_str = array_reader.getQueryType();
@@ -231,17 +244,16 @@ Status array_from_capnp(
       array->set_serialized_array_open();
     }
 
-    RETURN_NOT_OK(array->set_timestamp_end_opened_at(
-        array_reader.getOpenedAtEndTimestamp()));
+    array->set_timestamp_end_opened_at(array_reader.getOpenedAtEndTimestamp());
     if (array->timestamp_end_opened_at() == UINT64_MAX) {
       if (query_type == QueryType::READ) {
-        RETURN_NOT_OK(array->set_timestamp_end_opened_at(
-            tiledb::sm::utils::time::timestamp_now_ms()));
+        array->set_timestamp_end_opened_at(
+            tiledb::sm::utils::time::timestamp_now_ms());
       } else if (
           query_type == QueryType::WRITE ||
           query_type == QueryType::MODIFY_EXCLUSIVE ||
           query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
-        RETURN_NOT_OK(array->set_timestamp_end_opened_at(0));
+        array->set_timestamp_end_opened_at(0);
       } else {
         throw StatusException(Status_SerializationError(
             "Cannot open array; Unsupported query type."));

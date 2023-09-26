@@ -49,6 +49,7 @@ namespace sm {
 
 class Buffer;
 class FilterStorage;
+enum class Datatype : uint8_t;
 
 /**
  * Class that manages an ordered list of multiple separate buffers and offers as
@@ -108,6 +109,22 @@ class FilterBuffer {
    * making up this FilterBuffer.
    */
   std::vector<ConstBuffer> buffers() const;
+
+  /**
+   * Return a list of ConstBuffers representing the multiple separate buffers
+   * making up this FilterBuffer reinterpreted as Datatype. If datatype is ANY,
+   * buffers will be returned unchanged.
+   *
+   * @param datatype Datatype to reinterpret buffer data.
+   */
+  std::vector<ConstBuffer> buffers_as(Datatype datatype) const;
+
+  /**
+   * Return a list of ConstBuffers representing the multiple separate buffers
+   * making up this FilterBuffer reinterpreted as type T.
+   */
+  template <typename T>
+  std::vector<ConstBuffer> buffers_as() const;
 
   /**
    * Return a pointer to the underlying buffer at the given index. It is allowed

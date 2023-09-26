@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -92,27 +92,6 @@ Domain::Domain(
   set_tile_cell_order_cmp_funcs();
 }
 
-Domain::Domain(const Domain* domain) {
-  cell_num_per_tile_ = domain->cell_num_per_tile_;
-  cell_order_ = domain->cell_order_;
-  dim_num_ = domain->dim_num_;
-  cell_order_cmp_func_ = domain->cell_order_cmp_func_;
-  cell_order_cmp_func_2_ = domain->cell_order_cmp_func_2_;
-  tile_order_cmp_func_ = domain->tile_order_cmp_func_;
-
-  const auto n_dimensions{domain->dimensions_.size()};
-  dimensions_.reserve(n_dimensions);
-  for (const auto& dim : domain->dimensions_) {
-    dimensions_.emplace_back(dim);
-  }
-  dimension_ptrs_.reserve(n_dimensions);
-  for (const auto dim_ptr : domain->dimension_ptrs_) {
-    dimension_ptrs_.emplace_back(dim_ptr);
-  }
-
-  tile_order_ = domain->tile_order_;
-}
-
 Domain::Domain(Domain&& rhs)
     : cell_num_per_tile_(rhs.cell_num_per_tile_)
     , cell_order_(rhs.cell_order_)
@@ -160,6 +139,10 @@ Status Domain::add_dimension(shared_ptr<Dimension> dim) {
   dimensions_.emplace_back(dim);
   dimension_ptrs_.emplace_back(p);
   ++dim_num_;
+
+  // Compute number of cells per tile
+  compute_cell_num_per_tile();
+
   return Status::Ok();
 }
 
@@ -333,7 +316,8 @@ shared_ptr<Domain> Domain::deserialize(
     Deserializer& deserializer,
     uint32_t version,
     Layout cell_order,
-    Layout tile_order) {
+    Layout tile_order,
+    FilterPipeline& coords_filters) {
   Status st;
   // Load type
   Datatype type = Datatype::INT32;
@@ -345,7 +329,8 @@ shared_ptr<Domain> Domain::deserialize(
   std::vector<shared_ptr<Dimension>> dimensions;
   auto dim_num = deserializer.read<uint32_t>();
   for (uint32_t i = 0; i < dim_num; ++i) {
-    auto dim{Dimension::deserialize(deserializer, version, type)};
+    auto dim{
+        Dimension::deserialize(deserializer, version, type, coords_filters)};
     dimensions.emplace_back(std::move(dim));
   }
 
@@ -367,11 +352,10 @@ NDRange Domain::domain() const {
 }
 
 const Dimension* Domain::dimension_ptr(const std::string& name) const {
-  return dimension_shared_ptr(name).get();
+  return shared_dimension(name).get();
 }
 
-shared_ptr<Dimension> Domain::dimension_shared_ptr(
-    const std::string& name) const {
+shared_ptr<Dimension> Domain::shared_dimension(const std::string& name) const {
   for (dimension_size_type i = 0; i < dim_num_; i++) {
     const auto dim = dimension_ptrs_[i];
     if (dim->name() == name) {
@@ -553,28 +537,6 @@ Status Domain::get_dimension_index(
 
   return Status_DomainError(
       "Cannot get dimension index; Invalid dimension name");
-}
-
-Status Domain::init(Layout cell_order, Layout tile_order) {
-  // Set cell and tile order
-  cell_order_ = cell_order;
-  tile_order_ = tile_order;
-
-  // Compute number of cells per tile
-  compute_cell_num_per_tile();
-
-  // Compute the tile/cell order cmp functions
-  set_tile_cell_order_cmp_funcs();
-
-  // Set tile_extent to empty if cell order is HILBERT
-  if (cell_order_ == Layout::HILBERT) {
-    ByteVecValue be;
-    for (auto& d : dimensions_) {
-      RETURN_NOT_OK(d->set_tile_extent(be));
-    }
-  }
-
-  return Status::Ok();
 }
 
 bool Domain::null_tile_extents() const {

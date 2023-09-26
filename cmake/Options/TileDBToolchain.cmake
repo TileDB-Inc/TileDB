@@ -2,14 +2,8 @@
 # TileDB Toolchain Setup
 ############################################################
 
-# Only enable vcpkg on Azure and GCS builds for now
-if (NOT TILEDB_VCPKG AND NOT (TILEDB_AZURE OR TILEDB_GCS))
+if (NOT TILEDB_VCPKG)
     return()
-endif()
-
-# For testing we're using --enable-gcs or --enable-azure
-if((TILEDB_AZURE OR TILEDB_GCS) AND NOT TILEDB_VCPKG)
-    set(TILEDB_VCPKG ON)
 endif()
 
 # We've already run vcpkg by the time the super build is finished
@@ -28,6 +22,14 @@ else()
         CACHE STRING "Vcpkg toolchain file")
 endif()
 
+if(APPLE AND NOT DEFINED VCPKG_TARGET_TRIPLET)
+    if (CMAKE_OSX_ARCHITECTURES STREQUAL x86_64 OR CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64)|(AMD64|amd64)|(^i.86$)")
+        set(VCPKG_TARGET_TRIPLET "x64-macos")
+    elseif (CMAKE_OSX_ARCHITECTURES STREQUAL arm64 OR CMAKE_SYSTEM_PROCESSOR MATCHES "^aarch64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "^arm")
+        set(VCPKG_TARGET_TRIPLET "arm64-macos")
+    endif()
+endif()
+
 set(VCPKG_INSTALL_OPTIONS "--no-print-usage")
 
 macro(tiledb_vcpkg_enable_if tiledb_feature vcpkg_feature)
@@ -36,7 +38,6 @@ macro(tiledb_vcpkg_enable_if tiledb_feature vcpkg_feature)
     endif()
 endmacro()
 
-tiledb_vcpkg_enable_if(TILEDB_ABSEIL "abseil")
 tiledb_vcpkg_enable_if(TILEDB_AZURE "azure")
 tiledb_vcpkg_enable_if(TILEDB_GCS "gcs")
 tiledb_vcpkg_enable_if(TILEDB_SERIALIZATION "serialization")

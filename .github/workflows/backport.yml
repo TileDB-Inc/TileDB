@@ -11,10 +11,20 @@ on:
 
 jobs:
   backport:
-    runs-on: ubuntu-22.04
     name: Backport
+    runs-on: ubuntu-22.04
+    if: >
+      github.event.pull_request.merged &&
+      (
+        github.event.action == 'closed' ||
+        (
+          github.event.action == 'labeled' &&
+          contains(github.event.label.name, 'backport')
+        )
+      )
     steps:
       - name: Backport
-        uses: tibdex/backport@v1
+        uses: zephyrproject-rtos/action-backport@v2.0.3-3
         with:
+          issue_labels: Backport
           github_token: ${{ secrets.GITHUB_TOKEN }}

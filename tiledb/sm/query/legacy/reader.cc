@@ -110,10 +110,13 @@ Reader::Reader(
     Array* array,
     Config& config,
     std::unordered_map<std::string, QueryBuffer>& buffers,
+    std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
     Subarray& subarray,
     Layout layout,
     std::optional<QueryCondition>& condition,
-    bool skip_checks_serialization)
+    DefaultChannelAggregates& default_channel_aggregates,
+    bool skip_checks_serialization,
+    bool remote_query)
     : ReaderBase(
           stats,
           logger->clone("Reader", ++logger_id_),
@@ -121,13 +124,20 @@ Reader::Reader(
           array,
           config,
           buffers,
+          aggregate_buffers,
           subarray,
           layout,
-          condition) {
+          condition,
+          default_channel_aggregates) {
   // Sanity checks
   if (storage_manager_ == nullptr) {
     throw ReaderStatusException(
         "Cannot initialize reader; Storage manager not set");
+  }
+
+  if (!default_channel_aggregates.empty()) {
+    throw ReaderStatusException(
+        "Cannot initialize reader; Reader cannot process aggregates");
   }
 
   if (!skip_checks_serialization && buffers_.empty()) {
@@ -141,7 +151,7 @@ Reader::Reader(
   }
 
   // Check subarray
-  check_subarray();
+  check_subarray(remote_query && array->array_schema_latest().dense());
 
   // Initialize the read state
   init_read_state();
@@ -720,8 +730,7 @@ Status Reader::compute_sparse_result_tiles(
           auto pair = std::pair<unsigned, uint64_t>(f, t);
           // Add tile only if it does not already exist
           if (result_tile_map->find(pair) == result_tile_map->end()) {
-            result_tiles.emplace_back(
-                f, t, *(fragment_metadata_[f]->array_schema()).get());
+            result_tiles.emplace_back(f, t, *fragment_metadata_[f].get());
             (*result_tile_map)[pair] = result_tiles.size() - 1;
           }
           // Always check range for multiple fragments or fragments with
@@ -740,8 +749,7 @@ Status Reader::compute_sparse_result_tiles(
         auto pair = std::pair<unsigned, uint64_t>(f, t);
         // Add tile only if it does not already exist
         if (result_tile_map->find(pair) == result_tile_map->end()) {
-          result_tiles.emplace_back(
-              f, t, *(fragment_metadata_[f]->array_schema()).get());
+          result_tiles.emplace_back(f, t, *fragment_metadata_[f].get());
           (*result_tile_map)[pair] = result_tiles.size() - 1;
         }
         // Always check range for multiple fragments or fragments with
@@ -1006,8 +1014,8 @@ Status Reader::copy_partitioned_fixed_cells(
     // for this tile.
     const bool split_buffer_for_zipped_coords =
         is_dim && cs.tile_->stores_zipped_coords();
-    const bool field_not_present =
-        (is_dim || is_attr) && cs.tile_->tile_tuple(*name) == nullptr;
+    const bool field_not_present = (is_dim || is_attr) && cs.tile_ != nullptr &&
+                                   cs.tile_->tile_tuple(*name) == nullptr;
     if ((cs.tile_ == nullptr || field_not_present) &&
         !split_buffer_for_zipped_coords) {  // Empty range or attributed added
                                             // in schema evolution
@@ -1207,18 +1215,13 @@ Status Reader::compute_var_cell_destinations(
     auto cs_length = cs.length_;
 
     // Get tile information, if the range is nonempty.
-    uint64_t* tile_offsets = nullptr;
-    uint64_t tile_cell_num = 0;
-    uint64_t tile_var_size = 0;
+    offsets_t* tile_offsets = nullptr;
     if (cs.tile_ != nullptr && cs.tile_->tile_tuple(name) != nullptr) {
       const auto tile_tuple = cs.tile_->tile_tuple(name);
       const auto& tile = tile_tuple->fixed_tile();
-      const auto& tile_var = tile_tuple->var_tile();
 
       // Get the internal buffer to the offset values.
-      tile_offsets = (uint64_t*)tile.data();
-      tile_cell_num = tile.cell_num();
-      tile_var_size = tile_var.size();
+      tile_offsets = tile.data_as<offsets_t>();
     }
 
     // Compute the destinations for each cell in the range.
@@ -1232,10 +1235,7 @@ Status Reader::compute_var_cell_destinations(
       if (cs.tile_ == nullptr || cs.tile_->tile_tuple(name) == nullptr) {
         cell_var_size = fill_value_size;
       } else {
-        cell_var_size =
-            (cell_idx != tile_cell_num - 1) ?
-                tile_offsets[cell_idx + 1] - tile_offsets[cell_idx] :
-                tile_var_size - (tile_offsets[cell_idx] - tile_offsets[0]);
+        cell_var_size = tile_offsets[cell_idx + 1] - tile_offsets[cell_idx];
       }
 
       if (*total_offset_size + offset_size > buffer_size ||
@@ -1314,10 +1314,9 @@ Status Reader::copy_partitioned_var_cells(
     auto cs_length = cs.length_;
 
     // Get tile information, if the range is nonempty.
-    uint64_t* tile_offsets = nullptr;
+    offsets_t* tile_offsets = nullptr;
     Tile* tile_var = nullptr;
     Tile* tile_validity = nullptr;
-    uint64_t tile_cell_num = 0;
     if (cs.tile_ != nullptr && cs.tile_->tile_tuple(*name) != nullptr) {
       const auto tile_tuple = cs.tile_->tile_tuple(*name);
       Tile* const tile = &tile_tuple->fixed_tile();
@@ -1325,8 +1324,7 @@ Status Reader::copy_partitioned_var_cells(
       tile_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
 
       // Get the internal buffer to the offset values.
-      tile_offsets = (uint64_t*)tile->data();
-      tile_cell_num = tile->cell_num();
+      tile_offsets = tile->data_as<offsets_t>();
     }
 
     // Copy each cell in the range
@@ -1357,9 +1355,7 @@ Status Reader::copy_partitioned_var_cells(
               constants::cell_validity_size);
       } else {
         const uint64_t cell_var_size =
-            (cell_idx != tile_cell_num - 1) ?
-                tile_offsets[cell_idx + 1] - tile_offsets[cell_idx] :
-                tile_var->size() - (tile_offsets[cell_idx] - tile_offsets[0]);
+            tile_offsets[cell_idx + 1] - tile_offsets[cell_idx];
         const uint64_t tile_var_offset =
             tile_offsets[cell_idx] - tile_offsets[0];
 

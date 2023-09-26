@@ -40,12 +40,12 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-NoopFilter::NoopFilter()
-    : Filter(FilterType::FILTER_NONE) {
+NoopFilter::NoopFilter(Datatype filter_data_type)
+    : Filter(FilterType::FILTER_NONE, filter_data_type) {
 }
 
 NoopFilter* NoopFilter::clone_impl() const {
-  return new NoopFilter;
+  return tdb_new(NoopFilter, filter_data_type_);
 }
 
 void NoopFilter::dump(FILE* out) const {

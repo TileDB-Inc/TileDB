@@ -307,8 +307,9 @@ Status Subarray::add_range(
   if (oob_warning.has_value())
     LOG_WARN(oob_warning.value() + " on dimension '" + dim_name + "'");
 
-  // Update is default.
+  // Update is default and stats counter.
   is_default_[dim_idx] = range_subset_[dim_idx].is_implicitly_initialized();
+  stats_->add_counter("add_range_dim_" + std::to_string(dim_idx), 1);
   return Status::Ok();
 }
 
@@ -862,6 +863,12 @@ bool Subarray::coincides_with_tiles() const {
   return true;
 }
 
+void Subarray::check_oob() {
+  for (auto& subset : range_subset_) {
+    subset.check_oob();
+  }
+}
+
 template <class T>
 Subarray Subarray::crop_to_tile(const T* tile_coords, Layout layout) const {
   // TBD: is it ok that Subarray log id will increase as if it's a new subarray?
@@ -1121,9 +1128,10 @@ Status Subarray::set_coalesce_ranges(bool coalesce_ranges) {
 }
 
 Status Subarray::to_byte_vec(std::vector<uint8_t>* byte_vec) const {
-  if (range_num() != 1)
+  if (range_num() != 1) {
     return logger_->status(Status_SubarrayError(
         "Cannot export to byte vector; The subarray must be unary"));
+  }
 
   byte_vec->clear();
 
@@ -1306,12 +1314,6 @@ Status Subarray::get_est_result_size_nullable(
         Status_SubarrayError("Cannot get estimated result size; "
                              "Attribute must be nullable"));
 
-  if (array_->is_remote() && !this->est_result_size_computed()) {
-    return LOG_STATUS(Status_SubarrayError(
-        "Error in query estimate result size; unimplemented "
-        "for nullable attributes in remote arrays."));
-  }
-
   // Compute tile overlap for each fragment
   RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
   *size = static_cast<uint64_t>(std::ceil(est_result_size_[name].size_fixed_));
@@ -1368,12 +1370,6 @@ Status Subarray::get_est_result_size_nullable(
     return logger_->status(
         Status_SubarrayError("Cannot get estimated result size; "
                              "Attribute must be nullable"));
-
-  if (array_->is_remote() && !this->est_result_size_computed()) {
-    return LOG_STATUS(Status_SubarrayError(
-        "Error in query estimate result size; unimplemented "
-        "for nullable attributes in remote arrays."));
-  }
 
   // Compute tile overlap for each fragment
   RETURN_NOT_OK(compute_est_result_size(config, compute_tp));
@@ -1666,8 +1662,9 @@ uint64_t Subarray::range_idx(const std::vector<uint64_t>& range_coords) const {
 }
 
 uint64_t Subarray::range_num() const {
-  if (range_subset_.empty())
+  if (range_subset_.empty()) {
     return 0;
+  }
 
   uint64_t ret = 1;
   for (const auto& subset : range_subset_) {
@@ -2006,6 +2003,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
               mem_vec[i].size_validity_ +=
                   tile_size / cell_size * constants::cell_validity_size;
           } else {
+            tile_size -= constants::cell_var_offset_size;
             auto tile_var_size = meta->tile_var_size(names[i], ft.second);
             mem_vec[i].size_fixed_ += tile_size;
             mem_vec[i].size_var_ += tile_var_size;
@@ -2051,29 +2049,30 @@ Status Subarray::set_est_result_size(
   return Status::Ok();
 }
 
-Status Subarray::sort_ranges(ThreadPool* const compute_tp) {
+void Subarray::sort_and_merge_ranges(ThreadPool* const compute_tp) {
   std::scoped_lock<std::mutex> lock(ranges_sort_mtx_);
   if (ranges_sorted_)
-    return Status::Ok();
+    return;
 
-  auto timer = stats_->start_timer("sort_ranges");
-  auto st = parallel_for(
+  auto merge = config_.get<bool>(
+      "sm.merge_overlapping_ranges_experimental", Config::MustFindMarker());
+
+  // Sort and conditionally merge ranges
+  auto timer = stats_->start_timer("sort_and_merge_ranges");
+  throw_if_not_ok(parallel_for(
       compute_tp,
       0,
       array_->array_schema_latest().dim_num(),
       [&](uint64_t dim_idx) {
-        return range_subset_[dim_idx].sort_ranges(compute_tp);
-      });
-
-  RETURN_NOT_OK(st);
+        range_subset_[dim_idx].sort_and_merge_ranges(compute_tp, merge);
+        return Status::Ok();
+      }));
   ranges_sorted_ = true;
-
-  return Status::Ok();
 }
 
 tuple<Status, optional<bool>> Subarray::non_overlapping_ranges(
     ThreadPool* const compute_tp) {
-  RETURN_NOT_OK_TUPLE(sort_ranges(compute_tp), nullopt);
+  sort_and_merge_ranges(compute_tp);
 
   std::atomic<bool> non_overlapping_ranges = true;
   auto st = parallel_for(
@@ -2314,6 +2313,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
                   tile_size / attr_datatype_size *
                   constants::cell_validity_size;
           } else {
+            tile_size -= constants::cell_var_offset_size;
             (*result_sizes)[n].size_fixed_ += tile_size;
             auto tile_var_size = meta->tile_var_size(names[n], tid);
             (*result_sizes)[n].size_var_ += tile_var_size;
@@ -2353,6 +2353,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
                 ratio;
 
         } else {
+          tile_size -= constants::cell_var_offset_size;
           (*result_sizes)[n].size_fixed_ += tile_size * ratio;
           auto tile_var_size = meta->tile_var_size(names[n], tid);
           (*result_sizes)[n].size_var_ += tile_var_size * ratio;
@@ -2625,18 +2626,15 @@ Status Subarray::precompute_tile_overlap(
 Status Subarray::precompute_all_ranges_tile_overlap(
     ThreadPool* const compute_tp,
     std::vector<FragIdx>& frag_tile_idx,
-    std::vector<std::vector<std::pair<uint64_t, uint64_t>>>*
-        result_tile_ranges) {
+    ITileRange* tile_ranges) {
   auto timer_se = stats_->start_timer("read_compute_simple_tile_overlap");
 
   // For easy reference.
   const auto meta = array_->fragment_metadata();
-  const auto fragment_num = meta.size();
   const auto dim_num = array_->array_schema_latest().dim_num();
 
   // Get the results ready.
-  result_tile_ranges->clear();
-  result_tile_ranges->resize(fragment_num);
+  tile_ranges->clear_tile_ranges();
 
   compute_range_offsets();
 
@@ -2716,7 +2714,7 @@ Status Subarray::precompute_all_ranges_tile_overlap(
 
           if (!comb) {
             if (length != 0) {
-              result_tile_ranges->at(f).emplace_back(end + 1 - length, end);
+              tile_ranges->add_tile_range(f, end + 1 - length, end);
               length = 0;
             }
 
@@ -2727,12 +2725,15 @@ Status Subarray::precompute_all_ranges_tile_overlap(
         }
 
         // Push the last result tile range.
-        if (length != 0)
-          result_tile_ranges->at(f).emplace_back(end + 1 - length, end);
+        if (length != 0) {
+          tile_ranges->add_tile_range(f, end + 1 - length, end);
+        }
 
         return Status::Ok();
       });
   RETURN_NOT_OK(status);
+
+  tile_ranges->done_adding_tile_ranges();
 
   return Status::Ok();
 }

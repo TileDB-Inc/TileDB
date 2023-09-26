@@ -29,10 +29,22 @@
  *
  * This file defines some vfs-specific test suite helper functions.
  */
-#include "test/support/src/vfs_helpers.h"
+
+// The order of header includes is important here. serialization_wrappers.h
+// must be included before tdb_catch.h or anything that includes tdb_catch.h.
+// This is due to catch2 including Windows.h which defines things that break
+// compiling TileDB.
+//
+// The blank line between serialization_wrappers.h and the other three headers
+// is also important because clang-format will treat these as separate blocks
+// of includes. If they were one block, then clang-format would insist they
+// were sorted which means that serialization_wrappers.h would be included
+// after tdb_catch.h.
+#include "test/support/src/serialization_wrappers.h"
+
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
-#include "test/support/src/serialization_wrappers.h"
+#include "test/support/src/vfs_helpers.h"
 
 namespace tiledb {
 namespace test {
@@ -111,8 +123,24 @@ Status vfs_test_close(
   return Status::Ok();
 }
 
+void vfs_test_remove_temp_dir(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const std::string& path) {
+  int is_dir = 0;
+  REQUIRE(tiledb_vfs_is_dir(ctx, vfs, path.c_str(), &is_dir) == TILEDB_OK);
+  if (is_dir) {
+    REQUIRE(tiledb_vfs_remove_dir(ctx, vfs, path.c_str()) == TILEDB_OK);
+  }
+}
+
+void vfs_test_create_temp_dir(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const std::string& path) {
+  vfs_test_remove_temp_dir(ctx, vfs, path);
+  REQUIRE(tiledb_vfs_create_dir(ctx, vfs, path.c_str()) == TILEDB_OK);
+}
+
 Status SupportedFsS3::prepare_config(
-    tiledb_config_t* config, tiledb_error_t* error) {
+    [[maybe_unused]] tiledb_config_t* config,
+    [[maybe_unused]] tiledb_error_t* error) {
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
   REQUIRE(
       tiledb_config_set(
@@ -143,10 +171,10 @@ Status SupportedFsS3::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
     // between each retry if the bucket create fails here.
     for (int i = 0; i < 5; ++i) {
       rc = tiledb_vfs_create_bucket(ctx, vfs, s3_bucket_.c_str());
-      if (rc == TILEDB_OK)
+      if (rc == TILEDB_OK) {
         break;
-      else
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+      }
+      std::this_thread::sleep_for(std::chrono::seconds(1));
     }
     REQUIRE(rc == TILEDB_OK);
   }

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,15 @@
  * @section DESCRIPTION
  *
  * This file implements the S3 class.
+ *
+ * ============================================================================
+ * Notes on implementation limitations:
+ *
+ * When using MinIO object storage, files may mask Array directories
+ * if they are of the same name. As such, the ArrayDirectory may filter out
+ * non-empty directories. Users should be aware of this limitation and attempt
+ * to manually maintain their working directory to avoid test failures.
+ * ============================================================================
  */
 
 #ifdef HAVE_S3
@@ -39,6 +48,7 @@
 #include <aws/core/utils/logging/DefaultLogSystem.h>
 #include <aws/core/utils/logging/LogLevel.h>
 #include <aws/core/utils/memory/stl/AWSString.h>
+#include <aws/core/utils/memory/stl/AWSStringStream.h>
 #include <aws/s3/model/AbortMultipartUploadRequest.h>
 #include <aws/s3/model/CreateMultipartUploadRequest.h>
 #include <boost/interprocess/streams/bufferstream.hpp>
@@ -47,7 +57,8 @@
 
 #include "tiledb/common/logger.h"
 #include "tiledb/common/unique_rwlock.h"
-#include "tiledb/platform/cert_file.h"
+#include "tiledb/platform/platform.h"
+#include "tiledb/sm/filesystem/ssl_config.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
@@ -62,6 +73,7 @@
 #endif
 
 #include "tiledb/sm/filesystem/s3.h"
+#include "tiledb/sm/filesystem/s3/STSProfileWithWebIdentityCredentialsProvider.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 
 using tiledb::common::filesystem::directory_entry;
@@ -163,10 +175,44 @@ namespace {
  */
 template <typename R, typename E>
 std::string outcome_error_message(const Aws::Utils::Outcome<R, E>& outcome) {
-  return std::string("\nException:  ") +
-         outcome.GetError().GetExceptionName().c_str() +
-         std::string("\nError message:  ") +
-         outcome.GetError().GetMessage().c_str();
+  if (outcome.IsSuccess()) {
+    return "Success";
+  }
+
+  auto err = outcome.GetError();
+  Aws::StringStream ss;
+
+  ss << "[Error Type: " << static_cast<int>(err.GetErrorType()) << "]"
+     << " [HTTP Response Code: " << static_cast<int>(err.GetResponseCode())
+     << "]";
+
+  if (!err.GetExceptionName().empty()) {
+    ss << " [Exception: " << err.GetExceptionName() << "]";
+  }
+
+  // For some reason, these symbols are not exposed when building with MINGW
+  // so for now we just disable adding the tags on Windows.
+  if constexpr (!platform::is_os_windows) {
+    if (!err.GetRemoteHostIpAddress().empty()) {
+      ss << " [Remote IP: " << err.GetRemoteHostIpAddress() << "]";
+    }
+
+    if (!err.GetRequestId().empty()) {
+      ss << " [Request ID: " << err.GetRequestId() << "]";
+    }
+  }
+
+  if (err.GetResponseHeaders().size() > 0) {
+    ss << " [Headers:";
+    for (auto&& h : err.GetResponseHeaders()) {
+      ss << " '" << h.first << "' = '" << h.second << "'";
+    }
+    ss << "]";
+  }
+
+  ss << " : " << err.GetMessage();
+
+  return ss.str();
 }
 
 }  // namespace
@@ -469,10 +515,7 @@ Status S3::disconnect() {
   }
 
   if (s3_tp_executor_) {
-    const Status st = s3_tp_executor_->Stop();
-    if (!st.ok()) {
-      ret_st = st;
-    }
+    s3_tp_executor_->Stop();
   }
 
   state_ = State::DISCONNECTED;
@@ -702,18 +745,20 @@ Status S3::is_empty_bucket(const URI& bucket, bool* is_empty) const {
 
   bool exists;
   RETURN_NOT_OK(is_bucket(bucket, &exists));
-  if (!exists)
+  if (!exists) {
     return LOG_STATUS(Status_S3Error(
         "Cannot check if bucket is empty; Bucket does not exist"));
+  }
 
   Aws::Http::URI aws_uri = bucket.c_str();
-  Aws::S3::Model::ListObjectsRequest list_objects_request;
+  Aws::S3::Model::ListObjectsV2Request list_objects_request;
   list_objects_request.SetBucket(aws_uri.GetAuthority());
   list_objects_request.SetPrefix("");
   list_objects_request.SetDelimiter("/");
-  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET) {
     list_objects_request.SetRequestPayer(request_payer_);
-  auto list_objects_outcome = client_->ListObjects(list_objects_request);
+  }
+  auto list_objects_outcome = client_->ListObjectsV2(list_objects_request);
 
   if (!list_objects_outcome.IsSuccess()) {
     return LOG_STATUS(Status_S3Error(
@@ -816,22 +861,24 @@ tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
   Aws::Http::URI aws_uri = prefix_str.c_str();
   auto aws_prefix = remove_front_slash(aws_uri.GetPath().c_str());
   std::string aws_auth = aws_uri.GetAuthority().c_str();
-  Aws::S3::Model::ListObjectsRequest list_objects_request;
+  Aws::S3::Model::ListObjectsV2Request list_objects_request;
   list_objects_request.SetBucket(aws_uri.GetAuthority());
   list_objects_request.SetPrefix(aws_prefix.c_str());
   list_objects_request.SetDelimiter(delimiter.c_str());
-  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET)
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET) {
     list_objects_request.SetRequestPayer(request_payer_);
+  }
 
   std::vector<directory_entry> entries;
 
   bool is_done = false;
   while (!is_done) {
     // Not requesting more items than needed
-    if (max_paths != -1)
+    if (max_paths != -1) {
       list_objects_request.SetMaxKeys(
           max_paths - static_cast<int>(entries.size()));
-    auto list_objects_outcome = client_->ListObjects(list_objects_request);
+    }
+    auto list_objects_outcome = client_->ListObjectsV2(list_objects_request);
 
     if (!list_objects_outcome.IsSuccess()) {
       auto st = LOG_STATUS(Status_S3Error(
@@ -863,19 +910,15 @@ tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
         !list_objects_outcome.GetResult().GetIsTruncated() ||
         (max_paths != -1 && entries.size() >= static_cast<size_t>(max_paths));
     if (!is_done) {
-      // The documentation states that "GetNextMarker" will be non-empty only
-      // when the delimiter in the request is non-empty. When the delimiter is
-      // non-empty, we must used the last returned key as the next marker.
-      assert(
-          !delimiter.empty() ||
-          !list_objects_outcome.GetResult().GetContents().empty());
       Aws::String next_marker =
-          !delimiter.empty() ?
-              list_objects_outcome.GetResult().GetNextMarker() :
-              list_objects_outcome.GetResult().GetContents().back().GetKey();
-      assert(!next_marker.empty());
-
-      list_objects_request.SetMarker(std::move(next_marker));
+          list_objects_outcome.GetResult().GetNextContinuationToken();
+      if (next_marker.empty()) {
+        auto st =
+            LOG_STATUS(Status_S3Error("Failed to retrieve next continuation "
+                                      "token for ListObjectsV2 request."));
+        return {st, nullopt};
+      }
+      list_objects_request.SetContinuationToken(std::move(next_marker));
     }
   }
 
@@ -1349,22 +1392,38 @@ Status S3::init_client() const {
 
   std::lock_guard<std::mutex> lck(client_init_mtx_);
 
+  auto s3_config_source = config_.get<std::string>(
+      "vfs.s3.config_source", Config::MustFindMarker());
+  if (s3_config_source != "auto" && s3_config_source != "config_files" &&
+      s3_config_source != "sts_profile_with_web_identity") {
+    throw S3StatusException(
+        "Unknown 'vfs.s3.config_source' config value " + s3_config_source +
+        "; supported values are 'auto', 'config_files' and "
+        "'sts_profile_with_web_identity'");
+  }
+
+  auto aws_no_sign_request =
+      config_.get<bool>("vfs.s3.no_sign_request", Config::MustFindMarker());
+
   if (client_ != nullptr) {
-    // Check credentials. If expired, referesh it
+    // Check credentials. If expired, refresh it
     if (credentials_provider_) {
       Aws::Auth::AWSCredentials credentials =
           credentials_provider_->GetAWSCredentials();
-      if (credentials.IsExpiredOrEmpty()) {
+      if (credentials.IsExpired()) {
         return LOG_STATUS(
-            Status_S3Error(std::string("Credentials is expired or empty.")));
+            Status_S3Error(std::string("AWS credentials are expired.")));
+      } else if (!aws_no_sign_request && credentials.IsEmpty()) {
+        return LOG_STATUS(Status_S3Error(std::string(
+            "AWS credentials were not provided. For public S3 data, consider "
+            "setting the vfs.s3.no_sign_request config option.")));
       }
     }
     return Status::Ok();
   }
 
-  bool found;
-  auto s3_endpoint_override = config_.get("vfs.s3.endpoint_override", &found);
-  assert(found);
+  auto s3_endpoint_override = config_.get<std::string>(
+      "vfs.s3.endpoint_override", Config::MustFindMarker());
 
   // ClientConfiguration should be lazily init'ed here in init_client to avoid
   // potential slowdowns for non s3 users as the ClientConfig now attempts to
@@ -1383,120 +1442,86 @@ Status S3::init_client() const {
   if (!region_.empty())
     client_config.region = region_.c_str();
 
-  if (!s3_endpoint_override.empty())
-    client_config.endpointOverride = s3_endpoint_override.c_str();
+  if (!s3_endpoint_override.empty()) {
+    client_config.endpointOverride = s3_endpoint_override;
+  }
 
-  auto proxy_host = config_.get("vfs.s3.proxy_host", &found);
-  assert(found);
+  auto proxy_host =
+      config_.get<std::string>("vfs.s3.proxy_host", Config::MustFindMarker());
 
-  uint32_t proxy_port = 0;
-  RETURN_NOT_OK(
-      config_.get<uint32_t>("vfs.s3.proxy_port", &proxy_port, &found));
-  assert(found);
+  auto proxy_port =
+      config_.get<uint32_t>("vfs.s3.proxy_port", Config::MustFindMarker());
 
-  auto proxy_username = config_.get("vfs.s3.proxy_username", &found);
-  assert(found);
+  auto proxy_username = config_.get<std::string>(
+      "vfs.s3.proxy_username", Config::MustFindMarker());
 
-  auto proxy_password = config_.get("vfs.s3.proxy_password", &found);
-  assert(found);
+  auto proxy_password = config_.get<std::string>(
+      "vfs.s3.proxy_password", Config::MustFindMarker());
 
-  auto proxy_scheme = config_.get("vfs.s3.proxy_scheme", &found);
-  assert(found);
+  auto proxy_scheme =
+      config_.get<std::string>("vfs.s3.proxy_scheme", Config::MustFindMarker());
 
   if (!proxy_host.empty()) {
-    client_config.proxyHost = proxy_host.c_str();
+    client_config.proxyHost = proxy_host;
     client_config.proxyPort = proxy_port;
     client_config.proxyScheme = proxy_scheme == "https" ?
                                     Aws::Http::Scheme::HTTPS :
                                     Aws::Http::Scheme::HTTP;
-    client_config.proxyUserName = proxy_username.c_str();
-    client_config.proxyPassword = proxy_password.c_str();
+    client_config.proxyUserName = proxy_username;
+    client_config.proxyPassword = proxy_password;
   }
 
-  auto s3_scheme = config_.get("vfs.s3.scheme", &found);
-  assert(found);
+  auto s3_scheme =
+      config_.get<std::string>("vfs.s3.scheme", Config::MustFindMarker());
 
-  int64_t connect_timeout_ms = 0;
-  RETURN_NOT_OK(config_.get<int64_t>(
-      "vfs.s3.connect_timeout_ms", &connect_timeout_ms, &found));
-  assert(found);
+  auto connect_timeout_ms = config_.get<int64_t>(
+      "vfs.s3.connect_timeout_ms", Config::MustFindMarker());
 
-  int64_t request_timeout_ms = 0;
-  RETURN_NOT_OK(config_.get<int64_t>(
-      "vfs.s3.request_timeout_ms", &request_timeout_ms, &found));
-  assert(found);
+  auto request_timeout_ms = config_.get<int64_t>(
+      "vfs.s3.request_timeout_ms", Config::MustFindMarker());
 
-  auto ca_file = config_.get("vfs.s3.ca_file", &found);
-  assert(found);
+  auto aws_access_key_id = config_.get<std::string>(
+      "vfs.s3.aws_access_key_id", Config::MustFindMarker());
 
-  auto ca_path = config_.get("vfs.s3.ca_path", &found);
-  assert(found);
+  auto aws_secret_access_key = config_.get<std::string>(
+      "vfs.s3.aws_secret_access_key", Config::MustFindMarker());
 
-  bool verify_ssl = false;
-  RETURN_NOT_OK(config_.get<bool>("vfs.s3.verify_ssl", &verify_ssl, &found));
-  assert(found);
+  auto aws_session_token = config_.get<std::string>(
+      "vfs.s3.aws_session_token", Config::MustFindMarker());
 
-  auto aws_access_key_id = config_.get("vfs.s3.aws_access_key_id", &found);
-  assert(found);
+  auto aws_role_arn =
+      config_.get<std::string>("vfs.s3.aws_role_arn", Config::MustFindMarker());
 
-  auto aws_secret_access_key =
-      config_.get("vfs.s3.aws_secret_access_key", &found);
-  assert(found);
+  auto aws_external_id = config_.get<std::string>(
+      "vfs.s3.aws_external_id", Config::MustFindMarker());
 
-  auto aws_session_token = config_.get("vfs.s3.aws_session_token", &found);
-  assert(found);
+  auto aws_load_frequency = config_.get<std::string>(
+      "vfs.s3.aws_load_frequency", Config::MustFindMarker());
 
-  auto aws_role_arn = config_.get("vfs.s3.aws_role_arn", &found);
-  assert(found);
+  auto aws_session_name = config_.get<std::string>(
+      "vfs.s3.aws_session_name", Config::MustFindMarker());
 
-  auto aws_external_id = config_.get("vfs.s3.aws_external_id", &found);
-  assert(found);
+  auto connect_max_tries = config_.get<int64_t>(
+      "vfs.s3.connect_max_tries", Config::MustFindMarker());
 
-  auto aws_load_frequency = config_.get("vfs.s3.aws_load_frequency", &found);
-  assert(found);
+  auto connect_scale_factor = config_.get<int64_t>(
+      "vfs.s3.connect_scale_factor", Config::MustFindMarker());
 
-  auto aws_session_name = config_.get("vfs.s3.aws_session_name", &found);
-  assert(found);
-
-  bool aws_no_sign_request = false;
-  RETURN_NOT_OK(config_.get<bool>(
-      "vfs.s3.no_sign_request", &aws_no_sign_request, &found));
-  assert(found);
-
-  int64_t connect_max_tries = 0;
-  RETURN_NOT_OK(config_.get<int64_t>(
-      "vfs.s3.connect_max_tries", &connect_max_tries, &found));
-  assert(found);
-
-  int64_t connect_scale_factor = 0;
-  RETURN_NOT_OK(config_.get<int64_t>(
-      "vfs.s3.connect_scale_factor", &connect_scale_factor, &found));
-  assert(found);
+  SSLConfig ssl_cfg = S3SSLConfig(config_);
 
   client_config.scheme = (s3_scheme == "http") ? Aws::Http::Scheme::HTTP :
                                                  Aws::Http::Scheme::HTTPS;
   client_config.connectTimeoutMs = (long)connect_timeout_ms;
   client_config.requestTimeoutMs = (long)request_timeout_ms;
-  client_config.caFile = ca_file.c_str();
-  client_config.caPath = ca_path.c_str();
-  client_config.verifySSL = verify_ssl;
+  client_config.caFile = ssl_cfg.ca_file();
+  client_config.caPath = ssl_cfg.ca_path();
+  client_config.verifySSL = ssl_cfg.verify();
 
   client_config.retryStrategy = Aws::MakeShared<S3RetryStrategy>(
       constants::s3_allocation_tag.c_str(),
       stats_,
       connect_max_tries,
       connect_scale_factor);
-
-  if constexpr (tiledb::platform::PlatformCertFile::enabled) {
-    // If the user has not set a s3 ca file or ca path then let's attempt to set
-    // the cert file if we've autodetected it
-    if (ca_file.empty() && ca_path.empty()) {
-      const std::string cert_file = tiledb::platform::PlatformCertFile::get();
-      if (!cert_file.empty()) {
-        client_config.caFile = cert_file.c_str();
-      }
-    }
-  }
 
   // If the user says not to sign a request, use the
   // AnonymousAWSCredentialsProvider This is equivalent to --no-sign-request on
@@ -1507,7 +1532,9 @@ Status S3::init_client() const {
   } else {  // Check other authentication methods
     switch ((!aws_access_key_id.empty() ? 1 : 0) +
             (!aws_secret_access_key.empty() ? 2 : 0) +
-            (!aws_role_arn.empty() ? 4 : 0)) {
+            (!aws_role_arn.empty() ? 4 : 0) +
+            (s3_config_source == "config_files" ? 8 : 0) +
+            (s3_config_source == "sts_profile_with_web_identity" ? 16 : 0)) {
       case 0:
         break;
       case 1:
@@ -1547,11 +1574,33 @@ Status S3::init_client() const {
                 nullptr);
         break;
       }
-      default:
-        return Status_S3Error(
+      case 7: {
+        s3_tp_executor_->Stop();
+
+        throw S3StatusException{
             "Ambiguous authentication credentials; both permanent and "
             "temporary "
-            "authentication credentials are configured");
+            "authentication credentials are configured"};
+      }
+      case 8: {
+        credentials_provider_ =
+            make_shared<Aws::Auth::ProfileConfigFileAWSCredentialsProvider>(
+                HERE());
+        break;
+      }
+      case 16: {
+        credentials_provider_ = make_shared<
+            Aws::Auth::STSProfileWithWebIdentityCredentialsProvider>(HERE());
+        break;
+      }
+      default: {
+        s3_tp_executor_->Stop();
+
+        throw S3StatusException{
+            "Ambiguous authentification options; Setting "
+            "vfs.s3.config_source is mutually exclusive with providing "
+            "either permanent or temporary credentials"};
+      }
     }
   }
 

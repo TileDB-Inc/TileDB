@@ -1011,6 +1011,7 @@
       "description": "The Google Cloud Storage C++ client library",
       "dependencies": [
         "crc32c",
+        "openssl",
         {
           "name": "curl",
           "features": [

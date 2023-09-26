@@ -258,6 +258,35 @@ class Array {
   }
 
   /**
+   * Get the enumeration for the given name.
+   *
+   * This function retrieves the enumeration for the given name. If the
+   * corresponding enumeration has not been loaded from storage it is
+   * loaded before this function returns.
+   *
+   * @param enumeration_name The name of the enumeration.
+   * @return shared_ptr<const Enumeration> or nullptr on failure.
+   */
+  shared_ptr<const Enumeration> get_enumeration(
+      const std::string& enumeration_name);
+
+  /**
+   * Get the enumerations with the given names.
+   *
+   * This function retrieves the enumerations with the given names. If the
+   * corresponding enumerations have not been loaded from storage they are
+   * loaded before this function returns.
+   *
+   * @param enumeration_names The names of the enumerations.
+   * @return std::vector<shared_ptr<const Enumeration>> The loaded enumerations.
+   */
+  std::vector<shared_ptr<const Enumeration>> get_enumerations(
+      const std::vector<std::string>& enumeration_names);
+
+  /** Load all enumerations for the array. */
+  void load_all_enumerations();
+
+  /**
    * Returns `true` if the array is empty at the time it is opened.
    * The funciton returns `false` if the array is not open.
    */
@@ -316,22 +345,35 @@ class Array {
   Status reopen(uint64_t timestamp_start, uint64_t timestamp_end);
 
   /** Returns the start timestamp. */
-  uint64_t timestamp_start() const;
+  inline uint64_t timestamp_start() const {
+    return timestamp_start_;
+  }
 
   /** Returns the end timestamp. */
-  uint64_t timestamp_end() const;
+  inline uint64_t timestamp_end() const {
+    return timestamp_end_;
+  }
 
   /** Returns the timestamp at which the array was opened. */
-  uint64_t timestamp_end_opened_at() const;
+  inline uint64_t timestamp_end_opened_at() const {
+    return timestamp_end_opened_at_;
+  }
 
   /** Directly set the timestamp start value. */
-  Status set_timestamp_start(uint64_t timestamp_start);
+  inline void set_timestamp_start(uint64_t timestamp_start) {
+    timestamp_start_ = timestamp_start;
+  }
 
   /** Directly set the timestamp end value. */
-  Status set_timestamp_end(uint64_t timestamp_end);
+  inline void set_timestamp_end(uint64_t timestamp_end) {
+    timestamp_end_ = timestamp_end;
+  }
 
   /** Directly set the timestamp end opened at value. */
-  Status set_timestamp_end_opened_at(const uint64_t timestamp_end_opened_at);
+  inline void set_timestamp_end_opened_at(
+      const uint64_t timestamp_end_opened_at) {
+    timestamp_end_opened_at_ = timestamp_end_opened_at;
+  }
 
   /** Directly set the array config.
    *
@@ -353,11 +395,15 @@ class Array {
   }
 
   /** Retrieves a reference to the array config. */
-  Config config() const;
+  inline Config config() const {
+    return config_;
+  }
 
   /** Directly set the array URI for serialized compatibility with pre
    * TileDB 2.5 clients */
-  Status set_uri_serialized(const std::string& uri);
+  void set_uri_serialized(const std::string& uri) {
+    array_uri_serialized_ = tiledb::sm::URI(uri);
+  }
 
   /** Sets the array URI. */
   void set_array_uri(const URI& array_uri) {
@@ -495,6 +541,11 @@ class Array {
   bool serialize_non_empty_domain() const;
 
   /**
+   * Checks the config to se if enumerations should be serialized on array open.
+   */
+  bool serialize_enumerations() const;
+
+  /**
    * Checks the config to see if metadata should be serialized on array open.
    */
   bool serialize_metadata() const;
@@ -515,7 +566,9 @@ class Array {
   /**
    * Sets the array state as open, used in serialization
    */
-  void set_serialized_array_open();
+  inline void set_serialized_array_open() {
+    is_open_ = true;
+  }
 
   /** Set the query type to open the array for. */
   inline void set_query_type(QueryType query_type) {
@@ -741,6 +794,11 @@ class Array {
       const void* subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           max_buffer_sizes_) const;
+
+  /**
+   * Load non-remote array metadata.
+   */
+  void do_load_metadata();
 
   /**
    * Load array metadata, handles remote arrays vs non-remote arrays

@@ -34,7 +34,10 @@
 #ifndef TILEDB_TEST_SERIALIZATION_WRAPPERS_H
 #define TILEDB_TEST_SERIALIZATION_WRAPPERS_H
 
+#include <string>
+
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/c_api/tiledb_serialization.h"
 
 /**
  * Wrap creating the array by round tripping through array schema serialization

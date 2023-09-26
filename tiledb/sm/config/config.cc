@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,15 +30,15 @@
  * This file implements class Config.
  */
 
+#include <fstream>
+#include <iostream>
+#include <sstream>
+
 #include "config.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parse_argument.h"
-
-#include <fstream>
-#include <iostream>
-#include <sstream>
 
 using namespace tiledb::common;
 
@@ -89,7 +89,9 @@ const std::string Config::REST_RETRY_COUNT = "25";
 const std::string Config::REST_RETRY_INITIAL_DELAY_MS = "500";
 const std::string Config::REST_RETRY_DELAY_FACTOR = "1.25";
 const std::string Config::REST_CURL_BUFFER_SIZE = "524288";
+const std::string Config::REST_CAPNP_TRAVERSAL_LIMIT = "536870912";
 const std::string Config::REST_CURL_VERBOSE = "false";
+const std::string Config::REST_LOAD_ENUMERATIONS_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_LOAD_METADATA_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_USE_REFACTORED_ARRAY_OPEN = "false";
@@ -103,6 +105,7 @@ const std::string Config::SM_CHECK_COORD_DUPS = "true";
 const std::string Config::SM_CHECK_COORD_OOB = "true";
 const std::string Config::SM_READ_RANGE_OOB = "warn";
 const std::string Config::SM_CHECK_GLOBAL_ORDER = "true";
+const std::string Config::SM_MERGE_OVERLAPPING_RANGES_EXPERIMENTAL = "true";
 const std::string Config::SM_SKIP_EST_SIZE_PARTITIONING = "false";
 const std::string Config::SM_SKIP_UNARY_PARTITIONING_BUDGET_CHECK = "false";
 const std::string Config::SM_MEMORY_BUDGET = "5368709120";       // 5GB
@@ -154,6 +157,11 @@ const std::string Config::SM_GROUP_TIMESTAMP_START = "0";
 const std::string Config::SM_GROUP_TIMESTAMP_END = std::to_string(UINT64_MAX);
 const std::string Config::SM_FRAGMENT_INFO_PRELOAD_MBRS = "false";
 const std::string Config::SM_PARTIAL_TILE_OFFSETS_LOADING = "false";
+const std::string Config::SM_ENUMERATIONS_MAX_SIZE = "10485760";        // 10MiB
+const std::string Config::SM_ENUMERATIONS_MAX_TOTAL_SIZE = "52428800";  // 50MiB
+const std::string Config::SSL_CA_FILE = "";
+const std::string Config::SSL_CA_PATH = "";
+const std::string Config::SSL_VERIFY = "true";
 const std::string Config::VFS_MIN_PARALLEL_SIZE = "10485760";
 const std::string Config::VFS_MAX_BATCH_SIZE = "104857600";
 const std::string Config::VFS_MIN_BATCH_GAP = "512000";
@@ -164,6 +172,7 @@ const std::string Config::VFS_READ_AHEAD_SIZE = "102400";          // 100KiB
 const std::string Config::VFS_READ_AHEAD_CACHE_SIZE = "10485760";  // 10MiB;
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_NAME = "";
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_KEY = "";
+const std::string Config::VFS_AZURE_STORAGE_SAS_TOKEN = "";
 const std::string Config::VFS_AZURE_BLOB_ENDPOINT = "";
 const std::string Config::VFS_AZURE_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
@@ -172,6 +181,7 @@ const std::string Config::VFS_AZURE_USE_BLOCK_LIST_UPLOAD = "true";
 const std::string Config::VFS_AZURE_MAX_RETRIES = "5";
 const std::string Config::VFS_AZURE_RETRY_DELAY_MS = "800";
 const std::string Config::VFS_AZURE_MAX_RETRY_DELAY_MS = "60000";
+const std::string Config::VFS_GCS_ENDPOINT = "";
 const std::string Config::VFS_GCS_PROJECT_ID = "";
 const std::string Config::VFS_GCS_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
@@ -213,6 +223,7 @@ const std::string Config::VFS_S3_VERIFY_SSL = "true";
 const std::string Config::VFS_S3_NO_SIGN_REQUEST = "false";
 const std::string Config::VFS_S3_BUCKET_CANNED_ACL = "NOT_SET";
 const std::string Config::VFS_S3_OBJECT_CANNED_ACL = "NOT_SET";
+const std::string Config::VFS_S3_CONFIG_SOURCE = "auto";
 const std::string Config::VFS_HDFS_KERB_TICKET_CACHE_PATH = "";
 const std::string Config::VFS_HDFS_NAME_NODE_URI = "";
 const std::string Config::VFS_HDFS_USERNAME = "";
@@ -231,7 +242,12 @@ const std::map<std::string, std::string> default_config_values = {
         "rest.retry_initial_delay_ms", Config::REST_RETRY_INITIAL_DELAY_MS),
     std::make_pair("rest.retry_delay_factor", Config::REST_RETRY_DELAY_FACTOR),
     std::make_pair("rest.curl.buffer_size", Config::REST_CURL_BUFFER_SIZE),
+    std::make_pair(
+        "rest.capnp_traversal_limit", Config::REST_CAPNP_TRAVERSAL_LIMIT),
     std::make_pair("rest.curl.verbose", Config::REST_CURL_VERBOSE),
+    std::make_pair(
+        "rest.load_enumerations_on_array_open",
+        Config::REST_LOAD_ENUMERATIONS_ON_ARRAY_OPEN),
     std::make_pair(
         "rest.load_metadata_on_array_open",
         Config::REST_LOAD_METADATA_ON_ARRAY_OPEN),
@@ -261,6 +277,9 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair("sm.check_coord_oob", Config::SM_CHECK_COORD_OOB),
     std::make_pair("sm.read_range_oob", Config::SM_READ_RANGE_OOB),
     std::make_pair("sm.check_global_order", Config::SM_CHECK_GLOBAL_ORDER),
+    std::make_pair(
+        "sm.merge_overlapping_ranges_experimental",
+        Config::SM_MERGE_OVERLAPPING_RANGES_EXPERIMENTAL),
     std::make_pair(
         "sm.skip_est_size_partitioning", Config::SM_SKIP_EST_SIZE_PARTITIONING),
     std::make_pair(
@@ -349,6 +368,14 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "sm.partial_tile_offsets_loading",
         Config::SM_PARTIAL_TILE_OFFSETS_LOADING),
+    std::make_pair(
+        "sm.enumerations_max_size", Config::SM_ENUMERATIONS_MAX_SIZE),
+    std::make_pair(
+        "sm.enumerations_max_total_size",
+        Config::SM_ENUMERATIONS_MAX_TOTAL_SIZE),
+    std::make_pair("ssl.ca_file", Config::SSL_CA_FILE),
+    std::make_pair("ssl.ca_path", Config::SSL_CA_PATH),
+    std::make_pair("ssl.verify", Config::SSL_VERIFY),
     std::make_pair("vfs.min_parallel_size", Config::VFS_MIN_PARALLEL_SIZE),
     std::make_pair("vfs.max_batch_size", Config::VFS_MAX_BATCH_SIZE),
     std::make_pair("vfs.min_batch_gap", Config::VFS_MIN_BATCH_GAP),
@@ -367,6 +394,8 @@ const std::map<std::string, std::string> default_config_values = {
         Config::VFS_AZURE_STORAGE_ACCOUNT_NAME),
     std::make_pair(
         "vfs.azure.storage_account_key", Config::VFS_AZURE_STORAGE_ACCOUNT_KEY),
+    std::make_pair(
+        "vfs.azure.storage_sas_token", Config::VFS_AZURE_STORAGE_SAS_TOKEN),
     std::make_pair("vfs.azure.blob_endpoint", Config::VFS_AZURE_BLOB_ENDPOINT),
     std::make_pair(
         "vfs.azure.max_parallel_ops", Config::VFS_AZURE_MAX_PARALLEL_OPS),
@@ -381,6 +410,7 @@ const std::map<std::string, std::string> default_config_values = {
         "vfs.azure.retry_delay_ms", Config::VFS_AZURE_RETRY_DELAY_MS),
     std::make_pair(
         "vfs.azure.max_retry_delay_ms", Config::VFS_AZURE_MAX_RETRY_DELAY_MS),
+    std::make_pair("vfs.gcs.endpoint", Config::VFS_GCS_ENDPOINT),
     std::make_pair("vfs.gcs.project_id", Config::VFS_GCS_PROJECT_ID),
     std::make_pair(
         "vfs.gcs.max_parallel_ops", Config::VFS_GCS_MAX_PARALLEL_OPS),
@@ -437,6 +467,7 @@ const std::map<std::string, std::string> default_config_values = {
         "vfs.s3.bucket_canned_acl", Config::VFS_S3_BUCKET_CANNED_ACL),
     std::make_pair(
         "vfs.s3.object_canned_acl", Config::VFS_S3_OBJECT_CANNED_ACL),
+    std::make_pair("vfs.s3.config_source", Config::VFS_S3_CONFIG_SOURCE),
     std::make_pair("vfs.hdfs.name_node_uri", Config::VFS_HDFS_NAME_NODE_URI),
     std::make_pair("vfs.hdfs.username", Config::VFS_HDFS_USERNAME),
     std::make_pair(
@@ -454,6 +485,7 @@ const char Config::COMMENT_START = '#';
 const std::set<std::string> Config::unserialized_params_ = {
     "vfs.azure.storage_account_name",
     "vfs.azure.storage_account_key",
+    "vfs.azure.storage_sas_token",
     "vfs.s3.proxy_username",
     "vfs.s3.proxy_password",
     "vfs.s3.aws_access_key_id",
@@ -687,6 +719,8 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.check_global_order") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
+  } else if (param == "sm.merge_overlapping_ranges_experimental") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.memory_budget") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.memory_budget_var") {
@@ -722,6 +756,8 @@ Status Config::sanity_check(
       return LOG_STATUS(
           Status_ConfigError("Invalid offsets format parameter value"));
   } else if (param == "sm.fragment_info.preload_mbrs") {
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
+  } else if (param == "ssl.verify") {
     RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.min_parallel_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));

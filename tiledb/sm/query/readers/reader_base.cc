@@ -77,9 +77,11 @@ ReaderBase::ReaderBase(
     Array* array,
     Config& config,
     std::unordered_map<std::string, QueryBuffer>& buffers,
+    std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
     Subarray& subarray,
     Layout layout,
-    std::optional<QueryCondition>& condition)
+    std::optional<QueryCondition>& condition,
+    DefaultChannelAggregates& default_channel_aggregates)
     : StrategyBase(
           stats,
           logger,
@@ -95,7 +97,8 @@ ReaderBase::ReaderBase(
     , initial_data_loaded_(false)
     , max_batch_size_(config.get<uint64_t>("vfs.max_batch_size").value())
     , min_batch_gap_(config.get<uint64_t>("vfs.min_batch_gap").value())
-    , min_batch_size_(config.get<uint64_t>("vfs.min_batch_size").value()) {
+    , min_batch_size_(config.get<uint64_t>("vfs.min_batch_size").value())
+    , aggregate_buffers_(aggregate_buffers) {
   if (array != nullptr)
     fragment_metadata_ = array->fragment_metadata();
   timestamps_needed_for_deletes_and_updates_.resize(fragment_metadata_.size());
@@ -104,6 +107,13 @@ ReaderBase::ReaderBase(
     throw ReaderBaseStatusException(
         "Cannot initialize reader; Multi-range reads are not supported on a "
         "global order query.");
+  }
+
+  // Validate the aggregates and store the requested aggregates by field name.
+  for (auto& aggregate : default_channel_aggregates) {
+    aggregate.second->validate_output_buffer(
+        aggregate.first, aggregate_buffers_);
+    aggregates_[aggregate.second->field_name()].emplace_back(aggregate.second);
   }
 }
 
@@ -160,9 +170,7 @@ void ReaderBase::compute_result_space_tiles(
       result_space_tile.append_frag_domain(frag_idx, frag_domain);
       auto tile_idx = frag_tile_domains[f].tile_pos(coords);
       ResultTile result_tile(
-          frag_idx,
-          tile_idx,
-          *(fragment_metadata[frag_idx]->array_schema()).get());
+          frag_idx, tile_idx, *fragment_metadata[frag_idx].get());
       result_space_tile.set_result_tile(frag_idx, result_tile);
     }
   }
@@ -306,12 +314,15 @@ void ReaderBase::zero_out_buffer_sizes() {
   }
 }
 
-void ReaderBase::check_subarray() const {
+void ReaderBase::check_subarray(bool check_ranges_oob) const {
   if (subarray_.layout() == Layout::GLOBAL_ORDER &&
       subarray_.range_num() != 1) {
     throw ReaderBaseStatusException(
         "Cannot initialize reader; Multi-range subarrays with "
         "global order layout are not supported");
+  }
+  if (check_ranges_oob) {
+    subarray_.check_oob();
   }
 }
 
@@ -707,7 +718,11 @@ ReaderBase::load_tile_chunk_data(
   const FilterPipeline& filters = array_schema_.filters(name);
   if (!var_size ||
       !filters.skip_offsets_filtering(t_var->type(), array_schema_.version())) {
-    unfiltered_tile_size = t->load_chunk_data(tile_chunk_data);
+    if (var_size) {
+      unfiltered_tile_size = t->load_offsets_chunk_data(tile_chunk_data);
+    } else {
+      unfiltered_tile_size = t->load_chunk_data(tile_chunk_data);
+    }
   }
 
   if (var_size) {
@@ -765,6 +780,7 @@ Status ReaderBase::post_process_unfiltered_tile(
     auto& t_var = tile_tuple->var_tile();
     t_var.clear_filtered_buffer();
     throw_if_not_ok(zip_tile_coordinates(name, &t_var));
+    t.add_extra_offset(t_var);
   }
 
   if (nullable) {
@@ -991,19 +1007,6 @@ Status ReaderBase::unfilter_tile(
   return Status::Ok();
 }
 
-tuple<uint64_t, uint64_t> ReaderBase::compute_chunk_min_max(
-    const uint64_t num_chunks,
-    const uint64_t num_range_threads,
-    const uint64_t thread_idx) const {
-  auto t_part_num = std::min(num_chunks, num_range_threads);
-  auto t_min = (thread_idx * num_chunks + t_part_num - 1) / t_part_num;
-  auto t_max = std::min(
-      ((thread_idx + 1) * num_chunks + t_part_num - 1) / t_part_num,
-      num_chunks);
-
-  return {t_min, t_max};
-}
-
 uint64_t ReaderBase::offsets_bytesize() const {
   return offsets_bitsize_ == 32 ? sizeof(uint32_t) :
                                   constants::cell_var_offset_size;
@@ -1155,7 +1158,6 @@ void ReaderBase::validate_attribute_order(
       fragment_metadata_.size(),
       [&](int64_t f) {
         validator.validate_without_loading_tiles<IndexType, AttributeType>(
-            array_schema_,
             index_dim,
             increasing_data,
             f,

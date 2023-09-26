@@ -26,6 +26,7 @@
  * THE SOFTWARE.
  */
 
+#include "tiledb/api/c_api/attribute/attribute_api_internal.h"
 #include "tiledb/api/c_api/dimension/dimension_api_internal.h"
 #include "tiledb/api/c_api/dimension_label/dimension_label_api_internal.h"
 #include "tiledb/api/c_api/filter_list/filter_list_api_internal.h"
@@ -105,6 +106,23 @@ capi_return_t tiledb_array_schema_set_dimension_label_tile_extent(
   }
   array_schema->array_schema_->set_dimension_label_tile_extent(
       label_name, static_cast<tiledb::sm::Datatype>(type), tile_extent);
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_array_schema_get_dimension_label_num(
+    tiledb_array_schema_t* array_schema, uint64_t* dim_label_num) {
+  *dim_label_num = array_schema->array_schema_->dim_label_num();
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_array_schema_get_dimension_label_from_index(
+    tiledb_array_schema_t* array_schema,
+    uint64_t dim_label_index,
+    tiledb_dimension_label_t** dim_label) {
+  tiledb::api::ensure_output_pointer_is_valid(dim_label);
+  *dim_label = tiledb_dimension_label_t::make_handle(
+      array_schema->array_schema_->array_uri(),
+      array_schema->array_schema_->dimension_label(dim_label_index));
   return TILEDB_OK;
 }
 
@@ -241,6 +259,24 @@ capi_return_t tiledb_array_schema_set_dimension_label_tile_extent(
     const void* tile_extent) noexcept {
   return api_entry<detail::tiledb_array_schema_set_dimension_label_tile_extent>(
       ctx, array_schema, label_name, type, tile_extent);
+}
+
+capi_return_t tiledb_array_schema_get_dimension_label_num(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    uint64_t* dim_label_num) noexcept {
+  return api_entry_context<detail::tiledb_array_schema_get_dimension_label_num>(
+      ctx, array_schema, dim_label_num);
+}
+
+capi_return_t tiledb_array_schema_get_dimension_label_from_index(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    uint64_t dim_label_index,
+    tiledb_dimension_label_t** dim_label) noexcept {
+  return api_entry_context<
+      detail::tiledb_array_schema_get_dimension_label_from_index>(
+      ctx, array_schema, dim_label_index, dim_label);
 }
 
 capi_return_t tiledb_subarray_add_label_range(

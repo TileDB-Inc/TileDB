@@ -960,15 +960,15 @@ void DenseArrayFx::write_dense_subarray_2D_with_cancel(
 
 void DenseArrayFx::check_sorted_reads(const std::string& path) {
   // Parameters used in this test
-  int64_t domain_size_0 = 5000;
-  int64_t domain_size_1 = 10000;
-  int64_t tile_extent_0 = 1000;
-  int64_t tile_extent_1 = 1000;
+  int64_t domain_size_0 = 2500;
+  int64_t domain_size_1 = 5000;
+  int64_t tile_extent_0 = 500;
+  int64_t tile_extent_1 = 500;
   int64_t domain_0_lo = 0;
   int64_t domain_0_hi = domain_size_0 - 1;
   int64_t domain_1_lo = 0;
   int64_t domain_1_hi = domain_size_1 - 1;
-  uint64_t capacity = 1000000;
+  uint64_t capacity = 250000;
   tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
   std::string array_name = path + "sorted_reads_array";

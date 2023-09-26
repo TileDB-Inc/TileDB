@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -122,6 +122,11 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `sm.check_global_order` <br>
  *    Checks if the coordinates obey the global array order. Applicable only
  *    to sparse writes in global order.
+ *    **Default**: true
+ * - `sm.merge_overlapping_ranges_experimental` <br>
+ *    If `true`, merge overlapping Subarray ranges. Else, overlapping ranges
+ *    will not be merged and multiplicities will be returned.
+ *    Experimental for testing purposes, do not use.<br>
  *    **Default**: true
  * - `sm.enable_signal_handlers` <br>
  *    Determines whether or not TileDB will install signal handlers. <br>
@@ -319,13 +324,23 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    Permissions to use for posix file system with directory creation.<br>
  *    **Default**: 755
  * - `vfs.azure.storage_account_name` <br>
- *    Set the Azure Storage Account name. <br>
+ *    Set the name of the Azure Storage account to use. <br>
  *    **Default**: ""
  * - `vfs.azure.storage_account_key` <br>
- *    Set the Azure Storage Account key. <br>
+ *    Set the Shared Key to authenticate to Azure Storage. <br>
+ *    **Default**: ""
+ * - `vfs.azure.storage_sas_token` <br>
+ *    Set the Azure Storage SAS (shared access signature) token to use.
+ *    If this option is set along with `vfs.azure.blob_endpoint`, the
+ *    latter must not include a SAS token. <br>
  *    **Default**: ""
  * - `vfs.azure.blob_endpoint` <br>
- *    Overrides the default Azure Storage Blob endpoint. <br>
+ *    Set the default Azure Storage Blob endpoint. <br>
+ *    If not specified, it will take a value of
+ *    `https://<account-name>.blob.core.windows.net`, where `<account-name>`
+ *    is the value of the `vfs.azure.storage_account_name` option. This means
+ *    that at least one of these two options must be set (or both if shared
+ *    key authentication is used). <br>
  *    **Default**: ""
  * - `vfs.azure.block_list_block_size` <br>
  *    The block size (in bytes) used in Azure blob block list writes.
@@ -501,6 +516,17 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *     Aws::S3::Model::ObjectCannedACL.) "aws_exec_read" "owner_read"
  *    "bucket_owner_full_control"
  *    **Default**: "NOT_SET"
+ * - `vfs.s3.config_source` <br>
+ *    Force S3 SDK to only load config options from a set source.
+ *    The supported options are
+ *    `auto` (TileDB config options are considered first,
+ *    then SDK-defined precedence: env vars, config files, ec2 metadata),
+ *    `config_files` (forces SDK to only consider options found in aws
+ *    config files),
+ *    `sts_profile_with_web_identity` (force SDK to consider assume roles/sts
+ * from config files with support for web tokens, commonly used by EKS/ECS).
+ *    **Default**: auto
+ *    <br>
  * - `vfs.hdfs.name_node_uri"` <br>
  *    Name node for HDFS. <br>
  *    **Default**: ""
@@ -583,6 +609,9 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `rest.curl.buffer_size` <br>
  *    Set curl buffer size for REST requests <br>
  *    **Default**: 524288 (512KB)
+ * - `rest.capnp_traversal_limit` <br>
+ *    CAPNP traversal limit used in the deserialization of messages(bytes) <br>
+ *    **Default**: 536870912 (512MB)
  * - `filestore.buffer_size` <br>
  *    Specifies the size in bytes of the internal buffers used in the filestore
  *    API. The size should be bigger than the minimum tile size filestore

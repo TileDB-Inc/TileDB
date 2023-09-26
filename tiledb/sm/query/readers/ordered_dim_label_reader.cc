@@ -73,9 +73,11 @@ OrderedDimLabelReader::OrderedDimLabelReader(
     Array* array,
     Config& config,
     std::unordered_map<std::string, QueryBuffer>& buffers,
+    std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
     Subarray& subarray,
     Layout layout,
     std::optional<QueryCondition>& condition,
+    DefaultChannelAggregates& default_channel_aggregates,
     bool increasing_labels,
     bool skip_checks_serialization)
     : ReaderBase(
@@ -85,9 +87,11 @@ OrderedDimLabelReader::OrderedDimLabelReader(
           array,
           config,
           buffers,
+          aggregate_buffers,
           subarray,
           layout,
-          condition)
+          condition,
+          default_channel_aggregates)
     , ranges_(
           subarray.get_attribute_ranges(array_schema_.attributes()[0]->name()))
     , label_name_(array_schema_.attributes()[0]->name())
@@ -102,14 +106,20 @@ OrderedDimLabelReader::OrderedDimLabelReader(
         "Cannot initialize ordered dim label reader; Storage manager not set");
   }
 
+  if (!default_channel_aggregates.empty()) {
+    throw OrderedDimLabelReaderStatusException(
+        "Cannot initialize reader; Reader cannot process aggregates");
+  }
+
   if (!skip_checks_serialization && buffers_.empty()) {
     throw OrderedDimLabelReaderStatusException(
         "Cannot initialize ordered dim label reader; Buffers not set");
   }
 
-  if (buffers_.size() != 1) {
+  if (!skip_checks_serialization && buffers_.size() != 1) {
     throw OrderedDimLabelReaderStatusException(
-        "Cannot initialize ordered dim label reader; Only one buffer allowed");
+        "Cannot initialize ordered dim label reader with " +
+        std::to_string(buffers_.size()) + " buffers; Only one buffer allowed");
   }
 
   for (const auto& b : buffers_) {
@@ -130,14 +140,14 @@ OrderedDimLabelReader::OrderedDimLabelReader(
     }
   }
 
-  if (!skip_checks_serialization && subarray_.is_set()) {
+  if (subarray_.is_set()) {
     throw OrderedDimLabelReaderStatusException(
         "Cannot initialize ordered dim label reader; Subarray is set");
   }
 
   if (condition_.has_value()) {
     throw OrderedDimLabelReaderStatusException(
-        "Ordered dimension laber reader cannot process query condition");
+        "Ordered dimension label reader cannot process query condition");
   }
 
   bool found = false;
@@ -607,7 +617,8 @@ uint64_t OrderedDimLabelReader::create_result_tiles() {
               result_tiles_[f].emplace(
                   std::piecewise_construct,
                   std::forward_as_tuple(tile_idx),
-                  std::forward_as_tuple(f, frag_tile_idx, array_schema_));
+                  std::forward_as_tuple(
+                      f, frag_tile_idx, *fragment_metadata_[f].get()));
             } else {
               if (r == 0) {
                 throw OrderedDimLabelReaderStatusException(
