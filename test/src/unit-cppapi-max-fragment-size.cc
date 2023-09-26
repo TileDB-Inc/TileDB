@@ -493,16 +493,11 @@ TEST_CASE(
   REQUIRE(query.submit() == Query::Status::COMPLETE);
 
   std::iota(data.begin(), data.end(), 1024 * 1024);
+  REQUIRE(query.submit() == Query::Status::COMPLETE);
 
-  // This assertion will only exist in the history of this repository as the
-  // immediate next commit will change this logic to include a success
-  // condition here and then a successful consolidation.
-  //
-  // This is left in the history specifically to point out why we changed the
-  // call from std::vector::operator[] to std::vector::at which does range
-  // checking and throws exceptions rather than just falling back on undefined
-  // behavior.
-  REQUIRE_THROWS(query.submit());
+  // Consolidate without a max fragment size showing that we can read the
+  // entire array.
+  REQUIRE_NOTHROW(Array::consolidate(ctx, array_name));
 
   array.close();
 }
