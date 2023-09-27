@@ -28,7 +28,7 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the query_aggregate C API for TileDB.
+ * This file declares the query_aggregate experimental C API for TileDB.
  */
 
 #ifndef TILEDB_CAPI_QUERY_AGGREGATE_API_EXTERNAL_EXPERIMENTAL_H
