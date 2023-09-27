@@ -206,23 +206,34 @@ int Domain::cell_order_cmp_impl<char>(
   assert(dim->var_size());
   (void)dim;
 
-  auto var_a{a.value_as<const char[]>()};
-  auto var_b{b.value_as<const char[]>()};
+  auto var_a = reinterpret_cast<const char*>(a.content());
+  auto var_b = reinterpret_cast<const char*>(b.content());
   auto size_a{a.size()};
   auto size_b{b.size()};
   auto size = std::min(size_a, size_b);
 
-  // Check common prefix of size `size`
-  for (uint64_t i = 0; i < size; ++i) {
-    if (var_a[i] < var_b[i])
+  if (size != 0) {
+    size_t i = 0;
+    while (var_a[i] == var_b[i]) {
+      if (i == size - 1) {
+        break;
+      }
+      ++i;
+    }
+
+    if (var_a[i] < var_b[i]) {
       return -1;
-    if (var_a[i] > var_b[i])
+    }
+
+    if (var_a[i] > var_b[i]) {
       return 1;
+    }
   }
 
   // Equal common prefix, so equal if they have the same size
-  if (size_a == size_b)
+  if (size_a == size_b) {
     return 0;
+  }
 
   // Equal common prefix, so the smaller size wins
   return (size_a < size_b) ? -1 : 1;
