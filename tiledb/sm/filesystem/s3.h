@@ -161,205 +161,100 @@ struct S3Parameters {
 
   ~S3Parameters() = default;
 
-  /**
-   * The AWS region.
-   * Default: us-east-1
-   */
+  /** The AWS region. */
   std::string region_;
 
-  /**
-   * Set the AWS_ACCESS_KEY_ID.
-   * Default: ""
-   */
+  /** Set the AWS_ACCESS_KEY_ID. */
   std::string aws_access_key_id_;
 
-  /**
-   * Set the AWS_SECRET_ACCESS_KEY.
-   * Default: ""
-   */
+  /** Set the AWS_SECRET_ACCESS_KEY. */
   std::string aws_secret_access_key_;
 
-  /**
-   * Set the AWS_SESSION_TOKEN.
-   * Default: ""
-   */
+  /** Set the AWS_SESSION_TOKEN. */
   std::string aws_session_token_;
 
-  /**
-   * Set the AWS_ROLE_ARN. Determines the role that we want to assume.
-   * Default: ""
-   */
+  /** Set the AWS_ROLE_ARN. Determines the role that we want to assume. */
   std::string aws_role_arn_;
 
-  /**
-   * Set the AWS_EXTERNAL_ID.
-   * Third party access ID to your resources when assuming a role.
-   * Default: ""
-   */
+  /** Set the AWS_EXTERNAL_ID. Third party access ID when assuming a role. */
   std::string aws_external_id_;
 
-  /**
-   * Set the AWS_LOAD_FREQUENCY. Session time limit when assuming a role.
-   * Default: ""
-   */
+  /** Set the AWS_LOAD_FREQUENCY. Session time limit when assuming a role. */
   std::string aws_load_frequency_;
 
-  /**
-   * Optional.
-   * Set the AWS_SESSION_NAME. Session name when assuming a role.
-   * Can be used for tracing and bookkeeping.
-   * Default: ""
-   */
+  /** Optional. Set the AWS_SESSION_NAME. Session name when assuming a role. */
   std::string aws_session_name_;
 
-  /**
-   * The S3 scheme (`http` or `https`), if S3 is enabled.
-   * Default: https
-   */
+  /** The S3 scheme (`http` or `https`), if S3 is enabled. */
   std::string scheme_;
 
-  /**
-   * The S3 endpoint, if S3 is enabled.
-   * Default: ""
-   */
+  /** The S3 endpoint, if S3 is enabled. */
   std::string endpoint_override_;
 
-  /**
-   * Whether or not to use virtual addressing.
-   * Default: true
-   */
+  /** Whether or not to use virtual addressing. */
   bool use_virtual_addressing_;
 
-  /**
-   * Skip Aws::InitAPI for the S3 layer.
-   * Default: false
-   */
+  /** Skip Aws::InitAPI for the S3 layer. */
   bool skip_init_;
 
-  /**
-   * Whether or not to use multipart upload.
-   * Default: true
-   */
+  /** Whether or not to use multipart upload. */
   bool use_multipart_upload_;
 
-  /**
-   * The maximum number of parallel operations issued.
-   * Default: sm.io_concurrency_level
-   */
+  /** The maximum number of parallel operations issued. */
   uint64_t max_parallel_ops_;
 
-  /**
-   * The part size (in bytes) used in S3 multipart writes.
-   * Note: s3.multipart_part_size * s3.max_parallel_ops bytes will be buffered
-   * before issuing multipart uploads in parallel.
-   * Default: 5MB
-   */
+  /** The part size (in bytes) used in S3 multipart writes. */
   uint64_t multipart_part_size_;
 
-  /**
-   * The connection timeout in ms. Any `long` value is acceptable.
-   * Default: 3000
-   */
+  /** The connection timeout in ms. Any `long` value is acceptable. */
   int64_t connect_timeout_ms_;
 
-  /**
-   * The maximum tries for a connection. Any `long` value is acceptable.
-   * Default: 5
-   */
+  /** The maximum tries for a connection. Any `long` value is acceptable. */
   int64_t connect_max_tries_;
 
-  /**
-   * The scale factor for exponential backoff when connecting to S3.
-   * Any `long` value is acceptable.
-   * Default: 25
-   */
+  /** The scale factor for exponential backoff when connecting to S3. */
   int64_t connect_scale_factor_;
 
-  /**
-   * Process-global AWS SDK logging level. Log files are written to the process
-   * working directory.
-   * Default: "off"
-   */
+  /** Process-global AWS SDK logging level. */
   std::string logging_level_;
 
-  /**
-   * The request timeout in ms. Any `long` value is acceptable.
-   * Default: 3000
-   */
+  /** The request timeout in ms. */
   int64_t request_timeout_ms_;
 
-  /**
-   * If true, the requester pays for S3 access charges.
-   * Default: false
-   */
+  /** If true, the requester pays for S3 access charges. */
   bool requester_pays_;
 
-  /**
-   * The S3 proxy host.
-   * Default: ""
-   */
+  /** The S3 proxy host. */
   std::string proxy_host_;
 
-  /**
-   * The S3 proxy port.
-   * Default: 0
-   */
+  /** The S3 proxy port. */
   uint32_t proxy_port_;
 
-  /**
-   * The S3 proxy scheme.
-   * Default: "http"
-   */
+  /** The S3 proxy scheme. */
   std::string proxy_scheme_;
 
-  /**
-   * The S3 proxy username. Note: not serialized by tiledb_config_save_to_file
-   * Default: ""
-   */
+  /** The S3 proxy username. Not serialized by tiledb_config_save_to_file. */
   std::string proxy_username_;
 
-  /**
-   * The S3 proxy password.
-   * Default: ""
-   */
+  /** The S3 proxy password. */
   std::string proxy_password_;
 
-  /**
-   * Make unauthenticated requests to s3.
-   * Default: false
-   */
+  /** Make unauthenticated requests to s3. */
   bool no_sign_request_;
 
-  /**
-   * The server-side encryption algorithm to use.
-   * Supported non-empty values are "aes256" and "kms"
-   * Default: ""
-   */
+  /** The server-side encryption algorithm to use. "aes256" or "kms". */
   std::string sse_algorithm_;
 
-  /**
-   * The server-side encryption kms key to use if
-   * vfs.s3.sse == "kms" (AWS key management service).
-   * Default: ""
-   */
+  /** The server-side encryption key to use with the kms algorithm. */
   std::string sse_kms_key_id_;
 
-  /**
-   * Names of values found in Aws::S3::Model::BucketCannedACL enumeration.
-   * Default: "NOT_SET"
-   */
+  /** Names of values found in Aws::S3::Model::BucketCannedACL enumeration. */
   std::string bucket_acl_str_;
 
-  /**
-   * Names of values found in Aws::S3::Model::ObjectCannedACL enumeration.
-   * Default: "NOT_SET"
-   */
+  /** Names of values found in Aws::S3::Model::ObjectCannedACL enumeration. */
   std::string object_acl_str_;
 
-  /**
-   * Force S3 SDK to only load config options from a set source.
-   * Default: auto
-   */
+  /** Force S3 SDK to only load config options from a set source. */
   std::string config_source_;
 };
 
