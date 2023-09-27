@@ -322,6 +322,23 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `vfs.min_batch_gap` <br>
  *    The minimum number of bytes between two VFS read batches.<br>
  *    **Default**: 500KB
+ * - `vfs.read_logging_mode` <br>
+ *    Log read operations at varying levels of verbosity.<br>
+ *   **Default: ""**
+ *    Possible values:<br>
+ *    <ul>
+ *     <li><pre>""</pre> An empty string disables read logging.</li>
+ *     <li><pre>"fragments"</pre> Log each fragment read.</li>
+ *     <li><pre>"fragment_files"</pre> Log each individual fragment file
+ *         read.</li>
+ *     <li><pre>"all_files"</pre> Log all files read.</li>
+ *     <li><pre>"all_reads"</pre> Log all files with offset and length
+ *         parameters.</li>
+ *     <li><pre>"all_reads_always"</pre> Log all files with offset and length
+ *         parameters on every read, not just the first read. On large arrays
+ *         the read cache may get large so this trades of RAM usage vs
+ *         increased log verbosity.</li>
+ *   </ul>
  * - `vfs.file.posix_file_permissions` <br>
  *    Permissions to use for posix file system with file creation.<br>
  *    **Default**: 644

@@ -84,6 +84,19 @@ enum class VFSMode : uint8_t;
 
 /** The VFS configuration parameters. */
 struct VFSParameters {
+  /* ********************************* */
+  /*          TYPE DEFINITIONS         */
+  /* ********************************* */
+
+  enum struct ReadLoggingMode {
+    DISABLED,
+    FRAGMENTS,
+    FRAGMENT_FILES,
+    ALL_FILES,
+    ALL_READS,
+    ALL_READS_ALWAYS
+  };
+
   VFSParameters() = delete;
 
   VFSParameters(const Config& config)
@@ -91,7 +104,30 @@ struct VFSParameters {
             config.get<uint64_t>("vfs.min_parallel_size").value())
       , read_ahead_cache_size_(
             config.get<uint64_t>("vfs.read_ahead_cache_size").value())
-      , read_ahead_size_(config.get<uint64_t>("vfs.read_ahead_size").value()){};
+      , read_ahead_size_(config.get<uint64_t>("vfs.read_ahead_size").value())
+      , read_logging_mode_(ReadLoggingMode::DISABLED) {
+    auto log_mode = config.get<std::string>("vfs.read_logging_mode").value();
+    if (log_mode == "") {
+      read_logging_mode_ = ReadLoggingMode::DISABLED;
+    } else if (log_mode == "fragments") {
+      read_logging_mode_ = ReadLoggingMode::FRAGMENTS;
+    } else if (log_mode == "fragment_files") {
+      read_logging_mode_ = ReadLoggingMode::FRAGMENT_FILES;
+    } else if (log_mode == "all_files") {
+      read_logging_mode_ = ReadLoggingMode::ALL_FILES;
+    } else if (log_mode == "all_reads") {
+      read_logging_mode_ = ReadLoggingMode::ALL_READS;
+    } else if (log_mode == "all_reads_always") {
+      read_logging_mode_ = ReadLoggingMode::ALL_READS_ALWAYS;
+    } else {
+      std::stringstream ss;
+      ss << "Invalid read logging mode '" << log_mode << "'. "
+         << "Use one of 'fragments', 'fragment_files', 'all_files', "
+         << "'all_reads', or 'all_reads_always'. Read logging is currently "
+         << "disabled.";
+      LOG_WARN(ss.str());
+    }
+  };
 
   ~VFSParameters() = default;
 
@@ -103,6 +139,9 @@ struct VFSParameters {
 
   /** The byte size to read-ahead for each read. */
   uint64_t read_ahead_size_;
+
+  /** The read logging mode to use. */
+  ReadLoggingMode read_logging_mode_;
 };
 
 /** The base parameters for class VFS. */
@@ -750,8 +789,11 @@ class VFS : private VFSBase, S3_within_VFS {
   /** The read-ahead cache. */
   tdb_unique_ptr<ReadAheadCache> read_ahead_cache_;
 
-  /* The VFS configuration parameters. */
+  /** The VFS configuration parameters. */
   VFSParameters vfs_params_;
+
+  /** The URIs previously read by this instance. */
+  std::unordered_set<std::string> reads_logged_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -799,6 +841,16 @@ class VFS : private VFSBase, S3_within_VFS {
    * read.
    */
   Status max_parallel_ops(const URI& uri, uint64_t* ops) const;
+
+  /**
+   * Log a read operation. The format of the log message depends on the
+   * config value `vfs.read_logging_mode`.
+   *
+   * @param uri The URI being read.
+   * @param offset The offset being read from.
+   * @param nbytes The number of bytes requested.
+   */
+  void log_read(const URI& uri, uint64_t offset, uint64_t nbytes);
 };
 
 }  // namespace tiledb::sm
