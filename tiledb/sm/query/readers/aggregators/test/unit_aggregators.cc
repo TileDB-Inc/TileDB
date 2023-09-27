@@ -1087,6 +1087,58 @@ void basic_string_aggregation_test(std::vector<RES> expected_results) {
   }
 }
 
+TEST_CASE(
+    "NullCount aggregator: output datatype",
+    "[null-count-aggregator][output-datatype]") {
+  NullCountAggregator aggregator{FieldInfo{"a1", false, true, 1}};
+  CHECK(aggregator.output_datatype() == Datatype::UINT64);
+}
+
+TEST_CASE(
+    "Count aggregator: output datatype",
+    "[count-aggregator][output-datatype]") {
+  CountAggregator aggregator;
+  CHECK(aggregator.output_datatype() == Datatype::UINT64);
+}
+
+TEST_CASE(
+    "Sum aggregator: Expected output type",
+    "[sum-aggregator][output_datatype]") {
+  CHECK(
+      SumAggregator<int8_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      SumAggregator<uint8_t>{FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      SumAggregator<int16_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      SumAggregator<uint16_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      SumAggregator<int32_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      SumAggregator<uint32_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      SumAggregator<int64_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      SumAggregator<uint64_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      SumAggregator<float>{FieldInfo("a1", false, false, 1, Datatype::FLOAT64)}
+          .output_datatype() == Datatype::FLOAT64);
+  CHECK(
+      SumAggregator<double>{FieldInfo("a1", false, false, 1, Datatype::FLOAT64)}
+          .output_datatype() == Datatype::FLOAT64);
+}
+
 typedef tuple<MinAggregator<std::string>, MinAggregator<std::string>>
     MinMaxAggUnderTest;
 TEMPLATE_LIST_TEST_CASE(
