@@ -212,20 +212,28 @@ int Domain::cell_order_cmp_impl<char>(
   auto size_b{b.size()};
   auto size = std::min(size_a, size_b);
 
-  size_t i = 0;
-  while (var_a[i] == var_b[i]) {
-    if (i == size - 1)
-      break;
-    ++i;
+  if (size != 0) {
+    size_t i = 0;
+    while (var_a[i] == var_b[i]) {
+      if (i == size - 1) {
+        break;
+      }
+      ++i;
+    }
+
+    if (var_a[i] < var_b[i]) {
+      return -1;
+    }
+
+    if (var_a[i] > var_b[i]) {
+      return 1;
+    }
   }
-  if (var_a[i] < var_b[i])
-    return -1;
-  if (var_a[i] > var_b[i])
-    return 1;
 
   // Equal common prefix, so equal if they have the same size
-  if (size_a == size_b)
+  if (size_a == size_b) {
     return 0;
+  }
 
   // Equal common prefix, so the smaller size wins
   return (size_a < size_b) ? -1 : 1;
