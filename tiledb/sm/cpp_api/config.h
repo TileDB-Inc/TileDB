@@ -640,7 +640,7 @@ class Config {
    *    The AWS SDK logging level. This is a process-global setting. The
    *    configuration of the most recently constructed context will set
    *    process state. Log files are written to the process working directory.
-   *    **Default**: off""
+   *    **Default**: "off"
    * - `vfs.s3.request_timeout_ms` <br>
    *    The request timeout in ms. Any `long` value is acceptable. <br>
    *    **Default**: 3000
@@ -673,6 +673,10 @@ class Config {
    * - `vfs.s3.sse` <br>
    *    The server-side encryption algorithm to use. Supported non-empty
    *    values are "aes256" and "kms" (AWS key management service). <br>
+   *    **Default**: ""
+   * - `vfs.s3.sse_kms_key_id` <br>
+   *    The server-side encryption key to use if
+   *    vfs.s3.sse == "kms" (AWS key management service). <br>
    *    **Default**: ""
    * - `vfs.s3.bucket_canned_acl` <br>
    *    Names of values found in Aws::S3::Model::BucketCannedACL enumeration.
