@@ -168,7 +168,6 @@ const std::string Config::VFS_MIN_BATCH_GAP = "512000";
 const std::string Config::VFS_MIN_BATCH_SIZE = "20971520";
 const std::string Config::VFS_FILE_POSIX_FILE_PERMISSIONS = "644";
 const std::string Config::VFS_FILE_POSIX_DIRECTORY_PERMISSIONS = "755";
-const std::string Config::VFS_FILE_MAX_PARALLEL_OPS = "1";
 const std::string Config::VFS_READ_AHEAD_SIZE = "102400";          // 100KiB
 const std::string Config::VFS_READ_AHEAD_CACHE_SIZE = "10485760";  // 10MiB;
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_NAME = "";
@@ -390,8 +389,6 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "vfs.file.posix_directory_permissions",
         Config::VFS_FILE_POSIX_DIRECTORY_PERMISSIONS),
-    std::make_pair(
-        "vfs.file.max_parallel_ops", Config::VFS_FILE_MAX_PARALLEL_OPS),
     std::make_pair(
         "vfs.azure.storage_account_name",
         Config::VFS_AZURE_STORAGE_ACCOUNT_NAME),
@@ -778,8 +775,6 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "vfs.file.posix_directory_permissions") {
     RETURN_NOT_OK(utils::parse::convert(value, &v32));
-  } else if (param == "vfs.file.max_parallel_ops") {
-    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.s3.scheme") {
     if (value != "http" && value != "https")
       return LOG_STATUS(

@@ -304,7 +304,6 @@ void check_save_to_file() {
   ss << "vfs.azure.max_retry_delay_ms 60000\n";
   ss << "vfs.azure.retry_delay_ms 800\n";
   ss << "vfs.azure.use_block_list_upload true\n";
-  ss << "vfs.file.max_parallel_ops 1\n";
   ss << "vfs.file.posix_directory_permissions 755\n";
   ss << "vfs.file.posix_file_permissions 644\n";
   ss << "vfs.gcs.max_parallel_ops " << std::thread::hardware_concurrency()
@@ -704,7 +703,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.azure.max_retry_delay_ms"] = "60000";
   all_param_values["vfs.file.posix_file_permissions"] = "644";
   all_param_values["vfs.file.posix_directory_permissions"] = "755";
-  all_param_values["vfs.file.max_parallel_ops"] = "1";
   all_param_values["vfs.s3.scheme"] = "https";
   all_param_values["vfs.s3.region"] = "us-east-1";
   all_param_values["vfs.s3.aws_access_key_id"] = "";
@@ -772,7 +770,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["azure.max_retry_delay_ms"] = "60000";
   vfs_param_values["file.posix_file_permissions"] = "644";
   vfs_param_values["file.posix_directory_permissions"] = "755";
-  vfs_param_values["file.max_parallel_ops"] = "1";
   vfs_param_values["s3.scheme"] = "https";
   vfs_param_values["s3.region"] = "us-east-1";
   vfs_param_values["s3.aws_access_key_id"] = "";

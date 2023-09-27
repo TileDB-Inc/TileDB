@@ -109,9 +109,9 @@ VFS::VFS(
 #endif
 
 #ifdef _WIN32
-  throw_if_not_ok(win_.init(config_, io_tp_));
+  throw_if_not_ok(win_.init(config_));
 #else
-  throw_if_not_ok(posix_.init(config_, io_tp_));
+  throw_if_not_ok(posix_.init(config_));
 #endif
 
   supported_fs_.insert(Filesystem::MEMFS);
@@ -528,11 +528,7 @@ Status VFS::max_parallel_ops(const URI& uri, uint64_t* ops) const {
   bool found;
   *ops = 0;
 
-  if (uri.is_file()) {
-    RETURN_NOT_OK(
-        config_.get<uint64_t>("vfs.file.max_parallel_ops", ops, &found));
-    assert(found);
-  } else if (uri.is_hdfs()) {
+  if (uri.is_hdfs()) {
     // HDFS backend is currently serial.
     *ops = 1;
   } else if (uri.is_s3()) {

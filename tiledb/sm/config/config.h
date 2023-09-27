@@ -409,9 +409,6 @@ class Config {
   /** The default posix permissions for directory creations */
   static const std::string VFS_FILE_POSIX_DIRECTORY_PERMISSIONS;
 
-  /** The default maximum number of parallel file:/// operations. */
-  static const std::string VFS_FILE_MAX_PARALLEL_OPS;
-
   /** The maximum size (in bytes) to read-ahead in the VFS. */
   static const std::string VFS_READ_AHEAD_SIZE;
 

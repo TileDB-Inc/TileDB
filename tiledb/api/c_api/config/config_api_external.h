@@ -323,10 +323,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `vfs.file.posix_directory_permissions` <br>
  *    Permissions to use for posix file system with directory creation.<br>
  *    **Default**: 755
- * - `vfs.file.max_parallel_ops` <br>
- *    The maximum number of parallel operations on objects with `file:///`
- *    URIs. <br>
- *    **Default**: `1`
  * - `vfs.azure.storage_account_name` <br>
  *    Set the name of the Azure Storage account to use. <br>
  *    **Default**: ""
