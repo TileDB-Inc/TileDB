@@ -38,7 +38,28 @@
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/query/query.h"
 
-enum FieldOrigin {};
+class FieldOrigin {
+ public:
+  virtual int origin() = 0;
+};
+
+class FieldFromDimension : public FieldOrigin {
+ public:
+  virtual int origin() override;
+  virtual ~FieldFromDimension() = default;
+};
+
+class FieldFromAttribute : public FieldOrigin {
+ public:
+  virtual int origin() override;
+  virtual ~FieldFromAttribute() = default;
+};
+
+class FieldFromAggregate : public FieldOrigin {
+ public:
+  virtual int origin() override;
+  virtual ~FieldFromAggregate() = default;
+};
 
 struct tiledb_query_field_handle_t
     : public tiledb::api::CAPIHandle<tiledb_query_field_handle_t> {
@@ -50,7 +71,7 @@ struct tiledb_query_field_handle_t
  private:
   tiledb::sm::Query* query_;
   std::string field_name_;
-  enum FieldOrigin origin_;
+  std::shared_ptr<FieldOrigin> field_origin_;
   tiledb::sm::Datatype type_;
   uint32_t cell_val_num_;
   tiledb_query_channel_handle_t* channel_;
@@ -71,8 +92,8 @@ struct tiledb_query_field_handle_t
     tiledb_query_channel_handle_t::break_handle(channel_);
   }
 
-  enum FieldOrigin origin() {
-    return origin_;
+  int origin() {
+    return field_origin_->origin();
   }
   tiledb::sm::Datatype type() {
     return type_;

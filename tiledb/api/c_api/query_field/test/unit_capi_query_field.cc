@@ -249,7 +249,7 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_query_get_field(ctx, query, "d1", &field) == TILEDB_OK);
 
   // nullptr context
-  CHECK(tiledb_field_type(nullptr, field, &type) == TILEDB_INVALID_CONTEXT);
+  CHECK(tiledb_field_datatype(nullptr, field, &type) == TILEDB_INVALID_CONTEXT);
   CHECK(tiledb_field_origin(nullptr, field, &origin) == TILEDB_INVALID_CONTEXT);
   CHECK(
       tiledb_field_cell_val_num(nullptr, field, &cell_val_num) ==
@@ -258,13 +258,13 @@ TEST_CASE_METHOD(
       tiledb_field_channel(nullptr, field, &channel) == TILEDB_INVALID_CONTEXT);
 
   // nullptr field
-  CHECK(tiledb_field_type(ctx, nullptr, &type) == TILEDB_ERR);
+  CHECK(tiledb_field_datatype(ctx, nullptr, &type) == TILEDB_ERR);
   CHECK(tiledb_field_origin(ctx, nullptr, &origin) == TILEDB_ERR);
   CHECK(tiledb_field_cell_val_num(ctx, nullptr, &cell_val_num) == TILEDB_ERR);
   CHECK(tiledb_field_channel(ctx, nullptr, &channel) == TILEDB_ERR);
 
   // nullptr output ptr
-  CHECK(tiledb_field_type(ctx, field, nullptr) == TILEDB_ERR);
+  CHECK(tiledb_field_datatype(ctx, field, nullptr) == TILEDB_ERR);
   CHECK(tiledb_field_origin(ctx, field, nullptr) == TILEDB_ERR);
   CHECK(tiledb_field_cell_val_num(ctx, field, nullptr) == TILEDB_ERR);
   CHECK(tiledb_field_channel(ctx, field, nullptr) == TILEDB_ERR);
@@ -306,7 +306,7 @@ TEST_CASE_METHOD(
   // Check field api works on dimension field
   REQUIRE(tiledb_query_get_field(ctx, query, "d1", &field) == TILEDB_OK);
 
-  REQUIRE(tiledb_field_type(ctx, field, &type) == TILEDB_OK);
+  REQUIRE(tiledb_field_datatype(ctx, field, &type) == TILEDB_OK);
   CHECK(type == TILEDB_UINT64);
   REQUIRE(tiledb_field_origin(ctx, field, &origin) == TILEDB_OK);
   CHECK(origin == TILEDB_DIMENSION_FIELD);
@@ -332,7 +332,7 @@ TEST_CASE_METHOD(
 
   // Check field api works on attribute field
   REQUIRE(tiledb_query_get_field(ctx, query, "c", &field) == TILEDB_OK);
-  REQUIRE(tiledb_field_type(ctx, field, &type) == TILEDB_OK);
+  REQUIRE(tiledb_field_datatype(ctx, field, &type) == TILEDB_OK);
   CHECK(type == TILEDB_STRING_ASCII);
   REQUIRE(tiledb_field_origin(ctx, field, &origin) == TILEDB_OK);
   CHECK(origin == TILEDB_ATTRIBUTE_FIELD);
@@ -342,7 +342,7 @@ TEST_CASE_METHOD(
 
   // Check field api works on aggregate field
   REQUIRE(tiledb_query_get_field(ctx, query, "Count", &field) == TILEDB_OK);
-  REQUIRE(tiledb_field_type(ctx, field, &type) == TILEDB_OK);
+  REQUIRE(tiledb_field_datatype(ctx, field, &type) == TILEDB_OK);
   CHECK(type == TILEDB_UINT64);
   REQUIRE(tiledb_field_origin(ctx, field, &origin) == TILEDB_OK);
   CHECK(origin == TILEDB_AGGREGATE_FIELD);

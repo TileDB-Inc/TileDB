@@ -46,9 +46,9 @@ typedef struct tiledb_query_field_handle_t tiledb_query_field_t;
 
 /** TileDB query field origin. */
 typedef enum {
-#define TILEDB_FIELD_ORIGIN_ENUM(id) TILEDB_##id
-#include "tiledb/api/c_api/query_field/query_field_api_enum.h"
-#undef TILEDB_FIELD_ORIGIN_ENUM
+  TILEDB_ATTRIBUTE_FIELD = 0,
+  TILEDB_DIMENSION_FIELD,
+  TILEDB_AGGREGATE_FIELD
 } tiledb_field_origin_t;
 
 /**
@@ -99,7 +99,7 @@ TILEDB_EXPORT capi_return_t tiledb_query_field_free(
  * tiledb_query_field_t *field;
  * tiledb_query_get_field(ctx, query, "dimX", &field);
  * tiledb_datatype_t t;
- * tiledb_field_type(ctx, field, &t);
+ * tiledb_field_datatype(ctx, field, &t);
  * tiledb_query_field_free(ctx, &field);
  * @endcode
  *
@@ -108,7 +108,7 @@ TILEDB_EXPORT capi_return_t tiledb_query_field_free(
  * @param type The TileDB datatype to be returned for the field
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT capi_return_t tiledb_field_type(
+TILEDB_EXPORT capi_return_t tiledb_field_datatype(
     tiledb_ctx_t* ctx,
     tiledb_query_field_t* field,
     tiledb_datatype_t* type) TILEDB_NOEXCEPT;

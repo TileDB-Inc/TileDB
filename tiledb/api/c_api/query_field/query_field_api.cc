@@ -36,22 +36,34 @@
 #include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 
+int FieldFromDimension::origin() {
+  return TILEDB_DIMENSION_FIELD;
+}
+
+int FieldFromAttribute::origin() {
+  return TILEDB_ATTRIBUTE_FIELD;
+}
+
+int FieldFromAggregate::origin() {
+  return TILEDB_AGGREGATE_FIELD;
+}
+
 tiledb_query_field_handle_t::tiledb_query_field_handle_t(
     tiledb_query_t* query, const char* field_name)
     : query_(query->query_)
     , field_name_(field_name) {
   if (query_->array_schema().is_attr(field_name_)) {
-    origin_ = static_cast<enum FieldOrigin>(TILEDB_ATTRIBUTE_FIELD);
+    field_origin_ = std::make_shared<FieldFromAttribute>();
     type_ = query_->array_schema().attribute(field_name_)->type();
     cell_val_num_ =
         query_->array_schema().attribute(field_name_)->cell_val_num();
   } else if (query_->array_schema().is_dim(field_name_)) {
-    origin_ = static_cast<enum FieldOrigin>(TILEDB_DIMENSION_FIELD);
+    field_origin_ = std::make_shared<FieldFromDimension>();
     type_ = query_->array_schema().dimension_ptr(field_name_)->type();
     cell_val_num_ =
         query_->array_schema().dimension_ptr(field_name_)->cell_val_num();
   } else if (query_->is_aggregate(field_name_)) {
-    origin_ = static_cast<enum FieldOrigin>(TILEDB_AGGREGATE_FIELD);
+    field_origin_ = std::make_shared<FieldFromAggregate>();
     type_ = query_->get_aggregate(field_name_).value()->output_datatype();
     cell_val_num_ = 1;
   } else {
@@ -103,7 +115,7 @@ capi_return_t tiledb_query_field_free(tiledb_query_field_t** field) {
   return TILEDB_OK;
 }
 
-capi_return_t tiledb_field_type(
+capi_return_t tiledb_field_datatype(
     tiledb_query_field_t* field, tiledb_datatype_t* type) {
   ensure_query_field_is_valid(field);
   ensure_output_pointer_is_valid(type);
@@ -153,11 +165,12 @@ capi_return_t tiledb_query_field_free(
   return api_entry_context<tiledb::api::tiledb_query_field_free>(ctx, field);
 }
 
-capi_return_t tiledb_field_type(
+capi_return_t tiledb_field_datatype(
     tiledb_ctx_t* ctx,
     tiledb_query_field_t* field,
     tiledb_datatype_t* type) noexcept {
-  return api_entry_context<tiledb::api::tiledb_field_type>(ctx, field, type);
+  return api_entry_context<tiledb::api::tiledb_field_datatype>(
+      ctx, field, type);
 }
 
 capi_return_t tiledb_field_cell_val_num(
