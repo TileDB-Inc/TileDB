@@ -44,15 +44,15 @@ TEST_CASE(
   SECTION("Var size, not string") {
     CHECK_THROWS_WITH(
         MinAggregator<uint8_t>(FieldInfo("a1", true, false, 1)),
-        "MinMaxAggregator: Min/max aggregates must not be requested for var "
-        "sized non-string attributes.");
+        "MinMaxAggregator: Min/max aggregates are not supported for var sized "
+        "non-string attributes.");
   }
 
   SECTION("Invalid cell val num") {
     CHECK_THROWS_WITH(
         MinAggregator<uint8_t>(FieldInfo("a1", false, false, 2)),
-        "MinMaxAggregator: Min/max aggregates must not be requested for "
-        "attributes with more than one value.");
+        "MinMaxAggregator: Min/max aggregates are not supported for attributes "
+        "with cell_val_num greater than one.");
   }
 }
 

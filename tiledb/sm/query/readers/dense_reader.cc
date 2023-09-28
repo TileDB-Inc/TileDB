@@ -46,6 +46,7 @@
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/subarray.h"
+#include "tiledb/type/apply_with_type.h"
 
 #include <numeric>
 
@@ -229,58 +230,24 @@ std::string DenseReader::name() {
 template <class OffType>
 Status DenseReader::dense_read() {
   auto type{array_schema_.domain().dimension_ptr(0)->type()};
-  switch (type) {
-    case Datatype::INT8:
-      return dense_read<int8_t, OffType>();
-    case Datatype::UINT8:
-      return dense_read<uint8_t, OffType>();
-    case Datatype::INT16:
-      return dense_read<int16_t, OffType>();
-    case Datatype::UINT16:
-      return dense_read<uint16_t, OffType>();
-    case Datatype::INT32:
-      return dense_read<int, OffType>();
-    case Datatype::UINT32:
-      return dense_read<unsigned, OffType>();
-    case Datatype::INT64:
-      return dense_read<int64_t, OffType>();
-    case Datatype::UINT64:
-      return dense_read<uint64_t, OffType>();
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      return dense_read<int64_t, OffType>();
-    default:
-      return LOG_STATUS(Status_ReaderError(
-          "Cannot read dense array; Unsupported domain type"));
-  }
 
-  return Status::Ok();
+  auto g = [&](auto T) {
+    if constexpr (tiledb::type::TileDBIntegral<decltype(T)>) {
+      return dense_read<decltype(T), OffType>();
+    }
+    return Status_ReaderError(
+        "Cannot read dense array; Unsupported domain type");
+  };
+  return apply_with_type(g, type);
 }
 
 template <class DimType, class OffType>
 Status DenseReader::dense_read() {
   // Sanity checks.
-  assert(std::is_integral<DimType>::value);
+  if constexpr (!std::is_integral_v<DimType> || std::is_same_v<DimType, char>) {
+    throw StatusException(
+        Status_ReaderError("Cannot read dense array; Unsupported domain type"));
+  }
 
   // For easy reference.
   const auto dim_num = array_schema_.dim_num();

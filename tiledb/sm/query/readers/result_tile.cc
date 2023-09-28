@@ -35,6 +35,7 @@
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
+#include "tiledb/type/apply_with_type.h"
 #include "tiledb/type/range/range.h"
 
 #include <cassert>
@@ -1221,133 +1222,29 @@ void ResultTile::set_compute_results_func() {
   compute_results_sparse_func_.resize(dim_num);
   compute_results_count_sparse_uint8_t_func_.resize(dim_num);
   compute_results_count_sparse_uint64_t_func_.resize(dim_num);
+
   for (unsigned d = 0; d < dim_num; ++d) {
     auto dim{domain_->dimension_ptr(d)};
-    switch (dim->type()) {
-      case Datatype::INT32:
-        compute_results_dense_func_[d] = compute_results_dense<int32_t>;
-        compute_results_sparse_func_[d] = compute_results_sparse<int32_t>;
-        compute_results_count_sparse_uint8_t_func_[d] =
-            compute_results_count_sparse<uint8_t, int32_t>;
-        compute_results_count_sparse_uint64_t_func_[d] =
-            compute_results_count_sparse<uint64_t, int32_t>;
-        break;
-      case Datatype::INT64:
-        compute_results_dense_func_[d] = compute_results_dense<int64_t>;
-        compute_results_sparse_func_[d] = compute_results_sparse<int64_t>;
-        compute_results_count_sparse_uint8_t_func_[d] =
-            compute_results_count_sparse<uint8_t, int64_t>;
-        compute_results_count_sparse_uint64_t_func_[d] =
-            compute_results_count_sparse<uint64_t, int64_t>;
-        break;
-      case Datatype::INT8:
-        compute_results_dense_func_[d] = compute_results_dense<int8_t>;
-        compute_results_sparse_func_[d] = compute_results_sparse<int8_t>;
-        compute_results_count_sparse_uint8_t_func_[d] =
-            compute_results_count_sparse<uint8_t, int8_t>;
-        compute_results_count_sparse_uint64_t_func_[d] =
-            compute_results_count_sparse<uint64_t, int8_t>;
-        break;
-      case Datatype::UINT8:
-        compute_results_dense_func_[d] = compute_results_dense<uint8_t>;
-        compute_results_sparse_func_[d] = compute_results_sparse<uint8_t>;
-        compute_results_count_sparse_uint8_t_func_[d] =
-            compute_results_count_sparse<uint8_t, uint8_t>;
-        compute_results_count_sparse_uint64_t_func_[d] =
-            compute_results_count_sparse<uint64_t, uint8_t>;
-        break;
-      case Datatype::INT16:
-        compute_results_dense_func_[d] = compute_results_dense<int16_t>;
-        compute_results_sparse_func_[d] = compute_results_sparse<int16_t>;
-        compute_results_count_sparse_uint8_t_func_[d] =
-            compute_results_count_sparse<uint8_t, int16_t>;
-        compute_results_count_sparse_uint64_t_func_[d] =
-            compute_results_count_sparse<uint64_t, int16_t>;
-        break;
-      case Datatype::UINT16:
-        compute_results_dense_func_[d] = compute_results_dense<uint16_t>;
-        compute_results_sparse_func_[d] = compute_results_sparse<uint16_t>;
-        compute_results_count_sparse_uint8_t_func_[d] =
-            compute_results_count_sparse<uint8_t, uint16_t>;
-        compute_results_count_sparse_uint64_t_func_[d] =
-            compute_results_count_sparse<uint64_t, uint16_t>;
-        break;
-      case Datatype::UINT32:
-        compute_results_dense_func_[d] = compute_results_dense<uint32_t>;
-        compute_results_sparse_func_[d] = compute_results_sparse<uint32_t>;
-        compute_results_count_sparse_uint8_t_func_[d] =
-            compute_results_count_sparse<uint8_t, uint32_t>;
-        compute_results_count_sparse_uint64_t_func_[d] =
-            compute_results_count_sparse<uint64_t, uint32_t>;
-        break;
-      case Datatype::UINT64:
-        compute_results_dense_func_[d] = compute_results_dense<uint64_t>;
-        compute_results_sparse_func_[d] = compute_results_sparse<uint64_t>;
-        compute_results_count_sparse_uint8_t_func_[d] =
-            compute_results_count_sparse<uint8_t, uint64_t>;
-        compute_results_count_sparse_uint64_t_func_[d] =
-            compute_results_count_sparse<uint64_t, uint64_t>;
-        break;
-      case Datatype::FLOAT32:
-        compute_results_dense_func_[d] = compute_results_dense<float>;
-        compute_results_sparse_func_[d] = compute_results_sparse<float>;
-        compute_results_count_sparse_uint8_t_func_[d] =
-            compute_results_count_sparse<uint8_t, float>;
-        compute_results_count_sparse_uint64_t_func_[d] =
-            compute_results_count_sparse<uint64_t, float>;
-        break;
-      case Datatype::FLOAT64:
-        compute_results_dense_func_[d] = compute_results_dense<double>;
-        compute_results_sparse_func_[d] = compute_results_sparse<double>;
-        compute_results_count_sparse_uint8_t_func_[d] =
-            compute_results_count_sparse<uint8_t, double>;
-        compute_results_count_sparse_uint64_t_func_[d] =
-            compute_results_count_sparse<uint64_t, double>;
-        break;
-      case Datatype::DATETIME_YEAR:
-      case Datatype::DATETIME_MONTH:
-      case Datatype::DATETIME_WEEK:
-      case Datatype::DATETIME_DAY:
-      case Datatype::DATETIME_HR:
-      case Datatype::DATETIME_MIN:
-      case Datatype::DATETIME_SEC:
-      case Datatype::DATETIME_MS:
-      case Datatype::DATETIME_US:
-      case Datatype::DATETIME_NS:
-      case Datatype::DATETIME_PS:
-      case Datatype::DATETIME_FS:
-      case Datatype::DATETIME_AS:
-      case Datatype::TIME_HR:
-      case Datatype::TIME_MIN:
-      case Datatype::TIME_SEC:
-      case Datatype::TIME_MS:
-      case Datatype::TIME_US:
-      case Datatype::TIME_NS:
-      case Datatype::TIME_PS:
-      case Datatype::TIME_FS:
-      case Datatype::TIME_AS:
-        compute_results_dense_func_[d] = compute_results_dense<int64_t>;
-        compute_results_sparse_func_[d] = compute_results_sparse<int64_t>;
-        compute_results_count_sparse_uint8_t_func_[d] =
-            compute_results_count_sparse<uint8_t, int64_t>;
-        compute_results_count_sparse_uint64_t_func_[d] =
-            compute_results_count_sparse<uint64_t, int64_t>;
-        break;
-      case Datatype::STRING_ASCII:
+
+    auto g = [&](auto T) {
+      if constexpr (std::is_same_v<decltype(T), char>) {
         compute_results_dense_func_[d] = nullptr;
-        compute_results_sparse_func_[d] = compute_results_sparse<char>;
+        compute_results_sparse_func_[d] = compute_results_sparse<decltype(T)>;
         compute_results_count_sparse_uint8_t_func_[d] =
             compute_results_count_sparse_string<uint8_t>;
         compute_results_count_sparse_uint64_t_func_[d] =
             compute_results_count_sparse_string<uint64_t>;
-        break;
-      default:
-        compute_results_dense_func_[d] = nullptr;
-        compute_results_sparse_func_[d] = nullptr;
-        compute_results_count_sparse_uint8_t_func_[d] = nullptr;
-        compute_results_count_sparse_uint64_t_func_[d] = nullptr;
-        break;
-    }
+        return;
+      } else if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+        compute_results_dense_func_[d] = compute_results_dense<decltype(T)>;
+        compute_results_sparse_func_[d] = compute_results_sparse<decltype(T)>;
+        compute_results_count_sparse_uint8_t_func_[d] =
+            compute_results_count_sparse<uint8_t, decltype(T)>;
+        compute_results_count_sparse_uint64_t_func_[d] =
+            compute_results_count_sparse<uint64_t, decltype(T)>;
+      }
+    };
+    apply_with_type(g, dim->type());
   }
 }
 

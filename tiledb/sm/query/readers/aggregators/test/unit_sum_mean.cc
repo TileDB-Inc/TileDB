@@ -49,14 +49,14 @@ TEMPLATE_LIST_TEST_CASE(
     CHECK_THROWS_WITH(
         TestType(FieldInfo("a1", true, false, 1)),
         Catch::Matchers::EndsWith(
-            "aggregates must not be requested for var sized attributes."));
+            "aggregates are not supported for var sized attributes."));
   }
 
   SECTION("Invalid cell val num") {
     CHECK_THROWS_WITH(
         TestType(FieldInfo("a1", false, false, 2)),
-        Catch::Matchers::EndsWith("aggregates must not be requested for "
-                                  "attributes with more than one value."));
+        Catch::Matchers::EndsWith("aggregates are not supported for attributes "
+                                  "with cell_val_num greater than one."));
   }
 }
 

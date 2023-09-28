@@ -55,6 +55,7 @@
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
+#include "tiledb/type/apply_with_type.h"
 
 #include <algorithm>
 #include <cassert>
@@ -381,35 +382,15 @@ void ArraySchema::check_webp_filter() const {
           "WebP filter dimensions 0, 1 should have matching integral types");
     }
 
-    switch (x_dim->type()) {
-      case Datatype::INT8:
-        webp->set_extents<int8_t>(domain_->tile_extents());
-        break;
-      case Datatype::INT16:
-        webp->set_extents<int16_t>(domain_->tile_extents());
-        break;
-      case Datatype::INT32:
-        webp->set_extents<int32_t>(domain_->tile_extents());
-        break;
-      case Datatype::INT64:
-        webp->set_extents<int64_t>(domain_->tile_extents());
-        break;
-      case Datatype::UINT8:
-        webp->set_extents<uint8_t>(domain_->tile_extents());
-        break;
-      case Datatype::UINT16:
-        webp->set_extents<uint16_t>(domain_->tile_extents());
-        break;
-      case Datatype::UINT32:
-        webp->set_extents<uint32_t>(domain_->tile_extents());
-        break;
-      case Datatype::UINT64:
-        webp->set_extents<uint64_t>(domain_->tile_extents());
-        break;
-      default:
+    auto g = [&](auto T) {
+      if constexpr (tiledb::type::TileDBIntegral<decltype(T)>) {
+        webp->set_extents<decltype(T)>(domain_->tile_extents());
+      } else {
         throw ArraySchemaException(
             "WebP filter requires integral dimensions at index 0, 1");
-    }
+      }
+    };
+    apply_with_type(g, x_dim->type());
   }
 }
 

@@ -53,6 +53,7 @@
 #include "tiledb/sm/query/strategy_base.h"
 #include "tiledb/sm/query/writers/domain_buffer.h"
 #include "tiledb/sm/subarray/subarray.h"
+#include "tiledb/type/apply_with_type.h"
 
 namespace tiledb {
 namespace sm {
@@ -1203,127 +1204,26 @@ void ReaderBase::validate_attribute_order(
     std::vector<uint64_t>& frag_first_array_tile_idx) {
   auto timer_se = stats_->start_timer("validate_attribute_order");
 
-  switch (attribute_type) {
-    case Datatype::INT8:
-      validate_attribute_order<IndexType, int8_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::UINT8:
-      validate_attribute_order<IndexType, uint8_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::INT16:
-      validate_attribute_order<IndexType, int16_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::UINT16:
-      validate_attribute_order<IndexType, uint16_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::INT32:
-      validate_attribute_order<IndexType, int32_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::UINT32:
-      validate_attribute_order<IndexType, uint32_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::INT64:
-      validate_attribute_order<IndexType, int64_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::UINT64:
-      validate_attribute_order<IndexType, uint64_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::FLOAT32:
-      validate_attribute_order<IndexType, float>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::FLOAT64:
-      validate_attribute_order<IndexType, double>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      validate_attribute_order<IndexType, int64_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::STRING_ASCII:
+  auto g = [&](auto T) {
+    if constexpr (std::is_same_v<decltype(T), char>) {
       validate_attribute_order<IndexType, std::string_view>(
           attribute_name,
           increasing_data,
           array_non_empty_domain,
           non_empty_domains,
           frag_first_array_tile_idx);
-      break;
-    default:
+    } else if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      validate_attribute_order<IndexType, decltype(T)>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+    } else {
       throw ReaderBaseStatusException("Invalid attribute type");
-  }
+    }
+  };
+  apply_with_type(g, attribute_type);
 }
 
 // Explicit template instantiations
