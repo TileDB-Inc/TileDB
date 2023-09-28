@@ -45,7 +45,7 @@
             "dependencies": [
                 {
                     "name": "google-cloud-cpp",
-                    "version>=": "2.11.0",
+                    "version>=": "2.15.1",
                     "features": [ "storage" ],
                     "default-features": false
                 }
