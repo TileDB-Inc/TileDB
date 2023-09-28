@@ -70,7 +70,7 @@ TILEDB_EXPORT extern const tiledb_channel_operation_t* tiledb_aggregate_count;
  * tiledb_channel_operator_t *operator_sum;
  * tiledb_channel_operator_sum_get(ctx, &operator_sum);
  * tiledb_channel_operation_t* sum_A;
- * tiledb_create_aggregate_on_field(ctx, query, operator_sum, "A", sum_A);
+ * tiledb_create_unary_aggregate(ctx, query, operator_sum, "A", sum_A);
  * @endcode
  *
  * @param ctx The TileDB context
@@ -88,7 +88,7 @@ TILEDB_EXPORT int32_t tiledb_channel_operator_sum_get(
  * tiledb_channel_operator_t *operator_min;
  * tiledb_channel_operator_min_get(ctx, &operator_min);
  * tiledb_channel_operation_t* min_A;
- * tiledb_create_aggregate_on_field(ctx, query, operator_min, "A", min_A);
+ * tiledb_create_unary_aggregate(ctx, query, operator_min, "A", min_A);
  * @endcode
  *
  * @param ctx The TileDB context
@@ -106,7 +106,7 @@ TILEDB_EXPORT int32_t tiledb_channel_operator_min_get(
  * tiledb_channel_operator_t *operator_max;
  * tiledb_channel_operator_max_get(ctx, &operator_max);
  * tiledb_channel_operation_t* max_A;
- * tiledb_create_aggregate_on_field(ctx, query, operator_max, "A", max_A);
+ * tiledb_create_unary_aggregate(ctx, query, operator_max, "A", max_A);
  * @endcode
  *
  * @param ctx The TileDB context
@@ -159,7 +159,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_default_channel(
  *
  * @code{.c}
  * tiledb_channel_operation_t* sum_A;
- * tiledb_create_aggregate_on_field(ctx, query, tiledb_aggregate_sum, "A",
+ * tiledb_create_unary_aggregate(ctx, query, tiledb_aggregate_sum, "A",
  * &sum_A);
  * @endcode
  *
@@ -170,7 +170,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_default_channel(
  * @param operation The operation handle to be allocated
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_create_aggregate_on_field(
+TILEDB_EXPORT int32_t tiledb_create_unary_aggregate(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const tiledb_channel_operator_t* op,

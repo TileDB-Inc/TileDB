@@ -58,13 +58,13 @@ MeanAggregator<T>::MeanAggregator(const FieldInfo field_info)
   // other aggregates. (sc-33763).
   if (field_info_.var_sized_) {
     throw MeanAggregatorStatusException(
-        "Mean aggregates must not be requested for var sized attributes.");
+        "Mean aggregates are not supported for var sized attributes.");
   }
 
   if (field_info_.cell_val_num_ != 1) {
     throw MeanAggregatorStatusException(
-        "Mean aggregates must not be requested for attributes with more than "
-        "one value.");
+        "Mean aggregates are not supported for attributes with cell_val_num "
+        "greater than one.");
   }
 }
 

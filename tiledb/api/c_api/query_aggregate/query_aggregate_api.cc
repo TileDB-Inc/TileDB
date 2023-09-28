@@ -166,7 +166,7 @@ capi_return_t tiledb_query_get_default_channel(
   return TILEDB_OK;
 }
 
-capi_return_t tiledb_create_aggregate_on_field(
+capi_return_t tiledb_create_unary_aggregate(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const tiledb_channel_operator_t* op,
@@ -263,13 +263,13 @@ capi_return_t tiledb_query_get_default_channel(
       ctx, query, channel);
 }
 
-capi_return_t tiledb_create_aggregate_on_field(
+capi_return_t tiledb_create_unary_aggregate(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const tiledb_channel_operator_t* op,
     const char* input_field_name,
     tiledb_channel_operation_t** operation) noexcept {
-  return api_entry_with_context<tiledb::api::tiledb_create_aggregate_on_field>(
+  return api_entry_with_context<tiledb::api::tiledb_create_unary_aggregate>(
       ctx, query, op, input_field_name, operation);
 }
 
@@ -300,7 +300,7 @@ MaxOperation::MaxOperation(
   auto g = [&](auto T) {
     if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
       if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
-        check_aggregate_numeric_field(op, fi);
+        ensure_aggregate_numeric_field(op, fi);
       }
 
       // This is a min/max on strings, should be refactored out once we
@@ -327,7 +327,7 @@ MinOperation::MinOperation(
   auto g = [&](auto T) {
     if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
       if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
-        check_aggregate_numeric_field(op, fi);
+        ensure_aggregate_numeric_field(op, fi);
       }
 
       // This is a min/max on strings, should be refactored out once we
@@ -353,7 +353,7 @@ SumOperation::SumOperation(
     const tiledb_channel_operator_handle_t* op) {
   auto g = [&](auto T) {
     if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
-      check_aggregate_numeric_field(op, fi);
+      ensure_aggregate_numeric_field(op, fi);
       aggregator_ =
           std::make_shared<tiledb::sm::SumAggregator<decltype(T)>>(fi);
     } else {

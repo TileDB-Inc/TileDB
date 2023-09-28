@@ -34,6 +34,7 @@
 #ifndef TILEDB_CAPI_QUERY_AGGREGATE_INTERNAL_H
 #define TILEDB_CAPI_QUERY_AGGREGATE_INTERNAL_H
 
+#include "tiledb/api/c_api_support/argument_validation.h"
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/query/query.h"
@@ -48,7 +49,7 @@ enum QueryChannelOperator {
   TILEDB_QUERY_CHANNEL_OPERATOR_MAX
 };
 
-void check_aggregate_numeric_field(
+void ensure_aggregate_numeric_field(
     const tiledb_channel_operator_t* op, const tiledb::sm::FieldInfo& fi);
 
 class Operation {
@@ -152,7 +153,7 @@ struct tiledb_query_channel_handle_t
       const char* output_field,
       const tiledb_channel_operation_handle_t* operation) {
     if (query_->is_aggregate(output_field)) {
-      throw std::logic_error(
+      throw tiledb::api::CAPIStatusException(
           "An aggregate operation for output field: " +
           std::string(output_field) + " already exists.");
     }
@@ -217,25 +218,24 @@ shared_ptr<Operation> tiledb_channel_operator_handle_t::make_operation(
       return std::make_shared<MaxOperation>(fi, this);
     }
     default:
-      throw std::logic_error(
+      throw tiledb::api::CAPIStatusException(
           "operator has unsupported value: " +
           std::to_string(static_cast<uint8_t>(this->value())));
       break;
   }
 }
 
-void check_aggregate_numeric_field(
+void ensure_aggregate_numeric_field(
     const tiledb_channel_operator_t* op, const tiledb::sm::FieldInfo& fi) {
   if (fi.var_sized_) {
-    throw std::logic_error(
-        op->name() +
-        " aggregates must not be requested for var sized attributes.");
+    throw tiledb::api::CAPIStatusException(
+        op->name() + " aggregates are not supported for var sized attributes.");
   }
   if (fi.cell_val_num_ != 1) {
-    throw std::logic_error(
+    throw tiledb::api::CAPIStatusException(
         op->name() +
-        " aggregates must not be requested for attributes with more than "
-        "one value.");
+        " aggregates are not supported for attributes with cell_val_num "
+        "greater than one.");
   }
 }
 

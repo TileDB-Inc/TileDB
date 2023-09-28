@@ -231,7 +231,7 @@ TEST_CASE_METHOD(
       tiledb_query_get_default_channel(nullptr, query, &default_channel) ==
       TILEDB_INVALID_CONTEXT);
   CHECK(
-      tiledb_create_aggregate_on_field(
+      tiledb_create_unary_aggregate(
           nullptr, query, tiledb_channel_operator_sum, "a", &operation) ==
       TILEDB_INVALID_CONTEXT);
   CHECK(
@@ -244,19 +244,19 @@ TEST_CASE_METHOD(
       tiledb_query_get_default_channel(ctx, nullptr, &default_channel) ==
       TILEDB_ERR);
   CHECK(
-      tiledb_create_aggregate_on_field(
+      tiledb_create_unary_aggregate(
           ctx, nullptr, tiledb_channel_operator_sum, "a", &operation) ==
       TILEDB_ERR);
 
   // nullptr operator
   CHECK(
-      tiledb_create_aggregate_on_field(ctx, query, nullptr, "a", &operation) ==
+      tiledb_create_unary_aggregate(ctx, query, nullptr, "a", &operation) ==
       TILEDB_ERR);
   CHECK(tiledb_channel_operator_sum_get(ctx, nullptr) == TILEDB_ERR);
 
   // nullptr input field
   CHECK(
-      tiledb_create_aggregate_on_field(
+      tiledb_create_unary_aggregate(
           ctx, query, tiledb_channel_operator_sum, nullptr, &operation) ==
       TILEDB_ERR);
 
@@ -371,7 +371,7 @@ TEST_CASE_METHOD(
 
   tiledb_channel_operation_t* sum_op;
   REQUIRE(
-      tiledb_create_aggregate_on_field(
+      tiledb_create_unary_aggregate(
           ctx, query, tiledb_channel_operator_sum, "a", &sum_op) == TILEDB_OK);
   REQUIRE(
       tiledb_channel_apply_aggregate(ctx, default_channel, "Sum", sum_op) ==
@@ -421,7 +421,7 @@ TEST_CASE_METHOD(
 
   tiledb_channel_operation_t* min_op;
   REQUIRE(
-      tiledb_create_aggregate_on_field(
+      tiledb_create_unary_aggregate(
           ctx, query, tiledb_channel_operator_min, "a", &min_op) == TILEDB_OK);
   REQUIRE(
       tiledb_channel_apply_aggregate(ctx, default_channel, "Min", min_op) ==
@@ -472,7 +472,7 @@ TEST_CASE_METHOD(
 
   tiledb_channel_operation_t* max_op;
   REQUIRE(
-      tiledb_create_aggregate_on_field(
+      tiledb_create_unary_aggregate(
           ctx, query, tiledb_channel_operator_max, "a", &max_op) == TILEDB_OK);
   REQUIRE(
       tiledb_channel_apply_aggregate(ctx, default_channel, "Max", max_op) ==
@@ -523,25 +523,25 @@ TEST_CASE_METHOD(
   tiledb_channel_operation_t* op;
   // SUM only works on numeric and string_ascii types
   REQUIRE(
-      tiledb_create_aggregate_on_field(
+      tiledb_create_unary_aggregate(
           ctx, query, tiledb_channel_operator_sum, "c", &op) == TILEDB_ERR);
   REQUIRE(
-      tiledb_create_aggregate_on_field(
+      tiledb_create_unary_aggregate(
           ctx, query, tiledb_channel_operator_sum, "d", &op) == TILEDB_ERR);
 
   // MIN,MAX only work on numeric and string_ascii types
   REQUIRE(
-      tiledb_create_aggregate_on_field(
+      tiledb_create_unary_aggregate(
           ctx, query, tiledb_channel_operator_min, "d", &op) == TILEDB_ERR);
   REQUIRE(
-      tiledb_create_aggregate_on_field(
+      tiledb_create_unary_aggregate(
           ctx, query, tiledb_channel_operator_max, "d", &op) == TILEDB_ERR);
   REQUIRE(
-      tiledb_create_aggregate_on_field(
+      tiledb_create_unary_aggregate(
           ctx, query, tiledb_channel_operator_min, "c", &op) == TILEDB_OK);
   CHECK(tiledb_aggregate_free(ctx, &op) == TILEDB_OK);
   REQUIRE(
-      tiledb_create_aggregate_on_field(
+      tiledb_create_unary_aggregate(
           ctx, query, tiledb_channel_operator_max, "c", &op) == TILEDB_OK);
 
   // Clean up
