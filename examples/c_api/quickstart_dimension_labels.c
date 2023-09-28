@@ -108,13 +108,13 @@ void print_timestamp(int64_t timestamp) {
  * * Array Summary:
  *  * Array Type: Dense
  *  * Dimensions:
- *    - x: (type=INT32, domain=[0, 5])
+ *    - x_index: (type=INT32, domain=[0, 5])
  *    - sample: (type=INT32, domain=[0,3])
  *
  *  * Attributes:
  *    - a: (type=INT16)
  *
- *  * Labels on dimension 'x':
+ *  * Labels on dimension 'x_index':
  *    - x (order=INCREASING, type=FLOAT64)
  *    - y (order=INCREASING, type=FLOAT64)
  *

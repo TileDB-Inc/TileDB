@@ -50,6 +50,7 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/query_remote_buffer_storage.h"
+#include "tiledb/sm/query/readers/aggregators/iaggregator.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
@@ -222,6 +223,9 @@ class Query {
 
   /** Returns the names of the buffers set by the user for the query. */
   std::vector<std::string> buffer_names() const;
+
+  /** Returns the names of dimension label buffers for the query. */
+  std::vector<std::string> dimension_label_buffer_names() const;
 
   /**
    * Returns the names of the buffers set by the user for the query not already
@@ -692,12 +696,47 @@ class Query {
   void set_dimension_label_ordered_read(bool increasing_order);
 
   /**
+   * Check if the query is a dimension label ordered read.
+   * If true, this query will use the OrderedDimLabelReader strategy.
+   * Only applicable to dimension label read queries.
+   *
+   * @return True if the query is a dimension label ordered read, else False.
+   */
+  inline bool dimension_label_ordered_read() const {
+    return is_dimension_label_ordered_read_;
+  }
+
+  /**
+   * Check if the dimension label query is increasing or decreasing order.
+   * Only applicable to dimension label read queries.
+   *
+   * @return True if increasing order, false if decreasing order.
+   */
+  inline bool dimension_label_increasing_order() const {
+    return dimension_label_increasing_;
+  }
+
+  /**
    * Set the fragment size.
    *
    * @param fragment_size Fragment size.
    */
   void set_fragment_size(uint64_t fragment_size) {
     fragment_size_ = fragment_size;
+  }
+
+  /** Returns true if the output field is an aggregate. */
+  bool is_aggregate(std::string output_field_name) const;
+
+  /**
+   * Adds an aggregator to the default channel.
+   *
+   * @param output_field_name Output field name for the aggregate.
+   * @param aggregator Aggregator to add.
+   */
+  void add_aggregator_to_default_channel(
+      std::string output_field_name, shared_ptr<IAggregator> aggregator) {
+    default_channel_aggregates_.emplace(output_field_name, aggregator);
   }
 
  private:
@@ -756,11 +795,16 @@ class Query {
    * Maps attribute/dimension names to their buffers.
    * `TILEDB_COORDS` may be used for the special zipped coordinates
    * buffer.
-   * */
+   */
   std::unordered_map<std::string, QueryBuffer> buffers_;
 
   /** Maps label names to their buffers. */
   std::unordered_map<std::string, QueryBuffer> label_buffers_;
+
+  /**
+   * Maps aggregate names to their buffers.
+   */
+  std::unordered_map<std::string, QueryBuffer> aggregate_buffers_;
 
   /** Dimension label queries that are part of the main query. */
   tdb_unique_ptr<ArrayDimensionLabelQueries> dim_label_queries_;
@@ -868,6 +912,10 @@ class Query {
   /** Cache for tile aligned remote global order writes. */
   std::optional<QueryRemoteBufferStorage> query_remote_buffer_storage_;
 
+  /** Aggregates for the default channel, by output field name. */
+  std::unordered_map<std::string, shared_ptr<IAggregator>>
+      default_channel_aggregates_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -898,7 +946,7 @@ class Query {
    * The query will only query dimension labels if all the following are true:
    * 1. At most one dimension buffer is set.
    * 2. No attribute buffers are set.
-   * 3. At least one label buffer is set.
+   * 3. At least one label buffer or subarray label range is set.
    */
   bool only_dim_label_query() const;
 
@@ -914,6 +962,9 @@ class Query {
    * This will allow for the user to properly set the next write batch.
    */
   void reset_coords_markers();
+
+  /** Copies the data from the aggregates to the user buffers. */
+  void copy_aggregates_data_to_user_buffer();
 };
 
 }  // namespace sm

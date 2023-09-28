@@ -82,11 +82,18 @@ Status GCS::init(const Config& config, ThreadPool* const thread_pool) {
         Status_GCSError("Can't initialize with null thread pool."));
   }
 
+  ssl_cfg_ = SSLConfig(config);
+
   assert(state_ == State::UNINITIALIZED);
 
   thread_pool_ = thread_pool;
 
   bool found;
+  endpoint_ = config.get("vfs.gcs.endpoint", &found);
+  assert(found);
+  if (endpoint_.empty() && getenv("TILEDB_TEST_GCS_ENDPOINT")) {
+    endpoint_ = getenv("TILEDB_TEST_GCS_ENDPOINT");
+  }
   project_id_ = config.get("vfs.gcs.project_id", &found);
   assert(found);
   RETURN_NOT_OK(config.get<uint64_t>(
@@ -120,12 +127,14 @@ Status GCS::init_client() const {
   }
 
   google::cloud::storage::ChannelOptions channel_options;
+  if (!ssl_cfg_.ca_file().empty()) {
+    channel_options.set_ssl_root_path(ssl_cfg_.ca_file());
+  }
 
-  if constexpr (tiledb::platform::PlatformCertFile::enabled) {
-    const std::string cert_file = tiledb::platform::PlatformCertFile::get();
-    if (!cert_file.empty()) {
-      channel_options.set_ssl_root_path(cert_file);
-    }
+  if (!ssl_cfg_.ca_path().empty()) {
+    LOG_WARN(
+        "GCS ignores the `ssl.ca_path` configuration key, "
+        "use `ssl.ca_file` instead");
   }
 
   // Note that the order here is *extremely important*
@@ -143,7 +152,7 @@ Status GCS::init_client() const {
   // env variable GOOGLE_APPLICATION_CREDENTIALS
   try {
     shared_ptr<google::cloud::storage::oauth2::Credentials> creds = nullptr;
-    if (getenv("CLOUD_STORAGE_EMULATOR_ENDPOINT")) {
+    if (!endpoint_.empty() || getenv("CLOUD_STORAGE_EMULATOR_ENDPOINT")) {
       creds = google::cloud::storage::oauth2::CreateAnonymousCredentials();
     } else {
       auto status_or_creds =
@@ -158,6 +167,9 @@ Status GCS::init_client() const {
     }
     google::cloud::storage::ClientOptions client_options(
         creds, channel_options);
+    if (!endpoint_.empty()) {
+      client_options.set_endpoint(endpoint_);
+    }
     auto client = google::cloud::storage::Client(
         client_options,
         google::cloud::storage::LimitedTimeRetryPolicy(

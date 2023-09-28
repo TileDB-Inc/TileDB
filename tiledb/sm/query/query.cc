@@ -406,6 +406,17 @@ std::vector<std::string> Query::buffer_names() const {
   return ret;
 }
 
+std::vector<std::string> Query::dimension_label_buffer_names() const {
+  std::vector<std::string> ret(label_buffers_.size());
+
+  size_t i = 0;
+  for (const auto& buffer : label_buffers_) {
+    ret[i++] = buffer.first;
+  }
+
+  return ret;
+}
+
 std::vector<std::string> Query::unwritten_buffer_names() const {
   std::vector<std::string> ret;
   for (auto& name : buffer_names()) {
@@ -428,10 +439,18 @@ QueryBuffer Query::buffer(const std::string& name) const {
         nullptr);
   }
 
-  // Attribute or dimension
-  auto buf = buffers_.find(name);
-  if (buf != buffers_.end()) {
-    return buf->second;
+  if (array_schema_->is_dim_label(name)) {
+    // Dimension label buffer
+    auto buf = label_buffers_.find(name);
+    if (buf != label_buffers_.end()) {
+      return buf->second;
+    }
+  } else {
+    // Attribute or dimension
+    auto buf = buffers_.find(name);
+    if (buf != buffers_.end()) {
+      return buf->second;
+    }
   }
 
   // Named buffer does not exist
@@ -459,6 +478,8 @@ Status Query::finalize() {
   }
 
   RETURN_NOT_OK(strategy_->finalize());
+
+  copy_aggregates_data_to_user_buffer();
   status_ = QueryStatus::COMPLETED;
   return Status::Ok();
 }
@@ -511,9 +532,11 @@ Status Query::get_offsets_buffer(
         Status_QueryError("Cannot get buffer; Coordinates are not var-sized"));
   }
   if (array_schema_->attribute(name) == nullptr &&
-      array_schema_->dimension_ptr(name) == nullptr) {
+      array_schema_->dimension_ptr(name) == nullptr &&
+      !array_schema_->is_dim_label(name)) {
     return logger_->status(Status_QueryError(
-        std::string("Cannot get buffer; Invalid attribute/dimension name '") +
+        std::string(
+            "Cannot get buffer; Invalid attribute/dimension/label name '") +
         name + "'"));
   }
   if (!array_schema_->var_size(name)) {
@@ -556,9 +579,11 @@ Status Query::get_data_buffer(
   // Check attribute
   if (!ArraySchema::is_special_attribute(name)) {
     if (array_schema_->attribute(name) == nullptr &&
-        array_schema_->dimension_ptr(name) == nullptr)
+        array_schema_->dimension_ptr(name) == nullptr &&
+        !array_schema_->is_dim_label(name))
       return logger_->status(Status_QueryError(
-          std::string("Cannot get buffer; Invalid attribute/dimension name '") +
+          std::string(
+              "Cannot get buffer; Invalid attribute/dimension/label name '") +
           name + "'"));
   }
 
@@ -791,8 +816,39 @@ Status Query::process() {
       }
       // This changes the query into INITIALIZED, but it's ok as the status
       // is updated correctly below
-      throw_if_not_ok(create_strategy(true));
+      throw_if_not_ok(create_strategy());
     }
+  }
+
+  if (condition_.has_value()) {
+    auto& names = condition_->enumeration_field_names();
+    std::unordered_set<std::string> deduped_enmr_names;
+    for (auto name : names) {
+      auto attr = array_schema_->attribute(name);
+      if (attr == nullptr) {
+        continue;
+      }
+      auto enmr_name = attr->get_enumeration_name();
+      if (enmr_name.has_value()) {
+        deduped_enmr_names.insert(enmr_name.value());
+      }
+    }
+    std::vector<std::string> enmr_names;
+    enmr_names.reserve(deduped_enmr_names.size());
+    for (auto& enmr_name : deduped_enmr_names) {
+      enmr_names.emplace_back(enmr_name);
+    }
+
+    throw_if_not_ok(parallel_for(
+        storage_manager_->compute_tp(),
+        0,
+        enmr_names.size(),
+        [&](const uint64_t i) {
+          array_->get_enumeration(enmr_names[i]);
+          return Status::Ok();
+        }));
+
+    condition_->rewrite_enumeration_conditions(array_schema());
   }
 
   // Update query status.
@@ -823,6 +879,8 @@ Status Query::process() {
     if (callback_ != nullptr) {
       callback_(callback_data_);
     }
+
+    copy_aggregates_data_to_user_buffer();
     status_ = QueryStatus::COMPLETED;
   } else {
     // Either the main query or the dimension lable query are incomplete.
@@ -968,11 +1026,33 @@ Status Query::set_data_buffer(
       throw QueryStatusException("[set_data_buffer] Unsupported query type.");
     }
 
+    const bool exists = label_buffers_.find(name) != label_buffers_.end();
+    if (status_ != QueryStatus::UNINITIALIZED && !exists &&
+        !serialization_allow_new_attr) {
+      throw QueryStatusException(
+          "[set_data_buffer] Cannot set buffer for new dimension label '" +
+          name + "' after initialization");
+    }
+
     // Set dimension label buffer on the appropriate buffer depending if the
     // label is fixed or variable length.
     array_schema_->dimension_label(name).is_var() ?
         label_buffers_[name].set_data_var_buffer(buffer, buffer_size) :
         label_buffers_[name].set_data_buffer(buffer, buffer_size);
+    return Status::Ok();
+  }
+
+  // If this is an aggregate buffer, set it and return.
+  if (is_aggregate(name)) {
+    const bool is_var = default_channel_aggregates_[name]->var_sized();
+    if (!is_var) {
+      // Fixed size data buffer
+      aggregate_buffers_[name].set_data_buffer(buffer, buffer_size);
+    } else {
+      // Var sized data buffer
+      aggregate_buffers_[name].set_data_var_buffer(buffer, buffer_size);
+    }
+
     return Status::Ok();
   }
 
@@ -1047,12 +1127,13 @@ Status Query::set_data_buffer(
   has_coords_buffer_ |= is_dim;
 
   // Set attribute/dimension buffer on the appropriate buffer
-  if (!is_var)
+  if (!is_var) {
     // Fixed size data buffer
     buffers_[name].set_data_buffer(buffer, buffer_size);
-  else
+  } else {
     // Var sized data buffer
     buffers_[name].set_data_var_buffer(buffer, buffer_size);
+  }
 
   return Status::Ok();
 }
@@ -1086,7 +1167,7 @@ Status Query::set_offsets_buffer(
           "[set_offsets_buffer] Unsupported query type.");
     }
 
-    // Check the dimension labe is in fact variable length.
+    // Check the dimension label is in fact variable length.
     if (!array_schema_->dimension_label(name).is_var()) {
       throw QueryStatusException(
           "[set_offsets_buffer] Input dimension label '" + name +
@@ -1094,7 +1175,9 @@ Status Query::set_offsets_buffer(
     }
 
     // Check the query was not already initialized.
-    if (status_ != QueryStatus::UNINITIALIZED) {
+    const bool exists = label_buffers_.find(name) != label_buffers_.end();
+    if (status_ != QueryStatus::UNINITIALIZED && !exists &&
+        !serialization_allow_new_attr) {
       throw QueryStatusException(
           "[set_offsets_buffer] Cannot set buffer for new dimension label '" +
           name + "' after initialization");
@@ -1103,6 +1186,21 @@ Status Query::set_offsets_buffer(
     // Set dimension label offsets buffers.
     label_buffers_[name].set_offsets_buffer(
         buffer_offsets, buffer_offsets_size);
+    return Status::Ok();
+  }
+
+  // If this is an aggregate buffer, set it and return.
+  if (is_aggregate(name)) {
+    if (!array_schema_->var_size(
+            default_channel_aggregates_[name]->field_name())) {
+      return logger_->status(Status_QueryError(
+          std::string("Cannot set buffer; Input attribute '") + name +
+          "' is not var sized"));
+    }
+
+    aggregate_buffers_[name].set_offsets_buffer(
+        buffer_offsets, buffer_offsets_size);
+
     return Status::Ok();
   }
 
@@ -1125,7 +1223,7 @@ Status Query::set_offsets_buffer(
   }
 
   // Error if setting a new attribute/dimension after initialization
-  bool exists = buffers_.find(name) != buffers_.end();
+  const bool exists = buffers_.find(name) != buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists &&
       !allow_separate_attribute_writes() && !serialization_allow_new_attr) {
     return logger_->status(Status_QueryError(
@@ -1189,6 +1287,20 @@ Status Query::set_validity_buffer(
         "Cannot set buffer; " + name + " validity buffer size is null"));
   }
 
+  // If this is an aggregate buffer, set it and return.
+  if (is_aggregate(name)) {
+    if (!array_schema_->is_nullable(
+            default_channel_aggregates_[name]->field_name())) {
+      return logger_->status(Status_QueryError(
+          std::string("Cannot set buffer; Input attribute '") + name +
+          "' is not nullable"));
+    }
+
+    aggregate_buffers_[name].set_validity_buffer(std::move(validity_vector));
+
+    return Status::Ok();
+  }
+
   // Must be an attribute
   if (!array_schema_->is_attr(name)) {
     return logger_->status(Status_QueryError(
@@ -1206,7 +1318,7 @@ Status Query::set_validity_buffer(
   // Error if setting a new attribute after initialization
   const bool exists = buffers_.find(name) != buffers_.end();
   if (status_ != QueryStatus::UNINITIALIZED && !exists &&
-      !serialization_allow_new_attr) {
+      !allow_separate_attribute_writes() && !serialization_allow_new_attr) {
     return logger_->status(Status_QueryError(
         std::string("Cannot set buffer for new attribute '") + name +
         "' after initialization"));
@@ -1461,7 +1573,8 @@ Status Query::submit() {
       return logger_->status(Status_QueryError(
           "Error in query submission; remote array with no rest client."));
 
-    if (status_ == QueryStatus::UNINITIALIZED) {
+    if (status_ == QueryStatus::UNINITIALIZED && !only_dim_label_query() &&
+        !subarray_.has_label_ranges()) {
       RETURN_NOT_OK(create_strategy());
 
       // Allocate remote buffer storage for global order writes if necessary.
@@ -1643,6 +1756,10 @@ void Query::set_dimension_label_ordered_read(bool increasing_order) {
   dimension_label_increasing_ = increasing_order;
 }
 
+bool Query::is_aggregate(std::string output_field_name) const {
+  return default_channel_aggregates_.count(output_field_name) != 0;
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
@@ -1730,9 +1847,11 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           array_,
           config_,
           buffers_,
+          aggregate_buffers_,
           subarray_,
           layout_,
           condition_,
+          default_channel_aggregates_,
           dimension_label_increasing_,
           skip_checks_serialization));
     } else if (use_refactored_sparse_unordered_with_dups_reader(
@@ -1750,9 +1869,11 @@ Status Query::create_strategy(bool skip_checks_serialization) {
             array_,
             config_,
             buffers_,
+            aggregate_buffers_,
             subarray_,
             layout_,
             condition_,
+            default_channel_aggregates_,
             skip_checks_serialization));
       } else {
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
@@ -1763,9 +1884,11 @@ Status Query::create_strategy(bool skip_checks_serialization) {
             array_,
             config_,
             buffers_,
+            aggregate_buffers_,
             subarray_,
             layout_,
             condition_,
+            default_channel_aggregates_,
             skip_checks_serialization));
       }
     } else if (
@@ -1786,9 +1909,11 @@ Status Query::create_strategy(bool skip_checks_serialization) {
             array_,
             config_,
             buffers_,
+            aggregate_buffers_,
             subarray_,
             layout_,
             condition_,
+            default_channel_aggregates_,
             consolidation_with_timestamps_,
             skip_checks_serialization));
       } else {
@@ -1800,9 +1925,11 @@ Status Query::create_strategy(bool skip_checks_serialization) {
             array_,
             config_,
             buffers_,
+            aggregate_buffers_,
             subarray_,
             layout_,
             condition_,
+            default_channel_aggregates_,
             consolidation_with_timestamps_,
             skip_checks_serialization));
       }
@@ -1815,9 +1942,11 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           array_,
           config_,
           buffers_,
+          aggregate_buffers_,
           subarray_,
           layout_,
           condition_,
+          default_channel_aggregates_,
           skip_checks_serialization,
           remote_query_));
     } else {
@@ -1829,9 +1958,11 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           array_,
           config_,
           buffers_,
+          aggregate_buffers_,
           subarray_,
           layout_,
           condition_,
+          default_channel_aggregates_,
           skip_checks_serialization,
           remote_query_));
     }
@@ -1993,9 +2124,9 @@ bool Query::only_dim_label_query() const {
   // Returns true if all the following are true:
   // 1. At most one dimension buffer is set.
   // 2. No attribute buffers are set.
-  // 3. At least one label buffer is set.
+  // 3. At least one label buffer or subarray label range is set.
   return (
-      !label_buffers_.empty() &&
+      (!label_buffers_.empty() || subarray_.has_label_ranges()) &&
       (buffers_.size() == 0 ||
        (buffers_.size() == 1 &&
         (coord_buffer_is_set_ || coord_data_buffer_is_set_ ||
@@ -2048,6 +2179,18 @@ void Query::reset_coords_markers() {
     coord_buffer_is_set_ = false;
     coord_data_buffer_is_set_ = false;
     coord_offsets_buffer_is_set_ = false;
+  }
+}
+
+void Query::copy_aggregates_data_to_user_buffer() {
+  if (array_->is_remote() && !default_channel_aggregates_.empty()) {
+    throw QueryStatusException(
+        "Cannot submit query; Query aggregates are not supported in REST yet");
+  }
+
+  for (auto& default_channel_aggregate : default_channel_aggregates_) {
+    default_channel_aggregate.second->copy_to_user_buffer(
+        default_channel_aggregate.first, aggregate_buffers_);
   }
 }
 

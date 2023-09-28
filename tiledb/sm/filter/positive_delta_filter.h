@@ -73,20 +73,33 @@ namespace sm {
  */
 class PositiveDeltaFilter : public Filter {
  public:
-  /** Constructor. */
-  PositiveDeltaFilter();
-
-  /** Constructor.
+  /**
+   * Constructor.
    *
-   * @param max_window_size
+   * @param filter_data_type Datatype the filter will operate on.
    */
-  PositiveDeltaFilter(uint32_t max_window_size);
+  PositiveDeltaFilter(Datatype filter_data_type);
+
+  /**
+   * Constructor.
+   *
+   * @param max_window_size Window size in bytes to apply positive delta filter.
+   * @param filter_data_type Datatype the filter will operate on.
+   */
+  PositiveDeltaFilter(uint32_t max_window_size, Datatype filter_data_type);
 
   /** Return the max window size used by the filter. */
   uint32_t max_window_size() const;
 
   /** Dumps the filter details in ASCII format in the selected output. */
   void dump(FILE* out) const override;
+
+  /**
+   * Checks if the filter is applicable to the input datatype.
+   *
+   * @param type Input datatype to check filter compatibility.
+   */
+  bool accepts_input_datatype(Datatype datatype) const override;
 
   /**
    * Perform positive-delta encoding of the given input into the given output.

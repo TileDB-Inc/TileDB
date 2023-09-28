@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -48,34 +48,20 @@ using namespace tiledb::common;
 using namespace tiledb::sm;
 
 struct S3DirectFx {
+  S3DirectFx();
+  ~S3DirectFx();
+  static Config set_config_params();
+  static std::string random_name(const std::string& prefix);
+
   const std::string S3_PREFIX = "s3://";
   const tiledb::sm::URI S3_BUCKET =
       tiledb::sm::URI(S3_PREFIX + random_name("tiledb") + "/");
   const std::string TEST_DIR = S3_BUCKET.to_string() + "tiledb_test_dir/";
-  tiledb::sm::S3 s3_;
   ThreadPool thread_pool_{2};
-
-  S3DirectFx();
-  ~S3DirectFx();
-
-  static std::string random_name(const std::string& prefix);
+  tiledb::sm::S3 s3_{&g_helper_stats, &thread_pool_, set_config_params()};
 };
 
 S3DirectFx::S3DirectFx() {
-  // Connect
-  Config config;
-#ifndef TILEDB_TESTS_AWS_S3_CONFIG
-  REQUIRE(config.set("vfs.s3.endpoint_override", "localhost:9999").ok());
-  REQUIRE(config.set("vfs.s3.scheme", "https").ok());
-  REQUIRE(config.set("vfs.s3.use_virtual_addressing", "false").ok());
-  REQUIRE(config.set("vfs.s3.verify_ssl", "false").ok());
-#endif
-  REQUIRE(config.set("vfs.s3.max_parallel_ops", "1").ok());
-  // set max buffer size to 10 MB
-  REQUIRE(config.set("vfs.s3.multipart_part_size", "10000000").ok());
-  REQUIRE(config.set("vfs.s3.use_multipart_upload", "false").ok());
-  REQUIRE(s3_.init(&g_helper_stats, config, &thread_pool_).ok());
-
   // Create bucket
   bool exists;
   REQUIRE(s3_.is_bucket(S3_BUCKET, &exists).ok());
@@ -105,6 +91,29 @@ S3DirectFx::~S3DirectFx() {
   // Delete bucket
   CHECK(s3_.remove_bucket(S3_BUCKET).ok());
   CHECK(s3_.disconnect().ok());
+}
+
+Config S3DirectFx::set_config_params() {
+  // Connect
+  Config config;
+#ifndef TILEDB_TESTS_AWS_S3_CONFIG
+  REQUIRE(config.set("vfs.s3.endpoint_override", "localhost:9999").ok());
+  REQUIRE(config.set("vfs.s3.scheme", "https").ok());
+  REQUIRE(config.set("vfs.s3.use_virtual_addressing", "false").ok());
+  REQUIRE(config.set("vfs.s3.verify_ssl", "false").ok());
+#endif
+  REQUIRE(config.set("vfs.s3.max_parallel_ops", "1").ok());
+  // set max buffer size to 10 MB
+  REQUIRE(config.set("vfs.s3.multipart_part_size", "10000000").ok());
+  REQUIRE(config.set("vfs.s3.use_multipart_upload", "false").ok());
+  return config;
+}
+
+std::string S3DirectFx::random_name(const std::string& prefix) {
+  std::stringstream ss;
+  ss << prefix << "-" << std::this_thread::get_id() << "-"
+     << tiledb::sm::utils::time::timestamp_now_ms();
+  return ss.str();
 }
 
 TEST_CASE_METHOD(
@@ -182,12 +191,5 @@ TEST_CASE_METHOD(
   auto badfile = TEST_DIR + "badfile";
   auto badbuffer = (char*)malloc(11000000);
   CHECK(!(s3_.write(URI(badfile), badbuffer, 11000000).ok()));
-}
-
-std::string S3DirectFx::random_name(const std::string& prefix) {
-  std::stringstream ss;
-  ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << tiledb::sm::utils::time::timestamp_now_ms();
-  return ss.str();
 }
 #endif

@@ -1265,8 +1265,8 @@ class Subarray {
     return ranges_sorted_;
   }
 
-  /** Sort ranges per dimension. */
-  Status sort_ranges(ThreadPool* const compute_tp);
+  /** Sort and merge ranges per dimension. */
+  void sort_and_merge_ranges(ThreadPool* const compute_tp);
 
   /** Returns if all ranges for this subarray are non overlapping. */
   tuple<Status, optional<bool>> non_overlapping_ranges(
@@ -1349,6 +1349,29 @@ class Subarray {
 
     /** The ranges set on the dimension label. */
     RangeSetAndSuperset ranges_;
+  };
+
+  /**
+   * A hash function capable of hashing std::vector<uint8_t> for use by
+   * the tile_coords_map_ unordered_map for caching coords indices.
+   */
+  struct CoordsHasher {
+    /**
+     * Compute a hash value of the provided key.
+     *
+     * @param key The uint8_t vector to hash.
+     * @return std::size_t The hash value.
+     */
+    std::size_t operator()(const std::vector<uint8_t>& key) const {
+      // The awkward cast here is because std::string_view doesn't accept
+      // a uint8_t* in its constructor. Since compilers won't let us cast
+      // directly from unsigned to signed, we have to static cast to void*
+      // first.
+      auto data =
+          static_cast<const char*>(static_cast<const void*>(key.data()));
+      std::string_view str_key(data, key.size());
+      return std::hash<std::string_view>()(str_key);
+    }
   };
 
   /* ********************************* */
@@ -1452,7 +1475,8 @@ class Subarray {
   std::vector<std::vector<uint8_t>> tile_coords_;
 
   /** A map (tile coords) -> (vector element position in `tile_coords_`). */
-  std::map<std::vector<uint8_t>, size_t> tile_coords_map_;
+  std::unordered_map<std::vector<uint8_t>, size_t, CoordsHasher>
+      tile_coords_map_;
 
   /** The config for query-level parameters only. */
   Config config_;
@@ -1574,38 +1598,6 @@ class Subarray {
    */
   Status load_relevant_fragment_tile_var_sizes(
       const std::vector<std::string>& names, ThreadPool* compute_tp) const;
-
-  /**
-   * Sort ranges for a particular dimension
-   *
-   * @tparam T dimension type
-   * @param compute_tp threadpool for parallel_sort
-   * @param dim_idx dimension index to sort
-   * @return Status
-   */
-  template <typename T>
-  Status sort_ranges_for_dim(
-      ThreadPool* const compute_tp, const uint64_t& dim_idx);
-
-  /**
-   * Sort ranges for a particular dimension
-   *
-   * @param compute_tp threadpool for parallel_sort
-   * @param dim_idx dimension index to sort
-   * @return Status
-   */
-  Status sort_ranges_for_dim(
-      ThreadPool* const compute_tp, const uint64_t& dim_idx);
-
-  /**
-   * Determine if ranges for a dimension are non overlapping.
-   *
-   * @param dim_idx dimension index.
-   * @return true if the ranges are non overlapping, false otherwise.
-   */
-  template <typename T>
-  tuple<Status, optional<bool>> non_overlapping_ranges_for_dim(
-      const uint64_t dim_idx);
 
   /**
    * Determine if ranges for a dimension are non overlapping.

@@ -510,9 +510,9 @@ TEST_CASE_METHOD(
 
   // Create result coordinates
   std::vector<ResultCoords> result_coords;
-  ResultTile result_tile_2_0(1, 0, array_schema);
-  ResultTile result_tile_3_0(2, 0, array_schema);
-  ResultTile result_tile_3_1(2, 1, array_schema);
+  ResultTile result_tile_2_0(1, 0, *fragments[0]);
+  ResultTile result_tile_3_0(2, 0, *fragments[0]);
+  ResultTile result_tile_3_1(2, 1, *fragments[1]);
 
   set_result_tile_dim(
       array_schema, result_tile_2_0, "d", 0, {{1000, 3, 1000, 5}});
@@ -1361,8 +1361,8 @@ TEST_CASE_METHOD(
 
   // Create result coordinates
   std::vector<ResultCoords> result_coords;
-  ResultTile result_tile_3_0(2, 0, array_schema);
-  ResultTile result_tile_3_1(2, 1, array_schema);
+  ResultTile result_tile_3_0(2, 0, *fragments[0]);
+  ResultTile result_tile_3_1(2, 1, *fragments[1]);
 
   set_result_tile_dim(
       array_schema, result_tile_3_0, "d1", 0, {{1000, 3, 1000, 1000}});

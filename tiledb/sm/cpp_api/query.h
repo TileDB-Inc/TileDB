@@ -1525,6 +1525,13 @@ class Query {
   /**
    * Sets the data for a fixed/var-sized attribute/dimension.
    *
+   * The caller owns the buffer provided and is responsible for freeing the
+   * memory associated with it. For writes, the buffer holds values to be
+   * written which can be freed at any time after query completion. For reads,
+   * the buffer is allocated by the caller and will contain data read by the
+   * query after completion. The freeing of this memory is up to the caller once
+   * they are done referencing the read data.
+   *
    * **Example:**
    * @code{.cpp}
    * tiledb::Context ctx;
@@ -1548,16 +1555,17 @@ class Query {
     // Checks
     auto is_attr = schema_.has_attribute(name);
     auto is_dim = schema_.domain().has_dimension(name);
-    if (name != "__coords" && !is_attr && !is_dim)
+    if (name != "__coords" && name != "__timestamps" && !is_attr && !is_dim) {
       throw TileDBError(
           std::string("Cannot set buffer; Attribute/Dimension '") + name +
           "' does not exist");
-    else if (is_attr)
+    } else if (is_attr) {
       impl::type_check<T>(schema_.attribute(name).type());
-    else if (is_dim)
+    } else if (is_dim) {
       impl::type_check<T>(schema_.domain().dimension(name).type());
-    else if (name == "__coords")
+    } else if (name == "__coords") {
       impl::type_check<T>(schema_.domain().type());
+    }
 
     return set_data_buffer(name, buff, nelements, sizeof(T));
   }
@@ -1580,11 +1588,18 @@ class Query {
    **/
   template <typename T>
   Query& set_data_buffer(const std::string& name, std::vector<T>& buf) {
-    return set_data_buffer(name, buf.data(), buf.size(), sizeof(T));
+    return set_data_buffer(name, buf.data(), buf.size());
   }
 
   /**
    * Sets the data for a fixed/var-sized attribute/dimension.
+   *
+   * The caller owns the buffer provided and is responsible for freeing the
+   * memory associated with it. For writes, the buffer holds values to be
+   * written which can be freed at any time after query completion. For reads,
+   * the buffer is allocated by the caller and will contain data read by the
+   * query after completion. The freeing of this memory is up to the caller once
+   * they are done referencing the read data.
    *
    * @note This unsafe version does not perform type checking; the given buffer
    * is assumed to be the correct type, and the size of an element in the given
@@ -1641,6 +1656,13 @@ class Query {
 
   /**
    * Sets the offset buffer for a var-sized attribute/dimension.
+   *
+   * The caller owns the buffer provided and is responsible for freeing the
+   * memory associated with it. For writes, the buffer holds offsets to be
+   * written which can be freed at any time after query completion. For reads,
+   * the buffer is allocated by the caller and will contain offset data read by
+   * the query after completion. The freeing of this memory is up to the caller
+   * once they are done referencing the read data.
    *
    * **Example:**
    *
@@ -1705,6 +1727,13 @@ class Query {
 
   /**
    * Sets the validity buffer for nullable attribute/dimension.
+   *
+   * The caller owns the buffer provided and is responsible for freeing the
+   * memory associated with it. For writes, the buffer holds validity values to
+   * be written which can be freed at any time after query completion. For
+   * reads, the buffer is allocated by the caller and will contain the validity
+   * map read by the query after completion. The freeing of this memory is up to
+   * the caller once they are done referencing the read data.
    *
    * @tparam T Attribute value type
    * @param attr Attribute name

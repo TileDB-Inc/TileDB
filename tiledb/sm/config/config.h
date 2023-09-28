@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,12 +33,12 @@
 #ifndef TILEDB_CONFIG_H
 #define TILEDB_CONFIG_H
 
-#include "tiledb/common/status.h"
-
 #include <map>
 #include <set>
 #include <string>
 #include <vector>
+
+#include "tiledb/common/status.h"
 
 /*
  * C++14 introduced the attribute [[deprecated]], but no conditional syntax
@@ -96,8 +96,14 @@ class Config {
   /** The default buffer size for curl reads used by REST. */
   static const std::string REST_CURL_BUFFER_SIZE;
 
+  /** CAPNP traversal limit used in the deserialization of messages(MB). */
+  static const std::string REST_CAPNP_TRAVERSAL_LIMIT;
+
   /** The default for Curl's verbose mode used by REST. */
   static const std::string REST_CURL_VERBOSE;
+
+  /** If the array enumerations should be loaded on array open */
+  static const std::string REST_LOAD_ENUMERATIONS_ON_ARRAY_OPEN;
 
   /** If the array metadata should be loaded on array open */
   static const std::string REST_LOAD_METADATA_ON_ARRAY_OPEN;
@@ -123,6 +129,9 @@ class Config {
 
   /** The default format for logging. */
   static const std::string CONFIG_LOGGING_DEFAULT_FORMAT;
+
+  /** Allow aggregates API or not. */
+  static const std::string SM_ALLOW_AGGREGATES_EXPERIMENTAL;
 
   /** Allow separate attribute writes or not. */
   static const std::string SM_ALLOW_SEPARATE_ATTRIBUTE_WRITES;
@@ -167,6 +176,12 @@ class Config {
    * are indeed provided in global order.
    */
   static const std::string SM_CHECK_GLOBAL_ORDER;
+
+  /**
+   * If `true`, merge overlapping Subarray ranges. Else, overlapping ranges
+   * will not be merged and multiplicities will be returned.
+   */
+  static const std::string SM_MERGE_OVERLAPPING_RANGES_EXPERIMENTAL;
 
   /** If `true`, bypass partitioning on estimated result sizes. */
   static const std::string SM_SKIP_EST_SIZE_PARTITIONING;
@@ -362,6 +377,21 @@ class Config {
   /** If `true` the readers might partially load/unload tile offsets. */
   static const std::string SM_PARTIAL_TILE_OFFSETS_LOADING;
 
+  /** The maximum size of a single enumeration. */
+  static const std::string SM_ENUMERATIONS_MAX_SIZE;
+
+  /** The maximum total size for all enumerations in a schema. */
+  static const std::string SM_ENUMERATIONS_MAX_TOTAL_SIZE;
+
+  /** Certificate file path. */
+  static const std::string SSL_CA_FILE;
+
+  /** Certificate directory path. */
+  static const std::string SSL_CA_PATH;
+
+  /** Whether to verify SSL connections. */
+  static const std::string SSL_VERIFY;
+
   /** The default minimum number of bytes in a parallel VFS operation. */
   static const std::string VFS_MIN_PARALLEL_SIZE;
 
@@ -381,9 +411,6 @@ class Config {
 
   /** The default posix permissions for directory creations */
   static const std::string VFS_FILE_POSIX_DIRECTORY_PERMISSIONS;
-
-  /** The default maximum number of parallel file:/// operations. */
-  static const std::string VFS_FILE_MAX_PARALLEL_OPS;
 
   /** The maximum size (in bytes) to read-ahead in the VFS. */
   static const std::string VFS_READ_AHEAD_SIZE;
@@ -420,6 +447,9 @@ class Config {
 
   /** Azure max retry delay. */
   static const std::string VFS_AZURE_MAX_RETRY_DELAY_MS;
+
+  /** GCS Endpoint. */
+  static const std::string VFS_GCS_ENDPOINT;
 
   /** GCS project id. */
   static const std::string VFS_GCS_PROJECT_ID;

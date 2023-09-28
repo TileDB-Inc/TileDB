@@ -156,12 +156,16 @@ class Dimension {
    * Populates the object members from the data in the input binary buffer.
    *
    * @param deserializer The deserializer to deserialize from.
-   * @param type The type of the dimension.
    * @param version The array schema version.
+   * @param type The type of the dimension.
+   * @param coords_filters Coords filters to replace empty coords pipelines.
    * @return Dimension
    */
   static shared_ptr<Dimension> deserialize(
-      Deserializer& deserializer, uint32_t version, Datatype type);
+      Deserializer& deserializer,
+      uint32_t version,
+      Datatype type,
+      FilterPipeline& coords_filters);
 
   /** Returns the domain. */
   const Range& domain() const;
@@ -715,7 +719,7 @@ class Dimension {
   Status set_domain_unsafe(const void* domain);
 
   /** Sets the filter pipeline for this dimension. */
-  Status set_filter_pipeline(const FilterPipeline& pipeline);
+  void set_filter_pipeline(const FilterPipeline& pipeline);
 
   /** Sets the tile extent. */
   Status set_tile_extent(const void* tile_extent);

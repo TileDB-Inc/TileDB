@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,15 +38,14 @@
 
 using namespace tiledb::type;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ********************************* */
 /*          TYPE DEFINITIONS         */
 /* ********************************* */
 
 /** An N-dimensional range, consisting of a vector of 1D ranges. */
-typedef std::vector<Range> NDRange;
+using NDRange = std::vector<Range>;
 
 /** An untyped value, barely more than raw storage. This class is only
  * transitional. All uses should be rewritten to use ordinary types. Consider
@@ -62,12 +61,25 @@ typedef std::vector<Range> NDRange;
  */
 
 class ByteVecValue {
-  typedef std::vector<uint8_t> Base;
-  std::vector<uint8_t> x_;
+  using Base = std::vector<uint8_t>;
+  Base x_;
+
+  template <class T>
+  Base convert_to_bytes(std::initializer_list<T> y) {
+    Base x{};
+    auto from{reinterpret_cast<const uint8_t*>(y.begin())};
+    Base::size_type length{sizeof(T) * y.size()};
+    x.resize(length);
+    auto to{x.data()};
+    for (decltype(length) i{0}; i < length; ++i) {
+      *to++ = *from++;
+    }
+    return x;
+  }
 
  public:
-  typedef Base::size_type size_type;
-  typedef Base::reference reference;
+  using size_type = Base::size_type;
+  using reference = Base::reference;
   /** Default constructor */
   ByteVecValue()
       : x_() {
@@ -76,6 +88,15 @@ class ByteVecValue {
   explicit ByteVecValue(Base::size_type n)
       : x_(n) {
   }
+
+  /**
+   * Constructor from initializer list
+   */
+  template <class T>
+  ByteVecValue(std::initializer_list<T> y)
+      : x_(convert_to_bytes(y)) {
+  }
+
   /** Move constructor from underlying vector type */
   explicit ByteVecValue(std::vector<uint8_t>&& y)
       : x_(std::move(y)) {
@@ -130,11 +151,11 @@ class ByteVecValue {
     return x_.data();
   }
   /// Forwarded from vector
-  const uint8_t* data() const noexcept {
+  [[nodiscard]] const uint8_t* data() const noexcept {
     return x_.data();
   }
   /// Forwarded from vector
-  Base::size_type size() const noexcept {
+  [[nodiscard]] Base::size_type size() const noexcept {
     return x_.size();
   }
   /**
@@ -147,7 +168,7 @@ class ByteVecValue {
 };
 
 /** A byte vector. */
-typedef std::vector<uint8_t> ByteVec;
+using ByteVec = std::vector<uint8_t>;
 
 /** The chunk info, buffers and offsets */
 struct ChunkData {
@@ -163,7 +184,6 @@ struct ChunkData {
   std::vector<DiskLayout> filtered_chunks_;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_TYPES_H

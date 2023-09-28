@@ -82,7 +82,7 @@ void write_array2(const Context& ctx) {
   std::vector<int> coords_rows = {3};
   std::vector<int> coords_cols = {1};
   std::vector<int> a_data = {4};
-  std::vector<int> b_data = {4};
+  std::vector<uint32_t> b_data = {4};
 
   // Open the array for writing and create the query.
   Array array(ctx, array_uri, TILEDB_WRITE);

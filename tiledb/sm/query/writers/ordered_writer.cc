@@ -53,6 +53,7 @@
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 #include "tiledb/sm/tile/writer_tile_tuple.h"
+#include "tiledb/type/apply_with_type.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
@@ -173,52 +174,15 @@ Status OrderedWriter::ordered_write() {
   assert(array_schema_.dense());
 
   auto type{array_schema_.domain().dimension_ptr(0)->type()};
-  switch (type) {
-    case Datatype::INT8:
-      return ordered_write<int8_t>();
-    case Datatype::UINT8:
-      return ordered_write<uint8_t>();
-    case Datatype::INT16:
-      return ordered_write<int16_t>();
-    case Datatype::UINT16:
-      return ordered_write<uint16_t>();
-    case Datatype::INT32:
-      return ordered_write<int32_t>();
-    case Datatype::UINT32:
-      return ordered_write<uint32_t>();
-    case Datatype::INT64:
-      return ordered_write<int64_t>();
-    case Datatype::UINT64:
-      return ordered_write<uint64_t>();
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      return ordered_write<int64_t>();
-    default:
-      return logger_->status(Status_WriterError(
-          "Cannot write in ordered layout; Unsupported domain type"));
-  }
 
-  return Status::Ok();
+  auto g = [&](auto T) {
+    if constexpr (tiledb::type::TileDBIntegral<decltype(T)>) {
+      return ordered_write<decltype(T)>();
+    }
+    return Status_WriterError(
+        "Cannot write in ordered layout; Unsupported domain type");
+  };
+  return apply_with_type(g, type);
 }
 
 template <class T>

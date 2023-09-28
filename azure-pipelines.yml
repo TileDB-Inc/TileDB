@@ -29,27 +29,6 @@ stages:
     variables:
       BACKWARDS_COMPATIBILITY_ARRAYS: OFF
     jobs:
-    - job:
-      timeoutInMinutes: 120
-      strategy:
-        matrix:
-          macOS_azure:
-            imageName: 'macos-11'
-            TILEDB_AZURE: ON
-            TILEDB_SERIALIZATION: ON
-            CXX: clang++
-            ARTIFACT_OS: macOS_azure
-          linux_asan:
-            imageName: 'ubuntu-20.04'
-            TILEDB_CI_ASAN: ON
-            TILEDB_SERIALIZATION: ON
-            CXX: g++
-            CC: gcc
-      pool:
-        vmImage: $(imageName)
-      steps:
-      - template: scripts/azure-linux_mac.yml
-
     - job: linux_manylinux
       pool: { vmImage: $(imageName) }
       container: ${{ variables.MANYLINUX_IMAGE }}
@@ -73,72 +52,72 @@ stages:
       TILEDB_HDFS: ON
       TILEDB_STATIC: OFF
       TILEDB_SERIALIZATION: ON
-      TILEDB_FORCE_BUILD_DEPS: ON
       MACOSX_DEPLOYMENT_TARGET: 10.14
       SUDO: 'sudo'
     jobs:
-     - job:
-       timeoutInMinutes: 90
-       strategy:
-         matrix:
-           macOS:
-             imageName: 'macos-11'
-             CXX: clang++
-             ARTIFACT_OS: 'macos'
-             ARTIFACT_ARCH: 'x86_64'
-             CMAKE_OSX_ARCHITECTURES: "x86_64"
-           macOS_arm64:
-             imageName: 'macos-11'
-             CXX: clang++
-             ARTIFACT_OS: 'macos'
-             ARTIFACT_ARCH: 'arm64'
-             TILEDB_GCS: OFF
-             TILEDB_WERROR: OFF
-             CMAKE_OSX_ARCHITECTURES: "arm64"
-             BUILD_MAGIC_MACOS_UNIVERSAL: "ON"
-             MACOSX_DEPLOYMENT_TARGET: 11
-       pool:
-         vmImage: $(imageName)
-       steps:
-       - template: scripts/azure-linux_mac-release.yml
-     - job: linux_manylinux
-       timeoutInMinutes: 90
-       pool: { vmImage: 'ubuntu-20.04' }
-       container: ${{ variables.MANYLINUX_IMAGE }}
-       strategy:
-         matrix:
-           standard:
-             CXX: g++
-             CFLAGS: "-lrt"
-             CXXFLAGS: "-lrt"
-             ARTIFACT_OS: 'linux'
-             ARTIFACT_ARCH: "x86_64"
-             TILEDB_AVX2: ON
-             SUDO: ''
-           noavx2:
-             CXX: g++
-             CFLAGS: "-lrt"
-             CXXFLAGS: "-lrt"
-             ARTIFACT_OS: 'linux'
-             ARTIFACT_ARCH: "x86_64-noavx2"
-             TILEDB_AVX2: OFF
-             SUDO: ''
-       steps:
-       - template: scripts/azure-linux_mac-release.yml
-     - job: Windows
-       strategy:
-         matrix:
-           VS2019:
-             imageName: 'windows-2019'
-             # Only S3 variable is currently supported in boostrap powershell
-             TILEDB_GCS: OFF
-             TILEDB_HDFS: OFF
-             ARTIFACT_OS: 'windows'
-             ARTIFACT_ARCH: 'x86_64'
-       pool:
-         vmImage: $(imageName)
-       steps:
-       - template: scripts/azure-windows-release.yml
+      - job:
+        timeoutInMinutes: 90
+        strategy:
+          matrix:
+            macOS:
+              imageName: 'macos-11'
+              CXX: clang++
+              ARTIFACT_OS: 'macos'
+              ARTIFACT_ARCH: 'x86_64'
+              CMAKE_OSX_ARCHITECTURES: "x86_64"
+            macOS_arm64:
+              imageName: 'macos-11'
+              CXX: clang++
+              ARTIFACT_OS: 'macos'
+              ARTIFACT_ARCH: 'arm64'
+              TILEDB_GCS: OFF
+              TILEDB_WERROR: OFF
+              CMAKE_OSX_ARCHITECTURES: "arm64"
+              BUILD_MAGIC_MACOS_UNIVERSAL: "ON"
+              MACOSX_DEPLOYMENT_TARGET: 11
+        pool:
+          vmImage: $(imageName)
+        steps:
+        - template: scripts/azure-linux_mac-release.yml
+      - job: linux_manylinux
+        timeoutInMinutes: 90
+        pool: { vmImage: 'ubuntu-20.04' }
+        container: ${{ variables.MANYLINUX_IMAGE }}
+        strategy:
+          matrix:
+            standard:
+              CXX: g++
+              CFLAGS: "-lrt"
+              CXXFLAGS: "-lrt"
+              ARTIFACT_OS: 'linux'
+              ARTIFACT_ARCH: "x86_64"
+              TILEDB_AVX2: ON
+              SUDO: ''
+            noavx2:
+              CXX: g++
+              CFLAGS: "-lrt"
+              CXXFLAGS: "-lrt"
+              ARTIFACT_OS: 'linux'
+              ARTIFACT_ARCH: "x86_64-noavx2"
+              TILEDB_AVX2: OFF
+              SUDO: ''
+        steps:
+        - template: scripts/azure-linux_mac-release.yml
+      - job: Windows
+        timeoutInMinutes: 90
+        strategy:
+          matrix:
+            VS2019:
+              imageName: 'windows-2019'
+              # Only S3 variable is currently supported in bootstrap powershell
+              TILEDB_GCS: OFF
+              TILEDB_HDFS: OFF
+              ARTIFACT_OS: 'windows'
+              ARTIFACT_ARCH: 'x86_64'
+        pool:
+          vmImage: $(imageName)
+        steps:
+        - template: scripts/azure-windows-release.yml
 
   # NOTE: this section cannot be conditional because `Build.Repository.Name` is an agent-scoped variable.
   - stage: Github_Release

@@ -52,6 +52,7 @@ find_package(Threads REQUIRED)
 ############################################################
 
 add_subdirectory(api)
+add_subdirectory(as_built)
 add_subdirectory(common)
 add_subdirectory(platform)
 add_subdirectory(type)
@@ -84,10 +85,13 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/tiledb_experimental
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_deprecated.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema_evolution.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema_experimental.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/as_built_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/attribute.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/attribute_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/config.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/consolidation_plan_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/context.h
@@ -96,6 +100,7 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/dimension.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/dimension_label_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/domain.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/enumeration_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/error.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/exception.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/filter.h
@@ -107,6 +112,7 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/object_iter.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_condition_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_condition.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/schema_base.h
@@ -147,6 +153,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/dimension.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/dimension_label.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/domain.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/enumeration.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer_list.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/api_argument_validator.cc
@@ -186,6 +193,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3_thread_pool_executor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3/STSProfileWithWebIdentityCredentialsProvider.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/ssl_config.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/uri.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs_file_handle.cc
@@ -231,7 +239,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/utils.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/uuid.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/win_constants.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/work_arounds.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/ast/query_ast.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/deletes_and_updates/deletes_and_updates.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/deletes_and_updates/serialization.cc
@@ -245,6 +252,13 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query_condition.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query_remote_buffer_storage.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/count_aggregator.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/mean_aggregator.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/min_max_aggregator.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/null_count_aggregator.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/output_buffer_validator.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/safe_sum.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/sum_aggregator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/dense_reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/ordered_dim_label_reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/reader_base.cc
@@ -267,10 +281,13 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema_evolution.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/enumeration.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragment_info.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragment_metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/group.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/consolidation.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/vacuum.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/global_stats.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/stats.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context.cc
@@ -315,10 +332,13 @@ if (TILEDB_SERIALIZATION)
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema_evolution.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/enumeration.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragment_info.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragment_metadata.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/group.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/consolidation.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/vacuum.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++
       PROPERTIES
         COMPILE_FLAGS "-Wno-unused-parameter"
@@ -332,10 +352,13 @@ if (TILEDB_SERIALIZATION)
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema_evolution.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/enumeration.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragment_info.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragment_metadata.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/group.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/consolidation.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/vacuum.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++
       PROPERTIES
         #   C4267: 'argument': conversion from 'size_t' to '<various-lesser-types>', possible loss of data
@@ -434,6 +457,7 @@ if (WIN32 AND TILEDB_STATIC)
     ${TILEDB_CORE_SOURCES}
     ${TILEDB_EXTERNALS_SOURCES}
   )
+  add_dependencies(TILEDB_CORE_OBJECTS_STATIC gen_mgc_unarch)
 
   # Compile all core sources with PIC
   set_property(TARGET TILEDB_CORE_OBJECTS_STATIC PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -521,12 +545,21 @@ if (TILEDB_S3)
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
       INTERFACE
         AWSSDK::aws-cpp-sdk-s3
-        AWSSDK::aws-cpp-sdk-core
-        AWSSDK::aws-c-event-stream
-        AWSSDK::aws-checksums
-        AWSSDK::aws-c-common
         AWSSDK::aws-cpp-sdk-identity-management
-        AWSSDK::aws-cpp-sdk-sts)
+        AWSSDK::aws-cpp-sdk-sts
+        AWSSDK::aws-cpp-sdk-core
+        AWSSDK::aws-crt-cpp
+        AWSSDK::aws-c-s3
+        AWSSDK::aws-c-auth
+        AWSSDK::aws-c-mqtt
+        AWSSDK::aws-c-http
+        AWSSDK::aws-c-event-stream
+        AWSSDK::aws-c-io
+        AWSSDK::aws-c-cal
+        AWSSDK::aws-c-sdkutils
+        AWSSDK::aws-c-compression
+        AWSSDK::aws-c-common
+        AWSSDK::aws-checksums)
   endif()
 endif()
 
@@ -536,39 +569,44 @@ if (TILEDB_AZURE)
 
   if (TILEDB_VCPKG)
     find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
-    if (NOT TARGET LibLZMA::LibLZMA)
-      find_package(LibLZMA REQUIRED)
-    endif()
-    if (NOT TARGET LibXml2::LibXml2)
-      find_package(LibXml2 REQUIRED)
-      install_target_libs(LibXml2::LibXml2)
+    if (NOT WIN32)
+      if (NOT TARGET LibLZMA::LibLZMA)
+        find_package(LibLZMA REQUIRED)
+      endif()
+      if (NOT TARGET LibXml2::LibXml2)
+        find_package(LibXml2 REQUIRED)
+        install_target_libs(LibXml2::LibXml2)
+      endif()
+      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+              INTERFACE
+              LibXml2::LibXml2
+              LibLZMA::LibLZMA)
     endif()
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
             INTERFACE
-            Azure::azure-storage-blobs
             Azure::azure-storage-common
+            Azure::azure-storage-blobs
             Azure::azure-core
-            LibXml2::LibXml2
-            LibLZMA::LibLZMA
             )
     install_all_target_libs("Azure::azure-storage-blobs;Azure::azure-storage-common;Azure::azure-core")
   else()
     find_package(AzureCore_EP REQUIRED)
     find_package(AzureStorageCommon_EP REQUIRED)
     find_package(AzureStorageBlobs_EP REQUIRED)
-    if (NOT TARGET LibXml2::LibXml2)
-      find_package(libxml2 REQUIRED)
-      install_target_libs(LibXml2::LibXml2)
+    if (NOT WIN32)
+      if (NOT TARGET LibXml2::LibXml2)
+        find_package(LibXml2 REQUIRED)
+        install_target_libs(LibXml2::LibXml2)
+      endif()
     endif()
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
             INTERFACE
-            Azure::azure-storage-common
             Azure::azure-storage-blobs
-            Azure::azure-core
-            LibXml2::LibXml2)
-    if(WIN32)
-      # WebServices needed by Azure storage on windows
-      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE WebServices)
+            Azure::azure-storage-common
+            Azure::azure-core)
+    # Link xml after Azure to allow symbol resolution on all platforms
+    if (NOT WIN32)
+      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE LibXml2::LibXml2)
     endif()
   endif()
 endif()
@@ -614,8 +652,12 @@ if (SANITIZER)
 endif()
 
 # Coverage linker flags
+# TODO: Use $<CONFIG:Coverage> after we remove the superbuild.
 if (CMAKE_BUILD_TYPE MATCHES "Coverage")
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+  if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    message(FATAL_ERROR "Compiling with code coverage is only supported with Clang.")
+  endif()
+  target_link_options(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
       --coverage
   )
@@ -671,6 +713,7 @@ if(TILEDB_WEBP)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
     WebP::webp
+    WebP::sharpyuv
   )
   add_definitions(-DTILEDB_WEBP)
 endif()
@@ -685,26 +728,22 @@ endif()
 
 # Win32 specific libraries
 if (WIN32)
-  set(WIN32_LIBS shlwapi rpcrt4 bcrypt)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE shlwapi rpcrt4 bcrypt)
   if(TILEDB_SERIALIZATION)
     #ws2_32.lib, crypt32.lib needed to satisfy curl dependencies
-    set(WIN32_LIBS ${WIN32_LIBS} ws2_32 crypt32)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ws2_32 crypt32)
   endif()
 
   if (TILEDB_S3)
-    list(APPEND WIN32_LIBS "${AWS_EXTRA_LIBS}")
+    # the AWSSDK does not include links to some transitive dependencies
+    # ref: github<dot>com/aws<slash>aws-sdk-cpp/issues/1074#issuecomment-466252911
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE userenv ws2_32 wininet winhttp bcrypt ncrypt crypt32 version secur32)
   endif()
 
-  foreach (LIB ${WIN32_LIBS})
-    if(MSVC)
-      find_library(LIB_${LIB} ${LIB})
-      message(STATUS "Found Win32 lib ${LIB}: ${LIB_${LIB}}")
-      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${LIB_${LIB}})
-    else()
-      message(STATUS "Linking to Win32 lib ${LIB}")
-      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE -l${LIB})
-    endif()
-  endforeach()
+  if (TILEDB_AZURE)
+    # WebServices, winhttp and crypt32 needed by Azure storage on windows
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE WebServices winhttp crypt32)
+  endif()
 endif()
 
 # macOS specific libraries
@@ -863,14 +902,22 @@ if(TILEDB_SERIALIZATION)
       ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/${TILEDB_SERIALIZATION_GENERATED_SUBDIR})
 
   # We only need to override the include path and PATH env for EP builds
+  # note: We run the compiler under `cmake -E env ...` because we need to run capnp executable
+  #       the capnp driver needs to be able to find the plugin executables (eg capnpc-c++).
+  #       For system installed capnp binaries we rely on the user to have their PATH
+  #       include the directory with CapNProto plugin binaries.
   if(TILEDB_CAPNP_EP_BUILT)
-    list(APPEND CAPNP_COMPILE_COMMAND "${CMAKE_COMMAND}" -E env PATH="${TILEDB_EP_BASE}/install/bin" "${CAPNP_EXECUTABLE}" compile -I "${TILEDB_EP_BASE}/install/include" -oc++:"${TILEDB_SERIALIZATION_GENERATED_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp" --src-prefix="${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization")
+    list(APPEND CAPNP_COMPILE_COMMAND "${CMAKE_COMMAND}" -E env PATH="${TILEDB_EP_BASE}/install/bin" "${CAPNP_EXECUTABLE}" compile -I "${TILEDB_EP_BASE}/install/include")
+  elseif(TILEDB_VCPKG)
+    set(CAPNP_PLUGIN_DIR $<TARGET_FILE_DIR:CapnProto::capnp_tool>)
+    list(APPEND CAPNP_COMPILE_COMMAND "${CMAKE_COMMAND}" -E env PATH="${CAPNP_PLUGIN_DIR}" "${CAPNP_EXECUTABLE}" compile "-I${CAPNP_INCLUDE_DIRECTORY}")
   else()
-    list(APPEND CAPNP_COMPILE_COMMAND "${CAPNP_EXECUTABLE}" compile -oc++:"${TILEDB_SERIALIZATION_GENERATED_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp" --src-prefix "${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization")
+    list(APPEND CAPNP_COMPILE_COMMAND "${CAPNP_EXECUTABLE}" compile)
   endif()
 
-  # note: run the compiler under `cmake -E env ...` because we need to run capnp executable
-  #       the capnp driver needs to be able to find the plugin executables (eg capnpc-c++)
+  # Add the rest of the capnp compile command
+  list(APPEND CAPNP_COMPILE_COMMAND -oc++:"${TILEDB_SERIALIZATION_GENERATED_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp" --src-prefix="${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization")
+
   add_custom_target(
     update-serialization
       ${CMAKE_COMMAND} -E echo "CAPNP_COMPILE_COMMAND: '${CAPNP_COMPILE_COMMAND}'"
@@ -939,21 +986,28 @@ if (TILEDB_STATIC)
     endforeach()
   elseif(TILEDB_S3)
     append_dep_lib(AWSSDK::aws-cpp-sdk-s3)
-    append_dep_lib(AWSSDK::aws-cpp-sdk-core)
-    append_dep_lib(AWSSDK::aws-c-event-stream)
-    append_dep_lib(AWSSDK::aws-checksums)
-    append_dep_lib(AWSSDK::aws-c-common)
-    append_dep_lib(AWSSDK::aws-cpp-sdk-sts)
     append_dep_lib(AWSSDK::aws-cpp-sdk-identity-management)
+    append_dep_lib(AWSSDK::aws-cpp-sdk-sts)
+    append_dep_lib(AWSSDK::aws-cpp-sdk-core)
+    append_dep_lib(AWSSDK::aws-crt-cpp)
+    append_dep_lib(AWSSDK::aws-c-s3)
+    append_dep_lib(AWSSDK::aws-c-auth)
+    append_dep_lib(AWSSDK::aws-c-mqtt)
+    append_dep_lib(AWSSDK::aws-c-http)
+    append_dep_lib(AWSSDK::aws-c-event-stream)
+    append_dep_lib(AWSSDK::aws-c-io)
+    append_dep_lib(AWSSDK::aws-c-cal)
+    append_dep_lib(AWSSDK::aws-c-sdkutils)
+    append_dep_lib(AWSSDK::aws-c-compression)
+    append_dep_lib(AWSSDK::aws-c-common)
+    append_dep_lib(AWSSDK::aws-checksums)
   endif()
 
   append_dep_lib(fmt::fmt)
   append_dep_lib(spdlog::spdlog)
 
+  append_dep_lib(Azure::azure-storage-blobs)
   append_dep_lib(Azure::azure-storage-common)
-  if(TILEDB_AZURE AND NOT TILEDB_VCPKG)
-    append_dep_lib(Azure::azure-storage-blobs)
-  endif()
   append_dep_lib(Azure::azure-core)
   append_dep_lib(LibXml2::LibXml2)
   append_dep_lib(LibLZMA::LibLZMA)
@@ -962,8 +1016,12 @@ if (TILEDB_STATIC)
   append_dep_lib(google-cloud-cpp::experimental-storage-grpc)
 
   append_dep_lib(libmagic)
+  append_dep_lib(unofficial::libmagic::libmagic)
+  append_dep_lib(PCRE2::8BIT)
+  append_dep_lib(PCRE2::POSIX)
   append_dep_lib(Crc32c::crc32c)
   append_dep_lib(WebP::webp)
+  append_dep_lib(WebP::sharpyuv)
 
 endif()
 

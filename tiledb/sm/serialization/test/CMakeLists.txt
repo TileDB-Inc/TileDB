@@ -41,3 +41,11 @@ commence(unit_test capnp_array_schema)
   # Enable serialization
   target_compile_definitions(unit_capnp_array_schema PRIVATE -DTILEDB_SERIALIZATION)
 conclude(unit_test)
+
+commence(unit_test capnp_nonempty_domain)
+  this_target_sources(main.cc unit_capnp_nonempty_domain.cc)
+  this_target_link_libraries(TILEDB_CORE_OBJECTS TILEDB_CORE_OBJECTS_ILIB)
+
+  # Enable serialization
+  target_compile_definitions(unit_capnp_nonempty_domain PRIVATE -DTILEDB_SERIALIZATION)
+conclude(unit_test)

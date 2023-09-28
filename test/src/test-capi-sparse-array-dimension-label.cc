@@ -316,15 +316,15 @@ TEST_CASE_METHOD(
 #endif
 
   // Input vectors.
-  std::vector<uint64_t> input_index_data{};
-  std::vector<double> input_label_data{};
-  std::vector<double> input_attr_data{};
+  std::vector<uint64_t> input_index_data{4};
+  std::vector<double> input_label_data{4};
+  std::vector<double> input_attr_data{4};
 
   // Expected output vectors.
-  std::vector<double> label_data_sorted_by_index{};
-  std::vector<double> label_data_sorted_by_label{};
-  std::vector<double> attr_data_sorted_by_index{};
-  std::vector<uint64_t> index_data_sorted_by_label{};
+  std::vector<double> label_data_sorted_by_index{4};
+  std::vector<double> label_data_sorted_by_label{4};
+  std::vector<double> attr_data_sorted_by_index{4};
+  std::vector<uint64_t> index_data_sorted_by_label{4};
 
   // Dimension label parameters.
   tiledb_data_order_t label_order{};
@@ -426,9 +426,9 @@ TEST_CASE_METHOD(
 #endif
 
   // Vectors for input data.
-  std::vector<uint64_t> input_index_data{};
-  std::vector<double> input_label_data{};
-  std::vector<double> input_attr_data{};
+  std::vector<uint64_t> input_index_data{4};
+  std::vector<double> input_label_data{4};
+  std::vector<double> input_attr_data{4};
 
   // Dimension label parameters.
   tiledb_data_order_t label_order{};

@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -265,6 +265,11 @@ class Config {
    *
    * **Parameters**
    *
+   * - `sm.allow_aggregates_experimental` <br>
+   *    **Experimental** <br>
+   *    Allow aggregates APIs. Experimental for testing purposes,
+   *    do not use.<br>
+   *    **Default**: false
    * - `sm.allow_separate_attribute_writes` <br>
    *    **Experimental** <br>
    *    Allow separate attribute write queries.<br>
@@ -296,6 +301,12 @@ class Config {
    * - `sm.check_global_order` <br>
    *    Checks if the coordinates obey the global array order. Applicable only
    *    to sparse writes in global order.
+   *    **Default**: true
+   * - `sm.merge_overlapping_ranges_experimental` <br>
+   *    **Experimental** <br>
+   *    If `true`, merge overlapping Subarray ranges. Else, overlapping ranges
+   *    will not be merged and multiplicities will be returned.
+   *    Experimental for testing purposes, do not use.<br>
    *    **Default**: true
    * - `sm.enable_signal_handlers` <br>
    *    Whether or not TileDB will install signal handlers. <br>
@@ -495,10 +506,6 @@ class Config {
    * - `vfs.file.posix_directory_permissions` <br>
    *    permissions to use for posix file system with file or dir creation.<br>
    *    **Default**: 755
-   * - `vfs.file.max_parallel_ops` <br>
-   *    The maximum number of parallel operations on objects with `file:///`
-   *    URIs. <br>
-   *    **Default**: `1`
    * - `vfs.azure.storage_account_name` <br>
    *    Set the name of the Azure Storage account to use. <br>
    *    **Default**: ""
@@ -638,7 +645,7 @@ class Config {
    *    The AWS SDK logging level. This is a process-global setting. The
    *    configuration of the most recently constructed context will set
    *    process state. Log files are written to the process working directory.
-   *    **Default**: off""
+   *    **Default**: "off"
    * - `vfs.s3.request_timeout_ms` <br>
    *    The request timeout in ms. Any `long` value is acceptable. <br>
    *    **Default**: 3000
@@ -671,6 +678,10 @@ class Config {
    * - `vfs.s3.sse` <br>
    *    The server-side encryption algorithm to use. Supported non-empty
    *    values are "aes256" and "kms" (AWS key management service). <br>
+   *    **Default**: ""
+   * - `vfs.s3.sse_kms_key_id` <br>
+   *    The server-side encryption key to use if
+   *    vfs.s3.sse == "kms" (AWS key management service). <br>
    *    **Default**: ""
    * - `vfs.s3.bucket_canned_acl` <br>
    *    Names of values found in Aws::S3::Model::BucketCannedACL enumeration.
@@ -786,6 +797,10 @@ class Config {
    * - `rest.curl.buffer_size` <br>
    *    Set curl buffer size for REST requests <br>
    *    **Default**: 524288 (512KB)
+   * - `rest.capnp_traversal_limit` <br>
+   *    CAPNP traversal limit used in the deserialization of messages(bytes)
+   * <br>
+   *    **Default**: 536870912 (512MB)
    * - `filestore.buffer_size` <br>
    *    Specifies the size in bytes of the internal buffers used in the
    *    filestore API. The size should be bigger than the minimum tile size

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -764,15 +764,15 @@ void SparseArrayFx::check_sorted_reads(
     tiledb_layout_t tile_order,
     tiledb_layout_t cell_order) {
   // Parameters used in this test
-  int64_t domain_size_0 = 5000;
-  int64_t domain_size_1 = 1000;
-  int64_t tile_extent_0 = 100;
-  int64_t tile_extent_1 = 100;
+  int64_t domain_size_0 = 2500;
+  int64_t domain_size_1 = 500;
+  int64_t tile_extent_0 = 50;
+  int64_t tile_extent_1 = 50;
   int64_t domain_0_lo = 0;
   int64_t domain_0_hi = domain_size_0 - 1;
   int64_t domain_1_lo = 0;
   int64_t domain_1_hi = domain_size_1 - 1;
-  int64_t capacity = 100000;
+  int64_t capacity = 25000;
   int iter_num = (compressor != TILEDB_FILTER_BZIP2) ? ITER_NUM : 1;
 
   create_sparse_array_2D(
@@ -2486,6 +2486,14 @@ TEST_CASE_METHOD(
         TILEDB_ROW_MAJOR,
         TILEDB_COL_MAJOR);
   }
+
+  SECTION("- delta compression, row/col-major") {
+    // TODO: refactor for each supported FS.
+    std::string temp_dir = fs_vec_[0]->temp_dir();
+    array_name = temp_dir + ARRAY;
+    check_sorted_reads(
+        array_name, TILEDB_FILTER_DELTA, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
+  }
 }
 
 TEST_CASE_METHOD(
@@ -3284,13 +3292,27 @@ TEST_CASE_METHOD(
   create_sparse_array(array_name);
   write_sparse_array(array_name);
 
+  // Disable merge overlapping sparse ranges.
+  // Support for returning multiplicities for overlapping ranges will be
+  // deprecated in a few releases. Turning off this setting allows to still
+  // test that the feature functions properly until we do so. Once support is
+  // fully removed for overlapping ranges, this section can be deleted.
+  tiledb_error_t* error = nullptr;
+  tiledb_config_t* config = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  int rc = tiledb_config_set(
+      config, "sm.merge_overlapping_ranges_experimental", "false", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
   // Create TileDB context
   tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
+  REQUIRE(tiledb_ctx_alloc(config, &ctx) == TILEDB_OK);
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);

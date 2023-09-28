@@ -22,6 +22,8 @@ Optionally specify the CMake generator string, e.g. "Visual Studio 15
 
 .PARAMETER EnableDebug
 Enable Debug build.
+When using multi-config CMake generators this option is ignored and
+you can just pass "--config Debug" when building with CMake.
 
 .PARAMETER EnableAssert
 Enable Assertions in compiled code (always on for debug build;
@@ -29,6 +31,8 @@ default off in release).
 
 .PARAMETER EnableReleaseSymbols
 Enable symbols with Release build.
+When using multi-config CMake generators this option is ignored and
+you can just pass "--config RelWithDebInfo" when building with CMake.
 
 .PARAMETER EnableCoverage
 Enable build with code coverage support.
@@ -38,6 +42,7 @@ Enable verbose status messages.
 
 .PARAMETER EnableVcpkg
 Enables building dependencies with vcpkg.
+Deprecated, this is now the default behavior.
 
 .PARAMETER EnableAzure
 Enables building with the Azure storage backend.
@@ -90,6 +95,9 @@ Disable building the TileDB tests.
 .Parameter DisableStats
 Disables internal TileDB statistics.
 
+.PARAMETER DisableVcpkg
+Disables building dependencies with vcpkg.
+
 .PARAMETER BuildProcesses
 Number of parallel compile jobs.
 
@@ -115,6 +123,7 @@ Param(
     [switch]$EnableCoverage,
     [switch]$EnableVerbose,
     [switch]$EnableVcpkg,
+    [switch]$DisableVcpkg,
     [switch]$EnableAzure,
     [switch]$EnableS3,
     [switch]$EnableSerialization,
@@ -179,9 +188,12 @@ if ($EnableVerbose.IsPresent) {
 }
 
 # Set vcpkg flag
-$UseVcpkg = "OFF"
+$UseVcpkg = "ON"
 if ($EnableVcpkg.IsPresent) {
-    $UseVcpkg = "ON"
+    Write-Warning "-EnableVcpkg is deprecated and will be removed in a future version. Vcpkg is now enabled by default. Use -DisableVcpkg to disable it."
+}
+elseif ($DisableVcpkg.IsPresent) {
+    $UseVcpkg = "OFF"
 }
 
 # Set TileDB Azure flag

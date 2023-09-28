@@ -37,7 +37,6 @@
 
 #include <cassert>
 #include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/crypto.h"
 #include "tiledb/sm/filesystem/path_win.h"
@@ -61,13 +60,10 @@ static bool ends_with(const std::string& value, const std::string& suffix) {
 struct WinFx {
   const std::string& TEMP_DIR = tiledb::test::get_temp_path();
   Win win_;
-  ThreadPool thread_pool_{4};
   Config vfs_config_;
 
   WinFx() {
-    // Make sure parallel reads/writes are tested.
-    REQUIRE(vfs_config_.set("vfs.min_parallel_size", "100").ok());
-    REQUIRE(win_.init(vfs_config_, &thread_pool_).ok());
+    REQUIRE(win_.init(vfs_config_).ok());
 
     if (path_exists(TEMP_DIR)) {
       REQUIRE(win_.remove_dir(TEMP_DIR).ok());

@@ -34,8 +34,6 @@
 #define TILEDB_AZURE_H
 
 #ifdef HAVE_AZURE
-#include <azure/core/base64.hpp>
-
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
@@ -325,28 +323,7 @@ class Azure {
     }
 
     /* Generates the next base64-encoded block id. */
-    std::string next_block_id() {
-      const uint64_t block_id = next_block_id_++;
-      const std::string block_id_str = std::to_string(block_id);
-
-      // Pad the block id string with enough leading zeros to support
-      // the maximum number of blocks (50,000). All block ids must be
-      // of equal length among a single blob.
-      const int block_id_chars = 5;
-      std::vector<uint8_t> padded_block_id(
-          block_id_chars - block_id_str.length(), '0');
-      std::copy(
-          block_id_str.begin(),
-          block_id_str.end(),
-          std::back_inserter(padded_block_id));
-
-      const std::string b64_block_id_str =
-          ::Azure::Core::Convert::Base64Encode(padded_block_id);
-
-      block_ids_.emplace_back(b64_block_id_str);
-
-      return b64_block_id_str;
-    }
+    std::string next_block_id();
 
     /* Returns all generated block ids. */
     std::list<std::string> get_block_ids() const {

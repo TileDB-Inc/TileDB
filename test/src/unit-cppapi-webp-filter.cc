@@ -254,7 +254,10 @@ TEMPLATE_LIST_TEST_CASE(
 
     // Create an invalid attribute for use with WebP filter.
     auto invalid_attr = Attribute::create<TestType>(ctx, "rgb");
-    invalid_attr.set_filter_list(filterList);
+    REQUIRE_THROWS_WITH(
+        invalid_attr.set_filter_list(filterList),
+        Catch::Matchers::ContainsSubstring(
+            "Filter WEBP does not accept input type"));
 
     // WebP filter requires exactly 2 dimensions for Y, X.
     {
@@ -297,18 +300,6 @@ TEMPLATE_LIST_TEST_CASE(
           invalid_schema.set_domain(invalid_domain),
           Catch::Matchers::ContainsSubstring(
               "In dense arrays, all dimensions must have the same datatype"));
-    }
-
-    // WebP filter supports only uint8 attributes.
-    {
-      ArraySchema invalid_schema(ctx, TILEDB_DENSE);
-      invalid_schema.set_domain(valid_domain);
-
-      invalid_schema.add_attribute(invalid_attr);
-      REQUIRE_THROWS_WITH(
-          Array::create(webp_array_name, invalid_schema),
-          Catch::Matchers::ContainsSubstring(
-              "WebP filter supports only uint8 attributes"));
     }
 
     // WebP filter can only be applied to dense arrays.

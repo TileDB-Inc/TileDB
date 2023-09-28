@@ -34,6 +34,7 @@
 // Avoid deprecation warnings for the cpp api
 #define TILEDB_DEPRECATED
 
+#include "tiledb/api/c_api/attribute/attribute_api_internal.h"
 #include "tiledb/api/c_api/config/config_api_internal.h"
 #include "tiledb/api/c_api/dimension/dimension_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"

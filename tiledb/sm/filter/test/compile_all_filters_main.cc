@@ -33,7 +33,7 @@ int main() {
 
   (void)sizeof(tiledb::sm::FilterCreate);
   (void)static_cast<shared_ptr<Filter> (*)(
-      Deserializer & deserializer, const uint32_t version)>(
+      Deserializer & deserializer, const uint32_t version, Datatype datatype)>(
       tiledb::sm::FilterCreate::deserialize);
   return 0;
 }

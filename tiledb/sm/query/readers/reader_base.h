@@ -41,6 +41,8 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
+#include "tiledb/sm/query/readers/aggregators/iaggregator.h"
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 #include "tiledb/sm/query/readers/result_space_tile.h"
 #include "tiledb/sm/query/writers/domain_buffer.h"
@@ -115,9 +117,11 @@ class ReaderBase : public StrategyBase {
       Array* array,
       Config& config,
       std::unordered_map<std::string, QueryBuffer>& buffers,
+      std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
       Subarray& subarray,
       Layout layout,
-      std::optional<QueryCondition>& condition);
+      std::optional<QueryCondition>& condition,
+      DefaultChannelAggregates& default_channel_aggregates);
 
   /** Destructor. */
   ~ReaderBase() = default;
@@ -153,6 +157,41 @@ class ReaderBase : public StrategyBase {
       const TileDomain<T>& array_tile_domain,
       const std::vector<TileDomain<T>>& frag_tile_domains,
       std::map<const T*, ResultSpaceTile<T>>& result_space_tiles);
+
+  /**
+   * Computes the minimum and maximum indexes of tile chunks to process based on
+   * the available threads.
+   *
+   * @param num_chunks Total number of chunks in a tile
+   * @param num_range_threads Total number of range threads.
+   * @param range_thread_idx Current range thread index.
+   * @return {min, max}
+   */
+  static tuple<uint64_t, uint64_t> compute_chunk_min_max(
+      const uint64_t num_chunks,
+      const uint64_t num_range_threads,
+      const uint64_t thread_idx) {
+    if (num_range_threads == 0) {
+      throw std::runtime_error("Number of range thread value is 0");
+    }
+
+    if (thread_idx > num_range_threads - 1) {
+      throw std::runtime_error(
+          "Range thread index is greater than number of range threads");
+    }
+
+    if (num_chunks == 0) {
+      return {0, 0};
+    }
+
+    auto t_part_num = std::min(num_chunks, num_range_threads);
+    auto t_min = (thread_idx * num_chunks + t_part_num - 1) / t_part_num;
+    auto t_max = std::min(
+        ((thread_idx + 1) * num_chunks + t_part_num - 1) / t_part_num,
+        num_chunks);
+
+    return {t_min, t_max};
+  }
 
   /* ********************************* */
   /*          PUBLIC METHODS           */
@@ -238,6 +277,15 @@ class ReaderBase : public StrategyBase {
 
   /** The minimum number of bytes in a batched read operation. */
   uint64_t min_batch_size_;
+
+  /** Default channel aggregates, stored by field name. */
+  std::unordered_map<std::string, std::vector<shared_ptr<IAggregator>>>
+      aggregates_;
+
+  /**
+   * Maps aggregate names to their buffers.
+   * */
+  std::unordered_map<std::string, QueryBuffer>& aggregate_buffers_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */
@@ -503,20 +551,6 @@ class ReaderBase : public StrategyBase {
       const ChunkData& tile_chunk_data,
       const ChunkData& tile_chunk_var_data,
       const ChunkData& tile_chunk_validity_data) const;
-
-  /**
-   * Computes the minimum and maximum indexes of tile chunks to process based on
-   * the available threads.
-   *
-   * @param num_chunks Total number of chunks in a tile
-   * @param num_range_threads Total number of range threads.
-   * @param range_thread_idx Current range thread index.
-   * @return {min, max}
-   */
-  tuple<uint64_t, uint64_t> compute_chunk_min_max(
-      const uint64_t num_chunks,
-      const uint64_t num_range_threads,
-      const uint64_t thread_idx) const;
 
   /**
    * Returns the configured bytesize for var-sized attribute offsets

@@ -58,8 +58,7 @@ TEST_CASE("Test delta compression of a vector", "[compression][delta]") {
   compressed.assign(
       reinterpret_cast<int64_t*>((char*)compressed_buff.data() + 8),
       reinterpret_cast<int64_t*>(compressed_buff.data()) +
-          (compressed_buff.size() / sizeof(decltype(compressed)::value_type) -
-           1));
+          (compressed_buff.size() / sizeof(decltype(compressed)::value_type)));
   CHECK(compressed == expected);
 }
 

@@ -68,11 +68,11 @@ if (TILEDB_WEBP)
   find_package(Webp_EP REQUIRED)
   add_executable(unit_link_webp)
   if (WIN32)
-    target_link_libraries(unit_link_webp PRIVATE WebP::webp WebP::webpdecoder WebP::webpdemux WebP::webpmux)
+    target_link_libraries(unit_link_webp PRIVATE WebP::webp WebP::webpdecoder WebP::webpdemux WebP::libwebpmux)
   else() #if (NOT WIN32)
     # On Linux, must explicitly link -lpthread -ldl in order for static linking
     # to libzstd or libcurl to work.
-    target_link_libraries(unit_link_webp WebP::webp WebP::webpdecoder WebP::webpdemux WebP::webpmux pthread dl)
+    target_link_libraries(unit_link_webp WebP::webp WebP::webpdecoder WebP::webpdemux WebP::libwebpmux pthread dl)
   endif()
   target_sources(
       unit_link_webp
