@@ -189,7 +189,7 @@ class GroupDetails {
   /**
    * Apply any pending member additions or removals
    *
-   * mutates members_ and clears members_to_add_ and members_to_remove_
+   * mutates members_ and clears members_to_modify_
    *
    * @return Status
    */
@@ -203,13 +203,14 @@ class GroupDetails {
   /** The group URI. */
   URI group_uri_;
 
-  /** The mapping of all members of this group. */
+  /** The mapping of all members of this group. This is the canonical store of
+   * the group's members. The key is the member's name_or_uri. */
   std::unordered_map<std::string, shared_ptr<GroupMember>> members_;
 
   /** Vector for index based lookup. */
   std::vector<shared_ptr<GroupMember>> members_vec_;
 
-  /** Unordered map of members by their name, if the member doesn't have a name,
+  /** Unordered map for name based lookup. If the member doesn't have a name,
    * it will not be in the map. */
   std::unordered_map<std::string, shared_ptr<GroupMember>> members_by_name_;
 
@@ -219,10 +220,10 @@ class GroupDetails {
   /** Mutex for thread safety. */
   mutable std::mutex mtx_;
 
-  /* Format version. */
+  /** Format version. */
   const uint32_t version_;
 
-  /* Were changes applied and is a write is required */
+  /** Were changes applied and is a write is required */
   bool changes_applied_;
 };
 }  // namespace sm
