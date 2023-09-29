@@ -2954,11 +2954,37 @@ TILEDB_EXPORT int32_t tiledb_array_get_open_timestamp_end(
  * @param timestamp_end The epoch timestamp in milliseconds. Use UINT64_MAX for
  *   the current timestamp.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note This function was deprecated in release 2.18 in favor of
+ * tiledb_array_delete_fragments_v2.
  */
-TILEDB_EXPORT int32_t tiledb_array_delete_fragments(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_delete_fragments(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const char* uri,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end) TILEDB_NOEXCEPT;
+
+/**
+ * Deletes array fragments written between the input timestamps.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_delete_fragments_v2(
+ *   ctx, "hdfs:///temp/my_array", 0, UINT64_MAX);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param uri_str The URI of the fragments' parent Array.
+ * @param timestamp_start The epoch timestamp in milliseconds.
+ * @param timestamp_end The epoch timestamp in milliseconds. Use UINT64_MAX for
+ *   the current timestamp.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_delete_fragments_v2(
+    tiledb_ctx_t* ctx,
+    const char* uri_str,
     uint64_t timestamp_start,
     uint64_t timestamp_end) TILEDB_NOEXCEPT;
 
@@ -2976,14 +3002,14 @@ TILEDB_EXPORT int32_t tiledb_array_delete_fragments(
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param uri The URI of the fragments' parent Array.
+ * @param uri_str The URI of the fragments' parent Array.
  * @param fragment_uris The URIs of the fragments to be deleted.
  * @param num_fragments The number of fragments to be deleted.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_delete_fragments_list(
     tiledb_ctx_t* ctx,
-    const char* array_uri,
+    const char* uri_str,
     const char* fragment_uris[],
     const size_t num_fragments) TILEDB_NOEXCEPT;
 

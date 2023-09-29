@@ -1199,6 +1199,17 @@ struct BufferedChunk {
   # the size in bytes of the intermediate chunk
 }
 
+struct ArrayDeleteFragmentsListRequest {
+  uri @0 :Text;
+  entries @1 :List(Text);
+}
+
+struct ArrayDeleteFragmentsTimestampsRequest {
+  uri @0 :Text;
+  startTimestamp @1 :UInt64;
+  endTimestamp @2 :UInt64;
+}
+
 struct ArrayConsolidationRequest {
   config @0 :Config;
   # Config
