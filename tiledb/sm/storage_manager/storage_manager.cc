@@ -1945,14 +1945,13 @@ StorageManagerCanonical::load_fragment_metadata(
         sf.uri_.join_path(constants::coords + constants::file_suffix);
 
     auto name = sf.uri_.remove_trailing_slash().last_path_part();
-    uint32_t f_version;
-    RETURN_NOT_OK(utils::parse::get_fragment_name_version(name, &f_version));
+    auto format_version = utils::parse::get_fragment_version(name);
 
     // Note that the fragment metadata version is >= the array schema
     // version. Therefore, the check below is defensive and will always
     // ensure backwards compatibility.
     shared_ptr<FragmentMetadata> metadata;
-    if (f_version == 1) {  // This is equivalent to format version <=2
+    if (format_version <= 2) {
       bool sparse;
       RETURN_NOT_OK(vfs()->is_file(coords_uri, &sparse));
       metadata = make_shared<FragmentMetadata>(
@@ -1963,7 +1962,8 @@ StorageManagerCanonical::load_fragment_metadata(
           sf.uri_,
           sf.timestamp_range_,
           !sparse);
-    } else {  // Format version > 2
+    } else {
+      // Fragment format version > 2
       metadata = make_shared<FragmentMetadata>(
           HERE(),
           this,
