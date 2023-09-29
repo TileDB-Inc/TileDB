@@ -1443,9 +1443,9 @@ class FragmentMetadata {
    * Returns the size of the fragment metadata footer
    * (which contains the generic tile offsets) along with its size.
    *
-   * Applicable to format version 7 to 10.
+   * Applicable to format version 7 to 9.
    */
-  uint64_t footer_size_v7_v10() const;
+  uint64_t footer_size_v7_v9() const;
 
   /**
    * Returns the ids (positions) of the tiles overlapping `subarray`.

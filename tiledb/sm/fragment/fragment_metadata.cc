@@ -2132,7 +2132,7 @@ Status FragmentMetadata::get_footer_offset_and_size(
     *size = footer_size_v5_v6();
     *offset = meta_file_size_ - *size;
   } else if (all_fixed && fragment_format_version < 10) {
-    *size = footer_size_v7_v10();
+    *size = footer_size_v7_v9();
     *offset = meta_file_size_ - *size;
   } else {
     URI fragment_metadata_uri = fragment_uri_.join_path(
@@ -2213,7 +2213,7 @@ uint64_t FragmentMetadata::footer_size_v5_v6() const {
   return size;
 }
 
-uint64_t FragmentMetadata::footer_size_v7_v10() const {
+uint64_t FragmentMetadata::footer_size_v7_v9() const {
   auto dim_num = array_schema_->dim_num();
   auto num = num_dims_and_attrs();
   uint64_t domain_size = 0;
