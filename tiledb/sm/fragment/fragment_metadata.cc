@@ -2111,32 +2111,28 @@ Status FragmentMetadata::load_tile_var_sizes(
 /*        PRIVATE METHODS         */
 /* ****************************** */
 
-Status FragmentMetadata::get_footer_size(
-    uint32_t version, uint64_t* size) const {
-  if (version < 3) {
-    *size = footer_size_v3_v4();
-  } else if (version < 4) {
-    *size = footer_size_v5_v6();
-  } else if (version < 11) {
-    *size = footer_size_v7_v10();
-  } else {
-    *size = footer_size_v11_or_higher();
-  }
-
-  return Status::Ok();
-}
-
 uint64_t FragmentMetadata::footer_size() const {
   return footer_size_;
 }
 
 Status FragmentMetadata::get_footer_offset_and_size(
     uint64_t* offset, uint64_t* size) const {
-  uint32_t f_version;
   auto name = fragment_uri_.remove_trailing_slash().last_path_part();
-  RETURN_NOT_OK(utils::parse::get_fragment_name_version(name, &f_version));
-  if (array_schema_->domain().all_dims_fixed() && f_version < 5) {
-    RETURN_NOT_OK(get_footer_size(f_version, size));
+  uint32_t fragment_format_version;
+  RETURN_NOT_OK(
+      utils::parse::get_fragment_version(name, &fragment_format_version));
+  auto all_fixed = array_schema_->domain().all_dims_fixed();
+  if (all_fixed &&
+      (fragment_format_version == UINT32_MAX || fragment_format_version < 5)) {
+    // The UINT32_MAX check is because old versions didn't have a version
+    // encoded in their fragment URI.
+    *size = footer_size_v3_v4();
+    *offset = meta_file_size_ - *size;
+  } else if (all_fixed && fragment_format_version < 7) {
+    *size = footer_size_v5_v6();
+    *offset = meta_file_size_ - *size;
+  } else if (all_fixed && fragment_format_version < 10) {
+    *size = footer_size_v7_v10();
     *offset = meta_file_size_ - *size;
   } else {
     URI fragment_metadata_uri = fragment_uri_.join_path(
