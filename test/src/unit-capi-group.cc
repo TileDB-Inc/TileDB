@@ -893,12 +893,18 @@ TEST_CASE_METHOD(
   rc = tiledb_group_open(ctx_, group2, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
+  // The member has a name; removing it by URI should fail.
   rc = tiledb_group_remove_member(ctx_, group1, group2_uri.c_str());
+  REQUIRE(rc != TILEDB_OK);
+  rc = tiledb_group_remove_member(ctx_, group1, "four");
   REQUIRE(rc == TILEDB_OK);
   // Group is the latest element
   group1_expected.resize(group1_expected.size() - 1);
 
+  // The member has a name; removing it by URI should fail.
   rc = tiledb_group_remove_member(ctx_, group2, array3_uri.c_str());
+  REQUIRE(rc != TILEDB_OK);
+  rc = tiledb_group_remove_member(ctx_, group2, "three");
   REQUIRE(rc == TILEDB_OK);
   // There should be nothing left in group2
   group2_expected.clear();
@@ -1321,12 +1327,18 @@ TEST_CASE_METHOD(
   rc = tiledb_group_open(ctx_, group2, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
+  // The member has a name; removing it by URI should fail.
   rc = tiledb_group_remove_member(ctx_, group1, group2_uri.c_str());
+  REQUIRE(rc != TILEDB_OK);
+  rc = tiledb_group_remove_member(ctx_, group1, "eight");
   REQUIRE(rc == TILEDB_OK);
   // Group is the latest element
   group1_expected.resize(group1_expected.size() - 1);
 
+  // The member has a name; removing it by URI should fail.
   rc = tiledb_group_remove_member(ctx_, group2, array3_relative_uri.c_str());
+  REQUIRE(rc != TILEDB_OK);
+  rc = tiledb_group_remove_member(ctx_, group2, "seven");
   REQUIRE(rc == TILEDB_OK);
   // There should be nothing left in group2
   group2_expected.clear();
