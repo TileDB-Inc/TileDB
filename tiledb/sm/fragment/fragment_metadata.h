@@ -727,12 +727,6 @@ class FragmentMetadata {
   uint64_t file_validity_offset(
       const std::string& name, uint64_t tile_idx) const;
 
-  /**
-   * Retrieves the size of the fragment metadata footer
-   * (which contains the generic tile offsets) along with its size.
-   */
-  Status get_footer_size(uint32_t version, uint64_t* size) const;
-
   uint64_t footer_size() const;
 
   /** Returns the MBR of the input tile. */
