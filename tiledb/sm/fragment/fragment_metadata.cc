@@ -799,20 +799,13 @@ Status FragmentMetadata::load(
   }
 
   // Get fragment name version
-  uint32_t f_version;
   auto name = fragment_uri_.remove_trailing_slash().last_path_part();
-  RETURN_NOT_OK(utils::parse::get_fragment_name_version(name, &f_version));
+  auto format_version = utils::parse::get_fragment_version(name);
 
-  // Note: The fragment name version is different from the fragment format
-  // version.
-  //  - Version 1 corresponds to format versions 1 and 2
-  //    * __uuid_<t1>{_t2}
-  //  - Version 2 corresponds to version 3 and 4
-  //    * __t1_t2_uuid
-  //  - Version 3 corresponds to version 5 or higher
-  //    * __t1_t2_uuid_version
-  if (f_version == 1)
+  if (format_version <= 2) {
     return load_v1_v2(encryption_key, array_schemas);
+  }
+
   return load_v3_or_higher(
       encryption_key, fragment_metadata_tile, offset, array_schemas);
 }
@@ -2118,14 +2111,9 @@ uint64_t FragmentMetadata::footer_size() const {
 Status FragmentMetadata::get_footer_offset_and_size(
     uint64_t* offset, uint64_t* size) const {
   auto name = fragment_uri_.remove_trailing_slash().last_path_part();
-  uint32_t fragment_format_version;
-  RETURN_NOT_OK(
-      utils::parse::get_fragment_version(name, &fragment_format_version));
+  auto fragment_format_version = utils::parse::get_fragment_version(name);
   auto all_fixed = array_schema_->domain().all_dims_fixed();
-  if (all_fixed &&
-      (fragment_format_version == UINT32_MAX || fragment_format_version < 5)) {
-    // The UINT32_MAX check is because old versions didn't have a version
-    // encoded in their fragment URI.
+  if (all_fixed && fragment_format_version < 5) {
     *size = footer_size_v3_v4();
     *offset = meta_file_size_ - *size;
   } else if (all_fixed && fragment_format_version < 7) {

@@ -539,10 +539,9 @@ URI ArrayDirectory::get_commits_dir(uint32_t write_version) const {
 
 URI ArrayDirectory::get_commit_uri(const URI& fragment_uri) const {
   auto name = fragment_uri.remove_trailing_slash().last_path_part();
-  uint32_t version;
-  throw_if_not_ok(utils::parse::get_fragment_version(name, &version));
+  auto fragment_version = utils::parse::get_fragment_version(name);
 
-  if (version == UINT32_MAX || version < 12) {
+  if (fragment_version < 12) {
     return URI(fragment_uri.to_string() + constants::ok_file_suffix);
   }
 
@@ -553,10 +552,9 @@ URI ArrayDirectory::get_commit_uri(const URI& fragment_uri) const {
 
 URI ArrayDirectory::get_vacuum_uri(const URI& fragment_uri) const {
   auto name = fragment_uri.remove_trailing_slash().last_path_part();
-  uint32_t version;
-  throw_if_not_ok(utils::parse::get_fragment_version(name, &version));
+  auto fragment_version = utils::parse::get_fragment_version(name);
 
-  if (version == UINT32_MAX || version < 12) {
+  if (fragment_version < 12) {
     return URI(fragment_uri.to_string() + constants::vacuum_file_suffix);
   }
 
@@ -1283,9 +1281,8 @@ Status ArrayDirectory::is_fragment(
 
   // If the format version is >= 5, then the above suffices to check if
   // the URI is indeed a fragment
-  uint32_t version;
-  RETURN_NOT_OK(utils::parse::get_fragment_version(name, &version));
-  if (version != UINT32_MAX && version >= 5) {
+  auto fragment_version = utils::parse::get_fragment_version(name);
+  if (fragment_version >= 5) {
     *is_fragment = false;
     return Status::Ok();
   }
@@ -1301,16 +1298,15 @@ Status ArrayDirectory::is_fragment(
 bool ArrayDirectory::consolidation_with_timestamps_supported(
     const URI& uri) const {
   // Get the fragment version from the uri
-  uint32_t version;
   auto name = uri.remove_trailing_slash().last_path_part();
-  throw_if_not_ok(utils::parse::get_fragment_version(name, &version));
+  auto fragment_version = utils::parse::get_fragment_version(name);
 
   // get_fragment_version returns UINT32_MAX for versions <= 2 so we should
   // explicitly exclude this case when checking if consolidation with timestamps
   // is supported on a fragment
   return mode_ == ArrayDirectoryMode::READ &&
-         version >= constants::consolidation_with_timestamps_min_version &&
-         version != UINT32_MAX;
+         fragment_version >=
+             constants::consolidation_with_timestamps_min_version;
 }
 
 shared_ptr<const Enumeration> ArrayDirectory::load_enumeration(

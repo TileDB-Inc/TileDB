@@ -47,22 +47,11 @@ Status get_timestamp_range(
     const URI& uri, std::pair<uint64_t, uint64_t>* timestamp_range);
 
 /**
- * Retrieves the fragment name version.
- *  - Version 1 corresponds to format versions 1 and 2
- *      * __uuid_<t1>{_t2}
- *  - Version 2 corresponds to version 3 and 4
- *      * __t1_t2_uuid
- *  - Version 3 corresponds to version 5 or higher
- *      * __t1_t2_uuid_version
- */
-Status get_fragment_name_version(const std::string& name, uint32_t* version);
-
-/**
  * Retrieves the fragment version. This will work only for
  * name versions > 2, otherwise the function sets `version`
  * to UINT32_MAX.
  */
-Status get_fragment_version(const std::string& name, uint32_t* version);
+format_version_t get_fragment_version(const std::string& name);
 
 /**
  * Returns true if the given URIs have the same "prefix" and could
