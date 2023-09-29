@@ -96,14 +96,6 @@ Status GroupDetailsV1::apply_pending_changes() {
 
   members_vec_.clear();
   members_by_name_.clear();
-  members_vec_.reserve(members_.size());
-  for (auto& it : members_) {
-    members_vec_.emplace_back(it.second);
-    if (it.second->name().has_value()) {
-      members_by_name_.emplace(it.second->name().value(), it.second);
-    }
-  }
-
   return Status::Ok();
 }
 

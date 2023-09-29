@@ -109,7 +109,6 @@ Status GroupDetailsV2::apply_pending_changes() {
   members_.clear();
   members_vec_.clear();
   members_by_name_.clear();
-  members_vec_.reserve(members_to_modify_.size());
 
   // First add each member to unordered map, overriding if the user adds/removes
   // it multiple times
@@ -117,12 +116,6 @@ Status GroupDetailsV2::apply_pending_changes() {
     members_[it->name_or_uri()] = it;
   }
 
-  for (auto& it : members_) {
-    members_vec_.emplace_back(it.second);
-    if (it.second->name().has_value()) {
-      members_by_name_.emplace(it.second->name().value(), it.second);
-    }
-  }
   changes_applied_ = !members_to_modify_.empty();
   members_to_modify_.clear();
 
