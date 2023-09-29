@@ -1414,6 +1414,17 @@ Status query_to_capnp(
   buffer_names.insert(
       buffer_names.end(), dim_label_names.begin(), dim_label_names.end());
 
+  // Add aggregate buffers
+  const auto aggregate_names = query.aggregate_buffer_names();
+  buffer_names.insert(
+      buffer_names.end(), aggregate_names.begin(), aggregate_names.end());
+
+  // TODO: add API in query to get all buffers in one go
+  // Deserialization gets the list of buffers from wire then call
+  // set_data_buffer which knows on which structure to set We should have a
+  // function here as well that gets all buffer names or even better, all
+  // buffers
+
   uint64_t total_fixed_len_bytes = 0;
   uint64_t total_var_len_bytes = 0;
   uint64_t total_validity_len_bytes = 0;
@@ -1581,6 +1592,8 @@ Status query_to_capnp(
       builder.set(i++, written_buffer);
     }
   }
+
+  query_aggregates_to_capnp(query, query_builder);
 
   return Status::Ok();
 }
@@ -2240,6 +2253,8 @@ Status query_from_capnp(
       written_buffers.emplace(it);
     }
   }
+
+  query_aggregates_from_capnp(query_reader, query);
 
   return Status::Ok();
 }

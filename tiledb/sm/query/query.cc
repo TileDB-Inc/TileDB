@@ -417,6 +417,16 @@ std::vector<std::string> Query::dimension_label_buffer_names() const {
   return ret;
 }
 
+std::vector<std::string> Query::aggregate_buffer_names() const {
+  std::vector<std::string> buffer_names;
+  buffer_names.reserve(aggregate_buffers_.size());
+
+  for (const auto& buffer : aggregate_buffers_) {
+    buffer_names.push_back(buffer.first);
+  }
+  return buffer_names;
+}
+
 std::vector<std::string> Query::unwritten_buffer_names() const {
   std::vector<std::string> ret;
   for (auto& name : buffer_names()) {
@@ -443,6 +453,12 @@ QueryBuffer Query::buffer(const std::string& name) const {
     // Dimension label buffer
     auto buf = label_buffers_.find(name);
     if (buf != label_buffers_.end()) {
+      return buf->second;
+    }
+  } else if (is_aggregate(name)) {
+    // Aggregate buffer
+    auto buf = aggregate_buffers_.find(name);
+    if (buf != aggregate_buffers_.end()) {
       return buf->second;
     }
   } else {

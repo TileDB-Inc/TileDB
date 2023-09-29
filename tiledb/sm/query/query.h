@@ -227,6 +227,9 @@ class Query {
   /** Returns the names of dimension label buffers for the query. */
   std::vector<std::string> dimension_label_buffer_names() const;
 
+  /** Returns the names of aggregate buffers for the query. */
+  std::vector<std::string> aggregate_buffer_names() const;
+
   /**
    * Returns the names of the buffers set by the user for the query not already
    * written by a previous partial attribute write.
@@ -234,7 +237,7 @@ class Query {
   std::vector<std::string> unwritten_buffer_names() const;
 
   /**
-   * Gets the query buffer for the input attribute/dimension.
+   * Gets the query buffer for the input field.
    * An empty string means the special default attribute.
    */
   QueryBuffer buffer(const std::string& name) const;

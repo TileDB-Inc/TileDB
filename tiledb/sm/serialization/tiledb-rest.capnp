@@ -772,6 +772,10 @@ struct Query {
 
     orderedDimLabelReader @20 :QueryReader;
     # orderedDimLabelReader contains data needed for dense dimension label reads.
+
+    channels @21 :List(QueryChannel);
+    # channels contains the list of channels (streams of data) within a read
+    # query. It always contains at least one element, the default channel.
 }
 
 struct NonEmptyDomain {
@@ -1244,4 +1248,42 @@ struct LoadArraySchemaRequest {
 struct LoadArraySchemaResponse {
   schema @0 :ArraySchema;
   # The loaded ArraySchema
+}
+
+struct QueryChannel {
+  # structure representing a query channel, that is a
+  # stream of data within a TileDB query. Such channels can be generated
+  # for the purpose of avoiding processing result items multiple times
+  # in more complex queries such as e.g. grouping queries.
+
+  default @0 :Bool;
+  # True if a channel is the default query channel
+
+  segments @1 :List(ChannelSegment);
+  # contains the list of segments in a query channel.
+  # If the channel is the default query channel, this list contains
+  # a single segment.
+}
+
+struct ChannelSegment {
+  # structure representing a query channel segment. A segment expresses a set
+  # of rows. Such segments are usually produced by a grouping operation,
+  # that is a grouping operation divides all the rows in a query channel into
+  # multiple segments.
+
+  aggregates @0 :List(Aggregate);
+  # a list of the aggregate operations applied on this segment
+}
+
+struct Aggregate {
+  # structure representing a query aggregate operation
+
+  outputFieldName @0 :Text;
+  # name of the result query buffers
+
+  inputFieldName @1 :Text;
+  # name of the input field the aggregate is applied on
+
+  type @2 :Text;
+  # the type of aggregate, e.g. COUNT, MEAN, SUM
 }
