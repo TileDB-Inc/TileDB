@@ -2256,53 +2256,6 @@ uint64_t FragmentMetadata::footer_size_v7_v10() const {
   return size;
 }
 
-uint64_t FragmentMetadata::footer_size_v11_or_higher() const {
-  auto dim_num = array_schema_->dim_num();
-  auto num = num_dims_and_attrs();
-  uint64_t domain_size = 0;
-
-  if (non_empty_domain_.empty()) {
-    // For var-sized dimensions, this function would be called only upon
-    // writing the footer to storage, in which case the non-empty domain
-    // would not be empty. For reading the footer from storage, the footer
-    // size is explicitly stored to and retrieved from storage, so this
-    // function is not called then.
-    assert(array_schema_->domain().all_dims_fixed());
-    for (unsigned d = 0; d < dim_num; ++d)
-      domain_size += 2 * array_schema_->domain().dimension_ptr(d)->coord_size();
-  } else {
-    for (unsigned d = 0; d < dim_num; ++d) {
-      domain_size += non_empty_domain_[d].size();
-      if (array_schema_->dimension_ptr(d)->var_size()) {
-        domain_size += 2 * sizeof(uint64_t);  // Two more sizes get serialized
-      }
-    }
-  }
-
-  // Get footer size
-  uint64_t size = 0;
-  size += sizeof(uint32_t);        // version
-  size += sizeof(char);            // dense
-  size += sizeof(char);            // null non-empty domain
-  size += domain_size;             // non-empty domain
-  size += sizeof(uint64_t);        // sparse tile num
-  size += sizeof(uint64_t);        // last tile cell num
-  size += num * sizeof(uint64_t);  // file sizes
-  size += num * sizeof(uint64_t);  // file var sizes
-  size += num * sizeof(uint64_t);  // file validity sizes
-  size += sizeof(uint64_t);        // R-Tree offset
-  size += num * sizeof(uint64_t);  // tile offsets
-  size += num * sizeof(uint64_t);  // tile var offsets
-  size += num * sizeof(uint64_t);  // tile var sizes
-  size += num * sizeof(uint64_t);  // tile validity sizes
-  size += num * sizeof(uint64_t);  // tile mins sizes
-  size += num * sizeof(uint64_t);  // tile maxs sizes
-  size += num * sizeof(uint64_t);  // tile sums sizes
-  size += num * sizeof(uint64_t);  // tile null count sizes
-
-  return size;
-}
-
 template <class T>
 std::vector<uint64_t> FragmentMetadata::compute_overlapping_tile_ids(
     const T* subarray) const {
