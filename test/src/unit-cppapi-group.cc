@@ -784,11 +784,13 @@ TEST_CASE_METHOD(
   set_group_timestamp(&group2, 2);
   group2.open(TILEDB_WRITE);
 
-  group1.remove_member(group2_uri.to_string());
+  REQUIRE_THROWS(group1.remove_member(group2_uri.to_string()));
+  group1.remove_member("three");
   // Group is the latest element
   group1_expected.resize(group1_expected.size() - 1);
 
-  group2.remove_member(array3_relative_uri);
+  REQUIRE_THROWS(group2.remove_member(array3_relative_uri));
+  group2.remove_member("four");
   // There should be nothing left in group2
   group2_expected.clear();
 
