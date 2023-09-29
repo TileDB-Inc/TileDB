@@ -75,21 +75,20 @@ Status GroupDetailsV1::apply_pending_changes() {
 
   // Remove members first
   for (const auto& member : members_to_modify_) {
-    auto& uri = member->uri();
+    auto key = member->name_or_uri();
     if (member->deleted()) {
-      members_.erase(uri.to_string());
+      members_.erase(key);
 
       // Check to remove relative URIs
-      auto uri_str = uri.to_string();
-      if (uri_str.find(group_uri_.add_trailing_slash().to_string()) !=
+      if (key.find(group_uri_.add_trailing_slash().to_string()) !=
           std::string::npos) {
         // Get the substring relative path
-        auto relative_uri = uri_str.substr(
-            group_uri_.add_trailing_slash().to_string().size(), uri_str.size());
+        auto relative_uri = key.substr(
+            group_uri_.add_trailing_slash().to_string().size(), key.size());
         members_.erase(relative_uri);
       }
     } else {
-      members_.emplace(member->uri().to_string(), member);
+      members_.emplace(member->name_or_uri(), member);
     }
   }
   changes_applied_ = !members_to_modify_.empty();

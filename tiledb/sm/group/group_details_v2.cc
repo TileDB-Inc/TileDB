@@ -114,7 +114,7 @@ Status GroupDetailsV2::apply_pending_changes() {
   // First add each member to unordered map, overriding if the user adds/removes
   // it multiple times
   for (auto& it : members_to_modify_) {
-    members_[it->uri().to_string()] = it;
+    members_[it->name_or_uri()] = it;
   }
 
   for (auto& it : members_) {

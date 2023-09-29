@@ -80,18 +80,11 @@ class GroupDetails {
   /**
    * Remove a member from a group, this will be flushed to disk on close
    *
-   * @param uri of member to remove
+   * @param name_or_uri name of member to remove, or URI if the member is
+   * unnamed.
    * @return Status
    */
-  Status mark_member_for_removal(const URI& uri);
-
-  /**
-   * Remove a member from a group, this will be flushed to disk on close
-   *
-   * @param uri of member to remove
-   * @return Status
-   */
-  Status mark_member_for_removal(const std::string& uri);
+  Status mark_member_for_removal(const std::string& name_or_uri);
 
   /**
    * Get the vector of members to modify, used in serialization only

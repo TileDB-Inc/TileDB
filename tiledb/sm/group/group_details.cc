@@ -68,8 +68,7 @@ Status GroupDetails::clear() {
 
 void GroupDetails::add_member(const shared_ptr<GroupMember> group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
-  const std::string& uri = group_member->uri().to_string();
-  members_.emplace(uri, group_member);
+  members_.emplace(group_member->name_or_uri(), group_member);
   members_vec_.emplace_back(group_member);
   if (group_member->name().has_value()) {
     members_by_name_.emplace(group_member->name().value(), group_member);
@@ -127,15 +126,14 @@ Status GroupDetails::mark_member_for_addition(
   return Status::Ok();
 }
 
-Status GroupDetails::mark_member_for_removal(const URI& uri) {
-  return mark_member_for_removal(uri.to_string());
-}
-
-Status GroupDetails::mark_member_for_removal(const std::string& uri) {
+Status GroupDetails::mark_member_for_removal(const std::string& name_or_uri) {
   std::lock_guard<std::mutex> lck(mtx_);
 
-  auto it = members_.find(uri);
-  auto it_name = members_by_name_.find(uri);
+  auto it = members_.find(name_or_uri);
+  if (it == members_.end()) {
+    // try URI to see if we need to convert the local file to file://
+    it = members_.find(URI(name_or_uri).to_string());
+  }
   if (it != members_.end()) {
     auto member_to_delete = make_shared<GroupMemberV2>(
         it->second->uri(),
@@ -145,37 +143,10 @@ Status GroupDetails::mark_member_for_removal(const std::string& uri) {
         true);
     members_to_modify_.emplace_back(member_to_delete);
     return Status::Ok();
-  } else if (it_name != members_by_name_.end()) {
-    // If the user passed the name, convert it to the URI for removal
-    auto member_to_delete = make_shared<GroupMemberV2>(
-        it_name->second->uri(),
-        it_name->second->type(),
-        it_name->second->relative(),
-        it_name->second->name(),
-        true);
-    members_to_modify_.emplace_back(member_to_delete);
-    return Status::Ok();
-  } else {
-    // try URI to see if we need to convert the local file to file://
-    URI uri_uri(uri);
-    it = members_.find(uri_uri.to_string());
-    if (it != members_.end()) {
-      auto member_to_delete = make_shared<GroupMemberV2>(
-          it->second->uri(),
-          it->second->type(),
-          it->second->relative(),
-          it->second->name(),
-          true);
-      members_to_modify_.emplace_back(member_to_delete);
-      return Status::Ok();
-    } else {
-      return Status_GroupError(
-          "Cannot remove group member " + uri +
-          ", member does not exist in group.");
-    }
   }
-
-  return Status::Ok();
+  return Status_GroupError(
+      "Cannot remove group member " + name_or_uri +
+      ", member does not exist in group.");
 }
 
 const std::vector<shared_ptr<GroupMember>>& GroupDetails::members_to_modify()
