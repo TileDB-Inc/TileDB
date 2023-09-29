@@ -205,7 +205,6 @@ struct tiledb_channel_operator_handle_t
       const tiledb::sm::FieldInfo& fi) const;
 };
 
-
 inline void ensure_aggregate_numeric_field(
     const tiledb_channel_operator_t* op, const tiledb::sm::FieldInfo& fi) {
   if (fi.var_sized_) {
