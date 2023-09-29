@@ -54,7 +54,8 @@ namespace sm {
 GroupDetails::GroupDetails(const URI& group_uri, uint32_t version)
     : group_uri_(group_uri)
     , version_(version)
-    , changes_applied_(false) {
+    , changes_applied_(false)
+    , is_populated_(false) {
 }
 
 Status GroupDetails::clear() {
@@ -62,38 +63,28 @@ Status GroupDetails::clear() {
   members_by_name_.clear();
   members_vec_.clear();
   members_to_modify_.clear();
+  is_populated_ = false;
 
   return Status::Ok();
 }
 
 void GroupDetails::add_member(const shared_ptr<GroupMember> group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
-  members_.emplace(group_member->name_or_uri(), group_member);
-  members_vec_.emplace_back(group_member);
-  if (group_member->name().has_value()) {
-    members_by_name_.emplace(group_member->name().value(), group_member);
-  }
+  assert(!is_populated_);
+  auto key = group_member->name_or_uri();
+  members_[key] = group_member;
 }
 
 void GroupDetails::delete_member(const shared_ptr<GroupMember> group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
-  const std::string& uri = group_member->uri().to_string();
-  auto it = members_.find(uri);
-  if (it != members_.end()) {
-    for (size_t i = 0; i < members_vec_.size(); i++) {
-      if (members_vec_[i] == it->second) {
-        members_vec_.erase(members_vec_.begin() + i);
-        break;
-      }
-    }
-    auto name = it->second->name();
-    members_.erase(it);
-    if (group_member->name().has_value()) {
-      members_by_name_.erase(group_member->name().value());
-    } else if (name.has_value()) {
-      members_by_name_.erase(name.value());
-    }
-  }
+  assert(!is_populated_);
+  members_.erase(group_member->name_or_uri());
+}
+
+void GroupDetails::finish_populating() {
+  std::lock_guard<std::mutex> lck(mtx_);
+  assert(!is_populated_);
+  is_populated_ = true;
 }
 
 Status GroupDetails::mark_member_for_addition(
@@ -203,6 +194,15 @@ uint64_t GroupDetails::member_count() const {
 tuple<std::string, ObjectType, optional<std::string>>
 GroupDetails::member_by_index(uint64_t index) {
   std::lock_guard<std::mutex> lck(mtx_);
+  assert(is_populated_);
+
+  if (members_vec_.size() != members_.size()) {
+    members_vec_.clear();
+    members_vec_.reserve(members_.size());
+    for (auto& [key, member] : members_) {
+      members_vec_.emplace_back(member);
+    }
+  }
 
   if (index >= members_vec_.size()) {
     throw Status_GroupError(
@@ -223,6 +223,23 @@ GroupDetails::member_by_index(uint64_t index) {
 tuple<std::string, ObjectType, optional<std::string>, bool>
 GroupDetails::member_by_name(const std::string& name) {
   std::lock_guard<std::mutex> lck(mtx_);
+  assert(is_populated_);
+
+  if (members_by_name_.size() != members_.size()) {
+    members_by_name_.clear();
+    members_by_name_.reserve(members_.size());
+    for (auto& [key, member] : members_) {
+      if (member->name().has_value()) {
+        bool added =
+            members_by_name_.insert_or_assign(member->name().value(), member)
+                .second;
+        // add_member makes sure that the name is unique, so the call to
+        // insert_or_assign should always add a member.
+        assert(added);
+        std::ignore = added;
+      }
+    }
+  }
 
   auto it = members_by_name_.find(name);
   if (it == members_by_name_.end()) {

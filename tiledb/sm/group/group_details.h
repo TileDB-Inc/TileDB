@@ -115,6 +115,14 @@ class GroupDetails {
   void delete_member(const shared_ptr<GroupMember> group_member);
 
   /**
+   * Finish populating the group after creating it.
+   * Sets is_populated_ to true.
+   * Subsequent calls to add_member, delete_member and finish_populating will
+   * assert.
+   */
+  void finish_populating();
+
+  /**
    * Serializes the object members into a binary buffer.
    *
    * @param buff The buffer to serialize the data into.
@@ -162,7 +170,7 @@ class GroupDetails {
   uint64_t member_count() const;
 
   /**
-   * Get a member by index
+   * Get a member by index. Must be called after finish_populating.
    *
    * @param index of member
    * @return Tuple of URI string, ObjectType, optional GroupMember name
@@ -171,7 +179,7 @@ class GroupDetails {
       uint64_t index);
 
   /**
-   * Get a member by name
+   * Get a member by name. Must be called after finish_populating.
    *
    * @param name of member
    * @return Tuple of URI string, ObjectType, optional GroupMember name,
@@ -225,6 +233,9 @@ class GroupDetails {
 
   /** Were changes applied and is a write is required */
   bool changes_applied_;
+
+  /** Has the group finished being populated with members. */
+  bool is_populated_;
 };
 }  // namespace sm
 }  // namespace tiledb
