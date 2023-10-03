@@ -156,8 +156,8 @@ capi_return_t tiledb_group_put_metadata(
   ensure_group_is_valid(group);
   ensure_key_argument_is_valid(key);
 
-  throw_if_not_ok(group->group().put_metadata(
-      key, static_cast<tiledb::sm::Datatype>(value_type), value_num, value));
+  group->group().put_metadata(
+      key, static_cast<tiledb::sm::Datatype>(value_type), value_num, value);
 
   return TILEDB_OK;
 }
@@ -176,7 +176,7 @@ capi_return_t tiledb_group_delete_metadata(
   ensure_group_is_valid(group);
   ensure_key_argument_is_valid(key);
 
-  throw_if_not_ok(group->group().delete_metadata(key));
+  group->group().delete_metadata(key);
 
   return TILEDB_OK;
 }
@@ -194,7 +194,7 @@ capi_return_t tiledb_group_get_metadata(
   ensure_output_pointer_is_valid(value);
 
   tiledb::sm::Datatype type;
-  throw_if_not_ok(group->group().get_metadata(key, &type, value_num, value));
+  group->group().get_metadata(key, &type, value_num, value);
 
   *value_type = static_cast<tiledb_datatype_t>(type);
 
@@ -206,7 +206,7 @@ capi_return_t tiledb_group_get_metadata_num(
   ensure_group_is_valid(group);
   ensure_output_pointer_is_valid(num);
 
-  throw_if_not_ok(group->group().get_metadata_num(num));
+  *num = group->group().get_metadata_num();
 
   return TILEDB_OK;
 }
@@ -227,8 +227,7 @@ capi_return_t tiledb_group_get_metadata_from_index(
   ensure_output_pointer_is_valid(value);
 
   tiledb::sm::Datatype type;
-  throw_if_not_ok(group->group().get_metadata(
-      index, key, key_len, &type, value_num, value));
+  group->group().get_metadata(index, key, key_len, &type, value_num, value);
 
   *value_type = static_cast<tiledb_datatype_t>(type);
 
@@ -246,8 +245,7 @@ capi_return_t tiledb_group_has_metadata_key(
   ensure_output_pointer_is_valid(has_key);
 
   tiledb::sm::Datatype type;
-  bool has_the_key;
-  throw_if_not_ok(group->group().has_metadata_key(key, &type, &has_the_key));
+  bool has_the_key = group->group().has_metadata_key(key, type);
 
   *has_key = has_the_key ? 1 : 0;
   if (has_the_key) {
