@@ -218,8 +218,9 @@ TEST_CASE(
   cfg["sm.encryption_key"] = encryption_key.c_str();
   Context ctx_encrypt(cfg);
   std::string compat_folder(arrays_dir + "/read_compatibility_test");
-  if (Object::object(ctx, compat_folder).type() != Object::Type::Group)
+  if (Object::object(ctx, compat_folder).type() != Object::Type::Group) {
     return;
+  }
 
   tiledb::ObjectIter versions_iter(ctx, compat_folder);
   for (const auto& group_versions : versions_iter) {
@@ -228,8 +229,9 @@ TEST_CASE(
       bool encrypted = false;
       Array* array;
 
-      if (object.type() != Object::Type::Array)
+      if (object.type() != Object::Type::Array) {
         continue;
+      }
 
       // Check for if array is encrypted based on name for now
       if (object.uri().find("_encryption_AES_256_GCM") != std::string::npos) {
@@ -251,8 +253,9 @@ TEST_CASE(
         }
       }
 
-      if (heterogeneous)
+      if (heterogeneous) {
         continue;
+      }
 
       // Skip domain types that are unsupported with zipped coordinates.
       if (domain.type() == TILEDB_STRING_ASCII) {
@@ -743,8 +746,9 @@ TEST_CASE(
   cfg["sm.encryption_key"] = encryption_key.c_str();
   Context ctx_encrypt(cfg);
   std::string compat_folder(arrays_dir + "/read_compatibility_test");
-  if (Object::object(ctx, compat_folder).type() != Object::Type::Group)
+  if (Object::object(ctx, compat_folder).type() != Object::Type::Group) {
     return;
+  }
 
   tiledb::ObjectIter versions_iter(ctx, compat_folder);
   for (const auto& group_versions : versions_iter) {
@@ -753,8 +757,9 @@ TEST_CASE(
       bool encrypted = false;
       Array* array;
 
-      if (object.type() != Object::Type::Array)
+      if (object.type() != Object::Type::Array) {
         continue;
+      }
 
       // Check for if array is encrypted based on name for now
       if (object.uri().find("_encryption_AES_256_GCM") != std::string::npos) {
@@ -1390,19 +1395,23 @@ TEST_CASE(
     "[backwards-compat][group][metadata]") {
   Context ctx;
   std::string compat_folder(arrays_dir + "/read_compatibility_test");
-  if (Object::object(ctx, compat_folder).type() != Object::Type::Group)
+  if (Object::object(ctx, compat_folder).type() != Object::Type::Group) {
     return;
+  }
+
   std::string encryption_key = "unittestunittestunittestunittest";
 
   tiledb::ObjectIter versions_iter(ctx, compat_folder);
   for (const auto& group_versions : versions_iter) {
-    if (group_versions.type() != Object::Type::Group)
+    if (group_versions.type() != Object::Type::Group) {
       continue;
+    }
 
     Group g{ctx, group_versions.uri(), TILEDB_READ};
 
-    if (g.metadata_num() == 0)
+    if (g.metadata_num() == 0) {
       continue;
+    }
 
     assert_group_metadata<uint8_t>(g, "u8", TILEDB_UINT8, 0x77);
     assert_group_metadata<uint16_t>(g, "u16", TILEDB_UINT16, 0x7777);
