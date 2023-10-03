@@ -83,9 +83,9 @@ enum class Filesystem : uint8_t;
 enum class VFSMode : uint8_t;
 
 /** Class for VFS status exceptions. */
-class VFSStatusException : public StatusException {
+class VFSException : public StatusException {
  public:
-  explicit VFSStatusException(const std::string& msg)
+  explicit VFSException(const std::string& msg)
       : StatusException("VFS", msg) {
   }
 };
@@ -390,14 +390,11 @@ class VFS : private VFSBase, S3_within_VFS {
   /**
    * Recursively lists objects and object information that start with `prefix`.
    *
-   * @param prefix The parent path to list sub-paths.
-   * @param uris The URIs that are contained in the parent.
-   * @param max_paths The maximum number of paths to be retrieved.
-   *        -1 to retrieve all results.
-   * @return Vector of URIs from recursive ls on 'parent'.
+   * @param parent The parent path to list sub-objects recursively.
+   * @return Vector of directory_entry results from recursive ls on 'parent'.
    */
   std::vector<filesystem::directory_entry> ls_recursive(
-      const URI& parent, int64_t max_paths = -1) const;
+      const URI& parent) const;
 
   /**
    * Retrieves all the entries contained in the parent.

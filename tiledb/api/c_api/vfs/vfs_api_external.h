@@ -597,7 +597,7 @@ tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) TILEDB_NOEXCEPT;
  *     path, and the data provided by the user for the callback. The callback
  *     returns `-1` upon error. Note that `path` in the callback will be an
  *     **absolute** path.
- * @param data The data passed in the callback as the last argument.
+ * @param[in] data Data pointer passed into the callback for storing results.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_vfs_ls(
@@ -608,30 +608,24 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_ls(
     void* data) TILEDB_NOEXCEPT;
 
 /**
- * Visits the children of `path` recursively, listing all nested objects in
- * a single pass. Offsets are in Arrow format [r1, r2, ..., rN] where r1 is the
- * beginning of the first result (0) and r2 is the beginning of the second. The
- * final offset rN marks the end of the last result. The length of result N can
- * be retrieved with rN - rN-1.
+ * Visits the children of `path` recursively, invoking the callback for each
+ * entry. The callback should return 1 to continue traversal, 0 to stop, or -1
+ * on error. The callback is responsible for writing gathered entries into the
+ * `data` buffer, for example using a pointer to a user-defined struct.
  *
  * **Example:**
  *
  * @code{.c}
- * size_t paths_max = 500, offsets_max = 10;
- * char paths_data[paths_max];
- * uint64_t offsets[offsets_max];
- * LsRecursiveData ls_data(paths_data, paths_max, offsets, offsets_max);
+ * int my_callback(
+ *     const char* path, size_t path_length, uint64_t file_size, void* data) {
+ *   MyCbStruct cb_data = static_cast<MyCbStruct*>(data);
+ *   // Perform custom callback behavior here.
+ *   return 1;  // Continue traversal to next entry.
+ * }
+ * MyCbStruct* cb_data = allocate_cb_struct();
  *
  * // Retrieve at most 100 results from 'my_dir'.
- * tiledb_vfs_ls_recursive(ctx, vfs, "my_dir", callback, &ls_data, 100);
- * uint64_t* offsets = ls_data.path_offsets_;
- * for (size_t i = 1; i < ls_data.offsets_pos_; i++) {
- *   size_t length = offsets[i] - offsets[i - 1];
- *   char path[length + 1];  // +1 for '\0'
- *   std::strncpy(path, ls_data.paths_data_ + offsets[i - 1], length);
- *   path[length] = '\0';
- *   printf("%s\n", path);
- * }
+ * tiledb_vfs_ls_recursive(ctx, vfs, "my_dir", my_callback, &cb_data, 100);
  * @endcode
  *
  * @param[in] ctx The TileDB context.
@@ -641,14 +635,11 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_ls(
  * The callback function to be applied on every visited object.
  *     The callback should return `0` if the iteration must stop, and `1`
  *     if the iteration must continue. It takes as input the currently visited
- *     path, the length of the currently visited path, and user provided
- *     buffer for paths and their offsets in the form of a struct pointer. The
- *     callback returns `-1` upon error. Note that `path` in the callback will
- *     be an **absolute** path.
- * @param[out] data Data buffer results wrote into by recursive ls.
- * @param[out] data_off Offset data retrieved from recursive ls.
- * @param[in] max_paths The maximum number of paths to retrieve.
- *     -1 returns all results.
+ *     path, the length of the currently visited path, the size of the file, and
+ *     user provided buffer for paths and object sizes in the form of a struct
+ *     pointer. The callback returns `-1` upon error. Note that `path` in the
+ *     callback will be an **absolute** path.
+ * @param[in] data Data pointer passed into the callback for storing results.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_vfs_ls_recursive(
@@ -656,8 +647,7 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_ls_recursive(
     tiledb_vfs_t* vfs,
     const char* path,
     int32_t (*callback)(const char*, size_t, uint64_t, void*),
-    void* data,
-    int64_t max_paths) TILEDB_NOEXCEPT;
+    void* data) TILEDB_NOEXCEPT;
 
 /**
  * Frees a file handle.

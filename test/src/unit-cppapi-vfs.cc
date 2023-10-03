@@ -34,6 +34,8 @@
 #include <test/support/src/vfs_helpers.h>
 #include <test/support/tdb_catch.h>
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/cpp_api/tiledb_experimental"
+#include "tiledb/sm/enums/filesystem.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/path_win.h"
@@ -503,164 +505,67 @@ TEST_CASE(
   }
 }
 
-TEST_CASE(
-    "C++ API: VFS ls_recursive list all results",
+TEST_CASE_METHOD(
+    tiledb::test::VfsFixture,
+    "C++ API: VFS ls_recursive filter",
     "[cppapi][vfs][ls-recursive]") {
-  using namespace tiledb;
-  Config config;
-#ifndef TILEDB_TESTS_AWS_S3_CONFIG
-  REQUIRE_NOTHROW(config.set("vfs.s3.endpoint_override", "localhost:9999"));
-  REQUIRE_NOTHROW(config.set("vfs.s3.scheme", "https"));
-  REQUIRE_NOTHROW(config.set("vfs.s3.use_virtual_addressing", "false"));
-  REQUIRE_NOTHROW(config.set("vfs.s3.verify_ssl", "false"));
-#endif
-  Context ctx(config);
-  VFS vfs(ctx);
-#ifdef _WIN32
-  std::string fs_prefix =
-      GENERATE("file://" + sm::Win::current_dir(), "mem://", "s3://");
-#else
-  std::string fs_prefix =
-      GENERATE("file://" + sm::Posix::current_dir(), "mem://", "s3://");
-#endif
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<uint64_t> dist(0);
-  sm::URI uri(fs_prefix + "tiledb-" + std::to_string(dist(gen)));
-  DYNAMIC_SECTION("ls_recursive with " << uri.backend_name() << " backend") {
-    auto uri_str = uri.to_string();
-    if (uri.backend_name() == "s3") {
-      if (!ctx.is_supported_fs(TILEDB_S3)) {
-        return;
-      }
-      vfs.create_bucket(uri_str);
-    } else {
-      vfs.create_dir(uri_str);
+  // Tests ls_recursive against S3, Memfs, and Posix / Windows filesystems.
+  // GCS, Azure, and HDFS are currently unsupported for ls_recursive.
+  DYNAMIC_SECTION("ls_recursive with " << fs_name() << " backend") {
+    SECTION("Default filter (include all)") {
+      test_ls_recursive();
     }
-
-    std::vector<std::pair<std::string, uint64_t>> expected_results;
-    // d1, d2, and d3 contain 10, 100 and 0 files respectively.
-    std::vector<size_t> max_files = {10, 100, 0};
-    // Create d1, d2, d3 directories.
-    // d3 will not be returned, as it is an empty prefix with no objects.
-    for (size_t i = 1; i <= 3; i++) {
-      vfs.create_dir(uri_str + "/d" + std::to_string(i));
-      for (size_t j = 1; j <= max_files[i - 1]; j++) {
-        auto file = uri_str + "/d" + std::to_string(i) + "/test" +
-                    std::to_string(j) + ".txt";
-        vfs.touch(file);
-
-        // Write some data to test file sizes are correct.
-        tiledb_vfs_fh_t* fh;
-        CHECK(
-            tiledb_vfs_open(
-                ctx.ptr().get(),
-                vfs.ptr().get(),
-                file.c_str(),
-                TILEDB_VFS_WRITE,
-                &fh) == TILEDB_OK);
-        std::string data(j, 'a');
-        CHECK(
-            tiledb_vfs_write(ctx.ptr().get(), fh, data.data(), data.size()) ==
-            TILEDB_OK);
-        CHECK(tiledb_vfs_close(ctx.ptr().get(), fh) == TILEDB_OK);
-        tiledb_vfs_fh_free(&fh);
-
-        expected_results.emplace_back(file, j);
-      }
+    SECTION("Custom filter (include none)") {
+      LsRecursiveFilter filter = [](const std::string_view&) { return false; };
+      test_ls_recursive(filter);
     }
-    // Sort expected vector to match VFS::ls sorted output.
-    std::sort(expected_results.begin(), expected_results.end());
-
-    auto results = vfs.ls_recursive(uri_str);
-    for (size_t i = 0; i < results.size(); i++) {
-      CHECK(expected_results[i] == results[i]);
+    SECTION("Custom filter (include half)") {
+      bool include = true;
+      LsRecursiveFilter filter = [&include](const std::string_view&) {
+        include = !include;
+        return include;
+      };
+      // Apply filter to expected_results_ vector.
+      filter_expected(filter);
+      // Reset include to it's initial value to ensure the test is correct for
+      // odd number of objects.
+      include = true;
+      test_ls_recursive(filter, false);
     }
-    CHECK(static_cast<int64_t>(results.size()) == 110);
-    vfs.remove_dir(uri_str);
+    SECTION("Custom filter (search for text1.txt)") {
+      LsRecursiveFilter filter = [](const std::string_view& object_name) {
+        return object_name.find("test1.txt") != std::string::npos;
+      };
+      test_ls_recursive(filter);
+    }
+    SECTION("Custom filter (search for text1*.txt)") {
+      LsRecursiveFilter filter = [](const std::string_view& object_name) {
+        return object_name.find("test1") != std::string::npos &&
+               object_name.find(".txt") != std::string::npos;
+      };
+      test_ls_recursive(filter);
+    }
   }
 }
 
-TEST_CASE(
-    "C++ API: VFS ls_recursive max_paths limits results",
-    "[cppapi][vfs][ls-recursive]") {
-  using namespace tiledb;
-  Config config;
-#ifndef TILEDB_TESTS_AWS_S3_CONFIG
-  REQUIRE_NOTHROW(config.set("vfs.s3.endpoint_override", "localhost:9999"));
-  REQUIRE_NOTHROW(config.set("vfs.s3.scheme", "https"));
-  REQUIRE_NOTHROW(config.set("vfs.s3.use_virtual_addressing", "false"));
-  REQUIRE_NOTHROW(config.set("vfs.s3.verify_ssl", "false"));
-#endif
-  Context ctx(config);
-  VFS vfs(ctx);
-#ifdef _WIN32
-  std::string fs_prefix =
-      GENERATE("file://" + sm::Win::current_dir(), "mem://", "s3://");
-#else
-  std::string fs_prefix =
-      GENERATE("file://" + sm::Posix::current_dir(), "mem://", "s3://");
-#endif
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<uint64_t> dist(0);
-  sm::URI uri(fs_prefix + "tiledb-" + std::to_string(dist(gen)));
-
-  // Sets max paths returned by recursive ls.
-  int64_t max_paths = GENERATE(10, 50, 0);
-  DYNAMIC_SECTION(
-      "ls_recursive over " << uri.backend_name() << " with " << max_paths
-                           << " max_paths") {
-    auto uri_str = uri.to_string();
-    if (uri.backend_name() == "s3") {
-      if (!ctx.is_supported_fs(TILEDB_S3)) {
-        return;
-      }
-      vfs.create_bucket(uri_str);
-    } else {
-      vfs.create_dir(uri_str);
-    }
-
-    std::vector<std::pair<std::string, uint64_t>> expected_results;
-    // d1, d2, and d3 contain 10, 100 and 0 files respectively.
-    std::vector<size_t> max_files = {10, 100, 0};
-    // Create d1, d2, d3 directories.
-    // d3 will not be returned, as it is an empty prefix with no objects.
-    for (size_t i = 1; i <= 3; i++) {
-      vfs.create_dir(uri_str + "/d" + std::to_string(i));
-      for (size_t j = 1; j <= max_files[i - 1]; j++) {
-        auto file = uri_str + "/d" + std::to_string(i) + "/test" +
-                    std::to_string(j) + ".txt";
-        vfs.touch(file);
-
-        // Write some data to test file sizes are correct.
-        tiledb_vfs_fh_t* fh;
-        CHECK(
-            tiledb_vfs_open(
-                ctx.ptr().get(),
-                vfs.ptr().get(),
-                file.c_str(),
-                TILEDB_VFS_WRITE,
-                &fh) == TILEDB_OK);
-        std::string data(j, 'a');
-        CHECK(
-            tiledb_vfs_write(ctx.ptr().get(), fh, data.data(), data.size()) ==
-            TILEDB_OK);
-        CHECK(tiledb_vfs_close(ctx.ptr().get(), fh) == TILEDB_OK);
-        tiledb_vfs_fh_free(&fh);
-
-        expected_results.emplace_back(file, j);
+TEST_CASE_METHOD(
+    tiledb::test::VfsFixture, "C++ API: Throwing filter", "[vfs]") {
+  DYNAMIC_SECTION("ls_recursive with " << fs_name() << " backend") {
+    LsRecursiveFilter filter = [](const std::string_view&) -> bool {
+      throw std::runtime_error("Throwing filter");
+    };
+    // If the test directory is empty the filter should not throw.
+    CHECKED_IF(expected_results_.empty()) {
+      SECTION("Throwing filter with 0 objects should not throw") {
+        CHECK_NOTHROW(tiledb::VFSExperimental::ls_recursive(
+            ctx_, vfs_, temp_dir_.to_string(), filter));
       }
     }
-    // Sort and trim expected vector to match VFS::ls sorted output.
-    std::sort(expected_results.begin(), expected_results.end());
-    expected_results.resize(max_paths);
-
-    auto results = vfs.ls_recursive(uri_str, max_paths);
-    for (size_t i = 0; i < results.size(); i++) {
-      CHECK(expected_results[i] == results[i]);
+    CHECKED_ELSE(expected_results_.empty()) {
+      SECTION("Throwing filter with N objects should throw") {
+        CHECK_THROWS(tiledb::VFSExperimental::ls_recursive(
+            ctx_, vfs_, temp_dir_.to_string(), filter));
+      }
     }
-    CHECK(static_cast<int64_t>(results.size()) == max_paths);
-    vfs.remove_dir(uri_str);
   }
 }

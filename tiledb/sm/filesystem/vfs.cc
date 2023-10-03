@@ -740,19 +740,15 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   return Status::Ok();
 }
 
-std::vector<directory_entry> VFS::ls_recursive(
-    const URI& parent, int64_t max_paths) const {
+std::vector<directory_entry> VFS::ls_recursive(const URI& parent) const {
   Status st;
   optional<std::vector<directory_entry>> entries;
   std::vector<directory_entry> results;
-  // Ensure max_paths is valid for ls_with_sizes.
-  max_paths = std::max(max_paths, static_cast<int64_t>(-1));
 
   if (parent.is_file() || parent.is_memfs()) {
     std::queue<URI> q;
     q.push(parent);
-    bool done = false;
-    while (!q.empty() && !done) {
+    while (!q.empty()) {
       if (parent.is_memfs()) {
         std::tie(st, entries) = memfs_.ls_with_sizes(q.front());
       } else if (parent.is_file()) {
@@ -777,23 +773,18 @@ std::vector<directory_entry> VFS::ls_recursive(
         } else {
           results.emplace_back(result);
         }
-
-        if (static_cast<int64_t>(results.size()) == max_paths) {
-          done = true;
-          break;
-        }
       }
       q.pop();
     }
   } else if (parent.is_s3()) {
 #ifdef HAVE_S3
-    std::tie(st, entries) = s3_.ls_with_sizes(parent, "", max_paths);
+    std::tie(st, entries) = s3_.ls_with_sizes(parent, "");
     throw_if_not_ok(st);
 #else
-    throw VFSStatusException("TileDB was built without S3 support");
+    throw VFSException("TileDB was built without S3 support");
 #endif
   } else {
-    throw VFSStatusException(
+    throw VFSException(
         "Recursive ls over " + parent.backend_name() +
         " storage backend is not supported.");
   }

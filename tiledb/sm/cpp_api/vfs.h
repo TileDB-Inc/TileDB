@@ -296,6 +296,27 @@ class VFSFilebuf : public std::streambuf {
  * posix/windows, HDFS, AWS S3, etc.
  */
 class VFS {
+ private:
+  /* ********************************* */
+  /*          TYPE DEFINITIONS         */
+  /* ********************************* */
+
+  /**
+   * TODO
+   */
+  typedef int32_t (*LsCallback)(const char*, size_t, uint64_t, void*);
+
+  /**
+   * Typedef for ls inclusion predicate function used to check if a single
+   * result should be included in the final results returned from ls or
+   * ls_recusrive functions.
+   *
+   * @param path The path of a visited object for the relative filesystem.
+   * @return True if the result should be included, else false.
+   * @sa ls_include
+   */
+  typedef std::function<bool(const std::string&)> LsInclude;
+
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -478,42 +499,38 @@ class VFS {
     std::vector<std::string> ret;
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_vfs_ls(
-        ctx.ptr().get(), vfs_.get(), uri.c_str(), ls_getter, &ret));
+        ctx.ptr().get(), vfs_.get(), uri.c_str(), ls_gather, &ret));
     return ret;
   }
 
   /**
-   * Recursively lists objects at the input URI.
-   * Results are not batch based and are returned in a single pass.
-   * Offsets are in Arrow format [r1, r2, ..., rN] where r1 is the beginning
-   * of the first result and r2 is the beginning of the second. The final offset
-   * rN marks the end of the last result. The length of result N can be
-   * retrieved with rN - rN-1.
+   * Recursively lists objects at the input URI, invoking the provided callback
+   * on each entry gathered. The callback should return true if the entry should
+   * be included in the results. By default all entries are included using the
+   * ls_include predicate, which simply returns true for all results.
    *
    * @param uri The base URI to list results recursively.
-   * @param max_paths The maximum number of paths to return, or -1 to return all
-   * paths.
-   * @return Vector of strings for each path collected.
+   * @param callback The callback predicate to invoke on each entry collected.
+   * @return Vector of pairs storing the path and object size of each result.
+   * @sa ls_recursive_gather
+   * @sa LsInclude
    */
   std::vector<std::pair<std::string, uint64_t>> ls_recursive(
-      const std::string& uri, int64_t max_paths = -1) const {
+      const std::string& uri, const LsInclude& callback = ls_include) const {
     LsRecursiveData ls_data;
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_vfs_ls_recursive(
         ctx.ptr().get(),
         vfs_.get(),
         uri.c_str(),
-        ls_recursive_cb,
-        &ls_data,
-        max_paths));
+        ls_recursive_gather,
+        &ls_data));
     std::vector<std::pair<std::string, uint64_t>> results;
-    for (size_t i = 1; i < ls_data.path_offsets_.size(); i++) {
-      results.emplace_back(
-          std::string(
-              ls_data.path_data_,
-              ls_data.path_offsets_[i - 1],
-              ls_data.path_offsets_[i] - ls_data.path_offsets_[i - 1]),
-          ls_data.file_sizes_[i - 1]);
+    for (size_t i = 0; i < ls_data.object_paths_.size(); i++) {
+      if (callback(ls_data.object_paths_[i])) {
+        results.emplace_back(
+            ls_data.object_paths_[i], ls_data.object_sizes_[i]);
+      }
     }
     return results;
   }
@@ -577,6 +594,7 @@ class VFS {
     return config_;
   }
 
+ private:
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
   /* ********************************* */
@@ -590,7 +608,7 @@ class VFS {
    * @param data This will be casted to the vector that will store `path`.
    * @return If `1` then the walk should continue to the next object.
    */
-  static int ls_getter(const char* path, void* data) {
+  static int ls_gather(const char* path, void* data) {
     auto vec = static_cast<std::vector<std::string>*>(data);
     vec->emplace_back(path);
     return 1;
@@ -599,32 +617,31 @@ class VFS {
   /**
    * Callback function to be used when invoking the C TileDB function
    * for recursive ls. The callback will cast 'data' to LsRecursiveData struct.
-   * The struct stores a single string buffer which all paths are appended to,
-   * and a vector of uint64 offset positions for the start and end of each path.
-   *
-   * Offsets are in Arrow format [r1, r2, ..., rN] where r1 is the beginning of
-   * the first result (0) and r2 is the beginning of the second. The final
-   * offset rN marks the end of the last result. The length of result N can be
-   * retrieved with rN - rN-1.
+   * The struct stores a vector of strings for each path collected, and a uint64
+   * vector of file sizes for the objects at each path.
    *
    * @param path The path of a visited TileDB object
    * @param data Cast to LsRecursiveData struct to store paths and offsets.
    * @return If `1` then the walk should continue to the next object.
    */
-  static int ls_recursive_cb(
+  static int ls_recursive_gather(
       const char* path, size_t path_length, uint64_t file_size, void* data) {
     auto ls_data = static_cast<LsRecursiveData*>(data);
-    ls_data->path_data_.append(path, path_length);
-    // Offsets should start at 0.
-    if (ls_data->path_offsets_.empty()) {
-      ls_data->path_offsets_.push_back(0);
-    }
-    ls_data->path_offsets_.push_back(ls_data->path_data_.size());
-    ls_data->file_sizes_.push_back(file_size);
+    ls_data->object_paths_.emplace_back(path, path_length);
+    ls_data->object_sizes_.push_back(file_size);
     return 1;
   }
 
- private:
+  /**
+   * Default inclusion predicate for ls functions. Optionally, a user can
+   * provide their own inclusion predicate to filter results.
+   *
+   * @return True if the result should be included, else false.
+   */
+  static bool ls_include(const std::string_view&) {
+    return true;
+  }
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
@@ -658,13 +675,12 @@ class VFS {
 
   /**
    * Struct to store recursive ls results data.
-   * 'path_data_' Stores all paths collected in a single string buffer.
-   * 'path_offsets_' Stores offsets for results within 'path_data_'.
-   * Offsets begin at 0 and end at the total length of 'path_data_'
+   * 'object_paths_' Stores all paths collected as a vector of strings.
+   * `file_sizes` stores all file sizes as a vector of uint64_t.
    */
   struct LsRecursiveData {
-    std::string path_data_;
-    std::vector<uint64_t> path_offsets_, file_sizes_;
+    std::vector<std::string> object_paths_;
+    std::vector<uint64_t> object_sizes_;
   };
 };
 

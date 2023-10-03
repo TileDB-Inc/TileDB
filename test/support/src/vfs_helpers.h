@@ -45,6 +45,12 @@
 namespace tiledb {
 namespace test {
 
+#ifdef TILEDB_TESTS_AWS_CONFIG
+constexpr bool aws_s3_config = true;
+#else
+constexpr bool aws_s3_config = false;
+#endif
+
 // Forward declaration
 class SupportedFs;
 
@@ -84,6 +90,15 @@ void vfs_test_remove_temp_dir(
 
 void vfs_test_create_temp_dir(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const std::string& path);
+
+/**
+ * Generates a random temp directory URI for use in VFS tests.
+ *
+ * @param prefix A prefix to use for the temp directory name. Should include
+ *    `s3://`, `mem://` or other URI prefix for the backend.
+ * @return URI which the caller can use to create a temp directory.
+ */
+tiledb::sm::URI test_dir(const std::string& prefix);
 
 /**
  * This class defines and manipulates
@@ -681,6 +696,88 @@ struct TemporaryDirectoryFixture {
 
   /** Vector of supported filesystems. Used to initialize ``vfs_``. */
   const std::vector<std::unique_ptr<SupportedFs>> supported_filesystems_;
+};
+
+struct VfsFixture {
+ public:
+  VfsFixture();
+
+  ~VfsFixture();
+
+  void setup_test();
+
+  /**
+   * Typedef for customizing ls_recursive CAPI callback behavior. Custom filter
+   * behavior can also be implemented within this callback by handling result
+   * entry names accordingly.
+   */
+  typedef int32_t (*LsRecursiveCb)(const char*, size_t, uint64_t, void*);
+
+  /** Typedef for customizing ls_recursive filter behavior. */
+  typedef std::function<bool(const std::string_view&)> LsRecursiveFilter;
+
+  /// Helper function to filter expected results using a custom filter function.
+  void filter_expected(const LsRecursiveFilter& filter);
+
+  void test_ls_recursive(
+      const LsRecursiveFilter& filter =
+          [](const std::string_view&) { return true; },
+      bool filter_expected = true);
+
+  /**
+   * Tests ls_recursive against S3, Memfs, and Posix / Windows filesystems.
+   * GCS, Azure, and HDFS are currently unsupported for ls_recursive.
+   */
+  void test_ls_recursive_capi(
+      const LsRecursiveCb& callback,
+      const LsRecursiveFilter& filter =
+          [](const std::string_view&) { return true; },
+      bool filter_expected = true);
+
+  std::string fs_name();
+
+ protected:
+  tiledb::Config cfg_;
+  tiledb::Context ctx_;
+  tiledb_ctx_handle_t* ctx_c_;
+  tiledb::VFS vfs_{ctx_};
+  tiledb_vfs_handle_t* vfs_c_;
+
+  // The filesystem to test.
+  tiledb_filesystem_t fs_;
+  // The filesystem prefix for this test.
+  std::string fs_prefix_;
+  // The temporary directory for this test.
+  sm::URI temp_dir_;
+  std::vector<std::pair<std::string, uint64_t>> expected_results_;
+
+  struct LsRecursiveData {
+    LsRecursiveData(
+        char** data,
+        size_t data_max,
+        uint64_t* object_sizes,
+        LsRecursiveFilter filter)
+        : path_pos_(0)
+        , path_max_(data_max)
+        , filter_(std::move(filter)) {
+      path_data_ = data;
+      object_sizes_ = object_sizes;
+    }
+
+    ~LsRecursiveData() {
+      // Top level data was stack allocated.
+      for (size_t i = 0; i < path_pos_; ++i) {
+        free(path_data_[i]);
+      }
+    }
+
+    // Buffer resulting path data is appended to.
+    char** path_data_;
+    uint64_t* object_sizes_;
+    // Current buffer position, max buffer size for paths collected.
+    size_t path_pos_, path_max_;
+    LsRecursiveFilter filter_;
+  };
 };
 
 }  // End of namespace test

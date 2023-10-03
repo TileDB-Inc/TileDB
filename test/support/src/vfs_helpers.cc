@@ -415,5 +415,140 @@ std::string TemporaryDirectoryFixture::create_temporary_array(
   return array_uri;
 }
 
+tiledb::sm::URI test_dir(const std::string& prefix) {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<uint64_t> dist(0);
+  return tiledb::sm::URI(prefix + "tiledb-" + std::to_string(dist(gen)));
+}
+
+/* ********************************* */
+/*             VfsFixture            */
+/* ********************************* */
+
+VfsFixture::VfsFixture() {
+  if constexpr (!tiledb::test::aws_s3_config) {
+    REQUIRE_NOTHROW(cfg_.set("vfs.s3.endpoint_override", "localhost:9999"));
+    REQUIRE_NOTHROW(cfg_.set("vfs.s3.scheme", "https"));
+    REQUIRE_NOTHROW(cfg_.set("vfs.s3.use_virtual_addressing", "false"));
+    REQUIRE_NOTHROW(cfg_.set("vfs.s3.verify_ssl", "false"));
+  }
+  ctx_ = tiledb::Context(cfg_);
+  ctx_c_ = ctx_.ptr().get();
+  vfs_ = tiledb::VFS(ctx_);
+  vfs_c_ = vfs_.ptr().get();
+
+  fs_prefix_ = GENERATE("file://", "s3://", "mem://");
+  if (fs_prefix_ == "file://") {
+#ifdef _WIN32
+    fs_prefix_ += sm::Win::current_dir() + "/";
+#else
+    fs_prefix_ += sm::Posix::current_dir() + "/";
+#endif
+  }
+  // Generate a temporary directory or bucket name for the test.
+  temp_dir_ = test_dir(fs_prefix_);
+  setup_test();
+}
+
+VfsFixture::~VfsFixture() {
+  if (fs_ == TILEDB_S3 && vfs_.is_bucket(temp_dir_.to_string())) {
+    vfs_.remove_bucket(temp_dir_.to_string());
+  } else if (vfs_.is_dir(temp_dir_.to_string())) {
+    vfs_.remove_dir(temp_dir_.to_string());
+  }
+}
+
+void VfsFixture::setup_test() {
+  auto uri_str = temp_dir_.to_string();
+  if (temp_dir_.backend_name() == "s3") {
+    if (!ctx_.is_supported_fs(TILEDB_S3)) {
+      return;
+    }
+    vfs_.create_bucket(uri_str);
+  } else {
+    vfs_.create_dir(uri_str);
+  }
+
+  // d1, d2, and d3 contain 10, 100 and 0 files respectively.
+  std::vector<size_t> max_files =
+      GENERATE(std::vector<size_t>{10, 100, 0}, std::vector<size_t>{0});
+  // Create d1, d2, d3 directories.
+  // d3 will never be returned, as it is an empty prefix with no objects.
+  for (size_t i = 1; i <= max_files.size(); i++) {
+    vfs_.create_dir(uri_str + "/d" + std::to_string(i));
+    for (size_t j = 1; j <= max_files[i - 1]; j++) {
+      auto file = uri_str + "/d" + std::to_string(i) + "/test" +
+                  std::to_string(j) + ".txt";
+      vfs_.touch(file);
+
+      // Write some data to test file sizes are correct.
+      tiledb_vfs_fh_t* fh;
+      tiledb_vfs_open(ctx_c_, vfs_c_, file.c_str(), TILEDB_VFS_WRITE, &fh);
+      std::string data(j, 'a');
+      tiledb_vfs_write(ctx_c_, fh, data.data(), data.size());
+      tiledb_vfs_close(ctx_c_, fh);
+      tiledb_vfs_fh_free(&fh);
+
+      expected_results_.emplace_back(file, j);
+    }
+  }
+}
+
+void VfsFixture::filter_expected(const LsRecursiveFilter& filter) {
+  // Sort expected vector to match VFS::ls sorted output.
+  std::sort(expected_results_.begin(), expected_results_.end());
+  // Apply the filter to the expected results vector.
+  expected_results_.erase(
+      std::remove_if(
+          expected_results_.begin(),
+          expected_results_.end(),
+          [&filter](const auto& a) { return !filter(a.first); }),
+      expected_results_.end());
+}
+
+void VfsFixture::test_ls_recursive(
+    const LsRecursiveFilter& filter, bool filter_expected) {
+  if (filter_expected) {
+    VfsFixture::filter_expected(filter);
+  }
+
+  auto results = vfs_.ls_recursive(temp_dir_.to_string(), filter);
+  CHECK(expected_results_ == results);
+  CHECK(results.size() == expected_results_.size());
+}
+
+std::string VfsFixture::fs_name() {
+  return temp_dir_.backend_name();
+}
+
+void VfsFixture::test_ls_recursive_capi(
+    const VfsFixture::LsRecursiveCb& callback,
+    const LsRecursiveFilter& filter,
+    bool filter_expected) {
+  if (filter_expected) {
+    VfsFixture::filter_expected(filter);
+  }
+
+  // Allocate required LsRecursiveData for the filtered results.
+  // TODO: This will probably fail CI for lifetime issues. Use malloc/free?
+  size_t paths_max = 0;
+  for (const auto& result : expected_results_) {
+    paths_max += result.first.size();
+  }
+  char* data[expected_results_.size()];
+  uint64_t object_sizes[expected_results_.size()];
+  LsRecursiveData results(data, paths_max, object_sizes, filter);
+
+  tiledb_vfs_ls_recursive(
+      ctx_c_, vfs_c_, temp_dir_.to_string().c_str(), callback, &results);
+  for (size_t i = 0; i < results.path_pos_; i++) {
+    std::string path(results.path_data_[i]);
+    CHECK(
+        expected_results_[i] == std::make_pair(path, results.object_sizes_[i]));
+  }
+  CHECK(results.path_pos_ == expected_results_.size());
+}
+
 }  // End of namespace test
 }  // End of namespace tiledb

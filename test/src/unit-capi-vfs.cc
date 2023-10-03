@@ -34,7 +34,9 @@
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/enums/filesystem.h"
 #include "tiledb/sm/misc/utils.h"
+
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/path_win.h"
 #include "tiledb/sm/filesystem/win.h"
@@ -127,23 +129,23 @@ void VFSFx::set_num_vfs_threads(unsigned num_threads) {
   REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
   if (supports_s3_) {
-#ifndef TILEDB_TESTS_AWS_S3_CONFIG
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.scheme", "https", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.use_virtual_addressing", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(error == nullptr);
-#endif
+    if constexpr (!tiledb::test::aws_s3_config) {
+      REQUIRE(
+          tiledb_config_set(
+              config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
+          TILEDB_OK);
+      REQUIRE(
+          tiledb_config_set(config, "vfs.s3.scheme", "https", &error) ==
+          TILEDB_OK);
+      REQUIRE(
+          tiledb_config_set(
+              config, "vfs.s3.use_virtual_addressing", "false", &error) ==
+          TILEDB_OK);
+      REQUIRE(
+          tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &error) ==
+          TILEDB_OK);
+      REQUIRE(error == nullptr);
+    }
   }
   if (supports_azure_) {
     REQUIRE(
@@ -966,220 +968,61 @@ TEST_CASE_METHOD(VFSFx, "C API: Test VFS parallel I/O", "[capi][vfs]") {
   }
 }
 
-struct LsRecursiveData {
-  std::string path_data_;
-  std::vector<uint64_t> path_offsets_, file_sizes_;
-};
-
-int ls_recursive_cb(
-    const char* path, size_t path_length, uint64_t file_size, void* data) {
-  auto ls_data = static_cast<LsRecursiveData*>(data);
-  ls_data->path_data_.append(path, path_length);
-  // Offsets should start at 0.
-  if (ls_data->path_offsets_.empty()) {
-    ls_data->path_offsets_.push_back(0);
-  }
-  ls_data->path_offsets_.push_back(ls_data->path_data_.size());
-  ls_data->file_sizes_.push_back(file_size);
-  return 1;
-}
-
-TEST_CASE(
-    "C API: VFS ls_recursive list all results", "[capi][vfs][ls-recursive]") {
-  using namespace tiledb;
-  Config config;
-#ifndef TILEDB_TESTS_AWS_S3_CONFIG
-  REQUIRE_NOTHROW(config.set("vfs.s3.endpoint_override", "localhost:9999"));
-  REQUIRE_NOTHROW(config.set("vfs.s3.scheme", "https"));
-  REQUIRE_NOTHROW(config.set("vfs.s3.use_virtual_addressing", "false"));
-  REQUIRE_NOTHROW(config.set("vfs.s3.verify_ssl", "false"));
-#endif
-  Context ctx(config);
-  VFS vfs(ctx);
-  auto ctx_c = ctx.ptr().get();
-  auto vfs_c = vfs.ptr().get();
-#ifdef _WIN32
-  std::string fs_prefix =
-      GENERATE("file://" + sm::Win::current_dir(), "mem://", "s3://");
-#else
-  std::string fs_prefix =
-      GENERATE("file://" + sm::Posix::current_dir(), "mem://", "s3://");
-#endif
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<uint64_t> dist(0);
-  sm::URI uri(fs_prefix + "tiledb-" + std::to_string(dist(gen)));
-  DYNAMIC_SECTION("ls_recursive with " << uri.backend_name() << " backend") {
-    std::string uri_str = uri.to_string();
-    if (uri.is_s3()) {
-      if (!ctx.is_supported_fs(TILEDB_S3)) {
-        return;
+TEST_CASE_METHOD(
+    VfsFixture, "C API: VFS ls_recursive", "[capi][vfs][ls-recursive]") {
+  // Tests ls_recursive against S3, Memfs, and Posix / Windows filesystems.
+  // GCS, Azure, and HDFS are currently unsupported for ls_recursive.
+  DYNAMIC_SECTION("Testing ls_recursive over " << fs_name() << " backend") {
+    // C callback with a custom filter to be used for remaining SECTIONS.
+    LsRecursiveCb callback = [](const char* path,
+                                size_t path_len,
+                                uint64_t object_size,
+                                void* data) -> int32_t {
+      auto ls_data = static_cast<LsRecursiveData*>(data);
+      if (ls_data->filter_({path, path_len})) {
+        // stop gathering results if either buffer overflows.
+        if (path_len + ls_data->path_pos_ >= ls_data->path_max_) {
+          return 0;
+        }
+        ls_data->path_data_[ls_data->path_pos_] = strndup(path, path_len);
+        ls_data->object_sizes_[ls_data->path_pos_] = object_size;
+        ls_data->path_pos_++;
       }
-      tiledb_vfs_create_bucket(ctx_c, vfs_c, uri_str.c_str());
-    } else {
-      tiledb_vfs_create_dir(ctx_c, vfs_c, uri_str.c_str());
+      return 1;
+    };
+
+    SECTION("Default filter (include all)") {
+      test_ls_recursive_capi(callback);
     }
-
-    std::vector<std::pair<std::string, uint64_t>> expected_results;
-    // d1, d2, and d3 contain 10, 100 and 0 files respectively.
-    std::vector<size_t> max_files = {10, 100, 0};
-    // Create d1, d2, d3 directories.
-    // d3 will not be returned, as it is an empty prefix with no objects.
-    for (size_t i = 1; i <= 3; i++) {
-      tiledb_vfs_create_dir(
-          ctx_c,
-          vfs_c,
-          std::string(uri_str + "/d" + std::to_string(i)).c_str());
-      for (size_t j = 1; j <= max_files[i - 1]; j++) {
-        auto file = uri_str + "/d" + std::to_string(i) + "/test" +
-                    std::to_string(j) + ".txt";
-        tiledb_vfs_touch(ctx_c, vfs_c, file.c_str());
-
-        // Write some data to test file sizes are correct.
-        tiledb_vfs_fh_t* fh;
-        CHECK(
-            tiledb_vfs_open(
-                ctx.ptr().get(),
-                vfs.ptr().get(),
-                file.c_str(),
-                TILEDB_VFS_WRITE,
-                &fh) == TILEDB_OK);
-        std::string data(j, 'a');
-        CHECK(
-            tiledb_vfs_write(ctx.ptr().get(), fh, data.data(), data.size()) ==
-            TILEDB_OK);
-        CHECK(tiledb_vfs_close(ctx.ptr().get(), fh) == TILEDB_OK);
-        tiledb_vfs_fh_free(&fh);
-
-        expected_results.emplace_back(file, j);
-      }
+    SECTION("Custom filter (include none)") {
+      LsRecursiveFilter filter = [](const std::string_view&) { return false; };
+      test_ls_recursive_capi(callback, filter);
     }
-    // Sort expected vector to match VFS::ls sorted output.
-    std::sort(expected_results.begin(), expected_results.end());
-    LsRecursiveData ls_data;
-
-    CHECK(
-        tiledb_vfs_ls_recursive(
-            ctx_c, vfs_c, uri_str.c_str(), ls_recursive_cb, &ls_data, -1) ==
-        TILEDB_OK);
-    auto data_off = ls_data.path_offsets_;
-    for (size_t i = 1; i < ls_data.path_offsets_.size(); i++) {
-      std::string path(
-          ls_data.path_data_, data_off[i - 1], data_off[i] - data_off[i - 1]);
-      CHECK(
-          expected_results[i - 1] ==
-          std::make_pair(path, ls_data.file_sizes_[i - 1]));
+    SECTION("Custom filter (include half)") {
+      bool include = true;
+      LsRecursiveFilter filter = [&include](const std::string_view&) {
+        include = !include;
+        return include;
+      };
+      // Apply filter to expected_results_ vector.
+      filter_expected(filter);
+      // Reset include to it's initial value to ensure the test is correct for
+      // odd number of objects.
+      include = true;
+      test_ls_recursive_capi(callback, filter, false);
     }
-    CHECK(static_cast<int64_t>(ls_data.path_offsets_.size() - 1) == 110);
-
-    tiledb_vfs_remove_dir(ctx_c, vfs_c, uri_str.c_str());
-  }
-}
-
-TEST_CASE(
-    "C API: VFS ls_recursive max_paths limits results",
-    "[capi][vfs][ls-recursive]") {
-  using namespace tiledb;
-  Config config;
-#ifndef TILEDB_TESTS_AWS_S3_CONFIG
-  REQUIRE_NOTHROW(config.set("vfs.s3.endpoint_override", "localhost:9999"));
-  REQUIRE_NOTHROW(config.set("vfs.s3.scheme", "https"));
-  REQUIRE_NOTHROW(config.set("vfs.s3.use_virtual_addressing", "false"));
-  REQUIRE_NOTHROW(config.set("vfs.s3.verify_ssl", "false"));
-#endif
-  Context ctx(config);
-  VFS vfs(ctx);
-  auto ctx_c = ctx.ptr().get();
-  auto vfs_c = vfs.ptr().get();
-  // Sets max paths returned by recursive ls.
-  int64_t max_paths = GENERATE(10, 50, 0);
-
-#ifdef _WIN32
-  std::string fs_prefix =
-      GENERATE("file://" + sm::Win::current_dir(), "mem://", "s3://");
-#else
-  std::string fs_prefix =
-      GENERATE("file://" + sm::Posix::current_dir(), "mem://", "s3://");
-#endif
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<uint64_t> dist(0);
-  sm::URI uri(fs_prefix + "tiledb-" + std::to_string(dist(gen)));
-  DYNAMIC_SECTION(
-      "ls_recursive over " << uri.backend_name() << " backend with "
-                           << max_paths << " max_paths") {
-    std::string uri_str = uri.to_string();
-    if (uri.is_s3()) {
-      if (!ctx.is_supported_fs(TILEDB_S3)) {
-        return;
-      }
-      tiledb_vfs_create_bucket(ctx_c, vfs_c, uri_str.c_str());
-    } else {
-      tiledb_vfs_create_dir(ctx_c, vfs_c, uri_str.c_str());
+    SECTION("Custom filter (search for text1.txt)") {
+      LsRecursiveFilter filter = [](const std::string_view& object_name) {
+        return object_name.find("test1.txt") != std::string::npos;
+      };
+      test_ls_recursive_capi(callback, filter);
     }
-
-    std::vector<std::pair<std::string, uint64_t>> expected_results;
-    // d1, d2, and d3 contain 10, 100 and 0 files respectively.
-    std::vector<size_t> max_files = {10, 100, 0};
-    // Create d1, d2, d3 directories.
-    // d3 will not be returned, as it is an empty prefix with no objects.
-    for (size_t i = 1; i <= 3; i++) {
-      tiledb_vfs_create_dir(
-          ctx_c,
-          vfs_c,
-          std::string(uri_str + "/d" + std::to_string(i)).c_str());
-      for (size_t j = 1; j <= max_files[i - 1]; j++) {
-        auto file = uri_str + "/d" + std::to_string(i) + "/test" +
-                    std::to_string(j) + ".txt";
-        tiledb_vfs_touch(ctx_c, vfs_c, file.c_str());
-
-        // Write some data to test file sizes are correct.
-        tiledb_vfs_fh_t* fh;
-        CHECK(
-            tiledb_vfs_open(
-                ctx.ptr().get(),
-                vfs.ptr().get(),
-                file.c_str(),
-                TILEDB_VFS_WRITE,
-                &fh) == TILEDB_OK);
-        std::string data(j, 'a');
-        CHECK(
-            tiledb_vfs_write(ctx.ptr().get(), fh, data.data(), data.size()) ==
-            TILEDB_OK);
-        CHECK(tiledb_vfs_close(ctx.ptr().get(), fh) == TILEDB_OK);
-        tiledb_vfs_fh_free(&fh);
-
-        expected_results.emplace_back(file, j);
-      }
+    SECTION("Custom filter (search for text1*.txt)") {
+      LsRecursiveFilter filter = [](const std::string_view& object_name) {
+        return object_name.find("test1") != std::string::npos &&
+               object_name.find(".txt") != std::string::npos;
+      };
+      test_ls_recursive_capi(callback, filter);
     }
-    // Sort and trim expected vector to match VFS::ls sorted output.
-    std::sort(expected_results.begin(), expected_results.end());
-    expected_results.resize(max_paths);
-    LsRecursiveData ls_data;
-
-    CHECK(
-        tiledb_vfs_ls_recursive(
-            ctx_c,
-            vfs_c,
-            uri_str.c_str(),
-            ls_recursive_cb,
-            &ls_data,
-            max_paths) == TILEDB_OK);
-    auto data_off = ls_data.path_offsets_;
-    for (size_t i = 1; i < ls_data.path_offsets_.size(); i++) {
-      std::string path(
-          ls_data.path_data_, data_off[i - 1], data_off[i] - data_off[i - 1]);
-      CHECK(
-          expected_results[i - 1] ==
-          std::make_pair(path, ls_data.file_sizes_[i - 1]));
-    }
-    if (max_paths == 0) {
-      CHECK(static_cast<int64_t>(ls_data.path_offsets_.size()) == max_paths);
-    } else {
-      CHECK(
-          static_cast<int64_t>(ls_data.path_offsets_.size() - 1) == max_paths);
-    }
-
-    tiledb_vfs_remove_dir(ctx_c, vfs_c, uri_str.c_str());
   }
 }

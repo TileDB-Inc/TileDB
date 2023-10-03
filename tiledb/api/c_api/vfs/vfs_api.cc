@@ -300,8 +300,7 @@ capi_return_t tiledb_vfs_ls_recursive(
     tiledb_vfs_t* vfs,
     const char* path,
     int32_t (*callback)(const char*, size_t, uint64_t, void*),
-    void* data,
-    int64_t max_paths) {
+    void* data) {
   ensure_vfs_is_valid(vfs);
   if (path == nullptr) {
     throw CAPIStatusException("Invalid TileDB object: VFS passed a null path.");
@@ -310,7 +309,7 @@ capi_return_t tiledb_vfs_ls_recursive(
         "Invalid TileDB object: Callback function is null.");
   }
   ensure_output_pointer_is_valid(data);
-  auto children = vfs->ls_recursive(tiledb::sm::URI(path), max_paths);
+  auto children = vfs->ls_recursive(tiledb::sm::URI(path));
 
   int rc = 1;
   for (const auto& entry : children) {
@@ -552,10 +551,9 @@ capi_return_t tiledb_vfs_ls_recursive(
     tiledb_vfs_t* vfs,
     const char* path,
     int32_t (*callback)(const char*, size_t, uint64_t, void*),
-    void* data,
-    int64_t max_paths) noexcept {
+    void* data) noexcept {
   return api_entry_context<tiledb::api::tiledb_vfs_ls_recursive>(
-      ctx, vfs, path, callback, data, max_paths);
+      ctx, vfs, path, callback, data);
 }
 
 void tiledb_vfs_fh_free(tiledb_vfs_fh_t** fh) noexcept {

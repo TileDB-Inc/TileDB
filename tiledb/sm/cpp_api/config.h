@@ -638,7 +638,7 @@ class Config {
    *    The maximum tries for a connection. Any `long` value is acceptable. <br>
    *    **Default**: 5
    * - `vfs.s3.connect_scale_factor` <br>
-   *    The scale factor for exponential backofff when connecting to S3.
+   *    The scale factor for exponential backoff when connecting to S3.
    *    Any `long` value is acceptable. <br>
    *    **Default**: 25
    * - `vfs.s3.logging_level` <br>
