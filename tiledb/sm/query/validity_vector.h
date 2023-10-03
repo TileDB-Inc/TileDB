@@ -37,8 +37,6 @@
 
 #include "tiledb/common/macros.h"
 
-using namespace tiledb::common;
-
 namespace tiledb {
 namespace sm {
 

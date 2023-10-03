@@ -1293,7 +1293,8 @@ Status Query::set_validity_buffer(
           "' is not nullable"));
     }
 
-    aggregate_buffers_[name].set_validity_buffer(std::move(validity_vector));
+    aggregate_buffers_[name].set_validity_buffer(
+        {buffer_validity_bytemap, buffer_validity_bytemap_size});
 
     return Status::Ok();
   }
