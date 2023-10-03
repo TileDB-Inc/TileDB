@@ -33,6 +33,7 @@
 #ifndef TILEDB_VALIDITY_VECTOR_H
 #define TILEDB_VALIDITY_VECTOR_H
 
+#include <cstdint>
 #include <vector>
 
 #include "tiledb/common/macros.h"
