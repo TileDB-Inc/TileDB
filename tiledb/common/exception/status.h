@@ -308,10 +308,6 @@ inline Status Status_BufferError(const std::string& msg) {
 inline Status Status_QueryError(const std::string& msg) {
   return {"[TileDB::Query] Error", msg};
 }
-/** Return a ValidityVector error class Status with a given message **/
-inline Status Status_ValidityVectorError(const std::string& msg) {
-  return {"[TileDB::ValidityVector] Error", msg};
-}
 /** Return a Status_VFSError error class Status with a given message **/
 inline Status Status_VFSError(const std::string& msg) {
   return {"[TileDB::VFS] Error", msg};

@@ -1,0 +1,332 @@
+/**
+ * @file   fragments.cc
+ *
+ * @section LICENSE
+ *
+ * The MIT License
+ *
+ * @copyright Copyright (c) 2023 TileDB, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file declares serialization functions for fragments.
+ */
+
+// clang-format off
+#ifdef TILEDB_SERIALIZATION
+#include <capnp/compat/json.h>
+#include <capnp/message.h>
+#include <capnp/serialize.h>
+#include "tiledb/sm/serialization/capnp_utils.h"
+#endif
+// clang-format on
+
+#include <string>
+
+#include "tiledb/common/common.h"
+#include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/serialization/fragments.h"
+
+using namespace tiledb::common;
+
+namespace tiledb::sm::serialization {
+
+class FragmentsSerializationException : public StatusException {
+ public:
+  explicit FragmentsSerializationException(const std::string& message)
+      : StatusException("[TileDB::Serialization][Fragments]", message) {
+  }
+};
+
+#ifdef TILEDB_SERIALIZATION
+void fragments_timestamps_to_capnp(
+    std::string uri,
+    uint64_t start_timestamp,
+    uint64_t end_timestamp,
+    capnp::ArrayDeleteFragmentsTimestampsRequest::Builder* builder) {
+  builder->setUri(uri);
+  builder->setStartTimestamp(start_timestamp);
+  builder->setEndTimestamp(end_timestamp);
+}
+
+std::tuple<const char*, uint64_t, uint64_t> fragments_timestamps_from_capnp(
+    const capnp::ArrayDeleteFragmentsTimestampsRequest::Reader& reader) {
+  return {
+      reader.getUri().cStr(),
+      reader.getStartTimestamp(),
+      reader.getEndTimestamp()};
+}
+
+void fragments_timestamps_serialize(
+    std::string uri,
+    uint64_t start_timestamp,
+    uint64_t end_timestamp,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer) {
+  try {
+    // Serialize
+    ::capnp::MallocMessageBuilder message;
+    auto builder =
+        message.initRoot<capnp::ArrayDeleteFragmentsTimestampsRequest>();
+    fragments_timestamps_to_capnp(
+        uri, start_timestamp, end_timestamp, &builder);
+
+    // Copy to buffer
+    serialized_buffer->reset_size();
+    serialized_buffer->reset_offset();
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        kj::String capnp_json = json.encode(builder);
+        const auto json_len = capnp_json.size();
+        const char nul = '\0';
+        // size does not include needed null terminator, so add +1
+        throw_if_not_ok(serialized_buffer->realloc(json_len + 1));
+        throw_if_not_ok(serialized_buffer->write(capnp_json.cStr(), json_len));
+        throw_if_not_ok(serialized_buffer->write(&nul, 1));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
+        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
+        const auto nbytes = message_chars.size();
+        throw_if_not_ok(serialized_buffer->realloc(nbytes));
+        throw_if_not_ok(
+            serialized_buffer->write(message_chars.begin(), nbytes));
+        break;
+      }
+      default: {
+        throw FragmentsSerializationException(
+            "[fragments_timestamps_serialize] Unknown serialization type "
+            "passed");
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    throw FragmentsSerializationException(
+        "[fragments_timestamps_serialize] kj::Exception: " +
+        std::string(e.getDescription().cStr()));
+  } catch (std::exception& e) {
+    throw FragmentsSerializationException(
+        "[fragments_timestamps_serialize] exception " + std::string(e.what()));
+  }
+}
+
+std::tuple<const char*, uint64_t, uint64_t> fragments_timestamps_deserialize(
+    SerializationType serialize_type, const Buffer& serialized_buffer) {
+  try {
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        ::capnp::MallocMessageBuilder message_builder;
+        auto builder =
+            message_builder
+                .initRoot<capnp::ArrayDeleteFragmentsTimestampsRequest>();
+        json.decode(
+            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
+            builder);
+        auto reader = builder.asReader();
+        // Deserialize
+        return fragments_timestamps_from_capnp(reader);
+      }
+      case SerializationType::CAPNP: {
+        const auto mBytes =
+            reinterpret_cast<const kj::byte*>(serialized_buffer.data());
+        ::capnp::FlatArrayMessageReader msg_reader(kj::arrayPtr(
+            reinterpret_cast<const ::capnp::word*>(mBytes),
+            serialized_buffer.size() / sizeof(::capnp::word)));
+        auto reader =
+            msg_reader.getRoot<capnp::ArrayDeleteFragmentsTimestampsRequest>();
+        // Deserialize
+        return fragments_timestamps_from_capnp(reader);
+      }
+      default: {
+        throw FragmentsSerializationException(
+            "[fragments_timestamps_deserialize] "
+            "Unknown serialization type passed");
+      }
+    }
+  } catch (kj::Exception& e) {
+    throw FragmentsSerializationException(
+        "[fragments_timestamps_deserialize] kj::Exception: " +
+        std::string(e.getDescription().cStr()));
+  } catch (std::exception& e) {
+    throw FragmentsSerializationException(
+        "[fragments_timestamps_deserialize] exception " +
+        std::string(e.what()));
+  }
+}
+
+void fragments_list_to_capnp(
+    std::string uri,
+    const std::vector<URI>& fragments,
+    capnp::ArrayDeleteFragmentsListRequest::Builder* builder) {
+  builder->setUri(uri);
+  auto entries_builder = builder->initEntries(fragments.size());
+  for (size_t i = 0; i < fragments.size(); i++) {
+    const auto& relative_uri = serialize_array_uri_to_relative(fragments[i]);
+    entries_builder.set(i, relative_uri);
+  }
+}
+
+std::tuple<const char*, std::vector<URI>> fragments_list_from_capnp(
+    const capnp::ArrayDeleteFragmentsListRequest::Reader& reader) {
+  auto uri = reader.getUri().cStr();
+  if (reader.hasEntries()) {
+    std::vector<URI> fragments;
+    fragments.reserve(reader.getEntries().size());
+    auto get_entries_reader = reader.getEntries();
+    for (auto entry : get_entries_reader) {
+      fragments.emplace_back(
+          deserialize_array_uri_to_absolute(entry.cStr(), URI(uri)));
+    }
+    return {uri, fragments};
+  } else {
+    throw FragmentsSerializationException(
+        "[fragments_list_from_capnp] There are no fragments to deserialize");
+  }
+}
+
+void fragments_list_serialize(
+    std::string uri,
+    const std::vector<URI>& fragments,
+    SerializationType serialize_type,
+    Buffer* serialized_buffer) {
+  if (fragments.empty()) {
+    throw FragmentsSerializationException(
+        "[fragments_list_serialize] Fragments vector is empty");
+  }
+
+  try {
+    // Serialize
+    ::capnp::MallocMessageBuilder message;
+    auto builder = message.initRoot<capnp::ArrayDeleteFragmentsListRequest>();
+    fragments_list_to_capnp(uri, fragments, &builder);
+
+    // Copy to buffer
+    serialized_buffer->reset_size();
+    serialized_buffer->reset_offset();
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        kj::String capnp_json = json.encode(builder);
+        const auto json_len = capnp_json.size();
+        const char nul = '\0';
+        // size does not include needed null terminator, so add +1
+        throw_if_not_ok(serialized_buffer->realloc(json_len + 1));
+        throw_if_not_ok(serialized_buffer->write(capnp_json.cStr(), json_len));
+        throw_if_not_ok(serialized_buffer->write(&nul, 1));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
+        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
+        const auto nbytes = message_chars.size();
+        throw_if_not_ok(serialized_buffer->realloc(nbytes));
+        throw_if_not_ok(
+            serialized_buffer->write(message_chars.begin(), nbytes));
+        break;
+      }
+      default: {
+        throw FragmentsSerializationException(
+            "[fragments_list_serialize] Unknown serialization type passed");
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    throw FragmentsSerializationException(
+        "[fragments_list_serialize] kj::Exception: " +
+        std::string(e.getDescription().cStr()));
+  } catch (std::exception& e) {
+    throw FragmentsSerializationException(
+        "[fragments_list_serialize] exception " + std::string(e.what()));
+  }
+}
+
+std::tuple<const char*, std::vector<URI>> fragments_list_deserialize(
+    SerializationType serialize_type, const Buffer& serialized_buffer) {
+  try {
+    switch (serialize_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        ::capnp::MallocMessageBuilder message_builder;
+        auto builder =
+            message_builder.initRoot<capnp::ArrayDeleteFragmentsListRequest>();
+        json.decode(
+            kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
+            builder);
+        auto reader = builder.asReader();
+        // Deserialize
+        return fragments_list_from_capnp(reader);
+      }
+      case SerializationType::CAPNP: {
+        const auto mBytes =
+            reinterpret_cast<const kj::byte*>(serialized_buffer.data());
+        ::capnp::FlatArrayMessageReader msg_reader(kj::arrayPtr(
+            reinterpret_cast<const ::capnp::word*>(mBytes),
+            serialized_buffer.size() / sizeof(::capnp::word)));
+        auto reader =
+            msg_reader.getRoot<capnp::ArrayDeleteFragmentsListRequest>();
+        // Deserialize
+        return fragments_list_from_capnp(reader);
+      }
+      default: {
+        throw FragmentsSerializationException(
+            "[fragments_list_deserialize] Unknown serialization type passed");
+      }
+    }
+  } catch (kj::Exception& e) {
+    throw FragmentsSerializationException(
+        "[fragments_list_deserialize] kj::Exception: " +
+        std::string(e.getDescription().cStr()));
+  } catch (std::exception& e) {
+    throw FragmentsSerializationException(
+        "[fragments_list_deserialize] exception " + std::string(e.what()));
+  }
+}
+
+#else
+void fragments_timestamps_serialize(
+    std::string, uint64_t, uint64_t, SerializationType, Buffer*) {
+  throw FragmentsSerializationException(
+      "Cannot serialize; serialization not enabled.");
+}
+
+std::tuple<const char*, uint64_t, uint64_t> fragments_timestamps_deserialize(
+    SerializationType, const Buffer&) {
+  throw FragmentsSerializationException(
+      "Cannot deserialize; serialization not enabled.");
+}
+
+void fragments_list_serialize(
+    std::string, const std::vector<URI>&, SerializationType, Buffer*) {
+  throw FragmentsSerializationException(
+      "Cannot serialize; serialization not enabled.");
+}
+
+std::tuple<const char*, std::vector<URI>> fragments_list_deserialize(
+    SerializationType, const Buffer&) {
+  throw FragmentsSerializationException(
+      "Cannot deserialize; serialization not enabled.");
+}
+
+#endif  // TILEDB_SERIALIZATION
+}  // namespace tiledb::sm::serialization

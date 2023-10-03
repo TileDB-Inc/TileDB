@@ -95,6 +95,8 @@ CAPNP_DECLARE_SCHEMA(d492b6734d5e3bf5);
 CAPNP_DECLARE_SCHEMA(bde8ebd7b13d8625);
 CAPNP_DECLARE_SCHEMA(a736c51d292ca752);
 CAPNP_DECLARE_SCHEMA(cd8abc9dabc4b03f);
+CAPNP_DECLARE_SCHEMA(cfea684b4bcd0721);
+CAPNP_DECLARE_SCHEMA(aaeeafe1e9f3ea1c);
 CAPNP_DECLARE_SCHEMA(f5a35661031194d2);
 CAPNP_DECLARE_SCHEMA(e68edfc0939e63df);
 CAPNP_DECLARE_SCHEMA(891a70a671f15cf6);
@@ -1532,6 +1534,40 @@ struct BufferedChunk {
 
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(cd8abc9dabc4b03f, 1, 1)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
+struct ArrayDeleteFragmentsListRequest {
+  ArrayDeleteFragmentsListRequest() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(cfea684b4bcd0721, 0, 2)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
+struct ArrayDeleteFragmentsTimestampsRequest {
+  ArrayDeleteFragmentsTimestampsRequest() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(aaeeafe1e9f3ea1c, 2, 1)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -13869,6 +13905,228 @@ class BufferedChunk::Builder {
 class BufferedChunk::Pipeline {
  public:
   typedef BufferedChunk Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class ArrayDeleteFragmentsListRequest::Reader {
+ public:
+  typedef ArrayDeleteFragmentsListRequest Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasUri() const;
+  inline ::capnp::Text::Reader getUri() const;
+
+  inline bool hasEntries() const;
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader getEntries()
+      const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class ArrayDeleteFragmentsListRequest::Builder {
+ public:
+  typedef ArrayDeleteFragmentsListRequest Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasUri();
+  inline ::capnp::Text::Builder getUri();
+  inline void setUri(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initUri(unsigned int size);
+  inline void adoptUri(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownUri();
+
+  inline bool hasEntries();
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  getEntries();
+  inline void setEntries(
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value);
+  inline void setEntries(::kj::ArrayPtr<const ::capnp::Text::Reader> value);
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder initEntries(
+      unsigned int size);
+  inline void adoptEntries(
+      ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+          value);
+  inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+  disownEntries();
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class ArrayDeleteFragmentsListRequest::Pipeline {
+ public:
+  typedef ArrayDeleteFragmentsListRequest Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class ArrayDeleteFragmentsTimestampsRequest::Reader {
+ public:
+  typedef ArrayDeleteFragmentsTimestampsRequest Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasUri() const;
+  inline ::capnp::Text::Reader getUri() const;
+
+  inline ::uint64_t getStartTimestamp() const;
+
+  inline ::uint64_t getEndTimestamp() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class ArrayDeleteFragmentsTimestampsRequest::Builder {
+ public:
+  typedef ArrayDeleteFragmentsTimestampsRequest Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasUri();
+  inline ::capnp::Text::Builder getUri();
+  inline void setUri(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initUri(unsigned int size);
+  inline void adoptUri(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownUri();
+
+  inline ::uint64_t getStartTimestamp();
+  inline void setStartTimestamp(::uint64_t value);
+
+  inline ::uint64_t getEndTimestamp();
+  inline void setEndTimestamp(::uint64_t value);
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class ArrayDeleteFragmentsTimestampsRequest::Pipeline {
+ public:
+  typedef ArrayDeleteFragmentsTimestampsRequest Pipelines;
 
   inline Pipeline(decltype(nullptr))
       : _typeless(nullptr) {
@@ -30461,6 +30719,180 @@ inline ::uint64_t BufferedChunk::Builder::getSize() {
 inline void BufferedChunk::Builder::setSize(::uint64_t value) {
   _builder.setDataField<::uint64_t>(
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool ArrayDeleteFragmentsListRequest::Reader::hasUri() const {
+  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArrayDeleteFragmentsListRequest::Builder::hasUri() {
+  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader ArrayDeleteFragmentsListRequest::Reader::getUri()
+    const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder
+ArrayDeleteFragmentsListRequest::Builder::getUri() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void ArrayDeleteFragmentsListRequest::Builder::setUri(
+    ::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder ArrayDeleteFragmentsListRequest::Builder::initUri(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      size);
+}
+inline void ArrayDeleteFragmentsListRequest::Builder::adoptUri(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text>
+ArrayDeleteFragmentsListRequest::Builder::disownUri() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool ArrayDeleteFragmentsListRequest::Reader::hasEntries() const {
+  return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArrayDeleteFragmentsListRequest::Builder::hasEntries() {
+  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+ArrayDeleteFragmentsListRequest::Reader::getEntries() const {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+ArrayDeleteFragmentsListRequest::Builder::getEntries() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void ArrayDeleteFragmentsListRequest::Builder::setEntries(
+    ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          value);
+}
+inline void ArrayDeleteFragmentsListRequest::Builder::setEntries(
+    ::kj::ArrayPtr<const ::capnp::Text::Reader> value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+ArrayDeleteFragmentsListRequest::Builder::initEntries(unsigned int size) {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::init(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          size);
+}
+inline void ArrayDeleteFragmentsListRequest::Builder::adoptEntries(
+    ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+        value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::adopt(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+ArrayDeleteFragmentsListRequest::Builder::disownEntries() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
+          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+
+inline bool ArrayDeleteFragmentsTimestampsRequest::Reader::hasUri() const {
+  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArrayDeleteFragmentsTimestampsRequest::Builder::hasUri() {
+  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader
+ArrayDeleteFragmentsTimestampsRequest::Reader::getUri() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder
+ArrayDeleteFragmentsTimestampsRequest::Builder::getUri() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void ArrayDeleteFragmentsTimestampsRequest::Builder::setUri(
+    ::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder
+ArrayDeleteFragmentsTimestampsRequest::Builder::initUri(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      size);
+}
+inline void ArrayDeleteFragmentsTimestampsRequest::Builder::adoptUri(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text>
+ArrayDeleteFragmentsTimestampsRequest::Builder::disownUri() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline ::uint64_t
+ArrayDeleteFragmentsTimestampsRequest::Reader::getStartTimestamp() const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t
+ArrayDeleteFragmentsTimestampsRequest::Builder::getStartTimestamp() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void ArrayDeleteFragmentsTimestampsRequest::Builder::setStartTimestamp(
+    ::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline ::uint64_t
+ArrayDeleteFragmentsTimestampsRequest::Reader::getEndTimestamp() const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t
+ArrayDeleteFragmentsTimestampsRequest::Builder::getEndTimestamp() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
+}
+inline void ArrayDeleteFragmentsTimestampsRequest::Builder::setEndTimestamp(
+    ::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
 }
 
 inline bool ArrayConsolidationRequest::Reader::hasConfig() const {

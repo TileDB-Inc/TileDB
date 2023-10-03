@@ -58,6 +58,13 @@ namespace tiledb {
 namespace sm {
 namespace serialization {
 
+class ArraySerializationException : public StatusException {
+ public:
+  explicit ArraySerializationException(const std::string& message)
+      : StatusException("[TileDB::Serialization][Array]", message) {
+  }
+};
+
 #ifdef TILEDB_SERIALIZATION
 
 Status metadata_to_capnp(
@@ -697,7 +704,7 @@ Status array_serialize(Array*, SerializationType, Buffer*, const bool) {
 Status array_deserialize(
     Array*, SerializationType, const Buffer&, StorageManager*) {
   return LOG_STATUS(Status_SerializationError(
-      "Cannot serialize; serialization not enabled."));
+      "Cannot deserialize; serialization not enabled."));
 }
 
 Status array_open_serialize(const Array&, SerializationType, Buffer*) {
@@ -717,7 +724,7 @@ Status metadata_serialize(Metadata*, SerializationType, Buffer*) {
 
 Status metadata_deserialize(Metadata*, SerializationType, const Buffer&) {
   return LOG_STATUS(Status_SerializationError(
-      "Cannot serialize; serialization not enabled."));
+      "Cannot deserialize; serialization not enabled."));
 }
 
 #endif  // TILEDB_SERIALIZATION

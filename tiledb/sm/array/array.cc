@@ -552,10 +552,14 @@ void Array::delete_fragments(
   ensure_array_is_valid_for_delete(uri);
 
   // Delete fragments
-  // #TODO Add rest support for delete_fragments
   if (remote_) {
-    throw ArrayException(
-        "[delete_fragments] Remote arrays currently unsupported.");
+    auto rest_client = resources_.rest_client();
+    if (rest_client == nullptr) {
+      throw ArrayException(
+          "[delete_fragments] Remote array with no REST client.");
+    }
+    rest_client->delete_fragments_from_rest(
+        uri, timestamp_start, timestamp_end);
   } else {
     storage_manager_->delete_fragments(
         uri.c_str(), timestamp_start, timestamp_end);
@@ -567,11 +571,14 @@ void Array::delete_fragments_list(
   // Check that data deletion is allowed
   ensure_array_is_valid_for_delete(uri);
 
-  // Delete fragments
-  // #TODO Add rest support for delete_fragments_list
+  // Delete fragments_list
   if (remote_) {
-    throw ArrayException(
-        "[delete_fragments_list] Remote arrays currently unsupported.");
+    auto rest_client = resources_.rest_client();
+    if (rest_client == nullptr) {
+      throw ArrayException(
+          "[delete_fragments_list] Remote array with no REST client.");
+    }
+    rest_client->delete_fragments_list_from_rest(uri, fragment_uris);
   } else {
     auto array_dir = ArrayDirectory(
         resources_, uri, 0, std::numeric_limits<uint64_t>::max());

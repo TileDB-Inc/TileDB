@@ -122,8 +122,8 @@ if (NOT WIN32)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindOpenSSL_EP.cmake)
 endif()
 
-if (TILEDB_AZURE OR TILEDB_SERIALIZATION)
-  # Need libcurl either with Azure or serialization support.
+if ((TILEDB_S3 AND NOT WIN32 AND NOT TILEDB_VCPKG) OR TILEDB_AZURE OR TILEDB_GCS OR TILEDB_SERIALIZATION)
+  # Need libcurl either with GCS or serialization support.
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCurl_EP.cmake)
 endif()
 
