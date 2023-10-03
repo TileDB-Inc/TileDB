@@ -640,7 +640,7 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
 
       // Load the enumerations from storage
       loaded = array_dir_.load_enumerations_from_paths(
-          paths_to_load, get_encryption_key());
+          paths_to_load, get_encryption_key(), memory_tracker_);
     }
 
     // Store the loaded enumerations in the schema
