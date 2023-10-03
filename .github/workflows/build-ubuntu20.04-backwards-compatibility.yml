@@ -84,7 +84,7 @@ jobs:
 
           # we clone the latest version, because we are specifying the
           # test target version in the TILEDB_COMPATIBILITY_VERSION variable
-          git clone --depth=1 https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch teo/fix-groups test/inputs/arrays/read_compatibility_test
+          git clone --depth=1 https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch main test/inputs/arrays/read_compatibility_test
 
           # Remove all arrays besides the current matrix version
           ls test/inputs/arrays/read_compatibility_test/ | grep -v ${TILEDB_COMPATIBILITY_VERSION} | grep -v "__tiledb_group.tdb" | xargs -I{} echo "rm -r test/inputs/arrays/read_compatibility_test/{}"
