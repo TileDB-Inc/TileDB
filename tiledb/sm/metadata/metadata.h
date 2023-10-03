@@ -191,14 +191,8 @@ class Metadata {
   /** Returns the number of metadata items. */
   uint64_t num() const;
 
-  /**
-   * Checks if metadata has specified key.
-   *
-   * @param key The metadata key.
-   * @param value_type A reference to store the metadata's type if it exists.
-   * @return Whether the metadata with the given key exists.
-   */
-  bool has_metadata(const char* key, Datatype& value_type);
+  /** Gets the type of the given metadata or nullopt if it does not exist. */
+  std::optional<Datatype> metadata_type(const char* key);
 
   /**
    * Sets the URIs of the metadata files that have been loaded

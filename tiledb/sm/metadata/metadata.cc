@@ -289,19 +289,18 @@ void Metadata::get(
   }
 }
 
-bool Metadata::has_metadata(const char* key, Datatype& value_type) {
+std::optional<Datatype> Metadata::metadata_type(const char* key) {
   assert(key != nullptr);
 
   auto it = metadata_map_.find(key);
   if (it == metadata_map_.end()) {
     // Key not found
-    return false;
+    return nullopt;
   }
 
   // Key found
   auto& value_struct = it->second;
-  value_type = static_cast<Datatype>(value_struct.type_);
-  return true;
+  return static_cast<Datatype>(value_struct.type_);
 }
 
 uint64_t Metadata::num() const {

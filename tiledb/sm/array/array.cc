@@ -1044,7 +1044,7 @@ uint64_t Array::metadata_num() {
   return metadata_.num();
 }
 
-bool Array::has_metadata_key(const char* key, Datatype& value_type) {
+std::optional<Datatype> Array::metadata_type(const char* key) {
   // Check if array is open
   if (!is_open_) {
     throw ArrayException("Cannot get metadata; Array is not open");
@@ -1067,7 +1067,7 @@ bool Array::has_metadata_key(const char* key, Datatype& value_type) {
     throw_if_not_ok(load_metadata());
   }
 
-  return metadata_.has_metadata(key, value_type);
+  return metadata_.metadata_type(key);
 }
 
 Metadata* Array::unsafe_metadata() {

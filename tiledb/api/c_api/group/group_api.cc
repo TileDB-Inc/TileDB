@@ -244,12 +244,11 @@ capi_return_t tiledb_group_has_metadata_key(
   ensure_output_pointer_is_valid(value_type);
   ensure_output_pointer_is_valid(has_key);
 
-  tiledb::sm::Datatype type;
-  bool has_the_key = group->group().has_metadata_key(key, type);
+  std::optional<tiledb::sm::Datatype> type = group->group().metadata_type(key);
 
-  *has_key = has_the_key ? 1 : 0;
-  if (has_the_key) {
-    *value_type = static_cast<tiledb_datatype_t>(type);
+  *has_key = type.has_value();
+  if (*has_key) {
+    *value_type = static_cast<tiledb_datatype_t>(type.value());
   }
 
   return TILEDB_OK;

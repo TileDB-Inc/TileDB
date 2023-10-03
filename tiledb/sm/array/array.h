@@ -475,8 +475,8 @@ class Array {
   /** Returns the number of array metadata items. */
   uint64_t metadata_num();
 
-  /** Returns whether metadata with the fiven key exists, and its type. */
-  bool has_metadata_key(const char* key, Datatype& value_type);
+  /** Gets the type of the given metadata or nullopt if it does not exist. */
+  std::optional<Datatype> metadata_type(const char* key);
 
   /** Retrieves the array metadata object. */
   Status metadata(Metadata** metadata);

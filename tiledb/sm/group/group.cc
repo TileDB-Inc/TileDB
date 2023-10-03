@@ -467,7 +467,7 @@ uint64_t Group::get_metadata_num() {
   return metadata_.num();
 }
 
-bool Group::has_metadata_key(const char* key, Datatype& value_type) {
+std::optional<Datatype> Group::metadata_type(const char* key) {
   // Check if group is open
   if (!is_open_)
     throw GroupStatusException("Cannot get metadata; Group is not open");
@@ -486,7 +486,7 @@ bool Group::has_metadata_key(const char* key, Datatype& value_type) {
   if (!metadata_loaded_)
     load_metadata();
 
-  return metadata_.has_metadata(key, value_type);
+  return metadata_.metadata_type(key);
 }
 
 Metadata* Group::unsafe_metadata() {

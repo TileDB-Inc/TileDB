@@ -3101,12 +3101,11 @@ int32_t tiledb_array_has_metadata_key(
     return TILEDB_ERR;
 
   // Check whether metadata has_key
-  tiledb::sm::Datatype type;
-  bool has_the_key = array->array_->has_metadata_key(key, type);
+  std::optional<tiledb::sm::Datatype> type = array->array_->metadata_type(key);
 
-  *has_key = has_the_key ? 1 : 0;
-  if (has_the_key) {
-    *value_type = static_cast<tiledb_datatype_t>(type);
+  *has_key = type.has_value();
+  if (*has_key) {
+    *value_type = static_cast<tiledb_datatype_t>(type.value());
   }
   return TILEDB_OK;
 }
