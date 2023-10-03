@@ -361,8 +361,8 @@ void Group::delete_metadata(const char* key) {
   if (query_type_ != QueryType::WRITE &&
       query_type_ != QueryType::MODIFY_EXCLUSIVE)
     throw GroupStatusException(
-        "Cannot delete metadata. Group was "
-        "not opened in write or modify_exclusive mode");
+        "Cannot delete metadata. Group was not opened in write or "
+        "modify_exclusive mode");
 
   // Check if key is null
   if (key == nullptr)
@@ -384,8 +384,8 @@ void Group::put_metadata(
   if (query_type_ != QueryType::WRITE &&
       query_type_ != QueryType::MODIFY_EXCLUSIVE)
     throw GroupStatusException(
-        "Cannot put metadata; Group was "
-        "not opened in write or modify_exclusive mode");
+        "Cannot put metadata; Group was not opened in write or "
+        "modify_exclusive mode");
 
   // Check if key is null
   if (key == nullptr)
@@ -410,8 +410,7 @@ void Group::get_metadata(
   // Check mode
   if (query_type_ != QueryType::READ)
     throw GroupStatusException(
-        "Cannot get metadata; Group was "
-        "not opened in read mode");
+        "Cannot get metadata; Group was not opened in read mode");
 
   // Check if key is null
   if (key == nullptr)
@@ -438,8 +437,7 @@ void Group::get_metadata(
   // Check mode
   if (query_type_ != QueryType::READ)
     throw GroupStatusException(
-        "Cannot get metadata; Group was "
-        "not opened in read mode");
+        "Cannot get metadata; Group was not opened in read mode");
 
   // Load group metadata, if not loaded yet
   if (!metadata_loaded_)
@@ -457,8 +455,7 @@ uint64_t Group::get_metadata_num() {
   // Check mode
   if (query_type_ != QueryType::READ)
     throw GroupStatusException(
-        "Cannot get number of metadata; Group was "
-        "not opened in read mode");
+        "Cannot get number of metadata; Group was not opened in read mode");
 
   // Load group metadata, if not loaded yet
   if (!metadata_loaded_)
@@ -475,8 +472,7 @@ std::optional<Datatype> Group::metadata_type(const char* key) {
   // Check mode
   if (query_type_ != QueryType::READ)
     throw GroupStatusException(
-        "Cannot get metadata; Group was "
-        "not opened in read mode");
+        "Cannot get metadata; Group was not opened in read mode");
 
   // Check if key is null
   if (key == nullptr)

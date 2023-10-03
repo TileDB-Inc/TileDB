@@ -615,8 +615,7 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
       auto rest_client = resources_.rest_client();
       if (rest_client == nullptr) {
         throw ArrayException(
-            "Error loading enumerations; "
-            "Remote array with no REST client.");
+            "Error loading enumerations; Remote array with no REST client.");
       }
 
       std::vector<std::string> names_to_load;
@@ -923,8 +922,8 @@ void Array::delete_metadata(const char* key) {
   if (query_type_ != QueryType::WRITE &&
       query_type_ != QueryType::MODIFY_EXCLUSIVE) {
     throw ArrayException(
-        "Cannot delete metadata. Array was "
-        "not opened in write or modify_exclusive mode");
+        "Cannot delete metadata. Array was not opened in write or "
+        "modify_exclusive mode");
   }
 
   // Check if key is null
@@ -949,8 +948,8 @@ void Array::put_metadata(
   if (query_type_ != QueryType::WRITE &&
       query_type_ != QueryType::MODIFY_EXCLUSIVE) {
     throw ArrayException(
-        "Cannot put metadata; Array was "
-        "not opened in write or modify_exclusive mode");
+        "Cannot put metadata; Array was not opened in write or "
+        "modify_exclusive mode");
   }
 
   // Check if key is null
@@ -979,8 +978,7 @@ void Array::get_metadata(
   // Check mode
   if (query_type_ != QueryType::READ) {
     throw ArrayException(
-        "Cannot get metadata; Array was "
-        "not opened in read mode");
+        "Cannot get metadata; Array was not opened in read mode");
   }
 
   // Check if key is null
@@ -1011,8 +1009,7 @@ void Array::get_metadata(
   // Check mode
   if (query_type_ != QueryType::READ) {
     throw ArrayException(
-        "Cannot get metadata; Array was "
-        "not opened in read mode");
+        "Cannot get metadata; Array was not opened in read mode");
   }
 
   // Load array metadata, if not loaded yet
@@ -1032,8 +1029,7 @@ uint64_t Array::metadata_num() {
   // Check mode
   if (query_type_ != QueryType::READ) {
     throw ArrayException(
-        "Cannot get number of metadata; Array was "
-        "not opened in read mode");
+        "Cannot get number of metadata; Array was not opened in read mode");
   }
 
   // Load array metadata, if not loaded yet
@@ -1053,8 +1049,7 @@ std::optional<Datatype> Array::metadata_type(const char* key) {
   // Check mode
   if (query_type_ != QueryType::READ) {
     throw ArrayException(
-        "Cannot get metadata; Array was "
-        "not opened in read mode");
+        "Cannot get metadata; Array was not opened in read mode");
   }
 
   // Check if key is null
