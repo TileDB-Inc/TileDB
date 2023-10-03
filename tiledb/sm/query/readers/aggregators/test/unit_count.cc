@@ -31,11 +31,9 @@
  */
 
 #include "tiledb/common/common.h"
-#include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/count_aggregator.h"
-#include "tiledb/sm/query/readers/aggregators/test/whitebox_aggregate_buffer.h"
 
 #include <test/support/tdb_catch.h>
 
@@ -74,7 +72,7 @@ TEST_CASE(
     buffers["Count"].buffer_ = nullptr;
     CHECK_THROWS_WITH(
         aggregator.validate_output_buffer("Count", buffers),
-        "CountAggregator: Count aggregates must have a fixed size buffer.");
+        "OutputBufferValidator: Aggregate must have a fixed size buffer.");
   }
 
   SECTION("Wrong size") {
@@ -83,7 +81,7 @@ TEST_CASE(
     buffers["Count"].original_buffer_size_ = 1;
     CHECK_THROWS_WITH(
         aggregator.validate_output_buffer("Count", buffers),
-        "CountAggregator: Count aggregates fixed size buffer should be for one "
+        "OutputBufferValidator: Aggregate fixed size buffer should be for one "
         "element only.");
   }
 
@@ -95,7 +93,7 @@ TEST_CASE(
 
     CHECK_THROWS_WITH(
         aggregator.validate_output_buffer("Count", buffers),
-        "CountAggregator: Count aggregates must not have a var buffer.");
+        "OutputBufferValidator: Aggregate must not have a var buffer.");
   }
 
   SECTION("With validity") {
@@ -109,7 +107,8 @@ TEST_CASE(
         ValidityVector(&validity, &validity_size);
     CHECK_THROWS_WITH(
         aggregator.validate_output_buffer("Count", buffers),
-        "CountAggregator: Count aggregates must not have a validity buffer.");
+        "OutputBufferValidator: Count aggregates must not have a validity "
+        "buffer.");
   }
 
   SECTION("Success") {
@@ -132,8 +131,8 @@ TEST_CASE(
   buffers["Count"].original_buffer_size_ = 1;
 
   SECTION("No bitmap") {
-    AggregateBuffer input_data = WhiteboxAggregateBuffer::make_aggregate_buffer(
-        2, 10, nullptr, nullopt, nullopt, false, nullopt);
+    AggregateBuffer input_data{
+        2, 10, nullptr, nullopt, nullopt, false, nullopt};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("Count", buffers);
     CHECK(count == 8);
@@ -141,15 +140,14 @@ TEST_CASE(
 
   SECTION("Regular bitmap") {
     std::vector<uint8_t> bitmap = {1, 1, 0, 0, 0, 1, 1, 0, 1, 0};
-    AggregateBuffer input_data = WhiteboxAggregateBuffer::make_aggregate_buffer(
-        2, 10, nullptr, nullopt, nullopt, false, bitmap.data());
+    AggregateBuffer input_data{
+        2, 10, nullptr, nullopt, nullopt, false, bitmap.data()};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("Count", buffers);
     CHECK(count == 3);
 
-    AggregateBuffer input_data2 =
-        WhiteboxAggregateBuffer::make_aggregate_buffer(
-            0, 2, nullptr, nullopt, nullopt, false, bitmap.data());
+    AggregateBuffer input_data2{
+        0, 2, nullptr, nullopt, nullopt, false, bitmap.data()};
     aggregator.aggregate_data(input_data2);
     aggregator.copy_to_user_buffer("Count", buffers);
     CHECK(count == 5);
@@ -157,15 +155,14 @@ TEST_CASE(
 
   SECTION("Count bitmap") {
     std::vector<uint64_t> bitmap_count = {1, 2, 4, 0, 0, 1, 2, 0, 1, 2};
-    AggregateBuffer input_data = WhiteboxAggregateBuffer::make_aggregate_buffer(
-        2, 10, nullptr, nullopt, nullopt, true, bitmap_count.data());
+    AggregateBuffer input_data{
+        2, 10, nullptr, nullopt, nullopt, true, bitmap_count.data()};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("Count", buffers);
     CHECK(count == 10);
 
-    AggregateBuffer input_data2 =
-        WhiteboxAggregateBuffer::make_aggregate_buffer(
-            0, 2, nullptr, nullopt, nullopt, true, bitmap_count.data());
+    AggregateBuffer input_data2{
+        0, 2, nullptr, nullopt, nullopt, true, bitmap_count.data()};
     aggregator.aggregate_data(input_data2);
     aggregator.copy_to_user_buffer("Count", buffers);
     CHECK(count == 13);

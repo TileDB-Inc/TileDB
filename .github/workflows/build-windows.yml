@@ -11,7 +11,7 @@ env:
   TILEDB_SERIALIZATION: OFF
   TILEDB_STATIC: OFF
   TILEDB_TOOLS: ON
-  TILEDB_BASE_BOOTSTRAP_OPTIONS: '-EnableVcpkg -EnableVerbose -EnableStaticTileDB'
+  TILEDB_BASE_BOOTSTRAP_OPTIONS: '-EnableVerbose -EnableStaticTileDB'
 
 jobs:
   build:
@@ -42,6 +42,9 @@ jobs:
             TILEDB_ARROW_TESTS: OFF
             TILEDB_SERIALIZATION: ON
             TILEDB_WEBP: ON
+
+    name: ${{ matrix.os }} - ${{ matrix.environ }}
+
     env:
       TILEDB_HOME: ${{ github.workspace }}
       TILEDB_GA_IMAGE_NAME: ${{ matrix.os }}
@@ -404,9 +407,9 @@ jobs:
           Invoke-Expression $cmd
 
           #.\$CMakeBuildType\ExampleExe_static.exe
-          #$cmd = ".\$CMakeBuildType\ExampleExe_static.exe"
-          #Write-Host "cmd: '$cmd'"
-          #Invoke-Expression $cmd
+          $cmd = ".\$CMakeBuildType\ExampleExe_static.exe"
+          Write-Host "cmd: '$cmd'"
+          Invoke-Expression $cmd
 
           # Packaging test
           cd $env:BUILD_SOURCESDIRECTORY\test\packaging

@@ -123,6 +123,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-backwards_compat.cc
   src/unit-bufferlist.cc
   src/unit-capi-any.cc
+  src/unit-capi-as_built.cc
   src/unit-capi-array.cc
   src/unit-capi-array_schema.cc
   src/unit-capi-async.cc
@@ -194,6 +195,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-s3.cc
   src/unit-sparse-global-order-reader.cc
   src/unit-sparse-unordered-with-dups-reader.cc
+  src/unit-ssl-config.cc
   src/unit-Subarray.cc
   src/unit-SubarrayPartitioner-dense.cc
   src/unit-SubarrayPartitioner-error.cc
@@ -230,6 +232,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-nullable.cc
     src/unit-cppapi-partial-attribute-write.cc
     src/unit-cppapi-query.cc
+    src/unit-cppapi-query-condition-sets.cc
     src/cpp-integration-query-condition.cc
     src/unit-cppapi-schema.cc
     src/unit-cppapi-schema-evolution.cc
@@ -303,6 +306,9 @@ target_link_libraries(tiledb_unit
 )
 
 target_link_libraries(tiledb_unit PRIVATE $<BUILD_INTERFACE:common>)
+target_include_directories(tiledb_unit PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
+)
 
 # need to properly link the signal chaining library for catch to work with the jni hdfs interface
 # see: https://docs.oracle.com/javase/9/vm/signal-chaining.htm
@@ -313,9 +319,6 @@ if (TILEDB_HDFS)
       LibJVM::libjvm
       LibJVM::libjsig
   )
-  target_include_directories(tiledb_unit PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
-    )
 endif()
 
 if (TILEDB_TESTS_AWS_S3_CONFIG)
@@ -387,9 +390,10 @@ if(TILEDB_HDFS)
 endif()
 
 # Add custom target 'check'
-add_custom_target(
-  check COMMAND ${CMAKE_CTEST_COMMAND} -V -C ${CMAKE_BUILD_TYPE}
-  DEPENDS tiledb_unit
+add_custom_target(check
+  COMMAND ${CMAKE_CTEST_COMMAND} -V -C $<CONFIG>
+  DEPENDS tests
+  USES_TERMINAL
 )
 
 # CI tests

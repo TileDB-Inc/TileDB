@@ -69,7 +69,6 @@ TEST_CASE("as_built: Print dump", "[as_built][dump][.print_json]") {
   std::cerr << dump_str_ << std::endl;
 }
 
-/** Allow Ubuntu-only failure on all of the following tests; fix in progress. */
 TEST_CASE("as_built: Ensure dump has json output", "[as_built][dump][json]") {
   json x;
   CHECK_NOTHROW(x = json::parse(dump_str_));
@@ -107,23 +106,29 @@ TEST_CASE(
   auto x(dump_.value()["as_built"]["parameters"]["storage_backends"]);
   CHECK(!x.empty());
 
-#ifdef TILEDB_AZURE
+#ifdef HAVE_AZURE
   CHECK(x["azure"]["enabled"] == true);
 #else
   CHECK(x["azure"]["enabled"] == false);
-#endif  // TILEDB_AZURE
+#endif  // HAVE_AZURE
 
-#ifdef TILEDB_GCS
+#ifdef HAVE_GCS
   CHECK(x["gcs"]["enabled"] == true);
 #else
   CHECK(x["gcs"]["enabled"] == false);
-#endif  // TILEDB_GCS
+#endif  // HAVE_GCS
 
-#ifdef TILEDB_S3
+#ifdef HAVE_HDFS
+  CHECK(x["hdfs"]["enabled"] == true);
+#else
+  CHECK(x["hdfs"]["enabled"] == false);
+#endif  // HAVE_HDFS
+
+#ifdef HAVE_S3
   CHECK(x["s3"]["enabled"] == true);
 #else
   CHECK(x["s3"]["enabled"] == false);
-#endif  // TILEDB_S3
+#endif  // HAVE_S3
 }
 
 TEST_CASE("as_built: Validate support key", "[as_built][support]") {

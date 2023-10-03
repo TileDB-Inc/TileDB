@@ -43,23 +43,29 @@ namespace tiledb::as_built::parameters::storage_backends {
 /* ********************************* */
 /*              ATTRIBUTES           */
 /* ********************************* */
-#ifdef TILEDB_AZURE
+#ifdef HAVE_AZURE
 static constexpr bool azure = true;
 #else
 static constexpr bool azure = false;
-#endif  // TILEDB_AZURE
+#endif  // HAVE_AZURE
 
-#ifdef TILEDB_GCS
+#ifdef HAVE_GCS
 static constexpr bool gcs = true;
 #else
 static constexpr bool gcs = false;
-#endif  // TILEDB_GCS
+#endif  // HAVE_GCS
 
-#ifdef TILEDB_S3
+#ifdef HAVE_HDFS
+static constexpr bool hdfs = true;
+#else
+static constexpr bool hdfs = false;
+#endif  // HAVE_HDFS
+
+#ifdef HAVE_S3
 static constexpr bool s3 = true;
 #else
 static constexpr bool s3 = false;
-#endif  // TILEDB_S3
+#endif  // HAVE_S3
 
 /* ********************************* */
 /*                API                */
@@ -70,6 +76,7 @@ void to_json(json& j, const storage_backends&) {
   j = {
       {"azure", {{"enabled", azure}}},
       {"gcs", {{"enabled", gcs}}},
+      {"hdfs", {{"enabled", hdfs}}},
       {"s3", {{"enabled", s3}}}};
 }
 

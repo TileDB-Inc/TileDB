@@ -75,7 +75,7 @@ const std::string& get_temp_path() {
 std::string g_vfs;
 
 void check_tiledb_error_with(
-    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg) {
+    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg, bool contains) {
   CHECK(rc == TILEDB_ERR);
   if (rc != TILEDB_ERR) {
     return;
@@ -93,7 +93,11 @@ void check_tiledb_error_with(
       CHECK(false);
     } else {
       std::string err_msg{raw_msg};
-      CHECK(err_msg == expected_msg);
+      if (contains) {
+        CHECK_THAT(err_msg, Catch::Matchers::ContainsSubstring(expected_msg));
+      } else {
+        CHECK(err_msg == expected_msg);
+      }
     }
   }
   tiledb_error_free(&err);
@@ -116,7 +120,7 @@ void check_tiledb_ok(tiledb_ctx_t* ctx, int rc) {
 }
 
 void require_tiledb_error_with(
-    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg) {
+    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg, bool contains) {
   REQUIRE(rc == TILEDB_ERR);
   tiledb_error_t* err{nullptr};
   tiledb_ctx_get_last_error(ctx, &err);
@@ -132,7 +136,11 @@ void require_tiledb_error_with(
     REQUIRE(false);
   }
   std::string err_msg{raw_msg};
-  REQUIRE(err_msg == expected_msg);
+  if (contains) {
+    REQUIRE_THAT(err_msg, Catch::Matchers::ContainsSubstring(expected_msg));
+  } else {
+    REQUIRE(err_msg == expected_msg);
+  }
   tiledb_error_free(&err);
 }
 

@@ -63,12 +63,10 @@ class ArrayExperimental {
    *
    * @param ctx The context to use.
    * @param array The array to load enumerations for.
-   * @param latest_only Whether to only load enumerations for the latest schema.
    */
-  static void load_all_enumerations(
-      const Context& ctx, const Array& array, bool latest_only = true) {
-    ctx.handle_error(tiledb_array_load_all_enumerations(
-        ctx.ptr().get(), array.ptr().get(), latest_only ? 1 : 0));
+  static void load_all_enumerations(const Context& ctx, const Array& array) {
+    ctx.handle_error(
+        tiledb_array_load_all_enumerations(ctx.ptr().get(), array.ptr().get()));
   }
 };
 

@@ -76,4 +76,6 @@ TEST_CASE(
   FragmentInfo fi(ctx, array_name);
   fi.load();
   REQUIRE(fi.fragment_num() == 1);
+
+  remove_array();
 }

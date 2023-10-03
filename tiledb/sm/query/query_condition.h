@@ -62,6 +62,15 @@ class QueryCondition {
   /** Default constructor. */
   QueryCondition();
 
+  /** Constructor for a set membership QueryCondition */
+  QueryCondition(
+      const std::string& field_name,
+      const void* data,
+      uint64_t data_size,
+      const void* offsets,
+      uint64_t offsets_size,
+      QueryConditionOp op);
+
   /** Constructor from a marker. */
   QueryCondition(const std::string& condition_marker);
 

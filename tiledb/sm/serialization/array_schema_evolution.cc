@@ -35,6 +35,7 @@
 #include "tiledb/sm/serialization/capnp_utils.h"
 #endif
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
@@ -52,6 +53,7 @@
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/serialization/array_schema.h"
+#include "tiledb/sm/serialization/enumeration.h"
 
 #include <set>
 

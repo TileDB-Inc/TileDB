@@ -36,6 +36,7 @@
 #include "attribute.h"
 #include "context.h"
 #include "enumeration_experimental.h"
+#include "tiledb_experimental.h"
 
 #include <optional>
 

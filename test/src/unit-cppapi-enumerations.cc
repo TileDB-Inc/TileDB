@@ -60,6 +60,22 @@ const static std::string dump_name = "enumeration_dump_test.txt";
 
 TEST_CASE_METHOD(
     CPPEnumerationFx,
+    "CPP: Enumeration API - Create Boolean",
+    "[enumeration][create][bool]") {
+  std::vector<bool> values = {true, false};
+  auto enmr = Enumeration::create(ctx_, enmr_name, values);
+  REQUIRE(enmr.ptr() != nullptr);
+  REQUIRE(enmr.name() == enmr_name);
+  REQUIRE(enmr.type() == TILEDB_BOOL);
+  REQUIRE(enmr.cell_val_num() == 1);
+  REQUIRE(enmr.ordered() == false);
+
+  auto data = enmr.as_vector<bool>();
+  REQUIRE(data == values);
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
     "CPP: Enumeration API - Create Fixed Size",
     "[enumeration][create][fixed-size]") {
   std::vector<int> values = {1, 2, 3, 4, 5};
@@ -137,25 +153,6 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPEnumerationFx,
-    "CPP: Load Schema from URI",
-    "[enumeration][add-attribute]") {
-  create_array();
-  auto schema = ArraySchemaExperimental::load_with_enumerations(ctx_, uri_);
-  auto enmr_names =
-      schema.ptr().get()->array_schema_->get_loaded_enumeration_names();
-  REQUIRE(enmr_names.size() > 0);
-}
-
-TEST_CASE_METHOD(
-    CPPEnumerationFx,
-    "CPP: Load Schema from URI - REMOTE NOT SUPPORTED YET",
-    "[enumeration][add-attribute][fixme]") {
-  std::string uri = "tiledb://namespace/array_name";
-  REQUIRE_THROWS(ArraySchemaExperimental::load_with_enumerations(ctx_, uri));
-}
-
-TEST_CASE_METHOD(
-    CPPEnumerationFx,
     "CPP: Schema Dump With Enumeration",
     "[enumeration][array-schema][dump]") {
   ArraySchema schema(ctx_, TILEDB_DENSE);
@@ -219,7 +216,7 @@ TEST_CASE_METHOD(
     CPPEnumerationFx,
     "C API: Array load_all_enumerations - Check nullptr",
     "[enumeration][array-load-all-enumerations]") {
-  auto rc = tiledb_array_load_all_enumerations(ctx_.ptr().get(), nullptr, 0);
+  auto rc = tiledb_array_load_all_enumerations(ctx_.ptr().get(), nullptr);
   REQUIRE(rc != TILEDB_OK);
 }
 
@@ -387,6 +384,34 @@ TEST_CASE_METHOD(
       REQUIRE(attr2[i] == attr2_expect[i]);
     }
   }
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
+    "CPP: Enumeration Query - Invalid Enumeration Value",
+    "[enumeration][query][basic]") {
+  create_array();
+
+  // Attempt to query with an enumeration value that isn't in the Enumeration
+  QueryCondition qc(ctx_);
+  qc.init("attr1", "alf", 4, TILEDB_EQ);
+
+  // Execute the query condition against the array
+  std::vector<int> dim(5);
+  std::vector<int> attr1(5);
+
+  auto array = Array(ctx_, uri_, TILEDB_READ);
+  Query query(ctx_, array);
+  query.add_range("dim", 1, 5)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("dim", dim)
+      .set_data_buffer("attr1", attr1)
+      .set_condition(qc);
+
+  // Check that the error message is helpful to users.
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Enumeration value not found for field 'attr1'");
+  REQUIRE_THROWS_WITH(query.submit(), matcher);
 }
 
 TEST_CASE_METHOD(

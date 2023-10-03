@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -57,6 +57,7 @@ class Buffer;
 class ConstBuffer;
 class Dimension;
 class DomainTypedDataView;
+class FilterPipeline;
 enum class Datatype : uint8_t;
 enum class Layout : uint8_t;
 
@@ -182,13 +183,17 @@ class Domain {
    *
    * @param deserializer The deserializer to deserialize from.
    * @param version The array schema version.
+   * @param cell_order Cell order.
+   * @param tile_order Tile order.
+   * @param coords_filters Coords filters to replace empty coords pipelines.
    * @return Status and Domain
    */
   static shared_ptr<Domain> deserialize(
       Deserializer& deserializer,
       uint32_t version,
       Layout cell_order,
-      Layout tile_order);
+      Layout tile_order,
+      FilterPipeline& coords_filters);
 
   /** Returns the cell order. */
   Layout cell_order() const;
@@ -403,15 +408,6 @@ class Domain {
    * @return Status
    */
   Status get_dimension_index(const std::string& name, unsigned* dim_idx) const;
-
-  /**
-   * Initializes the domain.
-   *
-   * @param cell_order The cell order of the array the domain belongs to.
-   * @param tile_order The cell order of the array the domain belongs to.
-   * @return Status
-   */
-  Status init(Layout cell_order, Layout tile_order);
 
   /** Returns true if at least one dimension has null tile extent. */
   bool null_tile_extents() const;

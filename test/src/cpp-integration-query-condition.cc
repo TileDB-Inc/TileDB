@@ -130,7 +130,7 @@ void create_array(
   std::vector<int> col_dims;
   std::vector<int> a_data;
   std::vector<float> b_data;
-  std::vector<uint8_t> c_data;
+  std::vector<char> c_data;
   std::vector<uint64_t> c_offsets;
   std::vector<uint8_t> c_validity;
 
@@ -2594,12 +2594,12 @@ TEST_CASE(
   ArraySchema schema(ctx, TILEDB_SPARSE);
   schema.set_domain(domain)
       .set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}})
-      .add_attribute(Attribute::create<bool>(ctx, "labs"));
+      .add_attribute(Attribute::create<uint8_t>(ctx, "labs"));
   Array::create(array_name, schema);
 
   // Write some initial data and close the array.
   std::vector<int> wrows{1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-  bool wlabs[10] = {
+  uint8_t wlabs[10] = {
       false, true, false, true, true, false, false, true, false, false};
 
   Array warray(ctx, array_name, TILEDB_WRITE);
@@ -2634,7 +2634,7 @@ TEST_CASE(
   CHECK(table["labs"].second == 10);
 
   for (size_t i = 0; i < table["labs"].second; ++i) {
-    CHECK(rlabs[i] == !!wlabs[i]);
+    CHECK(rlabs[i] == static_cast<uint8_t>(wlabs[i]));
   }
 
   if (vfs.is_dir(array_name)) {

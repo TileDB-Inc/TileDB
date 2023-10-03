@@ -354,17 +354,36 @@ class Array {
    * @param timestamp_end The epoch end timestamp in milliseconds. Use
    * UINT64_MAX for the current timestamp.
    */
+  TILEDB_DEPRECATED
   void delete_fragments(
       const std::string& uri,
       uint64_t timestamp_start,
       uint64_t timestamp_end) const {
+    throw std::logic_error(
+        "This method is deprecated. Please use "
+        "Array::delete_fragments(ctx, uri, timestamp_start, timestamp_end)");
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_array_delete_fragments(
-        ctx.ptr().get(),
-        array_.get(),
-        uri.c_str(),
-        timestamp_start,
-        timestamp_end));
+    ctx.handle_error(tiledb_array_delete_fragments_v2(
+        ctx.ptr().get(), uri.c_str(), timestamp_start, timestamp_end));
+  }
+
+  /**
+   * Deletes the fragments written between the input timestamps of an array
+   * with the input uri.
+   *
+   * @param ctx TileDB context
+   * @param uri The URI of the fragments' parent Array.
+   * @param timestamp_start The epoch start timestamp in milliseconds.
+   * @param timestamp_end The epoch end timestamp in milliseconds. Use
+   * UINT64_MAX for the current timestamp.
+   */
+  static void delete_fragments(
+      const Context& ctx,
+      const std::string& uri,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end) {
+    ctx.handle_error(tiledb_array_delete_fragments_v2(
+        ctx.ptr().get(), uri.c_str(), timestamp_start, timestamp_end));
   }
 
   /**

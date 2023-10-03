@@ -105,11 +105,42 @@ struct VFSParameters {
   uint64_t read_ahead_size_;
 };
 
+/** The base parameters for class VFS. */
+struct VFSBase {
+  VFSBase() = delete;
+
+  VFSBase(stats::Stats* const parent_stats)
+      : stats_(parent_stats->create_child("VFS")){};
+
+  ~VFSBase() = default;
+
+ protected:
+  /** The class stats. */
+  stats::Stats* stats_;
+};
+
+/** The S3 filesystem. */
+#ifdef HAVE_S3
+struct S3_within_VFS {
+  S3 s3_;
+  template <typename... Args>
+  S3_within_VFS(Args&&... args)
+      : s3_(std::forward<Args>(args)...) {
+  }
+};
+#else
+struct S3_within_VFS {
+  template <typename... Args>
+  S3_within_VFS(Args&&...) {
+  }  // empty constructor
+};
+#endif
+
 /**
  * This class implements a virtual filesystem that directs filesystem-related
  * function execution to the appropriate backend based on the input URI.
  */
-class VFS {
+class VFS : private VFSBase, S3_within_VFS {
  public:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
@@ -682,10 +713,6 @@ class VFS {
   GCS gcs_;
 #endif
 
-#ifdef HAVE_S3
-  S3 s3_;
-#endif
-
 #ifdef _WIN32
   Win win_;
 #else
@@ -695,9 +722,6 @@ class VFS {
 #ifdef HAVE_HDFS
   tdb_unique_ptr<hdfs::HDFS> hdfs_;
 #endif
-
-  /** The class stats. */
-  stats::Stats* stats_;
 
   /** The in-memory filesystem which is always supported */
   MemFilesystem memfs_;

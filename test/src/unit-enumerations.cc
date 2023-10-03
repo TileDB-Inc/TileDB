@@ -53,6 +53,7 @@
 
 #ifdef TILEDB_SERIALIZATION
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/array_schema_evolution.h"
 #include "tiledb/sm/serialization/query.h"
@@ -100,7 +101,7 @@ struct EnumerationFx {
   void create_array();
   shared_ptr<Array> get_array(QueryType type);
   shared_ptr<ArrayDirectory> get_array_directory();
-  shared_ptr<ArraySchema> get_array_schema_latest(bool load_enmrs = false);
+  shared_ptr<ArraySchema> get_array_schema_latest();
 
   // Serialization helpers
   ArraySchema ser_des_array_schema(
@@ -113,6 +114,13 @@ struct EnumerationFx {
 
   void ser_des_query(
       Query* q_in, Query* q_out, bool client_side, SerializationType stype);
+
+  void ser_des_array(
+      Context& ctx,
+      Array* in,
+      Array* out,
+      bool client_side,
+      SerializationType stype);
 
   template <typename T>
   bool vec_cmp(std::vector<T> v1, std::vector<T> v2);
@@ -137,6 +145,15 @@ QueryCondition create_qc(
 
 TEST_CASE_METHOD(
     EnumerationFx,
+    "Basic Boolean Enumeration Creation",
+    "[enumeration][basic][boolean]") {
+  std::vector<bool> values = {true, false};
+  auto enmr = create_enumeration(values);
+  check_enumeration(enmr, default_enmr_name, values, Datatype::BOOL, 1, false);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
     "Basic Fixed Size Enumeration Creation",
     "[enumeration][basic][fixed]") {
   std::vector<uint32_t> values = {1, 2, 3, 4, 5};
@@ -148,7 +165,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     EnumerationFx,
     "Basic Variable Size Enumeration Creation",
-    "[enumeration][basic][fixed]") {
+    "[enumeration][basic][var-size]") {
   std::vector<std::string> values = {"foo", "bar", "baz", "bingo", "bango"};
   auto enmr = create_enumeration(values);
   check_enumeration(
@@ -521,8 +538,7 @@ TEST_CASE_METHOD(
 
   for (uint64_t i = 0; i < values.size(); i++) {
     int tmp = values[i];
-    UntypedDatumView udv(&tmp, sizeof(int));
-    REQUIRE(enmr->index_of(udv) == i);
+    REQUIRE(enmr->index_of(&tmp, sizeof(int)) == i);
   }
 }
 
@@ -534,8 +550,9 @@ TEST_CASE_METHOD(
   auto enmr = create_enumeration(values);
 
   int zero = 0;
-  UntypedDatumView udv_zero(&zero, sizeof(int));
-  REQUIRE(enmr->index_of(udv_zero) == constants::enumeration_missing_value);
+  REQUIRE(
+      enmr->index_of(&zero, sizeof(int)) ==
+      constants::enumeration_missing_value);
 }
 
 TEST_CASE_METHOD(
@@ -546,8 +563,7 @@ TEST_CASE_METHOD(
   auto enmr = create_enumeration(values);
 
   for (uint64_t i = 0; i < values.size(); i++) {
-    UntypedDatumView udv(values[i].data(), values[i].size());
-    REQUIRE(enmr->index_of(udv) == i);
+    REQUIRE(enmr->index_of(values[i].data(), values[i].size()) == i);
   }
 }
 
@@ -558,8 +574,7 @@ TEST_CASE_METHOD(
   std::vector<std::string> values = {"foo", "bar", "baz", "bang", "ohai"};
   auto enmr = create_enumeration(values);
 
-  UntypedDatumView udv_empty("", 0);
-  REQUIRE(enmr->index_of(udv_empty) == constants::enumeration_missing_value);
+  REQUIRE(enmr->index_of("", 0) == constants::enumeration_missing_value);
 }
 
 /* ********************************* */
@@ -600,7 +615,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     EnumerationFx,
     "Array - Get Enumeration Repeated",
-    "[enumeration][array][get-enumeration]") {
+    "[enumeration][array][get-enumeration][repeated]") {
   create_array();
   auto array = get_array(QueryType::READ);
   auto enmr1 = array->get_enumeration("test_enmr");
@@ -610,19 +625,11 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     EnumerationFx,
-    "Array - Get Enumeration Error - REMOTE NOT YET SUPPORTED",
-    "[enumeration][array][error][get-remote]") {
-  std::string uri_str = "tiledb://namespace/array_name";
-  auto array = make_shared<Array>(HERE(), URI(uri_str), ctx_.storage_manager());
-  REQUIRE_THROWS(array->get_enumeration("something_here"));
-}
-
-TEST_CASE_METHOD(
-    EnumerationFx,
     "Array - Get Enumeration Error - Not Open",
     "[enumeration][array][error][not-open]") {
   auto array = make_shared<Array>(HERE(), uri_, ctx_.storage_manager());
-  REQUIRE_THROWS(array->get_enumeration("foo"));
+  auto matcher = Catch::Matchers::ContainsSubstring("Array is not open");
+  REQUIRE_THROWS(array->get_enumeration("foo"), matcher);
 }
 
 TEST_CASE_METHOD(
@@ -665,30 +672,10 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     EnumerationFx,
-    "Array - Load All Enumerations",
-    "[enumeration][array][load-all-enumerations]") {
-  create_array();
-  auto array = get_array(QueryType::READ);
-  auto schema = array->array_schema_latest_ptr();
-  REQUIRE(schema->is_enumeration_loaded("test_enmr") == false);
-  CHECK_NOTHROW(array->load_all_enumerations(false));
-  REQUIRE(schema->is_enumeration_loaded("test_enmr") == true);
-}
-
-TEST_CASE_METHOD(
-    EnumerationFx,
-    "Array - Load All Enumerations Error - REMOTE NOT YET SUPPORTED",
-    "[enumeration][array][error][get-remote]") {
-  std::string uri_str = "tiledb://namespace/array_name";
-  auto array = make_shared<Array>(HERE(), URI(uri_str), ctx_.storage_manager());
-  REQUIRE_THROWS(array->load_all_enumerations());
-}
-
-TEST_CASE_METHOD(
-    EnumerationFx,
     "Array - Load All Enumerations Error - Not Open",
     "[enumeration][array][error][not-open]") {
   auto array = make_shared<Array>(HERE(), uri_, ctx_.storage_manager());
+  auto matcher = Catch::Matchers::ContainsSubstring("Array is not open");
   REQUIRE_THROWS(array->load_all_enumerations());
 }
 
@@ -698,8 +685,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     EnumerationFx,
-    "ArrayDirectory - Load Enumeration",
-    "[enumeration][array-directory][load-enumeration]") {
+    "ArrayDirectory - Load Enumerations From Paths",
+    "[enumeration][array-directory][load-enumerations-from-paths]") {
   create_array();
 
   auto schema = get_array_schema_latest();
@@ -707,7 +694,12 @@ TEST_CASE_METHOD(
   auto enmr_name = schema->attribute("attr1")->get_enumeration_name();
   REQUIRE(enmr_name.has_value());
 
-  auto enmr = ad->load_enumeration(schema, enmr_name.value(), enc_key_);
+  auto enmr_path = schema->get_enumeration_path_name(enmr_name.value());
+
+  auto loaded = ad->load_enumerations_from_paths({enmr_path}, enc_key_);
+  REQUIRE(loaded.size() == 1);
+
+  auto enmr = loaded[0];
   std::vector<std::string> values = {"ant", "bat", "cat", "dog", "emu"};
   check_enumeration(
       enmr,
@@ -729,7 +721,8 @@ TEST_CASE_METHOD(
 
   // Check that this function throws an exception when attempting to load
   // an unknown enumeration
-  REQUIRE_THROWS(ad->load_enumeration(schema, "not_an_enumeration", enc_key_));
+  REQUIRE_THROWS(
+      ad->load_enumerations_from_paths({"not_an_enumeration"}, enc_key_));
 }
 
 /* ********************************* */
@@ -919,13 +912,68 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     EnumerationFx,
+    "ArraySchema - Large Single Enumeration",
+    "[enumeration][array-scehma][size-check]") {
+  auto schema = create_schema();
+  REQUIRE_NOTHROW(schema->check(cfg_));
+
+  std::vector<uint8_t> data(1024 * 1024 * 10 + 1);
+  std::vector<uint64_t> offsets = {0};
+  auto enmr = Enumeration::create(
+      "enmr_name",
+      Datatype::STRING_ASCII,
+      constants::var_num,
+      false,
+      data.data(),
+      data.size(),
+      offsets.data(),
+      offsets.size() * constants::cell_var_offset_size);
+
+  schema->add_enumeration(enmr);
+
+  // One single enumeration larger than 10MiB
+  auto matcher = Catch::Matchers::ContainsSubstring("has a size exceeding");
+  REQUIRE_THROWS_WITH(schema->check(cfg_), matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "ArraySchema - Many Large Enumerations",
+    "[enumeration][array-scehma][size-check]") {
+  auto schema = create_schema();
+  REQUIRE_NOTHROW(schema->check(cfg_));
+
+  std::vector<uint8_t> data(1024 * 1024 * 5 + 1);
+  std::vector<uint64_t> offsets = {0};
+
+  // Create more than 50MiB of enumeration data
+  for (size_t i = 0; i < 10; i++) {
+    auto enmr = Enumeration::create(
+        "enmr_name_" + std::to_string(i),
+        Datatype::STRING_ASCII,
+        constants::var_num,
+        false,
+        data.data(),
+        data.size(),
+        offsets.data(),
+        offsets.size() * constants::cell_var_offset_size);
+    schema->add_enumeration(enmr);
+  }
+
+  // 10 enumerations each over 5MiB for more than 50MiB total.
+  auto matcher = Catch::Matchers::ContainsSubstring("Total enumeration size");
+  REQUIRE_THROWS_WITH(schema->check(cfg_), matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
     "ArraySchema - Schema Copy Constructor",
     "[enumeration][array-schema][copy-ctor]") {
   auto schema = create_schema();
 
   // Check that the schema is valid and that we can copy it using the
   // copy constructor.
-  CHECK_NOTHROW(schema->check());
+  CHECK_NOTHROW(schema->check(cfg_));
   CHECK_NOTHROW(make_shared<ArraySchema>(HERE(), *(schema.get())));
 }
 
@@ -971,10 +1019,13 @@ TEST_CASE_METHOD(
     "ArraySchemaEvolution - Simple No Enumeration",
     "[enumeration][array-schema-evolution][simple]") {
   create_array();
-  auto orig_schema = get_array_schema_latest(true);
+  auto array = get_array(QueryType::READ);
+  array->load_all_enumerations();
+
+  auto orig_schema = array->array_schema_latest_ptr();
   auto ase = make_shared<ArraySchemaEvolution>(HERE());
   auto attr3 = make_shared<Attribute>(HERE(), "attr3", Datatype::UINT32);
-  ase->add_attribute(attr3.get());
+  ase->add_attribute(attr3);
   CHECK_NOTHROW(ase->evolve_schema(orig_schema));
 }
 
@@ -992,7 +1043,7 @@ TEST_CASE_METHOD(
 
   auto attr3 = make_shared<Attribute>(HERE(), "attr3", Datatype::UINT32);
   attr3->set_enumeration_name(default_enmr_name);
-  ase->add_attribute(attr3.get());
+  ase->add_attribute(attr3);
 
   ase->drop_attribute("attr2");
 
@@ -1013,7 +1064,7 @@ TEST_CASE_METHOD(
 
   auto attr3 = make_shared<Attribute>(HERE(), "attr3", Datatype::UINT32);
   attr3->set_enumeration_name(default_enmr_name);
-  ase->add_attribute(attr3.get());
+  ase->add_attribute(attr3);
 
   CHECK_NOTHROW(ase->drop_attribute("attr3"));
   CHECK_NOTHROW(ase->evolve_schema(orig_schema));
@@ -1162,7 +1213,7 @@ TEST_CASE_METHOD(
   attr3->set_enumeration_name("test_enmr");
 
   auto ase = make_shared<ArraySchemaEvolution>(HERE());
-  ase->add_attribute(attr3.get());
+  ase->add_attribute(attr3);
 
   auto orig_schema = get_array_schema_latest();
   REQUIRE_THROWS(ase->evolve_schema(orig_schema));
@@ -1184,7 +1235,7 @@ TEST_CASE_METHOD(
 
   auto ase = make_shared<ArraySchemaEvolution>(HERE());
   ase->add_enumeration(enmr);
-  ase->add_attribute(attr3.get());
+  ase->add_attribute(attr3);
 
   auto orig_schema = get_array_schema_latest();
   REQUIRE_THROWS(ase->evolve_schema(orig_schema));
@@ -1206,7 +1257,7 @@ TEST_CASE_METHOD(
 
   auto ase = make_shared<ArraySchemaEvolution>(HERE());
   ase->add_enumeration(enmr);
-  ase->add_attribute(attr3.get());
+  ase->add_attribute(attr3);
 
   auto orig_schema = get_array_schema_latest();
   REQUIRE_THROWS(ase->evolve_schema(orig_schema));
@@ -1250,11 +1301,10 @@ TEST_CASE_METHOD(
   REQUIRE(tree2->is_expr() == tree1->is_expr());
   REQUIRE(tree2->get_field_name() == tree1->get_field_name());
 
-  auto udv1 = tree1->get_condition_value_view();
-  auto udv2 = tree2->get_condition_value_view();
-  REQUIRE(udv2.size() != udv1.size());
-  REQUIRE(udv2.content() != udv1.content());
-  REQUIRE(udv2.value_as<int>() == 2);
+  auto data1 = tree1->get_data();
+  auto data2 = tree2->get_data();
+  REQUIRE(data2.size() != data1.size());
+  REQUIRE(data2.rvalue_as<int>() == 2);
 }
 
 TEST_CASE_METHOD(
@@ -1284,11 +1334,11 @@ TEST_CASE_METHOD(
   REQUIRE(tree2->is_expr() == tree1->is_expr());
   REQUIRE(tree2->get_field_name() == tree1->get_field_name());
 
-  auto udv1 = tree1->get_condition_value_view();
-  auto udv2 = tree1->get_condition_value_view();
-  REQUIRE(udv2.size() == udv1.size());
-  REQUIRE(udv2.content() == udv1.content());
-  REQUIRE(udv2.value_as<int>() == 2);
+  auto data1 = tree1->get_data();
+  auto data2 = tree1->get_data();
+  REQUIRE(data2.size() == data1.size());
+  REQUIRE(memcmp(data2.data(), data1.data(), data1.size()) == 0);
+  REQUIRE(data2.rvalue_as<int>() == 2);
 }
 
 TEST_CASE_METHOD(
@@ -1465,7 +1515,7 @@ TEST_CASE_METHOD(
   attr->set_enumeration_name("enmr2");
 
   ArraySchemaEvolution ase1;
-  ase1.add_attribute(attr.get());
+  ase1.add_attribute(attr);
   ase1.add_enumeration(enmr1);
   ase1.add_enumeration(enmr2);
   ase1.drop_attribute("some_attr");
@@ -1553,6 +1603,44 @@ TEST_CASE_METHOD(
   REQUIRE(node2->use_enumeration() == true);
 }
 
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Cap'N Proto - Basic Array v2 Serialization",
+    "[enumeration][capnp][serialization][v2][array]") {
+  auto client_side = GENERATE(true, false);
+  auto ser_type = GENERATE(SerializationType::CAPNP, SerializationType::JSON);
+  auto do_load = GENERATE(std::string("true"), std::string("false"));
+
+  create_array();
+
+  Config cfg;
+  throw_if_not_ok(cfg.set("rest.use_refactored_array_open", "true"));
+  throw_if_not_ok(cfg.set("rest.load_enumerations_on_array_open", do_load));
+  Context ctx(cfg);
+
+  auto a1 = make_shared<Array>(HERE(), uri_, ctx.storage_manager());
+  throw_if_not_ok(
+      a1->open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
+  REQUIRE(a1->serialize_enumerations() == (do_load == "true"));
+  REQUIRE(
+      a1->array_schema_latest_ptr()->get_loaded_enumeration_names().size() ==
+      0);
+
+  auto a2 = make_shared<Array>(HERE(), uri_, ctx.storage_manager());
+
+  ser_des_array(ctx, a1.get(), a2.get(), client_side, ser_type);
+
+  auto schema = a2->array_schema_latest_ptr();
+  auto names = schema->get_enumeration_names();
+  auto loaded = schema->get_loaded_enumeration_names();
+
+  if (do_load == "true") {
+    REQUIRE(vec_cmp(loaded, names));
+  } else {
+    REQUIRE(loaded.size() == 0);
+  }
+}
+
 #endif  // ifdef TILEDB_SERIALIZATIONs
 
 /* ********************************* */
@@ -1591,6 +1679,10 @@ struct TypeParams {
   template <typename T>
   static TypeParams get(const std::vector<std::basic_string<T>>&) {
     return TypeParams(Datatype::STRING_ASCII, constants::var_num);
+  }
+
+  static TypeParams get(const std::vector<bool>&) {
+    return TypeParams(Datatype::BOOL, 1);
   }
 
   static TypeParams get(const std::vector<int>&) {
@@ -1640,7 +1732,23 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
     tp.type_ = type;
   }
 
-  if constexpr (std::is_pod_v<T>) {
+  if constexpr (std::is_same_v<T, bool>) {
+    // We have to call out bool specifically because of the stdlib
+    // specialization for std::vector<bool>
+    std::vector<uint8_t> raw_values(values.size());
+    for (size_t i = 0; i < values.size(); i++) {
+      raw_values[i] = values[i] ? 1 : 0;
+    }
+    return Enumeration::create(
+        name,
+        tp.type_,
+        tp.cell_val_num_,
+        ordered,
+        raw_values.data(),
+        raw_values.size() * sizeof(uint8_t),
+        nullptr,
+        0);
+  } else if constexpr (std::is_pod_v<T>) {
     return Enumeration::create(
         name,
         tp.type_,
@@ -1842,9 +1950,9 @@ shared_ptr<ArraySchema> EnumerationFx::create_schema() {
   throw_if_not_ok(schema->set_domain(dom));
 
   std::vector<std::string> values = {"ant", "bat", "cat", "dog", "emu"};
-  auto enmr =
+  auto enmr1 =
       create_enumeration(values, false, Datatype::STRING_ASCII, "test_enmr");
-  schema->add_enumeration(enmr);
+  schema->add_enumeration(enmr1);
 
   auto attr1 = make_shared<Attribute>(HERE(), "attr1", Datatype::INT32);
   attr1->set_enumeration_name("test_enmr");
@@ -1852,6 +1960,15 @@ shared_ptr<ArraySchema> EnumerationFx::create_schema() {
 
   auto attr2 = make_shared<Attribute>(HERE(), "attr2", Datatype::STRING_ASCII);
   throw_if_not_ok(schema->add_attribute(attr2));
+
+  std::vector<std::string> names = {"fred", "wilma", "barney", "betty"};
+  auto enmr2 =
+      create_enumeration(names, false, Datatype::STRING_UTF8, "flintstones");
+  schema->add_enumeration(enmr2);
+
+  auto attr3 = make_shared<Attribute>(HERE(), "attr3", Datatype::UINT8);
+  attr3->set_enumeration_name("flintstones");
+  throw_if_not_ok(schema->add_attribute(attr3));
 
   return schema;
 }
@@ -1872,14 +1989,9 @@ shared_ptr<ArrayDirectory> EnumerationFx::get_array_directory() {
       HERE(), ctx_.resources(), uri_, 0, UINT64_MAX, ArrayDirectoryMode::READ);
 }
 
-shared_ptr<ArraySchema> EnumerationFx::get_array_schema_latest(
-    bool load_enmrs) {
+shared_ptr<ArraySchema> EnumerationFx::get_array_schema_latest() {
   auto array_dir = get_array_directory();
-  auto schema = array_dir->load_array_schema_latest(enc_key_);
-  if (load_enmrs) {
-    array_dir->load_all_enumerations(schema, enc_key_);
-  }
-  return schema;
+  return array_dir->load_array_schema_latest(enc_key_);
 }
 
 #ifdef TILEDB_SERIALIZATION
@@ -1926,6 +2038,18 @@ void EnumerationFx::ser_des_query(
       &(ctx_.resources().compute_tp())));
 }
 
+void EnumerationFx::ser_des_array(
+    Context& ctx,
+    Array* in,
+    Array* out,
+    bool client_side,
+    SerializationType stype) {
+  Buffer buf;
+  throw_if_not_ok(serialization::array_serialize(in, stype, &buf, client_side));
+  throw_if_not_ok(
+      serialization::array_deserialize(out, stype, buf, ctx.storage_manager()));
+}
+
 #else  // No TILEDB_SERIALIZATION
 
 ArraySchema EnumerationFx::ser_des_array_schema(
@@ -1939,6 +2063,11 @@ shared_ptr<ArraySchemaEvolution> EnumerationFx::ser_des_array_schema_evolution(
 }
 
 void EnumerationFx::ser_des_query(Query*, Query*, bool, SerializationType) {
+  throw std::logic_error("Serialization not enabled.");
+}
+
+void EnumerationFx::ser_des_array(
+    Context&, Array*, Array*, bool, SerializationType) {
   throw std::logic_error("Serialization not enabled.");
 }
 

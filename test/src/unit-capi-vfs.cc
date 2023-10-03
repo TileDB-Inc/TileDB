@@ -173,12 +173,6 @@ void VFSFx::set_num_vfs_threads(unsigned num_threads) {
           "vfs.s3.max_parallel_ops",
           std::to_string(num_threads).c_str(),
           &error) == TILEDB_OK);
-  REQUIRE(
-      tiledb_config_set(
-          config,
-          "vfs.file.max_parallel_ops",
-          std::to_string(num_threads).c_str(),
-          &error) == TILEDB_OK);
   // Set very small parallelization threshold (ignored when there is only 1
   // thread).
   REQUIRE(
@@ -290,7 +284,7 @@ void VFSFx::check_vfs(const std::string& path) {
   rc = tiledb_vfs_is_file(ctx_, vfs_, foo_file.c_str(), &is_file);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(!is_file);
-  tiledb_vfs_fh_t* fh;
+  tiledb_vfs_fh_t* fh = nullptr;
   rc = tiledb_vfs_open(ctx_, vfs_, foo_file.c_str(), TILEDB_VFS_READ, &fh);
   REQUIRE(rc == TILEDB_ERR);
   REQUIRE(fh == nullptr);

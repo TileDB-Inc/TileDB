@@ -55,6 +55,7 @@
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
+#include "tiledb/type/apply_with_type.h"
 
 #include <algorithm>
 #include <cassert>
@@ -64,8 +65,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** Class for locally generated status exceptions. */
 class ArraySchemaException : public StatusException {
@@ -99,53 +99,20 @@ ArraySchema::ArraySchema(ArrayType array_type)
 
   // Set up default filter pipelines for coords, offsets, and validity values.
   coords_filters_.add_filter(CompressionFilter(
-      constants::coords_compression, constants::coords_compression_level));
+      constants::coords_compression,
+      constants::coords_compression_level,
+      Datatype::ANY));
   cell_var_offsets_filters_.add_filter(CompressionFilter(
       constants::cell_var_offsets_compression,
-      constants::cell_var_offsets_compression_level));
+      constants::cell_var_offsets_compression_level,
+      Datatype::UINT64));
   cell_validity_filters_.add_filter(CompressionFilter(
       constants::cell_validity_compression,
-      constants::cell_validity_compression_level));
+      constants::cell_validity_compression_level,
+      Datatype::UINT8));
 
   // Generate URI and name for ArraySchema
   throw_if_not_ok(generate_uri());
-}
-
-ArraySchema::ArraySchema(
-    URI uri,
-    uint32_t version,
-    std::pair<uint64_t, uint64_t> timestamp_range,
-    std::string name,
-    ArrayType array_type,
-    bool allows_dups,
-    shared_ptr<Domain> domain,
-    Layout cell_order,
-    Layout tile_order,
-    uint64_t capacity,
-    std::vector<shared_ptr<const Attribute>> attributes,
-    std::vector<shared_ptr<const DimensionLabel>> dim_label_refs,
-    std::unordered_map<std::string, std::string> enumeration_path_map,
-    FilterPipeline cell_var_offsets_filters,
-    FilterPipeline cell_validity_filters,
-    FilterPipeline coords_filters)
-    : ArraySchema(
-          uri,
-          version,
-          timestamp_range,
-          name,
-          array_type,
-          allows_dups,
-          domain,
-          cell_order,
-          tile_order,
-          capacity,
-          attributes,
-          dim_label_refs,
-          {},
-          enumeration_path_map,
-          cell_var_offsets_filters,
-          cell_validity_filters,
-          coords_filters) {
 }
 
 ArraySchema::ArraySchema(
@@ -182,26 +149,10 @@ ArraySchema::ArraySchema(
     , cell_var_offsets_filters_(cell_var_offsets_filters)
     , cell_validity_filters_(cell_validity_filters)
     , coords_filters_(coords_filters) {
-  Status st;
-
   // Create dimension map
-  dim_map_.clear();
   for (dimension_size_type d = 0; d < domain_->dim_num(); ++d) {
     auto dim{domain_->dimension_ptr(d)};
     dim_map_[dim->name()] = dim;
-  }
-
-  // Create attribute map
-  if (!attributes_.empty()) {
-    for (auto attr_iter : attributes_) {
-      auto attr = attr_iter.get();
-      attribute_map_[attr->name()] = attr;
-    }
-  }
-
-  // Create dimension label map
-  for (const auto& label : dimension_labels_) {
-    dimension_label_map_[label->name()] = label.get();
   }
 
   for (auto& [enmr_name, enmr_uri] : enumeration_path_map_) {
@@ -213,8 +164,20 @@ ArraySchema::ArraySchema(
     enumeration_map_[enmr->name()] = enmr;
   }
 
+  // Create attribute map
+  auto n{attribute_num()};
+  for (decltype(n) i = 0; i < n; ++i) {
+    auto attr = attributes_[i].get();
+    attribute_map_[attr->name()] = {attr, i};
+  }
+
+  // Create dimension label map
+  for (const auto& label : dimension_labels_) {
+    dimension_label_map_[label->name()] = label.get();
+  }
+
   // Check array schema is valid.
-  st = check_double_delta_compressor(coords_filters_);
+  Status st = check_double_delta_compressor(coords_filters_);
   if (!st.ok()) {
     throw ArraySchemaException(
         "Array schema check failed; Double delta compression used in zipped "
@@ -230,43 +193,40 @@ ArraySchema::ArraySchema(
   check_attribute_dimension_label_names();
 }
 
-ArraySchema::ArraySchema(const ArraySchema& array_schema) {
-  allows_dups_ = array_schema.allows_dups_;
-  array_uri_ = array_schema.array_uri_;
-  uri_ = array_schema.uri_;
-  array_type_ = array_schema.array_type_;
-  domain_ = nullptr;
-  timestamp_range_ = array_schema.timestamp_range_;
-
-  capacity_ = array_schema.capacity_;
-  cell_order_ = array_schema.cell_order_;
-  cell_var_offsets_filters_ = array_schema.cell_var_offsets_filters_;
-  cell_validity_filters_ = array_schema.cell_validity_filters_;
-  coords_filters_ = array_schema.coords_filters_;
-  tile_order_ = array_schema.tile_order_;
-  version_ = array_schema.version_;
-
+/*
+ * Copy constructor manually initializes its map members, so we don't use the
+ * default copy constructor. At some point this may no longer hold and we can
+ * eliminate this code in favor of the default.
+ */
+ArraySchema::ArraySchema(const ArraySchema& array_schema)
+    : uri_{array_schema.uri_}
+    , array_uri_{array_schema.array_uri_}
+    , version_{array_schema.version_}
+    , timestamp_range_{array_schema.timestamp_range_}
+    , name_{array_schema.name_}
+    , array_type_{array_schema.array_type_}
+    , allows_dups_{array_schema.allows_dups_}
+    , domain_{}   // copied below by `set_domain`
+    , dim_map_{}  // initialized in `set_domain`
+    , cell_order_{array_schema.cell_order_}
+    , tile_order_{array_schema.tile_order_}
+    , capacity_{array_schema.capacity_}
+    , attributes_{array_schema.attributes_}
+    , attribute_map_{array_schema.attribute_map_}
+    , dimension_labels_{}     // copied in loop below
+    , dimension_label_map_{}  // initialized below
+    , enumeration_map_{array_schema.enumeration_map_}
+    , enumeration_path_map_{array_schema.enumeration_path_map_}
+    , cell_var_offsets_filters_{array_schema.cell_var_offsets_filters_}
+    , cell_validity_filters_{array_schema.cell_validity_filters_}
+    , coords_filters_{array_schema.coords_filters_}
+    , mtx_{} {
   throw_if_not_ok(set_domain(array_schema.domain_));
 
-  enumeration_map_ = array_schema.enumeration_map_;
-  enumeration_path_map_ = array_schema.enumeration_path_map_;
-
-  for (auto attr : array_schema.attributes_) {
-    attributes_.emplace_back(attr);
-    attribute_map_[attr->name()] = attr.get();
-  }
-
-  // Create dimension label map
   for (const auto& label : array_schema.dimension_labels_) {
     dimension_labels_.emplace_back(label);
     dimension_label_map_[label->name()] = label.get();
   }
-
-  name_ = array_schema.name_;
-}
-
-ArraySchema::~ArraySchema() {
-  clear();
 }
 
 /* ****************************** */
@@ -286,18 +246,32 @@ const URI& ArraySchema::array_uri() const {
 }
 
 const Attribute* ArraySchema::attribute(attribute_size_type id) const {
-  if (id < attributes_.size())
+  if (id < attributes_.size()) {
     return attributes_[id].get();
+  }
   return nullptr;
+}
+
+shared_ptr<const Attribute> ArraySchema::shared_attribute(
+    attribute_size_type id) const {
+  if (id < attributes_.size()) {
+    return attributes_[id];
+  }
+  return {};
 }
 
 const Attribute* ArraySchema::attribute(const std::string& name) const {
   auto it = attribute_map_.find(name);
-  return it == attribute_map_.end() ? nullptr : it->second;
+  return it == attribute_map_.end() ? nullptr : it->second.pointer;
 }
 
-ArraySchema::attribute_size_type ArraySchema::attribute_num() const {
-  return static_cast<attribute_size_type>(attributes_.size());
+shared_ptr<const Attribute> ArraySchema::shared_attribute(
+    const std::string& name) const {
+  auto it = attribute_map_.find(name);
+  if (it == attribute_map_.end()) {
+    return {};
+  }
+  return attributes_[it->second.index];
 }
 
 const std::vector<shared_ptr<const Attribute>>& ArraySchema::attributes()
@@ -331,9 +305,8 @@ uint64_t ArraySchema::cell_size(const std::string& name) const {
   }
 
   // Attribute
-  auto attr_it = attribute_map_.find(name);
-  if (attr_it != attribute_map_.end()) {
-    auto attr = attr_it->second;
+  auto attr = attribute(name);
+  if (attr) {
     auto cell_val_num = attr->cell_val_num();
     return (cell_val_num == constants::var_num) ?
                constants::var_size :
@@ -357,9 +330,9 @@ unsigned int ArraySchema::cell_val_num(const std::string& name) const {
   }
 
   // Attribute
-  auto attr_it = attribute_map_.find(name);
-  if (attr_it != attribute_map_.end()) {
-    return attr_it->second->cell_val_num();
+  auto attr{attribute(name)};
+  if (attr) {
+    return attr->cell_val_num();
   }
 
   // Dimension
@@ -409,75 +382,59 @@ void ArraySchema::check_webp_filter() const {
           "WebP filter dimensions 0, 1 should have matching integral types");
     }
 
-    switch (x_dim->type()) {
-      case Datatype::INT8:
-        webp->set_extents<int8_t>(domain_->tile_extents());
-        break;
-      case Datatype::INT16:
-        webp->set_extents<int16_t>(domain_->tile_extents());
-        break;
-      case Datatype::INT32:
-        webp->set_extents<int32_t>(domain_->tile_extents());
-        break;
-      case Datatype::INT64:
-        webp->set_extents<int64_t>(domain_->tile_extents());
-        break;
-      case Datatype::UINT8:
-        webp->set_extents<uint8_t>(domain_->tile_extents());
-        break;
-      case Datatype::UINT16:
-        webp->set_extents<uint16_t>(domain_->tile_extents());
-        break;
-      case Datatype::UINT32:
-        webp->set_extents<uint32_t>(domain_->tile_extents());
-        break;
-      case Datatype::UINT64:
-        webp->set_extents<uint64_t>(domain_->tile_extents());
-        break;
-      default:
+    auto g = [&](auto T) {
+      if constexpr (tiledb::type::TileDBIntegral<decltype(T)>) {
+        webp->set_extents<decltype(T)>(domain_->tile_extents());
+      } else {
         throw ArraySchemaException(
             "WebP filter requires integral dimensions at index 0, 1");
-    }
+      }
+    };
+    apply_with_type(g, x_dim->type());
   }
 }
 
-Status ArraySchema::check() const {
+void ArraySchema::check(const Config& cfg) const {
+  check_without_config();
+  check_enumerations(cfg);
+}
+
+void ArraySchema::check_without_config() const {
   if (domain_ == nullptr)
-    return LOG_STATUS(
-        Status_ArraySchemaError("Array schema check failed; Domain not set"));
+    throw ArraySchemaException{"Array schema check failed; Domain not set"};
 
   auto dim_num = this->dim_num();
   if (dim_num == 0)
-    return LOG_STATUS(Status_ArraySchemaError(
-        "Array schema check failed; No dimensions provided"));
+    throw ArraySchemaException{
+        "Array schema check failed; No dimensions provided"};
 
   if (cell_order_ == Layout::HILBERT && dim_num > Hilbert::HC_MAX_DIM) {
-    return LOG_STATUS(Status_ArraySchemaError(
+    throw ArraySchemaException{
         "Array schema check failed; Maximum dimensions supported by Hilbert "
-        "order exceeded"));
+        "order exceeded"};
   }
 
   if (array_type_ == ArrayType::DENSE) {
     auto type{domain_->dimension_ptr(0)->type()};
     if (datatype_is_real(type)) {
-      return LOG_STATUS(
-          Status_ArraySchemaError("Array schema check failed; Dense arrays "
-                                  "cannot have floating point domains"));
+      throw ArraySchemaException{
+          "Array schema check failed; Dense arrays "
+          "cannot have floating point domains"};
     }
     if (attributes_.size() == 0) {
-      return LOG_STATUS(Status_ArraySchemaError(
-          "Array schema check failed; No attributes provided"));
+      throw ArraySchemaException{
+          "Array schema check failed; No attributes provided"};
     }
   }
 
   if (array_type_ == ArrayType::SPARSE && capacity_ == 0) {
-    throw ArraySchemaException(
+    throw ArraySchemaException{
         "Array schema check failed; Sparse arrays "
-        "cannot have their capacity equal to zero.");
+        "cannot have their capacity equal to zero."};
   }
 
-  RETURN_NOT_OK(check_double_delta_compressor(coords_filters()));
-  RETURN_NOT_OK(check_string_compressor(coords_filters()));
+  throw_if_not_ok(check_double_delta_compressor(coords_filters()));
+  throw_if_not_ok(check_string_compressor(coords_filters()));
   check_attribute_dimension_label_names();
   check_webp_filter();
 
@@ -485,9 +442,9 @@ Status ArraySchema::check() const {
   // dimension.
   if (array_type_ == ArrayType::SPARSE || this->dim_num() != 1) {
     if (has_ordered_attributes()) {
-      throw ArraySchemaException(
+      throw ArraySchemaException{
           "Array schema check failed; Ordered attributes are only supported on "
-          "dense arrays with 1 dimension.");
+          "dense arrays with 1 dimension."};
     }
   }
 
@@ -499,30 +456,14 @@ Status ArraySchema::check() const {
   for (auto label : dimension_labels_) {
     if (!label->is_external()) {
       if (!label->has_schema()) {
-        return LOG_STATUS(Status_ArraySchemaError(
+        throw ArraySchemaException{
             "Array schema check failed; Missing dimension label schema for "
             "dimension label '" +
-            label->name() + "'."));
+            label->name() + "'."};
       }
       check_dimension_label_schema(label->name(), *label->schema());
     }
   }
-
-  // Success
-  return Status::Ok();
-}
-
-Status ArraySchema::check_attributes(
-    const std::vector<std::string>& attributes) const {
-  for (const auto& attr : attributes) {
-    if (attr == constants::coords)
-      continue;
-    if (attribute_map_.find(attr) == attribute_map_.end())
-      return LOG_STATUS(Status_ArraySchemaError(
-          "Attribute check failed; cannot find attribute"));
-  }
-
-  return Status::Ok();
 }
 
 void ArraySchema::check_dimension_label_schema(
@@ -593,22 +534,56 @@ void ArraySchema::check_dimension_label_schema(
   }
 }
 
+void ArraySchema::check_enumerations(const Config& cfg) const {
+  auto max_size = cfg.get<uint64_t>("sm.enumerations_max_size");
+  if (!max_size.has_value()) {
+    throw std::runtime_error(
+        "Missing required config parameter 'sm.enumerations_max_size'.");
+  }
+
+  auto max_total_size = cfg.get<uint64_t>("sm.enumerations_max_total_size");
+  if (!max_total_size.has_value()) {
+    throw std::runtime_error(
+        "Missing required config parameter 'sm.enumerations_max_total_size'.");
+  }
+
+  uint64_t total_size = 0;
+  for (const auto& pair : enumeration_map_) {
+    uint64_t size = pair.second->data().size() + pair.second->offsets().size();
+    if (size > max_size.value()) {
+      throw ArraySchemaException(
+          "Invalid enumeration '" + pair.second->name() +
+          "' has a size "
+          "exceeding " +
+          std::to_string(max_size.value()) + " bytes.");
+    }
+    total_size += size;
+  }
+
+  if (total_size > max_total_size.value()) {
+    throw ArraySchemaException(
+        "Total enumeration size for the entire schema "
+        "exceeds " +
+        std::to_string(max_total_size.value()) + " bytes.");
+  }
+}
+
 const FilterPipeline& ArraySchema::filters(const std::string& name) const {
   if (is_special_attribute(name)) {
     return coords_filters();
   }
 
   // Attribute
-  auto attr_it = attribute_map_.find(name);
-  if (attr_it != attribute_map_.end()) {
-    return attr_it->second->filters();
+  auto attr{attribute(name)};
+  if (attr) {
+    return attr->filters();
   }
 
   // Dimension (if filters not set, return default coordinate filters)
   auto dim_it = dim_map_.find(name);
   assert(dim_it != dim_map_.end());
   const auto& ret = dim_it->second->filters();
-  return !ret.empty() ? ret : coords_filters();
+  return ret;
 }
 
 const FilterPipeline& ArraySchema::coords_filters() const {
@@ -866,9 +841,9 @@ Datatype ArraySchema::type(const std::string& name) const {
   }
 
   // Attribute
-  auto attr_it = attribute_map_.find(name);
-  if (attr_it != attribute_map_.end()) {
-    return attr_it->second->type();
+  auto attr{attribute(name)};
+  if (attr) {
+    return attr->type();
   }
 
   // Dimension
@@ -884,9 +859,9 @@ bool ArraySchema::var_size(const std::string& name) const {
   }
 
   // Attribute
-  auto attr_it = attribute_map_.find(name);
-  if (attr_it != attribute_map_.end()) {
-    return attr_it->second->var_size();
+  auto attr{attribute(name)};
+  if (attr) {
+    return attr->var_size();
   }
 
   // Dimension
@@ -967,8 +942,9 @@ Status ArraySchema::add_attribute(
   }
 
   // Create new attribute and potentially set a default name
+  auto k{static_cast<unsigned int>(attributes_.size())};
   attributes_.emplace_back(attr);
-  attribute_map_[attr->name()] = attr.get();
+  attribute_map_[attr->name()] = {attr.get(), k};
 
   return Status::Ok();
 }
@@ -1057,7 +1033,7 @@ Status ArraySchema::drop_attribute(const std::string& attr_name) {
         Status_ArraySchemaError("Cannot remove an empty name attribute"));
   }
 
-  if (attribute_map_.find(attr_name) == attribute_map_.end()) {
+  if (!attribute(attr_name)) {
     // Not exists.
     return LOG_STATUS(
         Status_ArraySchemaError("Cannot remove a non-exist attribute"));
@@ -1283,18 +1259,21 @@ ArraySchema ArraySchema::deserialize(
 
   // Load filters
   // Note: Security validation delegated to invoked API
-  auto coords_filters{FilterPipeline::deserialize(deserializer, version)};
-  auto cell_var_filters{FilterPipeline::deserialize(deserializer, version)};
+  auto coords_filters{
+      FilterPipeline::deserialize(deserializer, version, Datatype::UINT64)};
+  auto cell_var_filters{
+      FilterPipeline::deserialize(deserializer, version, Datatype::UINT64)};
   FilterPipeline cell_validity_filters;
   if (version >= 7) {
-    cell_validity_filters = FilterPipeline::deserialize(deserializer, version);
+    cell_validity_filters =
+        FilterPipeline::deserialize(deserializer, version, Datatype::UINT8);
   }
 
   // Load domain
   // Note: Security validation delegated to invoked API
   // #TODO Add security validation
-  auto domain{
-      Domain::deserialize(deserializer, version, cell_order, tile_order)};
+  auto domain{Domain::deserialize(
+      deserializer, version, cell_order, tile_order, coords_filters)};
 
   // Load attributes
   // Note: Security validation delegated to invoked API
@@ -1345,8 +1324,8 @@ ArraySchema ArraySchema::deserialize(
     auto type{domain->dimension_ptr(0)->type()};
     if (datatype_is_real(type)) {
       throw ArraySchemaException(
-          "Array schema check failed; Dense arrays cannot have floating point "
-          "domains");
+          "Array schema check failed; Dense arrays cannot have floating "
+          "point domains");
     }
     if (attributes.size() == 0) {
       throw ArraySchemaException(
@@ -1361,7 +1340,6 @@ ArraySchema ArraySchema::deserialize(
   // Set schema name
   std::string name = uri.last_path_part();
 
-  // Success
   return ArraySchema(
       uri,
       version,
@@ -1375,21 +1353,13 @@ ArraySchema ArraySchema::deserialize(
       capacity,
       attributes,
       dimension_labels,
+      {},
       enumeration_path_map,
       cell_var_filters,
       cell_validity_filters,
-      coords_filters);
-}
-
-Status ArraySchema::init() {
-  // Perform check of all members
-  RETURN_NOT_OK(check());
-
-  // Initialize domain
-  RETURN_NOT_OK(domain_->init(cell_order_, tile_order_));
-
-  // Success
-  return Status::Ok();
+      FilterPipeline(
+          coords_filters,
+          version < 5 ? domain->dimension_ptr(0)->type() : Datatype::UINT64));
 }
 
 Status ArraySchema::set_allows_dups(bool allows_dups) {
@@ -1713,5 +1683,4 @@ Status ArraySchema::generate_uri(
   return Status::Ok();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

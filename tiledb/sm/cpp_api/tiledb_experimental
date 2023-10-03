@@ -36,6 +36,7 @@
 #include "array_experimental.h"
 #include "array_schema_evolution.h"
 #include "array_schema_experimental.h"
+#include "as_built_experimental.h"
 #include "attribute_experimental.h"
 #include "dimension_label_experimental.h"
 #include "enumeration_experimental.h"

@@ -272,6 +272,10 @@ Status StorageManagerCanonical::array_consolidate(
         "Cannot consolidate array; Array does not exist"));
   }
 
+  if (array_uri.is_tiledb()) {
+    return rest_client()->post_consolidation_to_rest(array_uri, config);
+  }
+
   // Get encryption key from config
   std::string encryption_key_from_cfg;
   if (!encryption_key) {
@@ -535,6 +539,12 @@ void StorageManagerCanonical::delete_group(const char* group_name) {
 
 void StorageManagerCanonical::array_vacuum(
     const char* array_name, const Config& config) {
+  URI array_uri(array_name);
+  if (array_uri.is_tiledb()) {
+    throw_if_not_ok(rest_client()->post_vacuum_to_rest(array_uri, config));
+    return;
+  }
+
   auto mode = Consolidator::mode_from_config(config, true);
   auto consolidator = Consolidator::create(mode, config, this);
   consolidator->vacuum(array_name);
@@ -559,6 +569,10 @@ Status StorageManagerCanonical::array_metadata_consolidate(
   if (obj_type != ObjectType::ARRAY) {
     return logger_->status(Status_StorageManagerError(
         "Cannot consolidate array metadata; Array does not exist"));
+  }
+
+  if (array_uri.is_tiledb()) {
+    return rest_client()->post_consolidation_to_rest(array_uri, config);
   }
 
   // Get encryption key from config
@@ -621,7 +635,7 @@ Status StorageManagerCanonical::array_create(
   std::lock_guard<std::mutex> lock{object_create_mtx_};
   array_schema->set_array_uri(array_uri);
   RETURN_NOT_OK(array_schema->generate_uri());
-  RETURN_NOT_OK(array_schema->check());
+  array_schema->check(config_);
 
   // Create array directory
   RETURN_NOT_OK(vfs()->create_dir(array_uri));
@@ -1342,44 +1356,6 @@ Status StorageManagerCanonical::is_group(const URI& uri, bool* is_group) const {
         vfs()->is_file(uri.join_path(constants::group_filename), is_group));
   }
   return Status::Ok();
-}
-
-void StorageManagerCanonical::load_array_metadata(
-    const ArrayDirectory& array_dir,
-    const EncryptionKey& encryption_key,
-    Metadata* metadata) {
-  auto timer_se = stats()->start_timer("sm_load_array_metadata");
-
-  // Special case
-  if (metadata == nullptr) {
-    return;
-  }
-
-  // Determine which array metadata to load
-  const auto& array_metadata_to_load = array_dir.array_meta_uris();
-
-  auto metadata_num = array_metadata_to_load.size();
-  std::vector<shared_ptr<Tile>> metadata_tiles(metadata_num);
-  throw_if_not_ok(parallel_for(compute_tp(), 0, metadata_num, [&](size_t m) {
-    const auto& uri = array_metadata_to_load[m].uri_;
-
-    auto&& tile = GenericTileIO::load(resources_, uri, 0, encryption_key);
-    metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(tile));
-
-    return Status::Ok();
-  }));
-
-  // Compute array metadata size for the statistics
-  uint64_t meta_size = 0;
-  for (const auto& t : metadata_tiles) {
-    meta_size += t->size();
-  }
-  stats()->add_counter("read_array_meta_size", meta_size);
-
-  *metadata = Metadata::deserialize(metadata_tiles);
-
-  // Sets the loaded metadata URIs
-  metadata->set_loaded_metadata_uris(array_metadata_to_load);
 }
 
 tuple<

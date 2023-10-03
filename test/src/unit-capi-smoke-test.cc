@@ -45,6 +45,7 @@ using namespace tiledb::sm;
 using namespace tiledb::test;
 
 static const char encryption_key[] = "unittestunittestunittestunittest";
+static const string array_name = "smoke_test_array";
 
 class SmokeTestFx {
  public:
@@ -188,26 +189,24 @@ class SmokeTestFx {
    * Create, write and read attributes to an array.
    *
    * @param test_attrs The attributes to test.
-   * @param test_query_conditions The attribute conditions to filter on.
+   * @param test_query_conditions_vec The different query conditions for read.
    * @param test_dims The dimensions to test.
    * @param array_type The type of the array (dense/sparse).
    * @param cell_order The cell order of the array.
    * @param tile_order The tile order of the array.
    * @param write_order The write layout.
-   * @param read_order The read layout.
    * @param encryption_type The encryption type.
    */
   void smoke_test(
       const vector<test_attr_t>& test_attrs,
-      const vector<shared_ptr<test_query_condition_t>>& test_query_conditions,
+      const vector<vector<shared_ptr<test_query_condition_t>>>&
+          query_conditions_vec,
       const vector<test_dim_t>& test_dims,
       tiledb_array_type_t array_type,
       tiledb_layout_t cell_order,
       tiledb_layout_t tile_order,
       tiledb_layout_t write_order,
-      tiledb_layout_t read_order,
-      tiledb_encryption_type_t encryption_type,
-      tiledb_query_condition_combination_op_t combination_op);
+      tiledb_encryption_type_t encryption_type);
 
  private:
   /** The C-API context object. */
@@ -233,7 +232,6 @@ class SmokeTestFx {
   /**
    * Creates a TileDB array.
    *
-   * @param array_name The name of the array.
    * @param array_type The type of the array (dense/sparse).
    * @param test_dims The dimensions in the array.
    * @param test_attr The attribute in the array.
@@ -243,7 +241,6 @@ class SmokeTestFx {
    *
    */
   void create_array(
-      const string& array_name,
       tiledb_array_type_t array_type,
       const vector<test_dim_t>& test_dims,
       const vector<test_attr_t>& test_attrs,
@@ -254,13 +251,11 @@ class SmokeTestFx {
   /**
    * Creates and executes a single write query.
    *
-   * @param array_name The name of the array.
    * @param test_query_buffers The query buffers to write.
    * @param layout The write layout.
    * @param encryption_type The encryption type of the array.
    */
   void write(
-      const string& array_name,
       const vector<test_query_buffer_t>& test_query_buffers,
       tiledb_layout_t layout,
       tiledb_encryption_type_t encryption_type);
@@ -268,7 +263,6 @@ class SmokeTestFx {
   /**
    * Creates and executes a single read query.
    *
-   * @param array_name The name of the array.
    * @param test_query_conditions The attribute conditions to filter on.
    * @param test_query_buffers The query buffers to read.
    * @param subarray The subarray to read.
@@ -276,7 +270,6 @@ class SmokeTestFx {
    * @param encryption_type The encryption type of the array.
    */
   void read(
-      const string& array_name,
       const vector<shared_ptr<test_query_condition_t>>& test_query_conditions,
       const vector<test_query_buffer_t>& test_query_buffers,
       const void* subarray,
@@ -416,7 +409,6 @@ void SmokeTestFx::remove_dir(const string& path) {
 }
 
 void SmokeTestFx::create_array(
-    const string& array_name,
     tiledb_array_type_t array_type,
     const vector<test_dim_t>& test_dims,
     const vector<test_attr_t>& test_attrs,
@@ -534,7 +526,6 @@ void SmokeTestFx::create_array(
 }
 
 void SmokeTestFx::write(
-    const string& array_name,
     const vector<test_query_buffer_t>& test_query_buffers,
     tiledb_layout_t layout,
     tiledb_encryption_type_t encryption_type) {
@@ -662,7 +653,6 @@ void SmokeTestFx::write(
 }
 
 void SmokeTestFx::read(
-    const string& array_name,
     const vector<shared_ptr<test_query_condition_t>>& test_query_conditions,
     const vector<test_query_buffer_t>& test_query_buffers,
     const void* subarray,
@@ -841,28 +831,26 @@ void SmokeTestFx::read(
 
 void SmokeTestFx::smoke_test(
     const vector<test_attr_t>& test_attrs,
-    const vector<shared_ptr<test_query_condition_t>>& test_query_conditions,
+    const vector<vector<shared_ptr<test_query_condition_t>>>&
+        query_conditions_vec,
     const vector<test_dim_t>& test_dims,
     tiledb_array_type_t array_type,
     tiledb_layout_t cell_order,
     tiledb_layout_t tile_order,
     tiledb_layout_t write_order,
-    tiledb_layout_t read_order,
-    tiledb_encryption_type_t encryption_type,
-    tiledb_query_condition_combination_op_t combination_op) {
-  const string array_name = "smoke_test_array";
-
+    tiledb_encryption_type_t encryption_type) {
   // Skip row-major and col-major writes for sparse arrays.
   if (array_type == TILEDB_SPARSE &&
       (write_order == TILEDB_ROW_MAJOR || write_order == TILEDB_COL_MAJOR)) {
     return;
   }
 
-  // Skip unordered writes/reads and global order reads for dense arrays.
-  if (array_type == TILEDB_DENSE)
-    if (write_order == TILEDB_UNORDERED || read_order == TILEDB_UNORDERED ||
-        read_order == TILEDB_GLOBAL_ORDER)
+  // Skip unordered writes for dense arrays.
+  if (array_type == TILEDB_DENSE) {
+    if (write_order == TILEDB_UNORDERED) {
       return;
+    }
+  }
 
   // String_ascii, float32, and float64 types can only be
   // written to sparse arrays.
@@ -876,25 +864,8 @@ void SmokeTestFx::smoke_test(
     }
   }
 
-  // If a query condition filters on an attribute name that does not
-  // exist, skip this permutation of the smoke test.
-  for (const auto& test_query_condition : test_query_conditions) {
-    bool attr_exists_for_cond = false;
-    for (const auto& test_attr : test_attrs) {
-      if (test_attr.name_ == test_query_condition->name_) {
-        attr_exists_for_cond = true;
-        break;
-      }
-    }
-
-    if (!attr_exists_for_cond) {
-      return;
-    }
-  }
-
   // Create the array.
   create_array(
-      array_name,
       array_type,
       test_dims,
       test_attrs,
@@ -1039,260 +1010,319 @@ void SmokeTestFx::smoke_test(
   }
 
   // Execute the write query.
-  write(array_name, write_query_buffers, write_order, encryption_type);
+  write(write_query_buffers, write_order, encryption_type);
 
-  // Define the read query buffers for "a".
-  vector<test_query_buffer_t> read_query_buffers;
-
-  // Create the read buffer for attribute "a".
-  uint64_t a_read_buffer_size =
-      total_cells * tiledb_datatype_size(test_attrs[0].type_);
-  int32_t* a_read_buffer = (int32_t*)malloc(a_read_buffer_size);
-  for (uint64_t i = 0; i < total_cells; i++) {
-    a_read_buffer[i] = 0;
-  }
-  uint64_t a_read_buffer_validity_size = total_cells;
-  uint8_t* a_read_buffer_validity =
-      (uint8_t*)malloc(a_read_buffer_validity_size);
-  for (uint64_t i = 0; i < total_cells; i++) {
-    a_read_buffer_validity[i] = 0;
-  }
-  read_query_buffers.emplace_back(
-      test_attrs[0].name_,
-      a_read_buffer,
-      &a_read_buffer_size,
-      nullptr,
-      nullptr,
-      a_read_buffer_validity,
-      &a_read_buffer_validity_size);
-
-  // Create the read buffers for attribute "b".
-  uint64_t b_read_buffer_size = 0;
-  int32_t* b_read_buffer = nullptr;
-  uint64_t b_read_buffer_offset_size = 0;
-  uint64_t* b_read_buffer_offset = nullptr;
-  if (test_attrs.size() >= 2) {
-    b_read_buffer_size =
-        total_cells * 2 * tiledb_datatype_size(test_attrs[1].type_);
-    b_read_buffer = (int32_t*)malloc(b_read_buffer_size);
-    for (uint64_t i = 0; i < total_cells * 2; i++) {
-      b_read_buffer[i] = 0;
-    }
-
-    b_read_buffer_offset_size = total_cells * sizeof(uint64_t);
-    b_read_buffer_offset = (uint64_t*)malloc(b_read_buffer_offset_size);
-    for (uint64_t i = 0; i < total_cells; i++) {
-      b_read_buffer_offset[i] = 0;
-    }
-    read_query_buffers.emplace_back(
-        test_attrs[1].name_,
-        b_read_buffer,
-        &b_read_buffer_size,
-        b_read_buffer_offset,
-        &b_read_buffer_offset_size,
-        nullptr,
-        nullptr);
-  }
-
-  // Create the read buffers for attribute "c".
-  uint64_t c_read_buffer_size = 0;
-  char* c_read_buffer = nullptr;
-  if (test_attrs.size() >= 3) {
-    const uint64_t cell_len = test_attrs[2].cell_val_num_;
-    const uint64_t type_size = tiledb_datatype_size(test_attrs[2].type_);
-    c_read_buffer_size = total_cells * cell_len * type_size;
-    c_read_buffer = (char*)malloc(c_read_buffer_size);
-    for (uint64_t i = 0; i < total_cells; i++) {
-      c_read_buffer[(i * 2)] = 0;
-      c_read_buffer[(i * 2) + 1] = 0;
-    }
-
-    read_query_buffers.emplace_back(
-        test_attrs[2].name_,
-        c_read_buffer,
-        &c_read_buffer_size,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr);
-  }
-
-  // If we wrote dimension buffers, allocate dimension read buffers.
-  vector<pair<uint64_t*, uint64_t>> d_read_buffers;
-  if (!d_write_buffers.empty()) {
-    d_read_buffers.reserve(test_dims.size());
-    for (const auto& test_dim : test_dims) {
-      // Reading dimension buffers on a dense array with a query condition
-      // is unsupported.
-      if (!test_query_conditions.empty() && array_type == TILEDB_DENSE) {
-        continue;
-      }
-
-      REQUIRE(tiledb_datatype_size(test_dim.type_) == sizeof(uint64_t));
-      const uint64_t d_read_buffer_size = total_cells * sizeof(uint64_t);
-      uint64_t* const d_read_buffer =
-          static_cast<uint64_t*>(malloc(d_read_buffer_size));
-
-      for (uint64_t i = 0; i < total_cells; ++i) {
-        d_read_buffer[i] = 0;
-      }
-
-      d_read_buffers.emplace_back(d_read_buffer, d_read_buffer_size);
-
-      read_query_buffers.emplace_back(
-          test_dim.name_,
-          d_read_buffers.back().first,
-          &d_read_buffers.back().second,
-          nullptr,
-          nullptr,
-          nullptr,
-          nullptr);
-    }
-  }
-
-  // This logic assumes that all dimensions are of type TILEDB_UINT64.
-  uint64_t subarray_size = 2 * test_dims.size() * sizeof(uint64_t);
-  uint64_t* subarray_full = (uint64_t*)malloc(subarray_size);
-  for (uint64_t i = 0; i < test_dims.size(); ++i) {
-    const uint64_t min_range = ((uint64_t*)(test_dims[i].domain_))[0];
-    const uint64_t max_range = ((uint64_t*)(test_dims[i].domain_))[1];
-    subarray_full[(i * 2)] = min_range;
-    subarray_full[(i * 2) + 1] = max_range;
-  }
-
-  // Read from the array.
-  read(
-      array_name,
-      test_query_conditions,
-      read_query_buffers,
-      subarray_full,
-      read_order,
-      encryption_type,
-      combination_op);
-
-  // Map each cell value to a bool that indicates whether or
-  // not we expect it in the read results.
-  unordered_map<int32_t, bool> expected_a_values_read;
-  unordered_map<string, bool> expected_c_values_read;
-  for (uint64_t i = 0; i < total_cells; ++i) {
-    expected_a_values_read[i] = true;
-    if (test_attrs.size() >= 3) {
-      expected_c_values_read[string(&c_write_buffer[i * 2], 2)] = true;
-    }
-  }
-
-  // Populate the expected values maps. We only filter on attributes
-  // "a" and "c".
-  for (const auto& test_query_condition : test_query_conditions) {
-    if (test_query_condition->name_ == "a") {
-      for (uint64_t i = 0; i < total_cells; ++i) {
-        const bool expected = test_query_condition->cmp(&a_write_buffer[i]) &&
-                              a_write_buffer_validity[i];
-        REQUIRE((combination_op == TILEDB_AND || combination_op == TILEDB_OR));
-        if (combination_op == TILEDB_AND) {
-          expected_a_values_read[i] = expected_a_values_read[i] && expected;
-        } else {
-          expected_a_values_read[i] = expected_a_values_read[i] || expected;
+  for (const auto& query_conditions : query_conditions_vec) {
+    for (const tiledb_layout_t read_order :
+         {TILEDB_ROW_MAJOR, TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER}) {
+      for (const tiledb_query_condition_combination_op_t combination_op :
+           {TILEDB_AND, TILEDB_OR}) {
+        // Skip unordered reads and global order reads for dense arrays.
+        if (array_type == TILEDB_DENSE) {
+          if (read_order == TILEDB_UNORDERED ||
+              read_order == TILEDB_GLOBAL_ORDER) {
+            continue;
+          }
         }
-      }
-    } else {
-      REQUIRE(test_query_condition->name_ == "c");
-      for (uint64_t i = 0; i < total_cells; ++i) {
-        const bool expected =
-            test_query_condition->cmp(&c_write_buffer[(i * 2)]);
-        REQUIRE((combination_op == TILEDB_AND || combination_op == TILEDB_OR));
-        if (combination_op == TILEDB_AND) {
-          expected_c_values_read[string(&c_write_buffer[i * 2], 2)] =
-              expected_c_values_read[string(&c_write_buffer[i * 2], 2)] &&
-              expected;
-        } else {
-          expected_c_values_read[string(&c_write_buffer[i * 2], 2)] =
-              expected_c_values_read[string(&c_write_buffer[i * 2], 2)] ||
-              expected;
+
+        // If a query condition filters on an attribute name that does not
+        // exist, skip this permutation of the smoke test.
+        for (const auto& test_query_condition : query_conditions) {
+          bool attr_exists_for_cond = false;
+          for (const auto& test_attr : test_attrs) {
+            if (test_attr.name_ == test_query_condition->name_) {
+              attr_exists_for_cond = true;
+              break;
+            }
+          }
+
+          if (!attr_exists_for_cond) {
+            return;
+          }
         }
+
+        // Define the read query buffers for "a".
+        vector<test_query_buffer_t> read_query_buffers;
+
+        // Create the read buffer for attribute "a".
+        uint64_t a_read_buffer_size =
+            total_cells * tiledb_datatype_size(test_attrs[0].type_);
+        int32_t* a_read_buffer = (int32_t*)malloc(a_read_buffer_size);
+        for (uint64_t i = 0; i < total_cells; i++) {
+          a_read_buffer[i] = 0;
+        }
+        uint64_t a_read_buffer_validity_size = total_cells;
+        uint8_t* a_read_buffer_validity =
+            (uint8_t*)malloc(a_read_buffer_validity_size);
+        for (uint64_t i = 0; i < total_cells; i++) {
+          a_read_buffer_validity[i] = 0;
+        }
+        read_query_buffers.emplace_back(
+            test_attrs[0].name_,
+            a_read_buffer,
+            &a_read_buffer_size,
+            nullptr,
+            nullptr,
+            a_read_buffer_validity,
+            &a_read_buffer_validity_size);
+
+        // Create the read buffers for attribute "b".
+        uint64_t b_read_buffer_size = 0;
+        int32_t* b_read_buffer = nullptr;
+        uint64_t b_read_buffer_offset_size = 0;
+        uint64_t* b_read_buffer_offset = nullptr;
+        if (test_attrs.size() >= 2) {
+          b_read_buffer_size =
+              total_cells * 2 * tiledb_datatype_size(test_attrs[1].type_);
+          b_read_buffer = (int32_t*)malloc(b_read_buffer_size);
+          for (uint64_t i = 0; i < total_cells * 2; i++) {
+            b_read_buffer[i] = 0;
+          }
+
+          b_read_buffer_offset_size = total_cells * sizeof(uint64_t);
+          b_read_buffer_offset = (uint64_t*)malloc(b_read_buffer_offset_size);
+          for (uint64_t i = 0; i < total_cells; i++) {
+            b_read_buffer_offset[i] = 0;
+          }
+          read_query_buffers.emplace_back(
+              test_attrs[1].name_,
+              b_read_buffer,
+              &b_read_buffer_size,
+              b_read_buffer_offset,
+              &b_read_buffer_offset_size,
+              nullptr,
+              nullptr);
+        }
+
+        // Create the read buffers for attribute "c".
+        uint64_t c_read_buffer_size = 0;
+        char* c_read_buffer = nullptr;
+        if (test_attrs.size() >= 3) {
+          const uint64_t cell_len = test_attrs[2].cell_val_num_;
+          const uint64_t type_size = tiledb_datatype_size(test_attrs[2].type_);
+          c_read_buffer_size = total_cells * cell_len * type_size;
+          c_read_buffer = (char*)malloc(c_read_buffer_size);
+          for (uint64_t i = 0; i < total_cells; i++) {
+            c_read_buffer[(i * 2)] = 0;
+            c_read_buffer[(i * 2) + 1] = 0;
+          }
+
+          read_query_buffers.emplace_back(
+              test_attrs[2].name_,
+              c_read_buffer,
+              &c_read_buffer_size,
+              nullptr,
+              nullptr,
+              nullptr,
+              nullptr);
+        }
+
+        // If we wrote dimension buffers, allocate dimension read buffers.
+        vector<pair<uint64_t*, uint64_t>> d_read_buffers;
+        if (!d_write_buffers.empty()) {
+          d_read_buffers.reserve(test_dims.size());
+          for (const auto& test_dim : test_dims) {
+            // Reading dimension buffers on a dense array with a query condition
+            // is unsupported.
+            if (!query_conditions.empty() && array_type == TILEDB_DENSE) {
+              continue;
+            }
+
+            REQUIRE(tiledb_datatype_size(test_dim.type_) == sizeof(uint64_t));
+            const uint64_t d_read_buffer_size = total_cells * sizeof(uint64_t);
+            uint64_t* const d_read_buffer =
+                static_cast<uint64_t*>(malloc(d_read_buffer_size));
+
+            for (uint64_t i = 0; i < total_cells; ++i) {
+              d_read_buffer[i] = 0;
+            }
+
+            d_read_buffers.emplace_back(d_read_buffer, d_read_buffer_size);
+
+            read_query_buffers.emplace_back(
+                test_dim.name_,
+                d_read_buffers.back().first,
+                &d_read_buffers.back().second,
+                nullptr,
+                nullptr,
+                nullptr,
+                nullptr);
+          }
+        }
+
+        // This logic assumes that all dimensions are of type TILEDB_UINT64.
+        uint64_t subarray_size = 2 * test_dims.size() * sizeof(uint64_t);
+        uint64_t* subarray_full = (uint64_t*)malloc(subarray_size);
+        for (uint64_t i = 0; i < test_dims.size(); ++i) {
+          const uint64_t min_range = ((uint64_t*)(test_dims[i].domain_))[0];
+          const uint64_t max_range = ((uint64_t*)(test_dims[i].domain_))[1];
+          subarray_full[(i * 2)] = min_range;
+          subarray_full[(i * 2) + 1] = max_range;
+        }
+
+        // Read from the array.
+        read(
+            query_conditions,
+            read_query_buffers,
+            subarray_full,
+            read_order,
+            encryption_type,
+            combination_op);
+
+        // Map each cell value to a bool that indicates whether or
+        // not we expect it in the read results.
+        unordered_map<int32_t, bool> expected_a_values_read;
+        unordered_map<string, bool> expected_c_values_read;
+        for (uint64_t i = 0; i < total_cells; ++i) {
+          expected_a_values_read[i] = true;
+          if (test_attrs.size() >= 3) {
+            expected_c_values_read[string(&c_write_buffer[i * 2], 2)] = true;
+          }
+        }
+
+        // Populate the expected values maps. We only filter on attributes
+        // "a" and "c".
+        for (const auto& test_query_condition : query_conditions) {
+          if (test_query_condition->name_ == "a") {
+            for (uint64_t i = 0; i < total_cells; ++i) {
+              const bool expected =
+                  test_query_condition->cmp(&a_write_buffer[i]) &&
+                  a_write_buffer_validity[i];
+              REQUIRE((
+                  combination_op == TILEDB_AND || combination_op == TILEDB_OR));
+              if (combination_op == TILEDB_AND) {
+                expected_a_values_read[i] =
+                    expected_a_values_read[i] && expected;
+              } else {
+                expected_a_values_read[i] =
+                    expected_a_values_read[i] || expected;
+              }
+            }
+          } else {
+            REQUIRE(test_query_condition->name_ == "c");
+            for (uint64_t i = 0; i < total_cells; ++i) {
+              const bool expected =
+                  test_query_condition->cmp(&c_write_buffer[(i * 2)]);
+              REQUIRE((
+                  combination_op == TILEDB_AND || combination_op == TILEDB_OR));
+              if (combination_op == TILEDB_AND) {
+                expected_c_values_read[string(&c_write_buffer[i * 2], 2)] =
+                    expected_c_values_read[string(&c_write_buffer[i * 2], 2)] &&
+                    expected;
+              } else {
+                expected_c_values_read[string(&c_write_buffer[i * 2], 2)] =
+                    expected_c_values_read[string(&c_write_buffer[i * 2], 2)] ||
+                    expected;
+              }
+            }
+          }
+        }
+
+        // Calculate the number of cells read from the "a" read buffer.
+        const uint64_t cells_read =
+            a_read_buffer_size / tiledb_datatype_size(test_attrs[0].type_);
+
+        // When we check the values on "a", store a vector of the cell indexes
+        // from the write-buffer. We can use this to ensure that the values
+        // in the other attributes are similarly ordered.
+        vector<uint64_t> cell_idx_vec;
+
+        // Check the read values on "a".
+        uint64_t non_null_cells = 0;
+        for (uint64_t i = 0; i < cells_read; ++i) {
+          const int32_t cell_value = ((int32_t*)a_read_buffer)[i];
+
+          if (cell_value != std::numeric_limits<int32_t>::min()) {
+            non_null_cells++;
+            REQUIRE(expected_a_values_read[cell_value]);
+
+            // We expect to read a unique cell value exactly once.
+            expected_a_values_read[cell_value] = false;
+          }
+
+          // The cell value is the cell index in the write buffers.
+          cell_idx_vec.emplace_back(cell_value);
+        }
+
+        // Check the read on "b".
+        if (test_attrs.size() >= 2) {
+          const uint64_t type_size = tiledb_datatype_size(test_attrs[1].type_);
+
+          // Null cells will have the fill value of length 1,
+          // others the value of length 2.
+          auto expected_size =
+              (cells_read - non_null_cells + 2 * non_null_cells) * type_size;
+          REQUIRE(b_read_buffer_size == expected_size);
+          for (uint64_t i = 0; i < cells_read; ++i) {
+            auto offset = b_read_buffer_offset[i] / type_size;
+            if (((int32_t*)a_read_buffer)[i] ==
+                std::numeric_limits<int32_t>::min()) {
+              REQUIRE(
+                  ((int32_t*)b_read_buffer)[offset] ==
+                  std::numeric_limits<int32_t>::min());
+            } else {
+              const uint64_t write_i = cell_idx_vec[i];
+              REQUIRE(
+                  ((int32_t*)b_read_buffer)[offset] ==
+                  ((int32_t*)b_write_buffer)[(write_i * 2)]);
+              REQUIRE(
+                  ((int32_t*)b_read_buffer)[offset + 1] ==
+                  ((int32_t*)b_write_buffer)[(write_i * 2) + 1]);
+            }
+          }
+        }
+
+        // Check the read on "c"
+        if (test_attrs.size() >= 3) {
+          const uint64_t cell_len = test_attrs[2].cell_val_num_;
+          const uint64_t type_size = tiledb_datatype_size(test_attrs[2].type_);
+          REQUIRE(c_read_buffer_size == cell_len * cells_read * type_size);
+
+          for (uint64_t i = 0; i < cells_read; ++i) {
+            REQUIRE(expected_c_values_read[string(
+                &c_read_buffer[(i * cell_len)], cell_len)]);
+
+            const uint64_t write_i = cell_idx_vec[i];
+            for (uint64_t j = 0; j < cell_len; ++j) {
+              REQUIRE(
+                  c_read_buffer[(i * cell_len) + j] ==
+                  c_write_buffer[(write_i * cell_len) + j]);
+            }
+          }
+        }
+
+        // Check the read on the dimensions.
+        for (size_t d = 0; d < d_read_buffers.size(); ++d) {
+          REQUIRE(d_read_buffers[d].second / sizeof(uint64_t) == cells_read);
+
+          for (uint64_t i = 0; i < cells_read; ++i) {
+            const uint64_t write_i = cell_idx_vec[i];
+            REQUIRE(
+                d_read_buffers[d].first[i] ==
+                d_write_buffers[d].first[write_i]);
+          }
+        }
+
+        // Free the read buffers.
+        if (a_read_buffer != nullptr)
+          free(a_read_buffer);
+        if (a_read_buffer_validity != nullptr)
+          free(a_read_buffer_validity);
+        if (b_read_buffer != nullptr)
+          free(b_read_buffer);
+        if (b_read_buffer_offset != nullptr)
+          free(b_read_buffer_offset);
+        if (c_read_buffer != nullptr)
+          free(c_read_buffer);
+
+        // Free the dimension read buffers.
+        for (const auto& kv : d_read_buffers) {
+          free(kv.first);
+        }
+
+        // Free the subarray_full.
+        free(subarray_full);
       }
-    }
-  }
-
-  // Calculate the number of cells read from the "a" read buffer.
-  const uint64_t cells_read =
-      a_read_buffer_size / tiledb_datatype_size(test_attrs[0].type_);
-
-  // When we check the values on "a", store a vector of the cell indexes
-  // from the write-buffer. We can use this to ensure that the values
-  // in the other attributes are similarly ordered.
-  vector<uint64_t> cell_idx_vec;
-
-  // Check the read values on "a".
-  uint64_t non_null_cells = 0;
-  for (uint64_t i = 0; i < cells_read; ++i) {
-    const int32_t cell_value = ((int32_t*)a_read_buffer)[i];
-
-    if (cell_value != std::numeric_limits<int32_t>::min()) {
-      non_null_cells++;
-      REQUIRE(expected_a_values_read[cell_value]);
-
-      // We expect to read a unique cell value exactly once.
-      expected_a_values_read[cell_value] = false;
-    }
-
-    // The cell value is the cell index in the write buffers.
-    cell_idx_vec.emplace_back(cell_value);
-  }
-
-  // Check the read on "b".
-  if (test_attrs.size() >= 2) {
-    const uint64_t type_size = tiledb_datatype_size(test_attrs[1].type_);
-
-    // Null cells will have the fill value of length 1,
-    // others the value of length 2.
-    auto expected_size =
-        (cells_read - non_null_cells + 2 * non_null_cells) * type_size;
-    REQUIRE(b_read_buffer_size == expected_size);
-    for (uint64_t i = 0; i < cells_read; ++i) {
-      auto offset = b_read_buffer_offset[i] / type_size;
-      if (((int32_t*)a_read_buffer)[i] == std::numeric_limits<int32_t>::min()) {
-        REQUIRE(
-            ((int32_t*)b_read_buffer)[offset] ==
-            std::numeric_limits<int32_t>::min());
-      } else {
-        const uint64_t write_i = cell_idx_vec[i];
-        REQUIRE(
-            ((int32_t*)b_read_buffer)[offset] ==
-            ((int32_t*)b_write_buffer)[(write_i * 2)]);
-        REQUIRE(
-            ((int32_t*)b_read_buffer)[offset + 1] ==
-            ((int32_t*)b_write_buffer)[(write_i * 2) + 1]);
-      }
-    }
-  }
-
-  // Check the read on "c"
-  if (test_attrs.size() >= 3) {
-    const uint64_t cell_len = test_attrs[2].cell_val_num_;
-    const uint64_t type_size = tiledb_datatype_size(test_attrs[2].type_);
-    REQUIRE(c_read_buffer_size == cell_len * cells_read * type_size);
-
-    for (uint64_t i = 0; i < cells_read; ++i) {
-      REQUIRE(expected_c_values_read[string(
-          &c_read_buffer[(i * cell_len)], cell_len)]);
-
-      const uint64_t write_i = cell_idx_vec[i];
-      for (uint64_t j = 0; j < cell_len; ++j) {
-        REQUIRE(
-            c_read_buffer[(i * cell_len) + j] ==
-            c_write_buffer[(write_i * cell_len) + j]);
-      }
-    }
-  }
-
-  // Check the read on the dimensions.
-  for (size_t d = 0; d < d_read_buffers.size(); ++d) {
-    REQUIRE(d_read_buffers[d].second / sizeof(uint64_t) == cells_read);
-
-    for (uint64_t i = 0; i < cells_read; ++i) {
-      const uint64_t write_i = cell_idx_vec[i];
-      REQUIRE(d_read_buffers[d].first[i] == d_write_buffers[d].first[write_i]);
     }
   }
 
@@ -1312,26 +1342,6 @@ void SmokeTestFx::smoke_test(
   for (const auto& kv : d_write_buffers) {
     free(kv.first);
   }
-
-  // Free the read buffers.
-  if (a_read_buffer != nullptr)
-    free(a_read_buffer);
-  if (a_read_buffer_validity != nullptr)
-    free(a_read_buffer_validity);
-  if (b_read_buffer != nullptr)
-    free(b_read_buffer);
-  if (b_read_buffer_offset != nullptr)
-    free(b_read_buffer_offset);
-  if (c_read_buffer != nullptr)
-    free(c_read_buffer);
-
-  // Free the dimension read buffers.
-  for (const auto& kv : d_read_buffers) {
-    free(kv.first);
-  }
-
-  // Free the subarray_full.
-  free(subarray_full);
 }
 
 TEST_CASE_METHOD(
@@ -1389,41 +1399,28 @@ TEST_CASE_METHOD(
 
   for (auto attr_iter = attrs.begin(); attr_iter != attrs.end(); ++attr_iter) {
     vector<test_attr_t> test_attrs(attrs.begin(), attr_iter + 1);
-    for (const auto& query_conditions : query_conditions_vec) {
-      for (const tiledb_array_type_t array_type :
-           {TILEDB_DENSE, TILEDB_SPARSE}) {
-        for (const tiledb_layout_t cell_order :
+    for (const tiledb_array_type_t array_type : {TILEDB_DENSE, TILEDB_SPARSE}) {
+      for (const tiledb_layout_t cell_order :
+           {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR}) {
+        for (const tiledb_layout_t tile_order :
              {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR}) {
-          for (const tiledb_layout_t tile_order :
-               {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR}) {
-            for (const tiledb_encryption_type_t encryption_type :
-                 {TILEDB_NO_ENCRYPTION, TILEDB_AES_256_GCM}) {
-              for (const tiledb_layout_t write_order :
-                   {TILEDB_ROW_MAJOR, TILEDB_UNORDERED}) {
-                for (const tiledb_layout_t read_order :
-                     {TILEDB_ROW_MAJOR,
-                      TILEDB_UNORDERED,
-                      TILEDB_GLOBAL_ORDER}) {
-                  for (const tiledb_query_condition_combination_op_t
-                           combination_op : {TILEDB_AND, TILEDB_OR}) {
-                    vector<test_dim_t> test_dims;
-                    for (const test_dim_t& dim : dims) {
-                      test_dims.emplace_back(dim);
+          for (const tiledb_encryption_type_t encryption_type :
+               {TILEDB_NO_ENCRYPTION, TILEDB_AES_256_GCM}) {
+            for (const tiledb_layout_t write_order :
+                 {TILEDB_ROW_MAJOR, TILEDB_UNORDERED}) {
+              vector<test_dim_t> test_dims;
+              for (const test_dim_t& dim : dims) {
+                test_dims.emplace_back(dim);
 
-                      smoke_test(
-                          test_attrs,
-                          query_conditions,
-                          test_dims,
-                          array_type,
-                          cell_order,
-                          tile_order,
-                          write_order,
-                          read_order,
-                          encryption_type,
-                          combination_op);
-                    }
-                  }
-                }
+                smoke_test(
+                    test_attrs,
+                    query_conditions_vec,
+                    test_dims,
+                    array_type,
+                    cell_order,
+                    tile_order,
+                    write_order,
+                    encryption_type);
               }
             }
           }

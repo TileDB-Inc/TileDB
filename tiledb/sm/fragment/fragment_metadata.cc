@@ -1636,7 +1636,7 @@ uint64_t FragmentMetadata::tile_size(
     const std::string& name, uint64_t tile_idx) const {
   auto var_size = array_schema_->var_size(name);
   auto cell_num = this->cell_num(tile_idx);
-  return (var_size) ? cell_num * constants::cell_var_offset_size :
+  return (var_size) ? (cell_num + 1) * constants::cell_var_offset_size :
                       cell_num * array_schema_->cell_size(name);
 }
 
@@ -1720,6 +1720,10 @@ std::string_view FragmentMetadata::get_tile_min_as<std::string_view>(
             static_cast<sv_size_cast>(
                 tile_min_var_buffer_[idx].size() - min_offset) :
             static_cast<sv_size_cast>(offsets[tile_idx + 1] - min_offset);
+    if (size == 0) {
+      return {};
+    }
+
     char* min = &tile_min_var_buffer_[idx][min_offset];
     return {min, size};
   } else {
@@ -1796,6 +1800,10 @@ std::string_view FragmentMetadata::get_tile_max_as<std::string_view>(
             static_cast<sv_size_cast>(
                 tile_max_var_buffer_[idx].size() - max_offset) :
             static_cast<sv_size_cast>(offsets[tile_idx + 1] - max_offset);
+    if (size == 0) {
+      return {};
+    }
+
     char* max = &tile_max_var_buffer_[idx][max_offset];
     return {max, size};
   } else {
@@ -4703,6 +4711,23 @@ Status FragmentMetadata::store_footer(const EncryptionKey& encryption_key) {
       "write_frag_meta_footer_size", tile.size());
 
   return Status::Ok();
+}
+
+void FragmentMetadata::resize_tile_offsets_vectors(uint64_t size) {
+  tile_offsets_mtx().resize(size);
+  tile_offsets().resize(size);
+}
+
+void FragmentMetadata::resize_tile_var_offsets_vectors(uint64_t size) {
+  tile_var_offsets_mtx().resize(size);
+  tile_var_offsets().resize(size);
+}
+
+void FragmentMetadata::resize_tile_var_sizes_vectors(uint64_t size) {
+  tile_var_sizes().resize(size);
+}
+void FragmentMetadata::resize_tile_validity_offsets_vectors(uint64_t size) {
+  tile_validity_offsets().resize(size);
 }
 
 void FragmentMetadata::clean_up() {

@@ -33,6 +33,11 @@ on:
         description: 'Job timeout (minutes)'
         required: false
         type: number
+      asan:
+        default: false
+        description: 'Enable Address Sanitizer'
+        required: false
+        type: boolean
 
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
@@ -40,7 +45,7 @@ env:
   TILEDB_CI_OS: runner.os
   CXX: ${{ inputs.matrix_compiler_cxx }}
   CC: ${{ inputs.matrix_compiler_cc }}
-  bootstrap_args: "--enable-vcpkg --enable-ccache ${{ inputs.bootstrap_args }}"
+  bootstrap_args: "--enable-ccache ${{ inputs.bootstrap_args }} ${{ inputs.asan && '--enable-sanitizer=address' || '' }}"
   VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
   SCCACHE_GHA_ENABLED: "true"
 
@@ -140,6 +145,9 @@ jobs:
       - name: 'Test libtiledb'
         id: test
         shell: bash
+        env:
+          ASAN_OPTIONS: ${{ inputs.asan && 'detect_leaks=0' || '' }}
+          LD_PRELOAD: ${{ inputs.asan && '/usr/lib/x86_64-linux-gnu/libasan.so.6' || '' }}
         run: |
           set -e pipefail
 
@@ -172,6 +180,11 @@ jobs:
 
           source $GITHUB_WORKSPACE/scripts/ci/posix/build-services-stop.sh
 
+          # Skip examples and benchmarks if ASAN is enabled
+          if [[ "${{ inputs.asan }}" == "true" ]]; then
+            exit 0
+          fi
+
           ###################################################
           # Build and run Examples
           make -C $GITHUB_WORKSPACE/build -j3 examples
@@ -198,7 +211,7 @@ jobs:
 
       - name: 'Upload failure artifacts (macOS)' # https://github.com/actions/upload-artifact#where-does-the-upload-go
         if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           retention-days: 10
           name: "${{ matrix.os }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"

@@ -27,12 +27,6 @@
 include(common NO_POLICY_SCOPE)
 include(object_library)
 
-#
-# `result_tile` object library
-#
-commence(object_library result_tile)
-  this_target_sources(result_tile.cc)
-  this_target_object_libraries(array_schema baseline tile)
-conclude(object_library)
-
 add_subdirectory(aggregators)
+
+add_test_subdirectory()

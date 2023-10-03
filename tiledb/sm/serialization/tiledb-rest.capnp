@@ -588,7 +588,7 @@ struct ASTNode {
   # The name of the field this clause applies to
 
   value @2 :Data;
-  # The comparison value
+  # The comparison value or set membership data
 
   op @3 :Text;
   # The comparison operation
@@ -602,6 +602,9 @@ struct ASTNode {
 
   useEnumeration @6 :Bool;
   # Whether or not to use the associated attribute's Enumeration
+
+  offsets @7 :Data;
+  # The offsets for set membership data
 }
 
 struct Condition {
@@ -634,6 +637,9 @@ struct QueryReader {
 
   stats @4 :Stats;
   # Stats object
+
+  dimLabelIncreasing @5 :Bool;
+  # True if dim label query is using increasing order, false if decreasing order.
 }
 
 struct Delete {
@@ -763,6 +769,9 @@ struct Query {
 
     writtenBuffers @19 : List(Text);
     # written buffers for partial attribute writes
+
+    orderedDimLabelReader @20 :QueryReader;
+    # orderedDimLabelReader contains data needed for dense dimension label reads.
 }
 
 struct NonEmptyDomain {
@@ -1188,4 +1197,38 @@ struct BufferedChunk {
 
   size@1 :UInt64;
   # the size in bytes of the intermediate chunk
+}
+
+struct ArrayDeleteFragmentsListRequest {
+  uri @0 :Text;
+  entries @1 :List(Text);
+}
+
+struct ArrayDeleteFragmentsTimestampsRequest {
+  uri @0 :Text;
+  startTimestamp @1 :UInt64;
+  endTimestamp @2 :UInt64;
+}
+
+struct ArrayConsolidationRequest {
+  config @0 :Config;
+  # Config
+}
+
+struct ArrayVacuumRequest {
+  config @0 :Config;
+  # Config
+}
+
+struct LoadEnumerationsRequest {
+  config @0 :Config;
+  # Config
+
+  enumerations @1 :List(Text);
+  # Enumeration names to load
+}
+
+struct LoadEnumerationsResponse {
+  enumerations @0 :List(Enumeration);
+  # The loaded enumerations
 }

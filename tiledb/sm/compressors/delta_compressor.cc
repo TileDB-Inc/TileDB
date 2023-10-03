@@ -229,7 +229,7 @@ void Delta::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
   // Write first value
   throw_if_not_ok(output_buffer->write(&in[0], value_size));
   if (num > 1) {
-    for (uint64_t i = 1; i < num + 1; ++i) {
+    for (uint64_t i = 1; i < num; ++i) {
       int64_t cur_delta = int64_t(in[i]) - int64_t(in[i - 1]);
       throw_if_not_ok(output_buffer->write(&cur_delta, value_size));
     }

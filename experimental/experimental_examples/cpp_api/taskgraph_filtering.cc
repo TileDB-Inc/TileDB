@@ -33,6 +33,14 @@
  *
  */
 
+// bzlib.h bleeds "windows.h" symbols
+#if !defined(NOMINMAX)
+#define NOMINMAX
+#endif
+#include <bzlib.h>
+#if defined(DELETE)
+#undef DELETE
+#endif
 #include <iostream>
 
 #include <tiledb/tiledb>
@@ -41,8 +49,6 @@
 #include "experimental/tiledb/common/dag/execution/throw_catch.h"
 #include "experimental/tiledb/common/dag/graph/taskgraph.h"
 #include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
-
-#include <bzlib.h>
 
 using namespace tiledb;
 using namespace tiledb::common;
@@ -205,15 +211,16 @@ auto compress_chunk(const input_info<uint32_t>& in) {
   auto [offset, chunk_size, data_ptr] = in;
 
   // Alloc a buffer big enough to fit the resulted compressed buffer
-  unsigned int out_size = 2 * data_ptr->size() * sizeof(uint32_t);
-  std::vector<char> compressed_data(out_size);
+  auto in_size = static_cast<unsigned int>(data_ptr->size() * sizeof(uint32_t));
+  std::vector<char> compressed_data(2 * in_size);
 
   // Bzip2 compress the data
+  unsigned int out_size;
   int rc = BZ2_bzBuffToBuffCompress(
       compressed_data.data(),
       &out_size,
       reinterpret_cast<char*>(data_ptr->data()),
-      data_ptr->size() * sizeof(uint32_t),
+      in_size,
       1,
       0,
       0);

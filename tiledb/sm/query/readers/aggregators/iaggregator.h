@@ -33,13 +33,11 @@
 #ifndef TILEDB_IAGGREGATOR_H
 #define TILEDB_IAGGREGATOR_H
 
-#include "tiledb/common/status.h"
-#include "tiledb/sm/enums/layout.h"
+#include "tiledb/common/common.h"
+#include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/query/readers/aggregators/output_buffer_validator.h"
 
-using namespace tiledb::common;
-
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class QueryBuffer;
 class AggregateBuffer;
@@ -97,7 +95,6 @@ class IAggregator {
       std::unordered_map<std::string, QueryBuffer>& buffers) = 0;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_IAGGREGATOR_H

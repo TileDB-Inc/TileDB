@@ -548,6 +548,24 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       std::optional<std::string>& last_field_to_overflow);
 
   /**
+   * Make an aggregate buffer.
+   *
+   * @param name Field to aggregate.
+   * @param var_sized Is the field var sized?
+   * @param nullable Is the field nullable?
+   * @param min_cell Min cell to aggregate.
+   * @param min_cell Max cell to aggregate.
+   * @param rt Result tile.
+   */
+  AggregateBuffer make_aggregate_buffer(
+      const std::string name,
+      const bool var_sized,
+      const bool nullable,
+      const uint64_t min_cell,
+      const uint64_t max_cell,
+      ResultTile& rt);
+
+  /**
    * Process aggregates.
    *
    * @param num_range_threads Total number of range threads.

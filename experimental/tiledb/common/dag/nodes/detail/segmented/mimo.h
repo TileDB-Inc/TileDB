@@ -52,8 +52,6 @@
 
 #include "experimental/tiledb/common/dag/ports/ports.h"
 
-#include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
-
 #include "experimental/tiledb/common/dag/nodes/detail/segmented/segmented_base.h"
 #include "experimental/tiledb/common/dag/nodes/detail/segmented/segmented_fwd.h"
 

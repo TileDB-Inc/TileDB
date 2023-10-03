@@ -29,11 +29,13 @@
 # This script should be sourced from tiledb/build folder
 set -xe
 
-export_gcs_env(){
-  export CLOUD_STORAGE_EMULATOR_ENDPOINT=http://localhost:9000 # For JSON and XML API
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+export_gcs_env() {
+  export TILEDB_TEST_GCS_ENDPOINT=http://localhost:9000 # For JSON and XML API
 }
 
-run_gcs(){
+run_gcs() {
   pushd .
   source /tmp/storage-testbench-venv/bin/activate
   cd /tmp/storage-testbench
@@ -43,10 +45,20 @@ run_gcs(){
   popd
 }
 
+run_gcs_ssl_proxy() {
+  $DIR/run-ssl-proxy.py \
+    --source-port 9001 \
+    --target-port 9000 \
+    --public-certificate $DIR/../test/inputs/test_certs/public.crt \
+    --private-key $DIR/../test/inputs/test_certs/private.key &
+  export GCS_SSL_PID=$!
+}
+
 run() {
   export_gcs_env
 
   run_gcs
+  run_gcs_ssl_proxy
 }
 
 run

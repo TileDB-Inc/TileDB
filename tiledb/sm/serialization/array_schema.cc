@@ -66,6 +66,7 @@
 #include "tiledb/sm/filter/xor_filter.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/serialization/array_schema.h"
+#include "tiledb/sm/serialization/enumeration.h"
 
 #include <cstring>
 #include <set>
@@ -102,14 +103,21 @@ Status filter_to_capnp(
     case FilterType::FILTER_LZ4:
     case FilterType::FILTER_RLE:
     case FilterType::FILTER_BZIP2:
-    case FilterType::FILTER_DELTA:
-    case FilterType::FILTER_DOUBLE_DELTA:
     case FilterType::FILTER_DICTIONARY: {
       int32_t level;
       RETURN_NOT_OK(
           filter->get_option(FilterOption::COMPRESSION_LEVEL, &level));
       auto data = filter_builder->initData();
       data.setInt32(level);
+      break;
+    }
+    case FilterType::FILTER_DELTA:
+    case FilterType::FILTER_DOUBLE_DELTA: {
+      auto data = filter_builder->getData();
+      Datatype reinterpret_type = Datatype::ANY;
+      RETURN_NOT_OK(filter->get_option(
+          FilterOption::COMPRESSION_REINTERPRET_DATATYPE, &reinterpret_type));
+      data.setUint8(static_cast<uint8_t>(reinterpret_type));
       break;
     }
     case FilterType::FILTER_SCALE_FLOAT: {
@@ -181,7 +189,7 @@ Status filter_pipeline_to_capnp(
 }
 
 tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
-    const capnp::Filter::Reader& filter_reader) {
+    const capnp::Filter::Reader& filter_reader, Datatype datatype) {
   FilterType type = FilterType::FILTER_NONE;
   RETURN_NOT_OK_TUPLE(
       filter_type_enum(filter_reader.getType().cStr(), &type), nullopt);
@@ -192,28 +200,39 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
       uint32_t window = data.getUint32();
       return {
           Status::Ok(),
-          tiledb::common::make_shared<BitWidthReductionFilter>(HERE(), window)};
+          tiledb::common::make_shared<BitWidthReductionFilter>(
+              HERE(), window, datatype)};
     }
     case FilterType::FILTER_POSITIVE_DELTA: {
       auto data = filter_reader.getData();
       uint32_t window = data.getUint32();
       return {
           Status::Ok(),
-          tiledb::common::make_shared<PositiveDeltaFilter>(HERE(), window)};
+          tiledb::common::make_shared<PositiveDeltaFilter>(
+              HERE(), window, datatype)};
     }
     case FilterType::FILTER_GZIP:
     case FilterType::FILTER_ZSTD:
     case FilterType::FILTER_LZ4:
     case FilterType::FILTER_RLE:
     case FilterType::FILTER_BZIP2:
-    case FilterType::FILTER_DOUBLE_DELTA:
-    case FilterType::FILTER_DELTA:
     case FilterType::FILTER_DICTIONARY: {
       auto data = filter_reader.getData();
       int32_t level = data.getInt32();
       return {
           Status::Ok(),
-          tiledb::common::make_shared<CompressionFilter>(HERE(), type, level)};
+          tiledb::common::make_shared<CompressionFilter>(
+              HERE(), type, level, datatype)};
+    }
+    case FilterType::FILTER_DOUBLE_DELTA:
+    case FilterType::FILTER_DELTA: {
+      auto data = filter_reader.getData();
+      Datatype reinterpret_datatype = Datatype::ANY;
+      reinterpret_datatype = static_cast<Datatype>(data.getUint8());
+      return {
+          Status::Ok(),
+          tiledb::common::make_shared<CompressionFilter>(
+              HERE(), type, -1, datatype, reinterpret_datatype)};
     }
     case FilterType::FILTER_SCALE_FLOAT: {
       if (filter_reader.hasFloatScaleConfig()) {
@@ -224,40 +243,48 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
         return {
             Status::Ok(),
             tiledb::common::make_shared<FloatScalingFilter>(
-                HERE(), byte_width, scale, offset)};
+                HERE(), byte_width, scale, offset, datatype)};
       }
 
       return {
           Status::Ok(),
-          tiledb::common::make_shared<FloatScalingFilter>(HERE())};
+          tiledb::common::make_shared<FloatScalingFilter>(HERE(), datatype)};
     }
     case FilterType::FILTER_NONE: {
-      return {Status::Ok(), tiledb::common::make_shared<NoopFilter>(HERE())};
+      return {
+          Status::Ok(),
+          tiledb::common::make_shared<NoopFilter>(HERE(), datatype)};
     }
     case FilterType::FILTER_BITSHUFFLE: {
       return {
-          Status::Ok(), tiledb::common::make_shared<BitshuffleFilter>(HERE())};
+          Status::Ok(),
+          tiledb::common::make_shared<BitshuffleFilter>(HERE(), datatype)};
     }
     case FilterType::FILTER_BYTESHUFFLE: {
       return {
-          Status::Ok(), tiledb::common::make_shared<ByteshuffleFilter>(HERE())};
+          Status::Ok(),
+          tiledb::common::make_shared<ByteshuffleFilter>(HERE(), datatype)};
     }
     case FilterType::FILTER_CHECKSUM_MD5: {
       return {
-          Status::Ok(), tiledb::common::make_shared<ChecksumMD5Filter>(HERE())};
+          Status::Ok(),
+          tiledb::common::make_shared<ChecksumMD5Filter>(HERE(), datatype)};
     }
     case FilterType::FILTER_CHECKSUM_SHA256: {
       return {
           Status::Ok(),
-          tiledb::common::make_shared<ChecksumSHA256Filter>(HERE())};
+          tiledb::common::make_shared<ChecksumSHA256Filter>(HERE(), datatype)};
     }
     case FilterType::INTERNAL_FILTER_AES_256_GCM: {
       return {
           Status::Ok(),
-          tiledb::common::make_shared<EncryptionAES256GCMFilter>(HERE())};
+          tiledb::common::make_shared<EncryptionAES256GCMFilter>(
+              HERE(), datatype)};
     }
     case FilterType::FILTER_XOR: {
-      return {Status::Ok(), tiledb::common::make_shared<XORFilter>(HERE())};
+      return {
+          Status::Ok(),
+          tiledb::common::make_shared<XORFilter>(HERE(), datatype)};
     }
     case FilterType::FILTER_WEBP: {
       if constexpr (webp_filter_exists) {
@@ -271,10 +298,17 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
           return {
               Status::Ok(),
               tiledb::common::make_shared<WebpFilter>(
-                  HERE(), quality, format, lossless, extent_x, extent_y)};
+                  HERE(),
+                  quality,
+                  format,
+                  lossless,
+                  extent_x,
+                  extent_y,
+                  datatype)};
         } else {
           return {
-              Status::Ok(), tiledb::common::make_shared<WebpFilter>(HERE())};
+              Status::Ok(),
+              tiledb::common::make_shared<WebpFilter>(HERE(), datatype)};
         }
       } else {
         throw WebpNotPresentError();
@@ -295,15 +329,20 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
 }
 
 tuple<Status, optional<shared_ptr<FilterPipeline>>> filter_pipeline_from_capnp(
-    const capnp::FilterPipeline::Reader& filter_pipeline_reader) {
+    const capnp::FilterPipeline::Reader& filter_pipeline_reader,
+    Datatype datatype) {
   if (!filter_pipeline_reader.hasFilters())
     return {Status::Ok(), make_shared<FilterPipeline>(HERE())};
 
   std::vector<shared_ptr<Filter>> filter_list;
   auto filter_list_reader = filter_pipeline_reader.getFilters();
   for (auto filter_reader : filter_list_reader) {
-    auto&& [st_f, filter]{filter_from_capnp(filter_reader)};
+    // Deserialize and initialize filter with filter datatype within the
+    // pipeline.
+    auto&& [st_f, filter]{filter_from_capnp(filter_reader, datatype)};
     RETURN_NOT_OK_TUPLE(st_f, nullopt);
+    // Update datatype to next in pipeline.
+    datatype = filter.value()->output_datatype(datatype);
     filter_list.push_back(filter.value());
   }
 
@@ -376,7 +415,8 @@ shared_ptr<Attribute> attribute_from_capnp(
   shared_ptr<FilterPipeline> filters{};
   if (attribute_reader.hasFilterPipeline()) {
     auto filter_pipeline_reader = attribute_reader.getFilterPipeline();
-    auto&& [st_fp, f]{filter_pipeline_from_capnp(filter_pipeline_reader)};
+    auto&& [st_fp, f]{
+        filter_pipeline_from_capnp(filter_pipeline_reader, datatype)};
     throw_if_not_ok(st_fp);
     filters = f.value();
   } else {
@@ -612,7 +652,7 @@ shared_ptr<Dimension> dimension_from_capnp(
   shared_ptr<FilterPipeline> filters{};
   if (dimension_reader.hasFilterPipeline()) {
     auto reader = dimension_reader.getFilterPipeline();
-    auto&& [st_fp, f]{filter_pipeline_from_capnp(reader)};
+    auto&& [st_fp, f]{filter_pipeline_from_capnp(reader, dim_type)};
     if (!st_fp.ok()) {
       throw std::runtime_error(
           "[Deserialization::dimension_from_capnp] Failed to deserialize "
@@ -773,61 +813,6 @@ shared_ptr<DimensionLabel> dimension_label_from_capnp(
       is_relative);
 }
 
-void enumeration_to_capnp(
-    shared_ptr<const Enumeration> enumeration,
-    capnp::Enumeration::Builder& enmr_builder) {
-  enmr_builder.setName(enumeration->name());
-  enmr_builder.setType(datatype_str(enumeration->type()));
-  enmr_builder.setCellValNum(enumeration->cell_val_num());
-  enmr_builder.setOrdered(enumeration->ordered());
-
-  auto dspan = enumeration->data();
-  enmr_builder.setData(::kj::arrayPtr(dspan.data(), dspan.size()));
-
-  if (enumeration->var_size()) {
-    auto ospan = enumeration->offsets();
-    enmr_builder.setOffsets(::kj::arrayPtr(ospan.data(), ospan.size()));
-  }
-}
-
-shared_ptr<const Enumeration> enumeration_from_capnp(
-    const capnp::Enumeration::Reader& reader) {
-  auto name = reader.getName();
-  auto path_name = reader.getPathName();
-  Datatype datatype = Datatype::ANY;
-  throw_if_not_ok(datatype_enum(reader.getType(), &datatype));
-
-  if (!reader.hasData()) {
-    throw SerializationStatusException(
-        "[Deserialization::enumeration_from_capnp] Deserialization of "
-        "Enumeration is missing its data buffer.");
-  }
-
-  auto data_reader = reader.getData().asBytes();
-  auto data = data_reader.begin();
-  auto data_size = data_reader.size();
-
-  const void* offsets = nullptr;
-  uint64_t offsets_size = 0;
-
-  if (reader.hasOffsets()) {
-    auto offsets_reader = reader.getOffsets().asBytes();
-    offsets = offsets_reader.begin();
-    offsets_size = offsets_reader.size();
-  }
-
-  return Enumeration::create(
-      name,
-      path_name,
-      datatype,
-      reader.getCellValNum(),
-      reader.getOrdered(),
-      data,
-      data_size,
-      offsets,
-      offsets_size);
-}
-
 Status array_schema_to_capnp(
     const ArraySchema& array_schema,
     capnp::ArraySchema::Builder* array_schema_builder,
@@ -901,22 +886,28 @@ Status array_schema_to_capnp(
   // Loaded enumerations
   auto loaded_enmr_names = array_schema.get_loaded_enumeration_names();
   const unsigned num_loaded_enmrs = loaded_enmr_names.size();
-  auto enmr_builders = array_schema_builder->initEnumerations(num_loaded_enmrs);
-  for (size_t i = 0; i < num_loaded_enmrs; i++) {
-    auto enmr = array_schema.get_enumeration(loaded_enmr_names[i]);
-    auto builder = enmr_builders[i];
-    enumeration_to_capnp(enmr, builder);
+  if (num_loaded_enmrs > 0) {
+    auto enmr_builders =
+        array_schema_builder->initEnumerations(num_loaded_enmrs);
+    for (size_t i = 0; i < num_loaded_enmrs; i++) {
+      auto enmr = array_schema.get_enumeration(loaded_enmr_names[i]);
+      auto builder = enmr_builders[i];
+      enumeration_to_capnp(enmr, builder);
+    }
   }
 
   // Enumeration path map
   auto enmr_names = array_schema.get_enumeration_names();
   const unsigned num_enmr_names = enmr_names.size();
-  auto enmr_path_map_builders =
-      array_schema_builder->initEnumerationPathMap(num_enmr_names);
-  for (size_t i = 0; i < num_enmr_names; i++) {
-    auto enmr_path_name = array_schema.get_enumeration_path_name(enmr_names[i]);
-    enmr_path_map_builders[i].setKey(enmr_names[i]);
-    enmr_path_map_builders[i].setValue(enmr_path_name);
+  if (num_enmr_names > 0) {
+    auto enmr_path_map_builders =
+        array_schema_builder->initEnumerationPathMap(num_enmr_names);
+    for (size_t i = 0; i < num_enmr_names; i++) {
+      auto enmr_path_name =
+          array_schema.get_enumeration_path_name(enmr_names[i]);
+      enmr_path_map_builders[i].setKey(enmr_names[i]);
+      enmr_path_map_builders[i].setValue(enmr_path_name);
+    }
   }
 
   return Status::Ok();
@@ -1013,7 +1004,7 @@ ArraySchema array_schema_from_capnp(
   FilterPipeline coords_filters;
   if (schema_reader.hasCoordsFilterPipeline()) {
     auto reader = schema_reader.getCoordsFilterPipeline();
-    auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
+    auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader, Datatype::ANY)};
     if (!st_fp.ok()) {
       throw std::runtime_error(
           "[Deserialization::array_schema_from_capnp] Cannot deserialize "
@@ -1028,7 +1019,8 @@ ArraySchema array_schema_from_capnp(
   FilterPipeline cell_var_offsets_filters;
   if (schema_reader.hasOffsetFilterPipeline()) {
     auto reader = schema_reader.getOffsetFilterPipeline();
-    auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
+    auto&& [st_fp, filters]{
+        filter_pipeline_from_capnp(reader, Datatype::UINT64)};
     if (!st_fp.ok()) {
       throw std::runtime_error(
           "[Deserialization::array_schema_from_capnp] Cannot deserialize "
@@ -1043,7 +1035,8 @@ ArraySchema array_schema_from_capnp(
   FilterPipeline cell_validity_filters;
   if (schema_reader.hasValidityFilterPipeline()) {
     auto reader = schema_reader.getValidityFilterPipeline();
-    auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader)};
+    auto&& [st_fp, filters]{
+        filter_pipeline_from_capnp(reader, Datatype::UINT8)};
     if (!st_fp.ok()) {
       throw std::runtime_error(
           "[Deserialization::array_schema_from_capnp] Cannot deserialize "

@@ -137,7 +137,6 @@ TEST_CASE("Tile: Test move constructor", "[Tile][move_constructor]") {
 
   // Verify all public attributes are identical.
   CHECK(tile2.cell_size() == cell_size);
-  CHECK(tile2.cell_num() == buffer_len);
   CHECK(tile2.zipped_coords_dim_num() == dim_num);
   CHECK(tile2.filtered() == false);
   CHECK(tile2.format_version() == format_version);
@@ -178,7 +177,6 @@ TEST_CASE("Tile: Test move-assignment", "[Tile][move_assignment]") {
 
   // Verify all public attributes are identical.
   CHECK(tile2.cell_size() == cell_size);
-  CHECK(tile2.cell_num() == buffer_len);
   CHECK(tile2.zipped_coords_dim_num() == dim_num);
   CHECK(tile2.filtered() == false);
   CHECK(tile2.format_version() == format_version);

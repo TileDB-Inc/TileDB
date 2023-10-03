@@ -38,6 +38,104 @@
 namespace tiledb {
 class QueryConditionExperimental {
  public:
+  /* ********************************* */
+  /*          STATIC FUNCTIONS         */
+  /* ********************************* */
+
+  /**
+   * Factory function for creating a new set membership query condition.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * std::vector<int> values = {1, 2, 3, 4, 5};
+   * auto a1 = tiledb::QueryConditionExperimental::create(ctx, "a1", values);
+   * @endcode
+   *
+   * @param ctx The TileDB context.
+   * @param field_name The field name.
+   * @param values The set membership values to use.
+   * @param op The query condition operator to use. Currently limited to
+   *        TILEDB_IN and TILEDB_NOT_IN.
+   */
+  template <typename T, impl::enable_trivial<T>* = nullptr>
+  static QueryCondition create(
+      const Context& ctx,
+      const std::string& field_name,
+      const std::vector<T>& values,
+      tiledb_query_condition_op_t op) {
+    std::vector<uint64_t> offsets;
+    offsets.push_back(0);
+    for (size_t i = 1; i < values.size(); i++) {
+      offsets.push_back(i * sizeof(T));
+    }
+
+    tiledb_query_condition_t* qc;
+    ctx.handle_error(tiledb_query_condition_alloc_set_membership(
+        ctx.ptr().get(),
+        field_name.c_str(),
+        values.data(),
+        values.size() * sizeof(T),
+        offsets.data(),
+        offsets.size() * sizeof(uint64_t),
+        op,
+        &qc));
+
+    return QueryCondition(ctx, qc);
+  }
+
+  /**
+   * Factory function for creating a new set membership query condition.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * std::vector<std::string> values = {"foo", "bar", "baz"};
+   * auto a1 = tiledb::QueryConditionExperimental::create(ctx, "a1", values);
+   * @endcode
+   *
+   * @param ctx The TileDB context.
+   * @param field_name The field name.
+   * @param values The set membership values to use.
+   * @param op The query condition operator to use. Currently limited to
+   *        TILEDB_IN and TILEDB_NOT_IN.
+   */
+  template <typename T, impl::enable_trivial<T>* = nullptr>
+  static QueryCondition create(
+      const Context& ctx,
+      const std::string& field_name,
+      const std::vector<std::basic_string<T>>& values,
+      tiledb_query_condition_op_t op) {
+    std::vector<uint8_t> data;
+    std::vector<uint64_t> offsets;
+
+    uint64_t data_size = 0;
+    for (auto& val : values) {
+      data_size += val.size();
+    }
+
+    data.resize(data_size);
+    uint64_t curr_offset = 0;
+    for (auto& val : values) {
+      offsets.push_back(curr_offset);
+      memcpy(data.data() + curr_offset, val.data(), val.size());
+      curr_offset += val.size();
+    }
+
+    tiledb_query_condition_t* qc;
+    ctx.handle_error(tiledb_query_condition_alloc_set_membership(
+        ctx.ptr().get(),
+        field_name.c_str(),
+        data.data(),
+        data.size(),
+        offsets.data(),
+        offsets.size() * sizeof(uint64_t),
+        op,
+        &qc));
+
+    return QueryCondition(ctx, qc);
+  }
+
   /**
    * Set whether or not to use the associated enumeration.
    *
@@ -54,4 +152,4 @@ class QueryConditionExperimental {
 
 }  // namespace tiledb
 
-#endif
+#endif  // TILEDB_CPP_API_QUERY_CONDITION_EXPERIMENTAL_H

@@ -89,6 +89,7 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema_evolution.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema_experimental.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/as_built_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/attribute.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/attribute_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/config.h
@@ -192,6 +193,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3_thread_pool_executor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3/STSProfileWithWebIdentityCredentialsProvider.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/ssl_config.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/uri.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs_file_handle.cc
@@ -237,7 +239,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/utils.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/uuid.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/win_constants.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/work_arounds.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/ast/query_ast.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/deletes_and_updates/deletes_and_updates.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/deletes_and_updates/serialization.cc
@@ -251,8 +252,12 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query_condition.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query_remote_buffer_storage.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/aggregate_buffer.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/count_aggregator.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/mean_aggregator.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/min_max_aggregator.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/null_count_aggregator.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/output_buffer_validator.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/safe_sum.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/sum_aggregator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/dense_reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/ordered_dim_label_reader.cc
@@ -276,10 +281,14 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema_evolution.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/enumeration.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragment_info.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragment_metadata.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragments.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/group.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/consolidation.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/vacuum.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/global_stats.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/stats.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context.cc
@@ -324,10 +333,14 @@ if (TILEDB_SERIALIZATION)
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema_evolution.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/enumeration.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragment_info.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragment_metadata.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragments.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/group.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/consolidation.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/vacuum.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++
       PROPERTIES
         COMPILE_FLAGS "-Wno-unused-parameter"
@@ -341,10 +354,14 @@ if (TILEDB_SERIALIZATION)
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema_evolution.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/config.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/enumeration.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragment_info.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragment_metadata.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/fragments.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/group.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/consolidation.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/vacuum.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++
       PROPERTIES
         #   C4267: 'argument': conversion from 'size_t' to '<various-lesser-types>', possible loss of data
@@ -443,6 +460,7 @@ if (WIN32 AND TILEDB_STATIC)
     ${TILEDB_CORE_SOURCES}
     ${TILEDB_EXTERNALS_SOURCES}
   )
+  add_dependencies(TILEDB_CORE_OBJECTS_STATIC gen_mgc_unarch)
 
   # Compile all core sources with PIC
   set_property(TARGET TILEDB_CORE_OBJECTS_STATIC PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -517,26 +535,12 @@ endif()
 if (TILEDB_S3)
   message(STATUS "The TileDB library is compiled with S3 support.")
 
-  if (TILEDB_VCPKG)
-    find_package(AWSSDK_EP REQUIRED)
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-      INTERFACE
-        ${AWSSDK_LINK_LIBRARIES}
-        ${AWSSDK_EXTRA_LIBS}
-        )
-
-  else()
-    find_package(AWSSDK_EP REQUIRED COMPONENTS s3)
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-      INTERFACE
-        AWSSDK::aws-cpp-sdk-s3
-        AWSSDK::aws-cpp-sdk-core
-        AWSSDK::aws-c-event-stream
-        AWSSDK::aws-checksums
-        AWSSDK::aws-c-common
-        AWSSDK::aws-cpp-sdk-identity-management
-        AWSSDK::aws-cpp-sdk-sts)
-  endif()
+  find_package(AWSSDK_EP REQUIRED)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+    INTERFACE
+      ${AWSSDK_LINK_LIBRARIES}
+      ${AWSSDK_EXTRA_LIBS}
+      )
 endif()
 
 # Azure dependencies
@@ -571,7 +575,7 @@ if (TILEDB_AZURE)
     find_package(AzureStorageBlobs_EP REQUIRED)
     if (NOT WIN32)
       if (NOT TARGET LibXml2::LibXml2)
-        find_package(libxml2 REQUIRED)
+        find_package(LibXml2 REQUIRED)
         install_target_libs(LibXml2::LibXml2)
       endif()
     endif()
@@ -580,10 +584,8 @@ if (TILEDB_AZURE)
             Azure::azure-storage-blobs
             Azure::azure-storage-common
             Azure::azure-core)
-    if(WIN32)
-      # WebServices and crypt32 needed by Azure storage on windows
-      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE WebServices crypt32)
-    else()
+    # Link xml after Azure to allow symbol resolution on all platforms
+    if (NOT WIN32)
       target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE LibXml2::LibXml2)
     endif()
   endif()
@@ -713,6 +715,7 @@ if(TILEDB_WEBP)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
     WebP::webp
+    WebP::sharpyuv
   )
   add_definitions(-DTILEDB_WEBP)
 endif()
@@ -727,19 +730,22 @@ endif()
 
 # Win32 specific libraries
 if (WIN32)
-  set(WIN32_LIBS shlwapi rpcrt4 bcrypt)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE shlwapi rpcrt4 bcrypt)
   if(TILEDB_SERIALIZATION)
     #ws2_32.lib, crypt32.lib needed to satisfy curl dependencies
-    set(WIN32_LIBS ${WIN32_LIBS} ws2_32 crypt32)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ws2_32 crypt32)
   endif()
 
   if (TILEDB_S3)
-    list(APPEND WIN32_LIBS "${AWS_EXTRA_LIBS}")
+    # the AWSSDK does not include links to some transitive dependencies
+    # ref: github<dot>com/aws<slash>aws-sdk-cpp/issues/1074#issuecomment-466252911
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE userenv ws2_32 wininet winhttp bcrypt ncrypt crypt32 version secur32)
   endif()
 
-  foreach (LIB ${WIN32_LIBS})
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${LIB})
-  endforeach()
+  if (TILEDB_AZURE)
+    # WebServices, winhttp and crypt32 needed by Azure storage on windows
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE WebServices winhttp crypt32)
+  endif()
 endif()
 
 # macOS specific libraries
@@ -976,27 +982,15 @@ if (TILEDB_STATIC)
   append_dep_lib(OpenSSL::Crypto)
   append_dep_lib(CURL::libcurl)
 
-  if(TILEDB_S3 AND TILEDB_VCPKG)
-    foreach(tgt ${AWSSDK_LINK_LIBRARIES} ${AWSSDK_EXTRA_LIBS})
-      append_dep_lib(${tgt})
-    endforeach()
-  elseif(TILEDB_S3)
-    append_dep_lib(AWSSDK::aws-cpp-sdk-s3)
-    append_dep_lib(AWSSDK::aws-cpp-sdk-core)
-    append_dep_lib(AWSSDK::aws-c-event-stream)
-    append_dep_lib(AWSSDK::aws-checksums)
-    append_dep_lib(AWSSDK::aws-c-common)
-    append_dep_lib(AWSSDK::aws-cpp-sdk-sts)
-    append_dep_lib(AWSSDK::aws-cpp-sdk-identity-management)
-  endif()
+  foreach(tgt ${AWSSDK_LINK_LIBRARIES} ${AWSSDK_EXTRA_LIBS})
+    append_dep_lib(${tgt})
+  endforeach()
 
   append_dep_lib(fmt::fmt)
   append_dep_lib(spdlog::spdlog)
 
+  append_dep_lib(Azure::azure-storage-blobs)
   append_dep_lib(Azure::azure-storage-common)
-  if(TILEDB_AZURE AND NOT TILEDB_VCPKG)
-    append_dep_lib(Azure::azure-storage-blobs)
-  endif()
   append_dep_lib(Azure::azure-core)
   append_dep_lib(LibXml2::LibXml2)
   append_dep_lib(LibLZMA::LibLZMA)
@@ -1005,8 +999,12 @@ if (TILEDB_STATIC)
   append_dep_lib(google-cloud-cpp::experimental-storage-grpc)
 
   append_dep_lib(libmagic)
+  append_dep_lib(unofficial::libmagic::libmagic)
+  append_dep_lib(PCRE2::8BIT)
+  append_dep_lib(PCRE2::POSIX)
   append_dep_lib(Crc32c::crc32c)
   append_dep_lib(WebP::webp)
+  append_dep_lib(WebP::sharpyuv)
 
 endif()
 
