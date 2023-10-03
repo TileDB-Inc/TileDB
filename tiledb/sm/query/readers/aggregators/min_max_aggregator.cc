@@ -34,6 +34,7 @@
 
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
+#include "tiledb/sm/query/readers/aggregators/min_max.h"
 
 namespace tiledb::sm {
 
@@ -43,35 +44,6 @@ class MinMaxAggregatorStatusException : public StatusException {
       : StatusException("MinMaxAggregator", message) {
   }
 };
-
-template <typename T>
-template <typename VALUE_T>
-VALUE_T ComparatorAggregatorBase<T>::value_at(
-    const void* fixed_data, const char*, const uint64_t cell_idx) const {
-  return static_cast<const T*>(fixed_data)[cell_idx];
-}
-
-template <>
-template <>
-std::string_view ComparatorAggregatorBase<std::string>::value_at(
-    const void* fixed_data,
-    const char* var_data,
-    const uint64_t cell_idx) const {
-  if (field_info_.var_sized_) {
-    auto offsets = static_cast<const uint64_t*>(fixed_data);
-    // Return the var sized string.
-    uint64_t offset = offsets[cell_idx];
-    uint64_t next_offset = offsets[cell_idx + 1];
-
-    return std::string_view(var_data + offset, next_offset - offset);
-  } else {
-    // Return the fixed size string.
-    return std::string_view(
-        static_cast<const char*>(fixed_data) +
-            field_info_.cell_val_num_ * cell_idx,
-        field_info_.cell_val_num_);
-  }
-}
 
 template <typename T>
 void ComparatorAggregatorBase<T>::copy_to_user_buffer(
@@ -147,7 +119,8 @@ void ComparatorAggregatorBase<std::string>::copy_to_user_buffer(
 template <typename T, typename Op>
 ComparatorAggregator<T, Op>::ComparatorAggregator(const FieldInfo& field_info)
     : ComparatorAggregatorBase<T>(field_info)
-    , OutputBufferValidator(field_info) {
+    , OutputBufferValidator(field_info)
+    , aggregate_with_count_(field_info) {
   if (field_info.var_sized_ && !std::is_same<T, std::string>::value) {
     throw MinMaxAggregatorStatusException(
         "Min/max aggregates are not supported for var sized non-string "
@@ -174,26 +147,29 @@ void ComparatorAggregator<T, Op>::validate_output_buffer(
 
 template <typename T, typename Op>
 void ComparatorAggregator<T, Op>::aggregate_data(AggregateBuffer& input_data) {
-  optional<T> res{nullopt};
-
+  tuple<VALUE_T, uint64_t> res;
   if (input_data.is_count_bitmap()) {
-    res = min_max<uint64_t>(input_data);
+    res =
+        aggregate_with_count_.template aggregate<VALUE_T, uint64_t, MinMax<Op>>(
+            input_data);
   } else {
-    res = min_max<uint8_t>(input_data);
+    res =
+        aggregate_with_count_.template aggregate<VALUE_T, uint8_t, MinMax<Op>>(
+            input_data);
   }
 
   {
     // This might be called on multiple threads, the final result stored in
     // value_ should be computed in a thread safe manner.
     std::unique_lock lock(value_mtx_);
-    if (res.has_value() &&
+    if (std::get<1>(res) > 0 &&
         (ComparatorAggregatorBase<T>::value_ == std::nullopt ||
-         op_(res.value(), ComparatorAggregatorBase<T>::value_.value()))) {
-      ComparatorAggregatorBase<T>::value_ = res.value();
+         op_(std::get<0>(res), ComparatorAggregatorBase<T>::value_.value()))) {
+      ComparatorAggregatorBase<T>::value_ = std::get<0>(res);
     }
 
     if (ComparatorAggregatorBase<T>::field_info_.is_nullable_ &&
-        res.has_value()) {
+        std::get<1>(res) > 0) {
       ComparatorAggregatorBase<T>::validity_value_ = 1;
     }
   }
@@ -204,63 +180,6 @@ void ComparatorAggregator<T, Op>::copy_to_user_buffer(
     std::string output_field_name,
     std::unordered_map<std::string, QueryBuffer>& buffers) {
   ComparatorAggregatorBase<T>::copy_to_user_buffer(output_field_name, buffers);
-}
-
-template <typename T, typename Op>
-template <typename BITMAP_T>
-optional<T> ComparatorAggregator<T, Op>::min_max(AggregateBuffer& input_data) {
-  optional<VALUE_T> value;
-  auto fixed_data = input_data.fixed_data_as<void*>();
-  auto var_data = ComparatorAggregatorBase<T>::field_info_.var_sized_ ?
-                      input_data.var_data() :
-                      nullptr;
-
-  // Run different loops for bitmap versus no bitmap and nullable versus non
-  // nullable. The bitmap tells us which cells was already filtered out by
-  // ranges or query conditions.
-  if (input_data.has_bitmap()) {
-    auto bitmap_values = input_data.bitmap_data_as<BITMAP_T>();
-
-    if (ComparatorAggregatorBase<T>::field_info_.is_nullable_) {
-      auto validity_values = input_data.validity_data();
-
-      // Process for nullable min/max with bitmap.
-      for (uint64_t c = input_data.min_cell(); c < input_data.max_cell(); c++) {
-        if (validity_values[c] != 0 && bitmap_values[c] != 0) {
-          update_min_max(value, fixed_data, var_data, c);
-        }
-      }
-    } else {
-      // Process for non nullable min/max with bitmap.
-      for (uint64_t c = input_data.min_cell(); c < input_data.max_cell(); c++) {
-        if (bitmap_values[c]) {
-          update_min_max(value, fixed_data, var_data, c);
-        }
-      }
-    }
-  } else {
-    if (ComparatorAggregatorBase<T>::field_info_.is_nullable_) {
-      auto validity_values = input_data.validity_data();
-
-      // Process for nullable min/max with no bitmap.
-      for (uint64_t c = input_data.min_cell(); c < input_data.max_cell(); c++) {
-        if (validity_values[c] != 0) {
-          update_min_max(value, fixed_data, var_data, c);
-        }
-      }
-    } else {
-      // Process for non nullable min/max with no bitmap.
-      for (uint64_t c = input_data.min_cell(); c < input_data.max_cell(); c++) {
-        update_min_max(value, fixed_data, var_data, c);
-      }
-    }
-  }
-
-  if (value.has_value()) {
-    return std::make_optional<T>(value.value());
-  }
-
-  return nullopt;
 }
 
 // Explicit template instantiations

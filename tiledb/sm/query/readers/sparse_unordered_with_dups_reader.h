@@ -496,6 +496,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * @param name Field to aggregate.
    * @param var_sized Is the field var sized?
    * @param nullable Is the field nullable?
+   * @param cell_size Cell size for the field.
    * @param count_bitmap Is the bitmap a count bitmap?
    * @param min_cell Min cell to aggregate.
    * @param min_cell Max cell to aggregate.
@@ -505,6 +506,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       const std::string name,
       const bool var_sized,
       const bool nullable,
+      const uint64_t cell_size,
       const bool count_bitmap,
       const uint64_t min_cell,
       const uint64_t max_cell,

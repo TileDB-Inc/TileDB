@@ -1,5 +1,5 @@
 /**
- * @file   safe_sum.h
+ * @file   min_max.h
  *
  * @section LICENSE
  *
@@ -27,49 +27,38 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class SafeSum.
+ * This file defines class MinMax.
  */
 
-#ifndef TILEDB_SAFE_SUM_H
-#define TILEDB_SAFE_SUM_H
-
-#include <atomic>
-#include <stdexcept>
+#ifndef TILEDB_MIN_MAX_H
+#define TILEDB_MIN_MAX_H
 
 namespace tiledb::sm {
 
-struct SafeSum {
+template <class Op>
+struct MinMax {
  public:
   /**
-   * Sum function that prevent wrap arounds on overflow.
+   * Min max function.
    *
-   * @param value Value to add to the sum.
-   * @param sum Computed sum.
+   * @param value Value to compare against.
+   * @param sum Computed min/max.
+   * @param count Current count of values.
+   * @param
    */
-  template <typename SUM_T>
-  void op(SUM_T value, SUM_T& sum, uint64_t);
-
-  /**
-   * Sum function for atomics that prevent wrap arounds on overflow.
-   *
-   * @param value Value to add to the sum.
-   * @param sum Computed sum.
-   */
-  template <typename SUM_T>
-  void safe_sum(SUM_T value, std::atomic<SUM_T>& sum) {
-    // Start by saving the current sum value from the atomic to operate on in
-    // 'cur_sum'. Then compute the new sum in 'new_sum'.
-    // std::atomic_compare_exchange_weak will only update the value and return
-    // true if the value hasn't changed since we saved it in 'cur_sum'.
-    SUM_T cur_sum;
-    SUM_T new_sum;
-    do {
-      new_sum = cur_sum = sum;
-      op(value, new_sum, true);
-    } while (!std::atomic_compare_exchange_weak(&sum, &cur_sum, new_sum));
+  template <typename MIN_MAX_T>
+  void op(MIN_MAX_T value, MIN_MAX_T& min_max, uint64_t count) {
+    if (count == 0) {
+      min_max = value;
+    } else if (op_(value, min_max)) {
+      min_max = value;
+    }
   }
+
+ private:
+  Op op_;
 };
 
 }  // namespace tiledb::sm
 
-#endif  // TILEDB_SAFE_SUM_H
+#endif  // TILEDB_MIN_MAX_H

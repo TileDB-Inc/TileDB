@@ -1258,7 +1258,8 @@ AggregateBuffer DenseReader::make_aggregate_buffer(
       var_data,
       validity_data,
       false,
-      bitmap_data);
+      bitmap_data,
+      cell_size);
 }
 
 template <class DimType, class OffType>

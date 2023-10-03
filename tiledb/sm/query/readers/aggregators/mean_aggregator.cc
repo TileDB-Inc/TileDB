@@ -34,6 +34,7 @@
 
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
+#include "tiledb/sm/query/readers/aggregators/safe_sum.h"
 
 namespace tiledb::sm {
 
@@ -48,7 +49,7 @@ template <typename T>
 MeanAggregator<T>::MeanAggregator(const FieldInfo field_info)
     : OutputBufferValidator(field_info)
     , field_info_(field_info)
-    , summator_(field_info)
+    , aggregate_with_count_(field_info)
     , sum_(0)
     , count_(0)
     , validity_value_(
@@ -93,26 +94,25 @@ void MeanAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
   }
 
   try {
-    tuple<typename sum_type_data<T>::sum_type, uint64_t, optional<uint8_t>> res{
-        0, 0, nullopt};
+    tuple<typename sum_type_data<T>::sum_type, uint64_t> res;
 
     // TODO: This is duplicated across aggregates but will go away with
     // sc-33104.
     if (input_data.is_count_bitmap()) {
-      res = summator_.template aggregate<
+      res = aggregate_with_count_.template aggregate<
           typename sum_type_data<T>::sum_type,
           uint64_t,
           SafeSum>(input_data);
     } else {
-      res = summator_.template aggregate<
+      res = aggregate_with_count_.template aggregate<
           typename sum_type_data<T>::sum_type,
           uint8_t,
           SafeSum>(input_data);
     }
 
-    SafeSum::safe_sum(std::get<0>(res), sum_);
+    SafeSum().safe_sum(std::get<0>(res), sum_);
     count_ += std::get<1>(res);
-    if (field_info_.is_nullable_ && std::get<2>(res).value() == 1) {
+    if (field_info_.is_nullable_ && std::get<1>(res) > 0) {
       validity_value_ = 1;
     }
   } catch (std::overflow_error& e) {

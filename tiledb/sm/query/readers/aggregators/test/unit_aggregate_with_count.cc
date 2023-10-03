@@ -66,14 +66,13 @@ TEMPLATE_LIST_TEST_CASE(
   SECTION("No bitmap") {
     // Regular attribute.
     AggregateBuffer input_data{
-        2, 10, fixed_data.data(), nullopt, nullopt, false, nullopt};
+        2, 10, fixed_data.data(), nullopt, nullopt, false, nullopt, 0};
     auto res = aggregator.template aggregate<
         typename sum_type_data<T>::sum_type,
         uint8_t,
         SafeSum>(input_data);
     CHECK(std::get<0>(res) == 27);
     CHECK(std::get<1>(res) == 8);
-    CHECK(std::get<2>(res) == nullopt);
 
     // Nullable attribute.
     AggregateBuffer input_data2{
@@ -83,49 +82,53 @@ TEMPLATE_LIST_TEST_CASE(
         nullopt,
         validity_data.data(),
         false,
-        nullopt};
+        nullopt,
+        0};
     auto res_nullable = aggregator_nullable.template aggregate<
         typename sum_type_data<T>::sum_type,
         uint8_t,
         SafeSum>(input_data2);
     CHECK(std::get<0>(res_nullable) == 14);
     CHECK(std::get<1>(res_nullable) == 4);
-    CHECK(std::get<2>(res_nullable) == std::make_optional<uint8_t>(1));
   }
 
   SECTION("Regular bitmap") {
     // Regular attribute.
     std::vector<uint8_t> bitmap = {1, 1, 0, 0, 0, 1, 1, 0, 1, 0};
     AggregateBuffer input_data{
-        2, 10, fixed_data.data(), nullopt, nullopt, false, bitmap.data()};
+        2, 10, fixed_data.data(), nullopt, nullopt, false, bitmap.data(), 0};
     auto res = aggregator.template aggregate<
         typename sum_type_data<T>::sum_type,
         uint8_t,
         SafeSum>(input_data);
     CHECK(std::get<0>(res) == 11);
     CHECK(std::get<1>(res) == 3);
-    CHECK(std::get<2>(res) == nullopt);
 
     AggregateBuffer input_data2{
-        0, 2, fixed_data.data(), nullopt, nullopt, false, bitmap.data()};
+        0, 2, fixed_data.data(), nullopt, nullopt, false, bitmap.data(), 0};
     auto res2 = aggregator.template aggregate<
         typename sum_type_data<T>::sum_type,
         uint8_t,
         SafeSum>(input_data2);
     CHECK(std::get<0>(res2) == 3);
     CHECK(std::get<1>(res2) == 2);
-    CHECK(std::get<2>(res2) == nullopt);
 
     // Nullable attribute.
     AggregateBuffer input_data3{
-        0, 2, fixed_data.data(), nullopt, validity_data.data(), false, nullopt};
+        0,
+        2,
+        fixed_data.data(),
+        nullopt,
+        validity_data.data(),
+        false,
+        nullopt,
+        0};
     auto res_nullable = aggregator_nullable.template aggregate<
         typename sum_type_data<T>::sum_type,
         uint8_t,
         SafeSum>(input_data3);
     CHECK(std::get<0>(res_nullable) == 0);
     CHECK(std::get<1>(res_nullable) == 0);
-    CHECK(std::get<2>(res_nullable) == std::make_optional<uint8_t>(0));
 
     AggregateBuffer input_data4{
         2,
@@ -134,38 +137,50 @@ TEMPLATE_LIST_TEST_CASE(
         nullopt,
         validity_data.data(),
         false,
-        bitmap.data()};
+        bitmap.data(),
+        0};
     auto res_nullable2 = aggregator_nullable.template aggregate<
         typename sum_type_data<T>::sum_type,
         uint8_t,
         SafeSum>(input_data4);
     CHECK(std::get<0>(res_nullable2) == 6);
     CHECK(std::get<1>(res_nullable2) == 2);
-    CHECK(std::get<2>(res_nullable2) == std::make_optional<uint8_t>(1));
   }
 
   SECTION("Count bitmap") {
     // Regular attribute.
     std::vector<uint64_t> bitmap_count = {1, 2, 4, 0, 0, 1, 2, 0, 1, 2};
     AggregateBuffer input_data{
-        2, 10, fixed_data.data(), nullopt, nullopt, true, bitmap_count.data()};
+        2,
+        10,
+        fixed_data.data(),
+        nullopt,
+        nullopt,
+        true,
+        bitmap_count.data(),
+        0};
     auto res = aggregator.template aggregate<
         typename sum_type_data<T>::sum_type,
         uint64_t,
         SafeSum>(input_data);
     CHECK(std::get<0>(res) == 29);
     CHECK(std::get<1>(res) == 10);
-    CHECK(std::get<2>(res) == nullopt);
 
     AggregateBuffer input_data2{
-        0, 2, fixed_data.data(), nullopt, nullopt, true, bitmap_count.data()};
+        0,
+        2,
+        fixed_data.data(),
+        nullopt,
+        nullopt,
+        true,
+        bitmap_count.data(),
+        0};
     auto res2 = aggregator.template aggregate<
         typename sum_type_data<T>::sum_type,
         uint64_t,
         SafeSum>(input_data2);
     CHECK(std::get<0>(res2) == 5);
     CHECK(std::get<1>(res2) == 3);
-    CHECK(std::get<2>(res2) == nullopt);
 
     // Nullable attribute.
     AggregateBuffer input_data3{
@@ -175,14 +190,14 @@ TEMPLATE_LIST_TEST_CASE(
         nullopt,
         validity_data.data(),
         true,
-        bitmap_count.data()};
+        bitmap_count.data(),
+        0};
     auto res_nullable = aggregator_nullable.template aggregate<
         typename sum_type_data<T>::sum_type,
         uint64_t,
         SafeSum>(input_data3);
     CHECK(std::get<0>(res_nullable) == 22);
     CHECK(std::get<1>(res_nullable) == 7);
-    CHECK(std::get<2>(res_nullable) == std::make_optional<uint8_t>(1));
 
     AggregateBuffer input_data4{
         0,
@@ -191,13 +206,13 @@ TEMPLATE_LIST_TEST_CASE(
         nullopt,
         validity_data.data(),
         true,
-        bitmap_count.data()};
+        bitmap_count.data(),
+        0};
     auto res_nullable2 = aggregator_nullable.template aggregate<
         typename sum_type_data<T>::sum_type,
         uint64_t,
         SafeSum>(input_data4);
     CHECK(std::get<0>(res_nullable2) == 0);
     CHECK(std::get<1>(res_nullable2) == 0);
-    CHECK(std::get<2>(res_nullable2) == std::make_optional<uint8_t>(0));
   }
 }
