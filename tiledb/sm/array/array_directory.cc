@@ -191,7 +191,8 @@ ArrayDirectory::load_all_array_schemas(
 std::vector<shared_ptr<const Enumeration>>
 ArrayDirectory::load_enumerations_from_paths(
     const std::vector<std::string>& enumeration_paths,
-    const EncryptionKey& encryption_key) const {
+    const EncryptionKey& encryption_key,
+    MemoryTracker& memory_tracker) const {
   // This should never be called with an empty list of enumeration paths, but
   // there's no reason to not check an early return case here given that code
   // changes.
@@ -202,7 +203,8 @@ ArrayDirectory::load_enumerations_from_paths(
   std::vector<shared_ptr<const Enumeration>> ret(enumeration_paths.size());
   auto& tp = resources_.get().io_tp();
   throw_if_not_ok(parallel_for(&tp, 0, enumeration_paths.size(), [&](size_t i) {
-    ret[i] = load_enumeration(enumeration_paths[i], encryption_key);
+    ret[i] =
+        load_enumeration(enumeration_paths[i], encryption_key, memory_tracker);
     return Status::Ok();
   }));
   return ret;
@@ -1313,7 +1315,8 @@ bool ArrayDirectory::consolidation_with_timestamps_supported(
 
 shared_ptr<const Enumeration> ArrayDirectory::load_enumeration(
     const std::string& enumeration_path,
-    const EncryptionKey& encryption_key) const {
+    const EncryptionKey& encryption_key,
+    MemoryTracker& memory_tracker) const {
   auto timer_se = resources_.get().stats().start_timer("sm_load_enumeration");
 
   auto enmr_uri = uri_.join_path(constants::array_schema_dir_name)
@@ -1322,6 +1325,15 @@ shared_ptr<const Enumeration> ArrayDirectory::load_enumeration(
 
   auto&& tile = GenericTileIO::load(resources_, enmr_uri, 0, encryption_key);
   resources_.get().stats().add_counter("read_enumeration_size", tile.size());
+
+  if (!memory_tracker.take_memory(
+          tile.size(), MemoryTracker::MemoryType::ENUMERATION)) {
+    throw ArrayDirectoryException(
+        "Error loading enumeration; Insufficient memory budget; Needed " +
+        std::to_string(tile.size()) + " but only had " +
+        std::to_string(memory_tracker.get_memory_available()) +
+        " from budget " + std::to_string(memory_tracker.get_memory_budget()));
+  }
 
   Deserializer deserializer(tile.data(), tile.size());
   return Enumeration::deserialize(deserializer);
