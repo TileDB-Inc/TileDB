@@ -65,12 +65,12 @@ class Benchmark : public BenchmarkBase {
     const unsigned skip = 2;
     for (uint32_t i = 1; i < max_row; i += skip) {
       for (uint32_t j = 1; j < max_col; j += skip) {
-        coords_.push_back(i);
-        coords_.push_back(j);
+        d1_.push_back(i);
+        d2_.push_back(j);
       }
     }
 
-    data_.resize(coords_.size() / 2);
+    data_.resize(d1_.size());
     for (uint64_t i = 0; i < data_.size(); i++)
       data_[i] = i;
 
@@ -78,7 +78,8 @@ class Benchmark : public BenchmarkBase {
     Query query(ctx_, array);
     query.set_layout(TILEDB_UNORDERED)
         .set_data_buffer("a", data_)
-        .set_coordinates(coords_);
+        .set_data_buffer("d1", d1_)
+        .set_data_buffer("d2", d2_);
     query.submit();
     array.close();
   }
@@ -103,11 +104,13 @@ class Benchmark : public BenchmarkBase {
     Array array(ctx_, array_uri_, TILEDB_READ);
     Query query(ctx_, array);
     data_.resize(query.est_result_size("a"));
-    coords_.resize(query.est_result_size("TILEDB_COORDS"));
+    d1_.resize(query.est_result_size("d1"));
+    d2_.resize(query.est_result_size("d2"));
     query.set_subarray(Subarray(ctx_, array).set_subarray(subarray_))
         .set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a", data_)
-        .set_coordinates(coords_);
+        .set_data_buffer("d1", d1_)
+        .set_data_buffer("d2", d2_);
     query.submit();
     array.close();
   }
@@ -120,7 +123,7 @@ class Benchmark : public BenchmarkBase {
 
   Context ctx_;
   std::vector<int> data_;
-  std::vector<uint32_t> subarray_, coords_;
+  std::vector<uint32_t> subarray_, d1_, d2_;
 };
 
 int main(int argc, char** argv) {
