@@ -401,7 +401,7 @@ class Group {
    * Remove a member from a group
    *
    * @param name_or_uri Name of member to remove. If the member has no name,
-   * this parameter should be set of the URI of the member. In that case, only
+   * this parameter should be set to the URI of the member. In that case, only
    * the unnamed member with the given URI will be removed.
    */
   void remove_member(const std::string& name_or_uri) {

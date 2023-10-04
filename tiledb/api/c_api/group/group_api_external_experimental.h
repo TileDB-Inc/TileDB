@@ -367,7 +367,7 @@ TILEDB_EXPORT capi_return_t tiledb_group_add_member(
  * @param ctx The TileDB context.
  * @param group An group opened in WRITE mode.
  * @param name_or_uri Name of member to remove. If the member has no name, this
- * parameter should be set of the URI of the member. In that case, only the
+ * parameter should be set to the URI of the member. In that case, only the
  * unnamed member with the given URI will be removed.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
