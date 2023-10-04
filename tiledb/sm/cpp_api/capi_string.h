@@ -96,7 +96,7 @@ class CAPIString {
  * If the handle is null returns nullopt.
  */
 inline std::optional<std::string> to_string(tiledb_string_t** handle) {
-  if (handle == nullptr) {
+  if (*handle == nullptr) {
     return std::nullopt;
   }
   return CAPIString(handle).str();
