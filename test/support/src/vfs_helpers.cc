@@ -456,8 +456,13 @@ VfsFixture::VfsFixture() {
 }
 
 VfsFixture::~VfsFixture() {
-  if (temp_dir_.is_s3() && vfs_.is_bucket(temp_dir_.to_string())) {
-    vfs_.remove_bucket(temp_dir_.to_string());
+  if (temp_dir_.is_s3()) {
+    if (!ctx_.is_supported_fs(TILEDB_S3)) {
+      return;
+    }
+    if (vfs_.is_bucket(temp_dir_.to_string())) {
+      vfs_.remove_bucket(temp_dir_.to_string());
+    }
   } else if (vfs_.is_dir(temp_dir_.to_string())) {
     vfs_.remove_dir(temp_dir_.to_string());
   }
@@ -465,7 +470,7 @@ VfsFixture::~VfsFixture() {
 
 void VfsFixture::setup_test() {
   auto uri_str = temp_dir_.to_string();
-  if (temp_dir_.backend_name() == "s3") {
+  if (temp_dir_.is_s3()) {
     if (!ctx_.is_supported_fs(TILEDB_S3)) {
       return;
     }
@@ -507,7 +512,9 @@ void VfsFixture::filter_expected(const LsRecursiveFilter& filter) {
       std::remove_if(
           expected_results_.begin(),
           expected_results_.end(),
-          [&filter](const auto& a) { return !filter(a.first); }),
+          [&filter](const std::pair<std::string, uint64_t>& a) {
+            return !filter(a.first);
+          }),
       expected_results_.end());
 }
 
@@ -536,13 +543,13 @@ void VfsFixture::test_ls_recursive_capi(
   }
 
   // Allocate required LsRecursiveData for the filtered results.
-  // TODO: This will probably fail CI for lifetime issues. Use malloc/free?
   size_t paths_max = 0;
   for (const auto& result : expected_results_) {
     paths_max += result.first.size();
   }
-  char* data[expected_results_.size()];
-  uint64_t object_sizes[expected_results_.size()];
+  char** data = (char**)malloc(expected_results_.size() * sizeof(char*));
+  uint64_t* object_sizes =
+      (uint64_t*)malloc(expected_results_.size() * sizeof(uint64_t));
   LsRecursiveData results(data, paths_max, object_sizes, filter);
 
   tiledb_vfs_ls_recursive(

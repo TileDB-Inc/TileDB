@@ -972,6 +972,10 @@ TEST_CASE_METHOD(
     VfsFixture, "C API: VFS ls_recursive", "[capi][vfs][ls-recursive]") {
   // Tests ls_recursive against S3, Memfs, and Posix / Windows filesystems.
   // GCS, Azure, and HDFS are currently unsupported for ls_recursive.
+  if (temp_dir_.is_s3() && !ctx_.is_supported_fs(TILEDB_S3)) {
+    return;
+  }
+
   DYNAMIC_SECTION("Testing ls_recursive over " << fs_name() << " backend") {
     // C callback with a custom filter to be used for remaining SECTIONS.
     LsRecursiveCb callback = [](const char* path,
@@ -984,7 +988,8 @@ TEST_CASE_METHOD(
         if (path_len + ls_data->path_pos_ >= ls_data->path_max_) {
           return 0;
         }
-        ls_data->path_data_[ls_data->path_pos_] = strndup(path, path_len);
+        ls_data->path_data_[ls_data->path_pos_] = (char*)malloc(path_len + 1);
+        strcpy(ls_data->path_data_[ls_data->path_pos_], path);
         ls_data->object_sizes_[ls_data->path_pos_] = object_size;
         ls_data->path_pos_++;
       }

@@ -763,13 +763,14 @@ struct VfsFixture {
     }
 
     ~LsRecursiveData() {
-      // Top level data was stack allocated.
       for (size_t i = 0; i < path_pos_; ++i) {
         free(path_data_[i]);
       }
+      free(path_data_);
+      free(object_sizes_);
     }
 
-    // Buffer resulting path data is appended to.
+    // Buffers for storing paths and object sizes.
     char** path_data_;
     uint64_t* object_sizes_;
     // Current buffer position, max buffer size for paths collected.

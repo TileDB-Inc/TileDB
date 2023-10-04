@@ -511,6 +511,10 @@ TEST_CASE_METHOD(
     "[cppapi][vfs][ls-recursive]") {
   // Tests ls_recursive against S3, Memfs, and Posix / Windows filesystems.
   // GCS, Azure, and HDFS are currently unsupported for ls_recursive.
+  if (temp_dir_.is_s3() && !ctx_.is_supported_fs(TILEDB_S3)) {
+    return;
+  }
+
   DYNAMIC_SECTION("ls_recursive with " << fs_name() << " backend") {
     SECTION("Default filter (include all)") {
       test_ls_recursive();
@@ -550,6 +554,10 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     tiledb::test::VfsFixture, "C++ API: Throwing filter", "[vfs]") {
+  if (temp_dir_.is_s3() && !ctx_.is_supported_fs(TILEDB_S3)) {
+    return;
+  }
+
   DYNAMIC_SECTION("ls_recursive with " << fs_name() << " backend") {
     LsRecursiveFilter filter = [](const std::string_view&) -> bool {
       throw std::runtime_error("Throwing filter");
