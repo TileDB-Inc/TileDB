@@ -31,7 +31,9 @@
  * labels.
  */
 
+#include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/serialization_wrappers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
@@ -39,7 +41,6 @@
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/enums/encryption_type.h"
 
-#include <test/support/tdb_catch.h>
 #include <iostream>
 #include <string>
 
@@ -249,6 +250,10 @@ class SparseArrayExample1 : public TemporaryDirectoryFixture {
           ctx, subarray, "x", &ranges[2 * r], &ranges[2 * r + 1], nullptr));
     }
 
+    if (serialize_) {
+      tiledb_subarray_serialize(ctx, array, &subarray);
+    }
+
     // Define label buffer and size.
     std::vector<double> label_data(expected_label_data.size());
     uint64_t label_data_size{label_data.size() * sizeof(double)};
@@ -311,15 +316,15 @@ TEST_CASE_METHOD(
 #endif
 
   // Input vectors.
-  std::vector<uint64_t> input_index_data{};
-  std::vector<double> input_label_data{};
-  std::vector<double> input_attr_data{};
+  std::vector<uint64_t> input_index_data{4};
+  std::vector<double> input_label_data{4};
+  std::vector<double> input_attr_data{4};
 
   // Expected output vectors.
-  std::vector<double> label_data_sorted_by_index{};
-  std::vector<double> label_data_sorted_by_label{};
-  std::vector<double> attr_data_sorted_by_index{};
-  std::vector<uint64_t> index_data_sorted_by_label{};
+  std::vector<double> label_data_sorted_by_index{4};
+  std::vector<double> label_data_sorted_by_label{4};
+  std::vector<double> attr_data_sorted_by_index{4};
+  std::vector<uint64_t> index_data_sorted_by_label{4};
 
   // Dimension label parameters.
   tiledb_data_order_t label_order{};
@@ -421,9 +426,9 @@ TEST_CASE_METHOD(
 #endif
 
   // Vectors for input data.
-  std::vector<uint64_t> input_index_data{};
-  std::vector<double> input_label_data{};
-  std::vector<double> input_attr_data{};
+  std::vector<uint64_t> input_index_data{4};
+  std::vector<double> input_label_data{4};
+  std::vector<double> input_attr_data{4};
 
   // Dimension label parameters.
   tiledb_data_order_t label_order{};

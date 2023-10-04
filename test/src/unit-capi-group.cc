@@ -519,6 +519,61 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
+    GroupFx,
+    "C API: Group Metadata, delete",
+    "[capi][group][metadata][delete]") {
+  // TODO: move this test to unit_metadata.cc.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+
+  std::string group1_uri = temp_dir + "group1";
+  int rc = tiledb_group_create(ctx_, group1_uri.c_str());
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_group_t* group;
+  rc = tiledb_group_alloc(ctx_, group1_uri.c_str(), &group);
+  REQUIRE(rc == TILEDB_OK);
+
+  int metadata_val = 1;
+  set_group_timestamp(group, 1);
+  rc = tiledb_group_open(ctx_, group, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_group_put_metadata(
+      ctx_, group, "hello", TILEDB_INT32, 1, &metadata_val);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_group_put_metadata(
+      ctx_, group, "goodbye", TILEDB_INT32, 1, &metadata_val);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_group_delete_metadata(ctx_, group, "hello");
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_group_close(ctx_, group);
+  CHECK(rc == TILEDB_OK);
+
+  metadata_val = 2;
+  set_group_timestamp(group, 2);
+  rc = tiledb_group_open(ctx_, group, TILEDB_WRITE);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_group_put_metadata(
+      ctx_, group, "goodbye", TILEDB_INT32, 1, &metadata_val);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_group_delete_metadata(ctx_, group, "goodbye");
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_group_close(ctx_, group);
+  CHECK(rc == TILEDB_OK);
+
+  rc = tiledb_group_open(ctx_, group, TILEDB_READ);
+  CHECK(rc == TILEDB_OK);
+  uint64_t metadata_num;
+  rc = tiledb_group_get_metadata_num(ctx_, group, &metadata_num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(metadata_num == 0);
+  rc = tiledb_group_close(ctx_, group);
+  CHECK(rc == TILEDB_OK);
+
+  tiledb_group_free(&group);
+}
+
+TEST_CASE_METHOD(
     GroupFx, "C API: Group, write/read", "[capi][group][metadata][read]") {
   bool use_get_member_by_index_v2 = true;
   SECTION("Using tiledb_group_get_member_by_index_v2") {

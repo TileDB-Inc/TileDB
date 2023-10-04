@@ -75,7 +75,7 @@ const std::string& get_temp_path() {
 std::string g_vfs;
 
 void check_tiledb_error_with(
-    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg) {
+    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg, bool contains) {
   CHECK(rc == TILEDB_ERR);
   if (rc != TILEDB_ERR) {
     return;
@@ -93,7 +93,11 @@ void check_tiledb_error_with(
       CHECK(false);
     } else {
       std::string err_msg{raw_msg};
-      CHECK(err_msg == expected_msg);
+      if (contains) {
+        CHECK_THAT(err_msg, Catch::Matchers::ContainsSubstring(expected_msg));
+      } else {
+        CHECK(err_msg == expected_msg);
+      }
     }
   }
   tiledb_error_free(&err);
@@ -116,7 +120,7 @@ void check_tiledb_ok(tiledb_ctx_t* ctx, int rc) {
 }
 
 void require_tiledb_error_with(
-    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg) {
+    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg, bool contains) {
   REQUIRE(rc == TILEDB_ERR);
   tiledb_error_t* err{nullptr};
   tiledb_ctx_get_last_error(ctx, &err);
@@ -132,7 +136,11 @@ void require_tiledb_error_with(
     REQUIRE(false);
   }
   std::string err_msg{raw_msg};
-  REQUIRE(err_msg == expected_msg);
+  if (contains) {
+    REQUIRE_THAT(err_msg, Catch::Matchers::ContainsSubstring(expected_msg));
+  } else {
+    REQUIRE(err_msg == expected_msg);
+  }
   tiledb_error_free(&err);
 }
 
@@ -460,7 +468,8 @@ void create_array(
     tiledb_layout_t cell_order,
     uint64_t capacity,
     bool allows_dups,
-    bool serialize_array_schema) {
+    bool serialize_array_schema,
+    const optional<std::vector<bool>>& nullable) {
   // For easy reference
   auto dim_num = dim_names.size();
   auto attr_num = attr_names.size();
@@ -520,6 +529,12 @@ void create_array(
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_attribute_set_cell_val_num(ctx, a, cell_val_num[i]);
     REQUIRE(rc == TILEDB_OK);
+
+    if (nullable != nullopt) {
+      rc = tiledb_attribute_set_nullable(ctx, a, nullable.value()[i]);
+      REQUIRE(rc == TILEDB_OK);
+    }
+
     rc = tiledb_array_schema_add_attribute(ctx, array_schema, a);
     REQUIRE(rc == TILEDB_OK);
     tiledb_attribute_free(&a);
@@ -817,11 +832,8 @@ void create_ctx_and_vfs(
         tiledb_config_set(
             config,
             "vfs.azure.blob_endpoint",
-            "127.0.0.1:10000/devstoreaccount1",
+            "http://127.0.0.1:10000/devstoreaccount1",
             &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.azure.use_https", "false", &error) ==
-        TILEDB_OK);
   }
   REQUIRE(tiledb_ctx_alloc(config, ctx) == TILEDB_OK);
   REQUIRE(error == nullptr);

@@ -165,6 +165,7 @@ struct tiledb_vfs_fh_handle_t
       tiledb::sm::VFS* vfs,
       tiledb::sm::VFSMode mode)
       : vfs_fh_{uri, vfs, mode} {
+    throw_if_not_ok(vfs_fh_.open());
   }
 
   Status open() {

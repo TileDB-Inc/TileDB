@@ -71,10 +71,13 @@ class Reader : public ReaderBase, public IQueryStrategy {
       Array* array,
       Config& config,
       std::unordered_map<std::string, QueryBuffer>& buffers,
+      std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
       Subarray& subarray,
       Layout layout,
       std::optional<QueryCondition>& condition,
-      bool skip_checks_serialization = false);
+      DefaultChannelAggregates& default_channel_aggregates,
+      bool skip_checks_serialization = false,
+      bool remote_query = false);
 
   /** Destructor. */
   ~Reader() = default;
@@ -100,7 +103,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
   QueryStatusDetailsReason status_incomplete_reason() const;
 
   /** Initialize the memory budget variables. */
-  void initialize_memory_budget();
+  void refresh_config();
 
   /** Returns the current read state. */
   const ReadState* read_state() const;

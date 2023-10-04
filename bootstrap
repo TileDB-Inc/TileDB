@@ -46,6 +46,7 @@ Configuration:
     --disable-stats                 disables internal TileDB statistics
     --disable-avx2                  disables use of AVX2 instructions
     --disable-webp                  disables building of webp library and linkage test
+    --disable-vcpkg                 disables use of vcpkg for downloading and building dependencies
     --enable-static-tiledb          enables building TileDB as a static library
     --enable-sanitizer=SAN          enable sanitizer (clang only)
                                     (address|memory|leak|thread|undefined)
@@ -62,9 +63,11 @@ Configuration:
     --enable-tools                  enables TileDB CLI tools (experimental)
     --enable-ccache                 enables use of ccache (if present)
     --enable-arrow-tests            enables the compilation of the arrow adapter unit tests
-    --enable-_crc32                  enables building of crc32 library and linkage test
+    --enable-_crc32                 enables building of crc32 library and linkage test
     --enable-abseil                 enables building of abseil library and linkage test
     --enable-experimental-features  enables experimental TileDB features
+    --enable-rest-tests             enables REST tests
+    --enable-aws-s3-config          enables AWS S3 configuration for tests
     --enable=arg1,arg2...           same as "--enable-arg1 --enable-arg2 ..."
 
 
@@ -85,7 +88,7 @@ Example:
 
 # Parse arguments
 prefix_dirs="${default_prefix}"
-tiledb_vcpkg="OFF"
+tiledb_vcpkg="ON"
 dependency_dir="${default_dependency}"
 sanitizer=""
 build_type="Release"
@@ -102,7 +105,7 @@ tiledb_remove_deprecations="OFF"
 tiledb_stats="ON"
 tiledb_static="OFF"
 tiledb_disable_avx2=""
-tiledb_enable_assertions="OFF"
+tiledb_assertions="OFF"
 tiledb_serialization="OFF"
 tiledb_tools="OFF"
 tiledb_ccache="OFF"
@@ -111,12 +114,15 @@ tiledb_experimental_features="OFF"
 tiledb_build_crc32="OFF"
 tiledb_build_webp="ON"
 tiledb_build_abseil="OFF"
+tiledb_tests_enable_rest="OFF"
+tiledb_tests_aws_s3_config="OFF"
 enable_multiple=""
 while test $# != 0; do
     case "$1" in
     --prefix=*) dir=`arg "$1"`
                 prefix_dirs="$dir";;
-    --enable-vcpkg) tiledb_vcpkg="ON";;
+    --enable-vcpkg) echo "Argument '--enable-vcpkg' is obsolete and will be removed in a future version. Vcpkg is now enabled by default."
+                    tiledb_vcpkg="ON";;
     --dependency=*) dir=`arg "$1"`
                 dependency_dir="$dir";;
     --force-build-all-deps) tiledb_force_all_deps="ON";;
@@ -127,6 +133,7 @@ while test $# != 0; do
     --disable-stats) tiledb_stats="OFF";;
     --disable-avx2) tiledb_disable_avx2="-DCOMPILER_SUPPORTS_AVX2=FALSE";;
     --disable-webp) tiledb_build_webp="OFF";;
+    --disable-vcpkg) tiledb_vcpkg="OFF";;
     --enable-assertions) tiledb_assertions="ON";;
     --enable-debug) build_type="Debug";;
     --enable-release-symbols) build_type="RelWithDebInfo";;
@@ -146,6 +153,8 @@ while test $# != 0; do
     --enable-_crc32) tiledb_build_crc32="ON";;
     --enable-abseil) tiledb_build_abseil="ON";;
     --enable-experimental-features) tiledb_experimental_features="ON";;
+    --enable-rest-tests) tiledb_tests_enable_rest="ON";;
+    --enable-aws-s3-config) tiledb_tests_aws_s3_config="ON";;
     --enable=*) s=`arg "$1"`
                 enable_multiple+="${enable_multiple:+,}${s}";;
     --help) usage ;;
@@ -158,7 +167,8 @@ done
 IFS=',' read -ra enables <<< "$enable_multiple"
 for en in "${enables[@]}"; do
   case "$en" in
-    vcpkg) tiledb_vcpkg="ON";;
+    vcpkg) echo "Argument '--enable-vcpkg' is obsolete and will be removed in a future version. Vcpkg is now enabled by default."
+           tiledb_vcpkg="ON";;
     assertions) tiledb_assertions="ON";;
     debug) build_type="Debug";;
     release-symbols) build_type="RelWithDebInfo";;
@@ -176,9 +186,15 @@ for en in "${enables[@]}"; do
     hdfs) tiledb_hdfs="ON";;
     static-tiledb) tiledb_static="ON";;
     experimental-features) tiledb_experimental_features="ON";;
+    rest-tests) tiledb_tests_enable_rest="ON";;
+    aws-s3-config) tiledb_tests_aws_s3_config="ON";;
     *) die "Unknown option: --enable-$en" ;;
   esac
 done
+
+if [ "${tiledb_build_abseil}" = "ON" ]; then
+    echo "Argument '--build-abseil' is obsolete and will be removed in TileDB 2.18"
+fi
 
 if [ "${source_dir}" = "${binary_dir}" ]; then
     die "cannot build the project in the source directory! Out-of-source build is enforced!"
@@ -233,11 +249,12 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_ARROW_TESTS=${tiledb_arrow_tests} \
     -DTILEDB_CRC32=${tiledb_build_crc32} \
     -DTILEDB_WEBP=${tiledb_build_webp} \
-    -DTILEDB_ABSEIL=${tiledb_build_abseil} \
     -DTILEDB_FORCE_ALL_DEPS=${tiledb_force_all_deps} \
     -DTILEDB_REMOVE_DEPRECATIONS=${tiledb_remove_deprecations} \
     -DSANITIZER="${sanitizer}" \
     -DTILEDB_EXPERIMENTAL_FEATURES=${tiledb_experimental_features} \
+    -DTILEDB_TESTS_ENABLE_REST=${tiledb_tests_enable_rest} \
+    -DTILEDB_TESTS_AWS_S3_CONFIG=${tiledb_tests_aws_s3_config} \
     ${tiledb_disable_avx2} \
     "${source_dir}" || die "failed to configure the project"
 

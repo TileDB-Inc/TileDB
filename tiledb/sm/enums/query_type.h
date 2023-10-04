@@ -44,8 +44,12 @@ namespace sm {
 /** Defines the query type. */
 enum class QueryType : uint8_t {
 #define TILEDB_QUERY_TYPE_ENUM(id) id
+// Use token-pasting _CONCAT_ID version for precarious symbols
+// (such as DELETE, see `query_api_enum.h`)
+#define TILEDB_QUERY_TYPE_ENUM_CONCAT_ID(id, id2) id##id2
 #include "tiledb/api/c_api/query/query_api_enum.h"
 #undef TILEDB_QUERY_TYPE_ENUM
+#undef TILEDB_QUERY_TYPE_ENUM_CONCAT_ID
 };
 
 /** Returns the string representation of the input query type. */

@@ -17,6 +17,7 @@ ignored_files = frozenset(
         "heap_profiler.cc",
         "heap_memory.h",
         "heap_memory.cc",
+        "stop_token.h",
     ]
 )
 

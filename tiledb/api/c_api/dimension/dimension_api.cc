@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file defines C API functions for the config section.
+ * This file defines C API functions for the dimension section.
  */
 
 #include "../../c_api_support/c_api_support.h"

@@ -55,8 +55,6 @@
 #include "experimental/tiledb/common/dag/ports/ports.h"
 #include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
 
-#include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
-
 #include "experimental/tiledb/common/dag/nodes/detail/simple/simple_base.h"
 
 namespace tiledb::common {

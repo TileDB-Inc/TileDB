@@ -46,6 +46,11 @@ steps:
   condition: and(eq(variables['Agent.OS'], 'Darwin'), startsWith(variables['imageName'], 'macOS-'))
   displayName: 'prep macOS for "runner" core dumps'
 
+
+- bash: |
+    brew install autoconf automake
+  condition: eq(variables['Agent.OS'], 'Darwin')
+
 - bash: |
     # enable core dumps
     ulimit -c               # should output 0 if disabled

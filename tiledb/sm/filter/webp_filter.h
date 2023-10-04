@@ -107,27 +107,35 @@ class WebpFilter : public Filter {
   /* ********************************* */
 
   /**
+   * Constructor.
    * Default setting for webp quality factor is 100.0 for lossy compression.
    * Caller must set colorspace format filter option.
+   *
+   * @param filter_data_type Datatype the filter will operate on.
    */
-  WebpFilter()
-      : WebpFilter(100.0f, WebpInputFormat::WEBP_NONE, false, 0, 0) {
+  WebpFilter(Datatype filter_data_type)
+      : WebpFilter(
+            100.0f, WebpInputFormat::WEBP_NONE, false, 0, 0, filter_data_type) {
   }
 
   /**
+   * Constructor.
+   *
    * @param quality Quality factor to use for WebP lossy compression.
    * @param inputFormat Colorspace format to use for WebP compression.
    * @param lossless Enable lossless compression.
    * @param y_extent Extent at dimension index 0.
    * @param x_extent Extent at dimension index 1.
+   * @param filter_data_type Datatype the filter will operate on.
    */
   WebpFilter(
       float quality,
       WebpInputFormat inputFormat,
       bool lossless,
       uint16_t y_extent,
-      uint16_t x_extent)
-      : Filter(FilterType::FILTER_WEBP)
+      uint16_t x_extent,
+      Datatype filter_data_type)
+      : Filter(FilterType::FILTER_WEBP, filter_data_type)
       , quality_(quality)
       , format_(inputFormat)
       , lossless_(lossless)
@@ -143,6 +151,13 @@ class WebpFilter : public Filter {
    * @param out Location to write output.
    */
   void dump(FILE* out) const override;
+
+  /**
+   * Checks if the filter is applicable to the input datatype.
+   *
+   * @param type Input datatype to check filter compatibility.
+   */
+  bool accepts_input_datatype(Datatype datatype) const override;
 
   /**
    * Runs the filter forward, taking raw colorspace values as input and writing.

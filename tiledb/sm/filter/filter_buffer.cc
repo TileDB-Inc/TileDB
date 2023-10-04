@@ -33,6 +33,7 @@
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/filter/filter_storage.h"
 
 #include <algorithm>
@@ -195,6 +196,74 @@ std::vector<ConstBuffer> FilterBuffer::buffers() const {
   for (auto it = buffers_.cbegin(), ite = buffers_.cend(); it != ite; ++it) {
     Buffer* buffer = it->buffer();
     result.emplace_back(buffer->data(), buffer->size());
+  }
+
+  return result;
+}
+
+std::vector<ConstBuffer> FilterBuffer::buffers_as(Datatype datatype) const {
+  switch (datatype) {
+    case Datatype::ANY:
+      // If datatype is ANY, return buffers as-is
+      return buffers();
+    case Datatype::FLOAT32:
+      return buffers_as<float>();
+    case Datatype::FLOAT64:
+      return buffers_as<double>();
+    case Datatype::BLOB:
+    case Datatype::BOOL:
+    case Datatype::UINT8:
+      return buffers_as<uint8_t>();
+    case Datatype::INT8:
+      return buffers_as<int8_t>();
+    case Datatype::UINT16:
+      return buffers_as<uint16_t>();
+    case Datatype::INT16:
+      return buffers_as<int16_t>();
+    case Datatype::UINT32:
+      return buffers_as<uint32_t>();
+    case Datatype::INT32:
+      return buffers_as<int32_t>();
+    case Datatype::UINT64:
+      return buffers_as<uint64_t>();
+    case Datatype::INT64:
+    case Datatype::DATETIME_YEAR:
+    case Datatype::DATETIME_MONTH:
+    case Datatype::DATETIME_WEEK:
+    case Datatype::DATETIME_DAY:
+    case Datatype::DATETIME_HR:
+    case Datatype::DATETIME_MIN:
+    case Datatype::DATETIME_SEC:
+    case Datatype::DATETIME_MS:
+    case Datatype::DATETIME_US:
+    case Datatype::DATETIME_NS:
+    case Datatype::DATETIME_PS:
+    case Datatype::DATETIME_FS:
+    case Datatype::DATETIME_AS:
+    case Datatype::TIME_HR:
+    case Datatype::TIME_MIN:
+    case Datatype::TIME_SEC:
+    case Datatype::TIME_MS:
+    case Datatype::TIME_US:
+    case Datatype::TIME_NS:
+    case Datatype::TIME_PS:
+    case Datatype::TIME_FS:
+    case Datatype::TIME_AS:
+      return buffers_as<int64_t>();
+    default:
+      throw StatusException(Status_FilterError(
+          "Failed to reinterpret data as '" + datatype_str(datatype) +
+          "'; Unsupported datatype."));
+  }
+}
+
+template <typename T>
+std::vector<ConstBuffer> FilterBuffer::buffers_as() const {
+  std::vector<ConstBuffer> result;
+
+  for (auto it = buffers_.cbegin(), ite = buffers_.cend(); it != ite; ++it) {
+    Buffer* buffer = it->buffer();
+    result.emplace_back(buffer->data_as<T>(), buffer->size());
   }
 
   return result;
@@ -570,6 +639,18 @@ Status FilterBuffer::clear() {
 
   return Status::Ok();
 }
+
+template std::vector<ConstBuffer> FilterBuffer::buffers_as<char>() const;
+template std::vector<ConstBuffer> FilterBuffer::buffers_as<float>() const;
+template std::vector<ConstBuffer> FilterBuffer::buffers_as<double>() const;
+template std::vector<ConstBuffer> FilterBuffer::buffers_as<int8_t>() const;
+template std::vector<ConstBuffer> FilterBuffer::buffers_as<uint8_t>() const;
+template std::vector<ConstBuffer> FilterBuffer::buffers_as<int16_t>() const;
+template std::vector<ConstBuffer> FilterBuffer::buffers_as<uint16_t>() const;
+template std::vector<ConstBuffer> FilterBuffer::buffers_as<int32_t>() const;
+template std::vector<ConstBuffer> FilterBuffer::buffers_as<uint32_t>() const;
+template std::vector<ConstBuffer> FilterBuffer::buffers_as<int64_t>() const;
+template std::vector<ConstBuffer> FilterBuffer::buffers_as<uint64_t>() const;
 
 }  // namespace sm
 }  // namespace tiledb

@@ -33,7 +33,6 @@
 #ifndef TILEDB_VFS_HELPERS_H
 #define TILEDB_VFS_HELPERS_H
 
-#include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "test/support/tdb_catch.h"
 
@@ -79,6 +78,12 @@ Status vfs_test_close(
     const std::vector<std::unique_ptr<SupportedFs>>& fs_vec,
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs);
+
+void vfs_test_remove_temp_dir(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const std::string& path);
+
+void vfs_test_create_temp_dir(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const std::string& path);
 
 /**
  * This class defines and manipulates

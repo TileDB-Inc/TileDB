@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -62,7 +62,8 @@ VFS::VFS(
     ThreadPool* const compute_tp,
     ThreadPool* const io_tp,
     const Config& config)
-    : stats_(parent_stats->create_child("VFS"))
+    : VFSBase(parent_stats)
+    , S3_within_VFS(stats_, io_tp, config)
     , config_(config)
     , compute_tp_(compute_tp)
     , io_tp_(io_tp)
@@ -86,10 +87,6 @@ VFS::VFS(
 
 #ifdef HAVE_S3
   supported_fs_.insert(Filesystem::S3);
-  st = s3_.init(stats_, config_, io_tp_);
-  if (!st.ok()) {
-    throw std::runtime_error("[VFS::VFS] Failed to initialize S3 backend.");
-  }
 #endif
 
 #ifdef HAVE_AZURE
@@ -109,9 +106,9 @@ VFS::VFS(
 #endif
 
 #ifdef _WIN32
-  throw_if_not_ok(win_.init(config_, io_tp_));
+  throw_if_not_ok(win_.init(config_));
 #else
-  throw_if_not_ok(posix_.init(config_, io_tp_));
+  throw_if_not_ok(posix_.init(config_));
 #endif
 
   supported_fs_.insert(Filesystem::MEMFS);
@@ -452,6 +449,18 @@ Status VFS::remove_dir(const URI& uri) const {
   }
 }
 
+void VFS::remove_dirs(
+    ThreadPool* compute_tp, const std::vector<URI>& uris) const {
+  throw_if_not_ok(parallel_for(compute_tp, 0, uris.size(), [&](size_t i) {
+    bool is_dir;
+    RETURN_NOT_OK(this->is_dir(uris[i], &is_dir));
+    if (is_dir) {
+      RETURN_NOT_OK(remove_dir(uris[i]));
+    }
+    return Status::Ok();
+  }));
+}
+
 Status VFS::remove_file(const URI& uri) const {
   if (uri.is_file()) {
 #ifdef _WIN32
@@ -516,11 +525,7 @@ Status VFS::max_parallel_ops(const URI& uri, uint64_t* ops) const {
   bool found;
   *ops = 0;
 
-  if (uri.is_file()) {
-    RETURN_NOT_OK(
-        config_.get<uint64_t>("vfs.file.max_parallel_ops", ops, &found));
-    assert(found);
-  } else if (uri.is_hdfs()) {
+  if (uri.is_hdfs()) {
     // HDFS backend is currently serial.
     *ops = 1;
   } else if (uri.is_s3()) {

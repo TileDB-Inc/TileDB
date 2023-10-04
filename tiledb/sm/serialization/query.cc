@@ -64,6 +64,7 @@
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_remote_buffer_storage.h"
 #include "tiledb/sm/query/readers/dense_reader.h"
+#include "tiledb/sm/query/readers/ordered_dim_label_reader.h"
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
 #include "tiledb/sm/query/readers/sparse_unordered_with_dups_reader.h"
 #include "tiledb/sm/query/writers/global_order_writer.h"
@@ -73,7 +74,6 @@
 #include "tiledb/sm/serialization/fragment_metadata.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
-#include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 using namespace tiledb::common;
@@ -123,7 +123,8 @@ Status stats_from_capnp(
     auto counters = stats->counters();
     auto counters_reader = stats_reader.getCounters();
     for (const auto entry : counters_reader.getEntries()) {
-      (*counters)[std::string(entry.getKey().cStr())] = entry.getValue();
+      auto key = std::string_view{entry.getKey().cStr(), entry.getKey().size()};
+      (*counters)[std::string{key}] = entry.getValue();
     }
   }
 
@@ -131,11 +132,56 @@ Status stats_from_capnp(
     auto timers = stats->timers();
     auto timers_reader = stats_reader.getTimers();
     for (const auto entry : timers_reader.getEntries()) {
-      (*timers)[std::string(entry.getKey().cStr())] = entry.getValue();
+      auto key = std::string_view{entry.getKey().cStr(), entry.getKey().size()};
+      (*timers)[std::string{key}] = entry.getValue();
     }
   }
 
   return Status::Ok();
+}
+
+void range_buffers_to_capnp(
+    const std::vector<Range>& ranges,
+    capnp::SubarrayRanges::Builder& range_builder) {
+  auto range_sizes = range_builder.initBufferSizes(ranges.size());
+  auto range_start_sizes = range_builder.initBufferStartSizes(ranges.size());
+  // This will copy all of the ranges into one large byte vector
+  // Future improvement is to do this in a zero copy manner
+  // (kj::ArrayBuilder?)
+  auto capnpVector = kj::Vector<uint8_t>();
+  uint64_t range_idx = 0;
+  for (auto& range : ranges) {
+    capnpVector.addAll(kj::ArrayPtr<uint8_t>(
+        const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(range.data())),
+        range.size()));
+    range_sizes.set(range_idx, range.size());
+    range_start_sizes.set(range_idx, range.start_size());
+    ++range_idx;
+  }
+  range_builder.setBuffer(capnpVector.asPtr());
+}
+
+std::vector<Range> range_buffers_from_capnp(
+    capnp::SubarrayRanges::Reader& range_reader) {
+  auto data_ptr = range_reader.getBuffer().asBytes();
+  auto buffer_sizes = range_reader.getBufferSizes();
+  auto buffer_start_sizes = range_reader.getBufferStartSizes();
+  size_t range_count = buffer_sizes.size();
+  std::vector<Range> ranges(range_count);
+  uint64_t offset = 0;
+  for (size_t j = 0; j < range_count; j++) {
+    uint64_t range_size = buffer_sizes[j];
+    uint64_t range_start_size = buffer_start_sizes[j];
+    if (range_start_size != 0) {
+      ranges[j] =
+          Range(data_ptr.begin() + offset, range_size, range_start_size);
+    } else {
+      ranges[j] = Range(data_ptr.begin() + offset, range_size);
+    }
+    offset += range_size;
+  }
+
+  return ranges;
 }
 
 Status subarray_to_capnp(
@@ -143,7 +189,9 @@ Status subarray_to_capnp(
     const Subarray* subarray,
     capnp::Subarray::Builder* builder) {
   builder->setLayout(layout_str(subarray->layout()));
+  builder->setCoalesceRanges(subarray->coalesce_ranges());
 
+  // Add ranges
   const uint32_t dim_num = subarray->dim_num();
   auto ranges_builder = builder->initRanges(dim_num);
   for (uint32_t i = 0; i < dim_num; i++) {
@@ -151,24 +199,49 @@ Status subarray_to_capnp(
     auto range_builder = ranges_builder[i];
     const auto& ranges = subarray->ranges_for_dim(i);
     range_builder.setType(datatype_str(datatype));
-
     range_builder.setHasDefaultRange(subarray->is_default(i));
-    auto range_sizes = range_builder.initBufferSizes(ranges.size());
-    auto range_start_sizes = range_builder.initBufferStartSizes(ranges.size());
-    // This will copy all of the ranges into one large byte vector
-    // Future improvement is to do this in a zero copy manner
-    // (kj::ArrayBuilder?)
-    auto capnpVector = kj::Vector<uint8_t>();
-    uint64_t range_idx = 0;
-    for (auto& range : ranges) {
-      capnpVector.addAll(kj::ArrayPtr<uint8_t>(
-          const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(range.data())),
-          range.size()));
-      range_sizes.set(range_idx, range.size());
-      range_start_sizes.set(range_idx, range.start_size());
-      ++range_idx;
+    range_buffers_to_capnp(ranges, range_builder);
+  }
+
+  // Add label ranges
+  const auto label_ranges_num = subarray->label_ranges_num();
+  if (label_ranges_num > 0) {
+    auto label_ranges_builder = builder->initLabelRanges(label_ranges_num);
+    auto label_id = 0;
+    for (uint32_t i = 0; i < dim_num; i++) {
+      if (subarray->has_label_ranges(i)) {
+        auto label_range_builder = label_ranges_builder[label_id++];
+        if (label_id > label_ranges_num) {
+          throw StatusException(
+              Status_SerializationError("Label id exceeds the total number of "
+                                        "label ranges for the subarray."));
+        }
+        label_range_builder.setDimensionId(i);
+        const auto& label_name = subarray->get_label_name(i);
+        label_range_builder.setName(label_name);
+
+        auto range_builder = label_range_builder.initRanges();
+        const auto datatype{schema.dimension_ptr(i)->type()};
+        const auto& label_ranges = subarray->ranges_for_label(label_name);
+        range_builder.setType(datatype_str(datatype));
+        range_buffers_to_capnp(label_ranges, range_builder);
+      }
     }
-    range_builder.setBuffer(capnpVector.asPtr());
+  }
+
+  // Add attribute ranges
+  const auto& attr_ranges = subarray->get_attribute_ranges();
+  if (attr_ranges.size() > 0) {
+    auto attribute_ranges_builder = builder->initAttributeRanges();
+    auto entries_builder =
+        attribute_ranges_builder.initEntries(attr_ranges.size());
+    size_t i = 0;
+    for (const auto& attr_range : attr_ranges) {
+      auto entry = entries_builder[i++];
+      entry.setKey(attr_range.first);
+      auto attr_range_builder = entry.initValue();
+      range_buffers_to_capnp(attr_range.second, attr_range_builder);
+    }
   }
 
   // If stats object exists set its cap'n proto object
@@ -193,6 +266,7 @@ Status subarray_to_capnp(
 
 Status subarray_from_capnp(
     const capnp::Subarray::Reader& reader, Subarray* subarray) {
+  RETURN_NOT_OK(subarray->set_coalesce_ranges(reader.getCoalesceRanges()));
   auto ranges_reader = reader.getRanges();
   uint32_t dim_num = ranges_reader.size();
   for (uint32_t i = 0; i < dim_num; i++) {
@@ -203,23 +277,7 @@ Status subarray_from_capnp(
     auto data = range_reader.getBuffer();
     auto data_ptr = data.asBytes();
     if (range_reader.hasBufferSizes()) {
-      auto buffer_sizes = range_reader.getBufferSizes();
-      auto buffer_start_sizes = range_reader.getBufferStartSizes();
-      size_t range_count = buffer_sizes.size();
-      std::vector<Range> ranges(range_count);
-      uint64_t offset = 0;
-      for (size_t j = 0; j < range_count; j++) {
-        uint64_t range_size = buffer_sizes[j];
-        uint64_t range_start_size = buffer_start_sizes[j];
-        if (range_start_size != 0) {
-          ranges[j] =
-              Range(data_ptr.begin() + offset, range_size, range_start_size);
-        } else {
-          ranges[j] = Range(data_ptr.begin() + offset, range_size);
-        }
-        offset += range_size;
-      }
-
+      auto ranges = range_buffers_from_capnp(range_reader);
       RETURN_NOT_OK(subarray->set_ranges_for_dim(i, ranges));
 
       // Set default indicator
@@ -230,6 +288,41 @@ Status subarray_from_capnp(
       RETURN_NOT_OK(subarray->set_ranges_for_dim(i, {range}));
       subarray->set_is_default(i, range_reader.getHasDefaultRange());
     }
+  }
+
+  if (reader.hasLabelRanges()) {
+    subarray->add_default_label_ranges(dim_num);
+    auto label_ranges_reader = reader.getLabelRanges();
+    uint32_t label_num = label_ranges_reader.size();
+    for (uint32_t i = 0; i < label_num; i++) {
+      auto label_range_reader = label_ranges_reader[i];
+      auto dim_id = label_range_reader.getDimensionId();
+      auto label_name = label_range_reader.getName();
+
+      // Deserialize ranges for this dim label
+      auto range_reader = label_range_reader.getRanges();
+      auto ranges = range_buffers_from_capnp(range_reader);
+
+      // Set ranges for this dim label on the subarray
+      subarray->set_label_ranges_for_dim(dim_id, label_name, ranges);
+    }
+  }
+
+  if (reader.hasAttributeRanges()) {
+    std::unordered_map<std::string, std::vector<Range>> attr_ranges;
+    auto attr_ranges_reader = reader.getAttributeRanges();
+    if (attr_ranges_reader.hasEntries()) {
+      for (auto attr_ranges_entry : attr_ranges_reader.getEntries()) {
+        auto range_reader = attr_ranges_entry.getValue();
+        auto key = std::string_view{
+            attr_ranges_entry.getKey().cStr(),
+            attr_ranges_entry.getKey().size()};
+        attr_ranges[std::string{key}] = range_buffers_from_capnp(range_reader);
+      }
+    }
+
+    for (const auto& attr_range : attr_ranges)
+      subarray->set_attribute_ranges(attr_range.first, attr_range.second);
   }
 
   // If cap'n proto object has stats set it on c++ object
@@ -367,7 +460,7 @@ Status subarray_partitioner_from_capnp(
   RETURN_NOT_OK(layout_enum(subarray_reader.getLayout(), &layout));
 
   // Subarray, which is used to initialize the partitioner.
-  Subarray subarray(array, layout, query_stats, dummy_logger, false);
+  Subarray subarray(array, layout, query_stats, dummy_logger, true);
   RETURN_NOT_OK(subarray_from_capnp(reader.getSubarray(), &subarray));
   *partitioner = SubarrayPartitioner(
       &config,
@@ -426,7 +519,7 @@ Status subarray_partitioner_from_capnp(
     partition_info->split_multi_range_ =
         partition_info_reader.getSplitMultiRange();
     partition_info->partition_ =
-        Subarray(array, layout, query_stats, dummy_logger, false);
+        Subarray(array, layout, query_stats, dummy_logger, true);
     RETURN_NOT_OK(subarray_from_capnp(
         partition_info_reader.getSubarray(), &partition_info->partition_));
 
@@ -450,7 +543,7 @@ Status subarray_partitioner_from_capnp(
   for (unsigned i = 0; i < num_sr; i++) {
     auto subarray_reader_ = sr_reader[i];
     state->single_range_.emplace_back(
-        array, layout, query_stats, dummy_logger, false);
+        array, layout, query_stats, dummy_logger, true);
     Subarray& subarray_ = state->single_range_.back();
     RETURN_NOT_OK(subarray_from_capnp(subarray_reader_, &subarray_));
   }
@@ -459,7 +552,7 @@ Status subarray_partitioner_from_capnp(
   for (unsigned i = 0; i < num_m; i++) {
     auto subarray_reader_ = m_reader[i];
     state->multi_range_.emplace_back(
-        array, layout, query_stats, dummy_logger, false);
+        array, layout, query_stats, dummy_logger, true);
     Subarray& subarray_ = state->multi_range_.back();
     RETURN_NOT_OK(subarray_from_capnp(subarray_reader_, &subarray_));
   }
@@ -673,21 +766,36 @@ static Status condition_ast_to_capnp(
     ensure_qc_field_name_is_valid(field_name);
     ast_builder->setFieldName(field_name);
 
-    // Copy the condition value into a capnp vector of bytes.
-    const UntypedDatumView& value = node->get_condition_value_view();
-    auto capnpValue = kj::Vector<uint8_t>();
-    capnpValue.addAll(kj::ArrayPtr<uint8_t>(
-        const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(value.content())),
-        value.size()));
+    // Copy the condition data into a capnp vector of bytes.
+    auto& data = node->get_data();
+    auto capnpData = kj::Vector<uint8_t>();
+    capnpData.addAll(
+        kj::ArrayPtr<uint8_t>(const_cast<uint8_t*>(data.data()), data.size()));
 
     // Validate and store the condition value vector of bytes.
-    ensure_qc_capnp_condition_value_is_valid(capnpValue);
-    ast_builder->setValue(capnpValue.asPtr());
+    ensure_qc_capnp_condition_value_is_valid(capnpData);
+    ast_builder->setValue(capnpData.asPtr());
+
+    if (node->get_op() == QueryConditionOp::IN ||
+        node->get_op() == QueryConditionOp::NOT_IN) {
+      // Copy the condition offsets into a capnp vector of bytes
+      auto& offsets = node->get_offsets();
+      auto capnpOffsets = kj::Vector<uint8_t>();
+      capnpOffsets.addAll(kj::ArrayPtr<uint8_t>(
+          const_cast<uint8_t*>(offsets.data()), offsets.size()));
+
+      // Validate and store the condition value offsets
+      ensure_qc_capnp_condition_value_is_valid(capnpOffsets);
+      ast_builder->setOffsets(capnpOffsets.asPtr());
+    }
 
     // Validate and store the query condition op.
     const std::string op_str = query_condition_op_str(node->get_op());
     ensure_qc_op_string_is_valid(op_str);
     ast_builder->setOp(op_str);
+
+    // Store whether this expression should skip the enumeration lookup.
+    ast_builder->setUseEnumeration(node->use_enumeration());
   } else {
     // Store the boolean expression tag.
     ast_builder->setIsExpression(true);
@@ -721,20 +829,21 @@ static void clause_to_capnp(
   clause_builder->setFieldName(field_name);
 
   // Copy the condition value into a capnp vector of bytes.
-  const UntypedDatumView& value = node->get_condition_value_view();
-  auto capnpValue = kj::Vector<uint8_t>();
-  capnpValue.addAll(kj::ArrayPtr<uint8_t>(
-      const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(value.content())),
-      value.size()));
+  auto& data = node->get_data();
+  auto capnpData = kj::Vector<uint8_t>();
+  capnpData.addAll(
+      kj::ArrayPtr<uint8_t>(const_cast<uint8_t*>(data.data()), data.size()));
 
   // Validate and store the condition value vector of bytes.
-  ensure_qc_capnp_condition_value_is_valid(capnpValue);
-  clause_builder->setValue(capnpValue.asPtr());
+  ensure_qc_capnp_condition_value_is_valid(capnpData);
+  clause_builder->setValue(capnpData.asPtr());
 
   // Validate and store the query condition op.
   const std::string op_str = query_condition_op_str(node->get_op());
   ensure_qc_op_string_is_valid(op_str);
   clause_builder->setOp(op_str);
+
+  clause_builder->setUseEnumeration(node->use_enumeration());
 }
 
 Status condition_to_capnp(
@@ -899,6 +1008,16 @@ tdb_unique_ptr<ASTNode> condition_ast_from_capnp(
     size_t size = condition_value.size();
     ensure_qc_condition_value_is_valid(data, size);
 
+    // Getting and validating the condition offsets.
+    const void* offsets = nullptr;
+    size_t offsets_size = 0;
+    if (ast_reader.hasOffsets()) {
+      auto condition_offsets = ast_reader.getOffsets();
+      offsets = static_cast<const void*>(condition_offsets.asBytes().begin());
+      offsets_size = condition_offsets.size();
+      ensure_qc_condition_value_is_valid(offsets, offsets_size);
+    }
+
     // Getting and validating the query condition operator.
     QueryConditionOp op = QueryConditionOp::LT;
     Status s = query_condition_op_enum(ast_reader.getOp(), &op);
@@ -908,8 +1027,22 @@ tdb_unique_ptr<ASTNode> condition_ast_from_capnp(
     }
     ensure_qc_op_is_valid(op);
 
+    auto use_enumeration = ast_reader.getUseEnumeration();
+
+    if (op == QueryConditionOp::IN || op == QueryConditionOp::NOT_IN) {
+      return tdb_unique_ptr<ASTNode>(tdb_new(
+          ASTNodeVal,
+          field_name,
+          size == 0 ? nullptr : data,
+          size,
+          offsets,
+          offsets_size,
+          op,
+          use_enumeration));
+    }
+
     return tdb_unique_ptr<ASTNode>(
-        tdb_new(ASTNodeVal, field_name, data, size, op));
+        tdb_new(ASTNodeVal, field_name, data, size, op, use_enumeration));
   }
 
   // Getting and validating the query condition combination operator.
@@ -961,8 +1094,10 @@ Status condition_from_capnp(
       }
       ensure_qc_op_is_valid(op);
 
+      bool use_enumeration = clause.getUseEnumeration();
+
       ast_nodes.push_back(tdb_unique_ptr<ASTNode>(
-          tdb_new(ASTNodeVal, field_name, data, size, op)));
+          tdb_new(ASTNodeVal, field_name, data, size, op, use_enumeration)));
     }
 
     // Constructing the tree from the list of AST nodes.
@@ -995,7 +1130,7 @@ Status reader_from_capnp(
   RETURN_NOT_OK(layout_enum(reader_reader.getLayout(), &layout));
 
   // Subarray
-  Subarray subarray(array, layout, query->stats(), dummy_logger, false);
+  Subarray subarray(array, layout, query->stats(), dummy_logger, true);
   auto subarray_reader = reader_reader.getSubarray();
   RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
   RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
@@ -1037,7 +1172,7 @@ Status index_reader_from_capnp(
   RETURN_NOT_OK(layout_enum(reader_reader.getLayout(), &layout));
 
   // Subarray
-  Subarray subarray(array, layout, query->stats(), dummy_logger, false);
+  Subarray subarray(array, layout, query->stats(), dummy_logger, true);
   auto subarray_reader = reader_reader.getSubarray();
   RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
   RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
@@ -1080,7 +1215,7 @@ Status dense_reader_from_capnp(
   RETURN_NOT_OK(layout_enum(reader_reader.getLayout(), &layout));
 
   // Subarray
-  Subarray subarray(array, layout, query->stats(), dummy_logger, false);
+  Subarray subarray(array, layout, query->stats(), dummy_logger, true);
   auto subarray_reader = reader_reader.getSubarray();
   RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
   RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
@@ -1165,20 +1300,11 @@ Status writer_to_capnp(
 
   const auto& array_schema = query.array_schema();
 
-  if (array_schema.dense()) {
-    std::vector<uint8_t> subarray_flat;
-    RETURN_NOT_OK(query.subarray()->to_byte_vec(&subarray_flat));
-    auto subarray_builder = writer_builder->initSubarray();
-    RETURN_NOT_OK(utils::serialize_subarray(
-        subarray_builder, array_schema, &subarray_flat[0]));
-  }
-
   // Subarray
-  const auto subarray_ranges = query.subarray();
-  if (!subarray_ranges->empty()) {
+  const auto subarray = query.subarray();
+  if (!subarray->empty() || subarray->has_label_ranges()) {
     auto subarray_builder = writer_builder->initSubarrayRanges();
-    RETURN_NOT_OK(
-        subarray_to_capnp(array_schema, subarray_ranges, &subarray_builder));
+    RETURN_NOT_OK(subarray_to_capnp(array_schema, subarray, &subarray_builder));
   }
 
   // If stats object exists set its cap'n proto object
@@ -1244,12 +1370,6 @@ Status writer_from_capnp(
   } else if (query.layout() == Layout::UNORDERED) {
     auto unordered_writer = dynamic_cast<UnorderedWriter*>(writer);
 
-    // Fragment metadata is not allocated when deserializing into a new Query
-    // object.
-    if (unordered_writer->frag_meta() == nullptr) {
-      RETURN_NOT_OK(unordered_writer->alloc_frag_meta());
-    }
-
     RETURN_NOT_OK(unordered_write_state_from_capnp(
         query,
         writer_reader.getUnorderedWriterState(),
@@ -1268,12 +1388,6 @@ Status query_to_capnp(
   auto layout = query.layout();
   auto type = query.type();
   auto array = query.array();
-
-  if (query.uses_dimension_labels()) {
-    return LOG_STATUS(Status_SerializationError(
-        "Cannot serialize; serialization is not yet supported for queries "
-        "using dimension labels."));
-  }
 
   if (array == nullptr) {
     return LOG_STATUS(
@@ -1294,26 +1408,33 @@ Status query_to_capnp(
   }
 
   // Serialize attribute buffer metadata
-  const auto buffer_names =
+  std::vector<std::string> buffer_names =
       client_side ? query.unwritten_buffer_names() : query.buffer_names();
-  auto attr_buffers_builder =
-      query_builder->initAttributeBufferHeaders(buffer_names.size());
+  const auto dim_label_names = query.dimension_label_buffer_names();
+  buffer_names.insert(
+      buffer_names.end(), dim_label_names.begin(), dim_label_names.end());
+
   uint64_t total_fixed_len_bytes = 0;
   uint64_t total_var_len_bytes = 0;
   uint64_t total_validity_len_bytes = 0;
   auto& query_buffer_storage = query.get_remote_buffer_cache();
 
+  // Builder for query attribute / dimension buffers.
+  // This builder also serializes dimension label buffers for the query.
+  auto attr_buffers_builder =
+      query_builder->initAttributeBufferHeaders(buffer_names.size());
   for (uint64_t i = 0; i < buffer_names.size(); i++) {
-    auto attr_buffer_builder = attr_buffers_builder[i];
     const auto& name = buffer_names[i];
     const auto& buff = query.buffer(name);
+    auto buffer_builder = attr_buffers_builder[i];
 
     // Adjust buffer sizes if cache exists for remote global order writes.
     uint64_t cached_fixed_size = 0;
     uint64_t cached_var_size = 0;
     uint64_t cached_validity_size = 0;
     // The cache will only exist if the query is a remote global order write.
-    if (query_buffer_storage.has_value()) {
+    // Dimension labels do not support global order writes.
+    if (!schema.is_dim_label(name) && query_buffer_storage.has_value()) {
       // Remote global order writes must be tile-aligned.
       // The cache sizes here reflect the bytes prepended to this query.
       // If all writes were tile-aligned these will be zero.
@@ -1321,7 +1442,7 @@ Status query_to_capnp(
       // submission by adjusting user buffer sizes, tile-aligning the write.
       // Once this write completes the cache is updated with the previously held
       // tile-overflow bytes, and the following submission is prepended with
-      // with this data. See the QueryRemoteBufferStorage class for more info.
+      // this data. See the QueryRemoteBufferStorage class for more info.
       const auto& buff_cache =
           query_buffer_storage->get_query_buffer_cache(name);
       cached_fixed_size = buff_cache.buffer_.size();
@@ -1329,34 +1450,34 @@ Status query_to_capnp(
       cached_validity_size = buff_cache.buffer_validity_.size();
     }
 
-    attr_buffer_builder.setName(name);
+    buffer_builder.setName(name);
     if (buff.buffer_var_ != nullptr && buff.buffer_var_size_ != nullptr) {
       // Variable-sized buffer
       // Include cached bytes for remote global order writes prepend data.
       uint64_t var_buff_size = *buff.buffer_var_size_ + cached_var_size;
       total_var_len_bytes += var_buff_size;
-      attr_buffer_builder.setVarLenBufferSizeInBytes(var_buff_size);
+      buffer_builder.setVarLenBufferSizeInBytes(var_buff_size);
 
       uint64_t offset_buff_size = *buff.buffer_size_ + cached_fixed_size;
       total_fixed_len_bytes += offset_buff_size;
-      attr_buffer_builder.setFixedLenBufferSizeInBytes(offset_buff_size);
+      buffer_builder.setFixedLenBufferSizeInBytes(offset_buff_size);
 
       // Set original user requested sizes
-      attr_buffer_builder.setOriginalVarLenBufferSizeInBytes(
+      buffer_builder.setOriginalVarLenBufferSizeInBytes(
           buff.original_buffer_var_size_);
-      attr_buffer_builder.setOriginalFixedLenBufferSizeInBytes(
+      buffer_builder.setOriginalFixedLenBufferSizeInBytes(
           buff.original_buffer_size_);
     } else if (buff.buffer_ != nullptr && buff.buffer_size_ != nullptr) {
       // Fixed-length buffer
       // Include cached bytes for remote global order writes prepend data.
       uint64_t buff_size = *buff.buffer_size_ + cached_fixed_size;
       total_fixed_len_bytes += buff_size;
-      attr_buffer_builder.setFixedLenBufferSizeInBytes(buff_size);
+      buffer_builder.setFixedLenBufferSizeInBytes(buff_size);
 
-      attr_buffer_builder.setVarLenBufferSizeInBytes(0);
+      buffer_builder.setVarLenBufferSizeInBytes(0);
       // Set original user requested sizes
-      attr_buffer_builder.setOriginalVarLenBufferSizeInBytes(0);
-      attr_buffer_builder.setOriginalFixedLenBufferSizeInBytes(
+      buffer_builder.setOriginalVarLenBufferSizeInBytes(0);
+      buffer_builder.setOriginalFixedLenBufferSizeInBytes(
           buff.original_buffer_size_);
     } else {
       throw StatusException(Status_SerializationError(
@@ -1368,10 +1489,10 @@ Status query_to_capnp(
       uint64_t buff_size =
           *buff.validity_vector_.buffer_size() + cached_validity_size;
       total_validity_len_bytes += buff_size;
-      attr_buffer_builder.setValidityLenBufferSizeInBytes(buff_size);
+      buffer_builder.setValidityLenBufferSizeInBytes(buff_size);
 
       // Set original user requested sizes
-      attr_buffer_builder.setOriginalValidityLenBufferSizeInBytes(
+      buffer_builder.setOriginalValidityLenBufferSizeInBytes(
           buff.original_validity_vector_size_);
     }
   }
@@ -1398,6 +1519,10 @@ Status query_to_capnp(
       auto builder = query_builder->initReaderIndex();
       auto reader = dynamic_cast<SparseIndexReaderBase*>(query.strategy(true));
       RETURN_NOT_OK(index_reader_to_capnp(query, *reader, &builder));
+    } else if (query.dimension_label_ordered_read()) {
+      auto builder = query_builder->initOrderedDimLabelReader();
+      auto reader = dynamic_cast<OrderedDimLabelReader*>(query.strategy(true));
+      ordered_dim_label_reader_to_capnp(query, *reader, &builder);
     } else if (query.use_refactored_dense_reader(schema, all_dense)) {
       auto builder = query_builder->initDenseReader();
       auto reader = dynamic_cast<DenseReader*>(query.strategy(true));
@@ -1511,6 +1636,14 @@ Status query_from_capnp(
       query_type == QueryType::READ && query_reader.hasReader();
   RETURN_NOT_OK(query->reset_strategy_with_layout(layout, force_legacy_reader));
 
+  // Reset QueryStatus to UNINITIALIZED
+  // Note: this is a pre-C.41 hack. At present, Strategy creation is the point
+  // of construction through the regular API. However, the Query cannot be
+  // considered fully initialized until everything has been deserialized. We
+  // must "reset" the status here to bypass future checks on a
+  // fully-initialized Query until the final QueryStatus is deserialized.
+  query->set_status(QueryStatus::UNINITIALIZED);
+
   // Deserialize Config
   if (query_reader.hasConfig()) {
     tdb_unique_ptr<Config> decoded_config = nullptr;
@@ -1560,7 +1693,8 @@ Status query_from_capnp(
       // We use the query_buffer directly in order to get the original buffer
       // sizes. This avoid a problem where an incomplete query will change the
       // users buffer size to the smaller results and we end up not being able
-      // to correctly calculate if the new results can fit into the users buffer
+      // to correctly calculate if the new results can fit into the users
+      // buffer
       if (var_size) {
         if (!nullable) {
           existing_offset_buffer = static_cast<uint64_t*>(query_buffer.buffer_);
@@ -1655,8 +1789,9 @@ Status query_from_capnp(
       // For reads, copy the response data into user buffers. For writes,
       // nothing to do.
       if (type == QueryType::READ) {
-        // For read queries on the client side, we require buffers have been set
-        // by the user, and that they are large enough for all serialized data.
+        // For read queries on the client side, we require buffers have been
+        // set by the user, and that they are large enough for all serialized
+        // data.
         const uint64_t curr_data_size =
             attr_copy_state == nullptr ? 0 : attr_copy_state->data_size;
         const uint64_t data_size_left = existing_buffer_size - curr_data_size;
@@ -1697,9 +1832,10 @@ Status query_from_capnp(
           uint64_t fixedlen_size_to_copy = fixedlen_size;
 
           // If the last query included an extra offset we will skip the first
-          // offset in this query The first offset is the 0 position which ends
-          // up the same as the extra offset in the last query 0th is converted
-          // below to curr_data_size which is also the n+1 offset in arrow mode
+          // offset in this query The first offset is the 0 position which
+          // ends up the same as the extra offset in the last query 0th is
+          // converted below to curr_data_size which is also the n+1 offset in
+          // arrow mode
           if (attr_copy_state != nullptr &&
               attr_copy_state->last_query_added_extra_offset) {
             attribute_buffer_start += sizeof(uint64_t);
@@ -1755,10 +1891,10 @@ Status query_from_capnp(
             // result size).
             // Subsequent incomplete submits will use the original buffer
             // sizes members from the query in the beginning of the loop
-            // to calculate if user buffers have enough space to hold the data,
-            // here we only care that after data received from the wire is
-            // copied within the user buffers, the buffer sizes are accurate so
-            // user can introspect.
+            // to calculate if user buffers have enough space to hold the
+            // data, here we only care that after data received from the wire
+            // is copied within the user buffers, the buffer sizes are
+            // accurate so user can introspect.
             *query_buffer.buffer_size_ =
                 curr_offset_size + fixedlen_size_to_copy;
             *query_buffer.buffer_var_size_ = curr_data_size + varlen_size;
@@ -1800,10 +1936,10 @@ Status query_from_capnp(
             // result size).
             // Subsequent incomplete submits will use the original buffer
             // sizes members from the query in the beginning of the loop
-            // to calculate if user buffers have enough space to hold the data,
-            // here we only care that after data received from the wire is
-            // copied within the user buffers, the buffer sizes are accurate so
-            // user can introspect.
+            // to calculate if user buffers have enough space to hold the
+            // data, here we only care that after data received from the wire
+            // is copied within the user buffers, the buffer sizes are
+            // accurate so user can introspect.
             *query_buffer.buffer_size_ = curr_data_size + fixedlen_size;
             if (nullable) {
               *query_buffer.validity_vector_.buffer_size() =
@@ -1830,17 +1966,18 @@ Status query_from_capnp(
       RETURN_NOT_OK(query->get_attr_serialization_state(name, &attr_state));
       if (type == QueryType::READ) {
         // On reads, just set null pointers with accurate size so that the
-        // server can introspect and allocate properly sized buffers separately.
+        // server can introspect and allocate properly sized buffers
+        // separately.
         Buffer offsets_buff(nullptr, fixedlen_size);
         Buffer varlen_buff(nullptr, varlen_size);
         Buffer validitylen_buff(nullptr, validitylen_size);
         // For the server on reads we want to set the original user requested
-        // buffer sizes This handles the case of incomplete queries where on the
-        // second `submit()` call the client's buffer size will be the first
-        // submit's result size not the original user set buffer size. To work
-        // around this we revert the server to always use the full original user
-        // requested buffer sizes.
-        // We check for > 0 for fallback for clients older than 2.2.5
+        // buffer sizes This handles the case of incomplete queries where on
+        // the second `submit()` call the client's buffer size will be the
+        // first submit's result size not the original user set buffer size.
+        // To work around this we revert the server to always use the full
+        // original user requested buffer sizes. We check for > 0 for fallback
+        // for clients older than 2.2.5
         if (buffer_header.getOriginalFixedLenBufferSizeInBytes() > 0) {
           attr_state->fixed_len_size =
               buffer_header.getOriginalFixedLenBufferSizeInBytes();
@@ -1885,7 +2022,8 @@ Status query_from_capnp(
           }
         }
       } else if (query_type == QueryType::WRITE) {
-        // On writes, just set buffer pointers wrapping the data in the message.
+        // On writes, just set buffer pointers wrapping the data in the
+        // message.
         if (var_size) {
           auto* offsets = reinterpret_cast<uint64_t*>(attribute_buffer_start);
           auto* varlen_data = attribute_buffer_start + fixedlen_size;
@@ -1974,6 +2112,13 @@ Status query_from_capnp(
           reader_reader,
           query,
           dynamic_cast<SparseIndexReaderBase*>(query->strategy())));
+    } else if (query_reader.hasOrderedDimLabelReader()) {
+      auto reader_reader = query_reader.getOrderedDimLabelReader();
+      ordered_dim_label_reader_from_capnp(
+          reader_reader,
+          query,
+          dynamic_cast<OrderedDimLabelReader*>(query->strategy()),
+          compute_tp);
     } else if (query_reader.hasDenseReader()) {
       auto reader_reader = query_reader.getDenseReader();
       RETURN_NOT_OK(dense_reader_from_capnp(
@@ -2028,7 +2173,7 @@ Status query_from_capnp(
 
       // Subarray
       if (writer_reader.hasSubarrayRanges()) {
-        Subarray subarray(array, layout, query->stats(), dummy_logger, false);
+        Subarray subarray(array, layout, query->stats(), dummy_logger, true);
         auto subarray_reader = writer_reader.getSubarrayRanges();
         RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
         RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
@@ -2079,6 +2224,21 @@ Status query_from_capnp(
     for (auto written_buffer : written_buffer_list) {
       written_buffers.emplace(written_buffer.cStr());
     }
+  } else if (
+      query_type == QueryType::WRITE &&
+      query_status == QueryStatus::COMPLETED &&
+      context == SerializationContext::SERVER && layout == Layout::UNORDERED) {
+    // Handle pre 2.16 clients...
+    // For pre-2.16 clients, unordered writes always had to write all attributes
+    // + dimensions at once so we just list all fields here.
+    auto& written_buffers = query->get_written_buffers();
+    written_buffers.clear();
+    for (const auto& it : schema.attributes()) {
+      written_buffers.emplace(it->name());
+    }
+    for (const auto& it : schema.dim_names()) {
+      written_buffers.emplace(it);
+    }
   }
 
   return Status::Ok();
@@ -2112,9 +2272,14 @@ Status array_from_query_deserialize(
           return LOG_STATUS(Status_SerializationError(
               "Could not deserialize query; buffer is not 8-byte aligned."));
 
-        // Set traversal limit to 10GI (TODO: make this a config option)
+        // Set traversal limit from config
+        uint64_t limit = storage_manager->config()
+                             .get<uint64_t>("rest.capnp_traversal_limit")
+                             .value();
         ::capnp::ReaderOptions readerOptions;
-        readerOptions.traversalLimitInWords = uint64_t(1024) * 1024 * 1024 * 10;
+        // capnp uses the limit in words
+        readerOptions.traversalLimitInWords = limit / sizeof(::capnp::word);
+
         ::capnp::FlatArrayMessageReader reader(
             kj::arrayPtr(
                 reinterpret_cast<const ::capnp::word*>(
@@ -2332,9 +2497,13 @@ Status do_query_deserialize(
           return LOG_STATUS(Status_SerializationError(
               "Could not deserialize query; buffer is not 8-byte aligned."));
 
-        // Set traversal limit to 10GI (TODO: make this a config option)
+        // Set traversal limit from config
+        uint64_t limit =
+            query->config().get<uint64_t>("rest.capnp_traversal_limit").value();
         ::capnp::ReaderOptions readerOptions;
-        readerOptions.traversalLimitInWords = uint64_t(1024) * 1024 * 1024 * 10;
+        // capnp uses the limit in words
+        readerOptions.traversalLimitInWords = limit / sizeof(::capnp::word);
+
         ::capnp::FlatArrayMessageReader reader(
             kj::arrayPtr(
                 reinterpret_cast<const ::capnp::word*>(
@@ -2479,7 +2648,7 @@ Status query_est_result_size_reader_from_capnp(
 
   std::unordered_map<std::string, Subarray::ResultSize> est_result_sizes_map;
   for (auto it : est_result_sizes.getEntries()) {
-    std::string name = it.getKey();
+    auto name = std::string_view{it.getKey().cStr(), it.getKey().size()};
     auto result_size = it.getValue();
     est_result_sizes_map.emplace(
         name,
@@ -2491,7 +2660,7 @@ Status query_est_result_size_reader_from_capnp(
 
   std::unordered_map<std::string, Subarray::MemorySize> max_memory_sizes_map;
   for (auto it : max_memory_sizes.getEntries()) {
-    std::string name = it.getKey();
+    auto name = std::string_view{it.getKey().cStr(), it.getKey().size()};
     auto memory_size = it.getValue();
     max_memory_sizes_map.emplace(
         name,
@@ -2633,6 +2802,7 @@ Status global_write_state_to_capnp(
   if (write_state.frag_meta_) {
     auto frag_meta = write_state.frag_meta_;
     auto frag_meta_builder = state_builder->initFragMeta();
+    fragment_meta_sizes_offsets_to_capnp(*frag_meta, &frag_meta_builder);
     RETURN_NOT_OK(fragment_metadata_to_capnp(*frag_meta, &frag_meta_builder));
   }
 
@@ -2730,7 +2900,8 @@ Status global_write_state_from_capnp(
     auto& cells_written = write_state->cells_written_;
     auto cell_written_reader = state_reader.getCellsWritten();
     for (const auto& entry : cell_written_reader.getEntries()) {
-      cells_written[std::string(entry.getKey().cStr())] = entry.getValue();
+      auto key = std::string_view{entry.getKey().cStr(), entry.getKey().size()};
+      cells_written[std::string{key}] = entry.getValue();
     }
   }
 
@@ -2780,7 +2951,9 @@ Status global_write_state_from_capnp(
       for (auto entry : multipart_reader.getEntries()) {
         VFS::MultiPartUploadState deserialized_state;
         auto state = entry.getValue();
-        std::string buffer_uri(entry.getKey().cStr());
+        auto buffer_uri =
+            std::string_view{entry.getKey().cStr(), entry.getKey().size()};
+
         if (state.hasUploadId()) {
           deserialized_state.upload_id = state.getUploadId();
         }
@@ -2813,7 +2986,7 @@ Status global_write_state_from_capnp(
         }
 
         RETURN_NOT_OK(global_writer->set_multipart_upload_state(
-            buffer_uri,
+            std::string{buffer_uri},
             deserialized_state,
             context == SerializationContext::CLIENT));
       }
@@ -2850,6 +3023,7 @@ Status unordered_write_state_to_capnp(
   auto frag_meta = unordered_writer.frag_meta();
   if (frag_meta != nullptr) {
     auto frag_meta_builder = state_builder->initFragMeta();
+    fragment_meta_sizes_offsets_to_capnp(*frag_meta, &frag_meta_builder);
     RETURN_NOT_OK(fragment_metadata_to_capnp(*frag_meta, &frag_meta_builder));
   }
 
@@ -2883,6 +3057,11 @@ Status unordered_write_state_from_capnp(
   }
 
   if (state_reader.hasFragMeta()) {
+    // Fragment metadata is not allocated when deserializing into a new Query
+    // object.
+    if (unordered_writer->frag_meta() == nullptr) {
+      RETURN_NOT_OK(unordered_writer->alloc_frag_meta());
+    }
     auto frag_meta = unordered_writer->frag_meta();
     auto frag_meta_reader = state_reader.getFragMeta();
     RETURN_NOT_OK(fragment_metadata_from_capnp(
@@ -2890,6 +3069,65 @@ Status unordered_write_state_from_capnp(
   }
 
   return Status::Ok();
+}
+
+void ordered_dim_label_reader_to_capnp(
+    const Query& query,
+    const OrderedDimLabelReader& reader,
+    capnp::QueryReader::Builder* reader_builder) {
+  const auto& array_schema = query.array_schema();
+
+  // Subarray layout
+  const auto& layout = layout_str(query.layout());
+  reader_builder->setLayout(layout);
+
+  // Subarray
+  auto subarray_builder = reader_builder->initSubarray();
+  throw_if_not_ok(
+      subarray_to_capnp(array_schema, query.subarray(), &subarray_builder));
+
+  reader_builder->setDimLabelIncreasing(
+      query.dimension_label_increasing_order());
+
+  // If stats object exists set its cap'n proto object
+  stats::Stats* stats = reader.stats();
+  if (stats != nullptr) {
+    auto stats_builder = reader_builder->initStats();
+    throw_if_not_ok(stats_to_capnp(*stats, &stats_builder));
+  }
+}
+
+void ordered_dim_label_reader_from_capnp(
+    const capnp::QueryReader::Reader& reader_reader,
+    Query* query,
+    OrderedDimLabelReader* reader,
+    ThreadPool* compute_tp) {
+  auto array = query->array();
+
+  // Layout
+  Layout layout = Layout::ROW_MAJOR;
+  throw_if_not_ok(layout_enum(reader_reader.getLayout(), &layout));
+
+  // Subarray
+  Subarray subarray(array, layout, query->stats(), dummy_logger, false);
+  auto subarray_reader = reader_reader.getSubarray();
+  throw_if_not_ok(subarray_from_capnp(subarray_reader, &subarray));
+  throw_if_not_ok(query->set_subarray_unsafe(subarray));
+
+  // OrderedDimLabelReader requires an initialized subarray for construction.
+  query->set_dimension_label_ordered_read(
+      reader_reader.getDimLabelIncreasing());
+  throw_if_not_ok(query->reset_strategy_with_layout(layout, false));
+  reader = dynamic_cast<OrderedDimLabelReader*>(query->strategy(true));
+
+  // If cap'n proto object has stats set it on c++ object
+  if (reader_reader.hasStats()) {
+    stats::Stats* stats = reader->stats();
+    // We should always have a stats here
+    if (stats != nullptr) {
+      throw_if_not_ok(stats_from_capnp(reader_reader.getStats(), stats));
+    }
+  }
 }
 
 #else

@@ -128,6 +128,26 @@ bool ArrayDimensionLabelQueries::completed() const {
              [](const auto& query) { return query->completed(); });
 }
 
+DimensionLabelQuery* ArrayDimensionLabelQueries::get_range_query(
+    ArrayDimensionLabelQueries::dimension_size_type dim_idx) const {
+  if (!has_range_query(dim_idx)) {
+    throw DimensionLabelQueryStatusException(
+        "No dimension label range query for dimension at index " +
+        std::to_string(dim_idx));
+  }
+  return label_range_queries_by_dim_idx_[dim_idx];
+}
+
+std::vector<DimensionLabelQuery*> ArrayDimensionLabelQueries::get_data_query(
+    ArrayDimensionLabelQueries::dimension_size_type dim_idx) const {
+  if (!has_data_query(dim_idx)) {
+    throw DimensionLabelQueryStatusException(
+        "No dimension label data query for dimension at index " +
+        std::to_string(dim_idx));
+  }
+  return label_data_queries_by_dim_idx_[dim_idx];
+}
+
 void ArrayDimensionLabelQueries::process_data_queries() {
   throw_if_not_ok(parallel_for(
       storage_manager_->compute_tp(),

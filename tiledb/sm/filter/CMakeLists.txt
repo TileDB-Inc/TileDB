@@ -32,7 +32,7 @@ include(object_library)
 #
 commence(object_library filter)
     this_target_sources(filter.cc filter_buffer.cc filter_storage.cc)
-    this_target_object_libraries(baseline buffer crypto)
+    this_target_object_libraries(baseline buffer tiledb_crypto)
 conclude(object_library)
 
 #
@@ -101,7 +101,7 @@ conclude(object_library)
 #
 commence(object_library encryption_filters)
     this_target_sources(encryption_aes256gcm_filter.cc)
-    this_target_object_libraries(crypto filter)
+    this_target_object_libraries(tiledb_crypto filter)
 conclude(object_library)
 
 #

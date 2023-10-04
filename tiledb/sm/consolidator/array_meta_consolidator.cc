@@ -133,9 +133,19 @@ Status ArrayMetaConsolidator::consolidate(
   // Write vacuum file
   URI vac_uri = URI(new_uri.to_string() + constants::vacuum_file_suffix);
 
+  size_t base_uri_size = 0;
+
+  // Write vac files relative to the array URI. This was fixed for reads in
+  // version 19 so only do this for arrays starting with version 19.
+  if (array_for_reads.array_schema_latest_ptr() == nullptr ||
+      array_for_reads.array_schema_latest().write_version() >= 19) {
+    base_uri_size = array_for_reads.array_uri().to_string().size();
+  }
+
   std::stringstream ss;
-  for (const auto& uri : to_vacuum)
-    ss << uri.to_string() << "\n";
+  for (const auto& uri : to_vacuum) {
+    ss << uri.to_string().substr(base_uri_size) << "\n";
+  }
 
   auto data = ss.str();
   RETURN_NOT_OK(

@@ -38,6 +38,7 @@
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/misc/parse_argument.h"
+#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/type/range/range.h"
 
 #include <cassert>
@@ -61,10 +62,6 @@ class AttributeStatusException : public StatusException {
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
-
-Attribute::Attribute()
-    : Attribute("", Datatype::CHAR, false) {
-}
 
 Attribute::Attribute(
     const std::string& name, const Datatype type, const bool nullable)
@@ -115,7 +112,8 @@ Attribute::Attribute(
     const FilterPipeline& filter_pipeline,
     const ByteVecValue& fill_value,
     uint8_t fill_value_validity,
-    DataOrder order)
+    DataOrder order,
+    std::optional<std::string> enumeration_name)
     : cell_val_num_(cell_val_num)
     , nullable_(nullable)
     , filters_(filter_pipeline)
@@ -123,37 +121,13 @@ Attribute::Attribute(
     , type_(type)
     , fill_value_(fill_value)
     , fill_value_validity_(fill_value_validity)
-    , order_(order) {
+    , order_(order)
+    , enumeration_name_(enumeration_name) {
 }
-
-Attribute::Attribute(const Attribute* attr) {
-  assert(attr != nullptr);
-  name_ = attr->name();
-  type_ = attr->type();
-  cell_val_num_ = attr->cell_val_num();
-  nullable_ = attr->nullable();
-  filters_ = attr->filters_;
-  fill_value_ = attr->fill_value_;
-  fill_value_validity_ = attr->fill_value_validity_;
-  order_ = attr->order_;
-}
-
-Attribute::~Attribute() = default;
 
 /* ********************************* */
 /*                API                */
 /* ********************************* */
-
-uint64_t Attribute::cell_size() const {
-  if (var_size())
-    return constants::var_size;
-
-  return cell_val_num_ * datatype_size(type_);
-}
-
-unsigned int Attribute::cell_val_num() const {
-  return cell_val_num_;
-}
 
 Attribute Attribute::deserialize(
     Deserializer& deserializer, const uint32_t version) {
@@ -171,7 +145,8 @@ Attribute Attribute::deserialize(
   auto cell_val_num = deserializer.read<uint32_t>();
 
   // Load filter pipeline
-  auto filterpipeline{FilterPipeline::deserialize(deserializer, version)};
+  auto filterpipeline{
+      FilterPipeline::deserialize(deserializer, version, datatype)};
 
   // Load fill value
   uint64_t fill_value_size = 0;
@@ -204,6 +179,17 @@ Attribute Attribute::deserialize(
     order = data_order_from_int(deserializer.read<uint8_t>());
   }
 
+  std::optional<std::string> enmr_name;
+  if (version >= constants::enumerations_min_format_version) {
+    auto enmr_name_length = deserializer.read<uint32_t>();
+    if (enmr_name_length > 0) {
+      std::string enmr_name_value;
+      enmr_name_value.resize(enmr_name_length);
+      deserializer.read(enmr_name_value.data(), enmr_name_length);
+      enmr_name = enmr_name_value;
+    }
+  }
+
   return Attribute(
       name,
       datatype,
@@ -212,7 +198,8 @@ Attribute Attribute::deserialize(
       filterpipeline,
       fill_value,
       fill_value_validity,
-      order);
+      order,
+      enmr_name);
 }
 
 void Attribute::dump(FILE* out) const {
@@ -244,10 +231,6 @@ void Attribute::dump(FILE* out) const {
 
 const FilterPipeline& Attribute::filters() const {
   return filters_;
-}
-
-const std::string& Attribute::name() const {
-  return name_;
 }
 
 // ===== FORMAT =====
@@ -287,6 +270,10 @@ void Attribute::serialize(
 
   // Write nullable
   if (version >= 7) {
+    /*
+     * Data coherence across platforms relies on the C++ integral conversion
+     * rule that mandates `false` be converted to 0 and `true` to 1.
+     */
     serializer.write<uint8_t>(nullable_);
   }
 
@@ -298,6 +285,18 @@ void Attribute::serialize(
   // Write order
   if (version >= 17) {
     serializer.write<uint8_t>(static_cast<uint8_t>(order_));
+  }
+
+  // Write enumeration URI
+  if (version >= constants::enumerations_min_format_version) {
+    if (enumeration_name_.has_value()) {
+      auto enmr_name_size =
+          static_cast<uint32_t>(enumeration_name_.value().size());
+      serializer.write<uint32_t>(enmr_name_size);
+      serializer.write(enumeration_name_.value().data(), enmr_name_size);
+    } else {
+      serializer.write<uint32_t>(0);
+    }
   }
 }
 
@@ -329,35 +328,8 @@ void Attribute::set_nullable(const bool nullable) {
 }
 
 void Attribute::set_filter_pipeline(const FilterPipeline& pipeline) {
-  for (unsigned i = 0; i < pipeline.size(); ++i) {
-    if (datatype_is_real(type_) &&
-        pipeline.get_filter(i)->type() == FilterType::FILTER_DOUBLE_DELTA)
-      throw AttributeStatusException(
-          "Cannot set DOUBLE DELTA filter to an attribute with a real "
-          "datatype");
-  }
-
-  if ((type_ == Datatype::STRING_ASCII || type_ == Datatype::STRING_UTF8) &&
-      var_size() && pipeline.size() > 1) {
-    if (pipeline.has_filter(FilterType::FILTER_RLE) &&
-        pipeline.get_filter(0)->type() != FilterType::FILTER_RLE) {
-      throw AttributeStatusException(
-          "RLE filter must be the first filter to apply when used on a "
-          "variable length string attribute");
-    }
-    if (pipeline.has_filter(FilterType::FILTER_DICTIONARY) &&
-        pipeline.get_filter(0)->type() != FilterType::FILTER_DICTIONARY) {
-      throw AttributeStatusException(
-          "Dictionary filter must be the first filter to apply when used on a "
-          "variable length string attribute");
-    }
-  }
-
+  FilterPipeline::check_filter_types(pipeline, type_, var_size());
   filters_ = pipeline;
-}
-
-void Attribute::set_name(const std::string& name) {
-  name_ = name;
 }
 
 void Attribute::set_fill_value(const void* value, uint64_t size) {
@@ -456,28 +428,16 @@ void Attribute::get_fill_value(
   *valid = fill_value_validity_;
 }
 
-const ByteVecValue& Attribute::fill_value() const {
-  return fill_value_;
+void Attribute::set_enumeration_name(std::optional<std::string> enmr_name) {
+  if (enmr_name.has_value() && enmr_name.value().empty()) {
+    throw AttributeStatusException(
+        "Invalid enumeration name, name must not be empty.");
+  }
+  enumeration_name_ = enmr_name;
 }
 
-uint8_t Attribute::fill_value_validity() const {
-  return fill_value_validity_;
-}
-
-Datatype Attribute::type() const {
-  return type_;
-}
-
-bool Attribute::var_size() const {
-  return cell_val_num_ == constants::var_num;
-}
-
-bool Attribute::nullable() const {
-  return nullable_;
-}
-
-DataOrder Attribute::order() const {
-  return order_;
+std::optional<std::string> Attribute::get_enumeration_name() const {
+  return enumeration_name_;
 }
 
 /* ********************************* */

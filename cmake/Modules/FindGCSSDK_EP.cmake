@@ -105,7 +105,7 @@ if (NOT GCSSDK_FOUND AND NOT google_cloud_cpp_storage_FOUND)
         patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_gcssdk/v1.22.0.CMakelists.txt.openssl3md5deprecationmitigation.patch
       CONFIGURE_COMMAND
          ${CMAKE_COMMAND} -Hsuper -Bcmake-out
-        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_BUILD_TYPE=$<CONFIG>
         -DBUILD_SHARED_LIBS=OFF
         -DBUILD_SAMPLES=OFF
         -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}

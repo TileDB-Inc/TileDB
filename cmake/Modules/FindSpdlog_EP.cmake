@@ -33,6 +33,13 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
+if (TILEDB_VCPKG)
+  find_package(fmt REQUIRED)
+  find_package(spdlog CONFIG REQUIRED)
+  install_all_target_libs("fmt::fmt;spdlog::spdlog")
+endif()
+
+
 # If the EP was built, it will install the storage_client-config.cmake file,
 # which we can use with find_package. CMake uses CMAKE_PREFIX_PATH to locate find
 # modules.
@@ -77,7 +84,7 @@ if (NOT SPDLOG_FOUND)
         -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
-        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_BUILD_TYPE=$<CONFIG>
         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
         -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
@@ -119,6 +126,7 @@ elseif(TARGET spdlog::spdlog)
     endif()
   endif()
 endif()
+
 
 # If we built a static EP, install it if required.
 if (TILEDB_SPDLOG_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)

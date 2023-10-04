@@ -124,9 +124,9 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
 
   SECTION("Make Buffer") {
     Array array(ctx, "cpp_unit_array", TILEDB_WRITE);
-    Query query(ctx, array, TILEDB_WRITE);
-    CHECK_THROWS(query.set_subarray<unsigned>({1, 2}));  // Wrong type
-    CHECK_THROWS(query.set_subarray<int>({1, 2}));       // Wrong num
+    Subarray subarray(ctx, array);
+    CHECK_THROWS(subarray.set_subarray<unsigned>({1, 2}));  // Wrong type
+    CHECK_THROWS(subarray.set_subarray<int>({1, 2}));       // Wrong num
     array.close();
   }
 
@@ -634,7 +634,7 @@ TEST_CASE("C++ API: Read subarray with expanded domain", "[cppapi][dense]") {
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
         Array array_w(ctx, array_name, TILEDB_WRITE);
         Query query_w(ctx, array_w);
-        query_w.set_subarray({0, 3, 0, 3})
+        query_w.set_subarray(Subarray(ctx, array_w).set_subarray({0, 3, 0, 3}))
             .set_layout(TILEDB_ROW_MAJOR)
             .set_data_buffer("a", data_w);
         query_w.submit();
@@ -712,16 +712,22 @@ TEST_CASE(
   std::vector<int> data = {0, 1};
 
   auto query_1 = tiledb::Query(ctx, array_w, TILEDB_WRITE);
-  query_1.set_data_buffer("a", data).set_subarray({0, 1}).submit();
+  query_1.set_data_buffer("a", data)
+      .set_subarray(Subarray(ctx, array_w).set_subarray({0, 1}))
+      .submit();
 
   auto query_2 = tiledb::Query(ctx, array_w, TILEDB_WRITE);
-  query_2.set_data_buffer("a", data).set_subarray({2, 3}).submit();
+  query_2.set_data_buffer("a", data)
+      .set_subarray(Subarray(ctx, array_w).set_subarray({2, 3}))
+      .submit();
 
   // this fragment write caused crash during consolidation
   //   https://github.com/TileDB-Inc/TileDB/issues/1205
   //   https://github.com/TileDB-Inc/TileDB/issues/1212
   auto query_3 = tiledb::Query(ctx, array_w, TILEDB_WRITE);
-  query_3.set_data_buffer("a", data).set_subarray({4, 5}).submit();
+  query_3.set_data_buffer("a", data)
+      .set_subarray(Subarray(ctx, array_w).set_subarray({4, 5}))
+      .submit();
 
   array_w.close();
   CHECK(tiledb::test::num_fragments(array_name) == 3);
@@ -1676,7 +1682,7 @@ TEST_CASE(
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w);
-  query_w.set_subarray({0, 3, 0, 3})
+  query_w.set_subarray(Subarray(ctx, array_w).set_subarray({0, 3, 0, 3}))
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", data_w);
   query_w.submit();
@@ -1729,7 +1735,7 @@ TEST_CASE(
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w);
-  query_w.set_subarray({0, 3, 0, 3})
+  query_w.set_subarray(Subarray(ctx, array_w).set_subarray({0, 3, 0, 3}))
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", data_w);
   query_w.submit();
@@ -1746,14 +1752,14 @@ TEST_CASE(
   std::string stats;
   Stats::dump(&stats);
 
-  // Expect ls on:
+  // Expect read_ops on:
   // cpp_unit_array/
   // cpp_unit_array/__commits
   // cpp_unit_array/__schema
   // cpp_unit_array/__meta
   // cpp_unit_array/__fragment_meta
   CHECK(
-      stats.find("\"Context.StorageManager.VFS.ls_num\": 5") !=
+      stats.find("\"Context.StorageManager.VFS.read_ops_num\": 5") !=
       std::string::npos);
 
   // Expect file_size on the fragment.
@@ -1803,20 +1809,157 @@ TEST_CASE(
   std::string stats;
   Stats::dump(&stats);
 
-  // Expect ls on:
+  // Expect read_ops on:
   // cpp_unit_array/
   // cpp_unit_array/__commits
   // cpp_unit_array/__schema
   // cpp_unit_array/__meta
   // cpp_unit_array/__fragment_meta
   CHECK(
-      stats.find("\"Context.StorageManager.VFS.ls_num\": 5") !=
+      stats.find("\"Context.StorageManager.VFS.read_ops_num\": 5") !=
       std::string::npos);
 
   // Expect file_size on the fragment.
   CHECK(
       stats.find("\"Context.StorageManager.VFS.file_size_num\": 1") !=
       std::string::npos);
+}
+
+TEST_CASE("C++ API: Array write and read from MemFS", "[cppapi][memfs]") {
+  const std::string array_name = "mem://cpp_unit_array";
+  Context ctx;
+
+  // Create
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 4))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 4}}, 4));
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+  Array::create(array_name, schema);
+
+  // Try writing on a non-process-global Context
+  Context ctx_non_global;
+  REQUIRE_THROWS_WITH(
+      Array(ctx_non_global, array_name, TILEDB_WRITE),
+      Catch::Matchers::ContainsSubstring(
+          "Cannot open array; Array does not exist"));
+
+  // Write
+  std::vector<int> data_w = {
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+  Array array_w(ctx, array_name, TILEDB_WRITE);
+  Query query_w(ctx, array_w);
+  query_w.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data_w);
+  query_w.submit();
+  array_w.close();
+
+  // Read
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array, TILEDB_READ);
+  std::vector<int> data(6);
+  query.add_range(0, 1, 2)
+      .add_range(1, 2, 4)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a", data);
+  query.submit();
+  array.close();
+  std::vector<int> data_expected = {2, 3, 4, 6, 7, 8};
+  for (int i = 0; i < 6; i++) {
+    REQUIRE(data[i] == data_expected[i]);
+  }
+
+  // Try removing on a different VFS instance
+  VFS vfs(ctx);
+  REQUIRE_THROWS_WITH(
+      vfs.remove_dir(array_name),
+      Catch::Matchers::ContainsSubstring("File not found, remove failed"));
+}
+
+TEST_CASE(
+    "C++ API: Array on s3 with empty subfolders",
+    "[cppapi][s3][empty_subfolders]") {
+  const std::string array_bucket = "s3://" + random_name("tiledb") + "/";
+  const std::string array_name = array_bucket + "cpp_unit_array/";
+
+  tiledb::Config cfg;
+  cfg["vfs.s3.endpoint_override"] = "localhost:9999";
+  cfg["vfs.s3.scheme"] = "https";
+  cfg["vfs.s3.use_virtual_addressing"] = "false";
+  cfg["vfs.s3.verify_ssl"] = "false";
+
+  Context ctx(cfg);
+  if (!ctx.is_supported_fs(TILEDB_S3))
+    return;
+
+  // Create bucket on s3
+  VFS vfs(ctx);
+  if (vfs.is_bucket(array_bucket)) {
+    vfs.remove_bucket(array_bucket);
+  }
+  vfs.create_bucket(array_bucket);
+  REQUIRE(vfs.is_bucket(array_bucket));
+
+  // Create array with only a __schema folder
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 4))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 4}}, 4));
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  Attribute attr = Attribute::create<int>(ctx, "a");
+  schema.add_attribute(attr);
+  Array::create(array_name, schema);
+  REQUIRE(vfs.ls(array_name).size() == 1);
+
+  // Ensure the array can be opened and write to it
+  std::vector<int> a_w = {
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+  Array array(ctx, array_name, TILEDB_WRITE);
+  REQUIRE(array.is_open());
+  Query query_w(ctx, array, TILEDB_WRITE);
+  query_w.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", a_w);
+  REQUIRE(query_w.submit() == Query::Status::COMPLETE);
+  array.close();
+
+  // Read from the array
+  array.open(TILEDB_READ);
+  REQUIRE(array.is_open());
+  REQUIRE(array.metadata_num() == 0);
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, 1, 4).add_range(1, 1, 4);
+  std::vector<int> a_r(16);
+  Query query_r(ctx, array, TILEDB_READ);
+  query_r.set_subarray(subarray)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a", a_r);
+  REQUIRE(query_r.submit() == Query::Status::COMPLETE);
+  array.close();
+
+  // Validate write / read
+  for (int i = 0; i < 16; i++) {
+    CHECK(a_r[i] == a_w[i]);
+  }
+
+  // Add a file to the array with the same name as an existing folder
+  std::string commits_uri = array_name + "__commits";
+  vfs.touch(commits_uri);
+  CHECK(vfs.file_size(commits_uri) == 0);
+
+  // Try to read from the array with empty files
+  // Note: MinIO will delete the actual commits if commits_uri is deleted,
+  // per the s3 implementation limitation, making the array invalid
+  try {
+    array.open(TILEDB_READ);
+  } catch (std::exception& e) {
+    REQUIRE_THAT(
+        e.what(), Catch::Matchers::ContainsSubstring("Cannot list given uri"));
+  }
+
+  // Clean up
+  if (vfs.is_bucket(array_bucket)) {
+    vfs.remove_bucket(array_bucket);
+  }
+  REQUIRE(!vfs.is_bucket(array_bucket));
 }
 
 TEST_CASE(
@@ -1924,12 +2067,16 @@ TEST_CASE(
   // Try writing to a newer-versioned (UINT32_MAX) array
   REQUIRE_THROWS_WITH(
       Array(ctx, new_array_name, TILEDB_WRITE),
-      Catch::Matchers::ContainsSubstring("incompatible format version"));
+      Catch::Matchers::ContainsSubstring("Array format version") &&
+          Catch::Matchers::ContainsSubstring(
+              "is newer than the library format version"));
 
   // Try reading from a newer-versioned (UINT32_MAX) array
   REQUIRE_THROWS_WITH(
       Array(ctx, new_array_name, TILEDB_READ),
-      Catch::Matchers::ContainsSubstring("incompatible format version"));
+      Catch::Matchers::ContainsSubstring("Array format version") &&
+          Catch::Matchers::ContainsSubstring(
+              "is newer than the library format version"));
 
   // Clean up
   VFS vfs(ctx);
