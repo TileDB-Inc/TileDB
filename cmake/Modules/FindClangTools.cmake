@@ -52,6 +52,8 @@ endif()
 
 find_program(CLANG_FORMAT_BIN
   NAMES
+  clang-format-16
+  clang-format-15
   clang-format-14
   clang-format-13
   clang-format-12
