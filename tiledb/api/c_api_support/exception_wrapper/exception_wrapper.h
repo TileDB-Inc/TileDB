@@ -59,7 +59,7 @@ namespace detail {
  * @tparam T the type representing items within the tree
  */
 template <class T>
-concept ErrorTreeVisitor = requires(T t, const T::item_type& e) {
+concept ErrorTreeVisitor = requires(T t, const typename T::item_type& e) {
   /*
    * The action taken when starting a new level. This action is only ever
    * immediately after an item.
