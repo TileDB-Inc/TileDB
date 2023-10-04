@@ -194,7 +194,8 @@ TEMPLATE_LIST_TEST_CASE(
         nullopt,
         validity_data.data(),
         false,
-        nullopt};
+        nullopt,
+        0};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("NullCount", buffers);
     CHECK(null_count == 4);
@@ -209,7 +210,8 @@ TEMPLATE_LIST_TEST_CASE(
         nullopt,
         validity_data.data(),
         false,
-        bitmap.data()};
+        bitmap.data(),
+        0};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("NullCount", buffers);
     CHECK(null_count == 1);
@@ -221,7 +223,8 @@ TEMPLATE_LIST_TEST_CASE(
         nullopt,
         validity_data.data(),
         false,
-        bitmap.data()};
+        bitmap.data(),
+        0};
     aggregator.aggregate_data(input_data2);
     aggregator.copy_to_user_buffer("NullCount", buffers);
     CHECK(null_count == 3);
@@ -236,7 +239,8 @@ TEMPLATE_LIST_TEST_CASE(
         nullopt,
         validity_data.data(),
         true,
-        bitmap_count.data()};
+        bitmap_count.data(),
+        0};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("NullCount", buffers);
     CHECK(null_count == 3);
@@ -248,7 +252,8 @@ TEMPLATE_LIST_TEST_CASE(
         nullopt,
         validity_data.data(),
         true,
-        bitmap_count.data()};
+        bitmap_count.data(),
+        0};
     aggregator.aggregate_data(input_data2);
     aggregator.copy_to_user_buffer("NullCount", buffers);
     CHECK(null_count == 6);
@@ -279,7 +284,8 @@ TEST_CASE(
         var_data.data(),
         validity_data.data(),
         false,
-        nullopt};
+        nullopt,
+        0};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("NullCount", buffers);
     CHECK(null_count == 4);
@@ -294,7 +300,8 @@ TEST_CASE(
         var_data.data(),
         validity_data.data(),
         false,
-        bitmap.data()};
+        bitmap.data(),
+        0};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("NullCount", buffers);
     CHECK(null_count == 1);
@@ -306,7 +313,8 @@ TEST_CASE(
         var_data.data(),
         validity_data.data(),
         false,
-        bitmap.data()};
+        bitmap.data(),
+        0};
     aggregator.aggregate_data(input_data2);
     aggregator.copy_to_user_buffer("NullCount", buffers);
     CHECK(null_count == 3);
@@ -321,7 +329,8 @@ TEST_CASE(
         var_data.data(),
         validity_data.data(),
         true,
-        bitmap_count.data()};
+        bitmap_count.data(),
+        0};
     aggregator.aggregate_data(input_data);
     aggregator.copy_to_user_buffer("NullCount", buffers);
     CHECK(null_count == 3);
@@ -333,7 +342,8 @@ TEST_CASE(
         var_data.data(),
         validity_data.data(),
         true,
-        bitmap_count.data()};
+        bitmap_count.data(),
+        0};
     aggregator.aggregate_data(input_data2);
     aggregator.copy_to_user_buffer("NullCount", buffers);
     CHECK(null_count == 6);

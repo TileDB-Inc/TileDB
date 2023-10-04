@@ -40,7 +40,7 @@ namespace tiledb::sm {
 
 /** Specialization of op for int64_t sums. */
 template <>
-void SafeSum::op<int64_t>(int64_t value, int64_t& sum) {
+void SafeSum::op<int64_t>(int64_t value, int64_t& sum, uint64_t) {
   if (sum > 0 && value > 0 &&
       (sum > (std::numeric_limits<int64_t>::max() - value))) {
     throw std::overflow_error("overflow on sum");
@@ -56,7 +56,7 @@ void SafeSum::op<int64_t>(int64_t value, int64_t& sum) {
 
 /** Specialization of op for uint64_t sums. */
 template <>
-void SafeSum::op<uint64_t>(uint64_t value, uint64_t& sum) {
+void SafeSum::op<uint64_t>(uint64_t value, uint64_t& sum, uint64_t) {
   if (sum > (std::numeric_limits<uint64_t>::max() - value)) {
     throw std::overflow_error("overflow on sum");
   }
@@ -66,7 +66,7 @@ void SafeSum::op<uint64_t>(uint64_t value, uint64_t& sum) {
 
 /** Specialization of op for double sums. */
 template <>
-void SafeSum::op<double>(double value, double& sum) {
+void SafeSum::op<double>(double value, double& sum, uint64_t) {
   if ((sum < 0.0) == (value < 0.0) &&
       (std::abs(sum) >
        (std::numeric_limits<double>::max() - std::abs(value)))) {

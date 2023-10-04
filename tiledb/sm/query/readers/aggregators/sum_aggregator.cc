@@ -34,6 +34,7 @@
 
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
+#include "tiledb/sm/query/readers/aggregators/safe_sum.h"
 
 namespace tiledb::sm {
 
@@ -48,7 +49,7 @@ template <typename T>
 SumAggregator<T>::SumAggregator(const FieldInfo field_info)
     : OutputBufferValidator(field_info)
     , field_info_(field_info)
-    , summator_(field_info)
+    , aggregate_with_count_(field_info)
     , sum_(0)
     , validity_value_(
           field_info_.is_nullable_ ? std::make_optional(0) : nullopt)
@@ -86,25 +87,29 @@ void SumAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
   }
 
   try {
-    tuple<typename sum_type_data<T>::sum_type, uint64_t, optional<uint8_t>> res{
-        0, 0, nullopt};
+    tuple<typename sum_type_data<T>::sum_type, uint64_t> res;
 
     // TODO: This is duplicated across aggregates but will go away with
     // sc-33104.
     if (input_data.is_count_bitmap()) {
-      res = summator_.template aggregate<
+      res = aggregate_with_count_.template aggregate<
           typename sum_type_data<T>::sum_type,
           uint64_t,
           SafeSum>(input_data);
     } else {
-      res = summator_.template aggregate<
+      res = aggregate_with_count_.template aggregate<
           typename sum_type_data<T>::sum_type,
           uint8_t,
           SafeSum>(input_data);
     }
 
-    SafeSum::safe_sum(std::get<0>(res), sum_);
-    if (field_info_.is_nullable_ && std::get<2>(res).value() == 1) {
+    const auto value = std::get<0>(res);
+    const auto count = std::get<1>(res);
+    SafeSum().safe_sum(value, sum_);
+
+    // Here we know that if the count is greater than 0, it means at least one
+    // valid item was found, which means the result is valid.
+    if (field_info_.is_nullable_ && count) {
       validity_value_ = 1;
     }
   } catch (std::overflow_error& e) {
