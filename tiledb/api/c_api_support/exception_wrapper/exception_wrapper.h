@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,49 +35,173 @@
 #define TILEDB_C_API_SUPPORT_EXCEPTION_WRAPPER_H
 
 #include <utility>                   // std::forward
-#include "../argument_validation.h"  // CAPIStatusException
+#include "../argument_validation.h"  // CAPIException
 #include "tiledb/api/c_api/api_external_common.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/api/c_api/error/error_api_internal.h"
 #include "tiledb/common/exception/exception.h"
-#include "tiledb/common/exception/status.h"
 
 namespace tiledb::api {
+namespace detail {
 
-/*
- * Top-level exception handling.
+//-------------------------------------------------------
+// Error message generation from exceptions
+//-------------------------------------------------------
+/**
+ * A visitor for an `ErrorTree`.
  *
+ * As a grammar, the visitation generates the following productions:
+ *   trees : list
+ *   list : full-item
+ *        | list "," full-item
+ *   full-item : Item [ "(" list ")" ]
+ *
+ * @tparam T the type representing items within the tree
+ */
+template <class T>
+concept ErrorTreeVisitor = requires(T t, const T::item_type& e) {
+  /*
+   * The action taken when starting a new level. This action is only ever
+   * immediately after an item.
+   */
+  t.start_level();
+
+  /*
+   * The action taken when ending a level, including the root. This action
+   * always immediately follows some item.
+   */
+  t.end_level();
+
+  /*
+   * The action taken after one item and before another. This action always
+   * immediately follows an item or an end-level.
+   */
+  t.separator();
+
+  /*
+   * The action taken for an item. This action always follows either a level
+   * start or a separator.
+   */
+  t.item(e);
+};
+
+/**
+ * A `std::exception`, possibly nested, treated as an error tree.
+ *
+ * An error tree is an interface for error messages. It takes as a template
+ * argument an error type taken as a primitive. It support two kinds of compound
+ * operations: sequence and nesting. Sequences support individual parallel
+ * operations that might generate more than one error message. Nesting supports
+ * rethrown exceptions and stack traces.
+ */
+class ErrorTreeStdException {
+  /**
+   * An exception to be visited.
+   */
+  const std::exception& e_;
+
+  /**
+   * Perform a complete visit of this exception as an error tree, calling the
+   * visitor at each event.
+   *
+   * The visit is a depth-first, left-to-right traversal of the error tree. The
+   * events are documented in more depth in `concept ErrorTreeVisitor`.
+   *
+   * @tparam V The type of the visitor
+   * @param v The visitor
+   * @param e The exception to be visited
+   */
+  template <ErrorTreeVisitor V>
+  void visit_nested_exception(V& v, const std::exception& e) const noexcept {
+    v.item(e);
+    try {
+      std::rethrow_if_nested(e);
+    } catch (const std::exception& e2) {
+      v.start_level();
+      visit_nested_exception(v, e2);
+      v.end_level();
+    } catch (...) {
+      v.item(std::logic_error("exception substituted for unknown type"));
+    }
+  }
+
+ public:
+  /**
+   * Default constructor is deleted.
+   */
+  ErrorTreeStdException() = delete;
+
+  /**
+   * Ordinary constructor
+   */
+  explicit ErrorTreeStdException(const std::exception& e)
+      : e_{e} {};
+
+  /**
+   * Perform a visitation with the specified visitor.
+   *
+   * This function is `const`. All results from the visitation are held within
+   * the visitor.
+   */
+  template <ErrorTreeVisitor V>
+  void visit(V& v) const {
+    visit_nested_exception(v, e_);
+  }
+};
+
+/**
+ * Visitor for `ErrorTreeStdException` generates text from a possibly-nested
+ * exception.
+ *
+ * All the visitation function have `try` blocks that suppress all exceptions.
+ * The only exception anticipated is `bad_alloc`, which would not allow a string
+ * lengthening to succeed regardless.
+ */
+class ETVisitorStdException {
+  std::string s_{};
+
+ public:
+  ETVisitorStdException() = default;
+  void start_level() noexcept;
+  void end_level() noexcept;
+  void separator() noexcept;
+  using item_type = std::exception;
+  void item(const item_type& e) noexcept;
+  [[nodiscard]] inline std::string value() const {
+    return s_;
+  }
+};
+
+/**
+ * Create a log message from an exception.
+ */
+inline std::string log_message(const std::exception& e) {
+  ETVisitorStdException v{};
+  ErrorTreeStdException x{e};
+  x.visit(v);
+  return v.value();
+}
+
+//-------------------------------------------------------
+// Handlers and actions
+//-------------------------------------------------------
+/*
  * Responsibilities of the exception wrappers:
  * - Ensure that no exception propagates out of the C API
  * - Provide uniform treatment of errors caught at the top level
  *
- * Actions taken for each exception:
- * - Generate a `Status` from an exception object
- *   - std::bad_alloc -> "Out of memory" + what()
- *   - std::exception -> "uncaught exception" + what()
- *   - StatusException -> extract_status()
- *   - other -> "uncaught unknown exception"
- * - Log the `Status`
+ * Actions taken for each (ordinary) exception:
+ * - Generate a log message from an exception object. The message generator
+ *   handles nested exceptions.
+ * - Log the generated message.
  * - (optional) Save the error to a context
  * - (optional) Pass the error back through an error argument
  *
- * We use `Status` here primarily out of convenience, even though it should be
- * considered a legacy class. It does, however, provide useful informtion, as it
- * separates the site (coarsely construed) where the error occurred from the
- * error message itself. Thus `StatusException` generated within the code have
- * their own sites. We designate standard library exceptions caught at the top
- * level with site "C API".
+ * @section Maturity Notes
  *
- * We'll have to stop using `Status` when we all support for nested exceptions.
- * At that point the simple strings of `Status` won't suffice to capture the
- * sequence-like nature of nested exceptions.
+ * Out of memory exceptions, notably `bad_alloc`, are not at present handled
+ * with an audited zero-allocation method.
  */
-
-inline Status CAPIStatusError(const std::string& msg) {
-  return {"C API", msg};
-};
-
-namespace detail {
 
 /**
  * Generic class for exception actions; only implemented as specializations.
@@ -112,13 +236,13 @@ class ExceptionActionImpl<Head, Tail...> : public Head,
       , ExceptionActionImpl<Tail...>{std::forward<Tail>(tail)...} {
   }
   /**
-   * Action to take upon catching an exception.
+   * Action to take upon catching `std::exception`
    *
-   * @param st A `Status` that captures the content of an exception.
+   * @param e An exception
    */
-  inline void action(const Status& st) {
-    Head::action(st);
-    ExceptionActionImpl<Tail...>::action(st);
+  inline void action(const std::exception& e) {
+    Head::action(e);
+    ExceptionActionImpl<Tail...>::action(e);
   }
   /**
    * Action to take when no exception was caught.
@@ -143,7 +267,7 @@ template <>
 class ExceptionActionImpl<> {
  public:
   ExceptionActionImpl() = default;
-  inline void action(const Status&) {
+  inline void action(const std::exception&) {
   }
   inline void action_on_success() {
   }
@@ -180,8 +304,8 @@ class ExceptionActionImpl<> {
 class LogAction {
  public:
   LogAction() = default;
-  inline void action(const Status& st) const {
-    (void)LOG_STATUS(st);
+  inline void action(const std::exception& e) {
+    (void)LOG_ERROR(log_message(e));
   }
   inline void action_on_success() {
   }
@@ -242,12 +366,12 @@ class ContextAction {
   /**
    * Action on exception
    */
-  inline void action(const Status& st) {
+  inline void action(const std::exception& e) {
     if (!valid_) {
       // Don't even try to report our own invalidity
       return;
     }
-    tiledb::api::save_error(ctx_, st);
+    ctx_->context().save_error(log_message(e));
   }
 
   /**
@@ -309,11 +433,11 @@ class ErrorAction {
   /**
    * Action to report an error
    */
-  inline void action(const Status& st) {
+  inline void action(const std::exception& e) {
     if (!valid_) {
       return;
     }
-    tiledb::api::create_error(err_, st);
+    tiledb::api::create_error(err_, log_message(e));
   }
 
   /**
@@ -387,6 +511,9 @@ using ExceptionActionCtx = detail::ExceptionActionDetailCtx;
 using ExceptionActionErr = detail::ExceptionActionDetailErr;
 using ExceptionActionCtxErr = detail::ExceptionActionDetailCtxErr;
 
+//-------------------------------------------------------
+// Exception wrapper
+//-------------------------------------------------------
 /**
  * Non-specialized wrapper for implementations functions for the C API. May
  * only be used as a specialization.
@@ -399,22 +526,6 @@ class CAPIFunction;
  */
 template <class... Args, capi_return_t (*f)(Args...), class H>
 class CAPIFunction<f, H> {
-  /**
-   * Convert `std:bad_alloc` to a C API `Status`.
-   */
-  static inline Status exception_to_status(const std::bad_alloc& e) {
-    return CAPIStatusError(
-        std::string{"Out of memory, caught std::bad_alloc; "} + e.what());
-  }
-
-  /**
-   * Convert `std:exception` to a C API `Status`.
-   */
-  static inline Status exception_to_status(const std::exception& e) {
-    return CAPIStatusError(
-        std::string{"TileDB Internal, std::exception; "} + e.what());
-  }
-
  public:
   /**
    * Forwarded alias to template parameter H.
@@ -454,23 +565,22 @@ class CAPIFunction<f, H> {
       h.action_on_success();
       return x;
     } catch (const std::bad_alloc& e) {
-      h.action(exception_to_status(e));
+      h.action(e);
       return TILEDB_OOM;
     } catch (const detail::InvalidContextException& e) {
-      h.action(exception_to_status(e));
+      h.action(e);
       return TILEDB_INVALID_CONTEXT;
     } catch (const detail::InvalidErrorException& e) {
-      h.action(exception_to_status(e));
+      h.action(e);
       return TILEDB_INVALID_ERROR;
     } catch (const StatusException& e) {
-      h.action(e.extract_status());
+      h.action(e);
       return TILEDB_ERR;
     } catch (const std::exception& e) {
-      h.action(exception_to_status(e));
+      h.action(e);
       return TILEDB_ERR;
     } catch (...) {
-      h.action(CAPIStatusError(
-          "TileDB Internal: unknown exception type; no further information"));
+      h.action(CAPIException("unknown exception type; no further information"));
       return TILEDB_ERR;
     }
   };
@@ -526,6 +636,9 @@ class CAPIFunction<f, H> {
   }
 };
 
+//-------------------------------------------------------
+// Exception-wrapping function transformers
+//-------------------------------------------------------
 /*
  * `class CAPIFunction` is the foundation for a set of function transformers
  * that convert API implementation functions into API interface functions. We
