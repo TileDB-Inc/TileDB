@@ -35,7 +35,6 @@
 #include <test/support/tdb_catch.h>
 #include <tiledb/common/common.h>
 #include <tiledb/common/dynamic_memory/dynamic_memory.h>
-// #include <tiledb/sm/cpp_api/tiledb>
 #include <tiledb/sm/stats/global_stats.h>
 
 #include <string>

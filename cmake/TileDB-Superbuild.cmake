@@ -208,7 +208,7 @@ set(SCRIPTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/scripts")
 
 find_package(ClangTools)
 if (NOT ${CLANG_FORMAT_FOUND})
-  find_program(CLANG_FORMAT_BIN NAMES clang-format-16 clang-format-15 clang-format-14 clang-format-13 clang-format-12 clang-format-11 clang-format-10 clang-format-9 clang-format-8 clang-format-7 clang-format-6.0 clang-format-5.0 clang-format-4.0)
+  find_program(CLANG_FORMAT_BIN NAMES clang-format-16)
   if(CLANG_FORMAT_BIN)
     set(CLANG_FORMAT_FOUND TRUE)
   endif()
