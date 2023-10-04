@@ -1602,6 +1602,13 @@ Status Query::submit() {
 
     RETURN_NOT_OK(rest_client->submit_query_to_rest(array_->array_uri(), this));
 
+    if (status_ == QueryStatus::INCOMPLETE &&
+        !default_channel_aggregates_.empty()) {
+      throw QueryStatusException(
+          "Aggregates are not currently supported in incomplete remote "
+          "queries");
+    }
+
     reset_coords_markers();
     return Status::Ok();
   }
@@ -2198,11 +2205,6 @@ void Query::reset_coords_markers() {
 }
 
 void Query::copy_aggregates_data_to_user_buffer() {
-  if (array_->is_remote() && !default_channel_aggregates_.empty()) {
-    throw QueryStatusException(
-        "Cannot submit query; Query aggregates are not supported in REST yet");
-  }
-
   for (auto& default_channel_aggregate : default_channel_aggregates_) {
     default_channel_aggregate.second->copy_to_user_buffer(
         default_channel_aggregate.first, aggregate_buffers_);
