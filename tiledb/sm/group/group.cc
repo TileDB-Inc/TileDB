@@ -204,7 +204,6 @@ Status Group::open(
   query_type_ = query_type;
   is_open_ = true;
   changes_applied_ = false;
-  group_details_->finish_populating();
 
   return Status::Ok();
 }

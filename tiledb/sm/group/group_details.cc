@@ -54,8 +54,7 @@ namespace sm {
 GroupDetails::GroupDetails(const URI& group_uri, uint32_t version)
     : group_uri_(group_uri)
     , version_(version)
-    , changes_applied_(false)
-    , is_populated_(false) {
+    , changes_applied_(false) {
 }
 
 Status GroupDetails::clear() {
@@ -63,28 +62,25 @@ Status GroupDetails::clear() {
   members_by_name_.clear();
   members_vec_.clear();
   members_to_modify_.clear();
-  is_populated_ = false;
 
   return Status::Ok();
 }
 
 void GroupDetails::add_member(const shared_ptr<GroupMember> group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
-  assert(!is_populated_);
   auto key = group_member->name_or_uri();
   members_[key] = group_member;
+  // Invalidate the lookup tables.
+  members_by_name_.clear();
+  members_vec_.clear();
 }
 
 void GroupDetails::delete_member(const shared_ptr<GroupMember> group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
-  assert(!is_populated_);
   members_.erase(group_member->name_or_uri());
-}
-
-void GroupDetails::finish_populating() {
-  std::lock_guard<std::mutex> lck(mtx_);
-  assert(!is_populated_);
-  is_populated_ = true;
+  // Invalidate the lookup tables.
+  members_by_name_.clear();
+  members_vec_.clear();
 }
 
 Status GroupDetails::mark_member_for_addition(
@@ -194,7 +190,6 @@ uint64_t GroupDetails::member_count() const {
 tuple<std::string, ObjectType, optional<std::string>>
 GroupDetails::member_by_index(uint64_t index) {
   std::lock_guard<std::mutex> lck(mtx_);
-  assert(is_populated_);
 
   if (members_vec_.size() != members_.size()) {
     members_vec_.clear();
@@ -223,7 +218,6 @@ GroupDetails::member_by_index(uint64_t index) {
 tuple<std::string, ObjectType, optional<std::string>, bool>
 GroupDetails::member_by_name(const std::string& name) {
   std::lock_guard<std::mutex> lck(mtx_);
-  assert(is_populated_);
 
   if (members_by_name_.size() != members_.size()) {
     members_by_name_.clear();
