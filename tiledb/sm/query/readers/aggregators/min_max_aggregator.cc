@@ -162,14 +162,17 @@ void ComparatorAggregator<T, Op>::aggregate_data(AggregateBuffer& input_data) {
     // This might be called on multiple threads, the final result stored in
     // value_ should be computed in a thread safe manner.
     std::unique_lock lock(value_mtx_);
-    if (std::get<1>(res) > 0 &&
+    const auto value = std::get<0>(res);
+    const auto count = std::get<1>(res);
+    if (count > 0 &&
         (ComparatorAggregatorBase<T>::value_ == std::nullopt ||
-         op_(std::get<0>(res), ComparatorAggregatorBase<T>::value_.value()))) {
-      ComparatorAggregatorBase<T>::value_ = std::get<0>(res);
+         op_(value, ComparatorAggregatorBase<T>::value_.value()))) {
+      ComparatorAggregatorBase<T>::value_ = value;
     }
 
-    if (ComparatorAggregatorBase<T>::field_info_.is_nullable_ &&
-        std::get<1>(res) > 0) {
+    // Here we know that if the count is greater than 0, it means at least one
+    // valid item was found, which means the result is valid.
+    if (ComparatorAggregatorBase<T>::field_info_.is_nullable_ && count > 0) {
       ComparatorAggregatorBase<T>::validity_value_ = 1;
     }
   }

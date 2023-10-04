@@ -110,9 +110,14 @@ void MeanAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
           SafeSum>(input_data);
     }
 
-    SafeSum().safe_sum(std::get<0>(res), sum_);
-    count_ += std::get<1>(res);
-    if (field_info_.is_nullable_ && std::get<1>(res) > 0) {
+    const auto value = std::get<0>(res);
+    const auto count = std::get<1>(res);
+    SafeSum().safe_sum(value, sum_);
+    count_ += count;
+
+    // Here we know that if the count is greater than 0, it means at least one
+    // valid item was found, which means the result is valid.
+    if (field_info_.is_nullable_ && count) {
       validity_value_ = 1;
     }
   } catch (std::overflow_error& e) {

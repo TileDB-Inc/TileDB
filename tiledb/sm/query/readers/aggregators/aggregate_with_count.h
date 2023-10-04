@@ -76,14 +76,18 @@ class AggregateWithCount {
    * @tparam AggPolicy Aggregation policy.
    * @param input_data Input data for the aggregation.
    *
-   * @return {Aggregate value, number of cells, optional validity value}.
+   * NOTE: Count of cells returned is used to infer the validity from the
+   * caller.
+   * @return {Aggregate value, count of cells}.
    */
   template <typename AGG_T, typename BITMAP_T, class AggPolicy>
   tuple<AGG_T, uint64_t> aggregate(AggregateBuffer& input_data) {
     typedef typename type_data<T>::value_type VALUE_T;
     AggPolicy agg_policy;
     AGG_T res;
-    if constexpr (!std::is_same<AGG_T, std::string_view>::value) {
+    if constexpr (std::is_same<AGG_T, std::string_view>::value) {
+      res = "";
+    } else {
       res = 0;
     }
     uint64_t count{0};
