@@ -529,6 +529,9 @@ class Config {
   /** Connect scale factor for exponential backoff. */
   static const std::string VFS_S3_CONNECT_SCALE_FACTOR;
 
+  /** Header to add to curl requests with format "header_key header_value" */
+  static const std::string VFS_S3_CURL_HEADER;
+
   /** S3 server-side encryption algorithm. */
   static const std::string VFS_S3_SSE;
 

@@ -480,6 +480,9 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    The scale factor for exponential backoff when connecting to S3.
  *    Any `long` value is acceptable. <br>
  *    **Default**: 25
+ * - `vfs.s3.curl_header` <br>
+ *    Header to add to curl requests with format "header_key header_value" <br>
+ *    **Default**: ""
  * - `vfs.s3.logging_level` <br>
  *    The AWS SDK logging level. This is a process-global setting. The
  *    configuration of the most recently constructed context will set

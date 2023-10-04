@@ -85,6 +85,8 @@ using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb::sm {
 
+class TileDBS3Client;
+
 /**
  * The s3-specific configuration parameters.
  *
@@ -129,6 +131,8 @@ struct S3Parameters {
             config.get<int64_t>("vfs.s3.connect_max_tries", Config::must_find))
       , connect_scale_factor_(config.get<int64_t>(
             "vfs.s3.connect_scale_factor", Config::must_find))
+      , curl_header_(
+            config.get<std::string>("vfs.s3.curl_header", Config::must_find))
       , logging_level_(
             config.get<std::string>("vfs.s3.logging_level", Config::must_find))
       , request_timeout_ms_(
@@ -214,6 +218,9 @@ struct S3Parameters {
 
   /** The scale factor for exponential backoff when connecting to S3. */
   int64_t connect_scale_factor_;
+
+  /** Header to add to curl requests with format "header_key header_value" */
+  std::string curl_header_;
 
   /** Process-global AWS SDK logging level. */
   std::string logging_level_;
@@ -861,7 +868,7 @@ class S3 {
    * The lazily-initialized S3 client. This is mutable so that nominally const
    * functions can call init_client().
    */
-  mutable shared_ptr<Aws::S3::S3Client> client_;
+  mutable shared_ptr<TileDBS3Client> client_;
 
   /** The AWS credetial provider. */
   mutable shared_ptr<Aws::Auth::AWSCredentialsProvider> credentials_provider_;

@@ -222,6 +222,64 @@ class S3Exception : public StatusException {
   }
 };
 
+/**
+ * Helper class which overrides Aws::S3::S3Client to set a header from
+ * vfs.s3.curl_header
+ *
+ * @note vfs.s3.curl_header expects format "header_key header_value"
+ */
+class TileDBS3Client : public Aws::S3::S3Client {
+ public:
+  TileDBS3Client(
+      const S3Parameters& s3_params,
+      const Aws::S3::S3ClientConfiguration& client_config,
+      Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy sign_payloads,
+      bool use_virtual_addressing)
+      : Aws::S3::S3Client(client_config, sign_payloads, use_virtual_addressing)
+      , params_(s3_params) {
+  }
+
+  TileDBS3Client(
+      const S3Parameters& s3_params,
+      const std::shared_ptr<Aws::Auth::AWSCredentialsProvider>& creds,
+      const Aws::S3::S3ClientConfiguration& client_config,
+      Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy sign_payloads,
+      bool use_virtual_addressing)
+      : Aws::S3::S3Client(
+            creds, client_config, sign_payloads, use_virtual_addressing)
+      , params_(s3_params) {
+  }
+
+  virtual void BuildHttpRequest(
+      const Aws::AmazonWebServiceRequest& request,
+      const std::shared_ptr<Aws::Http::HttpRequest>& httpRequest)
+      const override {
+    S3Client::BuildHttpRequest(request, httpRequest);
+
+    // Set header from S3Parameters "header_key header_value"
+    auto header = params_.curl_header_;
+    if (header != "") {
+      if (header.find(" ") == std::string::npos) {
+        throw std::runtime_error(
+            "Failed to set curl header; vfs.s3.curl_header expects "
+            "a key-value pair in format \"header_key header_value\"");
+      }
+
+      httpRequest->SetHeaderValue(
+          header.substr(0, header.find(" ")),
+          header.substr(header.find(" ") + 1));
+    }
+  }
+
+ protected:
+  /**
+   * A reference to the S3 configuration parameters, which stores the header.
+   *
+   * @note Until the removal of init_client(), this must be const-qualified.
+   */
+  const S3Parameters& params_;
+};
+
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
@@ -1490,16 +1548,17 @@ Status S3::init_client() const {
   static std::mutex static_client_init_mtx;
   {
     std::lock_guard<std::mutex> static_lck(static_client_init_mtx);
-
     if (credentials_provider_ == nullptr) {
-      client_ = make_shared<Aws::S3::S3Client>(
+      client_ = make_shared<TileDBS3Client>(
           HERE(),
+          s3_params_,
           *client_config_,
           Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
           s3_params_.use_virtual_addressing_);
     } else {
-      client_ = make_shared<Aws::S3::S3Client>(
+      client_ = make_shared<TileDBS3Client>(
           HERE(),
+          s3_params_,
           credentials_provider_,
           *client_config_,
           Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
