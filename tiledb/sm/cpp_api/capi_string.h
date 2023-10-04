@@ -36,6 +36,8 @@
 #include <cassert>
 #include <optional>
 #include <stdexcept>
+#include "exception.h"
+#include "log.h"
 #include "tiledb.h"
 
 namespace tiledb::impl {
@@ -46,11 +48,11 @@ namespace tiledb::impl {
  */
 class CAPIString {
  public:
-  CAPIString(tiledb_string_t*&& handle) {
+  CAPIString(tiledb_string_t** handle) {
     if (handle == nullptr) {
       throw std::invalid_argument("String handle cannot be null.");
     }
-    string_ = handle;
+    string_ = *handle;
     handle = nullptr;
   }
   ~CAPIString() {
@@ -93,11 +95,11 @@ class CAPIString {
  *
  * If the handle is null returns nullopt.
  */
-inline std::optional<std::string> to_string(tiledb_string_t*&& handle) {
+inline std::optional<std::string> to_string(tiledb_string_t** handle) {
   if (handle == nullptr) {
     return std::nullopt;
   }
-  return CAPIString(std::move(handle)).str();
+  return CAPIString(handle).str();
 }
 
 }  // namespace tiledb::impl
