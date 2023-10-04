@@ -296,27 +296,6 @@ class VFSFilebuf : public std::streambuf {
  * posix/windows, HDFS, AWS S3, etc.
  */
 class VFS {
- private:
-  /* ********************************* */
-  /*          TYPE DEFINITIONS         */
-  /* ********************************* */
-
-  /**
-   * TODO
-   */
-  typedef int32_t (*LsCallback)(const char*, size_t, uint64_t, void*);
-
-  /**
-   * Typedef for ls inclusion predicate function used to check if a single
-   * result should be included in the final results returned from ls or
-   * ls_recusrive functions.
-   *
-   * @param path The path of a visited object for the relative filesystem.
-   * @return True if the result should be included, else false.
-   * @sa ls_include
-   */
-  typedef std::function<bool(const std::string&)> LsInclude;
-
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -503,38 +482,6 @@ class VFS {
     return ret;
   }
 
-  /**
-   * Recursively lists objects at the input URI, invoking the provided callback
-   * on each entry gathered. The callback should return true if the entry should
-   * be included in the results. By default all entries are included using the
-   * ls_include predicate, which simply returns true for all results.
-   *
-   * @param uri The base URI to list results recursively.
-   * @param callback The callback predicate to invoke on each entry collected.
-   * @return Vector of pairs storing the path and object size of each result.
-   * @sa ls_recursive_gather
-   * @sa LsInclude
-   */
-  std::vector<std::pair<std::string, uint64_t>> ls_recursive(
-      const std::string& uri, const LsInclude& callback = ls_include) const {
-    LsRecursiveData ls_data;
-    auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_vfs_ls_recursive(
-        ctx.ptr().get(),
-        vfs_.get(),
-        uri.c_str(),
-        ls_recursive_gather,
-        &ls_data));
-    std::vector<std::pair<std::string, uint64_t>> results;
-    for (size_t i = 0; i < ls_data.object_paths_.size(); i++) {
-      if (callback(ls_data.object_paths_[i])) {
-        results.emplace_back(
-            ls_data.object_paths_[i], ls_data.object_sizes_[i]);
-      }
-    }
-    return results;
-  }
-
   /** Retrieves the size of a file with the input URI. */
   uint64_t file_size(const std::string& uri) const {
     uint64_t ret;
@@ -614,34 +561,6 @@ class VFS {
     return 1;
   }
 
-  /**
-   * Callback function to be used when invoking the C TileDB function
-   * for recursive ls. The callback will cast 'data' to LsRecursiveData struct.
-   * The struct stores a vector of strings for each path collected, and a uint64
-   * vector of file sizes for the objects at each path.
-   *
-   * @param path The path of a visited TileDB object
-   * @param data Cast to LsRecursiveData struct to store paths and offsets.
-   * @return If `1` then the walk should continue to the next object.
-   */
-  static int ls_recursive_gather(
-      const char* path, size_t path_length, uint64_t file_size, void* data) {
-    auto ls_data = static_cast<LsRecursiveData*>(data);
-    ls_data->object_paths_.emplace_back(path, path_length);
-    ls_data->object_sizes_.push_back(file_size);
-    return 1;
-  }
-
-  /**
-   * Default inclusion predicate for ls functions. Optionally, a user can
-   * provide their own inclusion predicate to filter results.
-   *
-   * @return True if the result should be included, else false.
-   */
-  static bool ls_include(const std::string_view&) {
-    return true;
-  }
-
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
@@ -672,16 +591,6 @@ class VFS {
 
     vfs_ = std::shared_ptr<tiledb_vfs_t>(vfs, deleter_);
   }
-
-  /**
-   * Struct to store recursive ls results data.
-   * 'object_paths_' Stores all paths collected as a vector of strings.
-   * `file_sizes` stores all file sizes as a vector of uint64_t.
-   */
-  struct LsRecursiveData {
-    std::vector<std::string> object_paths_;
-    std::vector<uint64_t> object_sizes_;
-  };
 };
 
 namespace impl {

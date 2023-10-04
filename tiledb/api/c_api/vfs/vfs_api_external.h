@@ -608,48 +608,6 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_ls(
     void* data) TILEDB_NOEXCEPT;
 
 /**
- * Visits the children of `path` recursively, invoking the callback for each
- * entry. The callback should return 1 to continue traversal, 0 to stop, or -1
- * on error. The callback is responsible for writing gathered entries into the
- * `data` buffer, for example using a pointer to a user-defined struct.
- *
- * **Example:**
- *
- * @code{.c}
- * int my_callback(
- *     const char* path, size_t path_length, uint64_t file_size, void* data) {
- *   MyCbStruct cb_data = static_cast<MyCbStruct*>(data);
- *   // Perform custom callback behavior here.
- *   return 1;  // Continue traversal to next entry.
- * }
- * MyCbStruct* cb_data = allocate_cb_struct();
- *
- * // Retrieve at most 100 results from 'my_dir'.
- * tiledb_vfs_ls_recursive(ctx, vfs, "my_dir", my_callback, &cb_data, 100);
- * @endcode
- *
- * @param[in] ctx The TileDB context.
- * @param[in] vfs The virtual filesystem object.
- * @param[in] path The path in which the traversal will occur.
- * @param[in] callback
- * The callback function to be applied on every visited object.
- *     The callback should return `0` if the iteration must stop, and `1`
- *     if the iteration must continue. It takes as input the currently visited
- *     path, the length of the currently visited path, the size of the file, and
- *     user provided buffer for paths and object sizes in the form of a struct
- *     pointer. The callback returns `-1` upon error. Note that `path` in the
- *     callback will be an **absolute** path.
- * @param[in] data Data pointer passed into the callback for storing results.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT capi_return_t tiledb_vfs_ls_recursive(
-    tiledb_ctx_t* ctx,
-    tiledb_vfs_t* vfs,
-    const char* path,
-    int32_t (*callback)(const char*, size_t, uint64_t, void*),
-    void* data) TILEDB_NOEXCEPT;
-
-/**
  * Frees a file handle.
  *
  * **Example:**

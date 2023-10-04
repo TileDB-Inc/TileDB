@@ -38,6 +38,7 @@
 #include "tiledb/sm/enums/vfs_mode.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/filesystem/vfs_file_handle.h"
+#include "vfs_api_experimental.h"
 #include "vfs_api_external.h"
 
 /** Handle `struct` for API VFS objects. */

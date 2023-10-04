@@ -46,6 +46,7 @@
 #include "tiledb/api/c_api/group/group_api_external_experimental.h"
 #include "tiledb/api/c_api/query_aggregate/query_aggregate_api_external_experimental.h"
 #include "tiledb/api/c_api/query_plan/query_plan_api_external_experimental.h"
+#include "tiledb/api/c_api/vfs/vfs_api_experimental.h"
 #include "tiledb_dimension_label_experimental.h"
 
 /* ********************************* */

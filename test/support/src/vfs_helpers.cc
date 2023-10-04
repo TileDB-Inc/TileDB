@@ -46,6 +46,9 @@
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 
+#include "tiledb/sm/c_api/tiledb_experimental.h"
+#include "tiledb/sm/cpp_api/tiledb_experimental"
+
 namespace tiledb {
 namespace test {
 
@@ -439,20 +442,21 @@ VfsFixture::VfsFixture() {
   vfs_c_ = vfs_.ptr().get();
 
   fs_prefix_ = GENERATE("file://", "s3://", "mem://");
+  // Generate a temporary directory or bucket name for the test.
   if (fs_prefix_ == "file://") {
 #ifdef _WIN32
-    fs_prefix_ += sm::Win::current_dir() + "/";
+    temp_dir_ = test_dir(fs_prefix_ + sm::Win::current_dir() + "/");
 #else
-    fs_prefix_ += sm::Posix::current_dir() + "/";
+    temp_dir_ = test_dir(fs_prefix_ + sm::Posix::current_dir() + "/");
 #endif
+  } else {
+    temp_dir_ = test_dir(fs_prefix_);
   }
-  // Generate a temporary directory or bucket name for the test.
-  temp_dir_ = test_dir(fs_prefix_);
   setup_test();
 }
 
 VfsFixture::~VfsFixture() {
-  if (fs_ == TILEDB_S3 && vfs_.is_bucket(temp_dir_.to_string())) {
+  if (temp_dir_.is_s3() && vfs_.is_bucket(temp_dir_.to_string())) {
     vfs_.remove_bucket(temp_dir_.to_string());
   } else if (vfs_.is_dir(temp_dir_.to_string())) {
     vfs_.remove_dir(temp_dir_.to_string());
@@ -513,7 +517,8 @@ void VfsFixture::test_ls_recursive(
     VfsFixture::filter_expected(filter);
   }
 
-  auto results = vfs_.ls_recursive(temp_dir_.to_string(), filter);
+  auto results =
+      VFSExperimental::ls_recursive(ctx_, vfs_, temp_dir_.to_string(), filter);
   CHECK(expected_results_ == results);
   CHECK(results.size() == expected_results_.size());
 }

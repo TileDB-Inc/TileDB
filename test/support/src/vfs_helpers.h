@@ -743,8 +743,6 @@ struct VfsFixture {
   tiledb::VFS vfs_{ctx_};
   tiledb_vfs_handle_t* vfs_c_;
 
-  // The filesystem to test.
-  tiledb_filesystem_t fs_;
   // The filesystem prefix for this test.
   std::string fs_prefix_;
   // The temporary directory for this test.

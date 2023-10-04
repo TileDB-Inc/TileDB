@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/api/c_api_support/c_api_support.h"
+#include "vfs_api_experimental.h"
 #include "vfs_api_internal.h"
 
 namespace tiledb::api {
