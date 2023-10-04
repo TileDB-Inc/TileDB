@@ -1,5 +1,5 @@
 /**
- * @file   sum_type.h
+ * @file operation.cc
  *
  * @section LICENSE
  *
@@ -27,54 +27,27 @@
  *
  * @section DESCRIPTION
  *
- * This file defines sum types in relation to basic types.
- *
- * TODO: This needs to be improved to remove macros (sc-33764).
+ * This file implements class Operation.
  */
 
-#ifndef TILEDB_SUM_TYPE_H
-#define TILEDB_SUM_TYPE_H
-
-#include "tiledb/sm/query/readers/aggregators/field_info.h"
+#include "tiledb/sm/query/readers/aggregators/operation.h"
 
 namespace tiledb::sm {
 
-inline void ensure_aggregate_numeric_field(
+shared_ptr<Operation> Operation::make_operation(
     const std::string& name, const tiledb::sm::FieldInfo& fi) {
-  if (fi.var_sized_) {
-    throw std::logic_error(
-        name + " aggregates are not supported for var sized attributes.");
+  if (name == constants::aggregate_sum_str) {
+    return std::make_shared<SumOperation>(fi);
+  } else if (name == constants::aggregate_min_str) {
+    return std::make_shared<MinOperation>(fi);
+  } else if (name == constants::aggregate_max_str) {
+    return std::make_shared<MaxOperation>(fi);
+  } else if (name == constants::aggregate_count_str) {
+    return std::make_shared<CountOperation>();
   }
-  if (fi.cell_val_num_ != 1) {
-    throw std::logic_error(
-        name +
-        " aggregates are not supported for attributes with cell_val_num "
-        "greater than one.");
-  }
+
+  throw std::logic_error(
+      "Unable to create and aggregate operation using name: " + name);
 }
 
-#define SUM_TYPE_DATA(T, SUM_T) \
-  template <>                   \
-  struct sum_type_data<T> {     \
-    using type = T;             \
-    typedef SUM_T sum_type;     \
-  };
-
-/** Convert basic type to a sum type. **/
-template <typename T>
-struct sum_type_data;
-
-SUM_TYPE_DATA(int8_t, int64_t);
-SUM_TYPE_DATA(uint8_t, uint64_t);
-SUM_TYPE_DATA(int16_t, int64_t);
-SUM_TYPE_DATA(uint16_t, uint64_t);
-SUM_TYPE_DATA(int32_t, int64_t);
-SUM_TYPE_DATA(uint32_t, uint64_t);
-SUM_TYPE_DATA(int64_t, int64_t);
-SUM_TYPE_DATA(uint64_t, uint64_t);
-SUM_TYPE_DATA(float, double);
-SUM_TYPE_DATA(double, double);
-
 }  // namespace tiledb::sm
-
-#endif  // TILEDB_SUM_TYPE_H

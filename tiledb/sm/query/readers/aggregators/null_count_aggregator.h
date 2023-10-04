@@ -104,6 +104,11 @@ class NullCountAggregator : public OutputBufferValidator, public IAggregator {
       std::string output_field_name,
       std::unordered_map<std::string, QueryBuffer>& buffers) override;
 
+  /** Returns name of the aggregate, e.g. COUNT, MIN, SUM. */
+  std::string aggregate_name() override {
+    return constants::aggregate_null_count_str;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

@@ -6,15 +6,10 @@
 #include <capnp/generated-header-support.h>
 #include <kj/windows-sanity.h>
 
-#ifndef CAPNP_VERSION
-#error \
-    "CAPNP_VERSION is not defined, is capnp/generated-header-support.h missing?"
-#elif CAPNP_VERSION != 1000001
+#if CAPNP_VERSION != 8000
 #error \
     "Version mismatch between generated code and library headers.  You must use the same version of the Cap'n Proto compiler and library."
 #endif
-
-CAPNP_BEGIN_HEADER
 
 namespace capnp {
 namespace schemas {
@@ -100,20 +95,13 @@ CAPNP_DECLARE_SCHEMA(d492b6734d5e3bf5);
 CAPNP_DECLARE_SCHEMA(bde8ebd7b13d8625);
 CAPNP_DECLARE_SCHEMA(a736c51d292ca752);
 CAPNP_DECLARE_SCHEMA(cd8abc9dabc4b03f);
-CAPNP_DECLARE_SCHEMA(cfea684b4bcd0721);
-CAPNP_DECLARE_SCHEMA(aaeeafe1e9f3ea1c);
 CAPNP_DECLARE_SCHEMA(f5a35661031194d2);
 CAPNP_DECLARE_SCHEMA(e68edfc0939e63df);
 CAPNP_DECLARE_SCHEMA(891a70a671f15cf6);
 CAPNP_DECLARE_SCHEMA(805c080c10c1e959);
-<<<<<<< HEAD:tiledb/sm/serialization/tiledb-rest.capnp.h
-CAPNP_DECLARE_SCHEMA(83f094010132ff21);
-CAPNP_DECLARE_SCHEMA(ebe17f59ac9a1df1);
-=======
 CAPNP_DECLARE_SCHEMA(ca2d4d0bfe4ae5d9);
 CAPNP_DECLARE_SCHEMA(88c149ffbfd7a497);
 CAPNP_DECLARE_SCHEMA(e193f1f45a9f102e);
->>>>>>> ace5bd498 (basic rest support):tiledb/sm/serialization/posix/tiledb-rest.capnp.h
 
 }  // namespace schemas
 }  // namespace capnp
@@ -1555,40 +1543,6 @@ struct BufferedChunk {
   };
 };
 
-struct ArrayDeleteFragmentsListRequest {
-  ArrayDeleteFragmentsListRequest() = delete;
-
-  class Reader;
-  class Builder;
-  class Pipeline;
-
-  struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(cfea684b4bcd0721, 0, 2)
-#if !CAPNP_LITE
-    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
-      return &schema->defaultBrand;
-    }
-#endif  // !CAPNP_LITE
-  };
-};
-
-struct ArrayDeleteFragmentsTimestampsRequest {
-  ArrayDeleteFragmentsTimestampsRequest() = delete;
-
-  class Reader;
-  class Builder;
-  class Pipeline;
-
-  struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(aaeeafe1e9f3ea1c, 2, 1)
-#if !CAPNP_LITE
-    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
-      return &schema->defaultBrand;
-    }
-#endif  // !CAPNP_LITE
-  };
-};
-
 struct ArrayConsolidationRequest {
   ArrayConsolidationRequest() = delete;
 
@@ -1657,24 +1611,15 @@ struct LoadEnumerationsResponse {
   };
 };
 
-<<<<<<< HEAD:tiledb/sm/serialization/tiledb-rest.capnp.h
-struct LoadArraySchemaRequest {
-  LoadArraySchemaRequest() = delete;
-=======
 struct QueryChannel {
   QueryChannel() = delete;
->>>>>>> ace5bd498 (basic rest support):tiledb/sm/serialization/posix/tiledb-rest.capnp.h
 
   class Reader;
   class Builder;
   class Pipeline;
 
   struct _capnpPrivate {
-<<<<<<< HEAD:tiledb/sm/serialization/tiledb-rest.capnp.h
-    CAPNP_DECLARE_STRUCT_HEADER(83f094010132ff21, 1, 1)
-=======
     CAPNP_DECLARE_STRUCT_HEADER(ca2d4d0bfe4ae5d9, 1, 1)
->>>>>>> ace5bd498 (basic rest support):tiledb/sm/serialization/posix/tiledb-rest.capnp.h
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -1683,22 +1628,14 @@ struct QueryChannel {
   };
 };
 
-<<<<<<< HEAD:tiledb/sm/serialization/tiledb-rest.capnp.h
-struct LoadArraySchemaResponse {
-  LoadArraySchemaResponse() = delete;
-=======
 struct ChannelSegment {
   ChannelSegment() = delete;
->>>>>>> ace5bd498 (basic rest support):tiledb/sm/serialization/posix/tiledb-rest.capnp.h
 
   class Reader;
   class Builder;
   class Pipeline;
 
   struct _capnpPrivate {
-<<<<<<< HEAD:tiledb/sm/serialization/tiledb-rest.capnp.h
-    CAPNP_DECLARE_STRUCT_HEADER(ebe17f59ac9a1df1, 0, 1)
-=======
     CAPNP_DECLARE_STRUCT_HEADER(88c149ffbfd7a497, 0, 1)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
@@ -1717,7 +1654,6 @@ struct Aggregate {
 
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(e193f1f45a9f102e, 0, 3)
->>>>>>> ace5bd498 (basic rest support):tiledb/sm/serialization/posix/tiledb-rest.capnp.h
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -14030,228 +13966,6 @@ class BufferedChunk::Pipeline {
 };
 #endif  // !CAPNP_LITE
 
-class ArrayDeleteFragmentsListRequest::Reader {
- public:
-  typedef ArrayDeleteFragmentsListRequest Reads;
-
-  Reader() = default;
-  inline explicit Reader(::capnp::_::StructReader base)
-      : _reader(base) {
-  }
-
-  inline ::capnp::MessageSize totalSize() const {
-    return _reader.totalSize().asPublic();
-  }
-
-#if !CAPNP_LITE
-  inline ::kj::StringTree toString() const {
-    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
-  }
-#endif  // !CAPNP_LITE
-
-  inline bool hasUri() const;
-  inline ::capnp::Text::Reader getUri() const;
-
-  inline bool hasEntries() const;
-  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader getEntries()
-      const;
-
- private:
-  ::capnp::_::StructReader _reader;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::ToDynamic_;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::_::PointerHelpers;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::List;
-  friend class ::capnp::MessageBuilder;
-  friend class ::capnp::Orphanage;
-};
-
-class ArrayDeleteFragmentsListRequest::Builder {
- public:
-  typedef ArrayDeleteFragmentsListRequest Builds;
-
-  Builder() = delete;  // Deleted to discourage incorrect usage.
-                       // You can explicitly initialize to nullptr instead.
-  inline Builder(decltype(nullptr)) {
-  }
-  inline explicit Builder(::capnp::_::StructBuilder base)
-      : _builder(base) {
-  }
-  inline operator Reader() const {
-    return Reader(_builder.asReader());
-  }
-  inline Reader asReader() const {
-    return *this;
-  }
-
-  inline ::capnp::MessageSize totalSize() const {
-    return asReader().totalSize();
-  }
-#if !CAPNP_LITE
-  inline ::kj::StringTree toString() const {
-    return asReader().toString();
-  }
-#endif  // !CAPNP_LITE
-
-  inline bool hasUri();
-  inline ::capnp::Text::Builder getUri();
-  inline void setUri(::capnp::Text::Reader value);
-  inline ::capnp::Text::Builder initUri(unsigned int size);
-  inline void adoptUri(::capnp::Orphan<::capnp::Text>&& value);
-  inline ::capnp::Orphan<::capnp::Text> disownUri();
-
-  inline bool hasEntries();
-  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
-  getEntries();
-  inline void setEntries(
-      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value);
-  inline void setEntries(::kj::ArrayPtr<const ::capnp::Text::Reader> value);
-  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder initEntries(
-      unsigned int size);
-  inline void adoptEntries(
-      ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
-          value);
-  inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
-  disownEntries();
-
- private:
-  ::capnp::_::StructBuilder _builder;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::ToDynamic_;
-  friend class ::capnp::Orphanage;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::_::PointerHelpers;
-};
-
-#if !CAPNP_LITE
-class ArrayDeleteFragmentsListRequest::Pipeline {
- public:
-  typedef ArrayDeleteFragmentsListRequest Pipelines;
-
-  inline Pipeline(decltype(nullptr))
-      : _typeless(nullptr) {
-  }
-  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
-      : _typeless(kj::mv(typeless)) {
-  }
-
- private:
-  ::capnp::AnyPointer::Pipeline _typeless;
-  friend class ::capnp::PipelineHook;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::ToDynamic_;
-};
-#endif  // !CAPNP_LITE
-
-class ArrayDeleteFragmentsTimestampsRequest::Reader {
- public:
-  typedef ArrayDeleteFragmentsTimestampsRequest Reads;
-
-  Reader() = default;
-  inline explicit Reader(::capnp::_::StructReader base)
-      : _reader(base) {
-  }
-
-  inline ::capnp::MessageSize totalSize() const {
-    return _reader.totalSize().asPublic();
-  }
-
-#if !CAPNP_LITE
-  inline ::kj::StringTree toString() const {
-    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
-  }
-#endif  // !CAPNP_LITE
-
-  inline bool hasUri() const;
-  inline ::capnp::Text::Reader getUri() const;
-
-  inline ::uint64_t getStartTimestamp() const;
-
-  inline ::uint64_t getEndTimestamp() const;
-
- private:
-  ::capnp::_::StructReader _reader;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::ToDynamic_;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::_::PointerHelpers;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::List;
-  friend class ::capnp::MessageBuilder;
-  friend class ::capnp::Orphanage;
-};
-
-class ArrayDeleteFragmentsTimestampsRequest::Builder {
- public:
-  typedef ArrayDeleteFragmentsTimestampsRequest Builds;
-
-  Builder() = delete;  // Deleted to discourage incorrect usage.
-                       // You can explicitly initialize to nullptr instead.
-  inline Builder(decltype(nullptr)) {
-  }
-  inline explicit Builder(::capnp::_::StructBuilder base)
-      : _builder(base) {
-  }
-  inline operator Reader() const {
-    return Reader(_builder.asReader());
-  }
-  inline Reader asReader() const {
-    return *this;
-  }
-
-  inline ::capnp::MessageSize totalSize() const {
-    return asReader().totalSize();
-  }
-#if !CAPNP_LITE
-  inline ::kj::StringTree toString() const {
-    return asReader().toString();
-  }
-#endif  // !CAPNP_LITE
-
-  inline bool hasUri();
-  inline ::capnp::Text::Builder getUri();
-  inline void setUri(::capnp::Text::Reader value);
-  inline ::capnp::Text::Builder initUri(unsigned int size);
-  inline void adoptUri(::capnp::Orphan<::capnp::Text>&& value);
-  inline ::capnp::Orphan<::capnp::Text> disownUri();
-
-  inline ::uint64_t getStartTimestamp();
-  inline void setStartTimestamp(::uint64_t value);
-
-  inline ::uint64_t getEndTimestamp();
-  inline void setEndTimestamp(::uint64_t value);
-
- private:
-  ::capnp::_::StructBuilder _builder;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::ToDynamic_;
-  friend class ::capnp::Orphanage;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::_::PointerHelpers;
-};
-
-#if !CAPNP_LITE
-class ArrayDeleteFragmentsTimestampsRequest::Pipeline {
- public:
-  typedef ArrayDeleteFragmentsTimestampsRequest Pipelines;
-
-  inline Pipeline(decltype(nullptr))
-      : _typeless(nullptr) {
-  }
-  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
-      : _typeless(kj::mv(typeless)) {
-  }
-
- private:
-  ::capnp::AnyPointer::Pipeline _typeless;
-  friend class ::capnp::PipelineHook;
-  template <typename, ::capnp::Kind>
-  friend struct ::capnp::ToDynamic_;
-};
-#endif  // !CAPNP_LITE
-
 class ArrayConsolidationRequest::Reader {
  public:
   typedef ArrayConsolidationRequest Reads;
@@ -14691,15 +14405,9 @@ class LoadEnumerationsResponse::Pipeline {
 };
 #endif  // !CAPNP_LITE
 
-<<<<<<< HEAD:tiledb/sm/serialization/tiledb-rest.capnp.h
-class LoadArraySchemaRequest::Reader {
- public:
-  typedef LoadArraySchemaRequest Reads;
-=======
 class QueryChannel::Reader {
  public:
   typedef QueryChannel Reads;
->>>>>>> ace5bd498 (basic rest support):tiledb/sm/serialization/posix/tiledb-rest.capnp.h
 
   Reader() = default;
   inline explicit Reader(::capnp::_::StructReader base)
@@ -14716,12 +14424,6 @@ class QueryChannel::Reader {
   }
 #endif  // !CAPNP_LITE
 
-<<<<<<< HEAD:tiledb/sm/serialization/tiledb-rest.capnp.h
-  inline bool hasConfig() const;
-  inline ::tiledb::sm::serialization::capnp::Config::Reader getConfig() const;
-
-  inline bool getIncludeEnumerations() const;
-=======
   inline bool getDefault() const;
 
   inline bool hasSegments() const;
@@ -14729,7 +14431,6 @@ class QueryChannel::Reader {
       ::tiledb::sm::serialization::capnp::ChannelSegment,
       ::capnp::Kind::STRUCT>::Reader
   getSegments() const;
->>>>>>> ace5bd498 (basic rest support):tiledb/sm/serialization/posix/tiledb-rest.capnp.h
 
  private:
   ::capnp::_::StructReader _reader;
@@ -14743,15 +14444,9 @@ class QueryChannel::Reader {
   friend class ::capnp::Orphanage;
 };
 
-<<<<<<< HEAD:tiledb/sm/serialization/tiledb-rest.capnp.h
-class LoadArraySchemaRequest::Builder {
- public:
-  typedef LoadArraySchemaRequest Builds;
-=======
 class QueryChannel::Builder {
  public:
   typedef QueryChannel Builds;
->>>>>>> ace5bd498 (basic rest support):tiledb/sm/serialization/posix/tiledb-rest.capnp.h
 
   Builder() = delete;  // Deleted to discourage incorrect usage.
                        // You can explicitly initialize to nullptr instead.
@@ -14776,20 +14471,6 @@ class QueryChannel::Builder {
   }
 #endif  // !CAPNP_LITE
 
-<<<<<<< HEAD:tiledb/sm/serialization/tiledb-rest.capnp.h
-  inline bool hasConfig();
-  inline ::tiledb::sm::serialization::capnp::Config::Builder getConfig();
-  inline void setConfig(
-      ::tiledb::sm::serialization::capnp::Config::Reader value);
-  inline ::tiledb::sm::serialization::capnp::Config::Builder initConfig();
-  inline void adoptConfig(
-      ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>&& value);
-  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>
-  disownConfig();
-
-  inline bool getIncludeEnumerations();
-  inline void setIncludeEnumerations(bool value);
-=======
   inline bool getDefault();
   inline void setDefault(bool value);
 
@@ -14813,7 +14494,6 @@ class QueryChannel::Builder {
       ::tiledb::sm::serialization::capnp::ChannelSegment,
       ::capnp::Kind::STRUCT>>
   disownSegments();
->>>>>>> ace5bd498 (basic rest support):tiledb/sm/serialization/posix/tiledb-rest.capnp.h
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -14825,15 +14505,9 @@ class QueryChannel::Builder {
 };
 
 #if !CAPNP_LITE
-<<<<<<< HEAD:tiledb/sm/serialization/tiledb-rest.capnp.h
-class LoadArraySchemaRequest::Pipeline {
- public:
-  typedef LoadArraySchemaRequest Pipelines;
-=======
 class QueryChannel::Pipeline {
  public:
   typedef QueryChannel Pipelines;
->>>>>>> ace5bd498 (basic rest support):tiledb/sm/serialization/posix/tiledb-rest.capnp.h
 
   inline Pipeline(decltype(nullptr))
       : _typeless(nullptr) {
@@ -14842,11 +14516,6 @@ class QueryChannel::Pipeline {
       : _typeless(kj::mv(typeless)) {
   }
 
-<<<<<<< HEAD:tiledb/sm/serialization/tiledb-rest.capnp.h
-  inline ::tiledb::sm::serialization::capnp::Config::Pipeline getConfig();
-
-=======
->>>>>>> ace5bd498 (basic rest support):tiledb/sm/serialization/posix/tiledb-rest.capnp.h
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
   friend class ::capnp::PipelineHook;
@@ -14855,15 +14524,9 @@ class QueryChannel::Pipeline {
 };
 #endif  // !CAPNP_LITE
 
-<<<<<<< HEAD:tiledb/sm/serialization/tiledb-rest.capnp.h
-class LoadArraySchemaResponse::Reader {
- public:
-  typedef LoadArraySchemaResponse Reads;
-=======
 class ChannelSegment::Reader {
  public:
   typedef ChannelSegment Reads;
->>>>>>> ace5bd498 (basic rest support):tiledb/sm/serialization/posix/tiledb-rest.capnp.h
 
   Reader() = default;
   inline explicit Reader(::capnp::_::StructReader base)
@@ -14880,17 +14543,11 @@ class ChannelSegment::Reader {
   }
 #endif  // !CAPNP_LITE
 
-<<<<<<< HEAD:tiledb/sm/serialization/tiledb-rest.capnp.h
-  inline bool hasSchema() const;
-  inline ::tiledb::sm::serialization::capnp::ArraySchema::Reader getSchema()
-      const;
-=======
   inline bool hasAggregates() const;
   inline ::capnp::List<
       ::tiledb::sm::serialization::capnp::Aggregate,
       ::capnp::Kind::STRUCT>::Reader
   getAggregates() const;
->>>>>>> ace5bd498 (basic rest support):tiledb/sm/serialization/posix/tiledb-rest.capnp.h
 
  private:
   ::capnp::_::StructReader _reader;
@@ -14904,15 +14561,9 @@ class ChannelSegment::Reader {
   friend class ::capnp::Orphanage;
 };
 
-<<<<<<< HEAD:tiledb/sm/serialization/tiledb-rest.capnp.h
-class LoadArraySchemaResponse::Builder {
- public:
-  typedef LoadArraySchemaResponse Builds;
-=======
 class ChannelSegment::Builder {
  public:
   typedef ChannelSegment Builds;
->>>>>>> ace5bd498 (basic rest support):tiledb/sm/serialization/posix/tiledb-rest.capnp.h
 
   Builder() = delete;  // Deleted to discourage incorrect usage.
                        // You can explicitly initialize to nullptr instead.
@@ -14937,17 +14588,6 @@ class ChannelSegment::Builder {
   }
 #endif  // !CAPNP_LITE
 
-<<<<<<< HEAD:tiledb/sm/serialization/tiledb-rest.capnp.h
-  inline bool hasSchema();
-  inline ::tiledb::sm::serialization::capnp::ArraySchema::Builder getSchema();
-  inline void setSchema(
-      ::tiledb::sm::serialization::capnp::ArraySchema::Reader value);
-  inline ::tiledb::sm::serialization::capnp::ArraySchema::Builder initSchema();
-  inline void adoptSchema(
-      ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArraySchema>&& value);
-  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArraySchema>
-  disownSchema();
-=======
   inline bool hasAggregates();
   inline ::capnp::List<
       ::tiledb::sm::serialization::capnp::Aggregate,
@@ -14967,7 +14607,6 @@ class ChannelSegment::Builder {
       ::tiledb::sm::serialization::capnp::Aggregate,
       ::capnp::Kind::STRUCT>>
   disownAggregates();
->>>>>>> ace5bd498 (basic rest support):tiledb/sm/serialization/posix/tiledb-rest.capnp.h
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -14979,11 +14618,6 @@ class ChannelSegment::Builder {
 };
 
 #if !CAPNP_LITE
-<<<<<<< HEAD:tiledb/sm/serialization/tiledb-rest.capnp.h
-class LoadArraySchemaResponse::Pipeline {
- public:
-  typedef LoadArraySchemaResponse Pipelines;
-=======
 class ChannelSegment::Pipeline {
  public:
   typedef ChannelSegment Pipelines;
@@ -15104,7 +14738,6 @@ class Aggregate::Builder {
 class Aggregate::Pipeline {
  public:
   typedef Aggregate Pipelines;
->>>>>>> ace5bd498 (basic rest support):tiledb/sm/serialization/posix/tiledb-rest.capnp.h
 
   inline Pipeline(decltype(nullptr))
       : _typeless(nullptr) {
@@ -15113,11 +14746,6 @@ class Aggregate::Pipeline {
       : _typeless(kj::mv(typeless)) {
   }
 
-<<<<<<< HEAD:tiledb/sm/serialization/tiledb-rest.capnp.h
-  inline ::tiledb::sm::serialization::capnp::ArraySchema::Pipeline getSchema();
-
-=======
->>>>>>> ace5bd498 (basic rest support):tiledb/sm/serialization/posix/tiledb-rest.capnp.h
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
   friend class ::capnp::PipelineHook;
@@ -20231,20 +19859,16 @@ inline ::capnp::Orphan<Value> Map<Key, Value>::Entry::Builder::disownValue() {
 }
 
 // Map<Key, Value>::Entry
-#if CAPNP_NEED_REDUNDANT_CONSTEXPR_DECL
 template <typename Key, typename Value>
 constexpr uint16_t Map<Key, Value>::Entry::_capnpPrivate::dataWordSize;
 template <typename Key, typename Value>
 constexpr uint16_t Map<Key, Value>::Entry::_capnpPrivate::pointerCount;
-#endif  // !CAPNP_NEED_REDUNDANT_CONSTEXPR_DECL
 #if !CAPNP_LITE
-#if CAPNP_NEED_REDUNDANT_CONSTEXPR_DECL
 template <typename Key, typename Value>
 constexpr ::capnp::Kind Map<Key, Value>::Entry::_capnpPrivate::kind;
 template <typename Key, typename Value>
 constexpr ::capnp::_::RawSchema const*
     Map<Key, Value>::Entry::_capnpPrivate::schema;
-#endif  // !CAPNP_NEED_REDUNDANT_CONSTEXPR_DECL
 template <typename Key, typename Value>
 const ::capnp::_::RawBrandedSchema::Scope
     Map<Key, Value>::Entry::_capnpPrivate::brandScopes[] = {
@@ -20268,19 +19892,15 @@ const ::capnp::_::RawBrandedSchema
 #endif  // !CAPNP_LITE
 
 // Map<Key, Value>
-#if CAPNP_NEED_REDUNDANT_CONSTEXPR_DECL
 template <typename Key, typename Value>
 constexpr uint16_t Map<Key, Value>::_capnpPrivate::dataWordSize;
 template <typename Key, typename Value>
 constexpr uint16_t Map<Key, Value>::_capnpPrivate::pointerCount;
-#endif  // !CAPNP_NEED_REDUNDANT_CONSTEXPR_DECL
 #if !CAPNP_LITE
-#if CAPNP_NEED_REDUNDANT_CONSTEXPR_DECL
 template <typename Key, typename Value>
 constexpr ::capnp::Kind Map<Key, Value>::_capnpPrivate::kind;
 template <typename Key, typename Value>
 constexpr ::capnp::_::RawSchema const* Map<Key, Value>::_capnpPrivate::schema;
-#endif  // !CAPNP_NEED_REDUNDANT_CONSTEXPR_DECL
 template <typename Key, typename Value>
 const ::capnp::_::RawBrandedSchema::Scope
     Map<Key, Value>::_capnpPrivate::brandScopes[] = {
@@ -31347,180 +30967,6 @@ inline void BufferedChunk::Builder::setSize(::uint64_t value) {
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
-inline bool ArrayDeleteFragmentsListRequest::Reader::hasUri() const {
-  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline bool ArrayDeleteFragmentsListRequest::Builder::hasUri() {
-  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline ::capnp::Text::Reader ArrayDeleteFragmentsListRequest::Reader::getUri()
-    const {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
-      _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
-}
-inline ::capnp::Text::Builder
-ArrayDeleteFragmentsListRequest::Builder::getUri() {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
-      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
-}
-inline void ArrayDeleteFragmentsListRequest::Builder::setUri(
-    ::capnp::Text::Reader value) {
-  ::capnp::_::PointerHelpers<::capnp::Text>::set(
-      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
-      value);
-}
-inline ::capnp::Text::Builder ArrayDeleteFragmentsListRequest::Builder::initUri(
-    unsigned int size) {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
-      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
-      size);
-}
-inline void ArrayDeleteFragmentsListRequest::Builder::adoptUri(
-    ::capnp::Orphan<::capnp::Text>&& value) {
-  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
-      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
-      kj::mv(value));
-}
-inline ::capnp::Orphan<::capnp::Text>
-ArrayDeleteFragmentsListRequest::Builder::disownUri() {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
-      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
-}
-
-inline bool ArrayDeleteFragmentsListRequest::Reader::hasEntries() const {
-  return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline bool ArrayDeleteFragmentsListRequest::Builder::hasEntries() {
-  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
-ArrayDeleteFragmentsListRequest::Reader::getEntries() const {
-  return ::capnp::_::
-      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
-          _reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
-}
-inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
-ArrayDeleteFragmentsListRequest::Builder::getEntries() {
-  return ::capnp::_::
-      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
-          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
-}
-inline void ArrayDeleteFragmentsListRequest::Builder::setEntries(
-    ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value) {
-  ::capnp::_::
-      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
-          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
-          value);
-}
-inline void ArrayDeleteFragmentsListRequest::Builder::setEntries(
-    ::kj::ArrayPtr<const ::capnp::Text::Reader> value) {
-  ::capnp::_::
-      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
-          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
-          value);
-}
-inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
-ArrayDeleteFragmentsListRequest::Builder::initEntries(unsigned int size) {
-  return ::capnp::_::
-      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::init(
-          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
-          size);
-}
-inline void ArrayDeleteFragmentsListRequest::Builder::adoptEntries(
-    ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
-        value) {
-  ::capnp::_::
-      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::adopt(
-          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
-          kj::mv(value));
-}
-inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
-ArrayDeleteFragmentsListRequest::Builder::disownEntries() {
-  return ::capnp::_::
-      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
-          _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
-}
-
-inline bool ArrayDeleteFragmentsTimestampsRequest::Reader::hasUri() const {
-  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline bool ArrayDeleteFragmentsTimestampsRequest::Builder::hasUri() {
-  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline ::capnp::Text::Reader
-ArrayDeleteFragmentsTimestampsRequest::Reader::getUri() const {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
-      _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
-}
-inline ::capnp::Text::Builder
-ArrayDeleteFragmentsTimestampsRequest::Builder::getUri() {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
-      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
-}
-inline void ArrayDeleteFragmentsTimestampsRequest::Builder::setUri(
-    ::capnp::Text::Reader value) {
-  ::capnp::_::PointerHelpers<::capnp::Text>::set(
-      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
-      value);
-}
-inline ::capnp::Text::Builder
-ArrayDeleteFragmentsTimestampsRequest::Builder::initUri(unsigned int size) {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
-      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
-      size);
-}
-inline void ArrayDeleteFragmentsTimestampsRequest::Builder::adoptUri(
-    ::capnp::Orphan<::capnp::Text>&& value) {
-  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
-      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
-      kj::mv(value));
-}
-inline ::capnp::Orphan<::capnp::Text>
-ArrayDeleteFragmentsTimestampsRequest::Builder::disownUri() {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
-      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
-}
-
-inline ::uint64_t
-ArrayDeleteFragmentsTimestampsRequest::Reader::getStartTimestamp() const {
-  return _reader.getDataField<::uint64_t>(
-      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
-}
-
-inline ::uint64_t
-ArrayDeleteFragmentsTimestampsRequest::Builder::getStartTimestamp() {
-  return _builder.getDataField<::uint64_t>(
-      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
-}
-inline void ArrayDeleteFragmentsTimestampsRequest::Builder::setStartTimestamp(
-    ::uint64_t value) {
-  _builder.setDataField<::uint64_t>(
-      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
-}
-
-inline ::uint64_t
-ArrayDeleteFragmentsTimestampsRequest::Reader::getEndTimestamp() const {
-  return _reader.getDataField<::uint64_t>(
-      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
-}
-
-inline ::uint64_t
-ArrayDeleteFragmentsTimestampsRequest::Builder::getEndTimestamp() {
-  return _builder.getDataField<::uint64_t>(
-      ::capnp::bounded<1>() * ::capnp::ELEMENTS);
-}
-inline void ArrayDeleteFragmentsTimestampsRequest::Builder::setEndTimestamp(
-    ::uint64_t value) {
-  _builder.setDataField<::uint64_t>(
-      ::capnp::bounded<1>() * ::capnp::ELEMENTS, value);
-}
-
 inline bool ArrayConsolidationRequest::Reader::hasConfig() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
@@ -31807,114 +31253,6 @@ LoadEnumerationsResponse::Builder::disownEnumerations() {
                                               ::capnp::POINTERS));
 }
 
-<<<<<<< HEAD:tiledb/sm/serialization/tiledb-rest.capnp.h
-inline bool LoadArraySchemaRequest::Reader::hasConfig() const {
-  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline bool LoadArraySchemaRequest::Builder::hasConfig() {
-  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline ::tiledb::sm::serialization::capnp::Config::Reader
-LoadArraySchemaRequest::Reader::getConfig() const {
-  return ::capnp::_::
-      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::get(
-          _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
-}
-inline ::tiledb::sm::serialization::capnp::Config::Builder
-LoadArraySchemaRequest::Builder::getConfig() {
-  return ::capnp::_::
-      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::get(
-          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
-}
-#if !CAPNP_LITE
-inline ::tiledb::sm::serialization::capnp::Config::Pipeline
-LoadArraySchemaRequest::Pipeline::getConfig() {
-  return ::tiledb::sm::serialization::capnp::Config::Pipeline(
-      _typeless.getPointerField(0));
-}
-#endif  // !CAPNP_LITE
-inline void LoadArraySchemaRequest::Builder::setConfig(
-    ::tiledb::sm::serialization::capnp::Config::Reader value) {
-  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Config>::set(
-      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
-      value);
-}
-inline ::tiledb::sm::serialization::capnp::Config::Builder
-LoadArraySchemaRequest::Builder::initConfig() {
-  return ::capnp::_::
-      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::init(
-          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
-}
-inline void LoadArraySchemaRequest::Builder::adoptConfig(
-    ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>&& value) {
-  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Config>::adopt(
-      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
-      kj::mv(value));
-}
-inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>
-LoadArraySchemaRequest::Builder::disownConfig() {
-  return ::capnp::_::
-      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::disown(
-          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
-}
-
-inline bool LoadArraySchemaRequest::Reader::getIncludeEnumerations() const {
-  return _reader.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
-}
-
-inline bool LoadArraySchemaRequest::Builder::getIncludeEnumerations() {
-  return _builder.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
-}
-inline void LoadArraySchemaRequest::Builder::setIncludeEnumerations(
-    bool value) {
-  _builder.setDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
-}
-
-inline bool LoadArraySchemaResponse::Reader::hasSchema() const {
-  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline bool LoadArraySchemaResponse::Builder::hasSchema() {
-  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
-              .isNull();
-}
-inline ::tiledb::sm::serialization::capnp::ArraySchema::Reader
-LoadArraySchemaResponse::Reader::getSchema() const {
-  return ::capnp::_::
-      PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::get(
-          _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
-}
-inline ::tiledb::sm::serialization::capnp::ArraySchema::Builder
-LoadArraySchemaResponse::Builder::getSchema() {
-  return ::capnp::_::
-      PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::get(
-          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
-}
-#if !CAPNP_LITE
-inline ::tiledb::sm::serialization::capnp::ArraySchema::Pipeline
-LoadArraySchemaResponse::Pipeline::getSchema() {
-  return ::tiledb::sm::serialization::capnp::ArraySchema::Pipeline(
-      _typeless.getPointerField(0));
-}
-#endif  // !CAPNP_LITE
-inline void LoadArraySchemaResponse::Builder::setSchema(
-    ::tiledb::sm::serialization::capnp::ArraySchema::Reader value) {
-  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::
-      set(_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
-          value);
-}
-inline ::tiledb::sm::serialization::capnp::ArraySchema::Builder
-LoadArraySchemaResponse::Builder::initSchema() {
-  return ::capnp::_::
-      PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::init(
-          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
-}
-inline void LoadArraySchemaResponse::Builder::adoptSchema(
-    ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArraySchema>&& value) {
-  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::
-=======
 inline bool QueryChannel::Reader::getDefault() const {
   return _reader.getDataField<bool>(::capnp::bounded<0>() * ::capnp::ELEMENTS);
 }
@@ -31984,18 +31322,10 @@ inline void QueryChannel::Builder::adoptSegments(
   ::capnp::_::PointerHelpers<::capnp::List<
       ::tiledb::sm::serialization::capnp::ChannelSegment,
       ::capnp::Kind::STRUCT>>::
->>>>>>> ace5bd498 (basic rest support):tiledb/sm/serialization/posix/tiledb-rest.capnp.h
       adopt(
           _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
           kj::mv(value));
 }
-<<<<<<< HEAD:tiledb/sm/serialization/tiledb-rest.capnp.h
-inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::ArraySchema>
-LoadArraySchemaResponse::Builder::disownSchema() {
-  return ::capnp::_::
-      PointerHelpers<::tiledb::sm::serialization::capnp::ArraySchema>::disown(
-          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
-=======
 inline ::capnp::Orphan<::capnp::List<
     ::tiledb::sm::serialization::capnp::ChannelSegment,
     ::capnp::Kind::STRUCT>>
@@ -32196,12 +31526,9 @@ inline void Aggregate::Builder::adoptName(
 inline ::capnp::Orphan<::capnp::Text> Aggregate::Builder::disownName() {
   return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
       _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
->>>>>>> ace5bd498 (basic rest support):tiledb/sm/serialization/posix/tiledb-rest.capnp.h
 }
 
 }  // namespace capnp
 }  // namespace serialization
 }  // namespace sm
 }  // namespace tiledb
-
-CAPNP_END_HEADER

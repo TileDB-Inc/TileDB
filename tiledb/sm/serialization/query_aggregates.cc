@@ -31,6 +31,8 @@
  */
 
 #include "tiledb/sm/serialization/query_aggregates.h"
+#include "tiledb/sm/query/query.h"
+#include "tiledb/sm/query/readers/aggregators/operation.h"
 
 namespace tiledb::sm::serialization {
 
@@ -38,13 +40,74 @@ namespace tiledb::sm::serialization {
 
 void query_aggregates_to_capnp(
     Query& query, capnp::Query::Builder* query_builder) {
-  // TODO: get the aggregates from the default channel
-  // and create the capnp message with output field name, fieldinfo::field_name
-  // and aggregate type
+  // There is currently only a default channel
+  size_t num_channels = 1;
+  auto channels_builder = query_builder->initChannels(num_channels);
+  auto channel_builder = channels_builder[0];
+  channel_builder.setDefault(true);
+
+  // Only 1 segment in the default channel currently
+  size_t num_segments = 1;
+  auto segments_builder = channel_builder.initSegments(num_segments);
+  auto segment_builder = segments_builder[0];
+
+  auto default_channel_aggregates = query.get_default_channel_aggregates();
+  if (!default_channel_aggregates.empty()) {
+    size_t num_aggregates = default_channel_aggregates.size();
+    auto aggregates_builder = segment_builder.initAggregates(num_aggregates);
+    size_t i = 0;
+    for (const auto& agg : default_channel_aggregates) {
+      auto aggregate_builder = aggregates_builder[i];
+      aggregate_builder.setOutputFieldName(agg.first);
+      aggregate_builder.setInputFieldName(agg.second->field_name());
+      aggregate_builder.setName(agg.second->aggregate_name());
+      ++i;
+    }
+  }
 }
 
 void query_aggregates_from_capnp(
     const capnp::Query::Reader& query_reader, Query* const query) {
+  // Should always be true as there is always at least 1 query default channel
+  if (query_reader.hasChannels()) {
+    auto channels_reader = query_reader.getChannels();
+    // Only the query default channel is on the wire for now
+    auto channel_reader = channels_reader[0];
+    if (!channel_reader.getDefault()) {
+      throw std::logic_error(
+          "This channel is expected to be the default query channel");
+    }
+    // Should always be true because a channel has at least one segment
+    if (channel_reader.hasSegments()) {
+      auto segments_reader = channel_reader.getSegments();
+      // Only a single segment is on the wire now until grouping operations
+      // get implemented
+      auto segment_reader = segments_reader[0];
+      if (segment_reader.hasAggregates()) {
+        auto aggregates_reader = segment_reader.getAggregates();
+        for (const auto& aggregate : aggregates_reader) {
+          if (aggregate.hasOutputFieldName() && aggregate.hasInputFieldName() &&
+              aggregate.hasName()) {
+            auto output_field = aggregate.getOutputFieldName();
+            auto input_field = aggregate.getInputFieldName();
+            auto name = aggregate.getName();
+
+            auto& schema = query->array_schema();
+            auto fi = tiledb::sm::FieldInfo(
+                input_field,
+                schema.var_size(input_field),
+                schema.is_nullable(input_field),
+                schema.cell_val_num(input_field),
+                schema.type(input_field));
+
+            auto operation = Operation::make_operation(name, fi);
+            query->add_aggregator_to_default_channel(
+                output_field, operation->aggregator());
+          }
+        }
+      }
+    }
+  }
 }
 
 #endif  // TILEDB_SERIALIZATION

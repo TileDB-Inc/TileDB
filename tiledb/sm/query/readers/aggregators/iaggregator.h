@@ -93,6 +93,9 @@ class IAggregator {
   virtual void copy_to_user_buffer(
       std::string output_field_name,
       std::unordered_map<std::string, QueryBuffer>& buffers) = 0;
+
+  /** Returns name of the aggregate, e.g. COUNT, MIN, SUM. */
+  virtual std::string aggregate_name() = 0;
 };
 
 }  // namespace tiledb::sm

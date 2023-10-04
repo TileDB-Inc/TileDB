@@ -41,6 +41,7 @@
 #include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/capnp_utils.h"
+#include "tiledb/sm/serialization/query_aggregates.h"
 #endif
 // clang-format on
 
@@ -1667,6 +1668,11 @@ Status query_from_capnp(
     }
   }
 
+  // It's important that deserialization of query aggregates happens before
+  // deserializing buffers. set_data_buffer won't know whether a buffer is
+  // aggregate or not if the list of aggregates per channel is not populated.
+  query_aggregates_from_capnp(query_reader, query);
+
   const auto& schema = query->array_schema();
   // Deserialize and set attribute buffers.
   if (!query_reader.hasAttributeBufferHeaders()) {
@@ -2253,8 +2259,6 @@ Status query_from_capnp(
       written_buffers.emplace(it);
     }
   }
-
-  query_aggregates_from_capnp(query_reader, query);
 
   return Status::Ok();
 }

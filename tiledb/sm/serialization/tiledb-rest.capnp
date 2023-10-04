@@ -1284,6 +1284,7 @@ struct Aggregate {
   inputFieldName @1 :Text;
   # name of the input field the aggregate is applied on
 
-  type @2 :Text;
-  # the type of aggregate, e.g. COUNT, MEAN, SUM
+  name @2 :Text;
+  # the name of aggregate, e.g. COUNT, MEAN, SUM
+  # used for constructing the correct object during deserialization
 }

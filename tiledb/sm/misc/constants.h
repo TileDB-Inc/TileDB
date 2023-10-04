@@ -49,6 +49,24 @@ enum class SerializationType : uint8_t;
 
 namespace constants {
 
+/** The name of COUNT aggregator. */
+extern const std::string aggregate_count_str;
+
+/** The name of SUM aggregator. */
+extern const std::string aggregate_sum_str;
+
+/** The name of MIN aggregator. */
+extern const std::string aggregate_min_str;
+
+/** The name of MAX aggregator. */
+extern const std::string aggregate_max_str;
+
+/** The name of NULL_COUNT aggregator. */
+extern const std::string aggregate_null_count_str;
+
+/** The name of MEAN aggregator. */
+extern const std::string aggregate_mean_str;
+
 /**
  * Reduction factor (must be in [0.0, 1.0]) for the multi_range subarray
  * split by the partitioner. If the number is equal to 0.3, then this

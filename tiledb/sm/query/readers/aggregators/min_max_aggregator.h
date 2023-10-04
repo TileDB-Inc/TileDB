@@ -208,6 +208,15 @@ class MinAggregator : public ComparatorAggregator<
 
   DISABLE_COPY_AND_COPY_ASSIGN(MinAggregator);
   DISABLE_MOVE_AND_MOVE_ASSIGN(MinAggregator);
+
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
+  /** Returns name of the aggregate, e.g. COUNT, MIN, SUM. */
+  std::string aggregate_name() override {
+    return constants::aggregate_min_str;
+  }
 };
 
 template <typename T>
@@ -233,6 +242,15 @@ class MaxAggregator : public ComparatorAggregator<
 
   DISABLE_COPY_AND_COPY_ASSIGN(MaxAggregator);
   DISABLE_MOVE_AND_MOVE_ASSIGN(MaxAggregator);
+
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
+  /** Returns name of the aggregate, e.g. COUNT, MIN, SUM. */
+  std::string aggregate_name() override {
+    return constants::aggregate_max_str;
+  }
 };
 
 }  // namespace tiledb::sm

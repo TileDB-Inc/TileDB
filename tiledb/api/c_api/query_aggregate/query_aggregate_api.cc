@@ -35,21 +35,20 @@
 #include "query_aggregate_api_internal.h"
 #include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
-#include "tiledb/type/apply_with_type.h"
 
 const tiledb_channel_operator_handle_t* tiledb_channel_operator_sum =
     tiledb_channel_operator_handle_t::make_handle(
-        TILEDB_QUERY_CHANNEL_OPERATOR_SUM, "SUM");
+        tiledb::sm::constants::aggregate_sum_str);
 const tiledb_channel_operator_handle_t* tiledb_channel_operator_min =
     tiledb_channel_operator_handle_t::make_handle(
-        TILEDB_QUERY_CHANNEL_OPERATOR_MIN, "MIN");
+        tiledb::sm::constants::aggregate_min_str);
 const tiledb_channel_operator_handle_t* tiledb_channel_operator_max =
     tiledb_channel_operator_handle_t::make_handle(
-        TILEDB_QUERY_CHANNEL_OPERATOR_MAX, "MAX");
+        tiledb::sm::constants::aggregate_max_str);
 
 const tiledb_channel_operation_handle_t* tiledb_aggregate_count =
     tiledb_channel_operation_handle_t::make_handle(
-        std::make_shared<CountOperation>());
+        std::make_shared<tiledb::sm::CountOperation>());
 
 namespace tiledb::api {
 
@@ -229,6 +228,12 @@ capi_return_t tiledb_query_channel_free(
 
 }  // namespace tiledb::api
 
+shared_ptr<tiledb::sm::Operation>
+tiledb_channel_operator_handle_t::make_operation(
+    const tiledb::sm::FieldInfo& fi) const {
+  return tiledb::sm::Operation::make_operation(this->name(), fi);
+}
+
 using tiledb::api::api_entry_with_context;
 
 capi_return_t tiledb_channel_operator_sum_get(
@@ -292,74 +297,4 @@ capi_return_t tiledb_query_channel_free(
     tiledb_ctx_t* ctx, tiledb_query_channel_t** channel) noexcept {
   return tiledb::api::api_entry_with_context<
       tiledb::api::tiledb_query_channel_free>(ctx, channel);
-}
-
-MaxOperation::MaxOperation(
-    const tiledb::sm::FieldInfo& fi,
-    const tiledb_channel_operator_handle_t* op) {
-  auto g = [&](auto T) {
-    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
-        ensure_aggregate_numeric_field(op, fi);
-      }
-
-      // This is a min/max on strings, should be refactored out once we
-      // change (STRING_ASCII,CHAR) mapping in apply_with_type
-      if constexpr (std::is_same_v<char, decltype(T)>) {
-        aggregator_ =
-            std::make_shared<tiledb::sm::MaxAggregator<std::string>>(fi);
-      } else {
-        aggregator_ =
-            std::make_shared<tiledb::sm::MaxAggregator<decltype(T)>>(fi);
-      }
-    } else {
-      throw std::logic_error(
-          "MAX aggregates can only be requested on numeric and string "
-          "types");
-    }
-  };
-  apply_with_type(g, fi.type_);
-}
-
-MinOperation::MinOperation(
-    const tiledb::sm::FieldInfo& fi,
-    const tiledb_channel_operator_handle_t* op) {
-  auto g = [&](auto T) {
-    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
-        ensure_aggregate_numeric_field(op, fi);
-      }
-
-      // This is a min/max on strings, should be refactored out once we
-      // change (STRING_ASCII,CHAR) mapping in apply_with_type
-      if constexpr (std::is_same_v<char, decltype(T)>) {
-        aggregator_ =
-            std::make_shared<tiledb::sm::MinAggregator<std::string>>(fi);
-      } else {
-        aggregator_ =
-            std::make_shared<tiledb::sm::MinAggregator<decltype(T)>>(fi);
-      }
-    } else {
-      throw std::logic_error(
-          "MIN aggregates can only be requested on numeric and string "
-          "types");
-    }
-  };
-  apply_with_type(g, fi.type_);
-}
-
-SumOperation::SumOperation(
-    const tiledb::sm::FieldInfo& fi,
-    const tiledb_channel_operator_handle_t* op) {
-  auto g = [&](auto T) {
-    if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
-      ensure_aggregate_numeric_field(op, fi);
-      aggregator_ =
-          std::make_shared<tiledb::sm::SumAggregator<decltype(T)>>(fi);
-    } else {
-      throw std::logic_error(
-          "Sum aggregates can only be requested on numeric types");
-    }
-  };
-  apply_with_type(g, fi.type_);
 }

@@ -54,18 +54,7 @@ SumAggregator<T>::SumAggregator(const FieldInfo field_info)
     , validity_value_(
           field_info_.is_nullable_ ? std::make_optional(0) : nullopt)
     , sum_overflowed_(false) {
-  // TODO: These argument validation can be merged for mean/sum and possibly
-  // other aggregates. (sc-33763).
-  if (field_info_.var_sized_) {
-    throw SumAggregatorStatusException(
-        "Sum aggregates are not supported for var sized attributes.");
-  }
-
-  if (field_info_.cell_val_num_ != 1) {
-    throw SumAggregatorStatusException(
-        "Sum aggregates are not supported for attributes with cell_val_num "
-        "greater than one.");
-  }
+  ensure_aggregate_numeric_field(aggregate_name(), field_info_);
 }
 
 template <typename T>
