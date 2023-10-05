@@ -30,6 +30,7 @@ commence(unit_test capi_exception_wrapper)
       unit_capi_exception_wrapper.cc
       unit_capi_error_tree.cc)
   this_target_object_libraries(
-      capi_context_stub
-      exception_wrapper)
+      # The exception wrapper is wrapped up with the context, so that's the
+      # top-level dependency required for the test.
+      capi_context_stub)
 conclude(unit_test)
