@@ -208,8 +208,8 @@ class function_node_impl : public node_base,
   BlockOut out_thing{};
 
  public:
-  //#pragma clang diagnostic push
-  //#pragma ide diagnostic ignored "UnreachableCode"
+  // #pragma clang diagnostic push
+  // #pragma ide diagnostic ignored "UnreachableCode"
   /**
    * Resume the node.  This will call the function that produces items.
    * Main entry point of the node.
@@ -335,7 +335,7 @@ auto post_state = sink_mover->state();
     }
     return scheduler_event_type::error;
   }
-  //#pragma clang diagnostic pop
+  // #pragma clang diagnostic pop
 
   /** Run the node until it is done. */
   void run() override {

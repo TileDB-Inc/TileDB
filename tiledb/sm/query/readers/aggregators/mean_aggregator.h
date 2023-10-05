@@ -117,7 +117,7 @@ class MeanAggregator : public OutputBufferValidator, public IAggregator {
   const FieldInfo field_info_;
 
   /** AggregateWithCount to do summation of AggregateBuffer data. */
-  AggregateWithCount<T> summator_;
+  AggregateWithCount<T> aggregate_with_count_;
 
   /** Computed sum. */
   std::atomic<typename sum_type_data<T>::sum_type> sum_;

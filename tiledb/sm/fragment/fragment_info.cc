@@ -1041,14 +1041,12 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   RETURN_NOT_OK_TUPLE(
       utils::parse::get_timestamp_range(new_fragment_uri, &timestamp_range),
       nullopt);
-  uint32_t version;
   auto name = new_fragment_uri.remove_trailing_slash().last_path_part();
-  RETURN_NOT_OK_TUPLE(
-      utils::parse::get_fragment_name_version(name, &version), nullopt);
+  auto fragment_version = utils::parse::get_fragment_version(name);
 
   // Check if fragment is sparse
   bool sparse = false;
-  if (version == 1) {  // This corresponds to format version <=2
+  if (fragment_version <= 2) {
     URI coords_uri =
         new_fragment_uri.join_path(constants::coords + constants::file_suffix);
     RETURN_NOT_OK_TUPLE(vfs->is_file(coords_uri, &sparse), nullopt);

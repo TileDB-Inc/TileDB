@@ -1,11 +1,11 @@
 /**
- * @file compile_all_filters_main.cc
+ * @file   min_max.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,16 +24,41 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file defines class MinMax.
  */
 
-#include "../filter_create.h"
+#ifndef TILEDB_MIN_MAX_H
+#define TILEDB_MIN_MAX_H
 
-int main() {
-  using namespace tiledb::sm;
+namespace tiledb::sm {
 
-  (void)sizeof(tiledb::sm::FilterCreate);
-  (void)static_cast<shared_ptr<Filter> (*)(
-      Deserializer& deserializer, const uint32_t version, Datatype datatype)>(
-      tiledb::sm::FilterCreate::deserialize);
-  return 0;
-}
+template <class Op>
+struct MinMax {
+ public:
+  /**
+   * Min max function.
+   *
+   * @param value Value to compare against.
+   * @param sum Computed min/max.
+   * @param count Current count of values.
+   * @param
+   */
+  template <typename MIN_MAX_T>
+  void op(MIN_MAX_T value, MIN_MAX_T& min_max, uint64_t count) {
+    if (count == 0) {
+      min_max = value;
+    } else if (op_(value, min_max)) {
+      min_max = value;
+    }
+  }
+
+ private:
+  Op op_;
+};
+
+}  // namespace tiledb::sm
+
+#endif  // TILEDB_MIN_MAX_H

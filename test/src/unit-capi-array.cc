@@ -2349,12 +2349,12 @@ TEST_CASE_METHOD(
   const void* v_r;
   uint32_t v_num;
   auto new_metadata = new_array->array_->unsafe_metadata();
-  Status st = new_metadata->get("aaa", &type, &v_num, &v_r);
+  new_metadata->get("aaa", &type, &v_num, &v_r);
   CHECK(static_cast<tiledb_datatype_t>(type) == TILEDB_INT32);
   CHECK(v_num == 1);
   CHECK(*((const int32_t*)v_r) == 5);
 
-  st = new_metadata->get("bb", &type, &v_num, &v_r);
+  new_metadata->get("bb", &type, &v_num, &v_r);
   CHECK(static_cast<tiledb_datatype_t>(type) == TILEDB_FLOAT32);
   CHECK(v_num == 2);
   CHECK(((const float*)v_r)[0] == 1.1f);

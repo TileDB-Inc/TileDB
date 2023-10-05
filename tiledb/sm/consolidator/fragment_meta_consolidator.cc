@@ -102,8 +102,7 @@ Status FragmentMetaConsolidator::consolidate(
   auto meta_name = uri.remove_trailing_slash().last_path_part();
   auto pos = meta_name.find_last_of('.');
   meta_name = (pos == std::string::npos) ? meta_name : meta_name.substr(0, pos);
-  uint32_t meta_version = 0;
-  RETURN_NOT_OK(utils::parse::get_fragment_version(meta_name, &meta_version));
+  auto meta_version = utils::parse::get_fragment_version(meta_name);
 
   // Calculate offset of first fragment footer
   uint64_t offset = sizeof(uint32_t);  // Fragment num

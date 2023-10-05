@@ -115,9 +115,9 @@ Status metadata_from_capnp(
     }
 
     if (entry_reader.getDel()) {
-      RETURN_NOT_OK(metadata->del(key.c_str()));
+      metadata->del(key.c_str());
     } else {
-      RETURN_NOT_OK(metadata->put(key.c_str(), type, value_num, value));
+      metadata->put(key.c_str(), type, value_num, value);
     }
   }
 

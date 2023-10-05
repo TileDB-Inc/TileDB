@@ -53,6 +53,7 @@ class AggregateBuffer {
    * @param validity_data Validity data buffer.
    * @param count_bitmap Is the bitmap a count bitmap?
    * @param bitmap_data Bitmap data.
+   * @param cell_size Cell size.
    */
   AggregateBuffer(
       const uint64_t min_cell,
@@ -61,14 +62,16 @@ class AggregateBuffer {
       const optional<char*> var_data,
       const optional<uint8_t*> validity_data,
       const bool count_bitmap,
-      const optional<void*> bitmap_data)
+      const optional<void*> bitmap_data,
+      const uint64_t cell_size)
       : min_cell_(min_cell)
       , max_cell_(max_cell)
       , fixed_data_(fixed_data)
       , var_data_(var_data)
       , validity_data_(validity_data)
       , count_bitmap_(count_bitmap)
-      , bitmap_data_(bitmap_data) {
+      , bitmap_data_(bitmap_data)
+      , cell_size_(cell_size) {
   }
 
   DISABLE_COPY_AND_COPY_ASSIGN(AggregateBuffer);
@@ -77,17 +80,6 @@ class AggregateBuffer {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
-
-  /** Returns a typed fixed data buffer. */
-  template <class T>
-  const T* fixed_data_as() const {
-    return static_cast<const T*>(fixed_data_);
-  }
-
-  /** Returns the var data. */
-  char* var_data() const {
-    return var_data_.value();
-  }
 
   /** Returns the validity buffer. */
   uint8_t* validity_data() const {
@@ -120,6 +112,35 @@ class AggregateBuffer {
     return max_cell_;
   }
 
+  /**
+   * Get the value at a certain cell index.
+   *
+   * @tparam VALUE_T Value type.
+   * @tparam VALUE_T Returned value type.
+   * @param cell_idx Cell index.
+   *
+   * @return Value.
+   */
+  template <typename T>
+  inline T value_at(const uint64_t cell_idx) const {
+    if constexpr (std::is_same_v<T, std::string_view>) {
+      if (var_data_.has_value()) {
+        auto offsets = static_cast<const uint64_t*>(fixed_data_);
+        // Return the var sized string.
+        uint64_t offset = offsets[cell_idx];
+        uint64_t next_offset = offsets[cell_idx + 1];
+        return {var_data_.value() + offset, next_offset - offset};
+      } else {
+        // Return the fixed size string.
+        return {
+            static_cast<const char*>(fixed_data_) + cell_size_ * cell_idx,
+            cell_size_};
+      }
+    } else {
+      return static_cast<const T*>(fixed_data_)[cell_idx];
+    }
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -145,6 +166,9 @@ class AggregateBuffer {
 
   /** Pointer to the bitmap data. */
   const optional<void*> bitmap_data_;
+
+  /** Cell size. */
+  const unsigned cell_size_;
 };
 
 }  // namespace tiledb::sm

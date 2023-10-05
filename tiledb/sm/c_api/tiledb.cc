@@ -3023,8 +3023,8 @@ int32_t tiledb_array_put_metadata(
     return TILEDB_ERR;
 
   // Put metadata
-  throw_if_not_ok(array->array_->put_metadata(
-      key, static_cast<tiledb::sm::Datatype>(value_type), value_num, value));
+  array->array_->put_metadata(
+      key, static_cast<tiledb::sm::Datatype>(value_type), value_num, value);
 
   return TILEDB_OK;
 }
@@ -3035,7 +3035,7 @@ int32_t tiledb_array_delete_metadata(
     return TILEDB_ERR;
 
   // Put metadata
-  throw_if_not_ok(array->array_->delete_metadata(key));
+  array->array_->delete_metadata(key);
 
   return TILEDB_OK;
 }
@@ -3052,7 +3052,7 @@ int32_t tiledb_array_get_metadata(
 
   // Get metadata
   tiledb::sm::Datatype type;
-  throw_if_not_ok(array->array_->get_metadata(key, &type, value_num, value));
+  array->array_->get_metadata(key, &type, value_num, value);
 
   *value_type = static_cast<tiledb_datatype_t>(type);
 
@@ -3065,7 +3065,7 @@ int32_t tiledb_array_get_metadata_num(
     return TILEDB_ERR;
 
   // Get metadata num
-  throw_if_not_ok(array->array_->get_metadata_num(num));
+  *num = array->array_->metadata_num();
 
   return TILEDB_OK;
 }
@@ -3084,8 +3084,7 @@ int32_t tiledb_array_get_metadata_from_index(
 
   // Get metadata
   tiledb::sm::Datatype type;
-  throw_if_not_ok(array->array_->get_metadata(
-      index, key, key_len, &type, value_num, value));
+  array->array_->get_metadata(index, key, key_len, &type, value_num, value);
 
   *value_type = static_cast<tiledb_datatype_t>(type);
 
@@ -3102,13 +3101,11 @@ int32_t tiledb_array_has_metadata_key(
     return TILEDB_ERR;
 
   // Check whether metadata has_key
-  bool has_the_key;
-  tiledb::sm::Datatype type;
-  throw_if_not_ok(array->array_->has_metadata_key(key, &type, &has_the_key));
+  std::optional<tiledb::sm::Datatype> type = array->array_->metadata_type(key);
 
-  *has_key = has_the_key ? 1 : 0;
-  if (has_the_key) {
-    *value_type = static_cast<tiledb_datatype_t>(type);
+  *has_key = type.has_value();
+  if (*has_key) {
+    *value_type = static_cast<tiledb_datatype_t>(type.value());
   }
   return TILEDB_OK;
 }
