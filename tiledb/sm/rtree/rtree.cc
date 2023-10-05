@@ -361,12 +361,12 @@ void RTree::deserialize_v1_v4(
   deserialized_buffer_size_ = deserializer.size();
 
   // For backwards compatibility, ignored
-  std::ignore = deserializer.read<unsigned>();
+  (void) deserializer.read<unsigned>();
 
   fanout_ = deserializer.read<unsigned>();
 
   // For backwards compatibility, ignored
-  std::ignore = deserializer.read<uint8_t>();
+  (void) deserializer.read<uint8_t>();
 
   auto level_num = deserializer.read<unsigned>();
   levels_.clear();

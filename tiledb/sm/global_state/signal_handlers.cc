@@ -127,7 +127,7 @@ Status SignalHandlers::initialize() {
 }
 
 void SignalHandlers::safe_stderr(const char* msg, size_t msg_len) {
-  std::ignore = _write(2, msg, (unsigned int)msg_len);
+  (void) _write(2, msg, (unsigned int)msg_len);
 }
 
 #else
@@ -161,7 +161,7 @@ Status SignalHandlers::initialize() {
 }
 
 void SignalHandlers::safe_stderr(const char* msg, size_t msg_len) {
-  std::ignore = write(2, msg, msg_len);
+  (void) write(2, msg, msg_len);
 }
 
 #endif
