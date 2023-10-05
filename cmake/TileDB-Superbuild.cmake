@@ -142,10 +142,6 @@ if (TILEDB_AZURE AND NOT TILEDB_VCPKG)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAzureStorageBlobs_EP.cmake)
 endif()
 
-if (TILEDB_GCS AND NOT TILEDB_VCPKG)
-  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindGCSSDK_EP.cmake)
-endif()
-
 if (TILEDB_TESTS)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCatch_EP.cmake)
 endif()
