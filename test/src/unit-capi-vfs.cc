@@ -989,7 +989,7 @@ TEST_CASE_METHOD(
           return 0;
         }
         ls_data->path_data_[ls_data->path_pos_] = (char*)malloc(path_len + 1);
-        strcpy(ls_data->path_data_[ls_data->path_pos_], path);
+        strncpy(ls_data->path_data_[ls_data->path_pos_], path, path_len + 1);
         ls_data->object_sizes_[ls_data->path_pos_] = object_size;
         ls_data->path_pos_++;
       }

@@ -300,7 +300,7 @@ capi_return_t tiledb_vfs_ls(
 capi_return_t tiledb_vfs_ls_recursive(
     tiledb_vfs_t* vfs,
     const char* path,
-    int32_t (*callback)(const char*, size_t, uint64_t, void*),
+    tiledb::sm::VFS::LsCallback callback,
     void* data) {
   ensure_vfs_is_valid(vfs);
   if (path == nullptr) {
@@ -310,20 +310,7 @@ capi_return_t tiledb_vfs_ls_recursive(
         "Invalid TileDB object: Callback function is null.");
   }
   ensure_output_pointer_is_valid(data);
-  auto children = vfs->ls_recursive(tiledb::sm::URI(path));
-
-  int rc = 1;
-  for (const auto& entry : children) {
-    sm::URI uri{entry.path().native()};
-    rc = callback(uri.c_str(), uri.to_string().size(), entry.file_size(), data);
-    if (rc != 1) {
-      break;
-    }
-  }
-
-  if (rc == -1) {
-    return TILEDB_ERR;
-  }
+  auto children = vfs->ls_recursive(tiledb::sm::URI(path), callback, data);
   return TILEDB_OK;
 }
 

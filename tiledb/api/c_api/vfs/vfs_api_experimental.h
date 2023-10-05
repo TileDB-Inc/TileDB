@@ -36,6 +36,7 @@
 #include "tiledb/api/c_api/api_external_common.h"
 #include "tiledb/api/c_api/context/context_api_external.h"
 #include "tiledb/api/c_api/vfs/vfs_api_external.h"
+#include "tiledb/sm/filesystem/vfs.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -80,7 +81,7 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_ls_recursive(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* path,
-    int32_t (*callback)(const char*, size_t, uint64_t, void*),
+    tiledb::sm::VFS::LsCallback callback,
     void* data) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus

@@ -25,7 +25,12 @@
 #
 include(unit_test)
 
-commence(unit_test vfs)
+commence(unit_test uri)
     this_target_object_libraries(vfs)
     this_target_sources(main.cc unit_uri.cc)
+conclude(unit_test)
+
+commence(unit_test vfs)
+    this_target_object_libraries(vfs)
+    this_target_sources(main.cc unit_vfs.cc)
 conclude(unit_test)

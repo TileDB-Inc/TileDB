@@ -144,8 +144,10 @@ struct tiledb_vfs_handle_t
   }
 
   std::vector<filesystem::directory_entry> ls_recursive(
-      const tiledb::sm::URI& parent) const {
-    return vfs_.ls_recursive(parent);
+      const tiledb::sm::URI& parent,
+      tiledb::sm::VFS::LsCallback cb,
+      void* data) const {
+    return vfs_.ls_recursive(parent, cb, data);
   }
 
   Status touch(const tiledb::sm::URI& uri) const {

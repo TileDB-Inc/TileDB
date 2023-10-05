@@ -53,6 +53,8 @@ using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb::sm {
 
+VFS::LsRecursiveData VFS::ls_recursive_data_;
+
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
@@ -740,7 +742,8 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   return Status::Ok();
 }
 
-std::vector<directory_entry> VFS::ls_recursive(const URI& parent) const {
+std::vector<directory_entry> VFS::ls_recursive(
+    const URI& parent, LsCallback cb, void* data) const {
   Status st;
   optional<std::vector<directory_entry>> entries;
   std::vector<directory_entry> results;
@@ -796,6 +799,18 @@ std::vector<directory_entry> VFS::ls_recursive(const URI& parent) const {
         results.emplace_back(result);
       }
     }
+  }
+
+  int rc = 1;
+  for (const auto& result : results) {
+    URI uri{result.path().native()};
+    rc = cb(uri.c_str(), uri.to_string().size(), result.file_size(), data);
+    if (rc != 1) {
+      break;
+    }
+  }
+  if (rc == -1) {
+    throw VFSException("Error in user callback");
   }
 
   return results;

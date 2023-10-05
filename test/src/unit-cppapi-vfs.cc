@@ -571,8 +571,10 @@ TEST_CASE_METHOD(
     }
     CHECKED_ELSE(expected_results_.empty()) {
       SECTION("Throwing filter with N objects should throw") {
-        CHECK_THROWS(tiledb::VFSExperimental::ls_recursive(
-            ctx_, vfs_, temp_dir_.to_string(), filter));
+        CHECK_THROWS_AS(
+            tiledb::VFSExperimental::ls_recursive(
+                ctx_, vfs_, temp_dir_.to_string(), filter),
+            std::runtime_error);
       }
     }
   }
