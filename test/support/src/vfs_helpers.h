@@ -711,10 +711,10 @@ struct VfsFixture {
    * behavior can also be implemented within this callback by handling result
    * entry names accordingly.
    */
-  typedef int32_t (*LsRecursiveCb)(const char*, size_t, uint64_t, void*);
+  typedef tiledb::sm::VFS::LsCallback LsRecursiveCb;
 
   /** Typedef for customizing ls_recursive filter behavior. */
-  typedef std::function<bool(const std::string_view&)> LsRecursiveFilter;
+  typedef tiledb::sm::VFS::LsInclude LsRecursiveFilter;
 
   /// Helper function to filter expected results using a custom filter function.
   void filter_expected(const LsRecursiveFilter& filter);

@@ -538,7 +538,7 @@ capi_return_t tiledb_vfs_ls_recursive(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* path,
-    int32_t (*callback)(const char*, size_t, uint64_t, void*),
+    tiledb::sm::VFS::LsCallback callback,
     void* data) noexcept {
   return api_entry_context<tiledb::api::tiledb_vfs_ls_recursive>(
       ctx, vfs, path, callback, data);
