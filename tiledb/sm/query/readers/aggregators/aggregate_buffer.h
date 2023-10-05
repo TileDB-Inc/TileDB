@@ -149,7 +149,7 @@ class AggregateBuffer {
    * @return Bitmap value.
    */
   template <class BitmapType>
-  BitmapType bitmap_at(const uint64_t cell_idx) const {
+  inline BitmapType bitmap_at(const uint64_t cell_idx) const {
     return static_cast<BitmapType*>(bitmap_data_.value())[cell_idx];
   }
 
