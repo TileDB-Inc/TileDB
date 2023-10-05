@@ -196,7 +196,7 @@ class GroupDirectory {
   uint64_t timestamp_end_;
 
   /** Mode for the group directory. */
-  [[maybe_unused]] GroupDirectoryMode mode_;
+  GroupDirectoryMode mode_;
 
   /** True if `load` has been run. */
   bool loaded_;
