@@ -1,5 +1,5 @@
 /**
- * @file   min_max.h
+ * @file   no_op.h
  *
  * @section LICENSE
  *
@@ -27,37 +27,24 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class MinMax.
+ * This file defines classes NoOp.
  */
 
-#ifndef TILEDB_MIN_MAX_H
-#define TILEDB_MIN_MAX_H
+#ifndef TILEDB_NO_OP_H
+#define TILEDB_NO_OP_H
 
 namespace tiledb::sm {
 
-template <class Op>
-struct MinMax {
+struct NoOp {
  public:
   /**
-   * Min max function.
-   *
-   * @param value Value to compare against.
-   * @param sum Computed min/max.
-   * @param count Current count of values.
+   * No op function.
    */
-  template <typename MIN_MAX_T>
-  void op(MIN_MAX_T value, MIN_MAX_T& min_max, uint64_t count) {
-    if (count == 0) {
-      min_max = value;
-    } else if (op_(value, min_max)) {
-      min_max = value;
-    }
+  template <typename NO_OP_T>
+  void op(NO_OP_T, uint64_t, uint64_t) {
   }
-
- private:
-  Op op_;
 };
 
 }  // namespace tiledb::sm
 
-#endif  // TILEDB_MIN_MAX_H
+#endif  // TILEDB_NO_OP_H

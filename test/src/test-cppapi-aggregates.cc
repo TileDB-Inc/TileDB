@@ -36,7 +36,6 @@
 #include "tiledb/sm/query/readers/aggregators/count_aggregator.h"
 #include "tiledb/sm/query/readers/aggregators/mean_aggregator.h"
 #include "tiledb/sm/query/readers/aggregators/min_max_aggregator.h"
-#include "tiledb/sm/query/readers/aggregators/null_count_aggregator.h"
 #include "tiledb/sm/query/readers/aggregators/sum_aggregator.h"
 
 #include <test/support/tdb_catch.h>

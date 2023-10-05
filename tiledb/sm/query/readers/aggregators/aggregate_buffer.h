@@ -81,11 +81,6 @@ class AggregateBuffer {
   /*                API                */
   /* ********************************* */
 
-  /** Returns the validity buffer. */
-  uint8_t* validity_data() const {
-    return validity_data_.value();
-  }
-
   /** Returns if the bitmap is a count bitmap. */
   bool is_count_bitmap() const {
     return count_bitmap_;
@@ -94,12 +89,6 @@ class AggregateBuffer {
   /** Returns wether this buffer has a bitmap or not. */
   bool has_bitmap() const {
     return bitmap_data_.has_value();
-  }
-
-  /** Returns types bitmap data. */
-  template <class BitmapType>
-  BitmapType* bitmap_data_as() const {
-    return static_cast<BitmapType*>(bitmap_data_.value());
   }
 
   /** Returns the min cell position to aggregate. */
@@ -139,6 +128,29 @@ class AggregateBuffer {
     } else {
       return static_cast<const T*>(fixed_data_)[cell_idx];
     }
+  }
+
+  /**
+   * Get the validity value at a certain cell index.
+   *
+   * @param cell_idx Cell index.
+   *
+   * @return Validity value.
+   */
+  inline uint8_t validity_at(const uint64_t cell_idx) const {
+    return validity_data_.value()[cell_idx];
+  }
+
+  /**
+   * Get the bitmap value at a certain cell index.
+   *
+   * @param cell_idx Cell index.
+   *
+   * @return Bitmap value.
+   */
+  template <class BitmapType>
+  BitmapType bitmap_at(const uint64_t cell_idx) const {
+    return static_cast<BitmapType*>(bitmap_data_.value())[cell_idx];
   }
 
  private:
