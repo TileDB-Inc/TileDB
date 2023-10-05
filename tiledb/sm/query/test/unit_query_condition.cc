@@ -1595,7 +1595,7 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
  * Non-specialized template type for `test_apply`.
  */
 template <typename T>
-void test_apply(const Datatype type, bool, bool) {
+void test_apply(const Datatype type, bool var_size, bool nullable) {
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const T fill_value = 3;
