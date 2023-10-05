@@ -116,10 +116,6 @@ const std::vector<TimestampedURI>& GroupDirectory::group_detail_uris() const {
 
 Status GroupDirectory::load() {
   assert(!loaded_);
-  // We use mode here to avoid warning on errors
-  // Mode will be used for consolidation settings
-  (void)mode_;
-
   std::vector<ThreadPool::Task> tasks;
   std::vector<URI> root_dir_uris;
   std::vector<URI> commits_dir_uris;

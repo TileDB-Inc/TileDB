@@ -108,9 +108,7 @@ typedef void VP8LDecoder;
 extern "C" VP8LDecoder* VP8LNew(void);
 extern "C" void VP8LClear(VP8LDecoder*);
 
-int main(int argc, const char* argv[]) {
-  (void)argv;
-  (void)argc;
+int main(int, const char*[]) {
   int return_value = -1;
   const char *in_file = NULL, *out_file = NULL;
   FILE* out = NULL;

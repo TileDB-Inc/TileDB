@@ -159,9 +159,7 @@ int32_t tiledb_filestore_uri_import(
     tiledb_ctx_t* ctx,
     const char* filestore_array_uri,
     const char* file_uri,
-    tiledb_mime_type_t mime_type) {
-  (void)mime_type;  // Unused
-
+    tiledb_mime_type_t) {
   if (sanity_check(ctx) == TILEDB_ERR || !filestore_array_uri || !file_uri) {
     return TILEDB_ERR;
   }
@@ -435,9 +433,7 @@ int32_t tiledb_filestore_buffer_import(
     const char* filestore_array_uri,
     void* buf,
     size_t size,
-    tiledb_mime_type_t mime_type) {
-  (void)mime_type;  // Unused
-
+    tiledb_mime_type_t) {
   if (sanity_check(ctx) == TILEDB_ERR || !filestore_array_uri || !buf) {
     return TILEDB_ERR;
   }

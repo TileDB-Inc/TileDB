@@ -2676,9 +2676,8 @@ Status query_est_result_size_reader_from_capnp(
 Status query_est_result_size_serialize(
     Query* query,
     SerializationType serialize_type,
-    bool clientside,
+    bool,
     Buffer* serialized_buffer) {
-  (void)clientside;
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::EstimatedResultSize::Builder est_result_size_builder =
@@ -2728,9 +2727,8 @@ Status query_est_result_size_serialize(
 Status query_est_result_size_deserialize(
     Query* query,
     SerializationType serialize_type,
-    bool clientside,
+    bool,
     const Buffer& serialized_buffer) {
-  (void)clientside;
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {

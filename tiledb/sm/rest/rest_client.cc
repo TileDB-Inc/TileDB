@@ -84,8 +84,7 @@ RestClient::RestClient()
     , resubmit_incomplete_(true) {
   auto st = utils::parse::convert(
       Config::REST_SERIALIZATION_DEFAULT_FORMAT, &serialization_type_);
-  assert(st.ok());
-  (void)st;
+  throw_if_not_ok(st);
 }
 
 Status RestClient::init(
