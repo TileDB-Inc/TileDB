@@ -50,7 +50,6 @@ RUN cd /home/tiledb/TileDB \
     && ../bootstrap \
         --prefix=/usr/local \
         --enable-verbose \
-        --enable-vcpkg \
         --enable-azure \
         --enable-s3 \
         --enable-serialization \

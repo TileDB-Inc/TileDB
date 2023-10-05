@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -268,6 +268,7 @@ TEST_CASE(
     refactored_query_v2 = GENERATE(true, false);
   }
 #endif
+
   Context ctx;
   VFS vfs(ctx);
   std::string array_name = "hilbert_array";
@@ -418,6 +419,15 @@ TEST_CASE(
 
   // Read
   SECTION("- Unordered, overlapped") {
+    // Disable merge overlapping sparse ranges.
+    // Support for returning multiplicities for overlapping ranges will be
+    // deprecated in a few releases. Turning off this setting allows to still
+    // test that the feature functions properly until we do so. Once support is
+    // fully removed for overlapping ranges, this section can be deleted.
+    Config cfg;
+    cfg["sm.merge_overlapping_ranges_experimental"] = "false";
+    ctx = Context(cfg);
+
     // regression test for sc-11244
     Array array_r(ctx, array_name, TILEDB_READ);
     Query query_r(ctx, array_r, TILEDB_READ);

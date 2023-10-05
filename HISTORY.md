@@ -1,3 +1,110 @@
+# TileDB v2.17.0 Release Notes
+
+## Disk Format
+
+* Storage format version is now 20, bringing changes to support enumerated types. ([#4051](https://github.com/TileDB-Inc/TileDB/pull/4051)).
+
+## Configuration Changes
+
+* Add Enumeration max size configuration. [#4308](https://github.com/TileDB-Inc/TileDB/pull/4308)
+
+## New features
+
+* Enumerated data types (aka: "categoricals" in Pandas, "factors" in R). [#4051](https://github.com/TileDB-Inc/TileDB/pull/4051)
+* Support optimized creation of set membership (`IN`, `NOT_IN`) QueryConditions, replacing create+combine pattern for specifying the target set. [#4164](https://github.com/TileDB-Inc/TileDB/pull/4164)
+* Add C and C++ APIs to reflect as-built (build-time) configuration options as a JSON string. [#4112](https://github.com/TileDB-Inc/TileDB/pull/4112), [#4199](https://github.com/TileDB-Inc/TileDB/pull/4199)
+* Filter pipeline support for datatype conversions based on filtered output datatype. [#4165](https://github.com/TileDB-Inc/TileDB/pull/4165)
+* Add TileDB-REST support for vacuum and consolidation requests. [#4229](https://github.com/TileDB-Inc/TileDB/pull/4229)
+* TileDB-REST support for dimension labels. [#4084](https://github.com/TileDB-Inc/TileDB/pull/4084)
+
+## Improvements
+
+* Add TileDB-REST serialization for reinterpret_datatype. [#4286](https://github.com/TileDB-Inc/TileDB/pull/4286)
+* Update VFS to call ListObjectsV2 from the AWS SDK, providing significant performance improvements for array opening and other listing-heavy operations. [#4216](https://github.com/TileDB-Inc/TileDB/pull/4216)
+* Wrap KV::Reader::getKey calls into std::string_view. [#4186](https://github.com/TileDB-Inc/TileDB/pull/4186)
+* Unify ca_file and ca_path configuration parameters. [#4087](https://github.com/TileDB-Inc/TileDB/pull/4087)
+* Inline and optimize some trivial methods of the internal `Array` class. [#4226](https://github.com/TileDB-Inc/TileDB/pull/4226)
+* Merge overlapping ranges on sparse reads. [#4184](https://github.com/TileDB-Inc/TileDB/pull/4184)
+* Legacy reader: reading non written region causes segfault. [#4253](https://github.com/TileDB-Inc/TileDB/pull/4253)
+* Make generic tile decompression single threaded to fix multi-query hang condition. [#4256](https://github.com/TileDB-Inc/TileDB/pull/4256)
+* Add `tiledb_handle_load_enumerations_request`. [#4288](https://github.com/TileDB-Inc/TileDB/pull/4288)
+* Add TileDB-REST array open v2 serialization support for enumerations. [#4307](https://github.com/TileDB-Inc/TileDB/pull/4307)
+
+## Defects removed
+
+* Dense reader: fix nullable string values when reading with QueryCondition. [#4174](https://github.com/TileDB-Inc/TileDB/pull/4174)
+* Fix segmentation fault in delta compressor test. [#4143](https://github.com/TileDB-Inc/TileDB/pull/4143)
+* Fix VFS `is_empty_bucket` in C++ API. [#4154](https://github.com/TileDB-Inc/TileDB/pull/4154)
+* Initialize a Query at the end of deserialization to fix QueryCondition error against TileDB-REST. [#4148](https://github.com/TileDB-Inc/TileDB/pull/4148)
+* Sparse unordered w/ dups reader: adding ignored tiles. [#4200](https://github.com/TileDB-Inc/TileDB/pull/4200)
+* Allow `Subarray::get_est_result_size_nullable` on remote arrays. [#4202](https://github.com/TileDB-Inc/TileDB/pull/4202)
+* Fix version check bug when deserializing attributes. [#4189](https://github.com/TileDB-Inc/TileDB/pull/4189)
+* Fix container issues in windows builds. [#4177](https://github.com/TileDB-Inc/TileDB/pull/4177)
+* Unordered writes: fix deserialization for older clients. [#4246](https://github.com/TileDB-Inc/TileDB/pull/4246)
+* Fix serialization of var-size property for nonempty domains. [#4264](https://github.com/TileDB-Inc/TileDB/pull/4264)
+* Clear pending changes during group delete to avoid updating a deleted group. [#4267](https://github.com/TileDB-Inc/TileDB/pull/4267)
+* Update filter checks for accepted datatypes. [#4233](https://github.com/TileDB-Inc/TileDB/pull/4233)
+* Check if Subarray label ranges are set in `Query::only_dim_label_query`. [#4285](https://github.com/TileDB-Inc/TileDB/pull/4285)
+* Optimize capnp traversal size usage. [#4287](https://github.com/TileDB-Inc/TileDB/pull/4287)
+* Fix QueryCondition set conditions on attributes with enumerations. [#4305](https://github.com/TileDB-Inc/TileDB/pull/4305)
+* Backwards compatibility: correctly handle 0 chunk variable-size tiles. [#4310](https://github.com/TileDB-Inc/TileDB/pull/4310)
+
+## API changes
+
+### C API
+
+* Add C API attribute handle. [#3982](https://github.com/TileDB-Inc/TileDB/pull/3982)
+* Add `result_buffer_elements_nullable` for variable size dimension labels. [#4142](https://github.com/TileDB-Inc/TileDB/pull/4142)
+* Add new C APIs for dimension label REST support. [#4072](https://github.com/TileDB-Inc/TileDB/pull/4072)
+* Add `tiledb_as_built_dump`, to reflect the build-time configuration options as a JSON string. [#4199](https://github.com/TileDB-Inc/TileDB/pull/4199)
+* Add `tiledb_query_condition_alloc_set_membership` for optimized set membership QC creation. [#4164](https://github.com/TileDB-Inc/TileDB/pull/4164)
+* Add C API handle for domain. [#4053](https://github.com/TileDB-Inc/TileDB/pull/4053)
+
+### C++ API
+
+* Throw if incorrect type is passed to `set_data_type`. [#4272](https://github.com/TileDB-Inc/TileDB/pull/4272)
+* Add `tiledb::AsBuilt::dump` class method, to reflect the build-time configuration options as a JSON string. [#4199](https://github.com/TileDB-Inc/TileDB/pull/4199)
+* Add `QueryCondition::create` vectorized signature for set membership QC creation. [#4164](https://github.com/TileDB-Inc/TileDB/pull/4164)
+
+## Build System Changes
+
+* TileDB core library now requires C++20. Note that the public C++ API still only requires C++17. [#4034](https://github.com/TileDB-Inc/TileDB/pull/4034)
+* Fix macOS "experimental-features" build; CMake and CI QOL improvements [#4297](https://github.com/TileDB-Inc/TileDB/pull/4297)
+* Libxml2 needs to be linked after Azure libraries [#4281](https://github.com/TileDB-Inc/TileDB/pull/4281)
+* Adds macos experimental build to nightly CI. [#4247](https://github.com/TileDB-Inc/TileDB/pull/4247)
+* Fix static linking from the GitHub Releases package on Windows. [#4263](https://github.com/TileDB-Inc/TileDB/pull/4263)
+* Fix Azure build failures on non-Windows when vcpkg is disabled. [#4258](https://github.com/TileDB-Inc/TileDB/pull/4258)
+* Do not install static libraries when `TILEDB_INSTALL_STATIC_DEPS` is not enabled. [#4244](https://github.com/TileDB-Inc/TileDB/pull/4244)
+* Use tiledb:stdx stop_token and jthread; fix experimental/ build on macOS. [#4240](https://github.com/TileDB-Inc/TileDB/pull/4240)
+* Export Azure::azure-storage-blobs on install when vcpkg is enabled. [#4232](https://github.com/TileDB-Inc/TileDB/pull/4232)
+* Move Azure DevOps CI jobs to GitHub Actions. [#4198](https://github.com/TileDB-Inc/TileDB/pull/4198)
+* Bump catch2 to 3.3.2 in vcpkg [#4201](https://github.com/TileDB-Inc/TileDB/pull/4201)
+* Fix static linking to the on Windows. [#4190](https://github.com/TileDB-Inc/TileDB/pull/4190)
+* Fix build with Clang 16 [#4206](https://github.com/TileDB-Inc/TileDB/pull/4206)
+* Remove a workaround for a no longer applicable GCC/linker script bug. [#4067](https://github.com/TileDB-Inc/TileDB/pull/4067)
+* Build curl with ZStandard support on vcpkg when serialization is enabled. [#4166](https://github.com/TileDB-Inc/TileDB/pull/4166)
+* Use clipp from vcpkg if enabled. [#4134](https://github.com/TileDB-Inc/TileDB/pull/4134)
+* Support acquiring libmagic from vcpkg. [#4119](https://github.com/TileDB-Inc/TileDB/pull/4119)
+* Simplify linking to Win32 libraries. [#4121](https://github.com/TileDB-Inc/TileDB/pull/4121)
+* curl version bump to resolve MyTile superbuild failure [#4170](https://github.com/TileDB-Inc/TileDB/pull/4170)
+* Improve support for multi-config CMake generators. [#4147](https://github.com/TileDB-Inc/TileDB/pull/4147)
+* Support new Azure SDK in superbuild [#4153](https://github.com/TileDB-Inc/TileDB/pull/4153)
+* Update libwebp to version 1.3.1. [#4211](https://github.com/TileDB-Inc/TileDB/pull/4211)
+* Fix Ninja builds on Windows [#4173](https://github.com/TileDB-Inc/TileDB/pull/4173)
+* Fix azure static library linking order for superbuild [#4171](https://github.com/TileDB-Inc/TileDB/pull/4171)
+* Fix vcpkg dependencies building only in Release mode. [#4159](https://github.com/TileDB-Inc/TileDB/pull/4159)
+* Fix compile error on macos 13.4.1 with c++20 enabled. [#4222](https://github.com/TileDB-Inc/TileDB/pull/4222)
+
+## Test Changes
+
+* Add tests for TILEDB_NOT. [#4169](https://github.com/TileDB-Inc/TileDB/pull/4169)
+* Fix regression test exit status; fix unhandled throw (expected). [#4311](https://github.com/TileDB-Inc/TileDB/pull/4311)
+* Fix `as_built` definitions in the C API compilation unit, and add validation test. [#4289](https://github.com/TileDB-Inc/TileDB/pull/4289)
+* Smoke test: only recreate array when needed. [#4262](https://github.com/TileDB-Inc/TileDB/pull/4262)
+* Array schema: C.41 changes, test support. [#4004](https://github.com/TileDB-Inc/TileDB/pull/4004)
+* Conditionally disable WhiteboxAllocator tests to fix GCC-13 build. [#4291](https://github.com/TileDB-Inc/TileDB/pull/4291)
+* Sorted reads tests: faster tests. [#4278](https://github.com/TileDB-Inc/TileDB/pull/4278)
+
 # TileDB v2.16.0 Release Notes
 
 ## Disk Format

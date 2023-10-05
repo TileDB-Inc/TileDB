@@ -13,7 +13,9 @@ TEST_CASE(
 
   const std::string uri{"/dir/not/exists/hello.txt"};
 
-  /* currently segfaults (11/July/2022) */
-  REQUIRE(fb.open(uri, std::ios::out));
-  fb.close();
+  fb.open(uri, std::ios::out);
+  // Previously segfaulted, before fix in PR 3360,
+  // now expected to throw. The throw happens here
+  // because VFS::filebuf is a streambuf API.
+  REQUIRE_THROWS(fb.close());
 }

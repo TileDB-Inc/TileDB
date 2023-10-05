@@ -81,6 +81,9 @@ class FilterPipeline {
   /** Copy constructor. */
   FilterPipeline(const FilterPipeline& other);
 
+  /** Copy constructor. */
+  FilterPipeline(const FilterPipeline& other, const Datatype on_disk_type);
+
   /** Move constructor. */
   FilterPipeline(FilterPipeline&& other);
 
@@ -93,12 +96,26 @@ class FilterPipeline {
   /**
    * Adds a copy of the given filter to the end of this pipeline.
    *
-   * @param filter Filter to add
+   * @param filter Filter to add.
    */
   void add_filter(const Filter& filter);
 
+  /**
+   * Adds a copy of the given filter to the end of this pipeline with the given
+   * internal type.
+   *
+   * @param filter Filter to add.
+   */
+  void add_filter(const Filter& filter, const Datatype new_type);
+
   /** Clears the pipeline (removes all filters. */
   void clear();
+
+  /** Checks that all filters in a pipeline have compatible types */
+  static void check_filter_types(
+      const FilterPipeline& pipeline,
+      const Datatype first_input_type,
+      bool is_var = false);
 
   /**
    * Populates the filter pipeline from the data in the input binary buffer.
@@ -108,13 +125,21 @@ class FilterPipeline {
    * @return FilterPipeline
    */
   static FilterPipeline deserialize(
-      Deserializer& deserializer, const uint32_t version);
+      Deserializer& deserializer, const uint32_t version, Datatype datatype);
 
   /**
    * Dumps the filter pipeline details in ASCII format in the selected
    * output.
    */
   void dump(FILE* out) const;
+
+  /**
+   * Checks that two filters have compatible input / output types.
+   * Checks fail if the first filter outputs a type not accepted by the second
+   * filter as input.
+   */
+  static void ensure_compatible(
+      const Filter& first, const Filter& second, Datatype first_input_type);
 
   /**
    * Returns pointer to the first instance of a filter in the pipeline with the
@@ -207,18 +232,14 @@ class FilterPipeline {
       bool chunking = true) const;
 
   /**
-   * Runs the pipeline in reverse on the given tile.
+   * Runs the pipeline in reverse on the given generic tile.
    *
    * @param reader_stats Stats to record in the function.
    * @param tile Current tile on which the filter pipeline is being run.
-   * @param compute_tp Compute theread pool.
    * @param config Global config.
    */
-  void run_reverse(
-      stats::Stats* stats,
-      Tile& tile,
-      ThreadPool& compute_tp,
-      const Config& config) const;
+  void run_reverse_generic_tile(
+      stats::Stats* stats, Tile& tile, const Config& config) const;
 
   /**
    * Run the given chunk range in reverse through the pipeline.

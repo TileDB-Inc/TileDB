@@ -33,6 +33,7 @@
 #ifndef TILEDB_ARRAY_DIRECTORY_H
 #define TILEDB_ARRAY_DIRECTORY_H
 
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -384,6 +385,18 @@ class ArrayDirectory {
    */
   std::unordered_map<std::string, shared_ptr<ArraySchema>>
   load_all_array_schemas(const EncryptionKey& encryption_key) const;
+
+  /**
+   * Load the enumerations from the provided list of paths.
+   *
+   * @param enumeration_paths The list of enumeration paths to load.
+   * @param encryption_key The encryption key to use.
+   * @return The loaded enumerations.
+   */
+  std::vector<shared_ptr<const Enumeration>> load_enumerations_from_paths(
+      const std::vector<std::string>& enumeration_paths,
+      const EncryptionKey& encryption_key,
+      MemoryTracker& memory_tracker) const;
 
   /** Returns the array URI. */
   const URI& uri() const;
@@ -805,6 +818,18 @@ class ArrayDirectory {
    * @return True if supported, false otherwise
    */
   bool consolidation_with_timestamps_supported(const URI& uri) const;
+
+  /**
+   * Load an enumeration from the given path.
+   *
+   * @param enumeration_path The enumeration path to load.
+   * @param encryption_key The encryption key to use.
+   * @return shared_ptr<Enumeration> The loaded enumeration.
+   */
+  shared_ptr<const Enumeration> load_enumeration(
+      const std::string& enumeration_path,
+      const EncryptionKey& encryption_key,
+      MemoryTracker& memory_tracker) const;
 };
 
 }  // namespace sm

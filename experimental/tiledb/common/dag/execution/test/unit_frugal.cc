@@ -36,10 +36,11 @@
 #include <cassert>
 #include <iostream>
 #include <map>
+#include <tiledb/stdx/stop_token>
 #include <type_traits>
+
 #include "../frugal.h"
 #include "experimental/tiledb/common/dag/edge/edge.h"
-#include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
 #include "experimental/tiledb/common/dag/execution/task.h"
 #include "experimental/tiledb/common/dag/execution/task_state_machine.h"
 #include "unit_frugal.h"
@@ -586,9 +587,9 @@ TEMPLATE_TEST_CASE(
  * Some deduction guides
  */
 namespace tiledb::common {
-Task(node&)->Task<node>;
+Task(node&) -> Task<node>;
 
-Task(const node&)->Task<node>;
+Task(const node&) -> Task<node>;
 
 template <template <class> class M, class T>
 Task(producer_node<M, T>) -> Task<node>;

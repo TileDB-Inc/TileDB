@@ -32,7 +32,7 @@
 
 #include "tiledb/sm/rest/curl.h"
 #include "tiledb/common/logger.h"
-#include "tiledb/platform/cert_file.h"
+#include "tiledb/sm/filesystem/ssl_config.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
@@ -302,28 +302,22 @@ Status Curl::init(
     return LOG_STATUS(Status_RestError(
         "Error initializing libcurl; failed to set CURLOPT_HEADERDATA"));
 
-  // Ignore ssl validation if the user has set rest.ignore_ssl_validation = true
-  bool ignore_ssl_validation = false;
-  bool found;
-  RETURN_NOT_OK(config_->get<bool>(
-      "rest.ignore_ssl_validation", &ignore_ssl_validation, &found));
+  SSLConfig ssl_cfg = RestSSLConfig(*config_);
 
-  if (ignore_ssl_validation) {
+  if (ssl_cfg.verify() == false) {
     curl_easy_setopt(curl_.get(), CURLOPT_SSL_VERIFYHOST, 0);
     curl_easy_setopt(curl_.get(), CURLOPT_SSL_VERIFYPEER, 0);
   }
 
-  if constexpr (tiledb::platform::PlatformCertFile::enabled) {
-    // Get CA Cert bundle file from global state. This is initialized and cached
-    // if detected. We have only had issues with finding the certificate path on
-    // Linux.
-    const std::string cert_file = tiledb::platform::PlatformCertFile::get();
-    // If we have detected a ca cert bundle let's set the curl option for CAINFO
-    if (!cert_file.empty()) {
-      curl_easy_setopt(curl_.get(), CURLOPT_CAINFO, cert_file.c_str());
-    }
+  if (!ssl_cfg.ca_file().empty()) {
+    curl_easy_setopt(curl_.get(), CURLOPT_CAINFO, ssl_cfg.ca_file().c_str());
   }
 
+  if (!ssl_cfg.ca_path().empty()) {
+    curl_easy_setopt(curl_.get(), CURLOPT_CAPATH, ssl_cfg.ca_path().c_str());
+  }
+
+  bool found;
   RETURN_NOT_OK(
       config_->get<uint64_t>("rest.retry_count", &retry_count_, &found));
   assert(found);

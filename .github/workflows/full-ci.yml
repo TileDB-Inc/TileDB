@@ -27,13 +27,13 @@ concurrency:
   group: ${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
-## NOTE: the job names below must be unique!
+## NOTE: the job ids below must be unique!
 jobs:
   ci1:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
       ci_backend: AZURE
-      matrix_image: ubuntu-20.04
+      matrix_image: ubuntu-22.04
       bootstrap_args: '--enable-azure --enable-release-symbols'
 
   ci2:
@@ -41,6 +41,8 @@ jobs:
     with:
       ci_backend: GCS
       matrix_image: ubuntu-20.04
+      matrix_compiler_cc: 'gcc-10'
+      matrix_compiler_cxx: 'g++-10'
       timeout: 120
       bootstrap_args: '--enable-gcs --enable-release-symbols'
 
@@ -56,15 +58,15 @@ jobs:
     with:
       ci_backend: HDFS
       matrix_image: ubuntu-22.04
-      matrix_compiler_cc: 'gcc-12'
-      matrix_compiler_cxx: 'g++-12'
-      bootstrap_args: '--enable-hdfs --enable-static-tiledb'
+      matrix_compiler_cc: 'gcc-13'
+      matrix_compiler_cxx: 'g++-13'
+      bootstrap_args: '--enable-hdfs --enable-static-tiledb --disable-werror'
 
   ci5:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
       ci_backend: S3
-      matrix_image: macos-11
+      matrix_image: macos-12
       timeout: 120
       bootstrap_args: '--enable=s3,serialization,tools --enable-release-symbols'
 
@@ -72,7 +74,7 @@ jobs:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
       ci_backend: GCS
-      matrix_image: macos-11
+      matrix_image: macos-12
       timeout: 120
       bootstrap_args: '--enable-gcs --enable-release-symbols'
 
@@ -90,6 +92,25 @@ jobs:
       matrix_image: ubuntu-22.04
       timeout: 120
       bootstrap_args: '--enable-s3 --enable-release-symbols'
+
+  ci9:
+    uses: ./.github/workflows/ci-linux_mac.yml
+    with:
+      ci_option: ASAN
+      matrix_image: ubuntu-20.04
+      matrix_compiler_cc: 'gcc-10'
+      matrix_compiler_cxx: 'g++-10'
+      timeout: 120
+      bootstrap_args: '--enable-serialization'
+      asan: true
+
+  ci10:
+    uses: ./.github/workflows/ci-linux_mac.yml
+    with:
+      ci_backend: AZURE
+      matrix_image: macos-12
+      timeout: 120
+      bootstrap_args: '--enable-azure'
 
   ci_msvc:
     uses: ./.github/workflows/build-windows.yml
@@ -122,6 +143,8 @@ jobs:
         ci6,
         ci7,
         ci8,
+        ci9,
+        ci10,
         ci_msvc,
         backward_compatibility,
         standalone

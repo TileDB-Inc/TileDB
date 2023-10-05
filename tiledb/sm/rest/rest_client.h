@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -128,6 +128,31 @@ class RestClient {
   void delete_array_from_rest(const URI& uri);
 
   /**
+   * Deletes the fragments written between the given timestamps from the array
+   * at the given URI from the REST server.
+   *
+   * @param uri Array URI to delete fragments from
+   * @param timestamp_start The start timestamp at which to delete fragments
+   * @param timestamp_end The end timestamp at which to delete fragments
+   *
+   * #TODO Implement API endpoint on TileDBCloud.
+   */
+  void delete_fragments_from_rest(
+      const URI& uri, uint64_t timestamp_start, uint64_t timestamp_end);
+
+  /**
+   * Deletes the fragments with the given URIs from the array at the given URI
+   * from the REST server.
+   *
+   * @param uri Array URI to delete fragments from
+   * @param fragment_uris The uris of the fragments to be deleted
+   *
+   * #TODO Implement API endpoint on TileDBCloud.
+   */
+  void delete_fragments_list_from_rest(
+      const URI& uri, const std::vector<URI>& fragment_uris);
+
+  /**
    * Deregisters an array at the given URI from the REST server.
    *
    * @param uri Array URI to deregister
@@ -192,6 +217,22 @@ class RestClient {
       uint64_t timestamp_start,
       uint64_t timestamp_end,
       Array* array);
+
+  /**
+   * Get the requested enumerations from the REST server via POST request.
+   *
+   * @param uri Array URI.
+   * @param timestamp_start Inclusive starting timestamp at which to open array.
+   * @param timestamp_end Inclusive ending timestamp at which to open array.
+   * @param array Array to fetch metadata for.
+   * @param enumeration_names The names of the enumerations to get.
+   */
+  std::vector<shared_ptr<const Enumeration>> post_enumerations_from_rest(
+      const URI& uri,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
+      Array* array,
+      const std::vector<std::string>& enumeration_names);
 
   /**
    * Post a data query to rest server
@@ -302,6 +343,24 @@ class RestClient {
    * @return Status
    */
   Status post_group_create_to_rest(const URI& uri, Group* group);
+
+  /**
+   * Post array consolidation request to the REST server.
+   *
+   * @param uri Array URI
+   * @param config config
+   * @return
+   */
+  Status post_consolidation_to_rest(const URI& uri, const Config& config);
+
+  /**
+   * Post array vacuum request to the REST server.
+   *
+   * @param uri Array URI
+   * @param config config
+   * @return
+   */
+  Status post_vacuum_to_rest(const URI& uri, const Config& config);
 
  private:
   /* ********************************* */

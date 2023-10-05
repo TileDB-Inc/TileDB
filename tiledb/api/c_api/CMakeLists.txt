@@ -76,6 +76,9 @@ add_subdirectory(data_order)
 # `dimension_label`: depends on `context`, `datatype`, `data_order`
 add_subdirectory(dimension_label)
 
+# `enumeration`: depends on `buffer`, `constants`, and `context`
+add_subdirectory(enumeration)
+
 # `filesystem`: no dependencies
 add_subdirectory(filesystem)
 
@@ -85,8 +88,14 @@ add_subdirectory(filter)
 # `filter_list`: depends on `context`, `filter`
 add_subdirectory(filter_list)
 
-# `dimension`: depends on `filter_list`
+# `dimension`: depends on `filter_list`, `datatype`
 add_subdirectory(dimension)
+
+# `domain`: depends on `dimension`
+add_subdirectory(domain)
+
+# `attribute`: depends on `filter_list`, `datatype`
+add_subdirectory(attribute)
 
 # `group`: depends on `config`, `context`
 add_subdirectory(group)
@@ -108,4 +117,7 @@ add_subdirectory(vfs)
 
 # `query_plan`: no dependencies yet
 add_subdirectory(query_plan)
+
+# `query_aggregate`: no dependencies
+add_subdirectory(query_aggregate)
 

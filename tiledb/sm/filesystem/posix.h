@@ -43,7 +43,6 @@
 #include <vector>
 
 #include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 
 using namespace tiledb::common;
@@ -131,10 +130,9 @@ class Posix {
    * Initialize this instance with the given config.
    *
    * @param config Config parameters.
-   * @param vfs_thread_pool ThreadPool from the parent VFS instance.
    * @return Status
    */
-  Status init(const Config& config, ThreadPool* vfs_thread_pool);
+  Status init(const Config& config);
 
   /**
    * Checks if the input is an existing directory.
@@ -243,9 +241,6 @@ class Posix {
   /** Config parameters inherited from parent VFS. */
   std::reference_wrapper<const Config> config_;
 
-  /** Thread pool from parent VFS instance. */
-  ThreadPool* vfs_thread_pool_;
-
   static void adjacent_slashes_dedup(std::string* path);
 
   static bool both_slashes(char a, char b);
@@ -286,8 +281,7 @@ class Posix {
 
   /**
    * Write data from the given buffer to the file descriptor, beginning at the
-   * given offset. Multiple threads can safely write to the same open file
-   * descriptor.
+   * given offset.
    *
    * @param fd Open file descriptor to write to
    * @param file_offset Offset in the file at which to start writing

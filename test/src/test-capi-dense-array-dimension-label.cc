@@ -493,8 +493,8 @@ TEST_CASE_METHOD(
 #endif
 
   // Vectors for input data.
-  std::vector<double> input_label_data{};
-  std::vector<double> input_attr_data{};
+  std::vector<double> input_label_data{4};
+  std::vector<double> input_attr_data{4};
 
   // Dimension label parameters.
   tiledb_data_order_t label_order{};
@@ -623,7 +623,8 @@ TEST_CASE(
       ctx,
       tiledb_query_submit(ctx, query),
       "Query: Cannot init query; Using query conditions and dimension labels "
-      "together is not supported.");
+      "together is not supported.",
+      true);
   tiledb_query_free(&query);
   tiledb_array_free(&array);
 }

@@ -83,6 +83,9 @@ extern const std::string array_commits_dir_name;
 /** The array dimension labels directory name. */
 extern const std::string array_dimension_labels_dir_name;
 
+/** The array enumerations directory name. */
+extern const std::string array_enumerations_dir_name;
+
 /** The array directory names. */
 extern const std::vector<std::string> array_dir_names;
 
@@ -136,6 +139,9 @@ extern const std::string delete_timestamps;
 
 /** Special name reserved for the delete condition index attribute. */
 extern const std::string delete_condition_index;
+
+/** Special name reserved for count or rows. */
+extern const std::string count_of_rows;
 
 /** The size of a timestamp cell. */
 extern const uint64_t timestamp_size;
@@ -202,6 +208,9 @@ extern const uint32_t empty_ucs4;
 
 /** The special value for an empty ANY. */
 extern const uint8_t empty_any;
+
+/** The return value for missing entries in an Enumeration */
+extern const uint64_t enumeration_missing_value;
 
 /** The file suffix used in TileDB. */
 extern const std::string file_suffix;
@@ -322,6 +331,12 @@ extern const std::string query_condition_op_eq_str;
 
 /** TILEDB_NE Query Condition Op String **/
 extern const std::string query_condition_op_ne_str;
+
+/** TILEDB_IN Query Condition Op String **/
+extern const std::string query_condition_op_in_str;
+
+/** TILEDB_NOT_IN Query Condition Op String **/
+extern const std::string query_condition_op_not_in_str;
 
 /** TILEDB_AND Query Condition Combination Op String **/
 extern const std::string query_condition_combination_op_and_str;
@@ -654,6 +669,12 @@ extern const format_version_t deletes_min_version;
 /** The lowest version supported for updates. */
 extern const format_version_t updates_min_version;
 
+/** The lowest version supported for enumerations. */
+extern const format_version_t enumerations_min_format_version;
+
+/** The current Enumerations version. */
+extern const format_version_t enumerations_version;
+
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 extern const uint64_t max_tile_chunk_size;
 
@@ -737,7 +758,6 @@ extern const uint64_t s3_min_multipart_part_size;
  * global order writes intermediate chunks
  */
 extern const std::string s3_multipart_buffering_dirname;
-
 }  // namespace constants
 
 }  // namespace sm

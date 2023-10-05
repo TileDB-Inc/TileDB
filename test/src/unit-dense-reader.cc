@@ -85,7 +85,7 @@ struct CDenseFx {
       int* subarray,
       int* data,
       uint64_t* data_size,
-      bool add_qc = false,
+      int qc_index = 0,
       std::string expected_error = std::string());
   void read_evolved(
       int* subarray,
@@ -432,7 +432,7 @@ void CDenseFx::read(
     int* subarray,
     int* data,
     uint64_t* data_size,
-    bool add_qc,
+    int qc_index,
     std::string expected_error) {
   // Open array for reading.
   tiledb_array_t* array;
@@ -455,16 +455,33 @@ void CDenseFx::read(
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", data, data_size);
   CHECK(rc == TILEDB_OK);
 
-  if (add_qc) {
+  if (qc_index != 0) {
     tiledb_query_condition_t* qc;
     rc = tiledb_query_condition_alloc(ctx_, &qc);
     CHECK(rc == TILEDB_OK);
-    int32_t val = 10000;
-    rc = tiledb_query_condition_init(
-        ctx_, qc, "a", &val, sizeof(int32_t), TILEDB_LT);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_set_condition(ctx_, query, qc);
-    CHECK(rc == TILEDB_OK);
+
+    if (qc_index == 1) {
+      // Test with TILEDB_LT query condition.
+      int32_t val = 10000;
+      rc = tiledb_query_condition_init(
+          ctx_, qc, "a", &val, sizeof(int32_t), TILEDB_LT);
+      CHECK(rc == TILEDB_OK);
+      rc = tiledb_query_set_condition(ctx_, query, qc);
+      CHECK(rc == TILEDB_OK);
+    } else if (qc_index == 2) {
+      // Test with TILEDB_NOT query condition.
+      int32_t val = 10;
+      rc = tiledb_query_condition_init(
+          ctx_, qc, "a", &val, sizeof(int32_t), TILEDB_GT);
+      CHECK(rc == TILEDB_OK);
+      tiledb_query_condition_t* qc_not;
+      rc = tiledb_query_condition_alloc(ctx_, &qc_not);
+      rc = tiledb_query_condition_negate(ctx_, qc, &qc_not);
+      rc = tiledb_query_set_condition(ctx_, query, qc_not);
+      CHECK(rc == TILEDB_OK);
+      tiledb_query_condition_free(&qc_not);
+    }
+
     tiledb_query_condition_free(&qc);
   }
 
@@ -820,7 +837,7 @@ TEST_CASE_METHOD(
       subarray,
       data_r,
       &data_r_size,
-      false,
+      0,
       "DenseReader: Memory budget is too small to open array");
 }
 
@@ -828,7 +845,7 @@ TEST_CASE_METHOD(
     CDenseFx,
     "Dense reader: tile budget exceeded, fixed attribute",
     "[dense-reader][tile-budget-exceeded][fixed]") {
-  bool use_qc = GENERATE(true, false);
+  int qc_index = GENERATE(0, 1, 2);
 
   // Create default array.
   reset_config();
@@ -848,17 +865,23 @@ TEST_CASE_METHOD(
   // Try to read.
   int data_r[NUM_CELLS] = {0};
   uint64_t data_r_size = sizeof(data_r);
-  read(subarray, data_r, &data_r_size, use_qc);
+  read(subarray, data_r, &data_r_size, qc_index);
 
   CHECK(data_r_size == data_size);
-  CHECK(!std::memcmp(data.data(), data_r, data_size));
+  if (qc_index == 2) {
+    // TILEDB_NOT query condition returns first half of the data set.
+    CHECK(!std::memcmp(data.data(), data_r, data_size / 2));
+  } else {
+    // TILEDB_LT or no query condition returns the full data set.
+    CHECK(!std::memcmp(data.data(), data_r, data_size));
+  }
 }
 
 TEST_CASE_METHOD(
     CDenseFx,
     "Dense reader: budget exceeded, fixed attribute",
     "[dense-reader][budget-too-small][fixed]") {
-  bool use_qc = GENERATE(true, false);
+  int use_qc = GENERATE(0, 1, 2);
 
   // Create default array.
   reset_config();
@@ -1273,9 +1296,9 @@ TEST_CASE_METHOD(
       a2_offsets.data(),
       &a2_offsets_size);
 
-  // First var tiles is 91 and subequent are 100 bytes, this will only allow to
+  // First var tiles is 99 and subequent are 108 bytes, this will only allow to
   // load two tiles the first loop and one on the subsequents.
-  tile_upper_memory_limit_ = "384";
+  tile_upper_memory_limit_ = "416";
   update_config();
 
   // Try to read.

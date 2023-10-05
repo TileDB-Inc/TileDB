@@ -52,6 +52,10 @@ GroupMemberV2::GroupMemberV2(
 // relative (uint8_t)
 // uri_size (uint64_t)
 // uri (string)
+// name_set (uint8_t)
+// name_size (uint64_t)
+// name (string)
+// deleted (uint8_t)
 void GroupMemberV2::serialize(Serializer& serializer) {
   serializer.write<uint32_t>(GroupMemberV2::format_version_);
 

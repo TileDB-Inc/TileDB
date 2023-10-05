@@ -11,6 +11,7 @@ env:
   TILEDB_SERIALIZATION: ON
   TILEDB_STATIC: ON
   TILEDB_TOOLS: ON
+  VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
 jobs:
   build:
@@ -26,6 +27,14 @@ jobs:
       - name: 'Homebrew setup'
         run: brew install pkg-config
         if: ${{ startsWith(matrix.os, 'macos-') == true }}
+
+      # Configure required environment variables for vcpkg to use
+      # GitHub's Action Cache
+      - uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
       - name: 'Print env'
         run: |
@@ -46,7 +55,6 @@ jobs:
           pushd $GITHUB_WORKSPACE/build
 
           cmake .. \
-            -DTILEDB_VCPKG=ON \
             -DTILEDB_AZURE=${TILEDB_AZURE}\
             -DTILEDB_GCS=${TILEDB_GCS} \
             -DTILEDB_S3=${TILEDB_S3} \

@@ -58,7 +58,7 @@ struct CPPFixedTileMetadataFx {
   void create_array(
       tiledb_layout_t layout, bool nullable, uint64_t cell_val_num) {
     auto tiledb_type = TILEDB_CHAR;
-    if constexpr (!std::is_same<TestType, unsigned char>::value) {
+    if constexpr (!std::is_same<TestType, char>::value) {
       auto type = tiledb::impl::type_to_tiledb<TestType>();
       tiledb_type = type.tiledb_type;
     }
@@ -610,8 +610,8 @@ struct CPPFixedTileMetadataFx {
 
 typedef tuple<
     std::byte,
-    unsigned char,  // Used for TILEDB_CHAR.
-    char,
+    unsigned char,
+    char,  // Used for TILEDB_CHAR.
     uint8_t,
     uint16_t,
     uint32_t,
@@ -787,7 +787,8 @@ struct CPPVarTileMetadataFx {
       // Copy the string.
       a_offsets[i] = offset;
       auto idx = values[i];
-      memcpy(&a_var[offset], strings_[idx].c_str(), strings_[idx].size());
+      memcpy(
+          a_var.data() + offset, strings_[idx].c_str(), strings_[idx].size());
       offset += strings_[idx].size();
 
       // Set the coordinate value.

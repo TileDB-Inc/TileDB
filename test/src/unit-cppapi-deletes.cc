@@ -111,6 +111,7 @@ struct DeletesFx {
   bool is_array(const std::string& array_name);
   void validate_array_dir_after_delete(const std::string& path);
   void validate_group_dir_after_delete(const std::string& path);
+  std::vector<std::string> list_schemas(const std::string& array_name);
 };
 
 DeletesFx::DeletesFx()
@@ -505,6 +506,29 @@ void DeletesFx::validate_group_dir_after_delete(const std::string& path) {
   REQUIRE(!vfs_.is_file(path + tiledb::sm::constants::group_filename));
   REQUIRE(!vfs_.is_dir(path + tiledb::sm::constants::group_detail_dir_name));
   REQUIRE(!vfs_.is_dir(path + tiledb::sm::constants::group_metadata_dir_name));
+}
+
+std::vector<std::string> DeletesFx::list_schemas(
+    const std::string& array_name) {
+  auto& enum_dir = tiledb::sm::constants::array_enumerations_dir_name;
+  auto schemas =
+      vfs_.ls(array_name + tiledb::sm::constants::array_schema_dir_name);
+
+  auto it = schemas.begin();
+  while (it != schemas.end()) {
+    if ((*it).size() < enum_dir.size()) {
+      continue;
+    }
+    if ((*it).substr((*it).size() - enum_dir.size()) == enum_dir) {
+      break;
+    }
+    ++it;
+  }
+  if (it != schemas.end()) {
+    schemas.erase(it);
+  }
+
+  return schemas;
 }
 
 TEST_CASE_METHOD(
@@ -1742,16 +1766,6 @@ TEST_CASE_METHOD(
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 3);
   CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 2);
 
-  // Open array in WRITE mode and try to delete fragments
-  std::unique_ptr<Array> array =
-      std::make_unique<Array>(ctx_, SPARSE_ARRAY_NAME, TILEDB_WRITE);
-  REQUIRE_THROWS_WITH(
-      array->delete_fragments(SPARSE_ARRAY_NAME, 0, UINT64_MAX),
-      Catch::Matchers::ContainsSubstring(
-          "Query type must be MODIFY_EXCLUSIVE"));
-  CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 2);
-  array->close();
-
   // Try to delete a fragment uri that doesn't exist
   std::string extraneous_fragment =
       std::string(SPARSE_ARRAY_NAME) + "/" +
@@ -1760,8 +1774,7 @@ TEST_CASE_METHOD(
   REQUIRE_THROWS_WITH(
       Array::delete_fragments_list(
           ctx_, SPARSE_ARRAY_NAME, extraneous_fragments, 1),
-      Catch::Matchers::ContainsSubstring(
-          "is not a fragment of the ArrayDirectory"));
+      Catch::Matchers::ContainsSubstring("Failed to delete fragments_list"));
   CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 2);
 
   remove_sparse_array();
@@ -1812,10 +1825,7 @@ TEST_CASE_METHOD(
 
   // Delete fragments
   SECTION("delete fragments by timestamps") {
-    std::unique_ptr<Array> array = std::make_unique<Array>(
-        ctx_, SPARSE_ARRAY_NAME, TILEDB_MODIFY_EXCLUSIVE);
-    array->delete_fragments(SPARSE_ARRAY_NAME, 2, 6);
-    array->close();
+    Array::delete_fragments(ctx_, SPARSE_ARRAY_NAME, 2, 6);
   }
 
   SECTION("delete fragments by uris") {
@@ -1902,9 +1912,7 @@ TEST_CASE_METHOD(
   CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == num_fragments);
 
   // Delete fragments at timestamps 2 - 4
-  std::unique_ptr<Array> array =
-      std::make_unique<Array>(ctx_, SPARSE_ARRAY_NAME, TILEDB_MODIFY_EXCLUSIVE);
-  array->delete_fragments(SPARSE_ARRAY_NAME, 2, 4);
+  Array::delete_fragments(ctx_, SPARSE_ARRAY_NAME, 2, 4);
   if (!vacuum) {
     // Vacuum after deletion
     auto config = ctx_.config();
@@ -1912,7 +1920,6 @@ TEST_CASE_METHOD(
     num_commits -= 2;
     num_fragments -= 2;
   }
-  array->close();
 
   // Validate working directory
   CHECK(tiledb::test::num_commits(SPARSE_ARRAY_NAME) == num_commits);
@@ -1968,8 +1975,7 @@ TEST_CASE_METHOD(
   // Check write
   CHECK(tiledb::test::num_commits(SPARSE_ARRAY_NAME) == 4);
   CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 4);
-  auto schemas =
-      vfs_.ls(array_name + tiledb::sm::constants::array_schema_dir_name);
+  auto schemas = list_schemas(array_name);
   CHECK(schemas.size() == 1);
   auto meta =
       vfs_.ls(array_name + tiledb::sm::constants::array_metadata_dir_name);
@@ -2040,8 +2046,7 @@ TEST_CASE_METHOD(
   vfs_.touch(extraneous_file_path);
 
   // Check write
-  auto schemas =
-      vfs_.ls(array_name + tiledb::sm::constants::array_schema_dir_name);
+  auto schemas = list_schemas(array_name);
   CHECK(schemas.size() == 1);
   auto uris = vfs_.ls(array_name);
   bool ok_exists = false;
@@ -2259,11 +2264,9 @@ TEST_CASE_METHOD(
   auto group_meta_dir =
       vfs_.ls(GROUP_NAME + tiledb::sm::constants::group_metadata_dir_name);
   CHECK(group_meta_dir.size() == 1);
-  auto array_schema =
-      vfs_.ls(array_path + tiledb::sm::constants::array_schema_dir_name);
+  auto array_schema = list_schemas(array_path);
   CHECK(array_schema.size() == 1);
-  auto array2_schema =
-      vfs_.ls(array2_path + tiledb::sm::constants::array_schema_dir_name);
+  auto array2_schema = list_schemas(array2_path);
   CHECK(array2_schema.size() == 1);
 
   // Recursively delete group in modify exclusive mode

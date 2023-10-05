@@ -28,7 +28,7 @@ include(unit_test)
 
 commence(unit_test array)
     this_target_sources(main.cc unit_array_directory.cc)
-    this_target_link_libraries(array)
+    this_target_link_libraries(array context_resources)
 conclude(unit_test)
 
 commence(unit_test consistency)

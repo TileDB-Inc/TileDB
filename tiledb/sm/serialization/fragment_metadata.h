@@ -69,6 +69,24 @@ Status fragment_metadata_from_capnp(
     MemoryTracker* memory_tracker = nullptr);
 
 /**
+ * Serialize Fragment Metadata sizes and offsets
+ * (fileSizes, fileVarSizes, fileValiditySizes, tileOffsets, tileVarOffsets,
+ * tileVarSizes, tileValidityOffsets)
+ *
+ * This function was split from fragment_metadata_to_capnp so that these
+ * potentially very large items are sent over the wire only for use cases
+ * such as global order writes, partial attribute writes
+ * where their existence is a strict requirement.
+ * Please only call this function if your use case meets the criteria above.
+ *
+ * @param frag_meta fragment metadata to serialize
+ * @param frag_meta_builder cap'n proto class
+ */
+void fragment_meta_sizes_offsets_to_capnp(
+    const FragmentMetadata& frag_meta,
+    capnp::FragmentMetadata::Builder* frag_meta_builder);
+
+/**
  * Convert Fragment Metadata to Cap'n Proto message
  *
  * @param frag_meta fragment metadata to serialize

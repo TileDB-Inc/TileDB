@@ -11,7 +11,7 @@ env:
   TILEDB_SERIALIZATION: OFF
   TILEDB_STATIC: OFF
   TILEDB_TOOLS: ON
-  TILEDB_BASE_BOOTSTRAP_OPTIONS: '-EnableVcpkg -EnableVerbose -EnableStaticTileDB'
+  TILEDB_BASE_BOOTSTRAP_OPTIONS: '-EnableVerbose -EnableStaticTileDB'
 
 jobs:
   build:
@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-2019]
+        os: [windows-2019, windows-2022]
         #considering https://stackoverflow.com/questions/65035256/how-to-access-matrix-variables-in-github-actions
         environ: [azure, s3, serialization]
         include:
@@ -42,6 +42,9 @@ jobs:
             TILEDB_ARROW_TESTS: OFF
             TILEDB_SERIALIZATION: ON
             TILEDB_WEBP: ON
+
+    name: ${{ matrix.os }} - ${{ matrix.environ }}
+
     env:
       TILEDB_HOME: ${{ github.workspace }}
       TILEDB_GA_IMAGE_NAME: ${{ matrix.os }}
@@ -118,7 +121,7 @@ jobs:
           submodules: true
           fetch-depth: 0
 
-      - name: Prevent vpckg from building debug variants
+      - name: Prevent vcpkg from building debug variants
         shell: python
         run: |
           import os
@@ -148,18 +151,6 @@ jobs:
 
           #directory $env:BUILD_BUILDDIRECTORY was created in step 'tiledb env prep'
           cd $env:BUILD_BUILDDIRECTORY
-
-          $VSCategory = "Enterprise" # alternate 'Community'
-          if ($env:TILEDB_GA_IMAGE_NAME -eq "windows-2019") {
-            if (!(Test-Path "C:\Program Files (x86)\Microsoft Visual Studio\2019\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin")) {
-              Write-Host "ERROR***: Missing C:\Program Files (x86)\Microsoft Visual Studio\2019\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
-              exit $LastExitCode
-            }
-            $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\${VSCategory}\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin"
-          } else {
-            Write-Host "Unknown image name: '$($env:TILEDB_GA_IMAGE_NAME)'"
-            exit $LastExitCode
-          }
 
           # allow double-checking path
           cmd /c "echo $PATH"
@@ -418,9 +409,9 @@ jobs:
           Invoke-Expression $cmd
 
           #.\$CMakeBuildType\ExampleExe_static.exe
-          #$cmd = ".\$CMakeBuildType\ExampleExe_static.exe"
-          #Write-Host "cmd: '$cmd'"
-          #Invoke-Expression $cmd
+          $cmd = ".\$CMakeBuildType\ExampleExe_static.exe"
+          Write-Host "cmd: '$cmd'"
+          Invoke-Expression $cmd
 
           # Packaging test
           cd $env:BUILD_SOURCESDIRECTORY\test\packaging

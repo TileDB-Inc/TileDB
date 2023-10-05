@@ -635,15 +635,6 @@ class StorageManagerCanonical {
   Status is_group(const URI& uri, bool* is_group) const;
 
   /**
-   * Loads the array metadata from persistent storage based on
-   * the input URI manager.
-   */
-  void load_array_metadata(
-      const ArrayDirectory& array_dir,
-      const EncryptionKey& encryption_key,
-      Metadata* metadata);
-
-  /**
    * Loads the delete and update conditions from storage.
    *
    * @param array The array.
