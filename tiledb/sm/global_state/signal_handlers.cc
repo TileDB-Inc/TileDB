@@ -127,7 +127,9 @@ Status SignalHandlers::initialize() {
 }
 
 void SignalHandlers::safe_stderr(const char* msg, size_t msg_len) {
-  (void) _write(2, msg, (unsigned int)msg_len);
+  auto retval = _write(2, msg, (unsigned int)msg_len);
+  // Ignore return value.
+  (void)retval;
 }
 
 #else
@@ -161,7 +163,9 @@ Status SignalHandlers::initialize() {
 }
 
 void SignalHandlers::safe_stderr(const char* msg, size_t msg_len) {
-  (void) write(2, msg, msg_len);
+  auto retval = write(2, msg, msg_len);
+  // Ignore return value.
+  (void)retval;
 }
 
 #endif
