@@ -89,6 +89,7 @@ const std::string Config::REST_RETRY_COUNT = "25";
 const std::string Config::REST_RETRY_INITIAL_DELAY_MS = "500";
 const std::string Config::REST_RETRY_DELAY_FACTOR = "1.25";
 const std::string Config::REST_CURL_BUFFER_SIZE = "524288";
+const std::string Config::REST_CAPNP_TRAVERSAL_LIMIT = "536870912";
 const std::string Config::REST_CURL_VERBOSE = "false";
 const std::string Config::REST_LOAD_METADATA_ON_ARRAY_OPEN = "true";
 const std::string Config::REST_LOAD_NON_EMPTY_DOMAIN_ON_ARRAY_OPEN = "true";
@@ -234,6 +235,8 @@ const std::map<std::string, std::string> default_config_values = {
         "rest.retry_initial_delay_ms", Config::REST_RETRY_INITIAL_DELAY_MS),
     std::make_pair("rest.retry_delay_factor", Config::REST_RETRY_DELAY_FACTOR),
     std::make_pair("rest.curl.buffer_size", Config::REST_CURL_BUFFER_SIZE),
+    std::make_pair(
+        "rest.capnp_traversal_limit", Config::REST_CAPNP_TRAVERSAL_LIMIT),
     std::make_pair("rest.curl.verbose", Config::REST_CURL_VERBOSE),
     std::make_pair(
         "rest.load_metadata_on_array_open",

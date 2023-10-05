@@ -166,6 +166,14 @@ Status array_to_capnp(
                 fragment_metadata_all.size());
         for (size_t i = 0; i < fragment_metadata_all.size(); i++) {
           auto fragment_metadata_builder = fragment_metadata_all_builder[i];
+
+          // Old fragment with zipped coordinates didn't have a format that
+          // allow to dynamically load tile offsets and sizes and since they all
+          // get loaded at array open, we need to serialize them here.
+          if (fragment_metadata_all[i]->version() <= 2) {
+            fragment_meta_sizes_offsets_to_capnp(
+                *fragment_metadata_all[i], &fragment_metadata_builder);
+          }
           RETURN_NOT_OK(fragment_metadata_to_capnp(
               *fragment_metadata_all[i], &fragment_metadata_builder));
         }
