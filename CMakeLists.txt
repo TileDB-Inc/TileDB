@@ -569,15 +569,13 @@ if (TILEDB_TESTS)
   # C API support
   add_dependencies(tests unit_capi_handle unit_capi_exception_wrapper)
   # C API basics
-  add_dependencies(tests unit_capi_error unit_capi_config unit_capi_context)
+  add_dependencies(tests unit_capi_config unit_capi_context)
   add_dependencies(tests unit_capi_array)
   add_dependencies(tests unit_capi_buffer)
   add_dependencies(tests unit_capi_buffer_list)
   add_dependencies(tests unit_capi_data_order)
   add_dependencies(tests unit_capi_datatype)
   add_dependencies(tests unit_capi_filesystem)
-  add_dependencies(tests unit_capi_object_type)
-  add_dependencies(tests unit_capi_object_walk_order)
   add_dependencies(tests unit_capi_query_type)
   add_dependencies(tests unit_capi_vfs)
   # C API array schema
