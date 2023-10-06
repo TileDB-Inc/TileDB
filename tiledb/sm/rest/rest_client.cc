@@ -246,6 +246,56 @@ RestClient::get_array_schema_from_rest(const URI& uri) {
               serialization_type_, returned_data))};
 }
 
+shared_ptr<ArraySchema> RestClient::post_array_schema_from_rest(
+    const Config& config,
+    const URI& uri,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end,
+    bool include_enumerations) {
+  serialization::LoadArraySchemaRequest req(include_enumerations);
+
+  Buffer buf;
+  serialization::serialize_load_array_schema_request(
+      config, req, serialization_type_, buf);
+
+  // Wrap in a list
+  BufferList serialized;
+  throw_if_not_ok(serialized.add_buffer(std::move(buf)));
+
+  // Init curl and form the URL
+  Curl curlc(logger_);
+  std::string array_ns, array_uri;
+  throw_if_not_ok(uri.get_rest_components(&array_ns, &array_uri));
+  const std::string cache_key = array_ns + ":" + array_uri;
+  throw_if_not_ok(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
+                          "/" + curlc.url_escape(array_uri) + "/schema?" +
+                          "start_timestamp=" + std::to_string(timestamp_start) +
+                          "&end_timestamp=" + std::to_string(timestamp_end);
+
+  // Get the data
+  Buffer returned_data;
+  throw_if_not_ok(curlc.post_data(
+      stats_,
+      url,
+      serialization_type_,
+      &serialized,
+      &returned_data,
+      cache_key));
+  if (returned_data.data() == nullptr || returned_data.size() == 0) {
+    throw Status_RestError(
+        "Error getting array schema from REST; server returned no data.");
+  }
+
+  // Ensure data has a null delimiter for cap'n proto if using JSON
+  throw_if_not_ok(ensure_json_null_delimited_string(&returned_data));
+  return make_shared<ArraySchema>(
+      HERE(),
+      serialization::deserialize_load_array_schema_response(
+          serialization_type_, returned_data));
+}
+
 Status RestClient::post_array_schema_to_rest(
     const URI& uri, const ArraySchema& array_schema) {
   Buffer buff;

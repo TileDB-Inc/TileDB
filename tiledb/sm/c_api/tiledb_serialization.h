@@ -746,6 +746,25 @@ TILEDB_EXPORT int32_t tiledb_deserialize_group_metadata(
     const tiledb_buffer_t* buffer) TILEDB_NOEXCEPT;
 
 /**
+ * Process a load array schema request.
+ *
+ * @param ctx The TileDB context.
+ * @param array The TileDB Array.
+ * @param serialization_type The type of Cap'n Proto serialization used.
+ * @param request A buffer containing the LoadArraySchemaRequest Cap'n Proto
+ *        message.
+ * @param response An allocated buffer that will contain the
+ *        LoadArraySchemaResponse Cap'n Proto message.
+ * @return capi_return_t TILEDB_OK on success, TILEDB_ERR on error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_handle_load_array_schema_request(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_serialization_type_t serialization_type,
+    const tiledb_buffer_t* request,
+    tiledb_buffer_t* response) TILEDB_NOEXCEPT;
+
+/**
  * Process a load enumerations request.
  *
  * @param ctx The TileDB context.

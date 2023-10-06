@@ -592,32 +592,10 @@ if (TILEDB_AZURE)
   endif()
 endif()
 
-# GCS dependencies
 if (TILEDB_GCS)
-  if (TILEDB_VCPKG)
-    find_package(google_cloud_cpp_storage CONFIG REQUIRED)
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE google-cloud-cpp::storage)
-    install_all_target_libs(google-cloud-cpp::storage)
-  else()
-    message(STATUS "The TileDB library is compiled with GCS support.")
-    find_package(GCSSDK_EP REQUIRED COMPONENTS gcs)
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-      INTERFACE
-         storage_client
-    )
-
-    # work around for GCS finding the shared version of zlib: we will see the ZLIB::ZLIB
-    # transitive linkage later, and we can use the correct version there.
-    unset(ZLIB_FOUND)
-    unset(ZLIB_LIBRARIES)
-    unset(ZLIB_INCLUDE_DIR)
-
-    get_target_property(_GCS_INTERFACE_LIBS storage_client INTERFACE_LINK_LIBRARIES)
-    if ("ZLIB::ZLIB" IN_LIST _GCS_INTERFACE_LIBS)
-      list(REMOVE_ITEM _GCS_INTERFACE_LIBS "ZLIB::ZLIB")
-      set_property(TARGET storage_client PROPERTY INTERFACE_LINK_LIBRARIES "${_GCS_INTERFACE_LIBS}")
-    endif()
-  endif()
+  find_package(google_cloud_cpp_storage CONFIG REQUIRED)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE CURL::libcurl google-cloud-cpp::storage google-cloud-cpp::experimental-storage-grpc)
+  install_all_target_libs(google-cloud-cpp::storage)
 endif()
 
 # Libcurl

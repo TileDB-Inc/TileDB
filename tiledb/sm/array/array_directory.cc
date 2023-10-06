@@ -191,7 +191,8 @@ ArrayDirectory::load_all_array_schemas(
 std::vector<shared_ptr<const Enumeration>>
 ArrayDirectory::load_enumerations_from_paths(
     const std::vector<std::string>& enumeration_paths,
-    const EncryptionKey& encryption_key) const {
+    const EncryptionKey& encryption_key,
+    MemoryTracker& memory_tracker) const {
   // This should never be called with an empty list of enumeration paths, but
   // there's no reason to not check an early return case here given that code
   // changes.
@@ -202,7 +203,8 @@ ArrayDirectory::load_enumerations_from_paths(
   std::vector<shared_ptr<const Enumeration>> ret(enumeration_paths.size());
   auto& tp = resources_.get().io_tp();
   throw_if_not_ok(parallel_for(&tp, 0, enumeration_paths.size(), [&](size_t i) {
-    ret[i] = load_enumeration(enumeration_paths[i], encryption_key);
+    ret[i] =
+        load_enumeration(enumeration_paths[i], encryption_key, memory_tracker);
     return Status::Ok();
   }));
   return ret;
@@ -537,10 +539,9 @@ URI ArrayDirectory::get_commits_dir(uint32_t write_version) const {
 
 URI ArrayDirectory::get_commit_uri(const URI& fragment_uri) const {
   auto name = fragment_uri.remove_trailing_slash().last_path_part();
-  uint32_t version;
-  throw_if_not_ok(utils::parse::get_fragment_version(name, &version));
+  auto fragment_version = utils::parse::get_fragment_version(name);
 
-  if (version == UINT32_MAX || version < 12) {
+  if (fragment_version < 12) {
     return URI(fragment_uri.to_string() + constants::ok_file_suffix);
   }
 
@@ -551,10 +552,9 @@ URI ArrayDirectory::get_commit_uri(const URI& fragment_uri) const {
 
 URI ArrayDirectory::get_vacuum_uri(const URI& fragment_uri) const {
   auto name = fragment_uri.remove_trailing_slash().last_path_part();
-  uint32_t version;
-  throw_if_not_ok(utils::parse::get_fragment_version(name, &version));
+  auto fragment_version = utils::parse::get_fragment_version(name);
 
-  if (version == UINT32_MAX || version < 12) {
+  if (fragment_version < 12) {
     return URI(fragment_uri.to_string() + constants::vacuum_file_suffix);
   }
 
@@ -1281,9 +1281,8 @@ Status ArrayDirectory::is_fragment(
 
   // If the format version is >= 5, then the above suffices to check if
   // the URI is indeed a fragment
-  uint32_t version;
-  RETURN_NOT_OK(utils::parse::get_fragment_version(name, &version));
-  if (version != UINT32_MAX && version >= 5) {
+  auto fragment_version = utils::parse::get_fragment_version(name);
+  if (fragment_version >= 5) {
     *is_fragment = false;
     return Status::Ok();
   }
@@ -1299,21 +1298,21 @@ Status ArrayDirectory::is_fragment(
 bool ArrayDirectory::consolidation_with_timestamps_supported(
     const URI& uri) const {
   // Get the fragment version from the uri
-  uint32_t version;
   auto name = uri.remove_trailing_slash().last_path_part();
-  throw_if_not_ok(utils::parse::get_fragment_version(name, &version));
+  auto fragment_version = utils::parse::get_fragment_version(name);
 
   // get_fragment_version returns UINT32_MAX for versions <= 2 so we should
   // explicitly exclude this case when checking if consolidation with timestamps
   // is supported on a fragment
   return mode_ == ArrayDirectoryMode::READ &&
-         version >= constants::consolidation_with_timestamps_min_version &&
-         version != UINT32_MAX;
+         fragment_version >=
+             constants::consolidation_with_timestamps_min_version;
 }
 
 shared_ptr<const Enumeration> ArrayDirectory::load_enumeration(
     const std::string& enumeration_path,
-    const EncryptionKey& encryption_key) const {
+    const EncryptionKey& encryption_key,
+    MemoryTracker& memory_tracker) const {
   auto timer_se = resources_.get().stats().start_timer("sm_load_enumeration");
 
   auto enmr_uri = uri_.join_path(constants::array_schema_dir_name)
@@ -1322,6 +1321,15 @@ shared_ptr<const Enumeration> ArrayDirectory::load_enumeration(
 
   auto&& tile = GenericTileIO::load(resources_, enmr_uri, 0, encryption_key);
   resources_.get().stats().add_counter("read_enumeration_size", tile.size());
+
+  if (!memory_tracker.take_memory(
+          tile.size(), MemoryTracker::MemoryType::ENUMERATION)) {
+    throw ArrayDirectoryException(
+        "Error loading enumeration; Insufficient memory budget; Needed " +
+        std::to_string(tile.size()) + " but only had " +
+        std::to_string(memory_tracker.get_memory_available()) +
+        " from budget " + std::to_string(memory_tracker.get_memory_budget()));
+  }
 
   Deserializer deserializer(tile.data(), tile.size());
   return Enumeration::deserialize(deserializer);

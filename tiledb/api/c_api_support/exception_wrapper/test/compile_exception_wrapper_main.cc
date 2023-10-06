@@ -1,11 +1,11 @@
 /**
- * @file compile_all_filters_main.cc
+ * @file c_api_support/exception_wrapper/test/compile_exception_wrapper_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,14 +26,11 @@
  * THE SOFTWARE.
  */
 
-#include "../filter_create.h"
+#include "../exception_wrapper.h"
 
 int main() {
-  using namespace tiledb::sm;
-
-  (void)sizeof(tiledb::sm::FilterCreate);
-  (void)static_cast<shared_ptr<Filter> (*)(
-      Deserializer& deserializer, const uint32_t version, Datatype datatype)>(
-      tiledb::sm::FilterCreate::deserialize);
-  return 0;
+  tiledb::api::detail::ErrorTreeStdException x{std::runtime_error("")};
+  tiledb::api::detail::ETVisitorStdException v{};
+  x.visit(v);
+  return 1;
 }
