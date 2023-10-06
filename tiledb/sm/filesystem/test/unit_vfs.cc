@@ -62,12 +62,12 @@ struct VfsFixture {
   std::vector<filesystem::directory_entry> expected_results_;
 };
 
-TEST_CASE_METHOD(VfsFixture, "VFS: Default arguments ls_recursive", "[vfs]") {
+TEST_CASE_METHOD(
+    VfsFixture, "VFS: Default arguments ls_recursive", "[vfs][ls_recursive]]") {
   tiledb::sm::URI temp_dir("vfs_default_args");
   vfs_.create_dir(temp_dir).ok();
   SECTION("Empty directory") {
-    auto results = vfs_.ls_recursive(temp_dir);
-    CHECK(results.empty());
+    create_objects(temp_dir, 0, "file");
   }
 
   SECTION("Single file") {
@@ -76,7 +76,6 @@ TEST_CASE_METHOD(VfsFixture, "VFS: Default arguments ls_recursive", "[vfs]") {
 
   SECTION("Multiple files in single directory") {
     create_objects(temp_dir, 10, "file");
-    auto results = vfs_.ls_recursive(temp_dir);
   }
 
   SECTION("Multiple files in nested directories") {
@@ -96,12 +95,13 @@ TEST_CASE_METHOD(VfsFixture, "VFS: Default arguments ls_recursive", "[vfs]") {
   vfs_.remove_dir(temp_dir).ok();
 }
 
-TEST_CASE_METHOD(VfsFixture, "VFS: Throwing callback ls_recursive", "[vfs]") {
+TEST_CASE_METHOD(
+    VfsFixture, "VFS: Throwing callback ls_recursive", "[vfs][ls_recursive]") {
   auto cb = [](const char*, size_t, uint64_t, void*) -> int32_t {
     throw std::logic_error("Throwing callback");
   };
   tiledb::sm::URI temp_dir("vfs_throwing_callback");
-  int data = 1;
+  int data;
   SECTION("Throwing callback with 0 objects should not throw") {
     CHECK_NOTHROW(vfs_.ls_recursive(temp_dir, cb, &data));
   }

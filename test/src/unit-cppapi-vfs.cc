@@ -553,7 +553,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    tiledb::test::VfsFixture, "C++ API: Throwing filter", "[vfs]") {
+    tiledb::test::VfsFixture,
+    "C++ API: Throwing filter",
+    "[cppapi][vfs][ls-recursive]") {
   if (temp_dir_.is_s3() && !ctx_.is_supported_fs(TILEDB_S3)) {
     return;
   }
