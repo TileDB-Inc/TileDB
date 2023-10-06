@@ -685,6 +685,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.min_parallel_size"] = "10485760";
   all_param_values["vfs.read_ahead_size"] = "102400";
   all_param_values["vfs.read_ahead_cache_size"] = "10485760";
+  all_param_values["vfs.read_logging_mode"] = "";
   all_param_values["vfs.gcs.endpoint"] = "";
   all_param_values["vfs.gcs.project_id"] = "";
   all_param_values["vfs.gcs.max_parallel_ops"] =
@@ -752,6 +753,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["min_parallel_size"] = "10485760";
   vfs_param_values["read_ahead_size"] = "102400";
   vfs_param_values["read_ahead_cache_size"] = "10485760";
+  vfs_param_values["read_logging_mode"] = "";
   vfs_param_values["gcs.endpoint"] = "";
   vfs_param_values["gcs.project_id"] = "";
   vfs_param_values["gcs.max_parallel_ops"] =

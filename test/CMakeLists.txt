@@ -201,6 +201,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-SubarrayPartitioner-dense.cc
   src/unit-SubarrayPartitioner-error.cc
   src/unit-SubarrayPartitioner-sparse.cc
+  src/unit-vfs-read-log-modes.cc
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
   )

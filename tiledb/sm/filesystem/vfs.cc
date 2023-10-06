@@ -1211,6 +1211,7 @@ Status VFS::read_impl(
     const uint64_t nbytes,
     const bool use_read_ahead) {
   stats_->add_counter("read_ops_num", 1);
+  log_read(uri, offset, nbytes);
 
   // We only check to use the read-ahead cache for cloud-storage
   // backends. No-op the `use_read_ahead` to prevent the unused
@@ -1705,6 +1706,52 @@ Status VFS::flush_multipart_file_buffer(const URI& uri) {
   }
 
   return Status::Ok();
+}
+
+void VFS::log_read(const URI& uri, uint64_t offset, uint64_t nbytes) {
+  std::string read_to_log;
+  switch (vfs_params_.read_logging_mode_) {
+    case VFSParameters::ReadLoggingMode::DISABLED: {
+      return;
+    }
+    case VFSParameters::ReadLoggingMode::FRAGMENTS: {
+      auto fragment_name = uri.get_fragment_name();
+      if (!fragment_name.has_value()) {
+        return;
+      }
+      read_to_log = fragment_name.value().to_string();
+      break;
+    }
+    case VFSParameters::ReadLoggingMode::FRAGMENT_FILES: {
+      if (!uri.get_fragment_name().has_value()) {
+        return;
+      }
+      read_to_log = uri.to_string();
+      break;
+    }
+    case VFSParameters::ReadLoggingMode::ALL_FILES: {
+      read_to_log = uri.to_string();
+      break;
+    }
+    case VFSParameters::ReadLoggingMode::ALL_READS:
+    case VFSParameters::ReadLoggingMode::ALL_READS_ALWAYS: {
+      read_to_log = uri.to_string() + ":offset:" + std::to_string(offset) +
+                    ":nbytes:" + std::to_string(nbytes);
+      break;
+    }
+    default:
+      return;
+  }
+
+  if (vfs_params_.read_logging_mode_ !=
+      VFSParameters::ReadLoggingMode::ALL_READS_ALWAYS) {
+    if (reads_logged_.find(read_to_log) != reads_logged_.end()) {
+      return;
+    }
+    reads_logged_.insert(read_to_log);
+  }
+
+  LOG_INFO("VFS Read: " + read_to_log);
 }
 
 }  // namespace tiledb::sm
