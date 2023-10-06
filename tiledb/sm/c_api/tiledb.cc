@@ -798,7 +798,7 @@ int32_t tiledb_array_schema_get_attribute_from_name(
   std::string name_string(name);
   auto found_attr = array_schema->array_schema_->shared_attribute(name_string);
   if (!found_attr) {
-    throw CAPIStatusError(
+    throw CAPIException(
         std::string("Attribute name: ") +
         (name_string.empty() ? "<anonymous>" : name) +
         " does not exist for array " +

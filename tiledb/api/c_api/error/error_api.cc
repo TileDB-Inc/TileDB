@@ -36,14 +36,6 @@
 
 namespace tiledb::api {
 
-bool create_error(tiledb_error_handle_t** error, const Status& st) {
-  if (st.ok()) {
-    return false;
-  }
-  *error = tiledb_error_handle_t::make_handle(st.to_string());
-  return true;
-}
-
 void create_error(tiledb_error_handle_t** error, const std::string& message) {
   *error = tiledb_error_handle_t::make_handle(message);
 }
