@@ -46,15 +46,15 @@ using namespace Catch::Matchers;
 
 using namespace tiledb;
 
-template <typename T>
+template <typename LabelT, typename IndexT>
 struct CPPOrderedDimLabelReaderFixedFx {
   const char* array_name = "cpp_ordered_dim_label_reader";
 
-  CPPOrderedDimLabelReaderFixedFx()
+  CPPOrderedDimLabelReaderFixedFx(IndexT tile_size = 10)
       : vfs_(ctx_)
-      , labels_(100, std::numeric_limits<T>::lowest())
-      , min_index_(std::numeric_limits<int>::max())
-      , max_index_(std::numeric_limits<int>::min()) {
+      , labels_(100, std::numeric_limits<LabelT>::lowest())
+      , min_index_(std::numeric_limits<IndexT>::max())
+      , max_index_(std::numeric_limits<IndexT>::min()) {
     Config config;
     config["sm.query.dense.qc_coords_mode"] = "true";
     ctx_ = Context(config);
@@ -68,10 +68,10 @@ struct CPPOrderedDimLabelReaderFixedFx {
     }
 
     Domain domain(ctx_);
-    auto d = Dimension::create<int>(ctx_, "index", {{1, 100}}, 10);
+    auto d = Dimension::create<IndexT>(ctx_, "index", {{0, 99}}, tile_size);
     domain.add_dimensions(d);
 
-    auto a = Attribute::create<T>(ctx_, "labels");
+    auto a = Attribute::create<LabelT>(ctx_, "labels");
 
     ArraySchema schema(ctx_, TILEDB_DENSE);
     schema.set_domain(domain);
@@ -86,7 +86,8 @@ struct CPPOrderedDimLabelReaderFixedFx {
     }
   }
 
-  void write_labels(int min_index, int max_index, std::vector<T> labels) {
+  void write_labels(
+      IndexT min_index, IndexT max_index, std::vector<LabelT> labels) {
     Array array(ctx_, array_name, TILEDB_WRITE);
     Query query(ctx_, array, TILEDB_WRITE);
     Subarray subarray(ctx_, array);
@@ -104,7 +105,7 @@ struct CPPOrderedDimLabelReaderFixedFx {
     array.close();
 
     // Update the labels_ vector. It will contain the full dataset.
-    int i = min_index;
+    IndexT i = min_index;
     for (auto& label : labels) {
       labels_[i++] = label;
     }
@@ -113,15 +114,16 @@ struct CPPOrderedDimLabelReaderFixedFx {
     max_index_ = std::max(max_index_, max_index);
   }
 
-  std::vector<int> read_labels(std::vector<T> ranges) {
-    std::vector<int> index(ranges.size());
+  std::vector<IndexT> read_labels(std::vector<LabelT> ranges) {
+    std::vector<IndexT> index(ranges.size());
     Array array(ctx_, array_name, TILEDB_READ);
     Query query(ctx_, array, TILEDB_READ);
 
     // Set attribute ranges.
     std::vector<Range> input_ranges;
     for (uint64_t r = 0; r < ranges.size() / 2; r++) {
-      input_ranges.emplace_back(&ranges[r * 2], &ranges[r * 2 + 1], sizeof(T));
+      input_ranges.emplace_back(
+          &ranges[r * 2], &ranges[r * 2 + 1], sizeof(LabelT));
     }
 
     Subarray subarray(ctx_, array);
@@ -142,33 +144,34 @@ struct CPPOrderedDimLabelReaderFixedFx {
   }
 
   void read_all_possible_labels() {
-    for (int first = min_index_; first <= max_index_; first++) {
-      for (int second = first; second <= max_index_; second++) {
-        std::vector<int> index(2);
+    for (IndexT first = min_index_; first <= max_index_; first++) {
+      for (IndexT second = first; second <= max_index_; second++) {
+        std::vector<IndexT> index(2);
         Array array(ctx_, array_name, TILEDB_READ);
         Query query(ctx_, array, TILEDB_READ);
 
         // Set attribute ranges.
         std::vector<Range> input_ranges;
-        T boundary_modifier = increasing_labels_ ? 1 : -1;
+        LabelT boundary_modifier = increasing_labels_ ? 1 : -1;
 
         // Get the value in between the labels we are testing for or a label
         // before the first one.
-        T first_label = first == min_index_ ?
-                            labels_[first] - boundary_modifier :
-                            (labels_[first] + labels_[first - 1]) / 2;
+        LabelT first_label = first == min_index_ ?
+                                 labels_[first] - boundary_modifier :
+                                 (labels_[first] + labels_[first - 1]) / 2;
 
         // Get the value in between the labels we are testing for or a label
         // after the last one.
-        T second_label = second == max_index_ ?
-                             labels_[second] + boundary_modifier :
-                             (labels_[second] + labels_[second + 1]) / 2;
+        LabelT second_label = second == max_index_ ?
+                                  labels_[second] + boundary_modifier :
+                                  (labels_[second] + labels_[second + 1]) / 2;
 
         // Always add range so that the lower bound is less than or equal to the
         // upper bound.
-        increasing_labels_ ?
-            input_ranges.emplace_back(&first_label, &second_label, sizeof(T)) :
-            input_ranges.emplace_back(&second_label, &first_label, sizeof(T));
+        increasing_labels_ ? input_ranges.emplace_back(
+                                 &first_label, &second_label, sizeof(LabelT)) :
+                             input_ranges.emplace_back(
+                                 &second_label, &first_label, sizeof(LabelT));
 
         Subarray subarray(ctx_, array);
         subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
@@ -193,18 +196,18 @@ struct CPPOrderedDimLabelReaderFixedFx {
 
   Context ctx_;
   VFS vfs_;
-  std::vector<T> labels_;
-  int min_index_;
-  int max_index_;
+  std::vector<LabelT> labels_;
+  IndexT min_index_;
+  IndexT max_index_;
   bool increasing_labels_;
   bool serialize_ = false;
 };
 
 struct CPPOrderedDimLabelReaderFixedDoubleFx
-    : public CPPOrderedDimLabelReaderFixedFx<double> {};
+    : public CPPOrderedDimLabelReaderFixedFx<double, int> {};
 
 struct CPPOrderedDimLabelReaderFixedIntFx
-    : public CPPOrderedDimLabelReaderFixedFx<int> {};
+    : public CPPOrderedDimLabelReaderFixedFx<int, int> {};
 
 TEST_CASE_METHOD(
     CPPOrderedDimLabelReaderFixedDoubleFx,
@@ -429,6 +432,22 @@ TEST_CASE_METHOD(
   array.close();
 }
 
+TEST_CASE(
+    "Ordered dimension label reader: fixed double labels, single fragment, "
+    "increasing, unsigned dimension with tile size 1",
+    "[ordered-dim-label-reader][fixed][double][single-fragment]["
+    "increasing]") {
+  // This test catches an error where a while loop in the implementation
+  // never ended.
+  CPPOrderedDimLabelReaderFixedFx<double, uint32_t> fixture{1};
+#ifdef TILEDB_SERIALIZATION
+  fixture.serialize_ = GENERATE(true, false);
+#endif
+  fixture.write_labels(
+      0, 9, {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0});
+  fixture.read_all_possible_labels();
+}
+
 TEST_CASE_METHOD(
     CPPOrderedDimLabelReaderFixedDoubleFx,
     "Ordered dimension label reader: fixed double labels, single fragment, "
@@ -521,7 +540,7 @@ TEST_CASE_METHOD(
 #ifdef TILEDB_SERIALIZATION
   serialize_ = GENERATE(true, false);
 #endif
-  write_labels(1, 4, {1.0, 2.0, 3.0, 4.0});
+  write_labels(0, 3, {1.0, 2.0, 3.0, 4.0});
   REQUIRE_THROWS_WITH(
       read_labels({2.1, 2.8}),
       ContainsSubstring("OrderedDimLabelReader: Range contained no values"));
@@ -541,7 +560,7 @@ TEST_CASE_METHOD(
   serialize_ = GENERATE(true, false);
 #endif
   increasing_labels_ = false;
-  write_labels(1, 4, {4.0, 3.0, 2.0, 1.0});
+  write_labels(0, 3, {4.0, 3.0, 2.0, 1.0});
   std::vector<double> ranges{2.1, 2.8};
   REQUIRE_THROWS_WITH(
       read_labels({2.1, 2.8}),
