@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -265,34 +265,40 @@ TEST_CASE("mimo_node: Verify making simple mimo nodes", "[mimo_taskgraph]") {
     auto v = transform_node(graph, dummy_function);
     auto w = terminal_node(graph, dummy_sink);
   }
+
   SECTION("function") {
     auto u = initial_node(graph, dummy_source);
     auto v = mimo(graph, dummy_mimo_function);
     auto w = terminal_node(graph, dummy_sink);
   }
+
   SECTION("lambda") {
     auto l = [](const std::tuple<size_t>&) { return std::tuple<size_t>{}; };
     auto u = initial_node(graph, dummy_source);
     auto v = mimo(graph, l);
     auto w = terminal_node(graph, dummy_sink);
   }
+
   SECTION("inline lambda") {
     auto u = initial_node(graph, dummy_source);
     auto v = mimo(
         graph, [](const std::tuple<size_t>&) { return std::tuple<size_t>{}; });
     auto w = terminal_node(graph, dummy_sink);
   }
+
   SECTION("function object") {
     auto x = dummy_mimo_function_class{};
     auto u = initial_node(graph, dummy_source);
     auto v = mimo(graph, x);
     auto w = terminal_node(graph, dummy_sink);
   }
+
   SECTION("inline function object") {
     auto u = initial_node(graph, dummy_source);
     auto v = mimo(graph, dummy_mimo_function_class{});
     auto w = terminal_node(graph, dummy_sink);
   }
+
   SECTION("M by N") {
     auto u = mimo(graph, dummy_mimo_function);          // 1 by 1
     auto u_3_2 = mimo(graph, dummy_mimo_function_3_2);  // 3 by 2
@@ -316,6 +322,7 @@ TEST_CASE(
     make_edge(graph, u, v);
     make_edge(graph, v, w);
   }
+
   SECTION("mimo function, graph.make_edge member function") {
     auto u = initial_node(graph, dummy_source);
     auto v = mimo(graph, dummy_mimo_function);
@@ -324,6 +331,7 @@ TEST_CASE(
     graph.make_edge(u, make_proxy<0>(v));
     graph.make_edge(make_proxy<0>(v), w);
   }
+
   SECTION("mimo function, make_edge free function") {
     auto u = initial_node(graph, dummy_source);
     auto v = mimo(graph, dummy_mimo_function);
@@ -332,6 +340,7 @@ TEST_CASE(
     make_edge(graph, u, make_proxy<0>(v));
     make_edge(graph, make_proxy<0>(v), w);
   }
+
   SECTION("lambda") {
     auto l = [](const std::tuple<size_t>&) { return std::tuple<size_t>{}; };
     auto u = initial_node(graph, dummy_source);
@@ -340,6 +349,7 @@ TEST_CASE(
     make_edge(graph, u, make_proxy<0>(v));
     make_edge(graph, make_proxy<0>(v), w);
   }
+
   SECTION("inline lambda") {
     auto u = initial_node(graph, dummy_source);
     auto v = mimo(
@@ -348,6 +358,7 @@ TEST_CASE(
     make_edge(graph, u, make_proxy<0>(v));
     make_edge(graph, make_proxy<0>(v), w);
   }
+
   SECTION("function object") {
     auto x = dummy_mimo_function_class{};
     auto u = initial_node(graph, dummy_source);
@@ -356,6 +367,7 @@ TEST_CASE(
     make_edge(graph, u, make_proxy<0>(v));
     make_edge(graph, make_proxy<0>(v), w);
   }
+
   SECTION("inline function object") {
     auto u = initial_node(graph, dummy_source);
     auto v = mimo(graph, dummy_mimo_function_class{});
@@ -363,6 +375,7 @@ TEST_CASE(
     make_edge(graph, u, make_proxy<0>(v));
     make_edge(graph, make_proxy<0>(v), w);
   }
+
   SECTION("M by N") {
     auto u = mimo(graph, dummy_mimo_function);  // 1 by 1, size_t
     auto i32 = initial_mimo(graph, [](std::stop_source) {

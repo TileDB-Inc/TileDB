@@ -1,5 +1,5 @@
 /**
- * @file unit_osegmented_mimo_nodes.cc
+ * @file unit_segmented_mimo_nodes.cc
  *
  * @section LICENSE
  *
@@ -113,7 +113,6 @@ TEST_CASE(
 
 template <class... R, class... T>
 auto mimo(std::function<void(std::tuple<R...>, std::tuple<T...>)>&& f) {
-  // using U... = std::remove_cv_t<std::remove_reference_t<T...>>;
   auto tmp = mimo_node<
       AsyncMover3,
       std::remove_cv_t<std::remove_reference_t<T>>...,
@@ -319,9 +318,6 @@ TEST_CASE("mimo_node: Verify simple connections", "[segmented_mimo]") {
 
     Edge g{a, std::get<0>(b->inputs_)};
     Edge h{std::get<0>(b->outputs_), c};
-
-    // Edge i{d, std::get<0>(e->inputs_)};
-    // Edge j{std::get<0>(e->outputs_), f};
   }
 
   SECTION("inline lambda") {
@@ -593,9 +589,6 @@ TEST_CASE(
 
   Edge g1{q1, std::get<0>(r->inputs_)};
   Edge g2{q2, std::get<1>(r->inputs_)};
-
-  // print_types(r->outputs_, std::get<0>(r->outputs_),
-  // std::get<1>(r->outputs_),s1, s2);
 
   Edge h1{std::get<0>(r->outputs_), s1};
   Edge h2{std::get<1>(r->outputs_), s2};
@@ -892,12 +885,7 @@ TEMPLATE_TEST_CASE(
         producer_node<AsyncMover3, double>,
         consumer_node<AsyncMover3, double>,
         consumer_node<AsyncMover3, size_t>,
-        one>)/*,
-(std::tuple<GeneralProducerNode <AsyncMover3, std::tuple<size_t>>,
-GeneralProducerNode <AsyncMover3, std::tuple<double>>,
-GeneralConsumerNode <AsyncMover3, std::tuple<double>>,
-GeneralConsumerNode <AsyncMover3, std::tuple<size_t>>, two>)*/
-) {
+        one>)) {
   size_t rounds = GENERATE(0, 1, 2, 5, 3379);
   size_t offset = GENERATE(0, 1, 2, 5);
 

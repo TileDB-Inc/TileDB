@@ -50,17 +50,6 @@
 
 namespace tiledb::common {
 
-template <class... R, class... T>
-auto aaa(std::function<void(std::tuple<R...>, std::tuple<T...>)>&& f) {
-  // using U... = std::remove_cv_t<std::remove_reference_t<T...>>;
-  auto tmp = mimo_node<
-      DuffsMover3,
-      std::remove_cv_t<std::remove_reference_t<T>>...,
-      DuffsMover3,
-      R...>{f};
-  return tmp;
-}
-
 template <class Scheduler>
 class TaskGraph {
   using node_base_type = node_base;
@@ -161,8 +150,7 @@ class TaskGraph {
    * @param f The function to store in the node.
    *
    * @tparam Function The type of function to be held by the node.
-   * The function must take an item as input
-   * and return an item as output.
+   * The function must take an item as input and return an item as output.
    */
   template <class R, class T>
   auto transform_node(std::function<R(T)>&& f) {
@@ -192,12 +180,10 @@ class TaskGraph {
    * @param f The function to store in the node.
    *
    * @tparam Function The type of function to be held by the node.
-   * The function must take an item as input
-   * and return an item as output.
+   * The function must take an item as input and return an item as output.
    */
   template <class... R, class... T>
   auto mimo(std::function<std::tuple<R...>(const std::tuple<T...>&)>&& f) {
-    // using U... = std::remove_cv_t<std::remove_reference_t<T...>>;
     auto tmp = mimo_node<
         DuffsMover3,
         std::tuple<std::remove_cv_t<std::remove_reference_t<T>>...>,
@@ -213,8 +199,7 @@ class TaskGraph {
    * @param f The function to store in the node.
    *
    * @tparam Function The type of function to be held by the node.
-   * The function must take an item as input
-   * and return an item as output.
+   * The function must take an item as input and return an item as output.
    */
   template <class Function>
   auto mimo(Function&& f) {
@@ -227,8 +212,7 @@ class TaskGraph {
    * @param f The function to store in the node.
    *
    * @tparam Function The type of function to be held by the node.
-   * The function must take an item as input
-   * and return void.
+   * The function must take an item as input and return void.
    */
   template <class T>
   auto terminal_node(std::function<void(T)>&& f) {
@@ -258,8 +242,7 @@ class TaskGraph {
    * @param f The function to store in the node.
    *
    * @tparam Function The type of function to be held by the node.
-   * The function must take an item as input
-   * and return void.
+   * The function must take an item as input and return void.
    */
   template <class T>
   auto terminal_mimo(std::function<void(T)>&& f) {
@@ -268,6 +251,7 @@ class TaskGraph {
     nodes_.emplace_back(tmp);
     return tmp;
   }
+
   /**
    * Trampoline function to match a function to an std::function so that we
    * can use CTAD to deduce the input argument type.
@@ -298,7 +282,6 @@ class TaskGraph {
   template <class From, class To>
   void make_edge(From& from, To& to) {
     connect(from, to);
-    // edges_.emplace_back(std::make_shared<GraphEdge>(Edge(*from, *to)));
     edges_.emplace_back(std::make_shared<GraphEdge>(Edge(from, to)));
   }
 #endif

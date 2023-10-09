@@ -183,8 +183,7 @@ class mimo_node_impl<
   std::tuple<BlocksOut...> output_items_;
 
   /**
-   * Helper function to deal with tuples.
-   * Applies the same single input single
+   * Helper function to deal with tuples. Applies the same single input single
    * output function to elements of an input tuple to set values of an output
    * tuple.
    *
@@ -198,7 +197,7 @@ class mimo_node_impl<
       std::is_same_v<decltype(output_items_), std::tuple<>>};
 
   /**
-   * Helper function to deal with tuples.  Applies the same single input single
+   * Helper function to deal with tuples. Applies the same single input single
    * output function to elements of an input tuple to set values of an output
    * tuple.
    *
@@ -220,9 +219,7 @@ class mimo_node_impl<
 
   template <size_t I = 0, class Op, class Fn, class... Ts>
   constexpr auto tuple_fold(Op&& op, Fn&& f, const std::tuple<Ts...>& in) {
-    // static_assert(I == 0);
     static_assert(I >= 0);
-    // static_assert(sizeof...(Ts) > 0 && sizeof...(Ts) < 10);
     if constexpr (I == sizeof...(Ts) - 1) {
       return f(std::get<I>(in));
     } else {
@@ -239,7 +236,7 @@ class mimo_node_impl<
   }
 
   /**
-   * Helper function to deal with tuples.  A tuple version of simple nodes
+   * Helper function to deal with tuples. A tuple version of simple nodes
    * extract.  Copies items from inputs_ (Sinks) to a tuple of input_items.
    *
    * @note Elements are processed in order from 0 to sizeof(Ts)-1
@@ -264,7 +261,7 @@ class mimo_node_impl<
   }
 
   /**
-   * Helper function to deal with tuples.  A tuple version of simple node
+   * Helper function to deal with tuples. A tuple version of simple node
    * inject. Copies items from tuple of output_items to outputs_ (Sources).
    *
    * @note Elements are processed in order from 0 to sizeof(Ts)-1
@@ -626,7 +623,6 @@ class mimo_node_impl<
         this->program_counter_ = 0;
         return scheduler_event_type::yield;
       }
-        // [[fallthrough]];
 
       default: {
         break;

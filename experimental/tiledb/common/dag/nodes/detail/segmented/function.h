@@ -284,9 +284,6 @@ auto post_state = sink_mover->state();
 
       case 3: {
         ++this->program_counter_;
-
-        // assert(this->source_correspondent() != nullptr);
-        // assert(this->sink_correspondent() != nullptr);
       }
         [[fallthrough]];
 

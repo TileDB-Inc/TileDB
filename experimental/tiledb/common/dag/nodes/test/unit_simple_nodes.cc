@@ -1553,9 +1553,6 @@ TEMPLATE_TEST_CASE(
   CHECK(std::equal(input.begin(), i, output.begin()));
 }
 
-// We don't have simple mimo nodes as of yet
-#if 1
-
 TEST_CASE("mimo_node: Verify various API approaches", "[segmented_mimo]") {
   [[maybe_unused]] GeneralFunctionNode<
       AsyncMover2,
@@ -1593,5 +1590,3 @@ TEST_CASE(
       std::tuple<size_t>>
       x{[](std::tuple<size_t>, std::tuple<size_t>) {}};
 }
-
-#endif

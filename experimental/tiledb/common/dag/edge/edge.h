@@ -117,7 +117,7 @@ class Edge : public GraphEdge {
     attach(from, to, item_mover_);
   }
 
-  // Warning!! For ctad to work, the shared ptrs cannot be references
+  // Warning!! For CTAD to work, the shared ptrs cannot be references
   Edge(std::shared_ptr<source_type> from, sink_type& to) {
     item_mover_ = std::make_shared<mover_type>();
     attach(*from, to, item_mover_);
