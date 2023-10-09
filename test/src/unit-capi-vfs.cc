@@ -997,37 +997,30 @@ TEST_CASE_METHOD(
     };
 
     SECTION("Default filter (include all)") {
-      test_ls_recursive_capi(callback);
+      test_ls_recursive_capi(
+          callback, [](const std::string_view&) { return true; });
     }
     SECTION("Custom filter (include none)") {
-      LsInclude filter = [](const std::string_view&) { return false; };
-      test_ls_recursive_capi(callback, filter);
+      test_ls_recursive_capi(
+          callback, [](const std::string_view&) { return false; });
     }
     SECTION("Custom filter (include half)") {
       bool include = true;
-      LsInclude filter = [&include](const std::string_view&) {
+      test_ls_recursive_capi(callback, [&include](const std::string_view&) {
         include = !include;
         return include;
-      };
-      // Apply filter to expected_results_ vector.
-      filter_expected(filter);
-      // Reset include to it's initial value to ensure the test is correct for
-      // odd number of objects.
-      include = true;
-      test_ls_recursive_capi(callback, filter, false);
+      });
     }
     SECTION("Custom filter (search for text1.txt)") {
-      LsInclude filter = [](const std::string_view& object_name) {
+      test_ls_recursive_capi(callback, [](const std::string_view& object_name) {
         return object_name.find("test1.txt") != std::string::npos;
-      };
-      test_ls_recursive_capi(callback, filter);
+      });
     }
     SECTION("Custom filter (search for text1*.txt)") {
-      LsInclude filter = [](const std::string_view& object_name) {
+      test_ls_recursive_capi(callback, [](const std::string_view& object_name) {
         return object_name.find("test1") != std::string::npos &&
                object_name.find(".txt") != std::string::npos;
-      };
-      test_ls_recursive_capi(callback, filter);
+      });
     }
   }
 }

@@ -743,7 +743,6 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
 void VFS::ls_recursive(const URI& parent, LsCallback cb, void* data) const {
   Status st;
   optional<std::vector<directory_entry>> entries;
-  std::vector<directory_entry> results;
 
   if (parent.is_file() || parent.is_memfs()) {
     std::queue<URI> q;
@@ -759,7 +758,6 @@ void VFS::ls_recursive(const URI& parent, LsCallback cb, void* data) const {
 #endif
       }
       throw_if_not_ok(st);
-      // Sort the entries to avoid strange collections when pruned by max_paths.
       parallel_sort(
           compute_tp_,
           entries->begin(),
@@ -767,13 +765,13 @@ void VFS::ls_recursive(const URI& parent, LsCallback cb, void* data) const {
           [](const directory_entry& l, const directory_entry& r) {
             return l.path().native() < r.path().native();
           });
-      for (const auto& result : *entries) {
-        if (result.is_directory()) {
-          q.emplace(result.path().native());
+      for (const auto& entry : *entries) {
+        if (entry.is_directory()) {
+          q.emplace(entry.path().native());
         } else {
-          URI uri{result.path().native()};
+          URI uri{entry.path().native()};
           int rc = cb(
-              uri.c_str(), uri.to_string().length(), result.file_size(), data);
+              uri.c_str(), uri.to_string().length(), entry.file_size(), data);
           if (rc == 0) {
             break;
           } else if (rc == -1) {
@@ -797,7 +795,7 @@ void VFS::ls_recursive(const URI& parent, LsCallback cb, void* data) const {
   }
 
   // LocalFS, MemFS results were collected during traversal.
-  if (!parent.is_file() && !parent.is_memfs()) {
+  if (parent.is_s3()) {
     int rc = 1;
     for (auto& result : *entries) {
       if (!result.is_directory()) {

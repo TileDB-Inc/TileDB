@@ -41,10 +41,22 @@
 
 namespace tiledb {
 class VFSExperimental {
- private:
+ public:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
   /* ********************************* */
+
+  /**
+   * Typedef for ls callback function used to collect results from C++ API.
+   *
+   * @param path The path of a visited object for the relative filesystem.
+   * @param object_size The size of the object in bytes.
+   * @return True if the callback should continue to next object, else false.
+   *    If an error is thrown, the callback will stop and the error will be
+   *    propagated to the caller using std::throw_with_nested.
+   */
+  typedef std::function<bool(const std::string_view&, uint64_t)>
+      LsGatherCallback;
 
   /**
    * Typedef for ls inclusion predicate function used to check if a single
@@ -52,7 +64,6 @@ class VFSExperimental {
    *
    * @param path The path of a visited object for the relative filesystem.
    * @return True if the result should be included, else false.
-   * @sa ls_include
    */
   typedef std::function<bool(const std::string_view&)> LsInclude;
 
@@ -65,32 +76,6 @@ class VFSExperimental {
   typedef std::vector<std::pair<std::string, uint64_t>> LsObjects;
 
   /* ********************************* */
-  /*       PRIVATE STATIC METHODS      */
-  /* ********************************* */
-
-  /**
-   * Default callback function to be used when invoking recursive ls. The
-   * callback will cast 'data' to LsRecursiveData struct, which stores a
-   * vector of strings for each path collected and a uint64 vector of file
-   * sizes for the objects at each path.
-   *
-   * @param path The path of a visited object for the relative filesystem.
-   * @param path_length The length of the path string.
-   * @param file_size The size of the object at the path.
-   * @param data Cast to LsRecursiveData struct to store paths and offsets.
-   * @return `1` if the walk should continue to the next object, `0` if the walk
-   *    should stop, and `-1` on error.
-   * @sa LsCallback
-   */
-  static int ls_recursive_gather(
-      const char* path, size_t path_length, uint64_t file_size, void* data) {
-    auto ls_objects = static_cast<LsObjects*>(data);
-    ls_objects->emplace_back(std::string_view(path, path_length), file_size);
-    return 1;
-  }
-
- public:
-  /* ********************************* */
   /*       PUBLIC STATIC METHODS       */
   /* ********************************* */
 
@@ -98,7 +83,9 @@ class VFSExperimental {
    * Recursively lists objects at the input URI, invoking the provided callback
    * on each entry gathered. The callback is passed the data pointer provided
    * on each invocation and is responsible for writing the collected results
-   * into this structure.
+   * into this structure. If the callback returns True, the walk will continue.
+   * If False, the walk will stop. If an error is thrown, the walk will stop and
+   * the error will be propagated to the caller using std::throw_with_nested.
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS instance to use.
@@ -110,17 +97,21 @@ class VFSExperimental {
       const Context& ctx,
       const VFS& vfs,
       const std::string& uri,
-      const LsCallback& cb,
-      void* data) {
+      LsGatherCallback cb) {
+    CallbackWrapper wrapper(cb);
     ctx.handle_error(tiledb_vfs_ls_recursive(
-        ctx.ptr().get(), vfs.ptr().get(), uri.c_str(), cb, data));
+        ctx.ptr().get(),
+        vfs.ptr().get(),
+        uri.c_str(),
+        ls_callback_wrapper,
+        &wrapper));
   }
 
   /**
    * Recursively lists objects at the input URI, invoking the provided callback
    * on each entry gathered. The callback should return true if the entry should
-   * be included in the results. By default all entries are included using the
-   * ls_include predicate, which simply returns true for all results.
+   * be included in the results. If no inclusion predicate is provided, all
+   * results are returned.
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS instance to use.
@@ -128,29 +119,63 @@ class VFSExperimental {
    * @param include Predicate function to check if a result should be included.
    * @return Vector of pairs for each object path and size.
    */
-  static std::vector<std::pair<std::string, uint64_t>> ls_recursive(
+  static LsObjects ls_recursive(
       const Context& ctx,
       const VFS& vfs,
       const std::string& uri,
       std::optional<LsInclude> include = std::nullopt) {
     LsObjects ls_objects;
-    ctx.handle_error(tiledb_vfs_ls_recursive(
-        ctx.ptr().get(),
-        vfs.ptr().get(),
-        uri.c_str(),
-        ls_recursive_gather,
-        &ls_objects));
     if (include.has_value()) {
-      ls_objects.erase(
-          std::remove_if(
-              ls_objects.begin(),
-              ls_objects.end(),
-              [&](const std::pair<std::string, uint64_t>& p) {
-                return !include.value()(p.first);
-              }),
-          ls_objects.end());
+      auto include_cb = include.value();
+      ls_recursive(
+          ctx, vfs, uri, [&](const std::string_view& path, uint64_t size) {
+            if (include_cb(path)) {
+              ls_objects.emplace_back(path, size);
+            }
+            return true;
+          });
+    } else {
+      ls_recursive(
+          ctx, vfs, uri, [&](const std::string_view& path, uint64_t size) {
+            ls_objects.emplace_back(path, size);
+            return true;
+          });
     }
     return ls_objects;
+  }
+
+ private:
+  /** Private class to wrap C++ callback for passing to the C API. */
+  class CallbackWrapper {
+   public:
+    CallbackWrapper(LsGatherCallback& cb)
+        : cb_(cb) {
+    }
+
+    bool operator()(const std::string_view& path, uint64_t size) {
+      return cb_(path, size);
+    }
+
+   private:
+    LsGatherCallback& cb_;
+  };
+
+  /* ********************************* */
+  /*       PRIVATE STATIC METHODS      */
+  /* ********************************* */
+
+  static int32_t ls_callback_wrapper(
+      const char* path, size_t path_len, uint64_t object_size, void* data) {
+    CallbackWrapper* cb = static_cast<CallbackWrapper*>(data);
+    try {
+      if ((*cb)({path, path_len}, object_size)) {
+        return 1;
+      } else {
+        return 0;
+      }
+    } catch (...) {
+      std::throw_with_nested(std::runtime_error("Error in user callback"));
+    }
   }
 };
 }  // namespace tiledb

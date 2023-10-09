@@ -48,25 +48,20 @@ struct VfsFixture {
       vfs_.touch(uri).ok();
       std::string data(i * 10, 'a');
       vfs_.write(uri, data.data(), data.size()).ok();
-      expected_results_.emplace_back(uri.to_path(), data.size(), false);
+      expected_results_.emplace_back(uri.to_string(), data.size());
     }
   }
 
   /**
    * Struct to store recursive ls results data.
-   * `object_paths_` Stores all paths collected as a vector of strings.
-   * `object_sizes_` stores all file sizes as a vector of uint64_t.
+   * Same as tiledb::VFSExperimental::LsObjects.
    */
-  struct LsRecursiveData {
-    std::vector<std::string> object_paths_;
-    std::vector<uint64_t> object_sizes_;
-  };
+  typedef std::vector<std::pair<std::string, uint64_t>> LsObjects;
 
   static int ls_recursive_gather(
       const char* path, size_t path_length, uint64_t file_size, void* data) {
-    auto ls_data = static_cast<LsRecursiveData*>(data);
-    ls_data->object_paths_.emplace_back(path, path_length);
-    ls_data->object_sizes_.push_back(file_size);
+    auto ls_data = static_cast<LsObjects*>(data);
+    ls_data->emplace_back(std::string_view(path, path_length), file_size);
     return 1;
   }
 
@@ -77,13 +72,15 @@ struct VfsFixture {
   ThreadPool compute_, io_;
   tiledb::sm::VFS vfs_;
 
-  std::vector<filesystem::directory_entry> expected_results_;
+  LsObjects expected_results_;
 };
 
 TEST_CASE_METHOD(
     VfsFixture, "VFS: Default arguments ls_recursive", "[vfs][ls_recursive]") {
   tiledb::sm::URI temp_dir("vfs_default_args");
   vfs_.create_dir(temp_dir).ok();
+  LsObjects ls_objects;
+
   SECTION("Empty directory") {
     create_objects(temp_dir, 0, "file");
   }
@@ -104,15 +101,9 @@ TEST_CASE_METHOD(
     create_objects(subdir, 10, "file");
   }
 
-  LsRecursiveData data;
-  vfs_.ls_recursive(temp_dir, ls_recursive_gather, &data);
-  REQUIRE(data.object_paths_.size() == expected_results_.size());
-  for (size_t i = 0; i < expected_results_.size(); i++) {
-    CHECK(
-        data.object_paths_[i] ==
-        tiledb::sm::URI(expected_results_[i].path().native()).to_string());
-    CHECK(data.object_sizes_[i] == expected_results_[i].file_size());
-  }
+  vfs_.ls_recursive(temp_dir, ls_recursive_gather, &ls_objects);
+  CHECK(ls_objects.size() == expected_results_.size());
+  CHECK(ls_objects == expected_results_);
   vfs_.remove_dir(temp_dir).ok();
 }
 
@@ -122,7 +113,7 @@ TEST_CASE_METHOD(
     throw std::logic_error("Throwing callback");
   };
   tiledb::sm::URI temp_dir("vfs_throwing_callback");
-  int data;
+  LsObjects data;
   SECTION("Throwing callback with 0 objects should not throw") {
     CHECK_NOTHROW(vfs_.ls_recursive(temp_dir, cb, &data));
   }

@@ -35,6 +35,7 @@
 
 #include "test/support/src/helpers.h"
 #include "test/support/tdb_catch.h"
+#include "tiledb/sm/cpp_api/tiledb_experimental"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
@@ -706,29 +707,11 @@ struct VfsFixture {
 
   void setup_test();
 
-  /**
-   * Typedef for customizing ls_recursive CAPI callback behavior. Custom filter
-   * behavior can also be implemented within this callback by handling result
-   * entry names accordingly.
-   */
-  typedef std::function<int32_t(const char*, size_t, uint64_t, void*)>
-      LsRecursiveCb;
-
-  /** Typedef for customizing ls_recursive filter behavior. */
-  typedef std::function<bool(const std::string_view&)> LsInclude;
-
-  struct LsObjects {
-    std::vector<std::string> object_paths_;
-    std::vector<uint64_t> object_sizes_;
-    LsInclude ls_include_;
-  };
-
   /// Helper function to filter expected results using a custom filter function.
-  void filter_expected(const LsInclude& filter);
+  void filter_expected(const VFSExperimental::LsInclude& filter);
 
-  void test_ls_recursive(
-      const LsInclude& filter = [](const std::string_view&) { return true; },
-      bool filter_expected = true);
+  void test_ls_recursive_filter(
+      const VFSExperimental::LsInclude& filter, bool filter_expected = true);
 
   /**
    * Tests ls_recursive against S3, Memfs, and Posix / Windows filesystems.
@@ -736,12 +719,14 @@ struct VfsFixture {
    */
   void test_ls_recursive_capi(
       const LsCallback& callback,
-      const LsInclude& filter = [](const std::string_view&) { return true; },
+      const VFSExperimental::LsInclude& filter,
       bool filter_expected = true);
 
   std::string fs_name();
 
-  void test_ls_recursive_cb(LsCallback const cb, LsObjects data);
+  void test_ls_recursive_cb(
+      VFSExperimental::LsGatherCallback const cb,
+      const VFSExperimental::LsObjects& data);
 
  protected:
   tiledb::Config cfg_;
@@ -754,11 +739,14 @@ struct VfsFixture {
   std::string fs_prefix_;
   // The temporary directory for this test.
   sm::URI temp_dir_;
-  std::vector<std::pair<std::string, uint64_t>> expected_results_;
+  VFSExperimental::LsObjects expected_results_;
 
   struct LsRecursiveData {
     LsRecursiveData(
-        char** data, size_t data_max, uint64_t* object_sizes, LsInclude filter)
+        char** data,
+        size_t data_max,
+        uint64_t* object_sizes,
+        VFSExperimental::LsInclude filter)
         : path_pos_(0)
         , path_max_(data_max)
         , filter_(std::move(filter)) {
@@ -779,7 +767,7 @@ struct VfsFixture {
     uint64_t* object_sizes_;
     // Current buffer position, max buffer size for paths collected.
     size_t path_pos_, path_max_;
-    LsInclude filter_;
+    VFSExperimental::LsInclude filter_;
   };
 };
 

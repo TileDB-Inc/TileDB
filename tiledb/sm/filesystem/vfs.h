@@ -75,10 +75,6 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-class VFSExperimental;
-}
-
 namespace tiledb::sm {
 
 class Tile;
@@ -235,13 +231,12 @@ class VFS : private VFSBase, S3_within_VFS {
    *
    * @param path The path of a visited object for the relative filesystem.
    * @param path_len The length of the path string.
-   * @param file_size The size of the object at the path.
+   * @param object_size The size of the object at the path.
    * @param data Cast to LsRecursiveData struct to store paths and offsets.
    * @return `1` if the walk should continue to the next object, `0` if the walk
    *    should stop, and `-1` on error.
    */
-  typedef std::function<int32_t(
-      const char* path, size_t path_len, uint64_t size, void* data)>
+  typedef std::function<int32_t(const char*, size_t, uint64_t, void*)>
       LsCallback;
 
   /* ********************************* */
