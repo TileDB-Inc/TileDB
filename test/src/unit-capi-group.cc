@@ -263,11 +263,14 @@ std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> GroupFx::read_group(
       std::string uri;
       tiledb_object_t type;
       char *uri_ptr, *name_ptr;
-      // NOTE: The following function leaks memory.
       rc = tiledb_group_get_member_by_index(
           ctx_, group, i, &uri_ptr, &type, &name_ptr);
       REQUIRE(rc == TILEDB_OK);
       uri = uri_ptr == nullptr ? "" : std::string(uri_ptr);
+      std::free(uri_ptr);
+      if (name_ptr) {
+        std::free(name_ptr);
+      }
       ret.emplace_back(uri, type);
     }
   }
