@@ -42,6 +42,17 @@ extern "C" {
 #endif
 
 /**
+ * Typedef for ls_recursive callback function invoked on each object collected.
+ *
+ * @param path The path of a visited object for the relative filesystem.
+ * @param path_len The length of the path.
+ * @param object_size The size of the object at the current path.
+ * @param data Data passed to the callback used to store collected results.
+ */
+typedef int32_t (*LsCallback)(
+    const char* path, size_t path_len, uint64_t object_size, void* data);
+
+/**
  * Visits the children of `path` recursively, invoking the callback for each
  * entry. The callback should return 1 to continue traversal, 0 to stop, or -1
  * on error. The callback is responsible for writing gathered entries into the
@@ -80,7 +91,7 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_ls_recursive(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* path,
-    int32_t (*callback)(const char*, size_t, uint64_t, void*),
+    LsCallback callback,
     void* data) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus

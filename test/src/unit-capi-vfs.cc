@@ -978,10 +978,10 @@ TEST_CASE_METHOD(
 
   DYNAMIC_SECTION("Testing ls_recursive over " << fs_name() << " backend") {
     // C callback with a custom filter to be used for remaining SECTIONS.
-    LsRecursiveCb callback = [](const char* path,
-                                size_t path_len,
-                                uint64_t object_size,
-                                void* data) -> int32_t {
+    LsCallback callback = [](const char* path,
+                             size_t path_len,
+                             uint64_t object_size,
+                             void* data) -> int32_t {
       auto ls_data = static_cast<LsRecursiveData*>(data);
       if (ls_data->filter_({path, path_len})) {
         // stop gathering results if either buffer overflows.
@@ -1000,12 +1000,12 @@ TEST_CASE_METHOD(
       test_ls_recursive_capi(callback);
     }
     SECTION("Custom filter (include none)") {
-      LsRecursiveFilter filter = [](const std::string_view&) { return false; };
+      LsInclude filter = [](const std::string_view&) { return false; };
       test_ls_recursive_capi(callback, filter);
     }
     SECTION("Custom filter (include half)") {
       bool include = true;
-      LsRecursiveFilter filter = [&include](const std::string_view&) {
+      LsInclude filter = [&include](const std::string_view&) {
         include = !include;
         return include;
       };
@@ -1017,13 +1017,13 @@ TEST_CASE_METHOD(
       test_ls_recursive_capi(callback, filter, false);
     }
     SECTION("Custom filter (search for text1.txt)") {
-      LsRecursiveFilter filter = [](const std::string_view& object_name) {
+      LsInclude filter = [](const std::string_view& object_name) {
         return object_name.find("test1.txt") != std::string::npos;
       };
       test_ls_recursive_capi(callback, filter);
     }
     SECTION("Custom filter (search for text1*.txt)") {
-      LsRecursiveFilter filter = [](const std::string_view& object_name) {
+      LsInclude filter = [](const std::string_view& object_name) {
         return object_name.find("test1") != std::string::npos &&
                object_name.find(".txt") != std::string::npos;
       };

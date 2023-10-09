@@ -36,16 +36,85 @@
 #include <string>
 #include <vector>
 #include "context.h"
-#include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb_experimental.h"
 #include "vfs.h"
 
 namespace tiledb {
 class VFSExperimental {
+ private:
+  /* ********************************* */
+  /*          TYPE DEFINITIONS         */
+  /* ********************************* */
+
+  /**
+   * Typedef for ls inclusion predicate function used to check if a single
+   * result should be included in the final results returned from ls_recursive.
+   *
+   * @param path The path of a visited object for the relative filesystem.
+   * @return True if the result should be included, else false.
+   * @sa ls_include
+   */
+  typedef std::function<bool(const std::string_view&)> LsInclude;
+
+  /**
+   * Default typedef for objects collected by recursive ls, storing a vector of
+   * pairs for each object path and size. This can be overridden by the client
+   * to store results into a custom data structure using a custom callback.
+   * @sa LsCallback
+   */
+  typedef std::vector<std::pair<std::string, uint64_t>> LsObjects;
+
+  /* ********************************* */
+  /*       PRIVATE STATIC METHODS      */
+  /* ********************************* */
+
+  /**
+   * Default callback function to be used when invoking recursive ls. The
+   * callback will cast 'data' to LsRecursiveData struct, which stores a
+   * vector of strings for each path collected and a uint64 vector of file
+   * sizes for the objects at each path.
+   *
+   * @param path The path of a visited object for the relative filesystem.
+   * @param path_length The length of the path string.
+   * @param file_size The size of the object at the path.
+   * @param data Cast to LsRecursiveData struct to store paths and offsets.
+   * @return `1` if the walk should continue to the next object, `0` if the walk
+   *    should stop, and `-1` on error.
+   * @sa LsCallback
+   */
+  static int ls_recursive_gather(
+      const char* path, size_t path_length, uint64_t file_size, void* data) {
+    auto ls_objects = static_cast<LsObjects*>(data);
+    ls_objects->emplace_back(std::string_view(path, path_length), file_size);
+    return 1;
+  }
+
  public:
   /* ********************************* */
   /*       PUBLIC STATIC METHODS       */
   /* ********************************* */
+
+  /**
+   * Recursively lists objects at the input URI, invoking the provided callback
+   * on each entry gathered. The callback is passed the data pointer provided
+   * on each invocation and is responsible for writing the collected results
+   * into this structure.
+   *
+   * @param ctx The TileDB context.
+   * @param vfs The VFS instance to use.
+   * @param uri The base URI to list results recursively.
+   * @param cb The callback to invoke on each entry.
+   * @param data The data structure to store results in.
+   */
+  static void ls_recursive(
+      const Context& ctx,
+      const VFS& vfs,
+      const std::string& uri,
+      const LsCallback& cb,
+      void* data) {
+    ctx.handle_error(tiledb_vfs_ls_recursive(
+        ctx.ptr().get(), vfs.ptr().get(), uri.c_str(), cb, data));
+  }
 
   /**
    * Recursively lists objects at the input URI, invoking the provided callback
@@ -56,32 +125,32 @@ class VFSExperimental {
    * @param ctx The TileDB context.
    * @param vfs The VFS instance to use.
    * @param uri The base URI to list results recursively.
-   * @param predicate The inclusion predicate to invoke on each entry collected.
-   * @return Vector of pairs storing the path and object size of each result.
-   * @sa ls_recursive_gather
-   * @sa ls_include
+   * @param include Predicate function to check if a result should be included.
+   * @return Vector of pairs for each object path and size.
    */
   static std::vector<std::pair<std::string, uint64_t>> ls_recursive(
       const Context& ctx,
       const VFS& vfs,
       const std::string& uri,
-      const tiledb::sm::VFS::LsInclude& predicate =
-          tiledb::sm::VFS::ls_include) {
-    tiledb::sm::VFS::LsRecursiveData ls_data;
+      std::optional<LsInclude> include = std::nullopt) {
+    LsObjects ls_objects;
     ctx.handle_error(tiledb_vfs_ls_recursive(
         ctx.ptr().get(),
         vfs.ptr().get(),
         uri.c_str(),
-        tiledb::sm::VFS::ls_recursive_gather,
-        &ls_data));
-    std::vector<std::pair<std::string, uint64_t>> results;
-    for (size_t i = 0; i < ls_data.object_paths_.size(); i++) {
-      if (predicate(ls_data.object_paths_[i])) {
-        results.emplace_back(
-            ls_data.object_paths_[i], ls_data.object_sizes_[i]);
-      }
+        ls_recursive_gather,
+        &ls_objects));
+    if (include.has_value()) {
+      ls_objects.erase(
+          std::remove_if(
+              ls_objects.begin(),
+              ls_objects.end(),
+              [&](const std::pair<std::string, uint64_t>& p) {
+                return !include.value()(p.first);
+              }),
+          ls_objects.end());
     }
-    return results;
+    return ls_objects;
   }
 };
 }  // namespace tiledb

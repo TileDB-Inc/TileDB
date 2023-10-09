@@ -516,38 +516,55 @@ TEST_CASE_METHOD(
   }
 
   DYNAMIC_SECTION("ls_recursive with " << fs_name() << " backend") {
+    LsObjects ls_objects;
+    ls_objects.ls_include_ = [](const std::string_view&) { return true; };
+    LsCallback cb = [](const char* path,
+                       size_t path_len,
+                       uint64_t size,
+                       void* data) -> int32_t {
+      auto* ls_objects = static_cast<LsObjects*>(data);
+      std::string_view path_sv(path, path_len);
+      if (ls_objects->ls_include_(path_sv)) {
+        ls_objects->object_paths_.emplace_back(path, path_len);
+        ls_objects->object_sizes_.emplace_back(size);
+      }
+      return 1;
+    };
+
     SECTION("Default filter (include all)") {
       test_ls_recursive();
+      test_ls_recursive_cb(cb, ls_objects);
     }
     SECTION("Custom filter (include none)") {
-      LsRecursiveFilter filter = [](const std::string_view&) { return false; };
-      test_ls_recursive(filter);
+      ls_objects.ls_include_ = [](const std::string_view&) { return false; };
+      test_ls_recursive(ls_objects.ls_include_);
+      test_ls_recursive_cb(cb, ls_objects);
     }
     SECTION("Custom filter (include half)") {
       bool include = true;
-      LsRecursiveFilter filter = [&include](const std::string_view&) {
+      ls_objects.ls_include_ = [&include](const std::string_view&) {
         include = !include;
         return include;
       };
       // Apply filter to expected_results_ vector.
-      filter_expected(filter);
-      // Reset include to it's initial value to ensure the test is correct for
-      // odd number of objects.
-      include = true;
-      test_ls_recursive(filter, false);
+      filter_expected(ls_objects.ls_include_);
+      test_ls_recursive(ls_objects.ls_include_, false);
+      test_ls_recursive_cb(cb, ls_objects);
     }
     SECTION("Custom filter (search for text1.txt)") {
-      LsRecursiveFilter filter = [](const std::string_view& object_name) {
+      ls_objects.ls_include_ = [](const std::string_view& object_name) {
         return object_name.find("test1.txt") != std::string::npos;
       };
-      test_ls_recursive(filter);
+      test_ls_recursive(ls_objects.ls_include_);
+      test_ls_recursive_cb(cb, ls_objects);
     }
     SECTION("Custom filter (search for text1*.txt)") {
-      LsRecursiveFilter filter = [](const std::string_view& object_name) {
+      ls_objects.ls_include_ = [](const std::string_view& object_name) {
         return object_name.find("test1") != std::string::npos &&
                object_name.find(".txt") != std::string::npos;
       };
-      test_ls_recursive(filter);
+      test_ls_recursive(ls_objects.ls_include_);
+      test_ls_recursive_cb(cb, ls_objects);
     }
   }
 }
@@ -561,7 +578,7 @@ TEST_CASE_METHOD(
   }
 
   DYNAMIC_SECTION("ls_recursive with " << fs_name() << " backend") {
-    LsRecursiveFilter filter = [](const std::string_view&) -> bool {
+    LsInclude filter = [](const std::string_view&) -> bool {
       throw std::runtime_error("Throwing filter");
     };
     // If the test directory is empty the filter should not throw.

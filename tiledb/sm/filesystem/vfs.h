@@ -192,8 +192,6 @@ struct S3_within_VFS {
  * function execution to the appropriate backend based on the input URI.
  */
 class VFS : private VFSBase, S3_within_VFS {
-  friend class tiledb::VFSExperimental;
-
  public:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
@@ -233,39 +231,18 @@ class VFS : private VFSBase, S3_within_VFS {
   };
 
   /**
-   * Typedef for ls inclusion predicate function used to check if a single
-   * result should be included in the final results returned from ls_recursive.
+   * Typedef for the callback function invoked on each object collected by ls.
    *
    * @param path The path of a visited object for the relative filesystem.
-   * @return True if the result should be included, else false.
-   * @sa ls_include
+   * @param path_len The length of the path string.
+   * @param file_size The size of the object at the path.
+   * @param data Cast to LsRecursiveData struct to store paths and offsets.
+   * @return `1` if the walk should continue to the next object, `0` if the walk
+   *    should stop, and `-1` on error.
    */
-  typedef std::function<bool(const std::string_view&)> LsInclude;
-
-  /**
-   * Typedef for ls_recursive callback function used to gather results.
-   *
-   * @param path The path of a visited object for the relative filesystem.
-   * @param path_len The length of the path.
-   * @param object_size The size of the object at the current path.
-   * @param data Data passed to the callback used to store collected results.
-   * @sa ls_recursive_gather
-   */
-  typedef int32_t (*LsCallback)(
-      const char* path, size_t path_len, uint64_t object_size, void* data);
-
-  /**
-   * Struct to store recursive ls results data.
-   * `object_paths_` Stores all paths collected as a vector of strings.
-   * `object_sizes_` stores all file sizes as a vector of uint64_t.
-   */
-  struct LsRecursiveData {
-    std::vector<std::string> object_paths_;
-    std::vector<uint64_t> object_sizes_;
-  };
-
-  /// Used as default argument for internal recursive ls.
-  static LsRecursiveData ls_recursive_data_;
+  typedef std::function<int32_t(
+      const char* path, size_t path_len, uint64_t size, void* data)>
+      LsCallback;
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -469,16 +446,14 @@ class VFS : private VFSBase, S3_within_VFS {
 
   /**
    * Recursively lists objects and object information that start with `prefix`.
+   * The callback function is invoked on each object collected. The callback is
+   * responsible for storing the results into a user provided data structure.
    *
    * @param parent The parent path to list sub-objects recursively.
    * @param cb The callback to invoke on each object collected.
    * @param data Data passed to the callback used to store collected results.
-   * @return Vector of directory_entry results from recursive ls on 'parent'.
    */
-  std::vector<filesystem::directory_entry> ls_recursive(
-      const URI& parent,
-      LsCallback cb = ls_recursive_gather,
-      void* data = &ls_recursive_data_) const;
+  void ls_recursive(const URI& parent, LsCallback cb, void* data) const;
 
   /**
    * Retrieves all the entries contained in the parent.
@@ -645,43 +620,6 @@ class VFS : private VFSBase, S3_within_VFS {
   }
 
  private:
-  /* ********************************* */
-  /*       PRIVATE STATIC METHODS      */
-  /* ********************************* */
-
-  /**
-   * Default callback function to be used when invoking recursive ls. The
-   * callback will cast 'data' to LsRecursiveData struct, which stores a
-   * vector of strings for each path collected and a uint64 vector of file
-   * sizes for the objects at each path.
-   *
-   * @param path The path of a visited object for the relative filesystem.
-   * @param path_length The length of the path string.
-   * @param file_size The size of the object at the path.
-   * @param data Cast to LsRecursiveData struct to store paths and offsets.
-   * @return `1` if the walk should continue to the next object, `0` if the walk
-   *    should stop, and `-1` on error.
-   * @sa LsCallback
-   * @sa LsRecursiveData
-   */
-  static int ls_recursive_gather(
-      const char* path, size_t path_length, uint64_t file_size, void* data) {
-    auto ls_data = static_cast<LsRecursiveData*>(data);
-    ls_data->object_paths_.emplace_back(path, path_length);
-    ls_data->object_sizes_.push_back(file_size);
-    return 1;
-  }
-
-  /**
-   * Default inclusion predicate for ls recursive which includes all results.
-   * Optionally a custom inclusion predicate can be used to filter results.
-   *
-   * @return True if the result should be included, else false.
-   */
-  static bool ls_include(const std::string_view&) {
-    return true;
-  }
-
   /* ********************************* */
   /*        PRIVATE DATATYPES          */
   /* ********************************* */

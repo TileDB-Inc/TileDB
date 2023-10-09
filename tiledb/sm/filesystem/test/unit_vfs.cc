@@ -52,6 +52,24 @@ struct VfsFixture {
     }
   }
 
+  /**
+   * Struct to store recursive ls results data.
+   * `object_paths_` Stores all paths collected as a vector of strings.
+   * `object_sizes_` stores all file sizes as a vector of uint64_t.
+   */
+  struct LsRecursiveData {
+    std::vector<std::string> object_paths_;
+    std::vector<uint64_t> object_sizes_;
+  };
+
+  static int ls_recursive_gather(
+      const char* path, size_t path_length, uint64_t file_size, void* data) {
+    auto ls_data = static_cast<LsRecursiveData*>(data);
+    ls_data->object_paths_.emplace_back(path, path_length);
+    ls_data->object_sizes_.push_back(file_size);
+    return 1;
+  }
+
  protected:
   // A dummy `Stats` instance for testing internal VFS functions.
   tiledb::sm::stats::Stats stats_;
@@ -63,7 +81,7 @@ struct VfsFixture {
 };
 
 TEST_CASE_METHOD(
-    VfsFixture, "VFS: Default arguments ls_recursive", "[vfs][ls_recursive]]") {
+    VfsFixture, "VFS: Default arguments ls_recursive", "[vfs][ls_recursive]") {
   tiledb::sm::URI temp_dir("vfs_default_args");
   vfs_.create_dir(temp_dir).ok();
   SECTION("Empty directory") {
@@ -86,11 +104,14 @@ TEST_CASE_METHOD(
     create_objects(subdir, 10, "file");
   }
 
-  auto results = vfs_.ls_recursive(temp_dir);
-  REQUIRE(results.size() == expected_results_.size());
+  LsRecursiveData data;
+  vfs_.ls_recursive(temp_dir, ls_recursive_gather, &data);
+  REQUIRE(data.object_paths_.size() == expected_results_.size());
   for (size_t i = 0; i < expected_results_.size(); i++) {
-    CHECK(results[i].path().native() == expected_results_[i].path().native());
-    CHECK(results[i].file_size() == expected_results_[i].file_size());
+    CHECK(
+        data.object_paths_[i] ==
+        tiledb::sm::URI(expected_results_[i].path().native()).to_string());
+    CHECK(data.object_sizes_[i] == expected_results_[i].file_size());
   }
   vfs_.remove_dir(temp_dir).ok();
 }

@@ -504,7 +504,7 @@ void VfsFixture::setup_test() {
   }
 }
 
-void VfsFixture::filter_expected(const LsRecursiveFilter& filter) {
+void VfsFixture::filter_expected(const LsInclude& filter) {
   // Sort expected vector to match VFS::ls sorted output.
   std::sort(expected_results_.begin(), expected_results_.end());
   // Apply the filter to the expected results vector.
@@ -519,15 +519,22 @@ void VfsFixture::filter_expected(const LsRecursiveFilter& filter) {
 }
 
 void VfsFixture::test_ls_recursive(
-    const LsRecursiveFilter& filter, bool filter_expected) {
+    const LsInclude& filter, bool filter_expected) {
   if (filter_expected) {
     VfsFixture::filter_expected(filter);
   }
-
   auto results =
       VFSExperimental::ls_recursive(ctx_, vfs_, temp_dir_.to_string(), filter);
   CHECK(expected_results_ == results);
   CHECK(results.size() == expected_results_.size());
+}
+
+void VfsFixture::test_ls_recursive_cb(const LsCallback cb, LsObjects data) {
+  VFSExperimental::ls_recursive(ctx_, vfs_, temp_dir_.to_string(), cb, &data);
+  for (size_t i = 0; i < data.object_paths_.size(); i++) {
+    CHECK(data.object_paths_[i] == expected_results_[i].first);
+    CHECK(data.object_sizes_[i] == expected_results_[i].second);
+  }
 }
 
 std::string VfsFixture::fs_name() {
@@ -535,9 +542,7 @@ std::string VfsFixture::fs_name() {
 }
 
 void VfsFixture::test_ls_recursive_capi(
-    const VfsFixture::LsRecursiveCb& callback,
-    const LsRecursiveFilter& filter,
-    bool filter_expected) {
+    const LsCallback& callback, const LsInclude& filter, bool filter_expected) {
   if (filter_expected) {
     VfsFixture::filter_expected(filter);
   }

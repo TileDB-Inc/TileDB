@@ -711,17 +711,23 @@ struct VfsFixture {
    * behavior can also be implemented within this callback by handling result
    * entry names accordingly.
    */
-  typedef tiledb::sm::VFS::LsCallback LsRecursiveCb;
+  typedef std::function<int32_t(const char*, size_t, uint64_t, void*)>
+      LsRecursiveCb;
 
   /** Typedef for customizing ls_recursive filter behavior. */
-  typedef tiledb::sm::VFS::LsInclude LsRecursiveFilter;
+  typedef std::function<bool(const std::string_view&)> LsInclude;
+
+  struct LsObjects {
+    std::vector<std::string> object_paths_;
+    std::vector<uint64_t> object_sizes_;
+    LsInclude ls_include_;
+  };
 
   /// Helper function to filter expected results using a custom filter function.
-  void filter_expected(const LsRecursiveFilter& filter);
+  void filter_expected(const LsInclude& filter);
 
   void test_ls_recursive(
-      const LsRecursiveFilter& filter =
-          [](const std::string_view&) { return true; },
+      const LsInclude& filter = [](const std::string_view&) { return true; },
       bool filter_expected = true);
 
   /**
@@ -729,12 +735,13 @@ struct VfsFixture {
    * GCS, Azure, and HDFS are currently unsupported for ls_recursive.
    */
   void test_ls_recursive_capi(
-      const LsRecursiveCb& callback,
-      const LsRecursiveFilter& filter =
-          [](const std::string_view&) { return true; },
+      const LsCallback& callback,
+      const LsInclude& filter = [](const std::string_view&) { return true; },
       bool filter_expected = true);
 
   std::string fs_name();
+
+  void test_ls_recursive_cb(LsCallback const cb, LsObjects data);
 
  protected:
   tiledb::Config cfg_;
@@ -751,10 +758,7 @@ struct VfsFixture {
 
   struct LsRecursiveData {
     LsRecursiveData(
-        char** data,
-        size_t data_max,
-        uint64_t* object_sizes,
-        LsRecursiveFilter filter)
+        char** data, size_t data_max, uint64_t* object_sizes, LsInclude filter)
         : path_pos_(0)
         , path_max_(data_max)
         , filter_(std::move(filter)) {
@@ -775,7 +779,7 @@ struct VfsFixture {
     uint64_t* object_sizes_;
     // Current buffer position, max buffer size for paths collected.
     size_t path_pos_, path_max_;
-    LsRecursiveFilter filter_;
+    LsInclude filter_;
   };
 };
 
