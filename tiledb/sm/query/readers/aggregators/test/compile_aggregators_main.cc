@@ -79,6 +79,7 @@ int main() {
       tiledb::sm::FieldInfo("MinMax", false, false, 1));
   tiledb::sm::MinAggregator<std::string>(
       tiledb::sm::FieldInfo("MinMax", false, false, 1));
+
   tiledb::sm::MaxAggregator<uint8_t>(
       tiledb::sm::FieldInfo("MinMax", false, false, 1));
   tiledb::sm::MaxAggregator<uint16_t>(
