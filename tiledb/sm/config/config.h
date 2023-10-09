@@ -529,8 +529,11 @@ class Config {
   /** Connect scale factor for exponential backoff. */
   static const std::string VFS_S3_CONNECT_SCALE_FACTOR;
 
-  /** Header to add to curl requests with format "header_key header_value" */
-  static const std::string VFS_S3_CURL_HEADER;
+  /**
+   * Prefix for custom headers on s3 requests. Each custom header should be set
+   * with syntax VFS_S3_CUSTOM_HEADERS_KEY = "VALUE"
+   */
+  static const std::string VFS_S3_CUSTOM_HEADERS_;
 
   /** S3 server-side encryption algorithm. */
   static const std::string VFS_S3_SSE;

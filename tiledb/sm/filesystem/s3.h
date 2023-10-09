@@ -95,6 +95,9 @@ class TileDBS3Client;
  * @note Not all vfs.s3 config parameters are present in this struct.
  */
 struct S3Parameters {
+  /** Stores parsed custom headers from config. */
+  using Headers = std::unordered_map<std::string, std::string>;
+
   S3Parameters() = delete;
 
   S3Parameters(const Config& config)
@@ -130,9 +133,8 @@ struct S3Parameters {
       , connect_max_tries_(
             config.get<int64_t>("vfs.s3.connect_max_tries", Config::must_find))
       , connect_scale_factor_(config.get<int64_t>(
-            "vfs.s3.connect_scale_factor", Config::must_find))
-      , curl_header_(
-            config.get<std::string>("vfs.s3.curl_header", Config::must_find))
+            "vfs.s3.connect_scale_factor", Config::must_find))]
+      , custom_headers_(load_headers(config))
       , logging_level_(
             config.get<std::string>("vfs.s3.logging_level", Config::must_find))
       , request_timeout_ms_(
@@ -164,6 +166,9 @@ struct S3Parameters {
             "vfs.s3.config_source", Config::must_find)){};
 
   ~S3Parameters() = default;
+
+  /** Load all custom headers from the given config.  */
+  static Headers load_headers(const Config& cfg);
 
   /** The AWS region. */
   std::string region_;
@@ -219,8 +224,8 @@ struct S3Parameters {
   /** The scale factor for exponential backoff when connecting to S3. */
   int64_t connect_scale_factor_;
 
-  /** Header to add to curl requests with format "header_key header_value" */
-  std::string curl_header_;
+  /** Custom headers to add to all s3 requests. */
+  Headers custom_headers_;
 
   /** Process-global AWS SDK logging level. */
   std::string logging_level_;

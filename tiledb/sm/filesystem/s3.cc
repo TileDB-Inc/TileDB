@@ -58,6 +58,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/unique_rwlock.h"
 #include "tiledb/platform/platform.h"
+#include "tiledb/sm/config/config_iter.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
@@ -222,11 +223,27 @@ class S3Exception : public StatusException {
   }
 };
 
+S3Parameters::Headers S3Parameters::load_headers(const Config& cfg) {
+  Headers ret;
+  auto iter = ConfigIter(cfg, constants::s3_header_prefix);
+  for (; !iter.end(); iter.next()) {
+    auto key = iter.param();
+    if (key.size() == 0) {
+      continue;
+    }
+    ret[key] = iter.value();
+  }
+  return ret;
+}
+
 /**
- * Helper class which overrides Aws::S3::S3Client to set a header from
- * vfs.s3.curl_header
+ * Helper class which overrides Aws::S3::S3Client to set headers from
+ * vfs.s3.custom_headers.*
  *
- * @note vfs.s3.curl_header expects format "header_key header_value"
+ * @note The AWS SDK does not have a common base class, so there's no
+ * straightforward way to add a header to a unique request before submitting
+ * it. This class exists solely to override the S3Client, adding custom headers
+ * upon building the Http Request.
  */
 class TileDBS3Client : public Aws::S3::S3Client {
  public:
@@ -256,18 +273,9 @@ class TileDBS3Client : public Aws::S3::S3Client {
       const override {
     S3Client::BuildHttpRequest(request, httpRequest);
 
-    // Set header from S3Parameters "header_key header_value"
-    auto header = params_.curl_header_;
-    if (header != "") {
-      if (header.find(" ") == std::string::npos) {
-        throw std::runtime_error(
-            "Failed to set curl header; vfs.s3.curl_header expects "
-            "a key-value pair in format \"header_key header_value\"");
-      }
-
-      httpRequest->SetHeaderValue(
-          header.substr(0, header.find(" ")),
-          header.substr(header.find(" ") + 1));
+    // Set header from S3Parameters custom headers
+    for (auto& [key, val] : params_.custom_headers_) {
+      httpRequest->SetHeaderValue(key, val);
     }
   }
 
