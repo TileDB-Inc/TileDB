@@ -534,6 +534,16 @@ TEST_CASE_METHOD(
     SECTION("Default filter (include all)") {
       test_ls_recursive();
       test_ls_recursive_cb(cb, ls_objects);
+
+      // PJD: A basic callback.
+
+      tiledb::VFSExperimental::LsObjects objs;
+      tiledb::VFSExperimental::CppLsCallback cb = [&](const std::string_view& path, uint64_t file_size) {
+        objs.emplace_back(path, file_size);
+        return true;
+      };
+      tiledb::VFSExperimental::ls_recursive(ctx_, vfs_, temp_dir_.to_string(), cb);
+      CHECK(objs == expected_results_);
     }
     SECTION("Custom filter (include none)") {
       ls_objects.ls_include_ = [](const std::string_view&) { return false; };

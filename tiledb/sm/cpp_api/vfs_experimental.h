@@ -41,10 +41,15 @@
 
 namespace tiledb {
 class VFSExperimental {
- private:
+ public:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
   /* ********************************* */
+
+  /**
+   * A typedef for C++ style callbacks. This absolutely needs a better name.
+   */
+  typedef std::function<bool(const std::string_view&, uint64_t size)> CppLsCallback;
 
   /**
    * Typedef for ls inclusion predicate function used to check if a single
@@ -65,34 +70,18 @@ class VFSExperimental {
   typedef std::vector<std::pair<std::string, uint64_t>> LsObjects;
 
   /* ********************************* */
-  /*       PRIVATE STATIC METHODS      */
-  /* ********************************* */
-
-  /**
-   * Default callback function to be used when invoking recursive ls. The
-   * callback will cast 'data' to LsRecursiveData struct, which stores a
-   * vector of strings for each path collected and a uint64 vector of file
-   * sizes for the objects at each path.
-   *
-   * @param path The path of a visited object for the relative filesystem.
-   * @param path_length The length of the path string.
-   * @param file_size The size of the object at the path.
-   * @param data Cast to LsRecursiveData struct to store paths and offsets.
-   * @return `1` if the walk should continue to the next object, `0` if the walk
-   *    should stop, and `-1` on error.
-   * @sa LsCallback
-   */
-  static int ls_recursive_gather(
-      const char* path, size_t path_length, uint64_t file_size, void* data) {
-    auto ls_objects = static_cast<LsObjects*>(data);
-    ls_objects->emplace_back(std::string_view(path, path_length), file_size);
-    return 1;
-  }
-
- public:
-  /* ********************************* */
   /*       PUBLIC STATIC METHODS       */
   /* ********************************* */
+
+  static void ls_recursive(
+      const Context& ctx,
+      const VFS& vfs,
+      const std::string& uri,
+      CppLsCallback cb) {
+    auto cb_state = CppCbState{cb};
+    ctx.handle_error(tiledb_vfs_ls_recursive(
+        ctx.ptr().get(), vfs.ptr().get(), uri.c_str(), ls_cpp_wrapper, &cb_state));
+  }
 
   /**
    * Recursively lists objects at the input URI, invoking the provided callback
@@ -128,30 +117,85 @@ class VFSExperimental {
    * @param include Predicate function to check if a result should be included.
    * @return Vector of pairs for each object path and size.
    */
-  static std::vector<std::pair<std::string, uint64_t>> ls_recursive(
+  static LsObjects ls_recursive(
       const Context& ctx,
       const VFS& vfs,
       const std::string& uri,
       std::optional<LsInclude> include = std::nullopt) {
-    LsObjects ls_objects;
-    ctx.handle_error(tiledb_vfs_ls_recursive(
-        ctx.ptr().get(),
-        vfs.ptr().get(),
-        uri.c_str(),
-        ls_recursive_gather,
-        &ls_objects));
+    LsObjects objs;
     if (include.has_value()) {
-      ls_objects.erase(
-          std::remove_if(
-              ls_objects.begin(),
-              ls_objects.end(),
-              [&](const std::pair<std::string, uint64_t>& p) {
-                return !include.value()(p.first);
-              }),
-          ls_objects.end());
+      auto include_val = include.value();
+      ls_recursive(ctx, vfs, uri, [&](const std::string_view& path, uint64_t file_size) -> bool {
+        if (include_val(path)) {
+          objs.emplace_back(path, file_size);
+        }
+        return true;
+      });
+    } else {
+      ls_recursive(ctx, vfs, uri, [&](const std::string_view& path, uint64_t file_size) {
+        objs.emplace_back(path, file_size);
+        return true;
+      });
     }
-    return ls_objects;
+    return objs;
   }
+
+ private:
+  /* ********************************* */
+  /*       PRIVATE STATIC METHODS      */
+  /* ********************************* */
+
+  /**
+   * Default callback function to be used when invoking recursive ls. The
+   * callback will cast 'data' to LsRecursiveData struct, which stores a
+   * vector of strings for each path collected and a uint64 vector of file
+   * sizes for the objects at each path.
+   *
+   * @param path The path of a visited object for the relative filesystem.
+   * @param path_length The length of the path string.
+   * @param file_size The size of the object at the path.
+   * @param data Cast to LsRecursiveData struct to store paths and offsets.
+   * @return `1` if the walk should continue to the next object, `0` if the walk
+   *    should stop, and `-1` on error.
+   * @sa LsCallback
+   */
+  static int ls_recursive_gather(
+      const char* path, size_t path_length, uint64_t file_size, void* data) {
+    auto ls_objects = static_cast<LsObjects*>(data);
+    ls_objects->emplace_back(std::string_view(path, path_length), file_size);
+    return 1;
+  }
+
+  // Private struct
+
+  class CppCbState {
+   public:
+    CppCbState(CppLsCallback& cpp_cb)
+        : cpp_cb_(cpp_cb) {
+    }
+
+    bool operator()(const std::string_view& path, uint64_t file_size) {
+      return cpp_cb_(path, file_size);
+    }
+
+   private:
+    CppLsCallback& cpp_cb_;
+  };
+
+  static int ls_cpp_wrapper(const char* path, size_t path_size, uint64_t file_size, void* data) {
+    auto st = static_cast<CppCbState*>(data);
+    try {
+      auto cpp_path = std::string_view(path, path_size);
+      if ((*st)(cpp_path, file_size)) {
+        return 1;
+      } else {
+        return 0;
+      }
+    } catch (...) {
+      std::throw_with_nested(std::runtime_error("User ls callback threw an exception."));
+    }
+  }
+
 };
 }  // namespace tiledb
 
