@@ -46,11 +46,11 @@
 #define TILEDB_DAG_NODES_DETAIL_SEGMENTED_MIMO_H
 
 #include <functional>
+#include <tiledb/stdx/stop_token>
 #include <tuple>
 #include <type_traits>
 #include <utility>
 
-#include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
 #include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
 #include "experimental/tiledb/common/dag/ports/ports.h"
 #include "experimental/tiledb/common/dag/utility/print_types.h"
