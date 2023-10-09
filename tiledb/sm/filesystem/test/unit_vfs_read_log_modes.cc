@@ -31,13 +31,15 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "tiledb/common/logger.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/sm/filesystem/vfs.h"
-#include "tiledb/sm/storage_manager/context.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 
 using namespace tiledb::sm;
 
 TEST_CASE("VFS Read Log Modes", "[vfs][read-logging-modes]") {
+  global_logger().set_level(Logger::Level::INFO);
   std::string mode = GENERATE(
       "",
       "Don't set config",
@@ -56,8 +58,8 @@ TEST_CASE("VFS Read Log Modes", "[vfs][read-logging-modes]") {
     throw_if_not_ok(cfg.set("vfs.read_logging_mode", mode));
   }
 
-  Context ctx(cfg);
-  VFS vfs(&ctx.resources().stats(), ctx.compute_tp(), ctx.io_tp(), cfg);
+  auto logger = make_shared<Logger>(HERE(), "");
+  ContextResources res(cfg, logger, 1, 1, "test");
 
   std::vector<std::string> uris_to_read = {
       "foo",
@@ -71,7 +73,7 @@ TEST_CASE("VFS Read Log Modes", "[vfs][read-logging-modes]") {
   for (int i = 0; i < 2; i++) {
     char buffer[123];
     for (auto& uri : uris_to_read) {
-      auto st = vfs.read(URI(uri), 123, buffer, 456);
+      auto st = res.vfs().read(URI(uri), 123, buffer, 456);
       // None of these files exist, so we expect every read to fail.
       REQUIRE(!st.ok());
     }

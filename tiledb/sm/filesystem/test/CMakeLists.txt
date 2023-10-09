@@ -34,3 +34,8 @@ commence(unit_test vfs)
     this_target_object_libraries(vfs)
     this_target_sources(main.cc unit_vfs.cc)
 conclude(unit_test)
+
+commence(unit_test vfs_read_log_modes)
+    this_target_object_libraries(context_resources)
+    this_target_sources(main.cc unit_vfs_read_log_modes.cc)
+conclude(unit_test)
