@@ -49,7 +49,8 @@ class VFSExperimental {
   /**
    * A typedef for C++ style callbacks. This absolutely needs a better name.
    */
-  typedef std::function<bool(const std::string_view&, uint64_t size)> CppLsCallback;
+  typedef std::function<bool(const std::string_view&, uint64_t size)>
+      CppLsCallback;
 
   /**
    * Typedef for ls inclusion predicate function used to check if a single
@@ -80,7 +81,11 @@ class VFSExperimental {
       CppLsCallback cb) {
     auto cb_state = CppCbState{cb};
     ctx.handle_error(tiledb_vfs_ls_recursive(
-        ctx.ptr().get(), vfs.ptr().get(), uri.c_str(), ls_cpp_wrapper, &cb_state));
+        ctx.ptr().get(),
+        vfs.ptr().get(),
+        uri.c_str(),
+        ls_cpp_wrapper,
+        &cb_state));
   }
 
   /**
@@ -125,17 +130,22 @@ class VFSExperimental {
     LsObjects objs;
     if (include.has_value()) {
       auto include_val = include.value();
-      ls_recursive(ctx, vfs, uri, [&](const std::string_view& path, uint64_t file_size) -> bool {
-        if (include_val(path)) {
-          objs.emplace_back(path, file_size);
-        }
-        return true;
-      });
+      ls_recursive(
+          ctx,
+          vfs,
+          uri,
+          [&](const std::string_view& path, uint64_t file_size) -> bool {
+            if (include_val(path)) {
+              objs.emplace_back(path, file_size);
+            }
+            return true;
+          });
     } else {
-      ls_recursive(ctx, vfs, uri, [&](const std::string_view& path, uint64_t file_size) {
-        objs.emplace_back(path, file_size);
-        return true;
-      });
+      ls_recursive(
+          ctx, vfs, uri, [&](const std::string_view& path, uint64_t file_size) {
+            objs.emplace_back(path, file_size);
+            return true;
+          });
     }
     return objs;
   }
@@ -182,7 +192,8 @@ class VFSExperimental {
     CppLsCallback& cpp_cb_;
   };
 
-  static int ls_cpp_wrapper(const char* path, size_t path_size, uint64_t file_size, void* data) {
+  static int ls_cpp_wrapper(
+      const char* path, size_t path_size, uint64_t file_size, void* data) {
     auto st = static_cast<CppCbState*>(data);
     try {
       auto cpp_path = std::string_view(path, path_size);
@@ -192,10 +203,10 @@ class VFSExperimental {
         return 0;
       }
     } catch (...) {
-      std::throw_with_nested(std::runtime_error("User ls callback threw an exception."));
+      std::throw_with_nested(
+          std::runtime_error("User ls callback threw an exception."));
     }
   }
-
 };
 }  // namespace tiledb
 
