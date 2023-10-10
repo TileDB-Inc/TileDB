@@ -144,6 +144,27 @@ QueryCondition create_qc(
 /* ********************************* */
 
 TEST_CASE_METHOD(
+    EnumerationFx, "Create Empty Enumeration", "[enumeration][empty]") {
+  Enumeration::create(
+      default_enmr_name, Datatype::INT32, 1, false, nullptr, 0, nullptr, 0);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Create Empty Var Sized Enumeration",
+    "[enumeration][empty]") {
+  Enumeration::create(
+      default_enmr_name,
+      Datatype::STRING_ASCII,
+      constants::var_num,
+      false,
+      nullptr,
+      0,
+      nullptr,
+      0);
+}
+
+TEST_CASE_METHOD(
     EnumerationFx,
     "Basic Boolean Enumeration Creation",
     "[enumeration][basic][boolean]") {
@@ -182,6 +203,60 @@ TEST_CASE_METHOD(
     "Basic Variable Size With Empty Value Enumeration Creation",
     "[enumeration][basic][fixed]") {
   std::vector<std::string> values = {"foo", "bar", "", "bingo", "bango"};
+  auto enmr = create_enumeration(values);
+  check_enumeration(
+      enmr,
+      default_enmr_name,
+      values,
+      Datatype::STRING_ASCII,
+      constants::var_num,
+      false);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Basic Variable Size With Single Empty Value Enumeration Creation",
+    "[enumeration][basic][fixed]") {
+  std::vector<std::string> values = {""};
+  auto enmr = create_enumeration(values);
+  check_enumeration(
+      enmr,
+      default_enmr_name,
+      values,
+      Datatype::STRING_ASCII,
+      constants::var_num,
+      false);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Basic Variable Size With Single Empty Value Using nullptr",
+    "[enumeration][error][invalid-offsets-args]") {
+  uint64_t offsets = 0;
+  auto enmr = Enumeration::create(
+      default_enmr_name,
+      Datatype::STRING_ASCII,
+      constants::var_num,
+      false,
+      nullptr,
+      0,
+      &offsets,
+      sizeof(uint64_t));
+  std::vector<std::string> values = {""};
+  check_enumeration(
+      enmr,
+      default_enmr_name,
+      values,
+      Datatype::STRING_ASCII,
+      constants::var_num,
+      false);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Basic Variable Size With Last Value Empty Enumeration Creation",
+    "[enumeration][basic][fixed]") {
+  std::vector<std::string> values = {"last", "value", "is", ""};
   auto enmr = create_enumeration(values);
   check_enumeration(
       enmr,
@@ -237,6 +312,143 @@ TEST_CASE_METHOD(
       nullptr,
       0);
   check_enumeration(enmr, default_enmr_name, values, Datatype::INT32, 2, false);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Creation Error - Non-zero size for data nullptr",
+    "[enumeration][error][invalid-data-args]") {
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Invalid data buffer must not be nullptr for fixed sized data.");
+  REQUIRE_THROWS_WITH(
+      Enumeration::create(
+          default_enmr_name,
+          Datatype::INT32,
+          1,
+          false,
+          nullptr,
+          10,
+          nullptr,
+          0),
+      matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Creation Error - Zero size for data non-nullptr",
+    "[enumeration][error][invalid-data-args]") {
+  int val = 5;
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Invalid data size; must be non-zero for fixed size data.");
+  REQUIRE_THROWS_WITH(
+      Enumeration::create(
+          default_enmr_name, Datatype::INT32, 1, false, &val, 0, nullptr, 0),
+      matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Creation Error - Non-zero size for offsets nullptr",
+    "[enumeration][error][invalid-offsets-args]") {
+  const char* val = "foo";
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Var sized enumeration values require a non-null offsets pointer.");
+  REQUIRE_THROWS_WITH(
+      Enumeration::create(
+          default_enmr_name,
+          Datatype::STRING_ASCII,
+          constants::var_num,
+          false,
+          val,
+          strlen(val),
+          nullptr,
+          8),
+      matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Creation Error - Zero size for offsets non-nullptr",
+    "[enumeration][error][invalid-offsets-args]") {
+  const char* val = "foo";
+  uint64_t offset = 0;
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Var sized enumeration values require a non-zero offsets size.");
+  REQUIRE_THROWS_WITH(
+      Enumeration::create(
+          default_enmr_name,
+          Datatype::STRING_ASCII,
+          constants::var_num,
+          false,
+          val,
+          strlen(val),
+          &offset,
+          0),
+      matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Creation Error - Single Empty String Invalid Data Size",
+    "[enumeration][error][invalid-offsets-args]") {
+  uint64_t offsets = 0;
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Invalid data buffer; must not be nullptr when data_size "
+      "is non-zero.");
+  REQUIRE_THROWS_WITH(
+      Enumeration::create(
+          default_enmr_name,
+          Datatype::STRING_ASCII,
+          constants::var_num,
+          false,
+          nullptr,
+          5,
+          &offsets,
+          sizeof(uint64_t)),
+      matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Creation Error - Missing Var Data",
+    "[enumeration][error][invalid-data-args]") {
+  uint64_t offsets = 5;
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Invalid data input, nullptr provided when the provided offsets "
+      "require data.");
+  REQUIRE_THROWS_WITH(
+      Enumeration::create(
+          default_enmr_name,
+          Datatype::STRING_ASCII,
+          constants::var_num,
+          false,
+          nullptr,
+          5,
+          &offsets,
+          sizeof(uint64_t)),
+      matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Creation Error - Invalid Data Size",
+    "[enumeration][error][invalid-data-args]") {
+  uint64_t offsets = 5;
+  const char* data = "meow";
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Invalid data input, data_size is smaller than the last provided "
+      "offset.");
+  REQUIRE_THROWS_WITH(
+      Enumeration::create(
+          default_enmr_name,
+          Datatype::STRING_ASCII,
+          constants::var_num,
+          false,
+          data,
+          2,
+          &offsets,
+          sizeof(uint64_t)),
+      matcher);
 }
 
 TEST_CASE_METHOD(
