@@ -152,13 +152,8 @@ using tiledb_unique_ptr = std::unique_ptr<T, TileDBUniquePtrDeleter<T>>;
 
 #define tdb_free(p) tiledb::common::tiledb_free(p)
 
-#ifdef _MSC_VER
 #define tdb_new(T, ...) \
-  tiledb::common::tiledb_new<T>(TILEDB_HEAP_MEM_LABEL, __VA_ARGS__)
-#else
-#define tdb_new(T, ...) \
-  tiledb::common::tiledb_new<T>(TILEDB_HEAP_MEM_LABEL, ##__VA_ARGS__)
-#endif
+  tiledb::common::tiledb_new<T>(TILEDB_HEAP_MEM_LABEL __VA_OPT__(,) __VA_ARGS__)
 
 #define tdb_delete(p) tiledb::common::tiledb_delete(p);
 

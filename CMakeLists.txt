@@ -174,6 +174,8 @@ set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")
 if (MSVC)
   # Turn on standards-conformance mode
   add_compile_options("/permissive-")
+  # Enable the conforming preprocessor instead of the traditional (non-conforming) preprocessor
+  add_compile_options("/Zc:preprocessor")
   # /EH: Enables standard C++ stack unwinding.
   # s: Catches only standard C++ exceptions when you use catch(...) syntax.
   # c: The compiler assumes that functions declared as extern "C" never throw a C++ exception
