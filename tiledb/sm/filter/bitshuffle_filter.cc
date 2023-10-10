@@ -168,8 +168,7 @@ Status BitshuffleFilter::run_reverse(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output,
-    const Config& config) const {
-  (void)config;
+    const Config&) const {
   auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
 
   // Get number of parts
