@@ -975,6 +975,9 @@ TEST_CASE_METHOD(
   if (temp_dir_.is_s3() && !ctx_.is_supported_fs(TILEDB_S3)) {
     return;
   }
+  std::vector<size_t> max_files =
+      GENERATE(std::vector<size_t>{10, 100, 0}, std::vector<size_t>{0});
+  setup_test(max_files);
 
   DYNAMIC_SECTION("Testing ls_recursive over " << fs_name() << " backend") {
     // C callback with a custom filter to be used for remaining SECTIONS.

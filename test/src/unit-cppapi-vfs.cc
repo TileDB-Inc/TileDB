@@ -514,6 +514,9 @@ TEST_CASE_METHOD(
   if (temp_dir_.is_s3() && !ctx_.is_supported_fs(TILEDB_S3)) {
     return;
   }
+  std::vector<size_t> max_files =
+      GENERATE(std::vector<size_t>{10, 100, 0}, std::vector<size_t>{0});
+  setup_test(max_files);
 
   DYNAMIC_SECTION("ls_recursive with " << fs_name() << " backend") {
     tiledb::VFSExperimental::LsObjects ls_objects;
@@ -566,6 +569,35 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     tiledb::test::VfsFixture,
+    "C++ API: Callback stops traversal",
+    "[cppapi][vfs][ls-recursive]") {
+  if (temp_dir_.is_s3() && !ctx_.is_supported_fs(TILEDB_S3)) {
+    return;
+  }
+  // Create 10 nested directories with 5 files each.
+  std::vector<size_t> max_files(10, 5);
+  setup_test(max_files);
+
+  tiledb::VFSExperimental::LsObjects ls_objects;
+  size_t cb_count = GENERATE(1, 11, 50);
+  auto cb = [&](const std::string_view& path, uint64_t size) {
+    // Always emplace to check the callback is not invoked more than `cb_count`.
+    ls_objects.emplace_back(path, size);
+    // Signal to stop traversal when we have seen `cb_count` objects.
+    if (ls_objects.size() == cb_count) {
+      return false;
+    }
+    return true;
+  };
+  tiledb::VFSExperimental::ls_recursive(ctx_, vfs_, temp_dir_.to_string(), cb);
+  CHECK(ls_objects.size() == cb_count);
+  std::sort(expected_results_.begin(), expected_results_.end());
+  expected_results_.resize(cb_count);
+  CHECK(ls_objects == expected_results_);
+}
+
+TEST_CASE_METHOD(
+    tiledb::test::VfsFixture,
     "C++ API: Throwing filter",
     "[cppapi][vfs][ls-recursive]") {
   if (temp_dir_.is_s3() && !ctx_.is_supported_fs(TILEDB_S3)) {
@@ -578,19 +610,20 @@ TEST_CASE_METHOD(
       throw std::runtime_error("Throwing filter");
     };
     // If the test directory is empty the filter should not throw.
-    CHECKED_IF(expected_results_.empty()) {
-      SECTION("Throwing filter with 0 objects should not throw") {
-        CHECK_NOTHROW(tiledb::VFSExperimental::ls_recursive(
-            ctx_, vfs_, temp_dir_.to_string(), filter));
-      }
+    SECTION("Throwing filter with 0 objects should not throw") {
+      CHECK_NOTHROW(tiledb::VFSExperimental::ls_recursive(
+          ctx_, vfs_, temp_dir_.to_string(), filter));
     }
-    CHECKED_ELSE(expected_results_.empty()) {
-      SECTION("Throwing filter with N objects should throw") {
-        CHECK_THROWS_AS(
-            tiledb::VFSExperimental::ls_recursive(
-                ctx_, vfs_, temp_dir_.to_string(), filter),
-            std::runtime_error);
-      }
+    SECTION("Throwing filter with N objects should throw") {
+      vfs_.touch(temp_dir_.join_path("test_file").to_string());
+      CHECK_THROWS_AS(
+          tiledb::VFSExperimental::ls_recursive(
+              ctx_, vfs_, temp_dir_.to_string(), filter),
+          std::runtime_error);
+      CHECK_THROWS_WITH(
+          tiledb::VFSExperimental::ls_recursive(
+              ctx_, vfs_, temp_dir_.to_string(), filter),
+          Catch::Matchers::ContainsSubstring("Throwing filter"));
     }
   }
 }

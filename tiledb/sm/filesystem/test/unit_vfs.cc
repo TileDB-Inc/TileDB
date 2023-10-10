@@ -114,13 +114,44 @@ TEST_CASE_METHOD(
   };
   tiledb::sm::URI temp_dir("vfs_throwing_callback");
   LsObjects data;
+  vfs_.create_dir(temp_dir).ok();
   SECTION("Throwing callback with 0 objects should not throw") {
     CHECK_NOTHROW(vfs_.ls_recursive(temp_dir, cb, &data));
   }
   SECTION("Throwing callback with N objects should throw") {
-    vfs_.create_dir(temp_dir).ok();
     vfs_.touch(temp_dir.join_path("file")).ok();
     CHECK_THROWS_AS(vfs_.ls_recursive(temp_dir, cb, &data), std::logic_error);
-    vfs_.remove_dir(temp_dir).ok();
   }
+  vfs_.remove_dir(temp_dir).ok();
+}
+
+TEST_CASE_METHOD(
+    VfsFixture, "VFS: Callback stops traversal", "[vfs][ls_recursive]") {
+  tiledb::sm::URI temp_dir("vfs_stop_traversal");
+  vfs_.create_dir(temp_dir).ok();
+  // Create 10 nested subdirectories to test traversal stops within a recursive
+  // call chain. The name of the subdirectory is important, it should be not
+  // appear last when the adjacent objects are sorted.
+  tiledb::sm::URI path = temp_dir;
+  for (size_t i = 0; i < 10; i++) {
+    path = path.join_path("subdir" + std::to_string(i));
+    vfs_.create_dir(path).ok();
+    create_objects(path, 5, "test_file");
+  }
+
+  LsObjects ls_objects;
+  size_t count = GENERATE(1, 11, 25);
+  auto cb = [&](const char* path, size_t path_len, uint64_t size, void*) {
+    ls_objects.emplace_back(std::string_view(path, path_len), size);
+    if (ls_objects.size() == count) {
+      return 0;
+    }
+    return 1;
+  };
+  vfs_.ls_recursive(temp_dir, cb, &ls_objects);
+  CHECK(ls_objects.size() == count);
+  std::sort(expected_results_.begin(), expected_results_.end());
+  expected_results_.resize(count);
+  CHECK(ls_objects == expected_results_);
+  vfs_.remove_dir(temp_dir).ok();
 }

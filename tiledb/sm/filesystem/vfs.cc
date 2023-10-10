@@ -744,45 +744,18 @@ void VFS::ls_recursive(const URI& parent, LsCallback cb, void* data) const {
   Status st;
   optional<std::vector<directory_entry>> entries;
 
-  if (parent.is_file() || parent.is_memfs()) {
-    std::queue<URI> q;
-    q.push(parent);
-    while (!q.empty()) {
-      if (parent.is_memfs()) {
-        std::tie(st, entries) = memfs_.ls_with_sizes(q.front());
-      } else if (parent.is_file()) {
+  if (parent.is_memfs()) {
+    memfs_.ls_with_sizes_cb(parent, cb, data, true);
+  } else if (parent.is_file()) {
 #ifdef _WIN32
-        std::tie(st, entries) = win_.ls_with_sizes(q.front());
+    // TODO: Win::ls_with_sizes_cb
+    win_.ls_with_sizes_cb(parent, cb, data, true);
 #else
-        std::tie(st, entries) = posix_.ls_with_sizes(q.front());
+    posix_.ls_with_sizes_cb(parent, cb, data, true);
 #endif
-      }
-      throw_if_not_ok(st);
-      parallel_sort(
-          compute_tp_,
-          entries->begin(),
-          entries->end(),
-          [](const directory_entry& l, const directory_entry& r) {
-            return l.path().native() < r.path().native();
-          });
-      for (const auto& entry : *entries) {
-        if (entry.is_directory()) {
-          q.emplace(entry.path().native());
-        } else {
-          URI uri{entry.path().native()};
-          int rc = cb(
-              uri.c_str(), uri.to_string().length(), entry.file_size(), data);
-          if (rc == 0) {
-            break;
-          } else if (rc == -1) {
-            throw VFSException("Error in user callback");
-          }
-        }
-      }
-      q.pop();
-    }
   } else if (parent.is_s3()) {
 #ifdef HAVE_S3
+    // TODO: S3::ls_with_sizes_cb
     std::tie(st, entries) = s3_.ls_with_sizes(parent, "");
     throw_if_not_ok(st);
 #else
@@ -1230,8 +1203,8 @@ Status VFS::read(
   RETURN_NOT_OK(max_parallel_ops(uri, &max_ops));
 
   // Ensure that each thread is responsible for at least min_parallel_size
-  // bytes, and cap the number of parallel operations at the configured maximum
-  // number.
+  // bytes, and cap the number of parallel operations at the configured
+  // maximum number.
   uint64_t num_ops =
       std::min(std::max(nbytes / min_parallel_size, uint64_t(1)), max_ops);
 

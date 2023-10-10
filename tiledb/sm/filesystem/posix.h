@@ -169,6 +169,25 @@ class Posix {
   tuple<Status, optional<std::vector<filesystem::directory_entry>>>
   ls_with_sizes(const URI& uri) const;
 
+  typedef std::function<int32_t(const char*, size_t, uint64_t, void*)>
+      LsCallback;
+  /**
+   * Lists files and files information under path, invoking the callback on each
+   * object. If recursive is true, the path is traversed recursively. If the
+   * callback returns 0, traversal is stopped. If the callback returns 1,
+   * traversal continues. If the callback returns -1, traversal is stopped and
+   * an error is thrown.
+   *
+   * @param path The parent path to list sub-paths.
+   * @param cb The callback to invoke on each object.
+   * @param data User data to pass to the callback.
+   * @param recursive Whether to traverse the path recursively.
+   * @return True if the traversal should continue, false otherwise.
+   *    If the callback signals to stop traversal, this function returns false.
+   */
+  bool ls_with_sizes_cb(
+      const URI& uri, LsCallback cb, void* data, bool recursive = false) const;
+
   /**
    * Move a given filesystem path.
    *

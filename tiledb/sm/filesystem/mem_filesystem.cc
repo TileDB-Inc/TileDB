@@ -87,6 +87,22 @@ class MemFilesystem::FSNode {
   virtual tuple<Status, optional<std::vector<directory_entry>>> ls(
       const std::string& full_path) const = 0;
 
+  /**
+   * Lists contents of a node, invoking the callback function on each object.
+   *
+   * @param full_path Full path to the node.
+   * @param cb Callback function to invoke on each object.
+   * @param data Data to pass to the callback function.
+   * @param recursive If true, recursively list contents of subdirectories.
+   * @return True if traversal should continue, else false.
+   *    If the callback signals to stop traversal, this function returns false.
+   */
+  virtual bool ls(
+      const std::string& full_path,
+      LsCallback cb,
+      void* data,
+      bool recursive) = 0;
+
   /** Indicates if a given node is a child of this node */
   virtual bool has_child(const std::string& child) const = 0;
 
@@ -166,6 +182,11 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
     auto st = LOG_STATUS(Status_MemFSError(
         std::string("Cannot get children, the path is a file")));
     return {st, nullopt};
+  }
+
+  bool ls(const std::string&, LsCallback, void*, bool) override {
+    throw StatusException(Status_MemFSError(
+        std::string("Cannot get children, the path is a file")));
   }
 
   bool has_child(const std::string& child) const override {
@@ -302,6 +323,50 @@ class MemFilesystem::Directory : public MemFilesystem::FSNode {
     return {Status::Ok(), names};
   }
 
+  bool ls(
+      const std::string& full_path,
+      LsCallback cb,
+      void* data,
+      bool recursive = false) override {
+    if (mutex_.try_lock()) {
+      throw StatusException(Status_MemFSError("Mutex not locked"));
+    }
+    // Sort the keys so we can invoke the callback on each object directly.
+    std::vector<std::string> sorted_keys(children_.size());
+    std::transform(
+        children_.begin(),
+        children_.end(),
+        sorted_keys.begin(),
+        [](const auto& kv) { return kv.first; });
+    std::sort(sorted_keys.begin(), sorted_keys.end());
+    for (const auto& key : sorted_keys) {
+      FSNode* child = children_[key].get();
+      std::unique_lock<std::mutex> lock(child->mutex_);
+      std::string name(full_path + key);
+      if (recursive && child->is_dir()) {
+        if (!child->ls(full_path + key + "/", cb, data, recursive)) {
+          // Traversal was stopped in the recursive call chain.
+          return false;
+        }
+      } else {
+        uint64_t size = 0;
+        throw_if_not_ok(child->get_size(&size));
+        int rc = cb(name.c_str(), name.size(), size, data);
+        if (rc == -1) {
+          throw StatusException(Status_MemFSError(
+              std::string("Error in user callback for path ") + name));
+        }
+        if (rc != 1) {
+          // Return false to indicate traversal was stopped by the callback.
+          return false;
+        }
+      }
+    }
+
+    // Node traversal is finished, but was not stopped by the callback.
+    return true;
+  }
+
   bool has_child(const std::string& child) const override {
     assert(!mutex_.try_lock());
 
@@ -432,6 +497,28 @@ MemFilesystem::ls_with_sizes(const URI& path) const {
   }
 
   return {Status::Ok(), entries};
+}
+
+void MemFilesystem::ls_with_sizes_cb(
+    const URI& path,
+    MemFilesystem::LsCallback cb,
+    void* data,
+    bool recursive) const {
+  auto abspath = path.to_path();
+  std::vector<std::string> tokens = tokenize(abspath);
+
+  FSNode* node;
+  std::unique_lock<std::mutex> node_lock;
+  throw_if_not_ok(lookup_node(tokens, &node, &node_lock));
+  // Check the node exists and we own the correct lock.
+  if (node == nullptr) {
+    throw StatusException(Status_MemFSError(
+        std::string("Unable to list on non-existent path ") + abspath));
+  } else if (!node_lock.owns_lock() || node_lock.mutex() != &node->mutex_) {
+    throw StatusException(
+        Status_MemFSError("Mutex is invalid or not owned by the found node."));
+  }
+  node->ls(path.to_string() + "/", cb, data, recursive);
 }
 
 Status MemFilesystem::move(

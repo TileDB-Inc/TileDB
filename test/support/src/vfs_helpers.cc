@@ -452,7 +452,15 @@ VfsFixture::VfsFixture() {
   } else {
     temp_dir_ = test_dir(fs_prefix_);
   }
-  setup_test();
+
+  if (temp_dir_.is_s3()) {
+    if (!ctx_.is_supported_fs(TILEDB_S3)) {
+      return;
+    }
+    vfs_.create_bucket(temp_dir_.to_string());
+  } else {
+    vfs_.create_dir(temp_dir_.to_string());
+  }
 }
 
 VfsFixture::~VfsFixture() {
@@ -468,39 +476,12 @@ VfsFixture::~VfsFixture() {
   }
 }
 
-void VfsFixture::setup_test() {
-  auto uri_str = temp_dir_.to_string();
-  if (temp_dir_.is_s3()) {
-    if (!ctx_.is_supported_fs(TILEDB_S3)) {
-      return;
-    }
-    vfs_.create_bucket(uri_str);
-  } else {
-    vfs_.create_dir(uri_str);
-  }
-
-  // d1, d2, and d3 contain 10, 100 and 0 files respectively.
-  std::vector<size_t> max_files =
-      GENERATE(std::vector<size_t>{10, 100, 0}, std::vector<size_t>{0});
-  // Create d1, d2, d3 directories.
-  // d3 will never be returned, as it is an empty prefix with no objects.
+void VfsFixture::setup_test(std::vector<size_t> max_files) {
+  auto path = temp_dir_;
   for (size_t i = 1; i <= max_files.size(); i++) {
-    vfs_.create_dir(uri_str + "/d" + std::to_string(i));
-    for (size_t j = 1; j <= max_files[i - 1]; j++) {
-      auto file = uri_str + "/d" + std::to_string(i) + "/test" +
-                  std::to_string(j) + ".txt";
-      vfs_.touch(file);
-
-      // Write some data to test file sizes are correct.
-      tiledb_vfs_fh_t* fh;
-      tiledb_vfs_open(ctx_c_, vfs_c_, file.c_str(), TILEDB_VFS_WRITE, &fh);
-      std::string data(j, 'a');
-      tiledb_vfs_write(ctx_c_, fh, data.data(), data.size());
-      tiledb_vfs_close(ctx_c_, fh);
-      tiledb_vfs_fh_free(&fh);
-
-      expected_results_.emplace_back(file, j);
-    }
+    path = path.join_path("subdir" + std::to_string(i));
+    vfs_.create_dir(path.to_string());
+    create_objects(path, max_files[i - 1], "test_file");
   }
 }
 
@@ -567,6 +548,24 @@ void VfsFixture::test_ls_recursive_capi(
         expected_results_[i] == std::make_pair(path, results.object_sizes_[i]));
   }
   CHECK(results.path_pos_ == expected_results_.size());
+}
+
+void VfsFixture::create_objects(
+    const sm::URI& dir, size_t count, const std::string& prefix) {
+  for (size_t i = 1; i <= count; i++) {
+    auto uri = dir.join_path(prefix + std::to_string(i));
+    vfs_.touch(uri.to_string());
+
+    // Write some data to test file sizes are correct.
+    tiledb_vfs_fh_t* fh;
+    tiledb_vfs_open(ctx_c_, vfs_c_, uri.c_str(), TILEDB_VFS_WRITE, &fh);
+    std::string data(i * 10, 'a');
+    tiledb_vfs_write(ctx_c_, fh, data.data(), data.size());
+    tiledb_vfs_close(ctx_c_, fh);
+    tiledb_vfs_fh_free(&fh);
+
+    expected_results_.emplace_back(uri.to_string(), data.size());
+  }
 }
 
 }  // End of namespace test

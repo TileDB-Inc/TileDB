@@ -705,7 +705,7 @@ struct VfsFixture {
 
   ~VfsFixture();
 
-  void setup_test();
+  void setup_test(std::vector<size_t> max_files);
 
   /// Helper function to filter expected results using a custom filter function.
   void filter_expected(const VFSExperimental::LsInclude& filter);
@@ -727,6 +727,9 @@ struct VfsFixture {
   void test_ls_recursive_cb(
       VFSExperimental::LsGatherCallback const cb,
       const VFSExperimental::LsObjects& data);
+
+  void create_objects(
+      const tiledb::sm::URI& dir, size_t count, const std::string& prefix);
 
  protected:
   tiledb::Config cfg_;

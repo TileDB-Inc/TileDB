@@ -35,6 +35,7 @@
 #include "tiledb/sm/filesystem/posix.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/scoped_executor.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/tdb_math.h"
@@ -304,6 +305,60 @@ tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
     return {st, nullopt};
   }
   return {Status::Ok(), entries};
+}
+
+bool Posix::ls_with_sizes_cb(
+    const URI& uri, LsCallback cb, void* data, bool recursive) const {
+  std::string path = uri.to_path();
+  struct dirent** paths;
+  // scandir to traverse sorted objects, so we can invoke callback directly.
+  int path_num = scandir(path.c_str(), &paths, NULL, alphasort);
+  if (path_num < 0) {
+    throw std::runtime_error(
+        std::string("Cannot list files in directory '") + path + "'; " +
+        strerror(errno));
+  }
+  // Free memory allocated by scandir when we leave scope.
+  ScopedExecutor scoped_executor([&]() {
+    for (int i = 0; i < path_num; i++) {
+      free(paths[i]);
+    }
+    free(paths);
+  });
+
+  for (int i = 0; i < path_num; i++) {
+    auto next_path = paths[i];
+    if (!strcmp(next_path->d_name, ".") || !strcmp(next_path->d_name, "..")) {
+      continue;
+    }
+    std::string abspath = path + "/" + next_path->d_name;
+
+    // Getting the file size here incurs an additional system call
+    // via file_size() and ls() calls will feel this too.
+    // If this penalty becomes noticeable, we should just duplicate
+    // this implementation in ls() and don't get the size
+    if (next_path->d_type == DT_DIR) {
+      if (!ls_with_sizes_cb(URI(abspath), cb, data, recursive)) {
+        // Traversal was stopped by the callback.
+        return false;
+      }
+    } else {
+      uint64_t size;
+      throw_if_not_ok(file_size(abspath, &size));
+      URI path_uri(abspath);
+      int rc = cb(path_uri.c_str(), path_uri.to_string().size(), size, data);
+      if (rc == -1) {
+        throw std::runtime_error(
+            std::string("Error in user callback for path ") + abspath);
+      }
+      if (rc != 1) {
+        // Send the callback signal to stop traversal up the call stack.
+        return false;
+      }
+    }
+  }
+  // Finished traversal for this dir, but the callback did not signal to stop.
+  return true;
 }
 
 Status Posix::move_path(
