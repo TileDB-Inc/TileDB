@@ -34,6 +34,7 @@
 #include <type_traits>
 #include <variant>
 #include "experimental/tiledb/common/dag/edge/edge.h"
+#include "experimental/tiledb/common/dag/nodes/detail/segmented/edge_node_ctad.h"
 #include "experimental/tiledb/common/dag/nodes/generators.h"
 #include "experimental/tiledb/common/dag/nodes/segmented_nodes.h"
 #include "experimental/tiledb/common/dag/nodes/terminals.h"
@@ -152,6 +153,13 @@ size_t dummy_function(size_t) {
 void dummy_sink(size_t) {
 }
 
+size_t dummy_const_function(const size_t&) {
+  return size_t{};
+}
+
+void dummy_const_sink(const size_t&) {
+}
+
 class dummy_source_class {
  public:
   size_t operator()(std::stop_source&) {
@@ -258,6 +266,24 @@ TEMPLATE_TEST_CASE(
     P b{dummy_source};
     C c{dummy_sink};
     Edge g{*b, *c};
+  }
+
+  SECTION("function with const reference") {
+    P b{dummy_source};
+    C c{dummy_const_sink};
+    Edge g{*b, *c};
+  }
+
+  SECTION("function, no star") {
+    P b{dummy_source};
+    C c{dummy_sink};
+    Edge g{b, c};
+  }
+
+  SECTION("function with const reference, no star") {
+    P b{dummy_source};
+    C c{dummy_const_sink};
+    Edge g{b, c};
   }
 
   SECTION("lambda") {
