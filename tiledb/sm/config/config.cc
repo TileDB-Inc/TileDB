@@ -211,7 +211,6 @@ const std::string Config::VFS_S3_CA_PATH = "";
 const std::string Config::VFS_S3_CONNECT_TIMEOUT_MS = "10800";
 const std::string Config::VFS_S3_CONNECT_MAX_TRIES = "5";
 const std::string Config::VFS_S3_CONNECT_SCALE_FACTOR = "25";
-const std::string Config::VFS_S3_CUSTOM_HEADERS_;
 const std::string Config::VFS_S3_SSE = "";
 const std::string Config::VFS_S3_SSE_KMS_KEY_ID = "";
 const std::string Config::VFS_S3_REQUEST_TIMEOUT_MS = "3000";
@@ -457,7 +456,6 @@ const std::map<std::string, std::string> default_config_values = {
         "vfs.s3.connect_max_tries", Config::VFS_S3_CONNECT_MAX_TRIES),
     std::make_pair(
         "vfs.s3.connect_scale_factor", Config::VFS_S3_CONNECT_SCALE_FACTOR),
-    std::make_pair("vfs.s3.custom_headers.", Config::VFS_S3_CUSTOM_HEADERS_),
     std::make_pair("vfs.s3.sse", Config::VFS_S3_SSE),
     std::make_pair("vfs.s3.sse_kms_key_id", Config::VFS_S3_SSE_KMS_KEY_ID),
     std::make_pair(

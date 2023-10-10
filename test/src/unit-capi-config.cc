@@ -727,7 +727,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.s3.connect_timeout_ms"] = "10800";
   all_param_values["vfs.s3.connect_max_tries"] = "5";
   all_param_values["vfs.s3.connect_scale_factor"] = "25";
-  all_param_values["vfs.s3.custom_headers."] = "";
   all_param_values["vfs.s3.sse"] = "";
   all_param_values["vfs.s3.sse_kms_key_id"] = "";
   all_param_values["vfs.s3.logging_level"] = "Off";
@@ -796,7 +795,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["s3.connect_timeout_ms"] = "10800";
   vfs_param_values["s3.connect_max_tries"] = "5";
   vfs_param_values["s3.connect_scale_factor"] = "25";
-  vfs_param_values["s3.custom_headers."] = "";
   vfs_param_values["s3.sse"] = "";
   vfs_param_values["s3.sse_kms_key_id"] = "";
   vfs_param_values["s3.logging_level"] = "Off";
@@ -860,7 +858,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   s3_param_values["connect_timeout_ms"] = "10800";
   s3_param_values["connect_max_tries"] = "5";
   s3_param_values["connect_scale_factor"] = "25";
-  s3_param_values["custom_headers."] = "";
   s3_param_values["sse"] = "";
   s3_param_values["sse_kms_key_id"] = "";
   s3_param_values["logging_level"] = "Off";

@@ -133,7 +133,7 @@ struct S3Parameters {
       , connect_max_tries_(
             config.get<int64_t>("vfs.s3.connect_max_tries", Config::must_find))
       , connect_scale_factor_(config.get<int64_t>(
-            "vfs.s3.connect_scale_factor", Config::must_find))]
+            "vfs.s3.connect_scale_factor", Config::must_find))
       , custom_headers_(load_headers(config))
       , logging_level_(
             config.get<std::string>("vfs.s3.logging_level", Config::must_find))
