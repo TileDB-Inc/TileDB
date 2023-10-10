@@ -1705,8 +1705,18 @@ Status query_from_capnp(
     uint8_t* existing_validity_buffer = nullptr;
     uint64_t existing_validity_buffer_size = 0;
 
-    auto var_size = schema.var_size(name);
-    auto nullable = schema.is_nullable(name);
+    // TODO: This is yet another instance where there needs to be a common
+    // mechanism for reporting the common properties of a field.
+    // Refactor to use query_field_t.
+    bool var_size = false;
+    bool nullable = false;
+    if (query->is_aggregate(name)) {
+      var_size = query->get_aggregate(name)->var_sized();
+      nullable = query->get_aggregate(name)->nullable();
+    } else {
+      var_size = schema.var_size(name);
+      nullable = schema.is_nullable(name);
+    }
     const QueryBuffer& query_buffer = query->buffer(name);
     if (type == QueryType::READ) {
       // We use the query_buffer directly in order to get the original buffer

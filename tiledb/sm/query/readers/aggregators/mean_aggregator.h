@@ -76,6 +76,11 @@ class MeanAggregator : public OutputBufferValidator, public IAggregator {
     return false;
   };
 
+  /** Returns if the aggregation is nullable or not. */
+  bool nullable() override {
+    return field_info_.is_nullable_;
+  }
+
   /** Returns if the aggregate needs to be recomputed on overflow. */
   bool need_recompute_on_overflow() override {
     return true;

@@ -36,6 +36,7 @@
 #include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 
+//
 const tiledb_channel_operator_handle_t* tiledb_channel_operator_sum =
     tiledb_channel_operator_handle_t::make_handle(
         tiledb::sm::constants::aggregate_sum_str);

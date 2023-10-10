@@ -72,6 +72,11 @@ class NullCountAggregator : public OutputBufferValidator, public IAggregator {
     return false;
   };
 
+  /** Returns if the aggregation is nullable or not. */
+  bool nullable() override {
+    return false;
+  }
+
   /** Returns if the aggregate needs to be recomputed on overflow. */
   bool need_recompute_on_overflow() override {
     return true;

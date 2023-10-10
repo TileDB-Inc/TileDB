@@ -139,6 +139,11 @@ class ComparatorAggregator : public ComparatorAggregatorBase<T>,
     return ComparatorAggregatorBase<T>::field_info_.var_sized_;
   };
 
+  /** Returns if the aggregation is nullable or not. */
+  bool nullable() override {
+    return ComparatorAggregatorBase<T>::field_info_.is_nullable_;
+  }
+
   /** Returns if the aggregate needs to be recomputed on overflow. */
   bool need_recompute_on_overflow() override {
     return false;

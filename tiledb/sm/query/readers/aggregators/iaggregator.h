@@ -67,6 +67,9 @@ class IAggregator {
   /** Returns if the aggregation is var sized or not. */
   virtual bool var_sized() = 0;
 
+  /** Returns if the aggregation is nullable or not. */
+  virtual bool nullable() = 0;
+
   /**
    * Validate the result buffer.
    *
