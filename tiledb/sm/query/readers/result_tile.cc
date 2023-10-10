@@ -762,10 +762,7 @@ void ResultTile::compute_results_sparse(
     unsigned dim_idx,
     const Range& range,
     std::vector<uint8_t>* result_bitmap,
-    const Layout& cell_order) {
-  // We do not use `cell_order` for this template type.
-  (void)cell_order;
-
+    const Layout&) {
   // For easy reference.
   auto coords_num = result_tile->cell_num();
   auto r = (const T*)range.data();
@@ -1051,12 +1048,9 @@ void ResultTile::compute_results_count_sparse(
     const NDRange& ranges,
     const std::vector<uint64_t>& range_indexes,
     std::vector<BitmapType>& result_count,
-    const Layout& cell_order,
+    const Layout&,
     const uint64_t min_cell,
     const uint64_t max_cell) {
-  // We don't use cell_order for this template type.
-  (void)cell_order;
-
   // For easy reference.
   auto stores_zipped_coords = result_tile->stores_zipped_coords();
   auto dim_num = result_tile->domain()->dim_num();

@@ -193,14 +193,7 @@ std::string Posix::current_dir() {
 
 // TODO: it maybe better to use unlinkat for deeply nested recursive directories
 // but the path name length limit in TileDB may make this unnecessary
-int Posix::unlink_cb(
-    const char* fpath,
-    const struct stat* sb,
-    int typeflag,
-    struct FTW* ftwbuf) {
-  (void)sb;
-  (void)typeflag;
-  (void)ftwbuf;
+int Posix::unlink_cb(const char* fpath, const struct stat*, int, struct FTW*) {
   int rc = remove(fpath);
   if (rc)
     perror(fpath);

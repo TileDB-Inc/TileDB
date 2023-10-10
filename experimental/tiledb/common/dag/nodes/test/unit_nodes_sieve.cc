@@ -515,8 +515,8 @@ auto sieve_async_block(
      * Connect the nodes in the graph.  We try to keep the edges from going out
      * of scope by putting them into a vector.
      */
-    edges.emplace_back(std::move(
-        Edge(std::get<0>(graph.back()), std::get<1>(graph.back()), debug)));
+    edges.emplace_back(
+        std::move(Edge(std::get<0>(graph.back()), std::get<1>(graph.back()))));
     edges.emplace_back(
         std::move(Edge(std::get<1>(graph.back()), std::get<2>(graph.back()))));
     edges.emplace_back(

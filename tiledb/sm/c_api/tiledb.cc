@@ -3468,11 +3468,8 @@ int32_t tiledb_deserialize_array(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side,
+    int32_t,
     tiledb_array_t** array) {
-  // Currently unused:
-  (void)client_side;
-
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3561,15 +3558,8 @@ int32_t tiledb_deserialize_array_schema(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side,
+    int32_t,
     tiledb_array_schema_t** array_schema) {
-  // Currently unused:
-  (void)client_side;
-
-  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
-
   api::ensure_buffer_is_valid(buffer);
 
   // Create array schema struct
@@ -3599,11 +3589,10 @@ int32_t tiledb_serialize_array_open(
     tiledb_ctx_t* ctx,
     const tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side,
+    int32_t,
     tiledb_buffer_t** buffer) {
   // Currently no different behaviour is required if array open is serialized by
   // the client or the Cloud server, so the variable is unused
-  (void)client_side;
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array) == TILEDB_ERR) {
@@ -3631,11 +3620,10 @@ int32_t tiledb_deserialize_array_open(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side,
+    int32_t,
     tiledb_array_t** array) {
   // Currently no different behaviour is required if array open is deserialized
-  // by the client or the Cloud server, so the variable is unused
-  (void)client_side;
+  // by the client or the Cloud server
 
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR) {
@@ -3726,11 +3714,8 @@ int32_t tiledb_deserialize_array_schema_evolution(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side,
+    int32_t,
     tiledb_array_schema_evolution_t** array_schema_evolution) {
-  // Currently unused:
-  (void)client_side;
-
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3909,11 +3894,8 @@ int32_t tiledb_serialize_array_nonempty_domain(
     const void* nonempty_domain,
     int32_t is_empty,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side,
+    int32_t,
     tiledb_buffer_t** buffer) {
-  // Currently unused:
-  (void)client_side;
-
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3942,12 +3924,9 @@ int32_t tiledb_deserialize_array_nonempty_domain(
     const tiledb_array_t* array,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side,
+    int32_t,
     void* nonempty_domain,
     int32_t* is_empty) {
-  // Currently unused:
-  (void)client_side;
-
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3971,11 +3950,8 @@ int32_t tiledb_serialize_array_non_empty_domain_all_dimensions(
     tiledb_ctx_t* ctx,
     const tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side,
+    int32_t,
     tiledb_buffer_t** buffer) {
-  // Currently unused:
-  (void)client_side;
-
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -4002,10 +3978,7 @@ int32_t tiledb_deserialize_array_non_empty_domain_all_dimensions(
     tiledb_array_t* array,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side) {
-  // Currently unused:
-  (void)client_side;
-
+    int32_t) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -4323,11 +4296,11 @@ int32_t tiledb_serialize_fragment_info_request(
     tiledb_ctx_t* ctx,
     const tiledb_fragment_info_t* fragment_info,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side,
+    int32_t,
     tiledb_buffer_t** buffer) {
   // Currently no different behaviour is required if fragment info request is
-  // serialized by the client or the Cloud server, so the variable is unused
-  (void)client_side;
+  // serialized by the client or the Cloud server
+
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, fragment_info) == TILEDB_ERR) {
@@ -4355,11 +4328,10 @@ int32_t tiledb_deserialize_fragment_info_request(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side,
+    int32_t,
     tiledb_fragment_info_t* fragment_info) {
   // Currently no different behaviour is required if fragment info request is
-  // serialized by the client or the Cloud server, so the variable is unused
-  (void)client_side;
+  // serialized by the client or the Cloud server
 
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
@@ -4417,11 +4389,10 @@ int32_t tiledb_deserialize_fragment_info(
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     const char* array_uri,
-    int32_t client_side,
+    int32_t,
     tiledb_fragment_info_t* fragment_info) {
   // Currently no different behaviour is required if fragment info is
-  // deserialized by the client or the Cloud server, so the variable is unused
-  (void)client_side;
+  // deserialized by the client or the Cloud server
 
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||

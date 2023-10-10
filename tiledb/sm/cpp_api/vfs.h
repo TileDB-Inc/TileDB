@@ -684,8 +684,7 @@ inline uint64_t VFSFilebuf::file_size() const {
     return 0;
   try {
     return vfs_.get().file_size(uri_);
-  } catch (TileDBError& e) {
-    (void)e;
+  } catch (TileDBError&) {
     return 0;
   }
 }

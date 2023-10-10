@@ -3633,11 +3633,10 @@ Status FragmentMetadata::load_v3_or_higher(
 }
 
 Status FragmentMetadata::load_footer(
-    const EncryptionKey& encryption_key,
+    const EncryptionKey&,
     Tile* fragment_metadata_tile,
     uint64_t offset,
     std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas) {
-  (void)encryption_key;  // Not used for now, perhaps in the future
   std::lock_guard<std::mutex> lock(mtx_);
 
   if (loaded_metadata_.footer_)
@@ -4634,8 +4633,7 @@ void FragmentMetadata::write_has_delete_meta(Serializer& serializer) const {
   serializer.write<char>(has_delete_meta_);
 }
 
-Status FragmentMetadata::store_footer(const EncryptionKey& encryption_key) {
-  (void)encryption_key;  // Not used for now, maybe in the future
+Status FragmentMetadata::store_footer(const EncryptionKey&) {
   SizeComputationSerializer size_computation_serializer;
   RETURN_NOT_OK(write_footer(size_computation_serializer));
   WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
