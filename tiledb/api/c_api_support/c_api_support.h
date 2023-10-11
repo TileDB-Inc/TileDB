@@ -38,5 +38,6 @@
 
 #include "argument_validation.h"
 #include "tiledb/api/c_api_support/exception_wrapper/exception_wrapper.h"
+#include "tiledb/api/c_api_support/exception_wrapper/hook.h"
 
 #endif  // TILEDB_CAPI_SUPPORT_H

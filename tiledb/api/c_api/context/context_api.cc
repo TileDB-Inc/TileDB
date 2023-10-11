@@ -138,11 +138,9 @@ using tiledb::api::api_entry_with_context;
 /*
  * API Audit: No channel to return error message (failure code only)
  */
-capi_return_t tiledb_ctx_alloc(
-    tiledb_config_handle_t* config, tiledb_ctx_handle_t** ctx) noexcept {
-  return tiledb::api::api_entry_plain<tiledb::api::tiledb_ctx_alloc>(
-      config, ctx);
-}
+CAPI_PLAIN_BEGIN(
+    ctx_alloc, tiledb_config_handle_t* config, tiledb_ctx_handle_t** ctx)
+CAPI_PLAIN_END(config, ctx)
 
 /*
  * We have a special case with tiledb_ctx_alloc_with_error. It's declared in
@@ -156,57 +154,42 @@ capi_return_t tiledb_ctx_alloc(
  */
 extern "C" {
 
-capi_return_t tiledb_ctx_alloc_with_error(
+CAPI_ERROR_BEGIN_X(
+    ctx_alloc_with_error,
+    ctx_alloc,
     tiledb_config_handle_t* config,
-    tiledb_ctx_handle_t** ctx,
-    tiledb_error_handle_t** error) noexcept {
-  /*
-   * Wrapped with the `api_entry_error` variation. Note that the same function
-   * is wrapped with `api_entry_plain` above.
-   */
-  return tiledb::api::api_entry_error<tiledb::api::tiledb_ctx_alloc>(
-      error, config, ctx);
-}
+    tiledb_ctx_handle_t** ctx)
+CAPI_ERROR_END(config, ctx)
 
 }  // extern "C"
 
 /*
  * API Audit: void return
  */
-void tiledb_ctx_free(tiledb_ctx_handle_t** ctx) noexcept {
-  return tiledb::api::api_entry_void<tiledb::api::tiledb_ctx_free>(ctx);
-}
+CAPI_VOID_BEGIN(ctx_free, tiledb_ctx_handle_t** ctx)
+CAPI_VOID_END(ctx)
 
-capi_return_t tiledb_ctx_get_stats(
-    tiledb_ctx_t* ctx, char** stats_json) noexcept {
-  return api_entry_with_context<tiledb::api::tiledb_ctx_get_stats>(
-      ctx, stats_json);
-}
+CAPI_WITH_CONTEXT_BEGIN(ctx_get_stats, tiledb_ctx_t* ctx, char** stats_json)
+CAPI_WITH_CONTEXT_END(ctx, stats_json)
 
-capi_return_t tiledb_ctx_get_config(
-    tiledb_ctx_t* ctx, tiledb_config_handle_t** config) noexcept {
-  return api_entry_with_context<tiledb::api::tiledb_ctx_get_config>(
-      ctx, config);
-}
+CAPI_WITH_CONTEXT_BEGIN(
+    ctx_get_config, tiledb_ctx_t* ctx, tiledb_config_handle_t** config)
+CAPI_WITH_CONTEXT_END(ctx, config)
 
-capi_return_t tiledb_ctx_get_last_error(
-    tiledb_ctx_t* ctx, tiledb_error_handle_t** err) noexcept {
-  return api_entry_with_context<tiledb::api::tiledb_ctx_get_last_error>(
-      ctx, err);
-}
+CAPI_WITH_CONTEXT_BEGIN(
+    ctx_get_last_error, tiledb_ctx_t* ctx, tiledb_error_handle_t** err)
+CAPI_WITH_CONTEXT_END(ctx, err)
 
-capi_return_t tiledb_ctx_is_supported_fs(
-    tiledb_ctx_t* ctx, tiledb_filesystem_t fs, int32_t* is_supported) noexcept {
-  return api_entry_with_context<tiledb::api::tiledb_ctx_is_supported_fs>(
-      ctx, fs, is_supported);
-}
+CAPI_WITH_CONTEXT_BEGIN(
+    ctx_is_supported_fs,
+    tiledb_ctx_t* ctx,
+    tiledb_filesystem_t fs,
+    int32_t* is_supported)
+CAPI_WITH_CONTEXT_END(ctx, fs, is_supported)
 
-capi_return_t tiledb_ctx_cancel_tasks(tiledb_ctx_t* ctx) noexcept {
-  return api_entry_with_context<tiledb::api::tiledb_ctx_cancel_tasks>(ctx);
-}
+CAPI_WITH_CONTEXT_BEGIN(ctx_cancel_tasks, tiledb_ctx_t* ctx)
+CAPI_WITH_CONTEXT_END(ctx)
 
-capi_return_t tiledb_ctx_set_tag(
-    tiledb_ctx_t* ctx, const char* key, const char* value) noexcept {
-  return api_entry_with_context<tiledb::api::tiledb_ctx_set_tag>(
-      ctx, key, value);
-}
+CAPI_WITH_CONTEXT_BEGIN(
+    ctx_set_tag, tiledb_ctx_t* ctx, const char* key, const char* value)
+CAPI_WITH_CONTEXT_END(ctx, key, value)

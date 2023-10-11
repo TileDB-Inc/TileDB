@@ -514,18 +514,25 @@ using ExceptionActionCtxErr = detail::ExceptionActionDetailCtxErr;
 //-------------------------------------------------------
 // Exception wrapper
 //-------------------------------------------------------
+template<auto f>
+class CAPIFunctionNullAspect {
+ public:
+  template<typename... Args>
+  static void apply(Args...) {}
+};
+
 /**
  * Non-specialized wrapper for implementations functions for the C API. May
  * only be used as a specialization.
  */
-template <auto f, class H>
+template <auto f, class H, class A = CAPIFunctionNullAspect<f>>
 class CAPIFunction;
 
 /**
  * Wrapper for implementations functions for the C API
  */
-template <class... Args, capi_return_t (*f)(Args...), class H>
-class CAPIFunction<f, H> {
+template <class... Args, capi_return_t (*f)(Args...), class H, class A>
+class CAPIFunction<f, H, A> {
  public:
   /**
    * Forwarded alias to template parameter H.
@@ -561,6 +568,8 @@ class CAPIFunction<f, H> {
        * Note that we don't need std::forward here because all the arguments
        * must have "C" linkage.
        */
+      //-------------------------------------------------------
+      A::apply(f, args...);
       auto x{f(args...)};
       h.action_on_success();
       return x;

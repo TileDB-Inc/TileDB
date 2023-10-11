@@ -28,7 +28,8 @@ include(unit_test)
 commence(unit_test capi_exception_wrapper)
   this_target_sources(
       unit_capi_exception_wrapper.cc
-      unit_capi_error_tree.cc)
+      unit_capi_error_tree.cc
+      unit_capi_hook.cc)
   this_target_object_libraries(
       # The exception wrapper is wrapped up with the context, so that's the
       # top-level dependency required for the test.
