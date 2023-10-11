@@ -2199,6 +2199,44 @@ capi_return_t tiledb_query_condition_set_use_enumeration(
 }
 
 /* ****************************** */
+/*      Array Serialization       */
+/* ****************************** */
+capi_return_t tiledb_deserialize_array_delete_fragments_timestamps_request(
+    tiledb_ctx_t* ctx,
+    tiledb_serialization_type_t serialize_type,
+    const tiledb_buffer_t* buffer) {
+  api::ensure_buffer_is_valid(buffer);
+
+  // Deserialize buffer
+  auto [uri_str, timestamp_start, timestamp_end] =
+      tiledb::sm::serialization::fragments_timestamps_deserialize(
+          (tiledb::sm::SerializationType)serialize_type, buffer->buffer());
+
+  return tiledb_array_delete_fragments_v2(
+      ctx, uri_str, timestamp_start, timestamp_end);
+}
+
+capi_return_t tiledb_deserialize_array_delete_fragments_list_request(
+    tiledb_ctx_t* ctx,
+    tiledb_serialization_type_t serialize_type,
+    const tiledb_buffer_t* buffer) {
+  api::ensure_buffer_is_valid(buffer);
+
+  // Deserialize buffer
+  auto [uri_str, uris] = tiledb::sm::serialization::fragments_list_deserialize(
+      (tiledb::sm::SerializationType)serialize_type, buffer->buffer());
+
+  const size_t num_fragments = uris.size();
+  const char* fragment_uris[num_fragments];
+  for (size_t i = 0; i < num_fragments; i++) {
+    fragment_uris[i] = uris[i].c_str();
+  }
+
+  return tiledb_array_delete_fragments_list(
+      ctx, uri_str, fragment_uris, num_fragments);
+}
+
+/* ****************************** */
 /*              ARRAY             */
 /* ****************************** */
 
@@ -2406,16 +2444,24 @@ capi_return_t tiledb_array_delete_fragments_v2(
   try {
     array->array_->delete_fragments(uri, timestamp_start, timestamp_end);
   } catch (...) {
-    throw_if_not_ok(array->array_->close());
+    auto st = array->array_->close();
     delete array;
     array = nullptr;
-    throw api::CAPIStatusException("Failed to delete fragments");
+    if (!st.ok()) {
+      throw api::CAPIStatusException(
+          "Failed to delete fragments and close array. " + st.to_string());
+    } else {
+      throw api::CAPIStatusException("Failed to delete fragments");
+    }
   }
 
   // Close and delete the array
-  throw_if_not_ok(array->array_->close());
+  auto st = array->array_->close();
   delete array;
   array = nullptr;
+  if (!st.ok()) {
+    throw api::CAPIStatusException("Failed to close array. " + st.to_string());
+  }
 
   return TILEDB_OK;
 }
@@ -2472,16 +2518,24 @@ capi_return_t tiledb_array_delete_fragments_list(
   try {
     array->array_->delete_fragments_list(uri, uris);
   } catch (...) {
-    throw_if_not_ok(array->array_->close());
+    auto st = array->array_->close();
     delete array;
     array = nullptr;
-    throw api::CAPIStatusException("Failed to delete fragments_list");
+    if (!st.ok()) {
+      throw api::CAPIStatusException(
+          "Failed to delete fragments_list and close array. " + st.to_string());
+    } else {
+      throw api::CAPIStatusException("Failed to delete fragments_list");
+    }
   }
 
-  // Close the array
-  throw_if_not_ok(array->array_->close());
+  // Close and delete the array
+  auto st = array->array_->close();
   delete array;
   array = nullptr;
+  if (!st.ok()) {
+    throw api::CAPIStatusException("Failed to close array. " + st.to_string());
+  }
 
   return TILEDB_OK;
 }
@@ -4018,115 +4072,6 @@ int32_t tiledb_serialize_array_max_buffer_sizes(
   }
 
   *buffer = buf;
-
-  return TILEDB_OK;
-}
-
-capi_return_t tiledb_deserialize_array_delete_fragments_timestamps_request(
-    tiledb_ctx_t* ctx,
-    tiledb_serialization_type_t serialize_type,
-    const tiledb_buffer_t* buffer) {
-  api::ensure_buffer_is_valid(buffer);
-
-  // Deserialize buffer
-  auto [uri_str, timestamp_start, timestamp_end] =
-      tiledb::sm::serialization::fragments_timestamps_deserialize(
-          (tiledb::sm::SerializationType)serialize_type, buffer->buffer());
-
-  auto uri = tiledb::sm::URI(uri_str);
-  if (uri.is_invalid()) {
-    throw api::CAPIStatusException(
-        "Failed to delete fragments; Invalid input uri");
-  }
-
-  // Allocate an array object
-  tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
-  try {
-    array->array_ =
-        make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
-  } catch (...) {
-    delete array;
-    array = nullptr;
-    throw api::CAPIStatusException("Failed to create array");
-  }
-
-  // Set array open timestamps
-  array->array_->set_timestamp_start(timestamp_start);
-  array->array_->set_timestamp_end(timestamp_end);
-
-  // Open the array for exclusive modification
-  throw_if_not_ok(array->array_->open(
-      static_cast<tiledb::sm::QueryType>(TILEDB_MODIFY_EXCLUSIVE),
-      static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
-      nullptr,
-      0));
-
-  // Delete fragments
-  try {
-    array->array_->delete_fragments(uri, timestamp_start, timestamp_end);
-  } catch (...) {
-    throw_if_not_ok(array->array_->close());
-    delete array;
-    array = nullptr;
-    throw api::CAPIStatusException("Failed to delete fragments");
-  }
-
-  // Close and delete the array
-  throw_if_not_ok(array->array_->close());
-  delete array;
-  array = nullptr;
-
-  return TILEDB_OK;
-}
-
-capi_return_t tiledb_deserialize_array_delete_fragments_list_request(
-    tiledb_ctx_t* ctx,
-    tiledb_serialization_type_t serialize_type,
-    const tiledb_buffer_t* buffer) {
-  api::ensure_buffer_is_valid(buffer);
-
-  // Deserialize buffer
-  auto [uri_str, uris] = tiledb::sm::serialization::fragments_list_deserialize(
-      (tiledb::sm::SerializationType)serialize_type, buffer->buffer());
-
-  auto uri = tiledb::sm::URI(uri_str);
-  if (uri.is_invalid()) {
-    throw api::CAPIStatusException(
-        "Failed to delete_fragments_list; Invalid input uri");
-  }
-
-  // Allocate an array object
-  tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
-  try {
-    array->array_ =
-        make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
-  } catch (...) {
-    delete array;
-    array = nullptr;
-    throw api::CAPIStatusException("Failed to create array");
-  }
-
-  // Open the array for exclusive modification
-  throw_if_not_ok(array->array_->open(
-      static_cast<tiledb::sm::QueryType>(TILEDB_MODIFY_EXCLUSIVE),
-      static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
-      nullptr,
-      0));
-
-  // Delete fragments list
-  try {
-    array->array_->delete_fragments_list(uri, uris);
-  } catch (...) {
-    throw_if_not_ok(array->array_->close());
-    delete array;
-    array = nullptr;
-    throw api::CAPIStatusException("Failed to delete fragments_list");
-  }
-
-  // Close and delete the array
-  throw_if_not_ok(array->array_->close());
-  delete array;
-  array = nullptr;
 
   return TILEDB_OK;
 }
