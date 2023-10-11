@@ -59,8 +59,17 @@ void query_aggregates_to_capnp(
     for (const auto& agg : default_channel_aggregates) {
       auto aggregate_builder = aggregates_builder[i];
       aggregate_builder.setOutputFieldName(agg.first);
-      aggregate_builder.setInputFieldName(agg.second->field_name());
       aggregate_builder.setName(agg.second->aggregate_name());
+      // TODO: This is a bug which I merely propagate/workaround here, it should
+      // be fixed in a followup work item. Currently COUNT reports that its
+      // field name is constants::count_of_rows and NULL_COUNT reports
+      // field_info_.name_ which doesn't even exist. This causes deserialization
+      // code to crash because an input field is always assumed to exist, so
+      // deserialization calls some array schema functions on it.
+      if (agg.second->aggregate_name() != constants::aggregate_count_str &&
+          agg.second->aggregate_name() != constants::aggregate_null_count_str) {
+        aggregate_builder.setInputFieldName(agg.second->field_name());
+      }
       ++i;
     }
   }
@@ -86,23 +95,36 @@ void query_aggregates_from_capnp(
       if (segment_reader.hasAggregates()) {
         auto aggregates_reader = segment_reader.getAggregates();
         for (const auto& aggregate : aggregates_reader) {
-          if (aggregate.hasOutputFieldName() && aggregate.hasInputFieldName() &&
-              aggregate.hasName()) {
+          if (aggregate.hasOutputFieldName() && aggregate.hasName()) {
             auto output_field = aggregate.getOutputFieldName();
-            auto input_field = aggregate.getInputFieldName();
             auto name = aggregate.getName();
 
-            auto& schema = query->array_schema();
-            auto fi = tiledb::sm::FieldInfo(
-                input_field,
-                schema.var_size(input_field),
-                schema.is_nullable(input_field),
-                schema.cell_val_num(input_field),
-                schema.type(input_field));
+            // TODO: This is a bug which I merely propagate/workaround here, it
+            // should be fixed in a followup work item. Currently COUNT reports
+            // that its field name is constants::count_of_rows and NULL_COUNT
+            // reports field_info_.name_ which doesn't even exist. This causes
+            // deserialization code to crash because an input field is always
+            // assumed to exist, so deserialization calls some array schema
+            // functions on it.
+            if (aggregate.hasInputFieldName()) {
+              auto input_field = aggregate.getInputFieldName();
+              auto& schema = query->array_schema();
 
-            auto operation = Operation::make_operation(name, fi);
-            query->add_aggregator_to_default_channel(
-                output_field, operation->aggregator());
+              auto fi = tiledb::sm::FieldInfo(
+                  input_field,
+                  schema.var_size(input_field),
+                  schema.is_nullable(input_field),
+                  schema.cell_val_num(input_field),
+                  schema.type(input_field));
+
+              auto operation = Operation::make_operation(name, fi);
+              query->add_aggregator_to_default_channel(
+                  output_field, operation->aggregator());
+            } else {
+              auto operation = Operation::make_operation(name, nullopt);
+              query->add_aggregator_to_default_channel(
+                  output_field, operation->aggregator());
+            }
           }
         }
       }

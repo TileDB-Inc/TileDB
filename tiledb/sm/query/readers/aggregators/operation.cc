@@ -35,13 +35,13 @@
 namespace tiledb::sm {
 
 shared_ptr<Operation> Operation::make_operation(
-    const std::string& name, const tiledb::sm::FieldInfo& fi) {
+    const std::string& name, const std::optional<tiledb::sm::FieldInfo>& fi) {
   if (name == constants::aggregate_sum_str) {
-    return common::make_shared<SumOperation>(HERE(), fi);
+    return common::make_shared<SumOperation>(HERE(), fi.value());
   } else if (name == constants::aggregate_min_str) {
-    return common::make_shared<MinOperation>(HERE(), fi);
+    return common::make_shared<MinOperation>(HERE(), fi.value());
   } else if (name == constants::aggregate_max_str) {
-    return common::make_shared<MaxOperation>(HERE(), fi);
+    return common::make_shared<MaxOperation>(HERE(), fi.value());
   } else if (name == constants::aggregate_count_str) {
     return common::make_shared<CountOperation>(HERE());
   }

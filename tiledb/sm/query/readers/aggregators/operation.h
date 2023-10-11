@@ -52,7 +52,7 @@ class Operation {
     return aggregator_;
   }
   static shared_ptr<Operation> make_operation(
-      const std::string& name, const tiledb::sm::FieldInfo& fi);
+      const std::string& name, const std::optional<tiledb::sm::FieldInfo>& fi);
 };
 
 class MinOperation : public Operation {
