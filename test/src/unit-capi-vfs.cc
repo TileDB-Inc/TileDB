@@ -981,10 +981,10 @@ TEST_CASE_METHOD(
 
   DYNAMIC_SECTION("Testing ls_recursive over " << fs_name() << " backend") {
     // C callback with a custom filter to be used for remaining SECTIONS.
-    LsCallback callback = [](const char* path,
-                             size_t path_len,
-                             uint64_t object_size,
-                             void* data) -> int32_t {
+    tiledb_ls_callback_t callback = [](const char* path,
+                                       size_t path_len,
+                                       uint64_t object_size,
+                                       void* data) -> int32_t {
       auto ls_data = static_cast<LsRecursiveData*>(data);
       if (ls_data->filter_({path, path_len})) {
         // stop gathering results if either buffer overflows.

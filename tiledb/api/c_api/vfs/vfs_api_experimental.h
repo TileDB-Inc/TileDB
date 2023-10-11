@@ -49,7 +49,7 @@ extern "C" {
  * @param object_size The size of the object at the current path.
  * @param data Data passed to the callback used to store collected results.
  */
-typedef int32_t (*LsCallback)(
+typedef int32_t (*tiledb_ls_callback_t)(
     const char* path, size_t path_len, uint64_t object_size, void* data);
 
 /**
@@ -91,7 +91,7 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_ls_recursive(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* path,
-    LsCallback callback,
+    tiledb_ls_callback_t callback,
     void* data) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus

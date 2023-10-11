@@ -55,8 +55,7 @@ class VFSExperimental {
    *    If an error is thrown, the callback will stop and the error will be
    *    propagated to the caller using std::throw_with_nested.
    */
-  typedef std::function<bool(const std::string_view&, uint64_t)>
-      LsGatherCallback;
+  typedef std::function<bool(const std::string_view&, uint64_t)> LsCallback;
 
   /**
    * Typedef for ls inclusion predicate function used to check if a single
@@ -97,7 +96,7 @@ class VFSExperimental {
       const Context& ctx,
       const VFS& vfs,
       const std::string& uri,
-      LsGatherCallback cb) {
+      LsCallback cb) {
     CallbackWrapper wrapper(cb);
     ctx.handle_error(tiledb_vfs_ls_recursive(
         ctx.ptr().get(),
@@ -148,7 +147,7 @@ class VFSExperimental {
   /** Private class to wrap C++ callback for passing to the C API. */
   class CallbackWrapper {
    public:
-    CallbackWrapper(LsGatherCallback& cb)
+    CallbackWrapper(LsCallback& cb)
         : cb_(cb) {
     }
 
@@ -157,7 +156,7 @@ class VFSExperimental {
     }
 
    private:
-    LsGatherCallback& cb_;
+    LsCallback& cb_;
   };
 
   /* ********************************* */

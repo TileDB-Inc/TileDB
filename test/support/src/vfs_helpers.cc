@@ -511,8 +511,7 @@ void VfsFixture::test_ls_recursive_filter(
 }
 
 void VfsFixture::test_ls_recursive_cb(
-    VFSExperimental::LsGatherCallback cb,
-    const VFSExperimental::LsObjects& data) {
+    VFSExperimental::LsCallback cb, const VFSExperimental::LsObjects& data) {
   VFSExperimental::ls_recursive(ctx_, vfs_, temp_dir_.to_string(), cb);
   CHECK(data.size() == expected_results_.size());
   CHECK(data == expected_results_);
@@ -523,7 +522,7 @@ std::string VfsFixture::fs_name() {
 }
 
 void VfsFixture::test_ls_recursive_capi(
-    const LsCallback& callback,
+    const tiledb_ls_callback_t& callback,
     const VFSExperimental::LsInclude& filter,
     bool filter_expected) {
   if (filter_expected) {

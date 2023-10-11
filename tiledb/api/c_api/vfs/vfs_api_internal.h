@@ -144,7 +144,9 @@ struct tiledb_vfs_handle_t
   }
 
   void ls_recursive(
-      const tiledb::sm::URI& parent, LsCallback cb, void* data) const {
+      const tiledb::sm::URI& parent,
+      tiledb_ls_callback_t cb,
+      void* data) const {
     return vfs_.ls_recursive(parent, cb, data);
   }
 

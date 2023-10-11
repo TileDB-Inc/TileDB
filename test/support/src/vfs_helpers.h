@@ -718,14 +718,14 @@ struct VfsFixture {
    * GCS, Azure, and HDFS are currently unsupported for ls_recursive.
    */
   void test_ls_recursive_capi(
-      const LsCallback& callback,
+      const tiledb_ls_callback_t& callback,
       const VFSExperimental::LsInclude& filter,
       bool filter_expected = true);
 
   std::string fs_name();
 
   void test_ls_recursive_cb(
-      VFSExperimental::LsGatherCallback const cb,
+      VFSExperimental::LsCallback const cb,
       const VFSExperimental::LsObjects& data);
 
   void create_objects(
