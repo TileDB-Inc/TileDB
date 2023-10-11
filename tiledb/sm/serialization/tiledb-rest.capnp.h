@@ -6,10 +6,15 @@
 #include <capnp/generated-header-support.h>
 #include <kj/windows-sanity.h>
 
-#if CAPNP_VERSION != 8000
+#ifndef CAPNP_VERSION
+#error \
+    "CAPNP_VERSION is not defined, is capnp/generated-header-support.h missing?"
+#elif CAPNP_VERSION != 1000001
 #error \
     "Version mismatch between generated code and library headers.  You must use the same version of the Cap'n Proto compiler and library."
 #endif
+
+CAPNP_BEGIN_HEADER
 
 namespace capnp {
 namespace schemas {
@@ -19933,16 +19938,20 @@ inline ::capnp::Orphan<Value> Map<Key, Value>::Entry::Builder::disownValue() {
 }
 
 // Map<Key, Value>::Entry
+#if CAPNP_NEED_REDUNDANT_CONSTEXPR_DECL
 template <typename Key, typename Value>
 constexpr uint16_t Map<Key, Value>::Entry::_capnpPrivate::dataWordSize;
 template <typename Key, typename Value>
 constexpr uint16_t Map<Key, Value>::Entry::_capnpPrivate::pointerCount;
+#endif  // !CAPNP_NEED_REDUNDANT_CONSTEXPR_DECL
 #if !CAPNP_LITE
+#if CAPNP_NEED_REDUNDANT_CONSTEXPR_DECL
 template <typename Key, typename Value>
 constexpr ::capnp::Kind Map<Key, Value>::Entry::_capnpPrivate::kind;
 template <typename Key, typename Value>
 constexpr ::capnp::_::RawSchema const*
     Map<Key, Value>::Entry::_capnpPrivate::schema;
+#endif  // !CAPNP_NEED_REDUNDANT_CONSTEXPR_DECL
 template <typename Key, typename Value>
 const ::capnp::_::RawBrandedSchema::Scope
     Map<Key, Value>::Entry::_capnpPrivate::brandScopes[] = {
@@ -19966,15 +19975,19 @@ const ::capnp::_::RawBrandedSchema
 #endif  // !CAPNP_LITE
 
 // Map<Key, Value>
+#if CAPNP_NEED_REDUNDANT_CONSTEXPR_DECL
 template <typename Key, typename Value>
 constexpr uint16_t Map<Key, Value>::_capnpPrivate::dataWordSize;
 template <typename Key, typename Value>
 constexpr uint16_t Map<Key, Value>::_capnpPrivate::pointerCount;
+#endif  // !CAPNP_NEED_REDUNDANT_CONSTEXPR_DECL
 #if !CAPNP_LITE
+#if CAPNP_NEED_REDUNDANT_CONSTEXPR_DECL
 template <typename Key, typename Value>
 constexpr ::capnp::Kind Map<Key, Value>::_capnpPrivate::kind;
 template <typename Key, typename Value>
 constexpr ::capnp::_::RawSchema const* Map<Key, Value>::_capnpPrivate::schema;
+#endif  // !CAPNP_NEED_REDUNDANT_CONSTEXPR_DECL
 template <typename Key, typename Value>
 const ::capnp::_::RawBrandedSchema::Scope
     Map<Key, Value>::_capnpPrivate::brandScopes[] = {
@@ -31548,3 +31561,5 @@ LoadArraySchemaResponse::Builder::disownSchema() {
 }  // namespace serialization
 }  // namespace sm
 }  // namespace tiledb
+
+CAPNP_END_HEADER

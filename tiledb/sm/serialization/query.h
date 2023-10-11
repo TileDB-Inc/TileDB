@@ -42,7 +42,7 @@
 #include "tiledb/sm/subarray/subarray.h"
 
 #ifdef TILEDB_SERIALIZATION
-#include "tiledb/sm/serialization/tiledb-rest.h"
+#include "tiledb/sm/serialization/tiledb-rest.capnp.h"
 #endif
 
 using namespace tiledb::common;

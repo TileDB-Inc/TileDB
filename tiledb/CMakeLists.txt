@@ -856,18 +856,12 @@ if(TILEDB_SERIALIZATION)
           CapnProto::kj
           )
 
-  if (WIN32)
-    set(TILEDB_SERIALIZATION_GENERATED_SUBDIR win32)
-  else()
-    set(TILEDB_SERIALIZATION_GENERATED_SUBDIR posix)
-  endif()
-
   target_sources(TILEDB_CORE_OBJECTS PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/${TILEDB_SERIALIZATION_GENERATED_SUBDIR}/tiledb-rest.capnp.c++
+    ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp.c++
   )
   if (WIN32 AND TILEDB_STATIC)
     target_sources(TILEDB_CORE_OBJECTS_STATIC PRIVATE
-      ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/${TILEDB_SERIALIZATION_GENERATED_SUBDIR}/tiledb-rest.capnp.c++
+      ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp.c++
     )
   endif()
 
@@ -879,7 +873,7 @@ if(TILEDB_SERIALIZATION)
   # support. It must be re-run whenever `tiledb-rest.capnp` is updated.
 
   set(TILEDB_SERIALIZATION_GENERATED_DIR
-      ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/${TILEDB_SERIALIZATION_GENERATED_SUBDIR})
+      ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization)
 
   # We only need to override the include path and PATH env for EP builds
   # note: We run the compiler under `cmake -E env ...` because we need to run capnp executable

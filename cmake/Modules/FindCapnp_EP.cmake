@@ -42,10 +42,10 @@ endif()
 # If the EP was built, it will install the CapnProtoConfig.cmake file, which we
 # can use with find_package.
 
-set(TILEDB_CAPNPROTO_VERSION 0.8.0)
-set(TILEDB_CAPNPROTO_GITTAG "v0.8.0")
-set(TILEDB_CAPNPROTO_HASH_SPEC "SHA1=6910b8872602c46c8b0e9692dc2889c1808a5950")
-set(TILEDB_CAPNPROTO_URL "https://github.com/capnproto/capnproto/archive/v0.8.0.tar.gz")
+set(TILEDB_CAPNPROTO_VERSION 1.0.1)
+set(TILEDB_CAPNPROTO_GITTAG "v1.0.1")
+set(TILEDB_CAPNPROTO_HASH_SPEC "SHA1=a1ae37ec1731eef93d2ce1ffa959259e26d25874")
+set(TILEDB_CAPNPROTO_URL "https://github.com/capnproto/capnproto/archive/v1.0.1.tar.gz")
 
 # First try the CMake find module.
 if (NOT TILEDB_FORCE_ALL_DEPS OR TILEDB_CAPNP_EP_BUILT)
@@ -74,10 +74,11 @@ if (NOT CAPNP_FOUND)
       find_package(Git REQUIRED)
       set(CONDITIONAL_PATCH
            cd ${CMAKE_SOURCE_DIR} &&
-           ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_capnp < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/capnp_CMakeLists.txt.patch &&
-           ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_capnp < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/windows-sanity.h.patch)
+           ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_capnp < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/disable-C-20-co-routines.patch &&
+           ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_capnp < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/undef-KJ_USE_EPOLL-for-ANDROID_PLATFORM-23.patch)
     else()
-      set(CONDITIONAL_PATCH "")
+      set(CONDITIONAL_PATCH patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/disable-C-20-co-routines.patch &&
+                            patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_capnp/undef-KJ_USE_EPOLL-for-ANDROID_PLATFORM-23.patch)
     endif()
 
     ExternalProject_Add(ep_capnp
