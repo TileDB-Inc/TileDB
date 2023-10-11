@@ -433,6 +433,7 @@ TEMPLATE_TEST_CASE(
     Edge g{*a, *b};
     Edge h{*b, *c};
   }
+
   SECTION("bind") {
     double x = 0.01;
     float y = -0.001F;

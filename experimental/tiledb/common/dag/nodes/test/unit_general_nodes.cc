@@ -328,7 +328,6 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
   }
 
 #if 0
-
   SECTION("bind") {
     double x = 0.01;
     float y = -0.001F;
