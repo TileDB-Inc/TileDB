@@ -638,11 +638,7 @@ IndexType OrderedDimLabelReader::search_for_range(
 
   // Run a binary search.
   Op cmp;
-  for (IndexType count = non_empty_domain[0]; count <= non_empty_domain[1];
-       ++count) {
-    if (right_index <= left_index + 1) {
-      goto endloop;
-    }
+  while (left_index + 1 < right_index) {
     // Check against mid.
     IndexType mid = left_index + (right_index - left_index) / 2;
     if (cmp(get_value_at<IndexType, LabelType>(mid, domain_low, tile_extent),
@@ -653,9 +649,6 @@ IndexType OrderedDimLabelReader::search_for_range(
     }
   }
 
-  throw OrderedDimLabelReaderStatusException("Binary search failed");
-
-endloop:
   // Do one last comparison to decide to return left or right. If finding the
   // smaller range value, check if the left bound is within the value range.
   // If finding the larger range value, check if the right value is within the
