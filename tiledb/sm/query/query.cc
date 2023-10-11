@@ -1602,13 +1602,6 @@ Status Query::submit() {
 
     RETURN_NOT_OK(rest_client->submit_query_to_rest(array_->array_uri(), this));
 
-    if (status_ == QueryStatus::INCOMPLETE &&
-        !default_channel_aggregates_.empty()) {
-      throw QueryStatusException(
-          "Aggregates are not currently supported in incomplete remote "
-          "queries");
-    }
-
     reset_coords_markers();
     return Status::Ok();
   }

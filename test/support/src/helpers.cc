@@ -1850,7 +1850,9 @@ int submit_query_wrapper(
   // 4. Server -> Client : Send query response
   std::vector<uint8_t> serialized2;
   rc = serialize_query(server_ctx, server_deser_query, &serialized2, 0);
-  REQUIRE(rc == TILEDB_OK);
+  if (rc != TILEDB_OK) {
+    return rc;
+  }
 
   if (!refactored_query_v2) {
     // Close array and clean up

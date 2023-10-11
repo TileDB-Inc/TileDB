@@ -658,13 +658,12 @@ TEST_CASE_METHOD(
   int rc = submit_query_wrapper(
       ctx, array_name, &query, server_buffers_, serialize_, false, false);
 
-  tiledb_query_status_t status;
-  REQUIRE(tiledb_query_get_status(ctx, query, &status) == TILEDB_OK);
-  REQUIRE(status == TILEDB_INCOMPLETE);
-
   if (serialize_) {
-    CHECK(rc == 1);
+    CHECK(rc != 0);
   } else {
+    tiledb_query_status_t status;
+    REQUIRE(tiledb_query_get_status(ctx, query, &status) == TILEDB_OK);
+    REQUIRE(status == TILEDB_INCOMPLETE);
     CHECK(rc == 0);
   }
 

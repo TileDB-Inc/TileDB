@@ -60,14 +60,13 @@ void query_aggregates_to_capnp(
       auto aggregate_builder = aggregates_builder[i];
       aggregate_builder.setOutputFieldName(agg.first);
       aggregate_builder.setName(agg.second->aggregate_name());
-      // TODO: This is a bug which I merely propagate/workaround here, it should
-      // be fixed in a followup work item. Currently COUNT reports that its
-      // field name is constants::count_of_rows and NULL_COUNT reports
-      // field_info_.name_ which doesn't even exist. This causes deserialization
+      // TODO: Currently COUNT reports that its
+      // field name is constants::count_of_rows. This causes deserialization
       // code to crash because an input field is always assumed to exist, so
-      // deserialization calls some array schema functions on it.
-      if (agg.second->aggregate_name() != constants::aggregate_count_str &&
-          agg.second->aggregate_name() != constants::aggregate_null_count_str) {
+      // deserialization calls some array schema functions on it. This should be
+      // fixed in a followup work item by making the aggregators interface
+      // return an optional field_name
+      if (agg.second->aggregate_name() != constants::aggregate_count_str) {
         aggregate_builder.setInputFieldName(agg.second->field_name());
       }
       ++i;
@@ -99,13 +98,12 @@ void query_aggregates_from_capnp(
             auto output_field = aggregate.getOutputFieldName();
             auto name = aggregate.getName();
 
-            // TODO: This is a bug which I merely propagate/workaround here, it
-            // should be fixed in a followup work item. Currently COUNT reports
-            // that its field name is constants::count_of_rows and NULL_COUNT
-            // reports field_info_.name_ which doesn't even exist. This causes
+            // TODO: Currently COUNT reports that its
+            // field name is constants::count_of_rows. This causes
             // deserialization code to crash because an input field is always
             // assumed to exist, so deserialization calls some array schema
-            // functions on it.
+            // functions on it. This should be fixed in a followup work item by
+            // making the aggregators interface return an optional field_name
             if (aggregate.hasInputFieldName()) {
               auto input_field = aggregate.getInputFieldName();
               auto& schema = query->array_schema();
