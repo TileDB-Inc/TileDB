@@ -226,19 +226,6 @@ class VFS : private VFSBase, S3_within_VFS {
     Status status;
   };
 
-  /**
-   * Typedef for the callback function invoked on each object collected by ls.
-   *
-   * @param path The path of a visited object for the relative filesystem.
-   * @param path_len The length of the path string.
-   * @param object_size The size of the object at the path.
-   * @param data Cast to LsRecursiveData struct to store paths and offsets.
-   * @return `1` if the walk should continue to the next object, `0` if the walk
-   *    should stop, and `-1` on error.
-   */
-  typedef std::function<int32_t(const char*, size_t, uint64_t, void*)>
-      LsCallback;
-
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */

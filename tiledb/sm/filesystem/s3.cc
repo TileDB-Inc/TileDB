@@ -855,7 +855,7 @@ tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
   return {Status::Ok(), entries};
 }
 
-void S3::ls_with_sizes_cb(
+void S3::ls_cb(
     const URI& prefix,
     LsCallback cb,
     void* data,

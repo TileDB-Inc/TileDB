@@ -300,7 +300,7 @@ tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
   return {Status::Ok(), entries};
 }
 
-bool Posix::ls_with_sizes_cb(
+bool Posix::ls_cb(
     const URI& uri, LsCallback cb, void* data, bool recursive) const {
   std::string path = uri.to_path();
   struct dirent** paths;
@@ -331,7 +331,7 @@ bool Posix::ls_with_sizes_cb(
     // If this penalty becomes noticeable, we should just duplicate
     // this implementation in ls() and don't get the size
     if (next_path->d_type == DT_DIR) {
-      if (!ls_with_sizes_cb(URI(abspath), cb, data, recursive)) {
+      if (!ls_cb(URI(abspath), cb, data, recursive)) {
         // Traversal was stopped by the callback.
         return false;
       }

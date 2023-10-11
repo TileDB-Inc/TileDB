@@ -42,6 +42,7 @@
 #include <string>
 #include <vector>
 
+#include "ls_callback.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 
@@ -169,8 +170,6 @@ class Posix {
   tuple<Status, optional<std::vector<filesystem::directory_entry>>>
   ls_with_sizes(const URI& uri) const;
 
-  typedef std::function<int32_t(const char*, size_t, uint64_t, void*)>
-      LsCallback;
   /**
    * Lists files and files information under path, invoking the callback on each
    * object. If recursive is true, the path is traversed recursively. If the
@@ -185,7 +184,7 @@ class Posix {
    * @return True if the traversal should continue, false otherwise.
    *    If the callback signals to stop traversal, this function returns false.
    */
-  bool ls_with_sizes_cb(
+  bool ls_cb(
       const URI& uri, LsCallback cb, void* data, bool recursive = false) const;
 
   /**

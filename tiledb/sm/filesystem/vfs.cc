@@ -728,17 +728,17 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
 
 void VFS::ls_recursive(const URI& parent, LsCallback cb, void* data) const {
   if (parent.is_memfs()) {
-    memfs_.ls_with_sizes_cb(parent, cb, data, true);
+    memfs_.ls_cb(parent, cb, data, true);
   } else if (parent.is_file()) {
 #ifdef _WIN32
     // TODO: Win::ls_with_sizes_cb
     win_.ls_with_sizes_cb(parent, cb, data, true);
 #else
-    posix_.ls_with_sizes_cb(parent, cb, data, true);
+    posix_.ls_cb(parent, cb, data, true);
 #endif
   } else if (parent.is_s3()) {
 #ifdef HAVE_S3
-    s3_.ls_with_sizes_cb(parent, cb, data, "");
+    s3_.ls_cb(parent, cb, data, "");
 #else
     throw VFSException("TileDB was built without S3 support");
 #endif

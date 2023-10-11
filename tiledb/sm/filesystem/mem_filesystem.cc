@@ -97,11 +97,11 @@ class MemFilesystem::FSNode {
    * @return True if traversal should continue, else false.
    *    If the callback signals to stop traversal, this function returns false.
    */
-  virtual bool ls(
+  virtual bool ls_cb_impl(
       const std::string& full_path,
       LsCallback cb,
       void* data,
-      bool recursive) = 0;
+      bool recursive) const = 0;
 
   /** Indicates if a given node is a child of this node */
   virtual bool has_child(const std::string& child) const = 0;
@@ -182,7 +182,7 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
     return {st, nullopt};
   }
 
-  bool ls(const std::string&, LsCallback, void*, bool) override {
+  bool ls_cb_impl(const std::string&, LsCallback, void*, bool) const override {
     throw StatusException(Status_MemFSError(
         std::string("Cannot get children, the path is a file")));
   }
@@ -318,11 +318,11 @@ class MemFilesystem::Directory : public MemFilesystem::FSNode {
     return {Status::Ok(), names};
   }
 
-  bool ls(
+  bool ls_cb_impl(
       const std::string& full_path,
       LsCallback cb,
       void* data,
-      bool recursive = false) override {
+      bool recursive = false) const override {
     if (mutex_.try_lock()) {
       throw StatusException(Status_MemFSError("Mutex not locked"));
     }
@@ -335,11 +335,11 @@ class MemFilesystem::Directory : public MemFilesystem::FSNode {
         [](const auto& kv) { return kv.first; });
     std::sort(sorted_keys.begin(), sorted_keys.end());
     for (const auto& key : sorted_keys) {
-      FSNode* child = children_[key].get();
+      FSNode* child = children_.at(key).get();
       std::unique_lock<std::mutex> lock(child->mutex_);
       std::string name(full_path + key);
       if (recursive && child->is_dir()) {
-        if (!child->ls(full_path + key + "/", cb, data, recursive)) {
+        if (!child->ls_cb_impl(full_path + key + "/", cb, data, recursive)) {
           // Traversal was stopped in the recursive call chain.
           return false;
         }
@@ -482,11 +482,8 @@ MemFilesystem::ls_with_sizes(const URI& path) const {
   return {Status::Ok(), entries};
 }
 
-void MemFilesystem::ls_with_sizes_cb(
-    const URI& path,
-    MemFilesystem::LsCallback cb,
-    void* data,
-    bool recursive) const {
+void MemFilesystem::ls_cb(
+    const URI& path, LsCallback cb, void* data, bool recursive) const {
   auto abspath = path.to_path();
   std::vector<std::string> tokens = tokenize(abspath);
 
@@ -501,7 +498,7 @@ void MemFilesystem::ls_with_sizes_cb(
     throw StatusException(
         Status_MemFSError("Mutex is invalid or not owned by the found node."));
   }
-  node->ls(path.to_string() + "/", cb, data, recursive);
+  node->ls_cb_impl(path.to_string() + "/", cb, data, recursive);
 }
 
 Status MemFilesystem::move(

@@ -37,6 +37,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "ls_callback.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
 
@@ -142,10 +143,6 @@ class MemFilesystem {
   tuple<Status, optional<std::vector<filesystem::directory_entry>>>
   ls_with_sizes(const URI& path) const;
 
-  // TODO: Find a better place for this typedef so all filesystems can use it.
-  typedef std::function<int32_t(const char*, size_t, uint64_t, void*)>
-      LsCallback;
-
   /**
    * Lists files and files information under path, invoking the callback on each
    * object. If recursive is true, the path is traversed recursively. If the
@@ -158,7 +155,7 @@ class MemFilesystem {
    * @param data User data to pass to the callback.
    * @param recursive Whether to traverse the path recursively.
    */
-  void ls_with_sizes_cb(
+  void ls_cb(
       const URI& path, LsCallback cb, void* data, bool recursive = false) const;
 
   /**

@@ -34,6 +34,7 @@
 #define TILEDB_S3_H
 
 #ifdef HAVE_S3
+#include "ls_callback.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/rwlock.h"
 #include "tiledb/common/status.h"
@@ -412,11 +413,8 @@ class S3 {
       const std::string& delimiter = "/",
       int64_t max_paths = -1) const;
 
-  typedef std::function<int32_t(const char*, size_t, uint64_t, void*)>
-      LsCallback;
-
   /**
-   * Lists objects and object information that start with `prefix`, invokiing
+   * Lists objects and object information that start with `prefix`, invoking
    * the callback on each entry collected. If the callback returns 1, traversal
    * continues. If the callback returns 0, traversal is stopped. If the callback
    * returns -1 an error is thrown.
@@ -428,7 +426,7 @@ class S3 {
    * @param data User data to pass to the callback.
    * @param delimiter The uri is truncated to the first delimiter.
    */
-  void ls_with_sizes_cb(
+  void ls_cb(
       const URI& prefix,
       LsCallback cb,
       void* data,
