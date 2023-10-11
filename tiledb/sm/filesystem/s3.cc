@@ -249,7 +249,7 @@ class TileDBS3Client : public Aws::S3::S3Client {
  public:
   TileDBS3Client(
       const S3Parameters& s3_params,
-      const Aws::S3::S3ClientConfiguration& client_config,
+      const Aws::Client::ClientConfiguration& client_config,
       Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy sign_payloads,
       bool use_virtual_addressing)
       : Aws::S3::S3Client(client_config, sign_payloads, use_virtual_addressing)
@@ -259,7 +259,7 @@ class TileDBS3Client : public Aws::S3::S3Client {
   TileDBS3Client(
       const S3Parameters& s3_params,
       const std::shared_ptr<Aws::Auth::AWSCredentialsProvider>& creds,
-      const Aws::S3::S3ClientConfiguration& client_config,
+      const Aws::Client::ClientConfiguration& client_config,
       Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy sign_payloads,
       bool use_virtual_addressing)
       : Aws::S3::S3Client(
