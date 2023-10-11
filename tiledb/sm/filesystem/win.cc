@@ -398,6 +398,47 @@ err:
   return {st, nullopt};
 }
 
+bool Win::ls_cb(
+    const URI& uri, LsCallback cb, void* data, bool recursive) const {
+  auto&& [st, entries] = ls_with_sizes(uri);
+  throw_if_not_ok(st);
+  if (entries.has_value()) {
+    auto entries_value = entries.value();
+    // Sort the entries so we can invoke callback on each object directly.
+    std::sort(
+        entries_value.begin(),
+        entries_value.end(),
+        [](const auto& a, const auto& b) {
+          return a.path().native() < b.path().native();
+        });
+    for (const auto& entry : entries_value) {
+      if (recursive && entry.is_directory()) {
+        if (!ls_cb(URI(entry.path().native()), cb, data, recursive)) {
+          // Signal to stop traversal received within recursive call chain.
+          return false;
+        }
+      } else {
+        URI path_uri(entry.path().native());
+        int rc =
+            cb(path_uri.c_str(),
+               path_uri.to_string().size(),
+               entry.file_size(),
+               data);
+        if (rc == -1) {
+          throw StatusException(Status_IOError("Error in user callback"));
+        }
+        if (rc != 1) {
+          // Callback sent signal to stop traversal.
+          return false;
+        }
+      }
+    }
+  }
+
+  // Finished traversal for this directory with no signal to stop from callback.
+  return true;
+}
+
 Status Win::move_path(
     const std::string& old_path, const std::string& new_path) const {
   if (MoveFileEx(

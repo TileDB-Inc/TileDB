@@ -731,8 +731,7 @@ void VFS::ls_recursive(const URI& parent, LsCallback cb, void* data) const {
     memfs_.ls_cb(parent, cb, data, true);
   } else if (parent.is_file()) {
 #ifdef _WIN32
-    // TODO: Win::ls_with_sizes_cb
-    win_.ls_with_sizes_cb(parent, cb, data, true);
+    win_.ls_cb(parent, cb, data, true);
 #else
     posix_.ls_cb(parent, cb, data, true);
 #endif

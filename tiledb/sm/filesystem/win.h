@@ -39,6 +39,7 @@
 #include <string>
 #include <vector>
 
+#include "ls_callback.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
@@ -160,6 +161,23 @@ class Win {
    */
   tuple<Status, optional<std::vector<filesystem::directory_entry>>>
   ls_with_sizes(const URI& path) const;
+
+  /**
+   * Lists files and file information under a given path, invoking the callback
+   * on each object. If recursive is true, the path is traversed recursively. If
+   * the callback returns 0, traversal is stopped. If the callback returns 1,
+   * traversal continues. If the callback returns -1, traversal is stopped and
+   * an error is thrown.
+   *
+   * @param path The parent path to list sub-paths.
+   * @param cb The callback to invoke on each object.
+   * @param data User data to pass to the callback.
+   * @param recursive Whether to traverse the path recursively.
+   * @return True if the traversal should continue, false otherwise.
+   *    If the callback signals to stop traversal, this function returns false.
+   */
+  bool ls_cb(
+      const URI& path, LsCallback cb, void* data, bool recursive = false) const;
 
   /**
    * Move a given filesystem path.
