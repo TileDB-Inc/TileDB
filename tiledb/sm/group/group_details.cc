@@ -62,6 +62,7 @@ Status GroupDetails::clear() {
   members_by_name_.clear();
   members_vec_.clear();
   members_to_modify_.clear();
+  member_keys_to_modify_.clear();
 
   return Status::Ok();
 }
@@ -108,6 +109,13 @@ Status GroupDetails::mark_member_for_addition(
   auto group_member = tdb::make_shared<GroupMemberV2>(
       HERE(), group_member_uri, type, relative, name, false);
 
+  if (!member_keys_to_modify_.insert(group_member->name_or_uri()).second) {
+    return Status_GroupError(
+        "Cannot add group member " + group_member->name_or_uri() +
+        ", a member with the same name or URI has already been added or "
+        "removed.");
+  }
+
   members_to_modify_.emplace_back(group_member);
 
   return Status::Ok();
@@ -128,6 +136,15 @@ Status GroupDetails::mark_member_for_removal(const std::string& name_or_uri) {
         it->second->relative(),
         it->second->name(),
         true);
+
+    if (!member_keys_to_modify_.insert(member_to_delete->name_or_uri())
+             .second) {
+      return Status_GroupError(
+          "Cannot remove group member " + member_to_delete->name_or_uri() +
+          ", a member with the same name or URI has already been added or "
+          "removed.");
+    }
+
     members_to_modify_.emplace_back(member_to_delete);
     return Status::Ok();
   }

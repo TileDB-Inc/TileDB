@@ -343,8 +343,8 @@ TILEDB_EXPORT capi_return_t tiledb_group_has_metadata_key(
  * @param group An group opened in WRITE mode.
  * @param uri URI of member to add
  * @param relative is the URI relative to the group
- * @param name optional name group member can be given to be looked up by. Set
- * to NULL if wishing to remain unset.
+ * @param name optional name group member can be given to be looked up by.
+ * Can be set to NULL.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_group_add_member(
@@ -479,8 +479,6 @@ TILEDB_EXPORT capi_return_t tiledb_group_get_member_by_name(
     char** uri,
     tiledb_object_t* type) TILEDB_NOEXCEPT;
 
-/* (clang format was butchering the tiledb_group_add_member() calls) */
-/* clang-format off */
 /**
  * Get a member of a group by name and relative characteristic of that name
  *
