@@ -638,7 +638,7 @@ IndexType OrderedDimLabelReader::search_for_range(
 
   // Run a binary search.
   Op cmp;
-  while (left_index < right_index - 1) {
+  while (left_index + 1 < right_index) {
     // Check against mid.
     IndexType mid = left_index + (right_index - left_index) / 2;
     if (cmp(get_value_at<IndexType, LabelType>(mid, domain_low, tile_extent),
