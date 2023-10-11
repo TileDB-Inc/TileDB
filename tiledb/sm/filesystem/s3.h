@@ -48,6 +48,7 @@
 #include "tiledb/sm/stats/stats.h"
 #include "uri.h"
 
+#undef GetObject
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
 #include <aws/core/client/ClientConfiguration.h>
