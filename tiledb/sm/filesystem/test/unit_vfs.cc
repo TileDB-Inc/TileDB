@@ -121,6 +121,9 @@ TEST_CASE_METHOD(
   SECTION("Throwing callback with N objects should throw") {
     vfs_.touch(temp_dir.join_path("file")).ok();
     CHECK_THROWS_AS(vfs_.ls_recursive(temp_dir, cb, &data), std::logic_error);
+    CHECK_THROWS_WITH(
+        vfs_.ls_recursive(temp_dir, cb, &data),
+        Catch::Matchers::ContainsSubstring("Throwing callback"));
   }
   vfs_.remove_dir(temp_dir).ok();
 }

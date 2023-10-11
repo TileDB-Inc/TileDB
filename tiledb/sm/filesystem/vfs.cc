@@ -727,9 +727,6 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
 }
 
 void VFS::ls_recursive(const URI& parent, LsCallback cb, void* data) const {
-  Status st;
-  optional<std::vector<directory_entry>> entries;
-
   if (parent.is_memfs()) {
     memfs_.ls_with_sizes_cb(parent, cb, data, true);
   } else if (parent.is_file()) {
@@ -741,9 +738,7 @@ void VFS::ls_recursive(const URI& parent, LsCallback cb, void* data) const {
 #endif
   } else if (parent.is_s3()) {
 #ifdef HAVE_S3
-    // TODO: S3::ls_with_sizes_cb
-    std::tie(st, entries) = s3_.ls_with_sizes(parent, "");
-    throw_if_not_ok(st);
+    s3_.ls_with_sizes_cb(parent, cb, data, "");
 #else
     throw VFSException("TileDB was built without S3 support");
 #endif
@@ -751,24 +746,6 @@ void VFS::ls_recursive(const URI& parent, LsCallback cb, void* data) const {
     throw VFSException(
         "Recursive ls over " + parent.backend_name() +
         " storage backend is not supported.");
-  }
-
-  // LocalFS, MemFS results were collected during traversal.
-  if (parent.is_s3()) {
-    int rc = 1;
-    for (auto& result : *entries) {
-      if (!result.is_directory()) {
-        URI uri{result.path().native()};
-        rc =
-            cb(uri.c_str(), uri.to_string().length(), result.file_size(), data);
-        if (rc != 1) {
-          break;
-        }
-      }
-    }
-    if (rc == -1) {
-      throw VFSException("Error in user callback");
-    }
   }
 }
 

@@ -855,6 +855,87 @@ tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
   return {Status::Ok(), entries};
 }
 
+void S3::ls_with_sizes_cb(
+    const URI& prefix,
+    LsCallback cb,
+    void* data,
+    const std::string& delimiter) const {
+  throw_if_not_ok(init_client());
+  const auto prefix_dir = prefix.add_trailing_slash();
+  auto prefix_str = prefix_dir.to_string();
+  if (!prefix_dir.is_s3()) {
+    throw StatusException(
+        Status_S3Error(std::string("URI is not an S3 URI: " + prefix_str)));
+  }
+
+  Aws::Http::URI aws_uri = prefix_str.c_str();
+  auto aws_prefix = remove_front_slash(aws_uri.GetPath().c_str());
+  std::string aws_auth = aws_uri.GetAuthority().c_str();
+  Aws::S3::Model::ListObjectsV2Request list_objects_request;
+  list_objects_request.SetBucket(aws_uri.GetAuthority());
+  list_objects_request.SetPrefix(aws_prefix.c_str());
+  list_objects_request.SetDelimiter(delimiter.c_str());
+  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET) {
+    list_objects_request.SetRequestPayer(request_payer_);
+  }
+
+  bool is_done = false;
+  while (!is_done) {
+    auto list_objects_outcome = client_->ListObjectsV2(list_objects_request);
+    if (!list_objects_outcome.IsSuccess()) {
+      throw StatusException(Status_S3Error(
+          std::string("Error while listing with prefix '") + prefix_str +
+          "' and delimiter '" + delimiter + "'" +
+          outcome_error_message(list_objects_outcome)));
+    }
+
+    int rc = 1;
+    for (const auto& object : list_objects_outcome.GetResult().GetContents()) {
+      uint64_t size = object.GetSize();
+      std::string path =
+          "s3://" + aws_auth + add_front_slash(object.GetKey().c_str());
+      rc = cb(path.c_str(), path.size(), size, data);
+      if (rc != 1) {
+        is_done = true;
+        break;
+      }
+    }
+
+    if (!is_done) {
+      for (const auto& object :
+           list_objects_outcome.GetResult().GetCommonPrefixes()) {
+        // For "directories" it doesn't seem possible to get a shallow size in
+        // S3, so the size of such an entry will be 0 in S3.
+        std::string path =
+            "s3://" + aws_auth +
+            add_front_slash(remove_trailing_slash(object.GetPrefix().c_str()));
+        rc = cb(path.c_str(), path.size(), 0, data);
+        if (rc != 1) {
+          is_done = true;
+          break;
+        }
+      }
+    }
+
+    if (rc == -1) {
+      throw StatusException(Status_S3Error("Error in user callback"));
+    }
+    // Max keys is 1000 by default. If results are not truncated or the callback
+    // already signaled to stop traversal, we're done.
+    is_done = is_done || !list_objects_outcome.GetResult().GetIsTruncated();
+    if (!is_done) {
+      Aws::String next_marker =
+          list_objects_outcome.GetResult().GetNextContinuationToken();
+      if (next_marker.empty()) {
+        throw StatusException(
+            Status_S3Error("Failed to retrieve next continuation token for "
+                           "ListObjectsV2 request."));
+      }
+      list_objects_request.SetContinuationToken(std::move(next_marker));
+    }
+  }
+}
+
 Status S3::move_object(const URI& old_uri, const URI& new_uri) {
   RETURN_NOT_OK(init_client());
 
