@@ -50,7 +50,6 @@
 
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
-#include <aws/core/client/ClientConfiguration.h>
 #include <aws/core/client/RetryStrategy.h>
 #include <aws/core/http/HttpClient.h>
 #include <aws/core/utils/HashingUtils.h>
@@ -63,6 +62,7 @@
 #include <aws/core/utils/threading/Executor.h>
 #include <aws/identity-management/auth/STSAssumeRoleCredentialsProvider.h>
 #include <aws/s3/S3Client.h>
+#include <aws/s3/S3ClientConfiguration.h>
 #include <aws/s3/model/CompleteMultipartUploadRequest.h>
 #include <aws/s3/model/CopyObjectRequest.h>
 #include <aws/s3/model/CreateBucketRequest.h>
@@ -885,7 +885,7 @@ class S3 {
   mutable std::mutex client_init_mtx_;
 
   /** Configuration object used to initialize the client. */
-  mutable tdb_unique_ptr<Aws::Client::ClientConfiguration> client_config_;
+  mutable tdb_unique_ptr<Aws::S3::S3ClientConfiguration> client_config_;
 
   /** The executor used by 'client_'. */
   mutable shared_ptr<S3ThreadPoolExecutor> s3_tp_executor_;

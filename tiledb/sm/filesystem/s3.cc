@@ -249,7 +249,7 @@ class TileDBS3Client : public Aws::S3::S3Client {
  public:
   TileDBS3Client(
       const S3Parameters& s3_params,
-      const Aws::Client::ClientConfiguration& client_config,
+      const Aws::S3::S3ClientConfiguration& client_config,
       Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy sign_payloads,
       bool use_virtual_addressing)
       : Aws::S3::S3Client(client_config, sign_payloads, use_virtual_addressing)
@@ -259,7 +259,7 @@ class TileDBS3Client : public Aws::S3::S3Client {
   TileDBS3Client(
       const S3Parameters& s3_params,
       const std::shared_ptr<Aws::Auth::AWSCredentialsProvider>& creds,
-      const Aws::Client::ClientConfiguration& client_config,
+      const Aws::S3::S3ClientConfiguration& client_config,
       Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy sign_payloads,
       bool use_virtual_addressing)
       : Aws::S3::S3Client(
@@ -1419,8 +1419,8 @@ Status S3::init_client() const {
   // check for client configuration on create, which can be slow if aws is not
   // configured on a users systems due to ec2 metadata check
 
-  client_config_ = tdb_unique_ptr<Aws::Client::ClientConfiguration>(
-      tdb_new(Aws::Client::ClientConfiguration));
+  client_config_ = tdb_unique_ptr<Aws::S3::S3ClientConfiguration>(
+      tdb_new(Aws::S3::S3ClientConfiguration));
 
   s3_tp_executor_ = make_shared<S3ThreadPoolExecutor>(HERE(), vfs_thread_pool_);
 
