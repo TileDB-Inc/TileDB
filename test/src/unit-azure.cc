@@ -33,6 +33,7 @@
 #ifdef HAVE_AZURE
 
 #include <test/support/tdb_catch.h>
+#include <azure/storage/blobs.hpp>
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
@@ -476,6 +477,33 @@ TEST_CASE_METHOD(
     }
   }
   REQUIRE(allok);
+}
+
+TEST_CASE(
+    "Test constructing Azure Blob Storage endpoint URIs", "[azure][uri]") {
+  std::string sas_token, expected_endpoint;
+  SECTION("No SAS token") {
+    sas_token = "";
+    expected_endpoint = "https://devstoreaccount1.blob.core.windows.net";
+  }
+  SECTION("SAS token without leading question mark") {
+    sas_token = "baz=qux&foo=bar";
+    expected_endpoint =
+        "https://devstoreaccount1.blob.core.windows.net?baz=qux&foo=bar";
+  }
+  SECTION("SAS token with leading question mark") {
+    sas_token = "?baz=qux&foo=bar";
+    expected_endpoint =
+        "https://devstoreaccount1.blob.core.windows.net?baz=qux&foo=bar";
+  }
+  Config config;
+  REQUIRE(
+      config.set("vfs.azure.storage_account_name", "devstoreaccount1").ok());
+  REQUIRE(config.set("vfs.azure.storage_sas_token", sas_token).ok());
+  tiledb::sm::Azure azure;
+  ThreadPool thread_pool(1);
+  REQUIRE(azure.init(config, &thread_pool).ok());
+  REQUIRE(azure.client().GetUrl() == expected_endpoint);
 }
 
 #endif
