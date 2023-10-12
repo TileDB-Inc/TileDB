@@ -149,11 +149,12 @@ int32_t tiledb_dimension_alloc(
     const void* tile_extent,
     tiledb_dimension_t** dim) noexcept {
   return api_entry_context<tiledb::api::tiledb_dimension_alloc>(
-      ctx, name, type, dim_domain, tile_extent, dim);
+      TILEDB_SOURCE_LOCATION(), ctx, name, type, dim_domain, tile_extent, dim);
 }
 
 void tiledb_dimension_free(tiledb_dimension_t** dim) noexcept {
-  return tiledb::api::api_entry_void<tiledb::api::tiledb_dimension_free>(dim);
+  return tiledb::api::api_entry_void<tiledb::api::tiledb_dimension_free>(
+      TILEDB_SOURCE_LOCATION(), dim);
 }
 
 int32_t tiledb_dimension_set_filter_list(
@@ -161,7 +162,7 @@ int32_t tiledb_dimension_set_filter_list(
     tiledb_dimension_t* dim,
     tiledb_filter_list_t* filter_list) noexcept {
   return api_entry_context<tiledb::api::tiledb_dimension_set_filter_list>(
-      ctx, dim, filter_list);
+      TILEDB_SOURCE_LOCATION(), ctx, dim, filter_list);
 }
 
 int32_t tiledb_dimension_set_cell_val_num(
@@ -169,7 +170,7 @@ int32_t tiledb_dimension_set_cell_val_num(
     tiledb_dimension_t* dim,
     uint32_t cell_val_num) noexcept {
   return api_entry_context<tiledb::api::tiledb_dimension_set_cell_val_num>(
-      ctx, dim, cell_val_num);
+      TILEDB_SOURCE_LOCATION(), ctx, dim, cell_val_num);
 }
 
 int32_t tiledb_dimension_get_filter_list(
@@ -177,7 +178,7 @@ int32_t tiledb_dimension_get_filter_list(
     tiledb_dimension_t* dim,
     tiledb_filter_list_t** filter_list) noexcept {
   return api_entry_context<tiledb::api::tiledb_dimension_get_filter_list>(
-      ctx, dim, filter_list);
+      TILEDB_SOURCE_LOCATION(), ctx, dim, filter_list);
 }
 
 int32_t tiledb_dimension_get_cell_val_num(
@@ -185,7 +186,7 @@ int32_t tiledb_dimension_get_cell_val_num(
     const tiledb_dimension_t* dim,
     uint32_t* cell_val_num) noexcept {
   return api_entry_context<tiledb::api::tiledb_dimension_get_cell_val_num>(
-      ctx, dim, cell_val_num);
+      TILEDB_SOURCE_LOCATION(), ctx, dim, cell_val_num);
 }
 
 int32_t tiledb_dimension_get_name(
@@ -193,7 +194,7 @@ int32_t tiledb_dimension_get_name(
     const tiledb_dimension_t* dim,
     const char** name) noexcept {
   return api_entry_context<tiledb::api::tiledb_dimension_get_name>(
-      ctx, dim, name);
+      TILEDB_SOURCE_LOCATION(), ctx, dim, name);
 }
 
 int32_t tiledb_dimension_get_type(
@@ -201,7 +202,7 @@ int32_t tiledb_dimension_get_type(
     const tiledb_dimension_t* dim,
     tiledb_datatype_t* type) noexcept {
   return api_entry_context<tiledb::api::tiledb_dimension_get_type>(
-      ctx, dim, type);
+      TILEDB_SOURCE_LOCATION(), ctx, dim, type);
 }
 
 int32_t tiledb_dimension_get_domain(
@@ -209,7 +210,7 @@ int32_t tiledb_dimension_get_domain(
     const tiledb_dimension_t* dim,
     const void** domain) noexcept {
   return api_entry_context<tiledb::api::tiledb_dimension_get_domain>(
-      ctx, dim, domain);
+      TILEDB_SOURCE_LOCATION(), ctx, dim, domain);
 }
 
 int32_t tiledb_dimension_get_tile_extent(
@@ -217,10 +218,11 @@ int32_t tiledb_dimension_get_tile_extent(
     const tiledb_dimension_t* dim,
     const void** tile_extent) noexcept {
   return api_entry_context<tiledb::api::tiledb_dimension_get_tile_extent>(
-      ctx, dim, tile_extent);
+      TILEDB_SOURCE_LOCATION(), ctx, dim, tile_extent);
 }
 
 int32_t tiledb_dimension_dump(
     tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, FILE* out) noexcept {
-  return api_entry_context<tiledb::api::tiledb_dimension_dump>(ctx, dim, out);
+  return api_entry_context<tiledb::api::tiledb_dimension_dump>(
+      TILEDB_SOURCE_LOCATION(), ctx, dim, out);
 }

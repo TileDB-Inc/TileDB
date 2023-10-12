@@ -45,14 +45,18 @@ using tiledb::api::test_support::ordinary_context;
 capi_return_t tf_always_good() {
   return TILEDB_OK;
 }
-using always_good_wrapped = tiledb::api::
-    CAPIFunction<tf_always_good, tiledb::api::ExceptionActionCtxErr>;
+using always_good_wrapped = tiledb::api::CAPIFunction<
+    tf_always_good,
+    tiledb::api::ExceptionActionCtxErr,
+    TileDBSourceLocation>;
 
 capi_return_t tf_always_throw() {
   throw StatusException("Test", "error");
 }
-using always_throw_wrapped = tiledb::api::
-    CAPIFunction<tf_always_throw, tiledb::api::ExceptionActionCtxErr>;
+using always_throw_wrapped = tiledb::api::CAPIFunction<
+    tf_always_throw,
+    tiledb::api::ExceptionActionCtxErr,
+    TileDBSourceLocation>;
 
 TEST_CASE("ExceptionAction - construct") {
   tiledb::api::ExceptionAction h{};
@@ -145,7 +149,7 @@ TEST_CASE("CAPIFunction - return") {
       tiledb_ctx_handle_t::make_handle(tiledb::sm::Config{})};
   tiledb_error_handle_t* error{nullptr};
   always_good_wrapped::handler_type handler{ctx, &error};
-  always_good_wrapped::function(handler);
+  always_good_wrapped::function(handler, TILEDB_SOURCE_LOCATION());
   auto x{ctx->context().last_error()};
   CHECK(!x.has_value());
   CHECK(error == nullptr);
@@ -155,7 +159,9 @@ TEST_CASE("CAPIFunction - return") {
 TEST_CASE("CAPIFunction - Invalid context") {
   tiledb_error_handle_t* error{nullptr};
   always_good_wrapped::handler_type handler{nullptr, &error};
-  CHECK(always_good_wrapped::function(handler) == TILEDB_INVALID_CONTEXT);
+  CHECK(
+      always_good_wrapped::function(handler, TILEDB_SOURCE_LOCATION()) ==
+      TILEDB_INVALID_CONTEXT);
   CHECK(error != nullptr);
 }
 
@@ -163,7 +169,9 @@ TEST_CASE("CAPIFunction - Invalid error") {
   tiledb_ctx_handle_t* ctx{
       tiledb_ctx_handle_t::make_handle(tiledb::sm::Config{})};
   always_good_wrapped::handler_type handler{ctx, nullptr};
-  CHECK(always_good_wrapped::function(handler) == TILEDB_INVALID_ERROR);
+  CHECK(
+      always_good_wrapped::function(handler, TILEDB_SOURCE_LOCATION()) ==
+      TILEDB_INVALID_ERROR);
   auto x{ctx->context().last_error()};
   CHECK(x.has_value());
   tiledb_ctx_handle_t::break_handle(ctx);
@@ -174,7 +182,7 @@ TEST_CASE("CAPIFunction - throw") {
       tiledb_ctx_handle_t::make_handle(tiledb::sm::Config{})};
   tiledb_error_handle_t* error{nullptr};
   always_throw_wrapped::handler_type handler{ctx, &error};
-  always_throw_wrapped::function(handler);
+  always_throw_wrapped::function(handler, TILEDB_SOURCE_LOCATION());
   auto x{ctx->context().last_error()};
   REQUIRE(x.has_value());
   CHECK(x.value() == "Test: error");
@@ -191,13 +199,15 @@ capi_return_t tf_assign(int input, int* output) {
 
 TEST_CASE("api_entry_plain - return") {
   int k{1};
-  auto rc{tiledb::api::api_entry_plain<tf_assign>(2, &k)};
+  auto rc{
+      tiledb::api::api_entry_plain<tf_assign>(TILEDB_SOURCE_LOCATION(), 2, &k)};
   CHECK(tiledb_status(rc) == TILEDB_OK);
   CHECK(k == 2);
 }
 
 TEST_CASE("api_entry_plain - throw") {
-  auto rc{tiledb::api::api_entry_plain<tf_always_throw>()};
+  auto rc{
+      tiledb::api::api_entry_plain<tf_always_throw>(TILEDB_SOURCE_LOCATION())};
   CHECK(tiledb_status(rc) == TILEDB_ERR);
 }
 
@@ -211,12 +221,13 @@ void tf_void_throw() {
 
 TEST_CASE("api_entry_void - return") {
   int k{3};
-  tiledb::api::api_entry_void<tf_void_assign>(4, &k);
+  tiledb::api::api_entry_void<tf_void_assign>(TILEDB_SOURCE_LOCATION(), 4, &k);
   CHECK(k == 4);
 }
 
 TEST_CASE("api_entry_void - throw") {
-  CHECK_NOTHROW(tiledb::api::api_entry_void<tf_void_throw>());
+  CHECK_NOTHROW(
+      tiledb::api::api_entry_void<tf_void_throw>(TILEDB_SOURCE_LOCATION()));
 }
 
 capi_return_t tf_context_assign(tiledb_ctx_handle_t*, int input, int* output) {
@@ -232,8 +243,8 @@ TEST_CASE("api_entry_with_context - return") {
   auto y1{x.context->last_error()};
   REQUIRE(!y1.has_value());
   int k{6};
-  auto rc{
-      tiledb::api::api_entry_with_context<tf_context_assign>(x.context, 7, &k)};
+  auto rc{tiledb::api::api_entry_with_context<tf_context_assign>(
+      TILEDB_SOURCE_LOCATION(), x.context, 7, &k)};
   CHECK(tiledb_status(rc) == TILEDB_OK);
   CHECK(k == 7);
   auto y2{x.context->last_error()};
@@ -244,7 +255,8 @@ TEST_CASE("api_entry_with_context - throw") {
   ordinary_context x{};
   auto y1{x.context->last_error()};
   REQUIRE(!y1.has_value());
-  auto rc{tiledb::api::api_entry_with_context<tf_context_throw>(x.context)};
+  auto rc{tiledb::api::api_entry_with_context<tf_context_throw>(
+      TILEDB_SOURCE_LOCATION(), x.context)};
   CHECK(tiledb_status(rc) == TILEDB_ERR);
   auto y2{x.context->last_error()};
   CHECK(y2.has_value());
@@ -253,14 +265,16 @@ TEST_CASE("api_entry_with_context - throw") {
 TEST_CASE("api_entry_context - return") {
   ordinary_context x{};
   int k{7};
-  auto rc{tiledb::api::api_entry_context<tf_assign>(x.context, 8, &k)};
+  auto rc{tiledb::api::api_entry_context<tf_assign>(
+      TILEDB_SOURCE_LOCATION(), x.context, 8, &k)};
   CHECK(tiledb_status(rc) == TILEDB_OK);
   CHECK(k == 8);
 }
 
 TEST_CASE("api_entry_context - throw") {
   ordinary_context x{};
-  auto rc{tiledb::api::api_entry_context<tf_always_throw>(x.context)};
+  auto rc{tiledb::api::api_entry_context<tf_always_throw>(
+      TILEDB_SOURCE_LOCATION(), x.context)};
   CHECK(tiledb_status(rc) == TILEDB_ERR);
   auto e{x.context->last_error()};
   CHECK(e.has_value());
@@ -275,7 +289,8 @@ TEST_CASE("api_entry_error - return") {
   tiledb_error_handle_t bogus_error{""};
   tiledb_error_handle_t* error{&bogus_error};
   int k{9};
-  auto rc{tiledb::api::api_entry_error<tf_assign>(&error, 10, &k)};
+  auto rc{tiledb::api::api_entry_error<tf_assign>(
+      TILEDB_SOURCE_LOCATION(), &error, 10, &k)};
   CHECK(tiledb_status(rc) == TILEDB_OK);
   CHECK(k == 10);
   CHECK(error == nullptr);
@@ -283,7 +298,8 @@ TEST_CASE("api_entry_error - return") {
 
 TEST_CASE("api_entry_error - throw") {
   tiledb_error_handle_t* error{};
-  auto rc{tiledb::api::api_entry_error<tf_always_throw>(&error)};
+  auto rc{tiledb::api::api_entry_error<tf_always_throw>(
+      TILEDB_SOURCE_LOCATION(), &error)};
   CHECK(tiledb_status(rc) == TILEDB_ERR);
   REQUIRE(error != nullptr);
   CHECK(error->message() == "Test: error");

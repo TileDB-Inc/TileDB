@@ -91,23 +91,23 @@ using tiledb::api::api_entry_with_context;
 capi_return_t tiledb_object_type_to_str(
     tiledb_object_t object_type, const char** str) noexcept {
   return api_entry_plain<tiledb::api::tiledb_object_type_to_str>(
-      object_type, str);
+      TILEDB_SOURCE_LOCATION(), object_type, str);
 }
 
 capi_return_t tiledb_object_type_from_str(
     const char* str, tiledb_object_t* object_type) noexcept {
   return api_entry_plain<tiledb::api::tiledb_object_type_from_str>(
-      str, object_type);
+      TILEDB_SOURCE_LOCATION(), str, object_type);
 }
 
 capi_return_t tiledb_walk_order_to_str(
     tiledb_walk_order_t walk_order, const char** str) noexcept {
   return api_entry_plain<tiledb::api::tiledb_walk_order_to_str>(
-      walk_order, str);
+      TILEDB_SOURCE_LOCATION(), walk_order, str);
 }
 
 capi_return_t tiledb_walk_order_from_str(
     const char* str, tiledb_walk_order_t* walk_order) noexcept {
   return api_entry_plain<tiledb::api::tiledb_walk_order_from_str>(
-      str, walk_order);
+      TILEDB_SOURCE_LOCATION(), str, walk_order);
 }

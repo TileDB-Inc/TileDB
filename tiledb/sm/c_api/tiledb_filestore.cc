@@ -744,7 +744,7 @@ TILEDB_EXPORT int32_t tiledb_filestore_schema_create(
     const char* uri,
     tiledb_array_schema_t** array_schema) noexcept {
   return api_entry<detail::tiledb_filestore_schema_create>(
-      ctx, uri, array_schema);
+      TILEDB_SOURCE_LOCATION(), ctx, uri, array_schema);
 }
 
 TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
@@ -753,7 +753,7 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
     const char* file_uri,
     tiledb_mime_type_t mime_type) noexcept {
   return api_entry<detail::tiledb_filestore_uri_import>(
-      ctx, filestore_array_uri, file_uri, mime_type);
+      TILEDB_SOURCE_LOCATION(), ctx, filestore_array_uri, file_uri, mime_type);
 }
 
 TILEDB_EXPORT int32_t tiledb_filestore_uri_export(
@@ -761,7 +761,7 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_export(
     const char* file_uri,
     const char* filestore_array_uri) noexcept {
   return api_entry<detail::tiledb_filestore_uri_export>(
-      ctx, file_uri, filestore_array_uri);
+      TILEDB_SOURCE_LOCATION(), ctx, file_uri, filestore_array_uri);
 }
 
 TILEDB_EXPORT int32_t tiledb_filestore_buffer_import(
@@ -771,7 +771,7 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_import(
     size_t size,
     tiledb_mime_type_t mime_type) noexcept {
   return api_entry<detail::tiledb_filestore_buffer_import>(
-      ctx, filestore_array_uri, buf, size, mime_type);
+      TILEDB_SOURCE_LOCATION(), ctx, filestore_array_uri, buf, size, mime_type);
 }
 
 TILEDB_EXPORT int32_t tiledb_filestore_buffer_export(
@@ -781,21 +781,23 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_export(
     void* buf,
     size_t size) noexcept {
   return api_entry<detail::tiledb_filestore_buffer_export>(
-      ctx, filestore_array_uri, offset, buf, size);
+      TILEDB_SOURCE_LOCATION(), ctx, filestore_array_uri, offset, buf, size);
 }
 
 TILEDB_EXPORT int32_t tiledb_filestore_size(
     tiledb_ctx_t* ctx, const char* filestore_array_uri, size_t* size) noexcept {
   return api_entry<detail::tiledb_filestore_size>(
-      ctx, filestore_array_uri, size);
+      TILEDB_SOURCE_LOCATION(), ctx, filestore_array_uri, size);
 }
 
 TILEDB_EXPORT int32_t tiledb_mime_type_to_str(
     tiledb_mime_type_t mime_type, const char** str) noexcept {
-  return api_entry_plain<detail::tiledb_mime_type_to_str>(mime_type, str);
+  return api_entry_plain<detail::tiledb_mime_type_to_str>(
+      TILEDB_SOURCE_LOCATION(), mime_type, str);
 }
 
 TILEDB_EXPORT int32_t tiledb_mime_type_from_str(
     const char* str, tiledb_mime_type_t* mime_type) noexcept {
-  return api_entry_plain<detail::tiledb_mime_type_from_str>(str, mime_type);
+  return api_entry_plain<detail::tiledb_mime_type_from_str>(
+      TILEDB_SOURCE_LOCATION(), str, mime_type);
 }

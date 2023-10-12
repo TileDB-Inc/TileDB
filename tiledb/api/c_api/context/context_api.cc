@@ -141,7 +141,7 @@ using tiledb::api::api_entry_with_context;
 capi_return_t tiledb_ctx_alloc(
     tiledb_config_handle_t* config, tiledb_ctx_handle_t** ctx) noexcept {
   return tiledb::api::api_entry_plain<tiledb::api::tiledb_ctx_alloc>(
-      config, ctx);
+      TILEDB_SOURCE_LOCATION(), config, ctx);
 }
 
 /*
@@ -165,7 +165,7 @@ capi_return_t tiledb_ctx_alloc_with_error(
    * is wrapped with `api_entry_plain` above.
    */
   return tiledb::api::api_entry_error<tiledb::api::tiledb_ctx_alloc>(
-      error, config, ctx);
+      TILEDB_SOURCE_LOCATION(), error, config, ctx);
 }
 
 }  // extern "C"
@@ -174,39 +174,41 @@ capi_return_t tiledb_ctx_alloc_with_error(
  * API Audit: void return
  */
 void tiledb_ctx_free(tiledb_ctx_handle_t** ctx) noexcept {
-  return tiledb::api::api_entry_void<tiledb::api::tiledb_ctx_free>(ctx);
+  return tiledb::api::api_entry_void<tiledb::api::tiledb_ctx_free>(
+      TILEDB_SOURCE_LOCATION(), ctx);
 }
 
 capi_return_t tiledb_ctx_get_stats(
     tiledb_ctx_t* ctx, char** stats_json) noexcept {
   return api_entry_with_context<tiledb::api::tiledb_ctx_get_stats>(
-      ctx, stats_json);
+      TILEDB_SOURCE_LOCATION(), ctx, stats_json);
 }
 
 capi_return_t tiledb_ctx_get_config(
     tiledb_ctx_t* ctx, tiledb_config_handle_t** config) noexcept {
   return api_entry_with_context<tiledb::api::tiledb_ctx_get_config>(
-      ctx, config);
+      TILEDB_SOURCE_LOCATION(), ctx, config);
 }
 
 capi_return_t tiledb_ctx_get_last_error(
     tiledb_ctx_t* ctx, tiledb_error_handle_t** err) noexcept {
   return api_entry_with_context<tiledb::api::tiledb_ctx_get_last_error>(
-      ctx, err);
+      TILEDB_SOURCE_LOCATION(), ctx, err);
 }
 
 capi_return_t tiledb_ctx_is_supported_fs(
     tiledb_ctx_t* ctx, tiledb_filesystem_t fs, int32_t* is_supported) noexcept {
   return api_entry_with_context<tiledb::api::tiledb_ctx_is_supported_fs>(
-      ctx, fs, is_supported);
+      TILEDB_SOURCE_LOCATION(), ctx, fs, is_supported);
 }
 
 capi_return_t tiledb_ctx_cancel_tasks(tiledb_ctx_t* ctx) noexcept {
-  return api_entry_with_context<tiledb::api::tiledb_ctx_cancel_tasks>(ctx);
+  return api_entry_with_context<tiledb::api::tiledb_ctx_cancel_tasks>(
+      TILEDB_SOURCE_LOCATION(), ctx);
 }
 
 capi_return_t tiledb_ctx_set_tag(
     tiledb_ctx_t* ctx, const char* key, const char* value) noexcept {
   return api_entry_with_context<tiledb::api::tiledb_ctx_set_tag>(
-      ctx, key, value);
+      TILEDB_SOURCE_LOCATION(), ctx, key, value);
 }

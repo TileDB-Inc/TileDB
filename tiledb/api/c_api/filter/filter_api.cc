@@ -127,11 +127,12 @@ capi_return_t tiledb_filter_alloc(
     tiledb_filter_type_t type,
     tiledb_filter_t** filter) noexcept {
   return tiledb::api::api_entry_with_context<tiledb::api::tiledb_filter_alloc>(
-      ctx, type, filter);
+      TILEDB_SOURCE_LOCATION(), ctx, type, filter);
 }
 
 void tiledb_filter_free(tiledb_filter_t** filter) noexcept {
-  return tiledb::api::api_entry_void<tiledb::api::tiledb_filter_free>(filter);
+  return tiledb::api::api_entry_void<tiledb::api::tiledb_filter_free>(
+      TILEDB_SOURCE_LOCATION(), filter);
 }
 
 capi_return_t tiledb_filter_get_type(
@@ -139,7 +140,7 @@ capi_return_t tiledb_filter_get_type(
     tiledb_filter_t* filter,
     tiledb_filter_type_t* type) noexcept {
   return api_entry_context<tiledb::api::tiledb_filter_get_type>(
-      ctx, filter, type);
+      TILEDB_SOURCE_LOCATION(), ctx, filter, type);
 }
 
 capi_return_t tiledb_filter_set_option(
@@ -148,7 +149,7 @@ capi_return_t tiledb_filter_set_option(
     tiledb_filter_option_t option,
     const void* value) noexcept {
   return api_entry_context<tiledb::api::tiledb_filter_set_option>(
-      ctx, filter, option, value);
+      TILEDB_SOURCE_LOCATION(), ctx, filter, option, value);
 }
 
 capi_return_t tiledb_filter_get_option(
@@ -157,29 +158,29 @@ capi_return_t tiledb_filter_get_option(
     tiledb_filter_option_t option,
     void* value) noexcept {
   return api_entry_context<tiledb::api::tiledb_filter_get_option>(
-      ctx, filter, option, value);
+      TILEDB_SOURCE_LOCATION(), ctx, filter, option, value);
 }
 
 capi_return_t tiledb_filter_type_to_str(
     tiledb_filter_type_t filter_type, const char** str) noexcept {
   return api_entry_plain<tiledb::api::tiledb_filter_type_to_str>(
-      filter_type, str);
+      TILEDB_SOURCE_LOCATION(), filter_type, str);
 }
 
 capi_return_t tiledb_filter_type_from_str(
     const char* str, tiledb_filter_type_t* filter_type) noexcept {
   return api_entry_plain<tiledb::api::tiledb_filter_type_from_str>(
-      str, filter_type);
+      TILEDB_SOURCE_LOCATION(), str, filter_type);
 }
 
 capi_return_t tiledb_filter_option_to_str(
     tiledb_filter_option_t filter_option, const char** str) noexcept {
   return api_entry_plain<tiledb::api::tiledb_filter_option_to_str>(
-      filter_option, str);
+      TILEDB_SOURCE_LOCATION(), filter_option, str);
 }
 
 capi_return_t tiledb_filter_option_from_str(
     const char* str, tiledb_filter_option_t* filter_option) noexcept {
   return api_entry_plain<tiledb::api::tiledb_filter_option_from_str>(
-      str, filter_option);
+      TILEDB_SOURCE_LOCATION(), str, filter_option);
 }

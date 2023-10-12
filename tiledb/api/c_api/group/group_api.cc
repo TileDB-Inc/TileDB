@@ -554,13 +554,13 @@ using tiledb::api::api_entry_with_context;
 capi_return_t tiledb_group_create(
     tiledb_ctx_t* ctx, const char* group_uri) noexcept {
   return api_entry_with_context<tiledb::api::tiledb_group_create>(
-      ctx, group_uri);
+      TILEDB_SOURCE_LOCATION(), ctx, group_uri);
 }
 
 capi_return_t tiledb_group_alloc(
     tiledb_ctx_t* ctx, const char* group_uri, tiledb_group_t** group) noexcept {
   return api_entry_with_context<tiledb::api::tiledb_group_alloc>(
-      ctx, group_uri, group);
+      TILEDB_SOURCE_LOCATION(), ctx, group_uri, group);
 }
 
 capi_return_t tiledb_group_open(
@@ -568,16 +568,18 @@ capi_return_t tiledb_group_open(
     tiledb_group_t* group,
     tiledb_query_type_t query_type) noexcept {
   return api_entry_context<tiledb::api::tiledb_group_open>(
-      ctx, group, query_type);
+      TILEDB_SOURCE_LOCATION(), ctx, group, query_type);
 }
 
 capi_return_t tiledb_group_close(
     tiledb_ctx_t* ctx, tiledb_group_t* group) noexcept {
-  return api_entry_context<tiledb::api::tiledb_group_close>(ctx, group);
+  return api_entry_context<tiledb::api::tiledb_group_close>(
+      TILEDB_SOURCE_LOCATION(), ctx, group);
 }
 
 void tiledb_group_free(tiledb_group_t** group) noexcept {
-  return api_entry_void<tiledb::api::tiledb_group_free>(group);
+  return api_entry_void<tiledb::api::tiledb_group_free>(
+      TILEDB_SOURCE_LOCATION(), group);
 }
 
 capi_return_t tiledb_group_set_config(
@@ -585,7 +587,7 @@ capi_return_t tiledb_group_set_config(
     tiledb_group_t* group,
     tiledb_config_t* config) noexcept {
   return api_entry_context<tiledb::api::tiledb_group_set_config>(
-      ctx, group, config);
+      TILEDB_SOURCE_LOCATION(), ctx, group, config);
 }
 
 capi_return_t tiledb_group_get_config(
@@ -593,7 +595,7 @@ capi_return_t tiledb_group_get_config(
     tiledb_group_t* group,
     tiledb_config_t** config) noexcept {
   return api_entry_context<tiledb::api::tiledb_group_get_config>(
-      ctx, group, config);
+      TILEDB_SOURCE_LOCATION(), ctx, group, config);
 }
 
 capi_return_t tiledb_group_put_metadata(
@@ -604,7 +606,7 @@ capi_return_t tiledb_group_put_metadata(
     uint32_t value_num,
     const void* value) noexcept {
   return api_entry_context<tiledb::api::tiledb_group_put_metadata>(
-      ctx, group, key, value_type, value_num, value);
+      TILEDB_SOURCE_LOCATION(), ctx, group, key, value_type, value_num, value);
 }
 
 capi_return_t tiledb_group_delete_group(
@@ -613,13 +615,13 @@ capi_return_t tiledb_group_delete_group(
     const char* uri,
     const uint8_t recursive) noexcept {
   return api_entry_context<tiledb::api::tiledb_group_delete_group>(
-      ctx, group, uri, recursive);
+      TILEDB_SOURCE_LOCATION(), ctx, group, uri, recursive);
 }
 
 capi_return_t tiledb_group_delete_metadata(
     tiledb_ctx_t* ctx, tiledb_group_t* group, const char* key) noexcept {
   return api_entry_context<tiledb::api::tiledb_group_delete_metadata>(
-      ctx, group, key);
+      TILEDB_SOURCE_LOCATION(), ctx, group, key);
 }
 
 capi_return_t tiledb_group_get_metadata(
@@ -630,13 +632,13 @@ capi_return_t tiledb_group_get_metadata(
     uint32_t* value_num,
     const void** value) noexcept {
   return api_entry_context<tiledb::api::tiledb_group_get_metadata>(
-      ctx, group, key, value_type, value_num, value);
+      TILEDB_SOURCE_LOCATION(), ctx, group, key, value_type, value_num, value);
 }
 
 capi_return_t tiledb_group_get_metadata_num(
     tiledb_ctx_t* ctx, tiledb_group_t* group, uint64_t* num) noexcept {
   return api_entry_context<tiledb::api::tiledb_group_get_metadata_num>(
-      ctx, group, num);
+      TILEDB_SOURCE_LOCATION(), ctx, group, num);
 }
 
 capi_return_t tiledb_group_get_metadata_from_index(
@@ -649,7 +651,15 @@ capi_return_t tiledb_group_get_metadata_from_index(
     uint32_t* value_num,
     const void** value) noexcept {
   return api_entry_context<tiledb::api::tiledb_group_get_metadata_from_index>(
-      ctx, group, index, key, key_len, value_type, value_num, value);
+      TILEDB_SOURCE_LOCATION(),
+      ctx,
+      group,
+      index,
+      key,
+      key_len,
+      value_type,
+      value_num,
+      value);
 }
 
 capi_return_t tiledb_group_has_metadata_key(
@@ -659,7 +669,7 @@ capi_return_t tiledb_group_has_metadata_key(
     tiledb_datatype_t* value_type,
     int32_t* has_key) noexcept {
   return api_entry_context<tiledb::api::tiledb_group_has_metadata_key>(
-      ctx, group, key, value_type, has_key);
+      TILEDB_SOURCE_LOCATION(), ctx, group, key, value_type, has_key);
 }
 
 capi_return_t tiledb_group_add_member(
@@ -669,19 +679,19 @@ capi_return_t tiledb_group_add_member(
     const uint8_t relative,
     const char* name) noexcept {
   return api_entry_context<tiledb::api::tiledb_group_add_member>(
-      ctx, group, uri, relative, name);
+      TILEDB_SOURCE_LOCATION(), ctx, group, uri, relative, name);
 }
 
 capi_return_t tiledb_group_remove_member(
     tiledb_ctx_t* ctx, tiledb_group_t* group, const char* uri) noexcept {
   return api_entry_context<tiledb::api::tiledb_group_remove_member>(
-      ctx, group, uri);
+      TILEDB_SOURCE_LOCATION(), ctx, group, uri);
 }
 
 capi_return_t tiledb_group_get_member_count(
     tiledb_ctx_t* ctx, tiledb_group_t* group, uint64_t* count) noexcept {
   return api_entry_context<tiledb::api::tiledb_group_get_member_count>(
-      ctx, group, count);
+      TILEDB_SOURCE_LOCATION(), ctx, group, count);
 }
 
 capi_return_t tiledb_group_get_member_by_index(
@@ -692,7 +702,7 @@ capi_return_t tiledb_group_get_member_by_index(
     tiledb_object_t* type,
     char** name) noexcept {
   return api_entry_context<tiledb::api::tiledb_group_get_member_by_index>(
-      ctx, group, index, uri, type, name);
+      TILEDB_SOURCE_LOCATION(), ctx, group, index, uri, type, name);
 }
 
 capi_return_t tiledb_group_get_member_by_name(
@@ -702,7 +712,7 @@ capi_return_t tiledb_group_get_member_by_name(
     char** uri,
     tiledb_object_t* type) noexcept {
   return api_entry_context<tiledb::api::tiledb_group_get_member_by_name>(
-      ctx, group, name, uri, type);
+      TILEDB_SOURCE_LOCATION(), ctx, group, name, uri, type);
 }
 
 capi_return_t tiledb_group_get_is_relative_uri_by_name(
@@ -712,19 +722,19 @@ capi_return_t tiledb_group_get_is_relative_uri_by_name(
     uint8_t* relative) noexcept {
   return api_entry_context<
       tiledb::api::tiledb_group_get_is_relative_uri_by_name>(
-      ctx, group, name, relative);
+      TILEDB_SOURCE_LOCATION(), ctx, group, name, relative);
 }
 
 capi_return_t tiledb_group_is_open(
     tiledb_ctx_t* ctx, tiledb_group_t* group, int32_t* is_open) noexcept {
   return api_entry_context<tiledb::api::tiledb_group_is_open>(
-      ctx, group, is_open);
+      TILEDB_SOURCE_LOCATION(), ctx, group, is_open);
 }
 
 capi_return_t tiledb_group_get_uri(
     tiledb_ctx_t* ctx, tiledb_group_t* group, const char** group_uri) noexcept {
   return api_entry_context<tiledb::api::tiledb_group_get_uri>(
-      ctx, group, group_uri);
+      TILEDB_SOURCE_LOCATION(), ctx, group, group_uri);
 }
 
 capi_return_t tiledb_group_get_query_type(
@@ -732,7 +742,7 @@ capi_return_t tiledb_group_get_query_type(
     tiledb_group_t* group,
     tiledb_query_type_t* query_type) noexcept {
   return api_entry_context<tiledb::api::tiledb_group_get_query_type>(
-      ctx, group, query_type);
+      TILEDB_SOURCE_LOCATION(), ctx, group, query_type);
 }
 
 capi_return_t tiledb_group_dump_str(
@@ -741,7 +751,7 @@ capi_return_t tiledb_group_dump_str(
     char** dump_ascii,
     const uint8_t recursive) noexcept {
   return api_entry_context<tiledb::api::tiledb_group_dump_str>(
-      ctx, group, dump_ascii, recursive);
+      TILEDB_SOURCE_LOCATION(), ctx, group, dump_ascii, recursive);
 }
 
 capi_return_t tiledb_serialize_group(
@@ -751,7 +761,12 @@ capi_return_t tiledb_serialize_group(
     int32_t client_side,
     tiledb_buffer_t** buffer_list) noexcept {
   return api_entry_context<tiledb::api::tiledb_serialize_group>(
-      ctx, group, serialize_type, client_side, buffer_list);
+      TILEDB_SOURCE_LOCATION(),
+      ctx,
+      group,
+      serialize_type,
+      client_side,
+      buffer_list);
 }
 
 capi_return_t tiledb_deserialize_group(
@@ -761,7 +776,12 @@ capi_return_t tiledb_deserialize_group(
     int32_t client_side,
     tiledb_group_t* group) noexcept {
   return api_entry_context<tiledb::api::tiledb_deserialize_group>(
-      ctx, buffer, serialize_type, client_side, group);
+      TILEDB_SOURCE_LOCATION(),
+      ctx,
+      buffer,
+      serialize_type,
+      client_side,
+      group);
 }
 
 capi_return_t tiledb_serialize_group_metadata(
@@ -770,7 +790,7 @@ capi_return_t tiledb_serialize_group_metadata(
     tiledb_serialization_type_t serialization_type,
     tiledb_buffer_t** buffer) noexcept {
   return api_entry_context<tiledb::api::tiledb_serialize_group_metadata>(
-      ctx, group, serialization_type, buffer);
+      TILEDB_SOURCE_LOCATION(), ctx, group, serialization_type, buffer);
 }
 
 capi_return_t tiledb_deserialize_group_metadata(
@@ -779,7 +799,7 @@ capi_return_t tiledb_deserialize_group_metadata(
     tiledb_serialization_type_t serialization_type,
     const tiledb_buffer_t* buffer) noexcept {
   return api_entry_context<tiledb::api::tiledb_deserialize_group_metadata>(
-      ctx, group, serialization_type, buffer);
+      TILEDB_SOURCE_LOCATION(), ctx, group, serialization_type, buffer);
 }
 
 capi_return_t tiledb_group_consolidate_metadata(
@@ -787,7 +807,7 @@ capi_return_t tiledb_group_consolidate_metadata(
     const char* group_uri,
     tiledb_config_t* config) noexcept {
   return api_entry_with_context<tiledb::api::tiledb_group_consolidate_metadata>(
-      ctx, group_uri, config);
+      TILEDB_SOURCE_LOCATION(), ctx, group_uri, config);
 }
 
 capi_return_t tiledb_group_vacuum_metadata(
@@ -795,5 +815,5 @@ capi_return_t tiledb_group_vacuum_metadata(
     const char* group_uri,
     tiledb_config_t* config) noexcept {
   return api_entry_with_context<tiledb::api::tiledb_group_vacuum_metadata>(
-      ctx, group_uri, config);
+      TILEDB_SOURCE_LOCATION(), ctx, group_uri, config);
 }

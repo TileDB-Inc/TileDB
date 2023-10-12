@@ -64,5 +64,5 @@ capi_return_t tiledb_query_get_plan(
     tiledb_query_t* query,
     tiledb_string_handle_t** rv) noexcept {
   return api_entry_with_context<tiledb::api::tiledb_query_get_plan>(
-      ctx, query, rv);
+      TILEDB_SOURCE_LOCATION(), ctx, query, rv);
 }

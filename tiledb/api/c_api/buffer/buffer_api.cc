@@ -100,11 +100,13 @@ using tiledb::api::api_entry_void;
 
 capi_return_t tiledb_buffer_alloc(
     tiledb_ctx_t* ctx, tiledb_buffer_t** buffer) noexcept {
-  return api_entry_context<tiledb::api::tiledb_buffer_alloc>(ctx, buffer);
+  return api_entry_context<tiledb::api::tiledb_buffer_alloc>(
+      TILEDB_SOURCE_LOCATION(), ctx, buffer);
 }
 
 void tiledb_buffer_free(tiledb_buffer_t** buffer) noexcept {
-  return api_entry_void<tiledb::api::tiledb_buffer_free>(buffer);
+  return api_entry_void<tiledb::api::tiledb_buffer_free>(
+      TILEDB_SOURCE_LOCATION(), buffer);
 }
 
 capi_return_t tiledb_buffer_set_type(
@@ -112,7 +114,7 @@ capi_return_t tiledb_buffer_set_type(
     tiledb_buffer_t* buffer,
     tiledb_datatype_t datatype) noexcept {
   return api_entry_context<tiledb::api::tiledb_buffer_set_type>(
-      ctx, buffer, datatype);
+      TILEDB_SOURCE_LOCATION(), ctx, buffer, datatype);
 }
 
 capi_return_t tiledb_buffer_get_type(
@@ -120,7 +122,7 @@ capi_return_t tiledb_buffer_get_type(
     const tiledb_buffer_t* buffer,
     tiledb_datatype_t* datatype) noexcept {
   return api_entry_context<tiledb::api::tiledb_buffer_get_type>(
-      ctx, buffer, datatype);
+      TILEDB_SOURCE_LOCATION(), ctx, buffer, datatype);
 }
 
 capi_return_t tiledb_buffer_get_data(
@@ -129,7 +131,7 @@ capi_return_t tiledb_buffer_get_data(
     void** data,
     uint64_t* size) noexcept {
   return api_entry_context<tiledb::api::tiledb_buffer_get_data>(
-      ctx, buffer, data, size);
+      TILEDB_SOURCE_LOCATION(), ctx, buffer, data, size);
 }
 
 capi_return_t tiledb_buffer_set_data(
@@ -138,5 +140,5 @@ capi_return_t tiledb_buffer_set_data(
     void* data,
     uint64_t size) noexcept {
   return api_entry_context<tiledb::api::tiledb_buffer_set_data>(
-      ctx, buffer, data, size);
+      TILEDB_SOURCE_LOCATION(), ctx, buffer, data, size);
 }

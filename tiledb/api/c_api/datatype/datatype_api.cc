@@ -63,12 +63,14 @@ using tiledb::api::api_entry_plain;
 
 capi_return_t tiledb_datatype_to_str(
     tiledb_datatype_t datatype, const char** str) noexcept {
-  return api_entry_plain<tiledb::api::tiledb_datatype_to_str>(datatype, str);
+  return api_entry_plain<tiledb::api::tiledb_datatype_to_str>(
+      TILEDB_SOURCE_LOCATION(), datatype, str);
 }
 
 capi_return_t tiledb_datatype_from_str(
     const char* str, tiledb_datatype_t* datatype) noexcept {
-  return api_entry_plain<tiledb::api::tiledb_datatype_from_str>(str, datatype);
+  return api_entry_plain<tiledb::api::tiledb_datatype_from_str>(
+      TILEDB_SOURCE_LOCATION(), str, datatype);
 }
 
 uint64_t tiledb_datatype_size(tiledb_datatype_t type) noexcept {

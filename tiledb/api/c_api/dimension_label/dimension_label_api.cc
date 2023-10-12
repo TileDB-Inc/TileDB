@@ -107,7 +107,8 @@ using tiledb::api::api_entry_void;
 
 void tiledb_dimension_label_free(
     tiledb_dimension_label_t** dim_label) noexcept {
-  return api_entry_void<tiledb::api::tiledb_dimension_label_free>(dim_label);
+  return api_entry_void<tiledb::api::tiledb_dimension_label_free>(
+      TILEDB_SOURCE_LOCATION(), dim_label);
 }
 
 capi_return_t tiledb_dimension_label_get_dimension_index(
@@ -116,7 +117,7 @@ capi_return_t tiledb_dimension_label_get_dimension_index(
     uint32_t* dim_index) noexcept {
   return api_entry_context<
       tiledb::api::tiledb_dimension_label_get_dimension_index>(
-      ctx, dim_label, dim_index);
+      TILEDB_SOURCE_LOCATION(), ctx, dim_label, dim_index);
 }
 
 capi_return_t tiledb_dimension_label_get_label_attr_name(
@@ -125,7 +126,7 @@ capi_return_t tiledb_dimension_label_get_label_attr_name(
     const char** label_attr_name) noexcept {
   return api_entry_context<
       tiledb::api::tiledb_dimension_label_get_label_attr_name>(
-      ctx, dim_label, label_attr_name);
+      TILEDB_SOURCE_LOCATION(), ctx, dim_label, label_attr_name);
 }
 
 capi_return_t tiledb_dimension_label_get_label_cell_val_num(
@@ -134,7 +135,7 @@ capi_return_t tiledb_dimension_label_get_label_cell_val_num(
     uint32_t* label_cell_val_num) noexcept {
   return api_entry_context<
       tiledb::api::tiledb_dimension_label_get_label_cell_val_num>(
-      ctx, dim_label, label_cell_val_num);
+      TILEDB_SOURCE_LOCATION(), ctx, dim_label, label_cell_val_num);
 }
 
 capi_return_t tiledb_dimension_label_get_label_order(
@@ -142,7 +143,7 @@ capi_return_t tiledb_dimension_label_get_label_order(
     tiledb_dimension_label_t* dim_label,
     tiledb_data_order_t* label_order) noexcept {
   return api_entry_context<tiledb::api::tiledb_dimension_label_get_label_order>(
-      ctx, dim_label, label_order);
+      TILEDB_SOURCE_LOCATION(), ctx, dim_label, label_order);
 }
 
 capi_return_t tiledb_dimension_label_get_label_type(
@@ -150,7 +151,7 @@ capi_return_t tiledb_dimension_label_get_label_type(
     tiledb_dimension_label_t* dim_label,
     tiledb_datatype_t* label_type) noexcept {
   return api_entry_context<tiledb::api::tiledb_dimension_label_get_label_type>(
-      ctx, dim_label, label_type);
+      TILEDB_SOURCE_LOCATION(), ctx, dim_label, label_type);
 }
 
 capi_return_t tiledb_dimension_label_get_name(
@@ -158,7 +159,7 @@ capi_return_t tiledb_dimension_label_get_name(
     tiledb_dimension_label_t* dim_label,
     const char** name) noexcept {
   return api_entry_context<tiledb::api::tiledb_dimension_label_get_name>(
-      ctx, dim_label, name);
+      TILEDB_SOURCE_LOCATION(), ctx, dim_label, name);
 }
 
 capi_return_t tiledb_dimension_label_get_uri(
@@ -166,5 +167,5 @@ capi_return_t tiledb_dimension_label_get_uri(
     tiledb_dimension_label_t* dim_label,
     const char** uri) noexcept {
   return api_entry_context<tiledb::api::tiledb_dimension_label_get_uri>(
-      ctx, dim_label, uri);
+      TILEDB_SOURCE_LOCATION(), ctx, dim_label, uri);
 }
