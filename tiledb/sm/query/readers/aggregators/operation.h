@@ -70,10 +70,12 @@ class MinOperation : public Operation {
         // change (STRING_ASCII,CHAR) mapping in apply_with_type
         if constexpr (std::is_same_v<char, decltype(T)>) {
           aggregator_ =
-              tdb::make_shared<tiledb::sm::MinAggregator<std::string>>(HERE(), fi);
+              tdb::make_shared<tiledb::sm::MinAggregator<std::string>>(
+                  HERE(), fi);
         } else {
           aggregator_ =
-              tdb::make_shared<tiledb::sm::MinAggregator<decltype(T)>>(HERE(), fi);
+              tdb::make_shared<tiledb::sm::MinAggregator<decltype(T)>>(
+                  HERE(), fi);
         }
       } else {
         throw std::logic_error(
@@ -100,10 +102,12 @@ class MaxOperation : public Operation {
         // change (STRING_ASCII,CHAR) mapping in apply_with_type
         if constexpr (std::is_same_v<char, decltype(T)>) {
           aggregator_ =
-              tdb::make_shared<tiledb::sm::MaxAggregator<std::string>>(HERE(), fi);
+              tdb::make_shared<tiledb::sm::MaxAggregator<std::string>>(
+                  HERE(), fi);
         } else {
           aggregator_ =
-              tdb::make_shared<tiledb::sm::MaxAggregator<decltype(T)>>(HERE(), fi);
+              tdb::make_shared<tiledb::sm::MaxAggregator<decltype(T)>>(
+                  HERE(), fi);
         }
       } else {
         throw std::logic_error(
@@ -123,8 +127,8 @@ class SumOperation : public Operation {
     auto g = [&](auto T) {
       if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
         ensure_aggregate_numeric_field(constants::aggregate_sum_str, fi);
-        aggregator_ =
-            tdb::make_shared<tiledb::sm::SumAggregator<decltype(T)>>(HERE(), fi);
+        aggregator_ = tdb::make_shared<tiledb::sm::SumAggregator<decltype(T)>>(
+            HERE(), fi);
       } else {
         throw std::logic_error(
             "Sum aggregates can only be requested on numeric types");
