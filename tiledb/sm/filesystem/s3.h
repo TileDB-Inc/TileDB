@@ -417,7 +417,8 @@ class S3 {
    * Lists objects and object information that start with `prefix`, invoking
    * the callback on each entry collected. If the callback returns 1, traversal
    * continues. If the callback returns 0, traversal is stopped. If the callback
-   * returns -1 an error is thrown.
+   * returns -1 an error is thrown. The callback will not be invoked on
+   * directories.
    *
    * For recursive results, an empty string can be passed as the `delimiter`.
    *

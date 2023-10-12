@@ -69,7 +69,6 @@ typedef int32_t (*tiledb_ls_callback_t)(
  * }
  * MyCbStruct* cb_data = allocate_cb_struct();
  *
- * // Retrieve at most 100 results from 'my_dir'.
  * tiledb_vfs_ls_recursive(ctx, vfs, "my_dir", my_callback, &cb_data);
  * @endcode
  *

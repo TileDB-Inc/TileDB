@@ -521,10 +521,10 @@ TEST_CASE_METHOD(
   DYNAMIC_SECTION("ls_recursive with " << fs_name() << " backend") {
     tiledb::VFSExperimental::LsObjects ls_objects;
     // Predicate filter to apply to ls_recursive.
-    tiledb::VFSExperimental::LsInclude include_cb =
-        [](const std::string_view&) { return true; };
+    tiledb::VFSExperimental::LsInclude include_cb;
     // Callback to populate ls_objects vector using a filter.
-    auto cb = [&](const std::string_view& path, uint64_t size) {
+    tiledb::VFSExperimental::LsCallback cb = [&](const std::string_view& path,
+                                                 uint64_t size) {
       if (include_cb(path)) {
         ls_objects.emplace_back(path, size);
       }
@@ -532,38 +532,34 @@ TEST_CASE_METHOD(
     };
 
     SECTION("Default filter (include all)") {
-      test_ls_recursive_filter(include_cb);
-      test_ls_recursive_cb(cb, ls_objects);
+      include_cb = [](const std::string_view&) { return true; };
     }
     SECTION("Custom filter (include none)") {
       include_cb = [](const std::string_view&) { return false; };
-      test_ls_recursive_filter(include_cb);
-      test_ls_recursive_cb(cb, ls_objects);
     }
+
+    bool include = true;
     SECTION("Custom filter (include half)") {
-      bool include = true;
       include_cb = [&include](const std::string_view&) {
         include = !include;
         return include;
       };
-      test_ls_recursive_filter(include_cb);
-      test_ls_recursive_cb(cb, ls_objects);
     }
+
     SECTION("Custom filter (search for text1.txt)") {
       include_cb = [](const std::string_view& path) {
         return path.find("test1.txt") != std::string::npos;
       };
-      test_ls_recursive_filter(include_cb);
-      test_ls_recursive_cb(cb, ls_objects);
     }
     SECTION("Custom filter (search for text1*.txt)") {
       include_cb = [](const std::string_view& object_name) {
         return object_name.find("test1") != std::string::npos &&
                object_name.find(".txt") != std::string::npos;
       };
-      test_ls_recursive_filter(include_cb);
-      test_ls_recursive_cb(cb, ls_objects);
     }
+
+    test_ls_recursive_filter(include_cb);
+    test_ls_recursive_cb(cb, ls_objects);
   }
 }
 

@@ -86,11 +86,21 @@ class VFSExperimental {
    * If False, the walk will stop. If an error is thrown, the walk will stop and
    * the error will be propagated to the caller using std::throw_with_nested.
    *
+   * @code{.c}
+   * VFSExperimental::LsObjects ls_objects;
+   * VFSExperimental::LsCallback cb = [&](const std::string_view& path,
+   *                                      uint64_t size) {
+   *    ls_objects.emplace_back(path, size);
+   *    return true;  // Continue traversal to next entry.
+   * }
+   *
+   * VFSExperimental::ls_recursive(ctx, vfs, "my_dir", cb);
+   * @endcode
+   *
    * @param ctx The TileDB context.
    * @param vfs The VFS instance to use.
    * @param uri The base URI to list results recursively.
    * @param cb The callback to invoke on each entry.
-   * @param data The data structure to store results in.
    */
   static void ls_recursive(
       const Context& ctx,
@@ -111,6 +121,17 @@ class VFSExperimental {
    * on each entry gathered. The callback should return true if the entry should
    * be included in the results. If no inclusion predicate is provided, all
    * results are returned.
+   *
+   * @code{.c}
+   * VFSExperimental::LsInclude predicate = [](const std::string_view& path) {
+   *   return path.find(".txt") != std::string::npos;
+   * }
+   * // Include only files with '.txt' extension using a custom predicate.
+   * auto ret = VFSExperimental::ls_recursive(ctx, vfs, "my_dir", predicate);
+   *
+   * // Optionally omit the predicate to include all paths collected.
+   * auto all_paths = VFSExperimental::ls_recursive(ctx, vfs, "my_dir");
+   * @endcode
    *
    * @param ctx The TileDB context.
    * @param vfs The VFS instance to use.
@@ -173,7 +194,7 @@ class VFSExperimental {
         return 0;
       }
     } catch (...) {
-      std::throw_with_nested(std::runtime_error("Error in user callback"));
+      std::throw_with_nested(TileDBError("Error in user callback"));
     }
   }
 };

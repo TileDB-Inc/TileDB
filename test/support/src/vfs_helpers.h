@@ -705,7 +705,17 @@ struct VfsFixture {
 
   ~VfsFixture();
 
+  std::string fs_name();
+
   void setup_test(std::vector<size_t> max_files);
+
+  /**
+   * Creates `count` objects in the input directory with the given file name
+   * prefix. Each object is written with data of size `i * 10` for validating
+   * object sizes are correct.
+   */
+  void create_objects(
+      const tiledb::sm::URI& dir, size_t count, const std::string& prefix);
 
   /// Helper function to filter expected results using a custom filter function.
   void filter_expected(const VFSExperimental::LsInclude& filter);
@@ -722,14 +732,9 @@ struct VfsFixture {
       const VFSExperimental::LsInclude& filter,
       bool filter_expected = true);
 
-  std::string fs_name();
-
   void test_ls_recursive_cb(
       VFSExperimental::LsCallback const cb,
       const VFSExperimental::LsObjects& data);
-
-  void create_objects(
-      const tiledb::sm::URI& dir, size_t count, const std::string& prefix);
 
  protected:
   tiledb::Config cfg_;

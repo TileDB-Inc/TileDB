@@ -43,7 +43,8 @@ namespace tiledb::sm {
  * @param path The path of a visited object for the relative filesystem.
  * @param path_len The length of the path string.
  * @param object_size The size of the object at the path.
- * @param data Cast to LsRecursiveData struct to store paths and offsets.
+ * @param data Cast to user defined struct to store paths and offsets. See
+ *      VFSExperimental::LsObjects as an example.
  * @return `1` if the walk should continue to the next object, `0` if the walk
  *    should stop, and `-1` on error.
  */

@@ -39,6 +39,16 @@ struct VfsFixture {
       , compute_(4)
       , io_(4)
       , vfs_(&stats_, &compute_, &io_, tiledb::sm::Config()) {
+    temp_dir_ = tiledb::sm::URI("unit_vfs_test");
+    vfs_.create_dir(temp_dir_).ok();
+  }
+
+  ~VfsFixture() {
+    bool is_dir = false;
+    vfs_.is_dir(temp_dir_, &is_dir).ok();
+    if (is_dir) {
+      vfs_.remove_dir(temp_dir_).ok();
+    }
   }
 
   void create_objects(
@@ -73,38 +83,36 @@ struct VfsFixture {
   tiledb::sm::VFS vfs_;
 
   LsObjects expected_results_;
+  tiledb::sm::URI temp_dir_;
 };
 
-TEST_CASE_METHOD(
-    VfsFixture, "VFS: Default arguments ls_recursive", "[vfs][ls_recursive]") {
-  tiledb::sm::URI temp_dir("vfs_default_args");
-  vfs_.create_dir(temp_dir).ok();
+TEST_CASE_METHOD(VfsFixture, "VFS: ls_recursive", "[vfs][ls_recursive]") {
   LsObjects ls_objects;
 
   SECTION("Empty directory") {
-    create_objects(temp_dir, 0, "file");
+    create_objects(temp_dir_, 0, "file");
   }
 
   SECTION("Single file") {
-    create_objects(temp_dir, 1, "file");
+    create_objects(temp_dir_, 1, "file");
   }
 
   SECTION("Multiple files in single directory") {
-    create_objects(temp_dir, 10, "file");
+    create_objects(temp_dir_, 10, "file");
   }
 
   SECTION("Multiple files in nested directories") {
-    create_objects(temp_dir, 10, "file");
+    create_objects(temp_dir_, 10, "file");
 
-    auto subdir = temp_dir.join_path("subdir");
+    auto subdir = temp_dir_.join_path("subdir");
     vfs_.create_dir(subdir).ok();
     create_objects(subdir, 10, "file");
   }
 
-  vfs_.ls_recursive(temp_dir, ls_recursive_gather, &ls_objects);
+  vfs_.ls_recursive(temp_dir_, ls_recursive_gather, &ls_objects);
   CHECK(ls_objects.size() == expected_results_.size());
   CHECK(ls_objects == expected_results_);
-  vfs_.remove_dir(temp_dir).ok();
+  vfs_.remove_dir(temp_dir_).ok();
 }
 
 TEST_CASE_METHOD(
@@ -112,30 +120,25 @@ TEST_CASE_METHOD(
   auto cb = [](const char*, size_t, uint64_t, void*) -> int32_t {
     throw std::logic_error("Throwing callback");
   };
-  tiledb::sm::URI temp_dir("vfs_throwing_callback");
   LsObjects data;
-  vfs_.create_dir(temp_dir).ok();
   SECTION("Throwing callback with 0 objects should not throw") {
-    CHECK_NOTHROW(vfs_.ls_recursive(temp_dir, cb, &data));
+    CHECK_NOTHROW(vfs_.ls_recursive(temp_dir_, cb, &data));
   }
   SECTION("Throwing callback with N objects should throw") {
-    vfs_.touch(temp_dir.join_path("file")).ok();
-    CHECK_THROWS_AS(vfs_.ls_recursive(temp_dir, cb, &data), std::logic_error);
+    vfs_.touch(temp_dir_.join_path("file")).ok();
+    CHECK_THROWS_AS(vfs_.ls_recursive(temp_dir_, cb, &data), std::logic_error);
     CHECK_THROWS_WITH(
-        vfs_.ls_recursive(temp_dir, cb, &data),
+        vfs_.ls_recursive(temp_dir_, cb, &data),
         Catch::Matchers::ContainsSubstring("Throwing callback"));
   }
-  vfs_.remove_dir(temp_dir).ok();
 }
 
 TEST_CASE_METHOD(
     VfsFixture, "VFS: Callback stops traversal", "[vfs][ls_recursive]") {
-  tiledb::sm::URI temp_dir("vfs_stop_traversal");
-  vfs_.create_dir(temp_dir).ok();
   // Create 10 nested subdirectories to test traversal stops within a recursive
   // call chain. The name of the subdirectory is important, it should be not
   // appear last when the adjacent objects are sorted.
-  tiledb::sm::URI path = temp_dir;
+  tiledb::sm::URI path = temp_dir_;
   for (size_t i = 0; i < 10; i++) {
     path = path.join_path("subdir" + std::to_string(i));
     vfs_.create_dir(path).ok();
@@ -151,10 +154,9 @@ TEST_CASE_METHOD(
     }
     return 1;
   };
-  vfs_.ls_recursive(temp_dir, cb, &ls_objects);
+  vfs_.ls_recursive(temp_dir_, cb, &ls_objects);
   CHECK(ls_objects.size() == count);
   std::sort(expected_results_.begin(), expected_results_.end());
   expected_results_.resize(count);
   CHECK(ls_objects == expected_results_);
-  vfs_.remove_dir(temp_dir).ok();
 }

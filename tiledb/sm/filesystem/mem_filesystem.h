@@ -144,11 +144,10 @@ class MemFilesystem {
   ls_with_sizes(const URI& path) const;
 
   /**
-   * Lists files and files information under path, invoking the callback on each
-   * object. If recursive is true, the path is traversed recursively. If the
-   * callback returns 0, traversal is stopped. If the callback returns 1,
-   * traversal continues. If the callback returns -1, traversal is stopped and
-   * an error is thrown.
+   * Lists files and files information at `path`, invoking the callback on each
+   * object. The callback should return `1` to continue traversal, `0` to stop,
+   * and `-1` on error. If recursive is true, the path is traversed recursively.
+   * The callback will not be invoked on directories.
    *
    * @param path The parent path to list sub-paths.
    * @param cb The callback to invoke on each object.

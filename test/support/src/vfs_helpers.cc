@@ -476,12 +476,34 @@ VfsFixture::~VfsFixture() {
   }
 }
 
+std::string VfsFixture::fs_name() {
+  return temp_dir_.backend_name();
+}
+
 void VfsFixture::setup_test(std::vector<size_t> max_files) {
   auto path = temp_dir_;
   for (size_t i = 1; i <= max_files.size(); i++) {
     path = path.join_path("subdir" + std::to_string(i));
     vfs_.create_dir(path.to_string());
     create_objects(path, max_files[i - 1], "test_file");
+  }
+}
+
+void VfsFixture::create_objects(
+    const sm::URI& dir, size_t count, const std::string& prefix) {
+  for (size_t i = 1; i <= count; i++) {
+    auto uri = dir.join_path(prefix + std::to_string(i));
+    vfs_.touch(uri.to_string());
+
+    // Write some data to test file sizes are correct.
+    tiledb_vfs_fh_t* fh;
+    tiledb_vfs_open(ctx_c_, vfs_c_, uri.c_str(), TILEDB_VFS_WRITE, &fh);
+    std::string data(i * 10, 'a');
+    tiledb_vfs_write(ctx_c_, fh, data.data(), data.size());
+    tiledb_vfs_close(ctx_c_, fh);
+    tiledb_vfs_fh_free(&fh);
+
+    expected_results_.emplace_back(uri.to_string(), data.size());
   }
 }
 
@@ -517,10 +539,6 @@ void VfsFixture::test_ls_recursive_cb(
   CHECK(data == expected_results_);
 }
 
-std::string VfsFixture::fs_name() {
-  return temp_dir_.backend_name();
-}
-
 void VfsFixture::test_ls_recursive_capi(
     const tiledb_ls_callback_t& callback,
     const VFSExperimental::LsInclude& filter,
@@ -547,24 +565,6 @@ void VfsFixture::test_ls_recursive_capi(
         expected_results_[i] == std::make_pair(path, results.object_sizes_[i]));
   }
   CHECK(results.path_pos_ == expected_results_.size());
-}
-
-void VfsFixture::create_objects(
-    const sm::URI& dir, size_t count, const std::string& prefix) {
-  for (size_t i = 1; i <= count; i++) {
-    auto uri = dir.join_path(prefix + std::to_string(i));
-    vfs_.touch(uri.to_string());
-
-    // Write some data to test file sizes are correct.
-    tiledb_vfs_fh_t* fh;
-    tiledb_vfs_open(ctx_c_, vfs_c_, uri.c_str(), TILEDB_VFS_WRITE, &fh);
-    std::string data(i * 10, 'a');
-    tiledb_vfs_write(ctx_c_, fh, data.data(), data.size());
-    tiledb_vfs_close(ctx_c_, fh);
-    tiledb_vfs_fh_free(&fh);
-
-    expected_results_.emplace_back(uri.to_string(), data.size());
-  }
 }
 
 }  // End of namespace test
