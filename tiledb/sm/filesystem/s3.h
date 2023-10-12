@@ -48,6 +48,7 @@
 #include "tiledb/sm/stats/stats.h"
 #include "uri.h"
 
+#undef GetObject
 #include <aws/core/Aws.h>
 #include <aws/core/auth/AWSCredentialsProviderChain.h>
 #include <aws/core/client/ClientConfiguration.h>
@@ -85,6 +86,8 @@ using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb::sm {
 
+class TileDBS3Client;
+
 /**
  * The s3-specific configuration parameters.
  *
@@ -93,6 +96,9 @@ namespace tiledb::sm {
  * @note Not all vfs.s3 config parameters are present in this struct.
  */
 struct S3Parameters {
+  /** Stores parsed custom headers from config. */
+  using Headers = std::unordered_map<std::string, std::string>;
+
   S3Parameters() = delete;
 
   S3Parameters(const Config& config)
@@ -129,6 +135,7 @@ struct S3Parameters {
             config.get<int64_t>("vfs.s3.connect_max_tries", Config::must_find))
       , connect_scale_factor_(config.get<int64_t>(
             "vfs.s3.connect_scale_factor", Config::must_find))
+      , custom_headers_(load_headers(config))
       , logging_level_(
             config.get<std::string>("vfs.s3.logging_level", Config::must_find))
       , request_timeout_ms_(
@@ -160,6 +167,9 @@ struct S3Parameters {
             "vfs.s3.config_source", Config::must_find)){};
 
   ~S3Parameters() = default;
+
+  /** Load all custom headers from the given config.  */
+  static Headers load_headers(const Config& cfg);
 
   /** The AWS region. */
   std::string region_;
@@ -214,6 +224,9 @@ struct S3Parameters {
 
   /** The scale factor for exponential backoff when connecting to S3. */
   int64_t connect_scale_factor_;
+
+  /** Custom headers to add to all s3 requests. */
+  Headers custom_headers_;
 
   /** Process-global AWS SDK logging level. */
   std::string logging_level_;
@@ -861,7 +874,7 @@ class S3 {
    * The lazily-initialized S3 client. This is mutable so that nominally const
    * functions can call init_client().
    */
-  mutable shared_ptr<Aws::S3::S3Client> client_;
+  mutable shared_ptr<TileDBS3Client> client_;
 
   /** The AWS credetial provider. */
   mutable shared_ptr<Aws::Auth::AWSCredentialsProvider> credentials_provider_;

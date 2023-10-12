@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -698,6 +698,9 @@ extern const unsigned int gcs_attempt_sleep_ms;
 
 /** An allocation tag used for logging. */
 extern const std::string s3_allocation_tag;
+
+/** The S3 custom headers config key prefix. */
+extern const std::string s3_header_prefix;
 
 /** Prefix indicating a special name reserved by TileDB. */
 extern const std::string special_name_prefix;
