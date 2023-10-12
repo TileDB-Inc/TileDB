@@ -36,6 +36,7 @@
 #define TILEDB_CPP_API_GROUP_EXPERIMENTAL_H
 
 #include "context.h"
+#include "object.h"
 #include "tiledb.h"
 
 namespace tiledb {
