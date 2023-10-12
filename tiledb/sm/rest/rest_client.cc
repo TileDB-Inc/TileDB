@@ -395,11 +395,14 @@ void RestClient::delete_array_from_rest(const URI& uri) {
       stats_, url, serialization_type_, &returned_data, cache_key));
 }
 
-void RestClient::delete_fragments_from_rest(
-    const URI& uri, uint64_t timestamp_start, uint64_t timestamp_end) {
+void RestClient::post_delete_fragments_to_rest(
+    const URI& uri,
+    Array* array,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end) {
   Buffer buff;
-  serialization::fragments_timestamps_serialize(
-      uri.to_string(),
+  serialization::serialize_delete_fragments_timestamps_request(
+      array->config(),
       timestamp_start,
       timestamp_end,
       serialization_type_,
@@ -429,11 +432,11 @@ void RestClient::delete_fragments_from_rest(
       cache_key));
 }
 
-void RestClient::delete_fragments_list_from_rest(
-    const URI& uri, const std::vector<URI>& fragment_uris) {
+void RestClient::post_delete_fragments_list_to_rest(
+    const URI& uri, Array* array, const std::vector<URI>& fragment_uris) {
   Buffer buff;
-  serialization::fragments_list_serialize(
-      uri.to_string(), fragment_uris, serialization_type_, &buff);
+  serialization::serialize_delete_fragments_list_request(
+      array->config(), fragment_uris, serialization_type_, &buff);
   // Wrap in a list
   BufferList serialized;
   throw_if_not_ok(serialized.add_buffer(std::move(buff)));
@@ -1555,13 +1558,14 @@ void RestClient::delete_array_from_rest(const URI&) {
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
-void RestClient::delete_fragments_from_rest(const URI&, uint64_t, uint64_t) {
+void RestClient::post_delete_fragments_to_rest(
+    const URI&, Array*, uint64_t, uint64_t) {
   throw StatusException(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
-void RestClient::delete_fragments_list_from_rest(
-    const URI&, const std::vector<URI>&) {
+void RestClient::post_delete_fragments_list_to_rest(
+    const URI&, Array*, const std::vector<URI>&) {
   throw StatusException(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }

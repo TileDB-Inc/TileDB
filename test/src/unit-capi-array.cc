@@ -2686,6 +2686,14 @@ TEST_CASE_METHOD(
   CHECK(tiledb::test::num_commits(array_name) == 2);
   CHECK(tiledb::test::num_fragments(array_name) == 2);
 
+  // Reopen for modify exclusive.
+  tiledb_array_free(&array);
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_array_open(ctx_, array, TILEDB_MODIFY_EXCLUSIVE);
+  REQUIRE(rc == TILEDB_OK);
+
   // ALlocate buffer
   tiledb_buffer_t* buff;
   rc = tiledb_buffer_alloc(ctx_, &buff);
@@ -2693,14 +2701,15 @@ TEST_CASE_METHOD(
 
   SECTION("delete_fragments") {
     // Serialize fragment timestamps and deserialize delete request
-    tiledb::sm::serialization::fragments_timestamps_serialize(
-        array_name,
+    tiledb::sm::serialization::serialize_delete_fragments_timestamps_request(
+        array->array_->config(),
         start_timestamp,
         end_timestamp,
         tiledb::sm::SerializationType::CAPNP,
         &buff->buffer());
-    rc = tiledb_deserialize_array_delete_fragments_timestamps_request(
+    rc = tiledb_handle_array_delete_fragments_timestamps_request(
         ctx_,
+        array,
         (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
         buff);
     REQUIRE(rc == TILEDB_OK);
@@ -2729,13 +2738,14 @@ TEST_CASE_METHOD(
     fragments.emplace_back(URI(uri2));
 
     // Serialize fragments list and deserialize delete request
-    tiledb::sm::serialization::fragments_list_serialize(
-        array_name,
+    tiledb::sm::serialization::serialize_delete_fragments_list_request(
+        array->array_->config(),
         fragments,
         tiledb::sm::SerializationType::CAPNP,
         &buff->buffer());
-    rc = tiledb_deserialize_array_delete_fragments_list_request(
+    rc = tiledb_handle_array_delete_fragments_list_request(
         ctx_,
+        array,
         (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
         buff);
     REQUIRE(rc == TILEDB_OK);

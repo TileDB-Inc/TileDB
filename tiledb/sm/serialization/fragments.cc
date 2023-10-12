@@ -58,25 +58,24 @@ class FragmentsSerializationException : public StatusException {
 
 #ifdef TILEDB_SERIALIZATION
 void fragments_timestamps_to_capnp(
-    std::string uri,
+    const Config& config,
     uint64_t start_timestamp,
     uint64_t end_timestamp,
-    capnp::ArrayDeleteFragmentsTimestampsRequest::Builder* builder) {
-  builder->setUri(uri);
-  builder->setStartTimestamp(start_timestamp);
-  builder->setEndTimestamp(end_timestamp);
+    capnp::ArrayDeleteFragmentsTimestampsRequest::Builder& builder) {
+  auto config_builder = builder.initConfig();
+  throw_if_not_ok(config_to_capnp(config, &config_builder));
+
+  builder.setStartTimestamp(start_timestamp);
+  builder.setEndTimestamp(end_timestamp);
 }
 
-std::tuple<const char*, uint64_t, uint64_t> fragments_timestamps_from_capnp(
+std::tuple<uint64_t, uint64_t> fragments_timestamps_from_capnp(
     const capnp::ArrayDeleteFragmentsTimestampsRequest::Reader& reader) {
-  return {
-      reader.getUri().cStr(),
-      reader.getStartTimestamp(),
-      reader.getEndTimestamp()};
+  return {reader.getStartTimestamp(), reader.getEndTimestamp()};
 }
 
-void fragments_timestamps_serialize(
-    std::string uri,
+void serialize_delete_fragments_timestamps_request(
+    const Config& config,
     uint64_t start_timestamp,
     uint64_t end_timestamp,
     SerializationType serialize_type,
@@ -87,7 +86,7 @@ void fragments_timestamps_serialize(
     auto builder =
         message.initRoot<capnp::ArrayDeleteFragmentsTimestampsRequest>();
     fragments_timestamps_to_capnp(
-        uri, start_timestamp, end_timestamp, &builder);
+        config, start_timestamp, end_timestamp, builder);
 
     // Copy to buffer
     serialized_buffer->reset_size();
@@ -130,7 +129,7 @@ void fragments_timestamps_serialize(
   }
 }
 
-std::tuple<const char*, uint64_t, uint64_t> fragments_timestamps_deserialize(
+std::tuple<uint64_t, uint64_t> deserialize_delete_fragments_timestamps_request(
     SerializationType serialize_type, const Buffer& serialized_buffer) {
   try {
     switch (serialize_type) {
@@ -176,37 +175,39 @@ std::tuple<const char*, uint64_t, uint64_t> fragments_timestamps_deserialize(
 }
 
 void fragments_list_to_capnp(
-    std::string uri,
+    const Config& config,
     const std::vector<URI>& fragments,
-    capnp::ArrayDeleteFragmentsListRequest::Builder* builder) {
-  builder->setUri(uri);
-  auto entries_builder = builder->initEntries(fragments.size());
+    capnp::ArrayDeleteFragmentsListRequest::Builder& builder) {
+  auto config_builder = builder.initConfig();
+  throw_if_not_ok(config_to_capnp(config, &config_builder));
+
+  auto entries_builder = builder.initEntries(fragments.size());
   for (size_t i = 0; i < fragments.size(); i++) {
     const auto& relative_uri = serialize_array_uri_to_relative(fragments[i]);
     entries_builder.set(i, relative_uri);
   }
 }
 
-std::tuple<const char*, std::vector<URI>> fragments_list_from_capnp(
+std::vector<URI> fragments_list_from_capnp(
+    const URI& array_uri,
     const capnp::ArrayDeleteFragmentsListRequest::Reader& reader) {
-  auto uri = reader.getUri().cStr();
   if (reader.hasEntries()) {
     std::vector<URI> fragments;
     fragments.reserve(reader.getEntries().size());
     auto get_entries_reader = reader.getEntries();
     for (auto entry : get_entries_reader) {
       fragments.emplace_back(
-          deserialize_array_uri_to_absolute(entry.cStr(), URI(uri)));
+          deserialize_array_uri_to_absolute(entry.cStr(), URI(array_uri)));
     }
-    return {uri, fragments};
+    return fragments;
   } else {
     throw FragmentsSerializationException(
         "[fragments_list_from_capnp] There are no fragments to deserialize");
   }
 }
 
-void fragments_list_serialize(
-    std::string uri,
+void serialize_delete_fragments_list_request(
+    const Config& config,
     const std::vector<URI>& fragments,
     SerializationType serialize_type,
     Buffer* serialized_buffer) {
@@ -219,7 +220,7 @@ void fragments_list_serialize(
     // Serialize
     ::capnp::MallocMessageBuilder message;
     auto builder = message.initRoot<capnp::ArrayDeleteFragmentsListRequest>();
-    fragments_list_to_capnp(uri, fragments, &builder);
+    fragments_list_to_capnp(config, fragments, builder);
 
     // Copy to buffer
     serialized_buffer->reset_size();
@@ -261,8 +262,10 @@ void fragments_list_serialize(
   }
 }
 
-std::tuple<const char*, std::vector<URI>> fragments_list_deserialize(
-    SerializationType serialize_type, const Buffer& serialized_buffer) {
+std::vector<URI> deserialize_delete_fragments_list_request(
+    const URI& array_uri,
+    SerializationType serialize_type,
+    const Buffer& serialized_buffer) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -275,7 +278,7 @@ std::tuple<const char*, std::vector<URI>> fragments_list_deserialize(
             builder);
         auto reader = builder.asReader();
         // Deserialize
-        return fragments_list_from_capnp(reader);
+        return fragments_list_from_capnp(array_uri, reader);
       }
       case SerializationType::CAPNP: {
         const auto mBytes =
@@ -286,7 +289,7 @@ std::tuple<const char*, std::vector<URI>> fragments_list_deserialize(
         auto reader =
             msg_reader.getRoot<capnp::ArrayDeleteFragmentsListRequest>();
         // Deserialize
-        return fragments_list_from_capnp(reader);
+        return fragments_list_from_capnp(array_uri, reader);
       }
       default: {
         throw FragmentsSerializationException(
@@ -304,26 +307,26 @@ std::tuple<const char*, std::vector<URI>> fragments_list_deserialize(
 }
 
 #else
-void fragments_timestamps_serialize(
-    std::string, uint64_t, uint64_t, SerializationType, Buffer*) {
+void serialize_delete_fragments_timestamps_request(
+    uint64_t, uint64_t, SerializationType, Buffer*) {
   throw FragmentsSerializationException(
       "Cannot serialize; serialization not enabled.");
 }
 
-std::tuple<const char*, uint64_t, uint64_t> fragments_timestamps_deserialize(
+std::tuple<uint64_t, uint64_t> deserialize_delete_fragments_timestamps_request(
     SerializationType, const Buffer&) {
   throw FragmentsSerializationException(
       "Cannot deserialize; serialization not enabled.");
 }
 
-void fragments_list_serialize(
-    std::string, const std::vector<URI>&, SerializationType, Buffer*) {
+void serialize_delete_fragments_list_request(
+    const std::vector<URI>&, SerializationType, Buffer*) {
   throw FragmentsSerializationException(
       "Cannot serialize; serialization not enabled.");
 }
 
-std::tuple<const char*, std::vector<URI>> fragments_list_deserialize(
-    SerializationType, const Buffer&) {
+std::vector<URI> deserialize_delete_fragments_list_request(
+    const URI&, SerializationType, const Buffer&) {
   throw FragmentsSerializationException(
       "Cannot deserialize; serialization not enabled.");
 }
