@@ -40,6 +40,7 @@
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/api/c_api/error/error_api_internal.h"
 #include "tiledb/common/exception/exception.h"
+#include "tiledb/common/source_utils.h"
 
 namespace tiledb::api {
 namespace detail {
@@ -518,14 +519,14 @@ using ExceptionActionCtxErr = detail::ExceptionActionDetailCtxErr;
  * Non-specialized wrapper for implementations functions for the C API. May
  * only be used as a specialization.
  */
-template <auto f, class H>
+template <auto f, class H, class L>
 class CAPIFunction;
 
 /**
  * Wrapper for implementations functions for the C API
  */
-template <class... Args, capi_return_t (*f)(Args...), class H>
-class CAPIFunction<f, H> {
+template <class... Args, capi_return_t (*f)(Args...), class H, class L>
+class CAPIFunction<f, H, L> {
  public:
   /**
    * Forwarded alias to template parameter H.
@@ -539,7 +540,7 @@ class CAPIFunction<f, H> {
    * @param args Arguments to an API implementation function
    * @return
    */
-  static capi_return_t function(H& h, Args... args) {
+  static capi_return_t function(H& h, const L loc, Args... args) {
     /*
      * The order of the catch blocks is not arbitrary:
      * - `std::bad_alloc` comes first because it overrides other problems
@@ -552,6 +553,9 @@ class CAPIFunction<f, H> {
      *   never execute.
      */
     try {
+      // Log the call
+      log_location(loc);
+
       /*
        * If error-handling arguments are invalid, `validate` will throw and the
        * underlying function will not execute.
@@ -585,15 +589,23 @@ class CAPIFunction<f, H> {
     }
   };
 
+  static void log_location(const L& loc) {
+    std::stringstream ss;
+    ss << "location:" << loc.file_name() << "(" << loc.line() << ")"
+       << loc.function_name();
+    LOG_ERROR(ss.str());
+  }
+
   /**
    * The plain wrapper function.
    *
    * @param args Arguments to an API implementation function
    * @return The return value of the call to the implementation function.
    */
-  inline static capi_return_t function_plain(Args... args) {
+  inline static capi_return_t function_plain(
+      const TileDBSourceLocation location, Args... args) {
     ExceptionAction action{};
-    return function(action, args...);
+    return function(action, location, args...);
   }
 
   /**
@@ -602,9 +614,10 @@ class CAPIFunction<f, H> {
    *
    * @param args Arguments to an API implementation function
    */
-  inline static void void_function(Args... args) {
+  inline static void void_function(
+      const TileDBSourceLocation location, Args... args) {
     ExceptionAction action{};
-    (void)function(action, args...);
+    (void)function(action, location, args...);
   };
 
   /**
@@ -616,9 +629,12 @@ class CAPIFunction<f, H> {
    * @return The return value of the call to the implementation function.
    */
   inline static capi_return_t function_context(
-      tiledb_ctx_handle_t* ctx, Args... args) {
+      const TileDBSourceLocation location,
+      tiledb_ctx_handle_t* ctx,
+      Args... args) {
     tiledb::api::ExceptionActionCtx action{ctx};
-    return CAPIFunction<f, ExceptionActionCtx>::function(action, args...);
+    return CAPIFunction<f, ExceptionActionCtx, TileDBSourceLocation>::function(
+        action, location, args...);
   }
 
   /**
@@ -630,9 +646,11 @@ class CAPIFunction<f, H> {
    * @return The return value of the call to the implementation function.
    */
   inline static capi_return_t function_error(
-      tiledb_error_handle_t** error, Args... args) {
+      const TileDBSourceLocation location,
+      tiledb_error_handle_t** error,
+      Args... args) {
     ExceptionActionErr action{error};
-    return function(action, args...);
+    return function(action, location, args...);
   }
 };
 
@@ -666,7 +684,7 @@ class CAPIFunction<f, H> {
  */
 template <auto f>
 constexpr auto api_entry_plain =
-    CAPIFunction<f, ExceptionAction>::function_plain;
+    CAPIFunction<f, ExceptionAction, TileDBSourceLocation>::function_plain;
 
 /**
  * Declaration only defined through a specialization.
@@ -714,7 +732,8 @@ struct CAPIFunctionVoid<f> {
 template <auto f>
 constexpr auto api_entry_void = CAPIFunction<
     CAPIFunctionVoid<f>::function_from_void,
-    tiledb::api::ExceptionAction>::void_function;
+    tiledb::api::ExceptionAction,
+    TileDBSourceLocation>::void_function;
 
 /**
  * Declaration only defined through a specialization.
@@ -732,11 +751,15 @@ struct CAPIFunctionContext;
  * @tparam f An API implementation function
  */
 template <class... Args, capi_return_t (*f)(tiledb_ctx_handle_t*, Args...)>
-struct CAPIFunctionContext<f> : CAPIFunction<f, ExceptionActionCtx> {
+struct CAPIFunctionContext<f>
+    : CAPIFunction<f, ExceptionActionCtx, TileDBSourceLocation> {
   inline static capi_return_t function_with_context(
-      tiledb_ctx_handle_t* ctx, Args... args) {
+      const TileDBSourceLocation location,
+      tiledb_ctx_handle_t* ctx,
+      Args... args) {
     tiledb::api::ExceptionActionCtx action{ctx};
-    return CAPIFunction<f, ExceptionActionCtx>::function(action, ctx, args...);
+    return CAPIFunction<f, ExceptionActionCtx, TileDBSourceLocation>::function(
+        action, location, ctx, args...);
   }
 };
 
@@ -758,7 +781,7 @@ constexpr auto api_entry_with_context =
  */
 template <auto f>
 constexpr auto api_entry_context =
-    CAPIFunction<f, ExceptionActionErr>::function_context;
+    CAPIFunction<f, ExceptionActionErr, TileDBSourceLocation>::function_context;
 
 /**
  * API function transformer changes an implementation function without an error
@@ -768,7 +791,7 @@ constexpr auto api_entry_context =
  */
 template <auto f>
 constexpr auto api_entry_error =
-    CAPIFunction<f, ExceptionActionErr>::function_error;
+    CAPIFunction<f, ExceptionActionErr, TileDBSourceLocation>::function_error;
 
 }  // namespace tiledb::api
 
