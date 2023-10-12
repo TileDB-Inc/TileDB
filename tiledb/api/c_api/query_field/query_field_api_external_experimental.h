@@ -53,6 +53,8 @@ typedef enum {
 
 /**
  * Get a query field handle for the field name passed as argument.
+ * It is the responsability of the caller to manage the lifetime of the
+ * field handle and `tiledb_query_field_free` it when appropriate.
  * **Example:**
  *
  * @code{.c}

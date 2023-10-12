@@ -34,30 +34,31 @@
 #define TILEDB_CAPI_QUERY_FIELD_INTERNAL_H
 
 #include "tiledb/api/c_api/query_aggregate/query_aggregate_api_internal.h"
+#include "tiledb/api/c_api/query_field/query_field_api_external_experimental.h"
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/query/query.h"
 
 class FieldOrigin {
  public:
-  virtual int origin() = 0;
+  virtual tiledb_field_origin_t origin() = 0;
 };
 
 class FieldFromDimension : public FieldOrigin {
  public:
-  virtual int origin() override;
+  virtual tiledb_field_origin_t origin() override;
   virtual ~FieldFromDimension() = default;
 };
 
 class FieldFromAttribute : public FieldOrigin {
  public:
-  virtual int origin() override;
+  virtual tiledb_field_origin_t origin() override;
   virtual ~FieldFromAttribute() = default;
 };
 
 class FieldFromAggregate : public FieldOrigin {
  public:
-  virtual int origin() override;
+  virtual tiledb_field_origin_t origin() override;
   virtual ~FieldFromAggregate() = default;
 };
 
@@ -92,7 +93,7 @@ struct tiledb_query_field_handle_t
     tiledb_query_channel_handle_t::break_handle(channel_);
   }
 
-  int origin() {
+  tiledb_field_origin_t origin() {
     return field_origin_->origin();
   }
   tiledb::sm::Datatype type() {

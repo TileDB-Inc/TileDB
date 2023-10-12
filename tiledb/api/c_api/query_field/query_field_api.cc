@@ -36,22 +36,23 @@
 #include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 
-int FieldFromDimension::origin() {
+tiledb_field_origin_t FieldFromDimension::origin() {
   return TILEDB_DIMENSION_FIELD;
 }
 
-int FieldFromAttribute::origin() {
+tiledb_field_origin_t FieldFromAttribute::origin() {
   return TILEDB_ATTRIBUTE_FIELD;
 }
 
-int FieldFromAggregate::origin() {
+tiledb_field_origin_t FieldFromAggregate::origin() {
   return TILEDB_AGGREGATE_FIELD;
 }
 
 tiledb_query_field_handle_t::tiledb_query_field_handle_t(
     tiledb_query_t* query, const char* field_name)
     : query_(query->query_)
-    , field_name_(field_name) {
+    , field_name_(field_name)
+    , channel_(tiledb_query_channel_handle_t::make_handle(query)) {
   if (query_->array_schema().is_attr(field_name_)) {
     field_origin_ = std::make_shared<FieldFromAttribute>();
     type_ = query_->array_schema().attribute(field_name_)->type();
@@ -69,8 +70,6 @@ tiledb_query_field_handle_t::tiledb_query_field_handle_t(
   } else {
     throw tiledb::api::CAPIStatusException("There is no field " + field_name_);
   }
-
-  channel_ = tiledb_query_channel_handle_t::make_handle(query);
 }
 
 namespace tiledb::api {
@@ -135,7 +134,7 @@ capi_return_t tiledb_field_origin(
     tiledb_query_field_t* field, tiledb_field_origin_t* origin) {
   ensure_query_field_is_valid(field);
   ensure_output_pointer_is_valid(origin);
-  *origin = static_cast<tiledb_field_origin_t>(field->origin());
+  *origin = field->origin();
   return TILEDB_OK;
 }
 

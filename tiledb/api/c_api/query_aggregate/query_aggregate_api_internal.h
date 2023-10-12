@@ -49,9 +49,6 @@ enum QueryChannelOperator {
   TILEDB_QUERY_CHANNEL_OPERATOR_MAX
 };
 
-inline void ensure_aggregate_numeric_field(
-    const tiledb_channel_operator_t* op, const tiledb::sm::FieldInfo& fi);
-
 class Operation {
  protected:
   shared_ptr<tiledb::sm::IAggregator> aggregator_;

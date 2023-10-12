@@ -37,5 +37,5 @@ int main() {
   tiledb_field_origin(nullptr, nullptr, nullptr);
   tiledb_field_channel(nullptr, nullptr, nullptr);
 
-  return 0;
+  return 1;
 }
