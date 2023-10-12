@@ -1087,6 +1087,29 @@ void basic_string_aggregation_test(std::vector<RES> expected_results) {
   }
 }
 
+typedef tuple<MinAggregator<std::string>, MinAggregator<std::string>>
+    MinMaxAggUnderTest;
+TEMPLATE_LIST_TEST_CASE(
+    "Min max aggregator: Basic string aggregation",
+    "[min-max-aggregator][basic-string-aggregation]",
+    MinMaxAggUnderTest) {
+  typedef TestType AGGREGATOR;
+  std::vector<std::string> res = {
+      "1", "2222", "2222", "11", "", "2222", "1", "1", "2222", "2222"};
+  if (std::is_same<AGGREGATOR, MaxAggregator<std::string>>::value) {
+    res = {"5555", "555", "5555", "5555", "", "4", "5555", "5555", "4", "4"};
+  }
+
+  basic_string_aggregation_test<AGGREGATOR, std::string>(res);
+}
+
+TEST_CASE(
+    "NullCount aggregator: Basic string aggregation",
+    "[null-count-aggregator][basic-string-aggregation]") {
+  std::vector<uint64_t> res = {0, 4, 0, 0, 2, 3, 0, 0, 3, 6};
+  basic_string_aggregation_test<NullCountAggregator, uint64_t>(res);
+}
+
 TEST_CASE(
     "NullCount aggregator: output datatype",
     "[null-count-aggregator][output-datatype]") {
@@ -1139,25 +1162,44 @@ TEST_CASE(
           .output_datatype() == Datatype::FLOAT64);
 }
 
-typedef tuple<MinAggregator<std::string>, MinAggregator<std::string>>
-    MinMaxAggUnderTest;
-TEMPLATE_LIST_TEST_CASE(
-    "Min max aggregator: Basic string aggregation",
-    "[min-max-aggregator][basic-string-aggregation]",
-    MinMaxAggUnderTest) {
-  typedef TestType AGGREGATOR;
-  std::vector<std::string> res = {
-      "1", "2222", "2222", "11", "", "2222", "1", "1", "2222", "2222"};
-  if (std::is_same<AGGREGATOR, MaxAggregator<std::string>>::value) {
-    res = {"5555", "555", "5555", "5555", "", "4", "5555", "5555", "4", "4"};
-  }
-
-  basic_string_aggregation_test<AGGREGATOR, std::string>(res);
-}
-
 TEST_CASE(
-    "NullCount aggregator: Basic string aggregation",
-    "[null-count-aggregator][basic-string-aggregation]") {
-  std::vector<uint64_t> res = {0, 4, 0, 0, 2, 3, 0, 0, 3, 6};
-  basic_string_aggregation_test<NullCountAggregator, uint64_t>(res);
+    "Min max aggregator: Expected output type",
+    "[min-max-aggregator][output_datatype]") {
+  CHECK(
+      MinAggregator<int8_t>{FieldInfo("a1", false, false, 1, Datatype::INT8)}
+          .output_datatype() == Datatype::INT8);
+  CHECK(
+      MinAggregator<uint8_t>{FieldInfo("a1", false, false, 1, Datatype::UINT8)}
+          .output_datatype() == Datatype::UINT8);
+  CHECK(
+      MinAggregator<int16_t>{FieldInfo("a1", false, false, 1, Datatype::INT16)}
+          .output_datatype() == Datatype::INT16);
+  CHECK(
+      MinAggregator<uint16_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT16)}
+          .output_datatype() == Datatype::UINT16);
+  CHECK(
+      MinAggregator<int32_t>{FieldInfo("a1", false, false, 1, Datatype::INT32)}
+          .output_datatype() == Datatype::INT32);
+  CHECK(
+      MinAggregator<uint32_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT32)}
+          .output_datatype() == Datatype::UINT32);
+  CHECK(
+      MinAggregator<int64_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      MinAggregator<uint64_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      MinAggregator<float>{FieldInfo("a1", false, false, 1, Datatype::FLOAT32)}
+          .output_datatype() == Datatype::FLOAT32);
+  CHECK(
+      MinAggregator<double>{FieldInfo("a1", false, false, 1, Datatype::FLOAT64)}
+          .output_datatype() == Datatype::FLOAT64);
+  CHECK(
+      MinAggregator<std::string>{
+          FieldInfo("a1", false, false, 1, Datatype::STRING_ASCII)}
+          .output_datatype() == Datatype::STRING_ASCII);
 }
