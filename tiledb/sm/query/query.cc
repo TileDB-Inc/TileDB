@@ -479,7 +479,6 @@ Status Query::finalize() {
 
   RETURN_NOT_OK(strategy_->finalize());
 
-  copy_aggregates_data_to_user_buffer();
   status_ = QueryStatus::COMPLETED;
   return Status::Ok();
 }
