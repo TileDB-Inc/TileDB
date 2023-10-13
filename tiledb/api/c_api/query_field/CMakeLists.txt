@@ -23,19 +23,26 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
+
 include(common NO_POLICY_SCOPE)
-include(object_library)
 
 list(APPEND SOURCES
   query_field_api.cc
   )
 gather_sources(${SOURCES})
 
+#
+# Object library for other units to depend upon
+#
+add_library(capi_query_field OBJECT ${SOURCES})
+target_link_libraries(capi_query_field PUBLIC export)
+target_link_libraries(capi_query_field PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
-commence(object_library capi_query_field)
-  this_target_sources(query_field_api.cc)
-  this_target_link_libraries(export)
-  this_target_object_libraries(baseline)
-conclude(object_library)
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_capi_query_field EXCLUDE_FROM_ALL)
+target_link_libraries(compile_capi_query_field PRIVATE capi_query_field)
+target_sources(compile_capi_query_field PRIVATE test/compile_capi_query_field_main.cc)
 
 add_test_subdirectory()

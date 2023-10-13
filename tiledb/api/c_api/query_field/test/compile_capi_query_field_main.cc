@@ -32,7 +32,7 @@
 int main() {
   tiledb_query_get_field(nullptr, nullptr, nullptr, nullptr);
   tiledb_query_field_free(nullptr, nullptr);
-  tiledb_field_type(nullptr, nullptr, nullptr);
+  tiledb_field_datatype(nullptr, nullptr, nullptr);
   tiledb_field_cell_val_num(nullptr, nullptr, nullptr);
   tiledb_field_origin(nullptr, nullptr, nullptr);
   tiledb_field_channel(nullptr, nullptr, nullptr);

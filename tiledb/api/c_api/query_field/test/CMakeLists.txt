@@ -30,4 +30,8 @@ commence(unit_test capi_query_field)
   this_target_sources(unit_capi_query_field.cc)
   this_target_object_libraries(capi_query_field)
   this_target_link_libraries(tiledb_test_support_lib)
+
+  if (NOT MSVC)
+    target_compile_options(unit_capi_query_field PRIVATE -Wno-deprecated-declarations)
+  endif()
 conclude(unit_test)
