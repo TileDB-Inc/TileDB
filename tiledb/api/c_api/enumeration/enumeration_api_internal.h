@@ -72,6 +72,22 @@ struct tiledb_enumeration_handle_t
   }
 
   /**
+   * Extend a given enumeration.
+   */
+  [[nodiscard]] shared_ptr<const tiledb::sm::Enumeration> extend(
+      const void* data,
+      uint64_t data_size,
+      const void* offsets,
+      uint64_t offsets_size) const {
+    return enumeration_->extend(data, data_size, offsets, offsets_size);
+  }
+
+  [[nodiscard]] inline bool is_extension_of(
+      tiledb_enumeration_handle_t* rhs) const {
+    return enumeration_->is_extension_of(rhs->enumeration_);
+  }
+
+  /**
    * Return the name of the enumeration.
    */
   [[nodiscard]] inline const std::string& name() const {

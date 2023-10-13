@@ -76,6 +76,10 @@ struct EnumerationFx {
       std::string enmr_name = default_enmr_name);
 
   template <typename T>
+  shared_ptr<const Enumeration> extend_enumeration(
+      shared_ptr<const Enumeration> enmr, const std::vector<T>& values);
+
+  template <typename T>
   void check_enumeration(
       shared_ptr<const Enumeration> enmr,
       const std::string& name,
@@ -691,6 +695,154 @@ TEST_CASE_METHOD(
     "[enumeration][error][repeated-values]") {
   std::vector<std::string> values = {"foo", "", "bang", ""};
   REQUIRE_THROWS(create_enumeration(values));
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Extension Fixed Size",
+    "[enumeration][extension][fixed]") {
+  std::vector<int> init_values = {1, 2, 3, 4, 5};
+  std::vector<int> extend_values = {6, 7, 8, 9, 10};
+  std::vector<int> final_values = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  auto enmr1 = create_enumeration(init_values);
+  auto enmr2 = extend_enumeration(enmr1, extend_values);
+  check_enumeration(
+      enmr2, default_enmr_name, final_values, Datatype::INT32, 1, false);
+  REQUIRE(!enmr1->is_extension_of(enmr2));
+  REQUIRE(enmr2->is_extension_of(enmr1));
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Extension Fixed Size Multi-Cell Value",
+    "[enumeration][extension][fixed]") {
+  std::vector<int> init_values = {1, 2, 3, 4};
+  std::vector<int> extend_values = {5, 6, 7, 8, 9, 10};
+  std::vector<int> final_values = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  auto enmr1 = Enumeration::create(
+      default_enmr_name,
+      Datatype::INT32,
+      2,
+      false,
+      init_values.data(),
+      init_values.size() * sizeof(int),
+      nullptr,
+      0);
+  auto enmr2 = extend_enumeration(enmr1, extend_values);
+  check_enumeration(
+      enmr2, default_enmr_name, final_values, Datatype::INT32, 2, false);
+  REQUIRE(!enmr1->is_extension_of(enmr2));
+  REQUIRE(enmr2->is_extension_of(enmr1));
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Extension Var Size",
+    "[enumeration][extension][var-sized]") {
+  std::vector<std::string> init_values = {"fred", "wilma"};
+  std::vector<std::string> extend_values = {"barney", "betty"};
+  std::vector<std::string> final_values = {"fred", "wilma", "barney", "betty"};
+  auto enmr1 = create_enumeration(init_values);
+  auto enmr2 = extend_enumeration(enmr1, extend_values);
+  check_enumeration(
+      enmr2,
+      default_enmr_name,
+      final_values,
+      Datatype::STRING_ASCII,
+      constants::var_num,
+      false);
+  REQUIRE(!enmr1->is_extension_of(enmr2));
+  REQUIRE(enmr2->is_extension_of(enmr1));
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Extension Invalid Data",
+    "[enumeration][extension][error]") {
+  std::vector<std::string> init_values = {"fred", "wilma"};
+  auto enmr = create_enumeration(init_values);
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Unable to extend an enumeration without a data buffer.");
+  REQUIRE_THROWS_WITH(enmr->extend(nullptr, 10, nullptr, 0), matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Extension Invalid Data Size",
+    "[enumeration][extension][error]") {
+  std::vector<std::string> init_values = {"fred", "wilma"};
+  const char* data = "barneybetty";
+  auto enmr = create_enumeration(init_values);
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Unable to extend an enumeration with a zero sized data buffer.");
+  REQUIRE_THROWS_WITH(enmr->extend(data, 0, nullptr, 0), matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Extension Invalid Offsets",
+    "[enumeration][extension][error]") {
+  std::vector<std::string> init_values = {"fred", "wilma"};
+  const char* data = "barneybetty";
+  auto enmr = create_enumeration(init_values);
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "The offsets buffer is required for this enumeration extension.");
+  REQUIRE_THROWS_WITH(enmr->extend(data, 11, nullptr, 0), matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Extension Invalid Offsets Size",
+    "[enumeration][extension][error]") {
+  std::vector<std::string> init_values = {"fred", "wilma"};
+  const char* data = "barneybetty";
+  uint64_t offsets[2] = {0, 6};
+  auto enmr = create_enumeration(init_values);
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "The offsets buffer for "
+      "this enumeration extension must have a non-zero size.");
+  REQUIRE_THROWS_WITH(enmr->extend(data, 11, offsets, 0), matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Extension Invalid Offsets Size not Multiple of 8",
+    "[enumeration][extension][error]") {
+  std::vector<std::string> init_values = {"fred", "wilma"};
+  const char* data = "barneybetty";
+  uint64_t offsets[2] = {0, 6};
+  auto enmr = create_enumeration(init_values);
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Invalid offsets size is not a multiple of sizeof(uint64_t)");
+  REQUIRE_THROWS_WITH(enmr->extend(data, 11, offsets, 17), matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Extension Invalid Offsets for Fixed Size Data",
+    "[enumeration][extension][error]") {
+  std::vector<int> init_values = {0, 1, 2, 3};
+  const char* data = "barneybetty";
+  uint64_t offsets[2] = {0, 6};
+  auto enmr = create_enumeration(init_values);
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Offsets buffer provided when extending a fixed sized enumeration.");
+  REQUIRE_THROWS_WITH(enmr->extend(data, 11, offsets, 16), matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Extension Invalid Offsets Size for Fixed Size Data",
+    "[enumeration][extension][error]") {
+  std::vector<int> init_values = {0, 1, 2, 3};
+  std::vector<int> add_values = {4, 5, 6, 7};
+  auto enmr = create_enumeration(init_values);
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Offsets size is non-zero when extending a fixed sized enumeration.");
+  REQUIRE_THROWS_WITH(
+      enmr->extend(
+          add_values.data(), add_values.size() * sizeof(int), nullptr, 16),
+      matcher);
 }
 
 TEST_CASE_METHOD(
@@ -2029,6 +2181,45 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
         tp.type_,
         tp.cell_val_num_,
         ordered,
+        data.data(),
+        total_size,
+        offsets.data(),
+        offsets.size() * sizeof(uint64_t));
+  }
+}
+
+template <typename T>
+shared_ptr<const Enumeration> EnumerationFx::extend_enumeration(
+    shared_ptr<const Enumeration> enmr, const std::vector<T>& values) {
+  if constexpr (std::is_same_v<T, bool>) {
+    // We have to call out bool specifically because of the stdlib
+    // specialization for std::vector<bool>
+    std::vector<uint8_t> raw_values(values.size());
+    for (size_t i = 0; i < values.size(); i++) {
+      raw_values[i] = values[i] ? 1 : 0;
+    }
+    return enmr->extend(
+        raw_values.data(), raw_values.size() * sizeof(uint8_t), nullptr, 0);
+  } else if constexpr (std::is_pod_v<T>) {
+    return enmr->extend(values.data(), values.size() * sizeof(T), nullptr, 0);
+  } else {
+    uint64_t total_size = 0;
+    for (auto v : values) {
+      total_size += v.size();
+    }
+
+    std::vector<uint8_t> data(total_size, 0);
+    std::vector<uint64_t> offsets;
+    offsets.reserve(values.size());
+    uint64_t curr_offset = 0;
+
+    for (auto v : values) {
+      std::memcpy(data.data() + curr_offset, v.data(), v.size());
+      offsets.push_back(curr_offset);
+      curr_offset += v.size();
+    }
+
+    return enmr->extend(
         data.data(),
         total_size,
         offsets.data(),
