@@ -35,6 +35,8 @@
 
 #include "tiledb/sm/query/readers/aggregators/aggregate_with_count.h"
 #include "tiledb/sm/query/readers/aggregators/iaggregator.h"
+#include "tiledb/sm/query/readers/aggregators/min_max.h"
+#include "tiledb/sm/query/readers/aggregators/validity_policies.h"
 
 #include <functional>
 
@@ -177,7 +179,7 @@ class ComparatorAggregator : public ComparatorAggregatorBase<T>,
   /* ********************************* */
 
   /** AggregateWithCount to do summation of AggregateBuffer data. */
-  AggregateWithCount<T> aggregate_with_count_;
+  AggregateWithCount<T, VALUE_T, MinMax<Op>, NonNull> aggregate_with_count_;
 
   /** Mutex protecting `value_`. */
   std::mutex value_mtx_;

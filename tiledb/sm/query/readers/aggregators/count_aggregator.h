@@ -33,32 +33,31 @@
 #ifndef TILEDB_COUNT_AGGREGATOR_H
 #define TILEDB_COUNT_AGGREGATOR_H
 
+#include "tiledb/sm/query/readers/aggregators/aggregate_with_count.h"
 #include "tiledb/sm/query/readers/aggregators/iaggregator.h"
+#include "tiledb/sm/query/readers/aggregators/no_op.h"
+#include "tiledb/sm/query/readers/aggregators/validity_policies.h"
 
 namespace tiledb::sm {
 
 class QueryBuffer;
 
-class CountAggregator : public OutputBufferValidator, public IAggregator {
+template <class ValidityPolicy>
+class CountAggregatorBase : public OutputBufferValidator, public IAggregator {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /** Constructor. */
-  CountAggregator();
+  CountAggregatorBase(FieldInfo field_info = FieldInfo());
 
-  DISABLE_COPY_AND_COPY_ASSIGN(CountAggregator);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(CountAggregator);
+  DISABLE_COPY_AND_COPY_ASSIGN(CountAggregatorBase);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(CountAggregatorBase);
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
-
-  /** Returns the field name for the aggregator. */
-  std::string field_name() override {
-    return constants::count_of_rows;
-  }
 
   /** Returns if the aggregation is var sized or not. */
   bool var_sized() override {
@@ -102,8 +101,58 @@ class CountAggregator : public OutputBufferValidator, public IAggregator {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** AggregateWithCount to do summation of AggregateBuffer data. */
+  AggregateWithCount<uint8_t, uint64_t, NoOp, ValidityPolicy>
+      aggregate_with_count_;
+
   /** Cell count. */
   std::atomic<uint64_t> count_;
+};
+
+class CountAggregator : public CountAggregatorBase<NonNull> {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  CountAggregator()
+      : CountAggregatorBase() {
+  }
+
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
+  /** Returns the field name for the aggregator. */
+  std::string field_name() override {
+    return constants::count_of_rows;
+  }
+};
+
+class NullCountAggregator : public CountAggregatorBase<Null> {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  NullCountAggregator(FieldInfo field_info);
+
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
+  /** Returns the field name for the aggregator. */
+  std::string field_name() override {
+    return field_info_.name_;
+  }
+
+ private:
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
+  /** Field information. */
+  const FieldInfo field_info_;
 };
 
 }  // namespace tiledb::sm

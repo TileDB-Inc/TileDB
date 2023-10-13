@@ -1,5 +1,5 @@
 /**
- * @file   min_max.h
+ * @file   validity_policies.h
  *
  * @section LICENSE
  *
@@ -27,37 +27,38 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class MinMax.
+ * This file defines classes Null and NonNull.
  */
 
-#ifndef TILEDB_MIN_MAX_H
-#define TILEDB_MIN_MAX_H
+#ifndef TILEDB_VALIDITY_POLICIES_H
+#define TILEDB_VALIDITY_POLICIES_H
 
 namespace tiledb::sm {
 
-template <class Op>
-struct MinMax {
+struct Null {
  public:
   /**
-   * Min max function.
+   * Validity policy for null cells.
    *
-   * @param value Value to compare against.
-   * @param sum Computed min/max.
-   * @param count Current count of values.
+   * @param validity_value Validity value.
    */
-  template <typename MIN_MAX_T>
-  void op(MIN_MAX_T value, MIN_MAX_T& min_max, uint64_t count) {
-    if (count == 0) {
-      min_max = value;
-    } else if (op_(value, min_max)) {
-      min_max = value;
-    }
+  inline bool op(uint8_t validity_value) {
+    return validity_value == 0;
   }
+};
 
- private:
-  Op op_;
+struct NonNull {
+ public:
+  /**
+   * Validity policy for non null cells.
+   *
+   * @param validity_value Validity value.
+   */
+  inline bool op(uint8_t validity_value) {
+    return validity_value != 0;
+  }
 };
 
 }  // namespace tiledb::sm
 
-#endif  // TILEDB_MIN_MAX_H
+#endif  // TILEDB_VALIDITY_POLICIES_H

@@ -44,7 +44,14 @@ class FieldInfo {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  FieldInfo() = delete;
+  /**
+   * Default constructor.
+   */
+  FieldInfo()
+      : var_sized_(false)
+      , is_nullable_(false)
+      , cell_val_num_(1)
+      , type_(Datatype::UINT8){};
 
   /**
    * Constructor.
