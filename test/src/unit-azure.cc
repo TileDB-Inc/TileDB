@@ -481,7 +481,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE(
     "Test constructing Azure Blob Storage endpoint URIs", "[azure][uri]") {
-  std::string sas_token, expected_endpoint;
+  std::string sas_token, custom_endpoint, expected_endpoint;
   SECTION("No SAS token") {
     sas_token = "";
     expected_endpoint = "https://devstoreaccount1.blob.core.windows.net";
@@ -496,9 +496,21 @@ TEST_CASE(
     expected_endpoint =
         "https://devstoreaccount1.blob.core.windows.net?baz=qux&foo=bar";
   }
+  SECTION("SAS token in both endpoint and config option") {
+    sas_token = "baz=qux&foo=bar";
+    custom_endpoint =
+        "https://devstoreaccount1.blob.core.windows.net?baz=qux&foo=bar";
+    expected_endpoint =
+        "https://devstoreaccount1.blob.core.windows.net?baz=qux&foo=bar";
+  }
+  SECTION("No SAS token") {
+    sas_token = "";
+    expected_endpoint = "https://devstoreaccount1.blob.core.windows.net";
+  }
   Config config;
   REQUIRE(
       config.set("vfs.azure.storage_account_name", "devstoreaccount1").ok());
+  REQUIRE(config.set("vfs.azure.blob_endpoint", custom_endpoint).ok());
   REQUIRE(config.set("vfs.azure.storage_sas_token", sas_token).ok());
   tiledb::sm::Azure azure;
   ThreadPool thread_pool(1);
