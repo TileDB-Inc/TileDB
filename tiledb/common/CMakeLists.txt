@@ -43,6 +43,7 @@ add_subdirectory(dynamic_memory)
 add_subdirectory(exception)
 add_subdirectory(governor)
 add_subdirectory(interval)
+add_subdirectory(random)
 add_subdirectory(thread_pool)
 add_subdirectory(types)
 
