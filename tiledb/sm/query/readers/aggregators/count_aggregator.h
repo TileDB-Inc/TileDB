@@ -50,7 +50,7 @@ class CountAggregatorBase : public OutputBufferValidator, public IAggregator {
   /* ********************************* */
 
   /** Constructor. */
-  CountAggregatorBase(FieldInfo field_info);
+  CountAggregatorBase(FieldInfo field_info = FieldInfo());
 
   DISABLE_COPY_AND_COPY_ASSIGN(CountAggregatorBase);
   DISABLE_MOVE_AND_MOVE_ASSIGN(CountAggregatorBase);
@@ -116,7 +116,7 @@ class CountAggregator : public CountAggregatorBase<NonNull> {
   /* ********************************* */
 
   CountAggregator()
-      : CountAggregatorBase(FieldInfo("", false, false, 1)) {
+      : CountAggregatorBase() {
   }
 
   /* ********************************* */
