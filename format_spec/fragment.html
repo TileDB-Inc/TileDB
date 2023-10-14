@@ -344,7 +344,7 @@ ul.task-list li input[type="checkbox"] {
 <tr class="even">
 <td style="text-align: left;">Tile offsets for attribute/dimension 1</td>
 <td style="text-align: left;"><a href="#tile-offsets">Tile Offsets</a></td>
-<td style="text-align: left;">The serialized tile offsets for attribute/dimension 1</td>
+<td style="text-align: left;">The serialized <em>on-disk</em> tile offsets for attribute/dimension 1</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">…</td>
@@ -354,12 +354,12 @@ ul.task-list li input[type="checkbox"] {
 <tr class="even">
 <td style="text-align: left;">Tile offsets for attribute/dimension N</td>
 <td style="text-align: left;"><a href="#tile-offsets">Tile Offsets</a></td>
-<td style="text-align: left;">The serialized tile offsets for attribute/dimension N</td>
+<td style="text-align: left;">The serialized <em>on-disk</em> tile offsets for attribute/dimension N</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Variable tile offsets for attribute/dimension 1</td>
 <td style="text-align: left;"><a href="#tile-offsets">Tile Offsets</a></td>
-<td style="text-align: left;">The serialized variable tile offsets for attribute/dimension 1</td>
+<td style="text-align: left;">The serialized <em>on-disk</em> variable tile offsets for attribute/dimension 1</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">…</td>
@@ -369,12 +369,12 @@ ul.task-list li input[type="checkbox"] {
 <tr class="odd">
 <td style="text-align: left;">Variable tile offsets for attribute/dimension N</td>
 <td style="text-align: left;"><a href="#tile-offsets">Tile Offsets</a></td>
-<td style="text-align: left;">The serialized variable tile offsets for attribute/dimension N</td>
+<td style="text-align: left;">The serialized <em>on-disk</em> variable tile offsets for attribute/dimension N</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Variable tile sizes for attribute/dimension 1</td>
-<td style="text-align: left;"><a href="#tile-offsets">Tile Offsets</a></td>
-<td style="text-align: left;">The serialized variable tile sizes for attribute/dimension 1</td>
+<td style="text-align: left;"><a href="#tile-sizes">Tile Sizes</a></td>
+<td style="text-align: left;">The serialized <em>in-memory</em> variable tile sizes for attribute/dimension 1</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">…</td>
@@ -383,13 +383,13 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="even">
 <td style="text-align: left;">Variable tile sizes for attribute/dimension N</td>
-<td style="text-align: left;"><a href="#tile-offsets">Tile Offsets</a></td>
-<td style="text-align: left;">The serialized variable tile sizes for attribute/dimension N</td>
+<td style="text-align: left;"><a href="#tile-sizes">Tile Sizes</a></td>
+<td style="text-align: left;">The serialized <em>in-memory</em> variable tile sizes for attribute/dimension N</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Validity tile offsets for attribute/dimension 1</td>
 <td style="text-align: left;"><a href="#tile-offsets">Tile Offsets</a></td>
-<td style="text-align: left;">The serialized validity tile offsets for attribute/dimension 1</td>
+<td style="text-align: left;">The serialized <em>on-disk</em> validity tile offsets for attribute/dimension 1</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">…</td>
@@ -399,7 +399,7 @@ ul.task-list li input[type="checkbox"] {
 <tr class="odd">
 <td style="text-align: left;">Validity tile offsets for attribute/dimension N</td>
 <td style="text-align: left;"><a href="#tile-offsets">Tile Offsets</a></td>
-<td style="text-align: left;">The serialized validity tile offsets for attribute/dimension N</td>
+<td style="text-align: left;">The serialized <em>on-disk</em> validity tile offsets for attribute/dimension N</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Tile mins for attribute/dimension 1</td>
@@ -649,7 +649,8 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="tile-offsets" class="level3">
 <h3 class="anchored" data-anchor-id="tile-offsets">Tile Offsets</h3>
-<p>The tile offsets is a <a href="../format_spec/generic_tile.html">generic tile</a> with the following internal format:</p>
+<p>Tile offsets refer to each <em>on-disk</em> data tile’s starting byte offset.<br>
+Tile offsets is a <a href="../format_spec/generic_tile.html">generic tile</a> with the following internal format:</p>
 <table class="table">
 <thead>
 <tr class="header">
@@ -684,7 +685,8 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="tile-sizes" class="level3">
 <h3 class="anchored" data-anchor-id="tile-sizes">Tile Sizes</h3>
-<p>The tile sizes is a <a href="../format_spec/generic_tile.html">generic tile</a> with the following internal format:</p>
+<p>The tile size refers to the <em>in-memory</em> size.<br>
+It is a <a href="../format_spec/generic_tile.html">generic tile</a> with the following internal format:</p>
 <table class="table">
 <thead>
 <tr class="header">
