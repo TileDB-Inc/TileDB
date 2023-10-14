@@ -127,7 +127,14 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
         "The 'vfs.azure.blob_endpoint' option should include the scheme (HTTP "
         "or HTTPS).");
   }
-  if (!blob_endpoint.empty()) {
+  if (!blob_endpoint.empty() && !sas_token.empty()) {
+    // The question mark is not strictly part of the SAS token
+    // (https://learn.microsoft.com/en-us/azure/storage/common/storage-sas-overview#sas-token),
+    // but in the Azure Portal the SAS token starts with one. If it does not, we
+    // add the question mark ourselves.
+    if (!utils::parse::starts_with(sas_token, "?")) {
+      blob_endpoint += '?';
+    }
     blob_endpoint += sas_token;
   }
 
