@@ -32,11 +32,6 @@
 
 #ifdef HAVE_GCS
 
-#include <google/cloud/status.h>
-#include <google/cloud/storage/client_options.h>
-#include "google/cloud/storage/oauth2/credentials.h"
-#include "google/cloud/storage/oauth2/google_credentials.h"
-
 #include <sstream>
 #include <unordered_set>
 
