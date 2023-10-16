@@ -75,7 +75,7 @@ tiledb_query_field_handle_t::tiledb_query_field_handle_t(
 namespace tiledb::api {
 
 /**
- * Returns if the argument is a valid char pointer
+ * Ensure the argument is a valid char pointer
  *
  * @param field_name A char pointer
  */
@@ -86,7 +86,7 @@ inline void ensure_field_name_is_valid(const char* field_name) {
 }
 
 /**
- * Returns if the argument is a valid query field handle
+ * Ensure the argument is a valid query field handle
  *
  * @param field A query field handle
  */
