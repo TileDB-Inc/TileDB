@@ -1097,14 +1097,18 @@ Status GCS::flush_object_direct(const URI& uri) {
   std::string object_path;
   RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
 
-  absl::string_view write_buffer(
-      static_cast<const char*>(write_cache_buffer->data()),
-      write_cache_buffer->size());
+  Buffer buffer_moved;
 
   // Protect 'write_cache_map_' from multiple writers.
   std::unique_lock<std::mutex> cache_lock(write_cache_map_lock_);
+  // Erasing the buffer from the map will free its memory.
+  // We have to move it to a local variable first.
+  buffer_moved = std::move(*write_cache_buffer);
   write_cache_map_.erase(uri.to_string());
   cache_lock.unlock();
+
+  absl::string_view write_buffer(
+      static_cast<const char*>(buffer_moved.data()), buffer_moved.size());
 
   google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
       object_metadata = client_->InsertObject(
