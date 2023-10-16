@@ -24,6 +24,15 @@
 # THE SOFTWARE.
 #
 
+# The object library `capi_query_field` cannot be linked standalone at the
+# present time. It depends upon member functions of `class Query`, which does
+# not yet have a standalone object library of its own. Without such a
+# dependency, `capi_query_field` would have to link (essentially) the whole 
+# library to get a complete executable.
+# 
+# It is against policy to use the `object_library` environment to define object
+# libraries that cannot stand alone. Therefore this definition is directly in
+# CMake and does not include a link-completeness target.
 include(common NO_POLICY_SCOPE)
 
 list(APPEND SOURCES
@@ -37,12 +46,5 @@ gather_sources(${SOURCES})
 add_library(capi_query_field OBJECT ${SOURCES})
 target_link_libraries(capi_query_field PUBLIC export)
 target_link_libraries(capi_query_field PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_capi_query_field EXCLUDE_FROM_ALL)
-target_link_libraries(compile_capi_query_field PRIVATE capi_query_field)
-target_sources(compile_capi_query_field PRIVATE test/compile_capi_query_field_main.cc)
 
 add_test_subdirectory()

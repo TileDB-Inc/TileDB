@@ -28,6 +28,12 @@ include(unit_test)
 
 commence(unit_test capi_query_field)
   this_target_sources(unit_capi_query_field.cc)
+
+# The object library `capi_query_field` cannot be linked standalone at the
+# present time. It depends upon member functions of `class Query`, which does
+# not yet have a standalone object library of its own. Without such a
+# dependency, `capi_query_field` would have to link (essentially) the whole 
+# library to get a complete executable.
   this_target_object_libraries(capi_query_field)
   this_target_link_libraries(tiledb_test_support_lib)
 

@@ -64,7 +64,7 @@ shared_ptr<Operation> tiledb_channel_operator_handle_t::make_operation(
       return std::make_shared<MaxOperation>(fi, this);
     }
     default:
-      throw std::logic_error(
+      throw tiledb::api::CAPIStatusException(
           "operator has unsupported value: " +
           std::to_string(static_cast<uint8_t>(this->value())));
       break;

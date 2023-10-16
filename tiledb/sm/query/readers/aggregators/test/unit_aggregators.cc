@@ -1163,40 +1163,42 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "Sum aggregator: Expected output type",
-    "[sum-aggregator][output_datatype]") {
+    "Mean aggregator: Expected output type",
+    "[mean-aggregator][output_datatype]") {
   CHECK(
-      SumAggregator<int8_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+      MeanAggregator<int8_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
           .output_datatype() == Datatype::INT64);
   CHECK(
-      SumAggregator<uint8_t>{FieldInfo("a1", false, false, 1, Datatype::UINT64)}
-          .output_datatype() == Datatype::UINT64);
-  CHECK(
-      SumAggregator<int16_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
-          .output_datatype() == Datatype::INT64);
-  CHECK(
-      SumAggregator<uint16_t>{
+      MeanAggregator<uint8_t>{
           FieldInfo("a1", false, false, 1, Datatype::UINT64)}
           .output_datatype() == Datatype::UINT64);
   CHECK(
-      SumAggregator<int32_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+      MeanAggregator<int16_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
           .output_datatype() == Datatype::INT64);
   CHECK(
-      SumAggregator<uint32_t>{
+      MeanAggregator<uint16_t>{
           FieldInfo("a1", false, false, 1, Datatype::UINT64)}
           .output_datatype() == Datatype::UINT64);
   CHECK(
-      SumAggregator<int64_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+      MeanAggregator<int32_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
           .output_datatype() == Datatype::INT64);
   CHECK(
-      SumAggregator<uint64_t>{
+      MeanAggregator<uint32_t>{
           FieldInfo("a1", false, false, 1, Datatype::UINT64)}
           .output_datatype() == Datatype::UINT64);
   CHECK(
-      SumAggregator<float>{FieldInfo("a1", false, false, 1, Datatype::FLOAT64)}
+      MeanAggregator<int64_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      MeanAggregator<uint64_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      MeanAggregator<float>{FieldInfo("a1", false, false, 1, Datatype::FLOAT64)}
           .output_datatype() == Datatype::FLOAT64);
   CHECK(
-      SumAggregator<double>{FieldInfo("a1", false, false, 1, Datatype::FLOAT64)}
+      MeanAggregator<double>{
+          FieldInfo("a1", false, false, 1, Datatype::FLOAT64)}
           .output_datatype() == Datatype::FLOAT64);
 }
 

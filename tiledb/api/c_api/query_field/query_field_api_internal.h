@@ -42,24 +42,22 @@
 class FieldOrigin {
  public:
   virtual tiledb_field_origin_t origin() = 0;
+  virtual ~FieldOrigin() = default;
 };
 
 class FieldFromDimension : public FieldOrigin {
  public:
   virtual tiledb_field_origin_t origin() override;
-  virtual ~FieldFromDimension() = default;
 };
 
 class FieldFromAttribute : public FieldOrigin {
  public:
   virtual tiledb_field_origin_t origin() override;
-  virtual ~FieldFromAttribute() = default;
 };
 
 class FieldFromAggregate : public FieldOrigin {
  public:
   virtual tiledb_field_origin_t origin() override;
-  virtual ~FieldFromAggregate() = default;
 };
 
 struct tiledb_query_field_handle_t

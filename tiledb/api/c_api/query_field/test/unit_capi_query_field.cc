@@ -54,19 +54,25 @@ struct QueryFieldFx : TemporaryDirectoryFixture {
     return temp_dir_ + "queryfield_array";
   }
 
+  inline void throw_if_setup_failed(const int32_t rc) {
+    if (rc != TILEDB_OK) {
+      throw std::runtime_error("test setup failed");
+    }
+  }
+
   void write_sparse_array(const std::string& path);
   void create_sparse_array(const std::string& path);
 };
 
 void QueryFieldFx::write_sparse_array(const std::string& array_name) {
   tiledb_array_t* array;
-  REQUIRE(tiledb_array_alloc(ctx, array_name.c_str(), &array) == TILEDB_OK);
-  REQUIRE(tiledb_array_open(ctx, array, TILEDB_WRITE) == TILEDB_OK);
+  throw_if_setup_failed(tiledb_array_alloc(ctx, array_name.c_str(), &array));
+  throw_if_setup_failed(tiledb_array_open(ctx, array, TILEDB_WRITE));
 
   tiledb_query_t* query;
-  REQUIRE(tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query) == TILEDB_OK);
+  throw_if_setup_failed(tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query));
 
-  REQUIRE(tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED) == TILEDB_OK);
+  throw_if_setup_failed(tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED));
 
   int32_t a[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   int32_t b[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
@@ -82,38 +88,32 @@ void QueryFieldFx::write_sparse_array(const std::string& array_name) {
   uint64_t c_data_offsets[] = {0, 5, 8, 13, 17, 21, 26, 31, 36, 40};
   uint64_t c_offsets_size = sizeof(c_data_offsets);
 
-  REQUIRE(
-      tiledb_query_set_data_buffer(ctx, query, "a", a, &a_size) == TILEDB_OK);
+  throw_if_setup_failed(
+      tiledb_query_set_data_buffer(ctx, query, "a", a, &a_size));
 
-  REQUIRE(
-      tiledb_query_set_data_buffer(ctx, query, "b", b, &b_size) == TILEDB_OK);
+  throw_if_setup_failed(
+      tiledb_query_set_data_buffer(ctx, query, "b", b, &b_size));
 
-  REQUIRE(
-      tiledb_query_set_data_buffer(ctx, query, "d1", d1, &d1_size) ==
-      TILEDB_OK);
+  throw_if_setup_failed(
+      tiledb_query_set_data_buffer(ctx, query, "d1", d1, &d1_size));
 
-  REQUIRE(
-      tiledb_query_set_data_buffer(ctx, query, "d2", d2, &d2_size) ==
-      TILEDB_OK);
+  throw_if_setup_failed(
+      tiledb_query_set_data_buffer(ctx, query, "d2", d2, &d2_size));
 
-  REQUIRE(
-      tiledb_query_set_data_buffer(ctx, query, "c", c_data, &c_size) ==
-      TILEDB_OK);
-  REQUIRE(
-      tiledb_query_set_offsets_buffer(
-          ctx, query, "c", c_data_offsets, &c_offsets_size) == TILEDB_OK);
+  throw_if_setup_failed(
+      tiledb_query_set_data_buffer(ctx, query, "c", c_data, &c_size));
+  throw_if_setup_failed(tiledb_query_set_offsets_buffer(
+      ctx, query, "c", c_data_offsets, &c_offsets_size));
 
-  REQUIRE(
-      tiledb_query_set_data_buffer(ctx, query, "d", c_data, &c_size) ==
-      TILEDB_OK);
-  REQUIRE(
-      tiledb_query_set_offsets_buffer(
-          ctx, query, "d", c_data_offsets, &c_offsets_size) == TILEDB_OK);
+  throw_if_setup_failed(
+      tiledb_query_set_data_buffer(ctx, query, "d", c_data, &c_size));
+  throw_if_setup_failed(tiledb_query_set_offsets_buffer(
+      ctx, query, "d", c_data_offsets, &c_offsets_size));
 
-  REQUIRE(tiledb_query_submit(ctx, query) == TILEDB_OK);
+  throw_if_setup_failed(tiledb_query_submit(ctx, query));
 
   // Clean up
-  REQUIRE(tiledb_array_close(ctx, array) == TILEDB_OK);
+  throw_if_setup_failed(tiledb_array_close(ctx, array));
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
@@ -124,69 +124,60 @@ void QueryFieldFx::create_sparse_array(const std::string& array_name) {
   uint64_t dim_domain[] = {1, 10, 1, 10};
 
   tiledb_dimension_t* d1;
-  int rc = tiledb_dimension_alloc(
-      ctx, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extents[0], &d1);
-  REQUIRE(rc == TILEDB_OK);
+  throw_if_setup_failed(tiledb_dimension_alloc(
+      ctx, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extents[0], &d1));
   tiledb_dimension_t* d2;
-  rc = tiledb_dimension_alloc(
-      ctx, "d2", TILEDB_UINT64, &dim_domain[2], &tile_extents[1], &d2);
-  REQUIRE(rc == TILEDB_OK);
+  throw_if_setup_failed(tiledb_dimension_alloc(
+      ctx, "d2", TILEDB_UINT64, &dim_domain[2], &tile_extents[1], &d2));
 
   // Create domain
   tiledb_domain_t* domain;
-  rc = tiledb_domain_alloc(ctx, &domain);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_domain_add_dimension(ctx, domain, d1);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_domain_add_dimension(ctx, domain, d2);
-  REQUIRE(rc == TILEDB_OK);
+  throw_if_setup_failed(tiledb_domain_alloc(ctx, &domain));
+  throw_if_setup_failed(tiledb_domain_add_dimension(ctx, domain, d1));
+  throw_if_setup_failed(tiledb_domain_add_dimension(ctx, domain, d2));
 
   // Create attributes
   tiledb_attribute_t* a;
-  rc = tiledb_attribute_alloc(ctx, "a", TILEDB_INT32, &a);
-  REQUIRE(rc == TILEDB_OK);
+  throw_if_setup_failed(tiledb_attribute_alloc(ctx, "a", TILEDB_INT32, &a));
   tiledb_attribute_t* b;
-  rc = tiledb_attribute_alloc(ctx, "b", TILEDB_INT32, &b);
-  REQUIRE(rc == TILEDB_OK);
+  throw_if_setup_failed(tiledb_attribute_alloc(ctx, "b", TILEDB_INT32, &b));
   tiledb_attribute_t* c;
-  rc = tiledb_attribute_alloc(ctx, "c", TILEDB_STRING_ASCII, &c);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_cell_val_num(ctx, c, TILEDB_VAR_NUM);
-  REQUIRE(rc == TILEDB_OK);
+  throw_if_setup_failed(
+      tiledb_attribute_alloc(ctx, "c", TILEDB_STRING_ASCII, &c));
+  throw_if_setup_failed(
+      tiledb_attribute_set_cell_val_num(ctx, c, TILEDB_VAR_NUM));
   tiledb_attribute_t* d;
-  rc = tiledb_attribute_alloc(ctx, "d", TILEDB_STRING_UTF8, &d);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_cell_val_num(ctx, d, TILEDB_VAR_NUM);
-  REQUIRE(rc == TILEDB_OK);
+  throw_if_setup_failed(
+      tiledb_attribute_alloc(ctx, "d", TILEDB_STRING_UTF8, &d));
+  throw_if_setup_failed(
+      tiledb_attribute_set_cell_val_num(ctx, d, TILEDB_VAR_NUM));
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  rc = tiledb_array_schema_alloc(ctx, TILEDB_SPARSE, &array_schema);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_ROW_MAJOR);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_set_tile_order(ctx, array_schema, TILEDB_ROW_MAJOR);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_set_capacity(ctx, array_schema, 4);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_set_domain(ctx, array_schema, domain);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_add_attribute(ctx, array_schema, a);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_add_attribute(ctx, array_schema, b);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_add_attribute(ctx, array_schema, c);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_add_attribute(ctx, array_schema, d);
-  REQUIRE(rc == TILEDB_OK);
+  throw_if_setup_failed(
+      tiledb_array_schema_alloc(ctx, TILEDB_SPARSE, &array_schema));
+  throw_if_setup_failed(
+      tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_ROW_MAJOR));
+  throw_if_setup_failed(
+      tiledb_array_schema_set_tile_order(ctx, array_schema, TILEDB_ROW_MAJOR));
+  throw_if_setup_failed(tiledb_array_schema_set_capacity(ctx, array_schema, 4));
+  throw_if_setup_failed(
+      tiledb_array_schema_set_domain(ctx, array_schema, domain));
+  throw_if_setup_failed(
+      tiledb_array_schema_add_attribute(ctx, array_schema, a));
+  throw_if_setup_failed(
+      tiledb_array_schema_add_attribute(ctx, array_schema, b));
+  throw_if_setup_failed(
+      tiledb_array_schema_add_attribute(ctx, array_schema, c));
+  throw_if_setup_failed(
+      tiledb_array_schema_add_attribute(ctx, array_schema, d));
 
   // check array schema
-  rc = tiledb_array_schema_check(ctx, array_schema);
-  REQUIRE(rc == TILEDB_OK);
+  throw_if_setup_failed(tiledb_array_schema_check(ctx, array_schema));
 
   // Create array
-  rc = tiledb_array_create(ctx, array_name.c_str(), array_schema);
-  REQUIRE(rc == TILEDB_OK);
+  throw_if_setup_failed(
+      tiledb_array_create(ctx, array_name.c_str(), array_schema));
 
   // Clean up
   tiledb_attribute_free(&a);
