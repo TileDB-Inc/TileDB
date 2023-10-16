@@ -34,31 +34,48 @@
 
 #ifndef TILEDB_SUM_TYPE_H
 #define TILEDB_SUM_TYPE_H
-
 namespace tiledb::sm {
 
-#define SUM_TYPE_DATA(T, SUM_T, T_DT)                 \
-  template <>                                         \
-  struct sum_type_data<T> {                           \
-    using type = T;                                   \
-    typedef SUM_T sum_type;                           \
-    static constexpr Datatype tiledb_datatype = T_DT; \
-  };
+template <class T>
+concept SignedInt = std::signed_integral<T>;
+
+template <class T>
+concept UnsignedInt = std::unsigned_integral<T>;
+
+template <class T>
+concept FloatingPoint = std::floating_point<T>;
+
+template <class T>
+concept SummableType = FloatingPoint<T> || SignedInt<T> || UnsignedInt<T>;
 
 /** Convert basic type to a sum type. **/
 template <typename T>
-struct sum_type_data;
+  requires SummableType<T>
+struct sum_type_data {};
 
-SUM_TYPE_DATA(int8_t, int64_t, Datatype::INT64);
-SUM_TYPE_DATA(uint8_t, uint64_t, Datatype::UINT64);
-SUM_TYPE_DATA(int16_t, int64_t, Datatype::INT64);
-SUM_TYPE_DATA(uint16_t, uint64_t, Datatype::UINT64);
-SUM_TYPE_DATA(int32_t, int64_t, Datatype::INT64);
-SUM_TYPE_DATA(uint32_t, uint64_t, Datatype::UINT64);
-SUM_TYPE_DATA(int64_t, int64_t, Datatype::INT64);
-SUM_TYPE_DATA(uint64_t, uint64_t, Datatype::UINT64);
-SUM_TYPE_DATA(float, double, Datatype::FLOAT64);
-SUM_TYPE_DATA(double, double, Datatype::FLOAT64);
+// Signed integer specializations.
+template <SignedInt T>
+struct sum_type_data<T> {
+  using type = T;
+  typedef int64_t sum_type;
+  static constexpr Datatype tiledb_datatype = Datatype::INT64;
+};
+
+// Unsigned integer specializations.
+template <UnsignedInt T>
+struct sum_type_data<T> {
+  using type = T;
+  typedef uint64_t sum_type;
+  static constexpr Datatype tiledb_datatype = Datatype::UINT64;
+};
+
+// Floating point specializations.
+template <FloatingPoint T>
+struct sum_type_data<T> {
+  using type = T;
+  typedef double sum_type;
+  static constexpr Datatype tiledb_datatype = Datatype::FLOAT64;
+};
 
 }  // namespace tiledb::sm
 
