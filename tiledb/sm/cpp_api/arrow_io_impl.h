@@ -616,14 +616,11 @@ static inline int8_t bitmap_get(const uint8_t* bits, int64_t i) {
 }
 
 static void bitmap_to_bytemap(void* bitmap, int64_t n) {
-  uint8_t valcpy[n];  // we make a copy so that we overwrite
-  std::memcpy(valcpy, bitmap, n * sizeof(uint8_t));
-  uint8_t valarr[n];
-  std::memcpy(valarr, bitmap, n * sizeof(uint8_t));
+  uint8_t* bmp = static_cast<uint8_t*>(bitmap);
+  std::vector<uint8_t> valcpy(bmp, bmp + n);  // we make as we will overwrite.
   for (auto i = 0; i < n; i++) {
-    valarr[i] = bitmap_get(valcpy, i);
+    bmp[i] = bitmap_get(valcpy.data(), i);
   }
-  std::memcpy(bitmap, valarr, n * sizeof(uint8_t));
 }
 
 void ArrowImporter::import_(
@@ -643,23 +640,15 @@ void ArrowImporter::import_(
       data_nbytes =
           static_cast<uint64_t*>(p_offsets)[num_offsets] * typeinfo.elem_size;
     } else {
-      data_nbytes =
-          static_cast<uint32_t*>(p_offsets)[num_offsets] * typeinfo.elem_size;
+      uint32_t* offs32 = static_cast<uint32_t*>(p_offsets);
+      data_nbytes = offs32[num_offsets] * typeinfo.elem_size;
 
       // in the 'small' case convert 32 bit offsets to 64 bit offsets
-      int32_t curroffsets[num_offsets + 1];
-      int64_t updtoffsets[num_offsets + 1];
-      std::memcpy(
-          curroffsets,
-          arw_array->buffers[1],
-          (num_offsets + 1) * sizeof(int32_t));
-      for (int i = 0; i <= num_offsets; i++) {
-        updtoffsets[i] = static_cast<uint64_t>(curroffsets[i]);
+      std::vector<int32_t> curroffsets(offs32, offs32 + num_offsets + 1);
+      uint64_t* offs64 = static_cast<uint64_t*>(p_offsets);
+      for (uint64_t i = 0; i <= num_offsets; i++) {
+        offs64[i] = static_cast<uint64_t>(curroffsets[i]);
       }
-      std::memcpy(
-          const_cast<void*>(arw_array->buffers[1]),
-          updtoffsets,
-          (num_offsets + 1) * sizeof(int64_t));
     }
 
     // Set the TileDB buffer, adding `1` to `num_offsets` to account for
