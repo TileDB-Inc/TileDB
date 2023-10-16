@@ -88,7 +88,9 @@ TEST_CASE("Resume functions", "[duffs]") {
     CHECK(p->get_program_counter() == 3);
     CHECK(str(x) == "notify_sink");
     x = p->resume();
-    CHECK(p->get_program_counter() == 5);
+
+    // Recall that wait decrements the program counter
+    CHECK(p->get_program_counter() == 4);
     CHECK(str(x) == "source_wait");
     // Don't resume further after wait
   }
@@ -96,14 +98,18 @@ TEST_CASE("Resume functions", "[duffs]") {
   SECTION("Test Consumer in Isolation ") {
     // One pass through node operation
     auto x = c->resume();
-    CHECK(c->get_program_counter() == 1);
+
+    // Recall that wait decrements the program counter
+    CHECK(c->get_program_counter() == 0);
     CHECK(str(x) == "sink_wait");
   }
 
   SECTION("Test Function in Isolation ") {
     // One pass through node operation
     auto x = f->resume();
-    CHECK(f->get_program_counter() == 1);
+
+    // Recall that wait decrements the program counter
+    CHECK(f->get_program_counter() == 0);
     CHECK(str(x) == "sink_wait");
   }
 
@@ -154,8 +160,8 @@ TEST_CASE("Resume functions", "[duffs]") {
     CHECK(str(z) == "notify_source");
 
     z = c->resume();
-    CHECK(c->get_program_counter() == 6);
-    CHECK(str(z) == "sink_wait");
+    CHECK(c->get_program_counter() == 0);
+    CHECK(str(z) == "yield");
   }
 
   SECTION("Emulate Passing Data, with Some Blocking") {
@@ -178,7 +184,9 @@ TEST_CASE("Resume functions", "[duffs]") {
     CHECK(p->get_program_counter() == 3);
     CHECK(str(x) == "notify_sink");
     x = p->resume();
-    CHECK(p->get_program_counter() == 5);
+
+    // Recall that wait decrements the program counter
+    CHECK(p->get_program_counter() == 4);
     CHECK(str(x) == "source_wait");
 
     // Move datum to next node
@@ -216,7 +224,9 @@ TEST_CASE("Resume functions", "[duffs]") {
     CHECK(str(y) == "notify_sink");
 
     y = f->resume();  // push
-    CHECK(f->get_program_counter() == 9);
+
+    // Recall that wait decrements the program counter
+    CHECK(f->get_program_counter() == 8);
     CHECK(str(y) == "source_wait");
 
     auto z = c->resume();  // pull
@@ -229,12 +239,12 @@ TEST_CASE("Resume functions", "[duffs]") {
     CHECK(str(z) == "notify_source");
 
     z = c->resume();
-    CHECK(c->get_program_counter() == 6);
-    CHECK(str(z) == "noop");
+    CHECK(c->get_program_counter() == 0);
+    CHECK(str(z) == "yield");
 
     z = c->resume();  // pull
     CHECK(c->get_program_counter() == 1);
-    CHECK(str(z) == "yield");
+    CHECK(str(z) == "noop");
 
     // Move datum to last node
     z = c->resume();  // drain
@@ -242,17 +252,19 @@ TEST_CASE("Resume functions", "[duffs]") {
     CHECK(str(z) == "notify_source");
 
     z = c->resume();
-    CHECK(c->get_program_counter() == 6);
-    CHECK(str(z) == "sink_wait");
+    CHECK(c->get_program_counter() == 0);
+    CHECK(str(z) == "yield");
   }
 
   SECTION("Emulate Pulling Data, with Some Blocking") {
     auto z = c->resume();  // pull
-    CHECK(c->get_program_counter() == 1);
+    CHECK(
+        c->get_program_counter() == 0);  // wait decrements the program counter
     CHECK(str(z) == "sink_wait");
 
     auto y = f->resume();  // pull
-    CHECK(c->get_program_counter() == 1);
+    CHECK(
+        c->get_program_counter() == 0);  // wait decrements the program counter
     CHECK(str(z) == "sink_wait");
 
     // Inject datum
@@ -265,6 +277,10 @@ TEST_CASE("Resume functions", "[duffs]") {
     x = p->resume();
     CHECK(p->get_program_counter() == 0);
     CHECK(str(x) == "yield");
+
+    y = f->resume();  // pull (successful)
+    CHECK(f->get_program_counter() == 1);
+    CHECK(str(y) == "noop");
 
     y = f->resume();  // drain
     CHECK(f->get_program_counter() == 3);
@@ -283,13 +299,17 @@ TEST_CASE("Resume functions", "[duffs]") {
     CHECK(str(y) == "yield");
 
     // Move datum to last node
+    z = c->resume();  // pull (successful)
+    CHECK(c->get_program_counter() == 1);
+    CHECK(str(z) == "noop");
+
     z = c->resume();  // drain
     CHECK(c->get_program_counter() == 3);
     CHECK(str(z) == "notify_source");
 
-    z = c->resume();  // pull
-    CHECK(c->get_program_counter() == 6);
-    CHECK(str(z) == "sink_wait");
+    z = c->resume();  // yield
+    CHECK(c->get_program_counter() == 0);
+    CHECK(str(z) == "yield");
   }
 }
 

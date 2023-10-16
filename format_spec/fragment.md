@@ -52,18 +52,18 @@ The fragment metadata file has the following on-disk format:
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
 | R-Tree | [R-Tree](#r-tree) | The serialized R-Tree |
-| Tile offsets for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | The serialized tile offsets for attribute/dimension 1 |
+| Tile offsets for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | The serialized _on-disk_ tile offsets for attribute/dimension 1 |
 | … | … | … |
-| Tile offsets for attribute/dimension N | [Tile Offsets](#tile-offsets) | The serialized tile offsets for attribute/dimension N |
-| Variable tile offsets for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | The serialized variable tile offsets for attribute/dimension 1 |
+| Tile offsets for attribute/dimension N | [Tile Offsets](#tile-offsets) | The serialized _on-disk_ tile offsets for attribute/dimension N |
+| Variable tile offsets for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | The serialized _on-disk_ variable tile offsets for attribute/dimension 1 |
 | … | … | … |
-| Variable tile offsets for attribute/dimension N | [Tile Offsets](#tile-offsets) | The serialized variable tile offsets for attribute/dimension N |
-| Variable tile sizes for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | The serialized variable tile sizes for attribute/dimension 1 |
+| Variable tile offsets for attribute/dimension N | [Tile Offsets](#tile-offsets) | The serialized _on-disk_ variable tile offsets for attribute/dimension N |
+| Variable tile sizes for attribute/dimension 1 | [Tile Sizes](#tile-sizes) | The serialized _in-memory_ variable tile sizes for attribute/dimension 1 |
 | … | … | … |
-| Variable tile sizes for attribute/dimension N | [Tile Offsets](#tile-offsets) | The serialized variable tile sizes for attribute/dimension N |
-| Validity tile offsets for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | The serialized validity tile offsets for attribute/dimension 1 |
+| Variable tile sizes for attribute/dimension N | [Tile Sizes](#tile-sizes) | The serialized _in-memory_ variable tile sizes for attribute/dimension N |
+| Validity tile offsets for attribute/dimension 1 | [Tile Offsets](#tile-offsets) | The serialized _on-disk_ validity tile offsets for attribute/dimension 1 |
 | … | … | … |
-| Validity tile offsets for attribute/dimension N | [Tile Offsets](#tile-offsets) | The serialized validity tile offsets for attribute/dimension N |
+| Validity tile offsets for attribute/dimension N | [Tile Offsets](#tile-offsets) | The serialized _on-disk_ validity tile offsets for attribute/dimension N |
 | Tile mins for attribute/dimension 1 | [Tile Mins/Maxes](#tile-mins-maxes) | The serialized mins for attribute/dimension 1 |
 | … | … | … |
 | Variable mins for attribute/dimension N | [Tile Mins/Maxes](#tile-mins-maxes) | The serialized mins for attribute/dimension N |
@@ -126,7 +126,8 @@ For *var-sized dimensions*, the `1DRange` format is:
 
 ### Tile Offsets
 
-The tile offsets is a [generic tile](./generic_tile.md) with the following internal format:
+Tile offsets refer to each _on-disk_ data tile's starting byte offset. \
+Tile offsets is a [generic tile](./generic_tile.md) with the following internal format:
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
@@ -137,7 +138,8 @@ The tile offsets is a [generic tile](./generic_tile.md) with the following inter
 
 ### Tile Sizes
 
-The tile sizes is a [generic tile](./generic_tile.md) with the following internal format:
+The tile size refers to the _in-memory_ size. \
+It is a [generic tile](./generic_tile.md) with the following internal format:
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |

@@ -523,7 +523,6 @@ capi_return_t tiledb_deserialize_group_metadata(
 capi_return_t tiledb_group_consolidate_metadata(
     tiledb_ctx_handle_t* ctx, const char* group_uri, tiledb_config_t* config) {
   ensure_group_uri_argument_is_valid(group_uri);
-  ensure_config_is_valid(config);
 
   auto cfg =
       (config == nullptr) ? ctx->storage_manager()->config() : config->config();
@@ -536,7 +535,6 @@ capi_return_t tiledb_group_consolidate_metadata(
 capi_return_t tiledb_group_vacuum_metadata(
     tiledb_ctx_handle_t* ctx, const char* group_uri, tiledb_config_t* config) {
   ensure_group_uri_argument_is_valid(group_uri);
-  ensure_config_is_valid(config);
 
   auto cfg =
       (config == nullptr) ? ctx->storage_manager()->config() : config->config();

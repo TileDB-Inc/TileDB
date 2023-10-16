@@ -192,4 +192,27 @@ TEST_CASE_METHOD(
   auto badbuffer = (char*)malloc(11000000);
   CHECK(!(s3_.write(URI(badfile), badbuffer, 11000000).ok()));
 }
+
+TEST_CASE_METHOD(
+    S3DirectFx, "Validate vfs.s3.custom_headers.*", "[s3][custom-headers]") {
+  Config cfg = set_config_params();
+
+  // Check the edge case of a key matching the ConfigIter prefix.
+  REQUIRE(cfg.set("vfs.s3.custom_headers.", "").ok());
+
+  // Set an unexpected value for Content-MD5, which minio should reject
+  REQUIRE(cfg.set("vfs.s3.custom_headers.Content-MD5", "unexpected").ok());
+
+  // Recreate a new S3 client because config is not dynamic
+  tiledb::sm::S3 s3{&g_helper_stats, &thread_pool_, cfg};
+  auto uri = URI(TEST_DIR + "writefailure");
+
+  // This is a buffered write, which is why it returns ok.
+  auto st = s3.write(uri, "Validate s3 custom headers", 26);
+  REQUIRE(st.ok());
+
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "The Content-Md5 you specified is not valid.");
+  REQUIRE_THROWS_WITH(s3.flush_object(uri), matcher);
+}
 #endif

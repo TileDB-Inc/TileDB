@@ -84,6 +84,11 @@ void Context::save_error(const Status& st) {
   last_error_ = st.to_string();
 }
 
+void Context::save_error(const std::string& msg) {
+  std::lock_guard<std::mutex> lock(mtx_);
+  last_error_ = msg;
+}
+
 void Context::save_error(const StatusException& st) {
   std::lock_guard<std::mutex> lock(mtx_);
   last_error_ = st.what();

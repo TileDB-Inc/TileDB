@@ -227,6 +227,10 @@ TEST_CASE_METHOD(
   // Write a correct item
   group.put_metadata("key", TILEDB_INT32, 1, &v);
 
+  // Consolidate and vacuum metadata with default config
+  group.consolidate_metadata(ctx_, group1_uri);
+  group.vacuum_metadata(ctx_, group1_uri);
+
   // Close group
   group.close();
 

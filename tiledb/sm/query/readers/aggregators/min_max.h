@@ -44,7 +44,6 @@ struct MinMax {
    * @param value Value to compare against.
    * @param sum Computed min/max.
    * @param count Current count of values.
-   * @param
    */
   template <typename MIN_MAX_T>
   void op(MIN_MAX_T value, MIN_MAX_T& min_max, uint64_t count) {

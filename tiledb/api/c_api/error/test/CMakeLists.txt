@@ -23,21 +23,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
+include(unit_test)
 
-add_executable(unit_capi_error EXCLUDE_FROM_ALL)
-find_package(Catch_EP REQUIRED)
-target_link_libraries(unit_capi_error PUBLIC Catch2::Catch2WithMain)
-
-# Sources for code under test
-target_link_libraries(unit_capi_error PUBLIC capi_error)
-
-# Sources for tests
-target_sources(unit_capi_error PUBLIC
-    unit_capi_error.cc
-    )
-
-add_test(
-    NAME "unit_capi_error"
-    COMMAND $<TARGET_FILE:unit_capi_error>
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
+commence(unit_test capi_error)
+  this_target_sources(unit_capi_error.cc)
+  this_target_object_libraries(capi_error)
+conclude(unit_test)

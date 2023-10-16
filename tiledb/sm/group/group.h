@@ -50,6 +50,13 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+class GroupDetailsException : public StatusException {
+ public:
+  explicit GroupDetailsException(const std::string& message)
+      : StatusException("Group Details", message) {
+  }
+};
+
 class Group {
  public:
   Group(const URI& group_uri, StorageManager* storage_manager);

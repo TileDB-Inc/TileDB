@@ -1017,5 +1017,5 @@ T CPPQueryConditionFx::choose_value(std::vector<T>& values) {
 }
 
 float CPPQueryConditionFx::random() {
-  return static_cast<float>(std::rand()) / RAND_MAX;
+  return static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
 }

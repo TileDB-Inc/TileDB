@@ -23,8 +23,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 #
 # `exception_wrapper` object library
@@ -34,14 +34,15 @@ include(common NO_POLICY_SCOPE)
 # OBJECT syntax.
 
 # No actual source files at present.
-#list(APPEND SOURCES
-#)
-#gather_sources(${SOURCES})
+list(APPEND SOURCES
+    exception_wrapper.cc
+)
+gather_sources(${SOURCES})
 
-add_library(exception_wrapper OBJECT exception_wrapper.cc)
-target_link_libraries(exception_wrapper PUBLIC export)
-target_link_libraries(exception_wrapper PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(exception_wrapper PUBLIC thread_pool $<TARGET_OBJECTS:thread_pool>)
-target_link_libraries(exception_wrapper PUBLIC config $<TARGET_OBJECTS:config>)
+commence(object_library exception_wrapper)
+  this_target_sources(${SOURCES})
+  this_target_link_libraries(export)
+  this_target_object_libraries(baseline thread_pool config)
+conclude(object_library)
 
 add_test_subdirectory()
