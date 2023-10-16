@@ -173,6 +173,11 @@ class ComparatorAggregator : public ComparatorAggregatorBase<T>,
       std::string output_field_name,
       std::unordered_map<std::string, QueryBuffer>& buffers) override;
 
+  /** Returns the TileDB datatype of the output field for the aggregate. */
+  Datatype output_datatype() override {
+    return ComparatorAggregatorBase<T>::field_info_.type_;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

@@ -1109,3 +1109,137 @@ TEST_CASE(
   std::vector<uint64_t> res = {0, 4, 0, 0, 2, 3, 0, 0, 3, 6};
   basic_string_aggregation_test<NullCountAggregator, uint64_t>(res);
 }
+
+TEST_CASE(
+    "NullCount aggregator: output datatype",
+    "[null-count-aggregator][output-datatype]") {
+  NullCountAggregator aggregator{FieldInfo{"a1", false, true, 1}};
+  CHECK(aggregator.output_datatype() == Datatype::UINT64);
+}
+
+TEST_CASE(
+    "Count aggregator: output datatype",
+    "[count-aggregator][output-datatype]") {
+  CountAggregator aggregator;
+  CHECK(aggregator.output_datatype() == Datatype::UINT64);
+}
+
+TEST_CASE(
+    "Sum aggregator: Expected output type",
+    "[sum-aggregator][output_datatype]") {
+  CHECK(
+      SumAggregator<int8_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      SumAggregator<uint8_t>{FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      SumAggregator<int16_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      SumAggregator<uint16_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      SumAggregator<int32_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      SumAggregator<uint32_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      SumAggregator<int64_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      SumAggregator<uint64_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      SumAggregator<float>{FieldInfo("a1", false, false, 1, Datatype::FLOAT64)}
+          .output_datatype() == Datatype::FLOAT64);
+  CHECK(
+      SumAggregator<double>{FieldInfo("a1", false, false, 1, Datatype::FLOAT64)}
+          .output_datatype() == Datatype::FLOAT64);
+}
+
+TEST_CASE(
+    "Mean aggregator: Expected output type",
+    "[mean-aggregator][output_datatype]") {
+  CHECK(
+      MeanAggregator<int8_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      MeanAggregator<uint8_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      MeanAggregator<int16_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      MeanAggregator<uint16_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      MeanAggregator<int32_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      MeanAggregator<uint32_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      MeanAggregator<int64_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      MeanAggregator<uint64_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      MeanAggregator<float>{FieldInfo("a1", false, false, 1, Datatype::FLOAT64)}
+          .output_datatype() == Datatype::FLOAT64);
+  CHECK(
+      MeanAggregator<double>{
+          FieldInfo("a1", false, false, 1, Datatype::FLOAT64)}
+          .output_datatype() == Datatype::FLOAT64);
+}
+
+TEST_CASE(
+    "Min max aggregator: Expected output type",
+    "[min-max-aggregator][output_datatype]") {
+  CHECK(
+      MinAggregator<int8_t>{FieldInfo("a1", false, false, 1, Datatype::INT8)}
+          .output_datatype() == Datatype::INT8);
+  CHECK(
+      MinAggregator<uint8_t>{FieldInfo("a1", false, false, 1, Datatype::UINT8)}
+          .output_datatype() == Datatype::UINT8);
+  CHECK(
+      MinAggregator<int16_t>{FieldInfo("a1", false, false, 1, Datatype::INT16)}
+          .output_datatype() == Datatype::INT16);
+  CHECK(
+      MinAggregator<uint16_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT16)}
+          .output_datatype() == Datatype::UINT16);
+  CHECK(
+      MinAggregator<int32_t>{FieldInfo("a1", false, false, 1, Datatype::INT32)}
+          .output_datatype() == Datatype::INT32);
+  CHECK(
+      MinAggregator<uint32_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT32)}
+          .output_datatype() == Datatype::UINT32);
+  CHECK(
+      MinAggregator<int64_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      MinAggregator<uint64_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      MinAggregator<float>{FieldInfo("a1", false, false, 1, Datatype::FLOAT32)}
+          .output_datatype() == Datatype::FLOAT32);
+  CHECK(
+      MinAggregator<double>{FieldInfo("a1", false, false, 1, Datatype::FLOAT64)}
+          .output_datatype() == Datatype::FLOAT64);
+  CHECK(
+      MinAggregator<std::string>{
+          FieldInfo("a1", false, false, 1, Datatype::STRING_ASCII)}
+          .output_datatype() == Datatype::STRING_ASCII);
+}
