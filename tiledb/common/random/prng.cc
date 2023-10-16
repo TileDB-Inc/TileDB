@@ -27,5 +27,47 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the library-wide 64-bit PRNG facility.
+ * This file defines the library-wide 64-bit PRNG facility.
  */
+
+#include "tiledb/common/random/prng.h"
+
+namespace tiledb::common {
+
+/* ********************************* */
+/*     CONSTRUCTORS & DESTRUCTORS    */
+/* ********************************* */
+
+PRNG::PRNG()
+    : prng_(prng_initial())
+    , mtx_{} {
+}
+
+/* ********************************* */
+/*                API                */
+/* ********************************* */
+
+PRNG& PRNG::get() {
+  static PRNG singleton;
+  return singleton;
+}
+
+uint64_t PRNG::operator()() {
+  std::lock_guard<std::mutex> lock(mtx_);
+  return prng_();
+}
+
+/* ********************************* */
+/*          PRIVATE METHODS          */
+/* ********************************* */
+
+std::mt19937_64 PRNG::prng_initial() {
+  auto x{Seeder::get().seed()};
+  if (x.has_value()) {
+    return std::mt19937_64{x.value()};  // RVO
+  } else {
+    return {};  // RVO
+  }
+}
+
+}  // namespace tiledb::common

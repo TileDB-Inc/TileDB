@@ -27,15 +27,88 @@
  *
  * @section DESCRIPTION
  *
- * This file defines the seeder for the library-wide 64-bit RNG facility.
+ * This file declares the seeder for the library-wide 64-bit RNG facility.
  */
 
 #ifndef TILEDB_SEEDER_H
 #define TILEDB_SEEDER_H
 
 #include <mutex>
-#include <random>
 
-namespace tiledb::common {}  // namespace tiledb::common
+namespace tiledb::common {
+
+class Seeder {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  /**
+   * Constructor.
+   *
+   * Default constructed as the initial state of the singleton Seeder with
+   * no set seed.
+   */
+  Seeder() = default;
+
+  /** Copy constructor is deleted. */
+  Seeder(const Seeder&) = delete;
+
+  /** Move constructor is deleted. */
+  Seeder(Seeder&&) = delete;
+
+  /** Copy assignment is deleted. */
+  Seeder& operator=(const Seeder&) = delete;
+
+  /** Move assignment is deleted. */
+  Seeder& operator=(Seeder&&) = delete;
+
+  /** Destructor. */
+  ~Seeder() = default;
+
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
+  /** Singleton accessor. */
+  static Seeder& get();
+
+  /**
+   * Sets the seed
+   *
+   * @param seed Seed to set
+   */
+  void set_seed(uint64_t seed);
+
+  /**
+   * Returns the seed, if set.
+   *
+   * @return If set, return the seed. Else return nullopt.
+   */
+  std::optional<uint64_t> seed();
+
+ private:
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
+  /**
+   * Optional seed object, set by set_seed.
+   * #TODO note about state?
+   */
+  std::optional<uint64_t> seed_{std::nullopt};
+
+  /**
+   * 0 = default
+   * 1 = seeded but seed not yet used
+   * 2 = seeded and seed used
+   * #TODO potentially change to use something more stateful than int (Status?)
+   */
+  int lifespan_state_{0};
+
+  /** Mutex which protects transitions of lifespan_state_. */
+  std::mutex mtx_;
+};
+}  // namespace tiledb::common
 
 #endif  // TILEDB_SEEDER_H

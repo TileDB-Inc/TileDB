@@ -27,5 +27,41 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the seeder for the library-wide 64-bit RNG facility.
+ * This file defines the seeder for the library-wide 64-bit RNG facility.
  */
+
+// #TODO lifespan_state_ checking & updating
+
+#include "tiledb/common/random/seeder.h"
+
+namespace tiledb::common {
+
+/* ********************************* */
+/*                API                */
+/* ********************************* */
+
+Seeder& Seeder::get() {
+  static Seeder singleton;
+  return singleton;
+}
+
+void Seeder::set_seed(uint64_t seed) {
+  std::lock_guard<std::mutex> lock(mtx_);
+  seed_ = seed;
+  lifespan_state_ = 1;
+}
+
+std::optional<uint64_t> Seeder::seed() {
+  std::lock_guard<std::mutex> lock(mtx_);
+
+  if (lifespan_state_ == 2) {
+    throw std::logic_error(
+        "[Seeder] Seed has already been used. Use set_seed to set a new one.");
+  } else if (lifespan_state_ == 1) {
+    lifespan_state_ = 2;
+  }
+
+  return seed_;
+}
+
+}  // namespace tiledb::common

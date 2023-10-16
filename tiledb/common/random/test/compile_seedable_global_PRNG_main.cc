@@ -27,7 +27,7 @@
  */
 
 #include "../prng.h"
-#include "../seedable.h"
+#include "../seeder.h"
 
 int main() {
   // #TODO
