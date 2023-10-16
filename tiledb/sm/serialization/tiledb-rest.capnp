@@ -1200,14 +1200,22 @@ struct BufferedChunk {
 }
 
 struct ArrayDeleteFragmentsListRequest {
-  uri @0 :Text;
+  config @0 :Config;
+  # Config
+
   entries @1 :List(Text);
+  # Fragment list to delete
 }
 
 struct ArrayDeleteFragmentsTimestampsRequest {
-  uri @0 :Text;
+  config @0 :Config;
+  # Config
+
   startTimestamp @1 :UInt64;
+  # Start timestamp for the delete
+
   endTimestamp @2 :UInt64;
+  # End timestamp for the delete
 }
 
 struct ArrayConsolidationRequest {
