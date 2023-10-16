@@ -566,10 +566,9 @@ void Array::delete_fragments(
   }
 }
 
-void Array::delete_fragments_list(
-    const URI& uri, const std::vector<URI>& fragment_uris) {
+void Array::delete_fragments_list(const std::vector<URI>& fragment_uris) {
   // Check that data deletion is allowed
-  ensure_array_is_valid_for_delete(uri);
+  ensure_array_is_valid_for_delete(array_uri_);
 
   // Delete fragments_list
   if (remote_) {
@@ -578,10 +577,11 @@ void Array::delete_fragments_list(
       throw ArrayException(
           "[delete_fragments_list] Remote array with no REST client.");
     }
-    rest_client->post_delete_fragments_list_to_rest(uri, this, fragment_uris);
+    rest_client->post_delete_fragments_list_to_rest(
+        array_uri_, this, fragment_uris);
   } else {
     auto array_dir = ArrayDirectory(
-        resources_, uri, 0, std::numeric_limits<uint64_t>::max());
+        resources_, array_uri_, 0, std::numeric_limits<uint64_t>::max());
     array_dir.delete_fragments_list(fragment_uris);
   }
 }

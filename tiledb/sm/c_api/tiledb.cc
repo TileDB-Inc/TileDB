@@ -2470,7 +2470,7 @@ capi_return_t tiledb_array_delete_fragments_list(
 
   // Delete fragments list
   try {
-    array->array_->delete_fragments_list(uri, uris);
+    array->array_->delete_fragments_list(uris);
   } catch (...) {
     throw_if_not_ok(array->array_->close());
     delete array;
@@ -4069,7 +4069,7 @@ capi_return_t tiledb_handle_array_delete_fragments_list_request(
 
   // Delete fragments list
   try {
-    array->array_->delete_fragments_list(array->array_->array_uri(), uris);
+    array->array_->delete_fragments_list(uris);
   } catch (...) {
     throw api::CAPIStatusException("Failed to delete fragments_list");
   }
