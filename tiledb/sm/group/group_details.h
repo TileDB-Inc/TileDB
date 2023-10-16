@@ -217,8 +217,11 @@ class GroupDetails {
   /** Mapping of members slated for adding. */
   std::vector<shared_ptr<GroupMember>> members_to_modify_;
 
-  /** Set of member keys that have been marked for addition or removal. */
-  std::unordered_set<std::string> member_keys_to_modify_;
+  /** Set of member keys that have been marked for addition. */
+  std::unordered_set<std::string> member_keys_to_add_;
+
+  /** Set of member keys that have been marked for removal. */
+  std::unordered_set<std::string> member_keys_to_delete_;
 
   /** Mutex for thread safety. */
   mutable std::mutex mtx_;

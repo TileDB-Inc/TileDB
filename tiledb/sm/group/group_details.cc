@@ -62,7 +62,8 @@ Status GroupDetails::clear() {
   members_by_name_.clear();
   members_vec_.clear();
   members_to_modify_.clear();
-  member_keys_to_modify_.clear();
+  member_keys_to_add_.clear();
+  member_keys_to_delete_.clear();
 
   return Status::Ok();
 }
@@ -90,9 +91,6 @@ Status GroupDetails::mark_member_for_addition(
     std::optional<std::string>& name,
     StorageManager* storage_manager) {
   std::lock_guard<std::mutex> lck(mtx_);
-  // TODO: Safety checks for not double adding, making sure its remove + add,
-  // etc
-
   URI absolute_group_member_uri = group_member_uri;
   if (relative) {
     absolute_group_member_uri =
@@ -109,11 +107,10 @@ Status GroupDetails::mark_member_for_addition(
   auto group_member = tdb::make_shared<GroupMemberV2>(
       HERE(), group_member_uri, type, relative, name, false);
 
-  if (!member_keys_to_modify_.insert(group_member->name_or_uri()).second) {
+  if (!member_keys_to_add_.insert(group_member->name_or_uri()).second) {
     return Status_GroupError(
         "Cannot add group member " + group_member->name_or_uri() +
-        ", a member with the same name or URI has already been added or "
-        "removed.");
+        ", a member with the same name or URI has already been added.");
   }
 
   members_to_modify_.emplace_back(group_member);
@@ -137,12 +134,17 @@ Status GroupDetails::mark_member_for_removal(const std::string& name_or_uri) {
         it->second->name(),
         true);
 
-    if (!member_keys_to_modify_.insert(member_to_delete->name_or_uri())
+    if (member_keys_to_add_.count(member_to_delete->name_or_uri()) != 0) {
+      return Status_GroupError(
+          "Cannot remove group member " + member_to_delete->name_or_uri() +
+          ", a member with the same name or URI has already been added.");
+    }
+
+    if (!member_keys_to_delete_.insert(member_to_delete->name_or_uri())
              .second) {
       return Status_GroupError(
           "Cannot remove group member " + member_to_delete->name_or_uri() +
-          ", a member with the same name or URI has already been added or "
-          "removed.");
+          ", a member with the same name or URI has already been removed.");
     }
 
     members_to_modify_.emplace_back(member_to_delete);
