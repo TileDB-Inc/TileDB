@@ -112,7 +112,7 @@ int32_t tiledb_filestore_schema_create(
 
   *array_schema = new (std::nothrow) tiledb_array_schema_t;
   if (*array_schema == nullptr) {
-    throw std::runtime_error(
+    throw api::CAPIStatusException(
         "Failed to create TileDB Array Schema object; Memory allocation error");
   }
 
@@ -168,11 +168,23 @@ int32_t tiledb_filestore_schema_create(
   } catch (const std::exception& e) {
     (*array_schema)->array_schema_ = nullptr;
     delete *array_schema;
-    throw std::logic_error(
+    throw api::CAPIStatusException(
         std::string("Internal TileDB uncaught exception; ") + e.what());
   }
 
   return TILEDB_OK;
+}
+
+inline void ensure_uri_is_valid(const char* uri) {
+  if (uri == nullptr) {
+    throw api::CAPIException("Invalid uri pointer");
+  }
+}
+
+inline void ensure_buffer_is_valid(void* p) {
+  if (p == nullptr) {
+    throw api::CAPIException("Invalid pointer");
+  }
 }
 
 int32_t tiledb_filestore_uri_import(
@@ -180,9 +192,9 @@ int32_t tiledb_filestore_uri_import(
     const char* filestore_array_uri,
     const char* file_uri,
     tiledb_mime_type_t) {
-  if (sanity_check(ctx) == TILEDB_ERR || !filestore_array_uri || !file_uri) {
-    return TILEDB_ERR;
-  }
+  api::ensure_context_is_valid(ctx);
+  ensure_uri_is_valid(filestore_array_uri);
+  ensure_uri_is_valid(file_uri);
 
   tiledb::sm::Context& context = ctx->context();
 
@@ -247,15 +259,11 @@ int32_t tiledb_filestore_uri_import(
       fext.c_str());
 
   // Write the data in batches using the global order writer
-  auto fb_open_status =
-      vfs.open_file(tiledb::sm::URI(file_uri), tiledb::sm::VFSMode::VFS_READ);
-  if (!fb_open_status.ok()) {
-    auto st = Status_Error(
+  if (!vfs.open_file(tiledb::sm::URI(file_uri), tiledb::sm::VFSMode::VFS_READ)
+           .ok()) {
+    throw api::CAPIException(
         "Failed to open the file; Invalid file URI or incorrect file "
         "permissions");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
   }
 
   // tiledb:// uri hack
@@ -360,7 +368,7 @@ int32_t tiledb_filestore_uri_import(
   if (start_range < file_size) {
     // Something must have gone wrong whilst reading the file
     throw_if_not_ok(vfs.close_file(tiledb::sm::URI(file_uri)));
-    throw std::runtime_error("Error whilst reading the file");
+    throw api::CAPIStatusException("Error whilst reading the file");
   }
 
   if (!is_tiledb_uri) {
@@ -376,9 +384,8 @@ int32_t tiledb_filestore_uri_import(
 
 int32_t tiledb_filestore_uri_export(
     tiledb_ctx_t* ctx, const char* file_uri, const char* filestore_array_uri) {
-  if (!filestore_array_uri || !file_uri) {
-    return TILEDB_ERR;
-  }
+  ensure_uri_is_valid(filestore_array_uri);
+  ensure_uri_is_valid(file_uri);
 
   tiledb::sm::Context& context = ctx->context();
   tiledb::sm::VFS vfs(
@@ -386,15 +393,11 @@ int32_t tiledb_filestore_uri_export(
       context.compute_tp(),
       context.io_tp(),
       context.storage_manager()->config());
-  auto fb_open_status =
-      vfs.open_file(tiledb::sm::URI(file_uri), tiledb::sm::VFSMode::VFS_WRITE);
-  if (!fb_open_status.ok()) {
-    auto st = Status_Error(
+  if (!vfs.open_file(tiledb::sm::URI(file_uri), tiledb::sm::VFSMode::VFS_WRITE)
+           .ok()) {
+    throw api::CAPIException(
         "Failed to open the file; Invalid file URI or incorrect file "
         "permissions");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
   }
 
   auto array = make_shared<tiledb::sm::Array>(
@@ -414,12 +417,9 @@ int32_t tiledb_filestore_uri_export(
       &num,
       &file_size_ptr);
   if (!file_size_ptr) {
-    auto st = Status_Error(
+    throw api::CAPIException(
         "The array metadata doesn't contain the " +
         tiledb::sm::constants::filestore_metadata_size_key + "key");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
   }
 
   uint64_t file_size = *static_cast<const uint64_t*>(file_size_ptr);
@@ -492,9 +492,9 @@ int32_t tiledb_filestore_buffer_import(
     void* buf,
     size_t size,
     tiledb_mime_type_t) {
-  if (sanity_check(ctx) == TILEDB_ERR || !filestore_array_uri || !buf) {
-    return TILEDB_ERR;
-  }
+  api::ensure_context_is_valid(ctx);
+  ensure_uri_is_valid(filestore_array_uri);
+  ensure_buffer_is_valid(buf);
 
   if (!size) {
     return TILEDB_OK;  // NOOP
@@ -579,9 +579,9 @@ int32_t tiledb_filestore_buffer_export(
     size_t offset,
     void* buf,
     size_t size) {
-  if (!filestore_array_uri || !buf) {
-    return TILEDB_ERR;
-  }
+  api::ensure_context_is_valid(ctx);
+  ensure_uri_is_valid(filestore_array_uri);
+  ensure_buffer_is_valid(buf);
 
   tiledb::sm::Context& context = ctx->context();
   auto array = make_shared<tiledb::sm::Array>(
@@ -639,9 +639,9 @@ int32_t tiledb_filestore_buffer_export(
 
 int32_t tiledb_filestore_size(
     tiledb_ctx_t* ctx, const char* filestore_array_uri, size_t* size) {
-  if (!filestore_array_uri || !size) {
-    return TILEDB_ERR;
-  }
+  api::ensure_context_is_valid(ctx);
+  ensure_uri_is_valid(filestore_array_uri);
+  ensure_buffer_is_valid(size);
 
   tiledb::sm::Context& context = ctx->context();
   tiledb::sm::Array array(
@@ -717,14 +717,14 @@ std::string libmagic_get_mime(void* data, uint64_t size) {
   if (tiledb::sm::magic_dict::magic_mgc_embedded_load(magic)) {
     std::string errmsg(magic_error(magic));
     magic_close(magic);
-    throw std::runtime_error(
+    throw api::CAPIStatusException(
         std::string("Cannot load magic database - ") + errmsg);
   }
   auto rv = magic_buffer(magic, data, size);
   if (!rv) {
     std::string errmsg(magic_error(magic));
     magic_close(magic);
-    throw std::runtime_error(
+    throw api::CAPIStatusException(
         std::string("Cannot get the mime type - ") + errmsg);
   }
   std::string mime(rv);
@@ -737,14 +737,14 @@ std::string libmagic_get_mime_encoding(void* data, uint64_t size) {
   if (tiledb::sm::magic_dict::magic_mgc_embedded_load(magic)) {
     std::string errmsg(magic_error(magic));
     magic_close(magic);
-    throw std::runtime_error(
+    throw api::CAPIStatusException(
         std::string("Cannot load magic database - ") + errmsg);
   }
   auto rv = magic_buffer(magic, data, size);
   if (!rv) {
     std::string errmsg(magic_error(magic));
     magic_close(magic);
-    throw std::runtime_error(
+    throw api::CAPIStatusException(
         std::string("Cannot get the mime encoding - ") + errmsg);
   }
   std::string mime(rv);
@@ -805,7 +805,7 @@ uint64_t get_buffer_size_from_config(
   assert(found);
 
   if (buffer_size < tile_extent) {
-    throw std::runtime_error(
+    throw api::CAPIStatusException(
         "The buffer size configured via filestore.buffer_size"
         "is smaller than current " +
         std::to_string(tile_extent) + " tile extent");
