@@ -144,7 +144,8 @@ class CountAggregator : public CountAggregatorBase<NonNull> {
   }
 };
 
-class NullCountAggregator : public CountAggregatorBase<Null> {
+class NullCountAggregator : public CountAggregatorBase<Null>,
+                            public InputFieldValidator {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

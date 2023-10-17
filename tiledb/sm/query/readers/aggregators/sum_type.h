@@ -39,20 +39,6 @@
 
 namespace tiledb::sm {
 
-inline void ensure_aggregate_numeric_field(
-    const std::string& name, const tiledb::sm::FieldInfo& fi) {
-  if (fi.var_sized_) {
-    throw std::logic_error(
-        name + " aggregates are not supported for var sized attributes.");
-  }
-  if (fi.cell_val_num_ != 1) {
-    throw std::logic_error(
-        name +
-        " aggregates are not supported for attributes with cell_val_num "
-        "greater than one.");
-  }
-}
-
 template <class T>
 concept SignedInt = std::signed_integral<T>;
 

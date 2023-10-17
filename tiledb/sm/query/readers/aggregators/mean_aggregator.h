@@ -46,7 +46,9 @@ namespace tiledb::sm {
 class QueryBuffer;
 
 template <typename T>
-class MeanAggregator : public OutputBufferValidator, public IAggregator {
+class MeanAggregator : public InputFieldValidator,
+                       public OutputBufferValidator,
+                       public IAggregator {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

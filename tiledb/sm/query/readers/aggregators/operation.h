@@ -43,7 +43,7 @@
 
 namespace tiledb::sm {
 
-class Operation {
+class Operation : public InputFieldValidator {
  protected:
   shared_ptr<tiledb::sm::IAggregator> aggregator_;
 
@@ -63,7 +63,7 @@ class MinOperation : public Operation {
     auto g = [&](auto T) {
       if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
         if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
-          ensure_aggregate_numeric_field(constants::aggregate_min_str, fi);
+          ensure_field_numeric(fi);
         }
 
         // This is a min/max on strings, should be refactored out once we
@@ -95,7 +95,7 @@ class MaxOperation : public Operation {
     auto g = [&](auto T) {
       if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
         if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
-          ensure_aggregate_numeric_field(constants::aggregate_max_str, fi);
+          ensure_field_numeric(fi);
         }
 
         // This is a min/max on strings, should be refactored out once we
@@ -126,7 +126,7 @@ class SumOperation : public Operation {
   explicit SumOperation(const tiledb::sm::FieldInfo& fi) {
     auto g = [&](auto T) {
       if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
-        ensure_aggregate_numeric_field(constants::aggregate_sum_str, fi);
+        ensure_field_numeric(fi);
         aggregator_ = tdb::make_shared<tiledb::sm::SumAggregator<decltype(T)>>(
             HERE(), fi);
       } else {

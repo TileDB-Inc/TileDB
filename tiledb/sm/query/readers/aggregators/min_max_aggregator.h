@@ -104,6 +104,7 @@ class ComparatorAggregatorBase {
 
 template <typename T, typename Op>
 class ComparatorAggregator : public ComparatorAggregatorBase<T>,
+                             public InputFieldValidator,
                              public OutputBufferValidator,
                              public IAggregator {
  protected:

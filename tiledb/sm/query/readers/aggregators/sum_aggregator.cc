@@ -53,7 +53,7 @@ SumAggregator<T>::SumAggregator(const FieldInfo field_info)
     , validity_value_(
           field_info_.is_nullable_ ? std::make_optional(0) : nullopt)
     , sum_overflowed_(false) {
-  ensure_aggregate_numeric_field(aggregate_name(), field_info_);
+  ensure_field_numeric(field_info_);
 }
 
 template <typename T>

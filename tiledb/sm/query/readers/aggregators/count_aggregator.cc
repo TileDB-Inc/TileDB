@@ -91,11 +91,7 @@ void CountAggregatorBase<ValidityPolicy>::copy_to_user_buffer(
 NullCountAggregator::NullCountAggregator(FieldInfo field_info)
     : CountAggregatorBase(field_info)
     , field_info_(field_info) {
-  if (!field_info_.is_nullable_) {
-    throw CountAggregatorStatusException(
-        "NullCount aggregates must only be requested for nullable "
-        "attributes.");
-  }
+  ensure_field_nullable(field_info);
 }
 
 // Explicit template instantiations

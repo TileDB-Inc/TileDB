@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/query/readers/aggregators/input_field_validator.h"
 #include "tiledb/sm/query/readers/aggregators/output_buffer_validator.h"
 
 namespace tiledb::sm {
