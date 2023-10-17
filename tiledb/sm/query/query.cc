@@ -1154,6 +1154,15 @@ Status Query::set_data_buffer(
   return Status::Ok();
 }
 
+std::optional<shared_ptr<IAggregator>> Query::get_aggregate(
+    std::string output_field_name) const {
+  auto it = default_channel_aggregates_.find(output_field_name);
+  if (it == default_channel_aggregates_.end()) {
+    return nullopt;
+  }
+  return it->second;
+}
+
 Status Query::set_offsets_buffer(
     const std::string& name,
     uint64_t* const buffer_offsets,

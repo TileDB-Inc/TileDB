@@ -33,6 +33,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
+#include "tiledb/sm/query/readers/aggregators/count_aggregator.h"
 #include "tiledb/sm/query/readers/aggregators/mean_aggregator.h"
 #include "tiledb/sm/query/readers/aggregators/min_max_aggregator.h"
 #include "tiledb/sm/query/readers/aggregators/sum_aggregator.h"
@@ -45,9 +46,11 @@ typedef tuple<
     SumAggregator<uint8_t>,
     MeanAggregator<uint8_t>,
     MinAggregator<uint64_t>>
-    AggUnderTest;
+    AggUnderTestConstructor;
 TEMPLATE_LIST_TEST_CASE(
-    "Aggregator: constructor", "[aggregators][constructor]", AggUnderTest) {
+    "Aggregator: constructor",
+    "[aggregators][constructor]",
+    AggUnderTestConstructor) {
   SECTION("Var size") {
     CHECK_THROWS_WITH(
         TestType(FieldInfo("a1", true, false, 1)),
@@ -65,15 +68,42 @@ TEMPLATE_LIST_TEST_CASE(
   }
 }
 
+TEST_CASE(
+    "NullCount aggregator: constructor",
+    "[null-count-aggregator][constructor]") {
+  SECTION("Non nullable") {
+    CHECK_THROWS_WITH(
+        NullCountAggregator(FieldInfo("a1", false, false, 1)),
+        "CountAggregator: NullCount aggregates must only be requested for "
+        "nullable attributes.");
+  }
+}
+
+template <class AGGREGATOR>
+AGGREGATOR make_aggregator(FieldInfo field_info) {
+  return AGGREGATOR(field_info);
+}
+
+template <>
+CountAggregator make_aggregator(FieldInfo) {
+  return CountAggregator();
+}
+
+typedef tuple<
+    SumAggregator<uint8_t>,
+    MeanAggregator<uint8_t>,
+    MinAggregator<uint64_t>,
+    NullCountAggregator,
+    CountAggregator>
+    AggUnderTest;
 TEMPLATE_LIST_TEST_CASE(
     "Aggregator: var sized", "[aggregator][var-sized]", AggUnderTest) {
-  TestType aggregator(FieldInfo("a1", false, false, 1));
+  auto aggregator{make_aggregator<TestType>(FieldInfo("a1", false, true, 1))};
   CHECK(aggregator.var_sized() == false);
 
   if constexpr (std::is_same<TestType, MinAggregator<uint8_t>>::value) {
-    MinAggregator<std::string> aggregator_nullable(
-        FieldInfo("a1", true, false, 1));
-    CHECK(aggregator_nullable.var_sized() == true);
+    MinAggregator<std::string> aggregator2(FieldInfo("a1", true, false, 1));
+    CHECK(aggregator2.var_sized() == true);
   }
 }
 
@@ -81,7 +111,7 @@ TEMPLATE_LIST_TEST_CASE(
     "Aggregators: need recompute",
     "[aggregators][need-recompute]",
     AggUnderTest) {
-  TestType aggregator(FieldInfo("a1", false, false, 1));
+  auto aggregator{make_aggregator<TestType>(FieldInfo("a1", false, true, 1))};
   bool need_recompute = true;
   if constexpr (std::is_same<TestType, MinAggregator<uint64_t>>::value) {
     need_recompute = false;
@@ -91,14 +121,23 @@ TEMPLATE_LIST_TEST_CASE(
 
 TEMPLATE_LIST_TEST_CASE(
     "Aggregators: field name", "[aggregator][field-name]", AggUnderTest) {
-  TestType aggregator(FieldInfo("a1", false, false, 1));
-  CHECK(aggregator.field_name() == "a1");
+  auto aggregator{make_aggregator<TestType>(FieldInfo("a1", false, true, 1))};
+  if (std::is_same<TestType, CountAggregator>::value) {
+    CHECK(aggregator.field_name() == constants::count_of_rows);
+  } else {
+    CHECK(aggregator.field_name() == "a1");
+  }
 }
 
+typedef tuple<
+    SumAggregator<uint8_t>,
+    MeanAggregator<uint8_t>,
+    MinAggregator<uint64_t>>
+    AggUnderTestValidateBuffer;
 TEMPLATE_LIST_TEST_CASE(
     "Aggregators: Validate buffer",
     "[aggregators][validate-buffer]",
-    AggUnderTest) {
+    AggUnderTestValidateBuffer) {
   TestType aggregator(FieldInfo("a1", false, false, 1));
   TestType aggregator_nullable(FieldInfo("a2", false, true, 1));
   MinAggregator<std::string> aggregator_var(
@@ -275,6 +314,72 @@ TEMPLATE_LIST_TEST_CASE(
   }
 }
 
+typedef tuple<NullCountAggregator, CountAggregator>
+    AggUnderTestValidateBufferCount;
+TEMPLATE_LIST_TEST_CASE(
+    "Aggregators: Validate buffer count",
+    "[aggregators][validate-buffer]",
+    AggUnderTestValidateBufferCount) {
+  auto aggregator{make_aggregator<TestType>(FieldInfo("a1", false, true, 1))};
+  std::unordered_map<std::string, QueryBuffer> buffers;
+
+  SECTION("Doesn't exist") {
+    CHECK_THROWS_WITH(
+        aggregator.validate_output_buffer("Count", buffers),
+        "CountAggregator: Result buffer doesn't exist.");
+  }
+
+  SECTION("Null data buffer") {
+    buffers["Count"].buffer_ = nullptr;
+    CHECK_THROWS_WITH(
+        aggregator.validate_output_buffer("Count", buffers),
+        "OutputBufferValidator: Aggregate must have a fixed size buffer.");
+  }
+
+  SECTION("Wrong size") {
+    uint64_t count = 0;
+    buffers["Count"].buffer_ = &count;
+    buffers["Count"].original_buffer_size_ = 1;
+    CHECK_THROWS_WITH(
+        aggregator.validate_output_buffer("Count", buffers),
+        "OutputBufferValidator: Aggregate fixed size buffer should be for one "
+        "element only.");
+  }
+
+  SECTION("With var buffer") {
+    uint64_t count = 0;
+    buffers["Count"].buffer_ = &count;
+    buffers["Count"].original_buffer_size_ = 8;
+    buffers["Count"].buffer_var_ = &count;
+
+    CHECK_THROWS_WITH(
+        aggregator.validate_output_buffer("Count", buffers),
+        "OutputBufferValidator: Aggregate must not have a var buffer.");
+  }
+
+  SECTION("With validity") {
+    uint64_t count = 0;
+    buffers["Count"].buffer_ = &count;
+    buffers["Count"].original_buffer_size_ = 8;
+
+    uint8_t validity = 0;
+    uint64_t validity_size = 1;
+    buffers["Count"].validity_vector_ =
+        ValidityVector(&validity, &validity_size);
+    CHECK_THROWS_WITH(
+        aggregator.validate_output_buffer("Count", buffers),
+        "OutputBufferValidator: Count aggregates must not have a validity "
+        "buffer.");
+  }
+
+  SECTION("Success") {
+    uint64_t count = 0;
+    buffers["Count"].buffer_ = &count;
+    buffers["Count"].original_buffer_size_ = 8;
+    aggregator.validate_output_buffer("Count", buffers);
+  }
+}
+
 template <typename T>
 bool is_nan(T) {
   return false;
@@ -317,10 +422,29 @@ struct fixed_data_type<std::string> {
   typedef char value_type;
 };
 
+template <typename AGGREGATOR>
+void check_validity(uint8_t validity, uint8_t expected) {
+  if constexpr (
+      !std::is_same<AGGREGATOR, CountAggregator>::value &&
+      !std::is_same<AGGREGATOR, NullCountAggregator>::value) {
+    CHECK(validity == expected);
+  }
+}
+
 template <typename T, typename RES, typename AGGREGATOR>
 void basic_aggregation_test(std::vector<double> expected_results) {
-  AGGREGATOR aggregator(FieldInfo("a1", false, false, 1));
-  AGGREGATOR aggregator_nullable(FieldInfo("a2", false, true, 1));
+  // Optionally make the aggregator for non nullable values.
+  optional<AGGREGATOR> aggregator;
+  if constexpr (!std::is_same<AGGREGATOR, NullCountAggregator>::value) {
+    if constexpr (std::is_same<AGGREGATOR, CountAggregator>::value) {
+      aggregator.emplace();
+    } else {
+      aggregator.emplace(FieldInfo("a1", false, false, 1));
+    }
+  }
+
+  auto aggregator_nullable{
+      make_aggregator<AGGREGATOR>(FieldInfo("a1", false, true, 1))};
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -340,12 +464,14 @@ void basic_aggregation_test(std::vector<double> expected_results) {
   std::vector<uint8_t> validity_data = {0, 0, 1, 0, 1, 0, 1, 0, 1, 0};
 
   SECTION("No bitmap") {
-    // Regular attribute.
-    AggregateBuffer input_data{
-        2, 10, fixed_data.data(), nullopt, nullopt, false, nullopt, 1};
-    aggregator.aggregate_data(input_data);
-    aggregator.copy_to_user_buffer("Agg", buffers);
-    check_value(RES(), res, expected_results[0]);
+    if (aggregator.has_value()) {
+      // Regular attribute.
+      AggregateBuffer input_data{
+          2, 10, fixed_data.data(), nullopt, nullopt, false, nullopt, 1};
+      aggregator->aggregate_data(input_data);
+      aggregator->copy_to_user_buffer("Agg", buffers);
+      check_value(RES(), res, expected_results[0]);
+    }
 
     // Nullable attribute.
     AggregateBuffer input_data2{
@@ -360,23 +486,25 @@ void basic_aggregation_test(std::vector<double> expected_results) {
     aggregator_nullable.aggregate_data(input_data2);
     aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
     check_value(RES(), res2, expected_results[1]);
-    CHECK(validity == 1);
+    check_validity<AGGREGATOR>(validity, 1);
   }
 
   SECTION("Regular bitmap") {
-    // Regular attribute.
     std::vector<uint8_t> bitmap = {1, 1, 0, 0, 0, 1, 1, 0, 1, 0};
-    AggregateBuffer input_data{
-        2, 10, fixed_data.data(), nullopt, nullopt, false, bitmap.data(), 1};
-    aggregator.aggregate_data(input_data);
-    aggregator.copy_to_user_buffer("Agg", buffers);
-    check_value(RES(), res, expected_results[2]);
+    if (aggregator.has_value()) {
+      // Regular attribute.
+      AggregateBuffer input_data{
+          2, 10, fixed_data.data(), nullopt, nullopt, false, bitmap.data(), 1};
+      aggregator->aggregate_data(input_data);
+      aggregator->copy_to_user_buffer("Agg", buffers);
+      check_value(RES(), res, expected_results[2]);
 
-    AggregateBuffer input_data2{
-        0, 2, fixed_data.data(), nullopt, nullopt, false, bitmap.data(), 1};
-    aggregator.aggregate_data(input_data2);
-    aggregator.copy_to_user_buffer("Agg", buffers);
-    check_value(RES(), res, expected_results[3]);
+      AggregateBuffer input_data2{
+          0, 2, fixed_data.data(), nullopt, nullopt, false, bitmap.data(), 1};
+      aggregator->aggregate_data(input_data2);
+      aggregator->copy_to_user_buffer("Agg", buffers);
+      check_value(RES(), res, expected_results[3]);
+    }
 
     // Nullable attribute.
     AggregateBuffer input_data3{
@@ -401,7 +529,7 @@ void basic_aggregation_test(std::vector<double> expected_results) {
     } else {
       check_value(RES(), res2, expected_results[4]);
     }
-    CHECK(validity == 0);
+    check_validity<AGGREGATOR>(validity, 0);
 
     AggregateBuffer input_data4{
         2,
@@ -415,37 +543,39 @@ void basic_aggregation_test(std::vector<double> expected_results) {
     aggregator_nullable.aggregate_data(input_data4);
     aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
     check_value(RES(), res2, expected_results[5]);
-    CHECK(validity == 1);
+    check_validity<AGGREGATOR>(validity, 1);
   }
 
   SECTION("Count bitmap") {
-    // Regular attribute.
     std::vector<uint64_t> bitmap_count = {1, 2, 4, 0, 0, 1, 2, 0, 1, 2};
-    AggregateBuffer input_data{
-        2,
-        10,
-        fixed_data.data(),
-        nullopt,
-        nullopt,
-        true,
-        bitmap_count.data(),
-        1};
-    aggregator.aggregate_data(input_data);
-    aggregator.copy_to_user_buffer("Agg", buffers);
-    check_value(RES(), res, expected_results[6]);
+    if (aggregator.has_value()) {
+      // Regular attribute.
+      AggregateBuffer input_data{
+          2,
+          10,
+          fixed_data.data(),
+          nullopt,
+          nullopt,
+          true,
+          bitmap_count.data(),
+          1};
+      aggregator->aggregate_data(input_data);
+      aggregator->copy_to_user_buffer("Agg", buffers);
+      check_value(RES(), res, expected_results[6]);
 
-    AggregateBuffer input_data2{
-        0,
-        2,
-        fixed_data.data(),
-        nullopt,
-        nullopt,
-        true,
-        bitmap_count.data(),
-        1};
-    aggregator.aggregate_data(input_data2);
-    aggregator.copy_to_user_buffer("Agg", buffers);
-    check_value(RES(), res, expected_results[7]);
+      AggregateBuffer input_data2{
+          0,
+          2,
+          fixed_data.data(),
+          nullopt,
+          nullopt,
+          true,
+          bitmap_count.data(),
+          1};
+      aggregator->aggregate_data(input_data2);
+      aggregator->copy_to_user_buffer("Agg", buffers);
+      check_value(RES(), res, expected_results[7]);
+    }
 
     // Nullable attribute.
     AggregateBuffer input_data3{
@@ -460,7 +590,7 @@ void basic_aggregation_test(std::vector<double> expected_results) {
     aggregator_nullable.aggregate_data(input_data3);
     aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
     check_value(RES(), res2, expected_results[8]);
-    CHECK(validity == 1);
+    check_validity<AGGREGATOR>(validity, 1);
 
     AggregateBuffer input_data4{
         0,
@@ -474,7 +604,7 @@ void basic_aggregation_test(std::vector<double> expected_results) {
     aggregator_nullable.aggregate_data(input_data4);
     aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
     check_value(RES(), res2, expected_results[9]);
-    CHECK(validity == 1);
+    check_validity<AGGREGATOR>(validity, 1);
   }
 }
 
@@ -501,18 +631,6 @@ TEMPLATE_LIST_TEST_CASE(
       SumAggregator<T>>({27, 14, 11, 14, 0, 6, 29, 34, 22, 22});
 }
 
-typedef tuple<
-    uint8_t,
-    uint16_t,
-    uint32_t,
-    uint64_t,
-    int8_t,
-    int16_t,
-    int32_t,
-    int64_t,
-    float,
-    double>
-    FixedTypesUnderTest;
 TEMPLATE_LIST_TEST_CASE(
     "Mean aggregator: Basic aggregation",
     "[mean-aggregator][basic-aggregation]",
@@ -554,11 +672,11 @@ typedef tuple<
     std::pair<float, MaxAggregator<float>>,
     std::pair<double, MaxAggregator<double>>,
     std::pair<std::string, MaxAggregator<std::string>>>
-    FixedTypesUnderTestMinMax;
+    AggUnderTestMinMax;
 TEMPLATE_LIST_TEST_CASE(
     "Min max aggregator: Basic aggregation",
     "[min-max-aggregator][basic-aggregation]",
-    FixedTypesUnderTestMinMax) {
+    AggUnderTestMinMax) {
   typedef decltype(TestType::first) T;
   typedef decltype(TestType::second) AGG;
   std::vector<double> res = {1, 2, 2, 1, 0, 2, 1, 1, 2, 2};
@@ -566,6 +684,22 @@ TEMPLATE_LIST_TEST_CASE(
     res = {5, 5, 5, 5, 0, 4, 5, 5, 4, 4};
   }
   basic_aggregation_test<T, T, AGG>(res);
+}
+
+TEST_CASE(
+    "Count aggregator: Basic aggregation",
+    "[count-aggregator][basic-aggregation]") {
+  std::vector<double> res = {8, 8, 3, 5, 2, 5, 10, 13, 10, 13};
+  basic_aggregation_test<uint8_t, uint64_t, CountAggregator>(res);
+}
+
+TEMPLATE_LIST_TEST_CASE(
+    "NullCount aggregator: Basic aggregation",
+    "[null-count-aggregator][basic-aggregation]",
+    FixedTypesUnderTest) {
+  typedef TestType T;
+  std::vector<double> res = {0, 4, 0, 0, 2, 3, 0, 0, 3, 6};
+  basic_aggregation_test<T, uint64_t, NullCountAggregator>(res);
 }
 
 TEST_CASE(
@@ -745,70 +879,74 @@ TEMPLATE_LIST_TEST_CASE(
   }
 }
 
-void check_value_var(
-    uint64_t offset,
-    uint64_t min_max_size,
-    std::vector<char>& min_max,
-    bool min,
-    std::string min_val,
-    std::string max_val) {
-  if (min) {
-    CHECK(min_max_size == min_val.length());
-    CHECK(0 == memcmp(min_max.data(), min_val.data(), min_val.length()));
-  } else {
-    CHECK(min_max_size == max_val.length());
-    CHECK(0 == memcmp(min_max.data(), max_val.data(), max_val.length()));
-  }
-
-  CHECK(offset == 0);
+template <typename RES>
+void check_value_string(
+    uint64_t fixed_data, uint64_t, std::vector<char>&, RES expected) {
+  CHECK(fixed_data == expected);
 }
 
-typedef tuple<MinAggregator<std::string>, MinAggregator<std::string>>
-    MinMaxAggUnderTest;
-TEMPLATE_LIST_TEST_CASE(
-    "Min max aggregator: Basic string aggregation",
-    "[min-max-aggregator][basic-string-aggregation]",
-    MinMaxAggUnderTest) {
-  typedef TestType AGG;
-  bool min = std::is_same<AGG, MinAggregator<std::string>>::value;
-  AGG aggregator(FieldInfo("a1", true, false, constants::var_num));
-  AGG aggregator_nullable(FieldInfo("a2", true, true, constants::var_num));
+template <>
+void check_value_string(
+    uint64_t fixed_data,
+    uint64_t value_size,
+    std::vector<char>& value,
+    std::string expected) {
+  CHECK(value_size == expected.length());
+  CHECK(0 == memcmp(value.data(), expected.data(), expected.length()));
+
+  CHECK(fixed_data == 0);
+}
+
+template <typename AGGREGATOR, typename RES>
+void basic_string_aggregation_test(std::vector<RES> expected_results) {
+  // Optionally make the aggregator for non nullable values.
+  optional<AGGREGATOR> aggregator;
+  if constexpr (!std::is_same<AGGREGATOR, NullCountAggregator>::value) {
+    aggregator.emplace(FieldInfo("a1", true, false, constants::var_num));
+  }
+
+  AGGREGATOR aggregator_nullable(
+      FieldInfo("a2", true, true, constants::var_num));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
-  uint64_t offset = 11;
-  std::vector<char> min_max(10, 0);
-  uint64_t min_max_size = 10;
-  buffers["MinMax"].buffer_ = &offset;
-  buffers["MinMax"].original_buffer_size_ = 8;
-  buffers["MinMax"].buffer_var_ = min_max.data();
-  buffers["MinMax"].original_buffer_var_size_ = 10;
-  buffers["MinMax"].buffer_var_size_ = &min_max_size;
+  uint64_t fixed_data = 11;
+  std::vector<char> value(10, 0);
+  uint64_t value_size = 10;
+  buffers["Agg"].buffer_ = &fixed_data;
+  buffers["Agg"].original_buffer_size_ = 8;
+  buffers["Agg"].buffer_var_ = value.data();
+  buffers["Agg"].original_buffer_var_size_ = 10;
+  buffers["Agg"].buffer_var_size_ = &value_size;
 
-  uint64_t offset2 = 12;
-  std::vector<char> min_max2(10, 0);
-  uint64_t min_max_size2 = 10;
+  uint64_t fixed_data2 = 12;
+  std::vector<char> value2(10, 0);
+  uint64_t value_size2 = 10;
   uint8_t validity = 0;
   uint64_t validity_size = 1;
-  buffers["MinMax2"].buffer_ = &offset2;
-  buffers["MinMax2"].original_buffer_size_ = 8;
-  buffers["MinMax2"].buffer_var_ = min_max2.data();
-  buffers["MinMax2"].original_buffer_var_size_ = 10;
-  buffers["MinMax2"].buffer_var_size_ = &min_max_size2;
-  buffers["MinMax2"].validity_vector_ =
-      ValidityVector(&validity, &validity_size);
+  buffers["Agg2"].buffer_ = &fixed_data2;
+  buffers["Agg2"].original_buffer_size_ = 8;
+
+  if constexpr (!std::is_same<AGGREGATOR, NullCountAggregator>::value) {
+    buffers["Agg2"].buffer_var_ = value2.data();
+    buffers["Agg2"].original_buffer_var_size_ = 10;
+    buffers["Agg2"].buffer_var_size_ = &value_size2;
+  }
+  buffers["Agg2"].validity_vector_ = ValidityVector(&validity, &validity_size);
 
   std::vector<uint64_t> offsets = {0, 2, 3, 6, 8, 11, 15, 16, 18, 22, 23};
   std::string var_data = "11233344555555543322221";
   std::vector<uint8_t> validity_data = {0, 0, 1, 0, 1, 0, 1, 0, 1, 0};
 
   SECTION("No bitmap") {
-    // Regular attribute.
-    AggregateBuffer input_data{
-        2, 10, offsets.data(), var_data.data(), nullopt, false, nullopt, 1};
-    aggregator.aggregate_data(input_data);
-    aggregator.copy_to_user_buffer("MinMax", buffers);
-    check_value_var(offset, min_max_size, min_max, min, "1", "5555");
+    if (aggregator.has_value()) {
+      // Regular attribute.
+      AggregateBuffer input_data{
+          2, 10, offsets.data(), var_data.data(), nullopt, false, nullopt, 1};
+      aggregator->aggregate_data(input_data);
+      aggregator->copy_to_user_buffer("Agg", buffers);
+      check_value_string(fixed_data, value_size, value, expected_results[0]);
+    }
 
     // Nullable attribute.
     AggregateBuffer input_data2{
@@ -821,39 +959,41 @@ TEMPLATE_LIST_TEST_CASE(
         nullopt,
         1};
     aggregator_nullable.aggregate_data(input_data2);
-    aggregator_nullable.copy_to_user_buffer("MinMax2", buffers);
-    check_value_var(offset2, min_max_size2, min_max2, min, "2222", "555");
-    CHECK(validity == 1);
+    aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
+    check_value_string(fixed_data2, value_size2, value2, expected_results[1]);
+    check_validity<AGGREGATOR>(validity, 1);
   }
 
   SECTION("Regular bitmap") {
-    // Regular attribute.
     std::vector<uint8_t> bitmap = {1, 1, 0, 0, 0, 1, 1, 0, 1, 0};
-    AggregateBuffer input_data{
-        2,
-        10,
-        offsets.data(),
-        var_data.data(),
-        nullopt,
-        false,
-        bitmap.data(),
-        1};
-    aggregator.aggregate_data(input_data);
-    aggregator.copy_to_user_buffer("MinMax", buffers);
-    check_value_var(offset, min_max_size, min_max, min, "2222", "5555");
+    if (aggregator.has_value()) {
+      // Regular attribute.
+      AggregateBuffer input_data{
+          2,
+          10,
+          offsets.data(),
+          var_data.data(),
+          nullopt,
+          false,
+          bitmap.data(),
+          1};
+      aggregator->aggregate_data(input_data);
+      aggregator->copy_to_user_buffer("Agg", buffers);
+      check_value_string(fixed_data, value_size, value, expected_results[2]);
 
-    AggregateBuffer input_data2{
-        0,
-        2,
-        offsets.data(),
-        var_data.data(),
-        nullopt,
-        false,
-        bitmap.data(),
-        1};
-    aggregator.aggregate_data(input_data2);
-    aggregator.copy_to_user_buffer("MinMax", buffers);
-    check_value_var(offset, min_max_size, min_max, min, "11", "5555");
+      AggregateBuffer input_data2{
+          0,
+          2,
+          offsets.data(),
+          var_data.data(),
+          nullopt,
+          false,
+          bitmap.data(),
+          1};
+      aggregator->aggregate_data(input_data2);
+      aggregator->copy_to_user_buffer("Agg", buffers);
+      check_value_string(fixed_data, value_size, value, expected_results[3]);
+    }
 
     // Nullable attribute.
     AggregateBuffer input_data3{
@@ -866,9 +1006,9 @@ TEMPLATE_LIST_TEST_CASE(
         nullopt,
         1};
     aggregator_nullable.aggregate_data(input_data3);
-    aggregator_nullable.copy_to_user_buffer("MinMax2", buffers);
-    check_value_var(offset2, min_max_size2, min_max2, min, "", "");
-    CHECK(validity == 0);
+    aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
+    check_value_string(fixed_data2, value_size2, value2, expected_results[4]);
+    check_validity<AGGREGATOR>(validity, 0);
 
     AggregateBuffer input_data4{
         2,
@@ -880,39 +1020,41 @@ TEMPLATE_LIST_TEST_CASE(
         bitmap.data(),
         1};
     aggregator_nullable.aggregate_data(input_data4);
-    aggregator_nullable.copy_to_user_buffer("MinMax2", buffers);
-    check_value_var(offset2, min_max_size2, min_max2, min, "2222", "4");
-    CHECK(validity == 1);
+    aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
+    check_value_string(fixed_data2, value_size2, value2, expected_results[5]);
+    check_validity<AGGREGATOR>(validity, 1);
   }
 
   SECTION("Count bitmap") {
-    // Regular attribute.
     std::vector<uint64_t> bitmap_count = {1, 2, 4, 0, 0, 1, 2, 0, 1, 2};
-    AggregateBuffer input_data{
-        2,
-        10,
-        offsets.data(),
-        var_data.data(),
-        nullopt,
-        true,
-        bitmap_count.data(),
-        1};
-    aggregator.aggregate_data(input_data);
-    aggregator.copy_to_user_buffer("MinMax", buffers);
-    check_value_var(offset, min_max_size, min_max, min, "1", "5555");
+    if (aggregator.has_value()) {
+      // Regular attribute.
+      AggregateBuffer input_data{
+          2,
+          10,
+          offsets.data(),
+          var_data.data(),
+          nullopt,
+          true,
+          bitmap_count.data(),
+          1};
+      aggregator->aggregate_data(input_data);
+      aggregator->copy_to_user_buffer("Agg", buffers);
+      check_value_string(fixed_data, value_size, value, expected_results[6]);
 
-    AggregateBuffer input_data2{
-        0,
-        2,
-        offsets.data(),
-        var_data.data(),
-        nullopt,
-        true,
-        bitmap_count.data(),
-        1};
-    aggregator.aggregate_data(input_data2);
-    aggregator.copy_to_user_buffer("MinMax", buffers);
-    check_value_var(offset, min_max_size, min_max, min, "1", "5555");
+      AggregateBuffer input_data2{
+          0,
+          2,
+          offsets.data(),
+          var_data.data(),
+          nullopt,
+          true,
+          bitmap_count.data(),
+          1};
+      aggregator->aggregate_data(input_data2);
+      aggregator->copy_to_user_buffer("Agg", buffers);
+      check_value_string(fixed_data, value_size, value, expected_results[7]);
+    }
 
     // Nullable attribute.
     AggregateBuffer input_data3{
@@ -925,9 +1067,9 @@ TEMPLATE_LIST_TEST_CASE(
         bitmap_count.data(),
         1};
     aggregator_nullable.aggregate_data(input_data3);
-    aggregator_nullable.copy_to_user_buffer("MinMax2", buffers);
-    check_value_var(offset2, min_max_size2, min_max2, min, "2222", "4");
-    CHECK(validity == 1);
+    aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
+    check_value_string(fixed_data2, value_size2, value2, expected_results[8]);
+    check_validity<AGGREGATOR>(validity, 1);
 
     AggregateBuffer input_data4{
         0,
@@ -939,8 +1081,165 @@ TEMPLATE_LIST_TEST_CASE(
         bitmap_count.data(),
         1};
     aggregator_nullable.aggregate_data(input_data4);
-    aggregator_nullable.copy_to_user_buffer("MinMax2", buffers);
-    check_value_var(offset2, min_max_size2, min_max2, min, "2222", "4");
-    CHECK(validity == 1);
+    aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
+    check_value_string(fixed_data2, value_size2, value2, expected_results[9]);
+    check_validity<AGGREGATOR>(validity, 1);
   }
+}
+
+typedef tuple<MinAggregator<std::string>, MinAggregator<std::string>>
+    MinMaxAggUnderTest;
+TEMPLATE_LIST_TEST_CASE(
+    "Min max aggregator: Basic string aggregation",
+    "[min-max-aggregator][basic-string-aggregation]",
+    MinMaxAggUnderTest) {
+  typedef TestType AGGREGATOR;
+  std::vector<std::string> res = {
+      "1", "2222", "2222", "11", "", "2222", "1", "1", "2222", "2222"};
+  if (std::is_same<AGGREGATOR, MaxAggregator<std::string>>::value) {
+    res = {"5555", "555", "5555", "5555", "", "4", "5555", "5555", "4", "4"};
+  }
+
+  basic_string_aggregation_test<AGGREGATOR, std::string>(res);
+}
+
+TEST_CASE(
+    "NullCount aggregator: Basic string aggregation",
+    "[null-count-aggregator][basic-string-aggregation]") {
+  std::vector<uint64_t> res = {0, 4, 0, 0, 2, 3, 0, 0, 3, 6};
+  basic_string_aggregation_test<NullCountAggregator, uint64_t>(res);
+}
+
+TEST_CASE(
+    "NullCount aggregator: output datatype",
+    "[null-count-aggregator][output-datatype]") {
+  NullCountAggregator aggregator{FieldInfo{"a1", false, true, 1}};
+  CHECK(aggregator.output_datatype() == Datatype::UINT64);
+}
+
+TEST_CASE(
+    "Count aggregator: output datatype",
+    "[count-aggregator][output-datatype]") {
+  CountAggregator aggregator;
+  CHECK(aggregator.output_datatype() == Datatype::UINT64);
+}
+
+TEST_CASE(
+    "Sum aggregator: Expected output type",
+    "[sum-aggregator][output_datatype]") {
+  CHECK(
+      SumAggregator<int8_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      SumAggregator<uint8_t>{FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      SumAggregator<int16_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      SumAggregator<uint16_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      SumAggregator<int32_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      SumAggregator<uint32_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      SumAggregator<int64_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      SumAggregator<uint64_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      SumAggregator<float>{FieldInfo("a1", false, false, 1, Datatype::FLOAT64)}
+          .output_datatype() == Datatype::FLOAT64);
+  CHECK(
+      SumAggregator<double>{FieldInfo("a1", false, false, 1, Datatype::FLOAT64)}
+          .output_datatype() == Datatype::FLOAT64);
+}
+
+TEST_CASE(
+    "Mean aggregator: Expected output type",
+    "[mean-aggregator][output_datatype]") {
+  CHECK(
+      MeanAggregator<int8_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      MeanAggregator<uint8_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      MeanAggregator<int16_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      MeanAggregator<uint16_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      MeanAggregator<int32_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      MeanAggregator<uint32_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      MeanAggregator<int64_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      MeanAggregator<uint64_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      MeanAggregator<float>{FieldInfo("a1", false, false, 1, Datatype::FLOAT64)}
+          .output_datatype() == Datatype::FLOAT64);
+  CHECK(
+      MeanAggregator<double>{
+          FieldInfo("a1", false, false, 1, Datatype::FLOAT64)}
+          .output_datatype() == Datatype::FLOAT64);
+}
+
+TEST_CASE(
+    "Min max aggregator: Expected output type",
+    "[min-max-aggregator][output_datatype]") {
+  CHECK(
+      MinAggregator<int8_t>{FieldInfo("a1", false, false, 1, Datatype::INT8)}
+          .output_datatype() == Datatype::INT8);
+  CHECK(
+      MinAggregator<uint8_t>{FieldInfo("a1", false, false, 1, Datatype::UINT8)}
+          .output_datatype() == Datatype::UINT8);
+  CHECK(
+      MinAggregator<int16_t>{FieldInfo("a1", false, false, 1, Datatype::INT16)}
+          .output_datatype() == Datatype::INT16);
+  CHECK(
+      MinAggregator<uint16_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT16)}
+          .output_datatype() == Datatype::UINT16);
+  CHECK(
+      MinAggregator<int32_t>{FieldInfo("a1", false, false, 1, Datatype::INT32)}
+          .output_datatype() == Datatype::INT32);
+  CHECK(
+      MinAggregator<uint32_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT32)}
+          .output_datatype() == Datatype::UINT32);
+  CHECK(
+      MinAggregator<int64_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
+          .output_datatype() == Datatype::INT64);
+  CHECK(
+      MinAggregator<uint64_t>{
+          FieldInfo("a1", false, false, 1, Datatype::UINT64)}
+          .output_datatype() == Datatype::UINT64);
+  CHECK(
+      MinAggregator<float>{FieldInfo("a1", false, false, 1, Datatype::FLOAT32)}
+          .output_datatype() == Datatype::FLOAT32);
+  CHECK(
+      MinAggregator<double>{FieldInfo("a1", false, false, 1, Datatype::FLOAT64)}
+          .output_datatype() == Datatype::FLOAT64);
+  CHECK(
+      MinAggregator<std::string>{
+          FieldInfo("a1", false, false, 1, Datatype::STRING_ASCII)}
+          .output_datatype() == Datatype::STRING_ASCII);
 }

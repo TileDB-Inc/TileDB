@@ -1,5 +1,6 @@
 /**
- * @file   min_max.h
+ * @file
+ * tiledb/api/c_api/query_field/test/compile_capi_query_field_main.cc
  *
  * @section LICENSE
  *
@@ -24,40 +25,17 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- * This file defines class MinMax.
  */
 
-#ifndef TILEDB_MIN_MAX_H
-#define TILEDB_MIN_MAX_H
+#include "../query_field_api_external_experimental.h"
 
-namespace tiledb::sm {
+int main() {
+  tiledb_query_get_field(nullptr, nullptr, nullptr, nullptr);
+  tiledb_query_field_free(nullptr, nullptr);
+  tiledb_field_datatype(nullptr, nullptr, nullptr);
+  tiledb_field_cell_val_num(nullptr, nullptr, nullptr);
+  tiledb_field_origin(nullptr, nullptr, nullptr);
+  tiledb_field_channel(nullptr, nullptr, nullptr);
 
-template <class Op>
-struct MinMax {
- public:
-  /**
-   * Min max function.
-   *
-   * @param value Value to compare against.
-   * @param sum Computed min/max.
-   * @param count Current count of values.
-   */
-  template <typename MIN_MAX_T>
-  void op(MIN_MAX_T value, MIN_MAX_T& min_max, uint64_t count) {
-    if (count == 0) {
-      min_max = value;
-    } else if (op_(value, min_max)) {
-      min_max = value;
-    }
-  }
-
- private:
-  Op op_;
-};
-
-}  // namespace tiledb::sm
-
-#endif  // TILEDB_MIN_MAX_H
+  return 1;
+}

@@ -1,5 +1,5 @@
 /**
- * @file   fragments.h
+ * @file   validity_policies.h
  *
  * @section LICENSE
  *
@@ -27,50 +27,38 @@
  *
  * @section DESCRIPTION
  *
- * This file declares serialization functions for fragments.
+ * This file defines classes Null and NonNull.
  */
 
-#ifndef TILEDB_SERIALIZATION_FRAGMENTS_H
-#define TILEDB_SERIALIZATION_FRAGMENTS_H
+#ifndef TILEDB_VALIDITY_POLICIES_H
+#define TILEDB_VALIDITY_POLICIES_H
 
-#ifdef TILEDB_SERIALIZATION
-#include "tiledb/sm/serialization/capnp_utils.h"
-#endif
-
-#include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/filesystem/uri.h"
-
-using namespace tiledb::common;
 namespace tiledb::sm {
 
-class Buffer;
-class Config;
-enum class SerializationType : uint8_t;
+struct Null {
+ public:
+  /**
+   * Validity policy for null cells.
+   *
+   * @param validity_value Validity value.
+   */
+  inline bool op(uint8_t validity_value) {
+    return validity_value == 0;
+  }
+};
 
-namespace serialization {
+struct NonNull {
+ public:
+  /**
+   * Validity policy for non null cells.
+   *
+   * @param validity_value Validity value.
+   */
+  inline bool op(uint8_t validity_value) {
+    return validity_value != 0;
+  }
+};
 
-void serialize_delete_fragments_timestamps_request(
-    const Config& config,
-    uint64_t start_timestamp,
-    uint64_t end_timestamp,
-    SerializationType serialize_type,
-    Buffer* serialized_buffer);
-
-std::tuple<uint64_t, uint64_t> deserialize_delete_fragments_timestamps_request(
-    SerializationType serialize_type, const Buffer& serialized_buffer);
-
-void serialize_delete_fragments_list_request(
-    const Config& config,
-    const std::vector<URI>& fragments,
-    SerializationType serialize_type,
-    Buffer* serialized_buffer);
-
-std::vector<URI> deserialize_delete_fragments_list_request(
-    const URI& array_uri,
-    SerializationType serialize_type,
-    const Buffer& serialized_buffer);
-
-}  // namespace serialization
 }  // namespace tiledb::sm
 
-#endif  // TILEDB_SERIALIZATION_FRAGMENTS_H
+#endif  // TILEDB_VALIDITY_POLICIES_H

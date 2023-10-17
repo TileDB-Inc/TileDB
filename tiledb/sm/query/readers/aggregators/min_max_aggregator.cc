@@ -34,7 +34,6 @@
 
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
-#include "tiledb/sm/query/readers/aggregators/min_max.h"
 
 namespace tiledb::sm {
 
@@ -149,13 +148,9 @@ template <typename T, typename Op>
 void ComparatorAggregator<T, Op>::aggregate_data(AggregateBuffer& input_data) {
   tuple<VALUE_T, uint64_t> res;
   if (input_data.is_count_bitmap()) {
-    res =
-        aggregate_with_count_.template aggregate<VALUE_T, uint64_t, MinMax<Op>>(
-            input_data);
+    res = aggregate_with_count_.template aggregate<uint64_t>(input_data);
   } else {
-    res =
-        aggregate_with_count_.template aggregate<VALUE_T, uint8_t, MinMax<Op>>(
-            input_data);
+    res = aggregate_with_count_.template aggregate<uint8_t>(input_data);
   }
 
   {

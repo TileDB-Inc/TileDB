@@ -1,5 +1,5 @@
 #
-# tiledb/sm/query/readers/aggregators/test/CMakeLists.txt
+# tiledb/api/c_api/query_field/CMakeLists.txt
 #
 # The MIT License
 #
@@ -24,9 +24,27 @@
 # THE SOFTWARE.
 #
 
-include(unit_test)
+# The object library `capi_query_field` cannot be linked standalone at the
+# present time. It depends upon member functions of `class Query`, which does
+# not yet have a standalone object library of its own. Without such a
+# dependency, `capi_query_field` would have to link (essentially) the whole 
+# library to get a complete executable.
+# 
+# It is against policy to use the `object_library` environment to define object
+# libraries that cannot stand alone. Therefore this definition is directly in
+# CMake and does not include a link-completeness target.
+include(common NO_POLICY_SCOPE)
 
-commence(unit_test aggregators)
-    this_target_sources(main.cc unit_aggregate_with_count.cc unit_aggregation_policies.cc unit_aggregators.cc)
-    this_target_object_libraries(aggregators)
-conclude(unit_test)
+list(APPEND SOURCES
+  query_field_api.cc
+  )
+gather_sources(${SOURCES})
+
+#
+# Object library for other units to depend upon
+#
+add_library(capi_query_field OBJECT ${SOURCES})
+target_link_libraries(capi_query_field PUBLIC export)
+target_link_libraries(capi_query_field PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+
+add_test_subdirectory()

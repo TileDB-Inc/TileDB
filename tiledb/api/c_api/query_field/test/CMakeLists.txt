@@ -1,5 +1,5 @@
 #
-# tiledb/sm/query/readers/aggregators/test/CMakeLists.txt
+# tiledb/api/c_api/query_field/test/CMakeLists.txt
 #
 # The MIT License
 #
@@ -26,7 +26,18 @@
 
 include(unit_test)
 
-commence(unit_test aggregators)
-    this_target_sources(main.cc unit_aggregate_with_count.cc unit_aggregation_policies.cc unit_aggregators.cc)
-    this_target_object_libraries(aggregators)
+commence(unit_test capi_query_field)
+  this_target_sources(unit_capi_query_field.cc)
+
+# The object library `capi_query_field` cannot be linked standalone at the
+# present time. It depends upon member functions of `class Query`, which does
+# not yet have a standalone object library of its own. Without such a
+# dependency, `capi_query_field` would have to link (essentially) the whole 
+# library to get a complete executable.
+  this_target_object_libraries(capi_query_field)
+  this_target_link_libraries(tiledb_test_support_lib)
+
+  if (NOT MSVC)
+    target_compile_options(unit_capi_query_field PRIVATE -Wno-deprecated-declarations)
+  endif()
 conclude(unit_test)

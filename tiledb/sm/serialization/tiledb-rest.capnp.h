@@ -14062,8 +14062,8 @@ class ArrayDeleteFragmentsListRequest::Reader {
   }
 #endif  // !CAPNP_LITE
 
-  inline bool hasUri() const;
-  inline ::capnp::Text::Reader getUri() const;
+  inline bool hasConfig() const;
+  inline ::tiledb::sm::serialization::capnp::Config::Reader getConfig() const;
 
   inline bool hasEntries() const;
   inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader getEntries()
@@ -14108,12 +14108,15 @@ class ArrayDeleteFragmentsListRequest::Builder {
   }
 #endif  // !CAPNP_LITE
 
-  inline bool hasUri();
-  inline ::capnp::Text::Builder getUri();
-  inline void setUri(::capnp::Text::Reader value);
-  inline ::capnp::Text::Builder initUri(unsigned int size);
-  inline void adoptUri(::capnp::Orphan<::capnp::Text>&& value);
-  inline ::capnp::Orphan<::capnp::Text> disownUri();
+  inline bool hasConfig();
+  inline ::tiledb::sm::serialization::capnp::Config::Builder getConfig();
+  inline void setConfig(
+      ::tiledb::sm::serialization::capnp::Config::Reader value);
+  inline ::tiledb::sm::serialization::capnp::Config::Builder initConfig();
+  inline void adoptConfig(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>&& value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>
+  disownConfig();
 
   inline bool hasEntries();
   inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
@@ -14150,6 +14153,8 @@ class ArrayDeleteFragmentsListRequest::Pipeline {
       : _typeless(kj::mv(typeless)) {
   }
 
+  inline ::tiledb::sm::serialization::capnp::Config::Pipeline getConfig();
+
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
   friend class ::capnp::PipelineHook;
@@ -14177,8 +14182,8 @@ class ArrayDeleteFragmentsTimestampsRequest::Reader {
   }
 #endif  // !CAPNP_LITE
 
-  inline bool hasUri() const;
-  inline ::capnp::Text::Reader getUri() const;
+  inline bool hasConfig() const;
+  inline ::tiledb::sm::serialization::capnp::Config::Reader getConfig() const;
 
   inline ::uint64_t getStartTimestamp() const;
 
@@ -14223,12 +14228,15 @@ class ArrayDeleteFragmentsTimestampsRequest::Builder {
   }
 #endif  // !CAPNP_LITE
 
-  inline bool hasUri();
-  inline ::capnp::Text::Builder getUri();
-  inline void setUri(::capnp::Text::Reader value);
-  inline ::capnp::Text::Builder initUri(unsigned int size);
-  inline void adoptUri(::capnp::Orphan<::capnp::Text>&& value);
-  inline ::capnp::Orphan<::capnp::Text> disownUri();
+  inline bool hasConfig();
+  inline ::tiledb::sm::serialization::capnp::Config::Builder getConfig();
+  inline void setConfig(
+      ::tiledb::sm::serialization::capnp::Config::Reader value);
+  inline ::tiledb::sm::serialization::capnp::Config::Builder initConfig();
+  inline void adoptConfig(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>&& value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>
+  disownConfig();
 
   inline ::uint64_t getStartTimestamp();
   inline void setStartTimestamp(::uint64_t value);
@@ -14256,6 +14264,8 @@ class ArrayDeleteFragmentsTimestampsRequest::Pipeline {
   inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
       : _typeless(kj::mv(typeless)) {
   }
+
+  inline ::tiledb::sm::serialization::capnp::Config::Pipeline getConfig();
 
  private:
   ::capnp::AnyPointer::Pipeline _typeless;
@@ -31484,46 +31494,56 @@ inline void BufferedChunk::Builder::setSize(::uint64_t value) {
       ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
-inline bool ArrayDeleteFragmentsListRequest::Reader::hasUri() const {
+inline bool ArrayDeleteFragmentsListRequest::Reader::hasConfig() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
 }
-inline bool ArrayDeleteFragmentsListRequest::Builder::hasUri() {
+inline bool ArrayDeleteFragmentsListRequest::Builder::hasConfig() {
   return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
 }
-inline ::capnp::Text::Reader ArrayDeleteFragmentsListRequest::Reader::getUri()
-    const {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
-      _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+inline ::tiledb::sm::serialization::capnp::Config::Reader
+ArrayDeleteFragmentsListRequest::Reader::getConfig() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::get(
+          _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline ::capnp::Text::Builder
-ArrayDeleteFragmentsListRequest::Builder::getUri() {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
-      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+inline ::tiledb::sm::serialization::capnp::Config::Builder
+ArrayDeleteFragmentsListRequest::Builder::getConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::get(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline void ArrayDeleteFragmentsListRequest::Builder::setUri(
-    ::capnp::Text::Reader value) {
-  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::Config::Pipeline
+ArrayDeleteFragmentsListRequest::Pipeline::getConfig() {
+  return ::tiledb::sm::serialization::capnp::Config::Pipeline(
+      _typeless.getPointerField(0));
+}
+#endif  // !CAPNP_LITE
+inline void ArrayDeleteFragmentsListRequest::Builder::setConfig(
+    ::tiledb::sm::serialization::capnp::Config::Reader value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Config>::set(
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
       value);
 }
-inline ::capnp::Text::Builder ArrayDeleteFragmentsListRequest::Builder::initUri(
-    unsigned int size) {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
-      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
-      size);
+inline ::tiledb::sm::serialization::capnp::Config::Builder
+ArrayDeleteFragmentsListRequest::Builder::initConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::init(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline void ArrayDeleteFragmentsListRequest::Builder::adoptUri(
-    ::capnp::Orphan<::capnp::Text>&& value) {
-  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+inline void ArrayDeleteFragmentsListRequest::Builder::adoptConfig(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>&& value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Config>::adopt(
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
       kj::mv(value));
 }
-inline ::capnp::Orphan<::capnp::Text>
-ArrayDeleteFragmentsListRequest::Builder::disownUri() {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
-      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>
+ArrayDeleteFragmentsListRequest::Builder::disownConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::disown(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
 inline bool ArrayDeleteFragmentsListRequest::Reader::hasEntries() const {
@@ -31582,46 +31602,56 @@ ArrayDeleteFragmentsListRequest::Builder::disownEntries() {
           _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 
-inline bool ArrayDeleteFragmentsTimestampsRequest::Reader::hasUri() const {
+inline bool ArrayDeleteFragmentsTimestampsRequest::Reader::hasConfig() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
 }
-inline bool ArrayDeleteFragmentsTimestampsRequest::Builder::hasUri() {
+inline bool ArrayDeleteFragmentsTimestampsRequest::Builder::hasConfig() {
   return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
 }
-inline ::capnp::Text::Reader
-ArrayDeleteFragmentsTimestampsRequest::Reader::getUri() const {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
-      _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+inline ::tiledb::sm::serialization::capnp::Config::Reader
+ArrayDeleteFragmentsTimestampsRequest::Reader::getConfig() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::get(
+          _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline ::capnp::Text::Builder
-ArrayDeleteFragmentsTimestampsRequest::Builder::getUri() {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
-      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+inline ::tiledb::sm::serialization::capnp::Config::Builder
+ArrayDeleteFragmentsTimestampsRequest::Builder::getConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::get(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline void ArrayDeleteFragmentsTimestampsRequest::Builder::setUri(
-    ::capnp::Text::Reader value) {
-  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::Config::Pipeline
+ArrayDeleteFragmentsTimestampsRequest::Pipeline::getConfig() {
+  return ::tiledb::sm::serialization::capnp::Config::Pipeline(
+      _typeless.getPointerField(0));
+}
+#endif  // !CAPNP_LITE
+inline void ArrayDeleteFragmentsTimestampsRequest::Builder::setConfig(
+    ::tiledb::sm::serialization::capnp::Config::Reader value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Config>::set(
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
       value);
 }
-inline ::capnp::Text::Builder
-ArrayDeleteFragmentsTimestampsRequest::Builder::initUri(unsigned int size) {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
-      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
-      size);
+inline ::tiledb::sm::serialization::capnp::Config::Builder
+ArrayDeleteFragmentsTimestampsRequest::Builder::initConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::init(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline void ArrayDeleteFragmentsTimestampsRequest::Builder::adoptUri(
-    ::capnp::Orphan<::capnp::Text>&& value) {
-  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+inline void ArrayDeleteFragmentsTimestampsRequest::Builder::adoptConfig(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>&& value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Config>::adopt(
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
       kj::mv(value));
 }
-inline ::capnp::Orphan<::capnp::Text>
-ArrayDeleteFragmentsTimestampsRequest::Builder::disownUri() {
-  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
-      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>
+ArrayDeleteFragmentsTimestampsRequest::Builder::disownConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::disown(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
 inline ::uint64_t

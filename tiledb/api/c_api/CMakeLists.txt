@@ -121,3 +121,6 @@ add_subdirectory(query_plan)
 # `query_aggregate`: no dependencies
 add_subdirectory(query_aggregate)
 
+# `query_field`: no dependencies
+add_subdirectory(query_field)
+

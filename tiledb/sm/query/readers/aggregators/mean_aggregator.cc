@@ -34,7 +34,6 @@
 
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
-#include "tiledb/sm/query/readers/aggregators/safe_sum.h"
 
 namespace tiledb::sm {
 
@@ -88,15 +87,9 @@ void MeanAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
     // TODO: This is duplicated across aggregates but will go away with
     // sc-33104.
     if (input_data.is_count_bitmap()) {
-      res = aggregate_with_count_.template aggregate<
-          typename sum_type_data<T>::sum_type,
-          uint64_t,
-          SafeSum>(input_data);
+      res = aggregate_with_count_.template aggregate<uint64_t>(input_data);
     } else {
-      res = aggregate_with_count_.template aggregate<
-          typename sum_type_data<T>::sum_type,
-          uint8_t,
-          SafeSum>(input_data);
+      res = aggregate_with_count_.template aggregate<uint8_t>(input_data);
     }
 
     const auto value = std::get<0>(res);

@@ -30,7 +30,6 @@
 #include "../field_info.h"
 #include "../mean_aggregator.h"
 #include "../min_max_aggregator.h"
-#include "../null_count_aggregator.h"
 #include "../sum_aggregator.h"
 
 int main() {

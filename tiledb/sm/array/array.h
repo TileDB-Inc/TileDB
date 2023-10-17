@@ -233,13 +233,11 @@ class Array {
   /**
    * Deletes the fragments with the given URIs from the Array with given URI.
    *
-   * @param uri The uri of the Array whose fragments are to be deleted.
    * @param fragment_uris The uris of the fragments to be deleted.
    *
    * @pre The Array must be open for exclusive writes
    */
-  void delete_fragments_list(
-      const URI& uri, const std::vector<URI>& fragment_uris);
+  void delete_fragments_list(const std::vector<URI>& fragment_uris);
 
   /** Returns a constant pointer to the encryption key. */
   const EncryptionKey* encryption_key() const;

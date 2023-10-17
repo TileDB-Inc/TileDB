@@ -364,6 +364,7 @@ list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query/query_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query/query_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query_aggregate/query_aggregate_api_external_experimental.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query_field/query_field_api_external_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query_plan/query_plan_api_external_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/string/string_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/vfs/vfs_api_enum.h"

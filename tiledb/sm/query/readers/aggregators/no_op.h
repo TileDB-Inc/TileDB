@@ -1,5 +1,5 @@
 /**
- * @file   fragments.h
+ * @file   no_op.h
  *
  * @section LICENSE
  *
@@ -27,50 +27,24 @@
  *
  * @section DESCRIPTION
  *
- * This file declares serialization functions for fragments.
+ * This file defines classes NoOp.
  */
 
-#ifndef TILEDB_SERIALIZATION_FRAGMENTS_H
-#define TILEDB_SERIALIZATION_FRAGMENTS_H
+#ifndef TILEDB_NO_OP_H
+#define TILEDB_NO_OP_H
 
-#ifdef TILEDB_SERIALIZATION
-#include "tiledb/sm/serialization/capnp_utils.h"
-#endif
-
-#include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/filesystem/uri.h"
-
-using namespace tiledb::common;
 namespace tiledb::sm {
 
-class Buffer;
-class Config;
-enum class SerializationType : uint8_t;
+struct NoOp {
+ public:
+  /**
+   * No op function.
+   */
+  template <typename NO_OP_T>
+  void op(NO_OP_T, uint64_t, uint64_t) {
+  }
+};
 
-namespace serialization {
-
-void serialize_delete_fragments_timestamps_request(
-    const Config& config,
-    uint64_t start_timestamp,
-    uint64_t end_timestamp,
-    SerializationType serialize_type,
-    Buffer* serialized_buffer);
-
-std::tuple<uint64_t, uint64_t> deserialize_delete_fragments_timestamps_request(
-    SerializationType serialize_type, const Buffer& serialized_buffer);
-
-void serialize_delete_fragments_list_request(
-    const Config& config,
-    const std::vector<URI>& fragments,
-    SerializationType serialize_type,
-    Buffer* serialized_buffer);
-
-std::vector<URI> deserialize_delete_fragments_list_request(
-    const URI& array_uri,
-    SerializationType serialize_type,
-    const Buffer& serialized_buffer);
-
-}  // namespace serialization
 }  // namespace tiledb::sm
 
-#endif  // TILEDB_SERIALIZATION_FRAGMENTS_H
+#endif  // TILEDB_NO_OP_H

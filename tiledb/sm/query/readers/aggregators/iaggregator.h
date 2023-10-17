@@ -99,6 +99,9 @@ class IAggregator {
 
   /** Returns name of the aggregate, e.g. COUNT, MIN, SUM. */
   virtual std::string aggregate_name() = 0;
+
+  /** Returns the TileDB datatype of the output field for the aggregate. */
+  virtual Datatype output_datatype() = 0;
 };
 
 }  // namespace tiledb::sm

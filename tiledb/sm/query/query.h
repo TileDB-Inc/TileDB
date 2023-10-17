@@ -750,17 +750,9 @@ class Query {
     return default_channel_aggregates_;
   }
 
-  /**
-   * Get an aggregate from (for now) the default channel
-   * Throws if an aggregate with the passed name doesn't exist.
-   */
-  shared_ptr<IAggregator> get_aggregate(const std::string& name) {
-    if (!is_aggregate(name)) {
-      throw std::logic_error(
-          "Cannot get the aggregate. Aggregate " + name + " doesn't exist.");
-    }
-    return default_channel_aggregates_[name];
-  }
+  /** Returns an aggregate based on the output field. */
+  std::optional<shared_ptr<IAggregator>> get_aggregate(
+      std::string output_field_name) const;
 
  private:
   /* ********************************* */
