@@ -901,22 +901,6 @@ void S3::ls_cb(
       }
     }
 
-    if (!is_done) {
-      for (const auto& object :
-           list_objects_outcome.GetResult().GetCommonPrefixes()) {
-        // For "directories" it doesn't seem possible to get a shallow size in
-        // S3, so the size of such an entry will be 0 in S3.
-        std::string path =
-            "s3://" + aws_auth +
-            add_front_slash(remove_trailing_slash(object.GetPrefix().c_str()));
-        rc = cb(path.c_str(), path.size(), 0, data);
-        if (rc != 1) {
-          is_done = true;
-          break;
-        }
-      }
-    }
-
     if (rc == -1) {
       throw StatusException(Status_S3Error("Error in user callback"));
     }

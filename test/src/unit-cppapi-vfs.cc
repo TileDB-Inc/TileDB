@@ -33,6 +33,8 @@
 #include <test/support/src/helpers.h>
 #include <test/support/src/vfs_helpers.h>
 #include <test/support/tdb_catch.h>
+#include "tiledb/api/c_api/config/config_api_internal.h"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/enums/filesystem.h"
@@ -622,4 +624,69 @@ TEST_CASE_METHOD(
           Catch::Matchers::ContainsSubstring("Throwing filter"));
     }
   }
+}
+
+TEST_CASE_METHOD(
+    tiledb::test::VfsFixture, "Test ls_cb recursion argument", "[vfs][ls_cb]") {
+  if (temp_dir_.is_s3() && !ctx_.is_supported_fs(TILEDB_S3)) {
+    return;
+  }
+  std::vector<size_t> max_files{10, 50};
+  setup_test(max_files);
+  bool recursive = GENERATE(true, false);
+  tiledb::VFSExperimental::LsObjects ls_objects;
+  tiledb::sm::LsCallback cb =
+      [](const char* path, size_t path_len, uint64_t size, void* data) {
+        auto ls_objects =
+            static_cast<tiledb::VFSExperimental::LsObjects*>(data);
+        ls_objects->emplace_back(std::string(path, path_len), size);
+        return 1;
+      };
+
+  // If testing with recursion use the root directory, otherwise use a subdir.
+  auto test_path = recursive ? temp_dir_ : temp_dir_.join_path("subdir1");
+  if (test_path.is_s3()) {
+    ThreadPool tp(4);
+    tiledb::sm::S3 s3(
+        &tiledb::test::g_helper_stats, &tp, cfg_.ptr().get()->config());
+    if (recursive) {
+      s3.ls_cb(test_path, cb, &ls_objects, "");
+    } else {
+      s3.ls_cb(test_path, cb, &ls_objects);
+    }
+  } else if (test_path.is_memfs()) {
+    // The MemFilesystem attached to VFS isn't the same as the `mem` used here.
+    tiledb::sm::MemFilesystem mem;
+    // Create the test directory structure using Memfs managed by `mem`.
+    expected_results_.clear();
+    mem.create_dir(temp_dir_.to_path()).ok();
+    auto path = temp_dir_;
+    for (size_t i = 1; i <= max_files.size(); i++) {
+      path = path.join_path("subdir" + std::to_string(i));
+      mem.create_dir(path.to_path()).ok();
+      for (size_t j = 1; j <= max_files[i - 1]; j++) {
+        auto uri = path.join_path("test_file" + std::to_string(j));
+        mem.touch(uri.to_path()).ok();
+        // Write some data to test file sizes are correct.
+        std::string data(j * 10, 'a');
+        mem.write(uri.to_path(), data.data(), data.size()).ok();
+        expected_results_.emplace_back(uri.to_string(), data.size());
+      }
+    }
+    mem.ls_cb(test_path, cb, &ls_objects, recursive);
+  } else if (test_path.is_file()) {
+#ifdef _WIN32
+    tiledb::sm::Win local_fs;
+#else
+    tiledb::sm::Posix local_fs;
+#endif
+    local_fs.ls_cb(test_path, cb, &ls_objects, recursive);
+  }
+
+  if (!recursive) {
+    expected_results_.resize(10);
+  }
+  std::sort(expected_results_.begin(), expected_results_.end());
+  CHECK(ls_objects.size() == expected_results_.size());
+  CHECK(ls_objects == expected_results_);
 }

@@ -326,12 +326,8 @@ bool Posix::ls_cb(
     }
     std::string abspath = path + "/" + next_path->d_name;
 
-    // Getting the file size here incurs an additional system call
-    // via file_size() and ls() calls will feel this too.
-    // If this penalty becomes noticeable, we should just duplicate
-    // this implementation in ls() and don't get the size
     if (next_path->d_type == DT_DIR) {
-      if (!ls_cb(URI(abspath), cb, data, recursive)) {
+      if (recursive && !ls_cb(URI(abspath), cb, data, recursive)) {
         // Traversal was stopped by the callback.
         return false;
       }

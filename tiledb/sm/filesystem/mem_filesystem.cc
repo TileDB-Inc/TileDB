@@ -338,8 +338,9 @@ class MemFilesystem::Directory : public MemFilesystem::FSNode {
       FSNode* child = children_.at(key).get();
       std::unique_lock<std::mutex> lock(child->mutex_);
       std::string name(full_path + key);
-      if (recursive && child->is_dir()) {
-        if (!child->ls_cb_impl(full_path + key + "/", cb, data, recursive)) {
+      if (child->is_dir()) {
+        if (recursive &&
+            !child->ls_cb_impl(full_path + key + "/", cb, data, recursive)) {
           // Traversal was stopped in the recursive call chain.
           return false;
         }
