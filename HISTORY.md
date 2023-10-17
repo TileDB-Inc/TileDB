@@ -1,3 +1,10 @@
+# TileDB v2.17.2 Release Notes
+
+## Defects removed
+
+* Fix fragment corruption in the GlobalOrderWriter. [#4383](https://github.com/TileDB-Inc/TileDB/pull/4383)
+* Prepend a question mark to the Azure Storage SAS token if it does not begin with one. [#4426](https://github.com/TileDB-Inc/TileDB/pull/4426)
+
 # TileDB v2.17.1 Release Notes
 
 ## Improvements
