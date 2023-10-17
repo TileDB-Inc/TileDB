@@ -83,7 +83,7 @@ using null_always_wrapped_for_logging = tiledb::api::
  * logging aspect is compiled in or not. The aspect argument is omitted, the
  * default applies, and overriding is possible.
  */
-using null_naybe_wrapped_for_logging =
+using null_maybe_wrapped_for_logging =
     tiledb::api::CAPIFunction<tf_null, tiledb::api::ExceptionAction>;
 
 TEST_CASE("Compile consistency") {
@@ -123,7 +123,7 @@ TEST_CASE("Hook conditional for touch") {
   LABase::reset();
   CHECK(LABase::touched() == false);
   tiledb::api::ExceptionAction h;
-  null_naybe_wrapped_for_logging().function(h);
+  null_maybe_wrapped_for_logging().function(h);
   CHECK(LABase::touched() == compiled_with_hook);
 }
 
@@ -131,7 +131,7 @@ TEST_CASE("Hook conditional with text 1") {
   LABase::reset();
   CHECK(LABase::message() == "");
   tiledb::api::ExceptionAction h;
-  null_naybe_wrapped_for_logging().function(h);
+  null_maybe_wrapped_for_logging().function(h);
   if constexpr (compiled_with_hook) {
     CHECK(LABase::message() == "tf_null");
   } else {
