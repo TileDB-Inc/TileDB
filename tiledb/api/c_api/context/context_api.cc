@@ -140,7 +140,38 @@ using tiledb::api::api_entry_with_context;
  */
 CAPI_PLAIN_BEGIN(
     ctx_alloc, tiledb_config_handle_t* config, tiledb_ctx_handle_t** ctx)
-CAPI_PLAIN_END(ctx_alloc,config, ctx)
+CAPI_PLAIN_END(ctx_alloc, config, ctx)
+
+/*
+ * API Audit: void return
+ */
+CAPI_VOID_BEGIN(ctx_free, tiledb_ctx_handle_t** ctx)
+CAPI_VOID_END(ctx_free, ctx)
+
+CAPI_WITH_CONTEXT_BEGIN(ctx_get_stats, tiledb_ctx_t* ctx, char** stats_json)
+CAPI_WITH_CONTEXT_END(ctx_get_stats, ctx, stats_json)
+
+CAPI_WITH_CONTEXT_BEGIN(
+    ctx_get_config, tiledb_ctx_t* ctx, tiledb_config_handle_t** config)
+CAPI_WITH_CONTEXT_END(ctx_get_config, ctx, config)
+
+CAPI_WITH_CONTEXT_BEGIN(
+    ctx_get_last_error, tiledb_ctx_t* ctx, tiledb_error_handle_t** err)
+CAPI_WITH_CONTEXT_END(ctx_get_last_error, ctx, err)
+
+CAPI_WITH_CONTEXT_BEGIN(
+    ctx_is_supported_fs,
+    tiledb_ctx_t* ctx,
+    tiledb_filesystem_t fs,
+    int32_t* is_supported)
+CAPI_WITH_CONTEXT_END(ctx_is_supported_fs, ctx, fs, is_supported)
+
+CAPI_WITH_CONTEXT_BEGIN(ctx_cancel_tasks, tiledb_ctx_t* ctx)
+CAPI_WITH_CONTEXT_END(ctx_cancel_tasks, ctx)
+
+CAPI_WITH_CONTEXT_BEGIN(
+    ctx_set_tag, tiledb_ctx_t* ctx, const char* key, const char* value)
+CAPI_WITH_CONTEXT_END(ctx_set_tag, ctx, key, value)
 
 /*
  * We have a special case with tiledb_ctx_alloc_with_error. It's declared in
@@ -161,7 +192,8 @@ capi_return_t tiledb_ctx_alloc_with_error(
 
 /*
  * This is a special case. The API function does not match the name of the
- * implementation function. See`capi_definition.h` for more information.
+ * implementation function, which the macros assume. See`capi_definition.h` for
+ * more information.
  */
 /* clang-format off */
 capi_return_t tiledb_ctx_alloc_with_error(
@@ -170,35 +202,8 @@ capi_return_t tiledb_ctx_alloc_with_error(
     tiledb_error_t** error)
 CAPI_MIDDLE(ctx_alloc, error)
 CAPI_ERROR_END(ctx_alloc_with_error, config, ctx)
-/* clang-format on */
-
-/*
- * API Audit: void return
- */
-CAPI_VOID_BEGIN(ctx_free, tiledb_ctx_handle_t** ctx)
-CAPI_VOID_END(ctx_free,ctx)
-
-CAPI_WITH_CONTEXT_BEGIN(ctx_get_stats, tiledb_ctx_t* ctx, char** stats_json)
-CAPI_WITH_CONTEXT_END(ctx_get_stats,ctx, stats_json)
-
-CAPI_WITH_CONTEXT_BEGIN(
-    ctx_get_config, tiledb_ctx_t* ctx, tiledb_config_handle_t** config)
-CAPI_WITH_CONTEXT_END(ctx_get_config, ctx, config)
-
-CAPI_WITH_CONTEXT_BEGIN(
-    ctx_get_last_error, tiledb_ctx_t* ctx, tiledb_error_handle_t** err)
-CAPI_WITH_CONTEXT_END(ctx_get_last_error,ctx, err)
-
-CAPI_WITH_CONTEXT_BEGIN(
-    ctx_is_supported_fs,
-    tiledb_ctx_t* ctx,
-    tiledb_filesystem_t fs,
-    int32_t* is_supported)
-CAPI_WITH_CONTEXT_END(ctx_is_supported_fs,ctx, fs, is_supported)
-
-CAPI_WITH_CONTEXT_BEGIN(ctx_cancel_tasks, tiledb_ctx_t* ctx)
-CAPI_WITH_CONTEXT_END(ctx_cancel_tasks,ctx)
-
-CAPI_WITH_CONTEXT_BEGIN(
-    ctx_set_tag, tiledb_ctx_t* ctx, const char* key, const char* value)
-CAPI_WITH_CONTEXT_END(ctx_set_tag,ctx, key, value)
+    /* clang-format on */
+    /*
+     * WARNING: Don't include any code past this point lest you incur the wrath
+     * of a mistreated `clang-format`.
+     */
