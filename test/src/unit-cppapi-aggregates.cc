@@ -1,5 +1,5 @@
 /**
- * @file unit-cppapi-aggregates.cc
+ * @file unit-cpp_api-aggregates.cc
  *
  * @section LICENSE
  *
@@ -72,9 +72,7 @@ void CPPAggregatesFx::rm_array() {
 }
 
 void CPPAggregatesFx::create_array() {
-  // dim = {1, 2, 3, 4, 5}
-  // attr1 = {"fred", "wilma", "barney", "wilma", "fred"}
-  // attr2 = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f}
+  // attr = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f}
   ArraySchema schema(ctx_, TILEDB_DENSE);
 
   auto dim = Dimension::create<int>(ctx_, "dim", {{-100, 100}});
@@ -82,13 +80,13 @@ void CPPAggregatesFx::create_array() {
   dom.add_dimension(dim);
   schema.set_domain(dom);
 
-  auto attr2 = Attribute::create<float>(ctx_, "attr2");
-  schema.add_attribute(attr2);
+  auto attr = Attribute::create<float>(ctx_, "attr");
+  schema.add_attribute(attr);
 
   Array::create(uri_, schema);
 
   // Attribute data
-  std::vector<float> attr2_values = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
+  std::vector<float> attr_values = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
 
   Array array(ctx_, uri_, TILEDB_WRITE);
   Subarray subarray(ctx_, array);
@@ -96,7 +94,7 @@ void CPPAggregatesFx::create_array() {
   Query query(ctx_, array);
   query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
-      .set_data_buffer("attr2", attr2_values);
+      .set_data_buffer("attr", attr_values);
   CHECK_NOTHROW(query.submit());
   query.finalize();
   array.close();
@@ -104,15 +102,15 @@ void CPPAggregatesFx::create_array() {
 
 TEST_CASE_METHOD(
     CPPAggregatesFx,
-    "CPP: Aggregates Query - Basic",
-    "[aggregates][query][sum][basic]") {
+    "CPP: Aggregates - Basic",
+    "[aggregates][cpp_api][sum][basic]") {
   auto array = Array(ctx_, uri_, TILEDB_READ);
   Query query(ctx_, array);
   query.add_range("dim", 1, 5).set_layout(TILEDB_ROW_MAJOR);
 
   QueryChannel default_channel = QueryExperimental::get_default_channel(query);
   ChannelOperation operation =
-      QueryExperimental::create_unary_aggregate<SumOperator>(query, "attr2");
+      QueryExperimental::create_unary_aggregate<SumOperator>(query, "attr");
   default_channel.apply_aggregate("Sum", operation);
 
   double sum = 0;
@@ -128,8 +126,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPAggregatesFx,
-    "CPP: Aggregates Query - Basic",
-    "[aggregates][query][count][basic]") {
+    "CPP: Aggregates - Basic",
+    "[aggregates][cpp_api][count][basic]") {
   auto array = Array(ctx_, uri_, TILEDB_READ);
   Query query(ctx_, array);
   query.add_range("dim", 1, 3).set_layout(TILEDB_ROW_MAJOR);
@@ -145,4 +143,71 @@ TEST_CASE_METHOD(
   REQUIRE(query.submit() == Query::Status::COMPLETE);
 
   CHECK(count == 3);
+}
+
+TEST_CASE_METHOD(
+    CPPAggregatesFx,
+    "CPP: Aggregates - Basic",
+    "[aggregates][cpp_api][min][basic]") {
+  auto array = Array(ctx_, uri_, TILEDB_READ);
+  Query query(ctx_, array);
+  query.add_range("dim", 1, 5).set_layout(TILEDB_ROW_MAJOR);
+
+  QueryChannel default_channel = QueryExperimental::get_default_channel(query);
+  ChannelOperation operation =
+      QueryExperimental::create_unary_aggregate<MinOperator>(query, "attr");
+  default_channel.apply_aggregate("Min", operation);
+
+  float min = 0;
+  uint64_t size = 4;
+  // TODO: use proper set_data_buffer c++ API
+  REQUIRE(query.ptr()->query_->set_data_buffer("Min", &min, &size).ok());
+
+  REQUIRE(query.submit() == Query::Status::COMPLETE);
+
+  CHECK(min == 1);
+}
+
+TEST_CASE_METHOD(
+    CPPAggregatesFx,
+    "CPP: Aggregates - Basic",
+    "[aggregates][cpp_api][max][basic]") {
+  auto array = Array(ctx_, uri_, TILEDB_READ);
+  Query query(ctx_, array);
+  query.add_range("dim", 1, 5).set_layout(TILEDB_ROW_MAJOR);
+
+  QueryChannel default_channel = QueryExperimental::get_default_channel(query);
+  ChannelOperation operation =
+      QueryExperimental::create_unary_aggregate<MaxOperator>(query, "attr");
+  default_channel.apply_aggregate("Max", operation);
+
+  float max = 0;
+  uint64_t size = 4;
+  // TODO: use proper set_data_buffer c++ API
+  REQUIRE(query.ptr()->query_->set_data_buffer("Max", &max, &size).ok());
+
+  REQUIRE(query.submit() == Query::Status::COMPLETE);
+
+  CHECK(max == 5);
+}
+
+TEST_CASE_METHOD(
+    CPPAggregatesFx, "CPP: Aggregates - Basic", "[aggregates][cpp_api][args]") {
+  auto array = Array(ctx_, uri_, TILEDB_READ);
+  Query query(ctx_, array);
+  query.add_range("dim", 1, 5).set_layout(TILEDB_ROW_MAJOR);
+
+  // This throws for and attribute that doesnt exist
+  CHECK_THROWS(QueryExperimental::create_unary_aggregate<SumOperator>(
+      query, "nonexistent"));
+
+  QueryChannel default_channel = QueryExperimental::get_default_channel(query);
+  ChannelOperation operation =
+      QueryExperimental::create_unary_aggregate<SumOperator>(query, "attr");
+  default_channel.apply_aggregate("Sum", operation);
+
+  // Duplicated output fields are not allowed
+  CHECK_THROWS(default_channel.apply_aggregate("Sum", CountOperation{}));
+
+  // TODO: add lifetime test with >= INITIALIZED query
 }

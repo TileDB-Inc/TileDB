@@ -118,7 +118,7 @@ class ChannelOperation {
 };
 
 class CountOperation : public ChannelOperation {
- public:
+ private:
   virtual const tiledb_channel_operation_t* ptr() const {
     return tiledb_aggregate_count;
   }
