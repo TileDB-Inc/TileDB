@@ -97,8 +97,7 @@ class AggregateWithCount {
     if (input_data.has_bitmap()) {
       if (field_info_.is_nullable_) {
         // Process for nullable values with bitmap.
-        for (uint64_t c = input_data.min_cell(); c < input_data.max_cell();
-             c++) {
+        for (uint64_t c = 0; c < input_data.size(); c++) {
           auto bitmap_val = input_data.bitmap_at<BITMAP_T>(c);
           if (val_policy.op(input_data.validity_at(c)) && bitmap_val != 0) {
             auto value = value_at(input_data, c);
@@ -110,8 +109,7 @@ class AggregateWithCount {
         }
       } else {
         // Process for non nullable values with bitmap.
-        for (uint64_t c = input_data.min_cell(); c < input_data.max_cell();
-             c++) {
+        for (uint64_t c = 0; c < input_data.size(); c++) {
           auto bitmap_val = input_data.bitmap_at<BITMAP_T>(c);
           auto value = value_at(input_data, c);
           for (BITMAP_T i = 0; i < bitmap_val; i++) {
@@ -123,8 +121,7 @@ class AggregateWithCount {
     } else {
       if (field_info_.is_nullable_) {
         // Process for nullable values with no bitmap.
-        for (uint64_t c = input_data.min_cell(); c < input_data.max_cell();
-             c++) {
+        for (uint64_t c = 0; c < input_data.size(); c++) {
           if (val_policy.op(input_data.validity_at(c))) {
             auto value = value_at(input_data, c);
             agg_policy.op(value, res, count);
@@ -133,8 +130,7 @@ class AggregateWithCount {
         }
       } else {
         // Process for non nullable values with no bitmap.
-        for (uint64_t c = input_data.min_cell(); c < input_data.max_cell();
-             c++) {
+        for (uint64_t c = 0; c < input_data.size(); c++) {
           auto value = value_at(input_data, c);
           agg_policy.op(value, res, count);
           count++;
