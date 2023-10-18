@@ -645,6 +645,7 @@ TEST_CASE_METHOD(
 
   // If testing with recursion use the root directory, otherwise use a subdir.
   auto test_path = recursive ? temp_dir_ : temp_dir_.join_path("subdir1");
+#ifdef HAVE_S3
   if (test_path.is_s3()) {
     ThreadPool tp(4);
     tiledb::sm::S3 s3(
@@ -654,7 +655,10 @@ TEST_CASE_METHOD(
     } else {
       s3.ls_cb(test_path, cb, &ls_objects);
     }
-  } else if (test_path.is_memfs()) {
+  }
+#endif
+
+  if (test_path.is_memfs()) {
     // The MemFilesystem attached to VFS isn't the same as the `mem` used here.
     tiledb::sm::MemFilesystem mem;
     // Create the test directory structure using Memfs managed by `mem`.
@@ -684,7 +688,8 @@ TEST_CASE_METHOD(
   }
 
   if (!recursive) {
-    expected_results_.resize(10);
+    // If non-recursive, the first 10 objects created should be returned.
+    expected_results_.resize(max_files[0]);
   }
   std::sort(expected_results_.begin(), expected_results_.end());
   CHECK(ls_objects.size() == expected_results_.size());

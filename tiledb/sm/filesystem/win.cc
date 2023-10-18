@@ -412,8 +412,9 @@ bool Win::ls_cb(
           return a.path().native() < b.path().native();
         });
     for (const auto& entry : entries_value) {
-      if (recursive && entry.is_directory()) {
-        if (!ls_cb(URI(entry.path().native()), cb, data, recursive)) {
+      if (entry.is_directory()) {
+        if (recursive &&
+            !ls_cb(URI(entry.path().native()), cb, data, recursive)) {
           // Signal to stop traversal received within recursive call chain.
           return false;
         }
