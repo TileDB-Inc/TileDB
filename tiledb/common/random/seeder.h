@@ -81,9 +81,9 @@ class Seeder {
   void set_seed(uint64_t seed);
 
   /**
-   * Returns the seed, if set.
+   * Returns the seed, if set and unused.
    *
-   * @return If set, return the seed. Else return nullopt.
+   * @return If set but unused, return the seed. Else throw or return nullopt.
    */
   std::optional<uint64_t> seed();
 
@@ -92,17 +92,15 @@ class Seeder {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /**
-   * Optional seed object, set by set_seed.
-   * #TODO note about state?
-   */
+  /** Optional seed object, set by set_seed. */
   std::optional<uint64_t> seed_{std::nullopt};
 
   /**
-   * 0 = default
+   * Numerical representation of seeder state.
+   *
+   * 0 = default (unseeded)
    * 1 = seeded but seed not yet used
    * 2 = seeded and seed used
-   * #TODO potentially change to use something more stateful than int (Status?)
    */
   int lifespan_state_{0};
 

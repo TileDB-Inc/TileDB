@@ -1,5 +1,5 @@
 /**
- * @file   seeder.cc
+ * @file test/support/test/compile_tdb_catch_main.cc
  *
  * @section LICENSE
  *
@@ -24,48 +24,11 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- * This file defines the seeder for the library-wide 64-bit RNG facility.
  */
 
-#include "tiledb/common/random/seeder.h"
+#include "../tdb_catch.h"
+#include "../tdb_catch_prng.h"
 
-namespace tiledb::common {
-
-/* ********************************* */
-/*                API                */
-/* ********************************* */
-
-Seeder& Seeder::get() {
-  static Seeder singleton;
-  return singleton;
+int main() {
+  return 0;
 }
-
-void Seeder::set_seed(uint64_t seed) {
-  std::lock_guard<std::mutex> lock(mtx_);
-
-  if (lifespan_state_ != 0) {
-    throw std::logic_error("[Seeder::set_seed] Seed has already been set.");
-  } else {
-    seed_ = seed;
-    lifespan_state_ = 1;
-  }
-}
-
-std::optional<uint64_t> Seeder::seed() {
-  std::lock_guard<std::mutex> lock(mtx_);
-
-  if (lifespan_state_ == 2) {
-    throw std::logic_error(
-        "[Seeder::seed] Seed can only be used once and has already been used.");
-  } else if (lifespan_state_ == 1) {
-    lifespan_state_ = 2;
-  }
-
-  // If seed is not yet set (lifespan_state_ == 0), this will return nullopt
-  return seed_;
-}
-
-}  // namespace tiledb::common

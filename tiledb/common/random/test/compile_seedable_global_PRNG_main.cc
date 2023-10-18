@@ -29,7 +29,10 @@
 #include "../prng.h"
 #include "../seeder.h"
 
+using namespace tiledb::common;
+
 int main() {
-  // #TODO
+  (void)PRNG::get();
+  (void)Seeder::get();
   return 0;
 }

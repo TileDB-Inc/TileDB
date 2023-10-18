@@ -62,9 +62,9 @@ uint64_t PRNG::operator()() {
 /* ********************************* */
 
 std::mt19937_64 PRNG::prng_initial() {
-  auto x{Seeder::get().seed()};
-  if (x.has_value()) {
-    return std::mt19937_64{x.value()};  // RVO
+  auto seed{Seeder::get().seed()};
+  if (seed.has_value()) {
+    return std::mt19937_64{seed.value()};  // RVO
   } else {
     return {};  // RVO
   }

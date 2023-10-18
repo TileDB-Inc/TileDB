@@ -1,5 +1,5 @@
 /**
- * @file   seeder.cc
+ * @file   tdb_catch_prng.h
  *
  * @section LICENSE
  *
@@ -27,45 +27,26 @@
  *
  * @section DESCRIPTION
  *
- * This file defines the seeder for the library-wide 64-bit RNG facility.
+ * This file declares a Catch2 hook to set a global random number.
  */
 
+#ifndef TILEDB_TDB_CATCH_PRNG_H
+#define TILEDB_TDB_CATCH_PRNG_H
+
+#include <test/support/tdb_catch.h>
+#include "tiledb/common/random/prng.h"
 #include "tiledb/common/random/seeder.h"
 
-namespace tiledb::common {
+using namespace tiledb::common;
 
-/* ********************************* */
-/*                API                */
-/* ********************************* */
+class testRunListener : public Catch::EventListenerBase {
+ public:
+  using Catch::EventListenerBase::EventListenerBase;
 
-Seeder& Seeder::get() {
-  static Seeder singleton;
-  return singleton;
-}
-
-void Seeder::set_seed(uint64_t seed) {
-  std::lock_guard<std::mutex> lock(mtx_);
-
-  if (lifespan_state_ != 0) {
-    throw std::logic_error("[Seeder::set_seed] Seed has already been set.");
-  } else {
-    seed_ = seed;
-    lifespan_state_ = 1;
+  void testRunStarting(Catch::TestRunInfo const&) override {
+    Seeder& seeder_ = Seeder::get();
+    seeder_.set_seed(Catch::rngSeed());
   }
-}
+};
 
-std::optional<uint64_t> Seeder::seed() {
-  std::lock_guard<std::mutex> lock(mtx_);
-
-  if (lifespan_state_ == 2) {
-    throw std::logic_error(
-        "[Seeder::seed] Seed can only be used once and has already been used.");
-  } else if (lifespan_state_ == 1) {
-    lifespan_state_ = 2;
-  }
-
-  // If seed is not yet set (lifespan_state_ == 0), this will return nullopt
-  return seed_;
-}
-
-}  // namespace tiledb::common
+#endif  //  TILEDB_TEST_SUPPORT_PRNG_H

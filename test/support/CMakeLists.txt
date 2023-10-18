@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -97,3 +97,20 @@ target_link_libraries(tiledb_test_support_lib
     TILEDB_CORE_OBJECTS_ILIB
     Catch2::Catch2
 )
+
+# tdb_catch object library
+include(common NO_POLICY_SCOPE)
+include(object_library)
+
+list(APPEND SOURCES
+  tdb_catch_prng.cc
+)
+gather_sources(${SOURCES})
+
+commence(object_library tdb_catch)
+  this_target_sources(${SOURCES})
+  this_target_link_libraries(Catch2::Catch2)
+  this_target_object_libraries(seedable_global_PRNG)
+conclude(object_library)
+
+add_test_subdirectory()

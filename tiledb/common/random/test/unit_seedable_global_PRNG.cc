@@ -79,16 +79,16 @@ TEST_CASE(
   // Set new seed
   seeder_.set_seed(0);
 
-  // Set seed again, after it's been set but not used (lifespan_state_ = 1)
-  seeder_.set_seed(1);
+  // Use seed, after it's been set but not used (lifespan_state_ = 1)
   CHECK(seeder_.seed().has_value());
+
+  // Try to set new seed
+  CHECK_THROWS_WITH(
+      seeder_.set_seed(1),
+      Catch::Matchers::ContainsSubstring("Seed has already been set"));
 
   // Try to use seed again
   CHECK_THROWS_WITH(
       seeder_.seed(),
-      Catch::Matchers::ContainsSubstring("Seed has already been used"));
-
-  // Set & retrieve new seed
-  seeder_.set_seed(2);
-  CHECK(seeder_.seed().has_value());
+      Catch::Matchers::ContainsSubstring("Seed can only be used once"));
 }
