@@ -73,7 +73,7 @@ T random(size_t max) {
 
   thread_local static std::uniform_int_distribution<size_t> distribution(
       0, max);
-  return distribution(generator);
+  return static_cast<T>(distribution(generator));
 }
 
 template <typename T>
