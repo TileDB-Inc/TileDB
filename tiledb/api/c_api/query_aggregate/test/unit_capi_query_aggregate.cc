@@ -292,6 +292,12 @@ TEST_CASE_METHOD(
           ctx, default_channel, "duplicate", tiledb_aggregate_count) ==
       TILEDB_ERR);
 
+  // Non-existent input field
+  CHECK(
+      tiledb_create_unary_aggregate(
+          ctx, query, tiledb_channel_operator_sum, "nonexistent", &operation) ==
+      TILEDB_ERR);
+
   // Clean up
   CHECK(tiledb_query_channel_free(ctx, &default_channel) == TILEDB_OK);
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);

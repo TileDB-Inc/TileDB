@@ -34,6 +34,7 @@
 #include "query_aggregate_api_external_experimental.h"
 #include "query_aggregate_api_internal.h"
 #include "tiledb/api/c_api/query/query_api_internal.h"
+#include "tiledb/api/c_api/query_field/query_field_api_external_experimental.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/type/apply_with_type.h"
 
@@ -199,6 +200,14 @@ capi_return_t tiledb_create_unary_aggregate(
   ensure_input_field_is_valid(input_field_name, op->name());
   std::string field_name(input_field_name);
   auto& schema = query->query_->array_schema();
+
+  // Getting the field errors if there is no input_field_name associated with
+  // the query
+  tiledb_query_field_t* field;
+  if (auto rv = tiledb_query_get_field(ctx, query, input_field_name, &field)) {
+    return rv;
+  }
+  tiledb_query_field_free(ctx, &field);
 
   auto fi = tiledb::sm::FieldInfo(
       field_name,

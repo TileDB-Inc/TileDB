@@ -105,33 +105,44 @@ void CPPAggregatesFx::create_array() {
 TEST_CASE_METHOD(
     CPPAggregatesFx,
     "CPP: Aggregates Query - Basic",
-    "[aggregates][query][basic]") {
+    "[aggregates][query][sum][basic]") {
   auto array = Array(ctx_, uri_, TILEDB_READ);
   Query query(ctx_, array);
   query.add_range("dim", 1, 5).set_layout(TILEDB_ROW_MAJOR);
 
   QueryChannel default_channel = QueryExperimental::get_default_channel(query);
   ChannelOperation operation =
-      QueryExperimental::create_unary_aggregate<SumOperator>(query, "att");
+      QueryExperimental::create_unary_aggregate<SumOperator>(query, "attr2");
   default_channel.apply_aggregate("Sum", operation);
 
   double sum = 0;
   uint64_t size = 8;
-  CHECK(query.ptr()->query_->set_data_buffer("Sum", &sum, &size).ok());
+
+  // TODO: use proper set_data_buffer c++ API
+  REQUIRE(query.ptr()->query_->set_data_buffer("Sum", &sum, &size).ok());
 
   REQUIRE(query.submit() == Query::Status::COMPLETE);
 
   CHECK(sum == 15);
+}
 
-  // QueryChannel default_channel =
-  // QueryExperimental::get_default_channel(query);
-  // default_channel.apply_aggregate("Count", CountOperation{});
+TEST_CASE_METHOD(
+    CPPAggregatesFx,
+    "CPP: Aggregates Query - Basic",
+    "[aggregates][query][count][basic]") {
+  auto array = Array(ctx_, uri_, TILEDB_READ);
+  Query query(ctx_, array);
+  query.add_range("dim", 1, 3).set_layout(TILEDB_ROW_MAJOR);
 
-  // uint64_t count = 0;
-  // uint64_t size = 8;
-  // CHECK(query.ptr()->query_->set_data_buffer("Count", &count, &size).ok());
+  QueryChannel default_channel = QueryExperimental::get_default_channel(query);
+  default_channel.apply_aggregate("Count", CountOperation{});
 
-  // REQUIRE(query.submit() == Query::Status::COMPLETE);
+  uint64_t count = 0;
+  uint64_t size = 8;
+  // TODO: use proper set_data_buffer c++ API
+  REQUIRE(query.ptr()->query_->set_data_buffer("Count", &count, &size).ok());
 
-  // CHECK(count == 5);
+  REQUIRE(query.submit() == Query::Status::COMPLETE);
+
+  CHECK(count == 3);
 }
