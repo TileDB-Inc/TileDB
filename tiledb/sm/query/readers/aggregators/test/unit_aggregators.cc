@@ -1167,32 +1167,32 @@ TEST_CASE(
     "[mean-aggregator][output_datatype]") {
   CHECK(
       MeanAggregator<int8_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
-          .output_datatype() == Datatype::INT64);
+          .output_datatype() == Datatype::FLOAT64);
   CHECK(
       MeanAggregator<uint8_t>{
           FieldInfo("a1", false, false, 1, Datatype::UINT64)}
-          .output_datatype() == Datatype::UINT64);
+          .output_datatype() == Datatype::FLOAT64);
   CHECK(
       MeanAggregator<int16_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
-          .output_datatype() == Datatype::INT64);
+          .output_datatype() == Datatype::FLOAT64);
   CHECK(
       MeanAggregator<uint16_t>{
           FieldInfo("a1", false, false, 1, Datatype::UINT64)}
-          .output_datatype() == Datatype::UINT64);
+          .output_datatype() == Datatype::FLOAT64);
   CHECK(
       MeanAggregator<int32_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
-          .output_datatype() == Datatype::INT64);
+          .output_datatype() == Datatype::FLOAT64);
   CHECK(
       MeanAggregator<uint32_t>{
           FieldInfo("a1", false, false, 1, Datatype::UINT64)}
-          .output_datatype() == Datatype::UINT64);
+          .output_datatype() == Datatype::FLOAT64);
   CHECK(
       MeanAggregator<int64_t>{FieldInfo("a1", false, false, 1, Datatype::INT64)}
-          .output_datatype() == Datatype::INT64);
+          .output_datatype() == Datatype::FLOAT64);
   CHECK(
       MeanAggregator<uint64_t>{
           FieldInfo("a1", false, false, 1, Datatype::UINT64)}
-          .output_datatype() == Datatype::UINT64);
+          .output_datatype() == Datatype::FLOAT64);
   CHECK(
       MeanAggregator<float>{FieldInfo("a1", false, false, 1, Datatype::FLOAT64)}
           .output_datatype() == Datatype::FLOAT64);
