@@ -7,7 +7,7 @@
   "supports": "!uwp",
   "dependencies": [
     "abseil",
-    "grpc",
+    "openssl",
     {
       "name": "vcpkg-cmake",
       "host": true
