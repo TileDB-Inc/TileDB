@@ -35,6 +35,7 @@
 #include "tiledb/api/c_api/datatype/datatype_api_external.h"
 #include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
+#include "tiledb/sm/misc/constants.h"
 
 tiledb_field_origin_t FieldFromDimension::origin() {
   return TILEDB_DIMENSION_FIELD;
@@ -65,8 +66,9 @@ tiledb_query_field_handle_t::tiledb_query_field_handle_t(
         query_->array_schema().dimension_ptr(field_name_)->cell_val_num();
   } else if (query_->is_aggregate(field_name_)) {
     field_origin_ = std::make_shared<FieldFromAggregate>();
-    type_ = query_->get_aggregate(field_name_).value()->output_datatype();
-    cell_val_num_ = 1;
+    auto aggregate = query_->get_aggregate(field_name_).value();
+    type_ = aggregate->output_datatype();
+    cell_val_num_ = aggregate->var_sized() ? tiledb::sm::constants::var_num : 1;
   } else {
     throw tiledb::api::CAPIStatusException("There is no field " + field_name_);
   }
