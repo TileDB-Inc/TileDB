@@ -41,6 +41,7 @@
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
+#include "tiledb/platform/platform.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
 #else
@@ -703,4 +704,86 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_array_free(&rarray);
   remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    QueryFx,
+    "C API: Test query write failure",
+    "[capi][query][write-failure]") {
+  // DenyWriteAccess is not supported on Windows.
+  if constexpr (tiledb::platform::is_os_windows)
+    return;
+  SupportedFsLocal local_fs;
+  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
+  std::string array_name = temp_dir + "write_failure";
+  create_temp_dir(temp_dir);
+
+  tiledb_ctx_t* ctx;
+  int rc;
+  {
+    tiledb_array_schema_t* schema;
+    tiledb_domain_t* domain;
+    tiledb_dimension_t* dim;
+    tiledb_attribute_t* attr;
+
+    rc = tiledb_ctx_alloc(nullptr, &ctx);
+    REQUIRE(rc == TILEDB_OK);
+
+    rc = tiledb_array_schema_alloc(ctx, TILEDB_DENSE, &schema);
+    REQUIRE(rc == TILEDB_OK);
+
+    rc = tiledb_domain_alloc(ctx, &domain);
+    REQUIRE(rc == TILEDB_OK);
+
+    int bounds[] = {0, 5};
+    int extent = 1;
+    rc = tiledb_dimension_alloc(ctx, "d1", TILEDB_INT32, bounds, &extent, &dim);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_domain_add_dimension(ctx, domain, dim);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_schema_set_domain(ctx, schema, domain);
+    REQUIRE(rc == TILEDB_OK);
+
+    rc = tiledb_attribute_alloc(ctx, "attr1", TILEDB_INT32, &attr);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_schema_add_attribute(ctx, schema, attr);
+    REQUIRE(rc == TILEDB_OK);
+
+    rc = tiledb_array_create(ctx, array_name.c_str(), schema);
+    REQUIRE(rc == TILEDB_OK);
+
+    tiledb_attribute_free(&attr);
+    tiledb_dimension_free(&dim);
+    tiledb_domain_free(&domain);
+    tiledb_array_schema_free(&schema);
+  }
+
+  {
+    DenyWriteAccess dwa{array_name};
+
+    tiledb_array_t* array;
+    tiledb_query_t* query;
+    rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
+
+    rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
+    REQUIRE(rc == TILEDB_OK);
+
+    tiledb_layout_t layout =
+        GENERATE(TILEDB_ROW_MAJOR, TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
+    rc = tiledb_query_set_layout(ctx, query, layout);
+    REQUIRE(rc == TILEDB_OK);
+    int data[] = {1, 2, 3, 4, 5};
+    uint64_t data_size = sizeof(data);
+    rc = tiledb_query_set_data_buffer(ctx, query, "attr1", data, &data_size);
+    REQUIRE(rc == TILEDB_OK);
+
+    rc = tiledb_query_submit(ctx, query);
+    REQUIRE(rc != TILEDB_OK);
+
+    tiledb_query_free(&query);
+    tiledb_array_free(&array);
+  }
+  tiledb_ctx_free(&ctx);
 }
