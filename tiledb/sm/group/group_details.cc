@@ -70,7 +70,7 @@ Status GroupDetails::clear() {
 
 void GroupDetails::add_member(const shared_ptr<GroupMember> group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
-  auto key = group_member->name_or_uri();
+  auto key = group_member->key();
   members_[key] = group_member;
   // Invalidate the lookup tables.
   members_by_name_.clear();
@@ -79,7 +79,7 @@ void GroupDetails::add_member(const shared_ptr<GroupMember> group_member) {
 
 void GroupDetails::delete_member(const shared_ptr<GroupMember> group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
-  members_.erase(group_member->name_or_uri());
+  members_.erase(group_member->key());
   // Invalidate the lookup tables.
   members_by_name_.clear();
   members_vec_.clear();
@@ -107,9 +107,9 @@ Status GroupDetails::mark_member_for_addition(
   auto group_member = tdb::make_shared<GroupMemberV2>(
       HERE(), group_member_uri, type, relative, name, false);
 
-  if (!member_keys_to_add_.insert(group_member->name_or_uri()).second) {
+  if (!member_keys_to_add_.insert(group_member->key()).second) {
     return Status_GroupError(
-        "Cannot add group member " + group_member->name_or_uri() +
+        "Cannot add group member " + group_member->key() +
         ", a member with the same name or URI has already been added.");
   }
 
@@ -118,13 +118,13 @@ Status GroupDetails::mark_member_for_addition(
   return Status::Ok();
 }
 
-Status GroupDetails::mark_member_for_removal(const std::string& name_or_uri) {
+Status GroupDetails::mark_member_for_removal(const std::string& name) {
   std::lock_guard<std::mutex> lck(mtx_);
 
-  auto it = members_.find(name_or_uri);
+  auto it = members_.find(name);
   if (it == members_.end()) {
     // try URI to see if we need to convert the local file to file://
-    it = members_.find(URI(name_or_uri).to_string());
+    it = members_.find(URI(name).to_string());
   }
   if (it != members_.end()) {
     auto member_to_delete = make_shared<GroupMemberV2>(
@@ -134,16 +134,15 @@ Status GroupDetails::mark_member_for_removal(const std::string& name_or_uri) {
         it->second->name(),
         true);
 
-    if (member_keys_to_add_.count(member_to_delete->name_or_uri()) != 0) {
+    if (member_keys_to_add_.count(member_to_delete->key()) != 0) {
       return Status_GroupError(
-          "Cannot remove group member " + member_to_delete->name_or_uri() +
+          "Cannot remove group member " + member_to_delete->key() +
           ", a member with the same name or URI has already been added.");
     }
 
-    if (!member_keys_to_delete_.insert(member_to_delete->name_or_uri())
-             .second) {
+    if (!member_keys_to_delete_.insert(member_to_delete->key()).second) {
       return Status_GroupError(
-          "Cannot remove group member " + member_to_delete->name_or_uri() +
+          "Cannot remove group member " + member_to_delete->key() +
           ", a member with the same name or URI has already been removed.");
     }
 
@@ -151,7 +150,7 @@ Status GroupDetails::mark_member_for_removal(const std::string& name_or_uri) {
     return Status::Ok();
   }
   return Status_GroupError(
-      "Cannot remove group member " + name_or_uri +
+      "Cannot remove group member " + name +
       ", member does not exist in group.");
 }
 

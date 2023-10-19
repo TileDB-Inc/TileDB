@@ -579,7 +579,7 @@ Status Group::mark_member_for_addition(
       group_member_uri, relative, name, storage_manager_);
 }
 
-Status Group::mark_member_for_removal(const std::string& name_or_uri) {
+Status Group::mark_member_for_removal(const std::string& name) {
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
@@ -595,7 +595,7 @@ Status Group::mark_member_for_removal(const std::string& name_or_uri) {
         "mode");
   }
 
-  return group_details_->mark_member_for_removal(name_or_uri);
+  return group_details_->mark_member_for_removal(name);
 }
 
 const std::vector<shared_ptr<GroupMember>>& Group::members_to_modify() const {

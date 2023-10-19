@@ -82,8 +82,13 @@ class GroupMember {
   /** Return the Name. */
   const std::optional<std::string> name() const;
 
-  /** Return the name or the URI if it does not exist. */
-  const std::string name_or_uri() const {
+  /**
+   * Return the discriminating key of the member within a group. No
+   * multiple members with the same key may exist in a group.
+   *
+   * This method returns the member's name, or its URI if it does not exist.
+   */
+  const std::string key() const {
     return name_ ? *name_ : uri_.to_string();
   }
 

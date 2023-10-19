@@ -75,7 +75,7 @@ Status GroupDetailsV1::apply_pending_changes() {
 
   // Remove members first
   for (const auto& member : members_to_modify_) {
-    auto key = member->name_or_uri();
+    auto key = member->key();
     if (member->deleted()) {
       members_.erase(key);
 
@@ -88,7 +88,7 @@ Status GroupDetailsV1::apply_pending_changes() {
         members_.erase(relative_uri);
       }
     } else {
-      members_.emplace(member->name_or_uri(), member);
+      members_.emplace(member->key(), member);
     }
   }
   changes_applied_ = !members_to_modify_.empty();

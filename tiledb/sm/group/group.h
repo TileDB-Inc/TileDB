@@ -254,11 +254,12 @@ class Group {
   /**
    * Remove a member from a group, this will be flushed to disk on close
    *
-   * @param name_or_uri name of member to remove, or URI if the member is
-   * unnamed.
+   * @param name Name of member to remove. If the member has no name,
+   * this parameter should be set to the URI of the member. In that case, only
+   * the unnamed member with the given URI will be removed.
    * @return Status
    */
-  Status mark_member_for_removal(const std::string& name_or_uri);
+  Status mark_member_for_removal(const std::string& name);
 
   /**
    * Get the vector of members to modify, used in serialization only
