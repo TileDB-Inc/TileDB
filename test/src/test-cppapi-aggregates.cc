@@ -1186,12 +1186,7 @@ TEST_CASE_METHOD(
           std::vector<uint8_t> a1(100 * cell_size);
           std::vector<uint8_t> a1_validity(100);
           query.set_layout(layout);
-          uint64_t count_data_size = sizeof(uint64_t);
-          // TODO: Change to real CPPAPI.
-          CHECK(query.ptr()
-                    ->query_
-                    ->set_data_buffer("Count", count.data(), &count_data_size)
-                    .ok());
+          query.set_data_buffer("Count", count);
 
           if (request_data) {
             query.set_data_buffer("d1", dim1);
@@ -1219,8 +1214,8 @@ TEST_CASE_METHOD(
             }
           }
 
-          // TODO: use 'std::get<1>(result_el["Count"]) == 1' once we use the
-          // set_data_buffer api.
+          auto result_el = query.result_buffer_elements_nullable();
+          CHECK(std::get<1>(result_el["Count"]) == 1);
           CHECK(count[0] == expected_count);
 
           if (request_data) {
@@ -1288,22 +1283,9 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
           std::vector<uint8_t> a1(100 * cell_size);
           std::vector<uint8_t> a1_validity(100);
           query.set_layout(layout);
-          uint64_t sum_data_size =
-              sizeof(typename tiledb::sm::sum_type_data<T>::sum_type);
-          // TODO: Change to real CPPAPI.
-          CHECK(query.ptr()
-                    ->query_->set_data_buffer("Sum", sum.data(), &sum_data_size)
-                    .ok());
-          uint64_t returned_validity_size = 1;
+          query.set_data_buffer("Sum", sum);
           if (CppAggregatesFx<T>::nullable_) {
-            // TODO: Change to real CPPAPI. Use set_validity_buffer from the
-            // internal query directly because the CPPAPI doesn't know what is
-            // an aggregate and what the size of an aggregate should be.
-            CHECK(query.ptr()
-                      ->query_
-                      ->set_validity_buffer(
-                          "Sum", sum_validity.data(), &returned_validity_size)
-                      .ok());
+            query.set_validity_buffer("Sum", sum_validity);
           }
 
           if (request_data) {
@@ -1352,8 +1334,8 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
             }
           }
 
-          // TODO: use 'std::get<1>(result_el["Sum"]) == 1' once we use the
-          // set_data_buffer api.
+          auto result_el = query.result_buffer_elements_nullable();
+          CHECK(std::get<1>(result_el["Sum"]) == 1);
           CHECK(sum[0] == expected_sum);
 
           if (request_data) {
@@ -1422,25 +1404,9 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
           std::vector<uint8_t> a1(100 * cell_size);
           std::vector<uint8_t> a1_validity(100);
           query.set_layout(layout);
-
-          // TODO: Change to real CPPAPI. Use set_data_buffer from the internal
-          // query directly because the CPPAPI doesn't know what is an aggregate
-          // and what the size of an aggregate should be.
-          uint64_t returned_mean_size = 8;
-          CHECK(query.ptr()
-                    ->query_
-                    ->set_data_buffer("Mean", &mean[0], &returned_mean_size)
-                    .ok());
-          uint64_t returned_validity_size = 1;
+          query.set_data_buffer("Mean", mean);
           if (CppAggregatesFx<T>::nullable_) {
-            // TODO: Change to real CPPAPI. Use set_validity_buffer from the
-            // internal query directly because the CPPAPI doesn't know what is
-            // an aggregate and what the size of an aggregate should be.
-            CHECK(query.ptr()
-                      ->query_
-                      ->set_validity_buffer(
-                          "Mean", mean_validity.data(), &returned_validity_size)
-                      .ok());
+            query.set_validity_buffer("Mean", mean_validity);
           }
 
           if (request_data) {
@@ -1492,9 +1458,8 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
             }
           }
 
-          // TODO: use 'std::get<1>(result_el["Mean"]) == 1' once we use
-          // the set_data_buffer api.
-          CHECK(returned_mean_size == 8);
+          auto result_el = query.result_buffer_elements_nullable();
+          CHECK(std::get<1>(result_el["Mean"]) == 1);
           CHECK(mean[0] == expected_mean);
 
           if (request_data) {
@@ -1578,26 +1543,9 @@ TEMPLATE_LIST_TEST_CASE(
           std::vector<uint8_t> a1(100 * cell_size);
           std::vector<uint8_t> a1_validity(100);
           query.set_layout(layout);
-
-          // TODO: Change to real CPPAPI. Use set_data_buffer and
-          // set_validity_buffer from the internal query directly because the
-          // CPPAPI doesn't know what is an aggregate and what the size of an
-          // aggregate should be.
-          uint64_t returned_min_max_size = cell_size;
-          uint64_t returned_validity_size = 1;
-          CHECK(query.ptr()
-                    ->query_
-                    ->set_data_buffer(
-                        "MinMax", min_max.data(), &returned_min_max_size)
-                    .ok());
+          query.set_data_buffer("MinMax", min_max.data(), min_max.size());
           if (fx.nullable_) {
-            CHECK(query.ptr()
-                      ->query_
-                      ->set_validity_buffer(
-                          "MinMax",
-                          min_max_validity.data(),
-                          &returned_validity_size)
-                      .ok());
+            query.set_validity_buffer("MinMax", min_max_validity);
           }
 
           if (request_data) {
@@ -1648,9 +1596,8 @@ TEMPLATE_LIST_TEST_CASE(
             }
           }
 
-          // TODO: use 'std::get<1>(result_el["MinMax"]) == 1' once we use the
-          // set_data_buffer api.
-          CHECK(returned_min_max_size == cell_size);
+          auto result_el = query.result_buffer_elements_nullable();
+          CHECK(std::get<1>(result_el["MinMax"]) == min_max.size());
           CHECK(min_max == expected_min_max);
 
           if (request_data) {
@@ -1695,7 +1642,11 @@ TEMPLATE_LIST_TEST_CASE(
           query.ptr()->query_->add_aggregator_to_default_channel(
               "MinMax",
               std::make_shared<AGG>(tiledb::sm::FieldInfo(
-                  "a1", true, fx.nullable_, TILEDB_VAR_NUM)));
+                  "a1",
+                  true,
+                  fx.nullable_,
+                  TILEDB_VAR_NUM,
+                  tiledb::sm::Datatype::STRING_ASCII)));
 
           fx.set_ranges_and_condition_if_needed(array, query, true);
 
@@ -1711,36 +1662,10 @@ TEMPLATE_LIST_TEST_CASE(
           a1_data.resize(100);
           std::vector<uint8_t> a1_validity(100);
           query.set_layout(layout);
-
-          // TODO: Change to real CPPAPI. Use set_data_buffer and
-          // set_validity_buffer from the internal query directly because the
-          // CPPAPI doesn't know what is an aggregate and what the size of an
-          // aggregate should be.
-          uint64_t returned_min_max_data_size = 10;
-          uint64_t returned_min_max_offsets_size = 8;
-          uint64_t returned_validity_size = 1;
-          CHECK(query.ptr()
-                    ->query_
-                    ->set_data_buffer(
-                        "MinMax",
-                        min_max_data.data(),
-                        &returned_min_max_data_size)
-                    .ok());
-          CHECK(query.ptr()
-                    ->query_
-                    ->set_offsets_buffer(
-                        "MinMax",
-                        min_max_offset.data(),
-                        &returned_min_max_offsets_size)
-                    .ok());
+          query.set_data_buffer("MinMax", min_max_data);
+          query.set_offsets_buffer("MinMax", min_max_offset);
           if (fx.nullable_) {
-            CHECK(query.ptr()
-                      ->query_
-                      ->set_validity_buffer(
-                          "MinMax",
-                          min_max_validity.data(),
-                          &returned_validity_size)
-                      .ok());
+            query.set_validity_buffer("MinMax", min_max_validity);
           }
 
           if (request_data) {
@@ -1789,17 +1714,15 @@ TEMPLATE_LIST_TEST_CASE(
             }
           }
 
-          // TODO: use 'std::get<1>(result_el["MinMax"]) == 1' once we use the
-          // set_data_buffer api.
-          CHECK(returned_min_max_offsets_size == 8);
-          CHECK(returned_min_max_data_size == expected_min_max.size());
+          auto result_el = query.result_buffer_elements_nullable();
+          CHECK(std::get<1>(result_el["MinMax"]) == expected_min_max.size());
+          CHECK(std::get<0>(result_el["MinMax"]) == 1);
 
           min_max_data.resize(expected_min_max.size());
           CHECK(min_max_data == expected_min_max);
           CHECK(min_max_offset[0] == 0);
 
           if (request_data) {
-            auto result_el = query.result_buffer_elements_nullable();
             a1_offsets[std::get<0>(result_el["a1"])] =
                 std::get<1>(result_el["a1"]);
             fx.validate_data_var(
@@ -1873,22 +1796,13 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
           uint64_t cell_size = std::is_same<T, std::string>::value ?
                                    CppAggregatesFx<T>::STRING_CELL_VAL_NUM :
                                    sizeof(T);
-          uint64_t null_count = 0;
+          std::vector<uint64_t> null_count(1);
           std::vector<uint64_t> dim1(100);
           std::vector<uint64_t> dim2(100);
           std::vector<uint8_t> a1(100 * cell_size);
           std::vector<uint8_t> a1_validity(100);
           query.set_layout(layout);
-
-          // TODO: Change to real CPPAPI. Use set_data_buffer from the internal
-          // query directly because the CPPAPI doesn't know what is an aggregate
-          // and what the size of an aggregate should be.
-          uint64_t returned_null_count_size = 8;
-          CHECK(query.ptr()
-                    ->query_
-                    ->set_data_buffer(
-                        "NullCount", &null_count, &returned_null_count_size)
-                    .ok());
+          query.set_data_buffer("NullCount", null_count);
 
           if (request_data) {
             query.set_data_buffer("d1", dim1);
@@ -1921,10 +1835,9 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
             }
           }
 
-          // TODO: use 'std::get<1>(result_el["NullCount"]) == 1' once we use
-          // the set_data_buffer api.
-          CHECK(returned_null_count_size == 8);
-          CHECK(null_count == expected_null_count);
+          auto result_el = query.result_buffer_elements_nullable();
+          CHECK(std::get<1>(result_el["NullCount"]) == 1);
+          CHECK(null_count[0] == expected_null_count);
 
           if (request_data) {
             CppAggregatesFx<T>::validate_data(
@@ -1972,7 +1885,7 @@ TEST_CASE_METHOD(
           set_ranges_and_condition_if_needed(array, query, true);
 
           // Set the data buffer for the aggregator.
-          uint64_t null_count = 0;
+          std::vector<uint64_t> null_count(1);
           std::vector<uint64_t> dim1(100);
           std::vector<uint64_t> dim2(100);
           std::vector<uint64_t> a1_offsets(100);
@@ -1980,17 +1893,7 @@ TEST_CASE_METHOD(
           a1_data.resize(100);
           std::vector<uint8_t> a1_validity(100);
           query.set_layout(layout);
-
-          // TODO: Change to real CPPAPI. Use set_data_buffer and
-          // set_validity_buffer from the internal query directly because the
-          // CPPAPI doesn't know what is an aggregate and what the size of an
-          // aggregate should be.
-          uint64_t returned_null_count_size = 8;
-          CHECK(query.ptr()
-                    ->query_
-                    ->set_data_buffer(
-                        "NullCount", &null_count, &returned_null_count_size)
-                    .ok());
+          query.set_data_buffer("NullCount", null_count);
 
           if (request_data) {
             query.set_data_buffer("d1", dim1);
@@ -2023,13 +1926,11 @@ TEST_CASE_METHOD(
             }
           }
 
-          // TODO: use 'std::get<1>(result_el["NullCount"]) == 1' once we use
-          // the set_data_buffer api.
-          CHECK(returned_null_count_size == 8);
-          CHECK(null_count == expected_null_count);
+          auto result_el = query.result_buffer_elements_nullable();
+          CHECK(std::get<1>(result_el["NullCount"]) == 1);
+          CHECK(null_count[0] == expected_null_count);
 
           if (request_data) {
-            auto result_el = query.result_buffer_elements_nullable();
             a1_offsets[std::get<0>(result_el["a1"])] =
                 std::get<1>(result_el["a1"]);
             validate_data_var(
@@ -2087,8 +1988,8 @@ TEST_CASE_METHOD(
         set_ranges_and_condition_if_needed(array, query, true);
 
         // Set the data buffer for the aggregator.
-        uint64_t null_count = 0;
-        uint64_t null_count2 = 0;
+        std::vector<uint64_t> null_count(1);
+        std::vector<uint64_t> null_count2(1);
         std::vector<uint64_t> dim1(100);
         std::vector<uint64_t> dim2(100);
         std::vector<uint64_t> a1_offsets(100);
@@ -2096,24 +1997,8 @@ TEST_CASE_METHOD(
         a1_data.resize(100);
         std::vector<uint8_t> a1_validity(100);
         query.set_layout(layout);
-
-        // TODO: Change to real CPPAPI. Use set_data_buffer and
-        // set_validity_buffer from the internal query directly because the
-        // CPPAPI doesn't know what is an aggregate and what the size of an
-        // aggregate should be.
-        uint64_t returned_null_count_size = 8;
-        CHECK(query.ptr()
-                  ->query_
-                  ->set_data_buffer(
-                      "NullCount", &null_count, &returned_null_count_size)
-                  .ok());
-
-        uint64_t returned_null_count_size2 = 8;
-        CHECK(query.ptr()
-                  ->query_
-                  ->set_data_buffer(
-                      "NullCount2", &null_count2, &returned_null_count_size2)
-                  .ok());
+        query.set_data_buffer("NullCount", null_count);
+        query.set_data_buffer("NullCount2", null_count2);
 
         // Here we run a few iterations until the query completes and update the
         // buffers as we go.
@@ -2180,13 +2065,12 @@ TEST_CASE_METHOD(
           }
         }
 
-        // TODO: use 'std::get<1>(result_el["NullCount"]) == 1' once we use
-        // the set_data_buffer api.
-        CHECK(returned_null_count_size == 8);
-        CHECK(null_count == expected_null_count);
+        auto result_el = query.result_buffer_elements_nullable();
+        CHECK(std::get<1>(result_el["NullCount"]) == 1);
+        CHECK(null_count[0] == expected_null_count);
 
-        CHECK(returned_null_count_size2 == 8);
-        CHECK(null_count2 == expected_null_count);
+        CHECK(std::get<1>(result_el["NullCount2"]) == 1);
+        CHECK(null_count2[0] == expected_null_count);
 
         validate_data_var(
             query, dim1, dim2, a1_data, a1_offsets, a1_validity, false);
@@ -2240,8 +2124,8 @@ TEST_CASE_METHOD(
         set_ranges_and_condition_if_needed(array, query, true);
 
         // Set the data buffer for the aggregator.
-        uint64_t null_count = 0;
-        uint64_t null_count2 = 0;
+        std::vector<uint64_t> null_count(1);
+        std::vector<uint64_t> null_count2(1);
         std::vector<uint64_t> dim1(100);
         std::vector<uint64_t> dim2(100);
         std::vector<uint64_t> a1_offsets(100);
@@ -2253,25 +2137,8 @@ TEST_CASE_METHOD(
         a2_data.resize(100);
         std::vector<uint8_t> a2_validity(100);
         query.set_layout(layout);
-
-        // TODO: Change to real CPPAPI. Use set_data_buffer and
-        // set_validity_buffer from the internal query directly because the
-        // CPPAPI doesn't know what is an aggregate and what the size of an
-        // aggregate should be.
-        uint64_t returned_null_count_size = 8;
-        CHECK(query.ptr()
-                  ->query_
-                  ->set_data_buffer(
-                      "NullCount", &null_count, &returned_null_count_size)
-                  .ok());
-
-        uint64_t returned_null_count_size2 = 8;
-        CHECK(query.ptr()
-                  ->query_
-                  ->set_data_buffer(
-                      "NullCount2", &null_count2, &returned_null_count_size2)
-                  .ok());
-
+        query.set_data_buffer("NullCount", null_count);
+        query.set_data_buffer("NullCount2", null_count2);
         query.set_data_buffer("d1", dim1.data(), 100);
         query.set_data_buffer("d2", dim2.data(), 100);
         query.set_data_buffer("a1", a1_data.data(), 100);
@@ -2343,27 +2210,10 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
         std::vector<uint8_t> a1(100 * cell_size);
         std::vector<uint8_t> a1_validity(100);
         query.set_layout(layout);
-        uint64_t count_data_size = sizeof(uint64_t);
-        uint64_t sum_data_size =
-            sizeof(typename tiledb::sm::sum_type_data<T>::sum_type);
-        // TODO: Change to real CPPAPI.
-        CHECK(query.ptr()
-                  ->query_
-                  ->set_data_buffer("Count", count.data(), &count_data_size)
-                  .ok());
-        CHECK(query.ptr()
-                  ->query_->set_data_buffer("Sum", sum.data(), &sum_data_size)
-                  .ok());
-        uint64_t returned_validity_size = 1;
+        query.set_data_buffer("Count", count);
+        query.set_data_buffer("Sum", sum);
         if (CppAggregatesFx<T>::nullable_) {
-          // TODO: Change to real CPPAPI. Use set_validity_buffer from the
-          // internal query directly because the CPPAPI doesn't know what is
-          // an aggregate and what the size of an aggregate should be.
-          CHECK(query.ptr()
-                    ->query_
-                    ->set_validity_buffer(
-                        "Sum", sum_validity.data(), &returned_validity_size)
-                    .ok());
+          query.set_validity_buffer("Sum", sum_validity);
         }
 
         // Here we run a few iterations until the query completes and update the
@@ -2452,12 +2302,11 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
           }
         }
 
-        // TODO: use 'std::get<1>(result_el["Count"]) == 1' once we use the
-        // set_data_buffer api.
+        auto result_el = query.result_buffer_elements_nullable();
+        CHECK(std::get<1>(result_el["Count"]) == 1);
         CHECK(count[0] == expected_count);
 
-        // TODO: use 'std::get<1>(result_el["Sum"]) == 1' once we use the
-        // set_data_buffer api.
+        CHECK(std::get<1>(result_el["Sum"]) == 1);
         CHECK(sum[0] == expected_sum);
 
         CppAggregatesFx<T>::validate_data(

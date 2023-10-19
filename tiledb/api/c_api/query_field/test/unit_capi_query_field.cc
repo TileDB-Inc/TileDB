@@ -123,10 +123,10 @@ void QueryFieldFx::create_sparse_array(const std::string& array_name) {
   uint64_t tile_extents[] = {2, 2};
   uint64_t dim_domain[] = {1, 10, 1, 10};
 
-  tiledb_dimension_t* d1;
+  tiledb_dimension_t* d1 = nullptr;
   throw_if_setup_failed(tiledb_dimension_alloc(
       ctx, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extents[0], &d1));
-  tiledb_dimension_t* d2;
+  tiledb_dimension_t* d2 = nullptr;
   throw_if_setup_failed(tiledb_dimension_alloc(
       ctx, "d2", TILEDB_UINT64, &dim_domain[2], &tile_extents[1], &d2));
 
@@ -137,23 +137,23 @@ void QueryFieldFx::create_sparse_array(const std::string& array_name) {
   throw_if_setup_failed(tiledb_domain_add_dimension(ctx, domain, d2));
 
   // Create attributes
-  tiledb_attribute_t* a;
+  tiledb_attribute_t* a = nullptr;
   throw_if_setup_failed(tiledb_attribute_alloc(ctx, "a", TILEDB_INT32, &a));
-  tiledb_attribute_t* b;
+  tiledb_attribute_t* b = nullptr;
   throw_if_setup_failed(tiledb_attribute_alloc(ctx, "b", TILEDB_INT32, &b));
-  tiledb_attribute_t* c;
+  tiledb_attribute_t* c = nullptr;
   throw_if_setup_failed(
       tiledb_attribute_alloc(ctx, "c", TILEDB_STRING_ASCII, &c));
   throw_if_setup_failed(
       tiledb_attribute_set_cell_val_num(ctx, c, TILEDB_VAR_NUM));
-  tiledb_attribute_t* d;
+  tiledb_attribute_t* d = nullptr;
   throw_if_setup_failed(
       tiledb_attribute_alloc(ctx, "d", TILEDB_STRING_UTF8, &d));
   throw_if_setup_failed(
       tiledb_attribute_set_cell_val_num(ctx, d, TILEDB_VAR_NUM));
 
   // Create array schema
-  tiledb_array_schema_t* array_schema;
+  tiledb_array_schema_t* array_schema = nullptr;
   throw_if_setup_failed(
       tiledb_array_schema_alloc(ctx, TILEDB_SPARSE, &array_schema));
   throw_if_setup_failed(
@@ -192,11 +192,13 @@ TEST_CASE_METHOD(
     QueryFieldFx,
     "C API: argument validation",
     "[capi][query_field][get][args]") {
-  tiledb_array_t* array;
+  tiledb_array_t* array = nullptr;
+  ;
   REQUIRE(tiledb_array_alloc(ctx, array_name().c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx, array, TILEDB_READ) == TILEDB_OK);
 
-  tiledb_query_t* query;
+  tiledb_query_t* query = nullptr;
+  ;
   REQUIRE(tiledb_query_alloc(ctx, array, TILEDB_READ, &query) == TILEDB_OK);
 
   tiledb_query_field_t* field = nullptr;
@@ -231,11 +233,13 @@ TEST_CASE_METHOD(
     QueryFieldFx,
     "C API: argument validation",
     "[capi][query_field][access][args]") {
-  tiledb_array_t* array;
+  tiledb_array_t* array = nullptr;
+  ;
   REQUIRE(tiledb_array_alloc(ctx, array_name().c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx, array, TILEDB_READ) == TILEDB_OK);
 
-  tiledb_query_t* query;
+  tiledb_query_t* query = nullptr;
+  ;
   REQUIRE(tiledb_query_alloc(ctx, array, TILEDB_READ, &query) == TILEDB_OK);
 
   tiledb_query_field_t* field = nullptr;
@@ -282,11 +286,11 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     QueryFieldFx, "C API: argument validation", "[capi][query_field]") {
-  tiledb_array_t* array;
+  tiledb_array_t* array = nullptr;
   REQUIRE(tiledb_array_alloc(ctx, array_name().c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx, array, TILEDB_READ) == TILEDB_OK);
 
-  tiledb_query_t* query;
+  tiledb_query_t* query = nullptr;
   REQUIRE(tiledb_query_alloc(ctx, array, TILEDB_READ, &query) == TILEDB_OK);
 
   REQUIRE(tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED) == TILEDB_OK);
@@ -313,9 +317,7 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
   CHECK(cell_val_num == 1);
 
-  // Let's at least test that this API actually gets the default channel.
-  // Default channel means all rows, let's count them. We will add more field
-  // specific tests when more functionality gets implemented for channels.
+  // Check field api works on aggregate field
   REQUIRE(tiledb_field_channel(ctx, field, &channel) == TILEDB_OK);
   REQUIRE(
       tiledb_channel_apply_aggregate(
@@ -328,6 +330,27 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_query_submit(ctx, query) == TILEDB_OK);
   CHECK(count == 9);
   CHECK(tiledb_query_channel_free(ctx, &channel) == TILEDB_OK);
+  CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
+
+  // Check field api works on timestamp field
+  REQUIRE(
+      tiledb_query_get_field(ctx, query, "__timestamps", &field) == TILEDB_OK);
+  REQUIRE(tiledb_field_datatype(ctx, field, &type) == TILEDB_OK);
+  CHECK(type == TILEDB_UINT64);
+  REQUIRE(tiledb_field_origin(ctx, field, &origin) == TILEDB_OK);
+  CHECK(origin == TILEDB_ATTRIBUTE_FIELD);
+  REQUIRE(tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
+  CHECK(cell_val_num == 1);
+  CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
+
+  // Check field api works on coords field
+  REQUIRE(tiledb_query_get_field(ctx, query, "__coords", &field) == TILEDB_OK);
+  REQUIRE(tiledb_field_datatype(ctx, field, &type) == TILEDB_OK);
+  CHECK(type == TILEDB_UINT64);
+  REQUIRE(tiledb_field_origin(ctx, field, &origin) == TILEDB_OK);
+  CHECK(origin == TILEDB_DIMENSION_FIELD);
+  REQUIRE(tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
+  CHECK(cell_val_num == 1);
   CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
 
   // Check field api works on attribute field

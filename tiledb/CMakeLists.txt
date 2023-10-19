@@ -596,8 +596,24 @@ endif()
 
 if (TILEDB_GCS)
   find_package(google_cloud_cpp_storage CONFIG REQUIRED)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE CURL::libcurl google-cloud-cpp::storage google-cloud-cpp::experimental-storage-grpc)
-  install_all_target_libs(google-cloud-cpp::storage)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE
+          google-cloud-cpp::storage
+          google-cloud-cpp::rest_internal
+          absl::str_format_internal
+          absl::strings
+          absl::strings_internal
+          absl::crc32c
+          absl::time
+          absl::time_zone
+          absl::crc_internal
+          absl::int128
+          absl::raw_logging_internal
+          google-cloud-cpp::common
+          CURL::libcurl
+          OpenSSL::Crypto
+          Crc32c::crc32c
+          )
+  install_all_target_libs("google-cloud-cpp::storage;google-cloud-cpp::rest_internal;absl::str_format_internal;absl::strings;absl::strings_internal;absl::crc32c;absl::time;absl::time_zone;absl::crc_internal;absl::int128;absl::raw_logging_internal;google-cloud-cpp::common;CURL::libcurl;OpenSSL::Crypto;Crc32c::crc32c")
 endif()
 
 # Libcurl
@@ -721,6 +737,10 @@ if (WIN32)
     # the AWSSDK does not include links to some transitive dependencies
     # ref: github<dot>com/aws<slash>aws-sdk-cpp/issues/1074#issuecomment-466252911
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE userenv ws2_32 wininet winhttp bcrypt ncrypt crypt32 version secur32)
+  endif()
+
+  if (TILEDB_GCS)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ws2_32 crypt32)
   endif()
 
   if (TILEDB_AZURE)
@@ -971,7 +991,17 @@ if (TILEDB_STATIC)
   append_dep_lib(LibLZMA::LibLZMA)
 
   append_dep_lib(google-cloud-cpp::storage)
-  append_dep_lib(google-cloud-cpp::experimental-storage-grpc)
+  append_dep_lib(google-cloud-cpp::common)
+  append_dep_lib(google-cloud-cpp::rest_internal)
+  append_dep_lib(absl::str_format_internal)
+  append_dep_lib(absl::strings)
+  append_dep_lib(absl::strings_internal)
+  append_dep_lib(absl::crc32c)
+  append_dep_lib(absl::time)
+  append_dep_lib(absl::time_zone)
+  append_dep_lib(absl::crc_internal)
+  append_dep_lib(absl::int128)
+  append_dep_lib(absl::raw_logging_internal)
 
   append_dep_lib(libmagic)
   append_dep_lib(unofficial::libmagic::libmagic)
