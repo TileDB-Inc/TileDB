@@ -34,7 +34,6 @@
 
 #ifndef TILEDB_SUM_TYPE_H
 #define TILEDB_SUM_TYPE_H
-
 namespace tiledb::sm {
 
 template <class T>
