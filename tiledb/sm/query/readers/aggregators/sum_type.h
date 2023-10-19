@@ -35,8 +35,6 @@
 #ifndef TILEDB_SUM_TYPE_H
 #define TILEDB_SUM_TYPE_H
 
-#include "tiledb/sm/query/readers/aggregators/field_info.h"
-
 namespace tiledb::sm {
 
 template <class T>

@@ -1968,8 +1968,10 @@ void allocate_query_buffers_server_side(
     bool var_size = false;
     bool nullable = false;
     if (query->query_->is_aggregate(name)) {
-      var_size = query->query_->get_aggregate(name).value()->var_sized();
-      nullable = query->query_->get_aggregate(name).value()->nullable();
+      var_size =
+          query->query_->get_aggregate(name).value()->aggregation_var_sized();
+      nullable =
+          query->query_->get_aggregate(name).value()->aggregation_nullable();
     } else {
       var_size = schema.var_size(name);
       nullable = schema.is_nullable(name);

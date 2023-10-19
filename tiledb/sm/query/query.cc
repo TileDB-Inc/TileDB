@@ -1060,7 +1060,8 @@ Status Query::set_data_buffer(
 
   // If this is an aggregate buffer, set it and return.
   if (is_aggregate(name)) {
-    const bool is_var = default_channel_aggregates_[name]->var_sized();
+    const bool is_var =
+        default_channel_aggregates_[name]->aggregation_var_sized();
     if (!is_var) {
       // Fixed size data buffer
       aggregate_buffers_[name].set_data_buffer(buffer, buffer_size);

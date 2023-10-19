@@ -138,12 +138,12 @@ class ComparatorAggregator : public ComparatorAggregatorBase<T>,
   }
 
   /** Returns if the aggregation is var sized or not. */
-  bool var_sized() override {
+  bool aggregation_var_sized() override {
     return ComparatorAggregatorBase<T>::field_info_.var_sized_;
   };
 
   /** Returns if the aggregation is nullable or not. */
-  bool nullable() override {
+  bool aggregation_nullable() override {
     return ComparatorAggregatorBase<T>::field_info_.is_nullable_;
   }
 

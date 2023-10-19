@@ -75,12 +75,12 @@ class SumAggregator : public InputFieldValidator,
   }
 
   /** Returns if the aggregation is var sized or not. */
-  bool var_sized() override {
+  bool aggregation_var_sized() override {
     return false;
   };
 
   /** Returns if the aggregation is nullable or not. */
-  bool nullable() override {
+  bool aggregation_nullable() override {
     return field_info_.is_nullable_;
   }
 

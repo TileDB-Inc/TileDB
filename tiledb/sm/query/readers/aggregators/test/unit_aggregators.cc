@@ -97,11 +97,11 @@ typedef tuple<
 TEMPLATE_LIST_TEST_CASE(
     "Aggregator: var sized", "[aggregator][var-sized]", AggUnderTest) {
   auto aggregator{make_aggregator<TestType>(FieldInfo("a1", false, true, 1))};
-  CHECK(aggregator.var_sized() == false);
+  CHECK(aggregator.aggregation_var_sized() == false);
 
   if constexpr (std::is_same<TestType, MinAggregator<uint8_t>>::value) {
     MinAggregator<std::string> aggregator2(FieldInfo("a1", true, false, 1));
-    CHECK(aggregator2.var_sized() == true);
+    CHECK(aggregator2.aggregation_var_sized() == true);
   }
 }
 

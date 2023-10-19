@@ -66,10 +66,10 @@ class IAggregator {
   virtual bool need_recompute_on_overflow() = 0;
 
   /** Returns if the aggregation is var sized or not. */
-  virtual bool var_sized() = 0;
+  virtual bool aggregation_var_sized() = 0;
 
   /** Returns if the aggregation is nullable or not. */
-  virtual bool nullable() = 0;
+  virtual bool aggregation_nullable() = 0;
 
   /**
    * Validate the result buffer.
