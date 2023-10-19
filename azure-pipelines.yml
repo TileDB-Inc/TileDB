@@ -60,13 +60,13 @@ stages:
         strategy:
           matrix:
             macOS:
-              imageName: 'macos-11'
+              imageName: 'macos-12'
               CXX: clang++
               ARTIFACT_OS: 'macos'
               ARTIFACT_ARCH: 'x86_64'
               CMAKE_OSX_ARCHITECTURES: "x86_64"
             macOS_arm64:
-              imageName: 'macos-11'
+              imageName: 'macos-12'
               CXX: clang++
               ARTIFACT_OS: 'macos'
               ARTIFACT_ARCH: 'arm64'
