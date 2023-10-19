@@ -110,7 +110,6 @@ stages:
             VS2019:
               imageName: 'windows-2019'
               # Only S3 variable is currently supported in bootstrap powershell
-              TILEDB_GCS: OFF
               TILEDB_HDFS: OFF
               ARTIFACT_OS: 'windows'
               ARTIFACT_ARCH: 'x86_64'

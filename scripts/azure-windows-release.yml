@@ -32,7 +32,7 @@ steps:
       $bootstrapOptions = "-EnableAzure " + $bootstrapOptions
     }
     if ($env:TILEDB_GCS -eq "ON") {
-      $bootstrapOptions = "-EnableGCS " + $bootstrapOptions
+      $bootstrapOptions = "-EnableGcs " + $bootstrapOptions
       #NOTE: GCS simulator not yet actually in place.
     }
     if ($env:TILEDB_SERIALIZATION -eq "ON") {
