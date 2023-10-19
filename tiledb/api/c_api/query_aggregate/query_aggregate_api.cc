@@ -195,6 +195,7 @@ capi_return_t tiledb_create_unary_aggregate(
     tiledb_channel_operation_t** operation) {
   ensure_aggregates_enabled_via_config(ctx);
   ensure_query_is_valid(query);
+  ensure_query_is_not_initialized(query);
   ensure_channel_operator_is_valid(op);
   ensure_output_pointer_is_valid(operation);
   ensure_input_field_is_valid(input_field_name, op->name());
@@ -229,6 +230,7 @@ capi_return_t tiledb_channel_apply_aggregate(
     const tiledb_channel_operation_t* operation) {
   ensure_aggregates_enabled_via_config(ctx);
   ensure_query_channel_is_valid(channel);
+  ensure_query_is_not_initialized(channel->query_);
   ensure_output_field_is_valid(output_field_name);
   ensure_operation_is_valid(operation);
   channel->add_aggregate(output_field_name, operation);

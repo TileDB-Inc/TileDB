@@ -675,10 +675,10 @@ struct TemporaryDirectoryFixture {
   /** Name of the temporary directory to use for this test */
   std::string temp_dir_;
 
- private:
   /** Virtual file system */
   tiledb_vfs_t* vfs_;
 
+ private:
   /** Vector of supported filesystems. Used to initialize ``vfs_``. */
   const std::vector<std::unique_ptr<SupportedFs>> supported_filesystems_;
 };

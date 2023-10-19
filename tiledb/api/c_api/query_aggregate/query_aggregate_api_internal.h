@@ -129,10 +129,8 @@ struct tiledb_query_channel_handle_t
    */
   static constexpr std::string_view object_type_name{"tiledb_query_channel_t"};
 
- private:
-  tiledb::sm::Query* query_;
-
  public:
+  tiledb::sm::Query* query_;
   /**
    * Default constructor doesn't make sense
    */

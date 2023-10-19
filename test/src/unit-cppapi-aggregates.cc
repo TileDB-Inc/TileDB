@@ -114,10 +114,7 @@ TEST_CASE_METHOD(
   default_channel.apply_aggregate("Sum", operation);
 
   double sum = 0;
-  uint64_t size = 8;
-
-  // TODO: use proper set_data_buffer c++ API
-  REQUIRE(query.ptr()->query_->set_data_buffer("Sum", &sum, &size).ok());
+  query.set_data_buffer("Sum", &sum, 1);
 
   REQUIRE(query.submit() == Query::Status::COMPLETE);
 
@@ -136,9 +133,7 @@ TEST_CASE_METHOD(
   default_channel.apply_aggregate("Count", CountOperation{});
 
   uint64_t count = 0;
-  uint64_t size = 8;
-  // TODO: use proper set_data_buffer c++ API
-  REQUIRE(query.ptr()->query_->set_data_buffer("Count", &count, &size).ok());
+  query.set_data_buffer("Count", &count, 1);
 
   REQUIRE(query.submit() == Query::Status::COMPLETE);
 
@@ -159,9 +154,7 @@ TEST_CASE_METHOD(
   default_channel.apply_aggregate("Min", operation);
 
   float min = 0;
-  uint64_t size = 4;
-  // TODO: use proper set_data_buffer c++ API
-  REQUIRE(query.ptr()->query_->set_data_buffer("Min", &min, &size).ok());
+  query.set_data_buffer("Min", &min, 1);
 
   REQUIRE(query.submit() == Query::Status::COMPLETE);
 
@@ -182,9 +175,7 @@ TEST_CASE_METHOD(
   default_channel.apply_aggregate("Max", operation);
 
   float max = 0;
-  uint64_t size = 4;
-  // TODO: use proper set_data_buffer c++ API
-  REQUIRE(query.ptr()->query_->set_data_buffer("Max", &max, &size).ok());
+  query.set_data_buffer("Max", &max, 1);
 
   REQUIRE(query.submit() == Query::Status::COMPLETE);
 
@@ -209,5 +200,13 @@ TEST_CASE_METHOD(
   // Duplicated output fields are not allowed
   CHECK_THROWS(default_channel.apply_aggregate("Sum", CountOperation{}));
 
-  // TODO: add lifetime test with >= INITIALIZED query
+  // Transition the query state
+  double sum = 0;
+  query.set_data_buffer("Sum", &sum, 1);
+  REQUIRE(query.submit() == Query::Status::COMPLETE);
+
+  // Check api throws if the query state is already >= initialized
+  CHECK_THROWS(
+      QueryExperimental::create_unary_aggregate<SumOperator>(query, "attr"));
+  CHECK_THROWS(default_channel.apply_aggregate("Something", CountOperation{}));
 }
