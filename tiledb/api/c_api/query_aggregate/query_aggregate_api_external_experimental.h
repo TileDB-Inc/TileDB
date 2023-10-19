@@ -51,6 +51,9 @@ typedef struct tiledb_channel_operator_handle_t tiledb_channel_operator_t;
 
 // Constant aggregate operator handles
 TILEDB_EXPORT extern const tiledb_channel_operator_t*
+    tiledb_channel_operator_count;
+
+TILEDB_EXPORT extern const tiledb_channel_operator_t*
     tiledb_channel_operator_sum;
 
 TILEDB_EXPORT extern const tiledb_channel_operator_t*
@@ -59,8 +62,23 @@ TILEDB_EXPORT extern const tiledb_channel_operator_t*
 TILEDB_EXPORT extern const tiledb_channel_operator_t*
     tiledb_channel_operator_max;
 
-// Constant aggregate operation handles
-TILEDB_EXPORT extern const tiledb_channel_operation_t* tiledb_aggregate_count;
+/**
+ * Helper function to acces the constant COUNT aggregate operation handle
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_channel_operator_t *operator_count;
+ * tiledb_channel_operator_count_get(ctx, &operator_count);
+ * tiledb_channel_operation_t* count;
+ * tiledb_create_nullary_aggregate(ctx, query, operator_count, count);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param op The operation handle to be retrieved
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_channel_operator_count_get(
+    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) TILEDB_NOEXCEPT;
 
 /**
  * Helper function to access the constant SUM channel operator handle
@@ -74,7 +92,7 @@ TILEDB_EXPORT extern const tiledb_channel_operation_t* tiledb_aggregate_count;
  * @endcode
  *
  * @param ctx The TileDB context
- * @param operator The operator handle to be retrieved
+ * @param op The operator handle to be retrieved
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_channel_operator_sum_get(
@@ -92,14 +110,14 @@ TILEDB_EXPORT int32_t tiledb_channel_operator_sum_get(
  * @endcode
  *
  * @param ctx The TileDB context
- * @param operator The operator handle to be retrieved
+ * @param op The operator handle to be retrieved
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_channel_operator_min_get(
     tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) TILEDB_NOEXCEPT;
 
 /**
- * Helper function to access the constant MAx channel operator handle
+ * Helper function to access the constant MAX channel operator handle
  * **Example:**
  *
  * @code{.c}
@@ -110,28 +128,11 @@ TILEDB_EXPORT int32_t tiledb_channel_operator_min_get(
  * @endcode
  *
  * @param ctx The TileDB context
- * @param operator The operator handle to be retrieved
+ * @param op The operator handle to be retrieved
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_channel_operator_max_get(
     tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) TILEDB_NOEXCEPT;
-
-/**
- * Helper function to acces the constant COUNT aggregate operation handle
- * **Example:**
- *
- * @code{.c}
- * tiledb_channel_operation_t* count_aggregate;
- * tiledb_aggregate_count_get(ctx, &count_aggregate);
- * @endcode
- *
- * @param ctx The TileDB context
- * @param operation The operation handle to be retrieved
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_aggregate_count_get(
-    tiledb_ctx_t* ctx,
-    const tiledb_channel_operation_t** operation) TILEDB_NOEXCEPT;
 
 /**
  * Gets the default channel of the query. The default channel consists of all
@@ -152,6 +153,28 @@ TILEDB_EXPORT int32_t tiledb_query_get_default_channel(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     tiledb_query_channel_t** channel) TILEDB_NOEXCEPT;
+
+/**
+ * Create a channel operation given an operator.
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_channel_operation_t* count;
+ * tiledb_create_nullary_aggregate(ctx, query, tiledb_aggregate_count, &count);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param query A TileDB query
+ * @param op The operator to be applied on an attribute
+ * @param input_field_name The attribute on which the operator will be applied
+ * @param operation The operation handle to be allocated
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_create_nullary_aggregate(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const tiledb_channel_operator_t* op,
+    tiledb_channel_operation_t** operation) TILEDB_NOEXCEPT;
 
 /**
  * Create a channel operation given an input field and an operator.

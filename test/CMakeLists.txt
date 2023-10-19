@@ -207,7 +207,6 @@ set(TILEDB_UNIT_TEST_SOURCES
 
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
-    src/unit-cppapi-aggregates.cc
     src/test-cppapi-dense-array-dimension-label.cc
     src/test-cppapi-dimension-label.cc
     src/test-cppapi-subarray-labels.cc

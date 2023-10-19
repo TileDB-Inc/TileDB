@@ -379,6 +379,36 @@ class QueryExperimental {
   }
 
   /**
+   * Create an aggregate operation that produces a single output
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * auto array = Array(ctx, uri, TILEDB_READ);
+   * Query query(ctx, array);
+   * query.add_range("dim", 1, 5)
+   * QueryChannel default_channel =
+   *    QueryExperimental::get_default_channel(query);
+   * ChannelOperation operation =
+   *    QueryExperimental::create_nullary_aggregate<CountOperator>(query);
+   * default_channel.apply_aggregate("Count", operation);
+   *
+   * uint64_t count = 0;
+   * uint64_t size = sizeof(uint64_t);
+   * query.set_data_buffer("Count", &count, &size)
+   * query.submit();
+   * @endcode
+   *
+   * @tparam Op The channel operator type
+   * @param query Query object.
+   * @return The aggregate operation
+   */
+  template <std::derived_from<ChannelOperator> Op>
+  static ChannelOperation create_nullary_aggregate(const Query& query) {
+    return ChannelOperation::create<Op>(query);
+  }
+
+  /**
    * Create an aggregate operation that operates on a single input field
    * and produces a single output
    *

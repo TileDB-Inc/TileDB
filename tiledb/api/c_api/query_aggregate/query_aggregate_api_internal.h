@@ -59,6 +59,11 @@ class Operation {
   }
 };
 
+class CountOperation : public Operation {
+ public:
+  explicit CountOperation();
+};
+
 class MinOperation : public Operation {
  public:
   MinOperation() = delete;
@@ -81,14 +86,6 @@ class SumOperation : public Operation {
   explicit SumOperation(
       const tiledb::sm::FieldInfo& fi,
       const tiledb_channel_operator_handle_t* op);
-};
-
-class CountOperation : public Operation {
- public:
-  // For nullary operations, default constructor makes sense
-  CountOperation() {
-    aggregator_ = std::make_shared<tiledb::sm::CountAggregator>();
-  }
 };
 
 struct tiledb_channel_operation_handle_t
@@ -131,6 +128,7 @@ struct tiledb_query_channel_handle_t
 
  public:
   tiledb::sm::Query* query_;
+
   /**
    * Default constructor doesn't make sense
    */

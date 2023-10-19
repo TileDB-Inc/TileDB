@@ -31,6 +31,7 @@
 
 int main() {
   tiledb_query_get_default_channel(nullptr, nullptr, nullptr);
+  tiledb_create_nullary_aggregate(nullptr, nullptr, nullptr, nullptr);
   tiledb_create_unary_aggregate(nullptr, nullptr, nullptr, nullptr, nullptr);
   tiledb_channel_apply_aggregate(nullptr, nullptr, nullptr, nullptr);
   (void)tiledb_channel_operator_sum;
