@@ -696,7 +696,9 @@ TEST_CASE_METHOD(
 
   auto enmr_path = schema->get_enumeration_path_name(enmr_name.value());
 
-  auto loaded = ad->load_enumerations_from_paths({enmr_path}, enc_key_);
+  MemoryTracker tracker;
+  auto loaded =
+      ad->load_enumerations_from_paths({enmr_path}, enc_key_, tracker);
   REQUIRE(loaded.size() == 1);
 
   auto enmr = loaded[0];
@@ -718,11 +720,46 @@ TEST_CASE_METHOD(
 
   auto schema = get_array_schema_latest();
   auto ad = get_array_directory();
+  MemoryTracker tracker;
 
   // Check that this function throws an exception when attempting to load
   // an unknown enumeration
-  REQUIRE_THROWS(
-      ad->load_enumerations_from_paths({"not_an_enumeration"}, enc_key_));
+  auto posix_matcher =
+      Catch::Matchers::ContainsSubstring("No such file or directory");
+  auto windows_matcher = Catch::Matchers::ContainsSubstring(
+      "The system cannot find the file specified.");
+  REQUIRE_THROWS_WITH(
+      ad->load_enumerations_from_paths({"unknown_enmr"}, enc_key_, tracker),
+      posix_matcher || windows_matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "ArrayDirectory - Load Enumeration Memory Limit Exceeded",
+    "[enumeration][array-directory][error]") {
+  create_array();
+
+  auto schema = get_array_schema_latest();
+  auto ad = get_array_directory();
+
+  auto enmr_name = schema->attribute("attr1")->get_enumeration_name();
+  auto enmr_path = schema->get_enumeration_path_name(enmr_name.value());
+
+  MemoryTracker tracker;
+  tracker.set_budget(1);
+
+  // Check that this function throws an exception when attempting to load
+  // an enumeration that exceeds the memory budget.
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Error loading enumeration; Insufficient memory budget;");
+  REQUIRE_THROWS_WITH(
+      ad->load_enumerations_from_paths({enmr_path}, enc_key_, tracker),
+      matcher);
+
+  // Check that the fix is to increase the memory budget.
+  tracker.set_budget(std::numeric_limits<uint64_t>::max());
+  REQUIRE_NOTHROW(
+      ad->load_enumerations_from_paths({enmr_path}, enc_key_, tracker));
 }
 
 /* ********************************* */

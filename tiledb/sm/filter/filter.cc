@@ -117,15 +117,11 @@ void Filter::serialize(Serializer& serializer) const {
   serialize_impl(serializer);
 }
 
-Status Filter::get_option_impl(FilterOption option, void* value) const {
-  (void)option;
-  (void)value;
+Status Filter::get_option_impl(FilterOption, void*) const {
   return LOG_STATUS(Status_FilterError("Filter does not support options."));
 }
 
-Status Filter::set_option_impl(FilterOption option, const void* value) {
-  (void)option;
-  (void)value;
+Status Filter::set_option_impl(FilterOption, const void*) {
   return LOG_STATUS(Status_FilterError("Filter does not support options."));
 }
 
@@ -136,12 +132,10 @@ FilterType Filter::type() const {
   return type_;
 }
 
-void Filter::init_compression_resource_pool(uint64_t size) {
-  (void)size;
+void Filter::init_compression_resource_pool(uint64_t) {
 }
 
-void Filter::init_decompression_resource_pool(uint64_t size) {
-  (void)size;
+void Filter::init_decompression_resource_pool(uint64_t) {
 }
 
 }  // namespace sm

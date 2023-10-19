@@ -37,11 +37,24 @@
 
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/field_info.h"
-#include "tiledb/sm/query/readers/aggregators/safe_sum.h"
+#include "tiledb/sm/query/readers/aggregators/no_op.h"
 
 namespace tiledb::sm {
 
+/** Convert type to a value type. **/
 template <typename T>
+struct type_data {
+  using type = T;
+  typedef T value_type;
+};
+
+template <>
+struct type_data<std::string> {
+  using type = std::string;
+  typedef std::string_view value_type;
+};
+
+template <typename T, typename AGG_T, class AggPolicy, class ValidityPolicy>
 class AggregateWithCount {
  public:
   /* ********************************* */
@@ -57,86 +70,75 @@ class AggregateWithCount {
   /* ********************************* */
 
   /**
-   * Add the sum of cells for the input data.
+   * Aggregate the input data.
    *
-   * @tparam SUM_T Sum type.
    * @tparam BITMAP_T Bitmap type.
-   * @tparam AggPolicy Aggregation policy.
-   * @param input_data Input data for the sum.
+   * @param input_data Input data for the aggregation.
    *
-   * @return {Sum for the cells, number of cells, optional validity value}.
+   * NOTE: Count of cells returned is used to infer the validity from the
+   * caller.
+   * @return {Aggregate value, count of cells}.
    */
-  template <typename SUM_T, typename BITMAP_T, class AggPolicy>
-  tuple<SUM_T, uint64_t, optional<uint8_t>> aggregate(
-      AggregateBuffer& input_data) {
-    SUM_T sum{0};
+  template <typename BITMAP_T>
+  tuple<AGG_T, uint64_t> aggregate(AggregateBuffer& input_data) {
+    AggPolicy agg_policy;
+    ValidityPolicy val_policy;
+    AGG_T res;
+    if constexpr (std::is_same<AGG_T, std::string_view>::value) {
+      res = "";
+    } else {
+      res = 0;
+    }
     uint64_t count{0};
-    optional<uint8_t> validity{nullopt};
-    auto values = input_data.fixed_data_as<T>();
 
     // Run different loops for bitmap versus no bitmap and nullable versus non
     // nullable. The bitmap tells us which cells was already filtered out by
     // ranges or query conditions.
     if (input_data.has_bitmap()) {
-      auto bitmap_values = input_data.bitmap_data_as<BITMAP_T>();
-
       if (field_info_.is_nullable_) {
-        validity = 0;
-        auto validity_values = input_data.validity_data();
-
-        // Process for nullable sums with bitmap.
-        for (uint64_t c = input_data.min_cell(); c < input_data.max_cell();
-             c++) {
-          if (validity_values[c] != 0 && bitmap_values[c] != 0) {
-            validity = 1;
-
-            auto value = static_cast<SUM_T>(values[c]);
-            for (BITMAP_T i = 0; i < bitmap_values[c]; i++) {
+        // Process for nullable values with bitmap.
+        for (uint64_t c = 0; c < input_data.size(); c++) {
+          auto bitmap_val = input_data.bitmap_at<BITMAP_T>(c);
+          if (val_policy.op(input_data.validity_at(c)) && bitmap_val != 0) {
+            auto value = value_at(input_data, c);
+            for (BITMAP_T i = 0; i < bitmap_val; i++) {
+              agg_policy.op(value, res, count);
               count++;
-              AggPolicy::op(value, sum);
             }
           }
         }
       } else {
-        // Process for non nullable sums with bitmap.
-        for (uint64_t c = input_data.min_cell(); c < input_data.max_cell();
-             c++) {
-          auto value = static_cast<SUM_T>(values[c]);
-
-          for (BITMAP_T i = 0; i < bitmap_values[c]; i++) {
+        // Process for non nullable values with bitmap.
+        for (uint64_t c = 0; c < input_data.size(); c++) {
+          auto bitmap_val = input_data.bitmap_at<BITMAP_T>(c);
+          auto value = value_at(input_data, c);
+          for (BITMAP_T i = 0; i < bitmap_val; i++) {
+            agg_policy.op(value, res, count);
             count++;
-            AggPolicy::op(value, sum);
           }
         }
       }
     } else {
       if (field_info_.is_nullable_) {
-        validity = 0;
-        auto validity_values = input_data.validity_data();
-
-        // Process for nullable sums with no bitmap.
-        for (uint64_t c = input_data.min_cell(); c < input_data.max_cell();
-             c++) {
-          if (validity_values[c] != 0) {
-            validity = 1;
-
-            auto value = static_cast<SUM_T>(values[c]);
+        // Process for nullable values with no bitmap.
+        for (uint64_t c = 0; c < input_data.size(); c++) {
+          if (val_policy.op(input_data.validity_at(c))) {
+            auto value = value_at(input_data, c);
+            agg_policy.op(value, res, count);
             count++;
-            AggPolicy::op(value, sum);
           }
         }
       } else {
-        // Process for non nullable sums with no bitmap.
-        for (uint64_t c = input_data.min_cell(); c < input_data.max_cell();
-             c++) {
-          auto value = static_cast<SUM_T>(values[c]);
+        // Process for non nullable values with no bitmap.
+        for (uint64_t c = 0; c < input_data.size(); c++) {
+          auto value = value_at(input_data, c);
+          agg_policy.op(value, res, count);
           count++;
-          AggPolicy::op(value, sum);
         }
       }
     }
 
-    return {sum, count, validity};
+    return {res, count};
   }
 
  private:
@@ -146,6 +148,26 @@ class AggregateWithCount {
 
   /** Field information. */
   const FieldInfo field_info_;
+
+  /* ********************************* */
+  /*           PRIVATE METHODS         */
+  /* ********************************* */
+
+  /**
+   * Returns the value at the specified cell if needed.
+   *
+   * @param input_data Input data.
+   * @param c Cell index.
+   * @return Value.
+   */
+  inline AGG_T value_at(AggregateBuffer& input_data, uint64_t c) {
+    typedef typename type_data<T>::value_type VALUE_T;
+    if constexpr (!std::is_same<AggPolicy, NoOp>::value) {
+      return input_data.value_at<VALUE_T>(c);
+    }
+
+    return AGG_T();
+  }
 };
 
 }  // namespace tiledb::sm

@@ -1802,6 +1802,212 @@ Status max_buffer_sizes_deserialize(
   return Status::Ok();
 }
 
+void load_array_schema_request_to_capnp(
+    capnp::LoadArraySchemaRequest::Builder& builder,
+    const Config& config,
+    const LoadArraySchemaRequest& req) {
+  auto config_builder = builder.initConfig();
+  throw_if_not_ok(config_to_capnp(config, &config_builder));
+  builder.setIncludeEnumerations(req.include_enumerations());
+}
+
+void serialize_load_array_schema_request(
+    const Config& config,
+    const LoadArraySchemaRequest& req,
+    SerializationType serialization_type,
+    Buffer& data) {
+  try {
+    ::capnp::MallocMessageBuilder message;
+    auto builder = message.initRoot<capnp::LoadArraySchemaRequest>();
+    load_array_schema_request_to_capnp(builder, config, req);
+
+    data.reset_size();
+    data.reset_offset();
+
+    switch (serialization_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        kj::String capnp_json = json.encode(builder);
+        const auto json_len = capnp_json.size();
+        const char nul = '\0';
+        // size does not include needed null terminator, so add +1
+        throw_if_not_ok(data.realloc(json_len + 1));
+        throw_if_not_ok(data.write(capnp_json.cStr(), json_len));
+        throw_if_not_ok(data.write(&nul, 1));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
+        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
+        const auto nbytes = message_chars.size();
+        throw_if_not_ok(data.realloc(nbytes));
+        throw_if_not_ok(data.write(message_chars.begin(), nbytes));
+        break;
+      }
+      default: {
+        throw Status_SerializationError(
+            "Error serializing load array schema request; "
+            "Unknown serialization type passed");
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    throw Status_SerializationError(
+        "Error serializing load array schema request; kj::Exception: " +
+        std::string(e.getDescription().cStr()));
+  } catch (std::exception& e) {
+    throw Status_SerializationError(
+        "Error serializing load array schema request; exception " +
+        std::string(e.what()));
+  }
+}
+
+LoadArraySchemaRequest load_array_schema_request_from_capnp(
+    capnp::LoadArraySchemaRequest::Reader& reader) {
+  return LoadArraySchemaRequest(reader.getIncludeEnumerations());
+}
+
+LoadArraySchemaRequest deserialize_load_array_schema_request(
+    SerializationType serialization_type, const Buffer& data) {
+  try {
+    switch (serialization_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        ::capnp::MallocMessageBuilder message_builder;
+        auto builder =
+            message_builder.initRoot<capnp::LoadArraySchemaRequest>();
+        json.decode(
+            kj::StringPtr(static_cast<const char*>(data.data())), builder);
+        auto reader = builder.asReader();
+        return load_array_schema_request_from_capnp(reader);
+      }
+      case SerializationType::CAPNP: {
+        const auto mBytes = reinterpret_cast<const kj::byte*>(data.data());
+        ::capnp::FlatArrayMessageReader message_reader(kj::arrayPtr(
+            reinterpret_cast<const ::capnp::word*>(mBytes),
+            data.size() / sizeof(::capnp::word)));
+        auto reader = message_reader.getRoot<capnp::LoadArraySchemaRequest>();
+        return load_array_schema_request_from_capnp(reader);
+      }
+      default: {
+        throw Status_SerializationError(
+            "Error deserializing load array schema request; "
+            "Unknown serialization type passed");
+      }
+    }
+  } catch (kj::Exception& e) {
+    throw Status_SerializationError(
+        "Error deserializing load array schema request; kj::Exception: " +
+        std::string(e.getDescription().cStr()));
+  } catch (std::exception& e) {
+    throw Status_SerializationError(
+        "Error deserializing load array schema request; exception " +
+        std::string(e.what()));
+  }
+}
+
+void load_array_schema_response_to_capnp(
+    capnp::LoadArraySchemaResponse::Builder& builder,
+    const ArraySchema& schema) {
+  auto schema_builder = builder.initSchema();
+  throw_if_not_ok(array_schema_to_capnp(schema, &schema_builder, false));
+}
+
+void serialize_load_array_schema_response(
+    const ArraySchema& schema,
+    SerializationType serialization_type,
+    Buffer& data) {
+  try {
+    ::capnp::MallocMessageBuilder message;
+    auto builder = message.initRoot<capnp::LoadArraySchemaResponse>();
+    load_array_schema_response_to_capnp(builder, schema);
+
+    data.reset_size();
+    data.reset_offset();
+
+    switch (serialization_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        kj::String capnp_json = json.encode(builder);
+        const auto json_len = capnp_json.size();
+        const char nul = '\0';
+        // size does not include needed null terminator, so add +1
+        throw_if_not_ok(data.realloc(json_len + 1));
+        throw_if_not_ok(data.write(capnp_json.cStr(), json_len));
+        throw_if_not_ok(data.write(&nul, 1));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
+        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
+        const auto nbytes = message_chars.size();
+        throw_if_not_ok(data.realloc(nbytes));
+        throw_if_not_ok(data.write(message_chars.begin(), nbytes));
+        break;
+      }
+      default: {
+        throw Status_SerializationError(
+            "Error serializing load array schema response; "
+            "Unknown serialization type passed");
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    throw Status_SerializationError(
+        "Error serializing load array schema response; kj::Exception: " +
+        std::string(e.getDescription().cStr()));
+  } catch (std::exception& e) {
+    throw Status_SerializationError(
+        "Error serializing load array schema response; exception " +
+        std::string(e.what()));
+  }
+}
+
+ArraySchema load_array_schema_response_from_capnp(
+    capnp::LoadArraySchemaResponse::Reader& reader) {
+  auto schema_reader = reader.getSchema();
+  return array_schema_from_capnp(schema_reader, URI());
+}
+
+ArraySchema deserialize_load_array_schema_response(
+    SerializationType serialization_type, const Buffer& data) {
+  try {
+    switch (serialization_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        ::capnp::MallocMessageBuilder message_builder;
+        auto builder =
+            message_builder.initRoot<capnp::LoadArraySchemaResponse>();
+        json.decode(
+            kj::StringPtr(static_cast<const char*>(data.data())), builder);
+        auto reader = builder.asReader();
+        return load_array_schema_response_from_capnp(reader);
+      }
+      case SerializationType::CAPNP: {
+        const auto mBytes = reinterpret_cast<const kj::byte*>(data.data());
+        ::capnp::FlatArrayMessageReader array_reader(kj::arrayPtr(
+            reinterpret_cast<const ::capnp::word*>(mBytes),
+            data.size() / sizeof(::capnp::word)));
+        auto reader = array_reader.getRoot<capnp::LoadArraySchemaResponse>();
+        return load_array_schema_response_from_capnp(reader);
+      }
+      default: {
+        throw Status_SerializationError(
+            "Error deserializing load array schema response; "
+            "Unknown serialization type passed");
+      }
+    }
+  } catch (kj::Exception& e) {
+    throw Status_SerializationError(
+        "Error deserializing load array schema response; kj::Exception: " +
+        std::string(e.getDescription().cStr()));
+  } catch (std::exception& e) {
+    throw Status_SerializationError(
+        "Error deserializing load array schema response; exception " +
+        std::string(e.what()));
+  }
+}
+
 #else
 
 Status array_schema_serialize(
@@ -1850,6 +2056,30 @@ Status max_buffer_sizes_deserialize(
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
+}
+
+void serialize_load_array_schema_request(
+    const Config&, const LoadArraySchemaRequest&, SerializationType, Buffer&) {
+  throw Status_SerializationError(
+      "Cannot serialize; serialization not enabled.");
+}
+
+LoadArraySchemaRequest deserialize_load_array_schema_request(
+    SerializationType, const Buffer&) {
+  throw Status_SerializationError(
+      "Cannot serialize; serialization not enabled.");
+}
+
+void serialize_load_array_schema_response(
+    const ArraySchema&, SerializationType, Buffer&) {
+  throw Status_SerializationError(
+      "Cannot serialize; serialization not enabled.");
+}
+
+ArraySchema deserialize_load_array_schema_response(
+    SerializationType, const Buffer&) {
+  throw Status_SerializationError(
+      "Cannot serialize; serialization not enabled.");
 }
 
 #endif  // TILEDB_SERIALIZATION

@@ -553,6 +553,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @param name Field to aggregate.
    * @param var_sized Is the field var sized?
    * @param nullable Is the field nullable?
+   * @param cell_size Cell size.
    * @param min_cell Min cell to aggregate.
    * @param min_cell Max cell to aggregate.
    * @param rt Result tile.
@@ -561,6 +562,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       const std::string name,
       const bool var_sized,
       const bool nullable,
+      const uint64_t cell_size,
       const uint64_t min_cell,
       const uint64_t max_cell,
       ResultTile& rt);

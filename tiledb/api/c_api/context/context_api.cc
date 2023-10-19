@@ -1,5 +1,5 @@
 /**
- * @file tiledb/api/c_api/error/context_api.cc
+ * @file tiledb/api/c_api/context/context_api.cc
  *
  * @section LICENSE
  *

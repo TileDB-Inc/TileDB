@@ -49,9 +49,6 @@ enum QueryChannelOperator {
   TILEDB_QUERY_CHANNEL_OPERATOR_MAX
 };
 
-void ensure_aggregate_numeric_field(
-    const tiledb_channel_operator_t* op, const tiledb::sm::FieldInfo& fi);
-
 class Operation {
  protected:
   shared_ptr<tiledb::sm::IAggregator> aggregator_;
@@ -205,27 +202,7 @@ struct tiledb_channel_operator_handle_t
       const tiledb::sm::FieldInfo& fi) const;
 };
 
-shared_ptr<Operation> tiledb_channel_operator_handle_t::make_operation(
-    const tiledb::sm::FieldInfo& fi) const {
-  switch (this->value()) {
-    case TILEDB_QUERY_CHANNEL_OPERATOR_SUM: {
-      return std::make_shared<SumOperation>(fi, this);
-    }
-    case TILEDB_QUERY_CHANNEL_OPERATOR_MIN: {
-      return std::make_shared<MinOperation>(fi, this);
-    }
-    case TILEDB_QUERY_CHANNEL_OPERATOR_MAX: {
-      return std::make_shared<MaxOperation>(fi, this);
-    }
-    default:
-      throw tiledb::api::CAPIStatusException(
-          "operator has unsupported value: " +
-          std::to_string(static_cast<uint8_t>(this->value())));
-      break;
-  }
-}
-
-void ensure_aggregate_numeric_field(
+inline void ensure_aggregate_numeric_field(
     const tiledb_channel_operator_t* op, const tiledb::sm::FieldInfo& fi) {
   if (fi.var_sized_) {
     throw tiledb::api::CAPIStatusException(

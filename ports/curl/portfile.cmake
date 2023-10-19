@@ -13,6 +13,7 @@ vcpkg_from_github(
         mbedtls-ws2_32.patch
         export-components.patch
         0023-fix-find-cares.patch
+        CVE-2023-38545_7.87.0.patch
 )
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS

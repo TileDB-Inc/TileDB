@@ -1552,3 +1552,41 @@ TEMPLATE_TEST_CASE(
   CHECK(std::distance(output.begin(), j) == static_cast<long>(rounds));
   CHECK(std::equal(input.begin(), i, output.begin()));
 }
+
+TEST_CASE("mimo_node: Verify various API approaches", "[segmented_mimo]") {
+  [[maybe_unused]] GeneralFunctionNode<
+      AsyncMover2,
+      std::tuple<size_t, int>,
+      AsyncMover3,
+      std::tuple<size_t, double>>
+      x{};
+  [[maybe_unused]] GeneralFunctionNode<
+      AsyncMover2,
+      std::tuple<int>,
+      AsyncMover3,
+      std::tuple<size_t, double>>
+      y{};
+  [[maybe_unused]] GeneralFunctionNode<
+      AsyncMover2,
+      std::tuple<char*>,
+      AsyncMover3,
+      std::tuple<size_t, std::tuple<int, float>>>
+      z{};
+  [[maybe_unused]] GeneralFunctionNode<
+      AsyncMover2,
+      std::tuple<int, char, double, double, double>,
+      AsyncMover3,
+      std::tuple<int>>
+      a{};
+}
+
+TEST_CASE(
+    "GeneralFunctionNode: Verify construction with simple function",
+    "[segmented_mimo]") {
+  [[maybe_unused]] GeneralFunctionNode<
+      AsyncMover2,
+      std::tuple<size_t>,
+      AsyncMover3,
+      std::tuple<size_t>>
+      x{[](std::tuple<size_t>, std::tuple<size_t>) {}};
+}

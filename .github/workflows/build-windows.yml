@@ -21,11 +21,10 @@ jobs:
       matrix:
         os: [windows-2019, windows-2022]
         #considering https://stackoverflow.com/questions/65035256/how-to-access-matrix-variables-in-github-actions
-        environ: [azure, s3, serialization]
+        environ: [azure, s3, gcs, serialization]
         include:
           - environ: 'azure'
             TILEDB_AZURE: ON
-            TILEDB_USE_CUSTOM_NODEJS: OFF
             TILEDB_ARROW_TESTS: ON
             TILEDB_SERIALIZATION: OFF
             TILEDB_S3: OFF
@@ -35,6 +34,13 @@ jobs:
             TILEDB_ARROW_TESTS: ON
             TILEDB_SERIALIZATION: OFF
             TILEDB_AZURE: OFF
+            TILEDB_WEBP: OFF
+          - environ: 'gcs'
+            TILEDB_GCS: ON
+            TILEDB_ARROW_TESTS: ON
+            TILEDB_SERIALIZATION: OFF
+            TILEDB_AZURE: OFF
+            TILEDB_S3: OFF
             TILEDB_WEBP: OFF
           - environ: 'serialization'
             TILEDB_S3: OFF
@@ -50,6 +56,7 @@ jobs:
       TILEDB_GA_IMAGE_NAME: ${{ matrix.os }}
       TILEDB_S3: ${{ matrix.TILEDB_S3 }}
       TILEDB_AZURE: ${{ matrix.TILEDB_AZURE }} #azure }}
+      TILEDB_GCS: ${{ matrix.TILEDB_GCS }} #gcs }}
       TILEDB_SERIALIZATION: ${{ matrix.TILEDB_SERIALIZATION }} #serialization }}
       TILEDB_ARROW_TESTS: ${{ matrix.TILEDB_ARROW_TESTS }}
       TILEDB_WEBP: ${{ matrix.TILEDB_WEBP }}
@@ -127,21 +134,23 @@ jobs:
           import os
 
           workspace = os.environ["GITHUB_WORKSPACE"]
-          triplets = os.path.join(workspace, "external", "vcpkg", "triplets")
+          triplet_paths = [os.path.join(workspace, "external", "vcpkg", "triplets"),
+                          os.path.join(workspace, "ports", "triplets")]
 
-          for path, dnames, fnames in os.walk(triplets):
-            for fname in fnames:
-              fname = os.path.join(path, fname)
-              print(fname)
-              with open(fname, "rb") as handle:
-                contents = handle.read()
-              # If a file is already patched we skip patching it again because
-              # this affects the hashes calculated by vcpkg for caching
-              if b"VCPKG_BUILD_TYPE release" in contents:
-                continue
-              contents += b"\nset(VCPKG_BUILD_TYPE release)\n"
-              with open(fname, "wb") as handle:
-                handle.write(contents)
+          for triplet_path in triplet_paths:
+            for path, dnames, fnames in os.walk(triplet_path):
+              for fname in fnames:
+                fname = os.path.join(path, fname)
+                print(fname)
+                with open(fname, "rb") as handle:
+                  contents = handle.read()
+                # If a file is already patched we skip patching it again because
+                # this affects the hashes calculated by vcpkg for caching
+                if b"VCPKG_BUILD_TYPE release" in contents:
+                  continue
+                contents += b"\nset(VCPKG_BUILD_TYPE release)\n"
+                with open(fname, "wb") as handle:
+                  handle.write(contents)
 
       - name: core tiledb windows build
         run: |
@@ -164,8 +173,7 @@ jobs:
             $bootstrapOptions = $bootstrapOptions + " -_EnableCrc32"
           }
           if ($env:TILEDB_GCS -eq "ON") {
-            $bootstrapOptions = "-EnableGCS " + $bootstrapOptions
-            #NOTE: GCS simulator not yet actually in place.
+            $bootstrapOptions = "-EnableGcs " + $bootstrapOptions
           }
           if ($env:TILEDB_SERIALIZATION -eq "ON") {
             $bootstrapOptions = "-EnableSerialization " + $bootstrapOptions
@@ -283,6 +291,10 @@ jobs:
             }
             Write-Host "look for 'node.exe' in following list:"
             tasklist | findstr /i node.exe
+          }
+
+          if ($env:TILEDB_GCS -eq "ON") {
+            & "$env:BUILD_SOURCESDIRECTORY\scripts\install-run-gcs-emu.ps1"
           }
 
           # Actually run tests

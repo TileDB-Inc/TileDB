@@ -58,6 +58,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/unique_rwlock.h"
 #include "tiledb/platform/platform.h"
+#include "tiledb/sm/config/config_iter.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
@@ -220,6 +221,71 @@ class S3Exception : public StatusException {
   explicit S3Exception(const std::string& message)
       : StatusException("S3", message) {
   }
+};
+
+S3Parameters::Headers S3Parameters::load_headers(const Config& cfg) {
+  Headers ret;
+  auto iter = ConfigIter(cfg, constants::s3_header_prefix);
+  for (; !iter.end(); iter.next()) {
+    auto key = iter.param();
+    if (key.size() == 0) {
+      continue;
+    }
+    ret[key] = iter.value();
+  }
+  return ret;
+}
+
+/**
+ * Helper class which overrides Aws::S3::S3Client to set headers from
+ * vfs.s3.custom_headers.*
+ *
+ * @note The AWS SDK does not have a common base class, so there's no
+ * straightforward way to add a header to a unique request before submitting
+ * it. This class exists solely to override the S3Client, adding custom headers
+ * upon building the Http Request.
+ */
+class TileDBS3Client : public Aws::S3::S3Client {
+ public:
+  TileDBS3Client(
+      const S3Parameters& s3_params,
+      const Aws::Client::ClientConfiguration& client_config,
+      Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy sign_payloads,
+      bool use_virtual_addressing)
+      : Aws::S3::S3Client(client_config, sign_payloads, use_virtual_addressing)
+      , params_(s3_params) {
+  }
+
+  TileDBS3Client(
+      const S3Parameters& s3_params,
+      const std::shared_ptr<Aws::Auth::AWSCredentialsProvider>& creds,
+      const Aws::Client::ClientConfiguration& client_config,
+      Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy sign_payloads,
+      bool use_virtual_addressing)
+      : Aws::S3::S3Client(
+            creds, client_config, sign_payloads, use_virtual_addressing)
+      , params_(s3_params) {
+  }
+
+  virtual void BuildHttpRequest(
+      const Aws::AmazonWebServiceRequest& request,
+      const std::shared_ptr<Aws::Http::HttpRequest>& httpRequest)
+      const override {
+    S3Client::BuildHttpRequest(request, httpRequest);
+
+    // Set header from S3Parameters custom headers
+    for (auto& [key, val] : params_.custom_headers_) {
+      httpRequest->SetHeaderValue(key, val);
+    }
+  }
+
+ protected:
+  /**
+   * A reference to the S3 configuration parameters, which stores the header.
+   *
+   * @note Until the removal of init_client(), this must be const-qualified.
+   */
+  const S3Parameters& params_;
 };
 
 /* ********************************* */
@@ -1490,16 +1556,17 @@ Status S3::init_client() const {
   static std::mutex static_client_init_mtx;
   {
     std::lock_guard<std::mutex> static_lck(static_client_init_mtx);
-
     if (credentials_provider_ == nullptr) {
-      client_ = make_shared<Aws::S3::S3Client>(
+      client_ = make_shared<TileDBS3Client>(
           HERE(),
+          s3_params_,
           *client_config_,
           Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
           s3_params_.use_virtual_addressing_);
     } else {
-      client_ = make_shared<Aws::S3::S3Client>(
+      client_ = make_shared<TileDBS3Client>(
           HERE(),
+          s3_params_,
           credentials_provider_,
           *client_config_,
           Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,

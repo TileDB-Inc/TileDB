@@ -1596,8 +1596,6 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
  */
 template <typename T>
 void test_apply(const Datatype type, bool var_size, bool nullable) {
-  (void)var_size;
-  (void)nullable;
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const T fill_value = 3;

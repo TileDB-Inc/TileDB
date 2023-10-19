@@ -799,7 +799,7 @@ int32_t tiledb_array_schema_get_attribute_from_name(
   std::string name_string(name);
   auto found_attr = array_schema->array_schema_->shared_attribute(name_string);
   if (!found_attr) {
-    throw CAPIStatusError(
+    throw CAPIException(
         std::string("Attribute name: ") +
         (name_string.empty() ? "<anonymous>" : name) +
         " does not exist for array " +
@@ -2470,7 +2470,7 @@ capi_return_t tiledb_array_delete_fragments_list(
 
   // Delete fragments list
   try {
-    array->array_->delete_fragments_list(uri, uris);
+    array->array_->delete_fragments_list(uris);
   } catch (...) {
     throw_if_not_ok(array->array_->close());
     delete array;
@@ -3468,11 +3468,8 @@ int32_t tiledb_deserialize_array(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side,
+    int32_t,
     tiledb_array_t** array) {
-  // Currently unused:
-  (void)client_side;
-
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3561,15 +3558,8 @@ int32_t tiledb_deserialize_array_schema(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side,
+    int32_t,
     tiledb_array_schema_t** array_schema) {
-  // Currently unused:
-  (void)client_side;
-
-  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
-
   api::ensure_buffer_is_valid(buffer);
 
   // Create array schema struct
@@ -3599,11 +3589,10 @@ int32_t tiledb_serialize_array_open(
     tiledb_ctx_t* ctx,
     const tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side,
+    int32_t,
     tiledb_buffer_t** buffer) {
   // Currently no different behaviour is required if array open is serialized by
   // the client or the Cloud server, so the variable is unused
-  (void)client_side;
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array) == TILEDB_ERR) {
@@ -3631,11 +3620,10 @@ int32_t tiledb_deserialize_array_open(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side,
+    int32_t,
     tiledb_array_t** array) {
   // Currently no different behaviour is required if array open is deserialized
-  // by the client or the Cloud server, so the variable is unused
-  (void)client_side;
+  // by the client or the Cloud server
 
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR) {
@@ -3726,11 +3714,8 @@ int32_t tiledb_deserialize_array_schema_evolution(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side,
+    int32_t,
     tiledb_array_schema_evolution_t** array_schema_evolution) {
-  // Currently unused:
-  (void)client_side;
-
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3909,11 +3894,8 @@ int32_t tiledb_serialize_array_nonempty_domain(
     const void* nonempty_domain,
     int32_t is_empty,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side,
+    int32_t,
     tiledb_buffer_t** buffer) {
-  // Currently unused:
-  (void)client_side;
-
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3942,12 +3924,9 @@ int32_t tiledb_deserialize_array_nonempty_domain(
     const tiledb_array_t* array,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side,
+    int32_t,
     void* nonempty_domain,
     int32_t* is_empty) {
-  // Currently unused:
-  (void)client_side;
-
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -3971,11 +3950,8 @@ int32_t tiledb_serialize_array_non_empty_domain_all_dimensions(
     tiledb_ctx_t* ctx,
     const tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side,
+    int32_t,
     tiledb_buffer_t** buffer) {
-  // Currently unused:
-  (void)client_side;
-
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -4002,10 +3978,7 @@ int32_t tiledb_deserialize_array_non_empty_domain_all_dimensions(
     tiledb_array_t* array,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side) {
-  // Currently unused:
-  (void)client_side;
-
+    int32_t) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -4049,111 +4022,57 @@ int32_t tiledb_serialize_array_max_buffer_sizes(
   return TILEDB_OK;
 }
 
-capi_return_t tiledb_deserialize_array_delete_fragments_timestamps_request(
+capi_return_t tiledb_handle_array_delete_fragments_timestamps_request(
     tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
-    const tiledb_buffer_t* buffer) {
-  api::ensure_buffer_is_valid(buffer);
+    const tiledb_buffer_t* request) {
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
+    throw std::invalid_argument("Array paramter must be valid.");
+  }
+
+  api::ensure_buffer_is_valid(request);
 
   // Deserialize buffer
-  auto [uri_str, timestamp_start, timestamp_end] =
-      tiledb::sm::serialization::fragments_timestamps_deserialize(
-          (tiledb::sm::SerializationType)serialize_type, buffer->buffer());
-
-  auto uri = tiledb::sm::URI(uri_str);
-  if (uri.is_invalid()) {
-    throw api::CAPIStatusException(
-        "Failed to delete fragments; Invalid input uri");
-  }
-
-  // Allocate an array object
-  tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
-  try {
-    array->array_ =
-        make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
-  } catch (...) {
-    delete array;
-    array = nullptr;
-    throw api::CAPIStatusException("Failed to create array");
-  }
-
-  // Set array open timestamps
-  array->array_->set_timestamp_start(timestamp_start);
-  array->array_->set_timestamp_end(timestamp_end);
-
-  // Open the array for exclusive modification
-  throw_if_not_ok(array->array_->open(
-      static_cast<tiledb::sm::QueryType>(TILEDB_MODIFY_EXCLUSIVE),
-      static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
-      nullptr,
-      0));
+  auto [timestamp_start, timestamp_end] = tiledb::sm::serialization::
+      deserialize_delete_fragments_timestamps_request(
+          (tiledb::sm::SerializationType)serialize_type, request->buffer());
 
   // Delete fragments
   try {
-    array->array_->delete_fragments(uri, timestamp_start, timestamp_end);
+    array->array_->delete_fragments(
+        array->array_->array_uri(), timestamp_start, timestamp_end);
   } catch (...) {
-    throw_if_not_ok(array->array_->close());
-    delete array;
-    array = nullptr;
     throw api::CAPIStatusException("Failed to delete fragments");
   }
-
-  // Close and delete the array
-  throw_if_not_ok(array->array_->close());
-  delete array;
-  array = nullptr;
 
   return TILEDB_OK;
 }
 
-capi_return_t tiledb_deserialize_array_delete_fragments_list_request(
+capi_return_t tiledb_handle_array_delete_fragments_list_request(
     tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
-    const tiledb_buffer_t* buffer) {
-  api::ensure_buffer_is_valid(buffer);
+    const tiledb_buffer_t* request) {
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
+    throw std::invalid_argument("Array paramter must be valid.");
+  }
+
+  api::ensure_buffer_is_valid(request);
 
   // Deserialize buffer
-  auto [uri_str, uris] = tiledb::sm::serialization::fragments_list_deserialize(
-      (tiledb::sm::SerializationType)serialize_type, buffer->buffer());
-
-  auto uri = tiledb::sm::URI(uri_str);
-  if (uri.is_invalid()) {
-    throw api::CAPIStatusException(
-        "Failed to delete_fragments_list; Invalid input uri");
-  }
-
-  // Allocate an array object
-  tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
-  try {
-    array->array_ =
-        make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
-  } catch (...) {
-    delete array;
-    array = nullptr;
-    throw api::CAPIStatusException("Failed to create array");
-  }
-
-  // Open the array for exclusive modification
-  throw_if_not_ok(array->array_->open(
-      static_cast<tiledb::sm::QueryType>(TILEDB_MODIFY_EXCLUSIVE),
-      static_cast<tiledb::sm::EncryptionType>(TILEDB_NO_ENCRYPTION),
-      nullptr,
-      0));
+  auto uris =
+      tiledb::sm::serialization::deserialize_delete_fragments_list_request(
+          array->array_->array_uri(),
+          (tiledb::sm::SerializationType)serialize_type,
+          request->buffer());
 
   // Delete fragments list
   try {
-    array->array_->delete_fragments_list(uri, uris);
+    array->array_->delete_fragments_list(uris);
   } catch (...) {
-    throw_if_not_ok(array->array_->close());
-    delete array;
-    array = nullptr;
     throw api::CAPIStatusException("Failed to delete fragments_list");
   }
-
-  // Close and delete the array
-  throw_if_not_ok(array->array_->close());
-  delete array;
-  array = nullptr;
 
   return TILEDB_OK;
 }
@@ -4323,11 +4242,11 @@ int32_t tiledb_serialize_fragment_info_request(
     tiledb_ctx_t* ctx,
     const tiledb_fragment_info_t* fragment_info,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side,
+    int32_t,
     tiledb_buffer_t** buffer) {
   // Currently no different behaviour is required if fragment info request is
-  // serialized by the client or the Cloud server, so the variable is unused
-  (void)client_side;
+  // serialized by the client or the Cloud server
+
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, fragment_info) == TILEDB_ERR) {
@@ -4355,11 +4274,10 @@ int32_t tiledb_deserialize_fragment_info_request(
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side,
+    int32_t,
     tiledb_fragment_info_t* fragment_info) {
   // Currently no different behaviour is required if fragment info request is
-  // serialized by the client or the Cloud server, so the variable is unused
-  (void)client_side;
+  // serialized by the client or the Cloud server
 
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
@@ -4417,11 +4335,10 @@ int32_t tiledb_deserialize_fragment_info(
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     const char* array_uri,
-    int32_t client_side,
+    int32_t,
     tiledb_fragment_info_t* fragment_info) {
   // Currently no different behaviour is required if fragment info is
-  // deserialized by the client or the Cloud server, so the variable is unused
-  (void)client_side;
+  // deserialized by the client or the Cloud server
 
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR ||
@@ -4450,6 +4367,36 @@ int32_t tiledb_deserialize_fragment_info(
               buffer->buffer()))) {
     return TILEDB_ERR;
   }
+
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_handle_load_array_schema_request(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_serialization_type_t serialization_type,
+    const tiledb_buffer_t* request,
+    tiledb_buffer_t* response) {
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
+    throw std::invalid_argument("Array paramter must be valid.");
+  }
+
+  api::ensure_buffer_is_valid(request);
+  api::ensure_buffer_is_valid(response);
+
+  auto load_schema_req =
+      tiledb::sm::serialization::deserialize_load_array_schema_request(
+          static_cast<tiledb::sm::SerializationType>(serialization_type),
+          request->buffer());
+
+  if (load_schema_req.include_enumerations()) {
+    array->array_->load_all_enumerations();
+  }
+
+  tiledb::sm::serialization::serialize_load_array_schema_response(
+      array->array_->array_schema_latest(),
+      static_cast<tiledb::sm::SerializationType>(serialization_type),
+      response->buffer());
 
   return TILEDB_OK;
 }
@@ -7032,23 +6979,24 @@ int32_t tiledb_serialize_array_max_buffer_sizes(
       ctx, array, subarray, serialize_type, buffer);
 }
 
-capi_return_t tiledb_deserialize_array_delete_fragments_timestamps_request(
+capi_return_t tiledb_handle_array_delete_fragments_timestamps_request(
     tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
-    const tiledb_buffer_t* buffer) noexcept {
+    const tiledb_buffer_t* request) noexcept {
   return api_entry<
-      tiledb::api::
-          tiledb_deserialize_array_delete_fragments_timestamps_request>(
-      ctx, serialize_type, buffer);
+      tiledb::api::tiledb_handle_array_delete_fragments_timestamps_request>(
+      ctx, array, serialize_type, request);
 }
 
-capi_return_t tiledb_deserialize_array_delete_fragments_list_request(
+capi_return_t tiledb_handle_array_delete_fragments_list_request(
     tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
-    const tiledb_buffer_t* buffer) noexcept {
+    const tiledb_buffer_t* request) noexcept {
   return api_entry<
-      tiledb::api::tiledb_deserialize_array_delete_fragments_list_request>(
-      ctx, serialize_type, buffer);
+      tiledb::api::tiledb_handle_array_delete_fragments_list_request>(
+      ctx, array, serialize_type, request);
 }
 
 int32_t tiledb_serialize_array_metadata(
@@ -7148,6 +7096,16 @@ int32_t tiledb_deserialize_fragment_info(
     tiledb_fragment_info_t* fragment_info) noexcept {
   return api_entry<tiledb::api::tiledb_deserialize_fragment_info>(
       ctx, buffer, serialize_type, array_uri, client_side, fragment_info);
+}
+
+capi_return_t tiledb_handle_load_array_schema_request(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_serialization_type_t serialization_type,
+    const tiledb_buffer_t* request,
+    tiledb_buffer_t* response) noexcept {
+  return api_entry<tiledb::api::tiledb_handle_load_array_schema_request>(
+      ctx, array, serialization_type, request, response);
 }
 
 capi_return_t tiledb_handle_load_enumerations_request(

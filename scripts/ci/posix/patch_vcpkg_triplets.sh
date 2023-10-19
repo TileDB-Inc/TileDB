@@ -29,7 +29,7 @@
 # they're restored by run-vcpkg. While re-patching is harmless, it breaks
 # run-vcpkg's caching because it changes the generated package hashes.
 
-TRIPLETS="${GITHUB_WORKSPACE}/external/vcpkg/triplets"
+TRIPLETS="${GITHUB_WORKSPACE}/external/vcpkg/triplets ${GITHUB_WORKSPACE}/ports/triplets"
 
 find $TRIPLETS -type f -maxdepth 1 | xargs grep -q "VCPKG_BUILD_TYPE release"
 if [ $? -ne 0 ]

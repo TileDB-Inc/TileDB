@@ -62,13 +62,7 @@ GroupMetaConsolidator::GroupMetaConsolidator(
 /* ****************************** */
 
 Status GroupMetaConsolidator::consolidate(
-    const char* group_name,
-    EncryptionType encryption_type,
-    const void* encryption_key,
-    uint32_t key_length) {
-  (void)encryption_type;
-  (void)encryption_key;
-  (void)key_length;
+    const char* group_name, EncryptionType, const void*, uint32_t) {
   auto timer_se = stats_->start_timer("consolidate_group_meta");
 
   check_array_uri(group_name);

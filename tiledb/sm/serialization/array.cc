@@ -133,7 +133,7 @@ Status array_to_capnp(
   // want to serialized a query object TileDB >= 2.5 no longer needs to send the
   // array URI
   if (!array->array_uri_serialized().to_string().empty()) {
-    array_builder->setUri(array->array_uri_serialized());
+    array_builder->setUri(array->array_uri_serialized().to_string());
   }
   array_builder->setStartTimestamp(array->timestamp_start());
   array_builder->setEndTimestamp(array->timestamp_end());

@@ -256,7 +256,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/count_aggregator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/mean_aggregator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/min_max_aggregator.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/null_count_aggregator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/output_buffer_validator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/safe_sum.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/sum_aggregator.cc
@@ -592,32 +591,26 @@ if (TILEDB_AZURE)
   endif()
 endif()
 
-# GCS dependencies
 if (TILEDB_GCS)
-  if (TILEDB_VCPKG)
-    find_package(google_cloud_cpp_storage CONFIG REQUIRED)
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE google-cloud-cpp::storage)
-    install_all_target_libs(google-cloud-cpp::storage)
-  else()
-    message(STATUS "The TileDB library is compiled with GCS support.")
-    find_package(GCSSDK_EP REQUIRED COMPONENTS gcs)
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-      INTERFACE
-         storage_client
-    )
-
-    # work around for GCS finding the shared version of zlib: we will see the ZLIB::ZLIB
-    # transitive linkage later, and we can use the correct version there.
-    unset(ZLIB_FOUND)
-    unset(ZLIB_LIBRARIES)
-    unset(ZLIB_INCLUDE_DIR)
-
-    get_target_property(_GCS_INTERFACE_LIBS storage_client INTERFACE_LINK_LIBRARIES)
-    if ("ZLIB::ZLIB" IN_LIST _GCS_INTERFACE_LIBS)
-      list(REMOVE_ITEM _GCS_INTERFACE_LIBS "ZLIB::ZLIB")
-      set_property(TARGET storage_client PROPERTY INTERFACE_LINK_LIBRARIES "${_GCS_INTERFACE_LIBS}")
-    endif()
-  endif()
+  find_package(google_cloud_cpp_storage CONFIG REQUIRED)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE
+          google-cloud-cpp::storage
+          google-cloud-cpp::rest_internal
+          absl::str_format_internal
+          absl::strings
+          absl::strings_internal
+          absl::crc32c
+          absl::time
+          absl::time_zone
+          absl::crc_internal
+          absl::int128
+          absl::raw_logging_internal
+          google-cloud-cpp::common
+          CURL::libcurl
+          OpenSSL::Crypto
+          Crc32c::crc32c
+          )
+  install_all_target_libs("google-cloud-cpp::storage;google-cloud-cpp::rest_internal;absl::str_format_internal;absl::strings;absl::strings_internal;absl::crc32c;absl::time;absl::time_zone;absl::crc_internal;absl::int128;absl::raw_logging_internal;google-cloud-cpp::common;CURL::libcurl;OpenSSL::Crypto;Crc32c::crc32c")
 endif()
 
 # Libcurl
@@ -741,6 +734,10 @@ if (WIN32)
     # the AWSSDK does not include links to some transitive dependencies
     # ref: github<dot>com/aws<slash>aws-sdk-cpp/issues/1074#issuecomment-466252911
     target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE userenv ws2_32 wininet winhttp bcrypt ncrypt crypt32 version secur32)
+  endif()
+
+  if (TILEDB_GCS)
+    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ws2_32 crypt32)
   endif()
 
   if (TILEDB_AZURE)
@@ -879,18 +876,12 @@ if(TILEDB_SERIALIZATION)
           CapnProto::kj
           )
 
-  if (WIN32)
-    set(TILEDB_SERIALIZATION_GENERATED_SUBDIR win32)
-  else()
-    set(TILEDB_SERIALIZATION_GENERATED_SUBDIR posix)
-  endif()
-
   target_sources(TILEDB_CORE_OBJECTS PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/${TILEDB_SERIALIZATION_GENERATED_SUBDIR}/tiledb-rest.capnp.c++
+    ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp.c++
   )
   if (WIN32 AND TILEDB_STATIC)
     target_sources(TILEDB_CORE_OBJECTS_STATIC PRIVATE
-      ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/${TILEDB_SERIALIZATION_GENERATED_SUBDIR}/tiledb-rest.capnp.c++
+      ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp.c++
     )
   endif()
 
@@ -902,7 +893,7 @@ if(TILEDB_SERIALIZATION)
   # support. It must be re-run whenever `tiledb-rest.capnp` is updated.
 
   set(TILEDB_SERIALIZATION_GENERATED_DIR
-      ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/${TILEDB_SERIALIZATION_GENERATED_SUBDIR})
+      ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization)
 
   # We only need to override the include path and PATH env for EP builds
   # note: We run the compiler under `cmake -E env ...` because we need to run capnp executable
@@ -997,7 +988,17 @@ if (TILEDB_STATIC)
   append_dep_lib(LibLZMA::LibLZMA)
 
   append_dep_lib(google-cloud-cpp::storage)
-  append_dep_lib(google-cloud-cpp::experimental-storage-grpc)
+  append_dep_lib(google-cloud-cpp::common)
+  append_dep_lib(google-cloud-cpp::rest_internal)
+  append_dep_lib(absl::str_format_internal)
+  append_dep_lib(absl::strings)
+  append_dep_lib(absl::strings_internal)
+  append_dep_lib(absl::crc32c)
+  append_dep_lib(absl::time)
+  append_dep_lib(absl::time_zone)
+  append_dep_lib(absl::crc_internal)
+  append_dep_lib(absl::int128)
+  append_dep_lib(absl::raw_logging_internal)
 
   append_dep_lib(libmagic)
   append_dep_lib(unofficial::libmagic::libmagic)

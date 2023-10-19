@@ -479,7 +479,6 @@ Status Query::finalize() {
 
   RETURN_NOT_OK(strategy_->finalize());
 
-  copy_aggregates_data_to_user_buffer();
   status_ = QueryStatus::COMPLETED;
   return Status::Ok();
 }
@@ -1136,6 +1135,15 @@ Status Query::set_data_buffer(
   }
 
   return Status::Ok();
+}
+
+std::optional<shared_ptr<IAggregator>> Query::get_aggregate(
+    std::string output_field_name) const {
+  auto it = default_channel_aggregates_.find(output_field_name);
+  if (it == default_channel_aggregates_.end()) {
+    return nullopt;
+  }
+  return it->second;
 }
 
 Status Query::set_offsets_buffer(

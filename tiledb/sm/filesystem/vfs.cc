@@ -291,7 +291,6 @@ Status VFS::create_bucket(const URI& uri) const {
 #ifdef HAVE_S3
     return s3_.create_bucket(uri);
 #else
-    (void)uri;
     return LOG_STATUS(Status_VFSError(std::string("S3 is not supported")));
 #endif
   }
@@ -299,7 +298,6 @@ Status VFS::create_bucket(const URI& uri) const {
 #ifdef HAVE_AZURE
     return azure_.create_container(uri);
 #else
-    (void)uri;
     return LOG_STATUS(Status_VFSError(std::string("Azure is not supported")));
 #endif
   }
@@ -307,7 +305,6 @@ Status VFS::create_bucket(const URI& uri) const {
 #ifdef HAVE_GCS
     return gcs_.create_bucket(uri);
 #else
-    (void)uri;
     return LOG_STATUS(Status_VFSError(std::string("GCS is not supported")));
 #endif
   }
@@ -321,7 +318,6 @@ Status VFS::remove_bucket(const URI& uri) const {
 #ifdef HAVE_S3
     return s3_.remove_bucket(uri);
 #else
-    (void)uri;
     return LOG_STATUS(Status_VFSError(std::string("S3 is not supported")));
 #endif
   }
@@ -329,7 +325,6 @@ Status VFS::remove_bucket(const URI& uri) const {
 #ifdef HAVE_AZURE
     return azure_.remove_container(uri);
 #else
-    (void)uri;
     return LOG_STATUS(Status_VFSError(std::string("Azure is not supported")));
 #endif
   }
@@ -337,7 +332,6 @@ Status VFS::remove_bucket(const URI& uri) const {
 #ifdef HAVE_GCS
     return gcs_.remove_bucket(uri);
 #else
-    (void)uri;
     return LOG_STATUS(Status_VFSError(std::string("GCS is not supported")));
 #endif
   }
@@ -351,7 +345,6 @@ Status VFS::empty_bucket(const URI& uri) const {
 #ifdef HAVE_S3
     return s3_.empty_bucket(uri);
 #else
-    (void)uri;
     return LOG_STATUS(Status_VFSError(std::string("S3 is not supported")));
 #endif
   }
@@ -359,7 +352,6 @@ Status VFS::empty_bucket(const URI& uri) const {
 #ifdef HAVE_AZURE
     return azure_.empty_container(uri);
 #else
-    (void)uri;
     return LOG_STATUS(Status_VFSError(std::string("Azure is not supported")));
 #endif
   }
@@ -367,7 +359,6 @@ Status VFS::empty_bucket(const URI& uri) const {
 #ifdef HAVE_GCS
     return gcs_.empty_bucket(uri);
 #else
-    (void)uri;
     return LOG_STATUS(Status_VFSError(std::string("GCS is not supported")));
 #endif
   }
@@ -376,13 +367,12 @@ Status VFS::empty_bucket(const URI& uri) const {
       uri.to_string()));
 }
 
-Status VFS::is_empty_bucket(const URI& uri, bool* is_empty) const {
+Status VFS::is_empty_bucket(
+    const URI& uri, [[maybe_unused]] bool* is_empty) const {
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     return s3_.is_empty_bucket(uri, is_empty);
 #else
-    (void)uri;
-    (void)is_empty;
     return LOG_STATUS(Status_VFSError(std::string("S3 is not supported")));
 #endif
   }
@@ -390,8 +380,6 @@ Status VFS::is_empty_bucket(const URI& uri, bool* is_empty) const {
 #ifdef HAVE_AZURE
     return azure_.is_empty_container(uri, is_empty);
 #else
-    (void)uri;
-    (void)is_empty;
     return LOG_STATUS(Status_VFSError(std::string("Azure is not supported")));
 #endif
   }
@@ -399,8 +387,6 @@ Status VFS::is_empty_bucket(const URI& uri, bool* is_empty) const {
 #ifdef HAVE_GCS
     return gcs_.is_empty_bucket(uri, is_empty);
 #else
-    (void)uri;
-    (void)is_empty;
     return LOG_STATUS(Status_VFSError(std::string("GCS is not supported")));
 #endif
   }
@@ -1209,13 +1195,12 @@ Status VFS::read_impl(
     const uint64_t offset,
     void* const buffer,
     const uint64_t nbytes,
-    const bool use_read_ahead) {
+    [[maybe_unused]] const bool use_read_ahead) {
   stats_->add_counter("read_ops_num", 1);
+  log_read(uri, offset, nbytes);
 
   // We only check to use the read-ahead cache for cloud-storage
-  // backends. No-op the `use_read_ahead` to prevent the unused
-  // variable compiler warning.
-  (void)use_read_ahead;
+  // backends.
 
   if (uri.is_file()) {
 #ifdef _WIN32
@@ -1528,11 +1513,9 @@ Status VFS::write(
     const URI& uri,
     const void* buffer,
     uint64_t buffer_size,
-    bool remote_global_order_write) {
+    [[maybe_unused]] bool remote_global_order_write) {
   stats_->add_counter("write_byte_num", buffer_size);
   stats_->add_counter("write_ops_num", 1);
-
-  (void)remote_global_order_write;
 
   if (uri.is_file()) {
 #ifdef _WIN32
@@ -1642,8 +1625,7 @@ VFS::multipart_upload_state(const URI& uri) {
 }
 
 Status VFS::set_multipart_upload_state(
-    const URI& uri, const MultiPartUploadState& state) {
-  (void)state;
+    const URI& uri, [[maybe_unused]] const MultiPartUploadState& state) {
   if (uri.is_file()) {
     return Status::Ok();
   } else if (uri.is_s3()) {
@@ -1705,6 +1687,52 @@ Status VFS::flush_multipart_file_buffer(const URI& uri) {
   }
 
   return Status::Ok();
+}
+
+void VFS::log_read(const URI& uri, uint64_t offset, uint64_t nbytes) {
+  std::string read_to_log;
+  switch (vfs_params_.read_logging_mode_) {
+    case VFSParameters::ReadLoggingMode::DISABLED: {
+      return;
+    }
+    case VFSParameters::ReadLoggingMode::FRAGMENTS: {
+      auto fragment_name = uri.get_fragment_name();
+      if (!fragment_name.has_value()) {
+        return;
+      }
+      read_to_log = fragment_name.value().to_string();
+      break;
+    }
+    case VFSParameters::ReadLoggingMode::FRAGMENT_FILES: {
+      if (!uri.get_fragment_name().has_value()) {
+        return;
+      }
+      read_to_log = uri.to_string();
+      break;
+    }
+    case VFSParameters::ReadLoggingMode::ALL_FILES: {
+      read_to_log = uri.to_string();
+      break;
+    }
+    case VFSParameters::ReadLoggingMode::ALL_READS:
+    case VFSParameters::ReadLoggingMode::ALL_READS_ALWAYS: {
+      read_to_log = uri.to_string() + ":offset:" + std::to_string(offset) +
+                    ":nbytes:" + std::to_string(nbytes);
+      break;
+    }
+    default:
+      return;
+  }
+
+  if (vfs_params_.read_logging_mode_ !=
+      VFSParameters::ReadLoggingMode::ALL_READS_ALWAYS) {
+    if (reads_logged_.find(read_to_log) != reads_logged_.end()) {
+      return;
+    }
+    reads_logged_.insert(read_to_log);
+  }
+
+  LOG_INFO("VFS Read: " + read_to_log);
 }
 
 }  // namespace tiledb::sm

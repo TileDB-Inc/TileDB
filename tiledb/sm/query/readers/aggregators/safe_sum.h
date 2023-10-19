@@ -38,7 +38,7 @@
 
 namespace tiledb::sm {
 
-class SafeSum {
+struct SafeSum {
  public:
   /**
    * Sum function that prevent wrap arounds on overflow.
@@ -47,7 +47,7 @@ class SafeSum {
    * @param sum Computed sum.
    */
   template <typename SUM_T>
-  static void op(SUM_T value, SUM_T& sum);
+  void op(SUM_T value, SUM_T& sum, uint64_t);
 
   /**
    * Sum function for atomics that prevent wrap arounds on overflow.
@@ -56,7 +56,7 @@ class SafeSum {
    * @param sum Computed sum.
    */
   template <typename SUM_T>
-  static void safe_sum(SUM_T value, std::atomic<SUM_T>& sum) {
+  void safe_sum(SUM_T value, std::atomic<SUM_T>& sum) {
     // Start by saving the current sum value from the atomic to operate on in
     // 'cur_sum'. Then compute the new sum in 'new_sum'.
     // std::atomic_compare_exchange_weak will only update the value and return
@@ -65,7 +65,7 @@ class SafeSum {
     SUM_T new_sum;
     do {
       new_sum = cur_sum = sum;
-      op(value, new_sum);
+      op(value, new_sum, true);
     } while (!std::atomic_compare_exchange_weak(&sum, &cur_sum, new_sum));
   }
 };

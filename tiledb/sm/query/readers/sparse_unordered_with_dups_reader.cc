@@ -1874,6 +1874,7 @@ SparseUnorderedWithDupsReader<BitmapType>::make_aggregate_buffer(
     const std::string name,
     const bool var_sized,
     const bool nullable,
+    const uint64_t cell_size,
     const bool count_bitmap,
     const uint64_t min_cell,
     const uint64_t max_cell,
@@ -1894,7 +1895,8 @@ SparseUnorderedWithDupsReader<BitmapType>::make_aggregate_buffer(
                  nullopt,
       count_bitmap,
       rt.bitmap().data() != nullptr ? std::make_optional(rt.bitmap().data()) :
-                                      nullopt);
+                                      nullopt,
+      cell_size);
 }
 
 template <class BitmapType>
@@ -1907,10 +1909,12 @@ void SparseUnorderedWithDupsReader<BitmapType>::process_aggregates(
 
   bool var_sized = false;
   bool nullable = false;
+  unsigned cell_val_num = 0;
 
   if (name != constants::count_of_rows) {
     var_sized = array_schema_.var_size(name);
     nullable = array_schema_.is_nullable(name);
+    cell_val_num = array_schema_.cell_val_num(name);
   }
 
   const bool count_bitmap = std::is_same<BitmapType, uint64_t>::value;
@@ -1951,6 +1955,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::process_aggregates(
             name,
             var_sized,
             nullable,
+            cell_val_num,
             count_bitmap,
             src_min_pos,
             src_max_pos,

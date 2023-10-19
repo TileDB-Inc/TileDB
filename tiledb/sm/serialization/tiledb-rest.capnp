@@ -1200,14 +1200,22 @@ struct BufferedChunk {
 }
 
 struct ArrayDeleteFragmentsListRequest {
-  uri @0 :Text;
+  config @0 :Config;
+  # Config
+
   entries @1 :List(Text);
+  # Fragment list to delete
 }
 
 struct ArrayDeleteFragmentsTimestampsRequest {
-  uri @0 :Text;
+  config @0 :Config;
+  # Config
+
   startTimestamp @1 :UInt64;
+  # Start timestamp for the delete
+
   endTimestamp @2 :UInt64;
+  # End timestamp for the delete
 }
 
 struct ArrayConsolidationRequest {
@@ -1231,4 +1239,17 @@ struct LoadEnumerationsRequest {
 struct LoadEnumerationsResponse {
   enumerations @0 :List(Enumeration);
   # The loaded enumerations
+}
+
+struct LoadArraySchemaRequest {
+  config @0 :Config;
+  # Config
+
+  includeEnumerations @1 :Bool;
+  # When true, include all enumeration data in the returned ArraySchema
+}
+
+struct LoadArraySchemaResponse {
+  schema @0 :ArraySchema;
+  # The loaded ArraySchema
 }

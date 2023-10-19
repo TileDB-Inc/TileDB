@@ -224,6 +224,29 @@ TEST_CASE("URI: Test REST components", "[uri]") {
   CHECK(!URI("tiledb:///").get_rest_components(&ns, &array).ok());
 }
 
+TEST_CASE("URI: Test get_fragment_name", "[uri][get_fragment_name]") {
+  std::vector<std::pair<URI, std::optional<URI>>> cases = {
+      {URI("a randomish string"), std::nullopt},
+      {URI("file:///array_name"), std::nullopt},
+      {URI("file:///array_name/__schema/__t1_t2_uuid_version"), std::nullopt},
+      {URI("file:///array_name/__fragment_metadata/something_here"),
+       std::nullopt},
+      {URI("file:///array_name/__fragments/"), std::nullopt},
+      {URI("/__fragments//"), std::nullopt},
+      {URI("file:///array_name/__fragments//"), std::nullopt},
+      {URI("file:///array_name/__fragments/a"),
+       URI("file:///array_name/__fragments/a")},
+      {URI("file:///array_name/__fragments/a/b"),
+       URI("file:///array_name/__fragments/a")},
+      {URI("green /__fragments/ and ham"), URI("green /__fragments/ and ham")},
+      {URI("green /__fragments/ and ham/but no eggs"),
+       URI("green /__fragments/ and ham")}};
+
+  for (auto& test : cases) {
+    REQUIRE(test.first.get_fragment_name() == test.second);
+  }
+}
+
 #ifdef _WIN32
 
 TEST_CASE("URI: Test Windows paths", "[uri]") {

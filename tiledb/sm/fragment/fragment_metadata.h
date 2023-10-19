@@ -727,12 +727,6 @@ class FragmentMetadata {
   uint64_t file_validity_offset(
       const std::string& name, uint64_t tile_idx) const;
 
-  /**
-   * Retrieves the size of the fragment metadata footer
-   * (which contains the generic tile offsets) along with its size.
-   */
-  Status get_footer_size(uint32_t version, uint64_t* size) const;
-
   uint64_t footer_size() const;
 
   /** Returns the MBR of the input tile. */
@@ -1449,17 +1443,9 @@ class FragmentMetadata {
    * Returns the size of the fragment metadata footer
    * (which contains the generic tile offsets) along with its size.
    *
-   * Applicable to format version 7 to 10.
+   * Applicable to format version 7 to 9.
    */
-  uint64_t footer_size_v7_v10() const;
-
-  /**
-   * Returns the size of the fragment metadata footer
-   * (which contains the generic tile offsets) along with its size.
-   *
-   * Applicable to format version 11 or higher.
-   */
-  uint64_t footer_size_v11_or_higher() const;
+  uint64_t footer_size_v7_v9() const;
 
   /**
    * Returns the ids (positions) of the tiles overlapping `subarray`.

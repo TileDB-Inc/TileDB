@@ -37,7 +37,9 @@
 #include "tiledb/sm/query/readers/aggregators/aggregate_with_count.h"
 #include "tiledb/sm/query/readers/aggregators/field_info.h"
 #include "tiledb/sm/query/readers/aggregators/iaggregator.h"
+#include "tiledb/sm/query/readers/aggregators/safe_sum.h"
 #include "tiledb/sm/query/readers/aggregators/sum_type.h"
+#include "tiledb/sm/query/readers/aggregators/validity_policies.h"
 
 namespace tiledb::sm {
 
@@ -108,6 +110,11 @@ class MeanAggregator : public OutputBufferValidator, public IAggregator {
       std::string output_field_name,
       std::unordered_map<std::string, QueryBuffer>& buffers) override;
 
+  /** Returns the TileDB datatype of the output field for the aggregate. */
+  Datatype output_datatype() override {
+    return Datatype::FLOAT64;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -117,7 +124,8 @@ class MeanAggregator : public OutputBufferValidator, public IAggregator {
   const FieldInfo field_info_;
 
   /** AggregateWithCount to do summation of AggregateBuffer data. */
-  AggregateWithCount<T> summator_;
+  AggregateWithCount<T, typename sum_type_data<T>::sum_type, SafeSum, NonNull>
+      aggregate_with_count_;
 
   /** Computed sum. */
   std::atomic<typename sum_type_data<T>::sum_type> sum_;

@@ -35,7 +35,16 @@
 
 #ifdef HAVE_GCS
 
+#if defined(_MSC_VER)
+#pragma warning(push)
+// One abseil file has a warning that fails on Windows when compiling with
+// warnings as errors.
+#pragma warning(disable : 4127)  // conditional expression is constant
+#endif
 #include <google/cloud/storage/client.h>
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 #include "tiledb/common/rwlock.h"
 #include "tiledb/common/status.h"

@@ -201,11 +201,7 @@ uint64_t Domain::cell_num_per_tile() const {
 
 template <>
 int Domain::cell_order_cmp_impl<char>(
-    const Dimension* dim, const UntypedDatumView a, const UntypedDatumView b) {
-  // Must be var-sized
-  assert(dim->var_size());
-  (void)dim;
-
+    const Dimension*, const UntypedDatumView a, const UntypedDatumView b) {
   auto var_a = reinterpret_cast<const char*>(a.content());
   auto var_b = reinterpret_cast<const char*>(b.content());
   auto size_a{a.size()};
@@ -241,10 +237,7 @@ int Domain::cell_order_cmp_impl<char>(
 
 template <class T>
 int Domain::cell_order_cmp_impl(
-    const Dimension* dim, const UntypedDatumView a, const UntypedDatumView b) {
-  assert(!dim->var_size());
-  (void)dim;
-
+    const Dimension*, const UntypedDatumView a, const UntypedDatumView b) {
   auto ca = a.template value_as<T>();
   auto cb = b.template value_as<T>();
   if (ca < cb)
@@ -452,7 +445,6 @@ void Domain::get_end_of_cell_slab(
   } else {
     for (unsigned d = 0; d < dim_num_; ++d)
       end[d] = start[d];
-    (void)subarray;
   }
 }
 

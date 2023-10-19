@@ -93,6 +93,9 @@ class IAggregator {
   virtual void copy_to_user_buffer(
       std::string output_field_name,
       std::unordered_map<std::string, QueryBuffer>& buffers) = 0;
+
+  /** Returns the TileDB datatype of the output field for the aggregate. */
+  virtual Datatype output_datatype() = 0;
 };
 
 }  // namespace tiledb::sm

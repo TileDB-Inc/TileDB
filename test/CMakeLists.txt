@@ -188,6 +188,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-tile-metadata-generator.cc
   src/unit-ReadCellSlabIter.cc
   src/unit-Reader.cc
+  src/unit-request-handlers.cc
   src/unit-resource-pool.cc
   src/unit-result-coords.cc
   src/unit-result-tile.cc

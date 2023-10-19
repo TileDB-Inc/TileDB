@@ -1081,10 +1081,7 @@ void Dimension::splitting_value(
 }
 
 template <>
-uint64_t Dimension::tile_num<char>(const Dimension* dim, const Range& range) {
-  (void)dim;
-  (void)range;
-
+uint64_t Dimension::tile_num<char>(const Dimension*, const Range&) {
   return 1;
 }
 
@@ -1172,10 +1169,9 @@ ByteVecValue Dimension::map_from_uint64(
 
 template <class T>
 ByteVecValue Dimension::map_from_uint64(
-    const Dimension* dim, uint64_t value, int bits, uint64_t max_bucket_val) {
+    const Dimension* dim, uint64_t value, int, uint64_t max_bucket_val) {
   assert(dim != nullptr);
   assert(!dim->domain().empty());
-  (void)bits;  // Not needed here
 
   ByteVecValue ret(sizeof(T));
 
@@ -1206,11 +1202,7 @@ ByteVecValue Dimension::map_from_uint64(
 
 template <>
 ByteVecValue Dimension::map_from_uint64<char>(
-    const Dimension* dim, uint64_t value, int bits, uint64_t max_bucket_val) {
-  assert(dim != nullptr);
-  (void)dim;
-  (void)max_bucket_val;  // Not needed here
-
+    const Dimension*, uint64_t value, int bits, uint64_t) {
   std::vector<uint8_t> ret(sizeof(uint64_t));  // 8 bytes
 
   uint64_t ret_uint64 = (value << (64 - bits));
@@ -1251,10 +1243,12 @@ bool Dimension::smaller_than(
 
 template <>
 bool Dimension::smaller_than<char>(
-    const Dimension* dim, const ByteVecValue& value, const Range& range) {
-  assert(dim != nullptr);
-  assert(value);
-  (void)dim;
+    const Dimension*, const ByteVecValue& value, const Range& range) {
+  // verify precondition for `rvalue_as`
+  if (!value) {
+    throw DimensionException(
+        "smaller_than<char>: operand `value` may not be empty");
+  }
 
   auto value_str = value.rvalue_as<std::string>();
   auto range_start_str = range.start_str();

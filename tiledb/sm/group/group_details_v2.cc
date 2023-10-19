@@ -84,9 +84,11 @@ shared_ptr<GroupDetails> GroupDetailsV2::deserialize(
   for (auto& deserializer : deserializers) {
     // Read and assert version
     format_version_t details_version = deserializer->read<format_version_t>();
-    assert(details_version == 2);
-    // Avoid unused warning when in release mode and the assert doesn't exist.
-    (void)details_version;
+    if (details_version != 2) {
+      throw GroupDetailsException(
+          "Invalid version " + std::to_string(details_version) +
+          "; expected 2.");
+    }
 
     // Read members
     uint64_t member_count = deserializer->read<uint64_t>();
@@ -109,20 +111,13 @@ Status GroupDetailsV2::apply_pending_changes() {
   members_.clear();
   members_vec_.clear();
   members_by_name_.clear();
-  members_vec_.reserve(members_to_modify_.size());
 
   // First add each member to unordered map, overriding if the user adds/removes
   // it multiple times
   for (auto& it : members_to_modify_) {
-    members_[it->uri().to_string()] = it;
+    members_[it->key()] = it;
   }
 
-  for (auto& it : members_) {
-    members_vec_.emplace_back(it.second);
-    if (it.second->name().has_value()) {
-      members_by_name_.emplace(it.second->name().value(), it.second);
-    }
-  }
   changes_applied_ = !members_to_modify_.empty();
   members_to_modify_.clear();
 

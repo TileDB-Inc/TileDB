@@ -37,13 +37,16 @@ gather_sources(${SOURCES})
 # on StorageManager that would require us to link the entire library
 # for this to work.
 #
-# TODO: Remove StorageManager dependency from the object APIs and
-# make this a real object library for unit test use.
+# Maturity Warning: `capi_object` can't be a full object library unit the
+# `StorageManager` dependency is removed. Note that the test-compile is
+# commented out. This is the reason that it hasn't been converted to use the
+# `object_library` environment for CMake.
 #
 add_library(capi_object OBJECT ${SOURCES})
 target_link_libraries(capi_object PUBLIC export)
 target_link_libraries(capi_object PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(capi_object PUBLIC constants $<TARGET_OBJECTS:constants>)
+target_link_libraries(capi_object PUBLIC exception_wrapper $<TARGET_OBJECTS:exception_wrapper>)
 
 #
 # Test-compile of object library ensures link-completeness

@@ -171,6 +171,7 @@ const std::string Config::VFS_FILE_POSIX_FILE_PERMISSIONS = "644";
 const std::string Config::VFS_FILE_POSIX_DIRECTORY_PERMISSIONS = "755";
 const std::string Config::VFS_READ_AHEAD_SIZE = "102400";          // 100KiB
 const std::string Config::VFS_READ_AHEAD_CACHE_SIZE = "10485760";  // 10MiB;
+const std::string Config::VFS_READ_LOGGING_MODE = "";
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_NAME = "";
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_KEY = "";
 const std::string Config::VFS_AZURE_STORAGE_SAS_TOKEN = "";
@@ -393,6 +394,7 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "vfs.file.posix_directory_permissions",
         Config::VFS_FILE_POSIX_DIRECTORY_PERMISSIONS),
+    std::make_pair("vfs.read_logging_mode", Config::VFS_READ_LOGGING_MODE),
     std::make_pair(
         "vfs.azure.storage_account_name",
         Config::VFS_AZURE_STORAGE_ACCOUNT_NAME),
