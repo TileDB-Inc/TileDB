@@ -116,7 +116,7 @@ steps:
 
 - task: ArchiveFiles@2
   inputs:
-    rootFolderOrFile: '$(Agent.BuildDirectory)\s\'
+    rootFolderOrFile: '$(Agent.BuildDirectory)\s\build'
     includeRootFolder: false
     archiveType: 'zip' # Options: zip, 7z, tar, wim
     archiveFile: $(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-build-dir.zip
