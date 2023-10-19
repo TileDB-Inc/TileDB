@@ -54,7 +54,15 @@ tiledb_query_field_handle_t::tiledb_query_field_handle_t(
     : query_(query->query_)
     , field_name_(field_name)
     , channel_(tiledb_query_channel_handle_t::make_handle(query)) {
-  if (query_->array_schema().is_attr(field_name_)) {
+  if (field_name_ == tiledb::sm::constants::coords) {
+    field_origin_ = std::make_shared<FieldFromDimension>();
+    type_ = query_->array_schema().domain().dimension_ptr(0)->type();
+    cell_val_num_ = 1;
+  } else if (field_name_ == tiledb::sm::constants::timestamps) {
+    field_origin_ = std::make_shared<FieldFromAttribute>();
+    type_ = tiledb::sm::constants::timestamp_type;
+    cell_val_num_ = 1;
+  } else if (query_->array_schema().is_attr(field_name_)) {
     field_origin_ = std::make_shared<FieldFromAttribute>();
     type_ = query_->array_schema().attribute(field_name_)->type();
     cell_val_num_ =

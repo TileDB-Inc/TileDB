@@ -317,9 +317,7 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
   CHECK(cell_val_num == 1);
 
-  // Let's at least test that this API actually gets the default channel.
-  // Default channel means all rows, let's count them. We will add more field
-  // specific tests when more functionality gets implemented for channels.
+  // Check field api works on aggregate field
   REQUIRE(tiledb_field_channel(ctx, field, &channel) == TILEDB_OK);
   REQUIRE(
       tiledb_channel_apply_aggregate(
@@ -332,6 +330,27 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_query_submit(ctx, query) == TILEDB_OK);
   CHECK(count == 9);
   CHECK(tiledb_query_channel_free(ctx, &channel) == TILEDB_OK);
+  CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
+
+  // Check field api works on timestamp field
+  REQUIRE(
+      tiledb_query_get_field(ctx, query, "__timestamps", &field) == TILEDB_OK);
+  REQUIRE(tiledb_field_datatype(ctx, field, &type) == TILEDB_OK);
+  CHECK(type == TILEDB_UINT64);
+  REQUIRE(tiledb_field_origin(ctx, field, &origin) == TILEDB_OK);
+  CHECK(origin == TILEDB_ATTRIBUTE_FIELD);
+  REQUIRE(tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
+  CHECK(cell_val_num == 1);
+  CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
+
+  // Check field api works on coords field
+  REQUIRE(tiledb_query_get_field(ctx, query, "__coords", &field) == TILEDB_OK);
+  REQUIRE(tiledb_field_datatype(ctx, field, &type) == TILEDB_OK);
+  CHECK(type == TILEDB_UINT64);
+  REQUIRE(tiledb_field_origin(ctx, field, &origin) == TILEDB_OK);
+  CHECK(origin == TILEDB_DIMENSION_FIELD);
+  REQUIRE(tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
+  CHECK(cell_val_num == 1);
   CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
 
   // Check field api works on attribute field

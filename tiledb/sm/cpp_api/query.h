@@ -44,7 +44,7 @@
 #include "query_condition.h"
 #include "subarray.h"
 #include "tiledb.h"
-#include "tiledb/api/c_api/query_field/query_field_api_external_experimental.h"
+#include "tiledb_experimental.h"
 #include "type.h"
 #include "utils.h"
 
@@ -2377,14 +2377,6 @@ class Query {
    * @return Field type.
    */
   tiledb_datatype_t field_type(const std::string& name) const {
-    if (name == "__coords") {
-      return schema_.domain().type();
-    }
-
-    if (name == "__timestamps") {
-      return TILEDB_UINT64;
-    }
-
     // Get the field from the query.
     auto ctx = ctx_.get();
     tiledb_query_field_t* field = nullptr;
