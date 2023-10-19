@@ -37,9 +37,11 @@
 #include "tiledb/sm/query/readers/aggregators/min_max_aggregator.h"
 #include "tiledb/sm/query/readers/aggregators/sum_aggregator.h"
 
+#include <test/support/src/helper_type.h>
 #include <test/support/tdb_catch.h>
 
 using namespace tiledb::sm;
+using namespace tiledb::test;
 
 typedef tuple<
     SumAggregator<uint8_t>,
@@ -52,14 +54,14 @@ TEMPLATE_LIST_TEST_CASE(
     AggUnderTestConstructor) {
   SECTION("Var size") {
     CHECK_THROWS_WITH(
-        TestType(FieldInfo("a1", true, false, 1)),
+        TestType(FieldInfo("a1", true, false, 1, Datatype::UINT8)),
         "InputFieldValidator: Aggregate is not supported for var sized "
         "non-string fields.");
   }
 
   SECTION("Invalid cell val num") {
     CHECK_THROWS_WITH(
-        TestType(FieldInfo("a1", false, false, 2)),
+        TestType(FieldInfo("a1", false, false, 2, Datatype::UINT8)),
         "InputFieldValidator: Aggregate is not supported for non-string fields "
         "with cell_val_num greater than one.");
   }
@@ -70,7 +72,7 @@ TEST_CASE(
     "[null-count-aggregator][constructor]") {
   SECTION("Non nullable") {
     CHECK_THROWS_WITH(
-        NullCountAggregator(FieldInfo("a1", false, false, 1)),
+        NullCountAggregator(FieldInfo("a1", false, false, 1, Datatype::UINT8)),
         "InputFieldValidator: Aggregate must only be requested for nullable "
         "fields.");
   }
@@ -95,11 +97,13 @@ typedef tuple<
     AggUnderTest;
 TEMPLATE_LIST_TEST_CASE(
     "Aggregator: var sized", "[aggregator][var-sized]", AggUnderTest) {
-  auto aggregator{make_aggregator<TestType>(FieldInfo("a1", false, true, 1))};
+  auto aggregator{make_aggregator<TestType>(
+      FieldInfo("a1", false, true, 1, Datatype::UINT8))};
   CHECK(aggregator.aggregation_var_sized() == false);
 
   if constexpr (std::is_same<TestType, MinAggregator<uint8_t>>::value) {
-    MinAggregator<std::string> aggregator2(FieldInfo("a1", true, false, 1));
+    MinAggregator<std::string> aggregator2(
+        FieldInfo("a1", true, false, 1, Datatype::UINT8));
     CHECK(aggregator2.aggregation_var_sized() == true);
   }
 }
@@ -108,7 +112,8 @@ TEMPLATE_LIST_TEST_CASE(
     "Aggregators: need recompute",
     "[aggregators][need-recompute]",
     AggUnderTest) {
-  auto aggregator{make_aggregator<TestType>(FieldInfo("a1", false, true, 1))};
+  auto aggregator{make_aggregator<TestType>(
+      FieldInfo("a1", false, true, 1, Datatype::UINT8))};
   bool need_recompute = true;
   if constexpr (std::is_same<TestType, MinAggregator<uint64_t>>::value) {
     need_recompute = false;
@@ -118,7 +123,8 @@ TEMPLATE_LIST_TEST_CASE(
 
 TEMPLATE_LIST_TEST_CASE(
     "Aggregators: field name", "[aggregator][field-name]", AggUnderTest) {
-  auto aggregator{make_aggregator<TestType>(FieldInfo("a1", false, true, 1))};
+  auto aggregator{make_aggregator<TestType>(
+      FieldInfo("a1", false, true, 1, Datatype::UINT8))};
   if (std::is_same<TestType, CountAggregator>::value) {
     CHECK(aggregator.field_name() == constants::count_of_rows);
   } else {
@@ -135,14 +141,15 @@ TEMPLATE_LIST_TEST_CASE(
     "Aggregators: Validate buffer",
     "[aggregators][validate-buffer]",
     AggUnderTestValidateBuffer) {
-  TestType aggregator(FieldInfo("a1", false, false, 1));
-  TestType aggregator_nullable(FieldInfo("a2", false, true, 1));
+  TestType aggregator(FieldInfo("a1", false, false, 1, Datatype::UINT8));
+  TestType aggregator_nullable(
+      FieldInfo("a2", false, true, 1, Datatype::UINT8));
   MinAggregator<std::string> aggregator_var(
-      FieldInfo("a1", true, false, constants::var_num));
+      FieldInfo("a1", true, false, constants::var_num, Datatype::UINT8));
   MinAggregator<std::string> aggregator_var_wrong_cvn(
-      FieldInfo("a1", true, false, 11));
+      FieldInfo("a1", true, false, 11, Datatype::UINT8));
   MinAggregator<std::string> aggregator_fixed_string(
-      FieldInfo("a1", false, false, 5));
+      FieldInfo("a1", false, false, 5, Datatype::UINT8));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -317,7 +324,8 @@ TEMPLATE_LIST_TEST_CASE(
     "Aggregators: Validate buffer count",
     "[aggregators][validate-buffer]",
     AggUnderTestValidateBufferCount) {
-  auto aggregator{make_aggregator<TestType>(FieldInfo("a1", false, true, 1))};
+  auto aggregator{make_aggregator<TestType>(
+      FieldInfo("a1", false, true, 1, Datatype::UINT8))};
   std::unordered_map<std::string, QueryBuffer> buffers;
 
   SECTION("Doesn't exist") {
@@ -436,12 +444,12 @@ void basic_aggregation_test(std::vector<double> expected_results) {
     if constexpr (std::is_same<AGGREGATOR, CountAggregator>::value) {
       aggregator.emplace();
     } else {
-      aggregator.emplace(FieldInfo("a1", false, false, 1));
+      aggregator.emplace(FieldInfo("a1", false, false, 1, tdb_type<T>()));
     }
   }
 
-  auto aggregator_nullable{
-      make_aggregator<AGGREGATOR>(FieldInfo("a1", false, true, 1))};
+  auto aggregator_nullable{make_aggregator<AGGREGATOR>(
+      FieldInfo("a1", false, true, 1, tdb_type<T>()))};
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -701,7 +709,8 @@ TEMPLATE_LIST_TEST_CASE(
 
 TEST_CASE(
     "Sum aggregator: signed overflow", "[sum-aggregator][signed-overflow]") {
-  SumAggregator<int64_t> aggregator(FieldInfo("a1", false, false, 1));
+  SumAggregator<int64_t> aggregator(
+      FieldInfo("a1", false, false, 1, tdb_type<int64_t>()));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -785,7 +794,8 @@ TEST_CASE(
 TEST_CASE(
     "Sum aggregator: unsigned overflow",
     "[sum-aggregator][unsigned-overflow]") {
-  SumAggregator<uint64_t> aggregator(FieldInfo("a1", false, false, 1));
+  SumAggregator<uint64_t> aggregator(
+      FieldInfo("a1", false, false, 1, tdb_type<int64_t>()));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -823,7 +833,7 @@ TEMPLATE_LIST_TEST_CASE(
     "Sum aggregator: double overflow",
     "[sum-aggregator][double-overflow]",
     DoubleAggUnderTest) {
-  TestType aggregator(FieldInfo("a1", false, false, 1));
+  TestType aggregator(FieldInfo("a1", false, false, 1, tdb_type<double>()));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -899,11 +909,12 @@ void basic_string_aggregation_test(std::vector<RES> expected_results) {
   // Optionally make the aggregator for non nullable values.
   optional<AGGREGATOR> aggregator;
   if constexpr (!std::is_same<AGGREGATOR, NullCountAggregator>::value) {
-    aggregator.emplace(FieldInfo("a1", true, false, constants::var_num));
+    aggregator.emplace(FieldInfo(
+        "a1", true, false, constants::var_num, tdb_type<std::string>()));
   }
 
   AGGREGATOR aggregator_nullable(
-      FieldInfo("a2", true, true, constants::var_num));
+      FieldInfo("a2", true, true, constants::var_num, tdb_type<std::string>()));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -1110,7 +1121,8 @@ TEST_CASE(
 TEST_CASE(
     "NullCount aggregator: output datatype",
     "[null-count-aggregator][output-datatype]") {
-  NullCountAggregator aggregator{FieldInfo{"a1", false, true, 1}};
+  NullCountAggregator aggregator{
+      FieldInfo{"a1", false, true, 1, Datatype::UINT8}};
   CHECK(aggregator.output_datatype() == Datatype::UINT64);
 }
 
