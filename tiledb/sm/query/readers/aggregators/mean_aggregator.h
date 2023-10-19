@@ -112,7 +112,7 @@ class MeanAggregator : public OutputBufferValidator, public IAggregator {
 
   /** Returns the TileDB datatype of the output field for the aggregate. */
   Datatype output_datatype() override {
-    return sum_type_data<T>::tiledb_datatype;
+    return Datatype::FLOAT64;
   }
 
  private:

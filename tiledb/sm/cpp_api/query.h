@@ -44,6 +44,7 @@
 #include "query_condition.h"
 #include "subarray.h"
 #include "tiledb.h"
+#include "tiledb_experimental.h"
 #include "type.h"
 #include "utils.h"
 
@@ -414,15 +415,8 @@ class Query {
     for (const auto& b_it : buff_sizes_) {
       auto attr_name = b_it.first;
       auto size_tuple = b_it.second;
-      auto var =
-          ((attr_name != "__coords") &&
-           ((schema_.has_attribute(attr_name) &&
-             schema_.attribute(attr_name).cell_val_num() == TILEDB_VAR_NUM) ||
-            (schema_.domain().has_dimension(attr_name) &&
-             schema_.domain().dimension(attr_name).cell_val_num() ==
-                 TILEDB_VAR_NUM)));
       auto element_size = element_sizes_.find(attr_name)->second;
-      elements[attr_name] = var ?
+      elements[attr_name] = field_var_sized(attr_name) ?
                                 std::pair<uint64_t, uint64_t>(
                                     std::get<0>(size_tuple) / sizeof(uint64_t),
                                     std::get<1>(size_tuple) / element_size) :
@@ -492,14 +486,8 @@ class Query {
     for (const auto& b_it : buff_sizes_) {
       auto attr_name = b_it.first;
       auto size_tuple = b_it.second;
-      auto var =
-          (schema_.has_attribute(attr_name) &&
-           schema_.attribute(attr_name).cell_val_num() == TILEDB_VAR_NUM) ||
-          (schema_.domain().has_dimension(attr_name) &&
-           schema_.domain().dimension(attr_name).cell_val_num() ==
-               TILEDB_VAR_NUM);
       auto element_size = element_sizes_.find(attr_name)->second;
-      elements[attr_name] = var ?
+      elements[attr_name] = field_var_sized(attr_name) ?
                                 std::tuple<uint64_t, uint64_t, uint64_t>(
                                     std::get<0>(size_tuple) / sizeof(uint64_t),
                                     std::get<1>(size_tuple) / element_size,
@@ -1552,20 +1540,8 @@ class Query {
    **/
   template <typename T>
   Query& set_data_buffer(const std::string& name, T* buff, uint64_t nelements) {
-    // Checks
-    auto is_attr = schema_.has_attribute(name);
-    auto is_dim = schema_.domain().has_dimension(name);
-    if (name != "__coords" && name != "__timestamps" && !is_attr && !is_dim) {
-      throw TileDBError(
-          std::string("Cannot set buffer; Attribute/Dimension '") + name +
-          "' does not exist");
-    } else if (is_attr) {
-      impl::type_check<T>(schema_.attribute(name).type());
-    } else if (is_dim) {
-      impl::type_check<T>(schema_.domain().dimension(name).type());
-    } else if (name == "__coords") {
-      impl::type_check<T>(schema_.domain().type());
-    }
+    // Check we have the correct type.
+    impl::type_check<T>(field_type(name));
 
     return set_data_buffer(name, buff, nelements, sizeof(T));
   }
@@ -1611,23 +1587,8 @@ class Query {
    **/
   Query& set_data_buffer(
       const std::string& name, void* buff, uint64_t nelements) {
-    // Checks
-    auto is_attr = schema_.has_attribute(name);
-    auto is_dim = schema_.domain().has_dimension(name);
-    if (name != "__coords" && !is_attr && !is_dim)
-      throw TileDBError(
-          std::string("Cannot set buffer; Attribute/Dimension '") + name +
-          "' does not exist");
-
-    // Compute element size (in bytes).
-    size_t element_size = 0;
-    if (name == "__coords")
-      element_size = tiledb_datatype_size(schema_.domain().type());
-    else if (is_attr)
-      element_size = tiledb_datatype_size(schema_.attribute(name).type());
-    else if (is_dim)
-      element_size =
-          tiledb_datatype_size(schema_.domain().dimension(name).type());
+    // Get element size (in bytes).
+    size_t element_size = tiledb_datatype_size(field_type(name));
 
     return set_data_buffer(name, buff, nelements, element_size);
   }
@@ -1640,16 +1601,7 @@ class Query {
    **/
   Query& set_data_buffer(const std::string& name, std::string& data) {
     // Checks
-    auto is_attr = schema_.has_attribute(name);
-    auto is_dim = schema_.domain().has_dimension(name);
-    if (!is_attr && !is_dim)
-      throw TileDBError(
-          std::string("Cannot set buffer; Attribute/Dimension '") + name +
-          "' does not exist");
-    else if (is_attr)
-      impl::type_check<char>(schema_.attribute(name).type());
-    else if (is_dim)
-      impl::type_check<char>(schema_.domain().dimension(name).type());
+    impl::type_check<char>(field_type(name));
 
     return set_data_buffer(name, &data[0], data.size(), sizeof(char));
   }
@@ -1784,12 +1736,6 @@ class Query {
    **/
   Query& set_validity_buffer(
       const std::string& name, std::vector<uint8_t>& validity_bytemap) {
-    // Checks
-    auto is_attr = schema_.has_attribute(name);
-    if (!is_attr)
-      throw TileDBError(
-          std::string("Cannot set buffer; Attribute '") + name +
-          "' does not exist");
     return set_validity_buffer(
         name, validity_bytemap.data(), validity_bytemap.size());
   }
@@ -2423,6 +2369,49 @@ class Query {
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
+
+  /**
+   * Gets the field type from a field name.
+   *
+   * @param name Name of the field.
+   * @return Field type.
+   */
+  tiledb_datatype_t field_type(const std::string& name) const {
+    // Get the field from the query.
+    auto ctx = ctx_.get();
+    tiledb_query_field_t* field = nullptr;
+    ctx.handle_error(tiledb_query_get_field(
+        ctx.ptr().get(), query_.get(), name.c_str(), &field));
+
+    // Get the type from the field.
+    tiledb_datatype_t type;
+    ctx.handle_error(tiledb_field_datatype(ctx.ptr().get(), field, &type));
+    return type;
+  }
+
+  /**
+   * Returns if the field is var sized or not.
+   *
+   * @param name Name of the field.
+   * @return If the field is var sized.
+   */
+  bool field_var_sized(const std::string& name) const {
+    auto ctx = ctx_.get();
+    tiledb_query_field_t* field = nullptr;
+    try {
+      // Get the field from the query.
+      ctx.handle_error(tiledb_query_get_field(
+          ctx.ptr().get(), query_.get(), name.c_str(), &field));
+    } catch (std::exception&) {
+      return false;
+    }
+
+    // Get the cell_val_num from the field.
+    uint32_t cell_val_num;
+    ctx.handle_error(
+        tiledb_field_cell_val_num(ctx.ptr().get(), field, &cell_val_num));
+    return cell_val_num == TILEDB_VAR_NUM;
+  }
 
   /**
    * Sets a buffer for a fixed-sized attribute.
