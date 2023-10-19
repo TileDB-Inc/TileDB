@@ -117,7 +117,7 @@ class MeanAggregator : public InputFieldValidator,
       std::string output_field_name,
       std::unordered_map<std::string, QueryBuffer>& buffers) override;
 
-  /** Returns name of the aggregate, e.g. COUNT, MIN, SUM. */
+  /** Returns name of the aggregate. */
   std::string aggregate_name() override {
     return constants::aggregate_mean_str;
   }

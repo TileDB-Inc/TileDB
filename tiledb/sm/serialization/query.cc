@@ -1422,7 +1422,7 @@ Status query_to_capnp(
 
   // TODO: add API in query to get all buffers in one go
   // Deserialization gets the list of buffers from wire then call
-  // set_data_buffer which knows on which structure to set We should have a
+  // set_data_buffer which knows on which structure to set. We should have a
   // function here as well that gets all buffer names or even better, all
   // buffers
 

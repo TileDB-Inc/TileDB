@@ -226,7 +226,7 @@ class MinAggregator : public ComparatorAggregator<
   /*                API                */
   /* ********************************* */
 
-  /** Returns name of the aggregate, e.g. COUNT, MIN, SUM. */
+  /** Returns name of the aggregate. */
   std::string aggregate_name() override {
     return constants::aggregate_min_str;
   }

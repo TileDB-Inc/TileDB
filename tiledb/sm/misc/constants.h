@@ -49,8 +49,8 @@ enum class SerializationType : uint8_t;
 
 namespace constants {
 
-/** The following aggregate constants are declared static to avoid a SIOF
- * issue with constant aggregate operator handles with have extern linkage */
+// The following aggregate constants are declared static to avoid a SIOF
+// issue with constant aggregate operator handles with extern linkage.
 
 /** The name of COUNT aggregator. */
 static const std::string aggregate_count_str = "COUNT";

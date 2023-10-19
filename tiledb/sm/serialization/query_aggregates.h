@@ -55,7 +55,6 @@ void query_aggregates_to_capnp(
  *
  * @param query_reader capnp reader
  * @param query deserialized TileDB query
- * @return Status
  */
 void query_aggregates_from_capnp(
     const capnp::Query::Reader& query_reader, Query* const query);
