@@ -49,17 +49,13 @@ namespace tiledb::impl {
 class CAPIString {
  public:
   CAPIString(tiledb_string_t** handle) {
-    if (handle == nullptr) {
+    if (handle == nullptr || *handle == nullptr) {
       throw std::invalid_argument("String handle cannot be null.");
     }
     string_ = *handle;
-    handle = nullptr;
+    *handle = nullptr;
   }
   ~CAPIString() {
-    if (string_ == nullptr) {
-      return;
-    }
-
     auto result = tiledb_status(tiledb_string_free(&string_));
     if (result != TILEDB_OK) {
       log_warn("Could not free string; Error code: " + std::to_string(result));
@@ -95,7 +91,7 @@ class CAPIString {
  *
  * If the handle is null returns nullopt.
  */
-inline std::optional<std::string> to_string(tiledb_string_t** handle) {
+inline std::optional<std::string> convert_to_string(tiledb_string_t** handle) {
   if (*handle == nullptr) {
     return std::nullopt;
   }

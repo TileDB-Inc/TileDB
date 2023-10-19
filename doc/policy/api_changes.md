@@ -74,7 +74,7 @@ Function removal shall be announced one release cycle before removal, following 
 
 - `tiledb_query_submit_async`
 
-### 2.15.0..2.16.0
+### 2.18.0..2.19.0
 
 - `tiledb_group_get_member_by_index`
 - `tiledb_group_get_member_by_name`

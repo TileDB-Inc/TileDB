@@ -431,7 +431,9 @@ class Group {
     ctx.handle_error(tiledb_group_get_member_by_index_v2(
         c_ctx, group_.get(), index, &uri, &type, &name));
     return tiledb::Object(
-        type, impl::to_string(&uri).value(), impl::to_string(&name));
+        type,
+        impl::convert_to_string(&uri).value(),
+        impl::convert_to_string(&name));
   }
 
   tiledb::Object member(std::string name) const {
@@ -441,7 +443,7 @@ class Group {
     tiledb_object_t type;
     ctx.handle_error(tiledb_group_get_member_by_name_v2(
         c_ctx, group_.get(), name.c_str(), &uri, &type));
-    return tiledb::Object(type, impl::to_string(&uri).value(), name);
+    return tiledb::Object(type, impl::convert_to_string(&uri).value(), name);
   }
 
   /**

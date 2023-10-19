@@ -98,7 +98,7 @@ class FragmentInfo {
     tiledb_string_t* name;
     ctx.handle_error(tiledb_fragment_info_get_fragment_name_v2(
         ctx.ptr().get(), fragment_info_.get(), fid, &name));
-    return impl::to_string(&name).value();
+    return impl::convert_to_string(&name).value();
   }
 
   /**
