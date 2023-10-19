@@ -401,14 +401,15 @@ class Group {
   /**
    * Remove a member from a group
    *
-   * @param uri of member to remove. Passing a name is also supported if the
-   * group member was assigned a name.
+   * @param name Name of member to remove. If the member has no name,
+   * this parameter should be set to the URI of the member. In that case, only
+   * the unnamed member with the given URI will be removed.
    */
-  void remove_member(const std::string& uri) {
+  void remove_member(const std::string& name) {
     auto& ctx = ctx_.get();
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
     ctx.handle_error(
-        tiledb_group_remove_member(c_ctx, group_.get(), uri.c_str()));
+        tiledb_group_remove_member(c_ctx, group_.get(), name.c_str()));
   }
 
   uint64_t member_count() const {

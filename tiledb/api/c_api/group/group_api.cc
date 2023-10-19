@@ -276,11 +276,11 @@ capi_return_t tiledb_group_add_member(
 }
 
 capi_return_t tiledb_group_remove_member(
-    tiledb_group_handle_t* group, const char* group_uri) {
+    tiledb_group_handle_t* group, const char* name) {
   ensure_group_is_valid(group);
-  ensure_group_uri_argument_is_valid(group_uri);
+  ensure_name_argument_is_valid(name);
 
-  throw_if_not_ok(group->group().mark_member_for_removal(group_uri));
+  throw_if_not_ok(group->group().mark_member_for_removal(name));
 
   return TILEDB_OK;
 }
@@ -671,9 +671,9 @@ capi_return_t tiledb_group_add_member(
 }
 
 capi_return_t tiledb_group_remove_member(
-    tiledb_ctx_t* ctx, tiledb_group_t* group, const char* uri) noexcept {
+    tiledb_ctx_t* ctx, tiledb_group_t* group, const char* name) noexcept {
   return api_entry_context<tiledb::api::tiledb_group_remove_member>(
-      ctx, group, uri);
+      ctx, group, name);
 }
 
 capi_return_t tiledb_group_get_member_count(
