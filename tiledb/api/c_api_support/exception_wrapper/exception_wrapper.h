@@ -551,8 +551,6 @@ class CAPIFunction;
  */
 template <class R, class... Args, R (*f)(Args...), class H, class A>
 class CAPIFunction<f, H, A> {
-
-  
  public:
   /**
    * Forwarded alias to template parameter H.

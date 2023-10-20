@@ -47,7 +47,7 @@
 #undef CAPI_PREFIX
 #define CAPI_PREFIX(root)                                    \
   template <>                                                \
-  struct CAPIFunctionNameTrait<CAPI_IMPL(root)> {             \
+  struct CAPIFunctionNameTrait<CAPI_IMPL(root)> {            \
     static constexpr std::string_view name{"tiledb_" #root}; \
   };
 
