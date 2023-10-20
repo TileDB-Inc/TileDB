@@ -45,14 +45,17 @@ namespace tiledb::sm {
 
 class Operation : public InputFieldValidator {
  protected:
-  shared_ptr<tiledb::sm::IAggregator> aggregator_;
+  shared_ptr<tiledb::sm::IAggregator> aggregator_ = nullptr;
 
  public:
-  [[nodiscard]] shared_ptr<tiledb::sm::IAggregator> aggregator() const {
+  [[nodiscard]] virtual shared_ptr<tiledb::sm::IAggregator> aggregator() const {
     return aggregator_;
   }
+
   static shared_ptr<Operation> make_operation(
       const std::string& name, const std::optional<tiledb::sm::FieldInfo>& fi);
+
+  virtual ~Operation(){};
 };
 
 class MinOperation : public Operation {
@@ -131,7 +134,7 @@ class SumOperation : public Operation {
             HERE(), fi);
       } else {
         throw std::logic_error(
-            "Sum aggregates can only be requested on numeric types");
+            "SUM aggregates can only be requested on numeric types");
       }
     };
     type::apply_with_type(g, fi.type_);
@@ -140,9 +143,13 @@ class SumOperation : public Operation {
 
 class CountOperation : public Operation {
  public:
-  // For nullary operations, default constructor makes sense
-  CountOperation() {
-    aggregator_ = tdb::make_shared<tiledb::sm::CountAggregator>(HERE());
+  CountOperation() = default;
+
+  // For count operations we have a constant handle, create the aggregator when
+  // requested so that we get a different object for each query.
+  [[nodiscard]] shared_ptr<tiledb::sm::IAggregator> aggregator()
+      const override {
+    return std::make_shared<tiledb::sm::CountAggregator>();
   }
 };
 

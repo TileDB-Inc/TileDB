@@ -61,7 +61,13 @@ class Deleter {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  Deleter() = default;
+  Deleter()
+      : ctx_(nullptr) {
+  }
+
+  Deleter(const Context* ctx)
+      : ctx_(ctx) {
+  }
 
   /* ********************************* */
   /*              DELETERS             */
@@ -150,10 +156,19 @@ class Deleter {
     }
   }
 
+  void operator()(tiledb_query_channel_t* p) const {
+    tiledb_query_channel_free(ctx_->ptr().get(), &p);
+  }
+
+  void operator()(tiledb_channel_operation_t* p) const {
+    tiledb_aggregate_free(ctx_->ptr().get(), &p);
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+  const Context* ctx_;
 };
 
 }  // namespace impl

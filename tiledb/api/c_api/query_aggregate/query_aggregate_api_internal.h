@@ -78,10 +78,9 @@ struct tiledb_query_channel_handle_t
    */
   static constexpr std::string_view object_type_name{"tiledb_query_channel_t"};
 
- private:
+ public:
   tiledb::sm::Query* query_;
 
- public:
   /**
    * Default constructor doesn't make sense
    */
@@ -103,6 +102,7 @@ struct tiledb_query_channel_handle_t
           "An aggregate operation for output field: " +
           std::string(output_field) + " already exists.");
     }
+
     // Add the aggregator the the default channel as this is the only channel
     // type we currently support
     query_->add_aggregator_to_default_channel(

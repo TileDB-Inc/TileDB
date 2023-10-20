@@ -34,6 +34,7 @@
 #include "query_aggregate_api_external_experimental.h"
 #include "query_aggregate_api_internal.h"
 #include "tiledb/api/c_api/query/query_api_internal.h"
+#include "tiledb/api/c_api/query_field/query_field_api_external_experimental.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 
 //
@@ -174,11 +175,20 @@ capi_return_t tiledb_create_unary_aggregate(
     tiledb_channel_operation_t** operation) {
   ensure_aggregates_enabled_via_config(ctx);
   ensure_query_is_valid(query);
+  ensure_query_is_not_initialized(query);
   ensure_channel_operator_is_valid(op);
   ensure_output_pointer_is_valid(operation);
   ensure_input_field_is_valid(input_field_name, op->name());
   std::string field_name(input_field_name);
   auto& schema = query->query_->array_schema();
+
+  // Getting the field errors if there is no input_field_name associated with
+  // the query
+  tiledb_query_field_t* field;
+  if (auto rv = tiledb_query_get_field(ctx, query, input_field_name, &field)) {
+    return rv;
+  }
+  tiledb_query_field_free(ctx, &field);
 
   auto fi = tiledb::sm::FieldInfo(
       field_name,
@@ -200,6 +210,7 @@ capi_return_t tiledb_channel_apply_aggregate(
     const tiledb_channel_operation_t* operation) {
   ensure_aggregates_enabled_via_config(ctx);
   ensure_query_channel_is_valid(channel);
+  ensure_query_is_not_initialized(channel->query_);
   ensure_output_field_is_valid(output_field_name);
   ensure_operation_is_valid(operation);
   channel->add_aggregate(output_field_name, operation);
