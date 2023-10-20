@@ -120,16 +120,8 @@ ComparatorAggregator<T, Op>::ComparatorAggregator(const FieldInfo& field_info)
     : ComparatorAggregatorBase<T>(field_info)
     , OutputBufferValidator(field_info)
     , aggregate_with_count_(field_info) {
-  if (field_info.var_sized_ && !std::is_same<T, std::string>::value) {
-    throw MinMaxAggregatorStatusException(
-        "Min/max aggregates are not supported for var sized non-string "
-        "attributes.");
-  }
-
-  if (field_info.cell_val_num_ != 1 && !std::is_same<T, std::string>::value) {
-    throw MinMaxAggregatorStatusException(
-        "Min/max aggregates are not supported for attributes with cell_val_num "
-        "greater than one.");
+  if constexpr (!std::is_same<T, std::string>::value) {
+    ensure_field_numeric(field_info);
   }
 }
 

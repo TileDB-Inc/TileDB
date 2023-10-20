@@ -45,7 +45,9 @@ namespace tiledb::sm {
 class QueryBuffer;
 
 template <typename T>
-class SumAggregator : public OutputBufferValidator, public IAggregator {
+class SumAggregator : public InputFieldValidator,
+                      public OutputBufferValidator,
+                      public IAggregator {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -73,9 +75,14 @@ class SumAggregator : public OutputBufferValidator, public IAggregator {
   }
 
   /** Returns if the aggregation is var sized or not. */
-  bool var_sized() override {
+  bool aggregation_var_sized() override {
     return false;
   };
+
+  /** Returns if the aggregation is nullable or not. */
+  bool aggregation_nullable() override {
+    return field_info_.is_nullable_;
+  }
 
   /** Returns if the aggregate needs to be recomputed on overflow. */
   bool need_recompute_on_overflow() override {
@@ -108,6 +115,11 @@ class SumAggregator : public OutputBufferValidator, public IAggregator {
   void copy_to_user_buffer(
       std::string output_field_name,
       std::unordered_map<std::string, QueryBuffer>& buffers) override;
+
+  /** Returns name of the aggregate, e.g. COUNT, MIN, SUM. */
+  std::string aggregate_name() override {
+    return constants::aggregate_sum_str;
+  }
 
   /** Returns the TileDB datatype of the output field for the aggregate. */
   Datatype output_datatype() override {

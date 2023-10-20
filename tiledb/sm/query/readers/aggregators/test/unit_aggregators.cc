@@ -54,17 +54,15 @@ TEMPLATE_LIST_TEST_CASE(
   SECTION("Var size") {
     CHECK_THROWS_WITH(
         TestType(FieldInfo("a1", true, false, 1)),
-        Catch::Matchers::EndsWith(
-            "aggregates are not supported for var sized attributes.") ||
-            Catch::Matchers::EndsWith("aggregates are not supported for var "
-                                      "sized non-string attributes."));
+        "InputFieldValidator: Aggregate is not supported for var sized "
+        "non-string fields.");
   }
 
   SECTION("Invalid cell val num") {
     CHECK_THROWS_WITH(
         TestType(FieldInfo("a1", false, false, 2)),
-        Catch::Matchers::EndsWith("aggregates are not supported for attributes "
-                                  "with cell_val_num greater than one."));
+        "InputFieldValidator: Aggregate is not supported for non-string fields "
+        "with cell_val_num greater than one.");
   }
 }
 
@@ -74,8 +72,8 @@ TEST_CASE(
   SECTION("Non nullable") {
     CHECK_THROWS_WITH(
         NullCountAggregator(FieldInfo("a1", false, false, 1)),
-        "CountAggregator: NullCount aggregates must only be requested for "
-        "nullable attributes.");
+        "InputFieldValidator: Aggregate must only be requested for nullable "
+        "fields.");
   }
 }
 
@@ -99,11 +97,11 @@ typedef tuple<
 TEMPLATE_LIST_TEST_CASE(
     "Aggregator: var sized", "[aggregator][var-sized]", AggUnderTest) {
   auto aggregator{make_aggregator<TestType>(FieldInfo("a1", false, true, 1))};
-  CHECK(aggregator.var_sized() == false);
+  CHECK(aggregator.aggregation_var_sized() == false);
 
   if constexpr (std::is_same<TestType, MinAggregator<uint8_t>>::value) {
     MinAggregator<std::string> aggregator2(FieldInfo("a1", true, false, 1));
-    CHECK(aggregator2.var_sized() == true);
+    CHECK(aggregator2.aggregation_var_sized() == true);
   }
 }
 

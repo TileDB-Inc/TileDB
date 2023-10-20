@@ -76,7 +76,8 @@ tiledb_query_field_handle_t::tiledb_query_field_handle_t(
     field_origin_ = std::make_shared<FieldFromAggregate>();
     auto aggregate = query_->get_aggregate(field_name_).value();
     type_ = aggregate->output_datatype();
-    cell_val_num_ = aggregate->var_sized() ? tiledb::sm::constants::var_num : 1;
+    cell_val_num_ =
+        aggregate->aggregation_var_sized() ? tiledb::sm::constants::var_num : 1;
   } else {
     throw tiledb::api::CAPIStatusException("There is no field " + field_name_);
   }

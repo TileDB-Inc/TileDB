@@ -49,6 +49,27 @@ enum class SerializationType : uint8_t;
 
 namespace constants {
 
+// The following aggregate constants are declared static to avoid a SIOF
+// issue with constant aggregate operator handles with extern linkage.
+
+/** The name of COUNT aggregator. */
+static const std::string aggregate_count_str = "COUNT";
+
+/** The name of SUM aggregator. */
+static const std::string aggregate_sum_str = "SUM";
+
+/** The name of MIN aggregator. */
+static const std::string aggregate_min_str = "MIN";
+
+/** The name of MAX aggregator. */
+static const std::string aggregate_max_str = "MAX";
+
+/** The name of NULL_COUNT aggregator. */
+static const std::string aggregate_null_count_str = "NULL_COUNT";
+
+/** The name of MEAN aggregator. */
+static const std::string aggregate_mean_str = "MEAN";
+
 /**
  * Reduction factor (must be in [0.0, 1.0]) for the multi_range subarray
  * split by the partitioner. If the number is equal to 0.3, then this

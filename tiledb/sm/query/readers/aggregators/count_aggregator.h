@@ -60,9 +60,14 @@ class CountAggregatorBase : public OutputBufferValidator, public IAggregator {
   /* ********************************* */
 
   /** Returns if the aggregation is var sized or not. */
-  bool var_sized() override {
+  bool aggregation_var_sized() override {
     return false;
   };
+
+  /** Returns if the aggregation is nullable or not. */
+  bool aggregation_nullable() override {
+    return false;
+  }
 
   /** Returns if the aggregate needs to be recomputed on overflow. */
   bool need_recompute_on_overflow() override {
@@ -95,6 +100,11 @@ class CountAggregatorBase : public OutputBufferValidator, public IAggregator {
   void copy_to_user_buffer(
       std::string output_field_name,
       std::unordered_map<std::string, QueryBuffer>& buffers) override;
+
+  /** Returns name of the aggregate. */
+  std::string aggregate_name() override {
+    return constants::aggregate_count_str;
+  }
 
   /** Returns the TileDB datatype of the output field for the aggregate. */
   Datatype output_datatype() override {
@@ -134,7 +144,8 @@ class CountAggregator : public CountAggregatorBase<NonNull> {
   }
 };
 
-class NullCountAggregator : public CountAggregatorBase<Null> {
+class NullCountAggregator : public CountAggregatorBase<Null>,
+                            public InputFieldValidator {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
