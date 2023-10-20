@@ -45,25 +45,25 @@ namespace tiledb::sm {
 class QueryBuffer;
 
 template <typename T>
-class SumAggregator : public InputFieldValidator,
-                      public OutputBufferValidator,
-                      public IAggregator {
+class SumWithCountAggregator : public InputFieldValidator,
+                               public OutputBufferValidator,
+                               public IAggregator {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  SumAggregator() = delete;
+  SumWithCountAggregator() = delete;
 
   /**
    * Constructor.
    *
    * @param field_info Field info.
    */
-  SumAggregator(FieldInfo field_info);
+  SumWithCountAggregator(FieldInfo field_info);
 
-  DISABLE_COPY_AND_COPY_ASSIGN(SumAggregator);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(SumAggregator);
+  DISABLE_COPY_AND_COPY_ASSIGN(SumWithCountAggregator);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(SumWithCountAggregator);
 
   /* ********************************* */
   /*                API                */
@@ -107,6 +107,60 @@ class SumAggregator : public InputFieldValidator,
   void aggregate_data(AggregateBuffer& input_data) override;
 
   /**
+   * Copy final validity value to the user buffer.
+   *
+   * @param result_buffer Query buffer to copy to.
+   */
+  void copy_validity_value_to_user_buffers(QueryBuffer& result_buffer);
+
+ protected:
+  /* ********************************* */
+  /*        PROTECTED ATTRIBUTES       */
+  /* ********************************* */
+
+  /** Field information. */
+  const FieldInfo field_info_;
+
+  /** AggregateWithCount to do summation of AggregateBuffer data. */
+  AggregateWithCount<T, typename sum_type_data<T>::sum_type, SafeSum, NonNull>
+      aggregate_with_count_;
+
+  /** Computed sum. */
+  std::atomic<typename sum_type_data<T>::sum_type> sum_;
+
+  /** Count of values. */
+  std::atomic<uint64_t> count_;
+
+  /** Computed validity value. */
+  optional<uint8_t> validity_value_;
+
+  /** Has the sum overflowed. */
+  std::atomic<bool> sum_overflowed_;
+};
+
+template <typename T>
+class SumAggregator : public SumWithCountAggregator<T> {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  SumAggregator() = delete;
+
+  /**
+   * Constructor.
+   *
+   * @param field_info Field info.
+   */
+  SumAggregator(FieldInfo field_info)
+      : SumWithCountAggregator<T>(field_info) {
+  }
+
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
+  /**
    * Copy final data to the user buffer.
    *
    * @param output_field_name Name for the output buffer.
@@ -125,27 +179,48 @@ class SumAggregator : public InputFieldValidator,
   Datatype output_datatype() override {
     return sum_type_data<T>::tiledb_datatype;
   }
+};
 
- private:
+template <typename T>
+class MeanAggregator : public SumWithCountAggregator<T> {
+ public:
   /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Field information. */
-  const FieldInfo field_info_;
+  MeanAggregator() = delete;
 
-  /** AggregateWithCount to do summation of AggregateBuffer data. */
-  AggregateWithCount<T, typename sum_type_data<T>::sum_type, SafeSum, NonNull>
-      aggregate_with_count_;
+  /**
+   * Constructor.
+   *
+   * @param field_info Field info.
+   */
+  MeanAggregator(FieldInfo field_info)
+      : SumWithCountAggregator<T>(field_info) {
+  }
 
-  /** Computed sum. */
-  std::atomic<typename sum_type_data<T>::sum_type> sum_;
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+  /**
+   * Copy final data to the user buffer.
+   *
+   * @param output_field_name Name for the output buffer.
+   * @param buffers Query buffers.
+   */
+  void copy_to_user_buffer(
+      std::string output_field_name,
+      std::unordered_map<std::string, QueryBuffer>& buffers) override;
 
-  /** Computed validity value. */
-  optional<uint8_t> validity_value_;
+  /** Returns name of the aggregate, e.g. COUNT, MIN, SUM. */
+  std::string aggregate_name() override {
+    return constants::aggregate_mean_str;
+  }
 
-  /** Has the sum overflowed. */
-  std::atomic<bool> sum_overflowed_;
+  /** Returns the TileDB datatype of the output field for the aggregate. */
+  Datatype output_datatype() override {
+    return Datatype::FLOAT64;
+  }
 };
 
 }  // namespace tiledb::sm
