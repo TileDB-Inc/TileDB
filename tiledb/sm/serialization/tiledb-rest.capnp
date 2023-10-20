@@ -1267,20 +1267,8 @@ struct QueryChannel {
   default @0 :Bool;
   # True if a channel is the default query channel
 
-  segments @1 :List(ChannelSegment);
-  # contains the list of segments in a query channel.
-  # If the channel is the default query channel, this list contains
-  # a single segment.
-}
-
-struct ChannelSegment {
-  # structure representing a query channel segment. A segment expresses a set
-  # of rows. Such segments are usually produced by a grouping operation,
-  # that is a grouping operation divides all the rows in a query channel into
-  # multiple segments.
-
-  aggregates @0 :List(Aggregate);
-  # a list of the aggregate operations applied on this segment
+  aggregates @1 :List(Aggregate);
+  # a list of the aggregate operations applied on this channel
 }
 
 struct Aggregate {

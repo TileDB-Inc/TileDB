@@ -40,23 +40,23 @@ namespace tiledb::sm::serialization {
 
 void query_aggregates_to_capnp(
     Query& query, capnp::Query::Builder* query_builder) {
-  // There is currently only a default channel
-  size_t num_channels = 1;
-  auto channels_builder = query_builder->initChannels(num_channels);
-  auto channel_builder = channels_builder[0];
-  channel_builder.setDefault(true);
+  auto channels = query.get_channels();
+  if (channels.empty()) {
+    return;
+  }
+  auto channels_builder = query_builder->initChannels(channels.size());
+  for (const auto& channel : channels) {
+    auto channel_builder = channels_builder[0];
+    channel_builder.setDefault(channel.is_default());
 
-  // Only 1 segment in the default channel currently
-  size_t num_segments = 1;
-  auto segments_builder = channel_builder.initSegments(num_segments);
-  auto segment_builder = segments_builder[0];
+    auto& aggregates = query.aggregates();
+    if (aggregates.empty()) {
+      continue;
+    }
 
-  auto default_channel_aggregates = query.get_default_channel_aggregates();
-  if (!default_channel_aggregates.empty()) {
-    size_t num_aggregates = default_channel_aggregates.size();
-    auto aggregates_builder = segment_builder.initAggregates(num_aggregates);
+    auto aggregates_builder = channel_builder.initAggregates(aggregates.size());
     size_t i = 0;
-    for (const auto& agg : default_channel_aggregates) {
+    for (const auto& agg : agggregates) {
       auto aggregate_builder = aggregates_builder[i];
       aggregate_builder.setOutputFieldName(agg.first);
       aggregate_builder.setName(agg.second->aggregate_name());
@@ -80,19 +80,13 @@ void query_aggregates_from_capnp(
   if (query_reader.hasChannels()) {
     auto channels_reader = query_reader.getChannels();
     // Only the query default channel is on the wire for now
-    auto channel_reader = channels_reader[0];
-    if (!channel_reader.getDefault()) {
-      throw std::logic_error(
-          "This channel is expected to be the default query channel");
-    }
-    // Should always be true because a channel has at least one segment
-    if (channel_reader.hasSegments()) {
-      auto segments_reader = channel_reader.getSegments();
-      // Only a single segment is on the wire now until grouping operations
-      // get implemented
-      auto segment_reader = segments_reader[0];
-      if (segment_reader.hasAggregates()) {
-        auto aggregates_reader = segment_reader.getAggregates();
+    for (size_t i = 0; i < channels_reader.size(); ++i) {
+      auto channel_reader = channels_reader[i];
+
+      if (channel_reader.hasAggregates()) {
+        QueryChannel::ChannelAggregates aggregates;
+
+        auto aggregates_reader = channel_reader.getAggregates();
         for (const auto& aggregate : aggregates_reader) {
           if (aggregate.hasOutputFieldName() && aggregate.hasName()) {
             auto output_field = aggregate.getOutputFieldName();
@@ -104,26 +98,26 @@ void query_aggregates_from_capnp(
             // assumed to exist, so deserialization calls some array schema
             // functions on it. This should be fixed in a followup work item by
             // making the aggregators interface return an optional field_name
+            std::optional<FieldInfo> fi;
             if (aggregate.hasInputFieldName()) {
               auto input_field = aggregate.getInputFieldName();
               auto& schema = query->array_schema();
 
-              auto fi = tiledb::sm::FieldInfo(
+              fi = std::make_optional(tiledb::sm::FieldInfo(
                   input_field,
                   schema.var_size(input_field),
                   schema.is_nullable(input_field),
                   schema.cell_val_num(input_field),
-                  schema.type(input_field));
-
-              auto operation = Operation::make_operation(name, fi);
-              query->add_aggregator_to_default_channel(
-                  output_field, operation->aggregator());
-            } else {
-              auto operation = Operation::make_operation(name, nullopt);
-              query->add_aggregator_to_default_channel(
-                  output_field, operation->aggregator());
+                  schema.type(input_field)));
             }
+
+            auto operation = Operation::make_operation(name, fi);
+            aggregates.emplace(output_field, operation->aggregator());
           }
+        }
+        if (!aggregates.empty()) {
+          query->add_channel(
+              QueryChannel{channel_reader.getDefault(), aggregates});
         }
       }
     }

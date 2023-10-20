@@ -51,6 +51,7 @@
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/query_remote_buffer_storage.h"
 #include "tiledb/sm/query/readers/aggregators/iaggregator.h"
+#include "tiledb/sm/query/readers/aggregators/query_channel.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/query/validity_vector.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
@@ -753,6 +754,33 @@ class Query {
   /** Returns an aggregate based on the output field. */
   std::optional<shared_ptr<IAggregator>> get_aggregate(
       std::string output_field_name) const;
+
+  /**
+   * Get a list of all channels and their aggregates
+   */
+  std::vector<QueryChannel> get_channels() {
+    // Currently only the default channel is supported
+    return {QueryChannel(true)};
+  }
+
+  /**
+   * Add a channel to the query
+   */
+  void add_channel(const QueryChannel& channel) {
+    if (channel.is_default()) {
+      default_channel_aggregates_ = channel.aggregates();
+      return;
+    }
+    throw std::logic_error(
+        "We currently only support a default channel for queries");
+  }
+  /**
+   * Returns true if the query has any aggregates on any channels
+   */
+  bool has_aggregates() {
+    // We only need to check the default channel for now
+    return default_channel_aggregates_.empty();
+  }
 
  private:
   /* ********************************* */
