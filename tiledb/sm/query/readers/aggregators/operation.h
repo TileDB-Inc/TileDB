@@ -44,24 +44,52 @@
 namespace tiledb::sm {
 
 class Operation : public InputFieldValidator {
- protected:
-  shared_ptr<tiledb::sm::IAggregator> aggregator_ = nullptr;
-
  public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+  virtual ~Operation(){};
+
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+  /**
+   * @return a shared pointer to the internal aggregator object
+   */
   [[nodiscard]] virtual shared_ptr<tiledb::sm::IAggregator> aggregator() const {
     return aggregator_;
   }
 
+  /**
+   * Create the right operation based on the aggregator name
+   *
+   * @param name The name of the aggregator e.g. SUM, MIN
+   * @param fi A FieldInfo object describing the input field or nullopt for
+   * nullary operations
+   * @return The appropriate operation for the name
+   */
   static shared_ptr<Operation> make_operation(
       const std::string& name, const std::optional<tiledb::sm::FieldInfo>& fi);
 
-  virtual ~Operation(){};
+  /* ********************************* */
+  /*         PROTECTED ATTRIBUTES      */
+  /* ********************************* */
+ protected:
+  shared_ptr<tiledb::sm::IAggregator> aggregator_ = nullptr;
 };
 
 class MinOperation : public Operation {
  public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
   MinOperation() = delete;
 
+  /**
+   * Construct the operation where the internal aggregator object
+   * is instantiated to the correct type given the input field type.
+   * @param fi The FieldInfo for the input field
+   */
   explicit MinOperation(const tiledb::sm::FieldInfo& fi) {
     auto g = [&](auto T) {
       if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
@@ -92,8 +120,16 @@ class MinOperation : public Operation {
 
 class MaxOperation : public Operation {
  public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
   MaxOperation() = delete;
 
+  /**
+   * Construct the operation where the internal aggregator object
+   * is instantiated to the correct type given the input field type.
+   * @param fi The FieldInfo for the input field
+   */
   explicit MaxOperation(const tiledb::sm::FieldInfo& fi) {
     auto g = [&](auto T) {
       if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
@@ -124,8 +160,16 @@ class MaxOperation : public Operation {
 
 class SumOperation : public Operation {
  public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
   SumOperation() = delete;
 
+  /**
+   * Construct the operation where the internal aggregator object
+   * is instantiated to the correct type given the input field type.
+   * @param fi The FieldInfo for the input field
+   */
   explicit SumOperation(const tiledb::sm::FieldInfo& fi) {
     auto g = [&](auto T) {
       if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
@@ -143,8 +187,15 @@ class SumOperation : public Operation {
 
 class CountOperation : public Operation {
  public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+  /** Default constructor */
   CountOperation() = default;
 
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
   // For count operations we have a constant handle, create the aggregator when
   // requested so that we get a different object for each query.
   [[nodiscard]] shared_ptr<tiledb::sm::IAggregator> aggregator()

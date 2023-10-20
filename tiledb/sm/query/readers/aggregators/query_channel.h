@@ -44,20 +44,43 @@ class QueryChannel {
   using ChannelAggregates =
       std::unordered_map<std::string, shared_ptr<IAggregator>>;
 
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  /**
+   * Construct a QueryChannel
+   *
+   * @param is_default If true, this is the default query channel
+   * @param aggregates A map of aggregators by output field name
+   */
   QueryChannel(bool is_default, const ChannelAggregates& aggregates)
       : default_(is_default)
       , aggregates_{aggregates} {
   }
 
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
+  /**
+   * @return true if this is the default query channel
+   */
   bool is_default() const {
     return default_;
   }
 
+  /**
+   * @return the map of aggregator pointers
+   */
   const ChannelAggregates& aggregates() const {
     return aggregates_;
   }
 
  private:
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
   bool default_;
   ChannelAggregates aggregates_;
 };
