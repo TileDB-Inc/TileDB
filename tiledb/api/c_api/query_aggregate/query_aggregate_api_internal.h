@@ -51,18 +51,14 @@ enum QueryChannelOperator {
 
 class Operation {
  protected:
-  shared_ptr<tiledb::sm::IAggregator> aggregator_;
-
-  bool is_count_ = false;
+  shared_ptr<tiledb::sm::IAggregator> aggregator_ = nullptr;
 
  public:
-  [[nodiscard]] shared_ptr<tiledb::sm::IAggregator> aggregator() const {
+  [[nodiscard]] virtual shared_ptr<tiledb::sm::IAggregator> aggregator() const {
     return aggregator_;
   }
 
-  [[nodiscard]] bool is_count() const {
-    return is_count_;
-  }
+  virtual ~Operation(){};
 };
 
 class MinOperation : public Operation {
@@ -91,12 +87,13 @@ class SumOperation : public Operation {
 
 class CountOperation : public Operation {
  public:
-  // For count operations we have a constant handle, use nullptr and create
-  // the aggregator when requested so that we get a different object for each
-  // query.
-  CountOperation() {
-    aggregator_ = nullptr;
-    is_count_ = true;
+  CountOperation() = default;
+
+  // For count operations we have a constant handle, create the aggregator when
+  // requested so that we get a different object for each query.
+  [[nodiscard]] shared_ptr<tiledb::sm::IAggregator> aggregator()
+      const override {
+    return std::make_shared<tiledb::sm::CountAggregator>();
   }
 };
 
@@ -127,12 +124,6 @@ struct tiledb_channel_operation_handle_t
   }
 
   [[nodiscard]] inline shared_ptr<tiledb::sm::IAggregator> aggregator() const {
-    // For count operations we have a constant handle, we create the aggregator
-    // when requested so that we get a different object for each query.
-    if (operation_->is_count()) {
-      return std::make_shared<tiledb::sm::CountAggregator>();
-    }
-
     return operation_->aggregator();
   }
 };
