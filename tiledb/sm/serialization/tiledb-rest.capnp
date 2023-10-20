@@ -1259,10 +1259,10 @@ struct LoadArraySchemaResponse {
 }
 
 struct QueryChannel {
-  # structure representing a query channel, that is a
-  # stream of data within a TileDB query. Such channels can be generated
-  # for the purpose of avoiding processing result items multiple times
-  # in more complex queries such as e.g. grouping queries.
+  # structure representing a query channel, that is a stream of data within 
+  # a TileDB query. Such channels can be generated for the purpose of avoiding
+  # processing result items multiple times in more complex queries such as e.g.
+  # grouping queries.
 
   default @0 :Bool;
   # True if a channel is the default query channel
@@ -1281,6 +1281,6 @@ struct Aggregate {
   # name of the input field the aggregate is applied on
 
   name @2 :Text;
-  # the name of aggregate, e.g. COUNT, MEAN, SUM
-  # used for constructing the correct object during deserialization
+  # the name of aggregate, e.g. COUNT, MEAN, SUM used for constructing the 
+  # correct object during deserialization
 }

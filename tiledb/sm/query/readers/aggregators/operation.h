@@ -149,7 +149,7 @@ class CountOperation : public Operation {
   // requested so that we get a different object for each query.
   [[nodiscard]] shared_ptr<tiledb::sm::IAggregator> aggregator()
       const override {
-    return std::make_shared<tiledb::sm::CountAggregator>();
+    return common::make_shared<tiledb::sm::CountAggregator>(HERE());
   }
 };
 

@@ -1602,7 +1602,7 @@ Status query_to_capnp(
         "Aggregates are not currently supported in incomplete remote "
         "queries");
   }
-  query_aggregates_to_capnp(query, query_builder);
+  query_channels_to_capnp(query, query_builder);
 
   return Status::Ok();
 }
@@ -1676,10 +1676,10 @@ Status query_from_capnp(
     }
   }
 
-  // It's important that deserialization of query aggregates happens before
-  // deserializing buffers. set_data_buffer won't know whether a buffer is
-  // aggregate or not if the list of aggregates per channel is not populated.
-  query_aggregates_from_capnp(query_reader, query);
+  // It's important that deserialization of query channels/aggregates happens
+  // before deserializing buffers. set_data_buffer won't know whether a buffer
+  // is aggregate or not if the list of aggregates per channel is not populated.
+  query_channels_from_capnp(query_reader, query);
 
   const auto& schema = query->array_schema();
   // Deserialize and set attribute buffers.

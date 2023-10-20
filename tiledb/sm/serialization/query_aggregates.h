@@ -42,21 +42,21 @@ namespace tiledb::sm::serialization {
 #ifdef TILEDB_SERIALIZATION
 
 /**
- * Convert query aggregates to Cap'n Proto message
+ * Convert query channels to Cap'n Proto message
  *
  * @param query A TileDB query
  * @param query_builder cap'n proto class
  */
-void query_aggregates_to_capnp(
+void query_channels_to_capnp(
     Query& query, capnp::Query::Builder* query_builder);
 
 /**
- * Deserialize query aggregates from Cap'n Proto message
+ * Deserialize query channels from Cap'n Proto message
  *
  * @param query_reader capnp reader
  * @param query deserialized TileDB query
  */
-void query_aggregates_from_capnp(
+void query_channels_from_capnp(
     const capnp::Query::Reader& query_reader, Query* const query);
 
 #endif

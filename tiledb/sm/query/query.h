@@ -774,6 +774,7 @@ class Query {
     throw std::logic_error(
         "We currently only support a default channel for queries");
   }
+
   /**
    * Returns true if the query has any aggregates on any channels
    */

@@ -38,10 +38,13 @@ namespace tiledb::sm::serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
-void query_aggregates_to_capnp(
+void query_channels_to_capnp(
     Query& query, capnp::Query::Builder* query_builder) {
+  // Here, don't serialize if we don't have channels or if the default channel
+  // has no aggregates on it.
   auto channels = query.get_channels();
-  if (channels.empty()) {
+  if (channels.empty() || (channels.size() == 1 && channels[0].is_default() &&
+                           channels[0].aggregates().empty())) {
     return;
   }
   auto channels_builder = query_builder->initChannels(channels.size());
@@ -60,12 +63,12 @@ void query_aggregates_to_capnp(
       auto aggregate_builder = aggregates_builder[i];
       aggregate_builder.setOutputFieldName(agg.first);
       aggregate_builder.setName(agg.second->aggregate_name());
-      // TODO: Currently COUNT reports that its
-      // field name is constants::count_of_rows. This causes deserialization
-      // code to crash because an input field is always assumed to exist, so
-      // deserialization calls some array schema functions on it. This should be
-      // fixed in a followup work item by making the aggregators interface
-      // return an optional field_name
+      // TODO: Currently COUNT reports that its field name is
+      // constants::count_of_rows. This causes deserialization code to crash
+      // because an input field is always assumed to exist, so deserialization
+      // calls some array schema functions on it. This should be fixed in a
+      // followup work item by making the aggregators interface return an
+      // optional field_name
       if (agg.second->aggregate_name() != constants::aggregate_count_str) {
         aggregate_builder.setInputFieldName(agg.second->field_name());
       }
@@ -74,9 +77,9 @@ void query_aggregates_to_capnp(
   }
 }
 
-void query_aggregates_from_capnp(
+void query_channels_from_capnp(
     const capnp::Query::Reader& query_reader, Query* const query) {
-  // Should always be true as there is always at least 1 query default channel
+  // We might not have channels if the default channel had no aggregates.
   if (query_reader.hasChannels()) {
     auto channels_reader = query_reader.getChannels();
     // Only the query default channel is on the wire for now
@@ -92,12 +95,12 @@ void query_aggregates_from_capnp(
             auto output_field = aggregate.getOutputFieldName();
             auto name = aggregate.getName();
 
-            // TODO: Currently COUNT reports that its
-            // field name is constants::count_of_rows. This causes
-            // deserialization code to crash because an input field is always
-            // assumed to exist, so deserialization calls some array schema
-            // functions on it. This should be fixed in a followup work item by
-            // making the aggregators interface return an optional field_name
+            // TODO: Currently COUNT reports that its field name is
+            // constants::count_of_rows. This causes deserialization code to
+            // crash because an input field is always assumed to exist, so
+            // deserialization calls some array schema functions on it. This
+            // should be fixed in a followup work item by making the aggregators
+            // interface return an optional field_name
             std::optional<FieldInfo> fi;
             if (aggregate.hasInputFieldName()) {
               auto input_field = aggregate.getInputFieldName();
