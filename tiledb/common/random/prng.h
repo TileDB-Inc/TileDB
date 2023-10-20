@@ -45,7 +45,13 @@ class PRNG {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
+  /**
+   * Constructor.
+   *
+   * Constructs an mt19937 engine for random number generation.
+   * If Seeder has been seeded, the seed will be set on the engine.
+   * Otherwise, it is default-constructed.
+   */
   PRNG();
 
   /** Copy constructor is deleted. */

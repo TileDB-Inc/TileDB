@@ -26,8 +26,6 @@
  * THE SOFTWARE.
  *
  * Tests for the global seedable PRNG facility.
- * Note: Default behavior must be tested for both singletons before setting any
- * new seed.
  */
 
 #include <test/support/tdb_catch.h>
@@ -38,49 +36,47 @@
 
 using namespace tiledb::common;
 
-/** Global PRNG singleton reference. */
-PRNG& prng_ = PRNG::get();
-
-/** Global Seeder singleton reference. */
-Seeder& seeder_ = Seeder::get();
-
-TEST_CASE(
-    "SeedableGlobalPRNG: operator",
-    "[SeedableGlobalPRNG][operator][multiple]") {
-  auto rand_num1 = prng_();
-  CHECK(rand_num1 != 0);
-
-  auto rand_num2 = prng_();
-  CHECK(rand_num2 != 0);
-  CHECK(rand_num1 != rand_num2);
-
-  auto rand_num3 = prng_();
-  CHECK(rand_num3 != 0);
-  CHECK(rand_num1 != rand_num3);
-  CHECK(rand_num2 != rand_num3);
-}
-
 TEST_CASE(
     "SeedableGlobalPRNG: Seeder, default seed",
     "[SeedableGlobalPRNG][Seeder][seed]") {
-  auto seed{seeder_.seed()};
+  // Default seed is std::nullopt
+  Seeder seeder;
+  auto seed{seeder.seed()};
   CHECK(!seed.has_value());
 }
 
 TEST_CASE(
     "SeedableGlobalPRNG: Seeder, set seed",
     "[SeedableGlobalPRNG][Seeder][set_seed]") {
-  // Default seed is std::nullopt
-  CHECK(!seeder_.seed().has_value());
-
-  // Get default seed again
-  CHECK(!seeder_.seed().has_value());
-
-  // Set new seed
-  seeder_.set_seed(0);
+  Seeder seeder;
+  seeder.set_seed(0);
 
   // Use seed, after it's been set but not used (lifespan_state_ = 1)
-  CHECK(seeder_.seed().has_value());
+  CHECK(seeder.seed().has_value());
+}
+
+TEST_CASE(
+    "SeedableGlobalPRNG: operator",
+    "[SeedableGlobalPRNG][operator][multiple]") {
+  PRNG prng;
+  auto rand_num1 = prng();
+  CHECK(rand_num1 != 0);
+
+  auto rand_num2 = prng();
+  CHECK(rand_num2 != 0);
+  CHECK(rand_num1 != rand_num2);
+
+  auto rand_num3 = prng();
+  CHECK(rand_num3 != 0);
+  CHECK(rand_num1 != rand_num3);
+  CHECK(rand_num2 != rand_num3);
+}
+
+TEST_CASE(
+    "SeedableGlobalPRNG: Seeder singleton, errors",
+    "[SeedableGlobalPRNG][Seeder][singleton][errors]") {
+  // Note: these errors will occur because PRNG sets and uses the singleton.
+  Seeder& seeder_ = Seeder::get();
 
   // Try to set new seed
   CHECK_THROWS_WITH(

@@ -60,11 +60,9 @@ std::optional<uint64_t> Seeder::seed() {
   if (lifespan_state_ == 2) {
     throw std::logic_error(
         "[Seeder::seed] Seed can only be used once and has already been used.");
-  } else if (lifespan_state_ == 1) {
-    lifespan_state_ = 2;
   }
 
-  // If seed is not yet set (lifespan_state_ == 0), this will return nullopt
+  lifespan_state_ = 2;
   return seed_;
 }
 

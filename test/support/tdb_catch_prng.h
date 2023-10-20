@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file declares a Catch2 hook to set a global random number.
+ * This file declares a Catch2 hook to seed a global random number generator.
  */
 
 #ifndef TILEDB_TDB_CATCH_PRNG_H
@@ -39,8 +39,12 @@
 
 using namespace tiledb::common;
 
-class testRunListener : public Catch::EventListenerBase {
+class testPRNGSeeder : public Catch::EventListenerBase {
  public:
+  /**
+   * Make visible the base class constructor to default construct class
+   * testPRNG using base class initialization.
+   */
   using Catch::EventListenerBase::EventListenerBase;
 
   void testRunStarting(Catch::TestRunInfo const&) override {

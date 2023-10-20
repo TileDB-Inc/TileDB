@@ -26,9 +26,9 @@
  * THE SOFTWARE.
  */
 
-#include "../tdb_catch.h"
 #include "../tdb_catch_prng.h"
 
+// Don't need to check for link completeness on test class.
 int main() {
   return 0;
 }

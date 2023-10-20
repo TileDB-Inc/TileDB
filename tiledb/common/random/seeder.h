@@ -34,9 +34,22 @@
 #define TILEDB_SEEDER_H
 
 #include <mutex>
+#include <optional>
 
 namespace tiledb::common {
 
+/**
+ * Class which manages the lifetime state and transitions of a seed
+ * which may be used to seed a random number generator in class PRNG.
+ *
+ * Lifetime state and transitions can be depicted as follows:
+ *    0         --->           1        --->        2
+ * default   (set_seed)   seed is set  (seed)  seed is used
+ *                        but unused
+ *
+ * Note that each transition may occur only once.
+ * i.e. A seed may only be set one time and may only be used one time.
+ */
 class Seeder {
  public:
   /* ********************************* */
@@ -74,16 +87,23 @@ class Seeder {
   static Seeder& get();
 
   /**
-   * Sets the seed
+   * Sets the seed.
+   * Transitions seed lifetime_state_: 0 (default) --> 1 (set but unused).
+   * Note that this may be called once and only once.
    *
-   * @param seed Seed to set
+   * @param seed Seed to set.
    */
   void set_seed(uint64_t seed);
 
   /**
-   * Returns the seed, if set and unused.
+   * Returns the seed, if set and not yet used.
+   * Transitions seed lifetime_state_: 1 (set but unused) --> 2 (set and used).
+   * Note: this may be called once and only once.
    *
-   * @return If set but unused, return the seed. Else throw or return nullopt.
+   * Note: if the seed is not yet set, return std::nullopt.
+   * Transitions seed lifetime_state_: 0 (default) --> 2 (used).
+   *
+   * @return Seed, if set and not yet used. Else, throw or return nullopt.
    */
   std::optional<uint64_t> seed();
 

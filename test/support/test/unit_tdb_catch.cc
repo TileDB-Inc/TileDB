@@ -30,6 +30,10 @@
 
 #include "../tdb_catch_prng.h"
 
+/**
+ * Note: This is a singleton validation test.
+ * Only one test of this kind may run per test suite.
+ */
 TEST_CASE("tdbCatch: Validate set_seed hook", "[tdbCatch]") {
   tiledb::common::Seeder& seeder_ = tiledb::common::Seeder::get();
   CHECK(seeder_.seed().value() == Catch::rngSeed());

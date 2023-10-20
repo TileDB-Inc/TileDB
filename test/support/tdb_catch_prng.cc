@@ -27,9 +27,9 @@
  *
  * @section DESCRIPTION
  *
- * This file defines a Catch2 hook to set a global random number.
+ * This file defines a Catch2 hook to seed a global random number generator.
  */
 
 #include "tdb_catch_prng.h"
 
-CATCH_REGISTER_LISTENER(testRunListener)
+CATCH_REGISTER_LISTENER(testPRNGSeeder)
