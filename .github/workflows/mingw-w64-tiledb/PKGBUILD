@@ -7,13 +7,6 @@ pkgdesc="Storage management library for sparse and dense array data (mingw-w64)"
 arch=("any")
 url="https://tiledb.com/"
 license=("MIT")
-depends=("${MINGW_PACKAGE_PREFIX}-lz4"
-         "${MINGW_PACKAGE_PREFIX}-aws-sdk-cpp"
-         "${MINGW_PACKAGE_PREFIX}-bzip2"
-         "${MINGW_PACKAGE_PREFIX}-curl"
-         "${MINGW_PACKAGE_PREFIX}-zlib"
-         "${MINGW_PACKAGE_PREFIX}-zstd"
-         )
 makedepends=("${MINGW_PACKAGE_PREFIX}-cmake"
              "${MINGW_PACKAGE_PREFIX}-gcc")
 options=("staticlibs" "strip")
@@ -45,7 +38,6 @@ build() {
     -DCOMPILER_SUPPORTS_AVX2=OFF \
     -DTILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK=ON \
     -DTILEDB_WERROR=OFF \
-    -DVCPKG_OVERLAY_PORTS=../.github/workflows/mingw-w64-tiledb/system-ports \
     -DVCPKG_TARGET_TRIPLET=${vcpkg_triplet} \
     ..
   make
