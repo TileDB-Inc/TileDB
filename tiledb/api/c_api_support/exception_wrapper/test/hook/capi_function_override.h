@@ -36,13 +36,25 @@
 
 #include "../logging_aspect.h"
 
+/*
+ * CAPI_PREFIX is an extension point within the macros for defining C API
+ * interface functions. The override macro defines a trait class for each C API
+ * implementation function. The trait class is a specialization of an otherwise
+ * undefined class template. Each trait class contains the name of its
+ * implementation function; the name is subsequently picked up by `class
+ * LoggingAspect`.
+ */
 #undef CAPI_PREFIX
 #define CAPI_PREFIX(root)                                    \
   template <>                                                \
-  struct CAPIFunctionMetadata<CAPI_IMPL(root)> {             \
+  struct CAPIFunctionNameTrait<CAPI_IMPL(root)> {             \
     static constexpr std::string_view name{"tiledb_" #root}; \
   };
 
+/**
+ * Specialization of the aspect selector to `void` overrides the default (the
+ * null aspect) to compile with the logging aspect instead.
+ */
 template <auto f>
 struct tiledb::api::CAPIFunctionSelector<f, void> {
   using aspect_type = LoggingAspect<f>;

@@ -514,6 +514,10 @@ using ExceptionActionCtxErr = detail::ExceptionActionDetailCtxErr;
 //-------------------------------------------------------
 // Exception wrapper
 //-------------------------------------------------------
+/**
+ * Null aspect for `class CAPIFunction` has null operations for all aspects.
+ * @tparam f
+ */
 template <auto f>
 class CAPIFunctionNullAspect {
  public:
@@ -547,6 +551,8 @@ class CAPIFunction;
  */
 template <class R, class... Args, R (*f)(Args...), class H, class A>
 class CAPIFunction<f, H, A> {
+
+  
  public:
   /**
    * Forwarded alias to template parameter H.
@@ -582,7 +588,6 @@ class CAPIFunction<f, H, A> {
        * Note that we don't need std::forward here because all the arguments
        * must have "C" linkage.
        */
-      //-------------------------------------------------------
       A::call(args...);
       if constexpr (std::same_as<R, void>) {
         f(args...);

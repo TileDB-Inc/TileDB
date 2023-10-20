@@ -1,5 +1,5 @@
 /**
- * @file c_api_support/exception_wrapper/test/unit_capi_hook_without.cc
+ * @file tiledb/api/c_api_support/exception_wrapper/test/unit_capi_hook_without.cc
  *
  * @section LICENSE
  *

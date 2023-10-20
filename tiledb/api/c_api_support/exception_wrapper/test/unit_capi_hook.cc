@@ -1,5 +1,5 @@
 /**
- * @file c_api_support/exception_wrapper/test/unit_capi_hook.cc
+ * @file tiledb/api/c_api_support/exception_wrapper/test/unit_capi_hook.cc
  *
  * @section LICENSE
  *
@@ -54,7 +54,7 @@ capi_return_t tf_null() {
  * Metadata for null function.
  */
 template <>
-struct CAPIFunctionMetadata<tf_null> {
+struct CAPIFunctionNameTrait<tf_null> {
   static constexpr std::string_view name{"tf_null"};
 };
 
