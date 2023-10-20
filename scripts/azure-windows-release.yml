@@ -8,6 +8,9 @@ steps:
   env: { sourceVersion: $(Build.SourceVersion) }
   displayName: Git Hash 7-digit
 
+- powershell: python ./scripts/ci/patch_vcpkg_triplets.py
+  displayName: Prevent vpckg from building debug variants
+
 - powershell: |
     mkdir $env:AGENT_BUILDDIRECTORY\build
     cd $env:AGENT_BUILDDIRECTORY\build

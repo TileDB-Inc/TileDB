@@ -23,6 +23,9 @@ steps:
   condition: eq(variables['Agent.OS'], 'Darwin')
   displayName: 'Install brew packages for macOS build'
 
+- bash: python ./scripts/ci/patch_vcpkg_triplets.py
+  displayName: Prevent vpckg from building debug variants
+
 # Tried using mamba for manylinux missing packages - switched to custom image instead.
 #- bash: |
 #    curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
