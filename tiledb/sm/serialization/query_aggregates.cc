@@ -49,14 +49,14 @@ void query_aggregates_to_capnp(
     auto channel_builder = channels_builder[0];
     channel_builder.setDefault(channel.is_default());
 
-    auto& aggregates = query.aggregates();
+    auto& aggregates = channel.aggregates();
     if (aggregates.empty()) {
       continue;
     }
 
     auto aggregates_builder = channel_builder.initAggregates(aggregates.size());
     size_t i = 0;
-    for (const auto& agg : agggregates) {
+    for (const auto& agg : aggregates) {
       auto aggregate_builder = aggregates_builder[i];
       aggregate_builder.setOutputFieldName(agg.first);
       aggregate_builder.setName(agg.second->aggregate_name());
@@ -103,7 +103,7 @@ void query_aggregates_from_capnp(
               auto input_field = aggregate.getInputFieldName();
               auto& schema = query->array_schema();
 
-              fi = std::make_optional(tiledb::sm::FieldInfo(
+              fi.emplace(tiledb::sm::FieldInfo(
                   input_field,
                   schema.var_size(input_field),
                   schema.is_nullable(input_field),

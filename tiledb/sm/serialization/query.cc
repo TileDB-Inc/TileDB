@@ -1718,9 +1718,10 @@ Status query_from_capnp(
     // Refactor to use query_field_t.
     bool var_size = false;
     bool nullable = false;
-    if (query->is_aggregate(name)) {
-      var_size = query->get_aggregate(name).value()->aggregation_var_sized();
-      nullable = query->get_aggregate(name).value()->aggregation_nullable();
+    auto aggregate = query->get_aggregate(name);
+    if (aggregate.has_value()) {
+      var_size = aggregate.value()->aggregation_var_sized();
+      nullable = aggregate.value()->aggregation_nullable();
     } else {
       var_size = schema.var_size(name);
       nullable = schema.is_nullable(name);

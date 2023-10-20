@@ -49,11 +49,11 @@ class QueryChannel {
       , aggregates_{aggregates} {
   }
 
-  bool is_default() {
+  bool is_default() const {
     return default_;
   }
 
-  ChannelAggregates& aggregates() {
+  const ChannelAggregates& aggregates() const {
     return aggregates_;
   }
 

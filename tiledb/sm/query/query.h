@@ -760,7 +760,7 @@ class Query {
    */
   std::vector<QueryChannel> get_channels() {
     // Currently only the default channel is supported
-    return {QueryChannel(true)};
+    return {QueryChannel(true, default_channel_aggregates_)};
   }
 
   /**
