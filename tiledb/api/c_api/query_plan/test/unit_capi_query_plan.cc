@@ -1,5 +1,5 @@
 /**
- * @file tiledeb/api/c_api/query_plan/test/unit_capi_query_plan.cc
+ * @file tiledb/api/c_api/query_plan/test/unit_capi_query_plan.cc
  *
  * @section LICENSE
  *

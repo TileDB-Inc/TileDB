@@ -74,7 +74,7 @@ TILEDB_EXPORT extern const tiledb_channel_operation_t* tiledb_aggregate_count;
  * @endcode
  *
  * @param ctx The TileDB context
- * @param operator The operator handle to be retrieved
+ * @param op The operator handle to be retrieved
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_channel_operator_sum_get(
@@ -92,14 +92,14 @@ TILEDB_EXPORT int32_t tiledb_channel_operator_sum_get(
  * @endcode
  *
  * @param ctx The TileDB context
- * @param operator The operator handle to be retrieved
+ * @param op The operator handle to be retrieved
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_channel_operator_min_get(
     tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) TILEDB_NOEXCEPT;
 
 /**
- * Helper function to access the constant MAx channel operator handle
+ * Helper function to access the constant MAX channel operator handle
  * **Example:**
  *
  * @code{.c}
@@ -110,7 +110,7 @@ TILEDB_EXPORT int32_t tiledb_channel_operator_min_get(
  * @endcode
  *
  * @param ctx The TileDB context
- * @param operator The operator handle to be retrieved
+ * @param op The operator handle to be retrieved
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_channel_operator_max_get(

@@ -51,12 +51,14 @@ enum QueryChannelOperator {
 
 class Operation {
  protected:
-  shared_ptr<tiledb::sm::IAggregator> aggregator_;
+  shared_ptr<tiledb::sm::IAggregator> aggregator_ = nullptr;
 
  public:
-  [[nodiscard]] shared_ptr<tiledb::sm::IAggregator> aggregator() const {
+  [[nodiscard]] virtual shared_ptr<tiledb::sm::IAggregator> aggregator() const {
     return aggregator_;
   }
+
+  virtual ~Operation(){};
 };
 
 class MinOperation : public Operation {
@@ -85,9 +87,13 @@ class SumOperation : public Operation {
 
 class CountOperation : public Operation {
  public:
-  // For nullary operations, default constructor makes sense
-  CountOperation() {
-    aggregator_ = std::make_shared<tiledb::sm::CountAggregator>();
+  CountOperation() = default;
+
+  // For count operations we have a constant handle, create the aggregator when
+  // requested so that we get a different object for each query.
+  [[nodiscard]] shared_ptr<tiledb::sm::IAggregator> aggregator()
+      const override {
+    return std::make_shared<tiledb::sm::CountAggregator>();
   }
 };
 
@@ -129,10 +135,9 @@ struct tiledb_query_channel_handle_t
    */
   static constexpr std::string_view object_type_name{"tiledb_query_channel_t"};
 
- private:
+ public:
   tiledb::sm::Query* query_;
 
- public:
   /**
    * Default constructor doesn't make sense
    */
@@ -154,6 +159,7 @@ struct tiledb_query_channel_handle_t
           "An aggregate operation for output field: " +
           std::string(output_field) + " already exists.");
     }
+
     // Add the aggregator the the default channel as this is the only channel
     // type we currently support
     query_->add_aggregator_to_default_channel(
