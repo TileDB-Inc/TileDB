@@ -38,9 +38,6 @@
 #include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/type/apply_with_type.h"
 
-const tiledb_channel_operator_handle_t* tiledb_channel_operator_count =
-    tiledb_channel_operator_handle_t::make_handle(
-        TILEDB_QUERY_CHANNEL_OPERATOR_COUNT, "COUNT");
 const tiledb_channel_operator_handle_t* tiledb_channel_operator_sum =
     tiledb_channel_operator_handle_t::make_handle(
         TILEDB_QUERY_CHANNEL_OPERATOR_SUM, "SUM");
@@ -50,6 +47,10 @@ const tiledb_channel_operator_handle_t* tiledb_channel_operator_min =
 const tiledb_channel_operator_handle_t* tiledb_channel_operator_max =
     tiledb_channel_operator_handle_t::make_handle(
         TILEDB_QUERY_CHANNEL_OPERATOR_MAX, "MAX");
+
+const tiledb_channel_operation_handle_t* tiledb_aggregate_count =
+    tiledb_channel_operation_handle_t::make_handle(
+        std::make_shared<CountOperation>());
 
 shared_ptr<Operation> tiledb_channel_operator_handle_t::make_operation(
     const tiledb::sm::FieldInfo& fi) const {
@@ -138,14 +139,6 @@ inline void ensure_aggregates_enabled_via_config(tiledb_ctx_t* ctx) {
   }
 }
 
-capi_return_t tiledb_channel_operator_count_get(
-    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) {
-  ensure_aggregates_enabled_via_config(ctx);
-  ensure_output_pointer_is_valid(op);
-  *op = tiledb_channel_operator_count;
-  return TILEDB_OK;
-}
-
 capi_return_t tiledb_channel_operator_sum_get(
     tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) {
   ensure_aggregates_enabled_via_config(ctx);
@@ -170,6 +163,14 @@ capi_return_t tiledb_channel_operator_max_get(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_aggregate_count_get(
+    tiledb_ctx_t* ctx, const tiledb_channel_operation_t** operation) {
+  ensure_aggregates_enabled_via_config(ctx);
+  ensure_output_pointer_is_valid(operation);
+  *operation = tiledb_aggregate_count;
+  return TILEDB_OK;
+}
+
 capi_return_t tiledb_query_get_default_channel(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
@@ -182,29 +183,6 @@ capi_return_t tiledb_query_get_default_channel(
   // the default channel is currently just a hashmap, so only pass the query
   // to the channel constructor to be carried until next the api call.
   *channel = tiledb_query_channel_handle_t::make_handle(query);
-
-  return TILEDB_OK;
-}
-
-capi_return_t tiledb_create_nullary_aggregate(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const tiledb_channel_operator_t* op,
-    tiledb_channel_operation_t** operation) {
-  ensure_aggregates_enabled_via_config(ctx);
-  ensure_query_is_valid(query);
-  ensure_query_is_not_initialized(query);
-  ensure_channel_operator_is_valid(op);
-  ensure_output_pointer_is_valid(operation);
-
-  if (op->value() != TILEDB_QUERY_CHANNEL_OPERATOR_COUNT) {
-    throw tiledb::api::CAPIStatusException(
-        "operator has unsupported value: " +
-        std::to_string(static_cast<uint8_t>(op->value())));
-  }
-
-  *operation = tiledb_channel_operation_handle_t::make_handle(
-      std::make_shared<CountOperation>());
 
   return TILEDB_OK;
 }
@@ -302,10 +280,10 @@ capi_return_t tiledb_channel_operator_max_get(
       ctx, op);
 }
 
-capi_return_t tiledb_channel_operator_count_get(
-    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) noexcept {
-  return api_entry_with_context<tiledb::api::tiledb_channel_operator_count_get>(
-      ctx, op);
+capi_return_t tiledb_aggregate_count_get(
+    tiledb_ctx_t* ctx, const tiledb_channel_operation_t** operation) noexcept {
+  return api_entry_with_context<tiledb::api::tiledb_aggregate_count_get>(
+      ctx, operation);
 }
 
 capi_return_t tiledb_query_get_default_channel(
@@ -314,15 +292,6 @@ capi_return_t tiledb_query_get_default_channel(
     tiledb_query_channel_t** channel) noexcept {
   return api_entry_with_context<tiledb::api::tiledb_query_get_default_channel>(
       ctx, query, channel);
-}
-
-capi_return_t tiledb_create_nullary_aggregate(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    const tiledb_channel_operator_t* op,
-    tiledb_channel_operation_t** operation) noexcept {
-  return api_entry_with_context<tiledb::api::tiledb_create_nullary_aggregate>(
-      ctx, query, op, operation);
 }
 
 capi_return_t tiledb_create_unary_aggregate(
@@ -420,12 +389,8 @@ SumOperation::SumOperation(
           std::make_shared<tiledb::sm::SumAggregator<decltype(T)>>(fi);
     } else {
       throw std::logic_error(
-          "Sum aggregates can only be requested on numeric types");
+          "SUM aggregates can only be requested on numeric types");
     }
   };
   apply_with_type(g, fi.type_);
-}
-
-CountOperation::CountOperation() {
-  aggregator_ = std::make_shared<tiledb::sm::CountAggregator>();
 }

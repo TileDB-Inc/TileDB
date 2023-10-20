@@ -42,16 +42,6 @@ namespace tiledb {
 
 class ChannelOperator {};
 
-class CountOperator : public ChannelOperator {
- public:
-  /* ********************************* */
-  /*                API                */
-  /* ********************************* */
-  static const tiledb_channel_operator_t* ptr() {
-    return tiledb_channel_operator_count;
-  }
-};
-
 class SumOperator : public ChannelOperator {
  public:
   /* ********************************* */

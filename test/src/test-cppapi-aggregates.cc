@@ -1178,9 +1178,7 @@ TEST_CASE_METHOD(
           // Add a count aggregator to the query.
           QueryChannel default_channel =
               QueryExperimental::get_default_channel(query);
-          ChannelOperation operation =
-              QueryExperimental::create_nullary_aggregate<CountOperator>(query);
-          default_channel.apply_aggregate("Count", operation);
+          default_channel.apply_aggregate("Count", CountOperation());
 
           set_ranges_and_condition_if_needed(array, query, false);
 
@@ -2204,9 +2202,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
         // they are processed separately in the dense case.
         QueryChannel default_channel =
             QueryExperimental::get_default_channel(query);
-        ChannelOperation operation =
-            QueryExperimental::create_nullary_aggregate<CountOperator>(query);
-        default_channel.apply_aggregate("Count", operation);
+        default_channel.apply_aggregate("Count", CountOperation());
         ChannelOperation operation2 =
             QueryExperimental::create_unary_aggregate<SumOperator>(query, "a1");
         default_channel.apply_aggregate("Sum", operation2);
@@ -2350,11 +2346,6 @@ TEST_CASE_METHOD(
   CHECK_THROWS(QueryExperimental::create_unary_aggregate<SumOperator>(
       query, "nonexistent"));
 
-  // This throws for the wrong aggregator type
-  CHECK_THROWS(
-      QueryExperimental::create_unary_aggregate<CountOperator>(query, "a1"));
-  CHECK_THROWS(QueryExperimental::create_nullary_aggregate<SumOperator>(query));
-
   QueryChannel default_channel = QueryExperimental::get_default_channel(query);
   ChannelOperation operation =
       QueryExperimental::create_unary_aggregate<SumOperator>(query, "a1");
@@ -2371,7 +2362,5 @@ TEST_CASE_METHOD(
   // Check api throws if the query state is already >= initialized
   CHECK_THROWS(
       QueryExperimental::create_unary_aggregate<SumOperator>(query, "a1"));
-  CHECK_THROWS(
-      QueryExperimental::create_nullary_aggregate<CountOperator>(query));
   CHECK_THROWS(default_channel.apply_aggregate("Something", operation));
 }

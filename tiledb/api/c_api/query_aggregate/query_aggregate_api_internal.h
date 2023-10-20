@@ -53,15 +53,16 @@ class Operation {
  protected:
   shared_ptr<tiledb::sm::IAggregator> aggregator_;
 
+  bool is_count_ = false;
+
  public:
   [[nodiscard]] shared_ptr<tiledb::sm::IAggregator> aggregator() const {
     return aggregator_;
   }
-};
 
-class CountOperation : public Operation {
- public:
-  explicit CountOperation();
+  [[nodiscard]] bool is_count() const {
+    return is_count_;
+  }
 };
 
 class MinOperation : public Operation {
@@ -86,6 +87,17 @@ class SumOperation : public Operation {
   explicit SumOperation(
       const tiledb::sm::FieldInfo& fi,
       const tiledb_channel_operator_handle_t* op);
+};
+
+class CountOperation : public Operation {
+ public:
+  // For count operations we have a constant handle, use nullptr and create
+  // the aggregator when requested so that we get a different object for each
+  // query.
+  CountOperation() {
+    aggregator_ = nullptr;
+    is_count_ = true;
+  }
 };
 
 struct tiledb_channel_operation_handle_t
@@ -115,6 +127,12 @@ struct tiledb_channel_operation_handle_t
   }
 
   [[nodiscard]] inline shared_ptr<tiledb::sm::IAggregator> aggregator() const {
+    // For count operations we have a constant handle, we create the aggregator
+    // when requested so that we get a different object for each query.
+    if (operation_->is_count()) {
+      return std::make_shared<tiledb::sm::CountAggregator>();
+    }
+
     return operation_->aggregator();
   }
 };
@@ -150,6 +168,7 @@ struct tiledb_query_channel_handle_t
           "An aggregate operation for output field: " +
           std::string(output_field) + " already exists.");
     }
+
     // Add the aggregator the the default channel as this is the only channel
     // type we currently support
     query_->add_aggregator_to_default_channel(

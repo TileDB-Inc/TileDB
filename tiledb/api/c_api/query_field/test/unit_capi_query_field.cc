@@ -1,5 +1,5 @@
 /**
- * @file tiledeb/api/c_api/query_field/test/unit_capi_query_field.cc
+ * @file tiledb/api/c_api/query_field/test/unit_capi_query_field.cc
  *
  * @section LICENSE
  *
@@ -319,16 +319,9 @@ TEST_CASE_METHOD(
 
   // Check field api works on aggregate field
   REQUIRE(tiledb_field_channel(ctx, field, &channel) == TILEDB_OK);
-
-  const tiledb_channel_operator_t* operator_count;
-  REQUIRE(tiledb_channel_operator_count_get(ctx, &operator_count) == TILEDB_OK);
-  tiledb_channel_operation_t* agg_count;
   REQUIRE(
-      tiledb_create_nullary_aggregate(ctx, query, operator_count, &agg_count) ==
-      TILEDB_OK);
-  REQUIRE(
-      tiledb_channel_apply_aggregate(ctx, channel, "Count", agg_count) ==
-      TILEDB_OK);
+      tiledb_channel_apply_aggregate(
+          ctx, channel, "Count", tiledb_aggregate_count) == TILEDB_OK);
   uint64_t count = 0;
   uint64_t size = 8;
   REQUIRE(

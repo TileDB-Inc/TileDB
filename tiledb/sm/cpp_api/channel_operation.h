@@ -87,20 +87,6 @@ class ChannelOperation {
    * Create a ChannelOperation
    *
    * @param query The TileDB query
-   */
-  template <std::derived_from<ChannelOperator> Op>
-  static ChannelOperation create(const Query& query) {
-    const Context& ctx = query.ctx();
-    tiledb_channel_operation_t* operation = nullptr;
-    ctx.handle_error(tiledb_create_nullary_aggregate(
-        ctx.ptr().get(), query.ptr().get(), Op::ptr(), &operation));
-    return ChannelOperation(ctx, operation);
-  }
-
-  /**
-   * Create a ChannelOperation
-   *
-   * @param query The TileDB query
    * @param input_field The attribute name the aggregate operation will run on
    */
   template <std::derived_from<ChannelOperator> Op>
@@ -129,6 +115,13 @@ class ChannelOperation {
 
   friend class QueryExperimental;
   friend class QueryChannel;
+};
+
+class CountOperation : public ChannelOperation {
+ private:
+  virtual const tiledb_channel_operation_t* ptr() const {
+    return tiledb_aggregate_count;
+  }
 };
 
 }  // namespace tiledb

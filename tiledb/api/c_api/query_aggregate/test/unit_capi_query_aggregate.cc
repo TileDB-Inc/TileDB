@@ -1,5 +1,5 @@
 /**
- * @file tiledeb/api/c_api/query_aggregate/test/unit_capi_query_aggregate.cc
+ * @file tiledb/api/c_api/query_aggregate/test/unit_capi_query_aggregate.cc
  *
  * @section LICENSE
  *
@@ -232,6 +232,7 @@ TEST_CASE_METHOD(
   // nullptr context
   tiledb_query_channel_t* default_channel = nullptr;
   tiledb_channel_operation_t* operation;
+  const tiledb_channel_operation_t* const_operation;
   const tiledb_channel_operator_t* ch_operator;
 
   CHECK(
@@ -242,15 +243,14 @@ TEST_CASE_METHOD(
       tiledb_channel_operator_sum_get(nullptr, &ch_operator) ==
       TILEDB_INVALID_CONTEXT);
   CHECK(
+      tiledb_aggregate_count_get(nullptr, &const_operation) ==
+      TILEDB_INVALID_CONTEXT);
+  CHECK(
       tiledb_query_get_default_channel(nullptr, query, &default_channel) ==
       TILEDB_INVALID_CONTEXT);
   CHECK(
       tiledb_create_unary_aggregate(
           nullptr, query, tiledb_channel_operator_sum, "a", &operation) ==
-      TILEDB_INVALID_CONTEXT);
-  CHECK(
-      tiledb_create_nullary_aggregate(
-          nullptr, query, tiledb_channel_operator_count, &operation) ==
       TILEDB_INVALID_CONTEXT);
   CHECK(
       tiledb_channel_apply_aggregate(
@@ -264,10 +264,6 @@ TEST_CASE_METHOD(
   CHECK(
       tiledb_create_unary_aggregate(
           ctx, nullptr, tiledb_channel_operator_sum, "a", &operation) ==
-      TILEDB_ERR);
-  CHECK(
-      tiledb_create_nullary_aggregate(
-          ctx, nullptr, tiledb_channel_operator_count, &operation) ==
       TILEDB_ERR);
 
   // nullptr operator
@@ -302,29 +298,23 @@ TEST_CASE_METHOD(
   CHECK(tiledb_aggregate_free(ctx, nullptr) == TILEDB_ERR);
   tiledb_channel_operation_t* nullop = NULL;
   CHECK(tiledb_aggregate_free(ctx, &nullop) == TILEDB_ERR);
+  CHECK(tiledb_aggregate_count_get(ctx, nullptr) == TILEDB_ERR);
 
   // duplicate output field
   CHECK(
-      tiledb_create_nullary_aggregate(
-          ctx, query, tiledb_channel_operator_count, &operation) == TILEDB_OK);
+      tiledb_channel_apply_aggregate(
+          ctx, default_channel, "duplicate", tiledb_aggregate_count) ==
+      TILEDB_OK);
   CHECK(
       tiledb_channel_apply_aggregate(
-          ctx, default_channel, "duplicate", operation) == TILEDB_OK);
-  CHECK(
-      tiledb_channel_apply_aggregate(
-          ctx, default_channel, "duplicate", operation) == TILEDB_ERR);
-  CHECK(tiledb_aggregate_free(ctx, &operation) == TILEDB_OK);
+          ctx, default_channel, "duplicate", tiledb_aggregate_count) ==
+      TILEDB_ERR);
 
   // Non-existent input field
   CHECK(
       tiledb_create_unary_aggregate(
           ctx, query, tiledb_channel_operator_sum, "nonexistent", &operation) ==
       TILEDB_ERR);
-
-  // Invalid operation
-  CHECK(
-      tiledb_create_nullary_aggregate(
-          ctx, query, tiledb_channel_operator_sum, &operation) == TILEDB_ERR);
 
   // Clean up
   CHECK(tiledb_query_channel_free(ctx, &default_channel) == TILEDB_OK);
@@ -354,13 +344,9 @@ TEST_CASE_METHOD(
       tiledb_query_get_default_channel(ctx, query, &default_channel) ==
       TILEDB_OK);
 
-  tiledb_channel_operation_t* operation;
-  REQUIRE(
-      tiledb_create_nullary_aggregate(
-          ctx, query, tiledb_channel_operator_count, &operation) == TILEDB_OK);
   REQUIRE(
       tiledb_channel_apply_aggregate(
-          ctx, default_channel, "Count", operation) == TILEDB_OK);
+          ctx, default_channel, "Count", tiledb_aggregate_count) == TILEDB_OK);
 
   uint64_t count = 0;
   uint64_t size = 8;
@@ -374,7 +360,6 @@ TEST_CASE_METHOD(
   // Clean up
   CHECK(tiledb_query_channel_free(ctx, &default_channel) == TILEDB_OK);
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
-  CHECK(tiledb_aggregate_free(ctx, &operation) == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
@@ -584,11 +569,6 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED) == TILEDB_OK);
   int64_t dom[] = {1, 2, 1, 1};
   REQUIRE(tiledb_query_set_subarray(ctx, query, &dom) == TILEDB_OK);
-  tiledb_channel_operation_t* count_operation;
-  REQUIRE(
-      tiledb_create_nullary_aggregate(
-          ctx, query, tiledb_channel_operator_count, &count_operation) ==
-      TILEDB_OK);
 
   std::vector<int32_t> d(4);
   uint64_t size = 1;
@@ -607,7 +587,7 @@ TEST_CASE_METHOD(
   tiledb_channel_operation_t* op;
   CHECK(
       tiledb_channel_apply_aggregate(
-          ctx, default_channel, "Count", count_operation) == TILEDB_ERR);
+          ctx, default_channel, "Count", tiledb_aggregate_count) == TILEDB_ERR);
   CHECK(
       tiledb_create_unary_aggregate(
           ctx, query, tiledb_channel_operator_min, "_", &op) == TILEDB_ERR);
@@ -615,7 +595,6 @@ TEST_CASE_METHOD(
   // Clean up
   REQUIRE(tiledb_query_channel_free(ctx, &default_channel) == TILEDB_OK);
   REQUIRE(tiledb_array_close(ctx, array) == TILEDB_OK);
-  CHECK(tiledb_aggregate_free(ctx, &count_operation) == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
 }
