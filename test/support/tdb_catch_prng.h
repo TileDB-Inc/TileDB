@@ -39,7 +39,7 @@
 
 using namespace tiledb::common;
 
-class testPRNGSeeder : public Catch::EventListenerBase {
+class PRNGSeederFromCatch : public Catch::EventListenerBase {
  public:
   /**
    * Make visible the base class constructor to default construct class

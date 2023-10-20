@@ -32,4 +32,4 @@
 
 #include "tdb_catch_prng.h"
 
-CATCH_REGISTER_LISTENER(testPRNGSeeder)
+CATCH_REGISTER_LISTENER(PRNGSeederFromCatch)

@@ -102,13 +102,8 @@ target_link_libraries(tiledb_test_support_lib
 include(common NO_POLICY_SCOPE)
 include(object_library)
 
-list(APPEND SOURCES
-  tdb_catch_prng.cc
-)
-gather_sources(${SOURCES})
-
 commence(object_library tdb_catch)
-  this_target_sources(${SOURCES})
+  this_target_sources(tdb_catch_prng.cc)
   this_target_link_libraries(Catch2::Catch2)
   this_target_object_libraries(seedable_global_PRNG)
 conclude(object_library)

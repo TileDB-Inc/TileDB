@@ -101,6 +101,7 @@ class Seeder {
    * Note: this may be called once and only once.
    *
    * Note: if the seed is not yet set, return std::nullopt.
+   * This behavior will allow users to call the default constructor.
    * Transitions seed lifetime_state_: 0 (default) --> 2 (used).
    *
    * @return Seed, if set and not yet used. Else, throw or return nullopt.

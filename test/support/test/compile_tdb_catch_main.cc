@@ -28,7 +28,7 @@
 
 #include "../tdb_catch_prng.h"
 
-// Don't need to check for link completeness on test class.
 int main() {
+  PRNGSeederFromCatch(nullptr);
   return 0;
 }

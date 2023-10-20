@@ -62,7 +62,10 @@ uint64_t PRNG::operator()() {
 /* ********************************* */
 
 std::mt19937_64 PRNG::prng_initial() {
+  // Retrieve optional, potentially default-constructed seed.
   auto seed{Seeder::get().seed()};
+
+  // If the seed has been set, set it on the RNG engine.
   if (seed.has_value()) {
     return std::mt19937_64{seed.value()};  // RVO
   } else {

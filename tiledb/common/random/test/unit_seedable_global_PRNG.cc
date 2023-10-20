@@ -38,21 +38,59 @@ using namespace tiledb::common;
 
 TEST_CASE(
     "SeedableGlobalPRNG: Seeder, default seed",
-    "[SeedableGlobalPRNG][Seeder][seed]") {
+    "[SeedableGlobalPRNG][Seeder][default]") {
   // Default seed is std::nullopt
   Seeder seeder;
-  auto seed{seeder.seed()};
+  std::optional<uint64_t> seed;
+
+  // Use default seed (state 0 -> 2)
+  CHECK_NOTHROW(seed = seeder.seed());
   CHECK(!seed.has_value());
+
+  // Try setting seed after it's been used (state 2)
+  SECTION("try to set seed again") {
+    CHECK_THROWS_WITH(
+        seeder.set_seed(123),
+        Catch::Matchers::ContainsSubstring("Seed has already been set"));
+  }
+
+  // Try using seed after it's been used (state 2)
+  SECTION("try to use seed again") {
+    CHECK_THROWS_WITH(
+        seeder.seed(),
+        Catch::Matchers::ContainsSubstring("Seed can only be used once"));
+  }
 }
 
 TEST_CASE(
     "SeedableGlobalPRNG: Seeder, set seed",
     "[SeedableGlobalPRNG][Seeder][set_seed]") {
+  // Set seed (state 0 -> 1)
   Seeder seeder;
-  seeder.set_seed(0);
+  CHECK_NOTHROW(seeder.set_seed(123));
 
-  // Use seed, after it's been set but not used (lifespan_state_ = 1)
-  CHECK(seeder.seed().has_value());
+  SECTION("try to set seed again") {
+    CHECK_THROWS_WITH(
+        seeder.set_seed(456),
+        Catch::Matchers::ContainsSubstring("Seed has already been set"));
+  }
+
+  // Use seed, after it's been set but not used (state 1 -> 2)
+  CHECK(seeder.seed() == 123);
+
+  // Try setting seed after it's been set & used (state 2)
+  SECTION("try to set seed after it's been set and used") {
+    CHECK_THROWS_WITH(
+        seeder.set_seed(456),
+        Catch::Matchers::ContainsSubstring("Seed has already been set"));
+  }
+
+  // Try using seed after it's been set & used (state 2)
+  SECTION("try to use seed after it's been set and used") {
+    CHECK_THROWS_WITH(
+        seeder.seed(),
+        Catch::Matchers::ContainsSubstring("Seed can only be used once"));
+  }
 }
 
 TEST_CASE(
@@ -78,13 +116,15 @@ TEST_CASE(
   // Note: these errors will occur because PRNG sets and uses the singleton.
   Seeder& seeder_ = Seeder::get();
 
-  // Try to set new seed
-  CHECK_THROWS_WITH(
-      seeder_.set_seed(1),
-      Catch::Matchers::ContainsSubstring("Seed has already been set"));
+  SECTION("try to set new seed after it's been set") {
+    CHECK_THROWS_WITH(
+        seeder_.set_seed(1),
+        Catch::Matchers::ContainsSubstring("Seed has already been set"));
+  }
 
-  // Try to use seed again
-  CHECK_THROWS_WITH(
-      seeder_.seed(),
-      Catch::Matchers::ContainsSubstring("Seed can only be used once"));
+  SECTION("try to use seed after it's been used") {
+    CHECK_THROWS_WITH(
+        seeder_.seed(),
+        Catch::Matchers::ContainsSubstring("Seed can only be used once"));
+  }
 }
