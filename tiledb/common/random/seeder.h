@@ -35,6 +35,7 @@
 
 #include <mutex>
 #include <optional>
+#include <stdexcept>
 
 namespace tiledb::common {
 
