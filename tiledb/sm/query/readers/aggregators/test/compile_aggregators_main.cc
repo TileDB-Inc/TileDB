@@ -28,7 +28,6 @@
 
 #include "../count_aggregator.h"
 #include "../field_info.h"
-#include "../mean_aggregator.h"
 #include "../min_max_aggregator.h"
 #include "../sum_aggregator.h"
 
