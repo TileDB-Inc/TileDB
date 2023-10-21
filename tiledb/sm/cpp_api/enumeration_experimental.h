@@ -224,14 +224,36 @@ class Enumeration {
   /* ********************************* */
 
   /**
+   * Create an empty enumeration.
+   *
+   * @param ctx The context to use.
+   * @param name The name of the enumeration.
+   * @param type The datatype of the enumeration values. This is automatically
+   *        deduced if not provided.
+   * @param cell_val_num The number of values per cell.
+   * @param ordered Whether or not to consider this enumeration ordered.
+   * @return Enumeration The newly constructed enumeration.
+   */
+  static Enumeration create_empty(
+      const Context& ctx,
+      const std::string& name,
+      tiledb_datatype_t type,
+      uint32_t cell_val_num,
+      bool ordered = false) {
+    return create(
+        ctx, name, type, cell_val_num, ordered, nullptr, 0, nullptr, 0);
+  }
+
+  /**
    * Create an enumeration from a vector of trivial values (i.e., int's or other
    * integral or floating point values)
    *
    * @param ctx The context to use.
-   * @param values The list of values to use for this enumeration.
+   * @param name The name of the enumeration.
+   * @param values A vector of enumeration values
    * @param ordered Whether or not to consider this enumeration ordered.
-   * @param type The datatype of the enumeration values. This is automatically
-   *        deduced if not provided.
+   * @param type A specific type if you want to override the default.
+   * @return Enumeration The newly constructed enumeration.
    */
   template <typename T, impl::enable_trivial<T>* = nullptr>
   static Enumeration create(
@@ -279,13 +301,13 @@ class Enumeration {
    * Create an enumeration from a vector of strings
    *
    * @param ctx The context to use.
-   * @param values The vector of values for the enumeration.
-   * @param ordered Whether to consider the enumerationv alues as ordered.
-   * @param type The datatype of the enumeration values. This is automatically
-   *        deduced if not provided. However, this can be used to override the
-   *        deduced type if need be. For instance, TILEDB_STRING_ASCII is the
-   *        default type for strings but TILEDB_STRING_UTF8 can be specified.
+   * @param name The name of the enumeration.
+   * @param values A vector of enumeration values
+   * @param ordered Whether or not to consider this enumeration ordered.
+   * @param type A specific type if you want to override the default.
+   * @return Enumeration The newly constructed enumeration.
    */
+
   template <typename T, impl::enable_trivial<T>* = nullptr>
   static Enumeration create(
       const Context& ctx,
@@ -330,8 +352,9 @@ class Enumeration {
    * Create an enumeration
    *
    * @param ctx The context to use.
+   * @param name The name of the enumeration.
    * @param type The datatype of the enumeration values.
-   * @param cell_val_num The cell_val_num of the enumeration.
+   * @param cell_val_num The number of values per cell of the values.
    * @param ordered Whether this enumeration should be considered ordered.
    * @param data A pointer to a buffer of values for this enumeration.
    * @param data_size The size of the buffer pointed to by data.

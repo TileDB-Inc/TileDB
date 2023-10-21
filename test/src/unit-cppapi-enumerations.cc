@@ -47,7 +47,7 @@ struct CPPEnumerationFx {
   template <typename T>
   void check_dump(const T& val);
 
-  void create_array();
+  void create_array(bool with_empty_enumeration = false);
   void rm_array();
 
   std::string uri_;
@@ -394,7 +394,7 @@ TEST_CASE_METHOD(
 
   // Attempt to query with an enumeration value that isn't in the Enumeration
   QueryCondition qc(ctx_);
-  qc.init("attr1", "alf", 4, TILEDB_EQ);
+  qc.init("attr1", "alf", 3, TILEDB_EQ);
 
   // Execute the query condition against the array
   std::vector<int> dim(5);
@@ -435,6 +435,34 @@ TEST_CASE_METHOD(
   REQUIRE(rc != TILEDB_OK);
 }
 
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
+    "CPP: Enumeration Query - Attempt to query on empty enumeration",
+    "[enumeration][query][error]") {
+  create_array(true);
+
+  // Attempt to query with an enumeration value that isn't in the Enumeration
+  QueryCondition qc(ctx_);
+  qc.init("attr3", "alf", 3, TILEDB_EQ);
+
+  // Execute the query condition against the array
+  std::vector<int> dim(5);
+  std::vector<int> attr3(5);
+
+  auto array = Array(ctx_, uri_, TILEDB_READ);
+  Query query(ctx_, array);
+  query.add_range("dim", 1, 5)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("dim", dim)
+      .set_data_buffer("attr3", attr3)
+      .set_condition(qc);
+
+  // Check that the error message is helpful to users.
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Enumeration value not found for field 'attr3'");
+  REQUIRE_THROWS_WITH(query.submit(), matcher);
+}
+
 CPPEnumerationFx::CPPEnumerationFx()
     : uri_("enumeration_test_array")
     , vfs_(ctx_) {
@@ -470,7 +498,7 @@ void CPPEnumerationFx::check_dump(const T& val) {
   vfs_.remove_file(dump_name);
 }
 
-void CPPEnumerationFx::create_array() {
+void CPPEnumerationFx::create_array(bool with_empty_enumeration) {
   // Create a simple array for testing. This ends up with just five elements in
   // the array. dim is an int32_t dimension, attr1 is an enumeration with string
   // values and int32_t attribute values. attr2 is a float attribute.
@@ -500,11 +528,22 @@ void CPPEnumerationFx::create_array() {
   auto attr2 = Attribute::create<float>(ctx_, "attr2");
   schema.add_attribute(attr2);
 
+  if (with_empty_enumeration) {
+    auto empty_enmr = Enumeration::create_empty(
+        ctx_, "empty_enmr", TILEDB_STRING_ASCII, TILEDB_VAR_NUM);
+    ArraySchemaExperimental::add_enumeration(ctx_, schema, empty_enmr);
+
+    auto attr3 = Attribute::create<int>(ctx_, "attr3");
+    AttributeExperimental::set_enumeration_name(ctx_, attr3, "empty_enmr");
+    schema.add_attribute(attr3);
+  }
+
   Array::create(uri_, schema);
 
   // Attribute data
   std::vector<int> attr1_values = {0, 1, 2, 1, 0};
   std::vector<float> attr2_values = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
+  std::vector<int> attr3_values = {0, 0, 0, 0, 0};
 
   Array array(ctx_, uri_, TILEDB_WRITE);
   Subarray subarray(ctx_, array);
@@ -514,6 +553,11 @@ void CPPEnumerationFx::create_array() {
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("attr1", attr1_values)
       .set_data_buffer("attr2", attr2_values);
+
+  if (with_empty_enumeration) {
+    query.set_data_buffer("attr3", attr3_values);
+  }
+
   CHECK_NOTHROW(query.submit());
   query.finalize();
   array.close();
