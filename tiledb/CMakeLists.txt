@@ -47,6 +47,9 @@ cmake_policy(SET CMP0063 NEW)
 #  * CMAKE_HP_PTHREADS_INIT - If the found thread library is the HP thread library.
 find_package(Threads REQUIRED)
 
+# Compile all core sources with PIC
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 ############################################################
 # Subdirectories
 ############################################################
@@ -446,9 +449,6 @@ add_custom_target(
   COMMENT "Re-generate ${MGC_GZIPPED_BIN_INPUT_FILE} for embedded magic.mgc support"
 )
 
-# Compile all core sources with PIC
-set_property(TARGET TILEDB_CORE_OBJECTS PROPERTY POSITION_INDEPENDENT_CODE ON)
-
 target_include_directories(TILEDB_CORE_OBJECTS
   PRIVATE
     "${TILEDB_CORE_INCLUDE_DIR}"
@@ -471,9 +471,6 @@ if (WIN32 AND TILEDB_STATIC)
     PUBLIC
       baseline $<TARGET_OBJECTS:baseline>
   )
-
-  # Compile all core sources with PIC
-  set_property(TARGET TILEDB_CORE_OBJECTS_STATIC PROPERTY POSITION_INDEPENDENT_CODE ON)
 
   target_compile_definitions(TILEDB_CORE_OBJECTS_STATIC
     PRIVATE
