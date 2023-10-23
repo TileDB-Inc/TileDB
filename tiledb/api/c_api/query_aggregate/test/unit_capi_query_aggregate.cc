@@ -657,9 +657,9 @@ TEST_CASE_METHOD(
     QueryAggregateFx,
     "C API: Query aggregates NULL_COUNT test",
     "[capi][query_aggregate][null_count]") {
-  // SECTION("- No serialization") {
-  //   serialize_ = false;
-  // }
+  SECTION("- No serialization") {
+    serialize_ = false;
+  }
 #ifdef TILEDB_SERIALIZATION
   SECTION("- Serialization") {
     serialize_ = true;
