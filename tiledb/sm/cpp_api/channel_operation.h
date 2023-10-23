@@ -89,7 +89,9 @@ class ChannelOperation {
    * @param query The TileDB query
    * @param input_field The attribute name the aggregate operation will run on
    */
-  template <std::derived_from<ChannelOperator> Op>
+  template <
+      class Op,
+      std::enable_if_t<std::is_base_of_v<ChannelOperator, Op>, bool> = true>
   static ChannelOperation create(
       const Query& query, const std::string& input_field) {
     const Context& ctx = query.ctx();
