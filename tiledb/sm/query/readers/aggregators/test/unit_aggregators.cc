@@ -444,12 +444,12 @@ void basic_aggregation_test(std::vector<double> expected_results) {
     if constexpr (std::is_same<AGGREGATOR, CountAggregator>::value) {
       aggregator.emplace();
     } else {
-      aggregator.emplace(FieldInfo("a1", false, false, 1, tdb_type<T>()));
+      aggregator.emplace(FieldInfo("a1", false, false, 1, tdb_type<T>));
     }
   }
 
   auto aggregator_nullable{make_aggregator<AGGREGATOR>(
-      FieldInfo("a1", false, true, 1, tdb_type<T>()))};
+      FieldInfo("a1", false, true, 1, tdb_type<T>))};
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -710,7 +710,7 @@ TEMPLATE_LIST_TEST_CASE(
 TEST_CASE(
     "Sum aggregator: signed overflow", "[sum-aggregator][signed-overflow]") {
   SumAggregator<int64_t> aggregator(
-      FieldInfo("a1", false, false, 1, tdb_type<int64_t>()));
+      FieldInfo("a1", false, false, 1, tdb_type<int64_t>));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -795,7 +795,7 @@ TEST_CASE(
     "Sum aggregator: unsigned overflow",
     "[sum-aggregator][unsigned-overflow]") {
   SumAggregator<uint64_t> aggregator(
-      FieldInfo("a1", false, false, 1, tdb_type<int64_t>()));
+      FieldInfo("a1", false, false, 1, tdb_type<int64_t>));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -833,7 +833,7 @@ TEMPLATE_LIST_TEST_CASE(
     "Sum aggregator: double overflow",
     "[sum-aggregator][double-overflow]",
     DoubleAggUnderTest) {
-  TestType aggregator(FieldInfo("a1", false, false, 1, tdb_type<double>()));
+  TestType aggregator(FieldInfo("a1", false, false, 1, tdb_type<double>));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 
@@ -910,11 +910,11 @@ void basic_string_aggregation_test(std::vector<RES> expected_results) {
   optional<AGGREGATOR> aggregator;
   if constexpr (!std::is_same<AGGREGATOR, NullCountAggregator>::value) {
     aggregator.emplace(FieldInfo(
-        "a1", true, false, constants::var_num, tdb_type<std::string>()));
+        "a1", true, false, constants::var_num, tdb_type<std::string>));
   }
 
   AGGREGATOR aggregator_nullable(
-      FieldInfo("a2", true, true, constants::var_num, tdb_type<std::string>()));
+      FieldInfo("a2", true, true, constants::var_num, tdb_type<std::string>));
 
   std::unordered_map<std::string, QueryBuffer> buffers;
 

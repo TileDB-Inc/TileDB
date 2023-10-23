@@ -158,7 +158,7 @@ void run_bench() {
                     << ", Segmented: " << (segmented ? "true" : "false")) {
     BENCHMARK("Bench") {
       AggregateWithCount<T, AggregateT, PolicyT, ValidityPolicyT> aggregator(
-          FieldInfo("a1", var_sized, nullable, 1, tdb_type<T>()));
+          FieldInfo("a1", var_sized, nullable, 1, tdb_type<T>));
       for (uint64_t s = 0; s < num_cells; s += increment) {
         AggregateBuffer input_data{
             s,

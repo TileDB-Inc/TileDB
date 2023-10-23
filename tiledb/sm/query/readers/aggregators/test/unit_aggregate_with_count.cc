@@ -61,9 +61,9 @@ TEMPLATE_LIST_TEST_CASE(
     FixedTypesUnderTest) {
   typedef TestType T;
   AggregateWithCount<T, typename sum_type_data<T>::sum_type, SafeSum, NonNull>
-      aggregator(FieldInfo("a1", false, false, 1, tdb_type<T>()));
+      aggregator(FieldInfo("a1", false, false, 1, tdb_type<T>));
   AggregateWithCount<T, typename sum_type_data<T>::sum_type, SafeSum, NonNull>
-      aggregator_nullable(FieldInfo("a2", false, true, 1, tdb_type<T>()));
+      aggregator_nullable(FieldInfo("a2", false, true, 1, tdb_type<T>));
 
   std::vector<T> fixed_data = {1, 2, 3, 4, 5, 5, 4, 3, 2, 1};
   std::vector<uint8_t> validity_data = {0, 0, 1, 0, 1, 0, 1, 0, 1, 0};

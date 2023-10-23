@@ -1987,13 +1987,9 @@ TEST_CASE_METHOD(
         // second attribute.
         query.ptr()->query_->add_aggregator_to_default_channel(
             "NullCount2",
-            std::make_shared<tiledb::sm::NullCountAggregator>(
-                tiledb::sm::FieldInfo(
-                    "a2",
-                    true,
-                    nullable_,
-                    TILEDB_VAR_NUM,
-                    tdb_type<std::string>())));
+            std::make_shared<
+                tiledb::sm::NullCountAggregator>(tiledb::sm::FieldInfo(
+                "a2", true, nullable_, TILEDB_VAR_NUM, tdb_type<std::string>)));
 
         set_ranges_and_condition_if_needed(array, query, true);
 
@@ -2129,13 +2125,9 @@ TEST_CASE_METHOD(
         // the first one hence throw an exception.
         query.ptr()->query_->add_aggregator_to_default_channel(
             "NullCount2",
-            std::make_shared<tiledb::sm::NullCountAggregator>(
-                tiledb::sm::FieldInfo(
-                    "a2",
-                    true,
-                    nullable_,
-                    TILEDB_VAR_NUM,
-                    tdb_type<std::string>())));
+            std::make_shared<
+                tiledb::sm::NullCountAggregator>(tiledb::sm::FieldInfo(
+                "a2", true, nullable_, TILEDB_VAR_NUM, tdb_type<std::string>)));
 
         set_ranges_and_condition_if_needed(array, query, true);
 
