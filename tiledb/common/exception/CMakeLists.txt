@@ -27,10 +27,4 @@
 
 include(common NO_POLICY_SCOPE)
 
-list(APPEND SOURCES
-    # These sources are both in the `baseline` object library
-    exception.cc status.cc
-)
-gather_sources(${SOURCES})
-
 add_test_subdirectory()
