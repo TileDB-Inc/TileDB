@@ -293,6 +293,12 @@ capi_return_t tiledb_channel_operator_max_get(
       ctx, op);
 }
 
+capi_return_t tiledb_channel_operator_null_count_get(
+    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) noexcept {
+  return api_entry_with_context<
+      tiledb::api::tiledb_channel_operator_null_count_get>(ctx, op);
+}
+
 capi_return_t tiledb_aggregate_count_get(
     tiledb_ctx_t* ctx, const tiledb_channel_operation_t** operation) noexcept {
   return api_entry_with_context<tiledb::api::tiledb_aggregate_count_get>(
