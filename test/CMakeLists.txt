@@ -302,6 +302,7 @@ target_include_directories(
 target_link_libraries(tiledb_unit
   PUBLIC
     TILEDB_CORE_OBJECTS_ILIB
+    TILEDB_CORE_OBJECTS
     Catch2::Catch2
     tiledb_test_support_lib
 )

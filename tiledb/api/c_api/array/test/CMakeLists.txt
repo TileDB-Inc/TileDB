@@ -30,7 +30,6 @@ find_package(Catch_EP REQUIRED)
 # #TODO: link only against a new CAPI array handle, not all core objects
 add_executable(
     unit_capi_array EXCLUDE_FROM_ALL
-    $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
 )
 
 target_link_libraries(unit_capi_array
@@ -38,6 +37,7 @@ target_link_libraries(unit_capi_array
     Catch2::Catch2WithMain
     export
     TILEDB_CORE_OBJECTS_ILIB
+    TILEDB_CORE_OBJECTS
 )
 
 # Sources for tests
