@@ -538,33 +538,13 @@ endif()
 if (TILEDB_AZURE)
   message(STATUS "The TileDB library is compiled with Azure support.")
 
-  if (TILEDB_VCPKG)
-    find_package(azure-identity-cpp CONFIG REQUIRED)
-    find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-            INTERFACE
-            Azure::azure-identity
-            Azure::azure-storage-blobs
-            )
-  else()
-    find_package(AzureCore_EP REQUIRED)
-    find_package(AzureStorageCommon_EP REQUIRED)
-    find_package(AzureStorageBlobs_EP REQUIRED)
-    if (NOT WIN32)
-      if (NOT TARGET LibXml2::LibXml2)
-        find_package(LibXml2 REQUIRED)
-      endif()
-    endif()
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-            INTERFACE
-            Azure::azure-storage-blobs
-            Azure::azure-storage-common
-            Azure::azure-core)
-    # Link xml after Azure to allow symbol resolution on all platforms
-    if (NOT WIN32)
-      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE LibXml2::LibXml2)
-    endif()
-  endif()
+  find_package(azure-identity-cpp CONFIG REQUIRED)
+  find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+          INTERFACE
+          Azure::azure-identity
+          Azure::azure-storage-blobs
+          )
 endif()
 
 if (TILEDB_GCS)
