@@ -28,8 +28,6 @@
  * @section DESCRIPTION
  *
  * This file implements class SafeSum.
- *
- * TODO: Testing for this class is not done (sc-33762).
  */
 
 #include "tiledb/sm/query/readers/aggregators/safe_sum.h"

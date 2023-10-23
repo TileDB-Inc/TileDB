@@ -28,8 +28,6 @@
  * @section DESCRIPTION
  *
  * This file defines class AggregateWithCount.
- *
- * TODO: Add more benchmark coverage for this class (sc-33758).
  */
 
 #ifndef TILEDB_AGGREGATE_WITH_COUNT_H

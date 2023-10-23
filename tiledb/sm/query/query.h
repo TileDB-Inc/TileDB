@@ -743,14 +743,6 @@ class Query {
     default_channel_aggregates_.emplace(output_field_name, aggregator);
   }
 
-  /**
-   * Get all aggregates from the default channel.
-   */
-  std::unordered_map<std::string, shared_ptr<IAggregator>>
-  get_default_channel_aggregates() {
-    return default_channel_aggregates_;
-  }
-
   /** Returns an aggregate based on the output field. */
   std::optional<shared_ptr<IAggregator>> get_aggregate(
       std::string output_field_name) const;
