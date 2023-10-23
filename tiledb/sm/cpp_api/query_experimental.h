@@ -405,7 +405,9 @@ class QueryExperimental {
    * @param input_field The attribute name as input for the aggregate
    * @return The aggregate operation
    */
-  template <std::derived_from<ChannelOperator> Op>
+  template <
+      class Op,
+      std::enable_if_t<std::is_base_of_v<ChannelOperator, Op>, bool> = true>
   static ChannelOperation create_unary_aggregate(
       const Query& query, const std::string& input_field) {
     return ChannelOperation::create<Op>(query, input_field);
