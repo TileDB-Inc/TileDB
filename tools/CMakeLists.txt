@@ -51,6 +51,10 @@ foreach(TOOL ${TILEDB_TOOLS})
     ${CMAKE_CURRENT_SOURCE_DIR}/..
     ${CMAKE_CURRENT_SOURCE_DIR}/src
   )
+  set_target_properties(${TOOL} PROPERTIES
+    # Clipp is not compatible with MSVC's standards-conforming preprocessor.
+    MSVC_DISABLE_NEW_PREPROCESSOR ON
+  )
 endforeach()
 
 # Add custom target 'tools' to build all tools.
