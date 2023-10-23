@@ -38,6 +38,7 @@
 #include "tiledb/sm/query/readers/aggregators/min_max_aggregator.h"
 #include "tiledb/sm/query/readers/aggregators/sum_aggregator.h"
 
+#include <test/support/src/helper_type.h>
 #include <test/support/tdb_catch.h>
 
 using namespace tiledb;
@@ -1986,8 +1987,9 @@ TEST_CASE_METHOD(
         // second attribute.
         query.ptr()->query_->add_aggregator_to_default_channel(
             "NullCount2",
-            std::make_shared<tiledb::sm::NullCountAggregator>(
-                tiledb::sm::FieldInfo("a2", true, nullable_, TILEDB_VAR_NUM)));
+            std::make_shared<
+                tiledb::sm::NullCountAggregator>(tiledb::sm::FieldInfo(
+                "a2", true, nullable_, TILEDB_VAR_NUM, tdb_type<std::string>)));
 
         set_ranges_and_condition_if_needed(array, query, true);
 
@@ -2123,8 +2125,9 @@ TEST_CASE_METHOD(
         // the first one hence throw an exception.
         query.ptr()->query_->add_aggregator_to_default_channel(
             "NullCount2",
-            std::make_shared<tiledb::sm::NullCountAggregator>(
-                tiledb::sm::FieldInfo("a2", true, nullable_, TILEDB_VAR_NUM)));
+            std::make_shared<
+                tiledb::sm::NullCountAggregator>(tiledb::sm::FieldInfo(
+                "a2", true, nullable_, TILEDB_VAR_NUM, tdb_type<std::string>)));
 
         set_ranges_and_condition_if_needed(array, query, true);
 
@@ -2189,6 +2192,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
       for (tiledb_layout_t layout : CppAggregatesFx<T>::layout_values_) {
         CppAggregatesFx<T>::layout_ = layout;
         Query query(CppAggregatesFx<T>::ctx_, array, TILEDB_READ);
+
         // Add a count aggregator to the query. We add both sum and count as
         // they are processed separately in the dense case.
         QueryChannel default_channel =

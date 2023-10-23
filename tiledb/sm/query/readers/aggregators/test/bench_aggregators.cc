@@ -38,9 +38,11 @@
 #include "tiledb/sm/query/readers/aggregators/sum_type.h"
 #include "tiledb/sm/query/readers/aggregators/validity_policies.h"
 
+#include <test/support/src/helper_type.h>
 #include <test/support/tdb_catch.h>
 
 using namespace tiledb::sm;
+using namespace tiledb::test;
 
 const uint64_t num_cells = 10 * 1024 * 1024;
 
@@ -156,7 +158,7 @@ void run_bench() {
                     << ", Segmented: " << (segmented ? "true" : "false")) {
     BENCHMARK("Bench") {
       AggregateWithCount<T, AggregateT, PolicyT, ValidityPolicyT> aggregator(
-          FieldInfo("a1", var_sized, nullable, 1));
+          FieldInfo("a1", var_sized, nullable, 1, tdb_type<T>));
       for (uint64_t s = 0; s < num_cells; s += increment) {
         AggregateBuffer input_data{
             s,
