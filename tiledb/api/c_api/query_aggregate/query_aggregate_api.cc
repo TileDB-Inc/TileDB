@@ -37,7 +37,6 @@
 #include "tiledb/api/c_api/query_field/query_field_api_external_experimental.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 
-//
 const tiledb_channel_operator_handle_t* tiledb_channel_operator_sum =
     tiledb_channel_operator_handle_t::make_handle(
         tiledb::sm::constants::aggregate_sum_str);
@@ -47,6 +46,12 @@ const tiledb_channel_operator_handle_t* tiledb_channel_operator_min =
 const tiledb_channel_operator_handle_t* tiledb_channel_operator_max =
     tiledb_channel_operator_handle_t::make_handle(
         tiledb::sm::constants::aggregate_max_str);
+const tiledb_channel_operator_handle_t* tiledb_channel_operator_mean =
+    tiledb_channel_operator_handle_t::make_handle(
+        tiledb::sm::constants::aggregate_mean_str);
+const tiledb_channel_operator_handle_t* tiledb_channel_operator_null_count =
+    tiledb_channel_operator_handle_t::make_handle(
+        tiledb::sm::constants::aggregate_null_count_str);
 
 const tiledb_channel_operation_handle_t* tiledb_aggregate_count =
     tiledb_channel_operation_handle_t::make_handle(
@@ -124,6 +129,22 @@ capi_return_t tiledb_channel_operator_sum_get(
   ensure_aggregates_enabled_via_config(ctx);
   ensure_output_pointer_is_valid(op);
   *op = tiledb_channel_operator_sum;
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_channel_operator_mean_get(
+    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) {
+  ensure_aggregates_enabled_via_config(ctx);
+  ensure_output_pointer_is_valid(op);
+  *op = tiledb_channel_operator_mean;
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_channel_operator_null_count_get(
+    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) {
+  ensure_aggregates_enabled_via_config(ctx);
+  ensure_output_pointer_is_valid(op);
+  *op = tiledb_channel_operator_null_count;
   return TILEDB_OK;
 }
 
@@ -251,6 +272,12 @@ using tiledb::api::api_entry_with_context;
 capi_return_t tiledb_channel_operator_sum_get(
     tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) noexcept {
   return api_entry_with_context<tiledb::api::tiledb_channel_operator_sum_get>(
+      ctx, op);
+}
+
+capi_return_t tiledb_channel_operator_mean_get(
+    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) noexcept {
+  return api_entry_with_context<tiledb::api::tiledb_channel_operator_mean_get>(
       ctx, op);
 }
 

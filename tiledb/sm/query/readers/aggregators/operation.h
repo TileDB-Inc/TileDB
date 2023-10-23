@@ -36,6 +36,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/query/readers/aggregators/count_aggregator.h"
+#include "tiledb/sm/query/readers/aggregators/mean_aggregator.h"
 #include "tiledb/sm/query/readers/aggregators/min_max_aggregator.h"
 #include "tiledb/sm/query/readers/aggregators/sum_aggregator.h"
 #include "tiledb/sm/query/readers/aggregators/sum_type.h"
@@ -201,6 +202,49 @@ class CountOperation : public Operation {
   [[nodiscard]] shared_ptr<tiledb::sm::IAggregator> aggregator()
       const override {
     return common::make_shared<tiledb::sm::CountAggregator>(HERE());
+  }
+};
+
+class MeanOperation : public Operation {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+  MeanOperation() = delete;
+
+  /**
+   * Construct the operation where the internal aggregator object
+   * is instantiated to the correct type given the input field type.
+   * @param fi The FieldInfo for the input field
+   */
+  explicit MeanOperation(const tiledb::sm::FieldInfo& fi) {
+    auto g = [&](auto T) {
+      if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
+        ensure_field_numeric(fi);
+        aggregator_ = tdb::make_shared<tiledb::sm::MeanAggregator<decltype(T)>>(
+            HERE(), fi);
+      } else {
+        throw std::logic_error(
+            "MEAN aggregates can only be requested on numeric types");
+      }
+    };
+    type::apply_with_type(g, fi.type_);
+  }
+};
+
+class NullCountOperation : public Operation {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+  NullCountOperation() = delete;
+
+  /**
+   * Construct the NULL_COUNT operation
+   * @param fi The FieldInfo for the input field
+   */
+  explicit NullCountOperation(const tiledb::sm::FieldInfo& fi) {
+    aggregator_ = tdb::make_shared<tiledb::sm::NullCountAggregator>(HERE(), fi);
   }
 };
 

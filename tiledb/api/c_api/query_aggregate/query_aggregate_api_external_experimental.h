@@ -59,6 +59,12 @@ TILEDB_EXPORT extern const tiledb_channel_operator_t*
 TILEDB_EXPORT extern const tiledb_channel_operator_t*
     tiledb_channel_operator_max;
 
+TILEDB_EXPORT extern const tiledb_channel_operator_t*
+    tiledb_channel_operator_mean;
+
+TILEDB_EXPORT extern const tiledb_channel_operator_t*
+    tiledb_channel_operator_null_count;
+
 // Constant aggregate operation handles
 TILEDB_EXPORT extern const tiledb_channel_operation_t* tiledb_aggregate_count;
 
@@ -132,6 +138,43 @@ TILEDB_EXPORT int32_t tiledb_channel_operator_max_get(
 TILEDB_EXPORT int32_t tiledb_aggregate_count_get(
     tiledb_ctx_t* ctx,
     const tiledb_channel_operation_t** operation) TILEDB_NOEXCEPT;
+
+/**
+ * Helper function to access the constant MEAN channel operator handle
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_channel_operator_t *operator_mean;
+ * tiledb_channel_operator_mean_get(ctx, &operator_mean);
+ * tiledb_channel_operation_t* mean_A;
+ * tiledb_create_unary_aggregate(ctx, query, operator_mean, "A", mean_A);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param op The operator handle to be retrieved
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_channel_operator_mean_get(
+    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) TILEDB_NOEXCEPT;
+
+/**
+ * Helper function to access the constant NULL_COUNT channel operator handle
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_channel_operator_t *operator_nullcount;
+ * tiledb_channel_operator_null_count_get(ctx, &operator_nullcount);
+ * tiledb_channel_operation_t* nullcount_A;
+ * tiledb_create_unary_aggregate(ctx, query, operator_nullcount, "A",
+ * nullcount_A);
+ * @endcode
+ *
+ * @param ctx The TileDB context
+ * @param op The operator handle to be retrieved
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_channel_operator_null_count_get(
+    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) TILEDB_NOEXCEPT;
 
 /**
  * Gets the default channel of the query. The default channel consists of all
