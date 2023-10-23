@@ -179,6 +179,9 @@ struct ArraySchemaEvolution {
 
     enumerationsToDrop @4 :List(Text);
     # Enumeration names to be dropped
+
+    enumerationsToExtend @5 :List(Enumeration);
+    # Enumerations to be extended.
 }
 
 struct Attribute {
@@ -1259,7 +1262,7 @@ struct LoadArraySchemaResponse {
 }
 
 struct QueryChannel {
-  # structure representing a query channel, that is a stream of data within 
+  # structure representing a query channel, that is a stream of data within
   # a TileDB query. Such channels can be generated for the purpose of avoiding
   # processing result items multiple times in more complex queries such as e.g.
   # grouping queries.
@@ -1281,6 +1284,6 @@ struct Aggregate {
   # name of the input field the aggregate is applied on
 
   name @2 :Text;
-  # the name of aggregate, e.g. COUNT, MEAN, SUM used for constructing the 
+  # the name of aggregate, e.g. COUNT, MEAN, SUM used for constructing the
   # correct object during deserialization
 }

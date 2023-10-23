@@ -246,7 +246,7 @@ struct ArraySchemaEvolution {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(a1b81d67548230d4, 0, 5)
+    CAPNP_DECLARE_STRUCT_HEADER(a1b81d67548230d4, 0, 6)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -3150,6 +3150,12 @@ class ArraySchemaEvolution::Reader {
   inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
   getEnumerationsToDrop() const;
 
+  inline bool hasEnumerationsToExtend() const;
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::Enumeration,
+      ::capnp::Kind::STRUCT>::Reader
+  getEnumerationsToExtend() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -3275,6 +3281,28 @@ class ArraySchemaEvolution::Builder {
           value);
   inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
   disownEnumerationsToDrop();
+
+  inline bool hasEnumerationsToExtend();
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::Enumeration,
+      ::capnp::Kind::STRUCT>::Builder
+  getEnumerationsToExtend();
+  inline void setEnumerationsToExtend(
+      ::capnp::List<
+          ::tiledb::sm::serialization::capnp::Enumeration,
+          ::capnp::Kind::STRUCT>::Reader value);
+  inline ::capnp::List<
+      ::tiledb::sm::serialization::capnp::Enumeration,
+      ::capnp::Kind::STRUCT>::Builder
+  initEnumerationsToExtend(unsigned int size);
+  inline void adoptEnumerationsToExtend(
+      ::capnp::Orphan<::capnp::List<
+          ::tiledb::sm::serialization::capnp::Enumeration,
+          ::capnp::Kind::STRUCT>>&& value);
+  inline ::capnp::Orphan<::capnp::List<
+      ::tiledb::sm::serialization::capnp::Enumeration,
+      ::capnp::Kind::STRUCT>>
+  disownEnumerationsToExtend();
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -17882,6 +17910,80 @@ ArraySchemaEvolution::Builder::disownEnumerationsToDrop() {
   return ::capnp::_::
       PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
           _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
+}
+
+inline bool ArraySchemaEvolution::Reader::hasEnumerationsToExtend() const {
+  return !_reader.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ArraySchemaEvolution::Builder::hasEnumerationsToExtend() {
+  return !_builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<
+    ::tiledb::sm::serialization::capnp::Enumeration,
+    ::capnp::Kind::STRUCT>::Reader
+ArraySchemaEvolution::Reader::getEnumerationsToExtend() const {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::Enumeration,
+      ::capnp::Kind::STRUCT>>::get(_reader
+                                       .getPointerField(
+                                           ::capnp::bounded<5>() *
+                                           ::capnp::POINTERS));
+}
+inline ::capnp::List<
+    ::tiledb::sm::serialization::capnp::Enumeration,
+    ::capnp::Kind::STRUCT>::Builder
+ArraySchemaEvolution::Builder::getEnumerationsToExtend() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::Enumeration,
+      ::capnp::Kind::STRUCT>>::get(_builder
+                                       .getPointerField(
+                                           ::capnp::bounded<5>() *
+                                           ::capnp::POINTERS));
+}
+inline void ArraySchemaEvolution::Builder::setEnumerationsToExtend(
+    ::capnp::List<
+        ::tiledb::sm::serialization::capnp::Enumeration,
+        ::capnp::Kind::STRUCT>::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::Enumeration,
+      ::capnp::Kind::STRUCT>>::
+      set(_builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<
+    ::tiledb::sm::serialization::capnp::Enumeration,
+    ::capnp::Kind::STRUCT>::Builder
+ArraySchemaEvolution::Builder::initEnumerationsToExtend(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::Enumeration,
+      ::capnp::Kind::STRUCT>>::
+      init(
+          _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS),
+          size);
+}
+inline void ArraySchemaEvolution::Builder::adoptEnumerationsToExtend(
+    ::capnp::Orphan<::capnp::List<
+        ::tiledb::sm::serialization::capnp::Enumeration,
+        ::capnp::Kind::STRUCT>>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::Enumeration,
+      ::capnp::Kind::STRUCT>>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<5>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<
+    ::tiledb::sm::serialization::capnp::Enumeration,
+    ::capnp::Kind::STRUCT>>
+ArraySchemaEvolution::Builder::disownEnumerationsToExtend() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::tiledb::sm::serialization::capnp::Enumeration,
+      ::capnp::Kind::STRUCT>>::disown(_builder
+                                          .getPointerField(
+                                              ::capnp::bounded<5>() *
+                                              ::capnp::POINTERS));
 }
 
 inline ::uint32_t Attribute::Reader::getCellValNum() const {

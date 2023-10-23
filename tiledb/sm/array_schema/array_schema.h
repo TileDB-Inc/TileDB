@@ -388,6 +388,16 @@ class ArraySchema {
   void add_enumeration(shared_ptr<const Enumeration> enmr);
 
   /**
+   * Extend an Enumeration on this ArraySchema.
+   *
+   * N.B., this method is intended to be called via ArraySchemaEvolution.
+   * Calling it from anywhere else is likely incorrect.
+   *
+   * @param enmr The extended enumeration.
+   */
+  void extend_enumeration(shared_ptr<const Enumeration> enmr);
+
+  /**
    * Check if an enumeration exists with the given name.
    *
    * @param enmr_name The name to check

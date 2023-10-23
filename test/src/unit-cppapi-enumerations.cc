@@ -347,6 +347,33 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPEnumerationFx,
+    "CPP: ArraySchemaEvolution - Extend Enumeration",
+    "[enumeration][array-schema-evolution][extend-enumeration]") {
+  ArraySchemaEvolution ase(ctx_);
+  std::vector<std::string> values = {"fred", "wilma", "barney", "pebbles"};
+  auto enmr = Enumeration::create(ctx_, enmr_name, values);
+  CHECK_NOTHROW(ase.extend_enumeration(enmr));
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
+    "C API: ArraySchemaEvolution - Extend Enumeration - Check nullptr",
+    "[enumeration][array-schema-evolution][drop-enumeration]") {
+  std::vector<std::string> values = {"fred", "wilma", "barney", "pebbles"};
+  auto enmr = Enumeration::create(ctx_, enmr_name, values);
+
+  auto rc = tiledb_array_schema_evolution_extend_enumeration(
+      ctx_.ptr().get(), nullptr, enmr.ptr().get());
+  REQUIRE(rc != TILEDB_OK);
+
+  ArraySchemaEvolution ase(ctx_);
+  rc = tiledb_array_schema_evolution_extend_enumeration(
+      ctx_.ptr().get(), ase.ptr().get(), nullptr);
+  REQUIRE(rc != TILEDB_OK);
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
     "CPP: ArraySchemaEvolution - Drop Enumeration",
     "[enumeration][array-schema-evolution][drop-enumeration]") {
   ArraySchemaEvolution ase(ctx_);
