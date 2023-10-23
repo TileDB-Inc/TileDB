@@ -1061,7 +1061,7 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   // Get fragment non-empty domain
   auto meta = make_shared<FragmentMetadata>(
       HERE(),
-      storage_manager_,
+      &storage_manager_->resources(),
       nullptr,
       array_schema_latest,
       new_fragment_uri,

@@ -45,7 +45,6 @@
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/rtree/rtree.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 using namespace tiledb::type;
@@ -75,7 +74,7 @@ class FragmentMetadata {
   /**
    * Constructor.
    *
-   * @param storage_manager A storage manager instance.
+   * @param resources A context resources instance.
    * @param memory_tracker The memory tracker of the array this fragment
    *     metadata corresponds to.
    * @param array_schema The schema of the array the fragment belongs to.
@@ -88,7 +87,7 @@ class FragmentMetadata {
    * @param has_delete_meta Does the fragment contains delete metadata.
    */
   FragmentMetadata(
-      StorageManager* storage_manager,
+      ContextResources* resources,
       MemoryTracker* memory_tracker,
       const shared_ptr<const ArraySchema>& array_schema,
       const URI& fragment_uri,
@@ -1176,12 +1175,12 @@ class FragmentMetadata {
     return gt_offsets_;
   }
 
-  /** set the SM pointer during deserialization*/
-  void set_storage_manager(StorageManager* sm) {
-    storage_manager_ = sm;
+  /** set the CR pointer during deserialization*/
+  void set_context_resources(ContextResources* cr) {
+    context_resources_ = cr;
   }
 
-  /** set the SM pointer during deserialization*/
+  /** set the memory tracker pointer during deserialization*/
   void set_memory_tracker(MemoryTracker* memory_tracker) {
     memory_tracker_ = memory_tracker;
   }
@@ -1222,7 +1221,7 @@ class FragmentMetadata {
   /* ********************************* */
 
   /** The storage manager. */
-  StorageManager* storage_manager_;
+  ContextResources* context_resources_;
 
   /**
    * The memory tracker of the array this fragment metadata corresponds to.

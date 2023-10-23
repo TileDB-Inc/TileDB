@@ -314,7 +314,7 @@ Status array_from_capnp(
           array->array_schema_latest_ptr(),
           frag_meta_reader,
           meta,
-          storage_manager,
+          &storage_manager->resources(),
           array->memory_tracker()));
       if (client_side) {
         meta->set_rtree_loaded();
