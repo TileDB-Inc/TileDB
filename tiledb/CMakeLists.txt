@@ -1021,7 +1021,7 @@ endif()
 # TileDB static and shared library targets
 ############################################################
 
-add_library(tiledb_shared SHARED)
+add_library(tiledb_shared SHARED $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
 
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/sm/c_api/tiledb_version.h" ver)
 
@@ -1074,12 +1074,6 @@ target_link_libraries(tiledb_shared
 )
 
 if (TILEDB_STATIC)
-  # Create the target
-  add_library(tiledb_static STATIC)
-  target_link_libraries(tiledb_static
-    PRIVATE
-      $<BUILD_INTERFACE:TILEDB_CORE_OBJECTS_STATIC>
-  )
   if (WIN32)
     # Copy over all include directories, compile options, etc, from the regular
     # core objects.
@@ -1094,6 +1088,13 @@ if (TILEDB_STATIC)
     target_include_directories(TILEDB_CORE_OBJECTS_STATIC
       PRIVATE
         $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>
+    )
+    # Create the target
+    add_library(tiledb_static STATIC
+      $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS_STATIC>)
+    target_link_libraries(tiledb_static
+      PRIVATE
+        $<BUILD_INTERFACE:TILEDB_CORE_OBJECTS_STATIC>
     )
     target_compile_definitions(tiledb_static
       INTERFACE
