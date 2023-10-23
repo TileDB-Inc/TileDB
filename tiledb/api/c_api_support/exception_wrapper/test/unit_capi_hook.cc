@@ -66,11 +66,6 @@ capi_return_t tiledb_capi_nil(int) {
   return 0;
 }
 }  // namespace tiledb::api
-/*
- * API definitions with macros.
- */
-CAPI_PLAIN_BEGIN(capi_nil, int x)
-CAPI_PLAIN_END(capi_nil, x)
 
 /**
  * The wrapped function with an unconditional invocation of the logging

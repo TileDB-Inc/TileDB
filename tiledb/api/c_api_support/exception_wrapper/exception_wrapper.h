@@ -41,6 +41,8 @@
 #include "tiledb/api/c_api/error/error_api_internal.h"
 #include "tiledb/common/exception/exception.h"
 
+#include "capi_traits.h"
+
 namespace tiledb::api {
 namespace detail {
 
@@ -527,13 +529,51 @@ class CAPIFunctionNullAspect {
 };
 
 /**
+ * Logging aspect for the exception wrapper from a C API function
+ *
+ * @tparam f C API implementation function
+ */
+template <auto f>
+class LoggingAspect;
+
+/**
+ * Specialization of the logging aspect that infers the return type and argument
+ * types of the template parameter.
+ *
+ * @tparam R The return type of `f`
+ * @tparam Args The argument types of `f`
+ * @tparam f C API implementation function
+ */
+template <class R, class... Args, R (*f)(Args...)>
+class LoggingAspect<f> {
+ public:
+  /**
+   * Record the name of the function is the "log entry"
+   *
+   * @param ... Arguments are ignored
+   */
+  static void call(Args...) {
+    LOG_ERROR(std::string("call : ") + traits::get_name<f>());
+  }
+};
+
+/**
  * Selection struct defines the default aspect type for CAPIFunction. This class
  * is always used with second template argument as `void`. This definition is
  * for the general case; a specialization can override it.
  */
-template <auto f, typename>
+// template <auto f, typename>
+// struct CAPIFunctionSelector {
+//   using aspect_type = CAPIFunctionNullAspect<f>;
+// };
+
+/**
+ * Specialization of the aspect selector to `void` overrides the default (the
+ * null aspect) to compile with the logging aspect instead.
+ */
+template <auto f>
 struct CAPIFunctionSelector {
-  using aspect_type = CAPIFunctionNullAspect<f>;
+  using aspect_type = LoggingAspect<f>;
 };
 
 /**
@@ -543,7 +583,7 @@ struct CAPIFunctionSelector {
 template <
     auto f,
     class H,
-    class A = typename CAPIFunctionSelector<f, void>::aspect_type>
+    class A = typename CAPIFunctionSelector<f>::aspect_type>
 class CAPIFunction;
 
 /**
