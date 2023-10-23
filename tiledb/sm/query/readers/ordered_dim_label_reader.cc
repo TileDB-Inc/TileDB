@@ -45,6 +45,7 @@
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/subarray.h"
+#include "tiledb/type/apply_with_type.h"
 
 #include <numeric>
 
@@ -73,9 +74,11 @@ OrderedDimLabelReader::OrderedDimLabelReader(
     Array* array,
     Config& config,
     std::unordered_map<std::string, QueryBuffer>& buffers,
+    std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
     Subarray& subarray,
     Layout layout,
     std::optional<QueryCondition>& condition,
+    DefaultChannelAggregates& default_channel_aggregates,
     bool increasing_labels,
     bool skip_checks_serialization)
     : ReaderBase(
@@ -85,9 +88,11 @@ OrderedDimLabelReader::OrderedDimLabelReader(
           array,
           config,
           buffers,
+          aggregate_buffers,
           subarray,
           layout,
-          condition)
+          condition,
+          default_channel_aggregates)
     , ranges_(
           subarray.get_attribute_ranges(array_schema_.attributes()[0]->name()))
     , label_name_(array_schema_.attributes()[0]->name())
@@ -102,14 +107,20 @@ OrderedDimLabelReader::OrderedDimLabelReader(
         "Cannot initialize ordered dim label reader; Storage manager not set");
   }
 
+  if (!default_channel_aggregates.empty()) {
+    throw OrderedDimLabelReaderStatusException(
+        "Cannot initialize reader; Reader cannot process aggregates");
+  }
+
   if (!skip_checks_serialization && buffers_.empty()) {
     throw OrderedDimLabelReaderStatusException(
         "Cannot initialize ordered dim label reader; Buffers not set");
   }
 
-  if (buffers_.size() != 1) {
+  if (!skip_checks_serialization && buffers_.size() != 1) {
     throw OrderedDimLabelReaderStatusException(
-        "Cannot initialize ordered dim label reader; Only one buffer allowed");
+        "Cannot initialize ordered dim label reader with " +
+        std::to_string(buffers_.size()) + " buffers; Only one buffer allowed");
   }
 
   for (const auto& b : buffers_) {
@@ -130,14 +141,14 @@ OrderedDimLabelReader::OrderedDimLabelReader(
     }
   }
 
-  if (!skip_checks_serialization && subarray_.is_set()) {
+  if (subarray_.is_set()) {
     throw OrderedDimLabelReaderStatusException(
         "Cannot initialize ordered dim label reader; Subarray is set");
   }
 
   if (condition_.has_value()) {
     throw OrderedDimLabelReaderStatusException(
-        "Ordered dimension laber reader cannot process query condition");
+        "Ordered dimension label reader cannot process query condition");
   }
 
   bool found = false;
@@ -200,50 +211,16 @@ std::string OrderedDimLabelReader::name() {
 void OrderedDimLabelReader::label_read() {
   // Do the label read depending on the index type.
   auto type{index_dim_->type()};
-  switch (type) {
-    case Datatype::INT8:
-      return label_read<int8_t>();
-    case Datatype::UINT8:
-      return label_read<uint8_t>();
-    case Datatype::INT16:
-      return label_read<int16_t>();
-    case Datatype::UINT16:
-      return label_read<uint16_t>();
-    case Datatype::INT32:
-      return label_read<int>();
-    case Datatype::UINT32:
-      return label_read<unsigned>();
-    case Datatype::INT64:
-      return label_read<int64_t>();
-    case Datatype::UINT64:
-      return label_read<uint64_t>();
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      return label_read<int64_t>();
-    default:
+
+  auto g = [&](auto T) {
+    if constexpr (tiledb::type::TileDBIntegral<decltype(T)>) {
+      label_read<decltype(T)>();
+    } else {
       throw OrderedDimLabelReaderStatusException(
           "Cannot read ordered label array; Unsupported domain type");
-  }
+    }
+  };
+  apply_with_type(g, type);
 }
 
 template <typename IndexType>
@@ -482,55 +459,14 @@ OrderedDimLabelReader::get_array_tile_indexes_for_range(
 OrderedDimLabelReader::FragmentRangeTileIndexes
 OrderedDimLabelReader::get_array_tile_indexes_for_range(
     unsigned f, uint64_t r) {
-  switch (label_type_) {
-    case Datatype::INT8:
-      return get_array_tile_indexes_for_range<int8_t>(f, r);
-    case Datatype::UINT8:
-      return get_array_tile_indexes_for_range<uint8_t>(f, r);
-    case Datatype::INT16:
-      return get_array_tile_indexes_for_range<int16_t>(f, r);
-    case Datatype::UINT16:
-      return get_array_tile_indexes_for_range<uint16_t>(f, r);
-    case Datatype::INT32:
-      return get_array_tile_indexes_for_range<int32_t>(f, r);
-    case Datatype::UINT32:
-      return get_array_tile_indexes_for_range<uint32_t>(f, r);
-    case Datatype::INT64:
-      return get_array_tile_indexes_for_range<int64_t>(f, r);
-    case Datatype::UINT64:
-      return get_array_tile_indexes_for_range<uint64_t>(f, r);
-    case Datatype::FLOAT32:
-      return get_array_tile_indexes_for_range<float>(f, r);
-    case Datatype::FLOAT64:
-      return get_array_tile_indexes_for_range<double>(f, r);
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      return get_array_tile_indexes_for_range<int64_t>(f, r);
-    case Datatype::STRING_ASCII:
+  auto g = [&](auto T) {
+    if constexpr (std::is_same_v<decltype(T), char>) {
       return get_array_tile_indexes_for_range<std::string_view>(f, r);
-    default:
-      throw OrderedDimLabelReaderStatusException("Invalid dimension type");
-  }
+    } else if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      return get_array_tile_indexes_for_range<decltype(T)>(f, r);
+    }
+  };
+  return apply_with_type(g, label_type_);
 }
 
 uint64_t OrderedDimLabelReader::label_tile_size(unsigned f, uint64_t t) const {
@@ -607,7 +543,8 @@ uint64_t OrderedDimLabelReader::create_result_tiles() {
               result_tiles_[f].emplace(
                   std::piecewise_construct,
                   std::forward_as_tuple(tile_idx),
-                  std::forward_as_tuple(f, frag_tile_idx, array_schema_));
+                  std::forward_as_tuple(
+                      f, frag_tile_idx, *fragment_metadata_[f].get()));
             } else {
               if (r == 0) {
                 throw OrderedDimLabelReaderStatusException(
@@ -701,7 +638,7 @@ IndexType OrderedDimLabelReader::search_for_range(
 
   // Run a binary search.
   Op cmp;
-  while (left_index < right_index - 1) {
+  while (left_index + 1 < right_index) {
     // Check against mid.
     IndexType mid = left_index + (right_index - left_index) / 2;
     if (cmp(get_value_at<IndexType, LabelType>(mid, domain_low, tile_extent),
@@ -804,67 +741,15 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
 
   auto dest = static_cast<IndexType*>(buffers_[index_dim_->name()].buffer_) +
               (buffer_offset + r) * 2;
-  switch (label_type_) {
-    case Datatype::INT8:
-      compute_and_copy_range_indexes<IndexType, int8_t>(dest, r);
-      break;
-    case Datatype::UINT8:
-      compute_and_copy_range_indexes<IndexType, uint8_t>(dest, r);
-      break;
-    case Datatype::INT16:
-      compute_and_copy_range_indexes<IndexType, int16_t>(dest, r);
-      break;
-    case Datatype::UINT16:
-      compute_and_copy_range_indexes<IndexType, uint16_t>(dest, r);
-      break;
-    case Datatype::INT32:
-      compute_and_copy_range_indexes<IndexType, int32_t>(dest, r);
-      break;
-    case Datatype::UINT32:
-      compute_and_copy_range_indexes<IndexType, uint32_t>(dest, r);
-      break;
-    case Datatype::INT64:
-      compute_and_copy_range_indexes<IndexType, int64_t>(dest, r);
-      break;
-    case Datatype::UINT64:
-      compute_and_copy_range_indexes<IndexType, uint64_t>(dest, r);
-      break;
-    case Datatype::FLOAT32:
-      compute_and_copy_range_indexes<IndexType, float>(dest, r);
-      break;
-    case Datatype::FLOAT64:
-      compute_and_copy_range_indexes<IndexType, double>(dest, r);
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      compute_and_copy_range_indexes<IndexType, int64_t>(dest, r);
-      break;
-    case Datatype::STRING_ASCII:
+
+  auto g = [&](auto T) {
+    if constexpr (std::is_same_v<decltype(T), char>) {
       compute_and_copy_range_indexes<IndexType, std::string_view>(dest, r);
-      break;
-    default:
-      throw OrderedDimLabelReaderStatusException("Invalid label type");
-  }
+    } else if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      compute_and_copy_range_indexes<IndexType, decltype(T)>(dest, r);
+    }
+  };
+  apply_with_type(g, label_type_);
 }
 
 }  // namespace sm

@@ -36,6 +36,7 @@
 #define TILEDB_CPP_API_GROUP_EXPERIMENTAL_H
 
 #include "context.h"
+#include "object.h"
 #include "tiledb.h"
 
 namespace tiledb {
@@ -100,7 +101,7 @@ class Group {
   /** Destructor; calls `close()`. */
   ~Group() {
     if (owns_c_ptr_ && is_open()) {
-      close();
+      close(false);
     }
   }
 
@@ -156,8 +157,10 @@ class Group {
   }
 
   /**
-   * Closes the group. The destructor calls this automatically
-   * if the underlying pointer is owned.
+   * Closes the group. This must be called directly if you wish to check that
+   * any changes to the group were committed. This is automatically called
+   * by the destructor but any errors encountered are logged instead of throwing
+   * an exception from a destructor.
    *
    * **Example:**
    * @code{.cpp}
@@ -165,9 +168,15 @@ class Group {
    * group.close();
    * @endcode
    */
-  void close() {
+  void close(bool should_throw = true) {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_group_close(ctx.ptr().get(), group_.get()));
+    auto rc = tiledb_group_close(ctx.ptr().get(), group_.get());
+    if (rc != TILEDB_OK && should_throw) {
+      ctx.handle_error(rc);
+    } else if (rc != TILEDB_OK) {
+      auto msg = ctx.get_last_error_message();
+      tiledb_log_warn(ctx.ptr().get(), msg.c_str());
+    }
   }
 
   /**
@@ -239,13 +248,14 @@ class Group {
   }
 
   /**
-   * Deletes written data from an open group. The group must
+   * Deletes all written data from an open group. The group must
    * be opened in MODIFY_EXCLUSIVE mode, otherwise the function will error out.
    *
    * @param uri The address of the group item to be deleted.
    * @param recursive True if all data inside the group is to be deleted.
    *
    * @note if recursive == false, data added to the group will be left as-is.
+   * @post This is destructive; the group may not be reopened after delete.
    */
   void delete_group(const std::string& uri, bool recursive = false) {
     auto& ctx = ctx_.get();
@@ -391,14 +401,15 @@ class Group {
   /**
    * Remove a member from a group
    *
-   * @param uri of member to remove. Passing a name is also supported if the
-   * group member was assigned a name.
+   * @param name Name of member to remove. If the member has no name,
+   * this parameter should be set to the URI of the member. In that case, only
+   * the unnamed member with the given URI will be removed.
    */
-  void remove_member(const std::string& uri) {
+  void remove_member(const std::string& name) {
     auto& ctx = ctx_.get();
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
     ctx.handle_error(
-        tiledb_group_remove_member(c_ctx, group_.get(), uri.c_str()));
+        tiledb_group_remove_member(c_ctx, group_.get(), name.c_str()));
   }
 
   uint64_t member_count() const {

@@ -50,6 +50,7 @@
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
+#include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/enums/walk_order.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/group/group.h"
@@ -634,15 +635,6 @@ class StorageManagerCanonical {
   Status is_group(const URI& uri, bool* is_group) const;
 
   /**
-   * Loads the array metadata from persistent storage based on
-   * the input URI manager.
-   */
-  void load_array_metadata(
-      const ArrayDirectory& array_dir,
-      const EncryptionKey& encryption_key,
-      Metadata* metadata);
-
-  /**
    * Loads the delete and update conditions from storage.
    *
    * @param array The array.
@@ -990,6 +982,17 @@ class StorageManagerCanonical {
       optional<Tile>,
       optional<std::vector<std::pair<std::string, uint64_t>>>>
   load_consolidated_fragment_meta(const URI& uri, const EncryptionKey& enc_key);
+
+  /**
+   * Loads the filtered fragment URIs from the array directory.
+   *
+   * @param dense Is this a dense array.
+   * @param array_dir The ArrayDirectory object used to retrieve the
+   *     various URIs in the array directory.
+   * @return Filtered fragment URIs.
+   */
+  const ArrayDirectory::FilteredFragmentUris load_filtered_fragment_uris(
+      const bool dense, const ArrayDirectory& array_dir);
 
   /** Block until there are zero in-progress queries. */
   void wait_for_zero_in_progress();

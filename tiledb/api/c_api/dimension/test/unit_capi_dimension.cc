@@ -31,17 +31,10 @@
 #define CATCH_CONFIG_MAIN
 #include <test/support/tdb_catch.h>
 #include "../../../c_api_test_support/testsupport_capi_context.h"
+#include "../../../c_api_test_support/testsupport_capi_datatype.h"
 #include "../../filter_list/filter_list_api_internal.h"
 #include "../dimension_api_internal.h"
 using namespace tiledb::api::test_support;
-
-/*
- * TILEDB_INVALID_TYPE is defined as a function rather than a constant to get
- * around compile-time checking that the enumeration value is valid.
- */
-tiledb_datatype_t TILEDB_INVALID_TYPE() {
-  return static_cast<tiledb_datatype_t>(-1);
-}
 
 TEST_CASE(
     "C API: tiledb_dimension_alloc argument validation", "[capi][dimension]") {
@@ -101,14 +94,14 @@ TEST_CASE(
     REQUIRE_NOTHROW(tiledb_dimension_free(&dimension));
     CHECK(dimension == nullptr);
   }
-  SECTION("null dimensions") {
+  SECTION("null dimension") {
     REQUIRE_NOTHROW(tiledb_dimension_free(nullptr));
   }
 }
 
 struct ordinary_dimension_1 {
   ordinary_context ctx{};
-  tiledb_dimension_t* dimension;
+  tiledb_dimension_t* dimension{};
   const uint32_t constraint[2]{0, 10};
   ordinary_dimension_1() {
     capi_return_t rc = tiledb_dimension_alloc(

@@ -134,7 +134,7 @@ TEST_CASE_METHOD(GSFx, "Test GS filesystem, file management", "[gs]") {
   REQUIRE(is_empty);
 
   // Continue building the hierarchy
-  bool is_object;
+  bool is_object = false;
   REQUIRE(gcs_.touch(URI(file1)).ok());
   REQUIRE(gcs_.is_object(URI(file1), &is_object).ok());
   REQUIRE(is_object);
@@ -257,7 +257,7 @@ TEST_CASE_METHOD(
       gcs_.write(URI(smallfile), write_buffer_small, buffer_size_small).ok());
 
   // Before flushing, the files do not exist
-  bool is_object;
+  bool is_object = false;
   REQUIRE(gcs_.is_object(URI(largefile), &is_object).ok());
   REQUIRE(!is_object);
   REQUIRE(gcs_.is_object(URI(smallfile), &is_object).ok());
@@ -282,7 +282,7 @@ TEST_CASE_METHOD(
 
   // Read from the beginning
   auto read_buffer = new char[26];
-  uint64_t bytes_read;
+  uint64_t bytes_read = 0;
   REQUIRE(gcs_.read(URI(largefile), 0, read_buffer, 26, 0, &bytes_read).ok());
   CHECK(26 == bytes_read);
   bool allok = true;
@@ -344,7 +344,7 @@ TEST_CASE_METHOD(
       gcs_.write(URI(smallfile), write_buffer_small, buffer_size_small).ok());
 
   // Before flushing, the file does not exist
-  bool is_object;
+  bool is_object = false;
   REQUIRE(gcs_.is_object(URI(smallfile), &is_object).ok());
   REQUIRE(!is_object);
 
@@ -362,7 +362,7 @@ TEST_CASE_METHOD(
 
   // Read from the beginning
   auto read_buffer = new char[26];
-  uint64_t bytes_read;
+  uint64_t bytes_read = 0;
   REQUIRE(gcs_.read(URI(smallfile), 0, read_buffer, 26, 0, &bytes_read).ok());
   CHECK(26 == bytes_read);
   bool allok = true;
@@ -425,7 +425,7 @@ TEST_CASE_METHOD(
       gcs_.write(URI(smallfile), write_buffer_small, buffer_size_small).ok());
 
   // Before flushing, the files do not exist
-  bool is_object;
+  bool is_object = false;
   REQUIRE(gcs_.is_object(URI(largefile), &is_object).ok());
   REQUIRE(!is_object);
   REQUIRE(gcs_.is_object(URI(smallfile), &is_object).ok());
@@ -450,7 +450,7 @@ TEST_CASE_METHOD(
 
   // Read from the beginning
   auto read_buffer = new char[26];
-  uint64_t bytes_read;
+  uint64_t bytes_read = 0;
   REQUIRE(gcs_.read(URI(largefile), 0, read_buffer, 26, 0, &bytes_read).ok());
   CHECK(26 == bytes_read);
   bool allok = true;
@@ -505,7 +505,7 @@ TEST_CASE_METHOD(
       gcs_.write(URI(largefile), write_buffer_large, buffer_size_large).ok());
 
   // Before flushing, the file does not exist
-  bool is_object;
+  bool is_object = false;
   REQUIRE(gcs_.is_object(URI(largefile), &is_object).ok());
   REQUIRE(!is_object);
 
@@ -523,7 +523,7 @@ TEST_CASE_METHOD(
 
   // Read from the beginning
   auto read_buffer = new char[26];
-  uint64_t bytes_read;
+  uint64_t bytes_read = 0;
   REQUIRE(gcs_.read(URI(largefile), 0, read_buffer, 26, 0, &bytes_read).ok());
   CHECK(26 == bytes_read);
   bool allok = true;

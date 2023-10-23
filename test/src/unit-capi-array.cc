@@ -36,18 +36,10 @@
 #endif
 
 #include <test/support/tdb_catch.h>
-#include "tiledb/sm/c_api/tiledb.h"
-
-#include <iostream>
-
 #include "test/support/src/helpers.h"
 #include "test/support/src/serialization_wrappers.h"
 #include "test/support/src/vfs_helpers.h"
 #ifdef _WIN32
-#if !defined(NOMINMAX)
-#define NOMINMAX
-#endif
-#include <Windows.h>
 #include "tiledb/sm/filesystem/win.h"
 #else
 #include "tiledb/sm/filesystem/posix.h"
@@ -63,6 +55,7 @@
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/serialization/array.h"
+#include "tiledb/sm/serialization/fragments.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <chrono>
@@ -70,6 +63,16 @@
 #include <iostream>
 #include <sstream>
 #include <thread>
+
+#ifdef _WIN32
+#if !defined(NOMINMAX)
+#define NOMINMAX
+#endif
+#if !defined(WIN32_LEAN_AND_MEAN)
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <Windows.h>
+#endif
 
 using namespace tiledb::test;
 using namespace tiledb::common;
@@ -379,7 +382,7 @@ void ArrayFx::create_dense_array(const std::string& path) {
 
 void ArrayFx::write_fragment(tiledb_array_t* array, uint64_t timestamp) {
   // Open the array at the given timestamp
-  int rc = tiledb_array_set_open_timestamp_start(ctx_, array, timestamp);
+  int rc = tiledb_array_set_open_timestamp_end(ctx_, array, timestamp);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
@@ -2346,12 +2349,12 @@ TEST_CASE_METHOD(
   const void* v_r;
   uint32_t v_num;
   auto new_metadata = new_array->array_->unsafe_metadata();
-  Status st = new_metadata->get("aaa", &type, &v_num, &v_r);
+  new_metadata->get("aaa", &type, &v_num, &v_r);
   CHECK(static_cast<tiledb_datatype_t>(type) == TILEDB_INT32);
   CHECK(v_num == 1);
   CHECK(*((const int32_t*)v_r) == 5);
 
-  st = new_metadata->get("bb", &type, &v_num, &v_r);
+  new_metadata->get("bb", &type, &v_num, &v_r);
   CHECK(static_cast<tiledb_datatype_t>(type) == TILEDB_FLOAT32);
   CHECK(v_num == 2);
   CHECK(((const float*)v_r)[0] == 1.1f);
@@ -2657,6 +2660,103 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query_client);
   tiledb_query_free(&deserialized_query);
 
+  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+#endif
+}
+
+TEST_CASE_METHOD(
+    ArrayFx,
+    "Test array fragments serialization",
+    "[array][fragments][serialization]") {
+#ifdef TILEDB_SERIALIZATION
+  SupportedFsLocal local_fs;
+  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
+                           "array_fragments_serialization";
+  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+  create_dense_vector(array_name);
+
+  // Write fragments at timestamps 1, 2
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  uint64_t start_timestamp = 1;
+  uint64_t end_timestamp = 2;
+  write_fragment(array, start_timestamp);
+  write_fragment(array, end_timestamp);
+  CHECK(tiledb::test::num_commits(array_name) == 2);
+  CHECK(tiledb::test::num_fragments(array_name) == 2);
+
+  // Reopen for modify exclusive.
+  tiledb_array_free(&array);
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_array_open(ctx_, array, TILEDB_MODIFY_EXCLUSIVE);
+  REQUIRE(rc == TILEDB_OK);
+
+  // ALlocate buffer
+  tiledb_buffer_t* buff;
+  rc = tiledb_buffer_alloc(ctx_, &buff);
+  REQUIRE(rc == TILEDB_OK);
+
+  SECTION("delete_fragments") {
+    // Serialize fragment timestamps and deserialize delete request
+    tiledb::sm::serialization::serialize_delete_fragments_timestamps_request(
+        array->array_->config(),
+        start_timestamp,
+        end_timestamp,
+        tiledb::sm::SerializationType::CAPNP,
+        &buff->buffer());
+    rc = tiledb_handle_array_delete_fragments_timestamps_request(
+        ctx_,
+        array,
+        (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+        buff);
+    REQUIRE(rc == TILEDB_OK);
+    CHECK(tiledb::test::num_commits(array_name) == 0);
+    CHECK(tiledb::test::num_fragments(array_name) == 0);
+  }
+
+  SECTION("delete_fragments_list") {
+    // Get the fragment info object
+    tiledb_fragment_info_t* fragment_info = nullptr;
+    rc = tiledb_fragment_info_alloc(ctx_, array_name.c_str(), &fragment_info);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_fragment_info_load(ctx_, fragment_info);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Get the fragment URIs
+    const char* uri1;
+    rc = tiledb_fragment_info_get_fragment_uri(ctx_, fragment_info, 0, &uri1);
+    REQUIRE(rc == TILEDB_OK);
+    const char* uri2;
+    rc = tiledb_fragment_info_get_fragment_uri(ctx_, fragment_info, 1, &uri2);
+    REQUIRE(rc == TILEDB_OK);
+
+    std::vector<URI> fragments;
+    fragments.emplace_back(URI(uri1));
+    fragments.emplace_back(URI(uri2));
+
+    // Serialize fragments list and deserialize delete request
+    tiledb::sm::serialization::serialize_delete_fragments_list_request(
+        array->array_->config(),
+        fragments,
+        tiledb::sm::SerializationType::CAPNP,
+        &buff->buffer());
+    rc = tiledb_handle_array_delete_fragments_list_request(
+        ctx_,
+        array,
+        (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+        buff);
+    REQUIRE(rc == TILEDB_OK);
+    CHECK(tiledb::test::num_commits(array_name) == 0);
+    CHECK(tiledb::test::num_fragments(array_name) == 0);
+    tiledb_fragment_info_free(&fragment_info);
+  }
+
+  // Clean up
+  tiledb_array_free(&array);
+  tiledb_buffer_free(&buff);
   remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 #endif
 }

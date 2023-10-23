@@ -10,12 +10,12 @@ license=("MIT")
 depends=("${MINGW_PACKAGE_PREFIX}-lz4"
          "${MINGW_PACKAGE_PREFIX}-aws-sdk-cpp"
          "${MINGW_PACKAGE_PREFIX}-bzip2"
+         "${MINGW_PACKAGE_PREFIX}-curl"
          "${MINGW_PACKAGE_PREFIX}-zlib"
          "${MINGW_PACKAGE_PREFIX}-zstd"
          )
 makedepends=("${MINGW_PACKAGE_PREFIX}-cmake"
-             "${MINGW_PACKAGE_PREFIX}-gcc"
-             "${MINGW_PACKAGE_PREFIX}-curl")
+             "${MINGW_PACKAGE_PREFIX}-gcc")
 options=("staticlibs" "strip")
 source_dir="$TILEDB_HOME"
 
@@ -26,6 +26,9 @@ build() {
   if [ "$CARCH" == "i686" ]; then
   export CFLAGS="-mfpmath=sse -msse2"
   export CXXFLAGS="-mfpmath=sse -msse2"
+  vcpkg_triplet="x86-mingw-static"
+  else
+  vcpkg_triplet="x64-mingw-static"
   fi
 
 
@@ -40,6 +43,8 @@ build() {
     -DCOMPILER_SUPPORTS_AVX2=OFF \
     -DTILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK=ON \
     -DTILEDB_WERROR=OFF \
+    -DVCPKG_OVERLAY_PORTS=../.github/workflows/mingw-w64-tiledb/system-ports \
+    -DVCPKG_TARGET_TRIPLET=${vcpkg_triplet} \
     ..
   make
   make -C tiledb

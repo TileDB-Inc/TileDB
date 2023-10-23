@@ -34,6 +34,7 @@
 // Avoid deprecation warnings for the cpp api
 #define TILEDB_DEPRECATED
 
+#include "tiledb/api/c_api/attribute/attribute_api_internal.h"
 #include "tiledb/api/c_api/config/config_api_internal.h"
 #include "tiledb/api/c_api/dimension/dimension_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
@@ -68,7 +69,7 @@ std::pair<std::string, std::string> strip_file_extension(const char* file_uri);
 std::pair<Status, optional<uint64_t>> get_buffer_size_from_config(
     const Context& context, uint64_t tile_extent);
 
-TILEDB_EXPORT int32_t tiledb_filestore_schema_create(
+int32_t tiledb_filestore_schema_create(
     tiledb_ctx_t* ctx, const char* uri, tiledb_array_schema_t** array_schema) {
   if (sanity_check(ctx) == TILEDB_ERR) {
     *array_schema = nullptr;
@@ -154,13 +155,11 @@ TILEDB_EXPORT int32_t tiledb_filestore_schema_create(
   return TILEDB_OK;
 }
 
-TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
+int32_t tiledb_filestore_uri_import(
     tiledb_ctx_t* ctx,
     const char* filestore_array_uri,
     const char* file_uri,
-    tiledb_mime_type_t mime_type) {
-  (void)mime_type;  // Unused
-
+    tiledb_mime_type_t) {
   if (sanity_check(ctx) == TILEDB_ERR || !filestore_array_uri || !file_uri) {
     return TILEDB_ERR;
   }
@@ -341,7 +340,7 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
   return TILEDB_OK;
 }
 
-TILEDB_EXPORT int32_t tiledb_filestore_uri_export(
+int32_t tiledb_filestore_uri_export(
     tiledb_ctx_t* ctx, const char* file_uri, const char* filestore_array_uri) {
   if (sanity_check(ctx) == TILEDB_ERR || !filestore_array_uri || !file_uri) {
     return TILEDB_ERR;
@@ -429,14 +428,12 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_export(
   return TILEDB_OK;
 }
 
-TILEDB_EXPORT int32_t tiledb_filestore_buffer_import(
+int32_t tiledb_filestore_buffer_import(
     tiledb_ctx_t* ctx,
     const char* filestore_array_uri,
     void* buf,
     size_t size,
-    tiledb_mime_type_t mime_type) {
-  (void)mime_type;  // Unused
-
+    tiledb_mime_type_t) {
   if (sanity_check(ctx) == TILEDB_ERR || !filestore_array_uri || !buf) {
     return TILEDB_ERR;
   }
@@ -511,7 +508,7 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_import(
   return TILEDB_OK;
 }
 
-TILEDB_EXPORT int32_t tiledb_filestore_buffer_export(
+int32_t tiledb_filestore_buffer_export(
     tiledb_ctx_t* ctx,
     const char* filestore_array_uri,
     size_t offset,
@@ -559,7 +556,7 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_export(
   return TILEDB_OK;
 }
 
-TILEDB_EXPORT int32_t tiledb_filestore_size(
+int32_t tiledb_filestore_size(
     tiledb_ctx_t* ctx, const char* filestore_array_uri, size_t* size) {
   if (sanity_check(ctx) == TILEDB_ERR || !filestore_array_uri || !size) {
     return TILEDB_ERR;
@@ -589,16 +586,16 @@ TILEDB_EXPORT int32_t tiledb_filestore_size(
   return TILEDB_OK;
 }
 
-TILEDB_EXPORT int32_t
-tiledb_mime_type_to_str(tiledb_mime_type_t mime_type, const char** str) {
+int32_t tiledb_mime_type_to_str(
+    tiledb_mime_type_t mime_type, const char** str) {
   const auto& strval =
       tiledb::sm::mime_type_str((tiledb::sm::MimeType)mime_type);
   *str = strval.c_str();
   return strval.empty() ? TILEDB_ERR : TILEDB_OK;
 }
 
-TILEDB_EXPORT int32_t
-tiledb_mime_type_from_str(const char* str, tiledb_mime_type_t* mime_type) {
+int32_t tiledb_mime_type_from_str(
+    const char* str, tiledb_mime_type_t* mime_type) {
   tiledb::sm::MimeType val = tiledb::sm::MimeType::MIME_AUTODETECT;
   if (!tiledb::sm::mime_type_enum(str, &val).ok())
     return TILEDB_ERR;

@@ -74,13 +74,12 @@ TEST_CASE("make_shared - TracingLabel") {
   auto x = make_shared<unsigned short>(label, 5);
 }
 
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ < 13
+// Temporarily disabled due to compile error on GCC 13
+// - https://github.com/TileDB-Inc/TileDB/issues/4191
 TEST_CASE("make_shared_whitebox - TracingLabel") {
   auto label = TracingLabel(std::string_view("foo", 3));
   auto x = make_shared_whitebox<unsigned short>(label, 5);
-}
-
-TEST_CASE("make_shared - string constant") {
-  auto x = make_shared<unsigned short>("foo", 5);
 }
 
 TEST_CASE("make_shared_whitebox - string constant") {
@@ -98,6 +97,12 @@ TEST_CASE_METHOD(TracingFixture, "Tracer - trace make_shared") {
   CHECK(log[0].event_ == "allocate");
   CHECK(log[1].event_ == "deallocate");
   WARN(TestTracer::dump());
+}
+
+#endif
+
+TEST_CASE("make_shared - string constant") {
+  auto x = make_shared<unsigned short>("foo", 5);
 }
 
 TEST_CASE_METHOD(TracingFixture, "Tracer - trace bad_alloc") {

@@ -1,9 +1,9 @@
 #
-# tiledb/api/c_api/exception_wrapper/test/CMakeLists.txt
+# tiledb/api/c_api_support/exception_wrapper/test/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2022-2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,22 +23,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
+include(unit_test)
 
-add_executable(unit_capi_exception_wrapper EXCLUDE_FROM_ALL)
-find_package(Catch_EP REQUIRED)
-target_link_libraries(unit_capi_exception_wrapper PUBLIC Catch2::Catch2WithMain)
-
-# Sources for code under test
-target_link_libraries(unit_capi_exception_wrapper PUBLIC exception_wrapper)
-target_link_libraries(unit_capi_exception_wrapper PUBLIC capi_context_stub)
-
-# Sources for tests
-target_sources(unit_capi_exception_wrapper PUBLIC
-    unit_capi_exception_wrapper.cc
-    )
-
-add_test(
-    NAME "unit_capi_exception_wrapper"
-    COMMAND $<TARGET_FILE:unit_capi_exception_wrapper>
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
+commence(unit_test capi_exception_wrapper)
+  this_target_sources(
+      unit_capi_exception_wrapper.cc
+      unit_capi_error_tree.cc)
+  this_target_object_libraries(
+      # The exception wrapper is wrapped up with the context, so that's the
+      # top-level dependency required for the test.
+      capi_context_stub)
+conclude(unit_test)

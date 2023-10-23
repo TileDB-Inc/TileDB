@@ -102,8 +102,7 @@ Status FragmentMetaConsolidator::consolidate(
   auto meta_name = uri.remove_trailing_slash().last_path_part();
   auto pos = meta_name.find_last_of('.');
   meta_name = (pos == std::string::npos) ? meta_name : meta_name.substr(0, pos);
-  uint32_t meta_version = 0;
-  RETURN_NOT_OK(utils::parse::get_fragment_version(meta_name, &meta_version));
+  auto meta_version = utils::parse::get_fragment_version(meta_name);
 
   // Calculate offset of first fragment footer
   uint64_t offset = sizeof(uint32_t);  // Fragment num
@@ -173,9 +172,8 @@ Status FragmentMetaConsolidator::consolidate(
   RETURN_NOT_OK(enc_key.set_key(encryption_type, encryption_key, key_length));
 
   GenericTileIO tile_io(storage_manager_->resources(), uri);
-  uint64_t nbytes = 0;
+  [[maybe_unused]] uint64_t nbytes = 0;
   RETURN_NOT_OK(tile_io.write_generic(&tile, enc_key, &nbytes));
-  (void)nbytes;
   RETURN_NOT_OK(storage_manager_->vfs()->close_file(uri));
 
   return Status::Ok();

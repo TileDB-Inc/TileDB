@@ -36,7 +36,7 @@
 
 #include <png.h>
 // Note: on some macOS platforms with a brew-installed libpng, use this instead:
-//#include <libpng16/png.h>
+// #include <libpng16/png.h>
 
 // Include the TileDB C++ API headers
 #include <tiledb/tiledb>

@@ -799,20 +799,13 @@ Status FragmentMetadata::load(
   }
 
   // Get fragment name version
-  uint32_t f_version;
   auto name = fragment_uri_.remove_trailing_slash().last_path_part();
-  RETURN_NOT_OK(utils::parse::get_fragment_name_version(name, &f_version));
+  auto format_version = utils::parse::get_fragment_version(name);
 
-  // Note: The fragment name version is different from the fragment format
-  // version.
-  //  - Version 1 corresponds to format versions 1 and 2
-  //    * __uuid_<t1>{_t2}
-  //  - Version 2 corresponds to version 3 and 4
-  //    * __t1_t2_uuid
-  //  - Version 3 corresponds to version 5 or higher
-  //    * __t1_t2_uuid_version
-  if (f_version == 1)
+  if (format_version <= 2) {
     return load_v1_v2(encryption_key, array_schemas);
+  }
+
   return load_v3_or_higher(
       encryption_key, fragment_metadata_tile, offset, array_schemas);
 }
@@ -1636,7 +1629,7 @@ uint64_t FragmentMetadata::tile_size(
     const std::string& name, uint64_t tile_idx) const {
   auto var_size = array_schema_->var_size(name);
   auto cell_num = this->cell_num(tile_idx);
-  return (var_size) ? cell_num * constants::cell_var_offset_size :
+  return (var_size) ? (cell_num + 1) * constants::cell_var_offset_size :
                       cell_num * array_schema_->cell_size(name);
 }
 
@@ -1720,6 +1713,10 @@ std::string_view FragmentMetadata::get_tile_min_as<std::string_view>(
             static_cast<sv_size_cast>(
                 tile_min_var_buffer_[idx].size() - min_offset) :
             static_cast<sv_size_cast>(offsets[tile_idx + 1] - min_offset);
+    if (size == 0) {
+      return {};
+    }
+
     char* min = &tile_min_var_buffer_[idx][min_offset];
     return {min, size};
   } else {
@@ -1796,6 +1793,10 @@ std::string_view FragmentMetadata::get_tile_max_as<std::string_view>(
             static_cast<sv_size_cast>(
                 tile_max_var_buffer_[idx].size() - max_offset) :
             static_cast<sv_size_cast>(offsets[tile_idx + 1] - max_offset);
+    if (size == 0) {
+      return {};
+    }
+
     char* max = &tile_max_var_buffer_[idx][max_offset];
     return {max, size};
   } else {
@@ -2103,32 +2104,23 @@ Status FragmentMetadata::load_tile_var_sizes(
 /*        PRIVATE METHODS         */
 /* ****************************** */
 
-Status FragmentMetadata::get_footer_size(
-    uint32_t version, uint64_t* size) const {
-  if (version < 3) {
-    *size = footer_size_v3_v4();
-  } else if (version < 4) {
-    *size = footer_size_v5_v6();
-  } else if (version < 11) {
-    *size = footer_size_v7_v10();
-  } else {
-    *size = footer_size_v11_or_higher();
-  }
-
-  return Status::Ok();
-}
-
 uint64_t FragmentMetadata::footer_size() const {
   return footer_size_;
 }
 
 Status FragmentMetadata::get_footer_offset_and_size(
     uint64_t* offset, uint64_t* size) const {
-  uint32_t f_version;
   auto name = fragment_uri_.remove_trailing_slash().last_path_part();
-  RETURN_NOT_OK(utils::parse::get_fragment_name_version(name, &f_version));
-  if (array_schema_->domain().all_dims_fixed() && f_version < 5) {
-    RETURN_NOT_OK(get_footer_size(f_version, size));
+  auto fragment_format_version = utils::parse::get_fragment_version(name);
+  auto all_fixed = array_schema_->domain().all_dims_fixed();
+  if (all_fixed && fragment_format_version < 5) {
+    *size = footer_size_v3_v4();
+    *offset = meta_file_size_ - *size;
+  } else if (all_fixed && fragment_format_version < 7) {
+    *size = footer_size_v5_v6();
+    *offset = meta_file_size_ - *size;
+  } else if (all_fixed && fragment_format_version < 10) {
+    *size = footer_size_v7_v9();
     *offset = meta_file_size_ - *size;
   } else {
     URI fragment_metadata_uri = fragment_uri_.join_path(
@@ -2209,7 +2201,7 @@ uint64_t FragmentMetadata::footer_size_v5_v6() const {
   return size;
 }
 
-uint64_t FragmentMetadata::footer_size_v7_v10() const {
+uint64_t FragmentMetadata::footer_size_v7_v9() const {
   auto dim_num = array_schema_->dim_num();
   auto num = num_dims_and_attrs();
   uint64_t domain_size = 0;
@@ -2248,53 +2240,6 @@ uint64_t FragmentMetadata::footer_size_v7_v10() const {
   size += num * sizeof(uint64_t);  // tile var offsets
   size += num * sizeof(uint64_t);  // tile var sizes
   size += num * sizeof(uint64_t);  // tile validity sizes
-
-  return size;
-}
-
-uint64_t FragmentMetadata::footer_size_v11_or_higher() const {
-  auto dim_num = array_schema_->dim_num();
-  auto num = num_dims_and_attrs();
-  uint64_t domain_size = 0;
-
-  if (non_empty_domain_.empty()) {
-    // For var-sized dimensions, this function would be called only upon
-    // writing the footer to storage, in which case the non-empty domain
-    // would not be empty. For reading the footer from storage, the footer
-    // size is explicitly stored to and retrieved from storage, so this
-    // function is not called then.
-    assert(array_schema_->domain().all_dims_fixed());
-    for (unsigned d = 0; d < dim_num; ++d)
-      domain_size += 2 * array_schema_->domain().dimension_ptr(d)->coord_size();
-  } else {
-    for (unsigned d = 0; d < dim_num; ++d) {
-      domain_size += non_empty_domain_[d].size();
-      if (array_schema_->dimension_ptr(d)->var_size()) {
-        domain_size += 2 * sizeof(uint64_t);  // Two more sizes get serialized
-      }
-    }
-  }
-
-  // Get footer size
-  uint64_t size = 0;
-  size += sizeof(uint32_t);        // version
-  size += sizeof(char);            // dense
-  size += sizeof(char);            // null non-empty domain
-  size += domain_size;             // non-empty domain
-  size += sizeof(uint64_t);        // sparse tile num
-  size += sizeof(uint64_t);        // last tile cell num
-  size += num * sizeof(uint64_t);  // file sizes
-  size += num * sizeof(uint64_t);  // file var sizes
-  size += num * sizeof(uint64_t);  // file validity sizes
-  size += sizeof(uint64_t);        // R-Tree offset
-  size += num * sizeof(uint64_t);  // tile offsets
-  size += num * sizeof(uint64_t);  // tile var offsets
-  size += num * sizeof(uint64_t);  // tile var sizes
-  size += num * sizeof(uint64_t);  // tile validity sizes
-  size += num * sizeof(uint64_t);  // tile mins sizes
-  size += num * sizeof(uint64_t);  // tile maxs sizes
-  size += num * sizeof(uint64_t);  // tile sums sizes
-  size += num * sizeof(uint64_t);  // tile null count sizes
 
   return size;
 }
@@ -3688,11 +3633,10 @@ Status FragmentMetadata::load_v3_or_higher(
 }
 
 Status FragmentMetadata::load_footer(
-    const EncryptionKey& encryption_key,
+    const EncryptionKey&,
     Tile* fragment_metadata_tile,
     uint64_t offset,
     std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas) {
-  (void)encryption_key;  // Not used for now, perhaps in the future
   std::lock_guard<std::mutex> lock(mtx_);
 
   if (loaded_metadata_.footer_)
@@ -4689,8 +4633,7 @@ void FragmentMetadata::write_has_delete_meta(Serializer& serializer) const {
   serializer.write<char>(has_delete_meta_);
 }
 
-Status FragmentMetadata::store_footer(const EncryptionKey& encryption_key) {
-  (void)encryption_key;  // Not used for now, maybe in the future
+Status FragmentMetadata::store_footer(const EncryptionKey&) {
   SizeComputationSerializer size_computation_serializer;
   RETURN_NOT_OK(write_footer(size_computation_serializer));
   WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
@@ -4703,6 +4646,23 @@ Status FragmentMetadata::store_footer(const EncryptionKey& encryption_key) {
       "write_frag_meta_footer_size", tile.size());
 
   return Status::Ok();
+}
+
+void FragmentMetadata::resize_tile_offsets_vectors(uint64_t size) {
+  tile_offsets_mtx().resize(size);
+  tile_offsets().resize(size);
+}
+
+void FragmentMetadata::resize_tile_var_offsets_vectors(uint64_t size) {
+  tile_var_offsets_mtx().resize(size);
+  tile_var_offsets().resize(size);
+}
+
+void FragmentMetadata::resize_tile_var_sizes_vectors(uint64_t size) {
+  tile_var_sizes().resize(size);
+}
+void FragmentMetadata::resize_tile_validity_offsets_vectors(uint64_t size) {
+  tile_validity_offsets().resize(size);
 }
 
 void FragmentMetadata::clean_up() {

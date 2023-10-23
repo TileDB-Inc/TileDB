@@ -120,10 +120,7 @@ void create_array(
   if (add_utf8_attr) {
     Attribute attr_c = Attribute::create(ctx, "c", TILEDB_STRING_UTF8);
     attr_c.set_cell_val_num(TILEDB_VAR_NUM);
-    if (array_type == TILEDB_DENSE) {
-      std::string ohai("ohai");
-      attr_c.set_fill_value(ohai.data(), ohai.size());
-    }
+    attr_c.set_nullable(true);
     schema.add_attribute(attr_c);
   }
   Array::create(array_name, schema);
@@ -133,8 +130,9 @@ void create_array(
   std::vector<int> col_dims;
   std::vector<int> a_data;
   std::vector<float> b_data;
-  std::vector<uint8_t> c_data;
+  std::vector<char> c_data;
   std::vector<uint64_t> c_offsets;
+  std::vector<uint8_t> c_validity;
 
   std::vector<std::string> c_choices = {
       std::string("bird"),
@@ -176,6 +174,8 @@ void create_array(
     for (size_t c_idx = 0; c_idx < c_str.size(); c_idx++) {
       c_data.push_back(c_str.at(c_idx));
     }
+
+    c_validity.push_back(1);
   }
 
   if (array_type == TILEDB_SPARSE) {
@@ -188,7 +188,9 @@ void create_array(
         .set_data_buffer("b", b_data);
 
     if (add_utf8_attr) {
-      query_w.set_data_buffer("c", c_data).set_offsets_buffer("c", c_offsets);
+      query_w.set_data_buffer("c", c_data)
+          .set_offsets_buffer("c", c_offsets)
+          .set_validity_buffer("c", c_validity);
     }
 
     query_w.submit();
@@ -202,7 +204,9 @@ void create_array(
         .set_data_buffer("b", b_data);
 
     if (add_utf8_attr) {
-      query_w.set_data_buffer("c", c_data).set_offsets_buffer("c", c_offsets);
+      query_w.set_data_buffer("c", c_data)
+          .set_offsets_buffer("c", c_offsets)
+          .set_validity_buffer("c", c_validity);
     }
 
     query_w.submit();
@@ -275,6 +279,7 @@ static void perform_query(
     std::vector<float>& b_data,
     std::string& c_data,
     std::vector<uint64_t>& c_offsets,
+    std::vector<uint8_t>& c_validity,
     const QueryCondition& qc,
     tiledb_layout_t layout_type,
     Query& query) {
@@ -283,6 +288,7 @@ static void perform_query(
       .set_data_buffer("b", b_data)
       .set_data_buffer("c", c_data)
       .set_offsets_buffer("c", c_offsets)
+      .set_validity_buffer("c", c_validity)
       .set_condition(qc);
   query.submit();
 }
@@ -1383,6 +1389,7 @@ TEST_CASE(
   std::string c_data_read_2;
   c_data_read_2.resize(64 * 5);
   std::vector<uint64_t> c_data_offsets_2(64);
+  std::vector<uint8_t> c_data_validity_2(64);
 
   // Generate test parameters.
   TestParams params = GENERATE(
@@ -1421,6 +1428,7 @@ TEST_CASE(
       b_data_read_2,
       c_data_read_2,
       c_data_offsets_2,
+      c_data_validity_2,
       qc,
       params.layout_,
       query);
@@ -1491,12 +1499,14 @@ TEST_CASE(
           REQUIRE(
               fabs(b_data_read_2[i] - b_data_read[original_arr_i]) <
               std::numeric_limits<float>::epsilon());
+          REQUIRE(c_data_validity_2[i] == 1);
         } else {
           // Checking for fill value.
           REQUIRE(a_data_read_2[i] == a_fill_value);
           REQUIRE(
               fabs(b_data_read_2[i] - b_fill_value) <
               std::numeric_limits<float>::epsilon());
+          REQUIRE(c_data_validity_2[i] == 0);
         }
       }
     }
@@ -2562,6 +2572,70 @@ TEST_CASE(
 
   query.finalize();
   array.close();
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+}
+
+TEST_CASE(
+    "Testing read query with simple QC, condition on attribute, bool attr",
+    "[query][query-condition][dimension]") {
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 10}}, 10));
+
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain)
+      .set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}})
+      .add_attribute(Attribute::create<uint8_t>(ctx, "labs"));
+  Array::create(array_name, schema);
+
+  // Write some initial data and close the array.
+  std::vector<int> wrows{1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  uint8_t wlabs[10] = {
+      false, true, false, true, true, false, false, true, false, false};
+
+  Array warray(ctx, array_name, TILEDB_WRITE);
+  Query wquery(ctx, warray, TILEDB_WRITE);
+  wquery.set_layout(TILEDB_UNORDERED)
+      .set_data_buffer("rows", wrows)
+      .set_data_buffer("labs", wlabs, 10);
+  wquery.submit();
+  warray.close();
+
+  // Read the data with query condition on the Boolean attribute.
+  Array rarray(ctx, array_name, TILEDB_READ);
+  const std::vector<int> subarray = {1, 10};
+  std::vector<int> rrows(10);
+  std::vector<uint8_t> rlabs(10);
+
+  Query rquery(ctx, rarray, TILEDB_READ);
+  rquery.set_subarray(subarray)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("rows", rrows)
+      .set_data_buffer("labs", rlabs);
+  rquery.submit();  // Submit the query and close the array.
+  rarray.close();
+  CHECK(rquery.query_status() == Query::Status::COMPLETE);
+
+  // Check the query for accuracy.
+  auto table = rquery.result_buffer_elements();
+  CHECK(table.size() == 2);
+  CHECK(table["rows"].first == 0);
+  CHECK(table["rows"].second == 10);
+  CHECK(table["labs"].first == 0);
+  CHECK(table["labs"].second == 10);
+
+  for (size_t i = 0; i < table["labs"].second; ++i) {
+    CHECK(rlabs[i] == static_cast<uint8_t>(wlabs[i]));
+  }
 
   if (vfs.is_dir(array_name)) {
     vfs.remove_dir(array_name);

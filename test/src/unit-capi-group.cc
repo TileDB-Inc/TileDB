@@ -509,6 +509,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   int metadata_val = 1;
+  set_group_timestamp(group, 1);
   rc = tiledb_group_open(ctx_, group, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_group_put_metadata(
@@ -523,6 +524,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   metadata_val = 2;
+  set_group_timestamp(group, 2);
   rc = tiledb_group_open(ctx_, group, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_group_put_metadata(
@@ -891,12 +893,18 @@ TEST_CASE_METHOD(
   rc = tiledb_group_open(ctx_, group2, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
+  // The member has a name; removing it by URI should fail.
   rc = tiledb_group_remove_member(ctx_, group1, group2_uri.c_str());
+  REQUIRE(rc != TILEDB_OK);
+  rc = tiledb_group_remove_member(ctx_, group1, "four");
   REQUIRE(rc == TILEDB_OK);
   // Group is the latest element
   group1_expected.resize(group1_expected.size() - 1);
 
+  // The member has a name; removing it by URI should fail.
   rc = tiledb_group_remove_member(ctx_, group2, array3_uri.c_str());
+  REQUIRE(rc != TILEDB_OK);
+  rc = tiledb_group_remove_member(ctx_, group2, "three");
   REQUIRE(rc == TILEDB_OK);
   // There should be nothing left in group2
   group2_expected.clear();
@@ -931,6 +939,78 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   tiledb_group_free(&group1);
   tiledb_group_free(&group2);
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    GroupFx,
+    "C API: Group, write duplicate members",
+    "[capi][group][write][duplicate]") {
+  // Create and open group in write mode
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+
+  const tiledb::sm::URI group1_uri(temp_dir + "group1");
+  const tiledb::sm::URI group2_uri(temp_dir + "group1/group2");
+  const tiledb::sm::URI group3_uri(temp_dir + "group1/group3");
+
+  REQUIRE(tiledb_group_create(ctx_, group1_uri.c_str()) == TILEDB_OK);
+  REQUIRE(tiledb_group_create(ctx_, group2_uri.c_str()) == TILEDB_OK);
+  REQUIRE(tiledb_group_create(ctx_, group3_uri.c_str()) == TILEDB_OK);
+
+  tiledb_group_t* group1;
+  int rc = tiledb_group_alloc(ctx_, group1_uri.c_str(), &group1);
+  REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group1, 1);
+  rc = tiledb_group_open(ctx_, group1, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  SECTION("Name-name collision") {
+    rc =
+        tiledb_group_add_member(ctx_, group1, group2_uri.c_str(), false, "one");
+    REQUIRE(rc == TILEDB_OK);
+    rc =
+        tiledb_group_add_member(ctx_, group1, group3_uri.c_str(), false, "one");
+    REQUIRE(rc == TILEDB_ERR);
+    rc = tiledb_group_remove_member(ctx_, group1, "one");
+    REQUIRE(rc == TILEDB_ERR);
+  }
+
+  SECTION("Name-URI collision") {
+    rc = tiledb_group_add_member(
+        ctx_, group1, group2_uri.c_str(), false, "group2");
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_group_add_member(ctx_, group1, "group2", true, nullptr);
+    REQUIRE(rc == TILEDB_ERR);
+    rc = tiledb_group_remove_member(ctx_, group1, "group2");
+    REQUIRE(rc == TILEDB_ERR);
+  }
+
+  SECTION("URI-name collision") {
+    rc = tiledb_group_add_member(ctx_, group1, "group2", true, nullptr);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_group_add_member(
+        ctx_, group1, group3_uri.c_str(), false, "group2");
+    REQUIRE(rc == TILEDB_ERR);
+    rc = tiledb_group_remove_member(ctx_, group1, "group2");
+    REQUIRE(rc == TILEDB_ERR);
+  }
+
+  SECTION("URI-URI collision") {
+    rc = tiledb_group_add_member(
+        ctx_, group1, group2_uri.c_str(), false, nullptr);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_group_add_member(
+        ctx_, group1, group2_uri.c_str(), false, nullptr);
+    REQUIRE(rc == TILEDB_ERR);
+    rc = tiledb_group_remove_member(ctx_, group1, group2_uri.c_str());
+    REQUIRE(rc == TILEDB_ERR);
+  }
+
+  // Close group
+  rc = tiledb_group_close(ctx_, group1);
+  tiledb_group_free(&group1);
   remove_temp_dir(temp_dir);
 }
 
@@ -1319,12 +1399,18 @@ TEST_CASE_METHOD(
   rc = tiledb_group_open(ctx_, group2, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
+  // The member has a name; removing it by URI should fail.
   rc = tiledb_group_remove_member(ctx_, group1, group2_uri.c_str());
+  REQUIRE(rc != TILEDB_OK);
+  rc = tiledb_group_remove_member(ctx_, group1, "eight");
   REQUIRE(rc == TILEDB_OK);
   // Group is the latest element
   group1_expected.resize(group1_expected.size() - 1);
 
+  // The member has a name; removing it by URI should fail.
   rc = tiledb_group_remove_member(ctx_, group2, array3_relative_uri.c_str());
+  REQUIRE(rc != TILEDB_OK);
+  rc = tiledb_group_remove_member(ctx_, group2, "seven");
   REQUIRE(rc == TILEDB_OK);
   // There should be nothing left in group2
   group2_expected.clear();

@@ -226,8 +226,8 @@ Status DenseTiler<T>::get_tile(
         tile_off_size);
 
     // Fill entire tile with MAX_UINT64
-    std::vector<uint64_t> to_write(
-        cell_num_in_tile, std::numeric_limits<uint64_t>::max());
+    std::vector<offsets_t> to_write(
+        cell_num_in_tile, std::numeric_limits<offsets_t>::max());
     RETURN_NOT_OK(tile_pos.write(to_write.data(), 0, tile_off_size));
     to_write.clear();
     to_write.shrink_to_fit();
@@ -243,8 +243,7 @@ Status DenseTiler<T>::get_tile(
         id, constants::cell_var_offset_size, (uint8_t*)&cell_pos[0], tile_pos));
 
     // Copy real offsets and values to the corresponding tiles
-    void* tile_pos_buff_tmp = tile_pos.data();
-    auto tile_pos_buff = (uint64_t*)tile_pos_buff_tmp;
+    auto tile_pos_buff = tile_pos.data_as<offsets_t>();
     uint64_t tile_off_offset = 0, offset = 0, val_offset, val_size, pos;
     auto mul = (offsets_format_mode_ == "bytes") ? 1 : cell_size;
     auto& tile_off = tile.offset_tile();

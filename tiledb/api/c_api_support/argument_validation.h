@@ -38,12 +38,14 @@
 
 namespace tiledb::api {
 
-class CAPIStatusException : public common::StatusException {
+class CAPIException : public common::StatusException {
  public:
-  explicit CAPIStatusException(const std::string& message)
+  explicit CAPIException(const std::string& message)
       : StatusException("C API", message) {
   }
 };
+// Legacy alias to forestall massive sudden code change
+using CAPIStatusException = CAPIException;
 
 /*
  * Validation functions
@@ -67,7 +69,7 @@ class CAPIStatusException : public common::StatusException {
  */
 inline void ensure_output_pointer_is_valid(void* p) {
   if (p == nullptr) {
-    throw CAPIStatusException("Invalid output pointer for object");
+    throw CAPIException("Invalid output pointer for object");
   }
 }
 

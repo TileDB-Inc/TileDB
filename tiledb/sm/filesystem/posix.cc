@@ -36,7 +36,6 @@
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
-#include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
@@ -193,14 +192,7 @@ std::string Posix::current_dir() {
 
 // TODO: it maybe better to use unlinkat for deeply nested recursive directories
 // but the path name length limit in TileDB may make this unnecessary
-int Posix::unlink_cb(
-    const char* fpath,
-    const struct stat* sb,
-    int typeflag,
-    struct FTW* ftwbuf) {
-  (void)sb;
-  (void)typeflag;
-  (void)ftwbuf;
+int Posix::unlink_cb(const char* fpath, const struct stat*, int, struct FTW*) {
   int rc = remove(fpath);
   if (rc)
     perror(fpath);
@@ -239,14 +231,8 @@ Status Posix::file_size(const std::string& path, uint64_t* size) const {
   return Status::Ok();
 }
 
-Status Posix::init(const Config& config, ThreadPool* vfs_thread_pool) {
-  if (vfs_thread_pool == nullptr) {
-    return LOG_STATUS(
-        Status_VFSError("Cannot initialize with null thread pool"));
-  }
-
+Status Posix::init(const Config& config) {
   config_ = config;
-  vfs_thread_pool_ = vfs_thread_pool;
 
   return Status::Ok();
 }
@@ -506,17 +492,6 @@ Status Posix::write(
     }
   }
 
-  // Get config params
-  bool found = false;
-  uint64_t min_parallel_size = 0;
-  uint64_t max_parallel_ops = 0;
-  RETURN_NOT_OK(config_.get().get<uint64_t>(
-      "vfs.min_parallel_size", &min_parallel_size, &found));
-  assert(found);
-  RETURN_NOT_OK(config_.get().get<uint64_t>(
-      "vfs.file.max_parallel_ops", &max_parallel_ops, &found));
-  assert(found);
-
   uint32_t permissions = 0;
   RETURN_NOT_OK(get_posix_file_permissions(&permissions));
 
@@ -539,41 +514,12 @@ Status Posix::write(
         std::string("Cannot open file '") + path + "'; " + strerror(errno)));
   }
 
-  // Ensure that each thread is responsible for at least min_parallel_size
-  // bytes, and cap the number of parallel operations at the thread pool size.
-  uint64_t num_ops = std::min(
-      std::max(buffer_size / min_parallel_size, uint64_t(1)), max_parallel_ops);
-  if (num_ops == 1) {
-    st = write_at(fd, file_offset, buffer, buffer_size);
-    if (!st.ok()) {
-      close(fd);
-      std::stringstream errmsg;
-      errmsg << "Cannot write to file '" << path << "'; " << st.message();
-      return LOG_STATUS(Status_IOError(errmsg.str()));
-    }
-  } else {
-    std::vector<ThreadPool::Task> results;
-    uint64_t thread_write_nbytes = utils::math::ceil(buffer_size, num_ops);
-    for (uint64_t i = 0; i < num_ops; i++) {
-      uint64_t begin = i * thread_write_nbytes,
-               end =
-                   std::min((i + 1) * thread_write_nbytes - 1, buffer_size - 1);
-      uint64_t thread_nbytes = end - begin + 1;
-      uint64_t thread_file_offset = file_offset + begin;
-      auto thread_buffer = reinterpret_cast<const char*>(buffer) + begin;
-      results.emplace_back(vfs_thread_pool_->execute(
-          [fd, thread_file_offset, thread_buffer, thread_nbytes]() {
-            return write_at(
-                fd, thread_file_offset, thread_buffer, thread_nbytes);
-          }));
-    }
-    st = vfs_thread_pool_->wait_all(results);
-    if (!st.ok()) {
-      close(fd);
-      std::stringstream errmsg;
-      errmsg << "Cannot write to file '" << path << "'; " << st.message();
-      return LOG_STATUS(Status_IOError(errmsg.str()));
-    }
+  st = write_at(fd, file_offset, buffer, buffer_size);
+  if (!st.ok()) {
+    close(fd);
+    std::stringstream errmsg;
+    errmsg << "Cannot write to file '" << path << "'; " << st.message();
+    return LOG_STATUS(Status_IOError(errmsg.str()));
   }
   if (close(fd) != 0) {
     return LOG_STATUS(Status_IOError(

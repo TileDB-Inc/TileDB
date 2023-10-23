@@ -55,6 +55,7 @@
 /*
  * API sections
  */
+#include "tiledb/api/c_api/attribute/attribute_api_external.h"
 #include "tiledb/api/c_api/buffer/buffer_api_external.h"
 #include "tiledb/api/c_api/buffer_list/buffer_list_api_external.h"
 #include "tiledb/api/c_api/config/config_api_external.h"
@@ -62,6 +63,7 @@
 #include "tiledb/api/c_api/data_order/data_order_api_external.h"
 #include "tiledb/api/c_api/datatype/datatype_api_external.h"
 #include "tiledb/api/c_api/dimension/dimension_api_external.h"
+#include "tiledb/api/c_api/domain/domain_api_external.h"
 #include "tiledb/api/c_api/error/error_api_external.h"
 #include "tiledb/api/c_api/filesystem/filesystem_api_external.h"
 #include "tiledb/api/c_api/filter/filter_api_external.h"
@@ -287,14 +289,8 @@ typedef struct tiledb_array_t tiledb_array_t;
 /** A subarray object. */
 typedef struct tiledb_subarray_t tiledb_subarray_t;
 
-/** A TileDB attribute. */
-typedef struct tiledb_attribute_t tiledb_attribute_t;
-
 /** A TileDB array schema. */
 typedef struct tiledb_array_schema_t tiledb_array_schema_t;
-
-/** A TileDB domain. */
-typedef struct tiledb_domain_t tiledb_domain_t;
 
 /** A TileDB query condition object. */
 typedef struct tiledb_query_condition_t tiledb_query_condition_t;
@@ -304,621 +300,6 @@ typedef struct tiledb_fragment_info_t tiledb_fragment_info_t;
 
 /** A consolidation plan object. */
 typedef struct tiledb_consolidation_plan_t tiledb_consolidation_plan_t;
-
-/* ********************************* */
-/*            ATTRIBUTE              */
-/* ********************************* */
-
-/**
- * Creates a TileDB attribute.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_attribute_t* attr;
- * tiledb_attribute_alloc(ctx, "my_attr", TILEDB_INT32, &attr);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param name The attribute name. Providing an empty string for the name
- * creates an anonymous attribute.
- * @param type The attribute type.
- * @param attr The TileDB attribute to be created.
- * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
- *
- * @note The default number of values per cell is 1.
- */
-TILEDB_EXPORT int32_t tiledb_attribute_alloc(
-    tiledb_ctx_t* ctx,
-    const char* name,
-    tiledb_datatype_t type,
-    tiledb_attribute_t** attr) TILEDB_NOEXCEPT;
-
-/**
- * Destroys a TileDB attribute, freeing associated memory.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_attribute_t* attr;
- * tiledb_attribute_alloc(ctx, "my_attr", TILEDB_INT32, &attr);
- * tiledb_attribute_free(&attr);
- * @endcode
- *
- * @param attr The attribute to be destroyed.
- */
-TILEDB_EXPORT void tiledb_attribute_free(tiledb_attribute_t** attr)
-    TILEDB_NOEXCEPT;
-
-/**
- * Sets the nullability of an attribute.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_attribute_set_nullable(ctx, attr, 1);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param attr The target attribute.
- * @param nullable Non-zero if the attribute is nullable.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_attribute_set_nullable(
-    tiledb_ctx_t* ctx,
-    tiledb_attribute_t* attr,
-    uint8_t nullable) TILEDB_NOEXCEPT;
-
-/**
- * Sets the filter list for an attribute.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_filter_list_t* filter_list;
- * tiledb_filter_list_alloc(ctx, &filter_list);
- * tiledb_filter_list_add_filter(ctx, filter_list, filter);
- * tiledb_attribute_set_filter_list(ctx, attr, filter_list);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param attr The target attribute.
- * @param filter_list The filter_list to be set.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_attribute_set_filter_list(
-    tiledb_ctx_t* ctx,
-    tiledb_attribute_t* attr,
-    tiledb_filter_list_t* filter_list) TILEDB_NOEXCEPT;
-
-/**
- * Sets the number of values per cell for an attribute. If this is not
- * used, the default is `1`.
- *
- * **Examples:**
- *
- * For a fixed-sized attribute:
- *
- * @code{.c}
- * tiledb_attribute_set_cell_val_num(ctx, attr, 3);
- * @endcode
- *
- * For a variable-sized attribute:
- *
- * @code{.c}
- * tiledb_attribute_set_cell_val_num(ctx, attr, TILEDB_VAR_NUM);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param attr The target attribute.
- * @param cell_val_num The number of values per cell.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_attribute_set_cell_val_num(
-    tiledb_ctx_t* ctx,
-    tiledb_attribute_t* attr,
-    uint32_t cell_val_num) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the attribute name.
- *
- * **Example:**
- *
- * @code{.c}
- * const char* attr_name;
- * tiledb_attribute_get_name(ctx, attr, &attr_name);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param attr The attribute.
- * @param name The name to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_attribute_get_name(
-    tiledb_ctx_t* ctx,
-    const tiledb_attribute_t* attr,
-    const char** name) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the attribute type.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_datatype_t attr_type;
- * tiledb_attribute_get_type(ctx, attr, &attr_type);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param attr The attribute.
- * @param type The type to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_attribute_get_type(
-    tiledb_ctx_t* ctx,
-    const tiledb_attribute_t* attr,
-    tiledb_datatype_t* type) TILEDB_NOEXCEPT;
-
-/**
- * Sets the nullability of an attribute.
- *
- * **Example:**
- *
- * @code{.c}
- * uint8_t nullable;
- * tiledb_attribute_get_nullable(ctx, attr, &nullable);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param attr The target attribute.
- * @param nullable Output argument, non-zero for nullable and zero
- *    for non-nullable.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_attribute_get_nullable(
-    tiledb_ctx_t* ctx,
-    tiledb_attribute_t* attr,
-    uint8_t* nullable) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the filter list for an attribute.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_filter_list_t* filter_list;
- * tiledb_attribute_get_filter_list(ctx, attr, &filter_list);
- * tiledb_filter_list_free(&filter_list);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param attr The target attribute.
- * @param filter_list The filter list to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_attribute_get_filter_list(
-    tiledb_ctx_t* ctx,
-    tiledb_attribute_t* attr,
-    tiledb_filter_list_t** filter_list) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the number of values per cell for the attribute. For variable-sized
- * attributes result is TILEDB_VAR_NUM.
- *
- * **Example:**
- *
- * @code{.c}
- * uint32_t num;
- * tiledb_attribute_get_cell_val_num(ctx, attr, &num);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param attr The attribute.
- * @param cell_val_num The number of values per cell to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_attribute_get_cell_val_num(
-    tiledb_ctx_t* ctx,
-    const tiledb_attribute_t* attr,
-    uint32_t* cell_val_num) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the cell size for this attribute.
- *
- * **Example:**
- *
- * @code{.c}
- * uint64_t cell_size;
- * tiledb_attribute_get_cell_size(ctx, attr, &cell_size);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param attr The attribute.
- * @param cell_size The cell size to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_attribute_get_cell_size(
-    tiledb_ctx_t* ctx,
-    const tiledb_attribute_t* attr,
-    uint64_t* cell_size) TILEDB_NOEXCEPT;
-
-/**
- * Dumps the contents of an attribute in ASCII form to some output (e.g.,
- * file or stdout).
- *
- * **Example:**
- *
- * The following prints the attribute dump to standard output.
- *
- * @code{.c}
- * tiledb_attribute_dump(ctx, attr, stdout);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param attr The attribute.
- * @param out The output.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error./
- */
-TILEDB_EXPORT int32_t tiledb_attribute_dump(
-    tiledb_ctx_t* ctx,
-    const tiledb_attribute_t* attr,
-    FILE* out) TILEDB_NOEXCEPT;
-
-/**
- * Sets the default fill value for the input attribute. This value will
- * be used for the input attribute whenever querying (1) an empty cell in
- * a dense array, or (2) a non-empty cell (in either dense or sparse array)
- * when values on the input attribute are missing (e.g., if the user writes
- * a subset of the attributes in a write operation).
- *
- * Applicable to var-sized attributes.
- *
- * **Example:**
- *
- * @code{.c}
- * // Assumming a int32 attribute
- * int32_t value = 0;
- * uint64_t size = sizeof(value);
- * tiledb_attribute_set_fill_value(ctx, attr, &value, size);
- *
- * // Assumming a var char attribute
- * const char* value = "foo";
- * uint64_t size = strlen(value);
- * tiledb_attribute_set_fill_value(ctx, attr, value, size);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param attr The target attribute.
- * @param value The fill value to set.
- * @param size The fill value size in bytes.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note A call to `tiledb_attribute_cell_val_num` sets the fill value
- *     of the attribute to its default. Therefore, make sure you invoke
- *     `tiledb_attribute_set_fill_value` after deciding on the number
- *     of values this attribute will hold in each cell.
- *
- * @note For fixed-sized attributes, the input `size` should be equal
- *     to the cell size.
- */
-TILEDB_EXPORT int32_t tiledb_attribute_set_fill_value(
-    tiledb_ctx_t* ctx,
-    tiledb_attribute_t* attr,
-    const void* value,
-    uint64_t size) TILEDB_NOEXCEPT;
-
-/**
- * Gets the default fill value for the input attribute. This value will
- * be used for the input attribute whenever querying (1) an empty cell in
- * a dense array, or (2) a non-empty cell (in either dense or sparse array)
- * when values on the input attribute are missing (e.g., if the user writes
- * a subset of the attributes in a write operation).
- *
- * Applicable to both fixed-sized and var-sized attributes.
- *
- * **Example:**
- *
- * @code{.c}
- * // Assuming a int32 attribute
- * const int32_t* value;
- * uint64_t size;
- * tiledb_attribute_get_fill_value(ctx, attr, &value, &size);
- *
- * // Assuming a var char attribute
- * const char* value;
- * uint64_t size;
- * tiledb_attribute_get_fill_value(ctx, attr, &value, &size);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param attr The target attribute.
- * @param value A pointer to the fill value to get.
- * @param size The size of the fill value to get.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_attribute_get_fill_value(
-    tiledb_ctx_t* ctx,
-    tiledb_attribute_t* attr,
-    const void** value,
-    uint64_t* size) TILEDB_NOEXCEPT;
-
-/**
- * Sets the default fill value for the input, nullable attribute. This value
- * will be used for the input attribute whenever querying (1) an empty cell in
- * a dense array, or (2) a non-empty cell (in either dense or sparse array)
- * when values on the input attribute are missing (e.g., if the user writes
- * a subset of the attributes in a write operation).
- *
- * Applicable to var-sized attributes.
- *
- * **Example:**
- *
- * @code{.c}
- * // Assumming a int32 attribute
- * int32_t value = 0;
- * uint64_t size = sizeof(value);
- * uint8_t valid = 0;
- * tiledb_attribute_set_fill_value_nullable(ctx, attr, &value, size, valid);
- *
- * // Assumming a var char attribute
- * const char* value = "foo";
- * uint64_t size = strlen(value);
- * uint8_t valid = 1;
- * tiledb_attribute_set_fill_value_nullable(ctx, attr, value, size, valid);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param attr The target attribute.
- * @param value The fill value to set.
- * @param size The fill value size in bytes.
- * @param validity The validity fill value, zero for a null value and
- *     non-zero for a valid attribute.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note A call to `tiledb_attribute_cell_val_num` sets the fill value
- *     of the attribute to its default. Therefore, make sure you invoke
- *     `tiledb_attribute_set_fill_value_nullable` after deciding on the
- *     number of values this attribute will hold in each cell.
- *
- * @note For fixed-sized attributes, the input `size` should be equal
- *     to the cell size.
- */
-TILEDB_EXPORT int32_t tiledb_attribute_set_fill_value_nullable(
-    tiledb_ctx_t* ctx,
-    tiledb_attribute_t* attr,
-    const void* value,
-    uint64_t size,
-    uint8_t validity) TILEDB_NOEXCEPT;
-
-/**
- * Gets the default fill value for the input, nullable attribute. This value
- * will be used for the input attribute whenever querying (1) an empty cell in
- * a dense array, or (2) a non-empty cell (in either dense or sparse array)
- * when values on the input attribute are missing (e.g., if the user writes
- * a subset of the attributes in a write operation).
- *
- * Applicable to both fixed-sized and var-sized attributes.
- *
- * **Example:**
- *
- * @code{.c}
- * // Assuming a int32 attribute
- * const int32_t* value;
- * uint64_t size;
- * uint8_t valid;
- * tiledb_attribute_get_fill_value_nullable(ctx, attr, &value, &size, &valid);
- *
- * // Assuming a var char attribute
- * const char* value;
- * uint64_t size;
- * uint8_t valid;
- * tiledb_attribute_get_fill_value_nullable(ctx, attr, &value, &size, &valid);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param attr The target attribute.
- * @param value A pointer to the fill value to get.
- * @param size The size of the fill value to get.
- * @param valid The fill value validity to get.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_attribute_get_fill_value_nullable(
-    tiledb_ctx_t* ctx,
-    tiledb_attribute_t* attr,
-    const void** value,
-    uint64_t* size,
-    uint8_t* valid) TILEDB_NOEXCEPT;
-
-/* ********************************* */
-/*               DOMAIN              */
-/* ********************************* */
-
-/**
- * Creates a TileDB domain.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_domain_t* domain;
- * tiledb_domain_alloc(ctx, &domain);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param domain The TileDB domain to be created.
- * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_domain_alloc(
-    tiledb_ctx_t* ctx, tiledb_domain_t** domain) TILEDB_NOEXCEPT;
-
-/**
- * Destroys a TileDB domain, freeing associated memory.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_domain_t* domain;
- * tiledb_domain_alloc(ctx, &domain);
- * tiledb_domain_free(&domain);
- * @endcode
- *
- * @param domain The domain to be destroyed.
- */
-TILEDB_EXPORT void tiledb_domain_free(tiledb_domain_t** domain) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the domain's type.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_datatype_t type;
- * tiledb_domain_get_type(ctx, domain, &type);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param domain The domain.
- * @param type The type to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_domain_get_type(
-    tiledb_ctx_t* ctx,
-    const tiledb_domain_t* domain,
-    tiledb_datatype_t* type) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the number of dimensions in a domain.
- *
- * **Example:**
- *
- * @code{.c}
- * uint32_t dim_num;
- * tiledb_domain_get_ndim(ctx, domain, &dim_num);
- * @endcode
- *
- * @param ctx The TileDB context
- * @param domain The domain
- * @param ndim The number of dimensions in a domain.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_domain_get_ndim(
-    tiledb_ctx_t* ctx,
-    const tiledb_domain_t* domain,
-    uint32_t* ndim) TILEDB_NOEXCEPT;
-
-/**
- * Adds a dimension to a TileDB domain.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_dimension_t* dim;
- * int64_t dim_domain[] = {1, 10};
- * int64_t tile_extent = 5;
- * tiledb_dimension_alloc(
- *     ctx, "dim_0", TILEDB_INT64, dim_domain, &tile_extent, &dim);
- * tiledb_domain_add_dimension(ctx, domain, dim);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param domain The domain to add the dimension to.
- * @param dim The dimension to be added.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_domain_add_dimension(
-    tiledb_ctx_t* ctx,
-    tiledb_domain_t* domain,
-    tiledb_dimension_t* dim) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves a dimension object from a domain by index.
- *
- * **Example:**
- *
- * The following retrieves the first dimension from a domain.
- *
- * @code{.c}
- * tiledb_dimension_t* dim;
- * tiledb_domain_get_dimension_from_index(ctx, domain, 0, &dim);
- * @endcode
- *
- * @param ctx The TileDB context
- * @param domain The domain to add the dimension to.
- * @param index The index of domain dimension
- * @param dim The retrieved dimension object.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_domain_get_dimension_from_index(
-    tiledb_ctx_t* ctx,
-    const tiledb_domain_t* domain,
-    uint32_t index,
-    tiledb_dimension_t** dim) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves a dimension object from a domain by name (key).
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_dimension_t* dim;
- * tiledb_domain_get_dimension_from_name(ctx, domain, "dim_0", &dim);
- * @endcode
- *
- * @param ctx The TileDB context
- * @param domain The domain to add the dimension to.
- * @param name The name (key) of the requested dimension
- * @param dim The retrieved dimension object.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_domain_get_dimension_from_name(
-    tiledb_ctx_t* ctx,
-    const tiledb_domain_t* domain,
-    const char* name,
-    tiledb_dimension_t** dim) TILEDB_NOEXCEPT;
-
-/**
- * Checks whether the domain has a dimension of the given name.
- *
- * **Example:**
- *
- * @code{.c}
- * int32_t has_dim;
- * tiledb_domain_has_dimension(ctx, domain, "dim_0", &has_dim);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param domain The domain.
- * @param name The name of the dimension to check for.
- * @param has_dim Set to `1` if the domain has a dimension of the given name,
- *      else `0`.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_domain_has_dimension(
-    tiledb_ctx_t* ctx,
-    const tiledb_domain_t* domain,
-    const char* name,
-    int32_t* has_dim) TILEDB_NOEXCEPT;
-
-/**
- * Dumps the info of a domain in ASCII form to some output (e.g.,
- * file or `stdout`).
- *
- * **Example:**
- *
- * The following prints the domain dump to the standard output.
- *
- * @code{.c}
- * tiledb_domain_dump(ctx, domain, stdout);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param domain The domain.
- * @param out The output.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_domain_dump(
-    tiledb_ctx_t* ctx,
-    const tiledb_domain_t* domain,
-    FILE* out) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*            ARRAY SCHEMA           */
@@ -1065,7 +446,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_domain(
     tiledb_domain_t* domain) TILEDB_NOEXCEPT;
 
 /**
- * Sets the tile capacity.
+ * Sets the tile capacity. Applies to sparse arrays only.
  *
  * **Example:**
  *
@@ -1077,7 +458,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_set_domain(
  * @param array_schema The array schema.
  * @param capacity The capacity of a sparse data tile. Note that
  * sparse data tiles exist in sparse fragments, which can be created
- * in both sparse and dense arrays. For more details,
+ * in sparse arrays only. For more details,
  * see [tutorials/tiling-sparse.html](tutorials/tiling-sparse.html).
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
@@ -1716,6 +1097,13 @@ TILEDB_EXPORT int32_t tiledb_query_set_subarray_t(
  * either hold the values to be written (if it is a write query), or will hold
  * the results from a read query.
  *
+ * The caller owns the `buffer` provided and is responsible for freeing the
+ * memory associated with it. For writes, the buffer holds values to be written
+ * which can be freed at any time after query completion. For reads, the buffer
+ * is allocated by the caller and will contain data read by the query after
+ * completion. The freeing of this memory is up to the caller once they are done
+ * referencing the read data.
+ *
  * **Example:**
  *
  * @code{.c}
@@ -1745,6 +1133,13 @@ TILEDB_EXPORT int32_t tiledb_query_set_data_buffer(
 
 /**
  * Sets the starting offsets of each cell value in the data buffer.
+ *
+ * The caller owns the `buffer` provided and is responsible for freeing the
+ * memory associated with it. For writes, the buffer holds offsets to be written
+ * which can be freed at any time after query completion. For reads, the buffer
+ * is allocated by the caller and will contain offset data read by the query
+ * after completion. The freeing of this memory is up to the caller once they
+ * are done referencing the read data.
  *
  * **Example:**
  *
@@ -1777,6 +1172,13 @@ TILEDB_EXPORT int32_t tiledb_query_set_offsets_buffer(
 /**
  * Sets the validity byte map that has exactly one value for each value in the
  * data buffer.
+ *
+ * The caller owns the `buffer` provided and is responsible for freeing the
+ * memory associated with it. For writes, the buffer holds validity values to be
+ * written which can be freed at any time after query completion. For reads, the
+ * buffer is allocated by the caller and will contain the validity map read by
+ * the query after completion. The freeing of this memory is up to the caller
+ * once they are done referencing the read data.
  *
  * **Example:**
  *
@@ -3552,11 +2954,37 @@ TILEDB_EXPORT int32_t tiledb_array_get_open_timestamp_end(
  * @param timestamp_end The epoch timestamp in milliseconds. Use UINT64_MAX for
  *   the current timestamp.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note This function was deprecated in release 2.18 in favor of
+ * tiledb_array_delete_fragments_v2.
  */
-TILEDB_EXPORT int32_t tiledb_array_delete_fragments(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_delete_fragments(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const char* uri,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end) TILEDB_NOEXCEPT;
+
+/**
+ * Deletes array fragments written between the input timestamps.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_delete_fragments_v2(
+ *   ctx, "hdfs:///temp/my_array", 0, UINT64_MAX);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param uri_str The URI of the fragments' parent Array.
+ * @param timestamp_start The epoch timestamp in milliseconds.
+ * @param timestamp_end The epoch timestamp in milliseconds. Use UINT64_MAX for
+ *   the current timestamp.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_delete_fragments_v2(
+    tiledb_ctx_t* ctx,
+    const char* uri_str,
     uint64_t timestamp_start,
     uint64_t timestamp_end) TILEDB_NOEXCEPT;
 
@@ -3574,14 +3002,14 @@ TILEDB_EXPORT int32_t tiledb_array_delete_fragments(
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param uri The URI of the fragments' parent Array.
+ * @param uri_str The URI of the fragments' parent Array.
  * @param fragment_uris The URIs of the fragments to be deleted.
  * @param num_fragments The number of fragments to be deleted.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_delete_fragments_list(
     tiledb_ctx_t* ctx,
-    const char* array_uri,
+    const char* uri_str,
     const char* fragment_uris[],
     const size_t num_fragments) TILEDB_NOEXCEPT;
 

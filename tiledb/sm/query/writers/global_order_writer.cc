@@ -198,8 +198,6 @@ Status GlobalOrderWriter::alloc_global_write_state() {
 }
 
 Status GlobalOrderWriter::init_global_write_state() {
-  auto uri = global_write_state_->frag_meta_->fragment_uri();
-
   // Initialize global write state for attribute and coordinates
   for (const auto& it : buffers_) {
     // Initialize last tiles
@@ -518,9 +516,13 @@ Status GlobalOrderWriter::check_global_order_hilbert() const {
 
 void GlobalOrderWriter::clean_up() {
   if (global_write_state_ != nullptr) {
-    auto meta = global_write_state_->frag_meta_;
-    const auto& uri = meta->fragment_uri();
-    throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri));
+    const auto& uri = global_write_state_->frag_meta_->fragment_uri();
+
+    // Cleanup the fragment we are currently writing. There is a chance that the
+    // URI is empty if creating the first fragment had failed.
+    if (!uri.empty()) {
+      throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri));
+    }
     global_write_state_.reset(nullptr);
 
     // Cleanup all fragments pending commit.
@@ -800,6 +802,14 @@ Status GlobalOrderWriter::global_write() {
 
     // Compute the number of tiles that will fit in this fragment.
     auto num = num_tiles_to_write(idx, tile_num, tiles);
+
+    // If we're resuming a fragment write and the first tile doesn't fit into
+    // the previous fragment, we need to start a new fragment and recalculate
+    // the number of tiles to write.
+    if (current_fragment_size_ > 0 && num == 0) {
+      RETURN_CANCEL_OR_ERROR(start_new_fragment());
+      num = num_tiles_to_write(idx, tile_num, tiles);
+    }
 
     // Set new number of tiles in the fragment metadata
     auto new_num_tiles = frag_meta->tile_index_base() + num;

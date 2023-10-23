@@ -83,3 +83,11 @@ function(retrieve_from)
     get_directory_property(ACC_VALUE "ACCUMULATOR_VALUE_${ARGP_ACCUMULATOR}")
     set(${ARGV0} ${ACC_VALUE} PARENT_SCOPE)
 endfunction()
+
+#
+# reset_accumulator( ACCUMULATOR <accumulator> )
+#
+function(reset_accumulator)
+    cmake_parse_arguments(PARSE_ARGV 1 ARGP "" "ACCUMULATOR" "")
+    set_directory_properties(PROPERTIES "ACCUMULATOR_VALUE_${ARGP_ACCUMULATOR}" "")
+endfunction()

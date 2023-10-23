@@ -23,5 +23,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
+include(common NO_POLICY_SCOPE)
+
+add_test_subdirectory()
 
 add_subdirectory(synchronized_optional)

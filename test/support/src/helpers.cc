@@ -75,7 +75,7 @@ const std::string& get_temp_path() {
 std::string g_vfs;
 
 void check_tiledb_error_with(
-    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg) {
+    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg, bool contains) {
   CHECK(rc == TILEDB_ERR);
   if (rc != TILEDB_ERR) {
     return;
@@ -93,7 +93,11 @@ void check_tiledb_error_with(
       CHECK(false);
     } else {
       std::string err_msg{raw_msg};
-      CHECK(err_msg == expected_msg);
+      if (contains) {
+        CHECK_THAT(err_msg, Catch::Matchers::ContainsSubstring(expected_msg));
+      } else {
+        CHECK(err_msg == expected_msg);
+      }
     }
   }
   tiledb_error_free(&err);
@@ -116,7 +120,7 @@ void check_tiledb_ok(tiledb_ctx_t* ctx, int rc) {
 }
 
 void require_tiledb_error_with(
-    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg) {
+    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg, bool contains) {
   REQUIRE(rc == TILEDB_ERR);
   tiledb_error_t* err{nullptr};
   tiledb_ctx_get_last_error(ctx, &err);
@@ -132,7 +136,11 @@ void require_tiledb_error_with(
     REQUIRE(false);
   }
   std::string err_msg{raw_msg};
-  REQUIRE(err_msg == expected_msg);
+  if (contains) {
+    REQUIRE_THAT(err_msg, Catch::Matchers::ContainsSubstring(expected_msg));
+  } else {
+    REQUIRE(err_msg == expected_msg);
+  }
   tiledb_error_free(&err);
 }
 
@@ -824,11 +832,8 @@ void create_ctx_and_vfs(
         tiledb_config_set(
             config,
             "vfs.azure.blob_endpoint",
-            "127.0.0.1:10000/devstoreaccount1",
+            "http://127.0.0.1:10000/devstoreaccount1",
             &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.azure.use_https", "false", &error) ==
-        TILEDB_OK);
   }
   REQUIRE(tiledb_ctx_alloc(config, ctx) == TILEDB_OK);
   REQUIRE(error == nullptr);
@@ -1845,7 +1850,9 @@ int submit_query_wrapper(
   // 4. Server -> Client : Send query response
   std::vector<uint8_t> serialized2;
   rc = serialize_query(server_ctx, server_deser_query, &serialized2, 0);
-  REQUIRE(rc == TILEDB_OK);
+  if (rc != TILEDB_OK) {
+    return rc;
+  }
 
   if (!refactored_query_v2) {
     // Close array and clean up
@@ -1945,13 +1952,31 @@ void allocate_query_buffers_server_side(
     tiledb_query_t* query,
     ServerQueryBuffers& query_buffers) {
   int rc = 0;
-  const auto buffer_names = query->query_->buffer_names();
+  auto buffer_names = query->query_->buffer_names();
+  const auto aggregate_names = query->query_->aggregate_buffer_names();
+  buffer_names.insert(
+      buffer_names.end(), aggregate_names.begin(), aggregate_names.end());
+
   for (uint64_t i = 0; i < buffer_names.size(); i++) {
     const auto& name = buffer_names[i];
     const auto& buff = query->query_->buffer(name);
     const auto& schema = query->query_->array_schema();
-    auto var_size = schema.var_size(name);
-    auto nullable = schema.is_nullable(name);
+
+    // TODO: This is yet another instance where there needs to be a common
+    // mechanism for reporting the common properties of a field.
+    // Refactor to use query_field_t.
+    bool var_size = false;
+    bool nullable = false;
+    if (query->query_->is_aggregate(name)) {
+      var_size =
+          query->query_->get_aggregate(name).value()->aggregation_var_sized();
+      nullable =
+          query->query_->get_aggregate(name).value()->aggregation_nullable();
+    } else {
+      var_size = schema.var_size(name);
+      nullable = schema.is_nullable(name);
+    }
+
     if (var_size && buff.buffer_var_ == nullptr) {
       // Variable-sized buffer
       query_buffers.attr_or_dim_data.emplace_back(*buff.buffer_var_size_);

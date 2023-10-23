@@ -363,7 +363,8 @@ int main(int argc, char** argv) {
               << std::endl
               << "`quality_factor` should be a float in the range [0.0, 100.0] "
                  "and is used to adjust quality of lossy compression. If no "
-                 "`quality_factor` is given lossless compression will be used.";
+                 "`quality_factor` is given lossless compression will be used."
+              << std::endl;
     return 1;
   }
   std::string input_png(argv[1]), array_path(argv[2]), output_png(argv[3]);

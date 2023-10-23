@@ -156,8 +156,8 @@ capi_return_t tiledb_group_put_metadata(
   ensure_group_is_valid(group);
   ensure_key_argument_is_valid(key);
 
-  throw_if_not_ok(group->group().put_metadata(
-      key, static_cast<tiledb::sm::Datatype>(value_type), value_num, value));
+  group->group().put_metadata(
+      key, static_cast<tiledb::sm::Datatype>(value_type), value_num, value);
 
   return TILEDB_OK;
 }
@@ -176,7 +176,7 @@ capi_return_t tiledb_group_delete_metadata(
   ensure_group_is_valid(group);
   ensure_key_argument_is_valid(key);
 
-  throw_if_not_ok(group->group().delete_metadata(key));
+  group->group().delete_metadata(key);
 
   return TILEDB_OK;
 }
@@ -194,7 +194,7 @@ capi_return_t tiledb_group_get_metadata(
   ensure_output_pointer_is_valid(value);
 
   tiledb::sm::Datatype type;
-  throw_if_not_ok(group->group().get_metadata(key, &type, value_num, value));
+  group->group().get_metadata(key, &type, value_num, value);
 
   *value_type = static_cast<tiledb_datatype_t>(type);
 
@@ -206,7 +206,7 @@ capi_return_t tiledb_group_get_metadata_num(
   ensure_group_is_valid(group);
   ensure_output_pointer_is_valid(num);
 
-  throw_if_not_ok(group->group().get_metadata_num(num));
+  *num = group->group().get_metadata_num();
 
   return TILEDB_OK;
 }
@@ -227,8 +227,7 @@ capi_return_t tiledb_group_get_metadata_from_index(
   ensure_output_pointer_is_valid(value);
 
   tiledb::sm::Datatype type;
-  throw_if_not_ok(group->group().get_metadata(
-      index, key, key_len, &type, value_num, value));
+  group->group().get_metadata(index, key, key_len, &type, value_num, value);
 
   *value_type = static_cast<tiledb_datatype_t>(type);
 
@@ -245,13 +244,11 @@ capi_return_t tiledb_group_has_metadata_key(
   ensure_output_pointer_is_valid(value_type);
   ensure_output_pointer_is_valid(has_key);
 
-  tiledb::sm::Datatype type;
-  bool has_the_key;
-  throw_if_not_ok(group->group().has_metadata_key(key, &type, &has_the_key));
+  std::optional<tiledb::sm::Datatype> type = group->group().metadata_type(key);
 
-  *has_key = has_the_key ? 1 : 0;
-  if (has_the_key) {
-    *value_type = static_cast<tiledb_datatype_t>(type);
+  *has_key = type.has_value();
+  if (*has_key) {
+    *value_type = static_cast<tiledb_datatype_t>(type.value());
   }
 
   return TILEDB_OK;
@@ -279,11 +276,11 @@ capi_return_t tiledb_group_add_member(
 }
 
 capi_return_t tiledb_group_remove_member(
-    tiledb_group_handle_t* group, const char* group_uri) {
+    tiledb_group_handle_t* group, const char* name) {
   ensure_group_is_valid(group);
-  ensure_group_uri_argument_is_valid(group_uri);
+  ensure_name_argument_is_valid(name);
 
-  throw_if_not_ok(group->group().mark_member_for_removal(group_uri));
+  throw_if_not_ok(group->group().mark_member_for_removal(name));
 
   return TILEDB_OK;
 }
@@ -526,7 +523,6 @@ capi_return_t tiledb_deserialize_group_metadata(
 capi_return_t tiledb_group_consolidate_metadata(
     tiledb_ctx_handle_t* ctx, const char* group_uri, tiledb_config_t* config) {
   ensure_group_uri_argument_is_valid(group_uri);
-  ensure_config_is_valid(config);
 
   auto cfg =
       (config == nullptr) ? ctx->storage_manager()->config() : config->config();
@@ -539,7 +535,6 @@ capi_return_t tiledb_group_consolidate_metadata(
 capi_return_t tiledb_group_vacuum_metadata(
     tiledb_ctx_handle_t* ctx, const char* group_uri, tiledb_config_t* config) {
   ensure_group_uri_argument_is_valid(group_uri);
-  ensure_config_is_valid(config);
 
   auto cfg =
       (config == nullptr) ? ctx->storage_manager()->config() : config->config();
@@ -676,9 +671,9 @@ capi_return_t tiledb_group_add_member(
 }
 
 capi_return_t tiledb_group_remove_member(
-    tiledb_ctx_t* ctx, tiledb_group_t* group, const char* uri) noexcept {
+    tiledb_ctx_t* ctx, tiledb_group_t* group, const char* name) noexcept {
   return api_entry_context<tiledb::api::tiledb_group_remove_member>(
-      ctx, group, uri);
+      ctx, group, name);
 }
 
 capi_return_t tiledb_group_get_member_count(

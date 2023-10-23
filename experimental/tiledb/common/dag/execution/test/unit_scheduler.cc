@@ -37,6 +37,7 @@
 #include <iostream>
 #include <map>
 #include <type_traits>
+
 #include "unit_scheduler.h"
 
 #include "../bountiful.h"
@@ -44,7 +45,6 @@
 #include "../throw_catch.h"
 
 #include "experimental/tiledb/common/dag/edge/edge.h"
-#include "experimental/tiledb/common/dag/execution/jthread/stop_token.hpp"
 #include "experimental/tiledb/common/dag/execution/task_state_machine.h"
 
 #include "experimental/tiledb/common/dag/nodes/terminals.h"

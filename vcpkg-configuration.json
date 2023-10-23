@@ -1,3 +1,4 @@
 {
-  "overlay-ports": ["ports"]
+  "overlay-ports": ["ports"],
+  "overlay-triplets": ["ports/triplets"]
 }

@@ -256,9 +256,11 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
       Array* array,
       Config& config,
       std::unordered_map<std::string, QueryBuffer>& buffers,
+      std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
       Subarray& subarray,
       Layout layout,
       std::optional<QueryCondition>& condition,
+      DefaultChannelAggregates& default_channel_aggregates,
       bool increasing_order,
       bool skip_checks_serialization);
 
@@ -307,7 +309,7 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;
 
-  /** Ranges to be retreived for the attribute. */
+  /** Ranges to be retrieved for the attribute. */
   std::vector<Range> ranges_;
 
   /** Stores the label attribute name. */

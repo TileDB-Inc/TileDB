@@ -28,11 +28,6 @@
 
 find_package(Catch_EP REQUIRED)
 
-# These options not exposed in bootstrap script.
-option(TILEDB_TESTS_AWS_S3_CONFIG "Use an S3 config appropriate for AWS in tests" OFF)
-option(TILEDB_TESTS_ENABLE_REST "Enables REST tests (requires running REST server)" OFF)
-
-
 # Arrow integration test config and dependencies
 # Override from environment if not set in cache
 if (NOT DEFINED $CACHE{TILEDB_ARROW_TESTS})
@@ -121,12 +116,14 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/test-capi-query-error-handling.cc
   src/test-capi-sparse-array-dimension-label.cc
   src/test-capi-subarray-labels.cc
+  src/test-cppapi-aggregates.cc
   src/test-cppapi-consolidation-plan.cc
   src/unit-average-cell-size.cc
   src/unit-azure.cc
   src/unit-backwards_compat.cc
   src/unit-bufferlist.cc
   src/unit-capi-any.cc
+  src/unit-capi-as_built.cc
   src/unit-capi-array.cc
   src/unit-capi-array_schema.cc
   src/unit-capi-async.cc
@@ -139,6 +136,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-dense_neg.cc
   src/unit-capi-dense_vector.cc
   src/unit-capi-enum_values.cc
+  src/unit-capi-enumerations.cc
   src/unit-capi-error.cc
   src/unit-capi-filestore.cc
   src/unit-capi-fill_values.cc
@@ -168,6 +166,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-vfs.cc
   src/unit-CellSlabIter.cc
   src/unit-compression-dd.cc
+  src/unit-compression-delta.cc
   src/unit-compression-rle.cc
   src/unit-crypto.cc
   src/unit-ctx.cc
@@ -176,6 +175,8 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-dimension.cc
   src/unit-duplicates.cc
   src/unit-empty-var-length.cc
+  src/unit-enumerations.cc
+  src/unit-enum-helpers.cc
   src/unit-filter-buffer.cc
   src/unit-filter-pipeline.cc
   src/unit-global-order.cc
@@ -187,6 +188,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-tile-metadata-generator.cc
   src/unit-ReadCellSlabIter.cc
   src/unit-Reader.cc
+  src/unit-request-handlers.cc
   src/unit-resource-pool.cc
   src/unit-result-coords.cc
   src/unit-result-tile.cc
@@ -194,6 +196,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-s3.cc
   src/unit-sparse-global-order-reader.cc
   src/unit-sparse-unordered-with-dups-reader.cc
+  src/unit-ssl-config.cc
   src/unit-Subarray.cc
   src/unit-SubarrayPartitioner-dense.cc
   src/unit-SubarrayPartitioner-error.cc
@@ -217,6 +220,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-deletes.cc
     src/unit-cppapi-dense-qc-coords-mode.cc
     src/unit-cppapi-time.cc
+    src/unit-cppapi-enumerations.cc
     src/unit-cppapi-fill_values.cc
     src/unit-cppapi-filter.cc
     src/unit-cppapi-float-scaling-filter.cc
@@ -229,6 +233,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-nullable.cc
     src/unit-cppapi-partial-attribute-write.cc
     src/unit-cppapi-query.cc
+    src/unit-cppapi-query-condition-sets.cc
     src/cpp-integration-query-condition.cc
     src/unit-cppapi-schema.cc
     src/unit-cppapi-schema-evolution.cc
@@ -302,6 +307,9 @@ target_link_libraries(tiledb_unit
 )
 
 target_link_libraries(tiledb_unit PRIVATE $<BUILD_INTERFACE:common>)
+target_include_directories(tiledb_unit PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
+)
 
 # need to properly link the signal chaining library for catch to work with the jni hdfs interface
 # see: https://docs.oracle.com/javase/9/vm/signal-chaining.htm
@@ -312,14 +320,15 @@ if (TILEDB_HDFS)
       LibJVM::libjvm
       LibJVM::libjsig
   )
-  target_include_directories(tiledb_unit PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/../external/include"
-    )
 endif()
 
 if (TILEDB_TESTS_AWS_S3_CONFIG)
   message(STATUS "Tests built with AWS S3 config")
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_AWS_S3_CONFIG)
+endif()
+
+if (TILEDB_TESTS_ENABLE_REST)
+  target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_ENABLE_REST)
 endif()
 
 if (TILEDB_SERIALIZATION)
@@ -382,9 +391,10 @@ if(TILEDB_HDFS)
 endif()
 
 # Add custom target 'check'
-add_custom_target(
-  check COMMAND ${CMAKE_CTEST_COMMAND} -V -C ${CMAKE_BUILD_TYPE}
-  DEPENDS tiledb_unit
+add_custom_target(check
+  COMMAND ${CMAKE_CTEST_COMMAND} -V -C $<CONFIG>
+  DEPENDS tests
+  USES_TERMINAL
 )
 
 # CI tests
