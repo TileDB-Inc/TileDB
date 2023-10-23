@@ -1389,12 +1389,12 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
           CppAggregatesFx<T>::layout_ = layout;
           Query query(CppAggregatesFx<T>::ctx_, array, TILEDB_READ);
 
-          // TODO: Change to real CPPAPI. Add a mean aggregator to the query.
-          query.ptr()->query_->add_aggregator_to_default_channel(
-              "Mean",
-              std::make_shared<tiledb::sm::MeanAggregator<T>>(
-                  tiledb::sm::FieldInfo(
-                      "a1", false, CppAggregatesFx<T>::nullable_, 1)));
+          QueryChannel default_channel =
+              QueryExperimental::get_default_channel(query);
+          ChannelOperation operation =
+              QueryExperimental::create_unary_aggregate<MeanOperator>(
+                  query, "a1");
+          default_channel.apply_aggregate("Mean", operation);
 
           CppAggregatesFx<T>::set_ranges_and_condition_if_needed(
               array, query, false);
@@ -1785,19 +1785,12 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
           CppAggregatesFx<T>::layout_ = layout;
           Query query(CppAggregatesFx<T>::ctx_, array, TILEDB_READ);
 
-          // TODO: Change to real CPPAPI. Add a null count aggregator to the
-          // query.
-          uint64_t cell_val_num = std::is_same<T, std::string>::value ?
-                                      CppAggregatesFx<T>::STRING_CELL_VAL_NUM :
-                                      1;
-          query.ptr()->query_->add_aggregator_to_default_channel(
-              "NullCount",
-              std::make_shared<tiledb::sm::NullCountAggregator>(
-                  tiledb::sm::FieldInfo(
-                      "a1",
-                      false,
-                      CppAggregatesFx<T>::nullable_,
-                      cell_val_num)));
+          QueryChannel default_channel =
+              QueryExperimental::get_default_channel(query);
+          ChannelOperation operation =
+              QueryExperimental::create_unary_aggregate<NullCountOperator>(
+                  query, "a1");
+          default_channel.apply_aggregate("NullCount", operation);
 
           CppAggregatesFx<T>::set_ranges_and_condition_if_needed(
               array, query, false);
@@ -1885,13 +1878,12 @@ TEST_CASE_METHOD(
           layout_ = layout;
           Query query(ctx_, array, TILEDB_READ);
 
-          // TODO: Change to real CPPAPI. Add a null count aggregator to the
-          // query.
-          query.ptr()->query_->add_aggregator_to_default_channel(
-              "NullCount",
-              std::make_shared<tiledb::sm::NullCountAggregator>(
-                  tiledb::sm::FieldInfo(
-                      "a1", true, nullable_, TILEDB_VAR_NUM)));
+          QueryChannel default_channel =
+              QueryExperimental::get_default_channel(query);
+          ChannelOperation operation =
+              QueryExperimental::create_unary_aggregate<NullCountOperator>(
+                  query, "a1");
+          default_channel.apply_aggregate("NullCount", operation);
 
           set_ranges_and_condition_if_needed(array, query, true);
 
@@ -1981,12 +1973,12 @@ TEST_CASE_METHOD(
         layout_ = layout;
         Query query(ctx_, array, TILEDB_READ);
 
-        // TODO: Change to real CPPAPI. Add a null count aggregator to the
-        // query.
-        query.ptr()->query_->add_aggregator_to_default_channel(
-            "NullCount",
-            std::make_shared<tiledb::sm::NullCountAggregator>(
-                tiledb::sm::FieldInfo("a1", true, nullable_, TILEDB_VAR_NUM)));
+        QueryChannel default_channel =
+            QueryExperimental::get_default_channel(query);
+        ChannelOperation operation =
+            QueryExperimental::create_unary_aggregate<NullCountOperator>(
+                query, "a1");
+        default_channel.apply_aggregate("NullCount", operation);
 
         // Add another aggregator on the second attribute. We will make the
         // first attribute get a var size overflow, which should not impact the
@@ -2119,12 +2111,12 @@ TEST_CASE_METHOD(
         layout_ = layout;
         Query query(ctx_, array, TILEDB_READ);
 
-        // TODO: Change to real CPPAPI. Add a null count aggregator to the
-        // query.
-        query.ptr()->query_->add_aggregator_to_default_channel(
-            "NullCount",
-            std::make_shared<tiledb::sm::NullCountAggregator>(
-                tiledb::sm::FieldInfo("a1", true, nullable_, TILEDB_VAR_NUM)));
+        QueryChannel default_channel =
+            QueryExperimental::get_default_channel(query);
+        ChannelOperation operation =
+            QueryExperimental::create_unary_aggregate<NullCountOperator>(
+                query, "a1");
+        default_channel.apply_aggregate("NullCount", operation);
 
         // Add another aggregator on the second attribute. We will make this
         // attribute get a var size overflow, which should impact the result of

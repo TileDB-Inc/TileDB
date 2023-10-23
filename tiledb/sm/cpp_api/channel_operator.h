@@ -72,6 +72,26 @@ class MaxOperator : public ChannelOperator {
   }
 };
 
+class MeanOperator : public ChannelOperator {
+ public:
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+  static const tiledb_channel_operator_t* ptr() {
+    return tiledb_channel_operator_mean;
+  }
+};
+
+class NullCountOperator : public ChannelOperator {
+ public:
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+  static const tiledb_channel_operator_t* ptr() {
+    return tiledb_channel_operator_null_count;
+  }
+};
+
 }  // namespace tiledb
 
 #endif  // TILEDB_CPP_API_CHANNEL_OPERATOR_H

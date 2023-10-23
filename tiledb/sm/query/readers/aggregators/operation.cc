@@ -44,6 +44,10 @@ shared_ptr<Operation> Operation::make_operation(
     return common::make_shared<MaxOperation>(HERE(), fi.value());
   } else if (name == constants::aggregate_count_str) {
     return common::make_shared<CountOperation>(HERE());
+  } else if (name == constants::aggregate_mean_str) {
+    return common::make_shared<MeanOperation>(HERE(), fi.value());
+  } else if (name == constants::aggregate_null_count_str) {
+    return common::make_shared<NullCountOperation>(HERE(), fi.value());
   }
 
   throw std::logic_error(

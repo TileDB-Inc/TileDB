@@ -101,11 +101,6 @@ class CountAggregatorBase : public OutputBufferValidator, public IAggregator {
       std::string output_field_name,
       std::unordered_map<std::string, QueryBuffer>& buffers) override;
 
-  /** Returns name of the aggregate. */
-  std::string aggregate_name() override {
-    return constants::aggregate_count_str;
-  }
-
   /** Returns the TileDB datatype of the output field for the aggregate. */
   Datatype output_datatype() override {
     return Datatype::UINT64;
@@ -142,6 +137,11 @@ class CountAggregator : public CountAggregatorBase<NonNull> {
   std::string field_name() override {
     return constants::count_of_rows;
   }
+
+  /** Returns name of the aggregate. */
+  std::string aggregate_name() override {
+    return constants::aggregate_count_str;
+  }
 };
 
 class NullCountAggregator : public CountAggregatorBase<Null>,
@@ -160,6 +160,11 @@ class NullCountAggregator : public CountAggregatorBase<Null>,
   /** Returns the field name for the aggregator. */
   std::string field_name() override {
     return field_info_.name_;
+  }
+
+  /** Returns name of the aggregate. */
+  std::string aggregate_name() override {
+    return constants::aggregate_null_count_str;
   }
 
  private:
