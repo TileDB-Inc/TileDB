@@ -366,8 +366,8 @@ class QueryExperimental {
    * default_channel.apply_aggregate("Count", CountOperation{});
    *
    * uint64_t count = 0;
-   * uint64_t size = sizeof(uint64_t);
-   * query.set_data_buffer("Count", &count, &size)
+   * uint64_t size = 1;
+   * query.set_data_buffer("Count", &count, size);
    * query.submit();
    * @endcode
    *
@@ -395,8 +395,8 @@ class QueryExperimental {
    * default_channel.apply_aggregate("Sum", operation);
    *
    * double sum = 0;
-   * uint64_t size = sizeof(double);
-   * query.set_data_buffer("Sum", &sum, &size)
+   * uint64_t size = 1;
+   * query.set_data_buffer("Sum", &sum, size);
    * query.submit();
    * @endcode
    *
