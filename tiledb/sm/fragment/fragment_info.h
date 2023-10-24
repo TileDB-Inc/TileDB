@@ -40,7 +40,7 @@
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/fragment/single_fragment_info.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 
 using namespace tiledb::common;
 
@@ -58,7 +58,7 @@ class FragmentInfo {
   FragmentInfo();
 
   /** Constructor. */
-  FragmentInfo(const URI& array_uri, StorageManager* storage_manager);
+  FragmentInfo(const URI& array_uri, ContextResources& resources);
 
   /** Destructor. */
   ~FragmentInfo();
@@ -395,8 +395,8 @@ class FragmentInfo {
   /** Information about fragments in the array. */
   std::vector<SingleFragmentInfo> single_fragment_info_vec_;
 
-  /** The storage manager. */
-  StorageManager* storage_manager_;
+  /** The context resources. */
+  ContextResources* resources_;
 
   /** The URIs of the fragments to vacuum. */
   std::vector<URI> to_vacuum_;

@@ -51,15 +51,14 @@ namespace tiledb::sm {
 /* ****************************** */
 
 FragmentInfo::FragmentInfo()
-    : storage_manager_(nullptr)
+    : resources_(nullptr)
     , unconsolidated_metadata_num_(0) {
 }
 
-FragmentInfo::FragmentInfo(
-    const URI& array_uri, StorageManager* storage_manager)
+FragmentInfo::FragmentInfo(const URI& array_uri, ContextResources& resources)
     : array_uri_(array_uri)
-    , config_(storage_manager->config())
-    , storage_manager_(storage_manager)
+    , config_(resources.config())
+    , resources_(&resources)
     , unconsolidated_metadata_num_(0) {
 }
 
@@ -778,7 +777,7 @@ shared_ptr<ArraySchema> FragmentInfo::get_array_schema(uint32_t fid) {
 
   EncryptionKey encryption_key;
   return ArrayDirectory::load_array_schema_from_uri(
-      storage_manager_->resources(), schema_uri, encryption_key);
+      *resources_, schema_uri, encryption_key);
 }
 
 Status FragmentInfo::get_array_schema_name(
@@ -825,7 +824,7 @@ Status FragmentInfo::load() {
   RETURN_NOT_OK(set_default_timestamp_range());
 
   if (array_uri_.is_tiledb()) {
-    auto rest_client = storage_manager_->rest_client();
+    auto rest_client = resources_->rest_client();
     if (rest_client == nullptr) {
       return LOG_STATUS(Status_ArrayError(
           "Cannot load fragment info; remote array with no REST client."));
@@ -841,10 +840,7 @@ Status FragmentInfo::load() {
 
   // Create an ArrayDirectory object and load
   ArrayDirectory array_dir(
-      storage_manager_->resources(),
-      array_uri_,
-      timestamp_start_,
-      timestamp_end_);
+      *resources_, array_uri_, timestamp_start_, timestamp_end_);
 
   return load(array_dir);
 }
@@ -858,10 +854,7 @@ Status FragmentInfo::load(
 
   // Create an ArrayDirectory object and load
   ArrayDirectory array_dir(
-      storage_manager_->resources(),
-      array_uri_,
-      timestamp_start_,
-      timestamp_end_);
+      *resources_, array_uri_, timestamp_start_, timestamp_end_);
   return load(array_dir);
 }
 
@@ -890,7 +883,7 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
 
   // Get the array schemas and fragment metadata.
   auto&& [st_schemas, array_schema_latest, array_schemas_all, fragment_metadata] =
-      storage_manager_->load_array_schemas_and_fragment_metadata(
+      resources_->load_array_schemas_and_fragment_metadata(
           array_dir, nullptr, enc_key_);
   RETURN_NOT_OK(st_schemas);
   const auto& fragment_metadata_value = fragment_metadata.value();
@@ -901,7 +894,7 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
   // Get fragment sizes
   std::vector<uint64_t> sizes(fragment_num, 0);
   RETURN_NOT_OK(parallel_for(
-      storage_manager_->compute_tp(),
+      &resources_->compute_tp(),
       0,
       fragment_num,
       [this, &fragment_metadata_value, &sizes, preload_rtrees](uint64_t i) {
@@ -1032,7 +1025,7 @@ Status FragmentInfo::set_default_timestamp_range() {
 tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
     const URI& new_fragment_uri) const {
   SingleFragmentInfo ret;
-  auto vfs = storage_manager_->vfs();
+  auto& vfs = resources_->vfs();
   const auto& array_schema_latest =
       single_fragment_info_vec_.back().meta()->array_schema();
 
@@ -1049,7 +1042,7 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   if (fragment_version <= 2) {
     URI coords_uri =
         new_fragment_uri.join_path(constants::coords + constants::file_suffix);
-    RETURN_NOT_OK_TUPLE(vfs->is_file(coords_uri, &sparse), nullopt);
+    RETURN_NOT_OK_TUPLE(vfs.is_file(coords_uri, &sparse), nullopt);
   } else {
     // Do nothing. It does not matter what the `sparse` value
     // is, since the FragmentMetadata object will load the correct
@@ -1061,7 +1054,7 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   // Get fragment non-empty domain
   auto meta = make_shared<FragmentMetadata>(
       HERE(),
-      &storage_manager_->resources(),
+      resources_,
       nullptr,
       array_schema_latest,
       new_fragment_uri,
@@ -1138,7 +1131,7 @@ FragmentInfo FragmentInfo::clone() const {
   clone.array_schemas_all_ = array_schemas_all_;
   clone.config_ = config_;
   clone.single_fragment_info_vec_ = single_fragment_info_vec_;
-  clone.storage_manager_ = storage_manager_;
+  clone.resources_ = resources_;
   clone.to_vacuum_ = to_vacuum_;
   clone.unconsolidated_metadata_num_ = unconsolidated_metadata_num_;
   clone.anterior_ndrange_ = anterior_ndrange_;
@@ -1154,7 +1147,7 @@ void FragmentInfo::swap(FragmentInfo& fragment_info) {
   std::swap(array_schemas_all_, fragment_info.array_schemas_all_);
   std::swap(config_, fragment_info.config_);
   std::swap(single_fragment_info_vec_, fragment_info.single_fragment_info_vec_);
-  std::swap(storage_manager_, fragment_info.storage_manager_);
+  std::swap(resources_, fragment_info.resources_);
   std::swap(to_vacuum_, fragment_info.to_vacuum_);
   std::swap(
       unconsolidated_metadata_num_, fragment_info.unconsolidated_metadata_num_);
