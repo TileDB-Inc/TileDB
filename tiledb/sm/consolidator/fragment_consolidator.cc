@@ -371,7 +371,7 @@ Status FragmentConsolidator::consolidate_internal(
     URI* new_fragment_uri) {
   auto timer_se = stats_->start_timer("consolidate_internal");
 
-  RETURN_NOT_OK(array_for_reads->load_fragments(to_consolidate));
+  array_for_reads->load_fragments(to_consolidate);
 
   if (array_for_reads->is_empty()) {
     return Status::Ok();

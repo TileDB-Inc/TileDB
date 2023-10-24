@@ -247,17 +247,6 @@ class StorageManagerCanonical {
   group_open_for_writes(Group* group);
 
   /**
-   * Load fragments for an already open array.
-   *
-   * @param array The open array.
-   * @param fragment_info The list of fragment info.
-   * @return Status, the fragment metadata to be loaded.
-   */
-  tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
-  array_load_fragments(
-      Array* array, const std::vector<TimestampedURI>& fragment_info);
-
-  /**
    * Consolidates the fragments of an array into a single one.
    *
    * @param array_name The name of the array to be consolidated.

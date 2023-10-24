@@ -169,25 +169,6 @@ Status StorageManagerCanonical::group_close_for_writes(Group* group) {
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
-StorageManagerCanonical::array_load_fragments(
-    Array* array, const std::vector<TimestampedURI>& fragments_to_load) {
-  auto timer_se = stats()->start_timer("sm_array_load_fragments");
-
-  // Load the fragment metadata
-  std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
-  auto&& fragment_metadata = FragmentMetadata::load(
-      resources(),
-      array->memory_tracker(),
-      array->array_schema_latest_ptr(),
-      array->array_schemas_all(),
-      *array->encryption_key(),
-      fragments_to_load,
-      offsets);
-
-  return {Status::Ok(), fragment_metadata};
-}
-
 Status StorageManagerCanonical::array_consolidate(
     const char* array_name,
     EncryptionType encryption_type,
