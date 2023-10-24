@@ -82,6 +82,9 @@ struct tiledb_enumeration_handle_t
     return enumeration_->extend(data, data_size, offsets, offsets_size);
   }
 
+  /**
+   * Returns wether or not an enumeration is an extension of this one.
+   */
   [[nodiscard]] inline bool is_extension_of(
       tiledb_enumeration_handle_t* rhs) const {
     return enumeration_->is_extension_of(rhs->enumeration_);

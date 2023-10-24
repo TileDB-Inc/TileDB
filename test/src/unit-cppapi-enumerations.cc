@@ -33,6 +33,7 @@
 #include <fstream>
 
 #include <test/support/tdb_catch.h>
+#include "tiledb/api/c_api/enumeration/enumeration_api_internal.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -132,7 +133,7 @@ TEST_CASE_METHOD(
   auto enmr1 = Enumeration::create(ctx_, enmr_name, init_values, true);
   auto enmr2 = enmr1.extend(add_values);
 
-  REQUIRE(enmr2.is_extension_of(enmr1));
+  REQUIRE(enmr2.ptr()->is_extension_of(enmr1.ptr().get()));
 
   auto data = enmr2.as_vector<int>();
   REQUIRE(data == final_values);
@@ -148,7 +149,7 @@ TEST_CASE_METHOD(
   auto enmr1 = Enumeration::create(ctx_, enmr_name, init_values, true);
   auto enmr2 = enmr1.extend(add_values);
 
-  REQUIRE(enmr2.is_extension_of(enmr1));
+  REQUIRE(enmr2.ptr()->is_extension_of(enmr1.ptr().get()));
 
   auto data = enmr2.as_vector<std::string>();
   REQUIRE(data == final_values);

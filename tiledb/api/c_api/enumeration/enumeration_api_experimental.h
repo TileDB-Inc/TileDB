@@ -149,37 +149,6 @@ TILEDB_EXPORT void tiledb_enumeration_free(tiledb_enumeration_t** enumeration)
     TILEDB_NOEXCEPT;
 
 /**
- * Return whether an enumeration is an extension or not.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_ctx_t* ctx = create_context();
- * tiledb_enumeration_t* lhs = load_enumeration_from_somewhere();
- * tiledb_enumeration_t* rhs = load_enumeration_from_somewhere_else();
- * int is_extension;
- * tiledb_enumeration_is_extension_of(ctx, lhs, rhs, &is_extension);
- * if (is_extension != 0) {
- *   // lhs is an extension of rhs
- * } else {
- *   // lhs is not an extension of rhs
- * }
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param lhs The enumeration that might be an extension of rhs.
- * @param rhs The enumeration that might be a prefix of lhs.
- * @param is_extension The result parameter. Non-zero means lhs is an extension
- *        of rhs. Zero means lhs is not an extension of rhs.
- * @return `TILEDB_OK` or `TILED_ERR`.
- */
-TILEDB_EXPORT capi_return_t tiledb_enumeration_is_extension_of(
-    tiledb_ctx_t* ctx,
-    tiledb_enumeration_t* lhs,
-    tiledb_enumeration_t* rhs,
-    int* is_extension) TILEDB_NOEXCEPT;
-
-/**
  * Return the datatype of the enumeration values
  *
  * **Example:**

@@ -76,6 +76,12 @@ class Enumeration {
     return enumeration_;
   }
 
+  /**
+   * Extend this enumeration using the provided values.
+   *
+   * @param values The values to extend the enumeration with.
+   * @return The newly created enumeration.
+   */
   template <typename T, impl::enable_trivial<T>* = nullptr>
   Enumeration extend(std::vector<T> values) {
     if (values.size() == 0) {
@@ -103,6 +109,12 @@ class Enumeration {
     }
   }
 
+  /**
+   * Extend this enumeration using the provided string values.
+   *
+   * @param values The string values to extend the enumeration with.
+   * @return The newly created enumeration.
+   */
   template <typename T, impl::enable_trivial<T>* = nullptr>
   Enumeration extend(std::vector<std::basic_string<T>>& values) {
     if (values.size() == 0) {
@@ -159,17 +171,6 @@ class Enumeration {
         offsets_size,
         &new_enmr));
     return Enumeration(ctx_, new_enmr);
-  }
-
-  bool is_extension_of(const Enumeration& enmr) {
-    int is_extension;
-    ctx_.get().handle_error(tiledb_enumeration_is_extension_of(
-        ctx_.get().ptr().get(), ptr().get(), enmr.ptr().get(), &is_extension));
-    if (is_extension != 0) {
-      return true;
-    } else {
-      return false;
-    }
   }
 
   /**
