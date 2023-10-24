@@ -94,6 +94,47 @@ TILEDB_EXPORT capi_return_t tiledb_enumeration_alloc(
     tiledb_enumeration_t** enumeration) TILEDB_NOEXCEPT;
 
 /**
+ * Extend an Enumeration.
+ *
+ * This API exists for users that wish to just add more enumeration values to
+ * an existing enumeration via array schema evolution.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_enumeration_t* old_enumeration = load_existing_enumeration();
+ * tiledb_enumeration_t* new_enumeration;
+ * void* data = get_data();
+ * uint64_t data_size = get_data_size();
+ * tiledb_enumeration_extend(
+ *     ctx,
+ *     old_enumeration
+ *     data,
+ *     data_size,
+ *     nullptr,
+ *     0,
+ *     &new_enumeration);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param old_enumeration The enumeration to extend.
+ * @param data A pointer to the enumeration value data to add.
+ * @param data_size The length of the data buffer provided.
+ * @param offsets A pointer to the offsets buffer if enumeration is var sized.
+ * @param offsets_size The length of the offsets buffer, zero if no offsets.
+ * @param new_enumeration The newly created extended enumeration.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_enumeration_extend(
+    tiledb_ctx_t* ctx,
+    tiledb_enumeration_t* old_enumeration,
+    const void* data,
+    uint64_t data_size,
+    const void* offsets,
+    uint64_t offsets_size,
+    tiledb_enumeration_t** new_enumeration) TILEDB_NOEXCEPT;
+
+/**
  * Destroys a TileDB enumeration, freeing associated memory.
  *
  * **Example:**

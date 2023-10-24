@@ -227,6 +227,127 @@ shared_ptr<const Enumeration> Enumeration::deserialize(
       offsets_size);
 }
 
+shared_ptr<const Enumeration> Enumeration::extend(
+    const void* data,
+    uint64_t data_size,
+    const void* offsets,
+    uint64_t offsets_size) const {
+  if (data == nullptr) {
+    throw EnumerationException(
+        "Unable to extend an enumeration without a data buffer.");
+  }
+
+  if (data_size == 0) {
+    throw EnumerationException(
+        "Unable to extend an enumeration with a zero sized data buffer.");
+  }
+
+  if (var_size()) {
+    if (offsets == nullptr) {
+      throw EnumerationException(
+          "The offsets buffer is required for this enumeration extension.");
+    }
+
+    if (offsets_size == 0) {
+      throw EnumerationException(
+          "The offsets buffer for this enumeration extension must "
+          "have a non-zero size.");
+    }
+
+    if (offsets_size % sizeof(uint64_t) != 0) {
+      throw EnumerationException(
+          "Invalid offsets size is not a multiple of sizeof(uint64_t)");
+    }
+  } else {
+    if (offsets != nullptr) {
+      throw EnumerationException(
+          "Offsets buffer provided when extending a fixed sized enumeration.");
+    }
+    if (offsets_size != 0) {
+      throw EnumerationException(
+          "Offsets size is non-zero when extending a fixed sized enumeration.");
+    }
+  }
+
+  Buffer new_data(data_.size() + data_size);
+  throw_if_not_ok(new_data.write(data_.data(), data_.size()));
+  throw_if_not_ok(new_data.write(data, data_size));
+
+  const void* new_offsets_ptr = nullptr;
+  uint64_t new_offsets_size = 0;
+
+  Buffer new_offsets(offsets_.size() + offsets_size);
+
+  if (var_size()) {
+    // First we write our existing offsets
+    throw_if_not_ok(new_offsets.write(offsets_.data(), offsets_.size()));
+
+    // All new offsets have to be rewritten to be relative to the length
+    // of the current data array.
+    const uint64_t* offsets_arr = static_cast<const uint64_t*>(offsets);
+    uint64_t num_offsets = offsets_size / sizeof(uint64_t);
+    for (uint64_t i = 0; i < num_offsets; i++) {
+      uint64_t new_offset = offsets_arr[i] + data_.size();
+      throw_if_not_ok(new_offsets.write(&new_offset, sizeof(uint64_t)));
+    }
+
+    new_offsets_ptr = new_offsets.data();
+    new_offsets_size = new_offsets.size();
+  }
+
+  return create(
+      name_,
+      "",
+      type_,
+      cell_val_num_,
+      ordered_,
+      new_data.data(),
+      new_data.size(),
+      new_offsets_ptr,
+      new_offsets_size);
+}
+
+bool Enumeration::is_extension_of(shared_ptr<const Enumeration> other) const {
+  if (name_ != other->name()) {
+    return false;
+  }
+
+  if (type_ != other->type()) {
+    return false;
+  }
+
+  if (cell_val_num_ != other->cell_val_num()) {
+    return false;
+  }
+
+  if (ordered_ != other->ordered()) {
+    return false;
+  }
+
+  auto other_data = other->data();
+  if (data_.size() <= other_data.size()) {
+    return false;
+  }
+
+  if (std::memcmp(data_.data(), other_data.data(), other_data.size()) != 0) {
+    return false;
+  }
+
+  if (var_size()) {
+    auto other_offsets = other->offsets();
+    if (offsets_.size() <= other_offsets.size()) {
+      return false;
+    }
+
+    if (std::memcmp(
+            offsets_.data(), other_offsets.data(), other_offsets.size()) != 0) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 void Enumeration::serialize(Serializer& serializer) const {
   serializer.write<uint32_t>(constants::enumerations_version);
 

@@ -82,6 +82,29 @@ capi_return_t tiledb_enumeration_alloc(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_enumeration_extend(
+    tiledb_enumeration_t* old_enumeration,
+    const void* data,
+    uint64_t data_size,
+    const void* offsets,
+    uint64_t offsets_size,
+    tiledb_enumeration_t** new_enumeration) {
+  ensure_enumeration_is_valid(old_enumeration);
+  ensure_output_pointer_is_valid(new_enumeration);
+
+  auto new_enmr =
+      old_enumeration->extend(data, data_size, offsets, offsets_size);
+
+  try {
+    *new_enumeration = tiledb_enumeration_handle_t::make_handle(new_enmr);
+  } catch (...) {
+    *new_enumeration = nullptr;
+    throw;
+  }
+
+  return TILEDB_OK;
+}
+
 void tiledb_enumeration_free(tiledb_enumeration_t** enumeration) {
   ensure_output_pointer_is_valid(enumeration);
   ensure_enumeration_is_valid(*enumeration);
@@ -178,6 +201,24 @@ capi_return_t tiledb_enumeration_alloc(
       offsets,
       offsets_size,
       enumeration);
+}
+
+capi_return_t tiledb_enumeration_extend(
+    tiledb_ctx_t* ctx,
+    tiledb_enumeration_t* old_enumeration,
+    const void* data,
+    uint64_t data_size,
+    const void* offsets,
+    uint64_t offsets_size,
+    tiledb_enumeration_t** new_enumeration) noexcept {
+  return api_entry_context<tiledb::api::tiledb_enumeration_extend>(
+      ctx,
+      old_enumeration,
+      data,
+      data_size,
+      offsets,
+      offsets_size,
+      new_enumeration);
 }
 
 void tiledb_enumeration_free(tiledb_enumeration_t** enumeration) noexcept {
