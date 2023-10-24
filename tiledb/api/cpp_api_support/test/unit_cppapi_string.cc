@@ -30,7 +30,7 @@
  * This file defines tests for the CAPIString class of the TileDB C++ API.
  */
 
-#include <catch.hpp>
+#include <test/support/tdb_catch.h>
 
 #include "tiledb/sm/cpp_api/capi_string.h"
 
@@ -40,6 +40,12 @@ TEST_CASE(
     "CAPIString: Test constructor with null parameter throws",
     "[capi_string][null-param]") {
   REQUIRE_THROWS_AS(CAPIString(nullptr), std::invalid_argument);
+}
+
+TEST_CASE(
+    "CAPIString: Test constructor with non-null parameter pointing to null "
+    "handle throws",
+    "[capi_string][null-param-ptr]") {
   tiledb_string_t* string = nullptr;
   REQUIRE_THROWS_AS(CAPIString(&string), std::invalid_argument);
 }

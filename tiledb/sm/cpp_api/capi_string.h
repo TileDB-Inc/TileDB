@@ -48,9 +48,16 @@ namespace tiledb::impl {
  */
 class CAPIString {
  public:
+  /**
+   * Constructor. Takes ownership of the handle.
+   *
+   * @param handle A pointer to the string handle. Must not be null and must not
+   * point to a null handle.
+   */
   CAPIString(tiledb_string_t** handle) {
     if (handle == nullptr || *handle == nullptr) {
-      throw std::invalid_argument("String handle cannot be null.");
+      throw std::invalid_argument(
+          "Pointer to string handle cannot be null or point to null handle.");
     }
     string_ = *handle;
     *handle = nullptr;
