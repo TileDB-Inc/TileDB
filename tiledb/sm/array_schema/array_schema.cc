@@ -1089,6 +1089,51 @@ void ArraySchema::add_enumeration(shared_ptr<const Enumeration> enmr) {
   enumeration_path_map_[enmr->name()] = enmr->path_name();
 }
 
+void ArraySchema::extend_enumeration(shared_ptr<const Enumeration> enmr) {
+  if (enmr == nullptr) {
+    throw ArraySchemaException(
+        "Error adding enumeration. Enumeration must not be nullptr.");
+  }
+
+  auto it = enumeration_map_.find(enmr->name());
+  if (it == enumeration_map_.end()) {
+    throw ArraySchemaException(
+        "Error extending enumeration. Enumeration with name '" + enmr->name() +
+        "' does not exist in this ArraySchema.");
+  }
+
+  if (it->second == nullptr) {
+    throw ArraySchemaException(
+        "Error extending enumeration. Enumeration with name '" + enmr->name() +
+        "' is not loaded.");
+  }
+
+  if (!enmr->is_extension_of(it->second)) {
+    throw ArraySchemaException(
+        "Error extending enumeration. Provided enumeration is not an extension "
+        "of the current state of '" +
+        enmr->name() + "'");
+  }
+
+  if (enumeration_path_map_.find(enmr->name()) == enumeration_path_map_.end()) {
+    throw ArraySchemaException(
+        "Error extending enumeration. Invalid enumeration path map state for "
+        "enumeration '" +
+        enmr->name() + "'");
+  }
+
+  for (auto& enmr_path : enumeration_path_map_) {
+    if (enmr->path_name() == enmr_path.second) {
+      throw ArraySchemaException(
+          "Error extending enumeration. Enumeration path name for '" +
+          enmr->name() + "' already exists in this schema.");
+    }
+  }
+
+  enumeration_map_[enmr->name()] = enmr;
+  enumeration_path_map_[enmr->name()] = enmr->path_name();
+}
+
 void ArraySchema::store_enumeration(shared_ptr<const Enumeration> enmr) {
   if (enmr == nullptr) {
     throw ArraySchemaException(

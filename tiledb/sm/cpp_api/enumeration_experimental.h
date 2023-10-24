@@ -77,6 +77,103 @@ class Enumeration {
   }
 
   /**
+   * Extend this enumeration using the provided values.
+   *
+   * @param values The values to extend the enumeration with.
+   * @return The newly created enumeration.
+   */
+  template <typename T, impl::enable_trivial<T>* = nullptr>
+  Enumeration extend(std::vector<T> values) {
+    if (values.size() == 0) {
+      throw TileDBError(
+          "Unable to extend an enumeration with an empty vector.");
+    }
+
+    if (cell_val_num() == TILEDB_VAR_NUM) {
+      throw TileDBError(
+          "Error extending var sized enumeration with fixed size data.");
+    }
+
+    if constexpr (std::is_same_v<T, bool>) {
+      // This awkward dance for std::vector<bool> is due to the fact that
+      // C++ provides a template specialization that uses a bitmap which does
+      // not provide `data()` member method.
+      std::vector<uint8_t> converted(values.size());
+      for (size_t i = 0; i < values.size(); i++) {
+        converted[i] = values[i] ? 1 : 0;
+      }
+
+      return extend(converted.data(), converted.size() * sizeof(T), nullptr, 0);
+    } else {
+      return extend(values.data(), values.size() * sizeof(T), nullptr, 0);
+    }
+  }
+
+  /**
+   * Extend this enumeration using the provided string values.
+   *
+   * @param values The string values to extend the enumeration with.
+   * @return The newly created enumeration.
+   */
+  template <typename T, impl::enable_trivial<T>* = nullptr>
+  Enumeration extend(std::vector<std::basic_string<T>>& values) {
+    if (values.size() == 0) {
+      throw TileDBError(
+          "Unable to extend an enumeration with an empty vector.");
+    }
+
+    if (cell_val_num() != TILEDB_VAR_NUM) {
+      throw TileDBError(
+          "Error extending fixed sized enumeration with var size data.");
+    }
+
+    uint64_t total_size = 0;
+    for (auto v : values) {
+      total_size += v.size() * sizeof(T);
+    }
+
+    std::vector<uint8_t> data(total_size, 0);
+    std::vector<uint64_t> offsets;
+    offsets.reserve(values.size());
+    uint64_t curr_offset = 0;
+
+    for (auto v : values) {
+      std::memcpy(data.data() + curr_offset, v.data(), v.size() * sizeof(T));
+      offsets.push_back(curr_offset);
+      curr_offset += v.size() * sizeof(T);
+    }
+
+    return extend(
+        data.data(),
+        data.size(),
+        offsets.data(),
+        offsets.size() * sizeof(uint64_t));
+  }
+
+  /**
+   * Extend this enumeration using the provided pointers.
+   *
+   * @return The newly created enumeration.
+   */
+  Enumeration extend(
+      const void* data,
+      uint64_t data_size,
+      const void* offsets,
+      uint64_t offsets_size) {
+    tiledb_enumeration_t* old_enmr = enumeration_.get();
+    tiledb_enumeration_t* new_enmr = nullptr;
+    ctx_.get().handle_error(tiledb_enumeration_extend(
+        ctx_.get().ptr().get(),
+        old_enmr,
+        data,
+        data_size,
+        offsets,
+        offsets_size,
+        &new_enmr));
+    return Enumeration(ctx_, new_enmr);
+  }
+
+  /**
    * Get the name of the enumeration
    *
    * @return std::string The name of the enumeration.

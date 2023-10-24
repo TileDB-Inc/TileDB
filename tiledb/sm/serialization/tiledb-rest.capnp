@@ -179,6 +179,9 @@ struct ArraySchemaEvolution {
 
     enumerationsToDrop @4 :List(Text);
     # Enumeration names to be dropped
+
+    enumerationsToExtend @5 :List(Enumeration);
+    # Enumerations to be extended.
 }
 
 struct Attribute {

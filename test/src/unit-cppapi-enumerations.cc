@@ -33,6 +33,7 @@
 #include <fstream>
 
 #include <test/support/tdb_catch.h>
+#include "tiledb/api/c_api/enumeration/enumeration_api_internal.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -120,6 +121,112 @@ TEST_CASE_METHOD(
 
   auto data = enmr.as_vector<int>();
   REQUIRE(data == values);
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
+    "CPP: Enumeration API - Extend Fixed Size",
+    "[enumeration][extend][fixed-size]") {
+  std::vector<int> init_values = {1, 2, 3, 4, 5};
+  std::vector<int> add_values = {6, 7, 8, 9, 10};
+  std::vector<int> final_values = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  auto enmr1 = Enumeration::create(ctx_, enmr_name, init_values, true);
+  auto enmr2 = enmr1.extend(add_values);
+
+  REQUIRE(enmr2.ptr()->is_extension_of(enmr1.ptr().get()));
+
+  auto data = enmr2.as_vector<int>();
+  REQUIRE(data == final_values);
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
+    "CPP: Enumeration API - Extend Var Size",
+    "[enumeration][extend][var-size]") {
+  std::vector<std::string> init_values = {"fred", "wilma"};
+  std::vector<std::string> add_values = {"barney", "betty"};
+  std::vector<std::string> final_values = {"fred", "wilma", "barney", "betty"};
+  auto enmr1 = Enumeration::create(ctx_, enmr_name, init_values, true);
+  auto enmr2 = enmr1.extend(add_values);
+
+  REQUIRE(enmr2.ptr()->is_extension_of(enmr1.ptr().get()));
+
+  auto data = enmr2.as_vector<std::string>();
+  REQUIRE(data == final_values);
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
+    "CPP: Enumeration API - Fixed Size Empty Vector extension",
+    "[enumeration][extend][error]") {
+  std::vector<int> init_values = {1, 2, 3, 4, 5};
+  std::vector<int> add_values = {};
+  auto enmr = Enumeration::create(ctx_, enmr_name, init_values, true);
+
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Unable to extend an enumeration with an empty vector.");
+  REQUIRE_THROWS_WITH(enmr.extend(add_values), matcher);
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
+    "CPP: Enumeration API - Var Size Empty Vector extension",
+    "[enumeration][extend][error]") {
+  std::vector<std::string> init_values = {"fred", "wilma"};
+  std::vector<std::string> add_values = {};
+  auto enmr = Enumeration::create(ctx_, enmr_name, init_values, true);
+
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Unable to extend an enumeration with an empty vector.");
+  REQUIRE_THROWS_WITH(enmr.extend(add_values), matcher);
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
+    "CPP: Enumeration API - Invalid cell val num extension",
+    "[enumeration][extend][error]") {
+  std::vector<int> init_values = {1, 2, 3, 4};
+  std::vector<int> add_values = {5};
+  auto enmr = Enumeration::create(
+      ctx_,
+      enmr_name,
+      TILEDB_INT32,
+      2,
+      true,
+      init_values.data(),
+      init_values.size() * sizeof(int),
+      nullptr,
+      0);
+
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Invalid data size is not a multiple of the cell size.");
+  REQUIRE_THROWS_WITH(enmr.extend(add_values), matcher);
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
+    "CPP: Enumeration API - Fixed Size Wrong Type extension",
+    "[enumeration][extend][error]") {
+  std::vector<int> init_values = {1, 2, 3, 4, 5};
+  std::vector<std::string> add_values = {"barney", "betty"};
+  auto enmr = Enumeration::create(ctx_, enmr_name, init_values, true);
+
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Error extending fixed sized enumeration with var size data.");
+  REQUIRE_THROWS_WITH(enmr.extend(add_values), matcher);
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
+    "CPP: Enumeration API - Var Size Wrong Type extension",
+    "[enumeration][extend][error]") {
+  std::vector<std::string> init_values = {"fred", "wilma"};
+  std::vector<int> add_values = {6, 7, 8, 9, 10};
+  auto enmr = Enumeration::create(ctx_, enmr_name, init_values, true);
+
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Error extending var sized enumeration with fixed size data.");
+  REQUIRE_THROWS_WITH(enmr.extend(add_values), matcher);
 }
 
 TEST_CASE_METHOD(
@@ -236,6 +343,33 @@ TEST_CASE_METHOD(
     "[enumeration][array-schema-evolution][error]") {
   auto rc = tiledb_array_schema_evolution_add_enumeration(
       ctx_.ptr().get(), nullptr, nullptr);
+  REQUIRE(rc != TILEDB_OK);
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
+    "CPP: ArraySchemaEvolution - Extend Enumeration",
+    "[enumeration][array-schema-evolution][extend-enumeration]") {
+  ArraySchemaEvolution ase(ctx_);
+  std::vector<std::string> values = {"fred", "wilma", "barney", "pebbles"};
+  auto enmr = Enumeration::create(ctx_, enmr_name, values);
+  CHECK_NOTHROW(ase.extend_enumeration(enmr));
+}
+
+TEST_CASE_METHOD(
+    CPPEnumerationFx,
+    "C API: ArraySchemaEvolution - Extend Enumeration - Check nullptr",
+    "[enumeration][array-schema-evolution][drop-enumeration]") {
+  std::vector<std::string> values = {"fred", "wilma", "barney", "pebbles"};
+  auto enmr = Enumeration::create(ctx_, enmr_name, values);
+
+  auto rc = tiledb_array_schema_evolution_extend_enumeration(
+      ctx_.ptr().get(), nullptr, enmr.ptr().get());
+  REQUIRE(rc != TILEDB_OK);
+
+  ArraySchemaEvolution ase(ctx_);
+  rc = tiledb_array_schema_evolution_extend_enumeration(
+      ctx_.ptr().get(), ase.ptr().get(), nullptr);
   REQUIRE(rc != TILEDB_OK);
 }
 

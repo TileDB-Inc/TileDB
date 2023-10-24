@@ -211,6 +211,41 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_evolution_add_enumeration(
     tiledb_enumeration_t* enumeration) TILEDB_NOEXCEPT;
 
 /**
+ * Extends an enumeration during array schema evolution.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_enumeration_t* original_enmr = get_existing_enumeration();
+ * const void* data = get_new_data();
+ * uint64_t data_size = get_new_data_size();
+ * tiledb_enumeration_t* new_enmr;
+ * tiledb_enumeration_extend(
+ *     ctx,
+ *     original_enmr,
+ *     data,
+ *     data_size,
+ *     nullptr,
+ *     0,
+ *     &new_enmr);
+ * tiledb_array_schema_evolution_extend_enumeration(
+ *     ctx,
+ *     array_schema_evolution,
+ *     enmr);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema_evolution The schema evolution.
+ * @param enumeration The enumeration to be extended. This should be the result
+ *        of a call to tiledb_enumeration_extend.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_array_schema_evolution_extend_enumeration(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    tiledb_enumeration_t* enumeration) TILEDB_NOEXCEPT;
+
+/**
  * Drops an enumeration from an array schema evolution.
  *
  * **Example:**
