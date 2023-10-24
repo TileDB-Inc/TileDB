@@ -105,10 +105,14 @@ capi_return_t tiledb_dimension_label_get_uri(
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_void;
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_label_free);
+
 void tiledb_dimension_label_free(
     tiledb_dimension_label_t** dim_label) noexcept {
   return api_entry_void<tiledb::api::tiledb_dimension_label_free>(dim_label);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_label_get_dimension_index);
 
 capi_return_t tiledb_dimension_label_get_dimension_index(
     tiledb_ctx_t* ctx,
@@ -119,6 +123,8 @@ capi_return_t tiledb_dimension_label_get_dimension_index(
       ctx, dim_label, dim_index);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_label_get_label_attr_name);
+
 capi_return_t tiledb_dimension_label_get_label_attr_name(
     tiledb_ctx_t* ctx,
     tiledb_dimension_label_t* dim_label,
@@ -127,6 +133,9 @@ capi_return_t tiledb_dimension_label_get_label_attr_name(
       tiledb::api::tiledb_dimension_label_get_label_attr_name>(
       ctx, dim_label, label_attr_name);
 }
+
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_dimension_label_get_label_cell_val_num);
 
 capi_return_t tiledb_dimension_label_get_label_cell_val_num(
     tiledb_ctx_t* ctx,
@@ -137,6 +146,8 @@ capi_return_t tiledb_dimension_label_get_label_cell_val_num(
       ctx, dim_label, label_cell_val_num);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_label_get_label_order);
+
 capi_return_t tiledb_dimension_label_get_label_order(
     tiledb_ctx_t* ctx,
     tiledb_dimension_label_t* dim_label,
@@ -144,6 +155,8 @@ capi_return_t tiledb_dimension_label_get_label_order(
   return api_entry_context<tiledb::api::tiledb_dimension_label_get_label_order>(
       ctx, dim_label, label_order);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_label_get_label_type);
 
 capi_return_t tiledb_dimension_label_get_label_type(
     tiledb_ctx_t* ctx,
@@ -153,6 +166,8 @@ capi_return_t tiledb_dimension_label_get_label_type(
       ctx, dim_label, label_type);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_label_get_name);
+
 capi_return_t tiledb_dimension_label_get_name(
     tiledb_ctx_t* ctx,
     tiledb_dimension_label_t* dim_label,
@@ -160,6 +175,8 @@ capi_return_t tiledb_dimension_label_get_name(
   return api_entry_context<tiledb::api::tiledb_dimension_label_get_name>(
       ctx, dim_label, name);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_label_get_uri);
 
 capi_return_t tiledb_dimension_label_get_uri(
     tiledb_ctx_t* ctx,

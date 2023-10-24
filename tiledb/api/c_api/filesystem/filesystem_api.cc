@@ -58,11 +58,15 @@ capi_return_t tiledb_filesystem_from_str(
 
 using tiledb::api::api_entry_plain;
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filesystem_to_str);
+
 capi_return_t tiledb_filesystem_to_str(
     tiledb_filesystem_t filesystem, const char** str) noexcept {
   return api_entry_plain<tiledb::api::tiledb_filesystem_to_str>(
       filesystem, str);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filesystem_from_str);
 
 capi_return_t tiledb_filesystem_from_str(
     const char* str, tiledb_filesystem_t* filesystem) noexcept {

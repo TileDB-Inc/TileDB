@@ -62,11 +62,15 @@ void tiledb_error_free(tiledb_error_handle_t** err) {
 
 }  // namespace tiledb::api
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_error_message);
+
 capi_return_t tiledb_error_message(
     tiledb_error_handle_t* err, const char** errmsg) noexcept {
   return tiledb::api::api_entry_plain<tiledb::api::tiledb_error_message>(
       err, errmsg);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_error_free);
 
 void tiledb_error_free(tiledb_error_handle_t** err) noexcept {
   return tiledb::api::api_entry_void<tiledb::api::tiledb_error_free>(err);

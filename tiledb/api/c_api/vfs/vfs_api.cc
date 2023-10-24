@@ -316,15 +316,21 @@ capi_return_t tiledb_vfs_touch(tiledb_vfs_t* vfs, const char* uri) {
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_plain;
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_mode_to_str);
+
 capi_return_t tiledb_vfs_mode_to_str(
     tiledb_vfs_mode_t vfs_mode, const char** str) noexcept {
   return api_entry_plain<tiledb::api::tiledb_vfs_mode_to_str>(vfs_mode, str);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_mode_from_str);
+
 capi_return_t tiledb_vfs_mode_from_str(
     const char* str, tiledb_vfs_mode_t* vfs_mode) noexcept {
   return api_entry_plain<tiledb::api::tiledb_vfs_mode_from_str>(str, vfs_mode);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_alloc);
 
 capi_return_t tiledb_vfs_alloc(
     tiledb_ctx_t* ctx, tiledb_config_t* config, tiledb_vfs_t** vfs) noexcept {
@@ -332,9 +338,13 @@ capi_return_t tiledb_vfs_alloc(
       ctx, config, vfs);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_free);
+
 void tiledb_vfs_free(tiledb_vfs_t** vfs) noexcept {
   return tiledb::api::api_entry_void<tiledb::api::tiledb_vfs_free>(vfs);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_get_config);
 
 capi_return_t tiledb_vfs_get_config(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, tiledb_config_t** config) noexcept {
@@ -342,11 +352,15 @@ capi_return_t tiledb_vfs_get_config(
       ctx, vfs, config);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_create_bucket);
+
 capi_return_t tiledb_vfs_create_bucket(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) noexcept {
   return api_entry_context<tiledb::api::tiledb_vfs_create_bucket>(
       ctx, vfs, uri);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_remove_bucket);
 
 capi_return_t tiledb_vfs_remove_bucket(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) noexcept {
@@ -354,10 +368,14 @@ capi_return_t tiledb_vfs_remove_bucket(
       ctx, vfs, uri);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_empty_bucket);
+
 capi_return_t tiledb_vfs_empty_bucket(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) noexcept {
   return api_entry_context<tiledb::api::tiledb_vfs_empty_bucket>(ctx, vfs, uri);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_is_empty_bucket);
 
 capi_return_t tiledb_vfs_is_empty_bucket(
     tiledb_ctx_t* ctx,
@@ -368,6 +386,8 @@ capi_return_t tiledb_vfs_is_empty_bucket(
       ctx, vfs, uri, is_empty);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_is_bucket);
+
 capi_return_t tiledb_vfs_is_bucket(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
@@ -377,10 +397,14 @@ capi_return_t tiledb_vfs_is_bucket(
       ctx, vfs, uri, is_bucket);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_create_dir);
+
 capi_return_t tiledb_vfs_create_dir(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) noexcept {
   return api_entry_context<tiledb::api::tiledb_vfs_create_dir>(ctx, vfs, uri);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_is_dir);
 
 capi_return_t tiledb_vfs_is_dir(
     tiledb_ctx_t* ctx,
@@ -391,10 +415,14 @@ capi_return_t tiledb_vfs_is_dir(
       ctx, vfs, uri, is_dir);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_remove_dir);
+
 capi_return_t tiledb_vfs_remove_dir(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) noexcept {
   return api_entry_context<tiledb::api::tiledb_vfs_remove_dir>(ctx, vfs, uri);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_is_file);
 
 capi_return_t tiledb_vfs_is_file(
     tiledb_ctx_t* ctx,
@@ -405,10 +433,14 @@ capi_return_t tiledb_vfs_is_file(
       ctx, vfs, uri, is_file);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_remove_file);
+
 capi_return_t tiledb_vfs_remove_file(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) noexcept {
   return api_entry_context<tiledb::api::tiledb_vfs_remove_file>(ctx, vfs, uri);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_dir_size);
 
 capi_return_t tiledb_vfs_dir_size(
     tiledb_ctx_t* ctx,
@@ -419,6 +451,8 @@ capi_return_t tiledb_vfs_dir_size(
       ctx, vfs, uri, size);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_file_size);
+
 capi_return_t tiledb_vfs_file_size(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
@@ -427,6 +461,8 @@ capi_return_t tiledb_vfs_file_size(
   return api_entry_context<tiledb::api::tiledb_vfs_file_size>(
       ctx, vfs, uri, size);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_move_file);
 
 capi_return_t tiledb_vfs_move_file(
     tiledb_ctx_t* ctx,
@@ -437,6 +473,8 @@ capi_return_t tiledb_vfs_move_file(
       ctx, vfs, old_uri, new_uri);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_move_dir);
+
 capi_return_t tiledb_vfs_move_dir(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
@@ -445,6 +483,8 @@ capi_return_t tiledb_vfs_move_dir(
   return api_entry_context<tiledb::api::tiledb_vfs_move_dir>(
       ctx, vfs, old_uri, new_uri);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_copy_file);
 
 capi_return_t tiledb_vfs_copy_file(
     tiledb_ctx_t* ctx,
@@ -455,6 +495,8 @@ capi_return_t tiledb_vfs_copy_file(
       ctx, vfs, old_uri, new_uri);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_copy_dir);
+
 capi_return_t tiledb_vfs_copy_dir(
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
@@ -463,6 +505,8 @@ capi_return_t tiledb_vfs_copy_dir(
   return api_entry_context<tiledb::api::tiledb_vfs_copy_dir>(
       ctx, vfs, old_uri, new_uri);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_open);
 
 capi_return_t tiledb_vfs_open(
     tiledb_ctx_t* ctx,
@@ -474,10 +518,14 @@ capi_return_t tiledb_vfs_open(
       ctx, vfs, uri, mode, fh);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_close);
+
 capi_return_t tiledb_vfs_close(
     tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) noexcept {
   return api_entry_context<tiledb::api::tiledb_vfs_close>(ctx, fh);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_read);
 
 capi_return_t tiledb_vfs_read(
     tiledb_ctx_t* ctx,
@@ -489,6 +537,8 @@ capi_return_t tiledb_vfs_read(
       ctx, fh, offset, buffer, nbytes);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_write);
+
 capi_return_t tiledb_vfs_write(
     tiledb_ctx_t* ctx,
     tiledb_vfs_fh_t* fh,
@@ -498,9 +548,13 @@ capi_return_t tiledb_vfs_write(
       ctx, fh, buffer, nbytes);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_sync);
+
 capi_return_t tiledb_vfs_sync(tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) noexcept {
   return api_entry_context<tiledb::api::tiledb_vfs_sync>(ctx, fh);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_ls);
 
 capi_return_t tiledb_vfs_ls(
     tiledb_ctx_t* ctx,
@@ -512,15 +566,21 @@ capi_return_t tiledb_vfs_ls(
       ctx, vfs, path, callback, data);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_fh_free);
+
 void tiledb_vfs_fh_free(tiledb_vfs_fh_t** fh) noexcept {
   return tiledb::api::api_entry_void<tiledb::api::tiledb_vfs_fh_free>(fh);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_fh_is_closed);
 
 capi_return_t tiledb_vfs_fh_is_closed(
     tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh, int32_t* is_closed) noexcept {
   return api_entry_context<tiledb::api::tiledb_vfs_fh_is_closed>(
       ctx, fh, is_closed);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_touch);
 
 capi_return_t tiledb_vfs_touch(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) noexcept {

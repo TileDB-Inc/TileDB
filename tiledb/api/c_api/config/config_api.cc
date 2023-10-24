@@ -174,6 +174,8 @@ capi_return_t tiledb_config_iter_done(
 
 using tiledb::api::api_entry_error;
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_alloc);
+
 capi_return_t tiledb_config_alloc(
     tiledb_config_t** config, tiledb_error_t** error) noexcept {
   return api_entry_error<tiledb::api::tiledb_config_alloc>(error, config);
@@ -184,9 +186,13 @@ capi_return_t tiledb_config_alloc(
  * can return an error.
  * Possible errors: `config` may be null or an invalid handle.
  */
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_free);
+
 void tiledb_config_free(tiledb_config_t** config) noexcept {
   return tiledb::api::api_entry_void<tiledb::api::tiledb_config_free>(config);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_set);
 
 capi_return_t tiledb_config_set(
     tiledb_config_t* config,
@@ -197,6 +203,8 @@ capi_return_t tiledb_config_set(
       error, config, param, value);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_get);
+
 capi_return_t tiledb_config_get(
     tiledb_config_t* config,
     const char* param,
@@ -206,6 +214,8 @@ capi_return_t tiledb_config_get(
       error, config, param, value);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_unset);
+
 capi_return_t tiledb_config_unset(
     tiledb_config_t* config,
     const char* param,
@@ -214,6 +224,8 @@ capi_return_t tiledb_config_unset(
       error, config, param);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_load_from_file);
+
 capi_return_t tiledb_config_load_from_file(
     tiledb_config_t* config,
     const char* filename,
@@ -221,6 +233,8 @@ capi_return_t tiledb_config_load_from_file(
   return api_entry_error<tiledb::api::tiledb_config_load_from_file>(
       error, config, filename);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_save_to_file);
 
 capi_return_t tiledb_config_save_to_file(
     tiledb_config_t* config,
@@ -235,11 +249,15 @@ capi_return_t tiledb_config_save_to_file(
  * Possible errors: Both `lhs` and `rhs` may be null or an invalid handle.
  * `equal` may be a null pointer
  */
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_compare);
+
 capi_return_t tiledb_config_compare(
     tiledb_config_t* lhs, tiledb_config_t* rhs, uint8_t* equal) noexcept {
   return tiledb::api::api_entry_plain<tiledb::api::tiledb_config_compare>(
       lhs, rhs, equal);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_iter_alloc);
 
 capi_return_t tiledb_config_iter_alloc(
     tiledb_config_t* config,
@@ -249,6 +267,8 @@ capi_return_t tiledb_config_iter_alloc(
   return api_entry_error<tiledb::api::tiledb_config_iter_alloc>(
       error, config, prefix, config_iter);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_iter_reset);
 
 capi_return_t tiledb_config_iter_reset(
     tiledb_config_t* config,
@@ -264,10 +284,14 @@ capi_return_t tiledb_config_iter_reset(
  * can return an error.
  * Possible errors: `config` may be null or an invalid handle.
  */
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_iter_free);
+
 void tiledb_config_iter_free(tiledb_config_iter_t** config_iter) noexcept {
   tiledb::api::api_entry_void<tiledb::api::tiledb_config_iter_free>(
       config_iter);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_iter_here);
 
 capi_return_t tiledb_config_iter_here(
     tiledb_config_iter_t* config_iter,
@@ -278,11 +302,15 @@ capi_return_t tiledb_config_iter_here(
       error, config_iter, param, value);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_iter_next);
+
 capi_return_t tiledb_config_iter_next(
     tiledb_config_iter_t* config_iter, tiledb_error_t** error) noexcept {
   return api_entry_error<tiledb::api::tiledb_config_iter_next>(
       error, config_iter);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_iter_done);
 
 capi_return_t tiledb_config_iter_done(
     tiledb_config_iter_t* config_iter,

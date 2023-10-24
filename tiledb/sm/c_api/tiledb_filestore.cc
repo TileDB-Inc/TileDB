@@ -739,6 +739,8 @@ using tiledb::api::api_entry_plain;
 template <auto f>
 constexpr auto api_entry = tiledb::api::api_entry_with_context<f>;
 
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_filestore_schema_create);
+
 TILEDB_EXPORT int32_t tiledb_filestore_schema_create(
     tiledb_ctx_t* ctx,
     const char* uri,
@@ -746,6 +748,8 @@ TILEDB_EXPORT int32_t tiledb_filestore_schema_create(
   return api_entry<detail::tiledb_filestore_schema_create>(
       ctx, uri, array_schema);
 }
+
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_filestore_uri_import);
 
 TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
     tiledb_ctx_t* ctx,
@@ -756,6 +760,8 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
       ctx, filestore_array_uri, file_uri, mime_type);
 }
 
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_filestore_uri_export);
+
 TILEDB_EXPORT int32_t tiledb_filestore_uri_export(
     tiledb_ctx_t* ctx,
     const char* file_uri,
@@ -763,6 +769,8 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_export(
   return api_entry<detail::tiledb_filestore_uri_export>(
       ctx, file_uri, filestore_array_uri);
 }
+
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_filestore_buffer_import);
 
 TILEDB_EXPORT int32_t tiledb_filestore_buffer_import(
     tiledb_ctx_t* ctx,
@@ -774,6 +782,8 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_import(
       ctx, filestore_array_uri, buf, size, mime_type);
 }
 
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_filestore_buffer_export);
+
 TILEDB_EXPORT int32_t tiledb_filestore_buffer_export(
     tiledb_ctx_t* ctx,
     const char* filestore_array_uri,
@@ -784,16 +794,22 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_export(
       ctx, filestore_array_uri, offset, buf, size);
 }
 
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_filestore_size);
+
 TILEDB_EXPORT int32_t tiledb_filestore_size(
     tiledb_ctx_t* ctx, const char* filestore_array_uri, size_t* size) noexcept {
   return api_entry<detail::tiledb_filestore_size>(
       ctx, filestore_array_uri, size);
 }
 
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_mime_type_to_str);
+
 TILEDB_EXPORT int32_t tiledb_mime_type_to_str(
     tiledb_mime_type_t mime_type, const char** str) noexcept {
   return api_entry_plain<detail::tiledb_mime_type_to_str>(mime_type, str);
 }
+
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_mime_type_from_str);
 
 TILEDB_EXPORT int32_t tiledb_mime_type_from_str(
     const char* str, tiledb_mime_type_t* mime_type) noexcept {

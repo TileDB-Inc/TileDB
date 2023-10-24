@@ -138,6 +138,8 @@ using tiledb::api::api_entry_with_context;
 /*
  * API Audit: No channel to return error message (failure code only)
  */
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_ctx_alloc);
+
 capi_return_t tiledb_ctx_alloc(
     tiledb_config_handle_t* config, tiledb_ctx_handle_t** ctx) noexcept {
   return tiledb::api::api_entry_plain<tiledb::api::tiledb_ctx_alloc>(
@@ -173,9 +175,13 @@ capi_return_t tiledb_ctx_alloc_with_error(
 /*
  * API Audit: void return
  */
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_ctx_free);
+
 void tiledb_ctx_free(tiledb_ctx_handle_t** ctx) noexcept {
   return tiledb::api::api_entry_void<tiledb::api::tiledb_ctx_free>(ctx);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_ctx_get_stats);
 
 capi_return_t tiledb_ctx_get_stats(
     tiledb_ctx_t* ctx, char** stats_json) noexcept {
@@ -183,11 +189,15 @@ capi_return_t tiledb_ctx_get_stats(
       ctx, stats_json);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_ctx_get_config);
+
 capi_return_t tiledb_ctx_get_config(
     tiledb_ctx_t* ctx, tiledb_config_handle_t** config) noexcept {
   return api_entry_with_context<tiledb::api::tiledb_ctx_get_config>(
       ctx, config);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_ctx_get_last_error);
 
 capi_return_t tiledb_ctx_get_last_error(
     tiledb_ctx_t* ctx, tiledb_error_handle_t** err) noexcept {
@@ -195,15 +205,21 @@ capi_return_t tiledb_ctx_get_last_error(
       ctx, err);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_ctx_is_supported_fs);
+
 capi_return_t tiledb_ctx_is_supported_fs(
     tiledb_ctx_t* ctx, tiledb_filesystem_t fs, int32_t* is_supported) noexcept {
   return api_entry_with_context<tiledb::api::tiledb_ctx_is_supported_fs>(
       ctx, fs, is_supported);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_ctx_cancel_tasks);
+
 capi_return_t tiledb_ctx_cancel_tasks(tiledb_ctx_t* ctx) noexcept {
   return api_entry_with_context<tiledb::api::tiledb_ctx_cancel_tasks>(ctx);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_ctx_set_tag);
 
 capi_return_t tiledb_ctx_set_tag(
     tiledb_ctx_t* ctx, const char* key, const char* value) noexcept {

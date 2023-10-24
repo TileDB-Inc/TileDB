@@ -205,6 +205,8 @@ capi_return_t tiledb_attribute_get_enumeration_name(
 
 using tiledb::api::api_entry_context;
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_alloc);
+
 int32_t tiledb_attribute_alloc(
     tiledb_ctx_t* ctx,
     const char* name,
@@ -214,9 +216,13 @@ int32_t tiledb_attribute_alloc(
       ctx, name, type, attr);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_free);
+
 void tiledb_attribute_free(tiledb_attribute_handle_t** attr) noexcept {
   return tiledb::api::api_entry_void<tiledb::api::tiledb_attribute_free>(attr);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_set_nullable);
 
 int32_t tiledb_attribute_set_nullable(
     tiledb_ctx_t* ctx,
@@ -226,6 +232,8 @@ int32_t tiledb_attribute_set_nullable(
       ctx, attr, nullable);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_set_filter_list);
+
 int32_t tiledb_attribute_set_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_attribute_handle_t* attr,
@@ -233,6 +241,8 @@ int32_t tiledb_attribute_set_filter_list(
   return api_entry_context<tiledb::api::tiledb_attribute_set_filter_list>(
       ctx, attr, filter_list);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_set_cell_val_num);
 
 int32_t tiledb_attribute_set_cell_val_num(
     tiledb_ctx_t* ctx,
@@ -242,6 +252,8 @@ int32_t tiledb_attribute_set_cell_val_num(
       ctx, attr, cell_val_num);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_get_name);
+
 int32_t tiledb_attribute_get_name(
     tiledb_ctx_t* ctx,
     const tiledb_attribute_handle_t* attr,
@@ -249,6 +261,8 @@ int32_t tiledb_attribute_get_name(
   return api_entry_context<tiledb::api::tiledb_attribute_get_name>(
       ctx, attr, name);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_get_type);
 
 int32_t tiledb_attribute_get_type(
     tiledb_ctx_t* ctx,
@@ -258,6 +272,8 @@ int32_t tiledb_attribute_get_type(
       ctx, attr, type);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_get_nullable);
+
 int32_t tiledb_attribute_get_nullable(
     tiledb_ctx_t* ctx,
     tiledb_attribute_handle_t* attr,
@@ -265,6 +281,8 @@ int32_t tiledb_attribute_get_nullable(
   return api_entry_context<tiledb::api::tiledb_attribute_get_nullable>(
       ctx, attr, nullable);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_get_filter_list);
 
 int32_t tiledb_attribute_get_filter_list(
     tiledb_ctx_t* ctx,
@@ -274,6 +292,8 @@ int32_t tiledb_attribute_get_filter_list(
       ctx, attr, filter_list);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_get_cell_val_num);
+
 int32_t tiledb_attribute_get_cell_val_num(
     tiledb_ctx_t* ctx,
     const tiledb_attribute_handle_t* attr,
@@ -281,6 +301,8 @@ int32_t tiledb_attribute_get_cell_val_num(
   return api_entry_context<tiledb::api::tiledb_attribute_get_cell_val_num>(
       ctx, attr, cell_val_num);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_get_cell_size);
 
 int32_t tiledb_attribute_get_cell_size(
     tiledb_ctx_t* ctx,
@@ -290,12 +312,16 @@ int32_t tiledb_attribute_get_cell_size(
       ctx, attr, cell_size);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_dump);
+
 int32_t tiledb_attribute_dump(
     tiledb_ctx_t* ctx,
     const tiledb_attribute_handle_t* attr,
     FILE* out) noexcept {
   return api_entry_context<tiledb::api::tiledb_attribute_dump>(ctx, attr, out);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_set_fill_value);
 
 int32_t tiledb_attribute_set_fill_value(
     tiledb_ctx_t* ctx,
@@ -306,6 +332,8 @@ int32_t tiledb_attribute_set_fill_value(
       ctx, attr, value, size);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_get_fill_value);
+
 int32_t tiledb_attribute_get_fill_value(
     tiledb_ctx_t* ctx,
     tiledb_attribute_handle_t* attr,
@@ -314,6 +342,8 @@ int32_t tiledb_attribute_get_fill_value(
   return api_entry_context<tiledb::api::tiledb_attribute_get_fill_value>(
       ctx, attr, value, size);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_set_fill_value_nullable);
 
 int32_t tiledb_attribute_set_fill_value_nullable(
     tiledb_ctx_t* ctx,
@@ -326,6 +356,8 @@ int32_t tiledb_attribute_set_fill_value_nullable(
       ctx, attr, value, size, valid);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_get_fill_value_nullable);
+
 int32_t tiledb_attribute_get_fill_value_nullable(
     tiledb_ctx_t* ctx,
     tiledb_attribute_handle_t* attr,
@@ -337,6 +369,8 @@ int32_t tiledb_attribute_get_fill_value_nullable(
       ctx, attr, value, size, valid);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_set_enumeration_name);
+
 capi_return_t tiledb_attribute_set_enumeration_name(
     tiledb_ctx_t* ctx,
     tiledb_attribute_t* attr,
@@ -344,6 +378,8 @@ capi_return_t tiledb_attribute_set_enumeration_name(
   return api_entry_context<tiledb::api::tiledb_attribute_set_enumeration_name>(
       ctx, attr, enumeration_name);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_get_enumeration_name);
 
 capi_return_t tiledb_attribute_get_enumeration_name(
     tiledb_ctx_t* ctx,

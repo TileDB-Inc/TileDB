@@ -56,11 +56,15 @@ capi_return_t tiledb_string_free(tiledb_string_handle_t** s) {
 
 }  // namespace tiledb::api
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_string_view);
+
 capi_return_t tiledb_string_view(
     tiledb_string_t* s, const char** data, size_t* length) noexcept {
   return tiledb::api::api_entry_plain<tiledb::api::tiledb_string_view>(
       s, data, length);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_string_free);
 
 capi_return_t tiledb_string_free(tiledb_string_handle_t** s) noexcept {
   return tiledb::api::api_entry_plain<tiledb::api::tiledb_string_free>(s);

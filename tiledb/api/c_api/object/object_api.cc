@@ -88,11 +88,15 @@ capi_return_t tiledb_walk_order_from_str(
 using tiledb::api::api_entry_plain;
 using tiledb::api::api_entry_with_context;
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_object_type_to_str);
+
 capi_return_t tiledb_object_type_to_str(
     tiledb_object_t object_type, const char** str) noexcept {
   return api_entry_plain<tiledb::api::tiledb_object_type_to_str>(
       object_type, str);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_object_type_from_str);
 
 capi_return_t tiledb_object_type_from_str(
     const char* str, tiledb_object_t* object_type) noexcept {
@@ -100,11 +104,15 @@ capi_return_t tiledb_object_type_from_str(
       str, object_type);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_walk_order_to_str);
+
 capi_return_t tiledb_walk_order_to_str(
     tiledb_walk_order_t walk_order, const char** str) noexcept {
   return api_entry_plain<tiledb::api::tiledb_walk_order_to_str>(
       walk_order, str);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_walk_order_from_str);
 
 capi_return_t tiledb_walk_order_from_str(
     const char* str, tiledb_walk_order_t* walk_order) noexcept {

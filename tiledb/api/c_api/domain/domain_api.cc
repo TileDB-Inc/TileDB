@@ -146,14 +146,20 @@ int32_t tiledb_domain_dump(const tiledb_domain_t* domain, FILE* out) {
 
 using tiledb::api::api_entry_context;
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_domain_alloc);
+
 int32_t tiledb_domain_alloc(
     tiledb_ctx_t* ctx, tiledb_domain_t** domain) noexcept {
   return api_entry_context<tiledb::api::tiledb_domain_alloc>(ctx, domain);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_domain_free);
+
 void tiledb_domain_free(tiledb_domain_t** domain) noexcept {
   return tiledb::api::api_entry_void<tiledb::api::tiledb_domain_free>(domain);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_domain_get_type);
 
 int32_t tiledb_domain_get_type(
     tiledb_ctx_t* ctx,
@@ -163,11 +169,15 @@ int32_t tiledb_domain_get_type(
       ctx, domain, type);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_domain_get_ndim);
+
 int32_t tiledb_domain_get_ndim(
     tiledb_ctx_t* ctx, const tiledb_domain_t* domain, uint32_t* ndim) noexcept {
   return api_entry_context<tiledb::api::tiledb_domain_get_ndim>(
       ctx, domain, ndim);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_domain_add_dimension);
 
 int32_t tiledb_domain_add_dimension(
     tiledb_ctx_t* ctx,
@@ -176,6 +186,8 @@ int32_t tiledb_domain_add_dimension(
   return api_entry_context<tiledb::api::tiledb_domain_add_dimension>(
       ctx, domain, dim);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_domain_get_dimension_from_index);
 
 int32_t tiledb_domain_get_dimension_from_index(
     tiledb_ctx_t* ctx,
@@ -186,6 +198,8 @@ int32_t tiledb_domain_get_dimension_from_index(
       ctx, domain, index, dim);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_domain_get_dimension_from_name);
+
 int32_t tiledb_domain_get_dimension_from_name(
     tiledb_ctx_t* ctx,
     const tiledb_domain_t* domain,
@@ -195,6 +209,8 @@ int32_t tiledb_domain_get_dimension_from_name(
       ctx, domain, name, dim);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_domain_has_dimension);
+
 int32_t tiledb_domain_has_dimension(
     tiledb_ctx_t* ctx,
     const tiledb_domain_t* domain,
@@ -203,6 +219,8 @@ int32_t tiledb_domain_has_dimension(
   return api_entry_context<tiledb::api::tiledb_domain_has_dimension>(
       ctx, domain, name, has_dim);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_domain_dump);
 
 int32_t tiledb_domain_dump(
     tiledb_ctx_t* ctx, const tiledb_domain_t* domain, FILE* out) noexcept {

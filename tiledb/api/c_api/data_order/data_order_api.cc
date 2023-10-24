@@ -55,11 +55,15 @@ capi_return_t tiledb_data_order_from_str(
 
 using tiledb::api::api_entry_plain;
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_data_order_to_str);
+
 capi_return_t tiledb_data_order_to_str(
     tiledb_data_order_t data_order, const char** str) noexcept {
   return api_entry_plain<tiledb::api::tiledb_data_order_to_str>(
       data_order, str);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_data_order_from_str);
 
 capi_return_t tiledb_data_order_from_str(
     const char* str, tiledb_data_order_t* data_order) noexcept {

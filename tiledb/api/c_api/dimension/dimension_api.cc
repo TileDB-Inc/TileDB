@@ -141,6 +141,8 @@ int32_t tiledb_dimension_dump(const tiledb_dimension_t* dim, FILE* out) {
 
 using tiledb::api::api_entry_context;
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_alloc);
+
 int32_t tiledb_dimension_alloc(
     tiledb_ctx_t* ctx,
     const char* name,
@@ -152,9 +154,13 @@ int32_t tiledb_dimension_alloc(
       ctx, name, type, dim_domain, tile_extent, dim);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_free);
+
 void tiledb_dimension_free(tiledb_dimension_t** dim) noexcept {
   return tiledb::api::api_entry_void<tiledb::api::tiledb_dimension_free>(dim);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_set_filter_list);
 
 int32_t tiledb_dimension_set_filter_list(
     tiledb_ctx_t* ctx,
@@ -164,6 +170,8 @@ int32_t tiledb_dimension_set_filter_list(
       ctx, dim, filter_list);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_set_cell_val_num);
+
 int32_t tiledb_dimension_set_cell_val_num(
     tiledb_ctx_t* ctx,
     tiledb_dimension_t* dim,
@@ -171,6 +179,8 @@ int32_t tiledb_dimension_set_cell_val_num(
   return api_entry_context<tiledb::api::tiledb_dimension_set_cell_val_num>(
       ctx, dim, cell_val_num);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_get_filter_list);
 
 int32_t tiledb_dimension_get_filter_list(
     tiledb_ctx_t* ctx,
@@ -180,6 +190,8 @@ int32_t tiledb_dimension_get_filter_list(
       ctx, dim, filter_list);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_get_cell_val_num);
+
 int32_t tiledb_dimension_get_cell_val_num(
     tiledb_ctx_t* ctx,
     const tiledb_dimension_t* dim,
@@ -187,6 +199,8 @@ int32_t tiledb_dimension_get_cell_val_num(
   return api_entry_context<tiledb::api::tiledb_dimension_get_cell_val_num>(
       ctx, dim, cell_val_num);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_get_name);
 
 int32_t tiledb_dimension_get_name(
     tiledb_ctx_t* ctx,
@@ -196,6 +210,8 @@ int32_t tiledb_dimension_get_name(
       ctx, dim, name);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_get_type);
+
 int32_t tiledb_dimension_get_type(
     tiledb_ctx_t* ctx,
     const tiledb_dimension_t* dim,
@@ -203,6 +219,8 @@ int32_t tiledb_dimension_get_type(
   return api_entry_context<tiledb::api::tiledb_dimension_get_type>(
       ctx, dim, type);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_get_domain);
 
 int32_t tiledb_dimension_get_domain(
     tiledb_ctx_t* ctx,
@@ -212,6 +230,8 @@ int32_t tiledb_dimension_get_domain(
       ctx, dim, domain);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_get_tile_extent);
+
 int32_t tiledb_dimension_get_tile_extent(
     tiledb_ctx_t* ctx,
     const tiledb_dimension_t* dim,
@@ -219,6 +239,8 @@ int32_t tiledb_dimension_get_tile_extent(
   return api_entry_context<tiledb::api::tiledb_dimension_get_tile_extent>(
       ctx, dim, tile_extent);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_dump);
 
 int32_t tiledb_dimension_dump(
     tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, FILE* out) noexcept {

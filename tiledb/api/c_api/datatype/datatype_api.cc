@@ -61,10 +61,14 @@ uint64_t tiledb_datatype_size(tiledb_datatype_t type) {
 
 using tiledb::api::api_entry_plain;
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_datatype_to_str);
+
 capi_return_t tiledb_datatype_to_str(
     tiledb_datatype_t datatype, const char** str) noexcept {
   return api_entry_plain<tiledb::api::tiledb_datatype_to_str>(datatype, str);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_datatype_from_str);
 
 capi_return_t tiledb_datatype_from_str(
     const char* str, tiledb_datatype_t* datatype) noexcept {

@@ -108,16 +108,22 @@ capi_return_t tiledb_filter_list_get_max_chunk_size(
 
 using tiledb::api::api_entry_context;
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filter_list_alloc);
+
 capi_return_t tiledb_filter_list_alloc(
     tiledb_ctx_t* ctx, tiledb_filter_list_t** filter_list) noexcept {
   return tiledb::api::api_entry_with_context<
       tiledb::api::tiledb_filter_list_alloc>(ctx, filter_list);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filter_list_free);
+
 void tiledb_filter_list_free(tiledb_filter_list_t** filter_list) noexcept {
   return tiledb::api::api_entry_void<tiledb::api::tiledb_filter_list_free>(
       filter_list);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filter_list_add_filter);
 
 capi_return_t tiledb_filter_list_add_filter(
     tiledb_ctx_t* ctx,
@@ -127,6 +133,8 @@ capi_return_t tiledb_filter_list_add_filter(
       ctx, filter_list, filter);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filter_list_set_max_chunk_size);
+
 capi_return_t tiledb_filter_list_set_max_chunk_size(
     tiledb_ctx_t* ctx,
     tiledb_filter_list_t* filter_list,
@@ -135,6 +143,8 @@ capi_return_t tiledb_filter_list_set_max_chunk_size(
       ctx, filter_list, max_chunk_size);
 }
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filter_list_get_nfilters);
+
 capi_return_t tiledb_filter_list_get_nfilters(
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
@@ -142,6 +152,8 @@ capi_return_t tiledb_filter_list_get_nfilters(
   return api_entry_context<tiledb::api::tiledb_filter_list_get_nfilters>(
       ctx, filter_list, nfilters);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filter_list_get_filter_from_index);
 
 capi_return_t tiledb_filter_list_get_filter_from_index(
     tiledb_ctx_t* ctx,
@@ -152,6 +164,8 @@ capi_return_t tiledb_filter_list_get_filter_from_index(
       tiledb::api::tiledb_filter_list_get_filter_from_index>(
       ctx, filter_list, index, filter);
 }
+
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filter_list_get_max_chunk_size);
 
 capi_return_t tiledb_filter_list_get_max_chunk_size(
     tiledb_ctx_t* ctx,
