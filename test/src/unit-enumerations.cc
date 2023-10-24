@@ -495,11 +495,12 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     EnumerationFx,
-    "Enumeration Creation Error - Invalid name with slash",
+    "Enumeration Creation Error - Invalid path_name with slash",
     "[enumeration][error][invalid-name]") {
   std::vector<int> values = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   REQUIRE_THROWS(Enumeration::create(
-      "an/enumeration",
+      default_enmr_name,
+      "an/bad/path",
       Datatype::INT32,
       2,
       false,
