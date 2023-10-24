@@ -139,9 +139,6 @@ endif()
 
 # List of all core source files
 set(TILEDB_CORE_SOURCES
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/heap_memory.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/heap_profiler.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/logger.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/memory.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/stdx_string.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/interval/interval.cc
@@ -410,9 +407,12 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
     ${TILEDB_EXTERNALS_SOURCES}
 )
 
-# Use BUILD_INTERFACE generator to work around
-#   https://gitlab.kitware.com/cmake/cmake/-/issues/20736
-target_link_libraries(TILEDB_CORE_OBJECTS PRIVATE $<BUILD_INTERFACE:common>)
+target_link_libraries(TILEDB_CORE_OBJECTS
+  PRIVATE
+    common
+  PUBLIC
+    baseline $<TARGET_OBJECTS:baseline>
+)
 
 target_link_libraries(TILEDB_CORE_OBJECTS INTERFACE object_store_definitions)
 
@@ -466,6 +466,11 @@ if (WIN32 AND TILEDB_STATIC)
     ${TILEDB_EXTERNALS_SOURCES}
   )
   add_dependencies(TILEDB_CORE_OBJECTS_STATIC gen_mgc_unarch)
+
+  target_link_libraries(TILEDB_CORE_OBJECTS_STATIC
+    PUBLIC
+      baseline $<TARGET_OBJECTS:baseline>
+  )
 
   # Compile all core sources with PIC
   set_property(TARGET TILEDB_CORE_OBJECTS_STATIC PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -1019,7 +1024,7 @@ endif()
 # TileDB static and shared library targets
 ############################################################
 
-add_library(tiledb_shared SHARED $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
+add_library(tiledb_shared SHARED)
 
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/sm/c_api/tiledb_version.h" ver)
 
@@ -1068,9 +1073,16 @@ endif()
 target_link_libraries(tiledb_shared
   PRIVATE
     $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_LINK_LIBRARIES>
+    TILEDB_CORE_OBJECTS
 )
 
 if (TILEDB_STATIC)
+  # Create the target
+  add_library(tiledb_static STATIC)
+  target_link_libraries(tiledb_static
+    PRIVATE
+      $<BUILD_INTERFACE:TILEDB_CORE_OBJECTS_STATIC>
+  )
   if (WIN32)
     # Copy over all include directories, compile options, etc, from the regular
     # core objects.
@@ -1086,10 +1098,6 @@ if (TILEDB_STATIC)
       PRIVATE
         $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>
     )
-    # Create the target
-    add_library(tiledb_static STATIC
-      $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS_STATIC>
-    )
     target_compile_definitions(tiledb_static
       INTERFACE
         -DTILEDB_STATIC_DEFINE
@@ -1102,6 +1110,10 @@ if (TILEDB_STATIC)
     )
   else()
     add_library(tiledb_static STATIC $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
+    target_link_libraries(tiledb_static
+      PRIVATE
+        $<BUILD_INTERFACE:TILEDB_CORE_OBJECTS>
+    )
     set_target_properties(tiledb_static
       PROPERTIES
         OUTPUT_NAME "tiledb"
