@@ -119,6 +119,16 @@ capi_return_t tiledb_filter_option_from_str(
 
 }  // namespace tiledb::api
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filter_alloc);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filter_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filter_get_option);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filter_get_type);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filter_option_from_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filter_option_to_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filter_set_option);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filter_type_from_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filter_type_to_str);
+
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_plain;
 

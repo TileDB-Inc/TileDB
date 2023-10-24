@@ -118,6 +118,13 @@ capi_return_t tiledb_buffer_list_flatten(
 
 }  // namespace tiledb::api
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_buffer_list_alloc);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_buffer_list_flatten);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_buffer_list_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_buffer_list_get_buffer);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_buffer_list_get_num_buffers);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_buffer_list_get_total_size);
+
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_void;
 

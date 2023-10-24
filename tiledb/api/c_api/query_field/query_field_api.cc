@@ -148,6 +148,13 @@ capi_return_t tiledb_field_channel(
 
 }  // namespace tiledb::api
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_field_cell_val_num);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_field_channel);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_field_datatype);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_field_origin);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_field_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_field);
+
 using tiledb::api::api_entry_context;
 
 capi_return_t tiledb_query_get_field(

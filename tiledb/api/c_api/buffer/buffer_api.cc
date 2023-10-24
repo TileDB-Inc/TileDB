@@ -95,6 +95,13 @@ capi_return_t tiledb_buffer_set_data(
 
 }  // namespace tiledb::api
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_buffer_alloc);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_buffer_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_buffer_get_data);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_buffer_get_type);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_buffer_set_data);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_buffer_set_type);
+
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_void;
 

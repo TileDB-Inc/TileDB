@@ -139,6 +139,18 @@ int32_t tiledb_dimension_dump(const tiledb_dimension_t* dim, FILE* out) {
 
 }  // namespace tiledb::api
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_alloc);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_dump);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_get_cell_val_num);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_get_domain);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_get_filter_list);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_get_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_get_tile_extent);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_get_type);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_set_cell_val_num);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_set_filter_list);
+
 using tiledb::api::api_entry_context;
 
 int32_t tiledb_dimension_alloc(

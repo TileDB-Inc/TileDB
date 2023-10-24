@@ -133,6 +133,15 @@ capi_return_t tiledb_ctx_set_tag(
 
 }  // namespace tiledb::api
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_ctx_alloc);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_ctx_cancel_tasks);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_ctx_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_ctx_get_config);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_ctx_get_last_error);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_ctx_get_stats);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_ctx_is_supported_fs);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_ctx_set_tag);
+
 using tiledb::api::api_entry_with_context;
 
 /*

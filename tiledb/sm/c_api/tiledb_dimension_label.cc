@@ -206,6 +206,26 @@ capi_return_t tiledb_subarray_has_label_ranges(
 
 }  // namespace tiledb::common::detail
 
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_array_schema_add_dimension_label);
+TILEDB_CAPI_NAME_TRAIT(
+    detail::tiledb_array_schema_get_dimension_label_from_index);
+TILEDB_CAPI_NAME_TRAIT(
+    detail::tiledb_array_schema_get_dimension_label_from_name);
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_array_schema_get_dimension_label_num);
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_array_schema_has_dimension_label);
+TILEDB_CAPI_NAME_TRAIT(
+    detail::tiledb_array_schema_set_dimension_label_filter_list);
+TILEDB_CAPI_NAME_TRAIT(
+    detail::tiledb_array_schema_set_dimension_label_tile_extent);
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_subarray_add_label_range);
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_subarray_add_label_range_var);
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_subarray_get_label_name);
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_subarray_get_label_range);
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_subarray_get_label_range_num);
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_subarray_get_label_range_var);
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_subarray_get_label_range_var_size);
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_subarray_has_label_ranges);
+
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_with_context;
 

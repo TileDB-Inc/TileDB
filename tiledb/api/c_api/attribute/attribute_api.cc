@@ -203,6 +203,25 @@ capi_return_t tiledb_attribute_get_enumeration_name(
 
 }  // namespace tiledb::api
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_alloc);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_dump);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_get_cell_size);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_get_cell_val_num);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_get_enumeration_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_get_fill_value);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_get_fill_value_nullable);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_get_filter_list);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_get_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_get_nullable);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_get_type);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_set_cell_val_num);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_set_enumeration_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_set_fill_value);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_set_fill_value_nullable);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_set_filter_list);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_attribute_set_nullable);
+
 using tiledb::api::api_entry_context;
 
 int32_t tiledb_attribute_alloc(

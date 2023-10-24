@@ -144,6 +144,16 @@ int32_t tiledb_domain_dump(const tiledb_domain_t* domain, FILE* out) {
 
 }  // namespace tiledb::api
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_domain_add_dimension);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_domain_alloc);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_domain_dump);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_domain_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_domain_get_dimension_from_index);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_domain_get_dimension_from_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_domain_get_ndim);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_domain_get_type);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_domain_has_dimension);
+
 using tiledb::api::api_entry_context;
 
 int32_t tiledb_domain_alloc(

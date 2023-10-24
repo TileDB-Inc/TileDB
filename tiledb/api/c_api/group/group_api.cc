@@ -545,6 +545,37 @@ capi_return_t tiledb_group_vacuum_metadata(
 
 }  // namespace tiledb::api
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_deserialize_group);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_deserialize_group_metadata);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_add_member);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_alloc);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_close);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_consolidate_metadata);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_create);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_delete_group);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_delete_metadata);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_dump_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_get_config);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_get_is_relative_uri_by_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_get_member_by_index);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_get_member_by_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_get_member_count);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_get_metadata);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_get_metadata_from_index);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_get_metadata_num);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_get_query_type);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_get_uri);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_has_metadata_key);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_is_open);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_open);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_put_metadata);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_remove_member);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_set_config);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_group_vacuum_metadata);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_serialize_group);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_serialize_group_metadata);
+
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_void;
 using tiledb::api::api_entry_with_context;

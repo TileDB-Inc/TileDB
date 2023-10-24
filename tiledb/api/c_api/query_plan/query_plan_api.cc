@@ -57,6 +57,8 @@ capi_return_t tiledb_query_get_plan(
 
 }  // namespace tiledb::api
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_plan);
+
 using tiledb::api::api_entry_with_context;
 
 capi_return_t tiledb_query_get_plan(

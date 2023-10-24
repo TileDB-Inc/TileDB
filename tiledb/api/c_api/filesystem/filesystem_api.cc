@@ -56,6 +56,9 @@ capi_return_t tiledb_filesystem_from_str(
 
 }  // namespace tiledb::api
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filesystem_from_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filesystem_to_str);
+
 using tiledb::api::api_entry_plain;
 
 capi_return_t tiledb_filesystem_to_str(

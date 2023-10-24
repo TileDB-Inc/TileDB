@@ -102,6 +102,16 @@ capi_return_t tiledb_dimension_label_get_uri(
 
 }  // namespace tiledb::api
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_label_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_label_get_dimension_index);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_label_get_label_attr_name);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_dimension_label_get_label_cell_val_num);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_label_get_label_order);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_label_get_label_type);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_label_get_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_dimension_label_get_uri);
+
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_void;
 

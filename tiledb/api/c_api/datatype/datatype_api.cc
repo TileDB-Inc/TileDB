@@ -59,6 +59,9 @@ uint64_t tiledb_datatype_size(tiledb_datatype_t type) {
 
 }  // namespace tiledb::api
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_datatype_from_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_datatype_to_str);
+
 using tiledb::api::api_entry_plain;
 
 capi_return_t tiledb_datatype_to_str(

@@ -106,6 +106,14 @@ capi_return_t tiledb_filter_list_get_max_chunk_size(
 
 }  // namespace tiledb::api
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filter_list_add_filter);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filter_list_alloc);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filter_list_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filter_list_get_filter_from_index);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filter_list_get_max_chunk_size);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filter_list_get_nfilters);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_filter_list_set_max_chunk_size);
+
 using tiledb::api::api_entry_context;
 
 capi_return_t tiledb_filter_list_alloc(

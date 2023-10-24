@@ -153,6 +153,16 @@ capi_return_t tiledb_enumeration_dump(
 
 }  // namespace tiledb::api
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_enumeration_alloc);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_enumeration_dump);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_enumeration_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_enumeration_get_cell_val_num);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_enumeration_get_data);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_enumeration_get_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_enumeration_get_offsets);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_enumeration_get_ordered);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_enumeration_get_type);
+
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_void;
 

@@ -735,6 +735,15 @@ std::pair<Status, optional<uint64_t>> get_buffer_size_from_config(
 
 }  // namespace tiledb::common::detail
 
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_filestore_buffer_export);
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_filestore_buffer_import);
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_filestore_schema_create);
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_filestore_size);
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_filestore_uri_export);
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_filestore_uri_import);
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_mime_type_from_str);
+TILEDB_CAPI_NAME_TRAIT(detail::tiledb_mime_type_to_str);
+
 using tiledb::api::api_entry_plain;
 template <auto f>
 constexpr auto api_entry = tiledb::api::api_entry_with_context<f>;

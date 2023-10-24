@@ -5213,6 +5213,299 @@ int32_t tiledb_consolidation_plan_free_json_str(char** out) {
 
 }  // namespace tiledb::api
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::impl::tiledb_query_submit_async_func);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_alloc);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_close);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_consolidate);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_consolidate_fragments);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_consolidate_with_key);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_create);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_create_with_key);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_delete);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_delete_array);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_delete_fragments);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_delete_fragments_list);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_delete_fragments_v2);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_delete_metadata);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_encryption_type);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_evolve);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_get_config);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_get_enumeration);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_get_metadata);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_get_metadata_from_index);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_get_metadata_num);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_get_non_empty_domain);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_array_get_non_empty_domain_from_index);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_array_get_non_empty_domain_from_name);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_array_get_non_empty_domain_var_from_index);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_array_get_non_empty_domain_var_from_name);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_array_get_non_empty_domain_var_size_from_index);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_array_get_non_empty_domain_var_size_from_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_get_open_timestamp_end);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_get_open_timestamp_start);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_get_query_type);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_get_schema);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_get_uri);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_has_metadata_key);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_is_open);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_load_all_enumerations);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_open);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_put_metadata);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_reopen);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_add_attribute);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_add_enumeration);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_alloc);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_check);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_dump);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_array_schema_evolution_add_attribute);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_array_schema_evolution_add_enumeration);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_evolution_alloc);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_array_schema_evolution_drop_attribute);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_array_schema_evolution_drop_enumeration);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_evolution_free);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_array_schema_evolution_set_timestamp_range);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_get_allows_dups);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_get_array_type);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_array_schema_get_attribute_from_index);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_array_schema_get_attribute_from_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_get_attribute_num);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_get_capacity);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_get_cell_order);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_get_coords_filter_list);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_get_domain);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_array_schema_get_offsets_filter_list);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_get_tile_order);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_array_schema_get_validity_filter_list);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_get_version);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_has_attribute);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_load);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_load_with_key);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_set_allows_dups);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_set_capacity);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_set_cell_order);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_set_coords_filter_list);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_set_domain);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_array_schema_set_offsets_filter_list);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_set_tile_order);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_array_schema_set_validity_filter_list);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_schema_timestamp_range);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_set_config);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_set_open_timestamp_end);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_set_open_timestamp_start);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_type_from_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_type_to_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_upgrade_version);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_array_vacuum);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_as_built_dump);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_consolidation_plan_create_with_mbr);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_consolidation_plan_dump_json_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_consolidation_plan_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_consolidation_plan_free_json_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_consolidation_plan_get_fragment_uri);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_consolidation_plan_get_num_fragments);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_consolidation_plan_get_num_nodes);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_deserialize_array);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_deserialize_array_metadata);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_deserialize_array_non_empty_domain_all_dimensions);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_deserialize_array_nonempty_domain);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_deserialize_array_open);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_deserialize_array_schema);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_deserialize_array_schema_evolution);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_deserialize_config);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_deserialize_fragment_info);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_deserialize_fragment_info_request);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_deserialize_query);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_deserialize_query_and_array);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_deserialize_query_est_result_sizes);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_encryption_type_from_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_encryption_type_to_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_alloc);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_dump);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_get_array_schema);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_get_array_schema_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_get_cell_num);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_get_config);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_get_dense);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_get_fragment_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_get_fragment_name_v2);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_get_fragment_num);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_get_fragment_size);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_get_fragment_uri);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_get_mbr_from_index);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_get_mbr_from_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_get_mbr_num);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_fragment_info_get_mbr_var_from_index);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_get_mbr_var_from_name);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_fragment_info_get_mbr_var_size_from_index);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_fragment_info_get_mbr_var_size_from_name);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_fragment_info_get_non_empty_domain_from_index);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_fragment_info_get_non_empty_domain_from_name);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_fragment_info_get_non_empty_domain_var_from_index);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_fragment_info_get_non_empty_domain_var_from_name);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_fragment_info_get_non_empty_domain_var_size_from_index);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_fragment_info_get_non_empty_domain_var_size_from_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_get_sparse);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_get_timestamp_range);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_get_to_vacuum_num);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_get_to_vacuum_uri);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_get_total_cell_num);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_fragment_info_get_unconsolidated_metadata_num);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_get_version);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_fragment_info_has_consolidated_metadata);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_load);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_fragment_info_set_config);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_handle_array_delete_fragments_list_request);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_handle_array_delete_fragments_timestamps_request);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_handle_load_array_schema_request);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_handle_load_enumerations_request);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_heap_profiler_enable);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_layout_from_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_layout_to_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_log_warn);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_object_ls);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_object_move);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_object_remove);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_object_type);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_object_walk);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_add_point_ranges);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_add_range);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_add_range_by_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_add_range_var);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_add_range_var_by_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_add_update_value);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_alloc);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_condition_alloc);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_query_condition_alloc_set_membership);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_condition_combine);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_condition_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_condition_init);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_condition_negate);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_condition_set_use_enumeration);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_finalize);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_array);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_config);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_data_buffer);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_est_result_size);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_est_result_size_nullable);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_est_result_size_var);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_query_get_est_result_size_var_nullable);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_fragment_num);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_fragment_timestamp_range);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_fragment_uri);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_layout);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_offsets_buffer);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_range);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_range_from_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_range_num);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_range_num_from_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_range_var);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_range_var_from_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_range_var_size);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_range_var_size_from_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_relevant_fragment_num);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_stats);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_status);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_status_details);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_subarray_t);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_type);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_validity_buffer);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_has_results);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_set_condition);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_set_config);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_set_data_buffer);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_set_layout);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_set_offsets_buffer);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_set_subarray);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_set_subarray_t);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_set_validity_buffer);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_status_from_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_status_to_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_submit);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_submit_and_finalize);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_submit_async);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_serialization_type_from_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_serialization_type_to_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_serialize_array);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_serialize_array_max_buffer_sizes);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_serialize_array_metadata);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_serialize_array_non_empty_domain_all_dimensions);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_serialize_array_nonempty_domain);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_serialize_array_open);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_serialize_array_schema);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_serialize_array_schema_evolution);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_serialize_config);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_serialize_fragment_info);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_serialize_fragment_info_request);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_serialize_query);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_serialize_query_est_result_sizes);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_stats_disable);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_stats_dump);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_stats_dump_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_stats_enable);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_stats_free_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_stats_raw_dump);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_stats_raw_dump_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_stats_reset);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_subarray_add_point_ranges);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_subarray_add_range);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_subarray_add_range_by_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_subarray_add_range_var);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_subarray_add_range_var_by_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_subarray_alloc);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_subarray_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_subarray_get_range);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_subarray_get_range_from_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_subarray_get_range_num);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_subarray_get_range_num_from_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_subarray_get_range_var);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_subarray_get_range_var_from_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_subarray_get_range_var_size);
+TILEDB_CAPI_NAME_TRAIT(
+    tiledb::api::tiledb_subarray_get_range_var_size_from_name);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_subarray_set_coalesce_ranges);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_subarray_set_config);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_subarray_set_subarray);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_uri_to_path);
+
 /* ****************************** */
 /*  C API Interface Functions     */
 /* ****************************** */

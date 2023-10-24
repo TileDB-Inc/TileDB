@@ -313,6 +313,37 @@ capi_return_t tiledb_vfs_touch(tiledb_vfs_t* vfs, const char* uri) {
 
 }  // namespace tiledb::api
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_alloc);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_close);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_copy_dir);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_copy_file);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_create_bucket);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_create_dir);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_dir_size);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_empty_bucket);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_fh_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_fh_is_closed);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_file_size);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_get_config);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_is_bucket);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_is_dir);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_is_empty_bucket);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_is_file);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_ls);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_mode_from_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_mode_to_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_move_dir);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_move_file);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_open);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_read);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_remove_bucket);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_remove_dir);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_remove_file);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_sync);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_touch);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_vfs_write);
+
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_plain;
 

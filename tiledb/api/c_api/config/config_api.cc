@@ -172,6 +172,21 @@ capi_return_t tiledb_config_iter_done(
 
 }  // namespace tiledb::api
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_alloc);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_compare);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_get);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_iter_alloc);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_iter_done);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_iter_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_iter_here);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_iter_next);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_iter_reset);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_load_from_file);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_save_to_file);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_set);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_config_unset);
+
 using tiledb::api::api_entry_error;
 
 capi_return_t tiledb_config_alloc(

@@ -85,6 +85,11 @@ capi_return_t tiledb_walk_order_from_str(
 
 }  // namespace tiledb::api
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_object_type_from_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_object_type_to_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_walk_order_from_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_walk_order_to_str);
+
 using tiledb::api::api_entry_plain;
 using tiledb::api::api_entry_with_context;
 

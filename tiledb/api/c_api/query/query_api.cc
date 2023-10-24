@@ -55,6 +55,9 @@ int32_t tiledb_query_type_from_str(
 
 }  // namespace tiledb::api
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_type_from_str);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_type_to_str);
+
 using tiledb::api::api_entry_plain;
 
 int32_t tiledb_query_type_to_str(

@@ -249,6 +249,16 @@ capi_return_t tiledb_query_channel_free(
 
 }  // namespace tiledb::api
 
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_aggregate_count_get);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_aggregate_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_channel_apply_aggregate);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_channel_operator_max_get);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_channel_operator_min_get);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_channel_operator_sum_get);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_create_unary_aggregate);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_channel_free);
+TILEDB_CAPI_NAME_TRAIT(tiledb::api::tiledb_query_get_default_channel);
+
 using tiledb::api::api_entry_with_context;
 
 capi_return_t tiledb_channel_operator_sum_get(
