@@ -59,6 +59,7 @@
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/subarray/relevant_fragment_generator.h"
 #include "tiledb/sm/subarray/subarray.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/type/apply_with_type.h"
 #include "tiledb/type/range/range.h"
 

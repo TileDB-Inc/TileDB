@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 
 using namespace tiledb::common;
 
