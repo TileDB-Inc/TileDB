@@ -1919,7 +1919,7 @@ TEST_CASE_METHOD(
       array->array_uri(), ase.get(), array->get_encryption_key());
   throw_if_not_ok(st);
 
-  // Check that we can no rewrite the query condition.
+  // Check that we can not rewrite the query condition.
   array = get_array(QueryType::READ);
   array->load_all_enumerations();
   schema = array->array_schema_latest_ptr();

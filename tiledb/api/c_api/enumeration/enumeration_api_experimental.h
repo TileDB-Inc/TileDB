@@ -106,7 +106,7 @@ TILEDB_EXPORT capi_return_t tiledb_enumeration_alloc(
  * tiledb_enumeration_t* new_enumeration;
  * void* data = get_data();
  * uint64_t data_size = get_data_size();
- * tiledb_enumeration_alloc(
+ * tiledb_enumeration_extend(
  *     ctx,
  *     old_enumeration
  *     data,

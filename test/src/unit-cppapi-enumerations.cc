@@ -156,7 +156,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPEnumerationFx,
-    "CPP: Enumeration API - Fixed Size Empty Vector",
+    "CPP: Enumeration API - Fixed Size Empty Vector extension",
     "[enumeration][extend][error]") {
   std::vector<int> init_values = {1, 2, 3, 4, 5};
   std::vector<int> add_values = {};
@@ -169,7 +169,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPEnumerationFx,
-    "CPP: Enumeration API - Var Size Empty Vector",
+    "CPP: Enumeration API - Var Size Empty Vector extension",
     "[enumeration][extend][error]") {
   std::vector<std::string> init_values = {"fred", "wilma"};
   std::vector<std::string> add_values = {};
@@ -204,7 +204,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPEnumerationFx,
-    "CPP: Enumeration API - Fixed Size Wrong Type",
+    "CPP: Enumeration API - Fixed Size Wrong Type extension",
     "[enumeration][extend][error]") {
   std::vector<int> init_values = {1, 2, 3, 4, 5};
   std::vector<std::string> add_values = {"barney", "betty"};
@@ -217,7 +217,7 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPEnumerationFx,
-    "CPP: Enumeration API - Var Size Wrong Type",
+    "CPP: Enumeration API - Var Size Wrong Type extension",
     "[enumeration][extend][error]") {
   std::vector<std::string> init_values = {"fred", "wilma"};
   std::vector<int> add_values = {6, 7, 8, 9, 10};
