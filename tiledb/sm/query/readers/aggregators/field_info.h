@@ -67,7 +67,7 @@ class FieldInfo {
       const bool var_sized,
       const bool is_nullable,
       const unsigned cell_val_num,
-      const Datatype type = Datatype::UINT8)
+      const Datatype type)
       : name_(name)
       , var_sized_(var_sized)
       , is_nullable_(is_nullable)

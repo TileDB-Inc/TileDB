@@ -75,6 +75,16 @@ struct EnumerationFx {
       Datatype type = static_cast<Datatype>(255),
       std::string enmr_name = default_enmr_name);
 
+  shared_ptr<const Enumeration> create_empty_enumeration(
+      Datatype type,
+      uint32_t cell_val_num,
+      bool ordered = false,
+      std::string enmr_name = default_enmr_name);
+
+  template <typename T>
+  shared_ptr<const Enumeration> extend_enumeration(
+      shared_ptr<const Enumeration> enmr, const std::vector<T>& values);
+
   template <typename T>
   void check_enumeration(
       shared_ptr<const Enumeration> enmr,
@@ -144,6 +154,27 @@ QueryCondition create_qc(
 /* ********************************* */
 
 TEST_CASE_METHOD(
+    EnumerationFx, "Create Empty Enumeration", "[enumeration][empty]") {
+  Enumeration::create(
+      default_enmr_name, Datatype::INT32, 1, false, nullptr, 0, nullptr, 0);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Create Empty Var Sized Enumeration",
+    "[enumeration][empty]") {
+  Enumeration::create(
+      default_enmr_name,
+      Datatype::STRING_ASCII,
+      constants::var_num,
+      false,
+      nullptr,
+      0,
+      nullptr,
+      0);
+}
+
+TEST_CASE_METHOD(
     EnumerationFx,
     "Basic Boolean Enumeration Creation",
     "[enumeration][basic][boolean]") {
@@ -182,6 +213,60 @@ TEST_CASE_METHOD(
     "Basic Variable Size With Empty Value Enumeration Creation",
     "[enumeration][basic][fixed]") {
   std::vector<std::string> values = {"foo", "bar", "", "bingo", "bango"};
+  auto enmr = create_enumeration(values);
+  check_enumeration(
+      enmr,
+      default_enmr_name,
+      values,
+      Datatype::STRING_ASCII,
+      constants::var_num,
+      false);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Basic Variable Size With Single Empty Value Enumeration Creation",
+    "[enumeration][basic][fixed]") {
+  std::vector<std::string> values = {""};
+  auto enmr = create_enumeration(values);
+  check_enumeration(
+      enmr,
+      default_enmr_name,
+      values,
+      Datatype::STRING_ASCII,
+      constants::var_num,
+      false);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Basic Variable Size With Single Empty Value Using nullptr",
+    "[enumeration][error][invalid-offsets-args]") {
+  uint64_t offsets = 0;
+  auto enmr = Enumeration::create(
+      default_enmr_name,
+      Datatype::STRING_ASCII,
+      constants::var_num,
+      false,
+      nullptr,
+      0,
+      &offsets,
+      sizeof(uint64_t));
+  std::vector<std::string> values = {""};
+  check_enumeration(
+      enmr,
+      default_enmr_name,
+      values,
+      Datatype::STRING_ASCII,
+      constants::var_num,
+      false);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Basic Variable Size With Last Value Empty Enumeration Creation",
+    "[enumeration][basic][fixed]") {
+  std::vector<std::string> values = {"last", "value", "is", ""};
   auto enmr = create_enumeration(values);
   check_enumeration(
       enmr,
@@ -237,6 +322,143 @@ TEST_CASE_METHOD(
       nullptr,
       0);
   check_enumeration(enmr, default_enmr_name, values, Datatype::INT32, 2, false);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Creation Error - Non-zero size for data nullptr",
+    "[enumeration][error][invalid-data-args]") {
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Invalid data buffer must not be nullptr for fixed sized data.");
+  REQUIRE_THROWS_WITH(
+      Enumeration::create(
+          default_enmr_name,
+          Datatype::INT32,
+          1,
+          false,
+          nullptr,
+          10,
+          nullptr,
+          0),
+      matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Creation Error - Zero size for data non-nullptr",
+    "[enumeration][error][invalid-data-args]") {
+  int val = 5;
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Invalid data size; must be non-zero for fixed size data.");
+  REQUIRE_THROWS_WITH(
+      Enumeration::create(
+          default_enmr_name, Datatype::INT32, 1, false, &val, 0, nullptr, 0),
+      matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Creation Error - Non-zero size for offsets nullptr",
+    "[enumeration][error][invalid-offsets-args]") {
+  const char* val = "foo";
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Var sized enumeration values require a non-null offsets pointer.");
+  REQUIRE_THROWS_WITH(
+      Enumeration::create(
+          default_enmr_name,
+          Datatype::STRING_ASCII,
+          constants::var_num,
+          false,
+          val,
+          strlen(val),
+          nullptr,
+          8),
+      matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Creation Error - Zero size for offsets non-nullptr",
+    "[enumeration][error][invalid-offsets-args]") {
+  const char* val = "foo";
+  uint64_t offset = 0;
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Var sized enumeration values require a non-zero offsets size.");
+  REQUIRE_THROWS_WITH(
+      Enumeration::create(
+          default_enmr_name,
+          Datatype::STRING_ASCII,
+          constants::var_num,
+          false,
+          val,
+          strlen(val),
+          &offset,
+          0),
+      matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Creation Error - Single Empty String Invalid Data Size",
+    "[enumeration][error][invalid-offsets-args]") {
+  uint64_t offsets = 0;
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Invalid data buffer; must not be nullptr when data_size "
+      "is non-zero.");
+  REQUIRE_THROWS_WITH(
+      Enumeration::create(
+          default_enmr_name,
+          Datatype::STRING_ASCII,
+          constants::var_num,
+          false,
+          nullptr,
+          5,
+          &offsets,
+          sizeof(uint64_t)),
+      matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Creation Error - Missing Var Data",
+    "[enumeration][error][invalid-data-args]") {
+  uint64_t offsets = 5;
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Invalid data input, nullptr provided when the provided offsets "
+      "require data.");
+  REQUIRE_THROWS_WITH(
+      Enumeration::create(
+          default_enmr_name,
+          Datatype::STRING_ASCII,
+          constants::var_num,
+          false,
+          nullptr,
+          5,
+          &offsets,
+          sizeof(uint64_t)),
+      matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Creation Error - Invalid Data Size",
+    "[enumeration][error][invalid-data-args]") {
+  uint64_t offsets = 5;
+  const char* data = "meow";
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Invalid data input, data_size is smaller than the last provided "
+      "offset.");
+  REQUIRE_THROWS_WITH(
+      Enumeration::create(
+          default_enmr_name,
+          Datatype::STRING_ASCII,
+          constants::var_num,
+          false,
+          data,
+          2,
+          &offsets,
+          sizeof(uint64_t)),
+      matcher);
 }
 
 TEST_CASE_METHOD(
@@ -479,6 +701,201 @@ TEST_CASE_METHOD(
     "[enumeration][error][repeated-values]") {
   std::vector<std::string> values = {"foo", "", "bang", ""};
   REQUIRE_THROWS(create_enumeration(values));
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Extension Fixed Size",
+    "[enumeration][extension][fixed]") {
+  std::vector<int> init_values = {1, 2, 3, 4, 5};
+  std::vector<int> extend_values = {6, 7, 8, 9, 10};
+  std::vector<int> final_values = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  auto enmr1 = create_enumeration(init_values);
+  auto enmr2 = extend_enumeration(enmr1, extend_values);
+  check_enumeration(
+      enmr2, default_enmr_name, final_values, Datatype::INT32, 1, false);
+  REQUIRE(!enmr1->is_extension_of(enmr2));
+  REQUIRE(enmr2->is_extension_of(enmr1));
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Extension Empty Fixed Size",
+    "[enumeration][extension][fixed]") {
+  std::vector<int> values = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  auto enmr1 = create_empty_enumeration(Datatype::INT32, 1);
+  auto enmr2 = extend_enumeration(enmr1, values);
+  check_enumeration(
+      enmr2, default_enmr_name, values, Datatype::INT32, 1, false);
+  REQUIRE(!enmr1->is_extension_of(enmr2));
+  REQUIRE(enmr2->is_extension_of(enmr1));
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Extension Fixed Size Multi-Cell Value",
+    "[enumeration][extension][fixed]") {
+  std::vector<int> init_values = {1, 2, 3, 4};
+  std::vector<int> extend_values = {5, 6, 7, 8, 9, 10};
+  std::vector<int> final_values = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  auto enmr1 = Enumeration::create(
+      default_enmr_name,
+      Datatype::INT32,
+      2,
+      false,
+      init_values.data(),
+      init_values.size() * sizeof(int),
+      nullptr,
+      0);
+  auto enmr2 = extend_enumeration(enmr1, extend_values);
+  check_enumeration(
+      enmr2, default_enmr_name, final_values, Datatype::INT32, 2, false);
+  REQUIRE(!enmr1->is_extension_of(enmr2));
+  REQUIRE(enmr2->is_extension_of(enmr1));
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Extension Var Size",
+    "[enumeration][extension][var-sized]") {
+  std::vector<std::string> init_values = {"fred", "wilma"};
+  std::vector<std::string> extend_values = {"barney", "betty"};
+  std::vector<std::string> final_values = {"fred", "wilma", "barney", "betty"};
+  auto enmr1 = create_enumeration(init_values);
+  auto enmr2 = extend_enumeration(enmr1, extend_values);
+  check_enumeration(
+      enmr2,
+      default_enmr_name,
+      final_values,
+      Datatype::STRING_ASCII,
+      constants::var_num,
+      false);
+  REQUIRE(!enmr1->is_extension_of(enmr2));
+  REQUIRE(enmr2->is_extension_of(enmr1));
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Extension Empty Var Size",
+    "[enumeration][extension][var-sized]") {
+  std::vector<std::string> values = {"fred", "wilma", "barney", "betty"};
+  auto enmr1 =
+      create_empty_enumeration(Datatype::STRING_ASCII, constants::var_num);
+  auto enmr2 = extend_enumeration(enmr1, values);
+  check_enumeration(
+      enmr2,
+      default_enmr_name,
+      values,
+      Datatype::STRING_ASCII,
+      constants::var_num,
+      false);
+  REQUIRE(!enmr1->is_extension_of(enmr2));
+  REQUIRE(enmr2->is_extension_of(enmr1));
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Extension Invalid Data",
+    "[enumeration][extension][error]") {
+  std::vector<std::string> init_values = {"fred", "wilma"};
+  auto enmr = create_enumeration(init_values);
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Unable to extend an enumeration without a data buffer.");
+  REQUIRE_THROWS_WITH(enmr->extend(nullptr, 10, nullptr, 0), matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Extension Invalid Data Size",
+    "[enumeration][extension][error]") {
+  std::vector<std::string> init_values = {"fred", "wilma"};
+  const char* data = "barneybetty";
+  auto enmr = create_enumeration(init_values);
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Unable to extend an enumeration with a zero sized data buffer.");
+  REQUIRE_THROWS_WITH(enmr->extend(data, 0, nullptr, 0), matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Extension Invalid Offsets",
+    "[enumeration][extension][error]") {
+  std::vector<std::string> init_values = {"fred", "wilma"};
+  const char* data = "barneybetty";
+  auto enmr = create_enumeration(init_values);
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "The offsets buffer is required for this enumeration extension.");
+  REQUIRE_THROWS_WITH(enmr->extend(data, 11, nullptr, 0), matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Extension Invalid Offsets Size",
+    "[enumeration][extension][error]") {
+  std::vector<std::string> init_values = {"fred", "wilma"};
+  const char* data = "barneybetty";
+  uint64_t offsets[2] = {0, 6};
+  auto enmr = create_enumeration(init_values);
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "The offsets buffer for "
+      "this enumeration extension must have a non-zero size.");
+  REQUIRE_THROWS_WITH(enmr->extend(data, 11, offsets, 0), matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Extension Invalid Offsets Size not Multiple of 8",
+    "[enumeration][extension][error]") {
+  std::vector<std::string> init_values = {"fred", "wilma"};
+  const char* data = "barneybetty";
+  uint64_t offsets[2] = {0, 6};
+  auto enmr = create_enumeration(init_values);
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Invalid offsets size is not a multiple of sizeof(uint64_t)");
+  REQUIRE_THROWS_WITH(enmr->extend(data, 11, offsets, 17), matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Extension Invalid Offsets for Fixed Size Data",
+    "[enumeration][extension][error]") {
+  std::vector<int> init_values = {0, 1, 2, 3};
+  const char* data = "barneybetty";
+  uint64_t offsets[2] = {0, 6};
+  auto enmr = create_enumeration(init_values);
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Offsets buffer provided when extending a fixed sized enumeration.");
+  REQUIRE_THROWS_WITH(enmr->extend(data, 11, offsets, 16), matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Extension Invalid Offsets Size for Fixed Size Data",
+    "[enumeration][extension][error]") {
+  std::vector<int> init_values = {0, 1, 2, 3};
+  std::vector<int> add_values = {4, 5, 6, 7};
+  auto enmr = create_enumeration(init_values);
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Offsets size is non-zero when extending a fixed sized enumeration.");
+  REQUIRE_THROWS_WITH(
+      enmr->extend(
+          add_values.data(), add_values.size() * sizeof(int), nullptr, 16),
+      matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Enumeration Extension Invalid Duplicate Value",
+    "[enumeration][extension][error]") {
+  std::vector<int> init_values = {0, 1, 2, 3};
+  std::vector<int> add_values = {2, 3, 4, 5};
+  auto enmr = create_enumeration(init_values);
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Invalid duplicated value in enumeration");
+  REQUIRE_THROWS_WITH(
+      enmr->extend(
+          add_values.data(), add_values.size() * sizeof(int), nullptr, 0),
+      matcher);
 }
 
 TEST_CASE_METHOD(
@@ -1047,6 +1464,90 @@ TEST_CASE_METHOD(
   REQUIRE_THROWS(schema->drop_enumeration("not_an_enumeration"));
 }
 
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "ArraySchema - Extend Enumeration - Enumeration is nullptr",
+    "[enumeration][array-schema][error]") {
+  create_array();
+  auto schema = get_array_schema_latest();
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Error adding enumeration. Enumeration must not be nullptr.");
+  REQUIRE_THROWS_WITH(schema->extend_enumeration(nullptr), matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "ArraySchema - Extend Enumeration - Enumeration Does Not Exist",
+    "[enumeration][array-schema][error]") {
+  create_array();
+  auto schema = get_array_schema_latest();
+  auto enmr = create_empty_enumeration(Datatype::INT32, 1, false, "foo");
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Enumeration with name 'foo' does not exist in this ArraySchema.");
+  REQUIRE_THROWS_WITH(schema->extend_enumeration(enmr), matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "ArraySchema - Extend Enumeration - Enumeration Not Loaded",
+    "[enumeration][array-schema][error]") {
+  create_array();
+  auto schema = get_array_schema_latest();
+  auto enmr = create_empty_enumeration(Datatype::INT32, 1, false, "test_enmr");
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Enumeration with name 'test_enmr' is not loaded.");
+  REQUIRE_THROWS_WITH(schema->extend_enumeration(enmr), matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "ArraySchema - Extend Enumeration - Enumeration Not An Extension",
+    "[enumeration][array-schema][error]") {
+  create_array();
+  auto array = get_array(QueryType::READ);
+  array->load_all_enumerations();
+
+  auto schema = make_shared<ArraySchema>(HERE(), array->array_schema_latest());
+  auto enmr = create_empty_enumeration(Datatype::INT32, 1, false, "test_enmr");
+
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Provided enumeration is not an extension of the current state of "
+      "'test_enmr'");
+  REQUIRE_THROWS_WITH(schema->extend_enumeration(enmr), matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "ArraySchema - Extend Enumeration - Duplicate Enumeration Path Name",
+    "[enumeration][array-schema][error]") {
+  create_array();
+  auto array = get_array(QueryType::READ);
+  array->load_all_enumerations();
+
+  auto schema = make_shared<ArraySchema>(HERE(), array->array_schema_latest());
+  auto enmr1 = schema->get_enumeration("test_enmr");
+
+  std::vector<std::string> extra_values = {"manatee", "narwhal", "oppossum"};
+  auto enmr2 = extend_enumeration(enmr1, extra_values);
+
+  // We have to force this condition by hand
+  auto enmr3 = tiledb::sm::Enumeration::create(
+      enmr2->name(),
+      // Notice we're reusing the existing path name from enmr1
+      enmr1->path_name(),
+      enmr2->type(),
+      enmr2->cell_val_num(),
+      enmr2->ordered(),
+      enmr2->data().data(),
+      enmr2->data().size(),
+      enmr2->offsets().data(),
+      enmr2->offsets().size());
+
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Enumeration path name for 'test_enmr' already exists in this schema.");
+  REQUIRE_THROWS_WITH(schema->extend_enumeration(enmr3), matcher);
+}
+
 /* ********************************* */
 /*   Testing ArraySchemaEvolution    */
 /* ********************************* */
@@ -1147,8 +1648,35 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     EnumerationFx,
+    "ArraySchemaEvolution - Enumeration to Extend",
+    "[enumeration][array-schema-evolution][enmr-to-extend]") {
+  create_array();
+  auto array = get_array(QueryType::READ);
+  array->load_all_enumerations();
+  auto orig_schema = array->array_schema_latest_ptr();
+
+  std::vector<std::string> values_to_add = {"firefly", "gerbil", "hamster"};
+  auto old_enmr = orig_schema->get_enumeration("test_enmr");
+  REQUIRE(old_enmr != nullptr);
+  auto new_enmr = extend_enumeration(old_enmr, values_to_add);
+
+  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  ase->extend_enumeration(new_enmr);
+  CHECK_NOTHROW(ase->evolve_schema(orig_schema));
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
     "ArraySchemaEvolution - Drop Enumeration",
-    "[enumeration][array-schema-evolution][enmr-to-add]") {
+    "[enumeration][array-schema-evolution][enmr-to-drop]") {
+  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  CHECK_NOTHROW(ase->drop_enumeration("test_enmr"));
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "ArraySchemaEvolution - Add Then Drop Enumeration",
+    "[enumeration][array-schema-evolution][enmr-to-drop]") {
   create_array();
   auto orig_schema = get_array_schema_latest();
   auto ase1 = make_shared<ArraySchemaEvolution>(HERE());
@@ -1163,14 +1691,6 @@ TEST_CASE_METHOD(
   ase2->drop_enumeration("enmr");
 
   CHECK_NOTHROW(ase2->evolve_schema(new_schema));
-}
-
-TEST_CASE_METHOD(
-    EnumerationFx,
-    "ArraySchemaEvolution - Drop Enumeration",
-    "[enumeration][array-schema-evolution][enmr-to-drop]") {
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
-  CHECK_NOTHROW(ase->drop_enumeration("test_enmr"));
 }
 
 TEST_CASE_METHOD(
@@ -1300,6 +1820,30 @@ TEST_CASE_METHOD(
   REQUIRE_THROWS(ase->evolve_schema(orig_schema));
 }
 
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "ArraySchemaEvolution - Extend Enumeration nullptr",
+    "[enumeration][array-schema-evolution][extend][error]") {
+  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Cannot extend enumeration; Input enumeration is null");
+  REQUIRE_THROWS_WITH(ase->extend_enumeration(nullptr), matcher);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "ArraySchemaEvolution - Extend Enumeration Already Extended",
+    "[enumeration][array-schema-evolution][extend][error]") {
+  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  std::vector<int> values = {1, 2, 3, 4, 5};
+  auto enmr = create_enumeration(values);
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Cannot extend enumeration; Input enumeration name has already "
+      "been extended in this evolution.");
+  REQUIRE_NOTHROW(ase->extend_enumeration(enmr));
+  REQUIRE_THROWS_WITH(ase->extend_enumeration(enmr), matcher);
+}
+
 /* ********************************* */
 /*     Testing QueryCondition        */
 /* ********************************* */
@@ -1342,6 +1886,45 @@ TEST_CASE_METHOD(
   auto data2 = tree2->get_data();
   REQUIRE(data2.size() != data1.size());
   REQUIRE(data2.rvalue_as<int>() == 2);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "QueryCondition - Rewrite Enumeration Value After Extension",
+    "[enumeration][query-condition][extend][rewrite-enumeration-value]") {
+  create_array();
+  auto array = get_array(QueryType::READ);
+  array->load_all_enumerations();
+
+  auto schema = array->array_schema_latest_ptr();
+
+  // Create two copies of the same query condition for assertions
+  auto qc1 = create_qc("attr1", std::string("gerbil"), QueryConditionOp::EQ);
+  auto qc2 = qc1;
+
+  // Check that we fail the rewrite before extension.
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "Enumeration value not found for field 'attr1'");
+  REQUIRE_THROWS_WITH(
+      qc1.rewrite_enumeration_conditions(*(schema.get())), matcher);
+
+  // Extend enumeration via schema evolution.
+  std::vector<std::string> values_to_add = {"firefly", "gerbil", "hamster"};
+  auto old_enmr = schema->get_enumeration("test_enmr");
+  auto new_enmr = extend_enumeration(old_enmr, values_to_add);
+
+  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  ase->extend_enumeration(new_enmr);
+  auto st = ctx_.storage_manager()->array_evolve_schema(
+      array->array_uri(), ase.get(), array->get_encryption_key());
+  throw_if_not_ok(st);
+
+  // Check that we can not rewrite the query condition.
+  array = get_array(QueryType::READ);
+  array->load_all_enumerations();
+  schema = array->array_schema_latest_ptr();
+
+  REQUIRE_NOTHROW(qc2.rewrite_enumeration_conditions(*(schema.get())));
 }
 
 TEST_CASE_METHOD(
@@ -1562,12 +2145,45 @@ TEST_CASE_METHOD(
 
   auto enmrs_to_add1 = ase1.enumeration_names_to_add();
   auto enmrs_to_add2 = ase2->enumeration_names_to_add();
+  REQUIRE(enmrs_to_add1.size() == 2);
   REQUIRE(vec_cmp(enmrs_to_add1, enmrs_to_add2));
 
   for (auto& name : enmrs_to_add1) {
     REQUIRE(ase1.enumeration_to_add(name) != nullptr);
     REQUIRE(ase2->enumeration_to_add(name) != nullptr);
     REQUIRE(ase1.enumeration_to_add(name) != ase2->enumeration_to_add(name));
+  }
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "Cap'N Proto - ArraySchemaEvolution Serialization With Extensions",
+    "[enumeration][capnp][basic][array-schema-evolution]") {
+  auto client_side = GENERATE(true, false);
+  auto ser_type = GENERATE(SerializationType::CAPNP, SerializationType::JSON);
+
+  std::vector<int> values1 = {1, 2, 3, 4, 5};
+  auto enmr1 = create_enumeration(values1, false, Datatype::INT32, "enmr1");
+
+  std::vector<double> values2 = {1.0, 2.0, 3.0, 4.0, 5.0};
+  auto enmr2 = create_enumeration(values2, true, Datatype::FLOAT64, "enmr2");
+
+  ArraySchemaEvolution ase1;
+  ase1.extend_enumeration(enmr1);
+  ase1.extend_enumeration(enmr2);
+
+  auto ase2 = ser_des_array_schema_evolution(&ase1, client_side, ser_type);
+
+  auto enmrs_to_extend1 = ase1.enumeration_names_to_extend();
+  auto enmrs_to_extend2 = ase2->enumeration_names_to_extend();
+  REQUIRE(enmrs_to_extend2.size() == 2);
+  REQUIRE(vec_cmp(enmrs_to_extend1, enmrs_to_extend2));
+
+  for (auto& name : enmrs_to_extend1) {
+    REQUIRE(ase1.enumeration_to_extend(name) != nullptr);
+    REQUIRE(ase2->enumeration_to_extend(name) != nullptr);
+    REQUIRE(
+        ase1.enumeration_to_extend(name) != ase2->enumeration_to_extend(name));
   }
 }
 
@@ -1817,6 +2433,51 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
         tp.type_,
         tp.cell_val_num_,
         ordered,
+        data.data(),
+        total_size,
+        offsets.data(),
+        offsets.size() * sizeof(uint64_t));
+  }
+}
+
+shared_ptr<const Enumeration> EnumerationFx::create_empty_enumeration(
+    Datatype type, uint32_t cell_val_num, bool ordered, std::string name) {
+  return Enumeration::create(
+      name, type, cell_val_num, ordered, nullptr, 0, nullptr, 0);
+}
+
+template <typename T>
+shared_ptr<const Enumeration> EnumerationFx::extend_enumeration(
+    shared_ptr<const Enumeration> enmr, const std::vector<T>& values) {
+  if constexpr (std::is_same_v<T, bool>) {
+    // We have to call out bool specifically because of the stdlib
+    // specialization for std::vector<bool>
+    std::vector<uint8_t> raw_values(values.size());
+    for (size_t i = 0; i < values.size(); i++) {
+      raw_values[i] = values[i] ? 1 : 0;
+    }
+    return enmr->extend(
+        raw_values.data(), raw_values.size() * sizeof(uint8_t), nullptr, 0);
+  } else if constexpr (std::is_pod_v<T>) {
+    return enmr->extend(values.data(), values.size() * sizeof(T), nullptr, 0);
+  } else {
+    uint64_t total_size = 0;
+    for (auto v : values) {
+      total_size += v.size();
+    }
+
+    std::vector<uint8_t> data(total_size, 0);
+    std::vector<uint64_t> offsets;
+    offsets.reserve(values.size());
+    uint64_t curr_offset = 0;
+
+    for (auto v : values) {
+      std::memcpy(data.data() + curr_offset, v.data(), v.size());
+      offsets.push_back(curr_offset);
+      curr_offset += v.size();
+    }
+
+    return enmr->extend(
         data.data(),
         total_size,
         offsets.data(),

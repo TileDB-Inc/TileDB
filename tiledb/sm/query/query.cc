@@ -417,6 +417,16 @@ std::vector<std::string> Query::dimension_label_buffer_names() const {
   return ret;
 }
 
+std::vector<std::string> Query::aggregate_buffer_names() const {
+  std::vector<std::string> buffer_names;
+  buffer_names.reserve(aggregate_buffers_.size());
+
+  for (const auto& buffer : aggregate_buffers_) {
+    buffer_names.push_back(buffer.first);
+  }
+  return buffer_names;
+}
+
 std::vector<std::string> Query::unwritten_buffer_names() const {
   std::vector<std::string> ret;
   for (auto& name : buffer_names()) {
@@ -443,6 +453,12 @@ QueryBuffer Query::buffer(const std::string& name) const {
     // Dimension label buffer
     auto buf = label_buffers_.find(name);
     if (buf != label_buffers_.end()) {
+      return buf->second;
+    }
+  } else if (is_aggregate(name)) {
+    // Aggregate buffer
+    auto buf = aggregate_buffers_.find(name);
+    if (buf != aggregate_buffers_.end()) {
       return buf->second;
     }
   } else {
@@ -1043,7 +1059,8 @@ Status Query::set_data_buffer(
 
   // If this is an aggregate buffer, set it and return.
   if (is_aggregate(name)) {
-    const bool is_var = default_channel_aggregates_[name]->var_sized();
+    const bool is_var =
+        default_channel_aggregates_[name]->aggregation_var_sized();
     if (!is_var) {
       // Fixed size data buffer
       aggregate_buffers_[name].set_data_buffer(buffer, buffer_size);
@@ -2190,11 +2207,6 @@ void Query::reset_coords_markers() {
 }
 
 void Query::copy_aggregates_data_to_user_buffer() {
-  if (array_->is_remote() && !default_channel_aggregates_.empty()) {
-    throw QueryStatusException(
-        "Cannot submit query; Query aggregates are not supported in REST yet");
-  }
-
   for (auto& default_channel_aggregate : default_channel_aggregates_) {
     default_channel_aggregate.second->copy_to_user_buffer(
         default_channel_aggregate.first, aggregate_buffers_);

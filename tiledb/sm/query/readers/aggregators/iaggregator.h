@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/query/readers/aggregators/input_field_validator.h"
 #include "tiledb/sm/query/readers/aggregators/output_buffer_validator.h"
 
 namespace tiledb::sm {
@@ -65,7 +66,10 @@ class IAggregator {
   virtual bool need_recompute_on_overflow() = 0;
 
   /** Returns if the aggregation is var sized or not. */
-  virtual bool var_sized() = 0;
+  virtual bool aggregation_var_sized() = 0;
+
+  /** Returns if the aggregation is nullable or not. */
+  virtual bool aggregation_nullable() = 0;
 
   /**
    * Validate the result buffer.
@@ -93,6 +97,9 @@ class IAggregator {
   virtual void copy_to_user_buffer(
       std::string output_field_name,
       std::unordered_map<std::string, QueryBuffer>& buffers) = 0;
+
+  /** Returns name of the aggregate, e.g. COUNT, MIN, SUM. */
+  virtual std::string aggregate_name() = 0;
 
   /** Returns the TileDB datatype of the output field for the aggregate. */
   virtual Datatype output_datatype() = 0;

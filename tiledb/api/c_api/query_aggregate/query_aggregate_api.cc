@@ -34,42 +34,28 @@
 #include "query_aggregate_api_external_experimental.h"
 #include "query_aggregate_api_internal.h"
 #include "tiledb/api/c_api/query/query_api_internal.h"
+#include "tiledb/api/c_api/query_field/query_field_api_external_experimental.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
-#include "tiledb/type/apply_with_type.h"
 
 const tiledb_channel_operator_handle_t* tiledb_channel_operator_sum =
     tiledb_channel_operator_handle_t::make_handle(
-        TILEDB_QUERY_CHANNEL_OPERATOR_SUM, "SUM");
+        tiledb::sm::constants::aggregate_sum_str);
 const tiledb_channel_operator_handle_t* tiledb_channel_operator_min =
     tiledb_channel_operator_handle_t::make_handle(
-        TILEDB_QUERY_CHANNEL_OPERATOR_MIN, "MIN");
+        tiledb::sm::constants::aggregate_min_str);
 const tiledb_channel_operator_handle_t* tiledb_channel_operator_max =
     tiledb_channel_operator_handle_t::make_handle(
-        TILEDB_QUERY_CHANNEL_OPERATOR_MAX, "MAX");
+        tiledb::sm::constants::aggregate_max_str);
+const tiledb_channel_operator_handle_t* tiledb_channel_operator_mean =
+    tiledb_channel_operator_handle_t::make_handle(
+        tiledb::sm::constants::aggregate_mean_str);
+const tiledb_channel_operator_handle_t* tiledb_channel_operator_null_count =
+    tiledb_channel_operator_handle_t::make_handle(
+        tiledb::sm::constants::aggregate_null_count_str);
 
 const tiledb_channel_operation_handle_t* tiledb_aggregate_count =
     tiledb_channel_operation_handle_t::make_handle(
-        std::make_shared<CountOperation>());
-
-shared_ptr<Operation> tiledb_channel_operator_handle_t::make_operation(
-    const tiledb::sm::FieldInfo& fi) const {
-  switch (this->value()) {
-    case TILEDB_QUERY_CHANNEL_OPERATOR_SUM: {
-      return std::make_shared<SumOperation>(fi, this);
-    }
-    case TILEDB_QUERY_CHANNEL_OPERATOR_MIN: {
-      return std::make_shared<MinOperation>(fi, this);
-    }
-    case TILEDB_QUERY_CHANNEL_OPERATOR_MAX: {
-      return std::make_shared<MaxOperation>(fi, this);
-    }
-    default:
-      throw tiledb::api::CAPIStatusException(
-          "operator has unsupported value: " +
-          std::to_string(static_cast<uint8_t>(this->value())));
-      break;
-  }
-}
+        std::make_shared<tiledb::sm::CountOperation>());
 
 namespace tiledb::api {
 
@@ -146,6 +132,22 @@ capi_return_t tiledb_channel_operator_sum_get(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_channel_operator_mean_get(
+    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) {
+  ensure_aggregates_enabled_via_config(ctx);
+  ensure_output_pointer_is_valid(op);
+  *op = tiledb_channel_operator_mean;
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_channel_operator_null_count_get(
+    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) {
+  ensure_aggregates_enabled_via_config(ctx);
+  ensure_output_pointer_is_valid(op);
+  *op = tiledb_channel_operator_null_count;
+  return TILEDB_OK;
+}
+
 capi_return_t tiledb_channel_operator_min_get(
     tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) {
   ensure_aggregates_enabled_via_config(ctx);
@@ -194,11 +196,20 @@ capi_return_t tiledb_create_unary_aggregate(
     tiledb_channel_operation_t** operation) {
   ensure_aggregates_enabled_via_config(ctx);
   ensure_query_is_valid(query);
+  ensure_query_is_not_initialized(query);
   ensure_channel_operator_is_valid(op);
   ensure_output_pointer_is_valid(operation);
   ensure_input_field_is_valid(input_field_name, op->name());
   std::string field_name(input_field_name);
   auto& schema = query->query_->array_schema();
+
+  // Getting the field errors if there is no input_field_name associated with
+  // the query
+  tiledb_query_field_t* field;
+  if (auto rv = tiledb_query_get_field(ctx, query, input_field_name, &field)) {
+    return rv;
+  }
+  tiledb_query_field_free(ctx, &field);
 
   auto fi = tiledb::sm::FieldInfo(
       field_name,
@@ -220,6 +231,7 @@ capi_return_t tiledb_channel_apply_aggregate(
     const tiledb_channel_operation_t* operation) {
   ensure_aggregates_enabled_via_config(ctx);
   ensure_query_channel_is_valid(channel);
+  ensure_query_is_not_initialized(channel->query_);
   ensure_output_field_is_valid(output_field_name);
   ensure_operation_is_valid(operation);
   channel->add_aggregate(output_field_name, operation);
@@ -249,11 +261,23 @@ capi_return_t tiledb_query_channel_free(
 
 }  // namespace tiledb::api
 
+shared_ptr<tiledb::sm::Operation>
+tiledb_channel_operator_handle_t::make_operation(
+    const tiledb::sm::FieldInfo& fi) const {
+  return tiledb::sm::Operation::make_operation(this->name(), fi);
+}
+
 using tiledb::api::api_entry_with_context;
 
 capi_return_t tiledb_channel_operator_sum_get(
     tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) noexcept {
   return api_entry_with_context<tiledb::api::tiledb_channel_operator_sum_get>(
+      ctx, op);
+}
+
+capi_return_t tiledb_channel_operator_mean_get(
+    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) noexcept {
+  return api_entry_with_context<tiledb::api::tiledb_channel_operator_mean_get>(
       ctx, op);
 }
 
@@ -267,6 +291,12 @@ capi_return_t tiledb_channel_operator_max_get(
     tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) noexcept {
   return api_entry_with_context<tiledb::api::tiledb_channel_operator_max_get>(
       ctx, op);
+}
+
+capi_return_t tiledb_channel_operator_null_count_get(
+    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) noexcept {
+  return api_entry_with_context<
+      tiledb::api::tiledb_channel_operator_null_count_get>(ctx, op);
 }
 
 capi_return_t tiledb_aggregate_count_get(
@@ -312,74 +342,4 @@ capi_return_t tiledb_query_channel_free(
     tiledb_ctx_t* ctx, tiledb_query_channel_t** channel) noexcept {
   return tiledb::api::api_entry_with_context<
       tiledb::api::tiledb_query_channel_free>(ctx, channel);
-}
-
-MaxOperation::MaxOperation(
-    const tiledb::sm::FieldInfo& fi,
-    const tiledb_channel_operator_handle_t* op) {
-  auto g = [&](auto T) {
-    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
-        ensure_aggregate_numeric_field(op, fi);
-      }
-
-      // This is a min/max on strings, should be refactored out once we
-      // change (STRING_ASCII,CHAR) mapping in apply_with_type
-      if constexpr (std::is_same_v<char, decltype(T)>) {
-        aggregator_ =
-            std::make_shared<tiledb::sm::MaxAggregator<std::string>>(fi);
-      } else {
-        aggregator_ =
-            std::make_shared<tiledb::sm::MaxAggregator<decltype(T)>>(fi);
-      }
-    } else {
-      throw std::logic_error(
-          "MAX aggregates can only be requested on numeric and string "
-          "types");
-    }
-  };
-  apply_with_type(g, fi.type_);
-}
-
-MinOperation::MinOperation(
-    const tiledb::sm::FieldInfo& fi,
-    const tiledb_channel_operator_handle_t* op) {
-  auto g = [&](auto T) {
-    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
-        ensure_aggregate_numeric_field(op, fi);
-      }
-
-      // This is a min/max on strings, should be refactored out once we
-      // change (STRING_ASCII,CHAR) mapping in apply_with_type
-      if constexpr (std::is_same_v<char, decltype(T)>) {
-        aggregator_ =
-            std::make_shared<tiledb::sm::MinAggregator<std::string>>(fi);
-      } else {
-        aggregator_ =
-            std::make_shared<tiledb::sm::MinAggregator<decltype(T)>>(fi);
-      }
-    } else {
-      throw std::logic_error(
-          "MIN aggregates can only be requested on numeric and string "
-          "types");
-    }
-  };
-  apply_with_type(g, fi.type_);
-}
-
-SumOperation::SumOperation(
-    const tiledb::sm::FieldInfo& fi,
-    const tiledb_channel_operator_handle_t* op) {
-  auto g = [&](auto T) {
-    if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
-      ensure_aggregate_numeric_field(op, fi);
-      aggregator_ =
-          std::make_shared<tiledb::sm::SumAggregator<decltype(T)>>(fi);
-    } else {
-      throw std::logic_error(
-          "Sum aggregates can only be requested on numeric types");
-    }
-  };
-  apply_with_type(g, fi.type_);
 }

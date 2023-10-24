@@ -28,8 +28,6 @@
  * @section DESCRIPTION
  *
  * This file defines sum types in relation to basic types.
- *
- * TODO: This needs to be improved to remove macros (sc-33764).
  */
 
 #ifndef TILEDB_SUM_TYPE_H

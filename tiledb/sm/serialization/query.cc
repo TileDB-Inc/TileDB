@@ -41,6 +41,7 @@
 #include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/capnp_utils.h"
+#include "tiledb/sm/serialization/query_aggregates.h"
 #endif
 // clang-format on
 
@@ -1414,6 +1415,17 @@ Status query_to_capnp(
   buffer_names.insert(
       buffer_names.end(), dim_label_names.begin(), dim_label_names.end());
 
+  // Add aggregate buffers
+  const auto aggregate_names = query.aggregate_buffer_names();
+  buffer_names.insert(
+      buffer_names.end(), aggregate_names.begin(), aggregate_names.end());
+
+  // TODO: add API in query to get all buffers in one go
+  // Deserialization gets the list of buffers from wire then call
+  // set_data_buffer which knows on which structure to set. We should have a
+  // function here as well that gets all buffer names or even better, all
+  // buffers
+
   uint64_t total_fixed_len_bytes = 0;
   uint64_t total_var_len_bytes = 0;
   uint64_t total_validity_len_bytes = 0;
@@ -1582,6 +1594,16 @@ Status query_to_capnp(
     }
   }
 
+  // The server should throw if it's about to serialize an incomplete query
+  // that has aggregates on it, this behavior is currently not supported.
+  if (!client_side && query.status() == QueryStatus::INCOMPLETE &&
+      !query.has_aggregates()) {
+    throw Status_SerializationError(
+        "Aggregates are not currently supported in incomplete remote "
+        "queries");
+  }
+  query_channels_to_capnp(query, query_builder);
+
   return Status::Ok();
 }
 
@@ -1654,6 +1676,11 @@ Status query_from_capnp(
     }
   }
 
+  // It's important that deserialization of query channels/aggregates happens
+  // before deserializing buffers. set_data_buffer won't know whether a buffer
+  // is aggregate or not if the list of aggregates per channel is not populated.
+  query_channels_from_capnp(query_reader, query);
+
   const auto& schema = query->array_schema();
   // Deserialize and set attribute buffers.
   if (!query_reader.hasAttributeBufferHeaders()) {
@@ -1686,8 +1713,19 @@ Status query_from_capnp(
     uint8_t* existing_validity_buffer = nullptr;
     uint64_t existing_validity_buffer_size = 0;
 
-    auto var_size = schema.var_size(name);
-    auto nullable = schema.is_nullable(name);
+    // TODO: This is yet another instance where there needs to be a common
+    // mechanism for reporting the common properties of a field.
+    // Refactor to use query_field_t.
+    bool var_size = false;
+    bool nullable = false;
+    auto aggregate = query->get_aggregate(name);
+    if (aggregate.has_value()) {
+      var_size = aggregate.value()->aggregation_var_sized();
+      nullable = aggregate.value()->aggregation_nullable();
+    } else {
+      var_size = schema.var_size(name);
+      nullable = schema.is_nullable(name);
+    }
     const QueryBuffer& query_buffer = query->buffer(name);
     if (type == QueryType::READ) {
       // We use the query_buffer directly in order to get the original buffer

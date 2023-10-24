@@ -38,58 +38,7 @@
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/query/query.h"
-#include "tiledb/sm/query/readers/aggregators/count_aggregator.h"
-#include "tiledb/sm/query/readers/aggregators/min_max_aggregator.h"
-#include "tiledb/sm/query/readers/aggregators/sum_aggregator.h"
-
-enum QueryChannelOperator {
-  TILEDB_QUERY_CHANNEL_OPERATOR_COUNT = 0,
-  TILEDB_QUERY_CHANNEL_OPERATOR_SUM,
-  TILEDB_QUERY_CHANNEL_OPERATOR_MIN,
-  TILEDB_QUERY_CHANNEL_OPERATOR_MAX
-};
-
-class Operation {
- protected:
-  shared_ptr<tiledb::sm::IAggregator> aggregator_;
-
- public:
-  [[nodiscard]] shared_ptr<tiledb::sm::IAggregator> aggregator() const {
-    return aggregator_;
-  }
-};
-
-class MinOperation : public Operation {
- public:
-  MinOperation() = delete;
-  explicit MinOperation(
-      const tiledb::sm::FieldInfo& fi,
-      const tiledb_channel_operator_handle_t* op);
-};
-
-class MaxOperation : public Operation {
- public:
-  MaxOperation() = delete;
-  explicit MaxOperation(
-      const tiledb::sm::FieldInfo& fi,
-      const tiledb_channel_operator_handle_t* op);
-};
-
-class SumOperation : public Operation {
- public:
-  SumOperation() = delete;
-  explicit SumOperation(
-      const tiledb::sm::FieldInfo& fi,
-      const tiledb_channel_operator_handle_t* op);
-};
-
-class CountOperation : public Operation {
- public:
-  // For nullary operations, default constructor makes sense
-  CountOperation() {
-    aggregator_ = std::make_shared<tiledb::sm::CountAggregator>();
-  }
-};
+#include "tiledb/sm/query/readers/aggregators/operation.h"
 
 struct tiledb_channel_operation_handle_t
     : public tiledb::api::CAPIHandle<tiledb_channel_operation_handle_t> {
@@ -100,7 +49,7 @@ struct tiledb_channel_operation_handle_t
       "tiledb_channel_operation_t"};
 
  private:
-  std::shared_ptr<Operation> operation_;
+  std::shared_ptr<tiledb::sm::Operation> operation_;
 
  public:
   /**
@@ -113,7 +62,7 @@ struct tiledb_channel_operation_handle_t
    * @param operation An internal operation object
    */
   explicit tiledb_channel_operation_handle_t(
-      const shared_ptr<Operation>& operation)
+      const shared_ptr<tiledb::sm::Operation>& operation)
       : operation_{operation} {
   }
 
@@ -129,10 +78,9 @@ struct tiledb_query_channel_handle_t
    */
   static constexpr std::string_view object_type_name{"tiledb_query_channel_t"};
 
- private:
+ public:
   tiledb::sm::Query* query_;
 
- public:
   /**
    * Default constructor doesn't make sense
    */
@@ -154,6 +102,7 @@ struct tiledb_query_channel_handle_t
           "An aggregate operation for output field: " +
           std::string(output_field) + " already exists.");
     }
+
     // Add the aggregator the the default channel as this is the only channel
     // type we currently support
     query_->add_aggregator_to_default_channel(
@@ -170,7 +119,6 @@ struct tiledb_channel_operator_handle_t
       "tiledb_channel_operator_handle_t"};
 
  private:
-  QueryChannelOperator value_;
   std::string name_;
 
  public:
@@ -184,36 +132,16 @@ struct tiledb_channel_operator_handle_t
    * @param op An enum specifying the type of operator
    * @param name A string representation of the operator
    */
-  explicit tiledb_channel_operator_handle_t(
-      QueryChannelOperator op, const std::string& name)
-      : value_{op}
-      , name_{name} {
-  }
-
-  [[nodiscard]] inline QueryChannelOperator value() const {
-    return value_;
+  explicit tiledb_channel_operator_handle_t(const std::string& name)
+      : name_{name} {
   }
 
   [[nodiscard]] inline std::string name() const {
     return name_;
   }
 
-  [[nodiscard]] std::shared_ptr<Operation> make_operation(
+  [[nodiscard]] std::shared_ptr<tiledb::sm::Operation> make_operation(
       const tiledb::sm::FieldInfo& fi) const;
 };
-
-inline void ensure_aggregate_numeric_field(
-    const tiledb_channel_operator_t* op, const tiledb::sm::FieldInfo& fi) {
-  if (fi.var_sized_) {
-    throw tiledb::api::CAPIStatusException(
-        op->name() + " aggregates are not supported for var sized attributes.");
-  }
-  if (fi.cell_val_num_ != 1) {
-    throw tiledb::api::CAPIStatusException(
-        op->name() +
-        " aggregates are not supported for attributes with cell_val_num "
-        "greater than one.");
-  }
-}
 
 #endif  // TILEDB_CAPI_QUERY_AGGREGATE_INTERNAL_H

@@ -60,9 +60,14 @@ class CountAggregatorBase : public OutputBufferValidator, public IAggregator {
   /* ********************************* */
 
   /** Returns if the aggregation is var sized or not. */
-  bool var_sized() override {
+  bool aggregation_var_sized() override {
     return false;
   };
+
+  /** Returns if the aggregation is nullable or not. */
+  bool aggregation_nullable() override {
+    return false;
+  }
 
   /** Returns if the aggregate needs to be recomputed on overflow. */
   bool need_recompute_on_overflow() override {
@@ -132,9 +137,15 @@ class CountAggregator : public CountAggregatorBase<NonNull> {
   std::string field_name() override {
     return constants::count_of_rows;
   }
+
+  /** Returns name of the aggregate. */
+  std::string aggregate_name() override {
+    return constants::aggregate_count_str;
+  }
 };
 
-class NullCountAggregator : public CountAggregatorBase<Null> {
+class NullCountAggregator : public CountAggregatorBase<Null>,
+                            public InputFieldValidator {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -149,6 +160,11 @@ class NullCountAggregator : public CountAggregatorBase<Null> {
   /** Returns the field name for the aggregator. */
   std::string field_name() override {
     return field_info_.name_;
+  }
+
+  /** Returns name of the aggregate. */
+  std::string aggregate_name() override {
+    return constants::aggregate_null_count_str;
   }
 
  private:

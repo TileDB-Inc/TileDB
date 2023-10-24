@@ -104,6 +104,7 @@ class ComparatorAggregatorBase {
 
 template <typename T, typename Op>
 class ComparatorAggregator : public ComparatorAggregatorBase<T>,
+                             public InputFieldValidator,
                              public OutputBufferValidator,
                              public IAggregator {
  protected:
@@ -137,9 +138,14 @@ class ComparatorAggregator : public ComparatorAggregatorBase<T>,
   }
 
   /** Returns if the aggregation is var sized or not. */
-  bool var_sized() override {
+  bool aggregation_var_sized() override {
     return ComparatorAggregatorBase<T>::field_info_.var_sized_;
   };
+
+  /** Returns if the aggregation is nullable or not. */
+  bool aggregation_nullable() override {
+    return ComparatorAggregatorBase<T>::field_info_.is_nullable_;
+  }
 
   /** Returns if the aggregate needs to be recomputed on overflow. */
   bool need_recompute_on_overflow() override {
@@ -215,6 +221,15 @@ class MinAggregator : public ComparatorAggregator<
 
   DISABLE_COPY_AND_COPY_ASSIGN(MinAggregator);
   DISABLE_MOVE_AND_MOVE_ASSIGN(MinAggregator);
+
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
+  /** Returns name of the aggregate. */
+  std::string aggregate_name() override {
+    return constants::aggregate_min_str;
+  }
 };
 
 template <typename T>
@@ -240,6 +255,15 @@ class MaxAggregator : public ComparatorAggregator<
 
   DISABLE_COPY_AND_COPY_ASSIGN(MaxAggregator);
   DISABLE_MOVE_AND_MOVE_ASSIGN(MaxAggregator);
+
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
+  /** Returns name of the aggregate, e.g. COUNT, MIN, SUM. */
+  std::string aggregate_name() override {
+    return constants::aggregate_max_str;
+  }
 };
 
 }  // namespace tiledb::sm
