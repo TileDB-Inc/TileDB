@@ -1024,7 +1024,10 @@ FragmentInfo::load_array_schemas_and_fragment_metadata(
       "sm_load_array_schemas_and_fragment_metadata");
 
   // Load array schemas
-  auto&& [array_schema_latest, array_schemas_all] =
+  std::shared_ptr<ArraySchema> array_schema_latest;
+  std::unordered_map<std::string, std::shared_ptr<ArraySchema>>
+      array_schemas_all;
+  std::tie(array_schema_latest, array_schemas_all) =
       array_dir.load_array_schemas(enc_key);
 
   const auto filtered_fragment_uris = [&]() {
