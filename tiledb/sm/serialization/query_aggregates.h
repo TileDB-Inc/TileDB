@@ -34,8 +34,9 @@
 #define TILEDB_SERIALIZATION_QUERY_AGGREGATES_H
 
 #ifdef TILEDB_SERIALIZATION
-#include "tiledb/sm/serialization/capnp_utils.h"
 #include "tiledb/sm/query/query.h"
+#include "tiledb/sm/serialization/capnp_utils.h"
+
 #endif
 
 namespace tiledb::sm::serialization {

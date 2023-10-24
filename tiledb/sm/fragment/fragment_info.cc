@@ -980,9 +980,7 @@ Status FragmentInfo::load_and_replace(
 
 tuple<optional<Tile>, optional<std::vector<std::pair<std::string, uint64_t>>>>
 load_consolidated_fragment_meta(
-    ContextResources& resources,
-    const URI& uri,
-    const EncryptionKey& enc_key) {
+    ContextResources& resources, const URI& uri, const EncryptionKey& enc_key) {
   auto timer_se =
       resources.stats().start_timer("sm_read_load_consolidated_frag_meta");
 
