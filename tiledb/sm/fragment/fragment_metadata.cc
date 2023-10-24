@@ -784,6 +784,86 @@ Status FragmentMetadata::init(const NDRange& non_empty_domain) {
   return Status::Ok();
 }
 
+std::vector<shared_ptr<FragmentMetadata>>
+FragmentMetadata::load(
+    ContextResources& resources,
+    MemoryTracker* memory_tracker,
+    const shared_ptr<const ArraySchema> array_schema_latest,
+    const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+        array_schemas_all,
+    const EncryptionKey& encryption_key,
+    const std::vector<TimestampedURI>& fragments_to_load,
+    const std::unordered_map<std::string, std::pair<Tile*, uint64_t>>&
+        offsets) {
+  auto timer_se = resources.stats().start_timer("sm_load_fragment_metadata");
+
+  // Load the metadata for each fragment
+  auto fragment_num = fragments_to_load.size();
+  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata;
+  fragment_metadata.resize(fragment_num);
+  auto status = parallel_for(&resources.compute_tp(), 0, fragment_num, [&](size_t f) {
+    const auto& sf = fragments_to_load[f];
+
+    URI coords_uri =
+        sf.uri_.join_path(constants::coords + constants::file_suffix);
+
+    auto name = sf.uri_.remove_trailing_slash().last_path_part();
+    auto format_version = utils::parse::get_fragment_version(name);
+
+    // Note that the fragment metadata version is >= the array schema
+    // version. Therefore, the check below is defensive and will always
+    // ensure backwards compatibility.
+    shared_ptr<FragmentMetadata> metadata;
+    if (format_version <= 2) {
+      bool sparse;
+      RETURN_NOT_OK(resources.vfs().is_file(coords_uri, &sparse));
+      metadata = make_shared<FragmentMetadata>(
+          HERE(),
+          &resources,
+          memory_tracker,
+          array_schema_latest,
+          sf.uri_,
+          sf.timestamp_range_,
+          !sparse);
+    } else {
+      // Fragment format version > 2
+      metadata = make_shared<FragmentMetadata>(
+          HERE(),
+          &resources,
+          memory_tracker,
+          array_schema_latest,
+          sf.uri_,
+          sf.timestamp_range_);
+    }
+
+    // Potentially find the basic fragment metadata in the consolidated
+    // metadata buffer
+    Tile* fragment_metadata_tile = nullptr;
+    uint64_t offset = 0;
+
+    auto it = offsets.end();
+    if (metadata->format_version() >= 9) {
+      it = offsets.find(name);
+    } else {
+      it = offsets.find(sf.uri_.to_string());
+    }
+    if (it != offsets.end()) {
+      fragment_metadata_tile = it->second.first;
+      offset = it->second.second;
+    }
+
+    // Load fragment metadata
+    RETURN_NOT_OK(metadata->load(
+        encryption_key, fragment_metadata_tile, offset, array_schemas_all));
+
+    fragment_metadata[f] = metadata;
+    return Status::Ok();
+  });
+  throw_if_not_ok(status);
+
+  return fragment_metadata;
+}
+
 Status FragmentMetadata::load(
     const EncryptionKey& encryption_key,
     Tile* fragment_metadata_tile,

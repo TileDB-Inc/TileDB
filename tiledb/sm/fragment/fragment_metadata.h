@@ -45,6 +45,7 @@
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/rtree/rtree.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 
 using namespace tiledb::common;
 using namespace tiledb::type;
@@ -451,6 +452,45 @@ class FragmentMetadata {
       Tile* fragment_metadata_tile,
       uint64_t offset,
       std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas);
+
+  /**
+   * Loads the fragment metadata of an open array given a vector of
+   * fragment URIs `fragments_to_load`.
+   * The function stores the fragment metadata of each fragment
+   * in `fragments_to_load` into the returned vector, such
+   * that there is a one-to-one correspondence between the two vectors.
+   *
+   * If `meta_buf` has data, then some fragment metadata may be contained
+   * in there and does not need to be loaded from storage. In that
+   * case, `offsets` helps identifying each fragment metadata in the
+   * buffer.
+   *
+   * @param resources A context resources instance.
+   * @param memory_tracker The memory tracker of the array
+   *     for which the metadata is loaded. This will be passed to
+   *     the constructor of each of the metadata loaded.
+   * @param array_schema_latest The latest array schema.
+   * @param array_schemas_all All the array schemas in a map keyed by the
+   *     schema filename.
+   * @param encryption_key The encryption key to use.
+   * @param fragments_to_load The fragments whose metadata to load.
+   * @param offsets A map from a fragment name to an offset in `meta_buff`
+   *     where the basic fragment metadata can be found. If the offset
+   *     cannot be found, then the metadata of that fragment will be loaded from
+   *     storage instead.
+   * @return Vector of FragmentMetadata is the fragment metadata to be
+   * retrieved.
+   */
+  static std::vector<shared_ptr<FragmentMetadata>> load(
+      ContextResources& resources,
+      MemoryTracker* memory_tracker,
+      const shared_ptr<const ArraySchema> array_schema,
+      const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+          array_schemas_all,
+      const EncryptionKey& encryption_key,
+      const std::vector<TimestampedURI>& fragments_to_load,
+      const std::unordered_map<std::string, std::pair<Tile*, uint64_t>>&
+          offsets);
 
   /** Stores all the metadata to storage. */
   void store(const EncryptionKey& encryption_key);

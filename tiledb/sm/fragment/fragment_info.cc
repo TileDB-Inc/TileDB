@@ -42,6 +42,7 @@
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 namespace tiledb::sm {
@@ -882,14 +883,11 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
   }
 
   // Get the array schemas and fragment metadata.
-  auto&& [st_schemas, array_schema_latest, array_schemas_all, fragment_metadata] =
-      resources_->load_array_schemas_and_fragment_metadata(
-          array_dir, nullptr, enc_key_);
-  RETURN_NOT_OK(st_schemas);
-  const auto& fragment_metadata_value = fragment_metadata.value();
-  array_schema_latest_ = array_schema_latest.value();
-  array_schemas_all_ = std::move(array_schemas_all.value());
-  auto fragment_num = (uint32_t)fragment_metadata_value.size();
+  std::vector<std::shared_ptr<FragmentMetadata>> fragment_metadata;
+  std::tie(array_schema_latest_, array_schemas_all_, fragment_metadata) =
+      load_array_schemas_and_fragment_metadata(
+          *resources_, array_dir, nullptr, enc_key_);
+  auto fragment_num = (uint32_t)fragment_metadata.size();
 
   // Get fragment sizes
   std::vector<uint64_t> sizes(fragment_num, 0);
@@ -897,10 +895,10 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
       &resources_->compute_tp(),
       0,
       fragment_num,
-      [this, &fragment_metadata_value, &sizes, preload_rtrees](uint64_t i) {
+      [this, &fragment_metadata, &sizes, preload_rtrees](uint64_t i) {
         // Get fragment size. Applicable only to relevant fragments, including
         // fragments that are in the range [timestamp_start_, timestamp_end_].
-        auto meta = fragment_metadata_value[i];
+        auto meta = fragment_metadata[i];
         if (meta->timestamp_range().first >= timestamp_start_ &&
             meta->timestamp_range().second <= timestamp_end_) {
           sizes[i] = meta->fragment_size();
@@ -919,7 +917,7 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
 
   // Create the vector that will store the SingleFragmentInfo objects
   for (uint64_t fid = 0; fid < fragment_num; fid++) {
-    const auto meta = fragment_metadata_value[fid];
+    const auto meta = fragment_metadata[fid];
     const auto& array_schema = meta->array_schema();
     const auto& non_empty_domain = meta->non_empty_domain();
 
@@ -978,6 +976,105 @@ Status FragmentInfo::load_and_replace(
   RETURN_NOT_OK(replace(new_single_fragment_info.value(), to_replace));
 
   return Status::Ok();
+}
+
+tuple<optional<Tile>, optional<std::vector<std::pair<std::string, uint64_t>>>>
+load_consolidated_fragment_meta(
+    ContextResources& resources,
+    const URI& uri,
+    const EncryptionKey& enc_key) {
+  auto timer_se =
+      resources.stats().start_timer("sm_read_load_consolidated_frag_meta");
+
+  // No consolidated fragment metadata file
+  if (uri.to_string().empty())
+    return {nullopt, nullopt};
+
+  auto&& tile = GenericTileIO::load(resources, uri, 0, enc_key);
+
+  resources.stats().add_counter("consolidated_frag_meta_size", tile.size());
+
+  uint32_t fragment_num;
+  Deserializer deserializer(tile.data(), tile.size());
+  fragment_num = deserializer.read<uint32_t>();
+
+  uint64_t name_size, offset;
+  std::string name;
+  std::vector<std::pair<std::string, uint64_t>> ret;
+  ret.reserve(fragment_num);
+  for (uint32_t f = 0; f < fragment_num; ++f) {
+    name_size = deserializer.read<uint64_t>();
+    name.resize(name_size);
+    deserializer.read(&name[0], name_size);
+    offset = deserializer.read<uint64_t>();
+    ret.emplace_back(name, offset);
+  }
+
+  return {std::move(tile), std::move(ret)};
+}
+
+std::tuple<
+    shared_ptr<ArraySchema>,
+    std::unordered_map<std::string, shared_ptr<ArraySchema>>,
+    std::vector<shared_ptr<FragmentMetadata>>>
+FragmentInfo::load_array_schemas_and_fragment_metadata(
+    ContextResources& resources,
+    const ArrayDirectory& array_dir,
+    MemoryTracker* memory_tracker,
+    const EncryptionKey& enc_key) {
+  auto timer_se = resources.stats().start_timer(
+      "sm_load_array_schemas_and_fragment_metadata");
+
+  // Load array schemas
+  auto&& [array_schema_latest, array_schemas_all] =
+      array_dir.load_array_schemas(enc_key);
+
+  const auto filtered_fragment_uris = [&]() {
+    auto timer_se =
+        resources.stats().start_timer("sm_load_filtered_fragment_uris");
+    return array_dir.filtered_fragment_uris(array_schema_latest->dense());
+  }();
+  const auto& meta_uris = array_dir.fragment_meta_uris();
+  const auto& fragments_to_load = filtered_fragment_uris.fragment_uris();
+
+  // Get the consolidated fragment metadatas
+  std::vector<shared_ptr<Tile>> fragment_metadata_tiles(meta_uris.size());
+  std::vector<std::vector<std::pair<std::string, uint64_t>>> offsets_vectors(
+      meta_uris.size());
+  auto status =
+      parallel_for(&resources.compute_tp(), 0, meta_uris.size(), [&](size_t i) {
+        auto&& [tile_opt, offsets] =
+            load_consolidated_fragment_meta(resources, meta_uris[i], enc_key);
+        fragment_metadata_tiles[i] =
+            make_shared<Tile>(HERE(), std::move(*tile_opt));
+        offsets_vectors[i] = std::move(offsets.value());
+        return Status::Ok();
+      });
+  throw_if_not_ok(status);
+
+  // Get the unique fragment metadatas into a map.
+  std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
+  for (uint64_t i = 0; i < offsets_vectors.size(); i++) {
+    for (auto& offset : offsets_vectors[i]) {
+      if (offsets.count(offset.first) == 0) {
+        offsets.emplace(
+            offset.first,
+            std::make_pair(fragment_metadata_tiles[i].get(), offset.second));
+      }
+    }
+  }
+
+  // Load the fragment metadata
+  auto&& fragment_metadata = FragmentMetadata::load(
+      resources,
+      memory_tracker,
+      array_schema_latest,
+      array_schemas_all,
+      enc_key,
+      fragments_to_load,
+      offsets);
+
+  return {array_schema_latest, array_schemas_all, fragment_metadata};
 }
 
 const std::vector<SingleFragmentInfo>& FragmentInfo::single_fragment_info_vec()

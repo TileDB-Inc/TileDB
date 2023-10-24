@@ -1259,16 +1259,13 @@ tuple<
 Array::open_for_reads() {
   auto timer_se = resources_.stats().start_timer(
       "array_open_read_load_schemas_and_fragment_meta");
-  auto&& [st, array_schema_latest, array_schemas_all, fragment_metadata] =
-      storage_manager_->load_array_schemas_and_fragment_metadata(
-          array_directory(), memory_tracker(), *encryption_key());
+  auto result = FragmentInfo::load_array_schemas_and_fragment_metadata(
+      resources_, array_directory(), memory_tracker(), *encryption_key());
 
-  throw_if_not_ok(st);
-
-  auto version = array_schema_latest.value()->version();
+  auto version = std::get<0>(result)->version();
   ensure_supported_schema_version_for_read(version);
 
-  return {array_schema_latest, array_schemas_all, fragment_metadata};
+  return result;
 }
 
 tuple<

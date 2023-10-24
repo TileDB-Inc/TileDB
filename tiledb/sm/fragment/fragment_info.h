@@ -298,6 +298,35 @@ class FragmentInfo {
       const URI& new_fragment_uri,
       const std::vector<TimestampedURI>& to_replace);
 
+  /**
+   * Returns the array schemas and fragment metadata for the given array.
+   * The function will focus only on relevant schemas and metadata as
+   * dictated by the input URI manager.
+   *
+   * @param array_dir The ArrayDirectory object used to retrieve the
+   *     various URIs in the array directory.
+   * @param memory_tracker The memory tracker of the array
+   *     for which the fragment metadata is loaded.
+   * @param enc_key The encryption key to use.
+   * @return tuple of Status, latest ArraySchema, map of all array schemas and
+   * vector of FragmentMetadata
+   *        Status Ok on success, else error
+   *        ArraySchema The array schema to be retrieved after the
+   *           array is opened.
+   *        ArraySchemaMap Map of all array schemas found keyed by name
+   *        fragment_metadata The fragment metadata to be retrieved
+   *           after the array is opened.
+   */
+  static tuple<
+      shared_ptr<ArraySchema>,
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>,
+      std::vector<shared_ptr<FragmentMetadata>>>
+  load_array_schemas_and_fragment_metadata(
+      ContextResources& resources,
+      const ArrayDirectory& array_dir,
+      MemoryTracker* memory_tracker,
+      const EncryptionKey& enc_key);
+
   /** Returns the vector with the info about individual fragments. */
   const std::vector<SingleFragmentInfo>& single_fragment_info_vec() const;
 
