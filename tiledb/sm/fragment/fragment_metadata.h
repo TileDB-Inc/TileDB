@@ -1217,7 +1217,7 @@ class FragmentMetadata {
 
   /** set the CR pointer during deserialization*/
   void set_context_resources(ContextResources* cr) {
-    context_resources_ = cr;
+    resources_ = cr;
   }
 
   /** set the memory tracker pointer during deserialization*/
@@ -1261,7 +1261,7 @@ class FragmentMetadata {
   /* ********************************* */
 
   /** The storage manager. */
-  ContextResources* context_resources_;
+  ContextResources* resources_;
 
   /**
    * The memory tracker of the array this fragment metadata corresponds to.
