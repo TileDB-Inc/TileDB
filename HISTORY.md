@@ -1,3 +1,13 @@
+# TileDB v2.17.3 Release Notes
+
+## Improvements
+
+* Allow for empty enumerations [#4423](https://github.com/TileDB-Inc/TileDB/pull/4423)
+
+## API changes
+
+* Add `ArraySchemaEvolution::extend_enumeration` [#4445](https://github.com/TileDB-Inc/TileDB/pull/4445)
+
 # TileDB v2.17.2 Release Notes
 
 ## Defects removed
