@@ -68,7 +68,7 @@ class ChannelOperation {
   ChannelOperation& operator=(ChannelOperation&&) = default;
 
   /** Destructor. */
-  ~ChannelOperation() = default;
+  virtual ~ChannelOperation() = default;
 
   /* ********************************* */
   /*                API                */
