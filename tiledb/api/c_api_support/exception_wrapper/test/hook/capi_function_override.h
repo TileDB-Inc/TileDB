@@ -45,10 +45,10 @@
  * LoggingAspect`.
  */
 #undef CAPI_PREFIX
-#define CAPI_PREFIX(root)                                    \
-  template <>                                                \
-  struct CAPIFunctionNameTrait<CAPI_IMPL(root)> {            \
-    static constexpr std::string_view name{"tiledb_" #root}; \
+#define CAPI_PREFIX(root)                                     \
+  template <>                                                 \
+  struct CAPIFunctionNameTrait<tiledb::api::tiledb_##root> { \
+    static constexpr std::string_view name{"tiledb_" #root};  \
   };
 
 /**

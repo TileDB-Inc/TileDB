@@ -172,77 +172,135 @@ capi_return_t tiledb_config_iter_done(
 
 }  // namespace tiledb::api
 
-CAPI_ERROR_BEGIN(config_alloc, tiledb_config_t** config)
-CAPI_ERROR_END(config_alloc, config)
+using tiledb::api::api_entry_error;
+
+CAPI_INTERFACE(config_alloc, tiledb_config_t** config, tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_config_alloc>(error, config);
+}
 
 /*
  * API Audit: Void return means no possible signal for an error. No channel that
  * can return an error.
  * Possible errors: `config` may be null or an invalid handle.
  */
-CAPI_VOID_BEGIN(config_free, tiledb_config_t** config)
-CAPI_VOID_END(config_free, config)
+CAPI_INTERFACE_VOID(config_free, tiledb_config_t** config) {
+  tiledb::api::api_entry_void<tiledb::api::tiledb_config_free>(config);
+}
 
-CAPI_ERROR_BEGIN(
-    config_set, tiledb_config_t* config, const char* param, const char* value)
-CAPI_ERROR_END(config_set, config, param, value)
+CAPI_INTERFACE(
+    config_set,
+    tiledb_config_t* config,
+    const char* param,
+    const char* value,
+    tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_config_set>(
+      error, config, param, value);
+}
 
-CAPI_ERROR_BEGIN(
-    config_get, tiledb_config_t* config, const char* param, const char** value)
-CAPI_ERROR_END(config_get, config, param, value)
+CAPI_INTERFACE(
+    config_get,
+    tiledb_config_t* config,
+    const char* param,
+    const char** value,
+    tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_config_get>(
+      error, config, param, value);
+}
 
-CAPI_ERROR_BEGIN(config_unset, tiledb_config_t* config, const char* param)
-CAPI_ERROR_END(config_unset, config, param)
+CAPI_INTERFACE(
+    config_unset,
+    tiledb_config_t* config,
+    const char* param,
+    tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_config_unset>(
+      error, config, param);
+}
 
-CAPI_ERROR_BEGIN(
-    config_load_from_file, tiledb_config_t* config, const char* filename)
-CAPI_ERROR_END(config_load_from_file, config, filename)
+CAPI_INTERFACE(
+    config_load_from_file,
+    tiledb_config_t* config,
+    const char* filename,
+    tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_config_load_from_file>(
+      error, config, filename);
+}
 
-CAPI_ERROR_BEGIN(
-    config_save_to_file, tiledb_config_t* config, const char* filename)
-CAPI_ERROR_END(config_save_to_file, config, filename)
+CAPI_INTERFACE(
+    config_save_to_file,
+    tiledb_config_t* config,
+    const char* filename,
+    tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_config_save_to_file>(
+      error, config, filename);
+}
 
 /*
  * API Audit: No channel that can return an error.
  * Possible errors: Both `lhs` and `rhs` may be null or an invalid handle.
  * `equal` may be a null pointer
  */
-CAPI_PLAIN_BEGIN(
-    config_compare, tiledb_config_t* lhs, tiledb_config_t* rhs, uint8_t* equal)
-CAPI_PLAIN_END(config_compare, lhs, rhs, equal)
+CAPI_INTERFACE(
+    config_compare,
+    tiledb_config_t* lhs,
+    tiledb_config_t* rhs,
+    uint8_t* equal) {
+  return tiledb::api::api_entry_plain<tiledb::api::tiledb_config_compare>(
+      lhs, rhs, equal);
+}
 
-CAPI_ERROR_BEGIN(
+CAPI_INTERFACE(
     config_iter_alloc,
     tiledb_config_t* config,
     const char* prefix,
-    tiledb_config_iter_t** config_iter)
-CAPI_ERROR_END(config_iter_alloc, config, prefix, config_iter)
+    tiledb_config_iter_t** config_iter,
+    tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_config_iter_alloc>(
+      error, config, prefix, config_iter);
+}
 
-CAPI_ERROR_BEGIN(
+CAPI_INTERFACE(
     config_iter_reset,
     tiledb_config_t* config,
     tiledb_config_iter_t* config_iter,
-    const char* prefix)
-CAPI_ERROR_END(config_iter_reset, config, config_iter, prefix)
+    const char* prefix,
+    tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_config_iter_reset>(
+      error, config, config_iter, prefix);
+}
 
 /*
  * API Audit: Void return means no possible signal for an error. No channel that
  * can return an error.
  * Possible errors: `config` may be null or an invalid handle.
  */
-CAPI_VOID_BEGIN(config_iter_free, tiledb_config_iter_t** config_iter)
-CAPI_VOID_END(config_iter_free, config_iter)
+CAPI_INTERFACE_VOID(config_iter_free, tiledb_config_iter_t** config_iter) {
+  tiledb::api::api_entry_void<tiledb::api::tiledb_config_iter_free>(
+      config_iter);
+}
 
-CAPI_ERROR_BEGIN(
+CAPI_INTERFACE(
     config_iter_here,
     tiledb_config_iter_t* config_iter,
     const char** param,
-    const char** value)
-CAPI_ERROR_END(config_iter_here, config_iter, param, value)
+    const char** value,
+    tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_config_iter_here>(
+      error, config_iter, param, value);
+}
 
-CAPI_ERROR_BEGIN(config_iter_next, tiledb_config_iter_t* config_iter)
-CAPI_ERROR_END(config_iter_next, config_iter)
+CAPI_INTERFACE(
+    config_iter_next,
+    tiledb_config_iter_t* config_iter,
+    tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_config_iter_next>(
+      error, config_iter);
+}
 
-CAPI_ERROR_BEGIN(
-    config_iter_done, tiledb_config_iter_t* config_iter, int32_t* done)
-CAPI_ERROR_END(config_iter_done, config_iter, done)
+CAPI_INTERFACE(
+    config_iter_done,
+    tiledb_config_iter_t* config_iter,
+    int32_t* done,
+    tiledb_error_t** error) {
+  return api_entry_error<tiledb::api::tiledb_config_iter_done>(
+      error, config_iter, done);
+}

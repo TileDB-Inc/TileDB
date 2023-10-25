@@ -69,8 +69,9 @@ capi_return_t tiledb_capi_nil(int) {
 /*
  * API definitions with macros.
  */
-CAPI_PLAIN_BEGIN(capi_nil, int x)
-CAPI_PLAIN_END(capi_nil, x)
+CAPI_INTERFACE(capi_nil, int x) {
+  return tiledb::api::api_entry_plain<tiledb::api::tiledb_capi_nil>(x);
+}
 
 /**
  * The wrapped function with an unconditional invocation of the logging

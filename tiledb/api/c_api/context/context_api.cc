@@ -138,72 +138,77 @@ using tiledb::api::api_entry_with_context;
 /*
  * API Audit: No channel to return error message (failure code only)
  */
-CAPI_PLAIN_BEGIN(
-    ctx_alloc, tiledb_config_handle_t* config, tiledb_ctx_handle_t** ctx)
-CAPI_PLAIN_END(ctx_alloc, config, ctx)
-
-/*
- * API Audit: void return
- */
-CAPI_VOID_BEGIN(ctx_free, tiledb_ctx_handle_t** ctx)
-CAPI_VOID_END(ctx_free, ctx)
-
-CAPI_WITH_CONTEXT_BEGIN(ctx_get_stats, tiledb_ctx_t* ctx, char** stats_json)
-CAPI_WITH_CONTEXT_END(ctx_get_stats, ctx, stats_json)
-
-CAPI_WITH_CONTEXT_BEGIN(
-    ctx_get_config, tiledb_ctx_t* ctx, tiledb_config_handle_t** config)
-CAPI_WITH_CONTEXT_END(ctx_get_config, ctx, config)
-
-CAPI_WITH_CONTEXT_BEGIN(
-    ctx_get_last_error, tiledb_ctx_t* ctx, tiledb_error_handle_t** err)
-CAPI_WITH_CONTEXT_END(ctx_get_last_error, ctx, err)
-
-CAPI_WITH_CONTEXT_BEGIN(
-    ctx_is_supported_fs,
-    tiledb_ctx_t* ctx,
-    tiledb_filesystem_t fs,
-    int32_t* is_supported)
-CAPI_WITH_CONTEXT_END(ctx_is_supported_fs, ctx, fs, is_supported)
-
-CAPI_WITH_CONTEXT_BEGIN(ctx_cancel_tasks, tiledb_ctx_t* ctx)
-CAPI_WITH_CONTEXT_END(ctx_cancel_tasks, ctx)
-
-CAPI_WITH_CONTEXT_BEGIN(
-    ctx_set_tag, tiledb_ctx_t* ctx, const char* key, const char* value)
-CAPI_WITH_CONTEXT_END(ctx_set_tag, ctx, key, value)
+CAPI_INTERFACE(
+    ctx_alloc, tiledb_config_handle_t* config, tiledb_ctx_handle_t** ctx) {
+  return tiledb::api::api_entry_plain<tiledb::api::tiledb_ctx_alloc>(
+      config, ctx);
+}
 
 /*
  * We have a special case with tiledb_ctx_alloc_with_error. It's declared in
  * tiledb_experimental.h. Rather than all the apparatus needed to split up that
- * header (as tiledb.h is), we declare it separately here, at the point of
- * definition, with its correct link specification.
+ * header (as tiledb.h is), we declare its linkage separately at the point of
+ * definition.
  *
  * Not including the experimental header means that we're not using the compiler
  * to check the definition against the declaration. This won't scale
  * particularly well, but it doesn't need to for the time being.
  */
 extern "C" {
+
 capi_return_t tiledb_ctx_alloc_with_error(
     tiledb_config_handle_t* config,
     tiledb_ctx_handle_t** ctx,
-    tiledb_error_t** error) noexcept;
+    tiledb_error_handle_t** error) noexcept {
+  /*
+   * Wrapped with the `api_entry_error` variation. Note that the same function
+   * is wrapped with `api_entry_plain` above.
+   */
+  return tiledb::api::api_entry_error<tiledb::api::tiledb_ctx_alloc>(
+      error, config, ctx);
+}
+
 }  // extern "C"
 
 /*
- * This is a special case. The API function does not match the name of the
- * implementation function, which the macros assume. See`capi_definition.h` for
- * more information.
+ * API Audit: void return
  */
-/* clang-format off */
-capi_return_t tiledb_ctx_alloc_with_error(
-    tiledb_config_handle_t* config,
-    tiledb_ctx_handle_t** ctx,
-    tiledb_error_t** error)
-CAPI_MIDDLE(ctx_alloc, error)
-CAPI_ERROR_END(ctx_alloc_with_error, config, ctx)
-    /* clang-format on */
-    /*
-     * WARNING: Don't include any code past this point lest you incur the wrath
-     * of a mistreated `clang-format`.
-     */
+CAPI_INTERFACE_VOID(ctx_free, tiledb_ctx_handle_t** ctx) {
+  return tiledb::api::api_entry_void<tiledb::api::tiledb_ctx_free>(ctx);
+}
+
+CAPI_INTERFACE(ctx_get_stats, tiledb_ctx_t* ctx, char** stats_json) {
+  return api_entry_with_context<tiledb::api::tiledb_ctx_get_stats>(
+      ctx, stats_json);
+}
+
+CAPI_INTERFACE(
+    ctx_get_config, tiledb_ctx_t* ctx, tiledb_config_handle_t** config) {
+  return api_entry_with_context<tiledb::api::tiledb_ctx_get_config>(
+      ctx, config);
+}
+
+CAPI_INTERFACE(
+    ctx_get_last_error, tiledb_ctx_t* ctx, tiledb_error_handle_t** err) {
+  return api_entry_with_context<tiledb::api::tiledb_ctx_get_last_error>(
+      ctx, err);
+}
+
+CAPI_INTERFACE(
+    ctx_is_supported_fs,
+    tiledb_ctx_t* ctx,
+    tiledb_filesystem_t fs,
+    int32_t* is_supported) {
+  return api_entry_with_context<tiledb::api::tiledb_ctx_is_supported_fs>(
+      ctx, fs, is_supported);
+}
+
+CAPI_INTERFACE(ctx_cancel_tasks, tiledb_ctx_t* ctx) {
+  return api_entry_with_context<tiledb::api::tiledb_ctx_cancel_tasks>(ctx);
+}
+
+CAPI_INTERFACE(
+    ctx_set_tag, tiledb_ctx_t* ctx, const char* key, const char* value) {
+  return api_entry_with_context<tiledb::api::tiledb_ctx_set_tag>(
+      ctx, key, value);
+}
