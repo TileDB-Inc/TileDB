@@ -212,153 +212,153 @@ using tiledb::api::api_entry_with_context;
 template <auto f>
 constexpr auto api_entry = tiledb::api::api_entry_with_context<f>;
 
-capi_return_t tiledb_array_schema_add_dimension_label(
+CAPI_INTERFACE(array_schema_add_dimension_label,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     const uint32_t dim_index,
     const char* name,
     tiledb_data_order_t label_order,
-    tiledb_datatype_t label_type) noexcept {
+    tiledb_datatype_t label_type) {
   return api_entry<detail::tiledb_array_schema_add_dimension_label>(
       ctx, array_schema, dim_index, name, label_order, label_type);
 }
 
-capi_return_t tiledb_array_schema_get_dimension_label_from_name(
+CAPI_INTERFACE(array_schema_get_dimension_label_from_name,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     const char* label_name,
-    tiledb_dimension_label_t** dim_label) noexcept {
+    tiledb_dimension_label_t** dim_label) {
   return api_entry_with_context<
       detail::tiledb_array_schema_get_dimension_label_from_name>(
       ctx, array_schema, label_name, dim_label);
 }
 
-capi_return_t tiledb_array_schema_has_dimension_label(
+CAPI_INTERFACE(array_schema_has_dimension_label,
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     const char* name,
-    int32_t* has_dim_label) noexcept {
+    int32_t* has_dim_label) {
   return api_entry_context<detail::tiledb_array_schema_has_dimension_label>(
       ctx, array_schema, name, has_dim_label);
 }
 
-capi_return_t tiledb_array_schema_set_dimension_label_filter_list(
+CAPI_INTERFACE(array_schema_set_dimension_label_filter_list,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     const char* label_name,
-    tiledb_filter_list_t* filter_list) noexcept {
+    tiledb_filter_list_t* filter_list) {
   return api_entry<detail::tiledb_array_schema_set_dimension_label_filter_list>(
       ctx, array_schema, label_name, filter_list);
 }
 
-capi_return_t tiledb_array_schema_set_dimension_label_tile_extent(
+CAPI_INTERFACE(array_schema_set_dimension_label_tile_extent,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     const char* label_name,
     tiledb_datatype_t type,
-    const void* tile_extent) noexcept {
+    const void* tile_extent) {
   return api_entry<detail::tiledb_array_schema_set_dimension_label_tile_extent>(
       ctx, array_schema, label_name, type, tile_extent);
 }
 
-capi_return_t tiledb_array_schema_get_dimension_label_num(
+CAPI_INTERFACE(array_schema_get_dimension_label_num,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    uint64_t* dim_label_num) noexcept {
+    uint64_t* dim_label_num) {
   return api_entry_context<detail::tiledb_array_schema_get_dimension_label_num>(
       ctx, array_schema, dim_label_num);
 }
 
-capi_return_t tiledb_array_schema_get_dimension_label_from_index(
+CAPI_INTERFACE(array_schema_get_dimension_label_from_index,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     uint64_t dim_label_index,
-    tiledb_dimension_label_t** dim_label) noexcept {
+    tiledb_dimension_label_t** dim_label) {
   return api_entry_context<
       detail::tiledb_array_schema_get_dimension_label_from_index>(
       ctx, array_schema, dim_label_index, dim_label);
 }
 
-capi_return_t tiledb_subarray_add_label_range(
+CAPI_INTERFACE(subarray_add_label_range,
     tiledb_ctx_t* ctx,
     tiledb_subarray_t* subarray,
     const char* label_name,
     const void* start,
     const void* end,
-    const void* stride) noexcept {
+    const void* stride) {
   return api_entry_context<detail::tiledb_subarray_add_label_range>(
       ctx, subarray, label_name, start, end, stride);
 }
 
-capi_return_t tiledb_subarray_add_label_range_var(
+CAPI_INTERFACE(subarray_add_label_range_var,
     tiledb_ctx_t* ctx,
     tiledb_subarray_t* subarray,
     const char* label_name,
     const void* start,
     uint64_t start_size,
     const void* end,
-    uint64_t end_size) noexcept {
+    uint64_t end_size) {
   return api_entry_context<detail::tiledb_subarray_add_label_range_var>(
       ctx, subarray, label_name, start, start_size, end, end_size);
 }
 
-capi_return_t tiledb_subarray_get_label_name(
+CAPI_INTERFACE(subarray_get_label_name,
     tiledb_ctx_t* ctx,
     tiledb_subarray_t* subarray,
     uint32_t dim_idx,
-    const char** label_name) noexcept {
+    const char** label_name) {
   return api_entry_context<detail::tiledb_subarray_get_label_name>(
       ctx, subarray, dim_idx, label_name);
 }
 
-capi_return_t tiledb_subarray_get_label_range(
+CAPI_INTERFACE(subarray_get_label_range,
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* dim_name,
     uint64_t range_idx,
     const void** start,
     const void** end,
-    const void** stride) noexcept {
+    const void** stride) {
   return api_entry_context<detail::tiledb_subarray_get_label_range>(
       ctx, subarray, dim_name, range_idx, start, end, stride);
 }
 
-capi_return_t tiledb_subarray_get_label_range_num(
+CAPI_INTERFACE(subarray_get_label_range_num,
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* dim_name,
-    uint64_t* range_num) noexcept {
+    uint64_t* range_num) {
   return api_entry_context<detail::tiledb_subarray_get_label_range_num>(
       ctx, subarray, dim_name, range_num);
 }
 
-capi_return_t tiledb_subarray_get_label_range_var(
+CAPI_INTERFACE(subarray_get_label_range_var,
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* dim_name,
     uint64_t range_idx,
     void* start,
-    void* end) noexcept {
+    void* end) {
   return api_entry_context<detail::tiledb_subarray_get_label_range_var>(
       ctx, subarray, dim_name, range_idx, start, end);
 }
 
-capi_return_t tiledb_subarray_get_label_range_var_size(
+CAPI_INTERFACE(subarray_get_label_range_var_size,
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* dim_name,
     uint64_t range_idx,
     uint64_t* start_size,
-    uint64_t* end_size) noexcept {
+    uint64_t* end_size) {
   return api_entry_context<detail::tiledb_subarray_get_label_range_var_size>(
       ctx, subarray, dim_name, range_idx, start_size, end_size);
 }
 
-capi_return_t tiledb_subarray_has_label_ranges(
+CAPI_INTERFACE(subarray_has_label_ranges,
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const uint32_t dim_idx,
-    int32_t* has_label_ranges) noexcept {
+    int32_t* has_label_ranges) {
   return api_entry_context<detail::tiledb_subarray_has_label_ranges>(
       ctx, subarray, dim_idx, has_label_ranges);
 }
