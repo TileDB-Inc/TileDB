@@ -108,18 +108,19 @@ capi_return_t tiledb_filter_list_get_max_chunk_size(
 
 using tiledb::api::api_entry_context;
 
-CAPI_INTERFACE(filter_list_alloc,
-    tiledb_ctx_t* ctx, tiledb_filter_list_t** filter_list) {
+CAPI_INTERFACE(
+    filter_list_alloc, tiledb_ctx_t* ctx, tiledb_filter_list_t** filter_list) {
   return tiledb::api::api_entry_with_context<
       tiledb::api::tiledb_filter_list_alloc>(ctx, filter_list);
 }
 
-CAPI_INTERFACE_VOID(filter_list_free,tiledb_filter_list_t** filter_list) {
+CAPI_INTERFACE_VOID(filter_list_free, tiledb_filter_list_t** filter_list) {
   return tiledb::api::api_entry_void<tiledb::api::tiledb_filter_list_free>(
       filter_list);
 }
 
-CAPI_INTERFACE(filter_list_add_filter,
+CAPI_INTERFACE(
+    filter_list_add_filter,
     tiledb_ctx_t* ctx,
     tiledb_filter_list_t* filter_list,
     tiledb_filter_t* filter) {
@@ -127,7 +128,8 @@ CAPI_INTERFACE(filter_list_add_filter,
       ctx, filter_list, filter);
 }
 
-CAPI_INTERFACE(filter_list_set_max_chunk_size,
+CAPI_INTERFACE(
+    filter_list_set_max_chunk_size,
     tiledb_ctx_t* ctx,
     tiledb_filter_list_t* filter_list,
     uint32_t max_chunk_size) {
@@ -135,7 +137,8 @@ CAPI_INTERFACE(filter_list_set_max_chunk_size,
       ctx, filter_list, max_chunk_size);
 }
 
-CAPI_INTERFACE(filter_list_get_nfilters,
+CAPI_INTERFACE(
+    filter_list_get_nfilters,
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
     uint32_t* nfilters) {
@@ -143,7 +146,8 @@ CAPI_INTERFACE(filter_list_get_nfilters,
       ctx, filter_list, nfilters);
 }
 
-CAPI_INTERFACE(filter_list_get_filter_from_index,
+CAPI_INTERFACE(
+    filter_list_get_filter_from_index,
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
     uint32_t index,
@@ -153,7 +157,8 @@ CAPI_INTERFACE(filter_list_get_filter_from_index,
       ctx, filter_list, index, filter);
 }
 
-CAPI_INTERFACE(filter_list_get_max_chunk_size,
+CAPI_INTERFACE(
+    filter_list_get_max_chunk_size,
     tiledb_ctx_t* ctx,
     const tiledb_filter_list_t* filter_list,
     uint32_t* max_chunk_size) {

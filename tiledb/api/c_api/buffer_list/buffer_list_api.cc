@@ -121,17 +121,18 @@ capi_return_t tiledb_buffer_list_flatten(
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_void;
 
-CAPI_INTERFACE(buffer_list_alloc,
-    tiledb_ctx_t* ctx, tiledb_buffer_list_t** buffer_list) {
+CAPI_INTERFACE(
+    buffer_list_alloc, tiledb_ctx_t* ctx, tiledb_buffer_list_t** buffer_list) {
   return api_entry_context<tiledb::api::tiledb_buffer_list_alloc>(
       ctx, buffer_list);
 }
 
-CAPI_INTERFACE_VOID(buffer_list_free,tiledb_buffer_list_t** buffer_list) {
+CAPI_INTERFACE_VOID(buffer_list_free, tiledb_buffer_list_t** buffer_list) {
   return api_entry_void<tiledb::api::tiledb_buffer_list_free>(buffer_list);
 }
 
-CAPI_INTERFACE(buffer_list_get_num_buffers,
+CAPI_INTERFACE(
+    buffer_list_get_num_buffers,
     tiledb_ctx_t* ctx,
     const tiledb_buffer_list_t* buffer_list,
     uint64_t* num_buffers) {
@@ -139,7 +140,8 @@ CAPI_INTERFACE(buffer_list_get_num_buffers,
       ctx, buffer_list, num_buffers);
 }
 
-CAPI_INTERFACE(buffer_list_get_buffer,
+CAPI_INTERFACE(
+    buffer_list_get_buffer,
     tiledb_ctx_t* ctx,
     const tiledb_buffer_list_t* buffer_list,
     uint64_t buffer_idx,
@@ -148,7 +150,8 @@ CAPI_INTERFACE(buffer_list_get_buffer,
       ctx, buffer_list, buffer_idx, buffer);
 }
 
-CAPI_INTERFACE(buffer_list_get_total_size,
+CAPI_INTERFACE(
+    buffer_list_get_total_size,
     tiledb_ctx_t* ctx,
     const tiledb_buffer_list_t* buffer_list,
     uint64_t* total_size) {
@@ -156,7 +159,8 @@ CAPI_INTERFACE(buffer_list_get_total_size,
       ctx, buffer_list, total_size);
 }
 
-CAPI_INTERFACE(buffer_list_flatten,
+CAPI_INTERFACE(
+    buffer_list_flatten,
     tiledb_ctx_t* ctx,
     tiledb_buffer_list_t* buffer_list,
     tiledb_buffer_t** buffer) {

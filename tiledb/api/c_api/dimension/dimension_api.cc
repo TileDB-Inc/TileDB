@@ -141,7 +141,8 @@ int32_t tiledb_dimension_dump(const tiledb_dimension_t* dim, FILE* out) {
 
 using tiledb::api::api_entry_context;
 
-CAPI_INTERFACE(dimension_alloc,
+CAPI_INTERFACE(
+    dimension_alloc,
     tiledb_ctx_t* ctx,
     const char* name,
     tiledb_datatype_t type,
@@ -152,11 +153,12 @@ CAPI_INTERFACE(dimension_alloc,
       ctx, name, type, dim_domain, tile_extent, dim);
 }
 
-CAPI_INTERFACE_VOID(dimension_free,tiledb_dimension_t** dim) {
+CAPI_INTERFACE_VOID(dimension_free, tiledb_dimension_t** dim) {
   return tiledb::api::api_entry_void<tiledb::api::tiledb_dimension_free>(dim);
 }
 
-CAPI_INTERFACE(dimension_set_filter_list,
+CAPI_INTERFACE(
+    dimension_set_filter_list,
     tiledb_ctx_t* ctx,
     tiledb_dimension_t* dim,
     tiledb_filter_list_t* filter_list) {
@@ -164,7 +166,8 @@ CAPI_INTERFACE(dimension_set_filter_list,
       ctx, dim, filter_list);
 }
 
-CAPI_INTERFACE(dimension_set_cell_val_num,
+CAPI_INTERFACE(
+    dimension_set_cell_val_num,
     tiledb_ctx_t* ctx,
     tiledb_dimension_t* dim,
     uint32_t cell_val_num) {
@@ -172,7 +175,8 @@ CAPI_INTERFACE(dimension_set_cell_val_num,
       ctx, dim, cell_val_num);
 }
 
-CAPI_INTERFACE(dimension_get_filter_list,
+CAPI_INTERFACE(
+    dimension_get_filter_list,
     tiledb_ctx_t* ctx,
     tiledb_dimension_t* dim,
     tiledb_filter_list_t** filter_list) {
@@ -180,7 +184,8 @@ CAPI_INTERFACE(dimension_get_filter_list,
       ctx, dim, filter_list);
 }
 
-CAPI_INTERFACE(dimension_get_cell_val_num,
+CAPI_INTERFACE(
+    dimension_get_cell_val_num,
     tiledb_ctx_t* ctx,
     const tiledb_dimension_t* dim,
     uint32_t* cell_val_num) {
@@ -188,7 +193,8 @@ CAPI_INTERFACE(dimension_get_cell_val_num,
       ctx, dim, cell_val_num);
 }
 
-CAPI_INTERFACE(dimension_get_name,
+CAPI_INTERFACE(
+    dimension_get_name,
     tiledb_ctx_t* ctx,
     const tiledb_dimension_t* dim,
     const char** name) {
@@ -196,7 +202,8 @@ CAPI_INTERFACE(dimension_get_name,
       ctx, dim, name);
 }
 
-CAPI_INTERFACE(dimension_get_type,
+CAPI_INTERFACE(
+    dimension_get_type,
     tiledb_ctx_t* ctx,
     const tiledb_dimension_t* dim,
     tiledb_datatype_t* type) {
@@ -204,7 +211,8 @@ CAPI_INTERFACE(dimension_get_type,
       ctx, dim, type);
 }
 
-CAPI_INTERFACE(dimension_get_domain,
+CAPI_INTERFACE(
+    dimension_get_domain,
     tiledb_ctx_t* ctx,
     const tiledb_dimension_t* dim,
     const void** domain) {
@@ -212,7 +220,8 @@ CAPI_INTERFACE(dimension_get_domain,
       ctx, dim, domain);
 }
 
-CAPI_INTERFACE(dimension_get_tile_extent,
+CAPI_INTERFACE(
+    dimension_get_tile_extent,
     tiledb_ctx_t* ctx,
     const tiledb_dimension_t* dim,
     const void** tile_extent) {
@@ -220,7 +229,10 @@ CAPI_INTERFACE(dimension_get_tile_extent,
       ctx, dim, tile_extent);
 }
 
-CAPI_INTERFACE(dimension_dump,
-    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, FILE* out) {
+CAPI_INTERFACE(
+    dimension_dump,
+    tiledb_ctx_t* ctx,
+    const tiledb_dimension_t* dim,
+    FILE* out) {
   return api_entry_context<tiledb::api::tiledb_dimension_dump>(ctx, dim, out);
 }
