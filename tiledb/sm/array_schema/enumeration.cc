@@ -77,9 +77,9 @@ Enumeration::Enumeration(
         "__" + tmp_uuid + "_" + std::to_string(constants::enumerations_version);
   }
 
-  if (name.find("/") != std::string::npos) {
+  if (path_name.find("/") != std::string::npos) {
     throw EnumerationException(
-        "Enumeration name must not contain path separators");
+        "Enumeration path name must not contain path separators");
   }
 
   if (cell_val_num == 0) {
