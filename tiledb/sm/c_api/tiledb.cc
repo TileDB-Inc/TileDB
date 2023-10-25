@@ -5251,60 +5251,60 @@ constexpr auto api_entry = tiledb::api::api_entry_with_context<f>;
 /* ****************************** */
 /*       ENUMS TO/FROM STR        */
 /* ****************************** */
-int32_t tiledb_array_type_to_str(
-    tiledb_array_type_t array_type, const char** str) noexcept {
+CAPI_INTERFACE(array_type_to_str,
+    tiledb_array_type_t array_type, const char** str) {
   return api_entry_plain<tiledb::api::tiledb_array_type_to_str>(
       array_type, str);
 }
 
-int32_t tiledb_array_type_from_str(
-    const char* str, tiledb_array_type_t* array_type) noexcept {
+CAPI_INTERFACE(array_type_from_str,
+    const char* str, tiledb_array_type_t* array_type) {
   return api_entry_plain<tiledb::api::tiledb_array_type_from_str>(
       str, array_type);
 }
 
-int32_t tiledb_layout_to_str(
-    tiledb_layout_t layout, const char** str) noexcept {
+CAPI_INTERFACE(layout_to_str,
+    tiledb_layout_t layout, const char** str) {
   return api_entry_plain<tiledb::api::tiledb_layout_to_str>(layout, str);
 }
 
-int32_t tiledb_layout_from_str(
-    const char* str, tiledb_layout_t* layout) noexcept {
+CAPI_INTERFACE(layout_from_str,
+    const char* str, tiledb_layout_t* layout) {
   return api_entry_plain<tiledb::api::tiledb_layout_from_str>(str, layout);
 }
 
-int32_t tiledb_encryption_type_to_str(
-    tiledb_encryption_type_t encryption_type, const char** str) noexcept {
+CAPI_INTERFACE(encryption_type_to_str,
+    tiledb_encryption_type_t encryption_type, const char** str) {
   return api_entry_plain<tiledb::api::tiledb_encryption_type_to_str>(
       encryption_type, str);
 }
 
-int32_t tiledb_encryption_type_from_str(
-    const char* str, tiledb_encryption_type_t* encryption_type) noexcept {
+CAPI_INTERFACE(encryption_type_from_str,
+    const char* str, tiledb_encryption_type_t* encryption_type) {
   return api_entry_plain<tiledb::api::tiledb_encryption_type_from_str>(
       str, encryption_type);
 }
 
-int32_t tiledb_query_status_to_str(
-    tiledb_query_status_t query_status, const char** str) noexcept {
+CAPI_INTERFACE(query_status_to_str,
+    tiledb_query_status_t query_status, const char** str) {
   return api_entry_plain<tiledb::api::tiledb_query_status_to_str>(
       query_status, str);
 }
 
-int32_t tiledb_query_status_from_str(
-    const char* str, tiledb_query_status_t* query_status) noexcept {
+CAPI_INTERFACE(query_status_from_str,
+    const char* str, tiledb_query_status_t* query_status) {
   return api_entry_plain<tiledb::api::tiledb_query_status_from_str>(
       str, query_status);
 }
 
-int32_t tiledb_serialization_type_to_str(
-    tiledb_serialization_type_t serialization_type, const char** str) noexcept {
+CAPI_INTERFACE(serialization_type_to_str,
+    tiledb_serialization_type_t serialization_type, const char** str) {
   return api_entry_plain<tiledb::api::tiledb_serialization_type_to_str>(
       serialization_type, str);
 }
 
-int32_t tiledb_serialization_type_from_str(
-    const char* str, tiledb_serialization_type_t* serialization_type) noexcept {
+CAPI_INTERFACE(serialization_type_from_str,
+    const char* str, tiledb_serialization_type_t* serialization_type) {
   return api_entry_plain<tiledb::api::tiledb_serialization_type_from_str>(
       str, serialization_type);
 }
@@ -5347,7 +5347,7 @@ const char* tiledb_timestamps() noexcept {
 /*            VERSION             */
 /* ****************************** */
 
-void tiledb_version(int32_t* major, int32_t* minor, int32_t* rev) noexcept {
+CAPI_INTERFACE_VOID(version,int32_t* major, int32_t* minor, int32_t* rev) {
   *major = tiledb::sm::constants::library_version[0];
   *minor = tiledb::sm::constants::library_version[1];
   *rev = tiledb::sm::constants::library_version[2];
@@ -5357,14 +5357,14 @@ void tiledb_version(int32_t* major, int32_t* minor, int32_t* rev) noexcept {
 /*             LOGGING               */
 /* ********************************* */
 
-capi_return_t tiledb_log_warn(tiledb_ctx_t* ctx, const char* message) {
+CAPI_INTERFACE(log_warn,tiledb_ctx_t* ctx, const char* message) {
   return api_entry<tiledb::api::tiledb_log_warn>(ctx, message);
 }
 
 /* ********************************* */
 /*              AS BUILT             */
 /* ********************************* */
-capi_return_t tiledb_as_built_dump(tiledb_string_t** out) noexcept {
+CAPI_INTERFACE(as_built_dump,tiledb_string_t** out) {
   return api_entry_plain<tiledb::api::tiledb_as_built_dump>(out);
 }
 
@@ -5372,143 +5372,143 @@ capi_return_t tiledb_as_built_dump(tiledb_string_t** out) noexcept {
 /*           ARRAY SCHEMA         */
 /* ****************************** */
 
-int32_t tiledb_array_schema_alloc(
+CAPI_INTERFACE(array_schema_alloc,
     tiledb_ctx_t* ctx,
     tiledb_array_type_t array_type,
-    tiledb_array_schema_t** array_schema) noexcept {
+    tiledb_array_schema_t** array_schema) {
   return api_entry<tiledb::api::tiledb_array_schema_alloc>(
       ctx, array_type, array_schema);
 }
 
-void tiledb_array_schema_free(tiledb_array_schema_t** array_schema) noexcept {
+CAPI_INTERFACE_VOID(array_schema_free,tiledb_array_schema_t** array_schema) {
   return api_entry_void<tiledb::api::tiledb_array_schema_free>(array_schema);
 }
 
-int32_t tiledb_array_schema_add_attribute(
+CAPI_INTERFACE(array_schema_add_attribute,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    tiledb_attribute_t* attr) noexcept {
+    tiledb_attribute_t* attr) {
   return api_entry<tiledb::api::tiledb_array_schema_add_attribute>(
       ctx, array_schema, attr);
 }
 
-int32_t tiledb_array_schema_set_allows_dups(
+CAPI_INTERFACE(array_schema_set_allows_dups,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    int allows_dups) noexcept {
+    int allows_dups) {
   return api_entry<tiledb::api::tiledb_array_schema_set_allows_dups>(
       ctx, array_schema, allows_dups);
 }
 
-int32_t tiledb_array_schema_get_allows_dups(
+CAPI_INTERFACE(array_schema_get_allows_dups,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    int* allows_dups) noexcept {
+    int* allows_dups) {
   return api_entry<tiledb::api::tiledb_array_schema_get_allows_dups>(
       ctx, array_schema, allows_dups);
 }
 
-int32_t tiledb_array_schema_get_version(
+CAPI_INTERFACE(array_schema_get_version,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    uint32_t* version) noexcept {
+    uint32_t* version) {
   return api_entry<tiledb::api::tiledb_array_schema_get_version>(
       ctx, array_schema, version);
 }
 
-int32_t tiledb_array_schema_set_domain(
+CAPI_INTERFACE(array_schema_set_domain,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    tiledb_domain_t* domain) noexcept {
+    tiledb_domain_t* domain) {
   return api_entry<tiledb::api::tiledb_array_schema_set_domain>(
       ctx, array_schema, domain);
 }
 
-int32_t tiledb_array_schema_set_capacity(
+CAPI_INTERFACE(array_schema_set_capacity,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    uint64_t capacity) noexcept {
+    uint64_t capacity) {
   return api_entry<tiledb::api::tiledb_array_schema_set_capacity>(
       ctx, array_schema, capacity);
 }
 
-int32_t tiledb_array_schema_set_cell_order(
+CAPI_INTERFACE(array_schema_set_cell_order,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    tiledb_layout_t cell_order) noexcept {
+    tiledb_layout_t cell_order) {
   return api_entry<tiledb::api::tiledb_array_schema_set_cell_order>(
       ctx, array_schema, cell_order);
 }
 
-int32_t tiledb_array_schema_set_tile_order(
+CAPI_INTERFACE(array_schema_set_tile_order,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    tiledb_layout_t tile_order) noexcept {
+    tiledb_layout_t tile_order) {
   return api_entry<tiledb::api::tiledb_array_schema_set_tile_order>(
       ctx, array_schema, tile_order);
 }
 
-int32_t tiledb_array_schema_timestamp_range(
+CAPI_INTERFACE(array_schema_timestamp_range,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     uint64_t* lo,
-    uint64_t* hi) noexcept {
+    uint64_t* hi) {
   return api_entry<tiledb::api::tiledb_array_schema_timestamp_range>(
       ctx, array_schema, lo, hi);
 }
 
-int32_t tiledb_array_schema_add_enumeration(
+CAPI_INTERFACE(array_schema_add_enumeration,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    tiledb_enumeration_t* enumeration) noexcept {
+    tiledb_enumeration_t* enumeration) {
   return api_entry<tiledb::api::tiledb_array_schema_add_enumeration>(
       ctx, array_schema, enumeration);
 }
 
-int32_t tiledb_array_schema_set_coords_filter_list(
+CAPI_INTERFACE(array_schema_set_coords_filter_list,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    tiledb_filter_list_t* filter_list) noexcept {
+    tiledb_filter_list_t* filter_list) {
   return api_entry<tiledb::api::tiledb_array_schema_set_coords_filter_list>(
       ctx, array_schema, filter_list);
 }
 
-int32_t tiledb_array_schema_set_offsets_filter_list(
+CAPI_INTERFACE(array_schema_set_offsets_filter_list,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    tiledb_filter_list_t* filter_list) noexcept {
+    tiledb_filter_list_t* filter_list) {
   return api_entry<tiledb::api::tiledb_array_schema_set_offsets_filter_list>(
       ctx, array_schema, filter_list);
 }
 
-int32_t tiledb_array_schema_set_validity_filter_list(
+CAPI_INTERFACE(array_schema_set_validity_filter_list,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    tiledb_filter_list_t* filter_list) noexcept {
+    tiledb_filter_list_t* filter_list) {
   return api_entry<tiledb::api::tiledb_array_schema_set_validity_filter_list>(
       ctx, array_schema, filter_list);
 }
 
-int32_t tiledb_array_schema_check(
-    tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema) noexcept {
+CAPI_INTERFACE(array_schema_check,
+    tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema) {
   return api_entry<tiledb::api::tiledb_array_schema_check>(ctx, array_schema);
 }
 
-int32_t tiledb_array_schema_load(
+CAPI_INTERFACE(array_schema_load,
     tiledb_ctx_t* ctx,
     const char* array_uri,
-    tiledb_array_schema_t** array_schema) noexcept {
+    tiledb_array_schema_t** array_schema) {
   return api_entry<tiledb::api::tiledb_array_schema_load>(
       ctx, array_uri, array_schema);
 }
 
-int32_t tiledb_array_schema_load_with_key(
+CAPI_INTERFACE(array_schema_load_with_key,
     tiledb_ctx_t* ctx,
     const char* array_uri,
     tiledb_encryption_type_t encryption_type,
     const void* encryption_key,
     uint32_t key_length,
-    tiledb_array_schema_t** array_schema) noexcept {
+    tiledb_array_schema_t** array_schema) {
   return api_entry<tiledb::api::tiledb_array_schema_load_with_key>(
       ctx,
       array_uri,
@@ -5518,109 +5518,109 @@ int32_t tiledb_array_schema_load_with_key(
       array_schema);
 }
 
-int32_t tiledb_array_schema_get_array_type(
+CAPI_INTERFACE(array_schema_get_array_type,
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
-    tiledb_array_type_t* array_type) noexcept {
+    tiledb_array_type_t* array_type) {
   return api_entry<tiledb::api::tiledb_array_schema_get_array_type>(
       ctx, array_schema, array_type);
 }
 
-int32_t tiledb_array_schema_get_capacity(
+CAPI_INTERFACE(array_schema_get_capacity,
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
-    uint64_t* capacity) noexcept {
+    uint64_t* capacity) {
   return api_entry<tiledb::api::tiledb_array_schema_get_capacity>(
       ctx, array_schema, capacity);
 }
 
-int32_t tiledb_array_schema_get_cell_order(
+CAPI_INTERFACE(array_schema_get_cell_order,
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
-    tiledb_layout_t* cell_order) noexcept {
+    tiledb_layout_t* cell_order) {
   return api_entry<tiledb::api::tiledb_array_schema_get_cell_order>(
       ctx, array_schema, cell_order);
 }
 
-int32_t tiledb_array_schema_get_coords_filter_list(
+CAPI_INTERFACE(array_schema_get_coords_filter_list,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    tiledb_filter_list_t** filter_list) noexcept {
+    tiledb_filter_list_t** filter_list) {
   return api_entry<tiledb::api::tiledb_array_schema_get_coords_filter_list>(
       ctx, array_schema, filter_list);
 }
 
-int32_t tiledb_array_schema_get_offsets_filter_list(
+CAPI_INTERFACE(array_schema_get_offsets_filter_list,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    tiledb_filter_list_t** filter_list) noexcept {
+    tiledb_filter_list_t** filter_list) {
   return api_entry<tiledb::api::tiledb_array_schema_get_offsets_filter_list>(
       ctx, array_schema, filter_list);
 }
 
-int32_t tiledb_array_schema_get_validity_filter_list(
+CAPI_INTERFACE(array_schema_get_validity_filter_list,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
-    tiledb_filter_list_t** filter_list) noexcept {
+    tiledb_filter_list_t** filter_list) {
   return api_entry<tiledb::api::tiledb_array_schema_get_validity_filter_list>(
       ctx, array_schema, filter_list);
 }
 
-int32_t tiledb_array_schema_get_domain(
+CAPI_INTERFACE(array_schema_get_domain,
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
-    tiledb_domain_t** domain) noexcept {
+    tiledb_domain_t** domain) {
   return api_entry<tiledb::api::tiledb_array_schema_get_domain>(
       ctx, array_schema, domain);
 }
 
-int32_t tiledb_array_schema_get_tile_order(
+CAPI_INTERFACE(array_schema_get_tile_order,
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
-    tiledb_layout_t* tile_order) noexcept {
+    tiledb_layout_t* tile_order) {
   return api_entry<tiledb::api::tiledb_array_schema_get_tile_order>(
       ctx, array_schema, tile_order);
 }
 
-int32_t tiledb_array_schema_get_attribute_num(
+CAPI_INTERFACE(array_schema_get_attribute_num,
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
-    uint32_t* attribute_num) noexcept {
+    uint32_t* attribute_num) {
   return api_entry<tiledb::api::tiledb_array_schema_get_attribute_num>(
       ctx, array_schema, attribute_num);
 }
 
-int32_t tiledb_array_schema_dump(
+CAPI_INTERFACE(array_schema_dump,
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
-    FILE* out) noexcept {
+    FILE* out) {
   return api_entry<tiledb::api::tiledb_array_schema_dump>(
       ctx, array_schema, out);
 }
 
-int32_t tiledb_array_schema_get_attribute_from_index(
+CAPI_INTERFACE(array_schema_get_attribute_from_index,
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     uint32_t index,
-    tiledb_attribute_t** attr) noexcept {
+    tiledb_attribute_t** attr) {
   return api_entry<tiledb::api::tiledb_array_schema_get_attribute_from_index>(
       ctx, array_schema, index, attr);
 }
 
-int32_t tiledb_array_schema_get_attribute_from_name(
+CAPI_INTERFACE(array_schema_get_attribute_from_name,
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     const char* name,
-    tiledb_attribute_t** attr) noexcept {
+    tiledb_attribute_t** attr) {
   return api_entry<tiledb::api::tiledb_array_schema_get_attribute_from_name>(
       ctx, array_schema, name, attr);
 }
 
-int32_t tiledb_array_schema_has_attribute(
+CAPI_INTERFACE(array_schema_has_attribute,
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     const char* name,
-    int32_t* has_attr) noexcept {
+    int32_t* has_attr) {
   return api_entry<tiledb::api::tiledb_array_schema_has_attribute>(
       ctx, array_schema, name, has_attr);
 }
@@ -5629,56 +5629,56 @@ int32_t tiledb_array_schema_has_attribute(
 /*            SCHEMA EVOLUTION       */
 /* ********************************* */
 
-int32_t tiledb_array_schema_evolution_alloc(
+CAPI_INTERFACE(array_schema_evolution_alloc,
     tiledb_ctx_t* ctx,
-    tiledb_array_schema_evolution_t** array_schema_evolution) noexcept {
+    tiledb_array_schema_evolution_t** array_schema_evolution) {
   return api_entry<tiledb::api::tiledb_array_schema_evolution_alloc>(
       ctx, array_schema_evolution);
 }
 
-void tiledb_array_schema_evolution_free(
-    tiledb_array_schema_evolution_t** array_schema_evolution) noexcept {
+CAPI_INTERFACE_VOID(array_schema_evolution_free,
+    tiledb_array_schema_evolution_t** array_schema_evolution) {
   return api_entry_void<tiledb::api::tiledb_array_schema_evolution_free>(
       array_schema_evolution);
 }
 
-int32_t tiledb_array_schema_evolution_add_attribute(
+CAPI_INTERFACE(array_schema_evolution_add_attribute,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_evolution_t* array_schema_evolution,
-    tiledb_attribute_t* attr) noexcept {
+    tiledb_attribute_t* attr) {
   return api_entry<tiledb::api::tiledb_array_schema_evolution_add_attribute>(
       ctx, array_schema_evolution, attr);
 }
 
-int32_t tiledb_array_schema_evolution_drop_attribute(
+CAPI_INTERFACE(array_schema_evolution_drop_attribute,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_evolution_t* array_schema_evolution,
-    const char* attribute_name) noexcept {
+    const char* attribute_name) {
   return api_entry<tiledb::api::tiledb_array_schema_evolution_drop_attribute>(
       ctx, array_schema_evolution, attribute_name);
 }
 
-int32_t tiledb_array_schema_evolution_add_enumeration(
+CAPI_INTERFACE(array_schema_evolution_add_enumeration,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_evolution_t* array_schema_evolution,
-    tiledb_enumeration_t* enmr) noexcept {
+    tiledb_enumeration_t* enmr) {
   return api_entry<tiledb::api::tiledb_array_schema_evolution_add_enumeration>(
       ctx, array_schema_evolution, enmr);
 }
 
-capi_return_t tiledb_array_schema_evolution_extend_enumeration(
+CAPI_INTERFACE(array_schema_evolution_extend_enumeration,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_evolution_t* array_schema_evolution,
-    tiledb_enumeration_t* enmr) noexcept {
+    tiledb_enumeration_t* enmr) {
   return api_entry<
       tiledb::api::tiledb_array_schema_evolution_extend_enumeration>(
       ctx, array_schema_evolution, enmr);
 }
 
-capi_return_t tiledb_array_schema_evolution_drop_enumeration(
+CAPI_INTERFACE(array_schema_evolution_drop_enumeration,
     tiledb_ctx_t* ctx,
     tiledb_array_schema_evolution_t* array_schema_evolution,
-    const char* enumeration_name) noexcept {
+    const char* enumeration_name) {
   return api_entry<tiledb::api::tiledb_array_schema_evolution_drop_enumeration>(
       ctx, array_schema_evolution, enumeration_name);
 }
@@ -5697,400 +5697,400 @@ TILEDB_EXPORT int32_t tiledb_array_schema_evolution_set_timestamp_range(
 /*              QUERY             */
 /* ****************************** */
 
-int32_t tiledb_query_alloc(
+CAPI_INTERFACE(query_alloc,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_query_type_t query_type,
-    tiledb_query_t** query) noexcept {
+    tiledb_query_t** query) {
   return api_entry<tiledb::api::tiledb_query_alloc>(
       ctx, array, query_type, query);
 }
 
-int32_t tiledb_query_get_stats(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, char** stats_json) noexcept {
+CAPI_INTERFACE(query_get_stats,
+    tiledb_ctx_t* ctx, tiledb_query_t* query, char** stats_json) {
   return api_entry<tiledb::api::tiledb_query_get_stats>(ctx, query, stats_json);
 }
 
-int32_t tiledb_query_set_config(
+CAPI_INTERFACE(query_set_config,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    tiledb_config_t* config) noexcept {
+    tiledb_config_t* config) {
   return api_entry<tiledb::api::tiledb_query_set_config>(ctx, query, config);
 }
 
-int32_t tiledb_query_get_config(
+CAPI_INTERFACE(query_get_config,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    tiledb_config_t** config) noexcept {
+    tiledb_config_t** config) {
   return api_entry<tiledb::api::tiledb_query_get_config>(ctx, query, config);
 }
 
-int32_t tiledb_query_set_subarray(
+CAPI_INTERFACE(query_set_subarray,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    const void* subarray_vals) noexcept {
+    const void* subarray_vals) {
   return api_entry<tiledb::api::tiledb_query_set_subarray>(
       ctx, query, subarray_vals);
 }
 
-int32_t tiledb_query_set_subarray_t(
+CAPI_INTERFACE(query_set_subarray_t,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    const tiledb_subarray_t* subarray) noexcept {
+    const tiledb_subarray_t* subarray) {
   return api_entry<tiledb::api::tiledb_query_set_subarray_t>(
       ctx, query, subarray);
 }
 
-int32_t tiledb_query_set_data_buffer(
+CAPI_INTERFACE(query_set_data_buffer,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const char* name,
     void* buffer,
-    uint64_t* buffer_size) noexcept {
+    uint64_t* buffer_size) {
   return api_entry<tiledb::api::tiledb_query_set_data_buffer>(
       ctx, query, name, buffer, buffer_size);
 }
 
-int32_t tiledb_query_set_offsets_buffer(
+CAPI_INTERFACE(query_set_offsets_buffer,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const char* name,
     uint64_t* buffer_offsets,
-    uint64_t* buffer_offsets_size) noexcept {
+    uint64_t* buffer_offsets_size) {
   return api_entry<tiledb::api::tiledb_query_set_offsets_buffer>(
       ctx, query, name, buffer_offsets, buffer_offsets_size);
 }
 
-int32_t tiledb_query_set_validity_buffer(
+CAPI_INTERFACE(query_set_validity_buffer,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const char* name,
     uint8_t* buffer_validity,
-    uint64_t* buffer_validity_size) noexcept {
+    uint64_t* buffer_validity_size) {
   return api_entry<tiledb::api::tiledb_query_set_validity_buffer>(
       ctx, query, name, buffer_validity, buffer_validity_size);
 }
 
-int32_t tiledb_query_get_data_buffer(
+CAPI_INTERFACE(query_get_data_buffer,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const char* name,
     void** buffer,
-    uint64_t** buffer_size) noexcept {
+    uint64_t** buffer_size) {
   return api_entry<tiledb::api::tiledb_query_get_data_buffer>(
       ctx, query, name, buffer, buffer_size);
 }
 
-int32_t tiledb_query_get_offsets_buffer(
+CAPI_INTERFACE(query_get_offsets_buffer,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const char* name,
     uint64_t** buffer,
-    uint64_t** buffer_size) noexcept {
+    uint64_t** buffer_size) {
   return api_entry<tiledb::api::tiledb_query_get_offsets_buffer>(
       ctx, query, name, buffer, buffer_size);
 }
 
-int32_t tiledb_query_get_validity_buffer(
+CAPI_INTERFACE(query_get_validity_buffer,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const char* name,
     uint8_t** buffer,
-    uint64_t** buffer_size) noexcept {
+    uint64_t** buffer_size) {
   return api_entry<tiledb::api::tiledb_query_get_validity_buffer>(
       ctx, query, name, buffer, buffer_size);
 }
 
-int32_t tiledb_query_set_layout(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t layout) noexcept {
+CAPI_INTERFACE(query_set_layout,
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t layout) {
   return api_entry<tiledb::api::tiledb_query_set_layout>(ctx, query, layout);
 }
 
-int32_t tiledb_query_set_condition(
+CAPI_INTERFACE(query_set_condition,
     tiledb_ctx_t* const ctx,
     tiledb_query_t* const query,
-    const tiledb_query_condition_t* const cond) noexcept {
+    const tiledb_query_condition_t* const cond) {
   return api_entry<tiledb::api::tiledb_query_set_condition>(ctx, query, cond);
 }
 
-int32_t tiledb_query_finalize(
-    tiledb_ctx_t* ctx, tiledb_query_t* query) noexcept {
+CAPI_INTERFACE(query_finalize,
+    tiledb_ctx_t* ctx, tiledb_query_t* query) {
   return api_entry<tiledb::api::tiledb_query_finalize>(ctx, query);
 }
 
-int32_t tiledb_query_submit_and_finalize(
-    tiledb_ctx_t* ctx, tiledb_query_t* query) noexcept {
+CAPI_INTERFACE(query_submit_and_finalize,
+    tiledb_ctx_t* ctx, tiledb_query_t* query) {
   return api_entry<tiledb::api::tiledb_query_submit_and_finalize>(ctx, query);
 }
 
-void tiledb_query_free(tiledb_query_t** query) noexcept {
+CAPI_INTERFACE_VOID(query_free,tiledb_query_t** query) {
   return api_entry_void<tiledb::api::tiledb_query_free>(query);
 }
 
-int32_t tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) noexcept {
+CAPI_INTERFACE(query_submit,tiledb_ctx_t* ctx, tiledb_query_t* query) {
   return api_entry<tiledb::api::tiledb_query_submit>(ctx, query);
 }
 
-int32_t tiledb_query_submit_async(
+CAPI_INTERFACE(query_submit_async,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     void (*callback)(void*),
-    void* callback_data) noexcept {
+    void* callback_data) {
   return api_entry<tiledb::api::tiledb_query_submit_async>(
       ctx, query, callback, callback_data);
 }
 
-int32_t tiledb_query_has_results(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, int32_t* has_results) noexcept {
+CAPI_INTERFACE(query_has_results,
+    tiledb_ctx_t* ctx, tiledb_query_t* query, int32_t* has_results) {
   return api_entry<tiledb::api::tiledb_query_has_results>(
       ctx, query, has_results);
 }
 
-int32_t tiledb_query_get_status(
+CAPI_INTERFACE(query_get_status,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    tiledb_query_status_t* status) noexcept {
+    tiledb_query_status_t* status) {
   return api_entry<tiledb::api::tiledb_query_get_status>(ctx, query, status);
 }
 
-int32_t tiledb_query_get_type(
+CAPI_INTERFACE(query_get_type,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    tiledb_query_type_t* query_type) noexcept {
+    tiledb_query_type_t* query_type) {
   return api_entry<tiledb::api::tiledb_query_get_type>(ctx, query, query_type);
 }
 
-int32_t tiledb_query_get_layout(
+CAPI_INTERFACE(query_get_layout,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    tiledb_layout_t* query_layout) noexcept {
+    tiledb_layout_t* query_layout) {
   return api_entry<tiledb::api::tiledb_query_get_layout>(
       ctx, query, query_layout);
 }
 
-int32_t tiledb_query_get_array(
-    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_array_t** array) noexcept {
+CAPI_INTERFACE(query_get_array,
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_array_t** array) {
   return api_entry<tiledb::api::tiledb_query_get_array>(ctx, query, array);
 }
 
-int32_t tiledb_query_add_range(
+CAPI_INTERFACE(query_add_range,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     uint32_t dim_idx,
     const void* start,
     const void* end,
-    const void* stride) noexcept {
+    const void* stride) {
   return api_entry<tiledb::api::tiledb_query_add_range>(
       ctx, query, dim_idx, start, end, stride);
 }
 
-int32_t tiledb_query_add_point_ranges(
+CAPI_INTERFACE(query_add_point_ranges,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     uint32_t dim_idx,
     const void* start,
-    uint64_t count) noexcept {
+    uint64_t count) {
   return api_entry<tiledb::api::tiledb_query_add_point_ranges>(
       ctx, query, dim_idx, start, count);
 }
 
-int32_t tiledb_query_add_range_by_name(
+CAPI_INTERFACE(query_add_range_by_name,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const char* dim_name,
     const void* start,
     const void* end,
-    const void* stride) noexcept {
+    const void* stride) {
   return api_entry<tiledb::api::tiledb_query_add_range_by_name>(
       ctx, query, dim_name, start, end, stride);
 }
 
-int32_t tiledb_query_add_range_var(
+CAPI_INTERFACE(query_add_range_var,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     uint32_t dim_idx,
     const void* start,
     uint64_t start_size,
     const void* end,
-    uint64_t end_size) noexcept {
+    uint64_t end_size) {
   return api_entry<tiledb::api::tiledb_query_add_range_var>(
       ctx, query, dim_idx, start, start_size, end, end_size);
 }
 
-int32_t tiledb_query_add_range_var_by_name(
+CAPI_INTERFACE(query_add_range_var_by_name,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const char* dim_name,
     const void* start,
     uint64_t start_size,
     const void* end,
-    uint64_t end_size) noexcept {
+    uint64_t end_size) {
   return api_entry<tiledb::api::tiledb_query_add_range_var_by_name>(
       ctx, query, dim_name, start, start_size, end, end_size);
 }
 
-int32_t tiledb_query_get_range_num(
+CAPI_INTERFACE(query_get_range_num,
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     uint32_t dim_idx,
-    uint64_t* range_num) noexcept {
+    uint64_t* range_num) {
   return api_entry<tiledb::api::tiledb_query_get_range_num>(
       ctx, query, dim_idx, range_num);
 }
 
-int32_t tiledb_query_get_range_num_from_name(
+CAPI_INTERFACE(query_get_range_num_from_name,
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     const char* dim_name,
-    uint64_t* range_num) noexcept {
+    uint64_t* range_num) {
   return api_entry<tiledb::api::tiledb_query_get_range_num_from_name>(
       ctx, query, dim_name, range_num);
 }
 
-int32_t tiledb_query_get_range(
+CAPI_INTERFACE(query_get_range,
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     uint32_t dim_idx,
     uint64_t range_idx,
     const void** start,
     const void** end,
-    const void** stride) noexcept {
+    const void** stride) {
   return api_entry<tiledb::api::tiledb_query_get_range>(
       ctx, query, dim_idx, range_idx, start, end, stride);
 }
 
-int32_t tiledb_query_get_range_from_name(
+CAPI_INTERFACE(query_get_range_from_name,
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     const char* dim_name,
     uint64_t range_idx,
     const void** start,
     const void** end,
-    const void** stride) noexcept {
+    const void** stride) {
   return api_entry<tiledb::api::tiledb_query_get_range_from_name>(
       ctx, query, dim_name, range_idx, start, end, stride);
 }
 
-int32_t tiledb_query_get_range_var_size(
+CAPI_INTERFACE(query_get_range_var_size,
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     uint32_t dim_idx,
     uint64_t range_idx,
     uint64_t* start_size,
-    uint64_t* end_size) noexcept {
+    uint64_t* end_size) {
   return api_entry<tiledb::api::tiledb_query_get_range_var_size>(
       ctx, query, dim_idx, range_idx, start_size, end_size);
 }
 
-int32_t tiledb_query_get_range_var_size_from_name(
+CAPI_INTERFACE(query_get_range_var_size_from_name,
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     const char* dim_name,
     uint64_t range_idx,
     uint64_t* start_size,
-    uint64_t* end_size) noexcept {
+    uint64_t* end_size) {
   return api_entry<tiledb::api::tiledb_query_get_range_var_size_from_name>(
       ctx, query, dim_name, range_idx, start_size, end_size);
 }
 
-int32_t tiledb_query_get_range_var(
+CAPI_INTERFACE(query_get_range_var,
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     uint32_t dim_idx,
     uint64_t range_idx,
     void* start,
-    void* end) noexcept {
+    void* end) {
   return api_entry<tiledb::api::tiledb_query_get_range_var>(
       ctx, query, dim_idx, range_idx, start, end);
 }
 
-int32_t tiledb_query_get_range_var_from_name(
+CAPI_INTERFACE(query_get_range_var_from_name,
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     const char* dim_name,
     uint64_t range_idx,
     void* start,
-    void* end) noexcept {
+    void* end) {
   return api_entry<tiledb::api::tiledb_query_get_range_var_from_name>(
       ctx, query, dim_name, range_idx, start, end);
 }
 
-int32_t tiledb_query_get_est_result_size(
+CAPI_INTERFACE(query_get_est_result_size,
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     const char* name,
-    uint64_t* size) noexcept {
+    uint64_t* size) {
   return api_entry<tiledb::api::tiledb_query_get_est_result_size>(
       ctx, query, name, size);
 }
 
-int32_t tiledb_query_get_est_result_size_var(
+CAPI_INTERFACE(query_get_est_result_size_var,
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     const char* name,
     uint64_t* size_off,
-    uint64_t* size_val) noexcept {
+    uint64_t* size_val) {
   return api_entry<tiledb::api::tiledb_query_get_est_result_size_var>(
       ctx, query, name, size_off, size_val);
 }
 
-int32_t tiledb_query_get_est_result_size_nullable(
+CAPI_INTERFACE(query_get_est_result_size_nullable,
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     const char* name,
     uint64_t* size_val,
-    uint64_t* size_validity) noexcept {
+    uint64_t* size_validity) {
   return api_entry<tiledb::api::tiledb_query_get_est_result_size_nullable>(
       ctx, query, name, size_val, size_validity);
 }
 
-int32_t tiledb_query_get_est_result_size_var_nullable(
+CAPI_INTERFACE(query_get_est_result_size_var_nullable,
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     const char* name,
     uint64_t* size_off,
     uint64_t* size_val,
-    uint64_t* size_validity) noexcept {
+    uint64_t* size_validity) {
   return api_entry<tiledb::api::tiledb_query_get_est_result_size_var_nullable>(
       ctx, query, name, size_off, size_val, size_validity);
 }
 
-int32_t tiledb_query_get_fragment_num(
-    tiledb_ctx_t* ctx, const tiledb_query_t* query, uint32_t* num) noexcept {
+CAPI_INTERFACE(query_get_fragment_num,
+    tiledb_ctx_t* ctx, const tiledb_query_t* query, uint32_t* num) {
   return api_entry<tiledb::api::tiledb_query_get_fragment_num>(ctx, query, num);
 }
 
-int32_t tiledb_query_get_fragment_uri(
+CAPI_INTERFACE(query_get_fragment_uri,
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     uint64_t idx,
-    const char** uri) noexcept {
+    const char** uri) {
   return api_entry<tiledb::api::tiledb_query_get_fragment_uri>(
       ctx, query, idx, uri);
 }
 
-int32_t tiledb_query_get_fragment_timestamp_range(
+CAPI_INTERFACE(query_get_fragment_timestamp_range,
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     uint64_t idx,
     uint64_t* t1,
-    uint64_t* t2) noexcept {
+    uint64_t* t2) {
   return api_entry<tiledb::api::tiledb_query_get_fragment_timestamp_range>(
       ctx, query, idx, t1, t2);
 }
 
-int32_t tiledb_query_get_subarray_t(
+CAPI_INTERFACE(query_get_subarray_t,
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
-    tiledb_subarray_t** subarray) noexcept {
+    tiledb_subarray_t** subarray) {
   return api_entry<tiledb::api::tiledb_query_get_subarray_t>(
       ctx, query, subarray);
 }
 
-int32_t tiledb_query_get_relevant_fragment_num(
+CAPI_INTERFACE(query_get_relevant_fragment_num,
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
-    uint64_t* relevant_fragment_num) noexcept {
+    uint64_t* relevant_fragment_num) {
   return api_entry<tiledb::api::tiledb_query_get_relevant_fragment_num>(
       ctx, query, relevant_fragment_num);
 }
@@ -6099,179 +6099,179 @@ int32_t tiledb_query_get_relevant_fragment_num(
 /*         SUBARRAY               */
 /* ****************************** */
 
-int32_t tiledb_subarray_alloc(
+CAPI_INTERFACE(subarray_alloc,
     tiledb_ctx_t* ctx,
     const tiledb_array_t* array,
-    tiledb_subarray_t** subarray) noexcept {
+    tiledb_subarray_t** subarray) {
   return api_entry<tiledb::api::tiledb_subarray_alloc>(ctx, array, subarray);
 }
 
-int32_t tiledb_subarray_set_config(
+CAPI_INTERFACE(subarray_set_config,
     tiledb_ctx_t* ctx,
     tiledb_subarray_t* subarray,
-    tiledb_config_t* config) noexcept {
+    tiledb_config_t* config) {
   return api_entry<tiledb::api::tiledb_subarray_set_config>(
       ctx, subarray, config);
 }
 
-void tiledb_subarray_free(tiledb_subarray_t** subarray) noexcept {
+CAPI_INTERFACE_VOID(subarray_free,tiledb_subarray_t** subarray) {
   return api_entry_void<tiledb::api::tiledb_subarray_free>(subarray);
 }
 
-int32_t tiledb_subarray_set_coalesce_ranges(
+CAPI_INTERFACE(subarray_set_coalesce_ranges,
     tiledb_ctx_t* ctx,
     tiledb_subarray_t* subarray,
-    int coalesce_ranges) noexcept {
+    int coalesce_ranges) {
   return api_entry<tiledb::api::tiledb_subarray_set_coalesce_ranges>(
       ctx, subarray, coalesce_ranges);
 }
 
-int32_t tiledb_subarray_set_subarray(
+CAPI_INTERFACE(subarray_set_subarray,
     tiledb_ctx_t* ctx,
     tiledb_subarray_t* subarray_obj,
-    const void* subarray_vals) noexcept {
+    const void* subarray_vals) {
   return api_entry<tiledb::api::tiledb_subarray_set_subarray>(
       ctx, subarray_obj, subarray_vals);
 }
 
-int32_t tiledb_subarray_add_range(
+CAPI_INTERFACE(subarray_add_range,
     tiledb_ctx_t* ctx,
     tiledb_subarray_t* subarray,
     uint32_t dim_idx,
     const void* start,
     const void* end,
-    const void* stride) noexcept {
+    const void* stride) {
   return api_entry<tiledb::api::tiledb_subarray_add_range>(
       ctx, subarray, dim_idx, start, end, stride);
 }
 
-int32_t tiledb_subarray_add_point_ranges(
+CAPI_INTERFACE(subarray_add_point_ranges,
     tiledb_ctx_t* ctx,
     tiledb_subarray_t* subarray,
     uint32_t dim_idx,
     const void* start,
-    uint64_t count) noexcept {
+    uint64_t count) {
   return api_entry<tiledb::api::tiledb_subarray_add_point_ranges>(
       ctx, subarray, dim_idx, start, count);
 }
 
-int32_t tiledb_subarray_add_range_by_name(
+CAPI_INTERFACE(subarray_add_range_by_name,
     tiledb_ctx_t* ctx,
     tiledb_subarray_t* subarray,
     const char* dim_name,
     const void* start,
     const void* end,
-    const void* stride) noexcept {
+    const void* stride) {
   return api_entry<tiledb::api::tiledb_subarray_add_range_by_name>(
       ctx, subarray, dim_name, start, end, stride);
 }
 
-int32_t tiledb_subarray_add_range_var(
+CAPI_INTERFACE(subarray_add_range_var,
     tiledb_ctx_t* ctx,
     tiledb_subarray_t* subarray,
     uint32_t dim_idx,
     const void* start,
     uint64_t start_size,
     const void* end,
-    uint64_t end_size) noexcept {
+    uint64_t end_size) {
   return api_entry<tiledb::api::tiledb_subarray_add_range_var>(
       ctx, subarray, dim_idx, start, start_size, end, end_size);
 }
 
-int32_t tiledb_subarray_add_range_var_by_name(
+CAPI_INTERFACE(subarray_add_range_var_by_name,
     tiledb_ctx_t* ctx,
     tiledb_subarray_t* subarray,
     const char* dim_name,
     const void* start,
     uint64_t start_size,
     const void* end,
-    uint64_t end_size) noexcept {
+    uint64_t end_size) {
   return api_entry<tiledb::api::tiledb_subarray_add_range_var_by_name>(
       ctx, subarray, dim_name, start, start_size, end, end_size);
 }
 
-int32_t tiledb_subarray_get_range_num(
+CAPI_INTERFACE(subarray_get_range_num,
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     uint32_t dim_idx,
-    uint64_t* range_num) noexcept {
+    uint64_t* range_num) {
   return api_entry<tiledb::api::tiledb_subarray_get_range_num>(
       ctx, subarray, dim_idx, range_num);
 }
 
-int32_t tiledb_subarray_get_range_num_from_name(
+CAPI_INTERFACE(subarray_get_range_num_from_name,
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* dim_name,
-    uint64_t* range_num) noexcept {
+    uint64_t* range_num) {
   return api_entry<tiledb::api::tiledb_subarray_get_range_num_from_name>(
       ctx, subarray, dim_name, range_num);
 }
 
-int32_t tiledb_subarray_get_range(
+CAPI_INTERFACE(subarray_get_range,
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     uint32_t dim_idx,
     uint64_t range_idx,
     const void** start,
     const void** end,
-    const void** stride) noexcept {
+    const void** stride) {
   return api_entry<tiledb::api::tiledb_subarray_get_range>(
       ctx, subarray, dim_idx, range_idx, start, end, stride);
 }
 
-int32_t tiledb_subarray_get_range_var_size(
+CAPI_INTERFACE(subarray_get_range_var_size,
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     uint32_t dim_idx,
     uint64_t range_idx,
     uint64_t* start_size,
-    uint64_t* end_size) noexcept {
+    uint64_t* end_size) {
   return api_entry<tiledb::api::tiledb_subarray_get_range_var_size>(
       ctx, subarray, dim_idx, range_idx, start_size, end_size);
 }
 
-int32_t tiledb_subarray_get_range_from_name(
+CAPI_INTERFACE(subarray_get_range_from_name,
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* dim_name,
     uint64_t range_idx,
     const void** start,
     const void** end,
-    const void** stride) noexcept {
+    const void** stride) {
   return api_entry<tiledb::api::tiledb_subarray_get_range_from_name>(
       ctx, subarray, dim_name, range_idx, start, end, stride);
 }
 
-int32_t tiledb_subarray_get_range_var_size_from_name(
+CAPI_INTERFACE(subarray_get_range_var_size_from_name,
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* dim_name,
     uint64_t range_idx,
     uint64_t* start_size,
-    uint64_t* end_size) noexcept {
+    uint64_t* end_size) {
   return api_entry<tiledb::api::tiledb_subarray_get_range_var_size_from_name>(
       ctx, subarray, dim_name, range_idx, start_size, end_size);
 }
 
-int32_t tiledb_subarray_get_range_var(
+CAPI_INTERFACE(subarray_get_range_var,
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     uint32_t dim_idx,
     uint64_t range_idx,
     void* start,
-    void* end) noexcept {
+    void* end) {
   return api_entry<tiledb::api::tiledb_subarray_get_range_var>(
       ctx, subarray, dim_idx, range_idx, start, end);
 }
 
-int32_t tiledb_subarray_get_range_var_from_name(
+CAPI_INTERFACE(subarray_get_range_var_from_name,
     tiledb_ctx_t* ctx,
     const tiledb_subarray_t* subarray,
     const char* dim_name,
     uint64_t range_idx,
     void* start,
-    void* end) noexcept {
+    void* end) {
   return api_entry<tiledb::api::tiledb_subarray_get_range_var_from_name>(
       ctx, subarray, dim_name, range_idx, start, end);
 }
@@ -6280,12 +6280,12 @@ int32_t tiledb_subarray_get_range_var_from_name(
 /*          QUERY CONDITION       */
 /* ****************************** */
 
-int32_t tiledb_query_condition_alloc(
-    tiledb_ctx_t* const ctx, tiledb_query_condition_t** const cond) noexcept {
+CAPI_INTERFACE(query_condition_alloc,
+    tiledb_ctx_t* const ctx, tiledb_query_condition_t** const cond) {
   return api_entry<tiledb::api::tiledb_query_condition_alloc>(ctx, cond);
 }
 
-capi_return_t tiledb_query_condition_alloc_set_membership(
+CAPI_INTERFACE(query_condition_alloc_set_membership,
     tiledb_ctx_t* ctx,
     const char* field_name,
     const void* data,
@@ -6293,49 +6293,49 @@ capi_return_t tiledb_query_condition_alloc_set_membership(
     const void* offsets,
     uint64_t offsets_size,
     tiledb_query_condition_op_t op,
-    tiledb_query_condition_t** cond) noexcept {
+    tiledb_query_condition_t** cond) {
   return api_entry_context<
       tiledb::api::tiledb_query_condition_alloc_set_membership>(
       ctx, field_name, data, data_size, offsets, offsets_size, op, cond);
 }
 
-void tiledb_query_condition_free(tiledb_query_condition_t** cond) noexcept {
+CAPI_INTERFACE_VOID(query_condition_free,tiledb_query_condition_t** cond) {
   return api_entry_void<tiledb::api::tiledb_query_condition_free>(cond);
 }
 
-int32_t tiledb_query_condition_init(
+CAPI_INTERFACE(query_condition_init,
     tiledb_ctx_t* const ctx,
     tiledb_query_condition_t* const cond,
     const char* const attribute_name,
     const void* const condition_value,
     const uint64_t condition_value_size,
-    const tiledb_query_condition_op_t op) noexcept {
+    const tiledb_query_condition_op_t op) {
   return api_entry<tiledb::api::tiledb_query_condition_init>(
       ctx, cond, attribute_name, condition_value, condition_value_size, op);
 }
 
-int32_t tiledb_query_condition_combine(
+CAPI_INTERFACE(query_condition_combine,
     tiledb_ctx_t* const ctx,
     const tiledb_query_condition_t* const left_cond,
     const tiledb_query_condition_t* const right_cond,
     const tiledb_query_condition_combination_op_t combination_op,
-    tiledb_query_condition_t** const combined_cond) noexcept {
+    tiledb_query_condition_t** const combined_cond) {
   return api_entry<tiledb::api::tiledb_query_condition_combine>(
       ctx, left_cond, right_cond, combination_op, combined_cond);
 }
 
-int32_t tiledb_query_condition_negate(
+CAPI_INTERFACE(query_condition_negate,
     tiledb_ctx_t* const ctx,
     const tiledb_query_condition_t* const cond,
-    tiledb_query_condition_t** const negated_cond) noexcept {
+    tiledb_query_condition_t** const negated_cond) {
   return api_entry<tiledb::api::tiledb_query_condition_negate>(
       ctx, cond, negated_cond);
 }
 
-capi_return_t tiledb_query_condition_set_use_enumeration(
+CAPI_INTERFACE(query_condition_set_use_enumeration,
     tiledb_ctx_t* const ctx,
     const tiledb_query_condition_t* const cond,
-    int use_enumeration) noexcept {
+    int use_enumeration) {
   return api_entry<tiledb::api::tiledb_query_condition_set_use_enumeration>(
       ctx, cond, use_enumeration);
 }
@@ -6344,12 +6344,12 @@ capi_return_t tiledb_query_condition_set_use_enumeration(
 /*         UPDATE CONDITION       */
 /* ****************************** */
 
-int32_t tiledb_query_add_update_value(
+CAPI_INTERFACE(query_add_update_value,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const char* field_name,
     const void* update_value,
-    uint64_t update_value_size) noexcept {
+    uint64_t update_value_size) {
   return api_entry<tiledb::api::tiledb_query_add_update_value>(
       ctx, query, field_name, update_value, update_value_size);
 }
@@ -6358,147 +6358,147 @@ int32_t tiledb_query_add_update_value(
 /*              ARRAY             */
 /* ****************************** */
 
-int32_t tiledb_array_alloc(
-    tiledb_ctx_t* ctx, const char* array_uri, tiledb_array_t** array) noexcept {
+CAPI_INTERFACE(array_alloc,
+    tiledb_ctx_t* ctx, const char* array_uri, tiledb_array_t** array) {
   return api_entry<tiledb::api::tiledb_array_alloc>(ctx, array_uri, array);
 }
 
-int32_t tiledb_array_set_open_timestamp_start(
+CAPI_INTERFACE(array_set_open_timestamp_start,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
-    uint64_t timestamp_start) noexcept {
+    uint64_t timestamp_start) {
   return api_entry<tiledb::api::tiledb_array_set_open_timestamp_start>(
       ctx, array, timestamp_start);
 }
 
-int32_t tiledb_array_set_open_timestamp_end(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_end) noexcept {
+CAPI_INTERFACE(array_set_open_timestamp_end,
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_end) {
   return api_entry<tiledb::api::tiledb_array_set_open_timestamp_end>(
       ctx, array, timestamp_end);
 }
 
-int32_t tiledb_array_get_open_timestamp_start(
+CAPI_INTERFACE(array_get_open_timestamp_start,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
-    uint64_t* timestamp_start) noexcept {
+    uint64_t* timestamp_start) {
   return api_entry<tiledb::api::tiledb_array_get_open_timestamp_start>(
       ctx, array, timestamp_start);
 }
 
-int32_t tiledb_array_get_open_timestamp_end(
+CAPI_INTERFACE(array_get_open_timestamp_end,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
-    uint64_t* timestamp_end) noexcept {
+    uint64_t* timestamp_end) {
   return api_entry<tiledb::api::tiledb_array_get_open_timestamp_end>(
       ctx, array, timestamp_end);
 }
 
-int32_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* uri) noexcept {
+CAPI_INTERFACE(array_delete,tiledb_ctx_t* ctx, const char* uri) {
   return api_entry<tiledb::api::tiledb_array_delete>(ctx, uri);
 }
 
-int32_t tiledb_array_delete_array(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* uri) noexcept {
+CAPI_INTERFACE(array_delete_array,
+    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* uri) {
   return api_entry<tiledb::api::tiledb_array_delete_array>(ctx, array, uri);
 }
 
-int32_t tiledb_array_delete_fragments(
+CAPI_INTERFACE(array_delete_fragments,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const char* uri,
     uint64_t timestamp_start,
-    uint64_t timestamp_end) noexcept {
+    uint64_t timestamp_end) {
   return api_entry<tiledb::api::tiledb_array_delete_fragments>(
       ctx, array, uri, timestamp_start, timestamp_end);
 }
 
-capi_return_t tiledb_array_delete_fragments_v2(
+CAPI_INTERFACE(array_delete_fragments_v2,
     tiledb_ctx_t* ctx,
     const char* uri_str,
     uint64_t timestamp_start,
-    uint64_t timestamp_end) noexcept {
+    uint64_t timestamp_end) {
   return api_entry<tiledb::api::tiledb_array_delete_fragments_v2>(
       ctx, uri_str, timestamp_start, timestamp_end);
 }
 
-capi_return_t tiledb_array_delete_fragments_list(
+CAPI_INTERFACE(array_delete_fragments_list,
     tiledb_ctx_t* ctx,
     const char* uri_str,
     const char* fragment_uris[],
-    const size_t num_fragments) noexcept {
+    const size_t num_fragments) {
   return api_entry<tiledb::api::tiledb_array_delete_fragments_list>(
       ctx, uri_str, fragment_uris, num_fragments);
 }
 
-int32_t tiledb_array_open(
+CAPI_INTERFACE(array_open,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
-    tiledb_query_type_t query_type) noexcept {
+    tiledb_query_type_t query_type) {
   return api_entry<tiledb::api::tiledb_array_open>(ctx, array, query_type);
 }
 
-int32_t tiledb_array_is_open(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, int32_t* is_open) noexcept {
+CAPI_INTERFACE(array_is_open,
+    tiledb_ctx_t* ctx, tiledb_array_t* array, int32_t* is_open) {
   return api_entry<tiledb::api::tiledb_array_is_open>(ctx, array, is_open);
 }
 
-int32_t tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array) noexcept {
+CAPI_INTERFACE(array_reopen,tiledb_ctx_t* ctx, tiledb_array_t* array) {
   return api_entry<tiledb::api::tiledb_array_reopen>(ctx, array);
 }
 
-int32_t tiledb_array_set_config(
+CAPI_INTERFACE(array_set_config,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
-    tiledb_config_t* config) noexcept {
+    tiledb_config_t* config) {
   return api_entry<tiledb::api::tiledb_array_set_config>(ctx, array, config);
 }
 
-int32_t tiledb_array_get_config(
+CAPI_INTERFACE(array_get_config,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
-    tiledb_config_t** config) noexcept {
+    tiledb_config_t** config) {
   return api_entry<tiledb::api::tiledb_array_get_config>(ctx, array, config);
 }
 
-int32_t tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array) noexcept {
+CAPI_INTERFACE(array_close,tiledb_ctx_t* ctx, tiledb_array_t* array) {
   return api_entry<tiledb::api::tiledb_array_close>(ctx, array);
 }
 
-void tiledb_array_free(tiledb_array_t** array) noexcept {
+CAPI_INTERFACE_VOID(array_free,tiledb_array_t** array) {
   return api_entry_void<tiledb::api::tiledb_array_free>(array);
 }
 
-int32_t tiledb_array_get_schema(
+CAPI_INTERFACE(array_get_schema,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
-    tiledb_array_schema_t** array_schema) noexcept {
+    tiledb_array_schema_t** array_schema) {
   return api_entry<tiledb::api::tiledb_array_get_schema>(
       ctx, array, array_schema);
 }
 
-int32_t tiledb_array_get_query_type(
+CAPI_INTERFACE(array_get_query_type,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
-    tiledb_query_type_t* query_type) noexcept {
+    tiledb_query_type_t* query_type) {
   return api_entry<tiledb::api::tiledb_array_get_query_type>(
       ctx, array, query_type);
 }
 
-int32_t tiledb_array_create(
+CAPI_INTERFACE(array_create,
     tiledb_ctx_t* ctx,
     const char* array_uri,
-    const tiledb_array_schema_t* array_schema) noexcept {
+    const tiledb_array_schema_t* array_schema) {
   return api_entry<tiledb::api::tiledb_array_create>(
       ctx, array_uri, array_schema);
 }
 
-int32_t tiledb_array_create_with_key(
+CAPI_INTERFACE(array_create_with_key,
     tiledb_ctx_t* ctx,
     const char* array_uri,
     const tiledb_array_schema_t* array_schema,
     tiledb_encryption_type_t encryption_type,
     const void* encryption_key,
-    uint32_t key_length) noexcept {
+    uint32_t key_length) {
   return api_entry<tiledb::api::tiledb_array_create_with_key>(
       ctx,
       array_uri,
@@ -6508,165 +6508,165 @@ int32_t tiledb_array_create_with_key(
       key_length);
 }
 
-int32_t tiledb_array_consolidate(
+CAPI_INTERFACE(array_consolidate,
     tiledb_ctx_t* ctx,
     const char* array_uri,
-    tiledb_config_t* config) noexcept {
+    tiledb_config_t* config) {
   return api_entry<tiledb::api::tiledb_array_consolidate>(
       ctx, array_uri, config);
 }
 
-int32_t tiledb_array_consolidate_with_key(
+CAPI_INTERFACE(array_consolidate_with_key,
     tiledb_ctx_t* ctx,
     const char* array_uri,
     tiledb_encryption_type_t encryption_type,
     const void* encryption_key,
     uint32_t key_length,
-    tiledb_config_t* config) noexcept {
+    tiledb_config_t* config) {
   return api_entry<tiledb::api::tiledb_array_consolidate_with_key>(
       ctx, array_uri, encryption_type, encryption_key, key_length, config);
 }
 
-int32_t tiledb_array_consolidate_fragments(
+CAPI_INTERFACE(array_consolidate_fragments,
     tiledb_ctx_t* ctx,
     const char* array_uri,
     const char** fragment_uris,
     const uint64_t num_fragments,
-    tiledb_config_t* config) noexcept {
+    tiledb_config_t* config) {
   return api_entry<tiledb::api::tiledb_array_consolidate_fragments>(
       ctx, array_uri, fragment_uris, num_fragments, config);
 }
 
-int32_t tiledb_array_vacuum(
+CAPI_INTERFACE(array_vacuum,
     tiledb_ctx_t* ctx,
     const char* array_uri,
-    tiledb_config_t* config) noexcept {
+    tiledb_config_t* config) {
   return api_entry<tiledb::api::tiledb_array_vacuum>(ctx, array_uri, config);
 }
 
-int32_t tiledb_array_get_non_empty_domain(
+CAPI_INTERFACE(array_get_non_empty_domain,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     void* domain,
-    int32_t* is_empty) noexcept {
+    int32_t* is_empty) {
   return api_entry<tiledb::api::tiledb_array_get_non_empty_domain>(
       ctx, array, domain, is_empty);
 }
 
-int32_t tiledb_array_get_non_empty_domain_from_index(
+CAPI_INTERFACE(array_get_non_empty_domain_from_index,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     uint32_t idx,
     void* domain,
-    int32_t* is_empty) noexcept {
+    int32_t* is_empty) {
   return api_entry<tiledb::api::tiledb_array_get_non_empty_domain_from_index>(
       ctx, array, idx, domain, is_empty);
 }
 
-int32_t tiledb_array_get_non_empty_domain_from_name(
+CAPI_INTERFACE(array_get_non_empty_domain_from_name,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const char* name,
     void* domain,
-    int32_t* is_empty) noexcept {
+    int32_t* is_empty) {
   return api_entry<tiledb::api::tiledb_array_get_non_empty_domain_from_name>(
       ctx, array, name, domain, is_empty);
 }
 
-int32_t tiledb_array_get_non_empty_domain_var_size_from_index(
+CAPI_INTERFACE(array_get_non_empty_domain_var_size_from_index,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     uint32_t idx,
     uint64_t* start_size,
     uint64_t* end_size,
-    int32_t* is_empty) noexcept {
+    int32_t* is_empty) {
   return api_entry<
       tiledb::api::tiledb_array_get_non_empty_domain_var_size_from_index>(
       ctx, array, idx, start_size, end_size, is_empty);
 }
 
-int32_t tiledb_array_get_non_empty_domain_var_size_from_name(
+CAPI_INTERFACE(array_get_non_empty_domain_var_size_from_name,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const char* name,
     uint64_t* start_size,
     uint64_t* end_size,
-    int32_t* is_empty) noexcept {
+    int32_t* is_empty) {
   return api_entry<
       tiledb::api::tiledb_array_get_non_empty_domain_var_size_from_name>(
       ctx, array, name, start_size, end_size, is_empty);
 }
 
-int32_t tiledb_array_get_non_empty_domain_var_from_index(
+CAPI_INTERFACE(array_get_non_empty_domain_var_from_index,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     uint32_t idx,
     void* start,
     void* end,
-    int32_t* is_empty) noexcept {
+    int32_t* is_empty) {
   return api_entry<
       tiledb::api::tiledb_array_get_non_empty_domain_var_from_index>(
       ctx, array, idx, start, end, is_empty);
 }
 
-int32_t tiledb_array_get_non_empty_domain_var_from_name(
+CAPI_INTERFACE(array_get_non_empty_domain_var_from_name,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const char* name,
     void* start,
     void* end,
-    int32_t* is_empty) noexcept {
+    int32_t* is_empty) {
   return api_entry<
       tiledb::api::tiledb_array_get_non_empty_domain_var_from_name>(
       ctx, array, name, start, end, is_empty);
 }
 
-int32_t tiledb_array_get_uri(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, const char** array_uri) noexcept {
+CAPI_INTERFACE(array_get_uri,
+    tiledb_ctx_t* ctx, tiledb_array_t* array, const char** array_uri) {
   return api_entry<tiledb::api::tiledb_array_get_uri>(ctx, array, array_uri);
 }
 
-int32_t tiledb_array_encryption_type(
+CAPI_INTERFACE(array_encryption_type,
     tiledb_ctx_t* ctx,
     const char* array_uri,
-    tiledb_encryption_type_t* encryption_type) noexcept {
+    tiledb_encryption_type_t* encryption_type) {
   return api_entry<tiledb::api::tiledb_array_encryption_type>(
       ctx, array_uri, encryption_type);
 }
 
-int32_t tiledb_array_put_metadata(
+CAPI_INTERFACE(array_put_metadata,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const char* key,
     tiledb_datatype_t value_type,
     uint32_t value_num,
-    const void* value) noexcept {
+    const void* value) {
   return api_entry<tiledb::api::tiledb_array_put_metadata>(
       ctx, array, key, value_type, value_num, value);
 }
 
-int32_t tiledb_array_delete_metadata(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* key) noexcept {
+CAPI_INTERFACE(array_delete_metadata,
+    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* key) {
   return api_entry<tiledb::api::tiledb_array_delete_metadata>(ctx, array, key);
 }
 
-int32_t tiledb_array_get_metadata(
+CAPI_INTERFACE(array_get_metadata,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const char* key,
     tiledb_datatype_t* value_type,
     uint32_t* value_num,
-    const void** value) noexcept {
+    const void** value) {
   return api_entry<tiledb::api::tiledb_array_get_metadata>(
       ctx, array, key, value_type, value_num, value);
 }
 
-int32_t tiledb_array_get_metadata_num(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* num) noexcept {
+CAPI_INTERFACE(array_get_metadata_num,
+    tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* num) {
   return api_entry<tiledb::api::tiledb_array_get_metadata_num>(ctx, array, num);
 }
 
-int32_t tiledb_array_get_metadata_from_index(
+CAPI_INTERFACE(array_get_metadata_from_index,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     uint64_t index,
@@ -6674,47 +6674,47 @@ int32_t tiledb_array_get_metadata_from_index(
     uint32_t* key_len,
     tiledb_datatype_t* value_type,
     uint32_t* value_num,
-    const void** value) noexcept {
+    const void** value) {
   return api_entry<tiledb::api::tiledb_array_get_metadata_from_index>(
       ctx, array, index, key, key_len, value_type, value_num, value);
 }
 
-int32_t tiledb_array_has_metadata_key(
+CAPI_INTERFACE(array_has_metadata_key,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const char* key,
     tiledb_datatype_t* value_type,
-    int32_t* has_key) noexcept {
+    int32_t* has_key) {
   return api_entry<tiledb::api::tiledb_array_has_metadata_key>(
       ctx, array, key, value_type, has_key);
 }
 
-int32_t tiledb_array_evolve(
+CAPI_INTERFACE(array_evolve,
     tiledb_ctx_t* ctx,
     const char* array_uri,
-    tiledb_array_schema_evolution_t* array_schema_evolution) noexcept {
+    tiledb_array_schema_evolution_t* array_schema_evolution) {
   return api_entry<tiledb::api::tiledb_array_evolve>(
       ctx, array_uri, array_schema_evolution);
 }
 
-capi_return_t tiledb_array_get_enumeration(
+CAPI_INTERFACE(array_get_enumeration,
     tiledb_ctx_t* ctx,
     const tiledb_array_t* array,
     const char* attr_name,
-    tiledb_enumeration_t** enumeration) noexcept {
+    tiledb_enumeration_t** enumeration) {
   return api_entry<tiledb::api::tiledb_array_get_enumeration>(
       ctx, array, attr_name, enumeration);
 }
 
-capi_return_t tiledb_array_load_all_enumerations(
-    tiledb_ctx_t* ctx, const tiledb_array_t* array) noexcept {
+CAPI_INTERFACE(array_load_all_enumerations,
+    tiledb_ctx_t* ctx, const tiledb_array_t* array) {
   return api_entry<tiledb::api::tiledb_array_load_all_enumerations>(ctx, array);
 }
 
-int32_t tiledb_array_upgrade_version(
+CAPI_INTERFACE(array_upgrade_version,
     tiledb_ctx_t* ctx,
     const char* array_uri,
-    tiledb_config_t* config) noexcept {
+    tiledb_config_t* config) {
   return api_entry<tiledb::api::tiledb_array_upgrade_version>(
       ctx, array_uri, config);
 }
@@ -6723,35 +6723,35 @@ int32_t tiledb_array_upgrade_version(
 /*         OBJECT MANAGEMENT      */
 /* ****************************** */
 
-int32_t tiledb_object_type(
-    tiledb_ctx_t* ctx, const char* path, tiledb_object_t* type) noexcept {
+CAPI_INTERFACE(object_type,
+    tiledb_ctx_t* ctx, const char* path, tiledb_object_t* type) {
   return api_entry<tiledb::api::tiledb_object_type>(ctx, path, type);
 }
 
-int32_t tiledb_object_remove(tiledb_ctx_t* ctx, const char* path) noexcept {
+CAPI_INTERFACE(object_remove,tiledb_ctx_t* ctx, const char* path) {
   return api_entry<tiledb::api::tiledb_object_remove>(ctx, path);
 }
 
-int32_t tiledb_object_move(
-    tiledb_ctx_t* ctx, const char* old_path, const char* new_path) noexcept {
+CAPI_INTERFACE(object_move,
+    tiledb_ctx_t* ctx, const char* old_path, const char* new_path) {
   return api_entry<tiledb::api::tiledb_object_move>(ctx, old_path, new_path);
 }
 
-int32_t tiledb_object_walk(
+CAPI_INTERFACE(object_walk,
     tiledb_ctx_t* ctx,
     const char* path,
     tiledb_walk_order_t order,
     int32_t (*callback)(const char*, tiledb_object_t, void*),
-    void* data) noexcept {
+    void* data) {
   return api_entry<tiledb::api::tiledb_object_walk>(
       ctx, path, order, callback, data);
 }
 
-int32_t tiledb_object_ls(
+CAPI_INTERFACE(object_ls,
     tiledb_ctx_t* ctx,
     const char* path,
     int32_t (*callback)(const char*, tiledb_object_t, void*),
-    void* data) noexcept {
+    void* data) {
   return api_entry<tiledb::api::tiledb_object_ls>(ctx, path, callback, data);
 }
 
@@ -6759,11 +6759,11 @@ int32_t tiledb_object_ls(
 /*              URI               */
 /* ****************************** */
 
-int32_t tiledb_uri_to_path(
+CAPI_INTERFACE(uri_to_path,
     tiledb_ctx_t* ctx,
     const char* uri,
     char* path_out,
-    uint32_t* path_length) noexcept {
+    uint32_t* path_length) {
   return api_entry<tiledb::api::tiledb_uri_to_path>(
       ctx, uri, path_out, path_length);
 }
@@ -6772,35 +6772,35 @@ int32_t tiledb_uri_to_path(
 /*             Stats              */
 /* ****************************** */
 
-int32_t tiledb_stats_enable() noexcept {
+CAPI_INTERFACE_NULL(stats_enable) {
   return api_entry_plain<tiledb::api::tiledb_stats_enable>();
 }
 
-int32_t tiledb_stats_disable() noexcept {
+CAPI_INTERFACE_NULL(stats_disable) {
   return api_entry_plain<tiledb::api::tiledb_stats_disable>();
 }
 
-int32_t tiledb_stats_reset() noexcept {
+CAPI_INTERFACE_NULL(stats_reset) {
   return api_entry_plain<tiledb::api::tiledb_stats_reset>();
 }
 
-int32_t tiledb_stats_dump(FILE* out) noexcept {
+CAPI_INTERFACE(stats_dump,FILE* out) {
   return api_entry_plain<tiledb::api::tiledb_stats_dump>(out);
 }
 
-int32_t tiledb_stats_dump_str(char** out) noexcept {
+CAPI_INTERFACE(stats_dump_str,char** out) {
   return api_entry_plain<tiledb::api::tiledb_stats_dump_str>(out);
 }
 
-int32_t tiledb_stats_raw_dump(FILE* out) noexcept {
+CAPI_INTERFACE(stats_raw_dump,FILE* out) {
   return api_entry_plain<tiledb::api::tiledb_stats_raw_dump>(out);
 }
 
-int32_t tiledb_stats_raw_dump_str(char** out) noexcept {
+CAPI_INTERFACE(stats_raw_dump_str,char** out) {
   return api_entry_plain<tiledb::api::tiledb_stats_raw_dump_str>(out);
 }
 
-int32_t tiledb_stats_free_str(char** out) noexcept {
+CAPI_INTERFACE(stats_free_str,char** out) {
   return api_entry_plain<tiledb::api::tiledb_stats_free_str>(out);
 }
 
@@ -6808,11 +6808,11 @@ int32_t tiledb_stats_free_str(char** out) noexcept {
 /*          Heap Profiler         */
 /* ****************************** */
 
-int32_t tiledb_heap_profiler_enable(
+CAPI_INTERFACE(heap_profiler_enable,
     const char* const file_name_prefix,
     const uint64_t dump_interval_ms,
     const uint64_t dump_interval_bytes,
-    const uint64_t dump_threshold_bytes) noexcept {
+    const uint64_t dump_threshold_bytes) {
   return api_entry_plain<tiledb::api::tiledb_heap_profiler_enable>(
       file_name_prefix,
       dump_interval_ms,
@@ -6824,126 +6824,126 @@ int32_t tiledb_heap_profiler_enable(
 /*          Serialization         */
 /* ****************************** */
 
-int32_t tiledb_serialize_array(
+CAPI_INTERFACE(serialize_array,
     tiledb_ctx_t* ctx,
     const tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t** buffer) noexcept {
+    tiledb_buffer_t** buffer) {
   return api_entry<tiledb::api::tiledb_serialize_array>(
       ctx, array, serialize_type, client_side, buffer);
 }
 
-int32_t tiledb_deserialize_array(
+CAPI_INTERFACE(deserialize_array,
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_array_t** array) noexcept {
+    tiledb_array_t** array) {
   return api_entry<tiledb::api::tiledb_deserialize_array>(
       ctx, buffer, serialize_type, client_side, array);
 }
 
-int32_t tiledb_serialize_array_schema(
+CAPI_INTERFACE(serialize_array_schema,
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t** buffer) noexcept {
+    tiledb_buffer_t** buffer) {
   return api_entry<tiledb::api::tiledb_serialize_array_schema>(
       ctx, array_schema, serialize_type, client_side, buffer);
 }
 
-int32_t tiledb_deserialize_array_schema(
+CAPI_INTERFACE(deserialize_array_schema,
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_array_schema_t** array_schema) noexcept {
+    tiledb_array_schema_t** array_schema) {
   return api_entry<tiledb::api::tiledb_deserialize_array_schema>(
       ctx, buffer, serialize_type, client_side, array_schema);
 }
 
-int32_t tiledb_serialize_array_open(
+CAPI_INTERFACE(serialize_array_open,
     tiledb_ctx_t* ctx,
     const tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t** buffer) noexcept {
+    tiledb_buffer_t** buffer) {
   return api_entry<tiledb::api::tiledb_serialize_array_open>(
       ctx, array, serialize_type, client_side, buffer);
 }
 
-int32_t tiledb_deserialize_array_open(
+CAPI_INTERFACE(deserialize_array_open,
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_array_t** array) noexcept {
+    tiledb_array_t** array) {
   return api_entry<tiledb::api::tiledb_deserialize_array_open>(
       ctx, buffer, serialize_type, client_side, array);
 }
 
-int32_t tiledb_serialize_array_schema_evolution(
+CAPI_INTERFACE(serialize_array_schema_evolution,
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_evolution_t* array_schema_evolution,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t** buffer) noexcept {
+    tiledb_buffer_t** buffer) {
   return api_entry<tiledb::api::tiledb_serialize_array_schema_evolution>(
       ctx, array_schema_evolution, serialize_type, client_side, buffer);
 }
 
-int32_t tiledb_deserialize_array_schema_evolution(
+CAPI_INTERFACE(deserialize_array_schema_evolution,
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_array_schema_evolution_t** array_schema_evolution) noexcept {
+    tiledb_array_schema_evolution_t** array_schema_evolution) {
   return api_entry<tiledb::api::tiledb_deserialize_array_schema_evolution>(
       ctx, buffer, serialize_type, client_side, array_schema_evolution);
 }
 
-int32_t tiledb_serialize_query(
+CAPI_INTERFACE(serialize_query,
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_list_t** buffer_list) noexcept {
+    tiledb_buffer_list_t** buffer_list) {
   return api_entry<tiledb::api::tiledb_serialize_query>(
       ctx, query, serialize_type, client_side, buffer_list);
 }
 
-int32_t tiledb_deserialize_query(
+CAPI_INTERFACE(deserialize_query,
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_query_t* query) noexcept {
+    tiledb_query_t* query) {
   return api_entry<tiledb::api::tiledb_deserialize_query>(
       ctx, buffer, serialize_type, client_side, query);
 }
 
-int32_t tiledb_deserialize_query_and_array(
+CAPI_INTERFACE(deserialize_query_and_array,
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
     const char* array_uri,
     tiledb_query_t** query,
-    tiledb_array_t** array) noexcept {
+    tiledb_array_t** array) {
   return api_entry<tiledb::api::tiledb_deserialize_query_and_array>(
       ctx, buffer, serialize_type, client_side, array_uri, query, array);
 }
 
-int32_t tiledb_serialize_array_nonempty_domain(
+CAPI_INTERFACE(serialize_array_nonempty_domain,
     tiledb_ctx_t* ctx,
     const tiledb_array_t* array,
     const void* nonempty_domain,
     int32_t is_empty,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t** buffer) noexcept {
+    tiledb_buffer_t** buffer) {
   return api_entry<tiledb::api::tiledb_serialize_array_nonempty_domain>(
       ctx,
       array,
@@ -6954,14 +6954,14 @@ int32_t tiledb_serialize_array_nonempty_domain(
       buffer);
 }
 
-int32_t tiledb_deserialize_array_nonempty_domain(
+CAPI_INTERFACE(deserialize_array_nonempty_domain,
     tiledb_ctx_t* ctx,
     const tiledb_array_t* array,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
     void* nonempty_domain,
-    int32_t* is_empty) noexcept {
+    int32_t* is_empty) {
   return api_entry<tiledb::api::tiledb_deserialize_array_nonempty_domain>(
       ctx,
       array,
@@ -6972,173 +6972,173 @@ int32_t tiledb_deserialize_array_nonempty_domain(
       is_empty);
 }
 
-int32_t tiledb_serialize_array_non_empty_domain_all_dimensions(
+CAPI_INTERFACE(serialize_array_non_empty_domain_all_dimensions,
     tiledb_ctx_t* ctx,
     const tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t** buffer) noexcept {
+    tiledb_buffer_t** buffer) {
   return api_entry<
       tiledb::api::tiledb_serialize_array_non_empty_domain_all_dimensions>(
       ctx, array, serialize_type, client_side, buffer);
 }
 
-int32_t tiledb_deserialize_array_non_empty_domain_all_dimensions(
+CAPI_INTERFACE(deserialize_array_non_empty_domain_all_dimensions,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
-    int32_t client_side) noexcept {
+    int32_t client_side) {
   return api_entry<
       tiledb::api::tiledb_deserialize_array_non_empty_domain_all_dimensions>(
       ctx, array, buffer, serialize_type, client_side);
 }
 
-int32_t tiledb_serialize_array_max_buffer_sizes(
+CAPI_INTERFACE(serialize_array_max_buffer_sizes,
     tiledb_ctx_t* ctx,
     const tiledb_array_t* array,
     const void* subarray,
     tiledb_serialization_type_t serialize_type,
-    tiledb_buffer_t** buffer) noexcept {
+    tiledb_buffer_t** buffer) {
   return api_entry<tiledb::api::tiledb_serialize_array_max_buffer_sizes>(
       ctx, array, subarray, serialize_type, buffer);
 }
 
-capi_return_t tiledb_handle_array_delete_fragments_timestamps_request(
+CAPI_INTERFACE(handle_array_delete_fragments_timestamps_request,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
-    const tiledb_buffer_t* request) noexcept {
+    const tiledb_buffer_t* request) {
   return api_entry<
       tiledb::api::tiledb_handle_array_delete_fragments_timestamps_request>(
       ctx, array, serialize_type, request);
 }
 
-capi_return_t tiledb_handle_array_delete_fragments_list_request(
+CAPI_INTERFACE(handle_array_delete_fragments_list_request,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
-    const tiledb_buffer_t* request) noexcept {
+    const tiledb_buffer_t* request) {
   return api_entry<
       tiledb::api::tiledb_handle_array_delete_fragments_list_request>(
       ctx, array, serialize_type, request);
 }
 
-int32_t tiledb_serialize_array_metadata(
+CAPI_INTERFACE(serialize_array_metadata,
     tiledb_ctx_t* ctx,
     const tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
-    tiledb_buffer_t** buffer) noexcept {
+    tiledb_buffer_t** buffer) {
   return api_entry<tiledb::api::tiledb_serialize_array_metadata>(
       ctx, array, serialize_type, buffer);
 }
 
-int32_t tiledb_deserialize_array_metadata(
+CAPI_INTERFACE(deserialize_array_metadata,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_serialization_type_t serialize_type,
-    const tiledb_buffer_t* buffer) noexcept {
+    const tiledb_buffer_t* buffer) {
   return api_entry<tiledb::api::tiledb_deserialize_array_metadata>(
       ctx, array, serialize_type, buffer);
 }
 
-int32_t tiledb_serialize_query_est_result_sizes(
+CAPI_INTERFACE(serialize_query_est_result_sizes,
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t** buffer) noexcept {
+    tiledb_buffer_t** buffer) {
   return api_entry<tiledb::api::tiledb_serialize_query_est_result_sizes>(
       ctx, query, serialize_type, client_side, buffer);
 }
 
-int32_t tiledb_deserialize_query_est_result_sizes(
+CAPI_INTERFACE(deserialize_query_est_result_sizes,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    const tiledb_buffer_t* buffer) noexcept {
+    const tiledb_buffer_t* buffer) {
   return api_entry<tiledb::api::tiledb_deserialize_query_est_result_sizes>(
       ctx, query, serialize_type, client_side, buffer);
 }
 
-int32_t tiledb_serialize_config(
+CAPI_INTERFACE(serialize_config,
     tiledb_ctx_t* ctx,
     const tiledb_config_t* config,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t** buffer) noexcept {
+    tiledb_buffer_t** buffer) {
   return api_entry<tiledb::api::tiledb_serialize_config>(
       ctx, config, serialize_type, client_side, buffer);
 }
 
-int32_t tiledb_deserialize_config(
+CAPI_INTERFACE(deserialize_config,
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_config_t** config) noexcept {
+    tiledb_config_t** config) {
   return api_entry_context<tiledb::api::tiledb_deserialize_config>(
       ctx, buffer, serialize_type, client_side, config);
 }
 
-int32_t tiledb_serialize_fragment_info_request(
+CAPI_INTERFACE(serialize_fragment_info_request,
     tiledb_ctx_t* ctx,
     const tiledb_fragment_info_t* fragment_info,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t** buffer) noexcept {
+    tiledb_buffer_t** buffer) {
   return api_entry<tiledb::api::tiledb_serialize_fragment_info_request>(
       ctx, fragment_info, serialize_type, client_side, buffer);
 }
 
-int32_t tiledb_deserialize_fragment_info_request(
+CAPI_INTERFACE(deserialize_fragment_info_request,
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_fragment_info_t* fragment_info) noexcept {
+    tiledb_fragment_info_t* fragment_info) {
   return api_entry<tiledb::api::tiledb_deserialize_fragment_info_request>(
       ctx, buffer, serialize_type, client_side, fragment_info);
 }
 
-int32_t tiledb_serialize_fragment_info(
+CAPI_INTERFACE(serialize_fragment_info,
     tiledb_ctx_t* ctx,
     const tiledb_fragment_info_t* fragment_info,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
-    tiledb_buffer_t** buffer) noexcept {
+    tiledb_buffer_t** buffer) {
   return api_entry<tiledb::api::tiledb_serialize_fragment_info>(
       ctx, fragment_info, serialize_type, client_side, buffer);
 }
 
-int32_t tiledb_deserialize_fragment_info(
+CAPI_INTERFACE(deserialize_fragment_info,
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     const char* array_uri,
     int32_t client_side,
-    tiledb_fragment_info_t* fragment_info) noexcept {
+    tiledb_fragment_info_t* fragment_info) {
   return api_entry<tiledb::api::tiledb_deserialize_fragment_info>(
       ctx, buffer, serialize_type, array_uri, client_side, fragment_info);
 }
 
-capi_return_t tiledb_handle_load_array_schema_request(
+CAPI_INTERFACE(handle_load_array_schema_request,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_serialization_type_t serialization_type,
     const tiledb_buffer_t* request,
-    tiledb_buffer_t* response) noexcept {
+    tiledb_buffer_t* response) {
   return api_entry<tiledb::api::tiledb_handle_load_array_schema_request>(
       ctx, array, serialization_type, request, response);
 }
 
-capi_return_t tiledb_handle_load_enumerations_request(
+CAPI_INTERFACE(handle_load_enumerations_request,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_serialization_type_t serialization_type,
     const tiledb_buffer_t* request,
-    tiledb_buffer_t* response) noexcept {
+    tiledb_buffer_t* response) {
   return api_entry<tiledb::api::tiledb_handle_load_enumerations_request>(
       ctx, array, serialization_type, request, response);
 }
@@ -7159,348 +7159,348 @@ int32_t tiledb::impl::tiledb_query_submit_async_func(
 /*          FRAGMENT INFO         */
 /* ****************************** */
 
-int32_t tiledb_fragment_info_alloc(
+CAPI_INTERFACE(fragment_info_alloc,
     tiledb_ctx_t* ctx,
     const char* array_uri,
-    tiledb_fragment_info_t** fragment_info) noexcept {
+    tiledb_fragment_info_t** fragment_info) {
   return api_entry<tiledb::api::tiledb_fragment_info_alloc>(
       ctx, array_uri, fragment_info);
 }
 
-void tiledb_fragment_info_free(
-    tiledb_fragment_info_t** fragment_info) noexcept {
+CAPI_INTERFACE_VOID(fragment_info_free,
+    tiledb_fragment_info_t** fragment_info) {
   return api_entry_void<tiledb::api::tiledb_fragment_info_free>(fragment_info);
 }
 
-int32_t tiledb_fragment_info_set_config(
+CAPI_INTERFACE(fragment_info_set_config,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
-    tiledb_config_t* config) noexcept {
+    tiledb_config_t* config) {
   return api_entry<tiledb::api::tiledb_fragment_info_set_config>(
       ctx, fragment_info, config);
 }
 
-int32_t tiledb_fragment_info_get_config(
+CAPI_INTERFACE(fragment_info_get_config,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
-    tiledb_config_t** config) noexcept {
+    tiledb_config_t** config) {
   return api_entry<tiledb::api::tiledb_fragment_info_get_config>(
       ctx, fragment_info, config);
 }
 
-int32_t tiledb_fragment_info_load(
-    tiledb_ctx_t* ctx, tiledb_fragment_info_t* fragment_info) noexcept {
+CAPI_INTERFACE(fragment_info_load,
+    tiledb_ctx_t* ctx, tiledb_fragment_info_t* fragment_info) {
   return api_entry<tiledb::api::tiledb_fragment_info_load>(ctx, fragment_info);
 }
 
-int32_t tiledb_fragment_info_get_fragment_name(
+CAPI_INTERFACE(fragment_info_get_fragment_name,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    const char** name) noexcept {
+    const char** name) {
   return api_entry<tiledb::api::tiledb_fragment_info_get_fragment_name>(
       ctx, fragment_info, fid, name);
 }
 
-int32_t tiledb_fragment_info_get_fragment_name_v2(
+CAPI_INTERFACE(fragment_info_get_fragment_name_v2,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    tiledb_string_t** name) noexcept {
+    tiledb_string_t** name) {
   return api_entry<tiledb::api::tiledb_fragment_info_get_fragment_name_v2>(
       ctx, fragment_info, fid, name);
 }
 
-int32_t tiledb_fragment_info_get_fragment_num(
+CAPI_INTERFACE(fragment_info_get_fragment_num,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
-    uint32_t* fragment_num) noexcept {
+    uint32_t* fragment_num) {
   return api_entry<tiledb::api::tiledb_fragment_info_get_fragment_num>(
       ctx, fragment_info, fragment_num);
 }
 
-int32_t tiledb_fragment_info_get_fragment_uri(
+CAPI_INTERFACE(fragment_info_get_fragment_uri,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    const char** uri) noexcept {
+    const char** uri) {
   return api_entry<tiledb::api::tiledb_fragment_info_get_fragment_uri>(
       ctx, fragment_info, fid, uri);
 }
 
-int32_t tiledb_fragment_info_get_fragment_size(
+CAPI_INTERFACE(fragment_info_get_fragment_size,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    uint64_t* size) noexcept {
+    uint64_t* size) {
   return api_entry<tiledb::api::tiledb_fragment_info_get_fragment_size>(
       ctx, fragment_info, fid, size);
 }
 
-int32_t tiledb_fragment_info_get_dense(
+CAPI_INTERFACE(fragment_info_get_dense,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    int32_t* dense) noexcept {
+    int32_t* dense) {
   return api_entry<tiledb::api::tiledb_fragment_info_get_dense>(
       ctx, fragment_info, fid, dense);
 }
 
-int32_t tiledb_fragment_info_get_sparse(
+CAPI_INTERFACE(fragment_info_get_sparse,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    int32_t* sparse) noexcept {
+    int32_t* sparse) {
   return api_entry<tiledb::api::tiledb_fragment_info_get_sparse>(
       ctx, fragment_info, fid, sparse);
 }
 
-int32_t tiledb_fragment_info_get_timestamp_range(
+CAPI_INTERFACE(fragment_info_get_timestamp_range,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     uint64_t* start,
-    uint64_t* end) noexcept {
+    uint64_t* end) {
   return api_entry<tiledb::api::tiledb_fragment_info_get_timestamp_range>(
       ctx, fragment_info, fid, start, end);
 }
 
-int32_t tiledb_fragment_info_get_non_empty_domain_from_index(
+CAPI_INTERFACE(fragment_info_get_non_empty_domain_from_index,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     uint32_t did,
-    void* domain) noexcept {
+    void* domain) {
   return api_entry<
       tiledb::api::tiledb_fragment_info_get_non_empty_domain_from_index>(
       ctx, fragment_info, fid, did, domain);
 }
 
-int32_t tiledb_fragment_info_get_non_empty_domain_from_name(
+CAPI_INTERFACE(fragment_info_get_non_empty_domain_from_name,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     const char* dim_name,
-    void* domain) noexcept {
+    void* domain) {
   return api_entry<
       tiledb::api::tiledb_fragment_info_get_non_empty_domain_from_name>(
       ctx, fragment_info, fid, dim_name, domain);
 }
 
-int32_t tiledb_fragment_info_get_non_empty_domain_var_size_from_index(
+CAPI_INTERFACE(fragment_info_get_non_empty_domain_var_size_from_index,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     uint32_t did,
     uint64_t* start_size,
-    uint64_t* end_size) noexcept {
+    uint64_t* end_size) {
   return api_entry<
       tiledb::api::
           tiledb_fragment_info_get_non_empty_domain_var_size_from_index>(
       ctx, fragment_info, fid, did, start_size, end_size);
 }
 
-int32_t tiledb_fragment_info_get_non_empty_domain_var_size_from_name(
+CAPI_INTERFACE(fragment_info_get_non_empty_domain_var_size_from_name,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     const char* dim_name,
     uint64_t* start_size,
-    uint64_t* end_size) noexcept {
+    uint64_t* end_size) {
   return api_entry<
       tiledb::api::
           tiledb_fragment_info_get_non_empty_domain_var_size_from_name>(
       ctx, fragment_info, fid, dim_name, start_size, end_size);
 }
 
-int32_t tiledb_fragment_info_get_non_empty_domain_var_from_index(
+CAPI_INTERFACE(fragment_info_get_non_empty_domain_var_from_index,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     uint32_t did,
     void* start,
-    void* end) noexcept {
+    void* end) {
   return api_entry<
       tiledb::api::tiledb_fragment_info_get_non_empty_domain_var_from_index>(
       ctx, fragment_info, fid, did, start, end);
 }
 
-int32_t tiledb_fragment_info_get_non_empty_domain_var_from_name(
+CAPI_INTERFACE(fragment_info_get_non_empty_domain_var_from_name,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     const char* dim_name,
     void* start,
-    void* end) noexcept {
+    void* end) {
   return api_entry<
       tiledb::api::tiledb_fragment_info_get_non_empty_domain_var_from_name>(
       ctx, fragment_info, fid, dim_name, start, end);
 }
 
-int32_t tiledb_fragment_info_get_mbr_num(
+CAPI_INTERFACE(fragment_info_get_mbr_num,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    uint64_t* mbr_num) noexcept {
+    uint64_t* mbr_num) {
   return api_entry<tiledb::api::tiledb_fragment_info_get_mbr_num>(
       ctx, fragment_info, fid, mbr_num);
 }
 
-int32_t tiledb_fragment_info_get_mbr_from_index(
+CAPI_INTERFACE(fragment_info_get_mbr_from_index,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     uint32_t mid,
     uint32_t did,
-    void* mbr) noexcept {
+    void* mbr) {
   return api_entry<tiledb::api::tiledb_fragment_info_get_mbr_from_index>(
       ctx, fragment_info, fid, mid, did, mbr);
 }
 
-int32_t tiledb_fragment_info_get_mbr_from_name(
+CAPI_INTERFACE(fragment_info_get_mbr_from_name,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     uint32_t mid,
     const char* dim_name,
-    void* mbr) noexcept {
+    void* mbr) {
   return api_entry<tiledb::api::tiledb_fragment_info_get_mbr_from_name>(
       ctx, fragment_info, fid, mid, dim_name, mbr);
 }
 
-int32_t tiledb_fragment_info_get_mbr_var_size_from_index(
+CAPI_INTERFACE(fragment_info_get_mbr_var_size_from_index,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     uint32_t mid,
     uint32_t did,
     uint64_t* start_size,
-    uint64_t* end_size) noexcept {
+    uint64_t* end_size) {
   return api_entry<
       tiledb::api::tiledb_fragment_info_get_mbr_var_size_from_index>(
       ctx, fragment_info, fid, mid, did, start_size, end_size);
 }
 
-int32_t tiledb_fragment_info_get_mbr_var_size_from_name(
+CAPI_INTERFACE(fragment_info_get_mbr_var_size_from_name,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     uint32_t mid,
     const char* dim_name,
     uint64_t* start_size,
-    uint64_t* end_size) noexcept {
+    uint64_t* end_size) {
   return api_entry<
       tiledb::api::tiledb_fragment_info_get_mbr_var_size_from_name>(
       ctx, fragment_info, fid, mid, dim_name, start_size, end_size);
 }
 
-int32_t tiledb_fragment_info_get_mbr_var_from_index(
+CAPI_INTERFACE(fragment_info_get_mbr_var_from_index,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     uint32_t mid,
     uint32_t did,
     void* start,
-    void* end) noexcept {
+    void* end) {
   return api_entry<tiledb::api::tiledb_fragment_info_get_mbr_var_from_index>(
       ctx, fragment_info, fid, mid, did, start, end);
 }
 
-int32_t tiledb_fragment_info_get_mbr_var_from_name(
+CAPI_INTERFACE(fragment_info_get_mbr_var_from_name,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     uint32_t mid,
     const char* dim_name,
     void* start,
-    void* end) noexcept {
+    void* end) {
   return api_entry<tiledb::api::tiledb_fragment_info_get_mbr_var_from_name>(
       ctx, fragment_info, fid, mid, dim_name, start, end);
 }
 
-int32_t tiledb_fragment_info_get_cell_num(
+CAPI_INTERFACE(fragment_info_get_cell_num,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    uint64_t* cell_num) noexcept {
+    uint64_t* cell_num) {
   return api_entry<tiledb::api::tiledb_fragment_info_get_cell_num>(
       ctx, fragment_info, fid, cell_num);
 }
 
-int32_t tiledb_fragment_info_get_total_cell_num(
+CAPI_INTERFACE(fragment_info_get_total_cell_num,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
-    uint64_t* cell_num) noexcept {
+    uint64_t* cell_num) {
   return api_entry<tiledb::api::tiledb_fragment_info_get_total_cell_num>(
       ctx, fragment_info, cell_num);
 }
 
-int32_t tiledb_fragment_info_get_version(
+CAPI_INTERFACE(fragment_info_get_version,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    uint32_t* version) noexcept {
+    uint32_t* version) {
   return api_entry<tiledb::api::tiledb_fragment_info_get_version>(
       ctx, fragment_info, fid, version);
 }
 
-int32_t tiledb_fragment_info_has_consolidated_metadata(
+CAPI_INTERFACE(fragment_info_has_consolidated_metadata,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    int32_t* has) noexcept {
+    int32_t* has) {
   return api_entry<tiledb::api::tiledb_fragment_info_has_consolidated_metadata>(
       ctx, fragment_info, fid, has);
 }
 
-int32_t tiledb_fragment_info_get_unconsolidated_metadata_num(
+CAPI_INTERFACE(fragment_info_get_unconsolidated_metadata_num,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
-    uint32_t* unconsolidated) noexcept {
+    uint32_t* unconsolidated) {
   return api_entry<
       tiledb::api::tiledb_fragment_info_get_unconsolidated_metadata_num>(
       ctx, fragment_info, unconsolidated);
 }
 
-int32_t tiledb_fragment_info_get_to_vacuum_num(
+CAPI_INTERFACE(fragment_info_get_to_vacuum_num,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
-    uint32_t* to_vacuum_num) noexcept {
+    uint32_t* to_vacuum_num) {
   return api_entry<tiledb::api::tiledb_fragment_info_get_to_vacuum_num>(
       ctx, fragment_info, to_vacuum_num);
 }
 
-int32_t tiledb_fragment_info_get_to_vacuum_uri(
+CAPI_INTERFACE(fragment_info_get_to_vacuum_uri,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    const char** uri) noexcept {
+    const char** uri) {
   return api_entry<tiledb::api::tiledb_fragment_info_get_to_vacuum_uri>(
       ctx, fragment_info, fid, uri);
 }
 
-int32_t tiledb_fragment_info_get_array_schema(
+CAPI_INTERFACE(fragment_info_get_array_schema,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    tiledb_array_schema_t** array_schema) noexcept {
+    tiledb_array_schema_t** array_schema) {
   return api_entry<tiledb::api::tiledb_fragment_info_get_array_schema>(
       ctx, fragment_info, fid, array_schema);
 }
 
-int32_t tiledb_fragment_info_get_array_schema_name(
+CAPI_INTERFACE(fragment_info_get_array_schema_name,
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
-    const char** schema_name) noexcept {
+    const char** schema_name) {
   return api_entry<tiledb::api::tiledb_fragment_info_get_array_schema_name>(
       ctx, fragment_info, fid, schema_name);
 }
 
-int32_t tiledb_fragment_info_dump(
+CAPI_INTERFACE(fragment_info_dump,
     tiledb_ctx_t* ctx,
     const tiledb_fragment_info_t* fragment_info,
-    FILE* out) noexcept {
+    FILE* out) {
   return api_entry<tiledb::api::tiledb_fragment_info_dump>(
       ctx, fragment_info, out);
 }
@@ -7509,65 +7509,65 @@ int32_t tiledb_fragment_info_dump(
 /*          EXPERIMENTAL APIs        */
 /* ********************************* */
 
-TILEDB_EXPORT int32_t tiledb_query_get_status_details(
+TILEDB_EXPORT CAPI_INTERFACE(query_get_status_details,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    tiledb_query_status_details_t* status) noexcept {
+    tiledb_query_status_details_t* status) {
   return api_entry<tiledb::api::tiledb_query_get_status_details>(
       ctx, query, status);
 }
 
-int32_t tiledb_consolidation_plan_create_with_mbr(
+CAPI_INTERFACE(consolidation_plan_create_with_mbr,
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     uint64_t fragment_size,
-    tiledb_consolidation_plan_t** consolidation_plan) noexcept {
+    tiledb_consolidation_plan_t** consolidation_plan) {
   return api_entry<tiledb::api::tiledb_consolidation_plan_create_with_mbr>(
       ctx, array, fragment_size, consolidation_plan);
 }
 
-void tiledb_consolidation_plan_free(
-    tiledb_consolidation_plan_t** consolidation_plan) noexcept {
+CAPI_INTERFACE_VOID(consolidation_plan_free,
+    tiledb_consolidation_plan_t** consolidation_plan) {
   return api_entry_void<tiledb::api::tiledb_consolidation_plan_free>(
       consolidation_plan);
 }
 
-int32_t tiledb_consolidation_plan_get_num_nodes(
+CAPI_INTERFACE(consolidation_plan_get_num_nodes,
     tiledb_ctx_t* ctx,
     tiledb_consolidation_plan_t* consolidation_plan,
-    uint64_t* num_nodes) noexcept {
+    uint64_t* num_nodes) {
   return api_entry<tiledb::api::tiledb_consolidation_plan_get_num_nodes>(
       ctx, consolidation_plan, num_nodes);
 }
 
-int32_t tiledb_consolidation_plan_get_num_fragments(
+CAPI_INTERFACE(consolidation_plan_get_num_fragments,
     tiledb_ctx_t* ctx,
     tiledb_consolidation_plan_t* consolidation_plan,
     uint64_t node_index,
-    uint64_t* num_fragments) noexcept {
+    uint64_t* num_fragments) {
   return api_entry<tiledb::api::tiledb_consolidation_plan_get_num_fragments>(
       ctx, consolidation_plan, node_index, num_fragments);
 }
 
-int32_t tiledb_consolidation_plan_get_fragment_uri(
+CAPI_INTERFACE(consolidation_plan_get_fragment_uri,
     tiledb_ctx_t* ctx,
     tiledb_consolidation_plan_t* consolidation_plan,
     uint64_t node_index,
     uint64_t fragment_index,
-    const char** uri) noexcept {
+    const char** uri) {
   return api_entry<tiledb::api::tiledb_consolidation_plan_get_fragment_uri>(
       ctx, consolidation_plan, node_index, fragment_index, uri);
 }
 
-int32_t tiledb_consolidation_plan_dump_json_str(
+CAPI_INTERFACE(consolidation_plan_dump_json_str,
     tiledb_ctx_t* ctx,
     const tiledb_consolidation_plan_t* consolidation_plan,
-    char** out) noexcept {
+    char** out) {
   return api_entry<tiledb::api::tiledb_consolidation_plan_dump_json_str>(
       ctx, consolidation_plan, out);
 }
 
-int32_t tiledb_consolidation_plan_free_json_str(char** out) noexcept {
+CAPI_INTERFACE(consolidation_plan_free_json_str,char** out) {
   return api_entry_plain<tiledb::api::tiledb_consolidation_plan_free_json_str>(
       out);
 }

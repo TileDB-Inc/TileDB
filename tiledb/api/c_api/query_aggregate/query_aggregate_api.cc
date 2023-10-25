@@ -269,77 +269,77 @@ tiledb_channel_operator_handle_t::make_operation(
 
 using tiledb::api::api_entry_with_context;
 
-capi_return_t tiledb_channel_operator_sum_get(
-    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) noexcept {
+CAPI_INTERFACE(channel_operator_sum_get,
+    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) {
   return api_entry_with_context<tiledb::api::tiledb_channel_operator_sum_get>(
       ctx, op);
 }
 
-capi_return_t tiledb_channel_operator_mean_get(
-    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) noexcept {
+CAPI_INTERFACE(channel_operator_mean_get,
+    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) {
   return api_entry_with_context<tiledb::api::tiledb_channel_operator_mean_get>(
       ctx, op);
 }
 
-capi_return_t tiledb_channel_operator_min_get(
-    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) noexcept {
+CAPI_INTERFACE(channel_operator_min_get,
+    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) {
   return api_entry_with_context<tiledb::api::tiledb_channel_operator_min_get>(
       ctx, op);
 }
 
-capi_return_t tiledb_channel_operator_max_get(
-    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) noexcept {
+CAPI_INTERFACE(channel_operator_max_get,
+    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) {
   return api_entry_with_context<tiledb::api::tiledb_channel_operator_max_get>(
       ctx, op);
 }
 
-capi_return_t tiledb_channel_operator_null_count_get(
-    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) noexcept {
+CAPI_INTERFACE(channel_operator_null_count_get,
+    tiledb_ctx_t* ctx, const tiledb_channel_operator_t** op) {
   return api_entry_with_context<
       tiledb::api::tiledb_channel_operator_null_count_get>(ctx, op);
 }
 
-capi_return_t tiledb_aggregate_count_get(
-    tiledb_ctx_t* ctx, const tiledb_channel_operation_t** operation) noexcept {
+CAPI_INTERFACE(aggregate_count_get,
+    tiledb_ctx_t* ctx, const tiledb_channel_operation_t** operation) {
   return api_entry_with_context<tiledb::api::tiledb_aggregate_count_get>(
       ctx, operation);
 }
 
-capi_return_t tiledb_query_get_default_channel(
+CAPI_INTERFACE(query_get_default_channel,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    tiledb_query_channel_t** channel) noexcept {
+    tiledb_query_channel_t** channel) {
   return api_entry_with_context<tiledb::api::tiledb_query_get_default_channel>(
       ctx, query, channel);
 }
 
-capi_return_t tiledb_create_unary_aggregate(
+CAPI_INTERFACE(create_unary_aggregate,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const tiledb_channel_operator_t* op,
     const char* input_field_name,
-    tiledb_channel_operation_t** operation) noexcept {
+    tiledb_channel_operation_t** operation) {
   return api_entry_with_context<tiledb::api::tiledb_create_unary_aggregate>(
       ctx, query, op, input_field_name, operation);
 }
 
-capi_return_t tiledb_channel_apply_aggregate(
+CAPI_INTERFACE(channel_apply_aggregate,
     tiledb_ctx_t* ctx,
     tiledb_query_channel_t* channel,
     const char* output_field_name,
-    const tiledb_channel_operation_t* operation) noexcept {
+    const tiledb_channel_operation_t* operation) {
   return api_entry_with_context<tiledb::api::tiledb_channel_apply_aggregate>(
       ctx, channel, output_field_name, operation);
 }
 
-capi_return_t tiledb_aggregate_free(
-    tiledb_ctx_t* ctx, tiledb_channel_operation_t** operation) noexcept {
+CAPI_INTERFACE(aggregate_free,
+    tiledb_ctx_t* ctx, tiledb_channel_operation_t** operation) {
   return tiledb::api::api_entry_with_context<
       tiledb::api::tiledb_aggregate_free>(ctx, operation);
 }
 
-capi_return_t tiledb_query_channel_free(
-    tiledb_ctx_t* ctx, tiledb_query_channel_t** channel) noexcept {
+CAPI_INTERFACE(query_channel_free,
+    tiledb_ctx_t* ctx, tiledb_query_channel_t** channel) {
   return tiledb::api::api_entry_with_context<
       tiledb::api::tiledb_query_channel_free>(ctx, channel);
 }
