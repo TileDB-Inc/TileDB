@@ -156,7 +156,7 @@ CAPI_INTERFACE(
  */
 extern "C" {
 
-capi_return_t tiledb_ctx_alloc_with_error(/*{}*/
+capi_return_t tiledb_ctx_alloc_with_error(
     tiledb_config_handle_t* config,
     tiledb_ctx_handle_t** ctx,
     tiledb_error_handle_t** error) noexcept {

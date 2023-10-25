@@ -205,7 +205,8 @@ capi_return_t tiledb_attribute_get_enumeration_name(
 
 using tiledb::api::api_entry_context;
 
-CAPI_INTERFACE(attribute_alloc,
+CAPI_INTERFACE(
+    attribute_alloc,
     tiledb_ctx_t* ctx,
     const char* name,
     tiledb_datatype_t type,
@@ -214,11 +215,12 @@ CAPI_INTERFACE(attribute_alloc,
       ctx, name, type, attr);
 }
 
-CAPI_INTERFACE_VOID(attribute_free,tiledb_attribute_handle_t** attr) {
+CAPI_INTERFACE_VOID(attribute_free, tiledb_attribute_handle_t** attr) {
   return tiledb::api::api_entry_void<tiledb::api::tiledb_attribute_free>(attr);
 }
 
-CAPI_INTERFACE(attribute_set_nullable,
+CAPI_INTERFACE(
+    attribute_set_nullable,
     tiledb_ctx_t* ctx,
     tiledb_attribute_handle_t* attr,
     uint8_t nullable) {
@@ -226,7 +228,8 @@ CAPI_INTERFACE(attribute_set_nullable,
       ctx, attr, nullable);
 }
 
-CAPI_INTERFACE(attribute_set_filter_list,
+CAPI_INTERFACE(
+    attribute_set_filter_list,
     tiledb_ctx_t* ctx,
     tiledb_attribute_handle_t* attr,
     tiledb_filter_list_t* filter_list) {
@@ -234,7 +237,8 @@ CAPI_INTERFACE(attribute_set_filter_list,
       ctx, attr, filter_list);
 }
 
-CAPI_INTERFACE(attribute_set_cell_val_num,
+CAPI_INTERFACE(
+    attribute_set_cell_val_num,
     tiledb_ctx_t* ctx,
     tiledb_attribute_handle_t* attr,
     uint32_t cell_val_num) {
@@ -242,7 +246,8 @@ CAPI_INTERFACE(attribute_set_cell_val_num,
       ctx, attr, cell_val_num);
 }
 
-CAPI_INTERFACE(attribute_get_name,
+CAPI_INTERFACE(
+    attribute_get_name,
     tiledb_ctx_t* ctx,
     const tiledb_attribute_handle_t* attr,
     const char** name) {
@@ -250,7 +255,8 @@ CAPI_INTERFACE(attribute_get_name,
       ctx, attr, name);
 }
 
-CAPI_INTERFACE(attribute_get_type,
+CAPI_INTERFACE(
+    attribute_get_type,
     tiledb_ctx_t* ctx,
     const tiledb_attribute_handle_t* attr,
     tiledb_datatype_t* type) {
@@ -258,7 +264,8 @@ CAPI_INTERFACE(attribute_get_type,
       ctx, attr, type);
 }
 
-CAPI_INTERFACE(attribute_get_nullable,
+CAPI_INTERFACE(
+    attribute_get_nullable,
     tiledb_ctx_t* ctx,
     tiledb_attribute_handle_t* attr,
     uint8_t* nullable) {
@@ -266,7 +273,8 @@ CAPI_INTERFACE(attribute_get_nullable,
       ctx, attr, nullable);
 }
 
-CAPI_INTERFACE(attribute_get_filter_list,
+CAPI_INTERFACE(
+    attribute_get_filter_list,
     tiledb_ctx_t* ctx,
     tiledb_attribute_handle_t* attr,
     tiledb_filter_list_t** filter_list) {
@@ -274,7 +282,8 @@ CAPI_INTERFACE(attribute_get_filter_list,
       ctx, attr, filter_list);
 }
 
-CAPI_INTERFACE(attribute_get_cell_val_num,
+CAPI_INTERFACE(
+    attribute_get_cell_val_num,
     tiledb_ctx_t* ctx,
     const tiledb_attribute_handle_t* attr,
     uint32_t* cell_val_num) {
@@ -282,7 +291,8 @@ CAPI_INTERFACE(attribute_get_cell_val_num,
       ctx, attr, cell_val_num);
 }
 
-CAPI_INTERFACE(attribute_get_cell_size,
+CAPI_INTERFACE(
+    attribute_get_cell_size,
     tiledb_ctx_t* ctx,
     const tiledb_attribute_handle_t* attr,
     uint64_t* cell_size) {
@@ -290,14 +300,16 @@ CAPI_INTERFACE(attribute_get_cell_size,
       ctx, attr, cell_size);
 }
 
-CAPI_INTERFACE(attribute_dump,
+CAPI_INTERFACE(
+    attribute_dump,
     tiledb_ctx_t* ctx,
     const tiledb_attribute_handle_t* attr,
     FILE* out) {
   return api_entry_context<tiledb::api::tiledb_attribute_dump>(ctx, attr, out);
 }
 
-CAPI_INTERFACE(attribute_set_fill_value,
+CAPI_INTERFACE(
+    attribute_set_fill_value,
     tiledb_ctx_t* ctx,
     tiledb_attribute_handle_t* attr,
     const void* value,
@@ -306,7 +318,8 @@ CAPI_INTERFACE(attribute_set_fill_value,
       ctx, attr, value, size);
 }
 
-CAPI_INTERFACE(attribute_get_fill_value,
+CAPI_INTERFACE(
+    attribute_get_fill_value,
     tiledb_ctx_t* ctx,
     tiledb_attribute_handle_t* attr,
     const void** value,
@@ -315,7 +328,8 @@ CAPI_INTERFACE(attribute_get_fill_value,
       ctx, attr, value, size);
 }
 
-CAPI_INTERFACE(attribute_set_fill_value_nullable,
+CAPI_INTERFACE(
+    attribute_set_fill_value_nullable,
     tiledb_ctx_t* ctx,
     tiledb_attribute_handle_t* attr,
     const void* value,
@@ -326,7 +340,8 @@ CAPI_INTERFACE(attribute_set_fill_value_nullable,
       ctx, attr, value, size, valid);
 }
 
-CAPI_INTERFACE(attribute_get_fill_value_nullable,
+CAPI_INTERFACE(
+    attribute_get_fill_value_nullable,
     tiledb_ctx_t* ctx,
     tiledb_attribute_handle_t* attr,
     const void** value,
@@ -337,7 +352,8 @@ CAPI_INTERFACE(attribute_get_fill_value_nullable,
       ctx, attr, value, size, valid);
 }
 
-CAPI_INTERFACE(attribute_set_enumeration_name,
+CAPI_INTERFACE(
+    attribute_set_enumeration_name,
     tiledb_ctx_t* ctx,
     tiledb_attribute_t* attr,
     const char* enumeration_name) {
@@ -345,7 +361,8 @@ CAPI_INTERFACE(attribute_set_enumeration_name,
       ctx, attr, enumeration_name);
 }
 
-CAPI_INTERFACE(attribute_get_enumeration_name,
+CAPI_INTERFACE(
+    attribute_get_enumeration_name,
     tiledb_ctx_t* ctx,
     tiledb_attribute_t* attr,
     tiledb_string_t** name) {

@@ -316,50 +316,53 @@ capi_return_t tiledb_vfs_touch(tiledb_vfs_t* vfs, const char* uri) {
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_plain;
 
-CAPI_INTERFACE(vfs_mode_to_str,
-    tiledb_vfs_mode_t vfs_mode, const char** str) {
+CAPI_INTERFACE(vfs_mode_to_str, tiledb_vfs_mode_t vfs_mode, const char** str) {
   return api_entry_plain<tiledb::api::tiledb_vfs_mode_to_str>(vfs_mode, str);
 }
 
-CAPI_INTERFACE(vfs_mode_from_str,
-    const char* str, tiledb_vfs_mode_t* vfs_mode) {
+CAPI_INTERFACE(
+    vfs_mode_from_str, const char* str, tiledb_vfs_mode_t* vfs_mode) {
   return api_entry_plain<tiledb::api::tiledb_vfs_mode_from_str>(str, vfs_mode);
 }
 
-CAPI_INTERFACE(vfs_alloc,
-    tiledb_ctx_t* ctx, tiledb_config_t* config, tiledb_vfs_t** vfs) {
+CAPI_INTERFACE(
+    vfs_alloc, tiledb_ctx_t* ctx, tiledb_config_t* config, tiledb_vfs_t** vfs) {
   return tiledb::api::api_entry_with_context<tiledb::api::tiledb_vfs_alloc>(
       ctx, config, vfs);
 }
 
-CAPI_INTERFACE_VOID(vfs_free,tiledb_vfs_t** vfs) {
+CAPI_INTERFACE_VOID(vfs_free, tiledb_vfs_t** vfs) {
   return tiledb::api::api_entry_void<tiledb::api::tiledb_vfs_free>(vfs);
 }
 
-CAPI_INTERFACE(vfs_get_config,
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, tiledb_config_t** config) {
+CAPI_INTERFACE(
+    vfs_get_config,
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    tiledb_config_t** config) {
   return api_entry_context<tiledb::api::tiledb_vfs_get_config>(
       ctx, vfs, config);
 }
 
-CAPI_INTERFACE(vfs_create_bucket,
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
+CAPI_INTERFACE(
+    vfs_create_bucket, tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
   return api_entry_context<tiledb::api::tiledb_vfs_create_bucket>(
       ctx, vfs, uri);
 }
 
-CAPI_INTERFACE(vfs_remove_bucket,
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
+CAPI_INTERFACE(
+    vfs_remove_bucket, tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
   return api_entry_context<tiledb::api::tiledb_vfs_remove_bucket>(
       ctx, vfs, uri);
 }
 
-CAPI_INTERFACE(vfs_empty_bucket,
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
+CAPI_INTERFACE(
+    vfs_empty_bucket, tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
   return api_entry_context<tiledb::api::tiledb_vfs_empty_bucket>(ctx, vfs, uri);
 }
 
-CAPI_INTERFACE(vfs_is_empty_bucket,
+CAPI_INTERFACE(
+    vfs_is_empty_bucket,
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* uri,
@@ -368,7 +371,8 @@ CAPI_INTERFACE(vfs_is_empty_bucket,
       ctx, vfs, uri, is_empty);
 }
 
-CAPI_INTERFACE(vfs_is_bucket,
+CAPI_INTERFACE(
+    vfs_is_bucket,
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* uri,
@@ -377,12 +381,13 @@ CAPI_INTERFACE(vfs_is_bucket,
       ctx, vfs, uri, is_bucket);
 }
 
-CAPI_INTERFACE(vfs_create_dir,
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
+CAPI_INTERFACE(
+    vfs_create_dir, tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
   return api_entry_context<tiledb::api::tiledb_vfs_create_dir>(ctx, vfs, uri);
 }
 
-CAPI_INTERFACE(vfs_is_dir,
+CAPI_INTERFACE(
+    vfs_is_dir,
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* uri,
@@ -391,12 +396,13 @@ CAPI_INTERFACE(vfs_is_dir,
       ctx, vfs, uri, is_dir);
 }
 
-CAPI_INTERFACE(vfs_remove_dir,
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
+CAPI_INTERFACE(
+    vfs_remove_dir, tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
   return api_entry_context<tiledb::api::tiledb_vfs_remove_dir>(ctx, vfs, uri);
 }
 
-CAPI_INTERFACE(vfs_is_file,
+CAPI_INTERFACE(
+    vfs_is_file,
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* uri,
@@ -405,12 +411,13 @@ CAPI_INTERFACE(vfs_is_file,
       ctx, vfs, uri, is_file);
 }
 
-CAPI_INTERFACE(vfs_remove_file,
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
+CAPI_INTERFACE(
+    vfs_remove_file, tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
   return api_entry_context<tiledb::api::tiledb_vfs_remove_file>(ctx, vfs, uri);
 }
 
-CAPI_INTERFACE(vfs_dir_size,
+CAPI_INTERFACE(
+    vfs_dir_size,
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* uri,
@@ -419,7 +426,8 @@ CAPI_INTERFACE(vfs_dir_size,
       ctx, vfs, uri, size);
 }
 
-CAPI_INTERFACE(vfs_file_size,
+CAPI_INTERFACE(
+    vfs_file_size,
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* uri,
@@ -428,7 +436,8 @@ CAPI_INTERFACE(vfs_file_size,
       ctx, vfs, uri, size);
 }
 
-CAPI_INTERFACE(vfs_move_file,
+CAPI_INTERFACE(
+    vfs_move_file,
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* old_uri,
@@ -437,7 +446,8 @@ CAPI_INTERFACE(vfs_move_file,
       ctx, vfs, old_uri, new_uri);
 }
 
-CAPI_INTERFACE(vfs_move_dir,
+CAPI_INTERFACE(
+    vfs_move_dir,
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* old_uri,
@@ -446,7 +456,8 @@ CAPI_INTERFACE(vfs_move_dir,
       ctx, vfs, old_uri, new_uri);
 }
 
-CAPI_INTERFACE(vfs_copy_file,
+CAPI_INTERFACE(
+    vfs_copy_file,
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* old_uri,
@@ -455,7 +466,8 @@ CAPI_INTERFACE(vfs_copy_file,
       ctx, vfs, old_uri, new_uri);
 }
 
-CAPI_INTERFACE(vfs_copy_dir,
+CAPI_INTERFACE(
+    vfs_copy_dir,
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* old_uri,
@@ -464,7 +476,8 @@ CAPI_INTERFACE(vfs_copy_dir,
       ctx, vfs, old_uri, new_uri);
 }
 
-CAPI_INTERFACE(vfs_open,
+CAPI_INTERFACE(
+    vfs_open,
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* uri,
@@ -474,12 +487,12 @@ CAPI_INTERFACE(vfs_open,
       ctx, vfs, uri, mode, fh);
 }
 
-CAPI_INTERFACE(vfs_close,
-    tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
+CAPI_INTERFACE(vfs_close, tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
   return api_entry_context<tiledb::api::tiledb_vfs_close>(ctx, fh);
 }
 
-CAPI_INTERFACE(vfs_read,
+CAPI_INTERFACE(
+    vfs_read,
     tiledb_ctx_t* ctx,
     tiledb_vfs_fh_t* fh,
     uint64_t offset,
@@ -489,7 +502,8 @@ CAPI_INTERFACE(vfs_read,
       ctx, fh, offset, buffer, nbytes);
 }
 
-CAPI_INTERFACE(vfs_write,
+CAPI_INTERFACE(
+    vfs_write,
     tiledb_ctx_t* ctx,
     tiledb_vfs_fh_t* fh,
     const void* buffer,
@@ -498,11 +512,12 @@ CAPI_INTERFACE(vfs_write,
       ctx, fh, buffer, nbytes);
 }
 
-CAPI_INTERFACE(vfs_sync,tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
+CAPI_INTERFACE(vfs_sync, tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh) {
   return api_entry_context<tiledb::api::tiledb_vfs_sync>(ctx, fh);
 }
 
-CAPI_INTERFACE(vfs_ls,
+CAPI_INTERFACE(
+    vfs_ls,
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* path,
@@ -512,17 +527,20 @@ CAPI_INTERFACE(vfs_ls,
       ctx, vfs, path, callback, data);
 }
 
-CAPI_INTERFACE_VOID(vfs_fh_free,tiledb_vfs_fh_t** fh) {
+CAPI_INTERFACE_VOID(vfs_fh_free, tiledb_vfs_fh_t** fh) {
   return tiledb::api::api_entry_void<tiledb::api::tiledb_vfs_fh_free>(fh);
 }
 
-CAPI_INTERFACE(vfs_fh_is_closed,
-    tiledb_ctx_t* ctx, tiledb_vfs_fh_t* fh, int32_t* is_closed) {
+CAPI_INTERFACE(
+    vfs_fh_is_closed,
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_fh_t* fh,
+    int32_t* is_closed) {
   return api_entry_context<tiledb::api::tiledb_vfs_fh_is_closed>(
       ctx, fh, is_closed);
 }
 
-CAPI_INTERFACE(vfs_touch,
-    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
+CAPI_INTERFACE(
+    vfs_touch, tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
   return api_entry_context<tiledb::api::tiledb_vfs_touch>(ctx, vfs, uri);
 }

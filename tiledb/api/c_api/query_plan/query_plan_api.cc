@@ -59,7 +59,8 @@ capi_return_t tiledb_query_get_plan(
 
 using tiledb::api::api_entry_with_context;
 
-CAPI_INTERFACE(query_get_plan,
+CAPI_INTERFACE(
+    query_get_plan,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     tiledb_string_handle_t** rv) {

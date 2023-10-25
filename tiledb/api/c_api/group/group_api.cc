@@ -549,19 +549,22 @@ using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_void;
 using tiledb::api::api_entry_with_context;
 
-CAPI_INTERFACE(group_create,
-    tiledb_ctx_t* ctx, const char* group_uri) {
+CAPI_INTERFACE(group_create, tiledb_ctx_t* ctx, const char* group_uri) {
   return api_entry_with_context<tiledb::api::tiledb_group_create>(
       ctx, group_uri);
 }
 
-CAPI_INTERFACE(group_alloc,
-    tiledb_ctx_t* ctx, const char* group_uri, tiledb_group_t** group) {
+CAPI_INTERFACE(
+    group_alloc,
+    tiledb_ctx_t* ctx,
+    const char* group_uri,
+    tiledb_group_t** group) {
   return api_entry_with_context<tiledb::api::tiledb_group_alloc>(
       ctx, group_uri, group);
 }
 
-CAPI_INTERFACE(group_open,
+CAPI_INTERFACE(
+    group_open,
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     tiledb_query_type_t query_type) {
@@ -569,16 +572,16 @@ CAPI_INTERFACE(group_open,
       ctx, group, query_type);
 }
 
-CAPI_INTERFACE(group_close,
-    tiledb_ctx_t* ctx, tiledb_group_t* group) {
+CAPI_INTERFACE(group_close, tiledb_ctx_t* ctx, tiledb_group_t* group) {
   return api_entry_context<tiledb::api::tiledb_group_close>(ctx, group);
 }
 
-CAPI_INTERFACE_VOID(group_free,tiledb_group_t** group) {
+CAPI_INTERFACE_VOID(group_free, tiledb_group_t** group) {
   return api_entry_void<tiledb::api::tiledb_group_free>(group);
 }
 
-CAPI_INTERFACE(group_set_config,
+CAPI_INTERFACE(
+    group_set_config,
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     tiledb_config_t* config) {
@@ -586,7 +589,8 @@ CAPI_INTERFACE(group_set_config,
       ctx, group, config);
 }
 
-CAPI_INTERFACE(group_get_config,
+CAPI_INTERFACE(
+    group_get_config,
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     tiledb_config_t** config) {
@@ -594,7 +598,8 @@ CAPI_INTERFACE(group_get_config,
       ctx, group, config);
 }
 
-CAPI_INTERFACE(group_put_metadata,
+CAPI_INTERFACE(
+    group_put_metadata,
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     const char* key,
@@ -605,7 +610,8 @@ CAPI_INTERFACE(group_put_metadata,
       ctx, group, key, value_type, value_num, value);
 }
 
-CAPI_INTERFACE(group_delete_group,
+CAPI_INTERFACE(
+    group_delete_group,
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     const char* uri,
@@ -614,13 +620,17 @@ CAPI_INTERFACE(group_delete_group,
       ctx, group, uri, recursive);
 }
 
-CAPI_INTERFACE(group_delete_metadata,
-    tiledb_ctx_t* ctx, tiledb_group_t* group, const char* key) {
+CAPI_INTERFACE(
+    group_delete_metadata,
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char* key) {
   return api_entry_context<tiledb::api::tiledb_group_delete_metadata>(
       ctx, group, key);
 }
 
-CAPI_INTERFACE(group_get_metadata,
+CAPI_INTERFACE(
+    group_get_metadata,
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     const char* key,
@@ -631,13 +641,17 @@ CAPI_INTERFACE(group_get_metadata,
       ctx, group, key, value_type, value_num, value);
 }
 
-CAPI_INTERFACE(group_get_metadata_num,
-    tiledb_ctx_t* ctx, tiledb_group_t* group, uint64_t* num) {
+CAPI_INTERFACE(
+    group_get_metadata_num,
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    uint64_t* num) {
   return api_entry_context<tiledb::api::tiledb_group_get_metadata_num>(
       ctx, group, num);
 }
 
-CAPI_INTERFACE(group_get_metadata_from_index,
+CAPI_INTERFACE(
+    group_get_metadata_from_index,
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     uint64_t index,
@@ -650,7 +664,8 @@ CAPI_INTERFACE(group_get_metadata_from_index,
       ctx, group, index, key, key_len, value_type, value_num, value);
 }
 
-CAPI_INTERFACE(group_has_metadata_key,
+CAPI_INTERFACE(
+    group_has_metadata_key,
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     const char* key,
@@ -660,7 +675,8 @@ CAPI_INTERFACE(group_has_metadata_key,
       ctx, group, key, value_type, has_key);
 }
 
-CAPI_INTERFACE(group_add_member,
+CAPI_INTERFACE(
+    group_add_member,
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     const char* uri,
@@ -670,19 +686,26 @@ CAPI_INTERFACE(group_add_member,
       ctx, group, uri, relative, name);
 }
 
-CAPI_INTERFACE(group_remove_member,
-    tiledb_ctx_t* ctx, tiledb_group_t* group, const char* name) {
+CAPI_INTERFACE(
+    group_remove_member,
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char* name) {
   return api_entry_context<tiledb::api::tiledb_group_remove_member>(
       ctx, group, name);
 }
 
-CAPI_INTERFACE(group_get_member_count,
-    tiledb_ctx_t* ctx, tiledb_group_t* group, uint64_t* count) {
+CAPI_INTERFACE(
+    group_get_member_count,
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    uint64_t* count) {
   return api_entry_context<tiledb::api::tiledb_group_get_member_count>(
       ctx, group, count);
 }
 
-CAPI_INTERFACE(group_get_member_by_index,
+CAPI_INTERFACE(
+    group_get_member_by_index,
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     uint64_t index,
@@ -693,7 +716,8 @@ CAPI_INTERFACE(group_get_member_by_index,
       ctx, group, index, uri, type, name);
 }
 
-CAPI_INTERFACE(group_get_member_by_name,
+CAPI_INTERFACE(
+    group_get_member_by_name,
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     const char* name,
@@ -703,7 +727,8 @@ CAPI_INTERFACE(group_get_member_by_name,
       ctx, group, name, uri, type);
 }
 
-CAPI_INTERFACE(group_get_is_relative_uri_by_name,
+CAPI_INTERFACE(
+    group_get_is_relative_uri_by_name,
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     const char* name,
@@ -713,19 +738,23 @@ CAPI_INTERFACE(group_get_is_relative_uri_by_name,
       ctx, group, name, relative);
 }
 
-CAPI_INTERFACE(group_is_open,
-    tiledb_ctx_t* ctx, tiledb_group_t* group, int32_t* is_open) {
+CAPI_INTERFACE(
+    group_is_open, tiledb_ctx_t* ctx, tiledb_group_t* group, int32_t* is_open) {
   return api_entry_context<tiledb::api::tiledb_group_is_open>(
       ctx, group, is_open);
 }
 
-CAPI_INTERFACE(group_get_uri,
-    tiledb_ctx_t* ctx, tiledb_group_t* group, const char** group_uri) {
+CAPI_INTERFACE(
+    group_get_uri,
+    tiledb_ctx_t* ctx,
+    tiledb_group_t* group,
+    const char** group_uri) {
   return api_entry_context<tiledb::api::tiledb_group_get_uri>(
       ctx, group, group_uri);
 }
 
-CAPI_INTERFACE(group_get_query_type,
+CAPI_INTERFACE(
+    group_get_query_type,
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     tiledb_query_type_t* query_type) {
@@ -733,7 +762,8 @@ CAPI_INTERFACE(group_get_query_type,
       ctx, group, query_type);
 }
 
-CAPI_INTERFACE(group_dump_str,
+CAPI_INTERFACE(
+    group_dump_str,
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     char** dump_ascii,
@@ -742,7 +772,8 @@ CAPI_INTERFACE(group_dump_str,
       ctx, group, dump_ascii, recursive);
 }
 
-CAPI_INTERFACE(serialize_group,
+CAPI_INTERFACE(
+    serialize_group,
     tiledb_ctx_t* ctx,
     const tiledb_group_t* group,
     tiledb_serialization_type_t serialize_type,
@@ -752,7 +783,8 @@ CAPI_INTERFACE(serialize_group,
       ctx, group, serialize_type, client_side, buffer_list);
 }
 
-CAPI_INTERFACE(deserialize_group,
+CAPI_INTERFACE(
+    deserialize_group,
     tiledb_ctx_t* ctx,
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
@@ -762,7 +794,8 @@ CAPI_INTERFACE(deserialize_group,
       ctx, buffer, serialize_type, client_side, group);
 }
 
-CAPI_INTERFACE(serialize_group_metadata,
+CAPI_INTERFACE(
+    serialize_group_metadata,
     tiledb_ctx_t* ctx,
     const tiledb_group_t* group,
     tiledb_serialization_type_t serialization_type,
@@ -771,7 +804,8 @@ CAPI_INTERFACE(serialize_group_metadata,
       ctx, group, serialization_type, buffer);
 }
 
-CAPI_INTERFACE(deserialize_group_metadata,
+CAPI_INTERFACE(
+    deserialize_group_metadata,
     tiledb_ctx_t* ctx,
     tiledb_group_t* group,
     tiledb_serialization_type_t serialization_type,
@@ -780,7 +814,8 @@ CAPI_INTERFACE(deserialize_group_metadata,
       ctx, group, serialization_type, buffer);
 }
 
-CAPI_INTERFACE(group_consolidate_metadata,
+CAPI_INTERFACE(
+    group_consolidate_metadata,
     tiledb_ctx_t* ctx,
     const char* group_uri,
     tiledb_config_t* config) {
@@ -788,7 +823,8 @@ CAPI_INTERFACE(group_consolidate_metadata,
       ctx, group_uri, config);
 }
 
-CAPI_INTERFACE(group_vacuum_metadata,
+CAPI_INTERFACE(
+    group_vacuum_metadata,
     tiledb_ctx_t* ctx,
     const char* group_uri,
     tiledb_config_t* config) {
