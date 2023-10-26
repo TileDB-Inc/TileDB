@@ -5355,7 +5355,7 @@ const char* tiledb_timestamps() noexcept {
 /*            VERSION             */
 /* ****************************** */
 
-CAPI_INTERFACE_VOID(version, int32_t* major, int32_t* minor, int32_t* rev) {
+void tiledb_version(int32_t* major, int32_t* minor, int32_t* rev) noexcept {
   *major = tiledb::sm::constants::library_version[0];
   *minor = tiledb::sm::constants::library_version[1];
   *rev = tiledb::sm::constants::library_version[2];
@@ -7756,7 +7756,7 @@ CAPI_INTERFACE(
 /*          EXPERIMENTAL APIs        */
 /* ********************************* */
 
-TILEDB_EXPORT CAPI_INTERFACE(
+CAPI_INTERFACE(
     query_get_status_details,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
