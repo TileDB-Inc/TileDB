@@ -78,8 +78,8 @@ TEST_CASE(
   tiledb_string_t* handle = tiledb_string_t::make_handle(test_string);
   tiledb_string_t* handle_copy = handle;
   std::ignore = convert_to_string(&handle);
-  const char* chars;
-  uint64_t length;
+  const char* chars = nullptr;
+  size_t length = 0;
   REQUIRE(tiledb_string_view(handle_copy, &chars, &length) == TILEDB_ERR);
 }
 
