@@ -863,8 +863,7 @@ void FragmentMetadata::load(
   // Load the metadata file size when we are not reading from consolidated
   // buffer
   if (fragment_metadata_tile == nullptr) {
-    throw_if_not_ok(
-        resources_->vfs().file_size(meta_uri, &meta_file_size_));
+    throw_if_not_ok(resources_->vfs().file_size(meta_uri, &meta_file_size_));
   }
 
   // Get fragment name version
@@ -2457,8 +2456,7 @@ void FragmentMetadata::load_tile_var_offsets(
 
   auto tile = read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_var_offsets_[idx]);
-  resources_->stats().add_counter(
-      "read_tile_var_offsets_size", tile.size());
+  resources_->stats().add_counter("read_tile_var_offsets_size", tile.size());
 
   Deserializer deserializer(tile.data(), tile.size());
   load_tile_var_offsets(idx, deserializer);
@@ -2480,8 +2478,7 @@ void FragmentMetadata::load_tile_var_sizes(
 
   auto tile = read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_var_sizes_[idx]);
-  resources_->stats().add_counter(
-      "read_tile_var_sizes_size", tile.size());
+  resources_->stats().add_counter("read_tile_var_sizes_size", tile.size());
 
   Deserializer deserializer(tile.data(), tile.size());
   load_tile_var_sizes(idx, deserializer);
@@ -2592,8 +2589,7 @@ void FragmentMetadata::load_tile_null_count_values(
 
   auto tile = read_generic_tile_from_file(
       encryption_key, gt_offsets_.tile_null_count_offsets_[idx]);
-  resources_->stats().add_counter(
-      "read_tile_null_count_size", tile.size());
+  resources_->stats().add_counter("read_tile_null_count_size", tile.size());
 
   Deserializer deserializer(tile.data(), tile.size());
   load_tile_null_count_values(idx, deserializer);
@@ -3972,8 +3968,8 @@ void FragmentMetadata::write_footer_to_file(WriterTile& tile) const {
       std::string(constants::fragment_metadata_filename));
 
   uint64_t size = tile.size();
-  throw_if_not_ok(resources_->vfs().write(
-      fragment_metadata_uri, tile.data(), tile.size()));
+  throw_if_not_ok(
+      resources_->vfs().write(fragment_metadata_uri, tile.data(), tile.size()));
 
   // Write the size in the end if there is at least one var-sized dimension
   if (!array_schema_->domain().all_dims_fixed() || version_ >= 10) {
@@ -4603,8 +4599,7 @@ void FragmentMetadata::store_footer(const EncryptionKey&) {
   write_footer(serializer);
   write_footer_to_file(tile);
 
-  resources_->stats().add_counter(
-      "write_frag_meta_footer_size", tile.size());
+  resources_->stats().add_counter("write_frag_meta_footer_size", tile.size());
 }
 
 void FragmentMetadata::resize_tile_offsets_vectors(uint64_t size) {
