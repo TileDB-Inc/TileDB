@@ -183,7 +183,7 @@ Status UnorderedWriter::alloc_frag_meta() {
   // Alloc FragmentMetadata object.
   frag_meta_ = make_shared<FragmentMetadata>(HERE());
   // Used in serialization when FragmentMetadata is built from ground up.
-  frag_meta_->set_storage_manager(storage_manager_);
+  frag_meta_->set_context_resources(&storage_manager_->resources());
 
   return Status::Ok();
 }

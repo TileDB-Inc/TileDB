@@ -4504,7 +4504,7 @@ int32_t tiledb_fragment_info_alloc(
 
   // Allocate a fragment info object
   (*fragment_info)->fragment_info_ =
-      new (std::nothrow) tiledb::sm::FragmentInfo(uri, ctx->storage_manager());
+      new (std::nothrow) tiledb::sm::FragmentInfo(uri, ctx->resources());
   if ((*fragment_info)->fragment_info_ == nullptr) {
     delete *fragment_info;
     *fragment_info = nullptr;
