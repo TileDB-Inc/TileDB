@@ -34,6 +34,7 @@
 #define TILEDB_MIN_MAX_AGGREGATOR_H
 
 #include "tiledb/sm/query/readers/aggregators/aggregate_with_count.h"
+#include "tiledb/sm/query/readers/aggregators/full_tile_data.h"
 #include "tiledb/sm/query/readers/aggregators/iaggregator.h"
 #include "tiledb/sm/query/readers/aggregators/min_max.h"
 #include "tiledb/sm/query/readers/aggregators/validity_policies.h"
@@ -124,6 +125,9 @@ class ComparatorAggregator : public ComparatorAggregatorBase<T>,
    */
   ComparatorAggregator(const FieldInfo& field_info);
 
+  /** Virtual destructor. */
+  virtual ~ComparatorAggregator() = default;
+
   DISABLE_COPY_AND_COPY_ASSIGN(ComparatorAggregator);
   DISABLE_MOVE_AND_MOVE_ASSIGN(ComparatorAggregator);
 
@@ -170,6 +174,13 @@ class ComparatorAggregator : public ComparatorAggregatorBase<T>,
   void aggregate_data(AggregateBuffer& input_data) override;
 
   /**
+   * Aggregate a full tile.
+   *
+   * @param full_tile_data Full tile data for aggregation.
+   */
+  void aggregate_full_tile(FullTileData& input_data) override;
+
+  /**
    * Copy final data to the user buffer.
    *
    * @param output_field_name Name for the output buffer.
@@ -185,6 +196,21 @@ class ComparatorAggregator : public ComparatorAggregatorBase<T>,
   }
 
  private:
+  /* ********************************* */
+  /*         PRIVATE FUNCTIONS         */
+  /* ********************************* */
+
+  /** Returns the full tile value for the full tile data. */
+  virtual VALUE_T full_tile_value(FullTileData& input_data) = 0;
+
+  /**
+   * Update the value of the aggregation, if required.
+   *
+   * @param value Candidate value.
+   * @param count Count of values considered.
+   */
+  void update_value(VALUE_T value, uint64_t count);
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
@@ -204,6 +230,8 @@ class MinAggregator : public ComparatorAggregator<
                           T,
                           std::less<typename type_data<T>::value_type>> {
  public:
+  using VALUE_T = typename type_data<T>::value_type;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -230,6 +258,16 @@ class MinAggregator : public ComparatorAggregator<
   std::string aggregate_name() override {
     return constants::aggregate_min_str;
   }
+
+ private:
+  /* ********************************* */
+  /*         PRIVATE FUNCTIONS         */
+  /* ********************************* */
+
+  /** Returns the full tile value for the full tile data. */
+  VALUE_T full_tile_value(FullTileData& input_data) override {
+    return input_data.min_as<VALUE_T>();
+  }
 };
 
 template <typename T>
@@ -237,6 +275,8 @@ class MaxAggregator : public ComparatorAggregator<
                           T,
                           std::greater<typename type_data<T>::value_type>> {
  public:
+  using VALUE_T = typename type_data<T>::value_type;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -263,6 +303,16 @@ class MaxAggregator : public ComparatorAggregator<
   /** Returns name of the aggregate, e.g. COUNT, MIN, SUM. */
   std::string aggregate_name() override {
     return constants::aggregate_max_str;
+  }
+
+ private:
+  /* ********************************* */
+  /*         PRIVATE FUNCTIONS         */
+  /* ********************************* */
+
+  /** Returns the full tile value for the full tile data. */
+  VALUE_T full_tile_value(FullTileData& input_data) override {
+    return input_data.max_as<VALUE_T>();
   }
 };
 

@@ -92,6 +92,13 @@ class CountAggregatorBase : public OutputBufferValidator, public IAggregator {
   void aggregate_data(AggregateBuffer& input_data) override;
 
   /**
+   * Aggregate a full tile.
+   *
+   * @param full_tile_data Full tile data for aggregation.
+   */
+  void aggregate_full_tile(FullTileData& input_data) override;
+
+  /**
    * Copy final data to the user buffer.
    *
    * @param output_field_name Name for the output buffer.

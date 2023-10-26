@@ -145,12 +145,32 @@ void ComparatorAggregator<T, Op>::aggregate_data(AggregateBuffer& input_data) {
     res = aggregate_with_count_.template aggregate<uint8_t>(input_data);
   }
 
+  const auto value = std::get<0>(res);
+  const auto count = std::get<1>(res);
+  update_value(value, count);
+}
+
+template <typename T, typename Op>
+void ComparatorAggregator<T, Op>::aggregate_full_tile(
+    FullTileData& input_data) {
+  const auto value = full_tile_value(input_data);
+  const auto count = input_data.count() - input_data.null_count();
+  update_value(value, count);
+}
+
+template <typename T, typename Op>
+void ComparatorAggregator<T, Op>::copy_to_user_buffer(
+    std::string output_field_name,
+    std::unordered_map<std::string, QueryBuffer>& buffers) {
+  ComparatorAggregatorBase<T>::copy_to_user_buffer(output_field_name, buffers);
+}
+
+template <typename T, typename Op>
+void ComparatorAggregator<T, Op>::update_value(VALUE_T value, uint64_t count) {
   {
     // This might be called on multiple threads, the final result stored in
     // value_ should be computed in a thread safe manner.
     std::unique_lock lock(value_mtx_);
-    const auto value = std::get<0>(res);
-    const auto count = std::get<1>(res);
     if (count > 0 &&
         (ComparatorAggregatorBase<T>::value_ == std::nullopt ||
          op_(value, ComparatorAggregatorBase<T>::value_.value()))) {
@@ -163,13 +183,6 @@ void ComparatorAggregator<T, Op>::aggregate_data(AggregateBuffer& input_data) {
       ComparatorAggregatorBase<T>::validity_value_ = 1;
     }
   }
-}
-
-template <typename T, typename Op>
-void ComparatorAggregator<T, Op>::copy_to_user_buffer(
-    std::string output_field_name,
-    std::unordered_map<std::string, QueryBuffer>& buffers) {
-  ComparatorAggregatorBase<T>::copy_to_user_buffer(output_field_name, buffers);
 }
 
 // Explicit template instantiations

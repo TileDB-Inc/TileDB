@@ -42,6 +42,7 @@ namespace tiledb::sm {
 
 class QueryBuffer;
 class AggregateBuffer;
+class FullTileData;
 class IAggregator;
 
 typedef std::unordered_map<std::string, shared_ptr<IAggregator>>
@@ -87,6 +88,13 @@ class IAggregator {
    * @param input_data Input data for aggregation.
    */
   virtual void aggregate_data(AggregateBuffer& input_data) = 0;
+
+  /**
+   * Aggregate a full tile.
+   *
+   * @param full_tile_data Full tile data for aggregation.
+   */
+  virtual void aggregate_full_tile(FullTileData& input_data) = 0;
 
   /**
    * Copy final data to the user buffer.
