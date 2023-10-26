@@ -674,6 +674,27 @@ Status StorageManager::array_evolve_schema(
 
   auto&& array_schema = array_dir.load_array_schema_latest(encryption_key);
 
+  // Load required enumerations before evolution.
+  auto enmr_names = schema_evolution->enumeration_names_to_extend();
+  if (enmr_names.size() > 0) {
+    std::unordered_set<std::string> enmr_path_set;
+    for (auto name : enmr_names) {
+      enmr_path_set.insert(array_schema->get_enumeration_path_name(name));
+    }
+    std::vector<std::string> enmr_paths;
+    for (auto path : enmr_path_set) {
+      enmr_paths.emplace_back(path);
+    }
+
+    MemoryTracker tracker;
+    auto loaded_enmrs = array_dir.load_enumerations_from_paths(
+        enmr_paths, encryption_key, tracker);
+
+    for (auto enmr : loaded_enmrs) {
+      array_schema->store_enumeration(enmr);
+    }
+  }
+
   // Evolve schema
   auto array_schema_evolved = schema_evolution->evolve_schema(array_schema);
 

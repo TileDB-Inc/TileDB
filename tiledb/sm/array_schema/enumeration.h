@@ -179,6 +179,34 @@ class Enumeration {
   static shared_ptr<const Enumeration> deserialize(Deserializer& deserializer);
 
   /**
+   * Create a new enumeration by extending an existing enumeration's
+   * list of values.
+   *
+   * The returned Enumeration can then be used by the
+   * ArraySchemaEvolution::extend_enumeration to update the schema.
+   *
+   * @param data A pointer to the enumerations values to add.
+   * @param data_size The length of the buffer pointed to by data.
+   * @param offsets A pointer to a buffer of offsets data. Must be provided
+   *        if and only if the enumeration being extended is var sized.
+   * @param offsets_size The size of the offsets buffer or zero if no buffer
+   *        is supplied.
+   * @return shared_ptr<Enumeration> The extended enumeration.
+   */
+  shared_ptr<const Enumeration> extend(
+      const void* data,
+      uint64_t data_size,
+      const void* offsets,
+      uint64_t offsets_size) const;
+
+  /**
+   * Check if this enumeration is an extension of the provided Enumeration.
+   *
+   * @return bool Whether this enumeration is an extension or not.
+   */
+  bool is_extension_of(shared_ptr<const Enumeration> other) const;
+
+  /**
    * Serializes the enumeration into a buffer.
    *
    * @param serializer The object the array schema is serialized into.
