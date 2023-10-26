@@ -264,7 +264,6 @@ GlobalOrderWriter::multipart_upload_state(bool client) {
 
     if (array_schema_.var_size(name)) {
       auto var_uri = meta->var_uri(name);
-
       auto&& [st, var_state] =
           storage_manager_->vfs()->multipart_upload_state(var_uri);
       RETURN_NOT_OK_TUPLE(st, {});
@@ -273,7 +272,6 @@ GlobalOrderWriter::multipart_upload_state(bool client) {
     }
     if (array_schema_.is_nullable(name)) {
       auto validity_uri = meta->validity_uri(name);
-
       auto&& [st, val_state] =
           storage_manager_->vfs()->multipart_upload_state(validity_uri);
       RETURN_NOT_OK_TUPLE(st, {});

@@ -607,15 +607,12 @@ Status WriterBase::close_files(shared_ptr<FragmentMetadata> meta) const {
   file_uris.reserve(buffer_name.size() * 3);
 
   for (const auto& name : buffer_name) {
-    auto uri = meta->uri(name);
-    file_uris.emplace_back(uri);
+    file_uris.emplace_back(meta->uri(name));
     if (array_schema_.var_size(name)) {
-      auto var_uri = meta->var_uri(name);
-      file_uris.emplace_back(var_uri);
+      file_uris.emplace_back(meta->var_uri(name));
     }
     if (array_schema_.is_nullable(name)) {
-      auto validity_uri = meta->validity_uri(name);
-      file_uris.emplace_back(validity_uri);
+      file_uris.emplace_back(meta->validity_uri(name));
     }
   }
 
@@ -813,7 +810,7 @@ Status WriterBase::create_fragment(
       has_timestamps,
       has_delete_metadata);
 
-  (frag_meta)->init(subarray_.ndrange(0));
+  frag_meta->init(subarray_.ndrange(0));
   return Status::Ok();
 }
 
@@ -1178,16 +1175,13 @@ Status WriterBase::write_tiles(
   // writes
   if (close_files) {
     std::vector<URI> closing_uris;
-    auto uri = frag_meta->uri(name);
-    closing_uris.push_back(uri);
+    closing_uris.push_back(frag_meta->uri(name));
 
     if (var_size) {
-      auto var_uri = frag_meta->var_uri(name);
-      closing_uris.push_back(var_uri);
+      closing_uris.push_back(frag_meta->var_uri(name));
     }
     if (nullable) {
-      auto validity_uri = frag_meta->validity_uri(name);
-      closing_uris.push_back(validity_uri);
+      closing_uris.push_back(frag_meta->validity_uri(name));
     }
     for (auto& u : closing_uris) {
       if (layout_ == Layout::GLOBAL_ORDER) {
