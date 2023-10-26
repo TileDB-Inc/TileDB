@@ -500,7 +500,7 @@ Status FragmentInfo::get_mbr_num(uint32_t fid, uint64_t* mbr_num) {
   }
 
   auto meta = single_fragment_info_vec_[fid].meta();
-  RETURN_NOT_OK(meta->load_rtree(enc_key_));
+  meta->load_rtree(enc_key_);
   *mbr_num = meta->mbrs().size();
 
   return Status::Ok();
@@ -522,7 +522,7 @@ Status FragmentInfo::get_mbr(
         Status_FragmentInfoError("Cannot get MBR; Fragment is not sparse"));
 
   auto meta = single_fragment_info_vec_[fid].meta();
-  RETURN_NOT_OK(meta->load_rtree(enc_key_));
+  meta->load_rtree(enc_key_);
   const auto& mbrs = meta->mbrs();
 
   if (mid >= mbrs.size())
@@ -604,7 +604,7 @@ Status FragmentInfo::get_mbr_var_size(
         Status_FragmentInfoError("Cannot get MBR; Fragment is not sparse"));
 
   auto meta = single_fragment_info_vec_[fid].meta();
-  RETURN_NOT_OK(meta->load_rtree(enc_key_));
+  meta->load_rtree(enc_key_);
   const auto& mbrs = meta->mbrs();
 
   if (mid >= mbrs.size())
@@ -684,7 +684,7 @@ Status FragmentInfo::get_mbr_var(
         Status_FragmentInfoError("Cannot get MBR var; Fragment is not sparse"));
 
   auto meta = single_fragment_info_vec_[fid].meta();
-  RETURN_NOT_OK(meta->load_rtree(enc_key_));
+  meta->load_rtree(enc_key_);
   const auto& mbrs = meta->mbrs();
 
   if (mid >= mbrs.size())
@@ -914,7 +914,7 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
         }
 
         if (preload_rtrees & !meta->dense()) {
-          RETURN_NOT_OK(meta->load_rtree(enc_key_));
+          meta->load_rtree(enc_key_);
         }
 
         return Status::Ok();
@@ -1067,8 +1067,7 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
       new_fragment_uri,
       timestamp_range,
       !sparse);
-  RETURN_NOT_OK_TUPLE(
-      meta->load(enc_key_, nullptr, 0, array_schemas_all_), nullopt);
+  meta->load(enc_key_, nullptr, 0, array_schemas_all_);
 
   // This is important for format version > 2
   sparse = !meta->dense();

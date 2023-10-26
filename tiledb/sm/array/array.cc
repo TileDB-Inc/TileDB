@@ -1211,8 +1211,9 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
             return Status::Ok();
           }
 
-          return fragment_metadata_[f]->load_tile_var_sizes(
+          fragment_metadata_[f]->load_tile_var_sizes(
               *encryption_key_, var_name);
+          return Status::Ok();
         }));
   }
 
@@ -1414,8 +1415,7 @@ Status Array::compute_max_buffer_sizes(
   // arrays, this will not be accurate, as it accounts only for the
   // non-empty regions of the subarray.
   for (auto& meta : fragment_metadata_) {
-    RETURN_NOT_OK(
-        meta->add_max_buffer_sizes(*encryption_key_, subarray, buffer_sizes));
+    meta->add_max_buffer_sizes(*encryption_key_, subarray, buffer_sizes);
   }
 
   // Prepare an NDRange for the subarray
