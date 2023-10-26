@@ -72,7 +72,8 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "CAPIString: Test that accessing freed handle fails", "[capi_string][freed_handle]") {
+    "CAPIString: Test that accessing freed handle fails",
+    "[capi_string][freed_handle]") {
   const std::string test_string = "hello";
   tiledb_string_t* handle = tiledb_string_t::make_handle(test_string);
   tiledb_string_t* handle_copy = handle;
