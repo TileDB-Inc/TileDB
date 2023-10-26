@@ -308,9 +308,8 @@ class FragmentInfo {
    * @param memory_tracker The memory tracker of the array
    *     for which the fragment metadata is loaded.
    * @param enc_key The encryption key to use.
-   * @return tuple of Status, latest ArraySchema, map of all array schemas and
+   * @return tuple latest ArraySchema, map of all array schemas and
    * vector of FragmentMetadata
-   *        Status Ok on success, else error
    *        ArraySchema The array schema to be retrieved after the
    *           array is opened.
    *        ArraySchemaMap Map of all array schemas found keyed by name

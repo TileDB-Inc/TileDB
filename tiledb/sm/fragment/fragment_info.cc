@@ -978,7 +978,7 @@ Status FragmentInfo::load_and_replace(
   return Status::Ok();
 }
 
-tuple<optional<Tile>, optional<std::vector<std::pair<std::string, uint64_t>>>>
+tuple<Tile, std::vector<std::pair<std::string, uint64_t>>>
 load_consolidated_fragment_meta(
     ContextResources& resources, const URI& uri, const EncryptionKey& enc_key) {
   auto timer_se =
@@ -986,7 +986,8 @@ load_consolidated_fragment_meta(
 
   // No consolidated fragment metadata file
   if (uri.to_string().empty())
-    return {nullopt, nullopt};
+    throw StatusException(Status_FragmentInfoError(
+        "Cannot load consolidated fragment metadata; URI is empty."));
 
   auto&& tile = GenericTileIO::load(resources, uri, 0, enc_key);
 
@@ -1042,16 +1043,15 @@ FragmentInfo::load_array_schemas_and_fragment_metadata(
   std::vector<shared_ptr<Tile>> fragment_metadata_tiles(meta_uris.size());
   std::vector<std::vector<std::pair<std::string, uint64_t>>> offsets_vectors(
       meta_uris.size());
-  auto status =
+  throw_if_not_ok(
       parallel_for(&resources.compute_tp(), 0, meta_uris.size(), [&](size_t i) {
         auto&& [tile_opt, offsets] =
             load_consolidated_fragment_meta(resources, meta_uris[i], enc_key);
         fragment_metadata_tiles[i] =
-            make_shared<Tile>(HERE(), std::move(*tile_opt));
-        offsets_vectors[i] = std::move(offsets.value());
+            make_shared<Tile>(HERE(), std::move(tile_opt));
+        offsets_vectors[i] = std::move(offsets);
         return Status::Ok();
-      });
-  throw_if_not_ok(status);
+      }));
 
   // Get the unique fragment metadatas into a map.
   std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
