@@ -1,11 +1,12 @@
 /**
- * @file tiledb/api/c_api_support/c_api_support.h
+ * @file
+ * tiledb/api/c_api_support/exception_wrapper/test/unit_capi_hook_without.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,21 +27,12 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
- *
- * This file includes all the support functions that appear generally in C API
- * implementation functions:
- *   - Exception wrappers and error handling
- *   - Argument validation
  */
 
-#ifndef TILEDB_CAPI_SUPPORT_H
-#define TILEDB_CAPI_SUPPORT_H
+#include <test/support/tdb_catch.h>
 
-#include "argument_validation.h"
-#include "tiledb/api/c_api_support/exception_wrapper/capi_definition.h"
-#include "tiledb/api/c_api_support/exception_wrapper/exception_wrapper.h"
-#if __has_include("capi_function_override.h")
-#include "capi_function_override.h"
-#endif
+#include "hook_common.h"
 
-#endif  // TILEDB_CAPI_SUPPORT_H
+TEST_CASE("Compile definition - without hook") {
+  CHECK(compiled_with_hook == false);
+}
