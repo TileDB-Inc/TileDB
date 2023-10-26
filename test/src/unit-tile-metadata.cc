@@ -290,29 +290,16 @@ struct CPPFixedTileMetadataFx {
     // Load fragment metadata.
     auto frag_meta = array->array_->fragment_metadata();
     auto& enc_key = array->array_->get_encryption_key();
-    auto st = frag_meta[f]->load_fragment_min_max_sum_null_count(enc_key);
-    CHECK(st.ok());
+    frag_meta[f]->load_fragment_min_max_sum_null_count(enc_key);
 
     // Load the metadata and validate coords netadata.
     bool has_coords = layout != TILEDB_ROW_MAJOR;
     if (has_coords) {
-      std::vector<std::string> names_min{"d"};
-      auto st =
-          frag_meta[f]->load_tile_min_values(enc_key, std::move(names_min));
-      CHECK(st.ok());
-
-      std::vector<std::string> names_max{"d"};
-      st = frag_meta[f]->load_tile_max_values(enc_key, std::move(names_max));
-      CHECK(st.ok());
-
-      std::vector<std::string> names_sum{"d"};
-      st = frag_meta[f]->load_tile_sum_values(enc_key, std::move(names_sum));
-      CHECK(st.ok());
-
-      std::vector<std::string> names_null_count{"d"};
-      st = frag_meta[f]->load_tile_null_count_values(
-          enc_key, std::move(names_null_count));
-      CHECK(st.ok());
+      std::vector<std::string> names{"d"};
+      frag_meta[f]->load_tile_min_values(enc_key, names);
+      frag_meta[f]->load_tile_max_values(enc_key, names);
+      frag_meta[f]->load_tile_sum_values(enc_key, names);
+      frag_meta[f]->load_tile_null_count_values(enc_key, names);
 
       // Validation.
       // Min/max/sum for all null tile are invalid.
@@ -459,22 +446,11 @@ struct CPPFixedTileMetadataFx {
     }
 
     // Load attribute metadata.
-    std::vector<std::string> names_min{"a"};
-    st = frag_meta[f]->load_tile_min_values(enc_key, std::move(names_min));
-    CHECK(st.ok());
-
-    std::vector<std::string> names_max{"a"};
-    st = frag_meta[f]->load_tile_max_values(enc_key, std::move(names_max));
-    CHECK(st.ok());
-
-    std::vector<std::string> names_sum{"a"};
-    st = frag_meta[f]->load_tile_sum_values(enc_key, std::move(names_sum));
-    CHECK(st.ok());
-
-    std::vector<std::string> names_null_count{"a"};
-    st = frag_meta[f]->load_tile_null_count_values(
-        enc_key, std::move(names_null_count));
-    CHECK(st.ok());
+    std::vector<std::string> names{"a"};
+    frag_meta[f]->load_tile_min_values(enc_key, names);
+    frag_meta[f]->load_tile_max_values(enc_key, names);
+    frag_meta[f]->load_tile_sum_values(enc_key, names);
+    frag_meta[f]->load_tile_null_count_values(enc_key, names);
 
     // Validate attribute metadta.
     // Min/max/sum for all null tile are invalid.
@@ -837,29 +813,16 @@ struct CPPVarTileMetadataFx {
     // Load fragment metadata.
     auto frag_meta = array->array_->fragment_metadata();
     auto& enc_key = array->array_->get_encryption_key();
-    auto st = frag_meta[f]->load_fragment_min_max_sum_null_count(enc_key);
-    CHECK(st.ok());
+    frag_meta[f]->load_fragment_min_max_sum_null_count(enc_key);
 
     // Load the metadata and validate coords netadata.
     bool has_coords = layout != TILEDB_ROW_MAJOR;
     if (has_coords) {
-      std::vector<std::string> names_min{"d"};
-      auto st =
-          frag_meta[f]->load_tile_min_values(enc_key, std::move(names_min));
-      CHECK(st.ok());
-
-      std::vector<std::string> names_max{"d"};
-      st = frag_meta[f]->load_tile_max_values(enc_key, std::move(names_max));
-      CHECK(st.ok());
-
-      std::vector<std::string> names_sum{"d"};
-      st = frag_meta[f]->load_tile_sum_values(enc_key, std::move(names_sum));
-      CHECK(st.ok());
-
-      std::vector<std::string> names_null_count{"d"};
-      st = frag_meta[f]->load_tile_null_count_values(
-          enc_key, std::move(names_null_count));
-      CHECK(st.ok());
+      std::vector<std::string> names{"d"};
+      frag_meta[f]->load_tile_min_values(enc_key, names);
+      frag_meta[f]->load_tile_max_values(enc_key, names);
+      frag_meta[f]->load_tile_sum_values(enc_key, names);
+      frag_meta[f]->load_tile_null_count_values(enc_key, names);
 
       // Validation.
       // Min/max/sum for all null tile are invalid.
@@ -953,22 +916,11 @@ struct CPPVarTileMetadataFx {
     }
 
     // Load attribute metadata.
-    std::vector<std::string> names_min{"a"};
-    st = frag_meta[f]->load_tile_min_values(enc_key, std::move(names_min));
-    CHECK(st.ok());
-
-    std::vector<std::string> names_max{"a"};
-    st = frag_meta[f]->load_tile_max_values(enc_key, std::move(names_max));
-    CHECK(st.ok());
-
-    std::vector<std::string> names_sum{"a"};
-    st = frag_meta[f]->load_tile_sum_values(enc_key, std::move(names_sum));
-    CHECK(st.ok());
-
-    std::vector<std::string> names_null_count{"a"};
-    st = frag_meta[f]->load_tile_null_count_values(
-        enc_key, std::move(names_null_count));
-    CHECK(st.ok());
+    std::vector<std::string> names{"a"};
+    frag_meta[f]->load_tile_min_values(enc_key, names);
+    frag_meta[f]->load_tile_max_values(enc_key, names);
+    frag_meta[f]->load_tile_sum_values(enc_key, names);
+    frag_meta[f]->load_tile_null_count_values(enc_key, names);
 
     // Validate attribute metadata.
     // Min/max/sum for all null tile are invalid.
@@ -1185,8 +1137,7 @@ struct CPPFixedTileMetadataPartialFx {
     // Load fragment metadata.
     auto frag_meta = array->array_->fragment_metadata();
     auto& enc_key = array->array_->get_encryption_key();
-    auto st = frag_meta[0]->load_fragment_min_max_sum_null_count(enc_key);
-    CHECK(st.ok());
+    frag_meta[0]->load_fragment_min_max_sum_null_count(enc_key);
 
     // Do fragment metadata first for attribute.
     {
@@ -1211,22 +1162,11 @@ struct CPPFixedTileMetadataPartialFx {
     }
 
     // Load attribute metadata.
-    std::vector<std::string> names_min{"a"};
-    st = frag_meta[0]->load_tile_min_values(enc_key, std::move(names_min));
-    CHECK(st.ok());
-
-    std::vector<std::string> names_max{"a"};
-    st = frag_meta[0]->load_tile_max_values(enc_key, std::move(names_max));
-    CHECK(st.ok());
-
-    std::vector<std::string> names_sum{"a"};
-    st = frag_meta[0]->load_tile_sum_values(enc_key, std::move(names_sum));
-    CHECK(st.ok());
-
-    std::vector<std::string> names_null_count{"a"};
-    st = frag_meta[0]->load_tile_null_count_values(
-        enc_key, std::move(names_null_count));
-    CHECK(st.ok());
+    std::vector<std::string> names{"a"};
+    frag_meta[0]->load_tile_min_values(enc_key, names);
+    frag_meta[0]->load_tile_max_values(enc_key, names);
+    frag_meta[0]->load_tile_sum_values(enc_key, names);
+    frag_meta[0]->load_tile_null_count_values(enc_key, names);
 
     std::vector<double> correct_tile_mins{1.1, 2.1, 3.2, 4.1};
     std::vector<double> correct_tile_maxs{1.7, 2.6, 3.8, 4.9};
@@ -1366,8 +1306,7 @@ struct CPPVarTileMetadataPartialFx {
     // Load fragment metadata.
     auto frag_meta = array->array_->fragment_metadata();
     auto& enc_key = array->array_->get_encryption_key();
-    auto st = frag_meta[0]->load_fragment_min_max_sum_null_count(enc_key);
-    CHECK(st.ok());
+    frag_meta[0]->load_fragment_min_max_sum_null_count(enc_key);
 
     // Do fragment metadata first for attribute.
     {
@@ -1385,22 +1324,11 @@ struct CPPVarTileMetadataPartialFx {
     }
 
     // Load attribute metadata.
-    std::vector<std::string> names_min{"a"};
-    st = frag_meta[0]->load_tile_min_values(enc_key, std::move(names_min));
-    CHECK(st.ok());
-
-    std::vector<std::string> names_max{"a"};
-    st = frag_meta[0]->load_tile_max_values(enc_key, std::move(names_max));
-    CHECK(st.ok());
-
-    std::vector<std::string> names_sum{"a"};
-    st = frag_meta[0]->load_tile_sum_values(enc_key, std::move(names_sum));
-    CHECK(st.ok());
-
-    std::vector<std::string> names_null_count{"a"};
-    st = frag_meta[0]->load_tile_null_count_values(
-        enc_key, std::move(names_null_count));
-    CHECK(st.ok());
+    std::vector<std::string> names{"a"};
+    frag_meta[0]->load_tile_min_values(enc_key, names);
+    frag_meta[0]->load_tile_max_values(enc_key, names);
+    frag_meta[0]->load_tile_sum_values(enc_key, names);
+    frag_meta[0]->load_tile_null_count_values(enc_key, names);
 
     std::vector<std::string> correct_tile_mins{"1.1", "2.1", "3.2", "4.1"};
     std::vector<std::string> correct_tile_maxs{"1.7", "2.6", "3.8", "4.9"};

@@ -358,7 +358,7 @@ Status SparseIndexReaderBase::load_initial_data() {
 
   // Load processed conditions from fragment metadata.
   if (delete_and_update_conditions_.size() > 0) {
-    throw_if_not_ok(load_processed_conditions());
+    load_processed_conditions();
   }
 
   // Make a list of dim/attr that will be loaded for query condition.
@@ -499,16 +499,15 @@ void SparseIndexReaderBase::load_tile_offsets_for_fragments(
   // Preload zipped coordinate tile offsets. Note that this will
   // ignore fragments with a version >= 5.
   std::vector<std::string> zipped_coords_names = {constants::coords};
-  throw_if_not_ok(load_tile_offsets(relevant_fragments, zipped_coords_names));
+  load_tile_offsets(relevant_fragments, zipped_coords_names);
 
   // Preload unzipped coordinate tile offsets. Note that this will
   // ignore fragments with a version < 5.
-  throw_if_not_ok(load_tile_offsets(relevant_fragments, dim_names_));
+  load_tile_offsets(relevant_fragments, dim_names_);
 
   // Load tile offsets and var sizes for attributes.
-  throw_if_not_ok(load_tile_var_sizes(relevant_fragments, var_size_to_load_));
-  throw_if_not_ok(
-      load_tile_offsets(relevant_fragments, attr_tile_offsets_to_load_));
+  load_tile_var_sizes(relevant_fragments, var_size_to_load_);
+  load_tile_offsets(relevant_fragments, attr_tile_offsets_to_load_);
 }
 
 Status SparseIndexReaderBase::read_and_unfilter_coords(

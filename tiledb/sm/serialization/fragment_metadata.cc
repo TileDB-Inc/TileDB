@@ -390,7 +390,7 @@ Status fragment_metadata_from_capnp(
     // Whilst sparse gets its domain calculated, dense needs to have it
     // set here from the deserialized data
     if (array_schema->dense()) {
-      throw_if_not_ok(frag_meta->init_domain(*ndrange));
+      frag_meta->init_domain(*ndrange);
     } else {
       const auto& frag0_dom = *ndrange;
       frag_meta->non_empty_domain().assign(frag0_dom.begin(), frag0_dom.end());

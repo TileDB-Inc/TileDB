@@ -205,7 +205,7 @@ Status OrderedWriter::ordered_write() {
   auto tile_num = dense_tiler.tile_num();
 
   // Set number of tiles in the fragment metadata
-  throw_if_not_ok(frag_meta->set_num_tiles(tile_num));
+  frag_meta->set_num_tiles(tile_num);
 
   // Prepare, filter and write tiles for all attributes
   auto attr_num = buffers_.size();
