@@ -120,12 +120,12 @@ Status fragment_metadata_from_capnp(
     const shared_ptr<const ArraySchema>& array_schema,
     const capnp::FragmentMetadata::Reader& frag_meta_reader,
     shared_ptr<FragmentMetadata> frag_meta,
-    StorageManager* storage_manager,
+    ContextResources* resources,
     MemoryTracker* memory_tracker) {
   // TODO: consider a new constructor for fragment meta or using the
   // existing one
-  if (storage_manager) {
-    frag_meta->set_storage_manager(storage_manager);
+  if (resources) {
+    frag_meta->set_context_resources(resources);
   }
   if (memory_tracker) {
     frag_meta->set_memory_tracker(memory_tracker);
@@ -390,7 +390,7 @@ Status fragment_metadata_from_capnp(
     // Whilst sparse gets its domain calculated, dense needs to have it
     // set here from the deserialized data
     if (array_schema->dense()) {
-      throw_if_not_ok(frag_meta->init_domain(*ndrange));
+      frag_meta->init_domain(*ndrange);
     } else {
       const auto& frag0_dom = *ndrange;
       frag_meta->non_empty_domain().assign(frag0_dom.begin(), frag0_dom.end());

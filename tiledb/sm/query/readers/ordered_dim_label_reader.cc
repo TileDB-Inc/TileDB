@@ -185,8 +185,8 @@ Status OrderedDimLabelReader::dowork() {
   // `tile_var_offsets_`, `tile_validity_offsets_` and `tile_var_sizes_` in
   // `fragment_metadata_`.
   std::vector<std::string> names = {label_name_};
-  RETURN_NOT_OK(load_tile_offsets(subarray_.relevant_fragments(), names));
-  RETURN_NOT_OK(load_tile_var_sizes(subarray_.relevant_fragments(), names));
+  load_tile_offsets(subarray_.relevant_fragments(), names);
+  load_tile_var_sizes(subarray_.relevant_fragments(), names);
 
   // Load the dimension labels min/max values.
   load_label_min_max_values();
@@ -347,12 +347,9 @@ void OrderedDimLabelReader::load_label_min_max_values() {
       fragment_metadata_.size(),
       [&](const uint64_t i) {
         auto& fragment = fragment_metadata_[i];
-        std::vector<std::string> names_min = {label_name_};
-        RETURN_NOT_OK(fragment->load_tile_min_values(
-            *encryption_key, std::move(names_min)));
-        std::vector<std::string> names_max = {label_name_};
-        RETURN_NOT_OK(fragment->load_tile_max_values(
-            *encryption_key, std::move(names_max)));
+        std::vector<std::string> names = {label_name_};
+        fragment->load_tile_min_values(*encryption_key, names);
+        fragment->load_tile_max_values(*encryption_key, names);
         return Status::Ok();
       }));
 }

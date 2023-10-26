@@ -233,7 +233,7 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_evolution_add_enumeration(
  * tiledb_array_schema_evolution_extend_enumeration(
  *     ctx,
  *     array_schema_evolution,
- *     enmr);
+ *     new_enmr);
  * @endcode
  *
  * @param ctx The TileDB context.

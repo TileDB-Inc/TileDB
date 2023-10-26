@@ -42,6 +42,7 @@
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 namespace tiledb::sm {
@@ -51,15 +52,14 @@ namespace tiledb::sm {
 /* ****************************** */
 
 FragmentInfo::FragmentInfo()
-    : storage_manager_(nullptr)
+    : resources_(nullptr)
     , unconsolidated_metadata_num_(0) {
 }
 
-FragmentInfo::FragmentInfo(
-    const URI& array_uri, StorageManager* storage_manager)
+FragmentInfo::FragmentInfo(const URI& array_uri, ContextResources& resources)
     : array_uri_(array_uri)
-    , config_(storage_manager->config())
-    , storage_manager_(storage_manager)
+    , config_(resources.config())
+    , resources_(&resources)
     , unconsolidated_metadata_num_(0) {
 }
 
@@ -500,7 +500,7 @@ Status FragmentInfo::get_mbr_num(uint32_t fid, uint64_t* mbr_num) {
   }
 
   auto meta = single_fragment_info_vec_[fid].meta();
-  RETURN_NOT_OK(meta->load_rtree(enc_key_));
+  meta->load_rtree(enc_key_);
   *mbr_num = meta->mbrs().size();
 
   return Status::Ok();
@@ -522,7 +522,7 @@ Status FragmentInfo::get_mbr(
         Status_FragmentInfoError("Cannot get MBR; Fragment is not sparse"));
 
   auto meta = single_fragment_info_vec_[fid].meta();
-  RETURN_NOT_OK(meta->load_rtree(enc_key_));
+  meta->load_rtree(enc_key_);
   const auto& mbrs = meta->mbrs();
 
   if (mid >= mbrs.size())
@@ -604,7 +604,7 @@ Status FragmentInfo::get_mbr_var_size(
         Status_FragmentInfoError("Cannot get MBR; Fragment is not sparse"));
 
   auto meta = single_fragment_info_vec_[fid].meta();
-  RETURN_NOT_OK(meta->load_rtree(enc_key_));
+  meta->load_rtree(enc_key_);
   const auto& mbrs = meta->mbrs();
 
   if (mid >= mbrs.size())
@@ -684,7 +684,7 @@ Status FragmentInfo::get_mbr_var(
         Status_FragmentInfoError("Cannot get MBR var; Fragment is not sparse"));
 
   auto meta = single_fragment_info_vec_[fid].meta();
-  RETURN_NOT_OK(meta->load_rtree(enc_key_));
+  meta->load_rtree(enc_key_);
   const auto& mbrs = meta->mbrs();
 
   if (mid >= mbrs.size())
@@ -778,7 +778,7 @@ shared_ptr<ArraySchema> FragmentInfo::get_array_schema(uint32_t fid) {
 
   EncryptionKey encryption_key;
   return ArrayDirectory::load_array_schema_from_uri(
-      storage_manager_->resources(), schema_uri, encryption_key);
+      *resources_, schema_uri, encryption_key);
 }
 
 Status FragmentInfo::get_array_schema_name(
@@ -825,7 +825,7 @@ Status FragmentInfo::load() {
   RETURN_NOT_OK(set_default_timestamp_range());
 
   if (array_uri_.is_tiledb()) {
-    auto rest_client = storage_manager_->rest_client();
+    auto rest_client = resources_->rest_client();
     if (rest_client == nullptr) {
       return LOG_STATUS(Status_ArrayError(
           "Cannot load fragment info; remote array with no REST client."));
@@ -841,10 +841,7 @@ Status FragmentInfo::load() {
 
   // Create an ArrayDirectory object and load
   ArrayDirectory array_dir(
-      storage_manager_->resources(),
-      array_uri_,
-      timestamp_start_,
-      timestamp_end_);
+      *resources_, array_uri_, timestamp_start_, timestamp_end_);
 
   return load(array_dir);
 }
@@ -858,10 +855,7 @@ Status FragmentInfo::load(
 
   // Create an ArrayDirectory object and load
   ArrayDirectory array_dir(
-      storage_manager_->resources(),
-      array_uri_,
-      timestamp_start_,
-      timestamp_end_);
+      *resources_, array_uri_, timestamp_start_, timestamp_end_);
   return load(array_dir);
 }
 
@@ -889,32 +883,29 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
   }
 
   // Get the array schemas and fragment metadata.
-  auto&& [st_schemas, array_schema_latest, array_schemas_all, fragment_metadata] =
-      storage_manager_->load_array_schemas_and_fragment_metadata(
-          array_dir, nullptr, enc_key_);
-  RETURN_NOT_OK(st_schemas);
-  const auto& fragment_metadata_value = fragment_metadata.value();
-  array_schema_latest_ = array_schema_latest.value();
-  array_schemas_all_ = std::move(array_schemas_all.value());
-  auto fragment_num = (uint32_t)fragment_metadata_value.size();
+  std::vector<std::shared_ptr<FragmentMetadata>> fragment_metadata;
+  std::tie(array_schema_latest_, array_schemas_all_, fragment_metadata) =
+      load_array_schemas_and_fragment_metadata(
+          *resources_, array_dir, nullptr, enc_key_);
+  auto fragment_num = (uint32_t)fragment_metadata.size();
 
   // Get fragment sizes
   std::vector<uint64_t> sizes(fragment_num, 0);
   RETURN_NOT_OK(parallel_for(
-      storage_manager_->compute_tp(),
+      &resources_->compute_tp(),
       0,
       fragment_num,
-      [this, &fragment_metadata_value, &sizes, preload_rtrees](uint64_t i) {
+      [this, &fragment_metadata, &sizes, preload_rtrees](uint64_t i) {
         // Get fragment size. Applicable only to relevant fragments, including
         // fragments that are in the range [timestamp_start_, timestamp_end_].
-        auto meta = fragment_metadata_value[i];
+        auto meta = fragment_metadata[i];
         if (meta->timestamp_range().first >= timestamp_start_ &&
             meta->timestamp_range().second <= timestamp_end_) {
           sizes[i] = meta->fragment_size();
         }
 
         if (preload_rtrees & !meta->dense()) {
-          RETURN_NOT_OK(meta->load_rtree(enc_key_));
+          meta->load_rtree(enc_key_);
         }
 
         return Status::Ok();
@@ -926,7 +917,7 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
 
   // Create the vector that will store the SingleFragmentInfo objects
   for (uint64_t fid = 0; fid < fragment_num; fid++) {
-    const auto meta = fragment_metadata_value[fid];
+    const auto meta = fragment_metadata[fid];
     const auto& array_schema = meta->array_schema();
     const auto& non_empty_domain = meta->non_empty_domain();
 
@@ -987,6 +978,106 @@ Status FragmentInfo::load_and_replace(
   return Status::Ok();
 }
 
+tuple<Tile, std::vector<std::pair<std::string, uint64_t>>>
+load_consolidated_fragment_meta(
+    ContextResources& resources, const URI& uri, const EncryptionKey& enc_key) {
+  auto timer_se =
+      resources.stats().start_timer("sm_read_load_consolidated_frag_meta");
+
+  // No consolidated fragment metadata file
+  if (uri.to_string().empty())
+    throw StatusException(Status_FragmentInfoError(
+        "Cannot load consolidated fragment metadata; URI is empty."));
+
+  auto&& tile = GenericTileIO::load(resources, uri, 0, enc_key);
+
+  resources.stats().add_counter("consolidated_frag_meta_size", tile.size());
+
+  uint32_t fragment_num;
+  Deserializer deserializer(tile.data(), tile.size());
+  fragment_num = deserializer.read<uint32_t>();
+
+  uint64_t name_size, offset;
+  std::string name;
+  std::vector<std::pair<std::string, uint64_t>> ret;
+  ret.reserve(fragment_num);
+  for (uint32_t f = 0; f < fragment_num; ++f) {
+    name_size = deserializer.read<uint64_t>();
+    name.resize(name_size);
+    deserializer.read(&name[0], name_size);
+    offset = deserializer.read<uint64_t>();
+    ret.emplace_back(name, offset);
+  }
+
+  return {std::move(tile), std::move(ret)};
+}
+
+std::tuple<
+    shared_ptr<ArraySchema>,
+    std::unordered_map<std::string, shared_ptr<ArraySchema>>,
+    std::vector<shared_ptr<FragmentMetadata>>>
+FragmentInfo::load_array_schemas_and_fragment_metadata(
+    ContextResources& resources,
+    const ArrayDirectory& array_dir,
+    MemoryTracker* memory_tracker,
+    const EncryptionKey& enc_key) {
+  auto timer_se = resources.stats().start_timer(
+      "sm_load_array_schemas_and_fragment_metadata");
+
+  // Load array schemas
+  std::shared_ptr<ArraySchema> array_schema_latest;
+  std::unordered_map<std::string, std::shared_ptr<ArraySchema>>
+      array_schemas_all;
+  std::tie(array_schema_latest, array_schemas_all) =
+      array_dir.load_array_schemas(enc_key);
+
+  const auto filtered_fragment_uris = [&]() {
+    auto timer_se =
+        resources.stats().start_timer("sm_load_filtered_fragment_uris");
+    return array_dir.filtered_fragment_uris(array_schema_latest->dense());
+  }();
+  const auto& meta_uris = array_dir.fragment_meta_uris();
+  const auto& fragments_to_load = filtered_fragment_uris.fragment_uris();
+
+  // Get the consolidated fragment metadatas
+  std::vector<shared_ptr<Tile>> fragment_metadata_tiles(meta_uris.size());
+  std::vector<std::vector<std::pair<std::string, uint64_t>>> offsets_vectors(
+      meta_uris.size());
+  throw_if_not_ok(
+      parallel_for(&resources.compute_tp(), 0, meta_uris.size(), [&](size_t i) {
+        auto&& [tile_opt, offsets] =
+            load_consolidated_fragment_meta(resources, meta_uris[i], enc_key);
+        fragment_metadata_tiles[i] =
+            make_shared<Tile>(HERE(), std::move(tile_opt));
+        offsets_vectors[i] = std::move(offsets);
+        return Status::Ok();
+      }));
+
+  // Get the unique fragment metadatas into a map.
+  std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
+  for (uint64_t i = 0; i < offsets_vectors.size(); i++) {
+    for (auto& offset : offsets_vectors[i]) {
+      if (offsets.count(offset.first) == 0) {
+        offsets.emplace(
+            offset.first,
+            std::make_pair(fragment_metadata_tiles[i].get(), offset.second));
+      }
+    }
+  }
+
+  // Load the fragment metadata
+  auto&& fragment_metadata = FragmentMetadata::load(
+      resources,
+      memory_tracker,
+      array_schema_latest,
+      array_schemas_all,
+      enc_key,
+      fragments_to_load,
+      offsets);
+
+  return {array_schema_latest, array_schemas_all, fragment_metadata};
+}
+
 const std::vector<SingleFragmentInfo>& FragmentInfo::single_fragment_info_vec()
     const {
   return single_fragment_info_vec_;
@@ -1032,7 +1123,7 @@ Status FragmentInfo::set_default_timestamp_range() {
 tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
     const URI& new_fragment_uri) const {
   SingleFragmentInfo ret;
-  auto vfs = storage_manager_->vfs();
+  auto& vfs = resources_->vfs();
   const auto& array_schema_latest =
       single_fragment_info_vec_.back().meta()->array_schema();
 
@@ -1049,7 +1140,7 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   if (fragment_version <= 2) {
     URI coords_uri =
         new_fragment_uri.join_path(constants::coords + constants::file_suffix);
-    RETURN_NOT_OK_TUPLE(vfs->is_file(coords_uri, &sparse), nullopt);
+    RETURN_NOT_OK_TUPLE(vfs.is_file(coords_uri, &sparse), nullopt);
   } else {
     // Do nothing. It does not matter what the `sparse` value
     // is, since the FragmentMetadata object will load the correct
@@ -1061,14 +1152,13 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   // Get fragment non-empty domain
   auto meta = make_shared<FragmentMetadata>(
       HERE(),
-      storage_manager_,
+      resources_,
       nullptr,
       array_schema_latest,
       new_fragment_uri,
       timestamp_range,
       !sparse);
-  RETURN_NOT_OK_TUPLE(
-      meta->load(enc_key_, nullptr, 0, array_schemas_all_), nullopt);
+  meta->load(enc_key_, nullptr, 0, array_schemas_all_);
 
   // This is important for format version > 2
   sparse = !meta->dense();
@@ -1138,7 +1228,7 @@ FragmentInfo FragmentInfo::clone() const {
   clone.array_schemas_all_ = array_schemas_all_;
   clone.config_ = config_;
   clone.single_fragment_info_vec_ = single_fragment_info_vec_;
-  clone.storage_manager_ = storage_manager_;
+  clone.resources_ = resources_;
   clone.to_vacuum_ = to_vacuum_;
   clone.unconsolidated_metadata_num_ = unconsolidated_metadata_num_;
   clone.anterior_ndrange_ = anterior_ndrange_;
@@ -1154,7 +1244,7 @@ void FragmentInfo::swap(FragmentInfo& fragment_info) {
   std::swap(array_schemas_all_, fragment_info.array_schemas_all_);
   std::swap(config_, fragment_info.config_);
   std::swap(single_fragment_info_vec_, fragment_info.single_fragment_info_vec_);
-  std::swap(storage_manager_, fragment_info.storage_manager_);
+  std::swap(resources_, fragment_info.resources_);
   std::swap(to_vacuum_, fragment_info.to_vacuum_);
   std::swap(
       unconsolidated_metadata_num_, fragment_info.unconsolidated_metadata_num_);
