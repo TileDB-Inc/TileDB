@@ -39,6 +39,7 @@
 #include <string>
 #include <vector>
 
+#include "ls_callback.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/macros.h"
@@ -81,6 +82,14 @@ class Tile;
 
 enum class Filesystem : uint8_t;
 enum class VFSMode : uint8_t;
+
+/** Class for VFS status exceptions. */
+class VFSException : public StatusException {
+ public:
+  explicit VFSException(const std::string& msg)
+      : StatusException("VFS", msg) {
+  }
+};
 
 /** The VFS configuration parameters. */
 struct VFSParameters {
@@ -426,6 +435,17 @@ class VFS : private VFSBase, S3_within_VFS {
    */
   tuple<Status, optional<std::vector<filesystem::directory_entry>>>
   ls_with_sizes(const URI& parent) const;
+
+  /**
+   * Recursively lists objects and object information that start with `prefix`.
+   * The callback function is invoked on each object collected. The callback is
+   * responsible for storing the results into a user provided data structure.
+   *
+   * @param parent The parent path to list sub-objects recursively.
+   * @param cb The callback to invoke on each object collected.
+   * @param data Data passed to the callback used to store collected results.
+   */
+  void ls_recursive(const URI& parent, LsCallback cb, void* data) const;
 
   /**
    * Renames a file.

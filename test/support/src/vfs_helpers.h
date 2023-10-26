@@ -35,6 +35,7 @@
 
 #include "test/support/src/helpers.h"
 #include "test/support/tdb_catch.h"
+#include "tiledb/sm/enums/vfs_mode.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
@@ -47,6 +48,28 @@ namespace test {
 
 // Forward declaration
 class SupportedFs;
+
+#ifdef TILEDB_TESTS_AWS_CONFIG
+constexpr bool aws_s3_config = true;
+#else
+constexpr bool aws_s3_config = false;
+#endif
+
+/**
+ * Generates a random temp directory URI for use in VFS tests.
+ *
+ * @param prefix A prefix to use for the temp directory name. Should include
+ *    `s3://`, `mem://` or other URI prefix for the backend.
+ * @return URI which the caller can use to create a temp directory.
+ */
+tiledb::sm::URI test_dir(const std::string& prefix);
+
+/**
+ * Creates a config for testing VFS storage backends over local emulators.
+ *
+ * @return Fully initialized configuration for testing VFS storage backends.
+ */
+tiledb::sm::Config create_test_config();
 
 /**
  * Create the vector of supported filesystems.
@@ -681,6 +704,53 @@ struct TemporaryDirectoryFixture {
  private:
   /** Vector of supported filesystems. Used to initialize ``vfs_``. */
   const std::vector<std::unique_ptr<SupportedFs>> supported_filesystems_;
+};
+
+class VFSTest {
+ public:
+  using LsObjects = std::vector<std::pair<std::string, uint64_t>>;
+
+  VFSTest(
+      const std::vector<size_t>& test_tree,
+      const std::string& prefix = "file://");
+
+  virtual ~VFSTest();
+
+  virtual void create_objects(
+      const sm::URI& uri, size_t count, const std::string& prefix);
+
+  virtual void setup_test();
+
+  void test_ls_recursive(tiledb::sm::LsCallback cb, size_t expected_count = 0);
+
+  inline bool supports_fs() const {
+    return vfs_.supports_uri_scheme(temp_dir_);
+  }
+
+  std::vector<size_t> test_tree_;
+  ThreadPool compute_, io_;
+  tiledb::sm::VFS vfs_;
+  tiledb::sm::URI temp_dir_;
+
+  LsObjects expected_results_;
+};
+
+class S3Test : public VFSTest {
+ public:
+  S3Test(const std::vector<size_t>& test_tree);
+
+  ~S3Test() = default;
+
+  void create_objects(
+      const sm::URI& uri, size_t count, const std::string& prefix) override;
+
+  void setup_test() override;
+
+  void test_ls_cb(tiledb::sm::LsCallback cb, bool recursive);
+
+#ifdef HAVE_S3
+  tiledb::sm::S3 s3_;
+#endif
 };
 
 }  // End of namespace test

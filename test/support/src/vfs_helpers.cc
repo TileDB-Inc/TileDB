@@ -49,6 +49,25 @@
 namespace tiledb {
 namespace test {
 
+tiledb::sm::URI test_dir(const std::string& prefix) {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<uint64_t> dist(0);
+  return tiledb::sm::URI(prefix + "tiledb-" + std::to_string(dist(gen)));
+}
+
+tiledb::sm::Config create_test_config() {
+  tiledb::sm::Config cfg;
+  if constexpr (!tiledb::test::aws_s3_config) {
+    // Set up connection to minio backend emulator.
+    REQUIRE_NOTHROW(cfg.set("vfs.s3.endpoint_override", "localhost:9999"));
+    REQUIRE_NOTHROW(cfg.set("vfs.s3.scheme", "https"));
+    REQUIRE_NOTHROW(cfg.set("vfs.s3.use_virtual_addressing", "false"));
+    REQUIRE_NOTHROW(cfg.set("vfs.s3.verify_ssl", "false"));
+  }
+  return cfg;
+}
+
 std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
   std::vector<std::unique_ptr<SupportedFs>> fs_vec;
 
@@ -414,6 +433,139 @@ std::string TemporaryDirectoryFixture::create_temporary_array(
       ctx, array_uri, array_schema, serialize));
   return array_uri;
 }
+
+VFSTest::VFSTest(
+    const std::vector<size_t>& test_tree, const std::string& prefix)
+    : test_tree_(test_tree)
+    , compute_(4)
+    , io_(4)
+    , vfs_(
+          &tiledb::test::g_helper_stats,
+          &io_,
+          &compute_,
+          tiledb::test::create_test_config())
+    , temp_dir_(tiledb::test::test_dir(prefix)) {
+  if (prefix == "file://") {
+#ifdef _WIN32
+    temp_dir_ =
+        tiledb::test::test_dir(prefix + tiledb::sm::Win::current_dir() + "/");
+#else
+    temp_dir_ =
+        tiledb::test::test_dir(prefix + tiledb::sm::Posix::current_dir() + "/");
+#endif
+  }
+
+  if (temp_dir_.is_file() || temp_dir_.is_memfs()) {
+    vfs_.create_dir(temp_dir_).ok();
+  } else if (vfs_.supports_uri_scheme(temp_dir_)) {
+    vfs_.create_bucket(temp_dir_).ok();
+  }
+}
+
+VFSTest::~VFSTest() {
+  if (vfs_.supports_uri_scheme(temp_dir_)) {
+    bool is_dir = false;
+    vfs_.is_dir(temp_dir_, &is_dir).ok();
+    if (is_dir) {
+      vfs_.remove_dir(temp_dir_).ok();
+    }
+  }
+}
+
+void VFSTest::create_objects(
+    const sm::URI& uri, size_t count, const std::string& prefix) {
+  for (size_t i = 1; i <= count; i++) {
+    auto object_uri = uri.join_path(prefix + std::to_string(i));
+    vfs_.touch(object_uri).ok();
+    std::string data(i * 10, 'a');
+    vfs_.open_file(object_uri, sm::VFSMode::VFS_WRITE).ok();
+    vfs_.write(object_uri, data.data(), data.size()).ok();
+    vfs_.close_file(object_uri).ok();
+    expected_results_.emplace_back(object_uri.to_string(), data.size());
+  }
+}
+
+void VFSTest::setup_test() {
+  for (size_t i = 1; i <= test_tree_.size(); i++) {
+    sm::URI path = temp_dir_.join_path("subdir_" + std::to_string(i));
+    // VFS::create_dir is a no-op for S3.
+    vfs_.create_dir(path).ok();
+    create_objects(path, test_tree_[i - 1], "test_file_");
+  }
+}
+
+void VFSTest::test_ls_recursive(
+    tiledb::sm::LsCallback cb, size_t expected_count) {
+  LsObjects ls_objects;
+  CHECK_NOTHROW(vfs_.ls_recursive(temp_dir_, cb, &ls_objects));
+
+  std::sort(expected_results_.begin(), expected_results_.end());
+  if (expected_count != 0) {
+    expected_results_.resize(expected_count);
+  }
+  CHECK(ls_objects.size() == expected_results_.size());
+  CHECK(ls_objects == expected_results_);
+}
+
+#ifdef HAVE_S3
+S3Test::S3Test(const std::vector<size_t>& test_tree)
+    : VFSTest(test_tree, "s3://")
+    , s3_(&tiledb::test::g_helper_stats, &io_, vfs_.config()) {
+}
+
+void S3Test::create_objects(
+    const sm::URI& uri, size_t count, const std::string& prefix) {
+  for (size_t i = 1; i <= count; i++) {
+    auto object_uri = uri.join_path(prefix + std::to_string(i));
+    s3_.touch(object_uri).ok();
+    std::string data(i * 10, 'a');
+    s3_.write(object_uri, data.data(), data.size()).ok();
+    s3_.flush_object(object_uri).ok();
+    expected_results_.emplace_back(object_uri.to_string(), data.size());
+  }
+}
+
+void S3Test::setup_test() {
+  for (size_t i = 1; i <= test_tree_.size(); i++) {
+    sm::URI path = temp_dir_.join_path("subdir_" + std::to_string(i));
+    // VFS::create_dir is a no-op for S3; Just create objects.
+    create_objects(path, test_tree_[i - 1], "test_file_");
+  }
+}
+
+void S3Test::test_ls_cb(tiledb::sm::LsCallback cb, bool recursive) {
+  S3Test::LsObjects ls_objects;
+  // If testing with recursion use the root directory, otherwise use a subdir.
+  auto path = recursive ? temp_dir_ : temp_dir_.join_path("subdir_1");
+  if (recursive) {
+    CHECK_NOTHROW(s3_.ls_cb(path, cb, &ls_objects, ""));
+  } else {
+    CHECK_NOTHROW(s3_.ls_cb(path, cb, &ls_objects));
+  }
+
+  if (!recursive) {
+    // If non-recursive, all objects in the first directory should be
+    // returned.
+    expected_results_.resize(test_tree_[0]);
+  }
+  std::sort(expected_results_.begin(), expected_results_.end());
+  CHECK(ls_objects.size() == expected_results_.size());
+  CHECK(ls_objects == expected_results_);
+}
+#else
+S3Test::S3Test(const std::vector<size_t>& test_tree)
+    : VFSTest(test_tree, "s3://") {
+}
+
+void S3Test::create_objects(const sm::URI&, size_t, const std::string&) {
+}
+
+void S3Test::setup_test() {
+}
+
+void S3Test::test_ls_cb(tiledb::sm::LsCallback, bool) {
+}
+#endif
 
 }  // End of namespace test
 }  // End of namespace tiledb

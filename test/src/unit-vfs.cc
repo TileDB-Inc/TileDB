@@ -37,6 +37,7 @@
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/path_win.h"
 #endif
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
@@ -350,4 +351,83 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
 
   // Clean up
   REQUIRE(vfs_ls.remove_dir(URI(path)).ok());
+}
+
+// Currently only S3 is supported for VFS::ls_cb.
+using TestBackends = std::tuple<S3Test>;
+TEMPLATE_LIST_TEST_CASE(
+    "VFS: Test internal ls_cb recursion argument",
+    "[vfs][ls_cb]",
+    TestBackends) {
+  TestType fs({10, 50});
+  if (!fs.supports_fs()) {
+    return;
+  }
+  fs.setup_test();
+
+  tiledb::sm::LsCallback cb =
+      [](const char* path, size_t path_len, uint64_t size, void* data) {
+        auto ls_objects = static_cast<S3Test::LsObjects*>(data);
+        ls_objects->emplace_back(std::string(path, path_len), size);
+        return 1;
+      };
+
+  bool recursive = GENERATE(false, true);
+  DYNAMIC_SECTION(
+      fs.temp_dir_.backend_name()
+      << " ls_cb with recursion: " << (recursive ? "true" : "false")) {
+    fs.test_ls_cb(cb, recursive);
+  }
+}
+
+TEST_CASE("VFS: ls_recursive callback stops traversal", "[vfs][ls_recursive]") {
+  // Currently only S3 is supported for VFS::ls_recursive.
+  VFSTest vfs_test({10, 50}, "s3://");
+  if (!vfs_test.supports_fs()) {
+    return;
+  }
+  vfs_test.setup_test();
+
+  size_t cb_count = GENERATE(1, 11, 50);
+  tiledb::sm::LsCallback cb =
+      [&cb_count](
+          const char* path, size_t path_len, uint64_t size, void* data) {
+        auto ls_objects = static_cast<S3Test::LsObjects*>(data);
+        ls_objects->emplace_back(std::string(path, path_len), size);
+        if (ls_objects->size() == cb_count) {
+          return 0;
+        }
+        return 1;
+      };
+
+  vfs_test.test_ls_recursive(cb, cb_count);
+}
+
+TEST_CASE(
+    "VFS: ls_recursive throws for unsupported filesystems",
+    "[vfs][ls_recursive]") {
+  std::string prefix =
+      GENERATE("s3://", "hdfs://", "azure://", "gcs://", "file://", "mem://");
+  VFSTest vfs_test({1}, prefix);
+  if (!vfs_test.supports_fs()) {
+    return;
+  }
+  vfs_test.setup_test();
+  std::string backend = vfs_test.temp_dir_.backend_name();
+
+  auto cb = [](const char*, size_t, uint64_t, void*) { return 1; };
+  VFSTest::LsObjects data;
+  // Currently only S3 is supported for VFS::ls_recursive.
+  if (vfs_test.temp_dir_.is_s3()) {
+    DYNAMIC_SECTION(backend << " supported backend should not throw") {
+      CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, cb, &data));
+    }
+  } else {
+    DYNAMIC_SECTION(backend << " unsupported backend should throw") {
+      CHECK_THROWS_WITH(
+          vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, cb, &data),
+          Catch::Matchers::ContainsSubstring(
+              "storage backend is not supported"));
+    }
+  }
 }

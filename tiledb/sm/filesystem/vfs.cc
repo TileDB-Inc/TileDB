@@ -807,6 +807,22 @@ tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
   return {Status::Ok(), entries};
 }
 
+void VFS::ls_recursive(const URI& parent, LsCallback cb, void* data) const {
+  if (parent.is_s3()) {
+#ifdef HAVE_S3
+    s3_.ls_cb(parent, cb, data, "");
+#else
+    (void)cb;
+    (void)data;
+    throw VFSException("TileDB was built without S3 support");
+#endif
+  } else {
+    throw VFSException(
+        "Recursive ls over " + parent.backend_name() +
+        " storage backend is not supported.");
+  }
+}
+
 Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
   // If new_uri exists, delete it or raise an error based on `force`
   bool is_file;

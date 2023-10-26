@@ -34,6 +34,8 @@
 #define TILEDB_S3_H
 
 #ifdef HAVE_S3
+
+#include "ls_callback.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/rwlock.h"
 #include "tiledb/common/status.h"
@@ -413,17 +415,38 @@ class S3 {
   /**
    *
    * Lists objects and object information that start with `prefix`.
+   * For recursive results, an empty string can be passed as the `delimiter`.
    *
    * @param prefix The parent path to list sub-paths.
-   * @param delimiter The uri is truncated to the first delimiter
-   * @param max_paths The maximum number of paths to be retrieved
-   * @return A list of directory_entry objects
+   * @param delimiter The uri is truncated to the first delimiter.
+   * @param max_paths The maximum number of paths to be retrieved.
+   * @return Status tuple where second is a list of directory_entry objects.
    */
   tuple<Status, optional<std::vector<filesystem::directory_entry>>>
   ls_with_sizes(
       const URI& prefix,
       const std::string& delimiter = "/",
       int max_paths = -1) const;
+
+  /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the callback on each entry collected. If the callback returns 1, traversal
+   * continues. If the callback returns 0, traversal is stopped. If the callback
+   * returns -1 an error is thrown. The callback will not be invoked on
+   * directories.
+   *
+   * For recursive results, an empty string can be passed as the `delimiter`.
+   *
+   * @param prefix The parent path to list sub-paths.
+   * @param cb The callback to invoke on each object.
+   * @param data User data to pass to the callback.
+   * @param delimiter The uri is truncated to the first delimiter.
+   */
+  void ls_cb(
+      const URI& prefix,
+      LsCallback cb,
+      void* data,
+      const std::string& delimiter = "/") const;
 
   /**
    * Renames an object.
