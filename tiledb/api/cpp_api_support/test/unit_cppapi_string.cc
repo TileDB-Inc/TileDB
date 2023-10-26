@@ -72,6 +72,17 @@ TEST_CASE(
 }
 
 TEST_CASE(
+    "CAPIString: Test that accessing freed handle fails", "[capi_string][freed_handle]") {
+  const std::string test_string = "hello";
+  tiledb_string_t* handle = tiledb_string_t::make_handle(test_string);
+  tiledb_string_t* handle_copy = handle;
+  std::ignore = convert_to_string(&handle);
+  const char* chars;
+  uint64_t length;
+  REQUIRE(tiledb_string_view(handle_copy, &chars, &length) == TILEDB_ERR);
+}
+
+TEST_CASE(
     "CAPIString: Test convert_to_string with null handle", "[capi_string]") {
   tiledb_string_t* handle = nullptr;
   REQUIRE(!convert_to_string(&handle).has_value());
