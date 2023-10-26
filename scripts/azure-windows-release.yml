@@ -27,7 +27,7 @@ steps:
       $host.SetShouldExit(3)
     }
 
-    $bootstrapOptions = "-EnableVerbose -EnableStaticTileDB -DisableTests"
+    $bootstrapOptions = "-EnableVerbose -DisableTests"
     if ($env:TILEDB_S3 -eq "ON") {
       $bootstrapOptions = "-EnableS3 " + $bootstrapOptions
     }
@@ -41,10 +41,9 @@ steps:
     if ($env:TILEDB_SERIALIZATION -eq "ON") {
       $bootstrapOptions = "-EnableSerialization " + $bootstrapOptions
     }
-    # static already added above as initial default
-    # if ($env:TILEDB_STATIC -eq "ON") {
-    #  $bootstrapOptions = $bootstrapOptions + " -EnableStaticTileDB"
-    # }
+    if ($env:TILEDB_STATIC -eq "ON") {
+      $bootstrapOptions = $bootstrapOptions + " -EnableStaticTileDB"
+    }
     # if ($env:TILEDB_HDFS -eq "ON") {
     #  $bootstrapOptions = $bootstrapOptions + " -EnableHDFS"
     #}
@@ -59,10 +58,6 @@ steps:
     # }
     # if ($env:TILEDB_CI_TSAN -eq "ON") {
     #  $bootstrapOptions = $bootstrapOptions + " -EnableSanitizer thread -EnableDebug"
-    # }
-    # static already added above as initial default
-    # if ($env:TILEDB_FORCE_BUILD_DEPS" -eq "ON") {
-    #   $bootstrapOptions = $bootstrapOptions + " -EnableBuildDeps"
     # }
     if ($env:TILEDB_WEBP -eq "OFF") {
       $bootstrapOptions = $bootstrapOptions + " -DisableWebP"
