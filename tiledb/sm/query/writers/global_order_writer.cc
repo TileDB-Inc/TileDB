@@ -251,36 +251,33 @@ GlobalOrderWriter::multipart_upload_state(bool client) {
   // TODO: to be refactored, there are multiple places in writers where
   // we iterate over the internal fragment files manually
   for (const auto& name : buffer_names()) {
-    auto&& [st1, uri] = meta->uri(name);
-    RETURN_NOT_OK_TUPLE(st1, {});
+    auto uri = meta->uri(name);
 
-    auto&& [st2, state] = storage_manager_->vfs()->multipart_upload_state(*uri);
+    auto&& [st2, state] = storage_manager_->vfs()->multipart_upload_state(uri);
     RETURN_NOT_OK_TUPLE(st2, {});
     // If there is no entry for this uri, probably multipart upload is disabled
     // or no write was issued so far
     if (!state.has_value()) {
       return {Status::Ok(), {}};
     }
-    result[uri->remove_trailing_slash().last_path_part()] = std::move(*state);
+    result[uri.remove_trailing_slash().last_path_part()] = std::move(*state);
 
     if (array_schema_.var_size(name)) {
-      auto&& [status, var_uri] = meta->var_uri(name);
-      RETURN_NOT_OK_TUPLE(status, {});
+      auto var_uri = meta->var_uri(name);
 
       auto&& [st, var_state] =
-          storage_manager_->vfs()->multipart_upload_state(*var_uri);
+          storage_manager_->vfs()->multipart_upload_state(var_uri);
       RETURN_NOT_OK_TUPLE(st, {});
-      result[var_uri->remove_trailing_slash().last_path_part()] =
+      result[var_uri.remove_trailing_slash().last_path_part()] =
           std::move(*var_state);
     }
     if (array_schema_.is_nullable(name)) {
-      auto&& [status, validity_uri] = meta->validity_uri(name);
-      RETURN_NOT_OK_TUPLE(status, {});
+      auto validity_uri = meta->validity_uri(name);
 
       auto&& [st, val_state] =
-          storage_manager_->vfs()->multipart_upload_state(*validity_uri);
+          storage_manager_->vfs()->multipart_upload_state(validity_uri);
       RETURN_NOT_OK_TUPLE(st, {});
-      result[validity_uri->remove_trailing_slash().last_path_part()] =
+      result[validity_uri.remove_trailing_slash().last_path_part()] =
           std::move(*val_state);
     }
   }
@@ -813,7 +810,7 @@ Status GlobalOrderWriter::global_write() {
 
     // Set new number of tiles in the fragment metadata
     auto new_num_tiles = frag_meta->tile_index_base() + num;
-    throw_if_not_ok(frag_meta->set_num_tiles(new_num_tiles));
+    frag_meta->set_num_tiles(new_num_tiles);
 
     if (new_num_tiles == 0) {
       throw GlobalOrderWriterStatusException(
@@ -851,7 +848,7 @@ Status GlobalOrderWriter::global_write_handle_last_tile() {
 
   // Reserve space for the last tile in the fragment metadata
   auto meta = global_write_state_->frag_meta_;
-  throw_if_not_ok(meta->set_num_tiles(meta->tile_index_base() + 1));
+  meta->set_num_tiles(meta->tile_index_base() + 1);
 
   // Filter last tiles
   RETURN_CANCEL_OR_ERROR(filter_last_tiles(cell_num_last_tiles));

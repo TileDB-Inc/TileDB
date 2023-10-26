@@ -2011,8 +2011,8 @@ StorageManagerCanonical::load_fragment_metadata(
     }
 
     // Load fragment metadata
-    RETURN_NOT_OK(metadata->load(
-        encryption_key, fragment_metadata_tile, offset, array_schemas_all));
+    metadata->load(
+        encryption_key, fragment_metadata_tile, offset, array_schemas_all);
 
     fragment_metadata[f] = metadata;
     return Status::Ok();
