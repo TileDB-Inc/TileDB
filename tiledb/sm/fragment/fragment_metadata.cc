@@ -1708,7 +1708,7 @@ T FragmentMetadata::get_tile_min_as(
 
   auto size = array_schema_->cell_size(name);
   const void* min = &tile_min_buffer_[idx][tile_idx * size];
-  if constexpr (std::is_same<T, const void*>::value) {
+  if constexpr (std::is_same_v<T, const void*>) {
     return min;
   } else {
     return *static_cast<const T*>(min);
@@ -1792,7 +1792,7 @@ T FragmentMetadata::get_tile_max_as(
 
   auto size = array_schema_->cell_size(name);
   const void* max = &tile_max_buffer_[idx][tile_idx * size];
-  if constexpr (std::is_same<T, const void*>::value) {
+  if constexpr (std::is_same_v<T, const void*>) {
     return max;
   } else {
     return *static_cast<const T*>(max);
@@ -2016,9 +2016,9 @@ TileMetadata FragmentMetadata::get_tile_metadata(
 
     const auto type = array_schema_->type(name);
     const auto cell_val_num = array_schema_->cell_val_num(name);
-    void* sum = nullptr;
+    const void* sum = nullptr;
     if (TileMetadataGenerator::has_sum_metadata(type, false, cell_val_num)) {
-      sum = const_cast<void*>(get_tile_sum(name, tile_idx));
+      sum = get_tile_sum(name, tile_idx);
     }
 
     return {count, null_count, min, cell_size, max, cell_size, sum};
