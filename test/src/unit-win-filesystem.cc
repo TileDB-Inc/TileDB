@@ -42,6 +42,8 @@
 #include "tiledb/sm/filesystem/path_win.h"
 #include "tiledb/sm/filesystem/win.h"
 
+#include <Windows.h>
+
 using namespace tiledb::common;
 using namespace tiledb::sm;
 
@@ -283,6 +285,35 @@ TEST_CASE_METHOD(
           expected_buffer.data(),
           actual_buffer.data(),
           Crypto::MD5_DIGEST_BYTES) == 0);
+}
+
+// Uses RAII to temporarily change the Win32 thread UI language.
+class ChangeThreadUILanguage {
+ public:
+  ChangeThreadUILanguage(LANGID langid) {
+    old_langid_ = ::GetThreadUILanguage();
+    ::SetThreadUILanguage(langid);
+  }
+  ~ChangeThreadUILanguage() {
+    ::SetThreadUILanguage(old_langid_);
+  }
+
+ private:
+  LANGID old_langid_;
+};
+
+TEST_CASE("Test UTF-8 error messages", "[windows][utf8-msgs]") {
+  ChangeThreadUILanguage change_langid(
+      MAKELANGID(LANG_GREEK, SUBLANG_GREEK_GREECE));
+
+  Win win;
+  REQUIRE(win.init(Config()).ok());
+  // NUL is a special file on Windows; deleting it is not allowed.
+  Status st = win.remove_file("NUL");
+  REQUIRE(!st.ok());
+  auto message = st.message();
+  auto expected = u8"Δεν επιτρέπεται η πρόσβαση.";  // Access denied.
+  REQUIRE(message.find((char*)expected) != std::string::npos);
 }
 
 #endif  // _WIN32
