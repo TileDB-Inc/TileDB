@@ -59,6 +59,7 @@ namespace sm {
 class ArraySchema;
 class Buffer;
 class EncryptionKey;
+class TileMetadata;
 class MemoryTracker;
 
 /** Stores the metadata structures of a fragment. */
@@ -287,6 +288,10 @@ class FragmentMetadata {
   /** Returns true if the fragment has delete metadata. */
   inline bool has_delete_meta() const {
     return has_delete_meta_;
+  }
+
+  inline bool has_tile_metadata() {
+    return version_ >= constants::tile_metadata_min_version;
   }
 
   /** Returns the sizes of each attribute file. */
@@ -898,6 +903,15 @@ class FragmentMetadata {
    * @return Count.
    */
   uint64_t get_null_count(const std::string& name);
+
+  /**
+   * Returns the tile metadata for a tile.
+   *
+   * @param name Name of the attribute to get the data for.
+   * @param tile_idx Tile index.
+   */
+  TileMetadata get_tile_metadata(
+      const std::string& name, const uint64_t tile_idx) const;
 
   /**
    * Set the processed conditions. The processed conditions is the list
