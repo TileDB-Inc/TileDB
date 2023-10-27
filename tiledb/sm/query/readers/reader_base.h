@@ -431,6 +431,18 @@ class ReaderBase : public StrategyBase {
       const RelevantFragments& relevant_fragments,
       const std::vector<std::string>& names);
 
+  /*
+   * Loads tile metadata for each attribute/dimension name into
+   * their associated element in `fragment_metadata_`. This is done for
+   * attributes with aggregates.
+   *
+   * @param relevant_fragments List of relevant fragments.
+   * @param names The attribute/dimension names.
+   */
+  void load_tile_metadata(
+      const RelevantFragments& relevant_fragments,
+      const std::vector<std::string>& names);
+
   /**
    * Loads processed conditions from fragment metadata.
    *

@@ -568,6 +568,20 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       ResultTile& rt);
 
   /**
+   * Returns wether or not we can aggregate the tile with only the fragment
+   * metadata.
+   *
+   * @param rcs Result cell slab.
+   * @return If we can do the aggregation with the frag md or not.
+   */
+  inline bool can_aggregate_tile_with_frag_md(ResultCellSlab& rcs) {
+    auto rt = static_cast<GlobalOrderResultTile<BitmapType>*>(rcs.tile_);
+    auto& frag_md = fragment_metadata_[rt->frag_idx()];
+    return rt->copy_full_tile() && rcs.start_ == 0 &&
+           rcs.length_ == rt->cell_num() && frag_md->has_tile_metadata();
+  }
+
+  /**
    * Process aggregates.
    *
    * @param num_range_threads Total number of range threads.
