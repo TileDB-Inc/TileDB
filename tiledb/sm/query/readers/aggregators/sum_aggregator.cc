@@ -74,27 +74,28 @@ void SumWithCountAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
     return;
   }
 
+  tuple<typename sum_type_data<T>::sum_type, uint64_t> res;
   try {
-    tuple<typename sum_type_data<T>::sum_type, uint64_t> res;
     if (input_data.is_count_bitmap()) {
       res = aggregate_with_count_.template aggregate<uint64_t>(input_data);
     } else {
       res = aggregate_with_count_.template aggregate<uint8_t>(input_data);
     }
-
-    const auto value = std::get<0>(res);
-    const auto count = std::get<1>(res);
-    SafeSum().safe_sum(value, sum_);
-    count_ += count;
-
-    // Here we know that if the count is greater than 0, it means at least one
-    // valid item was found, which means the result is valid.
-    if (field_info_.is_nullable_ && count) {
-      validity_value_ = 1;
-    }
   } catch (std::overflow_error& e) {
     sum_overflowed_ = true;
   }
+
+  const auto sum = std::get<0>(res);
+  const auto count = std::get<1>(res);
+  update_sum(sum, count);
+}
+
+template <typename T>
+void SumWithCountAggregator<T>::aggregate_tile_with_frag_md(
+    TileMetadata& tile_metadata) {
+  const auto sum = tile_metadata.sum_as<SUM_T>();
+  const auto count = tile_metadata.count() - tile_metadata.null_count();
+  update_sum(sum, count);
 }
 
 template <typename T>
@@ -111,6 +112,22 @@ void SumWithCountAggregator<T>::copy_validity_value_to_user_buffers(
     if (result_buffer.validity_vector_.buffer_size()) {
       *result_buffer.validity_vector_.buffer_size() = 1;
     }
+  }
+}
+
+template <typename T>
+void SumWithCountAggregator<T>::update_sum(SUM_T sum, uint64_t count) {
+  try {
+    SafeSum().safe_sum(sum, sum_);
+    count_ += count;
+
+    // Here we know that if the count is greater than 0, it means at least one
+    // valid item was found, which means the result is valid.
+    if (field_info_.is_nullable_ && count) {
+      validity_value_ = 1;
+    }
+  } catch (std::overflow_error& e) {
+    sum_overflowed_ = true;
   }
 }
 

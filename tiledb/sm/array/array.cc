@@ -209,10 +209,8 @@ Status Array::open_without_fragments(
         array_dir_ = ArrayDirectory(
             resources_, array_uri_, 0, UINT64_MAX, ArrayDirectoryMode::READ);
       }
-      auto&& [array_schema, array_schemas] = open_for_reads_without_fragments();
-
-      array_schema_latest_ = array_schema.value();
-      array_schemas_all_ = array_schemas.value();
+      std::tie(array_schema_latest_, array_schemas_all_) =
+          open_for_reads_without_fragments();
     }
   } catch (std::exception& e) {
     set_array_closed();
@@ -223,15 +221,20 @@ Status Array::open_without_fragments(
   return Status::Ok();
 }
 
-Status Array::load_fragments(
+void Array::load_fragments(
     const std::vector<TimestampedURI>& fragments_to_load) {
-  auto&& [st, fragment_metadata] =
-      storage_manager_->array_load_fragments(this, fragments_to_load);
-  RETURN_NOT_OK(st);
+  auto timer_se = resources_.stats().start_timer("sm_array_load_fragments");
 
-  fragment_metadata_ = std::move(fragment_metadata.value());
-
-  return Status::Ok();
+  // Load the fragment metadata
+  std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
+  fragment_metadata_ = FragmentMetadata::load(
+      resources_,
+      memory_tracker(),
+      array_schema_latest_ptr(),
+      array_schemas_all(),
+      *encryption_key(),
+      fragments_to_load,
+      offsets);
 }
 
 Status Array::open(
@@ -380,13 +383,8 @@ Status Array::open(
         array_dir_ = ArrayDirectory(
             resources_, array_uri_, timestamp_start_, timestamp_end_opened_at_);
       }
-      auto&& [array_schema_latest, array_schemas, fragment_metadata] =
+      std::tie(array_schema_latest_, array_schemas_all_, fragment_metadata_) =
           open_for_reads();
-
-      // Set schemas
-      array_schema_latest_ = array_schema_latest.value();
-      array_schemas_all_ = array_schemas.value();
-      fragment_metadata_ = fragment_metadata.value();
     } else if (
         query_type == QueryType::WRITE ||
         query_type == QueryType::MODIFY_EXCLUSIVE) {
@@ -895,12 +893,8 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
 
-  auto&& [array_schema_latest, array_schemas, fragment_metadata] =
+  std::tie(array_schema_latest_, array_schemas_all_, fragment_metadata_) =
       open_for_reads();
-
-  array_schema_latest_ = array_schema_latest.value();
-  array_schemas_all_ = array_schemas.value();
-  fragment_metadata_ = fragment_metadata.value();
 
   return Status::Ok();
 }
@@ -1211,8 +1205,9 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
             return Status::Ok();
           }
 
-          return fragment_metadata_[f]->load_tile_var_sizes(
+          fragment_metadata_[f]->load_tile_var_sizes(
               *encryption_key_, var_name);
+          return Status::Ok();
         }));
   }
 
@@ -1253,39 +1248,35 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
 /* ********************************* */
 
 tuple<
-    optional<shared_ptr<ArraySchema>>,
-    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
-    optional<std::vector<shared_ptr<FragmentMetadata>>>>
+    shared_ptr<ArraySchema>,
+    std::unordered_map<std::string, shared_ptr<ArraySchema>>,
+    std::vector<shared_ptr<FragmentMetadata>>>
 Array::open_for_reads() {
   auto timer_se = resources_.stats().start_timer(
       "array_open_read_load_schemas_and_fragment_meta");
-  auto&& [st, array_schema_latest, array_schemas_all, fragment_metadata] =
-      storage_manager_->load_array_schemas_and_fragment_metadata(
-          array_directory(), memory_tracker(), *encryption_key());
+  auto result = FragmentInfo::load_array_schemas_and_fragment_metadata(
+      resources_, array_directory(), memory_tracker(), *encryption_key());
 
-  throw_if_not_ok(st);
-
-  auto version = array_schema_latest.value()->version();
+  auto version = std::get<0>(result)->version();
   ensure_supported_schema_version_for_read(version);
 
-  return {array_schema_latest, array_schemas_all, fragment_metadata};
+  return result;
 }
 
 tuple<
-    optional<shared_ptr<ArraySchema>>,
-    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+    shared_ptr<ArraySchema>,
+    std::unordered_map<std::string, shared_ptr<ArraySchema>>>
 Array::open_for_reads_without_fragments() {
   auto timer_se = resources_.stats().start_timer(
       "array_open_read_without_fragments_load_schemas");
 
   // Load array schemas
-  auto&& [array_schema_latest, array_schemas_all] =
-      array_dir_.load_array_schemas(*encryption_key());
+  auto result = array_dir_.load_array_schemas(*encryption_key());
 
-  auto version = array_schema_latest->version();
+  auto version = std::get<0>(result)->version();
   ensure_supported_schema_version_for_read(version);
 
-  return {array_schema_latest, array_schemas_all};
+  return result;
 }
 
 tuple<
@@ -1414,8 +1405,7 @@ Status Array::compute_max_buffer_sizes(
   // arrays, this will not be accurate, as it accounts only for the
   // non-empty regions of the subarray.
   for (auto& meta : fragment_metadata_) {
-    RETURN_NOT_OK(
-        meta->add_max_buffer_sizes(*encryption_key_, subarray, buffer_sizes));
+    meta->add_max_buffer_sizes(*encryption_key_, subarray, buffer_sizes);
   }
 
   // Prepare an NDRange for the subarray

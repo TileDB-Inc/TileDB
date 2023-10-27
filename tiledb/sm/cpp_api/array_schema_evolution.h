@@ -163,12 +163,35 @@ class ArraySchemaEvolution {
    * values));
    * @endcode
    *
-   * @param attr The Attribute to add
+   * @param enmr The Enumeration to add.
    * @return Reference to this `ArraySchemaEvolution` instance.
    */
   ArraySchemaEvolution& add_enumeration(const Enumeration& enmr) {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_array_schema_evolution_add_enumeration(
+        ctx.ptr().get(), evolution_.get(), enmr.ptr().get()));
+    return *this;
+  }
+
+  /**
+   * Extends an Enumeration during array schema evolution.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Context ctx;
+   * tiledb::Enumeration old_enmr = array->get_enumeration("some_enumeration");
+   * std::vector<std::string> new_values = {"cyan", "magenta", "mauve"};
+   * tiledb::Enumeration new_enmr = old_enmr->extend(new_values);
+   * tiledb::ArraySchemaEvolution schema_evolution(ctx);
+   * schema_evolution.extend_enumeration(new_enmr);
+   * @endcode
+   *
+   * @param enmr The Enumeration to extend.
+   * @return Reference to this `ArraySchemaEvolution` instance.
+   */
+  ArraySchemaEvolution& extend_enumeration(const Enumeration& enmr) {
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_array_schema_evolution_extend_enumeration(
         ctx.ptr().get(), evolution_.get(), enmr.ptr().get()));
     return *this;
   }

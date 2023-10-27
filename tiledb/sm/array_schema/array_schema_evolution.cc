@@ -79,11 +79,14 @@ ArraySchemaEvolution::ArraySchemaEvolution(
     std::unordered_map<std::string, shared_ptr<Attribute>> attrs_to_add,
     std::unordered_set<std::string> attrs_to_drop,
     std::unordered_map<std::string, shared_ptr<const Enumeration>> enmrs_to_add,
+    std::unordered_map<std::string, shared_ptr<const Enumeration>>
+        enmrs_to_extend,
     std::unordered_set<std::string> enmrs_to_drop,
     std::pair<uint64_t, uint64_t> timestamp_range)
     : attributes_to_add_map_(attrs_to_add)
     , attributes_to_drop_(attrs_to_drop)
     , enumerations_to_add_map_(enmrs_to_add)
+    , enumerations_to_extend_map_(enmrs_to_extend)
     , enumerations_to_drop_(enmrs_to_drop)
     , timestamp_range_(timestamp_range) {
 }
@@ -110,6 +113,10 @@ shared_ptr<ArraySchema> ArraySchemaEvolution::evolve_schema(
   // referencing enumerations won't fail to be added.
   for (auto& enmr : enumerations_to_add_map_) {
     schema->add_enumeration(enmr.second);
+  }
+
+  for (auto& enmr : enumerations_to_extend_map_) {
+    schema->extend_enumeration(enmr.second);
   }
 
   // Add attributes.
@@ -250,15 +257,63 @@ shared_ptr<const Enumeration> ArraySchemaEvolution::enumeration_to_add(
   return it->second;
 }
 
+void ArraySchemaEvolution::extend_enumeration(
+    shared_ptr<const Enumeration> enmr) {
+  std::lock_guard<std::mutex> lock(mtx_);
+
+  if (enmr == nullptr) {
+    throw ArraySchemaEvolutionException(
+        "Cannot extend enumeration; Input enumeration is null");
+  }
+
+  auto it = enumerations_to_extend_map_.find(enmr->name());
+  if (it != enumerations_to_extend_map_.end()) {
+    throw ArraySchemaEvolutionException(
+        "Cannot extend enumeration; Input enumeration name has already "
+        "been extended in this evolution.");
+  }
+
+  enumerations_to_extend_map_[enmr->name()] = enmr;
+}
+
+std::vector<std::string> ArraySchemaEvolution::enumeration_names_to_extend()
+    const {
+  std::lock_guard<std::mutex> lock(mtx_);
+  std::vector<std::string> names;
+  names.reserve(enumerations_to_extend_map_.size());
+  for (auto elem : enumerations_to_extend_map_) {
+    names.push_back(elem.first);
+  }
+
+  return names;
+}
+
+shared_ptr<const Enumeration> ArraySchemaEvolution::enumeration_to_extend(
+    const std::string& name) const {
+  std::lock_guard<std::mutex> lock(mtx_);
+  auto it = enumerations_to_extend_map_.find(name);
+
+  if (it == enumerations_to_extend_map_.end()) {
+    return nullptr;
+  }
+
+  return it->second;
+}
+
 void ArraySchemaEvolution::drop_enumeration(
     const std::string& enumeration_name) {
   std::lock_guard<std::mutex> lock(mtx_);
   enumerations_to_drop_.insert(enumeration_name);
 
-  auto it = enumerations_to_add_map_.find(enumeration_name);
-  if (it != enumerations_to_add_map_.end()) {
+  auto add_it = enumerations_to_add_map_.find(enumeration_name);
+  if (add_it != enumerations_to_add_map_.end()) {
     // Reset the pointer and erase it
-    enumerations_to_add_map_.erase(it);
+    enumerations_to_add_map_.erase(add_it);
+  }
+
+  auto extend_it = enumerations_to_extend_map_.find(enumeration_name);
+  if (extend_it != enumerations_to_extend_map_.end()) {
+    enumerations_to_extend_map_.erase(extend_it);
   }
 }
 

@@ -917,6 +917,22 @@ capi_return_t tiledb_array_schema_evolution_add_enumeration(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_array_schema_evolution_extend_enumeration(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    tiledb_enumeration_t* enumeration) {
+  if (sanity_check(ctx, array_schema_evolution) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  api::ensure_enumeration_is_valid(enumeration);
+
+  auto enmr = enumeration->copy();
+  array_schema_evolution->array_schema_evolution_->extend_enumeration(enmr);
+
+  return TILEDB_OK;
+}
+
 capi_return_t tiledb_array_schema_evolution_drop_enumeration(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_evolution_t* array_schema_evolution,
@@ -4488,7 +4504,7 @@ int32_t tiledb_fragment_info_alloc(
 
   // Allocate a fragment info object
   (*fragment_info)->fragment_info_ =
-      new (std::nothrow) tiledb::sm::FragmentInfo(uri, ctx->storage_manager());
+      new (std::nothrow) tiledb::sm::FragmentInfo(uri, ctx->resources());
   if ((*fragment_info)->fragment_info_ == nullptr) {
     delete *fragment_info;
     *fragment_info = nullptr;
@@ -5647,6 +5663,15 @@ int32_t tiledb_array_schema_evolution_add_enumeration(
     tiledb_array_schema_evolution_t* array_schema_evolution,
     tiledb_enumeration_t* enmr) noexcept {
   return api_entry<tiledb::api::tiledb_array_schema_evolution_add_enumeration>(
+      ctx, array_schema_evolution, enmr);
+}
+
+capi_return_t tiledb_array_schema_evolution_extend_enumeration(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    tiledb_enumeration_t* enmr) noexcept {
+  return api_entry<
+      tiledb::api::tiledb_array_schema_evolution_extend_enumeration>(
       ctx, array_schema_evolution, enmr);
 }
 

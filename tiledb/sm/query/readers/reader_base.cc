@@ -441,13 +441,13 @@ bool ReaderBase::include_timestamps(const unsigned f) const {
                          !dups || timestamps_needed);
 }
 
-Status ReaderBase::load_tile_offsets(
+void ReaderBase::load_tile_offsets(
     const RelevantFragments& relevant_fragments,
     const std::vector<std::string>& names) {
   auto timer_se = stats_->start_timer("load_tile_offsets");
   const auto encryption_key = array_->encryption_key();
 
-  const auto status = parallel_for(
+  throw_if_not_ok(parallel_for(
       storage_manager_->compute_tp(),
       0,
       relevant_fragments.size(),
@@ -466,23 +466,18 @@ Status ReaderBase::load_tile_offsets(
           filtered_names.emplace_back(name);
         }
 
-        RETURN_NOT_OK(fragment->load_tile_offsets(
-            *encryption_key, std::move(filtered_names)));
+        fragment->load_tile_offsets(*encryption_key, filtered_names);
         return Status::Ok();
-      });
-
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
+      }));
 }
 
-Status ReaderBase::load_tile_var_sizes(
+void ReaderBase::load_tile_var_sizes(
     const RelevantFragments& relevant_fragments,
     const std::vector<std::string>& names) {
   auto timer_se = stats_->start_timer("load_tile_var_sizes");
   const auto encryption_key = array_->encryption_key();
 
-  const auto status = parallel_for(
+  throw_if_not_ok(parallel_for(
       storage_manager_->compute_tp(),
       0,
       relevant_fragments.size(),
@@ -503,23 +498,19 @@ Status ReaderBase::load_tile_var_sizes(
             continue;
           }
 
-          throw_if_not_ok(fragment->load_tile_var_sizes(*encryption_key, name));
+          fragment->load_tile_var_sizes(*encryption_key, name);
         }
 
         return Status::Ok();
-      });
-
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
+      }));
 }
 
-Status ReaderBase::load_processed_conditions() {
+void ReaderBase::load_processed_conditions() {
   auto timer_se = stats_->start_timer("load_processed_conditions");
   const auto encryption_key = array_->encryption_key();
 
   // Load all fragments in parallel.
-  const auto status = parallel_for(
+  throw_if_not_ok(parallel_for(
       storage_manager_->compute_tp(),
       0,
       fragment_metadata_.size(),
@@ -527,15 +518,11 @@ Status ReaderBase::load_processed_conditions() {
         auto& fragment = fragment_metadata_[i];
 
         if (fragment->has_delete_meta()) {
-          RETURN_NOT_OK(fragment->load_processed_conditions(*encryption_key));
+          fragment->load_processed_conditions(*encryption_key);
         }
 
         return Status::Ok();
-      });
-
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
+      }));
 }
 
 Status ReaderBase::read_and_unfilter_attribute_tiles(

@@ -179,9 +179,8 @@ class Array {
    * Reload the array with the specified fragments.
    *
    * @param fragments_to_load The list of fragments to load.
-   * @return Status
    */
-  Status load_fragments(const std::vector<TimestampedURI>& fragments_to_load);
+  void load_fragments(const std::vector<TimestampedURI>& fragments_to_load);
 
   /**
    * Opens the array for reading.
@@ -716,9 +715,8 @@ class Array {
    * `timestamp_start` and `timestamp_end`.
    *
    * @param array The array to be opened.
-   * @return tuple of Status, latest ArraySchema, map of all array schemas and
+   * @return tuple latest ArraySchema, map of all array schemas and
    * vector of FragmentMetadata
-   *        Status Ok on success, else error
    *        ArraySchema The array schema to be retrieved after the
    *           array is opened.
    *        ArraySchemaMap Map of all array schemas found keyed by name
@@ -726,24 +724,23 @@ class Array {
    *           after the array is opened.
    */
   tuple<
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
-      optional<std::vector<shared_ptr<FragmentMetadata>>>>
+      shared_ptr<ArraySchema>,
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>,
+      std::vector<shared_ptr<FragmentMetadata>>>
   open_for_reads();
 
   /**
    * Opens an array for reads without fragments.
    *
    * @param array The array to be opened.
-   * @return tuple of Status, latest ArraySchema and map of all array schemas
-   *        Status Ok on success, else error
+   * @return tuple of latest ArraySchema and map of all array schemas
    *        ArraySchema The array schema to be retrieved after the
    *          array is opened.
    *        ArraySchemaMap Map of all array schemas found keyed by name
    */
   tuple<
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+      shared_ptr<ArraySchema>,
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>>
   open_for_reads_without_fragments();
 
   /** Opens an array for writes.

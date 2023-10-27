@@ -49,6 +49,8 @@ class SumWithCountAggregator : public InputFieldValidator,
                                public OutputBufferValidator,
                                public IAggregator {
  public:
+  using SUM_T = typename sum_type_data<T>::sum_type;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -107,6 +109,13 @@ class SumWithCountAggregator : public InputFieldValidator,
   void aggregate_data(AggregateBuffer& input_data) override;
 
   /**
+   * Aggregate a tile with fragment metadata.
+   *
+   * @param tile_metadata Tile metadata for aggregation.
+   */
+  void aggregate_tile_with_frag_md(TileMetadata& tile_metadata) override;
+
+  /**
    * Copy final validity value to the user buffer.
    *
    * @param result_buffer Query buffer to copy to.
@@ -115,6 +124,18 @@ class SumWithCountAggregator : public InputFieldValidator,
 
  protected:
   /* ********************************* */
+  /*        PROTECTED FUNCTIONS        */
+  /* ********************************* */
+
+  /**
+   * Update the sum.
+   *
+   * @param sum Sum.
+   * @param count Count of values summed.
+   */
+  void update_sum(SUM_T sum, uint64_t count);
+
+  /* ********************************* */
   /*        PROTECTED ATTRIBUTES       */
   /* ********************************* */
 
@@ -122,11 +143,10 @@ class SumWithCountAggregator : public InputFieldValidator,
   const FieldInfo field_info_;
 
   /** AggregateWithCount to do summation of AggregateBuffer data. */
-  AggregateWithCount<T, typename sum_type_data<T>::sum_type, SafeSum, NonNull>
-      aggregate_with_count_;
+  AggregateWithCount<T, SUM_T, SafeSum, NonNull> aggregate_with_count_;
 
   /** Computed sum. */
-  std::atomic<typename sum_type_data<T>::sum_type> sum_;
+  std::atomic<SUM_T> sum_;
 
   /** Count of values. */
   std::atomic<uint64_t> count_;

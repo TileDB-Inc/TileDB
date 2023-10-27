@@ -57,6 +57,7 @@
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/rtree/rtree.h"
 #include "tiledb/sm/stats/global_stats.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/relevant_fragment_generator.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/type/apply_with_type.h"
@@ -2952,7 +2953,8 @@ Status Subarray::load_relevant_fragment_rtrees(
 
   auto status =
       parallel_for(compute_tp, 0, relevant_fragments_.size(), [&](uint64_t f) {
-        return meta[relevant_fragments_[f]]->load_rtree(*encryption_key);
+        meta[relevant_fragments_[f]]->load_rtree(*encryption_key);
+        return Status::Ok();
       });
   RETURN_NOT_OK(status);
 
@@ -3005,8 +3007,8 @@ Status Subarray::compute_relevant_fragment_tile_overlap(
             compute_tile_overlap(r + tile_overlap->range_idx_start(), frag_idx);
       } else {  // Sparse fragment
         const auto& range = this->ndrange(r + tile_overlap->range_idx_start());
-        RETURN_NOT_OK(meta->get_tile_overlap(
-            range, is_default_, tile_overlap->at(frag_idx, r)));
+        meta->get_tile_overlap(
+            range, is_default_, tile_overlap->at(frag_idx, r));
       }
     }
 
@@ -3043,10 +3045,12 @@ Status Subarray::load_relevant_fragment_tile_var_sizes(
           // Gracefully skip loading tile sizes for attributes added in schema
           // evolution that do not exists in this fragment
           const auto& schema = meta[f]->array_schema();
-          if (!schema->is_field(var_name))
+          if (!schema->is_field(var_name)) {
             return Status::Ok();
+          }
 
-          return meta[f]->load_tile_var_sizes(*encryption_key, var_name);
+          meta[f]->load_tile_var_sizes(*encryption_key, var_name);
+          return Status::Ok();
         });
 
     RETURN_NOT_OK(status);

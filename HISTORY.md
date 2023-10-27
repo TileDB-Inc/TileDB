@@ -105,6 +105,48 @@
 * Conditionally disable WhiteboxAllocator tests to fix GCC-13 build. [#4291](https://github.com/TileDB-Inc/TileDB/pull/4291)
 * Sorted reads tests: faster tests. [#4278](https://github.com/TileDB-Inc/TileDB/pull/4278)
 
+# TileDB v2.16.3 Release Notes
+
+## Improvements
+
+* Make generic tile decompression single threaded. [#4256](https://github.com/TileDB-Inc/TileDB/pull/4256)
+
+## Defects removed
+
+* Legacy reader: reading non written region causes segfault. [#4253](https://github.com/TileDB-Inc/TileDB/pull/4253)
+* Unordered writes: fix deserialization for older clients. [#4246](https://github.com/TileDB-Inc/TileDB/pull/4246)
+* Clear pending changes during group delete. [#4267](https://github.com/TileDB-Inc/TileDB/pull/4267)
+* Fix serialization of var-size property for nonempty domains. [#4264](https://github.com/TileDB-Inc/TileDB/pull/4264)
+
+## Build system changes
+
+* Fix build failures when vcpkg is not enabled. [#4259](https://github.com/TileDB-Inc/TileDB/pull/4259)
+* Fix static linking from the GitHub Releases package on Windows. [#4263](https://github.com/TileDB-Inc/TileDB/pull/4263)
+
+# TileDB v2.16.2 Release Notes
+
+## Improvements
+
+* Add support for serialization of vacuum and consolidation requests. (#3902) [#4229](https://github.com/TileDB-Inc/TileDB/pull/4229)
+
+## Build changes
+
+* Export Azure::azure-storage-blobs on install when vcpkg is enabled. [#4232](https://github.com/TileDB-Inc/TileDB/pull/4232)
+
+# TileDB v2.16.1 Release Notes
+
+## Defects removed
+
+* Dense reader: fix nullable string values when reading with qc. [#4174](https://github.com/TileDB-Inc/TileDB/pull/4174)
+* Allow Subarray::get_est_result_size_nullable on remote arrays. [#4202](https://github.com/TileDB-Inc/TileDB/pull/4202)
+* Sparse unordered w/ dups reader: adding ignored tiles. [#4200](https://github.com/TileDB-Inc/TileDB/pull/4200)
+
+## Build system changes
+
+* Fix azure static library linking order for superbuild. [#4171](https://github.com/TileDB-Inc/TileDB/pull/4171)
+* Build curl with ZStandard support on vcpkg when serialization is enabled. [#4166](https://github.com/TileDB-Inc/TileDB/pull/4166)
+* Fix static linking to the release binaries on Windows. [#4208](https://github.com/TileDB-Inc/TileDB/pull/4208)
+
 # TileDB v2.16.0 Release Notes
 
 ## Disk Format
@@ -396,6 +438,27 @@ Bump to version 19 (.vac vacuum files now use relative filenames). [#4024](https
 
 * https://github.com/TileDB-Inc/TileDB/compare/2.14.0...2.15.0
 
+# TileDB v2.14.2 Release Notes
+
+## Improvements
+
+* RLE and dictionary filter only enabled for UTF8 since format version 17. [#3868](https://github.com/TileDB-Inc/TileDB/pull/3868)
+* Fragment consolidation: using correct buffer weights. [#3877](https://github.com/TileDB-Inc/TileDB/pull/3877)
+* Sparse global order reader: fix read progress update for duplicates. [#3937](https://github.com/TileDB-Inc/TileDB/pull/3937)
+* Sparse unordered w/ dups: fix error on double var size overflow. [#3963](https://github.com/TileDB-Inc/TileDB/pull/3963)
+
+## Bug fixes
+
+* Deregister a remote array from the Consistency multimap before reopening. [#3859](https://github.com/TileDB-Inc/TileDB/pull/3859)
+* Fix buffer size error in deserializing query. [#3851](https://github.com/TileDB-Inc/TileDB/pull/3851)
+* Fix support for empty strings for Dictionary and RLE encodings. [#3938](https://github.com/TileDB-Inc/TileDB/pull/3938)
+
+# TileDB v2.14.1 Release Notes
+
+## Defects removed
+
+* Tile metadata generator: fix buffer overflow on string comparison. [#3821](https://github.com/TileDB-Inc/TileDB/pull/3821)
+
 # TileDB v2.14.0 Release Notes
 
 ## Announcements
@@ -497,7 +560,6 @@ Bump to version 19 (.vac vacuum files now use relative filenames). [#4024](https
 
 * Query condition: fix when attribute condition is not in user buffers. [#3713](https://github.com/TileDB-Inc/TileDB/pull/3713)
 
-
 # TileDB v2.13.0 Release Notes
 
 # Announcements
@@ -577,6 +639,32 @@ Bump to version 19 (.vac vacuum files now use relative filenames). [#4024](https
 ## Full Changelog:
 
 * https://github.com/TileDB-Inc/TileDB/compare/2.12.0...2.13.0
+
+# TileDB v2.12.3 Release Notes
+
+## Improvements
+
+* Dense consolidation: set correct non-empty domain. [#3635](https://github.com/TileDB-Inc/TileDB/pull/3635)
+
+## Bug fixes
+
+* Dense array: Tile var size metadata not loaded on read. [#3645](https://github.com/TileDB-Inc/TileDB/pull/3645)
+* Sparse global order reader: fix tile cleanup when ending an iteration. [#3674](https://github.com/TileDB-Inc/TileDB/pull/3674)
+
+# TileDB v2.12.2 Release Notes
+
+## Bug fixes
+
+* Fix use-after-free on a capnp::FlatArrayMessageReader. [#3631](https://github.com/TileDB-Inc/TileDB/pull/3631)
+
+# TileDB v2.12.1 Release Notes
+
+## Improvements
+
+### Defects Removed
+
+* Sparse global order reader: fixing incomplete reason for rest queries. [#3620](https://github.com/TileDB-Inc/TileDB/pull/3620)
+* Add missing query_type in array_open capnp. [#3616](https://github.com/TileDB-Inc/TileDB/pull/3616)
 
 # TileDB v2.12.0 Release Notes
 
@@ -816,6 +904,44 @@ Bump to version 19 (.vac vacuum files now use relative filenames). [#4024](https
 ## Full Changelog:
 
 * https://github.com/TileDB-Inc/TileDB/compare/2.10.0...2.11.0
+
+# TileDB v2.10.4 Release Notes
+
+## Improvements
+
+* Adding experimental API for getting relevant fragments. [#3413](https://github.com/TileDB-Inc/TileDB/pull/3413)
+
+## API additions
+
+### C API
+
+* Add `tiledb_query_get_relevant_fragment_num` for experimental API to get relevant fragments. [#3413](https://github.com/TileDB-Inc/TileDB/pull/3413)
+
+# TileDB v2.10.3 Release Notes
+
+## Improvements
+
+* Sparse refactored readers, mark empty fragments as fully loaded early. [#3394](https://github.com/TileDB-Inc/TileDB/pull/3394)
+
+## Bug fixes
+
+* Fix SC-19287: segfault due to deref nonexistent filestore key [#3359](https://github.com/TileDB-Inc/TileDB/pull/3359)
+* Bug Fix: Wrong results when using OR condition with nullable attributes [#3308](https://github.com/TileDB-Inc/TileDB/pull/3308)
+
+# TileDB v2.10.2 Release Notes
+
+## Bug fixes
+
+* Close magic resources [#3319](https://github.com/TileDB-Inc/TileDB/pull/3319)
+* Correct simple typo in assignment [#3335](https://github.com/TileDB-Inc/TileDB/pull/3335)
+* Datatype for domain must be serialized for backwards client compatibility [#3343](https://github.com/TileDB-Inc/TileDB/pull/3343)
+* Sparse global order reader: disable reader for reads with qc. [#3342](https://github.com/TileDB-Inc/TileDB/pull/3342)
+* Fix issue with sparse unordered without duplicates query deserialization to use Indexed Reader [#3347](https://github.com/TileDB-Inc/TileDB/pull/3347)
+
+# TileDB v2.10.1 Release Notes
+
+## Bug fixes
+* compute_results_count_sparse_string: using cached ranges properly. [#3314](https://github.com/TileDB-Inc/TileDB/pull/3314)
 
 # TileDB v2.10.0 Release Notes
 
