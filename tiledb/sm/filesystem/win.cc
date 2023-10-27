@@ -68,6 +68,7 @@ namespace {
 /** Returns the last Windows error message string. */
 std::string get_last_error_msg_desc(decltype(GetLastError()) gle) {
   LPWSTR lpMsgBuf = nullptr;
+  // FormatMessageW allocates a buffer that must be freed with LocalFree.
   if (FormatMessageW(
           FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
               FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_ARGUMENT_ARRAY,
@@ -82,9 +83,11 @@ std::string get_last_error_msg_desc(decltype(GetLastError()) gle) {
     }
     return "unknown error";
   }
-  std::wstring msg(lpMsgBuf);
+  // Convert to UTF-8.
+  std::string msg =
+      std::wstring_convert<std::codecvt_utf8<wchar_t>>{}.to_bytes(lpMsgBuf);
   LocalFree(lpMsgBuf);
-  return std::wstring_convert<std::codecvt_utf8<wchar_t>>{}.to_bytes(msg);
+  return msg;
 }
 
 std::string get_last_error_msg(
