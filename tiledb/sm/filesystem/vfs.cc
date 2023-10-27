@@ -807,13 +807,14 @@ tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
   return {Status::Ok(), entries};
 }
 
-void VFS::ls_recursive(const URI& parent, LsCallback cb, void* data) const {
+void VFS::ls_recursive(
+    const URI& parent,
+    [[maybe_unused]] LsCallback cb,
+    [[maybe_unused]] void* data) const {
   if (parent.is_s3()) {
 #ifdef HAVE_S3
     s3_.ls_cb(parent, cb, data, "");
 #else
-    (void)cb;
-    (void)data;
     throw VFSException("TileDB was built without S3 support");
 #endif
   } else {

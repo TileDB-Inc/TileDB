@@ -710,7 +710,7 @@ class VFSTest {
  public:
   using LsObjects = std::vector<std::pair<std::string, uint64_t>>;
 
-  VFSTest(
+  explicit VFSTest(
       const std::vector<size_t>& test_tree,
       const std::string& prefix = "file://");
 
@@ -737,7 +737,7 @@ class VFSTest {
 
 class S3Test : public VFSTest {
  public:
-  S3Test(const std::vector<size_t>& test_tree);
+  explicit S3Test(const std::vector<size_t>& test_tree);
 
   ~S3Test() = default;
 
@@ -747,10 +747,6 @@ class S3Test : public VFSTest {
   void setup_test() override;
 
   void test_ls_cb(tiledb::sm::LsCallback cb, bool recursive);
-
-#ifdef HAVE_S3
-  tiledb::sm::S3 s3_;
-#endif
 };
 
 }  // End of namespace test

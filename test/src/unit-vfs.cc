@@ -367,7 +367,7 @@ TEMPLATE_LIST_TEST_CASE(
 
   tiledb::sm::LsCallback cb =
       [](const char* path, size_t path_len, uint64_t size, void* data) {
-        auto ls_objects = static_cast<S3Test::LsObjects*>(data);
+        auto ls_objects = static_cast<VFSTest::LsObjects*>(data);
         ls_objects->emplace_back(std::string(path, path_len), size);
         return 1;
       };
@@ -392,7 +392,7 @@ TEST_CASE("VFS: ls_recursive callback stops traversal", "[vfs][ls_recursive]") {
   tiledb::sm::LsCallback cb =
       [&cb_count](
           const char* path, size_t path_len, uint64_t size, void* data) {
-        auto ls_objects = static_cast<S3Test::LsObjects*>(data);
+        auto ls_objects = static_cast<VFSTest::LsObjects*>(data);
         ls_objects->emplace_back(std::string(path, path_len), size);
         if (ls_objects->size() == cb_count) {
           return 0;

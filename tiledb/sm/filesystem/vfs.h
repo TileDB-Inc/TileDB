@@ -170,11 +170,17 @@ struct VFSBase {
 /** The S3 filesystem. */
 #ifdef HAVE_S3
 struct S3_within_VFS {
-  S3 s3_;
   template <typename... Args>
   S3_within_VFS(Args&&... args)
       : s3_(std::forward<Args>(args)...) {
   }
+
+  inline S3* s3() {
+    return &s3_;
+  }
+
+ protected:
+  S3 s3_;
 };
 #else
 struct S3_within_VFS {
@@ -188,7 +194,7 @@ struct S3_within_VFS {
  * This class implements a virtual filesystem that directs filesystem-related
  * function execution to the appropriate backend based on the input URI.
  */
-class VFS : private VFSBase, S3_within_VFS {
+class VFS : private VFSBase, public S3_within_VFS {
  public:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */

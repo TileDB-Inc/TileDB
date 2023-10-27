@@ -65,6 +65,14 @@ tiledb::sm::Config create_test_config() {
     REQUIRE_NOTHROW(cfg.set("vfs.s3.use_virtual_addressing", "false"));
     REQUIRE_NOTHROW(cfg.set("vfs.s3.verify_ssl", "false"));
   }
+  REQUIRE_NOTHROW(
+      cfg.set("vfs.azure.storage_account_name", "devstoreaccount1"));
+  REQUIRE_NOTHROW(cfg.set(
+      "vfs.azure.storage_account_key",
+      "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
+      "K1SZFPTOtr/KBHBeksoGMGw=="));
+  REQUIRE_NOTHROW(cfg.set(
+      "vfs.azure.blob_endpoint", "http://127.0.0.1:10000/devstoreaccount1"));
   return cfg;
 }
 
@@ -507,40 +515,47 @@ void VFSTest::test_ls_recursive(
   CHECK(ls_objects == expected_results_);
 }
 
-#ifdef HAVE_S3
 S3Test::S3Test(const std::vector<size_t>& test_tree)
-    : VFSTest(test_tree, "s3://")
-    , s3_(&tiledb::test::g_helper_stats, &io_, vfs_.config()) {
+    : VFSTest(test_tree, "s3://") {
 }
 
 void S3Test::create_objects(
-    const sm::URI& uri, size_t count, const std::string& prefix) {
+    [[maybe_unused]] const sm::URI& uri,
+    [[maybe_unused]] size_t count,
+    [[maybe_unused]] const std::string& prefix) {
+#ifdef HAVE_S3
   for (size_t i = 1; i <= count; i++) {
     auto object_uri = uri.join_path(prefix + std::to_string(i));
-    s3_.touch(object_uri).ok();
+    vfs_.s3()->touch(object_uri).ok();
     std::string data(i * 10, 'a');
-    s3_.write(object_uri, data.data(), data.size()).ok();
-    s3_.flush_object(object_uri).ok();
+    vfs_.s3()->write(object_uri, data.data(), data.size()).ok();
+    vfs_.s3()->flush_object(object_uri).ok();
     expected_results_.emplace_back(object_uri.to_string(), data.size());
   }
+#endif
 }
 
 void S3Test::setup_test() {
+#ifdef HAVE_S3
   for (size_t i = 1; i <= test_tree_.size(); i++) {
     sm::URI path = temp_dir_.join_path("subdir_" + std::to_string(i));
     // VFS::create_dir is a no-op for S3; Just create objects.
     create_objects(path, test_tree_[i - 1], "test_file_");
   }
+#endif
 }
 
-void S3Test::test_ls_cb(tiledb::sm::LsCallback cb, bool recursive) {
-  S3Test::LsObjects ls_objects;
+void S3Test::test_ls_cb(
+    [[maybe_unused]] tiledb::sm::LsCallback cb,
+    [[maybe_unused]] bool recursive) {
+#ifdef HAVE_S3
+  LsObjects ls_objects;
   // If testing with recursion use the root directory, otherwise use a subdir.
   auto path = recursive ? temp_dir_ : temp_dir_.join_path("subdir_1");
   if (recursive) {
-    CHECK_NOTHROW(s3_.ls_cb(path, cb, &ls_objects, ""));
+    CHECK_NOTHROW(vfs_.s3()->ls_cb(path, cb, &ls_objects, ""));
   } else {
-    CHECK_NOTHROW(s3_.ls_cb(path, cb, &ls_objects));
+    CHECK_NOTHROW(vfs_.s3()->ls_cb(path, cb, &ls_objects));
   }
 
   if (!recursive) {
@@ -551,21 +566,8 @@ void S3Test::test_ls_cb(tiledb::sm::LsCallback cb, bool recursive) {
   std::sort(expected_results_.begin(), expected_results_.end());
   CHECK(ls_objects.size() == expected_results_.size());
   CHECK(ls_objects == expected_results_);
-}
-#else
-S3Test::S3Test(const std::vector<size_t>& test_tree)
-    : VFSTest(test_tree, "s3://") {
-}
-
-void S3Test::create_objects(const sm::URI&, size_t, const std::string&) {
-}
-
-void S3Test::setup_test() {
-}
-
-void S3Test::test_ls_cb(tiledb::sm::LsCallback, bool) {
-}
 #endif
+}
 
 }  // End of namespace test
 }  // End of namespace tiledb
