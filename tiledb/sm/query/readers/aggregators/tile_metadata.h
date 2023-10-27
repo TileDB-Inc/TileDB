@@ -1,5 +1,5 @@
 /**
- * @file   full_tile_data.h
+ * @file   tile_metadata.h
  *
  * @section LICENSE
  *
@@ -27,24 +27,24 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class FullTileData.
+ * This file defines class TileMetadata.
  */
 
-#ifndef TILEDB_FULL_TILE_DATA_H
-#define TILEDB_FULL_TILE_DATA_H
+#ifndef TILEDB_TILE_METADATA_H
+#define TILEDB_TILE_METADATA_H
 
 #include "tiledb/common/common.h"
 
 namespace tiledb::sm {
 
-class FullTileDataStatusException : public StatusException {
+class TileMetadataStatusException : public StatusException {
  public:
-  explicit FullTileDataStatusException(const std::string& message)
-      : StatusException("FullTileData", message) {
+  explicit TileMetadataStatusException(const std::string& message)
+      : StatusException("TileMetadata", message) {
   }
 };
 
-class FullTileData {
+class TileMetadata {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -61,7 +61,7 @@ class FullTileData {
    * @param max_size Size of the max data.
    * @param sum Pointer to the sum data.
    */
-  FullTileData(
+  TileMetadata(
       const uint64_t count,
       const uint64_t null_count,
       const void* min,
@@ -78,8 +78,8 @@ class FullTileData {
       , sum_(sum) {
   }
 
-  DISABLE_COPY_AND_COPY_ASSIGN(FullTileData);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(FullTileData);
+  DISABLE_COPY_AND_COPY_ASSIGN(TileMetadata);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(TileMetadata);
 
   /* ********************************* */
   /*                API                */
@@ -102,7 +102,7 @@ class FullTileData {
       return {static_cast<const char*>(min_), min_size_};
     } else {
       if (min_size_ != sizeof(T)) {
-        throw FullTileDataStatusException("Unexpected min size.");
+        throw TileMetadataStatusException("Unexpected min size.");
       }
 
       return *static_cast<const T*>(min_);
@@ -116,7 +116,7 @@ class FullTileData {
       return {static_cast<const char*>(max_), max_size_};
     } else {
       if (max_size_ != sizeof(T)) {
-        throw FullTileDataStatusException("Unexpected max size.");
+        throw TileMetadataStatusException("Unexpected max size.");
       }
 
       return *static_cast<const T*>(max_);
@@ -158,4 +158,4 @@ class FullTileData {
 
 }  // namespace tiledb::sm
 
-#endif  // TILEDB_FULL_TILE_DATA_H
+#endif  // TILEDB_TILE_METADATA_H

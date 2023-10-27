@@ -37,12 +37,12 @@
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/query/readers/aggregators/input_field_validator.h"
 #include "tiledb/sm/query/readers/aggregators/output_buffer_validator.h"
+#include "tiledb/sm/query/readers/aggregators/tile_metadata.h"
 
 namespace tiledb::sm {
 
 class QueryBuffer;
 class AggregateBuffer;
-class FullTileData;
 class IAggregator;
 
 typedef std::unordered_map<std::string, shared_ptr<IAggregator>>
@@ -90,11 +90,11 @@ class IAggregator {
   virtual void aggregate_data(AggregateBuffer& input_data) = 0;
 
   /**
-   * Aggregate a full tile.
+   * Aggregate a tile with fragment metadata.
    *
-   * @param full_tile_data Full tile data for aggregation.
+   * @param tile_metadata Tile metadata for aggregation.
    */
-  virtual void aggregate_full_tile(FullTileData& input_data) = 0;
+  virtual void aggregate_tile_with_frag_md(TileMetadata& tile_metadata) = 0;
 
   /**
    * Copy final data to the user buffer.

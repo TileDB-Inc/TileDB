@@ -34,7 +34,6 @@
 #define TILEDB_MIN_MAX_AGGREGATOR_H
 
 #include "tiledb/sm/query/readers/aggregators/aggregate_with_count.h"
-#include "tiledb/sm/query/readers/aggregators/full_tile_data.h"
 #include "tiledb/sm/query/readers/aggregators/iaggregator.h"
 #include "tiledb/sm/query/readers/aggregators/min_max.h"
 #include "tiledb/sm/query/readers/aggregators/validity_policies.h"
@@ -174,11 +173,11 @@ class ComparatorAggregator : public ComparatorAggregatorBase<T>,
   void aggregate_data(AggregateBuffer& input_data) override;
 
   /**
-   * Aggregate a full tile.
+   * Aggregate a tile with fragment metadata.
    *
-   * @param full_tile_data Full tile data for aggregation.
+   * @param tile_metadata Tile metadata for aggregation.
    */
-  void aggregate_full_tile(FullTileData& input_data) override;
+  void aggregate_tile_with_frag_md(TileMetadata& tile_metadata) override;
 
   /**
    * Copy final data to the user buffer.
@@ -200,8 +199,8 @@ class ComparatorAggregator : public ComparatorAggregatorBase<T>,
   /*         PRIVATE FUNCTIONS         */
   /* ********************************* */
 
-  /** Returns the full tile value for the full tile data. */
-  virtual VALUE_T full_tile_value(FullTileData& input_data) = 0;
+  /** Returns the tile metadata value for the full tile data. */
+  virtual VALUE_T tile_metadata_value(TileMetadata& tile_metadata) = 0;
 
   /**
    * Update the value of the aggregation, if required.
@@ -264,9 +263,9 @@ class MinAggregator : public ComparatorAggregator<
   /*         PRIVATE FUNCTIONS         */
   /* ********************************* */
 
-  /** Returns the full tile value for the full tile data. */
-  VALUE_T full_tile_value(FullTileData& input_data) override {
-    return input_data.min_as<VALUE_T>();
+  /** Returns the tile metadata value for the full tile data. */
+  VALUE_T tile_metadata_value(TileMetadata& tile_metadata) override {
+    return tile_metadata.min_as<VALUE_T>();
   }
 };
 
@@ -310,9 +309,9 @@ class MaxAggregator : public ComparatorAggregator<
   /*         PRIVATE FUNCTIONS         */
   /* ********************************* */
 
-  /** Returns the full tile value for the full tile data. */
-  VALUE_T full_tile_value(FullTileData& input_data) override {
-    return input_data.max_as<VALUE_T>();
+  /** Returns the tile metadata value for the full tile data. */
+  VALUE_T tile_metadata_value(TileMetadata& tile_metadata) override {
+    return tile_metadata.max_as<VALUE_T>();
   }
 };
 

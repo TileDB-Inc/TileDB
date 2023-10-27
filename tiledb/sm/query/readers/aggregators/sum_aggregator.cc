@@ -34,7 +34,6 @@
 
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
-#include "tiledb/sm/query/readers/aggregators/full_tile_data.h"
 
 namespace tiledb::sm {
 
@@ -92,9 +91,10 @@ void SumWithCountAggregator<T>::aggregate_data(AggregateBuffer& input_data) {
 }
 
 template <typename T>
-void SumWithCountAggregator<T>::aggregate_full_tile(FullTileData& input_data) {
-  const auto sum = input_data.sum_as<SUM_T>();
-  const auto count = input_data.count() - input_data.null_count();
+void SumWithCountAggregator<T>::aggregate_tile_with_frag_md(
+    TileMetadata& tile_metadata) {
+  const auto sum = tile_metadata.sum_as<SUM_T>();
+  const auto count = tile_metadata.count() - tile_metadata.null_count();
   update_sum(sum, count);
 }
 

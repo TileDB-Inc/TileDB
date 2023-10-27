@@ -34,7 +34,6 @@
 
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
-#include "tiledb/sm/query/readers/aggregators/full_tile_data.h"
 
 namespace tiledb::sm {
 
@@ -78,13 +77,13 @@ void CountAggregatorBase<ValidityPolicy>::aggregate_data(
 }
 
 template <class ValidityPolicy>
-void CountAggregatorBase<ValidityPolicy>::aggregate_full_tile(
-    FullTileData& input_data) {
+void CountAggregatorBase<ValidityPolicy>::aggregate_tile_with_frag_md(
+    TileMetadata& tile_metadata) {
   uint64_t count;
   if constexpr (std::is_same<ValidityPolicy, NonNull>::value) {
-    count = input_data.count();
+    count = tile_metadata.count();
   } else {
-    count = input_data.null_count();
+    count = tile_metadata.null_count();
   }
 
   count_ += count;

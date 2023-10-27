@@ -477,7 +477,7 @@ void basic_aggregation_test(std::vector<double> expected_results) {
           10);
     }
 
-    auto full_tile_data_all_null = FullTileData(
+    auto tile_metadata_all_null = TileMetadata(
         10,
         10,
         &fixed_data[0],
@@ -485,7 +485,7 @@ void basic_aggregation_test(std::vector<double> expected_results) {
         &fixed_data[0],
         sizeof(T),
         zero.data());
-    auto full_tile_data = FullTileData(
+    auto tile_metadata = TileMetadata(
         10,
         5,
         &fixed_data[0],
@@ -501,11 +501,11 @@ void basic_aggregation_test(std::vector<double> expected_results) {
       aggregator->copy_to_user_buffer("Agg", buffers);
       check_value(RES(), res, expected_results[0]);
 
-      aggregator->aggregate_full_tile(full_tile_data_all_null);
+      aggregator->aggregate_tile_with_frag_md(tile_metadata_all_null);
       aggregator->copy_to_user_buffer("Agg", buffers);
       check_value(RES(), res, expected_results[1]);
 
-      aggregator->aggregate_full_tile(full_tile_data);
+      aggregator->aggregate_tile_with_frag_md(tile_metadata);
       aggregator->copy_to_user_buffer("Agg", buffers);
       check_value(RES(), res, expected_results[2]);
     }
@@ -525,12 +525,12 @@ void basic_aggregation_test(std::vector<double> expected_results) {
     check_value(RES(), res2, expected_results[3]);
     check_validity<AGGREGATOR>(validity, 1);
 
-    aggregator_nullable.aggregate_full_tile(full_tile_data_all_null);
+    aggregator_nullable.aggregate_tile_with_frag_md(tile_metadata_all_null);
     aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
     check_value(RES(), res2, expected_results[4]);
     check_validity<AGGREGATOR>(validity, 1);
 
-    aggregator_nullable.aggregate_full_tile(full_tile_data);
+    aggregator_nullable.aggregate_tile_with_frag_md(tile_metadata);
     aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
     check_value(RES(), res2, expected_results[5]);
     check_validity<AGGREGATOR>(validity, 1);
@@ -994,7 +994,7 @@ void basic_string_aggregation_test(std::vector<RES> expected_results) {
 
   SECTION("No bitmap") {
     ByteVecValue unused(8);
-    auto full_tile_data_all_null = FullTileData(
+    auto tile_metadata_all_null = TileMetadata(
         10,
         10,
         &var_data[offsets[0]],
@@ -1002,7 +1002,7 @@ void basic_string_aggregation_test(std::vector<RES> expected_results) {
         &var_data[offsets[5]],
         offsets[6] - offsets[5],
         unused.data());
-    auto full_tile_data = FullTileData(
+    auto tile_metadata = TileMetadata(
         10,
         5,
         &var_data[offsets[0]],
@@ -1019,11 +1019,11 @@ void basic_string_aggregation_test(std::vector<RES> expected_results) {
       aggregator->copy_to_user_buffer("Agg", buffers);
       check_value_string(fixed_data, value_size, value, expected_results[0]);
 
-      aggregator->aggregate_full_tile(full_tile_data_all_null);
+      aggregator->aggregate_tile_with_frag_md(tile_metadata_all_null);
       aggregator->copy_to_user_buffer("Agg", buffers);
       check_value_string(fixed_data, value_size, value, expected_results[1]);
 
-      aggregator->aggregate_full_tile(full_tile_data);
+      aggregator->aggregate_tile_with_frag_md(tile_metadata);
       aggregator->copy_to_user_buffer("Agg", buffers);
       check_value_string(fixed_data, value_size, value, expected_results[2]);
     }
@@ -1043,11 +1043,11 @@ void basic_string_aggregation_test(std::vector<RES> expected_results) {
     check_value_string(fixed_data2, value_size2, value2, expected_results[3]);
     check_validity<AGGREGATOR>(validity, 1);
 
-    aggregator_nullable.aggregate_full_tile(full_tile_data_all_null);
+    aggregator_nullable.aggregate_tile_with_frag_md(tile_metadata_all_null);
     aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
     check_value_string(fixed_data2, value_size2, value2, expected_results[4]);
 
-    aggregator_nullable.aggregate_full_tile(full_tile_data);
+    aggregator_nullable.aggregate_tile_with_frag_md(tile_metadata);
     aggregator_nullable.copy_to_user_buffer("Agg2", buffers);
     check_value_string(fixed_data2, value_size2, value2, expected_results[5]);
   }

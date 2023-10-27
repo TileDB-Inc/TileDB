@@ -151,10 +151,10 @@ void ComparatorAggregator<T, Op>::aggregate_data(AggregateBuffer& input_data) {
 }
 
 template <typename T, typename Op>
-void ComparatorAggregator<T, Op>::aggregate_full_tile(
-    FullTileData& input_data) {
-  const auto value = full_tile_value(input_data);
-  const auto count = input_data.count() - input_data.null_count();
+void ComparatorAggregator<T, Op>::aggregate_tile_with_frag_md(
+    TileMetadata& tile_metadata) {
+  const auto value = tile_metadata_value(tile_metadata);
+  const auto count = tile_metadata.count() - tile_metadata.null_count();
   update_value(value, count);
 }
 
