@@ -46,6 +46,7 @@
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/query/readers/aggregators/tile_metadata.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
@@ -1707,7 +1708,11 @@ T FragmentMetadata::get_tile_min_as(
 
   auto size = array_schema_->cell_size(name);
   const void* min = &tile_min_buffer_[idx][tile_idx * size];
-  return *static_cast<const T*>(min);
+  if constexpr (std::is_same<T, const void*>::value) {
+    return min;
+  } else {
+    return *static_cast<const T*>(min);
+  }
 }
 
 template <>
@@ -1787,7 +1792,11 @@ T FragmentMetadata::get_tile_max_as(
 
   auto size = array_schema_->cell_size(name);
   const void* max = &tile_max_buffer_[idx][tile_idx * size];
-  return *static_cast<const T*>(max);
+  if constexpr (std::is_same<T, const void*>::value) {
+    return max;
+  } else {
+    return *static_cast<const T*>(max);
+  }
 }
 
 template <>
@@ -1958,6 +1967,62 @@ uint64_t FragmentMetadata::get_null_count(const std::string& name) {
   }
 
   return fragment_null_counts_[idx];
+}
+
+TileMetadata FragmentMetadata::get_tile_metadata(
+    const std::string& name, const uint64_t tile_idx) const {
+  auto var_size = array_schema_->var_size(name);
+  auto is_dim = array_schema_->is_dim(name);
+  auto count = cell_num(tile_idx);
+
+  if (name == constants::count_of_rows) {
+    return {count, 0, nullptr, 0, nullptr, 0, nullptr};
+  }
+
+  uint64_t null_count = 0;
+  if (array_schema_->is_nullable(name)) {
+    null_count = get_tile_null_count(name, tile_idx);
+  }
+
+  unsigned dim_idx = 0;
+  const NDRange* mbr = nullptr;
+  if (is_dim) {
+    throw_if_not_ok(
+        array_schema_->domain().get_dimension_index(name, &dim_idx));
+    mbr = &rtree_.leaf(tile_idx);
+  }
+
+  if (var_size) {
+    std::string_view min =
+        is_dim ? mbr->at(dim_idx).start_str() :
+                 get_tile_min_as<std::string_view>(name, tile_idx);
+    std::string_view max =
+        is_dim ? mbr->at(dim_idx).end_str() :
+                 get_tile_max_as<std::string_view>(name, tile_idx);
+    return {
+        count,
+        null_count,
+        min.data(),
+        min.size(),
+        max.data(),
+        max.size(),
+        nullptr};
+  } else {
+    auto cell_size = array_schema_->cell_size(name);
+    const void* min = is_dim ? mbr->at(dim_idx).start_fixed() :
+                               get_tile_min_as<const void*>(name, tile_idx);
+    const void* max = is_dim ? mbr->at(dim_idx).end_fixed() :
+                               get_tile_max_as<const void*>(name, tile_idx);
+
+    const auto type = array_schema_->type(name);
+    const auto cell_val_num = array_schema_->cell_val_num(name);
+    void* sum = nullptr;
+    if (TileMetadataGenerator::has_sum_metadata(type, false, cell_val_num)) {
+      sum = const_cast<void*>(get_tile_sum(name, tile_idx));
+    }
+
+    return {count, null_count, min, cell_size, max, cell_size, sum};
+  }
 }
 
 void FragmentMetadata::set_processed_conditions(
