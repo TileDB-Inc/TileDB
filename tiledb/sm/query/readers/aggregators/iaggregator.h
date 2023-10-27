@@ -37,6 +37,7 @@
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/query/readers/aggregators/input_field_validator.h"
 #include "tiledb/sm/query/readers/aggregators/output_buffer_validator.h"
+#include "tiledb/sm/query/readers/aggregators/tile_metadata.h"
 
 namespace tiledb::sm {
 
@@ -87,6 +88,13 @@ class IAggregator {
    * @param input_data Input data for aggregation.
    */
   virtual void aggregate_data(AggregateBuffer& input_data) = 0;
+
+  /**
+   * Aggregate a tile with fragment metadata.
+   *
+   * @param tile_metadata Tile metadata for aggregation.
+   */
+  virtual void aggregate_tile_with_frag_md(TileMetadata& tile_metadata) = 0;
 
   /**
    * Copy final data to the user buffer.

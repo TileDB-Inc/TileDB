@@ -124,6 +124,9 @@ class ComparatorAggregator : public ComparatorAggregatorBase<T>,
    */
   ComparatorAggregator(const FieldInfo& field_info);
 
+  /** Virtual destructor. */
+  virtual ~ComparatorAggregator() = default;
+
   DISABLE_COPY_AND_COPY_ASSIGN(ComparatorAggregator);
   DISABLE_MOVE_AND_MOVE_ASSIGN(ComparatorAggregator);
 
@@ -170,6 +173,13 @@ class ComparatorAggregator : public ComparatorAggregatorBase<T>,
   void aggregate_data(AggregateBuffer& input_data) override;
 
   /**
+   * Aggregate a tile with fragment metadata.
+   *
+   * @param tile_metadata Tile metadata for aggregation.
+   */
+  void aggregate_tile_with_frag_md(TileMetadata& tile_metadata) override;
+
+  /**
    * Copy final data to the user buffer.
    *
    * @param output_field_name Name for the output buffer.
@@ -185,6 +195,21 @@ class ComparatorAggregator : public ComparatorAggregatorBase<T>,
   }
 
  private:
+  /* ********************************* */
+  /*         PRIVATE FUNCTIONS         */
+  /* ********************************* */
+
+  /** Returns the tile metadata value for the full tile data. */
+  virtual VALUE_T tile_metadata_value(TileMetadata& tile_metadata) = 0;
+
+  /**
+   * Update the value of the aggregation, if required.
+   *
+   * @param value Candidate value.
+   * @param count Count of values considered.
+   */
+  void update_value(VALUE_T value, uint64_t count);
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
@@ -204,6 +229,8 @@ class MinAggregator : public ComparatorAggregator<
                           T,
                           std::less<typename type_data<T>::value_type>> {
  public:
+  using VALUE_T = typename type_data<T>::value_type;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -230,6 +257,16 @@ class MinAggregator : public ComparatorAggregator<
   std::string aggregate_name() override {
     return constants::aggregate_min_str;
   }
+
+ private:
+  /* ********************************* */
+  /*         PRIVATE FUNCTIONS         */
+  /* ********************************* */
+
+  /** Returns the tile metadata value for the full tile data. */
+  VALUE_T tile_metadata_value(TileMetadata& tile_metadata) override {
+    return tile_metadata.min_as<VALUE_T>();
+  }
 };
 
 template <typename T>
@@ -237,6 +274,8 @@ class MaxAggregator : public ComparatorAggregator<
                           T,
                           std::greater<typename type_data<T>::value_type>> {
  public:
+  using VALUE_T = typename type_data<T>::value_type;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -263,6 +302,16 @@ class MaxAggregator : public ComparatorAggregator<
   /** Returns name of the aggregate, e.g. COUNT, MIN, SUM. */
   std::string aggregate_name() override {
     return constants::aggregate_max_str;
+  }
+
+ private:
+  /* ********************************* */
+  /*         PRIVATE FUNCTIONS         */
+  /* ********************************* */
+
+  /** Returns the tile metadata value for the full tile data. */
+  VALUE_T tile_metadata_value(TileMetadata& tile_metadata) override {
+    return tile_metadata.max_as<VALUE_T>();
   }
 };
 
