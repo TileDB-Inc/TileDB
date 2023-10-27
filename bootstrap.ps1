@@ -22,6 +22,8 @@ Optionally specify the CMake generator string, e.g. "Visual Studio 15
 
 .PARAMETER EnableDebug
 Enable Debug build.
+When using multi-config CMake generators this option is ignored and
+you can just pass "--config Debug" when building with CMake.
 
 .PARAMETER EnableAssert
 Enable Assertions in compiled code (always on for debug build;
@@ -29,6 +31,8 @@ default off in release).
 
 .PARAMETER EnableReleaseSymbols
 Enable symbols with Release build.
+When using multi-config CMake generators this option is ignored and
+you can just pass "--config RelWithDebInfo" when building with CMake.
 
 .PARAMETER EnableCoverage
 Enable build with code coverage support.
@@ -36,11 +40,18 @@ Enable build with code coverage support.
 .PARAMETER EnableVerbose
 Enable verbose status messages.
 
+.PARAMETER EnableVcpkg
+Enables building dependencies with vcpkg.
+Deprecated, this is now the default behavior.
+
 .PARAMETER EnableAzure
 Enables building with the Azure storage backend.
 
 .PARAMETER EnableS3
 Enables building with the S3 storage backend.
+
+.PARAMETER EnableGcs
+Enables building with the GCS storage backend.
 
 .PARAMETER EnableSerialization
 Enables building with serialization support.
@@ -58,7 +69,19 @@ Enables building TileDB CLI tools (experimental)
 Enables building TileDB Experimental features
 
 .PARAMETER EnableAbseil
-Enables building of Abseil and simple linkage test
+(Obsolete) Enables building of Abseil and simple linkage test
+
+.PARAMETER _EnableCrc32
+Enables building of Crc32 and simple linkage test
+
+.PARAMETER EnableArrowTests
+Enables the compilation of the arrow adapter unit tests
+
+.PARAMETER EnableRestTests
+Enables REST unit tests
+
+.PARAMETER EnableAwsS3Config
+Enables AWS S3 configuration for unit tests
 
 .PARAMETER DisableWebP
 Disables building of WebP and simple linkage test
@@ -66,11 +89,17 @@ Disables building of WebP and simple linkage test
 .Parameter DisableWerror
 Disable use of warnings-as-errors (/WX) during build.
 
-.PARAMETER _EnableCrc32
-Enables building of Crc32 and simple linkage test
-
 .Parameter DisableCppApi
 Disable building the TileDB C++ API.
+
+.Parameter DisableTests
+Disable building the TileDB tests.
+
+.Parameter DisableStats
+Disables internal TileDB statistics.
+
+.PARAMETER DisableVcpkg
+Disables building dependencies with vcpkg.
 
 .PARAMETER BuildProcesses
 Number of parallel compile jobs.
@@ -96,8 +125,11 @@ Param(
     [switch]$EnableReleaseSymbols,
     [switch]$EnableCoverage,
     [switch]$EnableVerbose,
+    [switch]$EnableVcpkg,
+    [switch]$DisableVcpkg,
     [switch]$EnableAzure,
     [switch]$EnableS3,
+    [switch]$EnableGcs,
     [switch]$EnableSerialization,
     [switch]$EnableStaticTileDB,
     [switch]$EnableTools,
@@ -105,6 +137,9 @@ Param(
     [switch]$EnableAbseil,
     [switch]$EnableBuildDeps,
     [switch]$_EnableCrc32,
+    [switch]$EnableArrowTests,
+    [switch]$EnableRestTests,
+    [switch]$EnableAwsS3Config,
     [switch]$DisableWebP,
     [switch]$DisableWerror,
     [switch]$DisableCppApi,
@@ -156,6 +191,15 @@ if ($EnableVerbose.IsPresent) {
     $Verbosity = "ON"
 }
 
+# Set vcpkg flag
+$UseVcpkg = "ON"
+if ($EnableVcpkg.IsPresent) {
+    Write-Warning "-EnableVcpkg is deprecated and will be removed in a future version. Vcpkg is now enabled by default. Use -DisableVcpkg to disable it."
+}
+elseif ($DisableVcpkg.IsPresent) {
+    $UseVcpkg = "OFF"
+}
+
 # Set TileDB Azure flag
 $UseAzure = "OFF"
 if ($EnableAzure.IsPresent) {
@@ -166,6 +210,12 @@ if ($EnableAzure.IsPresent) {
 $UseS3 = "OFF"
 if ($EnableS3.IsPresent) {
     $UseS3 = "ON"
+}
+
+# Set TileDB GCS flag
+$UseGcs = "OFF"
+if ($EnableGcs.IsPresent) {
+    $UseGcs = "ON"
 }
 
 $UseSerialization = "OFF"
@@ -213,9 +263,9 @@ if ($EnableExperimentalFeatures.IsPresent) {
     $TileDBExperimentalFeatures = "ON"
 }
 
-$BuildAbseil="OFF"
 if ($EnableAbseil.IsPresent) {
-  $BuildAbseil="ON"
+  # remove in 2.18
+  Write-Host "EnableAbseil is deprecated and will be removed"
 }
 
 $TileDBBuildDeps = "OFF";
@@ -226,6 +276,21 @@ if ($EnableBuildDeps.IsPresent) {
 $BuildCrc32="OFF"
 if ($_EnableCrc32.IsPresent) {
   $BuildCrc32="ON"
+}
+
+$ArrowTests="OFF"
+if ($EnableArrowTests.IsPresent) {
+    $ArrowTests="ON"
+}
+
+$RestTests="OFF"
+if ($EnableRestTests.IsPresent) {
+    $RestTests="ON"
+}
+
+$ConfigureS3="OFF"
+if ($EnableAwsS3Config.IsPresent) {
+    $ConfigureS3="ON"
 }
 
 # Set TileDB prefix
@@ -252,7 +317,7 @@ if ($SourceDirectory -eq $BinaryDirectory) {
 }
 
 # Check cmake binary
-if ((Get-Command "cmake.exe" -ErrorAction SilentlyContinue) -eq $null) {
+if ($null -eq (Get-Command "cmake.exe" -ErrorAction SilentlyContinue)) {
     Throw "Unable to find cmake.exe in your PATH."
 }
 if ($CMakeGenerator -eq $null) {
@@ -261,7 +326,7 @@ if ($CMakeGenerator -eq $null) {
 
 # Run CMake.
 # We use Invoke-Expression so we can echo the command to the user.
-$CommandString = "cmake -A X64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_ASSERTIONS=$AssertionMode -DTILEDB_VERBOSE=$Verbosity -DTILEDB_AZURE=$UseAzure -DTILEDB_S3=$UseS3 -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_STATS=$Stats -DTILEDB_STATIC=$TileDBStatic -DTILEDB_FORCE_ALL_DEPS=$TileDBBuildDeps -DTILEDB_REMOVE_DEPRECATIONS=$RemoveDeprecations -DTILEDB_TOOLS=$TileDBTools -DTILEDB_EXPERIMENTAL_FEATURES=$TileDBExperimentalFeatures -DTILEDB_WEBP=$BuildWebP -DTILEDB_ABSEIL=$BuildAbseil -DTILEDB_CRC32=$BuildCrc32 $GeneratorFlag ""$SourceDirectory"""
+$CommandString = "cmake -A X64 -DTILEDB_VCPKG=$UseVcpkg -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_ASSERTIONS=$AssertionMode -DTILEDB_VERBOSE=$Verbosity -DTILEDB_AZURE=$UseAzure -DTILEDB_S3=$UseS3 -DTILEDB_GCS=$UseGcs -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_STATS=$Stats -DTILEDB_STATIC=$TileDBStatic -DTILEDB_FORCE_ALL_DEPS=$TileDBBuildDeps -DTILEDB_REMOVE_DEPRECATIONS=$RemoveDeprecations -DTILEDB_TOOLS=$TileDBTools -DTILEDB_EXPERIMENTAL_FEATURES=$TileDBExperimentalFeatures -DTILEDB_WEBP=$BuildWebP -DTILEDB_CRC32=$BuildCrc32 -DTILEDB_ARROW_TESTS=$ArrowTests -DTILEDB_TESTS_ENABLE_REST=$RestTests -DTILEDB_TESTS_AWS_S3_CONFIG=$ConfigureS3 $GeneratorFlag ""$SourceDirectory"""
 Write-Host $CommandString
 Write-Host
 Invoke-Expression "$CommandString"

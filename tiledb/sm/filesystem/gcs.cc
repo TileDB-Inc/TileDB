@@ -32,11 +32,6 @@
 
 #ifdef HAVE_GCS
 
-#include <google/cloud/status.h>
-#include <google/cloud/storage/client_options.h>
-#include "google/cloud/storage/oauth2/credentials.h"
-#include "google/cloud/storage/oauth2/google_credentials.h"
-
 #include <sstream>
 #include <unordered_set>
 
@@ -82,11 +77,18 @@ Status GCS::init(const Config& config, ThreadPool* const thread_pool) {
         Status_GCSError("Can't initialize with null thread pool."));
   }
 
+  ssl_cfg_ = SSLConfig(config);
+
   assert(state_ == State::UNINITIALIZED);
 
   thread_pool_ = thread_pool;
 
   bool found;
+  endpoint_ = config.get("vfs.gcs.endpoint", &found);
+  assert(found);
+  if (endpoint_.empty() && getenv("TILEDB_TEST_GCS_ENDPOINT")) {
+    endpoint_ = getenv("TILEDB_TEST_GCS_ENDPOINT");
+  }
   project_id_ = config.get("vfs.gcs.project_id", &found);
   assert(found);
   RETURN_NOT_OK(config.get<uint64_t>(
@@ -120,12 +122,14 @@ Status GCS::init_client() const {
   }
 
   google::cloud::storage::ChannelOptions channel_options;
+  if (!ssl_cfg_.ca_file().empty()) {
+    channel_options.set_ssl_root_path(ssl_cfg_.ca_file());
+  }
 
-  if constexpr (tiledb::platform::PlatformCertFile::enabled) {
-    const std::string cert_file = tiledb::platform::PlatformCertFile::get();
-    if (!cert_file.empty()) {
-      channel_options.set_ssl_root_path(cert_file);
-    }
+  if (!ssl_cfg_.ca_path().empty()) {
+    LOG_WARN(
+        "GCS ignores the `ssl.ca_path` configuration key, "
+        "use `ssl.ca_file` instead");
   }
 
   // Note that the order here is *extremely important*
@@ -143,7 +147,7 @@ Status GCS::init_client() const {
   // env variable GOOGLE_APPLICATION_CREDENTIALS
   try {
     shared_ptr<google::cloud::storage::oauth2::Credentials> creds = nullptr;
-    if (getenv("CLOUD_STORAGE_EMULATOR_ENDPOINT")) {
+    if (!endpoint_.empty() || getenv("CLOUD_STORAGE_EMULATOR_ENDPOINT")) {
       creds = google::cloud::storage::oauth2::CreateAnonymousCredentials();
     } else {
       auto status_or_creds =
@@ -158,6 +162,9 @@ Status GCS::init_client() const {
     }
     google::cloud::storage::ClientOptions client_options(
         creds, channel_options);
+    if (!endpoint_.empty()) {
+      client_options.set_endpoint(endpoint_);
+    }
     auto client = google::cloud::storage::Client(
         client_options,
         google::cloud::storage::LimitedTimeRetryPolicy(
@@ -920,7 +927,7 @@ Status GCS::upload_part(
     const std::string& object_part_path,
     const void* const buffer,
     const uint64_t length) {
-  std::string write_buffer(
+  absl::string_view write_buffer(
       static_cast<const char*>(buffer), static_cast<size_t>(length));
 
   google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
@@ -1090,14 +1097,18 @@ Status GCS::flush_object_direct(const URI& uri) {
   std::string object_path;
   RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
 
-  std::string write_buffer(
-      static_cast<const char*>(write_cache_buffer->data()),
-      write_cache_buffer->size());
+  Buffer buffer_moved;
 
   // Protect 'write_cache_map_' from multiple writers.
   std::unique_lock<std::mutex> cache_lock(write_cache_map_lock_);
+  // Erasing the buffer from the map will free its memory.
+  // We have to move it to a local variable first.
+  buffer_moved = std::move(*write_cache_buffer);
   write_cache_map_.erase(uri.to_string());
   cache_lock.unlock();
+
+  absl::string_view write_buffer(
+      static_cast<const char*>(buffer_moved.data()), buffer_moved.size());
 
   google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
       object_metadata = client_->InsertObject(

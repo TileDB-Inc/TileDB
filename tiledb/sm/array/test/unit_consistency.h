@@ -43,6 +43,7 @@
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 using namespace tiledb;

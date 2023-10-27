@@ -35,7 +35,7 @@
 
 #ifdef TILEDB_SERIALIZATION
 
-#include "tiledb-rest.h"
+#include "tiledb-rest.capnp.h"
 
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger_public.h"
@@ -455,7 +455,6 @@ Status serialize_non_empty_domain_rv(
 
       auto dim_builder = nonEmptyDomainListBuilder[dimIdx];
       dim_builder.setIsEmpty(dimNonEmptyDomain.empty());
-      auto range_start_sizes = dim_builder.initSizes(1);
 
       if (!dimNonEmptyDomain.empty()) {
         auto subarray_builder = dim_builder.initNonEmptyDomain();
@@ -466,6 +465,8 @@ Status serialize_non_empty_domain_rv(
             dimNonEmptyDomain.size()));
 
         if (dimNonEmptyDomain.start_size() != 0) {
+          // start_size() is non-zero for var-size dimensions
+          auto range_start_sizes = dim_builder.initSizes(1);
           range_start_sizes.set(0, dimNonEmptyDomain.start_size());
         }
       }

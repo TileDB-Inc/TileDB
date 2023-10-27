@@ -86,6 +86,9 @@ class OrderedWriter : public WriterBase {
   /** Resets the writer object, rendering it incomplete. */
   void reset();
 
+  /** Returns the name of the strategy */
+  std::string name();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

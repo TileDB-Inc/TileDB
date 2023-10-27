@@ -59,9 +59,14 @@ struct tiledb_ctx_handle_t
     return ctx_;
   }
 
+  inline tiledb::sm::ContextResources& resources() {
+    return ctx_.resources();
+  }
+
   inline tiledb::sm::StorageManager* storage_manager() {
     return ctx_.storage_manager();
   }
+
   inline optional<std::string> last_error() {
     return ctx_.last_error();
   }
@@ -83,7 +88,7 @@ bool save_error(tiledb_ctx_handle_t* ctx, const tiledb::common::Status& st);
  * @tparam E Exception type to throw if context is not valid
  * @param ctx A context of unknown validity
  */
-template <class E = CAPIStatusException>
+template <class E = CAPIException>
 inline void ensure_context_is_valid(const tiledb_ctx_handle_t* ctx) {
   ensure_handle_is_valid<tiledb_ctx_handle_t, E>(ctx);
 }

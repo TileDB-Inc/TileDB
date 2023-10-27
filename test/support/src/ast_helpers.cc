@@ -74,12 +74,17 @@ std::string ast_node_to_str(const tdb_unique_ptr<tiledb::sm::ASTNode>& node) {
   if (!node->is_expr()) {
     result_str = node->get_field_name() + " " +
                  query_condition_op_str(node->get_op()) + " ";
-    if (node->get_condition_value_view().content()) {
-      result_str += ptr_to_hex_str(
-          node->get_condition_value_view().content(),
-          node->get_condition_value_view().size());
-    } else {
+    if (node->get_value_ptr() != nullptr && node->get_value_size() > 0) {
+      result_str +=
+          ptr_to_hex_str(node->get_value_ptr(), node->get_value_size());
+    } else if (node->get_value_ptr() == nullptr) {
       result_str += "null";
+    } else {
+      auto data = node->get_data();
+      result_str += "Data: " + ptr_to_hex_str(data.data(), data.size());
+      auto offsets = node->get_offsets();
+      result_str +=
+          " Offsets: " + ptr_to_hex_str(offsets.data(), offsets.size());
     }
     return result_str;
   } else {
@@ -103,36 +108,52 @@ bool ast_equal(
     const tdb_unique_ptr<sm::ASTNode>& lhs,
     const tdb_unique_ptr<sm::ASTNode>& rhs) {
   if (!lhs->is_expr() && !rhs->is_expr()) {
-    if (lhs->get_field_name() != rhs->get_field_name())
+    if (lhs->get_field_name() != rhs->get_field_name()) {
       return false;
-
-    const UntypedDatumView& lhs_view = lhs->get_condition_value_view();
-    const UntypedDatumView& rhs_view = rhs->get_condition_value_view();
-    if (lhs_view.size() != rhs_view.size())
-      return false;
-    const uint8_t* lhs_start = static_cast<const uint8_t*>(lhs_view.content());
-    const uint8_t* rhs_start = static_cast<const uint8_t*>(rhs_view.content());
-    for (size_t i = 0; i < lhs_view.size(); ++i) {
-      if (lhs_start[i] != rhs_start[i])
-        return false;
     }
 
-    if (lhs->get_op() != rhs->get_op())
+    if (lhs->get_op() != rhs->get_op()) {
       return false;
+    }
+
+    if (lhs->get_value_size() != rhs->get_value_size()) {
+      return false;
+    }
+
+    auto lhs_ptr = lhs->get_value_ptr();
+    auto rhs_ptr = rhs->get_value_ptr();
+
+    if (lhs_ptr == nullptr && rhs_ptr != nullptr) {
+      return false;
+    }
+
+    if (lhs_ptr != nullptr && rhs_ptr == nullptr) {
+      return false;
+    }
+
+    if (lhs_ptr != nullptr && rhs_ptr != nullptr) {
+      if (memcmp(lhs_ptr, rhs_ptr, lhs->get_value_size()) != 0) {
+        return false;
+      }
+    }
 
     return true;
   } else if (lhs->is_expr() && rhs->is_expr()) {
-    if (lhs->get_combination_op() != rhs->get_combination_op())
+    if (lhs->get_combination_op() != rhs->get_combination_op()) {
       return false;
+    }
+
     const auto& lhs_children = lhs->get_children();
     const auto& rhs_children = rhs->get_children();
 
-    if (lhs_children.size() != rhs_children.size())
+    if (lhs_children.size() != rhs_children.size()) {
       return false;
+    }
 
     for (size_t i = 0; i < lhs_children.size(); ++i) {
-      if (!ast_equal(lhs_children[i], rhs_children[i]))
+      if (!ast_equal(lhs_children[i], rhs_children[i])) {
         return false;
+      }
     }
     return true;
   }

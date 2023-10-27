@@ -1,9 +1,8 @@
+#include <test/support/tdb_catch.h>
+
 #include <tiledb/sm/stats/global_stats.h>
 #include <iostream>
 #include <tiledb/tiledb>
-#include "tiledb/api/c_api/context/context_api_internal.h"
-
-#include <test/support/tdb_catch.h>
 
 using namespace tiledb::sm::stats;
 

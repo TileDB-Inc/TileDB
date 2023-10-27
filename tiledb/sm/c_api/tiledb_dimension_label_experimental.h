@@ -184,6 +184,60 @@ TILEDB_EXPORT capi_return_t tiledb_array_schema_set_dimension_label_tile_extent(
     const void* tile_extent) TILEDB_NOEXCEPT;
 
 /**
+ * Retrieve the number of dimension labels attached to an array schema.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t dim_label_num = 0;
+ * tiledb_array_schema_get_dimension_label_num(
+ *      ctx,
+ *      array_schema,
+ *      &dim_label_num);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param dim_label_num Retrieved number of dimension labels for the schema.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_array_schema_get_dimension_label_num(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    uint64_t* dim_label_num) TILEDB_NOEXCEPT;
+
+/**
+ * Retrieve a dimension label from an array schema by index position.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t dim_label_index = 1;
+ * tiledb_dimension_label_t* dim_label;
+ * tiledb_array_schema_get_dimension_label_from_index(
+ *      ctx,
+ *      array_schema,
+ *      dim_label_index,
+ *      &dim_label);
+ * // ...
+ *
+ * // Free dimension label object when work is complete.
+ * tiledb_dimension_label_free(&dim_label);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param dim_label_index Index position of the dimension label.
+ * @param dim_label Retrieved dimension label.
+ * @return `TILEDB_OK` for success or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_array_schema_get_dimension_label_from_index(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    uint64_t dim_label_index,
+    tiledb_dimension_label_t** dim_label) TILEDB_NOEXCEPT;
+
+/**
  * Adds a 1D range along a subarray for a dimension label, which is in the form
  * (start, end, stride). The datatype of the range components must be the same
  * as the datatype of label.

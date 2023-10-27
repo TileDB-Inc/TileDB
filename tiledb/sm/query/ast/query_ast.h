@@ -91,11 +91,19 @@ class ASTNode {
    * @brief Gets the set of field names from all the value nodes in the ASTNode.
    *
    * @param field_name_set The set variable the function populates.
-   * @return std::unordered_set<std::string>& Set of the field names in the
-   * node.
    */
   virtual void get_field_names(
       std::unordered_set<std::string>& field_name_set) const = 0;
+
+  /**
+   * @brief Gets the set of field names from all the value nodes that reference
+   * an enumerated field.
+   *
+   * @param field_name_set The set variable the function populates.
+   */
+  virtual void get_enumeration_field_names(
+      std::unordered_set<std::string>& field_name_set) const = 0;
+
   /**
    * @brief Returns true if the AST is previously supported by previous versions
    * of TileDB. This means that the AST should only have AND combination ops,
@@ -105,6 +113,15 @@ class ASTNode {
    * TileDB.
    */
   virtual bool is_backwards_compatible() const = 0;
+
+  /**
+   * @brief Update an node value condition values that refer to enumerated
+   * attributes.
+   *
+   * @param array_schema The array schema with all relevant enumerations loaded.
+   */
+  virtual void rewrite_enumeration_conditions(
+      const ArraySchema& array_schema) = 0;
 
   /**
    * @brief Checks whether the node is valid based on the array schema of the
@@ -139,14 +156,38 @@ class ASTNode {
   virtual const std::string& get_field_name() const = 0;
 
   /**
-   * @brief Get the condition value view object.
-   * This is an AST value node getter method.
-   * It should throw an exception if called on an expression node.
+   * @brief Get a pointer to the node's value data.
+   * This function throws an exception on any ASTNodeExpr.
    *
-   * @return const UntypedDatumView& The condition value view object,
-   * representing the value to compare to.
+   * @return void* A pointer to the node's value
    */
-  virtual const UntypedDatumView& get_condition_value_view() const = 0;
+  virtual const void* get_value_ptr() const = 0;
+
+  /**
+   * @brief Get the size of this node's value buffer.
+   * This function throws an exception on any ASTNodeExpr.
+   *
+   * @return uint64_t The length of the node's value buffer.
+   */
+  virtual uint64_t get_value_size() const = 0;
+
+  /**
+   * @brief Get the condition value data.
+   * This is an AST value node getter method.
+   * This function throws an exception on any ASTNodeExpr
+   *
+   * @return const ByteVecValue& The node's data
+   */
+  virtual const ByteVecValue& get_data() const = 0;
+
+  /**
+   * @brief Get the condition value offsets.
+   * This is an AST value node getter method.
+   * This function throws an exception on any ASTNodeExpr
+   *
+   * @return const ByteVecValue& The node's offsets
+   */
+  virtual const ByteVecValue& get_offsets() const = 0;
 
   /**
    * @brief Get the comparison op.
@@ -177,6 +218,26 @@ class ASTNode {
   virtual const QueryConditionCombinationOp& get_combination_op() const = 0;
 
   /**
+   * @brief Return whether this node's condition should be applied against
+   * the attributes enumerated values or the underlying index data if
+   * applicable for a given attribute.
+   *
+   * @return bool If true, apply this condition against the enumerated values.
+   */
+  virtual bool use_enumeration() const = 0;
+
+  /**
+   * @brief By default, a query condition is applied against an enumeration's
+   * values. This can be disabled to apply a given condition against the
+   * underlying integer data stored for the attribute by passing `false` to
+   * this method.
+   *
+   * @param use_enumeration A bool indicating whether this condition should be
+   *        applied against the enumerations values or not.
+   */
+  virtual void set_use_enumeration(bool use_enumeration) = 0;
+
+  /**
    * @brief Default virtual destructor.
    */
   virtual ~ASTNode() {
@@ -192,43 +253,68 @@ class ASTNodeVal : public ASTNode {
    * @brief Construct a new ASTNodeVal object.
    *
    * @param field_name The name of the field this operation applies to.
-   * @param condition_value  The value to compare to.
-   * @param condition_value_size The byte size of condition_value.
-   * @param op The relational operation between the value of the field
-   *     and `condition_value`.
+   * @param value The value to compare to.
+   * @param size The byte size of condition_value.
+   * @param op The operation to use for this condition.
+   * @param use_enumeration Whether or not to use an associated
+   *        enumeration at query time.
    */
   ASTNodeVal(
       const std::string& field_name,
-      const void* const condition_value,
-      const uint64_t condition_value_size,
-      const QueryConditionOp op)
+      const void* const value,
+      uint64_t size,
+      QueryConditionOp op,
+      bool use_enumeration = true)
       : field_name_(field_name)
-      , condition_value_data_(condition_value_size)
-      , condition_value_view_(
-            (condition_value != nullptr && condition_value_size == 0 ?
-                 (void*)"" :
-                 condition_value_data_.data()),
-            condition_value_data_.size())
-      , op_(op) {
-    if (condition_value_view_.size() != 0) {
-      memcpy(
-          condition_value_data_.data(), condition_value, condition_value_size);
+      , data_(size)
+      , offsets_(0)
+      , is_null_(value == nullptr)
+      , op_(op)
+      , use_enumeration_(use_enumeration) {
+    if (is_null_ && size > 0) {
+      throw std::invalid_argument(
+          "Invalid query condition cannot be nullptr with non-zero size.");
+    } else if (size > 0) {
+      memcpy(data_.data(), value, size);
     }
-  };
+    if (op_ == QueryConditionOp::IN || op_ == QueryConditionOp::NOT_IN) {
+      throw std::invalid_argument(
+          "Invalid query condition operation for set membership.");
+    }
+  }
+
+  /**
+   * @brief Construct a set membership ASTNodeVal object.
+   *
+   * @param field_name The name of the field for this query condition.
+   * @param data The set members to test against.
+   * @param data_size The size of the data buffer.
+   * @param offsets The offsets of the set members.
+   * @param offsets_size The size of the offsets buffer.
+   * @param op The set membership operation to use.
+   * @param use_enumeration Whether or not to use an associated
+   *        enumeration at query time.
+   */
+  ASTNodeVal(
+      const std::string& field_name,
+      const void* const data,
+      uint64_t data_size,
+      const void* const offsets,
+      uint64_t offsets_size,
+      const QueryConditionOp op,
+      bool use_enumeration = true);
 
   /**
    * @brief Copy constructor.
    */
   ASTNodeVal(const ASTNodeVal& rhs)
       : field_name_(rhs.field_name_)
-      , condition_value_data_(rhs.condition_value_data_)
-      , condition_value_view_(
-            (rhs.condition_value_view_.content() != nullptr &&
-                     rhs.condition_value_view_.size() == 0 ?
-                 (void*)"" :
-                 condition_value_data_.data()),
-            condition_value_data_.size())
-      , op_(rhs.op_) {
+      , data_(rhs.data_)
+      , offsets_(rhs.offsets_)
+      , is_null_(rhs.is_null_)
+      , op_(rhs.op_)
+      , use_enumeration_(rhs.use_enumeration_) {
+    generate_members();
   }
 
   /**
@@ -236,14 +322,13 @@ class ASTNodeVal : public ASTNode {
    */
   ASTNodeVal(const ASTNodeVal& rhs, ASTNegationT)
       : field_name_(rhs.field_name_)
-      , condition_value_data_(rhs.condition_value_data_)
-      , condition_value_view_(
-            (rhs.condition_value_view_.content() != nullptr &&
-                     rhs.condition_value_view_.size() == 0 ?
-                 (void*)"" :
-                 condition_value_data_.data()),
-            condition_value_data_.size())
-      , op_(negate_query_condition_op(rhs.op_)) {
+      , data_(rhs.data_)
+      , offsets_(rhs.offsets_)
+      , is_null_(rhs.is_null_)
+      , members_(rhs.members_)
+      , op_(negate_query_condition_op(rhs.op_))
+      , use_enumeration_(rhs.use_enumeration_) {
+    generate_members();
   }
 
   /**
@@ -284,10 +369,17 @@ class ASTNodeVal : public ASTNode {
    * @brief Gets the set of field names from all the value nodes in the ASTNode.
    *
    * @param field_name_set The set variable the function populates.
-   * @return std::unordered_set<std::string>& Set of the field names in the
-   * node.
    */
   void get_field_names(
+      std::unordered_set<std::string>& field_name_set) const override;
+
+  /**
+   * @brief Gets the set of field names from all the value nodes that reference
+   * an enumerated field.
+   *
+   * @param field_name_set The set variable the function populates.
+   */
+  void get_enumeration_field_names(
       std::unordered_set<std::string>& field_name_set) const override;
 
   /**
@@ -299,6 +391,17 @@ class ASTNodeVal : public ASTNode {
    * TileDB.
    */
   bool is_backwards_compatible() const override;
+
+  /**
+   * Update any node value condition values that refer to enumerated attributes.
+   * For any value condition on an attribute that has an Enumeration, the
+   * user specified value is passed to the attribute's enumeration `index_of`
+   * method to replace the user provided value with the Enumeration's value
+   * index.
+   *
+   * @param array_schema The array schema with all relevant enumerations loaded.
+   */
+  void rewrite_enumeration_conditions(const ArraySchema& array_schema) override;
 
   /**
    * @brief Checks whether the node is valid based on the array schema of the
@@ -333,14 +436,38 @@ class ASTNodeVal : public ASTNode {
   const std::string& get_field_name() const override;
 
   /**
-   * @brief Get the condition value view object.
-   * This is an AST value node getter method.
-   * It should throw an exception if called on an expression node.
+   * @brief Get a pointer to the node's value data.
+   * This function throws an exception on any ASTNodeExpr.
    *
-   * @return const UntypedDatumView& The condition value view object,
-   * representing the value to compare to.
+   * @return void* A pointer to the node's value
    */
-  const UntypedDatumView& get_condition_value_view() const override;
+  const void* get_value_ptr() const override;
+
+  /**
+   * @brief Get the size of this node's value buffer.
+   * This function throws an exception on any ASTNodeExpr.
+   *
+   * @return uint64_t The length of the node's value buffer.
+   */
+  uint64_t get_value_size() const override;
+
+  /**
+   * @brief Get the condition value data.
+   * This is an AST value node getter method.
+   * This function throws an exception on any ASTNodeExpr
+   *
+   * @return const ByteVecValue& The node's data
+   */
+  const ByteVecValue& get_data() const override;
+
+  /**
+   * @brief Get the condition value offsets.
+   * This is an AST value node getter method.
+   * This function throws an exception on any ASTNodeExpr
+   *
+   * @return const ByteVecValue& The node's offsets
+   */
+  const ByteVecValue& get_offsets() const override;
 
   /**
    * @brief Get the comparison op.
@@ -370,18 +497,50 @@ class ASTNodeVal : public ASTNode {
    */
   const QueryConditionCombinationOp& get_combination_op() const override;
 
+  /**
+   * @brief Return whether this node's condition should be applied against
+   * the attributes enumerated values or the underlying index data if
+   * applicable for a given attribute.
+   *
+   * @return bool If true, apply this condition against the enumerated values.
+   */
+  bool use_enumeration() const override;
+
+  /**
+   * @brief By default, a query condition is applied against an enumeration's
+   * values. This can be disabled to apply a given condition against the
+   * underlying integer data stored for the attribute by passing `false` to
+   * this method.
+   *
+   * @param use_enumeration A bool indicating whether this condition should be
+   *        applied against the enumerations values or not.
+   */
+  void set_use_enumeration(bool use_enumeration) override;
+
  private:
   /** The attribute name. */
   std::string field_name_;
 
   /** The value data. */
-  ByteVecValue condition_value_data_;
+  ByteVecValue data_;
 
-  /** A view of the value data. */
-  UntypedDatumView condition_value_view_;
+  /** The set membership offsets. */
+  ByteVecValue offsets_;
+
+  /** Whether this condition represents a null value. */
+  bool is_null_;
+
+  /** The set members if this is a set membership node. */
+  std::unordered_set<std::string_view> members_;
 
   /** The comparison operator. */
   QueryConditionOp op_;
+
+  /** Whether this condiiton applies to enumerated values if applicable */
+  bool use_enumeration_;
+
+  /** Generate the members set. */
+  void generate_members();
 };
 
 /**
@@ -461,10 +620,17 @@ class ASTNodeExpr : public ASTNode {
    * @brief Gets the set of field names from all the value nodes in the ASTNode.
    *
    * @param field_name_set The set variable the function populates.
-   * @return std::unordered_set<std::string>& Set of the field names in the
-   * node.
    */
   void get_field_names(
+      std::unordered_set<std::string>& field_name_set) const override;
+
+  /**
+   * @brief Gets the set of field names from all the value nodes that reference
+   * an enumerated field.
+   *
+   * @param field_name_set The set variable the function populates.
+   */
+  void get_enumeration_field_names(
       std::unordered_set<std::string>& field_name_set) const override;
 
   /**
@@ -476,6 +642,14 @@ class ASTNodeExpr : public ASTNode {
    * TileDB.
    */
   bool is_backwards_compatible() const override;
+
+  /**
+   * @brief Update an node value condition values that refer to enumerated
+   * attributes.
+   *
+   * @param array_schema The array schema with all relevant enumerations loaded.
+   */
+  void rewrite_enumeration_conditions(const ArraySchema& array_schema) override;
 
   /**
    * @brief Checks whether the node is valid based on the array schema of the
@@ -510,14 +684,38 @@ class ASTNodeExpr : public ASTNode {
   const std::string& get_field_name() const override;
 
   /**
-   * @brief Get the condition value view object.
-   * This is an AST value node getter method.
-   * It should throw an exception if called on an expression node.
+   * @brief Get a pointer to the node's value data.
+   * This function throws an exception on any ASTNodeExpr.
    *
-   * @return const UntypedDatumView& The condition value view object,
-   * representing the value to compare to.
+   * @return void* A pointer to the node's value
    */
-  const UntypedDatumView& get_condition_value_view() const override;
+  const void* get_value_ptr() const override;
+
+  /**
+   * @brief Get the size of this node's value buffer.
+   * This function throws an exception on any ASTNodeExpr.
+   *
+   * @return uint64_t The length of the node's value buffer.
+   */
+  uint64_t get_value_size() const override;
+
+  /**
+   * @brief Get the condition value data.
+   * This is an AST value node getter method.
+   * This function throws an exception on any ASTNodeExpr
+   *
+   * @return const ByteVecValue& The node's data
+   */
+  const ByteVecValue& get_data() const override;
+
+  /**
+   * @brief Get the condition value offsets.
+   * This is an AST value node getter method.
+   * This function throws an exception on any ASTNodeExpr
+   *
+   * @return const ByteVecValue& The node's offsets
+   */
+  const ByteVecValue& get_offsets() const override;
 
   /**
    * @brief Get the comparison op.
@@ -546,6 +744,31 @@ class ASTNodeExpr : public ASTNode {
    * @return const QueryConditionCombinationOp& The combination op.
    */
   const QueryConditionCombinationOp& get_combination_op() const override;
+
+  /**
+   * @brief Return whether this node's condition should be applied against
+   * the attributes enumerated values or the underlying index data if
+   * applicable for a given attribute.
+   *
+   * This method always throws when called on an expression node.
+   *
+   * @return bool If true, apply this condition against the enumerated values.
+   */
+  bool use_enumeration() const override;
+
+  /**
+   * @brief By default, a query condition is applied against an enumeration's
+   * values. This can be disabled to apply a given condition against the
+   * underlying integer data stored for the attribute by passing `false` to
+   * this method.
+   *
+   * When called on an expression node this value is recursively applied
+   * against all value nodes in the AST.
+   *
+   * @param use_enumeration A bool indicating whether this condition should be
+   *        applied against the enumerations values or not.
+   */
+  void set_use_enumeration(bool use_enumeration) override;
 
  private:
   /** The node list **/

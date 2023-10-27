@@ -89,16 +89,6 @@ inline constexpr int32_t sanity_check(tiledb_ctx_t*) {
   return TILEDB_OK;
 }
 
-inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_attribute_t* attr) {
-  if (attr == nullptr || attr->attr_ == nullptr) {
-    auto st = Status_Error("Invalid TileDB attribute object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-  return TILEDB_OK;
-}
-
 inline int32_t sanity_check(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema) {
   if (array_schema == nullptr || array_schema->array_schema_ == nullptr) {
@@ -116,16 +106,6 @@ inline int32_t sanity_check(
   if (schema_evolution == nullptr ||
       schema_evolution->array_schema_evolution_ == nullptr) {
     auto st = Status_Error("Invalid TileDB array schema evolution object");
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-  return TILEDB_OK;
-}
-
-inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_domain_t* domain) {
-  if (domain == nullptr || domain->domain_ == nullptr) {
-    auto st = Status_Error("Invalid TileDB domain object");
     LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;

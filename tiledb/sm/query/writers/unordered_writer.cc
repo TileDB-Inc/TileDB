@@ -164,17 +164,28 @@ Status UnorderedWriter::dowork() {
 Status UnorderedWriter::finalize() {
   auto timer_se = stats_->start_timer("finalize");
 
-  if (!array_->is_remote() && !remote_query()) {
-    if (written_buffers_.size() <
-        array_schema_.dim_num() + array_schema_.attribute_num()) {
-      throw UnorderWriterStatusException("Not all buffers already written");
-    }
+  if (written_buffers_.size() <
+      array_schema_.dim_num() + array_schema_.attribute_num()) {
+    throw UnorderWriterStatusException("Not all buffers already written");
   }
 
   return Status::Ok();
 }
 
 void UnorderedWriter::reset() {
+}
+
+std::string UnorderedWriter::name() {
+  return "UnorderedWriter";
+}
+
+Status UnorderedWriter::alloc_frag_meta() {
+  // Alloc FragmentMetadata object.
+  frag_meta_ = make_shared<FragmentMetadata>(HERE());
+  // Used in serialization when FragmentMetadata is built from ground up.
+  frag_meta_->set_context_resources(&storage_manager_->resources());
+
+  return Status::Ok();
 }
 
 /* ****************************** */
@@ -423,12 +434,9 @@ Status UnorderedWriter::prepare_tiles_fixed(
       (unsigned char*)buffers_.find(name)->second.validity_vector_.buffer();
   auto cell_size = array_schema_.cell_size(name);
   auto cell_num = (uint64_t)cell_pos_.size();
-  auto capacity = array_schema_.capacity();
+  auto cell_num_per_tile = array_schema_.capacity();
   auto dups_num = coord_dups_.size();
-  auto tile_num = utils::math::ceil(cell_num - dups_num, capacity);
-  auto& domain{array_schema_.domain()};
-  auto cell_num_per_tile =
-      coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
+  auto tile_num = utils::math::ceil(cell_num - dups_num, cell_num_per_tile);
 
   // Initialize tiles
   tiles->reserve(tile_num);
@@ -476,7 +484,7 @@ Status UnorderedWriter::prepare_tiles_fixed(
     }
   }
 
-  uint64_t last_tile_cell_num = (cell_num - dups_num) % capacity;
+  uint64_t last_tile_cell_num = (cell_num - dups_num) % cell_num_per_tile;
   if (last_tile_cell_num != 0) {
     tile_it->set_final_size(last_tile_cell_num);
   }
@@ -496,13 +504,10 @@ Status UnorderedWriter::prepare_tiles_var(
   auto buffer_validity = (uint8_t*)it->second.validity_vector_.buffer();
   auto buffer_var_size = it->second.buffer_var_size_;
   auto cell_num = (uint64_t)cell_pos_.size();
-  auto capacity = array_schema_.capacity();
+  auto cell_num_per_tile = array_schema_.capacity();
   auto dups_num = coord_dups_.size();
-  auto tile_num = utils::math::ceil(cell_num - dups_num, capacity);
+  auto tile_num = utils::math::ceil(cell_num - dups_num, cell_num_per_tile);
   auto attr_datatype_size = datatype_size(array_schema_.type(name));
-  auto cell_num_per_tile = coords_info_.has_coords_ ?
-                               capacity :
-                               array_schema_.domain().cell_num_per_tile();
 
   // Initialize tiles
   tiles->reserve(tile_num);
@@ -594,7 +599,7 @@ Status UnorderedWriter::prepare_tiles_var(
     tile_it->var_tile().set_size(offset);
   }
 
-  uint64_t last_tile_cell_num = (cell_num - dups_num) % capacity;
+  uint64_t last_tile_cell_num = (cell_num - dups_num) % cell_num_per_tile;
   if (last_tile_cell_num != 0) {
     tile_it->set_final_size(last_tile_cell_num);
   }
@@ -643,14 +648,15 @@ Status UnorderedWriter::unordered_write() {
     throw UnorderWriterStatusException("All buffers already written");
   }
 
-  for (ArraySchema::dimension_size_type d = 0; d < array_schema_.dim_num();
-       d++) {
-    if (buffers_.count(array_schema_.dimension_ptr(d)->name()) == 0) {
-      throw UnorderWriterStatusException("All dimension buffers should be set");
-    }
-  }
-
   if (is_coords_pass_) {
+    for (ArraySchema::dimension_size_type d = 0; d < array_schema_.dim_num();
+         d++) {
+      if (buffers_.count(array_schema_.dimension_ptr(d)->name()) == 0) {
+        throw UnorderWriterStatusException(
+            "All dimension buffers should be set");
+      }
+    }
+
     // Sort coordinates first
     RETURN_CANCEL_OR_ERROR(sort_coords());
 
@@ -666,8 +672,9 @@ Status UnorderedWriter::unordered_write() {
     // Create new fragment
     frag_meta_ = make_shared<FragmentMetadata>(HERE());
     RETURN_CANCEL_OR_ERROR(create_fragment(false, frag_meta_));
-    frag_uri_ = frag_meta_->fragment_uri();
   }
+
+  frag_uri_ = frag_meta_->fragment_uri();
 
   // Prepare tiles
   std::unordered_map<std::string, WriterTileTupleVector> tiles;
@@ -688,7 +695,7 @@ Status UnorderedWriter::unordered_write() {
   auto tile_num = it->second.size();
   if (is_coords_pass_) {
     // Set the number of tiles in the metadata
-    throw_if_not_ok(frag_meta_->set_num_tiles(tile_num));
+    frag_meta_->set_num_tiles(tile_num);
 
     stats_->add_counter("tile_num", tile_num);
     stats_->add_counter("cell_num", cell_pos_.size());
@@ -727,6 +734,11 @@ Status UnorderedWriter::unordered_write() {
         array_->array_directory().get_commit_uri(frag_uri_.value());
 
     RETURN_NOT_OK(storage_manager_->vfs()->touch(commit_uri));
+
+    // Clear some data to prevent it from being serialized.
+    cell_pos_.clear();
+    coord_dups_.clear();
+    frag_meta_ = nullptr;
   }
 
   is_coords_pass_ = false;

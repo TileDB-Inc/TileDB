@@ -177,6 +177,10 @@ void GlobalOrderWriter::reset() {
   }
 }
 
+std::string GlobalOrderWriter::name() {
+  return "GlobalOrderWriter";
+}
+
 Status GlobalOrderWriter::alloc_global_write_state() {
   // Create global array state object
   if (global_write_state_ != nullptr)
@@ -188,14 +192,13 @@ Status GlobalOrderWriter::alloc_global_write_state() {
   // Alloc FragmentMetadata object
   global_write_state_->frag_meta_ = make_shared<FragmentMetadata>(HERE());
   // Used in serialization when FragmentMetadata is built from ground up
-  global_write_state_->frag_meta_->set_storage_manager(storage_manager_);
+  global_write_state_->frag_meta_->set_context_resources(
+      &storage_manager_->resources());
 
   return Status::Ok();
 }
 
 Status GlobalOrderWriter::init_global_write_state() {
-  auto uri = global_write_state_->frag_meta_->fragment_uri();
-
   // Initialize global write state for attribute and coordinates
   for (const auto& it : buffers_) {
     // Initialize last tiles
@@ -249,36 +252,31 @@ GlobalOrderWriter::multipart_upload_state(bool client) {
   // TODO: to be refactored, there are multiple places in writers where
   // we iterate over the internal fragment files manually
   for (const auto& name : buffer_names()) {
-    auto&& [st1, uri] = meta->uri(name);
-    RETURN_NOT_OK_TUPLE(st1, {});
+    auto uri = meta->uri(name);
 
-    auto&& [st2, state] = storage_manager_->vfs()->multipart_upload_state(*uri);
+    auto&& [st2, state] = storage_manager_->vfs()->multipart_upload_state(uri);
     RETURN_NOT_OK_TUPLE(st2, {});
     // If there is no entry for this uri, probably multipart upload is disabled
     // or no write was issued so far
     if (!state.has_value()) {
       return {Status::Ok(), {}};
     }
-    result[uri->remove_trailing_slash().last_path_part()] = std::move(*state);
+    result[uri.remove_trailing_slash().last_path_part()] = std::move(*state);
 
     if (array_schema_.var_size(name)) {
-      auto&& [status, var_uri] = meta->var_uri(name);
-      RETURN_NOT_OK_TUPLE(status, {});
-
+      auto var_uri = meta->var_uri(name);
       auto&& [st, var_state] =
-          storage_manager_->vfs()->multipart_upload_state(*var_uri);
+          storage_manager_->vfs()->multipart_upload_state(var_uri);
       RETURN_NOT_OK_TUPLE(st, {});
-      result[var_uri->remove_trailing_slash().last_path_part()] =
+      result[var_uri.remove_trailing_slash().last_path_part()] =
           std::move(*var_state);
     }
     if (array_schema_.is_nullable(name)) {
-      auto&& [status, validity_uri] = meta->validity_uri(name);
-      RETURN_NOT_OK_TUPLE(status, {});
-
+      auto validity_uri = meta->validity_uri(name);
       auto&& [st, val_state] =
-          storage_manager_->vfs()->multipart_upload_state(*validity_uri);
+          storage_manager_->vfs()->multipart_upload_state(validity_uri);
       RETURN_NOT_OK_TUPLE(st, {});
-      result[validity_uri->remove_trailing_slash().last_path_part()] =
+      result[validity_uri.remove_trailing_slash().last_path_part()] =
           std::move(*val_state);
     }
   }
@@ -514,9 +512,13 @@ Status GlobalOrderWriter::check_global_order_hilbert() const {
 
 void GlobalOrderWriter::clean_up() {
   if (global_write_state_ != nullptr) {
-    auto meta = global_write_state_->frag_meta_;
-    const auto& uri = meta->fragment_uri();
-    throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri));
+    const auto& uri = global_write_state_->frag_meta_->fragment_uri();
+
+    // Cleanup the fragment we are currently writing. There is a chance that the
+    // URI is empty if creating the first fragment had failed.
+    if (!uri.empty()) {
+      throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri));
+    }
     global_write_state_.reset(nullptr);
 
     // Cleanup all fragments pending commit.
@@ -797,9 +799,17 @@ Status GlobalOrderWriter::global_write() {
     // Compute the number of tiles that will fit in this fragment.
     auto num = num_tiles_to_write(idx, tile_num, tiles);
 
+    // If we're resuming a fragment write and the first tile doesn't fit into
+    // the previous fragment, we need to start a new fragment and recalculate
+    // the number of tiles to write.
+    if (current_fragment_size_ > 0 && num == 0) {
+      RETURN_CANCEL_OR_ERROR(start_new_fragment());
+      num = num_tiles_to_write(idx, tile_num, tiles);
+    }
+
     // Set new number of tiles in the fragment metadata
     auto new_num_tiles = frag_meta->tile_index_base() + num;
-    throw_if_not_ok(frag_meta->set_num_tiles(new_num_tiles));
+    frag_meta->set_num_tiles(new_num_tiles);
 
     if (new_num_tiles == 0) {
       throw GlobalOrderWriterStatusException(
@@ -837,7 +847,7 @@ Status GlobalOrderWriter::global_write_handle_last_tile() {
 
   // Reserve space for the last tile in the fragment metadata
   auto meta = global_write_state_->frag_meta_;
-  throw_if_not_ok(meta->set_num_tiles(meta->tile_index_base() + 1));
+  meta->set_num_tiles(meta->tile_index_base() + 1);
 
   // Filter last tiles
   RETURN_CANCEL_OR_ERROR(filter_last_tiles(cell_num_last_tiles));

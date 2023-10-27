@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -142,10 +142,10 @@ tiledb_group_close(tiledb_ctx_t* ctx, tiledb_group_t* group) TILEDB_NOEXCEPT;
  * @code{.c}
  * tiledb_group_t* group;
  * tiledb_group_alloc(ctx, "s3://tiledb_bucket/my_group", &group);
- * tiledb_group_open(ctx, group, TILEDB_READ);
  * // Set the config for the given group.
  * tiledb_config_t* config;
  * tiledb_group_set_config(ctx, group, config);
+ * tiledb_group_open(ctx, group, TILEDB_READ);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -153,9 +153,7 @@ tiledb_group_close(tiledb_ctx_t* ctx, tiledb_group_t* group) TILEDB_NOEXCEPT;
  * @param config The config to be set.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  *
- * @note The group does not need to be opened via `tiledb_group_open_at` to use
- *      this function.
- * @note The config should be set before opening an group.
+ * @pre The config must be set on a closed group.
  */
 TILEDB_EXPORT capi_return_t tiledb_group_set_config(
     tiledb_ctx_t* ctx,
@@ -345,8 +343,8 @@ TILEDB_EXPORT capi_return_t tiledb_group_has_metadata_key(
  * @param group An group opened in WRITE mode.
  * @param uri URI of member to add
  * @param relative is the URI relative to the group
- * @param name optional name group member can be given to be looked up by. Set
- * to NULL if wishing to remain unset.
+ * @param name optional name group member can be given to be looked up by.
+ * Can be set to NULL.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_group_add_member(
@@ -368,12 +366,13 @@ TILEDB_EXPORT capi_return_t tiledb_group_add_member(
  *
  * @param ctx The TileDB context.
  * @param group An group opened in WRITE mode.
- * @param uri URI of member to remove. Passing a name is also supported if the
- * group member was assigned a name.
+ * @param name Name of member to remove. If the member has no name, this
+ * parameter should be set to the URI of the member. In that case, only the
+ * unnamed member with the given URI will be removed.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t tiledb_group_remove_member(
-    tiledb_ctx_t* ctx, tiledb_group_t* group, const char* uri) TILEDB_NOEXCEPT;
+    tiledb_ctx_t* ctx, tiledb_group_t* group, const char* name) TILEDB_NOEXCEPT;
 
 /**
  * Get the count of members in a group
@@ -478,8 +477,6 @@ TILEDB_EXPORT capi_return_t tiledb_group_get_member_by_name(
     char** uri,
     tiledb_object_t* type) TILEDB_NOEXCEPT;
 
-/* (clang format was butchering the tiledb_group_add_member() calls) */
-/* clang-format off */
 /**
  * Get a member of a group by name and relative characteristic of that name
  *

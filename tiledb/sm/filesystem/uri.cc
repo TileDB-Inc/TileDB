@@ -239,6 +239,32 @@ Status URI::get_rest_components(
   return Status::Ok();
 }
 
+std::optional<URI> URI::get_fragment_name() const {
+  auto to_find = "/" + sm::constants::array_fragments_dir_name + "/";
+  auto pos = uri_.find(to_find);
+  if (pos == std::string::npos) {
+    // Unable to find '/__fragments/' anywhere.
+    return std::nullopt;
+  }
+
+  if (pos + to_find.size() == uri_.size()) {
+    // URI is to the '/__fragments/' directory, no name present.
+    return std::nullopt;
+  }
+
+  auto slash_pos = uri_.find("/", pos + to_find.size());
+  if (slash_pos == pos + to_find.size()) {
+    // URI has an empty fragment name with '/__fragments//'
+    return std::nullopt;
+  }
+
+  if (slash_pos != std::string::npos) {
+    return URI(uri_.substr(0, slash_pos));
+  }
+
+  return URI(uri_);
+}
+
 URI URI::join_path(const std::string& path) const {
   // Check for empty strings.
   if (path.empty()) {
@@ -297,6 +323,10 @@ std::string URI::to_path(const std::string& uri) {
 
   // Error
   return "";
+}
+
+std::string URI::backend_name() const {
+  return uri_.substr(0, uri_.find_first_of(':'));
 }
 
 std::string URI::to_path() const {

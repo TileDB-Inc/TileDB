@@ -45,7 +45,7 @@ class Benchmark : public BenchmarkBase {
     // hold all of our tiles.
     Config config;
     config["sm.tile_cache_size"] = "10000000000";
-    ctx_ = std::unique_ptr<Context>(new Context(config));
+    ctx_ = std::make_unique<Context>(config);
   }
 
  protected:
@@ -74,12 +74,12 @@ class Benchmark : public BenchmarkBase {
     const unsigned skip = 2;
     for (uint32_t i = 1; i < max_row; i += skip) {
       for (uint32_t j = 1; j < max_col; j += skip) {
-        coords_.push_back(i);
-        coords_.push_back(j);
+        d1_.push_back(i);
+        d2_.push_back(j);
       }
     }
 
-    data_.resize(coords_.size() / 2);
+    data_.resize(d1_.size());
     for (uint64_t i = 0; i < data_.size(); i++)
       data_[i] = i;
 
@@ -88,7 +88,8 @@ class Benchmark : public BenchmarkBase {
     Query write_query(*ctx_, write_array);
     write_query.set_layout(TILEDB_UNORDERED)
         .set_data_buffer("a", data_)
-        .set_coordinates(coords_);
+        .set_data_buffer("d1", d1_)
+        .set_data_buffer("d2", d2_);
     write_query.submit();
     write_array.close();
   }
@@ -112,11 +113,13 @@ class Benchmark : public BenchmarkBase {
     Array read_array(*ctx_, array_uri_, TILEDB_READ);
     Query read_query(*ctx_, read_array);
     data_.resize(read_query.est_result_size("a"));
-    coords_.resize(read_query.est_result_size("TILEDB_COORDS"));
-    read_query.set_subarray(subarray_)
+    d1_.resize(read_query.est_result_size("d1"));
+    d2_.resize(read_query.est_result_size("d2"));
+    read_query.set_subarray(Subarray(*ctx_, read_array).set_subarray(subarray_))
         .set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a", data_)
-        .set_coordinates(coords_);
+        .set_data_buffer("d1", d1_)
+        .set_data_buffer("d2", d2_);
     read_query.submit();
     read_array.close();
   }
@@ -127,10 +130,11 @@ class Benchmark : public BenchmarkBase {
     for (int i = 0; i < 5; ++i) {
       Array array(*ctx_, array_uri_, TILEDB_READ);
       Query query(*ctx_, array);
-      query.set_subarray(subarray_)
+      query.set_subarray(Subarray(*ctx_, array).set_subarray(subarray_))
           .set_layout(TILEDB_ROW_MAJOR)
           .set_data_buffer("a", data_)
-          .set_coordinates(coords_);
+          .set_data_buffer("d1", d1_)
+          .set_data_buffer("d2", d2_);
       query.submit();
       array.close();
     }
@@ -143,7 +147,7 @@ class Benchmark : public BenchmarkBase {
 
   std::unique_ptr<Context> ctx_;
   std::vector<int> data_;
-  std::vector<uint32_t> subarray_, coords_;
+  std::vector<uint32_t> subarray_, d1_, d2_;
 };
 
 int main(int argc, char** argv) {

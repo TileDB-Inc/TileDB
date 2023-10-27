@@ -179,9 +179,8 @@ class Array {
    * Reload the array with the specified fragments.
    *
    * @param fragments_to_load The list of fragments to load.
-   * @return Status
    */
-  Status load_fragments(const std::vector<TimestampedURI>& fragments_to_load);
+  void load_fragments(const std::vector<TimestampedURI>& fragments_to_load);
 
   /**
    * Opens the array for reading.
@@ -233,13 +232,11 @@ class Array {
   /**
    * Deletes the fragments with the given URIs from the Array with given URI.
    *
-   * @param uri The uri of the Array whose fragments are to be deleted.
    * @param fragment_uris The uris of the fragments to be deleted.
    *
    * @pre The Array must be open for exclusive writes
    */
-  void delete_fragments_list(
-      const URI& uri, const std::vector<URI>& fragment_uris);
+  void delete_fragments_list(const std::vector<URI>& fragment_uris);
 
   /** Returns a constant pointer to the encryption key. */
   const EncryptionKey* encryption_key() const;
@@ -256,6 +253,35 @@ class Array {
   inline std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata() {
     return fragment_metadata_;
   }
+
+  /**
+   * Get the enumeration for the given name.
+   *
+   * This function retrieves the enumeration for the given name. If the
+   * corresponding enumeration has not been loaded from storage it is
+   * loaded before this function returns.
+   *
+   * @param enumeration_name The name of the enumeration.
+   * @return shared_ptr<const Enumeration> or nullptr on failure.
+   */
+  shared_ptr<const Enumeration> get_enumeration(
+      const std::string& enumeration_name);
+
+  /**
+   * Get the enumerations with the given names.
+   *
+   * This function retrieves the enumerations with the given names. If the
+   * corresponding enumerations have not been loaded from storage they are
+   * loaded before this function returns.
+   *
+   * @param enumeration_names The names of the enumerations.
+   * @return std::vector<shared_ptr<const Enumeration>> The loaded enumerations.
+   */
+  std::vector<shared_ptr<const Enumeration>> get_enumerations(
+      const std::vector<std::string>& enumeration_names);
+
+  /** Load all enumerations for the array. */
+  void load_all_enumerations();
 
   /**
    * Returns `true` if the array is empty at the time it is opened.
@@ -316,22 +342,35 @@ class Array {
   Status reopen(uint64_t timestamp_start, uint64_t timestamp_end);
 
   /** Returns the start timestamp. */
-  uint64_t timestamp_start() const;
+  inline uint64_t timestamp_start() const {
+    return timestamp_start_;
+  }
 
   /** Returns the end timestamp. */
-  uint64_t timestamp_end() const;
+  inline uint64_t timestamp_end() const {
+    return timestamp_end_;
+  }
 
   /** Returns the timestamp at which the array was opened. */
-  uint64_t timestamp_end_opened_at() const;
+  inline uint64_t timestamp_end_opened_at() const {
+    return timestamp_end_opened_at_;
+  }
 
   /** Directly set the timestamp start value. */
-  Status set_timestamp_start(uint64_t timestamp_start);
+  inline void set_timestamp_start(uint64_t timestamp_start) {
+    timestamp_start_ = timestamp_start;
+  }
 
   /** Directly set the timestamp end value. */
-  Status set_timestamp_end(uint64_t timestamp_end);
+  inline void set_timestamp_end(uint64_t timestamp_end) {
+    timestamp_end_ = timestamp_end;
+  }
 
   /** Directly set the timestamp end opened at value. */
-  Status set_timestamp_end_opened_at(const uint64_t timestamp_end_opened_at);
+  inline void set_timestamp_end_opened_at(
+      const uint64_t timestamp_end_opened_at) {
+    timestamp_end_opened_at_ = timestamp_end_opened_at;
+  }
 
   /** Directly set the array config.
    *
@@ -353,11 +392,15 @@ class Array {
   }
 
   /** Retrieves a reference to the array config. */
-  Config config() const;
+  inline Config config() const {
+    return config_;
+  }
 
   /** Directly set the array URI for serialized compatibility with pre
    * TileDB 2.5 clients */
-  Status set_uri_serialized(const std::string& uri);
+  void set_uri_serialized(const std::string& uri) {
+    array_uri_serialized_ = tiledb::sm::URI(uri);
+  }
 
   /** Sets the array URI. */
   void set_array_uri(const URI& array_uri) {
@@ -368,9 +411,8 @@ class Array {
    * Deletes metadata from an array opened in WRITE mode.
    *
    * @param key The key of the metadata item to be deleted.
-   * @return Status
    */
-  Status delete_metadata(const char* key);
+  void delete_metadata(const char* key);
 
   /**
    * Puts metadata into an array opened in WRITE mode.
@@ -382,9 +424,8 @@ class Array {
    *     same datatype. This argument indicates the number of items in the
    *     value component of the metadata.
    * @param value The metadata value in binary form.
-   * @return Status
    */
-  Status put_metadata(
+  void put_metadata(
       const char* key,
       Datatype value_type,
       uint32_t value_num,
@@ -401,9 +442,8 @@ class Array {
    *     same datatype. This argument indicates the number of items in the
    *     value component of the metadata.
    * @param value The metadata value in binary form.
-   * @return Status
    */
-  Status get_metadata(
+  void get_metadata(
       const char* key,
       Datatype* value_type,
       uint32_t* value_num,
@@ -420,9 +460,8 @@ class Array {
    *     same datatype. This argument indicates the number of items in the
    *     value component of the metadata.
    * @param value The metadata value in binary form.
-   * @return Status
    */
-  Status get_metadata(
+  void get_metadata(
       uint64_t index,
       const char** key,
       uint32_t* key_len,
@@ -431,10 +470,10 @@ class Array {
       const void** value);
 
   /** Returns the number of array metadata items. */
-  Status get_metadata_num(uint64_t* num);
+  uint64_t metadata_num();
 
-  /** Sets has_key == 1 and corresponding value_type if the array has key. */
-  Status has_metadata_key(const char* key, Datatype* value_type, bool* has_key);
+  /** Gets the type of the given metadata or nullopt if it does not exist. */
+  std::optional<Datatype> metadata_type(const char* key);
 
   /** Retrieves the array metadata object. */
   Status metadata(Metadata** metadata);
@@ -495,6 +534,11 @@ class Array {
   bool serialize_non_empty_domain() const;
 
   /**
+   * Checks the config to se if enumerations should be serialized on array open.
+   */
+  bool serialize_enumerations() const;
+
+  /**
    * Checks the config to see if metadata should be serialized on array open.
    */
   bool serialize_metadata() const;
@@ -515,7 +559,9 @@ class Array {
   /**
    * Sets the array state as open, used in serialization
    */
-  void set_serialized_array_open();
+  inline void set_serialized_array_open() {
+    is_open_ = true;
+  }
 
   /** Set the query type to open the array for. */
   inline void set_query_type(QueryType query_type) {
@@ -669,9 +715,8 @@ class Array {
    * `timestamp_start` and `timestamp_end`.
    *
    * @param array The array to be opened.
-   * @return tuple of Status, latest ArraySchema, map of all array schemas and
+   * @return tuple latest ArraySchema, map of all array schemas and
    * vector of FragmentMetadata
-   *        Status Ok on success, else error
    *        ArraySchema The array schema to be retrieved after the
    *           array is opened.
    *        ArraySchemaMap Map of all array schemas found keyed by name
@@ -679,24 +724,23 @@ class Array {
    *           after the array is opened.
    */
   tuple<
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
-      optional<std::vector<shared_ptr<FragmentMetadata>>>>
+      shared_ptr<ArraySchema>,
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>,
+      std::vector<shared_ptr<FragmentMetadata>>>
   open_for_reads();
 
   /**
    * Opens an array for reads without fragments.
    *
    * @param array The array to be opened.
-   * @return tuple of Status, latest ArraySchema and map of all array schemas
-   *        Status Ok on success, else error
+   * @return tuple of latest ArraySchema and map of all array schemas
    *        ArraySchema The array schema to be retrieved after the
    *          array is opened.
    *        ArraySchemaMap Map of all array schemas found keyed by name
    */
   tuple<
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+      shared_ptr<ArraySchema>,
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>>
   open_for_reads_without_fragments();
 
   /** Opens an array for writes.
@@ -741,6 +785,11 @@ class Array {
       const void* subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           max_buffer_sizes_) const;
+
+  /**
+   * Load non-remote array metadata.
+   */
+  void do_load_metadata();
 
   /**
    * Load array metadata, handles remote arrays vs non-remote arrays

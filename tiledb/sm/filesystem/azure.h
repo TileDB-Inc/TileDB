@@ -39,32 +39,18 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
-#include "tiledb/sm/curl/curl_init.h"
 #include "tiledb/sm/misc/constants.h"
 #include "uri.h"
 
 #if !defined(NOMINMAX)
 #define NOMINMAX  // avoid min/max macros from windows headers
 #endif
-#include <base64.h>
-#include <retry.h>
-#include <storage_account.h>
-#include <storage_credential.h>
 #include <list>
 #include <unordered_map>
 
-// azure sdk transitively includes mmtime.h which defines TIME_MS
-#ifdef TIME_MS
-#undef TIME_MS
-#endif
-
-#ifdef DELETE
-#undef DELETE
-#endif
-
 // Forward declaration
-namespace azure::storage_lite {
-class blob_client;
+namespace Azure::Storage::Blobs {
+class BlobServiceClient;
 }
 
 using namespace tiledb::common;
@@ -323,60 +309,20 @@ class Azure {
    */
   Status write(const URI& uri, const void* buffer, uint64_t length);
 
+  /**
+   * Returns a reference to the Azure blob service client.
+   *
+   * Used for testing. Calling code should include the Azure SDK headers to make
+   * use of the BlobServiceClient.
+   */
+  const ::Azure::Storage::Blobs::BlobServiceClient& client() const {
+    return *client_;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE DATATYPES         */
   /* ********************************* */
-
-  class AzureRetryPolicy final : public azure::storage_lite::retry_policy_base {
-   public:
-    /**
-     * The SDK invokes this routine before each request to Azure. This returns
-     * a pair: a bool to indicate if we should make a request and a time
-     * interval to wait before starting the request.
-     */
-    azure::storage_lite::retry_info evaluate(
-        const azure::storage_lite::retry_context& context) const override {
-      const int http_code = context.result();
-
-      // When the response code is 0, the SDK has yet to send the initial
-      // request. Allow the request to start immediately by returning a 0-second
-      // delay.
-      if (http_code == 0) {
-        return azure::storage_lite::retry_info(true, std::chrono::seconds(0));
-      }
-
-      // Determine if we should retry on the returned http code in the response.
-      if (!should_retry(http_code)) {
-        return azure::storage_lite::retry_info(false, std::chrono::seconds(0));
-      }
-
-      // Wait one second before all retry attempts.
-      static const int32_t max_retries = constants::azure_max_attempts;
-      if (context.numbers() < max_retries) {
-        return azure::storage_lite::retry_info(
-            true,
-            std::chrono::seconds(constants::azure_attempt_sleep_ms / 1000));
-      }
-
-      // All retry attempts exhausted.
-      return azure::storage_lite::retry_info(false, std::chrono::seconds(0));
-    }
-
-   private:
-    /**
-     * Returns true if we should attempt a retry after receiving 'http_code'
-     * in the last response.
-     */
-    bool should_retry(const int http_code) const {
-      // Only retry on server errors.
-      if (http_code >= 500 && http_code < 600) {
-        return true;
-      }
-
-      return false;
-    }
-  };
 
   /** Contains all state associated with a block list upload transaction. */
   class BlockListUploadState {
@@ -387,26 +333,7 @@ class Azure {
     }
 
     /* Generates the next base64-encoded block id. */
-    std::string next_block_id() {
-      const uint64_t block_id = next_block_id_++;
-      const std::string block_id_str = std::to_string(block_id);
-
-      // Pad the block id string with enough leading zeros to support
-      // the maximum number of blocks (50,000). All block ids must be
-      // of equal length among a single blob.
-      const int block_id_chars = 5;
-      const std::string padded_block_id_str =
-          std::string(block_id_chars - block_id_str.length(), '0') +
-          block_id_str;
-
-      const std::string b64_block_id_str = azure::storage_lite::to_base64(
-          reinterpret_cast<const unsigned char*>(padded_block_id_str.c_str()),
-          padded_block_id_str.size());
-
-      block_ids_.emplace_back(b64_block_id_str);
-
-      return b64_block_id_str;
-    }
+    std::string next_block_id();
 
     /* Returns all generated block ids. */
     std::list<std::string> get_block_ids() const {
@@ -437,35 +364,17 @@ class Azure {
     Status st_;
   };
 
-  /**
-   * A zero-copy stream buffer used as a work-around for writing
-   * a single buffer to the stream-only SDK interface.
-   */
-  class ZeroCopyStreamBuffer : public std::streambuf {
-   public:
-    ZeroCopyStreamBuffer(char* const buffer, std::size_t size) {
-      setg(buffer, buffer, buffer + size);
-    }
-  };
-
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /**
-   * A libcurl initializer instance. This should remain
-   * the first member variable to ensure that libcurl is
-   * initialized before any calls that may require it.
-   */
-  tiledb::sm::curl::LibCurlInitializer curl_inited_;
-
   /** The VFS thread pool. */
   ThreadPool* thread_pool_;
 
-  /** The Azure blob storage client. */
-  shared_ptr<azure::storage_lite::blob_client> client_;
+  /** The Azure blob service client. */
+  tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient> client_;
 
-  /** Maps a blob URI to an write cache buffer. */
+  /** Maps a blob URI to a write cache buffer. */
   std::unordered_map<std::string, Buffer> write_cache_map_;
 
   /** Protects 'write_cache_map_'. */
@@ -479,6 +388,9 @@ class Azure {
 
   /**  The target block size in a block list upload */
   uint64_t block_list_block_size_;
+
+  /** The minimum time to wait between retries. */
+  std::chrono::milliseconds retry_delay_;
 
   /** Whether or not to use block list upload. */
   bool use_block_list_upload_;
@@ -610,37 +522,6 @@ class Azure {
    */
   Status wait_for_blob_to_propagate(
       const std::string& container_name, const std::string& blob_path) const;
-
-  /**
-   * Waits for a blob with `container_name` and `blob_path`
-   * to not exist on Azure.
-   *
-   * @param container_name The blob's container name.
-   * @param blob_path The blob's path
-   * @return Status
-   */
-  Status wait_for_blob_to_be_deleted(
-      const std::string& container_name, const std::string& blob_path) const;
-
-  /**
-   * Waits for a container with `container_name`
-   * to exist on Azure.
-   *
-   * @param container_name The container's name.
-   * @return Status
-   */
-  Status wait_for_container_to_propagate(
-      const std::string& container_name) const;
-
-  /**
-   * Waits for a container with `container_name`
-   * to not exist on Azure.
-   *
-   * @param container_name The container's name.
-   * @return Status
-   */
-  Status wait_for_container_to_be_deleted(
-      const std::string& container_name) const;
 
   /**
    * Check if 'container_name' is a container on Azure.

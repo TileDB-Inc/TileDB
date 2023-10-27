@@ -94,10 +94,13 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       Array* array,
       Config& config,
       std::unordered_map<std::string, QueryBuffer>& buffers,
+      std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
       Subarray& subarray,
       Layout layout,
       std::optional<QueryCondition>& condition,
-      bool skip_checks_serialization = false);
+      DefaultChannelAggregates& default_channel_aggregates,
+      bool skip_checks_serialization = false,
+      bool remote_query = false);
 
   /** Destructor. */
   ~DenseReader() = default;
@@ -125,7 +128,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   QueryStatusDetailsReason status_incomplete_reason() const;
 
   /** Initialize the memory budget variables. */
-  void initialize_memory_budget();
+  void refresh_config();
 
   /** Returns the current read state. */
   const ReadState* read_state() const;
@@ -138,6 +141,9 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
 
   /** Resets the reader object. */
   void reset();
+
+  /** Returns the name of the strategy */
+  std::string name();
 
  private:
   /* ********************************* */
@@ -184,6 +190,16 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   void init_read_state();
 
   /**
+   * Returns the field name to process.
+   *
+   * @param condition_names Set of query condition names.
+   * @return {names, var names}.
+   */
+  tuple<std::vector<std::string>, std::vector<std::string>>
+  field_names_to_process(
+      const std::unordered_set<std::string>& condition_names);
+
+  /**
    * Compute the result tiles to process on an iteration to respect the memory
    * budget.
    */
@@ -193,11 +209,13 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const std::unordered_set<std::string>& condition_names,
       Subarray& subarray,
       uint64_t t_start,
-      std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles);
+      std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
+      ThreadPool::Task& compute_task);
 
   /** Apply the query condition. */
   template <class DimType, class OffType>
   Status apply_query_condition(
+      ThreadPool::Task& compute_task,
       Subarray& subarray,
       const uint64_t t_start,
       const uint64_t t_end,
@@ -234,6 +252,31 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const DynamicArray<Subarray>& tile_subarrays,
       const std::vector<uint64_t>& tile_offsets,
       uint64_t& var_buffer_size,
+      const std::vector<RangeInfo<DimType>>& range_info,
+      std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
+      const std::vector<uint8_t>& qc_result,
+      const uint64_t num_range_threads);
+
+  /** Make an aggregate buffer. */
+  AggregateBuffer make_aggregate_buffer(
+      const bool var_sized,
+      const bool nullable,
+      const uint64_t cell_size,
+      const uint64_t min_cell,
+      const uint64_t max_cell,
+      ResultTile::TileTuple* tile_tuple,
+      optional<void*> bitmap_data);
+
+  /** Process aggregates for a given field. */
+  template <class DimType, class OffType>
+  Status process_aggregates(
+      const std::string& name,
+      const std::vector<DimType>& tile_extents,
+      const Subarray& subarray,
+      const uint64_t t_start,
+      const uint64_t t_end,
+      const DynamicArray<Subarray>& tile_subarrays,
+      const std::vector<uint64_t>& tile_offsets,
       const std::vector<RangeInfo<DimType>>& range_info,
       std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
       const std::vector<uint8_t>& qc_result,
@@ -294,6 +337,20 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const std::vector<RangeInfo<DimType>>& range_info,
       bool last_tile,
       uint64_t var_buffer_sizes,
+      const uint64_t range_thread_idx,
+      const uint64_t num_range_threads);
+
+  /** Aggregate tiles. */
+  template <class DimType>
+  Status aggregate_tiles(
+      const std::string& name,
+      const std::vector<DimType>& tile_extents,
+      ResultSpaceTile<DimType>& result_space_tile,
+      const Subarray& subarray,
+      const Subarray& tile_subarray,
+      const uint64_t global_cell_offset,
+      const std::vector<RangeInfo<DimType>>& range_info,
+      std::vector<uint8_t>& aggregate_bitmap,
       const uint64_t range_thread_idx,
       const uint64_t num_range_threads);
 

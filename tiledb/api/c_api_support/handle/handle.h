@@ -216,7 +216,7 @@ class CAPIHandle {
  * @tparam E Exception type to throw if handle is not valid
  * @param p a possible pointer to an object of type T
  */
-template <class T, class E = CAPIStatusException>
+template <class T, class E = CAPIException>
 void ensure_handle_is_valid(const T* p) {
   if (p == nullptr) {
     throw E(std::string("Invalid TileDB ") + T::handle_name() + " object");

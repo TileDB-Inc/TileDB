@@ -99,9 +99,13 @@ using SubarrayRanges = std::vector<std::vector<T>>;
  * @param ctx Context to check for the error and error message.
  * @param rc Return code from a TileDB C-API function.
  * @param expected_msg The expected message from the last error.
+ * @param contains If true, error messages are matched with ContainsSubstring
  */
 void check_tiledb_error_with(
-    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg);
+    tiledb_ctx_t* ctx,
+    int rc,
+    const std::string& expected_msg,
+    bool contains = false);
 
 /**
  * Checks the return code for a TileDB C-API function is TILEDB_OK. If not,
@@ -121,9 +125,13 @@ void check_tiledb_ok(tiledb_ctx_t* ctx, int rc);
  * @param ctx Context to check for the error and error message.
  * @param rc Return code from a TileDB C-API function.
  * @param expected_msg The expected message from the last error.
+ * @param contains If true, error messages are matched with ContainsSubstring
  */
 void require_tiledb_error_with(
-    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg);
+    tiledb_ctx_t* ctx,
+    int rc,
+    const std::string& expected_msg,
+    bool contains = false);
 
 /**
  * Requires the return code for a TileDB C-API function is TILEDB_OK. If not,
@@ -268,8 +276,9 @@ int array_create_wrapper(
  * @param cell_order The cell order.
  * @param capacity The tile capacity.
  * @param allows_dups Whether the array allows coordinate duplicates.
- * @param serialize_array_schema whether to round-trip through serialization or
- * not
+ * @param serialize_array_schema Whether to round-trip through serialization or
+ * not.
+ * @param nullable Whether the attributes are nullable or not.
  */
 
 void create_array(
@@ -288,7 +297,8 @@ void create_array(
     tiledb_layout_t cell_order,
     uint64_t capacity,
     bool allows_dups = false,
-    bool serialize_array_schema = false);
+    bool serialize_array_schema = false,
+    const optional<std::vector<bool>>& nullable = nullopt);
 
 /**
  * Helper method to create an encrypted array.

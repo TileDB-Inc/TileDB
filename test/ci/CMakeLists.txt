@@ -23,19 +23,11 @@ if (TILEDB_ASSERTIONS)
   )
 endif()
 
-if (MSVC)
-  target_compile_definitions(
-    test_assert
-    PRIVATE
-    -DTILEDB_PATH_TO_TRY_ASSERT="${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}"
-  )
-else()
-  target_compile_definitions(
-    test_assert
-    PRIVATE
-    -DTILEDB_PATH_TO_TRY_ASSERT="${CMAKE_CURRENT_BINARY_DIR}"
-  )
-endif()
+target_compile_definitions(
+  test_assert
+  PRIVATE
+  -DTILEDB_PATH_TO_TRY_ASSERT="$<TARGET_FILE:try_assert>"
+)
 
 add_executable(
   try_assert

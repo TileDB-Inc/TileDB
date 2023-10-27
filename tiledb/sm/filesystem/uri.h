@@ -243,6 +243,17 @@ class URI {
       std::string* array_namespace, std::string* array_uri) const;
 
   /**
+   * Return the fragment name from the URI if one can be found.
+   *
+   * The logic for this parsing is that first we locate a '/__fragments/' path
+   * component in the string and then take everything up to the next possibly
+   * non-existent '/' separator.
+   *
+   * @return The fragment name URI if one is found, else std::nullopt.
+   */
+  std::optional<URI> get_fragment_name() const;
+
+  /**
    * Joins the URI with the input path.
    *
    * @param path The path to append.
@@ -290,6 +301,9 @@ class URI {
 
   /** Returns the parent dir URI */
   URI parent_path() const;
+
+  /** Returns the backend name given by backend://my/path */
+  std::string backend_name() const;
 
   /** For comparing URIs alphanumerically. */
   bool operator==(const URI& uri) const;

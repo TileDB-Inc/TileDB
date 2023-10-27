@@ -60,6 +60,8 @@ template <class BitmapType>
 class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
                                       public IQueryStrategy {
  public:
+  typedef std::list<UnorderedWithDupsResultTile<BitmapType>> ResultTilesList;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -72,9 +74,11 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       Array* array,
       Config& config,
       std::unordered_map<std::string, QueryBuffer>& buffers,
+      std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
       Subarray& subarray,
       Layout layout,
       std::optional<QueryCondition>& condition,
+      DefaultChannelAggregates& default_channel_aggregates,
       bool skip_checks_serialization = false);
 
   /** Destructor. */
@@ -97,7 +101,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * @param cell_offsets Cell offset per result tile.
    * @param query_buffer Query buffer to operate on.
    *
-   * @return buffers_full, new_var_buffer_size, new_result_tiles_size.
+   * @return caused_overflow, new_var_buffer_size, new_result_tiles_size.
    */
   template <class OffType>
   static tuple<bool, uint64_t, uint64_t> compute_var_size_offsets(
@@ -106,6 +110,24 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       const uint64_t first_tile_min_pos,
       std::vector<uint64_t>& cell_offsets,
       QueryBuffer& query_buffer);
+
+  /**
+   * Compute the fixed result tiles to copy using the list of result tiles. This
+   * will resize the list of result tiles to the actual size we can copy.
+   *
+   * @param max_num_cells Max number of cells we can fit in the fixed size
+   * buffers.
+   * @param initial_cell_offset Initial cell offset in the user buffers.
+   * @param first_tile_min_pos Cell progress of the first tile.
+   * @param result_tiles Result tiles to process, might be truncated.
+   *
+   * @return user_buffers_full, cell_offsets.
+   */
+  static tuple<bool, std::vector<uint64_t>> resize_fixed_result_tiles_to_copy(
+      uint64_t max_num_cells,
+      uint64_t initial_cell_offset,
+      uint64_t first_tile_min_pos,
+      std::vector<ResultTile*>& result_tiles);
 
   /* ********************************* */
   /*                 API               */
@@ -139,7 +161,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    *
    * @return Status.
    */
-  void initialize_memory_budget();
+  void refresh_config();
 
   /**
    * Performs a read query using its set members.
@@ -151,6 +173,9 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
   /** Resets the reader object. */
   void reset();
 
+  /** Returns the name of the strategy */
+  std::string name();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -159,9 +184,11 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;
 
-  /** Result tiles currently loaded. */
-  std::list<UnorderedWithDupsResultTile<BitmapType>> result_tiles_;
-
+  /**
+   * Result tiles currently for which we loaded coordinates but couldn't
+   * process in the previous iteration.
+   */
+  std::list<UnorderedWithDupsResultTile<BitmapType>> result_tiles_leftover_;
   /** Minimum fragment index for loaded tile offsets data. */
   unsigned tile_offsets_min_frag_idx_;
 
@@ -182,35 +209,42 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * @param f Fragment index.
    * @param t Tile index.
    *
-   * @return Tiles_size, tiles_size_qc.
+   * @return Tiles size.
    */
-  std::pair<uint64_t, uint64_t> get_coord_tiles_size(
-      unsigned dim_num, unsigned f, uint64_t t);
+  uint64_t get_coord_tiles_size(unsigned dim_num, unsigned f, uint64_t t);
 
   /**
    * Add a result tile to process, making sure maximum budget is respected.
    *
    * @param dim_num Number of dimensions.
-   * @param memory_budget_qc_tiles Memory budget for query condition tiles.
-   * @param memory_budget_coords_tiles Memory budget for coordinate tiles.
    * @param f Fragment index.
    * @param t Tile index.
    * @param last_t Last tile index.
    * @param frag_md Fragment metadata.
+   * @param result_tiles Result tile list to add to.
    *
-   * @return buffers_full.
+   * @return user_buffers_full.
    */
   bool add_result_tile(
       const unsigned dim_num,
-      const uint64_t memory_budget_qc_tiles,
-      const uint64_t memory_budget_coords_tiles,
       const unsigned f,
       const uint64_t t,
       const uint64_t last_t,
-      const FragmentMetadata& frag_md);
+      const FragmentMetadata& frag_md,
+      ResultTilesList& result_tiles);
 
   /** Create the result tiles. */
-  void create_result_tiles();
+  ResultTilesList create_result_tiles();
+
+  /**
+   * Clean tiles that have 0 results from the tile lists.
+   *
+   * @param result_tiles Result tiles list.
+   * @param result_tiles_ptr Result tile pointers vectors.
+   */
+  void clean_tile_list(
+      ResultTilesList& result_tiles,
+      std::vector<ResultTile*>& result_tiles_ptr);
 
   /**
    * Compute parallelization parameters for a tile copy operation.
@@ -244,11 +278,9 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * @param buffer Offsets buffer.
    * @param val_buffer Validity buffer.
    * @param var_data Stores pointers to var data cell values.
-   *
-   * @return Status.
    */
   template <class OffType>
-  Status copy_offsets_tile(
+  void copy_offsets_tile(
       const std::string& name,
       const bool nullable,
       const OffType offset_div,
@@ -270,11 +302,9 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * @param cell_offsets Cell offset per result tile.
    * @param query_buffer Query buffer to operate on.
    * @param var_data Stores pointers to var data cell values.
-   *
-   * @return Status.
    */
   template <class OffType>
-  Status copy_offsets_tiles(
+  void copy_offsets_tiles(
       const std::string& name,
       const uint64_t num_range_threads,
       const bool nullable,
@@ -296,11 +326,9 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * @param var_data Stores pointers to var data cell values.
    * @param offsets_buffer Offsets buffer.
    * @param var_data_buffer Var data buffer.
-   *
-   * @return Status.
    */
   template <class OffType>
-  Status copy_var_data_tile(
+  void copy_var_data_tile(
       const bool last_partition,
       const uint64_t var_data_offset,
       const uint64_t offset_div,
@@ -321,11 +349,9 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * @param cell_offsets Cell offset per result tile.
    * @param query_buffer Query buffer to operate on.
    * @param var_data Stores pointers to var data cell values.
-   *
-   * @return Status.
    */
   template <class OffType>
-  Status copy_var_data_tiles(
+  void copy_var_data_tiles(
       const uint64_t num_range_threads,
       const OffType offset_div,
       const uint64_t var_buffer_size,
@@ -347,10 +373,8 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * @param src_max_pos Maximum cell position to copy.
    * @param buffer Offsets buffer.
    * @param val_buffer Validity buffer.
-   *
-   * @return Status.
    */
-  Status copy_fixed_data_tile(
+  void copy_fixed_data_tile(
       const std::string& name,
       const bool is_dim,
       const bool nullable,
@@ -369,10 +393,8 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * @param src_min_pos Minimum cell position to copy.
    * @param src_max_pos Maximum cell position to copy.
    * @param buffer Offsets buffer.
-   *
-   * @return Status.
    */
-  Status copy_timestamp_data_tile(
+  void copy_timestamp_data_tile(
       UnorderedWithDupsResultTile<BitmapType>* rt,
       const uint64_t src_min_pos,
       const uint64_t src_max_pos,
@@ -390,10 +412,8 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
    * @param result_tiles Result tiles to process.
    * @param cell_offsets Cell offset per result tile.
    * @param query_buffer Query buffer to operate on.
-   *
-   * @return Status.
    */
-  Status copy_fixed_data_tiles(
+  void copy_fixed_data_tiles(
       const std::string& name,
       const uint64_t num_range_threads,
       const bool is_dim,
@@ -405,65 +425,126 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       QueryBuffer& query_buffer);
 
   /**
-   * Compute the maximum vector of result tiles to process and cell offsets for
-   * each tiles using the fixed size buffers from the user.
+   * Compute the maximum vector of result tiles to process and cell offsets
+   * for each tiles using the fixed size buffers from the user.
    *
    * @param names Attribute/dimensions to compute for.
    * @param result_tiles The result tiles to process.
    *
-   * @return Cell o
+   * @return user_buffers_full, cell_offsets.
    */
-  std::vector<uint64_t> compute_fixed_results_to_copy(
+  tuple<bool, std::vector<uint64_t>> resize_fixed_results_to_copy(
       const std::vector<std::string>& names,
       std::vector<ResultTile*>& result_tiles);
 
   /**
-   * Make sure we respect memory budget for copy operation by making sure that,
-   * for all attributes to be copied, the size of tiles in memory can fit into
-   * the budget.
+   * Make sure we respect memory budget for copy operation by making sure
+   * that, for all attributes to be copied, the size of tiles in memory can
+   * fit into the budget.
    *
    * @param names Attribute/dimensions to compute for.
-   * @param memory_budget Memory budget allowed for copy operation.
    * @param result_tiles Result tiles to process, might be truncated.
+   * @param user_buffers_full Boolean that indicates if the user buffers are
+   * full or not. If this comes in as `true`, it might be reset to `false` if
+   * the results were truncated.
    *
-   * @return Status, total_mem_usage_per_attr.
+   * @return total_mem_usage_per_attr.
    */
-  tuple<Status, optional<std::vector<uint64_t>>> respect_copy_memory_budget(
+  std::vector<uint64_t> respect_copy_memory_budget(
       const std::vector<std::string>& names,
-      const uint64_t memory_budget,
-      std::vector<ResultTile*>& result_tiles);
+      std::vector<ResultTile*>& result_tiles,
+      bool& user_buffers_full);
+
+  /**
+   * Process tiles.
+   *
+   * @param names Fields to process.
+   * @param result_tiles The result tiles to process.
+   *
+   * @return user_buffers_full.
+   */
+  template <class OffType>
+  bool process_tiles(
+      std::vector<std::string>& names, std::vector<ResultTile*>& result_tiles);
 
   /**
    * Copy tiles.
    *
-   * @param names Attribute/dimensions to compute for.
+   * @param num_range_threads Total number of range threads.
+   * @param name Field to copy.
+   * @param names_to_copy All names processed for this copy batch.
+   * @param is_dim Is the field a dimension.
+   * @param cell_offsets Cell offset per result tile.
    * @param result_tiles The result tiles to process.
+   * @param last_field_to_overflow Last field that caused an overflow.
    *
-   * @return Status.
+   * @return user_buffers_full.
    */
   template <class OffType>
-  Status process_tiles(
-      std::vector<std::string>& names, std::vector<ResultTile*>& result_tiles);
+  bool copy_tiles(
+      const uint64_t num_range_threads,
+      const std::string name,
+      const std::vector<std::string>& names_to_copy,
+      const bool is_dim,
+      std::vector<uint64_t>& cell_offsets,
+      std::vector<ResultTile*>& result_tiles,
+      std::optional<std::string>& last_field_to_overflow);
 
   /**
-   * Remove a result tile from memory
+   * Make an aggregate buffer.
+   *
+   * @param name Field to aggregate.
+   * @param var_sized Is the field var sized?
+   * @param nullable Is the field nullable?
+   * @param cell_size Cell size for the field.
+   * @param count_bitmap Is the bitmap a count bitmap?
+   * @param min_cell Min cell to aggregate.
+   * @param min_cell Max cell to aggregate.
+   * @param rt Result tile.
+   */
+  AggregateBuffer make_aggregate_buffer(
+      const std::string name,
+      const bool var_sized,
+      const bool nullable,
+      const uint64_t cell_size,
+      const bool count_bitmap,
+      const uint64_t min_cell,
+      const uint64_t max_cell,
+      UnorderedWithDupsResultTile<BitmapType>& rt);
+
+  /**
+   * Process aggregates.
+   *
+   * @param num_range_threads Total number of range threads.
+   * @param name Field to aggregate.
+   * @param cell_offsets Cell offset per result tile.
+   * @param result_tiles The result tiles to process.
+   */
+  void process_aggregates(
+      const uint64_t num_range_threads,
+      const std::string name,
+      std::vector<uint64_t>& cell_offsets,
+      std::vector<ResultTile*>& result_tiles);
+
+  /**
+   * Remove a result tile from memory.
    *
    * @param frag_idx Fragment index.
+   * @param result_tiles List of result tiles.
    * @param rt Iterator to the result tile to remove.
-   *
-   * @return Status.
    */
-  Status remove_result_tile(
+  void remove_result_tile(
       const unsigned frag_idx,
-      typename std::list<UnorderedWithDupsResultTile<BitmapType>>::iterator rt);
+      ResultTilesList& result_tiles,
+      typename ResultTilesList::iterator rt);
 
   /**
    * Clean up processed data after copying and get ready for the next
    * iteration.
    *
-   * @return Status.
+   * @param result_tiles List of result tiles.
    */
-  Status end_iteration();
+  void end_iteration(ResultTilesList& result_tiles);
 };
 
 }  // namespace sm

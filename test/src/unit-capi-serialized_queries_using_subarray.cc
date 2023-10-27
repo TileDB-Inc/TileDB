@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -150,6 +150,22 @@ struct SerializationFx {
         counters->find("Context.StorageManager.Query.Writer.attr_num");
     REQUIRE((loop_num != counters->end()));
     REQUIRE(loop_num->second > 0);
+  }
+
+  static void check_subarray_stats(int dim0_expected, int dim1_expected) {
+    Stats::enable();
+    std::string stats;
+    Stats::dump(&stats);
+    // Note: if these checks fail, use Stats::dump(stdout) to validate counters
+    CHECK(
+        stats.find(
+            "\"Context.StorageManager.subSubarray.add_range_dim_0\": " +
+            std::to_string(dim0_expected)) != std::string::npos);
+    CHECK(
+        stats.find(
+            "\"Context.StorageManager.subSubarray.add_range_dim_1\": " +
+            std::to_string(dim1_expected)) != std::string::npos);
+    Stats::disable();
   }
 
   void create_array(tiledb_array_type_t type) {
@@ -376,6 +392,7 @@ TEST_CASE_METHOD(
   refactored_query_v2_ = GENERATE(true, false);
   create_array(TILEDB_DENSE);
   auto expected_results = write_dense_array();
+  check_subarray_stats(2, 2);
 
   SECTION("- Read all") {
     Array array(ctx, array_uri, TILEDB_READ);
@@ -396,6 +413,9 @@ TEST_CASE_METHOD(
     query.set_data_buffer("a3", a3_data);
     query.set_offsets_buffer("a3", a3_offsets);
 
+    // Check stats before serialization
+    check_subarray_stats(3, 3);
+
     // Submit query
     auto rc = submit_query_wrapper(
         ctx,
@@ -407,6 +427,10 @@ TEST_CASE_METHOD(
         finalize_);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+    // Check stats after serialization
+    // #TODO Revisit after Stats serialization is reworked
+    check_subarray_stats(5, 5);
 
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 100);
@@ -454,6 +478,7 @@ TEST_CASE_METHOD(
 
     // The deserialized query should also include the write stats
     check_read_stats(query);
+    check_subarray_stats(5, 5);
 
     // We expect all cells where `a1` >= `cmp_value` to be filtered
     // out. For the refactored reader, filtered out means the value is
@@ -520,6 +545,7 @@ TEST_CASE_METHOD(
         finalize_);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
+    check_subarray_stats(5, 5);
 
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 4);
@@ -561,6 +587,7 @@ TEST_CASE_METHOD(
         refactored_query_v2_,
         finalize_);
     REQUIRE(rc == TILEDB_OK);
+    check_subarray_stats(5, 5);
 
     REQUIRE(query.query_status() == Query::Status::INCOMPLETE);
     auto result_el = query.result_buffer_elements_nullable();
@@ -581,6 +608,7 @@ TEST_CASE_METHOD(
         refactored_query_v2_,
         finalize_);
     REQUIRE(rc == TILEDB_OK);
+    check_subarray_stats(7, 7);
 
     REQUIRE(query.query_status() == Query::Status::INCOMPLETE);
     result_el = query.result_buffer_elements_nullable();
@@ -601,6 +629,7 @@ TEST_CASE_METHOD(
         refactored_query_v2_,
         finalize_);
     REQUIRE(rc == TILEDB_OK);
+    check_subarray_stats(9, 9);
 
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
     result_el = query.result_buffer_elements_nullable();

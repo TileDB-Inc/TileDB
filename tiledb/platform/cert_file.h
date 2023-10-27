@@ -38,7 +38,6 @@
 #include <string>
 #include <system_error>
 
-#include "tiledb/common/logger.h"
 #include "tiledb/platform/os.h"
 
 // We can remove this preprocessor block once our minimum

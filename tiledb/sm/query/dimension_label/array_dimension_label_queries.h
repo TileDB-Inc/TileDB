@@ -66,13 +66,14 @@ class ArrayDimensionLabelQueries {
   /** Default constructor is not C.41 compliant. */
   ArrayDimensionLabelQueries() = delete;
 
-  /** Constructor.
+  /**
+   * Constructor.
    *
    * @param storage_manager Storage manager object.
    * @param array Parent array the dimension labels are defined on.
    * @param subarray Subarray for the query on the parent array.
    * @param label_buffers A map of query buffers containing label data.
-   * @param array_bufffers A map of query buffers containing dimension and
+   * @param array_buffers A map of query buffers containing dimension and
    *     attribute data for the parent array.
    * @param fragment_name Optional fragment name for writing fragments.
    */
@@ -107,14 +108,44 @@ class ArrayDimensionLabelQueries {
   }
 
   /**
+   * Returns a label range query by dimension index.
+   * Throws if there is no label range query on dim_idx.
+   *
+   * @param dim_idx Dimension index for label range query.
+   * @returns Pointer to DimensionLabelQuery on dim_idx
+   */
+  DimensionLabelQuery* get_range_query(dimension_size_type dim_idx) const;
+
+  /**
    * Returns ``true`` if there is a range query on the requested dimension.
    *
    * @param dim_idx Index to check for a range query on.
-   * @returns ``true if there is a range query on the requested dimension and
+   * @returns ``true`` if there is a range query on the requested dimension and
    *     ``false`` otherwise.
    */
   inline bool has_range_query(dimension_size_type dim_idx) const {
-    return range_queries_[dim_idx] != nullptr;
+    return label_range_queries_by_dim_idx_[dim_idx] != nullptr;
+  }
+
+  /**
+   * Returns a label data query by dimension index.
+   * Throws if there is no label data query on dim_idx.
+   *
+   * @param dim_idx Dimension index for label data query.
+   * @returns Vector of DimensionLabelQuery on dim_idx
+   */
+  std::vector<DimensionLabelQuery*> get_data_query(
+      dimension_size_type dim_idx) const;
+
+  /**
+   * Returns ``true`` if there is a data query on the requested dimension.
+   *
+   * @param dim_idx Index to check for a data query on.
+   * @returns ``true`` if there is a data query on the requested dimension and
+   *     ``false`` otherwise.
+   */
+  inline bool has_data_query(dimension_size_type dim_idx) const {
+    return !label_data_queries_by_dim_idx_[dim_idx].empty();
   }
 
   /** Process all data queries. */
@@ -141,8 +172,8 @@ class ArrayDimensionLabelQueries {
    * Non-owning vector for accessing range query by dimension index.
    *
    * Note: This vector is always sized to the number of dimensions in the array.
-   * There can be at most on query per dimension. If there is no query on the
-   * dimension, it contains a nullpointer.
+   * There can be at most one query per dimension. If there is no query on the
+   * dimension, it contains a null pointer.
    */
   std::vector<DimensionLabelQuery*> label_range_queries_by_dim_idx_;
 

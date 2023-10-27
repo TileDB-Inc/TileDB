@@ -309,14 +309,8 @@ Status Win::file_size(const std::string& path, uint64_t* size) const {
   return Status::Ok();
 }
 
-Status Win::init(const Config& config, ThreadPool* vfs_thread_pool) {
-  if (vfs_thread_pool == nullptr) {
-    return LOG_STATUS(
-        Status_VFSError("Cannot initialize with null thread pool"));
-  }
-
+Status Win::init(const Config& config) {
   config_ = config;
-  vfs_thread_pool_ = vfs_thread_pool;
 
   return Status::Ok();
 }
@@ -511,17 +505,6 @@ Status Win::sync(const std::string& path) const {
 
 Status Win::write(
     const std::string& path, const void* buffer, uint64_t buffer_size) const {
-  // Get config params
-  bool found = false;
-  uint64_t min_parallel_size = 0;
-  RETURN_NOT_OK(config_.get<uint64_t>(
-      "vfs.min_parallel_size", &min_parallel_size, &found));
-  assert(found);
-  uint64_t max_parallel_ops = 0;
-  RETURN_NOT_OK(config_.get<uint64_t>(
-      "vfs.file.max_parallel_ops", &max_parallel_ops, &found));
-  assert(found);
-
   Status st;
   // Open the file for appending, creating it if it doesn't exist.
   HANDLE file_h = CreateFile(
@@ -547,40 +530,10 @@ Status Win::write(
         get_last_error_msg(gle, "GetFileSizeEx")));
   }
   uint64_t file_offset = file_size_lg_int.QuadPart;
-  // Ensure that each thread is responsible for at least min_parallel_size
-  // bytes, and cap the number of parallel operations at the thread pool size.
-  uint64_t num_ops = std::min(
-      std::max(buffer_size / min_parallel_size, uint64_t(1)), max_parallel_ops);
-  if (num_ops == 1) {
-    if (!write_at(file_h, file_offset, buffer, buffer_size).ok()) {
-      CloseHandle(file_h);
-      return LOG_STATUS(
-          Status_IOError(std::string("Cannot write to file '") + path));
-    }
-  } else {
-    std::vector<ThreadPool::Task> results;
-    uint64_t thread_write_nbytes = utils::math::ceil(buffer_size, num_ops);
-    for (uint64_t i = 0; i < num_ops; i++) {
-      uint64_t begin = i * thread_write_nbytes,
-               end =
-                   std::min((i + 1) * thread_write_nbytes - 1, buffer_size - 1);
-      uint64_t thread_nbytes = end - begin + 1;
-      uint64_t thread_file_offset = file_offset + begin;
-      auto thread_buffer = reinterpret_cast<const char*>(buffer) + begin;
-      results.push_back(vfs_thread_pool_->execute(
-          [file_h, thread_file_offset, thread_buffer, thread_nbytes]() {
-            return write_at(
-                file_h, thread_file_offset, thread_buffer, thread_nbytes);
-          }));
-    }
-    st = vfs_thread_pool_->wait_all(results);
-    if (!st.ok()) {
-      CloseHandle(file_h);
-      std::stringstream errmsg;
-      // failures in write_at() log their own gle messages.
-      errmsg << "Cannot write to file '" << path << "'; " << st.message();
-      return LOG_STATUS(Status_IOError(errmsg.str()));
-    }
+  if (!write_at(file_h, file_offset, buffer, buffer_size).ok()) {
+    CloseHandle(file_h);
+    return LOG_STATUS(
+        Status_IOError(std::string("Cannot write to file '") + path));
   }
   // Always close the handle.
   if (CloseHandle(file_h) == 0) {
@@ -596,10 +549,9 @@ Status Win::write_at(
     const void* buffer,
     uint64_t buffer_size) {
   // Write data to the file in batches of constants::max_write_bytes bytes at a
-  // time. Because this may be called in multiple threads, we don't seek the
-  // file handle. Instead, we use the OVERLAPPED struct to specify an offset at
-  // which to write. Note that the file handle does not have to be opened in
-  // "overlapped" mode (i.e. async writes) to do this.
+  // time. Instead of seeking the file handle we use the OVERLAPPED struct to
+  // specify an offset at which to write. Note that the file handle does not
+  // have to be opened in "overlapped" mode (i.e. async writes) to do this.
   uint64_t byte_idx = 0;
   const char* byte_buffer = reinterpret_cast<const char*>(buffer);
   uint64_t remaining_bytes_to_write = buffer_size;

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -91,6 +91,11 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *
  * **Parameters**
  *
+ * - `sm.allow_aggregates_experimental` <br>
+ *    **Experimental** <br>
+ *    Allow query aggregates APIs. Experimental for testing purposes,
+ *    do not use.<br>
+ *    **Default**: false
  * - `sm.allow_separate_attribute_writes` <br>
  *    **Experimental** <br>
  *    Allow separate attribute write queries.<br>
@@ -122,6 +127,11 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `sm.check_global_order` <br>
  *    Checks if the coordinates obey the global array order. Applicable only
  *    to sparse writes in global order.
+ *    **Default**: true
+ * - `sm.merge_overlapping_ranges_experimental` <br>
+ *    If `true`, merge overlapping Subarray ranges. Else, overlapping ranges
+ *    will not be merged and multiplicities will be returned.
+ *    Experimental for testing purposes, do not use.<br>
  *    **Default**: true
  * - `sm.enable_signal_handlers` <br>
  *    Determines whether or not TileDB will install signal handlers. <br>
@@ -243,7 +253,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    soft limit that we might go over if a single tile doesn't fit into memory,
  *    we will allow to load that tile if it still fits within
  *    `sm.mem.total_budget`. <br>
- *    **Default**: 2GB
+ *    **Default**: 1GB
  * - `sm.mem.total_budget` <br>
  *    Memory budget for readers and writers. <br>
  *    **Default**: 10GB
@@ -251,10 +261,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    Ratio of the budget allocated for coordinates in the sparse global
  *    order reader. <br>
  *    **Default**: 0.5
- * - `sm.mem.reader.sparse_global_order.ratio_query_condition` <br>
- *    Ratio of the budget allocated for the query condition in the sparse
- *    global order reader. <br>
- *    **Default**: 0.25
  * - `sm.mem.reader.sparse_global_order.ratio_tile_ranges` <br>
  *    Ratio of the budget allocated for tile ranges in the sparse global
  *    order reader. <br>
@@ -267,10 +273,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    Ratio of the budget allocated for coordinates in the sparse unordered
  *    with duplicates reader. <br>
  *    **Default**: 0.5
- * - `sm.mem.reader.sparse_unordered_with_dups.ratio_query_condition` <br>
- *    Ratio of the budget allocated for the query condition in the sparse
- *    unordered with duplicates reader. <br>
- *    **Default**: 0.25
  * - `sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges` <br>
  *    Ratio of the budget allocated for tile ranges in the sparse unordered
  *    with duplicates reader. <br>
@@ -320,29 +322,47 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `vfs.min_batch_gap` <br>
  *    The minimum number of bytes between two VFS read batches.<br>
  *    **Default**: 500KB
+ * - `vfs.read_logging_mode` <br>
+ *    Log read operations at varying levels of verbosity.<br>
+ *   **Default: ""**
+ *    Possible values:<br>
+ *    <ul>
+ *     <li><pre>""</pre> An empty string disables read logging.</li>
+ *     <li><pre>"fragments"</pre> Log each fragment read.</li>
+ *     <li><pre>"fragment_files"</pre> Log each individual fragment file
+ *         read.</li>
+ *     <li><pre>"all_files"</pre> Log all files read.</li>
+ *     <li><pre>"all_reads"</pre> Log all files with offset and length
+ *         parameters.</li>
+ *     <li><pre>"all_reads_always"</pre> Log all files with offset and length
+ *         parameters on every read, not just the first read. On large arrays
+ *         the read cache may get large so this trades of RAM usage vs
+ *         increased log verbosity.</li>
+ *   </ul>
  * - `vfs.file.posix_file_permissions` <br>
  *    Permissions to use for posix file system with file creation.<br>
  *    **Default**: 644
  * - `vfs.file.posix_directory_permissions` <br>
  *    Permissions to use for posix file system with directory creation.<br>
  *    **Default**: 755
- * - `vfs.file.max_parallel_ops` <br>
- *    The maximum number of parallel operations on objects with `file:///`
- *    URIs. <br>
- *    **Default**: `1`
  * - `vfs.azure.storage_account_name` <br>
- *    Set the Azure Storage Account name. <br>
+ *    Set the name of the Azure Storage account to use. <br>
  *    **Default**: ""
  * - `vfs.azure.storage_account_key` <br>
- *    Set the Azure Storage Account key. <br>
+ *    Set the Shared Key to authenticate to Azure Storage. <br>
  *    **Default**: ""
  * - `vfs.azure.storage_sas_token` <br>
- *    Set the Azure Storage SAS (shared access signature) token. <br>
+ *    Set the Azure Storage SAS (shared access signature) token to use.
+ *    If this option is set along with `vfs.azure.blob_endpoint`, the
+ *    latter must not include a SAS token. <br>
  *    **Default**: ""
  * - `vfs.azure.blob_endpoint` <br>
- *    Overrides the default Azure Storage Blob endpoint. If empty, the endpoint
- *    will be constructed from the storage account name. This should not include
- *    an http:// or https:// prefix. <br>
+ *    Set the default Azure Storage Blob endpoint. <br>
+ *    If not specified, it will take a value of
+ *    `https://<account-name>.blob.core.windows.net`, where `<account-name>`
+ *    is the value of the `vfs.azure.storage_account_name` option. This means
+ *    that at least one of these two options must be set (or both if shared
+ *    key authentication is used). <br>
  *    **Default**: ""
  * - `vfs.azure.block_list_block_size` <br>
  *    The block size (in bytes) used in Azure blob block list writes.
@@ -356,9 +376,17 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `vfs.azure.use_block_list_upload` <br>
  *    Determines if the Azure backend can use chunked block uploads. <br>
  *    **Default**: "true"
- * - `vfs.azure.use_https` <br>
- *    Determines if the blob endpoint should use HTTP or HTTPS.
- *    **Default**: "true"
+ * - `vfs.azure.max_retries` <br>
+ *    The maximum number of times to retry an Azure network request. <br>
+ *    **Default**: 5
+ * -  `vfs.azure.retry_delay_ms` <br>
+ *    The minimum permissible delay between Azure netwwork request retry
+ *    attempts, in milliseconds.
+ *    **Default**: 800
+ * -  `vfs.azure.max_retry_delay_ms` <br>
+ *    The maximum permissible delay between Azure netwwork request retry
+ *    attempts, in milliseconds.
+ *    **Default**: 60000
  * - `vfs.gcs.project_id` <br>
  *    Set the GCS project id. <br>
  *    **Default**: ""
@@ -452,6 +480,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    The scale factor for exponential backoff when connecting to S3.
  *    Any `long` value is acceptable. <br>
  *    **Default**: 25
+ * - `vfs.s3.custom_headers.*` <br>
+ *    (Optional) Prefix for custom headers on s3 requests. For each custom
+ *    header, use "vfs.s3.custom_headers.header_key" = "header_value" <br>
+ *    **Optional. No Default**
  * - `vfs.s3.logging_level` <br>
  *    The AWS SDK logging level. This is a process-global setting. The
  *    configuration of the most recently constructed context will set
@@ -490,6 +522,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    The server-side encryption algorithm to use. Supported non-empty
  *    values are "aes256" and "kms" (AWS key management service). <br>
  *    **Default**: ""
+ * - `vfs.s3.sse_kms_key_id` <br>
+ *    The server-side encryption key to use if
+ *    vfs.s3.sse == "kms" (AWS key management service). <br>
+ *    **Default**: ""
  * - `vfs.s3.bucket_canned_acl` <br>
  *    Names of values found in Aws::S3::Model::BucketCannedACL enumeration.
  *    "NOT_SET"
@@ -510,6 +546,17 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *     Aws::S3::Model::ObjectCannedACL.) "aws_exec_read" "owner_read"
  *    "bucket_owner_full_control"
  *    **Default**: "NOT_SET"
+ * - `vfs.s3.config_source` <br>
+ *    Force S3 SDK to only load config options from a set source.
+ *    The supported options are
+ *    `auto` (TileDB config options are considered first,
+ *    then SDK-defined precedence: env vars, config files, ec2 metadata),
+ *    `config_files` (forces SDK to only consider options found in aws
+ *    config files),
+ *    `sts_profile_with_web_identity` (force SDK to consider assume roles/sts
+ * from config files with support for web tokens, commonly used by EKS/ECS).
+ *    **Default**: auto
+ *    <br>
  * - `vfs.hdfs.name_node_uri"` <br>
  *    Name node for HDFS. <br>
  *    **Default**: ""
@@ -592,6 +639,9 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `rest.curl.buffer_size` <br>
  *    Set curl buffer size for REST requests <br>
  *    **Default**: 524288 (512KB)
+ * - `rest.capnp_traversal_limit` <br>
+ *    CAPNP traversal limit used in the deserialization of messages(bytes) <br>
+ *    **Default**: 536870912 (512MB)
  * - `filestore.buffer_size` <br>
  *    Specifies the size in bytes of the internal buffers used in the filestore
  *    API. The size should be bigger than the minimum tile size filestore

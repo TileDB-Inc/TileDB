@@ -142,8 +142,8 @@ void InfoCommand::print_tile_sizes() const {
       uint64_t tile_num = f->tile_num();
       std::vector<std::string> names;
       names.push_back(name);
-      THROW_NOT_OK(f->load_tile_offsets(enc_key, std::move(names)));
-      THROW_NOT_OK(f->load_tile_var_sizes(enc_key, name));
+      f->load_tile_offsets(enc_key, names);
+      f->load_tile_var_sizes(enc_key, name);
       for (uint64_t tile_idx = 0; tile_idx < tile_num; tile_idx++) {
         persisted_tile_size += f->persisted_tile_size(name, tile_idx);
         in_memory_tile_size += f->tile_size(name, tile_idx);
@@ -298,7 +298,7 @@ void InfoCommand::write_text_mbrs() const {
   auto fragment_metadata = array.fragment_metadata();
   std::stringstream text;
   for (const auto& f : fragment_metadata) {
-    THROW_NOT_OK(f->load_rtree(*encryption_key));
+    f->load_rtree(*encryption_key);
     const auto& mbrs = f->mbrs();
     for (const auto& mbr : mbrs) {
       auto str_mbr = mbr_to_string(mbr, schema.domain());

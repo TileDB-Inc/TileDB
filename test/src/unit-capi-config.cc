@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -226,9 +226,11 @@ void check_save_to_file() {
   ss << "config.logging_level 0\n";
 #endif
   ss << "filestore.buffer_size 104857600\n";
+  ss << "rest.capnp_traversal_limit 536870912\n";
   ss << "rest.curl.buffer_size 524288\n";
   ss << "rest.curl.verbose false\n";
   ss << "rest.http_compressor any\n";
+  ss << "rest.load_enumerations_on_array_open true\n";
   ss << "rest.load_metadata_on_array_open true\n";
   ss << "rest.load_non_empty_domain_on_array_open true\n";
   ss << "rest.retry_count 25\n";
@@ -239,6 +241,7 @@ void check_save_to_file() {
   ss << "rest.server_serialization_format CAPNP\n";
   ss << "rest.use_refactored_array_open false\n";
   ss << "rest.use_refactored_array_open_and_query_submit false\n";
+  ss << "sm.allow_aggregates_experimental false\n";
   ss << "sm.allow_separate_attribute_writes false\n";
   ss << "sm.allow_updates_experimental false\n";
   ss << "sm.check_coord_dups true\n";
@@ -261,6 +264,8 @@ void check_save_to_file() {
   ss << "sm.dedup_coords false\n";
   ss << "sm.enable_signal_handlers true\n";
   ss << "sm.encryption_type NO_ENCRYPTION\n";
+  ss << "sm.enumerations_max_size 10485760\n";
+  ss << "sm.enumerations_max_total_size 52428800\n";
   ss << "sm.fragment_info.preload_mbrs false\n";
   ss << "sm.group.timestamp_end 18446744073709551615\n";
   ss << "sm.group.timestamp_start 0\n";
@@ -270,17 +275,15 @@ void check_save_to_file() {
   ss << "sm.mem.malloc_trim true\n";
   ss << "sm.mem.reader.sparse_global_order.ratio_array_data 0.1\n";
   ss << "sm.mem.reader.sparse_global_order.ratio_coords 0.5\n";
-  ss << "sm.mem.reader.sparse_global_order.ratio_query_condition 0.25\n";
   ss << "sm.mem.reader.sparse_global_order.ratio_tile_ranges 0.1\n";
   ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_array_data 0.1\n";
   ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_coords 0.5\n";
-  ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_query_condition "
-        "0.25\n";
   ss << "sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges 0.1\n";
-  ss << "sm.mem.tile_upper_memory_limit 2147483648\n";
+  ss << "sm.mem.tile_upper_memory_limit 1073741824\n";
   ss << "sm.mem.total_budget 10737418240\n";
   ss << "sm.memory_budget 5368709120\n";
   ss << "sm.memory_budget_var 10737418240\n";
+  ss << "sm.merge_overlapping_ranges_experimental true\n";
   ss << "sm.partial_tile_offsets_loading false\n";
   ss << "sm.query.dense.qc_coords_mode false\n";
   ss << "sm.query.dense.reader refactored\n";
@@ -294,12 +297,14 @@ void check_save_to_file() {
   ss << "sm.var_offsets.bitsize 64\n";
   ss << "sm.var_offsets.extra_element false\n";
   ss << "sm.var_offsets.mode bytes\n";
+  ss << "ssl.verify true\n";
   ss << "vfs.azure.block_list_block_size 5242880\n";
   ss << "vfs.azure.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
+  ss << "vfs.azure.max_retries 5\n";
+  ss << "vfs.azure.max_retry_delay_ms 60000\n";
+  ss << "vfs.azure.retry_delay_ms 800\n";
   ss << "vfs.azure.use_block_list_upload true\n";
-  ss << "vfs.azure.use_https true\n";
-  ss << "vfs.file.max_parallel_ops 1\n";
   ss << "vfs.file.posix_directory_permissions 755\n";
   ss << "vfs.file.posix_file_permissions 644\n";
   ss << "vfs.gcs.max_parallel_ops " << std::thread::hardware_concurrency()
@@ -314,6 +319,7 @@ void check_save_to_file() {
   ss << "vfs.read_ahead_cache_size 10485760\n";
   ss << "vfs.read_ahead_size 102400\n";
   ss << "vfs.s3.bucket_canned_acl NOT_SET\n";
+  ss << "vfs.s3.config_source auto\n";
   ss << "vfs.s3.connect_max_tries 5\n";
   ss << "vfs.s3.connect_scale_factor 25\n";
   ss << "vfs.s3.connect_timeout_ms 10800\n";
@@ -564,6 +570,10 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
   rc = tiledb_config_set(
+      config, "rest.load_enumerations_on_array_open", "false", &error);
+  CHECK(rc == TILEDB_OK);
+  CHECK(error == nullptr);
+  rc = tiledb_config_set(
       config, "rest.use_refactored_array_open", "true", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
@@ -592,21 +602,27 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["rest.retry_delay_factor"] = "1.25";
   all_param_values["rest.retry_initial_delay_ms"] = "500";
   all_param_values["rest.retry_http_codes"] = "503";
+  all_param_values["rest.capnp_traversal_limit"] = "536870912";
   all_param_values["rest.curl.buffer_size"] = "524288";
   all_param_values["rest.curl.verbose"] = "false";
   all_param_values["rest.load_metadata_on_array_open"] = "false";
   all_param_values["rest.load_non_empty_domain_on_array_open"] = "false";
+  all_param_values["rest.load_enumerations_on_array_open"] = "false";
   all_param_values["rest.use_refactored_array_open"] = "true";
   all_param_values["rest.use_refactored_array_open_and_query_submit"] = "true";
+  all_param_values["sm.allow_aggregates_experimental"] = "false";
   all_param_values["sm.allow_separate_attribute_writes"] = "false";
   all_param_values["sm.allow_updates_experimental"] = "false";
   all_param_values["sm.encryption_key"] = "";
   all_param_values["sm.encryption_type"] = "NO_ENCRYPTION";
   all_param_values["sm.dedup_coords"] = "false";
   all_param_values["sm.partial_tile_offsets_loading"] = "false";
+  all_param_values["sm.enumerations_max_size"] = "10485760";
+  all_param_values["sm.enumerations_max_total_size"] = "52428800";
   all_param_values["sm.check_coord_dups"] = "true";
   all_param_values["sm.check_coord_oob"] = "true";
   all_param_values["sm.check_global_order"] = "true";
+  all_param_values["sm.merge_overlapping_ranges_experimental"] = "true";
   all_param_values["sm.skip_est_size_partitioning"] = "false";
   all_param_values["sm.skip_unary_partitioning_budget_check"] = "false";
   all_param_values["sm.memory_budget"] = "5368709120";
@@ -616,20 +632,15 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.query.sparse_global_order.reader"] = "refactored";
   all_param_values["sm.query.sparse_unordered_with_dups.reader"] = "refactored";
   all_param_values["sm.mem.malloc_trim"] = "true";
-  all_param_values["sm.mem.tile_upper_memory_limit"] = "2147483648";
+  all_param_values["sm.mem.tile_upper_memory_limit"] = "1073741824";
   all_param_values["sm.mem.total_budget"] = "10737418240";
   all_param_values["sm.mem.reader.sparse_global_order.ratio_coords"] = "0.5";
-  all_param_values["sm.mem.reader.sparse_global_order.ratio_query_condition"] =
-      "0.25";
   all_param_values["sm.mem.reader.sparse_global_order.ratio_tile_ranges"] =
       "0.1";
   all_param_values["sm.mem.reader.sparse_global_order.ratio_array_data"] =
       "0.1";
   all_param_values["sm.mem.reader.sparse_unordered_with_dups.ratio_coords"] =
       "0.5";
-  all_param_values
-      ["sm.mem.reader.sparse_unordered_with_dups.ratio_query_condition"] =
-          "0.25";
   all_param_values
       ["sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges"] = "0.1";
   all_param_values
@@ -664,12 +675,18 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.fragment_info.preload_mbrs"] = "true";
   all_param_values["sm.partial_tile_offsets_loading"] = "false";
 
+  all_param_values["ssl.ca_file"] = "";
+  all_param_values["ssl.ca_path"] = "";
+  all_param_values["ssl.verify"] = "true";
+
   all_param_values["vfs.max_batch_size"] = "104857600";
   all_param_values["vfs.min_batch_gap"] = "512000";
   all_param_values["vfs.min_batch_size"] = "20971520";
   all_param_values["vfs.min_parallel_size"] = "10485760";
   all_param_values["vfs.read_ahead_size"] = "102400";
   all_param_values["vfs.read_ahead_cache_size"] = "10485760";
+  all_param_values["vfs.read_logging_mode"] = "";
+  all_param_values["vfs.gcs.endpoint"] = "";
   all_param_values["vfs.gcs.project_id"] = "";
   all_param_values["vfs.gcs.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
@@ -684,10 +701,11 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.azure.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   all_param_values["vfs.azure.use_block_list_upload"] = "true";
-  all_param_values["vfs.azure.use_https"] = "true";
+  all_param_values["vfs.azure.max_retries"] = "5";
+  all_param_values["vfs.azure.retry_delay_ms"] = "800";
+  all_param_values["vfs.azure.max_retry_delay_ms"] = "60000";
   all_param_values["vfs.file.posix_file_permissions"] = "644";
   all_param_values["vfs.file.posix_directory_permissions"] = "755";
-  all_param_values["vfs.file.max_parallel_ops"] = "1";
   all_param_values["vfs.s3.scheme"] = "https";
   all_param_values["vfs.s3.region"] = "us-east-1";
   all_param_values["vfs.s3.aws_access_key_id"] = "";
@@ -726,6 +744,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.hdfs.name_node_uri"] = "";
   all_param_values["vfs.s3.bucket_canned_acl"] = "NOT_SET";
   all_param_values["vfs.s3.object_canned_acl"] = "NOT_SET";
+  all_param_values["vfs.s3.config_source"] = "auto";
 
   std::map<std::string, std::string> vfs_param_values;
   vfs_param_values["max_batch_size"] = "104857600";
@@ -734,6 +753,8 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["min_parallel_size"] = "10485760";
   vfs_param_values["read_ahead_size"] = "102400";
   vfs_param_values["read_ahead_cache_size"] = "10485760";
+  vfs_param_values["read_logging_mode"] = "";
+  vfs_param_values["gcs.endpoint"] = "";
   vfs_param_values["gcs.project_id"] = "";
   vfs_param_values["gcs.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
@@ -748,10 +769,11 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["azure.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   vfs_param_values["azure.use_block_list_upload"] = "true";
-  vfs_param_values["azure.use_https"] = "true";
+  vfs_param_values["azure.max_retries"] = "5";
+  vfs_param_values["azure.retry_delay_ms"] = "800";
+  vfs_param_values["azure.max_retry_delay_ms"] = "60000";
   vfs_param_values["file.posix_file_permissions"] = "644";
   vfs_param_values["file.posix_directory_permissions"] = "755";
-  vfs_param_values["file.max_parallel_ops"] = "1";
   vfs_param_values["s3.scheme"] = "https";
   vfs_param_values["s3.region"] = "us-east-1";
   vfs_param_values["s3.aws_access_key_id"] = "";
@@ -787,11 +809,13 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["s3.no_sign_request"] = "false";
   vfs_param_values["s3.bucket_canned_acl"] = "NOT_SET";
   vfs_param_values["s3.object_canned_acl"] = "NOT_SET";
+  vfs_param_values["s3.config_source"] = "auto";
   vfs_param_values["hdfs.username"] = "stavros";
   vfs_param_values["hdfs.kerb_ticket_cache_path"] = "";
   vfs_param_values["hdfs.name_node_uri"] = "";
 
   std::map<std::string, std::string> gcs_param_values;
+  gcs_param_values["endpoint"] = "";
   gcs_param_values["project_id"] = "";
   gcs_param_values["max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
@@ -808,7 +832,9 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   azure_param_values["max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   azure_param_values["use_block_list_upload"] = "true";
-  azure_param_values["use_https"] = "true";
+  azure_param_values["max_retries"] = "5";
+  azure_param_values["retry_delay_ms"] = "800";
+  azure_param_values["max_retry_delay_ms"] = "60000";
 
   std::map<std::string, std::string> s3_param_values;
   s3_param_values["scheme"] = "https";
@@ -846,6 +872,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   s3_param_values["no_sign_request"] = "false";
   s3_param_values["bucket_canned_acl"] = "NOT_SET";
   s3_param_values["object_canned_acl"] = "NOT_SET";
+  s3_param_values["config_source"] = "auto";
 
   // Create an iterator and iterate over all parameters
   tiledb_config_iter_t* config_iter = nullptr;

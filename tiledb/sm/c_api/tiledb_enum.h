@@ -70,6 +70,8 @@
     TILEDB_QUERY_STATUS_ENUM(INCOMPLETE) = 3,
     /** Query not initialized.  */
     TILEDB_QUERY_STATUS_ENUM(UNINITIALIZED) = 4,
+    /** Query initialized (strategy created)  */
+    TILEDB_QUERY_STATUS_ENUM(INITIALIZED) = 5,
 #endif
 
 #ifdef TILEDB_QUERY_STATUS_DETAILS_ENUM
@@ -93,6 +95,10 @@
     TILEDB_QUERY_CONDITION_OP_ENUM(EQ) = 4,
     /** Not-equal operator */
     TILEDB_QUERY_CONDITION_OP_ENUM(NE) = 5,
+    /** IN set membership operator. */
+    TILEDB_QUERY_CONDITION_OP_ENUM(IN) = 6,
+    /** NOT IN set membership operator. */
+    TILEDB_QUERY_CONDITION_OP_ENUM(NOT_IN) = 7,
 #endif
 
 #ifdef TILEDB_QUERY_CONDITION_COMBINATION_OP_ENUM

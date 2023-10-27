@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -49,6 +49,13 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+
+class GroupDetailsException : public StatusException {
+ public:
+  explicit GroupDetailsException(const std::string& message)
+      : StatusException("Group Details", message) {
+  }
+};
 
 class Group {
  public:
@@ -108,9 +115,8 @@ class Group {
    * Deletes metadata from an group opened in WRITE mode.
    *
    * @param key The key of the metadata item to be deleted.
-   * @return Status
    */
-  Status delete_metadata(const char* key);
+  void delete_metadata(const char* key);
 
   /**
    * Puts metadata into an group opened in WRITE mode.
@@ -122,9 +128,8 @@ class Group {
    *     same datatype. This argument indicates the number of items in the
    *     value component of the metadata.
    * @param value The metadata value in binary form.
-   * @return Status
    */
-  Status put_metadata(
+  void put_metadata(
       const char* key,
       Datatype value_type,
       uint32_t value_num,
@@ -141,9 +146,8 @@ class Group {
    *     same datatype. This argument indicates the number of items in the
    *     value component of the metadata.
    * @param value The metadata value in binary form.
-   * @return Status
    */
-  Status get_metadata(
+  void get_metadata(
       const char* key,
       Datatype* value_type,
       uint32_t* value_num,
@@ -160,9 +164,8 @@ class Group {
    *     same datatype. This argument indicates the number of items in the
    *     value component of the metadata.
    * @param value The metadata value in binary form.
-   * @return Status
    */
-  Status get_metadata(
+  void get_metadata(
       uint64_t index,
       const char** key,
       uint32_t* key_len,
@@ -171,10 +174,10 @@ class Group {
       const void** value);
 
   /** Returns the number of group metadata items. */
-  Status get_metadata_num(uint64_t* num);
+  uint64_t get_metadata_num();
 
-  /** Sets has_key == 1 and corresponding value_type if the group has key. */
-  Status has_metadata_key(const char* key, Datatype* value_type, bool* has_key);
+  /** Gets the type of the given metadata or nullopt if it does not exist. */
+  std::optional<Datatype> metadata_type(const char* key);
 
   /** Retrieves the group metadata object. */
   Status metadata(Metadata** metadata);
@@ -220,9 +223,23 @@ class Group {
    * Set the config on the group
    *
    * @param config
-   * @return status
+   *
+   * @pre The Group must be closed
    */
-  Status set_config(Config config);
+  void set_config(Config config);
+
+  /**
+   * Set the config on the group
+   *
+   * @param config
+   *
+   * @note This is a potentially unsafe operation. Groups should be closed when
+   * setting a config. Until C.41 compliance, this is necessary for
+   * serialization.
+   */
+  inline void unsafe_set_config(Config config) {
+    config_.inherit(config);
+  }
 
   /**
    * Add a member to a group, this will be flushed to disk on close
@@ -240,18 +257,12 @@ class Group {
   /**
    * Remove a member from a group, this will be flushed to disk on close
    *
-   * @param uri of member to remove
+   * @param name Name of member to remove. If the member has no name,
+   * this parameter should be set to the URI of the member. In that case, only
+   * the unnamed member with the given URI will be removed.
    * @return Status
    */
-  Status mark_member_for_removal(const URI& uri);
-
-  /**
-   * Remove a member from a group, this will be flushed to disk on close
-   *
-   * @param uri of member to remove
-   * @return Status
-   */
-  Status mark_member_for_removal(const std::string& uri);
+  Status mark_member_for_removal(const std::string& name);
 
   /**
    * Get the vector of members to modify, used in serialization only
@@ -440,9 +451,8 @@ class Group {
 
   /**
    * Load group metadata, handles remote groups vs non-remote groups
-   * @return  Status
    */
-  Status load_metadata();
+  void load_metadata();
 
   /**
    * Generate new name in the form of timestmap_timestamp_uuid

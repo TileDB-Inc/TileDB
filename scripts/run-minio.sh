@@ -48,7 +48,7 @@ run_cask_minio() {
 run_docker_minio() {
   # note: minio data directories *must* follow parameter arguments
   docker run -v /tmp/minio-data:/tmp/minio-data \
-       -e MINIO_ACCESS_KEY=minio -e MINIO_SECRET_KEY=miniosecretkey \
+       -e MINIO_ROOT_USER=minio -e MINIO_ROOT_PASSWORD=miniosecretkey \
        -d -p 9999:9000 \
        minio/minio server -S /tmp/minio-data/test_certs \
          /tmp/minio-data || die "could not run docker minio"

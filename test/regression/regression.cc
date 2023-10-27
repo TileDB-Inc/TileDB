@@ -8,5 +8,5 @@ int main(const int argc, char** const argv) {
   if (rc != 0)
     return rc;
 
-  session.run();
+  return session.run();
 }

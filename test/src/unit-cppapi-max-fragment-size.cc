@@ -32,6 +32,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "tiledb/common/scoped_executor.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -80,6 +81,7 @@ struct CPPMaxFragmentSizeFx {
 
     // Set the maximum size for the fragments.
     query.ptr().get()->query_->set_fragment_size(fragment_size);
+    query.set_layout(TILEDB_GLOBAL_ORDER);
 
     // Perform writes of the requested sizes.
     for (auto num_vals : write_sizes) {
@@ -95,7 +97,6 @@ struct CPPMaxFragmentSizeFx {
       // Perform the write.
       query.set_data_buffer("d1", d1_buff);
       query.set_data_buffer("a1", a1_buff);
-      query.set_layout(TILEDB_GLOBAL_ORDER);
       REQUIRE(query.submit() == Query::Status::COMPLETE);
 
       start_val += num_vals;
@@ -157,6 +158,7 @@ struct CPPMaxFragmentSizeFx {
 
     // Set the maximum size for the fragments.
     query.ptr().get()->query_->set_fragment_size(fragment_size);
+    query.set_layout(TILEDB_GLOBAL_ORDER);
 
     // Perform writes of the requested sizes.
     for (auto num_vals : write_sizes) {
@@ -190,7 +192,6 @@ struct CPPMaxFragmentSizeFx {
       query.set_offsets_buffer("a2", a2_offsets);
       query.set_data_buffer("a2", a2_var);
       query.set_validity_buffer("a2", a2_val);
-      query.set_layout(TILEDB_GLOBAL_ORDER);
       REQUIRE(query.submit() == Query::Status::COMPLETE);
 
       start_val += num_vals;
@@ -416,4 +417,87 @@ TEST_CASE_METHOD(
 
   // Validate the fragment domains are now disjoint.
   validate_disjoint_domains();
+}
+
+// This test exists to show the lack of a bug in the GlobalOrderWriter when
+// using the maximum fragment size setting. Previously, we could get into a
+// situation when a write starts and the currently active fragment can't fit
+// any more tiles. Before the changes in this PR we ended up in a convoluted
+// code path that eventually leads us to writing the wrong last_tile_cell_num
+// value in the FragmentMetdata stored on disk. This issue is then not detected
+// until a read against the last tile of the fragment detects a mismatch in the
+// expected size when Tile::load_chunk_data is called.
+//
+// The underlying bug had two specific contributing factors. First, the use of
+// std::vector::operator[] is specified as undefined behavior for out-of-bounds
+// reads. In our case, we ended up calling dim_tiles[-1].cell_num() which
+// returned a non-obvious garbage value rather than segfaulting or some other
+// obviously wrong value.
+//
+// The second part of this bug is how we get there. The GlobalOrderWriter has a
+// mode for writing fragments up to a certain size. When we resumed a write
+// with a partially filled fragment on disk, we did not check whether the first
+// tile would fit in the existing fragment. This failure to check lead us to
+// attempt to write zero tiles to the existing fragment which is how the
+// bad call to dim_tiles[-1] happened. The fix for this part of the bug is
+// simply to call GlobalOrderWriter::start_new_fragment so the current fragment
+// is flushed and committed and the write can continue as normal.
+//
+// If you're looking at this thinking this should be in a regression test, you
+// would be correct. Except for the fact that the regression tests are only
+// linked against the shared library and not TIELDB_CORE_OBJECTS. The issue here
+// is that the `Query::set_fragment_size` is not wrapped by the C API so we
+// have to link against TILEDB_CORE_OBJECTS.
+TEST_CASE(
+    "Global Order Writer Resume Writes Bug is Fixed",
+    "[global-order-writer][bug][sc34072]") {
+  std::string array_name = "cpp_max_fragment_size_bug";
+  Context ctx;
+
+  auto cleanup = [&]() {
+    auto obj = Object::object(ctx, array_name);
+    if (obj.type() == Object::Type::Array) {
+      Object::remove(ctx, array_name);
+    }
+  };
+
+  // Remove any existing arrays.
+  cleanup();
+
+  // Remove the array at the end of this test.
+  ScopedExecutor deferred(cleanup);
+
+  // Create a sparse array (dense arrays are unaffected)
+  auto dim = Dimension::create<uint64_t>(ctx, "dim", {{0, UINT64_MAX - 1}});
+  Domain domain(ctx);
+  domain.add_dimension(dim);
+
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.set_domain(domain);
+  schema.set_capacity(1024 * 1024);
+
+  Array::create(array_name, schema);
+
+  std::vector<uint64_t> data(1024 * 1024);
+
+  Array array(ctx, array_name, TILEDB_WRITE);
+  Query query(ctx, array);
+
+  // Set our max fragment size to force fragment writes
+  query.ptr()->query_->set_fragment_size(1080000);
+
+  query.set_layout(TILEDB_GLOBAL_ORDER).set_data_buffer("dim", data);
+
+  std::iota(data.begin(), data.end(), 0);
+  REQUIRE(query.submit() == Query::Status::COMPLETE);
+
+  std::iota(data.begin(), data.end(), 1024 * 1024);
+  REQUIRE(query.submit() == Query::Status::COMPLETE);
+
+  // Consolidate without a max fragment size showing that we can read the
+  // entire array.
+  REQUIRE_NOTHROW(Array::consolidate(ctx, array_name));
+
+  array.close();
 }

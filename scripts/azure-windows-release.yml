@@ -8,6 +8,9 @@ steps:
   env: { sourceVersion: $(Build.SourceVersion) }
   displayName: Git Hash 7-digit
 
+- powershell: python ./scripts/ci/patch_vcpkg_triplets.py
+  displayName: Prevent vpckg from building debug variants
+
 - powershell: |
     mkdir $env:AGENT_BUILDDIRECTORY\build
     cd $env:AGENT_BUILDDIRECTORY\build
@@ -24,7 +27,7 @@ steps:
       $host.SetShouldExit(3)
     }
 
-    $bootstrapOptions = "-EnableVerbose -EnableStaticTileDB -EnableBuildDeps"
+    $bootstrapOptions = "-EnableVerbose -EnableStaticTileDB -DisableTests"
     if ($env:TILEDB_S3 -eq "ON") {
       $bootstrapOptions = "-EnableS3 " + $bootstrapOptions
     }
@@ -32,7 +35,7 @@ steps:
       $bootstrapOptions = "-EnableAzure " + $bootstrapOptions
     }
     if ($env:TILEDB_GCS -eq "ON") {
-      $bootstrapOptions = "-EnableGCS " + $bootstrapOptions
+      $bootstrapOptions = "-EnableGcs " + $bootstrapOptions
       #NOTE: GCS simulator not yet actually in place.
     }
     if ($env:TILEDB_SERIALIZATION -eq "ON") {
@@ -68,6 +71,9 @@ steps:
       $bootstrapOptions = $bootstrapOptions + " -DisableWerror"
     }
 
+    # Set install prefix for packaging purposes
+    $bootstrapOptions = "-Prefix $env:AGENT_BUILDDIRECTORY/s/dist " + $bootstrapOptions
+
     $bootstrapExpression = "& $env:BUILD_SOURCESDIRECTORY\bootstrap.ps1 " + $bootstrapOptions
     Write-Host "bootstrapExpression: $bootstrapExpression"
     Invoke-Expression $bootstrapExpression
@@ -93,20 +99,6 @@ steps:
   displayName: "Build"
   continueOnError: true
 
-- task: ArchiveFiles@2
-  inputs:
-    rootFolderOrFile: '$(Agent.BuildDirectory)\s\'
-    includeRootFolder: false
-    archiveType: 'zip' # Options: zip, 7z, tar, wim
-    archiveFile: $(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-build-dir.zip
-    replaceExistingArchive: true
-    verbose: true # Optional
-
-- task: PublishBuildArtifacts@1
-  inputs:
-    pathToPublish: '$(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-build-dir.zip'
-    artifactName: 'build-dirs'
-
 # Archive files
 # Compress files into .7z, .tar.gz, or .zip
 - task: ArchiveFiles@2
@@ -124,3 +116,20 @@ steps:
       pathToPublish: '$(Build.ArtifactStagingDirectory)\tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-$(Build.SourceBranchName)-$(commitHash).zip'
       artifactName: 'built-libs'
   condition: succeeded()
+
+- task: ArchiveFiles@2
+  inputs:
+    rootFolderOrFile: '$(Agent.BuildDirectory)\build\'
+    includeRootFolder: false
+    archiveType: 'zip' # Options: zip, 7z, tar, wim
+    archiveFile: $(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-build-dir.zip
+    replaceExistingArchive: true
+    verbose: true # Optional
+  continueOnError: true
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathToPublish: '$(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-build-dir.zip'
+    artifactName: 'build-dirs'
+  condition: succeeded()
+  continueOnError: true

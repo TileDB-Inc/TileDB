@@ -392,7 +392,7 @@ class Subarray {
    */
   template <typename T = uint64_t>
   Subarray& set_subarray(const std::initializer_list<T>& l) {
-    return set_subarray(std::vector<T>(l));
+    return set_subarray(std::data(l), l.size());
   }
 
   /**

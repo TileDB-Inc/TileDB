@@ -188,9 +188,8 @@ Status DoubleDelta::decompress(
       "Cannot decompress tile with DoubleDelta; Not supported datatype"));
 }
 
-uint64_t DoubleDelta::overhead(uint64_t nbytes) {
+uint64_t DoubleDelta::overhead(uint64_t) {
   // DoubleDelta has a fixed size overhead
-  (void)nbytes;
   return DoubleDelta::OVERHEAD;
 }
 

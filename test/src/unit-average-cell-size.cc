@@ -212,7 +212,7 @@ struct CPPAverageCellSizeFx {
                 ->open_without_fragments(
                     sm::EncryptionType::NO_ENCRYPTION, nullptr, 0)
                 .ok());
-    REQUIRE(array_for_reads->load_fragments(uris).ok());
+    array_for_reads->load_fragments(uris);
     auto avg_cell_sizes = array_for_reads->get_average_var_cell_sizes();
 
     CHECK(avg_cell_sizes["d2"] == d2_size);

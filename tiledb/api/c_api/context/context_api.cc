@@ -1,11 +1,11 @@
 /**
- * @file tiledb/api/c_api/error/context_api.cc
+ * @file tiledb/api/c_api/context/context_api.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -138,8 +138,8 @@ using tiledb::api::api_entry_with_context;
 /*
  * API Audit: No channel to return error message (failure code only)
  */
-capi_return_t tiledb_ctx_alloc(
-    tiledb_config_handle_t* config, tiledb_ctx_handle_t** ctx) noexcept {
+CAPI_INTERFACE(
+    ctx_alloc, tiledb_config_handle_t* config, tiledb_ctx_handle_t** ctx) {
   return tiledb::api::api_entry_plain<tiledb::api::tiledb_ctx_alloc>(
       config, ctx);
 }
@@ -173,40 +173,42 @@ capi_return_t tiledb_ctx_alloc_with_error(
 /*
  * API Audit: void return
  */
-void tiledb_ctx_free(tiledb_ctx_handle_t** ctx) noexcept {
+CAPI_INTERFACE_VOID(ctx_free, tiledb_ctx_handle_t** ctx) {
   return tiledb::api::api_entry_void<tiledb::api::tiledb_ctx_free>(ctx);
 }
 
-capi_return_t tiledb_ctx_get_stats(
-    tiledb_ctx_t* ctx, char** stats_json) noexcept {
+CAPI_INTERFACE(ctx_get_stats, tiledb_ctx_t* ctx, char** stats_json) {
   return api_entry_with_context<tiledb::api::tiledb_ctx_get_stats>(
       ctx, stats_json);
 }
 
-capi_return_t tiledb_ctx_get_config(
-    tiledb_ctx_t* ctx, tiledb_config_handle_t** config) noexcept {
+CAPI_INTERFACE(
+    ctx_get_config, tiledb_ctx_t* ctx, tiledb_config_handle_t** config) {
   return api_entry_with_context<tiledb::api::tiledb_ctx_get_config>(
       ctx, config);
 }
 
-capi_return_t tiledb_ctx_get_last_error(
-    tiledb_ctx_t* ctx, tiledb_error_handle_t** err) noexcept {
+CAPI_INTERFACE(
+    ctx_get_last_error, tiledb_ctx_t* ctx, tiledb_error_handle_t** err) {
   return api_entry_with_context<tiledb::api::tiledb_ctx_get_last_error>(
       ctx, err);
 }
 
-capi_return_t tiledb_ctx_is_supported_fs(
-    tiledb_ctx_t* ctx, tiledb_filesystem_t fs, int32_t* is_supported) noexcept {
+CAPI_INTERFACE(
+    ctx_is_supported_fs,
+    tiledb_ctx_t* ctx,
+    tiledb_filesystem_t fs,
+    int32_t* is_supported) {
   return api_entry_with_context<tiledb::api::tiledb_ctx_is_supported_fs>(
       ctx, fs, is_supported);
 }
 
-capi_return_t tiledb_ctx_cancel_tasks(tiledb_ctx_t* ctx) noexcept {
+CAPI_INTERFACE(ctx_cancel_tasks, tiledb_ctx_t* ctx) {
   return api_entry_with_context<tiledb::api::tiledb_ctx_cancel_tasks>(ctx);
 }
 
-capi_return_t tiledb_ctx_set_tag(
-    tiledb_ctx_t* ctx, const char* key, const char* value) noexcept {
+CAPI_INTERFACE(
+    ctx_set_tag, tiledb_ctx_t* ctx, const char* key, const char* value) {
   return api_entry_with_context<tiledb::api::tiledb_ctx_set_tag>(
       ctx, key, value);
 }

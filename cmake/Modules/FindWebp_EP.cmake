@@ -30,11 +30,16 @@ include(TileDBCommon)
 if (TILEDB_VCPKG)
   find_package(Threads REQUIRED)
   find_package(WebP REQUIRED)
+  install_target_libs(WebP::webp)
+  install_target_libs(WebP::webpdecoder)
+  install_target_libs(WebP::webpdemux)
+  install_target_libs(WebP::libwebpmux)
+  install_target_libs(WebP::sharpyuv)
   return()
 endif()
 
 if(TILEDB_WEBP_EP_BUILT)
-  find_package(WebP REQUIRED PATHS ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_DEPS_NO_DEFAULT_PATH})
+  find_package(WebP REQUIRED PATHS ${TILEDB_EP_INSTALL_PREFIX} NO_DEFAULT_PATH)
 endif()
 
 # if not yet built add it as an external project
@@ -46,15 +51,12 @@ if(NOT TILEDB_WEBP_EP_BUILT)
     ExternalProject_Add(ep_webp
       PREFIX "externals"
       GIT_REPOSITORY "https://chromium.googlesource.com/webm/libwebp"
-      #GIT_TAG "release-1.?.?" # after 'static' addition in some release
-      # from branch 'main' history as the 'static' support added apr 12 2022
-      # at implementation time is not yet in release branch/tag.
-      GIT_TAG "a19a25bb03757d5bb14f8d9755ab39f06d0ae5ef"
+      GIT_TAG "v1.3.2"
       GIT_SUBMODULES_RECURSE TRUE
       UPDATE_COMMAND ""
       CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
-        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_BUILD_TYPE=$<CONFIG>
         "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
         -DWEBP_LINK_STATIC=ON
         -DWEBP_BUILD_ANIM_UTILS=OFF
@@ -66,6 +68,9 @@ if(NOT TILEDB_WEBP_EP_BUILT)
         -DWEBP_BUILD_WEBPINFO=OFF
         -DWEBP_BUILD_WEBPMUX=OFF
         -DWEBP_BUILD_EXTRAS=OFF
+        -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
+        -DCMAKE_OSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}
+        -DCMAKE_OSX_SYSROOT=${CMAKE_OSX_SYSROOT}
       LOG_DOWNLOAD TRUE
       LOG_CONFIGURE TRUE
       LOG_BUILD TRUE
@@ -90,5 +95,6 @@ if (TILEDB_WEBP_EP_BUILT)
   install_target_libs(WebP::webp)
   install_target_libs(WebP::webpdecoder)
   install_target_libs(WebP::webpdemux)
-  install_target_libs(WebP::webpmux)
+  install_target_libs(WebP::libwebpmux)
+  install_target_libs(WebP::sharpyuv)
 endif()
