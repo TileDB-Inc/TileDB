@@ -303,12 +303,14 @@ class ChangeThreadUILanguage {
 };
 
 TEST_CASE("Test UTF-8 error messages", "[windows][utf8-msgs]") {
+  // Change the thread UI language to Greek, to test thaat an error message with
+  // Unicode characters is received correctly.
   ChangeThreadUILanguage change_langid(
       MAKELANGID(LANG_GREEK, SUBLANG_GREEK_GREECE));
 
   Win win;
   REQUIRE(win.init(Config()).ok());
-  // NUL is a special file on Windows; deleting it is not allowed.
+  // NUL is a special file on Windows; deleting it should always fail.
   Status st = win.remove_file("NUL");
   REQUIRE(!st.ok());
   auto message = st.message();

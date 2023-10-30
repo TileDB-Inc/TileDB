@@ -71,9 +71,16 @@ std::string get_last_error_msg_desc(decltype(GetLastError()) gle) {
   // FormatMessageW allocates a buffer that must be freed with LocalFree.
   if (FormatMessageW(
           FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
-              FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_ARGUMENT_ARRAY,
+              FORMAT_MESSAGE_IGNORE_INSERTS,
           NULL,
           gle,
+          // By passing zero as the language ID, Windows will try the following
+          // languages in order:
+          // * Language neutral
+          // * Thread LANGID, based on the thread's locale value
+          // * User default LANGID, based on the user's default locale value
+          // * System default LANGID, based on the system default locale value
+          // * US English
           0,
           (LPWSTR)&lpMsgBuf,
           0,
