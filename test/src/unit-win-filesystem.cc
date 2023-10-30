@@ -302,7 +302,7 @@ class ChangeThreadUILanguage {
   LANGID old_langid_;
 };
 
-TEST_CASE("Test UTF-8 error messages", "[windows][utf8-msgs]") {
+TEST_CASE("Test UTF-8 error messages", "[.nightly-only][windows][utf8-msgs]") {
   // Change the thread UI language to Greek, to test thaat an error message with
   // Unicode characters is received correctly.
   ChangeThreadUILanguage change_langid(
