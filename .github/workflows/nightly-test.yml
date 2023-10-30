@@ -40,12 +40,6 @@ jobs:
       - name: Checkout TileDB `dev`
         uses: actions/checkout@v3
 
-        # Needed for testing UTF-8 error messages (search for [windows][utf8-msgs])
-      - name: Install Windows Greek language pack
-        shell: powershell
-        if: runner.os == 'Windows'
-        run: Install-Language el-GR
-
       - name: Configure TileDB CMake (not-Windows)
         if: ${{ ! contains(matrix.os, 'windows') }}
         env:
