@@ -304,7 +304,7 @@ class ChangeThreadUILanguage {
 
 // This test requires the Greek language pack to be installed.
 TEST_CASE("Test UTF-8 error messages", "[.hide][windows][utf8-msgs]") {
-  // Change the thread UI language to Greek, to test thaat an error message with
+  // Change the thread UI language to Greek, to test that an error message with
   // Unicode characters is received correctly.
   ChangeThreadUILanguage change_langid(
       MAKELANGID(LANG_GREEK, SUBLANG_GREEK_GREECE));
