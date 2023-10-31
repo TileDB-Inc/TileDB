@@ -36,6 +36,7 @@
 #include <test/support/tdb_catch.h>
 #include <atomic>
 #include <cstdio>
+#include <future>
 #include <iostream>
 #include <vector>
 
@@ -654,4 +655,13 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
         unbaked_potato_status.to_string());
     REQUIRE(result == 207);
   }
+}
+
+TEST_CASE("ThreadPool: Deferred futures", "[threadpool][deferred]") {
+  ThreadPool tp{1};
+
+  SECTION("Returning Status") {
+    auto future{
+        std::async(std::launch::deferred, []() { return Status::Ok(); })};
+    CHECK(tp.wait(future).ok());
 }

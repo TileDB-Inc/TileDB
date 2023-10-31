@@ -170,8 +170,8 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
       statuses[task_id] = Status_ThreadPoolError("Invalid task future");
       LOG_STATUS_NO_RETURN_VALUE(statuses[task_id]);
     } else if (
-        task.wait_for(std::chrono::milliseconds(0)) ==
-        std::future_status::ready) {
+        task.wait_for(std::chrono::milliseconds(0)) !=
+        std::future_status::timeout) {
       // Task is completed, get result, handling possible exceptions
 
       Status st = [&task] {
@@ -220,8 +220,8 @@ Status ThreadPool::wait(Task& task) {
     if (!task.valid()) {
       return Status_ThreadPoolError("Invalid task future");
     } else if (
-        task.wait_for(std::chrono::milliseconds(0)) ==
-        std::future_status::ready) {
+        task.wait_for(std::chrono::milliseconds(0)) !=
+        std::future_status::timeout) {
       // Task is completed, get result, handling possible exceptions
 
       Status st = [&task] {
