@@ -110,12 +110,7 @@ int32_t tiledb_filestore_schema_create(
     }
   }
 
-  *array_schema = new (std::nothrow) tiledb_array_schema_t;
-  if (*array_schema == nullptr) {
-    throw api::CAPIStatusException(
-        "Failed to create TileDB Array Schema object; Memory allocation error");
-  }
-
+  *array_schema = new tiledb_array_schema_t;
   try {
     // Share ownership of the internal ArraySchema ptr
     // All other calls for adding domains, attributes, etc
@@ -144,7 +139,7 @@ int32_t tiledb_filestore_schema_create(
         tiledb::sm::ByteVecValue(std::move(tile_extent_vec)));
 
     auto domain = make_shared<tiledb::sm::Domain>(HERE());
-    throw_if_not_ok(domain.get()->add_dimension(dim));
+    throw_if_not_ok(domain->add_dimension(dim));
 
     auto attr = make_shared<tiledb::sm::Attribute>(
         HERE(),
@@ -158,7 +153,7 @@ int32_t tiledb_filestore_schema_create(
           tiledb::sm::Compressor::ZSTD,
           tiledb::sm::ZStd::default_level(),
           tiledb::sm::Datatype::ANY));
-      attr.get()->set_filter_pipeline(filter);
+      attr->set_filter_pipeline(filter);
     }
 
     throw_if_not_ok(schema->set_domain(domain));
@@ -478,7 +473,6 @@ int32_t tiledb_filestore_uri_export(
     end_range = std::min(file_size - 1, end_range + buffer_size);
   } while (start_range <= end_range);
 
-  throw_if_not_ok(vfs.sync(tiledb::sm::URI(file_uri)));
   throw_if_not_ok(vfs.close_file(tiledb::sm::URI(file_uri)));
 
   throw_if_not_ok(array->close());
