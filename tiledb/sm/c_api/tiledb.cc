@@ -3595,7 +3595,7 @@ int32_t tiledb_deserialize_array_schema(
   } catch (...) {
     delete *array_schema;
     *array_schema = nullptr;
-    return TILEDB_ERR;
+    throw;
   }
 
   return TILEDB_OK;
