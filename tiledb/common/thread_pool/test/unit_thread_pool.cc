@@ -95,26 +95,21 @@ size_t random_ms(size_t max = 3) {
   return distribution(generator);
 }
 
-template <class R>
-bool wait_one(ThreadPool& pool, std::future<R>& task) {
-  REQUIRE_NOTHROW(pool.wait(task));
+bool wait_one(ThreadPool& pool, std::future<void>& task) {
+  pool.wait(task);
   return true;
 }
 
-template <>
-bool wait_one<Status>(ThreadPool& pool, std::future<Status>& task) {
+bool wait_one(ThreadPool& pool, std::future<Status>& task) {
   return pool.wait(task).ok();
 }
 
-template <class R>
-bool wait_all(ThreadPool& pool, std::vector<std::future<R>>& tasks) {
-  REQUIRE_NOTHROW(pool.wait_all(tasks));
+bool wait_all(ThreadPool& pool, std::vector<std::future<void>>& tasks) {
+  pool.wait_all(tasks);
   return true;
 }
 
-template <>
-bool wait_all<Status>(
-    ThreadPool& pool, std::vector<std::future<Status>>& task) {
+bool wait_all(ThreadPool& pool, std::vector<std::future<Status>>& task) {
   return pool.wait_all(task).ok();
 }
 
@@ -184,7 +179,9 @@ TEST_CASE("ThreadPool: Test empty", "[threadpool][empty]") {
 }
 
 TEMPLATE_LIST_TEST_CASE(
-    "ThreadPool: Test single thread", "[threadpool][single-thread]", VoidTaskTypes) {
+    "ThreadPool: Test single thread",
+    "[threadpool][single-thread]",
+    VoidTaskTypes) {
   bool use_wait = GENERATE(true, false);
   std::atomic<int> result = 0;  // needs to be atomic b/c scavenging thread can
                                 // run in addition to thread pool
@@ -208,7 +205,9 @@ TEMPLATE_LIST_TEST_CASE(
 }
 
 TEMPLATE_LIST_TEST_CASE(
-    "ThreadPool: Test multiple threads", "[threadpool][multi-thread]", VoidTaskTypes) {
+    "ThreadPool: Test multiple threads",
+    "[threadpool][multi-thread]",
+    VoidTaskTypes) {
   bool use_wait = GENERATE(true, false);
   std::atomic<int> result(0);
   std::vector<std::future<TestType>> results;
@@ -450,7 +449,9 @@ TEMPLATE_LIST_TEST_CASE(
 }
 
 TEMPLATE_LIST_TEST_CASE(
-    "ThreadPool: Test recursion, two pools", "[threadpool]", VoidTaskTypes) {
+    "ThreadPool: Test recursion, two pools",
+    "[threadpool][recursion][two-pools]",
+    VoidTaskTypes) {
   bool use_wait = GENERATE(true, false);
   size_t num_threads = 0;
 
