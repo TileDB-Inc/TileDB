@@ -179,7 +179,8 @@ capi_return_t tiledb_enumeration_dump(
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_void;
 
-capi_return_t tiledb_enumeration_alloc(
+CAPI_INTERFACE(
+    enumeration_alloc,
     tiledb_ctx_t* ctx,
     const char* name,
     tiledb_datatype_t type,
@@ -189,7 +190,7 @@ capi_return_t tiledb_enumeration_alloc(
     uint64_t data_size,
     const void* offsets,
     uint64_t offsets_size,
-    tiledb_enumeration_t** enumeration) noexcept {
+    tiledb_enumeration_t** enumeration) {
   return api_entry_context<tiledb::api::tiledb_enumeration_alloc>(
       ctx,
       name,
@@ -203,14 +204,15 @@ capi_return_t tiledb_enumeration_alloc(
       enumeration);
 }
 
-capi_return_t tiledb_enumeration_extend(
+CAPI_INTERFACE(
+    enumeration_extend,
     tiledb_ctx_t* ctx,
     tiledb_enumeration_t* old_enumeration,
     const void* data,
     uint64_t data_size,
     const void* offsets,
     uint64_t offsets_size,
-    tiledb_enumeration_t** new_enumeration) noexcept {
+    tiledb_enumeration_t** new_enumeration) {
   return api_entry_context<tiledb::api::tiledb_enumeration_extend>(
       ctx,
       old_enumeration,
@@ -221,62 +223,71 @@ capi_return_t tiledb_enumeration_extend(
       new_enumeration);
 }
 
-void tiledb_enumeration_free(tiledb_enumeration_t** enumeration) noexcept {
+CAPI_INTERFACE_VOID(enumeration_free, tiledb_enumeration_t** enumeration) {
   return api_entry_void<tiledb::api::tiledb_enumeration_free>(enumeration);
 }
 
-capi_return_t tiledb_enumeration_get_name(
+CAPI_INTERFACE(
+    enumeration_get_name,
     tiledb_ctx_t* ctx,
     tiledb_enumeration_t* enumeration,
-    tiledb_string_t** name) noexcept {
+    tiledb_string_t** name) {
   return api_entry_context<tiledb::api::tiledb_enumeration_get_name>(
       ctx, enumeration, name);
 }
 
-capi_return_t tiledb_enumeration_get_type(
+CAPI_INTERFACE(
+    enumeration_get_type,
     tiledb_ctx_t* ctx,
     tiledb_enumeration_t* enumeration,
-    tiledb_datatype_t* type) noexcept {
+    tiledb_datatype_t* type) {
   return api_entry_context<tiledb::api::tiledb_enumeration_get_type>(
       ctx, enumeration, type);
 }
 
-capi_return_t tiledb_enumeration_get_cell_val_num(
+CAPI_INTERFACE(
+    enumeration_get_cell_val_num,
     tiledb_ctx_t* ctx,
     tiledb_enumeration_t* enumeration,
-    uint32_t* cell_val_num) noexcept {
+    uint32_t* cell_val_num) {
   return api_entry_context<tiledb::api::tiledb_enumeration_get_cell_val_num>(
       ctx, enumeration, cell_val_num);
 }
 
-capi_return_t tiledb_enumeration_get_ordered(
+CAPI_INTERFACE(
+    enumeration_get_ordered,
     tiledb_ctx_t* ctx,
     tiledb_enumeration_t* enumeration,
-    int* ordered) noexcept {
+    int* ordered) {
   return api_entry_context<tiledb::api::tiledb_enumeration_get_ordered>(
       ctx, enumeration, ordered);
 }
 
-capi_return_t tiledb_enumeration_get_data(
+CAPI_INTERFACE(
+    enumeration_get_data,
     tiledb_ctx_t* ctx,
     tiledb_enumeration_t* enumeration,
     const void** data,
-    uint64_t* data_size) noexcept {
+    uint64_t* data_size) {
   return api_entry_context<tiledb::api::tiledb_enumeration_get_data>(
       ctx, enumeration, data, data_size);
 }
 
-capi_return_t tiledb_enumeration_get_offsets(
+CAPI_INTERFACE(
+    enumeration_get_offsets,
     tiledb_ctx_t* ctx,
     tiledb_enumeration_t* enumeration,
     const void** offsets,
-    uint64_t* offsets_size) noexcept {
+    uint64_t* offsets_size) {
   return api_entry_context<tiledb::api::tiledb_enumeration_get_offsets>(
       ctx, enumeration, offsets, offsets_size);
 }
 
-capi_return_t tiledb_enumeration_dump(
-    tiledb_ctx_t* ctx, tiledb_enumeration_t* enumeration, FILE* out) noexcept {
+CAPI_INTERFACE(
+    enumeration_dump,
+    tiledb_ctx_t* ctx,
+    tiledb_enumeration_t* enumeration,
+    FILE* out) {
   return api_entry_context<tiledb::api::tiledb_enumeration_dump>(
       ctx, enumeration, out);
 }
