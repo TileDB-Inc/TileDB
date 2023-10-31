@@ -62,7 +62,7 @@
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/type/range/range.h"
 
-namespace tiledb::common::detail {
+namespace tiledb::api {
 
 // Forward declarations
 uint64_t compute_tile_extent_based_on_file_size(uint64_t file_size);
@@ -809,69 +809,78 @@ uint64_t get_buffer_size_from_config(
   return buffer_size;
 }
 
-}  // namespace tiledb::common::detail
+}  // namespace tiledb::api
 
 using tiledb::api::api_entry_plain;
 template <auto f>
 constexpr auto api_entry = tiledb::api::api_entry_with_context<f>;
 
-int32_t tiledb_filestore_schema_create(
+CAPI_INTERFACE(
+    filestore_schema_create,
     tiledb_ctx_t* ctx,
     const char* uri,
-    tiledb_array_schema_t** array_schema) noexcept {
-  return api_entry<detail::tiledb_filestore_schema_create>(
+    tiledb_array_schema_t** array_schema) {
+  return api_entry<tiledb::api::tiledb_filestore_schema_create>(
       ctx, uri, array_schema);
 }
 
-int32_t tiledb_filestore_uri_import(
+CAPI_INTERFACE(
+    filestore_uri_import,
     tiledb_ctx_t* ctx,
     const char* filestore_array_uri,
     const char* file_uri,
-    tiledb_mime_type_t mime_type) noexcept {
-  return api_entry<detail::tiledb_filestore_uri_import>(
+    tiledb_mime_type_t mime_type) {
+  return api_entry<tiledb::api::tiledb_filestore_uri_import>(
       ctx, filestore_array_uri, file_uri, mime_type);
 }
 
-int32_t tiledb_filestore_uri_export(
+CAPI_INTERFACE(
+    filestore_uri_export,
     tiledb_ctx_t* ctx,
     const char* file_uri,
-    const char* filestore_array_uri) noexcept {
-  return api_entry<detail::tiledb_filestore_uri_export>(
+    const char* filestore_array_uri) {
+  return api_entry<tiledb::api::tiledb_filestore_uri_export>(
       ctx, file_uri, filestore_array_uri);
 }
 
-int32_t tiledb_filestore_buffer_import(
+CAPI_INTERFACE(
+    filestore_buffer_import,
     tiledb_ctx_t* ctx,
     const char* filestore_array_uri,
     void* buf,
     size_t size,
-    tiledb_mime_type_t mime_type) noexcept {
-  return api_entry<detail::tiledb_filestore_buffer_import>(
+    tiledb_mime_type_t mime_type) {
+  return api_entry<tiledb::api::tiledb_filestore_buffer_import>(
       ctx, filestore_array_uri, buf, size, mime_type);
 }
 
-int32_t tiledb_filestore_buffer_export(
+CAPI_INTERFACE(
+    filestore_buffer_export,
     tiledb_ctx_t* ctx,
     const char* filestore_array_uri,
     size_t offset,
     void* buf,
-    size_t size) noexcept {
-  return api_entry<detail::tiledb_filestore_buffer_export>(
+    size_t size) {
+  return api_entry<tiledb::api::tiledb_filestore_buffer_export>(
       ctx, filestore_array_uri, offset, buf, size);
 }
 
-int32_t tiledb_filestore_size(
-    tiledb_ctx_t* ctx, const char* filestore_array_uri, size_t* size) noexcept {
-  return api_entry<detail::tiledb_filestore_size>(
+CAPI_INTERFACE(
+    filestore_size,
+    tiledb_ctx_t* ctx,
+    const char* filestore_array_uri,
+    size_t* size) {
+  return api_entry<tiledb::api::tiledb_filestore_size>(
       ctx, filestore_array_uri, size);
 }
 
-int32_t tiledb_mime_type_to_str(
-    tiledb_mime_type_t mime_type, const char** str) noexcept {
-  return api_entry_plain<detail::tiledb_mime_type_to_str>(mime_type, str);
+CAPI_INTERFACE(
+    mime_type_to_str, tiledb_mime_type_t mime_type, const char** str) {
+  return api_entry_plain<tiledb::api::tiledb_mime_type_to_str>(mime_type, str);
 }
 
-int32_t tiledb_mime_type_from_str(
-    const char* str, tiledb_mime_type_t* mime_type) noexcept {
-  return api_entry_plain<detail::tiledb_mime_type_from_str>(str, mime_type);
+CAPI_INTERFACE(
+    mime_type_from_str, const char* str, tiledb_mime_type_t* mime_type) {
+  return api_entry_plain<tiledb::api::tiledb_mime_type_from_str>(
+      str, mime_type);
 }
