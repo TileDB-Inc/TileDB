@@ -1776,7 +1776,7 @@ TEST_CASE_METHOD(
   REQUIRE(
       tiledb_group_create(ctx_, group_deserialized_uri.c_str()) == TILEDB_OK);
 
-  tiledb_group_t* group;
+  tiledb_group_t* group = nullptr;
   REQUIRE(tiledb_group_alloc(ctx_, group_uri.c_str(), &group) == TILEDB_OK);
   REQUIRE(tiledb_group_open(ctx_, group, TILEDB_WRITE) == TILEDB_OK);
 
@@ -1792,7 +1792,7 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_group_alloc(ctx_, group_uri.c_str(), &group) == TILEDB_OK);
   REQUIRE(tiledb_group_open(ctx_, group, TILEDB_READ) == TILEDB_OK);
 
-  tiledb_group_t* group_deserialized;
+  tiledb_group_t* group_deserialized = nullptr;
   REQUIRE(
       tiledb_group_alloc(
           ctx_, group_deserialized_uri.c_str(), &group_deserialized) ==
