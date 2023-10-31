@@ -287,6 +287,8 @@ add_executable(
 
 add_dependencies(tiledb_unit tiledb_test_support_lib)
 
+target_compile_options(tiledb_unit PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+
 # We want tests to continue as normal even as the API is changing,
 # so don't warn for deprecations, since they'll be escalated to errors.
 if (NOT MSVC)
