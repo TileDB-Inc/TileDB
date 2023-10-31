@@ -103,8 +103,14 @@ Status GCS::init(const Config& config, ThreadPool* const thread_pool) {
   RETURN_NOT_OK(config.get<uint64_t>(
       "vfs.gcs.request_timeout_ms", &request_timeout_ms_, &found));
   assert(found);
+  uint64_t max_direct_upload_size;
+  RETURN_NOT_OK(config.get<uint64_t>(
+      "vfs.gcs.max_direct_upload_size", &max_direct_upload_size, &found));
+  assert(found);
 
-  write_cache_max_size_ = max_parallel_ops_ * multi_part_part_size_;
+  write_cache_max_size_ = use_multi_part_upload_ ?
+                              max_parallel_ops_ * multi_part_part_size_ :
+                              max_direct_upload_size;
 
   state_ = State::INITIALIZED;
   return Status::Ok();
@@ -692,8 +698,9 @@ Status GCS::write(
   if (!use_multi_part_upload_) {
     if (nbytes_filled != length) {
       std::stringstream errmsg;
-      errmsg << "Direct write failed! " << nbytes_filled
-             << " bytes written to buffer, " << length << " bytes requested.";
+      errmsg << "Cannot write more than " << write_cache_max_size_
+             << " bytes without multi-part uploads. This limit can be "
+                "configured with the 'vfs.gcs.max_direct_upload_size' option.";
       return LOG_STATUS(Status_GCSError(errmsg.str()));
     } else {
       return Status::Ok();
