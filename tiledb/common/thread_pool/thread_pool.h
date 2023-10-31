@@ -186,8 +186,12 @@ class ThreadPool {
   /* ********************************* */
 
  private:
-  /** Tries to run a queued task. Returns whether such task was found. */
-  bool pump();
+  /** Tries to run a queued task. Returns whether such task was found.
+   *
+   * @param worker Whether the caller is a worker thread. In that case, the
+   * method will block until a task is available or the thread pool is shutdown.
+   */
+  bool pump(bool worker);
 
   /** The worker thread routine */
   void worker();

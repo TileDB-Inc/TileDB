@@ -99,8 +99,8 @@ ThreadPool::ThreadPool(size_t n)
   }
 }
 
-bool ThreadPool::pump() {
-  auto val = task_queue_.pop();
+bool ThreadPool::pump(bool worker) {
+  auto val = worker ? task_queue_.pop() : task_queue_.try_pop();
   if (val) {
     try {
       (*val)();
@@ -118,7 +118,7 @@ bool ThreadPool::pump() {
 }
 
 void ThreadPool::worker() {
-  while (pump()) {
+  while (pump(true)) {
   }
 }
 
@@ -200,7 +200,7 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
 
       // In the meantime, try to do something useful to make progress (and avoid
       // deadlock)
-      if (!pump()) {
+      if (!pump(false)) {
         // If nothing useful to do, yield so we don't burn cycles
         // going through the task list over and over (thereby slowing down other
         // threads).
@@ -260,7 +260,7 @@ void ThreadPool::wait_all(std::vector<std::future<void>>& tasks) {
 
       // In the meantime, try to do something useful to make progress (and
       // avoid deadlock)
-      if (!pump()) {
+      if (!pump(false)) {
         // If nothing useful to do, yield so we don't burn cycles
         // going through the task list over and over (thereby slowing down
         // other threads).
@@ -311,7 +311,7 @@ Status ThreadPool::wait(Task& task) {
     } else {
       // In the meantime, try to do something useful to make progress (and avoid
       // deadlock)
-      if (pump()) {
+      if (pump(false)) {
         std::this_thread::yield();
       }
     }
@@ -326,7 +326,7 @@ void ThreadPool::wait(std::future<void>& task) {
          std::future_status::timeout) {
     // Until the task completes, try to do something useful to make progress
     // (and avoid deadlock)
-    if (!pump()) {
+    if (!pump(false)) {
       std::this_thread::yield();
     }
   }
