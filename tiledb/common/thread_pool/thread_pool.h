@@ -46,44 +46,6 @@
 
 namespace tiledb::common {
 
-namespace threadpool_impl {
-/**
- * Evaluates std::future<T> values and accumulates their result into a vector.
- */
-template <class T>
-struct ResultAccumulator {
-  using collection_type = std::vector<T>;
-  ResultAccumulator(size_t capacity)
-      : results_(capacity) {
-  }
-  void add(size_t index, std::future<T>& task) {
-    results_[index] = task.get();
-  }
-  collection_type results() {
-    return results_;
-  }
-
- private:
-  collection_type results_;
-};
-
-/**
- * Specialization of ResultAccumulator for void, which does not accumulate
- * anything.
- */
-template <>
-struct ResultAccumulator<void> {
-  using collection_type = void;
-  ResultAccumulator(size_t) {
-  }
-  void add(size_t, std::future<void>& task) {
-    task.get();
-  }
-  collection_type results() {
-  }
-};
-}  // namespace threadpool_impl
-
 class ThreadPool {
  public:
   using Task = std::future<Status>;
@@ -160,10 +122,7 @@ class ThreadPool {
   }
 
   /**
-   * Wait on all the given tasks to complete, returning a vector of their
-   * results.  Exceptions caught while waiting are aggregated and rethrown as a
-   * StatusException. Results are saved at the same index in the return vector
-   * as the corresponding task in the input vector.
+   * Wait on all the given void-returning futures to complete.
    *
    * This function is safe to call recursively and may execute pending tasks
    * with the calling thread while waiting.
@@ -171,73 +130,7 @@ class ThreadPool {
    * @param tasks Task list to wait on
    * @return Vector of each task's result or void if the tasks return void.
    */
-  template <class R>
-  typename threadpool_impl::ResultAccumulator<R>::collection_type wait_all(
-      std::vector<std::future<R>>& tasks) {
-    threadpool_impl::ResultAccumulator<R> results(tasks.size());
-    std::stringstream exceptions;
-
-    auto log_exception = [&exceptions](const char* message) {
-      // If this is the first exception, add an intro message.
-      if (exceptions.tellp() <= 0) {
-        exceptions << "One or more errors occurred";
-      }
-      exceptions << "\n * " << message;
-    };
-
-    std::queue<size_t> pending_tasks;
-
-    // Create queue of ids of all the pending tasks for processing
-    for (size_t i = 0; i < tasks.size(); ++i) {
-      pending_tasks.push(i);
-    }
-
-    // Process tasks in the pending queue
-    while (!pending_tasks.empty()) {
-      auto task_id = pending_tasks.front();
-      pending_tasks.pop();
-      auto& task = tasks[task_id];
-
-      if (!task.valid()) {
-        log_exception("Invalid task future");
-      } else if (
-          task.wait_for(std::chrono::milliseconds(0)) !=
-          std::future_status::timeout) {
-        // Task is completed, get result, handling possible exceptions
-        try {
-          results.add(task_id, task);
-        } catch (const std::exception& e) {
-          log_exception(e.what());
-        } catch (const std::string& msg) {
-          log_exception(msg.c_str());
-        } catch (...) {
-          log_exception("Unknown exception");
-        }
-      } else {
-        // If the task is not completed, try again later
-        pending_tasks.push(task_id);
-
-        // In the meantime, try to do something useful to make progress (and
-        // avoid deadlock)
-        if (!pump()) {
-          // If nothing useful to do, yield so we don't burn cycles
-          // going through the task list over and over (thereby slowing down
-          // other threads).
-          std::this_thread::yield();
-
-          // (An alternative would be to wait some amount of time)
-          // task.wait_for(std::chrono::milliseconds(10));
-        }
-      }
-    }
-
-    // If exceptions is not empty, at least one of the tasks has failed. We
-    // throw an exception containing all exception messages.
-    if (exceptions.tellp() > 0) {
-      throw StatusException(Status_ThreadPoolError(exceptions.str()));
-    }
-    return results.results();
-  }
+  void wait_all(std::vector<std::future<void>>& tasks);
 
   /**
    * Wait on all the given tasks to complete. This function is safe to call
@@ -266,29 +159,16 @@ class ThreadPool {
   std::vector<Status> wait_all_status(std::vector<Task>& tasks);
 
   /**
-   * Wait on a single task to complete. This function is safe to call
-   * recursively and may execute pending tasks on the calling thread while
-   * waiting. This method will throw the future's exception if it fails.
+   * Wait on a single void-returning task to complete.
+   *
+   * This function is safe to call recursively and may execute pending tasks on
+   * the calling thread while waiting. This method will throw the future's
+   * exception if it fails.
    *
    * @param task Task to wait on.
    * @return The task's result.
    */
-  template <class R>
-  R wait(std::future<R>& task) {
-    if (!task.valid()) {
-      throw std::runtime_error("Invalid task future");
-    }
-    while (task.wait_for(std::chrono::milliseconds(0)) ==
-           std::future_status::timeout) {
-      // Until the task completes, try to do something useful to make progress
-      // (and avoid deadlock)
-      if (!pump()) {
-        std::this_thread::yield();
-      }
-    }
-    // Task is completed, get result, throwing possible exceptions
-    return task.get();
-  }
+  void wait(std::future<void>& task);
 
   /**
    * Wait on a single task returning Status to complete. This function is safe
