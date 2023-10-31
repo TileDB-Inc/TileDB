@@ -819,7 +819,7 @@ Status group_create_serialize(const Group*, SerializationType, Buffer*) {
       "Cannot serialize; serialization not enabled."));
 }
 
-Status group_metadata_serialize(Group*, SerializationType, Buffer*, bool load) {
+Status group_metadata_serialize(Group*, SerializationType, Buffer*, bool) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
