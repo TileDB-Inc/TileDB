@@ -200,17 +200,29 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const std::unordered_set<std::string>& condition_names);
 
   /**
-   * Compute the result tiles to process on an iteration to respect the memory
-   * budget.
+   * Compute the result space tiles to process on an iteration to respect the
+   * memory budget.
    */
   template <class DimType>
-  tuple<uint64_t, std::vector<ResultTile*>> compute_result_tiles(
+  uint64_t compute_space_tiles_end(
       const std::vector<std::string>& names,
       const std::unordered_set<std::string>& condition_names,
       Subarray& subarray,
       uint64_t t_start,
       std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
+      const DynamicArray<Subarray>& tile_subarrays,
       ThreadPool::Task& compute_task);
+
+  /** Compute the result tiles to load for a name. */
+  template <class DimType>
+  std::vector<ResultTile*> result_tiles_to_load(
+      const optional<std::string> name,
+      const std::unordered_set<std::string>& condition_names,
+      const Subarray& subarray,
+      const uint64_t t_start,
+      const uint64_t t_end,
+      std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
+      const DynamicArray<Subarray>& tile_subarrays) const;
 
   /** Apply the query condition. */
   template <class DimType, class OffType>
@@ -221,7 +233,6 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const uint64_t t_end,
       const std::unordered_set<std::string>& condition_names,
       const std::vector<DimType>& tile_extents,
-      std::vector<ResultTile*>& result_tiles,
       DynamicArray<Subarray>& tile_subarrays,
       std::vector<uint64_t>& tile_offsets,
       const std::vector<RangeInfo<DimType>>& range_info,
@@ -267,6 +278,19 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       ResultTile::TileTuple* tile_tuple,
       optional<void*> bitmap_data);
 
+  /** Returns wether the field is for aggregation only or not. */
+  bool aggregate_only(const std::string& name) const {
+    if (condition_.has_value() && condition_->field_names().count(name) != 0) {
+      return false;
+    }
+
+    if (buffers_.count(name) != 0) {
+      return false;
+    }
+
+    return true;
+  }
+
   /**
    * Returns wether or not we can aggregate the tile with only the fragment
    * metadata.
@@ -280,7 +304,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   inline bool can_aggregate_tile_with_frag_md(
       const std::string& name,
       ResultSpaceTile<DimType>& rst,
-      const Subarray& tile_subarray) {
+      const Subarray& tile_subarray) const {
     // Make sure there are no filtered results by the query condition and that
     // there are only one fragment domain for this tile. Having more fragment
     // domains for a tile means we'll have to merge data for many sources so we
@@ -297,7 +321,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
     // Make sure this tile isn't cropped by ranges and the fragment metadata has
     // tile metadata.
     if (tile_subarray.cell_num() != rt.cell_num() ||
-        frag_md->has_tile_metadata()) {
+        !frag_md->has_tile_metadata()) {
       return false;
     }
 

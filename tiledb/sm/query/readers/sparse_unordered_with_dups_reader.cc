@@ -1473,6 +1473,7 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
       storage_manager_->compute_tp(), 0, names.size(), [&](uint64_t i) {
         // For easy reference.
         const auto& name = names[i];
+        const bool agg_only = aggregate_only(name);
         const auto var_sized = array_schema_.var_size(name);
         auto mem_usage = &total_mem_usage_per_attr[i];
         const bool is_timestamps = name == constants::timestamps ||
@@ -1490,7 +1491,14 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
         uint64_t idx = 0;
         for (; idx < max_rt_idx; idx++) {
           // Size of the tile in memory.
-          auto rt = (UnorderedWithDupsResultTile<BitmapType>*)result_tiles[idx];
+          auto rt = static_cast<UnorderedWithDupsResultTile<BitmapType>*>(
+              result_tiles[idx]);
+
+          // Skip this tile if it's aggregate only and we can aggregate it with
+          // the fragment metadata only.
+          if (agg_only && can_aggregate_tile_with_frag_md(rt)) {
+            continue;
+          }
 
           // Skip for fields added in schema evolution.
           if (!fragment_metadata_[rt->frag_idx()]->array_schema()->is_field(
@@ -1649,10 +1657,27 @@ bool SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
   // Read a few attributes at a time.
   std::optional<std::string> last_field_to_overflow{std::nullopt};
   uint64_t buffer_idx{0};
+  optional<std::vector<ResultTile*>> result_tiles_agg_only;
   while (buffer_idx < names.size()) {
+    // Generate a list of filtered result tiles for aggregates only fields.
+    bool agg_only = aggregate_only(names[buffer_idx]);
+    if (agg_only && result_tiles_agg_only == nullopt) {
+      result_tiles_agg_only = std::vector<ResultTile*>();
+      for (auto& rt : result_tiles) {
+        if (!can_aggregate_tile_with_frag_md(
+                static_cast<UnorderedWithDupsResultTile<BitmapType>*>(rt))) {
+          result_tiles_agg_only->emplace_back(rt);
+        }
+      }
+    }
+
     // Read and unfilter as many attributes as can fit in the budget.
     auto names_to_copy = read_and_unfilter_attributes(
-        names, mem_usage_per_attr, &buffer_idx, result_tiles);
+        names,
+        mem_usage_per_attr,
+        &buffer_idx,
+        agg_only ? *result_tiles_agg_only : result_tiles,
+        agg_only);
 
     // Process one field at a time for buffers in memory.
     for (const auto& name : names_to_copy) {

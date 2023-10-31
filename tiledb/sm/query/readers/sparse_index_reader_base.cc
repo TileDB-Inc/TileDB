@@ -834,7 +834,8 @@ std::vector<std::string> SparseIndexReaderBase::read_and_unfilter_attributes(
     const std::vector<std::string>& names,
     const std::vector<uint64_t>& mem_usage_per_attr,
     uint64_t* buffer_idx,
-    std::vector<ResultTile*>& result_tiles) {
+    std::vector<ResultTile*>& result_tiles,
+    bool agg_only) {
   auto timer_se = stats_->start_timer("read_and_unfilter_attributes");
   const uint64_t memory_budget = available_memory();
 
@@ -843,6 +844,13 @@ std::vector<std::string> SparseIndexReaderBase::read_and_unfilter_attributes(
   uint64_t memory_used = 0;
   while (*buffer_idx < names.size()) {
     auto& name = names[*buffer_idx];
+
+    // Stop processing if we are doing non aggregates only fields and we hit an
+    // aggregates only field. Aggregates only field will pass in a filteted list
+    // of tiles to load.
+    if (!agg_only && aggregate_only(name)) {
+      break;
+    }
 
     auto attr_mem_usage = mem_usage_per_attr[*buffer_idx];
     if (memory_used + attr_mem_usage < memory_budget) {
