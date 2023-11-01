@@ -62,6 +62,7 @@ class CAPIString {
     string_ = *handle;
     *handle = nullptr;
   }
+
   ~CAPIString() {
     auto result = tiledb_status(tiledb_string_free(&string_));
     if (result != TILEDB_OK) {
