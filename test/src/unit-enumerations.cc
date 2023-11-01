@@ -2083,6 +2083,39 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     EnumerationFx,
+    "Cap'N Proto - ArraySchema Serialization with Empty Enumerations",
+    "[enumeration][capnp][array-schema][empty-enumerations]") {
+  create_array();
+
+  auto client_side = GENERATE(true, false);
+  auto ser_type = GENERATE(SerializationType::CAPNP, SerializationType::JSON);
+
+  auto schema1 = create_schema();
+
+  auto enmr1 = Enumeration::create(
+      "empty_fixed", Datatype::INT32, 1, false, nullptr, 0, nullptr, 0);
+  auto enmr2 = Enumeration::create(
+      "empty_var",
+      Datatype::STRING_ASCII,
+      constants::var_num,
+      false,
+      nullptr,
+      0,
+      nullptr,
+      0);
+
+  schema1->add_enumeration(enmr1);
+  schema1->add_enumeration(enmr2);
+
+  auto schema2 = ser_des_array_schema(schema1, client_side, ser_type);
+
+  auto all_names1 = schema1->get_enumeration_names();
+  auto all_names2 = schema2.get_enumeration_names();
+  REQUIRE(vec_cmp(all_names1, all_names2));
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
     "Cap'N Proto - Basic ArraySchemaEvolution Serialization",
     "[enumeration][capnp][basic][array-schema-evolution]") {
   auto client_side = GENERATE(true, false);
