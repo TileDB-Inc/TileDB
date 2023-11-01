@@ -75,7 +75,7 @@ extern "C" {
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT capi_return_t
-tiledb_log_warn(tiledb_ctx_t* ctx, const char* message);
+tiledb_log_warn(tiledb_ctx_t* ctx, const char* message) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*              AS BUILT             */
