@@ -109,7 +109,7 @@ class TileBase {
    * buffer of size nbytes. Does not mutate the internal offset.
    * Thread-safe among readers.
    */
-  Status read(void* buffer, uint64_t offset, uint64_t nbytes) const;
+  void read(void* buffer, uint64_t offset, uint64_t nbytes) const;
 
   /** Returns the tile size. */
   inline uint64_t size() const {
@@ -127,7 +127,7 @@ class TileBase {
    * @note This function assumes that the tile buffer has already been
    *     properly allocated. It does not alter the tile offset and size.
    */
-  Status write(const void* data, uint64_t offset, uint64_t nbytes);
+  void write(const void* data, uint64_t offset, uint64_t nbytes);
 
   /**
    * Adds an extra offset at the end of this tile representing the size of the
@@ -265,7 +265,7 @@ class Tile : public TileBase {
    * Zips the coordinate values such that a cell's coordinates across
    * all dimensions appear contiguously in the buffer.
    */
-  Status zip_coordinates();
+  void zip_coordinates();
 
   /**
    * Reads the chunk data of a tile buffer and populates a chunk data structure.
@@ -433,9 +433,8 @@ class WriterTile : public TileBase {
    * @param data Pointer to the data to write.
    * @param offset Offset to write into the tile buffer.
    * @param nbytes Number of bytes to write.
-   * @return Status.
    */
-  Status write_var(const void* data, uint64_t offset, uint64_t nbytes);
+  void write_var(const void* data, uint64_t offset, uint64_t nbytes);
 
   /**
    * Sets the size of the tile.

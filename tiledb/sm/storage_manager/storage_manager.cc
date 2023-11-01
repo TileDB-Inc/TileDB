@@ -1691,13 +1691,8 @@ Status StorageManagerCanonical::store_data_to_generic_tile(
     WriterTile& tile, const URI& uri, const EncryptionKey& encryption_key) {
   GenericTileIO tile_io(resources_, uri);
   uint64_t nbytes = 0;
-  Status st = tile_io.write_generic(&tile, encryption_key, &nbytes);
-
-  if (st.ok()) {
-    st = vfs()->close_file(uri);
-  }
-
-  return st;
+  tile_io.write_generic(&tile, encryption_key, &nbytes);
+  return vfs()->close_file(uri);
 }
 
 void StorageManagerCanonical::wait_for_zero_in_progress() {

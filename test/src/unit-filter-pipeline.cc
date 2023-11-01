@@ -75,7 +75,7 @@ WriterTile make_increasing_tile(const uint64_t nelts) {
   WriterTile tile(
       constants::format_version, Datatype::UINT64, cell_size, tile_size);
   for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+    CHECK_NOTHROW(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)));
   }
 
   return tile;
@@ -93,12 +93,10 @@ WriterTile make_offsets_tile(std::vector<uint64_t>& offsets) {
 
   // Set up test data
   for (uint64_t i = 0; i < offsets.size(); i++) {
-    CHECK(offsets_tile
-              .write(
-                  &offsets[i],
-                  i * constants::cell_var_offset_size,
-                  constants::cell_var_offset_size)
-              .ok());
+    CHECK_NOTHROW(offsets_tile.write(
+        &offsets[i],
+        i * constants::cell_var_offset_size,
+        constants::cell_var_offset_size));
   }
 
   return offsets_tile;
@@ -652,8 +650,8 @@ TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
   run_reverse(config, tp, unfiltered_tile, pipeline);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
-    CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-              .ok());
+    CHECK_NOTHROW(
+        unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
     CHECK(elt == i);
   }
 }
@@ -741,8 +739,8 @@ TEST_CASE(
   run_reverse(config, tp, unfiltered_tile, pipeline);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
-    CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-              .ok());
+    CHECK_NOTHROW(
+        unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
     CHECK(elt == i);
   }
 
@@ -798,8 +796,8 @@ TEST_CASE(
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -845,8 +843,8 @@ TEST_CASE(
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -938,8 +936,8 @@ TEST_CASE(
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -990,8 +988,8 @@ TEST_CASE(
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -1050,8 +1048,8 @@ TEST_CASE(
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -1097,8 +1095,8 @@ TEST_CASE(
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -1190,8 +1188,8 @@ TEST_CASE(
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -1242,8 +1240,8 @@ TEST_CASE(
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -1301,8 +1299,8 @@ TEST_CASE(
   run_reverse(config, tp, unfiltered_tile, pipeline);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
-    CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-              .ok());
+    CHECK_NOTHROW(
+        unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
     CHECK(elt == i);
   }
 }
@@ -1394,8 +1392,8 @@ TEST_CASE(
   run_reverse(config, tp, unfiltered_tile, pipeline);
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
-    CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-              .ok());
+    CHECK_NOTHROW(
+        unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
     CHECK(elt == i);
   }
 
@@ -1441,8 +1439,8 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
     // Check all elements original values.
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -1464,8 +1462,8 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
     // Check all elements original values.
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -1489,8 +1487,8 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
     // Check all elements original values.
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -1569,8 +1567,8 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
     // Check all elements original values.
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -1595,8 +1593,8 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
     // Check all elements original values.
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -1623,8 +1621,8 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
     // Check all elements original values.
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -1689,8 +1687,8 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -1754,8 +1752,8 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -1856,8 +1854,8 @@ TEST_CASE(
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -1922,8 +1920,8 @@ TEST_CASE(
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -1987,8 +1985,8 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter][modify]") {
 
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
-    CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-              .ok());
+    CHECK_NOTHROW(
+        unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
     CHECK(elt == i);
   }
 }
@@ -2088,8 +2086,8 @@ TEST_CASE("Filter: Test pipeline modify filter var", "[filter][modify][var]") {
 
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
-    CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-              .ok());
+    CHECK_NOTHROW(
+        unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
     CHECK(elt == i);
   }
 
@@ -2166,8 +2164,8 @@ TEST_CASE("Filter: Test pipeline copy", "[filter][copy]") {
 
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
-    CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-              .ok());
+    CHECK_NOTHROW(
+        unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
     CHECK(elt == i);
   }
 }
@@ -2253,8 +2251,8 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
 
     for (uint64_t n = 0; n < nelts; n++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, n * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, n * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == n);
     }
   }
@@ -2284,8 +2282,8 @@ TEST_CASE(
 
   for (uint64_t n = 0; n < nelts; n++) {
     uint64_t elt = 0;
-    CHECK(unfiltered_tile.read(&elt, n * sizeof(uint64_t), sizeof(uint64_t))
-              .ok());
+    CHECK_NOTHROW(
+        unfiltered_tile.read(&elt, n * sizeof(uint64_t), sizeof(uint64_t)));
     CHECK(elt == n);
   }
 
@@ -2305,8 +2303,8 @@ TEST_CASE(
   run_reverse(config, tp, unfiltered_tile2, sha_256_pipeline);
   for (uint64_t n = 0; n < nelts; n++) {
     uint64_t elt = 0;
-    CHECK(unfiltered_tile2.read(&elt, n * sizeof(uint64_t), sizeof(uint64_t))
-              .ok());
+    CHECK_NOTHROW(
+        unfiltered_tile2.read(&elt, n * sizeof(uint64_t), sizeof(uint64_t)));
     CHECK(elt == n);
   }
 }
@@ -2359,8 +2357,8 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -2383,8 +2381,8 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
       run_reverse(config, tp, unfiltered_tile, pipeline);
       for (uint64_t i = 0; i < nelts; i++) {
         uint64_t elt = 0;
-        CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                  .ok());
+        CHECK_NOTHROW(
+            unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
         CHECK(elt == i);
       }
     }
@@ -2406,7 +2404,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
     // Set up test data
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t val = (uint64_t)rng(gen);
-      CHECK(tile.write(&val, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK_NOTHROW(tile.write(&val, i * sizeof(uint64_t), sizeof(uint64_t)));
     }
 
     CHECK(
@@ -2418,8 +2416,8 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK((int64_t)elt == rng(gen_copy));
     }
   }
@@ -2442,7 +2440,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
     // Set up test data
     for (uint64_t i = 0; i < nelts; i++) {
       uint32_t val = (uint32_t)rng(gen);
-      CHECK(tile.write(&val, i * sizeof(uint32_t), sizeof(uint32_t)).ok());
+      CHECK_NOTHROW(tile.write(&val, i * sizeof(uint32_t), sizeof(uint32_t)));
     }
 
     CHECK(
@@ -2454,8 +2452,8 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       int32_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(int32_t), sizeof(int32_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(int32_t), sizeof(int32_t)));
       CHECK(elt == rng(gen_copy));
     }
   }
@@ -2470,7 +2468,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
     // Set up test data
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t val = i % 257;
-      CHECK(tile.write(&val, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK_NOTHROW(tile.write(&val, i * sizeof(uint64_t), sizeof(uint64_t)));
     }
 
     CHECK(
@@ -2482,8 +2480,8 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i % 257);
     }
   }
@@ -2594,8 +2592,8 @@ TEST_CASE(
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -2620,8 +2618,8 @@ TEST_CASE(
       run_reverse(config, tp, unfiltered_tile, pipeline);
       for (uint64_t i = 0; i < nelts; i++) {
         uint64_t elt = 0;
-        CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                  .ok());
+        CHECK_NOTHROW(
+            unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
         CHECK(elt == i);
       }
     }
@@ -2645,7 +2643,7 @@ TEST_CASE(
     // Set up test data
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t val = (uint64_t)rng(gen);
-      CHECK(tile.write(&val, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK_NOTHROW(tile.write(&val, i * sizeof(uint64_t), sizeof(uint64_t)));
     }
 
     CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, &offsets_tile, &tp)
@@ -2657,8 +2655,8 @@ TEST_CASE(
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK((int64_t)elt == rng(gen_copy));
     }
   }
@@ -2682,7 +2680,7 @@ TEST_CASE(
     // Set up test data
     for (uint64_t i = 0; i < nelts; i++) {
       uint32_t val = (uint32_t)rng(gen);
-      CHECK(tile.write(&val, i * sizeof(uint32_t), sizeof(uint32_t)).ok());
+      CHECK_NOTHROW(tile.write(&val, i * sizeof(uint32_t), sizeof(uint32_t)));
     }
 
     std::vector<uint64_t> offsets32(offsets);
@@ -2698,12 +2696,10 @@ TEST_CASE(
 
     // Set up test data
     for (uint64_t i = 0; i < offsets.size(); i++) {
-      CHECK(offsets_tile32
-                .write(
-                    &offsets32[i],
-                    i * constants::cell_var_offset_size,
-                    constants::cell_var_offset_size)
-                .ok());
+      CHECK_NOTHROW(offsets_tile32.write(
+          &offsets32[i],
+          i * constants::cell_var_offset_size,
+          constants::cell_var_offset_size));
     }
 
     CHECK(
@@ -2716,8 +2712,8 @@ TEST_CASE(
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       int32_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(int32_t), sizeof(int32_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(int32_t), sizeof(int32_t)));
       CHECK(elt == rng(gen_copy));
     }
   }
@@ -2733,7 +2729,7 @@ TEST_CASE(
     // Set up test data
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t val = i % 257;
-      CHECK(tile.write(&val, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK_NOTHROW(tile.write(&val, i * sizeof(uint64_t), sizeof(uint64_t)));
     }
 
     auto offsets_tile = make_offsets_tile(offsets);
@@ -2747,8 +2743,8 @@ TEST_CASE(
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i % 257);
     }
   }
@@ -2803,8 +2799,8 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -2826,8 +2822,8 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
       run_reverse(config, tp, unfiltered_tile, pipeline);
       for (uint64_t i = 0; i < nelts; i++) {
         uint64_t elt = 0;
-        CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                  .ok());
+        CHECK_NOTHROW(
+            unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
         CHECK(elt == i);
       }
     }
@@ -2837,7 +2833,7 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
     auto tile = make_increasing_tile(nelts);
     for (uint64_t i = 0; i < nelts; i++) {
       auto val = nelts - i;
-      CHECK(tile.write(&val, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK_NOTHROW(tile.write(&val, i * sizeof(uint64_t), sizeof(uint64_t)));
     }
 
     CHECK(
@@ -2948,8 +2944,8 @@ TEST_CASE(
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -2975,8 +2971,8 @@ TEST_CASE(
       run_reverse(config, tp, unfiltered_tile, pipeline);
       for (uint64_t i = 0; i < nelts; i++) {
         uint64_t elt = 0;
-        CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                  .ok());
+        CHECK_NOTHROW(
+            unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
         CHECK(elt == i);
       }
     }
@@ -2989,7 +2985,7 @@ TEST_CASE(
     WriterTile::set_max_tile_chunk_size(80);
     for (uint64_t i = 0; i < nelts; i++) {
       auto val = nelts - i;
-      CHECK(tile.write(&val, i * sizeof(uint64_t), sizeof(uint64_t)).ok());
+      CHECK_NOTHROW(tile.write(&val, i * sizeof(uint64_t), sizeof(uint64_t)));
     }
 
     CHECK(
@@ -3021,8 +3017,8 @@ TEST_CASE("Filter: Test bitshuffle", "[filter][bitshuffle]") {
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -3039,7 +3035,7 @@ TEST_CASE("Filter: Test bitshuffle", "[filter][bitshuffle]") {
 
     // Set up test data
     for (uint32_t i = 0; i < nelts2; i++) {
-      CHECK(tile2.write(&i, i * sizeof(uint32_t), sizeof(uint32_t)).ok());
+      CHECK_NOTHROW(tile2.write(&i, i * sizeof(uint32_t), sizeof(uint32_t)));
     }
 
     CHECK(
@@ -3051,8 +3047,8 @@ TEST_CASE("Filter: Test bitshuffle", "[filter][bitshuffle]") {
     run_reverse(config, tp, unfiltered_tile2, pipeline);
     for (uint64_t i = 0; i < nelts2; i++) {
       uint32_t elt = 0;
-      CHECK(unfiltered_tile2.read(&elt, i * sizeof(uint32_t), sizeof(uint32_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile2.read(&elt, i * sizeof(uint32_t), sizeof(uint32_t)));
       CHECK(elt == i);
     }
   }
@@ -3110,8 +3106,8 @@ TEST_CASE("Filter: Test bitshuffle var", "[filter][bitshuffle][var]") {
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -3129,7 +3125,7 @@ TEST_CASE("Filter: Test bitshuffle var", "[filter][bitshuffle][var]") {
 
     // Set up test data
     for (uint32_t i = 0; i < nelts2; i++) {
-      CHECK(tile2.write(&i, i * sizeof(uint32_t), sizeof(uint32_t)).ok());
+      CHECK_NOTHROW(tile2.write(&i, i * sizeof(uint32_t), sizeof(uint32_t)));
     }
 
     CHECK(
@@ -3142,8 +3138,8 @@ TEST_CASE("Filter: Test bitshuffle var", "[filter][bitshuffle][var]") {
     run_reverse(config, tp, unfiltered_tile2, pipeline);
     for (uint64_t i = 0; i < nelts2; i++) {
       uint32_t elt = 0;
-      CHECK(unfiltered_tile2.read(&elt, i * sizeof(uint32_t), sizeof(uint32_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile2.read(&elt, i * sizeof(uint32_t), sizeof(uint32_t)));
       CHECK(elt == i);
     }
   }
@@ -3172,8 +3168,8 @@ TEST_CASE("Filter: Test byteshuffle", "[filter][byteshuffle]") {
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -3190,7 +3186,7 @@ TEST_CASE("Filter: Test byteshuffle", "[filter][byteshuffle]") {
 
     // Set up test data
     for (uint32_t i = 0; i < nelts2; i++) {
-      CHECK(tile2.write(&i, i * sizeof(uint32_t), sizeof(uint32_t)).ok());
+      CHECK_NOTHROW(tile2.write(&i, i * sizeof(uint32_t), sizeof(uint32_t)));
     }
 
     CHECK(
@@ -3202,8 +3198,8 @@ TEST_CASE("Filter: Test byteshuffle", "[filter][byteshuffle]") {
     run_reverse(config, tp, unfiltered_tile2, pipeline);
     for (uint64_t i = 0; i < nelts2; i++) {
       uint32_t elt = 0;
-      CHECK(unfiltered_tile2.read(&elt, i * sizeof(uint32_t), sizeof(uint32_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile2.read(&elt, i * sizeof(uint32_t), sizeof(uint32_t)));
       CHECK(elt == i);
     }
   }
@@ -3261,8 +3257,8 @@ TEST_CASE("Filter: Test byteshuffle var", "[filter][byteshuffle][var]") {
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -3280,7 +3276,7 @@ TEST_CASE("Filter: Test byteshuffle var", "[filter][byteshuffle][var]") {
 
     // Set up test data
     for (uint32_t i = 0; i < nelts2; i++) {
-      CHECK(tile2.write(&i, i * sizeof(uint32_t), sizeof(uint32_t)).ok());
+      CHECK_NOTHROW(tile2.write(&i, i * sizeof(uint32_t), sizeof(uint32_t)));
     }
 
     CHECK(
@@ -3293,8 +3289,8 @@ TEST_CASE("Filter: Test byteshuffle var", "[filter][byteshuffle][var]") {
     run_reverse(config, tp, unfiltered_tile2, pipeline);
     for (uint64_t i = 0; i < nelts2; i++) {
       uint32_t elt = 0;
-      CHECK(unfiltered_tile2.read(&elt, i * sizeof(uint32_t), sizeof(uint32_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile2.read(&elt, i * sizeof(uint32_t), sizeof(uint32_t)));
       CHECK(elt == i);
     }
   }
@@ -3335,8 +3331,8 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     run_reverse(config, tp, unfiltered_tile, pipeline);
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
 
@@ -3358,8 +3354,8 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
 
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
-      CHECK(unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t))
-                .ok());
+      CHECK_NOTHROW(
+          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }
@@ -3403,7 +3399,8 @@ void testing_float_scaling_filter() {
 
   for (uint64_t i = 0; i < nelts; i++) {
     FloatingType f = dis(gen);
-    CHECK(tile.write(&f, i * sizeof(FloatingType), sizeof(FloatingType)).ok());
+    CHECK_NOTHROW(
+        tile.write(&f, i * sizeof(FloatingType), sizeof(FloatingType)));
 
     IntType val = static_cast<IntType>(round(
         (f - static_cast<FloatingType>(foffset)) /
@@ -3437,9 +3434,8 @@ void testing_float_scaling_filter() {
   run_reverse(config, tp, unfiltered_tile, pipeline);
   for (uint64_t i = 0; i < nelts; i++) {
     FloatingType elt = 0.0f;
-    CHECK(unfiltered_tile
-              .read(&elt, i * sizeof(FloatingType), sizeof(FloatingType))
-              .ok());
+    CHECK_NOTHROW(unfiltered_tile.read(
+        &elt, i * sizeof(FloatingType), sizeof(FloatingType)));
     CHECK(elt == float_result_vec[i]);
   }
 }
@@ -3481,7 +3477,7 @@ void testing_xor_filter(Datatype t) {
 
   for (uint64_t i = 0; i < nelts; i++) {
     T val = static_cast<T>(dis(gen));
-    CHECK(tile.write(&val, i * sizeof(T), sizeof(T)).ok());
+    CHECK_NOTHROW(tile.write(&val, i * sizeof(T), sizeof(T)));
     results.push_back(val);
   }
 
@@ -3499,7 +3495,7 @@ void testing_xor_filter(Datatype t) {
   run_reverse(config, tp, unfiltered_tile, pipeline);
   for (uint64_t i = 0; i < nelts; i++) {
     T elt = 0;
-    CHECK(unfiltered_tile.read(&elt, i * sizeof(T), sizeof(T)).ok());
+    CHECK_NOTHROW(unfiltered_tile.read(&elt, i * sizeof(T), sizeof(T)));
     CHECK(elt == results[i]);
   }
 }
@@ -3598,7 +3594,7 @@ TEST_CASE("Filter: Pipeline filtered output types", "[filter][pipeline]") {
       sizeof(float),
       sizeof(float) * data.size());
   for (size_t i = 0; i < data.size(); i++) {
-    CHECK(tile.write(&data[i], i * sizeof(float), sizeof(float)).ok());
+    CHECK_NOTHROW(tile.write(&data[i], i * sizeof(float), sizeof(float)));
   }
 
   ThreadPool tp(4);
@@ -3625,7 +3621,7 @@ TEST_CASE("Filter: Pipeline filtered output types", "[filter][pipeline]") {
       1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 7.0f, 8.0f, 9.0f, 10.0f, 11.0f};
   for (size_t i = 0; i < data.size(); i++) {
     float val = 0;
-    CHECK(unfiltered_tile.read(&val, i * sizeof(float), sizeof(float)).ok());
+    CHECK_NOTHROW(unfiltered_tile.read(&val, i * sizeof(float), sizeof(float)));
     if (pipeline.has_filter(tiledb::sm::FilterType::FILTER_SCALE_FLOAT)) {
       // Loss of precision from rounding in FloatScale filter.
       CHECK(val == results[i]);

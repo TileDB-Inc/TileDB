@@ -3635,10 +3635,7 @@ void FragmentMetadata::load_v1_v2(
       std::string(constants::fragment_metadata_filename));
   // Read metadata
   GenericTileIO tile_io(*resources_, fragment_metadata_uri);
-  auto&& [st, tile_opt] =
-      tile_io.read_generic(0, encryption_key, resources_->config());
-  throw_if_not_ok(st);
-  auto& tile = *tile_opt;
+  auto tile = tile_io.read_generic(0, encryption_key, resources_->config());
 
   resources_->stats().add_counter("read_frag_meta_size", tile.size());
 
@@ -3978,11 +3975,7 @@ Tile FragmentMetadata::read_generic_tile_from_file(
 
   // Read metadata
   GenericTileIO tile_io(*resources_, fragment_metadata_uri);
-  auto&& [st, tile_opt] =
-      tile_io.read_generic(offset, encryption_key, resources_->config());
-  throw_if_not_ok(st);
-
-  return std::move(*tile_opt);
+  return tile_io.read_generic(offset, encryption_key, resources_->config());
 }
 
 void FragmentMetadata::read_file_footer(
@@ -4025,7 +4018,7 @@ void FragmentMetadata::write_generic_tile_to_file(
       std::string(constants::fragment_metadata_filename));
 
   GenericTileIO tile_io(*resources_, fragment_metadata_uri);
-  throw_if_not_ok(tile_io.write_generic(&tile, encryption_key, nbytes));
+  tile_io.write_generic(&tile, encryption_key, nbytes);
 }
 
 void FragmentMetadata::write_footer_to_file(WriterTile& tile) const {

@@ -935,15 +935,15 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
   if (last_tile_cell_idx != 0) {
     if (coord_dups.empty()) {
       do {
-        RETURN_NOT_OK(last_tile.fixed_tile().write(
+        last_tile.fixed_tile().write(
             buffer + cell_idx * cell_size,
             last_tile_cell_idx * cell_size,
-            cell_size));
+            cell_size);
         if (nullable) {
-          RETURN_NOT_OK(last_tile.validity_tile().write(
+          last_tile.validity_tile().write(
               buffer_validity + cell_idx * constants::cell_validity_size,
               last_tile_cell_idx * constants::cell_validity_size,
-              constants::cell_validity_size));
+              constants::cell_validity_size);
         }
         ++cell_idx;
         ++last_tile_cell_idx;
@@ -951,15 +951,15 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
     } else {
       do {
         if (coord_dups.find(cell_idx) == coord_dups.end()) {
-          RETURN_NOT_OK(last_tile.fixed_tile().write(
+          last_tile.fixed_tile().write(
               buffer + cell_idx * cell_size,
               last_tile_cell_idx * cell_size,
-              cell_size));
+              cell_size);
           if (nullable) {
-            RETURN_NOT_OK(last_tile.validity_tile().write(
+            last_tile.validity_tile().write(
                 buffer_validity + cell_idx * constants::cell_validity_size,
                 last_tile_cell_idx * constants::cell_validity_size,
-                constants::cell_validity_size));
+                constants::cell_validity_size);
           }
           ++last_tile_cell_idx;
         }
@@ -998,14 +998,14 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
     // Write all remaining cells one by one
     if (coord_dups.empty()) {
       for (uint64_t i = 0; i < cell_num_to_write;) {
-        RETURN_NOT_OK(tile_it->fixed_tile().write(
-            buffer + cell_idx * cell_size, 0, cell_size * cell_num_per_tile));
+        tile_it->fixed_tile().write(
+            buffer + cell_idx * cell_size, 0, cell_size * cell_num_per_tile);
 
         if (nullable) {
-          RETURN_NOT_OK(tile_it->validity_tile().write(
+          tile_it->validity_tile().write(
               buffer_validity + cell_idx * constants::cell_validity_size,
               0,
-              constants::cell_validity_size * cell_num_per_tile));
+              constants::cell_validity_size * cell_num_per_tile);
         }
 
         cell_idx += cell_num_per_tile;
@@ -1021,14 +1021,14 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
         }
 
         if (coord_dups.find(cell_idx) == coord_dups.end()) {
-          RETURN_NOT_OK(tile_it->fixed_tile().write(
-              buffer + cell_idx * cell_size, cell_idx * cell_size, cell_size));
+          tile_it->fixed_tile().write(
+              buffer + cell_idx * cell_size, cell_idx * cell_size, cell_size);
 
           if (nullable) {
-            RETURN_NOT_OK(tile_it->validity_tile().write(
+            tile_it->validity_tile().write(
                 buffer_validity + cell_idx * constants::cell_validity_size,
                 cell_idx * constants::cell_validity_size,
-                constants::cell_validity_size));
+                constants::cell_validity_size);
           }
         }
       }
@@ -1039,29 +1039,29 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
   last_tile_cell_idx = 0;
   if (coord_dups.empty()) {
     for (; cell_idx < cell_num; ++cell_idx, ++last_tile_cell_idx) {
-      RETURN_NOT_OK(last_tile.fixed_tile().write(
+      last_tile.fixed_tile().write(
           buffer + cell_idx * cell_size,
           last_tile_cell_idx * cell_size,
-          cell_size));
+          cell_size);
       if (nullable) {
-        RETURN_NOT_OK(last_tile.validity_tile().write(
+        last_tile.validity_tile().write(
             buffer_validity + cell_idx * constants::cell_validity_size,
             last_tile_cell_idx * constants::cell_validity_size,
-            constants::cell_validity_size));
+            constants::cell_validity_size);
       }
     }
   } else {
     for (; cell_idx < cell_num; ++cell_idx) {
       if (coord_dups.find(cell_idx) == coord_dups.end()) {
-        RETURN_NOT_OK(last_tile.fixed_tile().write(
+        last_tile.fixed_tile().write(
             buffer + cell_idx * cell_size,
             last_tile_cell_idx * cell_size,
-            cell_size));
+            cell_size);
         if (nullable) {
-          RETURN_NOT_OK(last_tile.validity_tile().write(
+          last_tile.validity_tile().write(
               buffer_validity + cell_idx * constants::cell_validity_size,
               last_tile_cell_idx * constants::cell_validity_size,
-              constants::cell_validity_size));
+              constants::cell_validity_size);
         }
         ++last_tile_cell_idx;
       }
@@ -1108,10 +1108,10 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
     if (coord_dups.empty()) {
       do {
         // Write offset.
-        RETURN_NOT_OK(last_tile.offset_tile().write(
+        last_tile.offset_tile().write(
             &last_var_offset,
             last_tile_cell_idx * sizeof(last_var_offset),
-            sizeof(last_var_offset)));
+            sizeof(last_var_offset));
 
         // Write var-sized value(s).
         auto buff_offset =
@@ -1121,16 +1121,16 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
                                 prepare_buffer_offset(
                                     buffer, cell_idx + 1, attr_datatype_size) -
                                     buff_offset;
-        RETURN_NOT_OK(last_tile.var_tile().write_var(
-            buffer_var + buff_offset, last_var_offset, var_size));
+        last_tile.var_tile().write_var(
+            buffer_var + buff_offset, last_var_offset, var_size);
         last_var_offset += var_size;
 
         // Write validity value(s).
         if (nullable) {
-          RETURN_NOT_OK(last_tile.validity_tile().write(
+          last_tile.validity_tile().write(
               buffer_validity + cell_idx,
               last_tile_cell_idx * constants::cell_validity_size,
-              constants::cell_validity_size));
+              constants::cell_validity_size);
         }
 
         ++cell_idx;
@@ -1140,10 +1140,10 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
       do {
         if (coord_dups.find(cell_idx) == coord_dups.end()) {
           // Write offset.
-          RETURN_NOT_OK(last_tile.offset_tile().write(
+          last_tile.offset_tile().write(
               &last_var_offset,
               last_tile_cell_idx * sizeof(last_var_offset),
-              sizeof(last_var_offset)));
+              sizeof(last_var_offset));
 
           // Write var-sized value(s).
           auto buff_offset =
@@ -1154,16 +1154,16 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
                   prepare_buffer_offset(
                       buffer, cell_idx + 1, attr_datatype_size) -
                       buff_offset;
-          RETURN_NOT_OK(last_tile.var_tile().write_var(
-              buffer_var + buff_offset, last_var_offset, var_size));
+          last_tile.var_tile().write_var(
+              buffer_var + buff_offset, last_var_offset, var_size);
           last_var_offset += var_size;
 
           // Write validity value(s).
           if (nullable) {
-            RETURN_NOT_OK(last_tile.validity_tile().write(
+            last_tile.validity_tile().write(
                 buffer_validity + cell_idx,
                 last_tile_cell_idx * constants::cell_validity_size,
-                constants::cell_validity_size));
+                constants::cell_validity_size);
           }
           ++last_tile_cell_idx;
         }
@@ -1218,10 +1218,10 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
           }
 
           // Write offset.
-          RETURN_NOT_OK(tile_it->offset_tile().write(
+          tile_it->offset_tile().write(
               &last_var_offset,
               current_tile_cell_idx * sizeof(last_var_offset),
-              sizeof(last_var_offset)));
+              sizeof(last_var_offset));
 
           // Write var-sized value(s).
           auto buff_offset =
@@ -1232,16 +1232,16 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
                   prepare_buffer_offset(
                       buffer, cell_idx + 1, attr_datatype_size) -
                       buff_offset;
-          RETURN_NOT_OK(tile_it->var_tile().write_var(
-              buffer_var + buff_offset, last_var_offset, var_size));
+          tile_it->var_tile().write_var(
+              buffer_var + buff_offset, last_var_offset, var_size);
           last_var_offset += var_size;
 
           // Write validity value(s).
           if (nullable) {
-            RETURN_NOT_OK(tile_it->validity_tile().write(
+            tile_it->validity_tile().write(
                 buffer_validity + cell_idx,
                 current_tile_cell_idx * constants::cell_validity_size,
-                constants::cell_validity_size));
+                constants::cell_validity_size);
           }
         }
       } else {
@@ -1255,10 +1255,10 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
             }
 
             // Write offset.
-            RETURN_NOT_OK(tile_it->offset_tile().write(
+            tile_it->offset_tile().write(
                 &last_var_offset,
                 current_tile_cell_idx * sizeof(last_var_offset),
-                sizeof(last_var_offset)));
+                sizeof(last_var_offset));
 
             // Write var-sized value(s).
             auto buff_offset =
@@ -1269,16 +1269,16 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
                     prepare_buffer_offset(
                         buffer, cell_idx + 1, attr_datatype_size) -
                         buff_offset;
-            RETURN_NOT_OK(tile_it->var_tile().write_var(
-                buffer_var + buff_offset, last_var_offset, var_size));
+            tile_it->var_tile().write_var(
+                buffer_var + buff_offset, last_var_offset, var_size);
             last_var_offset += var_size;
 
             // Write validity value(s).
             if (nullable) {
-              RETURN_NOT_OK(tile_it->validity_tile().write(
+              tile_it->validity_tile().write(
                   buffer_validity + cell_idx,
                   current_tile_cell_idx * constants::cell_validity_size,
-                  constants::cell_validity_size));
+                  constants::cell_validity_size);
             }
 
             ++current_tile_cell_idx;
@@ -1296,10 +1296,10 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
   if (coord_dups.empty()) {
     for (; cell_idx < cell_num; ++cell_idx, ++last_tile_cell_idx) {
       // Write offset.
-      RETURN_NOT_OK(last_tile.offset_tile().write(
+      last_tile.offset_tile().write(
           &last_var_offset,
           last_tile_cell_idx * sizeof(last_var_offset),
-          sizeof(last_var_offset)));
+          sizeof(last_var_offset));
 
       // Write var-sized value(s).
       auto buff_offset =
@@ -1309,26 +1309,26 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
               *buffer_var_size - buff_offset :
               prepare_buffer_offset(buffer, cell_idx + 1, attr_datatype_size) -
                   buff_offset;
-      RETURN_NOT_OK(last_tile.var_tile().write_var(
-          buffer_var + buff_offset, last_var_offset, var_size));
+      last_tile.var_tile().write_var(
+          buffer_var + buff_offset, last_var_offset, var_size);
       last_var_offset += var_size;
 
       // Write validity value(s).
       if (nullable) {
-        RETURN_NOT_OK(last_tile.validity_tile().write(
+        last_tile.validity_tile().write(
             buffer_validity + cell_idx,
             last_tile_cell_idx * constants::cell_validity_size,
-            constants::cell_validity_size));
+            constants::cell_validity_size);
       }
     }
   } else {
     for (; cell_idx < cell_num; ++cell_idx) {
       if (coord_dups.find(cell_idx) == coord_dups.end()) {
         // Write offset.
-        RETURN_NOT_OK(last_tile.offset_tile().write(
+        last_tile.offset_tile().write(
             &last_var_offset,
             last_tile_cell_idx * sizeof(last_var_offset),
-            sizeof(last_var_offset)));
+            sizeof(last_var_offset));
 
         // Write var-sized value(s).
         auto buff_offset =
@@ -1338,16 +1338,16 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
                                 prepare_buffer_offset(
                                     buffer, cell_idx + 1, attr_datatype_size) -
                                     buff_offset;
-        RETURN_NOT_OK(last_tile.var_tile().write_var(
-            buffer_var + buff_offset, last_var_offset, var_size));
+        last_tile.var_tile().write_var(
+            buffer_var + buff_offset, last_var_offset, var_size);
         last_var_offset += var_size;
 
         // Write validity value(s).
         if (nullable) {
-          RETURN_NOT_OK(last_tile.validity_tile().write(
+          last_tile.validity_tile().write(
               buffer_validity + cell_idx,
               last_tile_cell_idx * constants::cell_validity_size,
-              constants::cell_validity_size));
+              constants::cell_validity_size);
         }
 
         ++last_tile_cell_idx;

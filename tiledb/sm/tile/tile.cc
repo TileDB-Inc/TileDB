@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/tile/tile.h"
+#include "tiledb/common/exception/exception.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -44,9 +45,9 @@ namespace tiledb {
 namespace sm {
 
 /** Class for locally generated status exceptions. */
-class TileStatusException : public StatusException {
+class TileException : public StatusException {
  public:
-  explicit TileStatusException(const std::string& msg)
+  explicit TileException(const std::string& msg)
       : StatusException("Tile", msg) {
   }
 };
@@ -87,7 +88,7 @@ uint32_t WriterTile::compute_chunk_size(
   chunk_size64 = chunk_size64 / dim_cell_size * dim_cell_size;
   chunk_size64 = std::max(chunk_size64, dim_cell_size);
   if (chunk_size64 > std::numeric_limits<uint32_t>::max()) {
-    throw TileStatusException("Chunk size exceeds uint32_t");
+    throw TileException("Chunk size exceeds uint32_t");
   }
 
   return static_cast<uint32_t>(chunk_size64);
@@ -197,29 +198,24 @@ void TileBase::swap(TileBase& tile) {
   std::swap(type_, tile.type_);
 }
 
-Status TileBase::read(
+void TileBase::read(
     void* const buffer, const uint64_t offset, const uint64_t nbytes) const {
   if (nbytes > size_ - offset) {
-    return LOG_STATUS(Status_TileError(
-        "Read tile overflow; may not read beyond buffer size"));
+    throw TileException("Read tile overflow; may not read beyond buffer size");
   }
   std::memcpy(buffer, data_.get() + offset, nbytes);
-  return Status::Ok();
 }
 
-Status TileBase::write(const void* data, uint64_t offset, uint64_t nbytes) {
+void TileBase::write(const void* data, uint64_t offset, uint64_t nbytes) {
   if (nbytes > size_ - offset) {
-    return LOG_STATUS(
-        Status_TileError("Write tile overflow; would write out of bounds"));
+    throw TileException("Write tile overflow; would write out of bounds");
   }
 
   std::memcpy(data_.get() + offset, data, nbytes);
   size_ = std::max(offset + nbytes, size_);
-
-  return Status::Ok();
 }
 
-Status Tile::zip_coordinates() {
+void Tile::zip_coordinates() {
   assert(zipped_coords_dim_num_ > 0);
 
   // For easy reference
@@ -245,8 +241,6 @@ Status Tile::zip_coordinates() {
 
   // Clean up
   tdb_free((void*)tile_tmp);
-
-  return Status::Ok();
 }
 
 uint64_t Tile::load_chunk_data(ChunkData& chunk_data) {
@@ -256,7 +250,7 @@ uint64_t Tile::load_chunk_data(ChunkData& chunk_data) {
 uint64_t Tile::load_offsets_chunk_data(ChunkData& chunk_data) {
   auto s = size();
   if (s < 8) {
-    throw std::runtime_error("Offsets tile should at least be 8 bytes.");
+    throw TileException("Offsets tile should at least be 8 bytes.");
   }
 
   return load_chunk_data(chunk_data, s - 8);
@@ -274,8 +268,7 @@ void WriterTile::clear_data() {
   size_ = 0;
 }
 
-Status WriterTile::write_var(
-    const void* data, uint64_t offset, uint64_t nbytes) {
+void WriterTile::write_var(const void* data, uint64_t offset, uint64_t nbytes) {
   if (size_ - offset < nbytes) {
     auto new_alloc_size = size_ == 0 ? offset + nbytes : size_;
     while (new_alloc_size < offset + nbytes)
@@ -284,14 +277,13 @@ Status WriterTile::write_var(
     auto new_data =
         static_cast<char*>(tdb_realloc(data_.release(), new_alloc_size));
     if (new_data == nullptr) {
-      return LOG_STATUS(Status_TileError(
-          "Cannot reallocate buffer; Memory allocation failed"));
+      throw TileException("Cannot reallocate buffer; Memory allocation failed");
     }
     data_.reset(new_data);
     size_ = new_alloc_size;
   }
 
-  return write(data, offset, nbytes);
+  write(data, offset, nbytes);
 }
 
 void WriterTile::swap(WriterTile& tile) {
@@ -332,7 +324,7 @@ uint64_t Tile::load_chunk_data(
   }
 
   if (total_orig_size != expected_original_size) {
-    throw TileStatusException("Incorrect unfiltered tile size allocated.");
+    throw TileException("Incorrect unfiltered tile size allocated.");
   }
 
   return total_orig_size;

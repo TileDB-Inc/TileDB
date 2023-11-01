@@ -772,7 +772,7 @@ Status ReaderBase::zip_tile_coordinates(
         array_schema_.filters(name).get_filter<CompressionFilter>() != nullptr;
     auto version = tile->format_version();
     if (version > 1 || using_compression) {
-      RETURN_NOT_OK(tile->zip_coordinates());
+      tile->zip_coordinates();
     }
   }
   return Status::Ok();

@@ -143,7 +143,7 @@ class GenericTileIO {
    * @param config The storage manager's config.
    * @return Status, Tile
    */
-  tuple<Status, optional<Tile>> read_generic(
+  Tile read_generic(
       uint64_t file_offset,
       const EncryptionKey& encryption_key,
       const Config& config);
@@ -172,7 +172,7 @@ class GenericTileIO {
    * @param nbytes The total number of bytes written to the file.
    * @return Status
    */
-  Status write_generic(
+  void write_generic(
       WriterTile* tile, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
@@ -190,7 +190,7 @@ class GenericTileIO {
    * @param header The header to write
    * @return Status
    */
-  Status write_generic_tile_header(GenericTileHeader* header);
+  void write_generic_tile_header(GenericTileHeader* header);
 
  private:
   /* ********************************* */
@@ -210,7 +210,7 @@ class GenericTileIO {
    * @param encryption_key The encryption key to use.
    * @return Status
    */
-  Status configure_encryption_filter(
+  void configure_encryption_filter(
       GenericTileHeader* header, const EncryptionKey& encryption_key) const;
 
   /**
@@ -223,7 +223,7 @@ class GenericTileIO {
    * @param encryption_key The encryption key to use.
    * @return Status
    */
-  Status init_generic_tile_header(
+  void init_generic_tile_header(
       WriterTile* tile,
       GenericTileHeader* header,
       const EncryptionKey& encryption_key) const;
