@@ -144,6 +144,7 @@ endif()
 # List of all core source files
 set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/memory.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/memory_tracker.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/stdx_string.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/interval/interval.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/types/dynamic_typed_datum.cc

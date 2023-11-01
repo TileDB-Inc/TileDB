@@ -34,26 +34,69 @@
 #ifndef TILEDB_MEMORY_TRACKER_H
 #define TILEDB_MEMORY_TRACKER_H
 
-#include "tiledb/common/status.h"
+#include "tiledb/common/common.h"
+#include "tiledb/sm/stats/stats.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
-class MemoryTracker {
+enum class MemoryType : uint8_t {
+  RTREE,
+  FOOTER,
+  TILE_OFFSETS,
+  TILE_VAR_OFFSETS,
+  TILE_VAR_SIZES,
+  TILE_VALIDITY_OFFSETS,
+  MIN_BUFFER,
+  MAX_BUFFER,
+  SUMS,
+  NULL_COUNTS,
+  ENUMERATION,
+  TILE_DATA,
+  FILTERED_TILE_DATA
+};
+
+std::string memory_type_to_str(MemoryType mem_type);
+
+class MemoryTracker;
+
+class [[nodiscard]] MemoryToken {
  public:
-  enum class MemoryType {
-    RTREE,
-    FOOTER,
-    TILE_OFFSETS,
-    MIN_MAX_SUM_NULL_COUNT,
-    ENUMERATION
-  };
+  /** Disable the default constructor. */
+  MemoryToken() = delete;
 
   /** Constructor. */
-  MemoryTracker() {
-    memory_usage_ = 0;
-    memory_budget_ = std::numeric_limits<uint64_t>::max();
-  };
+  MemoryToken(
+      std::weak_ptr<MemoryTracker> parent, MemoryType mem_type, uint64_t size);
+
+  /** Destructor. */
+  ~MemoryToken();
+
+  DISABLE_COPY_AND_COPY_ASSIGN(MemoryToken);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(MemoryToken);
+
+  /** Create a copy of a token. This creates a new reservation. */
+  shared_ptr<MemoryToken> copy();
+
+  /** The size of this token's reservation. */
+  inline uint64_t size() const {
+    return size_;
+  }
+
+  /** The type of reserved memory. */
+  inline MemoryType memory_type() const {
+    return mem_type_;
+  }
+
+ private:
+  std::weak_ptr<MemoryTracker> parent_;
+  MemoryType mem_type_;
+  uint64_t size_;
+};
+
+class MemoryTracker : std::enable_shared_from_this<MemoryTracker> {
+ public:
+  /** Constructor. */
+  MemoryTracker(stats::Stats* stats = nullptr);
 
   /** Destructor. */
   ~MemoryTracker() = default;
@@ -61,99 +104,106 @@ class MemoryTracker {
   DISABLE_COPY_AND_COPY_ASSIGN(MemoryTracker);
   DISABLE_MOVE_AND_MOVE_ASSIGN(MemoryTracker);
 
-  /**
-   * Take memory from the budget.
-   *
-   * @param size The memory size.
-   * @return true if the memory is available, false otherwise.
-   */
-  bool take_memory(uint64_t size, MemoryType mem_type) {
-    std::lock_guard<std::mutex> lg(mutex_);
-    if (memory_usage_ + size <= memory_budget_) {
-      memory_usage_ += size;
-      memory_usage_by_type_[mem_type] += size;
-      return true;
-    }
+  /** Reserve memory budget. */
+  shared_ptr<MemoryToken> reserve(MemoryType mem_type, uint64_t size);
 
-    return false;
+  /** Release a reservation. */
+  void release(MemoryToken& token);
+
+  /** Leak. Provocatively named to make sure we come back to it. */
+  void leak(MemoryType mem_type, uint64_t size);
+
+  /** Set total memory budget. */
+  void set_budget(uint64_t size);
+
+  /** Get total memory budget. */
+  inline uint64_t get_budget() {
+    return budget_;
   }
 
-  /**
-   * Release memory from the budget.
-   *
-   * @param size The memory size.
-   */
-  void release_memory(uint64_t size, MemoryType mem_type) {
-    std::lock_guard<std::mutex> lg(mutex_);
-    memory_usage_ -= size;
-    memory_usage_by_type_[mem_type] -= size;
+  /** Get total usage. */
+  inline uint64_t get_usage() {
+    return usage_;
   }
 
-  /**
-   * Set the memory budget.
-   *
-   * @param size The memory budget size.
-   * @return true if the budget can be set, false otherwise.
-   */
-  bool set_budget(uint64_t size) {
-    std::lock_guard<std::mutex> lg(mutex_);
-    if (memory_usage_ > size) {
-      return false;
-    }
-
-    memory_budget_ = size;
-    return true;
+  /** Get usage by type. */
+  inline uint64_t get_usage(MemoryType mem_type) {
+    return usage_by_type_[mem_type];
   }
 
-  /**
-   * Get the memory usage.
-   */
-  uint64_t get_memory_usage() {
-    std::lock_guard<std::mutex> lg(mutex_);
-    return memory_usage_;
-  }
-
-  /**
-   * Get the memory usage by type.
-   */
-  uint64_t get_memory_usage(MemoryType mem_type) {
-    std::lock_guard<std::mutex> lg(mutex_);
-    return memory_usage_by_type_[mem_type];
-  }
-
-  /**
-   * Get available room based on budget
-   * @return available amount left in budget
-   */
-  uint64_t get_memory_available() {
-    std::lock_guard<std::mutex> lg(mutex_);
-    return memory_budget_ - memory_usage_;
-  }
-
-  /**
-   * Get memory budget
-   * @return budget
-   */
-  uint64_t get_memory_budget() {
-    std::lock_guard<std::mutex> lg(mutex_);
-    return memory_budget_;
+  /** Get available memory. */
+  inline uint64_t get_available() {
+    return budget_ - usage_;
   }
 
  private:
-  /** Protects all member variables. */
+  void do_reservation(MemoryType mem_type, uint64_t size);
+
+  /** The stats instance. */
+  stats::Stats* stats_;
+
+  /** Protects tracking member variables. */
   std::mutex mutex_;
 
   /** Memory usage for tracked structures. */
-  uint64_t memory_usage_;
+  uint64_t usage_;
+
+  /** Memory usage high water mark. */
+  uint64_t usage_hwm_;
 
   /** Memory budget. */
-  uint64_t memory_budget_;
+  uint64_t budget_;
 
   /** Memory usage by type. */
-  std::unordered_map<MemoryType, uint64_t> memory_usage_by_type_;
+  std::unordered_map<MemoryType, uint64_t> usage_by_type_;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+struct MemoryTokenKey {
+  MemoryTokenKey(MemoryType type, uint64_t id)
+      : type_(type)
+      , id_(id) {
+  }
 
-#endif  // TILEDB_OPEN_ARRAY_MEMORY_TRACKER_H
+  bool operator==(const MemoryTokenKey& rhs) const {
+    return (type_ == rhs.type_) && (id_ == rhs.id_);
+  }
+
+  static std::size_t hash(const MemoryTokenKey& key);
+
+  MemoryType type_;
+  uint64_t id_;
+};
+
+struct MemoryTokenKeyHasher {
+  std::size_t operator()(const MemoryTokenKey& key) const;
+};
+
+class MemoryTokenBag {
+ public:
+  MemoryTokenBag() = default;
+  MemoryTokenBag(shared_ptr<MemoryTracker> memory_tracker);
+
+  /** Reserve memory for a type that has no id. Like rtree or footer. */
+  void reserve(MemoryType mem_type, uint64_t size);
+
+  /** Reserve memory for a type and id pair. */
+  void reserve(MemoryType mem_type, uint64_t id, uint64_t size);
+
+  /** Release memory for a type with no id. */
+  void release(MemoryType mem_type);
+
+  /** Release memory for a type and id. */
+  void release(MemoryType mem_type, uint64_t id);
+
+ private:
+  shared_ptr<MemoryTracker> memory_tracker_;
+  std::unordered_map<
+      MemoryTokenKey,
+      shared_ptr<MemoryToken>,
+      MemoryTokenKeyHasher>
+      tokens_;
+};
+
+}  // namespace tiledb::sm
+
+#endif  // TILEDB_MEMORY_TRACKER_H

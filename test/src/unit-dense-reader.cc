@@ -838,7 +838,8 @@ TEST_CASE_METHOD(
       data_r,
       &data_r_size,
       0,
-      "DenseReader: Memory budget is too small to open array");
+      "DenseReader: Unable to set memory budget when opening array. "
+      "(MemoryTracker: Unable to set budget smaller than usage.)");
 }
 
 TEST_CASE_METHOD(

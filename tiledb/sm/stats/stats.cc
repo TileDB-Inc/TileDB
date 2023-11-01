@@ -187,6 +187,42 @@ void Stats::add_counter(const std::string& stat, uint64_t count) {
   }
 }
 
+void Stats::sub_counter(const std::string& stat, uint64_t count) {
+  if (!enabled_) {
+    return;
+  }
+
+  std::string new_stat = prefix_ + stat;
+  std::unique_lock<std::mutex> lck(mtx_);
+  auto it = counters_.find(new_stat);
+
+  if (it == counters_.end()) {
+    throw std::runtime_error("Unable to subtract from an unknown counter.");
+  }
+
+  if (it->second < count) {
+    throw std::runtime_error("Unable to set counter to a negative value.");
+  }
+
+  it->second -= count;
+}
+
+void Stats::set_max_counter(const std::string& stat, uint64_t count) {
+  if (!enabled_) {
+    return;
+  }
+
+  std::string new_stat = prefix_ + stat;
+  std::unique_lock<std::mutex> lck(mtx_);
+  auto it = counters_.find(new_stat);
+
+  if (it == counters_.end()) {
+    counters_[new_stat] = count;
+  } else if (count > it->second) {
+    it->second = count;
+  }
+}
+
 DurationInstrument<Stats> Stats::start_timer(const std::string& stat) {
   return DurationInstrument<Stats>(*this, stat);
 }
@@ -229,6 +265,12 @@ void Stats::report_duration(
 #else
 
 void Stats::add_counter(const std::string&, uint64_t) {
+}
+
+void Stats::sub_counter(const std::string&, uint64_t) {
+}
+
+void Stats::set_max_counter(const std::string&, uint64_t) {
 }
 
 int Stats::start_timer(const std::string&) {

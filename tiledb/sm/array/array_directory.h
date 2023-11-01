@@ -396,7 +396,7 @@ class ArrayDirectory {
   std::vector<shared_ptr<const Enumeration>> load_enumerations_from_paths(
       const std::vector<std::string>& enumeration_paths,
       const EncryptionKey& encryption_key,
-      MemoryTracker& memory_tracker) const;
+      shared_ptr<MemoryTracker> memory_tracker) const;
 
   /** Returns the array URI. */
   const URI& uri() const;
@@ -829,7 +829,7 @@ class ArrayDirectory {
   shared_ptr<const Enumeration> load_enumeration(
       const std::string& enumeration_path,
       const EncryptionKey& encryption_key,
-      MemoryTracker& memory_tracker) const;
+      shared_ptr<MemoryTracker> memory_tracker) const;
 };
 
 }  // namespace sm

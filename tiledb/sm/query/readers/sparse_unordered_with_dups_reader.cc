@@ -275,9 +275,15 @@ void SparseUnorderedWithDupsReader<BitmapType>::load_tile_offsets_data() {
   bool initial_load =
       tile_offsets_min_frag_idx_ == std::numeric_limits<unsigned>::max() &&
       tile_offsets_max_frag_idx_ == 0;
-  uint64_t available_memory = array_memory_tracker_->get_memory_available() -
-                              array_memory_tracker_->get_memory_usage(
-                                  MemoryTracker::MemoryType::TILE_OFFSETS);
+
+  uint64_t offsets_used =
+      array_memory_tracker_->get_usage(MemoryType::TILE_OFFSETS) +
+      array_memory_tracker_->get_usage(MemoryType::TILE_VAR_OFFSETS) +
+      array_memory_tracker_->get_usage(MemoryType::TILE_VAR_SIZES) +
+      array_memory_tracker_->get_usage(MemoryType::TILE_VALIDITY_OFFSETS);
+  uint64_t available_memory =
+      array_memory_tracker_->get_available() - offsets_used;
+
   auto& relevant_fragments = subarray_.relevant_fragments();
 
   if (!partial_tile_offsets_loading_) {
@@ -294,7 +300,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::load_tile_offsets_data() {
             ") is larger than available memory (" +
             std::to_string(available_memory) +
             "). Total budget for array data (" +
-            std::to_string(array_memory_tracker_->get_memory_budget()) + ").");
+            std::to_string(array_memory_tracker_->get_budget()) + ").");
       }
 
       // Load the tile offsets.
@@ -346,7 +352,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::load_tile_offsets_data() {
             ") is larger than available memory (" +
             std::to_string(available_memory) +
             "). Total budget for array data (" +
-            std::to_string(array_memory_tracker_->get_memory_budget()) + ").");
+            std::to_string(array_memory_tracker_->get_budget()) + ").");
       }
 
       // Load the tile offsets.

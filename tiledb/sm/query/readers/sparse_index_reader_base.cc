@@ -163,7 +163,7 @@ typename SparseIndexReaderBase::ReadState* SparseIndexReaderBase::read_state() {
 uint64_t SparseIndexReaderBase::available_memory() {
   return memory_budget_.total_budget() - memory_used_for_coords_total_ -
          tmp_read_state_.memory_used_tile_ranges() -
-         array_memory_tracker_->get_memory_usage();
+         array_memory_tracker_->get_usage();
 }
 
 std::vector<uint64_t> SparseIndexReaderBase::tile_offset_sizes() {
@@ -392,9 +392,11 @@ Status SparseIndexReaderBase::load_initial_data() {
   // Calculate ranges of tiles in the subarray, if set.
   if (subarray_.is_set()) {
     // At this point, full memory budget is available.
-    if (!array_memory_tracker_->set_budget(memory_budget_.total_budget())) {
-      throw SparseIndexReaderBaseStatusException(
-          "Cannot set array memory budget, already over limit.");
+    try {
+      array_memory_tracker_->set_budget(memory_budget_.total_budget());
+    } catch (...) {
+      std::throw_with_nested(SparseIndexReaderBaseStatusException(
+          "Unable set memory budget when loading initial data."));
     }
 
     // Make sure there is no memory taken by the subarray.
@@ -451,10 +453,12 @@ Status SparseIndexReaderBase::load_initial_data() {
   per_frag_tile_offsets_usage_ = tile_offset_sizes();
 
   // Set a limit to the array memory.
-  if (!array_memory_tracker_->set_budget(
-          memory_budget_.total_budget() * memory_budget_.ratio_array_data())) {
-    throw SparseIndexReaderBaseStatusException(
-        "Cannot set array memory budget, already over limit.");
+  try {
+    array_memory_tracker_->set_budget(
+        memory_budget_.total_budget() * memory_budget_.ratio_array_data());
+  } catch (...) {
+    std::throw_with_nested(SparseIndexReaderBaseStatusException(
+        "Unable to set memory budget when loading initial data."));
   }
 
   // Add var size dimensions to the list of tile var size to load vector.

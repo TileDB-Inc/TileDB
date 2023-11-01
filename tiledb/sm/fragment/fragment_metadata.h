@@ -40,6 +40,7 @@
 #include <vector>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/types.h"
@@ -60,7 +61,6 @@ class ArraySchema;
 class Buffer;
 class EncryptionKey;
 class TileMetadata;
-class MemoryTracker;
 
 /** Stores the metadata structures of a fragment. */
 class FragmentMetadata {
@@ -89,7 +89,7 @@ class FragmentMetadata {
    */
   FragmentMetadata(
       ContextResources* resources,
-      MemoryTracker* memory_tracker,
+      shared_ptr<MemoryTracker> memory_tracker,
       const shared_ptr<const ArraySchema>& array_schema,
       const URI& fragment_uri,
       const std::pair<uint64_t, uint64_t>& timestamp_range,
@@ -482,7 +482,7 @@ class FragmentMetadata {
    */
   static std::vector<shared_ptr<FragmentMetadata>> load(
       ContextResources& resources,
-      MemoryTracker* memory_tracker,
+      shared_ptr<MemoryTracker> memory_tracker,
       const shared_ptr<const ArraySchema> array_schema,
       const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
           array_schemas_all,
@@ -1221,8 +1221,12 @@ class FragmentMetadata {
   }
 
   /** set the memory tracker pointer during deserialization*/
-  void set_memory_tracker(MemoryTracker* memory_tracker) {
-    memory_tracker_ = memory_tracker;
+  void set_memory_tracker(shared_ptr<MemoryTracker> memory_tracker) {
+    memory_tokens_ = MemoryTokenBag(memory_tracker);
+  }
+
+  inline MemoryTokenBag& memory_tokens() {
+    return memory_tokens_;
   }
 
   /** loaded_metadata_.rtree_ accessor */
@@ -1264,9 +1268,9 @@ class FragmentMetadata {
   ContextResources* resources_;
 
   /**
-   * The memory tracker of the array this fragment metadata corresponds to.
+   * The memory token bag for tracking memory reservations.
    */
-  MemoryTracker* memory_tracker_;
+  MemoryTokenBag memory_tokens_;
 
   /** The array schema */
   shared_ptr<const ArraySchema> array_schema_;
@@ -2038,7 +2042,7 @@ class FragmentMetadata {
   void read_file_footer(
       std::shared_ptr<Tile>& tile,
       uint64_t* footer_offset,
-      uint64_t* footer_size) const;
+      uint64_t* footer_size);
 
   /**
    * Writes the contents of the input tile as a separate

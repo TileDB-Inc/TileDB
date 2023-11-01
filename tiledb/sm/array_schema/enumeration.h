@@ -36,6 +36,7 @@
 #include <iostream>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/types/untyped_datum.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"

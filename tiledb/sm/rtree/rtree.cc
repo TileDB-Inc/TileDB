@@ -56,7 +56,6 @@ namespace sm {
 RTree::RTree() {
   domain_ = nullptr;
   fanout_ = 0;
-  deserialized_buffer_size_ = 0;
 }
 
 RTree::RTree(const Domain* domain, unsigned fanout)
@@ -118,11 +117,9 @@ void RTree::build_tree() {
   std::reverse(std::begin(levels_), std::end(levels_));
 }
 
-uint64_t RTree::free_memory() {
-  auto ret = deserialized_buffer_size_;
+void RTree::free_memory() {
+  domain_ = nullptr;
   levels_.clear();
-  deserialized_buffer_size_ = 0;
-  return ret;
 }
 
 unsigned RTree::dim_num() const {
@@ -358,8 +355,6 @@ RTree RTree::clone() const {
 
 void RTree::deserialize_v1_v4(
     Deserializer& deserializer, const Domain* domain) {
-  deserialized_buffer_size_ = deserializer.size();
-
   // For backwards compatibility, ignored
   (void)deserializer.read<unsigned>();
 
@@ -389,8 +384,6 @@ void RTree::deserialize_v1_v4(
 }
 
 void RTree::deserialize_v5(Deserializer& deserializer, const Domain* domain) {
-  deserialized_buffer_size_ = deserializer.size();
-
   fanout_ = deserializer.read<unsigned>();
   auto level_num = deserializer.read<unsigned>();
 

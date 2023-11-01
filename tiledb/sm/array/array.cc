@@ -101,6 +101,7 @@ Array::Array(
     , metadata_()
     , metadata_loaded_(false)
     , non_empty_domain_computed_(false)
+    , memory_tracker_(make_shared<MemoryTracker>(HERE(), &resources_.stats()))
     , consistency_controller_(cc)
     , consistency_sentry_(nullopt) {
 }
@@ -230,7 +231,7 @@ void Array::load_fragments(
   std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
   fragment_metadata_ = FragmentMetadata::load(
       resources_,
-      memory_tracker(),
+      memory_tracker_,
       array_schema_latest_ptr(),
       array_schemas_all(),
       *encryption_key(),
@@ -1086,8 +1087,8 @@ void Array::set_non_empty_domain(const NDRange& non_empty_domain) {
   non_empty_domain_ = non_empty_domain;
 }
 
-MemoryTracker* Array::memory_tracker() {
-  return &memory_tracker_;
+shared_ptr<MemoryTracker> Array::memory_tracker() {
+  return memory_tracker_;
 }
 
 bool Array::serialize_non_empty_domain() const {
@@ -1250,7 +1251,7 @@ Array::open_for_reads() {
   auto timer_se = resources_.stats().start_timer(
       "array_open_read_load_schemas_and_fragment_meta");
   auto result = FragmentInfo::load_array_schemas_and_fragment_metadata(
-      resources_, array_directory(), memory_tracker(), *encryption_key());
+      resources_, array_directory(), memory_tracker_, *encryption_key());
 
   auto version = std::get<0>(result)->version();
   ensure_supported_schema_version_for_read(version);

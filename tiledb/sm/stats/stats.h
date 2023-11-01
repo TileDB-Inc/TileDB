@@ -92,6 +92,12 @@ class Stats {
   /** Adds `count` to the input counter stat. */
   void add_counter(const std::string& stat, uint64_t count);
 
+  /** Subtracts `count` from the input counter stat. */
+  void sub_counter(const std::string& stat, uint64_t count);
+
+  /** Set a counter to a value if it is larger than the current stat value. */
+  void set_max_counter(const std::string& stat, uint64_t count);
+
   /** Returns true if statistics are currently enabled. */
   bool enabled() const;
 

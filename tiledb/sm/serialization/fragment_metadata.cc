@@ -121,7 +121,7 @@ Status fragment_metadata_from_capnp(
     const capnp::FragmentMetadata::Reader& frag_meta_reader,
     shared_ptr<FragmentMetadata> frag_meta,
     ContextResources* resources,
-    MemoryTracker* memory_tracker) {
+    shared_ptr<MemoryTracker> memory_tracker) {
   // TODO: consider a new constructor for fragment meta or using the
   // existing one
   if (resources) {
@@ -377,6 +377,7 @@ Status fragment_metadata_from_capnp(
     // the version of a fragment is on disk, we will be serializing _on wire_ in
     // fragment_metadata_to_capnp in the "modern" (post v5) way, so we need to
     // deserialize it as well in that way.
+    frag_meta->memory_tokens().reserve(MemoryType::RTREE, data.size());
     frag_meta->rtree().deserialize(
         deserializer, &domain, constants::format_version);
   }

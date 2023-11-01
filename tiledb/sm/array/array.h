@@ -526,7 +526,7 @@ class Array {
   }
 
   /** Returns the memory tracker. */
-  MemoryTracker* memory_tracker();
+  shared_ptr<MemoryTracker> memory_tracker();
 
   /**
    * Checks the config to see if non empty domain should be serialized on array
@@ -689,7 +689,7 @@ class Array {
   NDRange non_empty_domain_;
 
   /** Memory tracker for the array. */
-  MemoryTracker memory_tracker_;
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /** A reference to the object which controls the present Array instance. */
   ConsistencyController& consistency_controller_;

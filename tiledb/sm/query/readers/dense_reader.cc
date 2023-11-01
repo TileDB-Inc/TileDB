@@ -151,9 +151,11 @@ void DenseReader::refresh_config() {
   assert(found);
 
   // Set the memory budget for the array
-  if (!array_memory_tracker_->set_budget(memory_budget_)) {
-    throw DenseReaderStatusException(
-        "Memory budget is too small to open array");
+  try {
+    array_memory_tracker_->set_budget(memory_budget_);
+  } catch (...) {
+    std::throw_with_nested(DenseReaderStatusException(
+        "Unable to set memory budget when opening array."));
   }
 }
 
@@ -732,7 +734,7 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
   // For easy reference.
   const auto& tile_coords = subarray.tile_coords();
   uint64_t available_memory =
-      memory_budget_ - array_memory_tracker_->get_memory_usage();
+      memory_budget_ - array_memory_tracker_->get_usage();
 
   // If the available memory is less than the tile upper memory limit, we cannot
   // load two batches at once. Wait for the first compute task to complete
@@ -818,7 +820,7 @@ tuple<uint64_t, std::vector<ResultTile*>> DenseReader::compute_result_tiles(
   // If we only include one tile, make sure we don't exceed the memory budget.
   if (t_end == t_start + 1) {
     const auto available_memory =
-        memory_budget_ - array_memory_tracker_->get_memory_usage();
+        memory_budget_ - array_memory_tracker_->get_usage();
     for (auto mem : required_memory) {
       if (mem > available_memory) {
         throw DenseReaderStatusException(

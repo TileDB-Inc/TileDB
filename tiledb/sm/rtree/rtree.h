@@ -36,6 +36,7 @@
 #include <vector>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/misc/tile_overlap.h"
@@ -92,7 +93,7 @@ class RTree {
   void build_tree();
 
   /** Frees the memory associated with the rtree. */
-  uint64_t free_memory();
+  void free_memory();
 
   /** The number of dimensions of the R-tree. */
   unsigned dim_num() const;
@@ -238,12 +239,6 @@ class RTree {
    * always consists of a single MBR.
    */
   std::vector<Level> levels_;
-
-  /**
-   * Stores the size of the buffer used to deserialize the data, used for
-   * memory tracking pusposes on reads.
-   */
-  uint64_t deserialized_buffer_size_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
