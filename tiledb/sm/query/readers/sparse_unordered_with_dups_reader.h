@@ -513,6 +513,23 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       UnorderedWithDupsResultTile<BitmapType>& rt);
 
   /**
+   * Returns wether or not we can aggregate the tile with only the fragment
+   * metadata.
+   *
+   * @param rt Result tile.
+   * @return If we can do the aggregation with the frag md or not.
+   */
+  inline bool can_aggregate_tile_with_frag_md(
+      UnorderedWithDupsResultTile<BitmapType>* rt) {
+    auto& frag_md = fragment_metadata_[rt->frag_idx()];
+
+    // Here we only aggregate a full tile if first of all there are no missing
+    // cells in the bitmap. This can be validated with 'copy_full_tile'.
+    // Finally, we check the fragment metadata has indeed tile metadata.
+    return rt->copy_full_tile() && frag_md->has_tile_metadata();
+  }
+
+  /**
    * Process aggregates.
    *
    * @param num_range_threads Total number of range threads.

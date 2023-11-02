@@ -267,6 +267,54 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       ResultTile::TileTuple* tile_tuple,
       optional<void*> bitmap_data);
 
+  /**
+   * Returns wether or not we can aggregate the tile with only the fragment
+   * metadata.
+   *
+   * @param name Name of the field to process.
+   * @param rst Result space tile.
+   * @param tile_subarray Tile subarray.
+   * @return If we can do the aggregation with the frag md or not.
+   */
+  template <class DimType>
+  inline bool can_aggregate_tile_with_frag_md(
+      const std::string& name,
+      ResultSpaceTile<DimType>& rst,
+      const Subarray& tile_subarray) {
+    // Make sure there are no filtered results by the query condition and that
+    // there are only one fragment domain for this tile. Having more fragment
+    // domains for a tile means we'll have to merge data for many sources so we
+    // cannot aggregate the full tile.
+    if (rst.qc_filtered_results() || rst.frag_domains().size() != 1) {
+      return false;
+    }
+
+    // Now we can get the fragment metadata of the only result tile in this
+    // space tile.
+    const auto& rt = rst.single_result_tile();
+    const auto frag_md = fragment_metadata_[rt.frag_idx()];
+
+    // Make sure this tile isn't cropped by ranges and the fragment metadata has
+    // tile metadata.
+    if (tile_subarray.cell_num() != rt.cell_num() ||
+        frag_md->has_tile_metadata()) {
+      return false;
+    }
+
+    // Fixed size nullable strings had incorrect min/max metadata for dense
+    // until version 20.
+    const auto type = array_schema_.type(name);
+    if ((type == Datatype::STRING_ASCII || type == Datatype::CHAR) &&
+        array_schema_.cell_val_num(name) != constants::var_num &&
+        array_schema_.is_nullable(name)) {
+      if (frag_md->version() <= 20) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   /** Process aggregates for a given field. */
   template <class DimType, class OffType>
   Status process_aggregates(

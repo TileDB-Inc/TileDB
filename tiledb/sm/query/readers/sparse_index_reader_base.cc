@@ -508,6 +508,9 @@ void SparseIndexReaderBase::load_tile_offsets_for_fragments(
   // Load tile offsets and var sizes for attributes.
   load_tile_var_sizes(relevant_fragments, var_size_to_load_);
   load_tile_offsets(relevant_fragments, attr_tile_offsets_to_load_);
+
+  // Load tile metadata.
+  load_tile_metadata(relevant_fragments, attr_tile_offsets_to_load_);
 }
 
 Status SparseIndexReaderBase::read_and_unfilter_coords(

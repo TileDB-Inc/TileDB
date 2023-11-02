@@ -505,6 +505,44 @@ void ReaderBase::load_tile_var_sizes(
       }));
 }
 
+void ReaderBase::load_tile_metadata(
+    const RelevantFragments& relevant_fragments,
+    const std::vector<std::string>& names) {
+  auto timer_se = stats_->start_timer("load_tile_metadata");
+  const auto encryption_key = array_->encryption_key();
+
+  throw_if_not_ok(parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      relevant_fragments.size(),
+      [&](const uint64_t i) {
+        auto frag_idx = relevant_fragments[i];
+        auto& fragment = fragment_metadata_[frag_idx];
+
+        // Generate the list of name with aggregates.
+        const auto& schema = fragment->array_schema();
+        std::vector<std::string> to_load;
+        for (auto& n : names) {
+          // Not a member of array schema, this field was added in array
+          // schema evolution, ignore for this fragment's tile metadata.
+          if (!schema->is_field(n)) {
+            continue;
+          }
+
+          if (aggregates_.count(n) != 0) {
+            to_load.emplace_back(n);
+          }
+        }
+
+        fragment->load_tile_max_values(*encryption_key, to_load);
+        fragment->load_tile_min_values(*encryption_key, to_load);
+        fragment->load_tile_sum_values(*encryption_key, to_load);
+        fragment->load_tile_null_count_values(*encryption_key, to_load);
+
+        return Status::Ok();
+      }));
+}
+
 void ReaderBase::load_processed_conditions() {
   auto timer_se = stats_->start_timer("load_processed_conditions");
   const auto encryption_key = array_->encryption_key();
