@@ -577,6 +577,18 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   inline bool can_aggregate_tile_with_frag_md(ResultCellSlab& rcs) {
     auto rt = static_cast<GlobalOrderResultTile<BitmapType>*>(rcs.tile_);
     auto& frag_md = fragment_metadata_[rt->frag_idx()];
+
+    // Here we only aggregate a full tile if first of all there are no missing
+    // cells in the bitmap. This can be validated with 'copy_full_tile'. Second,
+    // we only do it when a full tile is used in the result cell slab structure
+    // by making sure that the cell slab starts at 0 and ends at the end of the
+    // tile. When we perform the merge to order everything in global order for
+    // this reader, we might end up not using a cell in a tile at all because it
+    // has a duplicate entry (with the same coordinates) written at a later
+    // timestamp. There is no way to know that this happened in a tile at the
+    // moment so the best we can do for now is to use fragment metadata only
+    // when a full tile was merged in the cell slab structure. Finally, we check
+    // the fragment metadata has indeed tile metadata.
     return rt->copy_full_tile() && rcs.start_ == 0 &&
            rcs.length_ == rt->cell_num() && frag_md->has_tile_metadata();
   }
