@@ -26,6 +26,7 @@
 
 ## Improvements
 
+* Add an aspect template argument to `class CAPIFunction`. [#4430](https://github.com/TileDB-Inc/TileDB/pull/4430)
 * Fix enumeration value not found error message. [#4339](https://github.com/TileDB-Inc/TileDB/pull/4339)
 * Allow forward slashes in enumeration names. [#4454](https://github.com/TileDB-Inc/TileDB/pull/4454)
 * Adding extra in memory offset for var tiles on read path. [#4294](https://github.com/TileDB-Inc/TileDB/pull/4294)
@@ -52,6 +53,7 @@
 
 ## Defects removed
 
+* Fix serialization of empty enumerations. [#4472](https://github.com/TileDB-Inc/TileDB/pull/4472)
 * Patch curl to fix CVE-2023-38545. [#4408](https://github.com/TileDB-Inc/TileDB/pull/4408)
 * Update libwebp to version 1.3.2 to fix CVE-2023-5129. [#4384](https://github.com/TileDB-Inc/TileDB/pull/4384)
 * Fix missing WebP::sharpyuv installation command. [#4325](https://github.com/TileDB-Inc/TileDB/pull/4325)
