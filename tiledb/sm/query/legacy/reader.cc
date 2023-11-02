@@ -336,7 +336,7 @@ Status Reader::load_initial_data() {
 
   // Load processed conditions from fragment metadata.
   if (delete_and_update_conditions_.size() > 0) {
-    throw_if_not_ok(load_processed_conditions());
+    load_processed_conditions();
   }
 
   initial_data_loaded_ = true;
@@ -1403,12 +1403,11 @@ Status Reader::process_tiles(
 
   // Pre-load all attribute offsets into memory for attributes
   // to be read.
-  RETURN_NOT_OK(load_tile_offsets(subarray.relevant_fragments(), read_names));
+  load_tile_offsets(subarray.relevant_fragments(), read_names);
 
   // Pre-load all var attribute var tile sizes into memory for attributes
   // to be read.
-  RETURN_NOT_OK(
-      load_tile_var_sizes(subarray.relevant_fragments(), var_size_read_names));
+  load_tile_var_sizes(subarray.relevant_fragments(), var_size_read_names);
 
   // Get the maximum number of attributes to read and unfilter in parallel.
   // Each attribute requires additional memory to buffer reads into
@@ -1628,9 +1627,9 @@ Status Reader::compute_result_coords(
   // ignore fragments with a version >= 5.
   auto& subarray = read_state_.partitioner_.current();
   std::vector<std::string> zipped_coords_names = {constants::coords};
-  RETURN_CANCEL_OR_ERROR(load_tile_offsets(
+  load_tile_offsets(
       read_state_.partitioner_.subarray().relevant_fragments(),
-      zipped_coords_names));
+      zipped_coords_names);
 
   // Preload unzipped coordinate tile offsets. Note that this will
   // ignore fragments with a version < 5.
@@ -1644,11 +1643,11 @@ Status Reader::compute_result_coords(
     if (array_schema_.var_size(name))
       var_size_dim_names.emplace_back(name);
   }
-  RETURN_CANCEL_OR_ERROR(load_tile_offsets(
-      read_state_.partitioner_.subarray().relevant_fragments(), dim_names));
-  RETURN_CANCEL_OR_ERROR(load_tile_var_sizes(
+  load_tile_offsets(
+      read_state_.partitioner_.subarray().relevant_fragments(), dim_names);
+  load_tile_var_sizes(
       read_state_.partitioner_.subarray().relevant_fragments(),
-      var_size_dim_names));
+      var_size_dim_names);
 
   // Read and unfilter zipped coordinate tiles. Note that
   // this will ignore fragments with a version >= 5.
@@ -1663,8 +1662,8 @@ Status Reader::compute_result_coords(
   // Read and unfilter timestamps, if required.
   if (use_timestamps_) {
     std::vector<std::string> timestamps = {constants::timestamps};
-    RETURN_CANCEL_OR_ERROR(load_tile_offsets(
-        read_state_.partitioner_.subarray().relevant_fragments(), timestamps));
+    load_tile_offsets(
+        read_state_.partitioner_.subarray().relevant_fragments(), timestamps);
     RETURN_CANCEL_OR_ERROR(
         read_and_unfilter_attribute_tiles(timestamps, tmp_result_tiles));
   }
@@ -1672,9 +1671,9 @@ Status Reader::compute_result_coords(
   // Read and unfilter delete timestamps.
   {
     std::vector<std::string> delete_timestamps = {constants::delete_timestamps};
-    RETURN_CANCEL_OR_ERROR(load_tile_offsets(
+    load_tile_offsets(
         read_state_.partitioner_.subarray().relevant_fragments(),
-        delete_timestamps));
+        delete_timestamps);
     RETURN_CANCEL_OR_ERROR(
         read_and_unfilter_attribute_tiles(delete_timestamps, tmp_result_tiles));
   }

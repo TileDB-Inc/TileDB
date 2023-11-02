@@ -583,6 +583,10 @@ class Config {
    * - `vfs.gcs.request_timeout_ms` <br>
    *    The maximum amount of time to retry network requests to GCS. <br>
    *    **Default**: "3000"
+   * - `vfs.gcs.max_direct_upload_size` <br>
+   *    The maximum size in bytes of a direct upload to GCS. Ignored
+   *    if `vfs.gcs.use_multi_part_upload` is set to true. <br>
+   *    **Default**: "10737418240"
    * - `vfs.s3.region` <br>
    *    The S3 region, if S3 is enabled. <br>
    *    **Default**: us-east-1

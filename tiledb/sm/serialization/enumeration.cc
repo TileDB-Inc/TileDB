@@ -58,10 +58,12 @@ void enumeration_to_capnp(
   enmr_builder.setOrdered(enumeration->ordered());
 
   auto dspan = enumeration->data();
-  enmr_builder.setData(::kj::arrayPtr(dspan.data(), dspan.size()));
+  if (dspan.size() > 0) {
+    enmr_builder.setData(::kj::arrayPtr(dspan.data(), dspan.size()));
+  }
 
-  if (enumeration->var_size()) {
-    auto ospan = enumeration->offsets();
+  auto ospan = enumeration->offsets();
+  if (ospan.size() > 0) {
     enmr_builder.setOffsets(::kj::arrayPtr(ospan.data(), ospan.size()));
   }
 }
@@ -73,15 +75,14 @@ shared_ptr<const Enumeration> enumeration_from_capnp(
   Datatype datatype = Datatype::ANY;
   throw_if_not_ok(datatype_enum(reader.getType(), &datatype));
 
-  if (!reader.hasData()) {
-    throw SerializationStatusException(
-        "[Deserialization::enumeration_from_capnp] Deserialization of "
-        "Enumeration is missing its data buffer.");
-  }
+  const void* data = nullptr;
+  uint64_t data_size = 0;
 
-  auto data_reader = reader.getData().asBytes();
-  auto data = data_reader.begin();
-  auto data_size = data_reader.size();
+  if (reader.hasData()) {
+    auto data_reader = reader.getData().asBytes();
+    data = data_reader.begin();
+    data_size = data_reader.size();
+  }
 
   const void* offsets = nullptr;
   uint64_t offsets_size = 0;

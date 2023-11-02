@@ -676,7 +676,7 @@ const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization base format version number. */
-const format_version_t base_format_version = 20;
+const format_version_t base_format_version = 21;
 
 /**
  * The TileDB serialization format version number.
@@ -700,6 +700,9 @@ const format_version_t deletes_min_version = 16;
 
 /** The lowest version supported for updates. */
 const format_version_t updates_min_version = 16;
+
+/** The lowest version supported for tile min/max/sum/null count data. */
+const format_version_t tile_metadata_min_version = 11;
 
 /** The lowest version supported format version for enumerations. */
 const format_version_t enumerations_min_format_version = 20;

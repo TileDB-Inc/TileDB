@@ -395,7 +395,7 @@ class ReaderBase : public StrategyBase {
    * @param names The attribute/dimension names.
    * @return Status
    */
-  Status load_tile_offsets(
+  void load_tile_offsets(
       const RelevantFragments& relevant_fragments,
       const std::vector<std::string>& names);
 
@@ -426,9 +426,20 @@ class ReaderBase : public StrategyBase {
    *
    * @param relevant_fragments List of relevant fragments.
    * @param names The attribute/dimension names.
-   * @return Status
    */
-  Status load_tile_var_sizes(
+  void load_tile_var_sizes(
+      const RelevantFragments& relevant_fragments,
+      const std::vector<std::string>& names);
+
+  /*
+   * Loads tile metadata for each attribute/dimension name into
+   * their associated element in `fragment_metadata_`. This is done for
+   * attributes with aggregates.
+   *
+   * @param relevant_fragments List of relevant fragments.
+   * @param names The attribute/dimension names.
+   */
+  void load_tile_metadata(
       const RelevantFragments& relevant_fragments,
       const std::vector<std::string>& names);
 
@@ -438,7 +449,7 @@ class ReaderBase : public StrategyBase {
    * @param subarray The subarray to load processed conditions for.
    * @return Status
    */
-  Status load_processed_conditions();
+  void load_processed_conditions();
 
   /**
    * Read and unfilter attribute tiles.

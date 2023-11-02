@@ -161,48 +161,53 @@ capi_return_t tiledb_field_channel(
 
 using tiledb::api::api_entry_context;
 
-capi_return_t tiledb_query_get_field(
+CAPI_INTERFACE(
+    query_get_field,
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     const char* field_name,
-    tiledb_query_field_t** field) noexcept {
+    tiledb_query_field_t** field) {
   return api_entry_context<tiledb::api::tiledb_query_get_field>(
       ctx, query, field_name, field);
 }
 
-capi_return_t tiledb_query_field_free(
-    tiledb_ctx_t* ctx, tiledb_query_field_t** field) noexcept {
+CAPI_INTERFACE(
+    query_field_free, tiledb_ctx_t* ctx, tiledb_query_field_t** field) {
   return api_entry_context<tiledb::api::tiledb_query_field_free>(ctx, field);
 }
 
-capi_return_t tiledb_field_datatype(
+CAPI_INTERFACE(
+    field_datatype,
     tiledb_ctx_t* ctx,
     tiledb_query_field_t* field,
-    tiledb_datatype_t* type) noexcept {
+    tiledb_datatype_t* type) {
   return api_entry_context<tiledb::api::tiledb_field_datatype>(
       ctx, field, type);
 }
 
-capi_return_t tiledb_field_cell_val_num(
+CAPI_INTERFACE(
+    field_cell_val_num,
     tiledb_ctx_t* ctx,
     tiledb_query_field_t* field,
-    uint32_t* cell_val_num) noexcept {
+    uint32_t* cell_val_num) {
   return api_entry_context<tiledb::api::tiledb_field_cell_val_num>(
       ctx, field, cell_val_num);
 }
 
-capi_return_t tiledb_field_origin(
+CAPI_INTERFACE(
+    field_origin,
     tiledb_ctx_t* ctx,
     tiledb_query_field_t* field,
-    tiledb_field_origin_t* origin) noexcept {
+    tiledb_field_origin_t* origin) {
   return api_entry_context<tiledb::api::tiledb_field_origin>(
       ctx, field, origin);
 }
 
-capi_return_t tiledb_field_channel(
+CAPI_INTERFACE(
+    field_channel,
     tiledb_ctx_t* ctx,
     tiledb_query_field_t* field,
-    tiledb_query_channel_handle_t** channel) noexcept {
+    tiledb_query_channel_handle_t** channel) {
   return api_entry_context<tiledb::api::tiledb_field_channel>(
       ctx, field, channel);
 }

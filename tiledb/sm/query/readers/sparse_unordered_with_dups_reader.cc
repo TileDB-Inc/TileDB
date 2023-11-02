@@ -1936,32 +1936,43 @@ void SparseUnorderedWithDupsReader<BitmapType>::process_aggregates(
           return Status::Ok();
         }
 
-        uint64_t cell_num =
-            fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
-        auto&& [skip_aggregate, src_min_pos, src_max_pos, dest_cell_offset] =
-            compute_parallelization_parameters(
-                range_thread_idx,
-                num_range_threads,
-                0,
-                cell_num,
-                cell_offsets[i],
-                nullptr);
-        if (skip_aggregate) {
-          return Status::Ok();
-        }
+        if (can_aggregate_tile_with_frag_md(rt)) {
+          if (range_thread_idx == 0) {
+            auto t = rt->tile_idx();
+            auto md =
+                fragment_metadata_[rt->frag_idx()]->get_tile_metadata(name, t);
+            for (auto& aggregate : aggregates) {
+              aggregate->aggregate_tile_with_frag_md(md);
+            }
+          }
+        } else {
+          uint64_t cell_num =
+              fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
+          auto&& [skip_aggregate, src_min_pos, src_max_pos, dest_cell_offset] =
+              compute_parallelization_parameters(
+                  range_thread_idx,
+                  num_range_threads,
+                  0,
+                  cell_num,
+                  cell_offsets[i],
+                  nullptr);
+          if (skip_aggregate) {
+            return Status::Ok();
+          }
 
-        // Compute aggregate.
-        AggregateBuffer aggregate_buffer{make_aggregate_buffer(
-            name,
-            var_sized,
-            nullable,
-            cell_val_num,
-            count_bitmap,
-            src_min_pos,
-            src_max_pos,
-            *rt)};
-        for (auto& aggregate : aggregates) {
-          aggregate->aggregate_data(aggregate_buffer);
+          // Compute aggregate.
+          AggregateBuffer aggregate_buffer{make_aggregate_buffer(
+              name,
+              var_sized,
+              nullable,
+              cell_val_num,
+              count_bitmap,
+              src_min_pos,
+              src_max_pos,
+              *rt)};
+          for (auto& aggregate : aggregates) {
+            aggregate->aggregate_data(aggregate_buffer);
+          }
         }
 
         return Status::Ok();

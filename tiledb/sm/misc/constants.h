@@ -690,6 +690,9 @@ extern const format_version_t deletes_min_version;
 /** The lowest version supported for updates. */
 extern const format_version_t updates_min_version;
 
+/** The lowest version supported for tile min/max/sum/null count data. */
+extern const format_version_t tile_metadata_min_version;
+
 /** The lowest version supported for enumerations. */
 extern const format_version_t enumerations_min_format_version;
 

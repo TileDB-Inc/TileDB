@@ -107,7 +107,7 @@ Status FragmentConsolidator::consolidate(
   // must be fetched (even before `config_.timestamp_start_`),
   // to compute the anterior ND range that can help determine
   // which dense fragments are consolidatable.
-  FragmentInfo fragment_info(URI(array_name), storage_manager_);
+  FragmentInfo fragment_info(URI(array_name), storage_manager_->resources());
   auto st = fragment_info.load(
       array_for_reads->array_directory(),
       config_.timestamp_start_,
@@ -216,7 +216,7 @@ Status FragmentConsolidator::consolidate_fragments(
   }
 
   // Get all fragment info
-  FragmentInfo fragment_info(URI(array_name), storage_manager_);
+  FragmentInfo fragment_info(URI(array_name), storage_manager_->resources());
   auto st = fragment_info.load(
       array_for_reads->array_directory(),
       0,
@@ -371,7 +371,7 @@ Status FragmentConsolidator::consolidate_internal(
     URI* new_fragment_uri) {
   auto timer_se = stats_->start_timer("consolidate_internal");
 
-  RETURN_NOT_OK(array_for_reads->load_fragments(to_consolidate));
+  array_for_reads->load_fragments(to_consolidate);
 
   if (array_for_reads->is_empty()) {
     return Status::Ok();

@@ -105,13 +105,13 @@ Status array_schema_evolution_to_capnp(
     attribute_to_capnp(attr_to_add, &attribute_builder);
   }
 
+  // Enumerations to add
   auto enmr_names_to_add = array_schema_evolution->enumeration_names_to_add();
-  auto num_enmrs = enmr_names_to_add.size();
-
-  if (num_enmrs > 0) {
+  if (enmr_names_to_add.size() > 0) {
     auto enmrs_to_add_builder =
-        array_schema_evolution_builder->initEnumerationsToAdd(num_enmrs);
-    for (size_t i = 0; i < num_enmrs; i++) {
+        array_schema_evolution_builder->initEnumerationsToAdd(
+            enmr_names_to_add.size());
+    for (size_t i = 0; i < enmr_names_to_add.size(); i++) {
       auto enmr =
           array_schema_evolution->enumeration_to_add(enmr_names_to_add[i]);
       auto builder = enmrs_to_add_builder[i];
@@ -119,16 +119,31 @@ Status array_schema_evolution_to_capnp(
     }
   }
 
+  // Enumerations to extend
+  auto enmr_names_to_extend =
+      array_schema_evolution->enumeration_names_to_extend();
+  if (enmr_names_to_extend.size() > 0) {
+    auto enmrs_to_extend_builder =
+        array_schema_evolution_builder->initEnumerationsToExtend(
+            enmr_names_to_extend.size());
+    for (size_t i = 0; i < enmr_names_to_extend.size(); i++) {
+      auto enmr = array_schema_evolution->enumeration_to_extend(
+          enmr_names_to_extend[i]);
+      auto builder = enmrs_to_extend_builder[i];
+      enumeration_to_capnp(enmr, builder);
+    }
+  }
+
   // Enumerations to drop
-  std::vector<std::string> enmr_names_to_drop =
-      array_schema_evolution->enumeration_names_to_drop();
+  auto enmr_names_to_drop = array_schema_evolution->enumeration_names_to_drop();
+  if (enmr_names_to_drop.size() > 0) {
+    auto enumerations_to_drop_builder =
+        array_schema_evolution_builder->initEnumerationsToDrop(
+            enmr_names_to_drop.size());
 
-  auto enumerations_to_drop_builder =
-      array_schema_evolution_builder->initEnumerationsToDrop(
-          enmr_names_to_drop.size());
-
-  for (size_t i = 0; i < enmr_names_to_drop.size(); i++) {
-    enumerations_to_drop_builder.set(i, enmr_names_to_drop[i]);
+    for (size_t i = 0; i < enmr_names_to_drop.size(); i++) {
+      enumerations_to_drop_builder.set(i, enmr_names_to_drop[i]);
+    }
   }
 
   auto timestamp_builder =
@@ -166,6 +181,15 @@ tdb_unique_ptr<ArraySchemaEvolution> array_schema_evolution_from_capnp(
     enmrs_to_add[enmr->name()] = enmr;
   }
 
+  // Create enumerations to extend
+  std::unordered_map<std::string, shared_ptr<const Enumeration>>
+      enmrs_to_extend;
+  auto enmrs_to_extend_reader = evolution_reader.getEnumerationsToExtend();
+  for (auto enmr_reader : enmrs_to_extend_reader) {
+    auto enmr = enumeration_from_capnp(enmr_reader);
+    enmrs_to_extend[enmr->name()] = enmr;
+  }
+
   // Create enumerations to drop
   std::unordered_set<std::string> enmrs_to_drop;
   auto enmrs_to_drop_reader = evolution_reader.getEnumerationsToDrop();
@@ -187,6 +211,7 @@ tdb_unique_ptr<ArraySchemaEvolution> array_schema_evolution_from_capnp(
       attrs_to_add,
       attrs_to_drop,
       enmrs_to_add,
+      enmrs_to_extend,
       enmrs_to_drop,
       ts_range));
 }

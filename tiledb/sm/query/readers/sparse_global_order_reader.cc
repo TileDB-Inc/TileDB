@@ -2098,26 +2098,40 @@ void SparseGlobalOrderReader<BitmapType>::process_aggregates(
       [&](uint64_t i, uint64_t range_thread_idx) {
         // For easy reference.
         auto& rcs = result_cell_slabs[i];
-        auto rt = static_cast<GlobalOrderResultTile<BitmapType>*>(
-            result_cell_slabs[i].tile_);
+        if (can_aggregate_tile_with_frag_md(result_cell_slabs[i])) {
+          if (range_thread_idx == 0) {
+            auto rt = result_cell_slabs[i].tile_;
+            auto md = fragment_metadata_[rt->frag_idx()]->get_tile_metadata(
+                name, rt->tile_idx());
+            for (auto& aggregate : aggregates) {
+              aggregate->aggregate_tile_with_frag_md(md);
+            }
+          }
+        } else {
+          // Compute parallelization parameters.
+          auto&& [min_pos, max_pos, dest_cell_offset, skip_aggregate] =
+              compute_parallelization_parameters(
+                  range_thread_idx,
+                  num_range_threads,
+                  rcs.start_,
+                  rcs.length_,
+                  cell_offsets[i]);
+          if (skip_aggregate) {
+            return Status::Ok();
+          }
 
-        // Compute parallelization parameters.
-        auto&& [min_pos, max_pos, dest_cell_offset, skip_aggregate] =
-            compute_parallelization_parameters(
-                range_thread_idx,
-                num_range_threads,
-                rcs.start_,
-                rcs.length_,
-                cell_offsets[i]);
-        if (skip_aggregate) {
-          return Status::Ok();
-        }
-
-        // Compute aggregate.
-        AggregateBuffer aggregate_buffer{make_aggregate_buffer(
-            name, var_sized, nullable, cell_val_num, min_pos, max_pos, *rt)};
-        for (auto& aggregate : aggregates) {
-          aggregate->aggregate_data(aggregate_buffer);
+          // Compute aggregate.
+          AggregateBuffer aggregate_buffer{make_aggregate_buffer(
+              name,
+              var_sized,
+              nullable,
+              cell_val_num,
+              min_pos,
+              max_pos,
+              *result_cell_slabs[i].tile_)};
+          for (auto& aggregate : aggregates) {
+            aggregate->aggregate_data(aggregate_buffer);
+          }
         }
 
         return Status::Ok();

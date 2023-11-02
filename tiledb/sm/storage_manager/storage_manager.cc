@@ -169,87 +169,6 @@ Status StorageManagerCanonical::group_close_for_writes(Group* group) {
   return Status::Ok();
 }
 
-std::tuple<
-    Status,
-    optional<shared_ptr<ArraySchema>>,
-    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
-    optional<std::vector<shared_ptr<FragmentMetadata>>>>
-StorageManagerCanonical::load_array_schemas_and_fragment_metadata(
-    const ArrayDirectory& array_dir,
-    MemoryTracker* memory_tracker,
-    const EncryptionKey& enc_key) {
-  auto timer_se =
-      stats()->start_timer("sm_load_array_schemas_and_fragment_metadata");
-
-  // Load array schemas
-  auto&& [array_schema_latest, array_schemas_all] =
-      array_dir.load_array_schemas(enc_key);
-
-  const auto filtered_fragment_uris =
-      load_filtered_fragment_uris(array_schema_latest->dense(), array_dir);
-  const auto& meta_uris = array_dir.fragment_meta_uris();
-  const auto& fragments_to_load = filtered_fragment_uris.fragment_uris();
-
-  // Get the consolidated fragment metadatas
-  std::vector<shared_ptr<Tile>> fragment_metadata_tiles(meta_uris.size());
-  std::vector<std::vector<std::pair<std::string, uint64_t>>> offsets_vectors(
-      meta_uris.size());
-  auto status = parallel_for(compute_tp(), 0, meta_uris.size(), [&](size_t i) {
-    auto&& [st, tile_opt, offsets] =
-        load_consolidated_fragment_meta(meta_uris[i], enc_key);
-    RETURN_NOT_OK(st);
-    fragment_metadata_tiles[i] =
-        make_shared<Tile>(HERE(), std::move(*tile_opt));
-    offsets_vectors[i] = std::move(offsets.value());
-    return st;
-  });
-  RETURN_NOT_OK_TUPLE(status, nullopt, nullopt, nullopt);
-
-  // Get the unique fragment metadatas into a map.
-  std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
-  for (uint64_t i = 0; i < offsets_vectors.size(); i++) {
-    for (auto& offset : offsets_vectors[i]) {
-      if (offsets.count(offset.first) == 0) {
-        offsets.emplace(
-            offset.first,
-            std::make_pair(fragment_metadata_tiles[i].get(), offset.second));
-      }
-    }
-  }
-
-  // Load the fragment metadata
-  auto&& [st_fragment_meta, fragment_metadata] = load_fragment_metadata(
-      memory_tracker,
-      array_schema_latest,
-      array_schemas_all,
-      enc_key,
-      fragments_to_load,
-      offsets);
-  RETURN_NOT_OK_TUPLE(st_fragment_meta, nullopt, nullopt, nullopt);
-
-  return {
-      Status::Ok(), array_schema_latest, array_schemas_all, fragment_metadata};
-}
-
-tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
-StorageManagerCanonical::array_load_fragments(
-    Array* array, const std::vector<TimestampedURI>& fragments_to_load) {
-  auto timer_se = stats()->start_timer("sm_array_load_fragments");
-
-  // Load the fragment metadata
-  std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
-  auto&& [st_fragment_meta, fragment_metadata] = load_fragment_metadata(
-      array->memory_tracker(),
-      array->array_schema_latest_ptr(),
-      array->array_schemas_all(),
-      *array->encryption_key(),
-      fragments_to_load,
-      offsets);
-  RETURN_NOT_OK_TUPLE(st_fragment_meta, nullopt);
-
-  return {Status::Ok(), fragment_metadata};
-}
-
 Status StorageManagerCanonical::array_consolidate(
     const char* array_name,
     EncryptionType encryption_type,
@@ -754,6 +673,27 @@ Status StorageManager::array_evolve_schema(
   }
 
   auto&& array_schema = array_dir.load_array_schema_latest(encryption_key);
+
+  // Load required enumerations before evolution.
+  auto enmr_names = schema_evolution->enumeration_names_to_extend();
+  if (enmr_names.size() > 0) {
+    std::unordered_set<std::string> enmr_path_set;
+    for (auto name : enmr_names) {
+      enmr_path_set.insert(array_schema->get_enumeration_path_name(name));
+    }
+    std::vector<std::string> enmr_paths;
+    for (auto path : enmr_path_set) {
+      enmr_paths.emplace_back(path);
+    }
+
+    MemoryTracker tracker;
+    auto loaded_enmrs = array_dir.load_enumerations_from_paths(
+        enmr_paths, encryption_key, tracker);
+
+    for (auto enmr : loaded_enmrs) {
+      array_schema->store_enumeration(enmr);
+    }
+  }
 
   // Evolve schema
   auto array_schema_evolved = schema_evolution->evolve_schema(array_schema);
@@ -1921,128 +1861,6 @@ void StorageManagerCanonical::load_group_metadata(
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
-
-tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
-StorageManagerCanonical::load_fragment_metadata(
-    MemoryTracker* memory_tracker,
-    const shared_ptr<const ArraySchema>& array_schema_latest,
-    const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
-        array_schemas_all,
-    const EncryptionKey& encryption_key,
-    const std::vector<TimestampedURI>& fragments_to_load,
-    const std::unordered_map<std::string, std::pair<Tile*, uint64_t>>&
-        offsets) {
-  auto timer_se = stats()->start_timer("sm_load_fragment_metadata");
-
-  // Load the metadata for each fragment
-  auto fragment_num = fragments_to_load.size();
-  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata;
-  fragment_metadata.resize(fragment_num);
-  auto status = parallel_for(compute_tp(), 0, fragment_num, [&](size_t f) {
-    const auto& sf = fragments_to_load[f];
-
-    URI coords_uri =
-        sf.uri_.join_path(constants::coords + constants::file_suffix);
-
-    auto name = sf.uri_.remove_trailing_slash().last_path_part();
-    auto format_version = utils::parse::get_fragment_version(name);
-
-    // Note that the fragment metadata version is >= the array schema
-    // version. Therefore, the check below is defensive and will always
-    // ensure backwards compatibility.
-    shared_ptr<FragmentMetadata> metadata;
-    if (format_version <= 2) {
-      bool sparse;
-      RETURN_NOT_OK(vfs()->is_file(coords_uri, &sparse));
-      metadata = make_shared<FragmentMetadata>(
-          HERE(),
-          this,
-          memory_tracker,
-          array_schema_latest,
-          sf.uri_,
-          sf.timestamp_range_,
-          !sparse);
-    } else {
-      // Fragment format version > 2
-      metadata = make_shared<FragmentMetadata>(
-          HERE(),
-          this,
-          memory_tracker,
-          array_schema_latest,
-          sf.uri_,
-          sf.timestamp_range_);
-    }
-
-    // Potentially find the basic fragment metadata in the consolidated
-    // metadata buffer
-    Tile* fragment_metadata_tile = nullptr;
-    uint64_t offset = 0;
-
-    auto it = offsets.end();
-    if (metadata->format_version() >= 9) {
-      it = offsets.find(name);
-    } else {
-      it = offsets.find(sf.uri_.to_string());
-    }
-    if (it != offsets.end()) {
-      fragment_metadata_tile = it->second.first;
-      offset = it->second.second;
-    }
-
-    // Load fragment metadata
-    RETURN_NOT_OK(metadata->load(
-        encryption_key, fragment_metadata_tile, offset, array_schemas_all));
-
-    fragment_metadata[f] = metadata;
-    return Status::Ok();
-  });
-  RETURN_NOT_OK_TUPLE(status, nullopt);
-
-  return {Status::Ok(), fragment_metadata};
-}
-
-tuple<
-    Status,
-    optional<Tile>,
-    optional<std::vector<std::pair<std::string, uint64_t>>>>
-StorageManagerCanonical::load_consolidated_fragment_meta(
-    const URI& uri, const EncryptionKey& enc_key) {
-  auto timer_se = stats()->start_timer("sm_read_load_consolidated_frag_meta");
-
-  // No consolidated fragment metadata file
-  if (uri.to_string().empty())
-    return {Status::Ok(), nullopt, nullopt};
-
-  auto&& tile = GenericTileIO::load(resources_, uri, 0, enc_key);
-
-  stats()->add_counter("consolidated_frag_meta_size", tile.size());
-
-  uint32_t fragment_num;
-  Deserializer deserializer(tile.data(), tile.size());
-  fragment_num = deserializer.read<uint32_t>();
-
-  uint64_t name_size, offset;
-  std::string name;
-  std::vector<std::pair<std::string, uint64_t>> ret;
-  ret.reserve(fragment_num);
-  for (uint32_t f = 0; f < fragment_num; ++f) {
-    name_size = deserializer.read<uint64_t>();
-    name.resize(name_size);
-    deserializer.read(&name[0], name_size);
-    offset = deserializer.read<uint64_t>();
-    ret.emplace_back(name, offset);
-  }
-
-  return {Status::Ok(), std::move(tile), ret};
-}
-
-const ArrayDirectory::FilteredFragmentUris
-StorageManagerCanonical::load_filtered_fragment_uris(
-    const bool dense, const ArrayDirectory& array_dir) {
-  auto timer_se = stats()->start_timer("sm_load_filtered_fragment_uris");
-
-  return array_dir.filtered_fragment_uris(dense);
-}
 
 Status StorageManagerCanonical::set_default_tags() {
   const auto version = std::to_string(constants::library_version[0]) + "." +

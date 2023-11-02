@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 
 using namespace tiledb::common;
 
@@ -439,21 +440,15 @@ class FilteredData {
   inline URI file_uri(const FragmentMetadata* fragment, const TileType type) {
     switch (type) {
       case TileType::FIXED: {
-        auto&& [status, uri]{fragment->uri(name_)};
-        throw_if_not_ok(status);
-        return std::move(*uri);
+        return fragment->uri(name_);
       }
 
       case TileType::VAR: {
-        auto&& [status, uri]{fragment->var_uri(name_)};
-        throw_if_not_ok(status);
-        return std::move(*uri);
+        return fragment->var_uri(name_);
       }
 
       case TileType::NULLABLE: {
-        auto&& [status, uri]{fragment->validity_uri(name_)};
-        throw_if_not_ok(status);
-        return std::move(*uri);
+        return fragment->validity_uri(name_);
       }
 
       default:
