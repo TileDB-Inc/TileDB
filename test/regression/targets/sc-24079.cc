@@ -5,12 +5,12 @@
 
 #include <test/support/tdb_catch.h>
 
-std::string array_name = "cpp_unit_array_24079";
-
 TEST_CASE(
     "C++ API: DoubleDelta filter typecheck should account for output type of "
     "FloatScaleFilter",
     "[cppapi][filter][float-scaling]") {
+  std::string array_name = "cpp_unit_array_24079";
+
   tiledb::Context ctx;
   tiledb::VFS vfs(ctx);
 
