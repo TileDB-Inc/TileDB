@@ -23,6 +23,7 @@ title: Format Specification
 * **Group**
    * [File hierarchy](./group_file_hierarchy.md)
 * **Other**
+   * [Format version history](./format_version_history.md)
    * [Consolidated Fragment Metadata File](./consolidated_fragment_metadata_file.md)
    * [Filter Pipeline](./filter_pipeline.md)
    * [Vacuum Pipeline](./vacuum_file.md)
