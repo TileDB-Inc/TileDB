@@ -1,3 +1,10 @@
+# TileDB v2.17.4 Release Notes
+
+## Defects removed
+
+* Fix serialization of empty enumerations. [#4472](https://github.com/TileDB-Inc/TileDB/pull/4472)
+* Update libwebp to version 1.3.2 to fix CVE-2023-5129. [#4384](https://github.com/TileDB-Inc/TileDB/pull/4384)
+
 # TileDB v2.17.3 Release Notes
 
 ## Improvements
