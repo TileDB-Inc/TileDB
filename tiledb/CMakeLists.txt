@@ -411,11 +411,16 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
     ${TILEDB_EXTERNALS_SOURCES}
 )
 
+target_sources(TILEDB_CORE_OBJECTS
+  PUBLIC
+    $<TARGET_OBJECTS:baseline>
+)
+
 target_link_libraries(TILEDB_CORE_OBJECTS
   PRIVATE
     common
   PUBLIC
-    baseline $<TARGET_OBJECTS:baseline>
+    baseline
 )
 
 target_link_libraries(TILEDB_CORE_OBJECTS INTERFACE object_store_definitions)
@@ -468,9 +473,13 @@ if (WIN32 AND TILEDB_STATIC)
   )
   add_dependencies(TILEDB_CORE_OBJECTS_STATIC gen_mgc_unarch)
 
+  target_sources(TILEDB_CORE_OBJECTS_STATIC
+    PUBLIC
+      $<TARGET_OBJECTS:baseline>)
+
   target_link_libraries(TILEDB_CORE_OBJECTS_STATIC
     PUBLIC
-      baseline $<TARGET_OBJECTS:baseline>
+      baseline
   )
 
   target_compile_definitions(TILEDB_CORE_OBJECTS_STATIC
