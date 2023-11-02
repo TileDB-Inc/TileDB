@@ -412,7 +412,7 @@ Status FragmentConsolidator::consolidate_internal(
   // Prepare buffers
   auto average_var_cell_sizes = array_for_reads->get_average_var_cell_sizes();
   auto&& [buffers, buffer_sizes] =
-      create_buffers(stats_, config_, array_schema, average_var_cell_sizes);
+      create_buffers(stats_, config_, array_schema, average_var_cell_sizes, storage_manager_->compute_tp());
 
   // Create queries
   auto query_r = (Query*)nullptr;
@@ -529,7 +529,8 @@ FragmentConsolidator::create_buffers(
     stats::Stats* stats,
     const ConsolidationConfig& config,
     const ArraySchema& array_schema,
-    std::unordered_map<std::string, uint64_t>& avg_cell_sizes) {
+    std::unordered_map<std::string, uint64_t>& avg_cell_sizes,
+    ThreadPool* compute_tp) {
   auto timer_se = stats->start_timer("consolidate_create_buffers");
 
   // For easy reference
@@ -602,11 +603,14 @@ FragmentConsolidator::create_buffers(
 
   // Allocate space for each buffer.
   uint64_t adjusted_budget = total_budget / total_weights * total_weights;
-  for (unsigned i = 0; i < buffer_num; ++i) {
+
+  throw_if_not_ok(parallel_for(compute_tp, 0, buffer_num, [&](size_t i) {
     buffer_sizes[i] = std::max<uint64_t>(
         1, adjusted_budget * buffer_weights[i] / total_weights);
     buffers[i].resize(buffer_sizes[i]);
-  }
+
+    return Status::Ok();
+  }));
 
   // Success
   return {buffers, buffer_sizes};

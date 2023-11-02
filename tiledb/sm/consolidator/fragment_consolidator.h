@@ -260,7 +260,8 @@ class FragmentConsolidator : public Consolidator {
       stats::Stats* stats,
       const ConsolidationConfig& config,
       const ArraySchema& array_schema,
-      std::unordered_map<std::string, uint64_t>& avg_cell_sizes);
+      std::unordered_map<std::string, uint64_t>& avg_cell_sizes,
+      ThreadPool* compute_tp);
 
   /**
    * Creates the queries needed for consolidation. It also retrieves
