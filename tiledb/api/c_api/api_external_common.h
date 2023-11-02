@@ -156,9 +156,6 @@ TILEDB_EXPORT capi_status_t tiledb_status_code(capi_return_t x);
  * Invalid error argument would prevent errors from being reported correctly.
  */
 #define TILEDB_INVALID_ERROR (-4)
-
-/** Default compression level */
-#define TILEDB_COMPRESSION_FILTER_DEFAULT_LEVEL (-30000)
 /**@}*/
 
 #ifdef __cplusplus
