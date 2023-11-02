@@ -34,6 +34,7 @@
 #define TILEDB_CPP_API_FRAGMENT_INFO_H
 
 #include "array_schema.h"
+#include "capi_string.h"
 #include "context.h"
 #include "deleter.h"
 #include "exception.h"
@@ -97,12 +98,7 @@ class FragmentInfo {
     tiledb_string_t* name;
     ctx.handle_error(tiledb_fragment_info_get_fragment_name_v2(
         ctx.ptr().get(), fragment_info_.get(), fid, &name));
-    auto name_ptr =
-        std::unique_ptr<tiledb_string_t, tiledb::impl::Deleter>(name);
-    const char* name_c;
-    size_t length;
-    ctx.handle_error(tiledb_string_view(name_ptr.get(), &name_c, &length));
-    return std::string(name_c, length);
+    return impl::convert_to_string(&name).value();
   }
 
   /**
