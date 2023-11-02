@@ -307,7 +307,6 @@ void create_array(
  * @param array_name The array name.
  * @param enc_type The encryption type.
  * @param key The key to encrypt the array with.
- * @param key_len The key length.
  * @param array_type The array type (dense or sparse).
  * @param dim_names The names of dimensions.
  * @param dim_types The types of dimensions.
@@ -327,7 +326,6 @@ void create_array(
     const std::string& array_name,
     tiledb_encryption_type_t enc_type,
     const char* key,
-    uint32_t key_len,
     tiledb_array_type_t array_type,
     const std::vector<std::string>& dim_names,
     const std::vector<tiledb_datatype_t>& dim_types,
@@ -577,7 +575,6 @@ void write_array(
  * @param array_name The array name.
  * @param encyrption_type The type of encryption.
  * @param key The encryption key.
- * @param key_len The encryption key length.
  * @param timestamp The timestamp to write at.
  * @param layout The layout to write into.
  * @param buffers The attribute/dimension buffers to be written.
@@ -587,7 +584,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     tiledb_layout_t layout,
     const QueryBuffers& buffers);
@@ -649,7 +645,6 @@ void write_array(
  * @param array_name The array name.
  * @param encyrption_type The type of encryption.
  * @param key The encryption key.
- * @param key_len The encryption key length.
  * @param timestamp The timestamp to write at.
  * @param subarray The subarray to write into.
  * @param layout The layout to write into.
@@ -660,7 +655,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     const void* subarray,
     tiledb_layout_t layout,
@@ -691,7 +685,6 @@ void write_array(
  * @param array_name The array name.
  * @param encyrption_type The type of encryption.
  * @param key The encryption key.
- * @param key_len The encryption key length.
  * @param timestamp The timestamp to write at.
  * @param layout The layout to write into.
  * @param buffers The attribute/dimension buffers to be written.
@@ -702,7 +695,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     tiledb_layout_t layout,
     const QueryBuffers& buffers,
@@ -737,7 +729,6 @@ void write_array(
  * @param array_name The array name.
  * @param encyrption_type The type of encryption.
  * @param key The encryption key.
- * @param key_len The encryption key length.
  * @param timestamp The timestamp to write at.
  * @param subarray The subarray to write into.
  * @param layout The layout to write into.
@@ -749,7 +740,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     const void* subarray,
     tiledb_layout_t layout,

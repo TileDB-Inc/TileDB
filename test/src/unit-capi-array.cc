@@ -315,7 +315,6 @@ void ArrayFx::create_dense_vector(const std::string& path) {
     rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
-    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.reset();
     REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_, cfg).ok());
     tiledb_config_free(&cfg);
   }
@@ -531,7 +530,8 @@ TEST_CASE_METHOD(
 
   SECTION("- API calls with encrypted schema") {
     const char key[] = "0123456789abcdeF0123456789abcdeF";
-    uint32_t key_len = (uint32_t)strlen(key);
+    const char bad_key_len[] = "bad_key_len";
+    const char wrong_key[] = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
 
     // Check error with invalid key length
     tiledb_config_t* cfg;
@@ -541,10 +541,9 @@ TEST_CASE_METHOD(
     REQUIRE(err == nullptr);
     rc = tiledb_config_set(cfg, "sm.encryption_type", "AES_256_GCM", &err);
     REQUIRE(err == nullptr);
-    rc = tiledb_config_set(cfg, "sm.encryption_key", key, &err);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", bad_key_len, &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
-    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(31);
     tiledb_ctx_t* ctx_invalid_key_len_1;
     tiledb_vfs_t* vfs_invalid_key_len_1;
     REQUIRE(vfs_test_init(
@@ -559,8 +558,6 @@ TEST_CASE_METHOD(
     rc = tiledb_config_set(
         cfg, "sm.encryption_type", "TILEDB_NO_ENCRYPTION", &err);
     REQUIRE(err == nullptr);
-    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
-        key_len);
     tiledb_ctx_t* ctx_invalid_key_len_2;
     tiledb_vfs_t* vfs_invalid_key_len_2;
     REQUIRE(vfs_test_init(
@@ -576,6 +573,8 @@ TEST_CASE_METHOD(
 
     // Create array with proper key
     rc = tiledb_config_set(cfg, "sm.encryption_type", "AES_256_GCM", &err);
+    REQUIRE(err == nullptr);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", key, &err);
     REQUIRE(err == nullptr);
     tiledb_ctx_t* ctx_proper_key;
     tiledb_vfs_t* vfs_proper_key;
@@ -626,12 +625,11 @@ TEST_CASE_METHOD(
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(is_open == 0);
 
-    // Check error with bad key
-    char bad_key[32];
+    // Check error with wrong key
     rc = tiledb_config_set(cfg, "sm.encryption_type", "AES_256_GCM", &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
-    rc = tiledb_config_set(cfg, "sm.encryption_key", bad_key, &err);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", wrong_key, &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
     rc = tiledb_array_set_config(ctx_, array, cfg);
@@ -644,12 +642,11 @@ TEST_CASE_METHOD(
 
     // Check error with bad key length
     REQUIRE(
-        tiledb_config_set(cfg, "sm.encryption_key", key, &err) == TILEDB_OK);
+        tiledb_config_set(cfg, "sm.encryption_key", bad_key_len, &err) ==
+        TILEDB_OK);
     REQUIRE(err == nullptr);
     rc = tiledb_array_set_config(ctx_, array, cfg);
     REQUIRE(rc == TILEDB_OK);
-    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
-        key_len - 1);
     rc = tiledb_array_open(ctx_, array, TILEDB_READ);
     REQUIRE(rc == TILEDB_ERR);
     rc = tiledb_array_is_open(ctx_, array, &is_open);
@@ -657,8 +654,10 @@ TEST_CASE_METHOD(
     REQUIRE(is_open == 0);
 
     // Use correct key
-    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
-        key_len);
+    REQUIRE(
+        tiledb_config_set(cfg, "sm.encryption_key", key, &err) == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
     rc = tiledb_array_open(ctx_, array, TILEDB_READ);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_is_open(ctx_, array, &is_open);
@@ -669,7 +668,7 @@ TEST_CASE_METHOD(
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_close(ctx_, array);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_config_set(cfg, "sm.encryption_key", bad_key, &err);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", key, &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
     rc = tiledb_array_set_config(ctx_, array, cfg);
@@ -683,6 +682,10 @@ TEST_CASE_METHOD(
     REQUIRE(rc == TILEDB_ERR);
 
     // Opening an array with a bad key should fail
+    REQUIRE(
+        tiledb_config_set(cfg, "sm.encryption_key", wrong_key, &err) ==
+        TILEDB_OK);
+    REQUIRE(err == nullptr);
     rc = tiledb_array_set_config(ctx_, array2, cfg);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_open(ctx_, array2, TILEDB_READ);
@@ -702,7 +705,7 @@ TEST_CASE_METHOD(
     // Check with bad key
     rc = tiledb_config_set(cfg, "sm.encryption_type", "AES_256_GCM", &err);
     REQUIRE(err == nullptr);
-    rc = tiledb_config_set(cfg, "sm.encryption_key", bad_key, &err);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", wrong_key, &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
     tiledb_ctx_t* ctx_bad_key;
@@ -730,12 +733,17 @@ TEST_CASE_METHOD(
     tiledb_vfs_free(&vfs_correct_key);
 
     // Check opening after closing still requires a key.
+    rc = tiledb_config_set(cfg, "sm.encryption_key", "", &err);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(err == nullptr);
+    rc = tiledb_array_set_config(ctx_, array, cfg);
+    REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_open(ctx_, array, TILEDB_READ);
     REQUIRE(rc == TILEDB_ERR);
     rc = tiledb_array_is_open(ctx_, array, &is_open);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(is_open == 0);
-    rc = tiledb_config_set(cfg, "sm.encryption_key", bad_key, &err);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", wrong_key, &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
     rc = tiledb_array_set_config(ctx_, array, cfg);
@@ -814,7 +822,6 @@ TEST_CASE_METHOD(
     rc = tiledb_config_set(cfg, "sm.encryption_key", key, &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
-    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.reset();
     rc = tiledb_array_set_config(ctx_, array, cfg);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_open(ctx_, array, TILEDB_READ);
@@ -833,7 +840,6 @@ TEST_CASE_METHOD(
     REQUIRE(err == nullptr);
     rc = tiledb_array_set_config(ctx_, array, cfg);
     REQUIRE(rc == TILEDB_OK);
-    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(0);
     rc = tiledb_array_open(ctx_, array, TILEDB_READ);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_is_open(ctx_, array, &is_open);
@@ -939,9 +945,6 @@ TEST_CASE_METHOD(
     rc = tiledb_array_set_config(ctx_, array, cfg);
     CHECK(rc == TILEDB_OK);
     tiledb_config_free(&cfg);
-    uint32_t key_len = (uint32_t)strlen(encryption_key_);
-    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
-        key_len);
   }
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);

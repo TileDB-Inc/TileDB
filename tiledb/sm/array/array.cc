@@ -212,9 +212,10 @@ Status Array::open_without_fragments(
       std::tie(array_schema_latest_, array_schemas_all_) =
           open_for_reads_without_fragments();
     }
-  } catch (std::exception& e) {
+  } catch (...) {
     set_array_closed();
-    throw Status_ArrayError(e.what());
+    std::throw_with_nested(
+        ArrayException("Error opening array without fragments."));
   }
 
   is_opening_or_closing_ = false;
@@ -307,6 +308,7 @@ Status Array::open(
 
     if (!encryption_key_from_cfg.empty()) {
       encryption_key = encryption_key_from_cfg.c_str();
+      key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
       std::string encryption_type_from_cfg;
       bool found = false;
       encryption_type_from_cfg = config_.get("sm.encryption_type", &found);
@@ -317,16 +319,9 @@ Status Array::open(
       }
       encryption_type = et.value();
 
-      if (EncryptionKey::is_valid_key_length(
+      if (!EncryptionKey::is_valid_key_length(
               encryption_type,
               static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
-        const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
-        if (unit_test_cfg.array_encryption_key_length.is_set()) {
-          key_length = unit_test_cfg.array_encryption_key_length.get();
-        } else {
-          key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
-        }
-      } else {
         encryption_key = nullptr;
         key_length = 0;
       }
