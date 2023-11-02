@@ -47,6 +47,9 @@ cmake_policy(SET CMP0063 NEW)
 #  * CMAKE_HP_PTHREADS_INIT - If the found thread library is the HP thread library.
 find_package(Threads REQUIRED)
 
+# Compile all core sources with PIC
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 ############################################################
 # Subdirectories
 ############################################################
@@ -140,9 +143,6 @@ endif()
 
 # List of all core source files
 set(TILEDB_CORE_SOURCES
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/heap_memory.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/heap_profiler.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/logger.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/memory.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/stdx_string.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/interval/interval.cc
@@ -411,9 +411,17 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
     ${TILEDB_EXTERNALS_SOURCES}
 )
 
-# Use BUILD_INTERFACE generator to work around
-#   https://gitlab.kitware.com/cmake/cmake/-/issues/20736
-target_link_libraries(TILEDB_CORE_OBJECTS PRIVATE $<BUILD_INTERFACE:common>)
+target_sources(TILEDB_CORE_OBJECTS
+  PUBLIC
+    $<TARGET_OBJECTS:baseline>
+)
+
+target_link_libraries(TILEDB_CORE_OBJECTS
+  PRIVATE
+    common
+  PUBLIC
+    baseline
+)
 
 target_link_libraries(TILEDB_CORE_OBJECTS INTERFACE object_store_definitions)
 
@@ -447,9 +455,6 @@ add_custom_target(
   COMMENT "Re-generate ${MGC_GZIPPED_BIN_INPUT_FILE} for embedded magic.mgc support"
 )
 
-# Compile all core sources with PIC
-set_property(TARGET TILEDB_CORE_OBJECTS PROPERTY POSITION_INDEPENDENT_CODE ON)
-
 target_include_directories(TILEDB_CORE_OBJECTS
   PRIVATE
     "${TILEDB_CORE_INCLUDE_DIR}"
@@ -468,8 +473,14 @@ if (WIN32 AND TILEDB_STATIC)
   )
   add_dependencies(TILEDB_CORE_OBJECTS_STATIC gen_mgc_unarch)
 
-  # Compile all core sources with PIC
-  set_property(TARGET TILEDB_CORE_OBJECTS_STATIC PROPERTY POSITION_INDEPENDENT_CODE ON)
+  target_sources(TILEDB_CORE_OBJECTS_STATIC
+    PUBLIC
+      $<TARGET_OBJECTS:baseline>)
+
+  target_link_libraries(TILEDB_CORE_OBJECTS_STATIC
+    PUBLIC
+      baseline
+  )
 
   target_compile_definitions(TILEDB_CORE_OBJECTS_STATIC
     PRIVATE
@@ -1069,6 +1080,7 @@ endif()
 target_link_libraries(tiledb_shared
   PRIVATE
     $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_LINK_LIBRARIES>
+    TILEDB_CORE_OBJECTS
 )
 
 if (TILEDB_STATIC)
@@ -1089,7 +1101,10 @@ if (TILEDB_STATIC)
     )
     # Create the target
     add_library(tiledb_static STATIC
-      $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS_STATIC>
+      $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS_STATIC>)
+    target_link_libraries(tiledb_static
+      PRIVATE
+        $<BUILD_INTERFACE:TILEDB_CORE_OBJECTS_STATIC>
     )
     target_compile_definitions(tiledb_static
       INTERFACE
@@ -1103,6 +1118,10 @@ if (TILEDB_STATIC)
     )
   else()
     add_library(tiledb_static STATIC $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
+    target_link_libraries(tiledb_static
+      PRIVATE
+        $<BUILD_INTERFACE:TILEDB_CORE_OBJECTS>
+    )
     set_target_properties(tiledb_static
       PROPERTIES
         OUTPUT_NAME "tiledb"
