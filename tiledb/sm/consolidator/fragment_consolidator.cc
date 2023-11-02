@@ -121,9 +121,34 @@ Status FragmentConsolidator::consolidate(
     return st;
   }
 
+  const auto& array_schema = array_for_reads->array_schema_latest();
+
+  // Prepare buffers
+  // We probably should not load al fragment info
+  // However if we don't load all then what? Just the first batch for
+  // consolidation? That might be skewed? Maybe that is okay? We just need to
+  // run some tests to decide.
+  const auto& fragments = fragment_info.single_fragment_info_vec();
+  std::vector<TimestampedURI> all_fragments;
+  all_fragments.reserve(fragments.size());
+  for (const auto& frag_info : fragments) {
+    all_fragments.emplace_back(frag_info.uri(), frag_info.timestamp_range());
+  }
+
+  array_for_reads->load_fragments(all_fragments);
+  auto average_var_cell_sizes = array_for_reads->get_average_var_cell_sizes();
+  auto&& [buffers, original_buffer_sizes] = create_buffers(
+      stats_,
+      config_,
+      array_schema,
+      average_var_cell_sizes,
+      storage_manager_->compute_tp());
   uint32_t step = 0;
   std::vector<TimestampedURI> to_consolidate;
   do {
+    // Reset buffer sizes
+    std::vector<uint64_t> buffer_sizes = original_buffer_sizes;
+
     // No need to consolidate if no more than 1 fragment exist
     if (fragment_info.fragment_num() <= 1)
       break;
@@ -131,10 +156,7 @@ Status FragmentConsolidator::consolidate(
     // Find the next fragments to be consolidated
     NDRange union_non_empty_domains;
     st = compute_next_to_consolidate(
-        array_for_reads->array_schema_latest(),
-        fragment_info,
-        &to_consolidate,
-        &union_non_empty_domains);
+        array_schema, fragment_info, &to_consolidate, &union_non_empty_domains);
     if (!st.ok()) {
       throw_if_not_ok(array_for_reads->close());
       throw_if_not_ok(array_for_writes->close());
@@ -153,7 +175,9 @@ Status FragmentConsolidator::consolidate(
         array_for_writes,
         to_consolidate,
         union_non_empty_domains,
-        &new_fragment_uri);
+        &new_fragment_uri,
+        buffers,
+        buffer_sizes);
     if (!st.ok()) {
       throw_if_not_ok(array_for_reads->close());
       throw_if_not_ok(array_for_writes->close());
@@ -204,8 +228,10 @@ Status FragmentConsolidator::consolidate_fragments(
   RETURN_NOT_OK(array_for_writes->open(
       QueryType::WRITE, encryption_type, encryption_key, key_length));
 
+  const auto& array_schema = array_for_reads->array_schema_latest();
+
   // Disable consolidation with timestamps on older arrays.
-  if (array_for_reads->array_schema_latest().write_version() <
+  if (array_schema.write_version() <
       constants::consolidation_with_timestamps_min_version) {
     config_.with_timestamps_ = false;
   }
@@ -240,7 +266,7 @@ Status FragmentConsolidator::consolidate_fragments(
   // Make sure all fragments to consolidate are present
   // Compute union of non empty domains as we go
   uint64_t count = 0;
-  auto& domain{array_for_reads->array_schema_latest().domain()};
+  auto& domain{array_schema.domain()};
   std::vector<TimestampedURI> to_consolidate;
   to_consolidate.reserve(fragment_uris.size());
   auto& frag_info_vec = fragment_info.single_fragment_info_vec();
@@ -258,6 +284,14 @@ Status FragmentConsolidator::consolidate_fragments(
     return logger_->status(Status_ConsolidatorError(
         "Cannot consolidate; Not all fragments could be found"));
   }
+  // Prepare buffers
+  auto average_var_cell_sizes = array_for_reads->get_average_var_cell_sizes();
+  auto&& [buffers, buffer_sizes] = create_buffers(
+      stats_,
+      config_,
+      array_schema,
+      average_var_cell_sizes,
+      storage_manager_->compute_tp());
 
   // Consolidate the selected fragments
   URI new_fragment_uri;
@@ -266,7 +300,9 @@ Status FragmentConsolidator::consolidate_fragments(
       array_for_writes,
       to_consolidate,
       union_non_empty_domains,
-      &new_fragment_uri);
+      &new_fragment_uri,
+      buffers,
+      buffer_sizes);
   if (!st.ok()) {
     throw_if_not_ok(array_for_reads->close());
     throw_if_not_ok(array_for_writes->close());
@@ -368,7 +404,9 @@ Status FragmentConsolidator::consolidate_internal(
     shared_ptr<Array> array_for_writes,
     const std::vector<TimestampedURI>& to_consolidate,
     const NDRange& union_non_empty_domains,
-    URI* new_fragment_uri) {
+    URI* new_fragment_uri,
+    std::vector<ByteVec>& buffers,
+    std::vector<uint64_t>& buffer_sizes) {
   auto timer_se = stats_->start_timer("consolidate_internal");
 
   array_for_reads->load_fragments(to_consolidate);
@@ -408,11 +446,6 @@ Status FragmentConsolidator::consolidate_internal(
       }
     }
   }
-
-  // Prepare buffers
-  auto average_var_cell_sizes = array_for_reads->get_average_var_cell_sizes();
-  auto&& [buffers, buffer_sizes] =
-      create_buffers(stats_, config_, array_schema, average_var_cell_sizes, storage_manager_->compute_tp());
 
   // Create queries
   auto query_r = (Query*)nullptr;

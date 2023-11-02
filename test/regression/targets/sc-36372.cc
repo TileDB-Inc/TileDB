@@ -14,8 +14,8 @@ TEST_CASE(
   tiledb::Config cfg;
   cfg["sm.consolidation.step_min_frags"] = 2;
   cfg["sm.consolidation.step_max_frags"] = 4;
-//  cfg["sm.compute_concurrency_level"] = 1;
-//  cfg["sm.io_concurrency_level"] = 1;
+  //  cfg["sm.compute_concurrency_level"] = 1;
+  //  cfg["sm.io_concurrency_level"] = 1;
   tiledb::Context ctx(cfg);
   tiledb::VFS vfs(ctx);
 

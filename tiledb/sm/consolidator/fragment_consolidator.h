@@ -221,6 +221,8 @@ class FragmentConsolidator : public Consolidator {
    *     fragments are *not* all sparse.
    * @param new_fragment_uri The URI of the fragment created after
    *     consolidating the `to_consolidate` fragments.
+   * @param buffers Pre-allocated buffers for use in consolidation
+   * @param buffer_sizes Size of allocated buffers
    * @return Status
    */
   Status consolidate_internal(
@@ -228,7 +230,9 @@ class FragmentConsolidator : public Consolidator {
       shared_ptr<Array> array_for_writes,
       const std::vector<TimestampedURI>& to_consolidate,
       const NDRange& union_non_empty_domains,
-      URI* new_fragment_uri);
+      URI* new_fragment_uri,
+      std::vector<ByteVec>& buffers,
+      std::vector<uint64_t>& buffer_sizes);
 
   /**
    * Copies the array by reading from the fragments to be consolidated
