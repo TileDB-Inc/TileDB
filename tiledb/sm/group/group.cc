@@ -110,6 +110,7 @@ Status Group::open(
 
   if (!encryption_key_from_cfg.empty()) {
     encryption_key = encryption_key_from_cfg.c_str();
+    key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
     std::string encryption_type_from_cfg;
     encryption_type_from_cfg = config_.get("sm.encryption_type", &found);
     assert(found);
@@ -117,16 +118,9 @@ Status Group::open(
     RETURN_NOT_OK(st);
     encryption_type = et.value();
 
-    if (EncryptionKey::is_valid_key_length(
+    if (!EncryptionKey::is_valid_key_length(
             encryption_type,
             static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
-      const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
-      if (unit_test_cfg.array_encryption_key_length.is_set()) {
-        key_length = unit_test_cfg.array_encryption_key_length.get();
-      } else {
-        key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
-      }
-    } else {
       encryption_key = nullptr;
       key_length = 0;
     }

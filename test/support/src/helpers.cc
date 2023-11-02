@@ -558,7 +558,6 @@ void create_array(
     const std::string& array_name,
     tiledb_encryption_type_t enc_type,
     const char* key,
-    uint32_t key_len,
     tiledb_array_type_t array_type,
     const std::vector<std::string>& dim_names,
     const std::vector<tiledb_datatype_t>& dim_types,
@@ -651,8 +650,6 @@ void create_array(
   rc = tiledb_config_set(config, "sm.encryption_key", key, &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
-  tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
-      key_len);
   tiledb_ctx_t* ctx_array;
   REQUIRE(tiledb_ctx_alloc(config, &ctx_array) == TILEDB_OK);
   rc = tiledb_array_create(ctx_array, array_name.c_str(), array_schema);
@@ -1079,7 +1076,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     tiledb_layout_t layout,
     const QueryBuffers& buffers) {
@@ -1088,7 +1084,6 @@ void write_array(
       array_name,
       encryption_type,
       key,
-      key_len,
       timestamp,
       nullptr,
       layout,
@@ -1122,7 +1117,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     const void* subarray,
     tiledb_layout_t layout,
@@ -1133,7 +1127,6 @@ void write_array(
       array_name,
       encryption_type,
       key,
-      key_len,
       timestamp,
       subarray,
       layout,
@@ -1157,7 +1150,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     tiledb_layout_t layout,
     const QueryBuffers& buffers,
@@ -1167,7 +1159,6 @@ void write_array(
       array_name,
       encryption_type,
       key,
-      key_len,
       timestamp,
       nullptr,
       layout,
@@ -1187,8 +1178,7 @@ void write_array(
       ctx,
       array_name,
       TILEDB_NO_ENCRYPTION,
-      nullptr,
-      0,
+      "",
       timestamp,
       subarray,
       layout,
@@ -1201,7 +1191,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     const void* sub,
     tiledb_layout_t layout,
@@ -1232,8 +1221,6 @@ void write_array(
     REQUIRE(err == nullptr);
     rc = tiledb_array_set_config(ctx, array, cfg);
     REQUIRE(rc == TILEDB_OK);
-    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
-        key_len);
   }
   rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);

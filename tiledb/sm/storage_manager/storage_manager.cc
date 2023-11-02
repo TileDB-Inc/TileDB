@@ -205,6 +205,7 @@ Status StorageManagerCanonical::array_consolidate(
 
   if (!encryption_key_from_cfg.empty()) {
     encryption_key = encryption_key_from_cfg.c_str();
+    key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
     std::string encryption_type_from_cfg;
     bool found = false;
     encryption_type_from_cfg = config.get("sm.encryption_type", &found);
@@ -213,16 +214,9 @@ Status StorageManagerCanonical::array_consolidate(
     RETURN_NOT_OK(st);
     encryption_type = et.value();
 
-    if (EncryptionKey::is_valid_key_length(
+    if (!EncryptionKey::is_valid_key_length(
             encryption_type,
             static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
-      const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
-      if (unit_test_cfg.array_encryption_key_length.is_set()) {
-        key_length = unit_test_cfg.array_encryption_key_length.get();
-      } else {
-        key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
-      }
-    } else {
       encryption_key = nullptr;
       key_length = 0;
     }
@@ -268,6 +262,7 @@ Status StorageManagerCanonical::fragments_consolidate(
 
   if (!encryption_key_from_cfg.empty()) {
     encryption_key = encryption_key_from_cfg.c_str();
+    key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
     std::string encryption_type_from_cfg;
     bool found = false;
     encryption_type_from_cfg = config.get("sm.encryption_type", &found);
@@ -276,16 +271,9 @@ Status StorageManagerCanonical::fragments_consolidate(
     RETURN_NOT_OK(st);
     encryption_type = et.value();
 
-    if (EncryptionKey::is_valid_key_length(
+    if (!EncryptionKey::is_valid_key_length(
             encryption_type,
             static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
-      const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
-      if (unit_test_cfg.array_encryption_key_length.is_set()) {
-        key_length = unit_test_cfg.array_encryption_key_length.get();
-      } else {
-        key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
-      }
-    } else {
       encryption_key = nullptr;
       key_length = 0;
     }
@@ -504,6 +492,7 @@ Status StorageManagerCanonical::array_metadata_consolidate(
 
   if (!encryption_key_from_cfg.empty()) {
     encryption_key = encryption_key_from_cfg.c_str();
+    key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
     std::string encryption_type_from_cfg;
     bool found = false;
     encryption_type_from_cfg = config.get("sm.encryption_type", &found);
@@ -512,16 +501,9 @@ Status StorageManagerCanonical::array_metadata_consolidate(
     RETURN_NOT_OK(st);
     encryption_type = et.value();
 
-    if (EncryptionKey::is_valid_key_length(
+    if (!EncryptionKey::is_valid_key_length(
             encryption_type,
             static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
-      const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
-      if (unit_test_cfg.array_encryption_key_length.is_set()) {
-        key_length = unit_test_cfg.array_encryption_key_length.get();
-      } else {
-        key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
-      }
-    } else {
       encryption_key = nullptr;
       key_length = 0;
     }
@@ -612,21 +594,10 @@ Status StorageManagerCanonical::array_create(
       RETURN_NOT_OK(
           encryption_key_cfg.set_key(encryption_type_cfg, nullptr, 0));
     } else {
-      uint32_t key_length = 0;
-      if (EncryptionKey::is_valid_key_length(
-              encryption_type_cfg,
-              static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
-        const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
-        if (unit_test_cfg.array_encryption_key_length.is_set()) {
-          key_length = unit_test_cfg.array_encryption_key_length.get();
-        } else {
-          key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
-        }
-      }
       RETURN_NOT_OK(encryption_key_cfg.set_key(
           encryption_type_cfg,
           (const void*)encryption_key_from_cfg.c_str(),
-          key_length));
+          static_cast<uint32_t>(encryption_key_from_cfg.size())));
     }
     st = store_array_schema(array_schema, encryption_key_cfg);
   } else {
@@ -740,21 +711,10 @@ Status StorageManagerCanonical::array_upgrade_version(
   if (encryption_key_from_cfg.empty()) {
     RETURN_NOT_OK(encryption_key_cfg.set_key(encryption_type_cfg, nullptr, 0));
   } else {
-    uint32_t key_length = 0;
-    if (EncryptionKey::is_valid_key_length(
-            encryption_type_cfg,
-            static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
-      const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
-      if (unit_test_cfg.array_encryption_key_length.is_set()) {
-        key_length = unit_test_cfg.array_encryption_key_length.get();
-      } else {
-        key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
-      }
-    }
     RETURN_NOT_OK(encryption_key_cfg.set_key(
         encryption_type_cfg,
         (const void*)encryption_key_from_cfg.c_str(),
-        key_length));
+        static_cast<uint32_t>(encryption_key_from_cfg.size())));
   }
 
   auto&& array_schema = array_dir.load_array_schema_latest(encryption_key_cfg);
