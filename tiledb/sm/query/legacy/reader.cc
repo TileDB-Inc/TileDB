@@ -1360,11 +1360,11 @@ Status Reader::copy_partitioned_var_cells(
         const uint64_t tile_var_offset =
             tile_offsets[cell_idx] - tile_offsets[0];
 
-        RETURN_NOT_OK(tile_var->read(var_dest, tile_var_offset, cell_var_size));
+        tile_var->read(var_dest, tile_var_offset, cell_var_size);
 
         if (nullable)
-          RETURN_NOT_OK(tile_validity->read(
-              validity_dest, cell_idx, constants::cell_validity_size));
+          tile_validity->read(
+              validity_dest, cell_idx, constants::cell_validity_size);
       }
     }
 

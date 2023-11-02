@@ -282,14 +282,11 @@ std::string_view ResultTile::coord_string(
   const auto& coord_tile_val = coord_tiles_[dim_idx].second->var_tile();
 
   offsets_t offset = 0;
-  Status st =
-      coord_tile_off.read(&offset, pos * sizeof(uint64_t), sizeof(uint64_t));
-  assert(st.ok());
+  coord_tile_off.read(&offset, pos * sizeof(uint64_t), sizeof(uint64_t));
 
   offsets_t next_offset = 0;
-  st = coord_tile_off.read(
+  coord_tile_off.read(
       &next_offset, (pos + 1) * sizeof(uint64_t), sizeof(uint64_t));
-  assert(st.ok());
 
   auto size = next_offset - offset;
 
@@ -389,7 +386,8 @@ Status ResultTile::read(
     auto cell_size = tile.cell_size();
     auto nbytes = len * cell_size;
     auto offset = pos * cell_size;
-    return tile.read(buffer, offset, nbytes);
+    tile.read(buffer, offset, nbytes);
+    return Status::Ok();
   } else if (
       name == constants::coords && !coord_tiles_[0].first.empty() &&
       !coords_tile_.has_value()) {
@@ -404,8 +402,7 @@ Status ResultTile::read(
         auto& coord_tile = coord_tiles_[d].second->fixed_tile();
         auto cell_size = coord_tile.cell_size();
         auto tile_offset = (pos + c) * cell_size;
-        RETURN_NOT_OK(
-            coord_tile.read(buff + buff_offset, tile_offset, cell_size));
+        coord_tile.read(buff + buff_offset, tile_offset, cell_size);
         buff_offset += cell_size;
       }
     }
@@ -433,8 +430,7 @@ Status ResultTile::read(
     auto dim_size = cell_size / domain_->dim_num();
     uint64_t offset = pos * cell_size + dim_size * dim_offset;
     for (uint64_t c = 0; c < len; ++c) {
-      RETURN_NOT_OK(coords_tile_->fixed_tile().read(
-          buff + (c * dim_size), offset, dim_size));
+      coords_tile_->fixed_tile().read(buff + (c * dim_size), offset, dim_size);
       offset += cell_size;
     }
   };
@@ -464,9 +460,8 @@ Status ResultTile::read_nullable(
   auto validity_nbytes = len * validity_cell_size;
   auto validity_offset = pos * validity_cell_size;
 
-  RETURN_NOT_OK(tile.read(buffer, offset, nbytes));
-  RETURN_NOT_OK(
-      tile_validity.read(buffer_validity, validity_offset, validity_nbytes));
+  tile.read(buffer, offset, nbytes);
+  tile_validity.read(buffer_validity, validity_offset, validity_nbytes);
 
   return Status::Ok();
 }

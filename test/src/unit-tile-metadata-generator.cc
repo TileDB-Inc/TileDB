@@ -387,8 +387,8 @@ TEST_CASE(
 
     *offsets_tile_buff = offset;
     auto& val = strings[values[i]];
-    CHECK(
-        writer_tile.var_tile().write_var(val.c_str(), offset, val.size()).ok());
+    CHECK_NOTHROW(
+        writer_tile.var_tile().write_var(val.c_str(), offset, val.size()));
 
     offset += val.size();
     offsets_tile_buff++;
@@ -446,7 +446,7 @@ TEST_CASE(
 
   // Initialize var tile.
   std::string data = "12312";
-  CHECK(writer_tile.var_tile().write_var(data.c_str(), 0, 5).ok());
+  CHECK_NOTHROW(writer_tile.var_tile().write_var(data.c_str(), 0, 5));
   writer_tile.var_tile().set_size(5);
 
   // Call the tile metadata generator.

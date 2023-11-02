@@ -173,7 +173,7 @@ Status FragmentMetaConsolidator::consolidate(
 
   GenericTileIO tile_io(storage_manager_->resources(), uri);
   [[maybe_unused]] uint64_t nbytes = 0;
-  RETURN_NOT_OK(tile_io.write_generic(&tile, enc_key, &nbytes));
+  tile_io.write_generic(&tile, enc_key, &nbytes);
   RETURN_NOT_OK(storage_manager_->vfs()->close_file(uri));
 
   return Status::Ok();
