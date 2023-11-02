@@ -1888,6 +1888,13 @@ void SparseGlobalOrderReader<BitmapType>::process_slabs(
     bool agg_only = aggregate_only(names[buffer_idx]);
     if (agg_only && result_tiles_agg_only == nullopt) {
       result_tiles_agg_only = result_tiles_to_load(result_cell_slabs, true);
+
+      // If we hit an overflow, it might have changed the tiles we need to load.
+      // Recompute the memory usage.
+      if (last_field_to_overflow != nullopt) {
+        mem_usage_per_attr = respect_copy_memory_budget(
+            names, result_cell_slabs, user_buffers_full);
+      }
     }
 
     // Read and unfilter as many attributes as can fit in the budget.
