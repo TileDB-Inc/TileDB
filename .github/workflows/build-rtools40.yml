@@ -30,6 +30,8 @@ jobs:
           repository: microsoft/vcpkg
           path: vcpkg
           ref: ${{ steps.vcpkg_commit.outputs.ref }}
+          # Vcpkg requires fetching all commits.
+          fetch-depth: 0
       # Configure required environment variables for vcpkg to use
       # GitHub's Action Cache
       - uses: actions/github-script@v6
