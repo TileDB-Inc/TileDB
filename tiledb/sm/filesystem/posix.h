@@ -63,6 +63,11 @@ class URI;
  */
 class Posix : public FilesystemBase {
  public:
+  /** Default constructor. */
+  Posix()
+      : Posix(Config()) {
+  }
+
   /** Constructor. */
   explicit Posix(const Config& config);
 
@@ -128,14 +133,6 @@ class Posix : public FilesystemBase {
   Status file_size(const URI& path, uint64_t* size) const override;
 
   /**
-   * Initialize this instance with the given config.
-   *
-   * @param config Config parameters.
-   * @return Status
-   */
-  Status init(const Config& config);
-
-  /**
    * Checks if the input is an existing directory.
    *
    * @param dir The directory to be checked.
@@ -178,7 +175,7 @@ class Posix : public FilesystemBase {
    * @param new_path The new path.
    * @return Status
    */
-  Status move_file(const URI& old_path, const URI& new_path) override;
+  Status move_file(const URI& old_path, const URI& new_path) const override;
 
   /**
    * Copy a given filesystem file.
@@ -187,7 +184,7 @@ class Posix : public FilesystemBase {
    * @param new_path The new path.
    * @return Status
    */
-  Status copy_file(const URI& old_uri, const URI& new_uri) override;
+  Status copy_file(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Copy a given filesystem directory.
@@ -196,7 +193,7 @@ class Posix : public FilesystemBase {
    * @param new_path The new path.
    * @return Status
    */
-  Status copy_dir(const URI& old_path, const URI& new_path) override;
+  Status copy_dir(const URI& old_path, const URI& new_path) const override;
 
   /**
    * Reads data from a file into a buffer.
@@ -291,19 +288,8 @@ class Posix : public FilesystemBase {
   static Status write_at(
       int fd, uint64_t file_offset, const void* buffer, uint64_t buffer_size);
 
-  /**
-   * Parse config to get posix permissions for creating new files
-   * @param permissions parsed permissions are set to this parameter
-   * @return Status
-   */
-  Status get_posix_file_permissions(uint32_t* permissions) const;
-
-  /**
-   * Parse config to get posix permissions for creating new directories
-   * @param permissions parsed permissions are set to this parameter
-   * @return Status
-   */
-  Status get_posix_directory_permissions(uint32_t* permissions) const;
+ private:
+  uint32_t file_permissions_, directory_permissions_;
 };
 
 }  // namespace sm

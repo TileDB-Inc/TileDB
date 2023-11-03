@@ -40,11 +40,7 @@
 
 #include <sys/stat.h>
 
-// TODO: filesystem namespace
 namespace tiledb::sm {
-enum FilesystemType {
-  HDFS = 0, S3, AZURE, GCS, MEMFS, WIN, POSIX
-};
 
 class VFS;
 
@@ -52,9 +48,7 @@ class FilesystemBase {
   friend class VFS;
 
  public:
-  FilesystemBase(const Config& config)
-      : config_(config) {
-  }
+  FilesystemBase() = default;
 
   virtual ~FilesystemBase() = default;
 
@@ -78,8 +72,20 @@ class FilesystemBase {
    */
   virtual Status touch(const URI& uri) const = 0;
 
+  /**
+   * Checks if a directory exists.
+   *
+   * @param uri The URI to check for existence.
+   * @return True if the directory exists, else False.
+   */
   virtual bool is_dir(const URI& uri) const = 0;
 
+  /**
+   * Checks if a file exists.
+   *
+   * @param uri The URI to check for existence.
+   * @return True if the file exists, else False.
+   */
   virtual bool is_file(const URI& uri) const = 0;
 
   /**
@@ -125,7 +131,7 @@ class FilesystemBase {
    * @param new_uri The new URI.
    * @return Status
    */
-  virtual Status move_file(const URI& old_uri, const URI& new_uri) = 0;
+  virtual Status move_file(const URI& old_uri, const URI& new_uri) const = 0;
 
   /**
    * Copies a file.
@@ -134,7 +140,7 @@ class FilesystemBase {
    * @param new_uri The new URI.
    * @return Status
    */
-  virtual Status copy_file(const URI& old_uri, const URI& new_uri) = 0;
+  virtual Status copy_file(const URI& old_uri, const URI& new_uri) const = 0;
 
   /**
    * Copies directory.
@@ -143,7 +149,7 @@ class FilesystemBase {
    * @param new_uri The new URI.
    * @return Status
    */
-  virtual Status copy_dir(const URI& old_uri, const URI& new_uri) = 0;
+  virtual Status copy_dir(const URI& old_uri, const URI& new_uri) const = 0;
 
   /**
    * Reads from a file.
@@ -184,11 +190,6 @@ class FilesystemBase {
       const void* buffer,
       uint64_t buffer_size,
       bool remote_global_order_write = false) = 0;
-
- protected:
-  Config config_;
-
-  FilesystemType fs_type_;
 };
 
 }  // namespace tiledb::sm

@@ -59,9 +59,16 @@ using tiledb::common::filesystem::directory_entry;
 namespace tiledb {
 namespace sm {
 
-Posix::Posix(const Config& config)
-    : FilesystemBase(config) {
-  fs_type_ = FilesystemType::POSIX;
+Posix::Posix(const Config& config) {
+  // Initialize member variables with posix config parameters.
+
+  // File and directory permissions are set by the user in octal.
+  std::string permissions = config.get<std::string>(
+      "vfs.file.posix_file_permissions", Config::must_find);
+  file_permissions_ = std::strtol(permissions.c_str(), nullptr, 8);
+  permissions = config.get<std::string>(
+      "vfs.file.posix_directory_permissions", Config::must_find);
+  directory_permissions_ = std::strtol(permissions.c_str(), nullptr, 8);
 }
 
 bool Posix::both_slashes(char a, char b) {
@@ -160,10 +167,7 @@ Status Posix::create_dir(const URI& uri) const {
         "'; Directory already exists"));
   }
 
-  uint32_t permissions = 0;
-  RETURN_NOT_OK(get_posix_directory_permissions(&permissions));
-
-  if (mkdir(path.c_str(), permissions) != 0) {
+  if (mkdir(path.c_str(), directory_permissions_) != 0) {
     return LOG_STATUS(Status_IOError(
         std::string("Cannot create directory '") + path + "'; " +
         strerror(errno)));
@@ -172,11 +176,10 @@ Status Posix::create_dir(const URI& uri) const {
 }
 
 Status Posix::touch(const URI& uri) const {
-  uint32_t permissions = 0;
-  RETURN_NOT_OK(get_posix_file_permissions(&permissions));
   auto filename = uri.to_path();
 
-  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, permissions);
+  int fd =
+      ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, file_permissions_);
   if (fd == -1 || ::close(fd) != 0) {
     return LOG_STATUS(Status_IOError(
         std::string("Failed to create file '") + filename + "'; " +
@@ -233,12 +236,6 @@ Status Posix::file_size(const URI& uri, uint64_t* size) const {
   *size = (uint64_t)st.st_size;
 
   close(fd);
-  return Status::Ok();
-}
-
-Status Posix::init(const Config& config) {
-  config_ = config;
-
   return Status::Ok();
 }
 
@@ -304,7 +301,7 @@ tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
   return {Status::Ok(), entries};
 }
 
-Status Posix::move_file(const URI& old_path, const URI& new_path) {
+Status Posix::move_file(const URI& old_path, const URI& new_path) const {
   if (rename(old_path.to_path().c_str(), new_path.to_path().c_str()) != 0) {
     return LOG_STATUS(
         Status_IOError(std::string("Cannot move path: ") + strerror(errno)));
@@ -312,14 +309,14 @@ Status Posix::move_file(const URI& old_path, const URI& new_path) {
   return Status::Ok();
 }
 
-Status Posix::copy_file(const URI& old_uri, const URI& new_uri) {
+Status Posix::copy_file(const URI& old_uri, const URI& new_uri) const {
   std::ifstream src(old_uri.to_path(), std::ios::binary);
   std::ofstream dst(new_uri.to_path(), std::ios::binary);
   dst << src.rdbuf();
   return Status::Ok();
 }
 
-Status Posix::copy_dir(const URI& old_uri, const URI& new_uri) {
+Status Posix::copy_dir(const URI& old_uri, const URI& new_uri) const {
   auto old_path = old_uri.to_path();
   auto new_path = new_uri.to_path();
   RETURN_NOT_OK(create_dir(new_uri));
@@ -410,7 +407,7 @@ Status Posix::read(
     uint64_t offset,
     void* buffer,
     uint64_t nbytes,
-    bool use_read_ahead) {
+    [[maybe_unused]] bool use_read_ahead) {
   // Checks
   auto path = uri.to_path();
   uint64_t file_size;
@@ -446,16 +443,13 @@ Status Posix::read(
 
 Status Posix::sync(const URI& uri) {
   auto path = uri.to_path();
-  uint32_t permissions = 0;
 
   // Open file
   int fd = -1;
   if (is_dir(URI(path))) {  // DIRECTORY
-    RETURN_NOT_OK(get_posix_directory_permissions(&permissions));
-    fd = open(path.c_str(), O_RDONLY, permissions);
+    fd = open(path.c_str(), O_RDONLY, directory_permissions_);
   } else if (is_file(URI(path))) {  // FILE
-    RETURN_NOT_OK(get_posix_file_permissions(&permissions));
-    fd = open(path.c_str(), O_WRONLY | O_APPEND | O_CREAT, permissions);
+    fd = open(path.c_str(), O_WRONLY | O_APPEND | O_CREAT, file_permissions_);
   } else
     return Status_Ok();  // If file does not exist, exit
 
@@ -487,7 +481,7 @@ Status Posix::write(
     const URI& uri,
     const void* buffer,
     uint64_t buffer_size,
-    bool remote_global_order_write) {
+    [[maybe_unused]] bool remote_global_order_write) {
   auto path = uri.to_path();
   // Check for valid inputs before attempting the actual
   // write system call. This is to avoid a bug on macOS
@@ -503,9 +497,6 @@ Status Posix::write(
     }
   }
 
-  uint32_t permissions = 0;
-  RETURN_NOT_OK(get_posix_file_permissions(&permissions));
-
   // Get file offset (equal to file size)
   Status st;
   uint64_t file_offset = 0;
@@ -519,7 +510,7 @@ Status Posix::write(
   }
 
   // Open or create file.
-  int fd = open(path.c_str(), O_WRONLY | O_CREAT, permissions);
+  int fd = open(path.c_str(), O_WRONLY | O_CREAT, file_permissions_);
   if (fd == -1) {
     return LOG_STATUS(Status_IOError(
         std::string("Cannot open file '") + path + "'; " + strerror(errno)));
@@ -553,28 +544,6 @@ Status Posix::write_at(
     file_offset += actual_written;
     buffer_size -= actual_written;
   }
-  return Status::Ok();
-}
-
-Status Posix::get_posix_file_permissions(uint32_t* permissions) const {
-  // Get config params
-  std::string posix_permissions = config_.get<std::string>(
-      "vfs.file.posix_file_permissions", Config::must_find);
-
-  // Permissions are passed in octal notation by the user
-  *permissions = std::strtol(posix_permissions.c_str(), NULL, 8);
-
-  return Status::Ok();
-}
-
-Status Posix::get_posix_directory_permissions(uint32_t* permissions) const {
-  // Get config params
-  std::string posix_permissions = config_.get<std::string>(
-      "vfs.file.posix_directory_permissions", Config::must_find);
-
-  // Permissions are passed in octal notation by the user
-  *permissions = std::strtol(posix_permissions.c_str(), NULL, 8);
-
   return Status::Ok();
 }
 
