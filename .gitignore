@@ -41,3 +41,6 @@ CMakeUserPresets.json
 docs/.quarto
 # Let CI build this
 /docs
+
+vcpkg
+external/vcpkg
