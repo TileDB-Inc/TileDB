@@ -513,6 +513,16 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       QueryBuffer& query_buffer);
 
   /**
+   * Get the sorted unique result tile list from the result cell slabs.
+   *
+   * @param result_cell_slabs Result cell slabs.
+   * @param aggregate_only Are we generating the list for aggregate only fields?
+   * @return vector of result tiles.
+   */
+  std::vector<ResultTile*> result_tiles_to_load(
+      std::vector<ResultCellSlab>& result_cell_slabs, bool aggregate_only);
+
+  /**
    * Copy cell slabs.
    *
    * @param names Attribute/dimensions to compute for.

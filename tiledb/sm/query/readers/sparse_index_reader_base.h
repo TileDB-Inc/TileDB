@@ -671,6 +671,19 @@ class SparseIndexReaderBase : public ReaderBase {
   template <class ResultTileType, class BitmapType>
   void apply_query_condition(std::vector<ResultTile*>& result_tiles);
 
+  /** Returns wether the field is for aggregation only or not. */
+  bool aggregate_only(const std::string& name) const {
+    if (qc_loaded_attr_names_set_.count(name) != 0) {
+      return false;
+    }
+
+    if (buffers_.count(name) != 0) {
+      return false;
+    }
+
+    return true;
+  }
+
   /**
    * Read and unfilter as many attributes as can fit in the memory budget and
    * return the names loaded in 'names_to_copy'. Also keep the 'buffer_idx'
@@ -680,6 +693,7 @@ class SparseIndexReaderBase : public ReaderBase {
    * @param mem_usage_per_attr Computed per attribute memory usage.
    * @param buffer_idx Stores/return the current buffer index in process.
    * @param result_tiles Result tiles to process.
+   * @param agg_only Are we loading for aggregates only field.
    *
    * @return names_to_copy.
    */
@@ -687,7 +701,8 @@ class SparseIndexReaderBase : public ReaderBase {
       const std::vector<std::string>& names,
       const std::vector<uint64_t>& mem_usage_per_attr,
       uint64_t* buffer_idx,
-      std::vector<ResultTile*>& result_tiles);
+      std::vector<ResultTile*>& result_tiles,
+      bool agg_only);
 
   /**
    * Get the field names to process.

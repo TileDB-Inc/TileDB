@@ -130,6 +130,8 @@ struct CppAggregatesFx {
       std::vector<uint64_t>& a1_offsets,
       std::vector<uint8_t>& a1_validity,
       const bool validate_count = true);
+  void validate_tiles_read(Query& query, bool is_count = false);
+  void validate_tiles_read_var(Query& query);
   void remove_array();
   void remove_array(const std::string& array_name);
   bool is_array(const std::string& array_name);
@@ -1090,7 +1092,8 @@ void CppAggregatesFx<T>::validate_data_var(
     a1_data_vec.emplace_back(v);
   }
 
-  // Generate an expected vector taking into consideration the query condition.
+  // Generate an expected vector taking into consideration the query
+  // condition.
   std::vector<std::string> expected_a1_with_qc;
   expected_a1_with_qc.reserve(expected_a1.size());
   for (uint64_t c = 0; c < expected_a1.size(); c++) {
@@ -1136,6 +1139,119 @@ void CppAggregatesFx<T>::validate_data_var(
       CHECK(std::get<2>(result_el["a1"]) == expected_count);
     }
   }
+}
+
+template <class T>
+void CppAggregatesFx<T>::validate_tiles_read(Query& query, bool is_count) {
+  // Validate the number of tiles read.
+  auto stats = query.stats();
+
+  // Parse num_tiles_read from the stats.
+  std::string to_find =
+      "\"Context.StorageManager.Query.Reader.num_tiles_read\": ";
+  auto start_pos = stats.find(to_find);
+
+  uint64_t num_tiles_read = 0;
+  if (start_pos != std::string::npos) {
+    start_pos += to_find.length();
+    auto end_pos = stats.find("\n", start_pos);
+    auto str = stats.substr(start_pos, end_pos - start_pos);
+    num_tiles_read = std::stoull(str);
+  }
+
+  uint64_t expected_num_tiles_read;
+  if (dense_) {
+    // Dense has 5 tiles. If we request data or have a query condition, we'll
+    // read all of them.
+    if (request_data_ || set_qc_) {
+      expected_num_tiles_read = 5;
+    } else if (set_ranges_) {
+      // If we request range, we split all tiles, we'll have to read all.
+      expected_num_tiles_read = is_count ? 0 : 5;
+    } else {
+      // One space tile has two result tiles, we'll have to read them.
+      expected_num_tiles_read = is_count ? 0 : 2;
+    }
+  } else {
+    if (request_data_) {
+      if (set_ranges_) {
+        expected_num_tiles_read = 12;
+      } else {
+        expected_num_tiles_read = 15;
+      }
+    } else {
+      if (set_ranges_) {
+        if (allow_dups_) {
+          expected_num_tiles_read = is_count ? 8 : 10;
+        } else {
+          expected_num_tiles_read = is_count ? 8 : 11;
+        }
+      } else {
+        if (allow_dups_) {
+          expected_num_tiles_read = 0;
+        } else {
+          expected_num_tiles_read = is_count ? 10 : 14;
+        }
+      }
+    }
+  }
+
+  CHECK(num_tiles_read == expected_num_tiles_read);
+}
+
+template <class T>
+void CppAggregatesFx<T>::validate_tiles_read_var(Query& query) {
+  // Validate the number of tiles read.
+  auto stats = query.stats();
+
+  // Parse num_tiles_read from the stats.
+  std::string to_find =
+      "\"Context.StorageManager.Query.Reader.num_tiles_read\": ";
+  auto start_pos = stats.find(to_find);
+
+  uint64_t num_tiles_read = 0;
+  if (start_pos != std::string::npos) {
+    start_pos += to_find.length();
+    auto end_pos = stats.find("\n", start_pos);
+    auto str = stats.substr(start_pos, end_pos - start_pos);
+    num_tiles_read = std::stoull(str);
+  }
+
+  uint64_t expected_num_tiles_read;
+  if (dense_) {
+    // Dense has 5 tiles. If we request data or have a query condition or set
+    // ranges, we'll read all of them.
+    if (request_data_ || set_qc_ || set_ranges_) {
+      expected_num_tiles_read = 5;
+    } else {
+      // One space tile has two result tiles, we'll have to read them.
+      expected_num_tiles_read = 2;
+    }
+  } else {
+    if (request_data_) {
+      if (set_ranges_) {
+        expected_num_tiles_read = 9;
+      } else {
+        expected_num_tiles_read = 12;
+      }
+    } else {
+      if (set_ranges_) {
+        if (allow_dups_) {
+          expected_num_tiles_read = 8;
+        } else {
+          expected_num_tiles_read = 9;
+        }
+      } else {
+        if (allow_dups_) {
+          expected_num_tiles_read = 0;
+        } else {
+          expected_num_tiles_read = 12;
+        }
+      }
+    }
+  }
+
+  CHECK(num_tiles_read == expected_num_tiles_read);
 }
 
 template <class T>
@@ -1225,6 +1341,8 @@ TEST_CASE_METHOD(
           if (request_data) {
             validate_data(query, dim1, dim2, a1, a1_validity);
           }
+
+          validate_tiles_read(query, true);
         }
       }
     }
@@ -1347,6 +1465,8 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
             CppAggregatesFx<T>::validate_data(
                 query, dim1, dim2, a1, a1_validity);
           }
+
+          CppAggregatesFx<T>::validate_tiles_read(query);
         }
       }
     }
@@ -1471,6 +1591,8 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
             CppAggregatesFx<T>::validate_data(
                 query, dim1, dim2, a1, a1_validity);
           }
+
+          CppAggregatesFx<T>::validate_tiles_read(query);
         }
       }
     }
@@ -1619,6 +1741,8 @@ TEMPLATE_LIST_TEST_CASE(
           if (request_data) {
             fx.validate_data(query, dim1, dim2, a1, a1_validity);
           }
+
+          fx.validate_tiles_read(query);
         }
       }
     }
@@ -1738,6 +1862,8 @@ TEMPLATE_LIST_TEST_CASE(
             fx.validate_data_var(
                 query, dim1, dim2, a1_data, a1_offsets, a1_validity);
           }
+
+          fx.validate_tiles_read_var(query);
         }
       }
     }
@@ -1847,6 +1973,8 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
             CppAggregatesFx<T>::validate_data(
                 query, dim1, dim2, a1, a1_validity);
           }
+
+          CppAggregatesFx<T>::validate_tiles_read(query);
         }
       }
     }
@@ -1940,6 +2068,8 @@ TEST_CASE_METHOD(
             validate_data_var(
                 query, dim1, dim2, a1_data, a1_offsets, a1_validity);
           }
+
+          validate_tiles_read_var(query);
         }
       }
     }
@@ -1982,9 +2112,9 @@ TEST_CASE_METHOD(
         default_channel.apply_aggregate("NullCount", operation);
 
         // Add another aggregator on the second attribute. We will make the
-        // first attribute get a var size overflow, which should not impact the
-        // results of the second attribute as we don't request data for the
-        // second attribute.
+        // first attribute get a var size overflow, which should not impact
+        // the results of the second attribute as we don't request data for
+        // the second attribute.
         query.ptr()->query_->add_aggregator_to_default_channel(
             "NullCount2",
             std::make_shared<
@@ -2006,8 +2136,8 @@ TEST_CASE_METHOD(
         query.set_data_buffer("NullCount", null_count);
         query.set_data_buffer("NullCount2", null_count2);
 
-        // Here we run a few iterations until the query completes and update the
-        // buffers as we go.
+        // Here we run a few iterations until the query completes and update
+        // the buffers as we go.
         uint64_t var_buffer_size = dense_ ? 20 : 3;
         uint64_t curr_var_buffer_size = 0;
         uint64_t curr_elem = 0;
@@ -2121,8 +2251,8 @@ TEST_CASE_METHOD(
         default_channel.apply_aggregate("NullCount", operation);
 
         // Add another aggregator on the second attribute. We will make this
-        // attribute get a var size overflow, which should impact the result of
-        // the first one hence throw an exception.
+        // attribute get a var size overflow, which should impact the result
+        // of the first one hence throw an exception.
         query.ptr()->query_->add_aggregator_to_default_channel(
             "NullCount2",
             std::make_shared<
@@ -2221,8 +2351,8 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
           query.set_validity_buffer("Sum", sum_validity);
         }
 
-        // Here we run a few iterations until the query completes and update the
-        // buffers as we go.
+        // Here we run a few iterations until the query completes and update
+        // the buffers as we go.
         uint64_t curr_elem = 0;
         uint64_t num_elems = CppAggregatesFx<T>::dense_ ? 20 : 4;
         uint64_t num_iters = 0;
