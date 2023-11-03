@@ -74,18 +74,6 @@ jobs:
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-      - name: Setup vcpkg
-        uses: lukka/run-vcpkg@v11
-        id: runvcpkg
-        with:
-          vcpkgJsonGlob: 'vcpkg.json'
-          vcpkgDirectory: '${{ github.workspace }}/external/vcpkg'
-
-      - name: Prints output of run-vcpkg's action.
-        run: |
-          echo "run-vcpkg outputs:"
-          echo "${{ toJSON(steps.runvcpkg.outputs) }}"
-
       - name: Prevent vpckg from building debug variants
         run: python ./scripts/ci/patch_vcpkg_triplets.py
 

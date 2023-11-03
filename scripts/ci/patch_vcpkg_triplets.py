@@ -1,8 +1,7 @@
 import os
 
 workspace = os.curdir
-triplet_paths = [os.path.join(workspace, "external", "vcpkg", "triplets"),
-                 os.path.join(workspace, "ports", "triplets")]
+triplet_paths = [os.path.join(workspace, "ports", "triplets")]
 
 for triplet_path in triplet_paths:
   for path, dnames, fnames in os.walk(triplet_path):
