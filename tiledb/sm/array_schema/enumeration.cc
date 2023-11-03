@@ -71,8 +71,7 @@ Enumeration::Enumeration(
   }
 
   if (path_name_.empty()) {
-    std::string tmp_uuid;
-    throw_if_not_ok(uuid::generate_uuid(&tmp_uuid, false));
+    std::string tmp_uuid = uuid::generate_uuid(false);
     path_name_ =
         "__" + tmp_uuid + "_" + std::to_string(constants::enumerations_version);
   }
