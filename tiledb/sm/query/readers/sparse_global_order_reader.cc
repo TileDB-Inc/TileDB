@@ -1890,7 +1890,12 @@ void SparseGlobalOrderReader<BitmapType>::process_slabs(
       result_tiles_agg_only = result_tiles_to_load(result_cell_slabs, true);
 
       // If we hit an overflow, it might have changed the tiles we need to load.
-      // Recompute the memory usage.
+      // Recompute the memory usage. This is because a tile where we might have
+      // included the full tile in a cell slab (0 to 'cell_num()') and not
+      // loaded might now be truncated to fit the user buffers. Since we can't
+      // use the fragment metadata to compute the aggregates for this tile on
+      // this iteration, the memory usage for this attribute needs to be
+      // recomputed.
       if (last_field_to_overflow != nullopt) {
         mem_usage_per_attr = respect_copy_memory_budget(
             names, result_cell_slabs, user_buffers_full);
