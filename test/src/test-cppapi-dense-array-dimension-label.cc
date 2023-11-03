@@ -34,6 +34,7 @@
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 
@@ -62,7 +63,7 @@ class DenseArrayExample {
   /**
    * Constructor: Create a temporary directory with the example array.
    */
-  DenseArrayExample()
+  DenseArrayExample(bool var = false)
       : tmpdir_{}
       , ctx_{tmpdir_.get_ctx(), false}
       , array_name_{tmpdir_.fullpath("dense_array_with_label")}
@@ -74,9 +75,17 @@ class DenseArrayExample {
     domain.add_dimension(d1);
     schema.set_domain(domain);
     auto a1 = tiledb::Attribute::create<double>(ctx_, "a");
+    if (var) {
+      a1 = tiledb::Attribute::create<std::string>(ctx_, "a");
+    }
     schema.add_attribute(a1);
     tiledb::ArraySchemaExperimental::add_dimension_label(
-        ctx_, schema, 0, "x", data_order, TILEDB_FLOAT64);
+        ctx_,
+        schema,
+        0,
+        "x",
+        data_order,
+        var ? TILEDB_STRING_ASCII : TILEDB_FLOAT64);
     tiledb::Array::create(array_name_, schema);
   }
 
@@ -102,7 +111,7 @@ class DenseArrayExample {
       std::vector<double> input_label_data,
       bool error_on_write = false) {
     // Open array for writing.
-    tiledb::Array array{ctx_, array_name_, TILEDB_WRITE};
+    tiledb::Array array = open_array(TILEDB_WRITE);
 
     // Create the subarray.
     tiledb::Subarray subarray{ctx_, array};
@@ -116,6 +125,53 @@ class DenseArrayExample {
     }
     if (!input_label_data.empty()) {
       tiledb::QueryExperimental::set_data_buffer(query, "x", input_label_data);
+    }
+
+    // Submit write query.
+    if (error_on_write) {
+      REQUIRE_THROWS(query.submit());
+    } else {
+      query.submit();
+      REQUIRE(query.query_status() == tiledb::Query::Status::COMPLETE);
+    }
+  }
+
+  /**
+   * Write variable size data to the array and dimension label.
+   *
+   * @param index_start Starting index value
+   * @param index_end Ending index value
+   * @param input_attr_data Data to write to the array attribute. If empty, the
+   *     attribute data is not added to the query.
+   * @param input_label_data Data to write to the dimension label. If empty, the
+   *     dimension label data is not added to the query.
+   * @param error_on_write If true, require the query returns a failed status.
+   */
+  void write_by_index_var(
+      uint64_t index_start,
+      uint64_t index_end,
+      std::string input_attr_data,
+      std::vector<uint64_t> input_attr_offsets,
+      std::string input_label_data,
+      std::vector<uint64_t> input_label_offsets,
+      bool error_on_write = false) {
+    // Open array for writing.
+    tiledb::Array array = open_array(TILEDB_WRITE);
+
+    // Create the subarray.
+    tiledb::Subarray subarray{ctx_, array};
+    subarray.add_range(0, index_start, index_end);
+
+    // Create the query.
+    tiledb::Query query{ctx_, array, TILEDB_WRITE};
+    query.set_layout(TILEDB_ROW_MAJOR).set_subarray(subarray);
+    if (!input_attr_data.empty()) {
+      query.set_data_buffer("a", input_attr_data);
+      query.set_offsets_buffer("a", input_attr_offsets);
+    }
+    if (!input_label_data.empty()) {
+      tiledb::QueryExperimental::set_data_buffer(query, "x", input_label_data);
+      query.set_offsets_buffer("x", input_label_offsets);
     }
 
     // Submit write query.
@@ -145,7 +201,7 @@ class DenseArrayExample {
       std::vector<double> input_label_data,
       bool error_on_write = false) {
     // Open array for writing.
-    tiledb::Array array{ctx_, array_name_, TILEDB_WRITE};
+    tiledb::Array array = open_array(TILEDB_WRITE);
 
     // Create the subarray.
     tiledb::Subarray subarray{ctx_, array};
@@ -172,6 +228,54 @@ class DenseArrayExample {
   }
 
   /**
+   * Write variable size data to the array and dimension label by label.
+   *
+   * @param label_start Starting label value
+   * @param label_end Ending label value
+   * @param input_attr_data Data to write to the array attribute. If empty, the
+   *     attribute data is not added to the query.
+   * @param input_label_data Data to write to the dimension label. If empty, the
+   *     dimension label data is not added to the query.
+   * @param error_on_write If true, require the query returns a failed status.
+   */
+  void write_by_label_var(
+      std::string label_start,
+      std::string label_end,
+      std::string input_attr_data,
+      std::vector<uint64_t> input_attr_offsets,
+      std::string input_label_data,
+      std::vector<uint64_t> input_label_offsets,
+      bool error_on_write = false) {
+    // Open array for writing.
+    tiledb::Array array = open_array(TILEDB_WRITE);
+
+    // Create the subarray.
+    tiledb::Subarray subarray{ctx_, array};
+    tiledb::SubarrayExperimental::add_label_range(
+        ctx_, subarray, "x", label_start, label_end);
+
+    // Create the query.
+    tiledb::Query query{ctx_, array, TILEDB_WRITE};
+    query.set_layout(TILEDB_ROW_MAJOR).set_subarray(subarray);
+    if (!input_attr_data.empty()) {
+      query.set_data_buffer("a", input_attr_data);
+      query.set_offsets_buffer("a", input_attr_offsets);
+    }
+    if (!input_label_data.empty()) {
+      tiledb::QueryExperimental::set_data_buffer(query, "x", input_label_data);
+      query.set_offsets_buffer("x", input_label_offsets);
+    }
+
+    // Submit write query.
+    if (error_on_write) {
+      REQUIRE_THROWS(query.submit());
+    } else {
+      query.submit();
+      REQUIRE(query.query_status() == tiledb::Query::Status::COMPLETE);
+    }
+  }
+
+  /**
    * Read back full array with a data query and check the values.
    *
    * @param index_start Starting value to read data from.
@@ -185,8 +289,8 @@ class DenseArrayExample {
       uint64_t index_end,
       const std::vector<double>& expected_label_data,
       const std::vector<double>& expected_attr_data) {
-    // Open array for writing.
-    tiledb::Array array{ctx_, array_name_, TILEDB_READ};
+    // Open array for reading.
+    tiledb::Array array = open_array(TILEDB_READ);
 
     // Create the subarray.
     tiledb::Subarray subarray{ctx_, array};
@@ -209,6 +313,13 @@ class DenseArrayExample {
     // Submit the query.
     query.submit();
     CHECK(query.query_status() == tiledb::Query::Status::COMPLETE);
+    // Check result buffer elements.
+    auto results =
+        tiledb::QueryExperimental::result_buffer_elements_labels(query);
+    CHECK(std::get<0>(results["a"]) == 0);  // Fixed size attribute.
+    CHECK(std::get<1>(results["a"]) == attr_data.size());
+    CHECK(std::get<0>(results["x"]) == 0);  // Fixed size label.
+    CHECK(std::get<1>(results["x"]) == label_data.size());
 
     // Check results.
     CHECK(label_data == expected_label_data);
@@ -217,8 +328,73 @@ class DenseArrayExample {
     }
   }
 
-  tiledb::Array open_array() {
-    return tiledb::Array(ctx_, array_name_, TILEDB_WRITE);
+  /**
+   * Read back full array with a data query and check the values.
+   *
+   * @param index_start Starting value to read data from.
+   * @param index_end Ending value to read data from.
+   * @param expected_label_data A vector of the expected label values.
+   * @param expected_attr_data A vector of the expected attribute values. If
+   *     empty, do not read attribute data.
+   */
+  void read_and_check_values_var(
+      uint64_t index_start,
+      uint64_t index_end,
+      const std::string& expected_label_data,
+      std::vector<uint64_t> expected_label_offsets,
+      const std::string& expected_attr_data,
+      std::vector<uint64_t> expected_attr_offsets) {
+    // Open array for reading.
+    tiledb::Array array = open_array(TILEDB_READ);
+
+    // Create the subarray.
+    tiledb::Subarray subarray{ctx_, array};
+    subarray.add_range(0, index_start, index_end);
+
+    // Create vectors for output data.
+    std::string attr_data(expected_attr_data.size(), 'x');
+    std::vector<uint64_t> attr_offsets(4);
+    std::string label_data(expected_label_data.size(), 'x');
+    std::vector<uint64_t> label_offsets(4);
+
+    // Create the query.
+    tiledb::Query query{ctx_, array, TILEDB_READ};
+    query.set_layout(TILEDB_ROW_MAJOR).set_subarray(subarray);
+    if (!expected_attr_data.empty()) {
+      query.set_data_buffer("a", attr_data);
+      query.set_offsets_buffer("a", attr_offsets);
+    }
+    if (!expected_label_data.empty()) {
+      tiledb::QueryExperimental::set_data_buffer(query, "x", label_data);
+      query.set_offsets_buffer("x", label_offsets);
+    }
+
+    // Submit the query.
+    query.submit();
+    CHECK(query.query_status() == tiledb::Query::Status::COMPLETE);
+
+    // Check result buffer elements.
+    auto results =
+        tiledb::QueryExperimental::result_buffer_elements_nullable_labels(
+            query);
+    CHECK(std::get<0>(results["a"]) == attr_offsets.size());
+    CHECK(std::get<1>(results["a"]) == attr_data.size());
+    CHECK(std::get<2>(results["a"]) == 0);  // No validity buffer.
+    CHECK(std::get<0>(results["x"]) == label_offsets.size());
+    CHECK(std::get<1>(results["x"]) == label_data.size());
+    CHECK(std::get<2>(results["x"]) == 0);  // No validity buffer.
+
+    // Check results.
+    CHECK(label_data == expected_label_data);
+    CHECK(label_offsets == expected_label_offsets);
+    if (!expected_attr_data.empty()) {
+      CHECK(attr_data == expected_attr_data);
+      CHECK(attr_offsets == expected_attr_offsets);
+    }
+  }
+
+  tiledb::Array open_array(tiledb_query_type_t query_type) {
+    return tiledb::Array(ctx_, array_name_, query_type);
   }
 
  protected:
@@ -312,7 +488,7 @@ TEST_CASE(
   std::vector<double> attr_data{0.5, 1.0, 1.5, 2.0};
 
   // Open array for writing.
-  auto array = array_fixture.open_array();
+  auto array = array_fixture.open_array(TILEDB_WRITE);
 
   // Create the subarray.
   tiledb::Subarray subarray{ctx, array};
@@ -342,4 +518,79 @@ TEST_CASE(
 
   // Check results.
   array_fixture.read_and_check_values(0, 3, label_data, attr_data);
+}
+
+TEST_CASE(
+    "CPP_API: Round trip dimension label increasing variable size data",
+    "[cppapi][query][DimensionLabel]") {
+  DenseArrayExample<TILEDB_INCREASING_DATA> array_fixture{true};
+  auto ctx = array_fixture.ctx();
+
+  // Vectors for input data.
+  std::string label_data = "abbcccdddd";
+  std::vector<uint64_t> label_offsets{0, 1, 3, 6};
+  std::string attr_data = "zzzzyyyxxw";
+  std::vector<uint64_t> attr_offsets{0, 4, 7, 9};
+
+  // Write only dimension label data and check.
+  array_fixture.write_by_index_var(0, 3, {}, {}, label_data, label_offsets);
+
+  array_fixture.write_by_label_var(
+      "a", "dddd", attr_data, attr_offsets, {}, {});
+
+  array_fixture.read_and_check_values_var(
+      0, 3, label_data, label_offsets, attr_data, attr_offsets);
+}
+
+TEST_CASE(
+    "CPP_API: Round trip dimension label decreasing variable size data",
+    "[cppapi][query][DimensionLabel]") {
+  DenseArrayExample<TILEDB_DECREASING_DATA> array_fixture{true};
+  auto ctx = array_fixture.ctx();
+
+  // Vectors for input data.
+  std::string label_data = "zzzzyyyxxw";
+  std::vector<uint64_t> label_offsets{0, 4, 7, 9};
+  std::string attr_data = "abbcccdddd";
+  std::vector<uint64_t> attr_offsets{0, 1, 3, 6};
+
+  // Write only dimension label data and check.
+  array_fixture.write_by_index_var(0, 3, {}, {}, label_data, label_offsets);
+
+  array_fixture.write_by_label_var(
+      "w", "zzzz", attr_data, attr_offsets, {}, {});
+
+  array_fixture.read_and_check_values_var(
+      0, 3, label_data, label_offsets, attr_data, attr_offsets);
+}
+
+TEST_CASE(
+    "CPP-API: Check query subarray can be updated with only label ranges set",
+    "[cppapi][query][DimensionLabel]") {
+  // Create and write the array.
+  DenseArrayExample<TILEDB_INCREASING_DATA> array_fixture{};
+  array_fixture.write_by_index(0, 3, {}, {-1.0, 0.0, 0.5, 1.0});
+
+  // Set label ranges on the subarray to be used for updating dimension ranges.
+  tiledb::Array array = array_fixture.open_array(TILEDB_READ);
+  tiledb::Subarray subarray{array_fixture.ctx(), array};
+  double label_start = -1.0, label_end = 1.0;
+  tiledb::SubarrayExperimental::add_label_range(
+      array_fixture.ctx(), subarray, "x", label_start, label_end);
+
+  tiledb::Subarray expected_subarray(array_fixture.ctx(), array);
+  uint64_t start = 0, end = 3;
+  expected_subarray.add_range(0, start, end);
+
+  // Create the query using only subarray label ranges and no buffers set.
+  tiledb::Query query{array_fixture.ctx(), array};
+  query.set_layout(TILEDB_ROW_MAJOR).set_subarray(subarray);
+
+  // Check the query subarray was updated with expected dimension ranges.
+  CHECK(query.ptr()->query_->subarray()->range_num() == 0);
+  query.submit();
+  CHECK(query.ptr()->query_->subarray()->range_num() == 1);
+  CHECK(
+      query.ptr()->query_->subarray()->ranges_for_dim(0) ==
+      expected_subarray.ptr()->subarray_->ranges_for_dim(0));
 }

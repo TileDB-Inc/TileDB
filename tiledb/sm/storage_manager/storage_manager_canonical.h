@@ -50,6 +50,7 @@
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
+#include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/enums/walk_order.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/group/group.h"
@@ -227,35 +228,6 @@ class StorageManagerCanonical {
       const EncryptionKey& encryption_key);
 
   /**
-   * Returns the array schemas and fragment metadata for the given array.
-   * The function will focus only on relevant schemas and metadata as
-   * dictated by the input URI manager.
-   *
-   * @param array_dir The ArrayDirectory object used to retrieve the
-   *     various URIs in the array directory.
-   * @param memory_tracker The memory tracker of the array
-   *     for which the fragment metadata is loaded.
-   * @param enc_key The encryption key to use.
-   * @return tuple of Status, latest ArraySchema, map of all array schemas and
-   * vector of FragmentMetadata
-   *        Status Ok on success, else error
-   *        ArraySchema The array schema to be retrieved after the
-   *           array is opened.
-   *        ArraySchemaMap Map of all array schemas found keyed by name
-   *        fragment_metadata The fragment metadata to be retrieved
-   *           after the array is opened.
-   */
-  tuple<
-      Status,
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
-      optional<std::vector<shared_ptr<FragmentMetadata>>>>
-  load_array_schemas_and_fragment_metadata(
-      const ArrayDirectory& array_dir,
-      MemoryTracker* memory_tracker,
-      const EncryptionKey& enc_key);
-
-  /**
    * Opens an group for reads.
    *
    * @param group The group to be opened.
@@ -273,17 +245,6 @@ class StorageManagerCanonical {
    */
   std::tuple<Status, std::optional<tdb_shared_ptr<GroupDetails>>>
   group_open_for_writes(Group* group);
-
-  /**
-   * Load fragments for an already open array.
-   *
-   * @param array The open array.
-   * @param fragment_info The list of fragment info.
-   * @return Status, the fragment metadata to be loaded.
-   */
-  tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
-  array_load_fragments(
-      Array* array, const std::vector<TimestampedURI>& fragment_info);
 
   /**
    * Consolidates the fragments of an array into a single one.
@@ -634,15 +595,6 @@ class StorageManagerCanonical {
   Status is_group(const URI& uri, bool* is_group) const;
 
   /**
-   * Loads the array metadata from persistent storage based on
-   * the input URI manager.
-   */
-  void load_array_metadata(
-      const ArrayDirectory& array_dir,
-      const EncryptionKey& encryption_key,
-      Metadata* metadata);
-
-  /**
    * Loads the delete and update conditions from storage.
    *
    * @param array The array.
@@ -936,60 +888,6 @@ class StorageManagerCanonical {
 
   /** Increment the count of in-progress queries. */
   void increment_in_progress();
-
-  /**
-   * Loads the fragment metadata of an open array given a vector of
-   * fragment URIs `fragments_to_load`.
-   * The function stores the fragment metadata of each fragment
-   * in `fragments_to_load` into the returned vector, such
-   * that there is a one-to-one correspondence between the two vectors.
-   *
-   * If `meta_buf` has data, then some fragment metadata may be contained
-   * in there and does not need to be loaded from storage. In that
-   * case, `offsets` helps identifying each fragment metadata in the
-   * buffer.
-   *
-   * @param memory_tracker The memory tracker of the array
-   *     for which the metadata is loaded. This will be passed to
-   *     the constructor of each of the metadata loaded.
-   * @param array_schema_latest The latest array schema.
-   * @param array_schemas_all All the array schemas in a map keyed by the
-   *     schema filename.
-   * @param encryption_key The encryption key to use.
-   * @param fragments_to_load The fragments whose metadata to load.
-   * @param offsets A map from a fragment name to an offset in `meta_buff`
-   *     where the basic fragment metadata can be found. If the offset
-   *     cannot be found, then the metadata of that fragment will be loaded from
-   *     storage instead.
-   * @return tuple of Status and vector of FragmentMetadata
-   *        Status Ok on success, else error
-   *        Vector of FragmentMetadata is the fragment metadata to be retrieved.
-   */
-  tuple<Status, optional<std::vector<shared_ptr<FragmentMetadata>>>>
-  load_fragment_metadata(
-      MemoryTracker* memory_tracker,
-      const shared_ptr<const ArraySchema>& array_schema,
-      const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
-          array_schemas_all,
-      const EncryptionKey& encryption_key,
-      const std::vector<TimestampedURI>& fragments_to_load,
-      const std::unordered_map<std::string, std::pair<Tile*, uint64_t>>&
-          offsets);
-
-  /**
-   * Loads the latest consolidated fragment metadata from storage.
-   *
-   * @param uri The URI of the consolidated fragment metadata.
-   * @param enc_key The encryption key that may be needed to access the file.
-   * @param f_buff The buffer to hold the consolidated fragment metadata.
-   * @return Status, vector from the fragment name to the offset in `f_buff`
-   *     where the basic fragment metadata starts.
-   */
-  tuple<
-      Status,
-      optional<Tile>,
-      optional<std::vector<std::pair<std::string, uint64_t>>>>
-  load_consolidated_fragment_meta(const URI& uri, const EncryptionKey& enc_key);
 
   /** Block until there are zero in-progress queries. */
   void wait_for_zero_in_progress();

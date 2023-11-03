@@ -361,14 +361,12 @@ void RTree::deserialize_v1_v4(
   deserialized_buffer_size_ = deserializer.size();
 
   // For backwards compatibility, ignored
-  auto dim_num_i = deserializer.read<unsigned>();
-  (void)dim_num_i;
+  (void)deserializer.read<unsigned>();
 
   fanout_ = deserializer.read<unsigned>();
 
   // For backwards compatibility, ignored
-  auto type_i = deserializer.read<uint8_t>();
-  (void)type_i;
+  (void)deserializer.read<uint8_t>();
 
   auto level_num = deserializer.read<unsigned>();
   levels_.clear();

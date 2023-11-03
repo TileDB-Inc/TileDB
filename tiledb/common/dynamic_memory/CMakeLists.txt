@@ -26,11 +26,6 @@
 
 include(common NO_POLICY_SCOPE)
 
-list(APPEND SOURCES
-    dynamic_memory.cc
-)
-gather_sources(${SOURCES})
-
 list(APPEND DEPENDENT_SOURCES
     ../governor/governor.cc
     ../heap_profiler.cc

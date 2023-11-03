@@ -53,6 +53,7 @@
 #include "tiledb/sm/query/strategy_base.h"
 #include "tiledb/sm/query/writers/domain_buffer.h"
 #include "tiledb/sm/subarray/subarray.h"
+#include "tiledb/type/apply_with_type.h"
 
 namespace tiledb {
 namespace sm {
@@ -77,9 +78,11 @@ ReaderBase::ReaderBase(
     Array* array,
     Config& config,
     std::unordered_map<std::string, QueryBuffer>& buffers,
+    std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
     Subarray& subarray,
     Layout layout,
-    std::optional<QueryCondition>& condition)
+    std::optional<QueryCondition>& condition,
+    DefaultChannelAggregates& default_channel_aggregates)
     : StrategyBase(
           stats,
           logger,
@@ -95,7 +98,8 @@ ReaderBase::ReaderBase(
     , initial_data_loaded_(false)
     , max_batch_size_(config.get<uint64_t>("vfs.max_batch_size").value())
     , min_batch_gap_(config.get<uint64_t>("vfs.min_batch_gap").value())
-    , min_batch_size_(config.get<uint64_t>("vfs.min_batch_size").value()) {
+    , min_batch_size_(config.get<uint64_t>("vfs.min_batch_size").value())
+    , aggregate_buffers_(aggregate_buffers) {
   if (array != nullptr)
     fragment_metadata_ = array->fragment_metadata();
   timestamps_needed_for_deletes_and_updates_.resize(fragment_metadata_.size());
@@ -104,6 +108,13 @@ ReaderBase::ReaderBase(
     throw ReaderBaseStatusException(
         "Cannot initialize reader; Multi-range reads are not supported on a "
         "global order query.");
+  }
+
+  // Validate the aggregates and store the requested aggregates by field name.
+  for (auto& aggregate : default_channel_aggregates) {
+    aggregate.second->validate_output_buffer(
+        aggregate.first, aggregate_buffers_);
+    aggregates_[aggregate.second->field_name()].emplace_back(aggregate.second);
   }
 }
 
@@ -160,9 +171,7 @@ void ReaderBase::compute_result_space_tiles(
       result_space_tile.append_frag_domain(frag_idx, frag_domain);
       auto tile_idx = frag_tile_domains[f].tile_pos(coords);
       ResultTile result_tile(
-          frag_idx,
-          tile_idx,
-          *(fragment_metadata[frag_idx]->array_schema()).get());
+          frag_idx, tile_idx, *fragment_metadata[frag_idx].get());
       result_space_tile.set_result_tile(frag_idx, result_tile);
     }
   }
@@ -306,12 +315,15 @@ void ReaderBase::zero_out_buffer_sizes() {
   }
 }
 
-void ReaderBase::check_subarray() const {
+void ReaderBase::check_subarray(bool check_ranges_oob) const {
   if (subarray_.layout() == Layout::GLOBAL_ORDER &&
       subarray_.range_num() != 1) {
     throw ReaderBaseStatusException(
         "Cannot initialize reader; Multi-range subarrays with "
         "global order layout are not supported");
+  }
+  if (check_ranges_oob) {
+    subarray_.check_oob();
   }
 }
 
@@ -429,13 +441,13 @@ bool ReaderBase::include_timestamps(const unsigned f) const {
                          !dups || timestamps_needed);
 }
 
-Status ReaderBase::load_tile_offsets(
+void ReaderBase::load_tile_offsets(
     const RelevantFragments& relevant_fragments,
     const std::vector<std::string>& names) {
   auto timer_se = stats_->start_timer("load_tile_offsets");
   const auto encryption_key = array_->encryption_key();
 
-  const auto status = parallel_for(
+  throw_if_not_ok(parallel_for(
       storage_manager_->compute_tp(),
       0,
       relevant_fragments.size(),
@@ -454,23 +466,18 @@ Status ReaderBase::load_tile_offsets(
           filtered_names.emplace_back(name);
         }
 
-        RETURN_NOT_OK(fragment->load_tile_offsets(
-            *encryption_key, std::move(filtered_names)));
+        fragment->load_tile_offsets(*encryption_key, filtered_names);
         return Status::Ok();
-      });
-
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
+      }));
 }
 
-Status ReaderBase::load_tile_var_sizes(
+void ReaderBase::load_tile_var_sizes(
     const RelevantFragments& relevant_fragments,
     const std::vector<std::string>& names) {
   auto timer_se = stats_->start_timer("load_tile_var_sizes");
   const auto encryption_key = array_->encryption_key();
 
-  const auto status = parallel_for(
+  throw_if_not_ok(parallel_for(
       storage_manager_->compute_tp(),
       0,
       relevant_fragments.size(),
@@ -491,23 +498,57 @@ Status ReaderBase::load_tile_var_sizes(
             continue;
           }
 
-          throw_if_not_ok(fragment->load_tile_var_sizes(*encryption_key, name));
+          fragment->load_tile_var_sizes(*encryption_key, name);
         }
 
         return Status::Ok();
-      });
-
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
+      }));
 }
 
-Status ReaderBase::load_processed_conditions() {
+void ReaderBase::load_tile_metadata(
+    const RelevantFragments& relevant_fragments,
+    const std::vector<std::string>& names) {
+  auto timer_se = stats_->start_timer("load_tile_metadata");
+  const auto encryption_key = array_->encryption_key();
+
+  throw_if_not_ok(parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      relevant_fragments.size(),
+      [&](const uint64_t i) {
+        auto frag_idx = relevant_fragments[i];
+        auto& fragment = fragment_metadata_[frag_idx];
+
+        // Generate the list of name with aggregates.
+        const auto& schema = fragment->array_schema();
+        std::vector<std::string> to_load;
+        for (auto& n : names) {
+          // Not a member of array schema, this field was added in array
+          // schema evolution, ignore for this fragment's tile metadata.
+          if (!schema->is_field(n)) {
+            continue;
+          }
+
+          if (aggregates_.count(n) != 0) {
+            to_load.emplace_back(n);
+          }
+        }
+
+        fragment->load_tile_max_values(*encryption_key, to_load);
+        fragment->load_tile_min_values(*encryption_key, to_load);
+        fragment->load_tile_sum_values(*encryption_key, to_load);
+        fragment->load_tile_null_count_values(*encryption_key, to_load);
+
+        return Status::Ok();
+      }));
+}
+
+void ReaderBase::load_processed_conditions() {
   auto timer_se = stats_->start_timer("load_processed_conditions");
   const auto encryption_key = array_->encryption_key();
 
   // Load all fragments in parallel.
-  const auto status = parallel_for(
+  throw_if_not_ok(parallel_for(
       storage_manager_->compute_tp(),
       0,
       fragment_metadata_.size(),
@@ -515,15 +556,11 @@ Status ReaderBase::load_processed_conditions() {
         auto& fragment = fragment_metadata_[i];
 
         if (fragment->has_delete_meta()) {
-          RETURN_NOT_OK(fragment->load_processed_conditions(*encryption_key));
+          fragment->load_processed_conditions(*encryption_key);
         }
 
         return Status::Ok();
-      });
-
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
+      }));
 }
 
 Status ReaderBase::read_and_unfilter_attribute_tiles(
@@ -707,7 +744,11 @@ ReaderBase::load_tile_chunk_data(
   const FilterPipeline& filters = array_schema_.filters(name);
   if (!var_size ||
       !filters.skip_offsets_filtering(t_var->type(), array_schema_.version())) {
-    unfiltered_tile_size = t->load_chunk_data(tile_chunk_data);
+    if (var_size) {
+      unfiltered_tile_size = t->load_offsets_chunk_data(tile_chunk_data);
+    } else {
+      unfiltered_tile_size = t->load_chunk_data(tile_chunk_data);
+    }
   }
 
   if (var_size) {
@@ -731,7 +772,7 @@ Status ReaderBase::zip_tile_coordinates(
         array_schema_.filters(name).get_filter<CompressionFilter>() != nullptr;
     auto version = tile->format_version();
     if (version > 1 || using_compression) {
-      RETURN_NOT_OK(tile->zip_coordinates());
+      tile->zip_coordinates();
     }
   }
   return Status::Ok();
@@ -765,6 +806,7 @@ Status ReaderBase::post_process_unfiltered_tile(
     auto& t_var = tile_tuple->var_tile();
     t_var.clear_filtered_buffer();
     throw_if_not_ok(zip_tile_coordinates(name, &t_var));
+    t.add_extra_offset(t_var);
   }
 
   if (nullable) {
@@ -991,19 +1033,6 @@ Status ReaderBase::unfilter_tile(
   return Status::Ok();
 }
 
-tuple<uint64_t, uint64_t> ReaderBase::compute_chunk_min_max(
-    const uint64_t num_chunks,
-    const uint64_t num_range_threads,
-    const uint64_t thread_idx) const {
-  auto t_part_num = std::min(num_chunks, num_range_threads);
-  auto t_min = (thread_idx * num_chunks + t_part_num - 1) / t_part_num;
-  auto t_max = std::min(
-      ((thread_idx + 1) * num_chunks + t_part_num - 1) / t_part_num,
-      num_chunks);
-
-  return {t_min, t_max};
-}
-
 uint64_t ReaderBase::offsets_bytesize() const {
   return offsets_bitsize_ == 32 ? sizeof(uint32_t) :
                                   constants::cell_var_offset_size;
@@ -1155,7 +1184,6 @@ void ReaderBase::validate_attribute_order(
       fragment_metadata_.size(),
       [&](int64_t f) {
         validator.validate_without_loading_tiles<IndexType, AttributeType>(
-            array_schema_,
             index_dim,
             increasing_data,
             f,
@@ -1201,127 +1229,26 @@ void ReaderBase::validate_attribute_order(
     std::vector<uint64_t>& frag_first_array_tile_idx) {
   auto timer_se = stats_->start_timer("validate_attribute_order");
 
-  switch (attribute_type) {
-    case Datatype::INT8:
-      validate_attribute_order<IndexType, int8_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::UINT8:
-      validate_attribute_order<IndexType, uint8_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::INT16:
-      validate_attribute_order<IndexType, int16_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::UINT16:
-      validate_attribute_order<IndexType, uint16_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::INT32:
-      validate_attribute_order<IndexType, int32_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::UINT32:
-      validate_attribute_order<IndexType, uint32_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::INT64:
-      validate_attribute_order<IndexType, int64_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::UINT64:
-      validate_attribute_order<IndexType, uint64_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::FLOAT32:
-      validate_attribute_order<IndexType, float>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::FLOAT64:
-      validate_attribute_order<IndexType, double>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      validate_attribute_order<IndexType, int64_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::STRING_ASCII:
+  auto g = [&](auto T) {
+    if constexpr (std::is_same_v<decltype(T), char>) {
       validate_attribute_order<IndexType, std::string_view>(
           attribute_name,
           increasing_data,
           array_non_empty_domain,
           non_empty_domains,
           frag_first_array_tile_idx);
-      break;
-    default:
+    } else if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      validate_attribute_order<IndexType, decltype(T)>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+    } else {
       throw ReaderBaseStatusException("Invalid attribute type");
-  }
+    }
+  };
+  apply_with_type(g, attribute_type);
 }
 
 // Explicit template instantiations

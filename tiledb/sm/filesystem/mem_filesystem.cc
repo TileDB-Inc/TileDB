@@ -158,20 +158,15 @@ class MemFilesystem::File : public MemFilesystem::FSNode {
 
   /** Returns the full path to this file */
   tuple<Status, optional<std::vector<directory_entry>>> ls(
-      const std::string& full_path) const override {
+      const std::string&) const override {
     assert(!mutex_.try_lock());
-
-    (void)full_path;
 
     auto st = LOG_STATUS(Status_MemFSError(
         std::string("Cannot get children, the path is a file")));
     return {st, nullopt};
   }
 
-  bool has_child(const std::string& child) const override {
-    assert(!mutex_.try_lock());
-
-    (void)child;
+  bool has_child(const std::string&) const override {
     return false;
   }
 
@@ -308,33 +303,21 @@ class MemFilesystem::Directory : public MemFilesystem::FSNode {
     return children_.count(child) != 0;
   }
 
-  Status get_size(uint64_t* const size) const override {
+  Status get_size(uint64_t* const) const override {
     assert(!mutex_.try_lock());
-    assert(size);
 
-    (void)size;
     return LOG_STATUS(Status_MemFSError(
         std::string("Cannot get size, the path is a directory")));
   }
 
-  Status read(const uint64_t offset, void* buffer, const uint64_t nbytes)
-      const override {
-    assert(!mutex_.try_lock());
-    assert(buffer);
-
-    (void)offset;
-    (void)buffer;
-    (void)nbytes;
+  Status read(const uint64_t, void*, const uint64_t) const override {
     return LOG_STATUS(Status_MemFSError(
         std::string("Cannot read contents, the path is a directory")));
   }
 
-  Status append(const void* const data, const uint64_t nbytes) override {
+  Status append(const void* const, const uint64_t) override {
     assert(!mutex_.try_lock());
-    assert(data);
 
-    (void)data;
-    (void)nbytes;
     return LOG_STATUS(Status_MemFSError(
         std::string("Cannot append contents, the path is a directory")));
   }

@@ -250,7 +250,7 @@ class ArraySchema : public Schema {
    *
    * @param capacity The capacity of a sparse data tile. Note that
    * sparse data tiles exist in sparse fragments, which can be created
-   * in both sparse and dense arrays. For more details,
+   * in sparse arrays only. For more details,
    * see [tutorials/tiling-sparse.html](tutorials/tiling-sparse.html).
    * @return Reference to this `ArraySchema` instance.
    */

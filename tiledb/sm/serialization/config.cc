@@ -80,11 +80,13 @@ Status config_from_capnp(
     auto entries = config_reader.getEntries();
     bool found_refactored_reader_config = false;
     for (const auto kv : entries) {
-      RETURN_NOT_OK((*config)->set(kv.getKey().cStr(), kv.getValue().cStr()));
-      if (kv.getKey() == "sm.use_refactored_readers" ||
-          kv.getKey() == "sm.query.dense.reader" ||
-          kv.getKey() == "sm.query.sparse_global_order.reader" ||
-          kv.getKey() == "sm.query.sparse_unordered_with_dups.reader")
+      auto key = std::string_view{kv.getKey().cStr(), kv.getKey().size()};
+      auto value = std::string_view{kv.getValue().cStr(), kv.getValue().size()};
+      RETURN_NOT_OK((*config)->set(std::string{key}, std::string{value}));
+      if (key == "sm.use_refactored_readers" ||
+          key == "sm.query.dense.reader" ||
+          key == "sm.query.sparse_global_order.reader" ||
+          key == "sm.query.sparse_unordered_with_dups.reader")
         found_refactored_reader_config = true;
     }
 
@@ -106,9 +108,7 @@ Status config_serialize(
     const Config& config,
     SerializationType serialize_type,
     Buffer* serialized_buffer,
-    const bool client_side) {
-  // Currently client_side is unused
-  (void)client_side;
+    const bool) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::Config::Builder configBuilder = message.initRoot<capnp::Config>();

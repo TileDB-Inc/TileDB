@@ -66,8 +66,6 @@ struct CPPMetadataFx {
   const char* ARRAY_NAME = "test_metadata";
   tiledb_array_t* array_ = nullptr;
   const char* key_ = "0123456789abcdeF0123456789abcdeF";
-  const uint32_t key_len_ =
-      (uint32_t)strlen("0123456789abcdeF0123456789abcdeF");
   const tiledb_encryption_type_t enc_type_ = TILEDB_AES_256_GCM;
 
   void create_default_array_1d();
@@ -135,7 +133,6 @@ void CPPMetadataFx::create_default_array_1d_with_key() {
       array_name_,
       enc_type_,
       key_,
-      key_len_,
       TILEDB_DENSE,
       {"d"},
       {TILEDB_UINT64},

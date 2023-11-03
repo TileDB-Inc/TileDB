@@ -72,28 +72,6 @@ struct tiledb_error_handle_t
 };
 
 namespace tiledb::api {
-/**
- * Conditionally create a C API error object based on a `Status`.
- *
- * The error object in the C API, unlike almost every other, is created outside
- * a `tiledb_*_alloc` function. This function is the one that creates such
- * objects for other functions that can return errors.
- *
- * Note that this function can throw, since it allocates to create an error
- * handle. In that case the argument error is ignored and superseded by an
- * out-of-memory exception, which the C API wrapper will process.
- *
- * @pre `error != nullptr`. Error arguments must always be validated, because
- * on error they're assigned an error handle and on success they're assigned
- * `nullptr`.
- *
- * @param error A non-null pointer to `tiledb_error_t *` object
- * @param st A status that might contain an error
- * @return true if `st` contained an error, false if it did not
- */
-bool create_error(
-    tiledb_error_handle_t** error, const tiledb::common::Status& st);
-
 /*
  * Create a C API error object with a given string.
  *

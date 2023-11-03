@@ -57,6 +57,8 @@ template int ByteVecValue::rvalue_as<int>() const;
 template uint32_t ByteVecValue::rvalue_as<uint32_t>() const;
 template int64_t ByteVecValue::rvalue_as<int64_t>() const;
 template uint64_t ByteVecValue::rvalue_as<uint64_t>() const;
+template float ByteVecValue::rvalue_as<float>() const;
+template double ByteVecValue::rvalue_as<double>() const;
 
 }  // namespace sm
 }  // namespace tiledb

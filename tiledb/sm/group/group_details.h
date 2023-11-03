@@ -80,18 +80,12 @@ class GroupDetails {
   /**
    * Remove a member from a group, this will be flushed to disk on close
    *
-   * @param uri of member to remove
+   * @param name Name of member to remove. If the member has no name,
+   * this parameter should be set to the URI of the member. In that case, only
+   * the unnamed member with the given URI will be removed.
    * @return Status
    */
-  Status mark_member_for_removal(const URI& uri);
-
-  /**
-   * Remove a member from a group, this will be flushed to disk on close
-   *
-   * @param uri of member to remove
-   * @return Status
-   */
-  Status mark_member_for_removal(const std::string& uri);
+  Status mark_member_for_removal(const std::string& name);
 
   /**
    * Get the vector of members to modify, used in serialization only
@@ -169,7 +163,7 @@ class GroupDetails {
   uint64_t member_count() const;
 
   /**
-   * Get a member by index
+   * Get a member by index.
    *
    * @param index of member
    * @return Tuple of URI string, ObjectType, optional GroupMember name
@@ -178,7 +172,7 @@ class GroupDetails {
       uint64_t index);
 
   /**
-   * Get a member by name
+   * Get a member by name.
    *
    * @param name of member
    * @return Tuple of URI string, ObjectType, optional GroupMember name,
@@ -196,7 +190,7 @@ class GroupDetails {
   /**
    * Apply any pending member additions or removals
    *
-   * mutates members_ and clears members_to_add_ and members_to_remove_
+   * mutates members_ and clears members_to_modify_
    *
    * @return Status
    */
@@ -210,26 +204,33 @@ class GroupDetails {
   /** The group URI. */
   URI group_uri_;
 
-  /** The mapping of all members of this group. */
+  /** The mapping of all members of this group. This is the canonical store of
+   * the group's members. The key is the member's key(). */
   std::unordered_map<std::string, shared_ptr<GroupMember>> members_;
 
   /** Vector for index based lookup. */
   std::vector<shared_ptr<GroupMember>> members_vec_;
 
-  /** Unordered map of members by their name, if the member doesn't have a name,
+  /** Unordered map for name based lookup. If the member doesn't have a name,
    * it will not be in the map. */
   std::unordered_map<std::string, shared_ptr<GroupMember>> members_by_name_;
 
   /** Mapping of members slated for adding. */
   std::vector<shared_ptr<GroupMember>> members_to_modify_;
 
+  /** Set of member keys that have been marked for addition. */
+  std::unordered_set<std::string> member_keys_to_add_;
+
+  /** Set of member keys that have been marked for removal. */
+  std::unordered_set<std::string> member_keys_to_delete_;
+
   /** Mutex for thread safety. */
   mutable std::mutex mtx_;
 
-  /* Format version. */
+  /** Format version. */
   const uint32_t version_;
 
-  /* Were changes applied and is a write is required */
+  /** Were changes applied and is a write is required */
   bool changes_applied_;
 };
 }  // namespace sm

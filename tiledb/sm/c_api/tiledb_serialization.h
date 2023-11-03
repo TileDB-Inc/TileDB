@@ -432,6 +432,38 @@ TILEDB_EXPORT int32_t tiledb_serialize_array_max_buffer_sizes(
     tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
 
 /**
+ * Process a delete fragments request.
+ *
+ * @param ctx The TileDB context.
+ * @param array The TileDB Array.
+ * @param serialization_type Type of serialization to use
+ * @param request Buffer containing serialized fragment timestamps.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT
+capi_return_t tiledb_handle_array_delete_fragments_timestamps_request(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_serialization_type_t serialization_type,
+    const tiledb_buffer_t* request) TILEDB_NOEXCEPT;
+
+/**
+ * Process a delete fragments list request.
+ *
+ * @param ctx The TileDB context.
+ * @param array The TileDB Array.
+ * @param serialization_type Type of serialization to use
+ * @param buffer Buffer containing serialized fragments list.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT
+capi_return_t tiledb_handle_array_delete_fragments_list_request(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_serialization_type_t serialization_type,
+    const tiledb_buffer_t* request) TILEDB_NOEXCEPT;
+
+/**
  * Serializes the array metadata into the given buffer.
  *
  * @note The caller must free the returned `tiledb_buffer_t`.
@@ -716,6 +748,43 @@ TILEDB_EXPORT int32_t tiledb_deserialize_group_metadata(
     tiledb_group_t* group,
     tiledb_serialization_type_t serialization_type,
     const tiledb_buffer_t* buffer) TILEDB_NOEXCEPT;
+
+/**
+ * Process a load array schema request.
+ *
+ * @param ctx The TileDB context.
+ * @param array The TileDB Array.
+ * @param serialization_type The type of Cap'n Proto serialization used.
+ * @param request A buffer containing the LoadArraySchemaRequest Cap'n Proto
+ *        message.
+ * @param response An allocated buffer that will contain the
+ *        LoadArraySchemaResponse Cap'n Proto message.
+ * @return capi_return_t TILEDB_OK on success, TILEDB_ERR on error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_handle_load_array_schema_request(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_serialization_type_t serialization_type,
+    const tiledb_buffer_t* request,
+    tiledb_buffer_t* response) TILEDB_NOEXCEPT;
+
+/**
+ * Process a load enumerations request.
+ *
+ * @param ctx The TileDB context.
+ * @param array The TileDB Array.
+ * @param request A buffer containing the LoadEnumerationsRequest Capnp message.
+ * @param response An allocated buffer that will contain the
+ *        LoadEnumerationsResponse Capnp message.
+ * @return capi_return_t TILEDB_OK on success, TILEDB_ERR on error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_handle_load_enumerations_request(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_serialization_type_t serialization_type,
+    const tiledb_buffer_t* request,
+    tiledb_buffer_t* response) TILEDB_NOEXCEPT;
+
 #ifdef __cplusplus
 }
 #endif

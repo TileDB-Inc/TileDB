@@ -27,11 +27,6 @@
 
 include(common NO_POLICY_SCOPE)
 
-list(APPEND SOURCES
-    governor.cc
-)
-gather_sources(${SOURCES})
-
 if (FALSE AND TILEDB_TESTS) # reserved for later
     find_package(Catch_EP REQUIRED)
 

@@ -7,7 +7,7 @@ if [[ "$TILEDB_CI_OS" == "Linux" ]]; then
   ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
   ulimit -c
   sudo apt-get update
-  sudo apt-get -y install gdb
+  sudo apt-get -y install gdb ninja-build git curl zip unzip tar pkg-config
   if [[ -f $(which gdb) ]]; then
     echo found $(which gdb)
   else
@@ -27,4 +27,8 @@ if [[ "$TILEDB_CI_OS" == "macOS" ]]; then
   ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
   ls -ld /cores
   ulimit -c
+fi
+
+if [[ "$CC" == "gcc-13" ]]; then
+  sudo apt install -y gcc-13 g++-13
 fi

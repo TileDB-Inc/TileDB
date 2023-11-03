@@ -51,6 +51,7 @@
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/tile/generic_tile_io.h"
 
 #include <cassert>
 #include <cmath>
@@ -61,9 +62,9 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class ArrayStatusException : public StatusException {
+class ArrayException : public StatusException {
  public:
-  explicit ArrayStatusException(const std::string& message)
+  explicit ArrayException(const std::string& message)
       : StatusException("Array", message) {
   }
 };
@@ -147,8 +148,7 @@ Status Array::open_without_fragments(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  auto timer =
-      storage_manager_->stats()->start_timer("array_open_without_fragments");
+  auto timer = resources_.stats().start_timer("array_open_without_fragments");
   Status st;
   // Checks
   if (is_open()) {
@@ -204,36 +204,38 @@ Status Array::open_without_fragments(
       }
     } else {
       {
-        auto timer_se = storage_manager_->stats()->start_timer(
+        auto timer_se = resources_.stats().start_timer(
             "array_open_without_fragments_load_directory");
         array_dir_ = ArrayDirectory(
             resources_, array_uri_, 0, UINT64_MAX, ArrayDirectoryMode::READ);
       }
-      auto&& [array_schema, array_schemas] = open_for_reads_without_fragments();
-      if (!st.ok())
-        throw StatusException(st);
-
-      array_schema_latest_ = array_schema.value();
-      array_schemas_all_ = array_schemas.value();
+      std::tie(array_schema_latest_, array_schemas_all_) =
+          open_for_reads_without_fragments();
     }
-  } catch (std::exception& e) {
+  } catch (...) {
     set_array_closed();
-    throw Status_ArrayError(e.what());
+    std::throw_with_nested(
+        ArrayException("Error opening array without fragments."));
   }
 
   is_opening_or_closing_ = false;
   return Status::Ok();
 }
 
-Status Array::load_fragments(
+void Array::load_fragments(
     const std::vector<TimestampedURI>& fragments_to_load) {
-  auto&& [st, fragment_metadata] =
-      storage_manager_->array_load_fragments(this, fragments_to_load);
-  RETURN_NOT_OK(st);
+  auto timer_se = resources_.stats().start_timer("sm_array_load_fragments");
 
-  fragment_metadata_ = std::move(fragment_metadata.value());
-
-  return Status::Ok();
+  // Load the fragment metadata
+  std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
+  fragment_metadata_ = FragmentMetadata::load(
+      resources_,
+      memory_tracker(),
+      array_schema_latest_ptr(),
+      array_schemas_all(),
+      *encryption_key(),
+      fragments_to_load,
+      offsets);
 }
 
 Status Array::open(
@@ -257,7 +259,7 @@ Status Array::open(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  auto timer = storage_manager_->stats()->start_timer(
+  auto timer = resources_.stats().start_timer(
       "array_open_" + query_type_str(query_type));
   Status st;
   // Checks
@@ -285,12 +287,12 @@ Status Array::open(
                .get<bool>(
                    "sm.allow_updates_experimental", &allow_updates, &found)
                .ok()) {
-        throw Status_ArrayError("Cannot get setting");
+        throw ArrayException("Cannot get setting");
       }
       assert(found);
 
       if (!allow_updates) {
-        throw Status_ArrayError(
+        throw ArrayException(
             "Cannot open array; Update query type is only experimental, do "
             "not use.");
       }
@@ -306,6 +308,7 @@ Status Array::open(
 
     if (!encryption_key_from_cfg.empty()) {
       encryption_key = encryption_key_from_cfg.c_str();
+      key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
       std::string encryption_type_from_cfg;
       bool found = false;
       encryption_type_from_cfg = config_.get("sm.encryption_type", &found);
@@ -316,23 +319,16 @@ Status Array::open(
       }
       encryption_type = et.value();
 
-      if (EncryptionKey::is_valid_key_length(
+      if (!EncryptionKey::is_valid_key_length(
               encryption_type,
               static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
-        const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
-        if (unit_test_cfg.array_encryption_key_length.is_set()) {
-          key_length = unit_test_cfg.array_encryption_key_length.get();
-        } else {
-          key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
-        }
-      } else {
         encryption_key = nullptr;
         key_length = 0;
       }
     }
 
     if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION) {
-      throw Status_ArrayError(
+      throw ArrayException(
           "Cannot open array; encrypted remote arrays are not supported.");
     }
 
@@ -351,14 +347,14 @@ Status Array::open(
           query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
         timestamp_end_opened_at_ = 0;
       } else {
-        throw Status_ArrayError("Cannot open array; Unsupported query type.");
+        throw ArrayException("Cannot open array; Unsupported query type.");
       }
     }
 
     if (remote_) {
       auto rest_client = resources_.rest_client();
       if (rest_client == nullptr) {
-        throw Status_ArrayError(
+        throw ArrayException(
             "Cannot open array; remote array with no REST client.");
       }
       if (!use_refactored_array_open()) {
@@ -377,24 +373,19 @@ Status Array::open(
       }
     } else if (query_type == QueryType::READ) {
       {
-        auto timer_se = storage_manager_->stats()->start_timer(
-            "array_open_read_load_directory");
+        auto timer_se =
+            resources_.stats().start_timer("array_open_read_load_directory");
         array_dir_ = ArrayDirectory(
             resources_, array_uri_, timestamp_start_, timestamp_end_opened_at_);
       }
-      auto&& [array_schema_latest, array_schemas, fragment_metadata] =
+      std::tie(array_schema_latest_, array_schemas_all_, fragment_metadata_) =
           open_for_reads();
-
-      // Set schemas
-      array_schema_latest_ = array_schema_latest.value();
-      array_schemas_all_ = array_schemas.value();
-      fragment_metadata_ = fragment_metadata.value();
     } else if (
         query_type == QueryType::WRITE ||
         query_type == QueryType::MODIFY_EXCLUSIVE) {
       {
-        auto timer_se = storage_manager_->stats()->start_timer(
-            "array_open_write_load_directory");
+        auto timer_se =
+            resources_.stats().start_timer("array_open_write_load_directory");
         array_dir_ = ArrayDirectory(
             resources_,
             array_uri_,
@@ -413,7 +404,7 @@ Status Array::open(
     } else if (
         query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
       {
-        auto timer_se = storage_manager_->stats()->start_timer(
+        auto timer_se = resources_.stats().start_timer(
             "array_open_delete_or_update_load_directory");
         array_dir_ = ArrayDirectory(
             resources_,
@@ -451,7 +442,7 @@ Status Array::open(
 
       metadata_.reset(timestamp_end_opened_at_);
     } else {
-      throw Status_ArrayError("Cannot open array; Unsupported query type.");
+      throw ArrayException("Cannot open array; Unsupported query type.");
     }
   } catch (std::exception& e) {
     set_array_closed();
@@ -537,8 +528,7 @@ void Array::delete_array(const URI& uri) {
   if (remote_) {
     auto rest_client = resources_.rest_client();
     if (rest_client == nullptr) {
-      throw ArrayStatusException(
-          "[delete_array] Remote array with no REST client.");
+      throw ArrayException("[delete_array] Remote array with no REST client.");
     }
     rest_client->delete_array_from_rest(uri);
   } else {
@@ -555,31 +545,116 @@ void Array::delete_fragments(
   ensure_array_is_valid_for_delete(uri);
 
   // Delete fragments
-  // #TODO Add rest support for delete_fragments
   if (remote_) {
-    throw ArrayStatusException(
-        "[delete_fragments] Remote arrays currently unsupported.");
+    auto rest_client = resources_.rest_client();
+    if (rest_client == nullptr) {
+      throw ArrayException(
+          "[delete_fragments] Remote array with no REST client.");
+    }
+    rest_client->post_delete_fragments_to_rest(
+        uri, this, timestamp_start, timestamp_end);
   } else {
     storage_manager_->delete_fragments(
         uri.c_str(), timestamp_start, timestamp_end);
   }
 }
 
-void Array::delete_fragments_list(
-    const URI& uri, const std::vector<URI>& fragment_uris) {
+void Array::delete_fragments_list(const std::vector<URI>& fragment_uris) {
   // Check that data deletion is allowed
-  ensure_array_is_valid_for_delete(uri);
+  ensure_array_is_valid_for_delete(array_uri_);
 
-  // Delete fragments
-  // #TODO Add rest support for delete_fragments_list
+  // Delete fragments_list
   if (remote_) {
-    throw ArrayStatusException(
-        "[delete_fragments_list] Remote arrays currently unsupported.");
+    auto rest_client = resources_.rest_client();
+    if (rest_client == nullptr) {
+      throw ArrayException(
+          "[delete_fragments_list] Remote array with no REST client.");
+    }
+    rest_client->post_delete_fragments_list_to_rest(
+        array_uri_, this, fragment_uris);
   } else {
     auto array_dir = ArrayDirectory(
-        resources_, uri, 0, std::numeric_limits<uint64_t>::max());
+        resources_, array_uri_, 0, std::numeric_limits<uint64_t>::max());
     array_dir.delete_fragments_list(fragment_uris);
   }
+}
+
+shared_ptr<const Enumeration> Array::get_enumeration(
+    const std::string& enumeration_name) {
+  return get_enumerations({enumeration_name})[0];
+}
+
+std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
+    const std::vector<std::string>& enumeration_names) {
+  if (!is_open_) {
+    throw ArrayException("Unable to load enumerations; Array is not open.");
+  }
+
+  // Dedupe requested names and filter out anything already loaded.
+  std::unordered_set<std::string> enmrs_to_load;
+  for (auto& enmr_name : enumeration_names) {
+    if (array_schema_latest_->is_enumeration_loaded(enmr_name)) {
+      continue;
+    }
+    enmrs_to_load.insert(enmr_name);
+  }
+
+  // Only attempt to load enumerations if we have at least one Enumeration
+  // to load.
+  if (enmrs_to_load.size() > 0) {
+    std::vector<shared_ptr<const Enumeration>> loaded;
+
+    if (remote_) {
+      auto rest_client = resources_.rest_client();
+      if (rest_client == nullptr) {
+        throw ArrayException(
+            "Error loading enumerations; Remote array with no REST client.");
+      }
+
+      std::vector<std::string> names_to_load;
+      for (auto& enmr_name : enmrs_to_load) {
+        names_to_load.push_back(enmr_name);
+      }
+
+      loaded = rest_client->post_enumerations_from_rest(
+          array_uri_,
+          timestamp_start_,
+          timestamp_end_opened_at_,
+          this,
+          names_to_load);
+    } else {
+      // Create a vector of paths to be loaded.
+      std::vector<std::string> paths_to_load;
+      for (auto& enmr_name : enmrs_to_load) {
+        auto path = array_schema_latest_->get_enumeration_path_name(enmr_name);
+        paths_to_load.push_back(path);
+      }
+
+      // Load the enumerations from storage
+      loaded = array_dir_.load_enumerations_from_paths(
+          paths_to_load, get_encryption_key(), memory_tracker_);
+    }
+
+    // Store the loaded enumerations in the schema
+    for (auto& enmr : loaded) {
+      array_schema_latest_->store_enumeration(enmr);
+    }
+  }
+
+  // Return the requested list of enumerations
+  std::vector<shared_ptr<const Enumeration>> ret(enumeration_names.size());
+  for (size_t i = 0; i < enumeration_names.size(); i++) {
+    ret[i] = array_schema_latest_->get_enumeration(enumeration_names[i]);
+  }
+  return ret;
+}
+
+void Array::load_all_enumerations() {
+  if (!is_open_) {
+    throw ArrayException("Unable to load all enumerations; Array is not open.");
+  }
+  // Load all enumerations, discarding the returned list of loaded enumerations.
+  get_enumerations(array_schema_latest_->get_enumeration_names());
 }
 
 bool Array::is_empty() const {
@@ -756,7 +831,7 @@ Status Array::reopen() {
 }
 
 Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
-  auto timer = storage_manager_->stats()->start_timer("array_reopen");
+  auto timer = resources_.stats().start_timer("array_reopen");
   if (!is_open_) {
     return LOG_STATUS(
         Status_ArrayError("Cannot reopen array; Array is not open"));
@@ -800,8 +875,7 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
 
   try {
     {
-      auto timer_se =
-          storage_manager_->stats()->start_timer("array_reopen_directory");
+      auto timer_se = resources_.stats().start_timer("array_reopen_directory");
       array_dir_ = ArrayDirectory(
           resources_,
           array_uri_,
@@ -814,158 +888,102 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
     return LOG_STATUS(Status_ArrayDirectoryError(le.what()));
   }
 
-  auto&& [array_schema_latest, array_schemas, fragment_metadata] =
+  std::tie(array_schema_latest_, array_schemas_all_, fragment_metadata_) =
       open_for_reads();
 
-  array_schema_latest_ = array_schema_latest.value();
-  array_schemas_all_ = array_schemas.value();
-  fragment_metadata_ = fragment_metadata.value();
-
   return Status::Ok();
-}
-
-Status Array::set_timestamp_start(const uint64_t timestamp_start) {
-  timestamp_start_ = timestamp_start;
-  return Status::Ok();
-}
-
-uint64_t Array::timestamp_start() const {
-  return timestamp_start_;
-}
-
-Status Array::set_timestamp_end(const uint64_t timestamp_end) {
-  timestamp_end_ = timestamp_end;
-  return Status::Ok();
-}
-
-Status Array::set_timestamp_end_opened_at(
-    const uint64_t timestamp_end_opened_at) {
-  timestamp_end_opened_at_ = timestamp_end_opened_at;
-  return Status::Ok();
-}
-
-uint64_t Array::timestamp_end() const {
-  return timestamp_end_;
-}
-
-uint64_t Array::timestamp_end_opened_at() const {
-  return timestamp_end_opened_at_;
 }
 
 void Array::set_config(Config config) {
   if (is_open()) {
-    throw ArrayStatusException(
-        "[set_config] Cannot set a config on an open array");
+    throw ArrayException("[set_config] Cannot set a config on an open array");
   }
   config_.inherit(config);
 }
 
-Config Array::config() const {
-  return config_;
-}
-
-Status Array::set_uri_serialized(const std::string& uri) {
-  array_uri_serialized_ = URI(uri);
-  return Status::Ok();
-}
-
-Status Array::delete_metadata(const char* key) {
+void Array::delete_metadata(const char* key) {
   // Check if array is open
   if (!is_open_) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot delete metadata. Array is not open"));
+    throw ArrayException("Cannot delete metadata. Array is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::WRITE &&
       query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot delete metadata. Array was "
-                          "not opened in write or modify_exclusive mode"));
+    throw ArrayException(
+        "Cannot delete metadata. Array was not opened in write or "
+        "modify_exclusive mode");
   }
 
   // Check if key is null
   if (key == nullptr) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot delete metadata. Key cannot be null"));
+    throw ArrayException("Cannot delete metadata. Key cannot be null");
   }
 
-  RETURN_NOT_OK(metadata_.del(key));
-
-  return Status::Ok();
+  metadata_.del(key);
 }
 
-Status Array::put_metadata(
+void Array::put_metadata(
     const char* key,
     Datatype value_type,
     uint32_t value_num,
     const void* value) {
   // Check if array is open
   if (!is_open_) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot put metadata; Array is not open"));
+    throw ArrayException("Cannot put metadata; Array is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::WRITE &&
       query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot put metadata; Array was "
-                          "not opened in write or modify_exclusive mode"));
+    throw ArrayException(
+        "Cannot put metadata; Array was not opened in write or "
+        "modify_exclusive mode");
   }
 
   // Check if key is null
   if (key == nullptr) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot put metadata; Key cannot be null"));
+    throw ArrayException("Cannot put metadata; Key cannot be null");
   }
 
   // Check if value type is ANY
   if (value_type == Datatype::ANY) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot put metadata; Value type cannot be ANY"));
+    throw ArrayException("Cannot put metadata; Value type cannot be ANY");
   }
 
-  RETURN_NOT_OK(metadata_.put(key, value_type, value_num, value));
-
-  return Status::Ok();
+  metadata_.put(key, value_type, value_num, value);
 }
 
-Status Array::get_metadata(
+void Array::get_metadata(
     const char* key,
     Datatype* value_type,
     uint32_t* value_num,
     const void** value) {
   // Check if array is open
   if (!is_open_) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get metadata; Array is not open"));
+    throw ArrayException("Cannot get metadata; Array is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get metadata; Array was "
-                          "not opened in read mode"));
+    throw ArrayException(
+        "Cannot get metadata; Array was not opened in read mode");
   }
 
   // Check if key is null
   if (key == nullptr) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get metadata; Key cannot be null"));
+    throw ArrayException("Cannot get metadata; Key cannot be null");
   }
 
   // Load array metadata, if not loaded yet
   if (!metadata_loaded_) {
-    RETURN_NOT_OK(load_metadata());
+    throw_if_not_ok(load_metadata());
   }
 
-  RETURN_NOT_OK(metadata_.get(key, value_type, value_num, value));
-
-  return Status::Ok();
+  metadata_.get(key, value_type, value_num, value);
 }
 
-Status Array::get_metadata(
+void Array::get_metadata(
     uint64_t index,
     const char** key,
     uint32_t* key_len,
@@ -974,81 +992,66 @@ Status Array::get_metadata(
     const void** value) {
   // Check if array is open
   if (!is_open_) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get metadata; Array is not open"));
+    throw ArrayException("Cannot get metadata; Array is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get metadata; Array was "
-                          "not opened in read mode"));
+    throw ArrayException(
+        "Cannot get metadata; Array was not opened in read mode");
   }
 
   // Load array metadata, if not loaded yet
   if (!metadata_loaded_) {
-    RETURN_NOT_OK(load_metadata());
+    throw_if_not_ok(load_metadata());
   }
 
-  RETURN_NOT_OK(
-      metadata_.get(index, key, key_len, value_type, value_num, value));
-
-  return Status::Ok();
+  metadata_.get(index, key, key_len, value_type, value_num, value);
 }
 
-Status Array::get_metadata_num(uint64_t* num) {
+uint64_t Array::metadata_num() {
   // Check if array is open
   if (!is_open_) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get number of metadata; Array is not open"));
+    throw ArrayException("Cannot get number of metadata; Array is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get number of metadata; Array was "
-                          "not opened in read mode"));
+    throw ArrayException(
+        "Cannot get number of metadata; Array was not opened in read mode");
   }
 
   // Load array metadata, if not loaded yet
   if (!metadata_loaded_) {
-    RETURN_NOT_OK(load_metadata());
+    throw_if_not_ok(load_metadata());
   }
 
-  *num = metadata_.num();
-
-  return Status::Ok();
+  return metadata_.num();
 }
 
-Status Array::has_metadata_key(
-    const char* key, Datatype* value_type, bool* has_key) {
+std::optional<Datatype> Array::metadata_type(const char* key) {
   // Check if array is open
   if (!is_open_) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get metadata; Array is not open"));
+    throw ArrayException("Cannot get metadata; Array is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get metadata; Array was "
-                          "not opened in read mode"));
+    throw ArrayException(
+        "Cannot get metadata; Array was not opened in read mode");
   }
 
   // Check if key is null
   if (key == nullptr) {
-    return LOG_STATUS(
-        Status_ArrayError("Cannot get metadata; Key cannot be null"));
+    throw ArrayException("Cannot get metadata; Key cannot be null");
   }
 
   // Load array metadata, if not loaded yet
   if (!metadata_loaded_) {
-    RETURN_NOT_OK(load_metadata());
+    throw_if_not_ok(load_metadata());
   }
 
-  RETURN_NOT_OK(metadata_.has_key(key, value_type, has_key));
-
-  return Status::Ok();
+  return metadata_.metadata_type(key);
 }
 
 Metadata* Array::unsafe_metadata() {
@@ -1101,6 +1104,16 @@ bool Array::serialize_non_empty_domain() const {
   }
 
   return serialize_ned_array_open;
+}
+
+bool Array::serialize_enumerations() const {
+  auto serialize = config_.get<bool>("rest.load_enumerations_on_array_open");
+  if (!serialize.has_value()) {
+    throw std::runtime_error(
+        "Cannot get rest.load_enumerations_on_array_open configuration option "
+        "from config");
+  }
+  return serialize.value();
 }
 
 bool Array::serialize_metadata() const {
@@ -1187,8 +1200,9 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
             return Status::Ok();
           }
 
-          return fragment_metadata_[f]->load_tile_var_sizes(
+          fragment_metadata_[f]->load_tile_var_sizes(
               *encryption_key_, var_name);
+          return Status::Ok();
         }));
   }
 
@@ -1229,39 +1243,35 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
 /* ********************************* */
 
 tuple<
-    optional<shared_ptr<ArraySchema>>,
-    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>,
-    optional<std::vector<shared_ptr<FragmentMetadata>>>>
+    shared_ptr<ArraySchema>,
+    std::unordered_map<std::string, shared_ptr<ArraySchema>>,
+    std::vector<shared_ptr<FragmentMetadata>>>
 Array::open_for_reads() {
   auto timer_se = resources_.stats().start_timer(
       "array_open_read_load_schemas_and_fragment_meta");
-  auto&& [st, array_schema_latest, array_schemas_all, fragment_metadata] =
-      storage_manager_->load_array_schemas_and_fragment_metadata(
-          array_directory(), memory_tracker(), *encryption_key());
+  auto result = FragmentInfo::load_array_schemas_and_fragment_metadata(
+      resources_, array_directory(), memory_tracker(), *encryption_key());
 
-  throw_if_not_ok(st);
-
-  auto version = array_schema_latest.value()->version();
+  auto version = std::get<0>(result)->version();
   ensure_supported_schema_version_for_read(version);
 
-  return {array_schema_latest, array_schemas_all, fragment_metadata};
+  return result;
 }
 
 tuple<
-    optional<shared_ptr<ArraySchema>>,
-    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+    shared_ptr<ArraySchema>,
+    std::unordered_map<std::string, shared_ptr<ArraySchema>>>
 Array::open_for_reads_without_fragments() {
   auto timer_se = resources_.stats().start_timer(
       "array_open_read_without_fragments_load_schemas");
 
   // Load array schemas
-  auto&& [array_schema_latest, array_schemas_all] =
-      array_dir_.load_array_schemas(*encryption_key());
+  auto result = array_dir_.load_array_schemas(*encryption_key());
 
-  auto version = array_schema_latest->version();
+  auto version = std::get<0>(result)->version();
   ensure_supported_schema_version_for_read(version);
 
-  return {array_schema_latest, array_schemas_all};
+  return result;
 }
 
 tuple<
@@ -1390,8 +1400,7 @@ Status Array::compute_max_buffer_sizes(
   // arrays, this will not be accurate, as it accounts only for the
   // non-empty regions of the subarray.
   for (auto& meta : fragment_metadata_) {
-    RETURN_NOT_OK(
-        meta->add_max_buffer_sizes(*encryption_key_, subarray, buffer_sizes));
+    meta->add_max_buffer_sizes(*encryption_key_, subarray, buffer_sizes);
   }
 
   // Prepare an NDRange for the subarray
@@ -1451,6 +1460,41 @@ Status Array::compute_max_buffer_sizes(
   return Status::Ok();
 }
 
+void Array::do_load_metadata() {
+  if (!array_dir_.loaded()) {
+    throw ArrayException(
+        "Cannot load metadata; array directory is not loaded.");
+  }
+  auto timer_se = resources_.stats().start_timer("sm_load_array_metadata");
+
+  // Determine which array metadata to load
+  const auto& array_metadata_to_load = array_dir_.array_meta_uris();
+
+  auto metadata_num = array_metadata_to_load.size();
+  std::vector<shared_ptr<Tile>> metadata_tiles(metadata_num);
+  throw_if_not_ok(
+      parallel_for(&resources_.compute_tp(), 0, metadata_num, [&](size_t m) {
+        const auto& uri = array_metadata_to_load[m].uri_;
+
+        auto&& tile = GenericTileIO::load(resources_, uri, 0, *encryption_key_);
+        metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(tile));
+
+        return Status::Ok();
+      }));
+
+  // Compute array metadata size for the statistics
+  uint64_t meta_size = 0;
+  for (const auto& t : metadata_tiles) {
+    meta_size += t->size();
+  }
+  resources_.stats().add_counter("read_array_meta_size", meta_size);
+
+  metadata_ = Metadata::deserialize(metadata_tiles);
+
+  // Sets the loaded metadata URIs
+  metadata_.set_loaded_metadata_uris(array_metadata_to_load);
+}
+
 Status Array::load_metadata() {
   if (remote_) {
     auto rest_client = resources_.rest_client();
@@ -1461,9 +1505,7 @@ Status Array::load_metadata() {
     RETURN_NOT_OK(rest_client->get_array_metadata_from_rest(
         array_uri_, timestamp_start_, timestamp_end_opened_at_, this));
   } else {
-    assert(array_dir_.loaded());
-    storage_manager_->load_array_metadata(
-        array_dir_, *encryption_key_, &metadata_);
+    do_load_metadata();
   }
   metadata_loaded_ = true;
   return Status::Ok();
@@ -1577,20 +1619,19 @@ void Array::set_array_closed() {
 void Array::ensure_array_is_valid_for_delete(const URI& uri) {
   // Check that query type is MODIFY_EXCLUSIVE
   if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    throw ArrayStatusException(
+    throw ArrayException(
         "[ensure_array_is_valid_for_delete] "
         "Query type must be MODIFY_EXCLUSIVE to perform a delete.");
   }
 
   // Check that array is open
   if (!is_open() && !controller().is_open(uri)) {
-    throw ArrayStatusException(
-        "[ensure_array_is_valid_for_delete] Array is closed");
+    throw ArrayException("[ensure_array_is_valid_for_delete] Array is closed");
   }
 
   // Check that array is not in the process of opening or closing
   if (is_opening_or_closing_) {
-    throw ArrayStatusException(
+    throw ArrayException(
         "[ensure_array_is_valid_for_delete] "
         "May not perform simultaneous open or close operations.");
   }
@@ -1606,10 +1647,6 @@ void ensure_supported_schema_version_for_read(format_version_t version) {
     err << constants::format_version << ")";
     throw Status_StorageManagerError(err.str());
   }
-}
-
-void Array::set_serialized_array_open() {
-  is_open_ = true;
 }
 
 }  // namespace sm

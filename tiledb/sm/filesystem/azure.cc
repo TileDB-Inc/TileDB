@@ -32,11 +32,7 @@
 
 #ifdef HAVE_AZURE
 
-#if !defined(NOMINMAX)
-#define NOMINMAX  // avoid min/max macros from windows headers
-#endif
-
-#include <future>
+#include <sstream>
 
 #include <azure/core/diagnostics/logger.hpp>
 #include <azure/storage/blobs.hpp>
@@ -47,9 +43,13 @@
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/platform/cert_file.h"
 #include "tiledb/sm/filesystem/azure.h"
+#include "tiledb/sm/filesystem/ssl_config.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
+
+static std::shared_ptr<::Azure::Core::Http::HttpTransport> create_transport(
+    tiledb::sm::SSLConfig& ssl_cfg);
 
 using namespace tiledb::common;
 using tiledb::common::filesystem::directory_entry;
@@ -100,12 +100,11 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
     account_key = std::string(tmp);
   }
 
-  if (!config.get("vfs.azure.storage_sas_token", &found).empty() ||
-      getenv("AZURE_STORAGTE_SAS_TOKEN") != nullptr) {
-    LOG_WARN(
-        "The 'vfs.azure.storage_sas_token' option is deprecated and unused. "
-        "Make sure the 'vfs.azure.blob_endpoint' property has the SAS token "
-        "instead.");
+  std::string sas_token =
+      config.get<std::string>("vfs.azure.storage_sas_token", Config::must_find);
+  if (sas_token.empty() &&
+      ((tmp = getenv("AZURE_STORAGE_SAS_TOKEN")) != nullptr)) {
+    sas_token = std::string(tmp);
   }
 
   std::string blob_endpoint = config.get("vfs.azure.blob_endpoint", &found);
@@ -115,14 +114,28 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
     blob_endpoint = std::string(tmp);
   }
   if (blob_endpoint.empty()) {
-    LOG_WARN("The 'vfs.azure.blob_endpoint' option is not specified.");
-  }
-  if (!blob_endpoint.empty() &&
-      !(utils::parse::starts_with(blob_endpoint, "http://") ||
-        utils::parse::starts_with(blob_endpoint, "https://"))) {
+    if (!account_name.empty()) {
+      blob_endpoint = "https://" + account_name + ".blob.core.windows.net";
+    } else {
+      LOG_WARN(
+          "Neither the 'vfs.azure.storage_account_name' nor the "
+          "'vfs.azure.blob_endpoint' options are specified.");
+    }
+  } else if (!(utils::parse::starts_with(blob_endpoint, "http://") ||
+               utils::parse::starts_with(blob_endpoint, "https://"))) {
     LOG_WARN(
         "The 'vfs.azure.blob_endpoint' option should include the scheme (HTTP "
         "or HTTPS).");
+  }
+  if (!blob_endpoint.empty() && !sas_token.empty()) {
+    // The question mark is not strictly part of the SAS token
+    // (https://learn.microsoft.com/en-us/azure/storage/common/storage-sas-overview#sas-token),
+    // but in the Azure Portal the SAS token starts with one. If it does not, we
+    // add the question mark ourselves.
+    if (!utils::parse::starts_with(sas_token, "?")) {
+      blob_endpoint += '?';
+    }
+    blob_endpoint += sas_token;
   }
 
   RETURN_NOT_OK(config.get<uint64_t>(
@@ -171,8 +184,11 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   options.Retry.RetryDelay = retry_delay_;
   options.Retry.MaxRetryDelay = max_retry_delay;
 
+  SSLConfig ssl_cfg = SSLConfig(config);
+  options.Transport.Transport = create_transport(ssl_cfg);
+
   // Construct the Azure SDK blob service client.
-  // We pass a shared kay if it was specified.
+  // We pass a shared key if it was specified.
   if (!account_key.empty()) {
     client_ =
         tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
@@ -1079,7 +1095,77 @@ Status Azure::parse_azure_uri(
   return Status::Ok();
 }
 
+/* Generates the next base64-encoded block id. */
+std::string Azure::BlockListUploadState::next_block_id() {
+  const uint64_t block_id = next_block_id_++;
+  const std::string block_id_str = std::to_string(block_id);
+
+  // Pad the block id string with enough leading zeros to support
+  // the maximum number of blocks (50,000). All block ids must be
+  // of equal length among a single blob.
+  const int block_id_chars = 5;
+  std::vector<uint8_t> padded_block_id(
+      block_id_chars - block_id_str.length(), '0');
+  std::copy(
+      block_id_str.begin(),
+      block_id_str.end(),
+      std::back_inserter(padded_block_id));
+
+  const std::string b64_block_id_str =
+      ::Azure::Core::Convert::Base64Encode(padded_block_id);
+
+  block_ids_.emplace_back(b64_block_id_str);
+
+  return b64_block_id_str;
+}
+
 }  // namespace sm
 }  // namespace tiledb
+
+#if defined(_WIN32)
+#include <azure/core/http/win_http_transport.hpp>
+std::shared_ptr<::Azure::Core::Http::HttpTransport> create_transport(
+    tiledb::sm::SSLConfig& ssl_cfg) {
+  ::Azure::Core::Http::WinHttpTransportOptions transport_opts;
+
+  if (!ssl_cfg.ca_file().empty()) {
+    LOG_WARN("Azure ignores the `ssl.ca_file` configuration key on Windows.");
+  }
+
+  if (!ssl_cfg.ca_path().empty()) {
+    LOG_WARN("Azure ignores the `ssl.ca_path` configuration key on Windows.");
+  }
+
+  if (ssl_cfg.verify() == false) {
+    transport_opts.IgnoreUnknownCertificateAuthority = true;
+  }
+
+  return make_shared<::Azure::Core::Http::WinHttpTransport>(
+      HERE(), transport_opts);
+}
+#else
+#include <azure/core/http/curl_transport.hpp>
+std::shared_ptr<::Azure::Core::Http::HttpTransport> create_transport(
+    tiledb::sm::SSLConfig& ssl_cfg) {
+  ::Azure::Core::Http::CurlTransportOptions transport_opts;
+
+  if (!ssl_cfg.ca_file().empty()) {
+    transport_opts.CAInfo = ssl_cfg.ca_file();
+  }
+
+  if (!ssl_cfg.ca_path().empty()) {
+    LOG_WARN(
+        "Azure ignores the `ssl.ca_path` configuration key, "
+        "use `ssl.ca_file` instead");
+  }
+
+  if (ssl_cfg.verify() == false) {
+    transport_opts.SslVerifyPeer = false;
+  }
+
+  return make_shared<::Azure::Core::Http::CurlTransport>(
+      HERE(), transport_opts);
+}
+#endif
 
 #endif

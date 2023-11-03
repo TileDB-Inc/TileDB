@@ -55,36 +55,37 @@
 tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
   switch (type) {
     case tiledb::sm::FilterType::FILTER_NONE:
-      return tdb_new(tiledb::sm::NoopFilter);
+      return tdb_new(tiledb::sm::NoopFilter, Datatype::ANY);
     case tiledb::sm::FilterType::FILTER_GZIP:
     case tiledb::sm::FilterType::FILTER_ZSTD:
     case tiledb::sm::FilterType::FILTER_LZ4:
     case tiledb::sm::FilterType::FILTER_RLE:
     case tiledb::sm::FilterType::FILTER_BZIP2:
+    case tiledb::sm::FilterType::FILTER_DELTA:
     case tiledb::sm::FilterType::FILTER_DOUBLE_DELTA:
     case tiledb::sm::FilterType::FILTER_DICTIONARY:
-      return tdb_new(tiledb::sm::CompressionFilter, type, -1);
+      return tdb_new(tiledb::sm::CompressionFilter, type, -1, Datatype::ANY);
     case tiledb::sm::FilterType::FILTER_BIT_WIDTH_REDUCTION:
-      return tdb_new(tiledb::sm::BitWidthReductionFilter);
+      return tdb_new(tiledb::sm::BitWidthReductionFilter, Datatype::ANY);
     case tiledb::sm::FilterType::FILTER_BITSHUFFLE:
-      return tdb_new(tiledb::sm::BitshuffleFilter);
+      return tdb_new(tiledb::sm::BitshuffleFilter, Datatype::ANY);
     case tiledb::sm::FilterType::FILTER_BYTESHUFFLE:
-      return tdb_new(tiledb::sm::ByteshuffleFilter);
+      return tdb_new(tiledb::sm::ByteshuffleFilter, Datatype::ANY);
     case tiledb::sm::FilterType::FILTER_POSITIVE_DELTA:
-      return tdb_new(tiledb::sm::PositiveDeltaFilter);
+      return tdb_new(tiledb::sm::PositiveDeltaFilter, Datatype::ANY);
     case tiledb::sm::FilterType::INTERNAL_FILTER_AES_256_GCM:
-      return tdb_new(tiledb::sm::EncryptionAES256GCMFilter);
+      return tdb_new(tiledb::sm::EncryptionAES256GCMFilter, Datatype::ANY);
     case tiledb::sm::FilterType::FILTER_CHECKSUM_MD5:
-      return tdb_new(tiledb::sm::ChecksumMD5Filter);
+      return tdb_new(tiledb::sm::ChecksumMD5Filter, Datatype::ANY);
     case tiledb::sm::FilterType::FILTER_CHECKSUM_SHA256:
-      return tdb_new(tiledb::sm::ChecksumSHA256Filter);
+      return tdb_new(tiledb::sm::ChecksumSHA256Filter, Datatype::ANY);
     case tiledb::sm::FilterType::FILTER_SCALE_FLOAT:
-      return tdb_new(tiledb::sm::FloatScalingFilter);
+      return tdb_new(tiledb::sm::FloatScalingFilter, Datatype::ANY);
     case tiledb::sm::FilterType::FILTER_XOR:
-      return tdb_new(tiledb::sm::XORFilter);
+      return tdb_new(tiledb::sm::XORFilter, Datatype::ANY);
     case tiledb::sm::FilterType::FILTER_WEBP: {
       if constexpr (webp_filter_exists) {
-        return tdb_new(tiledb::sm::WebpFilter);
+        return tdb_new(tiledb::sm::WebpFilter, Datatype::ANY);
       } else {
         throw WebpNotPresentError();
       }
@@ -99,7 +100,8 @@ tiledb::sm::Filter* tiledb::sm::FilterCreate::make(FilterType type) {
 shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
     Deserializer& deserializer,
     const EncryptionKey& encryption_key,
-    const uint32_t version) {
+    const uint32_t version,
+    Datatype datatype) {
   Status st;
   uint8_t type = deserializer.read<uint8_t>();
   FilterType filtertype = static_cast<FilterType>(type);
@@ -112,43 +114,58 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
 
   switch (filtertype) {
     case FilterType::FILTER_NONE:
-      return make_shared<NoopFilter>(HERE());
+      return make_shared<NoopFilter>(HERE(), datatype);
     case FilterType::FILTER_GZIP:
     case FilterType::FILTER_ZSTD:
     case FilterType::FILTER_LZ4:
     case FilterType::FILTER_RLE:
     case FilterType::FILTER_BZIP2:
+    case FilterType::FILTER_DELTA:
     case FilterType::FILTER_DOUBLE_DELTA:
     case FilterType::FILTER_DICTIONARY: {
       uint8_t compressor_char = deserializer.read<uint8_t>();
       int compression_level = deserializer.read<int32_t>();
+      Datatype reinterpret_type = Datatype::ANY;
+      if (version >= 20 && (filtertype == FilterType::FILTER_DELTA ||
+                            filtertype == FilterType::FILTER_DOUBLE_DELTA)) {
+        uint8_t reinterpret = deserializer.read<uint8_t>();
+        reinterpret_type = static_cast<Datatype>(reinterpret);
+      }
       Compressor compressor = static_cast<Compressor>(compressor_char);
       return make_shared<CompressionFilter>(
-          HERE(), compressor, compression_level, version);
+          HERE(),
+          compressor,
+          compression_level,
+          datatype,
+          reinterpret_type,
+          version);
     }
     case FilterType::FILTER_BIT_WIDTH_REDUCTION: {
       uint32_t max_window_size = deserializer.read<uint32_t>();
-      return make_shared<BitWidthReductionFilter>(HERE(), max_window_size);
+      return make_shared<BitWidthReductionFilter>(
+          HERE(), max_window_size, datatype);
     }
     case FilterType::FILTER_BITSHUFFLE:
-      return make_shared<BitshuffleFilter>(HERE());
+      return make_shared<BitshuffleFilter>(HERE(), datatype);
     case FilterType::FILTER_BYTESHUFFLE:
-      return make_shared<ByteshuffleFilter>(HERE());
+      return make_shared<ByteshuffleFilter>(HERE(), datatype);
     case FilterType::FILTER_POSITIVE_DELTA: {
       uint32_t max_window_size = deserializer.read<uint32_t>();
-      return make_shared<PositiveDeltaFilter>(HERE(), max_window_size);
+      return make_shared<PositiveDeltaFilter>(
+          HERE(), max_window_size, datatype);
     }
     case FilterType::INTERNAL_FILTER_AES_256_GCM:
       if (encryption_key.encryption_type() ==
           tiledb::sm::EncryptionType::AES_256_GCM) {
-        return make_shared<EncryptionAES256GCMFilter>(HERE(), encryption_key);
+        return make_shared<EncryptionAES256GCMFilter>(
+            HERE(), encryption_key, datatype);
       } else {
-        return make_shared<EncryptionAES256GCMFilter>(HERE());
+        return make_shared<EncryptionAES256GCMFilter>(HERE(), datatype);
       }
     case FilterType::FILTER_CHECKSUM_MD5:
-      return make_shared<ChecksumMD5Filter>(HERE());
+      return make_shared<ChecksumMD5Filter>(HERE(), datatype);
     case FilterType::FILTER_CHECKSUM_SHA256:
-      return make_shared<ChecksumSHA256Filter>(HERE());
+      return make_shared<ChecksumSHA256Filter>(HERE(), datatype);
     case FilterType::FILTER_SCALE_FLOAT: {
       auto filter_config =
           deserializer.read<FloatScalingFilter::FilterConfig>();
@@ -156,10 +173,11 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
           HERE(),
           filter_config.byte_width,
           filter_config.scale,
-          filter_config.offset);
+          filter_config.offset,
+          datatype);
     };
     case FilterType::FILTER_XOR: {
-      return make_shared<XORFilter>(HERE());
+      return make_shared<XORFilter>(HERE(), datatype);
     };
     case FilterType::FILTER_WEBP: {
       if constexpr (webp_filter_exists) {
@@ -170,7 +188,8 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
             filter_config.format,
             filter_config.lossless,
             filter_config.y_extent,
-            filter_config.x_extent);
+            filter_config.x_extent,
+            datatype);
       } else {
         throw WebpNotPresentError();
       }
@@ -181,8 +200,8 @@ shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
   }
 }
 shared_ptr<tiledb::sm::Filter> tiledb::sm::FilterCreate::deserialize(
-    Deserializer& deserializer, const uint32_t version) {
+    Deserializer& deserializer, const uint32_t version, Datatype datatype) {
   EncryptionKey encryption_key;
   return tiledb::sm::FilterCreate::deserialize(
-      deserializer, encryption_key, version);
+      deserializer, encryption_key, version, datatype);
 }

@@ -28,11 +28,11 @@ include(unit_test)
 
 commence(unit_test array)
     this_target_sources(main.cc unit_array_directory.cc)
-    this_target_link_libraries(array)
+    this_target_link_libraries(array context_resources)
 conclude(unit_test)
 
 commence(unit_test consistency)
     this_target_sources(main.cc unit_consistency.cc)
-    this_target_sources($<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
+    this_target_link_libraries(TILEDB_CORE_OBJECTS)
     this_target_link_libraries(TILEDB_CORE_OBJECTS_ILIB)
 conclude(unit_test)

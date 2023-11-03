@@ -94,10 +94,13 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       Array* array,
       Config& config,
       std::unordered_map<std::string, QueryBuffer>& buffers,
+      std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
       Subarray& subarray,
       Layout layout,
       std::optional<QueryCondition>& condition,
-      bool skip_checks_serialization = false);
+      DefaultChannelAggregates& default_channel_aggregates,
+      bool skip_checks_serialization = false,
+      bool remote_query = false);
 
   /** Destructor. */
   ~DenseReader() = default;
@@ -187,6 +190,16 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   void init_read_state();
 
   /**
+   * Returns the field name to process.
+   *
+   * @param condition_names Set of query condition names.
+   * @return {names, var names}.
+   */
+  tuple<std::vector<std::string>, std::vector<std::string>>
+  field_names_to_process(
+      const std::unordered_set<std::string>& condition_names);
+
+  /**
    * Compute the result tiles to process on an iteration to respect the memory
    * budget.
    */
@@ -239,6 +252,79 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const DynamicArray<Subarray>& tile_subarrays,
       const std::vector<uint64_t>& tile_offsets,
       uint64_t& var_buffer_size,
+      const std::vector<RangeInfo<DimType>>& range_info,
+      std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
+      const std::vector<uint8_t>& qc_result,
+      const uint64_t num_range_threads);
+
+  /** Make an aggregate buffer. */
+  AggregateBuffer make_aggregate_buffer(
+      const bool var_sized,
+      const bool nullable,
+      const uint64_t cell_size,
+      const uint64_t min_cell,
+      const uint64_t max_cell,
+      ResultTile::TileTuple* tile_tuple,
+      optional<void*> bitmap_data);
+
+  /**
+   * Returns wether or not we can aggregate the tile with only the fragment
+   * metadata.
+   *
+   * @param name Name of the field to process.
+   * @param rst Result space tile.
+   * @param tile_subarray Tile subarray.
+   * @return If we can do the aggregation with the frag md or not.
+   */
+  template <class DimType>
+  inline bool can_aggregate_tile_with_frag_md(
+      const std::string& name,
+      ResultSpaceTile<DimType>& rst,
+      const Subarray& tile_subarray) {
+    // Make sure there are no filtered results by the query condition and that
+    // there are only one fragment domain for this tile. Having more fragment
+    // domains for a tile means we'll have to merge data for many sources so we
+    // cannot aggregate the full tile.
+    if (rst.qc_filtered_results() || rst.frag_domains().size() != 1) {
+      return false;
+    }
+
+    // Now we can get the fragment metadata of the only result tile in this
+    // space tile.
+    const auto& rt = rst.single_result_tile();
+    const auto frag_md = fragment_metadata_[rt.frag_idx()];
+
+    // Make sure this tile isn't cropped by ranges and the fragment metadata has
+    // tile metadata.
+    if (tile_subarray.cell_num() != rt.cell_num() ||
+        frag_md->has_tile_metadata()) {
+      return false;
+    }
+
+    // Fixed size nullable strings had incorrect min/max metadata for dense
+    // until version 20.
+    const auto type = array_schema_.type(name);
+    if ((type == Datatype::STRING_ASCII || type == Datatype::CHAR) &&
+        array_schema_.cell_val_num(name) != constants::var_num &&
+        array_schema_.is_nullable(name)) {
+      if (frag_md->version() <= 20) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /** Process aggregates for a given field. */
+  template <class DimType, class OffType>
+  Status process_aggregates(
+      const std::string& name,
+      const std::vector<DimType>& tile_extents,
+      const Subarray& subarray,
+      const uint64_t t_start,
+      const uint64_t t_end,
+      const DynamicArray<Subarray>& tile_subarrays,
+      const std::vector<uint64_t>& tile_offsets,
       const std::vector<RangeInfo<DimType>>& range_info,
       std::map<const DimType*, ResultSpaceTile<DimType>>& result_space_tiles,
       const std::vector<uint8_t>& qc_result,
@@ -299,6 +385,20 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const std::vector<RangeInfo<DimType>>& range_info,
       bool last_tile,
       uint64_t var_buffer_sizes,
+      const uint64_t range_thread_idx,
+      const uint64_t num_range_threads);
+
+  /** Aggregate tiles. */
+  template <class DimType>
+  Status aggregate_tiles(
+      const std::string& name,
+      const std::vector<DimType>& tile_extents,
+      ResultSpaceTile<DimType>& result_space_tile,
+      const Subarray& subarray,
+      const Subarray& tile_subarray,
+      const uint64_t global_cell_offset,
+      const std::vector<RangeInfo<DimType>>& range_info,
+      std::vector<uint8_t>& aggregate_bitmap,
       const uint64_t range_thread_idx,
       const uint64_t num_range_threads);
 

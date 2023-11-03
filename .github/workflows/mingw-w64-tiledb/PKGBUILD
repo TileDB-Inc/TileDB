@@ -7,15 +7,8 @@ pkgdesc="Storage management library for sparse and dense array data (mingw-w64)"
 arch=("any")
 url="https://tiledb.com/"
 license=("MIT")
-depends=("${MINGW_PACKAGE_PREFIX}-lz4"
-         "${MINGW_PACKAGE_PREFIX}-aws-sdk-cpp"
-         "${MINGW_PACKAGE_PREFIX}-bzip2"
-         "${MINGW_PACKAGE_PREFIX}-zlib"
-         "${MINGW_PACKAGE_PREFIX}-zstd"
-         )
 makedepends=("${MINGW_PACKAGE_PREFIX}-cmake"
-             "${MINGW_PACKAGE_PREFIX}-gcc"
-             "${MINGW_PACKAGE_PREFIX}-curl")
+             "${MINGW_PACKAGE_PREFIX}-gcc")
 options=("staticlibs" "strip")
 source_dir="$TILEDB_HOME"
 
@@ -26,6 +19,9 @@ build() {
   if [ "$CARCH" == "i686" ]; then
   export CFLAGS="-mfpmath=sse -msse2"
   export CXXFLAGS="-mfpmath=sse -msse2"
+  vcpkg_triplet="x86-mingw-static-release"
+  else
+  vcpkg_triplet="x64-mingw-static-release"
   fi
 
 
@@ -36,10 +32,13 @@ build() {
     -DBUILD_SHARED_LIBS=OFF \
     -DCMAKE_BUILD_TYPE=Release \
     -DTILEDB_STATIC=ON \
+    -DTILEDB_INSTALL_STATIC_DEPS=OFF \
+    -DTILEDB_TESTS=OFF \
     -DTILEDB_S3=ON \
     -DCOMPILER_SUPPORTS_AVX2=OFF \
     -DTILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK=ON \
     -DTILEDB_WERROR=OFF \
+    -DVCPKG_TARGET_TRIPLET=${vcpkg_triplet} \
     ..
   make
   make -C tiledb
@@ -55,6 +54,8 @@ build() {
 package() {
   cd ${source_dir}/build-${MINGW_CHOST}
   make DESTDIR="${pkgdir}" -C tiledb install
+  # Copy vcpkg_installed to the mingw package.
+  cp -r vcpkg_installed/${vcpkg_triplet}/. ${pkgdir}/${MINGW_ARCH}
 }
 
 check (){

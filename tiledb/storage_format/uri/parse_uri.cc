@@ -37,6 +37,37 @@
 
 namespace tiledb::sm::utils::parse {
 
+/**
+ * The possible fragment name versions.
+ */
+enum class FragmentNameVersion { ONE, TWO, THREE };
+
+/**
+ * Retrieves the fragment name version.
+ *  - Name version 1 corresponds to format versions 1 and 2
+ *      * __uuid_<t1>{_t2}
+ *  - Name version 2 corresponds to format version 3 and 4
+ *      * __t1_t2_uuid
+ *  - Name version 3 corresponds to format version 5 or higher
+ *      * __t1_t2_uuid_version
+ */
+FragmentNameVersion get_fragment_name_version(const std::string& name) {
+  // Format Version 3: __t1_t2_uuid_version
+  size_t n = std::count(name.begin(), name.end(), '_');
+  if (n == 5) {
+    return FragmentNameVersion::THREE;
+  }
+
+  // Format Version 2: __t1_t2_uuid
+  auto maybe_uuid = name.substr(name.find_last_of('_') + 1);
+  if (maybe_uuid.size() == 32) {
+    return FragmentNameVersion::TWO;
+  }
+
+  // Else, Format Version 1: __uuid_t1{_t2}
+  return FragmentNameVersion::ONE;
+}
+
 Status get_timestamp_range(
     const URI& uri, std::pair<uint64_t, uint64_t>* timestamp_range) {
   // Initializations
@@ -47,11 +78,11 @@ Status get_timestamp_range(
   auto pos = name.find_last_of('.');
   name = (pos == std::string::npos) ? name : name.substr(0, pos);
 
-  // Get fragment version
-  uint32_t version = 0;
-  RETURN_NOT_OK(get_fragment_name_version(name, &version));
+  // Get fragment name version
+  auto name_version = get_fragment_name_version(name);
 
-  if (version == 1) {  // This is equivalent to format version <=2
+  // FragmentNameVersion::ONE is equivalent to fragment format version <= 2
+  if (name_version == FragmentNameVersion::ONE) {
     assert(name.find_last_of('_') != std::string::npos);
     auto t_str = name.substr(name.find_last_of('_') + 1);
     sscanf(
@@ -78,47 +109,22 @@ Status get_timestamp_range(
   return Status::Ok();
 }
 
-Status get_fragment_name_version(const std::string& name, uint32_t* version) {
-  // First check if it is version 3 or greater, which has 5 '_'
-  // characters in the name.
-  size_t n = std::count(name.begin(), name.end(), '_');
-  if (n == 5) {
-    // Fetch the fragment version from the fragment name. If the fragment
-    // version is greater than or equal to 10, we have a footer version of 5.
-    // version is greater than or equal to 7, we have a footer version of 4.
-    // Otherwise, it is version 3.
-    const uint32_t frag_version =
-        std::stoul(name.substr(name.find_last_of('_') + 1));
-    if (frag_version >= 10)
-      *version = 5;
-    else if (frag_version >= 7)
-      *version = 4;
-    else
-      *version = 3;
-    return Status::Ok();
+format_version_t get_fragment_version(const std::string& name) {
+  auto name_version = get_fragment_name_version(name);
+
+  if (name_version == FragmentNameVersion::ONE) {
+    return 2;
   }
 
-  // Check if it is in version 1 or 2
-  // Version 2 has the 32-byte long UUID at the end
-  auto t_str = name.substr(name.find_last_of('_') + 1);
-  *version = (t_str.size() == 32) ? 2 : 1;
-
-  return Status::Ok();
-}
-
-Status get_fragment_version(const std::string& name, uint32_t* version) {
-  uint32_t name_version;
-  RETURN_NOT_OK(get_fragment_name_version(name, &name_version));
-
-  if (name_version <= 2) {
-    *version = UINT32_MAX;
-  } else {  // name version >= 3
-    auto v_str = name.substr(name.find_last_of('_') + 1);
-    std::stringstream ss(v_str);
-    ss >> *version;
+  if (name_version == FragmentNameVersion::TWO) {
+    return 4;
   }
 
-  return Status::Ok();
+  uint32_t ret;
+  auto version_str = name.substr(name.find_last_of('_') + 1);
+  std::stringstream ss(version_str);
+  ss >> ret;
+  return ret;
 }
 
 bool is_element_of(const URI uri, const URI intersecting_uri) {

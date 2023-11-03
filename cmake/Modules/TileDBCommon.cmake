@@ -86,6 +86,9 @@ endfunction()
 # manifest.
 #
 function(install_target_libs LIB_TARGET)
+  if (NOT TILEDB_INSTALL_STATIC_DEPS)
+    return()
+  endif()
   get_imported_location(TARGET_LIBRARIES ${LIB_TARGET})
   if (TARGET_LIBRARIES MATCHES "NOTFOUND")
     message(FATAL_ERROR "Could not determine library location for ${LIB_TARGET}")
@@ -95,6 +98,20 @@ function(install_target_libs LIB_TARGET)
   else()
     install(FILES ${TARGET_LIBRARIES} DESTINATION ${CMAKE_INSTALL_LIBDIR})
   endif()
+endfunction()
+
+#
+# Adds imported libraries from the given list of targets to the TileDB installation
+# manifest.
+#
+function (install_all_target_libs TARGET_LIST)
+  foreach(TGT ${TARGET_LIST})
+    if (TARGET ${TGT})
+      install_target_libs(${TGT})
+    else()
+      message(WARNING "Requested install for non-existant target '${TGT}'")
+    endif()
+  endforeach()
 endfunction()
 
 # Suppress warnings from find_package_handle_standard_args usage w/ *_EP targets

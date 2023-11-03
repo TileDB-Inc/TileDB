@@ -183,7 +183,7 @@ Status UnorderedWriter::alloc_frag_meta() {
   // Alloc FragmentMetadata object.
   frag_meta_ = make_shared<FragmentMetadata>(HERE());
   // Used in serialization when FragmentMetadata is built from ground up.
-  frag_meta_->set_storage_manager(storage_manager_);
+  frag_meta_->set_context_resources(&storage_manager_->resources());
 
   return Status::Ok();
 }
@@ -455,13 +455,13 @@ Status UnorderedWriter::prepare_tiles_fixed(
         cell_idx = 0;
       }
 
-      RETURN_NOT_OK(tile_it->fixed_tile().write(
-          buffer + cell_pos_[i] * cell_size, cell_idx * cell_size, cell_size));
+      tile_it->fixed_tile().write(
+          buffer + cell_pos_[i] * cell_size, cell_idx * cell_size, cell_size);
       if (nullable)
-        RETURN_NOT_OK(tile_it->validity_tile().write(
+        tile_it->validity_tile().write(
             buffer_validity + cell_pos_[i] * constants::cell_validity_size,
             cell_idx * constants::cell_validity_size,
-            constants::cell_validity_size));
+            constants::cell_validity_size);
     }
   } else {
     for (uint64_t i = 0; i < cell_num; ++i) {
@@ -473,13 +473,13 @@ Status UnorderedWriter::prepare_tiles_fixed(
         cell_idx = 0;
       }
 
-      RETURN_NOT_OK(tile_it->fixed_tile().write(
-          buffer + cell_pos_[i] * cell_size, cell_idx * cell_size, cell_size));
+      tile_it->fixed_tile().write(
+          buffer + cell_pos_[i] * cell_size, cell_idx * cell_size, cell_size);
       if (nullable)
-        RETURN_NOT_OK(tile_it->validity_tile().write(
+        tile_it->validity_tile().write(
             buffer_validity + cell_pos_[i] * constants::cell_validity_size,
             cell_idx * constants::cell_validity_size,
-            constants::cell_validity_size));
+            constants::cell_validity_size);
       ++cell_idx;
     }
   }
@@ -530,8 +530,8 @@ Status UnorderedWriter::prepare_tiles_var(
       }
 
       // Write offset.
-      RETURN_NOT_OK(tile_it->offset_tile().write(
-          &offset, cell_idx * sizeof(offset), sizeof(offset)));
+      tile_it->offset_tile().write(
+          &offset, cell_idx * sizeof(offset), sizeof(offset));
 
       // Write var-sized value(s).
       auto buff_offset =
@@ -542,16 +542,15 @@ Status UnorderedWriter::prepare_tiles_var(
               prepare_buffer_offset(
                   buffer, cell_pos_[i] + 1, attr_datatype_size) -
                   buff_offset;
-      RETURN_NOT_OK(tile_it->var_tile().write_var(
-          buffer_var + buff_offset, offset, var_size));
+      tile_it->var_tile().write_var(buffer_var + buff_offset, offset, var_size);
       offset += var_size;
 
       // Write validity value(s).
       if (nullable) {
-        RETURN_NOT_OK(tile_it->validity_tile().write(
+        tile_it->validity_tile().write(
             buffer_validity + cell_pos_[i],
             cell_idx * constants::cell_validity_size,
-            constants::cell_validity_size));
+            constants::cell_validity_size);
       }
     }
   } else {
@@ -567,8 +566,8 @@ Status UnorderedWriter::prepare_tiles_var(
       }
 
       // Write offset.
-      RETURN_NOT_OK(tile_it->offset_tile().write(
-          &offset, cell_idx * sizeof(offset), sizeof(offset)));
+      tile_it->offset_tile().write(
+          &offset, cell_idx * sizeof(offset), sizeof(offset));
 
       // Write var-sized value(s).
       auto buff_offset =
@@ -579,16 +578,15 @@ Status UnorderedWriter::prepare_tiles_var(
               prepare_buffer_offset(
                   buffer, cell_pos_[i] + 1, attr_datatype_size) -
                   buff_offset;
-      RETURN_NOT_OK(tile_it->var_tile().write_var(
-          buffer_var + buff_offset, offset, var_size));
+      tile_it->var_tile().write_var(buffer_var + buff_offset, offset, var_size);
       offset += var_size;
 
       // Write validity value(s).
       if (nullable) {
-        RETURN_NOT_OK(tile_it->validity_tile().write(
+        tile_it->validity_tile().write(
             buffer_validity + cell_pos_[i],
             cell_idx * constants::cell_validity_size,
-            constants::cell_validity_size));
+            constants::cell_validity_size);
       }
 
       ++cell_idx;
@@ -695,7 +693,7 @@ Status UnorderedWriter::unordered_write() {
   auto tile_num = it->second.size();
   if (is_coords_pass_) {
     // Set the number of tiles in the metadata
-    throw_if_not_ok(frag_meta_->set_num_tiles(tile_num));
+    frag_meta_->set_num_tiles(tile_num);
 
     stats_->add_counter("tile_num", tile_num);
     stats_->add_counter("cell_num", cell_pos_.size());

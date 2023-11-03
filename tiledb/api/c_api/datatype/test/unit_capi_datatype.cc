@@ -1,5 +1,5 @@
 /**
- * @file tiledeb/api/c_api/datatype/test/unit_capi_datatype.cc
+ * @file tiledb/api/c_api/datatype/test/unit_capi_datatype.cc
  *
  * @section LICENSE
  *

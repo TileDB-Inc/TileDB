@@ -24,15 +24,18 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-# Finds the Curl library, installing with an ExternalProject as necessary.
-# This module defines:
-#   - CURL_INCLUDE_DIR, directory containing headers
-#   - CURL_LIBRARIES, the Curl library path
-#   - CURL_FOUND, whether Curl has been found
-#   - The Curl::Curl imported target
 
-# Include some common helper functions.
-include(TileDBCommon)
+if (TARGET CURL OR NOT (TILEDB_SERIALIZATION OR TILEDB_GCS OR TILEDB_S3 OR TILEDB_AZURE))
+  return()
+endif()
+
+if (TILEDB_VCPKG)
+  find_package(CURL REQUIRED)
+  install_target_libs(CURL::libcurl)
+  return()
+endif()
+
+# === Superbuild
 
 # Search the path set during the superbuild for the EP.
 set(CURL_PATHS ${TILEDB_EP_INSTALL_PREFIX})
@@ -77,10 +80,8 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
       PREFIX "externals"
       # Set download name to avoid collisions with only the version number in the filename
       DOWNLOAD_NAME ep_curl.tar.gz
-      URL
-        "https://github.com/TileDB-Inc/tiledb-deps-mirror/releases/download/2.11-deps/curl-7.74.0.tar.gz"
-        "https://curl.se/download/curl-7.74.0.tar.gz"
-      URL_HASH SHA1=cd7239cf9223b39ade86a14eb37fe68f5656eae9
+      URL "https://curl.se/download/curl-7.88.1.tar.gz"
+      URL_HASH SHA1=6ae5229c36badb822641bb14958e7d227c57611d
       CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_BUILD_TYPE=Release
@@ -160,8 +161,8 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
 
     ExternalProject_Add(ep_curl
       PREFIX "externals"
-      URL "https://curl.se/download/curl-7.74.0.tar.gz"
-      URL_HASH SHA1=cd7239cf9223b39ade86a14eb37fe68f5656eae9
+      URL "https://curl.se/download/curl-7.88.1.tar.gz"
+      URL_HASH SHA1=6ae5229c36badb822641bb14958e7d227c57611d
       CONFIGURE_COMMAND
         ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${SSL_PKG_CONFIG_PATH} ${TILEDB_EP_BASE}/src/ep_curl/configure
           --prefix=${TILEDB_EP_INSTALL_PREFIX}
@@ -178,7 +179,6 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
           --without-gnutls
           --without-gssapi
           --without-idn2
-          --without-libmetalink
           --without-libssh2
           --without-librtmp
           --without-nghttp2

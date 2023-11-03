@@ -49,19 +49,22 @@ namespace sm {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
+/*
+ * Note that the `GroupDirectoryMode` argument is anonymous. It's not used
+ * anywhere in the code at present, though that might change.
+ */
 GroupDirectory::GroupDirectory(
     VFS* vfs,
     ThreadPool* tp,
     const URI& uri,
     uint64_t timestamp_start,
     uint64_t timestamp_end,
-    GroupDirectoryMode mode)
+    GroupDirectoryMode)
     : uri_(uri.add_trailing_slash())
     , vfs_(vfs)
     , tp_(tp)
     , timestamp_start_(timestamp_start)
     , timestamp_end_(timestamp_end)
-    , mode_(mode)
     , loaded_(false) {
   auto st = load();
   if (!st.ok()) {
@@ -116,10 +119,6 @@ const std::vector<TimestampedURI>& GroupDirectory::group_detail_uris() const {
 
 Status GroupDirectory::load() {
   assert(!loaded_);
-  // We use mode here to avoid warning on errors
-  // Mode will be used for consolidation settings
-  (void)mode_;
-
   std::vector<ThreadPool::Task> tasks;
   std::vector<URI> root_dir_uris;
   std::vector<URI> commits_dir_uris;

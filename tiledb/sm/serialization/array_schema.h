@@ -36,6 +36,7 @@
 #include <unordered_map>
 
 #include "tiledb/common/status.h"
+#include "tiledb/sm/config/config.h"
 
 #ifdef TILEDB_SERIALIZATION
 #include "tiledb/sm/serialization/capnp_utils.h"
@@ -54,6 +55,20 @@ enum class SerializationType : uint8_t;
 
 namespace serialization {
 
+class LoadArraySchemaRequest {
+ public:
+  LoadArraySchemaRequest(bool include_enumerations = false)
+      : include_enumerations_(include_enumerations) {
+  }
+
+  inline bool include_enumerations() const {
+    return include_enumerations_;
+  }
+
+ private:
+  bool include_enumerations_;
+};
+
 #ifdef TILEDB_SERIALIZATION
 /**
  * Serialize a filter to cap'n proto object
@@ -69,10 +84,11 @@ Status filter_to_capnp(
  * Deserialize a filter from a cap'n proto object
  *
  * @param filter_reader Cap'n proto object
+ * @param datatype Datatype the filter operates on within it's pipeline.
  * @return Status
  */
 tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
-    const capnp::Filter::Reader& filter_reader);
+    const capnp::Filter::Reader& filter_reader, Datatype datatype);
 
 /**
  * Serialize an array schema to cap'n proto object
@@ -173,6 +189,23 @@ Status max_buffer_sizes_deserialize(
     SerializationType serialize_type,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes);
+
+void serialize_load_array_schema_request(
+    const Config& config,
+    const LoadArraySchemaRequest& req,
+    SerializationType serialization_type,
+    Buffer& data);
+
+LoadArraySchemaRequest deserialize_load_array_schema_request(
+    SerializationType serialization_type, const Buffer& data);
+
+void serialize_load_array_schema_response(
+    const ArraySchema& schema,
+    SerializationType serialization_type,
+    Buffer& data);
+
+ArraySchema deserialize_load_array_schema_response(
+    SerializationType serialization_type, const Buffer& data);
 
 }  // namespace serialization
 }  // namespace sm
