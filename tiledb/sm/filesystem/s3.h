@@ -37,6 +37,7 @@
 
 #include "ls_callback.h"
 #include "tiledb/common/common.h"
+#include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/rwlock.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
@@ -87,6 +88,14 @@ using namespace tiledb::common;
 using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb::sm {
+
+/** Class for S3 status exceptions. */
+class S3Exception : public StatusException {
+ public:
+  explicit S3Exception(const std::string& msg)
+      : StatusException("S3", msg) {
+  }
+};
 
 class TileDBS3Client;
 
@@ -439,14 +448,10 @@ class S3 {
    *
    * @param prefix The parent path to list sub-paths.
    * @param cb The callback to invoke on each object.
-   * @param data User data to pass to the callback.
    * @param delimiter The uri is truncated to the first delimiter.
    */
-  void ls_cb(
-      const URI& prefix,
-      LsCallback cb,
-      void* data,
-      const std::string& delimiter = "/") const;
+  template <LsCb F>
+  void ls_cb(const URI& prefix, F cb, const std::string& delimiter = "/") const;
 
   /**
    * Renames an object.

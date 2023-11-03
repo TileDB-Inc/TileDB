@@ -95,7 +95,7 @@ target_compile_definitions(tiledb_test_support_lib PRIVATE
 target_link_libraries(tiledb_test_support_lib
   PUBLIC
     TILEDB_CORE_OBJECTS_ILIB
-    Catch2::Catch2
+    $<TARGET_OBJECTS:tdb_catch>
 )
 
 # tdb_catch object library

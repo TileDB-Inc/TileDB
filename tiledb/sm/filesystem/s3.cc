@@ -216,13 +216,6 @@ std::string outcome_error_message(const Aws::Utils::Outcome<R, E>& outcome) {
 
 }  // namespace
 
-class S3Exception : public StatusException {
- public:
-  explicit S3Exception(const std::string& message)
-      : StatusException("S3", message) {
-  }
-};
-
 S3Parameters::Headers S3Parameters::load_headers(const Config& cfg) {
   Headers ret;
   auto iter = ConfigIter(cfg, constants::s3_header_prefix);
@@ -921,17 +914,13 @@ tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
   return {Status::Ok(), entries};
 }
 
-void S3::ls_cb(
-    const URI& prefix,
-    LsCallback cb,
-    void* data,
-    const std::string& delimiter) const {
+template <LsCb F>
+void S3::ls_cb(const URI& prefix, F cb, const std::string& delimiter) const {
   throw_if_not_ok(init_client());
   const auto prefix_dir = prefix.add_trailing_slash();
   auto prefix_str = prefix_dir.to_string();
   if (!prefix_dir.is_s3()) {
-    throw StatusException(
-        Status_S3Error(std::string("URI is not an S3 URI: " + prefix_str)));
+    throw S3Exception(std::string("URI is not an S3 URI: " + prefix_str));
   }
 
   Aws::Http::URI aws_uri = prefix_str.c_str();
@@ -949,27 +938,22 @@ void S3::ls_cb(
   while (!is_done) {
     auto list_objects_outcome = client_->ListObjectsV2(list_objects_request);
     if (!list_objects_outcome.IsSuccess()) {
-      throw StatusException(Status_S3Error(
+      throw S3Exception(
           std::string("Error while listing with prefix '") + prefix_str +
           "' and delimiter '" + delimiter + "'" +
-          outcome_error_message(list_objects_outcome)));
+          outcome_error_message(list_objects_outcome));
     }
 
-    int rc = 1;
     for (const auto& object : list_objects_outcome.GetResult().GetContents()) {
       uint64_t size = object.GetSize();
       std::string path =
           "s3://" + aws_auth + add_front_slash(object.GetKey().c_str());
-      rc = cb(path.c_str(), path.size(), size, data);
-      if (rc != 1) {
+      if (!cb(path, size)) {
         is_done = true;
         break;
       }
     }
 
-    if (rc == -1) {
-      throw StatusException(Status_S3Error("Error in user callback"));
-    }
     // Max keys is 1000 by default. If results are not truncated or the callback
     // already signaled to stop traversal, we're done.
     is_done = is_done || !list_objects_outcome.GetResult().GetIsTruncated();
@@ -2171,6 +2155,12 @@ URI S3::generate_chunk_uri(
   return buffering_dir.join_path(chunk_name);
 }
 
+// Explicit template instantiations
+
+template void S3::ls_cb<LsCallbackWrapper>(
+    const URI& prefix,
+    LsCallbackWrapper cb,
+    const std::string& delimiter) const;
 }  // namespace tiledb::sm
 
 #endif

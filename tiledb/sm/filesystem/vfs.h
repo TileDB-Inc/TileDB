@@ -175,8 +175,8 @@ struct S3_within_VFS {
       : s3_(std::forward<Args>(args)...) {
   }
 
-  inline S3* s3() {
-    return &s3_;
+  inline S3& s3() {
+    return s3_;
   }
 
  protected:
@@ -449,9 +449,9 @@ class VFS : private VFSBase, public S3_within_VFS {
    *
    * @param parent The parent path to list sub-objects recursively.
    * @param cb The callback to invoke on each object collected.
-   * @param data Data passed to the callback used to store collected results.
    */
-  void ls_recursive(const URI& parent, LsCallback cb, void* data) const;
+  template <LsCb F>
+  void ls_recursive(const URI& parent, F cb) const;
 
   /**
    * Renames a file.

@@ -33,9 +33,10 @@
 #ifndef TILEDB_VFS_HELPERS_H
 #define TILEDB_VFS_HELPERS_H
 
+#include <test/support/tdb_catch_prng.h>
 #include "test/support/src/helpers.h"
-#include "test/support/tdb_catch.h"
 #include "tiledb/sm/enums/vfs_mode.h"
+#include "tiledb/sm/filesystem/s3.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
@@ -706,49 +707,132 @@ struct TemporaryDirectoryFixture {
   const std::vector<std::unique_ptr<SupportedFs>> supported_filesystems_;
 };
 
-class VFSTest {
+/**
+ * Base class use for VFS and file system test objects. Deriving classes are
+ * responsible for creating a temporary directory and populating it with test
+ * objects for the related file system.
+ */
+class VFSTestBase {
+ protected:
+  /**
+   * Requires derived class to create a temporary directory.
+   *
+   * @param test_tree Vector used to build test directory and objects.
+   *    For each element we create a nested directory with N objects.
+   * @param prefix The URI prefix to use for the test directory.
+   */
+  explicit VFSTestBase(
+      const std::vector<size_t>& test_tree, const std::string& prefix);
+
  public:
+  /** Type definition for objects returned from ls_recursive */
   using LsObjects = std::vector<std::pair<std::string, uint64_t>>;
 
-  explicit VFSTest(
-      const std::vector<size_t>& test_tree,
-      const std::string& prefix = "file://");
+  virtual ~VFSTestBase();
 
-  virtual ~VFSTest();
-
-  virtual void create_objects(
-      const sm::URI& uri, size_t count, const std::string& prefix);
-
-  virtual void setup_test();
-
-  void test_ls_recursive(tiledb::sm::LsCallback cb, size_t expected_count = 0);
-
-  inline bool supports_fs() const {
-    return vfs_.supports_uri_scheme(temp_dir_);
+  /**
+   * @return True if the URI prefix is supported by the build, else false.
+   */
+  inline bool is_supported() const {
+    return is_supported_;
   }
 
   std::vector<size_t> test_tree_;
   ThreadPool compute_, io_;
   tiledb::sm::VFS vfs_;
+  std::string prefix_;
   tiledb::sm::URI temp_dir_;
 
   LsObjects expected_results_;
+
+ protected:
+  bool is_supported_;
 };
 
-class S3Test : public VFSTest {
+/** Test object for tiledb::sm::VFS functionality. */
+class VFSTest : public VFSTestBase {
+ public:
+  VFSTest(const std::vector<size_t>& test_tree, const std::string& prefix);
+
+  void test_ls_recursive(
+      tiledb::sm::LsCallbackCAPI cb, size_t expected_count = 0);
+
+ private:
+  void setup_test();
+};
+
+/** Test object for tiledb::sm::S3 functionality. */
+class S3Test : public VFSTestBase {
  public:
   explicit S3Test(const std::vector<size_t>& test_tree);
 
-  ~S3Test() = default;
+  void test_ls_cb(tiledb::sm::LsCallbackCAPI cb, bool recursive);
 
-  void create_objects(
-      const sm::URI& uri, size_t count, const std::string& prefix) override;
-
-  void setup_test() override;
-
-  void test_ls_cb(tiledb::sm::LsCallback cb, bool recursive);
+ private:
+  void setup_test();
 };
 
+/** Stub test object for tiledb::sm::Win and Posix functionality. */
+class LocalFsTest : public VFSTestBase {
+ public:
+  explicit LocalFsTest(const std::vector<size_t>& test_tree);
+
+ private:
+  void setup_test() {
+  }
+};
+
+/** Stub test object for tiledb::sm::Azure functionality. */
+class AzureTest : public VFSTestBase {
+ public:
+  explicit AzureTest(const std::vector<size_t>& test_tree)
+      : VFSTestBase(test_tree, "azure://") {
+    setup_test();
+  }
+
+ private:
+  void setup_test() {
+  }
+};
+
+/** Stub test object for tiledb::sm::GCS functionality. */
+class GCSTest : public VFSTestBase {
+ public:
+  explicit GCSTest(const std::vector<size_t>& test_tree)
+      : VFSTestBase(test_tree, "gcs://") {
+    setup_test();
+  }
+
+ private:
+  void setup_test() {
+  }
+};
+
+/** Stub test object for tiledb::sm::HDFS functionality. */
+class HDFSTest : public VFSTestBase {
+ public:
+  explicit HDFSTest(const std::vector<size_t>& test_tree)
+      : VFSTestBase(test_tree, "hdfs://") {
+    setup_test();
+  }
+
+ private:
+  void setup_test() {
+  }
+};
+
+/** Stub test object for tiledb::sm::MemFilesystem functionality. */
+class MemFsTest : public VFSTestBase {
+ public:
+  explicit MemFsTest(const std::vector<size_t>& test_tree)
+      : VFSTestBase(test_tree, "mem://") {
+    setup_test();
+  }
+
+ private:
+  void setup_test() {
+  }
+};
 }  // End of namespace test
 }  // End of namespace tiledb
 

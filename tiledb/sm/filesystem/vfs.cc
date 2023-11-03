@@ -807,13 +807,11 @@ tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
   return {Status::Ok(), entries};
 }
 
-void VFS::ls_recursive(
-    const URI& parent,
-    [[maybe_unused]] LsCallback cb,
-    [[maybe_unused]] void* data) const {
+template <LsCb F>
+void VFS::ls_recursive(const URI& parent, [[maybe_unused]] F cb) const {
   if (parent.is_s3()) {
 #ifdef HAVE_S3
-    s3_.ls_cb(parent, cb, data, "");
+    s3_.ls_cb(parent, cb, "");
 #else
     throw VFSException("TileDB was built without S3 support");
 #endif
@@ -1752,4 +1750,8 @@ void VFS::log_read(const URI& uri, uint64_t offset, uint64_t nbytes) {
   LOG_INFO("VFS Read: " + read_to_log);
 }
 
+// Explicit template instantiations
+
+template void VFS::ls_recursive<LsCallbackWrapper>(
+    const URI& parent, LsCallbackWrapper cb) const;
 }  // namespace tiledb::sm
