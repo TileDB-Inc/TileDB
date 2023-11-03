@@ -35,7 +35,7 @@ title: Format Specification
 |18|2.15|[Dimension Labels no longer experimental](https://github.com/TileDB-Inc/TileDB/commit/c3a1bb47e7237f50e8ed9e33abfaa3161e23ff64)|
 |19|2.16|[Vac files now use relative URIs](https://github.com/TileDB-Inc/TileDB/commit/ef3236a526b67c50138436a16f67ad274c2ca037)|
 |20|2.17|[Enumerations](https://github.com/TileDB-Inc/TileDB/commit/c0d7c6a50fdeffbcc7d8c9ba4a29230fe22baed6)|
-|21|2.19|[Tile metadata are now correctly calculated](https://github.com/TileDB-Inc/TileDB/commit/081bcc5f7ce4bee576f08b97de348236ac88d429)|
+|21|2.19|[Tile metadata are now correctly calculated for nullable fixed size strings on dense arrays](https://github.com/TileDB-Inc/TileDB/commit/081bcc5f7ce4bee576f08b97de348236ac88d429)|
 
 ## Table of Contents
 
