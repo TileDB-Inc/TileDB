@@ -341,36 +341,75 @@ class Array {
    */
   Status reopen(uint64_t timestamp_start, uint64_t timestamp_end);
 
-  /** Returns the start timestamp. */
+  /** Returns the start timestamp used to load the array directory. */
   inline uint64_t timestamp_start() const {
-    return timestamp_start_;
+    return array_dir_timestamp_start_;
   }
 
-  /** Returns the end timestamp. */
+  /**
+   * Returns the end timestamp as set by the user.
+   *
+   * This may differ from the actual timestamp in use if the array has not yet
+   * been opened, the user has changed this value, or if using the sentinel
+   * value of `UINT64_MAX`.
+   */
   inline uint64_t timestamp_end() const {
-    return timestamp_end_;
+    return user_set_timestamp_end_.value_or(UINT64_MAX);
   }
 
-  /** Returns the timestamp at which the array was opened. */
+  /**
+   * Returns the timestamp at which the array was opened.
+   *
+   * WARNING: This is a legacy function that is needed to support the current
+   * API and REST calls. Do not use in new code.
+   */
   inline uint64_t timestamp_end_opened_at() const {
-    return timestamp_end_opened_at_;
+    return query_type_ == QueryType::READ ?
+               array_dir_timestamp_end_ :
+               new_component_timestamp_.value_or(0);
   }
+
+  /**
+   * Returns the timestamp to use when writing components (fragment,
+   * metadata, etc.)
+   *
+   * If set to use the lastest time, this will get the time when called.
+   */
+  uint64_t timestamp_for_new_component() const;
 
   /** Directly set the timestamp start value. */
   inline void set_timestamp_start(uint64_t timestamp_start) {
-    timestamp_start_ = timestamp_start;
+    array_dir_timestamp_start_ = timestamp_start;
   }
 
   /** Directly set the timestamp end value. */
   inline void set_timestamp_end(uint64_t timestamp_end) {
-    timestamp_end_ = timestamp_end;
+    if (timestamp_end == UINT64_MAX) {
+      user_set_timestamp_end_ = nullopt;
+    } else {
+      user_set_timestamp_end_ = timestamp_end;
+    }
   }
 
-  /** Directly set the timestamp end opened at value. */
-  inline void set_timestamp_end_opened_at(
-      const uint64_t timestamp_end_opened_at) {
-    timestamp_end_opened_at_ = timestamp_end_opened_at;
-  }
+  /**
+   * Set the internal timestamps.
+   *
+   * Note for sentinel values for `timestamp_end`:
+   * * `timestamp_end == UINT64_MAX`:
+   *     The array directory end timestamp will be set to the current time if
+   *     ``set_current_time=True``. New components will use the time at query
+   *     submission.
+   * * `timestamp_end` == 0:
+   *     The new component timestamp will use the time at query submission.
+   *
+   * @param timestamp_start The starting timestamp for opening the array
+   * directory.
+   * @param timstamp_end The ending timestamp for opening the array directory
+   * and setting new components. See above comments for sentinel values `0` and
+   * `UINT64_MAX`.
+   */
+  void set_timestamps(
+      uint64_t timetamp_start, uint64_t timestamp_end, bool set_current_time);
 
   /** Directly set the array config.
    *
@@ -631,28 +670,40 @@ class Array {
   QueryType query_type_ = QueryType::READ;
 
   /**
-   * The starting timestamp between to open `open_array_` at.
-   * In TileDB, timestamps are in ms elapsed since
-   * 1970-01-01 00:00:00 +0000 (UTC).
+   * Starting timestamp to open fragments between.
+   *
+   * Timestamps are ms elapsed since 1970-01-01 00:00:00 +0000 (UTC).
    */
-  uint64_t timestamp_start_;
+  uint64_t array_dir_timestamp_start_;
 
   /**
-   * The ending timestamp between to open `open_array_` at.
-   * In TileDB, timestamps are in ms elapsed since
-   * 1970-01-01 00:00:00 +0000 (UTC). A value of UINT64_T
-   * will be interpretted as the current timestamp.
+   * Timestamp set by the user.
+   *
+   * This is used when setting the end timestamp for loading the array directory
+   * and the timestamp to use when creating fragments, metadata, etc. This may
+   * be changed by the user at any time.
+   *
+   * Timestamps are ms elapsed since 1970-01-01 00:00:00 +0000 (UTC). If set to
+   * `nullopt`, use the current time.
    */
-  uint64_t timestamp_end_;
+  optional<uint64_t> user_set_timestamp_end_;
 
   /**
-   * The ending timestamp that the array was last opened
-   * at. This is useful when `timestamp_end_` has been
-   * set to UINT64_T. In this scenario, this variable will
-   * store the timestamp for the time that the array was
-   * opened.
+   * Ending timestamp to open fragments between.
+   *
+   * Timestamps are ms elapsed since 1970-01-01 00:00:00 +0000 (UTC). Set to a
+   * sentinel value of UINT64_MAX before the array is opened.
    */
-  uint64_t timestamp_end_opened_at_;
+  uint64_t array_dir_timestamp_end_;
+
+  /**
+   * The timestamp to use when creating fragments, delete/update commits,
+   * metadata, etc.
+   *
+   * Timestamps are ms elapsed since 1970-01-01 00:00:00 +0000 (UTC). If set to
+   * `nullopt`, use the current time.
+   */
+  optional<uint64_t> new_component_timestamp_;
 
   /** TileDB storage manager. */
   StorageManager* storage_manager_;

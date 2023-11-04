@@ -240,8 +240,6 @@ Status array_from_capnp(
   if (array_reader.hasUri()) {
     array->set_uri_serialized(array_reader.getUri().cStr());
   }
-  array->set_timestamp_start(array_reader.getStartTimestamp());
-  array->set_timestamp_end(array_reader.getEndTimestamp());
 
   if (array_reader.hasQueryType()) {
     auto query_type_str = array_reader.getQueryType();
@@ -252,22 +250,16 @@ Status array_from_capnp(
       array->set_serialized_array_open();
     }
 
-    array->set_timestamp_end_opened_at(array_reader.getOpenedAtEndTimestamp());
-    if (array->timestamp_end_opened_at() == UINT64_MAX) {
-      if (query_type == QueryType::READ) {
-        array->set_timestamp_end_opened_at(
-            tiledb::sm::utils::time::timestamp_now_ms());
-      } else if (
-          query_type == QueryType::WRITE ||
-          query_type == QueryType::MODIFY_EXCLUSIVE ||
-          query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
-        array->set_timestamp_end_opened_at(0);
-      } else {
-        throw StatusException(Status_SerializationError(
-            "Cannot open array; Unsupported query type."));
-      }
-    }
-  }
+    array->set_timestamps(
+        array_reader.getStartTimestamp(),
+        array_reader.getEndTimestamp(),
+        query_type == QueryType::READ);
+  } else {
+    array->set_timestamps(
+        array_reader.getStartTimestamp(),
+        array_reader.getEndTimestamp(),
+        false);
+  };
 
   if (array_reader.hasArraySchemasAll()) {
     std::unordered_map<std::string, shared_ptr<ArraySchema>> all_schemas;
