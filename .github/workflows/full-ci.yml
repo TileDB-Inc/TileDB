@@ -120,6 +120,7 @@ jobs:
       matrix_compiler_cflags: "-lrt"
       matrix_compiler_cxxflags: "-lrt"
       timeout: 120
+      bootstrap_args: '--enable-serialization'
       manylinux: true
 
   ci_msvc:
