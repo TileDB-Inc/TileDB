@@ -56,6 +56,8 @@ env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
   TILEDB_CI_BACKEND: ${{ inputs.ci_backend }}
   TILEDB_CI_OS: runner.os
+  # Installing Python does not work on manylinux.
+  TILEDB_ARROW_TESTS: ${{ !inputs.manylinux && 'ON' || 'OFF' }}
   CXX: ${{ inputs.matrix_compiler_cxx }}
   CC: ${{ inputs.matrix_compiler_cc }}
   CFLAGS: ${{ inputs.matrix_compiler_cflags }}
@@ -112,13 +114,13 @@ jobs:
       # Need this for virtualenv and arrow tests if enabled
       - name: 'Install Python'
         uses: actions/setup-python@v4
-        # setup-python fails on manylinux, but we don't need it since Python 3.8 is preinstalled.
         if: ${{ !inputs.manylinux }}
         with:
           python-version: '3.8'
           cache: 'pip'
 
       - name: 'Set up Python dependencies'
+        if: ${{ !inputs.manylinux }}
         run: |
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
