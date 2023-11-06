@@ -782,6 +782,15 @@ TEST_CASE_METHOD(
     rc = tiledb_query_submit(ctx, query);
     REQUIRE(rc != TILEDB_OK);
 
+    tiledb_error_t* err;
+    rc = tiledb_ctx_get_last_error(ctx, &err);
+    REQUIRE(rc == TILEDB_OK);
+    const char* msg;
+    rc = tiledb_error_message(err, &msg);
+    REQUIRE(rc == TILEDB_OK);
+    REQUIRE(std::string(msg).find("Cannot create directory") != std::string::npos);
+
+    tiledb_error_free(&err);
     tiledb_query_free(&query);
     tiledb_array_free(&array);
   }
