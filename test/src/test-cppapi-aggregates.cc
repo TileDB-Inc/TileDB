@@ -138,9 +138,7 @@ struct CppAggregatesFx {
 template <class T>
 CppAggregatesFx<T>::CppAggregatesFx()
     : vfs_(ctx_) {
-  Config cfg;
-  cfg["sm.allow_aggregates_experimental"] = "true";
-  ctx_ = Context(cfg);
+  ctx_ = Context();
   vfs_ = VFS(ctx_);
 
   remove_array();

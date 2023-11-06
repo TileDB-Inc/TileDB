@@ -265,11 +265,6 @@ class Config {
    *
    * **Parameters**
    *
-   * - `sm.allow_aggregates_experimental` <br>
-   *    **Experimental** <br>
-   *    Allow aggregates APIs. Experimental for testing purposes,
-   *    do not use.<br>
-   *    **Default**: false
    * - `sm.allow_separate_attribute_writes` <br>
    *    **Experimental** <br>
    *    Allow separate attribute write queries.<br>
