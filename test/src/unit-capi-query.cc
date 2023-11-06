@@ -714,9 +714,14 @@ TEST_CASE_METHOD(
   if constexpr (tiledb::platform::is_os_windows)
     return;
   SupportedFsLocal local_fs;
-  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
+  std::string temp_dir = local_fs.temp_dir();
   std::string array_name = temp_dir + "write_failure";
   create_temp_dir(temp_dir);
+
+  tiledb_layout_t layout =
+      GENERATE(TILEDB_ROW_MAJOR, TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
+  tiledb_array_type_t array_type =
+      layout == TILEDB_UNORDERED ? TILEDB_SPARSE : TILEDB_DENSE;
 
   tiledb_ctx_t* ctx;
   int rc;
@@ -729,13 +734,13 @@ TEST_CASE_METHOD(
     rc = tiledb_ctx_alloc(nullptr, &ctx);
     REQUIRE(rc == TILEDB_OK);
 
-    rc = tiledb_array_schema_alloc(ctx, TILEDB_DENSE, &schema);
+    rc = tiledb_array_schema_alloc(ctx, array_type, &schema);
     REQUIRE(rc == TILEDB_OK);
 
     rc = tiledb_domain_alloc(ctx, &domain);
     REQUIRE(rc == TILEDB_OK);
 
-    int bounds[] = {0, 5};
+    int bounds[] = {0, 4};
     int extent = 1;
     rc = tiledb_dimension_alloc(ctx, "d1", TILEDB_INT32, bounds, &extent, &dim);
     REQUIRE(rc == TILEDB_OK);
@@ -759,25 +764,27 @@ TEST_CASE_METHOD(
   }
 
   {
-    DenyWriteAccess dwa{array_name};
+    DenyWriteAccess dwa{array_name + "/__fragments"};
 
     tiledb_array_t* array;
     tiledb_query_t* query;
     rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
+    REQUIRE(rc == TILEDB_OK);
 
     rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
     REQUIRE(rc == TILEDB_OK);
-
-    tiledb_layout_t layout =
-        GENERATE(TILEDB_ROW_MAJOR, TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER);
     rc = tiledb_query_set_layout(ctx, query, layout);
     REQUIRE(rc == TILEDB_OK);
-    int data[] = {1, 2, 3, 4, 5};
+    int data[] = {0, 1, 2, 3, 4};
     uint64_t data_size = sizeof(data);
     rc = tiledb_query_set_data_buffer(ctx, query, "attr1", data, &data_size);
     REQUIRE(rc == TILEDB_OK);
+    if (array_type == TILEDB_SPARSE) {
+      rc = tiledb_query_set_data_buffer(ctx, query, "d1", data, &data_size);
+      REQUIRE(rc == TILEDB_OK);
+    }
 
     rc = tiledb_query_submit(ctx, query);
     REQUIRE(rc != TILEDB_OK);
@@ -788,7 +795,8 @@ TEST_CASE_METHOD(
     const char* msg;
     rc = tiledb_error_message(err, &msg);
     REQUIRE(rc == TILEDB_OK);
-    REQUIRE(std::string(msg).find("Cannot create directory") != std::string::npos);
+    REQUIRE(
+        std::string(msg).find("Cannot create directory") != std::string::npos);
 
     tiledb_error_free(&err);
     tiledb_query_free(&query);

@@ -702,8 +702,8 @@ class DenyWriteAccess {
       , previous_perms_(std::filesystem::status(path).permissions()) {
     std::filesystem::permissions(
         path_,
-        std::filesystem::perms::owner_read,
-        std::filesystem::perm_options::replace);
+        std::filesystem::perms::owner_write,
+        std::filesystem::perm_options::remove);
   }
 
   ~DenyWriteAccess() {
