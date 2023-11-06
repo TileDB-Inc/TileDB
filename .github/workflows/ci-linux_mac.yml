@@ -112,6 +112,8 @@ jobs:
       # Need this for virtualenv and arrow tests if enabled
       - name: 'Install Python'
         uses: actions/setup-python@v4
+        # setup-python fails on manylinux, but we don't need it since Python 3.8 is preinstalled.
+        if: ${{ !inputs.manylinux }}
         with:
           python-version: '3.8'
           cache: 'pip'
