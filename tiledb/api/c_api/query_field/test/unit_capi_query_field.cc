@@ -40,12 +40,6 @@ using namespace tiledb::test;
 
 struct QueryFieldFx : TemporaryDirectoryFixture {
   QueryFieldFx() {
-    REQUIRE(
-        ctx->resources()
-            .config()
-            .set("sm.allow_aggregates_experimental", "true")
-            .ok() == true);
-
     create_sparse_array(array_name());
     write_sparse_array(array_name());
   }
