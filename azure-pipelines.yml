@@ -5,17 +5,6 @@ trigger:
     - release-*
     - refs/tags/*
     - build-
-pr:
-  branches:
-    include:
-    - '*'  # must quote since "*" is a YAML reserved character; we want a string
-  paths:
-    exclude:
-    - '.github/workflows/quarto-render.yml'
-    - '_quarto.yml'
-    - 'quarto-materials/*'
-    - '**/.md'
-    - 'doc/source/conf.py'
 
 variables:
   - name: MANYLINUX_IMAGE
