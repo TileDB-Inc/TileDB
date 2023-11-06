@@ -14,7 +14,7 @@ on:
         type: string
       bootstrap_args:
         default: ''
-        required: true
+        required: false
         type: string
       matrix_image:
         default: ''
@@ -28,6 +28,14 @@ on:
         default: 'g++'
         required: false
         type: string
+      matrix_compiler_cflags:
+        default: ''
+        required: false
+        type: string
+      matrix_compiler_cxxflags:
+        default: ''
+        required: false
+        type: string
       timeout:
         default: 90
         description: 'Job timeout (minutes)'
@@ -38,6 +46,11 @@ on:
         description: 'Enable Address Sanitizer'
         required: false
         type: boolean
+      manylinux:
+        default: false
+        description: 'Enable manylinux builds'
+        required: false
+        type: boolean
 
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
@@ -45,6 +58,8 @@ env:
   TILEDB_CI_OS: runner.os
   CXX: ${{ inputs.matrix_compiler_cxx }}
   CC: ${{ inputs.matrix_compiler_cc }}
+  CFLAGS: ${{ inputs.matrix_compiler_cflags }}
+  CXXFLAGS: ${{ inputs.matrix_compiler_cxxflags }}
   bootstrap_args: "--enable-ccache ${{ inputs.bootstrap_args }} ${{ inputs.asan && '--enable-sanitizer=address' || '' }}"
   VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
   SCCACHE_GHA_ENABLED: "true"
@@ -56,6 +71,9 @@ jobs:
         os:
           - ${{ inputs.matrix_image }}
     runs-on: ${{matrix.os}}
+    #value: quay.io/pypa/manylinux2014_x86_64:2022-11-06-7be974c
+    # modified from above tag to add linux-headers
+    container: ${{inputs.manylinux && 'ghcr.io/ihnorton/tiledb-manylinux2014_x86_64:2023-04-02' || ''}}
 
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: ${{ inputs.timeout || 90 }}
