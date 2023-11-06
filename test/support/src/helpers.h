@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -83,8 +83,6 @@ static tiledb::sm::stats::Stats g_helper_stats("test");
 // A dummy `Logger` instance. This is useful for constructing
 // objects that require a parent `Logger` object.
 shared_ptr<Logger> g_helper_logger(void);
-
-const std::string& get_temp_path();
 
 // For easy reference
 typedef std::pair<tiledb_filter_type_t, int> Compressor;

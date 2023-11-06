@@ -61,16 +61,6 @@ std::mutex catch2_macro_mutex;
 namespace tiledb {
 namespace test {
 
-const std::string& get_temp_path() {
-  // Ensure the path has a trailing delimiter.
-  static std::string temp_path =
-      (std::filesystem::temp_directory_path() /
-       ("tiledb_test_" + std::to_string(getpid())) / "")
-          .string();
-
-  return temp_path;
-}
-
 // Command line arguments.
 std::string g_vfs;
 

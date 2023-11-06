@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,8 @@
 #include "test/support/src/helpers.h"
 
 #include <cassert>
+#include <filesystem>
+#include "tiledb/common/random/prng.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/crypto.h"
@@ -60,12 +62,19 @@ static bool ends_with(const std::string& value, const std::string& suffix) {
 }
 
 struct WinFx {
-  const std::string& TEMP_DIR = tiledb::test::get_temp_path();
+  std::string TEMP_DIR;
   Win win_;
   Config vfs_config_;
 
   WinFx() {
     REQUIRE(win_.init(vfs_config_).ok());
+
+    PRNG& prng = PRNG::get();
+    auto rand = prng();
+
+    TEMP_DIR =
+        (std::filesystem::temp_directory_path() / (std::to_string(rand)) / "")
+            .string();
 
     if (path_exists(TEMP_DIR)) {
       REQUIRE(win_.remove_dir(TEMP_DIR).ok());

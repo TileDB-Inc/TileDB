@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,9 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "tiledb/api/c_api/vfs/vfs_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/filesystem/unique_directory.h"
 #include "tiledb/sm/misc/utils.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/path_win.h"
@@ -42,6 +44,7 @@
 #endif
 
 #include <iostream>
+#include <optional>
 #include <sstream>
 #include <thread>
 
@@ -56,16 +59,15 @@ struct VFSFx {
   const std::string AZURE_CONTAINER =
       AZURE_PREFIX + random_name("tiledb") + "/";
   const std::string AZURE_TEMP_DIR = AZURE_CONTAINER + "tiledb_test/";
-  const std::string FILE_TEMP_DIR =
-#ifndef _WIN32
-      "file://" +
-#endif
-      tiledb::test::get_temp_path();
+  std::string FILE_TEMP_DIR;
   const std::string MEMFS_TEMP_DIR = std::string("mem://tiledb_test/");
 
   // TileDB context and vfs
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
+
+  /** The unique directory object. */
+  std::optional<tiledb::sm::UniqueDirectory> temp_dir_{std::nullopt};
 
   // Supported filesystems
   bool supports_s3_;
@@ -96,6 +98,15 @@ VFSFx::VFSFx() {
 
   // Create context and VFS with 1 thread
   set_num_vfs_threads(1);
+
+  // Create the UniqueDirectory.
+  temp_dir_.emplace(*vfs_->vfs(), "tiledb_test_");
+
+  FILE_TEMP_DIR =
+#ifndef _WIN32
+      "file://" +
+#endif
+      temp_dir_.value().path();
 }
 
 VFSFx::~VFSFx() {
@@ -329,7 +340,7 @@ void VFSFx::check_vfs(const std::string& path) {
     REQUIRE(!(bool)is_empty);
   }
 
-  if (!supports_s3_) {
+  if (!supports_s3_ && path != FILE_TEMP_DIR) {
     rc = tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str());
     REQUIRE(rc == TILEDB_OK);
   }

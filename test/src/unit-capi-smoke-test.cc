@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,11 +33,14 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "tiledb/api/c_api/vfs/vfs_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/enums/encryption_type.h"
+#include "tiledb/sm/filesystem/unique_directory.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <iostream>
+#include <optional>
 #include <vector>
 
 using namespace std;
@@ -49,8 +52,6 @@ static const string array_name = "smoke_test_array";
 
 class SmokeTestFx {
  public:
-  const string& FILE_TEMP_DIR = tiledb::test::get_temp_path();
-
   /**
    * Wraps data to build a dimension with the C-API.
    */
@@ -215,19 +216,8 @@ class SmokeTestFx {
   /** The C-API VFS object. */
   tiledb_vfs_t* vfs_;
 
-  /**
-   * Creates a directory using `vfs_`.
-   *
-   * @param path The directory path.
-   */
-  void create_dir(const string& path);
-
-  /**
-   * Removes a directory using `vfs_`.
-   *
-   * @param path The directory path.
-   */
-  void remove_dir(const string& path);
+  /** The unique directory object. */
+  std::optional<UniqueDirectory> temp_dir_{std::nullopt};
 
   /**
    * Creates a TileDB array.
@@ -387,25 +377,15 @@ SmokeTestFx::SmokeTestFx() {
 
   // Create the VFS.
   REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
-
   tiledb_config_free(&config);
+
+  // Create the UniqueDirectory.
+  temp_dir_.emplace(*vfs_->vfs());
 }
 
 SmokeTestFx::~SmokeTestFx() {
-  remove_dir(FILE_TEMP_DIR);
   tiledb_ctx_free(&ctx_);
   tiledb_vfs_free(&vfs_);
-}
-
-void SmokeTestFx::create_dir(const string& path) {
-  REQUIRE(tiledb_vfs_create_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
-}
-
-void SmokeTestFx::remove_dir(const string& path) {
-  int is_dir = 0;
-  REQUIRE(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir) == TILEDB_OK);
-  if (is_dir)
-    REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
 }
 
 void SmokeTestFx::create_array(
@@ -415,8 +395,13 @@ void SmokeTestFx::create_array(
     tiledb_layout_t cell_order,
     tiledb_layout_t tile_order,
     tiledb_encryption_type_t encryption_type) {
-  remove_dir(FILE_TEMP_DIR);
-  create_dir(FILE_TEMP_DIR);
+  // Remove array if it already exists
+  const string array_path = temp_dir_.value().path() + array_name;
+  int is_dir = 0;
+  REQUIRE(
+      tiledb_vfs_is_dir(ctx_, vfs_, array_path.c_str(), &is_dir) == TILEDB_OK);
+  if (is_dir)
+    REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, array_path.c_str()) == TILEDB_OK);
 
   // Create the dimensions.
   vector<tiledb_dimension_t*> dims;
@@ -504,8 +489,7 @@ void SmokeTestFx::create_array(
     REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
     tiledb_config_free(&config);
   }
-  rc = tiledb_array_create(
-      ctx_, (FILE_TEMP_DIR + array_name).c_str(), array_schema);
+  rc = tiledb_array_create(ctx_, array_path.c_str(), array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Free attributes.
@@ -531,8 +515,8 @@ void SmokeTestFx::write(
     tiledb_encryption_type_t encryption_type) {
   // Open the array for writing (with or without encryption).
   tiledb_array_t* array;
-  int rc =
-      tiledb_array_alloc(ctx_, (FILE_TEMP_DIR + array_name).c_str(), &array);
+  int rc = tiledb_array_alloc(
+      ctx_, (temp_dir_.value().path() + array_name).c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
   if (encryption_type != TILEDB_NO_ENCRYPTION) {
     tiledb_config_t* cfg;
@@ -661,8 +645,8 @@ void SmokeTestFx::read(
     tiledb_query_condition_combination_op_t combination_op) {
   // Open the array for reading (with or without encryption).
   tiledb_array_t* array;
-  int rc =
-      tiledb_array_alloc(ctx_, (FILE_TEMP_DIR + array_name).c_str(), &array);
+  int rc = tiledb_array_alloc(
+      ctx_, (temp_dir_.value().path() + array_name).c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
   if (encryption_type != TILEDB_NO_ENCRYPTION) {
     tiledb_config_t* cfg;
