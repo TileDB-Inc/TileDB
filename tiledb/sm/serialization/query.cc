@@ -2009,6 +2009,15 @@ Status query_from_capnp(
         Buffer offsets_buff(nullptr, fixedlen_size);
         Buffer varlen_buff(nullptr, varlen_size);
         Buffer validitylen_buff(nullptr, validitylen_size);
+
+        // Aggregates don't have incomplete queries, and only set the results on
+        // completion, so we don't need to have go allocate memory.
+        if (query->is_aggregate(name)) {
+          offsets_buff = Buffer(fixedlen_size);
+          varlen_buff = Buffer(fixedlen_size);
+          validitylen_buff = Buffer(validitylen_size);
+        }
+
         // For the server on reads we want to set the original user requested
         // buffer sizes This handles the case of incomplete queries where on
         // the second `submit()` call the client's buffer size will be the
@@ -2044,19 +2053,39 @@ Status query_from_capnp(
         attr_state->validity_len_data.swap(validitylen_buff);
         if (var_size) {
           throw_if_not_ok(query->set_data_buffer(
-              name, nullptr, &attr_state->var_len_size, false, true));
+              name,
+              attr_state->var_len_data.data(),
+              &attr_state->var_len_size,
+              false,
+              true));
           throw_if_not_ok(query->set_offsets_buffer(
-              name, nullptr, &attr_state->fixed_len_size, false, true));
+              name,
+              attr_state->fixed_len_data.data_as<uint64_t>(),
+              &attr_state->fixed_len_size,
+              false,
+              true));
           if (nullable) {
             throw_if_not_ok(query->set_validity_buffer(
-                name, nullptr, &attr_state->validity_len_size, false, true));
+                name,
+                attr_state->validity_len_data.data_as<uint8_t>(),
+                &attr_state->validity_len_size,
+                false,
+                true));
           }
         } else {
           throw_if_not_ok(query->set_data_buffer(
-              name, nullptr, &attr_state->fixed_len_size, false, true));
+              name,
+              attr_state->fixed_len_data.data(),
+              &attr_state->fixed_len_size,
+              false,
+              true));
           if (nullable) {
             throw_if_not_ok(query->set_validity_buffer(
-                name, nullptr, &attr_state->validity_len_size, false, true));
+                name,
+                attr_state->validity_len_data.data_as<uint8_t>(),
+                &attr_state->validity_len_size,
+                false,
+                true));
           }
         }
       } else if (query_type == QueryType::WRITE) {
