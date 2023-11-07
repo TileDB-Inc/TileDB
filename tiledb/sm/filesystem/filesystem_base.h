@@ -34,11 +34,9 @@
 #define TILEDB_FILESYSTEMBASE_H
 
 #include "tiledb/common/filesystem/directory_entry.h"
-#include "tiledb/sm/config/config.h"
-#include "tiledb/sm/enums/filesystem.h"
 #include "uri.h"
 
-#include <sys/stat.h>
+#include <vector>
 
 namespace tiledb::sm {
 
