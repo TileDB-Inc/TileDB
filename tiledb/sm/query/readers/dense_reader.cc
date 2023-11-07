@@ -452,7 +452,24 @@ Status DenseReader::dense_read() {
       if (condition_names.count(name) == 0) {
         // Read and unfilter tiles.
         to_read[0] = name;
-        filtered_data = std::move(read_attribute_tiles(to_read, result_tiles));
+        try {
+          filtered_data = std::move(read_attribute_tiles(to_read, result_tiles));
+        } catch (...) {
+          // If we don't wait for our background task to complete we're in
+          // a race condition for segfaults because its attempting to use
+          // objects that will be deallocated as the exception bubbles.
+          if (compute_task.valid()) {
+            try {
+              auto task_st = storage_manager_->compute_tp()->wait(compute_task);
+              if (!task_st.ok()) {
+                LOG_STATUS_NO_RETURN_VALUE(task_st);
+              }
+            } catch (...) {
+              // Swallow any exception sicne we're already reporting one.
+            }
+          }
+          std::throw_with_nested(DenseReaderStatusException("Error reading attribute tiles."));
+        }
       }
 
       if (compute_task.valid()) {

@@ -72,7 +72,8 @@ ResultTile::ResultTile(
     : domain_(&frag_md.array_schema()->domain())
     , frag_idx_(frag_idx)
     , tile_idx_(tile_idx)
-    , cell_num_(frag_md.cell_num(tile_idx)) {
+    , cell_num_(frag_md.cell_num(tile_idx))
+    , memory_tokens_(frag_md.get_memory_tracker()) {
   auto array_schema = frag_md.array_schema();
   coord_tiles_.resize(domain_->dim_num());
   attr_tiles_.resize(array_schema->attribute_num());
@@ -120,6 +121,8 @@ void ResultTile::swap(ResultTile& tile) {
   std::swap(
       compute_results_count_sparse_uint8_t_func_,
       tile.compute_results_count_sparse_uint8_t_func_);
+
+  memory_tokens_.swap(tile.memory_tokens_);
 }
 
 /* ****************************** */
@@ -137,32 +140,38 @@ uint64_t ResultTile::cell_num() const {
 void ResultTile::erase_tile(const std::string& name) {
   // Handle zipped coordinates tiles
   if (name == constants::coords) {
+    memory_tokens_.release(MemoryType::COORD_TILES, 0);
     coords_tile_.reset();
     return;
   }
 
   if (name == constants::timestamps) {
+    memory_tokens_.release(MemoryType::TIMESTAMP_TILES);
     timestamps_tile_.reset();
     return;
   }
 
   if (name == constants::delete_timestamps) {
+    memory_tokens_.release(MemoryType::DELETE_TIMESTAMP_TILES);
     delete_timestamps_tile_.reset();
     return;
   }
 
   // Handle dimension tile
-  for (auto& ct : coord_tiles_) {
-    if (ct.second.has_value() && ct.first == name) {
-      ct.second.reset();
+  for (size_t i = 0; i < coord_tiles_.size(); i++) {
+    if (coord_tiles_[i].second.has_value() && coord_tiles_[i].first == name) {
+      // +1 becuase coords_tile_ gets index 0
+      memory_tokens_.release(MemoryType::COORD_TILES, i + 1);
+      coord_tiles_[i].second.reset();
       return;
     }
   }
 
   // Handle attribute tile
-  for (auto& at : attr_tiles_) {
-    if (at.first == name) {
-      at.second.reset();
+  for (size_t i = 0; i < attr_tiles_.size(); i++) {
+    if (attr_tiles_[i].first == name) {
+      memory_tokens_.release(MemoryType::ATTR_TILES, i);
+      attr_tiles_[i].second.reset();
       return;
     }
   }
@@ -178,29 +187,36 @@ void ResultTile::init_attr_tile(
       TileTuple(format_version, array_schema, name, tile_sizes, tile_data);
 
   if (name == constants::coords) {
+    // The special coords_tile_ gets index zero, all other coords tiles get
+    // the id dim_num + 1;
+    memory_tokens_.reserve(tile_sizes.total_size(), MemoryType::COORD_TILES, 0);
     coords_tile_ = std::move(tuple);
     return;
   }
 
   if (name == constants::timestamps) {
+    memory_tokens_.reserve(tile_sizes.total_size(), MemoryType::TIMESTAMP_TILES);
     timestamps_tile_ = std::move(tuple);
     return;
   }
 
   if (name == constants::delete_timestamps) {
+    memory_tokens_.reserve(tile_sizes.total_size(), MemoryType::DELETE_TIMESTAMP_TILES);
     delete_timestamps_tile_ = std::move(tuple);
     return;
   }
 
   if (name == constants::delete_condition_index) {
+    memory_tokens_.reserve(tile_sizes.total_size(), MemoryType::DELETE_CONDITION_TILES);
     delete_condition_index_tile_ = std::move(tuple);
     return;
   }
 
   // Handle attributes
-  for (auto& at : attr_tiles_) {
-    if (at.first == name && at.second == nullopt) {
-      at.second = std::move(tuple);
+  for (size_t i = 0; i < attr_tiles_.size(); i++) {
+    if (attr_tiles_[i].first == name && attr_tiles_[i].second == nullopt) {
+      memory_tokens_.reserve(tile_sizes.total_size(), MemoryType::ATTR_TILES, i);
+      attr_tiles_[i].second = std::move(tuple);
       return;
     }
   }
@@ -213,6 +229,7 @@ void ResultTile::init_coord_tile(
     const TileSizes tile_sizes,
     const TileData tile_data,
     unsigned dim_idx) {
+  memory_tokens_.reserve(tile_sizes.total_size(), MemoryType::COORD_TILES, dim_idx + 1);
   coord_tiles_[dim_idx] = std::pair<std::string, TileTuple>(
       name,
       TileTuple(format_version, array_schema, name, tile_sizes, tile_data));

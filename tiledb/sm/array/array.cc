@@ -1087,7 +1087,7 @@ void Array::set_non_empty_domain(const NDRange& non_empty_domain) {
   non_empty_domain_ = non_empty_domain;
 }
 
-shared_ptr<MemoryTracker> Array::memory_tracker() {
+shared_ptr<MemoryTracker> Array::memory_tracker() const {
   return memory_tracker_;
 }
 

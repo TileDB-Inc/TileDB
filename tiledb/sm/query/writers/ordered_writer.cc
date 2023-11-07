@@ -332,7 +332,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
     tile_batches[b].reserve(batch_size);
     for (uint64_t i = 0; i < batch_size; i++) {
       tile_batches[b].emplace_back(WriterTileTuple(
-          array_schema_, cell_num_per_tile, var, nullable, cell_size, type));
+          array_schema_, cell_num_per_tile, var, nullable, cell_size, type, array_->memory_tracker()));
     }
 
     {

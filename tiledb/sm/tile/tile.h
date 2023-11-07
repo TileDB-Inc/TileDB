@@ -34,6 +34,7 @@
 #define TILEDB_TILE_H
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/tile/filtered_buffer.h"
@@ -390,7 +391,8 @@ class WriterTile : public TileBase {
       const format_version_t format_version,
       const Datatype type,
       const uint64_t cell_size,
-      const uint64_t size);
+      const uint64_t size,
+      MemoryTokenBag* memory_tokens_ = nullptr);
 
   /** Move constructor. */
   WriterTile(WriterTile&& tile);
@@ -452,6 +454,8 @@ class WriterTile : public TileBase {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  MemoryTokenBag* memory_tokens_;
 
   /**
    * The buffer that contains the filtered, on-disk bytes. This buffer is

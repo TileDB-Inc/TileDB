@@ -405,7 +405,7 @@ Status fragment_metadata_from_capnp(
     frag_meta->memory_tokens().reserve(data.size(), MemoryType::RTREE);
     frag_meta->rtree().deserialize(
         deserializer, &domain, constants::format_version);
-    loaded_metadata.rtree_ = true;
+    //loaded_metadata.rtree_ = true;
   }
 
   // It's important to do this here as init_domain depends on some fields

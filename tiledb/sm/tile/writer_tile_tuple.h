@@ -33,6 +33,7 @@
 #ifndef TILEDB_WRITER_TILE_TUPLE_H
 #define TILEDB_WRITER_TILE_TUPLE_H
 
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 
@@ -56,7 +57,8 @@ class WriterTileTuple {
       const bool var_size,
       const bool nullable,
       const uint64_t cell_size,
-      const Datatype type);
+      const Datatype type,
+      shared_ptr<MemoryTracker> memory_tracker = nullptr);
 
   /** Move constructor. */
   WriterTileTuple(WriterTileTuple&& tile);
@@ -222,6 +224,9 @@ class WriterTileTuple {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** Memory tracking tokens bag. */
+  MemoryTokenBag memory_tokens_;
 
   /**
    * Fixed data tile. Contains offsets for var size attribute/dimension and

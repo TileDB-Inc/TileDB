@@ -526,7 +526,7 @@ class Array {
   }
 
   /** Returns the memory tracker. */
-  shared_ptr<MemoryTracker> memory_tracker();
+  shared_ptr<MemoryTracker> memory_tracker() const;
 
   /**
    * Checks the config to see if non empty domain should be serialized on array

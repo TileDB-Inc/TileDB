@@ -169,8 +169,10 @@ WriterTile::WriterTile(
     const format_version_t format_version,
     const Datatype type,
     const uint64_t cell_size,
-    const uint64_t size)
+    const uint64_t size,
+    MemoryTokenBag* memory_tokens)
     : TileBase(format_version, type, cell_size, size)
+    , memory_tokens_(memory_tokens)
     , filtered_buffer_(0) {
 }
 
@@ -273,6 +275,10 @@ void WriterTile::write_var(const void* data, uint64_t offset, uint64_t nbytes) {
     auto new_alloc_size = size_ == 0 ? offset + nbytes : size_;
     while (new_alloc_size < offset + nbytes)
       new_alloc_size *= 2;
+
+    if (memory_tokens_ != nullptr) {
+      memory_tokens_->reserve(new_alloc_size, MemoryType::WRITER_VAR_DATA);
+    }
 
     auto new_data =
         static_cast<char*>(tdb_realloc(data_.release(), new_alloc_size));

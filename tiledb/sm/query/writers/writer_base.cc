@@ -962,7 +962,7 @@ Status WriterBase::init_tiles(
   tiles->reserve(tile_num);
   for (uint64_t i = 0; i < tile_num; i++) {
     tiles->emplace_back(WriterTileTuple(
-        array_schema_, cell_num_per_tile, var_size, nullable, cell_size, type));
+        array_schema_, cell_num_per_tile, var_size, nullable, cell_size, type, array_->memory_tracker()));
   }
 
   return Status::Ok();

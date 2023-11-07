@@ -67,10 +67,20 @@ std::string memory_type_to_str(MemoryType mem_type) {
       return "NullCounts";
     case MemoryType::ENUMERATION:
       return "Enumeration";
-    case MemoryType::TILE_DATA:
-      return "TileData";
-    case MemoryType::FILTERED_TILE_DATA:
-      return "FilteredTileData";
+    case MemoryType::COORD_TILES:
+      return "CoordinateTiles";
+    case MemoryType::ATTR_TILES:
+      return "AttributeTiles";
+    case MemoryType::TIMESTAMP_TILES:
+      return "TimestampTiles";
+    case MemoryType::DELETE_TIMESTAMP_TILES:
+      return "DeleteTimestampTiles";
+    case MemoryType::DELETE_CONDITION_TILES:
+      return "DeleteConditionTiles";
+    case MemoryType::WRITER_FIXED_DATA:
+      return "WriterFixedData";
+    case MemoryType::WRITER_VAR_DATA:
+      return "WriterVarData";
     default:
       auto val = std::to_string(static_cast<uint32_t>(mem_type));
       throw std::logic_error("Unknown memory type: " + val);
@@ -250,12 +260,20 @@ void MemoryTokenBag::release(MemoryType mem_type, std::vector<uint64_t> id) {
   MemoryTokenKey key{mem_type, id};
 
   auto it = tokens_.find(key);
-  // if (it == tokens_.end()) {
-  //   cpptrace::generate_trace().print();
-  //   throw MemoryTrackerException("No reservation token exists for this key.");
-  // }
+  if (it == tokens_.end()) {
+    return;
+    // cpptrace::generate_trace().print();
+    // throw MemoryTrackerException("No reservation token exists for this key.");
+  }
 
   tokens_.erase(it);
+}
+
+void MemoryTokenBag::swap(MemoryTokenBag& rhs) {
+  std::lock_guard<std::mutex> lg(mutex_);
+  std::lock_guard<std::mutex> rhs_lg(rhs.mutex_);
+  std::swap(memory_tracker_, rhs.memory_tracker_);
+  std::swap(tokens_, rhs.tokens_);
 }
 
 }  // namespace tiledb::sm

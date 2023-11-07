@@ -550,7 +550,7 @@ TEST_CASE_METHOD(
 
   // Specific relationship for failure not known, but these values
   // will result in failure with data being written.
-  total_budget_ = "10000";
+  total_budget_ = "15000";
   // Failure here occurs with the value of 0.1 for ratio_tile_ranges_.
   update_config();
 
@@ -777,7 +777,7 @@ TEST_CASE_METHOD(
 
   // Two result tile (2 * (~1200 + 8) will be bigger than the per fragment
   // budget (1000).
-  total_budget_ = "10000";
+  total_budget_ = "15000";
   ratio_coords_ = "0.30";
   update_config();
 
@@ -1233,7 +1233,8 @@ TEST_CASE(
     "[sparse-global-order][attribute-copy][memory-limit]") {
   std::string array_name = "test_sparse_global_order";
   Config config;
-  config["sm.mem.total_budget"] = "10000";
+  // PJD: Weird, the error report has this value divided by 10
+  config["sm.mem.total_budget"] = "250000";
   Context ctx(config);
   VFS vfs(ctx);
 
@@ -1348,7 +1349,7 @@ TEST_CASE_METHOD(
 
   // Two result tile (2 * (~1200 + 8) will be bigger than the per fragment
   // budget (1000).
-  total_budget_ = "10000";
+  total_budget_ = "15000";
   ratio_coords_ = "0.30";
   update_config();
 

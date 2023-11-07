@@ -51,8 +51,13 @@ enum class MemoryType : uint8_t {
   SUMS,
   NULL_COUNTS,
   ENUMERATION,
-  TILE_DATA,
-  FILTERED_TILE_DATA
+  COORD_TILES,
+  ATTR_TILES,
+  TIMESTAMP_TILES,
+  DELETE_TIMESTAMP_TILES,
+  DELETE_CONDITION_TILES,
+  WRITER_FIXED_DATA,
+  WRITER_VAR_DATA
 };
 
 std::string memory_type_to_str(MemoryType mem_type);
@@ -188,6 +193,12 @@ class MemoryTokenBag {
   /** Reset all tokens and drop the memory tracker. */
   void clear();
 
+  /** Get the memory tracker used by this bag. */
+  inline shared_ptr<MemoryTracker> get_memory_tracker() const {
+    std::lock_guard<std::mutex> lg(mutex_);
+    return memory_tracker_;
+  }
+
   /** Set the memory tracker to use for this bag. Throws if already set. */
   void set_memory_tracker(shared_ptr<MemoryTracker> memory_tracker);
 
@@ -239,8 +250,11 @@ class MemoryTokenBag {
     release(mem_type, std::vector<uint64_t>{x, y, z});
   }
 
+  // Swap memory trackers.
+  void swap(MemoryTokenBag& rhs);
+
  private:
-  std::mutex mutex_;
+  mutable std::mutex mutex_;
   shared_ptr<MemoryTracker> memory_tracker_;
   std::unordered_map<
       MemoryTokenKey,

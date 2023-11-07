@@ -132,6 +132,11 @@ class ResultTile {
     /*                API                */
     /* ********************************* */
 
+    /** @return The total size unfiltered size. */
+    inline uint64_t total_size() const {
+      return tile_size_ + tile_var_size_.value_or(0) + tile_validity_size_.value_or(0);
+    }
+
     /** @return The fixed tile in memory size. */
     inline uint64_t tile_size() const {
       return tile_size_;
@@ -706,6 +711,9 @@ class ResultTile {
    * dimension order.
    */
   std::vector<std::pair<std::string, optional<TileTuple>>> coord_tiles_;
+
+  /** The MemoryTokenBag to use for this ResultTile. */
+  MemoryTokenBag memory_tokens_;
 
   /**
    * Stores the appropriate templated compute_results_dense() function based for

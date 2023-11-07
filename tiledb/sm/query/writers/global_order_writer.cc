@@ -220,7 +220,8 @@ Status GlobalOrderWriter::init_global_write_state() {
           var_size,
           nullable,
           cell_size,
-          type));
+          type,
+          array_->memory_tracker()));
     } catch (const std::logic_error& le) {
       return Status_WriterError(le.what());
     }
@@ -979,7 +980,7 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
     tiles->reserve(full_tile_num);
     for (uint64_t i = 0; i < full_tile_num; i++) {
       tiles->emplace_back(WriterTileTuple(
-          array_schema_, cell_num_per_tile, false, nullable, cell_size, type));
+          array_schema_, cell_num_per_tile, false, nullable, cell_size, type, array_->memory_tracker()));
     }
 
     // Handle last tile (it must be either full or empty)
@@ -1186,7 +1187,7 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
     tiles->reserve(full_tile_num);
     for (uint64_t i = 0; i < full_tile_num; i++) {
       tiles->emplace_back(WriterTileTuple(
-          array_schema_, cell_num_per_tile, true, nullable, cell_size, type));
+          array_schema_, cell_num_per_tile, true, nullable, cell_size, type, array_->memory_tracker()));
     }
 
     // Handle last tile (it must be either full or empty)

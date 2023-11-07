@@ -1220,6 +1220,11 @@ class FragmentMetadata {
     resources_ = cr;
   }
 
+  /** Get the memory tracker this instance uses. */
+  inline shared_ptr<MemoryTracker> get_memory_tracker() const {
+    return memory_tokens_.get_memory_tracker();
+  }
+
   /** set the memory tracker pointer during deserialization*/
   void set_memory_tracker(shared_ptr<MemoryTracker> memory_tracker) {
     memory_tokens_.set_memory_tracker(memory_tracker);
