@@ -73,9 +73,7 @@ jobs:
         os:
           - ${{ inputs.matrix_image }}
     runs-on: ${{matrix.os}}
-    #value: quay.io/pypa/manylinux2014_x86_64:2022-11-06-7be974c
-    # modified from above tag to add linux-headers
-    container: ${{inputs.manylinux && 'ghcr.io/ihnorton/tiledb-manylinux2014_x86_64:2023-04-02' || ''}}
+    container: ${{inputs.manylinux && 'quay.io/pypa/manylinux2014_x86_64' || ''}}
 
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: ${{ inputs.timeout || 90 }}
