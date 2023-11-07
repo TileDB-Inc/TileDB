@@ -30,6 +30,9 @@
 #define TILEDB_COMMON_EXCEPTION_H
 
 #include <stdexcept>
+
+#include <cpptrace/cpptrace.hpp>
+
 #include "tiledb/common/common-std.h"
 #include "tiledb/common/status.h"
 
@@ -126,6 +129,7 @@ class StatusException : public std::exception {
   StatusException(const std::string origin, const std::string message)
       : origin_(origin)
       , message_(message) {
+    cpptrace::generate_trace().print();
   }
 
   /**
@@ -136,6 +140,7 @@ class StatusException : public std::exception {
   explicit StatusException(const Status& st)
       // Invoke the move constructor after factory validation of the argument
       : StatusException(make_from_status(st)) {
+    cpptrace::generate_trace().print();
   }
 
   /// Default copy constructor

@@ -157,6 +157,8 @@ message(STATUS "  CMake version: ${CMAKE_VERSION}")
 set(TILEDB_EP_SOURCE_DIR "${TILEDB_EP_BASE}/src")
 set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")
 
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/build/vcpkg_installed/arm64-osx/include/")
+
 ############################################################
 # Compile options/definitions for all targets
 ############################################################
@@ -231,6 +233,7 @@ else()
 
   # Disable newer Clang warnings about unqualified calls to std::move
   if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    set(CMAKE_XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT "dwarf-with-dsym")
     if (${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "14.0.3")
       add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-unqualified-std-cast-call>)
     endif()
