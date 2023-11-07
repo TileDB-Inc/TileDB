@@ -30,49 +30,59 @@
 #   - ZSTD_INCLUDE_DIR, directory containing headers
 #   - ZSTD_LIBRARIES, the Zstd library path
 #   - ZSTD_FOUND, whether Zstd has been found
-#   - The Zstd::Zstd imported target
+#   - The zstd::libzstd imported target
 
 # Include some common helper functions.
 include(TileDBCommon)
 
-# First check for a static version in the EP prefix.
-find_library(ZSTD_LIBRARIES
-  NAMES
-    libzstd${CMAKE_STATIC_LIBRARY_SUFFIX}
-    zstd_static${CMAKE_STATIC_LIBRARY_SUFFIX}
-  PATHS ${TILEDB_EP_INSTALL_PREFIX}
-  PATH_SUFFIXES lib
-  NO_DEFAULT_PATH
-)
-
-if (ZSTD_LIBRARIES)
-  set(ZSTD_STATIC_EP_FOUND TRUE)
-  find_path(ZSTD_INCLUDE_DIR
-    NAMES zstd.h
-    PATHS ${TILEDB_EP_INSTALL_PREFIX}
-    PATH_SUFFIXES include
-    NO_DEFAULT_PATH
-  )
-elseif(NOT TILEDB_FORCE_ALL_DEPS)
-  set(ZSTD_STATIC_EP_FOUND FALSE)
-  # Static EP not found, search in system paths.
+if (TILEDB_VCPKG)
+  find_package(zstd CONFIG REQUIRED)
+  if (TARGET zstd::libzstd_static)
+    add_library(zstd::libzstd ALIAS zstd::libzstd_static)
+  else()
+    add_library(zstd::libzstd ALIAS zstd::libzstd_shared)
+  endif()
+  set(ZSTD_FOUND TRUE)
+else()
+  # First check for a static version in the EP prefix.
   find_library(ZSTD_LIBRARIES
     NAMES
-      zstd libzstd
-    PATH_SUFFIXES lib bin
-    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+      libzstd${CMAKE_STATIC_LIBRARY_SUFFIX}
+      zstd_static${CMAKE_STATIC_LIBRARY_SUFFIX}
+    PATHS ${TILEDB_EP_INSTALL_PREFIX}
+    PATH_SUFFIXES lib
+    NO_DEFAULT_PATH
   )
-  find_path(ZSTD_INCLUDE_DIR
-    NAMES zstd.h
-    PATH_SUFFIXES include
-    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+
+  if (ZSTD_LIBRARIES)
+    set(ZSTD_STATIC_EP_FOUND TRUE)
+    find_path(ZSTD_INCLUDE_DIR
+      NAMES zstd.h
+      PATHS ${TILEDB_EP_INSTALL_PREFIX}
+      PATH_SUFFIXES include
+      NO_DEFAULT_PATH
+    )
+  elseif(NOT TILEDB_FORCE_ALL_DEPS)
+    set(ZSTD_STATIC_EP_FOUND FALSE)
+    # Static EP not found, search in system paths.
+    find_library(ZSTD_LIBRARIES
+      NAMES
+        zstd libzstd
+      PATH_SUFFIXES lib bin
+      ${TILEDB_DEPS_NO_DEFAULT_PATH}
+    )
+    find_path(ZSTD_INCLUDE_DIR
+      NAMES zstd.h
+      PATH_SUFFIXES include
+      ${TILEDB_DEPS_NO_DEFAULT_PATH}
+    )
+  endif()
+
+  include(FindPackageHandleStandardArgs)
+  FIND_PACKAGE_HANDLE_STANDARD_ARGS(Zstd
+    REQUIRED_VARS ZSTD_LIBRARIES ZSTD_INCLUDE_DIR
   )
 endif()
-
-include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(Zstd
-  REQUIRED_VARS ZSTD_LIBRARIES ZSTD_INCLUDE_DIR
-)
 
 if (NOT ZSTD_FOUND)
   if (TILEDB_SUPERBUILD)
@@ -118,9 +128,9 @@ if (NOT ZSTD_FOUND)
   endif()
 endif()
 
-if (ZSTD_FOUND AND NOT TARGET Zstd::Zstd)
-  add_library(Zstd::Zstd UNKNOWN IMPORTED)
-  set_target_properties(Zstd::Zstd PROPERTIES
+if (ZSTD_FOUND AND NOT TARGET zstd::libzstd)
+  add_library(zstd::libzstd UNKNOWN IMPORTED)
+  set_target_properties(zstd::libzstd PROPERTIES
     IMPORTED_LOCATION "${ZSTD_LIBRARIES}"
     INTERFACE_INCLUDE_DIRECTORIES "${ZSTD_INCLUDE_DIR}"
   )
@@ -128,5 +138,5 @@ endif()
 
 # If we built a static EP, install it if required.
 if (ZSTD_STATIC_EP_FOUND AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(Zstd::Zstd)
+  install_target_libs(zstd::libzstd)
 endif()

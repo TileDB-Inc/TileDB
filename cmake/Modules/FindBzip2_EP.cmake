@@ -29,49 +29,54 @@
 #   - BZIP2_INCLUDE_DIR, directory containing headers
 #   - BZIP2_LIBRARIES, the Bzip2 library path
 #   - BZIP2_FOUND, whether Bzip2 has been found
-#   - The Bzip2::Bzip2 imported target
+#   - The BZip2::BZip2 imported target
 
 # Include some common helper functions.
 include(TileDBCommon)
 
-# First check for a static version in the EP prefix.
-find_library(BZIP2_LIBRARIES
-  NAMES
-    libbz2static${CMAKE_STATIC_LIBRARY_SUFFIX}
-    libbz2${CMAKE_STATIC_LIBRARY_SUFFIX}
-  PATHS ${TILEDB_EP_INSTALL_PREFIX}
-  PATH_SUFFIXES lib
-  NO_DEFAULT_PATH
-)
-
-if (BZIP2_LIBRARIES)
-  set(BZIP2_STATIC_EP_FOUND TRUE)
-  find_path(BZIP2_INCLUDE_DIR
-    NAMES bzlib.h
-    PATHS ${TILEDB_EP_INSTALL_PREFIX}
-    PATH_SUFFIXES include
-    NO_DEFAULT_PATH
-  )
-elseif(NOT TILEDB_FORCE_ALL_DEPS)
-  set(BZIP2_STATIC_EP_FOUND FALSE)
-  # Static EP not found, search in system paths.
+if(TILEDB_VCPKG)
+  find_package(BZip2 REQUIRED)
+  set(BZIP2_FOUND TRUE)
+else()
+  # First check for a static version in the EP prefix.
   find_library(BZIP2_LIBRARIES
     NAMES
-      bz2 libbz2
-    PATH_SUFFIXES lib bin
-    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+      libbz2static${CMAKE_STATIC_LIBRARY_SUFFIX}
+      libbz2${CMAKE_STATIC_LIBRARY_SUFFIX}
+    PATHS ${TILEDB_EP_INSTALL_PREFIX}
+    PATH_SUFFIXES lib
+    NO_DEFAULT_PATH
   )
-  find_path(BZIP2_INCLUDE_DIR
-    NAMES bzlib.h
-    PATH_SUFFIXES include
-    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+
+  if (BZIP2_LIBRARIES)
+    set(BZIP2_STATIC_EP_FOUND TRUE)
+    find_path(BZIP2_INCLUDE_DIR
+      NAMES bzlib.h
+      PATHS ${TILEDB_EP_INSTALL_PREFIX}
+      PATH_SUFFIXES include
+      NO_DEFAULT_PATH
+    )
+  elseif(NOT TILEDB_FORCE_ALL_DEPS)
+    set(BZIP2_STATIC_EP_FOUND FALSE)
+    # Static EP not found, search in system paths.
+    find_library(BZIP2_LIBRARIES
+      NAMES
+        bz2 libbz2
+      PATH_SUFFIXES lib bin
+      ${TILEDB_DEPS_NO_DEFAULT_PATH}
+    )
+    find_path(BZIP2_INCLUDE_DIR
+      NAMES bzlib.h
+      PATH_SUFFIXES include
+      ${TILEDB_DEPS_NO_DEFAULT_PATH}
+    )
+  endif()
+
+  include(FindPackageHandleStandardArgs)
+  FIND_PACKAGE_HANDLE_STANDARD_ARGS(Bzip2
+    REQUIRED_VARS BZIP2_LIBRARIES BZIP2_INCLUDE_DIR
   )
 endif()
-
-include(FindPackageHandleStandardArgs)
-FIND_PACKAGE_HANDLE_STANDARD_ARGS(Bzip2
-  REQUIRED_VARS BZIP2_LIBRARIES BZIP2_INCLUDE_DIR
-)
 
 if (NOT BZIP2_FOUND)
   if (TILEDB_SUPERBUILD)
@@ -128,9 +133,9 @@ if (NOT BZIP2_FOUND)
   endif()
 endif()
 
-if (BZIP2_FOUND AND NOT TARGET Bzip2::Bzip2)
-  add_library(Bzip2::Bzip2 UNKNOWN IMPORTED)
-  set_target_properties(Bzip2::Bzip2 PROPERTIES
+if (BZIP2_FOUND AND NOT TARGET BZip2::BZip2)
+  add_library(BZip2::BZip2 UNKNOWN IMPORTED)
+  set_target_properties(BZip2::BZip2 PROPERTIES
     IMPORTED_LOCATION "${BZIP2_LIBRARIES}"
     INTERFACE_INCLUDE_DIRECTORIES "${BZIP2_INCLUDE_DIR}"
   )
@@ -138,5 +143,5 @@ endif()
 
 # If we built a static EP, install it if required.
 if (BZIP2_STATIC_EP_FOUND AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(Bzip2::Bzip2)
+  install_target_libs(BZip2::BZip2)
 endif()
