@@ -286,6 +286,15 @@ add_executable(
   "src/unit.cc"
 )
 
+if (APPLE)
+set_target_properties(tiledb_unit PROPERTIES XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT "dwarf-with-dsym")
+add_custom_command(
+  TARGET tiledb_unit
+  POST_BUILD
+  COMMAND dsymutil $<TARGET_FILE:tiledb_unit>
+)
+endif()
+
 add_dependencies(tiledb_unit tiledb_test_support_lib)
 
 target_compile_options(tiledb_unit PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")

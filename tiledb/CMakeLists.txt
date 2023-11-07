@@ -546,6 +546,10 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE object_store_definition
 # blosc link dependencies
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${TileDB_blosc_LINK_OPTIONS})
 
+find_package(libdwarf REQUIRED)
+find_package(cpptrace CONFIG REQUIRED)
+target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE cpptrace::cpptrace)
+
 # Find OpenSSL first in case it's needed for S3 or Azure
 if (NOT WIN32)
   find_package(OpenSSL_EP REQUIRED)
@@ -1039,6 +1043,14 @@ endif()
 ############################################################
 
 add_library(tiledb_shared SHARED $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
+if (APPLE)
+set_target_properties(tiledb_shared PROPERTIES XCODE_ATTRIBUTE_DEBUG_INFORMATION_FORMAT "dwarf-with-dsym")
+add_custom_command(
+  TARGET tiledb_shared
+  POST_BUILD
+  COMMAND dsymutil $<TARGET_FILE:tiledb_shared>
+)
+endif()
 
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/sm/c_api/tiledb_version.h" ver)
 

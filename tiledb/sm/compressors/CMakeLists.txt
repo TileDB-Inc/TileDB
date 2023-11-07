@@ -51,6 +51,11 @@ target_sources(tdb_gzip_embedded_data PRIVATE
         util/tdb_gzip_embedded_data.cc
 )
 
+find_package(libdwarf REQUIRED)
+find_package(cpptrace CONFIG REQUIRED)
+target_link_libraries(tdb_gzip_embedded_data PRIVATE cpptrace::cpptrace)
+
+
 target_link_libraries(
     tdb_gzip_embedded_data PUBLIC
     filter
