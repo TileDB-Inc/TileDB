@@ -78,10 +78,10 @@ std::string memory_type_to_str(MemoryType mem_type) {
 }
 
 MemoryToken::MemoryToken(
-    std::weak_ptr<MemoryTracker> parent, MemoryType mem_type, uint64_t size)
+    std::weak_ptr<MemoryTracker> parent, uint64_t size, MemoryType mem_type)
     : parent_(parent)
-    , mem_type_(mem_type)
-    , size_(size) {
+    , size_(size)
+    , mem_type_(mem_type) {
 }
 
 MemoryToken::~MemoryToken() {
@@ -92,7 +92,7 @@ MemoryToken::~MemoryToken() {
 
 shared_ptr<MemoryToken> MemoryToken::copy() {
   if (auto ptr = parent_.lock()) {
-    return ptr->reserve(mem_type_, size_);
+    return ptr->reserve(size_, mem_type_);
   } else {
     return nullptr;
   }
@@ -106,9 +106,9 @@ MemoryTracker::MemoryTracker(stats::Stats* stats)
 }
 
 shared_ptr<MemoryToken> MemoryTracker::reserve(
-    MemoryType mem_type, uint64_t size) {
-  do_reservation(mem_type, size);
-  return make_shared<MemoryToken>(HERE(), weak_from_this(), mem_type, size);
+    uint64_t size, MemoryType mem_type) {
+  do_reservation(size, mem_type);
+  return make_shared<MemoryToken>(HERE(), weak_from_this(), size, mem_type);
 }
 
 void MemoryTracker::release(MemoryToken& token) {
@@ -123,8 +123,8 @@ void MemoryTracker::release(MemoryToken& token) {
   }
 }
 
-void MemoryTracker::leak(MemoryType mem_type, uint64_t size) {
-  do_reservation(mem_type, size);
+void MemoryTracker::leak(uint64_t size, MemoryType mem_type) {
+  do_reservation(size, mem_type);
 }
 
 void MemoryTracker::set_budget(uint64_t size) {
@@ -136,7 +136,7 @@ void MemoryTracker::set_budget(uint64_t size) {
   budget_ = size;
 }
 
-void MemoryTracker::do_reservation(MemoryType mem_type, uint64_t size) {
+void MemoryTracker::do_reservation(uint64_t size, MemoryType mem_type) {
   std::lock_guard<std::mutex> lg(mutex_);
   if (usage_ + size > budget_) {
     std::string mem_type_str = memory_type_to_str(mem_type);
@@ -161,6 +161,16 @@ void MemoryTracker::do_reservation(MemoryType mem_type, uint64_t size) {
   }
 }
 
+
+MemoryTokenKey::MemoryTokenKey(MemoryType type, const std::vector<uint64_t>& id)
+      : type_(type)
+      , id_len_(id.size()) {
+  id_ = make_shared<uint64_t[]>(HERE(), id_len_);
+  for (size_t i = 0; i < id.size(); i++) {
+    id_[i] = id[i];
+  }
+}
+
 // This funky thing is boost::hash_combine from:
 // https://www.boost.org/doc/libs/1_55_0/doc/html/hash/reference.html#boost.hash_combine
 std::size_t hash_combine(uint64_t seed, uint64_t val) {
@@ -168,52 +178,84 @@ std::size_t hash_combine(uint64_t seed, uint64_t val) {
 }
 
 std::size_t MemoryTokenKeyHasher::operator()(const MemoryTokenKey& key) const {
-  auto h1 = std::hash<uint8_t>()(static_cast<uint8_t>(key.type_));
-  auto h2 = std::hash<uint64_t>()(key.id_);
-  return hash_combine(hash_combine(0, h1), h2);
+  auto type_hash = std::hash<uint8_t>()(static_cast<uint8_t>(key.type_));
+  auto curr_hash = hash_combine(0, type_hash);
+
+  auto hasher = std::hash<uint64_t>();
+  for (size_t i = 0; i < key.id_len_; i++) {
+    curr_hash = hash_combine(curr_hash, hasher(key.id_[i]));
+  }
+
+  return curr_hash;
 }
 
 MemoryTokenBag::MemoryTokenBag(shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker) {
 }
 
-void MemoryTokenBag::reserve(MemoryType mem_type, uint64_t size) {
-  switch (mem_type) {
-    case MemoryType::RTREE:
-    case MemoryType::FOOTER:
-      reserve(mem_type, 0, size);
-      return;
-    default:
-      throw MemoryTrackerException("This memory type requires an id.");
-  }
+void MemoryTokenBag::clear() {
+  std::lock_guard<std::mutex> lg(mutex_);
+  tokens_.clear();
+  memory_tracker_.reset();
 }
 
-void MemoryTokenBag::reserve(MemoryType mem_type, uint64_t id, uint64_t size) {
+void MemoryTokenBag::set_memory_tracker(shared_ptr<MemoryTracker> memory_tracker) {
+  std::lock_guard<std::mutex> lg(mutex_);
+
+  if (memory_tracker_) {
+    cpptrace::generate_trace().print();
+    throw MemoryTrackerException("Unable to replace existing memory tracker.");
+  }
+
+  assert(tokens_.empty() && "Non-empty tokens with no memory tracker");
+
+  memory_tracker_ = memory_tracker;
+}
+
+bool MemoryTokenBag::has_reservation(MemoryType mem_type, std::vector<uint64_t> id) {
+  std::lock_guard<std::mutex> lg(mutex_);
+
+  if (!memory_tracker_) {
+    return false;
+  }
+
+  MemoryTokenKey key{mem_type, id};
+  return tokens_.contains(key);
+}
+
+void MemoryTokenBag::reserve(uint64_t size, MemoryType mem_type, std::vector<uint64_t> id) {
+  std::lock_guard<std::mutex> lg(mutex_);
+
   if (!memory_tracker_) {
     return;
   }
 
-  auto token = memory_tracker_->reserve(mem_type, size);
-  tokens_[{mem_type, id}] = token;
+  MemoryTokenKey key{mem_type, id};
+  // if (tokens_.find(key) != tokens_.end()) {
+  //   cpptrace::generate_trace().print();
+  //   throw MemoryTrackerException("Reservation token already exists for this key.");
+  // }
+
+  auto token = memory_tracker_->reserve(size, mem_type);
+  tokens_[key] = token;
 }
 
-void MemoryTokenBag::release(MemoryType mem_type) {
-  switch (mem_type) {
-    case MemoryType::RTREE:
-    case MemoryType::FOOTER:
-      release(mem_type, 0);
-      return;
-    default:
-      throw MemoryTrackerException("This memory type requires an id.");
-  }
-}
+void MemoryTokenBag::release(MemoryType mem_type, std::vector<uint64_t> id) {
+  std::lock_guard<std::mutex> lg(mutex_);
 
-void MemoryTokenBag::release(MemoryType mem_type, uint64_t id) {
   if (!memory_tracker_) {
     return;
   }
 
-  tokens_.erase({mem_type, id});
+  MemoryTokenKey key{mem_type, id};
+
+  auto it = tokens_.find(key);
+  // if (it == tokens_.end()) {
+  //   cpptrace::generate_trace().print();
+  //   throw MemoryTrackerException("No reservation token exists for this key.");
+  // }
+
+  tokens_.erase(it);
 }
 
 }  // namespace tiledb::sm

@@ -54,6 +54,31 @@ namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
+// void dump_rtree(const RTree& rtree) {
+//   std::stringstream ss;
+//   ss << "====================" << std::endl;;
+//   ss << "RTree:" << std::endl;
+//   ss << "  Dim Num: " << rtree.dim_num() << std::endl;
+//   ss << "  Fanout: " << rtree.fanout() << std::endl;
+//   ss << "  Height: " << rtree.height() << std::endl;
+//   if (rtree.height() > 0) {
+//     ss << "  Num Leaves: " << rtree.leaves().size() << std::endl;
+//     ss << "  Subtree Leaves: ";
+//     for (uint32_t i = 0; i < rtree.height(); i++) {
+//       if (i == 0) {
+//         ss << rtree.subtree_leaf_num(i);
+//       } else {
+//         ss << ", " << rtree.subtree_leaf_num(i);
+//       }
+//     }
+//     ss << std::endl;
+//   }
+//   ss << "  Domain: " << std::endl;
+//   std::cerr << ss.str();
+//   rtree.domain()->dump(stderr);
+//   std::cerr << "\n\n\n";
+// }
+
 void generic_tile_offsets_from_capnp(
     const capnp::FragmentMetadata::GenericTileOffsets::Reader& gt_reader,
     FragmentMetadata::GenericTileOffsets& gt_offsets) {
@@ -377,9 +402,10 @@ Status fragment_metadata_from_capnp(
     // the version of a fragment is on disk, we will be serializing _on wire_ in
     // fragment_metadata_to_capnp in the "modern" (post v5) way, so we need to
     // deserialize it as well in that way.
-    frag_meta->memory_tokens().reserve(MemoryType::RTREE, data.size());
+    frag_meta->memory_tokens().reserve(data.size(), MemoryType::RTREE);
     frag_meta->rtree().deserialize(
         deserializer, &domain, constants::format_version);
+    loaded_metadata.rtree_ = true;
   }
 
   // It's important to do this here as init_domain depends on some fields
@@ -677,6 +703,9 @@ Status fragment_metadata_to_capnp(
       ned_builder,
       frag_meta.non_empty_domain(),
       frag_meta.array_schema()->dim_num()));
+
+  // std::cerr << "SERIALIZING:" << std::endl;
+  // dump_rtree(frag_meta.rtree());
 
   // TODO: Can this be done better? Does this make a lot of copies?
   SizeComputationSerializer size_computation_serializer;

@@ -2100,18 +2100,30 @@ void FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
 
   // Use the serialized buffer size to approximate memory usage of the rtree.
   try {
-    memory_tokens_.reserve(MemoryType::RTREE, tile.size());
+    // std::stringstream ss;
+    // ss << "TID: " << std::this_thread::get_id() << " : " << (void*) this;
+    // ss << " RTREE size: " << tile.size() << std::endl;
+    // std::cerr << ss.str();
+    memory_tokens_.reserve(tile.size(), MemoryType::RTREE);
     Deserializer deserializer(tile.data(), tile.size());
     rtree_.deserialize(deserializer, &array_schema_->domain(), version_);
     loaded_metadata_.rtree_ = true;
   } catch (...) {
+    if (memory_tokens_.has_reservation(MemoryType::RTREE, {})) {
+      memory_tokens_.release(MemoryType::RTREE);
+    }
     std::throw_with_nested(
         FragmentMetadataStatusException("Error loading R-Tree"));
   }
 }
 
 void FragmentMetadata::free_rtree() {
+  // std::stringstream ss;
+  // ss << "TID: " << std::this_thread::get_id() << " : " << (void*) this;
+  // ss << " RTREE RELEASE" << std::endl;
+  // std::cerr << ss.str();
   rtree_.free_memory();
+  memory_tokens_.release(MemoryType::RTREE);
   loaded_metadata_.rtree_ = false;
 }
 
@@ -2913,7 +2925,7 @@ void FragmentMetadata::load_tile_offsets(
 
   try {
     auto size = tile_offsets_num * sizeof(uint64_t);
-    memory_tokens_.reserve(MemoryType::TILE_OFFSETS, idx, size);
+    memory_tokens_.reserve(size, MemoryType::TILE_OFFSETS, idx);
     tile_offsets_[idx].resize(tile_offsets_num);
     deserializer.read(&tile_offsets_[idx][0], size);
   } catch (...) {
@@ -2958,7 +2970,7 @@ void FragmentMetadata::load_tile_var_offsets(
 
   try {
     auto size = tile_var_offsets_num * sizeof(uint64_t);
-    memory_tokens_.reserve(MemoryType::TILE_VAR_OFFSETS, idx, size);
+    memory_tokens_.reserve(size, MemoryType::TILE_VAR_OFFSETS, idx);
     tile_var_offsets_[idx].resize(tile_var_offsets_num);
     deserializer.read(&tile_var_offsets_[idx][0], size);
   } catch (...) {
@@ -2999,7 +3011,7 @@ void FragmentMetadata::load_tile_var_sizes(
 
   try {
     auto size = tile_var_sizes_num * sizeof(uint64_t);
-    memory_tokens_.reserve(MemoryType::TILE_VAR_SIZES, idx, size);
+    memory_tokens_.reserve(size, MemoryType::TILE_VAR_SIZES, idx);
     tile_var_sizes_[idx].resize(tile_var_sizes_num);
     deserializer.read(&tile_var_sizes_[idx][0], size);
   } catch (...) {
@@ -3025,7 +3037,7 @@ void FragmentMetadata::load_tile_validity_offsets(
 
   try {
     auto size = tile_validity_offsets_num * sizeof(uint64_t);
-    memory_tokens_.reserve(MemoryType::TILE_VALIDITY_OFFSETS, idx, size);
+    memory_tokens_.reserve(size, MemoryType::TILE_VALIDITY_OFFSETS, idx);
     tile_validity_offsets_[idx].resize(tile_validity_offsets_num);
     if (!buff->read(&tile_validity_offsets_[idx][0], size).ok()) {
       throw FragmentMetadataStatusException(
@@ -3065,7 +3077,7 @@ void FragmentMetadata::load_tile_min_values(
 
   try {
     auto size = buffer_size + var_buffer_size;
-    memory_tokens_.reserve(MemoryType::MIN_BUFFER, idx, size);
+    memory_tokens_.reserve(size, MemoryType::MIN_BUFFER, idx);
     tile_min_buffer_[idx].resize(buffer_size);
     deserializer.read(&tile_min_buffer_[idx][0], buffer_size);
 
@@ -3106,7 +3118,7 @@ void FragmentMetadata::load_tile_max_values(
 
   try {
     auto size = buffer_size + var_buffer_size;
-    memory_tokens_.reserve(MemoryType::MAX_BUFFER, idx, size);
+    memory_tokens_.reserve(size, MemoryType::MAX_BUFFER, idx);
     tile_max_buffer_[idx].resize(buffer_size);
     deserializer.read(&tile_max_buffer_[idx][0], buffer_size);
 
@@ -3142,7 +3154,7 @@ void FragmentMetadata::load_tile_sum_values(
 
   try {
     auto size = tile_sum_num * sizeof(uint64_t);
-    memory_tokens_.reserve(MemoryType::SUMS, idx, size);
+    memory_tokens_.reserve(size, MemoryType::SUMS, idx);
     tile_sums_[idx].resize(size);
     deserializer.read(tile_sums_[idx].data(), size);
   } catch (...) {
@@ -3172,7 +3184,7 @@ void FragmentMetadata::load_tile_null_count_values(
 
   try {
     auto size = tile_null_count_num * sizeof(uint64_t);
-    memory_tokens_.reserve(MemoryType::NULL_COUNTS, idx, size);
+    memory_tokens_.reserve(size, MemoryType::NULL_COUNTS, idx);
     tile_null_counts_[idx].resize(tile_null_count_num);
     deserializer.read(&tile_null_counts_[idx][0], size);
   } catch (...) {
@@ -3505,6 +3517,7 @@ void FragmentMetadata::load_v1_v2(
   if (schema != array_schemas.end()) {
     set_array_schema(schema->second);
   } else {
+    cpptrace::generate_trace().print();
     throw FragmentMetadataStatusException(
         "Could not find schema" + array_schema_name_ +
         " in map of schemas loaded.\n" +
@@ -3570,6 +3583,14 @@ void FragmentMetadata::load_footer(
     if (schema != array_schemas.end()) {
       set_array_schema(schema->second);
     } else {
+      std::stringstream ss;
+      ss << "Looking for schema:" << std::endl << "  => " << array_schema_name_ << std::endl;
+      ss << "Known schemas:" << std::endl;
+      for (auto& iter : array_schemas) {
+        ss << "   * " << iter.first << std::endl;
+      }
+      std::cerr << ss.str();
+      cpptrace::generate_trace().print();
       throw FragmentMetadataStatusException(
           "Could not find schema " + array_schema_name_ +
           " in map of schemas loaded.\n" +
@@ -3583,6 +3604,7 @@ void FragmentMetadata::load_footer(
     if (schema != array_schemas.end()) {
       set_array_schema(schema->second);
     } else {
+      cpptrace::generate_trace().print();
       throw FragmentMetadataStatusException(
           "Could not find schema " + array_schema_name_ +
           " in map of schemas loaded.\n" +
@@ -3852,7 +3874,7 @@ void FragmentMetadata::read_file_footer(
   resources_->stats().add_counter("read_frag_meta_size", *footer_size);
 
   try {
-    memory_tokens_.reserve(MemoryType::FOOTER, *footer_size);
+    memory_tokens_.reserve(*footer_size, MemoryType::FOOTER);
 
     // Read footer
     throw_if_not_ok(resources_->vfs().read(

@@ -1324,7 +1324,7 @@ shared_ptr<const Enumeration> ArrayDirectory::load_enumeration(
 
   try {
     if (memory_tracker) {
-      memory_tracker->leak(MemoryType::ENUMERATION, tile.size());
+      memory_tracker->leak(tile.size(), MemoryType::ENUMERATION);
     }
 
     Deserializer deserializer(tile.data(), tile.size());

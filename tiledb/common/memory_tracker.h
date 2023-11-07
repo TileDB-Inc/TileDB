@@ -66,7 +66,7 @@ class [[nodiscard]] MemoryToken {
 
   /** Constructor. */
   MemoryToken(
-      std::weak_ptr<MemoryTracker> parent, MemoryType mem_type, uint64_t size);
+      std::weak_ptr<MemoryTracker> parent, uint64_t size, MemoryType mem_type);
 
   /** Destructor. */
   ~MemoryToken();
@@ -89,8 +89,8 @@ class [[nodiscard]] MemoryToken {
 
  private:
   std::weak_ptr<MemoryTracker> parent_;
-  MemoryType mem_type_;
   uint64_t size_;
+  MemoryType mem_type_;
 };
 
 class MemoryTracker : std::enable_shared_from_this<MemoryTracker> {
@@ -105,13 +105,13 @@ class MemoryTracker : std::enable_shared_from_this<MemoryTracker> {
   DISABLE_MOVE_AND_MOVE_ASSIGN(MemoryTracker);
 
   /** Reserve memory budget. */
-  shared_ptr<MemoryToken> reserve(MemoryType mem_type, uint64_t size);
+  shared_ptr<MemoryToken> reserve(uint64_t size, MemoryType mem_type);
 
   /** Release a reservation. */
   void release(MemoryToken& token);
 
   /** Leak. Provocatively named to make sure we come back to it. */
-  void leak(MemoryType mem_type, uint64_t size);
+  void leak(uint64_t size, MemoryType mem_type);
 
   /** Set total memory budget. */
   void set_budget(uint64_t size);
@@ -137,7 +137,7 @@ class MemoryTracker : std::enable_shared_from_this<MemoryTracker> {
   }
 
  private:
-  void do_reservation(MemoryType mem_type, uint64_t size);
+  void do_reservation(uint64_t size, MemoryType mem_type);
 
   /** The stats instance. */
   stats::Stats* stats_;
@@ -159,19 +159,21 @@ class MemoryTracker : std::enable_shared_from_this<MemoryTracker> {
 };
 
 struct MemoryTokenKey {
-  MemoryTokenKey(MemoryType type, uint64_t id)
-      : type_(type)
-      , id_(id) {
-  }
+  MemoryTokenKey(MemoryType type, const std::vector<uint64_t>& id);
 
   bool operator==(const MemoryTokenKey& rhs) const {
-    return (type_ == rhs.type_) && (id_ == rhs.id_);
+    if (type_ != rhs.type_ || id_len_ != rhs.id_len_) {
+      return false;
+    }
+
+    return memcmp(id_.get(), rhs.id_.get(), id_len_ * sizeof(uint64_t)) == 0;
   }
 
   static std::size_t hash(const MemoryTokenKey& key);
 
   MemoryType type_;
-  uint64_t id_;
+  std::shared_ptr<uint64_t[]> id_;
+  size_t id_len_;
 };
 
 struct MemoryTokenKeyHasher {
@@ -183,19 +185,62 @@ class MemoryTokenBag {
   MemoryTokenBag() = default;
   MemoryTokenBag(shared_ptr<MemoryTracker> memory_tracker);
 
-  /** Reserve memory for a type that has no id. Like rtree or footer. */
-  void reserve(MemoryType mem_type, uint64_t size);
+  /** Reset all tokens and drop the memory tracker. */
+  void clear();
+
+  /** Set the memory tracker to use for this bag. Throws if already set. */
+  void set_memory_tracker(shared_ptr<MemoryTracker> memory_tracker);
+
+  bool has_reservation(MemoryType mem_type, std::vector<uint64_t> id);
 
   /** Reserve memory for a type and id pair. */
-  void reserve(MemoryType mem_type, uint64_t id, uint64_t size);
-
-  /** Release memory for a type with no id. */
-  void release(MemoryType mem_type);
+  void reserve(uint64_t size, MemoryType mem_type, std::vector<uint64_t> id);
 
   /** Release memory for a type and id. */
-  void release(MemoryType mem_type, uint64_t id);
+  void release(MemoryType mem_type, std::vector<uint64_t> id);
+
+  /** Syntactic helper. */
+  void reserve(uint64_t size, MemoryType mem_type) {
+    reserve(size, mem_type, std::vector<uint64_t>{});
+  }
+
+  /** Syntactic helper. */
+  void reserve(uint64_t size, MemoryType mem_type, uint64_t x) {
+    reserve(size, mem_type, std::vector<uint64_t>{x});
+  }
+
+  /** Syntactic helper. */
+  void reserve(uint64_t size, MemoryType mem_type, uint64_t x, uint64_t y) {
+    reserve(size, mem_type, std::vector<uint64_t>{x, y});
+  }
+
+  /** Syntactic helper. */
+  void reserve(uint64_t size, MemoryType mem_type, uint64_t x, uint64_t y, uint64_t z) {
+    reserve(size, mem_type, std::vector<uint64_t>{x, y, z});
+  }
+
+  /** Syntactic helper. */
+  inline void release(MemoryType mem_type) {
+    release(mem_type, std::vector<uint64_t>{});
+  }
+
+  /** Syntactic helper. */
+  inline void release(MemoryType mem_type, uint64_t x) {
+    release(mem_type, std::vector<uint64_t>{x});
+  }
+
+  /** Syntactic helper. */
+  inline void release(MemoryType mem_type, uint64_t x, uint64_t y) {
+    release(mem_type, std::vector<uint64_t>{x, y});
+  }
+
+  /** Syntactic helper. */
+  inline void release(MemoryType mem_type, uint64_t x, uint64_t y, uint64_t z) {
+    release(mem_type, std::vector<uint64_t>{x, y, z});
+  }
 
  private:
+  std::mutex mutex_;
   shared_ptr<MemoryTracker> memory_tracker_;
   std::unordered_map<
       MemoryTokenKey,
