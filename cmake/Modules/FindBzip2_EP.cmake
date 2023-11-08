@@ -36,47 +36,48 @@ include(TileDBCommon)
 
 if(TILEDB_VCPKG)
   find_package(BZip2 REQUIRED)
-  set(BZIP2_FOUND TRUE)
-else()
-  # First check for a static version in the EP prefix.
-  find_library(BZIP2_LIBRARIES
-    NAMES
-      libbz2static${CMAKE_STATIC_LIBRARY_SUFFIX}
-      libbz2${CMAKE_STATIC_LIBRARY_SUFFIX}
+  install_target_libs(BZip2::BZip2)
+  return()
+endif()
+
+# First check for a static version in the EP prefix.
+find_library(BZIP2_LIBRARIES
+  NAMES
+    libbz2static${CMAKE_STATIC_LIBRARY_SUFFIX}
+    libbz2${CMAKE_STATIC_LIBRARY_SUFFIX}
+  PATHS ${TILEDB_EP_INSTALL_PREFIX}
+  PATH_SUFFIXES lib
+  NO_DEFAULT_PATH
+)
+
+if (BZIP2_LIBRARIES)
+  set(BZIP2_STATIC_EP_FOUND TRUE)
+  find_path(BZIP2_INCLUDE_DIR
+    NAMES bzlib.h
     PATHS ${TILEDB_EP_INSTALL_PREFIX}
-    PATH_SUFFIXES lib
+    PATH_SUFFIXES include
     NO_DEFAULT_PATH
   )
-
-  if (BZIP2_LIBRARIES)
-    set(BZIP2_STATIC_EP_FOUND TRUE)
-    find_path(BZIP2_INCLUDE_DIR
-      NAMES bzlib.h
-      PATHS ${TILEDB_EP_INSTALL_PREFIX}
-      PATH_SUFFIXES include
-      NO_DEFAULT_PATH
-    )
-  elseif(NOT TILEDB_FORCE_ALL_DEPS)
-    set(BZIP2_STATIC_EP_FOUND FALSE)
-    # Static EP not found, search in system paths.
-    find_library(BZIP2_LIBRARIES
-      NAMES
-        bz2 libbz2
-      PATH_SUFFIXES lib bin
-      ${TILEDB_DEPS_NO_DEFAULT_PATH}
-    )
-    find_path(BZIP2_INCLUDE_DIR
-      NAMES bzlib.h
-      PATH_SUFFIXES include
-      ${TILEDB_DEPS_NO_DEFAULT_PATH}
-    )
-  endif()
-
-  include(FindPackageHandleStandardArgs)
-  FIND_PACKAGE_HANDLE_STANDARD_ARGS(Bzip2
-    REQUIRED_VARS BZIP2_LIBRARIES BZIP2_INCLUDE_DIR
+elseif(NOT TILEDB_FORCE_ALL_DEPS)
+  set(BZIP2_STATIC_EP_FOUND FALSE)
+  # Static EP not found, search in system paths.
+  find_library(BZIP2_LIBRARIES
+    NAMES
+      bz2 libbz2
+    PATH_SUFFIXES lib bin
+    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+  )
+  find_path(BZIP2_INCLUDE_DIR
+    NAMES bzlib.h
+    PATH_SUFFIXES include
+    ${TILEDB_DEPS_NO_DEFAULT_PATH}
   )
 endif()
+
+include(FindPackageHandleStandardArgs)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(Bzip2
+  REQUIRED_VARS BZIP2_LIBRARIES BZIP2_INCLUDE_DIR
+)
 
 if (NOT BZIP2_FOUND)
   if (TILEDB_SUPERBUILD)

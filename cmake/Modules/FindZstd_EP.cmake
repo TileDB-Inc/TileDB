@@ -39,51 +39,51 @@ if (TILEDB_VCPKG)
   find_package(zstd CONFIG REQUIRED)
   if (TARGET zstd::libzstd_static)
     set(ZSTD_TARGET zstd::libzstd_static)
-    set(ZSTD_STATIC_EP_FOUND TRUE)
   else()
     set(ZSTD_TARGET zstd::libzstd_shared)
   endif()
-  set(ZSTD_FOUND TRUE)
-else()
-  # First check for a static version in the EP prefix.
-  find_library(ZSTD_LIBRARIES
-    NAMES
-      libzstd${CMAKE_STATIC_LIBRARY_SUFFIX}
-      zstd_static${CMAKE_STATIC_LIBRARY_SUFFIX}
+  install_target_libs(${ZSTD_TARGET})
+  return()
+endif()
+
+# First check for a static version in the EP prefix.
+find_library(ZSTD_LIBRARIES
+  NAMES
+    libzstd${CMAKE_STATIC_LIBRARY_SUFFIX}
+    zstd_static${CMAKE_STATIC_LIBRARY_SUFFIX}
+  PATHS ${TILEDB_EP_INSTALL_PREFIX}
+  PATH_SUFFIXES lib
+  NO_DEFAULT_PATH
+)
+
+if (ZSTD_LIBRARIES)
+  set(ZSTD_STATIC_EP_FOUND TRUE)
+  find_path(ZSTD_INCLUDE_DIR
+    NAMES zstd.h
     PATHS ${TILEDB_EP_INSTALL_PREFIX}
-    PATH_SUFFIXES lib
+    PATH_SUFFIXES include
     NO_DEFAULT_PATH
   )
-
-  if (ZSTD_LIBRARIES)
-    set(ZSTD_STATIC_EP_FOUND TRUE)
-    find_path(ZSTD_INCLUDE_DIR
-      NAMES zstd.h
-      PATHS ${TILEDB_EP_INSTALL_PREFIX}
-      PATH_SUFFIXES include
-      NO_DEFAULT_PATH
-    )
-  elseif(NOT TILEDB_FORCE_ALL_DEPS)
-    set(ZSTD_STATIC_EP_FOUND FALSE)
-    # Static EP not found, search in system paths.
-    find_library(ZSTD_LIBRARIES
-      NAMES
-        zstd libzstd
-      PATH_SUFFIXES lib bin
-      ${TILEDB_DEPS_NO_DEFAULT_PATH}
-    )
-    find_path(ZSTD_INCLUDE_DIR
-      NAMES zstd.h
-      PATH_SUFFIXES include
-      ${TILEDB_DEPS_NO_DEFAULT_PATH}
-    )
-  endif()
-
-  include(FindPackageHandleStandardArgs)
-  FIND_PACKAGE_HANDLE_STANDARD_ARGS(Zstd
-    REQUIRED_VARS ZSTD_LIBRARIES ZSTD_INCLUDE_DIR
+elseif(NOT TILEDB_FORCE_ALL_DEPS)
+  set(ZSTD_STATIC_EP_FOUND FALSE)
+  # Static EP not found, search in system paths.
+  find_library(ZSTD_LIBRARIES
+    NAMES
+      zstd libzstd
+    PATH_SUFFIXES lib bin
+    ${TILEDB_DEPS_NO_DEFAULT_PATH}
+  )
+  find_path(ZSTD_INCLUDE_DIR
+    NAMES zstd.h
+    PATH_SUFFIXES include
+    ${TILEDB_DEPS_NO_DEFAULT_PATH}
   )
 endif()
+
+include(FindPackageHandleStandardArgs)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(Zstd
+  REQUIRED_VARS ZSTD_LIBRARIES ZSTD_INCLUDE_DIR
+)
 
 if (NOT ZSTD_FOUND)
   if (TILEDB_SUPERBUILD)
