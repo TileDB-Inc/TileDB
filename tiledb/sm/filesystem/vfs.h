@@ -73,9 +73,6 @@ namespace tiledb::sm {
 constexpr bool have_s3 = false;
 }
 #endif
-namespace tiledb::sm {
-constexpr auto tag_s3 = TagV<tiledb::sm::have_s3>();
-}
 
 #ifdef HAVE_HDFS
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
