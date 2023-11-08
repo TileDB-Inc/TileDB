@@ -141,6 +141,8 @@ class MemoryTracker : std::enable_shared_from_this<MemoryTracker> {
     return budget_ - usage_;
   }
 
+  std::string to_string() const;
+
  private:
   void do_reservation(uint64_t size, MemoryType mem_type);
 
@@ -189,6 +191,10 @@ class MemoryTokenBag {
  public:
   MemoryTokenBag() = default;
   MemoryTokenBag(shared_ptr<MemoryTracker> memory_tracker);
+  MemoryTokenBag(MemoryTokenBag&& rhs);
+  MemoryTokenBag& operator=(MemoryTokenBag&& rhs);
+
+  DISABLE_COPY_AND_COPY_ASSIGN(MemoryTokenBag);
 
   /** Reset all tokens and drop the memory tracker. */
   void clear();

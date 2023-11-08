@@ -225,9 +225,6 @@ class WriterTileTuple {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** Memory tracking tokens bag. */
-  MemoryTokenBag memory_tokens_;
-
   /**
    * Fixed data tile. Contains offsets for var size attribute/dimension and
    * the data itself in case of fixed sized attribute/dimension.

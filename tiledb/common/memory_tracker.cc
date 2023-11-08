@@ -146,6 +146,16 @@ void MemoryTracker::set_budget(uint64_t size) {
   budget_ = size;
 }
 
+std::string MemoryTracker::to_string() const {
+  std::stringstream ss;
+  ss << "[Budget: " << budget_ << "]";
+  ss << "[Usage: " << usage_ << "]";
+  for (auto& [type, size] : usage_by_type_) {
+    ss << "[" << memory_type_to_str(type) << ": " << size << "]";
+  }
+  return ss.str();
+}
+
 void MemoryTracker::do_reservation(uint64_t size, MemoryType mem_type) {
   std::lock_guard<std::mutex> lg(mutex_);
   if (usage_ + size > budget_) {
@@ -154,7 +164,8 @@ void MemoryTracker::do_reservation(uint64_t size, MemoryType mem_type) {
         "Insufficient " + mem_type_str + " memory budget; Need " +
         std::to_string(size) + " bytes but only had " +
         std::to_string(budget_ - usage_) +
-        " bytes remaining from original budget of " + std::to_string(budget_));
+        " bytes remaining from original budget of " + std::to_string(budget_)
+        + to_string());
   }
 
   usage_ += size;
@@ -201,6 +212,17 @@ std::size_t MemoryTokenKeyHasher::operator()(const MemoryTokenKey& key) const {
 
 MemoryTokenBag::MemoryTokenBag(shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker) {
+}
+
+MemoryTokenBag::MemoryTokenBag(MemoryTokenBag&& rhs)
+    : memory_tracker_(std::move(rhs.memory_tracker_))
+    , tokens_(std::move(rhs.tokens_)) {
+}
+
+MemoryTokenBag& MemoryTokenBag::operator=(MemoryTokenBag&& rhs) {
+  tokens_ = std::move(rhs.tokens_);
+  memory_tracker_ = std::move(rhs.memory_tracker_);
+  return *this;
 }
 
 void MemoryTokenBag::clear() {

@@ -844,47 +844,47 @@ bool AsyncFx::is_array(const std::string& array_name) {
   return type == TILEDB_ARRAY;
 }
 
-// TEST_CASE_METHOD(
-//     AsyncFx, "C API: Test dense async", "[capi][async][dense-async]") {
-//   SECTION("- No outside subarray") {
-//     use_external_subarray_ = false;
-//   }
-//   SECTION("- outside subarray") {
-//     use_external_subarray_ = true;
-//   }
-//   remove_dense_array();
-//   create_dense_array();
-//   write_dense_async();
-//   read_dense_async();
-//   remove_dense_array();
-// }
-//
-// TEST_CASE_METHOD(
-//     AsyncFx, "C API: Test sparse async", "[capi][async][sparse-async]") {
-//   SECTION("- No outside subarray") {
-//     use_external_subarray_ = false;
-//   }
-//   SECTION("- outside subarray") {
-//     use_external_subarray_ = true;
-//   }
-//   remove_sparse_array();
-//   create_sparse_array();
-//   write_sparse_async();
-//   read_sparse_async();
-//   remove_sparse_array();
-// }
-//
-// TEST_CASE_METHOD(
-//     AsyncFx, "C API: Test async cancellation", "[capi][async][cancel]") {
-//   SECTION("- No outside subarray") {
-//     use_external_subarray_ = false;
-//   }
-//   SECTION("- outside subarray") {
-//     use_external_subarray_ = true;
-//   }
-//   remove_sparse_array();
-//   create_sparse_array();
-//   write_sparse_async_cancelled();
-//   read_sparse_async();
-//   remove_sparse_array();
-// }
+TEST_CASE_METHOD(
+    AsyncFx, "C API: Test dense async", "[capi][async][dense-async]") {
+  SECTION("- No outside subarray") {
+    use_external_subarray_ = false;
+  }
+  SECTION("- outside subarray") {
+    use_external_subarray_ = true;
+  }
+  remove_dense_array();
+  create_dense_array();
+  write_dense_async();
+  read_dense_async();
+  remove_dense_array();
+}
+
+TEST_CASE_METHOD(
+    AsyncFx, "C API: Test sparse async", "[capi][async][sparse-async]") {
+  SECTION("- No outside subarray") {
+    use_external_subarray_ = false;
+  }
+  SECTION("- outside subarray") {
+    use_external_subarray_ = true;
+  }
+  remove_sparse_array();
+  create_sparse_array();
+  write_sparse_async();
+  read_sparse_async();
+  remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    AsyncFx, "C API: Test async cancellation", "[capi][async][cancel]") {
+  SECTION("- No outside subarray") {
+    use_external_subarray_ = false;
+  }
+  SECTION("- outside subarray") {
+    use_external_subarray_ = true;
+  }
+  remove_sparse_array();
+  create_sparse_array();
+  write_sparse_async_cancelled();
+  read_sparse_async();
+  remove_sparse_array();
+}

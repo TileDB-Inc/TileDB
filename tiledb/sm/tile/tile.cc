@@ -170,14 +170,16 @@ WriterTile::WriterTile(
     const Datatype type,
     const uint64_t cell_size,
     const uint64_t size,
-    MemoryTokenBag* memory_tokens)
+    shared_ptr<MemoryTracker> memory_tracker)
     : TileBase(format_version, type, cell_size, size)
-    , memory_tokens_(memory_tokens)
+    , memory_tokens_(memory_tracker)
     , filtered_buffer_(0) {
+  memory_tokens_.reserve(size, MemoryType::WRITER_FIXED_DATA);
 }
 
 WriterTile::WriterTile(WriterTile&& tile)
     : TileBase(std::move(tile))
+    , memory_tokens_(std::move(tile.memory_tokens_))
     , filtered_buffer_(std::move(tile.filtered_buffer_)) {
 }
 
@@ -268,17 +270,20 @@ void Tile::swap(Tile& tile) {
 void WriterTile::clear_data() {
   data_ = nullptr;
   size_ = 0;
+  memory_tokens_.clear();
 }
 
 void WriterTile::write_var(const void* data, uint64_t offset, uint64_t nbytes) {
+  // It turns out this is a var sized tile. So drop our fixed sized reservation
+  // before it gets replaced by the var sized reservation.
+  memory_tokens_.release(MemoryType::WRITER_FIXED_DATA);
+
   if (size_ - offset < nbytes) {
     auto new_alloc_size = size_ == 0 ? offset + nbytes : size_;
     while (new_alloc_size < offset + nbytes)
       new_alloc_size *= 2;
 
-    if (memory_tokens_ != nullptr) {
-      memory_tokens_->reserve(new_alloc_size, MemoryType::WRITER_VAR_DATA);
-    }
+    memory_tokens_.reserve(new_alloc_size, MemoryType::WRITER_VAR_DATA);
 
     auto new_data =
         static_cast<char*>(tdb_realloc(data_.release(), new_alloc_size));
@@ -294,6 +299,7 @@ void WriterTile::write_var(const void* data, uint64_t offset, uint64_t nbytes) {
 
 void WriterTile::swap(WriterTile& tile) {
   TileBase::swap(tile);
+  std::swap(memory_tokens_, tile.memory_tokens_);
   std::swap(filtered_buffer_, tile.filtered_buffer_);
 }
 

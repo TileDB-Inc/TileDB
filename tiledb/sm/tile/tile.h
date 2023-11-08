@@ -392,7 +392,7 @@ class WriterTile : public TileBase {
       const Datatype type,
       const uint64_t cell_size,
       const uint64_t size,
-      MemoryTokenBag* memory_tokens_ = nullptr);
+      shared_ptr<MemoryTracker> = nullptr);
 
   /** Move constructor. */
   WriterTile(WriterTile&& tile);
@@ -455,7 +455,7 @@ class WriterTile : public TileBase {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  MemoryTokenBag* memory_tokens_;
+  MemoryTokenBag memory_tokens_;
 
   /**
    * The buffer that contains the filtered, on-disk bytes. This buffer is
