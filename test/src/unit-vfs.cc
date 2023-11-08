@@ -375,7 +375,30 @@ TEMPLATE_LIST_TEST_CASE(
   DYNAMIC_SECTION(
       fs.temp_dir_.backend_name()
       << " ls_cb with recursion: " << (recursive ? "true" : "false")) {
-    fs.test_ls_cb(cb, recursive);
+    /*
+     * Temporary stub while common base class is added. The s3 accessor won't be
+     * needed, and can be converted to a virtual function call.
+     */
+#ifdef HAVE_S3
+    VFSTestBase::LsObjects ls_objects;
+    tiledb::sm::LsCallbackWrapper wrapper(cb, &ls_objects);
+    // If testing with recursion use the root directory, otherwise use a subdir.
+    auto path = recursive ? fs.temp_dir_ : fs.temp_dir_.join_path("subdir_1");
+    if (recursive) {
+      CHECK_NOTHROW(fs.s3().ls_cb(path, wrapper, ""));
+    } else {
+      CHECK_NOTHROW(fs.s3().ls_cb(path, wrapper));
+    }
+
+    if (!recursive) {
+      // If non-recursive, all objects in the first directory should be
+      // returned.
+      fs.expected_results_.resize(fs.test_tree_[0]);
+    }
+    std::sort(fs.expected_results_.begin(), fs.expected_results_.end());
+    CHECK(ls_objects.size() == fs.expected_results_.size());
+    CHECK(ls_objects == fs.expected_results_);
+#endif
   }
 }
 
@@ -397,7 +420,17 @@ TEST_CASE("VFS: ls_recursive callback stops traversal", "[vfs][ls_recursive]") {
         }
         return 1;
       };
-  vfs_test.test_ls_recursive(cb, cb_count);
+  VFSTestBase::LsObjects ls_objects;
+  tiledb::sm::LsCallbackWrapper wrapper(cb, &ls_objects);
+  CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, wrapper));
+
+  std::sort(
+      vfs_test.expected_results_.begin(), vfs_test.expected_results_.end());
+  if (cb_count != 0) {
+    vfs_test.expected_results_.resize(cb_count);
+  }
+  CHECK(ls_objects.size() == vfs_test.expected_results_.size());
+  CHECK(ls_objects == vfs_test.expected_results_);
 }
 
 TEST_CASE(

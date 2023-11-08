@@ -36,13 +36,7 @@
 #include <test/support/tdb_catch_prng.h>
 #include "test/support/src/helpers.h"
 #include "tiledb/sm/enums/vfs_mode.h"
-#include "tiledb/sm/filesystem/s3.h"
-
-#ifdef _WIN32
-#include "tiledb/sm/filesystem/win.h"
-#else
-#include "tiledb/sm/filesystem/posix.h"
-#endif
+#include "tiledb/sm/filesystem/vfs.h"
 
 namespace tiledb {
 namespace test {
@@ -64,13 +58,6 @@ constexpr bool aws_s3_config = false;
  * @return URI which the caller can use to create a temp directory.
  */
 tiledb::sm::URI test_dir(const std::string& prefix);
-
-/**
- * Creates a config for testing VFS storage backends over local emulators.
- *
- * @return Fully initialized configuration for testing VFS storage backends.
- */
-tiledb::sm::Config create_test_config();
 
 /**
  * Create the vector of supported filesystems.
@@ -737,6 +724,13 @@ class VFSTestBase {
     return is_supported_;
   }
 
+  /**
+   * Creates a config for testing VFS storage backends over local emulators.
+   *
+   * @return Fully initialized configuration for testing VFS storage backends.
+   */
+  static tiledb::sm::Config create_test_config();
+
   std::vector<size_t> test_tree_;
   ThreadPool compute_, io_;
   tiledb::sm::VFS vfs_;
@@ -753,33 +747,36 @@ class VFSTestBase {
 class VFSTest : public VFSTestBase {
  public:
   VFSTest(const std::vector<size_t>& test_tree, const std::string& prefix);
-
-  void test_ls_recursive(
-      tiledb::sm::LsCallbackCAPI cb, size_t expected_count = 0);
-
- private:
-  void setup_test();
 };
 
 /** Test object for tiledb::sm::S3 functionality. */
-class S3Test : public VFSTestBase {
+class S3Test : public VFSTestBase, public tiledb::sm::S3_within_VFS {
  public:
-  explicit S3Test(const std::vector<size_t>& test_tree);
-
-  void test_ls_cb(tiledb::sm::LsCallbackCAPI cb, bool recursive);
-
- private:
-  void setup_test();
+  explicit S3Test(const std::vector<size_t>& test_tree)
+      : VFSTestBase(test_tree, "s3://")
+      , S3_within_VFS(&tiledb::test::g_helper_stats, &io_, vfs_.config()) {
+#ifdef HAVE_S3
+    s3().create_bucket(temp_dir_).ok();
+    for (size_t i = 1; i <= test_tree_.size(); i++) {
+      sm::URI path = temp_dir_.join_path("subdir_" + std::to_string(i));
+      // VFS::create_dir is a no-op for S3; Just create objects.
+      for (size_t j = 1; j <= test_tree_[i - 1]; j++) {
+        auto object_uri = path.join_path("test_file_" + std::to_string(j));
+        s3().touch(object_uri).ok();
+        std::string data(j * 10, 'a');
+        s3().write(object_uri, data.data(), data.size()).ok();
+        s3().flush_object(object_uri).ok();
+        expected_results_.emplace_back(object_uri.to_string(), data.size());
+      }
+    }
+#endif
+  }
 };
 
 /** Stub test object for tiledb::sm::Win and Posix functionality. */
 class LocalFsTest : public VFSTestBase {
  public:
   explicit LocalFsTest(const std::vector<size_t>& test_tree);
-
- private:
-  void setup_test() {
-  }
 };
 
 /** Stub test object for tiledb::sm::Azure functionality. */
@@ -787,11 +784,6 @@ class AzureTest : public VFSTestBase {
  public:
   explicit AzureTest(const std::vector<size_t>& test_tree)
       : VFSTestBase(test_tree, "azure://") {
-    setup_test();
-  }
-
- private:
-  void setup_test() {
   }
 };
 
@@ -800,11 +792,6 @@ class GCSTest : public VFSTestBase {
  public:
   explicit GCSTest(const std::vector<size_t>& test_tree)
       : VFSTestBase(test_tree, "gcs://") {
-    setup_test();
-  }
-
- private:
-  void setup_test() {
   }
 };
 
@@ -813,11 +800,6 @@ class HDFSTest : public VFSTestBase {
  public:
   explicit HDFSTest(const std::vector<size_t>& test_tree)
       : VFSTestBase(test_tree, "hdfs://") {
-    setup_test();
-  }
-
- private:
-  void setup_test() {
   }
 };
 
@@ -826,11 +808,6 @@ class MemFsTest : public VFSTestBase {
  public:
   explicit MemFsTest(const std::vector<size_t>& test_tree)
       : VFSTestBase(test_tree, "mem://") {
-    setup_test();
-  }
-
- private:
-  void setup_test() {
   }
 };
 }  // End of namespace test

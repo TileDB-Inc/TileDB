@@ -44,6 +44,7 @@
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
+#include "tiledb/common/tag.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/cache/lru_cache.h"
 #include "tiledb/sm/config/config.h"
@@ -63,8 +64,18 @@
 #endif
 
 #ifdef HAVE_S3
+namespace tiledb::sm {
+constexpr bool have_s3 = true;
+}
 #include "tiledb/sm/filesystem/s3.h"
+#else
+namespace tiledb::sm {
+constexpr bool have_s3 = false;
+}
 #endif
+namespace tiledb::sm {
+constexpr auto tag_s3 = TagV<tiledb::sm::have_s3>();
+}
 
 #ifdef HAVE_HDFS
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
@@ -169,21 +180,30 @@ struct VFSBase {
 
 /** The S3 filesystem. */
 #ifdef HAVE_S3
-struct S3_within_VFS {
+class S3_within_VFS {
+  /** Private member variable */
+  S3 s3_;
+
+ protected:
   template <typename... Args>
   S3_within_VFS(Args&&... args)
       : s3_(std::forward<Args>(args)...) {
   }
 
-  inline S3& s3() {
+ public:
+  /** Protected accessor for the S3 object. */
+  inline tiledb::sm::S3& s3() {
     return s3_;
   }
 
- protected:
-  S3 s3_;
+  /** Protected accessor for the const S3 object. */
+  inline const tiledb::sm::S3& s3() const {
+    return s3_;
+  }
 };
 #else
-struct S3_within_VFS {
+class S3_within_VFS {
+ protected:
   template <typename... Args>
   S3_within_VFS(Args&&...) {
   }  // empty constructor
@@ -194,7 +214,7 @@ struct S3_within_VFS {
  * This class implements a virtual filesystem that directs filesystem-related
  * function execution to the appropriate backend based on the input URI.
  */
-class VFS : private VFSBase, public S3_within_VFS {
+class VFS : private VFSBase, protected S3_within_VFS {
  public:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
