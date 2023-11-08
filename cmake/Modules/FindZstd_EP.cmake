@@ -30,7 +30,7 @@
 #   - ZSTD_INCLUDE_DIR, directory containing headers
 #   - ZSTD_LIBRARIES, the Zstd library path
 #   - ZSTD_FOUND, whether Zstd has been found
-#   - The zstd::libzstd imported target
+#   - The ${ZSTD_TARGET} imported target
 
 # Include some common helper functions.
 include(TileDBCommon)
@@ -38,9 +38,10 @@ include(TileDBCommon)
 if (TILEDB_VCPKG)
   find_package(zstd CONFIG REQUIRED)
   if (TARGET zstd::libzstd_static)
-    add_library(zstd::libzstd ALIAS zstd::libzstd_static)
+    set(ZSTD_TARGET zstd::libzstd_static)
+    set(ZSTD_STATIC_EP_FOUND TRUE)
   else()
-    add_library(zstd::libzstd ALIAS zstd::libzstd_shared)
+    set(ZSTD_TARGET zstd::libzstd_shared)
   endif()
   set(ZSTD_FOUND TRUE)
 else()
@@ -128,15 +129,16 @@ if (NOT ZSTD_FOUND)
   endif()
 endif()
 
-if (ZSTD_FOUND AND NOT TARGET zstd::libzstd)
+if (ZSTD_FOUND AND NOT ZSTD_TARGET)
   add_library(zstd::libzstd UNKNOWN IMPORTED)
   set_target_properties(zstd::libzstd PROPERTIES
     IMPORTED_LOCATION "${ZSTD_LIBRARIES}"
     INTERFACE_INCLUDE_DIRECTORIES "${ZSTD_INCLUDE_DIR}"
   )
+  set(ZSTD_TARGET zstd::libzstd)
 endif()
 
 # If we built a static EP, install it if required.
 if (ZSTD_STATIC_EP_FOUND AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(zstd::libzstd)
+  install_target_libs(${ZSTD_TARGET})
 endif()

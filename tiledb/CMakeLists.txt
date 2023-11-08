@@ -697,7 +697,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     BZip2::BZip2
     lz4::lz4
     ZLIB::ZLIB
-    zstd::libzstd
+    ${ZSTD_TARGET}
     libmagic
 )
 if (TILEDB_VCPKG)
@@ -990,7 +990,7 @@ if (TILEDB_STATIC)
   append_dep_lib(BZip2::BZip2)
   append_dep_lib(lz4::lz4)
   append_dep_lib(ZLIB::ZLIB)
-  append_dep_lib(zstd::libzstd)
+  append_dep_lib(${ZSTD_TARGET})
   append_dep_lib(CapnProto::capnp)
   append_dep_lib(CapnProto::capnp-json)
   append_dep_lib(CapnProto::kj)
