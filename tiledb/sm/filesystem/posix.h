@@ -113,8 +113,6 @@ class Posix : public FilesystemBase {
    */
   Status remove_dir(const URI& path) const override;
 
-  /** Deletes the file in the input path. */
-
   /**
    * Removes a given path.
    *
@@ -170,6 +168,7 @@ class Posix : public FilesystemBase {
 
   /**
    * Move a given filesystem path.
+   * Both URI must be of the same file:// backend type.
    *
    * @param old_path The old path.
    * @param new_path The new path.
@@ -179,6 +178,7 @@ class Posix : public FilesystemBase {
 
   /**
    * Copy a given filesystem file.
+   * Both URI must be of the same file:// backend type.
    *
    * @param old_path The old path.
    * @param new_path The new path.
@@ -188,6 +188,7 @@ class Posix : public FilesystemBase {
 
   /**
    * Copy a given filesystem directory.
+   * Both URI must be of the same file:// backend type.
    *
    * @param old_path The old path.
    * @param new_path The new path.
