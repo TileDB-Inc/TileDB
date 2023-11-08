@@ -2,7 +2,7 @@
 
 ## Announcements
 
-* TileDB 2.18, targeted for release in November 2023, includes an internal release of a preview set of aggregate pushdown APIs. The APIs will be finalized in 2.19.
+* TileDB 2.18, targeted for release in November 2023, includes a preview set of aggregate pushdown APIs. The APIs will be finalized in 2.19 with performance improvements.
 
 ## Disk Format
 
