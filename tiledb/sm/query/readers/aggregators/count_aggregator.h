@@ -149,6 +149,11 @@ class CountAggregator : public CountAggregatorBase<NonNull> {
   std::string aggregate_name() override {
     return constants::aggregate_count_str;
   }
+
+  /** Returns if the aggregation is for validity only data. */
+  bool aggregation_validity_only() override {
+    return false;
+  }
 };
 
 class NullCountAggregator : public CountAggregatorBase<Null>,
@@ -172,6 +177,11 @@ class NullCountAggregator : public CountAggregatorBase<Null>,
   /** Returns name of the aggregate. */
   std::string aggregate_name() override {
     return constants::aggregate_null_count_str;
+  }
+
+  /** Returns if the aggregation is for validity only data. */
+  bool aggregation_validity_only() override {
+    return true;
   }
 
  private:

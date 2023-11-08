@@ -337,12 +337,11 @@ Status DenseReader::dense_read() {
   }
 
   // Compute attribute names to load and copy.
-  std::unordered_set<std::string> condition_names;
   if (condition_.has_value()) {
-    condition_names = condition_->field_names();
+    qc_loaded_attr_names_set_ = condition_->field_names();
   }
 
-  auto&& [names, var_names] = field_names_to_process(condition_names);
+  auto&& [names, var_names] = field_names_to_process(qc_loaded_attr_names_set_);
 
   // Pre-load all attribute offsets into memory for attributes
   // in query condition to be read.
@@ -393,7 +392,7 @@ Status DenseReader::dense_read() {
     // Get result tiles to process on this iteration.
     t_end = compute_space_tiles_end<DimType>(
         names,
-        condition_names,
+        qc_loaded_attr_names_set_,
         subarray,
         t_start,
         result_space_tiles,
@@ -420,7 +419,7 @@ Status DenseReader::dense_read() {
         subarray,
         t_start,
         t_end,
-        condition_names,
+        qc_loaded_attr_names_set_,
         tile_extents,
         tile_subarrays,
         tile_offsets,
@@ -440,7 +439,6 @@ Status DenseReader::dense_read() {
     // Process all attributes, names starts with the query condition names to
     // clear the memory. Also, a name in names might not be in the user buffers
     // so we might skip the copy but still clear the memory.
-    std::vector<std::string> to_read(1);
     for (auto& name : names) {
       if (name == constants::coords || array_schema_.is_dim(name)) {
         continue;
@@ -449,7 +447,7 @@ Status DenseReader::dense_read() {
       // Get the tiles to load for this attribute.
       auto result_tiles = result_tiles_to_load(
           name,
-          condition_names,
+          qc_loaded_attr_names_set_,
           subarray,
           t_start,
           t_end,
@@ -459,8 +457,10 @@ Status DenseReader::dense_read() {
       std::vector<FilteredData> filtered_data;
 
       // Read and unfilter tiles.
-      to_read[0] = name;
-      filtered_data = std::move(read_attribute_tiles(to_read, result_tiles));
+      bool validity_only = null_count_aggregate_only(name);
+      std::vector<ReaderBase::NameToLoad> to_load;
+      to_load.emplace_back(name, validity_only);
+      filtered_data = std::move(read_attribute_tiles(to_load, result_tiles));
 
       if (compute_task.valid()) {
         RETURN_NOT_OK(storage_manager_->compute_tp()->wait(compute_task));
@@ -473,15 +473,15 @@ Status DenseReader::dense_read() {
           [&,
            filtered_data = std::move(filtered_data),
            name,
+           validity_only,
            t_start,
            t_end,
            subarray_start_cell,
            subarray_end_cell,
            num_range_threads,
-           result_tiles,
-           condition_names]() {
+           result_tiles]() {
             // Unfilter tiles.
-            RETURN_NOT_OK(unfilter_tiles(name, result_tiles));
+            RETURN_NOT_OK(unfilter_tiles(name, validity_only, result_tiles));
 
             // Only copy names that are present in the user buffers.
             if (buffers_.count(name) != 0) {
@@ -932,8 +932,8 @@ Status DenseReader::apply_query_condition(
         tile_subarrays);
 
     // Read and unfilter query condition attributes.
-    std::vector<FilteredData> filtered_data =
-        read_attribute_tiles(qc_names, result_tiles);
+    std::vector<FilteredData> filtered_data = read_attribute_tiles(
+        NameToLoad::from_string_vec(qc_names), result_tiles);
 
     if (compute_task.valid()) {
       RETURN_NOT_OK(storage_manager_->compute_tp()->wait(compute_task));
@@ -956,7 +956,7 @@ Status DenseReader::apply_query_condition(
 
           // Unfilter tiles.
           for (auto& name : qc_names) {
-            RETURN_NOT_OK(unfilter_tiles(name, result_tiles));
+            RETURN_NOT_OK(unfilter_tiles(name, false, result_tiles));
           }
 
           if (stride == UINT64_MAX) {
@@ -1897,6 +1897,7 @@ Status DenseReader::aggregate_tiles(
   const auto cell_size = var_size ? constants::cell_var_offset_size :
                                     array_schema_.cell_size(name);
   auto& aggregates = aggregates_[name];
+  const bool validity_only = null_count_aggregate_only(name);
 
   // Cache tile tuples.
   std::vector<ResultTile::TileTuple*> tile_tuples(frag_domains.size());
@@ -1949,7 +1950,7 @@ Status DenseReader::aggregate_tiles(
         if (stride == 1) {
           // Compute aggregate.
           AggregateBuffer aggregate_buffer{make_aggregate_buffer(
-              var_size,
+              var_size & !validity_only,
               nullable,
               cell_size,
               iter.pos_in_tile() + start,
@@ -1965,7 +1966,7 @@ Status DenseReader::aggregate_tiles(
             // Compute aggregate.
             auto start_cell = iter.pos_in_tile() + (start + i) * stride;
             AggregateBuffer aggregate_buffer{make_aggregate_buffer(
-                var_size,
+                var_size & !validity_only,
                 nullable,
                 cell_size,
                 start_cell,
