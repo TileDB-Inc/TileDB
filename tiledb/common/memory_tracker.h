@@ -122,22 +122,26 @@ class MemoryTracker : std::enable_shared_from_this<MemoryTracker> {
   void set_budget(uint64_t size);
 
   /** Get total memory budget. */
-  inline uint64_t get_budget() {
+  inline uint64_t get_budget() const {
     return budget_;
   }
 
   /** Get total usage. */
-  inline uint64_t get_usage() {
+  inline uint64_t get_usage() const {
     return usage_;
   }
 
   /** Get usage by type. */
-  inline uint64_t get_usage(MemoryType mem_type) {
-    return usage_by_type_[mem_type];
+  inline uint64_t get_usage(MemoryType mem_type) const {
+    auto it = usage_by_type_.find(mem_type);
+    if (it == usage_by_type_.end()) {
+      return 0;
+    }
+    return it->second;
   }
 
   /** Get available memory. */
-  inline uint64_t get_available() {
+  inline uint64_t get_available() const {
     return budget_ - usage_;
   }
 

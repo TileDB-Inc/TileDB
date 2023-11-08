@@ -87,6 +87,29 @@ std::string memory_type_to_str(MemoryType mem_type) {
   }
 }
 
+std::vector<MemoryType> memory_types() {
+  return {
+    MemoryType::RTREE,
+    MemoryType::FOOTER,
+    MemoryType::TILE_OFFSETS,
+    MemoryType::TILE_VAR_OFFSETS,
+    MemoryType::TILE_VAR_SIZES,
+    MemoryType::TILE_VALIDITY_OFFSETS,
+    MemoryType::MIN_BUFFER,
+    MemoryType::MAX_BUFFER,
+    MemoryType::SUMS,
+    MemoryType::NULL_COUNTS,
+    MemoryType::ENUMERATION,
+    MemoryType::COORD_TILES,
+    MemoryType::ATTR_TILES,
+    MemoryType::TIMESTAMP_TILES,
+    MemoryType::DELETE_TIMESTAMP_TILES,
+    MemoryType::DELETE_CONDITION_TILES,
+    MemoryType::WRITER_FIXED_DATA,
+    MemoryType::WRITER_VAR_DATA
+  };
+}
+
 MemoryToken::MemoryToken(
     std::weak_ptr<MemoryTracker> parent, uint64_t size, MemoryType mem_type)
     : parent_(parent)
@@ -140,7 +163,8 @@ void MemoryTracker::leak(uint64_t size, MemoryType mem_type) {
 void MemoryTracker::set_budget(uint64_t size) {
   std::lock_guard<std::mutex> lg(mutex_);
   if (usage_ > size) {
-    throw MemoryTrackerException("Unable to set budget smaller than usage.");
+    throw MemoryTrackerException("Unable to set budget smaller than usage."
+        + to_string());
   }
 
   budget_ = size;
@@ -148,10 +172,11 @@ void MemoryTracker::set_budget(uint64_t size) {
 
 std::string MemoryTracker::to_string() const {
   std::stringstream ss;
-  ss << "[Budget: " << budget_ << "]";
-  ss << "[Usage: " << usage_ << "]";
-  for (auto& [type, size] : usage_by_type_) {
-    ss << "[" << memory_type_to_str(type) << ": " << size << "]";
+  ss << "[Budget: " << budget_ << "] ";
+  ss << "[Usage: " << usage_ << "] ";
+
+  for (MemoryType t : memory_types()) {
+    ss << "[" << memory_type_to_str(t) << ": " << get_usage(t) << "] ";
   }
   return ss.str();
 }
