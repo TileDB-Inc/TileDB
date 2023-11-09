@@ -101,6 +101,9 @@ Disables internal TileDB statistics.
 .PARAMETER DisableVcpkg
 Disables building dependencies with vcpkg.
 
+.PARAMETER DisableInstallFindDependencies
+Disables calling find_dependency in the exported config file. Should be set when when building a shared library with all dependencies statically linked.
+
 .PARAMETER BuildProcesses
 Number of parallel compile jobs.
 
@@ -145,6 +148,7 @@ Param(
     [switch]$DisableCppApi,
     [switch]$DisableTests,
     [switch]$DisableStats,
+    [switch]$DisableInstallFindDependencies,
     [Alias('J')]
     [int]
     $BuildProcesses = $env:NUMBER_OF_PROCESSORS
@@ -243,6 +247,14 @@ if ($DisableStats.IsPresent) {
     $Stats = "OFF"
 }
 
+$InstallFindDependencies = "ON"
+if ($DisableInstallFindDependencies.IsPresent) {
+    $InstallFindDependencies = "OFF"
+    if ($EnableStaticTileDB.IsPresent) {
+        Write-Warning "DisableInstallFindDependencies is ignored when building a static library."
+    }
+}
+
 $BuildWebP="ON"
 if ($DisableWebP.IsPresent) {
   $BuildWebP="OFF"
@@ -326,7 +338,7 @@ if ($CMakeGenerator -eq $null) {
 
 # Run CMake.
 # We use Invoke-Expression so we can echo the command to the user.
-$CommandString = "cmake -A X64 -DTILEDB_VCPKG=$UseVcpkg -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_ASSERTIONS=$AssertionMode -DTILEDB_VERBOSE=$Verbosity -DTILEDB_AZURE=$UseAzure -DTILEDB_S3=$UseS3 -DTILEDB_GCS=$UseGcs -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_STATS=$Stats -DTILEDB_STATIC=$TileDBStatic -DTILEDB_FORCE_ALL_DEPS=$TileDBBuildDeps -DTILEDB_REMOVE_DEPRECATIONS=$RemoveDeprecations -DTILEDB_TOOLS=$TileDBTools -DTILEDB_EXPERIMENTAL_FEATURES=$TileDBExperimentalFeatures -DTILEDB_WEBP=$BuildWebP -DTILEDB_CRC32=$BuildCrc32 -DTILEDB_ARROW_TESTS=$ArrowTests -DTILEDB_TESTS_ENABLE_REST=$RestTests -DTILEDB_TESTS_AWS_S3_CONFIG=$ConfigureS3 $GeneratorFlag ""$SourceDirectory"""
+$CommandString = "cmake -A X64 -DTILEDB_VCPKG=$UseVcpkg -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_ASSERTIONS=$AssertionMode -DTILEDB_VERBOSE=$Verbosity -DTILEDB_AZURE=$UseAzure -DTILEDB_S3=$UseS3 -DTILEDB_GCS=$UseGcs -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_STATS=$Stats -DTILEDB_STATIC=$TileDBStatic -DTILEDB_FORCE_ALL_DEPS=$TileDBBuildDeps -DTILEDB_REMOVE_DEPRECATIONS=$RemoveDeprecations -DTILEDB_TOOLS=$TileDBTools -DTILEDB_EXPERIMENTAL_FEATURES=$TileDBExperimentalFeatures -DTILEDB_WEBP=$BuildWebP -DTILEDB_CRC32=$BuildCrc32 -DTILEDB_ARROW_TESTS=$ArrowTests -DTILEDB_TESTS_ENABLE_REST=$RestTests -DTILEDB_TESTS_AWS_S3_CONFIG=$ConfigureS3 -DTILEDB_INSTALL_FIND_DEPENDENCIES=$InstallFindDependencies $GeneratorFlag ""$SourceDirectory"""
 Write-Host $CommandString
 Write-Host
 Invoke-Expression "$CommandString"
