@@ -136,4 +136,7 @@ if (AZURE_STORAGE_COMMON_FOUND AND NOT TARGET Azure::azure-storage-common)
           IMPORTED_LOCATION "${AZURE_STORAGE_COMMON_LIBRARIES}"
           INTERFACE_INCLUDE_DIRECTORIES "${AZURE_STORAGE_COMMON_INCLUDE_DIR}"
           )
+  if (WIN32)
+    target_link_libraries(Azure::azure-storage-common INTERFACE WebServices)
+  endif()
 endif()
