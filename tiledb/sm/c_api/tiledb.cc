@@ -382,7 +382,7 @@ int32_t tiledb_array_schema_timestamp_range(
   return TILEDB_OK;
 }
 
-TILEDB_EXPORT int32_t tiledb_array_schema_add_enumeration(
+int32_t tiledb_array_schema_add_enumeration(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_enumeration_t* enumeration) {
@@ -2050,7 +2050,7 @@ int32_t tiledb_query_condition_alloc(
   return TILEDB_OK;
 }
 
-TILEDB_EXPORT capi_return_t tiledb_query_condition_alloc_set_membership(
+capi_return_t tiledb_query_condition_alloc_set_membership(
     const char* field_name,
     const void* data,
     uint64_t data_size,
