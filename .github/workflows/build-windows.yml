@@ -131,7 +131,8 @@ jobs:
       - name: Prevent vcpkg from building debug variants
         run: python $env:GITHUB_WORKSPACE/scripts/ci/patch_vcpkg_triplets.py
 
-      - name: core tiledb windows build
+      - name: Configure TileDB
+        shell: pwsh
         run: |
           $ErrorView = "NormalView"
 
@@ -202,6 +203,9 @@ jobs:
             Write-Host "Bootstrap failed."
             exit $LastExitCode
           }
+      - name: Build TileDB
+        shell: pwsh
+        run: |
 
           cmake --build $env:BUILD_BUILDDIRECTORY --config $CMakeBuildType -j $env:NUMBER_OF_PROCESSORS 2>&1
 
@@ -216,11 +220,10 @@ jobs:
             Write-Host "Installation failed."
             $host.SetShouldExit($LastExitCode)
           }
-        shell: powershell
 
       - name: 'Test'
         id: test
-        shell: powershell
+        shell: pwsh
         run: |
           write-host "begin run: 'Test'"
 
@@ -304,7 +307,9 @@ jobs:
                $host.SetShouldExit($LastExitCode)
             }
           }
-          # Build the examples
+      - name: Build examples
+        shell: pwsh
+        run: |
           cmake --build $env:BUILD_BUILDDIRECTORY --target examples --config $CMakeBuildType -v
 
           if ($LastExitCode -ne 0) {
@@ -380,7 +385,9 @@ jobs:
           Set-Location -path $TestAppDir
           Remove-Item -Path $TestAppDataDir -recurse -force -ErrorAction SilentlyContinue
 
-          # Build examples
+      - name: Build CMake project example
+        shell: pwsh
+        run: |
           cd $env:BUILD_SOURCESDIRECTORY\examples\cmake_project
 
           mkdir build
