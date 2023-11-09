@@ -188,7 +188,7 @@ void Stats::add_counter(const std::string& stat, uint64_t count) {
 }
 
 void Stats::sub_counter(const std::string& stat, uint64_t count) {
-  if (!enabled_) {
+  if (!enabled_ || count == 0) {
     return;
   }
 
@@ -221,6 +221,16 @@ void Stats::set_max_counter(const std::string& stat, uint64_t count) {
   } else if (count > it->second) {
     it->second = count;
   }
+}
+
+void Stats::set_counter(const std::string& stat, uint64_t value) {
+  if (!enabled_) {
+    return;
+  }
+
+  std::string new_stat = prefix_ + stat;
+  std::unique_lock<std::mutex> lck(mtx_);
+  counters_[new_stat] = value;
 }
 
 DurationInstrument<Stats> Stats::start_timer(const std::string& stat) {
@@ -271,6 +281,9 @@ void Stats::sub_counter(const std::string&, uint64_t) {
 }
 
 void Stats::set_max_counter(const std::string&, uint64_t) {
+}
+
+void Stats::set_counter(const std::string&, uint64_t) {
 }
 
 int Stats::start_timer(const std::string&) {

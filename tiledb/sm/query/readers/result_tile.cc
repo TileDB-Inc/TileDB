@@ -73,7 +73,7 @@ ResultTile::ResultTile(
     , frag_idx_(frag_idx)
     , tile_idx_(tile_idx)
     , cell_num_(frag_md.cell_num(tile_idx))
-    , memory_tokens_(frag_md.get_memory_tracker()) {
+    , memory_tokens_("RT", frag_md.get_memory_tracker()) {
   auto array_schema = frag_md.array_schema();
   coord_tiles_.resize(domain_->dim_num());
   attr_tiles_.resize(array_schema->attribute_num());

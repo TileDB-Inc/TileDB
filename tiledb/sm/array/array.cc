@@ -101,7 +101,7 @@ Array::Array(
     , metadata_()
     , metadata_loaded_(false)
     , non_empty_domain_computed_(false)
-    , memory_tracker_(make_shared<MemoryTracker>(HERE(), &resources_.stats()))
+    , memory_tracker_(MemoryTracker::create(&resources_.stats()))
     , consistency_controller_(cc)
     , consistency_sentry_(nullopt) {
 }

@@ -98,16 +98,15 @@ class [[nodiscard]] MemoryToken {
   MemoryType mem_type_;
 };
 
-class MemoryTracker : std::enable_shared_from_this<MemoryTracker> {
+class MemoryTracker : public std::enable_shared_from_this<MemoryTracker> {
  public:
-  /** Constructor. */
-  MemoryTracker(stats::Stats* stats = nullptr);
-
   /** Destructor. */
-  ~MemoryTracker() = default;
+  ~MemoryTracker();
 
   DISABLE_COPY_AND_COPY_ASSIGN(MemoryTracker);
   DISABLE_MOVE_AND_MOVE_ASSIGN(MemoryTracker);
+
+  static shared_ptr<MemoryTracker> create(stats::Stats* stats = nullptr);
 
   /** Reserve memory budget. */
   shared_ptr<MemoryToken> reserve(uint64_t size, MemoryType mem_type);
@@ -147,6 +146,10 @@ class MemoryTracker : std::enable_shared_from_this<MemoryTracker> {
 
   std::string to_string() const;
 
+ protected:
+  /** Constructor. */
+  MemoryTracker(stats::Stats* stats = nullptr);
+
  private:
   void do_reservation(uint64_t size, MemoryType mem_type);
 
@@ -164,6 +167,9 @@ class MemoryTracker : std::enable_shared_from_this<MemoryTracker> {
 
   /** Memory budget. */
   uint64_t budget_;
+
+  /** Number of tokens issued. */
+  uint64_t num_tokens_;
 
   /** Memory usage by type. */
   std::unordered_map<MemoryType, uint64_t> usage_by_type_;
@@ -194,7 +200,7 @@ struct MemoryTokenKeyHasher {
 class MemoryTokenBag {
  public:
   MemoryTokenBag() = default;
-  MemoryTokenBag(shared_ptr<MemoryTracker> memory_tracker);
+  MemoryTokenBag(const std::string& tag, shared_ptr<MemoryTracker> memory_tracker);
   MemoryTokenBag(MemoryTokenBag&& rhs);
   MemoryTokenBag& operator=(MemoryTokenBag&& rhs);
 
@@ -266,6 +272,7 @@ class MemoryTokenBag {
  private:
   mutable std::mutex mutex_;
   shared_ptr<MemoryTracker> memory_tracker_;
+  std::string tag_;
   std::unordered_map<
       MemoryTokenKey,
       shared_ptr<MemoryToken>,

@@ -172,7 +172,7 @@ WriterTile::WriterTile(
     const uint64_t size,
     shared_ptr<MemoryTracker> memory_tracker)
     : TileBase(format_version, type, cell_size, size)
-    , memory_tokens_(memory_tracker)
+    , memory_tokens_("WT", memory_tracker)
     , filtered_buffer_(0) {
   memory_tokens_.reserve(size, MemoryType::WRITER_FIXED_DATA);
 }

@@ -98,6 +98,9 @@ class Stats {
   /** Set a counter to a value if it is larger than the current stat value. */
   void set_max_counter(const std::string& stat, uint64_t count);
 
+  /** Set a counter to a specific value. */
+  void set_counter(const std::string& stat, uint64_t value);
+
   /** Returns true if statistics are currently enabled. */
   bool enabled() const;
 

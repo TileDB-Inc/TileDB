@@ -91,7 +91,7 @@ FragmentMetadata::FragmentMetadata(
     bool has_timestamps,
     bool has_deletes_meta)
     : resources_(resources)
-    , memory_tokens_(memory_tracker)
+    , memory_tokens_("FM", memory_tracker)
     , array_schema_(array_schema)
     , dense_(dense)
     , footer_size_(0)
@@ -1233,6 +1233,11 @@ void FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
     const auto cell_size = var_size ? constants::cell_var_offset_size :
                                       array_schema_->cell_size(it.first);
 
+    memory_tokens_.reserve(num_tiles * sizeof(uint64_t), MemoryType::TILE_OFFSETS, i);
+    memory_tokens_.reserve(num_tiles * sizeof(uint64_t), MemoryType::TILE_VAR_OFFSETS, i);
+    memory_tokens_.reserve(num_tiles * sizeof(uint64_t), MemoryType::TILE_VAR_SIZES, i);
+    memory_tokens_.reserve(num_tiles * sizeof(uint64_t), MemoryType::TILE_VALIDITY_OFFSETS, i);
+
     tile_offsets_[i].resize(num_tiles, 0);
     tile_var_offsets_[i].resize(num_tiles, 0);
     tile_var_sizes_[i].resize(num_tiles, 0);
@@ -1245,17 +1250,24 @@ void FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
 
       if (TileMetadataGenerator::has_min_max_metadata(
               type, is_dim, var_size, cell_val_num)) {
+
+        memory_tokens_.reserve(num_tiles * cell_size, MemoryType::MIN_BUFFER, i);
+        memory_tokens_.reserve(num_tiles * cell_size, MemoryType::MAX_BUFFER, i);
+
         tile_min_buffer_[i].resize(num_tiles * cell_size, 0);
         tile_max_buffer_[i].resize(num_tiles * cell_size, 0);
       }
 
       if (TileMetadataGenerator::has_sum_metadata(
               type, var_size, cell_val_num)) {
-        if (!var_size)
+        if (!var_size) {
+          memory_tokens_.reserve(num_tiles * sizeof(uint64_t), MemoryType::SUMS, i);
           tile_sums_[i].resize(num_tiles * sizeof(uint64_t), 0);
+        }
       }
 
       if (array_schema_->is_nullable(it.first))
+        memory_tokens_.reserve(num_tiles * sizeof(uint64_t), MemoryType::NULL_COUNTS, i);
         tile_null_counts_[i].resize(num_tiles, 0);
     }
   }

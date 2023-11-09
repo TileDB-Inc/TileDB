@@ -802,7 +802,7 @@ Status WriterBase::create_fragment(
   frag_meta = make_shared<FragmentMetadata>(
       HERE(),
       &storage_manager_->resources(),
-      nullptr,
+      array_->memory_tracker(),
       array_->array_schema_latest_ptr(),
       fragment_uri_,
       timestamp_range,
