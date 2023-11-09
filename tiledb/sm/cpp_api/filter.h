@@ -335,67 +335,84 @@ class Filter {
   template <typename T>
   void option_value_typecheck(tiledb_filter_option_t option) {
     std::string type_name = tiledb::impl::type_to_tiledb<T>().name;
+    const char* option_name;
+    tiledb_filter_option_to_str(option, &option_name);
     switch (option) {
       case TILEDB_COMPRESSION_LEVEL:
-        if constexpr (!std::is_same_v<int32_t, T>)
+        if constexpr (!std::is_same_v<int32_t, T>) {
           throw std::invalid_argument(
-              "Cannot set option with type '" + type_name +
-              "'; Option value must be int32_t.");
+              "Cannot set filter option '" + std::string(option_name) +
+              "' with type '" + type_name + "'; Option value must be '" +
+              tiledb::impl::type_to_tiledb<int32_t>().name + "'.");
+        }
         break;
       case TILEDB_BIT_WIDTH_MAX_WINDOW:
       case TILEDB_POSITIVE_DELTA_MAX_WINDOW:
-        if constexpr (!std::is_same_v<uint32_t, T>)
+        if constexpr (!std::is_same_v<uint32_t, T>) {
           throw std::invalid_argument(
-              "Cannot set option with type '" + type_name +
-              "'; Option value must be uint32_t.");
+              "Cannot set filter option '" + std::string(option_name) +
+              "' with type '" + type_name + "'; Option value must be '" +
+              tiledb::impl::type_to_tiledb<uint32_t>().name + "'.");
+        }
         break;
       case TILEDB_SCALE_FLOAT_BYTEWIDTH:
-        if constexpr (!std::is_same_v<uint64_t, T>)
+        if constexpr (!std::is_same_v<uint64_t, T>) {
           throw std::invalid_argument(
-              "Cannot set option with type '" + type_name +
-              "'; Option value must be uint64_t.");
+              "Cannot set filter option '" + std::string(option_name) +
+              "' with type '" + type_name + "'; Option value must be '" +
+              tiledb::impl::type_to_tiledb<uint64_t>().name + "'.");
+        }
         break;
       case TILEDB_SCALE_FLOAT_FACTOR:
       case TILEDB_SCALE_FLOAT_OFFSET:
-        if constexpr (!std::is_same_v<double, T>)
+        if constexpr (!std::is_same_v<double, T>) {
           throw std::invalid_argument(
-              "Cannot set option with type '" + type_name +
-              "'; Option value must be double.");
+              "Cannot set filter option '" + std::string(option_name) +
+              "' with type '" + type_name + "'; Option value must be '" +
+              tiledb::impl::type_to_tiledb<double>().name + "'.");
+        }
         break;
       case TILEDB_WEBP_QUALITY:
-        if constexpr (!std::is_same_v<float, T>)
+        if constexpr (!std::is_same_v<float, T>) {
           throw std::invalid_argument(
-              "Cannot set option with type '" + type_name +
-              "'; Option value must be float.");
+              "Cannot set filter option '" + std::string(option_name) +
+              "' with type '" + type_name + "'; Option value must be '" +
+              tiledb::impl::type_to_tiledb<float>().name + "'.");
+        }
         break;
       case TILEDB_WEBP_INPUT_FORMAT:
         if constexpr (
             !std::is_same_v<uint8_t, T> &&
-            !std::is_same_v<tiledb_filter_webp_format_t, T>)
+            !std::is_same_v<tiledb_filter_webp_format_t, T>) {
           throw std::invalid_argument(
-              "Cannot set option with type '" + type_name +
-              "'; Option value must be tiledb_filter_webp_format_t or "
-              "uint8_t.");
+              "Cannot set filter option '" + std::string(option_name) +
+              "' with type '" + type_name +
+              "'; Option value must be tiledb_filter_webp_format_t or '" +
+              tiledb::impl::type_to_tiledb<uint8_t>().name + "'.");
+        }
         break;
       case TILEDB_WEBP_LOSSLESS:
-        if constexpr (!std::is_same_v<uint8_t, T>)
+        if constexpr (!std::is_same_v<uint8_t, T>) {
           throw std::invalid_argument(
-              "Cannot set option with type '" + type_name +
-              "'; Option value must be uint8_t.");
+              "Cannot set filter option '" + std::string(option_name) +
+              "' with type '" + type_name + "'; Option value must be '" +
+              tiledb::impl::type_to_tiledb<uint8_t>().name + "'.");
+        }
         break;
       case TILEDB_COMPRESSION_REINTERPRET_DATATYPE:
         if constexpr (
             !std::is_same_v<uint8_t, T> &&
-            !std::is_same_v<tiledb_datatype_t, T>)
+            !std::is_same_v<tiledb_datatype_t, T>) {
           throw std::invalid_argument(
-              "Cannot set option with type '" + type_name +
-              "'; Option value must be tiledb_datatype_t or uint8_t.");
+              "Cannot set filter option '" + std::string(option_name) +
+              "' with type '" + type_name +
+              "'; Option value must be tiledb_datatype_t or '" +
+              tiledb::impl::type_to_tiledb<uint8_t>().name + "'.");
+        }
         break;
       default: {
-        const char* option_str;
-        tiledb_filter_option_to_str(option, &option_str);
         throw std::invalid_argument(
-            "Invalid option '" + std::string(option_str) + "'");
+            "Invalid filter option '" + std::string(option_name) + "'");
       }
     }
   }
