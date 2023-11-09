@@ -264,7 +264,9 @@ if (SANITIZER)
     message(STATUS "The TileDB library is compiled with sanitizer ${SANITIZER} enabled")
   endif()
   add_compile_options(-DTILEDB_SANITIZER=${SANITIZER})
-  add_compile_options(-g -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize=${SANITIZER})
+  add_compile_options(
+    "$<$<NOT:$<C_COMPILER_ID:MSVC>>:-g;-fno-omit-frame-pointer;-fno-optimize-sibling-calls>"
+    -fsanitize=${SANITIZER})
   add_link_options(-fsanitize=${SANITIZER})
 endif()
 
