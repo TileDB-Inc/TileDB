@@ -1531,7 +1531,7 @@ struct QueryPlanResponse {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(9fd8fc2f462b2d06, 0, 2)
+    CAPNP_DECLARE_STRUCT_HEADER(9fd8fc2f462b2d06, 0, 1)
     #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
     #endif  // !CAPNP_LITE
@@ -11517,9 +11517,6 @@ public:
   }
 #endif  // !CAPNP_LITE
 
-  inline bool hasQuery() const;
-  inline  ::tiledb::sm::serialization::capnp::Query::Reader getQuery() const;
-
   inline bool hasQueryPlan() const;
   inline  ::capnp::Text::Reader getQueryPlan() const;
 
@@ -11551,13 +11548,6 @@ public:
   inline ::kj::StringTree toString() const { return asReader().toString(); }
 #endif  // !CAPNP_LITE
 
-  inline bool hasQuery();
-  inline  ::tiledb::sm::serialization::capnp::Query::Builder getQuery();
-  inline void setQuery( ::tiledb::sm::serialization::capnp::Query::Reader value);
-  inline  ::tiledb::sm::serialization::capnp::Query::Builder initQuery();
-  inline void adoptQuery(::capnp::Orphan< ::tiledb::sm::serialization::capnp::Query>&& value);
-  inline ::capnp::Orphan< ::tiledb::sm::serialization::capnp::Query> disownQuery();
-
   inline bool hasQueryPlan();
   inline  ::capnp::Text::Builder getQueryPlan();
   inline void setQueryPlan( ::capnp::Text::Reader value);
@@ -11583,7 +11573,6 @@ public:
   inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
       : _typeless(kj::mv(typeless)) {}
 
-  inline  ::tiledb::sm::serialization::capnp::Query::Pipeline getQuery();
 private:
   ::capnp::AnyPointer::Pipeline _typeless;
   friend class ::capnp::PipelineHook;
@@ -23758,77 +23747,38 @@ inline ::capnp::Orphan< ::tiledb::sm::serialization::capnp::Query> QueryPlanRequ
       ::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 
-inline bool QueryPlanResponse::Reader::hasQuery() const {
-  return !_reader.getPointerField(
-      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
-}
-inline bool QueryPlanResponse::Builder::hasQuery() {
-  return !_builder.getPointerField(
-      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
-}
-inline  ::tiledb::sm::serialization::capnp::Query::Reader QueryPlanResponse::Reader::getQuery() const {
-  return ::capnp::_::PointerHelpers< ::tiledb::sm::serialization::capnp::Query>::get(_reader.getPointerField(
-      ::capnp::bounded<0>() * ::capnp::POINTERS));
-}
-inline  ::tiledb::sm::serialization::capnp::Query::Builder QueryPlanResponse::Builder::getQuery() {
-  return ::capnp::_::PointerHelpers< ::tiledb::sm::serialization::capnp::Query>::get(_builder.getPointerField(
-      ::capnp::bounded<0>() * ::capnp::POINTERS));
-}
-#if !CAPNP_LITE
-inline  ::tiledb::sm::serialization::capnp::Query::Pipeline QueryPlanResponse::Pipeline::getQuery() {
-  return  ::tiledb::sm::serialization::capnp::Query::Pipeline(_typeless.getPointerField(0));
-}
-#endif  // !CAPNP_LITE
-inline void QueryPlanResponse::Builder::setQuery( ::tiledb::sm::serialization::capnp::Query::Reader value) {
-  ::capnp::_::PointerHelpers< ::tiledb::sm::serialization::capnp::Query>::set(_builder.getPointerField(
-      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
-}
-inline  ::tiledb::sm::serialization::capnp::Query::Builder QueryPlanResponse::Builder::initQuery() {
-  return ::capnp::_::PointerHelpers< ::tiledb::sm::serialization::capnp::Query>::init(_builder.getPointerField(
-      ::capnp::bounded<0>() * ::capnp::POINTERS));
-}
-inline void QueryPlanResponse::Builder::adoptQuery(
-    ::capnp::Orphan< ::tiledb::sm::serialization::capnp::Query>&& value) {
-  ::capnp::_::PointerHelpers< ::tiledb::sm::serialization::capnp::Query>::adopt(_builder.getPointerField(
-      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
-}
-inline ::capnp::Orphan< ::tiledb::sm::serialization::capnp::Query> QueryPlanResponse::Builder::disownQuery() {
-  return ::capnp::_::PointerHelpers< ::tiledb::sm::serialization::capnp::Query>::disown(_builder.getPointerField(
-      ::capnp::bounded<0>() * ::capnp::POINTERS));
-}
-
 inline bool QueryPlanResponse::Reader::hasQueryPlan() const {
   return !_reader.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
 }
 inline bool QueryPlanResponse::Builder::hasQueryPlan() {
   return !_builder.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
 }
 inline  ::capnp::Text::Reader QueryPlanResponse::Reader::getQueryPlan() const {
   return ::capnp::_::PointerHelpers< ::capnp::Text>::get(_reader.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS));
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 inline  ::capnp::Text::Builder QueryPlanResponse::Builder::getQueryPlan() {
   return ::capnp::_::PointerHelpers< ::capnp::Text>::get(_builder.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS));
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 inline void QueryPlanResponse::Builder::setQueryPlan( ::capnp::Text::Reader value) {
   ::capnp::_::PointerHelpers< ::capnp::Text>::set(_builder.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS), value);
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
 }
 inline  ::capnp::Text::Builder QueryPlanResponse::Builder::initQueryPlan(unsigned int size) {
   return ::capnp::_::PointerHelpers< ::capnp::Text>::init(_builder.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS), size);
+      ::capnp::bounded<0>() * ::capnp::POINTERS), size);
 }
 inline void QueryPlanResponse::Builder::adoptQueryPlan(
     ::capnp::Orphan< ::capnp::Text>&& value) {
   ::capnp::_::PointerHelpers< ::capnp::Text>::adopt(_builder.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS), kj::mv(value));
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
 }
 inline ::capnp::Orphan< ::capnp::Text> QueryPlanResponse::Builder::disownQueryPlan() {
   return ::capnp::_::PointerHelpers< ::capnp::Text>::disown(_builder.getPointerField(
-      ::capnp::bounded<1>() * ::capnp::POINTERS));
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
 }
 
 inline bool QueryChannel::Reader::getDefault() const {

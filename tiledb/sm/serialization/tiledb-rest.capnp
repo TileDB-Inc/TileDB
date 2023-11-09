@@ -1270,10 +1270,7 @@ struct QueryPlanRequest {
 }
 
 struct QueryPlanResponse {
-  query @0 : Query;
-  # the query for which we get the plan
-
-  queryPlan @1 :Text;
+  queryPlan @0 :Text;
   # The returned query plan
 }
 
