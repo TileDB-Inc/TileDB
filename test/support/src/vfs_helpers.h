@@ -708,8 +708,7 @@ class VFSTestBase {
    *    For each element we create a nested directory with N objects.
    * @param prefix The URI prefix to use for the test directory.
    */
-  explicit VFSTestBase(
-      const std::vector<size_t>& test_tree, const std::string& prefix);
+  VFSTestBase(const std::vector<size_t>& test_tree, const std::string& prefix);
 
  public:
   /** Type definition for objects returned from ls_recursive */
@@ -743,7 +742,16 @@ class VFSTestBase {
   bool is_supported_;
 };
 
-/** Test object for tiledb::sm::VFS functionality. */
+/**
+ * Test object for tiledb::sm::VFS functionality. When constructed, this test
+ * object creates a temporary directory and populates it using the test_tree
+ * vector passed to the constructor. For each element in the vector, we create a
+ * nested directory with N objects. The constructor also writes `10 * N` bytes
+ * of data to each object created for testing returned object sizes are correct.
+ *
+ * This test object can be used for any valid VFS URI prefix, and is not
+ * specific to any one backend.
+ */
 class VFSTest : public VFSTestBase {
  public:
   VFSTest(const std::vector<size_t>& test_tree, const std::string& prefix);

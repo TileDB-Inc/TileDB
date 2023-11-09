@@ -434,17 +434,10 @@ TEST_CASE("VFS: ls_recursive callback stops traversal", "[vfs][ls_recursive]") {
 }
 
 TEST_CASE(
-    "VFS: ls_recursive throws for unsupported filesystems",
+    "VFS: ls_recursive throws for unsupported backends",
     "[vfs][ls_recursive]") {
-  std::string prefix =
-      GENERATE("s3://", "hdfs://", "azure://", "gcs://", "file://", "mem://");
-  if (prefix == "file://") {
-#ifdef _WIN32
-    prefix += tiledb::sm::Win::current_dir() + "/";
-#else
-    prefix += tiledb::sm::Posix::current_dir() + "/";
-#endif
-  }
+  // Local and mem fs tests are in tiledb/sm/filesystem/test/unit_ls_filtered.cc
+  std::string prefix = GENERATE("s3://", "hdfs://", "azure://", "gcs://");
   VFSTest vfs_test({1}, prefix);
   if (!vfs_test.is_supported()) {
     return;
