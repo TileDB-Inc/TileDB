@@ -13,10 +13,6 @@
 include("${CMAKE_CURRENT_LIST_DIR}/@TARGETS_EXPORT_NAME@.cmake")
 check_required_components("@PROJECT_NAME@")
 
-# Targets required for linking against tiledb_static:
-@TILEDB_STATIC_DEP_STRING@
-# -- End required targets for static
-
 # Define a convenience all-caps variable
 if (NOT DEFINED TILEDB_FOUND)
   if (TARGET TileDB::tiledb_shared)

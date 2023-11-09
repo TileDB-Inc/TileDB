@@ -31,7 +31,6 @@ endif()
 
 if (TILEDB_VCPKG)
   find_package(CURL REQUIRED)
-  install_target_libs(CURL::libcurl)
   return()
 endif()
 
@@ -244,9 +243,4 @@ if (CURL_FOUND)
     endif()
   endif()
 
-endif()
-
-# If we built a static EP, install it if required.
-if (TILEDB_CURL_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(CURL::libcurl)
 endif()

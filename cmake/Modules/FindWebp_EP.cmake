@@ -28,13 +28,7 @@
 include(TileDBCommon)
 
 if (TILEDB_VCPKG)
-  find_package(Threads REQUIRED)
   find_package(WebP REQUIRED)
-  install_target_libs(WebP::webp)
-  install_target_libs(WebP::webpdecoder)
-  install_target_libs(WebP::webpdemux)
-  install_target_libs(WebP::libwebpmux)
-  install_target_libs(WebP::sharpyuv)
   return()
 endif()
 
@@ -87,14 +81,4 @@ if(NOT TILEDB_WEBP_EP_BUILT)
   else()
     message(FATAL_ERROR "Unable to find Webp")
   endif()
-endif()
-
-# Always building static EP, install it..
-if (TILEDB_WEBP_EP_BUILT)
-  # One install_target_libs() with all of these was only installing the first item.
-  install_target_libs(WebP::webp)
-  install_target_libs(WebP::webpdecoder)
-  install_target_libs(WebP::webpdemux)
-  install_target_libs(WebP::libwebpmux)
-  install_target_libs(WebP::sharpyuv)
 endif()

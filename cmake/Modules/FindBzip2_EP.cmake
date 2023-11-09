@@ -36,7 +36,6 @@ include(TileDBCommon)
 
 if(TILEDB_VCPKG)
   find_package(BZip2 REQUIRED)
-  install_target_libs(BZip2::BZip2)
   return()
 endif()
 
@@ -140,9 +139,4 @@ if (BZIP2_FOUND AND NOT TARGET BZip2::BZip2)
     IMPORTED_LOCATION "${BZIP2_LIBRARIES}"
     INTERFACE_INCLUDE_DIRECTORIES "${BZIP2_INCLUDE_DIR}"
   )
-endif()
-
-# If we built a static EP, install it if required.
-if (BZIP2_STATIC_EP_FOUND AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(BZip2::BZip2)
 endif()

@@ -134,8 +134,3 @@ if (AZURE_STORAGE_BLOBS_FOUND AND NOT TARGET Azure::azure-storage-blobs)
           INTERFACE_INCLUDE_DIRECTORIES "${AZURE_STORAGE_BLOBS_INCLUDE_DIR}"
           )
 endif()
-
-# If we built a static EP, install it if required.
-if (AZURE_STORAGE_BLOBS_STATIC_EP_FOUND AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(Azure::azure-storage-blobs)
-endif()
