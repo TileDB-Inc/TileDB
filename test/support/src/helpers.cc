@@ -64,6 +64,18 @@ namespace test {
 // Command line arguments.
 std::string g_vfs;
 
+void throw_if_setup_failed(int rc) {
+  if (rc != TILEDB_OK) {
+    throw std::runtime_error("Test setup failed.");
+  }
+}
+
+void throw_if_setup_failed(bool condition) {
+  if (!condition) {
+    throw std::runtime_error("Test setup failed.");
+  }
+}
+
 void check_tiledb_error_with(
     tiledb_ctx_t* ctx, int rc, const std::string& expected_msg, bool contains) {
   CHECK(rc == TILEDB_ERR);

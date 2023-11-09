@@ -1,5 +1,5 @@
 /**
- * @file   unique_directory.h
+ * @file   unique_local_directory.h
  *
  * @section LICENSE
  *
@@ -27,45 +27,51 @@
  *
  * @section DESCRIPTION
  *
- * This file declares class UniqueDirectory.
+ * This file declares class UniqueLocalDirectory.
  */
 
-#ifndef TILEDB_UNIQUE_DIRECTORY_H
-#define TILEDB_UNIQUE_DIRECTORY_H
+#ifndef TILEDB_UNIQUE_LOCAL_DIRECTORY_H
+#define TILEDB_UNIQUE_LOCAL_DIRECTORY_H
 
 #include "tiledb/sm/filesystem/vfs.h"
 
 namespace tiledb::sm {
-class UniqueDirectory {
+
+/**
+ * Maintenance of a local, unique directory.
+ *
+ * This class will create a randomly-seeded directory on the local filesystem
+ * with an optional prefix. Upon destruction of the object, the local directory
+ * is removed. The path to the unique directory may be accessed for additional
+ * reads / writes.
+ */
+class UniqueLocalDirectory {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor which will create a unique directory. */
-  UniqueDirectory(const VFS& vfs, std::string prefix = {});
+  /** Constructor which will create a unique local directory. */
+  UniqueLocalDirectory(std::string prefix = {});
 
   /** Destructor which will remove the directory. */
-  ~UniqueDirectory();
+  ~UniqueLocalDirectory();
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
   /** Return the path of the unique directory. */
-  std::string path();
+  const std::string& path();
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** Reference to parent VFS object which contains the directory. */
-  const VFS& vfs_;
-
   /** The path of the unique directory. */
   std::string path_;
 };
 }  // namespace tiledb::sm
 
-#endif  // TILEDB_UNIQUE_DIRECTORY_H
+#endif  // TILEDB_UNIQUE_LOCAL_DIRECTORY_H

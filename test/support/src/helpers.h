@@ -90,6 +90,22 @@ template <class T>
 using SubarrayRanges = std::vector<std::vector<T>>;
 
 /**
+ * Throws if the return code is not OK.
+ * For use in test setup for object allocation.
+ *
+ * @param rc Return code from a TileDB C-API setup function.
+ */
+void throw_if_setup_failed(int rc);
+
+/**
+ * Throws if the condition is not met.
+ * For use in test setup for object allocation.
+ *
+ * @param condition Condition to check from a TileDB C-API setup function.
+ */
+void throw_if_setup_failed(bool condition);
+
+/**
  * Check the return code for a TileDB C-API function is TILEDB_ERR and
  * compare the last error message from the local TileDB context to an expected
  * error message.

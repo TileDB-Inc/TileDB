@@ -34,7 +34,7 @@
 #include "test/support/src/helpers.h"
 #include "tiledb/api/c_api/vfs/vfs_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
-#include "tiledb/sm/filesystem/unique_directory.h"
+#include "tiledb/sm/filesystem/unique_local_directory.h"
 #include "tiledb/sm/misc/utils.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/path_win.h"
@@ -51,6 +51,9 @@
 using namespace tiledb::test;
 
 struct VFSFx {
+  // The unique directory object
+  tiledb::sm::UniqueLocalDirectory temp_dir_{"tiledb_test_"};
+
   const std::string HDFS_TEMP_DIR = "hdfs://localhost:9000/tiledb_test/";
   const std::string S3_PREFIX = "s3://";
   const std::string S3_BUCKET = S3_PREFIX + random_name("tiledb") + "/";
@@ -59,15 +62,16 @@ struct VFSFx {
   const std::string AZURE_CONTAINER =
       AZURE_PREFIX + random_name("tiledb") + "/";
   const std::string AZURE_TEMP_DIR = AZURE_CONTAINER + "tiledb_test/";
-  std::string FILE_TEMP_DIR;
+  const std::string FILE_TEMP_DIR =
+#ifndef _WIN32
+      "file://" +
+#endif
+      temp_dir_.path();
   const std::string MEMFS_TEMP_DIR = std::string("mem://tiledb_test/");
 
   // TileDB context and vfs
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
-
-  /** The unique directory object. */
-  std::optional<tiledb::sm::UniqueDirectory> temp_dir_{std::nullopt};
 
   // Supported filesystems
   bool supports_s3_;
@@ -85,118 +89,20 @@ struct VFSFx {
   void check_append(const std::string& path);
   void check_ls(const std::string& path);
   static std::string random_name(const std::string& prefix);
-  void set_supported_fs();
-  void set_num_vfs_threads(unsigned num_threads);
 };
 
 VFSFx::VFSFx() {
-  ctx_ = nullptr;
-  vfs_ = nullptr;
+  // Supported filesystem vector
+  bool supports_gcs;  // unused
+  get_supported_fs(
+      &supports_s3_, &supports_hdfs_, &supports_azure_, &supports_gcs);
 
-  // Supported filesystems
-  set_supported_fs();
-
-  // Create context and VFS with 1 thread
-  set_num_vfs_threads(1);
-
-  // Create the UniqueDirectory.
-  temp_dir_.emplace(*vfs_->vfs(), "tiledb_test_");
-
-  FILE_TEMP_DIR =
-#ifndef _WIN32
-      "file://" +
-#endif
-      temp_dir_.value().path();
+  create_ctx_and_vfs(supports_s3_, supports_azure_, &ctx_, &vfs_);
 }
 
 VFSFx::~VFSFx() {
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
-}
-
-void VFSFx::set_supported_fs() {
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
-  bool supports_gcs;  // unused
-  get_supported_fs(
-      &supports_s3_, &supports_hdfs_, &supports_azure_, &supports_gcs);
-
-  tiledb_ctx_free(&ctx);
-}
-
-void VFSFx::set_num_vfs_threads(unsigned num_threads) {
-  if (vfs_ != nullptr)
-    tiledb_vfs_free(&vfs_);
-  if (ctx_ != nullptr)
-    tiledb_ctx_free(&ctx_);
-
-  // Create TileDB context
-  tiledb_config_t* config = nullptr;
-  tiledb_error_t* error = nullptr;
-  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  if (supports_s3_) {
-#ifndef TILEDB_TESTS_AWS_S3_CONFIG
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.scheme", "https", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.use_virtual_addressing", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(error == nullptr);
-#endif
-  }
-  if (supports_azure_) {
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.storage_account_name",
-            "devstoreaccount1",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.storage_account_key",
-            "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
-            "K1SZFPTOtr/KBHBeksoGMGw==",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.blob_endpoint",
-            "http://127.0.0.1:10000/devstoreaccount1",
-            &error) == TILEDB_OK);
-  }
-
-  // Set number of threads across all backends.
-  REQUIRE(
-      tiledb_config_set(
-          config,
-          "vfs.s3.max_parallel_ops",
-          std::to_string(num_threads).c_str(),
-          &error) == TILEDB_OK);
-  // Set very small parallelization threshold (ignored when there is only 1
-  // thread).
-  REQUIRE(
-      tiledb_config_set(
-          config, "vfs.min_parallel_size", std::to_string(1).c_str(), &error) ==
-      TILEDB_OK);
-  REQUIRE(error == nullptr);
-
-  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  int rc = tiledb_vfs_alloc(ctx_, config, &vfs_);
-  REQUIRE(rc == TILEDB_OK);
-  tiledb_config_free(&config);
 }
 
 void VFSFx::check_vfs(const std::string& path) {
@@ -964,7 +870,25 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(VFSFx, "C API: Test VFS parallel I/O", "[capi][vfs]") {
   tiledb_stats_enable();
   tiledb_stats_reset();
-  set_num_vfs_threads(4);
+
+  tiledb_config_t* config;
+  REQUIRE(tiledb_vfs_get_config(ctx_, vfs_, &config) == TILEDB_OK);
+
+  // Set number of threads to 4.
+  tiledb_error_t* error = nullptr;
+  REQUIRE(
+      tiledb_config_set(
+          config,
+          "vfs.s3.max_parallel_ops",
+          std::to_string(4).c_str(),
+          &error) == TILEDB_OK);
+  // Set very small parallelization threshold (ignored when there is only 1
+  // thread).
+  REQUIRE(
+      tiledb_config_set(
+          config, "vfs.min_parallel_size", std::to_string(1).c_str(), &error) ==
+      TILEDB_OK);
+  REQUIRE(error == nullptr);
 
   if (supports_s3_) {
     check_vfs(S3_TEMP_DIR);

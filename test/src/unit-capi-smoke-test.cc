@@ -35,8 +35,9 @@
 #include "test/support/src/helpers.h"
 #include "tiledb/api/c_api/vfs/vfs_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
+#include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/encryption_type.h"
-#include "tiledb/sm/filesystem/unique_directory.h"
+#include "tiledb/sm/filesystem/unique_local_directory.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <iostream>
@@ -216,8 +217,16 @@ class SmokeTestFx {
   /** The C-API VFS object. */
   tiledb_vfs_t* vfs_;
 
-  /** The unique directory object. */
-  std::optional<UniqueDirectory> temp_dir_{std::nullopt};
+  /** The unique local directory object. */
+  UniqueLocalDirectory temp_dir_;
+
+  /**
+   * Compute the full array path given an array name.
+   *
+   * @param array_name The array name.
+   * @return The full array path.
+   */
+  const string array_path(const string& array_name);
 
   /**
    * Creates a TileDB array.
@@ -368,24 +377,25 @@ SmokeTestFx::SmokeTestFx() {
   // Create a config.
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
-  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
+  throw_if_setup_failed(tiledb_config_alloc(&config, &error));
+  throw_if_setup_failed(error == nullptr);
 
   // Create the context.
-  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
-  REQUIRE(error == nullptr);
+  throw_if_setup_failed(tiledb_ctx_alloc(config, &ctx_));
+  throw_if_setup_failed(error == nullptr);
 
   // Create the VFS.
-  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
+  throw_if_setup_failed(tiledb_vfs_alloc(ctx_, config, &vfs_));
   tiledb_config_free(&config);
-
-  // Create the UniqueDirectory.
-  temp_dir_.emplace(*vfs_->vfs());
 }
 
 SmokeTestFx::~SmokeTestFx() {
   tiledb_ctx_free(&ctx_);
   tiledb_vfs_free(&vfs_);
+}
+
+const string SmokeTestFx::array_path(const string& array_name) {
+  return temp_dir_.path() + array_name;
 }
 
 void SmokeTestFx::create_array(
@@ -395,14 +405,6 @@ void SmokeTestFx::create_array(
     tiledb_layout_t cell_order,
     tiledb_layout_t tile_order,
     tiledb_encryption_type_t encryption_type) {
-  // Remove array if it already exists
-  const string array_path = temp_dir_.value().path() + array_name;
-  int is_dir = 0;
-  REQUIRE(
-      tiledb_vfs_is_dir(ctx_, vfs_, array_path.c_str(), &is_dir) == TILEDB_OK);
-  if (is_dir)
-    REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, array_path.c_str()) == TILEDB_OK);
-
   // Create the dimensions.
   vector<tiledb_dimension_t*> dims;
   dims.reserve(test_dims.size());
@@ -489,7 +491,7 @@ void SmokeTestFx::create_array(
     REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
     tiledb_config_free(&config);
   }
-  rc = tiledb_array_create(ctx_, array_path.c_str(), array_schema);
+  rc = tiledb_array_create(ctx_, array_path(array_name).c_str(), array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Free attributes.
@@ -515,8 +517,7 @@ void SmokeTestFx::write(
     tiledb_encryption_type_t encryption_type) {
   // Open the array for writing (with or without encryption).
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(
-      ctx_, (temp_dir_.value().path() + array_name).c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_path(array_name).c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
   if (encryption_type != TILEDB_NO_ENCRYPTION) {
     tiledb_config_t* cfg;
@@ -645,8 +646,7 @@ void SmokeTestFx::read(
     tiledb_query_condition_combination_op_t combination_op) {
   // Open the array for reading (with or without encryption).
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(
-      ctx_, (temp_dir_.value().path() + array_name).c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_path(array_name).c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
   if (encryption_type != TILEDB_NO_ENCRYPTION) {
     tiledb_config_t* cfg;
@@ -1381,35 +1381,33 @@ TEST_CASE_METHOD(
   const uint64_t d3_tile_extent = 5;
   dims.emplace_back("d3", TILEDB_UINT64, d3_domain, d3_tile_extent);
 
-  for (auto attr_iter = attrs.begin(); attr_iter != attrs.end(); ++attr_iter) {
-    vector<test_attr_t> test_attrs(attrs.begin(), attr_iter + 1);
-    for (const tiledb_array_type_t array_type : {TILEDB_DENSE, TILEDB_SPARSE}) {
-      for (const tiledb_layout_t cell_order :
-           {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR}) {
-        for (const tiledb_layout_t tile_order :
-             {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR}) {
-          for (const tiledb_encryption_type_t encryption_type :
-               {TILEDB_NO_ENCRYPTION, TILEDB_AES_256_GCM}) {
-            for (const tiledb_layout_t write_order :
-                 {TILEDB_ROW_MAJOR, TILEDB_UNORDERED}) {
-              vector<test_dim_t> test_dims;
-              for (const test_dim_t& dim : dims) {
-                test_dims.emplace_back(dim);
+  // Generate test conditions
+  auto num_attrs{GENERATE(1, 2, 3)};
+  auto num_dims{GENERATE(1, 2, 3)};
+  auto array_type{GENERATE(TILEDB_DENSE, TILEDB_SPARSE)};
+  auto cell_order{GENERATE(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR)};
+  auto tile_order{GENERATE(TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR)};
+  auto encryption_type{GENERATE(TILEDB_NO_ENCRYPTION, TILEDB_AES_256_GCM)};
+  auto write_order{GENERATE(TILEDB_ROW_MAJOR, TILEDB_UNORDERED)};
 
-                smoke_test(
-                    test_attrs,
-                    query_conditions_vec,
-                    test_dims,
-                    array_type,
-                    cell_order,
-                    tile_order,
-                    write_order,
-                    encryption_type);
-              }
-            }
-          }
-        }
-      }
-    }
+  DYNAMIC_SECTION(
+      array_type_str((ArrayType)array_type)
+      << " array with " << num_attrs << " attribute(s) and " << num_dims
+      << " dimension(s)." << layout_str((Layout)cell_order) << " cells, "
+      << layout_str((Layout)tile_order) << " tiles, "
+      << layout_str((Layout)write_order) << " writes, "
+      << encryption_type_str((EncryptionType)encryption_type)
+      << " encryption") {
+    vector<test_attr_t> test_attrs(attrs.begin(), attrs.begin() + num_attrs);
+    vector<test_dim_t> test_dims(dims.begin(), dims.begin() + num_dims);
+    smoke_test(
+        test_attrs,
+        query_conditions_vec,
+        test_dims,
+        array_type,
+        cell_order,
+        tile_order,
+        write_order,
+        encryption_type);
   }
 }

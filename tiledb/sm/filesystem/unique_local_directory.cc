@@ -1,5 +1,5 @@
 /**
- * @file   unique_directory.cc
+ * @file   unique_local_directory.cc
  *
  * @section LICENSE
  *
@@ -27,54 +27,43 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class UniqueDirectory.
+ * This file defines class UniqueLocalDirectory.
  */
 
-#include "tiledb/sm/filesystem/unique_directory.h"
+#include "tiledb/sm/filesystem/unique_local_directory.h"
 #include "tiledb/common/random/prng.h"
 
 #include <filesystem>
+#include <system_error>
 
 using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-class UniqueDirectoryException : public StatusException {
- public:
-  explicit UniqueDirectoryException(const std::string& message)
-      : StatusException("UniqueDirectory", message) {
-  }
-};
-
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-UniqueDirectory::UniqueDirectory(const VFS& vfs, std::string prefix)
-    : vfs_(vfs) {
+UniqueLocalDirectory::UniqueLocalDirectory(std::string prefix) {
   // Generate random number using global PRNG
   PRNG& prng = PRNG::get();
   auto rand = prng();
 
-  // Generate random path
+  // Generate random local path
   path_ = (std::filesystem::temp_directory_path() /
-           (prefix.data() + std::to_string(rand)) / "")
+           (prefix + std::to_string(rand)) / "")
               .string();
 
-  // Create unique directory on the given VFS
-  Status st = vfs_.create_dir(URI(path_));
-  if (!st.ok()) {
-    std::throw_with_nested(
-        UniqueDirectoryException("Error creating unique directory. "));
-  }
+  // Create a unique directory
+  std::filesystem::create_directory(path_);
 }
 
-UniqueDirectory::~UniqueDirectory() {
-  // Remove the unique directory from the VFS
-  Status st = vfs_.remove_dir(URI(path_));
-  if (!st.ok()) {
-    std::throw_with_nested(
-        UniqueDirectoryException("Error removing unique directory. "));
+UniqueLocalDirectory::~UniqueLocalDirectory() {
+  // Remove the unique directory
+  std::error_code ec;
+  auto removed = std::filesystem::remove_all(path_, ec);
+  if (removed <= 0) {
+    LOG_ERROR(ec.message());
   }
 }
 
@@ -82,7 +71,7 @@ UniqueDirectory::~UniqueDirectory() {
 /*                API                */
 /* ********************************* */
 
-std::string UniqueDirectory::path() {
+const std::string& UniqueLocalDirectory::path() {
   return path_;
 }
 
