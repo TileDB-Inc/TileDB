@@ -206,8 +206,9 @@ jobs:
       - name: Build TileDB
         shell: pwsh
         run: |
+          $CMakeBuildType = $env:TILEDB_CMAKE_BUILD_TYPE
 
-          cmake --build $env:BUILD_BUILDDIRECTORY --config $CMakeBuildType -j $env:NUMBER_OF_PROCESSORS 2>&1
+          cmake --build $env:BUILD_BUILDDIRECTORY --config $CMakeBuildType -j 2>&1
 
           if ($LastExitCode -ne 0) {
             Write-Host "Build failed. CMake exit status: " $LastExitCocde
@@ -225,8 +226,6 @@ jobs:
         id: test
         shell: pwsh
         run: |
-          write-host "begin run: 'Test'"
-
           $CMakeBuildType = $env:TILEDB_CMAKE_BUILD_TYPE
 
           # Clone backwards compatibility test arrays
@@ -248,9 +247,9 @@ jobs:
           }
 
           # CMake exits with non-0 status if there are any warnings during the build, so
-          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config $CMakeBuildType -- /verbosity:minimal
-          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j $env:NUMBER_OF_PROCESSORS --target tiledb_regression --config $CMakeBuildType -- /verbosity:minimal
-          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j $env:NUMBER_OF_PROCESSORS --target all_link_complete --config $CMakeBuildType -- /verbosity:minimal
+          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target tiledb_unit --config $CMakeBuildType -- /verbosity:minimal
+          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target tiledb_regression --config $CMakeBuildType -- /verbosity:minimal
+          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target all_link_complete --config $CMakeBuildType -- /verbosity:minimal
 
           if ($env:TILEDB_AZURE -eq "ON") {
             if($env.TILEDB_USE_CUSTOM_NODE_JS) {
@@ -310,6 +309,8 @@ jobs:
       - name: Build examples
         shell: pwsh
         run: |
+          $CMakeBuildType = $env:TILEDB_CMAKE_BUILD_TYPE
+
           cmake --build $env:BUILD_BUILDDIRECTORY --target examples --config $CMakeBuildType -v
 
           if ($LastExitCode -ne 0) {
@@ -389,6 +390,8 @@ jobs:
         shell: pwsh
         run: |
           cd $env:BUILD_SOURCESDIRECTORY\examples\cmake_project
+
+          $CMakeBuildType = $env:TILEDB_CMAKE_BUILD_TYPE
 
           mkdir build
 
