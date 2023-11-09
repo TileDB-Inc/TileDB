@@ -39,6 +39,7 @@
 #include <string>
 #include <vector>
 
+#include "filesystem_base.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/macros.h"
