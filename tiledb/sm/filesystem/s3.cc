@@ -260,7 +260,7 @@ class TileDBS3Client : public Aws::S3::S3Client {
       , params_(s3_params) {
   }
 
-  virtual void BuildHttpRequest(
+  void BuildHttpRequest(
       const Aws::AmazonWebServiceRequest& request,
       const std::shared_ptr<Aws::Http::HttpRequest>& httpRequest)
       const override {
@@ -280,6 +280,49 @@ class TileDBS3Client : public Aws::S3::S3Client {
    */
   const S3Parameters& params_;
 };
+
+/* ********************************* */
+/*             S3 SCANNER            */
+/* ********************************* */
+
+template <FilePredicate F, DirectoryPredicate D>
+void S3Scanner<F, D>::next() {
+  while (!is_done_) {
+    auto list_objects_outcome = client_->ListObjectsV2(list_objects_request_);
+    if (!list_objects_outcome.IsSuccess()) {
+      throw S3Exception(
+          std::string("Error while listing with prefix '") +
+          this->prefix_.add_trailing_slash().to_string() + "' and delimiter '" +
+          delimiter_ + "'" + outcome_error_message(list_objects_outcome));
+    }
+
+    for (const auto& object : list_objects_outcome.GetResult().GetContents()) {
+      uint64_t size = object.GetSize();
+      std::string path = "s3://" + list_objects_request_.GetBucket() +
+                         S3::add_front_slash(object.GetKey());
+      if (this->file_filter_(path, size)) {
+        // If the file filter predicate is true, add the file to the results.
+        // TODO: Store results
+      }
+
+      // TODO: Add support for directory pruning.
+    }
+
+    // Max keys is 1000 by default. If results are not truncated or the
+    // callback already signaled to stop traversal, we're done.
+    is_done_ = is_done_ || !list_objects_outcome.GetResult().GetIsTruncated();
+    if (!is_done_) {
+      Aws::String next_marker =
+          list_objects_outcome.GetResult().GetNextContinuationToken();
+      if (next_marker.empty()) {
+        throw S3Exception(
+            "Failed to retrieve next continuation token for ListObjectsV2 "
+            "request.");
+      }
+      list_objects_request_.SetContinuationToken(std::move(next_marker));
+    }
+  }
+}
 
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
@@ -912,62 +955,6 @@ tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
   }
 
   return {Status::Ok(), entries};
-}
-
-template <LsCb F>
-void S3::ls_cb(const URI& prefix, F cb, const std::string& delimiter) const {
-  throw_if_not_ok(init_client());
-  const auto prefix_dir = prefix.add_trailing_slash();
-  auto prefix_str = prefix_dir.to_string();
-  if (!prefix_dir.is_s3()) {
-    throw S3Exception(std::string("URI is not an S3 URI: " + prefix_str));
-  }
-
-  Aws::Http::URI aws_uri = prefix_str.c_str();
-  auto aws_prefix = remove_front_slash(aws_uri.GetPath().c_str());
-  std::string aws_auth = aws_uri.GetAuthority().c_str();
-  Aws::S3::Model::ListObjectsV2Request list_objects_request;
-  list_objects_request.SetBucket(aws_uri.GetAuthority());
-  list_objects_request.SetPrefix(aws_prefix.c_str());
-  list_objects_request.SetDelimiter(delimiter.c_str());
-  if (request_payer_ != Aws::S3::Model::RequestPayer::NOT_SET) {
-    list_objects_request.SetRequestPayer(request_payer_);
-  }
-
-  bool is_done = false;
-  while (!is_done) {
-    auto list_objects_outcome = client_->ListObjectsV2(list_objects_request);
-    if (!list_objects_outcome.IsSuccess()) {
-      throw S3Exception(
-          std::string("Error while listing with prefix '") + prefix_str +
-          "' and delimiter '" + delimiter + "'" +
-          outcome_error_message(list_objects_outcome));
-    }
-
-    for (const auto& object : list_objects_outcome.GetResult().GetContents()) {
-      uint64_t size = object.GetSize();
-      std::string path =
-          "s3://" + aws_auth + add_front_slash(object.GetKey().c_str());
-      if (!cb(path, size)) {
-        is_done = true;
-        break;
-      }
-    }
-
-    // Max keys is 1000 by default. If results are not truncated or the callback
-    // already signaled to stop traversal, we're done.
-    is_done = is_done || !list_objects_outcome.GetResult().GetIsTruncated();
-    if (!is_done) {
-      Aws::String next_marker =
-          list_objects_outcome.GetResult().GetNextContinuationToken();
-      if (next_marker.empty()) {
-        throw StatusException(
-            Status_S3Error("Failed to retrieve next continuation token for "
-                           "ListObjectsV2 request."));
-      }
-      list_objects_request.SetContinuationToken(std::move(next_marker));
-    }
-  }
 }
 
 Status S3::move_object(const URI& old_uri, const URI& new_uri) {
@@ -1674,17 +1661,17 @@ Status S3::fill_file_buffer(
   return Status::Ok();
 }
 
-std::string S3::add_front_slash(const std::string& path) const {
+std::string S3::add_front_slash(const std::string& path) {
   return (path.front() != '/') ? (std::string("/") + path) : path;
 }
 
-std::string S3::remove_front_slash(const std::string& path) const {
+std::string S3::remove_front_slash(const std::string& path) {
   if (path.front() == '/')
     return path.substr(1, path.length());
   return path;
 }
 
-std::string S3::remove_trailing_slash(const std::string& path) const {
+std::string S3::remove_trailing_slash(const std::string& path) {
   if (path.back() == '/') {
     return path.substr(0, path.length() - 1);
   }
@@ -2155,12 +2142,18 @@ URI S3::generate_chunk_uri(
   return buffering_dir.join_path(chunk_name);
 }
 
-// Explicit template instantiations
+template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
+void S3::ls_filtered(const URI& parent, F f, D d, bool recursive) const {
+  S3Scanner<F, D> s3_scanner(client_, parent, f, d, recursive);
+  throw_if_not_ok(init_client());
+  while (!s3_scanner.end()) {
+    s3_scanner.next();
+  }
+}
 
-template void S3::ls_cb<LsCallbackWrapper>(
-    const URI& prefix,
-    LsCallbackWrapper cb,
-    const std::string& delimiter) const;
+template void S3Scanner<FileFilter, DirectoryFilter>::next();
+template void S3::ls_filtered<FileFilter, DirectoryFilter>(
+    const URI&, FileFilter, DirectoryFilter, bool) const;
 }  // namespace tiledb::sm
 
 #endif

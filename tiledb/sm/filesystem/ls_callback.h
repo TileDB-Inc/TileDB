@@ -33,17 +33,77 @@
 #ifndef TILEDB_LS_CALLBACK_H
 #define TILEDB_LS_CALLBACK_H
 
+#include "tiledb/sm/filesystem/uri.h"
+
 #include <cstdint>
 #include <functional>
 #include <stdexcept>
 
+/** Inclusion predicate for objects collected by ls */
 template <class F>
-concept LsCb = true;
+concept FilePredicate = true;
+
+/**
+ * DirectoryPredicate is currently unused, but is kept here for adding directory
+ * pruning support in the future.
+ */
+template <class F>
+concept DirectoryPredicate = true;
 
 namespace tiledb::sm {
 
-using LsCallback =
-    std::function<bool(const std::string_view&, uint64_t, void*)>;
+using FileFilter = std::function<bool(const std::string_view&, uint64_t)>;
+// TODO: rename or remove
+[[maybe_unused]] static bool no_file_filter(const std::string_view&, uint64_t) {
+  return true;
+}
+using DirectoryFilter = std::function<bool(const std::string_view&)>;
+// TODO: rename or remove
+static bool no_filter(const std::string_view&) {
+  return true;
+}
+
+using LsObject = std::pair<std::string, uint64_t>;
+using LsObjects = std::vector<LsObject>;
+
+class LsIterator {
+ public:
+  using value_type = LsObject;
+  using difference_type = ptrdiff_t;
+  using pointer = LsObject*;
+  using reference = LsObject&;
+  using iterator_category = std::forward_iterator_tag;
+
+  LsIterator()
+      : pos_(0) {
+  }
+
+ private:
+  LsObjects::iterator it_;
+  LsObjects objects_;
+  LsObjects::size_type pos_;
+};
+
+template <FilePredicate F, DirectoryPredicate D>
+class LsScanner {
+ public:
+  using iterator = LsIterator;
+
+  LsScanner(
+      const URI& prefix, F file_filter, D dir_filter, bool recursive = false)
+      : prefix_(prefix)
+      , file_filter_(file_filter)
+      , dir_filter_(dir_filter)
+      , is_recursive_(recursive) {
+  }
+
+ protected:
+  LsIterator it_;
+  URI prefix_;
+  F file_filter_;
+  D dir_filter_;
+  bool is_recursive_;
+};
 
 /**
  * Typedef for the callback function invoked on each object collected by ls.
@@ -61,10 +121,10 @@ using LsCallbackCAPI =
 /**
  * Wrapper for the C API ls callback function and it's associated data.
  */
-class LsCallbackWrapper {
+class LsCallbackWrapperCAPI {
  public:
   /** Constructor */
-  LsCallbackWrapper(LsCallbackCAPI cb, void* data)
+  LsCallbackWrapperCAPI(LsCallbackCAPI cb, void* data)
       : cb_(cb)
       , data_(data) {
   }

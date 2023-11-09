@@ -282,6 +282,51 @@ struct S3Parameters {
   std::string config_source_;
 };
 
+template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
+class S3Scanner : protected LsScanner<F, D> {
+ public:
+  S3Scanner(
+      const std::shared_ptr<TileDBS3Client>& client,
+      const URI& prefix,
+      F file_filter,
+      D dir_filter = no_filter,
+      bool recursive = false)
+    : LsScanner<F, D>(prefix, file_filter, dir_filter, recursive)
+    , client_(client)
+    , delimiter_(this->is_recursive_ ? "" : "/")
+    , is_done_(false) {
+  // Empty delimiter returns recursive results from S3.
+  const auto prefix_dir = prefix.add_trailing_slash();
+  auto prefix_str = prefix_dir.to_string();
+  if (!prefix_dir.is_s3()) {
+    throw S3Exception("URI is not an S3 URI: " + prefix_str);
+  }
+
+  Aws::Http::URI aws_uri = prefix_str.c_str();
+//  std::string aws_uri_str(S3::remove_front_slash(aws_uri.GetPath()));
+//  list_objects_request_.SetBucket(aws_uri.GetAuthority());
+//  list_objects_request_.SetPrefix(aws_uri_str.c_str());
+//  list_objects_request_.SetDelimiter(delimiter_.c_str());
+//  if (client_->params_.requester_pays_) {
+//    list_objects_request_.SetRequestPayer(
+//        Aws::S3::Model::RequestPayer::requester);
+//  }
+}
+
+  void next();
+
+  bool end() {
+    return is_done_;
+  }
+
+ private:
+  shared_ptr<TileDBS3Client> client_;
+  std::string delimiter_;
+  Aws::S3::Model::ListObjectsV2Request list_objects_request_;
+
+  bool is_done_;
+};
+
 /**
  * This class implements the various S3 filesystem functions. It also
  * maintains buffer caches for writing into the various attribute files.
@@ -439,19 +484,17 @@ class S3 {
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
-   * the callback on each entry collected. If the callback returns 1, traversal
-   * continues. If the callback returns 0, traversal is stopped. If the callback
-   * returns -1 an error is thrown. The callback will not be invoked on
-   * directories.
+   * the FilePredicate on each entry collected.
    *
-   * For recursive results, an empty string can be passed as the `delimiter`.
-   *
-   * @param prefix The parent path to list sub-paths.
-   * @param cb The callback to invoke on each object.
-   * @param delimiter The uri is truncated to the first delimiter.
+   * TODO Update docs when I stop changing this signature.
+   * @param recursive Whether to recursively list subdirectories.
    */
-  template <LsCb F>
-  void ls_cb(const URI& prefix, F cb, const std::string& delimiter = "/") const;
+  template <FilePredicate F, DirectoryPredicate D>
+  void ls_filtered(
+      const URI& parent,
+      F f,
+      D d = tiledb::sm::no_filter,
+      bool recursive = false) const;
 
   /**
    * Renames an object.
@@ -604,6 +647,28 @@ class S3 {
    * @param length The size of the input buffer.
    */
   void global_order_write(const URI& uri, const void* buffer, uint64_t length);
+
+  /* ********************************* */
+  /*        PUBLIC STATIC METHODS      */
+  /* ********************************* */
+
+  /**
+   * Returns the input `path` after adding a `/` character
+   * at the front if it does not exist.
+   */
+  static std::string add_front_slash(const std::string& path);
+
+  /**
+   * Returns the input `path` after removing a potential `/` character
+   * from the front if it exists.
+   */
+  static std::string remove_front_slash(const std::string& path);
+
+  /**
+   * Returns the input `path` after removing a potential `/` character
+   * from the end if it exists.
+   */
+  static std::string remove_trailing_slash(const std::string& path);
 
  private:
   /* ********************************* */
@@ -1000,24 +1065,6 @@ class S3 {
       const void* buffer,
       uint64_t length,
       uint64_t* nbytes_filled);
-
-  /**
-   * Returns the input `path` after adding a `/` character
-   * at the front if it does not exist.
-   */
-  std::string add_front_slash(const std::string& path) const;
-
-  /**
-   * Returns the input `path` after removing a potential `/` character
-   * from the front if it exists.
-   */
-  std::string remove_front_slash(const std::string& path) const;
-
-  /**
-   * Returns the input `path` after removing a potential `/` character
-   * from the end if it exists.
-   */
-  std::string remove_trailing_slash(const std::string& path) const;
 
   /**
    * Writes the contents of the input buffer to the S3 object given by

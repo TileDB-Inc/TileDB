@@ -38,6 +38,7 @@ commence(object_library vfs)
         uri.cc
         vfs.cc
         vfs_file_handle.cc
+        ls_callback.cc
         win.cc
         ../curl/curl_init.cc
     )

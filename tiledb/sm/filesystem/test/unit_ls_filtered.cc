@@ -84,6 +84,28 @@ class VFSTest {
   bool is_supported_;
 };
 
+// TODO: Disable shouldfail when file:// or mem:// support is added.
+TEST_CASE(
+    "VFS: Throwing callback ls_recursive", "[vfs][ls_recursive][!shouldfail]") {
+  std::string prefix = GENERATE("file://", "mem://");
+  size_t num_objects = GENERATE(0, 1);
+  VFSTest vfs_test({num_objects}, prefix);
+  auto cb = [](const char*, size_t, uint64_t, void*) -> int32_t {
+    throw std::logic_error("Throwing callback");
+  };
+  SECTION("Throwing callback with 0 objects should not throw") {
+    CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, cb));
+  }
+  SECTION("Throwing callback with N objects should throw") {
+    vfs_test.vfs_.touch(vfs_test.temp_dir_.join_path("file")).ok();
+    CHECK_THROWS_AS(
+        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, cb), std::logic_error);
+    CHECK_THROWS_WITH(
+        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, cb),
+        Catch::Matchers::ContainsSubstring("Throwing callback"));
+  }
+}
+
 TEST_CASE(
     "VFS: ls_recursive throws for unsupported filesystems",
     "[vfs][ls_recursive]") {
@@ -102,7 +124,7 @@ TEST_CASE(
 
   auto cb = [](const char*, size_t, uint64_t, void*) { return 1; };
   VFSTest::LsObjects data;
-  tiledb::sm::LsCallbackWrapper cb_wrapper(cb, &data);
+  tiledb::sm::LsCallbackWrapperCAPI cb_wrapper(cb, &data);
   // Currently only S3 is supported for VFS::ls_recursive.
   DYNAMIC_SECTION(backend << " unsupported backend should throw") {
     CHECK_THROWS_WITH(
