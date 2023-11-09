@@ -44,7 +44,7 @@ capi_return_t tiledb_array_schema_add_dimension_label(
     const char* name,
     tiledb_data_order_t label_order,
     tiledb_datatype_t label_type) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array_schema)) {
+  if (sanity_check(ctx, array_schema)) {
     return TILEDB_ERR;
   }
   array_schema->array_schema_->add_dimension_label(
@@ -84,7 +84,7 @@ capi_return_t tiledb_array_schema_set_dimension_label_filter_list(
     tiledb_array_schema_t* array_schema,
     const char* label_name,
     tiledb_filter_list_t* filter_list) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array_schema)) {
+  if (sanity_check(ctx, array_schema)) {
     return TILEDB_ERR;
   }
   api::ensure_filter_list_is_valid(filter_list);
@@ -99,7 +99,7 @@ capi_return_t tiledb_array_schema_set_dimension_label_tile_extent(
     const char* label_name,
     tiledb_datatype_t type,
     const void* tile_extent) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array_schema)) {
+  if (sanity_check(ctx, array_schema)) {
     return TILEDB_ERR;
   }
   array_schema->array_schema_->set_dimension_label_tile_extent(

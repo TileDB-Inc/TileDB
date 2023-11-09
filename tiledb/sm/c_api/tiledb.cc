@@ -244,9 +244,6 @@ int32_t tiledb_array_schema_alloc(
     tiledb_ctx_t* ctx,
     tiledb_array_type_t array_type,
     tiledb_array_schema_t** array_schema) {
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
-
   // Create array schema struct
   *array_schema = new (std::nothrow) tiledb_array_schema_t;
   if (*array_schema == nullptr) {
@@ -296,8 +293,7 @@ int32_t tiledb_array_schema_add_attribute(
 
 int32_t tiledb_array_schema_set_allows_dups(
     tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema, int allows_dups) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
   throw_if_not_ok(array_schema->array_schema_->set_allows_dups(allows_dups));
   return TILEDB_OK;
@@ -305,8 +301,7 @@ int32_t tiledb_array_schema_set_allows_dups(
 
 int32_t tiledb_array_schema_get_allows_dups(
     tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema, int* allows_dups) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
   *allows_dups = (int)array_schema->array_schema_->allows_dups();
   return TILEDB_OK;
@@ -314,8 +309,7 @@ int32_t tiledb_array_schema_get_allows_dups(
 
 int32_t tiledb_array_schema_get_version(
     tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema, uint32_t* version) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
   *version = (uint32_t)array_schema->array_schema_->version();
   return TILEDB_OK;
@@ -325,8 +319,7 @@ int32_t tiledb_array_schema_set_domain(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_domain_t* domain) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
   throw_if_not_ok(
       array_schema->array_schema_->set_domain(domain->copy_domain()));
@@ -335,8 +328,7 @@ int32_t tiledb_array_schema_set_domain(
 
 int32_t tiledb_array_schema_set_capacity(
     tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema, uint64_t capacity) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
   array_schema->array_schema_->set_capacity(capacity);
   return TILEDB_OK;
@@ -346,8 +338,7 @@ int32_t tiledb_array_schema_set_cell_order(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_layout_t cell_order) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
   throw_if_not_ok(array_schema->array_schema_->set_cell_order(
       static_cast<tiledb::sm::Layout>(cell_order)));
@@ -358,8 +349,7 @@ int32_t tiledb_array_schema_set_tile_order(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_layout_t tile_order) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
   throw_if_not_ok(array_schema->array_schema_->set_tile_order(
       static_cast<tiledb::sm::Layout>(tile_order)));
@@ -371,8 +361,7 @@ int32_t tiledb_array_schema_timestamp_range(
     tiledb_array_schema_t* array_schema,
     uint64_t* lo,
     uint64_t* hi) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
 
   auto timestamp_range = array_schema->array_schema_->timestamp_range();
@@ -401,8 +390,7 @@ int32_t tiledb_array_schema_set_coords_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_filter_list_t* filter_list) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR) {
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
   api::ensure_filter_list_is_valid(filter_list);
@@ -417,8 +405,7 @@ int32_t tiledb_array_schema_set_offsets_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_filter_list_t* filter_list) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR) {
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
   api::ensure_filter_list_is_valid(filter_list);
@@ -434,8 +421,7 @@ int32_t tiledb_array_schema_set_validity_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_filter_list_t* filter_list) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR) {
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
   api::ensure_filter_list_is_valid(filter_list);
@@ -459,9 +445,6 @@ int32_t tiledb_array_schema_load(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     tiledb_array_schema_t** array_schema) {
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
-
   // Create array schema
   *array_schema = new (std::nothrow) tiledb_array_schema_t;
   if (*array_schema == nullptr) {
@@ -540,9 +523,6 @@ int32_t tiledb_array_schema_load_with_key(
     const void* encryption_key,
     uint32_t key_length,
     tiledb_array_schema_t** array_schema) {
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
-
   // Create array schema
   *array_schema = new (std::nothrow) tiledb_array_schema_t;
   if (*array_schema == nullptr) {
@@ -631,8 +611,7 @@ int32_t tiledb_array_schema_get_array_type(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     tiledb_array_type_t* array_type) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
   *array_type = static_cast<tiledb_array_type_t>(
       array_schema->array_schema_->array_type());
@@ -643,8 +622,7 @@ int32_t tiledb_array_schema_get_capacity(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     uint64_t* capacity) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
   *capacity = array_schema->array_schema_->capacity();
   return TILEDB_OK;
@@ -654,8 +632,7 @@ int32_t tiledb_array_schema_get_cell_order(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     tiledb_layout_t* cell_order) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
   *cell_order =
       static_cast<tiledb_layout_t>(array_schema->array_schema_->cell_order());
@@ -666,8 +643,7 @@ int32_t tiledb_array_schema_get_coords_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_filter_list_t** filter_list) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
   api::ensure_output_pointer_is_valid(filter_list);
   // Copy-construct a separate FilterPipeline object
@@ -680,8 +656,7 @@ int32_t tiledb_array_schema_get_offsets_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_filter_list_t** filter_list) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
   api::ensure_output_pointer_is_valid(filter_list);
   // Copy-construct a separate FilterPipeline object
@@ -694,8 +669,7 @@ int32_t tiledb_array_schema_get_validity_filter_list(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_t* array_schema,
     tiledb_filter_list_t** filter_list) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
   api::ensure_output_pointer_is_valid(filter_list);
   // Copy-construct a separate FilterPipeline object
@@ -721,8 +695,7 @@ int32_t tiledb_array_schema_get_tile_order(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     tiledb_layout_t* tile_order) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
   *tile_order =
       static_cast<tiledb_layout_t>(array_schema->array_schema_->tile_order());
@@ -733,8 +706,7 @@ int32_t tiledb_array_schema_get_attribute_num(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     uint32_t* attribute_num) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
   *attribute_num = array_schema->array_schema_->attribute_num();
   return TILEDB_OK;
@@ -742,8 +714,7 @@ int32_t tiledb_array_schema_get_attribute_num(
 
 int32_t tiledb_array_schema_dump(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema, FILE* out) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
   array_schema->array_schema_->dump(out);
   return TILEDB_OK;
@@ -814,8 +785,7 @@ int32_t tiledb_array_schema_has_attribute(
     const tiledb_array_schema_t* array_schema,
     const char* name,
     int32_t* has_attr) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR) {
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
 
@@ -835,8 +805,6 @@ int32_t tiledb_array_schema_evolution_alloc(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_evolution_t** array_schema_evolution) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
 
   // Create schema evolution struct
   *array_schema_evolution = new (std::nothrow) tiledb_array_schema_evolution_t;
@@ -892,8 +860,7 @@ int32_t tiledb_array_schema_evolution_drop_attribute(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_evolution_t* array_schema_evolution,
     const char* attribute_name) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
     return TILEDB_ERR;
 
   array_schema_evolution->array_schema_evolution_->drop_attribute(
@@ -955,8 +922,7 @@ int32_t tiledb_array_schema_evolution_set_timestamp_range(
     tiledb_array_schema_evolution_t* array_schema_evolution,
     uint64_t lo,
     uint64_t hi) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
     return TILEDB_ERR;
 
   array_schema_evolution->array_schema_evolution_->set_timestamp_range(
@@ -974,7 +940,7 @@ int32_t tiledb_query_alloc(
     tiledb_query_type_t query_type,
     tiledb_query_t** query) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Error if array is not open
@@ -1038,7 +1004,7 @@ int32_t tiledb_query_alloc(
 
 int32_t tiledb_query_get_stats(
     tiledb_ctx_t* ctx, tiledb_query_t* query, char** stats_json) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   if (stats_json == nullptr)
@@ -1078,7 +1044,7 @@ int32_t tiledb_query_get_config(
 int32_t tiledb_query_set_subarray(
     tiledb_ctx_t* ctx, tiledb_query_t* query, const void* subarray_vals) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Set subarray
@@ -1092,8 +1058,7 @@ int32_t tiledb_query_set_subarray_t(
     tiledb_query_t* query,
     const tiledb_subarray_t* subarray) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, query) == TILEDB_ERR ||
+  if (sanity_check(ctx, query) == TILEDB_ERR ||
       sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -1108,7 +1073,7 @@ int32_t tiledb_query_set_data_buffer(
     const char* name,
     void* buffer,
     uint64_t* buffer_size) {  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Set attribute buffer
@@ -1123,7 +1088,7 @@ int32_t tiledb_query_set_offsets_buffer(
     const char* name,
     uint64_t* buffer_offsets,
     uint64_t* buffer_offsets_size) {  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Set attribute buffer
@@ -1139,7 +1104,7 @@ int32_t tiledb_query_set_validity_buffer(
     const char* name,
     uint8_t* buffer_validity,
     uint64_t* buffer_validity_size) {  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Set attribute buffer
@@ -1156,7 +1121,7 @@ int32_t tiledb_query_get_data_buffer(
     void** buffer,
     uint64_t** buffer_size) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Get attribute buffer
@@ -1172,7 +1137,7 @@ int32_t tiledb_query_get_offsets_buffer(
     uint64_t** buffer,
     uint64_t** buffer_size) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Get attribute buffer
@@ -1188,7 +1153,7 @@ int32_t tiledb_query_get_validity_buffer(
     uint8_t** buffer,
     uint64_t** buffer_size) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Get attribute buffer
@@ -1201,7 +1166,7 @@ int32_t tiledb_query_get_validity_buffer(
 int32_t tiledb_query_set_layout(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t layout) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Set layout
@@ -1216,8 +1181,7 @@ int32_t tiledb_query_set_condition(
     tiledb_query_t* const query,
     const tiledb_query_condition_t* const cond) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, query) == TILEDB_ERR ||
+  if (sanity_check(ctx, query) == TILEDB_ERR ||
       sanity_check(ctx, cond) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -1233,7 +1197,7 @@ int32_t tiledb_query_finalize(tiledb_ctx_t* ctx, tiledb_query_t* query) {
     return TILEDB_OK;
 
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Flush query
@@ -1249,7 +1213,7 @@ int32_t tiledb_query_submit_and_finalize(
     return TILEDB_OK;
 
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(query->query_->submit_and_finalize());
@@ -1267,7 +1231,7 @@ void tiledb_query_free(tiledb_query_t** query) {
 
 int32_t tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   // Sanity checks
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(query->query_->submit());
@@ -1281,7 +1245,7 @@ int32_t tiledb_query_submit_async(
     void (*callback)(void*),
     void* callback_data) {
   // Sanity checks
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
   throw_if_not_ok(query->query_->submit_async(callback, callback_data));
 
@@ -1291,7 +1255,7 @@ int32_t tiledb_query_submit_async(
 int32_t tiledb_query_has_results(
     tiledb_ctx_t* ctx, tiledb_query_t* query, int32_t* has_results) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   *has_results = query->query_->has_results();
@@ -1302,7 +1266,7 @@ int32_t tiledb_query_has_results(
 int32_t tiledb_query_get_status(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_status_t* status) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   *status = (tiledb_query_status_t)query->query_->status();
@@ -1313,7 +1277,7 @@ int32_t tiledb_query_get_status(
 int32_t tiledb_query_get_type(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_type_t* query_type) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   *query_type = static_cast<tiledb_query_type_t>(query->query_->type());
@@ -1324,7 +1288,7 @@ int32_t tiledb_query_get_type(
 int32_t tiledb_query_get_layout(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_layout_t* query_layout) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   *query_layout = static_cast<tiledb_layout_t>(query->query_->layout());
@@ -1335,7 +1299,7 @@ int32_t tiledb_query_get_layout(
 int32_t tiledb_query_get_array(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_array_t** array) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Create array datatype
@@ -1361,7 +1325,7 @@ int32_t tiledb_query_add_range(
     const void* start,
     const void* end,
     const void* stride) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   tiledb_subarray_transient_local_t query_subarray(query);
@@ -1375,7 +1339,7 @@ int32_t tiledb_query_add_point_ranges(
     uint32_t dim_idx,
     const void* start,
     uint64_t count) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   /*
@@ -1400,7 +1364,7 @@ int32_t tiledb_query_add_range_by_name(
     const void* start,
     const void* end,
     const void* stride) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   tiledb_subarray_transient_local_t query_subarray(query);
@@ -1416,7 +1380,7 @@ int32_t tiledb_query_add_range_var(
     uint64_t start_size,
     const void* end,
     uint64_t end_size) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   tiledb_subarray_transient_local_t query_subarray(query);
@@ -1432,7 +1396,7 @@ int32_t tiledb_query_add_range_var_by_name(
     uint64_t start_size,
     const void* end,
     uint64_t end_size) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   tiledb_subarray_transient_local_t query_subarray(query);
@@ -1445,7 +1409,7 @@ int32_t tiledb_query_get_range_num(
     const tiledb_query_t* query,
     uint32_t dim_idx,
     uint64_t* range_num) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   tiledb_subarray_transient_local_t query_subarray(query);
@@ -1458,7 +1422,7 @@ int32_t tiledb_query_get_range_num_from_name(
     const tiledb_query_t* query,
     const char* dim_name,
     uint64_t* range_num) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   tiledb_subarray_transient_local_t query_subarray(query);
@@ -1474,7 +1438,7 @@ int32_t tiledb_query_get_range(
     const void** start,
     const void** end,
     const void** stride) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   tiledb_subarray_transient_local_t query_subarray(query);
@@ -1490,7 +1454,7 @@ int32_t tiledb_query_get_range_from_name(
     const void** start,
     const void** end,
     const void** stride) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   tiledb_subarray_transient_local_t query_subarray(query);
@@ -1505,7 +1469,7 @@ int32_t tiledb_query_get_range_var_size(
     uint64_t range_idx,
     uint64_t* start_size,
     uint64_t* end_size) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   tiledb_subarray_transient_local_t which_subarray(query);
@@ -1520,7 +1484,7 @@ int32_t tiledb_query_get_range_var_size_from_name(
     uint64_t range_idx,
     uint64_t* start_size,
     uint64_t* end_size) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   tiledb_subarray_transient_local_t query_subarray(query);
@@ -1535,7 +1499,7 @@ int32_t tiledb_query_get_range_var(
     uint64_t range_idx,
     void* start,
     void* end) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   tiledb_subarray_transient_local_t query_subarray(query);
@@ -1550,7 +1514,7 @@ int32_t tiledb_query_get_range_var_from_name(
     uint64_t range_idx,
     void* start,
     void* end) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   tiledb_subarray_transient_local_t query_subarray(query);
@@ -1563,7 +1527,7 @@ int32_t tiledb_query_get_est_result_size(
     const tiledb_query_t* query,
     const char* name,
     uint64_t* size) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(query->query_->get_est_result_size(name, size));
@@ -1577,7 +1541,7 @@ int32_t tiledb_query_get_est_result_size_var(
     const char* name,
     uint64_t* size_off,
     uint64_t* size_val) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(query->query_->get_est_result_size(name, size_off, size_val));
@@ -1591,7 +1555,7 @@ int32_t tiledb_query_get_est_result_size_nullable(
     const char* name,
     uint64_t* size_val,
     uint64_t* size_validity) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(query->query_->get_est_result_size_nullable(
@@ -1607,7 +1571,7 @@ int32_t tiledb_query_get_est_result_size_var_nullable(
     uint64_t* size_off,
     uint64_t* size_val,
     uint64_t* size_validity) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(query->query_->get_est_result_size_nullable(
@@ -1618,7 +1582,7 @@ int32_t tiledb_query_get_est_result_size_var_nullable(
 
 int32_t tiledb_query_get_fragment_num(
     tiledb_ctx_t* ctx, const tiledb_query_t* query, uint32_t* num) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(query->query_->get_written_fragment_num(num));
@@ -1631,7 +1595,7 @@ int32_t tiledb_query_get_fragment_uri(
     const tiledb_query_t* query,
     uint64_t idx,
     const char** uri) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(query->query_->get_written_fragment_uri(idx, uri));
@@ -1645,7 +1609,7 @@ int32_t tiledb_query_get_fragment_timestamp_range(
     uint64_t idx,
     uint64_t* t1,
     uint64_t* t2) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(
@@ -1660,7 +1624,7 @@ int32_t tiledb_query_get_subarray_t(
     tiledb_subarray_t** subarray) {
   *subarray = nullptr;
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   *subarray = new (std::nothrow) tiledb_subarray_t;
@@ -1681,7 +1645,7 @@ int32_t tiledb_query_get_relevant_fragment_num(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     uint64_t* relevant_fragment_num) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   *relevant_fragment_num =
@@ -1697,8 +1661,7 @@ int32_t tiledb_query_add_update_value(
     const void* update_value,
     uint64_t update_value_size) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, query) == TILEDB_ERR) {
+  if (sanity_check(ctx, query) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
 
@@ -1773,8 +1736,7 @@ void tiledb_subarray_free(tiledb_subarray_t** subarray) {
 int32_t tiledb_subarray_set_coalesce_ranges(
     tiledb_ctx_t* ctx, tiledb_subarray_t* subarray, int coalesce_ranges) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
+  if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(
@@ -1787,8 +1749,7 @@ int32_t tiledb_subarray_set_subarray(
     tiledb_ctx_t* ctx,
     tiledb_subarray_t* subarray_obj,
     const void* subarray_vals) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray_obj) == TILEDB_ERR)
+  if (sanity_check(ctx, subarray_obj) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(subarray_obj->subarray_->set_subarray(subarray_vals));
@@ -1803,8 +1764,7 @@ int32_t tiledb_subarray_add_range(
     const void* start,
     const void* end,
     const void* stride) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
+  if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(subarray->subarray_->add_range(dim_idx, start, end, stride));
@@ -1818,8 +1778,7 @@ int32_t tiledb_subarray_add_point_ranges(
     uint32_t dim_idx,
     const void* start,
     uint64_t count) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
+  if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(subarray->subarray_->add_point_ranges(dim_idx, start, count));
@@ -1834,8 +1793,7 @@ int32_t tiledb_subarray_add_range_by_name(
     const void* start,
     const void* end,
     const void* stride) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
+  if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(
@@ -1852,8 +1810,7 @@ int32_t tiledb_subarray_add_range_var(
     uint64_t start_size,
     const void* end,
     uint64_t end_size) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
+  if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(subarray->subarray_->add_range_var(
@@ -1870,8 +1827,7 @@ int32_t tiledb_subarray_add_range_var_by_name(
     uint64_t start_size,
     const void* end,
     uint64_t end_size) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
+  if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(subarray->subarray_->add_range_var_by_name(
@@ -1885,8 +1841,7 @@ int32_t tiledb_subarray_get_range_num(
     const tiledb_subarray_t* subarray,
     uint32_t dim_idx,
     uint64_t* range_num) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
+  if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(subarray->subarray_->get_range_num(dim_idx, range_num));
@@ -1899,8 +1854,7 @@ int32_t tiledb_subarray_get_range_num_from_name(
     const tiledb_subarray_t* subarray,
     const char* dim_name,
     uint64_t* range_num) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
+  if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(
@@ -1917,8 +1871,7 @@ int32_t tiledb_subarray_get_range(
     const void** start,
     const void** end,
     const void** stride) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
+  if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(
@@ -1934,8 +1887,7 @@ int32_t tiledb_subarray_get_range_var_size(
     uint64_t range_idx,
     uint64_t* start_size,
     uint64_t* end_size) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
+  if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(subarray->subarray_->get_range_var_size(
@@ -1952,8 +1904,7 @@ int32_t tiledb_subarray_get_range_from_name(
     const void** start,
     const void** end,
     const void** stride) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
+  if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(subarray->subarray_->get_range_from_name(
@@ -1969,8 +1920,7 @@ int32_t tiledb_subarray_get_range_var_size_from_name(
     uint64_t range_idx,
     uint64_t* start_size,
     uint64_t* end_size) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
+  if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(subarray->subarray_->get_range_var_size_from_name(
@@ -1986,8 +1936,7 @@ int32_t tiledb_subarray_get_range_var(
     uint64_t range_idx,
     void* start,
     void* end) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
+  if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(
@@ -2003,8 +1952,7 @@ int32_t tiledb_subarray_get_range_var_from_name(
     uint64_t range_idx,
     void* start,
     void* end) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
+  if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(subarray->subarray_->get_range_var_from_name(
@@ -2019,11 +1967,6 @@ int32_t tiledb_subarray_get_range_var_from_name(
 
 int32_t tiledb_query_condition_alloc(
     tiledb_ctx_t* const ctx, tiledb_query_condition_t** const cond) {
-  if (sanity_check(ctx) == TILEDB_ERR) {
-    *cond = nullptr;
-    return TILEDB_ERR;
-  }
-
   // Create query condition struct
   *cond = new (std::nothrow) tiledb_query_condition_t;
   if (*cond == nullptr) {
@@ -2107,8 +2050,7 @@ int32_t tiledb_query_condition_init(
     const void* const condition_value,
     const uint64_t condition_value_size,
     const tiledb_query_condition_op_t op) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, cond) == TILEDB_ERR) {
+  if (sanity_check(ctx, cond) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
 
@@ -2135,8 +2077,7 @@ int32_t tiledb_query_condition_combine(
     const tiledb_query_condition_combination_op_t combination_op,
     tiledb_query_condition_t** const combined_cond) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, left_cond) == TILEDB_ERR ||
+  if (sanity_check(ctx, left_cond) == TILEDB_ERR ||
       (combination_op != TILEDB_NOT &&
        sanity_check(ctx, right_cond) == TILEDB_ERR) ||
       (combination_op == TILEDB_NOT && right_cond != nullptr))
@@ -2220,11 +2161,6 @@ capi_return_t tiledb_query_condition_set_use_enumeration(
 
 int32_t tiledb_array_alloc(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_array_t** array) {
-  if (sanity_check(ctx) == TILEDB_ERR) {
-    *array = nullptr;
-    return TILEDB_ERR;
-  }
-
   // Create array struct
   *array = new (std::nothrow) tiledb_array_t;
   if (*array == nullptr) {
@@ -2266,7 +2202,7 @@ int32_t tiledb_array_alloc(
 
 int32_t tiledb_array_set_open_timestamp_start(
     tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_start) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   array->array_->set_timestamp_start(timestamp_start);
@@ -2276,7 +2212,7 @@ int32_t tiledb_array_set_open_timestamp_start(
 
 int32_t tiledb_array_set_open_timestamp_end(
     tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t timestamp_end) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   array->array_->set_timestamp_end(timestamp_end);
@@ -2286,7 +2222,7 @@ int32_t tiledb_array_set_open_timestamp_end(
 
 int32_t tiledb_array_get_open_timestamp_start(
     tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp_start) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   *timestamp_start = array->array_->timestamp_start();
@@ -2296,7 +2232,7 @@ int32_t tiledb_array_get_open_timestamp_start(
 
 int32_t tiledb_array_get_open_timestamp_end(
     tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* timestamp_end) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   *timestamp_end = array->array_->timestamp_end_opened_at();
@@ -2305,9 +2241,6 @@ int32_t tiledb_array_get_open_timestamp_end(
 }
 
 int32_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* uri) {
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
-
   // Allocate an array object
   tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
   try {
@@ -2344,7 +2277,7 @@ int32_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* uri) {
 
 int32_t tiledb_array_delete_array(
     tiledb_ctx_t* ctx, tiledb_array_t* array, const char* uri) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   try {
@@ -2365,7 +2298,7 @@ int32_t tiledb_array_delete_fragments(
     const char* uri,
     uint64_t timestamp_start,
     uint64_t timestamp_end) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   LOG_WARN(
@@ -2504,7 +2437,7 @@ capi_return_t tiledb_array_delete_fragments_list(
 
 int32_t tiledb_array_open(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Open array
@@ -2519,7 +2452,7 @@ int32_t tiledb_array_open(
 
 int32_t tiledb_array_is_open(
     tiledb_ctx_t* ctx, tiledb_array_t* array, int32_t* is_open) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   *is_open = (int32_t)array->array_->is_open();
@@ -2528,7 +2461,7 @@ int32_t tiledb_array_is_open(
 }
 
 int32_t tiledb_array_reopen(tiledb_ctx_t* ctx, tiledb_array_t* array) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Reopen array
@@ -2557,7 +2490,7 @@ int32_t tiledb_array_get_config(
 }
 
 int32_t tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Close array
@@ -2577,8 +2510,7 @@ int32_t tiledb_array_get_schema(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_array_schema_t** array_schema) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array) == TILEDB_ERR) {
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
 
@@ -2607,8 +2539,7 @@ int32_t tiledb_array_get_schema(
 int32_t tiledb_array_get_query_type(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t* query_type) {
   // Sanity checks
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array) == TILEDB_ERR) {
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
 
@@ -2630,8 +2561,7 @@ int32_t tiledb_array_create(
     const char* array_uri,
     const tiledb_array_schema_t* array_schema) {
   // Sanity checks
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Check array name
@@ -2696,8 +2626,7 @@ int32_t tiledb_array_create_with_key(
     const void* encryption_key,
     uint32_t key_length) {
   // Sanity checks
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Check array name
@@ -2788,8 +2717,6 @@ int32_t tiledb_array_consolidate_with_key(
     uint32_t key_length,
     tiledb_config_t* config) {
   // Sanity checks
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
 
   throw_if_not_ok(ctx->storage_manager()->array_consolidate(
       array_uri,
@@ -2809,8 +2736,6 @@ int32_t tiledb_array_consolidate_fragments(
     const uint64_t num_fragments,
     tiledb_config_t* config) {
   // Sanity checks
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
 
   // Convert the list of fragments to a vector
   std::vector<std::string> uris;
@@ -2843,7 +2768,7 @@ int32_t tiledb_array_vacuum(
 
 int32_t tiledb_array_get_non_empty_domain(
     tiledb_ctx_t* ctx, tiledb_array_t* array, void* domain, int32_t* is_empty) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   bool is_empty_b;
@@ -2862,7 +2787,7 @@ int32_t tiledb_array_get_non_empty_domain_from_index(
     uint32_t idx,
     void* domain,
     int32_t* is_empty) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   bool is_empty_b;
@@ -2881,7 +2806,7 @@ int32_t tiledb_array_get_non_empty_domain_from_name(
     const char* name,
     void* domain,
     int32_t* is_empty) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   bool is_empty_b;
@@ -2901,7 +2826,7 @@ int32_t tiledb_array_get_non_empty_domain_var_size_from_index(
     uint64_t* start_size,
     uint64_t* end_size,
     int32_t* is_empty) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   bool is_empty_b = true;
@@ -2922,7 +2847,7 @@ int32_t tiledb_array_get_non_empty_domain_var_size_from_name(
     uint64_t* start_size,
     uint64_t* end_size,
     int32_t* is_empty) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   bool is_empty_b = true;
@@ -2943,7 +2868,7 @@ int32_t tiledb_array_get_non_empty_domain_var_from_index(
     void* start,
     void* end,
     int32_t* is_empty) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   bool is_empty_b = true;
@@ -2964,7 +2889,7 @@ int32_t tiledb_array_get_non_empty_domain_var_from_name(
     void* start,
     void* end,
     int32_t* is_empty) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   bool is_empty_b = true;
@@ -2981,7 +2906,7 @@ int32_t tiledb_array_get_non_empty_domain_var_from_name(
 int32_t tiledb_array_get_uri(
     tiledb_ctx_t* ctx, tiledb_array_t* array, const char** array_uri) {
   // Sanity checks
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   *array_uri = array->array_.get()->array_uri().c_str();
@@ -2994,8 +2919,7 @@ int32_t tiledb_array_encryption_type(
     const char* array_uri,
     tiledb_encryption_type_t* encryption_type) {
   // Sanity checks
-  if (sanity_check(ctx) == TILEDB_ERR || array_uri == nullptr ||
-      encryption_type == nullptr)
+  if (array_uri == nullptr || encryption_type == nullptr)
     return TILEDB_ERR;
 
   // For easy reference
@@ -3035,7 +2959,7 @@ int32_t tiledb_array_put_metadata(
     tiledb_datatype_t value_type,
     uint32_t value_num,
     const void* value) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Put metadata
@@ -3047,7 +2971,7 @@ int32_t tiledb_array_put_metadata(
 
 int32_t tiledb_array_delete_metadata(
     tiledb_ctx_t* ctx, tiledb_array_t* array, const char* key) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Put metadata
@@ -3063,7 +2987,7 @@ int32_t tiledb_array_get_metadata(
     tiledb_datatype_t* value_type,
     uint32_t* value_num,
     const void** value) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Get metadata
@@ -3077,7 +3001,7 @@ int32_t tiledb_array_get_metadata(
 
 int32_t tiledb_array_get_metadata_num(
     tiledb_ctx_t* ctx, tiledb_array_t* array, uint64_t* num) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Get metadata num
@@ -3095,7 +3019,7 @@ int32_t tiledb_array_get_metadata_from_index(
     tiledb_datatype_t* value_type,
     uint32_t* value_num,
     const void** value) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Get metadata
@@ -3113,7 +3037,7 @@ int32_t tiledb_array_has_metadata_key(
     const char* key,
     tiledb_datatype_t* value_type,
     int32_t* has_key) {
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Check whether metadata has_key
@@ -3131,8 +3055,7 @@ int32_t tiledb_array_evolve(
     const char* array_uri,
     tiledb_array_schema_evolution_t* array_schema_evolution) {
   // Sanity Checks
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Check array name
@@ -3190,8 +3113,6 @@ capi_return_t tiledb_array_load_all_enumerations(
 int32_t tiledb_array_upgrade_version(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
   // Sanity Checks
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
 
   // Check array name
   tiledb::sm::URI uri(array_uri);
@@ -3217,9 +3138,6 @@ int32_t tiledb_array_upgrade_version(
 
 int32_t tiledb_object_type(
     tiledb_ctx_t* ctx, const char* path, tiledb_object_t* type) {
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
-
   auto uri = tiledb::sm::URI(path);
   tiledb::sm::ObjectType object_type;
   throw_if_not_ok(ctx->storage_manager()->object_type(uri, &object_type));
@@ -3229,16 +3147,12 @@ int32_t tiledb_object_type(
 }
 
 int32_t tiledb_object_remove(tiledb_ctx_t* ctx, const char* path) {
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
   throw_if_not_ok(ctx->storage_manager()->object_remove(path));
   return TILEDB_OK;
 }
 
 int32_t tiledb_object_move(
     tiledb_ctx_t* ctx, const char* old_path, const char* new_path) {
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
   throw_if_not_ok(ctx->storage_manager()->object_move(old_path, new_path));
   return TILEDB_OK;
 }
@@ -3250,8 +3164,7 @@ int32_t tiledb_object_walk(
     int32_t (*callback)(const char*, tiledb_object_t, void*),
     void* data) {
   // Sanity checks
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
+
   if (callback == nullptr) {
     auto st = Status_Error("Cannot initiate walk; Invalid callback function");
     LOG_STATUS_NO_RETURN_VALUE(st);
@@ -3297,8 +3210,7 @@ int32_t tiledb_object_ls(
     int32_t (*callback)(const char*, tiledb_object_t, void*),
     void* data) {
   // Sanity checks
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
+
   if (callback == nullptr) {
     auto st =
         Status_Error("Cannot initiate object ls; Invalid callback function");
@@ -3344,8 +3256,7 @@ int32_t tiledb_object_ls(
 
 int32_t tiledb_uri_to_path(
     tiledb_ctx_t* ctx, const char* uri, char* path_out, uint32_t* path_length) {
-  if (sanity_check(ctx) == TILEDB_ERR || uri == nullptr ||
-      path_out == nullptr || path_length == nullptr)
+  if (uri == nullptr || path_out == nullptr || path_length == nullptr)
     return TILEDB_ERR;
 
   std::string path = tiledb::sm::URI::to_path(uri);
@@ -3459,7 +3370,7 @@ int32_t tiledb_serialize_array(
     int32_t client_side,
     tiledb_buffer_t** buffer) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   auto buf = tiledb_buffer_handle_t::make_handle();
@@ -3487,8 +3398,6 @@ int32_t tiledb_deserialize_array(
     int32_t,
     tiledb_array_t** array) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
 
   api::ensure_buffer_is_valid(buffer);
 
@@ -3547,8 +3456,7 @@ int32_t tiledb_serialize_array_schema(
     int32_t client_side,
     tiledb_buffer_t** buffer) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Create buffer
@@ -3610,8 +3518,7 @@ int32_t tiledb_serialize_array_open(
   // Currently no different behaviour is required if array open is serialized by
   // the client or the Cloud server, so the variable is unused
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array) == TILEDB_ERR) {
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
 
@@ -3640,12 +3547,6 @@ int32_t tiledb_deserialize_array_open(
     tiledb_array_t** array) {
   // Currently no different behaviour is required if array open is deserialized
   // by the client or the Cloud server
-
-  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR) {
-    return TILEDB_ERR;
-  }
-
   api::ensure_buffer_is_valid(buffer);
 
   // Create array struct
@@ -3704,8 +3605,7 @@ int32_t tiledb_serialize_array_schema_evolution(
     int32_t client_side,
     tiledb_buffer_t** buffer) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
+  if (sanity_check(ctx, array_schema_evolution) == TILEDB_ERR)
     return TILEDB_ERR;
 
   auto buf = tiledb_buffer_handle_t::make_handle();
@@ -3733,8 +3633,6 @@ int32_t tiledb_deserialize_array_schema_evolution(
     int32_t,
     tiledb_array_schema_evolution_t** array_schema_evolution) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
 
   api::ensure_buffer_is_valid(buffer);
 
@@ -3769,7 +3667,7 @@ int32_t tiledb_serialize_query(
     int32_t client_side,
     tiledb_buffer_list_t** buffer_list) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Allocate a buffer list
@@ -3797,7 +3695,7 @@ int32_t tiledb_deserialize_query(
     int32_t client_side,
     tiledb_query_t* query) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   api::ensure_buffer_is_valid(buffer);
@@ -3822,7 +3720,7 @@ int32_t tiledb_deserialize_query_and_array(
     tiledb_query_t** query,
     tiledb_array_t** array) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || query == nullptr) {
+  if (query == nullptr) {
     return TILEDB_ERR;
   }
 
@@ -3913,7 +3811,7 @@ int32_t tiledb_serialize_array_nonempty_domain(
     int32_t,
     tiledb_buffer_t** buffer) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   auto buf = tiledb_buffer_handle_t::make_handle();
@@ -3944,7 +3842,7 @@ int32_t tiledb_deserialize_array_nonempty_domain(
     void* nonempty_domain,
     int32_t* is_empty) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   api::ensure_buffer_is_valid(buffer);
@@ -3969,7 +3867,7 @@ int32_t tiledb_serialize_array_non_empty_domain_all_dimensions(
     int32_t,
     tiledb_buffer_t** buffer) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   auto buf = tiledb_buffer_handle_t::make_handle();
@@ -3996,7 +3894,7 @@ int32_t tiledb_deserialize_array_non_empty_domain_all_dimensions(
     tiledb_serialization_type_t serialize_type,
     int32_t) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   api::ensure_buffer_is_valid(buffer);
@@ -4016,7 +3914,7 @@ int32_t tiledb_serialize_array_max_buffer_sizes(
     tiledb_serialization_type_t serialize_type,
     tiledb_buffer_t** buffer) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   auto buf = tiledb_buffer_handle_t::make_handle();
@@ -4099,7 +3997,7 @@ int32_t tiledb_serialize_array_metadata(
     tiledb_serialization_type_t serialize_type,
     tiledb_buffer_t** buffer) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   auto buf = tiledb_buffer_handle_t::make_handle();
@@ -4133,7 +4031,7 @@ int32_t tiledb_deserialize_array_metadata(
     tiledb_serialization_type_t serialize_type,
     const tiledb_buffer_t* buffer) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   api::ensure_buffer_is_valid(buffer);
@@ -4154,7 +4052,7 @@ int32_t tiledb_serialize_query_est_result_sizes(
     int32_t client_side,
     tiledb_buffer_t** buffer) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   auto buf = tiledb_buffer_handle_t::make_handle();
@@ -4182,7 +4080,7 @@ int32_t tiledb_deserialize_query_est_result_sizes(
     int32_t client_side,
     const tiledb_buffer_t* buffer) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   api::ensure_buffer_is_valid(buffer);
@@ -4203,8 +4101,7 @@ int32_t tiledb_serialize_config(
     int32_t client_side,
     tiledb_buffer_t** buffer) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR)
-    return TILEDB_ERR;
+
   api::ensure_config_is_valid(config);
 
   auto buf = tiledb_buffer_handle_t::make_handle();
@@ -4264,8 +4161,7 @@ int32_t tiledb_serialize_fragment_info_request(
   // serialized by the client or the Cloud server
 
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR) {
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
 
@@ -4296,8 +4192,7 @@ int32_t tiledb_deserialize_fragment_info_request(
   // serialized by the client or the Cloud server
 
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR) {
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
 
@@ -4322,8 +4217,7 @@ int32_t tiledb_serialize_fragment_info(
     int32_t client_side,
     tiledb_buffer_t** buffer) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR) {
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
 
@@ -4357,8 +4251,7 @@ int32_t tiledb_deserialize_fragment_info(
   // deserialized by the client or the Cloud server
 
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR) {
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
 
@@ -4453,8 +4346,7 @@ int32_t tiledb_query_submit_async_func(
     tiledb_query_t* query,
     void* callback_func,
     void* callback_data) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, query) == TILEDB_ERR || callback_func == nullptr)
+  if (sanity_check(ctx, query) == TILEDB_ERR || callback_func == nullptr)
     return TILEDB_ERR;
 
   std::function<void(void*)> callback =
@@ -4474,11 +4366,6 @@ int32_t tiledb_fragment_info_alloc(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     tiledb_fragment_info_t** fragment_info) {
-  if (sanity_check(ctx) == TILEDB_ERR) {
-    *fragment_info = nullptr;
-    return TILEDB_ERR;
-  }
-
   // Create fragment info struct
   *fragment_info = new (std::nothrow) tiledb_fragment_info_t;
   if (*fragment_info == nullptr) {
@@ -4547,8 +4434,7 @@ int32_t tiledb_fragment_info_get_config(
     tiledb_fragment_info_t* fragment_info,
     tiledb_config_t** config) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   api::ensure_output_pointer_is_valid(config);
@@ -4559,8 +4445,7 @@ int32_t tiledb_fragment_info_get_config(
 
 int32_t tiledb_fragment_info_load(
     tiledb_ctx_t* ctx, tiledb_fragment_info_t* fragment_info) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Load fragment info
@@ -4574,8 +4459,7 @@ int32_t tiledb_fragment_info_get_fragment_name(
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     const char** name) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   LOG_WARN(
@@ -4612,8 +4496,7 @@ int32_t tiledb_fragment_info_get_fragment_num(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t* fragment_num) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   *fragment_num = fragment_info->fragment_info_->fragment_num();
@@ -4626,8 +4509,7 @@ int32_t tiledb_fragment_info_get_fragment_uri(
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     const char** uri) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(fragment_info->fragment_info_->get_fragment_uri(fid, uri));
@@ -4640,8 +4522,7 @@ int32_t tiledb_fragment_info_get_fragment_size(
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     uint64_t* size) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(fragment_info->fragment_info_->get_fragment_size(fid, size));
@@ -4654,8 +4535,7 @@ int32_t tiledb_fragment_info_get_dense(
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     int32_t* dense) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(fragment_info->fragment_info_->get_dense(fid, dense));
@@ -4668,8 +4548,7 @@ int32_t tiledb_fragment_info_get_sparse(
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     int32_t* sparse) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(fragment_info->fragment_info_->get_sparse(fid, sparse));
@@ -4683,8 +4562,7 @@ int32_t tiledb_fragment_info_get_timestamp_range(
     uint32_t fid,
     uint64_t* start,
     uint64_t* end) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(
@@ -4699,8 +4577,7 @@ int32_t tiledb_fragment_info_get_non_empty_domain_from_index(
     uint32_t fid,
     uint32_t did,
     void* domain) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(
@@ -4715,8 +4592,7 @@ int32_t tiledb_fragment_info_get_non_empty_domain_from_name(
     uint32_t fid,
     const char* dim_name,
     void* domain) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(fragment_info->fragment_info_->get_non_empty_domain(
@@ -4732,8 +4608,7 @@ int32_t tiledb_fragment_info_get_non_empty_domain_var_size_from_index(
     uint32_t did,
     uint64_t* start_size,
     uint64_t* end_size) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(fragment_info->fragment_info_->get_non_empty_domain_var_size(
@@ -4749,8 +4624,7 @@ int32_t tiledb_fragment_info_get_non_empty_domain_var_size_from_name(
     const char* dim_name,
     uint64_t* start_size,
     uint64_t* end_size) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(fragment_info->fragment_info_->get_non_empty_domain_var_size(
@@ -4766,8 +4640,7 @@ int32_t tiledb_fragment_info_get_non_empty_domain_var_from_index(
     uint32_t did,
     void* start,
     void* end) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(fragment_info->fragment_info_->get_non_empty_domain_var(
@@ -4783,8 +4656,7 @@ int32_t tiledb_fragment_info_get_non_empty_domain_var_from_name(
     const char* dim_name,
     void* start,
     void* end) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(fragment_info->fragment_info_->get_non_empty_domain_var(
@@ -4798,8 +4670,7 @@ int32_t tiledb_fragment_info_get_mbr_num(
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     uint64_t* mbr_num) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(fragment_info->fragment_info_->get_mbr_num(fid, mbr_num));
@@ -4814,8 +4685,7 @@ int32_t tiledb_fragment_info_get_mbr_from_index(
     uint32_t mid,
     uint32_t did,
     void* mbr) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(fragment_info->fragment_info_->get_mbr(fid, mid, did, mbr));
@@ -4830,8 +4700,7 @@ int32_t tiledb_fragment_info_get_mbr_from_name(
     uint32_t mid,
     const char* dim_name,
     void* mbr) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(
@@ -4848,8 +4717,7 @@ int32_t tiledb_fragment_info_get_mbr_var_size_from_index(
     uint32_t did,
     uint64_t* start_size,
     uint64_t* end_size) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(fragment_info->fragment_info_->get_mbr_var_size(
@@ -4866,8 +4734,7 @@ int32_t tiledb_fragment_info_get_mbr_var_size_from_name(
     const char* dim_name,
     uint64_t* start_size,
     uint64_t* end_size) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(fragment_info->fragment_info_->get_mbr_var_size(
@@ -4884,8 +4751,7 @@ int32_t tiledb_fragment_info_get_mbr_var_from_index(
     uint32_t did,
     void* start,
     void* end) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(
@@ -4902,8 +4768,7 @@ int32_t tiledb_fragment_info_get_mbr_var_from_name(
     const char* dim_name,
     void* start,
     void* end) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(fragment_info->fragment_info_->get_mbr_var(
@@ -4917,8 +4782,7 @@ int32_t tiledb_fragment_info_get_cell_num(
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     uint64_t* cell_num) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(fragment_info->fragment_info_->get_cell_num(fid, cell_num));
@@ -4930,8 +4794,7 @@ int32_t tiledb_fragment_info_get_total_cell_num(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint64_t* cell_num) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(fragment_info->fragment_info_->get_total_cell_num(cell_num));
@@ -4944,8 +4807,7 @@ int32_t tiledb_fragment_info_get_version(
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     uint32_t* version) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(fragment_info->fragment_info_->get_version(fid, version));
@@ -4958,8 +4820,7 @@ int32_t tiledb_fragment_info_has_consolidated_metadata(
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     int32_t* has) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(
@@ -4972,8 +4833,7 @@ int32_t tiledb_fragment_info_get_unconsolidated_metadata_num(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t* unconsolidated) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   *unconsolidated =
@@ -4986,8 +4846,7 @@ int32_t tiledb_fragment_info_get_to_vacuum_num(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint32_t* to_vacuum_num) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   *to_vacuum_num = fragment_info->fragment_info_->to_vacuum_num();
@@ -5000,8 +4859,7 @@ int32_t tiledb_fragment_info_get_to_vacuum_uri(
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     const char** uri) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(fragment_info->fragment_info_->get_to_vacuum_uri(fid, uri));
@@ -5014,8 +4872,7 @@ int32_t tiledb_fragment_info_get_array_schema(
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     tiledb_array_schema_t** array_schema) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Create array schema
@@ -5039,8 +4896,7 @@ int32_t tiledb_fragment_info_get_array_schema_name(
     tiledb_fragment_info_t* fragment_info,
     uint32_t fid,
     const char** schema_name) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
 
   throw_if_not_ok(
@@ -5053,8 +4909,7 @@ int32_t tiledb_fragment_info_get_array_schema_name(
 
 int32_t tiledb_fragment_info_dump(
     tiledb_ctx_t* ctx, const tiledb_fragment_info_t* fragment_info, FILE* out) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, fragment_info) == TILEDB_ERR)
+  if (sanity_check(ctx, fragment_info) == TILEDB_ERR)
     return TILEDB_ERR;
   fragment_info->fragment_info_->dump(out);
   return TILEDB_OK;
@@ -5069,7 +4924,7 @@ int32_t tiledb_query_get_status_details(
     tiledb_query_t* query,
     tiledb_query_status_details_t* status) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Currently only one detailed reason. Retrieve it and set to user struct.
@@ -5087,8 +4942,7 @@ int32_t tiledb_consolidation_plan_create_with_mbr(
     uint64_t fragment_size,
     tiledb_consolidation_plan_t** consolidation_plan) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array) == TILEDB_ERR) {
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
 
@@ -5134,8 +4988,7 @@ int32_t tiledb_consolidation_plan_get_num_nodes(
     tiledb_ctx_t* ctx,
     tiledb_consolidation_plan_t* consolidation_plan,
     uint64_t* num_nodes) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
+  if (sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
 
@@ -5148,8 +5001,7 @@ int32_t tiledb_consolidation_plan_get_num_fragments(
     tiledb_consolidation_plan_t* consolidation_plan,
     uint64_t node_index,
     uint64_t* num_fragments) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
+  if (sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
 
@@ -5172,8 +5024,7 @@ int32_t tiledb_consolidation_plan_get_fragment_uri(
     uint64_t node_index,
     uint64_t fragment_index,
     const char** uri) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
+  if (sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
 
@@ -5198,8 +5049,7 @@ int32_t tiledb_consolidation_plan_dump_json_str(
     return TILEDB_ERR;
   }
 
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
+  if (sanity_check(ctx, consolidation_plan) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
 
