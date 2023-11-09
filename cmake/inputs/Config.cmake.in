@@ -10,6 +10,35 @@
 
 @PACKAGE_INIT@
 
+if(@TILEDB_INSTALL_FIND_DEPENDENCIES@) # TILEDB_INSTALL_FIND_DEPENDENCIES
+  include(CMakeFindDependencyMacro)
+  find_dependency(Threads)
+  find_dependency(BZip2)
+  find_dependency(lz4)
+  find_dependency(spdlog)
+  find_dependency(zstd)
+  find_dependency(unofficial-libmagic)
+  if(NOT WIN32)
+    find_dependency(OpenSSL)
+  endif()
+  if(@TILEDB_S3@) # TILEDB_S3
+    find_dependency(AWSSDK COMPONENTS @AWS_SERVICES@)
+  endif()
+  if(@TILEDB_AZURE@) # TILEDB_AZURE
+    find_dependency(azure-storage-blobs-cpp)
+  endif()
+  if(@TILEDB_GCS@) # TILEDB_GCS
+    find_dependency(google_cloud_cpp_storage)
+  endif()
+  if(@TILEDB_SERIALIZATION@) # TILEDB_SERIALIZATION
+    find_dependency(CapnProto)
+    find_dependency(CURL)
+  endif()
+  if(@TILEDB_WEBP@) # TILEDB_WEBP
+    find_dependency(WebP)
+  endif()
+endif()
+
 include("${CMAKE_CURRENT_LIST_DIR}/@TARGETS_EXPORT_NAME@.cmake")
 check_required_components("@PROJECT_NAME@")
 
