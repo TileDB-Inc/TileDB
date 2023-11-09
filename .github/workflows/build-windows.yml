@@ -388,7 +388,7 @@ jobs:
           cd build
 
           # Build zip artifact
-          cmake -A X64 -DCMAKE_PREFIX_PATH="$env:BUILD_BUILDDIRECTORY\dist;$env:BUILD_BUILD_DIRECTORY\vcpkg_installed\x64-windows-mod" ..
+          cmake -A X64 -DCMAKE_PREFIX_PATH="$env:BUILD_BUILDDIRECTORY\dist;$env:BUILD_BUILD_DIRECTORY\vcpkg_installed\x64-windows" ..
 
           cmake --build . --config $CMakeBuildType -v
 
