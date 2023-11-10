@@ -166,7 +166,12 @@ Status group_details_to_capnp(
   }
 
   Metadata* metadata;
-  RETURN_NOT_OK(group->metadata(&metadata));
+  if (group->group_uri().is_tiledb()) {
+    metadata = const_cast<Metadata*>(group->metadata());
+  } else {
+    RETURN_NOT_OK(group->metadata(&metadata));
+  }
+
   if (metadata->num()) {
     auto group_metadata_builder = group_details_builder->initMetadata();
     RETURN_NOT_OK(metadata_to_capnp(metadata, &group_metadata_builder));
