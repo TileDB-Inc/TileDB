@@ -3255,7 +3255,7 @@ int32_t tiledb_object_ls(
 /* ****************************** */
 
 int32_t tiledb_uri_to_path(
-    tiledb_ctx_t* ctx, const char* uri, char* path_out, uint32_t* path_length) {
+    tiledb_ctx_t*, const char* uri, char* path_out, uint32_t* path_length) {
   if (uri == nullptr || path_out == nullptr || path_length == nullptr)
     return TILEDB_ERR;
 
