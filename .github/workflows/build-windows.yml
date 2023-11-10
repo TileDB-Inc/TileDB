@@ -148,9 +148,6 @@ jobs:
           }
           if ($env:TILEDB_AZURE -eq "ON") {
             $bootstrapOptions = "-EnableAzure " + $bootstrapOptions
-
-            # to be removed when build of crc32 is to be used by gcs
-            $bootstrapOptions = $bootstrapOptions + " -_EnableCrc32"
           }
           if ($env:TILEDB_GCS -eq "ON") {
             $bootstrapOptions = "-EnableGcs " + $bootstrapOptions
