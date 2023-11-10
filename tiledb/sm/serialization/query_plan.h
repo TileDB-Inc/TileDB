@@ -1,5 +1,5 @@
 /**
- * @file enumeration.h
+ * @file query_plan.h
  *
  * @section LICENSE
  *
@@ -27,18 +27,18 @@
  *
  * @section DESCRIPTION
  *
- * This file declares serialization functions for Enumeration.
+ * This file declares serialization functions for Query Plan.
  */
 
-#ifndef TILEDB_SERIALIZATION_ENUMERATION_H
-#define TILEDB_SERIALIZATION_ENUMERATION_H
+#ifndef TILEDB_SERIALIZATION_QUERY_PLAN_H
+#define TILEDB_SERIALIZATION_QUERY_PLAN_H
 
 #ifdef TILEDB_SERIALIZATION
 #include "tiledb/sm/serialization/capnp_utils.h"
 #endif
 
-#include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/query_plan/query_plan.h"
 
 using namespace tiledb::common;
 
@@ -48,48 +48,29 @@ enum class SerializationType : uint8_t;
 
 namespace serialization {
 
-#ifdef TILEDB_SERIALIZATION
+// DOC missing!!
 
-/**
- * Serialize an Enumeration to cap'n proto object
- *
- * @param enumeration Enumeration to serialize.
- * @param enmr_builder Cap'n proto class.
- */
-void enumeration_to_capnp(
-    shared_ptr<const Enumeration> enumeration,
-    capnp::Enumeration::Builder& enmr_builder);
-
-/**
- * Deserialize an enumeration from a cap'n proto object
- *
- * @param reader Cap'n proto reader object
- * @return A new Enumeration
- */
-shared_ptr<const Enumeration> enumeration_from_capnp(
-    const capnp::Enumeration::Reader& reader);
-
-#endif
-
-void serialize_load_enumerations_request(
+void serialize_query_plan_request(
     const Config& config,
-    const std::vector<std::string>& enumeration_names,
-    SerializationType serialization_type,
+    Query& query,
+    const SerializationType serialization_type,
     Buffer& request);
 
-std::vector<std::string> deserialize_load_enumerations_request(
-    SerializationType serialization_type, const Buffer& request);
+void deserialize_query_plan_request(
+    const SerializationType serialization_type,
+    const Buffer& request,
+    ThreadPool& compute_tp,
+    Query& query);
 
-void serialize_load_enumerations_response(
-    const std::vector<shared_ptr<const Enumeration>>& enumerations,
-    SerializationType serialization_type,
+void serialize_query_plan_response(
+    const std::string& query_plan,
+    const SerializationType serialization_type,
     Buffer& response);
 
-std::vector<shared_ptr<const Enumeration>>
-deserialize_load_enumerations_response(
-    SerializationType serialization_type, const Buffer& response);
+std::string deserialize_query_plan_response(
+    const SerializationType serialization_type, const Buffer& response);
 
 }  // namespace serialization
 }  // namespace tiledb::sm
 
-#endif  // TILEDB_SERIALIZATION_ENUMERATION_H
+#endif  // TILEDB_SERIALIZATION_QUERY_PLAN_H
