@@ -40,6 +40,7 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 using namespace tiledb;

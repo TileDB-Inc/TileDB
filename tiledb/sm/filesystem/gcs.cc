@@ -32,11 +32,6 @@
 
 #ifdef HAVE_GCS
 
-#include <google/cloud/status.h>
-#include <google/cloud/storage/client_options.h>
-#include "google/cloud/storage/oauth2/credentials.h"
-#include "google/cloud/storage/oauth2/google_credentials.h"
-
 #include <sstream>
 #include <unordered_set>
 
@@ -82,11 +77,18 @@ Status GCS::init(const Config& config, ThreadPool* const thread_pool) {
         Status_GCSError("Can't initialize with null thread pool."));
   }
 
+  ssl_cfg_ = SSLConfig(config);
+
   assert(state_ == State::UNINITIALIZED);
 
   thread_pool_ = thread_pool;
 
   bool found;
+  endpoint_ = config.get("vfs.gcs.endpoint", &found);
+  assert(found);
+  if (endpoint_.empty() && getenv("TILEDB_TEST_GCS_ENDPOINT")) {
+    endpoint_ = getenv("TILEDB_TEST_GCS_ENDPOINT");
+  }
   project_id_ = config.get("vfs.gcs.project_id", &found);
   assert(found);
   RETURN_NOT_OK(config.get<uint64_t>(
@@ -101,8 +103,14 @@ Status GCS::init(const Config& config, ThreadPool* const thread_pool) {
   RETURN_NOT_OK(config.get<uint64_t>(
       "vfs.gcs.request_timeout_ms", &request_timeout_ms_, &found));
   assert(found);
+  uint64_t max_direct_upload_size;
+  RETURN_NOT_OK(config.get<uint64_t>(
+      "vfs.gcs.max_direct_upload_size", &max_direct_upload_size, &found));
+  assert(found);
 
-  write_cache_max_size_ = max_parallel_ops_ * multi_part_part_size_;
+  write_cache_max_size_ = use_multi_part_upload_ ?
+                              max_parallel_ops_ * multi_part_part_size_ :
+                              max_direct_upload_size;
 
   state_ = State::INITIALIZED;
   return Status::Ok();
@@ -120,12 +128,14 @@ Status GCS::init_client() const {
   }
 
   google::cloud::storage::ChannelOptions channel_options;
+  if (!ssl_cfg_.ca_file().empty()) {
+    channel_options.set_ssl_root_path(ssl_cfg_.ca_file());
+  }
 
-  if constexpr (tiledb::platform::PlatformCertFile::enabled) {
-    const std::string cert_file = tiledb::platform::PlatformCertFile::get();
-    if (!cert_file.empty()) {
-      channel_options.set_ssl_root_path(cert_file);
-    }
+  if (!ssl_cfg_.ca_path().empty()) {
+    LOG_WARN(
+        "GCS ignores the `ssl.ca_path` configuration key, "
+        "use `ssl.ca_file` instead");
   }
 
   // Note that the order here is *extremely important*
@@ -143,7 +153,7 @@ Status GCS::init_client() const {
   // env variable GOOGLE_APPLICATION_CREDENTIALS
   try {
     shared_ptr<google::cloud::storage::oauth2::Credentials> creds = nullptr;
-    if (getenv("CLOUD_STORAGE_EMULATOR_ENDPOINT")) {
+    if (!endpoint_.empty() || getenv("CLOUD_STORAGE_EMULATOR_ENDPOINT")) {
       creds = google::cloud::storage::oauth2::CreateAnonymousCredentials();
     } else {
       auto status_or_creds =
@@ -158,6 +168,9 @@ Status GCS::init_client() const {
     }
     google::cloud::storage::ClientOptions client_options(
         creds, channel_options);
+    if (!endpoint_.empty()) {
+      client_options.set_endpoint(endpoint_);
+    }
     auto client = google::cloud::storage::Client(
         client_options,
         google::cloud::storage::LimitedTimeRetryPolicy(
@@ -594,8 +607,9 @@ Status GCS::write(
   if (!use_multi_part_upload_) {
     if (nbytes_filled != length) {
       std::stringstream errmsg;
-      errmsg << "Direct write failed! " << nbytes_filled
-             << " bytes written to buffer, " << length << " bytes requested.";
+      errmsg << "Cannot write more than " << write_cache_max_size_
+             << " bytes without multi-part uploads. This limit can be "
+                "configured with the 'vfs.gcs.max_direct_upload_size' option.";
       return LOG_STATUS(Status_GCSError(errmsg.str()));
     } else {
       return Status::Ok();
@@ -978,15 +992,17 @@ Status GCS::flush_object_direct(const URI& uri) {
 
   auto [bucket_name, object_path] = parse_gcs_uri(uri);
 
-  absl::string_view write_buffer(
-      static_cast<const char*>(write_cache_buffer->data()),
-      write_cache_buffer->size());
+  Buffer buffer_moved;
 
   // Protect 'write_cache_map_' from multiple writers.
   {
     std::unique_lock<std::mutex> cache_lock(write_cache_map_lock_);
+    buffer_moved = std::move(*write_cache_buffer);
     write_cache_map_.erase(uri.to_string());
   }
+
+  absl::string_view write_buffer(
+      static_cast<const char*>(buffer_moved.data()), buffer_moved.size());
 
   google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
       object_metadata = get_client().InsertObject(

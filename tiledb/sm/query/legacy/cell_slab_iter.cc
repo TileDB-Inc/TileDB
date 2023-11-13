@@ -38,6 +38,7 @@
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/type/apply_with_type.h"
 #include "tiledb/type/range/range.h"
 
 #include <cassert>
@@ -280,63 +281,20 @@ Status CellSlabIter<T>::sanity_check() const {
   bool error;
   const auto& array_schema = subarray_->array()->array_schema_latest();
   auto type = array_schema.domain().dimension_ptr(0)->type();
-  switch (type) {
-    case Datatype::INT8:
-      error = !std::is_same<T, int8_t>::value;
-      break;
-    case Datatype::UINT8:
-      error = !std::is_same<T, uint8_t>::value;
-      break;
-    case Datatype::INT16:
-      error = !std::is_same<T, int16_t>::value;
-      break;
-    case Datatype::UINT16:
-      error = !std::is_same<T, uint16_t>::value;
-      break;
-    case Datatype::INT32:
-      error = !std::is_same<T, int32_t>::value;
-      break;
-    case Datatype::UINT32:
-      error = !std::is_same<T, uint32_t>::value;
-      break;
-    case Datatype::INT64:
-      error = !std::is_same<T, int64_t>::value;
-      break;
-    case Datatype::UINT64:
-      error = !std::is_same<T, uint64_t>::value;
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      error = !std::is_same<T, int64_t>::value;
-      break;
-    default:
-      error = true;
-      assert(false);
-  }
 
-  if (error)
+  auto g = [&](auto Arg) {
+    if constexpr (tiledb::type::TileDBIntegral<decltype(Arg)>) {
+      error = !std::is_same_v<T, decltype(Arg)>;
+    } else {
+      throw std::logic_error("Unsupported datatype");
+    }
+  };
+  apply_with_type(g, type);
+
+  if (error) {
     return LOG_STATUS(Status_CellSlabIterError(
         "Datatype mismatch between cell slab iterator and subarray"));
+  }
 
   return Status::Ok();
 }

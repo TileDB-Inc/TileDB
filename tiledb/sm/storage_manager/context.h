@@ -81,6 +81,11 @@ class Context {
   void save_error(const Status& st);
 
   /**
+   * Saves a `std::string` as the last error.
+   */
+  void save_error(const std::string& msg);
+
+  /**
    * Saves a `StatusException` as the last error.
    */
   void save_error(const StatusException& st);

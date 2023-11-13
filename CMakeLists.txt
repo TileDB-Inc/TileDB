@@ -92,8 +92,8 @@ if(APPLE)
   set(CMAKE_FIND_FRAMEWORK NEVER)
 endif()
 
-# Set C++17 as default required standard for all C++ targets.
-set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ Standard")
+# Set C++20 as default required standard for all C++ targets.
+set(CMAKE_CXX_STANDARD 20 CACHE STRING "C++ Standard")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(CMAKE_SYSTEM_NAME MATCHES "CYGWIN")
   # Use GNU extensions under Cygwin
@@ -126,10 +126,6 @@ if (TILEDB_CMAKE_IDE)
   set(TILEDB_EP_BASE "${CMAKE_CURRENT_BINARY_DIR}/externals")
 endif()
 
-# When building static TileDB, we also need to install any static dependencies
-# built as external projects.
-set(TILEDB_INSTALL_STATIC_DEPS ${TILEDB_STATIC})
-
 # Set main TileDB Source
 set(TILEDB_BASE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tiledb")
 # Set experimental TileDB Source
@@ -156,6 +152,7 @@ endif()
 
 project(TileDB)
 message(STATUS "Starting TileDB regular build.")
+message(STATUS "  CMake version: ${CMAKE_VERSION}")
 # Paths to locate the installed external projects.
 set(TILEDB_EP_SOURCE_DIR "${TILEDB_EP_BASE}/src")
 set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")
@@ -164,10 +161,19 @@ set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")
 # Compile options/definitions for all targets
 ############################################################
 
+# NOTE: Config-specific options must use the $<CONFIG> generator expression
+#       and not check the value of CMAKE_BUILD_TYPE. The reason is that
+#       the latter is not set when using multi-config generators like
+#       Visual Studio or Xcode.
+
 # Set compiler flags
 if (MSVC)
   # Turn on standards-conformance mode
   add_compile_options("/permissive-")
+  # /EH: Enables standard C++ stack unwinding.
+  # s: Catches only standard C++ exceptions when you use catch(...) syntax.
+  # c: The compiler assumes that functions declared as extern "C" never throw a C++ exception
+  add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/EHsc>)
   # We disable some warnings that are not present in gcc/clang -Wall:
   #   C4101: unreferenced local variable
   #   C4146: unary minus operator applied to unsigned type
@@ -191,43 +197,40 @@ if (MSVC)
   add_compile_options(/wd4996)
   # Disable GDI (which we don't need, and causes some macro
   # re-definition issues if wingdi.h is included)
-  add_compile_options(/DNOGDI)
+  add_compile_definitions("NOGDI")
   # Add /MPn flag from CMake invocation (if defined).
   add_compile_options(${MSVC_MP_FLAG})
   # Build-specific flags
-  if (CMAKE_BUILD_TYPE MATCHES "Debug")
-    add_compile_options(/DDEBUG /Od /Zi /bigobj)
-  elseif (CMAKE_BUILD_TYPE MATCHES "Release")
-    add_compile_options(/DNDEBUG /Ox)
-  elseif (CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
-    add_compile_options(/DNDEBUG /Ox /Zi)
-  endif()
+  add_compile_definitions("$<IF:$<CONFIG:Debug>,DEBUG,NDEBUG>")
+  add_compile_options(
+    # /Od: Disable optimizations
+    # /bigobj: Increase number of sections in .obj file
+    "$<$<CONFIG:Debug>:/Od;/bigobj>"
+    # /Ox: Enable most speed optimizations
+    "$<$<CONFIG:Release,RelWithDebInfo>:/Ox>"
+    # /Zi: Generate debug info in a separate .pdb file
+    "$<$<CONFIG:Debug,RelWithDebInfo>:/Zi>")
 else()
   add_compile_options(-Wall -Wextra)
   if (TILEDB_WERROR)
     add_compile_options(-Werror)
   endif()
   # Build-specific flags
-  if (CMAKE_BUILD_TYPE MATCHES "Debug")
-    add_compile_options(-DDEBUG -O0 -g3 -ggdb3 -gdwarf-3)
-    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-      add_compile_options(-fstandalone-debug)
-    endif()
-  elseif (CMAKE_BUILD_TYPE MATCHES "Release")
-    add_compile_options(-O3)
-  elseif (CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
-    add_compile_options(-DNDEBUG -O3 -g3 -ggdb3 -gdwarf-3)
-  elseif (CMAKE_BUILD_TYPE MATCHES "Coverage")
-    add_compile_options(-DDEBUG -g3 -gdwarf-3 --coverage)
+  add_compile_definitions("$<IF:$<CONFIG:Debug,Coverage>,DEBUG,NDEBUG>")
+  add_compile_options(
+    "$<$<CONFIG:Debug>:-O0;-g3;-ggdb3;-gdwarf-3>"
+    "$<$<CONFIG:Coverage>:-g3;-gdwarf-3;--coverage>"
+    "$<$<CONFIG:Release,RelWithDebInfo>:-O3>"
+    "$<$<CONFIG:RelWithDebInfo>:-g3;-ggdb3;-gdwarf-3>")
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    add_compile_options(
+      "$<$<CONFIG:Debug>:-fstandalone-debug>"
+      "$<$<CONFIG:Coverage>:-fprofile-instr-generate;-fcoverage-mapping>")
+    add_link_options("$<$<CONFIG:Coverage>:--coverage;-fprofile-instr-generate;-fcoverage-mapping>")
   endif()
 
-  # Use -Wno-literal-suffix on Linux with C++ sources.
-  if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-literal-suffix>)
-  endif()
-
-  # Disable newer Apple Clang warnings about unqualified calls to std::move
-  if (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+  # Disable newer Clang warnings about unqualified calls to std::move
+  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     if (${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "14.0.3")
       add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-unqualified-std-cast-call>)
     endif()
@@ -330,6 +333,8 @@ endif()
 
 list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/api_external_common.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/attribute/attribute_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/attribute/attribute_api_external_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/buffer/buffer_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/buffer_list/buffer_list_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/config/config_api_external.h"
@@ -340,6 +345,8 @@ list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/datatype/datatype_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/dimension/dimension_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/dimension_label/dimension_label_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/domain/domain_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/enumeration/enumeration_api_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/error/error_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filesystem/filesystem_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filesystem/filesystem_api_external.h"
@@ -352,6 +359,8 @@ list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/object/object_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query/query_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query/query_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query_aggregate/query_aggregate_api_external_experimental.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query_field/query_field_api_external_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query_plan/query_plan_api_external_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/string/string_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/vfs/vfs_api_enum.h"
@@ -486,6 +495,12 @@ add_custom_target(all_link_complete)
 define_accumulator(object_library_compile_targets)
 
 define_accumulator(unit_test_targets)
+#
+# This is the legacy position of this target declaration; it should appear in
+# test section below. It cannot right now because certain tests are declaring
+# dependencies on it directly. It should be initialized only through
+# accumulators that gather the names of unit test targets.
+#
 add_custom_target(all_unit_tests)
 
 # -------------------------------------------------------
@@ -494,6 +509,15 @@ add_custom_target(all_unit_tests)
 
 # Build the TileDB library experimental features
 add_subdirectory(experimental)
+if (TILEDB_TESTS)
+  # Isolate the experimental unit tests into their own target
+  add_custom_target(experimental_unit_tests)
+  retrieve_from(Unit_Tests ACCUMULATOR unit_test_targets)
+  if (${Unit_Tests})
+    add_dependencies(experimental_unit_tests ${Unit_Tests})
+  endif()
+  reset_accumulator(ACCUMULATOR unit_test_targets)
+endif()
 
 # Build the TileDB library
 add_subdirectory(tiledb)
@@ -505,6 +529,9 @@ add_subdirectory(experimental/experimental_examples)
 
 # Build tools
 if (TILEDB_TOOLS)
+  if (TILEDB_AZURE AND NOT TILEDB_VCPKG)
+    message(FATAL_ERROR "Building tools with Azure enabled requires enabling TILEDB_VCPKG")
+  endif()
   add_subdirectory(tools)
 endif()
 
@@ -520,7 +547,10 @@ if (TILEDB_TESTS)
   # the `all_unit_tests` phantom target.
   #
   retrieve_from(Unit_Tests ACCUMULATOR unit_test_targets)
-  add_dependencies(all_unit_tests ${Unit_Tests})
+  add_custom_target(ordinary_unit_tests)
+  add_dependencies(ordinary_unit_tests ${Unit_Tests})
+  add_dependencies(all_unit_tests ordinary_unit_tests)
+  add_dependencies(all_unit_tests experimental_unit_tests)
 
   # ----------------------------------
   # Target `tests` build and runs all test executables
@@ -536,15 +566,13 @@ if (TILEDB_TESTS)
   # C API support
   add_dependencies(tests unit_capi_handle unit_capi_exception_wrapper)
   # C API basics
-  add_dependencies(tests unit_capi_error unit_capi_config unit_capi_context)
+  add_dependencies(tests unit_capi_config unit_capi_context)
   add_dependencies(tests unit_capi_array)
   add_dependencies(tests unit_capi_buffer)
   add_dependencies(tests unit_capi_buffer_list)
   add_dependencies(tests unit_capi_data_order)
   add_dependencies(tests unit_capi_datatype)
   add_dependencies(tests unit_capi_filesystem)
-  add_dependencies(tests unit_capi_object_type)
-  add_dependencies(tests unit_capi_object_walk_order)
   add_dependencies(tests unit_capi_query_type)
   add_dependencies(tests unit_capi_vfs)
   # C API array schema
@@ -556,10 +584,6 @@ if (TILEDB_TESTS)
 
   if (TILEDB_WEBP)
     add_dependencies(tests unit_link_webp)
-  endif()
-
-  if (TILEDB_ABSEIL)
-    add_dependencies(tests unit_link_absl)
   endif()
 
   if (ENABLE_MAGIC_TEST)

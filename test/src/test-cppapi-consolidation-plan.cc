@@ -41,7 +41,7 @@ using namespace tiledb::test;
 
 struct CppConsolidationPlanFx {
   // Constants.
-  const char* SPARSE_ARRAY_NAME = "test_deletes_array";
+  const char* SPARSE_ARRAY_NAME = "test_consolidation_plan_array";
 
   // TileDB context.
   Context ctx_;

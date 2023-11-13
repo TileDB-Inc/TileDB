@@ -45,12 +45,12 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-ChecksumMD5Filter::ChecksumMD5Filter()
-    : Filter(FilterType::FILTER_CHECKSUM_MD5) {
+ChecksumMD5Filter::ChecksumMD5Filter(Datatype filter_data_type)
+    : Filter(FilterType::FILTER_CHECKSUM_MD5, filter_data_type) {
 }
 
 ChecksumMD5Filter* ChecksumMD5Filter::clone_impl() const {
-  return tdb_new(ChecksumMD5Filter);
+  return tdb_new(ChecksumMD5Filter, filter_data_type_);
 }
 
 void ChecksumMD5Filter::dump(FILE* out) const {

@@ -126,7 +126,7 @@ class Port {
    *
    */
   void detach() {
-    std::lock_guard(this->mutex_);
+    auto lock = std::lock_guard(this->mutex_);
     if (!is_attached()) {
       throw std::runtime_error(
           "Attempting to unattached unattached correspondent");
@@ -177,7 +177,7 @@ class Source : public Port<Mover_T, Block> {
    * @pre The `Source` port is attached to a `Sink` port.
    */
   bool inject(const Block& value) {
-    std::lock_guard(this->mutex_);
+    auto lock = std::lock_guard(this->mutex_);
     if (!this->is_attached()) {
       throw std::logic_error("Sink not attached in inject");
       return {};
@@ -198,7 +198,7 @@ class Source : public Port<Mover_T, Block> {
    * @post `item_` will be empty.
    */
   std::optional<Block> extract() {
-    std::lock_guard(this->mutex_);
+    auto lock = std::lock_guard(this->mutex_);
     if (!this->is_attached()) {
       throw std::logic_error("Source not attached in extract");
       return {};
@@ -253,7 +253,7 @@ class Sink : public Port<Mover_T, Block> {
    * `Sink` and `Source` ports.
    */
   void attach(source_type& predecessor) {
-    std::lock_guard(this->mutex_);
+    auto lock = std::lock_guard(this->mutex_);
     if (this->is_attached() || predecessor.is_attached()) {
       throw std::runtime_error(
           "Sink attempting to attach to already attached ports");
@@ -267,7 +267,7 @@ class Sink : public Port<Mover_T, Block> {
   }
 
   void attach(source_type& predecessor, std::shared_ptr<mover_type> mover) {
-    std::lock_guard(this->mutex_);
+    auto lock = std::lock_guard(this->mutex_);
     if (this->is_attached() || predecessor.is_attached()) {
       throw std::runtime_error(
           "Sink attempting to attach to already attached ports");
@@ -280,7 +280,7 @@ class Sink : public Port<Mover_T, Block> {
   }
 
   void detach(source_type& predecessor) {
-    std::lock_guard(this->mutex_);
+    auto lock = std::lock_guard(this->mutex_);
     if (!this->is_attached() || !predecessor.is_attached()) {
       throw std::runtime_error("Sink attempting to detach unattached ports");
     } else {
@@ -346,7 +346,7 @@ class Sink : public Port<Mover_T, Block> {
    * Inject an item into the `Sink`.  Used only for testing.
    */
   bool inject(const Block& value) {
-    std::lock_guard(this->mutex_);
+    auto lock = std::lock_guard(this->mutex_);
     if (!this->is_attached()) {
       throw std::logic_error("Sink not attached in inject");
       return {};
@@ -367,7 +367,7 @@ class Sink : public Port<Mover_T, Block> {
    * @post `item_` will be empty.
    */
   std::optional<Block> extract() {
-    std::lock_guard(this->mutex_);
+    auto lock = std::lock_guard(this->mutex_);
     if (!this->is_attached()) {
       throw std::logic_error("Sink not attached in extract");
       return {};

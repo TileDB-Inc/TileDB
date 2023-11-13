@@ -35,18 +35,7 @@
   /** Write query */
   TILEDB_QUERY_TYPE_ENUM(WRITE) = 1,
   /** Delete query */
-  #if (defined(DELETE))
-  // note: 'DELETE' is #define'd somewhere within windows headers as
-  // something resolving to '(0x00010000L)', which causes problems with
-  // query_type.h which does not qualify the 'id' like tiledb.h does.
-  // #undef DELETE
-  #error "'DELETE' should not be defined before now in tiledb_enum.h.\nHas it seeped out from include of windows.h somewhere that needs changing?\n(Catch2 includes have been a past culprit.)\nFind error message in tiledb_enum.h for more information."
-  // If this is encountered 'too often', further consideration might be given to
-  // simply qualifying the currently unqualified definition of TILEDB_QUERY_TYPE_ENUM in
-  // query_type.h so 'DELETE' and any other enum items here would not collide with this
-  // windows definition known to be in conflict.
-  #endif
-  TILEDB_QUERY_TYPE_ENUM(DELETE) = 2,
+  TILEDB_QUERY_TYPE_ENUM_CONCAT_ID(DEL,ETE) = 2,
   /** Update query */
   TILEDB_QUERY_TYPE_ENUM(UPDATE) = 3,
   /** Exclusive Modification query */

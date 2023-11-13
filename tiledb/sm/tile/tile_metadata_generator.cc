@@ -458,7 +458,7 @@ void TileMetadataGenerator::min_max_nullable<char>(
     uint64_t start,
     uint64_t end) {
   // Get pointers to the data and cell num.
-  auto value = tile.data_as<char>();
+  auto value = tile.data_as<char>() + cell_size_ * start;
   auto validity_values = validity_tile.data_as<uint8_t>();
 
   // Process cell by cell.
@@ -531,7 +531,7 @@ void TileMetadataGenerator::process_cell_range_var(
   }
 
   // Get pointers to the data and cell num.
-  auto offset_value = offset_tile.data_as<uint64_t>() + start;
+  auto offset_value = offset_tile.data_as<offsets_t>() + start;
   auto var_data = var_tile.data_as<char>();
   auto cell_num = tile.cell_num();
 

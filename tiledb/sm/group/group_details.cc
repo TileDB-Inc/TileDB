@@ -62,39 +62,27 @@ Status GroupDetails::clear() {
   members_by_name_.clear();
   members_vec_.clear();
   members_to_modify_.clear();
+  member_keys_to_add_.clear();
+  member_keys_to_delete_.clear();
 
   return Status::Ok();
 }
 
 void GroupDetails::add_member(const shared_ptr<GroupMember> group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
-  const std::string& uri = group_member->uri().to_string();
-  members_.emplace(uri, group_member);
-  members_vec_.emplace_back(group_member);
-  if (group_member->name().has_value()) {
-    members_by_name_.emplace(group_member->name().value(), group_member);
-  }
+  auto key = group_member->key();
+  members_[key] = group_member;
+  // Invalidate the lookup tables.
+  members_by_name_.clear();
+  members_vec_.clear();
 }
 
 void GroupDetails::delete_member(const shared_ptr<GroupMember> group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
-  const std::string& uri = group_member->uri().to_string();
-  auto it = members_.find(uri);
-  if (it != members_.end()) {
-    for (size_t i = 0; i < members_vec_.size(); i++) {
-      if (members_vec_[i] == it->second) {
-        members_vec_.erase(members_vec_.begin() + i);
-        break;
-      }
-    }
-    auto name = it->second->name();
-    members_.erase(it);
-    if (group_member->name().has_value()) {
-      members_by_name_.erase(group_member->name().value());
-    } else if (name.has_value()) {
-      members_by_name_.erase(name.value());
-    }
-  }
+  members_.erase(group_member->key());
+  // Invalidate the lookup tables.
+  members_by_name_.clear();
+  members_vec_.clear();
 }
 
 Status GroupDetails::mark_member_for_addition(
@@ -103,9 +91,6 @@ Status GroupDetails::mark_member_for_addition(
     std::optional<std::string>& name,
     StorageManager* storage_manager) {
   std::lock_guard<std::mutex> lck(mtx_);
-  // TODO: Safety checks for not double adding, making sure its remove + add,
-  // etc
-
   URI absolute_group_member_uri = group_member_uri;
   if (relative) {
     absolute_group_member_uri =
@@ -122,20 +107,25 @@ Status GroupDetails::mark_member_for_addition(
   auto group_member = tdb::make_shared<GroupMemberV2>(
       HERE(), group_member_uri, type, relative, name, false);
 
+  if (!member_keys_to_add_.insert(group_member->key()).second) {
+    return Status_GroupError(
+        "Cannot add group member " + group_member->key() +
+        ", a member with the same name or URI has already been added.");
+  }
+
   members_to_modify_.emplace_back(group_member);
 
   return Status::Ok();
 }
 
-Status GroupDetails::mark_member_for_removal(const URI& uri) {
-  return mark_member_for_removal(uri.to_string());
-}
-
-Status GroupDetails::mark_member_for_removal(const std::string& uri) {
+Status GroupDetails::mark_member_for_removal(const std::string& name) {
   std::lock_guard<std::mutex> lck(mtx_);
 
-  auto it = members_.find(uri);
-  auto it_name = members_by_name_.find(uri);
+  auto it = members_.find(name);
+  if (it == members_.end()) {
+    // try URI to see if we need to convert the local file to file://
+    it = members_.find(URI(name).to_string());
+  }
   if (it != members_.end()) {
     auto member_to_delete = make_shared<GroupMemberV2>(
         it->second->uri(),
@@ -143,39 +133,25 @@ Status GroupDetails::mark_member_for_removal(const std::string& uri) {
         it->second->relative(),
         it->second->name(),
         true);
-    members_to_modify_.emplace_back(member_to_delete);
-    return Status::Ok();
-  } else if (it_name != members_by_name_.end()) {
-    // If the user passed the name, convert it to the URI for removal
-    auto member_to_delete = make_shared<GroupMemberV2>(
-        it_name->second->uri(),
-        it_name->second->type(),
-        it_name->second->relative(),
-        it_name->second->name(),
-        true);
-    members_to_modify_.emplace_back(member_to_delete);
-    return Status::Ok();
-  } else {
-    // try URI to see if we need to convert the local file to file://
-    URI uri_uri(uri);
-    it = members_.find(uri_uri.to_string());
-    if (it != members_.end()) {
-      auto member_to_delete = make_shared<GroupMemberV2>(
-          it->second->uri(),
-          it->second->type(),
-          it->second->relative(),
-          it->second->name(),
-          true);
-      members_to_modify_.emplace_back(member_to_delete);
-      return Status::Ok();
-    } else {
-      return Status_GroupError(
-          "Cannot remove group member " + uri +
-          ", member does not exist in group.");
-    }
-  }
 
-  return Status::Ok();
+    if (member_keys_to_add_.count(member_to_delete->key()) != 0) {
+      return Status_GroupError(
+          "Cannot remove group member " + member_to_delete->key() +
+          ", a member with the same name or URI has already been added.");
+    }
+
+    if (!member_keys_to_delete_.insert(member_to_delete->key()).second) {
+      return Status_GroupError(
+          "Cannot remove group member " + member_to_delete->key() +
+          ", a member with the same name or URI has already been removed.");
+    }
+
+    members_to_modify_.emplace_back(member_to_delete);
+    return Status::Ok();
+  }
+  return Status_GroupError(
+      "Cannot remove group member " + name +
+      ", member does not exist in group.");
 }
 
 const std::vector<shared_ptr<GroupMember>>& GroupDetails::members_to_modify()
@@ -233,6 +209,14 @@ tuple<std::string, ObjectType, optional<std::string>>
 GroupDetails::member_by_index(uint64_t index) {
   std::lock_guard<std::mutex> lck(mtx_);
 
+  if (members_vec_.size() != members_.size()) {
+    members_vec_.clear();
+    members_vec_.reserve(members_.size());
+    for (auto& [key, member] : members_) {
+      members_vec_.emplace_back(member);
+    }
+  }
+
   if (index >= members_vec_.size()) {
     throw Status_GroupError(
         "index " + std::to_string(index) + " is larger than member count " +
@@ -252,6 +236,22 @@ GroupDetails::member_by_index(uint64_t index) {
 tuple<std::string, ObjectType, optional<std::string>, bool>
 GroupDetails::member_by_name(const std::string& name) {
   std::lock_guard<std::mutex> lck(mtx_);
+
+  if (members_by_name_.size() != members_.size()) {
+    members_by_name_.clear();
+    members_by_name_.reserve(members_.size());
+    for (auto& [key, member] : members_) {
+      if (member->name().has_value()) {
+        bool added =
+            members_by_name_.insert_or_assign(member->name().value(), member)
+                .second;
+        // add_member makes sure that the name is unique, so the call to
+        // insert_or_assign should always add a member.
+        assert(added);
+        std::ignore = added;
+      }
+    }
+  }
 
   auto it = members_by_name_.find(name);
   if (it == members_by_name_.end()) {

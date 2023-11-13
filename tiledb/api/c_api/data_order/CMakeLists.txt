@@ -25,26 +25,17 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 list(APPEND SOURCES
   data_order_api.cc
 )
 gather_sources(${SOURCES})
 
-#
-# Object library for other units to depend upon
-#
-add_library(capi_data_order OBJECT ${SOURCES})
-target_link_libraries(capi_data_order PUBLIC export)
-target_link_libraries(capi_data_order PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(capi_data_order PUBLIC constants $<TARGET_OBJECTS:constants>)
-
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_capi_data_order EXCLUDE_FROM_ALL)
-target_sources(compile_capi_data_order PRIVATE test/compile_capi_data_order_main.cc)
-target_link_libraries(compile_capi_data_order PRIVATE capi_data_order)
-add_dependencies(all_link_complete compile_capi_data_order)
+commence(object_library capi_data_order)
+  this_target_sources(${SOURCES})
+  this_target_link_libraries(export)
+  this_target_object_libraries(baseline constants exception_wrapper)
+conclude(object_library)
 
 add_test_subdirectory()

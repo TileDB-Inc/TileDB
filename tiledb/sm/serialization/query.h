@@ -39,9 +39,10 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
+#include "tiledb/sm/subarray/subarray.h"
 
 #ifdef TILEDB_SERIALIZATION
-#include "tiledb/sm/serialization/tiledb-rest.h"
+#include "tiledb/sm/serialization/tiledb-rest.capnp.h"
 #endif
 
 using namespace tiledb::common;
@@ -55,6 +56,7 @@ class BufferList;
 class Query;
 class GlobalOrderWriter;
 class UnorderedWriter;
+class OrderedDimLabelReader;
 
 enum class SerializationType : uint8_t;
 
@@ -244,6 +246,26 @@ Status condition_from_capnp(
 Status condition_to_capnp(
     const QueryCondition& condition,
     capnp::Condition::Builder* condition_builder);
+
+Status subarray_to_capnp(
+    const ArraySchema& schema,
+    const Subarray* subarray,
+    capnp::Subarray::Builder* builder);
+
+Status subarray_from_capnp(
+    const capnp::Subarray::Reader& reader, Subarray* subarray);
+
+void ordered_dim_label_reader_to_capnp(
+    const Query& query,
+    const OrderedDimLabelReader& reader,
+    capnp::QueryReader::Builder* reader_builder);
+
+void ordered_dim_label_reader_from_capnp(
+    const capnp::QueryReader::Reader& reader_reader,
+    Query* query,
+    OrderedDimLabelReader* reader,
+    ThreadPool* compute_tp);
+
 #endif
 
 }  // namespace serialization

@@ -50,6 +50,7 @@
 #include "tiledb/sm/serialization/array_directory.h"
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/fragment_metadata.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
@@ -57,6 +58,13 @@ using namespace tiledb::sm::stats;
 namespace tiledb {
 namespace sm {
 namespace serialization {
+
+class ArraySerializationException : public StatusException {
+ public:
+  explicit ArraySerializationException(const std::string& message)
+      : StatusException("[TileDB::Serialization][Array]", message) {
+  }
+};
 
 #ifdef TILEDB_SERIALIZATION
 
@@ -92,7 +100,8 @@ Status metadata_from_capnp(
 
   for (size_t i = 0; i < num_entries; i++) {
     auto entry_reader = entries_reader[i];
-    std::string key = entry_reader.getKey();
+    auto key = std::string{std::string_view{
+        entry_reader.getKey().cStr(), entry_reader.getKey().size()}};
     Datatype type = Datatype::UINT8;
     RETURN_NOT_OK(datatype_enum(entry_reader.getType(), &type));
     uint32_t value_num = entry_reader.getValueNum();
@@ -107,9 +116,9 @@ Status metadata_from_capnp(
     }
 
     if (entry_reader.getDel()) {
-      RETURN_NOT_OK(metadata->del(key.c_str()));
+      metadata->del(key.c_str());
     } else {
-      RETURN_NOT_OK(metadata->put(key.c_str(), type, value_num, value));
+      metadata->put(key.c_str(), type, value_num, value);
     }
   }
 
@@ -125,13 +134,17 @@ Status array_to_capnp(
   // want to serialized a query object TileDB >= 2.5 no longer needs to send the
   // array URI
   if (!array->array_uri_serialized().to_string().empty()) {
-    array_builder->setUri(array->array_uri_serialized());
+    array_builder->setUri(array->array_uri_serialized().to_string());
   }
   array_builder->setStartTimestamp(array->timestamp_start());
   array_builder->setEndTimestamp(array->timestamp_end());
   array_builder->setOpenedAtEndTimestamp(array->timestamp_end_opened_at());
 
   array_builder->setQueryType(query_type_str(array->get_query_type()));
+
+  if (array->use_refactored_array_open() && array->serialize_enumerations()) {
+    array->load_all_enumerations();
+  }
 
   const auto& array_schema_latest = array->array_schema_latest();
   auto array_schema_latest_builder = array_builder->initArraySchemaLatest();
@@ -166,6 +179,14 @@ Status array_to_capnp(
                 fragment_metadata_all.size());
         for (size_t i = 0; i < fragment_metadata_all.size(); i++) {
           auto fragment_metadata_builder = fragment_metadata_all_builder[i];
+
+          // Old fragment with zipped coordinates didn't have a format that
+          // allow to dynamically load tile offsets and sizes and since they all
+          // get loaded at array open, we need to serialize them here.
+          if (fragment_metadata_all[i]->version() <= 2) {
+            fragment_meta_sizes_offsets_to_capnp(
+                *fragment_metadata_all[i], &fragment_metadata_builder);
+          }
           RETURN_NOT_OK(fragment_metadata_to_capnp(
               *fragment_metadata_all[i], &fragment_metadata_builder));
         }
@@ -217,10 +238,8 @@ Status array_from_capnp(
   // want to serialized a query object TileDB >= 2.5 no longer needs to receive
   // the array URI
   if (array_reader.hasUri()) {
-    RETURN_NOT_OK(array->set_uri_serialized(array_reader.getUri().cStr()));
+    array->set_uri_serialized(array_reader.getUri().cStr());
   }
-  RETURN_NOT_OK(array->set_timestamp_start(array_reader.getStartTimestamp()));
-  RETURN_NOT_OK(array->set_timestamp_end(array_reader.getEndTimestamp()));
 
   if (array_reader.hasQueryType()) {
     auto query_type_str = array_reader.getQueryType();
@@ -231,23 +250,16 @@ Status array_from_capnp(
       array->set_serialized_array_open();
     }
 
-    RETURN_NOT_OK(array->set_timestamp_end_opened_at(
-        array_reader.getOpenedAtEndTimestamp()));
-    if (array->timestamp_end_opened_at() == UINT64_MAX) {
-      if (query_type == QueryType::READ) {
-        RETURN_NOT_OK(array->set_timestamp_end_opened_at(
-            tiledb::sm::utils::time::timestamp_now_ms()));
-      } else if (
-          query_type == QueryType::WRITE ||
-          query_type == QueryType::MODIFY_EXCLUSIVE ||
-          query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
-        RETURN_NOT_OK(array->set_timestamp_end_opened_at(0));
-      } else {
-        throw StatusException(Status_SerializationError(
-            "Cannot open array; Unsupported query type."));
-      }
-    }
-  }
+    array->set_timestamps(
+        array_reader.getStartTimestamp(),
+        array_reader.getEndTimestamp(),
+        query_type == QueryType::READ);
+  } else {
+    array->set_timestamps(
+        array_reader.getStartTimestamp(),
+        array_reader.getEndTimestamp(),
+        false);
+  };
 
   if (array_reader.hasArraySchemasAll()) {
     std::unordered_map<std::string, shared_ptr<ArraySchema>> all_schemas;
@@ -295,7 +307,7 @@ Status array_from_capnp(
           array->array_schema_latest_ptr(),
           frag_meta_reader,
           meta,
-          storage_manager,
+          &storage_manager->resources(),
           array->memory_tracker()));
       if (client_side) {
         meta->set_rtree_loaded();
@@ -685,7 +697,7 @@ Status array_serialize(Array*, SerializationType, Buffer*, const bool) {
 Status array_deserialize(
     Array*, SerializationType, const Buffer&, StorageManager*) {
   return LOG_STATUS(Status_SerializationError(
-      "Cannot serialize; serialization not enabled."));
+      "Cannot deserialize; serialization not enabled."));
 }
 
 Status array_open_serialize(const Array&, SerializationType, Buffer*) {
@@ -705,7 +717,7 @@ Status metadata_serialize(Metadata*, SerializationType, Buffer*) {
 
 Status metadata_deserialize(Metadata*, SerializationType, const Buffer&) {
   return LOG_STATUS(Status_SerializationError(
-      "Cannot serialize; serialization not enabled."));
+      "Cannot deserialize; serialization not enabled."));
 }
 
 #endif  // TILEDB_SERIALIZATION

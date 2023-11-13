@@ -26,40 +26,61 @@
             ]
         },
         "azure": {
-            "description": "Support Azure Storage",
+            "description": "Support Azure Blob Storage",
             "dependencies": [
                 {
-                    "name": "azure-storage-cpplite",
-                    "version>=": "0.3.0"
+                    "name": "azure-storage-blobs-cpp",
+                    "version>=": "12.6.1"
+                },
+                {
+                    "name": "libxml2",
+                    "features": [
+                        "lzma",
+                        "zlib"
+                    ],
+                    "default-features": false,
+                    "platform": "!windows"
                 }
             ]
         },
         "gcs": {
-            "description": "Support google cloud storage",
+            "description": "Support Google Cloud Storage",
             "dependencies": [
                 {
                     "name": "google-cloud-cpp",
-                    "version>=": "2.9.0",
-                    "features": [ "storage" ],
+                    "version>=": "2.15.1",
+                    "features": [
+                        "storage"
+                    ],
                     "default-features": false
+                },
+                {
+                    "name": "abseil",
+                    "features": [
+                        "cxx17"
+                    ]
                 }
             ]
         },
         "serialization": {
-          "description": "Enable TileDB Cloud Support",
-          "dependencies": [
-              {
-                  "name": "capnproto",
-                  "version>=": "0.8.0"
-              }
-          ]
+            "description": "Enable TileDB Cloud Support",
+            "dependencies": [
+                {
+                    "name": "curl",
+                    "features": [ "zstd" ]
+                },
+                {
+                    "name": "capnproto",
+                    "version>=": "1.0.1"
+                }
+            ]
         },
         "s3": {
             "description": "Support AWS S3 Storage",
             "dependencies": [
                 {
                     "name": "aws-sdk-cpp",
-                    "version>=": "1.8.84",
+                    "version>=": "1.11.160",
                     "features": ["s3", "identity-management", "sts"],
                     "default-features": false
                 }
@@ -74,10 +95,7 @@
         "tools": {
             "description": "Build tiledb command line tool",
             "dependencies": [
-                {
-                    "name": "clipp",
-                    "version>=": "1.2.3"
-                }
+                "clipp"
             ]
         },
         "webp": {
@@ -85,10 +103,15 @@
             "dependencies": [
                 {
                     "name": "libwebp",
-                    "version>=": "1.2.3"
+                    "version>=": "1.3.2"
                 }
             ]
-
         }
-    }
+    },
+    "overrides": [
+        {
+            "name": "abseil",
+            "version": "20230802.1"
+        }
+    ]
 }

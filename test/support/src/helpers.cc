@@ -75,7 +75,7 @@ const std::string& get_temp_path() {
 std::string g_vfs;
 
 void check_tiledb_error_with(
-    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg) {
+    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg, bool contains) {
   CHECK(rc == TILEDB_ERR);
   if (rc != TILEDB_ERR) {
     return;
@@ -93,7 +93,11 @@ void check_tiledb_error_with(
       CHECK(false);
     } else {
       std::string err_msg{raw_msg};
-      CHECK(err_msg == expected_msg);
+      if (contains) {
+        CHECK_THAT(err_msg, Catch::Matchers::ContainsSubstring(expected_msg));
+      } else {
+        CHECK(err_msg == expected_msg);
+      }
     }
   }
   tiledb_error_free(&err);
@@ -116,7 +120,7 @@ void check_tiledb_ok(tiledb_ctx_t* ctx, int rc) {
 }
 
 void require_tiledb_error_with(
-    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg) {
+    tiledb_ctx_t* ctx, int rc, const std::string& expected_msg, bool contains) {
   REQUIRE(rc == TILEDB_ERR);
   tiledb_error_t* err{nullptr};
   tiledb_ctx_get_last_error(ctx, &err);
@@ -132,7 +136,11 @@ void require_tiledb_error_with(
     REQUIRE(false);
   }
   std::string err_msg{raw_msg};
-  REQUIRE(err_msg == expected_msg);
+  if (contains) {
+    REQUIRE_THAT(err_msg, Catch::Matchers::ContainsSubstring(expected_msg));
+  } else {
+    REQUIRE(err_msg == expected_msg);
+  }
   tiledb_error_free(&err);
 }
 
@@ -460,7 +468,8 @@ void create_array(
     tiledb_layout_t cell_order,
     uint64_t capacity,
     bool allows_dups,
-    bool serialize_array_schema) {
+    bool serialize_array_schema,
+    const optional<std::vector<bool>>& nullable) {
   // For easy reference
   auto dim_num = dim_names.size();
   auto attr_num = attr_names.size();
@@ -520,6 +529,12 @@ void create_array(
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_attribute_set_cell_val_num(ctx, a, cell_val_num[i]);
     REQUIRE(rc == TILEDB_OK);
+
+    if (nullable != nullopt) {
+      rc = tiledb_attribute_set_nullable(ctx, a, nullable.value()[i]);
+      REQUIRE(rc == TILEDB_OK);
+    }
+
     rc = tiledb_array_schema_add_attribute(ctx, array_schema, a);
     REQUIRE(rc == TILEDB_OK);
     tiledb_attribute_free(&a);
@@ -543,7 +558,6 @@ void create_array(
     const std::string& array_name,
     tiledb_encryption_type_t enc_type,
     const char* key,
-    uint32_t key_len,
     tiledb_array_type_t array_type,
     const std::vector<std::string>& dim_names,
     const std::vector<tiledb_datatype_t>& dim_types,
@@ -636,8 +650,6 @@ void create_array(
   rc = tiledb_config_set(config, "sm.encryption_key", key, &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
-  tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
-      key_len);
   tiledb_ctx_t* ctx_array;
   REQUIRE(tiledb_ctx_alloc(config, &ctx_array) == TILEDB_OK);
   rc = tiledb_array_create(ctx_array, array_name.c_str(), array_schema);
@@ -817,11 +829,8 @@ void create_ctx_and_vfs(
         tiledb_config_set(
             config,
             "vfs.azure.blob_endpoint",
-            "127.0.0.1:10000/devstoreaccount1",
+            "http://127.0.0.1:10000/devstoreaccount1",
             &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.azure.use_https", "false", &error) ==
-        TILEDB_OK);
   }
   REQUIRE(tiledb_ctx_alloc(config, ctx) == TILEDB_OK);
   REQUIRE(error == nullptr);
@@ -1067,7 +1076,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     tiledb_layout_t layout,
     const QueryBuffers& buffers) {
@@ -1076,7 +1084,6 @@ void write_array(
       array_name,
       encryption_type,
       key,
-      key_len,
       timestamp,
       nullptr,
       layout,
@@ -1110,7 +1117,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     const void* subarray,
     tiledb_layout_t layout,
@@ -1121,7 +1127,6 @@ void write_array(
       array_name,
       encryption_type,
       key,
-      key_len,
       timestamp,
       subarray,
       layout,
@@ -1145,7 +1150,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     tiledb_layout_t layout,
     const QueryBuffers& buffers,
@@ -1155,7 +1159,6 @@ void write_array(
       array_name,
       encryption_type,
       key,
-      key_len,
       timestamp,
       nullptr,
       layout,
@@ -1175,8 +1178,7 @@ void write_array(
       ctx,
       array_name,
       TILEDB_NO_ENCRYPTION,
-      nullptr,
-      0,
+      "",
       timestamp,
       subarray,
       layout,
@@ -1189,7 +1191,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     const void* sub,
     tiledb_layout_t layout,
@@ -1220,8 +1221,6 @@ void write_array(
     REQUIRE(err == nullptr);
     rc = tiledb_array_set_config(ctx, array, cfg);
     REQUIRE(rc == TILEDB_OK);
-    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
-        key_len);
   }
   rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
@@ -1838,7 +1837,9 @@ int submit_query_wrapper(
   // 4. Server -> Client : Send query response
   std::vector<uint8_t> serialized2;
   rc = serialize_query(server_ctx, server_deser_query, &serialized2, 0);
-  REQUIRE(rc == TILEDB_OK);
+  if (rc != TILEDB_OK) {
+    return rc;
+  }
 
   if (!refactored_query_v2) {
     // Close array and clean up
@@ -1938,13 +1939,31 @@ void allocate_query_buffers_server_side(
     tiledb_query_t* query,
     ServerQueryBuffers& query_buffers) {
   int rc = 0;
-  const auto buffer_names = query->query_->buffer_names();
+  auto buffer_names = query->query_->buffer_names();
+  const auto aggregate_names = query->query_->aggregate_buffer_names();
+  buffer_names.insert(
+      buffer_names.end(), aggregate_names.begin(), aggregate_names.end());
+
   for (uint64_t i = 0; i < buffer_names.size(); i++) {
     const auto& name = buffer_names[i];
     const auto& buff = query->query_->buffer(name);
     const auto& schema = query->query_->array_schema();
-    auto var_size = schema.var_size(name);
-    auto nullable = schema.is_nullable(name);
+
+    // TODO: This is yet another instance where there needs to be a common
+    // mechanism for reporting the common properties of a field.
+    // Refactor to use query_field_t.
+    bool var_size = false;
+    bool nullable = false;
+    if (query->query_->is_aggregate(name)) {
+      var_size =
+          query->query_->get_aggregate(name).value()->aggregation_var_sized();
+      nullable =
+          query->query_->get_aggregate(name).value()->aggregation_nullable();
+    } else {
+      var_size = schema.var_size(name);
+      nullable = schema.is_nullable(name);
+    }
+
     if (var_size && buff.buffer_var_ == nullptr) {
       // Variable-sized buffer
       query_buffers.attr_or_dim_data.emplace_back(*buff.buffer_var_size_);

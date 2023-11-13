@@ -65,8 +65,6 @@ struct CMetadataFx {
   const char* ARRAY_NAME = "test_metadata";
   tiledb_array_t* array_ = nullptr;
   const char* key_ = "0123456789abcdeF0123456789abcdeF";
-  const uint32_t key_len_ =
-      (uint32_t)strlen("0123456789abcdeF0123456789abcdeF");
   const tiledb_encryption_type_t enc_type_ = TILEDB_AES_256_GCM;
 
   void create_default_array_1d();
@@ -149,7 +147,6 @@ void CMetadataFx::create_default_array_1d_with_key() {
       array_name_,
       enc_type_,
       key_,
-      key_len_,
       TILEDB_DENSE,
       {"d"},
       {TILEDB_UINT64},
@@ -230,8 +227,6 @@ TEST_CASE_METHOD(
   rc = tiledb_config_set(config, "sm.encryption_key", key_, &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
-  tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
-      key_len_);
   rc = tiledb_array_set_config(ctx_, array, config);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
@@ -1030,8 +1025,6 @@ TEST_CASE_METHOD(
   REQUIRE(error == nullptr);
   rc = tiledb_array_set_config(ctx_, array, config);
   REQUIRE(rc == TILEDB_OK);
-  tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
-      key_len_);
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
@@ -1163,8 +1156,6 @@ TEST_CASE_METHOD(
   REQUIRE(error == nullptr);
   rc = tiledb_array_set_config(ctx_, array, config);
   REQUIRE(rc == TILEDB_OK);
-  tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
-      key_len_);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 

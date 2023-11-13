@@ -1458,18 +1458,18 @@ void test_apply_tile<char*>(
     values[i * 2] = 'a';
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
-  REQUIRE(tile->write(values.data(), 0, 2 * cells * sizeof(char)).ok());
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, 2 * cells * sizeof(char)));
 
   if (var_size) {
     Tile* const tile_offsets = &tile_tuple->fixed_tile();
-    std::vector<uint64_t> offsets(cells);
+    std::vector<uint64_t> offsets(cells + 1);
     uint64_t offset = 0;
-    for (uint64_t i = 0; i < cells; ++i) {
+    for (uint64_t i = 0; i <= cells; ++i) {
       offsets[i] = offset;
       offset += 2;
     }
-    REQUIRE(
-        tile_offsets->write(offsets.data(), 0, cells * sizeof(uint64_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
   }
 
   if (nullable) {
@@ -1478,8 +1478,8 @@ void test_apply_tile<char*>(
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(
-        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)));
   }
 
   test_apply_operators<char*>(
@@ -1505,7 +1505,7 @@ void test_apply_tile(
   for (uint64_t i = 0; i < cells; ++i) {
     values[i] = static_cast<T>(i);
   }
-  REQUIRE(tile->write(values.data(), 0, cells * sizeof(T)).ok());
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, cells * sizeof(T)));
 
   test_apply_operators<T>(
       field_name,
@@ -1549,19 +1549,29 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
   }
 
   REQUIRE(
-      array_schema->add_attribute(make_shared<Attribute>(HERE(), &attr)).ok());
+      array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   Domain domain;
   auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
   REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), &domain)).ok());
+  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
+
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, *array_schema);
+  ResultTile result_tile(0, 0, frag_md);
   ResultTile::TileSizes tile_sizes(
-      var_size ? cells * constants::cell_var_offset_size :
+      var_size ? (cells + 1) * constants::cell_var_offset_size :
                  2 * cells * sizeof(char),
       0,
       var_size ? std::optional(2 * cells * sizeof(char)) : std::nullopt,
@@ -1585,8 +1595,6 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
  */
 template <typename T>
 void test_apply(const Datatype type, bool var_size, bool nullable) {
-  (void)var_size;
-  (void)nullable;
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const T fill_value = 3;
@@ -1597,14 +1605,24 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
   attr.set_cell_val_num(1);
   attr.set_fill_value(&fill_value, sizeof(T));
   REQUIRE(
-      array_schema->add_attribute(make_shared<Attribute>(HERE(), &attr)).ok());
+      array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   Domain domain;
   auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
   REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), &domain)).ok());
+  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
+
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
 
   // Initialize the result tile.
   ResultTile::TileSizes tile_sizes(
@@ -1614,7 +1632,7 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
       var_size ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, *array_schema);
+  ResultTile result_tile(0, 0, frag_md);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -1693,23 +1711,34 @@ TEST_CASE(
     attr.set_fill_value(fill_value, 2 * sizeof(char));
   }
 
-  REQUIRE(
-      array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
-          .ok());
+  REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
+              .ok());
   Domain domain;
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
   REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
+
+  std::vector<shared_ptr<FragmentMetadata>> frag_md(1);
+  frag_md[0] = make_shared<FragmentMetadata>(
+      HERE(),
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
 
   // Initialize the result tile.
   ResultTile::TileSizes tile_sizes(
-      var_size ? cells * constants::cell_var_offset_size :
+      var_size ? (cells + 1) * constants::cell_var_offset_size :
                  2 * (cells - 2) * sizeof(char),
       0,
       var_size ? std::optional(2 * (cells - 2) * sizeof(char)) : std::nullopt,
@@ -1717,7 +1746,7 @@ TEST_CASE(
       nullable ? std::optional(cells * constants::cell_validity_size) :
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, *array_schema);
+  ResultTile result_tile(0, 0, *frag_md[0]);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -1740,11 +1769,12 @@ TEST_CASE(
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
 
-  REQUIRE(tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)).ok());
+  REQUIRE_NOTHROW(
+      tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)));
 
   if (var_size) {
     Tile* const tile_offsets = &tile_tuple->fixed_tile();
-    std::vector<uint64_t> offsets(cells);
+    std::vector<uint64_t> offsets(cells + 1);
     uint64_t offset = 0;
     for (uint64_t i = 0; i < cells - 2; ++i) {
       offsets[i] = offset;
@@ -1752,8 +1782,9 @@ TEST_CASE(
     }
     offsets[cells - 2] = offset;
     offsets[cells - 1] = offset;
-    REQUIRE(
-        tile_offsets->write(offsets.data(), 0, cells * sizeof(uint64_t)).ok());
+    offsets[cells] = offset;
+    REQUIRE_NOTHROW(
+        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
   }
 
   if (nullable) {
@@ -1762,8 +1793,8 @@ TEST_CASE(
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(
-        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)));
   }
 
   // Empty string or null string as condition value
@@ -1811,15 +1842,6 @@ TEST_CASE(
   ResultCellSlab result_cell_slab(&result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  std::vector<shared_ptr<FragmentMetadata>> frag_md(1);
-  frag_md[0] = make_shared<FragmentMetadata>(
-      HERE(),
-      nullptr,
-      nullptr,
-      array_schema,
-      URI(),
-      std::make_pair<uint64_t, uint64_t>(0, 0),
-      true);
   REQUIRE(
       query_condition.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
 
@@ -2147,18 +2169,18 @@ void test_apply_tile_dense<char*>(
     values[i * 2] = 'a';
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
-  REQUIRE(tile->write(values.data(), 0, 2 * cells * sizeof(char)).ok());
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, 2 * cells * sizeof(char)));
 
   if (var_size) {
     Tile* const tile_offsets = &tile_tuple->fixed_tile();
-    std::vector<uint64_t> offsets(cells);
+    std::vector<uint64_t> offsets(cells + 1);
     uint64_t offset = 0;
-    for (uint64_t i = 0; i < cells; ++i) {
+    for (uint64_t i = 0; i <= cells; ++i) {
       offsets[i] = offset;
       offset += 2;
     }
-    REQUIRE(
-        tile_offsets->write(offsets.data(), 0, cells * sizeof(uint64_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
   }
 
   if (nullable) {
@@ -2167,8 +2189,8 @@ void test_apply_tile_dense<char*>(
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(
-        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)));
   }
 
   test_apply_operators_dense<char*>(
@@ -2194,7 +2216,7 @@ void test_apply_tile_dense(
   for (uint64_t i = 0; i < cells; ++i) {
     values[i] = static_cast<T>(i);
   }
-  REQUIRE(tile->write(values.data(), 0, cells * sizeof(T)).ok());
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, cells * sizeof(T)));
 
   test_apply_operators_dense<T>(
       field_name,
@@ -2238,23 +2260,32 @@ void test_apply_dense<char*>(
     attr.set_fill_value(fill_value, 2 * sizeof(char));
   }
 
-  REQUIRE(
-      array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
-          .ok());
+  REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
+              .ok());
   Domain domain;
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
   REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
+
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
 
   // Initialize the result tile.
   ResultTile::TileSizes tile_sizes(
-      var_size ? cells * constants::cell_var_offset_size :
+      var_size ? (cells + 1) * constants::cell_var_offset_size :
                  2 * cells * sizeof(char),
       0,
       var_size ? std::optional(2 * cells * sizeof(char)) : std::nullopt,
@@ -2262,7 +2293,7 @@ void test_apply_dense<char*>(
       nullable ? std::optional(cells * constants::cell_validity_size) :
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, *array_schema);
+  ResultTile result_tile(0, 0, frag_md);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -2288,19 +2319,28 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
   Attribute attr(field_name, type);
   attr.set_cell_val_num(1);
   attr.set_fill_value(&fill_value, sizeof(T));
-  REQUIRE(
-      array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
-          .ok());
+  REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
+              .ok());
   Domain domain;
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
   REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
+
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
 
   // Initialize the result tile.
   ResultTile::TileSizes tile_sizes(
@@ -2310,7 +2350,7 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
       var_size ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, *array_schema);
+  ResultTile result_tile(0, 0, frag_md);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -2391,21 +2431,31 @@ TEST_CASE(
   }
 
   REQUIRE(
-      array_schema->add_attribute(make_shared<Attribute>(HERE(), &attr)).ok());
+      array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   Domain domain;
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
   REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
+
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
 
   // Initialize the result tile.
   ResultTile::TileSizes tile_sizes(
-      var_size ? cells * constants::cell_var_offset_size :
+      var_size ? (cells + 1) * constants::cell_var_offset_size :
                  2 * (cells - 2) * sizeof(char),
       0,
       var_size ? std::optional(2 * (cells - 2) * sizeof(char)) : std::nullopt,
@@ -2413,7 +2463,7 @@ TEST_CASE(
       nullable ? std::optional(cells * constants::cell_validity_size) :
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, *array_schema);
+  ResultTile result_tile(0, 0, frag_md);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -2435,11 +2485,12 @@ TEST_CASE(
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
 
-  REQUIRE(tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)).ok());
+  REQUIRE_NOTHROW(
+      tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)));
 
   if (var_size) {
     Tile* const tile_offsets = &tile_tuple->fixed_tile();
-    std::vector<uint64_t> offsets(cells);
+    std::vector<uint64_t> offsets(cells + 1);
     uint64_t offset = 0;
     for (uint64_t i = 0; i < cells - 2; ++i) {
       offsets[i] = offset;
@@ -2447,8 +2498,9 @@ TEST_CASE(
     }
     offsets[cells - 2] = offset;
     offsets[cells - 1] = offset;
-    REQUIRE(
-        tile_offsets->write(offsets.data(), 0, cells * sizeof(uint64_t)).ok());
+    offsets[cells] = offset;
+    REQUIRE_NOTHROW(
+        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
   }
 
   if (nullable) {
@@ -2457,8 +2509,8 @@ TEST_CASE(
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(
-        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)));
   }
 
   // Empty string or null string as condition value
@@ -2816,18 +2868,18 @@ void test_apply_tile_sparse<char*>(
     values[i * 2] = 'a';
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
-  REQUIRE(tile->write(values.data(), 0, 2 * cells * sizeof(char)).ok());
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, 2 * cells * sizeof(char)));
 
   if (var_size) {
     Tile* const tile_offsets = &tile_tuple->fixed_tile();
-    std::vector<uint64_t> offsets(cells);
+    std::vector<uint64_t> offsets(cells + 1);
     uint64_t offset = 0;
-    for (uint64_t i = 0; i < cells; ++i) {
+    for (uint64_t i = 0; i <= cells; ++i) {
       offsets[i] = offset;
       offset += 2;
     }
-    REQUIRE(
-        tile_offsets->write(offsets.data(), 0, cells * sizeof(uint64_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
   }
 
   if (nullable) {
@@ -2836,8 +2888,8 @@ void test_apply_tile_sparse<char*>(
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(
-        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)));
   }
 
   test_apply_operators_sparse<char*>(
@@ -2863,7 +2915,7 @@ void test_apply_tile_sparse(
   for (uint64_t i = 0; i < cells; ++i) {
     values[i] = static_cast<T>(i);
   }
-  REQUIRE(tile->write(values.data(), 0, cells * sizeof(T)).ok());
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, cells * sizeof(T)));
 
   test_apply_operators_sparse<T>(
       field_name,
@@ -2907,23 +2959,32 @@ void test_apply_sparse<char*>(
     attr.set_fill_value(fill_value, 2 * sizeof(char));
   }
 
-  REQUIRE(
-      array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
-          .ok());
+  REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
+              .ok());
   Domain domain;
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
   REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
+
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
 
   // Initialize the result tile.
   ResultTile::TileSizes tile_sizes(
-      var_size ? cells * constants::cell_var_offset_size :
+      var_size ? (cells + 1) * constants::cell_var_offset_size :
                  2 * cells * sizeof(char),
       0,
       var_size ? std::optional(2 * cells * sizeof(char)) : std::nullopt,
@@ -2931,7 +2992,7 @@ void test_apply_sparse<char*>(
       nullable ? std::optional(cells * constants::cell_validity_size) :
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, *array_schema);
+  ResultTile result_tile(0, 0, frag_md);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -2957,19 +3018,28 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
   Attribute attr(field_name, type);
   attr.set_cell_val_num(1);
   attr.set_fill_value(&fill_value, sizeof(T));
-  REQUIRE(
-      array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
-          .ok());
+  REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
+              .ok());
   Domain domain;
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
   REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
+
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
 
   // Initialize the result tile.
   ResultTile::TileSizes tile_sizes(
@@ -2979,7 +3049,7 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
       var_size ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, *array_schema);
+  ResultTile result_tile(0, 0, frag_md);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -3061,9 +3131,12 @@ struct TestParams {
     }
 
     // Calculate expected_slabs_
-    int start = -1;
-    int length = -1;
-    for (size_t i = 0; i < expected_bitmap_.size(); i++) {
+    using signed_size_t = std::make_signed_t<size_t>;
+    signed_size_t start{-1};
+    signed_size_t length{-1};
+    for (signed_size_t i = 0;
+         i < static_cast<signed_size_t>(expected_bitmap_.size());
+         i++) {
       if (expected_bitmap_[i] && start < 0) {
         start = i;
         length = 1;
@@ -3715,19 +3788,28 @@ TEST_CASE(
   // Initialize the array schema.
   shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(
-      array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
-          .ok());
+  REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
+              .ok());
   Domain domain;
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
   REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
+
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
 
   // Initialize the result tile.
   ResultTile::TileSizes tile_sizes(
@@ -3737,7 +3819,7 @@ TEST_CASE(
       std::nullopt,
       std::nullopt,
       std::nullopt);
-  ResultTile result_tile(0, 0, *array_schema);
+  ResultTile result_tile(0, 0, frag_md);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -3753,7 +3835,7 @@ TEST_CASE(
   for (uint64_t i = 0; i < cells; ++i) {
     values[i] = i;
   }
-  REQUIRE(tile->write(values.data(), 0, cells * sizeof(uint64_t)).ok());
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, cells * sizeof(uint64_t)));
 
   std::vector<TestParams> tp_vec;
   populate_test_params_vector(field_name, &result_tile, tp_vec);
@@ -3996,25 +4078,35 @@ TEST_CASE(
   attr.set_fill_value("ac", 2 * sizeof(char));
 
   REQUIRE(
-      array_schema->add_attribute(make_shared<Attribute>(HERE(), &attr)).ok());
+      array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   Domain domain;
   auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
   REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), &domain)).ok());
+  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
+
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
 
   // Initialize the result tile.
   std::string data = "alicebobcraigdaveerinfrankgraceheidiivanjudy";
   ResultTile::TileSizes tile_sizes(
-      cells * constants::cell_var_offset_size,
+      (cells + 1) * constants::cell_var_offset_size,
       0,
       data.size(),
       0,
       std::nullopt,
       std::nullopt);
-  ResultTile result_tile(0, 0, *array_schema);
+  ResultTile result_tile(0, 0, frag_md);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -4026,13 +4118,13 @@ TEST_CASE(
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
   Tile* const tile = &tile_tuple->var_tile();
 
-  std::vector<uint64_t> offsets = {0, 5, 8, 13, 17, 21, 26, 31, 36, 40};
-  REQUIRE(tile->write(data.c_str(), 0, data.size()).ok());
+  std::vector<uint64_t> offsets = {0, 5, 8, 13, 17, 21, 26, 31, 36, 40, 44};
+  REQUIRE_NOTHROW(tile->write(data.c_str(), 0, data.size()));
 
   // Write the tile offsets.
   Tile* const tile_offsets = &tile_tuple->fixed_tile();
-  REQUIRE(
-      tile_offsets->write(offsets.data(), 0, cells * sizeof(uint64_t)).ok());
+  REQUIRE_NOTHROW(
+      tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
 
   std::vector<TestParams> tp_vec;
   populate_string_test_params_vector(field_name, &result_tile, tp_vec);
@@ -4340,14 +4432,24 @@ TEST_CASE(
   attr.set_fill_value("ac", 2 * sizeof(char));
 
   REQUIRE(
-      array_schema->add_attribute(make_shared<Attribute>(HERE(), &attr)).ok());
+      array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   Domain domain;
   auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
   REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), &domain)).ok());
+  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
+
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
 
   // For pasting into a Python shell:
   //
@@ -4410,13 +4512,13 @@ TEST_CASE(
 
   // Initialize the result tile.
   ResultTile::TileSizes tile_sizes(
-      cells * constants::cell_var_offset_size,
+      (cells + 1) * constants::cell_var_offset_size,
       0,
       data.size(),
       0,
       std::nullopt,
       std::nullopt);
-  ResultTile result_tile(0, 0, *array_schema);
+  ResultTile result_tile(0, 0, frag_md);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -4428,12 +4530,12 @@ TEST_CASE(
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
   Tile* const tile = &tile_tuple->var_tile();
 
-  REQUIRE(tile->write(data.c_str(), 0, data.size()).ok());
+  REQUIRE_NOTHROW(tile->write(data.c_str(), 0, data.size()));
 
   // Write the tile offsets.
   Tile* const tile_offsets = &tile_tuple->fixed_tile();
-  REQUIRE(
-      tile_offsets->write(offsets.data(), 0, cells * sizeof(uint64_t)).ok());
+  REQUIRE_NOTHROW(
+      tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
 
   std::vector<TestParams> tp_vec;
   populate_utf8_string_test_params_vector(field_name, &result_tile, tp_vec);
@@ -4648,19 +4750,28 @@ TEST_CASE(
   shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
   attr.set_nullable(true);
-  REQUIRE(
-      array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
-          .ok());
+  REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
+              .ok());
   Domain domain;
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
   REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
+
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
 
   // Initialize the result tile.
   ResultTile::TileSizes tile_sizes(
@@ -4670,7 +4781,7 @@ TEST_CASE(
       std::nullopt,
       cells * constants::cell_validity_size,
       0);
-  ResultTile result_tile(0, 0, *array_schema);
+  ResultTile result_tile(0, 0, frag_md);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -4684,15 +4795,15 @@ TEST_CASE(
   // Populate the data tile.
   std::vector<float> values = {
       3.4f, 1.3f, 2.2f, 4.5f, 2.8f, 2.1f, 1.7f, 3.3f, 1.9f, 4.2f};
-  REQUIRE(tile->write(values.data(), 0, cells * sizeof(float)).ok());
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, cells * sizeof(float)));
 
   Tile* const tile_validity = &tile_tuple->validity_tile();
   std::vector<uint8_t> validity(cells);
   for (uint64_t i = 0; i < cells; ++i) {
     validity[i] = i % 2;
   }
-  REQUIRE(
-      tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
+  REQUIRE_NOTHROW(
+      tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)));
 
   std::vector<TestParams> tp_vec;
   populate_nullable_test_params_vector(field_name, &result_tile, tp_vec);
@@ -4742,18 +4853,28 @@ TEST_CASE(
   }
 
   REQUIRE(
-      array_schema->add_attribute(make_shared<Attribute>(HERE(), &attr)).ok());
+      array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   Domain domain;
   auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
   REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), &domain)).ok());
+  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
+
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
 
   // Initialize the result tile.
   ResultTile::TileSizes tile_sizes(
-      var_size ? cells * constants::cell_var_offset_size :
+      var_size ? (cells + 1) * constants::cell_var_offset_size :
                  2 * (cells - 2) * sizeof(char),
       0,
       var_size ? std::optional(2 * (cells - 2) * sizeof(char)) : std::nullopt,
@@ -4761,7 +4882,7 @@ TEST_CASE(
       nullable ? std::optional(cells * constants::cell_validity_size) :
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, *array_schema);
+  ResultTile result_tile(0, 0, frag_md);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -4783,11 +4904,12 @@ TEST_CASE(
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
 
-  REQUIRE(tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)).ok());
+  REQUIRE_NOTHROW(
+      tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)));
 
   if (var_size) {
     Tile* const tile_offsets = &tile_tuple->fixed_tile();
-    std::vector<uint64_t> offsets(cells);
+    std::vector<uint64_t> offsets(cells + 1);
     uint64_t offset = 0;
     for (uint64_t i = 0; i < cells - 2; ++i) {
       offsets[i] = offset;
@@ -4795,8 +4917,9 @@ TEST_CASE(
     }
     offsets[cells - 2] = offset;
     offsets[cells - 1] = offset;
-    REQUIRE(
-        tile_offsets->write(offsets.data(), 0, cells * sizeof(uint64_t)).ok());
+    offsets[cells] = offset;
+    REQUIRE_NOTHROW(
+        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
   }
 
   if (nullable) {
@@ -4805,8 +4928,8 @@ TEST_CASE(
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(
-        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)));
   }
 
   // Empty string or null string as condition value

@@ -46,6 +46,7 @@ target_link_libraries(capi_dimension_label_stub PUBLIC array_schema $<TARGET_OBJ
 #
 add_executable(compile_capi_dimension_label_stub EXCLUDE_FROM_ALL)
 target_link_libraries(compile_capi_dimension_label_stub PRIVATE capi_dimension_label_stub)
+target_link_libraries(compile_capi_dimension_label_stub PRIVATE generic_tile_io)
 target_sources(compile_capi_dimension_label_stub PRIVATE test/compile_capi_dimension_label_main.cc)
 add_dependencies(all_link_complete compile_capi_dimension_label_stub)
 

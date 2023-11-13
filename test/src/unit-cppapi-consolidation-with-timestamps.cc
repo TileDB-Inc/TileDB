@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB Inc.
+ * @copyright Copyright (c) 2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -779,7 +779,8 @@ TEST_CASE_METHOD(
 
   // Make sure there was an internal loop on the reader.
   CHECK(
-      stats.find("\"Context.StorageManager.Query.Reader.loop_num\": 2") !=
+      stats.find(
+          "\"Context.StorageManager.Query.Reader.internal_loop_num\": 2") !=
       std::string::npos);
 
   remove_sparse_array();
@@ -840,7 +841,8 @@ TEST_CASE_METHOD(
 
   // Make sure there was an internal loop on the reader.
   CHECK(
-      stats.find("\"Context.StorageManager.Query.Reader.loop_num\": 2") !=
+      stats.find(
+          "\"Context.StorageManager.Query.Reader.internal_loop_num\": 2") !=
       std::string::npos);
 
   remove_sparse_array();
@@ -985,9 +987,11 @@ TEST_CASE_METHOD(
     std::vector<int> c_a = {0, 1, 8, 2, 9, 10, 11};
     std::vector<uint64_t> c_dim1 = {1, 1, 2, 1, 2, 3, 3};
     std::vector<uint64_t> c_dim2 = {1, 2, 2, 4, 3, 2, 3};
-    CHECK(!memcmp(c_a.data(), a.data(), sizeof(c_a)));
-    CHECK(!memcmp(c_dim1.data(), dim1.data(), sizeof(c_dim1)));
-    CHECK(!memcmp(c_dim2.data(), dim2.data(), sizeof(c_dim2)));
+    CHECK(!memcmp(c_a.data(), a.data(), c_a.size() * sizeof(int)));
+    CHECK(
+        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+    CHECK(
+        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
     if (timestamps_ptr != nullptr) {
       std::vector<uint64_t> exp_ts = {1, 1, 3, 1, 3, 3, 3};
       CHECK(!memcmp(
@@ -1392,6 +1396,17 @@ TEST_CASE_METHOD(
   remove_sparse_array();
   // Enable duplicates.
   create_sparse_array(true);
+
+  // Disable merge overlapping sparse ranges.
+  // Support for returning multiplicities for overlapping ranges will be
+  // deprecated in a few releases. Turning off this setting allows to still
+  // test that the feature functions properly until we do so. Once support is
+  // fully removed for overlapping ranges, this test case can be deleted.
+  tiledb::Config cfg;
+  cfg.set("sm.merge_overlapping_ranges_experimental", "false");
+  ctx_ = Context(cfg);
+  sm_ = ctx_.ptr().get()->storage_manager();
+  vfs_ = VFS(ctx_);
 
   SECTION("no serialization") {
     serialize_ = false;

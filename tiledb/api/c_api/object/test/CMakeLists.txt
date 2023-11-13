@@ -24,26 +24,14 @@
 # THE SOFTWARE.
 #
 
-find_package(Catch_EP REQUIRED)
+include(unit_test)
 
-add_executable(unit_capi_object_type EXCLUDE_FROM_ALL)
-target_sources(unit_capi_object_type PUBLIC unit_capi_object_type.cc)
-target_link_libraries(unit_capi_object_type PUBLIC capi_object)
-target_link_libraries(unit_capi_object_type PUBLIC Catch2::Catch2WithMain)
+commence(unit_test capi_object_type)
+  this_target_sources(unit_capi_object_type.cc)
+  this_target_object_libraries(capi_object)
+conclude(unit_test)
 
-add_test(
-  NAME "unit_capi_object_type"
-  COMMAND $<TARGET_FILE:unit_capi_object_type>
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
-
-add_executable(unit_capi_object_walk_order EXCLUDE_FROM_ALL)
-target_sources(unit_capi_object_walk_order PUBLIC unit_capi_object_walk_order.cc)
-target_link_libraries(unit_capi_object_walk_order PUBLIC capi_object)
-target_link_libraries(unit_capi_object_walk_order PUBLIC Catch2::Catch2WithMain)
-
-add_test(
-  NAME "unit_capi_object_walk_order"
-  COMMAND $<TARGET_FILE:unit_capi_object_walk_order>
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
+commence(unit_test capi_object_walk_order)
+  this_target_sources(unit_capi_object_walk_order.cc)
+  this_target_object_libraries(capi_object)
+conclude(unit_test)

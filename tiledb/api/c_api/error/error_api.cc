@@ -36,14 +36,6 @@
 
 namespace tiledb::api {
 
-bool create_error(tiledb_error_handle_t** error, const Status& st) {
-  if (st.ok()) {
-    return false;
-  }
-  *error = tiledb_error_handle_t::make_handle(st.to_string());
-  return true;
-}
-
 void create_error(tiledb_error_handle_t** error, const std::string& message) {
   *error = tiledb_error_handle_t::make_handle(message);
 }
@@ -70,12 +62,11 @@ void tiledb_error_free(tiledb_error_handle_t** err) {
 
 }  // namespace tiledb::api
 
-capi_return_t tiledb_error_message(
-    tiledb_error_handle_t* err, const char** errmsg) noexcept {
+CAPI_INTERFACE(error_message, tiledb_error_handle_t* err, const char** errmsg) {
   return tiledb::api::api_entry_plain<tiledb::api::tiledb_error_message>(
       err, errmsg);
 }
 
-void tiledb_error_free(tiledb_error_handle_t** err) noexcept {
+CAPI_INTERFACE_VOID(error_free, tiledb_error_handle_t** err) {
   return tiledb::api::api_entry_void<tiledb::api::tiledb_error_free>(err);
 }

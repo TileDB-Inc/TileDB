@@ -35,6 +35,7 @@
 
 #include "array_schema.h"
 #include "dimension_label_experimental.h"
+#include "enumeration_experimental.h"
 #include "filter_list.h"
 #include "tiledb_experimental.h"
 
@@ -153,6 +154,21 @@ class ArraySchemaExperimental {
     ctx.handle_error(tiledb_array_schema_get_dimension_label_from_name(
         ctx.ptr().get(), array_schema.ptr().get(), name.c_str(), &dim_label));
     return DimensionLabel(ctx, dim_label);
+  }
+
+  /**
+   * Add an enumeration to the array schema.
+   *
+   * @param ctx TileDB context.
+   * @param array_schema Target array schema.
+   * @param enmr The enumeration to add.
+   */
+  static void add_enumeration(
+      const Context& ctx,
+      const ArraySchema& array_schema,
+      const Enumeration& enmr) {
+    ctx.handle_error(tiledb_array_schema_add_enumeration(
+        ctx.ptr().get(), array_schema.ptr().get(), enmr.ptr().get()));
   }
 };
 

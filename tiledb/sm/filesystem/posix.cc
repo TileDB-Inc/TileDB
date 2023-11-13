@@ -36,7 +36,6 @@
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
-#include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
@@ -60,9 +59,16 @@ using tiledb::common::filesystem::directory_entry;
 namespace tiledb {
 namespace sm {
 
-Posix::Posix()
-    : default_config_(Config())
-    , config_(default_config_) {
+Posix::Posix(const Config& config) {
+  // Initialize member variables with posix config parameters.
+
+  // File and directory permissions are set by the user in octal.
+  std::string permissions = config.get<std::string>(
+      "vfs.file.posix_file_permissions", Config::must_find);
+  file_permissions_ = std::strtol(permissions.c_str(), nullptr, 8);
+  permissions = config.get<std::string>(
+      "vfs.file.posix_directory_permissions", Config::must_find);
+  directory_permissions_ = std::strtol(permissions.c_str(), nullptr, 8);
 }
 
 bool Posix::both_slashes(char a, char b) {
@@ -152,18 +158,16 @@ std::string Posix::abs_path_internal(const std::string& path) {
   return ret_dir;
 }
 
-Status Posix::create_dir(const std::string& path) const {
+Status Posix::create_dir(const URI& uri) const {
   // If the directory does not exist, create it
-  if (is_dir(path)) {
+  auto path = uri.to_path();
+  if (is_dir(uri)) {
     return LOG_STATUS(Status_IOError(
         std::string("Cannot create directory '") + path +
         "'; Directory already exists"));
   }
 
-  uint32_t permissions = 0;
-  RETURN_NOT_OK(get_posix_directory_permissions(&permissions));
-
-  if (mkdir(path.c_str(), permissions) != 0) {
+  if (mkdir(path.c_str(), directory_permissions_) != 0) {
     return LOG_STATUS(Status_IOError(
         std::string("Cannot create directory '") + path + "'; " +
         strerror(errno)));
@@ -171,11 +175,11 @@ Status Posix::create_dir(const std::string& path) const {
   return Status::Ok();
 }
 
-Status Posix::touch(const std::string& filename) const {
-  uint32_t permissions = 0;
-  RETURN_NOT_OK(get_posix_file_permissions(&permissions));
+Status Posix::touch(const URI& uri) const {
+  auto filename = uri.to_path();
 
-  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, permissions);
+  int fd =
+      ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, file_permissions_);
   if (fd == -1 || ::close(fd) != 0) {
     return LOG_STATUS(Status_IOError(
         std::string("Failed to create file '") + filename + "'; " +
@@ -193,21 +197,15 @@ std::string Posix::current_dir() {
 
 // TODO: it maybe better to use unlinkat for deeply nested recursive directories
 // but the path name length limit in TileDB may make this unnecessary
-int Posix::unlink_cb(
-    const char* fpath,
-    const struct stat* sb,
-    int typeflag,
-    struct FTW* ftwbuf) {
-  (void)sb;
-  (void)typeflag;
-  (void)ftwbuf;
+int Posix::unlink_cb(const char* fpath, const struct stat*, int, struct FTW*) {
   int rc = remove(fpath);
   if (rc)
     perror(fpath);
   return rc;
 }
 
-Status Posix::remove_dir(const std::string& path) const {
+Status Posix::remove_dir(const URI& uri) const {
+  auto path = uri.to_path();
   int rc = nftw(path.c_str(), unlink_cb, 64, FTW_DEPTH | FTW_PHYS);
   if (rc)
     return LOG_STATUS(Status_IOError(
@@ -216,7 +214,8 @@ Status Posix::remove_dir(const std::string& path) const {
   return Status::Ok();
 }
 
-Status Posix::remove_file(const std::string& path) const {
+Status Posix::remove_file(const URI& uri) const {
+  auto path = uri.to_path();
   if (remove(path.c_str()) != 0) {
     return LOG_STATUS(Status_IOError(
         std::string("Cannot delete file '") + path + "'; " + strerror(errno)));
@@ -224,7 +223,8 @@ Status Posix::remove_file(const std::string& path) const {
   return Status::Ok();
 }
 
-Status Posix::file_size(const std::string& path, uint64_t* size) const {
+Status Posix::file_size(const URI& uri, uint64_t* size) const {
+  auto path = uri.to_path();
   int fd = open(path.c_str(), O_RDONLY);
   if (fd == -1) {
     return LOG_STATUS(Status_IOError(
@@ -239,28 +239,16 @@ Status Posix::file_size(const std::string& path, uint64_t* size) const {
   return Status::Ok();
 }
 
-Status Posix::init(const Config& config, ThreadPool* vfs_thread_pool) {
-  if (vfs_thread_pool == nullptr) {
-    return LOG_STATUS(
-        Status_VFSError("Cannot initialize with null thread pool"));
-  }
-
-  config_ = config;
-  vfs_thread_pool_ = vfs_thread_pool;
-
-  return Status::Ok();
-}
-
-bool Posix::is_dir(const std::string& path) const {
+bool Posix::is_dir(const URI& uri) const {
   struct stat st;
   memset(&st, 0, sizeof(struct stat));
-  return stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+  return stat(uri.to_path().c_str(), &st) == 0 && S_ISDIR(st.st_mode);
 }
 
-bool Posix::is_file(const std::string& path) const {
+bool Posix::is_file(const URI& uri) const {
   struct stat st;
   memset(&st, 0, sizeof(struct stat));
-  return (stat(path.c_str(), &st) == 0) && !S_ISDIR(st.st_mode);
+  return (stat(uri.to_path().c_str(), &st) == 0) && !S_ISDIR(st.st_mode);
 }
 
 Status Posix::ls(
@@ -300,7 +288,7 @@ tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
       entries.emplace_back(abspath, 0, true);
     } else {
       uint64_t size;
-      RETURN_NOT_OK_TUPLE(file_size(abspath, &size), nullopt);
+      RETURN_NOT_OK_TUPLE(file_size(URI(abspath), &size), nullopt);
       entries.emplace_back(abspath, size, false);
     }
   }
@@ -313,26 +301,25 @@ tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
   return {Status::Ok(), entries};
 }
 
-Status Posix::move_path(
-    const std::string& old_path, const std::string& new_path) {
-  if (rename(old_path.c_str(), new_path.c_str()) != 0) {
+Status Posix::move_file(const URI& old_path, const URI& new_path) const {
+  if (rename(old_path.to_path().c_str(), new_path.to_path().c_str()) != 0) {
     return LOG_STATUS(
         Status_IOError(std::string("Cannot move path: ") + strerror(errno)));
   }
   return Status::Ok();
 }
 
-Status Posix::copy_file(
-    const std::string& old_path, const std::string& new_path) {
-  std::ifstream src(old_path, std::ios::binary);
-  std::ofstream dst(new_path, std::ios::binary);
+Status Posix::copy_file(const URI& old_uri, const URI& new_uri) const {
+  std::ifstream src(old_uri.to_path(), std::ios::binary);
+  std::ofstream dst(new_uri.to_path(), std::ios::binary);
   dst << src.rdbuf();
   return Status::Ok();
 }
 
-Status Posix::copy_dir(
-    const std::string& old_path, const std::string& new_path) {
-  RETURN_NOT_OK(create_dir(new_path));
+Status Posix::copy_dir(const URI& old_uri, const URI& new_uri) const {
+  auto old_path = old_uri.to_path();
+  auto new_path = new_uri.to_path();
+  RETURN_NOT_OK(create_dir(new_uri));
   std::vector<std::string> paths;
   RETURN_NOT_OK(ls(old_path, &paths));
 
@@ -341,20 +328,20 @@ Status Posix::copy_dir(
     path_queue.emplace(std::move(path));
 
   while (!path_queue.empty()) {
-    std::string file_name_abs = path_queue.front();
-    std::string file_name = file_name_abs.substr(old_path.length());
+    const std::string file_name_abs = path_queue.front();
+    const std::string file_name = file_name_abs.substr(old_path.length());
     path_queue.pop();
 
-    if (is_dir(file_name_abs)) {
-      RETURN_NOT_OK(create_dir(new_path + "/" + file_name));
+    if (is_dir(URI(file_name_abs))) {
+      RETURN_NOT_OK(create_dir(URI(new_path + "/" + file_name)));
       std::vector<std::string> child_paths;
       RETURN_NOT_OK(ls(file_name_abs, &child_paths));
       for (auto& path : child_paths)
         path_queue.emplace(std::move(path));
     } else {
-      assert(is_file(file_name_abs));
-      RETURN_NOT_OK(
-          copy_file(old_path + "/" + file_name, new_path + "/" + file_name));
+      assert(is_file(URI(file_name_abs)));
+      RETURN_NOT_OK(copy_file(
+          URI(old_path + "/" + file_name), URI(new_path + "/" + file_name)));
     }
   }
 
@@ -416,13 +403,15 @@ void Posix::purge_dots_from_path(std::string* path) {
 }
 
 Status Posix::read(
-    const std::string& path,
+    const URI& uri,
     uint64_t offset,
     void* buffer,
-    uint64_t nbytes) const {
+    uint64_t nbytes,
+    [[maybe_unused]] bool use_read_ahead) {
   // Checks
+  auto path = uri.to_path();
   uint64_t file_size;
-  RETURN_NOT_OK(this->file_size(path, &file_size));
+  RETURN_NOT_OK(this->file_size(URI(path), &file_size));
   if (offset + nbytes > file_size)
     return LOG_STATUS(
         Status_IOError("Cannot read from file; Read exceeds file size"));
@@ -452,17 +441,15 @@ Status Posix::read(
   return st;
 }
 
-Status Posix::sync(const std::string& path) {
-  uint32_t permissions = 0;
+Status Posix::sync(const URI& uri) {
+  auto path = uri.to_path();
 
   // Open file
   int fd = -1;
-  if (is_dir(path)) {  // DIRECTORY
-    RETURN_NOT_OK(get_posix_directory_permissions(&permissions));
-    fd = open(path.c_str(), O_RDONLY, permissions);
-  } else if (is_file(path)) {  // FILE
-    RETURN_NOT_OK(get_posix_file_permissions(&permissions));
-    fd = open(path.c_str(), O_WRONLY | O_APPEND | O_CREAT, permissions);
+  if (is_dir(URI(path))) {  // DIRECTORY
+    fd = open(path.c_str(), O_RDONLY, directory_permissions_);
+  } else if (is_file(URI(path))) {  // FILE
+    fd = open(path.c_str(), O_WRONLY | O_APPEND | O_CREAT, file_permissions_);
   } else
     return Status_Ok();  // If file does not exist, exit
 
@@ -491,7 +478,11 @@ Status Posix::sync(const std::string& path) {
 }
 
 Status Posix::write(
-    const std::string& path, const void* buffer, uint64_t buffer_size) {
+    const URI& uri,
+    const void* buffer,
+    uint64_t buffer_size,
+    [[maybe_unused]] bool remote_global_order_write) {
+  auto path = uri.to_path();
   // Check for valid inputs before attempting the actual
   // write system call. This is to avoid a bug on macOS
   // Ventura 13.0 on Apple's M1 processors.
@@ -506,25 +497,11 @@ Status Posix::write(
     }
   }
 
-  // Get config params
-  bool found = false;
-  uint64_t min_parallel_size = 0;
-  uint64_t max_parallel_ops = 0;
-  RETURN_NOT_OK(config_.get().get<uint64_t>(
-      "vfs.min_parallel_size", &min_parallel_size, &found));
-  assert(found);
-  RETURN_NOT_OK(config_.get().get<uint64_t>(
-      "vfs.file.max_parallel_ops", &max_parallel_ops, &found));
-  assert(found);
-
-  uint32_t permissions = 0;
-  RETURN_NOT_OK(get_posix_file_permissions(&permissions));
-
   // Get file offset (equal to file size)
   Status st;
   uint64_t file_offset = 0;
-  if (is_file(path)) {
-    st = file_size(path, &file_offset);
+  if (is_file(URI(path))) {
+    st = file_size(URI(path), &file_offset);
     if (!st.ok()) {
       std::stringstream errmsg;
       errmsg << "Cannot write to file '" << path << "'; " << st.message();
@@ -533,47 +510,18 @@ Status Posix::write(
   }
 
   // Open or create file.
-  int fd = open(path.c_str(), O_WRONLY | O_CREAT, permissions);
+  int fd = open(path.c_str(), O_WRONLY | O_CREAT, file_permissions_);
   if (fd == -1) {
     return LOG_STATUS(Status_IOError(
         std::string("Cannot open file '") + path + "'; " + strerror(errno)));
   }
 
-  // Ensure that each thread is responsible for at least min_parallel_size
-  // bytes, and cap the number of parallel operations at the thread pool size.
-  uint64_t num_ops = std::min(
-      std::max(buffer_size / min_parallel_size, uint64_t(1)), max_parallel_ops);
-  if (num_ops == 1) {
-    st = write_at(fd, file_offset, buffer, buffer_size);
-    if (!st.ok()) {
-      close(fd);
-      std::stringstream errmsg;
-      errmsg << "Cannot write to file '" << path << "'; " << st.message();
-      return LOG_STATUS(Status_IOError(errmsg.str()));
-    }
-  } else {
-    std::vector<ThreadPool::Task> results;
-    uint64_t thread_write_nbytes = utils::math::ceil(buffer_size, num_ops);
-    for (uint64_t i = 0; i < num_ops; i++) {
-      uint64_t begin = i * thread_write_nbytes,
-               end =
-                   std::min((i + 1) * thread_write_nbytes - 1, buffer_size - 1);
-      uint64_t thread_nbytes = end - begin + 1;
-      uint64_t thread_file_offset = file_offset + begin;
-      auto thread_buffer = reinterpret_cast<const char*>(buffer) + begin;
-      results.emplace_back(vfs_thread_pool_->execute(
-          [fd, thread_file_offset, thread_buffer, thread_nbytes]() {
-            return write_at(
-                fd, thread_file_offset, thread_buffer, thread_nbytes);
-          }));
-    }
-    st = vfs_thread_pool_->wait_all(results);
-    if (!st.ok()) {
-      close(fd);
-      std::stringstream errmsg;
-      errmsg << "Cannot write to file '" << path << "'; " << st.message();
-      return LOG_STATUS(Status_IOError(errmsg.str()));
-    }
+  st = write_at(fd, file_offset, buffer, buffer_size);
+  if (!st.ok()) {
+    close(fd);
+    std::stringstream errmsg;
+    errmsg << "Cannot write to file '" << path << "'; " << st.message();
+    return LOG_STATUS(Status_IOError(errmsg.str()));
   }
   if (close(fd) != 0) {
     return LOG_STATUS(Status_IOError(
@@ -596,32 +544,6 @@ Status Posix::write_at(
     file_offset += actual_written;
     buffer_size -= actual_written;
   }
-  return Status::Ok();
-}
-
-Status Posix::get_posix_file_permissions(uint32_t* permissions) const {
-  // Get config params
-  bool found = false;
-  std::string posix_permissions =
-      config_.get().get("vfs.file.posix_file_permissions", &found);
-  assert(found);
-
-  // Permissions are passed in octal notation by the user
-  *permissions = std::strtol(posix_permissions.c_str(), NULL, 8);
-
-  return Status::Ok();
-}
-
-Status Posix::get_posix_directory_permissions(uint32_t* permissions) const {
-  // Get config params
-  bool found = false;
-  std::string posix_permissions =
-      config_.get().get("vfs.file.posix_directory_permissions", &found);
-  assert(found);
-
-  // Permissions are passed in octal notation by the user
-  *permissions = std::strtol(posix_permissions.c_str(), NULL, 8);
-
   return Status::Ok();
 }
 

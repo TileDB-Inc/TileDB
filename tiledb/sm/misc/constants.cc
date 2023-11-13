@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -93,6 +93,19 @@ const std::string fragment_metadata_filename = "__fragment_metadata.tdb";
 /** The array dimension labels directory name. */
 const std::string array_dimension_labels_dir_name = "__labels";
 
+/** The array enumerations directory name. */
+const std::string array_enumerations_dir_name = "__enumerations";
+
+/** The array directory names. */
+const std::vector<std::string> array_dir_names = {
+    array_schema_dir_name,
+    array_metadata_dir_name,
+    array_fragment_meta_dir_name,
+    array_fragments_dir_name,
+    array_commits_dir_name,
+    array_dimension_labels_dir_name,
+    array_enumerations_dir_name};
+
 /** The default tile capacity. */
 const uint64_t capacity = 10000;
 
@@ -134,6 +147,9 @@ const std::string delete_timestamps = "__delete_timestamps";
 
 /** Special name reserved for the delete condition index attribute. */
 const std::string delete_condition_index = "__delete_condition_index";
+
+/** Special name reserved for count of rows. */
+const std::string count_of_rows = "__count_of_rows";
 
 /** The size of a timestamp cell. */
 const uint64_t timestamp_size = sizeof(uint64_t);
@@ -213,6 +229,9 @@ const uint32_t empty_ucs4 = 0;
 /** The special value for an empty ANY. */
 const uint8_t empty_any = 0;
 
+/** The return value for missing entries in an Enumeration */
+const uint64_t enumeration_missing_value = std::numeric_limits<uint64_t>::max();
+
 /** The file suffix used in TileDB. */
 const std::string file_suffix = ".tdb";
 
@@ -260,6 +279,10 @@ const std::string group_detail_dir_name = "__group";
 
 /** The group metadata directory name. */
 const std::string group_metadata_dir_name = "__meta";
+
+/** The group directory names. */
+const std::vector<std::string> group_dir_names = {
+    group_detail_dir_name, group_metadata_dir_name};
 
 /** The maximum number of bytes written in a single I/O. */
 const uint64_t max_write_bytes = std::numeric_limits<int>::max();
@@ -329,6 +352,12 @@ const std::string query_condition_op_eq_str = "EQ";
 /** TILEDB_NE Query Condition Op String **/
 const std::string query_condition_op_ne_str = "NE";
 
+/** TILEDB_IN Query Condition Op String **/
+const std::string query_condition_op_in_str = "IN";
+
+/** TILEDB_NIN Query Condition Op String **/
+const std::string query_condition_op_not_in_str = "NOT_IN";
+
 /** TILEDB_AND Query Condition Combination Op String **/
 const std::string query_condition_combination_op_and_str = "AND";
 
@@ -370,6 +399,9 @@ const std::string bzip2_str = "BZIP2";
 
 /** String describing DOUBLE_DELTA. */
 const std::string double_delta_str = "DOUBLE_DELTA";
+
+/** String describing DELTA. */
+const std::string delta_str = "DELTA";
 
 /** String describing FILTER_NONE. */
 const std::string filter_none_str = "NONE";
@@ -433,6 +465,13 @@ const std::string filter_option_webp_input_format = "WEBP_INPUT_FORMAT";
 
 /** The string representation for FilterOption type webp_lossless. */
 const std::string filter_option_webp_lossless = "WEBP_LOSSLESS";
+
+/**
+ * The string representation for FilterOption type
+ * compression_reinterpret_datatype.
+ */
+const std::string filter_option_compression_reinterpret_datatype =
+    "COMPRESSION_REINTERPRET_DATATYPE";
 
 /** The string representation for type int32. */
 const std::string int32_str = "INT32";
@@ -637,7 +676,7 @@ const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization base format version number. */
-const format_version_t base_format_version = 18;
+const format_version_t base_format_version = 21;
 
 /**
  * The TileDB serialization format version number.
@@ -662,6 +701,15 @@ const format_version_t deletes_min_version = 16;
 /** The lowest version supported for updates. */
 const format_version_t updates_min_version = 16;
 
+/** The lowest version supported for tile min/max/sum/null count data. */
+const format_version_t tile_metadata_min_version = 11;
+
+/** The lowest version supported format version for enumerations. */
+const format_version_t enumerations_min_format_version = 20;
+
+/** The current enumerations version. */
+const format_version_t enumerations_version = 0;
+
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 const uint64_t max_tile_chunk_size = 64 * 1024;
 
@@ -677,12 +725,6 @@ const unsigned int s3_max_attempts = 100;
 /** Milliseconds of wait time between S3 attempts. */
 const unsigned int s3_attempt_sleep_ms = 100;
 
-/** Maximum number of attempts to wait for an Azure response. */
-const unsigned int azure_max_attempts = 10;
-
-/** Milliseconds of wait time between Azure attempts. */
-const unsigned int azure_attempt_sleep_ms = 1000;
-
 /** Maximum number of attempts to wait for a GCS response. */
 const unsigned int gcs_max_attempts = 100;
 
@@ -691,6 +733,9 @@ const unsigned int gcs_attempt_sleep_ms = 1000;
 
 /** An allocation tag used for logging. */
 const std::string s3_allocation_tag = "TileDB";
+
+/** The config key prefix for S3 custom headers. */
+const std::string s3_header_prefix = "vfs.s3.custom_headers.";
 
 /** Prefix indicating a special name reserved by TileDB. */
 const std::string special_name_prefix = "__";

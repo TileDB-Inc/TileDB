@@ -33,7 +33,7 @@
 #ifndef TILEDB_VFS_HELPERS_H
 #define TILEDB_VFS_HELPERS_H
 
-#include <test/support/tdb_catch.h>
+#include <filesystem>
 #include "test/support/src/helpers.h"
 #include "test/support/tdb_catch.h"
 
@@ -79,6 +79,12 @@ Status vfs_test_close(
     const std::vector<std::unique_ptr<SupportedFs>>& fs_vec,
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs);
+
+void vfs_test_remove_temp_dir(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const std::string& path);
+
+void vfs_test_create_temp_dir(
+    tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const std::string& path);
 
 /**
  * This class defines and manipulates
@@ -670,12 +676,47 @@ struct TemporaryDirectoryFixture {
   /** Name of the temporary directory to use for this test */
   std::string temp_dir_;
 
- private:
   /** Virtual file system */
   tiledb_vfs_t* vfs_;
 
+ private:
   /** Vector of supported filesystems. Used to initialize ``vfs_``. */
   const std::vector<std::unique_ptr<SupportedFs>> supported_filesystems_;
+};
+
+/**
+ * Denies write access to a local filesystem path.
+ *
+ * Not supported on Windows. The permissions function there sets the
+ * readonly bit on the path, which is not supported on directories.
+ *
+ * To support it on Windows we would have to add and remove Access Control
+ * Lists, which is a nontrivial thing to do.
+ */
+class DenyWriteAccess {
+ public:
+  DenyWriteAccess() = delete;
+
+  DenyWriteAccess(const std::string& path)
+      : path_(path)
+      , previous_perms_(std::filesystem::status(path).permissions()) {
+    std::filesystem::permissions(
+        path_,
+        std::filesystem::perms::owner_write,
+        std::filesystem::perm_options::remove);
+  }
+
+  ~DenyWriteAccess() {
+    std::filesystem::permissions(
+        path_, previous_perms_, std::filesystem::perm_options::replace);
+  }
+
+ private:
+  /** The path. */
+  const std::string path_;
+
+  /** The previous permissions of the path. */
+  const std::filesystem::perms previous_perms_;
 };
 
 }  // End of namespace test

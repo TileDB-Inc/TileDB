@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/metadata/metadata.h"
+#include "tiledb/common/exception/exception.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -46,10 +47,12 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-/** Return a Metadata error class Status with a given message **/
-inline Status Status_MetadataError(const std::string& msg) {
-  return {"[TileDB::Metadata] Error", msg};
-}
+class MetadataException : public StatusException {
+ public:
+  explicit MetadataException(const std::string& message)
+      : StatusException("Metadata", message) {
+  }
+};
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -191,20 +194,18 @@ const std::pair<uint64_t, uint64_t>& Metadata::timestamp_range() const {
   return timestamp_range_;
 }
 
-Status Metadata::del(const char* key) {
+void Metadata::del(const char* key) {
   assert(key != nullptr);
 
   std::unique_lock<std::mutex> lck(mtx_);
 
   MetadataValue value;
   value.del_ = 1;
-  metadata_map_.emplace(std::make_pair(std::string(key), std::move(value)));
+  metadata_map_.insert_or_assign(key, std::move(value));
   build_metadata_index();
-
-  return Status::Ok();
 }
 
-Status Metadata::put(
+void Metadata::put(
     const char* key,
     Datatype value_type,
     uint32_t value_num,
@@ -226,15 +227,11 @@ Status Metadata::put(
     value_struct.value_.resize(value_size);
     std::memcpy(value_struct.value_.data(), value, value_size);
   }
-  metadata_map_.erase(std::string(key));
-  metadata_map_.emplace(
-      std::make_pair(std::string(key), std::move(value_struct)));
+  metadata_map_.insert_or_assign(key, std::move(value_struct));
   build_metadata_index();
-
-  return Status::Ok();
 }
 
-Status Metadata::get(
+void Metadata::get(
     const char* key,
     Datatype* value_type,
     uint32_t* value_num,
@@ -245,7 +242,7 @@ Status Metadata::get(
   if (it == metadata_map_.end()) {
     // Key not found
     *value = nullptr;
-    return Status::Ok();
+    return;
   }
 
   // Key found
@@ -259,11 +256,9 @@ Status Metadata::get(
     *value_num = value_struct.num_;
     *value = (const void*)(value_struct.value_.data());
   }
-
-  return Status::Ok();
 }
 
-Status Metadata::get(
+void Metadata::get(
     uint64_t index,
     const char** key,
     uint32_t* key_len,
@@ -274,8 +269,7 @@ Status Metadata::get(
     build_metadata_index();
 
   if (index >= metadata_index_.size())
-    return LOG_STATUS(
-        Status_MetadataError("Cannot get metadata; index out of bounds"));
+    throw MetadataException("Cannot get metadata; index out of bounds");
 
   // Get key
   auto& key_str = *(metadata_index_[index].first);
@@ -293,25 +287,20 @@ Status Metadata::get(
     *value_num = value_struct.num_;
     *value = (const void*)(value_struct.value_.data());
   }
-  return Status::Ok();
 }
 
-Status Metadata::has_key(const char* key, Datatype* value_type, bool* has_key) {
+std::optional<Datatype> Metadata::metadata_type(const char* key) {
   assert(key != nullptr);
 
   auto it = metadata_map_.find(key);
   if (it == metadata_map_.end()) {
     // Key not found
-    *has_key = false;
-    return Status::Ok();
+    return nullopt;
   }
 
   // Key found
   auto& value_struct = it->second;
-  *value_type = static_cast<Datatype>(value_struct.type_);
-  *has_key = true;
-
-  return Status::Ok();
+  return static_cast<Datatype>(value_struct.type_);
 }
 
 uint64_t Metadata::num() const {

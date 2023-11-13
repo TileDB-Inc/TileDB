@@ -22,6 +22,8 @@ my_array                        # array folder
          |_ ...
 ```
 
+When located in the commits folder, it will include the URI of fragments (in the __fragments folder) that can be vaccumed. When located in the array metadata folder, it will include the URI or array metadata files that can be vaccumed.
+
 In the file name:
 
 * `t1` and `t2` are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)

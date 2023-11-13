@@ -43,15 +43,12 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-Status LZ4::compress(
-    int level, ConstBuffer* input_buffer, Buffer* output_buffer) {
+Status LZ4::compress(int, ConstBuffer* input_buffer, Buffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
     return LOG_STATUS(Status_CompressionError(
         "Failed compressing with LZ4; invalid buffer format"));
 
-  // TODO: level is ignored using the simple api interface
-  (void)level;
 // Compress
 #if LZ4_VERSION_NUMBER >= 10705
   int ret = LZ4_compress_default(

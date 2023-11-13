@@ -28,6 +28,14 @@ include(common NO_POLICY_SCOPE)
 include(object_library)
 
 #
+# `cert_file` object library
+#
+commence(object_library cert_file)
+    this_target_sources(cert_file.cc)
+    this_target_link_libraries(baseline)
+conclude(object_library)
+
+#
 # `platform` object library
 #
 commence(object_library platform)

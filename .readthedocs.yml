@@ -8,8 +8,12 @@ version: 2
 sphinx:
   configuration: tiledb/doxygen/source/conf.py
 
+build:
+  os: "ubuntu-22.04"
+  tools:
+    python: "3.8"
+
 python:
-  version: 3.8
   install:
     # this order is important: we need cmake to build doxygen XML for breathe
     - requirements: tiledb/doxygen/source/requirements.txt

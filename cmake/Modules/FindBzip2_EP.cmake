@@ -29,10 +29,16 @@
 #   - BZIP2_INCLUDE_DIR, directory containing headers
 #   - BZIP2_LIBRARIES, the Bzip2 library path
 #   - BZIP2_FOUND, whether Bzip2 has been found
-#   - The Bzip2::Bzip2 imported target
+#   - The BZip2::BZip2 imported target
 
 # Include some common helper functions.
 include(TileDBCommon)
+
+if(TILEDB_VCPKG)
+  find_package(BZip2 REQUIRED)
+  install_target_libs(BZip2::BZip2)
+  return()
+endif()
 
 # First check for a static version in the EP prefix.
 find_library(BZIP2_LIBRARIES
@@ -128,9 +134,9 @@ if (NOT BZIP2_FOUND)
   endif()
 endif()
 
-if (BZIP2_FOUND AND NOT TARGET Bzip2::Bzip2)
-  add_library(Bzip2::Bzip2 UNKNOWN IMPORTED)
-  set_target_properties(Bzip2::Bzip2 PROPERTIES
+if (BZIP2_FOUND AND NOT TARGET BZip2::BZip2)
+  add_library(BZip2::BZip2 UNKNOWN IMPORTED)
+  set_target_properties(BZip2::BZip2 PROPERTIES
     IMPORTED_LOCATION "${BZIP2_LIBRARIES}"
     INTERFACE_INCLUDE_DIRECTORIES "${BZIP2_INCLUDE_DIR}"
   )
@@ -138,5 +144,5 @@ endif()
 
 # If we built a static EP, install it if required.
 if (BZIP2_STATIC_EP_FOUND AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(Bzip2::Bzip2)
+  install_target_libs(BZip2::BZip2)
 endif()

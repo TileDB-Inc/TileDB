@@ -29,10 +29,16 @@
 #   - LZ4_INCLUDE_DIR, directory containing headers
 #   - LZ4_LIBRARIES, the LZ4 library path
 #   - LZ4_FOUND, whether LZ4 has been found
-#   - The LZ4::LZ4 imported target
+#   - The lz4::lz4 imported target
 
 # Include some common helper functions.
 include(TileDBCommon)
+
+if(TILEDB_VCPKG)
+  find_package(lz4 REQUIRED)
+  install_target_libs(lz4::lz4)
+  return()
+endif()
 
 # First check for a static version in the EP prefix.
 find_library(LZ4_LIBRARIES
@@ -116,9 +122,9 @@ endif()
 
 set(ignoreUnusedWarning "${TILEDB_LZ4_EP_BUILT}")
 
-if (LZ4_FOUND AND NOT TARGET LZ4::LZ4)
-  add_library(LZ4::LZ4 UNKNOWN IMPORTED)
-  set_target_properties(LZ4::LZ4 PROPERTIES
+if (LZ4_FOUND AND NOT TARGET lz4::lz4)
+  add_library(lz4::lz4 UNKNOWN IMPORTED)
+  set_target_properties(lz4::lz4 PROPERTIES
     IMPORTED_LOCATION "${LZ4_LIBRARIES}"
     INTERFACE_INCLUDE_DIRECTORIES "${LZ4_INCLUDE_DIR}"
   )
@@ -126,5 +132,5 @@ endif()
 
 # If we built a static EP, install it if required.
 if (LZ4_STATIC_EP_FOUND AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(LZ4::LZ4)
+  install_target_libs(lz4::lz4)
 endif()

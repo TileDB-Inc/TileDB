@@ -40,7 +40,6 @@
 #include <vector>
 
 #include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
 
@@ -124,10 +123,9 @@ class Win {
    * Initialize this instance with the given parameters.
    *
    * @param config Config from the parent VFS instance.
-   * @param vfs_thread_pool ThreadPool from the parent VFS instance.
    * @return Status
    */
-  Status init(const Config& config, ThreadPool* vfs_thread_pool);
+  Status init(const Config& config);
 
   /**
    * Checks if the input is an existing directory.
@@ -216,9 +214,6 @@ class Win {
   /** Config parameters from parent VFS instance. */
   Config config_;
 
-  /** Thread pool from parent VFS instance. */
-  ThreadPool* vfs_thread_pool_;
-
   /**
    * Recursively removes the directory at the given path.
    *
@@ -229,8 +224,7 @@ class Win {
 
   /**
    * Write data from the given buffer to the file handle, beginning at the
-   * given offset. Multiple threads can safely write to the same open file
-   * descriptor.
+   * given offset.
    *
    * @param file_h Open file handle to write to
    * @param file_offset Offset in the file at which to start writing
