@@ -73,7 +73,7 @@ TILEDB_EXPORT extern const tiledb_channel_operation_t* tiledb_aggregate_count;
  * **Example:**
  *
  * @code{.c}
- * tiledb_channel_operator_t *operator_sum;
+ * const tiledb_channel_operator_t *operator_sum;
  * tiledb_channel_operator_sum_get(ctx, &operator_sum);
  * tiledb_channel_operation_t* sum_A;
  * tiledb_create_unary_aggregate(ctx, query, operator_sum, "A", sum_A);
@@ -91,7 +91,7 @@ TILEDB_EXPORT int32_t tiledb_channel_operator_sum_get(
  * **Example:**
  *
  * @code{.c}
- * tiledb_channel_operator_t *operator_min;
+ * const tiledb_channel_operator_t *operator_min;
  * tiledb_channel_operator_min_get(ctx, &operator_min);
  * tiledb_channel_operation_t* min_A;
  * tiledb_create_unary_aggregate(ctx, query, operator_min, "A", min_A);
@@ -109,7 +109,7 @@ TILEDB_EXPORT int32_t tiledb_channel_operator_min_get(
  * **Example:**
  *
  * @code{.c}
- * tiledb_channel_operator_t *operator_max;
+ * const tiledb_channel_operator_t *operator_max;
  * tiledb_channel_operator_max_get(ctx, &operator_max);
  * tiledb_channel_operation_t* max_A;
  * tiledb_create_unary_aggregate(ctx, query, operator_max, "A", max_A);
@@ -127,7 +127,7 @@ TILEDB_EXPORT int32_t tiledb_channel_operator_max_get(
  * **Example:**
  *
  * @code{.c}
- * tiledb_channel_operation_t* count_aggregate;
+ * const tiledb_channel_operation_t* count_aggregate;
  * tiledb_aggregate_count_get(ctx, &count_aggregate);
  * @endcode
  *
@@ -144,7 +144,7 @@ TILEDB_EXPORT int32_t tiledb_aggregate_count_get(
  * **Example:**
  *
  * @code{.c}
- * tiledb_channel_operator_t *operator_mean;
+ * const tiledb_channel_operator_t *operator_mean;
  * tiledb_channel_operator_mean_get(ctx, &operator_mean);
  * tiledb_channel_operation_t* mean_A;
  * tiledb_create_unary_aggregate(ctx, query, operator_mean, "A", mean_A);
@@ -162,7 +162,7 @@ TILEDB_EXPORT int32_t tiledb_channel_operator_mean_get(
  * **Example:**
  *
  * @code{.c}
- * tiledb_channel_operator_t *operator_nullcount;
+ * const tiledb_channel_operator_t *operator_nullcount;
  * tiledb_channel_operator_null_count_get(ctx, &operator_nullcount);
  * tiledb_channel_operation_t* nullcount_A;
  * tiledb_create_unary_aggregate(ctx, query, operator_nullcount, "A",
