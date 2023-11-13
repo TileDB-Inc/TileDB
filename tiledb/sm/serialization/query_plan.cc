@@ -152,6 +152,7 @@ void deserialize_query_plan_request(
     switch (serialization_type) {
       case SerializationType::JSON: {
         ::capnp::JsonCodec json;
+        json.handleByAnnotation<capnp::QueryPlanRequest>();
         ::capnp::MallocMessageBuilder message_builder;
         capnp::QueryPlanRequest::Builder builder =
             message_builder.initRoot<capnp::QueryPlanRequest>();
@@ -159,6 +160,7 @@ void deserialize_query_plan_request(
             kj::StringPtr(static_cast<const char*>(request.data())), builder);
         capnp::QueryPlanRequest::Reader reader = builder.asReader();
         query_plan_request_from_capnp(reader, compute_tp, query);
+        break;
       }
       case SerializationType::CAPNP: {
         const auto mBytes = reinterpret_cast<const kj::byte*>(request.data());
@@ -168,6 +170,7 @@ void deserialize_query_plan_request(
         capnp::QueryPlanRequest::Reader reader =
             array_reader.getRoot<capnp::QueryPlanRequest>();
         query_plan_request_from_capnp(reader, compute_tp, query);
+        break;
       }
       default: {
         throw Status_SerializationError(
@@ -280,13 +283,13 @@ std::string deserialize_query_plan_response(
 #else
 
 void serialize_query_plan_request(
-    const Config&, const Query&, const SerializationType, Buffer&) {
+    const Config&, Query&, const SerializationType, Buffer&) {
   throw Status_SerializationError(
       "Cannot serialize; serialization not enabled.");
 }
 
 void deserialize_query_plan_request(
-    const SerializationType, const Buffer&, const ThreadPool&, Query&) {
+    const SerializationType, const Buffer&, ThreadPool&, Query&) {
   throw Status_SerializationError(
       "Cannot serialize; serialization not enabled.");
 }
