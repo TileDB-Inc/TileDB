@@ -57,15 +57,12 @@ GroupDetails::GroupDetails(const URI& group_uri, uint32_t version)
     , changes_applied_(false) {
 }
 
-Status GroupDetails::clear() {
+void GroupDetails::clear() {
   members_.clear();
-  members_by_name_.clear();
-  members_vec_.clear();
+  invalidate_lookups();
   members_to_modify_.clear();
   member_keys_to_add_.clear();
   member_keys_to_delete_.clear();
-
-  return Status::Ok();
 }
 
 void GroupDetails::add_member(const shared_ptr<GroupMember> group_member) {
@@ -73,19 +70,17 @@ void GroupDetails::add_member(const shared_ptr<GroupMember> group_member) {
   auto key = group_member->key();
   members_[key] = group_member;
   // Invalidate the lookup tables.
-  members_by_name_.clear();
-  members_vec_.clear();
+  invalidate_lookups();
 }
 
 void GroupDetails::delete_member(const shared_ptr<GroupMember> group_member) {
   std::lock_guard<std::mutex> lck(mtx_);
   members_.erase(group_member->key());
   // Invalidate the lookup tables.
-  members_by_name_.clear();
-  members_vec_.clear();
+  invalidate_lookups();
 }
 
-Status GroupDetails::mark_member_for_addition(
+void GroupDetails::mark_member_for_addition(
     const URI& group_member_uri,
     const bool& relative,
     std::optional<std::string>& name,
@@ -97,9 +92,10 @@ Status GroupDetails::mark_member_for_addition(
         group_uri_.join_path(group_member_uri.to_string());
   }
   ObjectType type = ObjectType::INVALID;
-  RETURN_NOT_OK(storage_manager->object_type(absolute_group_member_uri, &type));
+  throw_if_not_ok(
+      storage_manager->object_type(absolute_group_member_uri, &type));
   if (type == ObjectType::INVALID) {
-    return Status_GroupError(
+    throw GroupDetailsException(
         "Cannot add group member " + absolute_group_member_uri.to_string() +
         ", type is INVALID. The member likely does not exist.");
   }
@@ -108,50 +104,89 @@ Status GroupDetails::mark_member_for_addition(
       HERE(), group_member_uri, type, relative, name, false);
 
   if (!member_keys_to_add_.insert(group_member->key()).second) {
-    return Status_GroupError(
+    throw GroupDetailsException(
         "Cannot add group member " + group_member->key() +
         ", a member with the same name or URI has already been added.");
   }
 
   members_to_modify_.emplace_back(group_member);
-
-  return Status::Ok();
 }
 
-Status GroupDetails::mark_member_for_removal(const std::string& name) {
+void GroupDetails::mark_member_for_removal(const std::string& name_or_uri) {
   std::lock_guard<std::mutex> lck(mtx_);
 
-  auto it = members_.find(name);
+  // Try to find the member by key.
+  shared_ptr<GroupMemberV2> member_to_delete = nullptr;
+  auto it = members_.find(name_or_uri);
   if (it == members_.end()) {
     // try URI to see if we need to convert the local file to file://
-    it = members_.find(URI(name).to_string());
+    it = members_.find(URI(name_or_uri).to_string());
   }
+
+  // We found the member by key, set the member to delete pointer.
   if (it != members_.end()) {
-    auto member_to_delete = make_shared<GroupMemberV2>(
+    member_to_delete = make_shared<GroupMemberV2>(
         it->second->uri(),
         it->second->type(),
         it->second->relative(),
         it->second->name(),
         true);
+  } else {
+    // Try to lookup by URI.
+    ensure_lookup_by_uri();
 
+    // Make sure the user cannot delete members by URI when there are more than
+    // one group member with the same URI.
+    auto it_dup = duplicated_uris_->find(name_or_uri);
+    if (it_dup == duplicated_uris_->end()) {
+      // try URI to see if we need to convert the local file to file://
+      it_dup = duplicated_uris_->find(URI(name_or_uri).to_string());
+    }
+    if (it_dup != duplicated_uris_->end()) {
+      throw GroupDetailsException(
+          "Cannot remove group member " + name_or_uri +
+          ", there are multiple members with the same URI, please remove by "
+          "name.");
+    }
+
+    // Try to find the member by URI.
+    auto it_by_url = members_by_uri_->find(name_or_uri);
+    if (it_by_url == members_by_uri_->end()) {
+      // try URI to see if we need to convert the local file to file://
+      it_by_url = members_by_uri_->find(URI(name_or_uri).to_string());
+    }
+
+    // The member was found, set the member to delete pointer.
+    if (it_by_url != members_by_uri_->end()) {
+      member_to_delete = make_shared<GroupMemberV2>(
+          it_by_url->second->uri(),
+          it_by_url->second->type(),
+          it_by_url->second->relative(),
+          it_by_url->second->name(),
+          true);
+    }
+  }
+
+  // Delete the member, if set.
+  if (member_to_delete != nullptr) {
     if (member_keys_to_add_.count(member_to_delete->key()) != 0) {
-      return Status_GroupError(
+      throw GroupDetailsException(
           "Cannot remove group member " + member_to_delete->key() +
           ", a member with the same name or URI has already been added.");
     }
 
     if (!member_keys_to_delete_.insert(member_to_delete->key()).second) {
-      return Status_GroupError(
+      throw GroupDetailsException(
           "Cannot remove group member " + member_to_delete->key() +
           ", a member with the same name or URI has already been removed.");
     }
 
     members_to_modify_.emplace_back(member_to_delete);
-    return Status::Ok();
+  } else {
+    throw GroupDetailsException(
+        "Cannot remove group member " + name_or_uri +
+        ", member does not exist in group.");
   }
-  return Status_GroupError(
-      "Cannot remove group member " + name +
-      ", member does not exist in group.");
 }
 
 const std::vector<shared_ptr<GroupMember>>& GroupDetails::members_to_modify()
@@ -167,7 +202,7 @@ GroupDetails::members() const {
 }
 
 void GroupDetails::serialize(Serializer&) {
-  throw StatusException(Status_GroupError("Invalid call to Group::serialize"));
+  throw GroupDetailsException("Invalid call to Group::serialize");
 }
 
 std::optional<shared_ptr<GroupDetails>> GroupDetails::deserialize(
@@ -180,8 +215,8 @@ std::optional<shared_ptr<GroupDetails>> GroupDetails::deserialize(
     return GroupDetailsV2::deserialize(deserializer, group_uri);
   }
 
-  throw StatusException(Status_GroupError(
-      "Unsupported group version " + std::to_string(version)));
+  throw GroupDetailsException(
+      "Unsupported group version " + std::to_string(version));
 }
 
 std::optional<shared_ptr<GroupDetails>> GroupDetails::deserialize(
@@ -209,22 +244,14 @@ tuple<std::string, ObjectType, optional<std::string>>
 GroupDetails::member_by_index(uint64_t index) {
   std::lock_guard<std::mutex> lck(mtx_);
 
-  if (members_vec_.size() != members_.size()) {
-    members_vec_.clear();
-    members_vec_.reserve(members_.size());
-    for (auto& [key, member] : members_) {
-      members_vec_.emplace_back(member);
-    }
-  }
-
-  if (index >= members_vec_.size()) {
-    throw Status_GroupError(
+  if (index >= members_.size()) {
+    throw GroupDetailsException(
         "index " + std::to_string(index) + " is larger than member count " +
-        std::to_string(members_vec_.size()));
+        std::to_string(members_.size()));
   }
 
-  auto member = members_vec_[index];
-
+  ensure_lookup_by_index();
+  auto member = members_vec_->at(index);
   std::string uri = member->uri().to_string();
   if (member->relative()) {
     uri = group_uri_.join_path(member->uri().to_string()).to_string();
@@ -237,25 +264,12 @@ tuple<std::string, ObjectType, optional<std::string>, bool>
 GroupDetails::member_by_name(const std::string& name) {
   std::lock_guard<std::mutex> lck(mtx_);
 
-  if (members_by_name_.size() != members_.size()) {
-    members_by_name_.clear();
-    members_by_name_.reserve(members_.size());
-    for (auto& [key, member] : members_) {
-      if (member->name().has_value()) {
-        bool added =
-            members_by_name_.insert_or_assign(member->name().value(), member)
-                .second;
-        // add_member makes sure that the name is unique, so the call to
-        // insert_or_assign should always add a member.
-        assert(added);
-        std::ignore = added;
-      }
-    }
-  }
+  auto it = members_.find(name);
 
-  auto it = members_by_name_.find(name);
-  if (it == members_by_name_.end()) {
-    throw Status_GroupError(name + " does not exist in group");
+  // If we didn't find the key in the members list or if the found member is a
+  // nameless member, return as not found.
+  if (it == members_.end() || !it->second->name().has_value()) {
+    throw GroupDetailsException(name + " does not exist in group");
   }
 
   auto member = it->second;
@@ -269,6 +283,55 @@ GroupDetails::member_by_name(const std::string& name) {
 
 format_version_t GroupDetails::version() const {
   return version_;
+}
+
+void GroupDetails::ensure_lookup_by_index() {
+  // Populate the the member by index lookup if it hasn't been generated.
+  if (members_vec_ == nullopt) {
+    members_vec_.emplace();
+    members_vec_->reserve(members_.size());
+    for (auto& [key, member] : members_) {
+      members_vec_->emplace_back(member);
+    }
+  }
+}
+
+void GroupDetails::ensure_lookup_by_uri() {
+  // Populate the the member by uri lookup if it hasn't been generated.
+  if (members_by_uri_ == nullopt) {
+    if (duplicated_uris_ != nullopt) {
+      GroupDetailsException("`duplicated_uris_` should not be generated.");
+    }
+
+    members_by_uri_.emplace();
+    duplicated_uris_.emplace();
+    for (auto& [key, member] : members_) {
+      const std::string& uri = member->uri().to_string();
+
+      // See if the URI is already duplicated.
+      auto dup_it = duplicated_uris_->find(uri);
+      if (dup_it != duplicated_uris_->end()) {
+        dup_it->second++;
+        continue;
+      }
+
+      // See if the URI already exists.
+      auto it = members_by_uri_->find(uri);
+      if (it != members_by_uri_->end()) {
+        members_by_uri_->erase(it);
+        duplicated_uris_->emplace(uri, 2);
+        continue;
+      }
+
+      members_by_uri_->emplace(uri, member);
+    }
+  }
+}
+
+void GroupDetails::invalidate_lookups() {
+  members_vec_ = nullopt;
+  members_by_uri_ = nullopt;
+  duplicated_uris_ = nullopt;
 }
 
 }  // namespace sm
