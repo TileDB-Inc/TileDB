@@ -42,7 +42,7 @@
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/crypto.h"
 #include "tiledb/sm/filesystem/path_win.h"
-#include "tiledb/sm/filesystem/unique_local_directory.h"
+#include "tiledb/sm/filesystem/temporary_local_directory.h"
 #include "tiledb/sm/filesystem/win.h"
 
 #include <Windows.h>
@@ -65,7 +65,7 @@ static bool ends_with(const std::string& value, const std::string& suffix) {
 struct WinFx {
   Win win_;
   Config vfs_config_;
-  UniqueLocalDirectory temp_dir_;
+  TemporaryLocalDirectory temp_dir_;
 
   WinFx() {
     REQUIRE(win_.init(vfs_config_).ok());

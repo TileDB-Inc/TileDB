@@ -1,5 +1,5 @@
 /**
- * @file   unique_local_directory.h
+ * @file   temporary_local_directory.h
  *
  * @section LICENSE
  *
@@ -27,11 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file declares class UniqueLocalDirectory.
+ * This file declares class TemporaryLocalDirectory.
  */
 
-#ifndef TILEDB_UNIQUE_LOCAL_DIRECTORY_H
-#define TILEDB_UNIQUE_LOCAL_DIRECTORY_H
+#ifndef TILEDB_TEMPORARY_LOCAL_DIRECTORY_H
+#define TILEDB_TEMPORARY_LOCAL_DIRECTORY_H
 
 #include "tiledb/sm/filesystem/vfs.h"
 
@@ -45,17 +45,17 @@ namespace tiledb::sm {
  * is removed. The path to the unique directory may be accessed for additional
  * reads / writes.
  */
-class UniqueLocalDirectory {
+class TemporaryLocalDirectory {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /** Constructor which will create a unique local directory. */
-  UniqueLocalDirectory(std::string prefix = {});
+  TemporaryLocalDirectory(std::string prefix = {});
 
   /** Destructor which will remove the directory. */
-  ~UniqueLocalDirectory();
+  ~TemporaryLocalDirectory();
 
   /* ********************************* */
   /*                API                */
@@ -74,4 +74,4 @@ class UniqueLocalDirectory {
 };
 }  // namespace tiledb::sm
 
-#endif  // TILEDB_UNIQUE_LOCAL_DIRECTORY_H
+#endif  // TILEDB_TEMPORARY_LOCAL_DIRECTORY_H

@@ -35,7 +35,7 @@ commence(object_library vfs)
         mem_filesystem.cc
         path_win.cc
         posix.cc
-        unique_local_directory.cc
+        temporary_local_directory.cc
         uri.cc
         vfs.cc
         vfs_file_handle.cc

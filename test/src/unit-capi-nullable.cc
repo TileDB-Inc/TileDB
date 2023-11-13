@@ -35,7 +35,7 @@
 #include "tiledb/api/c_api/vfs/vfs_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/enums/array_type.h"
-#include "tiledb/sm/filesystem/unique_local_directory.h"
+#include "tiledb/sm/filesystem/temporary_local_directory.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <iostream>
@@ -147,7 +147,7 @@ class NullableArrayFx {
   tiledb_vfs_t* vfs_;
 
   /** The unique local directory object. */
-  UniqueLocalDirectory temp_dir_;
+  TemporaryLocalDirectory temp_dir_;
 
   /**
    * Compute the full array path given an array name.

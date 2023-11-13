@@ -37,7 +37,7 @@
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/encryption_type.h"
-#include "tiledb/sm/filesystem/unique_local_directory.h"
+#include "tiledb/sm/filesystem/temporary_local_directory.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <iostream>
@@ -47,9 +47,6 @@
 using namespace std;
 using namespace tiledb::sm;
 using namespace tiledb::test;
-
-static const char encryption_key[] = "unittestunittestunittestunittest";
-static const string array_name = "smoke_test_array";
 
 class SmokeTestFx {
  public:
@@ -218,7 +215,13 @@ class SmokeTestFx {
   tiledb_vfs_t* vfs_;
 
   /** The unique local directory object. */
-  UniqueLocalDirectory temp_dir_;
+  TemporaryLocalDirectory temp_dir_;
+
+  /** The encryption key. */
+  const char encryption_key_[33] = "unittestunittestunittestunittest";
+
+  /** The name of the array. */
+  const string array_name_ = "smoke_test_array";
 
   /**
    * Compute the full array path given an array name.
@@ -485,13 +488,14 @@ void SmokeTestFx::create_array(
     rc = tiledb_config_set(
         config, "sm.encryption_type", encryption_type_string.c_str(), &error);
     REQUIRE(error == nullptr);
-    rc = tiledb_config_set(config, "sm.encryption_key", encryption_key, &error);
+    rc =
+        tiledb_config_set(config, "sm.encryption_key", encryption_key_, &error);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(error == nullptr);
     REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
     tiledb_config_free(&config);
   }
-  rc = tiledb_array_create(ctx_, array_path(array_name).c_str(), array_schema);
+  rc = tiledb_array_create(ctx_, array_path(array_name_).c_str(), array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Free attributes.
@@ -517,7 +521,7 @@ void SmokeTestFx::write(
     tiledb_encryption_type_t encryption_type) {
   // Open the array for writing (with or without encryption).
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, array_path(array_name).c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_path(array_name_).c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
   if (encryption_type != TILEDB_NO_ENCRYPTION) {
     tiledb_config_t* cfg;
@@ -531,7 +535,7 @@ void SmokeTestFx::write(
         cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
-    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key, &err);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
     rc = tiledb_array_set_config(ctx_, array, cfg);
@@ -646,7 +650,7 @@ void SmokeTestFx::read(
     tiledb_query_condition_combination_op_t combination_op) {
   // Open the array for reading (with or without encryption).
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, array_path(array_name).c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_path(array_name_).c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
   if (encryption_type != TILEDB_NO_ENCRYPTION) {
     tiledb_config_t* cfg;
@@ -660,7 +664,7 @@ void SmokeTestFx::read(
         cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
-    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key, &err);
+    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key_, &err);
     REQUIRE(rc == TILEDB_OK);
     REQUIRE(err == nullptr);
     rc = tiledb_array_set_config(ctx_, array, cfg);

@@ -1,5 +1,5 @@
 /**
- * @file   unique_local_directory.cc
+ * @file   temporary_local_directory.cc
  *
  * @section LICENSE
  *
@@ -27,10 +27,10 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class UniqueLocalDirectory.
+ * This file defines class TemporaryLocalDirectory.
  */
 
-#include "tiledb/sm/filesystem/unique_local_directory.h"
+#include "tiledb/sm/filesystem/temporary_local_directory.h"
 #include "tiledb/common/random/prng.h"
 
 #include <filesystem>
@@ -44,7 +44,7 @@ namespace tiledb::sm {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-UniqueLocalDirectory::UniqueLocalDirectory(std::string prefix) {
+TemporaryLocalDirectory::TemporaryLocalDirectory(std::string prefix) {
   // Generate random number using global PRNG
   PRNG& prng = PRNG::get();
   auto rand = prng();
@@ -58,11 +58,11 @@ UniqueLocalDirectory::UniqueLocalDirectory(std::string prefix) {
   std::filesystem::create_directory(path_);
 }
 
-UniqueLocalDirectory::~UniqueLocalDirectory() {
+TemporaryLocalDirectory::~TemporaryLocalDirectory() {
   // Remove the unique directory
   std::error_code ec;
   auto removed = std::filesystem::remove_all(path_, ec);
-  if (removed <= 0) {
+  if (removed == static_cast<std::uintmax_t>(-1)) {
     LOG_ERROR(ec.message());
   }
 }
@@ -71,7 +71,7 @@ UniqueLocalDirectory::~UniqueLocalDirectory() {
 /*                API                */
 /* ********************************* */
 
-const std::string& UniqueLocalDirectory::path() {
+const std::string& TemporaryLocalDirectory::path() {
   return path_;
 }
 
