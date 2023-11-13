@@ -259,10 +259,10 @@ Status Group::close() {
       try {
         // If changes haven't been applied, apply them
         if (!changes_applied_) {
-          RETURN_NOT_OK(group_details_->apply_pending_changes());
+          group_details_->apply_pending_changes();
           changes_applied_ = group_details_->changes_applied();
         }
-        RETURN_NOT_OK(storage_manager_->group_close_for_writes(this));
+        throw_if_not_ok(storage_manager_->group_close_for_writes(this));
       } catch (StatusException& exc) {
         std::string msg = exc.what();
         msg += " : Was storage for the group moved or deleted before closing?";
@@ -346,7 +346,7 @@ void Group::delete_group(const URI& uri, bool recursive) {
   }
   // Clear metadata and other pending changes to avoid patching a deleted group.
   metadata_.clear();
-  throw_if_not_ok(group_details_->clear());
+  group_details_->clear();
 
   // Close the deleted group
   throw_if_not_ok(this->close());
@@ -527,7 +527,8 @@ void Group::set_config(Config config) {
 }
 
 Status Group::clear() {
-  return group_details_->clear();
+  group_details_->clear();
+  return Status::Ok();
 }
 
 void Group::add_member(const shared_ptr<GroupMember> group_member) {
@@ -557,8 +558,9 @@ Status Group::mark_member_for_addition(
         "Cannot get member; Group was not opened in write or modify_exclusive "
         "mode");
   }
-  return group_details_->mark_member_for_addition(
+  group_details_->mark_member_for_addition(
       group_member_uri, relative, name, storage_manager_);
+  return Status::Ok();
 }
 
 Status Group::mark_member_for_removal(const std::string& name) {
@@ -577,7 +579,8 @@ Status Group::mark_member_for_removal(const std::string& name) {
         "mode");
   }
 
-  return group_details_->mark_member_for_removal(name);
+  group_details_->mark_member_for_removal(name);
+  return Status::Ok();
 }
 
 const std::vector<shared_ptr<GroupMember>>& Group::members_to_modify() const {

@@ -276,11 +276,11 @@ capi_return_t tiledb_group_add_member(
 }
 
 capi_return_t tiledb_group_remove_member(
-    tiledb_group_handle_t* group, const char* name) {
+    tiledb_group_handle_t* group, const char* name_or_uri) {
   ensure_group_is_valid(group);
-  ensure_name_argument_is_valid(name);
+  ensure_name_argument_is_valid(name_or_uri);
 
-  throw_if_not_ok(group->group().mark_member_for_removal(name));
+  throw_if_not_ok(group->group().mark_member_for_removal(name_or_uri));
 
   return TILEDB_OK;
 }

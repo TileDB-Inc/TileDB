@@ -35,7 +35,6 @@
 
 #include <atomic>
 
-#include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -58,10 +57,8 @@ class GroupDetails {
 
   /**
    * Clear a group
-   *
-   * @return
    */
-  Status clear();
+  void clear();
 
   /**
    * Add a member to a group, this will be flushed to disk on close
@@ -69,9 +66,8 @@ class GroupDetails {
    * @param group_member_uri group member uri
    * @param relative is this URI relative
    * @param name optional name for member
-   * @return Status
    */
-  Status mark_member_for_addition(
+  void mark_member_for_addition(
       const URI& group_member_uri,
       const bool& relative,
       std::optional<std::string>& name,
@@ -80,12 +76,13 @@ class GroupDetails {
   /**
    * Remove a member from a group, this will be flushed to disk on close
    *
-   * @param name Name of member to remove. If the member has no name,
-   * this parameter should be set to the URI of the member. In that case, only
-   * the unnamed member with the given URI will be removed.
-   * @return Status
+   * @param name_or_uri Name or URI of member to remove. If the URI is
+   * registered multiple times in the group, the name needs to be specified so
+   * that the correct one can be removed. Note that if a URI is registered as
+   * both a named and unnamed member, the unnamed member will be removed
+   * successfully using the URI.
    */
-  Status mark_member_for_removal(const std::string& name);
+  void mark_member_for_removal(const std::string& name_or_uri);
 
   /**
    * Get the vector of members to modify, used in serialization only
@@ -120,7 +117,6 @@ class GroupDetails {
    *
    * @param buff The buffer to serialize the data into.
    * @param version The format spec version.
-   * @return Status
    */
   virtual void serialize(Serializer& serializer);
 
@@ -129,7 +125,7 @@ class GroupDetails {
    *
    * @param deserializer The buffer to deserialize from.
    * @param version The format spec version.
-   * @return Status and Attribute
+   * @return Group detail.
    */
   static std::optional<shared_ptr<GroupDetails>> deserialize(
       Deserializer& deserializer, const URI& group_uri);
@@ -140,7 +136,7 @@ class GroupDetails {
    * @param deserializers List of buffers for each details file to deserialize
    * from.
    * @param version The format spec version.
-   * @return Status and Attribute
+   * @return Group detail.
    */
   static std::optional<shared_ptr<GroupDetails>> deserialize(
       const std::vector<shared_ptr<Deserializer>>& deserializer,
@@ -191,10 +187,8 @@ class GroupDetails {
    * Apply any pending member additions or removals
    *
    * mutates members_ and clears members_to_modify_
-   *
-   * @return Status
    */
-  virtual Status apply_pending_changes() = 0;
+  virtual void apply_pending_changes() = 0;
 
  protected:
   /* ********************************* */
@@ -204,18 +198,26 @@ class GroupDetails {
   /** The group URI. */
   URI group_uri_;
 
-  /** The mapping of all members of this group. This is the canonical store of
-   * the group's members. The key is the member's key(). */
+  /**
+   * The mapping of all members of this group. This is the canonical store of
+   * the group's members. The key is the member's key().
+   */
   std::unordered_map<std::string, shared_ptr<GroupMember>> members_;
 
   /** Vector for index based lookup. */
-  std::vector<shared_ptr<GroupMember>> members_vec_;
+  optional<std::vector<shared_ptr<GroupMember>>> members_vec_;
 
-  /** Unordered map for name based lookup. If the member doesn't have a name,
-   * it will not be in the map. */
-  std::unordered_map<std::string, shared_ptr<GroupMember>> members_by_name_;
+  /**
+   * Map of members for uri based lookup. Note that if a URI is found more than
+   * once, it will not be found here, but in `duplicated_uris_`.
+   */
+  optional<std::unordered_map<std::string, shared_ptr<GroupMember>>>
+      members_by_uri_;
 
-  /** Mapping of members slated for adding. */
+  /** Set of duplicated URIs, with count. */
+  optional<std::unordered_map<std::string, uint64_t>> duplicated_uris_;
+
+  /** Mapping of members slated for addition/removal. */
   std::vector<shared_ptr<GroupMember>> members_to_modify_;
 
   /** Set of member keys that have been marked for addition. */
@@ -232,6 +234,19 @@ class GroupDetails {
 
   /** Were changes applied and is a write is required */
   bool changes_applied_;
+
+  /* ********************************* */
+  /*         PROTECTED METHODS         */
+  /* ********************************* */
+
+  /** Ensure we have built lookup table for members by index. */
+  void ensure_lookup_by_index();
+
+  /** Ensure we have built lookup table for members by uri. */
+  void ensure_lookup_by_uri();
+
+  /** Invalidate the built lookup tables. */
+  void invalidate_lookups();
 };
 }  // namespace sm
 }  // namespace tiledb

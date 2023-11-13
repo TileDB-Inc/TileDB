@@ -70,7 +70,7 @@ shared_ptr<GroupDetails> GroupDetailsV1::deserialize(
   return group;
 }
 
-Status GroupDetailsV1::apply_pending_changes() {
+void GroupDetailsV1::apply_pending_changes() {
   std::lock_guard<std::mutex> lck(mtx_);
 
   // Remove members first
@@ -94,9 +94,7 @@ Status GroupDetailsV1::apply_pending_changes() {
   changes_applied_ = !members_to_modify_.empty();
   members_to_modify_.clear();
 
-  members_vec_.clear();
-  members_by_name_.clear();
-  return Status::Ok();
+  invalidate_lookups();
 }
 
 }  // namespace sm

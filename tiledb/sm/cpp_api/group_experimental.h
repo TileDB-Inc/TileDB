@@ -401,15 +401,17 @@ class Group {
   /**
    * Remove a member from a group
    *
-   * @param name Name of member to remove. If the member has no name,
-   * this parameter should be set to the URI of the member. In that case, only
-   * the unnamed member with the given URI will be removed.
+   * @param name_or_uri Name or URI of member to remove. If the URI is
+   * registered multiple times in the group, the name needs to be specified so
+   * that the correct one can be removed. Note that if a URI is registered as
+   * both a named and unnamed member, the unnamed member will be removed
+   * successfully using the URI.
    */
-  void remove_member(const std::string& name) {
+  void remove_member(const std::string& name_or_uri) {
     auto& ctx = ctx_.get();
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
     ctx.handle_error(
-        tiledb_group_remove_member(c_ctx, group_.get(), name.c_str()));
+        tiledb_group_remove_member(c_ctx, group_.get(), name_or_uri.c_str()));
   }
 
   uint64_t member_count() const {
