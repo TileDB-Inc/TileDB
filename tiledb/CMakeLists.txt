@@ -695,10 +695,10 @@ find_package(Zstd_EP REQUIRED)
 find_package(Magic_EP REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
-    Bzip2::Bzip2
-    LZ4::LZ4
+    BZip2::BZip2
+    lz4::lz4
     ZLIB::ZLIB
-    Zstd::Zstd
+    ${ZSTD_TARGET}
     libmagic
 )
 if (TILEDB_VCPKG)
@@ -988,10 +988,10 @@ if (TILEDB_STATIC)
     endif()
   endmacro()
 
-  append_dep_lib(Bzip2::Bzip2)
-  append_dep_lib(LZ4::LZ4)
+  append_dep_lib(BZip2::BZip2)
+  append_dep_lib(lz4::lz4)
   append_dep_lib(ZLIB::ZLIB)
-  append_dep_lib(Zstd::Zstd)
+  append_dep_lib(${ZSTD_TARGET})
   append_dep_lib(CapnProto::capnp)
   append_dep_lib(CapnProto::capnp-json)
   append_dep_lib(CapnProto::kj)

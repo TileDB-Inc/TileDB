@@ -33,7 +33,7 @@ find_package(Bzip2_EP REQUIRED)
 function(build_TileDB_experimental_example_cppapi TARGET)
   add_executable(${TARGET}_exp_cpp EXCLUDE_FROM_ALL ${TARGET}.cc)
   target_link_libraries(${TARGET}_exp_cpp PUBLIC local_install tiledb_shared)
-  target_link_libraries(${TARGET}_exp_cpp PUBLIC Bzip2::Bzip2)
+  target_link_libraries(${TARGET}_exp_cpp PUBLIC BZip2::BZip2)
   if (NOT WIN32)
     # On Linux, must explicitly link -lpthread -ldl in order for static linking
     # to libzstd or libcurl to work.
