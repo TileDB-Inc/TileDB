@@ -45,6 +45,7 @@
 #include "tiledb/sm/query/dimension_label/array_dimension_label_queries.h"
 #include "tiledb/sm/query/legacy/reader.h"
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/sm/query/readers/aggregators/sum_aggregator.h"
 #include "tiledb/sm/query/readers/dense_reader.h"
 #include "tiledb/sm/query/readers/ordered_dim_label_reader.h"
 #include "tiledb/sm/query/readers/sparse_global_order_reader.h"
@@ -132,6 +133,13 @@ Query::Query(
   subarray_.set_config(config_);
 
   rest_scratch_ = make_shared<Buffer>(HERE());
+
+  bool found = false;
+  const Status& st =
+      config_.get<uint64_t>("sm.hardcoded_agg", &hardcoded_agg_, &found);
+  if (!st.ok() || !found) {
+    hardcoded_agg_ = 0;
+  }
 }
 
 Query::~Query() {
@@ -1576,6 +1584,17 @@ void Query::set_subarray_unsafe(const void* subarray) {
 }
 
 Status Query::submit() {
+  uint64_t sum = 0;
+  uint64_t sum_size = 8;
+  if (hardcoded_agg_ == 1 && default_channel_aggregates_.size() == 0) {
+    buffers_.clear();
+    default_channel_aggregates_.emplace(
+        "a",
+        std::make_shared<SumAggregator<int64_t>>(
+            tiledb::sm::FieldInfo("a", false, false, 1, Datatype::UINT64)));
+    throw_if_not_ok(set_data_buffer("a", &sum, &sum_size, false, false));
+  }
+
   // Do not resubmit completed reads.
   if (type_ == QueryType::READ && status_ == QueryStatus::COMPLETED) {
     return Status::Ok();
