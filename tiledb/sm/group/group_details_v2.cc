@@ -105,12 +105,13 @@ shared_ptr<GroupDetails> GroupDetailsV2::deserialize(
   return group;
 }
 
-Status GroupDetailsV2::apply_pending_changes() {
+void GroupDetailsV2::apply_pending_changes() {
   std::lock_guard<std::mutex> lck(mtx_);
 
+  // In groups V2, we use `members_` to write the list of additions/removals to
+  // disk. Start with a fresh list.
   members_.clear();
-  members_vec_.clear();
-  members_by_name_.clear();
+  invalidate_lookups();
 
   // First add each member to unordered map, overriding if the user adds/removes
   // it multiple times
@@ -120,8 +121,6 @@ Status GroupDetailsV2::apply_pending_changes() {
 
   changes_applied_ = !members_to_modify_.empty();
   members_to_modify_.clear();
-
-  return Status::Ok();
 }
 
 }  // namespace sm
