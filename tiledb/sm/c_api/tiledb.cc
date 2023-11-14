@@ -4363,6 +4363,7 @@ capi_return_t tiledb_handle_query_plan_request(
       plan.dump_json(),
       static_cast<tiledb::sm::SerializationType>(serialization_type),
       response->buffer());
+
   return TILEDB_OK;
 }
 

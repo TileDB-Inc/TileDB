@@ -36,12 +36,15 @@
 #include <capnp/message.h>
 #include <capnp/serialize.h>
 #include "tiledb/sm/serialization/capnp_utils.h"
-#include "tiledb/sm/serialization/query.h"
 #endif
 // clang-format on
 
 #include "tiledb/sm/query_plan/query_plan.h"
+#include "tiledb/common/thread_pool.h"
+#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/serialization/query.h"
+#include "tiledb/sm/serialization/query_plan.h"
 
 using namespace tiledb::common;
 

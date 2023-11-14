@@ -378,7 +378,6 @@ ArraySchema HandleLoadArraySchemaRequestFx::call_handler(
 }
 
 shared_ptr<ArraySchema> HandleQueryPlanRequestFx::create_schema() {
-  // Create a schema to serialize
   auto schema = make_shared<ArraySchema>(HERE(), ArrayType::DENSE);
   schema->set_capacity(10000);
   throw_if_not_ok(schema->set_cell_order(Layout::ROW_MAJOR));
@@ -409,16 +408,11 @@ std::string HandleQueryPlanRequestFx::call_handler(
     SerializationType stype, Query& query) {
   auto ctx = tiledb::Context();
   auto array = tiledb::Array(ctx, uri_.to_string(), TILEDB_READ);
-  // auto query = tiledb::Query(ctx, array);
   auto req_buf = tiledb_buffer_handle_t::make_handle();
   auto resp_buf = tiledb_buffer_handle_t::make_handle();
 
   serialization::serialize_query_plan_request(
-      //    cfg_, *query.ptr().get()->query_, stype, req_buf->buffer());
-      cfg_,
-      query,
-      stype,
-      req_buf->buffer());
+      cfg_, query, stype, req_buf->buffer());
   auto rval = tiledb_handle_query_plan_request(
       ctx.ptr().get(),
       array.ptr().get(),

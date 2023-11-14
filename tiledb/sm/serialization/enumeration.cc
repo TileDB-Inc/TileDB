@@ -40,7 +40,9 @@
 // clang-format on
 
 #include "tiledb/sm/array_schema/enumeration.h"
+#include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/serialization/enumeration.h"
 
 using namespace tiledb::common;
 
@@ -361,7 +363,7 @@ std::vector<std::string> deserialize_load_enumerations_request(
 }
 
 void serialize_load_enumerations_response(
-    const std::vector<shared_ptr<const Enumeration>>,
+    const std::vector<shared_ptr<const Enumeration>>&,
     SerializationType,
     Buffer&) {
   throw Status_SerializationError(
