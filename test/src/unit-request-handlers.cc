@@ -190,14 +190,18 @@ TEST_CASE_METHOD(
   int32_t dom[] = {1, 2, 1, 2};
   REQUIRE(tiledb_query_set_subarray(ctx, query, &dom) == TILEDB_OK);
 
-  std::vector<int32_t> a1(2);
   uint64_t size = 1;
+  std::vector<int32_t> a1(2);
   REQUIRE(
       tiledb_query_set_data_buffer(ctx, query, "attr1", a1.data(), &size) ==
       TILEDB_OK);
-  std::vector<int64_t> a2(2);
+  std::vector<int32_t> a2(2);
   REQUIRE(
       tiledb_query_set_data_buffer(ctx, query, "attr2", a2.data(), &size) ==
+      TILEDB_OK);
+  std::vector<int64_t> a3(2);
+  REQUIRE(
+      tiledb_query_set_data_buffer(ctx, query, "attr3", a3.data(), &size) ==
       TILEDB_OK);
 
   // Use C API to get the query plan
@@ -337,7 +341,6 @@ shared_ptr<ArraySchema> HandleQueryPlanRequestFx::create_schema() {
   throw_if_not_ok(schema->set_cell_order(Layout::ROW_MAJOR));
   throw_if_not_ok(schema->set_tile_order(Layout::ROW_MAJOR));
   uint32_t dim_domain[] = {1, 10, 1, 10};
-  // uint64_t extents[] = {5, 5};
 
   auto dim1 = make_shared<Dimension>(HERE(), "dim1", Datatype::INT32);
   throw_if_not_ok(dim1->set_domain(&dim_domain[0]));
@@ -351,8 +354,10 @@ shared_ptr<ArraySchema> HandleQueryPlanRequestFx::create_schema() {
 
   auto attr1 = make_shared<Attribute>(HERE(), "attr1", Datatype::INT32);
   throw_if_not_ok(schema->add_attribute(attr1));
-  auto attr2 = make_shared<Attribute>(HERE(), "attr2", Datatype::INT64);
+  auto attr2 = make_shared<Attribute>(HERE(), "attr2", Datatype::INT32);
   throw_if_not_ok(schema->add_attribute(attr2));
+  auto attr3 = make_shared<Attribute>(HERE(), "attr3", Datatype::INT64);
+  throw_if_not_ok(schema->add_attribute(attr3));
 
   return schema;
 }
