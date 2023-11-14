@@ -48,25 +48,53 @@ enum class SerializationType : uint8_t;
 
 namespace serialization {
 
-// DOC missing!!
-
+/**
+ * Serialize a Query Plan request to cap'n proto object
+ *
+ * @param config Config to serialize.
+ * @param query The query for which the plan is requested.
+ * @param serialization_type Format to serialize into: Cap'n Proto or JSON.
+ * @param request Buffer to store serialized bytes in.
+ */
 void serialize_query_plan_request(
     const Config& config,
     Query& query,
     const SerializationType serialization_type,
     Buffer& request);
 
+/**
+ * Deserialize a Query Plan request to cap'n proto object
+ *
+ * @param serialization_type Format to serialize from: Cap'n Proto or JSON.
+ * @param request Buffer to read serialized bytes from.
+ * @param compute_tp The thread pool for compute-bound tasks.
+ * @param query The query for which the plan is requested.
+ */
 void deserialize_query_plan_request(
     const SerializationType serialization_type,
     const Buffer& request,
     ThreadPool& compute_tp,
     Query& query);
 
+/**
+ * Serialize a Query Plan response to cap'n proto object
+ *
+ * @param query_plan The query plan to serialize.
+ * @param serialization_type Format to serialize into: Cap'n Proto or JSON.
+ * @param response Buffer to store serialized bytes in.
+ */
 void serialize_query_plan_response(
     const std::string& query_plan,
     const SerializationType serialization_type,
     Buffer& response);
 
+/**
+ * Deserialize a Query Plan request to cap'n proto object
+ *
+ * @param serialization_type Format to serialize from: Cap'n Proto or JSON.
+ * @param response Buffer to read serialized bytes from.
+ * @return The requested query plan as a string.
+ */
 std::string deserialize_query_plan_response(
     const SerializationType serialization_type, const Buffer& response);
 

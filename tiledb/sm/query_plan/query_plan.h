@@ -106,15 +106,6 @@ class QueryPlan {
 
   /** A list of queried dimensions */
   std::vector<std::string> dimensions_;
-
-  /**
-   * Populate query plan from a valid json representation.
-   * Only meant to be used during construction when a remote query
-   * plan comes as a json string from rest serialization.
-   *
-   * @param json a json representation of the query plan
-   */
-  void from_json(const std::string& json);
 };
 
 }  // namespace sm

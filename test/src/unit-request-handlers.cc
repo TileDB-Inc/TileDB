@@ -171,8 +171,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     HandleQueryPlanRequestFx,
-    "tiledb_handle_query_plan_request - default request",
-    "[request_handler][query_plan][default]") {
+    "tiledb_handle_query_plan_request - check json",
+    "[request_handler][query_plan][full]") {
   auto stype = GENERATE(SerializationType::JSON, SerializationType::CAPNP);
 
   // Create and open array
@@ -212,8 +212,6 @@ TEST_CASE_METHOD(
   auto query_plan_ser_deser = call_handler(stype, *query->query_);
 
   // Compare the two query plans
-  // std::cout << query_plan->view();
-  // std::cout << query_plan_ser_deser;
   REQUIRE(query_plan->view() == query_plan_ser_deser);
 
   // Clean up
@@ -221,6 +219,51 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
   tiledb_array_free(&array);
   tiledb_ctx_free(&ctx);
+}
+
+TEST_CASE_METHOD(
+    HandleQueryPlanRequestFx,
+    "tiledb_handle_query_plan_request - error checks",
+    "[request_handler][query_plan][errors]") {
+  create_array();
+
+  auto ctx = tiledb::Context();
+  auto array = tiledb::Array(ctx, uri_.to_string(), TILEDB_READ);
+  auto stype = TILEDB_CAPNP;
+  auto req_buf = tiledb_buffer_handle_t::make_handle();
+  auto resp_buf = tiledb_buffer_handle_t::make_handle();
+
+  auto rval = tiledb_handle_query_plan_request(
+      nullptr,
+      array.ptr().get(),
+      static_cast<tiledb_serialization_type_t>(stype),
+      req_buf,
+      resp_buf);
+  REQUIRE(rval != TILEDB_OK);
+
+  rval = tiledb_handle_query_plan_request(
+      ctx.ptr().get(),
+      nullptr,
+      static_cast<tiledb_serialization_type_t>(stype),
+      req_buf,
+      resp_buf);
+  REQUIRE(rval != TILEDB_OK);
+
+  rval = tiledb_handle_query_plan_request(
+      ctx.ptr().get(),
+      array.ptr().get(),
+      static_cast<tiledb_serialization_type_t>(stype),
+      nullptr,
+      resp_buf);
+  REQUIRE(rval != TILEDB_OK);
+
+  rval = tiledb_handle_query_plan_request(
+      ctx.ptr().get(),
+      array.ptr().get(),
+      static_cast<tiledb_serialization_type_t>(stype),
+      req_buf,
+      nullptr);
+  REQUIRE(rval != TILEDB_OK);
 }
 
 /* ********************************* */
