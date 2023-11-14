@@ -97,12 +97,17 @@ class LsScanner {
       , is_recursive_(recursive) {
   }
 
+  inline const LsObjects& results() const {
+    return results_;
+  }
+
  protected:
-  LsIterator it_;
   URI prefix_;
   F file_filter_;
   D dir_filter_;
   bool is_recursive_;
+  // TODO: remove
+  LsObjects results_;
 };
 
 /**

@@ -282,41 +282,94 @@ struct S3Parameters {
   std::string config_source_;
 };
 
+/**
+ * Helper class which overrides Aws::S3::S3Client to set headers from
+ * vfs.s3.custom_headers.*
+ *
+ * @note The AWS SDK does not have a common base class, so there's no
+ * straightforward way to add a header to a unique request before submitting
+ * it. This class exists solely to override the S3Client, adding custom headers
+ * upon building the Http Request.
+ */
+class TileDBS3Client : public Aws::S3::S3Client {
+ public:
+  TileDBS3Client(
+      const S3Parameters& s3_params,
+      const Aws::Client::ClientConfiguration& client_config,
+      Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy sign_payloads,
+      bool use_virtual_addressing)
+      : Aws::S3::S3Client(client_config, sign_payloads, use_virtual_addressing)
+      , params_(s3_params) {
+  }
+
+  TileDBS3Client(
+      const S3Parameters& s3_params,
+      const std::shared_ptr<Aws::Auth::AWSCredentialsProvider>& creds,
+      const Aws::Client::ClientConfiguration& client_config,
+      Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy sign_payloads,
+      bool use_virtual_addressing)
+      : Aws::S3::S3Client(
+            creds, client_config, sign_payloads, use_virtual_addressing)
+      , params_(s3_params) {
+  }
+
+  void BuildHttpRequest(
+      const Aws::AmazonWebServiceRequest& request,
+      const std::shared_ptr<Aws::Http::HttpRequest>& httpRequest)
+      const override {
+    S3Client::BuildHttpRequest(request, httpRequest);
+
+    // Set header from S3Parameters custom headers
+    for (auto& [key, val] : params_.custom_headers_) {
+      httpRequest->SetHeaderValue(key, val);
+    }
+  }
+
+  inline bool requester_pays() const {
+    return params_.requester_pays_;
+  }
+
+ protected:
+  /**
+   * A reference to the S3 configuration parameters, which stores the header.
+   *
+   * @note Until the removal of init_client(), this must be const-qualified.
+   */
+  const S3Parameters& params_;
+};
+
 template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
-class S3Scanner : protected LsScanner<F, D> {
+class S3Scanner : public LsScanner<F, D> {
  public:
   S3Scanner(
       const std::shared_ptr<TileDBS3Client>& client,
       const URI& prefix,
       F file_filter,
       D dir_filter = no_filter,
-      bool recursive = false)
-    : LsScanner<F, D>(prefix, file_filter, dir_filter, recursive)
-    , client_(client)
-    , delimiter_(this->is_recursive_ ? "" : "/")
-    , is_done_(false) {
-  // Empty delimiter returns recursive results from S3.
-  const auto prefix_dir = prefix.add_trailing_slash();
-  auto prefix_str = prefix_dir.to_string();
-  if (!prefix_dir.is_s3()) {
-    throw S3Exception("URI is not an S3 URI: " + prefix_str);
-  }
+      bool recursive = false);
 
-  Aws::Http::URI aws_uri = prefix_str.c_str();
-//  std::string aws_uri_str(S3::remove_front_slash(aws_uri.GetPath()));
-//  list_objects_request_.SetBucket(aws_uri.GetAuthority());
-//  list_objects_request_.SetPrefix(aws_uri_str.c_str());
-//  list_objects_request_.SetDelimiter(delimiter_.c_str());
-//  if (client_->params_.requester_pays_) {
-//    list_objects_request_.SetRequestPayer(
-//        Aws::S3::Model::RequestPayer::requester);
-//  }
-}
+  inline const Aws::S3::Model::Object& object() const {
+    return *it_;
+  }
 
   void next();
 
-  bool end() {
-    return is_done_;
+  inline bool end() const {
+    return it_ == list_objects_outcome_.GetResult().GetContents().end();
+  }
+
+  void fetch_results() {
+    list_objects_outcome_ = client_->ListObjectsV2(list_objects_request_);
+    it_ = list_objects_outcome_.GetResult().GetContents().begin();
+
+    if (!list_objects_outcome_.IsSuccess()) {
+      // TODO: Use outcome_error_message
+      throw S3Exception(
+          std::string("Error while listing with prefix '") +
+          this->prefix_.add_trailing_slash().to_string() + "' and delimiter '" +
+          delimiter_ +
+          "'");  // + outcome_error_message(list_objects_outcome_));
+    }
   }
 
  private:
@@ -324,7 +377,11 @@ class S3Scanner : protected LsScanner<F, D> {
   std::string delimiter_;
   Aws::S3::Model::ListObjectsV2Request list_objects_request_;
 
-  bool is_done_;
+  /** The current request outcome being scanned. */
+  Aws::S3::Model::ListObjectsV2Outcome list_objects_outcome_;
+  //  std::vector<Aws::S3::Model::Object>& objects_;
+
+  std::vector<Aws::S3::Model::Object>::const_iterator it_;
 };
 
 /**
@@ -490,11 +547,18 @@ class S3 {
    * @param recursive Whether to recursively list subdirectories.
    */
   template <FilePredicate F, DirectoryPredicate D>
-  void ls_filtered(
+  LsObjects ls_filtered(
       const URI& parent,
       F f,
       D d = tiledb::sm::no_filter,
-      bool recursive = false) const;
+      bool recursive = false) const {
+    throw_if_not_ok(init_client());
+    S3Scanner<F, D> s3_scanner(client_, parent, f, d, recursive);
+    while (!s3_scanner.end()) {
+      s3_scanner.next();
+    }
+    return std::move(s3_scanner.results());
+  }
 
   /**
    * Renames an object.
@@ -1266,6 +1330,73 @@ class S3 {
   URI generate_chunk_uri(
       const URI& attribute_uri, const std::string& chunk_name);
 };
+
+template <FilePredicate F, DirectoryPredicate D>
+S3Scanner<F, D>::S3Scanner(
+    const shared_ptr<TileDBS3Client>& client,
+    const URI& prefix,
+    F file_filter,
+    D dir_filter,
+    bool recursive)
+    : LsScanner<F, D>(prefix, file_filter, dir_filter, recursive)
+    , client_(client)
+    , delimiter_(this->is_recursive_ ? "" : "/") {
+  const auto prefix_dir = prefix.add_trailing_slash();
+  auto prefix_str = prefix_dir.to_string();
+  if (!prefix_dir.is_s3()) {
+    throw S3Exception("URI is not an S3 URI: " + prefix_str);
+  }
+
+  Aws::Http::URI aws_uri = prefix_str.c_str();
+  std::string aws_uri_str(S3::remove_front_slash(aws_uri.GetPath()));
+  list_objects_request_.SetBucket(aws_uri.GetAuthority());
+  list_objects_request_.SetPrefix(aws_uri_str.c_str());
+  // Empty delimiter returns recursive results from S3.
+  list_objects_request_.SetDelimiter(delimiter_.c_str());
+  if (client_->requester_pays()) {
+    list_objects_request_.SetRequestPayer(
+        Aws::S3::Model::RequestPayer::requester);
+  }
+  fetch_results();
+}
+
+template <FilePredicate F, DirectoryPredicate D>
+void S3Scanner<F, D>::next() {
+  static uint64_t c = 0;
+  while (!end()) {
+    auto object = *it_;
+    uint64_t size = object.GetSize();
+    std::string path = "s3://" + list_objects_request_.GetBucket() +
+                       S3::add_front_slash(object.GetKey());
+    if (!this->file_filter_(path, size)) {
+      it_++;
+    } else {
+      // TODO: Remove print debugs, results_ member.
+      // If the file filter predicate is true, add the file to the results.
+      this->results_.emplace_back(path, size);
+      std::cout << path << std::endl;
+      c++;
+
+      // iterator is at the next object within results accepted by the filters.
+      return;
+    }
+    // TODO: Add support for directory pruning.
+  }
+
+  if (end() && list_objects_outcome_.GetResult().GetIsTruncated()) {
+    Aws::String next_marker =
+        list_objects_outcome_.GetResult().GetNextContinuationToken();
+    if (next_marker.empty()) {
+      throw S3Exception(
+          "Failed to retrieve next continuation token for ListObjectsV2 "
+          "request.");
+    }
+    list_objects_request_.SetContinuationToken(std::move(next_marker));
+    fetch_results();
+  } else if (end()) {
+    std::cout << "Collected " << c << " total results." << std::endl;
+  }
+}
 
 }  // namespace tiledb::sm
 

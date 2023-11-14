@@ -378,7 +378,8 @@ TEMPLATE_LIST_TEST_CASE(
 #ifdef HAVE_S3
     // If testing with recursion use the root directory, otherwise use a subdir.
     auto path = recursive ? fs.temp_dir_ : fs.temp_dir_.join_path("subdir_1");
-    CHECK_NOTHROW(fs.s3().ls_filtered(path, no_file_filter, no_filter, recursive));
+    CHECK_NOTHROW(
+        fs.s3().ls_filtered(path, no_file_filter, no_filter, recursive));
 
     if (!recursive) {
       // If non-recursive, all objects in the first directory should be
@@ -409,8 +410,8 @@ TEST_CASE("VFS: ls_recursive callback stops traversal", "[vfs][ls_recursive]") {
   if (cb_count != 0) {
     vfs_test.expected_results_.resize(cb_count);
   }
-//  CHECK(ls_objects.size() == vfs_test.expected_results_.size());
-//  CHECK(ls_objects == vfs_test.expected_results_);
+  //  CHECK(vfs_test.ls_objects.size() == vfs_test.expected_results_.size());
+  //  CHECK(vfs_test.ls_objects == vfs_test.expected_results_);
 }
 
 TEST_CASE(

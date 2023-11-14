@@ -229,101 +229,6 @@ S3Parameters::Headers S3Parameters::load_headers(const Config& cfg) {
   return ret;
 }
 
-/**
- * Helper class which overrides Aws::S3::S3Client to set headers from
- * vfs.s3.custom_headers.*
- *
- * @note The AWS SDK does not have a common base class, so there's no
- * straightforward way to add a header to a unique request before submitting
- * it. This class exists solely to override the S3Client, adding custom headers
- * upon building the Http Request.
- */
-class TileDBS3Client : public Aws::S3::S3Client {
- public:
-  TileDBS3Client(
-      const S3Parameters& s3_params,
-      const Aws::Client::ClientConfiguration& client_config,
-      Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy sign_payloads,
-      bool use_virtual_addressing)
-      : Aws::S3::S3Client(client_config, sign_payloads, use_virtual_addressing)
-      , params_(s3_params) {
-  }
-
-  TileDBS3Client(
-      const S3Parameters& s3_params,
-      const std::shared_ptr<Aws::Auth::AWSCredentialsProvider>& creds,
-      const Aws::Client::ClientConfiguration& client_config,
-      Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy sign_payloads,
-      bool use_virtual_addressing)
-      : Aws::S3::S3Client(
-            creds, client_config, sign_payloads, use_virtual_addressing)
-      , params_(s3_params) {
-  }
-
-  void BuildHttpRequest(
-      const Aws::AmazonWebServiceRequest& request,
-      const std::shared_ptr<Aws::Http::HttpRequest>& httpRequest)
-      const override {
-    S3Client::BuildHttpRequest(request, httpRequest);
-
-    // Set header from S3Parameters custom headers
-    for (auto& [key, val] : params_.custom_headers_) {
-      httpRequest->SetHeaderValue(key, val);
-    }
-  }
-
- protected:
-  /**
-   * A reference to the S3 configuration parameters, which stores the header.
-   *
-   * @note Until the removal of init_client(), this must be const-qualified.
-   */
-  const S3Parameters& params_;
-};
-
-/* ********************************* */
-/*             S3 SCANNER            */
-/* ********************************* */
-
-template <FilePredicate F, DirectoryPredicate D>
-void S3Scanner<F, D>::next() {
-  while (!is_done_) {
-    auto list_objects_outcome = client_->ListObjectsV2(list_objects_request_);
-    if (!list_objects_outcome.IsSuccess()) {
-      throw S3Exception(
-          std::string("Error while listing with prefix '") +
-          this->prefix_.add_trailing_slash().to_string() + "' and delimiter '" +
-          delimiter_ + "'" + outcome_error_message(list_objects_outcome));
-    }
-
-    for (const auto& object : list_objects_outcome.GetResult().GetContents()) {
-      uint64_t size = object.GetSize();
-      std::string path = "s3://" + list_objects_request_.GetBucket() +
-                         S3::add_front_slash(object.GetKey());
-      if (this->file_filter_(path, size)) {
-        // If the file filter predicate is true, add the file to the results.
-        // TODO: Store results
-      }
-
-      // TODO: Add support for directory pruning.
-    }
-
-    // Max keys is 1000 by default. If results are not truncated or the
-    // callback already signaled to stop traversal, we're done.
-    is_done_ = is_done_ || !list_objects_outcome.GetResult().GetIsTruncated();
-    if (!is_done_) {
-      Aws::String next_marker =
-          list_objects_outcome.GetResult().GetNextContinuationToken();
-      if (next_marker.empty()) {
-        throw S3Exception(
-            "Failed to retrieve next continuation token for ListObjectsV2 "
-            "request.");
-      }
-      list_objects_request_.SetContinuationToken(std::move(next_marker));
-    }
-  }
-}
-
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
@@ -2142,18 +2047,6 @@ URI S3::generate_chunk_uri(
   return buffering_dir.join_path(chunk_name);
 }
 
-template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
-void S3::ls_filtered(const URI& parent, F f, D d, bool recursive) const {
-  S3Scanner<F, D> s3_scanner(client_, parent, f, d, recursive);
-  throw_if_not_ok(init_client());
-  while (!s3_scanner.end()) {
-    s3_scanner.next();
-  }
-}
-
-template void S3Scanner<FileFilter, DirectoryFilter>::next();
-template void S3::ls_filtered<FileFilter, DirectoryFilter>(
-    const URI&, FileFilter, DirectoryFilter, bool) const;
 }  // namespace tiledb::sm
 
 #endif
