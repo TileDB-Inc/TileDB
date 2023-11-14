@@ -97,12 +97,15 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: tiledb-dist
-          path: dist/${{ steps.get-values.outputs.archive_name }}.*
+          path: ${{ steps.get-values.outputs.archive_name }}.*
+      - name: Archive build directory
+        run: |
+          tar -czf build-${{ matrix.platform }}.tar.gz build
       - name: Upload build directory
         uses: actions/upload-artifact@v3
         with:
-          name: tiledb-build-${{ matrix.platform }}
-          path: build
+          name: tiledb-build
+          path: build-${{ matrix.platform }}.tar.gz
 
   Publish-Release:
     needs: Build-Release
