@@ -467,11 +467,10 @@ class VFS : private VFSBase, protected S3_within_VFS {
    * @param cb The callback to invoke on each object collected.
    */
   template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
-  const LsObjects& ls_recursive(
-      const URI& parent, F f, D d = tiledb::sm::no_filter) const {
+  void ls_recursive(const URI& parent, F f, D d = tiledb::sm::no_filter) const {
     if (parent.is_s3()) {
 #ifdef HAVE_S3
-      return s3().ls_filtered(parent, f, d, true);
+      s3().ls_filtered(parent, f, d, true);
 #else
       throw VFSException("TileDB was built without S3 support");
 #endif

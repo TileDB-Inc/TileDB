@@ -359,9 +359,19 @@ class S3Scanner : public LsScanner<F, D> {
   }
 
   void fetch_results() {
+    if (list_objects_outcome_.GetResult().GetIsTruncated()) {
+      Aws::String next_marker =
+          list_objects_outcome_.GetResult().GetNextContinuationToken();
+      if (next_marker.empty()) {
+        throw S3Exception(
+            "Failed to retrieve next continuation token for ListObjectsV2 "
+            "request.");
+      }
+      list_objects_request_.SetContinuationToken(std::move(next_marker));
+    }
+
     list_objects_outcome_ = client_->ListObjectsV2(list_objects_request_);
     it_ = list_objects_outcome_.GetResult().GetContents().begin();
-
     if (!list_objects_outcome_.IsSuccess()) {
       // TODO: Use outcome_error_message
       throw S3Exception(
@@ -372,6 +382,45 @@ class S3Scanner : public LsScanner<F, D> {
     }
   }
 
+  class S3ScanIterator {
+   public:
+    using value_type = Aws::S3::Model::Object;
+    using difference_type = ptrdiff_t;
+    using pointer = Aws::S3::Model::Object*;
+    using reference = Aws::S3::Model::Object&;
+    using iterator_category = std::forward_iterator_tag;
+
+    S3ScanIterator() = default;
+    S3ScanIterator(pointer begin, pointer end)
+        : ptr_(begin)
+        , begin_(begin)
+        , end_(end) {
+    }
+
+    reference operator*() {
+      return *ptr_;
+    }
+
+    S3ScanIterator& operator++() {
+      if (ptr_ == end_) {
+        throw std::out_of_range("S3ScanIterator out of range");
+      }
+      ++ptr_;
+      return *this;
+    }
+
+    inline S3ScanIterator begin() {
+      return begin_;
+    }
+    inline S3ScanIterator end() {
+      return end_;
+    }
+
+   private:
+    pointer ptr_, begin_, end_;
+  };
+  friend class S3ScanIterator;
+
  private:
   shared_ptr<TileDBS3Client> client_;
   std::string delimiter_;
@@ -379,9 +428,10 @@ class S3Scanner : public LsScanner<F, D> {
 
   /** The current request outcome being scanned. */
   Aws::S3::Model::ListObjectsV2Outcome list_objects_outcome_;
-  //  std::vector<Aws::S3::Model::Object>& objects_;
 
   std::vector<Aws::S3::Model::Object>::const_iterator it_;
+
+  bool found_;
 };
 
 /**
@@ -547,7 +597,7 @@ class S3 {
    * @param recursive Whether to recursively list subdirectories.
    */
   template <FilePredicate F, DirectoryPredicate D>
-  LsObjects ls_filtered(
+  void ls_filtered(
       const URI& parent,
       F f,
       D d = tiledb::sm::no_filter,
@@ -557,7 +607,6 @@ class S3 {
     while (!s3_scanner.end()) {
       s3_scanner.next();
     }
-    return std::move(s3_scanner.results());
   }
 
   /**
@@ -1340,7 +1389,8 @@ S3Scanner<F, D>::S3Scanner(
     bool recursive)
     : LsScanner<F, D>(prefix, file_filter, dir_filter, recursive)
     , client_(client)
-    , delimiter_(this->is_recursive_ ? "" : "/") {
+    , delimiter_(this->is_recursive_ ? "" : "/")
+    , found_(false) {
   const auto prefix_dir = prefix.add_trailing_slash();
   auto prefix_str = prefix_dir.to_string();
   if (!prefix_dir.is_s3()) {
@@ -1362,7 +1412,17 @@ S3Scanner<F, D>::S3Scanner(
 
 template <FilePredicate F, DirectoryPredicate D>
 void S3Scanner<F, D>::next() {
-  static uint64_t c = 0;
+  // Increment the iterator if we found a result on the last call.
+  if (found_) {
+    it_++;
+    found_ = false;
+    if (end() && list_objects_outcome_.GetResult().GetIsTruncated()) {
+      fetch_results();
+    } else if (end()) {
+      std::cout << "Collected " << this->results_.size() << " total results."
+                << std::endl;
+    }
+  }
   while (!end()) {
     auto object = *it_;
     uint64_t size = object.GetSize();
@@ -1372,29 +1432,21 @@ void S3Scanner<F, D>::next() {
       it_++;
     } else {
       // TODO: Remove print debugs, results_ member.
-      // If the file filter predicate is true, add the file to the results.
       this->results_.emplace_back(path, size);
       std::cout << path << std::endl;
-      c++;
 
       // iterator is at the next object within results accepted by the filters.
+      found_ = true;
       return;
     }
     // TODO: Add support for directory pruning.
-  }
 
-  if (end() && list_objects_outcome_.GetResult().GetIsTruncated()) {
-    Aws::String next_marker =
-        list_objects_outcome_.GetResult().GetNextContinuationToken();
-    if (next_marker.empty()) {
-      throw S3Exception(
-          "Failed to retrieve next continuation token for ListObjectsV2 "
-          "request.");
+    if (end() && list_objects_outcome_.GetResult().GetIsTruncated()) {
+      fetch_results();
+    } else if (end()) {
+      std::cout << "Collected " << this->results_.size() << " total results."
+                << std::endl;
     }
-    list_objects_request_.SetContinuationToken(std::move(next_marker));
-    fetch_results();
-  } else if (end()) {
-    std::cout << "Collected " << c << " total results." << std::endl;
   }
 }
 

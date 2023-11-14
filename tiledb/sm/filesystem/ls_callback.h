@@ -51,7 +51,6 @@ template <class F>
 concept DirectoryPredicate = true;
 
 namespace tiledb::sm {
-
 using FileFilter = std::function<bool(const std::string_view&, uint64_t)>;
 // TODO: rename or remove
 [[maybe_unused]] static bool no_file_filter(const std::string_view&, uint64_t) {
@@ -110,43 +109,6 @@ class LsScanner {
   LsObjects results_;
 };
 
-/**
- * Typedef for the callback function invoked on each object collected by ls.
- *
- * @param path[int] The path of a visited object for the relative filesystem.
- * @param path_len[in] The length of the path string.
- * @param object_size[in] The size of the object at the path.
- * @param data[in] Cast to user defined struct to store paths and offsets.
- * @return `1` if the walk should continue to the next object, `0` if the walk
- *    should stop, and `-1` on error.
- */
-using LsCallbackCAPI =
-    std::function<int32_t(const char*, size_t, uint64_t, void*)>;
-
-/**
- * Wrapper for the C API ls callback function and it's associated data.
- */
-class LsCallbackWrapperCAPI {
- public:
-  /** Constructor */
-  LsCallbackWrapperCAPI(LsCallbackCAPI cb, void* data)
-      : cb_(cb)
-      , data_(data) {
-  }
-
-  /** Operator for invoking C API callback via C++ interface */
-  bool operator()(const std::string_view& path, uint64_t size) {
-    int rc = cb_(path.data(), path.size(), size, data_);
-    if (rc == -1) {
-      throw std::runtime_error("Error in ls callback");
-    }
-    return rc == 1;
-  }
-
- private:
-  LsCallbackCAPI cb_;
-  void* data_;
-};
 }  // namespace tiledb::sm
 
 #endif  // TILEDB_LS_CALLBACK_H
