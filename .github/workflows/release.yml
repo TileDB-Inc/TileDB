@@ -88,11 +88,12 @@ jobs:
       - name: Archive installed artifacts (non-Windows)
         if: ${{ !startsWith(matrix.platform, 'windows') }}
         run: |
-          tar -czf ${{ steps.get-values.outputs.archive_name }}.tar.gz dist
+          tar -czf ${{ steps.get-values.outputs.archive_name }}.tar.gz -C dist *
       - name: Archive installed artifacts (Windows)
         if: startsWith(matrix.platform, 'windows')
         run: |
-          7z a -tzip ${{ steps.get-values.outputs.archive_name }}.zip dist
+          Compress-Archive -Path dist\* -DestinationPath ${{ steps.get-values.outputs.archive_name }}.zip
+        shell: pwsh
       - name: Upload release artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -100,7 +101,7 @@ jobs:
           path: ${{ steps.get-values.outputs.archive_name }}.*
       - name: Archive build directory
         run: |
-          tar -czf build-${{ matrix.platform }}.tar.gz build
+          tar -czf build-${{ matrix.platform }}.tar.gz -C build *
       - name: Upload build directory
         uses: actions/upload-artifact@v3
         with:
