@@ -15,7 +15,7 @@
 
 ## Breaking C API changes
 
-* Behavior breaking change: `tiledb_group_remove_member` cannot remove named members by URI. [#4391](https://github.com/TileDB-Inc/TileDB/pull/4391)
+* Behavior breaking change: `tiledb_group_remove_member` cannot remove named members by URI if the URI is duplicated. [#4391](https://github.com/TileDB-Inc/TileDB/pull/4391)
 
 ## New features
 
