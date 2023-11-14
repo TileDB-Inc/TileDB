@@ -1,0 +1,140 @@
+name: Release
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - 'release-*'
+  push:
+    branches:
+      - dev
+      - 'release-*'
+    tags:
+      - '*'
+
+jobs:
+  Build-Release:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos-arm64, macos-x86_64, linux-x86_64, linux-x86_64-noavx2, windows-x86_64]
+        include:
+          - platform: windows-x86_64
+            os: windows-latest
+          - platform: linux-x86_64
+            os: ubuntu-latest
+            manylinux: true
+          - platform: linux-x86_64-noavx2
+            os: ubuntu-latest
+            cmake_args: -DCOMPILER_SUPPORTS_AVX2=OFF
+            manylinux: true
+          - platform: macos-x86_64
+            os: macos-latest
+            MACOSX_DEPLOYMENT_TARGET: 10.14
+          - platform: macos-arm64
+            os: macos-latest
+            cmake_args: -DCMAKE_OSX_ARCHITECTURES=arm64
+            MACOSX_DEPLOYMENT_TARGET: 11
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.manylinux && 'quay.io/pypa/manylinux2014_x86_64' || '' }}
+    env:
+      MACOSX_DEPLOYMENT_TARGET: ${{ matrix.MACOSX_DEPLOYMENT_TARGET }}
+      VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+
+    steps:
+      - name: Checkout TileDB
+        # v4 uses node 20 which is incompatible with the libc version of the manylinux image
+        uses: actions/checkout@v3
+      - name: Prevent vpckg from building debug variants        
+        run: python ./scripts/ci/patch_vcpkg_triplets.py
+      - name: Export GitHub Actions cache variables
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      - name: Set variables
+        id: get-values
+        run: |
+          release_hash=$( echo ${{ github.sha }} | cut -c-8 - )
+          echo "release_hash=$release_hash" >> $GITHUB_OUTPUT
+          echo "archive_name=tiledb-${{ matrix.platform }}-${{ github.ref_name }}-$release_hash" >> $GITHUB_OUTPUT
+        shell: bash
+      - name: Install manylinux prerequisites
+        if: matrix.manylinux
+        run: |
+          set -e pipefail
+          yum install -y redhat-lsb-core centos-release-scl devtoolset-7
+          echo "source /opt/rh/devtoolset-7/enable" >> ~/.bashrc
+      - name: Configure TileDB
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=./dist \
+            -DTILEDB_S3=ON \
+            -DTILEDB_AZURE=ON \
+            -DTILEDB_GCS=ON \
+            -DTILEDB_HDFS=${{ startsWith(matrix.platform, 'windows') && 'OFF' || 'ON' }} \
+            -DTILEDB_SERIALIZATION=ON \
+            -DTILEDB_WEBP=ON \
+            -DTILEDB_STATIC=OFF \
+            -DTILEDB_TESTS=OFF \
+            ${{ matrix.cmake_args }}
+        shell: bash
+      - name: Build TileDB
+        run: cmake --build build --config Release -j
+      - name: Install TileDB
+        run: cmake --build build --config Release --target install-tiledb
+      - name: Archive installed artifacts (non-Windows)
+        if: ${{ !startsWith(matrix.platform, 'windows') }}
+        run: |
+          tar -czf ${{ steps.get-values.outputs.archive_name }}.tar.gz dist
+      - name: Archive installed artifacts (Windows)
+        if: startsWith(matrix.platform, 'windows')
+        run: |
+          7z a -tzip ${{ steps.get-values.outputs.archive_name }}.zip dist
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: tiledb-dist
+          path: dist/${{ steps.get-values.outputs.archive_name }}.*
+      - name: Upload build directory
+        uses: actions/upload-artifact@v3
+        with:
+          name: tiledb-build-${{ matrix.platform }}
+          path: build
+
+  Publish-Release:
+    needs: Build-Release
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: tiledb-dist
+          path: dist
+      - name: Publish release artifacts
+        uses: actions/github-script@v6
+        with:
+          script: |
+            let repo = context.repo;
+            let release = await octokit.rest.repos.getReleaseByTag({
+              owner: repo.owner,
+              repo: repo.repo,
+              tag: ${{ github.ref_name }}
+            });
+            let globber = await glob.create('dist/*');
+            for await (const file of globber.globGenerator()) {
+              await octokit.rest.repos.uploadReleaseAsset({
+                owner: repo.owner,
+                repo: repo.repo,
+                release_id: release.data.id
+                headers: {
+                  'content-type': 'application/octet-stream',
+                  'content-length': fs.statSync(file).size
+                },
+                name: path.basename(file),
+                data: fs.readFileSync(file)
+              });
+            }
