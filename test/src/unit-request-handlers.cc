@@ -421,8 +421,12 @@ std::string HandleQueryPlanRequestFx::call_handler(
       resp_buf);
   REQUIRE(rval == TILEDB_OK);
 
-  return serialization::deserialize_query_plan_response(
-      stype, resp_buf->buffer());
-}
+  auto query_plan =
+      serialization::deserialize_query_plan_response(stype, resp_buf->buffer());
 
+  tiledb_buffer_handle_t::break_handle(req_buf);
+  tiledb_buffer_handle_t::break_handle(resp_buf);
+
+  return query_plan;
+}
 #endif  // TILEDB_SERIALIZATION
