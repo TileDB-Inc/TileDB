@@ -308,6 +308,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/generic_tile_io.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/tile_metadata_generator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/writer_tile_tuple.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/storage_format/uri/fragment_name.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/storage_format/uri/generate_uri.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/storage_format/uri/parse_uri.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/type/range/range.cc

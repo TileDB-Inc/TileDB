@@ -48,8 +48,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** Mode for the ArrayDirectory class. */
 enum class ArrayDirectoryMode {
@@ -456,13 +455,6 @@ class ArrayDirectory {
   /** Returns the URI for a vacuum file. */
   URI get_vacuum_uri(const URI& fragment_uri) const;
 
-  /**
-   * The new fragment name is computed
-   * as `__<first_URI_timestamp>_<last_URI_timestamp>_<uuid>`.
-   */
-  std::string compute_new_fragment_name(
-      const URI& first, const URI& last, format_version_t format_version) const;
-
   /** Returns `true` if `load` has been run. */
   bool loaded() const;
 
@@ -832,7 +824,6 @@ class ArrayDirectory {
       MemoryTracker& memory_tracker) const;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_ARRAY_DIRECTORY_H

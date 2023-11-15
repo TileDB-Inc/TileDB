@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,7 +41,7 @@
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/query/query.h"
-#include "tiledb/storage_format/uri/generate_uri.h"
+#include "tiledb/storage_format/uri/fragment_name.h"
 
 #include <algorithm>
 

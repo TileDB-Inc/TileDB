@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -54,14 +54,13 @@
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 #include "tiledb/sm/tile/writer_tile_tuple.h"
-#include "tiledb/storage_format/uri/generate_uri.h"
+#include "tiledb/storage_format/uri/fragment_name.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class WriterBaseStatusException : public StatusException {
  public:
@@ -1205,5 +1204,4 @@ bool WriterBase::remote_query() const {
   return remote_query_;
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

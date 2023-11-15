@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,14 +35,13 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/query/deletes_and_updates/serialization.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
-#include "tiledb/storage_format/uri/generate_uri.h"
+#include "tiledb/storage_format/uri/fragment_name.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class DeleteAndUpdateStatusException : public StatusException {
  public:
@@ -191,5 +190,4 @@ std::string DeletesAndUpdates::name() {
   return "DeletesAndUpdates";
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

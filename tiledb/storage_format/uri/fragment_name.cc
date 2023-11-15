@@ -1,11 +1,11 @@
 /**
- * @file generate_uri.cc
+ * @file fragment_name.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,8 +26,11 @@
  * THE SOFTWARE.
  */
 
-#include "tiledb/storage_format/uri/generate_uri.h"
+#include "tiledb/storage_format/uri/fragment_name.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/uuid.h"
+#include "tiledb/storage_format/uri/generate_uri.h"
+#include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <sstream>
 
@@ -35,15 +38,36 @@ using namespace tiledb::common;
 
 namespace tiledb::storage_format {
 
-std::string generate_uri(
-    uint64_t timestamp_start, uint64_t timestamp_end, uint32_t version) {
+std::string compute_new_fragment_name(
+    const URI& first, const URI& last, format_version_t format_version) {
+  // Get uuid
   std::string uuid;
-  throw_if_not_ok(sm::uuid::generate_uuid(&uuid, false));
+  throw_if_not_ok(uuid::generate_uuid(&uuid, false));
+
+  // Get timestamp ranges
+  std::pair<uint64_t, uint64_t> t_first, t_last;
+  throw_if_not_ok(utils::parse::get_timestamp_range(first, &t_first));
+  throw_if_not_ok(utils::parse::get_timestamp_range(last, &t_last));
+
+  if (t_first.first > t_last.second) {
+    throw std::logic_error(
+        "Error computing new fragment name; "
+        "start timestamp cannot be after end timestamp.");
+  }
+
+  // Create new URI
   std::stringstream ss;
-  ss << "/__" << timestamp_start << "_" << timestamp_end << "_" << uuid << "_"
-     << version;
+  ss << "/__" << t_first.first << "_" << t_last.second << "_" << uuid << "_"
+     << format_version;
 
   return ss.str();
+}
+
+std::string generate_fragment_name(
+    uint64_t timestamp, format_version_t format_version) {
+  timestamp =
+      (timestamp != 0) ? timestamp : sm::utils::time::timestamp_now_ms();
+  return generate_uri(timestamp, timestamp, format_version);
 }
 
 }  // namespace tiledb::storage_format

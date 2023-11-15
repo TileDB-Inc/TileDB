@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,6 +40,7 @@
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/storage_format/uri/fragment_name.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <iostream>
@@ -650,8 +651,7 @@ Status FragmentConsolidator::create_queries(
 
   auto write_version = array_for_reads->array_schema_latest().write_version();
   auto fragment_name =
-      array_for_reads->array_directory().compute_new_fragment_name(
-          first, last, write_version);
+      storage_format::compute_new_fragment_name(first, last, write_version);
 
   // Create write query
   *query_w = tdb_new(Query, storage_manager_, array_for_writes, fragment_name);

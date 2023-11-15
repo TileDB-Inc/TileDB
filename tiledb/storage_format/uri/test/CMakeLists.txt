@@ -1,9 +1,9 @@
 #
-# tiledb/storage_format/uri/CMakeLists.txt
+# tiledb/storage_format/uri/test/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2022-2023 TileDB, Inc.
+# Copyright (c) 2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,15 +23,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-include(common NO_POLICY_SCOPE)
-include(object_library)
+include(unit_test)
 
-#
-# `uri_format` object library
-#
-commence(object_library uri_format)
-    this_target_sources(fragment_name.cc parse_uri.cc generate_uri.cc)
-    this_target_object_libraries(baseline time uuid vfs)
-conclude(object_library)
-
-add_test_subdirectory()
+commence(unit_test uri_format)
+  this_target_sources(unit_uri_format.cc)
+  this_target_object_libraries(uri_format)
+conclude(unit_test)
