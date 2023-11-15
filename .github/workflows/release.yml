@@ -93,7 +93,7 @@ jobs:
             ${{ matrix.cmake_args }}
         shell: bash
       - name: Build TileDB
-        run: cmake --build build --config Release -j
+        run: cmake --build build --config Release
       - name: Install TileDB
         run: cmake --build build --config Release --target install-tiledb
       - name: Archive installed artifacts (non-Windows)
