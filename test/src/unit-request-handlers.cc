@@ -177,14 +177,14 @@ TEST_CASE_METHOD(
 
   // Create and open array
   create_array();
-  tiledb_ctx_t* ctx;
+  tiledb_ctx_t* ctx = nullptr;
   REQUIRE(tiledb_ctx_alloc(NULL, &ctx) == TILEDB_OK);
-  tiledb_array_t* array;
+  tiledb_array_t* array = nullptr;
   REQUIRE(tiledb_array_alloc(ctx, uri_.c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx, array, TILEDB_READ) == TILEDB_OK);
 
   // Create query
-  tiledb_query_t* query;
+  tiledb_query_t* query = nullptr;
   REQUIRE(tiledb_query_alloc(ctx, array, TILEDB_READ, &query) == TILEDB_OK);
   REQUIRE(tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR) == TILEDB_OK);
   int32_t dom[] = {1, 2, 1, 2};
@@ -205,7 +205,7 @@ TEST_CASE_METHOD(
       TILEDB_OK);
 
   // Use C API to get the query plan
-  tiledb_string_handle_t* query_plan;
+  tiledb_string_handle_t* query_plan = nullptr;
   REQUIRE(tiledb_query_get_plan(ctx, query, &query_plan) == TILEDB_OK);
 
   // Call handler to get query plan via serialized req/deserialized response
