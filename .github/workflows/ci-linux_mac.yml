@@ -58,6 +58,7 @@ env:
   TILEDB_CI_OS: runner.os
   # Installing Python does not work on manylinux.
   TILEDB_ARROW_TESTS: ${{ !inputs.manylinux && 'ON' || 'OFF' }}
+  TILEDB_MANYLINUX: ${{ !inputs.manylinux && 'ON' || 'OFF' }}
   CXX: ${{ inputs.matrix_compiler_cxx }}
   CC: ${{ inputs.matrix_compiler_cc }}
   CFLAGS: ${{ inputs.matrix_compiler_cflags }}
