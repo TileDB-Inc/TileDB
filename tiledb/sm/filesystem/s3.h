@@ -41,6 +41,7 @@
 #include "tiledb/common/rwlock.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
+#include "tiledb/platform/platform.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/curl/curl_init.h"
@@ -96,6 +97,60 @@ class S3Exception : public StatusException {
       : StatusException("S3", msg) {
   }
 };
+
+namespace {
+
+/**
+ * Return the exception name and error message from the given outcome object.
+ *
+ * @tparam R AWS result type
+ * @tparam E AWS error type
+ * @param outcome Outcome to retrieve error message from
+ * @return Error message string
+ */
+template <typename R, typename E>
+std::string outcome_error_message(const Aws::Utils::Outcome<R, E>& outcome) {
+  if (outcome.IsSuccess()) {
+    return "Success";
+  }
+
+  auto err = outcome.GetError();
+  Aws::StringStream ss;
+
+  ss << "[Error Type: " << static_cast<int>(err.GetErrorType()) << "]"
+     << " [HTTP Response Code: " << static_cast<int>(err.GetResponseCode())
+     << "]";
+
+  if (!err.GetExceptionName().empty()) {
+    ss << " [Exception: " << err.GetExceptionName() << "]";
+  }
+
+  // For some reason, these symbols are not exposed when building with MINGW
+  // so for now we just disable adding the tags on Windows.
+  if constexpr (!platform::is_os_windows) {
+    if (!err.GetRemoteHostIpAddress().empty()) {
+      ss << " [Remote IP: " << err.GetRemoteHostIpAddress() << "]";
+    }
+
+    if (!err.GetRequestId().empty()) {
+      ss << " [Request ID: " << err.GetRequestId() << "]";
+    }
+  }
+
+  if (err.GetResponseHeaders().size() > 0) {
+    ss << " [Headers:";
+    for (auto&& h : err.GetResponseHeaders()) {
+      ss << " '" << h.first << "' = '" << h.second << "'";
+    }
+    ss << "]";
+  }
+
+  ss << " : " << err.GetMessage();
+
+  return ss.str();
+}
+
+}  // namespace
 
 class TileDBS3Client;
 
@@ -373,12 +428,10 @@ class S3Scanner : public LsScanner<F, D> {
     list_objects_outcome_ = client_->ListObjectsV2(list_objects_request_);
     it_ = list_objects_outcome_.GetResult().GetContents().begin();
     if (!list_objects_outcome_.IsSuccess()) {
-      // TODO: Use outcome_error_message
       throw S3Exception(
           std::string("Error while listing with prefix '") +
           this->prefix_.add_trailing_slash().to_string() + "' and delimiter '" +
-          delimiter_ +
-          "'");  // + outcome_error_message(list_objects_outcome_));
+          delimiter_ + "'" + outcome_error_message(list_objects_outcome_));
     }
   }
 
