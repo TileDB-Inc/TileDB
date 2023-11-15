@@ -3,8 +3,14 @@ name: Release
 on:
   pull_request:
     branches:
-      - dev
-      - 'release-*'
+      - '*'  # must quote since "*" is a YAML reserved character; we want a string
+    paths-ignore:
+      - '.github/workflows/quarto-render.yml'
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
+      - 'tiledb/doxygen/source/*'
+      - 'tiledb/sm/c_api/tiledb_version.h'
   push:
     branches:
       - dev
