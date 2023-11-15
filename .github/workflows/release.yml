@@ -99,7 +99,7 @@ jobs:
       - name: Archive installed artifacts (non-Windows)
         if: ${{ !startsWith(matrix.platform, 'windows') }}
         run: |
-          tar -czf ${{ steps.get-values.outputs.archive_name }}.tar.gz -C dist *
+          tar -czf ${{ steps.get-values.outputs.archive_name }}.tar.gz -C dist .
       - name: Archive installed artifacts (Windows)
         if: startsWith(matrix.platform, 'windows')
         run: |
@@ -112,7 +112,7 @@ jobs:
           path: ${{ steps.get-values.outputs.archive_name }}.*
       - name: Archive build directory
         run: |
-          tar -czf build-${{ matrix.platform }}.tar.gz -C build *
+          tar -czf build-${{ matrix.platform }}.tar.gz -C build .
       - name: Upload build directory
         uses: actions/upload-artifact@v3
         with:
@@ -133,18 +133,20 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            let repo = context.repo;
-            let release = await octokit.rest.repos.getReleaseByTag({
+            const fs = require('fs');
+            const path = require('path');
+            const repo = context.repo;
+            const release = await github.rest.repos.getReleaseByTag({
               owner: repo.owner,
               repo: repo.repo,
-              tag: ${{ github.ref_name }}
+              tag: "${{ github.ref_name }}"
             });
-            let globber = await glob.create('dist/*');
+            const globber = await glob.create('dist/*');
             for await (const file of globber.globGenerator()) {
-              await octokit.rest.repos.uploadReleaseAsset({
+              await github.rest.repos.uploadReleaseAsset({
                 owner: repo.owner,
                 repo: repo.repo,
-                release_id: release.data.id
+                release_id: release.data.id,
                 headers: {
                   'content-type': 'application/octet-stream',
                   'content-length': fs.statSync(file).size
