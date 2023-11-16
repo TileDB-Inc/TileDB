@@ -34,14 +34,17 @@
 
 #include "test/support/tdb_catch.h"
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"
+#include "tiledb/api/c_api/string/string_api_internal.h"
 #include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
+#include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/serialization/array_schema.h"
+#include "tiledb/sm/serialization/query_plan.h"
 #include "tiledb/sm/storage_manager/context.h"
 
 using namespace tiledb::sm;
@@ -57,9 +60,6 @@ struct RequestHandlerFx {
 
   shared_ptr<Array> get_array(QueryType type);
 
-  shared_ptr<const Enumeration> create_string_enumeration(
-      std::string name, std::vector<std::string>& values);
-
   URI uri_;
   Config cfg_;
   Context ctx_;
@@ -74,6 +74,18 @@ struct HandleLoadArraySchemaRequestFx : RequestHandlerFx {
   virtual shared_ptr<ArraySchema> create_schema() override;
   ArraySchema call_handler(
       serialization::LoadArraySchemaRequest req, SerializationType stype);
+
+  shared_ptr<const Enumeration> create_string_enumeration(
+      std::string name, std::vector<std::string>& values);
+};
+
+struct HandleQueryPlanRequestFx : RequestHandlerFx {
+  HandleQueryPlanRequestFx()
+      : RequestHandlerFx("query_plan_handler") {
+  }
+
+  virtual shared_ptr<ArraySchema> create_schema() override;
+  std::string call_handler(SerializationType stype, Query& query);
 };
 
 /* ********************************* */
@@ -153,6 +165,107 @@ TEST_CASE_METHOD(
   REQUIRE(rval != TILEDB_OK);
 }
 
+/* ******************************************** */
+/*       Testing Query Plan serialization       */
+/* ******************************************** */
+
+TEST_CASE_METHOD(
+    HandleQueryPlanRequestFx,
+    "tiledb_handle_query_plan_request - check json",
+    "[request_handler][query_plan][full]") {
+  auto stype = GENERATE(SerializationType::JSON, SerializationType::CAPNP);
+
+  // Create and open array
+  create_array();
+  tiledb_ctx_t* ctx = nullptr;
+  REQUIRE(tiledb_ctx_alloc(NULL, &ctx) == TILEDB_OK);
+  tiledb_array_t* array = nullptr;
+  REQUIRE(tiledb_array_alloc(ctx, uri_.c_str(), &array) == TILEDB_OK);
+  REQUIRE(tiledb_array_open(ctx, array, TILEDB_READ) == TILEDB_OK);
+
+  // Create query
+  tiledb_query_t* query = nullptr;
+  REQUIRE(tiledb_query_alloc(ctx, array, TILEDB_READ, &query) == TILEDB_OK);
+  REQUIRE(tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR) == TILEDB_OK);
+  int32_t dom[] = {1, 2, 1, 2};
+  REQUIRE(tiledb_query_set_subarray(ctx, query, &dom) == TILEDB_OK);
+
+  uint64_t size = 1;
+  std::vector<int32_t> a1(2);
+  REQUIRE(
+      tiledb_query_set_data_buffer(ctx, query, "attr1", a1.data(), &size) ==
+      TILEDB_OK);
+  std::vector<int32_t> a2(2);
+  REQUIRE(
+      tiledb_query_set_data_buffer(ctx, query, "attr2", a2.data(), &size) ==
+      TILEDB_OK);
+  std::vector<int64_t> a3(2);
+  REQUIRE(
+      tiledb_query_set_data_buffer(ctx, query, "attr3", a3.data(), &size) ==
+      TILEDB_OK);
+
+  // Use C API to get the query plan
+  tiledb_string_handle_t* query_plan = nullptr;
+  REQUIRE(tiledb_query_get_plan(ctx, query, &query_plan) == TILEDB_OK);
+
+  // Call handler to get query plan via serialized req/deserialized response
+  auto query_plan_ser_deser = call_handler(stype, *query->query_);
+
+  // Compare the two query plans
+  REQUIRE(query_plan->view() == query_plan_ser_deser);
+
+  // Clean up
+  REQUIRE(tiledb_array_close(ctx, array) == TILEDB_OK);
+  tiledb_query_free(&query);
+  tiledb_array_free(&array);
+  tiledb_ctx_free(&ctx);
+}
+
+TEST_CASE_METHOD(
+    HandleQueryPlanRequestFx,
+    "tiledb_handle_query_plan_request - error checks",
+    "[request_handler][query_plan][errors]") {
+  create_array();
+
+  auto ctx = tiledb::Context();
+  auto array = tiledb::Array(ctx, uri_.to_string(), TILEDB_READ);
+  auto stype = TILEDB_CAPNP;
+  auto req_buf = tiledb_buffer_handle_t::make_handle();
+  auto resp_buf = tiledb_buffer_handle_t::make_handle();
+
+  auto rval = tiledb_handle_query_plan_request(
+      nullptr,
+      array.ptr().get(),
+      static_cast<tiledb_serialization_type_t>(stype),
+      req_buf,
+      resp_buf);
+  REQUIRE(rval != TILEDB_OK);
+
+  rval = tiledb_handle_query_plan_request(
+      ctx.ptr().get(),
+      nullptr,
+      static_cast<tiledb_serialization_type_t>(stype),
+      req_buf,
+      resp_buf);
+  REQUIRE(rval != TILEDB_OK);
+
+  rval = tiledb_handle_query_plan_request(
+      ctx.ptr().get(),
+      array.ptr().get(),
+      static_cast<tiledb_serialization_type_t>(stype),
+      nullptr,
+      resp_buf);
+  REQUIRE(rval != TILEDB_OK);
+
+  rval = tiledb_handle_query_plan_request(
+      ctx.ptr().get(),
+      array.ptr().get(),
+      static_cast<tiledb_serialization_type_t>(stype),
+      req_buf,
+      nullptr);
+  REQUIRE(rval != TILEDB_OK);
+}
+
 /* ********************************* */
 /*       Testing Support Code        */
 /* ********************************* */
@@ -187,7 +300,8 @@ shared_ptr<Array> RequestHandlerFx::get_array(QueryType type) {
   return array;
 }
 
-shared_ptr<const Enumeration> RequestHandlerFx::create_string_enumeration(
+shared_ptr<const Enumeration>
+HandleLoadArraySchemaRequestFx::create_string_enumeration(
     std::string name, std::vector<std::string>& values) {
   uint64_t total_size = 0;
   for (auto v : values) {
@@ -263,4 +377,56 @@ ArraySchema HandleLoadArraySchemaRequestFx::call_handler(
       stype, resp_buf->buffer());
 }
 
+shared_ptr<ArraySchema> HandleQueryPlanRequestFx::create_schema() {
+  auto schema = make_shared<ArraySchema>(HERE(), ArrayType::DENSE);
+  schema->set_capacity(10000);
+  throw_if_not_ok(schema->set_cell_order(Layout::ROW_MAJOR));
+  throw_if_not_ok(schema->set_tile_order(Layout::ROW_MAJOR));
+  uint32_t dim_domain[] = {1, 10, 1, 10};
+
+  auto dim1 = make_shared<Dimension>(HERE(), "dim1", Datatype::INT32);
+  throw_if_not_ok(dim1->set_domain(&dim_domain[0]));
+  auto dim2 = make_shared<Dimension>(HERE(), "dim2", Datatype::INT32);
+  throw_if_not_ok(dim2->set_domain(&dim_domain[2]));
+
+  auto dom = make_shared<Domain>(HERE());
+  throw_if_not_ok(dom->add_dimension(dim1));
+  throw_if_not_ok(dom->add_dimension(dim2));
+  throw_if_not_ok(schema->set_domain(dom));
+
+  auto attr1 = make_shared<Attribute>(HERE(), "attr1", Datatype::INT32);
+  throw_if_not_ok(schema->add_attribute(attr1));
+  auto attr2 = make_shared<Attribute>(HERE(), "attr2", Datatype::INT32);
+  throw_if_not_ok(schema->add_attribute(attr2));
+  auto attr3 = make_shared<Attribute>(HERE(), "attr3", Datatype::INT64);
+  throw_if_not_ok(schema->add_attribute(attr3));
+
+  return schema;
+}
+
+std::string HandleQueryPlanRequestFx::call_handler(
+    SerializationType stype, Query& query) {
+  auto ctx = tiledb::Context();
+  auto array = tiledb::Array(ctx, uri_.to_string(), TILEDB_READ);
+  auto req_buf = tiledb_buffer_handle_t::make_handle();
+  auto resp_buf = tiledb_buffer_handle_t::make_handle();
+
+  serialization::serialize_query_plan_request(
+      cfg_, query, stype, req_buf->buffer());
+  auto rval = tiledb_handle_query_plan_request(
+      ctx.ptr().get(),
+      array.ptr().get(),
+      static_cast<tiledb_serialization_type_t>(stype),
+      req_buf,
+      resp_buf);
+  REQUIRE(rval == TILEDB_OK);
+
+  auto query_plan =
+      serialization::deserialize_query_plan_response(stype, resp_buf->buffer());
+
+  tiledb_buffer_handle_t::break_handle(req_buf);
+  tiledb_buffer_handle_t::break_handle(resp_buf);
+
+  return query_plan;
+}
 #endif  // TILEDB_SERIALIZATION
