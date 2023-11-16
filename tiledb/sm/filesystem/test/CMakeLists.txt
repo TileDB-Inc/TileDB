@@ -27,7 +27,10 @@ include(unit_test)
 
 commence(unit_test vfs)
     this_target_object_libraries(vfs)
-    this_target_sources(main.cc unit_uri.cc)
+    this_target_sources(main.cc unit_posix_directory_entries.cc unit_uri.cc)
+    this_target_compile_definitions(vfs PRIVATE
+        -DTILEDB_TEST_INPUTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../../../../test/inputs"
+    )
 conclude(unit_test)
 
 commence(unit_test vfs_read_log_modes)

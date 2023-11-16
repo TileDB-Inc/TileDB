@@ -136,6 +136,16 @@ struct TileDBUniquePtrDeleter {
 template <class T>
 using tiledb_unique_ptr = std::unique_ptr<T, TileDBUniquePtrDeleter<T>>;
 
+/** Unique pointer with std::free as a deleter. */
+struct TileDBFreeDeleter {
+  void operator()(void* const p) const {
+    std::free(p);
+  }
+};
+
+template <class T>
+using tiledb_unique_c_ptr = std::unique_ptr<T, TileDBFreeDeleter>;
+
 }  // namespace common
 }  // namespace tiledb
 
