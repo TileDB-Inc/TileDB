@@ -265,7 +265,7 @@ const uint64_t& ArrayDirectory::timestamp_end() const {
 
 void ArrayDirectory::write_commit_ignore_file(
     const std::vector<URI>& commit_uris_to_ignore) {
-  auto name = storage_format::compute_new_fragment_name(
+  auto name = storage_format::compute_consolidated_fragment_name(
       commit_uris_to_ignore.front(),
       commit_uris_to_ignore.back(),
       constants::format_version);

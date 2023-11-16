@@ -293,7 +293,7 @@ void StorageManagerCanonical::write_consolidated_commits_file(
     ArrayDirectory array_dir,
     const std::vector<URI>& commit_uris) {
   // Compute the file name.
-  auto name = storage_format::compute_new_fragment_name(
+  auto name = storage_format::compute_consolidated_fragment_name(
       commit_uris.front(), commit_uris.back(), write_version);
 
   // Compute size of consolidated file. Save the sizes of the files to re-use

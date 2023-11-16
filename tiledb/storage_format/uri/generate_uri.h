@@ -40,8 +40,6 @@ using namespace tiledb::common;
 namespace tiledb::storage_format {
 
 /**
- * Generates a new URI.
- *
  * Generate a new URI in the form `__t1_t2_uuid_v`, where `t1` is the starting
  * timestamp, `t2` is the ending timestamp,  and `v` is the current format
  * version. For instance,
@@ -55,8 +53,26 @@ namespace tiledb::storage_format {
  *
  * @return The new URI.
  */
-std::string generate_uri(
+std::string generate_timestamped_name(
     uint64_t timestamp_start, uint64_t timestamp_end, uint32_t version);
+
+/**
+ * Generates a new fragment name.
+ *
+ * Generates a fragment name in the form `__t_t_uuid_v`, where `t` is the input
+ * timestamp and `v` is the current format version. For instance,
+ * `__1458759561320_1458759561320_6ba7b8129dad11d180b400c04fd430c8_3`.
+ *
+ * If `timestamp` is 0, then it is set to the current time.
+ *
+ * @param timestamp The timestamp of when the array got opened for writes. It
+ *     is in ms since 1970-01-01 00:00:00 +0000 (UTC).
+ * @param format_version The write version.
+ *
+ * @return new fragment name.
+ */
+std::string generate_timestamped_name(
+    uint64_t timestamp, format_version_t format_version);
 
 }  // namespace tiledb::storage_format
 

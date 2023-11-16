@@ -42,35 +42,17 @@ using namespace tiledb::sm;
 namespace tiledb::storage_format {
 
 /**
- * Computes a new fragment name in the form
+ * Computes a consolidated fragment name in the form
  * `__<first_URI_timestamp>_<last_URI_timestamp>_<uuid>`.
  *
  * @param first The first URI.
  * @param last The last URI.
  * @param format_version The write version.
  *
- * @return new fragment name.
+ * @return consolidated fragment name.
  */
-std::string compute_new_fragment_name(
+std::string compute_consolidated_fragment_name(
     const URI& first, const URI& last, format_version_t format_version);
-
-/**
- * Generates a new fragment name.
- *
- * Generates a fragment name in the form `__t_t_uuid_v`, where `t` is the input
- * timestamp and `v` is the current format version. For instance,
- * `__1458759561320_1458759561320_6ba7b8129dad11d180b400c04fd430c8_3`.
- *
- * If `timestamp` is 0, then it is set to the current time.
- *
- * @param timestamp The timestamp of when the array got opened for writes. It
- *     is in ms since 1970-01-01 00:00:00 +0000 (UTC).
- * @param format_version The write version.
- *
- * @return new fragment name.
- */
-std::string generate_fragment_name(
-    uint64_t timestamp, format_version_t format_version);
 
 }  // namespace tiledb::storage_format
 

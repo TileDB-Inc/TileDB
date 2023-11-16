@@ -27,9 +27,7 @@
  */
 
 #include "tiledb/storage_format/uri/fragment_name.h"
-#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/uuid.h"
-#include "tiledb/storage_format/uri/generate_uri.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <sstream>
@@ -38,7 +36,7 @@ using namespace tiledb::common;
 
 namespace tiledb::storage_format {
 
-std::string compute_new_fragment_name(
+std::string compute_consolidated_fragment_name(
     const URI& first, const URI& last, format_version_t format_version) {
   // Get uuid
   std::string uuid;
@@ -51,7 +49,7 @@ std::string compute_new_fragment_name(
 
   if (t_first.first > t_last.second) {
     throw std::logic_error(
-        "Error computing new fragment name; "
+        "Error computing consolidated fragment name; "
         "start timestamp cannot be after end timestamp.");
   }
 
@@ -61,13 +59,6 @@ std::string compute_new_fragment_name(
      << format_version;
 
   return ss.str();
-}
-
-std::string generate_fragment_name(
-    uint64_t timestamp, format_version_t format_version) {
-  timestamp =
-      (timestamp != 0) ? timestamp : sm::utils::time::timestamp_now_ms();
-  return generate_uri(timestamp, timestamp, format_version);
 }
 
 }  // namespace tiledb::storage_format

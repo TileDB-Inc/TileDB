@@ -35,7 +35,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/query/deletes_and_updates/serialization.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
-#include "tiledb/storage_format/uri/fragment_name.h"
+#include "tiledb/storage_format/uri/generate_uri.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
@@ -138,7 +138,7 @@ Status DeletesAndUpdates::dowork() {
   uint64_t timestamp = array_->timestamp_end_opened_at();
   auto write_version = array_->array_schema_latest().write_version();
   auto new_fragment_str =
-      storage_format::generate_fragment_name(timestamp, write_version);
+      storage_format::generate_timestamped_name(timestamp, write_version);
 
   // Check that the delete or update isn't in the middle of a fragment
   // consolidated without timestamps.

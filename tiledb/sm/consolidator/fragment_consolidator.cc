@@ -650,8 +650,8 @@ Status FragmentConsolidator::create_queries(
   auto last = (*query_r)->last_fragment_uri();
 
   auto write_version = array_for_reads->array_schema_latest().write_version();
-  auto fragment_name =
-      storage_format::compute_new_fragment_name(first, last, write_version);
+  auto fragment_name = storage_format::compute_consolidated_fragment_name(
+      first, last, write_version);
 
   // Create write query
   *query_w = tdb_new(Query, storage_manager_, array_for_writes, fragment_name);

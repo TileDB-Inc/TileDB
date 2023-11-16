@@ -33,6 +33,7 @@
 #include <test/support/tdb_catch.h>
 
 #include "../fragment_name.h"
+#include "../generate_uri.h"
 #include "../parse_uri.h"
 #include "tiledb/sm/misc/constants.h"
 
@@ -40,45 +41,70 @@ using namespace tiledb::storage_format;
 using namespace tiledb::sm::utils::parse;
 
 TEST_CASE(
-    "StorageFormat: Fragment: compute_new_fragment_name",
-    "[storage_format][fragment][compute_new_fragment_name]") {
+    "StorageFormat: Fragment: compute_consolidated_fragment_name",
+    "[storage_format][fragment][compute_consolidated_fragment_name]") {
   // Create fragments at timestamps 1 and 2
-  auto start = tiledb::sm::URI{
-      "file:///array_name/__fragments/__1_1_44318efd44f546b18db13edc8d10805b"};
-  auto end = tiledb::sm::URI{
-      "file:///array_name/__fragments/__2_2_44318efd44f546b18db13edc8d10805b"};
+  auto start = tiledb::sm::URI(
+      "file:///array_name/__fragments/__1_1_44318efd44f546b18db13edc8d10805b");
+  auto end = tiledb::sm::URI(
+      "file:///array_name/__fragments/__2_2_44318efd44f546b18db13edc8d10806c");
 
-  SECTION("valid timestamps") {
-    // Compute new fragment name for fragments at timestamps 1, 2
-    auto name{compute_new_fragment_name(start, end, constants::format_version)};
+  SECTION("valid, unique timestamps") {
+    // Compute fragment name for fragments at timestamps 1, 2
+    auto name{compute_consolidated_fragment_name(
+        start, end, constants::format_version)};
 
     // Check new fragment name timestamp range
     auto name_substr{name.substr(name.find_last_of("/"), 6)};
     CHECK(name_substr == "/__1_2");
   }
 
+  SECTION("valid, same timestamps") {
+    // Compute fragment name for fragments at timestamps 1, 1
+    auto name{compute_consolidated_fragment_name(
+        start, start, constants::format_version)};
+
+    // Check new fragment name timestamp range
+    auto name_substr{name.substr(name.find_last_of("/"), 6)};
+    CHECK(name_substr == "/__1_1");
+  }
+
   SECTION("invalid timestamps") {
-    // Try to compute new fragment name for fragments at timestamps 2, 1
+    // Try to compute fragment name for fragments at timestamps 2, 1
     REQUIRE_THROWS_WITH(
-        compute_new_fragment_name(end, start, constants::format_version),
+        compute_consolidated_fragment_name(
+            end, start, constants::format_version),
         Catch::Matchers::ContainsSubstring(
             "start timestamp cannot be after end timestamp"));
   }
 }
 
 TEST_CASE(
-    "StorageFormat: Fragment: generate_fragment_name",
-    "[storage_format][fragment][generate_fragment_name]") {
+    "StorageFormat: Fragment: generate_timestamped_name",
+    "[storage_format][fragment][generate_timestamped_name]") {
   // Note: all format versions will generate the same format of fragment name
-  uint64_t timestamp = 1;
+  uint64_t start = 1;
+  uint64_t end = 2;
   format_version_t format_version = 5;
+  std::string name;
 
-  // Generate new fragment name
-  auto name{generate_fragment_name(timestamp, format_version)};
+  SECTION("one timestamp") {
+    // Generate new fragment name
+    name = generate_timestamped_name(start, format_version);
 
-  // Check new fragment name's timestamp range
-  auto name_timestamps{name.substr(0, 6)};
-  CHECK(name_timestamps == "/__1_1");
+    // Check new fragment name's timestamp range
+    auto name_timestamps{name.substr(0, 6)};
+    CHECK(name_timestamps == "/__1_1");
+  }
+
+  SECTION("two timestamps") {
+    // Generate new fragment name
+    name = generate_timestamped_name(start, end, (uint32_t)format_version);
+
+    // Check new fragment name's timestamp range
+    auto name_timestamps{name.substr(0, 6)};
+    CHECK(name_timestamps == "/__1_2");
+  }
 
   // Check new fragment name's format version
   auto name_version{name.substr(name.find_last_of("_"))};
@@ -91,13 +117,25 @@ TEST_CASE(
   std::pair<uint64_t, uint64_t> range;
 
   SECTION("name version 1") {
-    // Note that this version sets both range values to the end timestamp.
+    // Note: the end timestamp may or may not be present.
+    // If present, this version sets both range values to the end timestamp.
     // As such, if the end_timestamp < start_timestamp, no error is thrown.
     SECTION("valid timestamps") {
-      // Create fragment at timestamp 1-2
-      auto frag = tiledb::sm::URI{
-          "file:///array_name/__fragments/"
-          "__44318efd44f546b18db13edc8d10805b_1{_2}"};
+      tiledb::sm::URI frag;
+
+      SECTION("with end timestamp") {
+        // Create fragment at timestamp 1-2
+        frag = tiledb::sm::URI(
+            "file:///array_name/__fragments/"
+            "__44318efd44f546b18db13edc8d10805b_1_2");
+      }
+
+      SECTION("without end timestamp") {
+        // Create fragment at timestamp 2
+        frag = tiledb::sm::URI(
+            "file:///array_name/__fragments/"
+            "__44318efd44f546b18db13edc8d10805b_2");
+      }
 
       // Check timestamp range
       REQUIRE(get_timestamp_range(frag, &range).ok());
@@ -107,9 +145,9 @@ TEST_CASE(
 
     SECTION("invalid timestamps") {
       // Create fragment at timestamp 2-1
-      auto frag = tiledb::sm::URI{
+      auto frag = tiledb::sm::URI(
           "file:///array_name/__fragments/"
-          "__44318efd44f546b18db13edc8d10805b_2{_1}"};
+          "__44318efd44f546b18db13edc8d10805b_2_1");
 
       // Check timestamp range
       REQUIRE(get_timestamp_range(frag, &range).ok());
@@ -121,9 +159,9 @@ TEST_CASE(
   SECTION("name version 2") {
     SECTION("valid timestamps") {
       // Create fragment at timestamp 1-2
-      auto frag = tiledb::sm::URI{
+      auto frag = tiledb::sm::URI(
           "file:///array_name/__fragments/"
-          "__1_2_44318efd44f546b18db13edc8d10805b"};
+          "__1_2_44318efd44f546b18db13edc8d10805b");
 
       // Check timestamp range
       REQUIRE(get_timestamp_range(frag, &range).ok());
@@ -133,9 +171,9 @@ TEST_CASE(
 
     SECTION("invalid timestamps") {
       // Create fragment at timestamp 2-1
-      auto frag = tiledb::sm::URI{
+      auto frag = tiledb::sm::URI(
           "file:///array_name/__fragments/"
-          "__2_1_44318efd44f546b18db13edc8d10805b"};
+          "__2_1_44318efd44f546b18db13edc8d10805b");
 
       // Try to get timestamp range
       REQUIRE_THROWS_WITH(
@@ -148,9 +186,9 @@ TEST_CASE(
   SECTION("name version 3") {
     SECTION("valid timestamps") {
       // Create fragment at timestamp 1-2
-      auto frag = tiledb::sm::URI{
+      auto frag = tiledb::sm::URI(
           "file:///array_name/__fragments/"
-          "__1_2_44318efd44f546b18db13edc8d10805b_5"};
+          "__1_2_44318efd44f546b18db13edc8d10805b_5");
 
       // Check timestamp range
       REQUIRE(get_timestamp_range(frag, &range).ok());
@@ -160,9 +198,9 @@ TEST_CASE(
 
     SECTION("invalid timestamps") {
       // Create fragment at timestamp 2-1
-      auto frag = tiledb::sm::URI{
+      auto frag = tiledb::sm::URI(
           "file:///array_name/__fragments/"
-          "__2_1_44318efd44f546b18db13edc8d10805b_5"};
+          "__2_1_44318efd44f546b18db13edc8d10805b_5");
 
       // Try to get timestamp range
       REQUIRE_THROWS_WITH(

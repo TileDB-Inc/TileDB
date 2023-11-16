@@ -93,8 +93,8 @@ Status FragmentMetaConsolidator::consolidate(
   auto first = meta.front()->fragment_uri();
   auto last = meta.back()->fragment_uri();
   auto write_version = array.array_schema_latest().write_version();
-  auto name =
-      storage_format::compute_new_fragment_name(first, last, write_version);
+  auto name = storage_format::compute_consolidated_fragment_name(
+      first, last, write_version);
 
   auto frag_md_uri = array_dir.get_fragment_metadata_dir(write_version);
   RETURN_NOT_OK(storage_manager_->vfs()->create_dir(frag_md_uri));

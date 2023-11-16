@@ -54,7 +54,7 @@
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 #include "tiledb/sm/tile/writer_tile_tuple.h"
-#include "tiledb/storage_format/uri/fragment_name.h"
+#include "tiledb/storage_format/uri/generate_uri.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
@@ -224,7 +224,7 @@ WriterBase::WriterBase(
   auto new_fragment_str =
       fragment_name.has_value() ?
           fragment_name.value() :
-          storage_format::generate_fragment_name(timestamp, write_version);
+          storage_format::generate_timestamped_name(timestamp, write_version);
   auto frag_dir_uri =
       array_->array_directory().get_fragments_dir(write_version);
   fragment_uri_ = frag_dir_uri.join_path(new_fragment_str);
