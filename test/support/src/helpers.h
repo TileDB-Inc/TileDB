@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -84,12 +84,26 @@ static tiledb::sm::stats::Stats g_helper_stats("test");
 // objects that require a parent `Logger` object.
 shared_ptr<Logger> g_helper_logger(void);
 
-const std::string& get_temp_path();
-
 // For easy reference
 typedef std::pair<tiledb_filter_type_t, int> Compressor;
 template <class T>
 using SubarrayRanges = std::vector<std::vector<T>>;
+
+/**
+ * Throws if the return code is not OK.
+ * For use in test setup for object allocation.
+ *
+ * @param rc Return code from a TileDB C-API setup function.
+ */
+void throw_if_setup_failed(int rc);
+
+/**
+ * Throws if the condition is not met.
+ * For use in test setup for object allocation.
+ *
+ * @param condition Condition to check from a TileDB C-API setup function.
+ */
+void throw_if_setup_failed(bool condition);
 
 /**
  * Check the return code for a TileDB C-API function is TILEDB_ERR and

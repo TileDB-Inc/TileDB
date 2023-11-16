@@ -31,6 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/config/config_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
@@ -46,12 +47,6 @@ struct QueryFieldFx : TemporaryDirectoryFixture {
 
   std::string array_name() {
     return temp_dir_ + "queryfield_array";
-  }
-
-  inline void throw_if_setup_failed(const int32_t rc) {
-    if (rc != TILEDB_OK) {
-      throw std::runtime_error("test setup failed");
-    }
   }
 
   void write_sparse_array(const std::string& path);
