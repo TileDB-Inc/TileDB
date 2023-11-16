@@ -393,22 +393,64 @@ class TileDBS3Client : public Aws::S3::S3Client {
   const S3Parameters& params_;
 };
 
-template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
+template <class T>
 class S3ScanIterator {
  public:
   using value_type = Aws::S3::Model::Object;
   using difference_type = ptrdiff_t;
-  using pointer = const Aws::S3::Model::Object*;
+  using pointer = std::vector<Aws::S3::Model::Object>::const_iterator;
   using reference = const Aws::S3::Model::Object&;
   using iterator_category = std::forward_iterator_tag;
 
   S3ScanIterator() = default;
 
-  explicit S3ScanIterator(
+  S3ScanIterator(pointer ptr, T* scanner)
+      : ptr_(ptr)
+      , scanner_(scanner) {
+  }
+
+  S3ScanIterator& operator=(const S3ScanIterator& rhs) {
+    ptr_ = rhs.ptr_;
+    scanner_ = rhs.scanner_;
+    return *this;
+  }
+
+  reference operator*() {
+    return *ptr_;
+  }
+
+  S3ScanIterator& operator++() {
+    scanner_->next();
+    ptr_++;
+    return *this;
+  }
+
+  bool operator!=(const S3ScanIterator& rhs) const {
+    return ptr_ != rhs.ptr_;
+  }
+
+  bool operator==(const S3ScanIterator& rhs) const {
+    return ptr_ == rhs.ptr_;
+  }
+
+ private:
+  pointer ptr_;
+  T* scanner_;
+};
+
+template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
+class S3Scanner : public LsScanner<F, D> {
+ public:
+  template <class T>
+  friend class S3ScanIterator;
+
+  /** Constructor. */
+  S3Scanner(
       const std::shared_ptr<TileDBS3Client>& client,
-      const Aws::Http::URI& aws_uri,
-      const std::string& delimiter,
-      const URI& prefix);
+      const URI& prefix,
+      F file_filter,
+      D dir_filter = no_filter,
+      bool recursive = false);
 
   /**
    * Advance to the next object accepted by the filters for this scan.
@@ -434,9 +476,11 @@ class S3ScanIterator {
     }
 
     list_objects_outcome_ = client_->ListObjectsV2(list_objects_request_);
-    ptr_ = list_objects_outcome_.GetResult().GetContents().begin();
-    begin_ = ptr_;
-    end_ = list_objects_outcome_.GetResult().GetContents().end();
+    begin_ = S3ScanIterator<S3Scanner<F, D>>(
+        list_objects_outcome_.GetResult().GetContents().begin(), this);
+    ptr_ = begin_;
+    end_ = S3ScanIterator<S3Scanner<F, D>>(
+        list_objects_outcome_.GetResult().GetContents().end(), this);
     if (!list_objects_outcome_.IsSuccess()) {
       throw S3Exception(
           std::string("Error while listing with prefix '") +
@@ -445,21 +489,8 @@ class S3ScanIterator {
     }
   }
 
-  reference operator*() {
-    return *ptr_;
-  }
-
-  S3ScanIterator& operator++() {
-    next();
-    return *this;
-  }
-
-  bool operator!=(const S3ScanIterator& rhs) const {
-    return ptr_ != rhs.ptr_;
-  }
-
-  bool operator==(const S3ScanIterator& rhs) const {
-    return is_done() && ptr_ == rhs.ptr_;
+  inline bool is_done() const {
+    return ptr_ == end();
   }
 
   inline auto begin() const {
@@ -470,18 +501,10 @@ class S3ScanIterator {
     return end_;
   }
 
-  /**
-   *
-   * @return
-   */
-  inline bool is_done() const {
-    return ptr_ == end();
-  }
-
  private:
   shared_ptr<TileDBS3Client> client_;
-  std::vector<Aws::S3::Model::Object>::const_iterator ptr_, begin_, end_;
   std::string delimiter_;
+  S3ScanIterator<S3Scanner<F, D>> ptr_, begin_, end_;
 
   Aws::S3::Model::ListObjectsV2Request list_objects_request_;
 
@@ -490,38 +513,6 @@ class S3ScanIterator {
 
   bool found_;
   URI prefix_;
-};
-
-template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
-class S3Scanner : public LsScanner<F, D> {
- public:
-  template <FilePredicate T, DirectoryPredicate U>
-  friend class S3ScanIterator;
-
-  /** Constructor. */
-  S3Scanner(
-      const std::shared_ptr<TileDBS3Client>& client,
-      const URI& prefix,
-      F file_filter,
-      D dir_filter = no_filter,
-      bool recursive = false);
-
-  /**
-   * @return
-   */
-  inline auto begin() const {
-    return it_.begin();
-  }
-
-  /**
-   * @return
-   */
-  inline auto end() const {
-    return it_.end();
-  }
-
- private:
-  S3ScanIterator<F, D> it_;
 };
 
 /**
@@ -1480,32 +1471,22 @@ S3Scanner<F, D>::S3Scanner(
     F file_filter,
     D dir_filter,
     bool recursive)
-    : LsScanner<F, D>(file_filter, dir_filter, recursive) {
+    : LsScanner<F, D>(prefix, file_filter, dir_filter, recursive)
+    , client_(client)
+    , delimiter_(this->is_recursive_ ? "" : "/")
+    , found_(false) {
   const auto prefix_dir = prefix.add_trailing_slash();
   auto prefix_str = prefix_dir.to_string();
   Aws::Http::URI aws_uri = prefix_str.c_str();
-  std::string delimiter = this->is_recursive_ ? "" : "/";
-  it_ = S3ScanIterator<F, D>(client, aws_uri, delimiter, prefix);
   if (!prefix_dir.is_s3()) {
     throw S3Exception("URI is not an S3 URI: " + prefix_str);
   }
-}
 
-template <FilePredicate F, DirectoryPredicate D>
-S3ScanIterator<F, D>::S3ScanIterator(
-    const shared_ptr<TileDBS3Client>& client,
-    const Aws::Http::URI& aws_uri,
-    const std::string& delimiter,
-    const URI& prefix)
-    : client_(client)
-    , delimiter_(delimiter)
-    , found_(false)
-    , prefix_(prefix) {
   list_objects_request_.SetBucket(aws_uri.GetAuthority());
   std::string aws_uri_str(S3::remove_front_slash(aws_uri.GetPath()));
   list_objects_request_.SetPrefix(aws_uri_str.c_str());
   // Empty delimiter returns recursive results from S3.
-  list_objects_request_.SetDelimiter(delimiter.c_str());
+  list_objects_request_.SetDelimiter(delimiter_.c_str());
 
   // TODO: Remove; Used to test batch collection with small max_keys.
   list_objects_request_.SetMaxKeys(10);
@@ -1518,10 +1499,10 @@ S3ScanIterator<F, D>::S3ScanIterator(
 }
 
 template <FilePredicate F, DirectoryPredicate D>
-void S3ScanIterator<F, D>::next() {
+void S3Scanner<F, D>::next() {
   // Increment the iterator if we found a result on the last call.
   if (found_) {
-    ptr_++;
+    ++ptr_;
     found_ = false;
   }
   if (is_done() && list_objects_outcome_.GetResult().GetIsTruncated()) {
@@ -1534,7 +1515,7 @@ void S3ScanIterator<F, D>::next() {
     std::string path = "s3://" + list_objects_request_.GetBucket() +
                        S3::add_front_slash(object.GetKey());
     if (!this->file_filter_(path, size)) {
-      ptr_++;
+      ++ptr_;
     } else {
       // iterator is at the next object within results accepted by the filters.
       found_ = true;

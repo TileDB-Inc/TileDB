@@ -65,13 +65,16 @@ static bool no_filter(const std::string_view&) {
 template <FilePredicate F, DirectoryPredicate D>
 class LsScanner {
  public:
-  LsScanner(F file_filter, D dir_filter, bool recursive = false)
-      : file_filter_(file_filter)
+  LsScanner(
+      const URI& prefix, F file_filter, D dir_filter, bool recursive = false)
+      : prefix_(prefix)
+      , file_filter_(file_filter)
       , dir_filter_(dir_filter)
       , is_recursive_(recursive) {
   }
 
  protected:
+  URI prefix_;
   F file_filter_;
   D dir_filter_;
   bool is_recursive_;
