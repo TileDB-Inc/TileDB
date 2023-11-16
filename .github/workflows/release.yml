@@ -47,6 +47,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.manylinux && 'quay.io/pypa/manylinux2014_x86_64' || '' }}
     env:
+      # We target macOS 11 at minimum according to CRAN policy.
+      # See https://stat.ethz.ch/pipermail/r-package-devel/2023q4/010078.html
       MACOSX_DEPLOYMENT_TARGET: 11
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
