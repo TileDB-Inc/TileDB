@@ -213,7 +213,8 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
               std::shared_ptr<::Azure::Core::Credentials::TokenCredential>>{
               make_shared<::Azure::Identity::EnvironmentCredential>(HERE()),
               make_shared<::Azure::Identity::AzureCliCredential>(HERE()),
-              make_shared<::Azure::Identity::ManagedIdentityCredential>(
+              make_shared<::Azure::Identity::ManagedIdentityCredential>(HERE()),
+              make_shared<::Azure::Identity::WorkloadIdentityCredential>(
                   HERE())});
       // If a token is not available we wouldn't know it until we make a request
       // and it would be too late. Try getting a token, and if it fails fall
