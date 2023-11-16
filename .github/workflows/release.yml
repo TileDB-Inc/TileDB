@@ -89,6 +89,7 @@ jobs:
             -DTILEDB_WEBP=ON \
             -DTILEDB_STATIC=OFF \
             -DTILEDB_TESTS=OFF \
+            -DTILEDB_INSTALL_FIND_DEPENDENCIES=OFF \
             -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} \
             ${{ matrix.cmake_args }}
         shell: bash
