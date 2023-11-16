@@ -730,6 +730,10 @@ class VFSTestBase {
    */
   static tiledb::sm::Config create_test_config();
 
+  static bool no_file_filter(const std::string_view&, uint64_t) {
+    return true;
+  }
+
   std::vector<size_t> test_tree_;
   ThreadPool compute_, io_;
   tiledb::sm::VFS vfs_;

@@ -53,18 +53,26 @@ concept DirectoryPredicate = true;
 namespace tiledb::sm {
 using FileFilter = std::function<bool(const std::string_view&, uint64_t)>;
 // TODO: rename or remove
-[[maybe_unused]] static bool no_file_filter(const std::string_view&, uint64_t) {
-  return true;
-}
+
 using DirectoryFilter = std::function<bool(const std::string_view&)>;
 // TODO: rename or remove
 static bool no_filter(const std::string_view&) {
   return true;
 }
 
+/**
+ * LsScanner is a base class for scanning a filesystem for objects that match
+ * the given file and directory predicates. This should be used as a common
+ * base class for future filesystem scanner implementations, similar to
+ * S3Scanner.
+ *
+ * @tparam F The FilePredicate type used to filter object results.
+ * @tparam D The DirectoryPredicate type used to prune prefix results.
+ */
 template <FilePredicate F, DirectoryPredicate D>
 class LsScanner {
  public:
+  /** Constructor. */
   LsScanner(
       const URI& prefix, F file_filter, D dir_filter, bool recursive = false)
       : prefix_(prefix)
@@ -74,9 +82,13 @@ class LsScanner {
   }
 
  protected:
+  /** URI prefix being scanned and filtered for results. */
   URI prefix_;
+  /** File predicate used to filter file or object results. */
   F file_filter_;
+  /** Directory predicate used to prune directory or prefix results. */
   D dir_filter_;
+  /** Whether or not to recursively scan the prefix. */
   bool is_recursive_;
 };
 

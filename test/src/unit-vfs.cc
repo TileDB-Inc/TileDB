@@ -378,8 +378,8 @@ TEMPLATE_LIST_TEST_CASE(
 #ifdef HAVE_S3
     // If testing with recursion use the root directory, otherwise use a subdir.
     auto path = recursive ? fs.temp_dir_ : fs.temp_dir_.join_path("subdir_1");
-    CHECK_NOTHROW(
-        fs.s3().ls_filtered(path, no_file_filter, no_filter, recursive));
+    CHECK_NOTHROW(fs.s3().ls_filtered(
+        path, VFSTestBase::no_file_filter, no_filter, recursive));
 
     if (!recursive) {
       // If non-recursive, all objects in the first directory should be
@@ -395,25 +395,6 @@ TEMPLATE_LIST_TEST_CASE(
   }
 }
 
-TEST_CASE("VFS: ls_recursive callback stops traversal", "[vfs][ls_recursive]") {
-  // Currently only S3 is supported for VFS::ls_recursive.
-  VFSTest vfs_test({10, 50}, "s3://");
-  if (!vfs_test.is_supported()) {
-    return;
-  }
-
-  size_t cb_count = GENERATE(1, 11, 50);
-  CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, no_file_filter));
-
-  std::sort(
-      vfs_test.expected_results_.begin(), vfs_test.expected_results_.end());
-  if (cb_count != 0) {
-    vfs_test.expected_results_.resize(cb_count);
-  }
-  //  CHECK(vfs_test.ls_objects.size() == vfs_test.expected_results_.size());
-  //  CHECK(vfs_test.ls_objects == vfs_test.expected_results_);
-}
-
 TEST_CASE(
     "VFS: ls_recursive throws for unsupported backends",
     "[vfs][ls_recursive]") {
@@ -425,19 +406,17 @@ TEST_CASE(
   }
   std::string backend = vfs_test.temp_dir_.backend_name();
 
-  // TODO: Use or remove.
-  auto file_filter = [](const std::string_view&, uint64_t) { return true; };
-
   // Currently only S3 is supported for VFS::ls_recursive.
   if (vfs_test.temp_dir_.is_s3()) {
     DYNAMIC_SECTION(backend << " supported backend should not throw") {
-      CHECK_NOTHROW(
-          vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, no_file_filter));
+      CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(
+          vfs_test.temp_dir_, VFSTestBase::no_file_filter));
     }
   } else {
     DYNAMIC_SECTION(backend << " unsupported backend should throw") {
       CHECK_THROWS_WITH(
-          vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, no_file_filter),
+          vfs_test.vfs_.ls_recursive(
+              vfs_test.temp_dir_, VFSTestBase::no_file_filter),
           Catch::Matchers::ContainsSubstring(
               "storage backend is not supported"));
     }
