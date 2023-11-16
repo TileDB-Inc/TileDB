@@ -671,19 +671,6 @@ class SparseIndexReaderBase : public ReaderBase {
   template <class ResultTileType, class BitmapType>
   void apply_query_condition(std::vector<ResultTile*>& result_tiles);
 
-  /** Returns wether the field is for aggregation only or not. */
-  bool aggregate_only(const std::string& name) const {
-    if (qc_loaded_attr_names_set_.count(name) != 0) {
-      return false;
-    }
-
-    if (buffers_.count(name) != 0) {
-      return false;
-    }
-
-    return true;
-  }
-
   /**
    * Read and unfilter as many attributes as can fit in the memory budget and
    * return the names loaded in 'names_to_copy'. Also keep the 'buffer_idx'

@@ -547,8 +547,14 @@ Status SparseIndexReaderBase::read_and_unfilter_coords(
       std::back_inserter(attr_to_load));
 
   // Read and unfilter attribute tiles.
+  std::vector<ReaderBase::NameToLoad> to_load;
+  to_load.reserve(attr_to_load.size());
+  for (auto& name : attr_to_load) {
+    to_load.emplace_back(name);
+  }
+
   RETURN_CANCEL_OR_ERROR(
-      read_and_unfilter_attribute_tiles(attr_to_load, result_tiles));
+      read_and_unfilter_attribute_tiles(to_load, result_tiles));
 
   logger_->debug("Done reading and unfiltering coords tiles");
   return Status::Ok();
@@ -839,7 +845,7 @@ std::vector<std::string> SparseIndexReaderBase::read_and_unfilter_attributes(
   auto timer_se = stats_->start_timer("read_and_unfilter_attributes");
   const uint64_t memory_budget = available_memory();
 
-  std::vector<std::string> names_to_read;
+  std::vector<ReaderBase::NameToLoad> names_to_read;
   std::vector<std::string> names_to_copy;
   uint64_t memory_used = 0;
   while (*buffer_idx < names.size()) {
@@ -858,7 +864,7 @@ std::vector<std::string> SparseIndexReaderBase::read_and_unfilter_attributes(
 
       // We only read attributes, so dimensions have 0 cost.
       if (attr_mem_usage != 0) {
-        names_to_read.emplace_back(name);
+        names_to_read.emplace_back(name, null_count_aggregate_only(name));
       }
 
       names_to_copy.emplace_back(name);
